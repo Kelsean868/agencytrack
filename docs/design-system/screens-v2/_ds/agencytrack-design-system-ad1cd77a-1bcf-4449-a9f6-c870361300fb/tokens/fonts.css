@@ -1,0 +1,68 @@
+/* AgencyTrack webfonts.
+   Cabinet Grotesk (display) — shipped locally from the brand's OTF/WEB package (assets/fonts/).
+   Satoshi (body) — shipped locally (assets/fonts/), 400/500/700.
+   General Sans — shipped locally and available; NOT the canonical body font
+     unless the --brand-sans/--sans tokens are repointed to it.
+   JetBrains Mono (eyebrows/data) — Google Fonts CDN. */
+
+/* ---- JetBrains Mono (data) — CDN (must precede @font-face) ---- */
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap");
+
+/* ---- Cabinet Grotesk (local) ---- */
+@font-face{
+  font-family:'Cabinet Grotesk'; font-weight:400; font-style:normal; font-display:swap;
+  src:url('../assets/fonts/CabinetGrotesk-Regular.woff2') format('woff2'),
+      url('../assets/fonts/CabinetGrotesk-Regular.woff') format('woff');
+}
+@font-face{
+  font-family:'Cabinet Grotesk'; font-weight:500; font-style:normal; font-display:swap;
+  src:url('../assets/fonts/CabinetGrotesk-Medium.woff2') format('woff2'),
+      url('../assets/fonts/CabinetGrotesk-Medium.woff') format('woff');
+}
+@font-face{
+  font-family:'Cabinet Grotesk'; font-weight:700; font-style:normal; font-display:swap;
+  src:url('../assets/fonts/CabinetGrotesk-Bold.woff2') format('woff2'),
+      url('../assets/fonts/CabinetGrotesk-Bold.woff') format('woff');
+}
+@font-face{
+  font-family:'Cabinet Grotesk'; font-weight:800; font-style:normal; font-display:swap;
+  src:url('../assets/fonts/CabinetGrotesk-Extrabold.woff2') format('woff2'),
+      url('../assets/fonts/CabinetGrotesk-Extrabold.woff') format('woff');
+}
+@font-face{
+  font-family:'Cabinet Grotesk'; font-weight:900; font-style:normal; font-display:swap;
+  src:url('../assets/fonts/CabinetGrotesk-Black.woff2') format('woff2'),
+      url('../assets/fonts/CabinetGrotesk-Black.woff') format('woff');
+}
+
+/* ---- Satoshi (body, local) ---- */
+@font-face{
+  font-family:'Satoshi'; font-weight:400; font-style:normal; font-display:swap;
+  src:url('../assets/fonts/Satoshi-Regular.woff2') format('woff2');
+}
+@font-face{
+  font-family:'Satoshi'; font-weight:500; font-style:normal; font-display:swap;
+  src:url('../assets/fonts/Satoshi-Medium.woff2') format('woff2');
+}
+@font-face{
+  font-family:'Satoshi'; font-weight:700; font-style:normal; font-display:swap;
+  src:url('../assets/fonts/Satoshi-Bold.woff2') format('woff2');
+}
+
+/* ---- General Sans (local, available — not wired as the body token) ---- */
+@font-face{
+  font-family:'General Sans'; font-weight:400; font-style:normal; font-display:swap;
+  src:url('../assets/fonts/GeneralSans-Regular.woff2') format('woff2');
+}
+@font-face{
+  font-family:'General Sans'; font-weight:500; font-style:normal; font-display:swap;
+  src:url('../assets/fonts/GeneralSans-Medium.woff2') format('woff2');
+}
+@font-face{
+  font-family:'General Sans'; font-weight:600; font-style:normal; font-display:swap;
+  src:url('../assets/fonts/GeneralSans-Semibold.woff2') format('woff2');
+}
+@font-face{
+  font-family:'General Sans'; font-weight:700; font-style:normal; font-display:swap;
+  src:url('../assets/fonts/GeneralSans-Bold.woff2') format('woff2');
+}

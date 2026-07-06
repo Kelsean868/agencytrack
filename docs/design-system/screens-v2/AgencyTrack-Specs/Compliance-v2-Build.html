@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Compliance v2 — Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:760px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute);align-items:center}
+  .keylegend span.it{display:inline-flex;align-items:center;gap:7px}
+  .keylegend .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.exist{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.derive{background:var(--successTint);color:var(--success)}
+  .pchip.new{background:var(--goldTint);color:var(--goldInk)}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.d{background:var(--success)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)} .mk.f{background:var(--danger)}
+
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.exist{background:var(--tealTint);color:var(--tealDark)}
+  .ptag.derive{background:var(--successTint);color:var(--success)}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+
+  /* app frame */
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(38,35,28,.10);display:flex;gap:14px}
+  .sidebar{width:152px;flex-shrink:0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 9px;display:flex;flex-direction:column;gap:3px}
+  .sb-logo{display:flex;align-items:center;gap:8px;padding:4px 6px 12px}
+  .sb-logo .lm{width:24px;height:24px;border-radius:7px;background:var(--teal)}
+  .sb-logo .lt{font-family:var(--display);font-weight:800;font-size:13px}
+  .sb-grp{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.12em;color:var(--inkFaint);padding:9px 8px 4px}
+  .nav{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;font-size:11.5px;font-weight:600;color:var(--inkMute)}
+  .nav .ic{width:14px;height:14px;border-radius:4px;background:var(--inkDim);flex-shrink:0}
+  .nav.on{background:var(--tealTint);color:var(--tealDark);font-weight:700}
+  .nav.on .ic{background:var(--teal)}
+
+  .canvas{flex:1;min-width:0;display:flex;flex-direction:column;gap:13px}
+  .topbar{display:flex;align-items:center;gap:10px;padding:2px 2px 0}
+  .topbar .pt{font-family:var(--display);font-weight:800;font-size:16px;white-space:nowrap}
+  .topbar .ps{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.05em}
+
+  /* lens toggle */
+  .lens{display:flex;gap:4px;padding:4px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:10px;width:fit-content}
+  .lens .lg{display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:7px;font-size:12px;font-weight:700;color:var(--inkMute);white-space:nowrap}
+  .lens .lg.on{background:var(--teal);color:#fff;box-shadow:0 2px 6px color-mix(in srgb,var(--teal) 27%,transparent)}
+  .lens .lg .ct{font-family:var(--mono);font-size:9px;padding:0 6px;border-radius:99px;background:color-mix(in srgb,#fff 25%,transparent)}
+  .lens .lg:not(.on) .ct{background:var(--surfaceMute);color:var(--inkFaint)}
+
+  /* reality bar */
+  .reality{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:16px 19px;position:relative}
+  .rb-h{display:flex;align-items:center;gap:10px;margin-bottom:13px}
+  .rb-h .t{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--inkMute)}
+  .rb-h .scope{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);letter-spacing:.04em}
+  .rbbar{display:flex;height:34px;border-radius:9px;overflow:hidden;border:1px solid var(--rule)}
+  .rbbar .seg{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700;color:#fff;white-space:nowrap}
+  .rbbar .seg.ontime{background:var(--success)}
+  .rbbar .seg.late{background:var(--warning)}
+  .rbbar .seg.notin{background:var(--danger)}
+  .rbstats{display:flex;gap:22px;margin-top:14px;flex-wrap:wrap}
+  .rstat{display:flex;align-items:center;gap:9px}
+  .rstat .d{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+  .rstat .cc{display:flex;flex-direction:column;line-height:1.15}
+  .rstat .cl{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;color:var(--inkMute)}
+  .rstat .cv{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-.012em}
+
+  /* exception list */
+  .excard{background:var(--surface);border:1px solid color-mix(in srgb,var(--danger) 26%,transparent);border-radius:14px;overflow:hidden}
+  .ex-h{display:flex;align-items:center;gap:11px;padding:13px 17px;border-bottom:1px solid var(--rule);background:color-mix(in srgb,var(--danger) 5%,transparent)}
+  .ex-h .et{font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:-.01em}
+  .ex-h .ec{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--danger);background:var(--dangerTint);padding:2px 9px;border-radius:99px}
+  .ex-h .nudgeall{margin-left:auto;padding:9px 15px;background:var(--teal);color:#fff;border-radius:9px;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:7px;box-shadow:0 2px 8px color-mix(in srgb,var(--teal) 27%,transparent)}
+  .exrow{display:flex;align-items:center;gap:13px;padding:11px 17px;border-bottom:1px solid var(--rule)}
+  .exrow:last-child{border-bottom:none}
+  .av{width:36px;height:36px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:13px;flex-shrink:0}
+  .exrow .nm{flex:1;min-width:0}
+  .exrow .nm .n{font-size:13px;font-weight:700;white-space:nowrap}
+  .exrow .nm .u{font-family:var(--mono);font-size:10px;color:var(--inkMute);margin-top:1px}
+  .exrow .last{font-family:var(--mono);font-size:10.5px;color:var(--inkMute);white-space:nowrap}
+  .nudgebtn{padding:8px 15px;background:var(--surface);border:1px solid var(--teal);color:var(--teal);border-radius:9px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;min-height:38px}
+  .cooldown{padding:8px 13px;background:var(--surfaceSoft);border:1px solid var(--rule);color:var(--inkMute);border-radius:9px;font-family:var(--mono);font-size:10.5px;font-weight:700;display:inline-flex;align-items:center;gap:6px;min-height:38px;white-space:nowrap}
+
+  /* roster */
+  .roster{background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+  .ro-h{display:flex;align-items:center;gap:10px;padding:13px 17px;border-bottom:1px solid var(--rule)}
+  .ro-h .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .ro-h .hint{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--inkFaint)}
+  .rorow{display:grid;grid-template-columns:1.7fr 110px 116px 1fr;gap:12px;align-items:center;padding:10px 17px;border-bottom:1px solid var(--rule)}
+  .rorow:last-child{border-bottom:none}
+  .rorow .who{display:flex;align-items:center;gap:11px;min-width:0}
+  .rorow .who .n{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rorow .who .u{font-family:var(--mono);font-size:9.5px;color:var(--inkMute)}
+  .pill{padding:3px 10px;border-radius:99px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.04em;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+  .pill.ontime{background:var(--successTint);color:var(--success)}
+  .pill.late{background:var(--warningTint);color:var(--warning)}
+  .pill.notin{background:var(--dangerTint);color:var(--danger)}
+  .rorow .time{font-family:var(--mono);font-size:11px;color:var(--inkMute)}
+  .streak{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--ink);font-weight:700}
+  .streak .fl{color:var(--gold)}
+  .streak .dots{display:flex;gap:2px}
+  .streak .dots i{width:5px;height:5px;border-radius:50%;background:var(--success)}
+  .streak .dots i.miss{background:var(--dangerTint);box-shadow:inset 0 0 0 1px var(--danger)}
+  .rowclick{font-family:var(--mono);font-size:9px;color:var(--inkFaint);text-align:right}
+
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.exist{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.exist .ad b{color:var(--tealDark)}
+  .anno.derive{background:var(--successTint);border-color:color-mix(in srgb,var(--success) 28%,transparent)}
+  .anno.derive .ad b{color:var(--success)}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+
+  /* nudge flow */
+  .flow{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .flowcard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .fc-h{padding:10px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .fc-b{padding:15px 15px;min-height:150px;display:flex;flex-direction:column;gap:11px}
+  .confirm{flex:1;display:flex;flex-direction:column;gap:11px;justify-content:center}
+  .confirm .q{font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:-.01em;text-align:center}
+  .confirm .sub{font-size:11px;color:var(--inkMute);text-align:center}
+  .confirm .acts{display:flex;gap:9px;margin-top:4px}
+  .confirm .acts .go{flex:1;padding:10px;background:var(--teal);color:#fff;border-radius:9px;font-size:12px;font-weight:700;text-align:center}
+  .confirm .acts .cancel{padding:10px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--inkMute);border-radius:9px;font-size:12px;font-weight:700}
+  .firedmsg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:9px}
+  .firedmsg .ic{width:40px;height:40px;border-radius:50%;background:var(--successTint);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:19px}
+  .firedmsg .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .firedmsg .d{font-size:11px;color:var(--inkMute)}
+
+  /* doc schema */
+  .doc{background:#1a1612;border-radius:13px;padding:17px 19px;font-family:var(--mono);font-size:12px;line-height:1.7;color:#E8E2D4;overflow-x:auto}
+  .doc .k{color:#6FC3C0} .doc .s{color:#E0B964} .doc .c{color:#8A8273;font-style:italic} .doc .p{color:#D98A6A}
+
+  /* product judgment flags */
+  .pjbox{background:var(--warningTint);border:1px solid color-mix(in srgb,var(--warning) 32%,transparent);border-radius:14px;padding:17px 20px}
+  .pjbox .dt{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--warning);margin-bottom:11px;display:flex;align-items:center;gap:8px}
+  .pjlist{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .pj{display:flex;gap:11px;background:var(--surface);border:1px solid color-mix(in srgb,var(--warning) 22%,transparent);border-radius:10px;padding:11px 14px}
+  .pj .q{font-size:12.5px;font-weight:700}
+  .pj .w{font-size:11px;color:var(--inkMute);margin-top:2px;text-wrap:pretty}
+  .pj .mk{margin-top:1px}
+
+  /* CBTT */
+  .cbtt{display:flex;gap:13px;background:var(--surface);border:1px solid color-mix(in srgb,var(--gold) 32%,transparent);border-radius:13px;padding:15px 18px}
+  .cbtt .ic{width:38px;height:38px;border-radius:10px;background:var(--goldTint);color:var(--goldInk);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .cbtt .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .cbtt p{font-size:12px;color:var(--inkMute);margin-top:4px;text-wrap:pretty}
+  .cbtt .flagtag{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;color:var(--warning);background:var(--warningTint);padding:2px 8px;border-radius:99px;display:inline-block;margin-top:8px}
+
+  /* slices */
+  .slices{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .slice{border-radius:13px;padding:16px 18px;border:1px solid var(--rule);background:var(--surface)}
+  .slice.s1{border-color:color-mix(in srgb,var(--teal) 34%,transparent);background:var(--tealTint)}
+  .slice.s2{border-color:color-mix(in srgb,var(--danger) 30%,transparent);background:var(--dangerTint)}
+  .slice .sh{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+  .slice.s1 .sh{color:var(--teal)} .slice.s2 .sh{color:var(--danger)} .slice.s3 .sh{color:var(--inkMute)}
+  .slice .st{font-family:var(--display);font-weight:800;font-size:14.5px;margin-top:7px;letter-spacing:-.01em}
+  .slice .sd{font-size:11.5px;color:var(--inkMute);margin-top:6px;text-wrap:pretty}
+  .slice .sd b{color:var(--ink)}
+  .slice .chk{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--danger);background:var(--surface);border:1px solid color-mix(in srgb,var(--danger) 25%,transparent);border-radius:7px;padding:5px 8px;margin-top:9px;display:block}
+
+  /* states */
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:15px 14px;min-height:150px;display:flex;flex-direction:column;gap:10px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .allin,.errs{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:6px}
+  .allin .ic{width:40px;height:40px;border-radius:11px;background:var(--successTint);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:19px}
+  .allin .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .allin .d{font-size:11px;color:var(--inkMute);line-height:1.45}
+  .errs .ic{width:40px;height:40px;border-radius:11px;background:var(--dangerTint);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:19px}
+  .errs .eb{margin-top:4px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:200px 1fr 92px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .crow .co{text-align:right}
+
+  @media(max-width:1040px){
+    .annos,.flow,.slices,.states,.pjlist{grid-template-columns:1fr}
+    .appframe{flex-direction:column}.sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px}.sb-logo,.sb-grp{display:none}
+    .crow{grid-template-columns:1fr}.crow .co{text-align:left}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+    .rorow{grid-template-columns:1.4fr 90px 1fr}.rowclick{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Compliance v2 · Manager — Build annotation</div>
+      <h1>Two lenses, one management motion.</h1>
+      <p class="subt">The WAR governance surface rebuilt to v2 grammar: a <b>reality bar</b> with a <b>Filing ⇄ Plan-adoption lens toggle</b>, an <b>exception-first not-in list</b> with one-tap Nudge, the <b>on-time streak roster</b>, and the shared coaching drawer on row-click. Manager reads stay <b>get-fan-out over the roster</b> (no collection queries, no new indexes). The Nudge write creates the app's first general notifications object.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />COMPLIANCE v2 · MANAGER<br />UM/BM · DESKTOP<br />REV 2026-06-04</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Architecture</span>
+    <p><b>Reads are deterministic-ID get-fan-out over the roster</b> (UM unit / BM branch) — no collection queries, no new indexes, no manager-list rules changes. Filing-compliance and plan-adoption are <b>siblings</b> (two lenses on one bar + one exception list), not two bolted-on panels. The only write in the track is the isolated notifications slice.</p>
+  </div>
+
+  <div class="secttl">Provenance key</div>
+  <div class="keylegend">
+    <span class="it"><span class="pchip exist">EXISTING</span> shipped data — <code style="font-family:var(--mono);font-size:11px">submissions.status</code> · <code style="font-family:var(--mono);font-size:11px">weeklyPlans</code> · roster · drawer</span>
+    <span class="it"><span class="pchip derive">DERIVED</span> computed read — on-time vs Sunday deadline, streaks, %s</span>
+    <span class="it"><span class="pchip new">NET-NEW</span> the notifications write (Nudge) — its own slice</span>
+  </div>
+
+  <!-- ASK 1+2+4 · THE SURFACE -->
+  <div class="secttl">Asks 1·2·4 · The surface — reality bar, exception-first, roster</div>
+  <div class="appframe">
+    <div class="sidebar">
+      <div class="sb-logo"><div class="lm"></div><div class="lt">AgencyTrack</div></div>
+      <div class="sb-grp">MANAGE</div>
+      <div class="nav"><span class="ic"></span>Dashboard</div>
+      <div class="nav"><span class="ic"></span>Master Sheet</div>
+      <div class="nav on"><span class="ic"></span>Compliance</div>
+      <div class="nav"><span class="ic"></span>Reports</div>
+    </div>
+    <div class="canvas">
+      <div class="topbar"><span class="pt">Compliance</span><span class="ps">· SOUTH BRANCH · WK 48 · 28 AGENTS</span></div>
+
+      <!-- lens toggle -->
+      <div class="lens">
+        <span class="lg on">Filing <span class="ct">4 not in</span></span>
+        <span class="lg">Plan adoption <span class="ct">7 not in</span></span>
+      </div>
+
+      <!-- reality bar -->
+      <div class="reality">
+        <div class="rb-h"><span class="t">Filing reality · this week</span><span class="mk e" style="width:17px;height:17px;font-size:9px">1</span><span class="scope">Sun 23:59 AST deadline</span></div>
+        <div class="rbbar">
+          <div class="seg ontime" style="width:64%">64% on-time</div>
+          <div class="seg late" style="width:21%">21% late</div>
+          <div class="seg notin" style="width:15%">15% not in</div>
+        </div>
+        <div class="rbstats">
+          <div class="rstat"><span class="d" style="background:var(--ink)"></span><div class="cc"><span class="cl">FILED</span><span class="cv">24 / 28 · 86%</span></div></div>
+          <div class="rstat"><span class="d" style="background:var(--success)"></span><div class="cc"><span class="cl">ON-TIME</span><span class="cv">18</span></div></div>
+          <div class="rstat"><span class="d" style="background:var(--warning)"></span><div class="cc"><span class="cl">LATE</span><span class="cv">6</span></div></div>
+          <div class="rstat"><span class="d" style="background:var(--danger)"></span><div class="cc"><span class="cl">NOT IN</span><span class="cv">4</span></div></div>
+        </div>
+      </div>
+
+      <!-- exception-first not-in -->
+      <div class="excard">
+        <div class="ex-h"><span class="et">Haven't filed</span><span class="ec">4 AGENTS</span><span class="nudgeall">◔ Nudge all 4<span class="mk n" style="width:16px;height:16px;font-size:8px">2</span></span></div>
+        <div class="exrow"><div class="av">DL</div><div class="nm"><div class="n">Devin Lewis</div><div class="u">S·02 · last filed WK 46</div></div><span class="nudgebtn">◔ Nudge</span></div>
+        <div class="exrow"><div class="av">RL</div><div class="nm"><div class="n">Ravi Lochan</div><div class="u">S·02 · last filed WK 47</div></div><span class="cooldown">✓ Nudged 2h ago<span class="mk f" style="width:15px;height:15px;font-size:8px">3</span></span></div>
+        <div class="exrow"><div class="av">JK</div><div class="nm"><div class="n">Jamal Khan</div><div class="u">S·03 · last filed WK 45</div></div><span class="nudgebtn">◔ Nudge</span></div>
+        <div class="exrow"><div class="av">NP</div><div class="nm"><div class="n">Nisha Patel</div><div class="u">S·01 · never filed</div></div><span class="nudgebtn">◔ Nudge</span></div>
+      </div>
+
+      <!-- roster -->
+      <div class="roster">
+        <div class="ro-h"><span class="t">Filing roster · 28</span><span class="hint">click a row → coaching drawer ↗</span></div>
+        <div class="rorow"><div class="who"><span class="av" style="width:30px;height:30px;font-size:11px">MS</span><div><div class="n">Marsha Singh</div><div class="u">S·02</div></div></div><span class="pill ontime">✓ On-time</span><span class="time">Sun 4:12 PM</span><span class="streak"><span class="fl">▲</span> 12 wk <span class="dots"><i></i><i></i><i></i><i></i><i></i></span></span></div>
+        <div class="rorow"><div class="who"><span class="av" style="width:30px;height:30px;font-size:11px">AP</span><div><div class="n">Anand Persad</div><div class="u">S·01</div></div></div><span class="pill ontime">✓ On-time</span><span class="time">Sat 6:40 PM</span><span class="streak"><span class="fl">▲</span> 9 wk <span class="dots"><i></i><i></i><i></i><i></i><i></i></span></span></div>
+        <div class="rorow"><div class="who"><span class="av" style="width:30px;height:30px;font-size:11px">TR</span><div><div class="n">Trevor Ramnauth</div><div class="u">S·03</div></div></div><span class="pill late">▼ Late</span><span class="time">Mon 8:05 AM</span><span class="streak">0 wk <span class="dots"><i></i><i></i><i class="miss"></i><i></i><i></i></span></span></div>
+        <div class="rorow"><div class="who"><span class="av" style="width:30px;height:30px;font-size:11px">DL</span><div><div class="n">Devin Lewis</div><div class="u">S·02</div></div></div><span class="pill notin">● Not in</span><span class="time" style="color:var(--inkFaint)">—</span><span class="streak">0 wk <span class="dots"><i class="miss"></i><i class="miss"></i><i></i><i></i><i></i></span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annos">
+    <div class="anno newc"><span class="mk n">1</span><div><div class="at">One bar, lens-toggled — not two panels</div><div class="ad"><b>Filing ⇄ Plan-adoption</b> toggle swaps the bar's metric set <i>and</i> the exception list beneath in lockstep. Filing: <code>filed% · on-time · late · not-in</code>. Plan: <code>committed% · committed · not-committed</code>. Two lenses, one motion.</div></div></div>
+    <div class="anno newc"><span class="mk n">2</span><div><div class="at">Nudge all — confirm with count first</div><div class="ad">"Nudge all 4" opens a confirm naming <b>count + roster scope</b> ("Nudge 4 who haven't filed — S·02 unit?") before firing. Never a silent blast. (Blast radius flagged below.)</div></div></div>
+    <div class="anno newc"><span class="mk f">3</span><div><div class="at">Nudged state = cooldown chip</div><div class="ad">After firing, the row's button becomes <b>"Nudged 2h ago"</b> — relative time from the latest <code>notifications</code> doc for that uid+type+week. Re-nudge gated by the rate-limit rule (flagged).</div></div></div>
+    <div class="anno derive"><span class="mk d">D</span><div><div class="at">On-time + streak = DERIVED, no new store</div><div class="ad">Status (on-time/late/not-in) from <code>submittedAt</code> vs the Sunday deadline; streak from cross-week aggregation. All read/derive — <code>submissions.status</code> + <code>submittedAt</code> already exist.</div></div></div>
+  </div>
+
+  <!-- ASK 3 · NOTIFICATIONS PRIMITIVE + FLOW -->
+  <div class="secttl">Ask 3 · Notifications primitive — the app's first general notification object</div>
+  <div class="doc">
+<span class="c">// tenants/{tid}/notifications/{id} — general, NOT a compliance one-off</span>
+{
+  <span class="k">type</span>: <span class="s">'compliance.filing.nudge'</span>,   <span class="c">// namespaced · plan lens → 'compliance.plan.nudge'</span>
+  <span class="k">audienceUid</span>: <span class="p">&lt;agentId&gt;</span>,             <span class="c">// single recipient; fan-out writes N docs</span>
+  <span class="k">payload</span>: { <span class="k">weekStart</span>: <span class="s">'2026-11-23'</span>, <span class="k">lens</span>: <span class="s">'filing'</span>, <span class="k">managerName</span>: <span class="s">'…'</span> },
+  <span class="k">createdBy</span>: <span class="p">&lt;managerUid&gt;</span>,
+  <span class="k">createdAt</span>: <span class="p">serverTimestamp()</span>,
+  <span class="k">readAt</span>: <span class="p">null</span>                       <span class="c">// agent marks read in-app</span>
+}
+  </div>
+  <div class="flow" style="margin-top:14px">
+    <div class="flowcard"><div class="fc-h"><span class="mk n" style="width:17px;height:17px;font-size:9px">a</span>Nudge all · confirm</div><div class="fc-b"><div class="confirm"><div class="q">Nudge 4 agents?</div><div class="sub">Who haven't filed in S·02 · WK 48. Skips anyone nudged in the last cooldown window.</div><div class="acts"><span class="go">Send 4 nudges</span><span class="cancel">Cancel</span></div></div></div></div>
+    <div class="flowcard"><div class="fc-h">fired · fan-out write</div><div class="fc-b"><div class="firedmsg"><div class="ic">✓</div><div class="t">4 nudges sent</div><div class="d">4 <code style="font-family:var(--mono);font-size:10px">notifications</code> docs written · rows flip to cooldown chips</div></div></div></div>
+    <div class="flowcard"><div class="fc-h"><span class="mk f" style="width:17px;height:17px;font-size:9px">!</span>Transport · FLAGGED</div><div class="fc-b" style="justify-content:center;gap:10px"><div style="font-size:12px;color:var(--inkMute);text-wrap:pretty">Product decision — the doc is written either way:</div><div style="display:flex;flex-direction:column;gap:7px"><span class="ptag" style="background:var(--tealTint);color:var(--tealDark);align-self:flex-start">○ in-app doc only</span><span class="ptag" style="background:var(--surfaceSoft);color:var(--inkMute);align-self:flex-start">○ + email via SendGrid Trigger Email ext</span><span class="ptag" style="background:var(--surfaceSoft);color:var(--inkMute);align-self:flex-start">○ both</span></div></div></div>
+  </div>
+
+  <!-- ASK 5 · CBTT -->
+  <div class="secttl">Ask 5 · CBTT — regulatory, cannot be dropped silently</div>
+  <div class="cbtt">
+    <div class="ic">§</div>
+    <div>
+      <div class="t">Proposed: keep CBTT as its own labeled section within Compliance</div>
+      <p>The mockup omits CBTT, but it's <b>regulatory</b> (contract-start compliance via <code style="font-family:var(--mono);font-size:11px">users.contractStartDate</code>) and a <b>different cadence + legal basis</b> than weekly filing — so it shouldn't share the weekly lenses. Recommended: a distinct <b>CBTT section/tab</b> under Compliance, carried forward from the shipped panel, not folded into the reality bar.</p>
+      <span class="flagtag">⚑ FLAGGED — operator confirms: kept section · own tab · or relocated surface</span>
+    </div>
+  </div>
+
+  <!-- ASK 6 · SLICES -->
+  <div class="secttl">Ask 6 · Slice boundaries — reads first, the write isolated</div>
+  <div class="slices">
+    <div class="slice s1"><div class="sh">S1 · read / derive</div><div class="st">Filing compliance surface</div><div class="sd">Reality bar (filing lens), exception list (no actions yet / disabled nudge), on-time roster + streaks, drawer reuse, <b>CBTT section kept</b>. Pure get-fan-out + derive. <b>No writes.</b></div></div>
+    <div class="slice s2"><div class="sh">S2 · the WRITE</div><div class="st">Notifications collection + Nudge</div><div class="sd">The app's first <code style="font-family:var(--mono);font-size:11px">notifications</code> object. Nudge + Nudge-all + cooldown chips go live.</div><span class="chk">⚑ Triggers full new-collection checklist: rules + write + read + indexes + smoke</span></div>
+    <div class="slice s3"><div class="sh">S3 · second lens</div><div class="st">Plan-adoption lens</div><div class="sd">The Plan toggle on the <b>locked get-fan-out</b> over <code style="font-family:var(--mono);font-size:11px">weeklyPlans/{agentId}_{weekStart}</code>. Reuses S1's bar + S2's nudge — no new primitive.</div></div>
+  </div>
+
+  <!-- ASK 7 · FLAG LIST -->
+  <div class="secttl">Ask 7 · Flag-not-decide — product judgments</div>
+  <div class="pjbox">
+    <div class="dt">⚑ Flagged for the operator — not decided here</div>
+    <div class="pjlist">
+      <div class="pj"><span class="mk i" style="width:18px;height:18px;font-size:9px">?</span><div><div class="q">Nudge rate-limit / dedupe</div><div class="w">Cooldown window before re-nudge (per uid+type+week)? One nudge per day? Dedupe key?</div></div></div>
+      <div class="pj"><span class="mk i" style="width:18px;height:18px;font-size:9px">?</span><div><div class="q">Nudge-all blast radius</div><div class="w">Whole not-in set, or only the current unit/filter? Does it skip already-nudged rows?</div></div></div>
+      <div class="pj"><span class="mk i" style="width:18px;height:18px;font-size:9px">?</span><div><div class="q">Auto-escalation</div><div class="w">Does an un-actioned nudge ever escalate (to BM, or to email after N in-app)? Or never?</div></div></div>
+      <div class="pj"><span class="mk i" style="width:18px;height:18px;font-size:9px">?</span><div><div class="q">Notification transport</div><div class="w">In-app doc only · + SendGrid email · both. (Doc is written regardless.)</div></div></div>
+      <div class="pj"><span class="mk i" style="width:18px;height:18px;font-size:9px">?</span><div><div class="q">CBTT placement</div><div class="w">Kept section · own tab · relocated. Regulatory — needs explicit sign-off.</div></div></div>
+      <div class="pj"><span class="mk i" style="width:18px;height:18px;font-size:9px">?</span><div><div class="q">On-time deadline definition</div><div class="w">Sun 23:59 AST exactly? Grace period? Drives every on-time/late split + streak.</div></div></div>
+    </div>
+  </div>
+
+  <!-- STATES -->
+  <div class="secttl">States</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">S</span>Skeleton · fan-out loading</div>
+      <div class="sc-b"><div class="shimmer" style="width:50%;height:11px"></div><div class="shimmer" style="width:100%;height:34px"></div><div class="shimmer" style="width:100%;height:18px"></div><div class="shimmer" style="width:100%;height:18px"></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">✓</span>All filed · no exceptions</div>
+      <div class="sc-b"><div class="allin"><div class="ic">✓</div><div class="t">Everyone's in</div><div class="d">28 of 28 filed this week. The exception list collapses; the roster + streaks remain.</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">!</span>Error · partial fan-out</div>
+      <div class="sc-b"><div class="errs"><div class="ic">!</div><div class="t" style="font-family:var(--display);font-weight:800;font-size:13.5px">Couldn't load some agents</div><div class="d" style="font-size:11px;color:var(--inkMute)">Show who loaded; flag the misses, don't fake a 100%.</div><div class="eb">↻ Retry</div></div></div>
+    </div>
+  </div>
+
+  <!-- COMPONENTS -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">ComplianceLensToggle</div><div class="cd">Filing ⇄ Plan-adoption; swaps bar metrics + exception list together.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">RealityBar</div><div class="cd">Segmented bar + stat chips; metric set per lens. Derived %s.</div><div class="co"><span class="ptag derive">DERIVE</span></div></div>
+    <div class="crow"><div class="cn">ExceptionList + NudgeRow</div><div class="cd">Not-in list, per-row Nudge / cooldown chip, Nudge-all confirm.</div><div class="co"><span class="ptag new">NEW · S2</span></div></div>
+    <div class="crow"><div class="cn">FilingRoster</div><div class="cd">Status pill · submitted time · on-time streak. Row click → drawer.</div><div class="co"><span class="ptag derive">DERIVE</span></div></div>
+    <div class="crow"><div class="cn">CoachingDrawer</div><div class="cd">The shared 5-tab drawer from the Weekly tab — <b>reused</b>, not rebuilt.</div><div class="co"><span class="ptag exist">REUSE</span></div></div>
+    <div class="crow"><div class="cn">notifications doc + writer</div><div class="cd">First general notification object; fan-out write. Transport flagged.</div><div class="co"><span class="ptag new">NET-NEW · S2</span></div></div>
+    <div class="crow"><div class="cn">CBTTSection</div><div class="cd">Regulatory contract-start compliance, carried from shipped panel. Placement flagged.</div><div class="co"><span class="ptag exist">EXISTING</span></div></div>
+    <div class="crow"><div class="cn">statusToken(role)</div><div class="cd">Shared — on-time / late / not-in / committed. <code>text-ink-muted</code> for small text (doctrine).</div><div class="co"><span class="ptag exist">SHARED</span></div></div>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

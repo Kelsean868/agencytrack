@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Policy Reconciliation v2 — Slice 1 Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:730px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  /* data-reality banner */
+  .reality{display:flex;gap:14px;background:var(--warningTint);border:1px solid color-mix(in srgb,var(--warning) 32%,transparent);border-radius:14px;padding:16px 20px;margin-bottom:8px}
+  .reality .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--warning);flex-shrink:0;padding-top:2px}
+  .reality p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .reality p b{font-weight:700}
+  .reality p+p{margin-top:7px}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .roles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .role{background:var(--surface);border:1px solid var(--rule);border-radius:11px;padding:12px 13px}
+  .role .sw{width:100%;height:7px;border-radius:99px;margin-bottom:9px}
+  .role .rn{font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:-.01em}
+  .role .rs{font-family:var(--mono);font-size:9px;color:var(--inkFaint);letter-spacing:.04em;margin-top:4px;line-height:1.5}
+  .roles-note{font-size:11.5px;color:var(--inkMute);margin-top:10px;font-style:italic}
+  .roles-note code{font-family:var(--mono);font-style:normal;font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;background:var(--ink);color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:18px;box-shadow:0 14px 40px rgba(38,35,28,.10)}
+  .appbar{display:flex;align-items:center;gap:9px;margin-bottom:14px;padding:0 2px}
+  .appbar .dt{display:flex;gap:6px}
+  .appbar .dt i{width:9px;height:9px;border-radius:50%;background:var(--ruleStrong)}
+  .appbar .ttl{font-family:var(--display);font-weight:800;font-size:14px;margin-left:6px}
+  .appbar .crumb{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.06em}
+  /* secondary tab strip */
+  .tabs{display:flex;gap:4px;margin-left:auto;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px;padding:3px}
+  .tabs .tab{padding:6px 13px;border-radius:7px;font-size:11.5px;font-weight:700;color:var(--inkMute);display:flex;align-items:center;gap:6px}
+  .tabs .tab.on{background:var(--surface);color:var(--ink);border:1px solid var(--rule)}
+  .tabs .tab .bm{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:1px 5px;border-radius:99px;background:var(--goldTint);color:var(--goldInk)}
+
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:14px}
+
+  /* at-risk hero + tiles */
+  .recsum{padding:16px 20px;position:relative;overflow:hidden;display:flex;align-items:center;gap:22px}
+  .risk{flex-shrink:0}
+  .risk .l{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--danger)}
+  .risk .v{font-family:var(--display);font-weight:800;font-size:34px;color:var(--danger);letter-spacing:-.025em;line-height:1;margin-top:7px}
+  .risk .s{font-size:11px;color:var(--inkMute);margin-top:6px}
+  .vrule{width:1px;align-self:stretch;background:var(--rule);margin:2px 0}
+  .rtiles{flex:1;display:flex;gap:12px}
+  .rtile{flex:1;padding:13px 15px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:12px}
+  .rtile.on{background:color-mix(in srgb,var(--warning) 8%,transparent);border-color:color-mix(in srgb,var(--warning) 33%,transparent)}
+  .rtile .th{display:flex;align-items:center;gap:7px}
+  .rtile .dot{width:8px;height:8px;border-radius:50%}
+  .rtile .tl{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint);white-space:nowrap}
+  .rtile .tc{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.02em;line-height:1;margin-top:9px}
+  .rtile .tt{font-size:10.5px;color:var(--inkMute);margin-top:5px;font-family:var(--mono)}
+
+  /* filter row */
+  .filt{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+  .chips{display:flex;gap:4px;padding:4px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:10px}
+  .chip{padding:7px 13px;border-radius:7px;font-size:12px;font-weight:700;color:var(--inkMute);display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip.on{background:var(--surface);color:var(--ink);border:1px solid var(--rule)}
+  .chip .ct{font-family:var(--mono);font-size:10px;padding:0 6px;border-radius:99px;color:var(--inkFaint)}
+  .chip.on .ct{background:var(--tealTint);color:var(--teal)}
+  .grow{flex:1}
+  .bulk{padding:9px 15px;background:var(--teal);color:#fff;border-radius:10px;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:7px;box-shadow:0 2px 8px color-mix(in srgb,var(--teal) 27%,transparent)}
+
+  /* worklist rows */
+  .work{display:flex;flex-direction:column;gap:9px;margin-top:14px}
+  .wrow{display:flex;align-items:center;gap:14px;padding:12px 15px;background:var(--surface);border:1px solid var(--rule);border-radius:12px}
+  .wrow.flagged{border-color:color-mix(in srgb,var(--warning) 33%,transparent)}
+  .wrow.active{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 55%,transparent)}
+  .av{width:36px;height:36px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:13px;flex-shrink:0}
+  .av.g{background:var(--goldTint);color:var(--goldInk)}
+  .wnm{width:150px;flex-shrink:0}
+  .wnm .n{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wnm .u{font-family:var(--mono);font-size:10px;color:var(--inkFaint);margin-top:1px}
+  .wcmp{flex:1;display:flex;align-items:center;gap:10px;min-width:0}
+  .wcmp .col .k{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--inkFaint);letter-spacing:.1em}
+  .wcmp .col .v{font-family:var(--mono);font-size:13px;font-weight:700;margin-top:2px}
+  .wcmp .arr{color:var(--inkDim);font-weight:700}
+  .wdelta{width:96px;text-align:right;flex-shrink:0;font-family:var(--mono);font-size:11.5px;font-weight:700}
+  .wflag{width:120px;flex-shrink:0;display:flex;justify-content:flex-end}
+  .pill{padding:3px 10px;border-radius:99px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+  .waction{width:116px;flex-shrink:0;display:flex;justify-content:flex-end}
+  .confirmbtn{padding:6px 13px;background:var(--teal);color:#fff;border-radius:8px;font-size:11.5px;font-weight:700}
+
+  /* two-col annotated */
+  .split{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:start;margin-top:8px}
+  .annocol{display:flex;flex-direction:column;gap:12px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13.5px;font-weight:700}
+  .anno .ad{font-size:12.5px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.lock{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 28%,transparent)}
+  .anno.lock .mk{background:var(--teal)}
+  .anno.lock .ad b{color:var(--tealDark)}
+  .anno.honest{background:var(--warningTint);border-color:color-mix(in srgb,var(--warning) 30%,transparent)}
+  .anno.honest .mk{background:var(--warning)}
+  .anno.honest .ad b{color:var(--warning)}
+
+  /* compare card */
+  .compare{background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+  .cmp-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--rule)}
+  .cmp-head .x{font-size:12px;font-weight:700;color:var(--inkMute)}
+  .cmp-body{padding:16px 18px}
+  .cmp-id{display:flex;align-items:center;gap:12px}
+  .cmp-id .who{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:-.015em}
+  .cmp-id .sub{font-family:var(--mono);font-size:11px;color:var(--inkMute);margin-top:1px}
+  .cmp-cols{display:flex;align-items:center;gap:12px;margin:16px 0 6px}
+  .cmp-cols .lh{flex:1;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;color:var(--teal)}
+  .cmp-cols .rh{flex:1;text-align:right;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;color:var(--gold)}
+  .cmprow{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--rule)}
+  .cmprow .lab{width:84px;font-family:var(--mono);font-size:9px;font-weight:700;color:var(--inkFaint);letter-spacing:.1em}
+  .cmprow .sv{flex:1;font-family:var(--mono);font-size:13px;font-weight:600}
+  .cmprow .arr{color:var(--inkDim)}
+  .cmprow .cv{flex:1;text-align:right;font-family:var(--mono);font-size:13px;font-weight:700}
+  .cmprow .cv.bad{color:var(--danger)}
+  .deltaread{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:11px 14px;border-radius:11px;background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 33%,transparent)}
+  .deltaread .l{font-size:11.5px;font-weight:700}
+  .deltaread .v{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--danger)}
+  .keyin{margin-top:14px;padding:13px 15px;background:var(--surfaceSoft);border:1px dashed var(--ruleStrong);border-radius:12px}
+  .keyin .kh{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+  .keyin .kd{font-size:11.5px;color:var(--inkMute);margin:6px 0 11px;line-height:1.5}
+  .keyin .fields{display:flex;gap:9px}
+  .keyin .f{flex:1;padding:10px 13px;background:var(--surface);border:1px solid var(--rule);border-radius:9px}
+  .keyin .f .fk{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--inkFaint);letter-spacing:.08em}
+  .keyin .f .fv{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--inkDim);margin-top:3px}
+  .notefield{margin-top:9px;padding:10px 13px;background:var(--surface);border:1px solid var(--rule);border-radius:9px}
+  .notefield .fk{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--inkFaint);letter-spacing:.08em}
+  .notefield .fv{font-size:12px;color:var(--inkFaint);margin-top:4px;font-style:italic}
+  .cmp-foot{display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--rule);background:var(--surfaceSoft)}
+  .cmp-foot .pri{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;background:var(--teal);color:#fff;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 2px 8px color-mix(in srgb,var(--teal) 27%,transparent)}
+  .cmp-foot .sec{padding:11px 16px;background:var(--surface);border:1px solid var(--rule);border-radius:10px;font-size:12.5px;font-weight:700;color:var(--inkMute)}
+
+  /* deferred */
+  .deferbox{background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:14px;padding:18px 20px;margin-top:8px}
+  .deferbox .dt{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--danger);margin-bottom:5px;display:flex;align-items:center;gap:8px}
+  .deferbox .dsub{font-size:12.5px;color:var(--ink);margin-bottom:14px;text-wrap:pretty}
+  .defgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .defitem{background:var(--surface);border:1px solid color-mix(in srgb,var(--danger) 22%,transparent);border-radius:10px;padding:12px 14px}
+  .defitem .dn{font-size:13px;font-weight:700;display:flex;align-items:flex-start;gap:8px}
+  .defitem .dn::before{content:'✕';color:var(--danger);font-weight:700;font-size:11px;line-height:1.5}
+  .defitem .dd{font-size:11.5px;color:var(--inkMute);margin-top:4px;text-wrap:pretty}
+  .defitem .s2{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;color:var(--teal);background:var(--tealTint);padding:2px 7px;border-radius:99px;display:inline-block;margin-top:7px}
+
+  /* states */
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:16px 14px;min-height:150px;display:flex;flex-direction:column;gap:10px}
+  .skel{background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px;padding:13px;display:flex;align-items:center;gap:11px}
+  .skel .sc{width:34px;height:34px;border-radius:50%;background:var(--surfaceMute);flex-shrink:0}
+  .skel .sl{flex:1;display:flex;flex-direction:column;gap:7px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .empty,.errs{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:9px;padding:8px}
+  .empty .ic{width:42px;height:42px;border-radius:12px;background:var(--successTint);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .empty .et{font-family:var(--display);font-weight:800;font-size:15px}
+  .empty .ed{font-size:11.5px;color:var(--inkMute)}
+  .errs .ic{width:42px;height:42px;border-radius:12px;background:var(--dangerTint);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .errs .eb{margin-top:4px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden;margin-top:8px}
+  .crow{display:grid;grid-template-columns:190px 1fr;gap:14px;padding:11px 16px;border-top:1px solid var(--rule)}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd b{color:var(--ink);font-weight:600}
+
+  .scope{display:flex;gap:13px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:13px;padding:15px 18px;margin-top:22px}
+  .scope .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scope p{font-size:13px;color:var(--ink);text-wrap:pretty}
+  .scope b{font-weight:700}
+
+  @media(max-width:1000px){.split{grid-template-columns:1fr}.roles{grid-template-columns:repeat(2,1fr)}.defgrid{grid-template-columns:1fr}.states{grid-template-columns:1fr}.recsum{flex-wrap:wrap}.rtiles{flex-basis:100%}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Policy Reconciliation v2 · Slice 1 — Build annotation</div>
+      <h1>Manager reconciliation — restyle on the manual model.</h1>
+      <p class="subt">The worklist, tiles, at-risk hero, and side-by-side compare — restyled on the <b>existing shipped confirm flow</b>. The mockup's file-ingestion premise is corrected: reconciliation stays <b>manual</b>, the manager keys the figure from Tatil's printed circular. No new schema, no parsing, no awards path.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />POLICY RECONCILIATION · SLICE 1<br />MANAGER SURFACE · DESKTOP<br />REV 2026-06-03</div>
+  </header>
+
+  <!-- DATA REALITY -->
+  <div class="reality">
+    <span class="tag">⚑ Data reality</span>
+    <div>
+      <p><b>Tatil's settlement record reaches the branch only as a printed/PDF circular that managers read.</b> There is no structured, ingestible file — so the mockup's "reconcile against an external Tatil file" (auto-matching, <code style="font-family:var(--mono);font-size:11.5px">unmatched</code>/<code style="font-family:var(--mono);font-size:11.5px">missing</code> flags) is <b>not buildable as drawn</b>, and we are not building PDF parsing/OCR.</p>
+      <p>Reconciliation stays <b>manual</b>: the manager reads the circular and <b>keys the confirmed figure per policy</b> — the current shipped model. This sheet restyles that flow; it does not invent a pipeline.</p>
+    </div>
+  </div>
+
+  <!-- ROLE LEGEND -->
+  <div class="secttl">Semantic status roles — shared <code style="font-family:var(--mono);text-transform:none;letter-spacing:0;color:var(--tealDark)">statusToken()</code> helper</div>
+  <div class="roles">
+    <div class="role"><div class="sw" style="background:var(--success)"></div><div class="rn">Clean · ready</div><div class="rs">keyed = ledger<br>(hasDiscrepancy false)</div></div>
+    <div class="role"><div class="sw" style="background:var(--warning)"></div><div class="rn">Flagged</div><div class="rs">keyed ≠ ledger<br>(hasDiscrepancy true)</div></div>
+    <div class="role"><div class="sw" style="background:var(--gold)"></div><div class="rn">Confirmed</div><div class="rs">reconciled &amp; locked</div></div>
+    <div class="role"><div class="sw" style="background:var(--danger)"></div><div class="rn">At risk</div><div class="rs">Σ flagged deltas<br>(hero accent)</div></div>
+  </div>
+  <div class="roles-note">Slice 1 uses only the <b>existing boolean</b> <code>hasDiscrepancy</code> (clean vs flagged) + the keyed delta — the 8-way sub-classification is Slice 2. Colors are expressed as these <b>roles</b>; the real Nexus token binding is verified at build (this fixes the broken <code>text-text*</code> family).</div>
+
+  <!-- THE SURFACE -->
+  <div class="secttl">The surface — reconciliation worklist</div>
+  <div class="appframe">
+    <div class="appbar">
+      <div class="dt"><i></i><i></i><i></i></div><span class="ttl">Policy Reconciliation</span><span class="crumb">· SOUTH BRANCH · TEAM VIEW</span>
+      <div class="tabs">
+        <div class="tab on">Confirm <span class="ct" style="font-family:var(--mono);font-size:10px;color:var(--teal)">6</span></div>
+        <div class="tab">Lapse <span class="bm">BM+</span></div>
+      </div>
+    </div>
+
+    <!-- at-risk + tiles -->
+    <div class="card recsum">
+      <div class="risk">
+        <div class="l">★ TTD at risk this cycle</div>
+        <div class="v">TTD 31.4K</div>
+        <div class="s">across 3 flagged · from your keyed deltas</div>
+      </div>
+      <div class="vrule"></div>
+      <div class="rtiles">
+        <div class="rtile"><div class="th"><span class="dot" style="background:var(--success)"></span><span class="tl">CLEAN · READY</span></div><div class="tc">2</div><div class="tt">confirm in one tap</div></div>
+        <div class="rtile on"><div class="th"><span class="dot" style="background:var(--warning)"></span><span class="tl">FLAGGED</span></div><div class="tc">3</div><div class="tt">need a decision</div></div>
+        <div class="rtile"><div class="th"><span class="dot" style="background:var(--gold)"></span><span class="tl">CONFIRMED</span></div><div class="tc">1</div><div class="tt">locked this cycle</div></div>
+      </div>
+      <span class="mk" style="position:absolute;top:12px;right:12px">1</span>
+    </div>
+
+    <!-- filter -->
+    <div class="filt">
+      <span class="mk">2</span>
+      <div class="chips">
+        <div class="chip on">To reconcile <span class="ct">5</span></div>
+        <div class="chip">Clean · ready <span class="ct">2</span></div>
+        <div class="chip">Flagged <span class="ct">3</span></div>
+        <div class="chip">Confirmed <span class="ct">1</span></div>
+      </div>
+      <div class="grow"></div>
+      <div class="bulk">✓ Confirm all 2 clean</div>
+    </div>
+
+    <!-- worklist -->
+    <div class="work">
+      <!-- clean -->
+      <div class="wrow">
+        <div class="av">MS</div>
+        <div class="wnm"><div class="n">Marsha Singh</div><div class="u">S·02 · TL-2026-08661</div></div>
+        <div class="wcmp">
+          <div class="col"><div class="k">LEDGER · SUBMITTED</div><div class="v">TTD 36.0K</div></div>
+          <span class="arr">→</span>
+          <div class="col"><div class="k">CONFIRMED · FROM CIRCULAR</div><div class="v">TTD 36.0K</div></div>
+        </div>
+        <div class="wdelta" style="color:var(--success)">✓ match</div>
+        <div class="wflag"><span class="pill" style="background:var(--successTint);color:var(--success)">✓ Clean</span></div>
+        <div class="waction"><span class="confirmbtn">Confirm</span></div>
+      </div>
+      <!-- clean 2 -->
+      <div class="wrow">
+        <div class="av">RK</div>
+        <div class="wnm"><div class="n">Riaz Khan</div><div class="u">S·02 · TL-2026-08655</div></div>
+        <div class="wcmp">
+          <div class="col"><div class="k">LEDGER · SUBMITTED</div><div class="v">TTD 18.6K</div></div>
+          <span class="arr">→</span>
+          <div class="col"><div class="k">CONFIRMED · FROM CIRCULAR</div><div class="v">TTD 18.6K</div></div>
+        </div>
+        <div class="wdelta" style="color:var(--success)">✓ match</div>
+        <div class="wflag"><span class="pill" style="background:var(--successTint);color:var(--success)">✓ Clean</span></div>
+        <div class="waction"><span class="confirmbtn">Confirm</span></div>
+      </div>
+      <!-- flagged · active -->
+      <div class="wrow flagged active">
+        <div class="av g">MS</div>
+        <div class="wnm"><div class="n">Marsha Singh</div><div class="u">S·02 · TL-2026-08503</div></div>
+        <div class="wcmp">
+          <div class="col"><div class="k">LEDGER · SUBMITTED</div><div class="v">TTD 32.4K</div></div>
+          <span class="arr">→</span>
+          <div class="col"><div class="k">CONFIRMED · FROM CIRCULAR</div><div class="v" style="color:var(--danger)">TTD 29.8K</div></div>
+        </div>
+        <div class="wdelta" style="color:var(--danger)">−TTD 2.6K</div>
+        <div class="wflag"><span class="pill" style="background:var(--warningTint);color:var(--warning)">! Flagged</span></div>
+        <div class="waction"><span class="mk">3</span></div>
+      </div>
+      <!-- flagged -->
+      <div class="wrow flagged">
+        <div class="av g">SM</div>
+        <div class="wnm"><div class="n">Selina Mohammed</div><div class="u">S·03 · TL-2026-08540</div></div>
+        <div class="wcmp">
+          <div class="col"><div class="k">LEDGER · SUBMITTED</div><div class="v">TTD 24.0K</div></div>
+          <span class="arr">→</span>
+          <div class="col"><div class="k">CONFIRMED · FROM CIRCULAR</div><div class="v" style="color:var(--danger)">TTD 12.0K</div></div>
+        </div>
+        <div class="wdelta" style="color:var(--danger)">−TTD 12.0K</div>
+        <div class="wflag"><span class="pill" style="background:var(--warningTint);color:var(--warning)">! Flagged</span></div>
+        <div class="waction"><span class="confirmbtn" style="background:var(--surface);border:1px solid var(--rule);color:var(--inkMute)">Review</span></div>
+      </div>
+      <!-- flagged · status differs (keyed 0) -->
+      <div class="wrow flagged">
+        <div class="av g">AP</div>
+        <div class="wnm"><div class="n">Anand Persad</div><div class="u">S·01 · TL-2026-08498</div></div>
+        <div class="wcmp">
+          <div class="col"><div class="k">LEDGER · SUBMITTED</div><div class="v">TTD 16.8K</div></div>
+          <span class="arr">→</span>
+          <div class="col"><div class="k">CONFIRMED · FROM CIRCULAR</div><div class="v" style="color:var(--danger)">not issued</div></div>
+        </div>
+        <div class="wdelta" style="color:var(--danger)">−TTD 16.8K</div>
+        <div class="wflag"><span class="pill" style="background:var(--warningTint);color:var(--warning)">! Flagged</span></div>
+        <div class="waction"><span class="confirmbtn" style="background:var(--surface);border:1px solid var(--rule);color:var(--inkMute)">Review</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKLIST ANNOTATIONS -->
+  <div class="split" style="margin-top:18px">
+    <div class="annocol">
+      <div class="anno"><span class="mk">1</span><div><div class="at">At-risk hero + tiles — existing data</div><div class="ad"><b>At risk</b> = Σ |ledger API − keyed figure| over <b>flagged</b> rows (here 2.6K + 12.0K + 16.8K = TTD 31.4K). Tiles (Clean·ready / Flagged / Confirmed) are driven by the <b>existing boolean</b> <code>hasDiscrepancy</code> — no new fields.</div></div></div>
+      <div class="anno"><span class="mk">2</span><div><div class="at">Filter + bulk confirm</div><div class="ad">Chips To reconcile · Clean·ready · Flagged · Confirmed. "Confirm all clean" batches the existing <code>confirmPolicy</code> over the clean set (the only bulk action in this slice).</div></div></div>
+      <div class="anno honest"><span class="mk">3</span><div><div class="at">Right column = the keyed figure, honestly labeled</div><div class="ad"><b>REFRAME:</b> the compare's right side reads <b>"Confirmed · from circular"</b> — the manager's keyed <code>managerSettledAPI</code>, <b>not</b> an ingested "Tatil Report." Flagged = boolean true; the delta is shown, sub-type is not.</div></div></div>
+    </div>
+    <div class="annocol">
+      <div class="anno" style="background:var(--surfaceSoft)"><span class="mk" style="background:var(--inkFaint)">i</span><div><div class="at">What changes vs today</div><div class="ad">Agent-grouped Confirm tab → a flat <b>worklist</b> with at-risk framing. Same <code>confirmPolicy</code> / <code>lapsePolicy</code> writes (batched + notify). The broken <code>text-text*</code> tokens are replaced via <code>statusToken()</code>.</div></div></div>
+      <div class="anno" style="background:var(--surfaceSoft)"><span class="mk" style="background:var(--inkFaint)">i</span><div><div class="at">Permissions unchanged</div><div class="ad">Confirm = BM / tenant-admin / platform-admin / <code>canConfirmSettlements</code>. Lapse = BM+ only (secondary tab, below).</div></div></div>
+    </div>
+  </div>
+
+  <!-- COMPARE / CONFIRM -->
+  <div class="secttl">The compare &amp; confirm — manual key-in</div>
+  <div class="split">
+    <div class="compare">
+      <div class="cmp-head"><span class="x">✕ Close</span><div class="grow"></div><span class="pill" style="background:var(--warningTint);color:var(--warning)">! Flagged</span></div>
+      <div class="cmp-body">
+        <div class="cmp-id"><div class="av g" style="width:44px;height:44px;font-size:15px">MS</div><div><div class="who">Marsha Singh</div><div class="sub">S·02 · TL-2026-08503 · Universal Life · Platinum Edge</div></div></div>
+
+        <div class="cmp-cols"><div class="lh">● LEDGER · SUBMITTED</div><div class="rh">CONFIRMED · FROM CIRCULAR ●</div></div>
+        <div class="cmprow"><div class="lab">API</div><div class="sv">TTD 32,400</div><span class="arr">→</span><div class="cv bad">TTD 29,800</div></div>
+        <div class="cmprow"><div class="lab">PREMIUM</div><div class="sv">TTD 2,700/M</div><span class="arr">→</span><div class="cv">TTD 2,483/M</div></div>
+        <div class="cmprow"><div class="lab">STATUS</div><div class="sv">SETTLED</div><span class="arr">→</span><div class="cv">SETTLED</div></div>
+        <div class="cmprow"><div class="lab">PERIOD</div><div class="sv">Nov</div><span class="arr">→</span><div class="cv">Nov</div></div>
+
+        <div class="deltaread"><span class="l">Difference to resolve</span><span class="v">−TTD 2,600</span></div>
+
+        <div class="keyin">
+          <div class="kh">Key in from circular</div>
+          <div class="kd">Read the confirmed figure off Tatil's circular and enter it. This is the <b>normal confirm flow</b> — not a "record not found" case.</div>
+          <div class="fields">
+            <div class="f"><div class="fk">CONFIRMED API</div><div class="fv">TTD 29,800</div></div>
+            <div class="f"><div class="fk">STATUS</div><div class="fv">Settled ▾</div></div>
+          </div>
+          <div class="notefield"><div class="fk">MANAGER NOTE</div><div class="fv">Smoker-loading review — settled TTD 2,600 under submission.</div></div>
+        </div>
+      </div>
+      <div class="cmp-foot">
+        <div class="pri">✓ Confirm at keyed figure</div>
+        <div class="sec">Flag &amp; note</div>
+      </div>
+    </div>
+
+    <div class="annocol">
+      <div class="anno"><span class="mk">4</span><div><div class="at">Side-by-side compare</div><div class="ad">Ledger (submitted) vs the manager's keyed figure, field by field; mismatches in danger. The delta read sums to the at-risk hero. Reuses the shipped compare data — just restyled.</div></div></div>
+      <div class="anno honest"><span class="mk">5</span><div><div class="at">Key-in = the normal confirm, reframed</div><div class="ad"><b>REFRAME:</b> "Key in from circular" enters <code>managerSettledAPI</code> + status + <code>managerNote</code>. It is the everyday confirm action — <b>not</b> a special "not in the file" path. Confirm writes via the existing <code>confirmPolicy</code>.</div></div></div>
+      <div class="anno"><span class="mk">5</span><div><div class="at">Two outcomes only, this slice</div><div class="ad"><b>Confirm at keyed figure</b> (locks it) or <b>Flag &amp; note</b> (keeps <code>hasDiscrepancy</code> true with the manager's note). Dispute / escalate / resolve states are Slice 2.</div></div></div>
+    </div>
+  </div>
+
+  <!-- LAPSE TAB -->
+  <div class="secttl">Lapse — kept as a BM-only secondary tab</div>
+  <div class="anno lock" style="max-width:none"><span class="mk">L</span><div><div class="at">Keep the existing Lapse tab — don't fold it into the worklist</div><div class="ad"><b>LOCKED:</b> the mockup dropped Lapse; Slice 1 <b>keeps the shipped Lapse tab</b> as a <b>BM+ secondary tab</b> (tokenized for consistency, same <code>lapsePolicy</code> write). The full "Lapse-in-v2" decision — whether it merges into the reconciliation worklist — is <b>Slice 2</b>.</div></div></div>
+
+  <!-- DEFERRED -->
+  <div class="secttl">Deferred — not in this slice</div>
+  <div class="deferbox">
+    <div class="dt">⚑ Cut from Slice 1 — needs a file we don't have, or the dormant awards flip</div>
+    <div class="dsub">The mockup's reconciliation power came from an ingestible Tatil file + awards coupling. Neither exists yet. Build none of these in Slice 1.</div>
+    <div class="defgrid">
+      <div class="defitem"><div class="dn">8-way discrepancy taxonomy</div><div class="dd">amount / partial / status / period / duplicate badges. Slice 1 uses the existing boolean + delta.<div class="s2">→ SLICE 2 · sub-classify</div></div></div>
+      <div class="defitem"><div class="dn">unmatched / missing rows</div><div class="dd">Depend on a file to match against — none exists. Not surfaced.<div class="s2">→ SLICE 2 · manual actions</div></div></div>
+      <div class="defitem"><div class="dn">Dispute / escalate workflow</div><div class="dd">Resolution-state machine (disputed/escalated/resolved). Slice 1 keeps confirm + flag.<div class="s2">→ SLICE 2 · workflow</div></div></div>
+      <div class="defitem"><div class="dn">File ingestion / auto-match UI</div><div class="dd">No structured Tatil file; no PDF parsing/OCR. Not built.<div class="s2">✕ NOT PLANNED</div></div></div>
+      <div class="defitem"><div class="dn">FEEDS / campaign chips</div><div class="dd">Couple a policy to award/campaign rollups — dormant <code style="font-family:var(--mono);font-size:11px">usesPolicyLedger</code>.<div class="s2">⚑ AWAITS PARITY FLIP</div></div></div>
+      <div class="defitem"><div class="dn">"Export proof"</div><div class="dd">Campaign-proof export — depends on the deferred awards path.<div class="s2">⚑ AWAITS PARITY FLIP</div></div></div>
+    </div>
+  </div>
+
+  <!-- STATES -->
+  <div class="secttl">Not drawn in the mockup — spec’d here</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk" style="background:var(--inkFaint)">S</span>Skeleton · loading</div>
+      <div class="sc-b">
+        <div class="skel"><div class="sc"></div><div class="sl"><div class="shimmer" style="width:55%"></div><div class="shimmer" style="width:35%"></div></div></div>
+        <div class="skel"><div class="sc"></div><div class="sl"><div class="shimmer" style="width:45%"></div><div class="shimmer" style="width:60%"></div></div></div>
+      </div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk" style="background:var(--inkFaint)">E</span>Empty</div>
+      <div class="sc-b"><div class="empty"><div class="ic">✓</div><div class="et">No policies to reconcile</div><div class="ed">Settled policies will appear here as agents log them.</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk" style="background:var(--inkFaint)">!</span>Error</div>
+      <div class="sc-b"><div class="errs"><div class="ic">!</div><div class="et" style="font-family:var(--display);font-weight:800;font-size:15px">Couldn’t load the worklist</div><div class="ed" style="font-size:11.5px;color:var(--inkMute)">Check your connection and try again.</div><div class="eb">↻ Retry</div></div></div>
+    </div>
+  </div>
+
+  <!-- COMPONENTS -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · Slice-1 scope</div></div>
+    <div class="crow"><div class="cn">ReconciliationScreen</div><div class="cd">ManagerShell <code>active='recon'</code>, teamView. Wraps shipped <b>PolicyReconciliationPanel</b> logic; adds loading/empty/error + the Confirm/Lapse tabs.</div></div>
+    <div class="crow"><div class="cn">AtRiskSummary</div><div class="cd">Danger hero + 3 tiles. <b>Client-derived</b> from existing keyed deltas + <code>hasDiscrepancy</code>.</div></div>
+    <div class="crow"><div class="cn">ReconFilterRow</div><div class="cd">Chips + "Confirm all clean" (batches existing <code>confirmPolicy</code>).</div></div>
+    <div class="crow"><div class="cn">ReconRow</div><div class="cd">Worklist row: ledger → "from circular" compare + delta + clean/flagged pill + confirm.</div></div>
+    <div class="crow"><div class="cn">CompareConfirm</div><div class="cd">Side-by-side compare + manual key-in (<code>managerSettledAPI</code> + note) + Confirm / Flag.</div></div>
+    <div class="crow"><div class="cn">LapseTab</div><div class="cd">Existing Lapse flow, <b>BM+ only</b>, tokenized. Unchanged write (<code>lapsePolicy</code>).</div></div>
+    <div class="crow"><div class="cn">statusToken(role)</div><div class="cd">Shared helper (clean / flagged / confirmed / at-risk). Replaces broken <code>text-text*</code>.</div></div>
+  </div>
+
+  <div class="scope"><span class="tag">Slice rule</span><p><b>Presentational restyle on the manual model.</b> Existing confirm/lapse writes, the <code>hasDiscrepancy</code> boolean, <code>managerSettledAPI</code> + <code>managerNote</code>, and permissions — all unchanged. The <b>only</b> non-presentational notes are the honest "from circular" reframe and keeping Lapse as a BM-only tab. The 8-way taxonomy, unmatched/missing, dispute/escalate, file ingestion, and awards coupling are <b>out</b>.</p></div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

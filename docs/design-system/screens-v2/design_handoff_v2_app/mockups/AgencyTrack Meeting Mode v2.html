@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Meeting Mode v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 640px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+
+    /* Celebration motion — confetti, balloons, sparkles (carried from kiosk). */
+    @keyframes kiosk-confetti-fall {
+      0%   { transform: translateY(-60px) rotate(0deg); opacity: 0; }
+      10%  { opacity: 0.85; }
+      90%  { opacity: 0.85; }
+      100% { transform: translateY(740px) rotate(720deg); opacity: 0; }
+    }
+    @keyframes kiosk-sparkle {
+      0%, 100% { transform: scale(0.6); opacity: 0.2; }
+      50%      { transform: scale(1);   opacity: 1; }
+    }
+    @keyframes kiosk-balloon-float-a {
+      0%   { transform: translateY(0)      translateX(0)    rotate(0deg);   opacity: 0; }
+      8%   { opacity: 0.9; }
+      25%  { transform: translateY(-220px) translateX(36px) rotate(2deg); }
+      55%  { transform: translateY(-460px) translateX(-22px) rotate(-3deg); }
+      80%  { transform: translateY(-660px) translateX(14px) rotate(1deg); }
+      92%  { opacity: 0.9; }
+      100% { transform: translateY(-880px) translateX(0)    rotate(0deg);   opacity: 0; }
+    }
+    @keyframes kiosk-balloon-float-b {
+      0%   { transform: translateY(0)      translateX(0)     rotate(0deg);   opacity: 0; }
+      10%  { opacity: 0.9; }
+      30%  { transform: translateY(-260px) translateX(-58px) rotate(-3deg); }
+      60%  { transform: translateY(-510px) translateX(40px)  rotate(4deg); }
+      85%  { transform: translateY(-720px) translateX(-12px) rotate(-1deg); }
+      92%  { opacity: 0.9; }
+      100% { transform: translateY(-880px) translateX(20px)  rotate(0deg);   opacity: 0; }
+    }
+    @keyframes kiosk-balloon-float-c {
+      0%   { transform: translateY(0)      translateX(0)    scale(1, 1)      rotate(0deg);  opacity: 0; }
+      8%   { opacity: 0.9; }
+      30%  { transform: translateY(-280px) translateX(18px) scale(1, 1)      rotate(2deg); }
+      38%  { transform: translateY(-340px) translateX(22px) scale(1.05, 0.92) rotate(0deg); }
+      44%  { transform: translateY(-320px) translateX(-12px) scale(1, 1)      rotate(-3deg); }
+      55%  { transform: translateY(-380px) translateX(-26px) scale(1, 1)      rotate(2deg); }
+      80%  { transform: translateY(-620px) translateX(10px) scale(1, 1)      rotate(-1deg); }
+      92%  { opacity: 0.9; }
+      100% { transform: translateY(-880px) translateX(0)    scale(1, 1)      rotate(0deg);  opacity: 0; }
+    }
+    @keyframes kiosk-balloon-float-d {
+      0%   { transform: translateY(0)      translateX(0)    rotate(0deg);   opacity: 0; }
+      9%   { opacity: 0.9; }
+      35%  { transform: translateY(-300px) translateX(-30px) rotate(-2deg); }
+      65%  { transform: translateY(-560px) translateX(-70px) rotate(1deg); }
+      88%  { transform: translateY(-760px) translateX(-44px) rotate(-1deg); }
+      92%  { opacity: 0.9; }
+      100% { transform: translateY(-880px) translateX(-20px) rotate(0deg);   opacity: 0; }
+    }
+    @keyframes kiosk-balloon-float-e {
+      0%   { transform: translateY(0)      translateX(0)    scale(1, 1)      rotate(0deg);  opacity: 0; }
+      8%   { opacity: 0.9; }
+      32%  { transform: translateY(-300px) translateX(-22px) scale(1, 1)      rotate(-2deg); }
+      40%  { transform: translateY(-360px) translateX(-26px) scale(0.94, 1.05) rotate(0deg); }
+      46%  { transform: translateY(-340px) translateX(8px)  scale(1, 1)      rotate(3deg); }
+      60%  { transform: translateY(-460px) translateX(36px) scale(1, 1)      rotate(-1deg); }
+      85%  { transform: translateY(-700px) translateX(-14px) scale(1, 1)     rotate(2deg); }
+      92%  { opacity: 0.9; }
+      100% { transform: translateY(-880px) translateX(0)    scale(1, 1)      rotate(0deg);  opacity: 0; }
+    }
+    @keyframes kiosk-ken-burns {
+      from { transform: scale(1.0) translate(0, 0); }
+      to   { transform: scale(1.12) translate(-12px, -6px); }
+    }
+    @keyframes kiosk-ken-burns-alt {
+      from { transform: scale(1.1) translate(10px, 4px); }
+      to   { transform: scale(1.0) translate(0, 0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Meeting Mode v2 — the guided stand-up</h1>
+    <p>
+      The full-screen "Start meeting" stand-up, rebuilt to the v2 grammar as a <b>guided presentation</b> rather than a stat slideshow. It opens on the branch's <b>reality</b>, then gives the room the <b>bird's-eye</b> — branch scorecard (this week · month · quarter · year), units team-by-team, and two master sheets (everyone's activity + the printed production report). It drills <b>exception-first</b> through each agent's week against the <b>company's minimum weekly activity floors</b>, lands recognition (<b>top producers + most-active + an "on the rise" strip</b>), celebrates the week's <b>birthdays &amp; anniversaries</b>, points at <b>awards within reach</b>, and wraps on actions captured. A <b>1-on-1</b> step adds coaching ratios + self-evaluation. Open <b>Tweaks</b> to flip the whole deck light/dark (dark default), hide presenter chrome, or set the activity sheet's group/sort default. Drag in your own <b>team photos</b> (they persist, separate from kiosk). Plus a phone <b>presenter remote</b>. Use ←/→ to walk the run.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="image-slot.js"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="meeting-v2-shared.jsx"></script>
+  <script type="text/babel" src="meeting-v2-tables.jsx"></script>
+  <script type="text/babel" src="campaigns-v2-shared.jsx"></script>
+  <script type="text/babel" src="meeting-campaigns.jsx"></script>
+  <script type="text/babel" src="meeting-v2-scenes.jsx"></script>
+  <script type="text/babel" src="meeting-v2-mobile.jsx"></script>
+
+  <script type="text/babel">
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "theme": "Dark",
+      "chrome": true,
+      "actGroup": "Unit",
+      "actSort": "New API",
+      "kpiDetail": "Condensed (company floor)"
+    }/*EDITMODE-END*/;
+
+    const ACT_SORT_MAP = { 'New API': 'api', 'Activity': 'activity', 'Persistency': 'pers', 'Needs attention first': 'status', 'Name': 'name' };
+    const KPI_DETAIL_MAP = { 'Condensed (company floor)': 'condensed', "Coach's set": 'coach', 'Full detail': 'full' };
+
+    // Royalty-free Unsplash team/office photos for the demo slideshow (up to 10).
+    const DEMO_PHOTOS = [
+      'https://images.unsplash.com/photo-1552664730-d307ca884978?w=1600&q=75&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=1600&q=75&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=1600&q=75&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=1600&q=75&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1600&q=75&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=1600&q=75&auto=format&fit=crop',
+    ];
+
+    function App() {
+      const [tw, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      const T = tw.theme === 'Light' ? MEETING_LIGHT : MEETING_DARK;
+      const chrome = tw.chrome;
+      const actGroup = tw.actGroup === 'None' ? 'none' : 'unit';
+      const actSort = ACT_SORT_MAP[tw.actSort] || 'api';
+      const kpiDensity = KPI_DETAIL_MAP[tw.kpiDetail] || 'condensed';
+      return (
+        <>
+        <DesignCanvas>
+          <DCSection
+            id="open"
+            title="Meeting open — the team's reality"
+            subtitle="Anchor-first: the week pulse, the year-vs-cascade bar, and the three counts that frame the meeting — plus the exception-first run of who we'll cover. The background stays the dynamic ambient by default; drop up to 10 team photos (the filmstrip tray) and they play full-bleed as a crossfading, slowly-panning slideshow — the kiosk welcome treatment. 01b/01c show it filled. Dark for the projector by default; flip the whole deck to light in Tweaks."
+          >
+            <DCArtboard id="open" label="01 · Open / Agenda" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={T} slide="agenda" chrome={chrome} />
+            </DCArtboard>
+            <DCArtboard id="open-photo-dark" label="01b · Open · team photo slideshow (dark)" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={MEETING_DARK} slide="agenda" chrome={chrome} photoSrcs={DEMO_PHOTOS} />
+            </DCArtboard>
+            <DCArtboard id="open-photo-light" label="01c · Open · team photo slideshow (light)" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={MEETING_LIGHT} slide="agenda" chrome={chrome} photoSrcs={DEMO_PHOTOS} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="birdseye"
+            title="The bird's-eye — branch, then teams"
+            subtitle="The Monday meeting starts with the whole picture before any individual. The branch scorecard reads what we did this week · month · quarter · year across New API, Apps and Persistency (persistency is monthly, so the weekly cell is n/a); the Units slide shows each team as a whole, windowed against its goal."
+          >
+            <DCArtboard id="branch" label="02 · Branch scorecard · week → year" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={T} slide="branch" chrome={chrome} />
+            </DCArtboard>
+            <DCArtboard id="units" label="03 · Units · team by team" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={T} slide="units" chrome={chrome} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="sheets"
+            title="The numbers — everyone, at a glance"
+            subtitle="Two master-sheet views so the room sees where each person stands. The activity sheet shows everyone's week banded against the company floor; the production sheet mirrors the printed report — this week / month / quarter / year Apps + API with a branch total and the agency motto."
+          >
+            <DCArtboard id="activity" label="04 · Activity master sheet · the week" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={T} slide="activity" chrome={chrome} actGroup={actGroup} actSort={actSort} kpiDensity={kpiDensity} />
+            </DCArtboard>
+            <DCArtboard id="production" label="05 · Production master sheet · week → year" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={T} slide="production" chrome={chrome} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="steps"
+            title="Stepping through the team — the week"
+            subtitle="After the bird's-eye, drill into individuals exception-first. Each agent step shows their week's activity against the company floor (met·at·below) and the resulting New API & Apps. The agenda rail keeps the room oriented; an exception leads with its flag reason, an on-pace champion leads with a gold win callout. Footer carries quick actions + the presenter note (hidden when presenter chrome is off)."
+          >
+            <DCArtboard id="step-exc" label="06 · Agent step · Exception (Devin, below floor)" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={T} slide="agent:devin" chrome={chrome} kpiDensity={kpiDensity} />
+            </DCArtboard>
+            <DCArtboard id="step-pace" label="07 · Agent step · On pace + win (Marsha)" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={T} slide="agent:marsha" chrome={chrome} kpiDensity={kpiDensity} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="solo"
+            title="1-on-1 — the deeper coaching frame"
+            subtitle="The CTA can launch in front of the team or for a single agent. The 1-on-1 step drops the rail and goes deep: the coaching point, agent self-evaluation, coaching ratios, and the manager's gold note (a suggestion, not their commitment)."
+          >
+            <DCArtboard id="solo-devin" label="08 · 1-on-1 · Devin Lewis" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={T} slide="solo:devin" mode="solo" chrome={chrome} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="recognition"
+            title="The recognition moment"
+            subtitle="Gold, and only here. A podium of this week's three champions, plus an 'On the rise' strip that recognizes the most-improved — encouraging the people who are trying, not just the leaders. (A per-agent win callout also fires on a champion's own step.)"
+          >
+            <DCArtboard id="champs" label="09 · Recognition · Champions + On the rise" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={T} slide="recognition" chrome={chrome} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="celebrations"
+            title="Celebrating this week — birthdays & anniversaries"
+            subtitle="The Monday meeting also celebrates the people — this week's birthdays and work anniversaries, carried over from kiosk mode: festive cards with glowing avatars over drifting confetti and balloons."
+          >
+            <DCArtboard id="celebrate" label="10 · Birthdays & Anniversaries" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={T} slide="celebrations" chrome={chrome} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="awards"
+            title="Within reach — awards & incentives"
+            subtitle="The system tracks every award, so the meeting can point at what's achievable. Agents closest to an award or incentive (Eagles Club, MDRT, Q4 Champion…) with where they stand, the gap, and the pace that closes it — encouragement aimed at the near-misses."
+          >
+            <DCArtboard id="reach" label="11 · Within reach · who's close" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={T} slide="awards" chrome={chrome} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="campaigns"
+            title="Active campaigns — live standings in the room"
+            subtitle="Any campaign with its 'Show in meeting' toggle on adds a slide here, right after Within reach. The company's Christmas Campaign (qualify ladder) and the manager's own Closer's Cup (placement race) — each as a projection-scale leaderboard with the persistency gate and prize. Drives the same urgency the wall display does, but in the room."
+          >
+            <DCArtboard id="camp-company" label="12 · Campaign · Christmas (company · qualify)" width={MTG_W} height={MTG_H}>
+              <CampaignMeetingScene t={T} campaignId="xmas25" chrome={chrome} step={14} total={16} />
+            </DCArtboard>
+            <DCArtboard id="camp-manager" label="13 · Campaign · Closer's Cup (manager's · placement)" width={MTG_W} height={MTG_H}>
+              <CampaignMeetingScene t={T} campaignId="s02-cup" chrome={chrome} step={15} total={16} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="wrap"
+            title="Wrap-up"
+            subtitle="Close on what was decided: agents reviewed, actions captured in the room (notes, recommendations, nudges), where the branch stands, and the next stand-up."
+          >
+            <DCArtboard id="close" label="14 · Wrap-up · Actions captured" width={MTG_W} height={MTG_H}>
+              <MeetingScene t={T} slide="close" chrome={chrome} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Mobile — presenter remote"
+            subtitle="The manager drives the projected meeting from their phone: what's on screen, who's next, big advance/retreat transport, the private presenter note, and a quick action on the current agent."
+          >
+            <DCArtboard id="remote" label="15 · Presenter remote" width={M_W} height={M_H}>
+              <MeetingRemote t={T} current="devin" />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+
+        <TweaksPanel>
+          <TweakSection label="Appearance" />
+          <TweakRadio label="Theme" value={tw.theme} options={['Dark', 'Light']} onChange={(v) => setTweak('theme', v)} />
+          <TweakSection label="Presentation" />
+          <TweakToggle label="Presenter chrome" value={tw.chrome} onChange={(v) => setTweak('chrome', v)} />
+          <TweakSection label="Activity master sheet" />
+          <TweakRadio label="Group by" value={tw.actGroup} options={['Unit', 'None']} onChange={(v) => setTweak('actGroup', v)} />
+          <TweakSelect label="Sort" value={tw.actSort} options={['New API', 'Activity', 'Persistency', 'Needs attention first', 'Name']} onChange={(v) => setTweak('actSort', v)} />
+          <TweakSection label="Activity detail (KPI rollup)" />
+          <TweakSelect label="Show" value={tw.kpiDetail} options={['Condensed (company floor)', "Coach's set", 'Full detail']} onChange={(v) => setTweak('kpiDetail', v)} />
+          <div style={{ fontSize: 11, lineHeight: 1.45, opacity: 0.6, padding: '2px 2px 4px' }}>
+            Condensed = the company-floor categories. Coach's set expands Contacts &amp; Closing. Full = every granular wizard KPI (master-sheet detail). Applies to the agent steps and the activity master sheet.
+          </div>
+          <TweakSection label="Open-slide team photos" />
+          <div style={{ fontSize: 11, lineHeight: 1.45, opacity: 0.7, padding: '0 2px 8px' }}>
+            Drag up to 10 photos. Filled photos play full-bleed on the Meeting Open slide as a crossfading slideshow (kiosk welcome style). Empty = the dynamic ambient background.
+          </div>
+          <OpenPhotoSlots t={T} />
+          <div style={{ fontSize: 11, lineHeight: 1.45, opacity: 0.6, padding: '8px 2px 4px' }}>
+            Theme recolors the whole meeting (dark is default). Turn presenter chrome off for a clean projected view — hides the private notes &amp; quick actions.
+          </div>
+        </TweaksPanel>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

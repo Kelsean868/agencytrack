@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Weekly Wizard v3 — Mode-Aware (fast vs full)</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{--display:'Cabinet Grotesk',sans-serif;--sans:'Satoshi',sans-serif;--mono:'JetBrains Mono',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  body{font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.5;transition:background .3s,color .3s}
+  body.light{background:#EDEBE4;color:#28251D}
+  body.dark{background:#100D0B;color:#F0EBE0}
+  .wrap{max-width:1240px;margin:0 auto;padding:30px 28px 80px}
+
+  .head{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+  .badge{width:48px;height:48px;border-radius:13px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#018A91}
+  body.dark .eyebrow{color:#4ab5b8}
+  h1{font-family:var(--display);font-weight:800;font-size:25px;letter-spacing:-.02em;margin-top:5px}
+  .sub{font-size:13px;opacity:.72;margin-top:7px;max-width:720px;text-wrap:pretty}
+  .controls{margin-left:auto;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .seg{display:flex;background:rgba(127,127,127,.12);border:1px solid rgba(127,127,127,.2);border-radius:10px;padding:3px}
+  .seg button{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:7px;font-size:11.5px;font-weight:700;opacity:.6;min-height:36px;white-space:nowrap}
+  .seg button.on{opacity:1;background:#01696F;color:#fff}
+  body.dark .seg button.on{background:#4ab5b8;color:#08201f}
+  .seg.mode button.on{background:#5A3FA0}
+  body.dark .seg.mode button.on{background:#A995E0;color:#1a1018}
+
+  .modenote{display:flex;align-items:center;gap:9px;background:rgba(90,63,160,.08);border:1px solid rgba(90,63,160,.24);border-radius:11px;padding:10px 15px;margin:16px 0 22px;font-size:12.5px}
+  body.dark .modenote{background:rgba(169,149,224,.1);border-color:rgba(169,149,224,.3)}
+  .modenote b{font-weight:700}
+  .modenote .mtag{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:99px;background:#5A3FA0;color:#fff;flex-shrink:0}
+  body.dark .modenote .mtag{background:#A995E0;color:#1a1018}
+
+  .stage{display:flex;justify-content:center;padding:6px 0}
+  .frame{position:relative;background:#fff;box-shadow:0 24px 60px rgba(38,35,28,.22);overflow:hidden}
+  .frame.browser{width:100%;max-width:1000px;height:640px;border-radius:14px;border:1px solid #CFCBC2}
+  .frame.phone{width:384px;height:760px;border-radius:42px;border:9px solid #2A2620}
+  .br-bar{height:36px;background:#F4F2EC;border-bottom:1px solid #E5E2DB;display:flex;align-items:center;gap:10px;padding:0 13px}
+  .br-dots{display:flex;gap:6px}.br-dots i{width:10px;height:10px;border-radius:50%;background:#D4CFC6}
+  .br-url{font-family:var(--mono);font-size:10px;color:#A8A39C;background:#fff;border:1px solid #E5E2DB;border-radius:6px;padding:3px 12px}
+  .ph-status{height:32px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-family:var(--mono);font-size:10px;font-weight:700;background:#F7F6F2;color:#28251D;position:relative;z-index:3}
+  .ph-notch{position:absolute;left:50%;transform:translateX(-50%);top:7px;width:90px;height:17px;background:#2A2620;border-radius:99px}
+  .frame.browser .screen{height:604px}
+  .frame.phone .screen{height:708px}
+  .screen{overflow:hidden;position:relative}
+
+  /* app tokens */
+  .wiz{--surface:#FFFFFF;--raised:#FAFAF8;--soft:#F4F2EC;--mute:#F0EFE9;--ink:#28251D;--inkMute:#6B6560;--inkFaint:#A8A39C;--inkDim:#CFCBC2;--rule:#E5E2DB;--ruleStrong:#CFCBC2;--teal:#01696F;--tealDark:#014E52;--tealTint:#E6F4F4;--onTeal:#fff;--gold:#B07D1A;--goldTint:#FAEFD3;--goldInk:#8A6010;--violet:#5A3FA0;--violetTint:#F0ECFF;--success:#2D7A4F;--successTint:#E8F5EE;--warning:#B45309;--warningTint:#FEF3E2;--bg:#F7F6F2;
+    height:100%;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);min-height:0}
+  body.dark .wiz{--surface:#252019;--raised:#302A23;--soft:#1F1B17;--mute:#211C18;--ink:#F0EBE0;--inkMute:#B8AEA0;--inkFaint:#8A8074;--inkDim:#4F473E;--rule:rgba(240,235,224,.08);--ruleStrong:rgba(240,235,224,.18);--teal:#4AB5B8;--tealDark:#9FE0E2;--tealTint:rgba(74,181,184,.14);--onTeal:#10201F;--gold:#E0AA3E;--goldTint:rgba(224,170,62,.14);--goldInk:#E8C77A;--violet:#A995E0;--violetTint:rgba(169,149,224,.14);--success:#5DB876;--successTint:rgba(93,184,118,.14);--warning:#E8B53E;--warningTint:rgba(232,181,62,.14);--bg:#1A1612}
+
+  .wizchrome{display:flex;align-items:center;gap:11px;padding:13px 18px;border-bottom:1px solid var(--rule);flex-shrink:0}
+  .wizchrome .wb{width:32px;height:32px;border-radius:9px;background:var(--tealTint);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .wizchrome .wt{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .wizchrome .wn{font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:-.01em;margin-top:2px}
+  .wizchrome .wn em{font-style:normal;color:var(--teal)}
+  .autosave{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:5px 10px;background:var(--successTint);border-radius:99px;font-size:10px;font-weight:700;color:var(--success);font-family:var(--mono)}
+  .autosave .ck{width:14px;height:14px;border-radius:50%;background:var(--success);color:#fff;display:flex;align-items:center;justify-content:center;font-size:8px}
+  .wizclose{width:30px;height:30px;border-radius:8px;border:1px solid var(--rule);display:flex;align-items:center;justify-content:center;color:var(--inkFaint);flex-shrink:0}
+
+  .phasebar{padding:12px 18px;border-bottom:1px solid var(--rule);flex-shrink:0;display:flex;gap:6px;align-items:center}
+  .phasebar .pseg{flex:1;display:flex;flex-direction:column;gap:5px}
+  .phasebar .plabel{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inkFaint)}
+  .phasebar .plabel.done{color:var(--success)}
+  .phasebar .plabel.cur{color:var(--teal)}
+  .phasebar .ptrack{height:4px;border-radius:99px;background:var(--mute);overflow:hidden}
+  .phasebar .ptrack i{display:block;height:100%;border-radius:99px;background:var(--teal);width:0;transition:width .3s}
+
+  .wizmain{flex:1;display:flex;min-height:0}
+  .wizbody{flex:1;overflow:auto;padding:18px 20px;min-height:0;display:flex;flex-direction:column;gap:11px}
+  .wizbody::-webkit-scrollbar{width:0}
+  .sidepanel{width:280px;flex-shrink:0;border-left:1px solid var(--rule);background:var(--raised);padding:16px 16px;overflow:auto;display:flex;flex-direction:column;gap:12px}
+  .frame.phone .sidepanel{display:none}
+
+  .stepintro .se{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal)}
+  .stepintro .stt{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-.02em;margin-top:3px}
+  .stepintro .sd{font-size:12.5px;color:var(--inkMute);margin-top:6px;text-wrap:pretty}
+
+  /* confirm sections */
+  .csec{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 14px}
+  .csec.green{border-color:color-mix(in srgb,var(--success) 28%,transparent)}
+  .csh{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .csh .dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+  .csh .cl{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint);flex:1}
+  .csh .prov{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--successTint);color:var(--success);padding:2px 8px;border-radius:99px}
+  .csh .edit{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--teal);border:1px solid color-mix(in srgb,var(--teal) 30%,transparent);padding:3px 9px;border-radius:99px}
+  .crow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;font-size:12px;border-top:1px solid var(--rule)}
+  .crow:first-of-type{border-top:none}
+  .crow .l{color:var(--inkMute)}
+  .crow .v{font-family:var(--display);font-weight:800;font-size:13px;color:var(--ink)}
+
+  /* ratings */
+  .raterow{background:var(--surface);border:1px solid var(--rule);border-radius:11px;padding:11px 13px}
+  .raterow .rl{font-size:12.5px;font-weight:700;margin-bottom:8px;display:flex;justify-content:space-between}
+  .raterow .rl .rv{color:var(--teal);font-family:var(--display)}
+  .pips{display:flex;gap:4px}
+  .pip{flex:1;height:28px;border-radius:6px;background:var(--mute);border:1px solid var(--rule);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--inkFaint);cursor:pointer}
+  .pip.on{background:var(--teal);color:var(--onTeal);border-color:var(--teal)}
+
+  /* goals */
+  .goalgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .goalcard{background:var(--surface);border:1px solid var(--rule);border-radius:11px;padding:12px 13px}
+  .goalcard .gk{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inkFaint)}
+  .goalcard .gvrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px}
+  .goalcard .gv{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.02em}
+  .goalcard .gstep{display:flex;gap:5px}
+  .goalcard .gb{width:26px;height:26px;border-radius:7px;border:1px solid var(--ruleStrong);background:var(--soft);color:var(--inkMute);display:flex;align-items:center;justify-content:center;font-size:13px}
+  .goalcard .gb.p{background:var(--teal);color:var(--onTeal);border:none}
+  .goalcard .seed{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--teal);background:var(--tealTint);padding:2px 6px;border-radius:99px;margin-top:7px;display:inline-block}
+
+  /* entry field (full path) */
+  .efield{background:var(--surface);border:1px solid var(--rule);border-radius:11px;padding:11px 13px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .efield .el{font-size:12.5px;font-weight:600}
+  .efield .el small{display:block;font-family:var(--mono);font-size:9px;color:var(--inkFaint);font-weight:400;margin-top:2px}
+  .efield .einp{min-width:84px;height:36px;border-radius:8px;border:1px solid var(--ruleStrong);background:var(--soft);display:flex;align-items:center;justify-content:flex-end;padding:0 11px;font-family:var(--display);font-weight:800;font-size:15px}
+  .efield .einp.cur{padding-left:9px;justify-content:space-between}
+  .efield .einp .cu{font-family:var(--mono);font-size:9px;color:var(--inkFaint);font-weight:400}
+
+  .gcard2{background:var(--surface);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+  .gc2h{display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer}
+  .gc2h .dot{width:8px;height:8px;border-radius:2px}
+  .gc2h .gl{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint);flex:1}
+  .gc2h .chev{color:var(--inkFaint);transition:transform .2s}
+  .gcard2.collapsed .chev{transform:rotate(-90deg)}
+  .gc2b{padding:0 14px 12px;display:flex;flex-direction:column;gap:8px}
+  .gcard2.collapsed .gc2b{display:none}
+
+  /* side panel */
+  .sp-h{display:flex;align-items:baseline;justify-content:space-between}
+  .sp-h .e{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--inkFaint)}
+  .sphero{background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:14px 15px;position:relative;overflow:hidden}
+  .sphero .k{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal)}
+  .sphero .v{font-family:var(--display);font-weight:800;font-size:28px;letter-spacing:-.025em;margin-top:6px;line-height:1}
+  .sphero .d{font-size:10.5px;color:var(--inkMute);margin-top:6px}
+  .sppts{background:linear-gradient(135deg,#F4CE5A,#D9981C);color:#3a2906;border-radius:13px;padding:13px 15px}
+  body.dark .sppts{background:linear-gradient(135deg,#F0C24A,#C98A1A);color:#241a04}
+  .sppts .k{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
+  .sppts .v{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.02em;margin-top:5px;line-height:1}
+  .sppts .track{height:6px;border-radius:99px;background:rgba(0,0,0,.16);margin-top:9px;overflow:hidden}
+  .sppts .track i{display:block;height:100%;border-radius:99px;background:#3a2906}
+  .sppts .d{font-family:var(--mono);font-size:8.5px;font-weight:700;margin-top:6px;opacity:.85}
+  .sp2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .sp2 .c{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:10px 11px}
+  .sp2 .c .e{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint)}
+  .sp2 .c .v{font-family:var(--display);font-weight:800;font-size:17px;margin-top:5px;letter-spacing:-.01em}
+
+  /* mobile points strip */
+  .mptsstrip{display:none;align-items:center;gap:10px;padding:9px 14px;background:var(--surface);border-top:1px solid var(--rule);flex-shrink:0}
+  .frame.phone .mptsstrip{display:flex}
+  .mptsstrip .mp{display:flex;flex-direction:column}
+  .mptsstrip .mp .e{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint)}
+  .mptsstrip .mp .v{font-family:var(--display);font-weight:800;font-size:15px;line-height:1;margin-top:2px}
+  .mptsstrip .mpts{margin-left:auto;background:linear-gradient(135deg,#F4CE5A,#D9981C);color:#3a2906;padding:5px 11px;border-radius:9px;text-align:center}
+  .mptsstrip .mpts b{font-family:var(--display);font-weight:800;font-size:14px;display:block;line-height:1}
+  .mptsstrip .mpts span{font-family:var(--mono);font-size:7px;font-weight:700;letter-spacing:.04em}
+
+  .wizfoot{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--rule);background:var(--raised);flex-shrink:0}
+  .wizfoot .back{padding:11px 15px;border-radius:10px;border:1px solid var(--ruleStrong);font-size:12.5px;font-weight:700;color:var(--inkMute);display:inline-flex;align-items:center;gap:6px}
+  .wizfoot .info{flex:1;text-align:center;font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);letter-spacing:.06em}
+  .wizfoot .next{padding:11px 20px;border-radius:10px;background:var(--teal);color:var(--onTeal);font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:8px}
+  .wizfoot .next.gold{background:var(--gold)}
+
+  /* celebration */
+  .celebrate{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;z-index:6}
+  .celebrate .medal{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 32% 26%,#FFE48A,#D9981C 60%,#8E5A0F);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;box-shadow:0 12px 30px rgba(176,125,26,.4)}
+  .celebrate .medal .wk{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.18em;opacity:.85}
+  .celebrate .medal .n{font-family:var(--display);font-weight:800;font-size:44px;letter-spacing:-.03em;line-height:1}
+  .celebrate .ch{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.02em;margin-top:20px}
+  .celebrate .cs{font-size:13px;opacity:.7;margin-top:8px;max-width:380px;text-wrap:pretty}
+  .celebrate .cstats{display:flex;gap:11px;margin-top:22px}
+  .celebrate .cst{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 18px;min-width:90px}
+  .celebrate .cst .e{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em}
+  .celebrate .cst .v{font-family:var(--display);font-weight:800;font-size:20px;margin-top:6px;letter-spacing:-.02em}
+  .celebrate .cst.pts{background:linear-gradient(135deg,#F4CE5A,#D9981C);color:#3a2906;border:none}
+  .celebrate .cst.pts .e{color:#3a2906}
+  .celebrate .cgo{margin-top:26px;padding:12px 22px;background:var(--teal);color:var(--onTeal);border-radius:11px;font-size:13px;font-weight:700}
+
+  .annobar{display:flex;gap:11px;background:rgba(127,127,127,.06);border:1px solid rgba(127,127,127,.16);border-radius:12px;padding:13px 16px;margin-top:20px}
+  .annobar .ni{width:22px;height:22px;border-radius:50%;background:#01696F;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono);font-weight:700;font-size:12px}
+  body.dark .annobar .ni{background:#4ab5b8;color:#08201f}
+  .annobar p{font-size:12px;opacity:.82;text-wrap:pretty}
+  .annobar b{font-weight:700;opacity:1}
+  @media(max-width:900px){.controls{width:100%}.head{flex-wrap:wrap}}
+</style>
+</head>
+<body class="light">
+<div class="wrap">
+
+  <div class="head">
+    <svg class="badge" viewBox="0 0 200 200" aria-hidden="true"><rect width="200" height="200" rx="46" fill="#014e52"/><rect x="72" y="118" width="11" height="22" rx="2.5" fill="#fff" fill-opacity=".4"/><rect x="89" y="104" width="11" height="36" rx="2.5" fill="#fff" fill-opacity=".7"/><rect x="106" y="88" width="11" height="52" rx="2.5" fill="#fff"/><circle cx="111" cy="80" r="5" fill="#4ecdc4"/></svg>
+    <div>
+      <div class="eyebrow">Weekly Wizard v3 · mode-aware mockup</div>
+      <h1>One wizard, two paths — chosen by how the week was logged</h1>
+      <p class="sub">Fully clickable. Flip <b>Mode</b> to compare the <b>fast path</b> (daily/hybrid loggers confirm + reflect) against the <b>full path</b> (weekly-only loggers enter, grouped into 4 phase screens). Walk it on desktop and mobile, light and dark.</p>
+    </div>
+    <div class="controls">
+      <div class="seg mode" id="modeSeg"><button data-mode="fast" class="on">Daily / hybrid</button><button data-mode="full">Weekly-only</button></div>
+      <div class="seg" id="devSeg"><button data-dev="browser" class="on">Desktop</button><button data-dev="phone">Mobile</button></div>
+      <div class="seg" id="themeSeg"><button data-theme="light" class="on">Light</button><button data-theme="dark">Dark</button></div>
+    </div>
+  </div>
+
+  <div class="modenote" id="modeNote"></div>
+
+  <div class="stage"><div class="frame browser" id="frame"></div></div>
+
+  <div class="annobar">
+    <span class="ni">i</span>
+    <p id="annoText"></p>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var STATE = {
+    mode:'fast', dev:'browser', theme:'light', step:0,
+    ratings:{Planning:7,'Time use':6,Sales:8,Prospecting:7,Overall:7},
+    goals:{Calls:55,FFI:6,CI:5,API:24}
+  };
+
+  var FAST = ['confirm','rate','goals','review'];
+  var FULL = ['activity','sales','reflection','goals','review'];
+  var PHASES_FAST = ['Confirm','Reflect','Goals','Submit'];
+  var PHASES_FULL = ['Activity','Sales','Reflection','Goals'];
+
+  var MODE_NOTE = {
+    fast:['FAST PATH','<b>Daily / hybrid logger.</b> Activity, sales, production &amp; hours arrived pre-filled from the week\u2019s daily logs \u2014 so the wizard opens on <b>Confirm your week</b>, then only the genuinely-weekly work (rate &amp; goals) is a step. ~3 steps.'],
+    full:['FULL PATH','<b>Weekly-only logger.</b> No daily data, so this is the full entry flow \u2014 but the 9 old steps are grouped into <b>4 phase screens</b> with collapsible sections instead of 12 hard steps.']
+  };
+  var ANNO = {
+    confirm:'<b>Confirm, don\u2019t re-enter.</b> Eight entry steps collapse into two pre-filled review sections with \u201c\u2713 from daily\u201d provenance. Edit inline if a number\u2019s off \u2014 no jumping back through a wizard.',
+    rate:'<b>The real weekly work.</b> Rating the week 1\u201310 is something daily logging can\u2019t capture \u2014 so the wizard spends the agent\u2019s attention here, not on data entry. Tap any pip.',
+    goals:'<b>Seeded from pace + actuals.</b> Next-week targets pre-fill from the points floor and this week\u2019s numbers (the \u201cseeded\u201d tag) \u2014 the agent adjusts rather than starts blank.',
+    review:'<b>Submit.</b> Week points ride the button in the same gold the daily uses \u2014 one currency, daily through weekly. Hit submit to see the celebration.',
+    activity:'<b>Full path \u00b7 phase 1 of 4.</b> The 5 old activity steps become one Activity screen with collapsible groups \u2014 same grouped-card pattern the daily proved. Every field matches the daily\u2019s vocabulary.',
+    sales:'<b>Full path \u00b7 phase 2 of 4.</b> Approaches/interviews, new business, and delivery &amp; service on one screen. Lives sold and the servicing fields are here, in parity with the daily.',
+    reflection:'<b>Full path \u00b7 phase 3 of 4.</b> Hours + the five 1\u201310 ratings together \u2014 the reflection phase. Hours are an entry here (no daily to pull from).',
+  };
+
+  function steps(){ return STATE.mode==='fast'?FAST:FULL; }
+  function phases(){ return STATE.mode==='fast'?PHASES_FAST:PHASES_FULL; }
+
+  // ---- screen renderers ----
+  function rConfirm(){
+    var sec = function(tone,label,rows){
+      return '<div class="csec green"><div class="csh"><span class="dot" style="background:'+tone+'"></span><span class="cl">'+label+'</span><span class="prov">\u2713 from daily \u00d75</span><span class="edit">Edit</span></div>'+
+        rows.map(function(r){return '<div class="crow"><span class="l">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';}).join('')+'</div>';
+    };
+    return '<div class="stepintro"><div class="se">Step 1 of 3 \u00b7 Confirm</div><div class="stt">Confirm your week</div><div class="sd">Your daily logs filled everything below. Scan, accept, or edit inline \u2014 then reflect.</div></div>'+
+      sec('var(--violet)','Activity &amp; prospecting',[['Letters \u00b7 Seminars \u00b7 Social','12 \u00b7 1 \u00b7 4'],['Calls \u00b7 Tel contacts \u00b7 F2F','47 \u00b7 18 \u00b7 9'],['New names \u00b7 Approaches \u00b7 CIs','8 \u00b7 22 \u00b7 4']])+
+      sec('var(--gold)','Production &amp; hours',[['New business API \u00b7 apps \u00b7 lives','TTD 18.4K \u00b7 2 \u00b7 4'],['Delivery \u00b7 service \u00b7 hours','3 \u00b7 11 \u00b7 41h']]);
+  }
+  function rRate(){
+    var rows = Object.keys(STATE.ratings).map(function(k){
+      var val = STATE.ratings[k];
+      var pips='';
+      for(var i=1;i<=10;i++){ pips+='<div class="pip'+(i<=val?' on':'')+'" data-rate="'+k+'" data-v="'+i+'">'+i+'</div>'; }
+      return '<div class="raterow"><div class="rl"><span>'+k+'</span><span class="rv">'+val+'/10</span></div><div class="pips">'+pips+'</div></div>';
+    }).join('');
+    return '<div class="stepintro"><div class="se">Step 2 of 3 \u00b7 Reflect</div><div class="stt">Rate your week</div><div class="sd">The part only you can judge \u2014 how the week actually went, 1\u201310.</div></div>'+rows;
+  }
+  function rGoals(){
+    var units={Calls:'',FFI:'',CI:'',API:'TTD '};
+    var cards = Object.keys(STATE.goals).map(function(k){
+      var v=STATE.goals[k]; var disp = k==='API'?('TTD '+v+'K'):v;
+      return '<div class="goalcard"><div class="gk">'+k+'</div><div class="gvrow"><span class="gv">'+disp+'</span><span class="gstep"><span class="gb" data-goal="'+k+'" data-d="-1">\u2212</span><span class="gb p" data-goal="'+k+'" data-d="1">+</span></span></div><span class="seed">seeded from pace</span></div>';
+    }).join('');
+    return '<div class="stepintro"><div class="se">Step 3 of 3 \u00b7 Goals</div><div class="stt">Targets for next week</div><div class="sd">Pre-filled from your weekly pace floor + this week\u2019s actuals. Nudge any to commit.</div></div><div class="goalgrid">'+cards+'</div>';
+  }
+  function rReview(){
+    return '<div class="stepintro"><div class="se">Final \u00b7 Submit</div><div class="stt">Ready to submit</div><div class="sd">Everything\u2019s in. Your week lands on the dashboard and the leaderboard.</div></div>'+
+      '<div class="csec"><div class="csh"><span class="dot" style="background:var(--teal)"></span><span class="cl">Production this week</span></div><div class="crow"><span class="l">Production API</span><span class="v">TTD 18.4K</span></div><div class="crow"><span class="l">Apps \u00b7 lives</span><span class="v">2 \u00b7 4</span></div><div class="crow"><span class="l">Est. commission</span><span class="v">TTD 1.4K</span></div></div>'+
+      '<div class="csec"><div class="csh"><span class="dot" style="background:var(--gold)"></span><span class="cl">Week rating \u00b7 next-week goals</span></div><div class="crow"><span class="l">Overall</span><span class="v">'+STATE.ratings.Overall+'/10</span></div><div class="crow"><span class="l">WK 49 targets</span><span class="v">'+STATE.goals.Calls+' calls \u00b7 TTD '+STATE.goals.API+'K</span></div></div>';
+  }
+  // full path
+  function efield(label,hint,val,cur){
+    var inp = cur? '<div class="einp cur"><span class="cu">TTD</span>'+val+'</div>' : '<div class="einp">'+val+'</div>';
+    return '<div class="efield"><div class="el">'+label+(hint?'<small>'+hint+'</small>':'')+'</div>'+inp+'</div>';
+  }
+  function gcard(tone,label,collapsed,rows){
+    return '<div class="gcard2'+(collapsed?' collapsed':'')+'"><div class="gc2h" data-coll><span class="dot" style="background:'+tone+'"></span><span class="gl">'+label+'</span><span class="chev"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg></span></div><div class="gc2b">'+rows+'</div></div>';
+  }
+  function rActivity(){
+    return '<div class="stepintro"><div class="se">Phase 1 of 4 \u00b7 Activity</div><div class="stt">Your prospecting &amp; outreach</div><div class="sd">All five activity steps on one screen \u2014 expand a group, enter, move on.</div></div>'+
+      gcard('var(--violet)','Outreach &amp; social',false, efield('Letters &amp; outreach','',12)+efield('Seminars &amp; tradeshows','',1)+efield('Social &amp; content','posts/content/engage',4)+efield('New names added','',8))+
+      gcard('var(--teal)','Contact',false, efield('Calls / dials','',47)+efield('Telephone contacts','',18)+efield('F2F approaches','',9))+
+      gcard('var(--gold)','Interviews',true, efield('New CIs \u00b7 Old CIs','',5)+efield('CIs conducted','',4)+efield('Solution presentations','',5));
+  }
+  function rSales(){
+    return '<div class="stepintro"><div class="se">Phase 2 of 4 \u00b7 Sales</div><div class="stt">New business &amp; delivery</div><div class="sd">What you wrote and what you serviced \u2014 in parity with the daily.</div></div>'+
+      gcard('var(--gold)','New business',false, efield('Applications written','',2)+efield('Lives sold','',4)+efield('New business API','',18400,true))+
+      gcard('var(--gold)','PPP &amp; lumpsums',true, efield('PPP increase API','',6000,true)+efield('Lumpsum gross','',60000,true))+
+      gcard('var(--teal)','Delivery &amp; service',false, efield('Policies delivered','',3)+efield('Service contacts','',11)+efield('Old names worked','',14));
+  }
+  function rReflection(){
+    var rows = Object.keys(STATE.ratings).map(function(k){
+      var val=STATE.ratings[k];var pips='';for(var i=1;i<=10;i++){pips+='<div class="pip'+(i<=val?' on':'')+'" data-rate="'+k+'" data-v="'+i+'">'+i+'</div>';}
+      return '<div class="raterow"><div class="rl"><span>'+k+'</span><span class="rv">'+val+'/10</span></div><div class="pips">'+pips+'</div></div>';
+    }).join('');
+    return '<div class="stepintro"><div class="se">Phase 3 of 4 \u00b7 Reflection</div><div class="stt">Hours &amp; how it went</div><div class="sd">Log your hours, then rate the week.</div></div>'+
+      gcard('var(--teal)','Hours worked',false, efield('Office hours','',16)+efield('Field hours','',25))+rows;
+  }
+
+  function render(){
+    var s = steps()[STATE.step];
+    var ph = phases();
+    // phase index for progress
+    var phIdx = STATE.mode==='fast' ? STATE.step : Math.min(STATE.step, ph.length-1);
+    var bodyHTML = ({confirm:rConfirm,rate:rRate,goals:rGoals,review:rReview,activity:rActivity,sales:rSales,reflection:rReflection})[s]();
+
+    var phasebar = '<div class="phasebar">'+ph.map(function(p,i){
+      var cls = i<phIdx?'done':i===phIdx?'cur':'';
+      var w = i<phIdx?100:i===phIdx?60:0;
+      return '<div class="pseg"><span class="plabel '+cls+'">'+p+'</span><div class="ptrack"><i style="width:'+w+'%"></i></div></div>';
+    }).join('')+'</div>';
+
+    var side = STATE.dev==='browser' ? '<div class="sidepanel">'+
+      '<div class="sp-h"><span class="e">Your week so far</span><span class="e">WK 48 \u00b7 LIVE</span></div>'+
+      '<div class="sphero"><div class="k">Production API</div><div class="v">TTD 18.4K</div><div class="d">\u25b2 TTD 2.1K vs last wk \u00b7 est. comm TTD 1.4K</div></div>'+
+      '<div class="sppts"><div class="k">\u2605 Activity points</div><div class="v">462 / 550</div><div class="track"><i style="width:84%"></i></div><div class="d">84% OF YOUR WEEKLY FLOOR</div></div>'+
+      '<div class="sp2"><div class="c"><div class="e">APPS</div><div class="v">2</div></div><div class="c"><div class="e">CI CONV</div><div class="v">50%</div></div><div class="c"><div class="e">CALLS</div><div class="v">47</div></div><div class="c"><div class="e">NAMES</div><div class="v">8</div></div></div>'+
+      '</div>' : '';
+
+    var isLast = STATE.step===steps().length-1;
+    var nextLabel = isLast ? 'Submit week' : (STATE.mode==='fast'&&STATE.step===0 ? 'Looks right \u2014 continue' : 'Continue');
+    var foot = '<div class="wizfoot"><button class="back">\u2039 Back</button><span class="info">'+(STATE.mode==='fast'?'FAST PATH':'FULL PATH')+' \u00b7 STEP '+(STATE.step+1)+' OF '+steps().length+'</span><button class="next'+(isLast?' gold':'')+'" id="nextBtn">'+nextLabel+' \u203a</button></div>';
+
+    var mstrip = '<div class="mptsstrip"><div class="mp"><span class="e">PRODUCTION API</span><span class="v">TTD 18.4K</span></div><div class="mpts"><b>462</b><span>WK PTS</span></div></div>';
+
+    var wiz = '<div class="wiz">'+
+      '<div class="wizchrome"><div class="wb"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><path d="M5 3v16h16"/><path d="m19 9-5 5-4-4-3 3"/></svg></div>'+
+      '<div><div class="wt">Weekly Report \u00b7 Week of Nov 24</div><div class="wn">Marsha Singh \u00b7 <em>'+(STATE.mode==='fast'?'Confirm & reflect':'Weekly entry')+'</em></div></div>'+
+      '<span class="autosave"><span class="ck">\u2713</span> Saved</span><button class="wizclose">\u2715</button></div>'+
+      phasebar+
+      '<div class="wizmain"><div class="wizbody">'+bodyHTML+'</div>'+side+'</div>'+
+      mstrip+foot+'</div>';
+
+    var frame = document.getElementById('frame');
+    frame.className = 'frame '+STATE.dev;
+    var chrome = STATE.dev==='browser'
+      ? '<div class="br-bar"><span class="br-dots"><i></i><i></i><i></i></span><span class="br-url">agencytrack.app/weekly</span></div>'
+      : '<div class="ph-status"><span>9:41</span><span class="ph-notch"></span><span>\u25cf\u25cf\u25cf \u25be \u25ae</span></div>';
+    frame.innerHTML = chrome + '<div class="screen">'+wiz+'</div>';
+
+    document.getElementById('annoText').innerHTML = ANNO[s] || '';
+    wire();
+  }
+
+  function celebrate(){
+    var frame=document.getElementById('frame');
+    var chrome = STATE.dev==='browser'
+      ? '<div class="br-bar"><span class="br-dots"><i></i><i></i><i></i></span><span class="br-url">agencytrack.app/weekly</span></div>'
+      : '<div class="ph-status"><span>9:41</span><span class="ph-notch"></span><span>\u25cf\u25cf\u25cf \u25be \u25ae</span></div>';
+    frame.innerHTML = chrome+'<div class="screen"><div class="wiz"><div class="celebrate">'+
+      '<div class="medal"><span class="wk">WEEK</span><span class="n">48</span></div>'+
+      '<div class="ch">Nice work, Marsha.</div>'+
+      '<div class="cs">Your week landed on the dashboard. You logged daily all week and kept your streak alive.</div>'+
+      '<div class="cstats"><div class="cst"><div class="e" style="color:var(--teal)">PRODUCTION</div><div class="v">TTD 18.4K</div></div><div class="cst pts"><div class="e">\u2605 ACTIVITY PTS</div><div class="v">462</div></div><div class="cst"><div class="e" style="color:var(--gold)">STREAK</div><div class="v">9 days</div></div></div>'+
+      '<button class="cgo" id="cgo">Back to dashboard \u203a</button>'+
+      '</div></div></div>';
+    document.getElementById('annoText').innerHTML='<b>Celebration tied to points + streak</b> \u2014 not just API. It rewards the same currency the daily trained, reinforcing daily logging at the moment of weekly payoff. Click \u201cBack to dashboard\u201d to restart.';
+    document.getElementById('cgo').addEventListener('click',function(){STATE.step=0;render();});
+  }
+
+  function wire(){
+    var nb=document.getElementById('nextBtn');
+    if(nb) nb.addEventListener('click',function(){
+      if(STATE.step===steps().length-1){ celebrate(); }
+      else { STATE.step++; render(); }
+    });
+    var bk=document.querySelector('.wizfoot .back');
+    if(bk) bk.addEventListener('click',function(){ if(STATE.step>0){STATE.step--;render();} });
+    document.querySelectorAll('.pip').forEach(function(p){
+      p.addEventListener('click',function(){ STATE.ratings[p.dataset.rate]=parseInt(p.dataset.v,10); render(); });
+    });
+    document.querySelectorAll('[data-goal]').forEach(function(g){
+      g.addEventListener('click',function(){
+        var k=g.dataset.goal,d=parseInt(g.dataset.d,10); var inc=k==='API'?1:1;
+        STATE.goals[k]=Math.max(0,STATE.goals[k]+d*inc); render();
+      });
+    });
+    document.querySelectorAll('[data-coll]').forEach(function(h){
+      h.addEventListener('click',function(){ h.closest('.gcard2').classList.toggle('collapsed'); });
+    });
+  }
+
+  function setMode(m){ STATE.mode=m; STATE.step=0;
+    var mn=MODE_NOTE[m]; document.getElementById('modeNote').innerHTML='<span class="mtag">'+mn[0]+'</span><span>'+mn[1]+'</span>';
+    render();
+  }
+
+  document.getElementById('modeSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;this.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});setMode(b.dataset.mode);});
+  document.getElementById('devSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;this.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});STATE.dev=b.dataset.dev;render();});
+  document.getElementById('themeSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;document.body.className=b.dataset.theme;this.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});});
+
+  setMode('fast');
+})();
+</script>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" rx="40" fill="#01696F"/>
+    <rect x="36" y="50" width="58" height="100" rx="9" fill="#FAEFD3"/>
+    <rect x="106" y="50" width="58" height="46" rx="9" fill="#fff" fill-opacity="0.5"/>
+    <rect x="106" y="104" width="58" height="46" rx="9" fill="#fff" fill-opacity="0.5"/>
+    <path d="M150 30 l6 6 11 -12" fill="none" stroke="#4ecdc4" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</template>
+</body>
+</html>

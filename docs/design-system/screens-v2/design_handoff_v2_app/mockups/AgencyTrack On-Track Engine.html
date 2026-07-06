@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — the whole app</title>
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 620px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>AgencyTrack — the whole app, one loop</h1>
+    <p>
+      How the surfaces fit together as one product. The <b>App map</b> shows every screen grouped by loop stage; <b>Agent Home</b> is the front door; the <b>On-Track Engine</b> is the keystone — a campaign-aware, time-remaining backward-solve that turns a goal into <b>this week's activity prescription</b>. Two anchors feed it: <b>Money Needs</b> (your income → baseline floor) and the <b>campaign tier</b> (a temporary push) — the week's target resolves to the higher. Names come from the <b>hit-list</b> and book into the <b>Planner</b>; the <b>persistency gate</b> is an actionable reinstatement to-do. Reuses the real Nexus tokens + <code>goalsService</code> ratio chain. Mobile + desktop, light + dark. Drag to reorder · <b>Focus</b> (⤢) fullscreen · ←/→.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="planner-shared.jsx"></script>
+  <script type="text/babel" src="planner-desktop.jsx"></script>
+  <script type="text/babel" src="campaigns-v2-shared.jsx"></script>
+  <script type="text/babel" src="ontrack-shared.jsx"></script>
+  <script type="text/babel" src="ontrack-screens.jsx"></script>
+  <script type="text/babel" src="ontrack-app.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection id="map" title="The whole app — one loop, end to end"
+            subtitle="Every surface grouped by the stage of the loop it serves: Plan (Money Needs, Goals, Game Plan) → Work (Hit-list, Planner, Prep) → Report (Daily Capture, Ledger, Reconciliation, Persistency) → Compete (Campaigns, Leaderboard) → Recognize (Awards, Payouts). ★ marks the new connective tissue. The back-edges show persistency feeding the reinstatement list, and settled production updating next week’s prescription.">
+            <DCArtboard id="map-l" label="00 · App map · Light" width={1320} height={860}><AppMap t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="map-d" label="00 · App map · Dark" width={1320} height={860}><AppMap t={APP_DARK} /></DCArtboard>
+          </DCSection>
+
+          <DCSection id="home" title="Agent Home — the front door"
+            subtitle="The daily hub. The On-Track band is front-and-center (gap to the prize + this week’s C.I target), then today from the planner, the two standing nudges (fill the gap from the hit-list · lift persistency), and quick links to the rest of the app. This is what makes the surfaces feel like one product.">
+            <DCArtboard id="home-m-l" label="01 · Home · Mobile · Light" width={M_W} height={M_H}><AgentHome t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="home-m-d" label="02 · Home · Mobile · Dark" width={M_W} height={M_H}><AgentHome t={APP_DARK} /></DCArtboard>
+          </DCSection>
+
+          <DCSection id="hero" title="The On-Track Engine — one screen, the whole loop"
+            subtitle="Anchor a live campaign tier as your goal → the gap (settled + submitted vs tier) → THIS WEEK's activity prescription (the backward-solve: apps-gap ÷ weeks → sales/wk → C.I/F.F.I/A.I/dials via your close ratios, shown booked-vs-need) → the persistency gate as a reinstatement to-do → the hit-list names that close the shortfall, booking into the Planner.">
+            <DCArtboard id="hero-m-l" label="01 · On-Track · Mobile · Light" width={M_W} height={M_H}><OnTrackHero t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="hero-m-d" label="02 · On-Track · Mobile · Dark" width={M_W} height={M_H}><OnTrackHero t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="hero-d-l" label="03 · On-Track · Desktop · Light" width={APP_W} height={APP_H}><OnTrackDesk t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="hero-d-d" label="04 · On-Track · Desktop · Dark" width={APP_W} height={APP_H}><OnTrackDesk t={APP_DARK} /></DCArtboard>
+          </DCSection>
+
+          <DCSection id="ladder" title="Tier ladder — auto-ratchet, with optional 'aim higher'"
+            subtitle="Christmas is a qualify ladder, so the engine tracks your NEXT rung automatically as business settles — you bank whatever you clear, no pre-selection needed. 'Aim higher' is an optional stretch: tap a higher rung and this week's prescription climbs to match (it changes the target, not the reward). The 20-app floor is flagged because it gates every tier.">
+            <DCArtboard id="ladder-l" label="01 · Tier ladder · Light" width={M_W} height={M_H}><TierLadderScreen t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="ladder-d" label="02 · Tier ladder · Dark" width={M_W} height={M_H}><TierLadderScreen t={APP_DARK} /></DCArtboard>
+          </DCSection>
+
+          <DCSection id="hitlist" title="Campaign hit-list — the fuel, source-typed"
+            subtitle="The working call list scoped to the campaign, in the three sources the old spreadsheet used: Prospects (new business), Cross-sell (gaps in your own book), and Reinstatements (the persistency lever). Each row carries the activity stage it fills, so it maps onto the prescription shortfall — and Book drops it into the Planner.">
+            <DCArtboard id="hl-prospect" label="05 · Prospects · Light" width={M_W} height={M_H}><HitListScreen t={APP_LIGHT} source="prospect" /></DCArtboard>
+            <DCArtboard id="hl-crosssell" label="06 · Cross-sell · Light" width={M_W} height={M_H}><HitListScreen t={APP_LIGHT} source="crosssell" /></DCArtboard>
+            <DCArtboard id="hl-reinstate" label="07 · Reinstatements · Light" width={M_W} height={M_H}><HitListScreen t={APP_LIGHT} source="reinstate" /></DCArtboard>
+            <DCArtboard id="hl-prospect-d" label="08 · Prospects · Dark" width={M_W} height={M_H}><HitListScreen t={APP_DARK} source="prospect" /></DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

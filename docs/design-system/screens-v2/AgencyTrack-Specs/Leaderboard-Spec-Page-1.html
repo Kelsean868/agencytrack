@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AgencyTrack — v2 Leaderboard Spec Addendum</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:48px 0 96px}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 40px}
+
+  /* ── doc header ── */
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:28px;border-bottom:1px solid var(--rule);margin-bottom:40px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:34px;letter-spacing:-.025em;line-height:1.05;margin-top:8px}
+  .sub{color:var(--inkMute);font-size:15px;margin-top:10px;max-width:680px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  /* ── section scaffold ── */
+  section{margin-top:52px}
+  .sechead{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+  .snum{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.12em}
+  h2{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.02em}
+  .lede{color:var(--inkMute);font-size:14.5px;max-width:760px;margin:4px 0 24px;text-wrap:pretty}
+  .lede b{color:var(--ink);font-weight:700}
+  .pill-status{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--warningTint);color:var(--warning);vertical-align:middle;margin-left:4px}
+  .pill-status .dot{width:6px;height:6px;border-radius:50%;background:var(--warning)}
+
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:16px;box-shadow:0 1px 2px rgba(38,35,28,.04)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .ceyebrow{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--inkMute)}
+
+  /* ── decision callout ── */
+  .decision{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:16px 18px;margin-top:22px}
+  .decision .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .decision p{font-size:14px;color:var(--ink);text-wrap:pretty}
+  .decision b{font-weight:700}
+
+  /* ── §1 period windows ── */
+  .ptable{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}
+  .ptable th{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--inkMute);text-align:left;padding:14px 18px;background:var(--surfaceSoft);border-bottom:1px solid var(--rule)}
+  .ptable td{padding:15px 18px;border-bottom:1px solid var(--rule);vertical-align:top}
+  .ptable tr:last-child td{border-bottom:none}
+  .chip{display:inline-flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 12px;border-radius:8px;background:var(--teal);color:#fff;box-shadow:0 2px 6px color-mix(in srgb,var(--teal) 27%,transparent)}
+  .chip.off{background:transparent;color:var(--inkMute);box-shadow:none;border:1px solid var(--rule)}
+  .ptable .win{font-weight:700;color:var(--ink)}
+  .ptable .anchor{color:var(--inkMute);font-size:12.5px;margin-top:3px}
+  .ptable code{font-family:var(--mono);font-size:12px;background:var(--surfaceMute);padding:2px 6px;border-radius:5px;color:var(--tealDark)}
+  .chiprow{display:flex;gap:6px;padding:16px 18px;background:var(--surfaceRaised);border-bottom:1px solid var(--rule)}
+  .note{display:flex;gap:10px;padding:14px 18px;font-size:12.5px;color:var(--inkMute);background:var(--goldTint);border-radius:0 0 16px 16px}
+  .note b{color:var(--ink)}
+  .note .ic{color:var(--gold);flex-shrink:0;font-weight:800}
+
+  /* ── §4 role scope ── */
+  .role{padding:18px}
+  .role h3{font-family:var(--display);font-size:16px;font-weight:800;letter-spacing:-.01em}
+  .role .who{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:9px}
+  .scopebar{display:flex;gap:5px;margin:14px 0 12px}
+  .seg{flex:1;text-align:center;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;padding:8px 4px;border-radius:7px;border:1px solid var(--rule);color:var(--inkFaint);background:var(--surfaceSoft)}
+  .seg.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .seg.def{position:relative}
+  .seg.def::after{content:'DEFAULT';position:absolute;top:-7px;left:50%;transform:translateX(-50%);font-size:7px;letter-spacing:.1em;background:var(--gold);color:#fff;padding:1px 5px;border-radius:4px}
+  .role p{font-size:12.5px;color:var(--inkMute);text-wrap:pretty}
+  .role p b{color:var(--ink);font-weight:700}
+
+  /* ── §5 around-me board ── */
+  .board{padding:8px}
+  .lbrow{display:grid;grid-template-columns:34px 1fr auto auto;align-items:center;gap:12px;padding:11px 14px;border-radius:10px}
+  .lbrow .rk{font-family:var(--display);font-weight:800;font-size:14px;color:var(--inkFaint);text-align:center}
+  .lbrow .who{display:flex;align-items:center;gap:11px;min-width:0}
+  .lbrow .av{width:32px;height:32px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:11.5px;flex-shrink:0}
+  .lbrow .nm{font-size:13px;font-weight:600;color:var(--ink)}
+  .lbrow .un{font-family:var(--mono);font-size:10px;color:var(--inkFaint);margin-top:1px}
+  .lbrow .ap{font-family:var(--mono);font-size:11.5px;color:var(--inkMute)}
+  .lbrow .api{font-family:var(--display);font-weight:700;font-size:14px;color:var(--teal);text-align:right}
+  .lbrow.me{background:var(--tealTint);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--teal) 45%,transparent)}
+  .lbrow.me .rk{color:var(--teal)}
+  .lbrow.me .av{background:var(--teal);color:#fff}
+  .lbrow.me .nm{color:var(--tealDark);font-weight:700}
+  .gapsep{display:flex;align-items:center;justify-content:center;gap:7px;padding:7px 0;color:var(--inkDim);font-family:var(--mono);font-size:10px;letter-spacing:.2em}
+  .gapsep::before,.gapsep::after{content:'';height:1px;width:40px;background:var(--rule)}
+  .mepin{display:flex;align-items:center;gap:10px;margin-top:8px;padding:12px 14px;background:var(--surfaceSoft);border:1px dashed var(--ruleStrong);border-radius:12px}
+  .mepin .lab{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--inkMute)}
+
+  /* annotation cards on the right */
+  .splitspec{display:grid;grid-template-columns:1.25fr 1fr;gap:22px;align-items:start;margin-top:22px}
+  .anno{background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:14px;padding:18px 20px}
+  .anno .ceyebrow{margin-bottom:12px;color:var(--gold)}
+  .anno ul{list-style:none;display:flex;flex-direction:column;gap:11px}
+  .anno li{display:flex;gap:10px;font-size:13px;color:var(--inkMute);text-wrap:pretty}
+  .anno li b{color:var(--ink);font-weight:700}
+  .anno li .mk{color:var(--teal);font-weight:800;flex-shrink:0}
+  .anno code{font-family:var(--mono);font-size:11.5px;background:var(--surfaceMute);padding:2px 6px;border-radius:5px;color:var(--tealDark)}
+
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--inkMute)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  @media(max-width:900px){.grid2,.grid3,.splitspec{grid-template-columns:1fr}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ─────────── DOC HEADER ─────────── -->
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Spec Addendum · v2 Production Leaderboard</div>
+      <h1>The three decisions the mockups don't draw.</h1>
+      <p class="sub">The podium, period chips, card figures, kiosk reuse, and production-vs-points are all settled by the v2 mockups. These three are deliberately undrawn — they're product/data decisions. This sheet proposes a confirmable answer for each, in-system.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />LEADERBOARD · TRACK J<br />REV 2026-05-31<br />PAIRS WITH app-leaderboard</div>
+  </header>
+
+  <!-- ─────────── §2 PERIOD WINDOWS ─────────── -->
+  <section>
+    <div class="sechead"><span class="snum">DECISION 02</span><h2>Period chip windows &amp; anchors</h2><span class="pill-status"><span class="dot"></span>Confirm to build</span></div>
+    <p class="lede">The chips, labels, default (<b>YTD</b>), and "switching a chip re-ranks everyone by that period's reconciled API" are all in the mockup. What's undrawn: the <b>exact window boundaries</b>. The binding rule — <b>these must be the identical windows the production-report / reconciled-ledger engine already uses.</b> One source of truth means the Leaderboard can never define "this month" differently than the Production Report.</p>
+
+    <div class="card">
+      <div class="chiprow">
+        <span class="chip off">WK</span><span class="chip off">MTD</span><span class="chip off">QTD</span><span class="chip">YTD</span>
+        <span style="margin-left:auto;align-self:center;font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.06em">DEFAULT ACTIVE → YTD</span>
+      </div>
+      <table class="ptable">
+        <thead><tr><th style="width:90px">Chip</th><th>Window</th><th>Anchor &amp; boundary</th><th style="width:230px">Source of truth</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="chip off">WK</span></td>
+            <td><div class="win">Current reporting week</div><div class="anchor">Sun 00:00 → now</div></td>
+            <td>Reuse the existing <b>Sunday-anchored WAR week</b> — do <i>not</i> invent a new week. Closes on the WAR cycle.</td>
+            <td>WAR / weekly submission cycle · AST (America/Port_of_Spain)</td>
+          </tr>
+          <tr>
+            <td><span class="chip off">MTD</span></td>
+            <td><div class="win">Month to date</div><div class="anchor">1st 00:00 → now</div></td>
+            <td>Calendar month, tenant timezone. First of month to current instant.</td>
+            <td><code>productionReport</code> month range</td>
+          </tr>
+          <tr>
+            <td><span class="chip off">QTD</span></td>
+            <td><div class="win">Quarter to date</div><div class="anchor">Quarter start → now</div></td>
+            <td><b>Decision point:</b> calendar quarter <i>or</i> the Awards/Campaign fiscal quarter? AgencyTrack frames "Q4 2026" — align to whatever Awards already uses so the two never disagree.</td>
+            <td>Must match Awards/Campaign quarter</td>
+          </tr>
+          <tr>
+            <td><span class="chip off">YTD</span></td>
+            <td><div class="win">Year to date</div><div class="anchor">Jan 1 00:00 → now</div></td>
+            <td>Calendar year to current instant. The default view on load.</td>
+            <td><code>productionReport</code> year range</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="note"><span class="ic">!</span><div><b>Reconciled, not raw.</b> Every period sums <b>reconciled</b> production API from the policy ledger (settled/confirmed), so the Leaderboard, Awards, Kiosk and Production Report always show the same number for the same window. Pending/unreconciled premium is excluded until it clears.</div></div>
+    </div>
+
+    <div class="decision"><span class="tag">Confirm</span><p><b>Windows = the production-report engine's windows, AST.</b> WK = Sunday-anchored WAR week. MTD/YTD = calendar-to-date. <b>QTD = same quarter definition as Awards/Campaigns</b> (the one open question — pick calendar or fiscal and apply it everywhere).</p></div>
+  </section>
+
+  <!-- ─────────── §4 ROLE SCOPE ─────────── -->
+  <section>
+    <div class="sechead"><span class="snum">DECISION 04</span><h2>Ranking scope by viewer role</h2><span class="pill-status"><span class="dot"></span>Confirm to build</span></div>
+    <p class="lede">The mockup draws one field: <b>branch-wide</b> ("South Branch · 28 agents") with unit codes as a column. Undrawn: whether the field changes by viewer, and whether unit / tenant scopes exist. Proposed set below — the agent view is exactly what's mocked; managers gain a scope toggle; cross-branch lives in the Production Report suite, not the gamified podium.</p>
+
+    <div class="grid3">
+      <div class="card role">
+        <div class="who">Agent</div>
+        <h3>Their branch board</h3>
+        <div class="scopebar"><span class="seg on def">Branch</span></div>
+        <p><b>Exactly the mockup.</b> One branch field, unit codes shown for context. No scope switch — keeps the surface simple and competitive within the room they work in.</p>
+      </div>
+      <div class="card role">
+        <div class="who">Unit / Branch Mgr</div>
+        <h3>Unit ↔ Branch toggle</h3>
+        <div class="scopebar"><span class="seg on">Unit</span><span class="seg on def">Branch</span></div>
+        <p>Adds a <b>Unit</b> scope (their team only) alongside the branch default. Lets a UM run their unit's board in a huddle, then zoom to branch standing.</p>
+      </div>
+      <div class="card role">
+        <div class="who">Sales Mgr / CRO</div>
+        <h3>Branch picker</h3>
+        <div class="scopebar"><span class="seg on def">Branch</span><span class="seg">Pick ▾</span><span class="seg">Tenant*</span></div>
+        <p>Branch board with a <b>branch picker</b>. <b>Cross-branch / tenant-wide ranking belongs in the Production Report's <code>RankedLeaderboard</code></b>, not this podium.</p>
+      </div>
+    </div>
+
+    <div class="decision"><span class="tag">Confirm</span><p><b>Default scope everywhere = Branch</b> (matches the mockup). Managers get a <b>Unit/Branch toggle</b>; CRO/SM get a <b>branch picker</b>. <b>Tenant-wide stays in the Production Report</b> — the podium is a branch-room motivator, not an org analytics view. <span style="color:var(--inkFaint)">*Tenant scope = read-only, SM/CRO only.</span></p></div>
+  </section>
+
+  <!-- ─────────── §5 AROUND ME ─────────── -->
+  <section>
+    <div class="sechead"><span class="snum">DECISION 05</span><h2>"Around me" — pinned viewer row</h2><span class="pill-status" style="background:var(--dangerTint);color:var(--danger)"><span class="dot" style="background:var(--danger)"></span>Net-new · not in mockup</span></div>
+    <p class="lede">The mockup shows 8 rows and never highlights the viewer. At a real branch of <b>28+</b>, most agents fall off the visible list and lose their place. This adds a <b>pinned "You" row</b> with an optional N-1 / N / N+1 cluster — designed in the existing tail row style, using the <code>primary</code> highlight treatment.</p>
+
+    <div class="splitspec">
+      <div class="card board">
+        <!-- podium summary collapsed to a strip for context -->
+        <div style="display:flex;gap:8px;padding:8px 10px 12px;border-bottom:1px solid var(--rule);margin-bottom:6px">
+          <div style="flex:1;text-align:center;font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.06em;padding-top:4px">PODIUM 1–3 ABOVE · TAIL CONTINUES ↓</div>
+        </div>
+        <div class="lbrow"><div class="rk">6</div><div class="who"><div class="av">TR</div><div><div class="nm">Trevor Ramnauth</div><div class="un">S·03</div></div></div><div class="ap">24 apps</div><div class="api">TTD 287K</div></div>
+        <div class="lbrow"><div class="rk">7</div><div class="who"><div class="av">AM</div><div><div class="nm">Avinash Maharaj</div><div class="un">S·02</div></div></div><div class="ap">22 apps</div><div class="api">TTD 254K</div></div>
+        <div class="lbrow"><div class="rk">8</div><div class="who"><div class="av">HL</div><div><div class="nm">Hema Lakhan</div><div class="un">S·01</div></div></div><div class="ap">21 apps</div><div class="api">TTD 231K</div></div>
+
+        <div class="gapsep">+5 AGENTS</div>
+
+        <!-- around-me cluster -->
+        <div class="lbrow"><div class="rk">13</div><div class="who"><div class="av">RB</div><div><div class="nm">Rohan Boodoo</div><div class="un">S·02</div></div></div><div class="ap">15 apps</div><div class="api">TTD 168K</div></div>
+        <div class="lbrow me"><div class="rk">14</div><div class="who"><div class="av">YOU</div><div><div class="nm">You · Priya Gopaul</div><div class="un">S·02 · ↑2 this week</div></div></div><div class="ap">14 apps</div><div class="api">TTD 156K</div></div>
+        <div class="lbrow"><div class="rk">15</div><div class="who"><div class="av">DN</div><div><div class="nm">Devon Noel</div><div class="un">S·01</div></div></div><div class="ap">13 apps</div><div class="api">TTD 149K</div></div>
+
+        <!-- sticky pin variant -->
+        <div class="mepin">
+          <div class="av" style="width:30px;height:30px;background:var(--teal);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:11px">YOU</div>
+          <div style="flex:1"><div class="lab">Sticky · always visible while scrolling</div><div style="font-size:12.5px;font-weight:700;color:var(--tealDark);margin-top:2px">Rank 14 of 28 · TTD 156K · 7 behind #13</div></div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--success);font-weight:700">▲ 2</div>
+        </div>
+      </div>
+
+      <div class="anno">
+        <div class="ceyebrow">★ Behavior spec</div>
+        <ul>
+          <li><span class="mk">→</span><div><b>If viewer is in ranks 1–8:</b> no extra row — their existing podium/tail row gets the <code>.me</code> teal highlight in place.</div></li>
+          <li><span class="mk">→</span><div><b>If viewer is outside the visible list:</b> show an <b>around-me cluster</b> (N-1 · <b>You</b> · N+1) after a "+N agents" separator, so they see who's just ahead and behind.</div></li>
+          <li><span class="mk">→</span><div><b>Sticky pin</b> (mobile + long lists): a persistent "You · rank N of M" bar fixed to the bottom of the board — rank, period API, gap to the next rank up, and weekly movement (<code>▲▼</code>).</div></li>
+          <li><span class="mk">→</span><div><b>Movement chip</b> reuses the dashboard's <code>▲/▼</code> delta treatment — rank change vs. the same period last cadence.</div></li>
+          <li><span class="mk">→</span><div><b>Styling:</b> tail row grid + <code>primary</code> tint &amp; inset ring. No new tokens; this is the existing row with a highlight state.</div></li>
+        </ul>
+        <div class="legend">
+          <span><i style="background:var(--teal)"></i>You / current viewer</span>
+          <span><i style="background:var(--surfaceMute);border:1px solid var(--rule)"></i>Other agents</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="decision"><span class="tag">Confirm</span><p><b>Ship the pinned "You" row + around-me cluster + sticky bar.</b> Don't release the literal 8-row mockup to a 28-person branch — most agents would never see themselves. This is the one genuinely net-new piece of UI in the Leaderboard port.</p></div>
+  </section>
+
+</div>
+<!-- direct-edit style overrides -->
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

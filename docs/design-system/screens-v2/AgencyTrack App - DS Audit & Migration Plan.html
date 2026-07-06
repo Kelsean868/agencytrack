@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AgencyTrack — App DS Audit & Migration Plan</title>
+<link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/tokens/fonts.css" />
+<style>
+  doc-page:not(:defined){ visibility:hidden; }
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#7A7264; --inkDim:#A8A39C;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif;
+    --sans:'Satoshi','Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'JetBrains Mono','Menlo','SF Mono',monospace;
+  }
+  doc-page{ color:var(--ink); font-family:var(--sans); font-size:12.2px; line-height:1.62; background:var(--surface); }
+  h1,h2,h3,h4{ font-family:var(--display); letter-spacing:-.02em; color:var(--ink); line-height:1.1; }
+  h1{ font-size:30px; font-weight:800; margin:0 0 4px; }
+  h2{ font-size:19px; font-weight:800; margin:34px 0 4px; padding-top:16px; border-top:2px solid var(--ink); }
+  h3{ font-size:14.5px; font-weight:700; margin:20px 0 6px; }
+  h4{ font-size:12.5px; font-weight:700; margin:14px 0 4px; }
+  p{ margin:7px 0; }
+  strong{ font-weight:700; }
+  em{ color:var(--inkMute); }
+  a{ color:var(--teal); }
+  code, .mono{ font-family:var(--mono); font-size:.9em; }
+  code{ background:var(--surfaceMute); border:1px solid var(--rule); border-radius:5px; padding:1px 5px; color:var(--tealDark); }
+  .eyebrow{ font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--teal); }
+  .lede{ font-size:13.5px; color:var(--inkMute); line-height:1.6; max-width:62ch; }
+  .doc-meta{ font-family:var(--mono); font-size:10.5px; color:var(--inkFaint); letter-spacing:.04em; text-transform:uppercase; margin-top:8px; }
+
+  .callout{ border:1px solid var(--rule); border-left:3px solid var(--teal); background:var(--surfaceRaised); border-radius:10px; padding:12px 15px; margin:14px 0; }
+  .callout--gold{ border-left-color:var(--gold); }
+  .callout--danger{ border-left-color:var(--danger); }
+  .callout h4{ margin:0 0 4px; }
+  .callout p{ margin:3px 0; font-size:12px; }
+
+  table{ border-collapse:collapse; width:100%; margin:12px 0; font-size:11px; }
+  th,td{ text-align:left; padding:7px 9px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th{ font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--inkFaint); border-bottom:1.5px solid var(--ruleStrong); background:var(--surfaceMute); }
+  tbody tr:nth-child(even){ background:var(--surfaceRaised); }
+  td.scr{ font-weight:700; white-space:nowrap; }
+  td.mono{ font-family:var(--mono); font-size:10px; color:var(--inkMute); }
+
+  .badge{ display:inline-block; font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 7px; border-radius:20px; white-space:nowrap; }
+  .b-built{ background:var(--successTint); color:var(--success); }
+  .b-partial{ background:var(--warningTint); color:var(--warning); }
+  .b-missing{ background:var(--dangerTint); color:var(--danger); }
+  .b-no{ background:var(--surfaceMute); color:var(--inkFaint); border:1px solid var(--rule); }
+  .b-yes{ background:var(--tealTint); color:var(--tealDark); }
+
+  ul,ol{ margin:7px 0; padding-left:20px; }
+  li{ margin:3px 0; }
+  .tight li{ margin:1px 0; }
+  .cols2{ column-count:2; column-gap:26px; }
+  .cols2 li{ break-inside:avoid; }
+
+  .phase{ border:1px solid var(--rule); border-radius:12px; padding:13px 16px; margin:10px 0; background:var(--surfaceRaised); break-inside:avoid; }
+  .phase-h{ display:flex; align-items:baseline; gap:10px; }
+  .phase-n{ font-family:var(--display); font-weight:800; font-size:15px; color:var(--teal); }
+  .phase-t{ font-family:var(--display); font-weight:700; font-size:14px; }
+  .phase-tag{ margin-left:auto; font-family:var(--mono); font-size:9.5px; color:var(--inkFaint); text-transform:uppercase; letter-spacing:.08em; }
+
+  .legend{ display:flex; flex-wrap:wrap; gap:8px 16px; font-size:10.5px; color:var(--inkMute); margin:8px 0 2px; }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+
+  pre.code{ background:var(--ink); color:#EDE9DF; border-radius:9px; padding:12px 14px; font-family:var(--mono); font-size:9.6px; line-height:1.55; overflow-x:auto; margin:10px 0; white-space:pre; }
+  pre.code .c{ color:#8FB7A9; }
+  pre.code .k{ color:#E0AA3E; }
+
+  .kv{ display:grid; grid-template-columns:auto 1fr; gap:2px 14px; font-size:11.5px; margin:8px 0; }
+  .kv dt{ font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--inkFaint); padding-top:2px; }
+  .kv dd{ margin:0; }
+
+  h2,h3,.phase,table,.callout{ break-inside:avoid; }
+  .foot{ font-size:10px; color:var(--inkFaint); }
+  .run-foot{ display:flex; justify-content:space-between; font-family:var(--mono); font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--inkFaint); border-top:1px solid var(--rule); padding-top:6px; }
+</style>
+</head>
+<body>
+<doc-page size="letter" margin="0.7in">
+
+  <div slot="footer" class="run-foot">
+    <span>AgencyTrack · Nexus App</span>
+    <span>DS Audit &amp; Migration Plan</span>
+    <span>Confidential · Internal</span>
+  </div>
+
+  <p class="eyebrow">Design-system audit · Nexus app surfaces</p>
+  <h1>App DS Audit &amp; Migration Plan</h1>
+  <p class="lede">A screen-by-screen read of where the 39 Nexus app surfaces stand against the bound AgencyTrack design system, what has been redesigned but not yet built, and the order to migrate everything onto the canonical <code>_ds</code> component bundle. Agent surfaces are prioritised.</p>
+  <p class="doc-meta">Scope: 39 app screens · Target: <code>_ds</code> bundle + <code>.nexus</code> tokens (app-v2) · Prepared 05 Jul 2026 · Basis: design artefacts in this project</p>
+
+  <h2>1 · Executive summary</h2>
+  <p>The app exists today as <strong>two parallel tracks that have never been reconciled</strong>:</p>
+  <ul>
+    <li><strong>The composed prototype</strong> (<code>AgencyTrack Prototype.html</code>) — one navigable app that wires ~39 screens together. It still runs on <em>throwaway</em> kebab tokens (<code>--primary</code>, <code>.app-root[data-theme]</code>) and <strong>Space Mono</strong> — the exact conventions the redesign addendum says must not ship.</li>
+    <li><strong>The standalone v2 redesigns</strong> (<code>… v2.html</code>, one per feature) — polished, on the warm-neutral palette and correct fonts, but each <strong>re-implements the shell and tokens locally</strong> via <code>app-tokens.jsx</code> / <code>app-shell.jsx</code> rather than composing the bound system.</li>
+  </ul>
+
+  <div class="callout callout--danger">
+    <h4>Headline finding</h4>
+    <p><strong>0 of 39 screens are built on the bound <code>_ds</code> bundle.</strong> The design system now ships the entire app kit — <code>AppShell, Sidebar, SideNavSections, Topbar, Scorecard, GlassCard, StateLayer, EmptyState, ErrorState, SkeletonScreen, CommandPalette, MobileTab/More/CreateSheet, Money, Icon, Eyebrow, Button, Card</code> — plus a ready <code>ui_kits/nexus</code> shell. Every redesign predates it and duplicates that code by hand.</p>
+  </div>
+
+  <div class="callout callout--danger">
+    <h4>Latent accessibility bug carried by every v2 redesign</h4>
+    <p>The shared <code>app-tokens.jsx</code> still defines light-mode <code>inkFaint: #A8A39C</code> — the pre-fix value that measures ~2.3:1 and <strong>fails WCAG 2.2 AA (1.4.3)</strong> wherever it carries text (eyebrows, meta, table footers). Canonical <code>app-v2.css</code> fixed this to <code>#7A7264</code> (~4.7:1) and reserved <code>#A8A39C</code> for non-text (<code>--inkDim</code>) only. This ships broken in every standalone redesign.</p>
+  </div>
+
+  <h3>What "match the new design system" means, concretely</h3>
+  <div class="kv">
+    <dt>Tokens</dt><dd>Canonical <code>.nexus</code> / <code>.nexus.dark</code>, camelCase (<code>--teal</code>, <code>--inkMute</code>) from <code>app-v2.css</code> — not the prototype's kebab names.</dd>
+    <dt>Components</dt><dd>Compose <code>window.AgencyTrackDesignSystem_ad1cd7</code> exports; delete the local re-implementations.</dd>
+    <dt>Fonts</dt><dd>Local Cabinet Grotesk + Satoshi; mono is <strong>JetBrains Mono</strong> (retire Space Mono &amp; the Fontshare CDN).</dd>
+    <dt>State</dt><dd>Every data surface renders through <code>StateLayer</code> (loading / empty / error) per addendum §1.</dd>
+    <dt>A11y</dt><dd>WCAG 2.2 AA floor; the <code>inkFaint</code> fix; focus rings; labelled icon buttons; sectioned nav.</dd>
+  </div>
+
+  <h2>2 · Systemic gaps (apply to all screens)</h2>
+  <table>
+    <thead><tr><th style="width:20%">Gap</th><th style="width:33%">Today</th><th>Target</th></tr></thead>
+    <tbody>
+      <tr><td class="scr">Component source</td><td>Local <code>app-shell.jsx</code>, hand-built cards/nav</td><td>Bound <code>_ds</code> bundle exports</td></tr>
+      <tr><td class="scr">Token scope</td><td>Prototype: kebab <code>.app-root[data-theme]</code>; v2 files: local JS palette objects</td><td><code>.nexus</code> / <code>.nexus.dark</code> camelCase from <code>app-v2.css</code></td></tr>
+      <tr><td class="scr"><code>inkFaint</code> (light)</td><td><code>#A8A39C</code> — AA fail on text</td><td><code>#7A7264</code>; old value → <code>--inkDim</code> (non-text)</td></tr>
+      <tr><td class="scr">Mono font</td><td>Space Mono (prototype) / mixed</td><td>JetBrains Mono</td></tr>
+      <tr><td class="scr">Font delivery</td><td>Fontshare / Google CDN</td><td>Local <code>@font-face</code> from <code>_ds/assets/fonts</code></td></tr>
+      <tr><td class="scr">State design</td><td>Present only in the prototype; absent from most standalone v2 files</td><td><code>StateLayer</code> on all four states, every data surface</td></tr>
+      <tr><td class="scr">Navigation</td><td>Two nav systems (prototype vs per-file mock shells)</td><td>One <code>SideNavSections</code> + <code>MobileTab/More/CreateSheet</code> + <code>CommandPalette</code></td></tr>
+      <tr><td class="scr">Glass tier</td><td>Ad-hoc gradients; some non-hero glass</td><td>One <code>GlassCard</code> max per screen, top summary only</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3 · Screen-by-screen status</h2>
+  <div class="legend">
+    <span><span class="badge b-built">Redesigned</span> v2 mockup exists, DS-aligned</span>
+    <span><span class="badge b-partial">Partial</span> handoff / slice / legacy only</span>
+    <span><span class="badge b-missing">No redesign</span> needs one</span>
+    <span>·</span>
+    <span>On <code>_ds</code> bundle: <span class="badge b-no">No</span> everywhere today</span>
+  </div>
+
+  <h3>Agent surfaces — <em>priority track (19 screens)</em></h3>
+  <table>
+    <thead><tr><th style="width:16%">Screen</th><th style="width:12%">Redesign</th><th style="width:9%">On bundle</th><th style="width:22%">Source artefact</th><th>Migration action</th></tr></thead>
+    <tbody>
+      <tr><td class="scr">Login</td><td><span class="badge b-partial">Partial</span></td><td><span class="badge b-no">No</span></td><td class="mono">auth-v2.jsx</td><td>Rebuild on tokens; wire real focus/skip-link. Not a bundle component — hand-build on <code>.nexus</code>.</td></tr>
+      <tr><td class="scr">Dashboard</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">app-dashboard-v2.jsx</td><td>Port to <code>AppShell</code> + <code>GlassCard</code> hero + <code>Scorecard</code> grid + <code>StateLayer</code>.</td></tr>
+      <tr><td class="scr">Daily Capture</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">dailycap-*.jsx</td><td>Rebuild in shell; <code>timeline</code> skeleton + "log your first activity" empty state.</td></tr>
+      <tr><td class="scr">Weekly Report Wizard</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">wizard-v2-*.jsx</td><td>Select-week → step → review → celebrate as one flow on tokens.</td></tr>
+      <tr><td class="scr">Celebration</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">goals-v2-celebrate.jsx</td><td>Keep motion; gate on reduced-motion; gold radial only.</td></tr>
+      <tr><td class="scr">Game Plan</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">gameplan-*.jsx</td><td>Fold in <code>gameplan-loop-handoff</code>; rebuild on shell.</td></tr>
+      <tr><td class="scr">Money Needs</td><td><span class="badge b-partial">Partial</span></td><td><span class="badge b-no">No</span></td><td class="mono">money-needs-allocator-handoff</td><td>Calc-row-fix is the latest; promote to a full screen on tokens.</td></tr>
+      <tr><td class="scr">Goals</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">goals-v2-*.jsx</td><td>Hierarchy build → shell; <code>detail</code> skeleton.</td></tr>
+      <tr><td class="scr">Commission</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">commission-v2-*.jsx</td><td>Anchored playground; ensure sparkline SVGs are responsive (<code>min-width:0</code>).</td></tr>
+      <tr><td class="scr">Persistency</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">persistency-v2-*.jsx</td><td>Model-change spec is settled; rebuild on shell.</td></tr>
+      <tr><td class="scr">Policy Ledger</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">app-policy-v2.jsx</td><td>Dense table: scroll-in-card, sticky header + first col, tabular nums.</td></tr>
+      <tr><td class="scr">Policy Record</td><td><span class="badge b-partial">Partial</span></td><td><span class="badge b-no">No</span></td><td class="mono">app-policy-v2.jsx (detail)</td><td>Progressive-disclosure detail; <code>detail</code> skeleton.</td></tr>
+      <tr><td class="scr">History</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">history-v2-*.jsx</td><td>Feed + heatmap on shell; <code>timeline</code> skeleton.</td></tr>
+      <tr><td class="scr">Production Report</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">prodreport-v2-*.jsx / agentreport-v2.jsx</td><td>Rebuild on shell; reconcile agent vs manager variants.</td></tr>
+      <tr><td class="scr">Leaderboard</td><td><span class="badge b-partial">Partial</span></td><td><span class="badge b-no">No</span></td><td class="mono">app-leaderboard.jsx (legacy)</td><td>Not on v2 — bring up to tokens + ranked stress-scroll table.</td></tr>
+      <tr><td class="scr">Awards</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">app-awards-v2.jsx</td><td>Gold tier only for recognition; rebuild on shell.</td></tr>
+      <tr><td class="scr">Career</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">app-career-v2.jsx</td><td>Ladder detail on shell.</td></tr>
+      <tr><td class="scr">Prospect Prep</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">prospect-*.jsx</td><td>Confirm it belongs in agent nav; rebuild on shell.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Manager surfaces (15 screens)</h3>
+  <table>
+    <thead><tr><th style="width:16%">Screen</th><th style="width:12%">Redesign</th><th style="width:9%">On bundle</th><th style="width:22%">Source artefact</th><th>Migration action</th></tr></thead>
+    <tbody>
+      <tr><td class="scr">Team Dashboard</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">app-manager.jsx / manager-v2-*.jsx</td><td>Shell + hero + scorecards.</td></tr>
+      <tr><td class="scr">Master Sheet</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">mastersheet-v2-*.jsx</td><td>Flagship dense table; verify at 60–120 rows.</td></tr>
+      <tr><td class="scr">Team Performance</td><td><span class="badge b-partial">Partial</span></td><td><span class="badge b-no">No</span></td><td class="mono">manager-v2 / roster build</td><td>Promote roster build to full screen.</td></tr>
+      <tr><td class="scr">Compliance</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">compliance-v2-*.jsx</td><td>Nudge flow; partial-sync warning banner.</td></tr>
+      <tr><td class="scr">Settlements</td><td><span class="badge b-missing">No redesign</span></td><td><span class="badge b-no">No</span></td><td class="mono">—</td><td>Design first, then build. Empty state → policy ledger.</td></tr>
+      <tr><td class="scr">Financing</td><td><span class="badge b-partial">Partial</span></td><td><span class="badge b-no">No</span></td><td class="mono">design_handoff_financing_selfview</td><td>Handoff exists; promote to screen on tokens.</td></tr>
+      <tr><td class="scr">Reconciliation</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">reconcile-v2-*.jsx</td><td>"N policies differ" banner; dense table.</td></tr>
+      <tr><td class="scr">Team Plans</td><td><span class="badge b-partial">Partial</span></td><td><span class="badge b-no">No</span></td><td class="mono">planner-manager-handoff</td><td>Read-only roll-up; rebuild on shell.</td></tr>
+      <tr><td class="scr">Team WARs</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">war-v2-*.jsx</td><td>Rebuild on shell.</td></tr>
+      <tr><td class="scr">Agent of Month</td><td><span class="badge b-missing">No redesign</span></td><td><span class="badge b-no">No</span></td><td class="mono">—</td><td>Design first; gold recognition tier.</td></tr>
+      <tr><td class="scr">My WAR</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">war-v2-*.jsx</td><td>Draft + autosave chip on shell.</td></tr>
+      <tr><td class="scr">Production (mgr)</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">prodreport-v2 / Manager Reports</td><td>Branch aggregate; share with agent variant.</td></tr>
+      <tr><td class="scr">Campaigns</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">campaigns-v2-*.jsx</td><td>Builder + desktop + mobile on shell.</td></tr>
+      <tr><td class="scr">Meeting Mode</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">meeting-v2-*.jsx</td><td>Dark presentation surface; keep as full-bleed mode.</td></tr>
+      <tr><td class="scr">Kiosk</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">kiosk-refined-*.jsx</td><td>Opaque glass fallback for kiosk / reduced-transparency.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Admin surfaces (5 screens)</h3>
+  <table>
+    <thead><tr><th style="width:16%">Screen</th><th style="width:12%">Redesign</th><th style="width:9%">On bundle</th><th style="width:22%">Source artefact</th><th>Migration action</th></tr></thead>
+    <tbody>
+      <tr><td class="scr">Admin Dashboard</td><td><span class="badge b-missing">No redesign</span></td><td><span class="badge b-no">No</span></td><td class="mono">manager.jsx (AdminDashboard)</td><td>Design first; tenant-wide roll-up on shell.</td></tr>
+      <tr><td class="scr">Branches</td><td><span class="badge b-missing">No redesign</span></td><td><span class="badge b-no">No</span></td><td class="mono">manager.jsx (AdminBranches)</td><td>Design first; table + add-branch.</td></tr>
+      <tr><td class="scr">All Users</td><td><span class="badge b-partial">Partial</span></td><td><span class="badge b-no">No</span></td><td class="mono">usermgmt-v2.jsx</td><td>Roster dense table on shell.</td></tr>
+      <tr><td class="scr">Company Config</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">settings-v2.jsx</td><td>Rebuild on shell; grouped settings.</td></tr>
+      <tr><td class="scr">Campaigns (admin)</td><td><span class="badge b-built">Redesigned</span></td><td><span class="badge b-no">No</span></td><td class="mono">campaigns-v2-*.jsx</td><td>Shares the manager Campaigns build.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <h4>Tally</h4>
+    <p><strong>Redesigned (needs porting):</strong> ~26 · <strong>Partial (handoff/slice/legacy):</strong> ~8 · <strong>No redesign yet:</strong> ~4 (Settlements, Agent of Month, Admin Dashboard, Branches). <strong>On the <code>_ds</code> bundle: 0.</strong></p>
+  </div>
+
+  <h2>4 · Redesigns not yet on the repo</h2>
+  <p>These are designed here but — per your note — not yet in the product codebase. They should be treated as the source of truth when we rebuild, and merged in the same pass:</p>
+  <ul class="cols2 tight">
+    <li>Money Needs — calc-row-fix (<code>money-needs-allocator-handoff</code>)</li>
+    <li>Game Plan loop (<code>gameplan-loop-handoff</code>)</li>
+    <li>Weekly Planner slices (<code>planner-scheduler-handoff</code>)</li>
+    <li>Team Plans roll-up (<code>planner-manager-handoff</code>)</li>
+    <li>Financing self-view (<code>design_handoff_financing_selfview</code>)</li>
+    <li>Nav &amp; quick actions (<code>nav-quickactions-handoff</code>)</li>
+    <li>Track-K (<code>design_handoff_track_k</code>)</li>
+    <li>Persistency model-change spec</li>
+  </ul>
+  <p class="foot">Note: this list is derived from design artefacts present in this project. Reconcile against the actual repo before sign-off — some may already be partially landed.</p>
+
+  <h2>5 · Migration plan</h2>
+  <p>One shell, one token scope, one nav registry — screens plug in as content. Agent surfaces ship first because they carry the daily-active load.</p>
+
+  <div class="phase">
+    <div class="phase-h"><span class="phase-n">0</span><span class="phase-t">Scaffold the unified shell</span><span class="phase-tag">Foundation · blocks everything</span></div>
+    <ul class="tight">
+      <li>Copy <code>templates/nexus-portal/</code> as the app skeleton — it already wires <code>SideNavSections</code>, <code>CommandPalette</code> and the mobile bar to the bundle.</li>
+      <li>Adopt <code>app-v2.css</code> tokens verbatim; delete <code>app-tokens.jsx</code> palette objects and the prototype's kebab tokens.</li>
+      <li>Retire Space Mono &amp; Fontshare; point <code>--mono</code> at JetBrains Mono and load local <code>@font-face</code>.</li>
+      <li>Build the screen/nav registry (role → sections → screen id) once, from the prototype's existing <code>SCREENS</code> map.</li>
+    </ul>
+  </div>
+
+  <pre class="code"><span class="c">&lt;!-- the one canonical load block, per page --&gt;</span>
+&lt;link rel="stylesheet" href="_ds/…/tokens/fonts.css"&gt;
+&lt;link rel="stylesheet" href="_ds/…/tokens/app.css"&gt;    <span class="c">// or app-v2.css</span>
+&lt;link rel="stylesheet" href="_ds/…/tokens/glass.css"&gt;
+&lt;link rel="stylesheet" href="_ds/…/styles.css"&gt;
+&lt;script src="react / react-dom / babel"&gt;&lt;/script&gt;
+&lt;script src="_ds/…/_ds_bundle.js"&gt;&lt;/script&gt;
+<span class="k">const</span> { AppShell, Scorecard, GlassCard, StateLayer, Money } = window.AgencyTrackDesignSystem_ad1cd7;</pre>
+
+  <div class="phase">
+    <div class="phase-h"><span class="phase-n">1</span><span class="phase-t">Agent surfaces</span><span class="phase-tag">Priority · 19 screens</span></div>
+    <p style="font-size:11.5px;margin:4px 0 6px">Order by daily-use weight: Dashboard → Daily Capture → Weekly Report Wizard (+ Celebration) → Policy Ledger / Record → History → Game Plan → Money Needs → Goals → Commission → Persistency → Production → Leaderboard → Awards → Career → Prospect Prep → Login. Ledger &amp; History prove the dense-table + timeline patterns early.</p>
+  </div>
+
+  <div class="phase">
+    <div class="phase-h"><span class="phase-n">2</span><span class="phase-t">Manager surfaces</span><span class="phase-tag">15 screens</span></div>
+    <p style="font-size:11.5px;margin:4px 0 6px">Master Sheet &amp; Reconciliation first (validate dense tables at stress volume), then Team Dashboard, Compliance, WARs, Campaigns, Meeting/Kiosk. Design the two gaps — <strong>Settlements</strong> and <strong>Agent of Month</strong> — before their build slot.</p>
+  </div>
+
+  <div class="phase">
+    <div class="phase-h"><span class="phase-n">3</span><span class="phase-t">Admin surfaces</span><span class="phase-tag">5 screens</span></div>
+    <p style="font-size:11.5px;margin:4px 0 6px">Company Config &amp; Campaigns port directly; design <strong>Admin Dashboard</strong> and <strong>Branches</strong> (currently the plainest, oldest surfaces).</p>
+  </div>
+
+  <h3>Definition of done — per screen</h3>
+  <ul class="tight">
+    <li>Renders inside <code>AppShell</code> on <code>.nexus</code> / <code>.nexus.dark</code>; no local token objects.</li>
+    <li>Data surface wrapped in <code>StateLayer</code> with a matched skeleton, an <em>actionable</em> empty state, and an inline retry error.</li>
+    <li>Numerals tabular + right-aligned; currency via <code>Money</code>; dense tables scroll in-card with sticky header/first-column.</li>
+    <li>One <code>GlassCard</code> max (top summary); gold only for recognition.</li>
+    <li>AA in both themes (incl. the <code>inkFaint</code> fix); focus rings; every icon button labelled; ≥44px mobile targets.</li>
+    <li>Motion gated behind <code>prefers-reduced-motion</code>; visible end-state is the base style; no infinite content loops.</li>
+  </ul>
+
+  <div class="callout callout--gold">
+    <h4>Recommended next step</h4>
+    <p>Give me the go-ahead on <strong>Phase 0 + the Agent Dashboard</strong> as the reference conversion. Once the shell + one screen are proven on the bundle, the remaining agent screens follow the same recipe quickly, and we can compare old vs new side by side.</p>
+  </div>
+
+</doc-page>
+<script src="doc-page.js"></script>
+</body>
+</html>

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Daily → Weekly Rollup — what the weekly report looks like after a week</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{--display:'Cabinet Grotesk',sans-serif;--sans:'Satoshi',sans-serif;--mono:'JetBrains Mono',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  body{font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.5;transition:background .3s,color .3s}
+  body.light{background:#EDEBE4;color:#28251D}
+  body.dark{background:#100D0B;color:#F0EBE0}
+  .wrap{max-width:1280px;margin:0 auto;padding:32px 30px 90px}
+
+  .head{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:8px}
+  .badge{width:50px;height:50px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#018A91}
+  body.dark .eyebrow{color:#4ab5b8}
+  h1{font-family:var(--display);font-weight:800;font-size:27px;letter-spacing:-.025em;margin-top:6px}
+  .sub{font-size:13.5px;opacity:.74;margin-top:8px;max-width:780px;text-wrap:pretty}
+  .controls{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .seg{display:flex;background:rgba(127,127,127,.12);border:1px solid rgba(127,127,127,.2);border-radius:10px;padding:3px}
+  .seg button{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:7px;font-size:12px;font-weight:700;opacity:.6;min-height:38px}
+  .seg button.on{opacity:1;background:#01696F;color:#fff}
+  body.dark .seg button.on{background:#4ab5b8;color:#08201f}
+
+  .qbar{display:flex;gap:13px;background:rgba(1,138,145,.08);border:1px solid rgba(1,138,145,.26);border-radius:13px;padding:14px 18px;margin:18px 0 8px}
+  body.dark .qbar{background:rgba(74,181,184,.1);border-color:rgba(74,181,184,.3)}
+  .qbar .qk{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#018A91;flex-shrink:0;padding-top:2px}
+  body.dark .qbar .qk{color:#4ab5b8}
+  .qbar p{font-size:13px;text-wrap:pretty}
+  .qbar b{font-weight:700}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin:18px 0 22px;font-size:11.5px;opacity:.8}
+  .legend .lz{display:inline-flex;align-items:center;gap:7px}
+  .src{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:99px;white-space:nowrap}
+  .src.auto{background:rgba(45,122,79,.14);color:#2D7A4F}
+  body.dark .src.auto{background:rgba(93,184,118,.16);color:#5DB876}
+  .src.manual{background:rgba(180,83,9,.14);color:#B45309}
+  body.dark .src.manual{background:rgba(232,181,62,.16);color:#E8B53E}
+  .src.weekly{background:rgba(90,63,160,.14);color:#5A3FA0}
+  body.dark .src.weekly{background:rgba(169,149,224,.16);color:#a995e0}
+
+  /* 3-up */
+  .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start}
+  .ohead{margin-bottom:12px;min-height:80px}
+  .otag{display:inline-block;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:99px;margin-bottom:8px}
+  .otag.a{background:rgba(90,63,160,.14);color:#5A3FA0}body.dark .otag.a{background:rgba(169,149,224,.16);color:#a995e0}
+  .otag.b{background:rgba(1,138,145,.14);color:#018A91}body.dark .otag.b{background:rgba(74,181,184,.16);color:#4ab5b8}
+  .otag.c{background:rgba(176,125,26,.16);color:#8A6010}body.dark .otag.c{background:rgba(224,170,62,.16);color:#E0AA3E}
+  .oname{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:-.01em}
+  .odesc{font-size:11.5px;opacity:.66;margin-top:4px;text-wrap:pretty}
+
+  /* weekly draft card */
+  .draft{--surface:#fff;--soft:#F4F2EC;--mute:#F0EFE9;--ink:#28251D;--inkMute:#6B6560;--inkFaint:#A8A39C;--rule:#E5E2DB;--ruleStrong:#CFCBC2;--teal:#01696F;--tealTint:#E6F4F4;--gold:#B07D1A;--violet:#5A3FA0;--success:#2D7A4F;--successTint:#E8F5EE;--warning:#B45309;--warningTint:#FEF3E2;
+    background:var(--surface);border:1px solid var(--ruleStrong);border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(38,35,28,.08)}
+  body.dark .draft{--surface:#252019;--soft:#1F1B17;--mute:#211C18;--ink:#F0EBE0;--inkMute:#B8AEA0;--inkFaint:#8A8074;--rule:rgba(240,235,224,.08);--ruleStrong:rgba(240,235,224,.18);--teal:#4AB5B8;--tealTint:rgba(74,181,184,.14);--gold:#E0AA3E;--violet:#A995E0;--success:#5DB876;--successTint:rgba(93,184,118,.14);--warning:#E8B53E;--warningTint:rgba(232,181,62,.14);box-shadow:0 12px 32px rgba(0,0,0,.34)}
+  .draft *{color-scheme:inherit}
+  .dh{padding:14px 16px;border-bottom:1px solid var(--rule);background:var(--soft)}
+  .dh .dt{font-family:var(--display);font-weight:800;font-size:15px;color:var(--ink);display:flex;align-items:center;gap:8px}
+  .dh .ds{font-family:var(--mono);font-size:9px;color:var(--inkFaint);letter-spacing:.06em;margin-top:3px}
+  .readypill{margin-left:auto;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:99px}
+  .readypill.ok{background:var(--successTint);color:var(--success)}
+  .readypill.work{background:var(--warningTint);color:var(--warning)}
+  .fillbar{display:flex;align-items:center;gap:9px;margin-top:11px}
+  .fillbar .ft{flex:1;height:7px;border-radius:99px;background:var(--mute);overflow:hidden}
+  .fillbar .ft i{display:block;height:100%;border-radius:99px}
+  .fillbar .fn{font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--inkMute)}
+
+  .phase{border-bottom:1px solid var(--rule)}
+  .phase:last-child{border-bottom:none}
+  .ph-h{display:flex;align-items:center;gap:8px;padding:10px 16px 6px}
+  .ph-h .pd{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+  .ph-h .pl{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint);flex:1}
+  .ph-h .pc{font-family:var(--mono);font-size:8.5px;color:var(--inkFaint)}
+  .frow{display:flex;align-items:center;gap:8px;padding:6px 16px;border-top:1px solid var(--rule)}
+  .frow:first-of-type{border-top:none}
+  .frow .fn{flex:1;font-size:11.5px;color:var(--ink);min-width:0}
+  .frow.empty .fn{color:var(--inkFaint)}
+  .frow .fv{font-family:var(--display);font-weight:800;font-size:13px;color:var(--ink);flex-shrink:0}
+  .frow.empty .fv{color:var(--inkFaint);font-family:var(--mono);font-size:10px;font-weight:700}
+  .frow .fsrc{flex-shrink:0}
+  .priostar{color:var(--gold);font-size:9px;margin-left:1px}
+
+  .draftfoot{padding:12px 16px;display:flex;gap:8px;align-items:center;background:var(--soft);border-top:1px solid var(--rule)}
+  .draftfoot .ftxt{flex:1;font-size:10.5px;color:var(--inkMute);text-wrap:pretty}
+  .draftfoot .fbtn{padding:9px 13px;border-radius:9px;font-size:11.5px;font-weight:700;white-space:nowrap}
+  .draftfoot .fbtn.ok{background:var(--teal);color:#fff}
+  body.dark .draftfoot .fbtn.ok{color:#10201f}
+  .draftfoot .fbtn.work{background:var(--warningTint);color:var(--warning);border:1px solid color-mix(in srgb,var(--warning) 30%,transparent)}
+
+  .verdict{margin-top:14px;padding:12px 14px;border-radius:12px;font-size:12px;text-wrap:pretty}
+  .verdict.good{background:rgba(45,122,79,.08);border:1px solid rgba(45,122,79,.26)}
+  body.dark .verdict.good{background:rgba(93,184,118,.1);border-color:rgba(93,184,118,.3)}
+  .verdict.warn{background:rgba(180,83,9,.08);border:1px solid rgba(180,83,9,.26)}
+  body.dark .verdict.warn{background:rgba(232,181,62,.1);border-color:rgba(232,181,62,.3)}
+  .verdict b{font-weight:700}
+  .verdict .vk{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:4px;opacity:.8}
+
+  /* matrix */
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.55;margin:42px 0 16px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:rgba(127,127,127,.22)}
+  .cov{width:100%;border-collapse:separate;border-spacing:0;background:rgba(127,127,127,.04);border:1px solid rgba(127,127,127,.16);border-radius:14px;overflow:hidden}
+  .cov th,.cov td{padding:11px 14px;text-align:left;font-size:12px}
+  .cov thead th{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.6;border-bottom:1px solid rgba(127,127,127,.2);background:rgba(127,127,127,.05)}
+  .cov thead th.opt{font-family:var(--display);font-size:13px;letter-spacing:-.01em;opacity:1;text-transform:none}
+  .cov tbody td{border-bottom:1px solid rgba(127,127,127,.1)}
+  .cov tbody tr:last-child td{border-bottom:none}
+  .cov .grp{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.5;background:rgba(127,127,127,.05)}
+  .cov .fld{font-weight:600}
+  .cov .fld .star{color:#B07D1A;font-size:10px}
+  body.dark .cov .fld .star{color:#E0AA3E}
+  .cc{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.03em}
+  .cc.a{color:#2D7A4F}body.dark .cc.a{color:#5DB876}
+  .cc.m{color:#B45309}body.dark .cc.m{color:#E8B53E}
+  .cc.w{color:#5A3FA0}body.dark .cc.w{color:#a995e0}
+
+  .note{display:flex;gap:12px;background:rgba(127,127,127,.06);border:1px solid rgba(127,127,127,.16);border-radius:13px;padding:15px 18px;margin-top:16px}
+  .note .ni{width:22px;height:22px;border-radius:50%;background:#01696F;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono);font-weight:700;font-size:12px}
+  body.dark .note .ni{background:#4ab5b8;color:#08201f}
+  .note p{font-size:12.5px;opacity:.84;text-wrap:pretty}
+  .note b{font-weight:700;opacity:1}
+
+  /* recommendation block */
+  .rec{margin-top:16px;background:rgba(1,105,111,.06);border:1px solid rgba(1,105,111,.28);border-radius:16px;padding:20px 22px}
+  body.dark .rec{background:rgba(74,181,184,.08);border-color:rgba(74,181,184,.3)}
+  .rec .rk{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#018A91}
+  body.dark .rec .rk{color:#4ab5b8}
+  .rec h2{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.02em;margin-top:6px}
+  .rec p{font-size:13px;opacity:.84;margin-top:9px;text-wrap:pretty;max-width:840px}
+  .rec .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+  .rec .st{background:rgba(127,127,127,.06);border:1px solid rgba(127,127,127,.16);border-radius:12px;padding:13px 15px}
+  .rec .st .sn{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;color:#018A91}
+  body.dark .rec .st .sn{color:#4ab5b8}
+  .rec .st .stt{font-weight:700;font-size:13px;margin-top:5px}
+  .rec .st .sd{font-size:11.5px;opacity:.72;margin-top:4px;text-wrap:pretty}
+
+  @media(max-width:1080px){.cols,.rec .steps{grid-template-columns:1fr}.cov{display:block;overflow-x:auto}}
+</style>
+</head>
+<body class="light">
+<div class="wrap">
+
+  <div class="head">
+    <svg class="badge" viewBox="0 0 200 200" aria-hidden="true"><rect width="200" height="200" rx="46" fill="#014e52"/><rect x="72" y="118" width="11" height="22" rx="2.5" fill="#fff" fill-opacity=".4"/><rect x="89" y="104" width="11" height="36" rx="2.5" fill="#fff" fill-opacity=".7"/><rect x="106" y="88" width="11" height="52" rx="2.5" fill="#fff"/><circle cx="111" cy="80" r="5" fill="#4ecdc4"/></svg>
+    <div>
+      <div class="eyebrow">Daily Capture v2 · the rollup question</div>
+      <h1>After a week of daily logs — what's in the weekly report?</h1>
+      <p class="sub">The same WK 48 weekly report draft, opened Sunday, under each option. Green = already filled by the week's daily logs (nothing to re-enter); amber = still empty, the agent fills it from memory at week-end. Prospecting rows are starred ★ — the activities you flagged as must-capture.</p>
+    </div>
+    <div class="controls"><div class="seg" id="themeSeg"><button data-theme="light" class="on">Light</button><button data-theme="dark">Dark</button></div></div>
+  </div>
+
+  <div class="qbar">
+    <span class="qk">The challenge</span>
+    <p><b>Everything in the weekly has to be capturable in a daily log that's still fast.</b> The weekly report has four phases — <b>Activity / prospecting</b>, <b>Sales</b>, <b>Reflection</b>, <b>Goals</b>. Two of them (self-eval, next-week goals) are inherently weekly and are done once at close in every option. The real question is the <b>prospecting + sales</b> fields: which get captured day-by-day, and which become a Sunday backfill.</p>
+  </div>
+
+  <div class="legend">
+    <span class="lz"><span class="src auto">✓ from daily ×5</span> aggregated from the week's logs — agent just confirms</span>
+    <span class="lz"><span class="src manual">✎ fill Sunday</span> empty — re-entered from memory at week-end</span>
+    <span class="lz"><span class="src weekly">weekly-only</span> inherently weekly (every option)</span>
+    <span class="lz"><span class="priostar">★</span> prospecting — your priority to capture</span>
+  </div>
+
+  <div class="cols">
+
+    <!-- ═══ OPTION A ═══ -->
+    <div class="col">
+      <div class="ohead">
+        <span class="otag a">Option A · Full parity</span>
+        <div class="oname">Weekly = a review screen</div>
+        <div class="odesc">Daily wizard captured every channel; Sunday is confirm-and-add-reflection.</div>
+      </div>
+      <div class="draft">
+        <div class="dh">
+          <div class="dt">Weekly Report <span class="readypill ok">Ready</span></div>
+          <div class="ds">MARSHA SINGH · WK 48 · 5 DAYS LOGGED</div>
+          <div class="fillbar"><div class="ft"><i style="width:85%;background:var(--success)"></i></div><span class="fn">85% prefilled</span></div>
+        </div>
+        <div class="phase">
+          <div class="ph-h"><span class="pd" style="background:var(--violet)"></span><span class="pl">Activity · Prospecting</span><span class="pc">6/6</span></div>
+          <div class="frow"><span class="fn">Letters &amp; outreach <span class="priostar">★</span></span><span class="fv">12</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">Seminars &amp; tradeshows <span class="priostar">★</span></span><span class="fv">1</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">Calls / dials <span class="priostar">★</span></span><span class="fv">47</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">F2F approaches <span class="priostar">★</span></span><span class="fv">9</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">Social &amp; content <span class="priostar">★</span></span><span class="fv">4</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">New names added <span class="priostar">★</span></span><span class="fv">8</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+        </div>
+        <div class="phase">
+          <div class="ph-h"><span class="pd" style="background:var(--teal)"></span><span class="pl">Sales</span><span class="pc">5/5</span></div>
+          <div class="frow"><span class="fn">Approaches &amp; CIs</span><span class="fv">22 · 4</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">Solution presentations</span><span class="fv">5</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">New business — API</span><span class="fv">18.4K</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">Delivery &amp; service</span><span class="fv">3 · 11</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+        </div>
+        <div class="phase">
+          <div class="ph-h"><span class="pd" style="background:var(--gold)"></span><span class="pl">Reflection</span><span class="pc">1/2</span></div>
+          <div class="frow"><span class="fn">Hours worked</span><span class="fv">41</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow empty"><span class="fn">Rate your week</span><span class="fv">—</span><span class="fsrc"><span class="src weekly">weekly</span></span></div>
+        </div>
+        <div class="phase">
+          <div class="ph-h"><span class="pd" style="background:var(--inkFaint)"></span><span class="pl">Goals</span><span class="pc">0/1</span></div>
+          <div class="frow empty"><span class="fn">Targets for next week</span><span class="fv">—</span><span class="fsrc"><span class="src weekly">weekly</span></span></div>
+        </div>
+        <div class="draftfoot"><span class="ftxt">Only reflection + goals left — ~30 sec.</span><span class="fbtn ok">Review &amp; submit</span></div>
+      </div>
+      <div class="verdict good"><span class="vk">Result</span><b>Fullest weekly, least Sunday work</b> — every prospecting channel is captured. But that completeness cost 9 taps <i>every day</i> to get there.</div>
+    </div>
+
+    <!-- ═══ OPTION B ═══ -->
+    <div class="col">
+      <div class="ohead">
+        <span class="otag b">Option B · Field parity</span>
+        <div class="oname">Same coverage, one screen</div>
+        <div class="odesc">Daily screen carries the prospecting channels too; Sunday adds only reflection.</div>
+      </div>
+      <div class="draft">
+        <div class="dh">
+          <div class="dt">Weekly Report <span class="readypill ok">Ready</span></div>
+          <div class="ds">MARSHA SINGH · WK 48 · 5 DAYS LOGGED</div>
+          <div class="fillbar"><div class="ft"><i style="width:85%;background:var(--success)"></i></div><span class="fn">85% prefilled</span></div>
+        </div>
+        <div class="phase">
+          <div class="ph-h"><span class="pd" style="background:var(--violet)"></span><span class="pl">Activity · Prospecting</span><span class="pc">6/6</span></div>
+          <div class="frow"><span class="fn">Letters &amp; outreach <span class="priostar">★</span></span><span class="fv">12</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">Seminars &amp; tradeshows <span class="priostar">★</span></span><span class="fv">1</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">Calls / dials <span class="priostar">★</span></span><span class="fv">47</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">F2F approaches <span class="priostar">★</span></span><span class="fv">9</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">Social &amp; content <span class="priostar">★</span></span><span class="fv">4</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">New names added <span class="priostar">★</span></span><span class="fv">8</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+        </div>
+        <div class="phase">
+          <div class="ph-h"><span class="pd" style="background:var(--teal)"></span><span class="pl">Sales</span><span class="pc">5/5</span></div>
+          <div class="frow"><span class="fn">Approaches &amp; CIs</span><span class="fv">22 · 4</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">Solution presentations</span><span class="fv">5</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">New business — API</span><span class="fv">18.4K</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">Delivery &amp; service</span><span class="fv">3 · 11</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+        </div>
+        <div class="phase">
+          <div class="ph-h"><span class="pd" style="background:var(--gold)"></span><span class="pl">Reflection</span><span class="pc">0/2</span></div>
+          <div class="frow empty"><span class="fn">Hours worked</span><span class="fv">✎</span><span class="fsrc"><span class="src manual">fill Sun</span></span></div>
+          <div class="frow empty"><span class="fn">Rate your week</span><span class="fv">—</span><span class="fsrc"><span class="src weekly">weekly</span></span></div>
+        </div>
+        <div class="phase">
+          <div class="ph-h"><span class="pd" style="background:var(--inkFaint)"></span><span class="pl">Goals</span><span class="pc">0/1</span></div>
+          <div class="frow empty"><span class="fn">Targets for next week</span><span class="fv">—</span><span class="fsrc"><span class="src weekly">weekly</span></span></div>
+        </div>
+        <div class="draftfoot"><span class="ftxt">Hours + reflection + goals left — ~1 min.</span><span class="fbtn ok">Review &amp; submit</span></div>
+      </div>
+      <div class="verdict good"><span class="vk">Result</span><b>Same prospecting capture as A — without the wizard.</b> Daily stays one screen (a bit taller). Only the genuinely-weekly fields wait for Sunday.</div>
+    </div>
+
+    <!-- ═══ OPTION C ═══ -->
+    <div class="col">
+      <div class="ohead">
+        <span class="otag c">Option C · Visual only</span>
+        <div class="oname">Prospecting goes missing</div>
+        <div class="odesc">Daily fields unchanged, so the outreach channels were never logged.</div>
+      </div>
+      <div class="draft">
+        <div class="dh">
+          <div class="dt">Weekly Report <span class="readypill work">Needs work</span></div>
+          <div class="ds">MARSHA SINGH · WK 48 · 5 DAYS LOGGED</div>
+          <div class="fillbar"><div class="ft"><i style="width:42%;background:var(--warning)"></i></div><span class="fn">42% prefilled</span></div>
+        </div>
+        <div class="phase">
+          <div class="ph-h"><span class="pd" style="background:var(--violet)"></span><span class="pl">Activity · Prospecting</span><span class="pc" style="color:var(--warning)">1/6</span></div>
+          <div class="frow empty"><span class="fn">Letters &amp; outreach <span class="priostar">★</span></span><span class="fv">✎</span><span class="fsrc"><span class="src manual">fill Sun</span></span></div>
+          <div class="frow empty"><span class="fn">Seminars &amp; tradeshows <span class="priostar">★</span></span><span class="fv">✎</span><span class="fsrc"><span class="src manual">fill Sun</span></span></div>
+          <div class="frow empty"><span class="fn">Calls / dials <span class="priostar">★</span></span><span class="fv">✎</span><span class="fsrc"><span class="src manual">fill Sun</span></span></div>
+          <div class="frow empty"><span class="fn">F2F approaches <span class="priostar">★</span></span><span class="fv">✎</span><span class="fsrc"><span class="src manual">fill Sun</span></span></div>
+          <div class="frow empty"><span class="fn">Social &amp; content <span class="priostar">★</span></span><span class="fv">✎</span><span class="fsrc"><span class="src manual">fill Sun</span></span></div>
+          <div class="frow"><span class="fn">New names added <span class="priostar">★</span></span><span class="fv">8</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+        </div>
+        <div class="phase">
+          <div class="ph-h"><span class="pd" style="background:var(--teal)"></span><span class="pl">Sales</span><span class="pc">5/5</span></div>
+          <div class="frow"><span class="fn">Approaches &amp; CIs</span><span class="fv">22 · 4</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">Solution presentations</span><span class="fv">5</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">New business — API</span><span class="fv">18.4K</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+          <div class="frow"><span class="fn">Delivery &amp; service</span><span class="fv">3 · 11</span><span class="fsrc"><span class="src auto">✓ ×5</span></span></div>
+        </div>
+        <div class="phase">
+          <div class="ph-h"><span class="pd" style="background:var(--gold)"></span><span class="pl">Reflection</span><span class="pc" style="color:var(--warning)">0/2</span></div>
+          <div class="frow empty"><span class="fn">Hours worked</span><span class="fv">✎</span><span class="fsrc"><span class="src manual">fill Sun</span></span></div>
+          <div class="frow empty"><span class="fn">Rate your week</span><span class="fv">—</span><span class="fsrc"><span class="src weekly">weekly</span></span></div>
+        </div>
+        <div class="phase">
+          <div class="ph-h"><span class="pd" style="background:var(--inkFaint)"></span><span class="pl">Goals</span><span class="pc">0/1</span></div>
+          <div class="frow empty"><span class="fn">Targets for next week</span><span class="fv">—</span><span class="fsrc"><span class="src weekly">weekly</span></span></div>
+        </div>
+        <div class="draftfoot"><span class="ftxt">Re-enter 5 prospecting channels from memory + reflection.</span><span class="fbtn work">Finish 8 fields</span></div>
+      </div>
+      <div class="verdict warn"><span class="vk">Result</span><b>The prospecting you care about is lost daily and reconstructed Sunday</b> — from memory, a week later. Fast daily, but the weekly gets less accurate, not more.</div>
+    </div>
+
+  </div>
+
+  <!-- coverage matrix -->
+  <div class="secttl">Field-by-field — where each weekly field comes from</div>
+  <table class="cov">
+    <thead><tr><th style="width:34%">Weekly report field</th><th class="opt">A · Full parity</th><th class="opt">B · Field parity</th><th class="opt">C · Visual only</th></tr></thead>
+    <tbody>
+      <tr><td class="grp" colspan="4">Activity · Prospecting</td></tr>
+      <tr><td class="fld">Letters &amp; outreach <span class="star">★</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc m">✎ Sunday</span></td></tr>
+      <tr><td class="fld">Seminars &amp; tradeshows <span class="star">★</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc m">✎ Sunday</span></td></tr>
+      <tr><td class="fld">Calls / dials <span class="star">★</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc m">✎ Sunday</span></td></tr>
+      <tr><td class="fld">F2F approaches <span class="star">★</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc m">✎ Sunday</span></td></tr>
+      <tr><td class="fld">Social &amp; content <span class="star">★</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc m">✎ Sunday</span></td></tr>
+      <tr><td class="fld">New names added <span class="star">★</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td></tr>
+      <tr><td class="grp" colspan="4">Sales</td></tr>
+      <tr><td class="fld">Qualified approaches &amp; CIs</td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td></tr>
+      <tr><td class="fld">Solution presentations</td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td></tr>
+      <tr><td class="fld">New business — apps / API</td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td></tr>
+      <tr><td class="fld">Delivery &amp; service</td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td><td><span class="cc a">✓ daily</span></td></tr>
+      <tr><td class="grp" colspan="4">Reflection · Goals</td></tr>
+      <tr><td class="fld">Hours worked</td><td><span class="cc a">✓ daily</span></td><td><span class="cc m">✎ Sunday</span></td><td><span class="cc m">✎ Sunday</span></td></tr>
+      <tr><td class="fld">Rate your week (self-eval)</td><td><span class="cc w">weekly-only</span></td><td><span class="cc w">weekly-only</span></td><td><span class="cc w">weekly-only</span></td></tr>
+      <tr><td class="fld">Targets for next week</td><td><span class="cc w">weekly-only</span></td><td><span class="cc w">weekly-only</span></td><td><span class="cc w">weekly-only</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <span class="ni">i</span>
+    <p><b>Self-eval and next-week goals are weekly in every option</b> — rating a single day 1–10 or setting "next week's" goal mid-week is meaningless, so those two always wait for the Sunday review. They are <b>not</b> the gap. The gap is the five <b>prospecting channels</b> (★): A and B capture them day-by-day so the weekly is accurate; C leaves them to a memory-based Sunday backfill, which is exactly the prospecting data you said matters most.</p>
+  </div>
+
+  <!-- recommendation -->
+  <div class="rec">
+    <div class="rk">The answer to your challenge</div>
+    <h2>Capture all of it daily — but make the prospecting channels a single fast card.</h2>
+    <p>The way to put the whole weekly into an easy daily log isn't to drop fields (C) or to make people step through a wizard (A) — it's to <b>group the prospecting channels into one compact card of ± steppers that defaults every count to 0</b>. A day with no seminars is one glance, no taps; a day of 12 dials is two taps. That's <b>Option B</b>: the daily stays a single screen, every prospecting activity lands in the weekly automatically, and only the genuinely-weekly reflection waits for Sunday.</p>
+    <div class="steps">
+      <div class="st"><div class="sn">Daily — fast</div><div class="stt">One "Prospecting &amp; outreach" card</div><div class="sd">All 6 channels as ± steppers, defaulting to 0. Collapsible; most days the agent only touches 1–2.</div></div>
+      <div class="st"><div class="sn">Rolls up</div><div class="stt">Aggregator sums the week</div><div class="sd">Each day's counts add into the weekly draft — the prospecting phase is complete before Sunday.</div></div>
+      <div class="st"><div class="sn">Sunday — short</div><div class="stt">Confirm + reflect</div><div class="sd">Agent reviews prefilled totals, then does only hours, self-eval, and next-week goals.</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  document.getElementById('themeSeg').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    document.body.className = b.dataset.theme;
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+  });
+</script>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" rx="40" fill="#01696F"/>
+    <rect x="40" y="44" width="120" height="20" rx="5" fill="#fff" fill-opacity=".5"/>
+    <rect x="40" y="76" width="120" height="20" rx="5" fill="#FAEFD3"/>
+    <rect x="40" y="108" width="120" height="20" rx="5" fill="#fff" fill-opacity=".5"/>
+    <rect x="40" y="140" width="72" height="20" rx="5" fill="#fff" fill-opacity=".3"/>
+    <circle cx="150" cy="150" r="16" fill="#4ecdc4"/>
+    <path d="M143 150 l5 5 9 -10" fill="none" stroke="#01696F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</template>
+</body>
+</html>

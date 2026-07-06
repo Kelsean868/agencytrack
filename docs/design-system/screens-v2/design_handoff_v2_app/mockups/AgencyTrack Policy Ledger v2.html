@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Policy Ledger v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 460px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.5; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Policy Ledger v2 — pipeline-first</h1>
+    <p>Pipeline strip → filter chips → card feed with mini-lifecycle dots → drill drawer with visual lifecycle bar, history timeline, and inline transition action.</p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="app-policy-v2.jsx"></script>
+
+  <script type="text/babel">
+    // Lens object inlined here so it's in scope of this script's transpilation.
+    const SPRINT_LENS = {
+      name: 'November Sprint',
+      kind: 'Campaign',
+      endsIn: '2 weeks left',
+      progress: 78,
+      counts: { covered: 8, needed: 12 },
+      api: { current: 39000, target: 50000 },
+      contributions: {
+        '1': { state: 'pending',  reason: 'Will count if settled by Nov 30' },
+        '2': { state: 'pending',  reason: 'Awaiting settlement' },
+        '3': { state: 'pending',  reason: 'Awaiting settlement' },
+        '4': { state: 'counts',   value: 21600 },
+        '5': { state: 'counts',   value: 48000 },
+        '6': { state: 'excluded', reason: 'Policy lapsed' },
+      },
+    };
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="desktop"
+            title="Desktop — Policy Ledger v2"
+            subtitle="Light (closed glance · full pipeline + card feed) + Dark (drawer open on a 'Rated' policy showing lifecycle + history + transition CTA)"
+          >
+            <DCArtboard id="d-light" label="01 · Light · Glance"               width={APP_W} height={APP_H}><PolicyLedgerV2 t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="d-dark"  label="02 · Dark · Drawer · Devon Holder" width={APP_W} height={APP_H}><PolicyLedgerV2 t={APP_DARK} drawerPolicyId="2" /></DCArtboard>
+            <DCArtboard id="d-dropdown" label="03 · Dark · Drawer · Other Status menu open" width={APP_W} height={APP_H}><PolicyLedgerV2 t={APP_DARK} drawerPolicyId="2" drawerDropdownOpen /></DCArtboard>
+            <DCArtboard id="d-lens"  label="04 · Light · Lens · November Sprint" width={APP_W} height={APP_H}><PolicyLedgerV2 t={APP_LIGHT} lens={SPRINT_LENS} /></DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Mobile — Policy Ledger v2"
+            subtitle="Light (closed glance) + Dark (bottom sheet open on a 'Rated' policy)"
+          >
+            <DCArtboard id="m-light" label="04 · Light · Glance"               width={M_W} height={M_H}><PolicyLedgerV2Mobile t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="m-dark"  label="05 · Dark · Sheet · Devon Holder"  width={M_W} height={M_H}><PolicyLedgerV2Mobile t={APP_DARK} sheetPolicyId="2" /></DCArtboard>
+            <DCArtboard id="m-lens"  label="06 · Light · Lens · November Sprint" width={M_W} height={M_H}><PolicyLedgerV2Mobile t={APP_LIGHT} lens={SPRINT_LENS} /></DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

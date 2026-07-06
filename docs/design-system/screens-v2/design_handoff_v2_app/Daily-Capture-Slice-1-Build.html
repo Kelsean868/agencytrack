@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Daily Capture v2 — Slice 1 Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 40px}
+
+  /* header */
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:26px;border-bottom:1px solid var(--rule);margin-bottom:30px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .sub{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:680px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  /* flip controls */
+  .flips{display:flex;gap:14px;flex-wrap:wrap;align-items:stretch;margin-bottom:30px}
+  .flip{flex:1;min-width:260px;background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:13px 15px;display:flex;align-items:center;gap:13px}
+  .flip .ft{flex:1}
+  .flip .fk{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+  .flip .fl{font-size:12.5px;font-weight:700;margin-top:3px}
+  .flip .fd{font-size:11px;color:var(--inkMute);margin-top:2px;text-wrap:pretty}
+  .seg{display:flex;gap:3px;padding:3px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px;flex-shrink:0}
+  .seg button{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.04em;padding:8px 11px;border:none;border-radius:6px;background:transparent;color:var(--inkMute);cursor:pointer;white-space:nowrap}
+  .seg button.on{background:var(--teal);color:#fff;box-shadow:0 2px 6px color-mix(in srgb,var(--teal) 27%,transparent)}
+
+  /* main split */
+  .split{display:grid;grid-template-columns:360px 1fr;gap:40px;align-items:start}
+
+  /* ── phone ── */
+  .phonewrap{position:sticky;top:24px}
+  .phone{width:336px;background:#fff;border:1px solid var(--ruleStrong);border-radius:34px;padding:9px;box-shadow:0 18px 50px rgba(38,35,28,.17)}
+  .scr{background:var(--bg);border-radius:26px;overflow:hidden;display:flex;flex-direction:column;height:686px;position:relative}
+
+  /* phone header */
+  .ph-head{background:var(--surface);border-bottom:1px solid var(--rule);padding:13px 16px 12px;position:relative;z-index:3}
+  .ph-status{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;color:var(--inkFaint);margin-bottom:9px}
+  .ph-titlerow{display:flex;align-items:center;gap:10px}
+  .ph-close{width:30px;height:30px;border-radius:9px;background:var(--surfaceSoft);border:1px solid var(--rule);display:flex;align-items:center;justify-content:center;color:var(--inkMute);font-size:15px;flex-shrink:0}
+  .ph-title{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.015em}
+  .ph-sub{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.13em;color:var(--inkFaint);margin-top:1px}
+  /* D2 count strip (hidden by default) */
+  .countstrip{display:none;margin-top:11px;padding-top:11px;border-top:1px solid var(--rule);gap:7px}
+  .countstrip.show{display:flex}
+  .cchip{flex:1;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px;padding:7px 4px;text-align:center}
+  .cchip .cv{font-family:var(--display);font-weight:800;font-size:15px;color:var(--ink)}
+  .cchip .cl{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;color:var(--inkFaint);margin-top:2px}
+
+  /* phone body */
+  .ph-body{flex:1;overflow-y:auto;padding:13px;display:flex;flex-direction:column;gap:13px}
+  .ph-body::-webkit-scrollbar{width:0}
+
+  .gcard{background:var(--surface);border:1px solid var(--rule);border-radius:15px;overflow:hidden}
+  .gcard.teal{border-top:3px solid var(--teal)}
+  .gcard.gold{border-top:3px solid var(--gold)}
+  .gc-head{display:flex;align-items:center;gap:9px;padding:12px 14px 4px}
+  .gc-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+  .teal .gc-dot{background:var(--teal)} .gold .gc-dot{background:var(--gold)}
+  .gc-title{font-family:var(--display);font-weight:800;font-size:14.5px;letter-spacing:-.01em;flex:1}
+  .gc-count{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--inkFaint)}
+  .gc-credit{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--gold);background:var(--goldTint);padding:3px 8px;border-radius:6px}
+
+  /* stepper row — 44px targets */
+  .srow{display:flex;align-items:center;gap:11px;padding:8px 14px}
+  .srow .slabel{flex:1;font-size:13.5px;font-weight:500;color:var(--ink)}
+  .stepper{display:flex;align-items:center;gap:0;border:1px solid var(--rule);border-radius:11px;overflow:hidden;flex-shrink:0;background:var(--surfaceRaised)}
+  .stepper button{width:44px;height:44px;border:none;background:transparent;color:var(--teal);font-size:20px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+  .stepper button:active{background:var(--tealTint)}
+  .stepper .sval{width:46px;height:44px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:16px;color:var(--ink);border-left:1px solid var(--rule);border-right:1px solid var(--rule)}
+  .gold .stepper button{color:var(--gold)}
+  .gold .stepper button:active{background:var(--goldTint)}
+
+  /* money row — 44px */
+  .mrow{display:flex;align-items:center;gap:11px;padding:8px 14px}
+  .mrow .slabel{flex:1;font-size:13.5px;font-weight:500}
+  .moneyfield{display:flex;align-items:center;gap:6px;height:44px;padding:0 14px;border:1px solid var(--rule);border-radius:11px;background:var(--surfaceRaised);min-width:130px;justify-content:flex-end}
+  .moneyfield .cur{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--inkFaint)}
+  .moneyfield .mval{font-family:var(--display);font-weight:800;font-size:16px;color:var(--ink)}
+
+  /* disclosure */
+  .disc{border-top:1px solid var(--rule);margin-top:4px}
+  .disc-btn{width:100%;display:flex;align-items:center;gap:9px;padding:12px 14px;background:transparent;border:none;cursor:pointer;text-align:left;min-height:44px}
+  .disc-btn .dl{flex:1;font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inkMute)}
+  .disc-btn .chev{color:var(--inkFaint);font-size:11px;transition:none}
+  .disc-body{display:none;padding:0 0 6px}
+  .disc-body.open{display:block}
+  .disc-btn.open .chev{color:var(--teal)}
+
+  /* reflection fields */
+  .tfield{padding:7px 14px}
+  .tfield .tl{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inkMute);margin-bottom:5px}
+  .tfield .tinput{min-height:44px;border:1px solid var(--rule);border-radius:10px;background:var(--surfaceRaised);padding:11px 13px;font-size:13px;color:var(--inkFaint)}
+  .tfield .tinput.area{min-height:60px}
+
+  /* sticky save */
+  .ph-save{padding:11px 13px;background:var(--surface);border-top:1px solid var(--rule);position:relative;z-index:3}
+  .savebtn{width:100%;height:50px;border-radius:13px;background:var(--teal);color:#fff;border:none;font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-.01em;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 6px 16px color-mix(in srgb,var(--teal) 30%,transparent)}
+  .savebtn .sc{font-family:var(--mono);font-size:9.5px;font-weight:700;opacity:.8;letter-spacing:.04em}
+
+  /* annotation pins on phone */
+  .pin{position:absolute;width:23px;height:23px;border-radius:50%;background:var(--ink);color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(38,35,28,.3);z-index:5;border:2px solid #fff}
+
+  /* annotation column */
+  .annocol{display:flex;flex-direction:column;gap:13px}
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:2px}
+  .anno{display:flex;gap:13px;background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:14px 16px}
+  .anno .num{width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .anno .at{font-size:13.5px;font-weight:700;color:var(--ink)}
+  .anno .ad{font-size:12.5px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.flag{background:var(--warningTint);border-color:color-mix(in srgb,var(--warning) 30%,transparent)}
+  .anno.flag .num{background:var(--warning)}
+  .anno.flag .ad b{color:var(--warning)}
+  .anno.out{background:var(--surfaceSoft);border-style:dashed}
+  .anno.out .num{background:var(--inkFaint)}
+
+  .panel{background:var(--surface);border:1px solid var(--rule);border-radius:15px;padding:20px 22px;margin-top:8px}
+  .panel h3{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-.01em;margin-bottom:4px}
+  .panel .ph{color:var(--inkMute);font-size:12.5px;margin-bottom:15px;text-wrap:pretty}
+  .complist{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:11px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:160px 1fr;gap:14px;background:var(--surface);padding:11px 15px}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute);text-wrap:pretty}
+  .crow .cd b{color:var(--ink);font-weight:600}
+  .crow.hd{background:var(--surfaceSoft)}
+  .crow.hd .cn,.crow.hd .cd{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+
+  .outbox{background:var(--surfaceSoft);border:1px dashed var(--ruleStrong);border-radius:13px;padding:15px 18px;margin-top:14px}
+  .outbox .ot{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--inkMute);margin-bottom:9px}
+  .outtags{display:flex;flex-wrap:wrap;gap:8px}
+  .outtag{font-size:11.5px;color:var(--inkMute);background:var(--surface);border:1px solid var(--rule);border-radius:99px;padding:5px 12px;display:inline-flex;align-items:center;gap:6px}
+  .outtag::before{content:'✕';font-size:9px;color:var(--danger);font-weight:700}
+
+  .scope{display:flex;gap:13px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:13px;padding:14px 17px;margin-top:14px}
+  .scope .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scope p{font-size:13px;color:var(--ink);text-wrap:pretty}
+  .scope b{font-weight:700}
+
+  @media(max-width:1000px){.split{grid-template-columns:1fr;gap:30px}.phonewrap{position:static;display:flex;justify-content:center}.crow{grid-template-columns:130px 1fr}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Daily Capture v2 · Slice 1 — Build annotation</div>
+      <h1>Agent daily-entry surface — presentational port.</h1>
+      <p class="sub">The single mobile entry screen, stripped to what ships in Slice 1. <b>No new fields, no new data sources</b> — existing daily schema, existing <code style="font-family:var(--mono);font-size:12px">dailyActivityService</code> roll-up. Everything live/streak/mode-related is out (see stripped list). Use the two flips to preview the open decisions.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />DAILY CAPTURE · SLICE 1<br />REV 2026-06-02<br />ENTRY SURFACE ONLY</div>
+  </header>
+
+  <!-- FLIP CONTROLS -->
+  <div class="flips">
+    <div class="flip">
+      <div class="ft">
+        <div class="fk">Flip · D1</div>
+        <div class="fl">Reflection block</div>
+        <div class="fd">Collapsed “Reflection (optional)” holding Hours / Wins / Blockers + a visible Note — vs a single Note only.</div>
+      </div>
+      <div class="seg" id="d1seg">
+        <button class="on" data-d1="block">Reflection + Note</button>
+        <button data-d1="note">Note only</button>
+      </div>
+    </div>
+    <div class="flip">
+      <div class="ft">
+        <div class="fk">Flip · D2</div>
+        <div class="fl">Header</div>
+        <div class="fd">Date + week label only — vs a reduced week-to-date <i>count</i> strip (counts only; no targets, dials, or streak).</div>
+      </div>
+      <div class="seg" id="d2seg">
+        <button class="on" data-d2="bare">Date only</button>
+        <button data-d2="counts">+ Count strip</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN SPLIT -->
+  <div class="split">
+
+    <!-- PHONE -->
+    <div class="phonewrap">
+      <div class="phone"><div class="scr">
+
+        <div class="ph-head">
+          <div class="ph-status"><span>9:41</span><span>●●● ▮</span></div>
+          <div class="ph-titlerow">
+            <div class="ph-close">✕</div>
+            <div><div class="ph-title">Log Today</div><div class="ph-sub">THURSDAY · WK 48</div></div>
+          </div>
+          <!-- D2 count strip -->
+          <div class="countstrip" id="countstrip">
+            <div class="cchip"><div class="cv">7</div><div class="cl">APPR</div></div>
+            <div class="cchip"><div class="cv">3</div><div class="cl">FFI</div></div>
+            <div class="cchip"><div class="cv">2</div><div class="cl">CI</div></div>
+            <div class="cchip"><div class="cv">2</div><div class="cl">APPS</div></div>
+          </div>
+          <div class="pin-removed"></div>
+        </div>
+
+        <div class="ph-body">
+
+          <!-- PROSPECTING -->
+          <div class="gcard teal" style="position:relative">
+            <div class="gc-head"><span class="gc-dot"></span><span class="gc-title">Prospecting</span><span class="gc-count">3/4</span></div>
+            <div class="srow"><span class="slabel">Qualified approaches</span><div class="stepper"><button>−</button><span class="sval">7</span><button>+</button></div></div>
+            <div class="srow"><span class="slabel">New names added</span><div class="stepper"><button>−</button><span class="sval">4</span><button>+</button></div></div>
+            <div class="srow"><span class="slabel">Old names worked</span><div class="stepper"><button>−</button><span class="sval">0</span><button>+</button></div></div>
+            <div class="srow" style="padding-bottom:13px"><span class="slabel">Service contacts</span><div class="stepper"><button>−</button><span class="sval">5</span><button>+</button></div></div>
+          </div>
+
+          <!-- APPOINTMENTS & FFI -->
+          <div class="gcard teal" style="position:relative">
+            <div class="gc-head"><span class="gc-dot"></span><span class="gc-title">Appointments &amp; FFI</span><span class="gc-count">2/3</span></div>
+            <div class="srow"><span class="slabel">Appointments set</span><div class="stepper"><button>−</button><span class="sval">5</span><button>+</button></div></div>
+            <div class="srow"><span class="slabel">FFIs scheduled</span><div class="stepper"><button>−</button><span class="sval">3</span><button>+</button></div></div>
+            <div class="srow" style="padding-bottom:13px"><span class="slabel">FFIs conducted</span><div class="stepper"><button>−</button><span class="sval">0</span><button>+</button></div></div>
+          </div>
+
+          <!-- INTERVIEWS -->
+          <div class="gcard gold" style="position:relative">
+            <div class="gc-head"><span class="gc-dot"></span><span class="gc-title">Interviews</span><span class="gc-count">2/4</span></div>
+            <div class="srow"><span class="slabel">New CIs booked</span><div class="stepper"><button>−</button><span class="sval">2</span><button>+</button></div></div>
+            <div class="srow"><span class="slabel">Old CIs booked</span><div class="stepper"><button>−</button><span class="sval">1</span><button>+</button></div></div>
+            <div class="srow"><span class="slabel">CIs conducted</span><div class="stepper"><button>−</button><span class="sval">2</span><button>+</button></div></div>
+            <div class="srow" style="padding-bottom:13px"><span class="slabel">Solution presentations</span><div class="stepper"><button>−</button><span class="sval">0</span><button>+</button></div></div>
+          </div>
+
+          <!-- PRODUCTION -->
+          <div class="gcard gold" style="position:relative">
+            <div class="gc-head"><span class="gc-dot"></span><span class="gc-title">Production</span><span class="gc-credit">TTD 8.4K credit</span></div>
+            <div class="srow"><span class="slabel">New business — apps</span><div class="stepper"><button>−</button><span class="sval">2</span><button>+</button></div></div>
+            <div class="mrow"><span class="slabel">New business — API</span><div class="moneyfield"><span class="cur">TTD</span><span class="mval">21,800</span></div></div>
+            <div class="disc">
+              <button class="disc-btn" data-disc="ppp"><span class="dl">PPP increases &amp; lumpsums — optional</span><span class="chev">▾</span></button>
+              <div class="disc-body" id="ppp">
+                <div class="srow"><span class="slabel">PPP increases — apps</span><div class="stepper"><button>−</button><span class="sval">0</span><button>+</button></div></div>
+                <div class="mrow"><span class="slabel">PPP — API increase</span><div class="moneyfield"><span class="cur">TTD</span><span class="mval">0</span></div></div>
+                <div class="mrow" style="padding-bottom:11px"><span class="slabel">Lumpsum — gross</span><div class="moneyfield"><span class="cur">TTD</span><span class="mval">0</span></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- REFLECTION (D1) -->
+          <div class="gcard" id="reflectCard" style="position:relative">
+            <div class="disc" style="border-top:none">
+              <button class="disc-btn" data-disc="reflect"><span class="dl">Reflection — optional</span><span class="chev">▾</span></button>
+              <div class="disc-body" id="reflect">
+                <div class="srow"><span class="slabel">Hours worked</span><div class="stepper"><button>−</button><span class="sval">8</span><button>+</button></div></div>
+                <div class="tfield"><div class="tl">Wins</div><div class="tinput">What went well today…</div></div>
+                <div class="tfield"><div class="tl">Blockers</div><div class="tinput">What got in the way…</div></div>
+              </div>
+            </div>
+            <div class="tfield" style="border-top:1px solid var(--rule);padding-top:12px"><div class="tl">Note — optional</div><div class="tinput area">Anything else to remember…</div></div>
+          </div>
+
+        </div>
+
+        <div class="ph-save">
+          <button class="savebtn">Save today <span class="sc">· ROLLS INTO WK 48</span></button>
+        </div>
+
+      </div></div>
+    </div>
+
+    <!-- ANNOTATIONS -->
+    <div class="annocol">
+
+      <div class="secttl">Annotated surface — 8 markers</div>
+
+      <div class="anno"><span class="num">1</span><div><div class="at">Header — date + week only</div><div class="ad">Title <code>Log Today</code>, sub <code>THURSDAY · WK 48</code>, close (✕). <b>Default = date only.</b> Flip D2 adds a reduced week-to-date <i>count</i> strip (APPR/FFI/CI/APPS) — running counts of <i>this week's</i> entries, <b>no targets, no dials, no streak</b>. Week label is derived from today's date (Sunday-anchored), not a picker.</div></div></div>
+
+      <div class="anno"><span class="num">2</span><div><div class="at">Prospecting · teal group card</div><div class="ad">Four ± steppers: <code>qualifiedApproaches</code> · <code>newNamesAdded</code> (single rollup — kept) · <code>oldNamesWorked</code> · <code>serviceContacts</code>. Header <code>{filled}/{total}</code> = count of fields &gt; 0 (display only).</div></div></div>
+
+      <div class="anno"><span class="num">3</span><div><div class="at">Appointments &amp; FFI · teal</div><div class="ad">Three steppers: <code>appointmentsSet</code> · <code>ffisScheduled</code> · <code>ffiConducted</code>. Map each to the existing daily key before wiring — verify names against <code>INITIAL_DATA</code>.</div></div></div>
+
+      <div class="anno"><span class="num">4</span><div><div class="at">Interviews · gold</div><div class="ad">Four steppers: <code>newCIBooked</code> · <code>oldCIBooked</code> · <code>ciConducted</code> · <code>solutionPresentations</code>. Gold accent = production-adjacent grouping.</div></div></div>
+
+      <div class="anno"><span class="num">5</span><div><div class="at">Production · gold — core + disclosure</div><div class="ad">Visible: <code>newBusinessApps</code> (stepper) + <code>newBusinessAPI</code> (TTD money). Collapsed <b>“PPP increases &amp; lumpsums — optional”</b> holds <code>pppApps</code> / <code>pppApi</code> / <code>lumpsum</code> — matches today's collapsible behaviour.</div></div></div>
+
+      <div class="anno flag"><span class="num">6</span><div><div class="at">Per-day credit line — DERIVED, display-only</div><div class="ad"><code>TTD 8.4K credit</code> in the card header is <b>computed client-side from the entered production fields, not a stored field</b>. <b>DECISION:</b> the daily-credit formula isn't drawn — reuse the wizard/Leaderboard credit math so the number agrees across surfaces. If undecided, ship this slice <b>without</b> the credit line rather than guess.</div></div></div>
+
+      <div class="anno"><span class="num">7</span><div><div class="at">Reflection (D1 flip)</div><div class="ad"><b>Default:</b> collapsed “Reflection (optional)” holding <code>hoursWorked</code> / <code>wins</code> / <code>blockers</code> + a visible <code>note</code> — preserves today's journal fields &amp; the weekly hours feed. <b>Flip → “Note only”</b> drops the block to a single <code>note</code>.</div></div></div>
+
+      <div class="anno flag"><span class="num">7</span><div><div class="at">Why D1 matters</div><div class="ad"><b>“Note only” is not free</b> — dropping <code>hoursWorked</code> daily removes the source the weekly Time-Management step aggregates from. Keep the Reflection block unless you've re-homed hours. This is the one flip with an aggregation consequence.</div></div></div>
+
+      <div class="anno"><span class="num">8</span><div><div class="at">Sticky “Save today” — explicit save</div><div class="ad">Full-width CTA, caption <b>“Rolls into your WK 48 report.”</b> Explicit save (not autosave). Opening today re-opens the existing day's doc pre-filled (one entry per agent per day). No back-fill / past-day picker in this slice.</div></div></div>
+
+      <!-- COMPONENT LIST -->
+      <div class="panel">
+        <h3>Component list</h3>
+        <p class="ph">Slice-1 build units. All reusable; nothing here reads beyond the day's own entry.</p>
+        <div class="complist">
+          <div class="crow hd"><div class="cn">Component</div><div class="cd">Role</div></div>
+          <div class="crow"><div class="cn">DailyEntryScreen</div><div class="cd">Full-screen mobile container (header + scroll body + sticky save). Replaces the modal shell of <b>DailyEntryModal</b>; same service/save logic.</div></div>
+          <div class="crow"><div class="cn">DailyHeader</div><div class="cd">Title + week sub + close. Optional <b>CountStrip</b> slot (D2).</div></div>
+          <div class="crow"><div class="cn">CountStrip</div><div class="cd">D2 only — 4 read chips of week-to-date <b>counts</b>. Off by default; counts-only (no targets).</div></div>
+          <div class="crow"><div class="cn">GroupCard</div><div class="cd">Titled card, teal/gold accent, <code>{filled}/{total}</code> header, optional header credit slot.</div></div>
+          <div class="crow"><div class="cn">StepperRow</div><div class="cd">Label + ± stepper. <b>44×44 targets.</b> parseFloat (integer counts).</div></div>
+          <div class="crow"><div class="cn">MoneyRow</div><div class="cd">Label + TTD field, <b>44px</b>. Always TTD; parseFloat.</div></div>
+          <div class="crow"><div class="cn">Disclosure</div><div class="cd">Collapsible section (≥44px toggle). Used for PPP/lumpsums &amp; the Reflection block.</div></div>
+          <div class="crow"><div class="cn">ReflectionBlock</div><div class="cd">D1 — Hours stepper + Wins/Blockers textareas. Hidden in “Note only”.</div></div>
+          <div class="crow"><div class="cn">NoteField</div><div class="cd">Single optional textarea (always present).</div></div>
+          <div class="crow"><div class="cn">SaveBar</div><div class="cd">Sticky explicit-save CTA + roll-up caption.</div></div>
+        </div>
+      </div>
+
+      <!-- OUT OF SCOPE -->
+      <div class="outbox">
+        <div class="ot">Stripped from this slice — do not draw</div>
+        <div class="outtags">
+          <span class="outtag">Streak flame</span>
+          <span class="outtag">Week-to-date target bar</span>
+          <span class="outtag">Target / dial chips</span>
+          <span class="outtag">Reporting-mode badge + provenance</span>
+          <span class="outtag">Mode picker (daily/weekly/hybrid)</span>
+          <span class="outtag">Manager team-mode panel</span>
+          <span class="outtag">Streak / goal celebration</span>
+          <span class="outtag">Suggested-value hints</span>
+        </div>
+      </div>
+
+      <div class="scope"><span class="tag">Slice rule</span><p><b>Presentational port only.</b> Existing daily schema &amp; keys, existing <code style="font-family:var(--mono);font-size:11.5px">dailyActivity.aggregator</code> mapping (<code style="font-family:var(--mono);font-size:11.5px">newNamesAdded→namesFromOther</code>, <code style="font-family:var(--mono);font-size:11.5px">oldNamesWorked→oldNamesPool</code>), one-doc-per-agent-per-day, TTD, parseFloat — all unchanged. The only non-presentational notes are the two flagged <b>decisions</b> (per-day credit formula · D1's effect on the weekly hours feed); everything else is a skin.</p></div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // disclosures
+  document.querySelectorAll('.disc-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var body = document.getElementById(btn.getAttribute('data-disc'));
+      var open = body.classList.toggle('open');
+      btn.classList.toggle('open', open);
+      btn.querySelector('.chev').textContent = open ? '▴' : '▾';
+    });
+  });
+  // D1 flip
+  document.getElementById('d1seg').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    this.querySelectorAll('button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on');
+    var noteOnly = b.getAttribute('data-d1') === 'note';
+    var disc = document.querySelector('[data-disc="reflect"]');
+    var body = document.getElementById('reflect');
+    disc.style.display = noteOnly ? 'none' : '';
+    if(noteOnly){ body.classList.remove('open'); disc.classList.remove('open'); disc.querySelector('.chev').textContent='▾'; }
+  });
+  // D2 flip
+  document.getElementById('d2seg').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    this.querySelectorAll('button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on');
+    document.getElementById('countstrip').classList.toggle('show', b.getAttribute('data-d2') === 'counts');
+  });
+</script>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

@@ -1,0 +1,12 @@
+/* AgencyTrack — shared brand constants (both surfaces). Source: shared-brand.css */
+:root{
+  --brand-display:'Cabinet Grotesk','Helvetica Neue',sans-serif; /* @kind font */
+  --brand-sans:'Satoshi','Helvetica Neue',Arial,sans-serif; /* @kind font */
+  --brand-mono:'JetBrains Mono',ui-monospace,monospace; /* @kind font */
+  --brand-teal:#01696F;
+  --brand-teal-deep:#014E52;
+  --brand-gold:#B07D1A;
+  --brand-logo-dot:#4ECDC4;
+  --brand-logo-tile:#014E52;
+}
+.brand-eyebrow{font-family:var(--brand-mono);font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--brand-teal)}

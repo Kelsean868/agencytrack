@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Money Needs Merged — build annotations</title>
+<link rel="preconnect" href="https://api.fontshare.com" />
+<link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{ --primary:#01696f; --ink:#28251d; --ink-muted:#6b6560; --ink-faint:#a8a39c; --surface:#f7f6f2; --raised:#fff; --muted:#ebe8e1; --border:#e5e2db; --gold:#b07d1a; --success:#2d7a4f; --warning:#b4530a; --danger:#c0392b; --accent:#5a3fa0; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--surface); color:var(--ink); font-family:'Satoshi',sans-serif; -webkit-font-smoothing:antialiased; line-height:1.5; }
+  .wrap{ max-width:1080px; margin:0 auto; padding:40px 28px 80px; }
+  h1{ font-family:'Cabinet Grotesk',sans-serif; font-size:30px; font-weight:800; letter-spacing:-0.02em; margin:0 0 6px; }
+  .sub{ color:var(--ink-muted); font-size:14px; margin-bottom:8px; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  h2{ font-family:'Cabinet Grotesk',sans-serif; font-size:18px; font-weight:700; margin:34px 0 14px; padding-bottom:8px; border-bottom:2px solid var(--border); display:flex; align-items:center; gap:9px; }
+  .seam-band{ background:var(--primary); color:#fff; border-radius:16px; padding:20px 24px; margin:22px 0; }
+  .seam-band h2{ color:#fff; border:none; margin:0 0 8px; padding:0; }
+  .seam-band p{ margin:0; font-size:13.5px; opacity:0.94; }
+  .row{ display:flex; gap:14px; align-items:flex-start; background:var(--raised); border:1px solid var(--border); border-radius:13px; padding:15px 17px; margin-bottom:11px; }
+  .num{ width:30px; height:30px; border-radius:50%; background:var(--primary); color:#fff; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .num.flag{ background:var(--warning); border-radius:9px; }
+  .rc h3{ margin:0 0 5px; font-size:15px; font-weight:700; }
+  .rc p{ margin:0 0 8px; font-size:13px; color:var(--ink-muted); }
+  .meta{ display:flex; flex-wrap:wrap; gap:6px; }
+  .tag{ font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:999px; background:var(--muted); color:var(--ink-muted); }
+  .tag.cmp{ background:rgba(1,105,111,0.1); color:var(--primary); }
+  .tag.tok{ background:rgba(90,63,160,0.1); color:var(--accent); }
+  .tag.ico{ background:rgba(176,125,26,0.12); color:var(--gold); }
+  .tag.st{ background:rgba(45,122,79,0.12); color:var(--success); }
+  .tag.data{ background:rgba(180,83,10,0.12); color:var(--warning); }
+  .flagcard{ background:rgba(180,83,10,0.06); border:1px solid rgba(180,83,10,0.3); }
+  .legend{ display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 4px; }
+  code{ font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--muted); padding:1px 6px; border-radius:5px; }
+  .lead{ background:var(--raised); border:1px solid var(--border); border-radius:13px; padding:16px 18px; font-size:13.5px; color:var(--ink-muted); }
+  .lead b{ color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Money Needs — merged allocator</h1>
+  <div class="sub">Build-annotation sheet · maps each element to component · token · Lucide icon · state · data field. Pairs with <b>Money&nbsp;Needs&nbsp;Merged.html</b>.</div>
+  <div class="legend">
+    <span class="tag cmp">COMPONENT</span><span class="tag tok">TOKEN</span><span class="tag ico">LUCIDE</span><span class="tag st">STATE</span><span class="tag data">DATA / PENDING</span>
+  </div>
+
+  <div class="seam-band">
+    <h2>★ The seam — how the surface earns the transition</h2>
+    <p>The merge lives or dies on the handoff from <i>needs</i> ("how much must I earn") to <i>production</i> ("how I'll write it"). It's solved as <b>one full-width teal band</b> — the only saturated element on the surface — that restates the single output of the budget (<b>required first-year commission</b>) as a headline, then points forward with one line ("Now, here's how you'll write it →") and a connector glyph. Budget sits above it, allocation below, joined by a vertical rule through the band: the agent reads top-to-bottom as one sentence — <i>your life → your number → your plan to hit it</i>. The band is a divider that <i>asserts the number</i>, not a step boundary. That's the whole bet: if this reads as one honest flow, drop Step 2.</p>
+  </div>
+
+  <h2>① Money Needs — the budget half (Option C: compact + worksheet drill)</h2>
+  <div class="row"><div class="num">1</div><div class="rc">
+    <h3>Worksheet → required commission, with three-level disclosure</h3>
+    <p>The full rev 1–5 worksheet (<b>34 line items · 5 groups · 3 sub-calculators</b>) is preserved but progressively disclosed: <b>total → 5 group subtotals → items</b>. The compact default is NOT a sealed number — it's the five group rows (so the figure is never a black box); tapping a group expands the single-open accordion to it. "Edit worksheet" toggles full edit. The required first-year commission is computed live: <b>monthly total ×12 → PAYE gross-up (÷0.80) → less renewals</b>.</p>
+    <div class="meta"><span class="tag cmp">BudgetWorksheet · CompositionBar · NumCell</span><span class="tag tok">--surface-raised / --border / group tones</span><span class="tag ico">wallet · layers · chevron-down/right · check</span><span class="tag st">compact (group rows) · expanded (items) · single-open accordion</span><span class="tag data">moneyNeeds.sheet[itemId] · renewalIncome · payeRate</span></div>
+  </div></div>
+  <div class="row"><div class="num">1b</div><div class="rc">
+    <h3>The UX moves that make the drill trustworthy</h3>
+    <p><b>Live number:</b> the seam's required-commission figure re-solves in real time as any line edits (bump rent +1,000 → required jumps instantly) — a direct line-item→outcome feedback loop. <b>Composition bar:</b> a 5-segment bar + legend under the total shows where money goes at a glance, no expand needed. <b>Adaptive default:</b> first run opens guided (worksheet expanded, "fill a group" hint); returning users land compact. <b>Sticky recap:</b> while deep in the worksheet, the required figure stays pinned at the top. <b>Contextual calculators:</b> the 3 sub-calcs surface only inside their group (Housing→mortgage, Transport→vehicle, Family→education), never as top-level tools.</p>
+    <div class="meta"><span class="tag tok">position: sticky recap</span><span class="tag st">first-run (guided) vs returning (compact)</span><span class="tag data">moneyNeeds.touched → default mode · single apps divisor unchanged</span></div>
+  </div></div>
+
+  <h2>② Allocation — the production half (Phase 1)</h2>
+  <div class="row"><div class="num">2</div><div class="rc">
+    <h3>Allocation header · % of need + license switch</h3>
+    <p>Running <b>allocated-vs-required</b> meter (sum of line commissions ÷ required) with a live % — the bridge back to the budget number. The <b>license segmented control</b> reflows the lines live (Life / General / Composite).</p>
+    <div class="meta"><span class="tag cmp">Allocation · LicenseSwitch</span><span class="tag tok">--primary / --warning / --success</span><span class="tag ico">sliders-horizontal</span><span class="tag st">≥100% success · ≥80% neutral · &lt;80% warning</span><span class="tag data">profile.licenseClass</span></div>
+  </div></div>
+  <div class="row"><div class="num">3</div><div class="rc">
+    <h3>Line card · slider + direct entry (two-way bound)</h3>
+    <p>Each line: a <b>slider</b> (feel) and a <b>TTD number field</b> (precision), editing either moves the other. Slider <b>ceiling = required ÷ line-rate × 1.5 headroom</b> — anchored to the need, never a magic max. Shows derived first-year commission and derived apps.</p>
+    <div class="meta"><span class="tag cmp">LineCard · SliderField</span><span class="tag tok">--primary (life) / --accent (A&amp;H) / --gold (general)</span><span class="tag ico">target · scale · badge-check</span><span class="tag data">yearPlan.lines[k].api</span></div>
+  </div></div>
+  <div class="row"><div class="num">4</div><div class="rc">
+    <h3>A&amp;H as its own always-present line  <span class="tag data" style="vertical-align:middle">PROPOSAL</span></h3>
+    <p>Per ask 2, A&amp;H renders as a <b>standalone line</b> for every license class rather than bolting onto Life or General — sidesteps the "which side does A&amp;H sit on" question. Shown this way to pressure-test; confirm before locking <code>ahSide</code>.</p>
+    <div class="meta"><span class="tag cmp">LineCard (ah)</span><span class="tag ico">badge-check + lock</span><span class="tag st">NOT award-eligible badge</span><span class="tag data">ahSide — pending</span></div>
+  </div></div>
+  <div class="row"><div class="num">5</div><div class="rc">
+    <h3>Award strip · Life production only</h3>
+    <p>Reads Life API → highest club reached, next-club gap, or <b>top-tier-reached</b> (never an invented higher award). Eligibility is honest: only Life counts; A&amp;H + General carry a "NOT ELIGIBLE" lock badge.</p>
+    <div class="meta"><span class="tag cmp">AwardStrip</span><span class="tag tok">--gold / --gold-tint / --warning (in-contention)</span><span class="tag ico">award</span><span class="tag st">on-track · in-contention · not-yet · top-tier</span><span class="tag data">awardsRuleset (Life-only pilot)</span></div>
+  </div></div>
+
+  <h2>③ Per-product drill (Phase 2)</h2>
+  <div class="row"><div class="num">6</div><div class="rc">
+    <h3>Expand a line → up to 4 <b>user-named</b> products</h3>
+    <p>Optional drill on <b>both Life and General</b> (symmetric). The agent sets a line <b>total</b>, then "Split" expands into <b>up to 4 products they name themselves</b> via "Rename". Defaults seed the fields: Life → <b>Whole Life · Annuities · Critical Illness · Term</b>; General → <b>Motor · Property · Group · Commercial</b>. <b>Motor & Property are General-license lines</b> — they live under General, never Life. Each product has its own slider+field, derived apps and commission.</p>
+    <div class="meta"><span class="tag cmp">LineCard(expandable) · ProductDrill (generic)</span><span class="tag ico">layers · pencil (rename) · chevron-down/right</span><span class="tag st">collapsed · expanded · renaming</span><span class="tag data">lines[k].products[] {name, api} — max 4, schema change pending</span></div>
+  </div></div>
+  <div class="row"><div class="num">7</div><div class="rc">
+    <h3>Balance indicator + auto-balance</h3>
+    <p>Products must sum to the Life total. A stacked sum-bar + chip shows <b>BALANCED ✓</b> or <b>OVER / UNDER TTD&nbsp;X</b> (mirrors the monthly-plan balance pattern); <b>Auto-balance</b> scales products proportionally to the line total.</p>
+    <div class="meta"><span class="tag cmp">LifeDrill</span><span class="tag tok">--success (balanced) / --warning (off)</span><span class="tag ico">scale · check · triangle-alert</span><span class="tag st">balanced · over · under</span></div>
+  </div></div>
+  <div class="row"><div class="num">8</div><div class="rc">
+    <h3>Product-level eligibility — honest, but positive-only</h3>
+    <p>Life products carry the gold <b>ELIGIBLE</b> tag. <b>General products carry no badge</b> — we dropped the NOT-ELIGIBLE lock (it read as disabled); the award strip's "Life production only" line carries the meaning. Eligibility still follows the parent line; slider thumbs render in <code>--ink-muted</code> on non-eligible lines to read "counts, but not for awards."</p>
+    <div class="meta"><span class="tag cmp">ProductDrill rows</span><span class="tag ico">award</span><span class="tag st">Life eligible (tagged) · General neutral (no badge)</span><span class="tag data">lineEligibility (Life-only pilot)</span></div>
+  </div></div>
+
+  <h2>④ Send to Playground — the seam continues</h2>
+  <div class="row"><div class="num">9</div><div class="rc">
+    <h3>Send bar → confirm → "target sent" ack → onOpenTab('game-plan')</h3>
+    <p>The allocator's only job is to set <b>API targets</b>; the Playground (a step inside the <b>Game Plan</b> hub) back-solves them into <b>weekly activity</b>. The hop matches the <b>shipped #738 pattern exactly</b>, so the app has one Send behaviour, not two: a brief <b>confirm sheet</b> names exactly which line + named-product API figures hand over (nothing posts silently) → the targets are <b>written to the Playground key</b> (extend <code>PLAYGROUND_INCOME_GOAL_KEY</code>'s payload) → a <b>"Target sent" ack</b> offers <b>Continue to Game Plan</b> / Stay here. ⚠ The app has <b>no router</b> — navigation is tab-state: "Continue" calls <code>onOpenTab('game-plan')</code>, landing on the pre-filled Playground step. <b>No breadcrumb / back-button chrome</b> — the app's bottom-nav / sidebar is the way back. <b>One-directional:</b> Money Needs is the source; only <b>Life</b> API drives the award line. (The mock previews the destination step; in-app it's the existing Game Plan tab.)</p>
+    <div class="meta"><span class="tag cmp">SendBar · PlaygroundConfirm · PlaygroundAck · (preview) PlaygroundPage</span><span class="tag tok">--primary / --gold</span><span class="tag ico">git-commit-horizontal · check · chevron-right</span><span class="tag st">confirm · ack (sent) · continue / stay</span><span class="tag data">write PLAYGROUND_INCOME_GOAL_KEY (+ targets) · onOpenTab('game-plan') — NO router</span></div>
+  </div></div>
+
+  <h2>⑤ States (honest-data doctrine)</h2>
+  <div class="row"><div class="num">10</div><div class="rc">
+    <h3>License unset → first-run picker</h3>
+    <p>When <code>licenseClass</code> is null the surface gates to a picker (radio cards, <b>Composite default-highlighted</b>, Life-only flagged "Tatil pilot"). Toolbar "↺ License" returns here to demo reflow.</p>
+    <div class="meta"><span class="tag cmp">LicensePicker</span><span class="tag st">unset · switched (live reflow)</span><span class="tag data">profile.licenseClass</span></div>
+  </div></div>
+  <div class="row"><div class="num">11</div><div class="rc">
+    <h3>No commission need · loading · error</h3>
+    <p>Budget not done → allocator shows "Do the budget first / enter from scratch", not zeros. Loading = skeleton line cards. Error = saved-targets-safe retry. Switchable via the toolbar State selector.</p>
+    <div class="meta"><span class="tag cmp">NoNeedState · LoadingState · ErrorState</span><span class="tag ico">wallet · triangle-alert · rotate-ccw</span><span class="tag st">no-need · loading · error · empty→"Set in your plan"</span></div>
+  </div></div>
+
+  <h2>Availability, not greying — a clutter rule</h2>
+  <div class="lead" style="margin-bottom:20px"><b>Show only what the license grants.</b> Lines a license doesn't include are <b>omitted, never greyed/disabled</b> — Life shows Life + A&amp;H; General shows General + A&amp;H; Composite shows all. A&amp;H shows for every class. Award status is a single <b>positive</b> gold tag on Life only — no lock/disabled chrome anywhere. Same honesty, far less clutter.</div>
+
+  <h2>⚑ Design-around flags (resolve in PRD — built as if supported)</h2>
+  <div class="row flagcard"><div class="num flag">A</div><div class="rc">
+    <h3>Per-product data model</h3>
+    <p><code>yearPlan</code> stores per-<i>line</i> today. <b>Named</b> per-product targets (max 4 per drillable line, for Life <i>and</i> General) are a <b>schema change</b>: each product is <code>{name, api}</code> and names are user-editable, so they can't be hard-coded enums. The drill UI is designed; the data layer is yours to build.</p>
+    <div class="meta"><span class="tag data">yearPlan.lines[k].products[] {name, api} — NEW · max 4 · Life + General</span></div>
+  </div></div>
+  <div class="row flagcard"><div class="num flag">B</div><div class="rc">
+    <h3>Per-product apps divisor</h3>
+    <p>Apps = API ÷ average policy size, <b>single source</b> (same as weekly planner / <code>goalDecomposition</code> — no second math). Whether per-product apps use a per-product avg-policy or the blended figure is open; the UI shows derived apps with a visible note and does <b>not</b> hard-assert the divisor.</p>
+    <div class="meta"><span class="tag data">avgPolicySize — blended vs per-product, pending</span></div>
+  </div></div>
+  <div class="row flagcard"><div class="num flag">C</div><div class="rc">
+    <h3>A&amp;H placement (<code>ahSide</code>)</h3>
+    <p>Rendered as its own line (callout ④) precisely to help resolve this. If product confirms, drop <code>ahSide</code> entirely; if A&amp;H must attach to a side, the line simply nests there.</p>
+    <div class="meta"><span class="tag data">ahSide — proposal: remove</span></div>
+  </div></div>
+
+  <h2>Conventions applied</h2>
+  <div class="lead">Tokens are <b>CSS variables only</b> (<code>--primary</code>, <code>--ink</code>, <code>--surface-raised</code>, <code>--surface-muted</code>, <code>--border</code>, <code>--gold</code>, <code>--success</code>…), light + dark. Type: Satoshi body · <b>Cabinet Grotesk</b> (<code>font-display</code>) for values/headlines · JetBrains Mono for labels/numerics. <b>Lucide icons only</b> (inline paths). ≥44px touch targets on every control; <code>:focus-visible</code> rings via the primary token. Currency <b>TTD</b> throughout. No gradient buttons. Slider thumbs use <code>accent-color</code> / styled thumbs in the primary token; non-eligible lines render the thumb in <code>--ink-muted</code> to read "counts, but not for awards" at a glance.</div>
+</div>
+</body>
+</html>

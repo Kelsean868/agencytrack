@@ -1,0 +1,95 @@
+/* ============================================================================
+   nexus-patterns.css — styles for nexus-patterns.jsx + the redesign motion/
+   state/dense-table rules. Load inside a `.nexus` / `.nexus.dark` scope, after
+   tokens/app-v2.css. All values reference canonical tokens.
+   ============================================================================ */
+
+/* ---- minimal button (use the DS <Button> in real code; this is for the
+        patterns' inline CTAs / style-guide) ---------------------------------- */
+.nx-btn{ border:none; border-radius:12px; font-weight:700; font-family:var(--sans);
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:9px 15px; font-size:13.5px; transition:transform var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out); }
+.nx-btn:active{ transform:translateY(1px); }
+.nx-btn--primary{ background:var(--teal); color:#fff; }
+.nx-btn--ghost{ background:transparent; color:var(--teal); border:1.5px solid var(--rule); }
+.nexus.dark .nx-btn--primary{ color:var(--bg); }
+
+/* ---- ErrorState ---------------------------------------------------------- */
+.nx-error{ padding:44px 24px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:6px; }
+.nx-error-icon{ width:46px; height:46px; border-radius:50%; background:var(--dangerTint); color:var(--danger); display:grid; place-items:center; margin-bottom:8px; }
+.nx-error-title{ font-family:var(--display); font-weight:800; font-size:17px; color:var(--ink); }
+.nx-error-body{ color:var(--inkMute); font-size:13.5px; max-width:340px; line-height:1.5; margin-bottom:8px; }
+
+/* ---- EmptyState ---------------------------------------------------------- */
+.nx-empty{ padding:44px 24px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:6px; }
+.nx-empty-icon{ width:46px; height:46px; border-radius:14px; background:var(--tealTint); color:var(--teal); display:grid; place-items:center; margin-bottom:8px; }
+.nx-empty-title{ font-family:var(--display); font-weight:800; font-size:17px; color:var(--ink); }
+.nx-empty-body{ color:var(--inkMute); font-size:13.5px; max-width:320px; line-height:1.5; margin-bottom:8px; }
+
+/* ---- Skeleton ------------------------------------------------------------ */
+.nx-skel{ display:inline-block; background:var(--skeleton); background-size:200% 100%; }
+@media (prefers-reduced-motion: no-preference){
+  .nx-skel{ animation:nxShimmer 1.4s ease-in-out infinite; }
+  @keyframes nxShimmer{ from{ background-position:200% 0; } to{ background-position:-200% 0; } }
+}
+.nx-skel-screen{ display:flex; flex-direction:column; gap:16px; }
+.nx-skel-toolbar{ display:flex; align-items:center; gap:10px; }
+.nx-skel-table{ border:1px solid var(--rule); border-radius:14px; overflow:hidden; background:var(--surface); }
+.nx-skel-tr{ display:flex; align-items:center; gap:18px; padding:15px 18px; }
+.nx-skel-tr + .nx-skel-tr{ border-top:1px solid var(--rule); }
+.nx-skel-th{ background:var(--surfaceMute); }
+.nx-skel-hero{ padding:22px 24px; border-radius:18px; background:var(--surface); border:1px solid var(--rule); }
+.nx-skel-hero--split{ display:flex; align-items:center; gap:20px; }
+.nx-skel-row{ display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:14px; background:var(--surface); border:1px solid var(--rule); }
+.nx-skel-cards{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.nx-skel-card{ padding:18px; border-radius:16px; background:var(--surface); border:1px solid var(--rule); }
+
+/* ---- Motion: screen enter + safe stagger (transform-only) ---------------- */
+@media (prefers-reduced-motion: no-preference){
+  .nx-screen-enter{ animation:nxScreenIn var(--dur-3) var(--ease-out) both; }
+  @keyframes nxScreenIn{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
+  /* stagger the top-level blocks — TRANSFORM ONLY so a paused tab never
+     strands a block at opacity:0 (see addendum §2). */
+  .nx-screen-enter > *{ animation:nxRise .44s var(--ease-out) both; }
+  .nx-screen-enter > *:nth-child(1){ animation-delay:.01s; }
+  .nx-screen-enter > *:nth-child(2){ animation-delay:.05s; }
+  .nx-screen-enter > *:nth-child(3){ animation-delay:.09s; }
+  .nx-screen-enter > *:nth-child(4){ animation-delay:.13s; }
+  .nx-screen-enter > *:nth-child(5){ animation-delay:.17s; }
+  .nx-screen-enter > *:nth-child(n+6){ animation-delay:.2s; }
+  @keyframes nxRise{ from{ transform:translateY(12px); } to{ transform:none; } }
+}
+
+/* ---- Dense operational table (addendum §5) ------------------------------- */
+.nx-sheet{ background:var(--surface); border:1px solid var(--rule); border-radius:16px; overflow:hidden; }
+.nx-sheet-scroll{ overflow:auto; max-height:calc(100vh - 250px); }
+.nx-sheet-head, .nx-sheet-row{ display:grid; align-items:center; gap:18px; padding:13px 18px; min-width:760px; }
+.nx-sheet-head{ position:sticky; top:0; z-index:4; background:var(--surfaceMute); font:700 11px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--inkFaint); }
+.nx-sheet-row{ background:var(--surface); border-top:1px solid var(--rule); font-size:13px; color:var(--ink); }
+.nx-sheet-row:hover{ background:var(--surfaceMute); }
+.nx-sheet-stick{ position:sticky; left:0; z-index:2; background:inherit; }
+.nx-sheet-head .nx-sheet-stick{ z-index:6; }
+.nx-sheet-num{ font-variant-numeric:tabular-nums; text-align:right; }
+.nx-sheet-foot{ padding:12px 18px; border-top:1px solid var(--rule); font:11px var(--mono); color:var(--inkFaint); }
+.nx-cell{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } /* prevents fixed-width child overflow */
+.nx-pill{ font:700 10.5px var(--mono); text-transform:uppercase; padding:3px 9px; border-radius:20px; white-space:nowrap; }
+.nx-pill--ok{ background:var(--successTint); color:var(--success); }
+.nx-pill--warn{ background:var(--warningTint); color:var(--warning); }
+.nx-pill--bad{ background:var(--dangerTint); color:var(--danger); }
+.nx-pill--mute{ background:var(--surfaceMute); color:var(--inkFaint); }
+
+/* partial-sync banner */
+.nx-sync-banner{ display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:12px; background:var(--warningTint); border:1px solid var(--warning); color:var(--ink); font-size:13px; font-weight:600; }
+.nx-sync-banner svg{ color:var(--warning); flex:none; }
+
+/* ---- Table row-action button (a11y — real 32px hit target) --------------- */
+.nx-row-act{ width:32px; height:32px; border-radius:9px; border:1px solid var(--rule); background:var(--surfaceMute); color:var(--inkMute); display:grid; place-items:center; transition:border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out); }
+.nx-row-act:hover{ border-color:var(--teal); color:var(--teal); background:var(--tealTint); }
+
+/* ---- Skip link ----------------------------------------------------------- */
+.nx-skip{ position:fixed; top:10px; left:50%; transform:translate(-50%,-160%); z-index:400;
+  background:var(--teal); color:#fff; font:800 13px var(--display); padding:10px 18px; border-radius:12px; transition:transform var(--dur-2) var(--ease-out); }
+.nx-skip:focus{ transform:translate(-50%,0); }
+
+/* mobile: stack skeleton cards, taller scroll */
+.nexus[data-view="mobile"] .nx-skel-cards{ grid-template-columns:repeat(2,1fr); }

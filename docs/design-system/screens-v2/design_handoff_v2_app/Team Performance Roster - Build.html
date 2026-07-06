@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Team Performance Roster — Build Annotation (Manager scene)</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --accent:#5A3FA0; --accentTint:#F0ECFF;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  body.dark{
+    --bg:#1A1612; --surface:#252019; --surfaceRaised:#302A23; --surfaceSoft:#1F1B17; --surfaceMute:#1F1B17;
+    --ink:#F0EBE0; --inkMute:#B8AEA0; --inkFaint:#8A8074; --inkDim:#4F473E;
+    --rule:rgba(240,235,224,0.08); --ruleStrong:rgba(240,235,224,0.18);
+    --teal:#4AB5B8; --tealLight:#6FD3D6; --tealDark:#01696F; --tealTint:rgba(74,181,184,0.14);
+    --gold:#E0AA3E; --goldTint:rgba(224,170,62,0.14); --goldInk:#E0AA3E;
+    --success:#5DB876; --successTint:rgba(93,184,118,0.14);
+    --warning:#E8B53E; --warningTint:rgba(232,181,62,0.14);
+    --danger:#D96B5D; --dangerTint:rgba(217,107,93,0.14);
+    --accent:#A995E0; --accentTint:rgba(169,149,224,0.14);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px;transition:background .25s,color .25s}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:780px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute);align-items:center}
+  .keylegend span.it{display:inline-flex;align-items:center;gap:7px}
+  .keylegend .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.exist{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.new{background:var(--goldTint);color:var(--goldInk)}
+  .pchip.flag{background:var(--dangerTint);color:var(--danger)}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)} .mk.f{background:var(--danger)}
+
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.exist{background:var(--tealTint);color:var(--tealDark)}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+  .ptag.flag{background:var(--dangerTint);color:var(--danger)}
+
+  /* app frame */
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(38,35,28,.10);display:flex;gap:14px}
+  body.dark .appframe{box-shadow:0 14px 40px rgba(0,0,0,.4)}
+  .sidebar{width:150px;flex-shrink:0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 9px;display:flex;flex-direction:column;gap:3px}
+  .sb-logo{display:flex;align-items:center;gap:8px;padding:4px 6px 12px}
+  .sb-logo .lm{width:24px;height:24px;border-radius:7px;background:var(--teal)}
+  .sb-logo .lt{font-family:var(--display);font-weight:800;font-size:13px}
+  .sb-grp{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.12em;color:var(--inkFaint);padding:9px 8px 4px}
+  .nav{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;font-size:11.5px;font-weight:600;color:var(--inkMute)}
+  .nav .ic{width:14px;height:14px;border-radius:4px;background:var(--inkDim);flex-shrink:0}
+  .nav.on{background:var(--tealTint);color:var(--tealDark);font-weight:700}
+  .nav.on .ic{background:var(--teal)}
+
+  .canvas{flex:1;min-width:0;display:flex;flex-direction:column;gap:13px}
+  .topbar{display:flex;align-items:center;gap:10px;padding:2px 2px 0}
+  .topbar .pt{font-family:var(--display);font-weight:800;font-size:16px;white-space:nowrap}
+  .topbar .ps{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.05em}
+  .topbar .sp{flex:1}
+  .toggle{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:9px;background:var(--surface);border:1px solid var(--ruleStrong);font-size:11.5px;font-weight:700;color:var(--ink);cursor:pointer;min-height:34px}
+  .toggle .dotic{width:13px;height:13px;border-radius:50%;border:2px solid var(--teal);background:radial-gradient(circle at 65% 35%, var(--surface) 0 48%, var(--teal) 49%)}
+
+  /* filter bar */
+  .filterbar{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:12px 16px;flex-wrap:wrap}
+  .fb-lbl{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--inkFaint);flex-shrink:0}
+  .grain{display:flex;gap:3px;padding:3px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px}
+  .grain .g{padding:7px 14px;border-radius:6px;font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--inkMute);cursor:pointer;min-height:34px;display:flex;align-items:center}
+  .grain .g.on{background:var(--teal);color:#fff}
+  .picker{display:flex;align-items:center;gap:8px;padding:7px 13px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px;min-height:38px;cursor:pointer}
+  .picker .arr{color:var(--inkFaint);font-size:12px;width:18px;text-align:center;cursor:pointer;user-select:none;font-weight:700}
+  .picker .pv{font-size:13px;font-weight:700;min-width:118px;text-align:center;white-space:nowrap}
+  .fb-note{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.03em;display:flex;align-items:center;gap:7px;text-wrap:pretty}
+  .fb-note b{color:var(--inkMute);font-weight:700}
+
+  /* roster table */
+  .roster{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .scroller{overflow-x:auto}
+  table.rt{border-collapse:separate;border-spacing:0;width:100%;min-width:980px}
+  table.rt th,table.rt td{text-align:left;white-space:nowrap}
+  /* group band row */
+  .grpband th{padding:7px 14px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint);background:var(--surfaceSoft);border-bottom:1px solid var(--rule);position:sticky;top:0;z-index:3}
+  .grpband th.gsub{color:var(--teal);text-align:center;border-left:1px solid var(--rule)}
+  .grpband th.giss{color:var(--gold);text-align:center;border-left:1px solid var(--ruleStrong)}
+  .grpband th.pinL{position:sticky;left:0;z-index:4;background:var(--surfaceSoft)}
+  /* header row */
+  thead .hrow th{padding:0;background:var(--surface);border-bottom:1px solid var(--ruleStrong);position:sticky;top:29px;z-index:3}
+  thead .hrow th.pinL{left:0;z-index:4;box-shadow:1px 0 0 var(--rule)}
+  .sortbtn{display:flex;align-items:center;gap:5px;width:100%;padding:10px 14px;background:none;border:none;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--inkMute);cursor:pointer;min-height:40px}
+  .sortbtn.num{justify-content:flex-end;text-align:right}
+  .sortbtn:hover{color:var(--ink)}
+  .sortbtn.active{color:var(--teal)}
+  .sortbtn .car{font-size:8px;opacity:0;transition:opacity .12s;color:var(--teal)}
+  .sortbtn.active .car{opacity:1}
+  th.gsubcol{border-left:1px solid var(--rule)}
+  th.gisscol{border-left:1px solid var(--ruleStrong)}
+  /* body */
+  tbody td{padding:10px 14px;border-bottom:1px solid var(--rule);font-size:12.5px}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr.zebra td{background:var(--surfaceRaised)}
+  td.subcol{border-left:1px solid var(--rule)}
+  td.isscol{border-left:1px solid var(--ruleStrong)}
+  td.num{text-align:right;font-family:var(--mono);font-size:12px}
+  td.num .unit{color:var(--inkFaint);font-size:9.5px;margin-right:2px}
+  td.num.dim{color:var(--inkFaint)}
+  /* pinned name col */
+  td.pinL,th.pinL{position:sticky;left:0;background:var(--surface);z-index:1}
+  tbody tr.zebra td.pinL{background:var(--surfaceRaised)}
+  thead .hrow th.pinL,.grpband th.pinL{box-shadow:1px 0 0 var(--rule)}
+  td.pinL{box-shadow:1px 0 0 var(--rule)}
+  .who{display:flex;align-items:center;gap:10px;min-width:0}
+  .who .av{width:30px;height:30px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:11px;flex-shrink:0}
+  .who .av.mgr{background:var(--accentTint);color:var(--accent)}
+  .who .nm{font-size:13px;font-weight:600;white-space:nowrap}
+  .who .un{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);margin-top:1px;display:flex;align-items:center;gap:6px}
+  .rolechip{font-family:var(--mono);font-size:7.5px;font-weight:700;letter-spacing:.06em;padding:1px 5px;border-radius:99px;background:var(--accentTint);color:var(--accent);text-transform:uppercase}
+  /* tenure */
+  td.ten .big{font-size:12.5px;font-weight:700}
+  td.ten .sub{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);margin-top:1px}
+  /* persistency band */
+  .perscell{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+  .perscell .pv{font-family:var(--display);font-weight:800;font-size:14px}
+  .perscell .track{position:relative;height:6px;width:74px;border-radius:5px;background:var(--surfaceMute);overflow:visible}
+  .perscell .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+  .fill.ok{background:var(--success)} .fill.watch{background:var(--warning)} .fill.below{background:var(--danger)}
+  .perscell .floor{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--danger);left:80%}
+  .perscell .gate{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--success);left:90%}
+  /* goal heat */
+  .goalcell{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+  .goalcell .gv{font-family:var(--display);font-weight:800;font-size:14px}
+  .goalcell .gtrack{position:relative;height:6px;width:84px;border-radius:5px;background:var(--surfaceMute);overflow:hidden}
+  .goalcell .gfill{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+  .gfill.ahead{background:var(--success)} .gfill.behind{background:var(--warning)}
+  .goalcell .pace{position:absolute;top:-1px;bottom:-1px;width:2px;background:var(--inkFaint)}
+  .goalcell.none .gv{color:var(--inkFaint)}
+  .ro-foot{display:flex;align-items:center;gap:14px;padding:9px 16px;border-top:1px solid var(--rule);background:var(--surfaceSoft);font-size:11px;color:var(--inkMute)}
+  .ro-foot .sp{flex:1}
+  .ro-foot .mono{font-family:var(--mono);font-size:10px}
+
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.exist{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.exist .ad b{color:var(--tealDark)}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+  .anno.flagc{background:var(--dangerTint);border-color:color-mix(in srgb,var(--danger) 28%,transparent)}
+  .anno.flagc .ad b{color:var(--danger)}
+
+  /* mobile + states grids */
+  .split{display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start}
+  .phone{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:22px;padding:12px;box-shadow:0 12px 32px rgba(38,35,28,.10)}
+  body.dark .phone{box-shadow:0 12px 32px rgba(0,0,0,.4)}
+  .ph-top{display:flex;align-items:center;gap:8px;padding:4px 6px 10px}
+  .ph-top .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .ph-ctl{display:flex;gap:7px;margin-bottom:10px}
+  .ph-ctl .c{flex:1;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:9px 11px;background:var(--surface);border:1px solid var(--rule);border-radius:10px;font-size:11px;font-weight:700;min-height:44px}
+  .ph-ctl .c .cl{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint);text-transform:uppercase}
+  .ph-ctl .c .cv{font-size:11.5px}
+  .mcard{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px;margin-bottom:9px}
+  .mcard .mc-top{display:flex;align-items:center;gap:9px;padding-bottom:9px;border-bottom:1px solid var(--rule)}
+  .mcard .mc-top .av{width:30px;height:30px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:11px}
+  .mcard .mc-top .nm{font-size:13px;font-weight:700}
+  .mcard .mc-top .un{font-family:var(--mono);font-size:9px;color:var(--inkFaint);margin-top:1px}
+  .mcard .mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:9px}
+  .mcard .mi{display:flex;flex-direction:column}
+  .mcard .mi .k{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;color:var(--inkFaint);text-transform:uppercase}
+  .mcard .mi .v{font-family:var(--mono);font-size:12.5px;font-weight:700;margin-top:2px}
+  .mcard .mi .v.tealv{color:var(--teal)}
+  .mcard .mc-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:9px;border-top:1px solid var(--rule)}
+  .mcard .mc-foot .pers{font-family:var(--display);font-weight:800;font-size:13px}
+  .mcard .mc-foot .goal{font-family:var(--mono);font-size:10px;color:var(--inkMute)}
+
+  .states{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:15px 14px;min-height:140px;display:flex;flex-direction:column;gap:9px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .skrow{display:grid;grid-template-columns:1.4fr 70px 70px 70px;gap:10px;align-items:center}
+  .msg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:9px;padding:6px}
+  .msg .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px}
+  .msg.empty .ic{background:var(--surfaceMute);color:var(--inkMute)} .msg.period .ic{background:var(--goldTint);color:var(--goldInk)}
+  .msg .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .msg .d{font-size:11px;color:var(--inkMute);line-height:1.45;max-width:300px}
+  .msg .eb{margin-top:3px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  .flagnote{display:flex;gap:13px;background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:13px;padding:15px 18px;margin-top:14px}
+  .flagnote .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--danger);flex-shrink:0;padding-top:2px}
+  .flagnote p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .flagnote b{font-weight:700}
+  .flagnote code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--danger)}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:200px 1fr 96px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  body.dark .crow .cn{color:var(--teal)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .crow .co{text-align:right}
+
+  @media(max-width:1040px){
+    .annos,.states{grid-template-columns:1fr}
+    .split{grid-template-columns:1fr}
+    .appframe{flex-direction:column}.sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px}.sb-logo,.sb-grp{display:none}
+    .crow{grid-template-columns:1fr}.crow .co{text-align:left}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Team Performance v1 · Build annotation · MANAGER scene</div>
+      <h1>One sortable, period-scoped roster — rank the team in a glance.</h1>
+      <p class="subt">A consolidated <b>Team Performance roster</b> for Unit &amp; Branch Managers: one row per team member, <b>eight sortable columns</b>, and a <b>granularity + period picker</b> that scopes only the four production columns. Persistency reuses the <b>two-tick band</b> from the Persistency tab; % of annual goal is an <b>annual metric</b> that never moves with the period. Follows the <b>MasterSheet</b> sticky-header / pinned-name table pattern. Light &amp; dark.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />TEAM PERF v1 · UM / BM<br />8 COLS · NAME PINNED<br />REV 2026-06-17</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Data canon</span>
+    <p><b>Verified.</b> Production figures are <b>per-agent period GETs over the roster</b> (the MasterSheet/Compliance fan-out pattern) — no new collection query. Persistency reuses the shipped <code>PERS_GATE</code> 90 / <code>PERS_FLOOR</code> 80 thresholds and renders the existing two-tick band. <b>% of annual goal</b> = full-year YTD submitted API ÷ <code>committedAnnualTarget</code>; the target field is <b>per-agent, existing</b> from Goals. Tenure derives from the existing <code>contractDate</code>. Scope (UM unit / BM branch + unit managers) rides the established role/hierarchy read.</p>
+  </div>
+
+  <div class="secttl">Reading this sheet</div>
+  <div class="keylegend">
+    <span class="it"><span class="pchip exist">EXISTING</span> shipped data / pattern (fan-out GETs, pers thresholds, annual target, contractDate)</span>
+    <span class="it"><span class="pchip new">NEW CHROME</span> net-new UI · no new data</span>
+    <span class="it"><span class="pchip flag">FLAG</span> product decision pending — not invented</span>
+  </div>
+
+  <!-- LIVE SURFACE -->
+  <div class="secttl">Surface · sortable roster + period filter <span style="color:var(--inkFaint);font-weight:400;text-transform:none;letter-spacing:0">— live: click headers to sort, switch grain/period, toggle theme</span></div>
+  <div class="appframe">
+    <div class="sidebar">
+      <div class="sb-logo"><div class="lm"></div><div class="lt">AgencyTrack</div></div>
+      <div class="sb-grp">BRANCH</div>
+      <div class="nav"><span class="ic"></span>Dashboard</div>
+      <div class="nav"><span class="ic"></span>Master Sheet</div>
+      <div class="nav on"><span class="ic"></span>Team Performance</div>
+      <div class="nav"><span class="ic"></span>Persistency</div>
+      <div class="nav"><span class="ic"></span>Reports</div>
+    </div>
+    <div class="canvas">
+      <div class="topbar">
+        <span class="pt">Team Performance</span>
+        <span class="ps">· SOUTH BRANCH · T. RAMCHARAN · BRANCH MANAGER</span>
+        <span class="sp"></span>
+        <button class="toggle" id="themeBtn"><span class="dotic"></span><span id="themeLbl">Dark</span></button>
+      </div>
+
+      <!-- filter bar -->
+      <div class="filterbar">
+        <span class="fb-lbl">Period</span>
+        <div class="grain" id="grain">
+          <span class="g" data-g="year">Year</span>
+          <span class="g" data-g="month">Month</span>
+          <span class="g" data-g="week">Week</span>
+        </div>
+        <div class="picker"><span class="arr" id="prev">‹</span><span class="pv" id="periodVal">2026</span><span class="arr" id="next">›</span></div>
+        <span class="fb-note"><b>Scopes production columns only.</b> Persistency = month of period · % goal = annual</span>
+      </div>
+
+      <!-- roster -->
+      <div class="roster">
+        <div class="scroller">
+          <table class="rt" id="rt">
+            <thead>
+              <tr class="grpband">
+                <th class="pinL"></th>
+                <th></th>
+                <th class="gsub" colspan="2">Submitted</th>
+                <th class="giss" colspan="2">Issued / settled</th>
+                <th></th>
+                <th></th>
+              </tr>
+              <tr class="hrow" id="hrow"></tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div class="ro-foot">
+          <span id="footCount">11 team members</span>
+          <span class="sp"></span>
+          <span class="mono" id="footScope">← Name pinned · scroll for all 8 columns →</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annos">
+    <div class="anno newc"><span class="mk n">A</span><div><div class="at">Period filter — grain + picker, production-only scope</div><div class="ad">Granularity <b>Year / Month / Week</b> with a matching period picker. Default <b>current year (2026)</b>. The selected period scopes <b>only the four production columns</b> via per-agent period GETs. <b>Persistency &amp; % of annual goal do not flow by period.</b></div></div></div>
+    <div class="anno exist"><span class="mk e">P</span><div><div class="at">Persistency — reused two-tick band</div><div class="ad">Current % reflecting the <b>month containing the selected period</b> (latest month on a Year view). Same band grammar as the Persistency tab: fill colored by band + <b>80 floor</b> / <b>90 gate</b> ticks. Thresholds are the shipped <code>PERS_FLOOR</code>/<code>PERS_GATE</code>.</div></div></div>
+    <div class="anno newc"><span class="mk n">G</span><div><div class="at">% of annual goal — annual heat, AA-legible</div><div class="ad">Full-year YTD submitted API ÷ committed annual target. Subtle heat: <b>ahead-of-pace</b> reads success, <b>behind</b> reads warning, with a faint <b>time-elapsed pace marker</b>. Number stays AA-legible (color is a cue, not the only signal). <b>"—"</b> when no target is committed. <b>Does not change with the period.</b></div></div></div>
+    <div class="anno exist"><span class="mk e">S</span><div><div class="at">Sort + pinned Name — MasterSheet pattern</div><div class="ad">Click a header to sort; click again toggles asc/desc; the <b>active column + direction</b> shows an arrow. Default <b>Name A→Z</b>. Numeric columns right-aligned. <b>Name pinned</b> on horizontal scroll, sticky header — same scaffold as MasterSheet.</div></div></div>
+    <div class="anno newc"><span class="mk n">T</span><div><div class="at">Tenure — derived, sorts by date</div><div class="ad">Duration since <code>contractDate</code> rendered as <b>"3y 2m"</b>, with the contract date as secondary text. Sorting this column sorts by the <b>underlying date</b>, not the formatted string.</div></div></div>
+    <div class="anno exist"><span class="mk e">B</span><div><div class="at">Submitted vs Issued — subtly grouped</div><div class="ad">A quiet group band + a slightly stronger rule between the <b>Submitted</b> and <b>Issued/settled</b> pairs keep the four production columns from reading as a flat wall of numbers — without boxing them.</div></div></div>
+  </div>
+
+  <!-- MOBILE + STATES -->
+  <div class="secttl">Narrow / mobile degradation + states</div>
+  <div class="split">
+    <div class="phone">
+      <div class="ph-top"><span class="t">Team Performance</span></div>
+      <div class="ph-ctl">
+        <div class="c"><div><div class="cl">Period</div><div class="cv">2026 ▾</div></div></div>
+        <div class="c"><div><div class="cl">Sort by</div><div class="cv">API sub ▾</div></div></div>
+      </div>
+      <div class="mcard">
+        <div class="mc-top"><div class="av">SM</div><div><div class="nm">Selina Mohammed</div><div class="un">S·01 · 6y 4m</div></div></div>
+        <div class="mc-grid">
+          <div class="mi"><span class="k">API sub</span><span class="v tealv">TTD 412K</span></div>
+          <div class="mi"><span class="k">Apps sub</span><span class="v">128</span></div>
+          <div class="mi"><span class="k">API issued</span><span class="v tealv">TTD 371K</span></div>
+          <div class="mi"><span class="k">Apps issued</span><span class="v">112</span></div>
+        </div>
+        <div class="mc-foot"><span class="pers" style="color:var(--success)">Pers 94%</span><span class="goal">Goal 103%</span></div>
+      </div>
+      <div class="mcard">
+        <div class="mc-top"><div class="av mgr" style="background:var(--accentTint);color:var(--accent)">AP</div><div><div class="nm">Anand Persad <span class="rolechip">UM</span></div><div class="un">S·02 · 9y 1m</div></div></div>
+        <div class="mc-grid">
+          <div class="mi"><span class="k">API sub</span><span class="v tealv">TTD 288K</span></div>
+          <div class="mi"><span class="k">Apps sub</span><span class="v">94</span></div>
+          <div class="mi"><span class="k">API issued</span><span class="v tealv">TTD 246K</span></div>
+          <div class="mi"><span class="k">Apps issued</span><span class="v">79</span></div>
+        </div>
+        <div class="mc-foot"><span class="pers" style="color:var(--warning)">Pers 86%</span><span class="goal">Goal 78%</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="states">
+        <div class="statecard">
+          <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">S</span>Skeleton · fan-out loading</div>
+          <div class="sc-b">
+            <div class="skrow"><div class="shimmer" style="height:16px"></div><div class="shimmer"></div><div class="shimmer"></div><div class="shimmer"></div></div>
+            <div class="skrow"><div class="shimmer" style="height:16px"></div><div class="shimmer"></div><div class="shimmer"></div><div class="shimmer"></div></div>
+            <div class="skrow"><div class="shimmer" style="height:16px"></div><div class="shimmer"></div><div class="shimmer"></div><div class="shimmer"></div></div>
+            <div class="skrow"><div class="shimmer" style="height:16px"></div><div class="shimmer"></div><div class="shimmer"></div><div class="shimmer"></div></div>
+          </div>
+        </div>
+        <div class="statecard">
+          <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">E</span>Empty · no team members</div>
+          <div class="sc-b"><div class="msg empty"><div class="ic">○</div><div class="t">No team members yet</div><div class="d">This manager's unit/branch has no assigned members. The roster, filter, and sort controls stay visible but inert.</div></div></div>
+        </div>
+        <div class="statecard">
+          <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">∅</span>Empty period · no production</div>
+          <div class="sc-b"><div class="msg period"><div class="ic">∅</div><div class="t">No production this week</div><div class="d">Members still list with per-cell <b>"—"</b> across the four production columns; Persistency &amp; % goal remain populated. A banner offers a jump to the last active period.</div><div class="eb">Jump to last active week</div></div></div>
+        </div>
+        <div class="statecard">
+          <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">—</span>Per-cell missing</div>
+          <div class="sc-b" style="justify-content:center">
+            <div style="display:flex;flex-direction:column;gap:11px;font-size:12px;color:var(--inkMute)">
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--mono);font-size:18px;color:var(--inkFaint);width:30px;text-align:right">—</span><span><b style="color:var(--ink)">% of annual goal</b> shows "—" when no annual target is committed in Goals.</span></div>
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--mono);font-size:18px;color:var(--inkFaint);width:30px;text-align:right">—</span><span><b style="color:var(--ink)">Persistency</b> shows "—" when the underlying month has no settled book to score.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="anno newc" style="margin-top:16px"><span class="mk n">M</span><div><div class="at">Narrow / mobile — stacked card per member</div><div class="ad">Below the table breakpoint the 8-column grid degrades to a <b>card per member</b>: name + tenure header, a 2×2 production grid, and a persistency / % goal footer. A <b>"Sort by" control</b> replaces clickable headers; the <b>period filter stays accessible</b> at the top.</div></div></div>
+    </div>
+  </div>
+
+  <div class="flagnote">
+    <span class="tag">⚑ Flags</span>
+    <p><b>Two product calls before the brief locks.</b> (1) <b>Branch Manager rows</b> — confirm unit managers appear as <b>individual rows</b> (their own production, <code>UM</code> chip) rather than rolled-up unit subtotals; this build shows individual rows. (2) <b>"% of annual goal" pace marker</b> — confirm the heat compares YTD vs <b>straight-line time-elapsed</b> (≈46% at mid-June) vs a goal-curve; straight-line is drawn. Tenure, persistency band, and the fan-out scope are <b>verified</b>, not flagged.</p>
+  </div>
+
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · manager scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">TeamPerfRoster</div><div class="cd">Sticky-header, pinned-Name table; 8 columns; click-to-sort with asc/desc + arrow. MasterSheet scaffold.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">PeriodFilter</div><div class="cd">Grain (Year/Month/Week) + period picker. Scopes the four production columns only.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">TenureCell</div><div class="cd">"3y 2m" + contractDate secondary; sorts by underlying date. Derived from existing field.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">PersBandCell</div><div class="cd">Two-tick band (80 floor / 90 gate) + colored %. Reused grammar &amp; thresholds.</div><div class="co"><span class="ptag exist">REUSE</span></div></div>
+    <div class="crow"><div class="cn">GoalHeatCell</div><div class="cd">YTD API ÷ committed annual target, heat fill + pace marker, "—" fallback. AA floor.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">rosterPeriodGet</div><div class="cd">Per-agent period production over the roster (UM unit / BM branch). Fan-out pattern.</div><div class="co"><span class="ptag exist">EXISTING</span></div></div>
+  </div>
+
+</div>
+
+<script>
+const NOW = new Date(2026, 5, 17); // Jun 17 2026
+// ── team (deterministic). contract = [y,m,d]. ytdApiSub = Jan–Jun 2026 submitted API (TTD).
+const TEAM = [
+  { name:'Selina Mohammed', init:'SM', unit:'S·01', role:null,  contract:[2019,11,4], ytdApiSub:412000, persPct:94, target:400000, persBook:true },
+  { name:'Anand Persad',    init:'AP', unit:'S·02', role:'UM',  contract:[2017, 4,18],ytdApiSub:288000, persPct:86, target:370000, persBook:true },
+  { name:'Marsha Singh',    init:'MS', unit:'S·02', role:null,  contract:[2021, 2,9], ytdApiSub:264000, persPct:91, target:250000, persBook:true },
+  { name:'Devin Lewis',     init:'DL', unit:'S·03', role:null,  contract:[2023, 3,27],ytdApiSub:118000, persPct:72, target:220000, persBook:true },
+  { name:'Priya Naidu',     init:'PN', unit:'S·01', role:null,  contract:[2024, 9,2], ytdApiSub:96000,  persPct:78, target:null,   persBook:true },
+  { name:'Rohan Boodoo',    init:'RB', unit:'S·02', role:null,  contract:[2022, 7,15],ytdApiSub:154000, persPct:88, target:200000, persBook:true },
+  { name:'Kavita Ramnarine',init:'KR', unit:'S·03', role:'UM',  contract:[2016, 1,11],ytdApiSub:301000, persPct:93, target:330000, persBook:true },
+  { name:'Jared Khan',      init:'JK', unit:'S·01', role:null,  contract:[2025, 1,6], ytdApiSub:62000,  persPct:84, target:150000, persBook:true },
+  { name:'Leah Joseph',     init:'LJ', unit:'S·03', role:null,  contract:[2020, 8,22],ytdApiSub:208000, persPct:96, target:190000, persBook:true },
+  { name:'Omar Ali',        init:'OA', unit:'S·02', role:null,  contract:[2018,10,3], ytdApiSub:176000, persPct:90, target:240000, persBook:true },
+  { name:'Tessa Garcia',    init:'TG', unit:'S·01', role:null,  contract:[2024, 4,29],ytdApiSub:71000,  persPct:0,  target:160000, persBook:false },
+];
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+// elapsed months of 2026 at NOW ≈ 5.55 → straight-line pace
+const PACE = (5 + 17/30) / 12;
+
+// ── derive production for a member at a given grain/period index
+// figures shipped as period GETs; here a plausible deterministic split of the YTD.
+function production(m, grain){
+  if (m.ytdApiSub === 0) return { apiSub:0, appsSub:0, apiIss:0, appsIss:0 };
+  let apiSub;
+  if (grain === 'year')  apiSub = m.ytdApiSub;
+  else if (grain === 'month') apiSub = Math.round(m.ytdApiSub / 5.55);
+  else apiSub = Math.round(m.ytdApiSub / 5.55 / 4.33);
+  const ratePer1k = 0.31; // ~ apps per TTD1k of API, modulated by member
+  const mod = 0.85 + ((m.init.charCodeAt(0)+m.init.charCodeAt(1)) % 5) * 0.06;
+  const appsSub = Math.max(1, Math.round(apiSub/1000 * ratePer1k * mod));
+  const issRatio = 0.84 + ((m.init.charCodeAt(1)) % 6) * 0.015; // 0.84–0.92
+  const apiIss = Math.round(apiSub * issRatio);
+  const appsIss = Math.max(1, Math.round(appsSub * issRatio));
+  return { apiSub, appsSub, apiIss, appsIss };
+}
+
+function ttd(n){
+  if (n >= 1_000_000) return (n/1_000_000).toFixed(2)+'M';
+  if (n >= 1_000) return Math.round(n/1000)+'K';
+  return ''+Math.round(n);
+}
+function tenureStr(c){
+  let months = (NOW.getFullYear()-c[0])*12 + (NOW.getMonth()-(c[1]-1));
+  if (NOW.getDate() < c[2]) months -= 1;
+  const y = Math.floor(months/12), mo = months%12;
+  return y+'y '+mo+'m';
+}
+function contractDateStr(c){ return c[2]+' '+MONTHS[c[1]-1]+' '+c[0]; }
+function contractMs(c){ return new Date(c[0], c[1]-1, c[2]).getTime(); }
+function persBand(p){ return p>=90?'ok':p>=80?'watch':'below'; }
+function persColor(p){ return p>=90?'var(--success)':p>=80?'var(--warning)':'var(--danger)'; }
+
+// ── columns
+const COLS = [
+  { key:'name',   label:'Name',            sortType:'str',  pin:true },
+  { key:'tenure', label:'Tenure',          sortType:'date' },
+  { key:'apiSub', label:'API submitted',   sortType:'num', num:true, money:true, grp:'sub' },
+  { key:'appsSub',label:'Apps submitted',  sortType:'num', num:true, grp:'sub' },
+  { key:'apiIss', label:'API issued',      sortType:'num', num:true, money:true, grp:'iss' },
+  { key:'appsIss',label:'Apps issued',     sortType:'num', num:true, grp:'iss' },
+  { key:'pers',   label:'Persistency',     sortType:'num', num:true },
+  { key:'goal',   label:'% of annual goal',sortType:'num', num:true },
+];
+
+let state = { grain:'year', periodIdx:{ year:2026, month:5, week:23 }, sortKey:'name', sortDir:'asc' };
+
+function periodLabel(){
+  if (state.grain==='year') return ''+state.periodIdx.year;
+  if (state.grain==='month') return MONTHS[state.periodIdx.month]+' 2026';
+  return 'Wk '+state.periodIdx.week+' · 2026';
+}
+// which calendar month the persistency reflects
+function persMonthLabel(){
+  if (state.grain==='year') return 'Jun';
+  if (state.grain==='month') return MONTHS[state.periodIdx.month];
+  return 'Jun';
+}
+
+function sortVal(m, key){
+  if (key==='name') return m.name.toLowerCase();
+  if (key==='tenure') return contractMs(m.contract); // earlier date = longer tenure
+  if (key==='pers') return m.persBook ? m.persPct : -1;
+  if (key==='goal') return m.target ? (m.ytdApiSub/m.target) : -1;
+  const p = production(m, state.grain); return p[key];
+}
+
+function rowsSorted(){
+  const arr = TEAM.slice();
+  const dir = state.sortDir==='asc' ? 1 : -1;
+  arr.sort((a,b)=>{
+    let va = sortVal(a, state.sortKey), vb = sortVal(b, state.sortKey);
+    // tenure: ascending = newest first by default? we sort by date asc = longest-ago first.
+    if (va<vb) return -1*dir; if (va>vb) return 1*dir; return a.name<b.name?-1:1;
+  });
+  return arr;
+}
+
+function renderHead(){
+  const hrow = document.getElementById('hrow');
+  hrow.innerHTML = COLS.map(c=>{
+    const active = state.sortKey===c.key;
+    const car = active ? (state.sortDir==='asc'?'▲':'▼') : '';
+    const grpCls = c.grp==='sub'?'gsubcol':c.grp==='iss'?'gisscol':'';
+    const pinCls = c.pin?'pinL':'';
+    return `<th class="${grpCls} ${pinCls}"><button class="sortbtn ${c.num?'num':''} ${active?'active':''}" data-key="${c.key}">${c.num?`<span class="car">${car}</span>${c.label}`:`${c.label}<span class="car">${car}</span>`}</button></th>`;
+  }).join('');
+  hrow.querySelectorAll('.sortbtn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const k = b.dataset.key;
+      if (state.sortKey===k){ state.sortDir = state.sortDir==='asc'?'desc':'asc'; }
+      else { state.sortKey=k; state.sortDir = (k==='name'||k==='tenure')?'asc':'desc'; }
+      render();
+    });
+  });
+}
+
+function cellNum(val, money, dim){
+  if (dim) return `<td class="num dim ${money?'':''}">—</td>`;
+  if (money) return `<td class="num"><span class="unit">TTD</span>${ttd(val)}</td>`;
+  return `<td class="num">${val.toLocaleString()}</td>`;
+}
+
+function render(){
+  renderHead();
+  const tb = document.getElementById('tbody');
+  const rows = rowsSorted();
+  tb.innerHTML = rows.map((m,i)=>{
+    const p = production(m, state.grain);
+    const empty = p.apiSub===0;
+    const zebra = i%2===1?'zebra':'';
+    // name
+    const mgr = m.role==='UM';
+    const nameCell = `<td class="pinL"><div class="who"><div class="av ${mgr?'mgr':''}">${m.init}</div><div><div class="nm">${m.name}</div><div class="un">${m.unit}${mgr?' <span class="rolechip">UM</span>':''}</div></div></div></td>`;
+    // tenure
+    const tenCell = `<td class="ten"><div class="big">${tenureStr(m.contract)}</div><div class="sub">${contractDateStr(m.contract)}</div></td>`;
+    // production (period-scoped)
+    const prod = `
+      <td class="subcol num ${empty?'dim':''}">${empty?'—':`<span class="unit">TTD</span>${ttd(p.apiSub)}`}</td>
+      <td class="num ${empty?'dim':''}">${empty?'—':p.appsSub.toLocaleString()}</td>
+      <td class="isscol num ${empty?'dim':''}">${empty?'—':`<span class="unit">TTD</span>${ttd(p.apiIss)}`}</td>
+      <td class="num ${empty?'dim':''}">${empty?'—':p.appsIss.toLocaleString()}</td>`;
+    // persistency
+    let persC;
+    if (!m.persBook){ persC = `<td><div class="perscell"><span class="pv" style="color:var(--inkFaint)">—</span></div></td>`; }
+    else {
+      const band = persBand(m.persPct);
+      persC = `<td><div class="perscell"><span class="pv" style="color:${persColor(m.persPct)}">${m.persPct}%</span><div class="track"><div class="fill ${band}" style="width:${m.persPct}%"></div><div class="floor"></div><div class="gate"></div></div></div></td>`;
+    }
+    // goal
+    let goalC;
+    if (!m.target){ goalC = `<td><div class="goalcell none"><span class="gv">—</span></div></td>`; }
+    else {
+      const pct = m.ytdApiSub/m.target;
+      const ahead = pct >= PACE;
+      const w = Math.min(100, pct*100);
+      goalC = `<td><div class="goalcell"><span class="gv" style="color:${ahead?'var(--success)':'var(--warning)'}">${Math.round(pct*100)}%</span><div class="gtrack"><div class="gfill ${ahead?'ahead':'behind'}" style="width:${w}%"></div><div class="pace" style="left:${Math.round(PACE*100)}%"></div></div></div></td>`;
+    }
+    return `<tr class="${zebra}">${nameCell}${tenCell}${prod}${persC}${goalC}</tr>`;
+  }).join('');
+
+  // footer + filter labels
+  document.getElementById('periodVal').textContent = periodLabel();
+  document.getElementById('footCount').textContent = TEAM.length+' team members · '+(state.grain==='year'?'YTD '+state.periodIdx.year:periodLabel());
+  document.getElementById('footScope').textContent = 'Persistency reflects '+persMonthLabel()+' · Name pinned ←→';
+  document.querySelectorAll('#grain .g').forEach(g=>g.classList.toggle('on', g.dataset.g===state.grain));
+}
+
+// ── filter interactions
+document.querySelectorAll('#grain .g').forEach(g=>{
+  g.addEventListener('click', ()=>{ state.grain=g.dataset.g; render(); });
+});
+function step(dir){
+  if (state.grain==='year') state.periodIdx.year += dir;
+  else if (state.grain==='month'){ state.periodIdx.month = (state.periodIdx.month+dir+12)%12; }
+  else { state.periodIdx.week = Math.max(1, Math.min(52, state.periodIdx.week+dir)); }
+  render();
+}
+document.getElementById('prev').addEventListener('click', ()=>step(-1));
+document.getElementById('next').addEventListener('click', ()=>step(1));
+
+// ── theme
+const themeBtn = document.getElementById('themeBtn');
+function applyTheme(dark){
+  document.body.classList.toggle('dark', dark);
+  document.getElementById('themeLbl').textContent = dark?'Light':'Dark';
+  try{ localStorage.setItem('tpr-theme', dark?'dark':'light'); }catch(e){}
+}
+themeBtn.addEventListener('click', ()=> applyTheme(!document.body.classList.contains('dark')));
+try{ if(localStorage.getItem('tpr-theme')==='dark') applyTheme(true); }catch(e){}
+
+render();
+</script>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

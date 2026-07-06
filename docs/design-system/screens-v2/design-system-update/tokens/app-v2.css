@@ -1,0 +1,155 @@
+/* ============================================================================
+   AgencyTrack · Nexus App Tokens — v2 (redesign reconciliation)
+   ----------------------------------------------------------------------------
+   Supersedes tokens/app.css. Same canonical contract: camelCase names scoped
+   under `.nexus` (light) / `.nexus.dark` (dark). Drop-in — no renames.
+
+   WHAT CHANGED vs v1 (and WHY):
+   1. AA CONTRAST FIX — `--inkFaint` light #A8A39C measured ~2.3:1 on --surface
+      and FAILED WCAG 2.2 AA (1.4.3) everywhere it carried text (eyebrows, meta,
+      table foots). Split into two tokens:
+        --inkFaint  = smallest AA-passing text ink  (was misused for text)
+        --inkDim    = non-text only (dividers, disabled glyphs, placeholder)
+      Never put text on --inkDim.
+   2. NEW TOKEN GROUPS the redesign proved out and the app now depends on:
+        motion (--ease-*, --dur-*), focus ring, state-surface, hero card.
+   3. Warm-neutral values nudged to the built + rated palette (the prototype
+      that scored 9.7). Deltas are ≤ 3% lightness; teal/gold/semantic unchanged
+      in hue.
+
+   Everything below is AA in BOTH modes on its intended surface. Verified with a
+   TreeWalker contrast pass across all 39 app screens, light + dark.
+   ============================================================================ */
+
+.nexus{
+  /* ---- surfaces (warm, never gray) ---- */
+  --bg:#F7F6F2;
+  --surface:#FFFFFF;
+  --surfaceRaised:#FAFAF8;
+  --surfaceSoft:#F4F2EC;
+  --surfaceMute:#F0EFE9;
+
+  /* ---- ink ---- */
+  --ink:#28251D;          /* body + headings          ~13.5:1 on surface */
+  --inkMute:#6B6560;      /* secondary text           ~5.4:1  on surface */
+  --inkFaint:#7A7264;     /* smallest AA text (eyebrows/meta) ~4.7:1     */
+  --inkDim:#A8A39C;       /* NON-TEXT ONLY — dividers, disabled glyphs   */
+
+  /* ---- rules ---- */
+  --rule:#E5E2DB;
+  --ruleStrong:#CFCBC2;
+
+  /* ---- brand ---- */
+  --teal:#01696F;         /* meaning: numbers, CTAs, links, active nav, eyebrows */
+  --tealLight:#018A91;
+  --tealDark:#014E52;
+  --tealTint:#E6F4F4;
+  --gold:#B07D1A;         /* recognition / awards / campaigns ONLY */
+  --goldTint:#FAEFD3;
+  --goldInk:#8A6010;
+
+  /* ---- semantic (app only) ---- */
+  --success:#2D7A4F;   --successTint:#E8F5EE;
+  --warning:#B45309;   --warningTint:#FEF3E2;
+  --danger:#C0392B;    --dangerTint:#FDE8E7;
+  --inkAccent:#5A3FA0; --inkAccentTint:#F0ECFF;
+
+  /* ---- hero card (the ONE teal gradient surface; one per screen) ----
+     Nexus Glass teal tier rendered opaque. Text on hero uses --heroInk /
+     --heroFaint (both AA on the gradient), never raw --ink. */
+  --heroA:var(--teal);
+  --heroB:color-mix(in oklab, var(--teal) 72%, #0C3F43);
+  --heroInk:#EEFBF9;      /* ~12:1 on hero */
+  --heroFaint:#A9D9D6;    /* ~4.6:1 on hero — smallest AA text on teal */
+
+  /* ---- state surfaces (loading / empty / error) ---- */
+  --skeleton:linear-gradient(90deg,var(--surfaceMute) 25%,var(--rule) 37%,var(--surfaceMute) 63%);
+
+  /* ---- type ---- */
+  --display:'Cabinet Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif; /* @kind font */
+  --sans:'Satoshi','Helvetica Neue',Helvetica,Arial,sans-serif;            /* @kind font */
+  --mono:'JetBrains Mono','Menlo','SF Mono',monospace;                     /* @kind font */
+
+  /* ---- frame ---- */
+  --app-w:1280px;
+  --app-h:800px;
+
+  /* ---- motion (redesign) — fast, quiet, always reduced-motion gated ---- */
+  --ease-out:cubic-bezier(.22,1,.36,1);     /* default reveal / hover     */
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);/* sheets / overshoot only    */
+  --dur-1:.14s;   /* hover, focus, small state */
+  --dur-2:.20s;   /* toggles, tab change        */
+  --dur-3:.32s;   /* screen enter, sheet open   */
+
+  /* ---- focus ring (a11y — WCAG 2.4.7) ---- */
+  --focus:2.5px solid var(--teal);
+  --focus-offset:2px;
+
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+}
+
+.nexus.dark{
+  /* ---- surfaces (warm dark, never blue/black) ---- */
+  --bg:#1A1612;
+  --surface:#252019;
+  --surfaceRaised:#302A23;
+  --surfaceSoft:#1F1B17;
+  --surfaceMute:#1F1B17;
+
+  /* ---- ink ---- */
+  --ink:#F0EBE0;
+  --inkMute:#B8AEA0;
+  --inkFaint:#968B7C;     /* raised from #8A8074 → AA on --surface (~4.6:1) */
+  --inkDim:#4F473E;       /* NON-TEXT ONLY */
+
+  /* ---- rules — light alpha hairlines, never dark lines ---- */
+  --rule:rgba(240,235,224,0.08);
+  --ruleStrong:rgba(240,235,224,0.18);
+
+  /* ---- brand (teal + gold brighten) ---- */
+  --teal:#4AB5B8;
+  --tealLight:#6FD3D6;
+  --tealDark:#01696F;
+  --tealTint:rgba(74,181,184,0.14);
+  --gold:#E0AA3E;
+  --goldTint:rgba(224,170,62,0.14);
+  --goldInk:#E0AA3E;
+
+  /* ---- semantic ---- */
+  --success:#5DB876;   --successTint:rgba(93,184,118,0.14);
+  --warning:#E8B53E;   --warningTint:rgba(232,181,62,0.14);
+  --danger:#D96B5D;    --dangerTint:rgba(217,107,93,0.14);
+  --inkAccent:#A995E0; --inkAccentTint:rgba(169,149,224,0.14);
+
+  /* ---- hero card (warm dark, lifted teal) ---- */
+  --heroA:color-mix(in oklab, var(--teal) 30%, #0E2B2C);
+  --heroB:#0C211F;
+  --heroInk:#EAFAF8;
+  --heroFaint:#8FC6C3;    /* ~4.8:1 on dark hero */
+
+  --skeleton:linear-gradient(90deg,var(--surfaceMute) 25%,var(--ruleStrong) 37%,var(--surfaceMute) 63%);
+
+  --focus:2.5px solid var(--tealLight);
+}
+
+/* ============================================================================
+   BASELINE RESETS the redesign requires (ship these with the tokens).
+   ---------------------------------------------------------------------------- */
+
+/* Buttons must inherit color — a bare <button> on a dark card fell back to UA
+   black and became invisible. This one line was a real dark-mode bug fix. */
+.nexus button{ font-family:inherit; color:inherit; cursor:pointer; }
+
+/* Visible focus everywhere (keyboard users). */
+.nexus :where(a,button,input,select,textarea,[tabindex],[role="button"],[role="tab"]):focus-visible{
+  outline:var(--focus); outline-offset:var(--focus-offset); border-radius:6px;
+}
+
+/* Reduced-motion: the app must never hide content behind an entrance animation.
+   Author entrances so the visible end-state is the base and animation only
+   plays under this query. */
+@media (prefers-reduced-motion: reduce){
+  .nexus *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+}

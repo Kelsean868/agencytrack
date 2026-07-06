@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Policy Reconciliation v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 660px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Policy Reconciliation v2 — confirm Tatil settlements against the ledger</h1>
+    <p>
+      The trust gate beneath the ledger. An agent marks a policy <b>Settled</b> with the figures they submitted; the Unit/Branch Manager keys in the <b>actual figure from Tatil's settlement report</b> and confirms. A clean match confirms in one tap — any <b>discrepancy</b> (amount, partial, status conflict, period, duplicate, missing, or an unmatched settlement Tatil sent with no ledger entry) becomes an exception to dispute, resolve, add, or escalate. It matters because <b>confirmed API feeds commissions, awards, persistency, and campaign payouts</b> — so the surface leads with <b>TTD at risk</b> and spells out the downstream impact on each record. Manager worklist + side-by-side compare drawer, plus the agent's own "my settlements" view. Desktop light + dark, plus mobile (manager &amp; agent). <b>Teal = ledger · gold = confirmed value · red = at risk.</b>
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="manager-v2-shared.jsx"></script>
+  <script type="text/babel" src="reconcile-v2-shared.jsx"></script>
+  <script type="text/babel" src="reconcile-v2-desktop.jsx"></script>
+  <script type="text/babel" src="reconcile-v2-mobile.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="manager"
+            title="Policy Reconciliation — manager (desktop, branch_manager)"
+            subtitle="Leads with TTD at risk this cycle, then a worklist of settled records: clean matches ready to confirm in one tap, plus every exception type. Each row shows Submitted → Tatil settled with the delta. Light + dark."
+          >
+            <DCArtboard id="m-light" label="01 · Light · Reconciliation worklist" width={APP_W} height={APP_H}>
+              <PolicyReconScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="m-dark" label="02 · Dark · Reconciliation worklist" width={APP_W} height={APP_H}>
+              <PolicyReconScene t={APP_DARK} />
+            </DCArtboard>
+            <DCArtboard id="m-exc" label="03 · Light · Exceptions filter" width={APP_W} height={APP_H}>
+              <PolicyReconScene t={APP_LIGHT} filter="exceptions" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="drawer"
+            title="Reconcile a record — side-by-side compare"
+            subtitle="The drawer puts the ledger submission next to Tatil's figure field by field, computes the delta, shows the downstream impact (which awards/campaigns it feeds), and offers the right resolution actions for that discrepancy type."
+          >
+            <DCArtboard id="dr-amount" label="04 · Light · Amount mismatch (dispute)" width={APP_W} height={APP_H}>
+              <PolicyReconScene t={APP_LIGHT} drawer="r3" />
+            </DCArtboard>
+            <DCArtboard id="dr-status" label="05 · Light · Status conflict (NTU)" width={APP_W} height={APP_H}>
+              <PolicyReconScene t={APP_LIGHT} drawer="r5" />
+            </DCArtboard>
+            <DCArtboard id="dr-missing" label="06 · Dark · Missing settlement (key-in)" width={APP_W} height={APP_H}>
+              <PolicyReconScene t={APP_DARK} drawer="r8" />
+            </DCArtboard>
+            <DCArtboard id="dr-clean" label="07 · Light · Clean match (confirm)" width={APP_W} height={APP_H}>
+              <PolicyReconScene t={APP_LIGHT} drawer="r1" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Reconciliation (mobile)"
+            subtitle="Manager queue and the agent's own 'my settlements' view — the agent side that lets an advisor see how Tatil settled each policy vs what they submitted, confirmed value locked, and what's in dispute."
+          >
+            <DCArtboard id="mob-mgr" label="08 · Light · Manager queue" width={M_W} height={M_H}>
+              <ReconMgrMobile t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="mob-agent" label="09 · Light · Agent · my settlements" width={M_W} height={M_H}>
+              <ReconAgentMobile t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="mob-agent-dark" label="10 · Dark · Agent · my settlements" width={M_W} height={M_H}>
+              <ReconAgentMobile t={APP_DARK} />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

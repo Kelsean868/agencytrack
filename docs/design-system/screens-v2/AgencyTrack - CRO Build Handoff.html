@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AgencyTrack — CRO Build Handoff</title>
+<link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/tokens/fonts.css" />
+<style>
+  doc-page:not(:defined){ visibility:hidden; }
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#7A7264; --inkDim:#A8A39C;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif;
+    --sans:'Satoshi','Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'JetBrains Mono','Menlo','SF Mono',monospace;
+  }
+  doc-page{ color:var(--ink); font-family:var(--sans); font-size:var(--doc-fs,12.2px); line-height:1.62; background:var(--surface); }
+  h1,h2,h3,h4{ font-family:var(--display); letter-spacing:-.02em; color:var(--ink); line-height:1.1; }
+  h1{ font-size:30px; font-weight:800; margin:0 0 4px; }
+  h2{ font-size:19px; font-weight:800; margin:32px 0 4px; padding-top:15px; border-top:2px solid var(--ink); }
+  h3{ font-size:14.5px; font-weight:700; margin:19px 0 6px; }
+  h4{ font-size:12.5px; font-weight:700; margin:13px 0 4px; }
+  p{ margin:7px 0; }
+  strong{ font-weight:700; }
+  em{ color:var(--inkMute); }
+  a{ color:var(--teal); }
+  code, .mono{ font-family:var(--mono); font-size:.9em; }
+  code{ background:var(--surfaceMute); border:1px solid var(--rule); border-radius:5px; padding:1px 5px; color:var(--tealDark); }
+  .eyebrow{ font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--teal); }
+  .lede{ font-size:13.5px; color:var(--inkMute); line-height:1.6; max-width:64ch; }
+  .doc-meta{ font-family:var(--mono); font-size:10.5px; color:var(--inkFaint); letter-spacing:.04em; text-transform:uppercase; margin-top:8px; }
+
+  .callout{ border:1px solid var(--rule); border-left:3px solid var(--teal); background:var(--surfaceRaised); border-radius:10px; padding:12px 15px; margin:14px 0; }
+  .callout--gold{ border-left-color:var(--gold); }
+  .callout--danger{ border-left-color:var(--danger); }
+  .callout--good{ border-left-color:var(--success); }
+  .callout h4{ margin:0 0 4px; }
+  .callout p{ margin:3px 0; font-size:12px; }
+
+  table{ border-collapse:collapse; width:100%; margin:12px 0; font-size:11px; }
+  th,td{ text-align:left; padding:7px 9px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th{ font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--inkFaint); border-bottom:1.5px solid var(--ruleStrong); background:var(--surfaceMute); }
+  tbody tr:nth-child(even){ background:var(--surfaceRaised); }
+  td.scr{ font-weight:700; white-space:nowrap; }
+  td.mono{ font-family:var(--mono); font-size:9.6px; color:var(--inkMute); }
+
+  .badge{ display:inline-block; font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:20px; white-space:nowrap; }
+  .b-new{ background:var(--dangerTint); color:var(--danger); }
+  .b-ship{ background:var(--successTint); color:var(--success); }
+  .b-verify{ background:var(--warningTint); color:var(--warning); }
+  .b-teal{ background:var(--tealTint); color:var(--tealDark); }
+  .b-gold{ background:var(--goldTint); color:var(--goldInk); }
+
+  ul,ol{ margin:7px 0; padding-left:20px; }
+  li{ margin:3px 0; }
+  .tight li{ margin:1px 0; }
+
+  .phase{ border:1px solid var(--rule); border-radius:12px; padding:13px 16px; margin:10px 0; background:var(--surfaceRaised); break-inside:avoid; }
+  .phase-h{ display:flex; align-items:baseline; gap:10px; }
+  .phase-n{ font-family:var(--display); font-weight:800; font-size:15px; color:var(--teal); }
+  .phase-t{ font-family:var(--display); font-weight:700; font-size:14px; }
+  .phase-tag{ margin-left:auto; font-family:var(--mono); font-size:9.5px; color:var(--inkFaint); text-transform:uppercase; letter-spacing:.08em; }
+
+  .kv{ display:grid; grid-template-columns:auto 1fr; gap:2px 14px; font-size:11.5px; margin:8px 0; }
+  .kv dt{ font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--inkFaint); padding-top:2px; white-space:nowrap; }
+  .kv dd{ margin:0; }
+
+  pre.code{ background:var(--ink); color:#EDE9DF; border-radius:9px; padding:12px 14px; font-family:var(--mono); font-size:9.4px; line-height:1.55; overflow-x:auto; margin:10px 0; white-space:pre; }
+  pre.code .c{ color:#8FB7A9; } pre.code .k{ color:#E0AA3E; } pre.code .s{ color:#9FD0C7; }
+
+  .flow{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:10px 0; font-family:var(--mono); font-size:9.5px; }
+  .flow .st{ padding:4px 9px; border-radius:20px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+  .flow .ar{ color:var(--inkDim); font-weight:700; }
+  .st-teal{ background:var(--tealTint); color:var(--tealDark); }
+  .st-warn{ background:var(--warningTint); color:var(--warning); }
+  .st-ok{ background:var(--successTint); color:var(--success); }
+  .st-bad{ background:var(--dangerTint); color:var(--danger); }
+
+  .legend{ display:flex; flex-wrap:wrap; gap:8px 16px; font-size:10.5px; color:var(--inkMute); margin:8px 0 2px; }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .foot{ font-size:10px; color:var(--inkFaint); }
+  h2,h3,.phase,table,.callout,pre.code{ break-inside:avoid; }
+  .run-foot{ display:flex; justify-content:space-between; font-family:var(--mono); font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--inkFaint); border-top:1px solid var(--rule); padding-top:6px; }
+</style>
+</head>
+<body>
+<doc-page size="letter" margin="0.7in">
+
+  <div slot="footer" class="run-foot">
+    <span>AgencyTrack · Nexus App</span>
+    <span>CRO Build Handoff</span>
+    <span>Confidential · Internal</span>
+  </div>
+
+  <p class="eyebrow">Build handoff · net-new surface + v2 finish</p>
+  <h1>CRO / Back-Office — Build Handoff</h1>
+  <p class="lede">The reconcile left exactly one screen that isn't in the repo: the <strong>CRO / back-office</strong> role and its <strong>Delivery Register + 30-day clawback clock</strong>. This turns the existing CRO mockup into a repo-buildable spec, grounded in the app's real routing, nav, and service patterns — plus short verify-only notes for the two things people thought were left (Agent Dashboard J2 and the emails) that are in fact already shipped.</p>
+  <p class="doc-meta">Design source: <code>AgencyTrack CRO.html</code> (16 artboards) · Target: Kelsean868/agencytrack@main · React 19 + Tailwind + Firebase</p>
+
+  <h2>0 · What's actually left</h2>
+  <table>
+    <thead><tr><th style="width:24%">Item</th><th style="width:14%">Status</th><th>Reality</th></tr></thead>
+    <tbody>
+      <tr><td class="scr">CRO surface</td><td><span class="badge b-new">Build</span></td><td>No <code>cro</code> role branch in <code>App.jsx</code>; Delivery Register + clawback clock are net-new. <strong>This doc.</strong></td></tr>
+      <tr><td class="scr">Agent Dashboard J2</td><td><span class="badge b-ship">Shipped</span></td><td>Renders <code>AgentDashboardHomeV2</code>; Planning/Tools/Recognition groups already in <code>navConfig.js</code>; GoalCarousel/ActivityFeed/BadgeGrid landed. <strong>Verify vs mockup only.</strong></td></tr>
+      <tr><td class="scr">Transactional emails</td><td><span class="badge b-ship">Shipped</span></td><td>Templates already on the v2 palette + table layout + <code>{{vars}}</code>. <strong>Verify vs mockup only.</strong></td></tr>
+      <tr><td class="scr">Multi-branch AOM · kiosk users-list</td><td><span class="badge b-verify">Data FU</span></td><td>Banked data-model follow-ups, not screens. §6.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>1 · CRO — the surface</h2>
+  <p>The <strong>Customer Relationship Officer</strong> is the branch's operational hub and the human at the ledger's point of entry (<em>Anessa Baptiste, South Branch</em> in the mockup). She receives printed policies from head office, tracks collection + delivery against the clawback clock, data-enters every policy into Tatil, issues + settles the two branch products, and compiles the Friday 4pm production report.</p>
+  <div class="callout callout--gold">
+    <h4>The mechanic — the 30-day clawback clock</h4>
+    <p>Commission is withheld and <strong>clawed back if a policy isn't delivered within 30 days of the date head office dispatched it</strong> (the <code>sent</code> date). A client may also decline in that window (<strong>Not Taken</strong>). <code>daysLeft = 30 − daysOut</code>; <strong>at-risk ≤ 7 days left</strong>; <strong>overdue &lt; 0</strong>. Color language: <span class="badge b-teal">teal · pipeline</span> <span class="badge b-verify">amber · at-risk</span> <span class="badge b-new">red · clawed/overdue</span> <span class="badge b-gold">gold · branch-issued</span>.</p>
+  </div>
+  <h4>Eight surfaces (from the mockup)</h4>
+  <table>
+    <thead><tr><th style="width:22%">Surface</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td class="scr">Branch Desk</td><td>Daily landing — at-risk deliveries, business to enter, branch products to settle, weekly-report status; each a one-tap jump.</td></tr>
+      <tr><td class="scr">Delivery Register ★</td><td><strong>The hero.</strong> Digital delivery book: every policy + its clawback clock; filter in-delivery / at-risk / closed; row → lifecycle drawer.</td></tr>
+      <tr><td class="scr">Lifecycle drawer</td><td>Advance a policy through its states; shows the clock, dispatch memo, next action, and the Not Taken / Undeliverable exits.</td></tr>
+      <tr><td class="scr">Submissions</td><td>Data-entry queue — every policy keyed into Tatil; branch-issued (Annuity, Funeral Expense) flagged gold.</td></tr>
+      <tr><td class="scr">Settlements</td><td>Issue + settle Annuities & Funeral Expense at the branch; record returned issue/settlement dates for the rest. Writes to the ledger.</td></tr>
+      <tr><td class="scr">Delivery Metrics</td><td>Avg days-to-deliver, % on-time, commission at risk to delay — by agent/unit.</td></tr>
+      <tr><td class="scr">Weekly Report</td><td>Friday 4pm compile/send; live preview of the report that feeds Monday's meeting slide.</td></tr>
+      <tr><td class="scr">Mobile (CRO + Agent)</td><td>CRO phone register (at-risk first); the <strong>agent's own "policies to deliver"</strong> view with the same clocks — what the weekly wizard's "policies outstanding" reads.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2 · Routing & role</h2>
+  <p><code>App.jsx</code> is a role switch on <code>useAuth().role</code> (no router). Add a <code>cro</code> branch, lazy-loaded behind the existing <code>&lt;Suspense&gt;</code> + <code>ChunkLoadErrorBoundary</code>, mirroring <code>TenantAdminDashboard</code>.</p>
+  <pre class="code"><span class="c">// src/App.jsx — add the lazy import + one branch</span>
+<span class="k">const</span> CRODashboard = lazy(() => import(<span class="s">'./components/dashboard/CRODashboard'</span>));
+<span class="c">// …in AppRoot(), alongside the existing role branches:</span>
+} <span class="k">else if</span> (role === <span class="s">'cro'</span>) {
+  dashboard = &lt;CRODashboard /&gt;;   <span class="c">// branch-scoped, like a BM</span>
+}</pre>
+  <div class="callout callout--danger">
+    <h4>Human-merge + deploy gates (project policy)</h4>
+    <p>The role itself is a claims + rules change, <strong>not</strong> frontend-only:</p>
+    <ul class="tight" style="margin-top:4px">
+      <li><strong>Claims</strong> — <code>functions/index.js</code> <code>setUserClaims</code> + the creation matrix must allow <code>cro</code> (and who may create one — BM+ within their branch). <em>Human-merge + <code>firebase deploy --only functions</code>.</em></li>
+      <li><strong><code>firestore.rules</code></strong> — new <code>deliveries</code> read/write arms for the CRO, <strong>branch-scoped</strong> (<code>branch == request.auth.token.branchId</code>) exactly like the SEC-012 kiosk fix; agent read of own deliveries; manager read within branch. <em>Human-merge + <code>firebase deploy --only firestore:rules</code>.</em></li>
+      <li>Everything React/Tailwind ships on the normal Vercel PR path.</li>
+    </ul>
+  </div>
+
+  <h2>3 · Component map (new files, in-pattern)</h2>
+  <table>
+    <thead><tr><th style="width:34%">New file</th><th>Models on / reuses</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">dashboard/CRODashboard.jsx</td><td>Shell + <code>activeTab</code> switch — mirror <code>TenantAdminDashboard.jsx</code>. Wraps everything in <code>&lt;Shell&gt;</code>.</td></tr>
+      <tr><td class="mono">shell/navConfig.js → CRO_NAV</td><td>Add a <code>cro</code> config + <code>getNavConfig('cro')</code>. Groups from the mockup: <em>Branch Desk</em> · Operations (Delivery Register, Submissions, Settlements) · Branch (Weekly Report, Delivery Metrics). Live badges: at-risk count on Register, to-enter count on Submissions.</td></tr>
+      <tr><td class="mono">cro/DeliveryRegister.jsx</td><td>Dense table (<code>manager/MasterSheet.jsx</code> pattern) — scroll-in-card, sticky header, tabular nums, status pill + clock per row, filter tabs.</td></tr>
+      <tr><td class="mono">cro/DeliveryDrawer.jsx</td><td>Right-side lifecycle drawer — copy <code>submissions/SubmissionViewer.jsx</code> pattern. State timeline + next-action button + exits.</td></tr>
+      <tr><td class="mono">ui/ClawbackClock.jsx</td><td>Days-left meter (teal/amber/red). Small, reusable — also used on the agent view + Metrics.</td></tr>
+      <tr><td class="mono">cro/SubmissionsQueue.jsx</td><td>Data-entry list; gold flag for branch-issued.</td></tr>
+      <tr><td class="mono">cro/BranchSettlements.jsx</td><td>Reuse <code>manager/SettlementPanel.jsx</code> + <code>PolicyReconciliationPanel.jsx</code> patterns; writes settlement date to the ledger.</td></tr>
+      <tr><td class="mono">cro/WeeklyReportCompile.jsx</td><td>Reuse <code>productionReport/*</code> (ProductionTable / views) for the preview.</td></tr>
+      <tr><td class="mono">cro/DeliveryMetrics.jsx</td><td>KPI cards + per-agent rollup (<code>dashboard/KPICard.jsx</code>).</td></tr>
+      <tr><td class="mono">agent/DeliveriesToCollect.jsx</td><td>Agent's "policies to deliver" card/tab — same clocks; feeds the wizard's "policies outstanding". Add to <code>AGENT_NAV</code> or the Policy Ledger surface.</td></tr>
+    </tbody>
+  </table>
+  <p class="foot">Reuse everywhere: <code>Shell</code>, <code>ui/StatusPill</code>, <code>ui/Avatar</code>, <code>ui/ConfirmDialog</code>, <code>ToastProvider</code> (<code>useToast</code>), <code>utils/formatters.js</code> (<code>formatCurrency → TTD 5,000</code>). No new hex — use tokens.</p>
+
+  <h2>4 · Data model &amp; state machine</h2>
+  <h4>Delivery lifecycle</h4>
+  <div class="flow">
+    <span class="st st-teal">Received</span><span class="ar">→</span>
+    <span class="st st-teal">Notified</span><span class="ar">→</span>
+    <span class="st st-warn">Collected</span><span class="ar">→</span>
+    <span class="st st-warn">Out</span><span class="ar">→</span>
+    <span class="st st-ok">Delivered</span><span class="ar">→</span>
+    <span class="st st-ok">Receipt in</span>
+    <span class="ar" style="margin-left:10px">exits:</span>
+    <span class="st st-bad">Not Taken</span>
+    <span class="st st-bad">Undeliverable</span>
+    <span class="st st-bad">Clawed</span>
+  </div>
+  <p><code>open</code> states (Received → Out) count against the clock; terminal states close it. <code>Clawed</code> is the automatic terminal when an open policy passes 30 days.</p>
+  <h4>Firestore shape (suggested)</h4>
+  <pre class="code"><span class="c">tenants/{tid}/deliveries/{deliveryId}</span>
+{
+  policyNo, owner, product, plan, api,          <span class="c">// policy identity</span>
+  agentId, agentName, unitId, <span class="k">branchId</span>,        <span class="c">// scoping (branchId = auth clamp)</span>
+  sentDate,        <span class="c">// head-office dispatch — DRIVES the clock</span>
+  receivedDate, notifiedAt, collectedAt, outAt, deliveredAt, receiptInAt,
+  state,           <span class="c">// received | notified | collected | out | delivered | returned_receipt | not_taken | undeliverable | clawed</span>
+  settlementDate   <span class="c">// written back to policies/ ledger on delivery</span>
+}</pre>
+  <p><strong>Derived, never stored:</strong> <code>daysOut</code>, <code>daysLeft</code>, <code>atRisk</code>, <code>overdue</code> — compute from <code>sentDate</code> vs now (mirror <code>deliveryClock()</code> in the mockup). Constants: <code>CLAWBACK_DAYS = 30</code>, <code>AT_RISK_DAYS = 7</code>, <code>BRANCH_ISSUED = ['Annuity','Funeral Expense']</code>.</p>
+  <div class="callout">
+    <h4>Ledger write-back (the integration)</h4>
+    <p>Delivery confirmation writes <code>settlementDate</code> back to the policy in the <code>policies/</code> ledger — which is what feeds <strong>reconciliation, persistency, and campaigns</strong>. Keep the write in a <code>src/services/*</code> service (e.g. <code>deliveryService.js</code>), never a direct component query, passing <code>tenantId</code>. Branch-issued products (Annuity, Funeral Expense) also get issued + settled here.</p>
+  </div>
+
+  <h2>5 · Token bridge &amp; acceptance</h2>
+  <div class="kv">
+    <dt>t.teal / tealTint</dt><dd><code>primary</code> / <code>primary/10</code> — pipeline, active nav, links</dd>
+    <dt>t.warning / warningTint</dt><dd><code>warning</code> / <code>warning/10</code> — at-risk (≤7 days)</dd>
+    <dt>t.danger / dangerTint</dt><dd><code>danger</code> / <code>danger/10</code> — overdue / clawed / Not Taken</dd>
+    <dt>t.gold / goldTint</dt><dd><code>gold</code> / <code>gold-tint</code> — branch-issued only</dd>
+    <dt>t.surface / rule / ink*</dt><dd><code>card</code> / <code>border</code> / <code>ink</code>·<code>ink-muted</code>·<code>ink-faint</code></dd>
+  </div>
+  <h4>Definition of done</h4>
+  <ul class="tight">
+    <li>Register is a dense table: scroll-in-card, sticky header, tabular right-aligned nums, truncate-with-title.</li>
+    <li>Clawback clock meter on every open row; at-risk/overdue banding correct; live at-risk count badge in nav.</li>
+    <li>Lifecycle drawer advances state + writes timeline dates; Not Taken / Undeliverable exits present.</li>
+    <li>Settlement/delivery writes <code>settlementDate</code> back to the ledger via a service.</li>
+    <li>Reads branch-scoped; loading / empty / error on every data surface; light + dark; a11y CI green; 44px targets.</li>
+    <li>Agent "policies to deliver" mobile view renders the same clocks.</li>
+  </ul>
+
+  <h2>6 · Verify-only (already shipped) + data gaps</h2>
+  <h4><span class="badge b-ship">Shipped</span> Agent Dashboard J2 — diff, don't build</h4>
+  <p>Live: <code>AgentDashboard.jsx</code> → <code>AgentDashboardHomeV2</code> (Hero + PulseStrip + Recent + activity feed), nav groups in <code>navConfig.js</code> (Today / Planning / Tools / Recognition), <code>GoalCarousel</code> + <code>GoalDonut</code>, <code>ActivityFeed</code>, <code>BadgeGrid</code>, <code>NewAgentEmptyState</code>. <strong>Task:</strong> open <code>AgencyTrack Agent Dashboard v2.html</code> beside <code>HomeV2/</code> and log any visual drift — no structural work expected.</p>
+  <h4><span class="badge b-ship">Shipped</span> Emails — diff, don't build</h4>
+  <p><code>functions/email-templates/*.html</code> already use the warm palette (<code>#f7f6f2</code>/<code>#01696f</code>/<code>#28251d</code>/<code>#e5e2db</code>), accent stripe, table layout, and <code>{{vars}}</code> via <code>utils/email.js</code>. <strong>Task:</strong> diff against <code>AgencyTrack Emails.html</code>; confirm <code>sunday-nudge</code> / <code>compliance-*</code> parity; keep each <code>.txt</code> part in sync.</p>
+  <h4><span class="badge b-verify">Data FU</span> Not screens</h4>
+  <ul class="tight">
+    <li><strong>Multi-branch Agent-of-Month</strong> — per-branch docs. <em>Blocks second-branch onboarding.</em></li>
+    <li><strong>Branch-scoped kiosk users-list</strong> — restore real names (deferred during SEC-012 to avoid opening a new authz surface).</li>
+  </ul>
+
+  <h2>7 · Build order</h2>
+  <div class="phase">
+    <div class="phase-h"><span class="phase-n">1</span><span class="phase-t">CRO role + shell</span><span class="phase-tag">Human-merge + deploy</span></div>
+    <p style="font-size:11.5px;margin:4px 0 0"><code>cro</code> claim + creation matrix (functions) · branch-scoped <code>deliveries</code> rules · <code>CRODashboard</code> + <code>CRO_NAV</code> + empty Shell routing. Land + deploy before screen work.</p>
+  </div>
+  <div class="phase">
+    <div class="phase-h"><span class="phase-n">2</span><span class="phase-t">Delivery Register + clawback + drawer</span><span class="phase-tag">The hero · frontend PRs</span></div>
+    <p style="font-size:11.5px;margin:4px 0 0"><code>deliveryService.js</code> + the register table + <code>ClawbackClock</code> + lifecycle drawer. Then Submissions, Settlements (ledger write-back), Metrics, Weekly Report, and the agent "policies to deliver" view.</p>
+  </div>
+  <div class="phase">
+    <div class="phase-h"><span class="phase-n">3</span><span class="phase-t">Verify J2 + emails; land data FUs</span><span class="phase-tag">Cleanup</span></div>
+    <p style="font-size:11.5px;margin:4px 0 0">Diff passes on the two shipped items; multi-branch AOM + kiosk users-list when second-branch onboarding is scheduled.</p>
+  </div>
+
+  <div class="callout callout--good">
+    <h4>Recommended next step</h4>
+    <p>I can prep the <strong>Claude Code kickoff prompt</strong> for Phase 1 (CRO role + shell), the way <code>design_handoff_v2_app/CLAUDE_CODE_PROMPT.md</code> is written — pointing at this handoff + the <code>AgencyTrack CRO.html</code> mockup, with the human-merge/deploy gates called out. Or, if you'd rather keep polishing design first, I can pull any of the CRO boards (Delivery Register, drawer, Metrics) into standalone focus screens.</p>
+  </div>
+
+</doc-page>
+<script src="doc-page.js"></script>
+</body>
+</html>

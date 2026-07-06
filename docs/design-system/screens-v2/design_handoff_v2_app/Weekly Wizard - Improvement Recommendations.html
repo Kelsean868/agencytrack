@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Weekly Wizard v2 — Improvement Recommendations</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --soft:#F4F2EC; --mute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealDark:#014E52; --tealTint:#E6F4F4; --onTeal:#fff;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --violet:#5A3FA0; --violetTint:#F0ECFF;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.55;padding:44px 0 96px}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 40px}
+  code{font-family:var(--mono)}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:22px;border-bottom:1px solid var(--rule);margin-bottom:22px}
+  .logo{width:50px;height:50px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:29px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14px;margin-top:9px;max-width:790px;text-wrap:pretty}
+  .subt b{color:var(--ink);font-weight:700}
+  .subt code{font-size:12px}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .nowchips{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .nc{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 14px}
+  .nc .nk{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
+  .nc .nv{font-size:12px;color:var(--inkMute);margin-top:6px;text-wrap:pretty}
+  .nc .nv b{color:var(--ink);font-weight:700}
+
+  /* headline shift — path diagram */
+  .shift{background:var(--surface);border:1px solid var(--ruleStrong);border-radius:16px;padding:20px 22px;box-shadow:0 10px 30px rgba(38,35,28,.06)}
+  .shift .sh-t{font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:-.015em}
+  .shift .sh-s{font-size:13px;color:var(--inkMute);margin-top:6px;max-width:760px;text-wrap:pretty}
+  .paths{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+  .path{border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .path .ph{padding:11px 14px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--rule)}
+  .path .ph .pmode{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:99px}
+  .path.full .ph{background:var(--warningTint)}
+  .path.full .pmode{background:var(--surface);color:var(--warning);border:1px solid color-mix(in srgb,var(--warning) 30%,transparent)}
+  .path.fast .ph{background:var(--successTint)}
+  .path.fast .pmode{background:var(--surface);color:var(--success);border:1px solid color-mix(in srgb,var(--success) 30%,transparent)}
+  .path .ph .pt{font-size:13px;font-weight:700}
+  .path .ph .pcount{margin-left:auto;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--inkMute)}
+  .path .pb{padding:12px 14px;display:flex;flex-wrap:wrap;gap:5px}
+  .stp{font-family:var(--mono);font-size:9px;font-weight:700;padding:4px 8px;border-radius:7px;background:var(--soft);border:1px solid var(--rule);color:var(--inkMute);white-space:nowrap}
+  .stp.entry{background:var(--tealTint);color:var(--tealDark);border-color:color-mix(in srgb,var(--teal) 24%,transparent)}
+  .stp.confirm{background:var(--successTint);color:var(--success);border-color:color-mix(in srgb,var(--success) 26%,transparent)}
+  .stp.reflect{background:var(--goldTint);color:var(--goldInk);border-color:color-mix(in srgb,var(--gold) 28%,transparent)}
+  .path .pf{padding:9px 14px;border-top:1px solid var(--rule);font-size:11px;color:var(--inkMute);text-wrap:pretty}
+  .path .pf b{color:var(--ink);font-weight:700}
+
+  /* specimen: fast-path confirm card */
+  .specrow{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;align-items:start;margin-top:6px}
+  @media(max-width:820px){.specrow{grid-template-columns:1fr}.nowchips{grid-template-columns:1fr 1fr}.paths{grid-template-columns:1fr}}
+  .device{border:1px solid var(--ruleStrong);border-radius:16px;overflow:hidden;box-shadow:0 12px 32px rgba(38,35,28,.10)}
+  .dcap{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inkMute);padding:9px 14px;background:var(--soft);border-bottom:1px solid var(--rule)}
+  .dbody{padding:15px;background:var(--bg)}
+  .confirm-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:13px}
+  .confirm-head .ct{font-family:var(--display);font-weight:800;font-size:18px}
+  .confirm-head .cs{font-family:var(--mono);font-size:9px;color:var(--inkFaint);letter-spacing:.05em;margin-top:3px}
+  .ph-strip{display:flex;gap:5px;margin-bottom:13px}
+  .ph-strip .pp{flex:1;text-align:center;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:6px 2px;border-radius:7px;background:var(--soft);border:1px solid var(--rule);color:var(--inkFaint)}
+  .ph-strip .pp.done{background:var(--successTint);color:var(--success);border-color:color-mix(in srgb,var(--success) 26%,transparent)}
+  .ph-strip .pp.cur{background:var(--goldTint);color:var(--goldInk);border-color:color-mix(in srgb,var(--gold) 28%,transparent)}
+  .csec{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;margin-bottom:9px}
+  .csec.green{border-color:color-mix(in srgb,var(--success) 28%,transparent)}
+  .csec-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .csec-h .dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+  .csec-h .cl{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint);flex:1}
+  .csec-h .prov{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--successTint);color:var(--success);padding:2px 8px;border-radius:99px}
+  .csec-h .edit{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--teal)}
+  .crow2{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px 0;font-size:11.5px}
+  .crow2 .l{color:var(--inkMute)}
+  .crow2 .v{font-family:var(--display);font-weight:800;font-size:12px;color:var(--ink)}
+  .reflect-cta{background:var(--goldTint);border:1px solid color-mix(in srgb,var(--gold) 30%,transparent);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px}
+  .reflect-cta .ri{width:28px;height:28px;border-radius:8px;background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px}
+  .reflect-cta .rt{flex:1}
+  .reflect-cta .rt b{font-size:12.5px;font-weight:700;display:block}
+  .reflect-cta .rt span{font-size:10.5px;color:var(--inkMute)}
+  .csubmit{margin-top:10px;display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--teal);color:#fff;border-radius:12px}
+  .csubmit .st{flex:1}
+  .csubmit .st b{font-size:13.5px;font-weight:700;display:block}
+  .csubmit .st span{font-size:10px;opacity:.85;font-family:var(--mono)}
+  .csubmit .pts{display:flex;flex-direction:column;align-items:center;padding:6px 11px;border-radius:10px;background:linear-gradient(135deg,#F4CE5A,#D9981C);color:#3a2906;min-width:62px}
+  .csubmit .pts b{font-family:var(--display);font-weight:800;font-size:15px;line-height:1}
+  .csubmit .pts span{font-family:var(--mono);font-size:7px;font-weight:700;letter-spacing:.04em;margin-top:2px}
+
+  .specnote{display:flex;flex-direction:column;gap:11px}
+  .sn{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .sn .snt{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .sn .snt .b{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .sn .snd{font-size:11.5px;color:var(--inkMute);margin-top:5px;text-wrap:pretty}
+  .sn .snd code{font-family:var(--mono);font-size:10.5px;background:var(--mute);padding:1px 4px;border-radius:4px;color:var(--tealDark)}
+
+  /* recommendation cards */
+  .recs{display:flex;flex-direction:column;gap:13px}
+  .rec{display:flex;gap:14px;background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:15px 17px}
+  .rec .rn{width:30px;height:30px;border-radius:9px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:14px;flex-shrink:0}
+  .rec.p1 .rn{background:var(--teal)}
+  .rec.p2 .rn{background:var(--gold)}
+  .rec.p3 .rn{background:var(--inkFaint)}
+  .rec .rbody{flex:1;min-width:0}
+  .rec .rh{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .rec .rt{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-.01em}
+  .rec .tags{display:flex;gap:5px;margin-left:auto;flex-wrap:wrap}
+  .tg{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:99px}
+  .tg.flow{background:var(--tealTint);color:var(--tealDark)}
+  .tg.points{background:var(--goldTint);color:var(--goldInk)}
+  .tg.parity{background:var(--violetTint);color:var(--violet)}
+  .tg.now{background:var(--successTint);color:var(--success)}
+  .tg.next{background:var(--warningTint);color:var(--warning)}
+  .tg.later{background:var(--mute);color:var(--inkMute)}
+  .rec .rd{font-size:12.5px;color:var(--inkMute);margin-top:6px;text-wrap:pretty}
+  .rec .rd b{color:var(--ink);font-weight:700}
+  .rec .rd code{font-family:var(--mono);font-size:11px;background:var(--mute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .rec .rwhy{font-size:11.5px;color:var(--inkMute);margin-top:7px;padding:8px 11px;background:var(--soft);border-radius:9px;text-wrap:pretty}
+  .rec .rwhy b{color:var(--ink);font-weight:700}
+
+  .prio{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+  @media(max-width:820px){.prio{grid-template-columns:1fr}}
+  .pcol{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .pcol .pch{padding:11px 15px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--rule)}
+  .pcol.now .pch{background:var(--successTint);color:var(--success)}
+  .pcol.next .pch{background:var(--warningTint);color:var(--warning)}
+  .pcol.later .pch{background:var(--mute);color:var(--inkMute)}
+  .pcol .pi{padding:10px 15px;border-bottom:1px solid var(--rule);font-size:12px}
+  .pcol .pi:last-child{border-bottom:none}
+  .pcol .pi b{font-weight:700}
+  .pcol .pi span{display:block;font-size:10.5px;color:var(--inkMute);margin-top:2px}
+
+  .note{display:flex;gap:12px;background:var(--soft);border:1px solid var(--rule);border-radius:13px;padding:15px 18px;margin-top:18px}
+  .note .ni{width:22px;height:22px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono);font-weight:700;font-size:12px}
+  .note p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .note b{font-weight:700}
+  @media(max-width:820px){.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Weekly Report Wizard v2 · improvement review</div>
+      <h1>What I'd change now that the daily log feeds it</h1>
+      <p class="subt">A second look at the shipped 12-step wizard, with everything I've since learned: the <b>daily log</b> now captures the full field set and aggregates into the weekly draft, there's an <b>activity-points engine</b> + pace floors, and the goal is <b>capture everything, easy to follow</b>. The wizard was built for agents typing a whole week from memory on Sunday — but for anyone logging daily, that's no longer the job. Recommendations ranked below.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />WEEKLY WIZARD · REVIEW<br />vs SHIPPED v2 (12 steps)<br />REV 2026-06-17</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">The reframe</span>
+    <p><b>The wizard's job changes the moment daily logging is on.</b> A daily/hybrid agent arrives Sunday with activity, sales, production <b>and hours already filled</b> from the week's logs — so marching them through 12 entry steps re-asks for data they've given. The fix isn't a redesign of the steps; it's making the wizard <b>aware of how the week was captured</b> and adapting the path. Weekly-only agents keep the full entry flow — it's their one capture moment.</p>
+  </div>
+
+  <div class="secttl">What I understand now that I didn't last week</div>
+  <div class="nowchips">
+    <div class="nc"><div class="nk">The flow</div><div class="nv">12 micro-steps · 4 phases. <b>Activity · Sales · Reflection · Goals</b>, with a live side panel.</div></div>
+    <div class="nc"><div class="nk">The daily log</div><div class="nv">Now captures the <b>full weekly field set</b> day-by-day and rolls up into the draft.</div></div>
+    <div class="nc"><div class="nk">Points engine</div><div class="nv">A real <b>activity-points</b> currency + pace floors the daily already gamifies.</div></div>
+    <div class="nc"><div class="nk">The goal</div><div class="nv">Capture <b>all</b> of it, <b>easy to follow</b> — without re-typing or fatigue.</div></div>
+  </div>
+
+  <!-- HEADLINE -->
+  <div class="secttl">Headline — make the wizard logging-mode-aware</div>
+  <div class="shift">
+    <div class="sh-t">One wizard, two paths — chosen by how the week was logged.</div>
+    <div class="sh-s">The single highest-impact change. Daily/hybrid loggers get a <b>confirm-and-reflect</b> fast path; weekly-only loggers keep the full stepped entry. Same submission, same data — radically different effort for the agents who already did the work.</div>
+    <div class="paths">
+      <div class="path full">
+        <div class="ph"><span class="pmode">Weekly-only logger</span><span class="pt">Full path</span><span class="pcount">~12 steps</span></div>
+        <div class="pb">
+          <span class="stp entry">Letters</span><span class="stp entry">Seminars</span><span class="stp entry">Calls/F2F</span><span class="stp entry">Social</span><span class="stp entry">New names</span><span class="stp entry">Approaches/CI</span><span class="stp entry">New business</span><span class="stp entry">Delivery</span><span class="stp entry">Hours</span><span class="stp reflect">Rate week</span><span class="stp reflect">Next-wk goals</span><span class="stp confirm">Review</span>
+        </div>
+        <div class="pf">Unchanged — this is their only capture moment. <b>But</b> group the 9 entry steps into 4 phase screens with collapsible sections (rec 5), so even this path is fewer taps.</div>
+      </div>
+      <div class="path fast">
+        <div class="ph"><span class="pmode">Daily / hybrid logger</span><span class="pt">Fast path</span><span class="pcount">~3 steps</span></div>
+        <div class="pb">
+          <span class="stp confirm">Confirm your week</span><span class="stp reflect">Rate week</span><span class="stp reflect">Next-wk goals</span><span class="stp confirm">Submit</span>
+        </div>
+        <div class="pf">Activity / sales / production / hours arrive <b>pre-filled from daily</b> as one editable review. Only the <b>genuinely-weekly</b> work — ratings &amp; next-week goals — is a real step. <b>12 → ~3.</b></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPECIMEN -->
+  <div class="secttl">The fast path, drawn — "confirm your week"</div>
+  <div class="specrow">
+    <div class="device">
+      <div class="dcap">Fast path · step 1 of 3 · daily/hybrid logger</div>
+      <div class="dbody">
+        <div class="confirm-head">
+          <div><div class="ct">Confirm your week</div><div class="cs">MARSHA SINGH · WK 48 · 5 DAYS LOGGED</div></div>
+        </div>
+        <div class="ph-strip">
+          <span class="pp cur">Confirm</span><span class="pp">Rate week</span><span class="pp">Next-wk goals</span>
+        </div>
+        <div class="csec green">
+          <div class="csec-h"><span class="dot" style="background:var(--violet)"></span><span class="cl">Activity &amp; prospecting</span><span class="prov">✓ from daily ×5</span><span class="edit">Edit</span></div>
+          <div class="crow2"><span class="l">Letters · Seminars · Social</span><span class="v">12 · 1 · 4</span></div>
+          <div class="crow2"><span class="l">Calls · Tel contacts · F2F</span><span class="v">47 · 18 · 9</span></div>
+          <div class="crow2"><span class="l">New names · Approaches · CIs</span><span class="v">8 · 22 · 4</span></div>
+        </div>
+        <div class="csec green">
+          <div class="csec-h"><span class="dot" style="background:var(--gold)"></span><span class="cl">Production &amp; hours</span><span class="prov">✓ from daily ×5</span><span class="edit">Edit</span></div>
+          <div class="crow2"><span class="l">New business API · apps · lives</span><span class="v">TTD 18.4K · 2 · 4</span></div>
+          <div class="crow2"><span class="l">Delivery · service · hours</span><span class="v">3 · 11 · 41h</span></div>
+        </div>
+        <div class="reflect-cta">
+          <span class="ri">★</span>
+          <div class="rt"><b>Next: rate your week &amp; set WK 49 goals</b><span>The only things daily can't capture — ~1 min</span></div>
+        </div>
+        <div class="csubmit">
+          <div class="st"><b>Looks right — continue</b><span>edit any section inline if not</span></div>
+          <div class="pts"><b>462</b><span>WK PTS</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="specnote">
+      <div class="sn"><div class="snt"><span class="b" style="background:var(--success)"></span>Confirm, don't re-enter</div><div class="snd">Eight entry steps collapse into <b>two pre-filled review sections</b> the agent scans and accepts. Wrong number? <b>Edit inline</b> — no jumping back through a wizard.</div></div>
+      <div class="sn"><div class="snt"><span class="b" style="background:var(--success)"></span>Provenance builds trust</div><div class="snd">The <code>✓ from daily ×5</code> tag tells the agent <b>this is your own logged data</b> — so confirming feels safe, not like rubber-stamping a black box.</div></div>
+      <div class="sn"><div class="snt"><span class="b" style="background:var(--gold)"></span>Points close the loop</div><div class="snd">The week's <b>activity points</b> ride the submit button in the same gold the daily uses — one currency, daily through weekly.</div></div>
+      <div class="sn"><div class="snt"><span class="b" style="background:var(--violet)"></span>Reflection is the real work</div><div class="snd">What's left is what only Sunday can do: <b>rate the week</b> and <b>set next-week goals</b>. The wizard now spends the agent's attention there, not on data entry.</div></div>
+    </div>
+  </div>
+
+  <!-- RANKED RECS -->
+  <div class="secttl">Recommendations — ranked</div>
+  <div class="recs">
+    <div class="rec p1">
+      <span class="rn">1</span>
+      <div class="rbody">
+        <div class="rh"><span class="rt">Mode-aware path — fast vs full</span><span class="tags"><span class="tg flow">Flow</span><span class="tg now">Do now</span></span></div>
+        <div class="rd">Branch the wizard on <code>loggingMode</code>: daily/hybrid → the <b>confirm-and-reflect</b> fast path above; weekly-only → the full entry flow. The submission payload is identical — only the path differs.</div>
+        <div class="rwhy"><b>Why now:</b> it's the whole point of building the daily log. Without it, daily loggers do the work twice and adoption of <i>both</i> features suffers.</div>
+      </div>
+    </div>
+    <div class="rec p1">
+      <span class="rn">2</span>
+      <div class="rbody">
+        <div class="rh"><span class="rt">Show pre-fill provenance</span><span class="tags"><span class="tg flow">Flow</span><span class="tg now">Do now</span></span></div>
+        <div class="rd">Every field filled from daily gets a <code>✓ from daily ×N</code> tag (reuse the Sunday-confirm grammar). Manually-entered or unfilled fields stay plain.</div>
+        <div class="rwhy"><b>Why:</b> tells the agent what to simply <b>confirm</b> vs what still needs them — the core of "easy to follow." Also makes the rollup trustworthy.</div>
+      </div>
+    </div>
+    <div class="rec p1">
+      <span class="rn">3</span>
+      <div class="rbody">
+        <div class="rh"><span class="rt">Align vocabulary &amp; fields with the daily</span><span class="tags"><span class="tg parity">Parity</span><span class="tg now">Do now</span></span></div>
+        <div class="rd">Make the wizard's groups/labels match the daily's exactly, and carry the audit's fields — <b>telephone contacts, lives sold, the social breakdown, delivery &amp; service</b>. Today the wizard rolls "calls across 5 categories"; the daily is more granular.</div>
+        <div class="rwhy"><b>Why:</b> one mental model in both places. Mismatched labels are friction and break a clean rollup. (See the aggregator field-map spec.)</div>
+      </div>
+    </div>
+    <div class="rec p2">
+      <span class="rn">4</span>
+      <div class="rbody">
+        <div class="rh"><span class="rt">Bring activity points into the wizard</span><span class="tags"><span class="tg points">Points</span><span class="tg next">Next</span></span></div>
+        <div class="rd">The side panel shows Production API + commission but <b>not points</b>. Add <b>week points vs floor</b> to <code>WeekSoFarPanel</code>, the submit button, and the celebration.</div>
+        <div class="rwhy"><b>Why:</b> the daily centers points; the weekly should close the loop on the same currency, not switch to a different scoreboard at the finish line.</div>
+      </div>
+    </div>
+    <div class="rec p2">
+      <span class="rn">5</span>
+      <div class="rbody">
+        <div class="rh"><span class="rt">Collapse the full path: 9 entry steps → 4 phase screens</span><span class="tags"><span class="tg flow">Flow</span><span class="tg next">Next</span></span></div>
+        <div class="rd">Even weekly-only agents shouldn't tap through 12 hard steps. Group into <b>4 phase screens</b> (Activity · Sales · Reflection · Goals) with collapsible sections — the same grouped-card pattern the daily proved works.</div>
+        <div class="rwhy"><b>Why:</b> 12 sequential steps is the heaviest part of the current flow; phase screens cut taps without losing structure.</div>
+      </div>
+    </div>
+    <div class="rec p2">
+      <span class="rn">6</span>
+      <div class="rbody">
+        <div class="rh"><span class="rt">Seed next-week goals from pace + actuals</span><span class="tags"><span class="tg points">Points</span><span class="tg next">Next</span></span></div>
+        <div class="rd"><code>NumField</code> already supports a <code>suggested</code> value — wire it: pre-fill WK 49 targets from the <b>points floor + this week's actuals</b>, agent adjusts.</div>
+        <div class="rwhy"><b>Why:</b> goal-setting is the step agents skip or fudge. A smart default makes the hardest screen a confirm too.</div>
+      </div>
+    </div>
+    <div class="rec p3">
+      <span class="rn">7</span>
+      <div class="rbody">
+        <div class="rh"><span class="rt">Tie the celebration to points + streak</span><span class="tags"><span class="tg points">Points</span><span class="tg later">Later</span></span></div>
+        <div class="rd">The submit celebration counts up API. Add the week's <b>activity points</b> and the <b>daily-logging streak</b> it continued, so the reward matches what the daily trained.</div>
+        <div class="rwhy"><b>Why:</b> consistent reward currency across the loop; reinforces daily logging at the moment of weekly payoff.</div>
+      </div>
+    </div>
+    <div class="rec p3">
+      <span class="rn">8</span>
+      <div class="rbody">
+        <div class="rh"><span class="rt">Honest no-daily fallback</span><span class="tags"><span class="tg flow">Flow</span><span class="tg later">Later</span></span></div>
+        <div class="rd">If a daily/hybrid agent logged <b>nothing</b> this week, the fast path's confirm sections are empty — fall back to the full entry path automatically, no dead end.</div>
+        <div class="rwhy"><b>Why:</b> the fast path assumes data exists; the edge where it doesn't must degrade to the full flow gracefully.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRIORITY -->
+  <div class="secttl">Sequencing</div>
+  <div class="prio">
+    <div class="pcol now">
+      <div class="pch">Do now — serves the goal directly</div>
+      <div class="pi"><b>1 · Mode-aware path</b><span>fast confirm vs full entry</span></div>
+      <div class="pi"><b>2 · Pre-fill provenance</b><span>"✓ from daily" tags</span></div>
+      <div class="pi"><b>3 · Field + vocab parity</b><span>match the daily, carry the audit fields</span></div>
+    </div>
+    <div class="pcol next">
+      <div class="pch">Next — high value, more build</div>
+      <div class="pi"><b>4 · Points in the wizard</b><span>panel · submit · celebration</span></div>
+      <div class="pi"><b>5 · Full path → 4 phase screens</b><span>collapsible, fewer taps</span></div>
+      <div class="pi"><b>6 · Seed next-week goals</b><span>from pace + actuals</span></div>
+    </div>
+    <div class="pcol later">
+      <div class="pch">Later — polish &amp; edges</div>
+      <div class="pi"><b>7 · Points/streak celebration</b><span>match the daily's reward</span></div>
+      <div class="pi"><b>8 · No-daily fallback</b><span>degrade to full path</span></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <span class="ni">i</span>
+    <p><b>The through-line: the daily log changed what the weekly wizard is for.</b> It was a data-entry marathon because Sunday was the only capture point. Now that the daily carries the week, the wizard's real value is the <b>confirm + reflect</b> — so the top three recommendations make it stop re-asking for data and spend the agent's attention where only the weekly can: rating the week and aiming the next one. The rest brings the <b>points currency</b> and step-weight in line with what the daily already established. None of this breaks the weekly-only agent — it just stops penalizing the ones who logged.</p>
+  </div>
+
+</div>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" rx="40" fill="#01696F" />
+    <rect x="34" y="42" width="64" height="16" rx="4" fill="#fff" fill-opacity="0.5" />
+    <rect x="34" y="66" width="64" height="16" rx="4" fill="#fff" fill-opacity="0.5" />
+    <rect x="34" y="90" width="64" height="16" rx="4" fill="#fff" fill-opacity="0.5" />
+    <path d="M108 74 h26 m-9 -9 l9 9 l-9 9" fill="none" stroke="#4ecdc4" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="142" y="50" width="26" height="22" rx="5" fill="#FAEFD3" />
+    <rect x="142" y="94" width="26" height="22" rx="5" fill="#FAEFD3" />
+  </svg>
+</template>
+</body>
+</html>

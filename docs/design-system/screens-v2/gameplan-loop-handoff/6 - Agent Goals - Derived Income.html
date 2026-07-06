@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Agent Goals — Derived Income (v3.1) Build</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --violet:#5A3FA0; --violetTint:#F0ECFF;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:820px;text-wrap:pretty}
+  .subt code{font-family:var(--mono);font-size:12px}
+  .subt b{color:var(--ink);font-weight:700}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute);align-items:center}
+  .keylegend span.it{display:inline-flex;align-items:center;gap:7px}
+  .keylegend .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.exist{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.new{background:var(--goldTint);color:var(--goldInk)}
+  .pchip.tok{background:var(--violetTint);color:var(--violet)}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)} .mk.t{background:var(--violet)}
+
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.exist{background:var(--tealTint);color:var(--tealDark)}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+  .ptag.tok{background:var(--violetTint);color:var(--violet)}
+
+  /* device frame */
+  .deviceframe{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 14px 40px rgba(38,35,28,.12);border:1px solid var(--ruleStrong)}
+  .device-cap{position:absolute;top:12px;left:16px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;z-index:5;padding:3px 9px;border-radius:99px}
+  .cap-light{background:rgba(255,255,255,.86);color:var(--inkMute);border:1px solid var(--rule)}
+  .cap-dark{background:rgba(48,42,35,.86);color:#B8AEA0;border:1px solid rgba(240,235,224,.18)}
+
+  /* scoped app tokens */
+  .app{--a-bg:#F7F6F2;--a-surface:#FFFFFF;--a-raised:#FAFAF8;--a-soft:#F4F2EC;--a-mute:#F0EFE9;
+    --a-ink:#28251D;--a-inkMute:#6B6560;--a-inkFaint:#A8A39C;--a-inkDim:#CFCBC2;
+    --a-rule:#E5E2DB;--a-ruleStrong:#CFCBC2;
+    --a-teal:#01696F;--a-tealLight:#018A91;--a-tealDark:#014E52;--a-tealTint:#E6F4F4;
+    --a-gold:#B07D1A;--a-goldTint:#FAEFD3;--a-goldInk:#8A6010;--a-success:#2D7A4F;--a-successTint:#E8F5EE;
+    --a-warning:#B45309;--a-warningTint:#FEF3E2;--a-danger:#C0392B;--a-dangerTint:#FDE8E7;
+    --a-violet:#5A3FA0;--a-violetTint:#F0ECFF;
+    background:var(--a-bg);color:var(--a-ink);padding:18px 20px;font-family:var(--sans)}
+  .app.dark{--a-bg:#1A1612;--a-surface:#252019;--a-raised:#302A23;--a-soft:#1F1B17;--a-mute:#1F1B17;
+    --a-ink:#F0EBE0;--a-inkMute:#B8AEA0;--a-inkFaint:#8A8074;--a-inkDim:#4F473E;
+    --a-rule:rgba(240,235,224,0.08);--a-ruleStrong:rgba(240,235,224,0.18);
+    --a-teal:#4AB5B8;--a-tealLight:#6FD3D6;--a-tealDark:#01696F;--a-tealTint:rgba(74,181,184,0.14);
+    --a-gold:#E0AA3E;--a-goldTint:rgba(224,170,62,0.14);--a-goldInk:#E0AA3E;--a-success:#5DB876;--a-successTint:rgba(93,184,118,0.14);
+    --a-warning:#E8B53E;--a-warningTint:rgba(232,181,62,0.14);--a-danger:#D96B5D;--a-dangerTint:rgba(217,107,93,0.14);
+    --a-violet:#A995E0;--a-violetTint:rgba(169,149,224,0.14)}
+
+  .app-top{display:flex;align-items:center;gap:11px;margin-bottom:13px}
+  .app-top .crumb{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a-inkFaint)}
+  .app-top .crumb b{color:var(--a-teal)}
+  .app-top .yr{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--a-inkFaint);letter-spacing:.04em}
+
+  /* ghosted context above (existing GapAnalysisPanel) */
+  .ghost{opacity:.5;filter:saturate(.7);pointer-events:none;position:relative}
+  .ghost-tag{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--a-inkMute);background:var(--a-surface);border:1px solid var(--a-rule);padding:5px 12px;border-radius:99px;white-space:nowrap}
+  .ghero{background:var(--a-teal);border-radius:14px;padding:13px 16px;color:#fff;display:flex;align-items:center;gap:14px}
+  .app.dark .ghero{background:var(--a-surface);border:1px solid color-mix(in srgb,var(--a-teal) 40%,transparent)}
+  .ghero .gk{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.72)}
+  .app.dark .ghero .gk{color:var(--a-teal)}
+  .ghero .gv{font-family:var(--display);font-weight:800;font-size:22px;color:#fff;margin-top:2px;white-space:nowrap}
+  .app.dark .ghero .gv{color:var(--a-ink)}
+  .ghero .gbars{margin-left:auto;display:flex;gap:8px}
+  .ghero .gb{width:70px;height:34px;border-radius:8px;background:rgba(255,255,255,.14)}
+  .app.dark .ghero .gb{background:var(--a-soft)}
+  .gcasc{height:42px;border-radius:11px;background:var(--a-surface);border:1px solid var(--a-rule);margin-top:9px}
+
+  .divlabel{display:flex;align-items:center;gap:10px;margin:14px 0 12px}
+  .divlabel .dl-l{flex:1;height:1px;background:var(--a-rule)}
+  .divlabel .dl-t{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--a-inkFaint)}
+
+  /* ── THE DERIVED-INCOME SECTION ── */
+  .income{background:var(--a-surface);border:1px solid var(--a-rule);border-radius:16px;overflow:hidden;position:relative}
+  .inc-h{display:flex;align-items:center;gap:9px;padding:14px 17px 0}
+  .inc-h .ih-ic{width:26px;height:26px;border-radius:8px;background:var(--a-tealTint);color:var(--a-teal);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+  .inc-h .ih-t{font-family:var(--display);font-weight:800;font-size:16px;color:var(--a-ink);white-space:nowrap}
+  .inc-h .ih-s{font-family:var(--mono);font-size:9px;color:var(--a-inkFaint);letter-spacing:.04em;margin-top:1px}
+  .inc-h .derivedtag{margin-left:auto;display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.06em;color:var(--a-inkMute);background:var(--a-soft);border:1px solid var(--a-rule);padding:4px 10px;border-radius:99px;text-transform:uppercase}
+
+  /* the flow: goal → rate → income */
+  .incflow{display:flex;align-items:stretch;gap:0;padding:16px 17px 4px}
+  .flowcell{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+  .flowcell .fc-k{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a-inkFaint)}
+  .flowcell .fc-v{font-family:var(--display);font-weight:800;letter-spacing:-.02em;color:var(--a-ink);margin-top:5px;line-height:1}
+  .flowcell .fc-s{font-size:10px;color:var(--a-inkMute);margin-top:5px;text-wrap:pretty}
+  .flowcell.src .fc-v{font-size:26px}
+  .flowcell.rate .fc-v{font-size:20px;color:var(--a-tealDark)}
+  .app.dark .flowcell.rate .fc-v{color:var(--a-tealLight)}
+  .flowop{display:flex;align-items:center;justify-content:center;padding:0 16px;flex-shrink:0}
+  .flowop .op{width:30px;height:30px;border-radius:50%;background:var(--a-soft);border:1px solid var(--a-rule);display:flex;align-items:center;justify-content:center;color:var(--a-inkMute);font-family:var(--display);font-weight:800;font-size:14px;margin-top:14px}
+
+  /* the income result — hero ink inside its own pane */
+  .incresult{margin:8px 17px 0;background:var(--a-tealTint);border:1px solid color-mix(in srgb,var(--a-teal) 30%,transparent);border-radius:13px;padding:15px 17px;display:flex;align-items:center;gap:16px}
+  .incresult .ir-l{min-width:0}
+  .incresult .ir-k{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--a-tealDark)}
+  .app.dark .incresult .ir-k{color:var(--a-tealLight)}
+  .incresult .ir-big{font-family:var(--display);font-weight:800;font-size:38px;letter-spacing:-.03em;color:var(--a-tealDark);line-height:1;margin-top:6px;white-space:nowrap}
+  .app.dark .incresult .ir-big{color:var(--a-ink)}
+  .incresult .ir-big small{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--a-inkMute);letter-spacing:.04em;margin-left:7px}
+  .incresult .ir-sub{font-size:11px;color:var(--a-inkMute);margin-top:6px}
+  .incresult .ir-r{margin-left:auto;display:flex;flex-direction:column;gap:7px;flex-shrink:0}
+  .incresult .ircard{background:var(--a-surface);border:1px solid var(--a-rule);border-radius:9px;padding:8px 12px;min-width:128px}
+  .incresult .ircard .ic-k{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--a-inkFaint)}
+  .incresult .ircard .ic-v{font-family:var(--display);font-weight:800;font-size:15px;color:var(--a-ink);margin-top:2px}
+  .incresult .ircard .ic-v small{font-family:var(--mono);font-size:9px;color:var(--a-inkMute);font-weight:700}
+
+  /* assumptions note */
+  .assume{display:flex;gap:11px;margin:14px 17px 16px;padding:12px 14px;background:var(--a-soft);border:1px solid var(--a-rule);border-radius:11px}
+  .assume .as-ic{width:18px;height:18px;border-radius:50%;background:var(--a-inkFaint);color:#fff;font-family:var(--mono);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .assume .as-b{font-size:11px;color:var(--a-inkMute);text-wrap:pretty}
+  .assume .as-b b{color:var(--a-ink);font-weight:700}
+  .assume .as-b code{font-family:var(--mono);font-size:10px;background:var(--a-mute);padding:1px 5px;border-radius:4px;color:var(--a-tealDark)}
+  .app.dark .assume .as-b code{color:var(--a-tealLight)}
+  .assume .as-list{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+  .assume .as-tag{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.04em;color:var(--a-inkMute);background:var(--a-surface);border:1px solid var(--a-rule);padding:3px 8px;border-radius:99px}
+
+  .callout{position:absolute;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.07em;padding:2px 7px;border-radius:99px;z-index:6}
+  .callout.new{background:var(--goldTint);color:var(--goldInk);border:1px solid color-mix(in srgb,var(--gold) 35%,transparent)}
+  .callout.exist{background:var(--tealTint);color:var(--tealDark);border:1px solid color-mix(in srgb,var(--teal) 30%,transparent)}
+  .callout.tok{background:var(--violetTint);color:var(--violet);border:1px solid color-mix(in srgb,var(--violet) 30%,transparent)}
+
+  /* annotations */
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.exist{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.exist .ad b{color:var(--tealDark)}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+  .anno.tokc{background:var(--violetTint);border-color:color-mix(in srgb,var(--violet) 26%,transparent)}
+  .anno.tokc .ad b{color:var(--violet)}
+
+  /* math breakdown */
+  .mathbox{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .mb-h{display:grid;grid-template-columns:180px 1fr 130px;gap:14px;padding:10px 16px;background:var(--surfaceSoft);font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .mb-r{display:grid;grid-template-columns:180px 1fr 130px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .mb-r .step{font-size:12.5px;font-weight:700;color:var(--ink)}
+  .mb-r .form{font-family:var(--mono);font-size:11px;color:var(--inkMute);text-wrap:pretty}
+  .mb-r .form code{font-family:var(--mono);font-size:10.5px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .mb-r .res{text-align:right;font-family:var(--display);font-weight:800;font-size:14px;color:var(--ink)}
+  .mb-r.total{background:var(--tealTint)}
+  .mb-r.total .step{color:var(--tealDark)}
+  .mb-r.total .res{color:var(--tealDark);font-size:16px}
+
+  /* token map */
+  .toktable{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .tk-h{display:grid;grid-template-columns:170px 1fr 140px;gap:14px;padding:10px 16px;background:var(--surfaceSoft);font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .tk-r{display:grid;grid-template-columns:170px 1fr 140px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .tk-r .el{font-size:12.5px;font-weight:700;color:var(--ink)}
+  .tk-r .el .sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:6px}
+  .tk-r .map{font-family:var(--mono);font-size:11px;color:var(--inkMute);text-wrap:pretty}
+  .tk-r .map code{font-family:var(--mono);font-size:10.5px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .tk-r .ic{font-family:var(--mono);font-size:11px;color:var(--violet);text-align:right}
+
+  /* states */
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:15px 14px;min-height:172px;display:flex;flex-direction:column;gap:10px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .skbig{height:34px;border-radius:9px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute));width:60%}
+  .emptynote{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:6px}
+  .emptynote .ic{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px}
+  .emptynote .et{font-family:var(--display);font-weight:800;font-size:14px}
+  .emptynote .ed{font-size:11px;color:var(--inkMute);line-height:1.5;max-width:280px;text-wrap:pretty}
+  .emptynote .ed code{font-family:var(--mono);font-size:10px;background:var(--surfaceMute);padding:1px 4px;border-radius:4px;color:var(--tealDark)}
+  .emptynote .eb{margin-top:5px;padding:9px 15px;background:var(--teal);color:#fff;border-radius:9px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:7px}
+
+  /* mobile */
+  .twocol{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;align-items:start}
+  .phone{width:100%;max-width:300px;margin:0 auto;border-radius:26px;border:1px solid var(--ruleStrong);overflow:hidden;box-shadow:0 12px 32px rgba(38,35,28,.14)}
+  .phone .app{padding:14px 13px}
+  .phone .incflow{flex-direction:column;gap:0;padding:13px 14px 2px}
+  .phone .flowop{padding:7px 0}
+  .phone .flowop .op{margin-top:0}
+  .phone .flowcell{align-items:flex-start}
+  .phone .incresult{flex-direction:column;align-items:flex-start;gap:11px;margin:6px 14px 0}
+  .phone .incresult .ir-r{margin-left:0;flex-direction:row;width:100%}
+  .phone .incresult .ircard{flex:1;min-width:0}
+  .phone .incresult .ir-big{font-size:30px}
+  .phone .assume{margin:12px 14px 14px}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:210px 1fr 96px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .crow .co{text-align:right}
+
+  .note{display:flex;gap:12px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:12px;padding:14px 17px;margin-top:18px}
+  .note .mk{margin-top:1px}
+  .note p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .note b{font-weight:700}
+  .note code{font-family:var(--mono);font-size:11.5px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  @media(max-width:1040px){
+    .annos,.twocol{grid-template-columns:1fr}.states{grid-template-columns:1fr}
+    .tk-h,.tk-r,.mb-h,.mb-r{grid-template-columns:1fr}.tk-r .ic,.mb-r .res{text-align:left}
+    .crow{grid-template-columns:1fr}.crow .co{text-align:left}
+    .dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+  }
+  @media(max-width:720px){
+    .incflow{flex-direction:column}.flowop{padding:7px 0}.flowop .op{margin-top:0}
+    .incflow .flowcell{align-items:flex-start}
+    .incresult{flex-direction:column;align-items:flex-start;gap:12px}.incresult .ir-r{margin-left:0;flex-direction:row;width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Goals tab · Agent view — v3.1 derived-income build annotation</div>
+      <h1>Your committed goal → what it earns.</h1>
+      <p class="subt">One new section for the agent Goals tab, sitting <b>directly below <code>GapAnalysisPanel</code></b> (the CommitmentHero + production cascade). It translates the agent's <b>committed production goal</b> into the <b>income it generates</b> — committed API goal × the blended commission rate = <b>estimated annual income (TTD)</b>, with an honest assumptions note. <b>Derived &amp; display-only</b>: no input, no set-income-target (that's a separate privacy decision). Reuses the <b>Commission Playground math</b> already in the app. Awards + MDRT are later phases — this sheet designs <b>only</b> the derived-income readout.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />GOALS · AGENT · DERIVED INCOME<br />v3.1 · BELOW GapAnalysisPanel<br />REV 2026-06-14</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Scope rule</span>
+    <p><b>Derived, display-only — one section, no new inputs.</b> Reads the agent's <b>committed annual API goal</b> (the Personal Commitment that <code>GapAnalysisPanel</code> already shows) and the <b>blended commission rate</b>, and surfaces the <b>estimated annual income</b> it implies — the same conversion the <b>Commission Playground</b> runs. <b>No field, no income target</b> (setting one is a later, separate privacy call). The assumptions note is honest: a <b>single blended rate</b>, stated <b>settlement basis</b>, an <b>estimate not a guarantee</b>. Hero ink stays inside the income pane; TTD throughout; ≥44px on any control; both themes; mobile.</p>
+  </div>
+
+  <div class="secttl">Reading this sheet</div>
+  <div class="keylegend">
+    <span class="it"><span class="pchip exist">EXISTING / WIRED</span> value already in the app (committed goal · blended rate · Playground math)</span>
+    <span class="it"><span class="pchip new">NEW CHROME</span> the derived-income section built this phase</span>
+    <span class="it"><span class="pchip tok">TOKEN / ICON</span> Nexus CSS var or Lucide icon mapping</span>
+  </div>
+
+  <!-- ───────────────── THE SURFACE (LIGHT) ───────────────── -->
+  <div class="secttl">Placement &amp; surface — desktop · light · the section in context below GapAnalysisPanel</div>
+  <div class="deviceframe">
+    <span class="device-cap cap-light">DESKTOP · LIGHT · 1280 · AGENT GOALS TAB</span>
+    <div class="app">
+      <div class="app-top">
+        <span class="crumb">Goals · <b>Goal Hierarchy</b></span>
+        <span class="yr">MARSHA SINGH · L4 · S·02 · 2026</span>
+      </div>
+
+      <!-- ghosted existing panel for context -->
+      <div class="ghost">
+        <span class="ghost-tag">▲ EXISTING — GapAnalysisPanel (CommitmentHero + production cascade)</span>
+        <div class="ghero">
+          <div><div class="gk">Your 2026 personal commitment</div><div class="gv">TTD 600K · API</div></div>
+          <div class="gbars"><div class="gb"></div><div class="gb"></div><div class="gb"></div></div>
+        </div>
+        <div class="gcasc"></div>
+      </div>
+
+      <div class="divlabel"><span class="dl-l"></span><span class="dl-t">↓ NEW v3.1 section</span><span class="dl-l"></span></div>
+
+      <!-- THE DERIVED-INCOME SECTION -->
+      <div class="income">
+        <span class="callout new" style="top:13px;right:14px">NEW · derived-income</span>
+        <div class="inc-h">
+          <span class="ih-ic">◷</span>
+          <div><div class="ih-t">What your goal earns</div><div class="ih-s">income derived from your committed production goal</div></div>
+          <span class="derivedtag">◆ Derived · display-only</span>
+        </div>
+
+        <div class="incflow">
+          <div class="flowcell src">
+            <div class="fc-k">Committed API goal</div>
+            <div class="fc-v">TTD 600K</div>
+            <div class="fc-s">your Personal Commitment · from Game Plan</div>
+          </div>
+          <div class="flowop"><span class="op">×</span></div>
+          <div class="flowcell rate">
+            <div class="fc-k">Blended commission rate</div>
+            <div class="fc-v">50%</div>
+            <div class="fc-s">one rate across all lines · see assumptions</div>
+          </div>
+          <div class="flowop"><span class="op">=</span></div>
+          <div class="flowcell">
+            <div class="fc-k">Works out to</div>
+            <div class="fc-v" style="font-size:20px;color:var(--a-teal)">↓</div>
+            <div class="fc-s">estimated annual income</div>
+          </div>
+        </div>
+
+        <div class="incresult">
+          <div class="ir-l">
+            <div class="ir-k">Estimated annual income · 2026</div>
+            <div class="ir-big">TTD 300K<small>/ YEAR</small></div>
+            <div class="ir-sub">If you hit your committed TTD 600K production goal at the blended rate.</div>
+          </div>
+          <div class="ir-r">
+            <div class="ircard"><div class="ic-k">Per month avg</div><div class="ic-v">TTD 25K<small>/mo</small></div></div>
+            <div class="ircard"><div class="ic-k">Earned YTD · est.</div><div class="ic-v">TTD 186K<small> · 62%</small></div></div>
+          </div>
+        </div>
+
+        <div class="assume">
+          <span class="as-ic">i</span>
+          <div class="as-b">
+            <b>An estimate, not a guarantee.</b> Income is derived as <code>committed API × blended rate</code> — a <b>single blended rate</b> across all product lines, not per-line. Shown on a <b>first-year settlement basis</b>; renewals &amp; persistency clawbacks aren't modelled here. Actuals depend on what settles.
+            <div class="as-list">
+              <span class="as-tag">RATE · 50% blended</span>
+              <span class="as-tag">BASIS · first-year settled</span>
+              <span class="as-tag">EXCL · renewals / clawback</span>
+              <span class="as-tag">SOURCE · Commission Playground</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SURFACE ANNOTATIONS -->
+  <div class="annos">
+    <div class="anno newc"><span class="mk n">1</span><div><div class="at">Reads as a sentence: goal → rate → income · NEW</div><div class="ad">The section is one left-to-right equation — <b>committed API goal × blended rate = estimated annual income</b> — so the agent sees <i>why</i> the number is what it is, not a bare figure. The <code>×</code> / <code>=</code> operators are real glyphs, and the result lands in its own <b>teal pane</b> with hero ink kept inside it.</div></div></div>
+    <div class="anno exist"><span class="mk e">2</span><div><div class="at">No new data — reuses what's wired · EXISTING</div><div class="ad">Committed API comes from the same <b>Personal Commitment</b> <code>GapAnalysisPanel</code> renders; the rate + conversion are the <b>Commission Playground</b> math already in the app. This section is a <b>second read</b> of existing values — there's no second model and nothing to fetch beyond what the tab already has.</div></div></div>
+    <div class="anno newc"><span class="mk n">3</span><div><div class="at">Display-only — no input, no income target · NEW</div><div class="ad">There is <b>no field and no "set income target"</b> here. The agent edits <i>production</i> (in Game Plan); income is purely derived. Setting an income target is a <b>separate privacy decision</b> for a later phase — this section deliberately doesn't open that door.</div></div></div>
+    <div class="anno exist"><span class="mk e">4</span><div><div class="at">Honest assumptions, stated up front · doctrine</div><div class="ad">The note is honest by default: <b>one blended rate</b> (not per-line), an explicit <b>settlement basis</b>, renewals/clawbacks <b>excluded</b>, and "<b>estimate, not a guarantee</b>." The two side cards (per-month, earned-YTD) are clearly <b>est.</b> — never dressed as booked income.</div></div></div>
+  </div>
+
+  <!-- ───────────────── MATH BREAKDOWN ───────────────── -->
+  <div class="secttl">The derivation — exactly what computes (single-source, no new math)</div>
+  <div class="mathbox">
+    <div class="mb-h"><span>Step</span><span>Formula · source</span><span>Result</span></div>
+    <div class="mb-r"><span class="step">Committed API goal</span><span class="form">read <code>Personal Commitment.annualAPI</code> (same as the hero)</span><span class="res">TTD 600K</span></div>
+    <div class="mb-r"><span class="step">Blended rate</span><span class="form"><code>user.commissionRate</code> · one rate, all lines</span><span class="res">50%</span></div>
+    <div class="mb-r total"><span class="step">Estimated annual income</span><span class="form"><code>committedAPI × blendedRate</code> · Playground conversion</span><span class="res">TTD 300K</span></div>
+    <div class="mb-r"><span class="step">Per-month avg</span><span class="form"><code>annualIncome ÷ 12</code> · display aid</span><span class="res">TTD 25K</span></div>
+    <div class="mb-r"><span class="step">Earned YTD · est.</span><span class="form"><code>ytdSettledAPI × blendedRate</code> · uses YTD actual the cascade already reads</span><span class="res">TTD 186K</span></div>
+  </div>
+
+  <!-- ───────────────── TOKEN MAP ───────────────── -->
+  <div class="secttl">Token, icon &amp; component mapping — Nexus warm</div>
+  <div class="toktable">
+    <div class="tk-h"><span>Element</span><span>Token / CSS var · treatment</span><span>Lucide icon</span></div>
+    <div class="tk-r"><span class="el">Section card</span><span class="map"><code>--surface</code> + <code>--rule</code>, radius 16 · matches GapAnalysisPanel cards</span><span class="ic">Coins</span></div>
+    <div class="tk-r"><span class="el">Header icon</span><span class="map"><code>--teal-tint</code> bg, <code>--teal</code> glyph</span><span class="ic">PiggyBank</span></div>
+    <div class="tk-r"><span class="el">Derived badge</span><span class="map"><code>--surface-soft</code> + <code>--rule</code> · honest "display-only" tag</span><span class="ic">Sigma</span></div>
+    <div class="tk-r"><span class="el">Flow operators</span><span class="map"><code>--surface-soft</code> circle · <code>×</code> and <code>=</code> as glyphs</span><span class="ic">X · Equal</span></div>
+    <div class="tk-r"><span class="el"><span class="sw" style="background:var(--tealTint);border:1px solid var(--teal)"></span>Income pane</span><span class="map"><code>--teal-tint</code> bg + teal border; big number <code>--teal-dark</code> (light) / <code>--ink</code> (dark)</span><span class="ic">TrendingUp</span></div>
+    <div class="tk-r"><span class="el">Side cards</span><span class="map"><code>--surface</code> on tint · per-month &amp; earned-YTD, both marked est.</span><span class="ic">CalendarDays</span></div>
+    <div class="tk-r"><span class="el">Assumptions note</span><span class="map"><code>--surface-soft</code> + <code>--ink-faint</code> info dot · mono tags</span><span class="ic">Info</span></div>
+    <div class="tk-r"><span class="el">Type</span><span class="map">Display <b>Cabinet Grotesk</b> (figures) · body <b>Satoshi</b> · mono labels</span><span class="ic">—</span></div>
+  </div>
+
+  <!-- ───────────────── DARK + MOBILE ───────────────── -->
+  <div class="secttl">Dark theme + mobile — same section, scoped tokens</div>
+  <div class="twocol">
+    <div class="deviceframe">
+      <span class="device-cap cap-dark">DESKTOP · DARK · derived-income</span>
+      <div class="app dark">
+        <div class="income">
+          <div class="inc-h">
+            <span class="ih-ic">◷</span>
+            <div><div class="ih-t">What your goal earns</div><div class="ih-s">derived from your committed goal</div></div>
+            <span class="derivedtag">◆ Derived</span>
+          </div>
+          <div class="incflow">
+            <div class="flowcell src"><div class="fc-k">Committed API goal</div><div class="fc-v">TTD 600K</div><div class="fc-s">Personal Commitment</div></div>
+            <div class="flowop"><span class="op">×</span></div>
+            <div class="flowcell rate"><div class="fc-k">Blended rate</div><div class="fc-v">50%</div><div class="fc-s">all lines</div></div>
+            <div class="flowop"><span class="op">=</span></div>
+            <div class="flowcell"><div class="fc-k">Works out to</div><div class="fc-v" style="font-size:20px;color:var(--a-teal)">↓</div><div class="fc-s">annual income</div></div>
+          </div>
+          <div class="incresult">
+            <div class="ir-l"><div class="ir-k">Estimated annual income · 2026</div><div class="ir-big">TTD 300K<small>/ YEAR</small></div><div class="ir-sub">At your committed 600K production goal.</div></div>
+            <div class="ir-r"><div class="ircard"><div class="ic-k">Per month</div><div class="ic-v">TTD 25K</div></div><div class="ircard"><div class="ic-k">Earned YTD est.</div><div class="ic-v">TTD 186K</div></div></div>
+          </div>
+          <div class="assume"><span class="as-ic">i</span><div class="as-b"><b>An estimate, not a guarantee.</b> <code>API × blended rate</code>, first-year settlement basis; renewals &amp; clawbacks excluded.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phone">
+      <div class="app">
+        <div class="app-top"><span class="crumb">Goal <b>Hierarchy</b></span></div>
+        <div class="ghost" style="margin-bottom:4px"><div class="ghero"><div><div class="gk">2026 commitment</div><div class="gv">TTD 600K</div></div></div></div>
+        <div class="divlabel"><span class="dl-l"></span><span class="dl-t">↓ income</span><span class="dl-l"></span></div>
+        <div class="income">
+          <div class="inc-h"><span class="ih-ic">◷</span><div><div class="ih-t">What it earns</div></div><span class="derivedtag">◆</span></div>
+          <div class="incflow">
+            <div class="flowcell src"><div class="fc-k">Committed API</div><div class="fc-v" style="font-size:20px">TTD 600K</div></div>
+            <div class="flowop"><span class="op">×</span></div>
+            <div class="flowcell rate"><div class="fc-k">Blended rate</div><div class="fc-v" style="font-size:16px">50%</div></div>
+            <div class="flowop"><span class="op">=</span></div>
+          </div>
+          <div class="incresult"><div class="ir-l"><div class="ir-k">Est. annual income</div><div class="ir-big">TTD 300K</div></div><div class="ir-r"><div class="ircard"><div class="ic-k">/ month</div><div class="ic-v">25K</div></div><div class="ircard"><div class="ic-k">YTD est.</div><div class="ic-v">186K</div></div></div></div>
+          <div class="assume"><span class="as-ic">i</span><div class="as-b"><b>Estimate.</b> Blended rate · first-year basis.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="annos" style="margin-top:14px">
+    <div class="anno tokc"><span class="mk t">5</span><div><div class="at">One markup, both themes · scoped vars</div><div class="ad">Every color is a <code>--a-*</code> var, so dark mode is the same section under <code>.dark</code> — lifted teal <code>#4AB5B8</code>, warm surfaces. The income pane stays a <b>tinted pane with teal border</b> in both themes (never a saturated slab in dark); hero ink stays legible inside it. No hex outside the vars.</div></div></div>
+    <div class="anno newc"><span class="mk n">6</span><div><div class="at">Mobile = the equation stacks vertically</div><div class="ad">Below ~640px the goal → rate → income flow becomes a <b>vertical stack</b> with the operators between, the result pane full-width, and the two est. cards side-by-side beneath. The assumptions note wraps last. No controls to reflow — it's read-only.</div></div></div>
+  </div>
+
+  <!-- ───────────────── STATES ───────────────── -->
+  <div class="secttl">States — loading · no committed goal · honest "rate unset"</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">S</span>Loading</div>
+      <div class="sc-b">
+        <div class="shimmer" style="width:42%;height:11px"></div>
+        <div style="display:flex;gap:10px"><div class="shimmer" style="width:28%;height:30px"></div><div class="shimmer" style="width:20%;height:30px"></div><div class="shimmer" style="width:28%;height:30px"></div></div>
+        <div class="skbig"></div>
+        <div class="shimmer" style="width:80%"></div>
+      </div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">∅</span>No committed goal yet</div>
+      <div class="sc-b"><div class="emptynote"><div class="ic" style="background:var(--tealTint);color:var(--teal)">◌</div><div class="et">Commit a goal to see what it earns</div><div class="ed">Once you commit a production goal in <b>Game Plan</b>, the income it works out to shows here. <span style="font-family:var(--mono);font-size:10px;color:var(--inkFaint)">no goal → nothing fabricated</span></div><div class="eb">Go to Game Plan →</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">~</span>Rate unset · honest</div>
+      <div class="sc-b"><div class="emptynote"><div class="ic" style="background:var(--warningTint);color:var(--warning)">~</div><div class="et" style="color:var(--warning)">Rate not on file</div><div class="ed">If no <code>commissionRate</code> is set, income can't be derived. We show <b>"Set in your profile"</b> rather than assume a rate — the goal still displays, the income line stays honest-empty.</div></div></div>
+    </div>
+  </div>
+
+  <!-- ───────────────── COMPONENTS ───────────────── -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · derived-income scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">DerivedIncomePanel</div><div class="cd">The section shell below GapAnalysisPanel — switches loading / no-goal / rate-unset / populated.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">IncomeEquation</div><div class="cd">goal × rate = income flow with real operator glyphs; result pane with hero ink scoped.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">deriveIncome()</div><div class="cd"><code>committedAPI × blendedRate</code> — the Commission Playground conversion, reused.</div><div class="co"><span class="ptag exist">REUSE</span></div></div>
+    <div class="crow"><div class="cn">AssumptionsNote</div><div class="cd">Honest basis: blended rate, settlement basis, exclusions, "estimate not guarantee."</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">Personal Commitment</div><div class="cd">Source of committed API — same value the CommitmentHero reads.</div><div class="co"><span class="ptag exist">EXISTING</span></div></div>
+    <div class="crow"><div class="cn">statusToken(role)</div><div class="cd">Shared — <code>derived</code>, <code>estimate</code>, <code>value-unset</code> roles.</div><div class="co"><span class="ptag tok">TOKEN</span></div></div>
+  </div>
+
+  <div class="note">
+    <span class="mk n">i</span>
+    <p><b>"Your committed goal → what it earns" — and nothing more, yet.</b> This phase adds a single <b>derived, display-only</b> section: committed API goal × blended rate = estimated annual income, read as a sentence, landed in its own pane, and footnoted honestly (one blended rate, settlement basis, an estimate). It introduces <b>no input and no income target</b> — that's a deliberate, separate privacy call for later — and it adds <b>no math</b>, reusing the Commission Playground conversion. <b>Awards + MDRT are out of scope.</b> Fully tokenized: both themes from one markup, Lucide-only icons, ≥44px on the one CTA, TTD throughout, no hex outside the Nexus vars.</p>
+  </div>
+
+</div>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" rx="40" fill="#01696F" />
+    <circle cx="70" cy="100" r="26" fill="none" stroke="#FAEFD3" stroke-width="9" />
+    <text x="70" y="116" font-family="Georgia,serif" font-size="40" fill="#FAEFD3" text-anchor="middle">$</text>
+    <path d="M104 100 h26" stroke="#4ecdc4" stroke-width="8" stroke-linecap="round" />
+    <path d="M124 90 l12 10 -12 10" fill="none" stroke="#4ecdc4" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+</template>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AgencyTrack — Master Build Reference</title>
+<link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/tokens/fonts.css" />
+<style>
+  doc-page:not(:defined){ visibility:hidden; }
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#7A7264; --inkDim:#A8A39C;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --violet:#5A3FA0; --violetTint:#F0ECFF;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif;
+    --sans:'Satoshi','Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'JetBrains Mono','Menlo','SF Mono',monospace;
+  }
+  doc-page{ color:var(--ink); font-family:var(--sans); font-size:var(--doc-fs,12px); line-height:1.6; background:var(--surface); }
+  h1,h2,h3,h4{ font-family:var(--display); letter-spacing:-.02em; color:var(--ink); line-height:1.1; }
+  h1{ font-size:30px; font-weight:800; margin:0 0 4px; }
+  h2{ font-size:18.5px; font-weight:800; margin:30px 0 4px; padding-top:14px; border-top:2px solid var(--ink); }
+  h3{ font-size:14px; font-weight:700; margin:18px 0 5px; }
+  h4{ font-size:12.5px; font-weight:700; margin:12px 0 4px; }
+  p{ margin:6px 0; }
+  strong{ font-weight:700; }
+  em{ color:var(--inkMute); }
+  a{ color:var(--teal); }
+  code, .mono{ font-family:var(--mono); font-size:.9em; }
+  code{ background:var(--surfaceMute); border:1px solid var(--rule); border-radius:5px; padding:1px 5px; color:var(--tealDark); }
+  .eyebrow{ font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--teal); }
+  .lede{ font-size:13.5px; color:var(--inkMute); line-height:1.6; max-width:64ch; }
+  .doc-meta{ font-family:var(--mono); font-size:10.5px; color:var(--inkFaint); letter-spacing:.04em; text-transform:uppercase; margin-top:8px; }
+
+  .callout{ border:1px solid var(--rule); border-left:3px solid var(--teal); background:var(--surfaceRaised); border-radius:10px; padding:12px 15px; margin:13px 0; }
+  .callout--gold{ border-left-color:var(--gold); }
+  .callout--danger{ border-left-color:var(--danger); }
+  .callout--good{ border-left-color:var(--success); }
+  .callout h4{ margin:0 0 4px; }
+  .callout p{ margin:3px 0; font-size:12px; }
+
+  table{ border-collapse:collapse; width:100%; margin:10px 0; font-size:10.5px; }
+  th,td{ text-align:left; padding:6px 8px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th{ font-family:var(--mono); font-size:8.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--inkFaint); border-bottom:1.5px solid var(--ruleStrong); background:var(--surfaceMute); }
+  tbody tr:nth-child(even){ background:var(--surfaceRaised); }
+  td.scr{ font-weight:700; white-space:nowrap; }
+  td.mono{ font-family:var(--mono); font-size:9px; color:var(--inkMute); }
+
+  .badge{ display:inline-block; font-family:var(--mono); font-size:8.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:2px 6px; border-radius:20px; white-space:nowrap; }
+  .b-ship{ background:var(--successTint); color:var(--success); }
+  .b-verify{ background:var(--warningTint); color:var(--warning); }
+  .b-build{ background:var(--dangerTint); color:var(--danger); }
+  .b-teal{ background:var(--tealTint); color:var(--tealDark); }
+  .b-gold{ background:var(--goldTint); color:var(--goldInk); }
+  .b-violet{ background:var(--violetTint); color:var(--violet); }
+
+  ul,ol{ margin:6px 0; padding-left:19px; }
+  li{ margin:2px 0; }
+  .tight li{ margin:1px 0; }
+  .cols2{ column-count:2; column-gap:24px; }
+  .cols2 li{ break-inside:avoid; }
+
+  .kv{ display:grid; grid-template-columns:auto 1fr; gap:2px 14px; font-size:11px; margin:8px 0; }
+  .kv dt{ font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--inkFaint); padding-top:2px; white-space:nowrap; }
+  .kv dd{ margin:0; }
+
+  .legend{ display:flex; flex-wrap:wrap; gap:7px 14px; font-size:10px; color:var(--inkMute); margin:8px 0 2px; }
+  .legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .foot{ font-size:9.5px; color:var(--inkFaint); }
+  h2,h3,table,.callout,.kv{ break-inside:avoid; }
+  .run-foot{ display:flex; justify-content:space-between; font-family:var(--mono); font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--inkFaint); border-top:1px solid var(--rule); padding-top:6px; }
+  .swatch{ display:inline-block; width:10px; height:10px; border-radius:3px; vertical-align:middle; margin-right:4px; border:1px solid rgba(0,0,0,.1); }
+</style>
+</head>
+<body>
+<doc-page size="letter" margin="0.65in">
+
+  <div slot="footer" class="run-foot">
+    <span>AgencyTrack · Nexus App</span>
+    <span>Master Build Reference</span>
+    <span>Confidential · Internal</span>
+  </div>
+
+  <p class="eyebrow">Claude Code reference · every screen, every tab</p>
+  <h1>Master Build Reference</h1>
+  <p class="lede">The single source of truth for bringing every AgencyTrack app screen onto the Nexus v2 design system. For each surface: the redesigned mockup (design truth), the repo component that renders it, and whether the work is <em>verify-vs-mockup</em> or <em>net-new build</em>. Save this beside the repo; it's the map Claude Code works from.</p>
+  <p class="doc-meta">Target: Kelsean868/agencytrack@main · React 19 + Vite + Tailwind + Firebase · DS: Nexus v2 (repo <code>src/index.css</code> tokens) · 06 Jul 2026</p>
+
+  <h2>1 · How this app relates to the design system</h2>
+  <div class="callout callout--danger">
+    <h4>Read this first — the target is the repo's own tokens, not the <code>_ds</code> bundle</h4>
+    <p>The production app ships its own Nexus design system in <code>src/index.css</code> (Tailwind tokens + <code>@layer components</code>) that is a <strong>1:1 match</strong> for the mockups. <strong>"Implement the new design system" = port each mockup's look into its existing React component using these repo tokens</strong> — never introduce a new hex, and never import the <code>_ds</code> bundle into the app. The <code>_ds</code> bundle + the mockups in this project are <strong>design authoring tools</strong>; the repo tokens are what ship.</p>
+  </div>
+  <h4>Token bridge — mockup value → repo token → Tailwind</h4>
+  <table>
+    <thead><tr><th style="width:26%">Role</th><th style="width:22%">Hex</th><th style="width:24%">Repo token</th><th>Tailwind</th></tr></thead>
+    <tbody>
+      <tr><td><span class="swatch" style="background:#01696F"></span>Meaning / primary</td><td class="mono">#01696F</td><td class="mono">--primary</td><td class="mono">bg-primary text-primary</td></tr>
+      <tr><td><span class="swatch" style="background:#F7F6F2"></span>Page ground</td><td class="mono">#F7F6F2</td><td class="mono">--surface</td><td class="mono">bg-surface</td></tr>
+      <tr><td><span class="swatch" style="background:#fff"></span>Cards</td><td class="mono">#FFFFFF</td><td class="mono">--card</td><td class="mono">bg-card</td></tr>
+      <tr><td><span class="swatch" style="background:#28251D"></span>Ink / muted</td><td class="mono">#28251D / #6B6560</td><td class="mono">--ink / --ink-muted</td><td class="mono">text-ink / text-ink-muted</td></tr>
+      <tr><td><span class="swatch" style="background:#A8A39C"></span>Ink faint</td><td class="mono">#A8A39C</td><td class="mono">--ink-faint</td><td class="mono">non-text only (D5 rule)</td></tr>
+      <tr><td><span class="swatch" style="background:#B07D1A"></span>Recognition</td><td class="mono">#B07D1A</td><td class="mono">--gold</td><td class="mono">awards/campaigns ONLY</td></tr>
+      <tr><td><span class="swatch" style="background:#5A3FA0"></span>Violet</td><td class="mono">#5A3FA0</td><td class="mono">--violet</td><td class="mono">app lists, sparingly</td></tr>
+      <tr><td><span class="swatch" style="background:#1A1612"></span>Presentation</td><td class="mono">#1A1612</td><td class="mono">--presentation</td><td class="mono">Kiosk / Meeting (always dark)</td></tr>
+    </tbody>
+  </table>
+  <p class="foot">Semantic success/warning/danger (+tints) exist only in the app. Dark mode is a <em>warm</em> dark (ground <code>#1A1612</code>, warm inks); teal &amp; gold brighten, rules become light alpha hairlines. Medal gradients: reuse <code>.medal-1…8</code>, don't re-author.</p>
+
+  <h2>2 · Global rules — apply to every screen</h2>
+  <ul class="tight">
+    <li><strong>Tokens only</strong> — every color/space from a token; no new hex. Tailwind <code>@layer</code> utilities (<code>.card / .btn-primary / .input / .shell</code>) before bespoke classes.</li>
+    <li><strong>Both themes</strong> — every screen verified in light + dark via tokens (except Kiosk/Meeting = always presentation-dark).</li>
+    <li><strong>Four states</strong> — loading (skeleton) / empty (actionable) / error (inline retry) / ready on every data surface. The repo treats these as required.</li>
+    <li><strong>Data via services</strong> — <code>src/services/*</code> with <code>tenantId</code>; never query Firestore from components.</li>
+    <li><strong>Type &amp; number</strong> — Cabinet Grotesk display, Satoshi body, JetBrains Mono for eyebrows/currency/policy#. Currency via <code>formatCurrency</code> → <code>TTD 24.5K</code>. Tabular, right-aligned nums in tables.</li>
+    <li><strong>Density &amp; glass</strong> — dense tables scroll in-card with sticky header + first column; one <code>GlassCard</code> max per screen (top summary); gold only for recognition.</li>
+    <li><strong>a11y (WCAG 2.2 AA)</strong> — CI gate green (<code>@axe-core/playwright</code>, <code>eslint-plugin-jsx-a11y</code>): labelled controls, focus-visible rings, ≥44px targets, reduced-motion guards, semantic lists/tables.</li>
+    <li><strong>Motion</strong> — .15–.18s ease; reveal-on-scroll one-shot; visible end-state is the base style; no infinite loops on content.</li>
+    <li><strong>No emoji.</strong> Only <code>★</code> (live/recognition) and <code>✓</code> (checks) as text glyphs.</li>
+  </ul>
+
+  <h2>3 · Screen register — status legend</h2>
+  <div class="legend">
+    <span><span class="badge b-ship">Shipped</span> component on v2; diff vs mockup, no structural work expected</span>
+    <span><span class="badge b-verify">Verify / port</span> exists; confirm mockup deltas applied</span>
+    <span><span class="badge b-build">Build</span> net-new; not in repo</span>
+  </div>
+
+  <h3>Agent surfaces</h3>
+  <table>
+    <thead><tr><th style="width:16%">Screen / tab</th><th style="width:9%">Status</th><th style="width:30%">Mockup (design truth)</th><th>Repo component</th></tr></thead>
+    <tbody>
+      <tr><td class="scr">Dashboard</td><td><span class="badge b-verify">Verify</span></td><td class="mono">Agent Dashboard v2.html</td><td class="mono">dashboard/AgentDashboard.jsx · HomeV2/ · GoalCarousel · GoalDonut · ActivityFeed</td></tr>
+      <tr><td class="scr">Daily Capture</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Daily Capture v2.html</td><td class="mono">daily/DailyCaptureV2.jsx · DailyEntryModal.jsx</td></tr>
+      <tr><td class="scr">Weekly Report Wizard</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Weekly Report Wizard v2.html</td><td class="mono">wizard/WizardForm.jsx · v2steps/ · v2chrome/</td></tr>
+      <tr><td class="scr">Game Plan</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Game Plan v2.html</td><td class="mono">dashboard/GamePlanV2/ · goals/GapAnalysisPanel.jsx</td></tr>
+      <tr><td class="scr">Money Needs</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">(within Goals / allocator handoff)</td><td class="mono">agent/MoneyNeedsPanel.jsx · MoneyNeedsAllocator.jsx</td></tr>
+      <tr><td class="scr">Goals</td><td><span class="badge b-verify">Verify</span></td><td class="mono">Goals v2.html</td><td class="mono">manager/GoalsPanel.jsx · goals/DerivedIncomePanel.jsx</td></tr>
+      <tr><td class="scr">Commission</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Commission v2.html</td><td class="mono">goals/CommissionPlayground/ · agent/CommissionAnchorStrip.jsx</td></tr>
+      <tr><td class="scr">Persistency</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Persistency v2.html · Playground v1-v2 · Model-Change Spec</td><td class="mono">agent/PersistencyTab.jsx · persistency/PersistencyPlayground.jsx</td></tr>
+      <tr><td class="scr">Policy Ledger / Record</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Policy Ledger v2.html</td><td class="mono">agent/PolicyLedgerPanel.jsx</td></tr>
+      <tr><td class="scr">History</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">History v2.html</td><td class="mono">submissions/HistoryTab.jsx · SubmissionViewer.jsx</td></tr>
+      <tr><td class="scr">Production Report</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Production Report v2.html · Agent Report View v2.html</td><td class="mono">productionReport/AgentProductionView.jsx · profile/AgentReportDocument.jsx</td></tr>
+      <tr><td class="scr">Leaderboard</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Leaderboard.html</td><td class="mono">gamification/Leaderboard.jsx · leaderboard/ProductionLeaderboardSurface.jsx</td></tr>
+      <tr><td class="scr">Awards</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Agent Awards v2.html</td><td class="mono">awards/AgentAwardsPanel.jsx · awardPrimitives.jsx</td></tr>
+      <tr><td class="scr">Career</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Career Portal v2.html</td><td class="mono">profile/CareerPortal.jsx</td></tr>
+      <tr><td class="scr">Prospect Prep</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Prospect Prep v2.html</td><td class="mono">agent/ProspectInfoPanel.jsx · manager/JointCallsTab.jsx</td></tr>
+      <tr><td class="scr">Settings / Profile</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Settings v2.html</td><td class="mono">profile/ProfileScreen.jsx · EmailUpdateModal.jsx</td></tr>
+      <tr><td class="scr">Planner &amp; Scheduler</td><td><span class="badge b-build">Build</span></td><td class="mono">Planner &amp; Scheduler v2.html (handoff)</td><td class="mono">planner/* — NEW · nav gated coming-soon</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Manager surfaces</h3>
+  <table>
+    <thead><tr><th style="width:16%">Screen / tab</th><th style="width:9%">Status</th><th style="width:30%">Mockup (design truth)</th><th>Repo component</th></tr></thead>
+    <tbody>
+      <tr><td class="scr">Team Dashboard</td><td><span class="badge b-verify">Verify</span></td><td class="mono">Manager Dashboard v2.html</td><td class="mono">dashboard/ManagerDashboard.jsx · ManagerHeroSection · BranchKPIStrip</td></tr>
+      <tr><td class="scr">Master Sheet</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Master Sheet v2.html</td><td class="mono">manager/MasterSheet.jsx</td></tr>
+      <tr><td class="scr">Compliance</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Compliance v2.html</td><td class="mono">manager/CompliancePanel.jsx</td></tr>
+      <tr><td class="scr">Settlements</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">(CRO handoff references pattern)</td><td class="mono">manager/SettlementPanel.jsx</td></tr>
+      <tr><td class="scr">Financing</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">design_handoff_financing_selfview</td><td class="mono">financing/* · manager/TakeHomeWaterfallView</td></tr>
+      <tr><td class="scr">Reconciliation</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Policy Reconciliation.html</td><td class="mono">manager/PolicyReconciliationPanel.jsx</td></tr>
+      <tr><td class="scr">Team Plans</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">planner-manager-handoff</td><td class="mono">manager/TeamPlansRoster.jsx · AgentPlanDrawer.jsx</td></tr>
+      <tr><td class="scr">WARs (Team + My)</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Weekly WARs.html</td><td class="mono">manager/ManagerWarTab.jsx · ManagerWarDetail.jsx · TeamWarsTab.jsx</td></tr>
+      <tr><td class="scr">Agent of Month</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">(within Awards / recognition)</td><td class="mono">manager/AgentOfMonthTab.jsx · AOMCategorySection.jsx</td></tr>
+      <tr><td class="scr">Recruiting</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Monthly Recruiting.html</td><td class="mono">manager/MonthlyRecruitingTab.jsx</td></tr>
+      <tr><td class="scr">Campaigns</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Campaigns.html</td><td class="mono">campaigns/CampaignPanel.jsx · CampaignCard.jsx</td></tr>
+      <tr><td class="scr">Reports</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Manager Reports.html · Branch Report.html · Reports.html</td><td class="mono">productionReport/* · reports/*</td></tr>
+      <tr><td class="scr">Meeting Mode</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Meeting Mode v2.html</td><td class="mono">manager/MeetingMode.jsx</td></tr>
+      <tr><td class="scr">Kiosk</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Kiosk Mode.html</td><td class="mono">kiosk/KioskShell · KioskModeTab · panels/</td></tr>
+      <tr><td class="scr">Team Planner (coaching)</td><td><span class="badge b-build">Build</span></td><td class="mono">Planner — Manager Surfaces.html (handoff)</td><td class="mono">planner/manager/* — NEW</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Admin · CRO · shell · system</h3>
+  <table>
+    <thead><tr><th style="width:16%">Screen / tab</th><th style="width:9%">Status</th><th style="width:30%">Mockup (design truth)</th><th>Repo component</th></tr></thead>
+    <tbody>
+      <tr><td class="scr">Admin Dashboard</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">(B5)</td><td class="mono">dashboard/TenantAdminDashboard.jsx · admin/RoleDistributionCard</td></tr>
+      <tr><td class="scr">Branches</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">(B5)</td><td class="mono">admin/BranchesPanel.jsx · BranchEditorModal.jsx</td></tr>
+      <tr><td class="scr">All Users</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">(usermgmt)</td><td class="mono">manager/UserManagementPanel.jsx · EditUserDrawer.jsx</td></tr>
+      <tr><td class="scr">Company Config</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">Settings v2.html (admin section)</td><td class="mono">admin/CompanyConfigPanel.jsx · EditConfigModal.jsx</td></tr>
+      <tr><td class="scr">App shell / nav</td><td><span class="badge b-ship">Shipped</span></td><td class="mono">App Layout.html · App Mobile.html · Mobile Nav.html · Nav &amp; Quick Actions</td><td class="mono">shell/Shell.jsx · Sidebar · TopBar · MobileBottomNav · navConfig.js</td></tr>
+      <tr><td class="scr">Login / System states</td><td><span class="badge b-verify">Verify</span></td><td class="mono">System Screens.html</td><td class="mono">auth/LoginScreen.jsx · App.jsx states · onboarding/*</td></tr>
+      <tr><td class="scr">Transactional emails</td><td><span class="badge b-verify">Verify</span></td><td class="mono">Emails.html</td><td class="mono">functions/email-templates/*.html · functions/utils/email.js</td></tr>
+      <tr><td class="scr">CRO / Back-office</td><td><span class="badge b-build">Build</span></td><td class="mono">CRO.html (+ CRO Build Handoff)</td><td class="mono">dashboard/CRODashboard · cro/DeliveryRegister · ClawbackClock — NEW · role not routed</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout--good">
+    <h4>Coverage summary</h4>
+    <p>~30 screens are <span class="badge b-ship">Shipped</span> on v2 (diff-vs-mockup only) · a handful are <span class="badge b-verify">Verify / port</span> (Dashboard content deltas, Goals, Login states, emails) · <strong>3 are genuine builds</strong>: <span class="badge b-build">Planner (agent)</span>, <span class="badge b-build">Team Planner (manager)</span>, <span class="badge b-build">CRO / back-office</span>. There is no from-scratch DS migration left — the design system is already in the repo.</p>
+  </div>
+
+  <h2>4 · The three real builds — where the effort goes</h2>
+  <div class="kv">
+    <dt>CRO</dt><dd>Delivery Register + 30-day clawback clock; role not routed. Full spec: <code>AgencyTrack — CRO Build Handoff.html</code>. Human-merge gates: <code>cro</code> claim (functions) + branch-scoped <code>deliveries</code> rules.</dd>
+    <dt>Planner (agent)</dt><dd>Digitizes the paper Weekly Planner; owns the shared <code>appointments</code>/<code>prospects</code> data. Un-gate the coming-soon <code>planner</code> tab. Spec: <code>Planner &amp; Scheduler Build Handoff.html</code> + <code>planner-scheduler-handoff/</code>.</dd>
+    <dt>Team Planner (mgr)</dt><dd>Coaching tier over the agent planner; four trust constraints enforced at the rules layer. Reuses agent components with a <code>stream</code> prop. Spec: same handoff + <code>planner-manager-handoff/</code>.</dd>
+  </div>
+
+  <h2>5 · Per-screen definition of done (checklist)</h2>
+  <ul class="cols2 tight">
+    <li>Renders in <code>Shell</code>; correct nav group + tab.</li>
+    <li>Light + dark verified via tokens.</li>
+    <li>No new hex — every value a token.</li>
+    <li>Loading / empty / error / ready all present.</li>
+    <li>Data through a <code>services/*</code> fn with <code>tenantId</code>.</li>
+    <li>Currency via <code>formatCurrency</code> (TTD).</li>
+    <li>Dense tables: scroll-in-card, sticky header/col, tabular nums.</li>
+    <li>One GlassCard max; gold = recognition only.</li>
+    <li>a11y CI green; 44px targets; focus rings.</li>
+    <li>Reduced-motion guarded; no infinite content loops.</li>
+    <li>Matches the mockup; committed per-screen (small PR).</li>
+    <li>Rules/functions changes → human-merge + deploy.</li>
+  </ul>
+
+  <div class="callout callout--gold">
+    <h4>How to work this reference</h4>
+    <p>For each <span class="badge b-ship">Shipped</span> / <span class="badge b-verify">Verify</span> row: open the mockup beside the repo component and apply visual deltas only — no rebuild. For the three <span class="badge b-build">Build</span> rows: use the dedicated handoff + the unified Claude Code kickoff. Work one screen per branch, small PRs, verifying the definition-of-done each time.</p>
+  </div>
+
+</doc-page>
+<script src="doc-page.js"></script>
+</body>
+</html>

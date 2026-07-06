@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Weekly Planner v2 — Slice 1 Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:750px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute)}
+  .keylegend span{display:inline-flex;align-items:center;gap:7px}
+  .keylegend .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.exist{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.new{background:var(--goldTint);color:var(--goldInk)}
+  .keylegend .ref{width:22px;height:0;border-top:2px dashed var(--inkFaint);display:inline-block}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)}
+
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.exist{background:var(--tealTint);color:var(--tealDark)}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+
+  /* app frame */
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(38,35,28,.10);display:flex;gap:14px}
+  .sidebar{width:150px;flex-shrink:0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 9px;display:flex;flex-direction:column;gap:3px}
+  .sb-logo{display:flex;align-items:center;gap:8px;padding:4px 6px 12px}
+  .sb-logo .lm{width:24px;height:24px;border-radius:7px;background:var(--teal)}
+  .sb-logo .lt{font-family:var(--display);font-weight:800;font-size:13px}
+  .sb-grp{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.12em;color:var(--inkFaint);padding:9px 8px 4px}
+  .nav{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;font-size:11.5px;font-weight:600;color:var(--inkMute)}
+  .nav .ic{width:14px;height:14px;border-radius:4px;background:var(--inkDim);flex-shrink:0}
+  .nav.on{background:var(--tealTint);color:var(--tealDark);font-weight:700}
+  .nav.on .ic{background:var(--teal)}
+  .nav.child{margin-left:14px;font-size:11px}
+  .nav .nb{margin-left:auto;font-family:var(--mono);font-size:7px;font-weight:700;letter-spacing:.06em;padding:1px 5px;border-radius:99px;background:var(--goldTint);color:var(--goldInk)}
+
+  .canvas{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px}
+  .topbar{display:flex;align-items:center;gap:10px;padding:2px 2px 0}
+  .topbar .pt{font-family:var(--display);font-weight:800;font-size:16px;white-space:nowrap}
+  .topbar .ps{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.05em}
+
+  /* cascade context (dimmed) */
+  .cascade{display:flex;flex-direction:column;gap:7px;opacity:.55}
+  .rung{padding:9px 13px;border-radius:9px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .rung.done{background:var(--surfaceSoft);border:1px solid var(--rule)}
+  .rung .rk{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint)}
+  .rung .rd{font-size:11px;color:var(--inkMute);margin-top:2px}
+  .rung .rv{font-family:var(--display);font-weight:800;font-size:14px;white-space:nowrap}
+  .cscv{display:flex;justify-content:center;color:var(--inkDim);font-size:11px}
+  .ctxlabel{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint);text-transform:uppercase;display:flex;align-items:center;gap:7px}
+  .ctxlabel::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  /* THE card */
+  .wpcard{background:var(--surface);border:1px solid color-mix(in srgb,var(--teal) 34%,transparent);border-radius:14px;padding:17px 19px;position:relative;overflow:hidden;box-shadow:0 6px 18px rgba(1,105,111,.07)}
+  .wpcard .glow{position:absolute;top:-70px;right:-60px;width:210px;height:210px;border-radius:50%;background:radial-gradient(circle,var(--tealTint),transparent 65%);pointer-events:none}
+  .wp-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;position:relative}
+  .wp-ey{display:flex;align-items:center;gap:9px}
+  .wp-ey .e{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.16em;color:var(--teal)}
+  .wp-ro{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;padding:2px 9px;border-radius:99px;background:var(--surfaceMute);color:var(--inkMute)}
+  .wp-title{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:-.015em;line-height:1.25;margin-top:9px;max-width:560px}
+  .wp-title .g{color:var(--teal)}
+  .wp-from{font-size:11px;color:var(--inkMute);margin-top:5px;display:flex;align-items:center;gap:6px}
+  .wp-from .src{font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--tealDark);background:var(--tealTint);padding:2px 7px;border-radius:5px;letter-spacing:.03em}
+
+  /* metric chips row */
+  .metrics{display:flex;gap:10px;margin-top:16px;position:relative;flex-wrap:wrap}
+  .metric{flex:1;min-width:96px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:11px;padding:12px 13px;position:relative}
+  .metric .mv{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.022em;line-height:1;color:var(--teal)}
+  .metric .ml{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--inkMute);margin-top:6px;text-transform:uppercase}
+  .metric .basis{display:flex;align-items:center;gap:5px;margin-top:9px;padding-top:9px;border-top:1px dashed var(--rule);font-family:var(--mono);font-size:9px;color:var(--inkFaint)}
+  .metric .basis .x{color:var(--teal);font-weight:700}
+  .metric .exp{position:absolute;top:10px;right:11px;width:16px;height:16px;border-radius:5px;border:1px solid var(--rule);display:flex;align-items:center;justify-content:center;color:var(--inkFaint);font-size:10px}
+
+  /* derivation reveal (one expanded) */
+  .reveal{margin-top:13px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 26%,transparent);border-radius:11px;padding:13px 15px;position:relative}
+  .reveal .rh{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
+  .chain{display:flex;align-items:center;gap:8px;margin-top:11px;flex-wrap:wrap}
+  .chain .node{display:flex;flex-direction:column;gap:2px;align-items:flex-start}
+  .chain .node .nv{font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:-.012em;white-space:nowrap}
+  .chain .node .nl{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.06em;color:var(--inkFaint);text-transform:uppercase}
+  .chain .op{font-family:var(--mono);font-size:9px;color:var(--inkMute);background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:3px 7px;white-space:nowrap}
+  .chain .arr{color:var(--tealLight);font-weight:700}
+  .reveal .foot{font-size:10.5px;color:var(--inkMute);margin-top:10px}
+
+  /* annotations */
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.exist{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.exist .ad b{color:var(--tealDark)}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+
+  /* states */
+  .states{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-h .tg{margin-left:auto;font-size:8px;letter-spacing:.06em;padding:2px 7px;border-radius:99px}
+  .sc-b{padding:15px 15px;min-height:150px;display:flex;flex-direction:column;gap:11px}
+  /* loading skeleton */
+  .skel{display:flex;gap:9px}
+  .skel .sm{flex:1;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:10px;padding:13px;display:flex;flex-direction:column;gap:8px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  /* no-anchor */
+  .noanchor{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:9px;padding:8px}
+  .noanchor .ic{width:40px;height:40px;border-radius:11px;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:19px}
+  .noanchor .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .noanchor .d{font-size:11px;color:var(--inkMute);line-height:1.45;max-width:280px}
+  .noanchor .cta{margin-top:4px;padding:9px 16px;background:var(--teal);color:#fff;border-radius:9px;font-size:12px;font-weight:700}
+  /* floor fallback */
+  .floorflag{display:flex;align-items:center;gap:9px;padding:10px 13px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:10px;border-left:3px solid var(--inkFaint)}
+  .floorflag .fi{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--inkMute);text-transform:uppercase;white-space:nowrap}
+  .floorflag .fd{font-size:11px;color:var(--inkMute);line-height:1.4}
+  .floormetrics{display:flex;gap:8px}
+  .floormetrics .fm{flex:1;text-align:center;background:var(--surface);border:1px solid var(--rule);border-radius:9px;padding:9px 6px;position:relative}
+  .floormetrics .fm::before{content:'';position:absolute;left:8px;right:8px;top:50%;border-top:2px dashed var(--inkDim)}
+  .floormetrics .fm .v{font-family:var(--display);font-weight:800;font-size:17px;color:var(--inkMute);position:relative}
+  .floormetrics .fm .l{font-family:var(--mono);font-size:8px;font-weight:700;color:var(--inkFaint);margin-top:3px;letter-spacing:.04em}
+  /* error */
+  .errs{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:6px}
+  .errs .ic{width:40px;height:40px;border-radius:11px;background:var(--dangerTint);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:19px}
+  .errs .eb{margin-top:4px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+  .state-note{font-size:11px;color:var(--inkMute);margin-top:9px;text-wrap:pretty}
+  .state-note b{color:var(--ink)}
+
+  /* deferred */
+  .deferbox{background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:14px;padding:18px 20px}
+  .deferbox .dt{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--danger);margin-bottom:5px;display:flex;align-items:center;gap:8px}
+  .deferbox .dsub{font-size:12.5px;color:var(--ink);margin-bottom:14px;text-wrap:pretty}
+  .defgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .defitem{background:var(--surface);border:1px solid color-mix(in srgb,var(--danger) 22%,transparent);border-radius:10px;padding:12px 14px}
+  .defitem .dn{font-size:13px;font-weight:700;display:flex;align-items:flex-start;gap:8px}
+  .defitem .dn::before{content:'✕';color:var(--danger);font-weight:700;font-size:11px;line-height:1.5}
+  .defitem .dd{font-size:11.5px;color:var(--inkMute);margin-top:4px;text-wrap:pretty}
+  .defitem .s2{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;color:var(--teal);background:var(--tealTint);padding:2px 7px;border-radius:99px;display:inline-block;margin-top:7px}
+
+  .callout{display:flex;gap:13px;background:var(--goldTint);border:1px solid color-mix(in srgb,var(--gold) 30%,transparent);border-radius:13px;padding:16px 18px;margin-top:18px}
+  .callout .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--goldInk);flex-shrink:0;padding-top:2px}
+  .callout .h{font-size:14px;font-weight:800;font-family:var(--display);letter-spacing:-.01em}
+  .callout p{font-size:12.5px;color:var(--ink);margin-top:5px;text-wrap:pretty}
+  .callout b{font-weight:700}
+  .callout code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:200px 1fr 92px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .crow .co{text-align:right}
+
+  @media(max-width:1040px){
+    .keylegend{gap:10px}.annos{grid-template-columns:1fr}.defgrid{grid-template-columns:1fr}.states{grid-template-columns:1fr}
+    .appframe{flex-direction:column}.sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px}.sb-logo,.sb-grp{display:none}
+    .crow{grid-template-columns:1fr}.crow .co{text-align:left}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}.metric{min-width:calc(50% - 5px)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Weekly Planner v2 · Slice 1 — Build annotation</div>
+      <h1>The derived suggested-target card — read-only, zero new data.</h1>
+      <p class="subt">Path B, Slice 1: a <b>"Suggested weekly plan"</b> card in the Game Plan hub that surfaces the existing <b>Commission Playground</b> weekly decomposition — *"to stay on your plan, here's your week."* <b>Composition over the existing engine.</b> No steppers, no store, no commit, no actual, no variance. Honest fallbacks when there's no anchor or too little history.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />WEEKLY PLANNER · SLICE 1<br />AGENT · GAME PLAN HUB<br />REV 2026-06-03</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Slice rule</span>
+    <p><b>Read-only composition.</b> The weekly activity line is <b>derived by the existing Playground engine</b> (income/API → apps → CIs → dials, ratios from 8+ wks history) — Slice 1 reuses it, never recomputes and never stores. The only net-new thing is the <b>card chrome</b>. No anchor → honest fallback; &lt;8 weeks → company-floor suggestion, flagged.</p>
+  </div>
+
+  <div class="secttl">Reading this sheet</div>
+  <div class="keylegend">
+    <span><span class="pchip exist">EXISTING</span> the Playground decomposition engine + the company-floor data — reuse</span>
+    <span><span class="pchip new">NEW CHROME</span> the card UI only — no new data in Slice 1</span>
+    <span><span class="ref"></span> company-floor baseline = thin neutral reference (fallback only)</span>
+    <span style="color:var(--inkFaint)">variance ▲▼ roles are Slice-3 — not here</span>
+  </div>
+
+  <!-- SURFACE -->
+  <div class="secttl">Slice 1 surface — the card in the Game Plan hub</div>
+  <div class="appframe">
+    <div class="sidebar">
+      <div class="sb-logo"><div class="lm"></div><div class="lt">AgencyTrack</div></div>
+      <div class="sb-grp">PLANNING</div>
+      <div class="nav on"><span class="ic"></span>Game Plan <span class="nb">NEW</span></div>
+      <div class="nav child"><span class="ic"></span>Money Needs</div>
+      <div class="nav"><span class="ic"></span>Goals</div>
+      <div class="nav"><span class="ic"></span>Commission</div>
+      <div class="nav"><span class="ic"></span>Persistency</div>
+    </div>
+
+    <div class="canvas">
+      <div class="topbar"><span class="pt">Game Plan</span><span class="ps">· MARSHA SINGH · THU 26 NOV · WK 48</span></div>
+
+      <!-- context cascade (dimmed, shows where it sits) -->
+      <div class="ctxlabel">Game Plan hub · cascade context</div>
+      <div class="cascade">
+        <div class="rung done"><div><div class="rk">STEP 2 · YEAR PLAN</div><div class="rd">Split across product lines</div></div><div class="rv">TTD 600K API</div></div>
+        <div class="cscv">↓</div>
+        <div class="rung done"><div><div class="rk">STEP 3 · MONTHLY PLAN</div><div class="rd">Broken into 12 months</div></div><div class="rv">TTD 56K / NOV</div></div>
+      </div>
+      <div class="cscv" style="opacity:.55">↓</div>
+      <div class="ctxlabel"><span class="mk n" style="width:17px;height:17px;font-size:9px">1</span>NEW RUNG · THIS WEEK</div>
+
+      <!-- THE CARD -->
+      <div class="wpcard">
+        <div class="glow"></div>
+        <div class="wp-h">
+          <div>
+            <div class="wp-ey"><span class="e">SUGGESTED WEEKLY PLAN · WK 48</span><span class="mk n" style="width:17px;height:17px;font-size:9px">2</span></div>
+            <div class="wp-title">To stay on your <span class="g">TTD 600K</span> plan, your week looks like:</div>
+            <div class="wp-from">Derived from your committed annual target <span class="src">← GOALS · personalAnnualAPI</span> <span class="mk e" style="width:16px;height:16px;font-size:8px">3</span></div>
+          </div>
+          <span class="wp-ro">READ-ONLY</span>
+        </div>
+
+        <!-- metric chips -->
+        <div class="metrics">
+          <div class="metric"><span class="exp">⌄</span><div class="mv">50</div><div class="ml">Dials</div><div class="basis"><span class="x">5.6%</span> → CI</div></div>
+          <div class="metric"><span class="exp">⌄</span><div class="mv">40</div><div class="ml">Contacts</div><div class="basis"><span class="x">80%</span> of dials</div></div>
+          <div class="metric"><span class="exp">⌄</span><div class="mv">12</div><div class="ml">FFIs</div><div class="basis"><span class="x">30%</span> of contacts</div></div>
+          <div class="metric"><span class="exp">⌄</span><div class="mv">6</div><div class="ml">CIs</div><div class="basis"><span class="x">50%</span> of FFIs</div></div>
+          <div class="metric"><span class="exp">⌄</span><div class="mv">2</div><div class="ml">Apps</div><div class="basis"><span class="x">79%</span> CI→sale</div></div>
+        </div>
+
+        <!-- one metric's derivation revealed -->
+        <div class="reveal">
+          <div class="rh">↳ Dials · how we got 50 <span class="mk e" style="width:16px;height:16px;font-size:8px;margin-left:4px">4</span></div>
+          <div class="chain">
+            <div class="node"><span class="nv">2 apps</span><span class="nl">weekly</span></div>
+            <span class="arr">→</span><span class="op">÷ 79% CI→sale</span>
+            <div class="node"><span class="nv">~3 CIs</span><span class="nl">need</span></div>
+            <span class="arr">→</span><span class="op">÷ 50% FFI→CI</span>
+            <div class="node"><span class="nv">6 FFIs</span><span class="nl">need</span></div>
+            <span class="arr">→</span><span class="op">÷ 5.6% dial→CI</span>
+            <div class="node"><span class="nv">50 dials</span><span class="nl">plan</span></div>
+          </div>
+          <div class="foot">Ratios are your own — auto-filled from 8+ weeks of history by the Commission Playground. Tap any metric above to see its chain.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANNOTATIONS -->
+  <div class="annos">
+    <div class="anno newc"><span class="mk n">1</span><div><div class="at">NEW rung — not a new nav item</div><div class="ad">The card is a <b>new "This week" rung in the Game Plan hub cascade</b> (below the monthly grain) / a hub card. It extends the shipped shell; <b>no new nav entry</b>, no new route.</div></div></div>
+    <div class="anno newc"><span class="mk n">2</span><div><div class="at">The card chrome is the only net-new UI</div><div class="ad">Eyebrow, title, metric chips, the reveal — all <b>new chrome</b>. Everything <i>inside</i> is read from the existing engine. <b>READ-ONLY</b> badge is literal: no steppers, no commit in Slice 1.</div></div></div>
+    <div class="anno exist"><span class="mk e">3</span><div><div class="at">Anchor ← EXISTING committed target</div><div class="ad">Derives from the agent's <b>existing</b> annual target (<code>Goals.personalAnnualAPI</code>, or the Playground's own input — reconcile the exact source in the brief). <b>No anchor → fallback</b> (states below); never a fabricated number.</div></div></div>
+    <div class="anno exist"><span class="mk e">4</span><div><div class="at">Derivation ← EXISTING Playground chain</div><div class="ad">The per-metric reveal is the <b>Playground's own decomposition</b> (apps→CIs→FFIs→dials via the agent's ratios). Reuse the engine's numbers; the reveal just renders the chain. <b>Don't recompute.</b></div></div></div>
+  </div>
+
+  <!-- DAILY BREAKDOWN CALL -->
+  <div class="callout">
+    <span class="tag">Daily breakdown · my call</span>
+    <div>
+      <div class="h">Hold the daily breakdown for Slice 3 — not here.</div>
+      <p>A daily split is only meaningful <b>against daily actuals</b> (a Mon–Sun pace curve). In Slice 1 there's no actual to pace against, so a daily breakdown would either be a flat "÷5" restatement of the weekly number (noise) or imply tracking that doesn't exist yet (dishonest). <b>Keep Slice 1 to the weekly suggested line</b>; introduce the daily curve in <b>Slice 3</b> when plan-vs-actual arrives. A single honest "≈ 10 dials/day" sub-label is the most it should hint, if anything.</p>
+    </div>
+  </div>
+
+  <!-- STATES -->
+  <div class="secttl">States</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">S</span>Skeleton · loading</div>
+      <div class="sc-b">
+        <div class="shimmer" style="width:60%;height:11px"></div>
+        <div class="skel"><div class="sm"><div class="shimmer" style="width:60%;height:16px"></div><div class="shimmer" style="width:80%"></div></div><div class="sm"><div class="shimmer" style="width:60%;height:16px"></div><div class="shimmer" style="width:80%"></div></div><div class="sm"><div class="shimmer" style="width:60%;height:16px"></div><div class="shimmer" style="width:80%"></div></div></div>
+      </div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">A</span>Empty · no anchor set</div>
+      <div class="sc-b"><div class="noanchor"><div class="ic">◷</div><div class="t">Set a plan to see your week</div><div class="d">You haven't committed an annual target yet, so there's nothing to derive a weekly plan from.</div><div class="cta">Build your Game Plan →</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">F</span>&lt; 8 weeks history · floor fallback<span class="tg" style="background:var(--surfaceMute);color:var(--inkMute)">FLAGGED</span></div>
+      <div class="sc-b">
+        <div class="floormetrics">
+          <div class="fm"><div class="v">60</div><div class="l">DIALS</div></div>
+          <div class="fm"><div class="v">40</div><div class="l">CONTACTS</div></div>
+          <div class="fm"><div class="v">10</div><div class="l">FFIS</div></div>
+          <div class="fm"><div class="v">10</div><div class="l">CIS</div></div>
+        </div>
+        <div class="floorflag"><span class="fi">⎯ Company floor</span><span class="fd">Based on the <b>company floor</b> until you have 8 weeks of history — then we'll personalise it from your own ratios.</span></div>
+      </div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">!</span>Error</div>
+      <div class="sc-b"><div class="errs"><div class="ic">!</div><div class="t" style="font-family:var(--display);font-weight:800;font-size:14px">Couldn't load your suggested plan</div><div class="d" style="font-size:11px;color:var(--inkMute)">The rest of the hub stays usable.</div><div class="eb">↻ Retry</div></div></div>
+    </div>
+  </div>
+  <div class="state-note"><b>Honest-framing rule:</b> the card never shows a fabricated target. The order of resolution is — committed anchor → derive from the agent's ratios · no ratios (&lt;8 wks) → company floor, flagged · no anchor at all → the "set a plan" prompt. The floor fallback renders the floor as a <b>thin neutral baseline</b>, visually distinct from a derived teal target.</div>
+
+  <!-- DEFERRED -->
+  <div class="secttl">Deferred — red-flag column (the later slices)</div>
+  <div class="deferbox">
+    <div class="dt">⚑ Not in Slice 1 — each introduces a store, a write, a read, or an aggregate</div>
+    <div class="dsub">Slice 1 is the read-only suggestion. Everything that turns it into a tracked, committed, rolled-up plan is later.</div>
+    <div class="defgrid">
+      <div class="defitem"><div class="dn">Agent-set plan + store</div><div class="dd">Steppers, the <code style="font-family:var(--mono);font-size:11px">weeklyPlan</code> doc (per agent/week), commit + reset-to-suggested, floored at minimum.<div class="s2">→ SLICE 2 · store + write</div></div></div>
+      <div class="defitem"><div class="dn">Plan vs actual vs variance</div><div class="dd">Read actuals from the weekly submission (+ daily), compute variance/pace, the <b>daily breakdown</b>, weekly + daily display.<div class="s2">→ SLICE 3 · read + variance</div></div></div>
+      <div class="defitem"><div class="dn">WeeklyStandardCard evolution</div><div class="dd">Evolve the dashboard card to plan-vs-actual <b>with the floor as a baseline</b>. Slice 1 does <b>not</b> touch it.<div class="s2">→ SLICE 3 · dashboard</div></div></div>
+      <div class="defitem"><div class="dn">Manager roll-up</div><div class="dd">Team aggregate: who set a plan, plan-vs-actual per metric, on-pace/behind/no-plan flags.<div class="s2">→ SLICE 4 · aggregate</div></div></div>
+      <div class="defitem"><div class="dn">Commission Playground tab absorption</div><div class="dd">Reuse the engine now; retire the standalone tab once the planner owns the surface.<div class="s2">⚑ RECONCILE LATER</div></div></div>
+    </div>
+  </div>
+
+  <!-- COMPONENT LIST -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · Slice-1 scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">SuggestedWeekCard</div><div class="cd">The hub rung/card: eyebrow, title, metric chips, derivation reveal, READ-ONLY. The only net-new UI.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">playground.deriveWeek()</div><div class="cd">Existing decomposition engine — returns per-metric weekly targets + ratio basis. Reused, not rebuilt.</div><div class="co"><span class="ptag exist">EXISTING</span></div></div>
+    <div class="crow"><div class="cn">anchor resolver</div><div class="cd">Reads the committed annual target (<code>Goals.personalAnnualAPI</code> / Playground input). No anchor → fallback.</div><div class="co"><span class="ptag exist">EXISTING</span></div></div>
+    <div class="crow"><div class="cn">ACT_FLOORS</div><div class="cd">Company-floor constants — the &lt;8-week fallback suggestion, rendered as a neutral baseline.</div><div class="co"><span class="ptag exist">EXISTING</span></div></div>
+    <div class="crow"><div class="cn">statusToken(role)</div><div class="cd">Shared helper — roles here: suggested-target (teal) / floor-baseline (neutral). Variance roles deferred.</div><div class="co"><span class="ptag exist">SHARED</span></div></div>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

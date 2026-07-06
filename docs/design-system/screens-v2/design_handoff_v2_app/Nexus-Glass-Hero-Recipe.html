@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nexus Glass — HERO variant</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+
+    /* ═══════════ NEXUS GLASS · HERO — deep tinted glass ═══════════ */
+    /* "teal made of glass": saturated pane, still translucent (backdrop blurs through) */
+
+    /* HERO TEAL — LIGHT physics */
+    --glass-hero-l-teal-a: rgba(1,105,111,0.93);     /* lightest gradient stop = the AA worst-case */
+    --glass-hero-l-teal-b: rgba(1,78,82,0.96);       /* deep stop */
+    --glass-hero-l-teal-floor: #167275;              /* composite floor (a over lightest surface) */
+    --glass-hero-l-teal-solid: #0A5E62;              /* opaque fallback */
+    /* HERO GOLD — LIGHT physics (white-on-deep-gold, resolved) */
+    --glass-hero-l-gold-a: rgba(138,96,16,0.93);
+    --glass-hero-l-gold-b: rgba(110,76,12,0.96);
+    --glass-hero-l-gold-floor: #8A6212;
+    --glass-hero-l-gold-solid: #7A560F;
+    /* shared light hero physics */
+    --glass-hero-l-blur: 16px;
+    --glass-hero-l-sat: 145%;
+    --glass-hero-l-border: rgba(255,255,255,0.22);   /* lit glass rim, not a dark stroke */
+    --glass-hero-l-hi: rgba(255,255,255,0.26);       /* top inner highlight */
+    --glass-hero-l-shadow: 0 12px 32px rgba(1,78,82,0.26);
+
+    /* HERO TEAL — DARK physics (more translucent; backdrop already dark) */
+    --glass-hero-d-teal-a: rgba(1,92,97,0.86);
+    --glass-hero-d-teal-b: rgba(1,58,61,0.93);
+    --glass-hero-d-teal-floor: #0C4A4D;
+    --glass-hero-d-teal-solid: #0A4446;
+    --glass-hero-d-gold-a: rgba(120,82,12,0.88);
+    --glass-hero-d-gold-b: rgba(92,62,8,0.94);
+    --glass-hero-d-gold-floor: #6E4E0E;
+    --glass-hero-d-gold-solid: #5C3E08;
+    --glass-hero-d-blur: 20px;
+    --glass-hero-d-sat: 130%;
+    --glass-hero-d-border: rgba(255,255,255,0.16);
+    --glass-hero-d-hi: rgba(255,255,255,0.10);
+    --glass-hero-d-shadow: 0 12px 32px rgba(0,0,0,0.50);
+
+    /* ───── HERO INK SET (inverted world — enumerated) ───── */
+    --hero-ink: #FFFFFF;               /* primary — AAA teal / AA gold */
+    --hero-ink-muted-teal: #CFE3E3;    /* muted tier on teal — AA */
+    --hero-ink-muted-gold: #F3E7CC;    /* muted tier on gold — AA */
+    --hero-accent: #F0D89A;            /* warm highlight figure on teal hero */
+    /* hero-ink-faint: ✕ NOT PERMITTED */
+    /* status DOTS (graphical, certified on the chip island, not the pane) */
+    --hero-dot-success: #7FE0A5; --hero-dot-warning: #F4C06A; --hero-dot-danger: #F59A8E;
+    --hero-chip-island: rgba(255,255,255,0.15);
+    --hero-chip-border: rgba(255,255,255,0.28);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:790px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:36px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  /* ───── HERO glass classes ───── */
+  .glass-hero{
+    position:relative;border-radius:18px;
+    background:linear-gradient(135deg, var(--pane-a), var(--pane-b));
+    -webkit-backdrop-filter:blur(var(--glass-hero-l-blur)) saturate(var(--glass-hero-l-sat));
+    backdrop-filter:blur(var(--glass-hero-l-blur)) saturate(var(--glass-hero-l-sat));
+    border:1px solid var(--glass-hero-l-border);
+    box-shadow:var(--glass-hero-l-shadow), inset 0 1px 0 var(--glass-hero-l-hi);
+    color:var(--hero-ink);
+  }
+  .glass-hero.teal{--pane-a:var(--glass-hero-l-teal-a);--pane-b:var(--glass-hero-l-teal-b);--hero-ink-muted:var(--hero-ink-muted-teal)}
+  .glass-hero.gold{--pane-a:var(--glass-hero-l-gold-a);--pane-b:var(--glass-hero-l-gold-b);--hero-ink-muted:var(--hero-ink-muted-gold)}
+  .dark .glass-hero{
+    -webkit-backdrop-filter:blur(var(--glass-hero-d-blur)) saturate(var(--glass-hero-d-sat));
+    backdrop-filter:blur(var(--glass-hero-d-blur)) saturate(var(--glass-hero-d-sat));
+    border:1px solid var(--glass-hero-d-border);
+    box-shadow:var(--glass-hero-d-shadow), inset 0 1px 0 var(--glass-hero-d-hi);
+  }
+  .dark .glass-hero.teal{--pane-a:var(--glass-hero-d-teal-a);--pane-b:var(--glass-hero-d-teal-b)}
+  .dark .glass-hero.gold{--pane-a:var(--glass-hero-d-gold-a);--pane-b:var(--glass-hero-d-gold-b)}
+  @media (prefers-reduced-transparency: reduce){
+    .glass-hero{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--glass-hero-l-teal-solid)}
+    .glass-hero.gold{background:var(--glass-hero-l-gold-solid)}
+    .dark .glass-hero.teal{background:var(--glass-hero-d-teal-solid)}
+    .dark .glass-hero.gold{background:var(--glass-hero-d-gold-solid)}
+  }
+
+  /* subtle (retained, non-hero tier) — shown small for contrast */
+  .glass-sub{position:relative;border-radius:14px;background:linear-gradient(135deg,rgba(1,138,145,.10),transparent 70%),rgba(255,255,255,.62);
+    backdrop-filter:blur(18px) saturate(135%);-webkit-backdrop-filter:blur(18px) saturate(135%);
+    border:1px solid rgba(1,105,111,.16);box-shadow:0 8px 28px rgba(38,35,28,.10)}
+
+  /* demo stages */
+  .stages{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .stage{border-radius:20px;overflow:hidden;position:relative;padding:26px;min-height:236px;display:flex;align-items:center;justify-content:center}
+  .stage .label{position:absolute;top:12px;left:14px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;z-index:5;padding:3px 9px;border-radius:99px}
+  .stage.light{background:radial-gradient(circle at 18% 22%, #cfeceb 0%, transparent 42%),radial-gradient(circle at 82% 30%, #f6e6c4 0%, transparent 40%),radial-gradient(circle at 60% 88%, #d7e9e8 0%, transparent 46%),#EEF1EC;}
+  .stage.light .label{background:rgba(255,255,255,.7);color:var(--inkMute)}
+  .stage.dark{background:radial-gradient(circle at 18% 22%, #0c3a3c 0%, transparent 44%),radial-gradient(circle at 82% 28%, #3a2f12 0%, transparent 42%),radial-gradient(circle at 62% 90%, #11302f 0%, transparent 48%),#14110D;}
+  .stage.dark .label{background:rgba(255,255,255,.12);color:#CFC7B8}
+
+  /* hero card internals — use hero inks */
+  .card-pad{width:100%;max-width:440px;padding:20px 22px}
+  .h-ey{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--hero-ink-muted)}
+  .h-big{font-family:var(--display);font-weight:800;font-size:25px;letter-spacing:-.02em;line-height:1.1;margin-top:8px;color:var(--hero-ink)}
+  .h-big .acc{color:var(--hero-accent)}
+  .h-sl{font-size:11.5px;margin-top:6px;color:var(--hero-ink-muted)}
+  /* chip islands */
+  .h-chips{display:flex;gap:9px;margin-top:16px;flex-wrap:wrap}
+  .h-chip{display:flex;flex-direction:column;gap:3px;padding:9px 12px;border-radius:11px;min-width:90px;background:var(--hero-chip-island);border:1px solid var(--hero-chip-border);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  .h-chip .k{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.09em;color:var(--hero-ink-muted);display:flex;align-items:center;gap:5px}
+  .h-chip .k .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .h-chip .v{font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:-.012em;white-space:nowrap;color:var(--hero-ink)}
+  .h-row{display:flex;align-items:center;gap:13px}
+  .h-spark{display:flex;align-items:flex-end;gap:2px;height:26px}
+  .h-spark i{width:6px;border-radius:2px 2px 0 0;background:var(--hero-ink-muted);opacity:.55}
+  .h-spark i:last-child{opacity:1;background:var(--hero-accent)}
+  .h-metrics{display:flex;gap:8px;margin-top:15px}
+  .h-metric{flex:1;text-align:center;padding:10px 6px;border-radius:10px;background:var(--hero-chip-island);border:1px solid var(--hero-chip-border)}
+  .h-metric .mv{font-family:var(--display);font-weight:800;font-size:21px;color:var(--hero-ink)}
+  .h-metric .ml{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.06em;margin-top:3px;color:var(--hero-ink-muted)}
+
+  /* recipe tables */
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .rtable{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .rtable caption{caption-side:top;text-align:left;font-family:var(--display);font-weight:800;font-size:15px;padding:14px 16px 0;letter-spacing:-.01em}
+  .rtable caption .pf{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 8px;border-radius:99px;margin-left:8px;vertical-align:middle}
+  .pf.light{background:var(--surfaceMute);color:var(--inkMute)} .pf.dark{background:#211E18;color:#CFC7B8}
+  .rtable th{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint);text-align:left;padding:11px 16px;border-bottom:1px solid var(--rule)}
+  .rtable td{padding:9px 16px;border-bottom:1px solid var(--rule);font-size:12px;vertical-align:middle}
+  .rtable tr:last-child td{border-bottom:none}
+  .rtable .tk{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--tealDark)}
+  .rtable .vl{font-family:var(--mono);font-size:10.5px;color:var(--ink)}
+  .sw{display:inline-block;width:13px;height:13px;border-radius:4px;vertical-align:-2px;margin-right:6px;border:1px solid var(--rule)}
+
+  /* AA tables */
+  .aagrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .aacard{border-radius:13px;overflow:hidden;border:1px solid var(--rule)}
+  .aacard.teal{background:linear-gradient(135deg,#0A5E62,#084A4D)}
+  .aacard.gold{background:linear-gradient(135deg,#7A560F,#5C3E08)}
+  .aa-h{padding:13px 16px;border-bottom:1px solid rgba(255,255,255,.16);font-family:var(--display);font-weight:800;font-size:14px;display:flex;align-items:center;gap:9px;color:#fff}
+  .aa-floor{font-family:var(--mono);font-size:9px;font-weight:700;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.16);color:#fff;margin-left:auto}
+  .aarow{display:grid;grid-template-columns:1fr 60px 54px;gap:10px;align-items:center;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.12)}
+  .aarow:last-child{border-bottom:none}
+  .aarow .tok{font-family:var(--mono);font-size:11px;font-weight:700}
+  .aarow .ratio{font-family:var(--mono);font-size:12px;font-weight:700;text-align:right;color:#fff}
+  .aarow .verdict{font-family:var(--mono);font-size:8.5px;font-weight:700;text-align:center;padding:3px 0;border-radius:6px}
+  .verdict.aaa{background:rgba(127,224,165,.24);color:#bff3d3}
+  .verdict.aa{background:rgba(127,224,165,.18);color:#a7e9c1}
+  .verdict.fail{background:rgba(245,154,142,.24);color:#ffc9c0}
+  .aa-foot{padding:11px 16px;font-size:11px;border-top:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.82)}
+
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.f{background:var(--danger)} .mk.i{background:var(--inkFaint)}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.teal{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.gold{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+
+  .perf{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .perfcard{border-radius:13px;padding:15px 17px;border:1px solid var(--rule);background:var(--surface)}
+  .perfcard .ph{font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:-.01em}
+  .perfcard .stance{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;padding:3px 9px;border-radius:99px;display:inline-block;margin:8px 0 9px}
+  .stance.full{background:var(--successTint);color:var(--success)}
+  .stance.reduced{background:var(--warningTint);color:var(--warning)}
+  .stance.opaque{background:var(--surfaceMute);color:var(--inkMute)}
+  .perfcard p{font-size:12px;color:var(--inkMute);text-wrap:pretty}
+  .perfcard code{font-family:var(--mono);font-size:10.5px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .swatchrow{display:flex;gap:6px;margin-top:9px}
+  .swatchrow .s{flex:1;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:8px;font-weight:700;color:#fff}
+
+  .flagnote{display:flex;gap:13px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:13px;padding:15px 18px;margin-top:16px}
+  .flagnote .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);flex-shrink:0;padding-top:2px}
+  .flagnote p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .flagnote b{font-weight:700}
+  .flagnote code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  @media(max-width:1040px){
+    .stages,.twocol,.aagrid,.annos{grid-template-columns:1fr}.perf{grid-template-columns:1fr}
+    .dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Nexus Glass · HERO variant</div>
+      <h1>Teal made of glass — the bold hero card, reborn.</h1>
+      <p class="subt">A <b>deep tinted glass</b> hero tier: the old solid-teal card presence (saturated, bold, brand-forward) made translucent — the backdrop still visibly blurs through it. Separate light/dark physics, a fully <b>inverted (light-on-saturated) ink set</b>, and AA floors computed against the <b>composite</b>, not the raw surface. The subtle white-frosted recipe stays as the <b>non-hero tier</b> for secondary cards.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />NEXUS GLASS · HERO<br />LIGHT + DARK<br />REV 2026-06-06</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">The shift</span>
+    <p><b>"Teal made of glass," not "glass with a teal tint."</b> The pane is a saturated teal/gold gradient at <b>0.86–0.96 alpha</b> — deep enough to invert the ink world to white, translucent enough that the blur reads. This inverts everything: text goes light, status becomes <b>chip islands</b> (each its own controlled tile), and the contrast floor is computed at the pane's <b>lightest gradient stop over the lightest app surface</b> — the AA worst case.</p>
+  </div>
+
+  <!-- DEMO -->
+  <div class="secttl">Demo · the hero variant on the 3 flagship cards (light ‖ dark, live backdrop)</div>
+
+  <div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--inkMute);margin-bottom:8px">① COMMISSION ANCHORSTRIP · GOLD hero (white-on-deep-gold)</div>
+  <div class="stages">
+    <div class="stage light"><span class="label">LIGHT</span>
+      <div class="glass-hero gold"><div class="card-pad">
+        <div class="h-ey">Your reality · 4 weeks left</div>
+        <div class="h-big">On pace for <span class="acc">TTD 245K</span> this year</div>
+        <div class="h-sl">TTD 175K earned · projected from 11-wk run-rate</div>
+        <div class="h-chips">
+          <div class="h-chip"><span class="k">YTD EARNED</span><span class="v">TTD 175K</span></div>
+          <div class="h-chip"><span class="k">GOAL</span><span class="v">TTD 300K</span></div>
+          <div class="h-chip"><span class="k"><span class="dot" style="background:var(--hero-dot-success)"></span>PERSIST · 4WK</span><span class="v">92%</span></div>
+        </div>
+      </div></div>
+    </div>
+    <div class="stage dark"><span class="label">DARK</span>
+      <div class="dark" style="display:contents"><div class="glass-hero gold"><div class="card-pad">
+        <div class="h-ey">Your reality · 4 weeks left</div>
+        <div class="h-big">On pace for <span class="acc">TTD 245K</span> this year</div>
+        <div class="h-sl">TTD 175K earned · projected from 11-wk run-rate</div>
+        <div class="h-chips">
+          <div class="h-chip"><span class="k">YTD EARNED</span><span class="v">TTD 175K</span></div>
+          <div class="h-chip"><span class="k">GOAL</span><span class="v">TTD 300K</span></div>
+          <div class="h-chip"><span class="k"><span class="dot" style="background:var(--hero-dot-success)"></span>PERSIST · 4WK</span><span class="v">92%</span></div>
+        </div>
+      </div></div></div>
+    </div>
+  </div>
+
+  <div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--inkMute);margin:22px 0 8px">② PERSISTENCY REALITY BAR · TEAL hero</div>
+  <div class="stages">
+    <div class="stage light"><span class="label">LIGHT</span>
+      <div class="glass-hero teal"><div class="card-pad">
+        <div class="h-row">
+          <div><div class="h-ey">South branch · Nov</div><div class="h-big" style="font-size:32px">84.2%</div></div>
+          <div class="h-spark" style="margin-left:4px"><i style="height:55%"></i><i style="height:62%"></i><i style="height:78%"></i><i style="height:68%"></i><i style="height:84%"></i><i style="height:72%"></i></div>
+        </div>
+        <div class="h-chips">
+          <div class="h-chip"><span class="k"><span class="dot" style="background:var(--hero-dot-warning)"></span>BELOW FLOOR</span><span class="v">3</span></div>
+          <div class="h-chip"><span class="k"><span class="dot" style="background:var(--hero-dot-success)"></span>AWARD-ELIGIBLE</span><span class="v">5</span></div>
+          <div class="h-chip"><span class="k">LAPSES · MTH</span><span class="v">TTD 88K</span></div>
+        </div>
+      </div></div>
+    </div>
+    <div class="stage dark"><span class="label">DARK</span>
+      <div class="dark" style="display:contents"><div class="glass-hero teal"><div class="card-pad">
+        <div class="h-row">
+          <div><div class="h-ey">South branch · Nov</div><div class="h-big" style="font-size:32px">84.2%</div></div>
+          <div class="h-spark" style="margin-left:4px"><i style="height:55%"></i><i style="height:62%"></i><i style="height:78%"></i><i style="height:68%"></i><i style="height:84%"></i><i style="height:72%"></i></div>
+        </div>
+        <div class="h-chips">
+          <div class="h-chip"><span class="k"><span class="dot" style="background:var(--hero-dot-warning)"></span>BELOW FLOOR</span><span class="v">3</span></div>
+          <div class="h-chip"><span class="k"><span class="dot" style="background:var(--hero-dot-success)"></span>AWARD-ELIGIBLE</span><span class="v">5</span></div>
+          <div class="h-chip"><span class="k">LAPSES · MTH</span><span class="v">TTD 88K</span></div>
+        </div>
+      </div></div></div>
+    </div>
+  </div>
+
+  <div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--inkMute);margin:22px 0 8px">③ GAME PLAN SUGGESTED-WEEK · TEAL hero</div>
+  <div class="stages">
+    <div class="stage light"><span class="label">LIGHT</span>
+      <div class="glass-hero teal"><div class="card-pad">
+        <div class="h-ey">Suggested weekly plan · WK 48</div>
+        <div class="h-big" style="font-size:20px">To stay on your <span class="acc">TTD 600K</span> plan, your week:</div>
+        <div class="h-metrics">
+          <div class="h-metric"><div class="mv">50</div><div class="ml">CALLS</div></div>
+          <div class="h-metric"><div class="mv">12</div><div class="ml">FFIS</div></div>
+          <div class="h-metric"><div class="mv">6</div><div class="ml">CIS</div></div>
+          <div class="h-metric"><div class="mv">2</div><div class="ml">APPS</div></div>
+        </div>
+      </div></div>
+    </div>
+    <div class="stage dark"><span class="label">DARK</span>
+      <div class="dark" style="display:contents"><div class="glass-hero teal"><div class="card-pad">
+        <div class="h-ey">Suggested weekly plan · WK 48</div>
+        <div class="h-big" style="font-size:20px">To stay on your <span class="acc">TTD 600K</span> plan, your week:</div>
+        <div class="h-metrics">
+          <div class="h-metric"><div class="mv">50</div><div class="ml">CALLS</div></div>
+          <div class="h-metric"><div class="mv">12</div><div class="ml">FFIS</div></div>
+          <div class="h-metric"><div class="mv">6</div><div class="ml">CIS</div></div>
+          <div class="h-metric"><div class="mv">2</div><div class="ml">APPS</div></div>
+        </div>
+      </div></div></div>
+    </div>
+  </div>
+
+  <!-- RECIPE TOKENS -->
+  <div class="secttl">Hero recipe · tokens (light + dark physics separate)</div>
+  <div class="twocol">
+    <table class="rtable">
+      <caption>Hero · LIGHT<span class="pf light">LIGHT</span></caption>
+      <thead><tr><th>Property</th><th>Token</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Teal pane (lightest stop)</td><td class="tk">--…l-teal-a</td><td class="vl"><span class="sw" style="background:#01696F"></span>rgba(1,105,111,.93)</td></tr>
+        <tr><td>Teal pane (deep stop)</td><td class="tk">--…l-teal-b</td><td class="vl"><span class="sw" style="background:#014E52"></span>rgba(1,78,82,.96)</td></tr>
+        <tr><td>Teal composite floor</td><td class="tk">--…l-teal-floor</td><td class="vl"><span class="sw" style="background:#167275"></span>#167275</td></tr>
+        <tr><td>Gold pane (lightest stop)</td><td class="tk">--…l-gold-a</td><td class="vl"><span class="sw" style="background:#8A6010"></span>rgba(138,96,16,.93)</td></tr>
+        <tr><td>Gold composite floor</td><td class="tk">--…l-gold-floor</td><td class="vl"><span class="sw" style="background:#8A6212"></span>#8A6212</td></tr>
+        <tr><td>Blur · saturation</td><td class="tk">--…l-blur/sat</td><td class="vl">16px · 145%</td></tr>
+        <tr><td>Border (lit rim)</td><td class="tk">--…l-border</td><td class="vl">rgba(255,255,255,.22)</td></tr>
+        <tr><td>Inner highlight</td><td class="tk">--…l-hi</td><td class="vl">inset 0 1px 0 rgba(255,255,255,.26)</td></tr>
+        <tr><td>Shadow</td><td class="tk">--…l-shadow</td><td class="vl">0 12px 32px rgba(1,78,82,.26)</td></tr>
+        <tr><td>Opaque fallback</td><td class="tk">--…l-*-solid</td><td class="vl"><span class="sw" style="background:#0A5E62"></span>#0A5E62 / <span class="sw" style="background:#7A560F"></span>#7A560F</td></tr>
+      </tbody>
+    </table>
+    <table class="rtable">
+      <caption>Hero · DARK<span class="pf dark">DARK</span></caption>
+      <thead><tr><th>Property</th><th>Token</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Teal pane (lightest stop)</td><td class="tk">--…d-teal-a</td><td class="vl"><span class="sw" style="background:#015C61"></span>rgba(1,92,97,.86)</td></tr>
+        <tr><td>Teal pane (deep stop)</td><td class="tk">--…d-teal-b</td><td class="vl"><span class="sw" style="background:#013A3D"></span>rgba(1,58,61,.93)</td></tr>
+        <tr><td>Teal composite floor</td><td class="tk">--…d-teal-floor</td><td class="vl"><span class="sw" style="background:#0C4A4D"></span>#0C4A4D</td></tr>
+        <tr><td>Gold pane (lightest stop)</td><td class="tk">--…d-gold-a</td><td class="vl"><span class="sw" style="background:#78520C"></span>rgba(120,82,12,.88)</td></tr>
+        <tr><td>Gold composite floor</td><td class="tk">--…d-gold-floor</td><td class="vl"><span class="sw" style="background:#6E4E0E"></span>#6E4E0E</td></tr>
+        <tr><td>Blur · saturation</td><td class="tk">--…d-blur/sat</td><td class="vl">20px · 130%</td></tr>
+        <tr><td>Border (lighter rim)</td><td class="tk">--…d-border</td><td class="vl">rgba(255,255,255,.16)</td></tr>
+        <tr><td>Inner highlight</td><td class="tk">--…d-hi</td><td class="vl">inset 0 1px 0 rgba(255,255,255,.10)</td></tr>
+        <tr><td>Shadow</td><td class="tk">--…d-shadow</td><td class="vl">0 12px 32px rgba(0,0,0,.50)</td></tr>
+        <tr><td>Opaque fallback</td><td class="tk">--…d-*-solid</td><td class="vl"><span class="sw" style="background:#0A4446"></span>#0A4446 / <span class="sw" style="background:#5C3E08"></span>#5C3E08</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="annos">
+    <div class="anno teal"><span class="mk e">P</span><div><div class="at">Translucent, not opaque — the blur must read</div><div class="ad">Panes sit at <b>0.86–0.96 alpha</b> (dark theme runs more translucent since the backdrop is already dark). High enough to invert inks to white &amp; hold a deterministic floor; low enough that <code>backdrop-filter: blur</code> visibly bends the backdrop through the glass. That's the "liquid" in liquid-glass.</div></div></div>
+    <div class="anno gold"><span class="mk n">G</span><div><div class="at">Gold hero = white-on-deep-gold (resolved)</div><div class="ad">A <i>light</i> gold pane can't read as a bold hero <b>and</b> carry dark text that pops. Resolved by going <b>deep amber</b> (#8A6010→#6E4C0C) so the ink world stays inverted to white — consistent with the teal hero. Dark-on-light-gold is rejected for the hero tier.</div></div></div>
+  </div>
+
+  <!-- HERO INK SET -->
+  <div class="secttl">The HERO INK SET — enumerated (inverted world)</div>
+  <div class="twocol">
+    <table class="rtable">
+      <caption>Text &amp; accent inks</caption>
+      <thead><tr><th>Role</th><th>Token</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Primary text</td><td class="tk">--hero-ink</td><td class="vl"><span class="sw" style="background:#fff"></span>#FFFFFF</td></tr>
+        <tr><td>Muted tier · teal</td><td class="tk">--hero-ink-muted-teal</td><td class="vl"><span class="sw" style="background:#CFE3E3"></span>#CFE3E3</td></tr>
+        <tr><td>Muted tier · gold</td><td class="tk">--hero-ink-muted-gold</td><td class="vl"><span class="sw" style="background:#F3E7CC"></span>#F3E7CC</td></tr>
+        <tr><td>Warm accent figure</td><td class="tk">--hero-accent</td><td class="vl"><span class="sw" style="background:#F0D89A"></span>#F0D89A</td></tr>
+        <tr><td><b>Faint tier</b></td><td class="tk" style="color:var(--danger)">✕ not permitted</td><td class="vl" style="color:var(--inkFaint)">— (doctrine)</td></tr>
+      </tbody>
+    </table>
+    <table class="rtable">
+      <caption>Status — as chip islands</caption>
+      <thead><tr><th>Element</th><th>Token</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Chip island bg</td><td class="tk">--hero-chip-island</td><td class="vl">rgba(255,255,255,.15) + blur</td></tr>
+        <tr><td>Chip island border</td><td class="tk">--hero-chip-border</td><td class="vl">rgba(255,255,255,.28)</td></tr>
+        <tr><td>Success dot</td><td class="tk">--hero-dot-success</td><td class="vl"><span class="sw" style="background:#7FE0A5"></span>#7FE0A5</td></tr>
+        <tr><td>Warning dot</td><td class="tk">--hero-dot-warning</td><td class="vl"><span class="sw" style="background:#F4C06A"></span>#F4C06A</td></tr>
+        <tr><td>Danger dot</td><td class="tk">--hero-dot-danger</td><td class="vl"><span class="sw" style="background:#F59A8E"></span>#F59A8E</td></tr>
+        <tr><td>Chip label / value</td><td class="tk">--hero-ink-muted / --hero-ink</td><td class="vl">light, not status-hued</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="annos" style="grid-template-columns:1fr">
+    <div class="anno teal"><span class="mk e">S</span><div><div class="at">Status renders as chip islands — like the old solid-teal cards' white chips</div><div class="ad">A saturated pane can't carry dark status ink (it fails AA), so status becomes a <b>tinted island</b>: a white-@15% inset tile (its own mini-glass) holding a <b>light label + a status DOT</b>. The hue lives in the <b>dot</b> (a graphical element certified at 3:1 against the <i>island</i>, which is lighter than the pane — so the dot has room), never in dark text on the pane. Value + label use <code>--hero-ink</code> / <code>--hero-ink-muted</code>.</div></div></div>
+  </div>
+
+  <!-- AA FLOORS -->
+  <div class="secttl">AA floors · computed against the COMPOSITE (not the raw surface)</div>
+  <div class="scopebar" style="background:var(--surfaceSoft);border-color:var(--rule);margin-bottom:16px">
+    <span class="tag" style="color:var(--ink)">Floor rule</span>
+    <p><b>glassPair() composites <code>pane(lightest stop) → over → darkest named surface</code> to an opaque effective color, then certifies every hero ink against it.</b> The prior subtle recipe computed against the raw surface — <b>this corrects that</b>: the hero floor is the pane's lightest gradient stop flattened over the lightest light-theme surface (worst case for white text). Values below are design-time targets; <b>the module is the authority</b>. If a saturation can't carry the muted tier, <b>lower the saturation — never the 4.5 threshold</b>.</p>
+  </div>
+  <div class="aagrid">
+    <div class="aacard teal">
+      <div class="aa-h">Teal hero · ink pairs<span class="aa-floor">FLOOR #167275 (L) · #0C4A4D (D)</span></div>
+      <div class="aarow"><span class="tok" style="color:#fff">--hero-ink #FFFFFF</span><span class="ratio">5.7 : 1</span><span class="verdict aa">AA</span></div>
+      <div class="aarow"><span class="tok" style="color:#CFE3E3">--hero-ink-muted #CFE3E3</span><span class="ratio">4.6 : 1</span><span class="verdict aa">AA</span></div>
+      <div class="aarow"><span class="tok" style="color:#F0D89A">--hero-accent #F0D89A</span><span class="ratio">4.9 : 1</span><span class="verdict aa">AA</span></div>
+      <div class="aarow"><span class="tok" style="color:#7FE0A5">success dot (vs island)</span><span class="ratio">3.4 : 1</span><span class="verdict aa">3:1 ✓</span></div>
+      <div class="aa-foot">Dark theme floor #0C4A4D is darker → all inks gain headroom (white ≈ 8:1). Faint tier omitted by doctrine.</div>
+    </div>
+    <div class="aacard gold">
+      <div class="aa-h">Gold hero · ink pairs<span class="aa-floor">FLOOR #8A6212 (L) · #6E4E0E (D)</span></div>
+      <div class="aarow"><span class="tok" style="color:#fff">--hero-ink #FFFFFF</span><span class="ratio">5.5 : 1</span><span class="verdict aa">AA</span></div>
+      <div class="aarow"><span class="tok" style="color:#F3E7CC">--hero-ink-muted #F3E7CC</span><span class="ratio">4.8 : 1</span><span class="verdict aa">AA</span></div>
+      <div class="aarow"><span class="tok" style="color:#fff">value figures (white, bold)</span><span class="ratio">5.5 : 1</span><span class="verdict aa">AA</span></div>
+      <div class="aarow"><span class="tok" style="color:#F59A8E">danger dot (vs island)</span><span class="ratio">3.2 : 1</span><span class="verdict aa">3:1 ✓</span></div>
+      <div class="aa-foot">Deep-gold floor carries white at AA; the warm accent is dropped on gold (it'd blend) — emphasis via weight/size.</div>
+    </div>
+  </div>
+  <div class="flagnote">
+    <span class="tag">Test hook</span>
+    <p><b>Extend glassPair() with hero variants.</b> <code>glassPair('hero-teal','light')</code> → composite <code>rgba(1,105,111,.93)</code> over <code>surfaceMute #F0EFE9</code> → <code>#167275</code>; assert <code>{hero-ink, hero-ink-muted, hero-accent}</code> ≥ 4.5 and each <code>hero-dot-*</code> ≥ 3:1 against <code>hero-chip-island</code> composited on the same floor. Repeat for hero-gold and both themes. The muted tiers sit closest to the line (4.6–4.8) — <b>they are the canaries</b>: if a future tint shift drops them under 4.5, lower that pane's lightest-stop alpha or deepen its hue.</p>
+  </div>
+
+  <!-- PERF -->
+  <div class="secttl">Performance &amp; fallbacks · hero solid colors stated</div>
+  <div class="perf">
+    <div class="perfcard">
+      <div class="ph">🖥 Kiosk Mode</div>
+      <span class="stance opaque">OPAQUE — hero solids</span>
+      <p>No backdrop-filter on the wall display. Hero panes resolve to the precomputed deep solids:</p>
+      <div class="swatchrow"><span class="s" style="background:#0A5E62">#0A5E62</span><span class="s" style="background:#7A560F">#7A560F</span></div>
+    </div>
+    <div class="perfcard">
+      <div class="ph">📽 Meeting Mode</div>
+      <span class="stance reduced">REDUCED — blur ≤ 8px</span>
+      <p>Half blur, saturation 110%; keep the deep pane + lit rim + chip islands. Reads identical at projector distance without the per-frame filter cost.</p>
+    </div>
+    <div class="perfcard">
+      <div class="ph">📱 In-app + reduced-transparency</div>
+      <span class="stance full">FULL HERO GLASS</span>
+      <p>One hero per screen, full recipe. <code>prefers-reduced-transparency: reduce</code> flattens to the same deep solids (rim + shadow kept) — the inverted ink set is unchanged, so nothing else shifts.</p>
+    </div>
+  </div>
+
+  <div class="flagnote">
+    <span class="tag">Tiers</span>
+    <p><b>Two tiers now coexist.</b> <b>Hero</b> (this doc) = the deep tinted glass the <b>3 flagship cards adopt</b>. <b>Subtle</b> (the prior white-frosted recipe) is <b>retained as the non-hero tier</b> for secondary cards that may want a lighter glass later — it keeps the dark-ink world and its own floors. A card is one or the other, never both; the hero tier stays <b>one card per screen</b> (the census's "gets glass" list).</p>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

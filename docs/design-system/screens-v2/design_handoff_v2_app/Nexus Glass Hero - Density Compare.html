@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nexus Glass Hero — Density compare</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE; --warning:#B45309; --warningTint:#FEF3E2; --danger:#C0392B;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+
+    /* STANDARD (shipped) hero panes */
+    --s-l-teal-a:rgba(1,105,111,.93); --s-l-teal-b:rgba(1,78,82,.96);
+    --s-l-gold-a:rgba(138,96,16,.93); --s-l-gold-b:rgba(110,76,12,.96);
+    --s-d-teal-a:rgba(1,92,97,.86);   --s-d-teal-b:rgba(1,58,61,.93);
+    --s-d-gold-a:rgba(120,82,12,.88); --s-d-gold-b:rgba(92,62,8,.94);
+    --s-l-blur:16px; --s-d-blur:20px;
+    --muted-teal:#CFE3E3; --muted-gold:#F3E7CC;
+
+    /* AIRIER — lower alpha (light only slightly; dark noticeably), more blur, brightened muted */
+    --a-l-teal-a:rgba(1,105,111,.86); --a-l-teal-b:rgba(1,78,82,.90);
+    --a-l-gold-a:rgba(138,96,16,.86); --a-l-gold-b:rgba(110,76,12,.90);
+    --a-d-teal-a:rgba(1,92,97,.70);   --a-d-teal-b:rgba(1,58,61,.82);
+    --a-d-gold-a:rgba(120,82,12,.72); --a-d-gold-b:rgba(92,62,8,.84);
+    --a-l-blur:22px; --a-d-blur:28px;
+    --a-muted-teal:#E4F1F1; --a-muted-gold:#F8EFD9;
+
+    --hero-ink:#FFFFFF; --hero-accent:#F0D89A;
+    --dot-success:#7FE0A5; --dot-warning:#F4C06A;
+    --chip-island:rgba(255,255,255,.15); --chip-border:rgba(255,255,255,.28);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:780px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  /* hero panes */
+  .gh{position:relative;border-radius:18px;background:linear-gradient(135deg,var(--pa),var(--pb));
+    -webkit-backdrop-filter:blur(var(--bl)) saturate(145%);backdrop-filter:blur(var(--bl)) saturate(145%);
+    border:1px solid rgba(255,255,255,.22);box-shadow:0 12px 32px rgba(1,78,82,.26),inset 0 1px 0 rgba(255,255,255,.26);color:var(--hero-ink)}
+  /* standard */
+  .gh.teal{--pa:var(--s-l-teal-a);--pb:var(--s-l-teal-b);--bl:var(--s-l-blur);--mu:var(--muted-teal)}
+  .gh.gold{--pa:var(--s-l-gold-a);--pb:var(--s-l-gold-b);--bl:var(--s-l-blur);--mu:var(--muted-gold)}
+  .dark .gh{box-shadow:0 12px 32px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.10);border-color:rgba(255,255,255,.16)}
+  .dark .gh.teal{--pa:var(--s-d-teal-a);--pb:var(--s-d-teal-b);--bl:var(--s-d-blur)}
+  .dark .gh.gold{--pa:var(--s-d-gold-a);--pb:var(--s-d-gold-b);--bl:var(--s-d-blur)}
+  /* airier */
+  .gh.airy.teal{--pa:var(--a-l-teal-a);--pb:var(--a-l-teal-b);--bl:var(--a-l-blur);--mu:var(--a-muted-teal)}
+  .gh.airy.gold{--pa:var(--a-l-gold-a);--pb:var(--a-l-gold-b);--bl:var(--a-l-blur);--mu:var(--a-muted-gold)}
+  .dark .gh.airy.teal{--pa:var(--a-d-teal-a);--pb:var(--a-d-teal-b);--bl:var(--a-d-blur)}
+  .dark .gh.airy.gold{--pa:var(--a-d-gold-a);--pb:var(--a-d-gold-b);--bl:var(--a-d-blur)}
+
+  /* compare grid */
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .col-h{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+  .col-h .t{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-.01em}
+  .col-h .b{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;padding:3px 9px;border-radius:99px}
+  .b.std{background:var(--surfaceMute);color:var(--inkMute)} .b.air{background:var(--tealTint);color:var(--tealDark)}
+  .stack{display:flex;flex-direction:column;gap:14px;border-radius:20px;padding:20px;
+    background:radial-gradient(circle at 16% 16%,#cfeceb 0%,transparent 44%),radial-gradient(circle at 86% 24%,#f6e6c4 0%,transparent 40%),radial-gradient(circle at 60% 90%,#d7e9e8 0%,transparent 48%),#EEF1EC}
+  .dark .stack{background:radial-gradient(circle at 16% 16%,#0c3a3c 0%,transparent 46%),radial-gradient(circle at 86% 24%,#3a2f12 0%,transparent 42%),radial-gradient(circle at 60% 90%,#11302f 0%,transparent 50%),#14110D}
+
+  .card-pad{padding:16px 18px}
+  .h-ey{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mu)}
+  .h-big{font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.02em;line-height:1.12;margin-top:6px;color:var(--hero-ink)}
+  .h-big.sm{font-size:17px} .h-big .acc{color:var(--hero-accent)}
+  .h-sl{font-size:11px;margin-top:5px;color:var(--mu)}
+  .h-chips{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+  .h-chip{display:flex;flex-direction:column;gap:2px;padding:8px 11px;border-radius:10px;min-width:84px;background:var(--chip-island);border:1px solid var(--chip-border);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  .h-chip .k{font-family:var(--mono);font-size:7.5px;font-weight:700;letter-spacing:.08em;color:var(--mu);display:flex;align-items:center;gap:5px}
+  .h-chip .k .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .h-chip .v{font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:-.012em;white-space:nowrap;color:var(--hero-ink)}
+  .h-row{display:flex;align-items:center;gap:12px}
+  .h-spark{display:flex;align-items:flex-end;gap:2px;height:24px}
+  .h-spark i{width:5px;border-radius:2px 2px 0 0;background:var(--mu);opacity:.55}
+  .h-spark i:last-child{opacity:1;background:var(--hero-accent)}
+  .h-metrics{display:flex;gap:7px;margin-top:13px}
+  .h-metric{flex:1;text-align:center;padding:9px 5px;border-radius:9px;background:var(--chip-island);border:1px solid var(--chip-border)}
+  .h-metric .mv{font-family:var(--display);font-weight:800;font-size:19px;color:var(--hero-ink)}
+  .h-metric .ml{font-family:var(--mono);font-size:7.5px;font-weight:700;letter-spacing:.06em;margin-top:3px;color:var(--mu)}
+
+  .themetag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--inkMute);margin:6px 0 10px;display:flex;align-items:center;gap:8px}
+
+  /* AA tradeoff */
+  .aagrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .aacard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .aa-h{padding:12px 15px;border-bottom:1px solid var(--rule);font-family:var(--display);font-weight:800;font-size:14px;display:flex;align-items:center;gap:9px}
+  .aa-tag{margin-left:auto;font-family:var(--mono);font-size:9px;font-weight:700;padding:3px 9px;border-radius:99px}
+  .aarow{display:grid;grid-template-columns:1fr 90px 54px;gap:10px;align-items:center;padding:9px 15px;border-bottom:1px solid var(--rule);font-size:12px}
+  .aarow:last-child{border-bottom:none}
+  .aarow .tok{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--ink)}
+  .aarow .rr{font-family:var(--mono);font-size:11px;color:var(--inkMute);text-align:right}
+  .aarow .vd{font-family:var(--mono);font-size:8.5px;font-weight:700;text-align:center;padding:3px 0;border-radius:6px}
+  .vd.aa{background:var(--successTint);color:var(--success)} .vd.line{background:var(--warningTint);color:var(--warning)}
+
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.teal{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.gold{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+
+  @media(max-width:1040px){.cmp,.aagrid,.annos{grid-template-columns:1fr}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Nexus Glass Hero · Density compare</div>
+      <h1>Standard vs. Airier — pick the glass weight.</h1>
+      <p class="subt">Same hero recipe, two pane densities, side by side in both themes. <b>Airier</b> drops the pane alpha so more backdrop reads through — pushed harder in dark theme (where the dark backdrop leaves AA headroom) and only slightly in light (where the saturated pane is near its transparency floor). Everything else — inks, chip islands, rim, fallbacks — is unchanged.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />NEXUS GLASS HERO<br />DENSITY A/B<br />REV 2026-06-06</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">The knob</span>
+    <p><b>Only the pane alpha + blur change.</b> Standard light teal = <code>0.93</code>; airier = <code>0.86</code>. Standard dark teal = <code>0.86</code>; airier = <code>0.70</code> (dark gets the bigger move). Blur rises <code>16→22</code> (light) / <code>20→28</code> (dark) so the see-through reads as glass, not just thinner paint.</p>
+  </div>
+
+  <!-- LIGHT THEME COMPARE -->
+  <div class="secttl">Light theme · standard ‖ airier</div>
+  <div class="cmp">
+    <div>
+      <div class="col-h"><span class="t">Standard</span><span class="b std">SHIPPED · α .93</span></div>
+      <div class="stack">
+        <div class="gh gold"><div class="card-pad">
+          <div class="h-ey">Your reality · 4 weeks left</div>
+          <div class="h-big sm">On pace for <span class="acc">TTD 245K</span> this year</div>
+          <div class="h-chips"><div class="h-chip"><span class="k">YTD EARNED</span><span class="v">TTD 175K</span></div><div class="h-chip"><span class="k"><span class="dot" style="background:var(--dot-success)"></span>PERSIST</span><span class="v">92%</span></div></div>
+        </div></div>
+        <div class="gh teal"><div class="card-pad">
+          <div class="h-row"><div><div class="h-ey">South branch · Nov</div><div class="h-big" style="font-size:28px">84.2%</div></div><div class="h-spark" style="margin-left:auto"><i style="height:55%"></i><i style="height:62%"></i><i style="height:78%"></i><i style="height:68%"></i><i style="height:84%"></i><i style="height:72%"></i></div></div>
+          <div class="h-chips"><div class="h-chip"><span class="k"><span class="dot" style="background:var(--dot-warning)"></span>BELOW FLOOR</span><span class="v">3</span></div><div class="h-chip"><span class="k">LAPSES</span><span class="v">TTD 88K</span></div></div>
+        </div></div>
+        <div class="gh teal"><div class="card-pad">
+          <div class="h-ey">Suggested weekly plan · WK 48</div>
+          <div class="h-metrics"><div class="h-metric"><div class="mv">50</div><div class="ml">CALLS</div></div><div class="h-metric"><div class="mv">12</div><div class="ml">FFIS</div></div><div class="h-metric"><div class="mv">6</div><div class="ml">CIS</div></div><div class="h-metric"><div class="mv">2</div><div class="ml">APPS</div></div></div>
+        </div></div>
+      </div>
+    </div>
+    <div>
+      <div class="col-h"><span class="t">Airier</span><span class="b air">α .86 · blur 22</span></div>
+      <div class="stack">
+        <div class="gh airy gold"><div class="card-pad">
+          <div class="h-ey">Your reality · 4 weeks left</div>
+          <div class="h-big sm">On pace for <span class="acc">TTD 245K</span> this year</div>
+          <div class="h-chips"><div class="h-chip"><span class="k">YTD EARNED</span><span class="v">TTD 175K</span></div><div class="h-chip"><span class="k"><span class="dot" style="background:var(--dot-success)"></span>PERSIST</span><span class="v">92%</span></div></div>
+        </div></div>
+        <div class="gh airy teal"><div class="card-pad">
+          <div class="h-row"><div><div class="h-ey">South branch · Nov</div><div class="h-big" style="font-size:28px">84.2%</div></div><div class="h-spark" style="margin-left:auto"><i style="height:55%"></i><i style="height:62%"></i><i style="height:78%"></i><i style="height:68%"></i><i style="height:84%"></i><i style="height:72%"></i></div></div>
+          <div class="h-chips"><div class="h-chip"><span class="k"><span class="dot" style="background:var(--dot-warning)"></span>BELOW FLOOR</span><span class="v">3</span></div><div class="h-chip"><span class="k">LAPSES</span><span class="v">TTD 88K</span></div></div>
+        </div></div>
+        <div class="gh airy teal"><div class="card-pad">
+          <div class="h-ey">Suggested weekly plan · WK 48</div>
+          <div class="h-metrics"><div class="h-metric"><div class="mv">50</div><div class="ml">CALLS</div></div><div class="h-metric"><div class="mv">12</div><div class="ml">FFIS</div></div><div class="h-metric"><div class="mv">6</div><div class="ml">CIS</div></div><div class="h-metric"><div class="mv">2</div><div class="ml">APPS</div></div></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DARK THEME COMPARE -->
+  <div class="secttl">Dark theme · standard ‖ airier (the bigger move)</div>
+  <div class="cmp">
+    <div class="dark">
+      <div class="col-h"><span class="t" style="color:var(--ink)">Standard</span><span class="b std">SHIPPED · α .86</span></div>
+      <div class="stack">
+        <div class="gh gold"><div class="card-pad">
+          <div class="h-ey">Your reality · 4 weeks left</div>
+          <div class="h-big sm">On pace for <span class="acc">TTD 245K</span> this year</div>
+          <div class="h-chips"><div class="h-chip"><span class="k">YTD EARNED</span><span class="v">TTD 175K</span></div><div class="h-chip"><span class="k"><span class="dot" style="background:var(--dot-success)"></span>PERSIST</span><span class="v">92%</span></div></div>
+        </div></div>
+        <div class="gh teal"><div class="card-pad">
+          <div class="h-row"><div><div class="h-ey">South branch · Nov</div><div class="h-big" style="font-size:28px">84.2%</div></div><div class="h-spark" style="margin-left:auto"><i style="height:55%"></i><i style="height:62%"></i><i style="height:78%"></i><i style="height:68%"></i><i style="height:84%"></i><i style="height:72%"></i></div></div>
+          <div class="h-chips"><div class="h-chip"><span class="k"><span class="dot" style="background:var(--dot-warning)"></span>BELOW FLOOR</span><span class="v">3</span></div><div class="h-chip"><span class="k">LAPSES</span><span class="v">TTD 88K</span></div></div>
+        </div></div>
+        <div class="gh teal"><div class="card-pad">
+          <div class="h-ey">Suggested weekly plan · WK 48</div>
+          <div class="h-metrics"><div class="h-metric"><div class="mv">50</div><div class="ml">CALLS</div></div><div class="h-metric"><div class="mv">12</div><div class="ml">FFIS</div></div><div class="h-metric"><div class="mv">6</div><div class="ml">CIS</div></div><div class="h-metric"><div class="mv">2</div><div class="ml">APPS</div></div></div>
+        </div></div>
+      </div>
+    </div>
+    <div class="dark">
+      <div class="col-h"><span class="t" style="color:var(--ink)">Airier</span><span class="b air">α .70 · blur 28</span></div>
+      <div class="stack">
+        <div class="gh airy gold"><div class="card-pad">
+          <div class="h-ey">Your reality · 4 weeks left</div>
+          <div class="h-big sm">On pace for <span class="acc">TTD 245K</span> this year</div>
+          <div class="h-chips"><div class="h-chip"><span class="k">YTD EARNED</span><span class="v">TTD 175K</span></div><div class="h-chip"><span class="k"><span class="dot" style="background:var(--dot-success)"></span>PERSIST</span><span class="v">92%</span></div></div>
+        </div></div>
+        <div class="gh airy teal"><div class="card-pad">
+          <div class="h-row"><div><div class="h-ey">South branch · Nov</div><div class="h-big" style="font-size:28px">84.2%</div></div><div class="h-spark" style="margin-left:auto"><i style="height:55%"></i><i style="height:62%"></i><i style="height:78%"></i><i style="height:68%"></i><i style="height:84%"></i><i style="height:72%"></i></div></div>
+          <div class="h-chips"><div class="h-chip"><span class="k"><span class="dot" style="background:var(--dot-warning)"></span>BELOW FLOOR</span><span class="v">3</span></div><div class="h-chip"><span class="k">LAPSES</span><span class="v">TTD 88K</span></div></div>
+        </div></div>
+        <div class="gh airy teal"><div class="card-pad">
+          <div class="h-ey">Suggested weekly plan · WK 48</div>
+          <div class="h-metrics"><div class="h-metric"><div class="mv">50</div><div class="ml">CALLS</div></div><div class="h-metric"><div class="mv">12</div><div class="ml">FFIS</div></div><div class="h-metric"><div class="mv">6</div><div class="ml">CIS</div></div><div class="h-metric"><div class="mv">2</div><div class="ml">APPS</div></div></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AA TRADEOFF -->
+  <div class="secttl">The AA tradeoff · what airier costs at the floor</div>
+  <div class="aagrid">
+    <div class="aacard">
+      <div class="aa-h">Light · teal hero<span class="aa-tag" style="background:var(--warningTint);color:var(--warning)">TIGHT</span></div>
+      <div class="aarow"><span class="tok">hero-ink #FFFFFF</span><span class="rr">5.1 → <b style="color:var(--ink)">≈5.0</b></span><span class="vd aa">AA</span></div>
+      <div class="aarow"><span class="tok">muted (brightened →#E4F1F1)</span><span class="rr">4.6 → <b style="color:var(--ink)">≈4.5</b></span><span class="vd line">AA · line</span></div>
+      <div class="aarow"><span class="tok">accent #F0D89A</span><span class="rr">4.9 → ≈4.7</span><span class="vd aa">AA</span></div>
+      <div class="aarow"><span class="tok" style="font-size:9.5px;color:var(--inkMute)">floor #167275 → #1E797E</span><span class="rr"></span><span class="vd" style="background:none"></span></div>
+    </div>
+    <div class="aacard">
+      <div class="aa-h">Dark · teal hero<span class="aa-tag" style="background:var(--successTint);color:var(--success)">ROOMY</span></div>
+      <div class="aarow"><span class="tok">hero-ink #FFFFFF</span><span class="rr">8.0 → <b style="color:var(--ink)">≈6.8</b></span><span class="vd aa">AAA→AA</span></div>
+      <div class="aarow"><span class="tok">muted #CFE3E3 (unchanged)</span><span class="rr">6.4 → ≈5.6</span><span class="vd aa">AA</span></div>
+      <div class="aarow"><span class="tok">accent #F0D89A</span><span class="rr">7.1 → ≈6.1</span><span class="vd aa">AA</span></div>
+      <div class="aarow"><span class="tok" style="font-size:9.5px;color:var(--inkMute)">floor #0C4A4D → #0F5256</span><span class="rr"></span><span class="vd" style="background:none"></span></div>
+    </div>
+  </div>
+  <div class="annos">
+    <div class="anno gold"><span class="mk n">!</span><div><div class="at">Light theme is the constraint</div><div class="ad">At airier-light the muted tier sits <b>right on 4.5</b> — so airier light <b>brightens muted to <code>#E4F1F1</code></b> to stay legal, and can't go below <code>α .86</code> without failing. If you want maximum glass, it lives in <b>dark theme</b>.</div></div></div>
+    <div class="anno teal"><span class="mk e">✓</span><div><div class="at">Dark theme has room to breathe</div><div class="ad">The dark backdrop keeps the effective floor deep even at <code>α .70</code>, so dark airier still clears AA comfortably with the <b>same inks</b> — this is where the see-through glass really shows.</div></div></div>
+  </div>
+
+  <div class="scopebar" style="margin-top:18px">
+    <span class="tag">Your call</span>
+    <p><b>Weigh the two columns.</b> If you pick <b>Airier</b>, I'll fold it into <code>Nexus Glass Hero — Recipe.html</code> as the shipped values (with the brightened light-muted token + the re-derived floors), and re-run glassPair() certification. <b>Standard</b> stays as-is. Either way it's a token swap — the ink set, chip islands, and fallbacks don't move.</p>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

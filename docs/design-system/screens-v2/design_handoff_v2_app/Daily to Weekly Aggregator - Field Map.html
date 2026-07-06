@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Daily → Weekly Aggregator — Field Map & Rules</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --soft:#F4F2EC; --mute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --violet:#5A3FA0; --violetTint:#F0ECFF;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.55;padding:44px 0 96px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 40px}
+  code{font-family:var(--mono)}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:22px;border-bottom:1px solid var(--rule);margin-bottom:22px}
+  .logo{width:50px;height:50px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:29px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14px;margin-top:9px;max-width:780px;text-wrap:pretty}
+  .subt code{font-size:12px}
+  .subt b{color:var(--ink);font-weight:700}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:6px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  /* flow diagram */
+  .flow{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}
+  .fbox{flex:1;min-width:150px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:14px 15px}
+  .fbox .fk{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .fbox .ft{font-family:var(--display);font-weight:800;font-size:15px;margin-top:5px;letter-spacing:-.01em}
+  .fbox .fd{font-size:11.5px;color:var(--inkMute);margin-top:5px;text-wrap:pretty}
+  .fbox code{font-size:10.5px;background:var(--mute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .fbox.write{border-color:color-mix(in srgb,var(--gold) 36%,transparent);background:var(--goldTint)}
+  .farrow{display:flex;align-items:center;color:var(--inkDim);font-size:18px;flex-shrink:0}
+
+  .callout{display:flex;gap:11px;background:var(--soft);border:1px solid var(--rule);border-radius:12px;padding:13px 16px;margin-top:14px}
+  .callout .ci{width:22px;height:22px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono);font-weight:700;font-size:12px}
+  .callout.warn{background:var(--warningTint);border-color:color-mix(in srgb,var(--warning) 30%,transparent)}
+  .callout.warn .ci{background:var(--warning)}
+  .callout p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .callout b{font-weight:700}
+  .callout code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  /* pseudocode block */
+  .code-block{background:#1F1B17;color:#E9E3D6;border-radius:12px;padding:16px 18px;font-family:var(--mono);font-size:12px;line-height:1.7;overflow-x:auto;white-space:pre}
+  .code-block .cm{color:#8A8074}
+  .code-block .kw{color:#6FD3D6}
+  .code-block .fn{color:#E0AA3E}
+  .code-block .st{color:#9FD8A0}
+
+  /* tables */
+  .tbl{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .tbl th,.tbl td{text-align:left;padding:9px 14px;font-size:12px;vertical-align:top}
+  .tbl thead th{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inkFaint);background:var(--soft);border-bottom:1px solid var(--rule)}
+  .tbl tbody td{border-bottom:1px solid var(--rule)}
+  .tbl tbody tr:last-child td{border-bottom:none}
+  .tbl .grp td{background:var(--soft);font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--violet)}
+  .tbl .k{font-family:var(--mono);font-size:11px;color:var(--tealDark);font-weight:700;white-space:nowrap}
+  .tbl .w{font-weight:600}
+  .tbl .note{color:var(--inkMute);font-size:11px;text-wrap:pretty}
+  .rule{display:inline-block;font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:99px;white-space:nowrap}
+  .rule.sum{background:var(--tealTint);color:var(--tealDark)}
+  .rule.money{background:var(--goldTint);color:var(--goldInk)}
+  .rule.derive{background:var(--violetTint);color:var(--violet)}
+  .rule.none{background:var(--mute);color:var(--inkMute)}
+
+  .edge{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  .ecard{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .ecard .et{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .ecard .et .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .ecard .ed{font-size:11.5px;color:var(--inkMute);margin-top:5px;text-wrap:pretty}
+  .ecard .ed code{font-family:var(--mono);font-size:10.5px;background:var(--mute);padding:1px 4px;border-radius:4px;color:var(--tealDark)}
+
+  .decisions{background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:14px;padding:18px 20px}
+  .decisions .dt{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--danger);margin-bottom:4px}
+  .decisions .dsub{font-size:12.5px;color:var(--ink);margin-bottom:14px}
+  .dlist{display:flex;flex-direction:column;gap:10px}
+  .ditem{background:var(--surface);border:1px solid color-mix(in srgb,var(--danger) 20%,transparent);border-radius:10px;padding:12px 14px;display:flex;gap:11px}
+  .ditem .dn{width:22px;height:22px;border-radius:6px;background:var(--danger);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .ditem .dq{font-size:13px;font-weight:700}
+  .ditem .da{font-size:11.5px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .ditem .da b{color:var(--ink)}
+  .ditem .da code{font-family:var(--mono);font-size:10.5px;background:var(--mute);padding:1px 4px;border-radius:4px;color:var(--tealDark)}
+  .lean{display:inline-block;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--success);background:var(--successTint);padding:2px 7px;border-radius:99px;margin-top:6px}
+
+  @media(max-width:820px){.edge{grid-template-columns:1fr}.flow{flex-direction:column}.farrow{transform:rotate(90deg)}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Daily Capture v2 · companion build spec</div>
+      <h1>Daily → Weekly aggregator — field map &amp; rules</h1>
+      <p class="subt">The data contract behind the Option B daily log: how each day's <code>dailyActivity/{date}</code> entry rolls up into the <b>weekly report draft</b>, how points and pace are derived, and how back-filled or edited days re-aggregate. Paired with <b>Daily Entry — Option B Build</b> (the UI). This is a <b>spec, not a mock</b> — CC reconciles against the live schema + the existing activity-points engine and decides the flagged calls.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />DAILY CAPTURE · AGGREGATOR<br />COMPANION TO OPTION B<br />REV 2026-06-17</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Core rule</span>
+    <p><b>The weekly draft is a pure function of the week's daily entries — recomputed, never incremented.</b> <code>weeklyDraft = aggregate(all dailyActivity docs in ISO week)</code>. Any create / edit / back-fill of a day re-runs the whole aggregation, so the result is <b>idempotent</b> and edits can't drift. Aggregation <b>sums every logged day</b> regardless of schedule; working-days only affects pace, points-target, and streaks — never the totals.</p>
+  </div>
+
+  <!-- MODEL -->
+  <div class="secttl">The model — read, aggregate, write</div>
+  <div class="flow">
+    <div class="fbox">
+      <div class="fk">Source · read</div>
+      <div class="ft">dailyActivity/{date}</div>
+      <div class="fd">One doc per logged day. Holds the daily field set (counts, money, hours) + the day's note. Keyed by date in Trinidad time.</div>
+    </div>
+    <div class="farrow">→</div>
+    <div class="fbox">
+      <div class="fk">Aggregate · pure fn</div>
+      <div class="ft">aggregateWeek(weekId)</div>
+      <div class="fd">Sums all in-week day docs per the field map below; derives points + pace. <code>Σ</code> over days, not <code>+=</code>.</div>
+    </div>
+    <div class="farrow">→</div>
+    <div class="fbox write">
+      <div class="fk">Target · write</div>
+      <div class="ft">weeklyReport (draft)</div>
+      <div class="fd">Pre-fills the wizard's activity / sales / production / hours fields. Reflection + goals stay empty for Sunday.</div>
+    </div>
+  </div>
+
+  <div class="code-block"><span class="cm">// Recompute on ANY day change (create, edit, back-fill, delete). Idempotent.</span>
+<span class="kw">function</span> <span class="fn">aggregateWeek</span>(weekId, agentId) {
+  <span class="kw">const</span> days = readDailyDocs(agentId, weekId);        <span class="cm">// 0…7 docs (whatever was logged)</span>
+  <span class="kw">const</span> totals = sumByFieldMap(days);                 <span class="cm">// per the table below — Σ each key</span>
+  <span class="kw">const</span> points = pointsEngine.<span class="fn">score</span>(totals);        <span class="cm">// REUSE existing engine on weekly totals</span>
+  <span class="kw">return</span> mergeIntoWeeklyDraft(weekId, {
+    ...totals, activityPoints: points,
+    <span class="cm">// reflection ratings, note, next-week goals: NOT touched — entered Sunday</span>
+  });
+}</div>
+
+  <!-- FIELD MAP -->
+  <div class="secttl">Field map — every daily key → weekly field</div>
+  <table class="tbl">
+    <thead><tr><th style="width:24%">Daily key</th><th style="width:30%">Weekly field · step</th><th style="width:14%">Rule</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr class="grp"><td colspan="4">Prospecting &amp; outreach → Activity (steps 1–5)</td></tr>
+      <tr><td class="k">letters</td><td class="w">Letters &amp; outreach · 1</td><td><span class="rule sum">Σ sum</span></td><td class="note">Count.</td></tr>
+      <tr><td class="k">seminars</td><td class="w">Seminars &amp; tradeshows · 2</td><td><span class="rule sum">Σ sum</span></td><td class="note">Count.</td></tr>
+      <tr><td class="k">calls</td><td class="w">Calls / dials · 3</td><td><span class="rule sum">Σ sum</span></td><td class="note">Maps to <code>totalCalls</code>.</td></tr>
+      <tr><td class="k">contacts</td><td class="w">Telephone contacts · 3</td><td><span class="rule sum">Σ sum</span></td><td class="note">Distinct from dials — feeds contact-rate ratio.</td></tr>
+      <tr><td class="k">f2f</td><td class="w">F2F approaches · 3</td><td><span class="rule sum">Σ sum</span></td><td class="note">Count.</td></tr>
+      <tr><td class="k">social</td><td class="w">Social &amp; content · 4</td><td><span class="rule sum">Σ sum</span></td><td class="note">Headline count.</td></tr>
+      <tr><td class="k">socPosts · socContent · socEngage</td><td class="w">Social breakdown · 4</td><td><span class="rule sum">Σ sum</span></td><td class="note">Optional sub-fields. <b>See decision 2</b> — store separately or fold into <code>social</code>.</td></tr>
+      <tr><td class="k">newNames</td><td class="w">New names added · 5</td><td><span class="rule sum">Σ sum</span></td><td class="note">Count.</td></tr>
+
+      <tr class="grp"><td colspan="4">Appointments &amp; FFI · Interviews → Sales (step 6)</td></tr>
+      <tr><td class="k">appts</td><td class="w">Appointments set · 6</td><td><span class="rule sum">Σ sum</span></td><td class="note">Confirm weekly home (activity vs sales) — <b>decision 3</b>.</td></tr>
+      <tr><td class="k">ffiSched</td><td class="w">FFIs scheduled · 6</td><td><span class="rule sum">Σ sum</span></td><td class="note">Count.</td></tr>
+      <tr><td class="k">ffiDone</td><td class="w">FFIs conducted · 6</td><td><span class="rule sum">Σ sum</span></td><td class="note">Count.</td></tr>
+      <tr><td class="k">newCI · oldCI</td><td class="w">CIs booked (new / old) · 6</td><td><span class="rule sum">Σ sum</span></td><td class="note">Two counts.</td></tr>
+      <tr><td class="k">ciDone</td><td class="w">CIs conducted · 6</td><td><span class="rule sum">Σ sum</span></td><td class="note">Drives CI→app conversion.</td></tr>
+      <tr><td class="k">present</td><td class="w">Solution presentations · 6</td><td><span class="rule sum">Σ sum</span></td><td class="note">Count.</td></tr>
+
+      <tr class="grp"><td colspan="4">Production → New business (step 7)</td></tr>
+      <tr><td class="k">nbApps</td><td class="w">Applications written · 7</td><td><span class="rule sum">Σ sum</span></td><td class="note">Count.</td></tr>
+      <tr><td class="k">lives</td><td class="w">Lives sold · 7</td><td><span class="rule sum">Σ sum</span></td><td class="note">Count.</td></tr>
+      <tr><td class="k">nbApi</td><td class="w">New business API · 7</td><td><span class="rule money">Σ TTD</span></td><td class="note">Money. Sum gross TTD.</td></tr>
+      <tr><td class="k">pppApps · pppApi · lumpsum</td><td class="w">PPP / lumpsum · 7</td><td><span class="rule money">Σ TTD</span></td><td class="note">Advanced/optional. Lumpsum credit + commission computed weekly per existing rule (10% / 0.5%).</td></tr>
+
+      <tr class="grp"><td colspan="4">Delivery &amp; service → step 8</td></tr>
+      <tr><td class="k">delivered</td><td class="w">Policies delivered · 8</td><td><span class="rule sum">Σ sum</span></td><td class="note">Count.</td></tr>
+      <tr><td class="k">svcContacts</td><td class="w">Service contacts · 8</td><td><span class="rule sum">Σ sum</span></td><td class="note">Count.</td></tr>
+      <tr><td class="k">oldNames</td><td class="w">Old names worked · 8</td><td><span class="rule sum">Σ sum</span></td><td class="note">Count.</td></tr>
+
+      <tr class="grp"><td colspan="4">Hours → Reflection (step 9)</td></tr>
+      <tr><td class="k">office · field</td><td class="w">Hours worked · 9</td><td><span class="rule sum">Σ sum</span></td><td class="note">Sum each across days; weekly hours = Σ office + Σ field.</td></tr>
+
+      <tr class="grp"><td colspan="4">Derived</td></tr>
+      <tr><td class="k">activityPoints</td><td class="w">Weekly activity points</td><td><span class="rule derive">engine</span></td><td class="note"><b>Reuse the existing points engine.</b> Recommend scoring the <b>aggregated weekly totals</b> once — not summing per-day point values — to avoid rounding drift. <b>Decision 1.</b></td></tr>
+    </tbody>
+  </table>
+
+  <!-- NOT AGGREGATED -->
+  <div class="secttl">Not aggregated — weekly-only, entered Sunday</div>
+  <table class="tbl">
+    <thead><tr><th style="width:30%">Weekly field · step</th><th style="width:14%">Source</th><th>Why never daily</th></tr></thead>
+    <tbody>
+      <tr><td class="w">Self-ratings — planning / time / sales / prospecting / overall (1–10) · 10</td><td><span class="rule none">manual</span></td><td class="note">Rating a single day 1–10 is meaningless; it's a reflection on the whole week.</td></tr>
+      <tr><td class="w">Reflection note · 10</td><td><span class="rule none">manual</span></td><td class="note">Per-day notes exist on each daily doc, but the weekly prose reflection is its own field. <b>Decision 5</b> — concatenate daily notes as a draft, or leave blank.</td></tr>
+      <tr><td class="w">Targets for next week — calls / FFI / CI / API · 11</td><td><span class="rule none">manual</span></td><td class="note">Forward-looking; set once at week close.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- POINTS & PACE -->
+  <div class="secttl">Points &amp; pace — the anchored numbers</div>
+  <div class="code-block"><span class="cm">// Pace target derives from the manager-set weekly activity-point floor.</span>
+dailyPaceTarget   = weeklyPointsFloor / workingDaysPerWeek
+weekToDateTarget  = weeklyPointsFloor * (workingDaysElapsed / workingDaysPerWeek)
+
+<span class="cm">// Daily card: today's points vs dailyPaceTarget  → ahead / on-pace / behind</span>
+<span class="cm">// Weekly submit card: Σ week points vs weeklyPointsFloor</span>
+<span class="cm">// weeklyPointsFloor = pointsEngine.score(weeklyStandardFloors[agentLevel])</span></div>
+  <div class="callout">
+    <span class="ci">i</span>
+    <p><b>The floor is real; the mapping is the work.</b> The weekly activity-point floor comes from the manager standard already in the repo (<code>manager-v2-drill</code> — e.g. L1: dials 40 · tel 10 · F2F 5 · FFI 3 · CI 2 · app 1, scaled by level). Run those floor counts through the <b>existing points engine</b> to get <code>weeklyPointsFloor</code>, then ÷ working days for the daily target. <b>Don't introduce a second set of weights</b> — the daily tally and the floor must use the same engine or the "ahead/behind" call is wrong.</p>
+  </div>
+
+  <!-- WORKING DAYS -->
+  <div class="secttl">Working days — affects pace, not totals</div>
+  <table class="tbl">
+    <thead><tr><th style="width:26%">Concern</th><th>Behavior</th></tr></thead>
+    <tbody>
+      <tr><td class="w">Aggregation</td><td class="note"><b>Always sums every logged day</b> in the ISO week (5, 6, or 7). Schedule is irrelevant to totals.</td></tr>
+      <tr><td class="w">Pace &amp; points target</td><td class="note">Denominator = <code>workingDaysPerWeek</code> (profile setting: 5 / 6 / 7). Drives daily target and week-to-date expectation.</td></tr>
+      <tr><td class="w">Streak</td><td class="note">A scheduled day off <b>does not break</b> a streak and is not counted as "missed." Logging on an off-day still counts.</td></tr>
+      <tr><td class="w">Nudges</td><td class="note">"You haven't logged today" fires only on scheduled working days.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- BACK-FILL / EDIT -->
+  <div class="secttl">Back-fill &amp; edit semantics</div>
+  <div class="edge">
+    <div class="ecard"><div class="et"><span class="dot" style="background:var(--success)"></span>Edit a logged day</div><div class="ed">Open <code>dailyActivity/{date}</code>, change values, save → triggers <code>aggregateWeek</code>. Full recompute, so the weekly draft always matches the sum of days. No incremental math.</div></div>
+    <div class="ecard"><div class="et"><span class="dot" style="background:var(--warning)"></span>Back-fill a missing day</div><div class="ed">Creating a past day's doc is identical to editing — same recompute. The week strip's missing-day cue just surfaces the gap; nothing special server-side.</div></div>
+    <div class="ecard"><div class="et"><span class="dot" style="background:var(--danger)"></span>Locked week</div><div class="ed">Only weeks with <code>status: draft</code> aggregate. Once the weekly is <b>submitted / committed</b>, day docs are read-only; editing requires an explicit reopen. <b>Decision 4.</b></div></div>
+    <div class="ecard"><div class="et"><span class="dot" style="background:var(--violet)"></span>Zero / empty day</div><div class="ed">A saved all-zero day is still a <b>logged</b> day (counts for streak + "days logged"), contributing 0 to totals. Distinct from a <b>missing</b> day (no doc).</div></div>
+  </div>
+
+  <!-- MODE TRANSITIONS -->
+  <div class="secttl">Logging-mode transitions</div>
+  <table class="tbl">
+    <thead><tr><th style="width:24%">Transition</th><th>Behavior</th></tr></thead>
+    <tbody>
+      <tr><td class="w">daily → weekly</td><td class="note">Days already logged this week stay aggregated into the draft; the agent finishes in the weekly wizard. No data loss.</td></tr>
+      <tr><td class="w">weekly → daily (mid-week)</td><td class="note">Per the repo's <code>loggingModeService</code> note: a weekly draft converts to a dated <b>catch-up daily entry</b> so the day-level store stays consistent. <b>Decision 5</b> — confirm the conversion target.</td></tr>
+      <tr><td class="w">hybrid</td><td class="note">Daily logging + weekly review; aggregation identical. The weekly is always the read-model of the days.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- OPEN DECISIONS -->
+  <div class="secttl">Open decisions — CC's call</div>
+  <div class="decisions">
+    <div class="dt">⚑ Resolve against live schema + points engine</div>
+    <div class="dsub">Everything above is the recommended contract; these five are genuine forks the design can't settle alone.</div>
+    <div class="dlist">
+      <div class="ditem"><span class="dn">1</span><div><div class="dq">Points: recompute vs sum-of-days</div><div class="da">Score the <b>aggregated weekly totals</b> once through the engine, or <b>sum each day's</b> point value? <span class="lean">Lean: recompute from totals — no rounding drift, single source.</span></div></div></div>
+      <div class="ditem"><span class="dn">2</span><div><div class="dq">Social breakdown storage</div><div class="da">Does the weekly store <code>posts / content / engagements</code> separately, or only a single <code>social</code> count? Map the daily sub-fields accordingly — fold or keep distinct.</div></div></div>
+      <div class="ditem"><span class="dn">3</span><div><div class="dq">Weekly home for appointments / FFI-scheduled</div><div class="da">Confirm which weekly step <code>appts</code> and <code>ffiSched</code> land in (activity vs sales) so the rollup writes the right field.</div></div></div>
+      <div class="ditem"><span class="dn">4</span><div><div class="dq">Lock boundary</div><div class="da">Exact status that freezes day-level aggregation (<code>draft → submitted</code>), and whether a reopen is allowed after submit.</div></div></div>
+      <div class="ditem"><span class="dn">5</span><div><div class="dq">Daily notes → weekly reflection</div><div class="da">Concatenate the week's daily notes as a starter for the weekly reflection prose, or leave it blank? Same question for the <code>weekly→daily</code> catch-up conversion target.</div></div></div>
+    </div>
+  </div>
+
+  <div class="callout" style="margin-top:20px">
+    <span class="ci">i</span>
+    <p><b>Pairs with the UI file.</b> This contract backs <b>Daily Entry — Option B Build</b>: every field on that screen has a row here, the gold points pill reads <code>pointsEngine.score(today)</code>, the week strip's back-fill triggers <code>aggregateWeek</code>, and the working-days toggle sets the pace denominator. Build the two together; resolve the five decisions against the live schema and the existing activity-points engine.</p>
+  </div>
+
+</div>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" rx="40" fill="#01696F" />
+    <rect x="34" y="48" width="42" height="22" rx="5" fill="#fff" fill-opacity="0.55" />
+    <rect x="34" y="78" width="42" height="22" rx="5" fill="#fff" fill-opacity="0.55" />
+    <rect x="34" y="108" width="42" height="22" rx="5" fill="#fff" fill-opacity="0.55" />
+    <path d="M86 89 h28 m-10 -10 l10 10 l-10 10" fill="none" stroke="#4ecdc4" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="124" y="66" width="42" height="68" rx="6" fill="#FAEFD3" />
+  </svg>
+</template>
+</body>
+</html>

@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Mobile Bottom Nav</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+
+    .intro {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 50;
+      background: #ffffff;
+      border: 1px solid #e5e2db;
+      border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px;
+      max-width: 420px;
+      color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.5; color: #6b6560; margin: 0; }
+    .intro .dot {
+      display: inline-block; width: 8px; height: 8px;
+      background: #01696F; border-radius: 50%;
+      margin-right: 6px; vertical-align: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Mobile bottom nav — Gemini pattern in your palette</h1>
+    <p>4 tabs + central elevated FAB. Teal accent (not amber), warm cream surface, light mode default. The "More" tab opens a drawer with the full app screen catalog so nothing is hidden.</p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+
+  <script type="text/babel">
+    const APP = {
+      // Light mode default — Nexus warm tokens lifted from src/index.css
+      bg:           '#F7F6F2',   // page bg
+      surface:      '#FFFFFF',   // cards / nav bar surface
+      surfaceMute:  '#FAFAF8',   // raised
+      surfaceSoft:  '#F4F2EC',   // panel
+      ink:          '#28251D',
+      inkMute:      '#6B6560',
+      inkFaint:     '#A8A39C',
+      rule:         '#E5E2DB',
+      ruleStrong:   '#CFCBC2',
+      teal:         '#01696F',
+      tealDark:     '#014E52',
+      tealLight:    '#018A91',
+      tealTint:     '#E6F4F4',
+      gold:         '#B07D1A',
+      goldTint:     '#FAEFD3',
+      hot:          '#C0392B',
+      success:      '#2D7A4F',
+      successTint:  '#E8F5EE',
+      warning:      '#B45309',
+      warningTint:  '#FEF3E2',
+    };
+
+    const FONT_DISPLAY = "'Cabinet Grotesk', 'Helvetica Neue', Helvetica, Arial, sans-serif";
+    const FONT_SANS    = "'Satoshi', 'Helvetica Neue', Helvetica, Arial, sans-serif";
+    const FONT_MONO    = "'JetBrains Mono', 'Menlo', 'SF Mono', monospace";
+
+    // ──────────────────────────────────────────────────────────────────────
+    // Inline icons (lucide-style, 24×24)
+    // ──────────────────────────────────────────────────────────────────────
+    const Icon = ({ children, size = 24, color = 'currentColor', stroke = 2, fill = 'none' }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">{children}</svg>
+    );
+    const IconHome     = (p) => <Icon {...p}><path d="M3 12L12 4l9 8M5 10v10h14V10" /></Icon>;
+    const IconHistory  = (p) => <Icon {...p}><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" /><path d="M12 7v5l3 2" /></Icon>;
+    const IconPlus     = (p) => <Icon {...p} stroke={p.color || 'white'}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></Icon>;
+    const IconTrophy   = (p) => <Icon {...p}><path d="M6 4h12v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V4z" /><path d="M6 6H4a2 2 0 0 0 2 4M18 6h2a2 2 0 0 1-2 4" /><path d="M9 20h6M12 16v4" /></Icon>;
+    const IconMore     = (p) => <Icon {...p} fill={p.color || 'currentColor'} stroke="none"><circle cx="5" cy="12" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="19" cy="12" r="1.7" /></Icon>;
+    const IconUser     = (p) => <Icon {...p}><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-7 8-7s8 3 8 7" /></Icon>;
+    const IconBell     = (p) => <Icon {...p}><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8" /><path d="M10 21h4" /></Icon>;
+    const IconChart    = (p) => <Icon {...p}><path d="M3 20h18" /><path d="M5 16V8M11 16V5M17 16v-6" /></Icon>;
+    const IconTarget   = (p) => <Icon {...p}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" /></Icon>;
+    const IconWallet   = (p) => <Icon {...p}><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7H5a2 2 0 0 1 0-4h14V7" /><circle cx="17" cy="13" r="1" /></Icon>;
+    const IconBook     = (p) => <Icon {...p}><path d="M4 4h12a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4V4z" /><path d="M4 16a4 4 0 0 1 4-4h12" /></Icon>;
+    const IconMedal    = (p) => <Icon {...p}><circle cx="12" cy="15" r="6" /><path d="M8 3l2 6M16 3l-2 6" /></Icon>;
+    const IconRepeat   = (p) => <Icon {...p}><path d="M17 2l4 4-4 4M3 12V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4M21 12v4a2 2 0 0 1-2 2H3" /></Icon>;
+    const IconShield   = (p) => <Icon {...p}><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z" /></Icon>;
+    const IconSettings = (p) => <Icon {...p}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></Icon>;
+    const IconSignOut  = (p) => <Icon {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></Icon>;
+    const IconBolt     = (p) => <Icon {...p}><polygon points="13 2 4 14 11 14 10 22 19 10 12 10 13 2" /></Icon>;
+
+    // ──────────────────────────────────────────────────────────────────────
+    // Mobile-frame chrome — rounded screen + status bar + home indicator
+    // ──────────────────────────────────────────────────────────────────────
+    function MobileFrame({ children, time = "9:41" }) {
+      return (
+        <div style={{
+          width: 390, height: 844, background: APP.bg,
+          position: 'relative', overflow: 'hidden',
+          fontFamily: FONT_SANS, color: APP.ink,
+          borderRadius: 44,
+          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
+        }}>
+          {/* Status bar */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, height: 44,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '0 32px', fontSize: 15, fontWeight: 600,
+            color: APP.ink, letterSpacing: '-0.005em', zIndex: 10,
+          }}>
+            <span>{time}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {/* Signal */}
+              <svg width="18" height="11" viewBox="0 0 18 11" fill={APP.ink}>
+                <rect x="0"  y="7" width="3" height="4" rx="0.5" />
+                <rect x="5"  y="5" width="3" height="6" rx="0.5" />
+                <rect x="10" y="2" width="3" height="9" rx="0.5" />
+                <rect x="15" y="0" width="3" height="11" rx="0.5" />
+              </svg>
+              {/* Battery */}
+              <svg width="27" height="13" viewBox="0 0 27 13" fill="none">
+                <rect x="0.5" y="0.5" width="22" height="12" rx="3" stroke={APP.ink} strokeOpacity="0.4" />
+                <rect x="2"   y="2"   width="19" height="9"  rx="1.5" fill={APP.ink} />
+                <rect x="24"  y="4"   width="2"  height="5"  rx="0.6" fill={APP.ink} fillOpacity="0.4" />
+              </svg>
+            </div>
+          </div>
+          {children}
+          {/* Home indicator */}
+          <div style={{
+            position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
+            width: 134, height: 5, background: APP.ink, borderRadius: 999, opacity: 0.85,
+            zIndex: 20,
+          }}></div>
+        </div>
+      );
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // The new bottom nav — 4 tabs + central FAB
+    // ──────────────────────────────────────────────────────────────────────
+    function BottomNav({ active = 'home' }) {
+      const tabs = [
+        { key: 'home',    label: 'Home',    Icon: IconHome },
+        { key: 'history', label: 'History', Icon: IconHistory },
+        { key: 'submit',  label: 'Submit',  Icon: IconPlus,  fab: true },
+        { key: 'ranks',   label: 'Ranks',   Icon: IconTrophy },
+        { key: 'more',    label: 'More',    Icon: IconMore },
+      ];
+
+      return (
+        <div style={{
+          position: 'absolute', left: 0, right: 0, bottom: 0,
+          paddingBottom: 28, // home indicator safe area
+          background: APP.surface,
+          borderTop: `1px solid ${APP.rule}`,
+          boxShadow: '0 -2px 16px rgba(40,37,29,0.06)',
+          zIndex: 15,
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'flex-end',
+            padding: '8px 12px 12px', position: 'relative',
+          }}>
+            {tabs.map((t) => {
+              const isActive = active === t.key;
+              const isFab = t.fab;
+              return (
+                <div key={t.key} style={{
+                  flex: 1, display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: 4,
+                  minHeight: 56,
+                  cursor: 'pointer',
+                  position: 'relative',
+                }}>
+                  {isFab ? (
+                    // Elevated FAB
+                    <>
+                      <div style={{
+                        width: 60, height: 60, borderRadius: '50%',
+                        background: `linear-gradient(180deg, ${APP.tealLight} 0%, ${APP.teal} 100%)`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: APP.surface,
+                        marginTop: -32,
+                        boxShadow: `0 6px 16px ${APP.teal}55, 0 2px 4px rgba(40,37,29,0.18), inset 0 1px 0 rgba(255,255,255,0.25)`,
+                        border: `3px solid ${APP.surface}`,
+                      }}>
+                        <t.Icon size={26} color="white" stroke={2.5} />
+                      </div>
+                      <div style={{
+                        fontSize: 10.5, fontWeight: 700, color: APP.teal,
+                        letterSpacing: '0.005em', marginTop: 2,
+                      }}>{t.label}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{
+                        color: isActive ? APP.teal : APP.inkFaint,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        position: 'relative',
+                      }}>
+                        <t.Icon size={22} color={isActive ? APP.teal : APP.inkFaint} stroke={2} />
+                        {/* Active subtle background bubble */}
+                        {isActive && (
+                          <div style={{
+                            position: 'absolute', inset: -7,
+                            background: APP.tealTint, borderRadius: 999, zIndex: -1,
+                            width: 36, height: 36, top: -7, left: '50%', transform: 'translateX(-50%)',
+                          }}></div>
+                        )}
+                      </div>
+                      <div style={{
+                        fontSize: 10.5, fontWeight: isActive ? 700 : 600,
+                        color: isActive ? APP.teal : APP.inkMute,
+                        letterSpacing: '0.005em',
+                      }}>{t.label}</div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // Sample dashboard content (above the nav) — enough realism to see the
+    // nav in context, not a full dashboard redesign yet
+    // ──────────────────────────────────────────────────────────────────────
+    function SampleDashboard() {
+      return (
+        <div style={{
+          position: 'absolute', top: 44, left: 0, right: 0, bottom: 92,
+          overflow: 'hidden', padding: '20px 20px 0',
+        }}>
+          {/* Top — greeting + avatar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+            <div>
+              <div style={{ fontSize: 12, color: APP.inkFaint, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FONT_MONO }}>Thursday · Nov 26</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: APP.ink, letterSpacing: '-0.018em', fontFamily: FONT_DISPLAY, marginTop: 4 }}>Hi, Marsha</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: APP.surface, border: `1px solid ${APP.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: APP.inkMute, position: 'relative' }}>
+                <IconBell size={18} color={APP.inkMute} />
+                <div style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: '50%', background: APP.hot, border: `2px solid ${APP.surface}` }}></div>
+              </div>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: APP.tealTint, color: APP.teal, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, fontFamily: FONT_DISPLAY }}>MS</div>
+            </div>
+          </div>
+
+          {/* Needs attention card */}
+          <div style={{
+            padding: '14px 16px', background: APP.warningTint, border: `1px solid #fde6c2`,
+            borderRadius: 14, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fef3e7', color: APP.warning, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <IconBolt size={18} color={APP.warning} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: APP.ink }}>Weekly report opens Sunday</div>
+              <div style={{ fontSize: 11, color: APP.inkMute, marginTop: 2 }}>Last 2 minutes · takes ~5 min</div>
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: APP.warning, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FONT_MONO }}>3d</div>
+          </div>
+
+          {/* This week strip */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: APP.inkFaint, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 10, fontFamily: FONT_MONO }}>This week</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+            <div style={{ padding: '14px 14px', background: APP.surface, borderRadius: 12, border: `1px solid ${APP.rule}` }}>
+              <div style={{ fontSize: 10, color: APP.teal, fontWeight: 700, letterSpacing: '0.14em', fontFamily: FONT_MONO }}>API</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: APP.ink, letterSpacing: '-0.022em', fontFamily: FONT_DISPLAY, lineHeight: 1, marginTop: 6 }}>TTD 24.4K</div>
+              <div style={{ fontSize: 10.5, color: APP.inkMute, marginTop: 5 }}>3 apps</div>
+            </div>
+            <div style={{ padding: '14px 14px', background: APP.surface, borderRadius: 12, border: `1px solid ${APP.rule}` }}>
+              <div style={{ fontSize: 10, color: APP.gold, fontWeight: 700, letterSpacing: '0.14em', fontFamily: FONT_MONO }}>YTD GOAL</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: APP.ink, letterSpacing: '-0.022em', fontFamily: FONT_DISPLAY, lineHeight: 1, marginTop: 6 }}>81%</div>
+              <div style={{ height: 5, background: APP.rule, borderRadius: 999, marginTop: 8, overflow: 'hidden' }}>
+                <div style={{ width: '81%', height: 5, background: `linear-gradient(90deg, ${APP.tealDark}, ${APP.teal})`, borderRadius: 999 }}></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Looking Ahead widget */}
+          <div style={{
+            padding: '16px 16px', background: APP.surface, border: `1px solid ${APP.rule}`,
+            borderRadius: 14, marginBottom: 16,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: APP.teal, fontWeight: 700, letterSpacing: '0.14em', fontFamily: FONT_MONO }}>LOOKING AHEAD · 2026</div>
+              <div style={{ fontSize: 11, color: APP.inkFaint, fontWeight: 600 }}>5 of 5 weeks</div>
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: APP.ink, letterSpacing: '-0.012em', fontFamily: FONT_DISPLAY }}>TTD 113K to close the year on goal</div>
+            <div style={{ fontSize: 12, color: APP.inkMute, marginTop: 4, lineHeight: 1.5 }}>Two more applications this week puts you in Level 4 territory.</div>
+          </div>
+
+          {/* Recent activity */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: APP.inkFaint, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 10, fontFamily: FONT_MONO }}>Recent</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {[
+              { color: APP.success, text: 'Weekly report submitted', sub: 'Mon 24 Nov \u00B7 TTD 21.8K API' },
+              { color: APP.gold,    text: 'Eagle Club pacer milestone', sub: '68% to goal' },
+            ].map((a, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px' }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.color }}></div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, color: APP.ink, fontWeight: 600 }}>{a.text}</div>
+                  <div style={{ fontSize: 11, color: APP.inkMute, marginTop: 2 }}>{a.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // "More" drawer — full app screen catalog
+    // ──────────────────────────────────────────────────────────────────────
+    function MoreDrawer() {
+      const sections = [
+        { title: 'Planning', items: [
+          { Icon: IconChart,  label: 'Looking Ahead' },
+          { Icon: IconWallet, label: 'Money Needs' },
+          { Icon: IconTarget, label: 'Goals' },
+          { Icon: IconBolt,   label: 'Commission Playground' },
+          { Icon: IconRepeat, label: 'Persistency Playground' },
+        ]},
+        { title: 'Records', items: [
+          { Icon: IconBook,   label: 'Policy Ledger' },
+          { Icon: IconUser,   label: 'Prospect Info' },
+          { Icon: IconMedal,  label: 'Awards' },
+        ]},
+        { title: 'Account', items: [
+          { Icon: IconUser,     label: 'Profile' },
+          { Icon: IconBell,     label: 'Notifications', badge: 3 },
+          { Icon: IconSettings, label: 'Settings' },
+          { Icon: IconShield,   label: 'Career Portal' },
+          { Icon: IconSignOut,  label: 'Sign out', danger: true },
+        ]},
+      ];
+
+      return (
+        <div style={{
+          position: 'absolute', left: 0, right: 0, bottom: 0,
+          background: APP.surface,
+          borderTopLeftRadius: 22, borderTopRightRadius: 22,
+          padding: '16px 0 28px',
+          boxShadow: '0 -12px 40px rgba(40,37,29,0.18)',
+          zIndex: 20,
+          maxHeight: 620, overflowY: 'auto',
+        }}>
+          {/* Drag handle */}
+          <div style={{ width: 40, height: 4, background: APP.ruleStrong, borderRadius: 999, margin: '0 auto 18px' }}></div>
+
+          {/* Header */}
+          <div style={{ padding: '0 22px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: APP.inkFaint, fontFamily: FONT_MONO }}>MENU</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: APP.ink, letterSpacing: '-0.018em', fontFamily: FONT_DISPLAY, marginTop: 2 }}>All screens</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: APP.tealTint, borderRadius: 999 }}>
+              <div style={{ width: 30, height: 30, borderRadius: '50%', background: APP.teal, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, fontFamily: FONT_DISPLAY }}>MS</div>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: APP.teal, letterSpacing: '0.01em' }}>Senior Associate</div>
+            </div>
+          </div>
+
+          {/* Sections */}
+          <div style={{ padding: '0 14px' }}>
+            {sections.map((s, si) => (
+              <div key={s.title} style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: APP.inkFaint, letterSpacing: '0.14em', textTransform: 'uppercase', fontFamily: FONT_MONO, padding: '6px 10px 8px' }}>{s.title}</div>
+                <div style={{ background: APP.surfaceSoft, borderRadius: 14, padding: 4 }}>
+                  {s.items.map((it, i, arr) => (
+                    <div key={it.label} style={{
+                      display: 'flex', alignItems: 'center', gap: 14,
+                      padding: '13px 14px', borderRadius: 10,
+                      cursor: 'pointer',
+                    }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 10,
+                        background: it.danger ? '#fde8e7' : APP.surface,
+                        color: it.danger ? APP.hot : APP.teal,
+                        border: `1px solid ${APP.rule}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <it.Icon size={18} color={it.danger ? APP.hot : APP.teal} />
+                      </div>
+                      <div style={{ flex: 1, fontSize: 15, fontWeight: 600, color: it.danger ? APP.hot : APP.ink, letterSpacing: '-0.005em' }}>{it.label}</div>
+                      {it.badge && (
+                        <div style={{ minWidth: 22, height: 22, padding: '0 7px', borderRadius: 999, background: APP.hot, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{it.badge}</div>
+                      )}
+                      {!it.badge && (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={APP.inkFaint} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="9 6 15 12 9 18" />
+                        </svg>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // CURRENT mobile nav — recreated from src/index.css for comparison
+    // ──────────────────────────────────────────────────────────────────────
+    function CurrentBottomNav() {
+      const tabs = [
+        { key: 'home',    label: 'Home',    Icon: IconHome,    active: true },
+        { key: 'wizard',  label: 'Wizard',  Icon: IconBolt },
+        { key: 'ranks',   label: 'Ranks',   Icon: IconTrophy },
+        { key: 'profile', label: 'Profile', Icon: IconUser },
+      ];
+      return (
+        <div style={{
+          position: 'absolute', left: 0, right: 0, bottom: 0,
+          paddingBottom: 24,
+          background: APP.surface,
+          borderTop: `1px solid ${APP.rule}`,
+        }}>
+          <div style={{ display: 'flex', padding: '8px 4px' }}>
+            {tabs.map(t => (
+              <div key={t.key} style={{
+                flex: 1, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', gap: 3, padding: '6px 0',
+                minHeight: 44, color: t.active ? APP.teal : APP.inkMute,
+              }}>
+                <t.Icon size={22} color={t.active ? APP.teal : APP.inkMute} />
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.01em' }}>{t.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // Mobile screens — what the user actually sees
+    // ──────────────────────────────────────────────────────────────────────
+    function ScreenHome()    { return <MobileFrame><SampleDashboard /><BottomNav active="home" /></MobileFrame>; }
+    function ScreenMore()    {
+      return (
+        <MobileFrame>
+          <SampleDashboard />
+          {/* Backdrop scrim */}
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(40,37,29,0.4)', zIndex: 18 }}></div>
+          <BottomNav active="more" />
+          <MoreDrawer />
+        </MobileFrame>
+      );
+    }
+    function ScreenCurrent() { return <MobileFrame><SampleDashboard /><CurrentBottomNav /></MobileFrame>; }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // Nav-only zoom — large detail showing the FAB + tabs at scale
+    // ──────────────────────────────────────────────────────────────────────
+    function NavDetail() {
+      return (
+        <div style={{
+          width: 780, height: 280, background: APP.bg,
+          padding: 40, fontFamily: FONT_SANS,
+          display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+        }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: APP.teal, letterSpacing: '0.18em', fontFamily: FONT_MONO }}>★ NAVIGATION</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: APP.ink, letterSpacing: '-0.018em', fontFamily: FONT_DISPLAY, marginTop: 6 }}>Mobile bottom nav — at scale</div>
+            <div style={{ fontSize: 13, color: APP.inkMute, marginTop: 6 }}>4 tabs + central elevated Submit FAB. Teal accent. "More" opens the full screen catalog.</div>
+          </div>
+          <div style={{ position: 'relative', height: 80 }}>
+            <div style={{ position: 'absolute', inset: 0 }}>
+              <div style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                background: APP.surface,
+                borderTop: `1px solid ${APP.rule}`,
+                boxShadow: '0 -2px 16px rgba(40,37,29,0.06)',
+                borderRadius: 14,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', padding: '12px 22px 14px', position: 'relative' }}>
+                  {[
+                    { label: 'Home',    Icon: IconHome,    active: true },
+                    { label: 'History', Icon: IconHistory },
+                    { label: 'Submit',  Icon: IconPlus, fab: true },
+                    { label: 'Ranks',   Icon: IconTrophy },
+                    { label: 'More',    Icon: IconMore },
+                  ].map((t, i) => (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                      {t.fab ? (
+                        <>
+                          <div style={{
+                            width: 64, height: 64, borderRadius: '50%',
+                            background: `linear-gradient(180deg, ${APP.tealLight}, ${APP.teal})`,
+                            color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginTop: -34,
+                            boxShadow: `0 8px 20px ${APP.teal}66, 0 2px 4px rgba(40,37,29,0.18), inset 0 1px 0 rgba(255,255,255,0.25)`,
+                            border: `3px solid ${APP.surface}`,
+                          }}>
+                            <t.Icon size={28} color="white" stroke={2.5} />
+                          </div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: APP.teal, marginTop: 2 }}>{t.label}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ position: 'relative' }}>
+                            <t.Icon size={24} color={t.active ? APP.teal : APP.inkFaint} />
+                            {t.active && <div style={{ position: 'absolute', inset: -8, background: APP.tealTint, borderRadius: 999, zIndex: -1, width: 40, height: 40, left: -8, top: -8 }}></div>}
+                          </div>
+                          <div style={{ fontSize: 11, fontWeight: t.active ? 700 : 600, color: t.active ? APP.teal : APP.inkMute }}>{t.label}</div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="new-nav"
+            title="New mobile nav — Gemini pattern, your palette"
+            subtitle="4 tabs + elevated Submit FAB. Teal-on-cream (not amber-on-dark). 'More' opens a drawer with the full screen catalog so nothing is hidden."
+          >
+            <DCArtboard id="nav-detail" label="Nav — detail at scale"        width={780} height={280}><NavDetail /></DCArtboard>
+            <DCArtboard id="nav-home"   label="Home tab active \u00B7 in context" width={390} height={844}><ScreenHome /></DCArtboard>
+            <DCArtboard id="nav-more"   label="More tab \u00B7 drawer open"      width={390} height={844}><ScreenMore /></DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="current-nav"
+            title="Current mobile nav — for comparison"
+            subtitle="4 flat tabs from src/index.css. Functional but the Submit action competes for attention with everything else."
+          >
+            <DCArtboard id="nav-current" label="Today" width={390} height={844}><ScreenCurrent /></DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

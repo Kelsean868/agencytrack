@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Weekly Wizard v3 — Build Spec</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2;--surface:#FFFFFF;--soft:#F4F2EC;--mute:#F0EFE9;--ink:#28251D;--inkMute:#6B6560;--inkFaint:#A8A39C;--inkDim:#CFCBC2;
+    --rule:#E5E2DB;--ruleStrong:#CFCBC2;--teal:#01696F;--tealDark:#014E52;--tealTint:#E6F4F4;--gold:#B07D1A;--goldTint:#FAEFD3;--goldInk:#8A6010;
+    --success:#2D7A4F;--successTint:#E8F5EE;--warning:#B45309;--warningTint:#FEF3E2;--danger:#C0392B;--dangerTint:#FDE8E7;--violet:#5A3FA0;--violetTint:#F0ECFF;
+    --display:'Cabinet Grotesk',sans-serif;--sans:'Satoshi',sans-serif;--mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.55;padding:44px 0 96px}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 40px}
+  code{font-family:var(--mono)}
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:22px;border-bottom:1px solid var(--rule);margin-bottom:22px}
+  .logo{width:50px;height:50px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:28px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14px;margin-top:9px;max-width:780px;text-wrap:pretty}
+  .subt b{color:var(--ink);font-weight:700}.subt code{font-size:12px}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13px;text-wrap:pretty}.scopebar b{font-weight:700}
+  .scopebar code{font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+  .code-block{background:#1F1B17;color:#E9E3D6;border-radius:12px;padding:16px 18px;font-family:var(--mono);font-size:12px;line-height:1.7;overflow-x:auto;white-space:pre}
+  .code-block .cm{color:#8A8074}.code-block .kw{color:#6FD3D6}.code-block .fn{color:#E0AA3E}.code-block .st{color:#9FD8A0}
+  .tbl{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .tbl th,.tbl td{text-align:left;padding:9px 14px;font-size:12px;vertical-align:top}
+  .tbl thead th{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inkFaint);background:var(--soft);border-bottom:1px solid var(--rule)}
+  .tbl tbody td{border-bottom:1px solid var(--rule)}.tbl tbody tr:last-child td{border-bottom:none}
+  .tbl .k{font-family:var(--mono);font-size:11px;color:var(--tealDark);font-weight:700;white-space:nowrap}
+  .tbl .note{color:var(--inkMute);font-size:11px;text-wrap:pretty}
+  .pill{display:inline-block;font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:99px;white-space:nowrap}
+  .pill.fast{background:var(--successTint);color:var(--success)}.pill.full{background:var(--warningTint);color:var(--warning)}.pill.both{background:var(--tealTint);color:var(--tealDark)}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:15px 17px}
+  .card .ct{font-family:var(--display);font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px}
+  .card .cd{font-size:12px;color:var(--inkMute);margin-top:7px;text-wrap:pretty}
+  .card .cd code{font-family:var(--mono);font-size:10.5px;background:var(--mute);padding:1px 4px;border-radius:4px;color:var(--tealDark)}
+  .card ul{margin:7px 0 0;padding-left:17px}.card li{font-size:12px;color:var(--inkMute);margin-top:4px;text-wrap:pretty}
+  .card li b{color:var(--ink);font-weight:700}
+  .callout{display:flex;gap:11px;background:var(--soft);border:1px solid var(--rule);border-radius:12px;padding:13px 16px;margin-top:14px}
+  .callout .ci{width:22px;height:22px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono);font-weight:700;font-size:12px}
+  .callout p{font-size:12.5px;text-wrap:pretty}.callout b{font-weight:700}
+  .callout code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .decisions{background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:14px;padding:18px 20px}
+  .decisions .dt{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--danger);margin-bottom:4px}
+  .decisions .dsub{font-size:12.5px;margin-bottom:14px}
+  .dlist{display:flex;flex-direction:column;gap:10px}
+  .ditem{background:var(--surface);border:1px solid color-mix(in srgb,var(--danger) 20%,transparent);border-radius:10px;padding:12px 14px;display:flex;gap:11px}
+  .ditem .dn{width:22px;height:22px;border-radius:6px;background:var(--danger);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .ditem .dq{font-size:13px;font-weight:700}.ditem .da{font-size:11.5px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .ditem .da b{color:var(--ink)}.ditem .da code{font-family:var(--mono);font-size:10.5px;background:var(--mute);padding:1px 4px;border-radius:4px;color:var(--tealDark)}
+  .lean{display:inline-block;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--success);background:var(--successTint);padding:2px 7px;border-radius:99px;margin-top:6px}
+  .note{display:flex;gap:12px;background:var(--soft);border:1px solid var(--rule);border-radius:13px;padding:15px 18px;margin-top:18px}
+  .note .ni{width:22px;height:22px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono);font-weight:700;font-size:12px}
+  .note p{font-size:12.5px;text-wrap:pretty}.note b{font-weight:700}
+  @media(max-width:780px){.twocol{grid-template-columns:1fr}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack"><rect width="200" height="200" rx="46" fill="#01696F"/><rect x="58" y="104" width="20" height="46" rx="5" fill="#fff"/><rect x="90" y="82" width="20" height="68" rx="5" fill="#fff"/><rect x="122" y="58" width="20" height="92" rx="5" fill="#fff"/><circle cx="132" cy="44" r="11" fill="#018A91"/></svg>
+    <div>
+      <div class="eyebrow">Weekly Wizard v3 · build spec</div>
+      <h1>Mode-aware wizard — the build contract</h1>
+      <p class="subt">The logic + data behind the <b>Weekly Wizard v3 mockup</b>: how the wizard picks a path from <code>loggingMode</code>, what the confirm screen pre-fills and how it edits, where points sit, how next-week goals seed, and the fallbacks. Pairs with the mockup (the UI) and the <b>Daily→Weekly Aggregator</b> spec (the rollup). A spec, not a mock — CC reconciles against live code and decides the flagged calls.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />WEEKLY WIZARD · v3<br />PAIRS W/ MOCKUP + AGGREGATOR<br />REV 2026-06-17</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Core rule</span>
+    <p><b>One wizard, two paths, identical submission.</b> The path is chosen by how the week was captured: <code>loggingMode ∈ {daily, hybrid}</code> → <b>fast path</b> (confirm + reflect); <code>weekly</code> → <b>full path</b> (4 phase screens). Both write the same <code>weeklyReport</code> payload — only the data-entry burden differs. Nothing here changes the submission schema.</p>
+  </div>
+
+  <div class="secttl">Path selection</div>
+  <div class="code-block"><span class="cm">// Resolved once when the wizard opens.</span>
+<span class="kw">function</span> <span class="fn">resolvePath</span>(agent, weekId) {
+  <span class="kw">const</span> mode  = effectiveLoggingMode(agent, weekId);   <span class="cm">// daily | hybrid | weekly (existing service)</span>
+  <span class="kw">const</span> draft = readWeeklyDraft(weekId);              <span class="cm">// aggregated from daily (see aggregator spec)</span>
+  <span class="kw">const</span> hasDailyData = draft &amp;&amp; draft.daysLogged &gt; 0;
+  <span class="cm">// fast path only if the mode logs daily AND there's actually data to confirm</span>
+  <span class="kw">return</span> (mode !== <span class="st">'weekly'</span> &amp;&amp; hasDailyData) ? <span class="st">'fast'</span> : <span class="st">'full'</span>;
+}</div>
+  <div class="callout"><span class="ci">!</span><p><b>The <code>hasDailyData</code> guard is the no-daily fallback.</b> A daily/hybrid agent who logged nothing this week has an empty draft → drops to the <b>full path</b> automatically. No empty confirm screen, no dead end. (Decision 4 — partial-week threshold.)</p></div>
+
+  <div class="secttl">Step maps</div>
+  <div class="twocol">
+    <div class="card">
+      <div class="ct"><span class="pill fast">Fast</span> daily / hybrid</div>
+      <ul>
+        <li><b>1 · Confirm your week</b> — pre-filled activity/sales/production/hours as review sections; edit inline.</li>
+        <li><b>2 · Rate your week</b> — 5 ratings (1–10): planning, time, sales, prospecting, overall.</li>
+        <li><b>3 · Next-week goals</b> — seeded targets, adjustable.</li>
+        <li><b>Submit</b> → celebration.</li>
+      </ul>
+      <div class="cd">~3 steps. Phases shown: Confirm · Reflect · Goals · Submit.</div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="pill full">Full</span> weekly-only</div>
+      <ul>
+        <li><b>1 · Activity</b> — outreach &amp; social, contact, interviews (collapsible groups).</li>
+        <li><b>2 · Sales</b> — new business, PPP/lumpsum, delivery &amp; service.</li>
+        <li><b>3 · Reflection</b> — hours + the 5 ratings.</li>
+        <li><b>4 · Goals</b> — next-week targets → review → submit.</li>
+      </ul>
+      <div class="cd">4 phase screens (was 12 micro-steps). Same fields, grouped + collapsible.</div>
+    </div>
+  </div>
+
+  <div class="secttl">Confirm screen — pre-fill, provenance, edit</div>
+  <table class="tbl">
+    <thead><tr><th style="width:26%">Behavior</th><th>Spec</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Source</td><td class="note">Reads the aggregated <code>weeklyDraft</code> (see aggregator spec). Each section = a group of rolled-up daily totals.</td></tr>
+      <tr><td class="k">Provenance tag</td><td class="note">Any field/section sourced from daily shows <code>✓ from daily ×N</code> (N = days logged). Manually-entered or empty fields stay plain — the agent sees at a glance what to confirm vs touch.</td></tr>
+      <tr><td class="k">Edit inline</td><td class="note">"Edit" on a section expands it to the same ± steppers / inputs the daily uses, in place. <b>No jump-back</b> through steps. An edit here writes a correction at the <b>weekly level</b> (does not rewrite the daily docs) — Decision 1.</td></tr>
+      <tr><td class="k">Sections</td><td class="note">Activity &amp; prospecting · Production &amp; hours (mockup groups two for density — CC may split to match the daily's cards 1:1).</td></tr>
+      <tr><td class="k">What's NOT here</td><td class="note">Ratings + next-week goals are never pre-filled — they're the following steps. They're the reason the wizard still exists for daily loggers.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="secttl">Points &amp; pace — reuse the engine</div>
+  <div class="code-block"><span class="cm">// Use the SAME activity-points engine as the daily log — do not re-weight here.</span>
+weekPoints      = pointsEngine.<span class="fn">score</span>(weeklyTotals)        <span class="cm">// from the confirmed/aggregated totals</span>
+weeklyPointsFloor = pointsEngine.<span class="fn">score</span>(weeklyStandard[level])
+<span class="cm">// Side panel (desktop) + mobile strip: weekPoints / weeklyPointsFloor + % of floor</span>
+<span class="cm">// Submit button + celebration: weekPoints, and the daily streak it continued</span></div>
+  <div class="callout"><span class="ci">i</span><p><b>One currency across the loop.</b> The daily gamifies points; the wizard must read the <b>same engine</b> on the weekly totals, show <code>weekPoints / floor</code> in the WeekSoFar panel, and put points on the submit + celebration — not switch to API-only at the finish line. Floor anchors to the manager standard (per the aggregator spec).</p></div>
+
+  <div class="secttl">Next-week goals — seeded</div>
+  <table class="tbl">
+    <thead><tr><th style="width:26%">Field</th><th>Seed source</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Calls · FFI · CI</td><td class="note">Default to the agent's <b>weekly-standard floor</b> for each, nudged by this week's actual (e.g. <code>max(floor, thisWeek)</code>). Agent adjusts via stepper.</td></tr>
+      <tr><td class="k">API target</td><td class="note">Seed from pace toward the annual goal (reuse the existing decomposition the planner uses). Honest if no annual goal set → blank with a prompt.</td></tr>
+      <tr><td class="k">Affordance</td><td class="note">Each seeded value carries a "seeded from pace" tag (mockup shows it) so the agent knows it's a smart default, not their entry. Maps to <code>NumField</code>'s existing <code>suggested</code> prop.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="secttl">Responsive + states</div>
+  <div class="twocol">
+    <div class="card"><div class="ct">Desktop</div><div class="cd">Full-screen takeover modal; <b>persistent WeekSoFar side panel</b> (Production API + points + 2×2 scorecards). Phase bar across the top.</div></div>
+    <div class="card"><div class="ct">Mobile</div><div class="cd">Full-screen; side panel collapses to a <b>compact points/API strip</b> above the footer nav. Same steps, single column.</div></div>
+    <div class="card"><div class="ct">Both themes</div><div class="cd">All color via Nexus tokens; lifted teal in dark. Verified in the mockup.</div></div>
+    <div class="card"><div class="ct">Autosave</div><div class="cd">Keep the existing autosave chip; every step + inline edit persists, same as today.</div></div>
+  </div>
+
+  <div class="secttl">Open decisions — CC's call</div>
+  <div class="decisions">
+    <div class="dt">⚑ Resolve against live code</div>
+    <div class="dsub">Recommended contract above; these are genuine forks.</div>
+    <div class="dlist">
+      <div class="ditem"><span class="dn">1</span><div><div class="dq">Inline edit — weekly-level or rewrite the day?</div><div class="da">An edit on the confirm screen: store a <b>weekly override</b>, or write back to a specific <code>dailyActivity</code> doc? <span class="lean">Lean: weekly-level override — the confirm screen edits the report, not history.</span></div></div></div>
+      <div class="ditem"><span class="dn">2</span><div><div class="dq">Hybrid mode path</div><div class="da">Hybrid = daily logging + weekly review. Treat as <b>fast path</b> (confirm) like the mockup, or a middle path that still steps through sales/production? <span class="lean">Lean: fast path — hybrid already logged daily.</span></div></div></div>
+      <div class="ditem"><span class="dn">3</span><div><div class="dq">Confirm section granularity</div><div class="da">Two combined sections (mockup) vs one per daily card (prospecting / contact / interviews / production / delivery / hours). More sections = more scannable, more scrolling.</div></div></div>
+      <div class="ditem"><span class="dn">4</span><div><div class="dq">Partial-week threshold</div><div class="da">How many logged days trigger fast vs full? <code>daysLogged &gt; 0</code>, or a minimum (e.g. ≥ 60% of working days)? Below it, full path.</div></div></div>
+      <div class="ditem"><span class="dn">5</span><div><div class="dq">Mid-week mode switch</div><div class="da">If an agent switches weekly→daily mid-week, does the wizard recompute the path on next open? <span class="lean">Lean: yes — path resolves fresh each open from current mode + draft.</span></div></div></div>
+    </div>
+  </div>
+
+  <div class="note"><span class="ni">i</span><p><b>The three-file set for CC.</b> <b>Weekly Wizard v3 mockup</b> (the clickable UI, both paths/devices/themes) · <b>this spec</b> (path logic, confirm/points/goals behavior, decisions) · <b>Daily→Weekly Aggregator field map</b> (how the draft this reads is built). Together they specify the whole loop from daily entry to weekly submit; the flagged decisions resolve against the live schema + the existing points engine.</p></div>
+</div>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><rect width="200" height="200" rx="40" fill="#01696F"/><path d="M50 60 h70 M50 90 h70 M50 120 h44" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity="0.55"/><path d="M132 128 l13 13 l22 -26" fill="none" stroke="#4ecdc4" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+</template>
+</body>
+</html>

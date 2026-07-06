@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Persistency v2 — Build Annotation (Manager scene)</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:770px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute);align-items:center}
+  .keylegend span.it{display:inline-flex;align-items:center;gap:7px}
+  .keylegend .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.exist{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.new{background:var(--goldTint);color:var(--goldInk)}
+  .pchip.flag{background:var(--dangerTint);color:var(--danger)}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)} .mk.f{background:var(--danger)}
+
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.exist{background:var(--tealTint);color:var(--tealDark)}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+  .ptag.flag{background:var(--dangerTint);color:var(--danger)}
+
+  /* app frame */
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(38,35,28,.10);display:flex;gap:14px}
+  .sidebar{width:150px;flex-shrink:0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 9px;display:flex;flex-direction:column;gap:3px}
+  .sb-logo{display:flex;align-items:center;gap:8px;padding:4px 6px 12px}
+  .sb-logo .lm{width:24px;height:24px;border-radius:7px;background:var(--teal)}
+  .sb-logo .lt{font-family:var(--display);font-weight:800;font-size:13px}
+  .sb-grp{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.12em;color:var(--inkFaint);padding:9px 8px 4px}
+  .nav{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;font-size:11.5px;font-weight:600;color:var(--inkMute)}
+  .nav .ic{width:14px;height:14px;border-radius:4px;background:var(--inkDim);flex-shrink:0}
+  .nav.on{background:var(--tealTint);color:var(--tealDark);font-weight:700}
+  .nav.on .ic{background:var(--teal)}
+
+  .canvas{flex:1;min-width:0;display:flex;flex-direction:column;gap:13px}
+  .topbar{display:flex;align-items:center;gap:10px;padding:2px 2px 0}
+  .topbar .pt{font-family:var(--display);font-weight:800;font-size:16px;white-space:nowrap}
+  .topbar .ps{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.05em}
+
+  /* reality bar */
+  .reality{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:12px 16px;flex-wrap:wrap}
+  .rb-month{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px;font-size:12.5px;font-weight:700;white-space:nowrap}
+  .rb-scope{display:flex;gap:3px;padding:3px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px}
+  .rb-scope .s{padding:6px 11px;border-radius:6px;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--inkMute)}
+  .rb-scope .s.on{background:var(--teal);color:#fff}
+  .rb-div{width:1px;height:30px;background:var(--rule)}
+  .rb-agg{display:flex;align-items:center;gap:10px}
+  .rb-agg .lbl{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--inkFaint);line-height:1.3}
+  .rb-agg .v{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.02em;line-height:1;color:var(--warning)}
+  .spark{display:flex;align-items:flex-end;gap:2px;height:26px}
+  .spark i{width:6px;background:var(--warning);border-radius:2px 2px 0 0;opacity:.55}
+  .spark i:last-child{opacity:1}
+  .rb-stats{display:flex;gap:22px;margin-left:auto}
+  .rb-stat{text-align:right}
+  .rb-stat .k{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint)}
+  .rb-stat .v{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.015em;margin-top:3px;white-space:nowrap}
+  .rb-stat .s{font-family:var(--mono);font-size:8px;color:var(--inkFaint);margin-top:1px}
+
+  /* at-risk book */
+  .atrisk{background:var(--surface);border:1px solid color-mix(in srgb,var(--danger) 24%,transparent);border-radius:13px;overflow:hidden}
+  .ar-h{padding:11px 16px;border-bottom:1px solid var(--rule);background:var(--dangerTint);display:flex;align-items:center;gap:9px}
+  .ar-h .t{font-family:var(--display);font-weight:800;font-size:13.5px;color:var(--danger)}
+  .ar-h .c{font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--danger);background:var(--surface);padding:2px 8px;border-radius:99px;margin-left:auto}
+  .arrow{display:grid;grid-template-columns:32px 1.6fr 92px 1fr 150px;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid var(--rule)}
+  .arrow:last-child{border-bottom:none}
+  .arrow .av{width:30px;height:30px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:11px}
+  .arrow .nm{font-size:13px;font-weight:600;white-space:nowrap}
+  .arrow .un{font-family:var(--mono);font-size:10px;color:var(--inkFaint);margin-top:1px}
+  .arrow .pct{font-family:var(--display);font-weight:800;font-size:15px;color:var(--danger);text-align:center}
+  .arrow .lap{font-family:var(--mono);font-size:11px;color:var(--warning);text-align:right}
+  .arrow .acts{display:flex;gap:6px;justify-content:flex-end}
+  .arrow .ab{padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;min-height:34px;white-space:nowrap}
+  .ab.coach{background:var(--surface);border:1px solid var(--ruleStrong);color:var(--ink)}
+  .ab.play{background:var(--surfaceSoft);border:1px solid var(--rule);color:var(--teal)}
+
+  /* roster */
+  .roster{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .ro-legend{display:flex;align-items:center;gap:16px;padding:9px 16px;border-bottom:1px solid var(--rule);font-size:10.5px;color:var(--inkMute);flex-wrap:wrap}
+  .ro-legend .lg{display:flex;align-items:center;gap:6px}
+  .ro-legend .lg .d{width:8px;height:8px;border-radius:50%}
+  .ro-legend .note{margin-left:auto;font-family:var(--mono);font-size:10px}
+  .rohead,.rorow{display:grid;grid-template-columns:34px 1.7fr 150px 1fr 0.9fr 1.1fr 120px;gap:10px;align-items:center}
+  .rohead{padding:10px 16px;border-bottom:1px solid var(--ruleStrong);background:var(--surfaceSoft)}
+  .rohead .h{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute)}
+  .rorow{padding:9px 16px;border-bottom:1px solid var(--rule)}
+  .rorow:last-child{border-bottom:none}
+  .rorow.zebra{background:var(--surfaceRaised)}
+  .rorow .rk{text-align:center;font-family:var(--display);font-weight:800;font-size:12px;color:var(--inkFaint)}
+  .rorow .who{display:flex;align-items:center;gap:10px;min-width:0}
+  .rorow .av{width:30px;height:30px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:11px;flex-shrink:0}
+  .rorow .nm{font-size:13px;font-weight:600;white-space:nowrap}
+  .rorow .un{font-family:var(--mono);font-size:10px;color:var(--inkFaint);margin-top:1px}
+  /* two-tick band cell */
+  .bandcell{display:flex;flex-direction:column;gap:4px}
+  .bandcell .bv{font-family:var(--display);font-weight:800;font-size:14px}
+  .bandtrack{position:relative;height:7px;border-radius:5px;background:var(--surfaceMute);overflow:visible}
+  .bandtrack .bfill{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+  .bandtrack .bfill.ok{background:var(--success)} .bandtrack .bfill.watch{background:var(--warning)} .bandtrack .bfill.below{background:var(--danger)}
+  .bandtrack .floor{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--danger)}
+  .bandtrack .gate{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--success)}
+  .rorow .gross{font-family:var(--mono);font-size:12px;text-align:right}
+  .rorow .lap{font-family:var(--mono);font-size:12px;text-align:right;color:var(--inkMute)}
+  .rorow .lap.hi{color:var(--warning)}
+  .srcpill{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.04em;padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+  .srcpill.mgr{background:var(--tealTint);color:var(--tealDark)}
+  .srcpill.self{background:var(--surfaceSoft);color:var(--inkMute);border:1px solid var(--rule)}
+  .srcpill .ed{font-weight:400;color:var(--inkFaint)}
+  .rorow .acts{display:flex;gap:6px;justify-content:flex-end}
+  .rorow .ab{padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;min-height:34px;display:inline-flex;align-items:center;gap:4px}
+  .ab.edit{background:var(--surface);border:1px solid var(--ruleStrong);color:var(--ink)}
+  .ab.play{background:var(--surfaceSoft);border:1px solid var(--rule);color:var(--teal)}
+
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.exist{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.exist .ad b{color:var(--tealDark)}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+  .anno.flagc{background:var(--dangerTint);border-color:color-mix(in srgb,var(--danger) 28%,transparent)}
+  .anno.flagc .ad b{color:var(--danger)}
+
+  /* drawers side by side */
+  .drawers{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .drawer{background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(38,35,28,.08)}
+  .dw-h{padding:14px 18px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:10px}
+  .dw-h .dt{font-family:var(--display);font-weight:800;font-size:15px}
+  .dw-h .av{width:32px;height:32px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:12px}
+  .dw-b{padding:16px 18px;display:flex;flex-direction:column;gap:13px}
+  .precedence{display:flex;gap:11px;background:var(--goldTint);border:1px solid color-mix(in srgb,var(--gold) 35%,transparent);border-radius:11px;padding:12px 14px}
+  .precedence .pi{color:var(--goldInk);flex-shrink:0;font-size:15px}
+  .precedence .pt{font-size:11.5px;color:var(--goldInk);line-height:1.45}
+  .precedence .pt b{font-weight:700}
+  .sixgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .inp{background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px;padding:9px 11px}
+  .inp .il{font-size:10.5px;color:var(--inkMute);font-weight:600}
+  .inp .iv{display:flex;align-items:baseline;gap:3px;margin-top:4px}
+  .inp .iv .cu{font-family:var(--mono);font-size:9px;color:var(--inkFaint)}
+  .inp .iv .vv{font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:-.012em}
+  .derived{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:10px}
+  .derived .dl{font-size:12px;font-weight:700;color:var(--tealDark)}
+  .derived .dv{font-family:var(--display);font-weight:800;font-size:22px;color:var(--teal);letter-spacing:-.02em}
+  .dw-foot{padding:13px 18px;border-top:1px solid var(--rule);background:var(--surfaceSoft);display:flex;gap:10px}
+  .dw-foot .btn{flex:1;padding:12px;border-radius:9px;font-size:13px;font-weight:700;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn.primary{background:var(--teal);color:#fff}
+  .btn.ghost{background:var(--surface);border:1px solid var(--ruleStrong);color:var(--ink);flex:0 0 auto;padding-left:18px;padding-right:18px}
+
+  /* lever */
+  .lever{display:flex;flex-direction:column;gap:7px}
+  .lever .top{display:flex;align-items:baseline;justify-content:space-between}
+  .lever .ll{font-size:12.5px;font-weight:600}
+  .lever .rr{display:flex;align-items:center;gap:8px}
+  .lever .hint{font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--success)}
+  .lever .val{font-family:var(--mono);font-size:13px;font-weight:700;padding:4px 10px;background:var(--surfaceSoft);border:1px solid var(--ruleStrong);border-radius:8px}
+  .slider{position:relative;height:6px;background:var(--surfaceMute);border-radius:999px}
+  .slider .fill{position:absolute;left:0;top:0;height:6px;background:var(--teal);border-radius:999px}
+  .slider .knob{position:absolute;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:var(--surface);border:2px solid var(--teal);box-shadow:0 2px 6px rgba(0,0,0,.15)}
+  .levermap{display:flex;gap:9px;padding:10px 12px;background:var(--surfaceSoft);border:1px dashed var(--ruleStrong);border-radius:9px;font-size:11px;color:var(--inkMute);text-wrap:pretty}
+  .levermap code{font-family:var(--mono);font-size:10.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .projbox{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:var(--successTint);border:1px solid color-mix(in srgb,var(--success) 30%,transparent);border-radius:11px}
+  .projbox .pl{font-size:11.5px;color:var(--success);font-weight:700;line-height:1.4}
+  .projbox .pv{display:flex;align-items:baseline;gap:7px}
+  .projbox .now{font-family:var(--mono);font-size:13px;color:var(--inkMute)}
+  .projbox .arr{color:var(--success);font-weight:700}
+  .projbox .next{font-family:var(--display);font-weight:800;font-size:24px;color:var(--success);letter-spacing:-.02em}
+  .gateline{font-family:var(--mono);font-size:9.5px;color:var(--inkMute);margin-top:4px}
+
+  /* at-risk dual arm */
+  .dualwrap{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .arm{border-radius:12px;overflow:hidden;border:1px solid var(--rule)}
+  .arm-h{padding:9px 13px;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:7px}
+  .arm.rich .arm-h{background:var(--tealTint);color:var(--tealDark)}
+  .arm.deg .arm-h{background:var(--surfaceSoft);color:var(--inkMute)}
+  .arm-b{padding:12px 13px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
+  .polrow{display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px}
+  .polrow .dot{width:7px;height:7px;border-radius:50%;background:var(--warning);flex-shrink:0}
+  .polrow .pc{flex:1;min-width:0}
+  .polrow .pn{font-size:12px;font-weight:600;white-space:nowrap}
+  .polrow .pp{font-size:10.5px;color:var(--inkMute);margin-top:1px}
+  .polrow .substate{font-family:var(--mono);font-size:8.5px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--warningTint);color:var(--warning);white-space:nowrap}
+  .polrow .ledgerlink{font-family:var(--mono);font-size:10px;color:var(--teal);font-weight:700;white-space:nowrap}
+  .arm-foot{padding:9px 13px;border-top:1px solid var(--rule);font-size:10.5px;color:var(--inkMute);background:var(--surfaceSoft)}
+
+  /* states */
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:15px 14px;min-height:150px;display:flex;flex-direction:column;gap:10px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .msg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:9px;padding:6px}
+  .msg .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px}
+  .msg.empty .ic{background:var(--successTint);color:var(--success)} .msg.err .ic{background:var(--dangerTint);color:var(--danger)}
+  .msg .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .msg .d{font-size:11px;color:var(--inkMute);line-height:1.45;max-width:280px}
+  .msg .eb{margin-top:3px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  .flagnote{display:flex;gap:13px;background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:13px;padding:15px 18px;margin-top:14px}
+  .flagnote .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--danger);flex-shrink:0;padding-top:2px}
+  .flagnote p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .flagnote b{font-weight:700}
+  .flagnote code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--danger)}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:210px 1fr 96px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .crow .co{text-align:right}
+
+  @media(max-width:1040px){
+    .annos,.drawers,.dualwrap,.states{grid-template-columns:1fr}
+    .appframe{flex-direction:column}.sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px}.sb-logo,.sb-grp{display:none}
+    .crow{grid-template-columns:1fr}.crow .co{text-align:left}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+    .rohead,.rorow{grid-template-columns:28px 1.4fr 110px 90px;gap:8px}
+    .rohead .h:nth-child(4),.rohead .h:nth-child(5),.rohead .h:nth-child(6),.rorow .gross,.rorow .lap,.rorow .srcwrap{display:none}
+    .reality{gap:12px}.rb-stats{margin-left:0;width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Persistency v2 · Build annotation · MANAGER scene</div>
+      <h1>Branch persistency — exception-first, one management motion.</h1>
+      <p class="subt">The manager surface: a <b>reality bar</b>, an <b>at-risk exception book</b>, a <b>two-tick banded roster</b>, the <b>manager-entry drawer restyle</b> (shipped manager-wins write), and a <b>what-if playground</b> whose levers feed the <b>real shipped derivation</b> — no magic deltas. Aggregation rides the Compliance v2 get-fan-out.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />PERSISTENCY v2 · BRANCH_MANAGER<br />90% GATE · 80% FLOOR<br />REV 2026-06-05</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Data canon</span>
+    <p><b>Verified.</b> Source badge fields <b>exist</b>: <code>enteredByRole</code> + <code>lockedByManager</code> + <code>editedAt</code> → "manager-locked" vs "self-entered" (informational; self-entry is keep-for-pilot). Reality bar = <b>deterministic per-agent GETs over the roster</b> (fan-out). Roster banding = <b>two-tick</b> (90 gate + 80 floor). Playground levers feed the <b>shipped six-input derivation</b> with adjusted inputs → real recompute. Share rides the <b>existing nudge primitive</b>. At-risk policy sub-states = <b>pending schema verdict</b> (both arms drawn).</p>
+  </div>
+
+  <div class="secttl">Reading this sheet</div>
+  <div class="keylegend">
+    <span class="it"><span class="pchip exist">EXISTING</span> shipped data / write (six-input derivation, manager-wins, nudge, badge fields)</span>
+    <span class="it"><span class="pchip new">NEW CHROME</span> net-new UI · no new data</span>
+    <span class="it"><span class="pchip flag">FLAG</span> pending schema verdict / product decision — not invented</span>
+  </div>
+
+  <!-- REALITY BAR + AT-RISK + ROSTER -->
+  <div class="secttl">Surface · reality bar → at-risk book → banded roster</div>
+  <div class="appframe">
+    <div class="sidebar">
+      <div class="sb-logo"><div class="lm"></div><div class="lt">AgencyTrack</div></div>
+      <div class="sb-grp">BRANCH</div>
+      <div class="nav"><span class="ic"></span>Dashboard</div>
+      <div class="nav"><span class="ic"></span>Master Sheet</div>
+      <div class="nav on"><span class="ic"></span>Persistency</div>
+      <div class="nav"><span class="ic"></span>Compliance</div>
+    </div>
+    <div class="canvas">
+      <div class="topbar"><span class="pt">Persistency</span><span class="ps">· SOUTH BRANCH · T. RAMCHARAN · NOV 2026</span></div>
+
+      <!-- reality bar -->
+      <div class="reality">
+        <div class="rb-month">◷ Nov 2026 ⌄</div>
+        <div class="rb-scope"><span class="s">Unit</span><span class="s on">Branch</span></div>
+        <div class="rb-div"></div>
+        <div class="rb-agg">
+          <div class="lbl">BRANCH<br>PERSISTENCY</div>
+          <div class="v">84.2%</div>
+          <div class="spark"><i style="height:55%"></i><i style="height:60%"></i><i style="height:75%"></i><i style="height:68%"></i><i style="height:82%"></i><i style="height:70%"></i></div>
+          <span class="mk e" style="width:16px;height:16px;font-size:8px">1</span>
+        </div>
+        <div class="rb-stats">
+          <div class="rb-stat"><div class="k">BELOW FLOOR</div><div class="v" style="color:var(--danger)">3</div><div class="s">&lt; 80%</div></div>
+          <div class="rb-stat"><div class="k">AWARD-ELIGIBLE</div><div class="v" style="color:var(--success)">5</div><div class="s">≥ 90%</div></div>
+          <div class="rb-stat"><div class="k">LAPSES · MTH</div><div class="v">TTD 88K</div><div class="s">&nbsp;</div></div>
+        </div>
+      </div>
+
+      <!-- at-risk -->
+      <div class="atrisk">
+        <div class="ar-h"><span style="color:var(--danger);font-size:14px">▾</span><span class="t">At-risk book — below the 80% floor</span><span class="c">3 AGENTS · EXCEPTION-FIRST</span><span class="mk e" style="width:16px;height:16px;font-size:8px">2</span></div>
+        <div class="arrow"><div class="av">DL</div><div><div class="nm">Devin Lewis</div><div class="un">S·03 · L2</div></div><div class="pct">72%</div><div class="lap">TTD 34K lapsed</div><div class="acts"><span class="ab coach">Coach</span><span class="ab play">▣ Play</span></div></div>
+        <div class="arrow"><div class="av">RB</div><div><div class="nm">Rohan Boodoo</div><div class="un">S·02 · L1</div></div><div class="pct">76%</div><div class="lap">TTD 28K lapsed</div><div class="acts"><span class="ab coach">Coach</span><span class="ab play">▣ Play</span></div></div>
+        <div class="arrow"><div class="av">PN</div><div><div class="nm">Priya Naidu</div><div class="un">S·01 · L1</div></div><div class="pct">78%</div><div class="lap">TTD 26K lapsed</div><div class="acts"><span class="ab coach">Coach</span><span class="ab play">▣ Play</span></div></div>
+      </div>
+
+      <!-- roster -->
+      <div class="roster">
+        <div class="ro-legend">
+          <div class="lg"><span class="d" style="background:var(--success)"></span>≥ 90% award-eligible</div>
+          <div class="lg"><span class="d" style="background:var(--warning)"></span>80–89% watch</div>
+          <div class="lg"><span class="d" style="background:var(--danger)"></span>&lt; 80% below floor</div>
+          <span class="note">Manager entry overrides agent self-entry</span>
+        </div>
+        <div class="rohead"><span class="h" style="text-align:center">#</span><span class="h">Agent · Unit</span><span class="h">Persistency · gate/floor</span><span class="h" style="text-align:right">Gross settled</span><span class="h" style="text-align:right">Lapses</span><span class="h">Source</span><span class="h" style="text-align:right">Actions</span></div>
+        <div class="rorow"><div class="rk">1</div><div class="who"><div class="av">SM</div><div><div class="nm">Selina Mohammed</div><div class="un">S·01 · L3</div></div></div>
+          <div class="bandcell"><span class="bv" style="color:var(--success)">94%</span><div class="bandtrack"><div class="bfill ok" style="width:94%"></div><div class="floor" style="left:80%"></div><div class="gate" style="left:90%"></div></div></div>
+          <div class="gross">TTD 142K</div><div class="lap">TTD 9K</div><div class="srcwrap"><span class="srcpill mgr">● Manager · locked</span></div>
+          <div class="acts"><span class="ab edit">✎ Edit</span><span class="ab play">▣ Play</span></div></div>
+        <div class="rorow zebra"><div class="rk">2</div><div class="who"><div class="av">MS</div><div><div class="nm">Marsha Singh</div><div class="un">S·02 · L3</div></div></div>
+          <div class="bandcell"><span class="bv" style="color:var(--success)">91%</span><div class="bandtrack"><div class="bfill ok" style="width:91%"></div><div class="floor" style="left:80%"></div><div class="gate" style="left:90%"></div></div></div>
+          <div class="gross">TTD 138K</div><div class="lap">TTD 12K</div><div class="srcwrap"><span class="srcpill mgr">● Manager · locked</span></div>
+          <div class="acts"><span class="ab edit">✎ Edit</span><span class="ab play">▣ Play</span></div></div>
+        <div class="rorow"><div class="rk">3</div><div class="who"><div class="av">AP</div><div><div class="nm">Anand Persad</div><div class="un">S·02 · L2</div></div></div>
+          <div class="bandcell"><span class="bv" style="color:var(--warning)">86%</span><div class="bandtrack"><div class="bfill watch" style="width:86%"></div><div class="floor" style="left:80%"></div><div class="gate" style="left:90%"></div></div></div>
+          <div class="gross">TTD 96K</div><div class="lap hi">TTD 18K</div><div class="srcwrap"><span class="srcpill self">○ Self-entry <span class="ed">· 1 Dec</span></span></div>
+          <div class="acts"><span class="ab edit">✎ Edit</span><span class="ab play">▣ Play</span></div></div>
+        <div class="rorow zebra"><div class="rk">8</div><div class="who"><div class="av">DL</div><div><div class="nm">Devin Lewis</div><div class="un">S·03 · L2</div></div></div>
+          <div class="bandcell"><span class="bv" style="color:var(--danger)">72%</span><div class="bandtrack"><div class="bfill below" style="width:72%"></div><div class="floor" style="left:80%"></div><div class="gate" style="left:90%"></div></div></div>
+          <div class="gross">TTD 88K</div><div class="lap hi">TTD 34K</div><div class="srcwrap"><span class="srcpill mgr">● Manager · locked</span></div>
+          <div class="acts"><span class="ab edit">✎ Edit</span><span class="ab play">▣ Play</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annos">
+    <div class="anno exist"><span class="mk e">1</span><div><div class="at">Reality bar — fan-out aggregation</div><div class="ad">% · 6-mo trend · below-floor · award-eligible · lapses are computed from <b>deterministic per-agent GETs over the roster</b> (UM unit / BM branch), the <b>Compliance v2 pattern</b> — no collection query, no new index.</div></div></div>
+    <div class="anno newc"><span class="mk n">B</span><div><div class="at">Two-tick band — new grammar over shipped thresholds</div><div class="ad">Each roster % renders on a track with a <b>danger floor tick (80%)</b> + <b>success gate tick (90%)</b>, fill colored by band. Thresholds are the <b>shipped</b> <code>PERS_GATE</code>/<code>PERS_FLOOR</code>; only the visual is new.</div></div></div>
+    <div class="anno exist"><span class="mk e">2</span><div><div class="at">At-risk book — exception-first, existing data</div><div class="ad">Agents below the 80% floor float to the top with per-row lapsed TTD + Coach/Play actions. All from existing per-agent monthly % + lapses.</div></div></div>
+    <div class="anno exist"><span class="mk e">S</span><div><div class="at">Source badge — fields exist, informational</div><div class="ad"><b><code>enteredByRole</code> / <code>lockedByManager</code> / <code>editedAt</code></b> drive "Manager · locked" vs "Self-entry · date". Self-entry is <b>keep-for-pilot</b> — the badge is <b>informational, not a warning</b> (uses neutral <code>text-ink-muted</code>, never faint).</div></div></div>
+  </div>
+
+  <!-- DRAWERS -->
+  <div class="secttl">Drawers · manager entry (restyle) + what-if playground (corrected mechanics)</div>
+  <div class="drawers">
+    <!-- entry drawer -->
+    <div class="drawer">
+      <div class="dw-h"><span class="av">DL</span><span class="dt">Enter persistency · Devin Lewis</span></div>
+      <div class="dw-b">
+        <div class="precedence"><span class="pi">🔒</span><div class="pt"><b>Saving locks November for Devin.</b> Your figures override his self-entry; he'll see this month <b>read-only</b>. <span style="color:var(--inkMute)">(Shipped manager-wins write — restyle only, no mechanics change.)</span></div></div>
+        <div class="sixgrid">
+          <div class="inp"><div class="il">Gross settled API</div><div class="iv"><span class="cu">TTD</span><span class="vv">122K</span></div></div>
+          <div class="inp"><div class="il">Net settled API</div><div class="iv"><span class="cu">TTD</span><span class="vv">88K</span></div></div>
+          <div class="inp"><div class="il">Lapses</div><div class="iv"><span class="cu">TTD</span><span class="vv">34K</span></div></div>
+          <div class="inp"><div class="il">Reinstatements</div><div class="iv"><span class="cu">TTD</span><span class="vv">0</span></div></div>
+          <div class="inp"><div class="il">Policies in force</div><div class="iv"><span class="vv">41</span></div></div>
+          <div class="inp"><div class="il">Policies issued</div><div class="iv"><span class="vv">52</span></div></div>
+        </div>
+        <div class="derived"><span class="dl">Derived persistency</span><span class="dv">72%</span></div>
+      </div>
+      <div class="dw-foot"><span class="btn ghost">Cancel</span><span class="btn primary">🔒 Save &amp; lock November</span></div>
+    </div>
+
+    <!-- playground drawer -->
+    <div class="drawer">
+      <div class="dw-h"><span class="av">DL</span><span class="dt">What-if · Devin Lewis</span><span class="mk n" style="width:17px;height:17px;font-size:9px;margin-left:auto">3</span></div>
+      <div class="dw-b">
+        <div class="lever">
+          <div class="top"><span class="ll">Policies saved / month</span><span class="rr"><span class="hint">−lapses</span><span class="val">+3</span></span></div>
+          <div class="slider"><div class="fill" style="width:42%"></div><div class="knob" style="left:42%"></div></div>
+        </div>
+        <div class="lever">
+          <div class="top"><span class="ll">Additional clean API / quarter</span><span class="rr"><span class="hint">+gross/net</span><span class="val">TTD 30K</span></span></div>
+          <div class="slider"><div class="fill" style="width:55%"></div><div class="knob" style="left:55%"></div></div>
+        </div>
+        <div class="levermap"><span class="mk e" style="width:16px;height:16px;font-size:8px">4</span><div><b style="color:var(--ink)">Lever → input → recompute (no magic deltas):</b> "policies saved" <b>reduces the <code>lapses</code> input</b>; "clean API" <b>raises <code>gross</code>/<code>net settled</code></b>. The projected % is the <b>shipped six-input derivation</b> re-run on the adjusted inputs.</div></div>
+        <div class="projbox">
+          <div><div class="pl">Projected persistency</div><div class="gateline">vs 90% award gate</div></div>
+          <div class="pv"><span class="now">72%</span><span class="arr">→</span><span class="next">87%</span></div>
+        </div>
+        <!-- at-risk policies: DUAL ARM -->
+        <div class="dualwrap" style="margin-top:2px">
+          <div class="arm rich">
+            <div class="arm-h">⚑ IF sub-states exist</div>
+            <div class="arm-b">
+              <div class="polrow"><span class="dot"></span><div class="pc"><div class="pn">M. Baptiste</div><div class="pp">TTD 8.4K API</div></div><span class="substate">GRACE ENDS 4D</span></div>
+              <div class="polrow"><span class="dot"></span><div class="pc"><div class="pn">K. Ali</div><div class="pp">TTD 6.1K API</div></div><span class="substate">NSF RETRY</span></div>
+            </div>
+            <div class="arm-foot">Rich rows w/ grace/NSF/missed-payment chips</div>
+          </div>
+          <div class="arm deg">
+            <div class="arm-h">○ IF NOT (degraded)</div>
+            <div class="arm-b">
+              <div class="polrow"><span class="dot"></span><div class="pc"><div class="pn">Her at-risk policies</div><div class="pp">2 below-floor this month</div></div><span class="ledgerlink">Ledger →</span></div>
+              <div class="polrow" style="opacity:.6"><span class="dot" style="background:var(--inkDim)"></span><div class="pc"><div class="pn">No sub-state chips</div><div class="pp">link to filtered Policy Ledger</div></div></div>
+            </div>
+            <div class="arm-foot">Link to agent's Policy Ledger filtered view</div>
+          </div>
+        </div>
+      </div>
+      <div class="dw-foot"><span class="btn primary">Share this plan with Devin →</span></div>
+    </div>
+  </div>
+
+  <div class="annos">
+    <div class="anno exist"><span class="mk e">E</span><div><div class="at">Entry drawer — restyle of the shipped write</div><div class="ad">Six inputs → derived %, <b>gold precedence banner</b>, Save &amp; lock. This is the <b>shipped manager-wins write path</b> re-skinned — <b>no mechanics change</b>. Primary button <code>bg-primary dark:bg-primary-dark</code>, white text, ≥44px.</div></div></div>
+    <div class="anno flagc"><span class="mk f">4</span><div><div class="at">Playground — REAL recompute, not the mock's +9/+5pp</div><div class="ad">Supersedes the mock's hard-coded deltas: levers map to <b>real inputs</b> (saved→<code>lapses</code>↓, clean API→<code>gross</code>/<code>net</code>↑) and the projected % is the <b>shipped derivation re-run</b>. Annotate the mapping in-product so it's auditable.</div></div></div>
+    <div class="anno exist"><span class="mk e">N</span><div><div class="at">"Share as recommendation" — existing nudge primitive</div><div class="ad">Rides the <b>Compliance v2 nudge</b> (bell + email via the CF pattern) with the gold <b>"coaching, not a lock"</b> framing. Transport is established — <b>not a new channel.</b></div></div></div>
+    <div class="anno flagc"><span class="mk f">P</span><div><div class="at">At-risk policy sub-states — PENDING SCHEMA VERDICT</div><div class="ad">The status machine has only <code>lapsed</code> (BM-only). Grace-ends / NSF-retry / missed-payment are <b>not confirmed</b>. <b>Both arms drawn:</b> rich chips if they exist; else degraded link to the filtered Policy Ledger. <b>Flag — not chosen.</b></div></div></div>
+  </div>
+
+  <!-- STATES -->
+  <div class="secttl">States</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">S</span>Skeleton · fan-out loading</div>
+      <div class="sc-b"><div class="shimmer" style="width:50%;height:11px"></div><div class="shimmer" style="width:100%;height:18px"></div><div class="shimmer" style="width:100%;height:14px"></div><div class="shimmer" style="width:100%;height:14px"></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">E</span>Empty · all above floor</div>
+      <div class="sc-b"><div class="msg empty"><div class="ic">✓</div><div class="t">No one below the floor</div><div class="d">Every agent is at or above 80% this month. The at-risk book is empty; the roster still shows the full band.</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">!</span>Error · partial fan-out</div>
+      <div class="sc-b"><div class="msg err"><div class="ic">!</div><div class="t" style="font-size:13.5px">Some agents didn't load</div><div class="d" style="font-size:11px">Show the agents that resolved + a count of the misses; never imply a complete branch picture from a partial read.</div><div class="eb">↻ Retry misses</div></div></div>
+    </div>
+  </div>
+
+  <div class="flagnote">
+    <span class="tag">⚑ Flags</span>
+    <p><b>One verdict + one verify before the brief locks.</b> (1) <b>At-risk policy sub-states</b> (grace/NSF/missed-payment) — schema verdict pending; both arms are drawn so the build picks the resolved one, no invention. (2) <b>Partial-fan-out semantics</b> — confirm the desired behavior when some roster GETs fail (show-resolved + miss-count is proposed); it's a product call whether a partial branch % is shown at all. The lever→input mapping and the share/nudge transport are <b>verified</b>, not flagged.</p>
+  </div>
+
+  <!-- COMPONENTS -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · manager scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">PersRealityBar</div><div class="cd">Month + scope switch + branch % + 6-mo spark + below-floor/eligible/lapses, from fan-out GETs.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">PersAtRiskBook</div><div class="cd">Below-floor agents, exception-first, Coach/Play actions. Existing per-agent data.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">PersRoster (two-tick)</div><div class="cd">Banded rows w/ 80 floor + 90 gate ticks, source badge, Edit/Play. Thresholds shipped.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">PersEntryDrawer</div><div class="cd">Restyle of the shipped manager-wins write: 6 inputs → derived %, gold precedence, Save&amp;lock.</div><div class="co"><span class="ptag exist">RESTYLE</span></div></div>
+    <div class="crow"><div class="cn">PersWhatIfPlayground</div><div class="cd">Levers → adjusted inputs → shipped derivation re-run → projected %. Dual-arm at-risk list.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">persDerive (6-input)</div><div class="cd">Shipped derivation — drives entry % AND the playground projection. Reused, not rebuilt.</div><div class="co"><span class="ptag exist">EXISTING</span></div></div>
+    <div class="crow"><div class="cn">shareAsRecommendation</div><div class="cd">Rides the Compliance v2 nudge (bell + email). "Coaching, not a lock" banner.</div><div class="co"><span class="ptag exist">NUDGE</span></div></div>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

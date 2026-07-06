@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Prospect Prep v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 560px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Prospect Prep v2 — "prep for this joint call", not a CRM</h1>
+    <p>
+      The repo's appointment-bound <b>Joint-Call Prep</b> (agent-authored, manager-readable), reframed from a flat form-list into a prep tool. A <b>next-call hero</b> with countdown + readiness (amber when imminent &amp; unprepped), the four objections turned from dead checkboxes into a <b>rehearsal aid</b> (what each means + how to counter), a <b>bottom-sheet</b> new-prep flow, a clean <b>manager read-only</b> view for the joint call, and a quiet <b>prep → policy</b> convert moment. Mobile-first + a desktop layout.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="dailycap-celebrate.jsx"></script>
+  <script type="text/babel" src="prospect-shared.jsx"></script>
+  <script type="text/babel" src="prospect-pages.jsx"></script>
+  <script type="text/babel" src="prospect-scenes.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="where"
+            title="Where it lives"
+            subtitle="Prospect Prep is a Tools-section item on desktop (highlighted in the sidebar) and lives under the 'More' tab on mobile. These two artboards show its home in each."
+          >
+            <DCArtboard id="d-home" label="01 · Desktop · Light · Lives under Tools" width={APP_W} height={APP_H}>
+              <ProspectDesktopScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="m-more" label="02 · Mobile · Light · Lives under 'More'" width={M_W} height={M_H}>
+              <MoreHubScene t={APP_LIGHT} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Prospect Prep — agent (mobile)"
+            subtitle="The next joint call as a hero: countdown badge (amber when imminent & unprepped), client + call facts, the source, a note, and the objections rehearsed inline (meaning + counter). Upcoming calls list below. Light + dark."
+          >
+            <DCArtboard id="m-light" label="03 · Mobile · Light · Prep list" width={M_W} height={M_H}>
+              <ProspectMobileScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="m-dark" label="04 · Mobile · Dark · Prep list" width={M_W} height={M_H}>
+              <ProspectMobileScene t={APP_DARK} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="new"
+            title="New prep — bottom sheet"
+            subtitle="Creating a prep: a bottom sheet with drag handle. Client → source (Social Media reveals platform) → appointment type + required date → likely policy → expected objections as toggles."
+          >
+            <DCArtboard id="m-sheet" label="05 · Mobile · Light · New-prep sheet" width={M_W} height={M_H}>
+              <ProspectMobileScene t={APP_LIGHT} sheet />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="manager"
+            title="Manager perspective — read-only prep"
+            subtitle="The manager opens the agent's prep ahead of their joint call. Gold banner makes it read-only (coach the approach; she owns the record); the objection rehearsal is the coaching surface."
+          >
+            <DCArtboard id="d-mgr" label="06 · Desktop · Light · Manager read view" width={APP_W} height={APP_H}>
+              <ProspectDesktopScene t={APP_LIGHT} managerView />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="desktop-dark"
+            title="Prospect Prep — agent (desktop, dark)"
+            subtitle="The same surface in dark mode: hero next call beside the upcoming list."
+          >
+            <DCArtboard id="d-dark" label="07 · Desktop · Dark · Agent" width={APP_W} height={APP_H}>
+              <ProspectDesktopScene t={APP_DARK} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="convert"
+            title="Convert moment — prep → policy"
+            subtitle="When a joint call closes, logging the policy from the prep is a quiet win — it lands on the ledger and counts toward the week."
+          >
+            <DCArtboard id="convert" label="08 · Mobile · Light · Call closed" width={M_W} height={M_H}>
+              <ConvertMoment t={APP_LIGHT} />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

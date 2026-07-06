@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Weekly Planner v2 — Slice 3 Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:760px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  /* legend */
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute);align-items:center}
+  .keylegend span.it{display:inline-flex;align-items:center;gap:7px}
+  .swatch{width:13px;height:13px;border-radius:4px;display:inline-block;flex-shrink:0}
+  .tick-floor{width:2px;height:15px;background:var(--inkFaint);display:inline-block}
+  .tick-plan{width:2px;height:15px;background:var(--teal);display:inline-block}
+  .tick-pace{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--ink);display:inline-block}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)} .mk.f{background:var(--danger)}
+
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.exist{background:var(--tealTint);color:var(--tealDark)}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+  .ptag.flag{background:var(--dangerTint);color:var(--danger)}
+
+  /* app frame */
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(38,35,28,.10);display:flex;gap:14px}
+  .sidebar{width:150px;flex-shrink:0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 9px;display:flex;flex-direction:column;gap:3px}
+  .sb-logo{display:flex;align-items:center;gap:8px;padding:4px 6px 12px}
+  .sb-logo .lm{width:24px;height:24px;border-radius:7px;background:var(--teal)}
+  .sb-logo .lt{font-family:var(--display);font-weight:800;font-size:13px}
+  .sb-grp{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.12em;color:var(--inkFaint);padding:9px 8px 4px}
+  .nav{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;font-size:11.5px;font-weight:600;color:var(--inkMute)}
+  .nav .ic{width:14px;height:14px;border-radius:4px;background:var(--inkDim);flex-shrink:0}
+  .nav.on{background:var(--tealTint);color:var(--tealDark);font-weight:700}
+  .nav.on .ic{background:var(--teal)}
+  .nav.child{margin-left:14px;font-size:11px}
+  .nav .nb{margin-left:auto;font-family:var(--mono);font-size:7px;font-weight:700;letter-spacing:.06em;padding:1px 5px;border-radius:99px;background:var(--goldTint);color:var(--goldInk)}
+
+  .canvas{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px}
+  .topbar{display:flex;align-items:center;gap:10px;padding:2px 2px 0}
+  .topbar .pt{font-family:var(--display);font-weight:800;font-size:16px;white-space:nowrap}
+  .topbar .ps{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.05em}
+
+  /* THE committed card */
+  .wpcard{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:17px 19px;position:relative;overflow:hidden}
+  .wp-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .wp-ey{display:flex;align-items:center;gap:9px}
+  .wp-ey .e{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.16em;color:var(--teal)}
+  .wp-title{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-.015em;margin-top:8px}
+  .provchip{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;padding:3px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+  .provchip.mid{background:var(--warningTint);color:var(--warning)}
+  .provchip.final{background:var(--successTint);color:var(--success)}
+  .paceread{display:flex;align-items:center;gap:8px;margin-top:5px;font-family:var(--mono);font-size:10px;color:var(--inkMute)}
+  .paceread b{color:var(--ink)}
+
+  /* metric pace rows */
+  .prows{display:flex;flex-direction:column;gap:13px;margin-top:17px}
+  .prow{display:grid;grid-template-columns:118px 1fr 132px;gap:14px;align-items:center}
+  .prow .pl{min-width:0}
+  .prow .pn{font-size:12.5px;font-weight:700;white-space:nowrap}
+  .prow .pf{font-family:var(--mono);font-size:8.5px;color:var(--inkFaint);letter-spacing:.04em;margin-top:2px}
+  /* track */
+  .track{position:relative;height:26px;border-radius:8px;background:var(--surfaceMute);overflow:visible}
+  .track .fill{position:absolute;left:0;top:0;bottom:0;border-radius:8px}
+  .track .fill.ahead{background:var(--success)}
+  .track .fill.ontrack{background:var(--success);opacity:.62}
+  .track .fill.behind{background:var(--warning)}
+  .track .fill.nodaily{background:repeating-linear-gradient(90deg,var(--surfaceMute),var(--surfaceMute) 6px,var(--rule) 6px,var(--rule) 8px)}
+  .track .floor{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--inkFaint)}
+  .track .floor::after{content:'FLOOR';position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:6.5px;font-weight:700;color:var(--inkFaint);letter-spacing:.06em}
+  .track .pace{position:absolute;top:-6px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--ink);transform:translateX(-5px)}
+  .track .plancap{position:absolute;right:0;top:-3px;bottom:-3px;width:2px;background:var(--teal)}
+  .track .plancap::after{content:'PLAN';position:absolute;top:-12px;right:-2px;font-family:var(--mono);font-size:6.5px;font-weight:700;color:var(--teal);letter-spacing:.06em}
+  /* readout */
+  .pread{text-align:right;font-family:var(--mono);font-size:11px}
+  .pread .av{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-.01em}
+  .pread .av.ahead,.pread .av.ontrack{color:var(--success)} .pread .av.behind{color:var(--warning)}
+  .pread .tg{color:var(--inkFaint);font-size:10px}
+  .pread .vchip{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;margin-top:3px}
+  .vchip.ahead{background:var(--successTint);color:var(--success)} .vchip.ontrack{background:var(--successTint);color:var(--success)} .vchip.behind{background:var(--warningTint);color:var(--warning)}
+  .pread .nodailytag{font-size:8.5px;color:var(--inkFaint);font-weight:700;letter-spacing:.04em}
+
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.exist{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.exist .ad b{color:var(--tealDark)}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+  .anno.flagc{background:var(--dangerTint);border-color:color-mix(in srgb,var(--danger) 28%,transparent)}
+  .anno.flagc .ad b{color:var(--danger)}
+
+  /* WeeklyStandardCard evolution — 3 states side by side */
+  .wsc3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .wsc{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .wsc-h{padding:11px 14px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:8px}
+  .wsc-h .wt{font-family:var(--display);font-weight:800;font-size:12.5px}
+  .wsc-h .wtag{margin-left:auto;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.06em;padding:2px 7px;border-radius:99px;text-transform:uppercase}
+  .wsc-b{padding:13px 14px;display:flex;flex-direction:column;gap:11px;min-height:188px}
+  .wscrow{display:flex;flex-direction:column;gap:5px}
+  .wscrow .top{display:flex;align-items:baseline;justify-content:space-between}
+  .wscrow .nm{font-size:11px;font-weight:700;color:var(--ink)}
+  .wscrow .vv{font-family:var(--mono);font-size:10px;color:var(--inkMute)}
+  .minitrack{position:relative;height:9px;border-radius:5px;background:var(--surfaceMute);overflow:visible}
+  .minitrack .mf{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+  .minitrack .mf.ahead{background:var(--success)}.minitrack .mf.behind{background:var(--warning)}.minitrack .mf.floor{background:var(--inkDim)}
+  .minitrack .mfloor{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--inkFaint)}
+  .minitrack .mplan{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--teal)}
+  .wsc-foot{padding:9px 14px;border-top:1px solid var(--rule);background:var(--surfaceSoft);font-size:10px;color:var(--inkMute);display:flex;align-items:center;gap:7px}
+  .wsc-foot .nudge{color:var(--teal);font-weight:700}
+
+  /* variance semantics table */
+  .vtable,.maptable{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .vtable th,.maptable th{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint);text-align:left;padding:11px 15px;background:var(--surfaceSoft);border-bottom:1px solid var(--rule)}
+  .vtable td,.maptable td{padding:12px 15px;border-bottom:1px solid var(--rule);font-size:12.5px;vertical-align:top}
+  .vtable tr:last-child td,.maptable tr:last-child td{border-bottom:none}
+  .vtable .st{display:inline-flex;align-items:center;gap:7px;font-weight:700}
+  .vtable .st .d{width:9px;height:9px;border-radius:50%}
+  .vtable code,.maptable code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .flagcell{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--danger)}
+  .okcell{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--success)}
+  .warncell{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--warning)}
+  .maptable td .sub{font-size:10.5px;color:var(--inkFaint);margin-top:2px}
+
+  .flagnote{display:flex;gap:13px;background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:13px;padding:15px 18px;margin-top:14px}
+  .flagnote .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--danger);flex-shrink:0;padding-top:2px}
+  .flagnote p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .flagnote b{font-weight:700}
+  .flagnote code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--danger)}
+
+  /* product-judgment flags */
+  .pjbox{background:var(--warningTint);border:1px solid color-mix(in srgb,var(--warning) 32%,transparent);border-radius:14px;padding:17px 20px}
+  .pjbox .dt{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--warning);margin-bottom:11px;display:flex;align-items:center;gap:8px}
+  .pjlist{display:flex;flex-direction:column;gap:9px}
+  .pj{display:flex;gap:11px;background:var(--surface);border:1px solid color-mix(in srgb,var(--warning) 22%,transparent);border-radius:10px;padding:11px 14px}
+  .pj .q{font-size:12.5px;font-weight:700}
+  .pj .w{font-size:11.5px;color:var(--inkMute);margin-top:2px;text-wrap:pretty}
+  .pj .mk{margin-top:1px}
+
+  /* slice split */
+  .slices{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .slice{border-radius:13px;padding:16px 18px;border:1px solid var(--rule);background:var(--surface)}
+  .slice.a{border-color:color-mix(in srgb,var(--teal) 34%,transparent);background:var(--tealTint)}
+  .slice .sh{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
+  .slice.b .sh{color:var(--inkMute)}
+  .slice .st{font-family:var(--display);font-weight:800;font-size:15px;margin-top:7px;letter-spacing:-.01em}
+  .slice .sd{font-size:12px;color:var(--inkMute);margin-top:6px;text-wrap:pretty}
+  .slice .sd b{color:var(--ink)}
+
+  /* states */
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:15px 14px;min-height:150px;display:flex;flex-direction:column;gap:10px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .midmsg,.errs{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:6px}
+  .midmsg .ic{width:38px;height:38px;border-radius:11px;background:var(--warningTint);color:var(--warning);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .midmsg .t{font-family:var(--display);font-weight:800;font-size:13.5px}
+  .midmsg .d{font-size:11px;color:var(--inkMute);line-height:1.45}
+  .errs .ic{width:38px;height:38px;border-radius:11px;background:var(--dangerTint);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .errs .eb{margin-top:4px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:210px 1fr 92px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .crow .co{text-align:right}
+
+  @media(max-width:1040px){
+    .annos,.slices{grid-template-columns:1fr}.wsc3,.states{grid-template-columns:1fr}
+    .appframe{flex-direction:column}.sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px}.sb-logo,.sb-grp{display:none}
+    .crow{grid-template-columns:1fr}.crow .co{text-align:left}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+    .prow{grid-template-columns:90px 1fr 110px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Weekly Planner v2 · Slice 3 — Build annotation</div>
+      <h1>Plan vs actual vs variance — read-only, floor as baseline.</h1>
+      <p class="subt">S3 adds <b>actuals + variance</b> to the committed weekly plan (from S2) and evolves <b>WeeklyStandardCard</b> to plan-vs-actual-with-floor-baseline. <b>No new data is created</b> — actuals are read from the weekly submission (final) and Daily Capture (mid-week). Honest-framing doctrine holds: floor never masquerades as plan, no metric shows a number it can't source.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />WEEKLY PLANNER · SLICE 3<br />AGENT · GAME PLAN + DASHBOARD<br />REV 2026-06-04</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Slice rule</span>
+    <p><b>Read / derive only — no writes, no new collections.</b> Variance = plan − actual, computed against <b>pace</b> (plan × elapsed ÷ total), not the full-week number. The floor is an <b>always-visible neutral baseline</b>, visually distinct from the personal plan target. Two of the five metrics have no clean daily source — handled honestly, not invented (see the mapping flags).</p>
+  </div>
+
+  <div class="secttl">Visual grammar — the three reference points on every row</div>
+  <div class="keylegend">
+    <span class="it"><span class="swatch" style="background:var(--success)"></span> Actual · ahead / on-track</span>
+    <span class="it"><span class="swatch" style="background:var(--warning)"></span> Actual · behind pace</span>
+    <span class="it"><span class="tick-floor"></span> Company floor (baseline)</span>
+    <span class="it"><span class="tick-plan"></span> Personal plan (target cap)</span>
+    <span class="it"><span class="tick-pace"></span> Pace marker (where you should be today)</span>
+    <span class="it"><span class="swatch" style="background:repeating-linear-gradient(90deg,var(--surfaceMute),var(--surfaceMute) 4px,var(--rule) 4px,var(--rule) 6px)"></span> No daily source (mid-week)</span>
+  </div>
+
+  <!-- ASK 1 · COMMITTED CARD GAINS ACTUALS -->
+  <div class="secttl">Ask 1 · Committed-plan view gains actuals + variance</div>
+  <div class="appframe">
+    <div class="sidebar">
+      <div class="sb-logo"><div class="lm"></div><div class="lt">AgencyTrack</div></div>
+      <div class="sb-grp">PLANNING</div>
+      <div class="nav on"><span class="ic"></span>Game Plan <span class="nb">NEW</span></div>
+      <div class="nav child"><span class="ic"></span>Money Needs</div>
+      <div class="nav"><span class="ic"></span>Goals</div>
+      <div class="nav"><span class="ic"></span>Commission</div>
+    </div>
+    <div class="canvas">
+      <div class="topbar"><span class="pt">Game Plan</span><span class="ps">· MARSHA SINGH · THU 26 NOV · WK 48 · DAY 4 OF 5</span></div>
+      <div class="wpcard">
+        <div class="wp-h">
+          <div>
+            <div class="wp-ey"><span class="e">YOUR WEEK · PLAN VS ACTUAL</span><span class="mk e" style="width:17px;height:17px;font-size:9px">1</span></div>
+            <div class="wp-title">You're on pace on 3 of 5 — calls need a push.</div>
+          </div>
+          <span class="provchip mid">◷ MID-WEEK · FROM DAILY CAPTURE</span>
+        </div>
+        <div class="paceread"><span class="tick-pace"></span> Pace marker = <b>Day 4 of 5</b> → you should be at <b>80%</b> of plan <span class="mk n" style="width:16px;height:16px;font-size:8px;margin-left:4px">2</span></div>
+
+        <div class="prows">
+          <!-- apps · ahead -->
+          <div class="prow">
+            <div class="pl"><div class="pn">Applications</div><div class="pf">FLOOR 1 · PLAN 2</div></div>
+            <div class="track"><div class="fill ahead" style="width:100%"></div><div class="floor" style="left:50%"></div><div class="pace" style="left:80%"></div><div class="plancap"></div></div>
+            <div class="pread"><span class="av ahead">2</span><span class="tg"> / 2</span><div><span class="vchip ahead">▲ Ahead</span></div></div>
+          </div>
+          <!-- CI · on track -->
+          <div class="prow">
+            <div class="pl"><div class="pn">CIs kept</div><div class="pf">FLOOR 10 · PLAN 6</div></div>
+            <div class="track"><div class="fill ontrack" style="width:83%"></div><div class="floor" style="left:100%"></div><div class="pace" style="left:80%"></div><div class="plancap"></div></div>
+            <div class="pread"><span class="av ontrack">5</span><span class="tg"> / 6</span><div><span class="vchip ontrack">● On track</span></div></div>
+          </div>
+          <!-- FFI · behind -->
+          <div class="prow">
+            <div class="pl"><div class="pn">Fact-finds</div><div class="pf">FLOOR 10 · PLAN 12</div></div>
+            <div class="track"><div class="fill behind" style="width:50%"></div><div class="floor" style="left:83%"></div><div class="pace" style="left:80%"></div><div class="plancap"></div></div>
+            <div class="pread"><span class="av behind">6</span><span class="tg"> / 12</span><div><span class="vchip behind">▼ Behind</span></div></div>
+          </div>
+          <!-- calls · NO DAILY SOURCE -->
+          <div class="prow">
+            <div class="pl"><div class="pn">Calls made</div><div class="pf">FLOOR 60 · PLAN 50</div></div>
+            <div class="track"><div class="fill nodaily" style="width:100%"></div><div class="floor" style="left:100%;transform:translateX(-100%)"></div><div class="plancap"></div></div>
+            <div class="pread"><span class="nodailytag">weekly only ·<br>no daily pace</span><span class="mk f" style="width:16px;height:16px;font-size:8px;margin-top:3px">3</span></div>
+          </div>
+          <!-- contacts · NO DAILY SOURCE -->
+          <div class="prow">
+            <div class="pl"><div class="pn">Contacts made</div><div class="pf">FLOOR 40 · PLAN 40</div></div>
+            <div class="track"><div class="fill nodaily" style="width:100%"></div><div class="floor" style="left:100%;transform:translateX(-100%)"></div><div class="plancap"></div></div>
+            <div class="pread"><span class="nodailytag">weekly only ·<br>no daily pace</span><span class="mk f" style="width:16px;height:16px;font-size:8px;margin-top:3px">3</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annos">
+    <div class="anno newc"><span class="mk n">1</span><div><div class="at">Pace row — NEW grammar over the S2 plan</div><div class="ad">Each committed metric becomes a track with <b>floor tick</b> (neutral), <b>plan cap</b> (teal, the row end), <b>actual fill</b> (success ahead/on-track · warning behind), and a <b>pace marker</b>. Reuses the S1/S2 chip + provenance idioms; no new tokens.</div></div></div>
+    <div class="anno newc"><span class="mk n">2</span><div><div class="at">Variance is measured against PACE</div><div class="ad">"On track" = actual ≥ <code>plan × elapsed ÷ total</code>, so mid-week behind/ahead is honest, not judged against the full-week number on a Tuesday. The pace marker is the visible "should-be-here-today" line.</div></div></div>
+    <div class="anno exist"><span class="mk e">A</span><div><div class="at">Actuals are READ — nothing created</div><div class="ad">Mid-week actuals come from <b>Daily Capture</b> (provenance chip "mid-week"); once the weekly report is submitted they switch to the <b>submission</b> ("final"). Variance is computed client-side. No store, no write.</div></div></div>
+    <div class="anno flagc"><span class="mk f">3</span><div><div class="at">Calls &amp; Contacts — no daily source (honest)</div><div class="ad"><b>Daily Capture has no dials/calls or prospect-contacts field</b>, so these two rows show <b>"weekly only · no daily pace"</b> mid-week (hatched track) and only resolve to an actual at submission. <b>Not invented.</b> See the mapping flags.</div></div></div>
+  </div>
+
+  <!-- ASK 2 · WEEKLYSTANDARDCARD -->
+  <div class="secttl">Ask 2 · WeeklyStandardCard evolution — three honest states</div>
+  <div class="wsc3">
+    <!-- plan committed, mid-week -->
+    <div class="wsc">
+      <div class="wsc-h"><span class="wt">Plan committed · mid-week</span><span class="wtag" style="background:var(--warningTint);color:var(--warning)">DAILY</span></div>
+      <div class="wsc-b">
+        <div class="wscrow"><div class="top"><span class="nm">Fact-finds</span><span class="vv">6 / 12</span></div><div class="minitrack"><div class="mf behind" style="width:50%"></div><div class="mfloor" style="left:83%"></div><div class="mplan" style="left:100%"></div></div></div>
+        <div class="wscrow"><div class="top"><span class="nm">CIs kept</span><span class="vv">5 / 6</span></div><div class="minitrack"><div class="mf ahead" style="width:83%"></div><div class="mfloor" style="left:100%"></div><div class="mplan" style="left:100%"></div></div></div>
+        <div class="wscrow"><div class="top"><span class="nm">Applications</span><span class="vv">2 / 2</span></div><div class="minitrack"><div class="mf ahead" style="width:100%"></div><div class="mfloor" style="left:50%"></div><div class="mplan" style="left:100%"></div></div></div>
+        <div class="wscrow"><div class="top"><span class="nm">Calls</span><span class="vv" style="color:var(--inkFaint)">— weekly only</span></div><div class="minitrack"><div class="mf" style="width:100%;background:repeating-linear-gradient(90deg,var(--surfaceMute),var(--surfaceMute) 4px,var(--rule) 4px,var(--rule) 6px)"></div><div class="mplan" style="left:100%"></div></div></div>
+      </div>
+      <div class="wsc-foot"><span class="tick-pace"></span> Pace: Day 4 of 5 · from Daily Capture</div>
+    </div>
+    <!-- no plan -->
+    <div class="wsc">
+      <div class="wsc-h"><span class="wt">No plan committed</span><span class="wtag" style="background:var(--surfaceMute);color:var(--inkMute)">FLOOR ONLY</span></div>
+      <div class="wsc-b">
+        <div class="wscrow"><div class="top"><span class="nm">Fact-finds</span><span class="vv">8 / <b style="color:var(--inkMute)">10 floor</b></span></div><div class="minitrack"><div class="mf floor" style="width:80%"></div><div class="mfloor" style="left:100%"></div></div></div>
+        <div class="wscrow"><div class="top"><span class="nm">CIs kept</span><span class="vv">7 / <b style="color:var(--inkMute)">10 floor</b></span></div><div class="minitrack"><div class="mf floor" style="width:70%"></div><div class="mfloor" style="left:100%"></div></div></div>
+        <div class="wscrow"><div class="top"><span class="nm">Calls</span><span class="vv">52 / <b style="color:var(--inkMute)">60 floor</b></span></div><div class="minitrack"><div class="mf floor" style="width:87%"></div><div class="mfloor" style="left:100%"></div></div></div>
+        <div class="wscrow"><div class="top"><span class="nm">Contacts</span><span class="vv">33 / <b style="color:var(--inkMute)">40 floor</b></span></div><div class="minitrack"><div class="mf floor" style="width:82%"></div><div class="mfloor" style="left:100%"></div></div></div>
+      </div>
+      <div class="wsc-foot">Showing the <b style="color:var(--inkMute)">company floor</b> · <span class="nudge">Commit a plan in Game Plan →</span></div>
+    </div>
+    <!-- final submitted -->
+    <div class="wsc">
+      <div class="wsc-h"><span class="wt">Plan committed · final</span><span class="wtag" style="background:var(--successTint);color:var(--success)">SUBMITTED</span></div>
+      <div class="wsc-b">
+        <div class="wscrow"><div class="top"><span class="nm">Fact-finds</span><span class="vv">11 / 12</span></div><div class="minitrack"><div class="mf ahead" style="width:92%"></div><div class="mfloor" style="left:83%"></div><div class="mplan" style="left:100%"></div></div></div>
+        <div class="wscrow"><div class="top"><span class="nm">CIs kept</span><span class="vv">7 / 6</span></div><div class="minitrack"><div class="mf ahead" style="width:100%"></div><div class="mfloor" style="left:100%"></div><div class="mplan" style="left:90%"></div></div></div>
+        <div class="wscrow"><div class="top"><span class="nm">Calls</span><span class="vv">58 / 50</span></div><div class="minitrack"><div class="mf ahead" style="width:100%"></div><div class="mfloor" style="left:100%"></div><div class="mplan" style="left:86%"></div></div></div>
+        <div class="wscrow"><div class="top"><span class="nm">Contacts</span><span class="vv">42 / 40</span></div><div class="minitrack"><div class="mf ahead" style="width:100%"></div><div class="mfloor" style="left:95%"></div><div class="mplan" style="left:95%"></div></div></div>
+      </div>
+      <div class="wsc-foot"><span style="color:var(--success);font-weight:700">✓ Week submitted</span> · actuals from the weekly report</div>
+    </div>
+  </div>
+  <div class="annos" style="grid-template-columns:1fr 1fr">
+    <div class="anno"><span class="mk i">i</span><div><div class="at">No-plan state = today's behavior, kept honest</div><div class="ad">When no plan is committed the card shows <b>floor-only — exactly as today</b> — labeled "company floor" with a "Commit a plan" nudge. It never relabels the floor as a personal plan.</div></div></div>
+    <div class="anno"><span class="mk i">i</span><div><div class="at">Mid-week → final provenance switch</div><div class="ad">Partial actuals from <b>Daily Capture</b> carry a "daily" tag + live pace marker; on weekly submission the card flips to <b>"submitted"</b> and the submission is the source of record. Calls/Contacts stay "weekly only" until then.</div></div></div>
+  </div>
+
+  <!-- ASK 3 · VARIANCE SEMANTICS -->
+  <div class="secttl">Ask 3 · Variance semantics — proposed (product judgments flagged separately)</div>
+  <table class="vtable">
+    <thead><tr><th style="width:150px">State</th><th>Proposed rule</th><th>Visual</th></tr></thead>
+    <tbody>
+      <tr><td><span class="st"><span class="d" style="background:var(--success)"></span>Ahead</span></td><td>actual ≥ plan target (full week already met / exceeded)</td><td>success fill, solid · ▲ chip</td></tr>
+      <tr><td><span class="st"><span class="d" style="background:var(--success);opacity:.62"></span>On track</span></td><td><code>pace ≤ actual &lt; plan</code> where <code>pace = plan × elapsed ÷ total</code></td><td>success fill, 62% · ● chip</td></tr>
+      <tr><td><span class="st"><span class="d" style="background:var(--warning)"></span>Behind</span></td><td>actual &lt; pace (below where today's elapsed share expects)</td><td>warning fill · ▼ chip</td></tr>
+      <tr><td><span class="st"><span class="d" style="background:var(--inkFaint)"></span>No daily source</span></td><td>metric has no Daily Capture field → no mid-week pace; resolves at submission</td><td>hatched track · "weekly only"</td></tr>
+    </tbody>
+  </table>
+  <div class="pjbox" style="margin-top:16px">
+    <div class="dt">⚑ Product judgments — FLAGGED, not decided here</div>
+    <div class="pjlist">
+      <div class="pj"><span class="mk i" style="width:18px;height:18px;font-size:9px">?</span><div><div class="q">The "behind" threshold</div><div class="w">Is behind <code>actual &lt; pace</code> exactly, or with a grace buffer (e.g. &lt; 90% of pace) so early-week dips don't alarm? Operator's call.</div></div></div>
+      <div class="pj"><span class="mk i" style="width:18px;height:18px;font-size:9px">?</span><div><div class="q">Elapsed basis</div><div class="w">Does "elapsed ÷ total" count <b>calendar</b> days (Sun–Sat) or <b>working</b> days (Mon–Fri)? Changes every pace marker.</div></div></div>
+      <div class="pj"><span class="mk i" style="width:18px;height:18px;font-size:9px">?</span><div><div class="q">Early-week suppression</div><div class="w">Suppress variance states entirely on Day 1 (everything would read "behind" before any logging)? When does pace judgment "switch on"?</div></div></div>
+      <div class="pj"><span class="mk i" style="width:18px;height:18px;font-size:9px">?</span><div><div class="q">Floor below plan vs floor above plan</div><div class="w">When a metric's <b>floor exceeds the agent's plan</b> (e.g. CI floor 10 &gt; plan 6), which is the "real" target the card should hold them to? Doctrine says show both — but which drives the variance color?</div></div></div>
+    </div>
+  </div>
+
+  <!-- ASK 4 · MAPPING -->
+  <div class="secttl">Ask 4 · Actual-source mapping — flags where there's no clean source</div>
+  <table class="maptable">
+    <thead><tr><th style="width:180px">Plan metric (S2)</th><th>Weekly submission (final)</th><th>Daily Capture (mid-week)</th></tr></thead>
+    <tbody>
+      <tr><td><code>applicationsSubmitted</code></td><td><span class="okcell">✓ New business apps</span><div class="sub">Step 7 · new business</div></td><td><span class="okcell">✓ New business apps</span><div class="sub">Production group</div></td></tr>
+      <tr><td><code>closingInterviewsKept</code></td><td><span class="okcell">✓ CI conducted</span><div class="sub">Step 6 · approaches &amp; interviews</div></td><td><span class="okcell">✓ CIs conducted</span><div class="sub">Interviews group</div></td></tr>
+      <tr><td><code>factFindsCompleted</code></td><td><span class="okcell">✓ FFI conducted</span><div class="sub">Step 6</div></td><td><span class="okcell">✓ FFIs conducted</span><div class="sub">Appointments &amp; FFI group</div></td></tr>
+      <tr><td><code>contactsMade</code></td><td><span class="warncell">⚠ telephone contacts</span><div class="sub">verify stored distinct from calls</div></td><td><span class="flagcell">✕ no clean source</span><div class="sub">"Service contacts" = servicing existing clients, ≠ prospect contacts</div></td></tr>
+      <tr><td><code>callsMade</code></td><td><span class="warncell">⚠ totalCalls</span><div class="sub">Step 3 · likely clean — verify</div></td><td><span class="flagcell">✕ no source</span><div class="sub">Daily entry has no dials/calls field</div></td></tr>
+    </tbody>
+  </table>
+  <div class="flagnote">
+    <span class="tag">⚑ Headline flag</span>
+    <p><b><code>callsMade</code> and <code>contactsMade</code> have no clean Daily Capture source.</b> Consequence: the <b>mid-week daily pace curve can only cover Fact-finds, CIs, and Apps</b>; calls/contacts can only resolve to an actual at weekly submission — shown as "weekly only · no daily pace" until then. The <b>weekly-submission</b> side also carries two <b>⚠ verify</b> flags (calls/contacts distinctness) for the dispatcher to source-verify against the repo before the brief locks. <b>No mapping was invented to fill the gaps.</b></p>
+  </div>
+
+  <!-- ASK 5 · SLICE SPLIT -->
+  <div class="secttl">Ask 5 · Slice boundaries — split S3</div>
+  <div class="slices">
+    <div class="slice a"><div class="sh">S3a · first</div><div class="st">Game Plan card — actuals + variance</div><div class="sd">Add the pace rows to the committed-plan view: read submission/Daily Capture actuals, compute pace variance, render floor + plan + actual + pace. <b>Proves the read + variance grammar</b> on one surface, where the plan already lives.</div></div>
+    <div class="slice b"><div class="sh">S3b · second</div><div class="st">WeeklyStandardCard evolution</div><div class="sd">Apply the grammar to the dashboard card, and carry the two states unique to it: <b>no-plan floor-only fallback</b> and the <b>mid-week ↔ final provenance switch</b>. Depends on S3a's variance helper.</div></div>
+  </div>
+
+  <!-- STATES -->
+  <div class="secttl">States</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">S</span>Skeleton · loading actuals</div>
+      <div class="sc-b"><div class="shimmer" style="width:55%;height:11px"></div><div class="shimmer" style="width:100%;height:20px"></div><div class="shimmer" style="width:100%;height:20px"></div><div class="shimmer" style="width:100%;height:20px"></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">M</span>Day 1 · no actuals yet</div>
+      <div class="sc-b"><div class="midmsg"><div class="ic">◷</div><div class="t">Your week's just starting</div><div class="d">Plan committed. Pace tracking begins once you log activity in Daily Capture or submit your week.</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">!</span>Error</div>
+      <div class="sc-b"><div class="errs"><div class="ic">!</div><div class="t" style="font-family:var(--display);font-weight:800;font-size:13.5px">Couldn't load your actuals</div><div class="d" style="font-size:11px;color:var(--inkMute)">Your committed plan still shows; retry to load progress.</div><div class="eb">↻ Retry</div></div></div>
+    </div>
+  </div>
+
+  <!-- COMPONENTS -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · Slice-3 scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">PaceRow</div><div class="cd">One metric: floor tick + plan cap + actual fill + pace marker + variance chip. Reuses S1/S2 chip idioms.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">computeVariance()</div><div class="cd">Pure helper: actual vs <code>plan × elapsed ÷ total</code> → ahead/on-track/behind. Thresholds = flagged product params.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">actualsResolver</div><div class="cd">Reads submission (final) / Daily Capture (mid-week), sets provenance. <b>No write.</b> Flags calls/contacts as no-daily-source.</div><div class="co"><span class="ptag exist">READ</span></div></div>
+    <div class="crow"><div class="cn">WeeklyStandardCard</div><div class="cd">Evolve to plan-vs-actual-with-floor-baseline; no-plan → floor-only (today's behavior).</div><div class="co"><span class="ptag exist">EVOLVE</span></div></div>
+    <div class="crow"><div class="cn">statusToken(role)</div><div class="cd">Shared helper — roles here: ahead / on-track / behind / floor-baseline / no-source. Variance colors map through it.</div><div class="co"><span class="ptag exist">SHARED</span></div></div>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

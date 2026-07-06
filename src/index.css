@@ -1,5 +1,50 @@
-@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Self-hosted Nexus fonts ───────────────────────────────────────────
+ * Satoshi (body) + Cabinet Grotesk (display) served locally from
+ * src/assets/fonts/ (Vite fingerprints them into dist/assets). The prior
+ * Fontshare CDN @import has been removed. Weights mirror the CDN set
+ * exactly for zero visual change — Satoshi 400/500/700, Cabinet Grotesk
+ * 700/800 — with the same font-display: swap and family names the app
+ * already references.
+ * NOTE: JetBrains Mono (mono family) has no committed woff2, so it is
+ * still loaded via the CDN @import above (see docs/design-system/INTEGRATION.md).
+ */
+@font-face {
+  font-family: 'Satoshi';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/Satoshi-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Satoshi';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/Satoshi-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Satoshi';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/Satoshi-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/CabinetGrotesk-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('./assets/fonts/CabinetGrotesk-Extrabold.woff2') format('woff2');
+}
 
 @tailwind base;
 @tailwind components;

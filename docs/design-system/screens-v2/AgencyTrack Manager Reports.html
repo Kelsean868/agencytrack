@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Unit & Agency Reports</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+
+    /* Intro + ladder card */
+    .intro {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 50;
+      background: #ffffff;
+      border: 1px solid #e5e2db;
+      border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 16px 18px 14px;
+      max-width: 380px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; }
+    .intro p { font-size: 12px; line-height: 1.5; color: #6b6560; margin: 0 0 12px; }
+    .intro .dot {
+      display: inline-block; width: 8px; height: 8px;
+      background: #01696F; border-radius: 50%;
+      margin-right: 6px; vertical-align: 1px;
+    }
+
+    /* Ladder */
+    .ladder {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 6px;
+      padding-top: 10px;
+      border-top: 1px solid #eae6dd;
+    }
+    .lad {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      padding: 6px 8px;
+      border-radius: 8px;
+    }
+    .lad .who {
+      font-weight: 700;
+      letter-spacing: -0.008em;
+      color: #1f1c16;
+      flex: 1;
+    }
+    .lad .scope {
+      font-family: 'JetBrains Mono', 'Menlo', monospace;
+      font-size: 9.5px;
+      color: #6b6560;
+    }
+    .lad .pill {
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    .lad.done .pill { background: #e3f1e9; color: #2d7a4f; }
+    .lad.new   .pill { background: #d6ecec; color: #01696f; }
+    .lad.done  { background: #fafaf6; }
+    .lad.new   { background: #fdfcf8; border: 1px dashed #b8d4d4; }
+
+    .arrow {
+      width: 14px;
+      color: #a8a39c;
+      flex-shrink: 0;
+      font-size: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Unit + Agency Reports — new for the manager tier</h1>
+    <p>Unit managers and sales managers don't have report exports yet (sales_manager is Phase&nbsp;9, post-pilot). Designed both, scoped to their level. Same design system as Agent + Branch — they ladder cleanly.</p>
+
+    <div class="ladder">
+      <div class="lad done">
+        <span class="who">Agent</span>
+        <span class="scope">1 person</span>
+        <span class="pill">Shipped</span>
+      </div>
+      <div class="lad new">
+        <span class="who">Unit Manager</span>
+        <span class="scope">~10 agents · 1 unit</span>
+        <span class="pill">New</span>
+      </div>
+      <div class="lad done">
+        <span class="who">Branch Manager</span>
+        <span class="scope">~28 agents · 1 branch</span>
+        <span class="pill">Shipped</span>
+      </div>
+      <div class="lad new">
+        <span class="who">Sales Manager</span>
+        <span class="scope">~84 agents · all branches</span>
+        <span class="pill">New</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="root"></div>
+
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- Design canvas + PDF modules -->
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="pdf-shared.jsx"></script>
+  <script type="text/babel" src="pdf-refined-cover.jsx"></script>
+  <script type="text/babel" src="pdf-branch.jsx"></script>
+  <script type="text/babel" src="pdf-unit.jsx"></script>
+  <script type="text/babel" src="pdf-agency.jsx"></script>
+
+  <script type="text/babel">
+    const W = 595, H = 842;
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="unit-report"
+            title="🆕 Unit Performance Report"
+            subtitle="For Unit Managers — scoped to their 10 agents. Cover + 3 pages. Coaching focus is the centerpiece (which agent needs what, framed for next 1-on-1)."
+          >
+            <DCArtboard id="unit-cover" label="01 · Cover"           width={W} height={H}><UnitCover /></DCArtboard>
+            <DCArtboard id="unit-p2"    label="02 · Unit roster"     width={W} height={H}><UnitPage2 /></DCArtboard>
+            <DCArtboard id="unit-p3"    label="03 · Coaching focus"  width={W} height={H}><UnitPage3 /></DCArtboard>
+            <DCArtboard id="unit-p4"    label="04 · Compliance"      width={W} height={H}><UnitPage4 /></DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="agency-report"
+            title="🆕 Agency Performance Report"
+            subtitle="For Sales Managers — cross-branch view of the whole tenant. Cover + 3 pages. Branch leaderboard, agency top 5, career-level pipeline, two strategic levers."
+          >
+            <DCArtboard id="agency-cover" label="01 · Cover"            width={W} height={H}><AgencyCover /></DCArtboard>
+            <DCArtboard id="agency-p2"    label="02 · Branch ranking"   width={W} height={H}><AgencyPage2 /></DCArtboard>
+            <DCArtboard id="agency-p3"    label="03 · Top + pipeline"   width={W} height={H}><AgencyPage3 /></DCArtboard>
+            <DCArtboard id="agency-p4"    label="04 · Strategic focus"  width={W} height={H}><AgencyPage4 /></DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

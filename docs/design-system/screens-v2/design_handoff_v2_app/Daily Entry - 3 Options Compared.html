@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Daily Entry — Match the Weekly Report · 3 Options</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  /* page chrome (neutral, outside the device frames) */
+  body{font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.5;transition:background .3s,color .3s}
+  body.light{background:#EDEBE4;color:#28251D}
+  body.dark{background:#100D0B;color:#F0EBE0}
+  .wrap{max-width:1240px;margin:0 auto;padding:32px 30px 90px}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+  .head{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:8px}
+  .head .badge{width:50px;height:50px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#018A91}
+  body.dark .eyebrow{color:#4ab5b8}
+  h1{font-family:var(--display);font-weight:800;font-size:27px;letter-spacing:-.025em;margin-top:6px}
+  .sub{font-size:13.5px;opacity:.74;margin-top:8px;max-width:760px;text-wrap:pretty}
+  .controls{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .seg{display:flex;background:rgba(127,127,127,.12);border:1px solid rgba(127,127,127,.2);border-radius:10px;padding:3px}
+  .seg button{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:7px;font-size:12px;font-weight:700;opacity:.6;min-height:38px}
+  .seg button.on{opacity:1;background:#01696F;color:#fff}
+  body.dark .seg button.on{background:#4ab5b8;color:#08201f}
+
+  .baseline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:rgba(127,127,127,.07);border:1px solid rgba(127,127,127,.16);border-radius:12px;padding:11px 16px;margin:18px 0 26px}
+  .baseline .bk{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.5}
+  .baseline .bchip{font-family:var(--mono);font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:rgba(1,138,145,.12);color:#018A91}
+  body.dark .baseline .bchip{background:rgba(74,181,184,.16);color:#4ab5b8}
+  .baseline .bnote{font-size:11.5px;opacity:.62;margin-left:auto}
+
+  /* 3-up grid */
+  .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:start}
+  .col{display:flex;flex-direction:column;align-items:center}
+  .ohead{text-align:center;margin-bottom:14px;min-height:118px;display:flex;flex-direction:column;align-items:center}
+  .otag{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;border-radius:99px;margin-bottom:9px}
+  .otag.a{background:rgba(90,63,160,.14);color:#5A3FA0}
+  body.dark .otag.a{background:rgba(169,149,224,.16);color:#a995e0}
+  .otag.b{background:rgba(1,138,145,.14);color:#018A91}
+  body.dark .otag.b{background:rgba(74,181,184,.16);color:#4ab5b8}
+  .otag.c{background:rgba(176,125,26,.16);color:#8A6010}
+  body.dark .otag.c{background:rgba(224,170,62,.16);color:#E0AA3E}
+  .oname{font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:-.01em}
+  .odesc{font-size:12px;opacity:.68;margin-top:5px;text-wrap:pretty;max-width:300px}
+
+  /* phone frame */
+  .phone{width:300px;border-radius:38px;padding:11px;background:linear-gradient(165deg,#2c2823,#15120f);box-shadow:0 24px 50px rgba(0,0,0,.30), inset 0 0 0 1px rgba(255,255,255,.05);flex-shrink:0}
+  .screen{border-radius:28px;overflow:hidden;height:600px;position:relative;display:flex;flex-direction:column}
+  /* app tokens scoped to screen */
+  .app{--bg:#F7F6F2;--surface:#FFFFFF;--raised:#FAFAF8;--soft:#F4F2EC;--mute:#F0EFE9;
+    --ink:#28251D;--inkMute:#6B6560;--inkFaint:#A8A39C;--inkDim:#CFCBC2;
+    --rule:#E5E2DB;--ruleStrong:#CFCBC2;
+    --teal:#01696F;--tealLight:#018A91;--tealDark:#014E52;--tealTint:#E6F4F4;--onTeal:#fff;
+    --gold:#B07D1A;--goldTint:#FAEFD3;--violet:#5A3FA0;--violetTint:#F0ECFF;
+    --success:#2D7A4F;--successTint:#E8F5EE;--warning:#B45309;--warningTint:#FEF3E2;
+    flex:1;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);min-height:0}
+  body.dark .app{--bg:#1A1612;--surface:#252019;--raised:#302A23;--soft:#1F1B17;--mute:#211C18;
+    --ink:#F0EBE0;--inkMute:#B8AEA0;--inkFaint:#8A8074;--inkDim:#4F473E;
+    --rule:rgba(240,235,224,.08);--ruleStrong:rgba(240,235,224,.18);
+    --teal:#4AB5B8;--tealLight:#6FD3D6;--tealDark:#9FE0E2;--tealTint:rgba(74,181,184,.14);--onTeal:#10201F;
+    --gold:#E0AA3E;--goldTint:rgba(224,170,62,.14);--violet:#A995E0;--violetTint:rgba(169,149,224,.14);
+    --success:#5DB876;--successTint:rgba(93,184,118,.14);--warning:#E8B53E;--warningTint:rgba(232,181,62,.14)}
+
+  .stat{height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-family:var(--mono);font-size:10px;font-weight:700;flex-shrink:0;background:var(--surface);color:var(--ink)}
+  .appbody{flex:1;overflow:auto;padding:14px 14px 0;display:flex;flex-direction:column;gap:10px;min-height:0}
+  .appbody::-webkit-scrollbar{width:0}
+
+  /* modal header */
+  .mhead{display:flex;align-items:flex-start;gap:10px;flex-shrink:0}
+  .mhead .mt{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.01em}
+  .mhead .ms{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);letter-spacing:.06em;margin-top:3px}
+  .mhead .x{margin-left:auto;width:30px;height:30px;border-radius:9px;border:1px solid var(--rule);display:flex;align-items:center;justify-content:center;color:var(--inkFaint);flex-shrink:0}
+  .modepill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:99px;background:var(--tealTint);color:var(--teal);font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:7px}
+  .modepill .d{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+
+  /* group card */
+  .gcard{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;flex-shrink:0}
+  .gcard.gold{border-color:color-mix(in srgb,var(--gold) 34%,transparent)}
+  .gch{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .gch .dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+  .gch .gl{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--inkFaint);flex:1}
+  .gch .gc{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint)}
+  .gch .gc.gold{color:var(--gold);font-weight:700}
+  .crow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--rule)}
+  .crow:last-child{border-bottom:none}
+  .crow .cl{font-size:12px;color:var(--ink);font-weight:600;min-width:0}
+  .crow .cl.zero{color:var(--inkMute);font-weight:500}
+  .stepper{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .stepper .sb{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--ruleStrong);background:var(--soft);color:var(--inkMute)}
+  .stepper .sb.plus{color:#fff;border:none}
+  .stepper .sv{min-width:26px;text-align:center;font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-.01em}
+  .stepper .sv.zero{color:var(--inkDim)}
+  .mrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--rule)}
+  .mrow:last-child{border-bottom:none}
+  .mrow .cl{font-size:12px;font-weight:600}
+  .mfield{display:flex;align-items:center;height:32px;width:120px;border-radius:8px;border:1px solid var(--ruleStrong);background:var(--surface);overflow:hidden;flex-shrink:0}
+  .mfield .cu{font-family:var(--mono);font-size:9px;color:var(--inkFaint);padding-left:9px}
+  .mfield .mv{flex:1;text-align:right;padding-right:10px;font-family:var(--display);font-weight:800;font-size:13px}
+  .advrow{display:flex;align-items:center;gap:7px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--rule);color:var(--inkMute);font-size:11px;font-weight:600}
+  .advrow .opt{margin-left:auto;font-family:var(--mono);font-size:8.5px;color:var(--inkFaint)}
+
+  .notecard{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;flex-shrink:0}
+  .notecard .nl{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--inkFaint);margin-bottom:6px}
+  .notecard .nt{font-size:11.5px;color:var(--inkFaint);line-height:1.5}
+
+  /* save bar (sticky in-screen) */
+  .savebar{position:sticky;bottom:0;margin:0 -14px;padding:12px 14px 14px;background:linear-gradient(180deg,transparent,var(--bg) 28%);flex-shrink:0}
+  .savebtn{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--teal);color:var(--onTeal);border-radius:12px}
+  .savebtn .st{flex:1}
+  .savebtn .st b{font-size:14px;font-weight:700;display:block}
+  .savebtn .st span{font-size:10px;opacity:.85;font-family:var(--mono)}
+  .savebtn .go{display:flex;align-items:center;gap:6px;padding:8px 13px;background:rgba(255,255,255,.18);border-radius:9px;font-size:13px;font-weight:700}
+  body.dark .savebtn .go{background:rgba(0,0,0,.18)}
+
+  /* ── Option A: wizard chrome ── */
+  .wprog{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .wprog .wbar{flex:1;height:6px;border-radius:99px;background:var(--mute);overflow:hidden}
+  .wprog .wbar i{display:block;height:100%;border-radius:99px;background:var(--teal);width:33%}
+  .wprog .wn{font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--inkFaint);white-space:nowrap}
+  .phasechips{display:flex;gap:5px;flex-shrink:0}
+  .phasechips .pc{flex:1;text-align:center;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:5px 2px;border-radius:7px;background:var(--soft);color:var(--inkFaint);border:1px solid var(--rule)}
+  .phasechips .pc.on{background:var(--tealTint);color:var(--teal);border-color:color-mix(in srgb,var(--teal) 30%,transparent)}
+  .phasechips .pc.done{color:var(--success)}
+  .wstep-t{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:-.01em;margin-top:2px}
+  .wstep-e{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
+  .bigstep{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:16px 15px;flex-shrink:0;display:flex;flex-direction:column;gap:13px}
+  .bigfield{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .bigfield .bl{font-size:13px;font-weight:600}
+  .bigfield .bl small{display:block;font-family:var(--mono);font-size:9px;color:var(--inkFaint);font-weight:400;margin-top:2px}
+  .bigstepper{display:flex;align-items:center;gap:10px}
+  .bigstepper .sb{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid var(--ruleStrong);background:var(--soft);color:var(--inkMute)}
+  .bigstepper .sb.plus{background:var(--teal);color:#fff;border:none}
+  .bigstepper .sv{min-width:34px;text-align:center;font-family:var(--display);font-weight:800;font-size:22px}
+  .wnav{display:flex;gap:9px;flex-shrink:0}
+  .wnav .nb{flex:1;padding:13px;border-radius:11px;font-size:13px;font-weight:700;text-align:center}
+  .wnav .nb.back{border:1px solid var(--ruleStrong);color:var(--inkMute)}
+  .wnav .nb.next{background:var(--teal);color:var(--onTeal);flex:1.6;display:flex;align-items:center;justify-content:center;gap:7px}
+  .skipnote{display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:10px;background:var(--violetTint);border:1px solid color-mix(in srgb,var(--violet) 26%,transparent);font-size:10.5px;color:var(--violet);flex-shrink:0;text-wrap:pretty}
+  body.dark .skipnote{color:#c5b6ef}
+  .reflect-strip{display:flex;gap:7px;flex-shrink:0}
+  .reflect-strip .rs{flex:1;background:var(--soft);border:1px dashed var(--ruleStrong);border-radius:9px;padding:8px 9px;text-align:center;opacity:.72}
+  .reflect-strip .rs .rk{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--inkFaint)}
+  .reflect-strip .rs .rv{font-size:10px;color:var(--inkMute);margin-top:3px}
+
+  /* new badge on dials */
+  .newbadge{font-family:var(--mono);font-size:7.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--tealTint);color:var(--teal);padding:2px 6px;border-radius:99px;margin-left:7px}
+  .weeklytag{font-family:var(--mono);font-size:8px;font-weight:600;color:var(--inkFaint);font-style:italic}
+
+  /* week-to-date mini (Option C visual richness) */
+  .wtd{background:var(--surface);border:1px solid color-mix(in srgb,var(--teal) 30%,transparent);border-radius:13px;padding:13px 15px;flex-shrink:0;position:relative;overflow:hidden}
+  .wtd .glow{position:absolute;top:-60px;right:-60px;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,var(--tealTint),transparent 65%);pointer-events:none}
+  .wtd .wr{display:flex;align-items:center;justify-content:space-between;position:relative}
+  .wtd .we{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
+  .wtd .wt{font-family:var(--display);font-weight:800;font-size:16px;margin-top:6px;letter-spacing:-.01em}
+  .flame{width:40px;height:40px;border-radius:11px;background:linear-gradient(180deg,var(--gold),var(--warning));display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .flame .fn{position:absolute;font-family:var(--display);font-weight:800;font-size:12px;color:#fff}
+  .wtd .track{height:7px;border-radius:99px;background:var(--mute);margin-top:12px;overflow:hidden;position:relative}
+  .wtd .track i{display:block;height:100%;border-radius:99px;background:var(--teal);width:102%}
+  .wtd .chips{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;position:relative}
+  .wtd .ch{display:flex;align-items:center;gap:5px;padding:3px 8px;background:var(--soft);border:1px solid var(--rule);border-radius:8px}
+  .wtd .ch .cd{width:6px;height:6px;border-radius:50%}
+  .wtd .ch .ck{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--inkFaint);letter-spacing:.04em}
+  .wtd .ch .cv{font-family:var(--display);font-weight:800;font-size:11px}
+
+  /* downside callout under each phone */
+  .downside{margin-top:16px;width:300px;background:rgba(192,57,43,.07);border:1px solid rgba(192,57,43,.24);border-radius:12px;padding:12px 14px}
+  body.dark .downside{background:rgba(217,107,93,.1);border-color:rgba(217,107,93,.3)}
+  .downside .dk{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#C0392B;display:flex;align-items:center;gap:6px}
+  body.dark .downside .dk{color:#D96B5D}
+  .downside .dt{font-size:11.5px;opacity:.82;margin-top:6px;text-wrap:pretty}
+  .pickif{margin-top:10px;width:300px;background:rgba(45,122,79,.08);border:1px solid rgba(45,122,79,.26);border-radius:12px;padding:12px 14px}
+  body.dark .pickif{background:rgba(93,184,118,.1);border-color:rgba(93,184,118,.3)}
+  .pickif .pk{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#2D7A4F;display:flex;align-items:center;gap:6px}
+  body.dark .pickif .pk{color:#5DB876}
+  .pickif .pt{font-size:12px;margin-top:6px;font-weight:600;text-wrap:pretty}
+
+  /* matrix */
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.55;margin:44px 0 16px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:rgba(127,127,127,.22)}
+  .matrix{width:100%;border-collapse:separate;border-spacing:0;background:rgba(127,127,127,.04);border:1px solid rgba(127,127,127,.16);border-radius:14px;overflow:hidden}
+  .matrix th,.matrix td{padding:13px 15px;text-align:left;vertical-align:top}
+  .matrix thead th{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.6;border-bottom:1px solid rgba(127,127,127,.2);background:rgba(127,127,127,.05)}
+  .matrix thead th.opt{font-family:var(--display);font-size:14px;letter-spacing:-.01em;opacity:1;text-transform:none}
+  .matrix thead th .ost{font-family:var(--mono);font-size:8.5px;font-weight:700;opacity:.7;display:block;margin-top:2px;letter-spacing:.04em}
+  .matrix tbody td{border-bottom:1px solid rgba(127,127,127,.12);font-size:12px}
+  .matrix tbody tr:last-child td{border-bottom:none}
+  .matrix .crit{font-weight:700;font-size:12.5px;width:190px}
+  .matrix .crit small{display:block;font-weight:500;opacity:.6;font-size:10.5px;margin-top:2px}
+  .score{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:11.5px;margin-bottom:5px}
+  .dots{display:inline-flex;gap:3px}
+  .dots i{width:8px;height:8px;border-radius:50%;background:rgba(127,127,127,.25)}
+  .dots i.on.good{background:#2D7A4F}.dots i.on.mid{background:#B07D1A}.dots i.on.bad{background:#C0392B}
+  body.dark .dots i.on.good{background:#5DB876}body.dark .dots i.on.mid{background:#E0AA3E}body.dark .dots i.on.bad{background:#D96B5D}
+  .cellnote{font-size:11px;opacity:.72;text-wrap:pretty;line-height:1.45}
+  .matrix td.best{background:rgba(45,122,79,.07)}
+  body.dark .matrix td.best{background:rgba(93,184,118,.08)}
+
+  .legendrow{display:flex;gap:18px;margin-top:12px;font-size:11px;opacity:.62;flex-wrap:wrap}
+  .legendrow span{display:inline-flex;align-items:center;gap:6px}
+  .legendrow .dots i{background:rgba(127,127,127,.25)}
+
+  .note{display:flex;gap:12px;background:rgba(127,127,127,.06);border:1px solid rgba(127,127,127,.16);border-radius:13px;padding:15px 18px;margin-top:24px}
+  .note .ni{width:22px;height:22px;border-radius:50%;background:#01696F;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono);font-weight:700;font-size:12px}
+  body.dark .note .ni{background:#4ab5b8;color:#08201f}
+  .note p{font-size:12.5px;opacity:.84;text-wrap:pretty}
+  .note b{font-weight:700;opacity:1}
+
+  @media(max-width:1080px){
+    .cols{grid-template-columns:1fr;justify-items:center;gap:46px}
+    .matrix{display:block;overflow-x:auto;white-space:nowrap}
+  }
+</style>
+</head>
+<body class="light">
+<div class="wrap">
+
+  <div class="head">
+    <svg class="badge" viewBox="0 0 200 200" aria-hidden="true"><rect width="200" height="200" rx="46" fill="#014e52"/><rect x="72" y="118" width="11" height="22" rx="2.5" fill="#fff" fill-opacity=".4"/><rect x="89" y="104" width="11" height="36" rx="2.5" fill="#fff" fill-opacity=".7"/><rect x="106" y="88" width="11" height="52" rx="2.5" fill="#fff"/><circle cx="111" cy="80" r="5" fill="#4ecdc4"/></svg>
+    <div>
+      <div class="eyebrow">Daily Capture v2 · decision support</div>
+      <h1>Making the daily entry "match" the weekly report — 3 ways</h1>
+      <p class="sub">Three honest directions for how the lean daily entry could align with the multi-step weekly wizard. Same agent, same data in every frame, so you're judging the <i>approach</i> — not the numbers. Each option states its own downside. The matrix and "pick this if…" lines are below; nothing is chosen for you.</p>
+    </div>
+    <div class="controls">
+      <div class="seg" id="themeSeg"><button data-theme="light" class="on">Light</button><button data-theme="dark">Dark</button></div>
+    </div>
+  </div>
+
+  <div class="baseline">
+    <span class="bk">Shared sample</span>
+    <span class="bchip">Marsha Singh</span>
+    <span class="bchip">Thu · 27 Nov · WK 48</span>
+    <span class="bchip">mid-week · daily mode</span>
+    <span class="bnote">Weekly wizard = 12 micro-steps / 4 phases · Daily today = 1 sectioned screen, missing dials/calls</span>
+  </div>
+
+  <div class="cols">
+
+    <!-- ════════ OPTION A — FULL PARITY (STEPPED WIZARD) ════════ -->
+    <div class="col">
+      <div class="ohead">
+        <span class="otag a">Option A · Full parity</span>
+        <span class="oname">Daily becomes a wizard</span>
+        <span class="odesc">Mirror the weekly's stepped flow &amp; field set, one concept per screen.</span>
+      </div>
+      <div class="phone"><div class="screen"><div class="app">
+        <div class="stat"><span>9:41</span><span>●●● ▾ ▮</span></div>
+        <div class="appbody">
+          <div class="mhead">
+            <div><div class="mt">Log Today</div><div class="ms">THU · 27 NOV · WK 48</div></div>
+            <div class="x">✕</div>
+          </div>
+          <div class="wprog"><span class="wn">Step 3 / 9</span><div class="wbar"><i></i></div><span class="wn">Activity</span></div>
+          <div class="phasechips">
+            <span class="pc done">Prospect</span><span class="pc on">Appts</span><span class="pc">Interviews</span><span class="pc">Production</span>
+          </div>
+          <div>
+            <div class="wstep-e">Step 3 · Appointments &amp; FFI</div>
+            <div class="wstep-t">Appointments &amp; fact-finds</div>
+          </div>
+          <div class="bigstep">
+            <div class="bigfield"><div class="bl">Appointments set</div><div class="bigstepper"><span class="sb">−</span><span class="sv">3</span><span class="sb plus">+</span></div></div>
+            <div class="bigfield"><div class="bl">FFIs scheduled</div><div class="bigstepper"><span class="sb">−</span><span class="sv">2</span><span class="sb plus">+</span></div></div>
+            <div class="bigfield"><div class="bl">FFIs conducted</div><div class="bigstepper"><span class="sb">−</span><span class="sv">1</span><span class="sb plus">+</span></div></div>
+          </div>
+          <div class="reflect-strip">
+            <div class="rs"><div class="rk">Self-eval</div><div class="rv">weekly only — dropped</div></div>
+            <div class="rs"><div class="rk">Next-wk goals</div><div class="rv">weekly only — dropped</div></div>
+          </div>
+          <div class="savebar"><div class="wnav"><span class="nb back">Back</span><span class="nb next">Next step →</span></div></div>
+        </div>
+      </div></div></div>
+      <div class="downside">
+        <div class="dk">▼ Honest downside</div>
+        <div class="dt"><b>Slowest path by far.</b> 7–9 taps-through to log a day that used to take one screen — the exact friction that suppresses daily compliance. The two inherently-weekly steps (self-eval, next-week goals) are <b>dropped</b>, so it's not true parity anyway.</div>
+      </div>
+      <div class="pickif">
+        <div class="pk">★ Pick this if…</div>
+        <div class="pt">structural sameness with the weekly matters more than daily speed — and you're willing to risk logging frequency to get it.</div>
+      </div>
+    </div>
+
+    <!-- ════════ OPTION B — FIELD PARITY (FAST SINGLE SCREEN) ════════ -->
+    <div class="col">
+      <div class="ohead">
+        <span class="otag b">Option B · Field parity</span>
+        <span class="oname">Same screen, fuller fields</span>
+        <span class="odesc">Keep the one-screen speed; add the missing activity fields (dials). Reflective fields stay weekly.</span>
+      </div>
+      <div class="phone"><div class="screen"><div class="app">
+        <div class="stat"><span>9:41</span><span>●●● ▾ ▮</span></div>
+        <div class="appbody">
+          <div class="mhead">
+            <div><div class="mt">Log Today</div><div class="ms">THU · 27 NOV · WK 48</div><span class="modepill"><span class="d"></span>Daily</span></div>
+            <div class="x">✕</div>
+          </div>
+          <!-- NEW: contact group with dials -->
+          <div class="gcard">
+            <div class="gch"><span class="dot" style="background:var(--teal)"></span><span class="gl">Contact</span><span class="gc">2/3</span></div>
+            <div class="crow"><span class="cl">Dials / calls<span class="newbadge">+ new</span></span><div class="stepper"><span class="sb">−</span><span class="sv">12</span><span class="sb plus" style="background:var(--teal)">+</span></div></div>
+            <div class="crow"><span class="cl">Telephone contacts</span><div class="stepper"><span class="sb">−</span><span class="sv">5</span><span class="sb plus" style="background:var(--teal)">+</span></div></div>
+            <div class="crow"><span class="cl zero">F2F approaches</span><div class="stepper"><span class="sb">−</span><span class="sv zero">0</span><span class="sb plus" style="background:var(--teal)">+</span></div></div>
+          </div>
+          <div class="gcard">
+            <div class="gch"><span class="dot" style="background:var(--violet)"></span><span class="gl">Prospecting</span><span class="gc">4/4</span></div>
+            <div class="crow"><span class="cl">Qualified approaches</span><div class="stepper"><span class="sb">−</span><span class="sv">6</span><span class="sb plus" style="background:var(--violet)">+</span></div></div>
+            <div class="crow"><span class="cl">New names added</span><div class="stepper"><span class="sb">−</span><span class="sv">3</span><span class="sb plus" style="background:var(--violet)">+</span></div></div>
+          </div>
+          <div class="gcard gold">
+            <div class="gch"><span class="dot" style="background:var(--gold)"></span><span class="gl">Production</span><span class="gc gold">TTD 8.4K credit</span></div>
+            <div class="crow"><span class="cl">New business — apps</span><div class="stepper"><span class="sb">−</span><span class="sv">1</span><span class="sb plus" style="background:var(--gold)">+</span></div></div>
+            <div class="mrow"><span class="cl">New business — API</span><div class="mfield"><span class="cu">TTD</span><span class="mv">8,400</span></div></div>
+          </div>
+          <div class="skipnote">⊘ Self-eval &amp; next-week goals stay in the weekly report — they don't make sense per-day.</div>
+          <div class="savebar"><div class="savebtn"><div class="st"><b>Save today</b><span>Rolls into your WK 48 report</span></div><div class="go">Log →</div></div></div>
+        </div>
+      </div></div></div>
+      <div class="downside">
+        <div class="dk">▼ Honest downside</div>
+        <div class="dt"><b>A longer scroll than today.</b> Adding the contact group (incl. dials) makes the single screen taller, so it's a touch slower than the current lean form — and it widens the daily schema, so the aggregator must map the new fields into the weekly rollup.</div>
+      </div>
+      <div class="pickif">
+        <div class="pk">★ Pick this if…</div>
+        <div class="pt">you want the weekly draft to be complete from daily logs (no gaps like dials) while keeping daily logging fast.</div>
+      </div>
+    </div>
+
+    <!-- ════════ OPTION C — VISUAL CONSISTENCY ════════ -->
+    <div class="col">
+      <div class="ohead">
+        <span class="otag c">Option C · Visual only</span>
+        <span class="oname">Same fields, weekly's skin</span>
+        <span class="odesc">No field or structure change — restyle the existing daily so it feels like one product with the weekly.</span>
+      </div>
+      <div class="phone"><div class="screen"><div class="app">
+        <div class="stat"><span>9:41</span><span>●●● ▾ ▮</span></div>
+        <div class="appbody">
+          <div class="mhead">
+            <div><div class="mt">Log Today</div><div class="ms">THU · 27 NOV · WK 48</div></div>
+            <div class="x">✕</div>
+          </div>
+          <!-- adopts the weekly's anchor-strip visual language -->
+          <div class="wtd">
+            <div class="glow"></div>
+            <div class="wr">
+              <div><div class="we">Week to date · WK 48</div><div class="wt">Log today before you clock off</div></div>
+              <div style="text-align:center;position:relative"><div class="flame"><span class="fn">9</span></div></div>
+            </div>
+            <div class="track"><i></i></div>
+            <div class="chips">
+              <div class="ch"><span class="cd" style="background:var(--success)"></span><span class="ck">APPS</span><span class="cv">2/2</span></div>
+              <div class="ch"><span class="cd" style="background:var(--success)"></span><span class="ck">FFI</span><span class="cv">4/4</span></div>
+              <div class="ch"><span class="cd" style="background:var(--warning)"></span><span class="ck">CI</span><span class="cv">2/2</span></div>
+            </div>
+          </div>
+          <div class="gcard">
+            <div class="gch"><span class="dot" style="background:var(--violet)"></span><span class="gl">Prospecting</span><span class="gc">4/4</span></div>
+            <div class="crow"><span class="cl">Qualified approaches</span><div class="stepper"><span class="sb">−</span><span class="sv">6</span><span class="sb plus" style="background:var(--violet)">+</span></div></div>
+            <div class="crow"><span class="cl">New names added</span><div class="stepper"><span class="sb">−</span><span class="sv">3</span><span class="sb plus" style="background:var(--violet)">+</span></div></div>
+          </div>
+          <div class="gcard gold">
+            <div class="gch"><span class="dot" style="background:var(--gold)"></span><span class="gl">Production</span><span class="gc gold">TTD 8.4K credit</span></div>
+            <div class="crow"><span class="cl">New business — apps</span><div class="stepper"><span class="sb">−</span><span class="sv">1</span><span class="sb plus" style="background:var(--gold)">+</span></div></div>
+            <div class="mrow"><span class="cl">New business — API</span><div class="mfield"><span class="cu">TTD</span><span class="mv">8,400</span></div></div>
+            <div class="advrow">▸ PPP increases &amp; lumpsums<span class="opt">OPTIONAL</span></div>
+          </div>
+          <div class="savebar"><div class="savebtn"><div class="st"><b>Save today</b><span>Rolls into your WK 48 report</span></div><div class="go">Log →</div></div></div>
+        </div>
+      </div></div></div>
+      <div class="downside">
+        <div class="dk">▼ Honest downside</div>
+        <div class="dt"><b>Coverage gap stays.</b> Dials/calls are still missing daily, so the weekly draft keeps the same hole it has today — this only makes the two <i>look</i> like one product, it doesn't make the daily feed the weekly any more completely.</div>
+      </div>
+      <div class="pickif">
+        <div class="pk">★ Pick this if…</div>
+        <div class="pt">daily speed and compliance are sacred and the real problem is just that the two screens feel like different products.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════ TRADEOFF MATRIX ════════ -->
+  <div class="secttl">Tradeoff matrix — scored honestly</div>
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th>Criterion</th>
+        <th class="opt">Option A<span class="ost">Full parity · wizard</span></th>
+        <th class="opt">Option B<span class="ost">Field parity · 1 screen</span></th>
+        <th class="opt">Option C<span class="ost">Visual only</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="crit">Daily-entry speed<small>fewer taps = faster log</small></td>
+        <td><span class="score"><span class="dots"><i class="on bad"></i><i></i><i></i><i></i><i></i></span></span><div class="cellnote">Slowest — 9 steps to advance through.</div></td>
+        <td class="best"><span class="score"><span class="dots"><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i><i></i></span></span><div class="cellnote">Fast — one screen, a bit taller.</div></td>
+        <td class="best"><span class="score"><span class="dots"><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i></span></span><div class="cellnote">Fastest — current screen, untouched fields.</div></td>
+      </tr>
+      <tr>
+        <td class="crit">Field coverage vs weekly<small>can daily fill the weekly draft?</small></td>
+        <td class="best"><span class="score"><span class="dots"><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i></span></span><div class="cellnote">Complete (activity/production); reflective fields N/A daily.</div></td>
+        <td class="best"><span class="score"><span class="dots"><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i></span></span><div class="cellnote">Complete — adds dials, closes the gap.</div></td>
+        <td><span class="score"><span class="dots"><i class="on mid"></i><i class="on mid"></i><i class="on mid"></i><i></i><i></i></span></span><div class="cellnote">Unchanged — dials/calls still missing.</div></td>
+      </tr>
+      <tr>
+        <td class="crit">Visual + structural consistency<small>feel like one product</small></td>
+        <td class="best"><span class="score"><span class="dots"><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i></span></span><div class="cellnote">Highest — same flow &amp; chrome as weekly.</div></td>
+        <td><span class="score"><span class="dots"><i class="on mid"></i><i class="on mid"></i><i class="on mid"></i><i></i><i></i></span></span><div class="cellnote">Visual match; structure still differs (1 screen vs steps).</div></td>
+        <td><span class="score"><span class="dots"><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i><i></i></span></span><div class="cellnote">Strong visual match; structure intentionally stays lean.</div></td>
+      </tr>
+      <tr>
+        <td class="crit">Build complexity<small>effort to ship</small></td>
+        <td><span class="score"><span class="dots"><i class="on bad"></i><i></i><i></i><i></i><i></i></span></span><div class="cellnote">Highest — new stepped flow, nav, per-step state.</div></td>
+        <td><span class="score"><span class="dots"><i class="on mid"></i><i class="on mid"></i><i class="on mid"></i><i></i><i></i></span></span><div class="cellnote">Moderate — add fields + schema/aggregator mapping.</div></td>
+        <td class="best"><span class="score"><span class="dots"><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i></span></span><div class="cellnote">Lowest — restyle only, no logic change.</div></td>
+      </tr>
+      <tr>
+        <td class="crit">Daily-compliance risk<small>will agents keep logging?</small></td>
+        <td><span class="score"><span class="dots"><i class="on bad"></i><i></i><i></i><i></i><i></i></span></span><div class="cellnote">High risk — added friction is what kills daily habit.</div></td>
+        <td><span class="score"><span class="dots"><i class="on mid"></i><i class="on mid"></i><i class="on mid"></i><i class="on mid"></i><i></i></span></span><div class="cellnote">Low-moderate — slightly longer, still one screen.</div></td>
+        <td class="best"><span class="score"><span class="dots"><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i></span></span><div class="cellnote">Lowest — speed preserved exactly.</div></td>
+      </tr>
+      <tr>
+        <td class="crit">Aggregator / schema impact<small>data plumbing</small></td>
+        <td><span class="score"><span class="dots"><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i><i></i></span></span><div class="cellnote">Low — same fields, just re-paginated UI.</div></td>
+        <td><span class="score"><span class="dots"><i class="on mid"></i><i class="on mid"></i><i class="on mid"></i><i></i><i></i></span></span><div class="cellnote">Moderate — new daily fields → weekly rollup mapping.</div></td>
+        <td class="best"><span class="score"><span class="dots"><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i></span></span><div class="cellnote">None — fields &amp; schema unchanged.</div></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="legendrow">
+    <span><span class="dots"><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i><i class="on good"></i></span> stronger</span>
+    <span><span class="dots"><i class="on bad"></i><i></i><i></i><i></i><i></i></span> weaker</span>
+    <span>Green cell = best option on that row. More filled dots = better on that criterion (not a weighted total — weight them to your priorities).</span>
+  </div>
+
+  <div class="note">
+    <span class="ni">i</span>
+    <p><b>The core tension, stated plainly:</b> the daily was scoped lean <i>on purpose</i> because daily-logging speed drives compliance, and compliance is what feeds the weekly at all. <b>A</b> maximizes sameness at the most cost to that speed; <b>C</b> protects speed completely but leaves the dials/calls coverage gap; <b>B</b> is the middle path — it closes the field gap while keeping one screen, at the cost of a longer scroll and some schema work. They're also <b>combinable</b>: C's restyle is a low-risk foundation you could ship first, then layer B's fields on top. Tell me your pick and we'll lock the detailed mechanics.</p>
+  </div>
+
+</div>
+
+<script>
+  document.getElementById('themeSeg').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    document.body.className = b.dataset.theme;
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+  });
+</script>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" rx="40" fill="#01696F"/>
+    <rect x="34" y="52" width="36" height="96" rx="8" fill="#fff" fill-opacity="0.92"/>
+    <rect x="82" y="52" width="36" height="96" rx="8" fill="#FAEFD3"/>
+    <rect x="130" y="52" width="36" height="96" rx="8" fill="#fff" fill-opacity="0.55"/>
+  </svg>
+</template>
+</body>
+</html>
