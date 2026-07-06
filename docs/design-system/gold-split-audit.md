@@ -1,6 +1,22 @@
 # Gold Split — Phase-0 Audit & Decisions
 
-**Branch:** `feat/nexus-gold-split` · **Status:** audit surfaced, **implementation HELD** per the brief's Phase-0(e) stop-condition (>5 borderline sites + genuine entanglement → surface, do not mass-apply). No tokens changed, no sites swept in this PR — this is the decision gate.
+**Status: ✅ EXECUTED** on `feat/nexus-gold-sweep` (owner decisions D1–D4 locked). The audit below is the classification source; this section records what shipped.
+
+### Execution summary (Phase-0(b) re-verify + sweep)
+Tokens: light `--color-gold` → vivid **#B07D1A**, new `--color-gold-ink` = **#8a6011**; dark both = **#E0AA3E** (D1 — dark gold already AA-normal as text, 7.69:1). Tailwind: added `gold.ink` (`text-gold-ink`). Migrated ~22 files: all small/normal gold text → `text-gold-ink` (zero-visual-change today, since gold-ink == the pre-split light gold), plus the 3 index.css CSS classes (`.ai-gold`, `.activity-pill-gold`, `.badge-new`). Decorative (fills, dots, borders, chart series, standalone icons) stayed on vivid `--color-gold`.
+
+**D3 / D2 promotion verdicts (certified at actual composited bg):**
+| Site | Size | Actual bg | vivid contrast | Verdict |
+|---|---|---|---|---|
+| Plan-anchor currency ([PlanAnchorStrip:62](../../src/components/dashboard/GamePlanV2/PlanAnchorStrip.jsx:62)) | 20px extrabold | `bg-card` #fff, clean | **3.62** ✓ | **PROMOTED vivid** |
+| AwardCard % ([awardPrimitives](../../src/components/awards/awardPrimitives.jsx)) | 24px bold | `bg-card` #fff | 3.62 ✓ | **vivid** (pill 9px → gold-ink; bar → vivid) |
+| AwardDonut center % | dynamic `size*0.26` | `bg-card` #fff | 3.62 @ size≥72 | **branch**: vivid when px ≥ 18.66, else gold-ink |
+| Leaderboard champion value ([:184](../../src/components/leaderboard/ProductionLeaderboardSurface.jsx:184)) | 24/20px bold | `card` #fff **+ gold-hued medal corner-glow** | 3.62 clean / **2.74 worst-case under-glow** | **HELD gold-ink** — not statically certifiable; per "never promote on assumption" |
+| WhereYouRank Trophy ([:193](../../src/components/productionReport/WhereYouRankPanel.jsx:193)) | icon | card | 3.62 (graphical ≥3.0) | **vivid** (standalone; neighbor is ink-muted, so D4 N/A) |
+
+D4 icons beside small gold text (AlertTriangle, Lock) → gold-ink. Only two `text-gold` (vivid) className keepers remain app-wide: the promoted plan-anchor currency and the standalone Trophy.
+
+**Original hold rationale (superseded):** this was HELD in PR #814 per Phase-0(e) (>5 borderline + entanglement → surface, don't mass-apply). The owner reviewed the classification, locked D1–D4, and merged the audit — this sweep executes it.
 
 **Goal:** split gold into two roles so vivid gold can be used where it's legible without regressing AA:
 - `--color-gold` = **vivid `#B07D1A`** → decorative (fills, dots, borders, chart series, icons) + gold **text large enough to pass AA-large** at its actual background.

@@ -46,7 +46,7 @@ this (Rule 23 falsifier).
 | `--tealDark` | `--color-primary-dark` / `--primary-dark-channels` | equal |
 | `--tealTint` | `--color-primary-tint` | equal |
 | `--success` / `--warning` / `--danger` (+Tint) | same `--color-*` (+`-tint`) | equal |
-| `--gold` / `--goldTint` / `--goldInk` | `--color-gold` / `--color-gold-tint` | **kept app value** — AA (§4); vivid-gold is a follow-up |
+| `--gold` / `--goldTint` / `--goldInk` | `--color-gold` (vivid #B07D1A) / `--color-gold-tint` / `--color-gold-ink` | **gold SPLIT shipped** (feat/nexus-gold-sweep): `--color-gold` = vivid decoration + AA-large display; `--color-gold-ink` (#8a6011 light / #E0AA3E dark) = all other gold text. See `gold-split-audit.md` |
 | `--heroInk` / `--heroFaint` | `--color-hero-ink` / `--color-hero-faint` | **NEW role** (flat hero; distinct from glass `--hero-ink*`) |
 | `--skeleton` | `--color-skeleton` | **NEW role** |
 | `--ease-*` / `--dur-*` | `--ease-*` / `--dur-*` | **NEW roles** (verbatim; theme-independent) |
@@ -88,10 +88,12 @@ Adopt the v2 value for every token **except** where doing so would:
   cannot be an opaque RGB triplet. The app keeps its opaque dark border values
   (`#3A3530` / `#4A4540`), which already read as lifted hairlines on the dark
   surface and work with the 188 `border-border/NN` alpha consumers.
-- **(E2) regress a documented AA guarantee** — light `--gold` stays `#8a6011`
-  (AA-darkened), NOT the v2 mock `#B07D1A` (only 3.28:1 on gold-tint → fails AA
-  for the ~15 `text-gold`-on-tint sites). Adopting the v2 vivid-gold + `--goldInk`
-  split requires migrating those sites to a `text-gold-ink` utility → **follow-up**.
+- **(E2) regress a documented AA guarantee** — in the #813 foundation swap light
+  `--gold` was kept at `#8a6011` (not the vivid mock `#B07D1A`, only 3.28:1 on
+  gold-tint) to protect the ~15 `text-gold`-on-tint sites. **Resolved by the later
+  gold split** (feat/nexus-gold-sweep): `--color-gold` is now vivid `#B07D1A` for
+  decoration + AA-large display text, and `--color-gold-ink` (#8a6011) carries all
+  other gold text. See `gold-split-audit.md`.
 
 **Substantive v2 changes actually applied:** the `--inkFaint` AA fix
 (`#A8A39C`→`#7A7264` light, `#8A8074`→`#968B7C` dark) + the new role groups. The
@@ -114,12 +116,10 @@ prototype), so surfaces/brand/semantic values were already equal.
 
 ## 6. Deferred (follow-ups, out of the foundation swap)
 
-Vivid-gold + `--color-gold-ink` split — **Phase-0 audit complete; sweep HELD for
-owner decision**, see [`gold-split-audit.md`](gold-split-audit.md) (dark gold stays
-`#E0AA3E`; ~6 borderline/entangled sites need owner greenlight before migration) ·
-local woff2 font wiring (`tokens/fonts.css` + 17 assets; app still loads Satoshi/Cabinet
-Grotesk now self-hosted — see §7; JetBrains Mono still CDN, no committed woff2) ·
-glass-recipe reconciliation (`tokens/glass.css`
+Vivid-gold + `--color-gold-ink` split — **✅ SHIPPED** (feat/nexus-gold-sweep; see
+[`gold-split-audit.md`](gold-split-audit.md); dark gold stays `#E0AA3E`) · local
+woff2 font wiring — Satoshi/Cabinet Grotesk now **self-hosted** (see §7); JetBrains
+Mono still CDN, no committed woff2 · glass-recipe reconciliation (`tokens/glass.css`
 vs the app's `--glass-*`) · `surfaceSoft` 5th
 surface tier · per-screen Track-J polish · wiring motion/skeleton/hero-ink tokens
 into components (state-design + motion work per redesign-addendum §1–§2).

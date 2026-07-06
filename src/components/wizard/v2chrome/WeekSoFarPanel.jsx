@@ -227,7 +227,7 @@ function DeltaRow({ live, last, currency = false }) {
 
 function Scorecard({ eyebrow, tone, value, sub, delta, deltaSuffix = '', testid }) {
   const accent =
-    tone === 'gold' ? 'text-gold' : tone === 'teal' ? 'text-primary' : 'text-ink';
+    tone === 'gold' ? 'text-gold-ink' : tone === 'teal' ? 'text-primary' : 'text-ink';
   const positive = delta && delta.value > 0;
   const negative = delta && delta.value < 0;
   return (
@@ -328,7 +328,7 @@ function MobileStrip({
 
 function MobileTile({ eyebrow, value, tone }) {
   const accent =
-    tone === 'gold' ? 'text-gold' : tone === 'teal' ? 'text-primary' : 'text-ink-muted';
+    tone === 'gold' ? 'text-gold-ink' : tone === 'teal' ? 'text-primary' : 'text-ink-muted';
   return (
     <div className="flex flex-col items-start min-w-0">
       <span

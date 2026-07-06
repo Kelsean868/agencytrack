@@ -38,6 +38,17 @@ export function AwardDonut({ percent = 0, state, size = 100, strokeWidth = 10, s
     state === 'contention' ? 'var(--color-primary)' :
                              'var(--color-text-faint)'
   );
+  // Gold split (D2): the ring stays vivid --color-gold, but the center % label
+  // uses gold-ink when it renders SMALL (< AA-large 18.66px bold), because vivid
+  // #B07D1A fails AA-normal. Only the gold (qualified) state needs this — teal /
+  // faint / strokeOverride are unaffected. fontSize = size*0.26, so the label is
+  // large-bold once size ≳ 71.8 (e.g. the size=72 drawer donut clears 3.62:1 on
+  // bg-card). The ring itself is graphical (3:1) and passes vivid at any size.
+  const centerFontSize = size * 0.26;
+  const centerLabelColor =
+    (!strokeOverride && state === 'qualified' && centerFontSize < 18.66)
+      ? 'var(--color-gold-ink)'
+      : accentColor;
   return (
     <div
       style={{
@@ -63,7 +74,7 @@ export function AwardDonut({ percent = 0, state, size = 100, strokeWidth = 10, s
         />
       </svg>
       <span style={{
-        fontSize: size * 0.26, fontWeight: 700, color: accentColor,
+        fontSize: centerFontSize, fontWeight: 700, color: centerLabelColor,
         letterSpacing: '-0.025em', fontFamily: '"Cabinet Grotesk", system-ui',
         lineHeight: 1, position: 'relative',
       }}>
@@ -167,6 +178,10 @@ export function AwardCard({ award, onClick }) {
     isQualified  ? 'var(--color-gold)' :
     isContention ? 'var(--color-primary)' :
                    'var(--color-text)';
+  // Gold split (D2): the 9px state pill is small text on a tint — vivid gold
+  // fails AA-normal there, so the QUALIFIED pill uses gold-ink. The big % (24px
+  // on bg-card, 3.62:1) and the progress-bar fill stay vivid (accentColor).
+  const pillTextColor = isQualified ? 'var(--color-gold-ink)' : accentColor;
   const pillBg =
     isQualified  ? 'var(--color-gold-tint)' :
     isContention ? 'var(--color-primary-tint)' :
@@ -205,7 +220,7 @@ export function AwardCard({ award, onClick }) {
         </div>
         <span
           className="text-[9px] font-bold tracking-wide font-mono shrink-0 px-2 py-1 rounded-full"
-          style={{ color: accentColor, background: pillBg }}
+          style={{ color: pillTextColor, background: pillBg }}
         >
           {stateText}
         </span>
@@ -259,7 +274,9 @@ export function AwardDrillDrawer({ award, onClose }) {
   if (!award) return null;
 
   const isQualified = award.eligible;
-  const accentColor = isQualified ? 'var(--color-gold)' : 'var(--color-primary)';
+  // Gold split: this accent feeds only the 12px eyebrow label (small text), so
+  // the qualified state uses gold-ink; vivid --color-gold would fail AA-normal.
+  const accentColor = isQualified ? 'var(--color-gold-ink)' : 'var(--color-primary)';
 
   return (
     <>

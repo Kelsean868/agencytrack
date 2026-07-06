@@ -173,7 +173,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       {/* Award groups */}
       {qualified.length > 0 && (
         <div>
-          <GroupHeader label="✓ Qualified" count={qualified.length} accentStyle={{ color: 'var(--color-gold)' }} />
+          <GroupHeader label="✓ Qualified" count={qualified.length} accentStyle={{ color: 'var(--color-gold-ink)' }} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {qualified.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAwardId(a.id)} />)}
           </div>

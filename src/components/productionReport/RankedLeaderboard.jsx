@@ -30,7 +30,7 @@ export default function RankedLeaderboard({
   }
 
   const medalClass = (rank) => {
-    if (rank === 1) return 'bg-gold-tint text-gold';
+    if (rank === 1) return 'bg-gold-tint text-gold-ink';
     if (rank === 2) return 'bg-surface-muted text-ink-muted';
     if (rank === 3) return 'bg-warning-tint text-warning-ink';
     return 'bg-surface text-ink-muted';

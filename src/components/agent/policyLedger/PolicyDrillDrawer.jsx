@@ -149,10 +149,10 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
                     {n.state === 'done' && <Check size={14} />}
                     {n.state === 'cur' && <span className="w-2 h-2 rounded-full bg-white" />}
                   </span>
-                  <span className={`text-[11px] font-bold mt-2 ${n.state === 'future' ? 'text-ink-muted' : n.state === 'cur' ? 'text-gold' : 'text-primary'}`}>{n.label}</span>
+                  <span className={`text-[11px] font-bold mt-2 ${n.state === 'future' ? 'text-ink-muted' : n.state === 'cur' ? 'text-gold-ink' : 'text-primary'}`}>{n.label}</span>
                   <span className="font-mono text-[9px] text-ink-muted mt-0.5">{n.date ? fmtDate(n.date) : '—'}</span>
                   {n.derived && (
-                    <span className="font-mono text-[7.5px] font-bold tracking-[0.08em] text-gold bg-gold-tint px-1.5 py-px rounded-full mt-1">DERIVED</span>
+                    <span className="font-mono text-[7.5px] font-bold tracking-[0.08em] text-gold-ink bg-gold-tint px-1.5 py-px rounded-full mt-1">DERIVED</span>
                   )}
                 </div>
               </React.Fragment>

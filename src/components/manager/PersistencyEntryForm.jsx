@@ -145,8 +145,8 @@ export default function PersistencyEntryForm({
         <div className="flex-1 overflow-auto p-4 flex flex-col gap-4">
           {/* Gold precedence banner */}
           <div className="flex gap-2.5 p-3 rounded-xl bg-gold-tint" data-testid="pers-precedence-banner">
-            <Lock size={14} className="text-gold shrink-0 mt-0.5" />
-            <p className="text-sm text-gold leading-snug">
+            <Lock size={14} className="text-gold-ink shrink-0 mt-0.5" />
+            <p className="text-sm text-gold-ink leading-snug">
               <strong>Saving locks {monthLabel} for {agentName}.</strong>{' '}
               Your figures override their self-entry; they&apos;ll see this month <strong>read-only</strong>.
             </p>

@@ -223,7 +223,7 @@ export default function PolicyReconciliationPanel() {
               data-testid="tab-lapse"
             >
               Lapse
-              <span className="font-mono text-[8px] font-bold tracking-wide px-1.5 py-px rounded-full bg-gold-tint text-gold">BM+</span>
+              <span className="font-mono text-[8px] font-bold tracking-wide px-1.5 py-px rounded-full bg-gold-tint text-gold-ink">BM+</span>
             </button>
           )}
         </div>
@@ -348,7 +348,7 @@ export default function PolicyReconciliationPanel() {
                       className={`card bg-card p-4 ${flagged ? 'border-warning/40' : ''}`}
                       data-testid={`recon-row-${policy.id}`}>
                       <div className="flex items-start gap-3.5 flex-wrap">
-                        <span className={`w-9 h-9 rounded-full ${flagged || isConfirmedView ? 'bg-gold-tint text-gold' : 'bg-primary-tint text-primary'} flex items-center justify-center font-display font-bold text-[13px] shrink-0`}>
+                        <span className={`w-9 h-9 rounded-full ${flagged || isConfirmedView ? 'bg-gold-tint text-gold-ink' : 'bg-primary-tint text-primary'} flex items-center justify-center font-display font-bold text-[13px] shrink-0`}>
                           {initials(agentName)}
                         </span>
                         <div className="min-w-0 w-[150px]">

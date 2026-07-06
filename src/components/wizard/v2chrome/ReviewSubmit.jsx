@@ -64,7 +64,7 @@ export default function ReviewSubmit({
         />
         <div className="relative flex flex-wrap items-baseline justify-between gap-3">
           <div>
-            <p className="text-[10px] font-bold font-mono uppercase tracking-widest text-gold">
+            <p className="text-[10px] font-bold font-mono uppercase tracking-widest text-gold-ink">
               Your week
             </p>
             <p

@@ -112,7 +112,7 @@ function CalcFedLineRow({ item, onChange, onReset, onBlur, onOpenCalc }) {
       <div className="flex items-start gap-2">
         <span className="flex-1 min-w-0 text-sm text-ink text-pretty">{item.label}</span>
         {overridden ? (
-          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gold">Edited</span>
+          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gold-ink">Edited</span>
         ) : (
           <span className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
             <Sparkles size={10} aria-hidden="true" /> Calculator
@@ -453,7 +453,7 @@ function PAYESummary({ worksheet }) {
             <span className="text-[11px] text-ink-muted">all of it — no renewal income yet</span>
           )}
         </div>
-        <span className="text-gold font-extrabold text-lg tabular-nums">{formatCurrency(commissionsRequired)}</span>
+        <span className="text-gold-ink font-extrabold text-lg tabular-nums">{formatCurrency(commissionsRequired)}</span>
       </div>
     </div>
   );

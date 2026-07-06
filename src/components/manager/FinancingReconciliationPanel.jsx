@@ -327,7 +327,7 @@ export default function FinancingReconciliationPanel() {
   function gapBadge(key) {
     if (key === reconMonthKey) return { label: 'affects closing', cls: 'bg-danger/15 text-danger-ink' };
     const idx = reconMonthIndex(terms?.effectiveDate, key);
-    if (idx !== null && idx >= 1 && idx <= 3) return { label: 'affects waiver', cls: 'bg-gold/15 text-gold' };
+    if (idx !== null && idx >= 1 && idx <= 3) return { label: 'affects waiver', cls: 'bg-gold/15 text-gold-ink' };
     return null;
   }
 
@@ -697,7 +697,7 @@ function GapField({ id, label, value, onChange }) {
 
 // Worksheet line.
 function WsRow({ label, sub, value, tone, bold = false }) {
-  const toneCls = tone === 'success' ? 'text-success-ink' : tone === 'waive' ? 'text-gold' : 'text-ink';
+  const toneCls = tone === 'success' ? 'text-success-ink' : tone === 'waive' ? 'text-gold-ink' : 'text-ink';
   return (
     <div className={['flex items-center justify-between gap-3 py-2.5 border-b border-border', bold ? 'font-semibold' : ''].join(' ')}>
       <div>

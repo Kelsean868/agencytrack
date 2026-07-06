@@ -183,7 +183,7 @@ function LadderNode({ lvl, state, isLast, onClick }) {
   const accentColor = isAchieved
     ? 'var(--color-primary)'
     : isCurrent
-      ? 'var(--color-gold)'
+      ? 'var(--color-gold-ink)'
       : 'var(--color-text-faint)';
 
   const fmtApi = lvl.minApi ? `TTD ${(lvl.minApi / 1000).toFixed(0)}K API` : 'Pinnacle';
@@ -230,7 +230,7 @@ function LadderNode({ lvl, state, isLast, onClick }) {
               fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
               padding: '2px 7px',
               background: 'var(--color-gold-tint)',
-              color: 'var(--color-gold)',
+              color: 'var(--color-gold-ink)',
               borderRadius: 999, fontFamily: '"JetBrains Mono", monospace',
               textTransform: 'uppercase',
             }}>
@@ -510,7 +510,7 @@ function LevelDrillDrawer({ level, currentLevel, ytdAPI, ytdApps, avgPersistency
 
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-border shrink-0">
-          <p className="text-xs font-bold tracking-widest font-mono uppercase" style={{ color: isNext ? 'var(--color-gold)' : 'var(--color-primary)' }}>
+          <p className="text-xs font-bold tracking-widest font-mono uppercase" style={{ color: isNext ? 'var(--color-gold-ink)' : 'var(--color-primary)' }}>
             {isNext ? '★ Next milestone' : 'Future level'}
           </p>
           <p className="text-xl font-bold text-ink mt-1.5" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.018em' }}>
@@ -574,7 +574,7 @@ function LevelDrillDrawer({ level, currentLevel, ytdAPI, ytdApps, avgPersistency
 
           {unlocks.length > 0 && (
             <>
-              <p className="text-xs font-bold tracking-widest font-mono uppercase mt-5 mb-2.5" style={{ color: 'var(--color-gold)' }}>
+              <p className="text-xs font-bold tracking-widest font-mono uppercase mt-5 mb-2.5" style={{ color: 'var(--color-gold-ink)' }}>
                 ★ What you unlock
               </p>
               <div className="flex flex-col gap-2">

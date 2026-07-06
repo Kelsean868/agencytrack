@@ -144,7 +144,7 @@ export function PodiumCard({ entry, label, isChampion = false, isCenter = false,
         <MedalCoin rank={entry.rank} size={isCenter ? 32 : 26} />
         <span
           className={`text-[9.5px] font-bold font-mono uppercase tracking-widest ${
-            isChampion ? 'text-gold' : 'text-ink-muted'
+            isChampion ? 'text-gold-ink' : 'text-ink-muted'
           }`}
         >
           {label}
@@ -181,7 +181,7 @@ export function PodiumCard({ entry, label, isChampion = false, isCenter = false,
 
       <div
         className={`mt-3 font-bold font-display relative tabular-nums ${
-          isChampion ? 'text-gold' : 'text-primary'
+          isChampion ? 'text-gold-ink' : 'text-primary'
         } ${isCenter ? 'text-2xl' : 'text-xl'}`}
         style={{ letterSpacing: '-0.022em' }}
       >
@@ -412,7 +412,7 @@ export default function ProductionLeaderboardSurface({
       <div className="flex flex-col gap-4" data-testid="production-leaderboard-loading">
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-gold">
+            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-gold-ink">
               ★ Top of the board · YTD
             </p>
             <h2 className="text-2xl font-bold font-display text-ink mt-1.5 tracking-tight">
@@ -466,7 +466,7 @@ export default function ProductionLeaderboardSurface({
         <div>
           <p
             data-testid="leaderboard-eyebrow"
-            className="text-[9px] font-bold font-mono uppercase tracking-widest text-gold"
+            className="text-[9px] font-bold font-mono uppercase tracking-widest text-gold-ink"
           >
             {headerEyebrowLabel}
           </p>
