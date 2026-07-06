@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, RotateCw } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { getMoneyNeeds } from '../../../services/moneyNeedsService';
 import { getYearPlan, LINE_KEYS } from '../../../services/yearPlanService';
@@ -16,32 +15,8 @@ import PlanSuggestionsCard from './PlanSuggestionsCard';
 import SuggestedWeekCard from './SuggestedWeekCard';
 import MonthlyPlanModal from '../../agent/MonthlyPlanModal';
 import ReviewCommitModal from './ReviewCommitModal';
-import { Skeleton } from '../../ui/PanelSkeleton';
 
 const GAME_PLAN_LOOP_ENABLED = import.meta.env.VITE_GAME_PLAN_LOOP_ENABLED !== 'false';
-
-/**
- * Loading scaffold that reserves Game Plan's REAL footprint — anchor strip, step
- * rail (4 chips), cascade, and suggested-week card — so the screen-enter fade plays
- * over a structurally-complete placeholder and the real sections fill IN PLACE
- * (no layout jump, no spinner→content pop). Heights approximate the loaded sections
- * and are eyeball-tunable. Shimmer is reduced-motion-safe (see PanelSkeleton).
- */
-function GamePlanSkeleton() {
-  return (
-    <div className="space-y-4" role="status" aria-busy="true" aria-live="polite" aria-label="Loading your plan">
-      <Skeleton className="h-36 rounded-2xl" />
-      <div className="flex gap-2">
-        <Skeleton className="h-16 flex-1 rounded-xl" />
-        <Skeleton className="h-16 flex-1 rounded-xl" />
-        <Skeleton className="h-16 flex-1 rounded-xl" />
-        <Skeleton className="h-16 flex-1 rounded-xl" />
-      </div>
-      <Skeleton className="h-72 rounded-2xl" />
-      <Skeleton className="h-56 rounded-2xl" />
-    </div>
-  );
-}
 
 /**
  * GamePlanScreen — Game Plan v2 hub (Slice 1).
@@ -246,27 +221,6 @@ export default function GamePlanScreen({
         <p className="mt-0.5 text-xs text-ink-muted">Your year and monthly plans are visible to your managers.</p>
       </header>
 
-      {loading && <GamePlanSkeleton />}
-
-      {!loading && error && (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card px-4 py-12 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-danger/10 text-danger-ink">
-            <AlertCircle size={24} aria-hidden="true" />
-          </div>
-          <div>
-            <p className="font-semibold text-ink">Couldn&apos;t load your plan</p>
-            <p className="mt-1 text-sm text-ink-muted">{error}</p>
-          </div>
-          <button
-            type="button"
-            onClick={load}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary dark:bg-primary-dark px-5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 dark:hover:bg-primary-dark/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <RotateCw size={15} aria-hidden="true" /> Retry
-          </button>
-        </div>
-      )}
-
       {monthlyPlanOpen && (
         <MonthlyPlanModal
           onClose={() => setMonthlyPlanOpen(false)}
@@ -295,70 +249,76 @@ export default function GamePlanScreen({
         />
       )}
 
-      {!loading && !error && (
-        <>
-          <PlanAnchorStrip
-            year={year}
-            commissionNeed={commissionNeed}
-            afterTaxNeed={afterTaxNeed}
-            renewalsCover={renewalsCover}
-            grossNeed={grossNeed}
-            apiCommitment={committedAnnualAPI}
-            planBuiltPct={planBuiltPct}
-            stepsBuilt={stepsBuilt}
-            totalSteps={TOTAL_STEPS}
-            moneyNeedsFilled={moneyNeedsFilled}
-          />
+      {/* Persist-shells: every section renders in ALL states (loading skeleton /
+          error / empty / ready) so none mounts after the screen-enter fade — only
+          inner values swap when the fetch resolves. See
+          docs/design/motion-popin-systemic-fix.md. */}
+      <PlanAnchorStrip
+        year={year}
+        commissionNeed={commissionNeed}
+        afterTaxNeed={afterTaxNeed}
+        renewalsCover={renewalsCover}
+        grossNeed={grossNeed}
+        apiCommitment={committedAnnualAPI}
+        planBuiltPct={planBuiltPct}
+        stepsBuilt={stepsBuilt}
+        totalSteps={TOTAL_STEPS}
+        moneyNeedsFilled={moneyNeedsFilled}
+        loading={loading}
+        error={!!error}
+        onRetry={load}
+      />
 
-          <StepRail
-            moneyNeedsFilled={moneyNeedsFilled}
-            onOpenMoneyNeeds={openMoneyNeeds}
-            yearPlanFilled={yearPlanFilled}
-            onOpenMonthlyPlan={openMonthlyPlan}
-            monthlyPlanFilled={monthlyPlanFilled}
-            onOpenReviewCommit={openReviewCommit}
-            committed={committed}
-          />
+      <StepRail
+        moneyNeedsFilled={moneyNeedsFilled}
+        onOpenMoneyNeeds={openMoneyNeeds}
+        yearPlanFilled={yearPlanFilled}
+        onOpenMonthlyPlan={openMonthlyPlan}
+        monthlyPlanFilled={monthlyPlanFilled}
+        onOpenReviewCommit={openReviewCommit}
+        committed={committed}
+        loading={loading}
+      />
 
-          <PlanCascade
-            commissionNeed={commissionNeed}
-            moneyNeedsFilled={moneyNeedsFilled}
-            yearPlanEnabled={GAME_PLAN_LOOP_ENABLED}
-            yearPlanTotalAPI={yearPlanTotalAPI}
-            yearPlanFilled={yearPlanFilled}
-            monthlyPlanFilled={monthlyPlanFilled}
-            monthlyPlanTotal={monthlyPlanTotal}
-            monthlyYtdDelta={monthlyYtdDelta}
-            committed={committed}
-            committedAt={committedAt}
-          />
+      <PlanCascade
+        commissionNeed={commissionNeed}
+        moneyNeedsFilled={moneyNeedsFilled}
+        yearPlanEnabled={GAME_PLAN_LOOP_ENABLED}
+        yearPlanTotalAPI={yearPlanTotalAPI}
+        yearPlanFilled={yearPlanFilled}
+        monthlyPlanFilled={monthlyPlanFilled}
+        monthlyPlanTotal={monthlyPlanTotal}
+        monthlyYtdDelta={monthlyYtdDelta}
+        committed={committed}
+        committedAt={committedAt}
+        loading={loading}
+        error={!!error}
+      />
 
-          {/* B3 — manager→agent plan suggestions (agent's own data; renders
-              nothing when there are none). Reads through the agent-own arm. */}
-          <PlanSuggestionsCard tenantId={tenantId} agentId={uid} />
+      {/* B3 — manager→agent plan suggestions (agent's own data; renders
+          nothing when there are none). Reads through the agent-own arm. */}
+      <PlanSuggestionsCard tenantId={tenantId} agentId={uid} />
 
-          <SuggestedWeekCard
-            committedAnnualAPI={committedAnnualAPI}
-            avgPolicyAPI={avgPolicyAPI}
-            prospectRatio={prospectRatio}
-            submissions={submissions}
-            floors={weeklyActivityFloors}
-            loading={dataLoading}
-            error={dataError}
-            onRetry={onRetry}
-            onBuildPlan={openGoals}
-            weekLabel={`Wk ${weekNum}`}
-            committedPlan={committedPlan}
-            onCommit={handleCommitPlan}
-            onDeletePlan={handleDeletePlan}
-            planBusy={planBusy}
-            planError={planError}
-            weekStart={weekStart}
-            weekSubmission={weekSubmission}
-            dailyDocs={dailyDocs}
-          />
-        </>
-      )}
+      <SuggestedWeekCard
+        committedAnnualAPI={committedAnnualAPI}
+        avgPolicyAPI={avgPolicyAPI}
+        prospectRatio={prospectRatio}
+        submissions={submissions}
+        floors={weeklyActivityFloors}
+        loading={dataLoading}
+        error={dataError}
+        onRetry={onRetry}
+        onBuildPlan={openGoals}
+        weekLabel={`Wk ${weekNum}`}
+        committedPlan={committedPlan}
+        onCommit={handleCommitPlan}
+        onDeletePlan={handleDeletePlan}
+        planBusy={planBusy}
+        planError={planError}
+        weekStart={weekStart}
+        weekSubmission={weekSubmission}
+        dailyDocs={dailyDocs}
+      />
     </div>
   );
 }

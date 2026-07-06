@@ -2,6 +2,7 @@ import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { formatCurrency } from '../../../utils/formatters';
 import { statusToken } from '../../../lib/policyStatusTokens';
+import { Skeleton } from '../../ui/PanelSkeleton';
 
 function formatSeal(date) {
   if (!date) return '';
@@ -46,6 +47,17 @@ function CascadeArrow() {
   );
 }
 
+function CascadeHeader() {
+  return (
+    <div className="mb-3 flex items-baseline gap-2">
+      <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+        The plan so far
+      </span>
+      <span className="font-mono text-[9px] text-ink-muted">Need → split → months</span>
+    </div>
+  );
+}
+
 export default function PlanCascade({
   commissionNeed,
   moneyNeedsFilled,
@@ -57,7 +69,35 @@ export default function PlanCascade({
   monthlyYtdDelta = 0,
   committed = false,
   committedAt = null,
+  loading = false,
+  error = false,
 }) {
+  // Error — in place; the retry lives on the anchor above (single retry for the
+  // shared worksheet fetch). Shell + testid persist (no mount swap).
+  if (error) {
+    return (
+      <div className="card" data-testid="game-plan-cascade">
+        <CascadeHeader />
+        <div className="rounded-xl border border-dashed border-border bg-surface-raised p-4 text-xs text-ink-muted">
+          Couldn&apos;t load your plan — retry above.
+        </div>
+      </div>
+    );
+  }
+  // Loading — skeleton the three rungs; keep the shell + header + arrows.
+  if (loading) {
+    return (
+      <div className="card" data-testid="game-plan-cascade" aria-busy="true" aria-label="Loading your plan">
+        <CascadeHeader />
+        <Skeleton className="h-20 rounded-xl" />
+        <CascadeArrow />
+        <Skeleton className="h-20 rounded-xl" />
+        <CascadeArrow />
+        <Skeleton className="h-20 rounded-xl" />
+      </div>
+    );
+  }
+
   const committedToken = statusToken('settled');
   return (
     <div className="card" data-testid="game-plan-cascade">

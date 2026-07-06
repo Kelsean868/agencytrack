@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, ChevronRight } from 'lucide-react';
 import { statusToken } from '../../../lib/policyStatusTokens';
+import { Skeleton } from '../../ui/PanelSkeleton';
 
 /**
  * StepRail — Game Plan v2 three-step rail (NEW chrome).
@@ -89,7 +90,21 @@ export default function StepRail({
   monthlyPlanFilled = false,
   onOpenReviewCommit,
   committed = false,
+  loading = false,
 }) {
+  // Loading — skeleton the three step cards; the rail shell + testid persist (no
+  // mount swap). No error branch: Money Needs stays navigable regardless of fetch.
+  if (loading) {
+    return (
+      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center" data-testid="game-plan-rail" aria-busy="true" aria-label="Loading plan steps">
+        <Skeleton className="h-16 flex-1 rounded-xl" />
+        <Chevron />
+        <Skeleton className="h-16 flex-1 rounded-xl" />
+        <Chevron />
+        <Skeleton className="h-16 flex-1 rounded-xl" />
+      </div>
+    );
+  }
   // Direction 1.5 (PR-U1): Money Needs + Year Plan collapse into ONE step — the
   // merged Money Needs + Allocator surface writes the yearPlan. `yearPlanFilled`
   // (the merged write) is now Step 1's completion signal; `moneyNeedsFilled`
