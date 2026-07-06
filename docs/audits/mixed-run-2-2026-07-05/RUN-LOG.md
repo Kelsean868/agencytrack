@@ -61,8 +61,8 @@ EFF-004 (PR #805) is merged AND its fix is present on `main`:
 |---|---|---|
 | HARD PRECONDITION | ✅ PASSED | EFF-004 on main; Lane 1 cleared |
 | Lane 3 recon | ✅ DONE | `docs/audits/mixed-run-2-2026-07-05/NEXT-WINDOW-BACKLOG.md` written; corrected 4 drifted anchors (ARCH-001 `:50`/`tatillife_south`, A11Y-101 `:526`, A11Y-102 `:689`, EFF-015 `:701`); Node-20 decommission **2026-10-30** hard wall confirmed |
-| L1-1 MDRT+floor | ✅ HELD → **PR #807** | HEAD `db1c88a5` (3 commits). functions jest 373/373, root vitest 4228/4228, build clean, files lint-clean. All CI green. Gemini: 2 MED impl'd (calendar-date validation) + 1 HIGH DISAGREE→owner (badge sticky-vs-status); CodeRabbit: 1 trivial→FU. Deploy cmd in body. |
-| L1-2 year-attribution | ✅ HELD → **PR #808** | HEAD `a50ab9cf`, STACKED on #807. functions jest 31/31 (onSubmissionWrite). Gemini re-review: `Date.UTC` week-of-year base IMPLEMENTED (`a50ab9cf`). CodeRabbit skipped (stacked base). Merge order: #807 then #808. |
+| L1-1 MDRT+floor | ✅ HELD → **PR #807** | **HEAD `94b21d5e`** (was `db1c88a5`; +1 amend). Amend 2026-07-05: `mdrt_pace` 250k→**344,400** (owner decision) via `MDRT_PACE_API`, both config twins + 4 fake-timer pace tests. functions jest 373/373, cross-check 16/16, build clean. **All CI green.** Gemini re-review dispositioned (thisYear-UTC → addressed by #808; nowMs → DISAGREE). Deploy cmd in body. |
+| L1-2 year-attribution | ✅ HELD → **PR #808** | **HEAD `d0c87620`** (was `a50ab9cf`; rebased onto new #807 `94b21d5e`). One test-file conflict resolved (pace+attribution tests → one combined describe block). functions jest 377/377. Stack intact: `d0c87620`→`0ecde99b`→`94b21d5e`. Gemini `Date.UTC` base still in; re-review weekOfYear-defer → DISAGREE (FU). Merge order: #807 then #808. |
 | L1-3 EFF-006 | ⛔ PARKED (surfaced) | Correctness blocker: cron output is time-driven (weekly-champions rotation + previousRank), so a submission-only dirty flag is INCORRECT. Ready-to-brief surface below. |
 | L1-4 EFF-002 Ph2 | ✅ built (PARTIAL — foundation) | branch `perf/eff002-phase2-manualchunks` (`cc4c1060`). Shipped the `manualChunks` vendor-grouping (backlog headline enabler); tab-splitting scoped as fast-follow. Build clean · 5 named vendor chunks, 0 sprawl · vendor-pdf + ManagerDashboard stay lazy · adversarial smoke **66/66** both themes · lint clean. Push held for local vitest (machine-load-slowed; test-neutral config change). |
 | Lane 2 | ⏸ in gaps / likely thin | — |
@@ -103,7 +103,7 @@ EFF-004 (PR #805) is merged AND its fix is present on `main`:
 
 - **#807 HEAD `db1c88a5`** — Commit 1 `54e536e9` (MDRT 500k→688,800 named const), Commit 2 `df2a4de4` (tenure_floor_met badge + `wholeYearsSince` UTC-4-safe), Commit 3 `db1c88a5` (Gemini: reject non-real calendar dates).
 - **#808 HEAD `b3d5c596`** — year-attribution (weekStarting-year, not entry date) stacked on #807.
-- **⚠ Owner decisions at merge:** (1) confirm floor-marker KEY **`tenure_floor_met`**; (2) badge sticky-vs-status semantics (Gemini HIGH — DISAGREED, surfaced: all 10 badges are sticky `addIfNew`, changing only this one is inconsistent; system-wide product call); (3) `mdrt_pace` 250k vs 344,400 (half-of-new-MDRT) — surfaced, untouched.
+- **⚠ Owner decisions at merge:** (1) confirm floor-marker KEY **`tenure_floor_met`**; (2) badge sticky-vs-status semantics (Gemini HIGH — DISAGREED, surfaced: all 10 badges are sticky `addIfNew`, changing only this one is inconsistent; system-wide product call); (3) ~~`mdrt_pace` 250k vs 344,400~~ **RESOLVED → 344,400** (owner 2026-07-05; shipped in #807 amend `94b21d5e`).
 - **FUs banked (stashed → docs deliverable):** badge achievement-vs-status product question; `makeYtdAdminMock` consolidation (CodeRabbit trivial); EFF-004 items 2/3 annotated ADDRESSED-by-#807/#808.
 - **Backfill:** self-heals on next submission post-deploy; recompute path writes rankings not badges → a submission event or dedicated backfill needed. FU stands.
 
@@ -161,7 +161,7 @@ Refreshed backlog: `docs/audits/mixed-run-2-2026-07-05/NEXT-WINDOW-BACKLOG.md`. 
 3. **Owner decisions:**
    - **Confirm the floor-marker KEY `tenure_floor_met`** (or rename before merge — permanent data).
    - **Badge sticky-vs-status** (Gemini HIGH): keep sticky (current), or make YTD badges clear when criteria lapse (apply to `mdrt_qualified` too, consistently)?
-   - **`mdrt_pace` target**: 250,000 (half of old 500k) vs 344,400 (half of new MDRT)?
+   - ~~**`mdrt_pace` target**: 250,000 vs 344,400?~~ **RESOLVED 2026-07-05 → 344,400** (owner). Shipped in the #807 amend (`94b21d5e`); #808 rebased (`d0c87620`). Only the `mdrt_pace` future-year guard remains as a LOW FU.
    - **EFF-006**: ship Option A cadence cut now, or brief Option B event-driven?
    - **L1-4**: merge the `manualChunks` foundation (#TBD PR) as-is, then brief the per-tab split?
 4. **Post-merge:** land the docs deliverable (FOLLOW_UPS FU banking + this RUN-LOG + refreshed backlog) — staged separately from the money PRs.
