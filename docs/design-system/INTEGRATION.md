@@ -116,7 +116,7 @@ prototype), so surfaces/brand/semantic values were already equal.
 
 Vivid-gold + `--color-gold-ink` split — **Phase-0 audit complete; sweep HELD for
 owner decision**, see [`gold-split-audit.md`](gold-split-audit.md) (dark gold stays
-`#E0AA3E`; ~7 borderline/entangled sites need owner greenlight before migration) ·
+`#E0AA3E`; ~6 borderline/entangled sites need owner greenlight before migration) ·
 local woff2 font wiring (`tokens/fonts.css` + 17 assets; app still loads Satoshi/Cabinet
 Grotesk/JetBrains Mono from CDN) · glass-recipe reconciliation (`tokens/glass.css`
 vs the app's `--glass-*`) · `AgentReportDocument.jsx` hardcoded hex (react-pdf,

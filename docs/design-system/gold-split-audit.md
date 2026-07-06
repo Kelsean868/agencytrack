@@ -41,7 +41,7 @@ Thresholds: normal text ≥ 4.5:1 · large text (≥24px reg **or** ≥18.66px/1
 |---|---|---|---|
 | **decorative-vivid** | non-text: fills, dots, borders, chart strokes, icons | ~28 | keep `--color-gold` (→ vivid) |
 | **gold-ink** | text < 18.66px bold / < 24px reg, on any bg | ~22 | migrate → `text-gold-ink` / `var(--color-gold-ink)` |
-| **BORDERLINE** | large text (bg-dependent) OR entangled variable OR dynamic size OR within 0.2 of threshold | **7** (see §5) | **default gold-ink; owner decides vivid** |
+| **BORDERLINE** | large text (bg-dependent) OR entangled variable OR dynamic size OR within 0.2 of threshold | **6** (see §5) | **default gold-ink; owner decides vivid** |
 
 ### 3a. Decorative-vivid (keep `--color-gold`) — representative
 Borders: `border-gold/NN` on cards — GoalDecompositionTab:53, CommissionAnchorStrip:55, ProductionLeaderboardSurface:105, PolicyDrillDrawer:164, PlanCascade:71/82, ReviewSubmit:55, AgentPlanDrawer:405, FinancingBasisBadge:19, FinancingProrationPanel:339, FinancingStatusBadge:22, LedgerTimelineStrip:22, MonthlyStatementEntry:345. · Dots/particles (`bg-gold`): MoneyNeedsPanel:30, PlanAnchorStrip:35, PolicyDrillDrawer:145 (holds a white dot — graphical 3:1 OK), PolicyCard:30, Celebration:199/232, FinancingBasisBadge:20, FinancingStatusBadge:23, LedgerTimelineStrip:29. · Icons (`text-gold` on Lucide): WhereYouRankPanel:193 (Trophy), FinancingProrationPanel:341 (AlertTriangle), PersistencyEntryForm:148 (Lock). · Charts (`var(--color-gold)` stroke/fill): PersistencyTab:185, CashFlowChart:12/13, MiniSparkline:46, PulseStrip:20 (fg → icon + viz only, no text). · CSS: `.role-bar-fill-gold` ([index.css:1793](../../src/index.css:1793)).
@@ -54,7 +54,7 @@ Small text (7–14px), grouped: MoneyNeedsAllocator:235, ProductionLeaderboardSu
 `src/components/awards/awardPrimitives.jsx` drives a **single `accentColor` variable** to both graphical and text roles at once:
 - **AwardDonut** ([:36-70](../../src/components/awards/awardPrimitives.jsx:36)): `accentColor` = SVG ring stroke (graphical) **+** center `%` text with **dynamic** `fontSize: size*0.26` (≈26px at size 100, ≈12px at size 48 — small **or** large depending on caller).
 - **AwardCard** ([:166](../../src/components/awards/awardPrimitives.jsx:166)): `accentColor` = 9px pill text (:208) **+** 24px `%` text (:217) **+** progress-bar fill (:232).
-- **AwardDrillDrawer** ([:262](../../src/components/awards/awardPrimitives.jsx:262)): `accentColor` (drawer accent — mixed).
+- **AwardDrillDrawer** ([:262](../../src/components/awards/awardPrimitives.jsx:262)): its top-level `accentColor` is **NOT entangled** — it feeds only a 12px `text-xs` label ([:293](../../src/components/awards/awardPrimitives.jsx:293)); the drawer's donut ([:298](../../src/components/awards/awardPrimitives.jsx:298)) uses AwardDonut's own internal color. → clear **gold-ink** (corrected from borderline #5 per Gemini review, verified 2026-07-06).
 
 A single token can't be both vivid (decoration) and gold-ink (small text) here. Two safe resolutions, **owner's call**: (A) set the whole variable to `gold-ink` — simplest, zero visual change (rings stay today's `#8a6011`), foregoes vivid rings; or (B) split each into `ringColor` (vivid) + `textColor` (gold-ink) — a real per-component refactor to get vivid rings *and* legible text. PulseStrip's `fg` is **not** entangled (icon + viz only) → clean vivid.
 
@@ -68,9 +68,10 @@ All default to **gold-ink** (safe, AA-passing, zero visual change). Owner may pr
 | 2 | PlanAnchorStrip:62 | commission currency | `text-xl extrabold` (20px) | 3.62 on card → ✓ **if** hero bg is card (not glass/tinted) | gold-ink | **likely** — confirm hero bg |
 | 3 | awardPrimitives AwardCard:217 | progress `%` | `text-2xl` bold (24px) | entangled with 9px pill (:208) | gold-ink | only via §4-option-B refactor |
 | 4 | awardPrimitives AwardDonut:65 | center `%` | **dynamic** `size*0.26` | entangled with ring; size unresolved statically | gold-ink | only via §4-option-B + size guard |
-| 5 | awardPrimitives AwardDrillDrawer:262 | drawer accent | mixed (unverified) | entangled | gold-ink | verify uses |
-| 6 | MoneyNeedsPanel:456 | commission total | `text-lg extrabold` (**18px** < 18.66 bold threshold) | fails large by 0.66px | gold-ink | **no** (below threshold) |
-| 7 | CareerPortal:186 | tier accent label | unverified (likely `text-xs`) | — | gold-ink | verify size |
+| 5 | MoneyNeedsPanel:456 | commission total | `text-lg extrabold` (**18px** < 18.66 bold threshold) | fails large by 0.66px | gold-ink | **no** (below threshold) |
+| 6 | CareerPortal:186 | tier accent label | unverified (likely `text-xs`) | — | gold-ink | verify size |
+
+*(A prior 7th row — AwardDrillDrawer:262 — was resolved to clear gold-ink per §4 after Gemini review; no longer borderline.)*
 
 **Additional owner decisions:**
 - **D1 — dark-mode value:** confirm dark `--color-gold` stays `#E0AA3E` and dark `--color-gold-ink` = `#E0AA3E` (§2). Recommended: yes.
@@ -88,6 +89,6 @@ All default to **gold-ink** (safe, AA-passing, zero visual change). Owner may pr
 ## 7. Known gaps (Rule 22)
 
 - **Backgrounds for #1/#2 not composited to a pixel.** I classified by the nearest surface token; the champion podium and GamePlan hero *may* sit on a glass/tinted pane that lowers vivid below 3.0:1. Both are defaulted to gold-ink (safe) precisely because I did not verify their exact composited bg — the owner/sweep must confirm before any vivid promotion.
-- **A few inline sites classified from grep context, not full reads** (AwardDrillDrawer:262 uses, CareerPortal:186, GroupHeader label size). All defaulted to gold-ink; the follow-up sweep re-verifies each.
+- **A couple inline sites classified from grep context, not full reads** (CareerPortal:186, GroupHeader label size). All defaulted to gold-ink; the follow-up sweep re-verifies each. (AwardDrillDrawer:262 was verified post-review — clear gold-ink.)
 - **AgentReportDocument.jsx** (react-pdf hardcoded hex) is an out-of-scope holdout — it uses gold hex but cannot resolve CSS vars; **not touched**, deferred per the existing holdout follow-up.
 - **No code shipped in this PR** — this is the decision gate. Nothing is verified at runtime because nothing changed; verification lands with the sweep.
