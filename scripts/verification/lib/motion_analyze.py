@@ -164,12 +164,27 @@ def _render_artifacts(case_dir, meta, metrics):
             os.remove(listfile)
 
 
+def late_dom_summary(meta, top=6):
+    """DOM nodes added AFTER the animation ended (perf clock) — names the pop-in.
+    mutations[].tMs and animation.endPerfMs are both performance.now() ms."""
+    end = (meta.get('animation') or {}).get('endPerfMs')
+    muts = meta.get('mutations') or []
+    if end is None or not muts:
+        return {'count': 0, 'firstOffsetMs': None, 'sample': []}
+    late = sorted((m for m in muts if m.get('tMs', 0) > end), key=lambda m: m['tMs'])
+    sample = [{'offMs': round(m['tMs'] - end), 'tag': m.get('tag'),
+               'label': (m.get('testid') or m.get('txt') or m.get('cls') or '')[:40]}
+              for m in late[:top]]
+    return {'count': len(late), 'firstOffsetMs': round(late[0]['tMs'] - end) if late else None, 'sample': sample}
+
+
 def analyze_case(case_dir):
     with open(os.path.join(case_dir, 'meta.json')) as fh:
         meta = json.load(fh)
     frames = [load_frame(os.path.join(case_dir, fr['file'])) for fr in meta['frames']]
     metrics = compute_metrics(meta, frames)
     metrics['targetLabel'] = meta.get('targetLabel')
+    metrics['lateDom'] = late_dom_summary(meta)
     _render_artifacts(case_dir, meta, metrics)
     with open(os.path.join(case_dir, 'case.json'), 'w') as fh:
         json.dump(metrics, fh, indent=2)
@@ -197,6 +212,15 @@ def _write_summary_md(run_dir, cases):
             dec=c.get('declaredDurationMs'), meas=c.get('measuredWindowMs'),
             ae=c.get('animEndMs'), st=c.get('settleMs'), gap=c.get('popinGapMs'),
             late=c.get('lateChangePct'), drop=c.get('droppedFrameRatio'), verdict=c['verdict']))
+    lines += ['', '## Late DOM after animationEnd (what pops in)']
+    for c in cases:
+        ld = c.get('lateDom') or {}
+        if ld.get('count'):
+            samp = '; '.join('+{off}ms {tag} {label}'.format(off=int(s['offMs']), tag=s['tag'], label=s['label']) for s in ld['sample'])
+            lines.append('- **{r}/{ca}/{co}**: {n} node(s), first +{f}ms — {s}'.format(
+                r=c['role'], ca=c['case'], co=c['condition'], n=ld['count'], f=int(ld['firstOffsetMs']), s=samp))
+        else:
+            lines.append('- **{r}/{ca}/{co}**: none'.format(r=c['role'], ca=c['case'], co=c['condition']))
     lines += ['', '## Delta curves (shape distinguishes pop-in spike vs count-up ramp vs spinner)']
     for c in cases:
         lines.append("- **{role}/{case}/{cond}** ({v}): {series}".format(

@@ -10,7 +10,10 @@
 // Usage:
 //   node --env-file=.env.local scripts/verification/motion-verifier.mjs --role all --url <previewUrl>
 //   node --env-file=.env.local scripts/verification/motion-verifier.mjs --role agent --reduced-motion --url <previewUrl>
+//   node --env-file=.env.local scripts/verification/motion-verifier.mjs --role agent --target agent-tab-game-plan --case game-plan --url <url>
 //   node scripts/verification/motion-verifier.mjs --analyze-only <runDir>   # re-analyze existing frames, no browser
+// Flags: --target/--default <data-testid> (override the nav for a single role), --case <label>,
+//        --settle-cap <ms> (default 2500), --reduced-motion, --url/--analyze-only.
 import { chromium } from 'playwright';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -33,9 +36,9 @@ const CASES = {
   tenant_admin:   { envPrefix: 'A11Y_TENANT_ADMIN',   defaultTestId: 'nav-dashboard',       targetTestId: 'nav-users',         targetLabel: 'All Users',   case: 'all-users' },
 };
 const VIEWPORT = { width: 1440, height: 900 };
-const SETTLE_CAP_MS = 2500;   // covers the 320ms animation + a cold Firestore fetch
-
 function arg(name, def) { const i = process.argv.indexOf(name); return i > -1 ? (process.argv[i + 1] ?? true) : def; }
+const SETTLE_CAP_MS = Number(arg('--settle-cap', 2500)) || 2500;   // 320ms anim + cold fetch; --settle-cap to extend
+
 function safeStamp() { return new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-'); }
 const wantRole = arg('--role', 'all');
 const reducedMotion = process.argv.includes('--reduced-motion');
@@ -74,6 +77,7 @@ function writeCase(runDir, role, condition, cfg, cap, url, reduced) {
     viewport: VIEWPORT, beaconBox: { x: 0, y: 0, width: VIEWPORT.width, height: 6 },
     contentBox: cap.marks?.contentBox ?? { x: 0, y: 6, width: VIEWPORT.width, height: VIEWPORT.height - 6 },
     frames: [], animation: cap.marks?.animation ?? {}, longTasks: cap.marks?.longTasks ?? [],
+    mutations: cap.marks?.mutations ?? [], imgLoads: cap.marks?.imgLoads ?? [],
     url, account: cfg.envPrefix,
   };
   cap.frames.forEach((f, i) => {
@@ -86,7 +90,9 @@ function writeCase(runDir, role, condition, cfg, cap, url, reduced) {
 }
 
 async function runRole(browser, role, baseUrl, token, runDir) {
-  const cfg = CASES[role];
+  const base = CASES[role];
+  // --target/--default/--case override the case table (use with a single --role).
+  const cfg = { ...base, targetTestId: arg('--target', base.targetTestId), defaultTestId: arg('--default', base.defaultTestId), case: arg('--case', base.case) };
   const email = process.env[`${cfg.envPrefix}_EMAIL`];
   const password = process.env[`${cfg.envPrefix}_PASSWORD`];
   if (!email || !password) { safeLog(`SKIP ${role}: ${cfg.envPrefix}_EMAIL/PASSWORD not set`); return; }
@@ -97,6 +103,7 @@ async function runRole(browser, role, baseUrl, token, runDir) {
   await loginAs(page, baseUrl, email, password);
   await page.waitForTimeout(1500); // let the default tab settle before instrumenting the switch
   const client = await context.newCDPSession(page);
+  await page.evaluate(resetMotionMarks); // switch-scoped mutation/img log for cold
   // COLD: default tab -> target (data likely unfetched)
   const cold = await captureSwitch(page, client, cfg.targetTestId);
   const nCold = writeCase(runDir, role, 'cold', cfg, cold, baseUrl, reducedMotion);

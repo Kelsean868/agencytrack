@@ -9,8 +9,9 @@ export const MOTION_BEACON_ID = '__motion_beacon__';
 /** Runs in the page (via page.addInitScript). No external references. */
 export function installMotionInstrument() {
   const BEACON_ID = '__motion_beacon__';
-  const marks = { declaredDurationMs: null, animation: { startPerfMs: null, endPerfMs: null }, longTasks: [], contentBox: null };
+  const marks = { declaredDurationMs: null, animation: { startPerfMs: null, endPerfMs: null }, longTasks: [], contentBox: null, mutations: [], imgLoads: [] };
   window.__motionMarks = marks;
+  const MUT_CAP = 400, IMG_CAP = 200;
 
   function beacon() {
     let el = document.getElementById(BEACON_ID);
@@ -52,6 +53,34 @@ export function installMotionInstrument() {
       for (const entry of list.getEntries()) marks.longTasks.push({ startPerfMs: entry.startTime, durationMs: entry.duration });
     }).observe({ entryTypes: ['longtask'] });
   } catch (_) {}
+
+  // Diagnostic: timestamped DOM mutations (element additions) + image loads — so a
+  // capture can name WHAT repaints late (mutations/imgLoads with tMs > animationEnd
+  // are the pop-in culprit). Reset before each capture so the log is switch-scoped.
+  try {
+    new MutationObserver(function (records) {
+      const t = performance.now();
+      for (const r of records) {
+        if (r.type !== 'childList' || marks.mutations.length >= MUT_CAP) continue;
+        for (const n of r.addedNodes) {
+          if (n.nodeType !== 1 || marks.mutations.length >= MUT_CAP) continue;
+          marks.mutations.push({
+            tMs: t, tag: n.tagName,
+            testid: (n.getAttribute && n.getAttribute('data-testid')) || '',
+            cls: (typeof n.className === 'string' ? n.className : '').slice(0, 50),
+            txt: (n.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40),
+          });
+        }
+      }
+    }).observe(document, { childList: true, subtree: true }); // document node is always present at document-start (documentElement may not be)
+  } catch (_) {}
+
+  document.addEventListener('load', function (e) {
+    const el = e.target;
+    if (el && el.tagName === 'IMG' && marks.imgLoads.length < IMG_CAP) {
+      marks.imgLoads.push({ tMs: performance.now(), src: (el.currentSrc || el.src || '').slice(0, 70) });
+    }
+  }, true);
 }
 
 /** Runs in the page (via page.evaluate) between cold and warm captures. */
@@ -60,6 +89,8 @@ export function resetMotionMarks() {
     window.__motionMarks.animation = { startPerfMs: null, endPerfMs: null };
     window.__motionMarks.longTasks = [];
     window.__motionMarks.contentBox = null;
+    window.__motionMarks.mutations = [];
+    window.__motionMarks.imgLoads = [];
   }
   const el = document.getElementById('__motion_beacon__');
   if (el) el.style.background = '#000';
