@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nexus — Living Style Guide (v2)</title>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&f[]=cabinet-grotesk@700,800,900&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" />
+<link rel="stylesheet" href="tokens/app-v2.css" />
+<link rel="stylesheet" href="components/app/nexus-patterns.css" />
+<style>
+  html,body{ margin:0; }
+  .nexus{ min-height:100vh; }
+  .sg-wrap{ max-width:1080px; margin:0 auto; padding:32px 28px 120px; }
+  .sg-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding-bottom:28px; border-bottom:1px solid var(--rule); margin-bottom:36px; }
+  .sg-kicker{ font:700 11px var(--mono); letter-spacing:.18em; text-transform:uppercase; color:var(--teal); }
+  .sg-h1{ font-family:var(--display); font-weight:900; font-size:38px; letter-spacing:-.02em; line-height:1.05; margin:8px 0 6px; color:var(--ink); }
+  .sg-lede{ color:var(--inkMute); font-size:15px; max-width:560px; line-height:1.55; }
+  .sg-toggle{ display:inline-flex; gap:2px; background:var(--surfaceMute); border:1px solid var(--rule); border-radius:12px; padding:4px; flex:none; }
+  .sg-toggle button{ border:none; background:none; font:700 12.5px var(--sans); color:var(--inkMute); padding:8px 14px; border-radius:9px; }
+  .sg-toggle button.on{ background:var(--surface); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  .nexus.dark .sg-toggle button.on{ background:var(--surfaceRaised); }
+  .sg-sec{ margin:52px 0 0; }
+  .sg-sec-h{ font:700 11px var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--inkFaint); margin-bottom:4px; }
+  .sg-sec-t{ font-family:var(--display); font-weight:800; font-size:22px; color:var(--ink); margin:0 0 4px; letter-spacing:-.01em; }
+  .sg-sec-d{ color:var(--inkMute); font-size:13.5px; line-height:1.5; max-width:600px; margin-bottom:22px; }
+  .sg-grid{ display:grid; gap:14px; }
+  .sg-swatches{ grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); }
+  .sw{ border:1px solid var(--rule); border-radius:12px; overflow:hidden; background:var(--surface); }
+  .sw-chip{ height:64px; }
+  .sw-meta{ padding:9px 11px; }
+  .sw-name{ font:700 12px var(--sans); color:var(--ink); }
+  .sw-val{ font:11px var(--mono); color:var(--inkFaint); margin-top:2px; }
+  .sg-card{ background:var(--surface); border:1px solid var(--rule); border-radius:16px; padding:22px; }
+  .sg-row{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+  .sg-type-row{ display:flex; align-items:baseline; gap:16px; padding:12px 0; border-top:1px solid var(--rule); }
+  .sg-type-row:first-child{ border-top:none; }
+  .sg-type-tag{ font:11px var(--mono); color:var(--inkFaint); width:150px; flex:none; }
+  .sg-note{ font:12.5px var(--sans); color:var(--inkMute); background:var(--surfaceMute); border-left:3px solid var(--teal); padding:11px 14px; border-radius:0 9px 9px 0; margin-top:14px; line-height:1.5; }
+  .sg-note b{ color:var(--ink); }
+  .sg-cols-2{ grid-template-columns:1fr 1fr; }
+  .sg-eyebrow{ font:700 11px var(--mono); letter-spacing:.14em; text-transform:uppercase; }
+  @media (max-width:720px){ .sg-cols-2{ grid-template-columns:1fr; } .sg-top{ flex-direction:column; } }
+</style>
+</head>
+<body>
+<div class="nexus" id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- Icon shim (stand-in for the DS <Icon>) -->
+<script type="text/babel">
+const NX_PATHS = {
+  bell:'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0',
+  repeat:'M17 2l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3',
+  grid:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
+  plus:'M12 5v14M5 12h14', check:'M20 6 9 17l-5-5',
+  doc:'M7 3h7l5 5v13H7zM14 3v5h5', users:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11',
+  calendar:'M7 3v4M17 3v4M3 9h18M4 5h16v16H4z', trophy:'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 4H4v2a3 3 0 0 0 3 3M17 4h3v2a3 3 0 0 1-3 3',
+  book:'M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 0-2 2zM20 20V6', target:'M12 12m-9 0a9 9 0 1 0 18 0 9 9 0 1 0-18 0M12 12m-4 0a4 4 0 1 0 8 0 4 4 0 1 0-8 0M12 12h.01',
+  chart:'M3 3v18h18M7 15l4-4 3 3 5-6', home:'M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5',
+  moon:'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8', sun:'M12 4V2M12 22v-2M4 12H2M22 12h-2M6 6 4.5 4.5M19.5 19.5 18 18M6 18l-1.5 1.5M19.5 4.5 18 6M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8',
+  // 2026 redesign additions — one icon per nav tab
+  history:'M3 3v5h5M3.05 13A9 9 0 1 0 6 5.3L3 8M12 7v5l4 2', wallet:'M2 7h18v12H2zM2 7l3-4h11l3 4M16 13h.01',
+  coins:'M9 9m-6 0a6 6 0 1 0 12 0a6 6 0 1 0-12 0M21 12a6 6 0 0 1-6 6M15 6a6 6 0 0 1 0 12', calculator:'M6 2h12v20H6zM9 6h6M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h4',
+  medal:'M7 3l3 6M17 3l-3 6M12 21a6 6 0 1 0 0-12a6 6 0 0 0 0 12M10 14l2 1.5 2-1.5', ladder:'M7 2v20M17 2v20M7 7h10M7 12h10M7 17h10',
+  map:'M9 4 3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14', clipboard:'M9 3h6v3H9zM7 4.5H5v16.5h14V4.5h-2M9 12h6M9 16h6',
+  bank:'M3 10h18M4 10 12 4l8 6M5 10v8M10 10v8M14 10v8M19 10v8M3 21h18', scale:'M12 3v18M8 21h8M6 6h12M6 6 3 12h6zM3 12a3 3 0 0 0 6 0M18 6l-3 6h6zM15 12a3 3 0 0 0 6 0',
+  tv:'M2 7h20v13H2zM8 3l4 4 4-4', gauge:'M12 13l4-3M12 13a1.6 1.6 0 1 0 0 .01M4 19a9 9 0 1 1 16 0',
+  flag:'M4 21V3M4 4h13l-3 4 3 4H4', sliders:'M4 21v-7M4 10V3M12 21v-11M12 6V3M20 21v-5M20 12V3M2 14h4M10 6h4M18 16h4',
+};
+function Icon({ name, size = 18, style }) {
+  const d = NX_PATHS[name] || NX_PATHS.grid;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={style} aria-hidden="true">
+      {d.split('M').filter(Boolean).map((seg,i)=><path key={i} d={'M'+seg} />)}
+    </svg>
+  );
+}
+window.Icon = Icon;
+</script>
+
+<!-- The real extracted patterns file -->
+<script type="text/babel" src="components/app/nexus-patterns.jsx"></script>
+
+<!-- Style guide app -->
+<script type="text/babel">
+const { useState } = React;
+
+const COLORS = [
+  ['--bg','surface ground'],['--surface','card'],['--surfaceMute','recessed'],
+  ['--ink','body ink'],['--inkMute','secondary'],['--inkFaint','smallest text'],['--inkDim','NON-text only'],
+  ['--teal','meaning'],['--tealTint','teal wash'],['--gold','recognition'],['--goldTint','gold wash'],
+  ['--success','ok'],['--warning','watch'],['--danger','error'],['--rule','hairline'],
+];
+
+function Swatches(){
+  return (
+    <div className="sg-grid sg-swatches">
+      {COLORS.map(([v,label])=>(
+        <div className="sw" key={v}>
+          <div className="sw-chip" style={{ background:`var(${v})` }}/>
+          <div className="sw-meta"><div className="sw-name">{label}</div><div className="sw-val">{v}</div></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StateDemo(){
+  const [state,setState]=useState('loading');
+  const [kind,setKind]=useState('cards');
+  const empty = <EmptyState icon="calendar" title="No activity logged yet" body="Log your first call, appointment or sale — it rolls into this week's report." cta="Log your first activity" onCta={()=>setState('ready')}/>;
+  return (
+    <div>
+      <div className="sg-row" style={{marginBottom:14}}>
+        <div className="sg-toggle">{['loading','empty','error','ready'].map(s=><button key={s} className={state===s?'on':''} onClick={()=>setState(s)}>{s}</button>)}</div>
+        {state==='loading' && <div className="sg-toggle">{['cards','table','timeline','detail'].map(k=><button key={k} className={kind===k?'on':''} onClick={()=>setKind(k)}>{k}</button>)}</div>}
+      </div>
+      <div className="sg-card" style={{minHeight:220}}>
+        <StateLayer state={state} kind={kind} empty={empty} onRetry={()=>setState('ready')}>
+          <div style={{textAlign:'center',padding:'40px 0',color:'var(--inkMute)'}}>
+            <div style={{font:'900 34px var(--display)',color:'var(--ink)'}}>TTD <CountUp value={532777}/></div>
+            <div style={{marginTop:6,fontSize:13}}>Ready state — real content. The hero numeral counts up on load.</div>
+          </div>
+        </StateLayer>
+      </div>
+    </div>
+  );
+}
+
+function DenseTable(){
+  const cols=['Agent','Status','API','Reached','F2F'];
+  const rows=[['Anika Ramdeen','ok','TTD 9.3K',12,3],['Devon Charles','warn','TTD 9.8K',14,3],['Kwame Joseph','ok','TTD 10.4K',15,4],['Priya Maharaj','bad','TTD 10.9K',16,4]];
+  const tmpl='1.6fr .9fr 1fr .7fr .6fr';
+  const ini=n=>n.split(' ').map(x=>x[0]).join('');
+  return (
+    <div className="nx-sheet">
+      <div className="nx-sheet-scroll" style={{maxHeight:'none'}}>
+        <div className="nx-sheet-head" style={{gridTemplateColumns:tmpl,minWidth:0}}>{cols.map((c,i)=><div key={c} className={i===0?'nx-sheet-stick':''}>{c}</div>)}</div>
+        {rows.map((r,i)=>(
+          <div key={i} className="nx-sheet-row" style={{gridTemplateColumns:tmpl,minWidth:0}}>
+            <div className="nx-sheet-stick nx-cell" style={{display:'flex',gap:8,alignItems:'center',fontWeight:600}}><span style={{width:24,height:24,borderRadius:7,background:'var(--tealTint)',color:'var(--teal)',display:'grid',placeItems:'center',font:'700 9.5px var(--mono)',flex:'none'}}>{ini(r[0])}</span>{r[0]}</div>
+            <div><span className={'nx-pill nx-pill--'+r[1]}>{r[1]==='ok'?'Issued':r[1]==='warn'?'Pending':'Lapsed'}</span></div>
+            <div className="nx-sheet-num">{r[2]}</div>
+            <div className="nx-sheet-num">{r[3]}</div>
+            <div className="nx-sheet-num">{r[4]}</div>
+          </div>
+        ))}
+      </div>
+      <div className="nx-sheet-foot">4 agents · sticky header + first column · tabular numerals</div>
+    </div>
+  );
+}
+
+function App(){
+  const [dark,setDark]=useState(false);
+  React.useEffect(()=>{ document.getElementById('root').className='nexus'+(dark?' dark':''); },[dark]);
+  return (
+    <div className="sg-wrap">
+      <div className="sg-top">
+        <div>
+          <div className="sg-kicker">AgencyTrack · Nexus App</div>
+          <h1 className="sg-h1">Living Style Guide <span style={{color:'var(--teal)'}}>v2</span></h1>
+          <p className="sg-lede">The canonical app surface — tokens, type, and the systems the 2026 redesign proved out: state design, motion, dense tables, and accessibility. Everything on this page reads from <b style={{color:'var(--ink)'}}>tokens/app-v2.css</b>. Toggle the theme to verify parity.</p>
+        </div>
+        <div className="sg-toggle">
+          <button className={!dark?'on':''} onClick={()=>setDark(false)}>Light</button>
+          <button className={dark?'on':''} onClick={()=>setDark(true)}>Dark</button>
+        </div>
+      </div>
+
+      <section className="sg-sec">
+        <div className="sg-sec-h">01 · Color</div>
+        <h2 className="sg-sec-t">Tokens</h2>
+        <p className="sg-sec-d">Warm neutrals, teal for meaning, gold for recognition only. <b>--inkFaint</b> is the smallest ink allowed on text (AA-corrected in v2); <b>--inkDim</b> is non-text only.</p>
+        <Swatches/>
+        <div className="sg-note"><b>AA fix:</b> v1's <b>--inkFaint #A8A39C</b> failed WCAG AA on text (~2.3:1). v2 uses <b>#7A7264</b> (~4.7:1) and moves the old value to <b>--inkDim</b> for dividers/disabled glyphs only.</div>
+      </section>
+
+      <section className="sg-sec">
+        <div className="sg-sec-h">02 · Type</div>
+        <h2 className="sg-sec-t">Scale</h2>
+        <p className="sg-sec-d">Cabinet Grotesk display · Satoshi body · JetBrains Mono eyebrows, currency, KPI labels.</p>
+        <div className="sg-card">
+          <div className="sg-type-row"><span className="sg-type-tag">display / 38 / 900</span><span style={{font:'900 38px var(--display)',letterSpacing:'-.02em',color:'var(--ink)'}}>TTD 532,777</span></div>
+          <div className="sg-type-row"><span className="sg-type-tag">display / 22 / 800</span><span style={{font:'800 22px var(--display)',color:'var(--ink)'}}>Performance, made visible</span></div>
+          <div className="sg-type-row"><span className="sg-type-tag">body / 14 / 500</span><span style={{font:'500 14px var(--sans)',color:'var(--ink)'}}>Agents log it once. The CRO confirms it.</span></div>
+          <div className="sg-type-row"><span className="sg-type-tag">mono eyebrow / 11</span><span className="sg-eyebrow" style={{color:'var(--teal)'}}>YTD · SETTLED API</span></div>
+        </div>
+      </section>
+
+      <section className="sg-sec">
+        <div className="sg-sec-h">03 · Controls</div>
+        <h2 className="sg-sec-t">Buttons · pills · eyebrows</h2>
+        <div className="sg-card sg-row">
+          <button className="nx-btn nx-btn--primary"><Icon name="plus" size={15}/> Log activity</button>
+          <button className="nx-btn nx-btn--ghost"><Icon name="repeat" size={15}/> Retry</button>
+          <span className="nx-pill nx-pill--ok">Issued</span>
+          <span className="nx-pill nx-pill--warn">Pending</span>
+          <span className="nx-pill nx-pill--bad">Lapsed</span>
+          <span className="nx-pill nx-pill--mute">Draft</span>
+          <button className="nx-row-act" aria-label="Edit"><Icon name="doc" size={14}/></button>
+          <span className="sg-eyebrow" style={{color:'var(--gold)'}}>★ RECOGNITION</span>
+        </div>
+        <div className="sg-note"><b>No gradient buttons.</b> Teal fill = primary; ghost = teal text + hairline. Row-actions are real 32px buttons with <b>aria-label</b>, never bare glyphs.</div>
+      </section>
+
+      <section className="sg-sec">
+        <div className="sg-sec-h">04 · State design</div>
+        <h2 className="sg-sec-t">Loading · empty · error · ready</h2>
+        <p className="sg-sec-d">Every data surface renders through <b>StateLayer</b>. Skeletons match final layout (no shift); empties are actionable; errors persist with Retry. Toggle below.</p>
+        <StateDemo/>
+      </section>
+
+      <section className="sg-sec">
+        <div className="sg-sec-h">05 · Dense tables</div>
+        <h2 className="sg-sec-t">Operational density</h2>
+        <p className="sg-sec-d">Sticky header + sticky first column, tabular numerals, banded status pills, footer count. Holds 60–120 rows scrolling inside the card.</p>
+        <DenseTable/>
+      </section>
+
+      <section className="sg-sec">
+        <div className="sg-sec-h">06 · Motion & a11y</div>
+        <h2 className="sg-sec-t">The invisible rules</h2>
+        <div className="sg-grid sg-cols-2">
+          <div className="sg-card">
+            <div className="sg-eyebrow" style={{color:'var(--teal)',marginBottom:8}}>MOTION</div>
+            <p style={{font:'13.5px var(--sans)',color:'var(--inkMute)',lineHeight:1.55,margin:0}}>Fast & quiet: <b style={{color:'var(--ink)'}}>--dur-1/2/3</b> (.14/.20/.32s), <b style={{color:'var(--ink)'}}>--ease-out</b> reveals, <b style={{color:'var(--ink)'}}>--ease-spring</b> sheets only. Stagger via <b style={{color:'var(--ink)'}}>transform</b>, never opacity — a paused tab must never strand content. All gated behind prefers-reduced-motion.</p>
+          </div>
+          <div className="sg-card">
+            <div className="sg-eyebrow" style={{color:'var(--teal)',marginBottom:8}}>ACCESSIBILITY · AA</div>
+            <p style={{font:'13.5px var(--sans)',color:'var(--inkMute)',lineHeight:1.55,margin:0}}>Visible <b style={{color:'var(--ink)'}}>--focus</b> ring on every control; focus-trapped dialogs; skip link + landmark; <b style={{color:'var(--ink)'}}>aria-label</b> on every icon-only button; <b style={{color:'var(--ink)'}}>aria-current</b> on active nav; 44px touch targets. Try Tab ⇥ on this page.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

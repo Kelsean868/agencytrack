@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Career Portal v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 460px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.5; color: #6b6560; margin: 0 0 6px; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Career Portal v2 — the journey as the hero</h1>
+    <p>Vertical 7-level ladder shows past achievements, current standing, and the milestones ahead. Tap any future level → drawer with criteria + perks. Commission Playground moved to a dedicated Tools surface.</p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="app-career-v2.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="desktop"
+            title="Desktop — Career Portal v2"
+            subtitle="Light (full ladder · glance) + Dark (drawer open on Level 5 — Senior Advisor, the next milestone)"
+          >
+            <DCArtboard id="d-light" label="01 · Light · Glance"                width={APP_W} height={APP_H}><CareerPortalV2 t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="d-dark"  label="02 · Dark · Drawer · Level 5"       width={APP_W} height={APP_H}><CareerPortalV2 t={APP_DARK} drawerLevel={5} /></DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Mobile — Career Portal v2"
+            subtitle="Light (closed glance) + Dark (bottom sheet open on Level 5 detail)"
+          >
+            <DCArtboard id="m-light" label="03 · Light · Glance"                width={M_W} height={M_H}><CareerPortalV2Mobile t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="m-dark"  label="04 · Dark · Sheet · Level 5"        width={M_W} height={M_H}><CareerPortalV2Mobile t={APP_DARK} sheetLevel={5} /></DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

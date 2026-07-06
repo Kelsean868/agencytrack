@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Production Report v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 660px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Production Report v2 — the in-app tab the PDFs are pulled from</h1>
+    <p>
+      The missing screen: the <b>Production</b> tab (spec §18), one surface that adapts its scope by role — <b>agent</b> (own production + branch rank), <b>unit manager</b> (their unit), <b>branch manager</b> (the whole branch), <b>sales manager</b> (all branches). Each has the <b>time-period toggle</b> (this week · month · quarter · year), a settled/provisional <b>data-source badge</b>, period-scoped totals, a ranked <b>production table</b> + leaderboard, and the <b>Download</b> button that produces the Agent / Unit / Branch / Agency PDFs already designed. Light + dark + mobile.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="manager-v2-shared.jsx"></script>
+  <script type="text/babel" src="mastersheet-v2-shared.jsx"></script>
+  <script type="text/babel" src="prodreport-v2-shared.jsx"></script>
+  <script type="text/babel" src="prodreport-v2-scenes.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="agent"
+            title="Agent — own production"
+            subtitle="What the agent pulls from their dashboard. Their settled production for the period, the four windows (week → year), where they stand vs their tenure floor, and their rank in the branch. Download = the Agent Performance Report PDF."
+          >
+            <DCArtboard id="agent-light" label="01 · Agent · Light" width={APP_W} height={APP_H}>
+              <ProdReportDesktop t={APP_LIGHT} role="agent" period="month" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="unit"
+            title="Unit Manager — their unit"
+            subtitle="Scoped to the unit manager's ~10 agents. Period totals, the ranked unit roster, and a top-performers rail. Download = the Unit Performance Report PDF (new for the manager tier)."
+          >
+            <DCArtboard id="unit-light" label="02 · Unit Manager · Light" width={APP_W} height={APP_H}>
+              <ProdReportDesktop t={APP_LIGHT} role="unit" period="week" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="branch"
+            title="Branch Manager — the whole branch"
+            subtitle="The branch manager's view: all 28 agents ranked for the period, branch totals, on-pace count, and the leaderboard. Download = the Branch Performance Report PDF (replacing today's raw CSV). Light + dark."
+          >
+            <DCArtboard id="branch-light" label="03 · Branch Manager · Light" width={APP_W} height={APP_H}>
+              <ProdReportDesktop t={APP_LIGHT} role="branch" period="week" />
+            </DCArtboard>
+            <DCArtboard id="branch-dark" label="04 · Branch Manager · Dark" width={APP_W} height={APP_H}>
+              <ProdReportDesktop t={APP_DARK} role="branch" period="week" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="sm"
+            title="Sales Manager — all branches"
+            subtitle="The cross-branch agency view: branches ranked by production for the period, agency totals, and the branch leaderboard. Download = the Agency Performance Report PDF (Phase 9, post-pilot)."
+          >
+            <DCArtboard id="sm-light" label="05 · Sales Manager · Light" width={APP_W} height={APP_H}>
+              <ProdReportDesktop t={APP_LIGHT} role="sm" period="quarter" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Production Report (mobile)"
+            subtitle="The branch manager's production tab on a phone: period chips, branch totals, download, and the ranked list."
+          >
+            <DCArtboard id="m-branch" label="06 · Mobile · Branch · Light" width={M_W} height={M_H}>
+              <ProdReportMobile t={APP_LIGHT} period="week" />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

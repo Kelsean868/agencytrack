@@ -1,0 +1,453 @@
+0: ANNUAL
+1: MONTHLY
+2: A.    FIRST-YEAR COMMISSIONS REQUIRED (from page 3)
+3: E.    CLOSING INTERVIEWS REQUIRED (applications required times average number of closing interviews per sale)
+4: F.  SEEN CALLS REQUIRED (closing interviews required times average number of seen calls per closing interview)
+5: G. NEW QUALIFIED PROSPECTS REQUIRED (sufficient to replace those eliminated)
+6: Base your calculations for lines E, F, and G on your experience, if possible. Use average from last year's plan book, if available; otherwise use agency averages. Caution: Don't underestimate.
+7: *WEEKLY (1/4 Monthly)
+8: "Plan Your Work and Work Your Plan"
+9:  
+10:   
+11: Name:
+12: Home Address: 
+13: Home Phone:
+14: Business Name:
+15: Business Address:
+16: Business Phone:
+17: LOOKING AHEAD
+18: "A consistent finding in motivation research is that challenging, realistic goals lead to better performance than do no goals, easy goals, or extremely difficult goals. It's a fact that producers who set and work toward production goals outperform other producers; they have a clear understanding of what their goals are and how to achieve them. In fact, goal-setting is one of the strongest predictors of production."
+19: -from LIMRA's The Productivity Planner
+20: Follow this six-step plan to organize your production for this year and to start looking ahead to next year and beyond.
+21: Step 1 -Organize your money needs for the year.
+22: Determine your money needs for next year using the budget form shown on page 3. By determining how much income you must have during the year, you can calculate how much you must earn in first-year life commissions. Note: Additional sections are provided throughout this book for recording activity and results for other lines, as well, such as annuities, disability income, automobile, homeowners, etc.
+23: Step 2 -Organize your activities for the year.
+24: To earn the commissions needed to meet your money needs you must have prospects, secure appointments, make presentations, ask prospects to buy, secure applications, deliver policies, and collect first-year premiums from which your first-year commissions will be derived. From Step 1, you know how much you must earn. In Step 2, you translate this income into activities -your minimum requirements for gathering new qualified prospects, making personal (seen) calls, conducting interviews, etc. -in terms of annual, monthly, and weekly quotas.
+25: Step 3 -Organize your plans for self-improvement.
+26: To reach your objectives, you must work effectively. Are you working as effectively as you did last year? To answer this question, rate your performance using the chart on page 6. Each of five major areas that determine your effectiveness as a producer is broken down into specific functions that directly affect your performance. Your ratings will help you to pinpoint those areas in which you are not as effective as you would like to be and to develop plans for improving your effectiveness. Rate yourself quarterly to evaluate how your self-improvement plans are working.
+27: Step 4 -Organize your prospecting plans.
+28: In a normal day, a continuous stream of prospect cards flows into and out of your prospect file. At least once a month all cards should be removed from your file preparatory to planning your prospecting and selling activities for the next 30 days; enter these prospects' names on the appropriate page of your Monthly Prospecting Work Sheet (pages 8-31). Some suggestions for organizing your prospecting plans appear on page 7.
+29: Step 5 -Organize your record keeping.
+30: The best way to stay on track with your sales and self-improvement activities is to keep good records. Use the charts on pages 44, 45, and 58-61 to track your progress toward your objectives. These figures come from your monthly activity summaries on pages 32--43 and from your record of written and paid business on pages 46-57. Information recorded on these pages (source of prospect, interview on which sale closed, cash with application, etc.) also gives you valuable feedback about your markets and sales methods that will help you monitor your progress toward self-improvement.
+31: On pages 58-61, post your monthly commissions as a further check on your financial progress. Use pages
+32: 62-63 to record your business expenses and to determine the profit from your activities.
+33: Remember that the real value of record keeping is that it provides valuable feedback on your performance that will keep you on track toward accomplishing your objectives. With proper record keeping you will always know where you stand and should never fall so far behind in your objectives that you can't catch up.
+34: Step 6 -Organize your long-range plans.
+35: An important part of planning for the future is predicting what that future will be. Start by using the Future Prospects form on pages 64-65 to list the prospects and policy owners you plan to see next year. Then use the Long-Range Planning form on page 66 to prepare a three-year plan for yourself. Make sure that your objectives are based on past results and your best estimates of what is possible. You can then meet or surpass these objectives by following through on your plans with specific actions to improve performance.
+36: Looking ahead to next year and beyond can help you achieve your most ambitious goals, if you carry out the plans that you have made.
+37: ORGANIZE YOUR MONEY NEEDS FOR THE YEAR
+38: The first step in planning for greater success is to find out how much income you need to cover your requirements. Use the form below to compute your budget for next year.
+39: TOTAL
+40: HOW PAID*
+41: Rent or mortgage payments
+42: TOTAL ANNUAL
+43: Utilities -gas, heat, light, telephone, water
+44: Disability income insurance
+45: Homeowners insurance
+46: Car insurance
+47: Other
+48: Food
+49: Clothing
+50: Laundry, tailoring
+51: Entertainment
+52: Car expenses, nonbusiness
+53: Medical -doctor, dentist, drugs
+54: Household
+55: Sales promotion, advertising, direct mail, tuition,
+56: Telephone, computer, stationery, postage, supplies
+57: Business travel, car expense
+58: Business entertainment
+59: Life insurance
+60: Savings account
+61: Debt reduction (other than mortgage)
+62: Investments
+63: Slush fund
+64: Donations -religious, charitable, etc.
+65: Recreation
+66: MISCELLANEOUS
+67: Club dues
+68: Gifts and services
+69: Vacation
+70: Life
+71: Total   
+72: NAME
+73: PROSPECT'S NEED*
+74: NEW PROSPECTS SECURED DURING THE MONTH
+75: PROSPECTS TO SEE
+76: POLICYOWNERS TO SEE
+77: OTHER PROSPECTING ACTIVITIES 
+78: Wk.
+79: Planned
+80: Actual
+81: Nests to Develop
+82: JANUARY
+83: TOTAL MONTHLY
+84: *As a reminder for actual payment of item, indicate whether item is paid monthly (M); quarterly (Q); semiannually (S);  ann ually (A); every two, three, or five years (2A, 3A, SA).
+85: ORGANIZE YOUR ACTIVITIES FOR THE YEAR
+86: ACTIVITY OBJECTIVES-LIFE
+87: The first step in planning for improvement is to identify areas that need improvement. For each area listed below, rate yourself using the following scale: 3, good; 2, fair; l, poor. The next step is to determine how to improve those areas in which you rated yourself a 1or 2 and to develop specific plans to strengthen them. Briefly indicate how you plan to improve these areas on the form below. Rate yourself quarterly to evaluate how your self-improvement plans are working.
+88: ORGANIZE YOUR PLANS FOR SELF-IMPROVEMENT
+89: JAN.
+90: APR.
+91: JULY
+92: OCT.
+93: How do you plan to improve?
+94: PERSONAL EFFECTIVENESS
+95: Ambition
+96: Getting along with people
+97: Self-confidence
+98: Enthusiasm
+99: Managing personal affairs
+100: Daily planning
+101: Full day's work
+102: Keeping records
+103: Analysis of results
+104: Daily study
+105: Continuous prospecting
+106: Getting names
+107: Getting qualifying information
+108: Getting  introductions
+109: Eliminating  suspects
+110: SKILL IN SELLING
+111: Approach/getting  appointments
+112: Presentation
+113: Meeting objections
+114: Closing
+115: Policy delivery
+116: QUALITY BUSINESS
+117: Cash with application
+118: Use of settlement options
+119: Average size policy
+120: Collection frequency
+121: Quality of prospect
+122: PROSPECTING
+123: ORGANIZATION EFFICIENCY
+124:   ORGANIZE YOUR PROSPECTING PLANS
+125: 1.      NEW PROSPECTS SECURED DURING THE MONTH
+126: These columns start blank each month. As new qualified prospects are secured each day, they are transferred from the Weekly Sales Planner* to the New Prospects column. Record the prospect's name and the prospect's need in the spaces provided. Then complete the master prospect card.
+127: 2.      PROSPECTS TO SEE
+128: List all the calls that you plan to make this month -prospects whom you expect to approach. Many of these may develop into seen calls and closing interviews during the month.
+129: 3.      POLICYOWNERS TO SEE
+130: Plan the service or sales calls that you will make during the month on present policy owners.
+131: 4.      OTHER PROSPECTING ACTIVITIES
+132: Centers of Influence -Centers whom you plan to see as well as new centers to develop should be listed at the beginning of each month.
+133: Nests to Develop -Your plans for prospecting in nests should be listed here for the month.
+134:    ORGANIZE YOUR RECORD KEEPING
+135: Following are suggestions on how to use the record-keeping work sheets on pages 32-63:
+136: The weekly totals are from your Weekly Sales Planner.* At the end of the month, simply transfer these monthly totals to the Monthly Record of Activities.
+137: From the Weekly Sales Planner,* list the appropriate information for each sale. If more than one plan or type of insurance is sold to any one individual, additional lines should be used to record each plan or type.
+138: From pages 4-5, by product line, list your monthly objectives for premium or volume and for commission. Next list your paid sales results for last year in premium or volume. Last, post your monthly commissions earned (new and renewal) from your commission statement. You can now compare your progress with your objectives.
+139: From the Weekly Sales Planner,* list your weekly business expenses. By subtracting your expenses from your commission earnings, you can determine the profitability of your monthly and yearly activities.
+140:   ORGANIZE YOUR LONG-RANGE   PLANS
+141: List the prospects and policy owners you plan to see next year.
+142: Prepare a three-year plan for yourself using past results and reasonable estimates.
+143: FEBRUARY
+144: MARCH
+145: APRIL
+146: MAY
+147: JUNE
+148: AUGUST
+149: SEPTEMBER
+150: OCTOBER
+151: NOVEMBER
+152: DECEMBER
+153: MONTHLY SUMMARY
+154: LIFE
+155: WEEK
+156: Seen Calls
+157: Interviews
+158: Closing Interviews
+159: Service Calls
+160: Annualized Premium Sold
+161: Potential Annualized First-Year Commissions
+162: New Qualified Prospects
+163: Number of Sales
+164: Value Each Seen Call
+165: Value Each Interview
+166: Value Each Closing Interview
+167: Number Closing to Make a Sale
+168: Number of Seen Calls to a Closing Interview
+169: MONTHLY RECORD OF ACTIVITIES
+170: January
+171: February
+172: March
+173: April
+174: May
+175: June
+176: July
+177: August
+178: September
+179: October
+180: November
+181: December
+182: Monthly Average
+183: Value of Each Interview
+184: Number Seen Calls to a Closing Interview
+185: Number Closing Interviews to Make a Sale
+186: Enter here first all pending cases written but not placed last year.
+187: RECORD OF WRITTEN
+188: Occupation
+189: Source of Prospect
+190: Interview on Which Sale Closed
+191: Cash with Application
+192: Need Covered
+193: Persistency Rating
+194: Policy Number
+195: Plan of Insurance**
+196: How Paid A, S, Q, M
+197: Age at Issue
+198: Total Insurance Owned
+199: Remarks
+200: On this side record all cases written and submitted.
+201: AND PAID BUSINESS
+202: * If the user wishes to list the amount and plan of insurance in two parts (to show, for example, a combination ordinary life and 10-year level term sale)
+203: ** This column should describe the type of sale, such as life , single premium annuity, major medical, disability income, automobile, homeowners
+204: MONTHLY OBJECTIVES AND RECORD OF LIFE PROGRESS
+205: MONTH
+206: PAID LAST YEAR
+207: FOR MONTH
+208: YEAR TO DATE
+209: OBJECTIVE THIS YEAR
+210: PAID THIS YEAR
+211: + AHEAD                   -BEHIND OBJECTIVE
+212: Avg. per Month
+213: Total
+214: (Commissions)
+215: FIRST-YEAR COMMISSIONS THIS YEAR
+216: RENEWAL COMMISSIONS THIS YEAR
+217: TOTAL OF FIRST-YEAR AND RENEWAL COMMISSIONS
+218: OBJECTIVE TO DATE
+219: RECORD OF BUSINESS EXPENSE
+220: SALES PROMOTION, ADVERTISING, DIRECT MAIL
+221: TUITION, TRADE ASSOCIATION DUES, SERVICES, OREIODICALS
+222: TELEPHONE, COMPUTER,STATIONERY, POSTAGE SUPPLIES
+223: SECRETARIAL AND BANKING SERVICES
+224: BUSINESS AND TRAVEL, CAR EXPENSE
+225: BUSINESS ENTERTAINMENT
+226: OTHER
+227: EXPLANATION
+228: FEB.
+229: MAR. 
+230: TOTAL 
+231: JUN
+232: AUG.
+233: SEPT.
+234: NOV.
+235: DEC.
+236: TOTAL YEAR
+237: Commissions from:
+238: TOTAL COMMISSIONS
+239: 1. TOTAL COMMISSSIONS
+240: 2. TOTAL BUSINESS EXPENSE
+241: *An equivalent record of weekly activity may be used.
+242: Table of Contents
+243: Steps to Guide you
+244: Organize your money needs 2020
+245: Organize your Year activities
+246: Self-Improvement goals
+247: Organizing your goals
+248: Direct Mailings/Emails -Schedule the number of letters that you plan to send each week.
+249: JAN MTH SUMMARY
+250: FEB MTH SUMMARY
+251: MAR MTH SUMMARY
+252: APR MTH SUMMARY
+253: MAY MTH SUMMARY
+254: JUN MTH SUMMARY
+255: JUL MTH SUMMARY
+256: AUG MTH SUMMARY
+257: SEPT MTH SUMMARY
+258: OCT. MTH SUMMARY
+259: NOV MTH SUMMARY
+260: DEC MTH SUMMARY
+261: Monthly Record of Activities 1
+262: Monthly Record of Activities 2
+263: Written vs Paid Business
+264: MONTHLY OBJ & REC OF PROGRESS
+265: Record of Business Expense
+266: Direct Mailings /Email Mkting
+267: Knowlegde is on of your basic selling tool. Buyers of life insurance today are better educated and more sophisticated than ever before, so build your new career on a firm, factual foundation. You will grow in your profession as your knowledge grows… 
+268: P.E TOTAL 
+269: O.E TOTAL
+270: PROS. TOTAL
+271: SELLING SKILLS TOTAL
+272: QB TOTAL
+273: JAN. -MAR.
+274: APR.- JUN.
+275: JUL.- SEPT.
+276: OCT. - DEC.
+277: Following are suggestions on how to use the Monthly Prospecting Work Sheets
+278: 1.      MONTHLY SUMMARY and MONTHLY RECORD OF ACTIVITIES 
+279: 2.      RECORD OF WRITIEN AND PAID BUSINESS 
+280: 3.      MONTHLY OBJECTIVES AND RECORD OF PROGRESS 
+281: 4.      RECORD OF BUSINESS EXPENSE 
+282: 1.      FUTURE PROSPECTS
+283: Use the forms to organize your long-range plans.
+284: 2.      LONG-RANGE PLANNING
+285: SUMMARY
+286: JUL.
+287: Property
+288: MONTHLY (1/10 Annual)
+289: DAILY (1/5 Weekly)
+290: D.   MONTHLY PREMIUMS REQUIRED (Annual premiums divided by 12)  Formula = C/12
+291: Ratios/ Percentages
+292: D.   APPLICATIONS REQUIRED (monthly premiums required divided by estimated average monthly premium per policy) Average monthly premium per policy: 
+293: C.    ANNUAL REMIUMS REQUIRED - API ( first-year commissions required divided by average commission rate) Average commission rate: 
+294: B.    FIRST-YEAR COMMISSIONS REQUIRED ADJUSTED FOR PERSISTENCY  Expected Persistency: 
+295: ACTIVITY OBJECTIVES - ACCIDENT & HEALTH
+296: ACTIVITY OBJECTIVES - PROPERTY
+297: D.   APPLICATIONS REQUIRED (Annual premiums required divided by estimated average Annual premium per policy) Average Annual premium per policy: 
+298: D.   APPLICATIONS REQUIRED (annual premiums required divided by estimated average annual premium per policy) Average annual premium per policy: 
+299: ACCIDENT & HEALTH
+300: PROPERTY
+301: Number of Applications
+302: A&H
+303: Property taxes
+304: PAYE Tax
+305: 2. Total Annual Requirement (Pre-Tax)…..................................................................................................................................................................
+306: 3. Deduct Estimated Renewal Income -For the Year
+307: MONTHLY OBJECTIVE LIFE
+308: MONTHLY OBJECTIVE ACCIDENT & HEALTH
+309: MONTHLY OBJECTIVE PROPERTY
+310: Health
+311: PAYE TAX
+312: Monthly
+313: Annually
+314: Tax:
+315: 1. Total Annual Requirement (After- Tax)…........................................................................................................................
+316: SAVINGS & ACCUMULTION
+317: FIXED 
+EXPENSES
+318: LIVING 
+EXPENSES
+319: BUSINESS 
+EXPENSES
+320: Motor
+321: Based on your calculations the income needed from Life Business is:
+322: YES
+323: 4. First-Year Commissions Required - For the Year…...................................................................................................................................................
+324: 5. First-Year Commissions TARGETS -For the Year
+325: ACTIVITY OBJECTIVES - MOTOR
+326: MOTOR
+327: Avg. per Month:
+328: MONTHLY OBJECTIVES AND RECORD OF ACCIDENT & HEALTH PROGRESS
+329: (A.P.I.)
+330: (A.P.I)
+331: MONTHLY OBJECTIVES AND RECORD OF PROPOERTY PROGRESS
+332: MONTHLY OBJECTIVES AND RECORD OF MOTOR PROGRESS
+333: MONTHLY OBJECTIVE MOTOR
+334: Name of Insured
+335: Annual Income of Owner
+/Payer
+336: Name of Owner/Payer
+337: Initial Premium
+338: Proposed Coverage Amount
+339:  Proposed 
+A.P.I.
+340: Proposed Type of Policy
+341: Proposed Premium Frequency
+(M, S, Q, A)
+342: Marital Status
+343: Number of Children
+344: Morning, 
+Afternoon, 
+Night
+345:  Issued Coverage*
+346: Settled 
+A.P.I.
+347: Date Issued
+(dd/mm/yyyy)
+348: Date Policy Rec'd by Agent (dd/mm/yyyy)
+349: Date Policy Delivered to Client (dd/mm/yyyy)
+350: Date of Last Review (dd/mm/yyyy)
+351: Date of Birth (dd/mm/yyyy)
+352: Earned Commission
+353: Date Written 
+(dd/mm/yyyy)
+354: Date Submitted to Branch 
+(dd/mm/yyyy)
+355: Rated?
+356: Smoker?
+357: WEEK ENDING 
+(dd/mm/yyyy)
+358: HEALTH
+359: 3. TOTAL PROFIT/LOSS
+360: Employer
+361: Age of Youngest Child
+362:  Home Address (City/Village)
+363: Proposed 
+Premium/PPP
+364: Type of New Business
+365: Type of Client
+366: Employer Address
+(City/Village)
+367: Email
+368: Kyron Marchan
+369: Cypress Ridge, Union Hall San Fernando 
+370: 798-1014
+371: KQM Insurance Advicers Ltd
+372: TATIL, Grand Bazaar 
+373: 327-8273
+374: Secretarial and banking services
+375: CONTACT
+376: Center of Influence
+377: BUSINESS NAME
+378:  BUSINESS #
+379: CONTACT NAME
+380: CONTACT #
+381: Social Media Posts
+382: Wk
+383: CONTACT EMAIL
+384: MONTHLY PROSPECTING WORK SHEET
+385: Seminar Presentations
+386: CONTACT DETAILS
+387: Contacted
+388: Date of First Interview 
+(dd/mm/yyyy)
+389: NO
+390: **If your earnings is Modal, then this amount will be paid over a 24 month period, where roughtly 54% of commissions needed will be paid in the current year & 46% of commissions will be paid the following year. Would you like to base your calculations on the amount needed to EARN 100% of this commission in the 12 months of the current year? If you are on Projected Commission, put "NO".
+391: **If your earnings is Modal, then this amount will be paid over a 24 month period, where roughtly 54% of commissions needed will be paid in the current year & 46% of commissions will be paid the following year. Would you like to base your calculations on the amount needed to EARN 100% of this commission in the 12 months of the current year? If you are on Projected Commission, put "NO".
+392: Annual
+393: Life License Renewal
+394: General License Renewal
+395: TTAIFA fees
+396: TTII Portal Fee
+397: CPD classes
+398: TTAIFA Courses (FSCP/etc)
+399: MDRT membership fee
+400: MDRT Convention
+401: TTAIFA Congress
+402: Other Industry Events
+403: Branch Retreats
+404: Insurance Industry Expenses
+405: trade association dues, services, events
+406: Total Annual
+407: Bi-Annual
+408: Quarterly
+409: Car Expenses
+410: Insurance
+411: Parking fees
+412: Tickets
+413: Miscelaneous
+414: Gas/Petrol/Electric 
+415: Montly
+416: Vehicle Loan
+417: Total Annual with loan
+418: Total Annual without loan
+419: Car wash and maintainence
+420: Mechanical Servicing
+421: nkjytr
+422: Credit Card #1
+423: Credit Card #2
+424: Car Loan #1
+425: Car Loan #2
+426: Personal Loan #1
+427: Personal Loan #2
+428: Sou-sou #1
+429: Sou-sou #2
+430: Loans/Debt Payments
+431: Hire-Purchase
+432: Total Debt payments
+433: With loan
+434: Without loan
+435: Personal (1/3)
+436: Business (2/3)

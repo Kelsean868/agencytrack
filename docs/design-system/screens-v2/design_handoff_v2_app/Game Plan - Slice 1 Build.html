@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Game Plan v2 — Slice 1 Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:740px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  /* legend */
+  .legend{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .lg{background:var(--surface);border:1px solid var(--rule);border-radius:11px;padding:12px 13px}
+  .lg .sw{width:100%;height:7px;border-radius:99px;margin-bottom:9px}
+  .lg .rn{font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:-.01em}
+  .lg .rs{font-family:var(--mono);font-size:9px;color:var(--inkFaint);letter-spacing:.04em;margin-top:4px;line-height:1.5}
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--inkMute)}
+  .keylegend span{display:inline-flex;align-items:center;gap:7px}
+  .keylegend .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.exist{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.new{background:var(--goldTint);color:var(--goldInk)}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)}
+
+  /* tag chips inside the surface */
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.exist{background:var(--tealTint);color:var(--tealDark)}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+
+  /* app frame */
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(38,35,28,.10);display:flex;gap:14px}
+  .sidebar{width:158px;flex-shrink:0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 9px;display:flex;flex-direction:column;gap:3px}
+  .sb-logo{display:flex;align-items:center;gap:8px;padding:4px 6px 12px}
+  .sb-logo .lm{width:24px;height:24px;border-radius:7px;background:var(--teal)}
+  .sb-logo .lt{font-family:var(--display);font-weight:800;font-size:13px}
+  .sb-grp{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.12em;color:var(--inkFaint);padding:9px 8px 4px}
+  .nav{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;font-size:11.5px;font-weight:600;color:var(--inkMute)}
+  .nav .ic{width:14px;height:14px;border-radius:4px;background:var(--inkDim);flex-shrink:0}
+  .nav.on{background:var(--tealTint);color:var(--tealDark);font-weight:700}
+  .nav.on .ic{background:var(--teal)}
+  .nav.child{margin-left:14px;font-size:11px;padding-top:6px;padding-bottom:6px}
+  .nav .nb{margin-left:auto;font-family:var(--mono);font-size:7px;font-weight:700;letter-spacing:.06em;padding:1px 5px;border-radius:99px;background:var(--goldTint);color:var(--goldInk)}
+  .nav .nb.soon{background:var(--surfaceMute);color:var(--inkFaint)}
+
+  .canvas{flex:1;min-width:0;display:flex;flex-direction:column;gap:13px}
+  .topbar{display:flex;align-items:center;gap:10px;padding:2px 2px 0}
+  .topbar .pt{font-family:var(--display);font-weight:800;font-size:17px;white-space:nowrap}
+  .topbar .ps{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.05em}
+
+  /* anchor strip */
+  .anchor{background:var(--surface);border:1px solid color-mix(in srgb,var(--warning) 38%,transparent);border-radius:14px;padding:16px 20px;position:relative;overflow:hidden}
+  .anchor .glow{position:absolute;top:-70px;right:-70px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,var(--warningTint),transparent 65%);pointer-events:none}
+  .anchor .top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;position:relative}
+  .anchor .eyy{display:flex;align-items:center;gap:9px}
+  .anchor .ey{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.16em;color:var(--warning)}
+  .statuspill{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;padding:2px 9px;border-radius:99px;background:var(--warningTint);color:var(--warning)}
+  .anchor .big{font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.018em;line-height:1.15;margin-top:9px;max-width:430px}
+  .anchor .big .g{color:var(--gold)}
+  .anchor .sl{font-size:11px;color:var(--inkMute);margin-top:5px;max-width:430px;line-height:1.45}
+  .anchor .built{text-align:right;flex-shrink:0}
+  .anchor .built .bl{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.14em;color:var(--inkFaint)}
+  .anchor .built .bv{font-family:var(--display);font-weight:800;font-size:28px;letter-spacing:-.022em;margin-top:5px;line-height:1}
+  .anchor .built .bs{font-family:var(--mono);font-size:9.5px;color:var(--inkMute);margin-top:5px}
+  .chips{display:flex;gap:16px;margin-top:15px;flex-wrap:wrap;position:relative}
+  .chip{display:flex;align-items:center;gap:8px}
+  .chip .cd{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+  .chip .cl{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint)}
+  .chip .cv{font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:-.012em;margin-top:2px;white-space:nowrap}
+  .chip .cc{display:flex;flex-direction:column;line-height:1.1}
+
+  /* step rail */
+  .rail{display:flex;gap:10px;align-items:stretch}
+  .step{flex:1;min-width:0;background:var(--surface);border:1px solid var(--rule);border-radius:11px;padding:12px 13px;display:flex;align-items:center;gap:11px;position:relative}
+  .step.cur{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 40%,transparent)}
+  .step.soon{opacity:.72}
+  .step .sn{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:12px}
+  .step.done .sn{background:var(--success);color:#fff}
+  .step.cur .sn{background:var(--teal);color:#fff;box-shadow:0 0 0 3px var(--tealTint)}
+  .step.soon .sn{background:var(--surfaceMute);color:var(--inkFaint)}
+  .step .sl{flex:1;min-width:0}
+  .step .sk{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.1em}
+  .step.done .sk{color:var(--success)} .step.cur .sk{color:var(--teal)} .step.soon .sk{color:var(--inkFaint)}
+  .step .st{font-size:12px;font-weight:700;letter-spacing:-.005em;margin-top:2px}
+  .step .ss{font-size:9px;color:var(--inkFaint);margin-top:1px}
+  .railchev{display:flex;align-items:center;color:var(--inkDim);font-weight:700;flex-shrink:0}
+
+  /* hub body: cascade + commit */
+  .hub{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;align-items:start}
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:15px 17px}
+  .ch{display:flex;align-items:baseline;gap:9px;margin-bottom:11px}
+  .ch .t{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--inkFaint)}
+  .ch .s{font-family:var(--mono);font-size:9px;color:var(--inkFaint)}
+  /* cascade rungs */
+  .rung{padding:12px 14px;border-radius:10px;position:relative}
+  .rung.live{background:var(--goldTint);border:1px solid color-mix(in srgb,var(--gold) 30%,transparent)}
+  .rung.soon{background:var(--surfaceSoft);border:1px dashed var(--ruleStrong)}
+  .rung .rk{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em}
+  .rung.live .rk{color:var(--goldInk)} .rung.soon .rk{color:var(--inkFaint)}
+  .rung .rl{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:3px}
+  .rung .rd{font-size:12px;color:var(--inkMute)}
+  .rung .rv{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.022em;white-space:nowrap}
+  .rung .soontag{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;color:var(--inkFaint);padding:3px 9px;border-radius:99px;background:var(--surfaceMute);text-transform:uppercase}
+  .cscv{display:flex;justify-content:center;color:var(--inkFaint);padding:5px 0}
+  /* commit card */
+  .commit{background:var(--surface);border:1px dashed var(--ruleStrong);border-radius:13px;padding:15px 17px;position:relative;opacity:.92}
+  .commit .lockbadge{position:absolute;top:13px;right:14px;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint);background:var(--surfaceMute);padding:3px 8px;border-radius:99px}
+  .commit .ey{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.16em;color:var(--inkFaint)}
+  .commit .ct{font-size:15px;font-weight:800;font-family:var(--display);margin-top:8px;letter-spacing:-.01em;color:var(--inkMute)}
+  .commit .cd{font-size:11px;color:var(--inkFaint);margin-top:6px;line-height:1.5}
+  .commit .cbtn{margin-top:13px;padding:11px;border-radius:10px;background:var(--surfaceMute);color:var(--inkFaint);font-size:13px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px}
+  .commit .goalink{margin-top:10px;font-family:var(--mono);font-size:10px;color:var(--teal);display:flex;align-items:center;gap:6px;font-weight:700}
+
+  /* annotation columns */
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.exist{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.exist .ad b{color:var(--tealDark)}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+
+  /* money needs split */
+  .moneywrap{display:grid;grid-template-columns:1.15fr .85fr;gap:22px;align-items:start}
+  .mnpanel{background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+  .mn-h{padding:13px 16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:10px}
+  .mn-h .mt{font-family:var(--display);font-weight:800;font-size:15px}
+  .mn-h .sharetog{margin-left:auto;display:flex;align-items:center;gap:7px;opacity:.5}
+  .mn-h .sharetog .tg{width:30px;height:17px;border-radius:99px;background:var(--surfaceMute);border:1px solid var(--ruleStrong);position:relative}
+  .mn-h .sharetog .tg::after{content:'';position:absolute;left:2px;top:1.5px;width:12px;height:12px;border-radius:50%;background:var(--inkFaint)}
+  .mn-h .sharetog .sl{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--inkFaint);letter-spacing:.06em}
+  .mngroup{border-bottom:1px solid var(--rule)}
+  .mng-h{display:flex;align-items:center;gap:10px;padding:11px 16px}
+  .mng-h .gd{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+  .mng-h .gl{font-size:13px;font-weight:700;flex:1}
+  .mng-h .gc{font-family:var(--mono);font-size:9px;color:var(--inkFaint);letter-spacing:.04em}
+  .mng-h .gt{font-family:var(--display);font-weight:800;font-size:13px;margin-left:10px;white-space:nowrap}
+  .mline{display:flex;align-items:center;gap:10px;padding:7px 16px 7px 34px;border-top:1px solid var(--rule)}
+  .mline .ml{flex:1;min-width:0;font-size:11.5px;color:var(--ink);font-weight:600}
+  .mline .ml.empty{color:var(--inkFaint);font-weight:500}
+  .mline .amt{display:flex;align-items:center;height:30px;width:108px;border-radius:8px;border:1px solid var(--ruleStrong);background:var(--surface);overflow:hidden;flex-shrink:0}
+  .mline .amt.empty{border-color:var(--rule);background:var(--surfaceSoft)}
+  .mline .amt .cu{font-family:var(--mono);font-size:8.5px;color:var(--inkFaint);padding-left:8px}
+  .mline .amt .va{flex:1;text-align:right;padding-right:9px;font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:-.01em}
+  .mline .amt.empty .va{color:var(--inkDim)}
+  .mline .freq{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;background:var(--surface);border:1px solid var(--rule);border-radius:7px;font-size:10px;font-weight:600;color:var(--inkMute);white-space:nowrap;flex-shrink:0}
+  .mline .ann{width:62px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--inkMute);flex-shrink:0}
+  .mline .ann.empty{color:var(--inkDim)}
+  .mn-sum{background:var(--surfaceSoft);padding:13px 16px;display:flex;flex-direction:column;gap:7px}
+  .sumrow{display:flex;align-items:center;justify-content:space-between}
+  .sumrow .sl{font-size:11.5px;color:var(--inkMute)}
+  .sumrow .sl.b{font-weight:700;color:var(--ink)}
+  .sumrow .sv{font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:-.012em;white-space:nowrap}
+  .sumrow .sv.op{font-family:var(--mono);font-size:11px;color:var(--inkFaint);font-weight:700}
+  .sumrow.final{padding-top:9px;border-top:1px solid var(--rule);margin-top:2px}
+  .sumrow.final .sv{color:var(--gold);font-size:18px}
+  .badge44{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--teal);background:var(--tealTint);padding:2px 7px;border-radius:5px;letter-spacing:.04em}
+
+  .split-rec{background:var(--successTint);border:1px solid color-mix(in srgb,var(--success) 30%,transparent);border-radius:13px;padding:16px 18px;margin-top:18px;display:flex;gap:13px}
+  .split-rec .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--success);flex-shrink:0;padding-top:2px}
+  .split-rec .h{font-size:14px;font-weight:800;font-family:var(--display);letter-spacing:-.01em}
+  .split-rec p{font-size:12.5px;color:var(--ink);margin-top:5px;text-wrap:pretty}
+  .split-rec b{font-weight:700}
+  .split-rec code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  /* deferred */
+  .deferbox{background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:14px;padding:18px 20px}
+  .deferbox .dt{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--danger);margin-bottom:5px;display:flex;align-items:center;gap:8px}
+  .deferbox .dsub{font-size:12.5px;color:var(--ink);margin-bottom:14px;text-wrap:pretty}
+  .defgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .defitem{background:var(--surface);border:1px solid color-mix(in srgb,var(--danger) 22%,transparent);border-radius:10px;padding:12px 14px}
+  .defitem .dn{font-size:13px;font-weight:700;display:flex;align-items:flex-start;gap:8px}
+  .defitem .dn::before{content:'✕';color:var(--danger);font-weight:700;font-size:11px;line-height:1.5}
+  .defitem .dd{font-size:11.5px;color:var(--inkMute);margin-top:4px;text-wrap:pretty}
+  .defitem .s2{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;color:var(--teal);background:var(--tealTint);padding:2px 7px;border-radius:99px;display:inline-block;margin-top:7px}
+
+  /* states */
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:15px 14px;min-height:158px;display:flex;flex-direction:column;gap:10px}
+  .skel{background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .skrail{display:flex;gap:6px}
+  .skrail i{flex:1;height:34px;border-radius:8px;background:var(--surfaceMute)}
+  .emptynote,.errs{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:6px}
+  .emptynote .ic{width:40px;height:40px;border-radius:11px;background:var(--goldTint);color:var(--goldInk);display:flex;align-items:center;justify-content:center;font-size:19px}
+  .emptynote .et{font-family:var(--display);font-weight:800;font-size:14px}
+  .emptynote .ed{font-size:11px;color:var(--inkMute);line-height:1.45}
+  .errs .ic{width:40px;height:40px;border-radius:11px;background:var(--dangerTint);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:19px}
+  .errs .eb{margin-top:4px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  /* component list */
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:200px 1fr 92px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .crow .co{text-align:right}
+  .crow .co .ptag{display:inline-block}
+
+  .note{display:flex;gap:12px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:12px;padding:14px 17px;margin-top:18px}
+  .note .mk{margin-top:1px}
+  .note p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .note b{font-weight:700}
+  .note code{font-family:var(--mono);font-size:11.5px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  @media(max-width:1040px){
+    .legend{grid-template-columns:repeat(2,1fr)}.hub{grid-template-columns:1fr}.annos{grid-template-columns:1fr}
+    .moneywrap{grid-template-columns:1fr}.defgrid{grid-template-columns:1fr}.states{grid-template-columns:1fr}
+    .appframe{flex-direction:column}.sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px}.sb-logo,.sb-grp{display:none}
+    .crow{grid-template-columns:1fr}.crow .co{text-align:left}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Game Plan v2 · Slice 1 — Build annotation</div>
+      <h1>The planning shell + Money Needs — composition, zero new data.</h1>
+      <p class="subt">Path A locked (annual→monthly planner; weekly-activity planner out of scope). Slice 1 ships the <b>Game Plan shell</b> (anchor / rail / cascade / preview commit) and <b>re-homes the existing Money Needs</b> as Step 1. Forward steps read as honest <b>"next / coming"</b> — never empty data dressed up as content. No <code style="font-family:var(--mono);font-size:12px">gamePlan</code> collection, no writes, no rules.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />GAME PLAN · SLICE 1<br />AGENT SURFACE · DESKTOP<br />REV 2026-06-03</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Slice rule</span>
+    <p><b>Composition-first, pure frontend.</b> Completeness % is <b>derived</b> (is Money Needs filled); status is a <b>static "Draft"</b> (commit doesn't exist yet — honest, because there's nothing to commit to). The only live step is Money Needs, backed by the existing <code style="font-family:var(--mono);font-size:11.5px">moneyNeedsService</code>. Everything else is shell chrome or a deferred-slice flag.</p>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="secttl">Reading this sheet — provenance &amp; semantic roles</div>
+  <div class="legend">
+    <div class="lg"><div class="sw" style="background:var(--success)"></div><div class="rn">Step · done</div><div class="rs">success / teal</div></div>
+    <div class="lg"><div class="sw" style="background:var(--teal)"></div><div class="rn">Step · current</div><div class="rs">teal accent</div></div>
+    <div class="lg"><div class="sw" style="background:var(--inkDim)"></div><div class="rn">Step · upcoming / locked</div><div class="rs">muted</div></div>
+    <div class="lg"><div class="sw" style="background:var(--warning)"></div><div class="rn">Status · draft</div><div class="rs">warning</div></div>
+  </div>
+  <div class="keylegend">
+    <span><span class="pchip exist">EXISTING</span> maps to a shipped component / service — re-home + restyle</span>
+    <span><span class="pchip new">NEW CHROME</span> net-new shell UI, but <b>no new data</b> in Slice 1</span>
+    <span style="color:var(--inkFaint)">committed / variance ▲▼ / award-eligible roles are deferred-slice — they do not appear here</span>
+  </div>
+
+  <!-- THE SURFACE -->
+  <div class="secttl">Slice 1 surface — Game Plan hub</div>
+  <div class="appframe">
+    <!-- sidebar: nav re-nest -->
+    <div class="sidebar">
+      <div class="sb-logo"><div class="lm"></div><div class="lt">AgencyTrack</div></div>
+      <div class="sb-grp">MAIN</div>
+      <div class="nav"><span class="ic"></span>Dashboard</div>
+      <div class="nav"><span class="ic"></span>Clients</div>
+      <div class="sb-grp">PLANNING</div>
+      <div class="nav on"><span class="ic"></span>Game Plan <span class="nb">NEW</span></div>
+      <div class="nav child"><span class="ic"></span>Money Needs</div>
+      <div class="nav"><span class="ic"></span>Goals</div>
+      <div class="nav"><span class="ic"></span>Commission</div>
+      <div class="nav"><span class="ic"></span>Persistency</div>
+    </div>
+
+    <div class="canvas">
+      <div class="topbar"><span class="pt">Game Plan</span><span class="ps">· MARSHA SINGH · THU 26 NOV · BUILD YOUR 2026</span></div>
+
+      <!-- ANCHOR -->
+      <div class="anchor">
+        <span class="ptag new" style="position:absolute;top:13px;right:120px;z-index:3">NEW CHROME · container</span>
+        <div class="glow"></div>
+        <div class="top">
+          <div>
+            <div class="eyy"><span class="ey">YOUR 2026 PLAN</span><span class="statuspill">DRAFT</span><span class="mk n" style="width:18px;height:18px;font-size:9px">1</span></div>
+            <div class="big">Earn <span class="g">TTD 300K</span> in commission to cover your year</div>
+            <div class="sl">TTD 330K gross need, TTD 30K from your renewal book — leaving TTD 300K to earn, a <b style="color:var(--ink)">TTD 600K API</b> commitment.</div>
+          </div>
+          <div class="built">
+            <div class="bl">PLAN BUILT</div>
+            <div class="bv">25%</div>
+            <div class="bs">1 of 4 steps</div>
+            <span class="mk n" style="width:18px;height:18px;font-size:9px;margin-top:6px">2</span>
+          </div>
+        </div>
+        <div class="chips">
+          <div class="chip"><span class="cd" style="background:var(--ink)"></span><div class="cc"><span class="cl">AFTER-TAX NEED</span><span class="cv">TTD 264K</span></div></div>
+          <div class="chip"><span class="cd" style="background:var(--success)"></span><div class="cc"><span class="cl">RENEWALS COVER</span><span class="cv">TTD 30K</span></div></div>
+          <div class="chip"><span class="cd" style="background:var(--gold)"></span><div class="cc"><span class="cl">COMMISSION NEED</span><span class="cv">TTD 300K</span></div></div>
+          <div class="chip"><span class="cd" style="background:var(--teal)"></span><div class="cc"><span class="cl">API COMMITMENT</span><span class="cv">TTD 600K</span></div></div>
+        </div>
+      </div>
+
+      <!-- STEP RAIL -->
+      <div style="position:relative">
+        <span class="ptag new" style="position:absolute;top:-9px;right:0;z-index:3">NEW CHROME · rail</span>
+        <div class="rail">
+          <div class="step done"><div class="sn">✓</div><div class="sl"><div class="sk">DONE</div><div class="st">Money Needs</div><div class="ss">What you need to earn</div></div></div>
+          <div class="railchev">›</div>
+          <div class="step cur"><div class="sn">2</div><div class="sl"><div class="sk">NEXT</div><div class="st">Year Plan</div><div class="ss">Coming soon</div></div></div>
+          <div class="railchev">›</div>
+          <div class="step soon"><div class="sn">3</div><div class="sl"><div class="sk">COMING</div><div class="st">Monthly Plan</div><div class="ss">Coming soon</div></div></div>
+          <div class="railchev">›</div>
+          <div class="step soon"><div class="sn">4</div><div class="sl"><div class="sk">COMING</div><div class="st">Review &amp; Commit</div><div class="ss">Coming soon</div></div></div>
+        </div>
+      </div>
+
+      <!-- HUB BODY -->
+      <div class="hub">
+        <div class="card">
+          <div class="ch"><span class="t">The plan so far</span><span class="s">Need → split → months</span><span class="mk n" style="width:18px;height:18px;font-size:9px">3</span></div>
+          <div class="rung live">
+            <div class="rk">STEP 1 · MONEY NEEDS</div>
+            <div class="rl"><div class="rd">Commission you must earn this year</div><div class="rv">TTD 300K</div></div>
+          </div>
+          <div class="cscv">↓</div>
+          <div class="rung soon">
+            <div class="rl"><div><div class="rk">STEP 2 · YEAR PLAN</div><div class="rd" style="margin-top:3px">Split across product lines</div></div><span class="soontag">Coming</span></div>
+          </div>
+          <div class="cscv">↓</div>
+          <div class="rung soon">
+            <div class="rl"><div><div class="rk">STEP 3 · MONTHLY PLAN</div><div class="rd" style="margin-top:3px">Broken into 12 months</div></div><span class="soontag">Coming</span></div>
+          </div>
+        </div>
+
+        <!-- commit preview -->
+        <div class="commit">
+          <span class="lockbadge">🔒 PREVIEW</span>
+          <div class="ey">STEP 4 · REVIEW &amp; COMMIT</div>
+          <div class="ct">Lock your plan to set your Goals</div>
+          <div class="cd">Committing <i>will</i> write your API + apps to the Goals page as your personal commitment. <b style="color:var(--inkMute)">Available once Year &amp; Monthly steps ship.</b></div>
+          <div class="cbtn">Commit 2026 plan →</div>
+          <div class="goalink">↗ View your Goals page <span class="mk i" style="width:16px;height:16px;font-size:8px">4</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SURFACE ANNOTATIONS -->
+  <div class="annos">
+    <div class="anno exist"><span class="mk e">1</span><div><div class="at">PlanAnchorStrip ← EXISTING Money Needs output</div><div class="ad">Every figure (after-tax need, renewals, commission need, API commitment) is <b>read from the existing <code>moneyNeedsService</code> output</b>. The container/glow/eyebrow is new chrome; the numbers are not new data.</div></div></div>
+    <div class="anno newc"><span class="mk n">2</span><div><div class="at">Completeness % — DERIVED · status STATIC</div><div class="ad"><b>Plan built %</b> = is Money Needs filled (1 of 4 steps → 25%). Status pill is a <b>static "Draft"</b> — there is no committed state to reach in Slice 1, so this is honest, not a stub.</div></div></div>
+    <div class="anno newc"><span class="mk n">3</span><div><div class="at">StepRail + cascade — NEW chrome, honest "coming"</div><div class="ad">Money Needs is the only live rung (done). Year Plan / Monthly / Commit render as <b>"next / coming"</b> states — <b>not</b> interactive cards showing fake or empty data. The cascade shows the real Money Needs total, then "Coming" rungs.</div></div></div>
+    <div class="anno"><span class="mk i">4</span><div><div class="at">Commit = disabled preview · Goals link is real</div><div class="ad">The Review &amp; Commit card is a <b>disabled preview</b> with honest copy (commit→Goals is deferred). The <b>"View your Goals page"</b> link is live — it routes to the existing Goals destination where commit <i>would</i> write later.</div></div></div>
+  </div>
+
+  <!-- MONEY NEEDS STEP -->
+  <div class="secttl">Step 1 · Money Needs — existing service, restyled checklist</div>
+  <div class="moneywrap">
+    <div class="mnpanel">
+      <div class="mn-h">
+        <span class="mt">Money Needs</span>
+        <span class="ptag exist">EXISTING · moneyNeedsService</span>
+        <div class="sharetog"><span class="tg"></span><span class="sl">SHARE · DEFERRED</span></div>
+      </div>
+      <!-- group: fixed (expanded) -->
+      <div class="mngroup">
+        <div class="mng-h"><span class="gd" style="background:var(--teal)"></span><span class="gl">Fixed Expenses</span><span class="gc">7 of 7 filled</span><span class="gt">TTD 96K</span></div>
+        <div class="mline"><span class="ml">Rent or mortgage payments</span><span class="amt"><span class="cu">TTD</span><span class="va">5,000</span></span><span class="freq">Monthly ▾</span><span class="ann">TTD 60K</span></div>
+        <div class="mline"><span class="ml">Utilities — gas, light, phone, water</span><span class="amt"><span class="cu">TTD</span><span class="va">1,500</span></span><span class="freq">Monthly ▾</span><span class="ann">TTD 18K</span></div>
+        <div class="mline"><span class="ml empty">Property taxes</span><span class="amt empty"><span class="cu">TTD</span><span class="va">0</span></span><span class="freq">Monthly ▾</span><span class="ann empty">—</span></div>
+      </div>
+      <!-- group: living (collapsed) -->
+      <div class="mngroup"><div class="mng-h"><span class="gd" style="background:var(--inkMute)"></span><span class="gl">Living Expenses</span><span class="gc">6 of 8 filled</span><span class="gt">TTD 72K</span><span style="color:var(--inkFaint);margin-left:8px">›</span></div></div>
+      <div class="mngroup"><div class="mng-h"><span class="gd" style="background:var(--gold)"></span><span class="gl">Business Expenses</span><span class="gc">5 of 7 filled</span><span class="gt">TTD 36K</span><span style="color:var(--inkFaint);margin-left:8px">›</span></div></div>
+      <div class="mngroup"><div class="mng-h"><span class="gd" style="background:var(--success)"></span><span class="gl">Savings &amp; Accumulation</span><span class="gc">5 of 6 filled</span><span class="gt">TTD 42K</span><span style="color:var(--inkFaint);margin-left:8px">›</span></div></div>
+      <div class="mngroup"><div class="mng-h"><span class="gd" style="background:var(--inkFaint)"></span><span class="gl">Miscellaneous</span><span class="gc">4 of 6 filled</span><span class="gt">TTD 18K</span><span style="color:var(--inkFaint);margin-left:8px">›</span></div></div>
+      <!-- summary chain -->
+      <div class="mn-sum">
+        <div class="sumrow"><span class="sl">After-tax total need</span><span class="sv">TTD 264K</span></div>
+        <div class="sumrow"><span class="sl">+ PAYE gross-up</span><span class="sv op">+ TTD 66K</span></div>
+        <div class="sumrow"><span class="sl b">Pre-tax / gross need</span><span class="sv">TTD 330K</span></div>
+        <div class="sumrow"><span class="sl">− Renewal income</span><span class="sv op" style="color:var(--success)">− TTD 30K</span></div>
+        <div class="sumrow final"><span class="sl b">1st-year commissions required</span><span class="sv">TTD 300K</span></div>
+      </div>
+    </div>
+
+    <div class="annos" style="grid-template-columns:1fr;margin-top:0">
+      <div class="anno exist"><span class="mk e">E</span><div><div class="at">EXISTING — straight from moneyNeedsService</div><div class="ad">The <b>5 expense groups</b>, the <b>PAYE gross-up</b>, the <b>renewal deduction</b>, and the <b>commission-targets-by-line</b> all map 1:1 to the shipped service output. No math changes; keep TTD + parseFloat.</div></div></div>
+      <div class="anno newc"><span class="mk n">N</span><div><div class="at">NEW presentation only</div><div class="ad"><b>Per-row how-paid (freq) + annualized column</b> and the <b>pre-seeded-checklist layout</b> (familiar names shown, agent types amounts; collapsed groups with filled-count). The first-run template (names, amounts 0) is the empty state. <b>Steppers / money inputs at ≥44px</b> <span class="badge44">≥44px</span> — not the mock's 30px rows.</div></div></div>
+      <div class="anno"><span class="mk i">D</span><div><div class="at">Deferred within Step 1</div><div class="ad">The <b>"share with manager" toggle</b> is shown <b>disabled</b> (manager workflow is a later slice). The optional sub-calcs (Industry / Car ⅓-⅔ / Loans) can ship if already in the service; otherwise defer — they're existing-data, not new.</div></div></div>
+    </div>
+  </div>
+
+  <!-- SPLIT RECOMMENDATION -->
+  <div class="split-rec">
+    <span class="tag">Split call</span>
+    <div>
+      <div class="h">Ship the shell + Money Needs together — don't split.</div>
+      <p>The restyle is <b>presentation-light</b>: the data, math, and store are the <b>existing <code>moneyNeedsService</code></b> — Slice 1 adds a per-row freq/annualize column and a collapsed-checklist layout over output that already exists. That's a styling pass, not a re-architecture. Splitting would ship a shell with a <b>dead</b> Step 1, which violates the "no empty data dressed as content" rule worse than a one-PR restyle does. <b>Recommendation: one slice.</b> Only split if the team wants the shell chrome reviewed in isolation first — then it's shell-only PR → Money Needs restyle PR, same slice.</p>
+    </div>
+  </div>
+
+  <!-- DEFERRED -->
+  <div class="secttl">Deferred — red-flag column (each a net-new decision, not a port)</div>
+  <div class="deferbox">
+    <div class="dt">⚑ Not in Slice 1 — needs a new store, a new read, or a new write</div>
+    <div class="dsub">Slice 1 is the shell + the one existing piece. Every item below introduces data the current app doesn't persist or read — build none of it here.</div>
+    <div class="defgrid">
+      <div class="defitem"><div class="dn">Year Plan — allocator</div><div class="dd">Line split, percent/direct mode, add-line, award-eligibility calc, license-profile tabs. Needs a stored per-line allocation.<div class="s2">→ SLICE 2 · new store</div></div></div>
+      <div class="defitem"><div class="dn">License-profile attribute</div><div class="dd">Composite / Life-only / General-only — explicitly "not stored on the user yet." New user attribute.<div class="s2">→ SLICE 2 · user field</div></div></div>
+      <div class="defitem"><div class="dn">Monthly Plan</div><div class="dd">12-month target-vs-actual chart, the monthly <b>target store</b> (plan) + <b>actual-by-month read</b> (production), variance + "to finish the month" suggestions.<div class="s2">→ SLICE 3 · store + read</div></div></div>
+      <div class="defitem"><div class="dn">Review &amp; Commit → Goals write</div><div class="dd">The loop-close: writes personal API/apps into the 3-tier Goals system. The status pill goes live (draft→committed) only here.<div class="s2">→ SLICE 3 · new write</div></div></div>
+      <div class="defitem"><div class="dn">Manager review / suggest</div><div class="dd">The share-with-manager toggle, manager read of the shared plan, suggestion + notify. Toggle is disabled in Slice 1.<div class="s2">→ SLICE 4 · workflow</div></div></div>
+      <div class="defitem"><div class="dn">Commission Playground fold</div><div class="dd">Folding the Playground ratio engine behind Year Plan cases / retiring the standalone tab. Untouched in Slice 1.<div class="s2">⚑ RECONCILE LATER</div></div></div>
+    </div>
+  </div>
+
+  <!-- STATES -->
+  <div class="secttl">States — empty is drawn (first-run template); loading + error spec'd here</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">S</span>Skeleton · loading</div>
+      <div class="sc-b">
+        <div class="skel"><div class="shimmer" style="width:50%"></div><div class="shimmer" style="width:75%"></div></div>
+        <div class="skrail"><i></i><i></i><i></i><i></i></div>
+        <div class="skel"><div class="shimmer" style="width:40%"></div><div class="shimmer" style="width:60%"></div></div>
+      </div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">E</span>Empty · first-run (drawn)</div>
+      <div class="sc-b"><div class="emptynote"><div class="ic">📝</div><div class="et">Start your 2026 plan</div><div class="ed">Money Needs opens pre-seeded with the standard worksheet names — amounts at 0. Fill what applies; the anchor fills in as you go. <b>Status: Draft · 0% built.</b></div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">!</span>Error</div>
+      <div class="sc-b"><div class="errs"><div class="ic">!</div><div class="et" style="font-family:var(--display);font-weight:800;font-size:14px">Couldn't load your plan</div><div class="ed" style="font-size:11px;color:var(--inkMute)">The rail stays visible; retry reloads Money Needs.</div><div class="eb">↻ Retry</div></div></div>
+    </div>
+  </div>
+
+  <!-- COMPONENT LIST -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · Slice-1 scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">GamePlanScreen</div><div class="cd">AppShell <code>active='game-plan'</code> (reconcile mock key <code>lookahead</code> → repo id). Hub layout + loading/empty/error.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">PlanAnchorStrip</div><div class="cd">Income/commission need + derived completeness % + static Draft pill. Figures from existing service.</div><div class="co"><span class="ptag new">NEW chrome</span></div></div>
+    <div class="crow"><div class="cn">StepRail</div><div class="cd">4 cards; Money Needs live (done), others honest "next/coming". Jump enabled only for live steps.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">PlanCascade</div><div class="cd">Read-only "plan so far": real Money Needs total + "Coming" rungs.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">CommitPreviewCard</div><div class="cd">Disabled preview + live link to existing Goals page.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">MoneyNeedsStep</div><div class="cd">Re-home <b>MoneyNeedsPanel</b> + <b>moneyNeedsService</b>; restyle to checklist; ≥44px inputs; share toggle disabled.</div><div class="co"><span class="ptag exist">EXISTING</span></div></div>
+    <div class="crow"><div class="cn">statusToken(role)</div><div class="cd">Shared helper — roles: step-done / step-current / step-upcoming / draft. (committed/variance/award deferred.)</div><div class="co"><span class="ptag exist">SHARED</span></div></div>
+  </div>
+
+  <!-- NAV NOTE -->
+  <div class="note">
+    <span class="mk i">i</span>
+    <p><b>Nav re-nest &amp; the key reconciliation.</b> Add <b>Game Plan</b> as the Planning parent (badge <b>NEW</b>), nest <b>Money Needs</b> as its child, and drop Money Needs as a standalone top-level item. <b>Goals stays a sibling</b> — it does <b>not</b> nest under Game Plan; Game Plan will <i>feed</i> it on commit (deferred). The mockup's internal nav key is <code>lookahead</code>; your repo tab id is <code>game-plan</code> — they're the same destination, so reconcile to repo convention (no behavior depends on the literal string beyond routing + active-state).</p>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

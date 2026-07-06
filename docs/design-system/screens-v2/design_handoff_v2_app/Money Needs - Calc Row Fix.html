@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Money Needs — Calc-Fed Row Fix</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  :root {
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+  }
+  .dark {
+    --bg:#1A1612; --surface:#252019; --surfaceRaised:#302A23; --surfaceSoft:#1F1B17; --surfaceMute:#1F1B17;
+    --ink:#F0EBE0; --inkMute:#B8AEA0; --inkFaint:#8A8074; --inkDim:#4F473E;
+    --rule:rgba(240,235,224,0.08); --ruleStrong:rgba(240,235,224,0.18);
+    --teal:#4AB5B8; --tealLight:#6FD3D6; --tealTint:rgba(74,181,184,0.14);
+    --gold:#E0AA3E; --goldTint:rgba(224,170,62,0.14);
+    --success:#5DB876; --successTint:rgba(93,184,118,0.14);
+    --danger:#D96B5D; --dangerTint:rgba(217,107,93,0.14);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Satoshi',system-ui,sans-serif; background:#E8E6DF; color:#28251D; -webkit-font-smoothing:antialiased; }
+  .mono { font-family:'JetBrains Mono',monospace; }
+  .display { font-family:'Cabinet Grotesk',system-ui,sans-serif; }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+  input[type=number] { -moz-appearance:textfield; }
+  button { font-family:inherit; cursor:pointer; border:none; background:none; }
+
+  /* ── page chrome ── */
+  .wrap { max-width:1320px; margin:0 auto; padding:30px 26px 80px; }
+  .head { display:flex; flex-direction:column; gap:8px; margin-bottom:6px; }
+  .eyebrow { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; letter-spacing:.14em; color:var(--teal); text-transform:uppercase; }
+  .h1 { font-family:'Cabinet Grotesk',sans-serif; font-weight:800; font-size:30px; letter-spacing:-0.02em; color:#28251D; margin:0; line-height:1.1; }
+  .lede { font-size:14.5px; color:#5a554e; max-width:760px; line-height:1.55; margin:2px 0 0; }
+  .lede b { color:#28251D; }
+
+  .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:22px 0 24px; padding:11px 14px; background:#fff; border:1px solid #DEDBD3; border-radius:13px; position:sticky; top:12px; z-index:30; box-shadow:0 2px 10px rgba(40,37,29,0.04); }
+  .tgroup { display:flex; gap:3px; padding:3px; background:#F0EFE9; border-radius:9px; }
+  .tgroup button { padding:7px 13px; border-radius:7px; font-size:12px; font-weight:700; color:#6B6560; transition:all .12s; }
+  .tgroup button.on { background:#fff; color:#01696F; box-shadow:0 1px 3px rgba(40,37,29,0.12); }
+  .tlabel { font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:700; letter-spacing:.1em; color:#A8A39C; text-transform:uppercase; margin-right:2px; }
+  .tspacer { flex:1; }
+
+  /* ── comparison columns ── */
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:start; }
+  .cols.mobileview { grid-template-columns:1fr 1fr; justify-items:center; }
+  @media (max-width:1100px){ .cols { grid-template-columns:1fr; } }
+  .col { min-width:0; width:100%; }
+  .colhead { display:flex; align-items:center; gap:9px; margin-bottom:11px; }
+  .badge { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:.08em; padding:4px 10px; border-radius:999px; text-transform:uppercase; }
+  .badge.before { background:#FDE8E7; color:#C0392B; }
+  .badge.after { background:#E8F5EE; color:#2D7A4F; }
+  .colhead .ct { font-size:13.5px; font-weight:700; color:#28251D; }
+  .colhead .cs { font-size:12px; color:#8A8074; }
+
+  /* ── device frames ── */
+  .frame-desktop { background:var(--bg); border:1px solid var(--ruleStrong); border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(40,37,29,0.10); }
+  .frame-desktop .winbar { display:flex; align-items:center; gap:7px; padding:10px 14px; background:var(--surfaceRaised); border-bottom:1px solid var(--rule); }
+  .frame-desktop .dot { width:10px; height:10px; border-radius:50%; }
+  .frame-desktop .winttl { margin-left:8px; font-size:11px; color:var(--inkFaint); font-family:'JetBrains Mono',monospace; letter-spacing:.04em; }
+
+  .phone { width:390px; max-width:100%; background:var(--bg); border:9px solid #1c1a16; border-radius:42px; overflow:hidden; box-shadow:0 16px 40px rgba(40,37,29,0.20); position:relative; }
+  .phone .notch { height:30px; background:var(--bg); display:flex; align-items:center; justify-content:center; }
+  .phone .notch::after { content:''; width:118px; height:7px; border-radius:99px; background:#1c1a16; }
+
+  .scroller { overflow:hidden; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState } = React;
+
+// ─────────────────────────────────────────────────────────────
+// Lucide-style inline icons (stroke, currentColor) — match the app's set
+// ─────────────────────────────────────────────────────────────
+const I = {
+  calc:    "M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-4M8 7h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01",
+  spark:   "M12 3l1.6 4.6L18 9l-4.4 1.4L12 15l-1.6-4.6L6 9l4.4-1.4zM5 16l.8 2.2L8 19l-2.2.8L5 22l-.8-2.2L2 19l2.2-.8z",
+  reset:   "M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.4 2.6L3 8M3 4v4h4",
+  trash:   "M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6",
+  plus:    "M12 5v14M5 12h14",
+  chev:    "M6 9l6 6 6-6",
+  x:       "M18 6 6 18M6 6l12 12",
+  arrow:   "M5 12h14M13 6l6 6-6 6",
+  send:    "M22 2 11 13M22 2l-7 20-4-9-9-4z",
+  check:   "M20 6 9 17l-5-5",
+};
+function Icon({ d, size=16, sw=2, color="currentColor", style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display:'block', flexShrink:0, ...style }}>
+      {d.split('M').filter(Boolean).map((seg,i)=><path key={i} d={'M'+seg} />)}
+    </svg>
+  );
+}
+const fmt = (n) => 'TTD ' + Number(n).toLocaleString('en-US');
+
+// Sample worksheet rows
+const SAMPLE = {
+  business: {
+    label: 'Business Expenses', dot: 'var(--gold)',
+    calcFed: [
+      { id:'c1', label:'Professional / industry expenses', calc:'insuranceIndustry', calcTitle:'Insurance Industry Expenses', amount:4800, overridden:false },
+      { id:'c2', label:'Vehicle — business share (62%)',    calc:'carExpenses',      calcTitle:'Car Expenses',               amount:0,    overridden:false },
+    ],
+    manual: [
+      { id:'m1', label:'Office rent & utilities', amount:1500, freq:'M' },
+      { id:'m2', label:'Marketing & client gifts', amount:900,  freq:'Q' },
+    ],
+  },
+};
+const FREQ = { M:'Monthly', Q:'Quarterly', S:'Semi-Annual', A:'Annual' };
+const annualize = (amt, f) => { const a=+amt||0; return f==='M'?a*12:f==='Q'?a*4:f==='S'?a*2:a; };
+
+// ═══════════════════════════════════════════════════════════════
+// BEFORE — faithful recreation of the shipped rows
+// ═══════════════════════════════════════════════════════════════
+function BeforeCalcRow({ item, mobile }) {
+  const filled = item.amount > 0;
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 0', borderBottom:'1px solid var(--rule)' }}>
+      <span style={{ flex:1, minWidth:0, display:'flex', alignItems:'center', gap:6 }}>
+        <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:14, color:'var(--ink)' }}>{item.label}</span>
+        <span style={{ flexShrink:0, display:'inline-flex', alignItems:'center', gap:2, fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.03em', color:'var(--teal)' }}>
+          <Icon d={I.spark} size={10} /> Calc
+        </span>
+      </span>
+      <input readOnly value={item.amount===0?'':item.amount} placeholder="0"
+        style={{ width:96, height:44, padding:'0 8px', borderRadius:8, border:'1px solid var(--rule)', background:'var(--surface)', color:'var(--ink)', fontSize:14, textAlign:'right' }} />
+      <span style={{ width:112, textAlign:'right', fontSize:12, color:'var(--inkMute)', flexShrink:0 }} className="mono">{fmt(annualize(item.amount,'A'))}/yr</span>
+      <div style={{ display:'flex', alignItems:'center', gap:4, flexShrink:0 }}>
+        <button title="Open calculator" style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4, minHeight:44, minWidth:44, padding:'0 8px', borderRadius:8, color:'var(--teal)', fontSize:12, fontWeight:700 }}>
+          <Icon d={I.calc} size={14} />{!filled && <span>Calculate</span>}
+        </button>
+      </div>
+    </div>
+  );
+}
+function BeforeManualRow({ item }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 0', borderBottom:'1px solid var(--rule)' }}>
+      <input readOnly value={item.label} style={{ flex:1, minWidth:0, height:44, padding:'0 8px', borderRadius:8, border:'1px solid var(--rule)', background:'var(--surface)', color:'var(--ink)', fontSize:14 }} />
+      <input readOnly value={item.amount} style={{ width:96, height:44, padding:'0 8px', borderRadius:8, border:'1px solid var(--rule)', background:'var(--surface)', color:'var(--ink)', fontSize:14, textAlign:'right' }} />
+      <select defaultValue={item.freq} style={{ height:44, padding:'0 6px', borderRadius:8, border:'1px solid var(--rule)', background:'var(--surface)', color:'var(--ink)', fontSize:14 }}>
+        {Object.entries(FREQ).map(([k,v])=><option key={k}>{v}</option>)}
+      </select>
+      <span style={{ width:112, textAlign:'right', fontSize:12, color:'var(--inkMute)', flexShrink:0 }} className="mono">{fmt(annualize(item.amount,item.freq))}/yr</span>
+      <button style={{ width:32, height:44, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--inkMute)' }}><Icon d={I.trash} size={14} /></button>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AFTER — the redesign
+// ═══════════════════════════════════════════════════════════════
+function AfterCalcRow({ item, mobile, onOpen }) {
+  const filled = item.amount > 0;
+  return (
+    <div style={{
+      border:'1px solid ' + (filled ? 'var(--rule)' : 'var(--teal)'),
+      background: filled ? 'var(--surface)' : 'var(--tealTint)',
+      borderRadius:12, padding:'11px 13px', marginBottom:8,
+    }}>
+      {/* label row — full width, wraps, never truncates */}
+      <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:filled?9:10 }}>
+        <span style={{ flex:1, minWidth:0, fontSize:14, fontWeight:600, color:'var(--ink)', lineHeight:1.35, textWrap:'pretty' }}>{item.label}</span>
+        <span style={{ flexShrink:0, display:'inline-flex', alignItems:'center', gap:3, fontSize:9.5, fontWeight:700, textTransform:'uppercase', letterSpacing:'.05em', padding:'3px 7px', borderRadius:999,
+          background: item.overridden ? 'var(--goldTint)' : 'var(--tealTint)', color: item.overridden ? 'var(--gold)' : 'var(--teal)' }}>
+          <Icon d={I.spark} size={10} /> {item.overridden ? 'Edited' : 'Calculator'}
+        </span>
+      </div>
+
+      {filled ? (
+        // FILLED — value is primary, recalculate is a clear secondary
+        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', alignItems:'baseline', gap:6, flex:'1 1 auto', minWidth:0 }}>
+            <input defaultValue={item.amount} style={{ width:104, height:44, padding:'0 9px', borderRadius:9, border:'1px solid var(--ruleStrong)', background:'var(--surface)', color:'var(--ink)', fontSize:15, fontWeight:700, textAlign:'right' }} className="mono" />
+            <span style={{ fontSize:12.5, color:'var(--inkMute)' }} className="mono">{fmt(annualize(item.amount,'A'))}/yr</span>
+          </div>
+          <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+            {item.overridden && (
+              <button title="Reset to calculator value" style={{ display:'inline-flex', alignItems:'center', gap:5, height:44, padding:'0 11px', borderRadius:9, border:'1px solid var(--rule)', color:'var(--inkMute)', fontSize:12.5, fontWeight:700 }}>
+                <Icon d={I.reset} size={13} /> Reset
+              </button>
+            )}
+            <button onClick={onOpen} style={{ display:'inline-flex', alignItems:'center', gap:6, height:44, padding:'0 13px', borderRadius:9, border:'1px solid var(--teal)', color:'var(--teal)', fontSize:12.5, fontWeight:700 }}>
+              <Icon d={I.calc} size={14} /> Recalculate
+            </button>
+          </div>
+        </div>
+      ) : (
+        // EMPTY — the calculator IS the call to action
+        <button onClick={onOpen} style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:9, minHeight:48, padding:'0 16px', borderRadius:10, background:'var(--teal)', color:'#fff', fontSize:14, fontWeight:700, boxShadow:'0 3px 10px color-mix(in srgb, var(--teal) 40%, transparent)' }}>
+          <Icon d={I.calc} size={17} color="#fff" /> Build with calculator
+          <Icon d={I.arrow} size={15} color="#fff" style={{ opacity:.85 }} />
+        </button>
+      )}
+    </div>
+  );
+}
+function AfterManualRow({ item, mobile }) {
+  if (mobile) {
+    // stack: label on its own row, controls below — label never truncates
+    return (
+      <div style={{ padding:'9px 0', borderBottom:'1px solid var(--rule)' }}>
+        <input defaultValue={item.label} placeholder="Description"
+          style={{ width:'100%', height:44, padding:'0 10px', borderRadius:9, border:'1px solid var(--rule)', background:'var(--surface)', color:'var(--ink)', fontSize:14, marginBottom:7 }} />
+        <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+          <input defaultValue={item.amount} style={{ width:90, height:44, padding:'0 9px', borderRadius:9, border:'1px solid var(--rule)', background:'var(--surface)', color:'var(--ink)', fontSize:14, textAlign:'right' }} className="mono" />
+          <select defaultValue={item.freq} style={{ flex:1, minWidth:0, height:44, padding:'0 8px', borderRadius:9, border:'1px solid var(--rule)', background:'var(--surface)', color:'var(--ink)', fontSize:13.5 }}>
+            {Object.entries(FREQ).map(([k,v])=><option key={k}>{v}</option>)}
+          </select>
+          <span style={{ fontSize:11.5, color:'var(--inkMute)', whiteSpace:'nowrap' }} className="mono">{fmt(annualize(item.amount,item.freq))}/yr</span>
+          <button style={{ width:40, height:44, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--inkMute)', borderRadius:9 }}><Icon d={I.trash} size={15} /></button>
+        </div>
+      </div>
+    );
+  }
+  // desktop: single row but label flexes generously, annual sits under amount-free
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 0', borderBottom:'1px solid var(--rule)' }}>
+      <input defaultValue={item.label} placeholder="Description"
+        style={{ flex:1, minWidth:0, height:44, padding:'0 10px', borderRadius:9, border:'1px solid var(--rule)', background:'var(--surface)', color:'var(--ink)', fontSize:14 }} />
+      <input defaultValue={item.amount} style={{ width:96, height:44, padding:'0 9px', borderRadius:9, border:'1px solid var(--rule)', background:'var(--surface)', color:'var(--ink)', fontSize:14, textAlign:'right' }} className="mono" />
+      <select defaultValue={item.freq} style={{ height:44, padding:'0 8px', borderRadius:9, border:'1px solid var(--rule)', background:'var(--surface)', color:'var(--ink)', fontSize:13.5 }}>
+        {Object.entries(FREQ).map(([k,v])=><option key={k}>{v}</option>)}
+      </select>
+      <span style={{ width:104, textAlign:'right', fontSize:12, color:'var(--inkMute)', flexShrink:0 }} className="mono">{fmt(annualize(item.amount,item.freq))}/yr</span>
+      <button style={{ width:40, height:44, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--inkMute)', borderRadius:9 }}><Icon d={I.trash} size={15} /></button>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// The accordion shell (shared chrome) holding either Before/After rows
+// ═══════════════════════════════════════════════════════════════
+function GroupCard({ variant, mobile, onOpen }) {
+  const g = SAMPLE.business;
+  const total = g.calcFed.reduce((s,i)=>s+annualize(i.amount,'A'),0) + g.manual.reduce((s,i)=>s+annualize(i.amount,i.freq),0);
+  const filledCount = [...g.calcFed,...g.manual].filter(i=>i.amount>0).length;
+  const all = g.calcFed.length + g.manual.length;
+  const Calc = variant==='before' ? BeforeCalcRow : AfterCalcRow;
+  const Manual = variant==='before' ? BeforeManualRow : AfterManualRow;
+  return (
+    <div style={{ border:'1px solid var(--rule)', borderRadius:13, overflow:'hidden', background:'var(--surface)' }}>
+      {/* accordion header */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, padding:'0 14px', height:50 }}>
+        <span style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+          <span style={{ width:8, height:8, borderRadius:2, background:g.dot, flexShrink:0 }}></span>
+          <span style={{ fontSize:14, fontWeight:700, color:'var(--ink)' }}>{g.label}</span>
+          <span style={{ fontSize:10, fontWeight:500, color:'var(--inkMute)', letterSpacing:'.03em', flexShrink:0 }} className="mono">{filledCount} of {all} filled</span>
+        </span>
+        <span style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
+          <span style={{ fontSize:12, fontWeight:500, color:'var(--inkMute)' }} className="mono">{fmt(total)}/yr</span>
+          <Icon d={I.chev} size={16} color="var(--inkMute)" style={{ transform:'rotate(180deg)' }} />
+        </span>
+      </div>
+      {/* body */}
+      <div style={{ padding:'4px 14px 16px', borderTop:'1px solid var(--rule)' }}>
+        {/* calc-fed section */}
+        <div style={{ margin:'10px 0 4px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'.05em', color:'var(--teal)', marginBottom:variant==='before'?2:8 }}>
+            <Icon d={I.spark} size={11} /> From your calculators
+          </div>
+          {variant==='before' && (
+            <p style={{ margin:'0 0 6px', fontSize:11, color:'var(--inkMute)' }}>Prefilled from your sub-calculators — edit to override.</p>
+          )}
+          {variant==='before' && (
+            <div style={{ display:'flex', alignItems:'center', gap:8, paddingBottom:4, borderBottom:'1px solid var(--rule)', marginBottom:2 }}>
+              <span style={{ flex:1, fontSize:11, fontWeight:700, color:'var(--inkMute)' }}>Description</span>
+              <span style={{ width:96, textAlign:'right', fontSize:11, fontWeight:700, color:'var(--inkMute)' }}>Amount</span>
+              <span style={{ width:112, textAlign:'right', fontSize:11, fontWeight:700, color:'var(--inkMute)' }}>Annual</span>
+              <span style={{ width:44 }}></span>
+            </div>
+          )}
+          {g.calcFed.map(it => <Calc key={it.id} item={it} mobile={mobile} onOpen={onOpen} />)}
+        </div>
+        {/* manual section */}
+        <div style={{ marginTop:14 }}>
+          <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'.05em', color:'var(--inkMute)', marginBottom:6 }}>Your entries</div>
+          {variant==='before' && (
+            <div style={{ display:'flex', alignItems:'center', gap:8, paddingBottom:4, borderBottom:'1px solid var(--rule)', marginBottom:2 }}>
+              <span style={{ flex:1, fontSize:11, fontWeight:700, color:'var(--inkMute)' }}>Description</span>
+              <span style={{ width:96, textAlign:'right', fontSize:11, fontWeight:700, color:'var(--inkMute)' }}>Amount</span>
+              <span style={{ fontSize:11, fontWeight:700, color:'var(--inkMute)' }}>Freq</span>
+              <span style={{ width:112, textAlign:'right', fontSize:11, fontWeight:700, color:'var(--inkMute)' }}>Annual</span>
+              <span style={{ width:32 }}></span>
+            </div>
+          )}
+          {g.manual.map(it => <Manual key={it.id} item={it} mobile={mobile} />)}
+          <button style={{ display:'inline-flex', alignItems:'center', gap:6, height:40, marginTop:10, padding:'0 13px', borderRadius:9, border:'1px dashed color-mix(in srgb, var(--teal) 50%, transparent)', color:'var(--teal)', fontSize:12.5, fontWeight:700 }}>
+            <Icon d={I.plus} size={13} /> Add item
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Floating calc modal (after-flow) — desktop centered / mobile bottom sheet
+function CalcModal({ mobile, onClose }) {
+  const items = [
+    { id:1, label:'Life license renewal', amount:1000, freq:'A' },
+    { id:2, label:'CPD / training', amount:300, freq:'Q' },
+    { id:3, label:'Association dues', amount:200, freq:'A' },
+  ];
+  const total = items.reduce((s,i)=>s+annualize(i.amount,i.freq),0);
+  return (
+    <div onClick={onClose} style={{ position:'absolute', inset:0, zIndex:60, display:'flex', alignItems: mobile?'flex-end':'center', justifyContent:'center', background:'rgba(0,0,0,0.42)', backdropFilter:'blur(3px)', padding: mobile?0:16 }}>
+      <div onClick={e=>e.stopPropagation()} style={{
+        width: mobile?'100%':440, maxWidth:'100%', maxHeight: mobile?'88%':'90%', display:'flex', flexDirection:'column',
+        background:'var(--surfaceRaised)', border:'1px solid var(--rule)',
+        borderRadius: mobile?'20px 20px 0 0':16, overflow:'hidden', boxShadow:'0 24px 60px rgba(0,0,0,0.3)' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'14px 16px', borderBottom:'1px solid var(--rule)' }}>
+          <span style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <Icon d={I.calc} size={17} color="var(--teal)" />
+            <span className="display" style={{ fontSize:16, fontWeight:800, letterSpacing:'-0.01em', color:'var(--ink)' }}>Insurance Industry Expenses</span>
+          </span>
+          <button onClick={onClose} style={{ width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:11, color:'var(--inkMute)' }}><Icon d={I.x} size={18} /></button>
+        </div>
+        <div style={{ padding:16, overflowY:'auto' }}>
+          <p style={{ margin:'0 0 12px', fontSize:12.5, color:'var(--inkMute)' }}>Prefills “Professional / industry expenses” in Business Expenses.</p>
+          {items.map(it=>(
+            <div key={it.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 0', borderBottom:'1px solid var(--rule)' }}>
+              <input defaultValue={it.label} style={{ flex:1, minWidth:0, height:44, padding:'0 9px', borderRadius:9, border:'1px solid var(--rule)', background:'var(--surface)', color:'var(--ink)', fontSize:13.5 }} />
+              <input defaultValue={it.amount} style={{ width:84, height:44, padding:'0 8px', borderRadius:9, border:'1px solid var(--rule)', background:'var(--surface)', color:'var(--ink)', fontSize:13.5, textAlign:'right' }} className="mono" />
+              <select defaultValue={it.freq} style={{ height:44, padding:'0 6px', borderRadius:9, border:'1px solid var(--rule)', background:'var(--surface)', color:'var(--ink)', fontSize:13 }}>
+                {Object.entries(FREQ).map(([k,v])=><option key={k}>{v}</option>)}
+              </select>
+              <button style={{ width:36, height:44, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--inkMute)' }}><Icon d={I.trash} size={14} /></button>
+            </div>
+          ))}
+          <button style={{ display:'inline-flex', alignItems:'center', gap:6, height:40, marginTop:11, padding:'0 13px', borderRadius:9, border:'1px dashed color-mix(in srgb, var(--teal) 50%, transparent)', color:'var(--teal)', fontSize:12.5, fontWeight:700 }}>
+            <Icon d={I.plus} size={13} /> Add item
+          </button>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'13px 16px', borderTop:'1px solid var(--rule)', background:'var(--surface)' }}>
+          <span style={{ fontSize:12.5, color:'var(--inkMute)' }}>Annual total</span>
+          <span style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <span className="mono" style={{ fontSize:15, fontWeight:700, color:'var(--ink)' }}>{fmt(total)}</span>
+            <button onClick={onClose} style={{ display:'inline-flex', alignItems:'center', gap:6, height:44, padding:'0 16px', borderRadius:10, background:'var(--teal)', color:'#fff', fontSize:13.5, fontWeight:700 }}>
+              <Icon d={I.check} size={15} color="#fff" /> Done
+            </button>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// One framed specimen (desktop window or phone) holding a variant
+function Specimen({ variant, view, theme }) {
+  const mobile = view==='mobile';
+  const [modal, setModal] = useState(false);
+  const inner = (
+    <div className="scroller" style={{ position:'relative' }}>
+      <div style={{ padding: mobile?'14px 12px 20px':'18px 18px 22px' }}>
+        {/* mini panel header echoing the real one */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+          <span style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <Icon d={I.calc} size={mobile?17:19} color="var(--teal)" />
+            <span style={{ fontSize:mobile?15:17, fontWeight:700, color:'var(--ink)' }}>Money Needs</span>
+          </span>
+          <span className="mono" style={{ fontSize:9.5, fontWeight:700, textTransform:'uppercase', letterSpacing:'.05em', color:'var(--inkMute)', background:'var(--surfaceRaised)', border:'1px solid var(--rule)', borderRadius:999, padding:'3px 8px' }}>Filled 5/9</span>
+        </div>
+        <GroupCard variant={variant} mobile={mobile} onOpen={()=>setModal(true)} />
+      </div>
+      {modal && variant==='after' && <CalcModal mobile={mobile} onClose={()=>setModal(false)} />}
+    </div>
+  );
+  const themeClass = theme==='dark' ? 'dark' : '';
+  if (mobile) {
+    return (
+      <div className={'phone '+themeClass}>
+        <div className="notch"></div>
+        <div style={{ maxHeight:660, overflowY:'auto' }}>{inner}</div>
+      </div>
+    );
+  }
+  return (
+    <div className={'frame-desktop '+themeClass}>
+      <div className="winbar">
+        <span className="dot" style={{ background:'#E5736B' }}></span>
+        <span className="dot" style={{ background:'#E8C15B' }}></span>
+        <span className="dot" style={{ background:'#6DBE7E' }}></span>
+        <span className="winttl">agencytrack · Money Needs</span>
+      </div>
+      <div style={{ maxHeight:640, overflowY:'auto' }}>{inner}</div>
+    </div>
+  );
+}
+
+// Annotation note block
+function Notes() {
+  const rows = [
+    ['1', 'Label never truncates', 'Description gets its own full-width row (mobile) / a generous flex column (desktop) and wraps with text-wrap:pretty — long names like “Professional / industry expenses” read in full.'],
+    ['2', 'The calculator is the action, not an afterthought', 'An empty calc-fed line shows ONE primary ≥48px button — “Build this with the calculator” — instead of an empty input beside a faint ghost link. There is nothing else to tap, so the agent goes to the calculator and generates the figure.'],
+    ['3', 'Filled state flips the hierarchy', 'Once a value exists, the number is primary (editable) and the calculator becomes a quiet outlined “Recalculate”. The Calculator / Edited chip stays; Reset only appears when overridden.'],
+    ['4', 'Calc-fed lines read as linked cards', 'Each calc-fed line is a bordered card (teal-tinted while empty) so it is visually distinct from manual rows — the “these come from a calculator” relationship is obvious without a separate explainer paragraph.'],
+    ['5', 'Manual rows fit too', 'On mobile the manual row stacks (label row, then amount · frequency · annual · delete) so nothing is crushed; desktop keeps one row with a roomier label and a single ≥44px delete target.'],
+  ];
+  return (
+    <div style={{ marginTop:30 }}>
+      <div className="eyebrow" style={{ marginBottom:12 }}>What changed · build notes for CC</div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(330px,1fr))', gap:13 }}>
+        {rows.map(([n,t,d])=>(
+          <div key={n} style={{ display:'flex', gap:12, background:'#fff', border:'1px solid #DEDBD3', borderRadius:12, padding:'14px 15px' }}>
+            <span style={{ flexShrink:0, width:24, height:24, borderRadius:7, background:'#E8F5EE', color:'#2D7A4F', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:12 }}>{n}</span>
+            <div>
+              <div style={{ fontSize:13.5, fontWeight:700, color:'#28251D', marginBottom:3 }}>{t}</div>
+              <div style={{ fontSize:12.5, color:'#5a554e', lineHeight:1.5 }}>{d}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop:14, display:'flex', gap:11, background:'#FBF6EA', border:'1px solid #EAD9AE', borderRadius:12, padding:'13px 15px' }}>
+        <span style={{ flexShrink:0, width:24, height:24, borderRadius:7, background:'#FAEFD3', color:'#B07D1A', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:12 }}>★</span>
+        <div style={{ fontSize:12.5, color:'#5a554e', lineHeight:1.5 }}>
+          <b style={{ color:'#28251D' }}>Zero data-model change.</b> This is presentation only — same <span className="mono" style={{ fontSize:11.5 }}>CalcFedLineRow</span> / <span className="mono" style={{ fontSize:11.5 }}>LineItemRow</span> props, same <span className="mono" style={{ fontSize:11.5 }}>onOpenCalc(calcId)</span> trigger, same <span className="mono" style={{ fontSize:11.5 }}>FloatingCalcModal</span>. Only the markup/classes inside the two row components and the empty-vs-filled branch change.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [view, setView]   = useState('desktop');
+  const [theme, setTheme] = useState('light');
+  return (
+    <div className="wrap">
+      <div className="head">
+        <span className="eyebrow">AgencyTrack · Money Needs · Game Plan Step 1</span>
+        <h1 className="h1">Calc-fed rows that fit — and a calculator button that invites the tap</h1>
+        <p className="lede">The shipped rows pack a flexible label against fixed amount / annual / action columns in one non-wrapping line, so <b>names truncate</b> and the layout <b>crowds on mobile</b>; the calculator trigger is a faint ghost link stranded at the far right that <b>doesn’t read as “generate my figures here.”</b> Below: the shipped rows (left) beside the redesign (right). Toggle desktop / mobile and theme. On the redesign, tap a <b>Build with the calculator</b> button to see the floating calculator open.</p>
+      </div>
+
+      <div className="toolbar">
+        <span className="tlabel">View</span>
+        <div className="tgroup">
+          <button className={view==='desktop'?'on':''} onClick={()=>setView('desktop')}>Desktop</button>
+          <button className={view==='mobile'?'on':''} onClick={()=>setView('mobile')}>Mobile</button>
+        </div>
+        <span className="tlabel" style={{ marginLeft:8 }}>Theme</span>
+        <div className="tgroup">
+          <button className={theme==='light'?'on':''} onClick={()=>setTheme('light')}>Light</button>
+          <button className={theme==='dark'?'on':''} onClick={()=>setTheme('dark')}>Dark</button>
+        </div>
+        <span className="tspacer"></span>
+        <span style={{ fontSize:11.5, color:'#8A8074' }} className="mono">tap “Build with the calculator” on the right →</span>
+      </div>
+
+      <div className={'cols' + (view==='mobile'?' mobileview':'')}>
+        <div className="col">
+          <div className="colhead">
+            <span className="badge before">Before</span>
+            <span className="ct">Shipped</span>
+            <span className="cs">— label truncates · ghost calc link</span>
+          </div>
+          <Specimen variant="before" view={view} theme={theme} />
+        </div>
+        <div className="col">
+          <div className="colhead">
+            <span className="badge after">After</span>
+            <span className="ct">Proposed</span>
+            <span className="cs">— full label · calculator as CTA</span>
+          </div>
+          <Specimen variant="after" view={view} theme={theme} />
+        </div>
+      </div>
+
+      <Notes />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

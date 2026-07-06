@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Campaigns v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 640px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Campaigns v2 — time-boxed pushes, qualify ladders &amp; the persistency gate</h1>
+    <p>
+      The new <b>Campaigns</b> surface, built to the v2 grammar. A campaign is a time-boxed push toward a target, scoped to where it was created — a Branch Manager runs branch/unit/individual ones; agency-wide stays with the Sales Manager. Two structures: <b>qualify-target ladders</b> (hit a tier, win its prize — the company default, modelled on the real Christmas Campaign 2025) and <b>1st/2nd/3rd placement</b> races. The signature mechanic is the <b>persistency gate</b> — every payout scales by quality (≥90% full · 85–89% half · 80–84% quarter · &lt;80% disqualified). Manager surfaces: index · live standings · builder · confirm-winners. Agent surfaces (mobile): my prize locked, gate health, reach for the next tier. <b>Teal = operations · gold = the prize layer.</b>
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="manager-v2-shared.jsx"></script>
+  <script type="text/babel" src="campaigns-v2-shared.jsx"></script>
+  <script type="text/babel" src="campaigns-v2-desktop.jsx"></script>
+  <script type="text/babel" src="campaigns-v2-builder.jsx"></script>
+  <script type="text/babel" src="campaigns-v2-mobile.jsx"></script>
+
+  <script type="text/babel">
+    const noop = () => {};
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="manage"
+            title="Campaigns — manage (desktop, branch_manager)"
+            subtitle="The hub Trevor lands on: running campaigns + ones awaiting winner confirmation, grouped by state, with a New campaign CTA. Cards show objective progress (or the placement leader), who's qualified, and the prize. Light + dark."
+          >
+            <DCArtboard id="idx-light" label="01 · Light · Campaigns index" width={APP_W} height={APP_H}>
+              <CampaignsIndex t={APP_LIGHT} onOpen={noop} onNew={noop} />
+            </DCArtboard>
+            <DCArtboard id="idx-dark" label="02 · Dark · Campaigns index" width={APP_W} height={APP_H}>
+              <CampaignsIndex t={APP_DARK} onOpen={noop} onNew={noop} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="detail"
+            title="Campaign detail — live standings"
+            subtitle="One campaign: objective progress, the persistency gate, the prize structure (a qualify ladder or a placement podium), and the live standings table with each advisor's gated projected payout. Two structures shown."
+          >
+            <DCArtboard id="det-xmas" label="03 · Light · Christmas Campaign (qualify ladder + gate)" width={APP_W} height={APP_H}>
+              <CampaignDetail t={APP_LIGHT} id="xmas25" onBack={noop} />
+            </DCArtboard>
+            <DCArtboard id="det-cup" label="04 · Light · S·02 Closer's Cup (placement podium)" width={APP_W} height={APP_H}>
+              <CampaignDetail t={APP_LIGHT} id="s02-cup" onBack={noop} />
+            </DCArtboard>
+            <DCArtboard id="det-sprint" label="05 · Dark · South Sprint (single qualify target)" width={APP_W} height={APP_H}>
+              <CampaignDetail t={APP_DARK} id="south-sprint" onBack={noop} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="create"
+            title="Create a campaign — the builder"
+            subtitle="Scope (capped at the creator's tier — agency-wide is locked for a BM), metric, structure (qualify vs placement), dates, and the prize-ladder editor, with a live preview card and the persistency gate on by default."
+          >
+            <DCArtboard id="build-light" label="06 · Light · Campaign builder" width={APP_W} height={APP_H}>
+              <CampaignBuilder t={APP_LIGHT} onBack={noop} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="award"
+            title="Confirm winners — closed campaign"
+            subtitle="A completed campaign with the persistency gate already applied: qualified vs disqualified, total cash + vouchers, and a confirm-to-release action that pushes payouts to the December incentive run."
+          >
+            <DCArtboard id="award-light" label="07 · Light · Confirm winners" width={APP_W} height={APP_H}>
+              <AwardWinners t={APP_LIGHT} id="b2s" onBack={noop} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="agent"
+            title="Agent view (mobile) — Marsha Singh"
+            subtitle="How an advisor sees campaigns on 390×844: what they've locked in across every campaign, their tier/placement, the persistency gate health (am I banking full, half, or at risk?), and the gap to the next tier."
+          >
+            <DCArtboard id="m-list" label="08 · Light · My campaigns" width={M_W} height={M_H}>
+              <AgentCampaignsList t={APP_LIGHT} onOpen={noop} />
+            </DCArtboard>
+            <DCArtboard id="m-detail" label="09 · Light · Christmas Campaign · my standing" width={M_W} height={M_H}>
+              <AgentCampaignDetail t={APP_LIGHT} id="xmas25" onBack={noop} />
+            </DCArtboard>
+            <DCArtboard id="m-detail-dark" label="10 · Dark · Christmas Campaign · my standing" width={M_W} height={M_H}>
+              <AgentCampaignDetail t={APP_DARK} id="xmas25" onBack={noop} />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

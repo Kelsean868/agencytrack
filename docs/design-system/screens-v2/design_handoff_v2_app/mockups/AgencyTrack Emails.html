@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Email Templates</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    /* Page-level intro card sitting above the canvas */
+    .intro {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 50;
+      background: #ffffff;
+      border: 1px solid #e5e2db;
+      border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px;
+      max-width: 360px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #28251d;
+    }
+    .intro h1 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      margin: 0 0 4px;
+      color: #28251d;
+    }
+    .intro p {
+      font-size: 12px;
+      line-height: 1.5;
+      color: #6b6560;
+      margin: 0;
+    }
+    .intro .dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      background: #01696F;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>AgencyTrack — Email Templates</h1>
+    <p>Refresh of the existing transactional templates plus two new ones from the Phase&nbsp;5 notification scope. Pan / scroll the canvas. Click any artboard label to focus.</p>
+  </div>
+
+  <div id="root"></div>
+
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- Design canvas + email modules -->
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="email-shared.jsx"></script>
+  <script type="text/babel" src="emails-current.jsx"></script>
+  <script type="text/babel" src="emails-refined.jsx"></script>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // Artboard dims — emails sit on a 700-wide cream surface inside each artboard
+    // (the canvas adds its own warm gray bg around). Heights tuned per template.
+    const W = 700;
+    const H_NUDGE = 820;
+    const H_URGENT = 820;
+    const H_RESET = 920;
+    const H_RECEIVED = 900;
+    const H_ESCALATION = 860;
+
+    // Current-template heights are a touch shorter (less content, smaller body)
+    const H_CUR_NUDGE = 620;
+    const H_CUR_URGENT = 620;
+    const H_CUR_RESET = 700;
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="refined"
+            title="Refined templates"
+            subtitle="On-brand: warm cream surface, 4px accent bar, AT lockup, eyebrow pill, display headline, metadata strip, refined footer. Helvetica Neue throughout — email-safe."
+          >
+            <DCArtboard id="refined-sunday" label="Sunday nudge" width={W} height={H_NUDGE}>
+              <RefinedSundayNudge />
+            </DCArtboard>
+
+            <DCArtboard id="refined-monday" label="Monday urgent · 2hr left" width={W} height={H_URGENT}>
+              <RefinedMondayNudge />
+            </DCArtboard>
+
+            <DCArtboard id="refined-reset" label="Welcome / set password" width={W} height={H_RESET}>
+              <RefinedPasswordReset />
+            </DCArtboard>
+
+            <DCArtboard id="refined-received" label="Submission received · new" width={W} height={H_RECEIVED}>
+              <RefinedSubmissionReceived />
+            </DCArtboard>
+
+            <DCArtboard id="refined-escalation" label="Manager escalation · new" width={W} height={H_ESCALATION}>
+              <RefinedManagerEscalation />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="current"
+            title="Current templates"
+            subtitle="The existing production HTML, rendered as-is for comparison. functions/email-templates/*.html"
+          >
+            <DCArtboard id="current-sunday" label="sunday-nudge.html" width={W} height={H_CUR_NUDGE}>
+              <CurrentSundayNudge />
+            </DCArtboard>
+
+            <DCArtboard id="current-monday" label="monday-nudge.html" width={W} height={H_CUR_URGENT}>
+              <CurrentMondayNudge />
+            </DCArtboard>
+
+            <DCArtboard id="current-reset" label="password-reset.html" width={W} height={H_CUR_RESET}>
+              <CurrentPasswordReset />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

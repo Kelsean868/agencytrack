@@ -1,0 +1,10 @@
+@import "tokens/fonts.css";
+@import "tokens/brand.css";
+@import "tokens/marketing.css";
+@import "tokens/app.css";
+@import "tokens/glass.css";
+
+/* Nexus app component styles (2026 redesign) — state design, motion,
+   dense tables, navigation. Class-based; ship to consumers. */
+@import "components/app/nexus-patterns.css";
+@import "components/app/nexus-nav.css";

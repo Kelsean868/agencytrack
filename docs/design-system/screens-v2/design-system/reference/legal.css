@@ -1,0 +1,39 @@
+:root{
+  --cream:#F4F2EC; --paper:#FFFFFF; --ink:#26231C; --ink-mute:#6B6560; --ink-faint:#A8A39C;
+  --teal:#01696F; --teal-deep:#014E52;
+  --gold:#B07D1A; --gold-tint:#FBF1DA;
+  --rule:#E5E2DB; --rule-soft:#EEEBE3;
+  --display:'Cabinet Grotesk','Helvetica Neue',sans-serif;
+  --sans:'Satoshi','Helvetica Neue',Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{color:var(--teal);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:3px}
+.wrap{max-width:760px;margin:0 auto;padding:0 28px}
+
+.topbar{border-bottom:1px solid var(--rule);background:rgba(244,242,236,.9);padding:14px 0}
+.topbar .wrap{display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:11px;font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:-.02em;color:var(--ink)}
+.back{font-size:14px;font-weight:700}
+
+.doc{padding:64px 28px 90px}
+.eyebrow{font-family:ui-monospace,monospace;font-size:12px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--teal)}
+.doc h1{font-family:var(--display);font-weight:800;letter-spacing:-.03em;font-size:clamp(34px,5vw,48px);margin:12px 0 6px}
+.updated{font-size:13px;color:var(--ink-faint);margin-bottom:38px}
+.doc p{font-size:15.5px;line-height:1.7;color:var(--ink-mute);margin-bottom:16px}
+.doc h2{font-family:var(--display);font-weight:700;letter-spacing:-.02em;font-size:21px;margin:34px 0 12px;color:var(--ink)}
+.doc ul{margin:0 0 16px 20px}
+.doc li{font-size:15.5px;line-height:1.7;color:var(--ink-mute);margin-bottom:10px}
+.doc b{color:var(--ink)}
+.callout{background:var(--gold-tint);border:1px solid rgba(176,125,26,.25);border-radius:14px;padding:18px 20px;font-size:14.5px;line-height:1.65;color:#7A5A16;margin:26px 0}
+.callout b{color:#7A5A16}
+
+.legalfoot{border-top:1px solid var(--rule);padding:26px 0 34px;font-size:13px;color:var(--ink-faint)}
+.legalfoot .wrap{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.legalfoot a{color:var(--ink-mute);text-decoration:underline;text-underline-offset:3px}
+
+/* whatsapp fab */
+.wa-fab{position:fixed;right:22px;bottom:22px;z-index:95;display:inline-flex;align-items:center;gap:10px;background:#25D366;color:#fff;font-family:var(--sans);font-weight:700;font-size:14px;padding:13px 20px;border-radius:999px;box-shadow:0 10px 28px rgba(18,140,80,.4);transition:transform .15s,box-shadow .15s;text-decoration:none}
+.wa-fab:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(18,140,80,.5);color:#fff;text-decoration:none}
+@media(max-width:640px){.wa-fab span{display:none}.wa-fab{padding:15px;right:16px;bottom:16px}}

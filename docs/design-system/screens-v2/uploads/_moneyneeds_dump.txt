@@ -1,0 +1,75 @@
+R1:  B=ORGANIZE YOUR MONEY NEEDS FOR THE YEAR
+R2:  A=The first step in planning for greater success is to find out how much income you need to cover your requirements. Use the form below to compute your budget for next year.
+R4:  B=HOW PAID*  |  E=MONTHLY  |  F=TOTAL MONTHLY  |  G=TOTAL ANNUAL
+R5:  A=FIXED 
+EXPENSES  |  B=Annually  |  D=Rent or mortgage payments  |  E=3500
+R6:  B=Monthly  |  D=Utilities -gas, heat, light, telephone, water  |  E=1000
+R7:  B=Monthly  |  D=Disability income insurance  |  E=500
+R8:  B=Monthly  |  D=Homeowners insurance  |  E=100
+R9:  B=Annually  |  D=Car insurance  |  E=850
+R10:  B=Annually  |  D=Property taxes
+R11:  B=Monthly  |  D=Other  |  E=500
+R12:  F=6450
+R13:  G=77400
+R15:  A=LIVING 
+EXPENSES  |  B=Monthly  |  D=Food  |  E=1500
+R16:  B=Monthly  |  D=Clothing  |  E=500
+R17:  B=Monthly  |  D=Laundry, tailoring  |  E=100
+R18:  B=Monthly  |  D=Entertainment  |  E=1000
+R19:  B=Monthly  |  D=Car expenses, nonbusiness  |  E=1200
+R20:  B=Monthly  |  D=Medical -doctor, dentist, drugs  |  E=500
+R21:  B=Monthly  |  D=Household  |  E=1000
+R22:  B=Monthly  |  D=Other  |  E=500
+R23:  F=6300
+R24:  G=75600
+R26:  A=BUSINESS 
+EXPENSES  |  B=Monthly  |  D=Sales promotion, advertising, direct mail, tuition,  |  E=1000
+R27:  B=Monthly  |  D=trade association dues, services, events  |  E=3845.83
+R28:  B=Monthly  |  D=Telephone, computer, stationery, postage, supplies  |  E=500
+R29:  B=Monthly  |  D=Secretarial and banking services  |  E=2000
+R30:  B=Monthly  |  D=Business travel, car expense  |  E=2400
+R31:  B=Monthly  |  D=Business entertainment  |  E=500
+R32:  B=Monthly  |  D=Other  |  E=500
+R33:  F=10745.83
+R34:  G=128950
+R36:  A=SAVINGS & ACCUMULTION  |  B=Monthly  |  D=Life insurance  |  E=2500  |  J=Insurance Industry Expenses  |  L=Annual  |  N=Life License Renewal  |  P=1000
+R37:  B=Monthly  |  D=Savings account  |  E=2000  |  L=Annual  |  N=General License Renewal  |  P=1000
+R38:  B=Monthly  |  D=Debt reduction (other than mortgage)  |  E=5500  |  L=Annual  |  N=TTAIFA fees  |  P=1250
+R39:  B=Monthly  |  D=Investments  |  E=1500  |  L=Annual  |  N=TTII Portal Fee  |  P=500  |  R=Annual  |  S=46150
+R40:  B=Monthly  |  D=Slush fund  |  E=500  |  L=Annual  |  N=CPD classes  |  P=900  |  R=Bi-Annual  |  S=23075
+R41:  B=Monthly  |  D=Other  |  E=500  |  L=Annual  |  N=TTAIFA Courses (FSCP/etc)  |  P=10500  |  R=Quarterly  |  S=11537.5
+R42:  F=12500  |  L=Annual  |  N=TTAIFA Congress  |  P=12000  |  R=Monthly  |  S=3845.83
+R43:  G=150000  |  L=Annual  |  N=MDRT membership fee  |  P=2000
+R44:  L=Annual  |  N=MDRT Convention  |  P=15000
+R45:  A=MISCELLANEOUS  |  B=Monthly  |  D=Donations -religious, charitable, etc.  |  E=1000  |  L=Annual  |  N=Branch Retreats  |  P=1000
+R46:  B=Monthly  |  D=Recreation  |  E=500  |  L=Annual  |  N=Other Industry Events  |  P=1000
+R47:  B=Monthly  |  D=Club dues  |  E=500  |  L=Total Annual  |  P=46150
+R48:  B=Monthly  |  D=Gifts and services  |  E=500
+R49:  B=Monthly  |  D=Vacation  |  E=1000  |  R=Personal (1/3)
+R50:  B=Monthly  |  D=Other  |  E=500  |  S=Business (2/3)  |  U=With loan
+R51:  F=4000  |  J=Car Expenses  |  L=Monthly  |  N=Gas/Petrol/Electric   |  P=1500  |  Q=18000  |  R=6000  |  S=12000  |  U=Annual  |  V=84780
+R52:  G=48000  |  L=Quarterly  |  N=Mechanical Servicing  |  P=1000  |  Q=4000  |  R=1333.33  |  S=2666.67  |  U=Bi-Annual  |  V=42390
+R53:  L=Annual  |  N=Insurance  |  P=9000  |  Q=9000  |  R=3000  |  S=6000  |  U=Quarterly  |  V=21195
+R54:  L=Montly  |  N=Parking fees  |  P=500  |  Q=6000  |  R=2000  |  S=4000  |  U=Monthly  |  V=7065
+R55:  A=1. Total Annual Requirement (After- Tax)…........................................................................................................................  |  G=479950  |  L=Annual  |  N=Tickets  |  P=900  |  Q=900  |  R=300  |  S=600
+R56:  L=Monthly  |  N=Car wash and maintainence  |  P=240  |  Q=2880  |  R=960  |  S=1920  |  U=Without loan
+R57:  A=PAYE TAX  |  D=PAYE Tax  |  E=10831.94  |  L=Annual  |  N=Miscelaneous  |  P=2000  |  Q=2000  |  R=666.67  |  S=1333.33  |  U=Annual  |  V=42780
+R58:  E=Tax:  |  F=10831.94  |  L=Monthly  |  N=Vehicle Loan  |  P=3500  |  Q=42000  |  R=14000  |  S=28000  |  U=Bi-Annual  |  V=21390
+R59:  F=Tax:  |  G=129983.33  |  L=Total Annual with loan  |  P=nkjytr  |  Q=84780  |  R=28260  |  S=56520  |  U=Quarterly  |  V=10695
+R60:  L=Total Annual without loan  |  Q=42780  |  R=14260  |  S=28520  |  U=Monthly  |  V=3565
+R61:  A=2. Total Annual Requirement (Pre-Tax)…..................................................................................................................................................................  |  H=609933.33
+R63:  A=3. Deduct Estimated Renewal Income -For the Year  |  E=Life
+R64:  E=Property
+R65:  E=A&H  |  G=Total     |  H=40000  |  L=Loans/Debt Payments  |  P=Monthly  |  Q=Annually
+R66:  E=Motor  |  F=40000  |  L=Monthly  |  N=Credit Card #1  |  Q=0  |  S=Annual  |  T=42000
+R67:  L=Monthly  |  N=Credit Card #2  |  Q=0  |  S=Bi-Annual  |  T=21000
+R68:  L=Monthly  |  N=Car Loan #1  |  P=3500  |  Q=42000  |  S=Quarterly  |  T=10500
+R69:  A=4. First-Year Commissions Required - For the Year…...................................................................................................................................................  |  H=569933.33  |  L=Monthly  |  N=Car Loan #2  |  Q=0  |  S=Monthly  |  T=3500
+R70:  L=Monthly  |  N=Personal Loan #1  |  Q=0
+R71:  L=Monthly  |  N=Personal Loan #2  |  Q=0
+R72:  L=Monthly  |  N=Sou-sou #1  |  Q=0
+R73:  A=5. First-Year Commissions TARGETS -For the Year  |  E=Life  |  F=350000  |  L=Monthly  |  N=Sou-sou #2  |  Q=0
+R74:  E=Property  |  F=60000  |  L=Monthly  |  N=Hire-Purchase  |  Q=0
+R75:  E=A&H  |  F=50000  |  G=Total     |  H=520000  |  L=Monthly  |  N=Other  |  Q=0
+R76:  E=Motor  |  F=60000  |  L=Total Debt payments  |  P=3500  |  Q=42000
+R79:  A=*As a reminder for actual payment of item, indicate whether item is paid monthly (M); quarterly (Q); semiannually (S);  ann ually (A); every two, three, or five years (2A, 3A, SA).

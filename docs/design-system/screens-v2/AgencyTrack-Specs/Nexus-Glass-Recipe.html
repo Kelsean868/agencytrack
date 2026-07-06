@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nexus Glass — Recipe & Demo</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+
+    /* ─────────── NEXUS GLASS — LIGHT recipe (tokens) ─────────── */
+    --glass-l-base: rgba(255,255,255,0.62);          /* opacity FLOOR over named surfaces */
+    --glass-l-tint-teal: rgba(1,138,145,0.10);       /* context tint, painted over base */
+    --glass-l-tint-gold: rgba(176,125,26,0.10);
+    --glass-l-blur: 18px;
+    --glass-l-sat: 135%;
+    --glass-l-border: rgba(1,105,111,0.16);
+    --glass-l-hi: rgba(255,255,255,0.65);            /* top inner highlight */
+    --glass-l-shadow: 0 8px 28px rgba(38,35,28,0.10);
+    /* precomputed OPAQUE fallback = tint flattened over surface at the floor */
+    --glass-l-solid-teal: #EAF3F3;
+    --glass-l-solid-gold: #F6EEDD;
+
+    /* ─────────── NEXUS GLASS — DARK recipe (different physics) ─────────── */
+    --glass-d-base: rgba(28,25,20,0.55);             /* lower opacity — dark glass reads thinner */
+    --glass-d-tint-teal: rgba(74,181,184,0.14);      /* brighter tint, lighter touch */
+    --glass-d-tint-gold: rgba(232,183,62,0.12);
+    --glass-d-blur: 20px;
+    --glass-d-sat: 120%;
+    --glass-d-border: rgba(255,255,255,0.12);        /* light hairline, not dark */
+    --glass-d-hi: rgba(255,255,255,0.08);
+    --glass-d-shadow: 0 8px 28px rgba(0,0,0,0.45);
+    --glass-d-solid-teal: #15201F;
+    --glass-d-solid-gold: #221C12;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:780px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:36px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  /* ─── the glass recipe classes (LIGHT) ─── */
+  .glass{
+    position:relative;border-radius:18px;
+    background:linear-gradient(135deg,var(--tile-tint),transparent 70%), var(--glass-l-base);
+    -webkit-backdrop-filter:blur(var(--glass-l-blur)) saturate(var(--glass-l-sat));
+    backdrop-filter:blur(var(--glass-l-blur)) saturate(var(--glass-l-sat));
+    border:1px solid var(--glass-l-border);
+    box-shadow:var(--glass-l-shadow), inset 0 1px 0 var(--glass-l-hi);
+  }
+  .glass.teal{--tile-tint:var(--glass-l-tint-teal)}
+  .glass.gold{--tile-tint:var(--glass-l-tint-gold)}
+
+  /* dark scope flips the physics */
+  .dark .glass{
+    background:linear-gradient(135deg,var(--tile-tint),transparent 70%), var(--glass-d-base);
+    -webkit-backdrop-filter:blur(var(--glass-d-blur)) saturate(var(--glass-d-sat));
+    backdrop-filter:blur(var(--glass-d-blur)) saturate(var(--glass-d-sat));
+    border:1px solid var(--glass-d-border);
+    box-shadow:var(--glass-d-shadow), inset 0 1px 0 var(--glass-d-hi);
+  }
+  .dark .glass.teal{--tile-tint:var(--glass-d-tint-teal)}
+  .dark .glass.gold{--tile-tint:var(--glass-d-tint-gold)}
+
+  /* opaque fallbacks — kiosk, reduced-transparency */
+  @media (prefers-reduced-transparency: reduce){
+    .glass{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--glass-l-solid-teal)}
+    .glass.gold{background:var(--glass-l-solid-gold)}
+    .dark .glass{background:var(--glass-d-solid-teal)}
+    .dark .glass.gold{background:var(--glass-d-solid-gold)}
+  }
+
+  /* demo stage: a backdrop so the blur is visible */
+  .stages{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .stage{border-radius:20px;overflow:hidden;position:relative;padding:26px;min-height:230px;display:flex;align-items:center;justify-content:center}
+  .stage .label{position:absolute;top:12px;left:14px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;z-index:5;padding:3px 9px;border-radius:99px}
+  .stage.light{background:
+      radial-gradient(circle at 18% 22%, #cfeceb 0%, transparent 42%),
+      radial-gradient(circle at 82% 30%, #f6e6c4 0%, transparent 40%),
+      radial-gradient(circle at 60% 88%, #d7e9e8 0%, transparent 46%),
+      #EEF1EC;}
+  .stage.light .label{background:rgba(255,255,255,.7);color:var(--inkMute)}
+  .stage.dark{background:
+      radial-gradient(circle at 18% 22%, #0c3a3c 0%, transparent 44%),
+      radial-gradient(circle at 82% 28%, #3a2f12 0%, transparent 42%),
+      radial-gradient(circle at 62% 90%, #11302f 0%, transparent 48%),
+      #14110D;color:#F4EFE3;}
+  .stage.dark .label{background:rgba(255,255,255,.12);color:#CFC7B8}
+
+  /* ink tokens that must clear AA on glass (dark scope overrides) */
+  .ink{color:var(--ink)} .ink-mute{color:var(--inkMute)}
+  .dark .ink{color:#F4EFE3} .dark .ink-mute{color:#B5AB9C}
+  .teal-ink{color:var(--teal)} .dark .teal-ink{color:#4ab5b8}
+  .gold-ink{color:var(--goldInk)} .dark .gold-ink{color:#E8B73E}
+  .warn-ink{color:var(--warning)} .dark .warn-ink{color:#E8A04A}
+  .succ-ink{color:var(--success)} .dark .succ-ink{color:#5FC489}
+
+  /* ─── demo card internals ─── */
+  .card-pad{width:100%;max-width:430px;padding:18px 20px}
+  .c-ey{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+  .c-big{font-family:var(--display);font-weight:800;font-size:23px;letter-spacing:-.02em;line-height:1.12;margin-top:7px}
+  .c-sl{font-size:11.5px;margin-top:5px}
+  .c-chips{display:flex;gap:10px;margin-top:15px;flex-wrap:wrap}
+  .c-chip{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:11px;min-width:92px;background:rgba(255,255,255,0.34);border:1px solid rgba(255,255,255,0.4)}
+  .dark .c-chip{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10)}
+  .c-chip .k{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.09em}
+  .c-chip .v{font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:-.012em;white-space:nowrap}
+  /* persistency bar bits */
+  .c-row{display:flex;align-items:center;gap:13px}
+  .c-spark{display:flex;align-items:flex-end;gap:2px;height:26px}
+  .c-spark i{width:6px;border-radius:2px 2px 0 0;background:currentColor;opacity:.5}
+  .c-spark i:last-child{opacity:1}
+  /* gameplan metric chips */
+  .c-metrics{display:flex;gap:8px;margin-top:14px}
+  .c-metric{flex:1;text-align:center;padding:10px 6px;border-radius:10px;background:rgba(255,255,255,0.34);border:1px solid rgba(255,255,255,0.4)}
+  .dark .c-metric{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10)}
+  .c-metric .mv{font-family:var(--display);font-weight:800;font-size:20px}
+  .c-metric .ml{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.06em;margin-top:3px}
+
+  /* recipe token tables */
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .rtable{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .rtable caption{caption-side:top;text-align:left;font-family:var(--display);font-weight:800;font-size:15px;padding:14px 16px 0;letter-spacing:-.01em}
+  .rtable caption .pf{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 8px;border-radius:99px;margin-left:8px;vertical-align:middle}
+  .pf.light{background:var(--surfaceMute);color:var(--inkMute)} .pf.dark{background:#211E18;color:#CFC7B8}
+  .rtable th{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint);text-align:left;padding:11px 16px;border-bottom:1px solid var(--rule)}
+  .rtable td{padding:9px 16px;border-bottom:1px solid var(--rule);font-size:12px;vertical-align:middle}
+  .rtable tr:last-child td{border-bottom:none}
+  .rtable .tk{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--tealDark)}
+  .rtable .vl{font-family:var(--mono);font-size:11px;color:var(--ink)}
+  .sw{display:inline-block;width:13px;height:13px;border-radius:4px;vertical-align:-2px;margin-right:6px;border:1px solid var(--rule)}
+
+  /* contrast floor */
+  .aagrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .aacard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .aacard.dk{background:#14110D;border-color:#2a2620}
+  .aa-h{padding:13px 16px;border-bottom:1px solid var(--rule);font-family:var(--display);font-weight:800;font-size:14px;display:flex;align-items:center;gap:9px}
+  .aacard.dk .aa-h{color:#F4EFE3;border-color:#2a2620}
+  .aa-floor{font-family:var(--mono);font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--tealTint);color:var(--tealDark);margin-left:auto}
+  .aacard.dk .aa-floor{background:rgba(74,181,184,.18);color:#7fd0d2}
+  .aarow{display:grid;grid-template-columns:1fr 64px 56px;gap:10px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--rule)}
+  .aacard.dk .aarow{border-color:#2a2620}
+  .aarow:last-child{border-bottom:none}
+  .aarow .tok{font-family:var(--mono);font-size:11px;font-weight:700}
+  .aarow .ratio{font-family:var(--mono);font-size:12px;font-weight:700;text-align:right}
+  .aarow .verdict{font-family:var(--mono);font-size:9px;font-weight:700;text-align:center;padding:3px 0;border-radius:6px}
+  .verdict.pass{background:var(--successTint);color:var(--success)}
+  .verdict.fail{background:var(--dangerTint);color:var(--danger)}
+  .aacard.dk .verdict.pass{background:rgba(95,196,137,.16);color:#7fd49b}
+  .aacard.dk .verdict.fail{background:rgba(192,57,43,.22);color:#f0a59e}
+  .aa-foot{padding:11px 16px;font-size:11px;border-top:1px solid var(--rule)}
+  .aacard.dk .aa-foot{border-color:#2a2620;color:#B5AB9C}
+
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.f{background:var(--danger)} .mk.i{background:var(--inkFaint)}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.teal{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.gold{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+
+  /* perf stance */
+  .perf{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .perfcard{border-radius:13px;padding:15px 17px;border:1px solid var(--rule);background:var(--surface)}
+  .perfcard .ph{font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+  .perfcard .stance{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;padding:3px 9px;border-radius:99px;display:inline-block;margin:8px 0 9px}
+  .stance.full{background:var(--successTint);color:var(--success)}
+  .stance.reduced{background:var(--warningTint);color:var(--warning)}
+  .stance.opaque{background:var(--surfaceMute);color:var(--inkMute)}
+  .perfcard p{font-size:12px;color:var(--inkMute);text-wrap:pretty}
+  .perfcard code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  /* do-not-glass census */
+  .census{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .censusbox{border-radius:14px;padding:17px 20px}
+  .censusbox.no{background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 28%,transparent)}
+  .censusbox.yes{background:var(--successTint);border:1px solid color-mix(in srgb,var(--success) 28%,transparent)}
+  .censusbox .dt{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:11px;display:flex;align-items:center;gap:8px}
+  .censusbox.no .dt{color:var(--danger)} .censusbox.yes .dt{color:var(--success)}
+  .clist{display:flex;flex-direction:column;gap:8px}
+  .ci{display:flex;gap:9px;font-size:12.5px;color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:9px;padding:9px 12px}
+  .ci .x{font-weight:800;flex-shrink:0}
+  .censusbox.no .ci .x{color:var(--danger)} .censusbox.yes .ci .x{color:var(--success)}
+  .ci .why{color:var(--inkMute);font-size:11px;margin-top:2px}
+
+  .flagnote{display:flex;gap:13px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:13px;padding:15px 18px;margin-top:16px}
+  .flagnote .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);flex-shrink:0;padding-top:2px}
+  .flagnote p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .flagnote b{font-weight:700}
+  .flagnote code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  @media(max-width:1040px){
+    .stages,.twocol,.aagrid,.census,.annos{grid-template-columns:1fr}.perf{grid-template-columns:1fr}
+    .dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Nexus Glass · Recipe &amp; demo</div>
+      <h1>A liquid-glass tier for hero cards — tokenized, AA-guaranteed.</h1>
+      <p class="subt">One tokenized recipe (not per-card art) for the <b>hero-card tier</b>, with separate <b>light</b> and <b>dark</b> physics. Tinted backgrounds may use soft gradients; the <b>no-gradient-buttons rule stands</b>. Every recipe ships an <b>opacity floor over the named surface tokens</b> so all ink tokens clear AA — stated below for the contrast module's deterministic glass-pair tests.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />NEXUS GLASS · HERO TIER<br />LIGHT + DARK<br />REV 2026-06-06</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Doctrine</span>
+    <p><b>Glass is a surface treatment, never a content style.</b> It applies only to the top-of-screen hero summary card on a screen (one per screen). The hard rule: a glass tint that can't clear AA with our inks gets <b>changed — the ink never does</b>. Backdrop-filter is GPU-heavy, so Kiosk renders <b>opaque</b> and <code>prefers-reduced-transparency</code> flattens to a precomputed solid.</p>
+  </div>
+
+  <!-- ─────────── DEMO · 3 CARDS ─────────── -->
+  <div class="secttl">Demo · the recipe on 3 hero cards (light ‖ dark, over a live backdrop)</div>
+
+  <!-- Commission -->
+  <div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--inkMute);margin-bottom:8px">① COMMISSION ANCHORSTRIP · gold tint</div>
+  <div class="stages">
+    <div class="stage light"><span class="label">LIGHT</span>
+      <div class="glass gold"><div class="card-pad">
+        <div class="c-ey gold-ink">YOUR REALITY · 4 WEEKS LEFT</div>
+        <div class="c-big ink">On pace for <span class="teal-ink">TTD 245K</span> this year</div>
+        <div class="c-sl ink-mute">TTD 175K earned · projected from 11-wk run-rate</div>
+        <div class="c-chips">
+          <div class="c-chip"><span class="k ink-mute">YTD EARNED</span><span class="v ink">TTD 175K</span></div>
+          <div class="c-chip"><span class="k ink-mute">GOAL</span><span class="v ink">TTD 300K</span></div>
+          <div class="c-chip"><span class="k ink-mute">PERSIST · 4WK</span><span class="v succ-ink">92%</span></div>
+        </div>
+      </div></div>
+    </div>
+    <div class="stage dark"><span class="label">DARK</span>
+      <div class="dark" style="display:contents"><div class="glass gold"><div class="card-pad">
+        <div class="c-ey gold-ink">YOUR REALITY · 4 WEEKS LEFT</div>
+        <div class="c-big ink">On pace for <span class="teal-ink">TTD 245K</span> this year</div>
+        <div class="c-sl ink-mute">TTD 175K earned · projected from 11-wk run-rate</div>
+        <div class="c-chips">
+          <div class="c-chip"><span class="k ink-mute">YTD EARNED</span><span class="v ink">TTD 175K</span></div>
+          <div class="c-chip"><span class="k ink-mute">GOAL</span><span class="v ink">TTD 300K</span></div>
+          <div class="c-chip"><span class="k ink-mute">PERSIST · 4WK</span><span class="v succ-ink">92%</span></div>
+        </div>
+      </div></div></div>
+    </div>
+  </div>
+
+  <!-- Persistency -->
+  <div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--inkMute);margin:22px 0 8px">② PERSISTENCY REALITY BAR · teal tint</div>
+  <div class="stages">
+    <div class="stage light"><span class="label">LIGHT</span>
+      <div class="glass teal"><div class="card-pad">
+        <div class="c-row">
+          <div><div class="c-ey teal-ink">SOUTH BRANCH · NOV</div><div class="c-big ink" style="font-size:30px">84.2%</div></div>
+          <div class="c-spark warn-ink" style="margin-left:4px"><i style="height:55%"></i><i style="height:62%"></i><i style="height:78%"></i><i style="height:68%"></i><i style="height:84%"></i><i style="height:72%"></i></div>
+        </div>
+        <div class="c-chips">
+          <div class="c-chip"><span class="k ink-mute">BELOW FLOOR</span><span class="v warn-ink">3</span></div>
+          <div class="c-chip"><span class="k ink-mute">AWARD-ELIGIBLE</span><span class="v succ-ink">5</span></div>
+          <div class="c-chip"><span class="k ink-mute">LAPSES · MTH</span><span class="v ink">TTD 88K</span></div>
+        </div>
+      </div></div>
+    </div>
+    <div class="stage dark"><span class="label">DARK</span>
+      <div class="dark" style="display:contents"><div class="glass teal"><div class="card-pad">
+        <div class="c-row">
+          <div><div class="c-ey teal-ink">SOUTH BRANCH · NOV</div><div class="c-big ink" style="font-size:30px">84.2%</div></div>
+          <div class="c-spark warn-ink" style="margin-left:4px"><i style="height:55%"></i><i style="height:62%"></i><i style="height:78%"></i><i style="height:68%"></i><i style="height:84%"></i><i style="height:72%"></i></div>
+        </div>
+        <div class="c-chips">
+          <div class="c-chip"><span class="k ink-mute">BELOW FLOOR</span><span class="v warn-ink">3</span></div>
+          <div class="c-chip"><span class="k ink-mute">AWARD-ELIGIBLE</span><span class="v succ-ink">5</span></div>
+          <div class="c-chip"><span class="k ink-mute">LAPSES · MTH</span><span class="v ink">TTD 88K</span></div>
+        </div>
+      </div></div></div>
+    </div>
+  </div>
+
+  <!-- Game Plan -->
+  <div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--inkMute);margin:22px 0 8px">③ GAME PLAN SUGGESTED-WEEK CARD · teal tint</div>
+  <div class="stages">
+    <div class="stage light"><span class="label">LIGHT</span>
+      <div class="glass teal"><div class="card-pad">
+        <div class="c-ey teal-ink">SUGGESTED WEEKLY PLAN · WK 48</div>
+        <div class="c-big ink" style="font-size:19px">To stay on your <span class="teal-ink">TTD 600K</span> plan, your week:</div>
+        <div class="c-metrics">
+          <div class="c-metric"><div class="mv teal-ink">50</div><div class="ml ink-mute">CALLS</div></div>
+          <div class="c-metric"><div class="mv teal-ink">12</div><div class="ml ink-mute">FFIS</div></div>
+          <div class="c-metric"><div class="mv teal-ink">6</div><div class="ml ink-mute">CIS</div></div>
+          <div class="c-metric"><div class="mv teal-ink">2</div><div class="ml ink-mute">APPS</div></div>
+        </div>
+      </div></div>
+    </div>
+    <div class="stage dark"><span class="label">DARK</span>
+      <div class="dark" style="display:contents"><div class="glass teal"><div class="card-pad">
+        <div class="c-ey teal-ink">SUGGESTED WEEKLY PLAN · WK 48</div>
+        <div class="c-big ink" style="font-size:19px">To stay on your <span class="teal-ink">TTD 600K</span> plan, your week:</div>
+        <div class="c-metrics">
+          <div class="c-metric"><div class="mv teal-ink">50</div><div class="ml ink-mute">CALLS</div></div>
+          <div class="c-metric"><div class="mv teal-ink">12</div><div class="ml ink-mute">FFIS</div></div>
+          <div class="c-metric"><div class="mv teal-ink">6</div><div class="ml ink-mute">CIS</div></div>
+          <div class="c-metric"><div class="mv teal-ink">2</div><div class="ml ink-mute">APPS</div></div>
+        </div>
+      </div></div></div>
+    </div>
+  </div>
+
+  <!-- ─────────── RECIPE TOKENS ─────────── -->
+  <div class="secttl">The recipe · tokens (light + dark are separate physics)</div>
+  <div class="twocol">
+    <table class="rtable">
+      <caption>Light glass<span class="pf light">LIGHT</span></caption>
+      <thead><tr><th>Property</th><th>Token</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Base (opacity floor)</td><td class="tk">--glass-l-base</td><td class="vl">rgba(255,255,255,<b>0.62</b>)</td></tr>
+        <tr><td>Tint · teal</td><td class="tk">--glass-l-tint-teal</td><td class="vl"><span class="sw" style="background:#018A91"></span>rgba(1,138,145,.10)</td></tr>
+        <tr><td>Tint · gold</td><td class="tk">--glass-l-tint-gold</td><td class="vl"><span class="sw" style="background:#B07D1A"></span>rgba(176,125,26,.10)</td></tr>
+        <tr><td>Blur</td><td class="tk">--glass-l-blur</td><td class="vl">18px</td></tr>
+        <tr><td>Saturation</td><td class="tk">--glass-l-sat</td><td class="vl">135%</td></tr>
+        <tr><td>Border</td><td class="tk">--glass-l-border</td><td class="vl">rgba(1,105,111,.16)</td></tr>
+        <tr><td>Inner highlight</td><td class="tk">--glass-l-hi</td><td class="vl">inset 0 1px 0 rgba(255,255,255,.65)</td></tr>
+        <tr><td>Shadow</td><td class="tk">--glass-l-shadow</td><td class="vl">0 8px 28px rgba(38,35,28,.10)</td></tr>
+        <tr><td>Opaque fallback</td><td class="tk">--glass-l-solid-*</td><td class="vl"><span class="sw" style="background:#EAF3F3"></span>#EAF3F3 / <span class="sw" style="background:#F6EEDD"></span>#F6EEDD</td></tr>
+      </tbody>
+    </table>
+    <table class="rtable">
+      <caption>Dark glass<span class="pf dark">DARK</span></caption>
+      <thead><tr><th>Property</th><th>Token</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Base (opacity floor)</td><td class="tk">--glass-d-base</td><td class="vl">rgba(28,25,20,<b>0.55</b>)</td></tr>
+        <tr><td>Tint · teal</td><td class="tk">--glass-d-tint-teal</td><td class="vl"><span class="sw" style="background:#4ab5b8"></span>rgba(74,181,184,.14)</td></tr>
+        <tr><td>Tint · gold</td><td class="tk">--glass-d-tint-gold</td><td class="vl"><span class="sw" style="background:#E8B73E"></span>rgba(232,183,62,.12)</td></tr>
+        <tr><td>Blur</td><td class="tk">--glass-d-blur</td><td class="vl">20px</td></tr>
+        <tr><td>Saturation</td><td class="tk">--glass-d-sat</td><td class="vl">120%</td></tr>
+        <tr><td>Border <span style="color:var(--inkFaint)">(light, not dark)</span></td><td class="tk">--glass-d-border</td><td class="vl">rgba(255,255,255,.12)</td></tr>
+        <tr><td>Inner highlight</td><td class="tk">--glass-d-hi</td><td class="vl">inset 0 1px 0 rgba(255,255,255,.08)</td></tr>
+        <tr><td>Shadow</td><td class="tk">--glass-d-shadow</td><td class="vl">0 8px 28px rgba(0,0,0,.45)</td></tr>
+        <tr><td>Opaque fallback</td><td class="tk">--glass-d-solid-*</td><td class="vl"><span class="sw" style="background:#15201F"></span>#15201F / <span class="sw" style="background:#221C12"></span>#221C12</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="annos">
+    <div class="anno teal"><span class="mk e">P</span><div><div class="at">Dark physics differ on purpose</div><div class="ad">Dark glass uses a <b>lower base opacity</b> (0.55 vs 0.62), a <b>brighter tint</b> (the <code>#4ab5b8</code> dark-teal, not <code>#01696F</code>), and a <b>light hairline border</b> (white @12%) instead of a dark one — so the pane reads as lit translucent glass, not a muddy film.</div></div></div>
+    <div class="anno gold"><span class="mk n">G</span><div><div class="at">Tinted backgrounds may gradient — buttons may not</div><div class="ad">The card background is <code>linear-gradient(135deg, tint, transparent 70%)</code> over the base — a soft directional tint. This is a <b>surface</b>; the <b>no-gradient rule on buttons is untouched</b> (buttons stay <code>bg-primary</code>).</div></div></div>
+  </div>
+
+  <!-- ─────────── THE HARD CONSTRAINT ─────────── -->
+  <div class="secttl">The hard constraint · opacity floor → AA-guaranteed inks</div>
+  <div class="scopebar" style="background:var(--surfaceSoft);border-color:var(--rule);margin-bottom:16px">
+    <span class="tag" style="color:var(--ink)">Floor rule</span>
+    <p>The effective glass background is computed as <b>tint over the base over the darkest named app surface</b>. Because every app surface token is itself light (light theme) or dark (dark theme), the floor is deterministic — no arbitrary photo can breach it. <b>Light floor = base ≥ 0.62</b> over <code>{surface, surfaceSoft, surfaceMute}</code> (all L*≥0.88). <b>Dark floor = base ≥ 0.55</b> over <code>{surface, surfaceRaised}</code> (all L*≤0.03). The contrast module asserts ink-on-effective-bg at these floors.</p>
+  </div>
+  <div class="aagrid">
+    <div class="aacard">
+      <div class="aa-h">Light glass · ink pairs<span class="aa-floor">FLOOR 0.62 → eff. #EAF3F3</span></div>
+      <div class="aarow"><span class="tok ink">text-ink #28251D</span><span class="ratio">12.6:1</span><span class="verdict pass">AAA</span></div>
+      <div class="aarow"><span class="tok ink-mute">text-ink-muted #6B6560</span><span class="ratio">5.1:1</span><span class="verdict pass">AA</span></div>
+      <div class="aarow"><span class="tok teal-ink">teal #01696F</span><span class="ratio">5.6:1</span><span class="verdict pass">AA</span></div>
+      <div class="aarow"><span class="tok warn-ink">warning #B45309</span><span class="ratio">4.7:1</span><span class="verdict pass">AA</span></div>
+      <div class="aarow"><span class="tok" style="color:#A8A39C">text-ink-faint #A8A39C</span><span class="ratio">2.0:1</span><span class="verdict fail">FAIL</span></div>
+      <div class="aa-foot">text-ink-faint <b>fails by design</b> — doctrine already bars faint for small text; on glass it is <b>never permitted</b>.</div>
+    </div>
+    <div class="aacard dk">
+      <div class="aa-h">Dark glass · ink pairs<span class="aa-floor">FLOOR 0.55 → eff. #15201F</span></div>
+      <div class="aarow"><span class="tok" style="color:#F4EFE3">text-ink #F4EFE3</span><span class="ratio" style="color:#F4EFE3">12.1:1</span><span class="verdict pass">AAA</span></div>
+      <div class="aarow"><span class="tok" style="color:#B5AB9C">text-ink-muted #B5AB9C</span><span class="ratio" style="color:#B5AB9C">5.6:1</span><span class="verdict pass">AA</span></div>
+      <div class="aarow"><span class="tok" style="color:#4ab5b8">teal #4ab5b8</span><span class="ratio" style="color:#4ab5b8">5.4:1</span><span class="verdict pass">AA</span></div>
+      <div class="aarow"><span class="tok" style="color:#E8A04A">warning #E8A04A</span><span class="ratio" style="color:#E8A04A">6.2:1</span><span class="verdict pass">AA</span></div>
+      <div class="aarow"><span class="tok" style="color:#6B6560">faint (dk) #6B6560</span><span class="ratio" style="color:#6B6560">1.9:1</span><span class="verdict fail">FAIL</span></div>
+      <div class="aa-foot">Same verdict in dark: <b>faint is never used on glass</b>; all standard inks + status-ink clear AA at the floor.</div>
+    </div>
+  </div>
+  <div class="flagnote">
+    <span class="tag">Test hook</span>
+    <p><b>For the contrast module.</b> Add a deterministic <code>glassPair(tintToken, theme)</code> test: flatten <code>tint → base(floor) → darkestSurface</code> to an opaque effective color, then assert every ink in <code>{ink, ink-muted, teal, gold, success, warning, danger}</code> ≥ 4.5:1 against it. Ratios above are computed at the floor; <b>treat them as the spec to reproduce</b>, and if a future tint fails, <b>lower the tint alpha or shift its hue — never touch the ink</b>. (Ratios stated here are design-time; the module is the source of record.)</p>
+  </div>
+
+  <!-- ─────────── PERFORMANCE ─────────── -->
+  <div class="secttl">Performance · backdrop-filter is GPU-heavy</div>
+  <div class="perf">
+    <div class="perfcard">
+      <div class="ph">🖥 Kiosk Mode</div>
+      <span class="stance opaque">OPAQUE — no backdrop-filter</span>
+      <p>TV / smart-display GPUs choke on full-screen <code>backdrop-filter</code> across many cards, and there's nothing meaningful behind the wall display to blur. Glass tokens resolve to the <b>precomputed solid</b> (<code>--glass-*-solid-*</code>). Identical look, zero filter cost.</p>
+    </div>
+    <div class="perfcard">
+      <div class="ph">📽 Meeting Mode</div>
+      <span class="stance reduced">REDUCED — blur ≤ 8px</span>
+      <p>Projector + slide motion: halve the blur, drop saturation to 100%, keep the border + shadow + tint. Enough glass to read as the same tier without the per-frame cost while advancing run-of-show.</p>
+    </div>
+    <div class="perfcard">
+      <div class="ph">📱 In-app (agent/manager)</div>
+      <span class="stance full">FULL GLASS</span>
+      <p>One hero card per screen, scrolled over real content — the case glass is <i>for</i>. Full recipe. <code>@media (prefers-reduced-transparency: reduce)</code> flattens to the opaque solid (border + shadow retained) for users who opt out.</p>
+    </div>
+  </div>
+
+  <!-- ─────────── CENSUS ─────────── -->
+  <div class="secttl">Hero-card census · which cards get glass</div>
+  <div class="census">
+    <div class="censusbox yes">
+      <div class="dt">✓ Glass — the hero tier (one per screen)</div>
+      <div class="clist">
+        <div class="ci"><span class="x">✓</span><div><div>Commission AnchorStrip</div><div class="why">Low text density, top-of-screen, glanceable summary.</div></div></div>
+        <div class="ci"><span class="x">✓</span><div><div>Persistency reality bar</div><div class="why">Single KPI + chips; the screen's headline.</div></div></div>
+        <div class="ci"><span class="x">✓</span><div><div>Game Plan suggested-week / plan anchor</div><div class="why">Hero rung, few large numbers.</div></div></div>
+        <div class="ci"><span class="x">✓</span><div><div>Dashboard role-hero banner</div><div class="why">Already a gradient hero — glass formalizes it.</div></div></div>
+      </div>
+    </div>
+    <div class="censusbox no">
+      <div class="dt">✕ No glass — flag these from the census</div>
+      <div class="clist">
+        <div class="ci"><span class="x">✕</span><div><div>Master Sheet / data tables</div><div class="why">23-col dense data — blur kills legibility + perf over many rows.</div></div></div>
+        <div class="ci"><span class="x">✕</span><div><div>Kiosk leaderboard rows</div><div class="why">TV + many rows; opaque always (see perf).</div></div></div>
+        <div class="ci"><span class="x">✕</span><div><div>Policy Ledger / Reconciliation worklists</div><div class="why">Long scrolling lists; data needs flat, maximal contrast.</div></div></div>
+        <div class="ci"><span class="x">✕</span><div><div>Entry drawers / forms</div><div class="why">Inputs &amp; steppers need solid fields; glass behind them is noise.</div></div></div>
+        <div class="ci"><span class="x">✕</span><div><div>Any card whose primary content is small/faint text</div><div class="why">Faint can't clear AA on glass — hard stop.</div></div></div>
+        <div class="ci"><span class="x">✕</span><div><div>Error / empty states</div><div class="why">Clarity &gt; flourish; keep solid.</div></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

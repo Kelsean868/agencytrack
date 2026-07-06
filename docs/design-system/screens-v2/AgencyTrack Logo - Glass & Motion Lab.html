@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AgencyTrack Logo — Glass & Motion Lab</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.5;transition:background .35s ease}
+  /* studio themes */
+  body.light{background:radial-gradient(120% 100% at 50% -10%, #F4F1EA, #E4E0D6);color:#28251D}
+  body.dark{background:radial-gradient(120% 100% at 50% -10%, #1d1916, #100d0b);color:#F0EBE0}
+  .wrap{max-width:1180px;margin:0 auto;padding:34px 30px 90px}
+
+  .head{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap}
+  .head .badge{width:50px;height:50px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#018A91}
+  body.dark .eyebrow{color:#4ecdc4}
+  h1{font-family:var(--display);font-weight:800;font-size:27px;letter-spacing:-.025em;margin-top:6px}
+  .sub{font-size:13.5px;opacity:.72;margin-top:7px;max-width:680px;text-wrap:pretty}
+
+  /* control bar */
+  .controls{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .ctl{display:flex;align-items:center;gap:7px;background:rgba(127,127,127,.10);border:1px solid rgba(127,127,127,.22);border-radius:11px;padding:4px}
+  .ctl .lbl{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.5;padding:0 6px}
+  .seg{display:flex;background:rgba(127,127,127,.10);border-radius:8px;padding:2px}
+  .seg button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:7px;font-size:11.5px;font-weight:700;opacity:.6;min-height:34px}
+  .seg button.on{opacity:1;background:#01696F;color:#fff}
+  body.dark .seg button.on{background:#4ecdc4;color:#08201f}
+  .btn{font-family:inherit;cursor:pointer;border:1px solid rgba(127,127,127,.28);background:rgba(127,127,127,.08);color:inherit;display:flex;align-items:center;gap:7px;padding:9px 14px;border-radius:10px;font-size:12px;font-weight:700;min-height:40px;transition:background .15s}
+  .btn:hover{background:rgba(127,127,127,.16)}
+  .btn svg{width:15px;height:15px}
+
+  /* hero */
+  .hero{display:grid;grid-template-columns:auto 1fr;gap:38px;align-items:center;margin:32px 0 14px;padding:30px;border-radius:22px;background:rgba(127,127,127,.06);border:1px solid rgba(127,127,127,.14)}
+  .phone{width:236px;border-radius:38px;padding:13px;background:linear-gradient(160deg,#2a2620,#16130f);box-shadow:0 30px 60px rgba(0,0,0,.32), inset 0 0 0 1px rgba(255,255,255,.06);flex-shrink:0}
+  .phone .screen{border-radius:28px;overflow:hidden;aspect-ratio:9/17.5;position:relative;background:linear-gradient(165deg,#0c5a5f 0%, #02484c 48%, #052f38 100%)}
+  .phone .pstatus{position:absolute;top:0;left:0;right:0;height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,.85)}
+  .phone .dock{position:absolute;left:0;right:0;bottom:0;height:78px;background:rgba(255,255,255,.10);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-around;padding:0 18px}
+  .phone .dock i{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.16)}
+  .phone .appspot{position:absolute;top:54%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:9px}
+  .phone .appspot .ic{width:96px}
+  .phone .appspot .nm{font-size:12px;font-weight:700;color:#fff;letter-spacing:.01em;text-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .hero-info .hk{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#018A91}
+  body.dark .hero-info .hk{color:#4ecdc4}
+  .hero-info .hn{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.02em;margin-top:5px}
+  .hero-info .hd{font-size:14px;opacity:.74;margin-top:9px;max-width:440px;text-wrap:pretty}
+  .hero-info .specs{display:flex;gap:9px;margin-top:18px;flex-wrap:wrap}
+  .spec{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.04em;padding:6px 11px;border-radius:99px;background:rgba(127,127,127,.12);border:1px solid rgba(127,127,127,.2)}
+  .spec.teal{color:#018A91;border-color:rgba(1,138,145,.35);background:rgba(1,138,145,.1)}
+  body.dark .spec.teal{color:#4ecdc4;border-color:rgba(78,205,196,.3);background:rgba(78,205,196,.1)}
+  .sizes{display:flex;align-items:flex-end;gap:18px;margin-top:22px}
+  .sizes .sz{display:flex;flex-direction:column;align-items:center;gap:7px}
+  .sizes .sz .cap{font-family:var(--mono);font-size:8.5px;opacity:.5;letter-spacing:.05em}
+
+  /* grid */
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.55;margin:36px 0 16px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:rgba(127,127,127,.22)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:18px}
+  .tile{background:rgba(127,127,127,.06);border:1px solid rgba(127,127,127,.16);border-radius:18px;padding:18px;cursor:pointer;transition:transform .18s ease,border-color .18s,background .18s;position:relative}
+  .tile:hover{transform:translateY(-4px);border-color:rgba(1,138,145,.5);background:rgba(127,127,127,.1)}
+  .tile.sel{border-color:#01696F;box-shadow:0 0 0 2px rgba(1,105,111,.32)}
+  body.dark .tile.sel{border-color:#4ecdc4;box-shadow:0 0 0 2px rgba(78,205,196,.3)}
+  .tile .icwrap{width:130px;margin:4px auto 14px;transition:transform .18s ease}
+  .tile:hover .icwrap{transform:scale(1.03)}
+  .tile .tn{font-family:var(--display);font-weight:800;font-size:15.5px;display:flex;align-items:center;gap:8px}
+  .tile .tg{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:99px}
+  .tg.glass{background:rgba(1,138,145,.14);color:#018A91}
+  body.dark .tg.glass{color:#4ecdc4;background:rgba(78,205,196,.16)}
+  .tg.flat{background:rgba(127,127,127,.16);opacity:.7}
+  .tg.motion{background:rgba(176,125,26,.16);color:#8A6010}
+  body.dark .tg.motion{color:#E0AA3E;background:rgba(224,170,62,.16)}
+  .tile .td{font-size:11.5px;opacity:.66;margin-top:5px;text-wrap:pretty;min-height:32px}
+  .tile .pick{position:absolute;top:14px;right:14px;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:0;transition:opacity .15s}
+  .tile.sel .pick{opacity:1;color:#01696F}
+  body.dark .tile.sel .pick{color:#4ecdc4}
+
+  .note{display:flex;gap:12px;background:rgba(127,127,127,.07);border:1px solid rgba(127,127,127,.16);border-radius:13px;padding:15px 18px;margin-top:26px}
+  .note .ni{width:22px;height:22px;border-radius:50%;background:#01696F;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono);font-weight:700;font-size:12px}
+  body.dark .note .ni{background:#4ecdc4;color:#08201f}
+  .note p{font-size:12.5px;opacity:.82;text-wrap:pretty}
+  .note b{font-weight:700;opacity:1}
+
+  /* ───────────── ICON + ANIMATION ───────────── */
+  .ic{display:block;width:100%;height:auto}
+  .ic .bar{transform-box:fill-box;transform-origin:50% 100%}
+  .ic .dot,.ic .dotglow{transform-box:fill-box;transform-origin:50% 50%}
+  .ic .sheen{transform-origin:center}
+
+  @keyframes sheen{
+    0%,52%{transform:translateX(-120px) rotate(18deg);opacity:0}
+    60%{opacity:.85}74%{opacity:.85}
+    100%{transform:translateX(150px) rotate(18deg);opacity:0}
+  }
+  @keyframes glowPulse{0%,100%{opacity:.32;transform:scale(.92)}50%{opacity:.8;transform:scale(1.12)}}
+  @keyframes dotBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+  @keyframes growLoop{0%{transform:scaleY(0)}11%{transform:scaleY(1)}88%{transform:scaleY(1)}100%{transform:scaleY(0)}}
+  @keyframes popLoop{0%,38%{transform:scale(0);opacity:0}48%{transform:scale(1.22);opacity:1}57%{transform:scale(1)}86%{transform:scale(1);opacity:1}100%{transform:scale(0);opacity:0}}
+  @keyframes sig{0%,100%{transform:scaleY(var(--lo,.82))}50%{transform:scaleY(var(--hi,1.04))}}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+
+  /* frosted: slow sheen + gentle dot glow */
+  .v-frosted .sheen{animation:sheen 6.5s ease-in-out infinite}
+  .v-frosted .dotglow{animation:glowPulse 3.6s ease-in-out infinite}
+
+  /* liquid: faster sheen, breathing dot, floating bars */
+  .v-liquid .sheen{animation:sheen 5s ease-in-out infinite}
+  .v-liquid .dotglow{animation:glowPulse 2.6s ease-in-out infinite}
+  .v-liquid .dot{animation:dotBreathe 2.6s ease-in-out infinite}
+  .v-liquid .bars{animation:floaty 4.5s ease-in-out infinite}
+
+  /* build-up: bars grow + marker pop, looping */
+  .v-grow .b1{animation:growLoop 4.6s cubic-bezier(.2,.8,.2,1) infinite}
+  .v-grow .b2{animation:growLoop 4.6s cubic-bezier(.2,.8,.2,1) infinite .12s}
+  .v-grow .b3{animation:growLoop 4.6s cubic-bezier(.2,.8,.2,1) infinite .24s}
+  .v-grow .b4{animation:growLoop 4.6s cubic-bezier(.2,.8,.2,1) infinite .36s}
+  .v-grow .dot{animation:popLoop 4.6s ease-in-out infinite}
+  .v-grow .sheen{animation:sheen 7s ease-in-out infinite 1s}
+
+  /* live-signal: calm equalizer drift */
+  .v-signal .b1{--lo:.7;--hi:1.06;animation:sig 2.9s ease-in-out infinite}
+  .v-signal .b2{--lo:.8;--hi:1.0;animation:sig 3.4s ease-in-out infinite .2s}
+  .v-signal .b3{--lo:.84;--hi:1.05;animation:sig 3.1s ease-in-out infinite .5s}
+  .v-signal .b4{--lo:.9;--hi:1.03;animation:sig 3.7s ease-in-out infinite .3s}
+  .v-signal .dotglow{animation:glowPulse 3.2s ease-in-out infinite}
+  .v-signal .sheen{animation:sheen 8s ease-in-out infinite}
+
+  /* paused */
+  #studio.paused .ic *{animation-play-state:paused!important}
+
+  @media(prefers-reduced-motion:reduce){
+    .ic *{animation:none!important;transform:none!important;opacity:1!important}
+    .ic .dotglow{opacity:.5!important}
+  }
+  @media(max-width:760px){
+    .hero{grid-template-columns:1fr;justify-items:center;text-align:center}
+    .hero-info .specs,.sizes{justify-content:center}
+    .controls{margin-left:0;width:100%}
+  }
+</style>
+</head>
+<body class="light">
+<div class="wrap" id="studio">
+
+  <div class="head">
+    <svg class="badge" viewBox="0 0 200 200" aria-hidden="true"><rect width="200" height="200" rx="46" fill="#014e52"/><rect x="72" y="118" width="11" height="22" rx="2.5" fill="#fff" fill-opacity=".4"/><rect x="89" y="104" width="11" height="36" rx="2.5" fill="#fff" fill-opacity=".7"/><rect x="106" y="88" width="11" height="52" rx="2.5" fill="#fff"/><circle cx="111" cy="80" r="5" fill="#4ecdc4"/></svg>
+    <div>
+      <div class="eyebrow">AgencyTrack · icon exploration</div>
+      <h1>Glass &amp; Motion Lab</h1>
+      <p class="sub">Your logo, rebuilt from its own vector paths and dressed five ways — two glass treatments and three subtle motions. Pick any tile to preview it on a home screen and at real icon sizes. Everything's live; use the controls to pause, replay, or flip the studio light.</p>
+    </div>
+    <div class="controls">
+      <div class="ctl"><span class="lbl">Studio</span><div class="seg" id="themeSeg"><button data-theme="light" class="on">Light</button><button data-theme="dark">Dark</button></div></div>
+      <button class="btn" id="playBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg><span>Pause</span></button>
+      <button class="btn" id="replayBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>Replay</span></button>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="phone">
+      <div class="screen">
+        <div class="pstatus"><span>9:41</span><span>●●● ▾ ▮</span></div>
+        <div class="appspot"><div class="ic" id="heroIcon"></div><div class="nm">AgencyTrack</div></div>
+        <div class="dock"><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+    <div class="hero-info">
+      <div class="hk" id="heroKick">Liquid Glass</div>
+      <div class="hn" id="heroName">Liquid Glass</div>
+      <div class="hd" id="heroDesc">Layered translucency with a moving specular sheen, a soft rim-light, and a marker that quietly breathes. The most expressive of the set.</div>
+      <div class="specs" id="heroSpecs"></div>
+      <div class="sizes" id="sizeStrip"></div>
+    </div>
+  </div>
+
+  <!-- GRID -->
+  <div class="secttl">Variations — click to preview</div>
+  <div class="grid" id="grid"></div>
+
+  <div class="note">
+    <span class="ni">i</span>
+    <p><b>All built from your real artwork</b> — the shield path, the four ascending bars, and the teal up-marker are exactly your vectors; only the surface and motion change. The animations are loop-gentle and respect <b>reduced-motion</b> (they hold a clean static frame for users who opt out), so nothing distracting ships to a home screen. Tell me which direction feels right and I'll cut production SVG + an optional Lottie/animated-PNG for splash use.</p>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  // ── icon builder: stamps your real paths with namespaced gradient/clip ids ──
+  let uid = 0;
+  function buildIcon(vkey, glass, opts){
+    opts = opts || {};
+    const i = ++uid;
+    const lush = vkey === 'liquid';
+    // shield fill + bg differ for glass vs flat(current)
+    const bg = glass
+      ? `<radialGradient id="bg${i}" cx="34%" cy="26%" r="92%"><stop offset="0" stop-color="#0c6066"/><stop offset="1" stop-color="#013e43"/></radialGradient>`
+      : '';
+    const shieldFill = glass ? `url(#sh${i})` : 'rgba(255,255,255,0.12)';
+    const shieldGrad = glass
+      ? `<linearGradient id="sh${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="${lush?0.34:0.26}"/><stop offset="0.5" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="1" stop-color="#ffffff" stop-opacity="0.04"/></linearGradient>`
+      : '';
+    const barGrad = glass
+      ? `<linearGradient id="ba${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff" stop-opacity="1"/><stop offset="0.35" stop-color="#ffffff" stop-opacity="0.82"/><stop offset="1" stop-color="#ffffff" stop-opacity="0.6"/></linearGradient>`
+      : '';
+    const barFill = glass ? `url(#ba${i})` : '#ffffff';
+    const sheenGrad = glass
+      ? `<linearGradient id="se${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.5" stop-color="#fff" stop-opacity="${lush?0.55:0.4}"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>`
+      : '';
+    const shieldPath = 'M100 28 Q65 28 37 42 Q30 45 30 56 L30 115 Q30 160 100 188 Q170 160 170 115 L170 56 Q170 45 163 42 Q135 28 100 28 Z';
+    const clip = glass ? `<clipPath id="cl${i}"><path d="${shieldPath}"/></clipPath>` : '';
+    const sheen = glass
+      ? `<g clip-path="url(#cl${i})"><rect class="sheen" x="44" y="6" width="42" height="188" fill="url(#se${i})"/></g>`
+      : '';
+    const bgRect = glass ? `<rect width="200" height="200" rx="44" fill="url(#bg${i})"/>` : `<rect width="200" height="200" rx="44" fill="#014e52"/>`;
+    const rimStroke = lush ? 0.72 : 0.55;
+    // bar tier opacities preserved from your original
+    return `
+    <svg class="ic v-${vkey}" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AgencyTrack icon — ${vkey}">
+      <defs>${bg}${shieldGrad}${barGrad}${sheenGrad}${clip}
+        <filter id="gl${i}" x="-90%" y="-90%" width="280%" height="280%"><feGaussianBlur stdDeviation="3.4"/></filter>
+        <radialGradient id="dt${i}" cx="38%" cy="34%" r="75%"><stop offset="0" stop-color="#8fe9e2"/><stop offset="1" stop-color="#3bb9b1"/></radialGradient>
+      </defs>
+      ${bgRect}
+      <path d="${shieldPath}" fill="${shieldFill}" stroke="#ffffff" stroke-opacity="${rimStroke}" stroke-width="2.5"/>
+      ${sheen}
+      <g class="bars">
+        <rect class="bar b1" x="72"  y="127" width="11" height="18" rx="2.5" fill="${barFill}" opacity="0.32"/>
+        <rect class="bar b2" x="87"  y="117" width="11" height="28" rx="2.5" fill="${barFill}" opacity="0.55"/>
+        <rect class="bar b3" x="102" y="105" width="11" height="40" rx="2.5" fill="${barFill}" opacity="0.80"/>
+        <rect class="bar b4" x="117" y="93"  width="11" height="52" rx="2.5" fill="${barFill}"/>
+      </g>
+      <g class="dot">
+        ${glass ? `<circle class="dotglow" cx="122.5" cy="86" r="7" fill="#4ecdc4" filter="url(#gl${i})" opacity="0.5"/>` : ''}
+        <circle cx="122.5" cy="86" r="4.5" fill="${glass ? `url(#dt${i})` : '#4ecdc4'}"/>
+        <polyline points="120,87 122.5,84 125,87" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+    </svg>`;
+  }
+
+  const VARIANTS = [
+    { key:'current', name:'Current', kicker:'Your logo today', glass:false, tag:'flat', tagL:'Flat',
+      desc:'The flat reference, exactly as it is now — flat fills, no motion.' },
+    { key:'frosted', name:'Frosted Glass', kicker:'Frosted Glass', glass:true, tag:'glass', tagL:'Glass',
+      desc:'A soft frosted shield with a slow specular sheen drifting across it. Understated and premium.' },
+    { key:'liquid', name:'Liquid Glass', kicker:'Liquid Glass', glass:true, tag:'glass', tagL:'Glass',
+      desc:'Layered translucency, a brighter rim-light, faster sheen, and a marker that quietly breathes.' },
+    { key:'grow', name:'Build Up', kicker:'Build Up', glass:true, tag:'motion', tagL:'Motion',
+      desc:'The bars rise into place and the marker pops — a 1-second “growth” story, looping calmly.' },
+    { key:'signal', name:'Live Signal', kicker:'Live Signal', glass:true, tag:'motion', tagL:'Motion',
+      desc:'Bars drift like a calm equalizer — a logo that feels quietly alive without being busy.' },
+  ];
+
+  const specsFor = (v) => {
+    const out = [];
+    out.push(`<span class="spec ${v.glass?'teal':''}">${v.glass?'Glass surface':'Flat surface'}</span>`);
+    if(v.tag==='motion') out.push('<span class="spec teal">Looping motion</span>');
+    else if(v.glass) out.push('<span class="spec teal">Ambient motion</span>');
+    else out.push('<span class="spec">Static</span>');
+    out.push('<span class="spec">Built from source vectors</span>');
+    return out.join('');
+  };
+
+  let selected = 'liquid';
+  const grid = document.getElementById('grid');
+
+  function renderGrid(){
+    grid.innerHTML = VARIANTS.map(v => `
+      <div class="tile ${v.key===selected?'sel':''}" data-key="${v.key}">
+        <span class="pick">● Previewing</span>
+        <div class="icwrap">${buildIcon(v.key, v.glass)}</div>
+        <div class="tn">${v.name} <span class="tg ${v.tag}">${v.tagL}</span></div>
+        <div class="td">${v.desc}</div>
+      </div>`).join('');
+    grid.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () => { selected = t.dataset.key; renderHero(); grid.querySelectorAll('.tile').forEach(x=>x.classList.toggle('sel', x.dataset.key===selected)); }));
+  }
+
+  function renderHero(){
+    const v = VARIANTS.find(x => x.key === selected);
+    document.getElementById('heroIcon').innerHTML = buildIcon(v.key, v.glass);
+    document.getElementById('heroKick').textContent = v.kicker;
+    document.getElementById('heroName').textContent = v.name;
+    document.getElementById('heroDesc').textContent = v.desc;
+    document.getElementById('heroSpecs').innerHTML = specsFor(v);
+    const sizes = [[88,'88 · home'],[56,'56'],[40,'40'],[28,'28 · list']];
+    document.getElementById('sizeStrip').innerHTML = sizes.map(([s,c]) =>
+      `<div class="sz"><div style="width:${s}px">${buildIcon(v.key, v.glass)}</div><span class="cap">${c}px</span></div>`).join('');
+  }
+
+  // controls
+  document.getElementById('themeSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    document.body.className = b.dataset.theme;
+    document.querySelectorAll('#themeSeg button').forEach(x=>x.classList.toggle('on', x===b));
+  });
+  const studio = document.getElementById('studio');
+  const playBtn = document.getElementById('playBtn');
+  playBtn.addEventListener('click', () => {
+    const paused = studio.classList.toggle('paused');
+    playBtn.querySelector('span').textContent = paused ? 'Play' : 'Pause';
+    playBtn.querySelector('svg').innerHTML = paused
+      ? '<polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none"/>'
+      : '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+  });
+  document.getElementById('replayBtn').addEventListener('click', () => { renderGrid(); renderHero(); });
+
+  renderGrid();
+  renderHero();
+})();
+</script>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" rx="40" fill="#014e52"/>
+    <path d="M100 40 Q72 40 50 51 Q45 53 45 61 L45 104 Q45 138 100 160 Q155 138 155 104 L155 61 Q155 53 150 51 Q128 40 100 40 Z" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.6" stroke-width="3"/>
+    <rect x="80" y="112" width="9" height="16" rx="2" fill="#fff" fill-opacity="0.5"/>
+    <rect x="95" y="100" width="9" height="28" rx="2" fill="#fff" fill-opacity="0.75"/>
+    <rect x="110" y="86" width="9" height="42" rx="2" fill="#fff"/>
+    <circle cx="114.5" cy="78" r="6" fill="#4ecdc4"/>
+  </svg>
+</template>
+</body>
+</html>

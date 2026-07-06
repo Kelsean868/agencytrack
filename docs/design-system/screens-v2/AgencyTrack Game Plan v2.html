@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Game Plan v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 560px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Game Plan v2 — the planning module (renamed from "Looking Ahead")</h1>
+    <p>
+      A real planning hub that builds the agent's year and feeds Goals on commit. Anchored in <b>"your reality"</b> — the commission you must earn — with a jump-able <b>4-step rail</b>: <b>Money Needs</b> (expense groups → PAYE gross-up → required 1st-year commissions), <b>Year Plan</b> (split that target across license-aware product lines — composite, life-only or general-only — with award-eligibility, % or direct, → API to write), <b>Monthly Plan</b> (12-month target-vs-actual with variance-driven suggestion chips), and <b>Review & Commit</b> (lock → writes your commitment to the Goals page). Draft → committed state throughout. Manager view shows the shared plan with a suggest-back flow.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="gameplan-shared.jsx"></script>
+  <script type="text/babel" src="gameplan-pages.jsx"></script>
+  <script type="text/babel" src="gameplan-money.jsx"></script>
+  <script type="text/babel" src="gameplan-scenes.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="hub"
+            title="Game Plan — hub"
+            subtitle="The overview: anchor (commission need + plan completeness + draft/committed status), the 4-step rail, a 'plan so far' cascade (need → line split → months), and the commit card that writes your commitment to Goals. Light + dark."
+          >
+            <DCArtboard id="hub-light" label="01 · Hub · Desktop · Light" width={APP_W} height={APP_H}>
+              <GamePlanDesktopScene t={APP_LIGHT} page="hub" />
+            </DCArtboard>
+            <DCArtboard id="hub-dark" label="02 · Hub · Desktop · Dark" width={APP_W} height={APP_H}>
+              <GamePlanDesktopScene t={APP_DARK} page="hub" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="money"
+            title="Step 1 — Money Needs (pre-seeded checklist)"
+            subtitle="The real worksheet's ~34 standard line items, pre-filled so agents edit amounts into a familiar checklist instead of naming everything from blank. Each row: item · amount · how-paid · annualized. Summary chain: after-tax → PAYE → pre-tax → minus renewals → 1st-year commissions required → targets by line. 'Filled' shows a completed worksheet; 'First-run' shows the empty pre-seeded template."
+          >
+            <DCArtboard id="money-light" label="03 · Money Needs · Filled · Light" width={APP_W} height={APP_H}>
+              <GamePlanDesktopScene t={APP_LIGHT} page="money" />
+            </DCArtboard>
+            <DCArtboard id="money-fresh" label="03b · Money Needs · First-run template · Light" width={APP_W} height={APP_H}>
+              <GamePlanDesktopScene t={APP_LIGHT} page="money" fresh />
+            </DCArtboard>
+            <DCArtboard id="money-dark" label="03c · Money Needs · Filled · Dark" width={APP_W} height={APP_H}>
+              <GamePlanDesktopScene t={APP_DARK} page="money" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="year"
+            title="Step 2 — Year Plan (license-aware, configurable lines)"
+            subtitle="Lines adapt to the agent's license class (Insurance Act of T&T). Composite agents split Life / Health / Property / Motor; Life-only break out by Life product (Term / Endowment / Critical Illness / Annuities); General-only by General product. Each line is tagged award-eligible — only Life production counts toward awards — and the plan surfaces award-eligible vs total API. Lines are renameable / add / remove."
+          >
+            <DCArtboard id="year-composite" label="04 · Year Plan · Composite (Life + General) · Light" width={APP_W} height={APP_H}>
+              <GamePlanDesktopScene t={APP_LIGHT} page="year" profile="composite" />
+            </DCArtboard>
+            <DCArtboard id="year-life" label="05 · Year Plan · Life-only license · Light" width={APP_W} height={APP_H}>
+              <GamePlanDesktopScene t={APP_LIGHT} page="year" profile="life" />
+            </DCArtboard>
+            <DCArtboard id="year-general" label="06 · Year Plan · General-only license · Dark" width={APP_W} height={APP_H}>
+              <GamePlanDesktopScene t={APP_DARK} page="year" profile="general" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="monthly"
+            title="Step 3 — Monthly Plan"
+            subtitle="The annual API broken into 12 months (ghost = target, solid = actual), with the current month's pace + variance and variance-driven suggestion chips to finish it."
+          >
+            <DCArtboard id="monthly-light" label="06 · Monthly Plan · Desktop · Light" width={APP_W} height={APP_H}>
+              <GamePlanDesktopScene t={APP_LIGHT} page="monthly" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Mobile — Game Plan"
+            subtitle="Light: the hub (anchor + stepper + plan cascade + commit). Dark: the Year Plan step reflowed to a single column."
+          >
+            <DCArtboard id="m-hub" label="07 · Mobile · Light · Hub" width={M_W} height={M_H}>
+              <GamePlanMobileScene t={APP_LIGHT} page="hub" />
+            </DCArtboard>
+            <DCArtboard id="m-year" label="08 · Mobile · Dark · Year Plan" width={M_W} height={M_H}>
+              <GamePlanMobileScene t={APP_DARK} page="year" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="manager"
+            title="Manager perspective — review a shared plan"
+            subtitle="The agent shared her plan (Money Needs visibility toggle). The manager sees the same overview with a gold banner, a 'plan health' check, and a suggest-back card — the agent still commits the plan herself."
+          >
+            <DCArtboard id="d-mgr" label="09 · Desktop · Light · Manager review of Marsha's plan" width={APP_W} height={APP_H}>
+              <GamePlanDesktopScene t={APP_LIGHT} managerView />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

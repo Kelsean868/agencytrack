@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AgencyTrack — Navigation &amp; Quick Actions · 2 Options</title>
+<link rel="preconnect" href="https://api.fontshare.com" />
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --violet:#5A3FA0; --violetTint:#F0ECFF;
+    --display:'Cabinet Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif;
+    --sans:'Satoshi','Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'JetBrains Mono','Menlo','SF Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;}
+  #root{min-height:100vh;}
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const T = {
+  bg:'#F7F6F2', surface:'#FFFFFF', surfaceRaised:'#FAFAF8', surfaceSoft:'#F4F2EC', surfaceMute:'#F0EFE9',
+  ink:'#28251D', inkMute:'#6B6560', inkFaint:'#A8A39C', inkDim:'#CFCBC2',
+  rule:'#E5E2DB', ruleStrong:'#CFCBC2',
+  teal:'#01696F', tealLight:'#018A91', tealDark:'#014E52', tealTint:'#E6F4F4',
+  gold:'#B07D1A', goldTint:'#FAEFD3',
+  success:'#2D7A4F', successTint:'#E8F5EE',
+  warning:'#B45309', warningTint:'#FEF3E2',
+  danger:'#C0392B', dangerTint:'#FDE8E7',
+  violet:'#5A3FA0', violetTint:'#F0ECFF',
+};
+const DISPLAY="'Cabinet Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif";
+const SANS="'Satoshi','Helvetica Neue',Helvetica,Arial,sans-serif";
+const MONO="'JetBrains Mono','Menlo','SF Mono',monospace";
+
+// ── Icons ─────────────────────────────────────────────────────────────────
+function Icon({children,size=18,color='currentColor',stroke=1.8,fill='none'}){
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">{children}</svg>;
+}
+const IHome   =(p)=><Icon {...p}><path d="M3 12L12 4l9 8M5 10v10h14V10"/></Icon>;
+const IWizard =(p)=><Icon {...p}><path d="M9 21h6M12 17V11M5 8h14M5 8l2-4h10l2 4M5 8v3a7 7 0 0 0 14 0V8"/></Icon>;
+const IHistory=(p)=><Icon {...p}><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v5l3 2"/></Icon>;
+const IChart  =(p)=><Icon {...p}><path d="M3 20h18M5 16V8M11 16V5M17 16v-6"/></Icon>;
+const ITarget =(p)=><Icon {...p}><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></Icon>;
+const IWallet =(p)=><Icon {...p}><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7H5a2 2 0 0 1 0-4h14V7"/><circle cx="17" cy="13" r="1"/></Icon>;
+const IMedal  =(p)=><Icon {...p}><circle cx="12" cy="15" r="6"/><path d="M8 3l2 6M16 3l-2 6"/></Icon>;
+const IShield =(p)=><Icon {...p}><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z"/></Icon>;
+const IBolt   =(p)=><Icon {...p}><polygon points="13 2 4 14 11 14 10 22 19 10 12 10 13 2"/></Icon>;
+const IRepeat =(p)=><Icon {...p}><path d="M17 2l4 4-4 4M3 12V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4M21 12v4a2 2 0 0 1-2 2H3"/></Icon>;
+const IBook   =(p)=><Icon {...p}><path d="M4 4h12a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4V4z"/><path d="M4 16a4 4 0 0 1 4-4h12"/></Icon>;
+const IUsers  =(p)=><Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/></Icon>;
+const IGrid   =(p)=><Icon {...p}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></Icon>;
+const ISearch =(p)=><Icon {...p}><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16" y2="16"/></Icon>;
+const IBell   =(p)=><Icon {...p}><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 21h4"/></Icon>;
+const IChevR  =(p)=><Icon {...p}><polyline points="9 6 15 12 9 18"/></Icon>;
+const IPlus   =(p)=><Icon {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Icon>;
+const ITrophy =(p)=><Icon {...p}><path d="M6 4h12v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V4z"/><path d="M6 6H4a2 2 0 0 0 2 4M18 6h2a2 2 0 0 1-2 4"/><path d="M9 20h6M12 16v4"/></Icon>;
+const IClipboard=(p)=><Icon {...p}><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/></Icon>;
+const ICheckSq=(p)=><Icon {...p}><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></Icon>;
+const IStar   =(p)=><Icon {...p}><polygon points="12 3 14.6 8.6 21 9.3 16.5 13.7 17.8 20 12 16.8 6.2 20 7.5 13.7 3 9.3 9.4 8.6 12 3"/></Icon>;
+const IPencil =(p)=><Icon {...p}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></Icon>;
+const ICalendar=(p)=><Icon {...p}><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></Icon>;
+const IUserPlus=(p)=><Icon {...p}><path d="M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></Icon>;
+const IMega   =(p)=><Icon {...p}><path d="M3 11l13-5v12L3 13z"/><path d="M16 8a3 3 0 0 1 0 6"/><path d="M7 13v4a2 2 0 0 0 3.5 1.3"/></Icon>;
+const IPresent=(p)=><Icon {...p}><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4M8 20h8"/></Icon>;
+const ITv     =(p)=><Icon {...p}><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></Icon>;
+const IScale  =(p)=><Icon {...p}><path d="M12 3v18M6 7h12M6 7l-3 6h6zM18 7l-3 6h6z"/></Icon>;
+
+// ── small ui ─────────────────────────────────────────────────────────────
+function Mono({children,style}){return <span style={{fontFamily:MONO,...style}}>{children}</span>;}
+
+function Seg({options,value,onChange,accent=T.teal}){
+  return (
+    <div style={{display:'inline-flex',gap:3,padding:3,background:T.surfaceSoft,border:`1px solid ${T.rule}`,borderRadius:10}}>
+      {options.map(o=>{
+        const on=o.key===value;
+        return (
+          <button key={o.key} onClick={()=>onChange(o.key)} style={{
+            border:'none',cursor:'pointer',padding:'7px 14px',borderRadius:7,fontFamily:SANS,
+            fontSize:12.5,fontWeight:700,letterSpacing:'0.005em',whiteSpace:'nowrap',
+            background:on?accent:'transparent',color:on?'#fff':T.inkMute,
+            boxShadow:on?`0 1px 3px ${accent}55`:'none',transition:'all 160ms ease',
+          }}>{o.label}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Sidebar ────────────────────────────────────────────────────────────────
+function NavRow({item}){
+  const {label,Icon:I,active,child,badge,soon,pinnable}=item;
+  return (
+    <div style={{
+      display:'flex',alignItems:'center',gap:child?9:11,position:'relative',
+      padding:child?'7px 12px 7px 32px':'8.5px 12px',borderRadius:9,
+      background:active?T.tealTint:'transparent',
+      color:active?T.teal:(soon?T.inkFaint:T.inkMute),
+      fontSize:child?12:13,fontWeight:600,
+    }}>
+      {active && <div style={{position:'absolute',left:0,top:6,bottom:6,width:3,background:T.teal,borderRadius:999}}/>}
+      {child && <div style={{position:'absolute',left:19,top:-2,width:10,height:16,borderLeft:`1.5px solid ${T.rule}`,borderBottom:`1.5px solid ${T.rule}`,borderBottomLeftRadius:5}}/>}
+      <I size={child?15:17} color={active?T.teal:(soon?T.inkFaint:T.inkMute)} stroke={1.8}/>
+      <div style={{flex:1,whiteSpace:'nowrap'}}>{label}</div>
+      {item.scope && <Mono style={{fontSize:7.5,fontWeight:700,letterSpacing:'0.08em',color:item.scope==='team'?T.violet:(item.scope==='shared'?T.inkFaint:T.teal),background:item.scope==='team'?T.violetTint:(item.scope==='shared'?T.surfaceSoft:T.tealTint),padding:'1px 5px',borderRadius:999}}>{item.scope==='team'?'TEAM':(item.scope==='shared'?'BOTH':'MINE')}</Mono>}
+      {badge && <span style={{padding:'1px 6px',borderRadius:999,fontSize:8.5,fontWeight:700,background:badge==='NEW'?T.gold:T.inkDim,color:'#fff',letterSpacing:'0.06em'}}>{badge}</span>}
+      {soon && <Mono style={{fontSize:8.5,fontWeight:700,color:T.inkFaint,letterSpacing:'0.1em'}}>SOON</Mono>}
+      {pinnable && !badge && !soon && <IStar size={13} color={T.inkDim} fill="none"/>}
+    </div>
+  );
+}
+
+function SectionLabel({children,accent}){
+  return <div style={{fontSize:9.5,fontWeight:700,color:accent||T.inkFaint,letterSpacing:'0.14em',textTransform:'uppercase',padding:'12px 12px 6px',fontFamily:MONO,display:'flex',alignItems:'center',gap:6}}>{children}</div>;
+}
+
+function Sidebar({sections,topToggle,roleLabel,roleSub,initials}){
+  return (
+    <div style={{
+      width:248,height:724,background:T.surface,border:`1px solid ${T.rule}`,borderRadius:16,
+      display:'flex',flexDirection:'column',padding:'16px 12px',boxShadow:'0 18px 50px rgba(40,37,29,0.10)',
+    }}>
+      {/* brand */}
+      <div style={{display:'flex',alignItems:'center',gap:10,padding:'2px 8px 14px',borderBottom:`1px solid ${T.rule}`,marginBottom:6}}>
+        <Logo size={30}/>
+        <div>
+          <div style={{fontSize:13.5,fontWeight:700,letterSpacing:'-0.012em'}}>AgencyTrack</div>
+          <div style={{fontSize:10,color:T.inkMute,marginTop:1}}>Tatil Life · South</div>
+        </div>
+      </div>
+      {topToggle}
+      <div style={{flex:1,overflowY:'auto',overflowX:'hidden'}}>
+        {sections.map((s,i)=>(
+          <div key={i} style={{marginBottom:6}}>
+            {s.title && <SectionLabel accent={s.accent}>{s.icon}{s.title}{s.count!=null && <span style={{marginLeft:'auto',color:T.inkFaint,fontWeight:700}}>{s.count}</span>}</SectionLabel>}
+            {s.items.map((it,j)=><NavRow key={j} item={it}/>)}
+          </div>
+        ))}
+      </div>
+      {/* user */}
+      <div style={{padding:'10px 8px 2px',borderTop:`1px solid ${T.rule}`,display:'flex',alignItems:'center',gap:10,marginTop:6}}>
+        <div style={{width:32,height:32,borderRadius:'50%',background:T.tealTint,color:T.teal,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:12,fontFamily:DISPLAY}}>{initials}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:12.5,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{roleLabel}</div>
+          <div style={{fontSize:10.5,color:T.inkMute,marginTop:1}}>{roleSub}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Logo({size=30}){
+  const rad=Math.round(size*0.22);
+  return (
+    <svg width={size} height={size} viewBox="0 0 200 200" style={{display:'block',borderRadius:rad,flexShrink:0}}>
+      <rect width="200" height="200" rx="44" fill="#014e52"/>
+      <path d="M100 28 Q65 28 37 42 Q30 45 30 56 L30 115 Q30 160 100 188 Q170 160 170 115 L170 56 Q170 45 163 42 Q135 28 100 28 Z" fill="white" fillOpacity="0.12" stroke="white" strokeOpacity="0.55" strokeWidth="2.5"/>
+      <rect x="72" y="127" width="11" height="18" rx="2.5" fill="white" fillOpacity="0.30"/>
+      <rect x="87" y="117" width="11" height="28" rx="2.5" fill="white" fillOpacity="0.50"/>
+      <rect x="102" y="105" width="11" height="40" rx="2.5" fill="white" fillOpacity="0.75"/>
+      <rect x="117" y="93" width="11" height="52" rx="2.5" fill="white"/>
+      <circle cx="122.5" cy="86" r="4.5" fill="#4ecdc4"/>
+    </svg>
+  );
+}
+
+// ── DATA: nav per role per option ───────────────────────────────────────────
+const ROLE_META = {
+  agent:    {label:'Marsha Singh', sub:'Senior Associate · Agent', initials:'MS'},
+  pmanager: {label:'Trevor Ramcharan', sub:'Unit Manager · Producing', initials:'TR'},
+  manager:  {label:'Anita Boodram', sub:'Branch Manager', initials:'AB'},
+};
+
+// Option 1 — Pinned + grouped (job-based)
+function optionOne(role){
+  if(role==='agent') return {
+    sections:[
+      {title:'★ Pinned',accent:T.gold,items:[
+        {label:'Log Today',Icon:ICheckSq},
+        {label:'Weekly Report',Icon:IWizard},
+        {label:'Policy Ledger',Icon:IBook},
+        {label:'Goals',Icon:ITarget},
+        {label:'Planner',Icon:ICalendar,soon:true},
+      ]},
+      {title:'Today',items:[
+        {label:'Dashboard',Icon:IHome,active:true},
+        {label:'Daily Log',Icon:ICheckSq},
+        {label:'Weekly Report',Icon:IWizard},
+        {label:'History',Icon:IHistory},
+      ]},
+      {title:'Planning',items:[
+        {label:'Game Plan',Icon:IChart,badge:'NEW'},
+        {label:'Money Needs',Icon:IWallet,child:true},
+        {label:'Goals',Icon:ITarget},
+        {label:'Planner',Icon:ICalendar,soon:true},
+      ]},
+      {title:'Tools',items:[
+        {label:'Commission',Icon:IBolt,pinnable:true},
+        {label:'Persistency',Icon:IRepeat,pinnable:true},
+        {label:'Policy Ledger',Icon:IBook,pinnable:true},
+        {label:'Prospect Prep',Icon:ISearch,soon:true},
+        {label:'Production Report',Icon:IClipboard,pinnable:true},
+      ]},
+      {title:'Recognition',items:[
+        {label:'Leaderboard',Icon:ITrophy},
+        {label:'Awards',Icon:IMedal},
+        {label:'Career Portal',Icon:IShield},
+      ]},
+    ]
+  };
+  if(role==='pmanager') return {
+    sections:[
+      {title:'★ Pinned',accent:T.gold,items:[
+        {label:'Log Today',Icon:ICheckSq},
+        {label:'Master Sheet',Icon:IGrid},
+        {label:'Weekly WARs',Icon:IClipboard},
+        {label:'Recruiting',Icon:IUserPlus},
+        {label:'Goals',Icon:ITarget},
+        {label:'Planner',Icon:ICalendar,soon:true},
+      ]},
+      {title:'My Production',accent:T.teal,items:[
+        {label:'Dashboard',Icon:IHome,active:true},
+        {label:'Daily Log',Icon:ICheckSq},
+        {label:'Weekly Report',Icon:IWizard},
+        {label:'Commission',Icon:IBolt},
+        {label:'Persistency',Icon:IRepeat,scope:'mine'},
+        {label:'Policy Ledger',Icon:IBook},
+        {label:'Production Report',Icon:IClipboard,scope:'mine'},
+        {label:'History',Icon:IHistory},
+      ]},
+      {title:'My Team',accent:T.violet,items:[
+        {label:'Team Dashboard',Icon:IUsers},
+        {label:'Master Sheet',Icon:IGrid},
+        {label:'Weekly WARs',Icon:IClipboard},
+        {label:'Recruiting',Icon:IUserPlus},
+        {label:'Team Goals',Icon:ITarget,scope:'team'},
+        {label:'Persistency Entry',Icon:IRepeat,scope:'team'},
+        {label:'Compliance',Icon:IShield},
+        {label:'Campaigns',Icon:IMega},
+        {label:'Meetings',Icon:IPresent},
+        {label:'Team Reports',Icon:IChart,scope:'team'},
+        {label:'Team Awards',Icon:IMedal,scope:'team'},
+      ]},
+      {title:'Planning',items:[
+        {label:'Game Plan',Icon:IChart,badge:'NEW'},
+        {label:'Goals',Icon:ITarget,scope:'mine'},
+        {label:'Planner',Icon:ICalendar,soon:true},
+      ]},
+      {title:'Recognition',items:[
+        {label:'Leaderboard',Icon:ITrophy,scope:'shared'},
+        {label:'Awards',Icon:IMedal,scope:'mine'},
+        {label:'Career Portal',Icon:IShield},
+      ]},
+    ]
+  };
+  // manager
+  return {
+    sections:[
+      {title:'★ Pinned',accent:T.gold,items:[
+        {label:'Team Dashboard',Icon:IUsers},
+        {label:'Master Sheet',Icon:IGrid},
+        {label:'Weekly WARs',Icon:IClipboard},
+        {label:'Recruiting',Icon:IUserPlus},
+        {label:'Planner',Icon:ICalendar,soon:true},
+      ]},
+      {title:'Team',accent:T.teal,items:[
+        {label:'Team Dashboard',Icon:IUsers,active:true},
+        {label:'Master Sheet',Icon:IGrid},
+        {label:'Weekly WARs',Icon:IClipboard},
+        {label:'Team Goals',Icon:ITarget},
+        {label:'Reports',Icon:IChart},
+      ]},
+      {title:'Grow',accent:T.violet,items:[
+        {label:'Recruiting',Icon:IUserPlus},
+        {label:'Campaigns',Icon:IMega},
+        {label:'Meetings',Icon:IPresent},
+        {label:'Planner',Icon:ICalendar,soon:true},
+      ]},
+      {title:'Oversight',items:[
+        {label:'Compliance',Icon:IShield,pinnable:true},
+        {label:'Persistency',Icon:IRepeat,pinnable:true},
+        {label:'Reconciliation',Icon:IScale,pinnable:true},
+      ]},
+      {title:'Recognition',items:[
+        {label:'Leaderboard',Icon:ITrophy},
+        {label:'Awards',Icon:IMedal},
+        {label:'Kiosk Mode',Icon:ITv},
+        {label:'Career Portal',Icon:IShield},
+      ]},
+    ]
+  };
+}
+
+// Option 2 — Workspace switcher (My Work / My Team)
+function optionTwo(role, ws){
+  if(role==='agent') return {
+    sections:[
+      {title:'Today',items:[
+        {label:'Dashboard',Icon:IHome,active:true},
+        {label:'Daily Log',Icon:ICheckSq},
+        {label:'Weekly Report',Icon:IWizard},
+      ]},
+      {title:'Plan',items:[
+        {label:'Game Plan',Icon:IChart,badge:'NEW'},
+        {label:'Money Needs',Icon:IWallet,child:true},
+        {label:'Goals',Icon:ITarget},
+      ]},
+      {title:'Tools',items:[
+        {label:'Commission',Icon:IBolt},
+        {label:'Persistency',Icon:IRepeat},
+        {label:'Policy Ledger',Icon:IBook},
+        {label:'Prospect Prep',Icon:ISearch,soon:true},
+        {label:'Production Report',Icon:IClipboard},
+      ]},
+      {title:'Progress',items:[
+        {label:'Leaderboard',Icon:ITrophy},
+        {label:'Awards',Icon:IMedal},
+        {label:'History',Icon:IHistory},
+        {label:'Career Portal',Icon:IShield},
+      ]},
+    ]
+  };
+  // manager + producing manager share the toggle; content varies by workspace
+  if(ws==='work'){
+    const home = role==='pmanager';
+    return {
+      sections:[
+        {title:'Today',items:[
+          {label:'Dashboard',Icon:IHome,active:home},
+          ...(home?[{label:'Daily Log',Icon:ICheckSq},{label:'Weekly Report',Icon:IWizard}]:[{label:'Weekly Report',Icon:IWizard}]),
+        ]},
+        {title:'Plan',items:[
+          {label:'Game Plan',Icon:IChart,badge:'NEW'},
+          {label:'Goals',Icon:ITarget,scope:'mine'},
+        ]},
+        ...(home?[{title:'Tools',items:[
+          {label:'Commission',Icon:IBolt},
+          {label:'Persistency',Icon:IRepeat,scope:'mine'},
+          {label:'Policy Ledger',Icon:IBook},
+          {label:'Production Report',Icon:IClipboard,scope:'mine'},
+          {label:'Prospect Prep',Icon:ISearch,soon:true},
+        ]}]:[]),
+        {title:'Progress',items:[
+          {label:'Leaderboard',Icon:ITrophy,scope:'shared'},
+          {label:'Awards',Icon:IMedal,scope:'mine'},
+          {label:'History',Icon:IHistory},
+          {label:'Career Portal',Icon:IShield},
+        ]},
+      ]
+    };
+  }
+  // team workspace
+  return {
+    sections:[
+      {title:'Team',items:[
+        {label:'Team Dashboard',Icon:IUsers,active:true},
+        {label:'Master Sheet',Icon:IGrid},
+        {label:'Weekly WARs',Icon:IClipboard},
+      ]},
+      {title:'Grow',items:[
+        {label:'Recruiting',Icon:IUserPlus},
+        {label:'Campaigns',Icon:IMega},
+        {label:'Meetings',Icon:IPresent},
+      ]},
+      {title:'Oversight',items:[
+        {label:'Team Goals',Icon:ITarget,scope:'team'},
+        {label:'Compliance',Icon:IShield},
+        {label:'Team Reports',Icon:IChart,scope:'team'},
+        {label:'Persistency Entry',Icon:IRepeat,scope:'team'},
+        {label:'Reconciliation',Icon:IScale},
+      ]},
+      {title:'Recognition',items:[
+        {label:'Team Awards',Icon:IMedal,scope:'team'},
+        {label:'Leaderboard',Icon:ITrophy,scope:'shared'},
+        {label:'Kiosk Mode',Icon:ITv},
+      ]},
+    ]
+  };
+}
+
+// Option 3 — Workspace switch WITH a pinned row on top (combined)
+function optionThree(role, ws){
+  const base=optionTwo(role, role==='agent'?'work':ws);
+  const pinned=optionOne(role).sections[0];
+  return {sections:[pinned, ...base.sections]};
+}
+
+// ── Quick actions per role ──────────────────────────────────────────────────
+function quickActions(role){
+  const planner={soon:true};
+  if(role==='agent') return {
+    title:'Quick add', sub:'Agent',
+    actions:[
+      {label:'Log today',hint:'30-sec daily capture',Icon:ICheckSq,primary:true},
+      {label:'Weekly report',hint:'Opens Sunday',Icon:IWizard},
+      {label:'Log a policy',hint:'Add to ledger',Icon:IBook},
+      {label:'New goal',hint:'Set or adjust',Icon:ITarget},
+      {label:'Book appointment',hint:'Planner',Icon:ICalendar,...planner},
+    ]
+  };
+  if(role==='pmanager') return {
+    title:'Quick add', sub:'Producing Manager',
+    actions:[
+      {label:'Log today',hint:'Your daily capture',Icon:ICheckSq,primary:true},
+      {label:'Weekly report',hint:'Your production',Icon:IWizard},
+      {label:'Log a policy',hint:'Add to ledger',Icon:IBook},
+      {label:'Log recruiting',hint:'Activity or candidate',Icon:IUserPlus,group:'team'},
+      {label:'Start a meeting',hint:'1-on-1 or group',Icon:IPresent,group:'team'},
+      {label:'Enter persistency',hint:'For an agent',Icon:IRepeat,group:'team'},
+      {label:'Schedule coaching',hint:'Planner',Icon:ICalendar,...planner,group:'team'},
+    ]
+  };
+  return {
+    title:'Quick add', sub:'Manager',
+    actions:[
+      {label:'Log recruiting',hint:'Activity or candidate',Icon:IUserPlus,primary:true},
+      {label:'Start a meeting',hint:'1-on-1 or group',Icon:IPresent},
+      {label:'Send WAR nudge',hint:'To agents behind',Icon:IBell},
+      {label:'Enter persistency',hint:'For an agent',Icon:IRepeat},
+      {label:'Launch campaign',hint:'Team push',Icon:IMega},
+      {label:'Schedule coaching',hint:'Planner',Icon:ICalendar,...planner},
+    ]
+  };
+}
+
+// ── Quick-action presentations ──────────────────────────────────────────────
+// Option 1: compact list popover
+function QuickList({data,width=300}){
+  return (
+    <div style={{width,background:T.surface,border:`1px solid ${T.rule}`,borderRadius:16,boxShadow:'0 24px 60px rgba(40,37,29,0.18)',overflow:'hidden'}}>
+      <div style={{padding:'13px 16px 10px',borderBottom:`1px solid ${T.rule}`,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div style={{fontSize:14,fontWeight:700,fontFamily:DISPLAY,letterSpacing:'-0.01em'}}>{data.title}</div>
+        <Mono style={{fontSize:9.5,fontWeight:700,color:T.teal,letterSpacing:'0.1em',textTransform:'uppercase',background:T.tealTint,padding:'3px 8px',borderRadius:999}}>{data.sub}</Mono>
+      </div>
+      <div style={{padding:6}}>
+        {data.actions.map((a,i)=>{
+          const prev=data.actions[i-1];
+          const showDiv=a.group && (!prev||prev.group!==a.group);
+          return (
+            <React.Fragment key={i}>
+              {showDiv && <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 10px 4px'}}><Mono style={{fontSize:8.5,fontWeight:700,color:T.violet,letterSpacing:'0.14em'}}>TEAM</Mono><div style={{flex:1,height:1,background:T.rule}}/></div>}
+              <div style={{display:'flex',alignItems:'center',gap:11,padding:'9px 10px',borderRadius:10,opacity:a.soon?0.55:1,background:a.primary?T.tealTint:'transparent'}}>
+                <div style={{width:34,height:34,borderRadius:9,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',background:a.primary?T.teal:T.surfaceSoft,border:a.primary?'none':`1px solid ${T.rule}`,color:a.primary?'#fff':T.teal}}>
+                  <a.Icon size={17} color={a.primary?'#fff':T.teal} stroke={1.9}/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:700,color:T.ink,display:'flex',alignItems:'center',gap:6}}>{a.label}{a.soon&&<Mono style={{fontSize:8,fontWeight:700,color:T.inkFaint,letterSpacing:'0.1em',border:`1px solid ${T.rule}`,padding:'1px 5px',borderRadius:999}}>SOON</Mono>}</div>
+                  <div style={{fontSize:11,color:T.inkMute,marginTop:1}}>{a.hint}</div>
+                </div>
+                {!a.soon && <IChevR size={15} color={T.inkFaint}/>}
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Option 2: tappable grid (speed-dial)
+function QuickGrid({data,width=320}){
+  return (
+    <div style={{width,background:T.surface,border:`1px solid ${T.rule}`,borderRadius:18,boxShadow:'0 24px 60px rgba(40,37,29,0.18)',overflow:'hidden'}}>
+      <div style={{padding:'13px 16px 11px',borderBottom:`1px solid ${T.rule}`,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div style={{fontSize:14,fontWeight:700,fontFamily:DISPLAY,letterSpacing:'-0.01em'}}>{data.title}</div>
+        <Mono style={{fontSize:9.5,fontWeight:700,color:T.teal,letterSpacing:'0.1em',textTransform:'uppercase',background:T.tealTint,padding:'3px 8px',borderRadius:999}}>{data.sub}</Mono>
+      </div>
+      <div style={{padding:12,display:'grid',gridTemplateColumns:'1fr 1fr',gap:9}}>
+        {data.actions.map((a,i)=>(
+          <div key={i} style={{
+            gridColumn:a.primary?'1 / -1':'auto',
+            display:'flex',alignItems:'center',gap:11,padding:'13px 13px',borderRadius:12,
+            background:a.primary?T.teal:(a.group==='team'?T.violetTint:T.surfaceSoft),
+            border:a.primary?'none':`1px solid ${a.group==='team'?T.violet+'33':T.rule}`,
+            opacity:a.soon?0.55:1,
+          }}>
+            <div style={{width:32,height:32,borderRadius:9,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',
+              background:a.primary?'rgba(255,255,255,0.18)':T.surface,border:a.primary?'none':`1px solid ${T.rule}`}}>
+              <a.Icon size={16} color={a.primary?'#fff':(a.group==='team'?T.violet:T.teal)} stroke={1.9}/>
+            </div>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:12.5,fontWeight:700,color:a.primary?'#fff':T.ink,lineHeight:1.15,display:'flex',alignItems:'center',gap:5}}>{a.label}{a.soon&&<Mono style={{fontSize:7.5,fontWeight:700,color:T.inkFaint,letterSpacing:'0.08em',border:`1px solid ${T.rule}`,padding:'1px 4px',borderRadius:999}}>SOON</Mono>}</div>
+              {a.primary && <div style={{fontSize:10.5,color:'rgba(255,255,255,0.78)',marginTop:2}}>{a.hint}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Mobile frame ────────────────────────────────────────────────────────────
+function MobileFrame({role,option,sheet}){
+  const tabs = role==='agent'
+    ? [{label:'Home',Icon:IHome,on:true},{label:'History',Icon:IHistory},{fab:true},{label:'Ranks',Icon:ITrophy},{label:'More',Icon:IGrid}]
+    : [{label:'Team',Icon:IUsers,on:true},{label:'Sheet',Icon:IGrid},{fab:true},{label:'WARs',Icon:IClipboard},{label:'More',Icon:IGrid}];
+  return (
+    <div style={{width:330,height:680,background:T.surface,borderRadius:40,position:'relative',overflow:'hidden',boxShadow:'0 18px 50px rgba(40,37,29,0.16), inset 0 0 0 1px rgba(0,0,0,0.06)'}}>
+      {/* status bar */}
+      <div style={{position:'absolute',top:0,left:0,right:0,height:40,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 26px',fontSize:13.5,fontWeight:600,zIndex:5}}>
+        <span>9:41</span>
+        <Logo size={18}/>
+      </div>
+      {/* faux content */}
+      <div style={{position:'absolute',top:48,left:0,right:0,bottom:78,padding:'8px 18px',opacity:sheet?0.35:1,transition:'opacity 200ms'}}>
+        <div style={{fontSize:11,fontWeight:700,color:T.inkFaint,letterSpacing:'0.12em',fontFamily:MONO}}>{role==='agent'?'THU · 26 NOV':'SOUTH BRANCH'}</div>
+        <div style={{fontSize:21,fontWeight:700,fontFamily:DISPLAY,letterSpacing:'-0.018em',marginTop:2}}>{role==='agent'?'Hi, Marsha':'Branch'}</div>
+        <div style={{marginTop:14,display:'flex',flexDirection:'column',gap:9}}>
+          {[0,1,2].map(i=><div key={i} style={{height:i===0?64:54,borderRadius:12,background:T.surfaceSoft,border:`1px solid ${T.rule}`}}/>)}
+        </div>
+      </div>
+
+      {/* sheet (the + menu) */}
+      {sheet && (
+        <React.Fragment>
+          <div style={{position:'absolute',inset:0,background:'rgba(24,20,16,0.34)',zIndex:8}}/>
+          <div style={{position:'absolute',left:0,right:0,bottom:0,background:T.surface,borderRadius:'24px 24px 0 0',zIndex:10,boxShadow:'0 -10px 40px rgba(0,0,0,0.16)',paddingBottom:14}}>
+            <div style={{display:'flex',justifyContent:'center',paddingTop:9}}><div style={{width:38,height:5,borderRadius:999,background:T.ruleStrong}}/></div>
+            <div style={{padding:'12px 18px 6px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div style={{fontSize:16,fontWeight:700,fontFamily:DISPLAY,letterSpacing:'-0.012em'}}>{sheet.title}</div>
+              <Mono style={{fontSize:9.5,fontWeight:700,color:T.teal,letterSpacing:'0.1em',textTransform:'uppercase',background:T.tealTint,padding:'3px 8px',borderRadius:999}}>{sheet.sub}</Mono>
+            </div>
+            <div style={{padding:'4px 12px 4px'}}>
+              {sheet.actions.map((a,i)=>{
+                const prev=sheet.actions[i-1];
+                const showDiv=a.group && (!prev||prev.group!==a.group);
+                return (
+                  <React.Fragment key={i}>
+                    {showDiv && <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 10px 5px'}}><Mono style={{fontSize:8.5,fontWeight:700,color:T.violet,letterSpacing:'0.14em'}}>TEAM</Mono><div style={{flex:1,height:1,background:T.rule}}/></div>}
+                    <div style={{display:'flex',alignItems:'center',gap:13,padding:'11px 10px',borderRadius:12,opacity:a.soon?0.5:1,background:a.primary?T.tealTint:'transparent'}}>
+                      <div style={{width:42,height:42,borderRadius:11,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',background:a.primary?T.teal:T.surfaceSoft,border:a.primary?'none':`1px solid ${T.rule}`}}>
+                        <a.Icon size={20} color={a.primary?'#fff':T.teal} stroke={1.9}/>
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:14.5,fontWeight:700,display:'flex',alignItems:'center',gap:6}}>{a.label}{a.soon&&<Mono style={{fontSize:8,fontWeight:700,color:T.inkFaint,letterSpacing:'0.1em',border:`1px solid ${T.rule}`,padding:'1px 5px',borderRadius:999}}>SOON</Mono>}</div>
+                        <div style={{fontSize:11.5,color:T.inkMute,marginTop:1}}>{a.hint}</div>
+                      </div>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        </React.Fragment>
+      )}
+
+      {/* bottom nav — NO pencil; center + opens the sheet */}
+      <div style={{position:'absolute',left:0,right:0,bottom:0,paddingBottom:18,background:T.surface,borderTop:`1px solid ${T.rule}`,zIndex:9}}>
+        <div style={{display:'flex',alignItems:'flex-end',padding:'8px 10px 10px'}}>
+          {tabs.map((tab,i)=>(
+            <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4,minHeight:52}}>
+              {tab.fab?(
+                <React.Fragment>
+                  <div style={{width:56,height:56,borderRadius:'50%',background:`linear-gradient(180deg,${T.tealLight},${T.teal})`,display:'flex',alignItems:'center',justifyContent:'center',marginTop:-30,boxShadow:`0 6px 16px ${T.teal}66`,border:`3px solid ${T.surface}`}}>
+                    <IPlus size={24} color="#fff" stroke={2.5}/>
+                  </div>
+                  <div style={{fontSize:10,fontWeight:700,color:T.teal,marginTop:2}}>Create</div>
+                </React.Fragment>
+              ):(
+                <React.Fragment>
+                  <tab.Icon size={21} color={tab.on?T.teal:T.inkFaint} stroke={2}/>
+                  <div style={{fontSize:10,fontWeight:tab.on?700:600,color:tab.on?T.teal:T.inkMute}}>{tab.label}</div>
+                </React.Fragment>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Notes content ───────────────────────────────────────────────────────────
+const NOTES={
+  1:{
+    head:'Option 1 — Pinned favorites + job-based groups',
+    body:'Every tool stays, but groups are reorganized by the job to be done, and a user-curated ★ Pinned zone sits up top (seeded with smart per-role defaults). Hover any tool to pin it. Producing managers get an explicit My Production / My Team split so the two halves of their day never blur together.',
+    bullets:['Personalized — power users pin their daily 4–5','Nothing is hidden; discoverability stays high','Star affordance on every pinnable row','Default pins differ by role'],
+  },
+  2:{
+    head:'Option 2 — My Work / My Team workspace switcher',
+    body:'A segmented toggle at the top of the sidebar flips a producing manager between their own production nav and their team-management nav — so only one job\u2019s tools show at a time and the list is roughly half as long. Agents never see the toggle (single workspace); non-producing managers default to My Team.',
+    bullets:['Cuts a producing manager\u2019s visible items ~in half','Opinionated & predictable — fixed structure','One mental context at a time','Agents get a clean single list'],
+  },
+  3:{
+    head:'Option 3 — Both: workspace switch + a pinned row',
+    body:'The workspace toggle stays, and a curated ★ Pinned row sits above it for the handful of tools touched daily — regardless of which workspace they live in. Best of both: short contextual lists, plus one-tap access to favorites that cross the work/team line (e.g. Master Sheet while you\u2019re logging your own day).',
+    bullets:['Pinned crosses the work/team boundary','Shortest lists + fastest favorites','A little more to learn','Good default for heavy producing managers'],
+  },
+};
+
+// ── App ─────────────────────────────────────────────────────────────────────
+function Chip({c}){
+  const map={mine:['MINE',T.teal,T.tealTint],team:['TEAM',T.violet,T.violetTint],shared:['BOTH',T.inkFaint,T.surfaceSoft]};
+  const [l,fg,bg]=map[c];
+  return <Mono style={{fontSize:7.5,fontWeight:700,letterSpacing:'0.08em',color:fg,background:bg,padding:'2px 6px',borderRadius:999}}>{l}</Mono>;
+}
+
+function LayoutPref({role,option,setOption}){
+  const agent=role==='agent';
+  const opts=[
+    {k:1,t:'Pinned favorites',d:'All tools, grouped by job, with a curated ★ pinned row up top.'},
+    {k:2,t:'Workspace switch',d:'My Work ⇄ My Team toggle — one job\u2019s tools at a time.'},
+    {k:3,t:'Both',d:'Workspace switch with a pinned row that crosses both.'},
+  ];
+  return (
+    <div style={{background:T.surface,border:`1px solid ${T.rule}`,borderRadius:14,padding:'16px 18px',marginBottom:24}}>
+      <Mono style={{fontSize:10,fontWeight:700,color:T.teal,letterSpacing:'0.14em',textTransform:'uppercase'}}>Profile → Preferences</Mono>
+      <div style={{fontSize:15.5,fontWeight:700,fontFamily:DISPLAY,letterSpacing:'-0.01em',marginTop:3}}>Menu layout</div>
+      <p style={{fontSize:12.5,color:T.inkMute,lineHeight:1.55,marginTop:4,maxWidth:760}}>{agent?'Agents use Pinned by default — no choice needed. Managers & producing managers also start on Pinned, and can switch to Workspace or Both; nothing is removed, only re-arranged.':'Pinned + groups is your default. You can switch to Workspace or Both anytime — nothing is removed; tools are only re-arranged. The preview below updates live.'}</p>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginTop:14}}>
+        {opts.map(o=>{
+          const on=!agent && option===o.k;
+          const disabled=agent && o.k!==1;
+          const forced=agent && o.k===1;
+          const isDefault=o.k===1;
+          return (
+            <button key={o.k} disabled={disabled} onClick={()=>!agent&&setOption(o.k)} style={{
+              textAlign:'left',cursor:disabled?'default':'pointer',opacity:disabled?0.4:1,
+              border:`1.5px solid ${(on||forced)?T.teal:T.rule}`,background:(on||forced)?T.tealTint:T.surface,borderRadius:12,padding:'13px 14px',fontFamily:SANS,
+            }}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{width:16,height:16,borderRadius:'50%',border:`2px solid ${(on||forced)?T.teal:T.ruleStrong}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  {(on||forced)&&<div style={{width:7,height:7,borderRadius:'50%',background:T.teal}}/>}
+                </div>
+                <div style={{fontSize:13,fontWeight:700,color:T.ink}}>{o.t}</div>
+                {isDefault&&<Mono style={{marginLeft:'auto',fontSize:8,fontWeight:700,color:T.gold,letterSpacing:'0.08em',background:T.goldTint,padding:'2px 6px',borderRadius:999}}>DEFAULT</Mono>}
+              </div>
+              <div style={{fontSize:11,color:T.inkMute,lineHeight:1.45,marginTop:6}}>{o.d}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function App(){
+  const [role,setRole]=React.useState('pmanager');
+  const [option,setOption]=React.useState(1);
+  const [ws,setWs]=React.useState('work'); // option 2/3 workspace
+  const [sheetOpen,setSheetOpen]=React.useState(true);
+  const effOption = role==='agent' ? 1 : option;
+
+  const showToggle = (effOption===2||effOption===3) && role!=='agent';
+  let nav;
+  if(role==='agent') nav=optionOne('agent');
+  else if(effOption===1) nav=optionOne(role);
+  else if(effOption===2) nav=optionTwo(role, ws);
+  else nav=optionThree(role, ws);
+  const meta = ROLE_META[role];
+  const qa = quickActions(role);
+
+  // manager default workspace = team
+  React.useEffect(()=>{ if(role==='manager') setWs('team'); else setWs('work'); },[role]);
+
+  const topToggle = showToggle ? (
+    <div style={{padding:'4px 2px 8px'}}>
+      <div style={{display:'flex',gap:3,padding:3,background:T.surfaceSoft,border:`1px solid ${T.rule}`,borderRadius:10}}>
+        {[{k:'work',l:'My Work'},{k:'team',l:'My Team'}].map(o=>{
+          const on=o.k===ws;
+          return <button key={o.k} onClick={()=>setWs(o.k)} style={{flex:1,border:'none',cursor:'pointer',padding:'7px 4px',borderRadius:7,fontFamily:SANS,fontSize:11.5,fontWeight:700,background:on?T.teal:'transparent',color:on?'#fff':T.inkMute}}>{o.l}</button>;
+        })}
+      </div>
+    </div>
+  ) : null;
+
+  const note=NOTES[effOption];
+
+  return (
+    <div style={{maxWidth:1320,margin:'0 auto',padding:'34px 32px 80px'}}>
+      {/* header */}
+      <div style={{display:'flex',alignItems:'flex-start',gap:14,marginBottom:6}}>
+        <Logo size={40}/>
+        <div>
+          <Mono style={{fontSize:11,fontWeight:600,color:T.teal,letterSpacing:'0.16em',textTransform:'uppercase'}}>AgencyTrack · Design proposal</Mono>
+          <h1 style={{fontFamily:DISPLAY,fontSize:30,fontWeight:800,letterSpacing:'-0.022em',marginTop:5,lineHeight:1.05}}>Navigation &amp; Quick Actions</h1>
+        </div>
+      </div>
+      <p style={{fontSize:14,color:T.inkMute,lineHeight:1.6,maxWidth:760,marginTop:6}}>
+        Two ways to make the menu role-aware and tame the producing-manager overload — plus a redesigned create shortcut.
+        Switch <b style={{color:T.ink}}>role</b> and <b style={{color:T.ink}}>layout</b> below; open the quick-add menu to compare. Dual-context tools (Goals, Persistency, Reports, Awards…) appear in both places, tagged <Chip c="mine"/> / <Chip c="team"/>. The floating pencil is removed on mobile — the center <b style={{color:T.ink}}>＋</b> now opens these actions.
+      </p>
+
+      {/* controls */}
+      <div style={{display:'flex',flexWrap:'wrap',gap:18,alignItems:'center',margin:'22px 0 26px',padding:'14px 16px',background:T.surface,border:`1px solid ${T.rule}`,borderRadius:14,position:'sticky',top:12,zIndex:20,boxShadow:'0 6px 20px rgba(40,37,29,0.05)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <Mono style={{fontSize:10,fontWeight:700,color:T.inkFaint,letterSpacing:'0.12em'}}>ROLE</Mono>
+          <Seg value={role} onChange={setRole} options={[{key:'agent',label:'Agent'},{key:'pmanager',label:'Producing Manager'},{key:'manager',label:'Manager'}]}/>
+        </div>
+        <div style={{width:1,height:26,background:T.rule}}/>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <Mono style={{fontSize:10,fontWeight:700,color:T.inkFaint,letterSpacing:'0.12em'}}>LAYOUT</Mono>
+          {role==='agent'
+            ? <span style={{display:'inline-flex',alignItems:'center',gap:6,padding:'7px 12px',borderRadius:8,background:T.goldTint,border:`1px solid ${T.gold}44`,fontSize:12,fontWeight:700,color:'#7a5610'}}>Pinned · fixed for agents</span>
+            : <Seg value={option} onChange={setOption} accent={T.violet} options={[{key:1,label:'1 · Pinned'},{key:2,label:'2 · Workspace'},{key:3,label:'3 · Both'}]}/>}
+        </div>
+      </div>
+
+      {/* profile preference — where the layout choice lives */}
+      <LayoutPref role={role} option={option} setOption={setOption}/>
+
+      {/* note card */}
+      <div style={{background:effOption===1?T.goldTint:T.violetTint,border:`1px solid ${effOption===1?T.gold+'44':T.violet+'33'}`,borderRadius:14,padding:'16px 20px',marginBottom:22}}>
+        <div style={{fontSize:15.5,fontWeight:700,fontFamily:DISPLAY,letterSpacing:'-0.01em',color:effOption===1?'#7a5610':T.violet}}>{note.head}</div>
+        <p style={{fontSize:13,color:T.inkMute,lineHeight:1.6,marginTop:6,maxWidth:860}}>{note.body}</p>
+        <div style={{display:'flex',flexWrap:'wrap',gap:8,marginTop:12}}>
+          {note.bullets.map((b,i)=><span key={i} style={{fontSize:11.5,fontWeight:600,color:T.ink,background:T.surface,border:`1px solid ${T.rule}`,padding:'5px 11px',borderRadius:999}}>{b}</span>)}
+        </div>
+      </div>
+
+      {/* dual-context legend */}
+      {role!=='agent' && (
+        <div style={{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap',margin:'0 0 22px',padding:'11px 16px',background:T.surface,border:`1px solid ${T.rule}`,borderRadius:12,fontSize:12,color:T.inkMute}}>
+          <b style={{color:T.ink,fontSize:12.5}}>Dual-context tools</b>
+          <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Chip c="mine"/> your own view</span>
+          <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Chip c="team"/> the team view</span>
+          <span style={{display:'inline-flex',alignItems:'center',gap:6}}><Chip c="shared"/> one screen, scope toggle inside</span>
+          <span style={{color:T.inkFaint}}>— so nothing is lost: Goals, Persistency, Reports & Awards live at both levels and show in both groups.</span>
+        </div>
+      )}
+
+      {/* specimens */}
+      <div style={{display:'flex',flexWrap:'wrap',gap:30,alignItems:'flex-start'}}>
+
+        {/* desktop nav */}
+        <div>
+          <SpecCap n="A" t="Navigation · desktop sidebar" s={showToggle?'Toggle My Work / My Team at top':'Reorganized for this role'}/>
+          <Sidebar sections={nav.sections} topToggle={topToggle} roleLabel={meta.label} roleSub={meta.sub} initials={meta.initials}/>
+        </div>
+
+        {/* desktop quick add */}
+        <div>
+          <SpecCap n="B" t="Quick add · desktop" s="Floating pencil opens this popover"/>
+          <div style={{position:'relative',width:360,height:724,background:T.surfaceSoft,border:`1px dashed ${T.ruleStrong}`,borderRadius:16,overflow:'hidden'}}>
+            <Mono style={{position:'absolute',top:14,left:16,fontSize:10,color:T.inkFaint,letterSpacing:'0.1em'}}>APP CANVAS</Mono>
+            <div style={{position:'absolute',right:18,bottom:96,zIndex:2}}>
+              {effOption===1?<QuickList data={qa}/>:<QuickGrid data={qa}/>}
+            </div>
+            {/* the pencil FAB */}
+            <div style={{position:'absolute',right:24,bottom:24,width:54,height:54,borderRadius:'50%',background:`linear-gradient(180deg,${T.tealLight},${T.teal})`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 8px 20px ${T.teal}66`,zIndex:3}}>
+              <IPencil size={22} color="#fff" stroke={2.1}/>
+              <div style={{position:'absolute',top:6,right:6,width:9,height:9,borderRadius:'50%',background:T.gold,border:`2px solid ${T.surface}`}}/>
+            </div>
+          </div>
+        </div>
+
+        {/* mobile */}
+        <div>
+          <SpecCap n="C" t="Mobile · pencil removed" s="Center ＋ opens the same actions"/>
+          <MobileFrame role={role} option={option} sheet={sheetOpen?qa:null}/>
+          <button onClick={()=>setSheetOpen(s=>!s)} style={{marginTop:12,width:330,padding:'9px',border:`1px solid ${T.rule}`,background:T.surface,borderRadius:10,fontFamily:SANS,fontSize:12.5,fontWeight:700,color:T.teal,cursor:'pointer'}}>
+            {sheetOpen?'Close ＋ menu':'Tap ＋ to open menu'}
+          </button>
+        </div>
+      </div>
+
+      <div style={{marginTop:46,paddingTop:20,borderTop:`1px solid ${T.rule}`,fontSize:12.5,color:T.inkFaint,lineHeight:1.6,maxWidth:820}}>
+        <b style={{color:T.inkMute}}>Decision locked:</b> <b style={{color:T.ink}}>Pinned + groups is the default for every role</b> — agents, producing managers and managers all land here. Workspace and Both stay available as opt-in choices in <i>Profile → Preferences</i> for managers who want them. Dual-context tools appear in both groups (tagged MINE / TEAM) so nothing is lost, and the quick-add menu is identical across layouts. Next: I can take Pinned + groups to hi-fi on the real desktop shell + mobile nav for each role.
+      </div>
+    </div>
+  );
+}
+
+function SpecCap({n,t,s}){
+  return (
+    <div style={{marginBottom:12,display:'flex',alignItems:'center',gap:10}}>
+      <div style={{width:24,height:24,borderRadius:7,background:T.ink,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:DISPLAY,fontWeight:700,fontSize:12,flexShrink:0}}>{n}</div>
+      <div>
+        <div style={{fontSize:13.5,fontWeight:700,letterSpacing:'-0.005em'}}>{t}</div>
+        <div style={{fontSize:11,color:T.inkFaint,marginTop:1}}>{s}</div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

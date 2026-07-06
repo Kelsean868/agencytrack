@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Money Needs — merged allocator (prototype)</title>
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Nexus tokens — CSS variables only ───────────────────────────────── */
+    :root, [data-theme="light"] {
+      --primary: #01696f; --primary-dark: #014e52; --primary-light: #018a91;
+      --primary-tint: rgba(1,105,111,0.10);
+      --ink: #28251d; --ink-muted: #6b6560; --ink-faint: #a8a39c;
+      --surface: #f7f6f2; --surface-raised: #ffffff; --surface-muted: #ebe8e1;
+      --border: #e5e2db; --border-strong: #d7d2c8;
+      --gold: #b07d1a; --gold-tint: rgba(176,125,26,0.12);
+      --success: #2d7a4f; --success-tint: rgba(45,122,79,0.12);
+      --warning: #b4530a; --warning-tint: rgba(180,83,10,0.12);
+      --danger: #c0392b; --danger-tint: rgba(192,57,43,0.12);
+      --accent: #5a3fa0; --accent-tint: rgba(90,63,160,0.12);
+    }
+    [data-theme="dark"] {
+      --primary: #4ab5b8; --primary-dark: #2f8f92; --primary-light: #62c9cc;
+      --primary-tint: rgba(74,181,184,0.14);
+      --ink: #f0ece4; --ink-muted: #a8a39c; --ink-faint: #6b6560;
+      --surface: #1a1612; --surface-raised: #241f1a; --surface-muted: #2e2820;
+      --border: #34302a; --border-strong: #423c33;
+      --gold: #d4a843; --gold-tint: rgba(212,168,67,0.16);
+      --success: #5cba86; --success-tint: rgba(92,186,134,0.16);
+      --warning: #e08a4a; --warning-tint: rgba(224,138,74,0.16);
+      --danger: #e07a6a; --danger-tint: rgba(224,122,106,0.16);
+      --accent: #a98fe0; --accent-tint: rgba(169,143,224,0.16);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100%; background: var(--surface); font-family: 'Satoshi', -apple-system, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    #root { min-height: 100vh; }
+    .font-display { font-family: 'Cabinet Grotesk', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    /* range input — Nexus styling */
+    input[type=range] { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: var(--surface-muted); outline: none; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--primary); border: 3px solid var(--surface-raised); box-shadow: 0 2px 6px rgba(0,0,0,0.18); cursor: pointer; }
+    input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: var(--primary); border: 3px solid var(--surface-raised); box-shadow: 0 2px 6px rgba(0,0,0,0.18); cursor: pointer; }
+    input[type=range].eligible::-webkit-slider-thumb { background: var(--primary); }
+    input[type=range].neutral { opacity: 0.85; }
+    input[type=range].neutral::-webkit-slider-thumb { background: var(--ink-muted); }
+    input[type=number] { font-family: 'JetBrains Mono', monospace; }
+    input:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    @keyframes mnpulse { 0%,100% { box-shadow: 0 0 0 0 var(--primary-tint); } 50% { box-shadow: 0 0 0 8px transparent; } }
+    .pulse { animation: mnpulse 2s ease-in-out infinite; }
+    @keyframes mnscale { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+    .a-scale-in { animation: mnscale 0.22s ease-out; }
+    ::selection { background: var(--primary-tint); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="mn-merge-core.jsx"></script>
+  <script type="text/babel" src="mn-merge.jsx"></script>
+</body>
+</html>

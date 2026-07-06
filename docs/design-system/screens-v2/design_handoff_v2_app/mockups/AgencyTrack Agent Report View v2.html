@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Agent Report View v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro { position: fixed; top: 18px; left: 18px; z-index: 50; background: #fff; border: 1px solid #e5e2db; border-radius: 14px; box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08); padding: 14px 18px; max-width: 660px; color: #28251d; }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Agent Report View v2 — view the report in-app, download optional</h1>
+    <p>
+      The Agent Performance Report as a <b>live in-app view</b>, not a download-only PDF. Same content, but viewable in context — so managers can drill into an agent and read it inline, and it carries the 1-on-1 in Meeting Mode. <b>Download PDF</b> is a secondary action. One component reused across: the manager <b>drill-down drawer</b> (a new "Report" tab), the agent's <b>own full view</b>, the Meeting <b>1-on-1</b>, and <b>mobile</b>. Reuses the KPI rollup, period toggle, and coaching record already built.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="manager-v2-shared.jsx"></script>
+  <script type="text/babel" src="manager-v2-drill.jsx"></script>
+  <script type="text/babel" src="manager-v2-scenes.jsx"></script>
+  <script type="text/babel" src="mastersheet-v2-shared.jsx"></script>
+  <script type="text/babel" src="meeting-v2-shared.jsx"></script>
+  <script type="text/babel" src="prodreport-v2-shared.jsx"></script>
+  <script type="text/babel" src="agentreport-v2.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="drawer"
+            title="Manager drill-down — Report tab"
+            subtitle="The primary new use: a manager opens an agent from the Master Sheet / Dashboard and reads the full performance report inline in the coaching drawer — a new sixth 'Report' tab beside Overview / Weekly / Goals / Notes / Joint Work. No download needed; Download PDF is in the corner."
+          >
+            <DCArtboard id="drawer-light" label="01 · Drill-down drawer · Report tab · Light" width={APP_W} height={APP_H}>
+              <ManagerShell t={APP_LIGHT} active="sheet" title="Master Sheet" subtitle="South Branch · Week 48" persona={MGR} teamView>
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: APP_LIGHT.inkFaint, fontFamily: APP_FONT_MONO, fontSize: 12 }}>Roster behind · drawer open</div>
+              </ManagerShell>
+              <AgentReportDrawer t={APP_LIGHT} name="Devin Lewis" period="month" />
+            </DCArtboard>
+            <DCArtboard id="drawer-dark" label="02 · Drill-down drawer · Report tab · Dark" width={APP_W} height={APP_H}>
+              <ManagerShell t={APP_DARK} active="sheet" title="Master Sheet" subtitle="South Branch · Week 48" persona={MGR} teamView>
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: APP_DARK.inkFaint, fontFamily: APP_FONT_MONO, fontSize: 12 }}>Roster behind · drawer open</div>
+              </ManagerShell>
+              <AgentReportDrawer t={APP_DARK} name="Devin Lewis" period="month" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="full"
+            title="Full view — the agent's own report"
+            subtitle="The same report at full width: the agent pulls it from their dashboard, or a manager opens it full-screen. Period toggle, hero, the four windows, activity vs the company floor, trajectory, coaching ratios, vs tenure floor — and Download PDF."
+          >
+            <DCArtboard id="full-light" label="03 · Full report · Light" width={APP_W} height={APP_H}>
+              <AppShell t={APP_LIGHT} active="history" title="Performance Report" subtitle="Marsha Singh · S·02 · settled production">
+                <AgentReportView t={APP_LIGHT} name="Marsha Singh" period="year" layout="wide" />
+              </AppShell>
+            </DCArtboard>
+            <DCArtboard id="full-dark" label="04 · Full report · Dark" width={APP_W} height={APP_H}>
+              <AppShell t={APP_DARK} active="history" title="Performance Report" subtitle="Devin Lewis · S·02 · settled production">
+                <AgentReportView t={APP_DARK} name="Devin Lewis" period="month" layout="wide" />
+              </AppShell>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Mobile — the report on a phone"
+            subtitle="The same view reflowed to a single column for the agent's phone or a manager mid-1-on-1."
+          >
+            <DCArtboard id="m-report" label="05 · Mobile · Report · Light" width={M_W} height={M_H}>
+              <MFrame t={APP_LIGHT}>
+                <MHeader t={APP_LIGHT} title="Report" sub="DEVIN LEWIS · S·02" />
+                <MContent>
+                  <AgentReportView t={APP_LIGHT} name="Devin Lewis" period="month" layout="mobile" />
+                </MContent>
+              </MFrame>
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

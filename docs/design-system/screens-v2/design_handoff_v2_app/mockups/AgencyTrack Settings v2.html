@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Settings v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro { position: fixed; top: 18px; left: 18px; z-index: 50; background: #fff; border: 1px solid #e5e2db; border-radius: 14px; box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08); padding: 14px 18px; max-width: 680px; color: #28251d; }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Settings v2 — one home for every customization, role-scoped</h1>
+    <p>
+      Consolidates the app's scattered customizations into one surface (off the avatar menu). <b>My Preferences</b> are personal; <b>Team Defaults</b> let a manager set defaults for the levels beneath them — <b>recommend</b> (overridable) or <b>lock</b> (read-only below), reusing the recommend-vs-lock grammar from Goals. Settings resolve down the hierarchy Company → SM → Branch → Unit → Agent; rows locked above show greyed with provenance. In-context Tweaks still work — they write the same value. Branch-manager + agent views, light + dark + mobile.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="manager-v2-shared.jsx"></script>
+  <script type="text/babel" src="settings-v2.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="prefs"
+            title="My Preferences — personal, every user"
+            subtitle="Appearance, view defaults (period, KPI detail, presets), Meeting Mode, notifications. Only affects your own view. The 'Activity KPI detail' row shows a branch recommendation the manager can still change."
+          >
+            <DCArtboard id="prefs-light" label="01 · My Preferences · Branch Manager · Light" width={APP_W} height={APP_H}>
+              <ManagerShell t={APP_LIGHT} active="settings" title="Settings" subtitle="Preferences &amp; team defaults" persona={MGR}>
+                <SettingsView t={APP_LIGHT} role="branch" tab="prefs" />
+              </ManagerShell>
+            </DCArtboard>
+            <DCArtboard id="prefs-dark" label="02 · My Preferences · Branch Manager · Dark" width={APP_W} height={APP_H}>
+              <ManagerShell t={APP_DARK} active="settings" title="Settings" subtitle="Preferences &amp; team defaults" persona={MGR}>
+                <SettingsView t={APP_DARK} role="branch" tab="prefs" />
+              </ManagerShell>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="team"
+            title="Team Defaults — recommend vs lock (managers)"
+            subtitle="The heart of the model: a manager sets defaults for the levels beneath them, choosing recommend (overridable) or lock (standard). Rows locked by a higher level — company API floor, weekly activity floors, persistency threshold, award criteria — appear greyed with their provenance."
+          >
+            <DCArtboard id="team-light" label="03 · Team Defaults · Branch Manager · Light" width={APP_W} height={APP_H}>
+              <ManagerShell t={APP_LIGHT} active="settings" title="Settings" subtitle="Preferences &amp; team defaults" persona={MGR}>
+                <SettingsView t={APP_LIGHT} role="branch" tab="team" />
+              </ManagerShell>
+            </DCArtboard>
+            <DCArtboard id="team-dark" label="04 · Team Defaults · Branch Manager · Dark" width={APP_W} height={APP_H}>
+              <ManagerShell t={APP_DARK} active="settings" title="Settings" subtitle="Preferences &amp; team defaults" persona={MGR}>
+                <SettingsView t={APP_DARK} role="branch" tab="team" />
+              </ManagerShell>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="agent"
+            title="Agent view — locked rows from above"
+            subtitle="An agent has no one beneath them, so no Team Defaults tab. Their preferences are theirs, but the 'Activity KPI detail' carries a branch recommendation, and anything the branch or company locked is read-only with provenance."
+          >
+            <DCArtboard id="agent-light" label="05 · My Preferences · Agent · Light" width={APP_W} height={APP_H}>
+              <AppShell t={APP_LIGHT} active="home" title="Settings" subtitle="Your preferences">
+                <SettingsView t={APP_LIGHT} role="agent" tab="prefs" />
+              </AppShell>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Settings (mobile)"
+            subtitle="The agent's settings on a phone — grouped rows, locked items shown with provenance."
+          >
+            <DCArtboard id="m-settings" label="06 · Mobile · Agent · Light" width={M_W} height={M_H}>
+              <SettingsMobile t={APP_LIGHT} role="agent" tab="prefs" />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

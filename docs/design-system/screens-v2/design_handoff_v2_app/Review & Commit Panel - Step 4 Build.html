@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Review &amp; Commit — Step 4 Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE; --successDeep:#1E5A38;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:810px;text-wrap:pretty}
+  .subt code{font-family:var(--mono);font-size:12px}
+  .subt b{color:var(--ink);font-weight:700}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute);align-items:center}
+  .keylegend span.it{display:inline-flex;align-items:center;gap:7px}
+  .keylegend .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.exist{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.new{background:var(--goldTint);color:var(--goldInk)}
+  .pchip.flag{background:var(--dangerTint);color:var(--danger)}
+  .pchip.write{background:var(--successTint);color:var(--successDeep)}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)} .mk.f{background:var(--danger)} .mk.w{background:var(--success)}
+
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.exist{background:var(--tealTint);color:var(--tealDark)}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+  .ptag.flag{background:var(--dangerTint);color:var(--danger)}
+  .ptag.write{background:var(--successTint);color:var(--successDeep)}
+
+  /* stage */
+  .surfacestage{position:relative;background:var(--bg);border:1px solid var(--ruleStrong);border-radius:18px;padding:20px;overflow:hidden;box-shadow:0 14px 40px rgba(38,35,28,.10)}
+  .hubghost{filter:saturate(.6);opacity:.5;pointer-events:none}
+  .hubghost .topbar{display:flex;align-items:center;gap:10px;padding:0 2px 12px}
+  .hubghost .topbar .pt{font-family:var(--display);font-weight:800;font-size:16px}
+  .hubghost .topbar .ps{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.05em}
+  .hubghost .grail{display:flex;gap:8px}
+  .hubghost .gstep{flex:1;height:46px;border-radius:10px;background:var(--surface);border:1px solid var(--rule);display:flex;align-items:center;gap:9px;padding:0 13px}
+  .hubghost .gstep .sn{width:22px;height:22px;border-radius:50%;background:var(--surfaceMute);color:var(--inkFaint);font-family:var(--display);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center}
+  .hubghost .gstep.done .sn{background:var(--success);color:#fff}
+  .hubghost .gstep.cur{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 40%,transparent)}
+  .hubghost .gstep.cur .sn{background:var(--teal);color:#fff}
+  .hubghost .gstep .st{font-size:11px;font-weight:700}
+  .scrim{position:absolute;inset:0;background:rgba(38,35,28,.30);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+  .openedfrom{position:absolute;top:62px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;color:#fff;background:rgba(38,35,28,.55);padding:4px 11px;border-radius:99px;white-space:nowrap}
+
+  .modal{position:relative;width:940px;max-width:100%;margin:34px auto 8px;background:var(--surface);border:1px solid var(--ruleStrong);border-radius:16px;box-shadow:0 30px 70px rgba(38,35,28,.28);overflow:hidden}
+  .m-head{display:flex;align-items:center;gap:11px;padding:15px 18px;border-bottom:1px solid var(--rule)}
+  .m-head .mt{font-family:var(--display);font-weight:800;font-size:17px;white-space:nowrap;flex-shrink:0}
+  .m-head .ms{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);letter-spacing:.05em;white-space:nowrap;flex-shrink:0}
+  .statuspill{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;padding:3px 9px;border-radius:99px;background:var(--warningTint);color:var(--warning)}
+  .statuspill.committed{background:var(--successTint);color:var(--successDeep)}
+  .readychip{margin-left:auto;display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:9px;background:var(--surfaceSoft);border:1px solid var(--rule);flex-shrink:0}
+  .readychip .pl{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint)}
+  .readychip .pv{font-size:12px;font-weight:700;color:var(--tealDark);white-space:nowrap}
+  .m-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--rule);display:flex;align-items:center;justify-content:center;color:var(--inkMute);font-size:14px;flex-shrink:0}
+
+  .reviewbar{display:flex;align-items:center;gap:10px;padding:10px 18px;background:var(--surfaceSoft);border-bottom:1px solid var(--rule);font-size:11.5px;color:var(--inkMute)}
+  .reviewbar b{color:var(--ink);font-weight:700}
+  .reviewbar .ro{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;color:var(--tealDark);background:var(--tealTint);padding:3px 8px;border-radius:99px}
+
+  .m-body{display:grid;grid-template-columns:1.32fr 1fr;gap:16px;padding:16px 18px}
+
+  /* LEFT — plan review */
+  .planhero{border:1px solid color-mix(in srgb,var(--teal) 32%,transparent);background:var(--tealTint);border-radius:13px;padding:15px 16px;position:relative}
+  .planhero .ph-k{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--tealDark)}
+  .planhero .ph-big{font-family:var(--display);font-weight:800;font-size:38px;letter-spacing:-.03em;color:var(--teal);line-height:1;margin-top:7px}
+  .planhero .ph-big small{font-family:var(--mono);font-size:12px;color:var(--tealDark);font-weight:700;letter-spacing:.04em;margin-left:6px}
+  .planhero .ph-sub{display:flex;gap:22px;margin-top:13px}
+  .planhero .ph-sub .pi{font-size:11px;color:var(--inkMute);display:flex;flex-direction:column;gap:2px;line-height:1.3}
+  .planhero .ph-sub .pi b{font-family:var(--display);font-weight:800;font-size:14px;color:var(--ink);letter-spacing:-.01em}
+
+  .reviewblock{border:1px solid var(--rule);border-radius:12px;margin-top:13px;overflow:hidden}
+  .rb-h{display:flex;align-items:center;gap:8px;padding:10px 13px;background:var(--surfaceSoft);border-bottom:1px solid var(--rule)}
+  .rb-h .t{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute)}
+  .rb-h .src{margin-left:auto;font-family:var(--mono);font-size:8px;color:var(--inkFaint);letter-spacing:.04em}
+  .rb-h .editlink{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--teal);letter-spacing:.04em}
+  .lrow{display:flex;align-items:center;gap:10px;padding:8px 13px;border-top:1px solid var(--rule)}
+  .lrow:first-child{border-top:none}
+  .lrow .ld{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+  .lrow .ln{flex:1;font-size:12.5px;font-weight:700}
+  .lrow .lpct{font-family:var(--mono);font-size:10px;color:var(--inkFaint);width:42px;text-align:right}
+  .lrow .lapi{font-family:var(--display);font-weight:800;font-size:13px;width:74px;text-align:right;letter-spacing:-.01em}
+  .lrow .lapps{font-family:var(--mono);font-size:10px;color:var(--inkMute);width:54px;text-align:right}
+
+  .monthstrip{padding:12px 13px}
+  .monthbars{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;align-items:end;height:54px}
+  .monthbars .mb{border-radius:2px 2px 0 0;background:var(--teal);opacity:.85}
+  .monthbars .mb.future{background:var(--ruleStrong);opacity:.55}
+  .monthlabs{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;margin-top:5px}
+  .monthlabs span{font-family:var(--mono);font-size:7px;color:var(--inkFaint);text-align:center}
+
+  /* RIGHT — consequence + cascade + action */
+  .rcol{display:flex;flex-direction:column;gap:13px}
+  .meanscard{position:relative;border:1px solid color-mix(in srgb,var(--gold) 34%,transparent);background:var(--goldTint);border-radius:13px;padding:15px 16px}
+  .meanscard .mc-k{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--goldInk);display:flex;align-items:center;gap:7px}
+  .meanscard .mc-body{font-size:14px;color:var(--ink);margin-top:9px;line-height:1.5;text-wrap:pretty}
+  .meanscard .mc-body b{font-weight:700}
+  .meanscard .mc-body .amt{font-family:var(--display);font-weight:800;color:var(--goldInk)}
+  .meanscard .mc-list{margin-top:11px;display:flex;flex-direction:column;gap:6px}
+  .meanscard .mc-li{display:flex;gap:8px;font-size:11.5px;color:var(--inkMute);align-items:flex-start}
+  .meanscard .mc-li .ck{color:var(--goldInk);font-weight:700;flex-shrink:0}
+
+  /* cascade */
+  .cascade{border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .cas-h{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surfaceSoft);border-bottom:1px solid var(--rule)}
+  .cas-h .t{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute)}
+  .cas-h .s{margin-left:auto;font-family:var(--mono);font-size:8px;color:var(--inkFaint)}
+  .casbody{padding:11px 14px;display:flex;flex-direction:column;gap:0}
+  .caslayer{display:flex;align-items:center;gap:10px;padding:7px 0;position:relative}
+  .caslayer .cdot{width:10px;height:10px;border-radius:50%;background:var(--inkDim);flex-shrink:0;margin-left:3px}
+  .caslayer .cline{position:absolute;left:7px;top:0;bottom:0;width:2px;background:var(--rule);z-index:0}
+  .caslayer:first-child .cline{top:50%}
+  .caslayer:last-child .cline{bottom:50%}
+  .caslayer .cn{flex:1;font-size:11.5px;color:var(--inkMute);z-index:1}
+  .caslayer .cv{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);z-index:1}
+  .caslayer.mine{background:var(--tealTint);margin:0 -14px;padding:9px 14px;border-top:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-bottom:1px solid color-mix(in srgb,var(--teal) 28%,transparent)}
+  .caslayer.mine .cdot{background:var(--teal);box-shadow:0 0 0 3px var(--tealTint)}
+  .caslayer.mine .cn{font-weight:700;color:var(--tealDark);font-size:12.5px}
+  .caslayer.mine .cv{color:var(--teal);font-weight:700;font-size:11px}
+  .caslayer.mine .writetag{font-family:var(--mono);font-size:7.5px;font-weight:700;letter-spacing:.06em;color:#fff;background:var(--teal);padding:2px 7px;border-radius:99px;margin-left:8px}
+
+  .commitcta{margin-top:auto}
+  .nogate{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--inkMute);margin-bottom:9px;text-wrap:pretty}
+  .nogate .lk{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.06em;color:var(--success);background:var(--successTint);padding:2px 7px;border-radius:99px;flex-shrink:0}
+
+  .m-foot{display:flex;align-items:center;gap:11px;padding:14px 18px;border-top:1px solid var(--rule);background:var(--surfaceRaised)}
+  .m-foot .fnote{font-size:10.5px;color:var(--inkFaint);max-width:420px;text-wrap:pretty}
+  .m-foot .fnote b{color:var(--inkMute);font-weight:700}
+  .m-foot .spacer{flex:1}
+  .btn-ghost{padding:11px 16px;border-radius:10px;border:1px solid var(--ruleStrong);background:var(--surface);font-size:12.5px;font-weight:700;color:var(--inkMute)}
+  .btn-commit{padding:12px 22px;border-radius:10px;background:var(--teal);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;gap:9px;box-shadow:0 4px 14px color-mix(in srgb,var(--teal) 36%,transparent)}
+  .btn-commit .lock{font-size:12px}
+
+  .callout{position:absolute;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.07em;padding:2px 7px;border-radius:99px;z-index:6}
+  .callout.new{background:var(--goldTint);color:var(--goldInk);border:1px solid color-mix(in srgb,var(--gold) 35%,transparent)}
+  .callout.exist{background:var(--tealTint);color:var(--tealDark);border:1px solid color-mix(in srgb,var(--teal) 30%,transparent)}
+  .callout.write{background:var(--successTint);color:var(--successDeep);border:1px solid color-mix(in srgb,var(--success) 32%,transparent)}
+
+  /* two-up smaller surfaces */
+  .twoup{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .miniframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:18px;position:relative;overflow:hidden}
+  .miniframe .scrim2{position:absolute;inset:0;background:rgba(38,35,28,.28);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:1}
+  .miniframe .ghostlayer{filter:saturate(.55);opacity:.4;height:90px;border-radius:11px;background:var(--surface);border:1px solid var(--rule)}
+  .frametitle{position:absolute;top:10px;left:14px;font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint);z-index:3}
+
+  /* confirm moment */
+  .confirm{position:relative;z-index:2;width:380px;max-width:100%;margin:30px auto 8px;background:var(--surface);border:1px solid var(--ruleStrong);border-radius:16px;box-shadow:0 24px 60px rgba(38,35,28,.3);overflow:hidden}
+  .cf-top{padding:18px 20px 14px;text-align:center}
+  .cf-seal{width:46px;height:46px;border-radius:13px;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:21px;margin:0 auto 11px}
+  .cf-t{font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:-.02em}
+  .cf-d{font-size:12.5px;color:var(--inkMute);margin-top:7px;text-wrap:pretty;line-height:1.5}
+  .cf-d .amt{font-family:var(--display);font-weight:800;color:var(--teal)}
+  .cf-recap{margin:13px 20px 0;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:11px;padding:11px 14px;display:flex;flex-direction:column;gap:7px}
+  .cf-recap .rr{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--inkMute)}
+  .cf-recap .rr .rk{flex:1}
+  .cf-recap .rr .rv{font-family:var(--mono);font-weight:700;color:var(--ink)}
+  .cf-recap .rr .ck{color:var(--success);font-weight:700}
+  .cf-actions{padding:15px 20px 18px;display:flex;flex-direction:column;gap:9px}
+  .cf-commit{padding:13px;border-radius:11px;background:var(--teal);color:#fff;font-size:13.5px;font-weight:700;text-align:center;box-shadow:0 4px 14px color-mix(in srgb,var(--teal) 36%,transparent);display:flex;align-items:center;justify-content:center;gap:9px}
+  .cf-cancel{padding:11px;border-radius:11px;border:1px solid var(--ruleStrong);background:var(--surface);color:var(--inkMute);font-size:12.5px;font-weight:700;text-align:center}
+  .cf-fine{font-family:var(--mono);font-size:8.5px;color:var(--inkFaint);text-align:center;margin-top:2px;text-wrap:pretty;line-height:1.5}
+
+  /* post-commit done */
+  .donecard{position:relative;z-index:2;width:380px;max-width:100%;margin:30px auto 8px;background:var(--surface);border:1px solid color-mix(in srgb,var(--success) 32%,transparent);border-radius:16px;box-shadow:0 24px 60px rgba(38,35,28,.3);overflow:hidden}
+  .dc-band{background:linear-gradient(160deg,var(--successDeep),var(--success));padding:22px 20px 18px;text-align:center;color:#fff}
+  .dc-check{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.16);border:2px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:25px;margin:0 auto 11px}
+  .dc-t{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.02em}
+  .dc-d{font-size:12px;color:rgba(255,255,255,.85);margin-top:6px;font-family:var(--mono);letter-spacing:.03em}
+  .dc-body{padding:16px 20px 18px}
+  .dc-target{text-align:center;padding-bottom:14px;border-bottom:1px solid var(--rule)}
+  .dc-target .tk{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .dc-target .tv{font-family:var(--display);font-weight:800;font-size:30px;color:var(--teal);letter-spacing:-.028em;margin-top:5px;line-height:1}
+  .dc-target .ts{font-size:11px;color:var(--inkMute);margin-top:5px}
+  .dc-loop{display:flex;align-items:center;gap:10px;margin-top:14px}
+  .dc-loop .ll{flex:1}
+  .dc-loop .ll .lk{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;color:var(--inkFaint)}
+  .dc-loop .ll .lv{font-size:12.5px;font-weight:700;color:var(--successDeep);margin-top:2px}
+  .dc-loop .ring{width:42px;height:42px;border-radius:50%;background:conic-gradient(var(--success) 100%,var(--surfaceMute) 0);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .dc-loop .ring i{width:32px;height:32px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:11px;color:var(--successDeep)}
+  .dc-actions{display:flex;gap:8px;margin-top:15px}
+  .dc-actions .b1{flex:1;padding:11px;border-radius:10px;background:var(--surfaceSoft);border:1px solid var(--ruleStrong);color:var(--inkMute);font-size:12px;font-weight:700;text-align:center}
+  .dc-actions .b2{flex:1;padding:11px;border-radius:10px;background:var(--teal);color:#fff;font-size:12px;font-weight:700;text-align:center}
+
+  /* annotation cards */
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.exist{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.exist .ad b{color:var(--tealDark)}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+  .anno.writec{background:var(--successTint);border-color:color-mix(in srgb,var(--success) 28%,transparent)}
+  .anno.writec .ad b{color:var(--successDeep)}
+  .anno.flagc{background:var(--dangerTint);border-color:color-mix(in srgb,var(--danger) 28%,transparent)}
+  .anno.flagc .ad b{color:var(--danger)}
+
+  /* decision two-card */
+  .modespec{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .mcard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .mcard.lean{border-color:color-mix(in srgb,var(--teal) 40%,transparent);box-shadow:0 0 0 3px var(--tealTint)}
+  .mc-hh{padding:12px 15px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:9px}
+  .mc-hh .seg{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;padding:6px 12px;border-radius:7px;background:var(--teal);color:#fff}
+  .mc-hh .seg.alt{background:var(--surfaceMute);color:var(--inkMute)}
+  .mc-hh .mc-t{font-size:13px;font-weight:700}
+  .mc-hh .leantag{margin-left:auto;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;color:var(--tealDark);background:var(--tealTint);padding:3px 8px;border-radius:99px}
+  .mc-bb{padding:14px 15px}
+  .mc-bb .specrow{display:flex;gap:9px;padding:6px 0;border-bottom:1px solid var(--rule);font-size:11.5px;color:var(--inkMute);align-items:baseline}
+  .mc-bb .specrow:last-child{border-bottom:none}
+  .mc-bb .specrow .k{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.06em;color:var(--inkFaint);width:70px;flex-shrink:0;text-transform:uppercase;padding-top:2px}
+  .mc-bb .specrow .v{flex:1;text-wrap:pretty}
+  .mc-bb .specrow .v b{color:var(--ink);font-weight:700}
+  .mc-bb .specrow code{font-family:var(--mono);font-size:10.5px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .reopenchip{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:8px 12px;border-radius:9px;font-size:11px;font-weight:700}
+  .reopenchip.amend{background:var(--tealTint);color:var(--tealDark);border:1px solid color-mix(in srgb,var(--teal) 30%,transparent)}
+  .reopenchip.locked{background:var(--surfaceMute);color:var(--inkMute);border:1px solid var(--ruleStrong)}
+  .convnote{display:flex;gap:11px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:12px;padding:13px 16px;margin-top:14px}
+  .convnote .mk{margin-top:1px}
+  .convnote p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .convnote b{font-weight:700}
+  .convnote code{font-family:var(--mono);font-size:11.5px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  /* shows vs writes */
+  .swgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .swcard{border-radius:13px;overflow:hidden;border:1px solid var(--rule)}
+  .sw-h{padding:11px 15px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  .swcard.shows .sw-h{background:var(--tealTint);color:var(--tealDark)}
+  .swcard.writes .sw-h{background:var(--successTint);color:var(--successDeep)}
+  .sw-b{padding:13px 15px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
+  .sw-li{display:flex;gap:9px;font-size:12px;color:var(--inkMute);align-items:flex-start;text-wrap:pretty}
+  .sw-li .ic{flex-shrink:0;font-weight:700}
+  .swcard.shows .sw-li .ic{color:var(--teal)}
+  .swcard.writes .sw-li .ic{color:var(--success)}
+  .sw-li code{font-family:var(--mono);font-size:10.5px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .sw-li b{color:var(--ink);font-weight:700}
+
+  /* data model */
+  .modelwrap{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}
+  .codecard{background:#1d1b16;border-radius:13px;overflow:hidden}
+  .cc-h{padding:10px 15px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:9px}
+  .cc-h .cc-t{font-family:var(--mono);font-size:11px;font-weight:700;color:#e8e4d8}
+  .cc-h .cc-tag{margin-left:auto;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px}
+  .cc-tag.atomic{background:rgba(45,122,79,.28);color:#8fd6a8}
+  .cc-tag.read{background:rgba(168,163,156,.2);color:#bdb8ae}
+  .cc-b{padding:14px 16px;font-family:var(--mono);font-size:11px;line-height:1.7;color:#cfcabb;white-space:pre;overflow-x:auto}
+  .cc-b .ky{color:#7fd4d8}
+  .cc-b .st{color:#d9b777}
+  .cc-b .cm{color:#7d776b}
+  .cc-b .gn{color:#8fd6a8}
+  .cc-b .rd{color:#d98c7a}
+
+  /* hub wiring */
+  .wiring{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .wcard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:14px 15px}
+  .wcard.ungate{border-color:color-mix(in srgb,var(--success) 36%,transparent);box-shadow:0 0 0 3px var(--successTint)}
+  .wcard .wn{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:7px}
+  .wcard.ungate .wn{color:var(--successDeep)}
+  .wcard .wt{font-size:13.5px;font-weight:700;margin-top:8px}
+  .wcard .wd{font-size:11.5px;color:var(--inkMute);margin-top:5px;text-wrap:pretty}
+  .wcard .wd code{font-family:var(--mono);font-size:10.5px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .wcard .wstate{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.06em;padding:2px 8px;border-radius:99px;display:inline-block;margin-top:9px}
+  .wstate.live{background:var(--successTint);color:var(--success)}
+  .wstate.trigger{background:var(--goldTint);color:var(--goldInk)}
+
+  /* deferred */
+  .deferbox{background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:14px;padding:18px 20px}
+  .deferbox .dt{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--danger);margin-bottom:5px;display:flex;align-items:center;gap:8px}
+  .deferbox .dsub{font-size:12.5px;color:var(--ink);margin-bottom:14px;text-wrap:pretty}
+  .defgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .defitem{background:var(--surface);border:1px solid color-mix(in srgb,var(--danger) 22%,transparent);border-radius:10px;padding:12px 14px}
+  .defitem .dn{font-size:13px;font-weight:700;display:flex;align-items:flex-start;gap:8px}
+  .defitem .dn::before{content:'✕';color:var(--danger);font-weight:700;font-size:11px;line-height:1.5}
+  .defitem .dd{font-size:11.5px;color:var(--inkMute);margin-top:4px;text-wrap:pretty}
+  .defitem .s2{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;color:var(--teal);background:var(--tealTint);padding:2px 7px;border-radius:99px;display:inline-block;margin-top:7px}
+
+  /* states */
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:15px 14px;min-height:172px;display:flex;flex-direction:column;gap:10px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .skgroup{border:1px solid var(--rule);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .emptynote,.errs{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:6px}
+  .emptynote .ic{width:40px;height:40px;border-radius:11px;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:19px}
+  .emptynote .et{font-family:var(--display);font-weight:800;font-size:14px}
+  .emptynote .ed{font-size:11px;color:var(--inkMute);line-height:1.45;max-width:280px;text-wrap:pretty}
+  .emptynote .ed code{font-family:var(--mono);font-size:10px;background:var(--surfaceMute);padding:1px 4px;border-radius:4px;color:var(--tealDark)}
+  .errs .ic{width:40px;height:40px;border-radius:11px;background:var(--dangerTint);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:19px}
+  .errs .eb{margin-top:4px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  /* components */
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:210px 1fr 96px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .crow .co{text-align:right}
+
+  .note{display:flex;gap:12px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:12px;padding:14px 17px;margin-top:18px}
+  .note .mk{margin-top:1px}
+  .note p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .note b{font-weight:700}
+  .note code{font-family:var(--mono);font-size:11.5px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  @media(max-width:1040px){
+    .annos,.modespec,.swgrid,.modelwrap,.wiring,.defgrid,.states,.m-body,.twoup{grid-template-columns:1fr}
+    .modal,.confirm,.donecard{width:100%}.crow{grid-template-columns:1fr}.crow .co{text-align:left}
+    .dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Review &amp; Commit · Game Plan Step 4 — build annotation</div>
+      <h1>The commit — review the whole plan, then write the agent's real annual target.</h1>
+      <p class="subt">The final step of the planning loop and the <b>only one that writes real data</b>. Money Needs, Year Plan and Monthly Plan all produce <b>drafts</b>; Step 4 reviews the whole plan in one place and <b>commits</b> it — writing the agent's <b>Personal Commitment</b> into Goals (their real annual API target) and flipping the plan <code>draft → committed</code>. It's deliberately a <b>moment</b>, not a throwaway Save. Committing takes the hub to <b>4 of 4 / 100%</b> — the trigger that un-gates the whole loop.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />REVIEW &amp; COMMIT · GAME PLAN S4<br />AGENT · DESKTOP MODAL<br />REV 2026-06-12</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Slice rule</span>
+    <p><b>Review · confirm · commit — the one real write.</b> No new store. The review is <b>read-only</b> (edits happen back in Steps 2–3); reads exactly what's in the drafts (<code>yearPlan</code> + <code>monthlyPlan</code>), no fabrication. Commit is a <b>deliberate two-step</b>: a summary + an explicit <b>"Commit my plan"</b>, never a one-tap Save. On commit it <b>atomically</b> writes the Goals Personal Commitment and flips both plan statuses to <code>committed</code> — the loop is never half-committed. This is the first step to use the terminal <b>committed / done</b> statusToken for real.</p>
+  </div>
+
+  <div class="secttl">Reading this sheet</div>
+  <div class="keylegend">
+    <span class="it"><span class="pchip exist">EXISTING / SHIPPED</span> drafts &amp; figures the review reads</span>
+    <span class="it"><span class="pchip new">NEW CHROME</span> net-new review / confirm / done UI</span>
+    <span class="it"><span class="pchip write">THE WRITE</span> the one real data write — Goals + status flip</span>
+    <span class="it"><span class="pchip flag">DECISION</span> product call this design resolves</span>
+  </div>
+
+  <!-- ───────────────── THE SURFACE ───────────────── -->
+  <div class="secttl">Step 4 surface — the review modal (pre-commit)</div>
+  <div class="surfacestage">
+    <div class="hubghost">
+      <div class="topbar"><span class="pt">Game Plan</span><span class="ps">· MARSHA SINGH · BUILD YOUR 2026</span></div>
+      <div class="grail">
+        <div class="gstep done"><div class="sn">✓</div><div class="st">Money Needs</div></div>
+        <div class="gstep done"><div class="sn">✓</div><div class="st">Year Plan</div></div>
+        <div class="gstep done"><div class="sn">✓</div><div class="st">Monthly Plan</div></div>
+        <div class="gstep cur"><div class="sn">4</div><div class="st">Review &amp; Commit</div></div>
+      </div>
+    </div>
+    <div class="scrim"></div>
+    <div class="openedfrom">▲ OPENED FROM GAME PLAN · STEP 4 · "REVIEW &amp; COMMIT"</div>
+
+    <!-- THE MODAL -->
+    <div class="modal">
+      <span class="callout new" style="top:11px;left:215px">NEW CHROME · modal</span>
+      <div class="m-head">
+        <span class="mt">Review &amp; Commit</span>
+        <span class="ms">· STEP 4 OF 4 · 2026</span>
+        <span class="statuspill">DRAFT · READY</span>
+        <div class="readychip"><div><div class="pl">PLANNING LOOP</div><div class="pv">3 of 4 complete · commit to finish</div></div></div>
+        <div class="m-close">✕</div>
+      </div>
+
+      <div class="reviewbar">
+        <span class="ro">◷ READ-ONLY</span>
+        <span>Everything below is <b>read from your drafts</b>. To change a number, re-open <b>Year Plan</b> or <b>Monthly Plan</b> — this screen reviews, it doesn't edit.</span>
+      </div>
+
+      <div class="m-body">
+        <!-- LEFT: plan review -->
+        <div class="lcol">
+          <div class="planhero">
+            <span class="callout exist" style="top:-9px;right:12px">EXISTING drafts · displayed</span>
+            <div class="ph-k">Your 2026 plan · annual target</div>
+            <div class="ph-big">TTD 600K<small>API</small></div>
+            <div class="ph-sub">
+              <div class="pi"><b>50</b>implied apps / yr</div>
+              <div class="pi"><b>TTD 300K</b>est. commission</div>
+              <div class="pi"><b>✓ Bronze</b>award tier</div>
+            </div>
+          </div>
+
+          <div class="reviewblock">
+            <div class="rb-h"><span class="t">Per-line · from Year Plan</span><span class="editlink">Edit in Year Plan →</span></div>
+            <div class="lrow"><span class="ld" style="background:var(--teal)"></span><span class="ln">Life</span><span class="lpct">70%</span><span class="lapi">TTD 420K</span><span class="lapps">35 apps</span></div>
+            <div class="lrow"><span class="ld" style="background:var(--tealLight)"></span><span class="ln">A&amp;H</span><span class="lpct">20%</span><span class="lapi">TTD 120K</span><span class="lapps">10 apps</span></div>
+            <div class="lrow"><span class="ld" style="background:var(--gold)"></span><span class="ln">Property</span><span class="lpct">6%</span><span class="lapi">TTD 36K</span><span class="lapps">3 apps</span></div>
+            <div class="lrow"><span class="ld" style="background:var(--goldInk)"></span><span class="ln">Motor</span><span class="lpct">4%</span><span class="lapi">TTD 24K</span><span class="lapps">2 apps</span></div>
+          </div>
+
+          <div class="reviewblock">
+            <div class="rb-h"><span class="t">12-month shape · from Monthly Plan</span><span class="editlink">Edit in Monthly →</span></div>
+            <div class="monthstrip">
+              <div class="monthbars">
+                <div class="mb" style="height:92%"></div><div class="mb" style="height:92%"></div><div class="mb" style="height:92%"></div><div class="mb" style="height:84%"></div><div class="mb" style="height:84%"></div><div class="mb" style="height:84%"></div>
+                <div class="mb future" style="height:75%"></div><div class="mb future" style="height:75%"></div><div class="mb future" style="height:84%"></div><div class="mb future" style="height:84%"></div><div class="mb future" style="height:75%"></div><div class="mb future" style="height:84%"></div>
+              </div>
+              <div class="monthlabs"><span>J</span><span>F</span><span>M</span><span>A</span><span>M</span><span>J</span><span>J</span><span>A</span><span>S</span><span>O</span><span>N</span><span>D</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: consequence + cascade + action -->
+        <div class="rcol">
+          <div class="meanscard">
+            <span class="callout new" style="top:-9px;right:12px">NEW · plain-words consequence</span>
+            <div class="mc-k">⚑ What committing means</div>
+            <div class="mc-body">This sets your <b>personal annual target</b> to <span class="amt">TTD 600K API</span> and starts tracking you against it for 2026.</div>
+            <div class="mc-list">
+              <div class="mc-li"><span class="ck">✓</span><span>Writes your <b>Personal Commitment</b> into Goals — the target the app paces you against.</span></div>
+              <div class="mc-li"><span class="ck">✓</span><span>Marks your plan <b>committed</b> — Game Plan reads 4 of 4, 100%.</span></div>
+              <div class="mc-li"><span class="ck">✓</span><span>You can <b>re-open and amend</b> later (see re-commit below).</span></div>
+            </div>
+          </div>
+
+          <div class="cascade">
+            <div class="cas-h"><span class="t">Where it writes · Goals cascade</span><span class="s">5 layers</span></div>
+            <div class="casbody">
+              <div class="caslayer"><span class="cline"></span><span class="cdot"></span><span class="cn">Company Floor</span><span class="cv">set by HQ</span></div>
+              <div class="caslayer"><span class="cline"></span><span class="cdot"></span><span class="cn">Sales Manager</span><span class="cv">rolled down</span></div>
+              <div class="caslayer"><span class="cline"></span><span class="cdot"></span><span class="cn">Branch</span><span class="cv">rolled down</span></div>
+              <div class="caslayer"><span class="cline"></span><span class="cdot"></span><span class="cn">Unit</span><span class="cv">rolled down</span></div>
+              <div class="caslayer mine"><span class="cline"></span><span class="cdot"></span><span class="cn">Personal Commitment</span><span class="cv">TTD 600K</span><span class="writetag">YOU WRITE THIS</span></div>
+            </div>
+          </div>
+
+          <div class="commitcta">
+            <div class="nogate"><span class="lk">NO APPROVAL</span><span>This is your own layer — committing is immediate, no manager sign-off.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="m-foot">
+        <div class="fnote">Commit <b>atomically</b> writes Goals + flips <b>yearPlan</b> &amp; <b>monthlyPlan</b> to <b>committed</b>. A confirm step comes first →</div>
+        <div class="spacer"></div>
+        <div class="btn-ghost">Back to plan</div>
+        <div class="btn-commit"><span class="lock">⚿</span> Commit my plan</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SURFACE ANNOTATIONS -->
+  <div class="annos">
+    <div class="anno exist"><span class="mk e">1</span><div><div class="at">The review reads the drafts · EXISTING, read-only</div><div class="ad">The annual total, per-line breakdown and 12-month shape are read from <code>yearPlan/2026</code> + <code>monthlyPlan/2026</code> — <b>exactly what the agent drafted</b>, no fabrication. It's a confident "here's everything you planned." <b>Edits don't happen here</b>; each block links back to its step.</div></div></div>
+    <div class="anno newc"><span class="mk n">2</span><div><div class="at">The consequence is explicit, in plain words · NEW</div><div class="ad">The gold card states the outcome before the action: <b>"This sets your personal annual target to TTD 600K and starts tracking you against it."</b> Consequence is surfaced, not buried — committing means something, so the screen says what.</div></div></div>
+    <div class="anno writec"><span class="mk w">3</span><div><div class="at">The cascade shows exactly where it lands · THE WRITE</div><div class="ad">The 5-layer Goals cascade (<b>Company Floor → Sales Manager → Branch → Unit → Personal Commitment</b>) makes the write legible: the agent writes <b>only the bottom layer — their own</b>. The other four are rolled down and read-only.</div></div></div>
+    <div class="anno newc"><span class="mk n">4</span><div><div class="at">"Commit my plan" is deliberate, not a Save · NEW</div><div class="ad">The primary action carries a lock glyph and opens a <b>confirm moment</b> (next section) rather than writing on tap. The footnote is honest that the write is <b>atomic</b> — Goals + both status flips together, never half-committed.</div></div></div>
+  </div>
+
+  <!-- ───────────────── CONFIRM + DONE ───────────────── -->
+  <div class="secttl">The commit moment — deliberate confirm → terminal done state</div>
+  <div class="twoup">
+    <!-- confirm -->
+    <div class="miniframe">
+      <span class="frametitle">① CONFIRM · the deliberate moment</span>
+      <div class="ghostlayer"></div>
+      <div class="scrim2"></div>
+      <div class="confirm">
+        <span class="callout new" style="top:10px;right:12px;z-index:4">NEW</span>
+        <div class="cf-top">
+          <div class="cf-seal">⚿</div>
+          <div class="cf-t">Commit your 2026 plan?</div>
+          <div class="cf-d">Your personal annual target becomes <span class="amt">TTD 600K API</span>. The app will pace you against it all year. You can re-open and amend later.</div>
+        </div>
+        <div class="cf-recap">
+          <div class="rr"><span class="rk">Annual API target</span><span class="rv">TTD 600K</span></div>
+          <div class="rr"><span class="rk">Implied apps / yr</span><span class="rv">50</span></div>
+          <div class="rr"><span class="rk">Writes to</span><span class="rv">Personal Commitment</span></div>
+          <div class="rr"><span class="rk">Plan status</span><span class="ck">→ Committed</span></div>
+        </div>
+        <div class="cf-actions">
+          <div class="cf-commit"><span>⚿</span> Yes — commit my plan</div>
+          <div class="cf-cancel">Not yet</div>
+          <div class="cf-fine">Writes Goals + flips both plan statuses atomically · Trinidad time</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- done -->
+    <div class="miniframe">
+      <span class="frametitle">② DONE · terminal committed state</span>
+      <div class="ghostlayer"></div>
+      <div class="scrim2"></div>
+      <div class="donecard">
+        <span class="callout write" style="top:10px;right:12px;z-index:4">THE WRITE · committed</span>
+        <div class="dc-band">
+          <div class="dc-check">✓</div>
+          <div class="dc-t">Plan committed</div>
+          <div class="dc-d">12 JUN 2026 · 3:42 PM AST</div>
+        </div>
+        <div class="dc-body">
+          <div class="dc-target">
+            <div class="tk">Your 2026 personal commitment</div>
+            <div class="tv">TTD 600K API</div>
+            <div class="ts">Now live in Goals · the app is pacing you against it.</div>
+          </div>
+          <div class="dc-loop">
+            <div class="ll"><div class="lk">PLANNING LOOP</div><div class="lv">Complete · 4 of 4</div></div>
+            <div class="ring"><i>100%</i></div>
+          </div>
+          <div class="dc-actions">
+            <div class="b1">Re-open to amend</div>
+            <div class="b2">Back to Game Plan</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="annos" style="margin-top:14px">
+    <div class="anno newc"><span class="mk n">5</span><div><div class="at">Confirm recaps, then commits</div><div class="ad">The confirm restates the <b>exact target</b> and what it writes — a small recap table + <b>"Yes — commit my plan"</b> / <b>"Not yet."</b> One real beat of friction proportional to setting a year-long target. The fine print names the atomic write honestly.</div></div></div>
+    <div class="anno writec"><span class="mk w">6</span><div><div class="at">Done is the terminal state — for real</div><div class="ad">First true use of the <b>committed/done</b> statusToken: a dated seal (<b>"committed on 12 Jun · 3:42 PM AST"</b>, Trinidad time), the live target, the loop at <b>4/4 · 100%</b>, and a clear way back in — <b>Re-open to amend</b> (the re-commit decision below).</div></div></div>
+  </div>
+
+  <!-- ───────────────── DECISION 1: RE-COMMIT ───────────────── -->
+  <div class="secttl">Decision 1 — re-commit-ability · the big one · both states designed</div>
+  <div class="modespec">
+    <div class="mcard lean">
+      <div class="mc-hh"><span class="seg">AMENDABLE</span><span class="mc-t">Re-open &amp; re-commit</span><span class="leantag">LEAN</span></div>
+      <div class="mc-bb">
+        <div class="specrow"><span class="k">After commit</span><span class="v">The plan stays <b>re-openable</b>. The agent can amend Year / Monthly and <b>commit a new target</b> — plans change, and this is <b>their own</b> cascade layer.</span></div>
+        <div class="specrow"><span class="k">Affordance</span><span class="v">Done state shows <b>"You committed TTD 600K on 12 Jun — re-open to change it,"</b> and re-commit triggers the <b>same confirm</b> (re-confirm, never silent).</span></div>
+        <div class="specrow"><span class="k">Write</span><span class="v">Re-commit <b>overwrites</b> the Personal Commitment with the new target + a fresh committed date; history optional.</span></div>
+        <div class="reopenchip amend">↻ Re-open to amend · re-confirm on re-commit</div>
+      </div>
+    </div>
+    <div class="mcard">
+      <div class="mc-hh"><span class="seg alt">LOCKED</span><span class="mc-t">Once per period</span></div>
+      <div class="mc-bb">
+        <div class="specrow"><span class="k">After commit</span><span class="v">Commit is a <b>once-per-period</b> act. The plan <b>locks</b> — no agent self-amend until a new year rolls or a <b>manager reset</b>.</span></div>
+        <div class="specrow"><span class="k">Affordance</span><span class="v">Done state reads <b>"Committed for 2026 · locked."</b> Re-open is disabled with an honest reason + "ask your manager to reopen."</span></div>
+        <div class="specrow"><span class="k">Write</span><span class="v">Single write per period; changing it is a <b>manager-gated</b> action on a different surface.</span></div>
+        <div class="reopenchip locked">⚿ Locked for 2026 · manager reset to change</div>
+      </div>
+    </div>
+  </div>
+  <div class="convnote">
+    <span class="mk n">↻</span>
+    <p><b>Lean: allow re-commit.</b> The Personal Commitment is the agent's <b>own</b> layer of the cascade — plans change through the year, and locking the agent out of their own target creates a manager-reset bottleneck for an ordinary edit. So the done state offers <b>Re-open to amend</b>, and re-committing always passes back through the <b>same confirm</b> (a new target is as deliberate as the first). Both states are drawn so it's a clean product pick — if compliance wants commitments frozen per period, the <b>locked</b> variant is a one-flag swap (<code>recommitPolicy: 'open' | 'locked'</code>) with no layout change.</p>
+  </div>
+
+  <!-- ───────────────── DECISION 2: SHOWS vs WRITES + MANAGER ───────────────── -->
+  <div class="secttl">Decision 2 — what commit shows vs writes · &amp; manager visibility</div>
+  <div class="swgrid">
+    <div class="swcard shows">
+      <div class="sw-h">◷ The review SHOWS — richly</div>
+      <div class="sw-b">
+        <div class="sw-li"><span class="ic">›</span><span>The <b>full per-line annual</b> allocation (Life / A&amp;H / Property / Motor) with %, API and apps.</span></div>
+        <div class="sw-li"><span class="ic">›</span><span>The <b>12-month shape</b> from Monthly Plan — front-load and all.</span></div>
+        <div class="sw-li"><span class="ic">›</span><span>The <b>implied activity</b> — apps/yr, est. commission, award tier — from the existing decomposition.</span></div>
+        <div class="sw-li"><span class="ic">›</span><span>Read-only; the agent sees the <b>whole</b> plan, the richest possible "here's what you built."</span></div>
+      </div>
+    </div>
+    <div class="swcard writes">
+      <div class="sw-h">⚿ The commit WRITES — narrowly</div>
+      <div class="sw-b">
+        <div class="sw-li"><span class="ic">✓</span><span><b>Lean:</b> just the <b>annual API</b> into the Goals <b>Personal Commitment</b> field.</span></div>
+        <div class="sw-li"><span class="ic">✓</span><span>The <b>monthly shape stays</b> in the now-<b>committed</b> <code>monthlyPlan/2026</code> — the rest of the app reads it for pacing.</span></div>
+        <div class="sw-li"><span class="ic">✓</span><span>Status flips on <b>both</b> plans → <code>committed</code>, atomically with the Goals write.</span></div>
+        <div class="sw-li"><span class="ic">✓</span><span><b>Field names pinned at brief time</b> against the live Goals schema — design targets "writes the annual API commitment."</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="convnote">
+    <span class="mk f">⚑</span>
+    <p><b>Manager visibility — lean: purely personal, no approval gate.</b> Committing writes the agent's <b>own</b> cascade layer; it doesn't request manager sign-off and isn't blocked waiting on one. The review's <b>"no approval"</b> note says so plainly. A manager <i>seeing</i> the committed number (roll-up on the branch dashboard) is a <b>read</b> on a different surface, not an approval step here — flagged so if Kyron wants an acknowledgement step, it's an explicit addition, not an accident of this design.</p>
+  </div>
+
+  <!-- ───────────────── DATA MODEL ───────────────── -->
+  <div class="secttl">Data model — no new store · one atomic transactional write</div>
+  <div class="modelwrap">
+    <div class="codecard">
+      <div class="cc-h"><span class="cc-t">commit() · the only write</span><span class="cc-tag atomic">ATOMIC · all-or-nothing</span></div>
+<div class="cc-b"><span class="cm">// transaction — never half-committed</span>
+<span class="gn">commit</span>(year = <span class="st">2026</span>) {
+  <span class="ky">goals.personalCommitment</span> = <span class="st">600000</span>  <span class="cm">// ← THE write</span>
+  <span class="ky">yearPlan/2026.status</span>     = <span class="st">"committed"</span>
+  <span class="ky">monthlyPlan/2026.status</span>  = <span class="st">"committed"</span>
+  <span class="ky">committedAt</span>             = <span class="st">TT_now()</span>
+}
+<span class="cm">// all four land together, or none do</span>
+<span class="cm">// field path pinned vs live Goals schema</span></div>
+    </div>
+    <div class="codecard">
+      <div class="cc-h"><span class="cc-t">reads — already exist</span><span class="cc-tag read">READ · no new data</span></div>
+<div class="cc-b"><span class="rd">yearPlan/2026</span>     ← per-line annual API
+<span class="rd">monthlyPlan/2026</span>  ← 12-month split + status
+<span class="rd">submissions</span>       ← implied pace / activity
+<span class="rd">awardsRuleset</span>     ← tier shown in review
+<span class="rd">goals cascade</span>     ← 4 rolled-down layers
+
+<span class="cm">// review is pure read; commit is the</span>
+<span class="cm">// first &amp; only write in the whole loop</span>
+<span class="cm">// recommitPolicy: 'open' | 'locked'  (Dec.1)</span></div>
+    </div>
+  </div>
+
+  <!-- ───────────────── HUB WIRING ───────────────── -->
+  <div class="secttl">Hub wiring — StepRail, Commit rung, and the loop un-gate</div>
+  <div class="wiring">
+    <div class="wcard">
+      <div class="wn"><span class="mk e" style="width:16px;height:16px;font-size:8px">▸</span>StepRail</div>
+      <div class="wt">Step 4 goes live</div>
+      <div class="wd">Review &amp; Commit's rail entry becomes <b>active</b> once Monthly Plan is drafted. Opens this modal.</div>
+      <span class="wstate live">NOW LIVE</span>
+    </div>
+    <div class="wcard">
+      <div class="wn"><span class="mk e" style="width:16px;height:16px;font-size:8px">▸</span>PlanCascade</div>
+      <div class="wt">Commit rung lights</div>
+      <div class="wd">On commit the cascade's <b>Commit rung</b> turns committed/green and shows the dated seal — the loop's visual capstone.</div>
+      <span class="wstate live">NOW LIVE</span>
+    </div>
+    <div class="wcard ungate">
+      <div class="wn"><span class="mk w" style="width:16px;height:16px;font-size:8px">▸</span>Loop un-gate</div>
+      <div class="wt">4 of 4 · 100%</div>
+      <div class="wd">Commit takes completeness to <b>100%</b> — the <b>trigger condition</b> that un-gates the whole planning loop. Step 4 is the last piece that must exist before that un-gate.</div>
+      <span class="wstate trigger">TRIGGER · UN-GATES LOOP</span>
+    </div>
+  </div>
+
+  <!-- ───────────────── DEFERRED ───────────────── -->
+  <div class="secttl">Deferred — not in Step 4</div>
+  <div class="deferbox">
+    <div class="dt">⚑ Out of scope here — different surface or later</div>
+    <div class="dsub">Step 4 is the review + the deliberate commit + the terminal done state. Everything below is elsewhere.</div>
+    <div class="defgrid">
+      <div class="defitem"><div class="dn">Manager acknowledgement / approval</div><div class="dd">Lean is no approval gate. Any manager sign-off or acknowledgement step is an <b>explicit</b> future addition, not this slice.<div class="s2">⚑ DECISION · LATER</div></div></div>
+      <div class="defitem"><div class="dn">Commitment history / audit</div><div class="dd">Keeping prior committed targets (who/when, the trail of re-commits) is an audit feature beyond the single overwrite.<div class="s2">→ AUDIT SLICE</div></div></div>
+      <div class="defitem"><div class="dn">Manager branch roll-up</div><div class="dd">Showing committed personal targets aggregated on the branch dashboard is a manager read surface.<div class="s2">→ MANAGER SLICE</div></div></div>
+      <div class="defitem"><div class="dn">Mid-year variance vs commitment</div><div class="dd">Tracking actuals against the committed target all year lives in the dashboards / Monthly pacing, not this commit screen.<div class="s2">→ DASHBOARDS</div></div></div>
+    </div>
+  </div>
+
+  <!-- ───────────────── STATES ───────────────── -->
+  <div class="secttl">States — committing (in-flight) · incomplete loop · write failed</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">⟳</span>Committing · in-flight</div>
+      <div class="sc-b"><div class="emptynote"><div class="ic" style="background:var(--tealTint);color:var(--teal)">⟳</div><div class="et">Committing your plan…</div><div class="ed">Writing your Personal Commitment and flipping the plan to committed. The button is <b>disabled</b> while the atomic write lands — no double-commit.</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">○</span>Loop not complete yet</div>
+      <div class="sc-b"><div class="emptynote"><div class="ic" style="background:var(--goldTint);color:var(--goldInk)">○</div><div class="et">Finish your drafts first</div><div class="ed">Commit is <b>available</b> only when Year Plan <i>and</i> Monthly Plan are drafted. Missing a step? The review points to it — honest, not a dead Commit button.</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">!</span>Write failed</div>
+      <div class="sc-b"><div class="errs"><div class="ic">!</div><div class="et" style="font-family:var(--display);font-weight:800;font-size:14px">Commit didn't go through</div><div class="ed" style="font-size:11px;color:var(--inkMute)">The atomic write rolled back — <b>nothing changed</b>, your plan is still draft. Retry re-attempts the whole transaction.</div><div class="eb">↻ Retry commit</div></div></div>
+    </div>
+  </div>
+
+  <!-- ───────────────── COMPONENTS ───────────────── -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · Step-4 scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">ReviewCommitModal</div><div class="cd">The dialog: read-only review (hero + per-line + 12-month) + consequence + cascade + commit CTA.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">PlanReview</div><div class="cd">Read-only summary off <code>yearPlan</code> + <code>monthlyPlan</code>; each block links back to its step. No edits here.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">CommitConsequence</div><div class="cd">Plain-words "what committing means" + the 5-layer Goals cascade with Personal Commitment highlighted.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">CommitConfirm</div><div class="cd">The deliberate moment — recap table + "Yes, commit" / "Not yet." Re-confirm on re-commit.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">CommittedDone</div><div class="cd">Terminal state — dated seal, live target, loop 4/4·100%, re-open affordance.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">commit() txn</div><div class="cd">Atomic write — Goals Personal Commitment + both status flips + committedAt. All-or-nothing.</div><div class="co"><span class="ptag write">THE WRITE</span></div></div>
+    <div class="crow"><div class="cn">goals.personalCommitment</div><div class="cd">The agent's annual API target field — bottom cascade layer. Field path pinned at brief time.</div><div class="co"><span class="ptag flag">PIN</span></div></div>
+    <div class="crow"><div class="cn">statusToken(role)</div><div class="cd">Shared helper — first real use of terminal <code>committed</code>; also <code>draft</code>, <code>committing</code>, <code>commit-failed</code>.</div><div class="co"><span class="ptag exist">SHARED</span></div></div>
+  </div>
+
+  <div class="note">
+    <span class="mk w">i</span>
+    <p><b>One write, made to feel like one.</b> The whole planning loop is drafts until this screen — Step 4 is the single place real data changes, so it earns a <b>deliberate confirm</b> and a <b>terminal done state</b>, not a quiet Save. The write is <b>atomic</b> (Goals commitment + both status flips together, or none) so the loop is never half-committed. The review is <b>pure read</b> — it reflects the drafts exactly, never fabricates, and sends edits back to Steps 2–3. <b>Lean calls, both drawn:</b> re-commit <b>allowed</b> (agent's own layer), write is <b>just the annual API</b>, <b>no manager approval</b> — each a one-flag swap if Kyron decides otherwise. TTD throughout; commit date in Trinidad time; ≥44px controls.</p>
+  </div>
+
+</div>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" rx="40" fill="#01696F" />
+    <circle cx="100" cy="92" r="42" fill="none" stroke="#fff" stroke-width="10" />
+    <path d="M80 92 l14 14 l28 -32" fill="none" stroke="#FAEFD3" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="64" y="150" width="72" height="12" rx="6" fill="#B07D1A" />
+  </svg>
+</template>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

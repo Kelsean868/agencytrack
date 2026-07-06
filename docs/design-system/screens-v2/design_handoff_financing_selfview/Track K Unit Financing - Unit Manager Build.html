@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Track K — Unit Financing (Unit Manager) — Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:810px;text-wrap:pretty}
+  .subt code,.scopebar code,.anno code,.flagnote code,.crow code,.authitem code{font-family:var(--mono);background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-size:11.5px;background:var(--surface)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:36px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+  .secttl .pin{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px;background:var(--goldTint);color:var(--goldInk);text-transform:none}
+
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute);align-items:center}
+  .keylegend span.it{display:inline-flex;align-items:center;gap:7px}
+  .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.new{background:var(--goldTint);color:var(--goldInk)}
+  .pchip.reuse{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.flag{background:var(--dangerTint);color:var(--danger)}
+  .pchip.lock{background:var(--ink);color:#fff}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)} .mk.f{background:var(--danger)}
+
+  /* ── authority split (the core decision) ── */
+  .authsplit{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .authcol{background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+  .authcol.can{border-color:color-mix(in srgb,var(--teal) 30%,transparent)}
+  .authcol.cant{border-color:var(--ruleStrong)}
+  .auth-h{padding:13px 16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:10px}
+  .authcol.can .auth-h{background:var(--tealTint)}
+  .authcol.cant .auth-h{background:var(--surfaceMute)}
+  .auth-h .ah{font-family:var(--display);font-weight:800;font-size:14.5px}
+  .authcol.can .auth-h .ah{color:var(--tealDark)}
+  .auth-h .who{margin-left:auto;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:99px;text-transform:uppercase}
+  .authcol.can .auth-h .who{background:var(--teal);color:#fff}
+  .authcol.cant .auth-h .who{background:var(--inkDim);color:var(--ink)}
+  .auth-b{padding:8px 16px 14px}
+  .authitem{display:flex;gap:11px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:12.5px}
+  .authitem:last-child{border-bottom:none}
+  .authitem .mark{flex-shrink:0;font-weight:800;width:16px;text-align:center}
+  .authcol.can .authitem .mark{color:var(--teal)}
+  .authcol.cant .authitem .mark{color:var(--inkFaint)}
+  .authitem .x{font-weight:700}
+  .authitem b{font-weight:700}
+  .authitem .sub{display:block;color:var(--inkMute);font-size:11px;margin-top:2px;text-wrap:pretty}
+
+  /* status-chip vocabulary */
+  .chip-status{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;padding:4px 10px;border-radius:99px;text-transform:uppercase;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+  .chip-status.ontrack{background:var(--successTint);color:var(--success)}
+  .chip-status.atrisk{background:var(--warningTint);color:var(--warning)}
+  .chip-status.qualified{background:var(--tealTint);color:var(--tealDark)}
+  .chip-status.missed{background:var(--dangerTint);color:var(--danger)}
+
+  /* app frame */
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(38,35,28,.10);display:flex;gap:14px}
+  .sidebar{width:152px;flex-shrink:0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 9px;display:flex;flex-direction:column;gap:3px}
+  .sb-logo{display:flex;align-items:center;gap:8px;padding:4px 6px 12px}
+  .sb-logo .lm{width:24px;height:24px;border-radius:7px;background:var(--teal)}
+  .sb-logo .lt{font-family:var(--display);font-weight:800;font-size:13px}
+  .sb-grp{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.12em;color:var(--inkFaint);padding:9px 8px 4px}
+  .nav{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;font-size:11.5px;font-weight:600;color:var(--inkMute)}
+  .nav .ic{width:14px;height:14px;border-radius:4px;background:var(--inkDim);flex-shrink:0}
+  .nav.on{background:var(--tealTint);color:var(--tealDark);font-weight:700}
+  .nav.on .ic{background:var(--teal)}
+
+  .canvas{flex:1;min-width:0;display:flex;flex-direction:column;gap:13px}
+  .topbar{display:flex;align-items:center;gap:10px;padding:2px 2px 0;flex-wrap:wrap}
+  .topbar .pt{font-family:var(--display);font-weight:800;font-size:16px;white-space:nowrap}
+  .topbar .ps{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.05em}
+  .ro-tag{margin-left:auto;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:5px 11px;border-radius:99px;background:var(--surface);border:1px solid var(--ruleStrong);color:var(--inkMute);display:inline-flex;align-items:center;gap:6px}
+  .ro-tag .lk{font-size:11px}
+
+  /* reality strip */
+  .reality{display:flex;align-items:center;gap:18px;background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:13px 18px;flex-wrap:wrap}
+  .rb-agg{display:flex;align-items:center;gap:11px}
+  .rb-agg .lbl{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint);line-height:1.3}
+  .rb-agg .v{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.02em;line-height:1}
+  .rb-div{width:1px;height:34px;background:var(--rule)}
+  .rb-stats{display:flex;gap:24px}
+  .rb-stat{text-align:right}
+  .rb-stat .k{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint)}
+  .rb-stat .v{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.015em;margin-top:3px;white-space:nowrap}
+
+  /* termination-risk monitor (read-only for UM) */
+  .monitor{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  .moncard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .moncard.warnedge{border-color:color-mix(in srgb,var(--warning) 32%,transparent)}
+  .moncard.warnedge .mon-h{background:var(--warningTint)}
+  .mon-h{padding:11px 16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:9px}
+  .mon-h .mt{font-family:var(--display);font-weight:800;font-size:13.5px}
+  .moncard.warnedge .mt{color:var(--warning)}
+  .mon-h .badge{font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:auto;background:var(--surface);color:var(--warning);border:1px solid color-mix(in srgb,var(--warning) 30%,transparent)}
+  .mon-b{padding:15px 16px;display:flex;flex-direction:column;gap:13px}
+  .missrow{display:flex;align-items:center;gap:13px}
+  .missdots{display:flex;gap:8px}
+  .missdot{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:15px;border:2px solid var(--rule);color:var(--inkFaint);background:var(--surfaceSoft)}
+  .missdot.hit{background:var(--warningTint);border-color:var(--warning);color:var(--warning)}
+  .missdot.next{border-style:dashed;border-color:var(--danger);color:var(--danger);background:var(--surface)}
+  .missmeta{flex:1}
+  .missmeta .mm-n{font-family:var(--display);font-weight:800;font-size:15px}
+  .missmeta .mm-d{font-size:11.5px;color:var(--inkMute);margin-top:2px;text-wrap:pretty}
+  .pendingbasis{display:flex;gap:9px;align-items:center;background:var(--surfaceSoft);border:1px dashed var(--ruleStrong);border-radius:10px;padding:10px 13px;font-size:11px;color:var(--inkMute);text-wrap:pretty}
+  .pendingbasis .basis{flex-shrink:0}
+  .basis{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.03em;padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+  .basis::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .basis.settled{background:var(--tealTint);color:var(--tealDark)}.basis.settled::before{background:var(--teal)}
+  .basis.subprov{background:var(--warningTint);color:var(--warning)}.basis.subprov::before{background:var(--warning)}
+
+  .obligation{display:flex;flex-direction:column;gap:11px}
+  .adjbig{display:flex;align-items:baseline;gap:13px}
+  .adjbig .av{font-family:var(--display);font-weight:800;font-size:34px;color:var(--danger);letter-spacing:-.02em;line-height:1;flex-shrink:0}
+  .adjbig .al{font-size:12px;color:var(--inkMute);text-wrap:pretty}
+  .adjbig .al b{color:var(--ink)}
+  /* BM-owned duty, shown to UM as status (not an action) */
+  .bmowned{display:flex;gap:11px;background:var(--surfaceSoft);border:1px solid var(--ruleStrong);border-radius:11px;padding:12px 14px}
+  .bmowned .di{color:var(--inkMute);flex-shrink:0;font-size:15px}
+  .bmowned .dt{font-size:11.5px;color:var(--ink);line-height:1.45}
+  .bmowned .dt b{font-weight:700}
+  .bmpill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.04em;padding:3px 9px;border-radius:99px;background:var(--surface);border:1px solid var(--ruleStrong);color:var(--inkMute);text-transform:uppercase;margin-top:7px}
+  .bmpill .lk{font-size:10px}
+  /* UM action: coach / escalate */
+  .umacts{display:flex;gap:9px;flex-wrap:wrap}
+  .escbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border-radius:9px;font-size:12px;font-weight:700;min-height:40px;white-space:nowrap}
+  .escbtn.coach{background:var(--teal);color:#fff}
+  .escbtn.flag{background:var(--surface);border:1px solid var(--ruleStrong);color:var(--ink)}
+
+  /* roster (read-only) */
+  .roster{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .ro-legend{display:flex;align-items:center;gap:14px;padding:9px 16px;border-bottom:1px solid var(--rule);font-size:10.5px;color:var(--inkMute);flex-wrap:wrap}
+  .ro-legend .note{margin-left:auto;font-family:var(--mono);font-size:10px}
+  .rohead,.rorow{display:grid;grid-template-columns:34px 1.5fr 118px 138px 150px 88px 88px;gap:10px;align-items:center}
+  .rohead{padding:10px 16px;border-bottom:1px solid var(--ruleStrong);background:var(--surfaceSoft)}
+  .rohead .h{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inkMute)}
+  .rorow{padding:11px 16px;border-bottom:1px solid var(--rule)}
+  .rorow:last-child{border-bottom:none}
+  .rorow.zebra{background:var(--surfaceRaised)}
+  .rorow .rk{text-align:center;font-family:var(--display);font-weight:800;font-size:12px;color:var(--inkFaint)}
+  .rorow .who{display:flex;align-items:center;gap:10px;min-width:0}
+  .rorow .av{width:32px;height:32px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:11px;flex-shrink:0}
+  .rorow .nm{font-size:13px;font-weight:600;white-space:nowrap}
+  .rorow .un{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);margin-top:1px}
+  .termcell{display:flex;flex-direction:column;gap:4px}
+  .termcell .tm{font-family:var(--mono);font-size:9.5px;color:var(--inkMute)}
+  .miniterm{display:flex;gap:3px;margin-top:1px}
+  .miniterm i{width:13px;height:5px;border-radius:2px;background:var(--surfaceMute)}
+  .miniterm i.done{background:var(--teal)}
+  /* confirmed (read-only, lock) */
+  .confcell{display:flex;flex-direction:column;gap:4px}
+  .confcell .sline{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .confcell .slbl{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--inkFaint);letter-spacing:.04em}
+  .confcell .sval{font-family:var(--mono);font-size:11.5px;color:var(--inkMute)}
+  .confcell .conf{display:flex;align-items:center;gap:6px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:8px;padding:4px 9px}
+  .confcell .conf .lk{font-size:10px;color:var(--inkFaint)}
+  .confcell .conf .cv{font-family:var(--display);font-weight:800;font-size:14px;color:var(--ink);letter-spacing:-.01em}
+  .confcell .conf .cby{font-family:var(--mono);font-size:8px;color:var(--inkFaint)}
+  .balcell{display:flex;flex-direction:column;gap:5px}
+  .balcell .bv{font-family:var(--display);font-weight:800;font-size:14px}
+  .balcell .bv.neg{color:var(--success)}
+  .baltrack{position:relative;height:6px;border-radius:4px;background:var(--surfaceMute);overflow:hidden}
+  .baltrack .bf{position:absolute;left:0;top:0;bottom:0;background:var(--teal);border-radius:4px}
+  .baltrack .bf.hi{background:var(--warning)}
+  .balcell .bc{font-family:var(--mono);font-size:8px;color:var(--inkFaint)}
+  .adjcell{text-align:center}
+  .adjcell .ap{font-family:var(--display);font-weight:800;font-size:15px}
+  .adjcell .ap.flag{color:var(--danger)}
+  .adjcell .ap.ok{color:var(--inkMute)}
+  .adjcell .as{font-family:var(--mono);font-size:8px;color:var(--inkFaint);margin-top:1px}
+  .adjcell .flagdot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger);margin-left:4px;vertical-align:1px}
+  .rorow .acts{display:flex;justify-content:flex-end;gap:6px}
+  .rorow .ab{padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;min-height:34px;display:inline-flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--ruleStrong);color:var(--ink)}
+  .rorow .ab.coach{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 28%,transparent);color:var(--tealDark)}
+
+  /* read-only detail drawer */
+  .drawer{background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(38,35,28,.08);max-width:520px}
+  .dw-h{padding:14px 18px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:10px}
+  .dw-h .av{width:34px;height:34px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:13px}
+  .dw-h .dt{font-family:var(--display);font-weight:800;font-size:15px}
+  .dw-h .ds{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);margin-top:1px}
+  .dw-h .rotag{margin-left:auto;font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.05em;padding:4px 9px;border-radius:99px;background:var(--surfaceMute);color:var(--inkMute);display:inline-flex;gap:5px;align-items:center}
+  .dw-b{padding:16px 18px;display:flex;flex-direction:column;gap:13px}
+  .calc{display:flex;align-items:stretch;gap:8px}
+  .calc .cc{flex:1;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px;padding:10px 11px;text-align:center}
+  .calc .cc .ck{font-family:var(--mono);font-size:8px;font-weight:700;color:var(--inkMute);letter-spacing:.06em}
+  .calc .cc .cv{font-family:var(--display);font-weight:800;font-size:15px;margin-top:4px}
+  .calc .cop{display:flex;align-items:center;color:var(--inkFaint);font-size:14px}
+  .lockrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:11px}
+  .lockrow .ll{font-size:12px;font-weight:700;color:var(--ink)}
+  .lockrow .ll .sub{display:block;font-family:var(--mono);font-size:9px;font-weight:400;color:var(--inkFaint);margin-top:3px;letter-spacing:.02em}
+  .lockrow .lr{display:flex;align-items:center;gap:8px}
+  .lockrow .lr .lk{font-size:13px;color:var(--inkFaint)}
+  .lockrow .lr .lv{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.015em}
+  .adjreadout{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-radius:10px;background:var(--warningTint);border:1px solid color-mix(in srgb,var(--warning) 30%,transparent)}
+  .adjreadout .arl{font-size:11.5px;color:var(--warning);font-weight:700;line-height:1.4}
+  .adjreadout .arl .sub{display:block;font-weight:400;font-family:var(--mono);font-size:9px;color:var(--inkMute);margin-top:2px}
+  .adjreadout .arv{font-family:var(--display);font-weight:800;font-size:20px;color:var(--warning)}
+  .dw-divider{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint);text-transform:uppercase}
+  .dw-divider::before,.dw-divider::after{content:'';flex:1;height:1px;background:var(--rule)}
+  .dw-foot{padding:13px 18px;border-top:1px solid var(--rule);background:var(--surfaceSoft);display:flex;gap:10px}
+  .dw-foot .btn{flex:1;padding:12px;border-radius:9px;font-size:13px;font-weight:700;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn.primary{background:var(--teal);color:#fff}
+  .btn.ghost{background:var(--surface);border:1px solid var(--ruleStrong);color:var(--ink)}
+
+  .splitwrap{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .annocol{display:flex;flex-direction:column;gap:12px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-size:11px}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+  .anno.reusec{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.reusec .ad b{color:var(--tealDark)}
+  .anno.flagc{background:var(--dangerTint);border-color:color-mix(in srgb,var(--danger) 28%,transparent)}
+  .anno.flagc .ad b{color:var(--danger)}
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:15px 14px;min-height:148px;display:flex;flex-direction:column;gap:10px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .msg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:9px;padding:6px}
+  .msg .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px}
+  .msg.empty .ic{background:var(--tealTint);color:var(--teal)} .msg.err .ic{background:var(--dangerTint);color:var(--danger)}
+  .msg .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .msg .d{font-size:11px;color:var(--inkMute);line-height:1.45;max-width:280px}
+  .msg .eb{margin-top:3px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  .flagnote{display:flex;gap:13px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:13px;padding:15px 18px;margin-top:16px}
+  .flagnote .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);flex-shrink:0;padding-top:2px}
+  .flagnote p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .flagnote b{font-weight:700}
+  .flagnote code{font-size:11.5px;background:var(--surface)}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:215px 1fr 96px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-size:11px}
+  .crow .co{text-align:right}
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+  .ptag.reuse{background:var(--tealTint);color:var(--tealDark)}
+
+  @media(max-width:1040px){
+    .authsplit,.monitor,.splitwrap,.annos,.states{grid-template-columns:1fr}
+    .appframe{flex-direction:column}.sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px}.sb-logo,.sb-grp{display:none}
+    .crow{grid-template-columns:1fr}.crow .co{text-align:left}
+    .rohead,.rorow{grid-template-columns:28px 1.4fr 110px 134px}
+    .rohead .h:nth-child(5),.rohead .h:nth-child(6),.rohead .h:nth-child(7),.rorow .balcell,.rorow .adjcell,.rorow .acts{display:none}
+    .dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Track K · New-Agent Financing &amp; Bonus · Build annotation · UNIT MANAGER view · UNIT FINANCING</div>
+      <h1>Unit Financing — the branch roster, scoped to your unit, in view-and-escalate mode.</h1>
+      <p class="subt">The <b>Unit Manager's</b> team-financing surface. It's the <b>same roster + termination-risk monitor</b> as the branch-manager dashboard (K7+K8), <b>scoped to the UM's own unit</b> — but the authority is dialled down: a UM <b>sees</b> every status, balance and risk flag and can <b>coach + escalate</b>, while <b>confirming draws, the &gt;10% Sales-Admin notify, status changes and reconciliation stay with the Branch Manager.</b> <span class="pin" style="display:inline-block;margin-top:6px">Authority model: A — view + escalate</span></p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />TRACK K · K7 / K8 · UNIT_MANAGER<br />D. RAMPERSAD · UNIT S · TTD<br />REV 2026-06-26</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Data canon</span>
+    <p><b>Read-only fan-out, unit-scoped.</b> Reads the same <code>financingTerms</code> + latest <code>financing/{agentId}_{YYYY_MM}</code> per agent, filtered to <code>unitId == thisUM</code> (Compliance-v2 fan-out). The UM <b>reads</b> <code>managerFinancing</code> and <code>adjustmentPct</code> as a manager-of-record, but <b>cannot write</b> them. Determinations still read the <b>confirmed basis</b>; the miss counter shows but never advances off a projection. The same surface a Branch Manager uses — gated by role, not rebuilt.</p>
+  </div>
+
+  <div class="secttl">Reading this sheet</div>
+  <div class="keylegend">
+    <span class="it"><span class="pchip reuse">REUSE</span> the branch-manager roster / monitor, role-gated</span>
+    <span class="it"><span class="pchip new">NEW</span> view-and-escalate affordances (coach, flag to BM)</span>
+    <span class="it"><span class="pchip lock">BM-ONLY</span> reserved for the Branch Manager — read-only here</span>
+    <span class="it"><span class="pchip flag">FLAG</span> open authority item — your verdict</span>
+  </div>
+
+  <!-- ════ AUTHORITY MODEL ════ -->
+  <div class="secttl">The authority line — what a Unit Manager can and can't do here <span class="pin">option A, as you chose</span></div>
+  <div class="authsplit">
+    <div class="authcol can">
+      <div class="auth-h"><span class="ah">✓ The Unit Manager can</span><span class="who">view + escalate</span></div>
+      <div class="auth-b">
+        <div class="authitem"><span class="mark">✓</span><div><b>See the full unit roster</b><span class="sub">Status, term, miss count, confirmed draw, balance vs ceiling, and <code>adjustmentPct</code> for every agent in their unit.</span></div></div>
+        <div class="authitem"><span class="mark">✓</span><div><b>See the risk flags</b><span class="sub">The consecutive-miss monitor and the &gt;10% downward-adjustment flag — the same signals the BM sees.</span></div></div>
+        <div class="authitem"><span class="mark">✓</span><div><b>Coach an agent</b><span class="sub">Add a coaching note and open the agent's read-only detail to work the gap before quarter-end.</span></div></div>
+        <div class="authitem"><span class="mark">✓</span><div><b>Escalate / flag to the Branch Manager</b><span class="sub">Raise an agent to the BM for a draw decision, a confirm, or the 5.3 notification.</span></div></div>
+      </div>
+    </div>
+    <div class="authcol cant">
+      <div class="auth-h"><span class="ah">✕ Reserved for the Branch Manager</span><span class="who">BM-only</span></div>
+      <div class="auth-b">
+        <div class="authitem"><span class="mark">✕</span><div><b>Confirm / override the monthly draw</b><span class="sub">Writing <code>managerFinancing</code> (and the resulting <code>adjustmentPct</code>) is the BM's call. The UM sees the result, locked.</span></div></div>
+        <div class="authitem"><span class="mark">✕</span><div><b>Notify Sales Admin on a &gt;10% cut</b><span class="sub">The clause 5.3 notify-by-the-1st duty sits with the BM. The UM sees its status, not the button.</span></div></div>
+        <div class="authitem"><span class="mark">✕</span><div><b>Set the financing status</b><span class="sub">The 5-state machine (on_financing → reconciling → …) is manager-set at the branch level.</span></div></div>
+        <div class="authitem"><span class="mark">✕</span><div><b>Run the reconciliation event</b><span class="sub">Month-12 / early-exit waiver, surplus payout or garnish start — a branch-level action.</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ THE SURFACE ════ -->
+  <div class="secttl">The surface — unit financing roster + risk monitor (read-only)</div>
+  <div class="appframe">
+    <div class="sidebar">
+      <div class="sb-logo"><div class="lm"></div><div class="lt">AgencyTrack</div></div>
+      <div class="sb-grp">MY PRODUCTION</div>
+      <div class="nav"><span class="ic"></span>My Overview</div>
+      <div class="nav"><span class="ic"></span>My Financing</div>
+      <div class="sb-grp">MY UNIT</div>
+      <div class="nav"><span class="ic"></span>Team</div>
+      <div class="nav on"><span class="ic"></span>Unit Financing</div>
+      <div class="nav"><span class="ic"></span>Unit Persistency</div>
+    </div>
+    <div class="canvas">
+      <div class="topbar">
+        <span class="pt">Unit Financing</span>
+        <span class="ps">· UNIT S · D. RAMPERSAD · JUN 2026</span>
+        <span class="ro-tag"><span class="lk">🔒</span>Read-only · confirm &amp; notify with your BM</span>
+      </div>
+
+      <!-- reality strip -->
+      <div class="reality">
+        <div class="rb-agg"><div class="lbl">ON<br>FINANCING</div><div class="v">4</div></div>
+        <div class="rb-div"></div>
+        <div class="rb-stats">
+          <div class="rb-stat"><div class="k">TOTAL DRAWN · UNIT</div><div class="v">TTD 72.6K</div></div>
+          <div class="rb-stat"><div class="k">CONFIRMED · THIS MO</div><div class="v">TTD 19.1K</div></div>
+        </div>
+        <div class="rb-stats" style="margin-left:auto">
+          <div class="rb-stat"><div class="k">AT RISK</div><div class="v" style="color:var(--warning)">2</div></div>
+          <div class="rb-stat"><div class="k">≥2 MISSES</div><div class="v" style="color:var(--danger)">1</div></div>
+          <div class="rb-stat"><div class="k">&gt;10% ADJ · WITH BM</div><div class="v" style="color:var(--danger)">1</div></div>
+        </div>
+      </div>
+
+      <!-- risk monitor (read-only) -->
+      <div class="monitor">
+        <div class="moncard warnedge">
+          <div class="mon-h"><span style="color:var(--warning);font-size:14px">▲</span><span class="mt">Consecutive-miss monitor — R. Seepersad</span><span class="badge">CONFIRMED BASIS</span></div>
+          <div class="mon-b">
+            <div class="missrow">
+              <div class="missdots"><div class="missdot hit">1</div><div class="missdot hit">2</div><div class="missdot next">3</div></div>
+              <div class="missmeta"><div class="mm-n" style="color:var(--warning)">2 consecutive misses</div><div class="mm-d">Amber at 2 · a <b>3rd confirmed</b> miss approaches the termination trigger. <b>This is yours to coach now.</b></div></div>
+            </div>
+            <div class="pendingbasis"><span class="basis subprov">Q2 pending</span><div>Q2 is still provisional. The counter <b>will not advance to 3</b> until the <b>Branch Manager</b> confirms Q2 settlement — you see it, it doesn't count yet.</div></div>
+            <div class="umacts"><span class="escbtn coach">◎ Coach R. Seepersad</span><span class="escbtn flag">⚑ Flag to Branch Manager</span></div>
+          </div>
+        </div>
+        <div class="moncard">
+          <div class="mon-h"><span style="color:var(--danger);font-size:14px">⚑</span><span class="mt" style="color:var(--ink)">Downward-adjustment flag — M. Baptiste</span></div>
+          <div class="mon-b">
+            <div class="obligation">
+              <div class="adjbig"><span class="av">−14%</span><span class="al"><b>Confirmed draw is 14% below the agreed schedule</b> — past the 10% line (clause 5.3).</span></div>
+              <div class="bmowned"><span class="di">🔒</span><div class="dt"><b>The notify duty is your Branch Manager's.</b> A &gt;10% cut obliges <b>the BM</b> to notify Sales Admin by the 1st — not the unit manager. You see the flag so you can <b>coach on production</b>; the agent stays on financing.<span class="bmpill"><span class="lk">🔒</span>Notify Sales Admin · with Branch Manager</span></div></div>
+              <div class="umacts"><span class="escbtn coach">◎ Coach M. Baptiste</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- roster -->
+      <div class="roster">
+        <div class="ro-legend">
+          <span style="font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.08em;color:var(--inkFaint)">UNIT S · AGENTS ON FINANCING · 4</span>
+          <span class="note" style="color:var(--inkMute)">Confirmed draw &amp; adjustment % are <b>set by your Branch Manager</b> — shown here read-only</span>
+        </div>
+        <div class="rohead">
+          <span class="h" style="text-align:center">#</span>
+          <span class="h">Agent · status</span>
+          <span class="h">Term · misses</span>
+          <span class="h">Confirmed draw 🔒</span>
+          <span class="h">Balance vs ceiling</span>
+          <span class="h" style="text-align:center">Adj % 🔒</span>
+          <span class="h" style="text-align:right">Act</span>
+        </div>
+        <!-- Seepersad -->
+        <div class="rorow">
+          <div class="rk">1</div>
+          <div class="who"><div class="av">RS</div><div><div class="nm">R. Seepersad</div><div class="un">S·04 · <span style="color:var(--warning)">⚠ At risk</span></div></div></div>
+          <div class="termcell"><div class="tm">Month 7 / 12</div><div class="miniterm"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i></i><i></i><i></i><i></i><i></i></div><div class="tm" style="color:var(--warning)">2 misses · confirmed</div></div>
+          <div class="confcell"><div class="sline"><span class="slbl">SUGGESTED</span><span class="sval">TTD 4,000</span></div><div class="conf"><span class="lk">🔒</span><span class="cv">TTD 4,000</span><span class="cby">BM</span></div></div>
+          <div class="balcell"><div class="bv">TTD 22,400</div><div class="baltrack"><div class="bf" style="width:47%"></div></div><div class="bc">47% of 48,000 ceiling</div></div>
+          <div class="adjcell"><div class="ap ok">0%</div><div class="as">at full</div></div>
+          <div class="acts"><span class="ab coach">◎ Coach</span></div>
+        </div>
+        <!-- Baptiste -->
+        <div class="rorow zebra">
+          <div class="rk">2</div>
+          <div class="who"><div class="av">MB</div><div><div class="nm">M. Baptiste</div><div class="un">S·02 · <span style="color:var(--success)">On track</span></div></div></div>
+          <div class="termcell"><div class="tm">Month 9 / 12</div><div class="miniterm"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i></i><i></i><i></i></div><div class="tm">0 misses</div></div>
+          <div class="confcell"><div class="sline"><span class="slbl">SUGGESTED</span><span class="sval">TTD 5,000</span></div><div class="conf"><span class="lk">🔒</span><span class="cv">TTD 4,300</span><span class="cby">BM</span></div></div>
+          <div class="balcell"><div class="bv">TTD 31,200</div><div class="baltrack"><div class="bf hi" style="width:65%"></div></div><div class="bc">65% of 48,000 ceiling</div></div>
+          <div class="adjcell"><div class="ap flag">−14%<span class="flagdot"></span></div><div class="as">with BM</div></div>
+          <div class="acts"><span class="ab coach">◎ Coach</span></div>
+        </div>
+        <!-- Mohan (surplus) -->
+        <div class="rorow">
+          <div class="rk">3</div>
+          <div class="who"><div class="av">PM</div><div><div class="nm">P. Mohan</div><div class="un">S·01 · <span style="color:var(--tealDark)">✓ Qualified</span></div></div></div>
+          <div class="termcell"><div class="tm">Month 11 / 12</div><div class="miniterm"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i></i></div><div class="tm">0 misses</div></div>
+          <div class="confcell"><div class="sline"><span class="slbl">SUGGESTED</span><span class="sval">TTD 8,000</span></div><div class="conf"><span class="lk">🔒</span><span class="cv">TTD 8,000</span><span class="cby">BM</span></div></div>
+          <div class="balcell"><div class="bv neg">−TTD 3,100</div><div class="baltrack"><div class="bf" style="width:8%"></div></div><div class="bc" style="color:var(--success)">surplus — owed to agent</div></div>
+          <div class="adjcell"><div class="ap ok">0%</div><div class="as">at full</div></div>
+          <div class="acts"><span class="ab">View</span></div>
+        </div>
+        <!-- Ali (missed) -->
+        <div class="rorow zebra">
+          <div class="rk">4</div>
+          <div class="who"><div class="av">KA</div><div><div class="nm">K. Ali</div><div class="un">S·03 · <span style="color:var(--danger)">✕ Missed</span></div></div></div>
+          <div class="termcell"><div class="tm">Month 5 / 12</div><div class="miniterm"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="tm" style="color:var(--inkMute)">1 miss · confirmed</div></div>
+          <div class="confcell"><div class="sline"><span class="slbl">SUGGESTED</span><span class="sval">TTD 2,800</span></div><div class="conf"><span class="lk">🔒</span><span class="cv">TTD 2,800</span><span class="cby">BM</span></div></div>
+          <div class="balcell"><div class="bv">TTD 14,900</div><div class="baltrack"><div class="bf" style="width:31%"></div></div><div class="bc">31% of 48,000 ceiling</div></div>
+          <div class="adjcell"><div class="ap ok">−6%</div><div class="as">within 10%</div></div>
+          <div class="acts"><span class="ab coach">◎ Coach</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ READ-ONLY DRAWER + ANNOTATIONS ════ -->
+  <div class="secttl">Per-agent detail — read-only, with coach &amp; escalate</div>
+  <div class="splitwrap">
+    <div class="drawer">
+      <div class="dw-h"><span class="av">RS</span><div><div class="dt">R. Seepersad</div><div class="ds">S·04 · MONTH 7 / 12 · JUN 2026</div></div><span class="rotag"><span>🔒</span>READ-ONLY</span></div>
+      <div class="dw-b">
+        <div class="calc">
+          <div class="cc"><div class="ck">ACTUAL API</div><div class="cv">TTD 15,000</div></div>
+          <div class="cop">÷</div>
+          <div class="cc"><div class="ck">VALIDATING</div><div class="cv">TTD 30,000</div></div>
+          <div class="cop">=</div>
+          <div class="cc"><div class="ck">PRORATION</div><div class="cv" style="color:var(--teal)">50%</div></div>
+        </div>
+        <div class="lockrow"><div class="ll">Confirmed financing this month<span class="sub">managerFinancing · set by your Branch Manager · 03-06-2026</span></div><div class="lr"><span class="lk">🔒</span><span class="lv">TTD 4,000</span></div></div>
+        <div class="adjreadout"><div class="arl">adjustmentPct vs agreed<span class="sub">distance below TTD 8,000 full · read-only</span></div><div class="arv">−50%</div></div>
+        <div class="dw-divider">What you can do</div>
+        <div style="font-size:12px;color:var(--inkMute);text-wrap:pretty">This agent has <b style="color:var(--warning)">2 confirmed misses</b>. The draw and any &gt;10% notification are your BM's call — your levers are coaching and escalation.</div>
+      </div>
+      <div class="dw-foot"><span class="btn ghost">⚑ Flag to BM</span><span class="btn primary">◎ Add coaching note →</span></div>
+    </div>
+    <div class="annocol">
+      <div class="anno reusec"><span class="mk e">1</span><div><div class="at">Same component, role-gated &amp; unit-scoped</div><div class="ad">This is the branch-manager <code>FinancingRoster</code> + <code>ConsecutiveMissMonitor</code> + <code>DownwardAdjustFlag</code> — filtered to <code>unitId == thisUM</code> and rendered in a <b>read-only role</b>. <b>Not a rebuild</b> — one fan-out, gated by <code>role</code>.</div></div></div>
+      <div class="anno newc"><span class="mk n">2</span><div><div class="at">Override becomes a locked readout</div><div class="ad">The confirmed draw and <code>adjustmentPct</code> render with a <b>lock</b> and a "set by your Branch Manager" line. The UM sees exactly what posted and the distance-below-full — but the input is gone. No <code>managerFinancing</code> write path exists for this role.</div></div></div>
+      <div class="anno newc"><span class="mk n">3</span><div><div class="at">The UM's two real levers: coach &amp; escalate</div><div class="ad">Every actionable row offers <b>Coach</b> (note + read-only detail) and <b>Flag to Branch Manager</b> (escalation). These replace the BM's Confirm/Notify buttons — same rows, different verbs.</div></div></div>
+      <div class="anno flagc"><span class="mk f">4</span><div><div class="at">The &gt;10% notify stays a BM duty — shown, not actionable</div><div class="ad">The 5.3 obligation is the <b>Branch Manager's</b>. On the UM surface it appears as <b>status</b> ("with Branch Manager"), not a Notify button — so the UM has awareness without owning a duty that isn't theirs.</div></div></div>
+      <div class="anno reusec"><span class="mk e">5</span><div><div class="at">Miss counter — still confirmed-basis only</div><div class="ad">Visibility changes, the rule doesn't: the 0→3 counter advances only on <b>settled-confirmed</b> quarters. The UM watches it climb and coaches, but <b>no determination fires off a projection</b> — and the UM can't confirm to make it count.</div></div></div>
+      <div class="anno newc"><span class="mk n">6</span><div><div class="at">adjustmentPct: visible here, private on the self-view</div><div class="ad">The 5.3 trigger ratio is a <b>manager-of-record</b> figure — a UM sees it for their unit's agents. The <b>same number is hidden from the agent's own self-view (K9)</b>. Role decides visibility; the field is the same.</div></div></div>
+    </div>
+  </div>
+
+  <!-- STATES -->
+  <div class="secttl">States</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">S</span>Skeleton · fan-out loading</div>
+      <div class="sc-b"><div class="shimmer" style="width:40%;height:12px"></div><div class="shimmer" style="width:100%;height:30px;border-radius:9px"></div><div class="shimmer" style="width:100%"></div><div class="shimmer" style="width:100%"></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">E</span>Empty · none in unit on financing</div>
+      <div class="sc-b"><div class="msg empty"><div class="ic">○</div><div class="t">No agents on financing</div><div class="d">No one in <b>your unit</b> currently has <code style="font-family:var(--mono);font-size:10px">financingStatus = on_financing</code>. New agents appear once your BM sets their terms.</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">!</span>Error · partial fan-out</div>
+      <div class="sc-b"><div class="msg err"><div class="ic">!</div><div class="t" style="font-size:13.5px">Some agents didn't load</div><div class="d" style="font-size:11px">Show resolved rows only; never compute a unit total or imply a complete picture from a partial read.</div><div class="eb">↻ Retry</div></div></div>
+    </div>
+  </div>
+
+  <div class="flagnote">
+    <span class="tag">⚑ Flags — confirm the authority model</span>
+    <p><b>You picked A (view + escalate); these pin it down.</b> (1) <b>adjustmentPct visibility</b> — drawn as <b>visible read-only</b> to the UM (manager-of-record). If it should be BM-only, it drops to "with BM" like the notify. (2) <b>"Flag to Branch Manager"</b> — is escalation a <b>tracked record</b> (who flagged, when, BM ack) or just a nudge? Drawn as a tracked escalation. (3) <b>Coaching notes</b> — confirm a UM coaching note is private-to-managers and <b>not</b> on the agent's self-view. (4) <b>Unit scope</b> — confirm <code>unitId</code> is the right filter key vs. a reporting-line lookup.</p>
+  </div>
+
+  <!-- COMPONENT LIST -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · unit-manager scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">FinancingRoster</div><div class="cd">Same roster, filtered <code>unitId == thisUM</code>, rendered <b>read-only</b> (no override input; confirmed draw + adjustmentPct locked).</div><div class="co"><span class="ptag reuse">REUSE</span></div></div>
+    <div class="crow"><div class="cn">AgentDetailDrawer (read-only)</div><div class="cd">The override drawer minus the input: calc + locked confirmed value + adjustmentPct readout + coach/escalate foot.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">ConsecutiveMissMonitor</div><div class="cd">Unchanged logic (confirmed-basis only); UM sees it, can't confirm. Adds Coach / Flag actions.</div><div class="co"><span class="ptag reuse">REUSE</span></div></div>
+    <div class="crow"><div class="cn">DownwardAdjustFlag (status)</div><div class="cd">&gt;10% flag shown as <b>"with Branch Manager"</b> status — the 5.3 notify button is hidden for this role.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">CoachNote / EscalateToBM</div><div class="cd">The UM's two write paths: a managers-only coaching note + a tracked escalation to the branch manager.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">roleGate(role, action)</div><div class="cd">Gates confirm / notify / status / reconcile to BM; grants view / coach / escalate to UM. One policy, both surfaces.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

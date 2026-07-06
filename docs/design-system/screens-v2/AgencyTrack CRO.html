@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — CRO Sign-on v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 680px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>CRO Sign-on v2 — the branch's operational hub &amp; the ledger's point of entry</h1>
+    <p>
+      The <b>Customer Relationship Officer</b> gets her own sign-on. She's the human at the source of truth: she <b>receives printed policies</b> from head office, notifies agents, and tracks the <b>30-day clawback clock</b> (commission is withheld if a policy isn't delivered within 30 days of the head-office dispatch date — a client can also decline in that window: <b>Not Taken</b>). She <b>data-enters</b> every policy on Tatil, <b>issues &amp; settles</b> the two branch products (Annuities + Funeral Expense) while recording returned issue/settlement dates for the rest, and compiles the <b>Friday 4pm production report</b> that feeds Monday's meeting. Five desktop surfaces + CRO mobile + the agent's own "policies to deliver" view (with the same clocks). Delivery confirmation writes the settlement date back to the ledger — feeding reconciliation, persistency, and campaigns. <b>Teal = pipeline · amber = at risk · red = clawed/overdue · gold = branch-issued.</b>
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="cro-v2-shared.jsx"></script>
+  <script type="text/babel" src="cro-v2-home.jsx"></script>
+  <script type="text/babel" src="cro-v2-delivery.jsx"></script>
+  <script type="text/babel" src="cro-v2-ops.jsx"></script>
+  <script type="text/babel" src="cro-v2-mobile.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="home"
+            title="Branch Desk — the CRO's daily landing (desktop)"
+            subtitle="A single glance at what needs her today: at-risk deliveries, business to enter, branch products to settle, and the weekly report status — each a one-tap jump into the surface. Use the VIEW AS switcher in the sidebar to move between Agent / Manager / CRO sign-ons. Light + dark."
+          >
+            <DCArtboard id="home-light" label="01 · Light · Branch Desk" width={APP_W} height={APP_H}>
+              <BranchDeskScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="home-dark" label="02 · Dark · Branch Desk" width={APP_W} height={APP_H}>
+              <BranchDeskScene t={APP_DARK} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="delivery"
+            title="Delivery Register — the digital book (desktop, CRO)"
+            subtitle="The hero. The CRO logs policies received from head office; the app tracks the 30-day clawback clock on each and flags what's at risk. Filter by in-delivery / at-risk / closed. Light + dark."
+          >
+            <DCArtboard id="del-light" label="03 · Light · Delivery Register" width={APP_W} height={APP_H}>
+              <DeliveryRegisterScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="del-dark" label="04 · Dark · Delivery Register" width={APP_W} height={APP_H}>
+              <DeliveryRegisterScene t={APP_DARK} />
+            </DCArtboard>
+            <DCArtboard id="del-risk" label="05 · Light · At-risk filter" width={APP_W} height={APP_H}>
+              <DeliveryRegisterScene t={APP_LIGHT} filter="risk" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="drawer"
+            title="Advance a policy — the lifecycle drawer"
+            subtitle="Tapping a policy opens its full lifecycle: receive → notify → collect (agent signs) → out for delivery → delivered (client signs receipt) → receipt returned. The 30-day clock, dispatch memo, and the next action sit here — plus Not Taken / Undeliverable exits."
+          >
+            <DCArtboard id="dr-out" label="06 · Light · Out for delivery (at risk)" width={APP_W} height={APP_H}>
+              <DeliveryRegisterScene t={APP_LIGHT} drawer="p5" />
+            </DCArtboard>
+            <DCArtboard id="dr-received" label="07 · Light · Just received (notify agent)" width={APP_W} height={APP_H}>
+              <DeliveryRegisterScene t={APP_LIGHT} drawer="p1" />
+            </DCArtboard>
+            <DCArtboard id="dr-clawed" label="08 · Dark · Clawed back (overdue)" width={APP_W} height={APP_H}>
+              <DeliveryRegisterScene t={APP_DARK} drawer="p10" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="metrics"
+            title="Delivery Metrics — speed & leakage"
+            subtitle="Avg days-to-deliver, % on-time, and the commission at risk to delay — broken down by agent/unit. The case for why delivery discipline protects everyone's pay."
+          >
+            <DCArtboard id="met-light" label="09 · Light · Delivery Metrics" width={APP_W} height={APP_H}>
+              <DeliveryMetricsScene t={APP_LIGHT} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="submissions"
+            title="Submissions — data entry"
+            subtitle="Every policy that passes through the branch, keyed into Tatil. Branch-issued products (Annuity, Funeral Expense) are flagged gold — she issues + settles those; the rest are enter-only."
+          >
+            <DCArtboard id="sub-light" label="10 · Light · Submissions queue" width={APP_W} height={APP_H}>
+              <SubmissionsScene t={APP_LIGHT} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="settlements"
+            title="Settlements — branch-issued + returned issue dates"
+            subtitle="Issue & settle Annuities and Funeral Expense at the branch (left); record the issue date — which is the settlement date — on everything Tatil returns (right). Both write to the ledger that feeds reconciliation."
+          >
+            <DCArtboard id="set-light" label="11 · Light · Settlements" width={APP_W} height={APP_H}>
+              <SettlementsScene t={APP_LIGHT} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="report"
+            title="Weekly Report — Friday 4pm"
+            subtitle="The production report the CRO compiles and sends to the branch: a compile/send panel on the left, a live preview of the exact report that goes out (and lands on Monday's meeting production slide) on the right."
+          >
+            <DCArtboard id="rep-light" label="12 · Light · Weekly Report" width={APP_W} height={APP_H}>
+              <WeeklyReportScene t={APP_LIGHT} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Mobile — CRO on the floor & the agent's deliveries"
+            subtitle="The CRO's phone view of the register (at-risk first, tap to advance), and the AGENT's 'policies to deliver' view — what's at the branch to collect, what's out, each with its own 30-day clock. This is what the weekly wizard's 'policies outstanding' reads off."
+          >
+            <DCArtboard id="m-cro-home" label="13 · Light · CRO mobile · Branch Desk" width={M_W} height={M_H}>
+              <BranchDeskMobileScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="m-cro" label="14 · Light · CRO mobile · register" width={M_W} height={M_H}>
+              <CroMobileScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="m-agent" label="15 · Light · Agent · policies to deliver" width={M_W} height={M_H}>
+              <AgentDeliveryScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="m-agent-dark" label="16 · Dark · Agent · policies to deliver" width={M_W} height={M_H}>
+              <AgentDeliveryScene t={APP_DARK} />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

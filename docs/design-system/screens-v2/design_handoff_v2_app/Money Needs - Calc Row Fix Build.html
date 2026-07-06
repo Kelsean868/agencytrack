@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Money Needs — Calc-Fed Row Fix · Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:790px;text-wrap:pretty}
+  .subt b{color:var(--ink)}
+  .subt code{font-family:var(--mono);font-size:12px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute);align-items:center}
+  .keylegend span.it{display:inline-flex;align-items:center;gap:7px}
+  .keylegend .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.same{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.chg{background:var(--goldTint);color:var(--goldInk)}
+  .pchip.flag{background:var(--dangerTint);color:var(--danger)}
+
+  /* problem cards */
+  .probrow{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .prob{background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:15px 16px}
+  .prob .pn{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  .prob .pdot{width:24px;height:24px;border-radius:7px;background:var(--dangerTint);color:var(--danger);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
+  .prob .pt{font-size:13.5px;font-weight:700}
+  .prob .pd{font-size:12px;color:var(--inkMute);text-wrap:pretty}
+  .prob .pd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .rootcause{margin-top:13px;display:flex;gap:13px;background:var(--surfaceSoft);border:1px solid var(--ruleStrong);border-radius:12px;padding:14px 16px}
+  .rootcause .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);flex-shrink:0;padding-top:2px}
+  .rootcause p{font-size:12.5px;color:var(--inkMute);text-wrap:pretty}
+  .rootcause b{color:var(--ink);font-weight:700}
+  .rootcause code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  /* before/after compare */
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .bacol .bah{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+  .babadge{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;padding:4px 10px;border-radius:999px;text-transform:uppercase}
+  .babadge.b{background:var(--dangerTint);color:var(--danger)}
+  .babadge.a{background:var(--successTint);color:var(--success)}
+  .bah .bt{font-size:13px;font-weight:700}
+  .bah .bs{font-size:11.5px;color:var(--inkFaint)}
+  .surface{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:14px;padding:15px;box-shadow:0 10px 30px rgba(38,35,28,.08)}
+  .panelttl{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .panelttl .pl{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:800;font-size:15px}
+  .panelttl .pico{width:18px;height:18px;color:var(--teal)}
+  .filledpill{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--inkMute);background:var(--surfaceRaised);border:1px solid var(--rule);border-radius:999px;padding:3px 8px}
+
+  .grp{background:var(--surface);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+  .grph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 13px;height:46px}
+  .grph .gl{display:flex;align-items:center;gap:9px;min-width:0}
+  .grph .gd{width:8px;height:8px;border-radius:2px;background:var(--gold);flex-shrink:0}
+  .grph .gn{font-size:13px;font-weight:700}
+  .grph .gc{font-family:var(--mono);font-size:9.5px;color:var(--inkMute);letter-spacing:.04em}
+  .grph .gt{font-family:var(--mono);font-size:11px;color:var(--inkMute)}
+  .grpb{padding:4px 13px 14px;border-top:1px solid var(--rule)}
+  .calclabel{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--teal);margin:9px 0 7px}
+  .ico{display:inline-block;width:1em;height:1em;flex-shrink:0;vertical-align:-0.12em}
+
+  /* BEFORE rows */
+  .b-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--rule)}
+  .b-label{flex:1;min-width:0;display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ink);white-space:nowrap;overflow:hidden}
+  .b-label .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .b-chip{flex-shrink:0;display:inline-flex;align-items:center;gap:2px;font-size:9.5px;font-weight:700;text-transform:uppercase;color:var(--teal)}
+  .b-input{width:90px;height:42px;border:1px solid var(--rule);border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:flex-end;padding:0 9px;font-family:var(--mono);font-size:13px;color:var(--ink);flex-shrink:0}
+  .b-input.ph{color:var(--inkDim)}
+  .b-ann{width:96px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--inkMute);flex-shrink:0}
+  .b-ghost{display:inline-flex;align-items:center;gap:4px;height:42px;padding:0 8px;color:var(--teal);font-size:12px;font-weight:700;flex-shrink:0}
+  .b-input2{height:42px;border:1px solid var(--rule);border-radius:8px;background:var(--surface);display:flex;align-items:center;padding:0 9px;font-size:13px;color:var(--ink)}
+  .b-trash{width:30px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--inkMute);flex-shrink:0}
+
+  /* AFTER rows */
+  .a-card{border:1px solid var(--rule);background:var(--surface);border-radius:12px;padding:11px 13px;margin-bottom:8px}
+  .a-card.empty{border-color:var(--teal);background:var(--tealTint)}
+  .a-lab{display:flex;align-items:flex-start;gap:8px;margin-bottom:10px}
+  .a-lab .nm{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.35;text-wrap:pretty}
+  .a-chip{flex-shrink:0;display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:3px 7px;border-radius:999px;background:var(--tealTint);color:var(--teal)}
+  .a-chip.edited{background:var(--goldTint);color:var(--goldInk)}
+  .a-filled{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .a-val{display:flex;align-items:baseline;gap:6px;flex:1 1 auto;min-width:0}
+  .a-vinput{width:100px;height:44px;border:1px solid var(--ruleStrong);border-radius:9px;background:var(--surface);display:flex;align-items:center;justify-content:flex-end;padding:0 9px;font-family:var(--mono);font-weight:700;font-size:14px;color:var(--ink)}
+  .a-vann{font-family:var(--mono);font-size:12px;color:var(--inkMute)}
+  .a-recalc{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 13px;border:1px solid var(--teal);border-radius:9px;color:var(--teal);font-size:12.5px;font-weight:700;flex-shrink:0}
+  .a-reset{display:inline-flex;align-items:center;gap:5px;height:44px;padding:0 11px;border:1px solid var(--rule);border-radius:9px;color:var(--inkMute);font-size:12.5px;font-weight:700;flex-shrink:0}
+  .a-cta{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;min-height:48px;padding:0 16px;border-radius:10px;background:var(--teal);color:#fff;font-size:14px;font-weight:700;box-shadow:0 3px 10px color-mix(in srgb,var(--teal) 40%,transparent)}
+  .a-mrow{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--rule)}
+  .a-mlabel{flex:1;min-width:0;height:44px;border:1px solid var(--rule);border-radius:9px;background:var(--surface);display:flex;align-items:center;padding:0 10px;font-size:13.5px;color:var(--ink)}
+  .a-mamt{width:88px;height:44px;border:1px solid var(--rule);border-radius:9px;background:var(--surface);display:flex;align-items:center;justify-content:flex-end;padding:0 9px;font-family:var(--mono);font-size:13px;color:var(--ink);flex-shrink:0}
+  .a-mfreq{height:44px;border:1px solid var(--rule);border-radius:9px;background:var(--surface);display:flex;align-items:center;gap:5px;padding:0 10px;font-size:12.5px;color:var(--inkMute);flex-shrink:0}
+  .a-mann{width:90px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--inkMute);flex-shrink:0}
+  .a-add{display:inline-flex;align-items:center;gap:6px;height:40px;margin-top:10px;padding:0 13px;border:1px dashed color-mix(in srgb,var(--teal) 50%,transparent);border-radius:9px;color:var(--teal);font-size:12.5px;font-weight:700}
+  .subsec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--inkMute);margin:13px 0 6px}
+
+  .callout{position:relative;margin-top:7px;font-family:var(--mono);font-size:10px;color:var(--danger);background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:7px;padding:5px 9px;text-wrap:pretty}
+  .callout.ok{color:var(--success);background:var(--successTint);border-color:color-mix(in srgb,var(--success) 30%,transparent)}
+
+  /* annotations */
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.c{background:var(--gold)} .mk.s{background:var(--teal)}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.chg{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.chg .ad b{color:var(--goldInk)}
+  .anno.same{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.same .ad b{color:var(--tealDark)}
+
+  /* tables */
+  .tbl{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .trow{display:grid;gap:14px;padding:12px 16px;border-top:1px solid var(--rule);align-items:start}
+  .trow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .files .trow{grid-template-columns:300px 90px 1fr}
+  .comp .trow{grid-template-columns:230px 1fr}
+  .trow:first-child .h{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .trow .fp{font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--tealDark);word-break:break-all}
+  .trow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .trow .role{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px;white-space:nowrap;text-align:center;display:inline-block}
+  .role.edit{background:var(--goldTint);color:var(--goldInk)}
+  .role.keep{background:var(--tealTint);color:var(--tealDark)}
+  .role.test{background:var(--surfaceMute);color:var(--inkMute)}
+  .trow .desc{font-size:12.5px;color:var(--inkMute);text-wrap:pretty}
+  .trow .desc code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .trow .desc b{color:var(--ink)}
+
+  /* states */
+  .states{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}
+  .stcard{background:var(--surface);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+  .sth{padding:10px 13px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inkMute)}
+  .stb{padding:13px;min-height:96px;font-size:12px;color:var(--inkMute);line-height:1.5;text-wrap:pretty}
+  .stb code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .stb b{color:var(--ink)}
+
+  .twonote{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .note{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:14px 16px}
+  .note .nt{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .note .nd{font-size:12.5px;color:var(--inkMute);text-wrap:pretty}
+  .note .nd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .linkrow{display:flex;align-items:center;gap:12px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:12px;padding:14px 18px;margin-top:14px}
+  .linkrow .lk{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--tealDark);text-decoration:none;background:var(--surface);border:1px solid color-mix(in srgb,var(--teal) 30%,transparent);padding:7px 12px;border-radius:8px}
+  .linkrow .ld{font-size:12.5px;color:var(--ink)}
+
+  @media(max-width:1040px){
+    .probrow,.ba,.annos,.twonote{grid-template-columns:1fr}
+    .states{grid-template-columns:1fr 1fr}
+    .files .trow,.comp .trow{grid-template-columns:1fr}
+    .dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Money Needs · Calc-Fed Row Fix — Build annotation</div>
+      <h1>Rows that fit, and a calculator button that invites the tap.</h1>
+      <p class="subt">A presentation-only repair of the live <code>MoneyNeedsPanel</code>. The shipped expense rows pack a flexible label against fixed amount / annual / action columns in one non-wrapping line, so <b>line names truncate</b> (worst on mobile, where they vanish), and the sub-calculator trigger is a faint ghost-text link stranded at the far right that <b>doesn't read as "generate my figures here."</b> This sheet specifies the redesigned <code>CalcFedLineRow</code> and <code>LineItemRow</code> — same props, same <code>onOpenCalc</code>, same <code>FloatingCalcModal</code>, no data-model change.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />MONEY NEEDS · CALC-ROW FIX<br />AGENT · DESKTOP + MOBILE<br />REV 2026-06-21</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Scope rule</span>
+    <p><b>Markup &amp; classes only — no logic, no data, no props.</b> Touch the JSX inside two row components in <code>src/components/agent/MoneyNeedsPanel.jsx</code>: <code>CalcFedLineRow</code> (add the empty-vs-filled branch + card shell) and <code>LineItemRow</code> (responsive stack). Every handler, the <code>onOpenCalc(calcId)</code> contract, the <code>isOverridden</code> flag, the calc-fed/manual split, and <code>FloatingCalcModal</code> stay exactly as shipped.</p>
+  </div>
+
+  <div class="secttl">Reading this sheet</div>
+  <div class="keylegend">
+    <span class="it"><span class="pchip chg">CHANGED</span> markup the build edits</span>
+    <span class="it"><span class="pchip same">UNCHANGED</span> shipped logic / props kept verbatim</span>
+    <span class="it"><span class="pchip flag">PROBLEM</span> the defect this fixes</span>
+  </div>
+
+  <!-- ── THE PROBLEM ── -->
+  <div class="secttl">The problem — three symptoms, one root cause</div>
+  <div class="probrow">
+    <div class="prob">
+      <div class="pn"><span class="pdot">1</span><span class="pt">Layout doesn't fit</span></div>
+      <div class="pd">Label · <code>amount</code> · <code>annual</code> · actions sit in one <code>flex items-center gap-2</code> row that never wraps. Inside the <code>max-w-2xl</code> panel the fixed columns (96px + 112px + buttons) leave the label too little room; on mobile it collapses.</div>
+    </div>
+    <div class="prob">
+      <div class="pn"><span class="pdot">2</span><span class="pt">Field name gets cut off</span></div>
+      <div class="pd">The label uses <code>flex-1 min-w-0 truncate</code>, so "Professional / industry expenses" and "Debt reduction (non-mortgage)" render as "Professional / industry exp…" — and to almost nothing on a phone.</div>
+    </div>
+    <div class="prob">
+      <div class="pn"><span class="pdot">3</span><span class="pt">Calc button doesn't invite</span></div>
+      <div class="pd">The trigger is a ghost text button (<code>text-primary text-xs hover:bg-primary/5</code>) far right, showing "Calculate" only when empty. It's visually weak, distant from its line, and competes with Reset — agents don't realise it generates the figure.</div>
+    </div>
+  </div>
+  <div class="rootcause">
+    <span class="tag">Root cause</span>
+    <p>One over-columned, non-wrapping flex row carrying a flexible label + three-to-four fixed-width controls in a narrow container. <b>The label and the call-to-action both lose.</b> Fix = give the label its own width and make the calculator the primary action while a calc-fed line is empty.</p>
+  </div>
+
+  <!-- ── BEFORE / AFTER ── -->
+  <div class="secttl">Before → after · the calc-fed expense rows</div>
+  <div class="ba">
+    <!-- BEFORE -->
+    <div class="bacol">
+      <div class="bah"><span class="babadge b">Before</span><span class="bt">Shipped</span><span class="bs">— desktop column width</span></div>
+      <div class="surface">
+        <div class="panelttl">
+          <span class="pl"><svg class="pico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h4"/></svg>Money Needs</span>
+          <span class="filledpill">Filled 5/9</span>
+        </div>
+        <div class="grp">
+          <div class="grph"><span class="gl"><span class="gd"></span><span class="gn">Business Expenses</span><span class="gc">3 of 4 filled</span></span><span class="gt">TTD 26,400/yr</span></div>
+          <div class="grpb">
+            <div class="calclabel"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.6 4.6L18 9l-4.4 1.4L12 15l-1.6-4.6L6 9z"/></svg> From your calculators</div>
+            <div class="b-row">
+              <span class="b-label"><span class="nm">Professional / industry expen…</span><span class="b-chip">✦ Calc</span></span>
+              <span class="b-input">4,800</span>
+              <span class="b-ann">TTD 4,800/yr</span>
+              <span class="b-ghost"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/></svg></span>
+            </div>
+            <div class="b-row">
+              <span class="b-label"><span class="nm">Vehicle — business share (62%…</span><span class="b-chip">✦ Calc</span></span>
+              <span class="b-input ph">0</span>
+              <span class="b-ann">TTD 0/yr</span>
+              <span class="b-ghost"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/></svg> Calculate</span>
+            </div>
+            <div class="subsec">Your entries</div>
+            <div class="b-row">
+              <span class="b-input2" style="flex:1;min-width:0">Office rent &amp; utilities</span>
+              <span class="b-input">1,500</span>
+              <span class="b-input2" style="width:74px">Monthly</span>
+              <span class="b-ann">TTD 18,000</span>
+              <span class="b-trash"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2m-9 0v14h10V6"/></svg></span>
+            </div>
+          </div>
+        </div>
+        <div class="callout"><b>Truncation:</b> the <code>truncate</code> label loses its tail; the "Calculate" ghost link is the same weight as the dead annual text beside it.</div>
+      </div>
+    </div>
+
+    <!-- AFTER -->
+    <div class="bacol">
+      <div class="bah"><span class="babadge a">After</span><span class="bt">Proposed</span><span class="bs">— same width</span></div>
+      <div class="surface">
+        <div class="panelttl">
+          <span class="pl"><svg class="pico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h4"/></svg>Money Needs</span>
+          <span class="filledpill">Filled 5/9</span>
+        </div>
+        <div class="grp">
+          <div class="grph"><span class="gl"><span class="gd"></span><span class="gn">Business Expenses</span><span class="gc">3 of 4 filled</span></span><span class="gt">TTD 26,400/yr</span></div>
+          <div class="grpb">
+            <div class="calclabel"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.6 4.6L18 9l-4.4 1.4L12 15l-1.6-4.6L6 9z"/></svg> From your calculators</div>
+            <!-- filled calc-fed card -->
+            <div class="a-card">
+              <div class="a-lab"><span class="nm">Professional / industry expenses</span><span class="a-chip">✦ Calculator</span></div>
+              <div class="a-filled">
+                <div class="a-val"><span class="a-vinput">4,800</span><span class="a-vann">TTD 4,800/yr</span></div>
+                <span class="a-recalc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/></svg> Recalculate</span>
+              </div>
+            </div>
+            <!-- empty calc-fed card -->
+            <div class="a-card empty">
+              <div class="a-lab"><span class="nm">Vehicle — business share (62%)</span><span class="a-chip">✦ Calculator</span></div>
+              <span class="a-cta"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/></svg> Build with calculator →</span>
+            </div>
+            <div class="subsec">Your entries</div>
+            <div class="a-mrow">
+              <span class="a-mlabel">Office rent &amp; utilities</span>
+              <span class="a-mamt">1,500</span>
+              <span class="a-mfreq">Monthly ▾</span>
+              <span class="a-mann">TTD 18,000</span>
+            </div>
+            <span class="a-add"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Add item</span>
+          </div>
+        </div>
+        <div class="callout ok"><b>Fixed:</b> label reads in full and wraps; an empty calc-fed line is a single ≥48px primary CTA; a filled one shows value-first with a quiet "Recalculate".</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ANNOTATIONS ── -->
+  <div class="secttl">What changes — annotated</div>
+  <div class="annos">
+    <div class="anno chg"><span class="mk c">1</span><div><div class="at">Calc-fed line becomes a bordered card</div><div class="ad"><b>CHANGED.</b> Each <code>CalcFedLineRow</code> renders a <code>rounded-xl border</code> card — teal-tinted (<code>border-primary bg-primary/5</code>) while empty, plain (<code>border-border bg-surface</code>) once filled — so the "from a calculator" relationship is self-evident and the explainer paragraph can drop.</div></div></div>
+    <div class="anno chg"><span class="mk c">2</span><div><div class="at">Label gets its own full-width row</div><div class="ad"><b>CHANGED.</b> The name moves to a dedicated line above the value, <code>flex-1 min-w-0</code> with <code>text-wrap:pretty</code> and <b>no <code>truncate</code></b>. The Calculator / Edited chip sits inline, <code>shrink-0</code>, top-right.</div></div></div>
+    <div class="anno chg"><span class="mk c">3</span><div><div class="at">Empty state = one primary CTA</div><div class="ad"><b>CHANGED.</b> When <code>amount === 0</code>, render a full-width <code>min-h-12</code> filled button "Build with calculator →" calling <code>onOpenCalc(calcId)</code>. No bare input, no ghost link — nothing else to tap.</div></div></div>
+    <div class="anno chg"><span class="mk c">4</span><div><div class="at">Filled state = value first, quiet recalc</div><div class="ad"><b>CHANGED.</b> With a value, the editable amount + <code>/yr</code> lead; the trigger demotes to an outlined <code>≥44px</code> "Recalculate". <b>Reset</b> appears only when <code>isOverridden</code>, same handler as today.</div></div></div>
+    <div class="anno chg"><span class="mk c">5</span><div><div class="at">Manual rows stack on mobile</div><div class="ad"><b>CHANGED.</b> <code>LineItemRow</code> becomes responsive: below <code>sm</code> the description takes its own row, then amount · frequency · annual · delete on a second row. Desktop keeps one row with a roomier label. Delete target ≥44px.</div></div></div>
+    <div class="anno same"><span class="mk s">✓</span><div><div class="at">Everything else stays</div><div class="ad"><b>UNCHANGED.</b> <code>handleItemChange</code>, <code>handleResetCalcLine</code>, <code>onBlur</code> save, the <code>calcKey.split('.')[0]</code> calc-id resolution, <code>SubCalcLineItems</code>, and <code>FloatingCalcModal</code> (centred modal ↔ mobile bottom sheet, <code>useFocusTrap</code>) are kept verbatim.</div></div></div>
+  </div>
+
+  <!-- ── FILES REQUIRED ── -->
+  <div class="secttl">Files required to make this build</div>
+  <div class="tbl files">
+    <div class="trow"><span class="h">Repo path</span><span class="h">Role</span><span class="h">What to do</span></div>
+    <div class="trow">
+      <span class="fp">src/components/agent/MoneyNeedsPanel.jsx</span>
+      <span><span class="role edit">EDIT</span></span>
+      <span class="desc"><b>The only source change.</b> Rewrite the JSX of <code>CalcFedLineRow</code> (card shell + empty/filled branch) and <code>LineItemRow</code> (responsive stack). Keep all function signatures, props, and handlers. <code>ExpenseGroupAccordion</code> already splits <code>calcFedItems</code> / <code>manualItems</code> and passes <code>onOpenCalc</code> — no change there. The "Prefilled from your sub-calculators — edit to override" helper <code>&lt;p&gt;</code> can be removed (the card shell now carries that meaning).</span>
+    </div>
+    <div class="trow">
+      <span class="fp">src/components/agent/__tests__/MoneyNeedsPanel.test.jsx</span>
+      <span><span class="role test">UPDATE</span></span>
+      <span class="desc">Update any assertions that match the old markup — e.g. a query for the ghost <b>"Calculate"</b> text now resolves to the <b>"Build with calculator"</b> button label, and the truncated-label tests. Behaviour (open-calc click → <code>onOpenCalc</code>, reset visibility on override) is unchanged, so logic tests stand.</span>
+    </div>
+    <div class="trow">
+      <span class="fp">tailwind.config.js · src/index.css</span>
+      <span><span class="role keep">NO CHANGE</span></span>
+      <span class="desc">All classes used (<code>primary</code>, <code>primary/5</code>, <code>border</code>, <code>surface</code>, <code>ink-muted</code>, <code>gold</code>, <code>rounded-xl</code>, <code>min-h-[48px]</code>) already exist in the token set. No new tokens, colours, or utilities.</span>
+    </div>
+    <div class="trow">
+      <span class="fp">moneyNeedsService.js · FloatingCalcModal · useFocusTrap</span>
+      <span><span class="role keep">NO CHANGE</span></span>
+      <span class="desc">No service, data-model, or modal change. <code>targetAPI</code>/amount semantics, <code>updateExpenseGroup</code>, <code>updateSubCalculator</code>, and the calc-modal shell are untouched. This ships behind no flag — it's a like-for-like visual swap.</span>
+    </div>
+  </div>
+
+  <!-- ── COMPONENT-LEVEL SPEC ── -->
+  <div class="secttl">Component spec — the two row components</div>
+  <div class="tbl comp">
+    <div class="trow"><span class="h">Component</span><span class="h">Redesigned structure</span></div>
+    <div class="trow">
+      <span class="cn">CalcFedLineRow</span>
+      <span class="desc">Outer <code>div.rounded-xl.border.p-[11px_13px]</code> — <code>empty ? 'border-primary bg-primary/5' : 'border-border bg-surface'</code>.<br>• <b>Row 1 (always):</b> <code>flex items-start gap-2</code> → label <code>flex-1 min-w-0</code> (no truncate, <code>text-wrap:pretty</code>) + state chip (<code>Calculator</code> / <code>Edited</code> when <code>isOverridden</code>), <code>shrink-0</code>.<br>• <b>Row 2 — empty:</b> single <code>w-full min-h-12</code> primary button "Build with calculator →" → <code>onOpenCalc(calcId)</code>.<br>• <b>Row 2 — filled:</b> <code>flex items-center gap-2 flex-wrap</code> → editable amount input + <code>/yr</code>; then outlined <code>≥44px</code> "Recalculate" → <code>onOpenCalc(calcId)</code>; plus "Reset" (outlined, ≥44px) only when <code>isOverridden</code> → <code>onReset(item.id)</code>.</span>
+    </div>
+    <div class="trow">
+      <span class="cn">LineItemRow</span>
+      <span class="desc">Responsive. <b>≥ sm:</b> one row — label input <code>flex-1 min-w-0</code> · amount <code>w-24</code> · frequency select · annual <code>/yr</code> · delete (≥44px).<br><b>&lt; sm:</b> stack — label input full-width on its own line, then a second <code>flex</code> row of amount · frequency (<code>flex-1</code>) · annual · delete. The label input never shares its line with a fixed column on mobile, so descriptions stay legible. All inputs keep <code>h-11</code> (44px).</span>
+    </div>
+  </div>
+
+  <!-- ── STATES ── -->
+  <div class="secttl">States to cover</div>
+  <div class="states">
+    <div class="stcard"><div class="sth">Calc-fed · empty</div><div class="stb"><b>amount = 0.</b> Teal-tinted card, full-width "Build with calculator" CTA. No input, no annual figure. The one obvious action.</div></div>
+    <div class="stcard"><div class="sth">Calc-fed · filled (synced)</div><div class="stb"><b>amount &gt; 0, not overridden.</b> Plain card, <code>Calculator</code> chip, value-first, outlined "Recalculate". No Reset.</div></div>
+    <div class="stcard"><div class="sth">Calc-fed · overridden</div><div class="stb"><b>isOverridden.</b> <code>Edited</code> gold chip; "Reset" appears beside "Recalculate" → <code>onReset</code> restores the calculator value.</div></div>
+    <div class="stcard"><div class="sth">Manual · empty / typing</div><div class="stb"><b>isCustom.</b> Placeholder "Description"; stacks on mobile. Add-item button unchanged. Save on blur.</div></div>
+  </div>
+  <div class="twonote" style="margin-top:14px">
+    <div class="note"><div class="nt">↔ Responsive</div><div class="nd">Single breakpoint at Tailwind <code>sm</code> (640px). Calc-fed cards are width-agnostic (label wraps, controls <code>flex-wrap</code>); only <code>LineItemRow</code> needs the stack variant. Both themes inherit automatically from the existing CSS-var tokens — <b>no per-theme work</b>.</div></div>
+    <div class="note"><div class="nt">⌨ Accessibility</div><div class="nd">CTA &amp; Recalculate keep <code>aria-label</code> "Open {label} calculator". All targets ≥44px. <code>FloatingCalcModal</code>'s focus-trap + focus-return to the triggering button still applies — the trigger is now a real button in both states, so focus return is cleaner than the ghost link.</div></div>
+  </div>
+
+  <div class="linkrow">
+    <a class="lk" href="Money Needs - Calc Row Fix.html">▶ INTERACTIVE MOCKUP</a>
+    <span class="ld">Open <b>Money Needs - Calc Row Fix.html</b> to click the live before/after — toggle desktop / mobile + light / dark, and tap a "Build with calculator" button to watch the floating calculator open.</span>
+  </div>
+
+</div>
+</body>
+</html>

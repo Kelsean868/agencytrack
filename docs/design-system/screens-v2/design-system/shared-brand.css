@@ -1,0 +1,15 @@
+/* AgencyTrack — shared brand constants (both surfaces) */
+:root{
+  --brand-display:'Cabinet Grotesk','Helvetica Neue',sans-serif;
+  --brand-sans:'Satoshi','Helvetica Neue',Arial,sans-serif;
+  --brand-mono:'JetBrains Mono',ui-monospace,monospace;
+  --brand-teal:#01696F;
+  --brand-teal-deep:#014E52;
+  --brand-gold:#B07D1A;
+  --brand-logo-dot:#4ECDC4;
+}
+/* Font loading:
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700&f[]=satoshi@400,500,700&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" />
+*/
+.brand-eyebrow{font-family:var(--brand-mono);font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--brand-teal)}

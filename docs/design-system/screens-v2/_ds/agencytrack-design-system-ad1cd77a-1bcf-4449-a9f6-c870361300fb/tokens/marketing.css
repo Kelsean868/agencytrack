@@ -1,0 +1,82 @@
+/* AgencyTrack Marketing — "Nexus Warm" tokens. Light only. Source: marketing/tokens.css */
+:root{
+  /* color */
+  --cream:#F4F2EC;
+  --paper:#FFFFFF;
+  --ink:#26231C;
+  --ink-mute:#6B6560;
+  --ink-faint:#A8A39C;
+  --teal:#01696F;
+  --teal-deep:#014E52;
+  --teal-bright:#36BDB9;
+  --teal-tint:rgba(1,105,111,.08);
+  --gold:#B07D1A;
+  --gold-bright:#E8B73E;
+  --gold-tint:#FBF1DA;
+  --rule:#E5E2DB;
+  --rule-soft:#EEEBE3;
+  --dark:#0E0B07;
+  --dark-text:#B5AB9C;
+  --whatsapp:#25D366;
+
+  /* type */
+  --display:'Cabinet Grotesk','Helvetica Neue',sans-serif; /* @kind font */
+  --sans:'Satoshi','Helvetica Neue',Arial,sans-serif; /* @kind font */
+  --mono:'JetBrains Mono',ui-monospace,monospace; /* @kind font */
+
+  /* type scale */
+  --fs-hero:clamp(36px,5.4vw,58px); /* @kind other */
+  --fs-h2:clamp(28px,3.6vw,40px); /* @kind other */
+  --fs-h3:20px;
+  --fs-body:17px;
+  --fs-small:14.5px;
+  --fs-caption:13px;
+  --fs-eyebrow:12px;
+  --ls-display:-0.03em;
+  --ls-eyebrow:0.22em;
+  --lh-display:1.05; /* @kind other */
+  --lh-body:1.7; /* @kind other */
+
+  /* radius */
+  --r-btn:12px;
+  --r-card:18px;
+  --r-panel:20px;
+  --r-pill:999px;
+
+  /* elevation */
+  --sh-hover:0 14px 34px rgba(38,35,28,.09);
+  --sh-cta:0 8px 20px rgba(1,105,111,.28);
+  --sh-panel:0 18px 44px rgba(1,78,82,.35);
+
+  /* spacing */
+  --sp-section:96px;
+  --sp-section-lg:110px;
+  --sp-card-pad:28px;
+  --sp-gap:18px;
+  --wrap-max:1080px;
+  --wrap-prose:720px;
+  --wrap-pad:28px;
+
+  /* motion */
+  --ease-fast:.15s ease; /* @kind other */
+  --ease-med:.18s ease; /* @kind other */
+}
+
+/* base helpers */
+.ds-body{font-family:var(--sans);background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased}
+.ds-display{font-family:var(--display);font-weight:800;letter-spacing:var(--ls-display);line-height:var(--lh-display)}
+.ds-eyebrow{font-family:var(--mono);font-size:var(--fs-eyebrow);font-weight:700;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--teal)}
+
+/* buttons */
+.ds-btn{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;font-family:var(--sans);font-weight:700;font-size:14.5px;padding:12px 20px;border-radius:var(--r-btn);cursor:pointer;border:0;transition:transform var(--ease-fast),box-shadow var(--ease-fast)}
+.ds-btn-primary{background:var(--teal);color:#fff}
+.ds-btn-primary:hover{transform:translateY(-1px);box-shadow:var(--sh-cta)}
+.ds-btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--rule)}
+.ds-btn-ghost:hover{border-color:var(--ink-faint)}
+
+/* card */
+.ds-card{background:var(--paper);border:1px solid var(--rule);border-radius:var(--r-card);padding:26px var(--sp-card-pad)}
+.ds-card-num{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--teal-bright);letter-spacing:.1em}
+
+/* callout */
+.ds-callout{background:var(--gold-tint);border:1px solid rgba(176,125,26,.25);border-radius:14px;padding:18px 20px;color:#7A5A16}

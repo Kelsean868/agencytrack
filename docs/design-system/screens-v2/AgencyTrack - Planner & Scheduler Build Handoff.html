@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AgencyTrack — Planner &amp; Scheduler Build Handoff</title>
+<link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/tokens/fonts.css" />
+<style>
+  doc-page:not(:defined){ visibility:hidden; }
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#7A7264; --inkDim:#A8A39C;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --violet:#5A3FA0; --violetTint:#F0ECFF;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif;
+    --sans:'Satoshi','Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'JetBrains Mono','Menlo','SF Mono',monospace;
+  }
+  doc-page{ color:var(--ink); font-family:var(--sans); font-size:var(--doc-fs,12.2px); line-height:1.62; background:var(--surface); }
+  h1,h2,h3,h4{ font-family:var(--display); letter-spacing:-.02em; color:var(--ink); line-height:1.1; }
+  h1{ font-size:30px; font-weight:800; margin:0 0 4px; }
+  h2{ font-size:19px; font-weight:800; margin:32px 0 4px; padding-top:15px; border-top:2px solid var(--ink); }
+  h3{ font-size:14.5px; font-weight:700; margin:19px 0 6px; }
+  h4{ font-size:12.5px; font-weight:700; margin:13px 0 4px; }
+  p{ margin:7px 0; }
+  strong{ font-weight:700; }
+  em{ color:var(--inkMute); }
+  a{ color:var(--teal); }
+  code, .mono{ font-family:var(--mono); font-size:.9em; }
+  code{ background:var(--surfaceMute); border:1px solid var(--rule); border-radius:5px; padding:1px 5px; color:var(--tealDark); }
+  .eyebrow{ font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--teal); }
+  .lede{ font-size:13.5px; color:var(--inkMute); line-height:1.6; max-width:64ch; }
+  .doc-meta{ font-family:var(--mono); font-size:10.5px; color:var(--inkFaint); letter-spacing:.04em; text-transform:uppercase; margin-top:8px; }
+
+  .callout{ border:1px solid var(--rule); border-left:3px solid var(--teal); background:var(--surfaceRaised); border-radius:10px; padding:12px 15px; margin:14px 0; }
+  .callout--gold{ border-left-color:var(--gold); }
+  .callout--danger{ border-left-color:var(--danger); }
+  .callout--good{ border-left-color:var(--success); }
+  .callout h4{ margin:0 0 4px; }
+  .callout p{ margin:3px 0; font-size:12px; }
+
+  table{ border-collapse:collapse; width:100%; margin:12px 0; font-size:11px; }
+  th,td{ text-align:left; padding:7px 9px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th{ font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--inkFaint); border-bottom:1.5px solid var(--ruleStrong); background:var(--surfaceMute); }
+  tbody tr:nth-child(even){ background:var(--surfaceRaised); }
+  td.scr{ font-weight:700; white-space:nowrap; }
+  td.mono{ font-family:var(--mono); font-size:9.6px; color:var(--inkMute); }
+  td.ctr{ text-align:center; }
+
+  .badge{ display:inline-block; font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:20px; white-space:nowrap; }
+  .b-agent{ background:var(--tealTint); color:var(--tealDark); }
+  .b-mgr{ background:var(--goldTint); color:var(--goldInk); }
+  .b-star{ background:var(--dangerTint); color:var(--danger); }
+  .b-new{ background:var(--violetTint); color:var(--violet); }
+  .b-reuse{ background:var(--successTint); color:var(--success); }
+
+  ul,ol{ margin:7px 0; padding-left:20px; }
+  li{ margin:3px 0; }
+  .tight li{ margin:1px 0; }
+
+  .phase{ border:1px solid var(--rule); border-radius:12px; padding:13px 16px; margin:10px 0; background:var(--surfaceRaised); break-inside:avoid; }
+  .phase-h{ display:flex; align-items:baseline; gap:10px; }
+  .phase-n{ font-family:var(--display); font-weight:800; font-size:15px; color:var(--teal); }
+  .phase-t{ font-family:var(--display); font-weight:700; font-size:14px; }
+  .phase-tag{ margin-left:auto; font-family:var(--mono); font-size:9.5px; color:var(--inkFaint); text-transform:uppercase; letter-spacing:.08em; }
+
+  .kv{ display:grid; grid-template-columns:auto 1fr; gap:2px 14px; font-size:11.5px; margin:8px 0; }
+  .kv dt{ font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--inkFaint); padding-top:2px; white-space:nowrap; }
+  .kv dd{ margin:0; }
+
+  pre.code{ background:var(--ink); color:#EDE9DF; border-radius:9px; padding:12px 14px; font-family:var(--mono); font-size:9.4px; line-height:1.55; overflow-x:auto; margin:10px 0; white-space:pre; }
+  pre.code .c{ color:#8FB7A9; } pre.code .k{ color:#E0AA3E; } pre.code .s{ color:#9FD0C7; }
+
+  .streams{ display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+  .stream{ flex:1 1 30%; min-width:150px; border:1px solid var(--rule); border-radius:10px; padding:10px 12px; }
+  .stream b{ font-family:var(--display); font-size:13px; }
+  .stream.sell{ border-left:3px solid var(--teal); }
+  .stream.coach{ border-left:3px solid var(--gold); }
+  .stream.recruit{ border-left:3px solid var(--violet); }
+  .stream .codes{ font-family:var(--mono); font-size:9.5px; color:var(--inkMute); margin-top:3px; }
+
+  .foot{ font-size:10px; color:var(--inkFaint); }
+  h2,h3,.phase,table,.callout,pre.code{ break-inside:avoid; }
+  .run-foot{ display:flex; justify-content:space-between; font-family:var(--mono); font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--inkFaint); border-top:1px solid var(--rule); padding-top:6px; }
+</style>
+</head>
+<body>
+<doc-page size="letter" margin="0.7in">
+
+  <div slot="footer" class="run-foot">
+    <span>AgencyTrack · Nexus App</span>
+    <span>Planner &amp; Scheduler · Agent + Manager</span>
+    <span>Confidential · Internal</span>
+  </div>
+
+  <p class="eyebrow">Build handoff · new feature · agent + manager folded</p>
+  <h1>Planner &amp; Scheduler — Build Handoff</h1>
+  <p class="lede">One product, two tiers, folded into a single sequenced plan: the field-agent planner that digitizes Tatil's paper Weekly Planner, and the manager tier layered on the same booking data — a selling manager's Sell/Coach/Recruit planner plus the coaching &amp; visibility surfaces. An <strong>activity manager, not a CRM.</strong> If a flow is slower than paper, it has failed.</p>
+  <p class="doc-meta">Sources: <code>planner-scheduler-handoff/</code> + <code>planner-manager-handoff/</code> · Target: Kelsean868/agencytrack@main · Planner is currently coming-soon-gated in <code>navConfig.js</code></p>
+
+  <h2>0 · The shape — two tiers, one product</h2>
+  <table>
+    <thead><tr><th style="width:8%">Tier</th><th style="width:20%">What</th><th style="width:36%">Hero flows (★ = most polish)</th><th>Build</th></tr></thead>
+    <tbody>
+      <tr><td class="scr"><span class="badge b-agent">Agent</span></td><td>Plan &amp; book a week into slots, work the day, report — plan pre-fills the report.</td><td>★ Phone-day booking · ★ daily churn (cancel→fill) · ★ plan→report evening handoff</td><td>First</td></tr>
+      <tr><td class="scr"><span class="badge b-mgr">Manager</span></td><td>(a) Personal planner for selling managers (Sell·Coach·Recruit + recruiting); (b) coaching &amp; visibility over the team.</td><td>★ 1-on-1 coaching pack · ★ escalation inbox · book-a-block (1:1 / unit mtg / joint / recruit)</td><td>Second</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Shared, built once (in the agent tier):</strong> the Nexus tokens (<code>src/index.css</code>), the <code>Shell</code>, and the planner primitives (activity chips, status pills, time rail, counter bars, day-strip cells). The manager tier <strong>reuses the agent timeline &amp; week-booking components — parameterized, not forked.</strong> The manager reads the agent tier's <code>appointments</code> / <code>prospects</code> / <code>escalations</code>, so the agent tier lands first.</p>
+
+  <h2>1 · Trust constraints — enforce at the data layer</h2>
+  <div class="callout callout--danger">
+    <h4>Four non-negotiable, locked product decisions (manager tier)</h4>
+    <p>These are enforced in the mockups and <strong>must be enforced in code — at the query &amp; security-rules layer, not just the UI.</strong> A manager query that <em>could</em> return an agent's individual stalled prospects must be <em>impossible</em>, not merely un-rendered.</p>
+    <ol class="tight" style="margin-top:5px">
+      <li><strong>Per-agent stalled-pipeline ratio is aggregate only</strong> — show the number + trend; never a drill-down of named prospects. Always carries an "AGG · PRIVATE" shield marker.</li>
+      <li><strong>That ratio / anything individual is private manager↔agent</strong> — never on a kiosk, leaderboard, or TV. Public surfaces rank reconciled production, not forward bookings.</li>
+      <li><strong>A manager sees a named prospect only via an agent's explicit escalation</strong> — agent-initiated, opt-in, and reversible (the agent can withdraw anytime).</li>
+      <li><strong>Tone is coaching, not surveillance</strong> — soft-week signals read as "opportunity to coach," never "failure to flag."</li>
+    </ol>
+    <p style="margin-top:5px">Any request that conflicts with these is out of scope until product reopens the decision.</p>
+  </div>
+
+  <h2>2 · Repo placement &amp; nav</h2>
+  <p>The <code>planner</code> tab already exists in <code>navConfig.js</code> for both the agent and producing-manager configs, but it's <strong>gated coming-soon</strong> (<code>COMING_SOON_TABS</code> → rendered disabled). Un-gate it and build behind it. It renders inside the existing <code>Shell</code> as new <code>activeTab</code> values — <strong>do not fork the shell.</strong></p>
+  <div class="kv">
+    <dt>Agent nav</dt><dd>"Planner" top-level (badge <code>NEW</code>), 2nd after Dashboard. Own mobile bottom nav: <code>Today · Week · [Book FAB] · Follow-ups · More</code> (center FAB = quick-add).</dd>
+    <dt>Manager nav</dt><dd>Two groups in <code>ManagerDashboard</code>: <strong>My Planner</strong> (My Day · Week · Recruit) and <strong>Team Planner</strong> (Team · Coaching · Escalations · Capacity · Events · Health). Mobile personal: <code>My Day · Week · [Book FAB] · Recruit · Team</code>; mobile coaching: <code>Team · Coaching · [Schedule FAB] · Escalations · More</code>.</dd>
+    <dt>Selling mgrs</dt><dd>UM/BM get the <em>whole</em> agent planner too — reuse the agent components with a <code>stream</code> prop; a non-selling BM can hide the Sell stream.</dd>
+  </div>
+
+  <h2>3 · Screen inventory (folded)</h2>
+  <table>
+    <thead><tr><th style="width:6%">#</th><th style="width:22%">Screen</th><th style="width:9%">Tier</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">1</td><td class="scr">Today (home)</td><td><span class="badge b-agent">Agent</span></td><td>Timeline + live NOW marker, day-pulse, follow-ups-due strip, quick-add FAB.</td></tr>
+      <tr><td class="mono">2</td><td class="scr">Day timeline</td><td><span class="badge b-agent">Agent</span></td><td>Time-ordered list; empty gaps are dashed "tap to book" strips.</td></tr>
+      <tr><td class="mono">3 ★</td><td class="scr">Week booking</td><td><span class="badge b-agent">Agent</span></td><td>Forward day-strip (h-scroll, density) + 7-day list vs weekly minimums. <strong>Not a calendar grid.</strong></td></tr>
+      <tr><td class="mono">4 ★</td><td class="scr">Add / edit</td><td><span class="badge b-agent">Agent</span></td><td>Prospect search or free block; time/length/type; "Save &amp; add another."</td></tr>
+      <tr><td class="mono">5 ★</td><td class="scr">Status churn</td><td><span class="badge b-agent">Agent</span></td><td>Kept · Reschedule · Postpone · Cancel — cancelled/postponed retained, never deleted.</td></tr>
+      <tr><td class="mono">6 ★</td><td class="scr">Freed-slot fill</td><td><span class="badge b-agent">Agent</span></td><td>Auto-prompt on cancel: due follow-up / ready-anytime / log P.C time.</td></tr>
+      <tr><td class="mono">7</td><td class="scr">Follow-up worklist</td><td><span class="badge b-agent">Agent</span></td><td>Batched due callbacks; Book · Snooze · Re-qualify · Release.</td></tr>
+      <tr><td class="mono">8</td><td class="scr">Prep card</td><td><span class="badge b-agent">Agent</span></td><td>History, logged objections, product interest; "Copy WhatsApp" (clipboard only).</td></tr>
+      <tr><td class="mono">9 ★</td><td class="scr">Plan → report handoff</td><td><span class="badge b-agent">Agent</span></td><td>Evening confirm over a pre-fill seeded from kept appointments. <strong>The payoff.</strong></td></tr>
+      <tr><td class="mono">0A</td><td class="scr">My day (blended)</td><td><span class="badge b-mgr">Mgr</span></td><td>Agent timeline + Sell/Coach/Recruit stream tags + time-split readout.</td></tr>
+      <tr><td class="mono">0B</td><td class="scr">My week</td><td><span class="badge b-mgr">Mgr</span></td><td>Personal booking with dual minimums (sales floor + recruiting target).</td></tr>
+      <tr><td class="mono">0C</td><td class="scr">My recruiting</td><td><span class="badge b-mgr">Mgr</span> <span class="badge b-new">new</span></td><td>Career funnel (Contacted→Interviewed→Seminar→Selecting) + candidate worklist.</td></tr>
+      <tr><td class="mono">0D</td><td class="scr">Book a block</td><td><span class="badge b-mgr">Mgr</span></td><td>Stream selector reveals the right types; who/what field adapts to type.</td></tr>
+      <tr><td class="mono">1 ★</td><td class="scr">Team overview</td><td><span class="badge b-mgr">Mgr</span></td><td>Roster: booked-vs-min, kept-rate spark, <strong>aggregate</strong> stalled ratio, soft-week nudge.</td></tr>
+      <tr><td class="mono">2 ★</td><td class="scr">1-on-1 coaching pack</td><td><span class="badge b-mgr">Mgr</span></td><td>Auto-assembled per-agent sheet + aggregate explainer + wins to open with. A gift to the manager.</td></tr>
+      <tr><td class="mono">3 ★</td><td class="scr">Escalation inbox</td><td><span class="badge b-mgr">Mgr</span></td><td>Prospects agents chose to escalate — <strong>the only named-prospect surface.</strong> The ask + actions.</td></tr>
+      <tr><td class="mono">4</td><td class="scr">Capacity + joint calls</td><td><span class="badge b-mgr">Mgr</span></td><td>Manager's week with escalated joint calls slotted; team-capacity read.</td></tr>
+      <tr><td class="mono">5</td><td class="scr">Branch events</td><td><span class="badge b-mgr">BM</span></td><td>Schedule a branch event that fans out onto agent agendas as free blocks.</td></tr>
+      <tr><td class="mono">6</td><td class="scr">Branch booking health</td><td><span class="badge b-mgr">BM</span></td><td>Forward-booking roll-up + unit compare — private management view, never public.</td></tr>
+    </tbody>
+  </table>
+  <p class="foot">Every screen ships mobile (390×844) + desktop (1280×800), light + dark, with explicit loading / empty / error states — required for a daily tool.</p>
+
+  <h2>4 · Activity vocabulary &amp; streams</h2>
+  <div class="streams">
+    <div class="stream sell"><b>Sell</b> · teal<div class="codes">P.C · S.C · A.I · F.F.I · C.I · Sale</div></div>
+    <div class="stream coach"><b>Coach</b> · gold<div class="codes">1:1 · UNIT · joint C.I</div></div>
+    <div class="stream recruit"><b>Recruit</b> · violet<div class="codes">R.C · R.I · R.SEM</div></div>
+  </div>
+  <p><strong>Free blocks</strong> (neutral, dashed): Training · Company seminar · Tradeshow · Prospecting time · Personal. <code>stream</code> is derived from <code>type</code> and stored for fast filtering. Currency always <strong>TTD</strong>; Trinidad names + realistic amounts (Marsha Singh, Devon Ramlal, Kavita Ramlogan…). C.I is the money type (solid teal); Sale is solid gold.</p>
+
+  <h2>5 · Data model (shared + new)</h2>
+  <pre class="code"><span class="c">// SHARED — the agent tier writes this; the manager reads/extends it</span>
+tenants/{tid}/agents/{agentId}/appointments/{apptId}
+  date, startTime, durationMin, status,      <span class="c">// scheduled|confirmed|kept|cancelled|postponed|done</span>
+  type,        <span class="c">// PC|SC|AI|FFI|CI|SALE|FREE  (+mgr: RC|RI|RSEM|ONE|UNIT)</span>
+  stream,      <span class="c">// 'sell'|'coach'|'recruit'  (derived from type, stored)</span>
+  prospectId,  candidateId,  freeBlockLabel,  note,  apiAmount,  rescheduledToId
+prospects/{prospectId}                        <span class="c">// REUSE — extend, don't duplicate</span>
+  …name, objections[], callbackDueAt, waitlistReadyAnytime…
+
+<span class="c">// NEW — manager tier</span>
+tenants/{tid}/agents/{mgrId}/recruits/{id}    <span class="c">// career funnel — parallel light store</span>
+  name, source, stage <span class="c">// contacted|interview|seminar|selecting</span>, nextStep, nextStepAt
+tenants/{tid}/agents/{agentId}/pipelineStats  <span class="c">// CF-COMPUTED, aggregate ONLY</span>
+  stalledRatio, stalledRatioTrend, keptRate, keptRateSpark, bookedNextWeek{}, minimums{}, softWeek
+  <span class="k">// ⚠ rules: manager reads aggregates for own unit/branch; the per-prospect stalled set is NEVER here</span>
+tenants/{tid}/escalations/{id}                <span class="c">// agent-initiated, opt-in, reversible</span>
+  agentId, unitId, prospectId, ask <span class="c">// advice|joint-ci|take-call</span>, status <span class="c">// open|scheduled|resolved|withdrawn</span>
+tenants/{tid}/branches/{branchId}/events/{id} <span class="c">// fans out FREE blocks onto agent agendas</span></pre>
+  <div class="callout">
+    <h4>Two integrations that make it one product</h4>
+    <p><strong>Plan → report:</strong> at end of day, aggregate the day's <em>kept</em> appointments into the <strong>existing</strong> Daily Capture → Weekly Report schema via <code>utils/extractFields.js</code> — the handoff is a <em>confirm over a pre-fill</em>, reusing Daily Capture field components, not a new write path. <strong>Escalation:</strong> an agent-side "ask my manager" affordance (on the Prep card / churn flow) writes an <code>escalation</code>; the manager inbox reads it; either party withdraws. <strong>Security rules are part of the deliverable</strong> — constraints §1 live at the rules layer.</p>
+  </div>
+
+  <h2>6 · Component map</h2>
+  <p>All new, in-pattern. Agent under <code>src/components/planner/</code>; manager under <code>src/components/planner/manager/</code>. Reuse &amp; parameterize — never fork.</p>
+  <table>
+    <thead><tr><th style="width:30%">Area</th><th>Components · services</th></tr></thead>
+    <tbody>
+      <tr><td class="scr"><span class="badge b-agent">Agent</span> screens</td><td class="mono">PlannerToday · DayTimeline (+NowMarker, AppointmentCard, EmptyGap) · WeekBooking (+ForwardDayStrip, WeeklyMinimums) · AppointmentSheet · ChurnActions · FreedSlotFill · FollowupWorklist · PrepCard · EveningHandoff</td></tr>
+      <tr><td class="scr"><span class="badge b-agent">Agent</span> service</td><td class="mono">services/plannerService.js — appt CRUD, week/day queries, follow-up view, day→report aggregation</td></tr>
+      <tr><td class="scr"><span class="badge b-mgr">Mgr</span> personal <span class="badge b-reuse">reuse</span></td><td class="mono">DayTimeline + <code>stream</code> prop (+StreamTag, TimeSplitBar) · WeekBooking + RecruitingTargets · manager/Recruiting (CareerFunnel, CandidateRow) · Book-a-block stream selector</td></tr>
+      <tr><td class="scr"><span class="badge b-mgr">Mgr</span> coaching <span class="badge b-star">★</span></td><td class="mono">TeamOverview (StalledRatioChip, KeptRateSpark, SoftWeekFlag) · CoachingPack · EscalationInbox (reuse manager/JointCallsTab) · TeamCapacity · BranchEvents · BranchBookingHealth</td></tr>
+      <tr><td class="scr"><span class="badge b-mgr">Mgr</span> service · rules</td><td class="mono">plannerManagerService.js (team aggregates, escalation CRUD, event fan-out, recruits CRUD) + firestore.rules enforcing §1</td></tr>
+    </tbody>
+  </table>
+
+  <h2>7 · Build order (folded)</h2>
+  <div class="phase">
+    <div class="phase-h"><span class="phase-n">1</span><span class="phase-t">Agent tier — foundation + hero flows</span><span class="phase-tag">Frontend PRs</span></div>
+    <p style="font-size:11.5px;margin:4px 0 0"><code>plannerService.js</code> + appointment/prospect/follow-up shapes → Today → Day → ★ Week booking → ★ Add → ★ churn → ★ freed-slot → Follow-ups → Prep → ★ evening handoff (wire into existing Daily Capture). Un-gate the <code>planner</code> nav item. Include an agent-side <strong>"escalate / ask manager"</strong> affordance so the manager tier has data to read.</p>
+  </div>
+  <div class="phase">
+    <div class="phase-h"><span class="phase-n">2</span><span class="phase-t">Manager — personal planner</span><span class="phase-tag">Reuse + streams</span></div>
+    <p style="font-size:11.5px;margin:4px 0 0">Reuse agent timeline/week-booking with the <code>stream</code> prop; add the recruiting model (<code>recruits</code>) + funnel + dual minimums + the stream-aware Book-a-block sheet. Two manager nav groups.</p>
+  </div>
+  <div class="phase">
+    <div class="phase-h"><span class="phase-n">3</span><span class="phase-t">Manager — coaching &amp; visibility</span><span class="phase-tag">Human-merge: CF + rules</span></div>
+    <p style="font-size:11.5px;margin:4px 0 0">★ Team overview + 1-on-1 pack + escalation inbox, then capacity / branch events / booking health. <code>pipelineStats</code> Cloud Function + <code>firestore.rules</code> enforcing the four trust constraints are <strong>human-merge + <code>firebase deploy</code></strong>. The aggregate-only stalled ratio must be impossible to drill down — verified at the rules layer, not just the UI.</p>
+  </div>
+
+  <h4>Definition of done — per screen</h4>
+  <ul class="tight">
+    <li>Tokens only (no new hex); light + dark; loading / empty / error on every panel.</li>
+    <li>Offline-first (Firestore persistence); "N changes waiting to sync" state; cancelled/postponed retained.</li>
+    <li>Data via <code>plannerService</code> / <code>plannerManagerService</code> with <code>tenantId</code> — never query Firestore from components.</li>
+    <li>AST (America/Port_of_Spain) day/week windows matching the Sunday-anchored WAR week.</li>
+    <li>a11y gate green: semantic timeline (<code>&lt;ol&gt;/&lt;li&gt;</code>), labelled controls, 44px targets, focus rings, reduced-motion guards.</li>
+    <li>WhatsApp = clipboard only (never sends). Manager tier: trust constraints enforced at query/rules.</li>
+  </ul>
+
+  <div class="callout callout--good">
+    <h4>Recommended next step</h4>
+    <p>Both tiers already ship a paste-ready Claude Code kickoff. I can <strong>merge them into one unified kickoff prompt</strong> (agent-first, manager-second, with the trust-constraint rules called out as human-merge gates) validated against the current repo's nav/prospect/report schema — or pull any ★ board (Week booking, evening handoff, 1-on-1 pack, escalation inbox) into a focused, tweakable screen to lock the design before build.</p>
+  </div>
+
+</doc-page>
+<script src="doc-page.js"></script>
+</body>
+</html>

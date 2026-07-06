@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AgencyTrack — Insurance Agency Management &amp; Performance Software for the Caribbean</title>
+<link rel="canonical" href="https://agencytrack.app" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='44' fill='%23014e52'/%3E%3Crect x='58' y='118' width='16' height='40' rx='5' fill='%23fff' fill-opacity='.35'/%3E%3Crect x='82' y='98' width='16' height='60' rx='5' fill='%23fff' fill-opacity='.6'/%3E%3Crect x='106' y='74' width='16' height='84' rx='5' fill='%23fff'/%3E%3Ccircle cx='114' cy='58' r='10' fill='%234ecdc4'/%3E%3C/svg%3E" />
+<meta name="description" content="AgencyTrack is insurance agency management and performance software for Caribbean life-insurance agencies, built in Trinidad & Tobago. Track agent activity, reconcile commissions against carrier settlements, and run goals, awards and recognition — without a CRM." />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="AgencyTrack" />
+<meta property="og:title" content="AgencyTrack — Turn weekly activity into production" />
+<meta property="og:description" content="The performance platform for insurance agencies. Plan, log, coach, reconcile, recognize — one rhythm, start to finish." />
+<meta property="og:url" content="https://agencytrack.app" />
+<meta property="og:image" content="https://agencytrack.app/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:type" content="image/png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="AgencyTrack — Turn weekly activity into production" />
+<meta name="twitter:description" content="The performance platform for insurance agencies. Plan, log, coach, reconcile, recognize — one rhythm, start to finish." />
+<meta name="twitter:image" content="https://agencytrack.app/og-image.png" />
+<link rel="preconnect" href="https://api.fontshare.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,500&f[]=satoshi@400,500,700&display=swap" media="print" onload="this.media='all'" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" media="print" onload="this.media='all'" />
+<style>
+  :root{
+    --cream:#F4F2EC; --paper:#FFFFFF; --ink:#26231C; --ink-mute:#6B6560; --ink-faint:#A8A39C;
+    --teal:#01696F; --teal-deep:#014E52; --teal-bright:#36BDB9; --teal-tint:rgba(1,105,111,.08);
+    --gold:#B07D1A; --gold-bright:#E8B73E; --gold-tint:#FBF1DA;
+    --rule:#E5E2DB; --rule-soft:#EEEBE3;
+    --dark:#0E0B07; --dark-soft:#16110B;
+    --display:'Cabinet Grotesk','Helvetica Neue',sans-serif;
+    --sans:'Satoshi','Helvetica Neue',Arial,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --maxw:1180px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  h1,h2,h3{font-family:var(--display);font-weight:800;letter-spacing:-.03em;line-height:1.02}
+  .eyebrow{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--teal)}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+  section{position:relative}
+
+  /* reveal removed — content renders statically (sandbox-safe); motion comes
+     from the glyph drift, marquee, count-up, and hovers. */
+  .rv{opacity:1}
+
+  /* progress + nav */
+  #prog{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--teal-deep),var(--teal-bright));z-index:100}
+  nav{position:fixed;top:0;left:0;right:0;z-index:90;display:flex;align-items:center;gap:18px;padding:14px 28px;
+    background:rgba(244,242,236,.72);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border-bottom:1px solid transparent;transition:border-color .3s,background .3s}
+  nav.scrolled{border-color:var(--rule)}
+  nav .brand{display:flex;align-items:center;gap:11px;font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:-.02em}
+  nav .links{display:flex;gap:26px;margin-left:auto;font-size:14px;font-weight:500;color:var(--ink-mute)}
+  nav .links a:hover{color:var(--ink)}
+  nav .navcta{display:flex;gap:10px;align-items:center}
+  .btn{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;font-weight:700;font-size:14px;border-radius:11px;padding:11px 18px;cursor:pointer;border:0;transition:transform .15s,box-shadow .2s;font-family:var(--sans)}
+  .btn:hover{transform:translateY(-1px)}
+  .btn-primary{background:var(--teal);color:#fff;box-shadow:0 4px 16px rgba(1,105,111,.32)}
+  .btn-primary:hover{box-shadow:0 8px 24px rgba(1,105,111,.4)}
+  .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--rule)}
+  .btn-ghost:hover{border-color:var(--teal);color:var(--teal)}
+  .menubtn{display:none;width:42px;height:42px;border-radius:11px;border:1px solid var(--rule);background:var(--paper);cursor:pointer;align-items:center;justify-content:center;flex-direction:column;gap:5px;padding:0;flex-shrink:0}
+  .menubtn span{display:block;width:18px;height:2px;background:var(--ink);border-radius:2px;transition:transform .25s,opacity .25s}
+  .menubtn.x span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+  .menubtn.x span:nth-child(2){opacity:0}
+  .menubtn.x span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+  .mnav{position:fixed;top:64px;left:0;right:0;z-index:89;background:rgba(244,242,236,.97);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border-bottom:1px solid var(--rule);display:none;flex-direction:column;padding:8px 28px 16px}
+  .mnav.open{display:flex}
+  .mnav a{padding:14px 2px;font-size:16px;font-weight:600;border-bottom:1px solid var(--rule-soft)}
+  .mnav a:last-child{border-bottom:0}
+  @media(min-width:861px){.mnav{display:none!important}}
+  @media(max-width:860px){
+    nav .links{display:none}
+    nav .navcta{margin-left:auto}
+    .menubtn{display:flex}
+    nav .navcta .btn{padding:10px 14px;font-size:13px}
+  }
+  @media(max-width:400px){nav{gap:10px;padding:12px 16px}nav .brand{font-size:16px}nav .navcta .btn{padding:9px 12px}}
+
+  /* glyph field */
+  .glyphfield{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+  .grow{position:absolute;display:flex;align-items:center;gap:96px;height:120px}
+  @keyframes driftL{from{transform:translateX(0)}to{transform:translateX(-152px)}}
+  @keyframes driftR{from{transform:translateX(-152px)}to{transform:translateX(0)}}
+  .grow svg{flex-shrink:0;opacity:.9}
+
+  /* hero */
+  .hero{padding:160px 0 90px;position:relative;isolation:isolate}
+  .hero .wrap{position:relative;z-index:2;display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center}
+  .hero h1{font-size:clamp(40px,6.2vw,76px);margin:18px 0 0}
+  .hero h1 .hl{color:var(--teal);position:relative;white-space:nowrap}
+  .hero p.sub{font-size:clamp(16px,1.7vw,20px);color:var(--ink-mute);line-height:1.55;margin:22px 0 30px;max-width:560px}
+  .hero .cta{display:flex;gap:13px;flex-wrap:wrap}
+  .trustline{margin-top:26px;font-size:13px;color:var(--ink-faint);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .trustline b{color:var(--ink-mute);font-weight:700}
+  @media(max-width:880px){.hero .wrap{grid-template-columns:1fr}.hero{padding:130px 0 60px}}
+
+  /* hero visual */
+  .stage{position:relative;height:480px}
+  .glass{background:rgba(255,255,255,.62);backdrop-filter:blur(20px) saturate(165%);-webkit-backdrop-filter:blur(20px) saturate(165%);border:1px solid rgba(255,255,255,.7);box-shadow:0 24px 60px rgba(38,35,28,.16),inset 0 1px 0 rgba(255,255,255,.85)}
+  .phone{position:absolute;top:0;right:30px;width:270px;height:470px;border-radius:34px;padding:14px;background:rgba(255,255,255,.7);backdrop-filter:blur(20px) saturate(165%);-webkit-backdrop-filter:blur(20px) saturate(165%);border:1px solid rgba(255,255,255,.8);box-shadow:0 30px 70px rgba(38,35,28,.22)}
+  .phone .scr{height:100%;border-radius:22px;background:linear-gradient(170deg,#fff,#F7F5EF);border:1px solid var(--rule-soft);padding:16px 15px;overflow:hidden}
+  .pf-ey{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;color:var(--teal);font-weight:700}
+  .pf-big{font-family:var(--display);font-weight:800;font-size:38px;letter-spacing:-.03em;margin-top:6px}
+  .pf-bar{height:7px;border-radius:99px;background:var(--rule);overflow:hidden;margin-top:12px}
+  .pf-bar i{display:block;height:100%;width:81%;border-radius:99px;background:linear-gradient(90deg,var(--teal-deep),var(--teal))}
+  .pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+  .pf-card{background:#fff;border:1px solid var(--rule-soft);border-radius:12px;padding:9px 10px}
+  .pf-card .l{font-family:var(--mono);font-size:7.5px;letter-spacing:.1em;color:var(--ink-faint);font-weight:700}
+  .pf-card .v{font-family:var(--display);font-weight:800;font-size:17px;margin-top:3px}
+  .float{position:absolute;border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:11px}
+  .float .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .f-award{top:38px;left:0;animation:bobA 5s ease-in-out infinite}
+  .f-kiosk{bottom:22px;left:18px;width:226px;animation:bobB 6s ease-in-out infinite}
+  @keyframes bobA{50%{transform:translateY(-12px)}}
+  @keyframes bobB{50%{transform:translateY(10px)}}
+  @media(max-width:880px){.stage{height:430px;margin-top:20px}.phone{right:50%;transform:translateX(50%)}.f-kiosk{left:0}}
+
+  /* marquee */
+  .marquee{border-block:1px solid var(--rule);background:var(--paper);overflow:hidden;padding:18px 0}
+  .mtrack{display:flex;gap:42px;white-space:nowrap;width:max-content;animation:mq 38s linear infinite}
+  .mtrack span{font-family:var(--display);font-weight:700;font-size:20px;color:var(--ink-faint);display:flex;align-items:center;gap:42px}
+  .mtrack span::after{content:"●";color:var(--teal-bright);font-size:9px}
+  @keyframes mq{to{transform:translateX(-50%)}}
+
+  /* stats */
+  .stats{padding:70px 0}
+  .statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  .stat .n{font-family:var(--display);font-weight:800;font-size:clamp(34px,4.4vw,52px);letter-spacing:-.03em;color:var(--teal);line-height:1}
+  .stat .k{font-size:13.5px;color:var(--ink-mute);margin-top:8px;line-height:1.45}
+  @media(max-width:760px){.statgrid{grid-template-columns:1fr 1fr;gap:28px 18px}}
+
+  /* section heading */
+  .sechead{max-width:680px}
+  .sechead h2{font-size:clamp(28px,4vw,46px);margin:14px 0 0}
+  .sechead p{font-size:17px;color:var(--ink-mute);line-height:1.6;margin-top:16px}
+
+  /* loop */
+  .loop{padding:90px 0;background:var(--paper);border-block:1px solid var(--rule)}
+  .loopgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:46px}
+  .step{position:relative;padding:24px;border-radius:18px;background:var(--cream);border:1px solid var(--rule);display:flex;flex-direction:column}
+  .step .num{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--teal-bright)}
+  .step h3{font-size:21px;margin:14px 0 8px}
+  .step p{font-size:14px;color:var(--ink-mute);line-height:1.55}
+  .step .ic{width:46px;height:46px;border-radius:13px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;margin-top:auto}
+  .step p{margin-bottom:18px}
+  @media(max-width:880px){.loopgrid{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.loopgrid{grid-template-columns:1fr}}
+
+  /* bento features */
+  .features{padding:96px 0}
+  .bento{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-top:50px}
+  .cell{border-radius:20px;padding:26px;border:1px solid var(--rule);background:var(--paper);position:relative;overflow:hidden;transition:transform .25s,box-shadow .25s,border-color .25s}
+  .cell:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(38,35,28,.1);border-color:rgba(1,105,111,.3)}
+  .cell.span3{grid-column:span 3}.cell.span2{grid-column:span 2}.cell.span6{grid-column:span 6}
+  .cell .tag{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);background:var(--teal-tint);padding:5px 11px;border-radius:99px}
+  .cell.gold .tag{color:var(--gold);background:var(--gold-tint)}
+  .cell h3{font-size:24px;margin:18px 0 10px}
+  .cell p{font-size:14.5px;color:var(--ink-mute);line-height:1.55}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .chip{font-size:12.5px;font-weight:600;color:var(--ink);background:var(--cream);border:1px solid var(--rule);border-radius:99px;padding:6px 12px}
+  .cell.gold .chip{background:var(--gold-tint);border-color:rgba(176,125,26,.2)}
+  @media(max-width:980px){.bento{grid-template-columns:repeat(2,1fr)}.cell.span3,.cell.span2,.cell.span6{grid-column:span 2}}
+  @media(max-width:560px){.bento{grid-template-columns:1fr}.cell.span3,.cell.span2,.cell.span6{grid-column:span 1}}
+
+  /* spotlight */
+  .spot{padding:96px 0;background:linear-gradient(180deg,var(--cream),#EFEDE5)}
+  .spotgrid{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center}
+  .spotgrid ul{list-style:none;margin-top:24px;display:flex;flex-direction:column;gap:16px}
+  .spotgrid li{display:flex;gap:13px;align-items:flex-start;font-size:15px;color:var(--ink-mute);line-height:1.5}
+  .spotgrid li b{color:var(--ink)}
+  .tick{width:24px;height:24px;border-radius:8px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .ledger{border-radius:22px;padding:24px;background:var(--paper);border:1px solid var(--rule);box-shadow:0 24px 60px rgba(38,35,28,.1)}
+  .lrow{display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid var(--rule-soft)}
+  .lrow:last-child{border-bottom:0}
+  .ldot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  .lrow .nm{font-weight:700;font-size:14px}.lrow .meta{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-top:2px}
+  .lclock{margin-left:auto;text-align:right}
+  .lclock .d{font-family:var(--display);font-weight:800;font-size:20px;line-height:1}
+  .lclock .u{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;color:var(--ink-faint);margin-top:2px}
+  @media(max-width:880px){.spotgrid{grid-template-columns:1fr;gap:32px}}
+
+  /* audiences */
+  .aud{padding:96px 0}
+  .audgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:48px}
+  .role{border-radius:18px;padding:26px;border:1px solid var(--rule);background:var(--paper);transition:transform .25s,box-shadow .25s}
+  .role:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(38,35,28,.1)}
+  .role .rt{display:flex;align-items:center;gap:12px}
+  .role .ravatar{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:15px;color:#fff;flex-shrink:0}
+  .role h3{font-size:19px}
+  .role .who{font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:.06em;margin-top:2px}
+  .role p{font-size:14px;color:var(--ink-mute);line-height:1.55;margin-top:16px}
+  @media(max-width:880px){.audgrid{grid-template-columns:1fr 1fr}}
+  @media(max-width:560px){.audgrid{grid-template-columns:1fr}}
+
+  /* modes dark */
+  .modes{padding:100px 0;background:var(--dark);color:#F4EFE3;position:relative;overflow:hidden}
+  .modes .eyebrow{color:var(--teal-bright)}
+  .modes h2{font-size:clamp(28px,4vw,46px);color:#F8F4EA}
+  .modes .sub{color:#B5AB9C;font-size:17px;line-height:1.6;margin-top:16px;max-width:620px}
+  .modegrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:46px}
+  .modecard{border-radius:20px;padding:28px;background:rgba(255,248,232,.05);border:1px solid rgba(244,239,227,.12);position:relative;overflow:hidden}
+  .modecard h3{font-size:24px;color:#F8F4EA}
+  .modecard p{color:#B5AB9C;font-size:14.5px;line-height:1.55;margin-top:10px}
+  .modecard .badge{position:absolute;top:22px;right:22px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--gold-bright)}
+  @media(max-width:760px){.modegrid{grid-template-columns:1fr}}
+
+  /* outcomes */
+  .out{padding:96px 0}
+  .outgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:48px}
+  .outcard{display:flex;gap:18px;align-items:flex-start;padding:26px 28px;border-radius:18px;background:var(--paper);border:1px solid var(--rule)}
+  .outcard .onum{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--teal-bright);letter-spacing:.1em;margin-top:5px;flex-shrink:0}
+  .outcard h3{font-size:20px;margin-bottom:8px;line-height:1.15}
+  .outcard p{font-size:14px;color:var(--ink-mute);line-height:1.55}
+  @media(max-width:760px){.outgrid{grid-template-columns:1fr}}
+
+  /* resources */
+  .res{padding:96px 0}
+  .resgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:44px}
+  .rescard{display:block;background:var(--paper);border:1px solid var(--rule);border-radius:18px;padding:30px 32px;transition:transform .18s,box-shadow .18s,border-color .18s}
+  .rescard:hover{transform:translateY(-3px);box-shadow:0 14px 34px rgba(38,35,28,.09);border-color:var(--ink-faint)}
+  .rescard .rc-num{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--teal-bright);letter-spacing:.1em}
+  .rescard h3{font-size:21px;margin:14px 0 10px;line-height:1.15}
+  .rescard p{font-size:14.5px;color:var(--ink-mute);line-height:1.6}
+  .rescard .rc-go{display:inline-block;margin-top:16px;font-size:13.5px;font-weight:700;color:var(--teal)}
+  @media(max-width:760px){.resgrid{grid-template-columns:1fr}}
+
+  /* faq */
+  .faq{padding:96px 0;background:var(--paper);border-top:1px solid var(--rule)}
+  .faqlist{max-width:820px;margin:44px auto 0}
+  .faqlist details{border-bottom:1px solid var(--rule)}
+  .faqlist summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:18px;padding:22px 2px;font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:-.01em}
+  .faqlist summary::-webkit-details-marker{display:none}
+  .faqlist summary::after{content:"+";font-family:var(--mono);font-size:20px;color:var(--teal);flex-shrink:0;transition:transform .2s}
+  .faqlist details[open] summary::after{transform:rotate(45deg)}
+  .faqlist details p{font-size:15px;line-height:1.65;color:var(--ink-mute);padding:0 2px 24px;max-width:680px}
+
+  /* final cta */
+  .final{padding:110px 0;text-align:center;position:relative;overflow:hidden;isolation:isolate;background:var(--paper);border-top:1px solid var(--rule)}
+  .final .wrap{position:relative;z-index:2}
+  .final h2{font-size:clamp(34px,5.5vw,64px)}
+  .final p{font-size:18px;color:var(--ink-mute);margin:20px auto 34px;max-width:540px;line-height:1.6}
+
+  footer{background:var(--dark);color:#B5AB9C;padding:54px 0 40px}
+  footer .wrap{display:flex;gap:30px;justify-content:space-between;flex-wrap:wrap;align-items:flex-start}
+  footer .brand{display:flex;align-items:center;gap:11px;color:#F4EFE3;font-family:var(--display);font-weight:700;font-size:18px}
+  footer .cols{display:flex;gap:60px;flex-wrap:wrap}
+  footer h4{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#7A7064;margin-bottom:14px;font-weight:700}
+  footer a{display:block;font-size:14px;color:#B5AB9C;margin-bottom:9px}
+  footer a:hover{color:#F4EFE3}
+  .foot-base{border-top:1px solid rgba(244,239,227,.1);margin-top:40px;padding-top:22px;font-size:12.5px;color:#7A7064;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+
+  /* scroll reveal — base state visible; .show plays a one-shot fade-up so it can never trap content */
+  .reveal{opacity:1}
+  .reveal.show{animation:revUp .7s cubic-bezier(.2,.7,.3,1) forwards}
+  @keyframes revUp{from{transform:translateY(20px)}to{transform:none}}
+  @media(prefers-reduced-motion:reduce){.reveal.show{animation:none}}
+
+  /* deep dive */
+  .deep{padding:96px 0}
+  .deeprow{display:grid;grid-template-columns:1.02fr .98fr;gap:54px;align-items:center;margin-top:58px}
+  .deeprow.flip .dvwrap{order:-1}
+  .deepnum{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--teal-bright);letter-spacing:.14em;text-transform:uppercase}
+  .deeprow h3{font-size:clamp(24px,3.1vw,36px);margin:13px 0 14px}
+  .deeprow .lead{font-size:16px;color:var(--ink-mute);line-height:1.65}
+  .pts{list-style:none;margin-top:20px;display:flex;flex-direction:column;gap:11px}
+  .pts li{display:flex;gap:11px;align-items:flex-start;font-size:14.5px;color:var(--ink);line-height:1.5}
+  .dv{border-radius:20px;overflow:hidden;border:1px solid var(--rule);box-shadow:0 30px 70px rgba(38,35,28,.14);min-height:300px;padding:22px;background:var(--paper);position:relative}
+  .dv.dark{background:var(--dark);border-color:rgba(244,239,227,.12);color:#F4EFE3}
+  .dv .dvh{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--teal)}
+  .dv.dark .dvh{color:#36BDB9}
+  .dvbar{height:8px;border-radius:99px;background:var(--rule);overflow:hidden}.dvbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--teal-deep),var(--teal))}
+  .dvrow{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--rule-soft)}.dv.dark .dvrow{border-color:rgba(244,239,227,.08)}
+  .dvrow:last-child{border-bottom:0}
+  .medal{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:13px;color:#fff;flex-shrink:0}
+  @media(max-width:880px){.deeprow{grid-template-columns:1fr;gap:26px}.deeprow.flip .dvwrap{order:0}}
+
+
+
+  /* ── profile photos (layered OVER initials, so initials are the fallback) ── */
+  .ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:2;display:block}
+  .role .ravatar{position:relative;overflow:hidden;box-shadow:0 0 0 1.5px rgba(1,105,111,.22)}
+  .face{position:relative;border-radius:50%;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;color:#fff;line-height:1}
+  .face .ph{border-radius:50%}
+  .av-ring{box-shadow:0 0 0 2px rgba(54,189,185,.5)}
+
+  /* ── Caribbean team band ── */
+  .teamband{margin-top:42px;border-radius:22px;overflow:hidden;position:relative;height:320px;border:1px solid var(--rule);box-shadow:0 24px 60px rgba(38,35,28,.12);background:linear-gradient(120deg,#01696F,#014E52)}
+  .teamband img{width:100%;height:100%;object-fit:cover;display:block}
+  .teamband .ov{position:absolute;inset:0;background:linear-gradient(105deg,rgba(1,78,82,.84),rgba(1,78,82,.22) 52%,rgba(1,78,82,.04))}
+  .teamband .cap{position:absolute;left:34px;right:34px;bottom:30px;z-index:2;max-width:560px}
+  .teamband .cap .s{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9FE6E2;margin-bottom:10px}
+  .teamband .cap .t{font-family:var(--display);font-weight:800;font-size:clamp(22px,2.6vw,32px);letter-spacing:-.025em;line-height:1.05;color:#FBFAF6}
+  .tb-mock{position:absolute;right:34px;top:50%;transform:translateY(-50%);width:292px;background:#0E0B07;border:1px solid rgba(244,239,227,.14);border-radius:16px;padding:18px;box-shadow:0 20px 50px rgba(0,0,0,.4);z-index:2}
+  .tb-mock .krow{margin-top:11px}
+  @media(min-width:701px){.teamband .cap{right:calc(292px + 70px)}}
+  @media(max-width:700px){.tb-mock{display:none}}
+  @media(max-width:600px){.teamband{height:250px}.teamband .cap{left:22px;right:22px;bottom:22px}}
+
+  /* ── live mini-mockups inside the dark mode cards ── */
+  .modecard .live{margin-top:22px;border-radius:14px;background:rgba(6,4,2,.5);border:1px solid rgba(244,239,227,.12);padding:14px;position:relative;overflow:hidden;min-height:198px}
+  .live-head{display:flex;align-items:center;gap:8px}
+  .live-head .kperiod{font-family:var(--display);font-weight:800;font-size:15px;color:#F8F4EA;letter-spacing:-.01em;white-space:nowrap}
+  .live-live{margin-left:auto;display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;color:#E8B73E}
+  .live-live .pulse{width:6px;height:6px;border-radius:50%;background:#E8B73E;box-shadow:0 0 8px rgba(232,183,62,.8)}
+  .kboard{margin-top:14px;display:flex;flex-direction:column;gap:9px;transition:opacity .34s ease}
+  .kboard.swap{opacity:0}
+  .krow{display:flex;align-items:center;gap:10px}
+  .krow .rank{font-family:var(--display);font-weight:800;font-size:15px;width:13px;text-align:center;color:#7A7064;flex-shrink:0}
+  .krow.lead .rank{color:#E8B73E}
+  .krow .face{width:30px;height:30px;font-size:11px;background:#01696F}
+  .krow.lead .face{box-shadow:0 0 0 2px rgba(232,183,62,.6)}
+  .krow .knm{font-size:13.5px;font-weight:700;color:#F4EFE3;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .krow .kval{font-family:var(--mono);font-weight:700;font-size:12.5px;color:#CFC7B8}
+  .krow.lead .kval{color:#E8B73E}
+  .ros{display:flex;gap:6px;align-items:center}
+  .ros span{flex:1;height:4px;border-radius:9px;background:rgba(244,239,227,.16);transition:background .3s}
+  .ros span.on{background:#36BDB9}
+  .roslabel{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;color:#36BDB9;margin-top:13px}
+  .mslide{margin-top:9px;transition:opacity .34s ease;min-height:118px}
+  .mslide.swap{opacity:0}
+  .mbig{font-family:var(--display);font-weight:800;font-size:30px;color:#F8F4EA;letter-spacing:-.02em;margin-top:3px}
+  .mbar{height:7px;border-radius:99px;background:rgba(244,239,227,.14);overflow:hidden;margin-top:11px}
+  .mbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#01696F,#36BDB9)}
+  .mexc{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid rgba(244,239,227,.08)}
+  .mexc:last-child{border-bottom:0}
+  .mexc .face{width:26px;height:26px;font-size:9px;background:#01696F}
+  .mexc .en{flex:1;font-size:13px;font-weight:700;color:#F4EFE3}
+  .mexc .eb{font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px}
+  .mpod{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-top:8px}
+  .mpod .col{text-align:center}
+  .mpod .pn{font-size:11px;font-weight:700;color:#F8F4EA;margin-top:5px}
+  .mpod .bar{border-radius:8px 8px 0 0;margin:6px auto 0}
+  .mwrap{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+  .mwrap .wr{display:flex;align-items:center;gap:9px;font-size:13px;color:#F4EFE3}
+  .mwrap .wc{width:18px;height:18px;border-radius:6px;background:rgba(54,189,185,.2);color:#36BDB9;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+
+/* whatsapp fab */
+.wa-fab{position:fixed;right:22px;bottom:22px;z-index:95;display:inline-flex;align-items:center;gap:10px;background:#25D366;color:#fff;font-weight:700;font-size:14px;padding:13px 20px;border-radius:999px;box-shadow:0 10px 28px rgba(18,140,80,.4);transition:transform .15s,box-shadow .15s;text-decoration:none}
+.wa-fab:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(18,140,80,.5);color:#fff;text-decoration:none}
+@media(max-width:640px){.wa-fab span{display:none}.wa-fab{padding:15px;right:16px;bottom:16px}}
+</style>
+<script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xgmsilbh50");
+</script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-BBCHYJZJ28"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-BBCHYJZJ28');
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://agencytrack.app/#org",
+      "name": "AgencyTrack",
+      "url": "https://agencytrack.app",
+      "logo": "https://agencytrack.app/og-image.png",
+      "email": "hello@agencytrack.app",
+      "address": { "@type": "PostalAddress", "addressCountry": "TT" },
+      "description": "AgencyTrack is a performance and agency-management platform for life-insurance agencies across the Caribbean, built in Trinidad & Tobago. It tracks agent activity, reconciles commissions against carrier settlements, and runs goals, awards and recognition — without being a CRM."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://agencytrack.app/#app",
+      "name": "AgencyTrack",
+      "url": "https://agencytrack.app",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Insurance agency management software",
+      "operatingSystem": "Web",
+      "publisher": { "@id": "https://agencytrack.app/#org" },
+      "description": "Insurance agency management and performance software: activity tracking, production goals, commission reconciliation, policy delivery clocks, persistency-gated awards, leaderboards, and role-based dashboards for agents, unit managers, branch managers, sales managers, CROs and back office.",
+      "audience": { "@type": "BusinessAudience", "name": "Caribbean life-insurance agencies, carriers, branch and sales managers" },
+      "offers": { "@type": "Offer", "availability": "https://schema.org/PreOrder", "description": "Available by demo — contact for pilot pricing." }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://agencytrack.app/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is AgencyTrack?",
+          "acceptedAnswer": { "@type": "Answer", "text": "AgencyTrack is a performance and agency-management platform for life-insurance agencies across the Caribbean, built in Trinidad & Tobago. It tracks agent activity, reconciles commissions against carrier settlements, and runs goals, awards and recognition — without being a CRM." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is AgencyTrack a CRM?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. AgencyTrack deliberately stops short of client relationship management. It manages the agency's performance loop — planning, activity logging, coaching, settlement reconciliation, and recognition — while agents keep their client books wherever they already work." }
+        },
+        {
+          "@type": "Question",
+          "name": "How does commission reconciliation work in AgencyTrack?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Agents log business once. The back office reconciles each entry against the carrier's settlement file, flagging exceptions like status conflicts and unmatched entries. A 30-day delivery clock tracks policies at risk of clawback, so commission is protected before it is withheld." }
+        },
+        {
+          "@type": "Question",
+          "name": "Who is AgencyTrack for?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Every seat in a life-insurance agency: agents, unit managers, branch managers, sales managers, the CRO, and the back office. Each role gets its own dashboard and sees only what its role permits." }
+        },
+        {
+          "@type": "Question",
+          "name": "Where does AgencyTrack operate?",
+          "acceptedAnswer": { "@type": "Answer", "text": "AgencyTrack is built in Trinidad & Tobago and designed for life-insurance agencies across the Caribbean. The platform currently runs natively in TTD, including production figures, goals, campaign thresholds, and settlement reconciliation." }
+        },
+        {
+          "@type": "Question",
+          "name": "Are awards and campaigns based on persistency?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Persistency is gated into every campaign and award, so recognition pays out on quality business that stays on the books — not on churn." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div id="prog"></div>
+
+<nav id="nav">
+  <a class="brand" href="#top">
+    <svg width="30" height="30" viewBox="0 0 200 200" style="border-radius:7px"><rect width="200" height="200" rx="44" fill="#014e52"/><path d="M100 28 Q65 28 37 42 Q30 45 30 56 L30 115 Q30 160 100 188 Q170 160 170 115 L170 56 Q170 45 163 42 Q135 28 100 28 Z" fill="#fff" fill-opacity=".12" stroke="#fff" stroke-opacity=".55" stroke-width="2.5"/><rect x="72" y="127" width="11" height="18" rx="2.5" fill="#fff" fill-opacity=".3"/><rect x="87" y="117" width="11" height="28" rx="2.5" fill="#fff" fill-opacity=".5"/><rect x="102" y="105" width="11" height="40" rx="2.5" fill="#fff" fill-opacity=".75"/><rect x="117" y="93" width="11" height="52" rx="2.5" fill="#fff"/><circle cx="122.5" cy="86" r="4.5" fill="#4ecdc4"/></svg>
+    AgencyTrack
+  </a>
+  <div class="links">
+    <a href="#loop">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#deep">Deep dive</a>
+    <a href="#audiences">Who it's for</a>
+    <a href="#resources">Resources</a>
+  </div>
+  <div class="navcta">
+    <a class="btn btn-ghost" href="https://portal.agencytrack.app">Sign in</a>
+    <a class="btn btn-primary" href="#cta">Book a demo</a>
+  </div>
+  <button class="menubtn" id="menubtn" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+</nav>
+<div class="mnav" id="mnav">
+  <a href="#loop">How it works</a>
+  <a href="#features">Features</a>
+  <a href="#deep">Deep dive</a>
+  <a href="#audiences">Who it's for</a>
+  <a href="#resources">Resources</a>
+</div>
+
+<span id="top"></span>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="glyphfield" id="hero-glyphs"></div>
+  <div class="wrap">
+    <div>
+      <div class="eyebrow rv">For insurance agencies</div>
+      <h1 class="rv d1">Turn weekly activity into <span class="hl">production.</span></h1>
+      <p class="sub rv d2">AgencyTrack is the performance platform that runs the whole agency loop — agents plan and log, managers coach against the company floor, the back office reconciles every settlement, and recognition runs itself. One reconciled ledger powers it all.</p>
+      <div class="cta rv d3">
+        <a class="btn btn-primary" href="#cta">Book a demo →</a>
+        <a class="btn btn-ghost" href="#features">Explore features</a>
+      </div>
+      <div class="trustline rv d4">
+        <b>Built in Trinidad &amp; Tobago</b> · Agent → Unit → Branch → Sales Manager · CRO &amp; Admin
+      </div>
+    </div>
+    <div class="stage rv d2">
+      <!-- phone -->
+      <div class="phone">
+        <div class="scr">
+          <div class="pf-ey">YTD · SETTLED API</div>
+          <div class="pf-big">TTD 487K</div>
+          <div style="font-size:11px;color:var(--ink-mute);margin-top:6px">81% of TTD 600K · 5 weeks left</div>
+          <div class="pf-bar"><i></i></div>
+          <div class="pf-grid">
+            <div class="pf-card"><div class="l">PERSISTENCY</div><div class="v" style="color:#2D7A4F">88%</div></div>
+            <div class="pf-card"><div class="l">STREAK</div><div class="v">12 wks</div></div>
+            <div class="pf-card"><div class="l">THIS WEEK</div><div class="v">TTD 24K</div></div>
+            <div class="pf-card"><div class="l">AWARDS</div><div class="v" style="color:var(--gold)">MDRT</div></div>
+          </div>
+          <div style="margin-top:13px;background:var(--gold-tint);border:1px solid rgba(176,125,26,.2);border-radius:11px;padding:10px 12px;font-size:11.5px;color:var(--ink)">★ <b>2 policies to deliver</b> · 1 near the 30-day clock</div>
+        </div>
+      </div>
+      <!-- floating award -->
+      <div class="float glass f-award">
+        <div class="ic" style="background:var(--gold-tint)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B07D1A" stroke-width="2"><path d="M6 4h12v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V4z"/><path d="M9 20h6M12 16v4"/></svg>
+        </div>
+        <div><div style="font-size:9px;font-family:var(--mono);letter-spacing:.1em;color:var(--gold);font-weight:700">EAGLES CLUB</div><div style="font-weight:700;font-size:13px">Bermuda — unlocked</div></div>
+      </div>
+      <!-- floating kiosk leaderboard -->
+      <div class="float glass f-kiosk" style="flex-direction:column;align-items:stretch;gap:9px">
+        <div style="font-size:9px;font-family:var(--mono);letter-spacing:.12em;color:var(--teal);font-weight:700">★ THIS WEEK · LEADERBOARD</div>
+        <div style="display:flex;align-items:center;gap:9px"><span style="font-family:var(--display);font-weight:800;color:var(--gold)">1</span><span style="width:24px;height:24px;border-radius:50%;background:var(--teal-tint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;position:relative;overflow:hidden">MS</span><span style="font-size:12.5px;font-weight:700">Marsha Singh</span><span style="margin-left:auto;font-family:var(--mono);font-size:12px;font-weight:700">TTD 24K</span></div>
+        <div style="display:flex;align-items:center;gap:9px;opacity:.7"><span style="font-family:var(--display);font-weight:800;color:var(--ink-faint)">2</span><span style="width:24px;height:24px;border-radius:50%;background:var(--teal-tint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;position:relative;overflow:hidden">AP</span><span style="font-size:12.5px;font-weight:700">Anand Persad</span><span style="margin-left:auto;font-family:var(--mono);font-size:12px;font-weight:700">TTD 19K</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee" aria-hidden="true">
+  <div class="mtrack">
+    <span>Weekly Report Wizard</span><span>Policy Ledger</span><span>Persistency Gate</span><span>Campaigns</span><span>Kiosk Mode</span><span>CRO Delivery Register</span><span>Meeting Mode</span><span>Game Plan</span><span>Awards &amp; MDRT</span><span>Master Sheet</span>
+    <span>Weekly Report Wizard</span><span>Policy Ledger</span><span>Persistency Gate</span><span>Campaigns</span><span>Kiosk Mode</span><span>CRO Delivery Register</span><span>Meeting Mode</span><span>Game Plan</span><span>Awards &amp; MDRT</span><span>Master Sheet</span>
+  </div>
+</div>
+
+<!-- STATS -->
+<section class="stats"><div class="wrap">
+  <div class="eyebrow rv" style="margin-bottom:26px">How it's built</div>
+  <div class="statgrid">
+  <div class="stat rv"><div class="n" data-to="6">0</div><div class="k">role-based experiences — Agent to Tenant Admin, plus the CRO</div></div>
+  <div class="stat rv d1"><div class="n" data-to="30">0</div><div class="k">day delivery clock — commission protected before clawback</div></div>
+  <div class="stat rv d2"><div class="n" data-to="8">0</div><div class="k">company-floor activity standards, tracked every week</div></div>
+  <div class="stat rv d3"><div class="n" data-suffix="%" data-to="100">0</div><div class="k">of awards &amp; campaigns fed by one reconciled ledger</div></div>
+  </div>
+</div></section>
+
+<!-- LOOP -->
+<section class="loop" id="loop"><div class="wrap">
+  <div class="sechead rv">
+    <div class="eyebrow">The agency loop</div>
+    <h2>One rhythm, start to finish.</h2>
+    <p>AgencyTrack mirrors how a branch actually runs — a weekly cycle from planning the year to recognizing the win, with the back office keeping every number honest.</p>
+  </div>
+  <div class="loopgrid">
+    <div class="step rv">
+      <div class="num">01 · PLAN</div><h3>Set the year</h3>
+      <p>Agents build their Game Plan from income goals, and managers cascade targets — recommend or lock — down the hierarchy.</p>
+      <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg></div>
+    </div>
+    <div class="step rv d1">
+      <div class="num">02 · CAPTURE</div><h3>Log the week</h3>
+      <p>Daily capture or the 5-minute Weekly Report Wizard rolls granular activity up into the eight company-floor KPIs.</p>
+      <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2"><path d="M9 21h6M12 17V11M5 8h14M5 8l2-4h10l2 4M5 8v3a7 7 0 0 0 14 0V8"/></svg></div>
+    </div>
+    <div class="step rv d2">
+      <div class="num">03 · CONVERT</div><h3>Sell &amp; settle</h3>
+      <p>The Policy Ledger tracks every case to settlement; the CRO confirms it against head office and writes the truth back.</p>
+      <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2"><path d="M4 4h12a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4V4z"/><path d="M4 16a4 4 0 0 1 4-4h12"/></svg></div>
+    </div>
+    <div class="step rv d3">
+      <div class="num">04 · RECOGNIZE</div><h3>Celebrate the win</h3>
+      <p>Awards, campaigns, leaderboards and the Monday meeting turn settled production into momentum the whole branch feels.</p>
+      <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2"><path d="M6 4h12v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V4z"/><path d="M9 20h6M12 16v4"/></svg></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- FEATURES BENTO -->
+<section class="features" id="features"><div class="wrap">
+  <div class="sechead rv">
+    <div class="eyebrow">Everything in the platform</div>
+    <h2>Six surfaces. One source of truth.</h2>
+    <p>Each cluster is a full toolkit — not a checkbox. Together they cover planning, capture, conversion, recognition, leadership, and the back office.</p>
+  </div>
+  <div class="bento">
+    <div class="cell span3 rv">
+      <span class="tag">Plan</span><h3>Plan the year, not just the week</h3>
+      <p>Translate an income goal into the activity it takes to get there — then keep everyone aimed at the same number.</p>
+      <div class="chips"><span class="chip">Game Plan (Looking Ahead)</span><span class="chip">Money Needs calculator</span><span class="chip">Goal cascade · recommend or lock</span><span class="chip">Gap analysis</span></div>
+    </div>
+    <div class="cell span3 rv d1"><span class="tag">Capture</span><h3>Logging that takes five minutes</h3>
+      <p>Daily or weekly — granular wizard inputs roll up into the canonical company-floor KPIs automatically. No double entry.</p>
+      <div class="chips"><span class="chip">Weekly Report Wizard</span><span class="chip">Daily Capture</span><span class="chip">KPI roll-up</span><span class="chip">Submission history &amp; streaks</span></div>
+    </div>
+    <div class="cell span2 rv"><span class="tag">Convert</span><h3>Sell &amp; service</h3>
+      <p>Keep policies moving to settlement and protect persistency — without becoming a CRM.</p>
+      <div class="chips"><span class="chip">Policy Ledger</span><span class="chip">Joint-Call Prep</span><span class="chip">Commission Playground</span><span class="chip">Persistency Playground</span></div>
+    </div>
+    <div class="cell span2 gold rv d1">
+      <span class="tag">Recognize</span><h3>Recognition that runs itself</h3>
+      <p>Awards, career levels, and competitive campaigns with a persistency gate — quality earns the prize, not just volume.</p>
+      <div class="chips"><span class="chip">Awards &amp; MDRT</span><span class="chip">Career Portal</span><span class="chip">Campaigns + gate</span><span class="chip">Leaderboards</span></div>
+    </div>
+    <div class="cell span2 rv d2"><span class="tag">Lead</span><h3>Coach against the floor</h3>
+      <p>Exception-first dashboards and the guided Monday stand-up put managers on the agents who need them.</p>
+      <div class="chips"><span class="chip">Manager Dashboard</span><span class="chip">Master Sheet</span><span class="chip">Meeting Mode</span><span class="chip">Weekly WARs</span><span class="chip">Monthly Recruiting</span><span class="chip">Compliance</span></div>
+    </div>
+    <div class="cell span6 rv">
+      <span class="tag">Operate · back office</span><h3>The CRO finally has a seat</h3>
+      <p style="max-width:640px">The Customer Relationship Officer is the human at the point of entry — receiving printed policies, chasing delivery against the 30-day clock, keying every submission, settling branch products, and compiling the Friday production report that opens Monday's meeting.</p>
+      <div class="chips"><span class="chip">Delivery Register · 30-day clawback clock</span><span class="chip">Submissions / data entry</span><span class="chip">Branch settlements</span><span class="chip">Policy Reconciliation</span><span class="chip">Weekly Production Report</span><span class="chip">Delivery metrics</span></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- SPOTLIGHT: reconciled ledger -->
+<section class="spot"><div class="wrap spotgrid">
+  <div class="rv">
+    <div class="eyebrow">The trust gate</div>
+    <h2 style="font-size:clamp(28px,4vw,44px);margin-top:14px">Every number traces to one reconciled ledger.</h2>
+    <ul>
+      <li><span class="tick"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2.6"><polyline points="20 6 9 17 4 12"/></svg></span><div><b>Agents log it once.</b> Production, persistency, awards, and campaign payouts all read the same data — never re-keyed.</div></li>
+      <li><span class="tick"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2.6"><polyline points="20 6 9 17 4 12"/></svg></span><div><b>The CRO confirms it.</b> Each settlement is matched to head office; mismatches, NTUs, duplicates, and partials surface as exceptions.</div></li>
+      <li><span class="tick"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2.6"><polyline points="20 6 9 17 4 12"/></svg></span><div><b>Delivery protects pay.</b> A 30-day clawback clock chases every policy to a signed receipt before commission is withheld.</div></li>
+    </ul>
+  </div>
+  <div class="ledger rv d1">
+    <div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--ink-faint)">DELIVERY REGISTER · SOUTH BRANCH</div>
+    <div class="lrow"><span class="ldot" style="background:#2D7A4F"></span><div><div class="nm">Anil Boodram</div><div class="meta">Platinum Edge · TL-08661</div></div><div class="lclock"><div class="d" style="color:#2D7A4F">26</div><div class="u">DAYS LEFT</div></div></div>
+    <div class="lrow"><span class="ldot" style="background:#E8B53E"></span><div><div class="nm">Sara Khan</div><div class="meta">Term Life 20 · TL-08655</div></div><div class="lclock"><div class="d" style="color:#E8B53E">6</div><div class="u">DAYS LEFT</div></div></div>
+    <div class="lrow"><span class="ldot" style="background:#D9534F"></span><div><div class="nm">Marcus Lee</div><div class="meta">Status conflict · carrier shows NTU</div></div><div class="lclock"><div class="d" style="color:#D9534F">+3</div><div class="u">DAYS OVER</div></div></div>
+    <div class="lrow"><span class="ldot" style="background:#01696F"></span><div><div class="nm">Jamal Khan</div><div class="meta">Unmatched · in carrier file, no entry</div></div><div class="lclock"><div class="d" style="color:#01696F">?</div><div class="u">MATCH</div></div></div>
+  </div>
+</div></section>
+
+<!-- AUDIENCES -->
+<section class="aud" id="audiences"><div class="wrap">
+  <div class="sechead rv">
+    <div class="eyebrow">Who it's for</div>
+    <h2>One platform, every seat in the agency.</h2>
+    <p>Role-based experiences mean each person sees exactly what they need — and nothing they don't.</p>
+  </div>
+  <div class="teamband rv">
+    <div class="tb-mock" aria-hidden="true">
+      <div style="color:#9FE6E2;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em">★ THIS WEEK · SOUTH BRANCH</div>
+      <div class="krow lead" style="margin-top:14px"><span class="rank">1</span><span class="face">MS</span><span class="knm">Marsha Singh</span><span class="kval">TTD 24K</span></div>
+      <div class="krow"><span class="rank">2</span><span class="face">AP</span><span class="knm">Anand Persad</span><span class="kval">TTD 19K</span></div>
+      <div class="krow"><span class="rank">3</span><span class="face">SM</span><span class="knm">Selina Mohammed</span><span class="kval">TTD 17K</span></div>
+    </div>
+    <div class="cap">
+      <div class="s">One branch · one rhythm</div>
+      <div class="t">Built around the people who actually run the floor.</div>
+    </div>
+  </div>
+  <div class="audgrid">
+    <div class="role rv"><div class="rt"><div class="ravatar" style="background:#01696F">AG</div><div><h3>Agents</h3><div class="who">PLAN · LOG · GROW</div></div></div><p>A personal performance hub: plan the year, log in minutes, watch the goal bar climb, track awards and career level, and know exactly which policies to deliver.</p></div>
+    <div class="role rv d1"><div class="rt"><div class="ravatar" style="background:#018A91">UM</div><div><h3>Unit Managers</h3><div class="who">PLAYER-COACH</div></div></div><p>Sell and lead from one screen — your own production alongside a unit roll-up, exception-first coaching, and 1-on-1s built on real ratios.</p></div>
+    <div class="role rv d2"><div class="rt"><div class="ravatar" style="background:#014E52">BM</div><div><h3>Branch Managers</h3><div class="who">RUN THE BRANCH</div></div></div><p>Branch-wide visibility, the guided Monday meeting, campaigns you launch yourself, recruiting pipeline, compliance, and the at-risk delivery list.</p></div>
+    <div class="role rv"><div class="rt"><div class="ravatar" style="background:#013B3F">SM</div><div><h3>Sales Managers</h3><div class="who">CROSS-BRANCH</div></div></div><p>The whole agency rolled up — four branches, ten units, every leaderboard and award programme tracked against goal in one view.</p></div>
+    <div class="role rv d1"><div class="rt"><div class="ravatar" style="background:#B07D1A">CR</div><div><h3>CRO / Back office</h3><div class="who">SOURCE OF TRUTH</div></div></div><p>The branch's operational hub: delivery register, data entry, branch settlements, reconciliation, and the Friday production report — all in one sign-on.</p></div>
+    <div class="role rv d2"><div class="rt"><div class="ravatar" style="background:#26231C">TA</div><div><h3>Tenant Admins</h3><div class="who">CONFIGURE</div></div></div><p>Company config, activity standards, the awards ruleset, branches and users — the controls that make the platform fit your agency.</p></div>
+  </div>
+</div></section>
+
+<!-- DEEP DIVE -->
+<section class="deep" id="deep"><div class="wrap">
+  <div class="sechead">
+    <div class="eyebrow">A closer look</div>
+    <h2>Eight features, in depth.</h2>
+    <p>The tools agents and managers actually live in — each one earning its place in the weekly rhythm.</p>
+  </div>
+
+  <!-- 1 Weekly Report Wizard -->
+  <div class="deeprow">
+    <div>
+      <div class="deepnum">01 · Capture</div><h3>The five-minute Weekly Report</h3>
+      <p class="lead">A guided wizard turns the week into clean data — granular inputs roll straight up into the eight company-floor KPIs, so nothing is keyed twice.</p>
+      <ul class="pts"><li><span class="tick">✓</span>Daily capture or one weekly submit — agent's choice</li><li><span class="tick">✓</span>Auto roll-up to Calls → Contacts → Appointments → … → Referrals</li><li><span class="tick">✓</span>Submit before Monday 9 AM to stay compliant</li></ul>
+    </div>
+    <div class="dvwrap"><div class="dv">
+      <div class="dvh">WEEKLY REPORT · STEP 7 OF 9</div>
+      <div style="display:flex;gap:6px;margin:14px 0 18px"><!--steps--><span style="flex:1;height:5px;border-radius:9px;background:var(--teal)"></span><span style="flex:1;height:5px;border-radius:9px;background:var(--teal)"></span><span style="flex:1;height:5px;border-radius:9px;background:var(--teal)"></span><span style="flex:1;height:5px;border-radius:9px;background:var(--teal)"></span><span style="flex:1;height:5px;border-radius:9px;background:var(--teal)"></span><span style="flex:1;height:5px;border-radius:9px;background:var(--teal)"></span><span style="flex:1;height:5px;border-radius:9px;background:var(--teal)"></span><span style="flex:1;height:5px;border-radius:9px;background:var(--rule)"></span><span style="flex:1;height:5px;border-radius:9px;background:var(--rule)"></span></div>
+      <div style="font-family:var(--display);font-weight:800;font-size:19px;margin-bottom:14px">This week's activity</div>
+      <div class="dvrow"><span style="flex:1;font-size:13px;font-weight:600">Calls Made</span><span style="font-family:var(--mono);font-weight:700;font-size:13px">92 / 60</span><span style="color:#2D7A4F;font-size:12px">✓</span></div>
+      <div class="dvrow"><span style="flex:1;font-size:13px;font-weight:600">Contacts Made</span><span style="font-family:var(--mono);font-weight:700;font-size:13px">58 / 40</span><span style="color:#2D7A4F;font-size:12px">✓</span></div>
+      <div class="dvrow"><span style="flex:1;font-size:13px;font-weight:600">Fact Finds</span><span style="font-family:var(--mono);font-weight:700;font-size:13px">14 / 10</span><span style="color:#2D7A4F;font-size:12px">✓</span></div>
+      <div style="margin-top:16px;height:46px;border-radius:11px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">Continue →</div>
+    </div></div>
+  </div>
+
+  <!-- 2 Game Plan -->
+  <div class="deeprow flip">
+    <div>
+      <div class="deepnum">02 · Plan</div><h3>Plan the whole year backwards</h3>
+      <p class="lead">Game Plan starts from an income goal and works back to the weekly activity it takes — then managers cascade targets down the hierarchy, recommend or lock.</p>
+      <ul class="pts"><li><span class="tick">✓</span>Income → API → cases → weekly appointments</li><li><span class="tick">✓</span>Money Needs calculator grounds the number</li><li><span class="tick">✓</span>Goal cascade keeps the whole branch aimed alike</li></ul>
+    </div>
+    <div class="dvwrap"><div class="dv">
+      <div class="dvh">GAME PLAN · 2026</div>
+      <div style="font-family:var(--display);font-weight:800;font-size:30px;margin:10px 0 4px">TTD 600K<span style="font-size:14px;color:var(--ink-faint);font-weight:500;font-family:var(--sans)"> goal</span></div>
+      <div style="font-size:12.5px;color:var(--ink-mute);margin-bottom:18px">requires, every week:</div>
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px"><span>Appointments</span><b>20/wk</b></div><div class="dvbar"><i style="width:82%"></i></div></div>
+        <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px"><span>Fact Finds</span><b>10/wk</b></div><div class="dvbar"><i style="width:64%"></i></div></div>
+        <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px"><span>Clients Sold</span><b>1/wk</b></div><div class="dvbar"><i style="width:90%"></i></div></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 3 Ledger + Reconciliation -->
+  <div class="deeprow">
+    <div>
+      <div class="deepnum">03 · Truth</div><h3>One reconciled Policy Ledger</h3>
+      <p class="lead">Every case tracked to settlement, then confirmed against head office. Mismatches, NTUs, duplicates and partials surface as exceptions — not silent errors.</p>
+      <ul class="pts"><li><span class="tick">✓</span>Submitted vs settled, side by side</li><li><span class="tick">✓</span>Confirmed API feeds commissions, awards &amp; campaigns</li><li><span class="tick">✓</span>Never a CRM — focused on status &amp; cleanup</li></ul>
+    </div>
+    <div class="dvwrap"><div class="dv">
+      <div class="dvh">RECONCILIATION · SOUTH BRANCH</div>
+      <div style="margin-top:14px" class="dvrow"><span class="face av-ring" style="width:28px;height:28px;font-size:10px;background:#01696F">KM</span><div style="flex:1"><div style="font-weight:700;font-size:13.5px">Kareem Mohammed</div><div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">submitted 32.4K · settled 29.8K</div></div><span style="font-family:var(--mono);font-weight:700;color:#D9534F;font-size:13px">−TTD 2.6K</span></div>
+      <div class="dvrow"><span class="face av-ring" style="width:28px;height:28px;font-size:10px;background:#01696F">ML</span><div style="flex:1"><div style="font-weight:700;font-size:13.5px">Marcus Lee</div><div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">agent: settled · carrier: NTU</div></div><span style="font-family:var(--mono);font-weight:700;color:#D9534F;font-size:12px">CONFLICT</span></div>
+      <div class="dvrow"><span class="face av-ring" style="width:28px;height:28px;font-size:10px;background:#01696F">AB</span><div style="flex:1"><div style="font-weight:700;font-size:13.5px">Anil Boodram</div><div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">36K = 36K</div></div><span style="font-family:var(--mono);font-weight:700;color:#2D7A4F;font-size:12px">✓ MATCH</span></div>
+    </div></div>
+  </div>
+
+  <!-- 4 CRO Delivery -->
+  <div class="deeprow flip">
+    <div>
+      <div class="deepnum">04 · Operate</div><h3>The CRO's delivery register</h3>
+      <p class="lead">Printed policies tracked from head-office dispatch to a signed receipt, with a 30-day clawback clock on every one — so commission is never quietly lost to a late delivery.</p>
+      <ul class="pts"><li><span class="tick">✓</span>Receive → notify → collect → deliver, logged</li><li><span class="tick">✓</span>At-risk list chases the clock before clawback</li><li><span class="tick">✓</span>Delivery writes the settlement date back to the ledger</li></ul>
+    </div>
+    <div class="dvwrap"><div class="dv">
+      <div class="dvh">DELIVERY REGISTER · 30-DAY CLOCK</div>
+      <div style="margin-top:12px" class="dvrow"><span class="ldot" style="width:9px;height:9px;border-radius:50%;background:#2D7A4F"></span><div style="flex:1"><div style="font-weight:700;font-size:13.5px">Anil Boodram</div><div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">Marsha Singh · sent Nov 24</div></div><div style="text-align:right"><div style="font-family:var(--display);font-weight:800;font-size:18px;color:#2D7A4F;line-height:1">26</div><div style="font-family:var(--mono);font-size:8px;color:var(--ink-faint)">DAYS LEFT</div></div></div>
+      <div class="dvrow"><span style="width:9px;height:9px;border-radius:50%;background:#E8B53E"></span><div style="flex:1"><div style="font-weight:700;font-size:13.5px">Sara Khan</div><div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">Riaz Khan · sent Nov 22</div></div><div style="text-align:right"><div style="font-family:var(--display);font-weight:800;font-size:18px;color:#E8B53E;line-height:1">6</div><div style="font-family:var(--mono);font-size:8px;color:var(--ink-faint)">DAYS LEFT</div></div></div>
+      <div class="dvrow"><span style="width:9px;height:9px;border-radius:50%;background:#D9534F"></span><div style="flex:1"><div style="font-weight:700;font-size:13.5px">Hema Lakhan</div><div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">past deadline · clawed back</div></div><div style="text-align:right"><div style="font-family:var(--display);font-weight:800;font-size:18px;color:#D9534F;line-height:1">+7</div><div style="font-family:var(--mono);font-size:8px;color:var(--ink-faint)">OVER</div></div></div>
+    </div></div>
+  </div>
+
+  <!-- 5 Campaigns -->
+  <div class="deeprow">
+    <div>
+      <div class="deepnum">05 · Recognize</div><h3>Campaigns with a persistency gate</h3>
+      <p class="lead">Run company or branch campaigns as qualify-ladders or 1-2-3 races — every payout scaled by quality, so it's the right business that wins, not just volume.</p>
+      <ul class="pts"><li><span class="tick">✓</span>≥90% pays full · 85–89% half · 80–84% quarter · &lt;80% out</li><li><span class="tick">✓</span>Broadcasts to the kiosk wall &amp; the Monday meeting</li><li><span class="tick">✓</span>Counts toward annual awards</li></ul>
+    </div>
+    <div class="dvwrap"><div class="dv">
+      <div class="dvh" style="color:var(--gold)">★ CHRISTMAS CAMPAIGN · PERSISTENCY GATE</div>
+      <div style="display:flex;gap:8px;margin:16px 0">
+        <div style="flex:1;text-align:center;padding:10px 6px;border-radius:11px;background:var(--gold);color:#fff"><div style="font-family:var(--mono);font-size:9px;font-weight:700">≥90%</div><div style="font-family:var(--display);font-weight:800;font-size:17px">100%</div></div>
+        <div style="flex:1;text-align:center;padding:10px 6px;border-radius:11px;background:var(--gold-tint)"><div style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--gold)">85–89</div><div style="font-family:var(--display);font-weight:800;font-size:17px;color:var(--gold)">50%</div></div>
+        <div style="flex:1;text-align:center;padding:10px 6px;border-radius:11px;background:#FDF3DC"><div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#B07D1A">80–84</div><div style="font-family:var(--display);font-weight:800;font-size:17px;color:#B07D1A">25%</div></div>
+        <div style="flex:1;text-align:center;padding:10px 6px;border-radius:11px;background:#FBEAE7"><div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#D9534F">&lt;80</div><div style="font-family:var(--display);font-weight:800;font-size:17px;color:#D9534F">DQ</div></div>
+      </div>
+      <div class="dvrow"><span class="medal" style="background:radial-gradient(circle at 32% 28%,#fde68a,#f59e0b 60%,#b45309)">1</span><span class="face av-ring" style="width:28px;height:28px;font-size:10px;background:#01696F">MS</span><div style="flex:1;font-weight:700;font-size:13.5px">Marsha Singh</div><span style="font-family:var(--mono);font-weight:700;font-size:13px;color:var(--gold)">TTD 70K</span></div>
+      <div class="dvrow"><span class="medal" style="background:radial-gradient(circle at 32% 28%,#f1f5f9,#94a3b8 60%,#475569)">2</span><span class="face av-ring" style="width:28px;height:28px;font-size:10px;background:#01696F">AP</span><div style="flex:1;font-weight:700;font-size:13.5px">Anand Persad</div><span style="font-family:var(--mono);font-weight:700;font-size:13px;color:var(--gold)">TTD 52K</span></div>
+    </div></div>
+  </div>
+
+  <!-- 6 Manager -->
+  <div class="deeprow flip">
+    <div>
+      <div class="deepnum">06 · Lead</div><h3>Coach exception-first</h3>
+      <p class="lead">The Manager Dashboard and Master Sheet surface who's below the floor before anyone has to hunt — so 1-on-1s start on the agents who actually need them.</p>
+      <ul class="pts"><li><span class="tick">✓</span>Everyone banded against the company floor</li><li><span class="tick">✓</span>Coaching ratios &amp; joint-work built in</li><li><span class="tick">✓</span>Player-coach view for unit managers</li></ul>
+    </div>
+    <div class="dvwrap"><div class="dv">
+      <div class="dvh">MASTER SHEET · SOUTH BRANCH</div>
+      <div style="margin-top:12px" class="dvrow"><span style="width:26px;height:26px;border-radius:50%;background:var(--teal-tint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;position:relative;overflow:hidden">MS</span><div style="flex:1;font-weight:700;font-size:13px">Marsha Singh</div><span style="font-family:var(--mono);font-size:12px">TTD 24K</span><span style="font-size:10px;font-weight:700;color:#2D7A4F;background:#E8F5EE;padding:2px 8px;border-radius:99px">ON PACE</span></div>
+      <div class="dvrow"><span style="width:26px;height:26px;border-radius:50%;background:var(--teal-tint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;position:relative;overflow:hidden">DL</span><div style="flex:1;font-weight:700;font-size:13px">Devin Lewis</div><span style="font-family:var(--mono);font-size:12px">TTD 9K</span><span style="font-size:10px;font-weight:700;color:#D9534F;background:#FBEAE7;padding:2px 8px;border-radius:99px">BELOW</span></div>
+      <div class="dvrow"><span style="width:26px;height:26px;border-radius:50%;background:var(--teal-tint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;position:relative;overflow:hidden">CJ</span><div style="flex:1;font-weight:700;font-size:13px">Carla Joseph</div><span style="font-family:var(--mono);font-size:12px">TTD 18K</span><span style="font-size:10px;font-weight:700;color:#B07D1A;background:#FBF1DA;padding:2px 8px;border-radius:99px">AT FLOOR</span></div>
+    </div></div>
+  </div>
+
+  <!-- 7 Kiosk -->
+  <div class="deeprow">
+    <div>
+      <div class="deepnum" style="color:#36BDB9">07 · On the wall</div><h3>Kiosk Mode — retire the whiteboard</h3>
+      <p class="lead">A theatrical TV display that rotates leaderboards, agent of the month, running totals, live campaign standings, awards watch and celebrations — stadium-scale type that makes agents want their name up.</p>
+      <ul class="pts"><li><span class="tick">✓</span>No more marker-and-eraser whiteboard</li><li><span class="tick">✓</span>Always live — fed by the same reconciled ledger</li><li><span class="tick">✓</span>Glow medals, week → month → quarter → year</li></ul>
+    </div>
+    <div class="dvwrap"><div class="dv dark">
+      <div class="dvh">★ THIS WEEK · TOP OF THE FLOOR</div>
+      <div style="font-family:var(--display);font-weight:800;font-size:34px;margin:8px 0 18px;color:#F8F4EA">This Week.</div>
+      <div class="dvrow"><span class="medal" style="width:38px;height:38px;background:radial-gradient(circle at 32% 28%,#fde68a,#f59e0b 60%,#b45309);box-shadow:0 0 18px rgba(232,183,62,.5)">1</span><span class="face" style="width:34px;height:34px;font-size:12px;background:#01696F;box-shadow:0 0 0 2px rgba(232,183,62,.55)">MS</span><div style="flex:1"><div style="font-weight:700;font-size:15px;color:#F8F4EA">Marsha Singh</div><div style="font-family:var(--mono);font-size:10px;color:#7A7064">S·02</div></div><span style="font-family:var(--display);font-weight:800;font-size:20px;color:#E8B73E">TTD 24K</span></div>
+      <div class="dvrow"><span class="medal" style="width:34px;height:34px;background:radial-gradient(circle at 32% 28%,#f1f5f9,#94a3b8 60%,#475569)">2</span><span class="face" style="width:32px;height:32px;font-size:11px;background:#01696F">AP</span><div style="flex:1"><div style="font-weight:700;font-size:14px;color:#F8F4EA">Anand Persad</div><div style="font-family:var(--mono);font-size:10px;color:#7A7064">S·01</div></div><span style="font-family:var(--display);font-weight:800;font-size:18px;color:#F4EFE3">TTD 19K</span></div>
+      <div class="dvrow"><span class="medal" style="width:34px;height:34px;background:radial-gradient(circle at 32% 28%,#fed7aa,#c08d6b 60%,#92400e)">3</span><span class="face" style="width:32px;height:32px;font-size:11px;background:#01696F">SM</span><div style="flex:1"><div style="font-weight:700;font-size:14px;color:#F8F4EA">Selina Mohammed</div><div style="font-family:var(--mono);font-size:10px;color:#7A7064">S·03</div></div><span style="font-family:var(--display);font-weight:800;font-size:18px;color:#F4EFE3">TTD 17K</span></div>
+    </div></div>
+  </div>
+
+  <!-- 8 Meeting -->
+  <div class="deeprow flip">
+    <div>
+      <div class="deepnum" style="color:#36BDB9">08 · In the room</div><h3>Meeting Mode — the guided stand-up</h3>
+      <p class="lead">The Monday meeting as a presentation, not a slideshow: open on the branch's reality, drill exception-first through each agent against the floor, land recognition, point at awards within reach, then wrap on actions captured.</p>
+      <ul class="pts"><li><span class="tick">✓</span>Branch → units → agents → recognition → wrap</li><li><span class="tick">✓</span>Live campaign leaderboards in the run-of-show</li><li><span class="tick">✓</span>Drive it from your phone as a presenter remote</li></ul>
+    </div>
+    <div class="dvwrap"><div class="dv dark">
+      <div class="dvh" style="color:#E8B73E">★ RECOGNITION · THIS WEEK'S CHAMPIONS</div>
+      <div style="display:flex;align-items:flex-end;justify-content:center;gap:14px;margin-top:24px">
+        <div style="text-align:center;width:32%"><div class="medal" style="width:42px;height:42px;margin:0 auto 8px;background:radial-gradient(circle at 32% 28%,#f1f5f9,#94a3b8 60%,#475569)">2</div><span class="face" style="width:40px;height:40px;font-size:13px;background:#01696F;margin:0 auto 6px">AP</span><div style="font-size:12px;font-weight:700;color:#F8F4EA">Anand</div><div style="height:64px;border-radius:10px 10px 0 0;background:rgba(232,183,62,.18);border:1px solid rgba(232,183,62,.4);border-bottom:0;margin-top:8px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;color:#E8B73E">2nd</div></div>
+        <div style="text-align:center;width:36%"><div class="medal" style="width:52px;height:52px;margin:0 auto 8px;background:radial-gradient(circle at 32% 28%,#fde68a,#f59e0b 60%,#b45309);box-shadow:0 0 20px rgba(232,183,62,.55)">1</div><span class="face" style="width:50px;height:50px;font-size:16px;background:#01696F;margin:0 auto 6px;box-shadow:0 0 0 2px rgba(232,183,62,.6)">MS</span><div style="font-size:13px;font-weight:700;color:#F8F4EA">Marsha</div><div style="height:92px;border-radius:10px 10px 0 0;background:linear-gradient(180deg,#E8B73E,#E8B73Ecc);margin-top:8px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;color:#fff;font-size:18px">1st</div></div>
+        <div style="text-align:center;width:32%"><div class="medal" style="width:40px;height:40px;margin:0 auto 8px;background:radial-gradient(circle at 32% 28%,#fed7aa,#c08d6b 60%,#92400e)">3</div><span class="face" style="width:38px;height:38px;font-size:12px;background:#01696F;margin:0 auto 6px">SM</span><div style="font-size:12px;font-weight:700;color:#F8F4EA">Selina</div><div style="height:50px;border-radius:10px 10px 0 0;background:rgba(232,183,62,.18);border:1px solid rgba(232,183,62,.4);border-bottom:0;margin-top:8px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;color:#E8B73E">3rd</div></div>
+      </div>
+    </div></div>
+  </div>
+</div></section>
+
+<!-- MODES (dark) -->
+<section class="modes" id="modes">
+  <div class="wrap" style="position:relative;z-index:2">
+    <div class="sechead rv">
+      <div class="eyebrow">On the wall &amp; in the room</div>
+      <h2>Performance, made visible.</h2>
+      <p class="sub">The same reconciled data drives two presentation surfaces — so the branch feels the momentum, not just reads it.</p>
+    </div>
+    <div class="modegrid">
+      <div class="modecard rv"><span class="badge">16:9 · TV</span><h3>Kiosk Mode</h3><p>A theatrical wall display that rotates leaderboards, agent of the month, running totals, awards watch, live campaign standings, birthdays and notices — stadium-scale type that makes agents want their name up.</p>
+        <div class="live">
+          <div class="live-head"><span class="kperiod" id="kioskPeriod">This Week</span><span class="live-live"><span class="pulse"></span>LIVE</span></div>
+          <div class="kboard" id="kioskBoard">
+            <div class="krow lead"><span class="rank">1</span><span class="face">MS</span><span class="knm">Marsha Singh</span><span class="kval">TTD 24K</span></div>
+            <div class="krow"><span class="rank">2</span><span class="face">AP</span><span class="knm">Anand Persad</span><span class="kval">TTD 19K</span></div>
+            <div class="krow"><span class="rank">3</span><span class="face">SM</span><span class="knm">Selina Mohammed</span><span class="kval">TTD 17K</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="modecard rv d1"><span class="badge">PROJECTOR</span><h3>Meeting Mode</h3><p>A guided Monday stand-up: open on the branch reality, drill exception-first through each agent against the floor, land recognition, point at awards within reach, and run live campaign leaderboards — then wrap on actions captured.</p>
+        <div class="live">
+          <div class="ros" id="meetSteps"><span class="on"></span><span></span><span></span><span></span></div>
+          <div class="mslide" id="meetSlide">
+            <div class="roslabel">BRANCH · THIS WEEK</div><div class="mbig">TTD 142K</div><div style="font-size:12px;color:#B5AB9C;margin-top:4px">78% of TTD 182K floor · 14 advisors active</div><div class="mbar"><i style="width:78%"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- OUTCOMES -->
+<section class="out"><div class="wrap">
+  <div class="sechead rv">
+    <div class="eyebrow">Why it matters</div>
+    <h2>Outcomes you can feel by Friday.</h2>
+  </div>
+  <div class="outgrid">
+    <div class="outcard rv"><div class="onum">01</div><div><h3>More settled production</h3><p>Everyone aimed at the same company floor, coached exception-first, motivated by recognition that actually pays out.</p></div></div>
+    <div class="outcard rv d1"><div class="onum">02</div><div><h3>Commission protected before clawback</h3><p>The 30-day delivery clock and settlement reconciliation stop pay from being withheld or clawed back on undelivered policies.</p></div></div>
+    <div class="outcard rv"><div class="onum">03</div><div><h3>Persistency gates every prize</h3><p>Campaigns and awards pay on quality business that stays on the books — churn never wins.</p></div></div>
+    <div class="outcard rv d1"><div class="onum">04</div><div><h3>One source of truth</h3><p>From the agent's first keystroke to the agency PDF, every figure reconciles. No spreadsheets, no re-keying, no doubt.</p></div></div>
+  </div>
+</div></section>
+
+
+
+<!-- RESOURCES -->
+<section class="res" id="resources" data-screen-label="Resources">
+  <div class="wrap">
+    <div class="sechead rv">
+      <div class="eyebrow">Resources</div>
+      <h2>Read before you decide.</h2>
+      <p>Four short reads that answer the questions agencies actually ask — starting with the biggest one. They flow in order, about ten minutes end to end.</p>
+    </div>
+    <div class="resgrid">
+      <a class="rescard rv" href="adoption.html">
+        <div class="rc-num">01 · THE OBJECTION</div>
+        <h3>"Our agents don't like to report."</h3>
+        <p>Why agents resist reporting, and how AgencyTrack is designed so the agent — not management — is the first beneficiary of every entry.</p>
+        <span class="rc-go">Start here →</span>
+      </a>
+      <a class="rescard rv d1" href="reconciliation.html">
+        <div class="rc-num">02 · THE TRUST GATE</div>
+        <h3>One reconciled ledger.</h3>
+        <p>Settlement matching, exception flags, and the 30-day delivery clock — how every number on every screen stays honest.</p>
+        <span class="rc-go">Read →</span>
+      </a>
+      <a class="rescard rv" href="vs-spreadsheets.html">
+        <div class="rc-num">03 · THE COMPARISON</div>
+        <h3>vs Excel, paper &amp; WhatsApp.</h3>
+        <p>A fair, step-by-step look at the workflow most agencies run today — where it breaks, and what spreadsheets still do well.</p>
+        <span class="rc-go">Read →</span>
+      </a>
+      <a class="rescard rv d1" href="getting-agents-to-report.html">
+        <div class="rc-num">04 · THE PLAYBOOK</div>
+        <h3>Getting agents to report.</h3>
+        <p>Six practical steps for managers, from founder Kyron Marchan — fifteen years on the agent side of the standoff.</p>
+        <span class="rc-go">Read →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq" data-screen-label="FAQ">
+  <div class="wrap">
+    <div class="sechead rv">
+      <div class="eyebrow">Common questions</div>
+      <h2>Frequently asked questions.</h2>
+    </div>
+    <div class="faqlist rv">
+      <details>
+        <summary>What is AgencyTrack?</summary>
+        <p>AgencyTrack is a performance and agency-management platform for life-insurance agencies across the Caribbean, built in Trinidad &amp; Tobago. It tracks agent activity, reconciles commissions against carrier settlements, and runs goals, awards and recognition — without being a CRM.</p>
+      </details>
+      <details>
+        <summary>Is AgencyTrack a CRM?</summary>
+        <p>No — deliberately. AgencyTrack manages the agency's performance loop: planning, activity logging, coaching, settlement reconciliation, and recognition. Agents keep their client books wherever they already work.</p>
+      </details>
+      <details>
+        <summary>How does commission reconciliation work?</summary>
+        <p>Agents log business once. The back office reconciles each entry against the carrier's settlement file, flagging exceptions like status conflicts and unmatched entries. A 30-day delivery clock tracks policies at risk of clawback, so commission is protected before it's withheld.</p>
+      </details>
+      <details>
+        <summary>Who is AgencyTrack for?</summary>
+        <p>Every seat in the agency: agents, unit managers, branch managers, sales managers, the CRO, and the back office. Each role gets its own dashboard and sees only what its role permits.</p>
+      </details>
+      <details>
+        <summary>Where does AgencyTrack operate?</summary>
+        <p>AgencyTrack is built in Trinidad &amp; Tobago and designed for life-insurance agencies across the Caribbean. The platform currently runs natively in TTD — production figures, goals, campaign thresholds, and settlement reconciliation.</p>
+      </details>
+      <details>
+        <summary>Are awards and campaigns based on persistency?</summary>
+        <p>Yes. Persistency is gated into every campaign and award, so recognition pays out on quality business that stays on the books — not on churn.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final" id="cta"><div class="wrap">
+  <div class="eyebrow rv" style="display:flex;justify-content:center">Ready when you are</div>
+  <h2 class="rv d1">Run your agency on one rhythm.</h2>
+  <p class="rv d2">See how AgencyTrack turns weekly activity into settled production, protected commission, and recognition that runs itself.</p>
+  <div class="rv d3" style="max-width:920px;margin:0 auto;background:var(--paper);border:1px solid var(--rule);border-radius:20px;overflow:hidden;box-shadow:0 14px 40px rgba(38,35,28,.08)">
+    <!-- Calendly inline widget begin -->
+    <div class="calendly-inline-widget" data-url="https://calendly.com/agencytrackltd/demo-meeting?hide_landing_page_details=1&hide_gdpr_banner=1&primary_color=01696f" style="min-width:320px;height:700px;"></div>
+    <script type="text/javascript" src="https://assets.calendly.com/assets/external/widget.js" async></script>
+    <!-- Calendly inline widget end -->
+  </div>
+  <p class="rv" style="font-size:14px;color:var(--ink-faint);margin-top:22px">Prefer email? <a href="mailto:hello@agencytrack.app?subject=Demo%20request%20—%20AgencyTrack" style="color:var(--teal);text-decoration:underline;text-underline-offset:3px">hello@agencytrack.app</a></p>
+</div></section>
+
+<footer><div class="wrap">
+  <div>
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 200 200" style="border-radius:7px"><rect width="200" height="200" rx="44" fill="#014e52"/><path d="M100 28 Q65 28 37 42 Q30 45 30 56 L30 115 Q30 160 100 188 Q170 160 170 115 L170 56 Q170 45 163 42 Q135 28 100 28 Z" fill="#fff" fill-opacity=".12" stroke="#fff" stroke-opacity=".55" stroke-width="2.5"/><rect x="72" y="127" width="11" height="18" rx="2.5" fill="#fff" fill-opacity=".3"/><rect x="87" y="117" width="11" height="28" rx="2.5" fill="#fff" fill-opacity=".5"/><rect x="102" y="105" width="11" height="40" rx="2.5" fill="#fff" fill-opacity=".75"/><rect x="117" y="93" width="11" height="52" rx="2.5" fill="#fff"/><circle cx="122.5" cy="86" r="4.5" fill="#4ecdc4"/></svg>
+      AgencyTrack
+    </div>
+    <p style="font-size:13px;max-width:260px;margin-top:14px;line-height:1.6">The performance platform for insurance agencies. Built in Trinidad &amp; Tobago.</p>
+  </div>
+  <div class="cols">
+    <div><h4>Platform</h4><a href="#features">Features</a><a href="#loop">How it works</a><a href="#modes">Kiosk &amp; Meeting</a><a href="#audiences">Roles</a></div>
+    <div><h4>For</h4><a href="#audiences">Agents</a><a href="#audiences">Managers</a><a href="#audiences">CRO</a><a href="#audiences">Admins</a></div>
+    <div><h4>Resources</h4><a href="adoption.html">Agent adoption</a><a href="reconciliation.html">Reconciliation</a><a href="vs-spreadsheets.html">vs Spreadsheets</a><a href="getting-agents-to-report.html">Manager’s playbook</a></div>
+    <div><h4>Company</h4><a href="#cta">Book a demo</a><a href="https://portal.agencytrack.app">Sign in</a><a href="mailto:hello@agencytrack.app">Contact</a></div>
+  </div>
+  <div class="foot-base" style="width:100%">
+    <span>© 2026 AgencyTrack</span>
+    <span class="legal" style="display:flex;gap:16px"><a href="privacy.html" style="display:inline;margin:0;text-decoration:underline;text-underline-offset:3px">Privacy</a><a href="terms.html" style="display:inline;margin:0;text-decoration:underline;text-underline-offset:3px">Terms</a><a href="security.html" style="display:inline;margin:0;text-decoration:underline;text-underline-offset:3px">Security</a></span>
+  </div>
+</div></footer>
+
+<script>
+  // progressive-enhancement flag: content is visible by default; only armed
+  // for reveal once JS runs, so it can never get trapped hidden.
+  document.documentElement.classList.add('js');
+  // scroll progress + nav state
+  const prog=document.getElementById('prog'),navEl=document.getElementById('nav');
+  function onScroll(){const h=document.documentElement;const sc=h.scrollTop/(h.scrollHeight-h.clientHeight);prog.style.width=(sc*100)+'%';navEl.classList.toggle('scrolled',h.scrollTop>12);}
+  document.addEventListener('scroll',onScroll,{passive:true});onScroll();
+
+  // mobile menu
+  (function(){
+    var mb=document.getElementById('menubtn'),mn=document.getElementById('mnav');
+    if(!mb||!mn)return;
+    mb.addEventListener('click',function(){
+      var open=mn.classList.toggle('open');
+      mb.classList.toggle('x',open);
+      mb.setAttribute('aria-expanded',open?'true':'false');
+    });
+    mn.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){mn.classList.remove('open');mb.classList.remove('x');mb.setAttribute('aria-expanded','false');});});
+  })();
+
+  // reveal on view
+  const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}})},{threshold:.14});
+  document.querySelectorAll('.rv').forEach(el=>io.observe(el));
+  // instantly reveal anything already in the first viewport (hero), no scroll needed
+  requestAnimationFrame(()=>{const vh=window.innerHeight;document.querySelectorAll('.rv').forEach(el=>{if(el.getBoundingClientRect().top<vh*0.92)el.classList.add('in');});});
+
+  // count-up
+  const cu=new IntersectionObserver((es)=>{es.forEach(e=>{if(!e.isIntersecting)return;const el=e.target,to=+el.dataset.to,suf=el.dataset.suffix||'';let s=null;const dur=1100;
+    function tick(t){if(!s)s=t;const p=Math.min(1,(t-s)/dur);el.textContent=Math.round(to*(1-Math.pow(1-p,3)))+suf;if(p<1)requestAnimationFrame(tick);}
+    requestAnimationFrame(tick);cu.unobserve(el);})},{threshold:.5});
+  document.querySelectorAll('[data-to]').forEach(el=>cu.observe(el));
+
+  // scroll reveal — base state visible; .show plays a one-shot fade-up (never traps content)
+  (function(){
+    var sel='.sechead,.step,.cell,.role,.modecard,.outcard,.stat,.deeprow,.plan,.ledger';
+    var els=[].slice.call(document.querySelectorAll(sel));
+    els.forEach(function(el){el.classList.add('reveal');});
+    if(!('IntersectionObserver' in window)){els.forEach(function(el){el.classList.add('show');});return;}
+    var ob=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('show');ob.unobserve(e.target);}});},{threshold:.1,rootMargin:'0px 0px -7% 0px'});
+    els.forEach(function(el){if(el.getBoundingClientRect().top<window.innerHeight*0.95){el.classList.add('show');}else{ob.observe(el);}});
+    setTimeout(function(){els.forEach(function(el){el.classList.add('show');});},2600);
+  })();
+
+  // animated glyph field (hero)
+  (function(){
+    const host=document.getElementById('hero-glyphs');if(!host)return;
+    const G={
+      phone:'<rect x="6" y="2" width="20" height="28" rx="3"/><line x1="13" y1="25" x2="19" y2="25"/>',
+      doc:'<rect x="5" y="2" width="22" height="28" rx="3"/><line x1="10" y1="10" x2="22" y2="10"/><line x1="10" y1="16" x2="22" y2="16"/><line x1="10" y1="22" x2="17" y2="22"/>',
+      dollar:'<circle cx="16" cy="16" r="13"/><path d="M11 12h8a3 3 0 0 1 0 6h-6a3 3 0 0 0 0 6h8M16 6v3M16 23v3"/>',
+      shield:'<path d="M16 3l11 4v7c0 7-5 11-11 13C10 25 5 21 5 14V7l11-4z"/><path d="M11 15l3 3 6-6"/>',
+      target:'<circle cx="16" cy="16" r="13"/><circle cx="16" cy="16" r="7"/><circle cx="16" cy="16" r="1.5"/>',
+      chart:'<line x1="4" y1="27" x2="28" y2="27"/><rect x="7" y="16" width="4" height="11"/><rect x="14" y="9" width="4" height="18"/><rect x="21" y="13" width="4" height="14"/>',
+      cal:'<rect x="4" y="5" width="24" height="23" rx="3"/><line x1="4" y1="12" x2="28" y2="12"/><line x1="11" y1="2" x2="11" y2="8"/><line x1="21" y1="2" x2="21" y2="8"/>',
+      hand:'<path d="M2 13l7-4 5 3 5-3 7 4v8H2z"/><path d="M9 9l4-4 5 3"/>'
+    };
+    const order=Object.values(G),rowH=116,cell=152,W=window.innerWidth,H=720;
+    const rows=Math.ceil(H/rowH)+1,per=Math.ceil((W+cell*2)/cell)+1;
+    for(let r=0;r<rows;r++){
+      const div=document.createElement('div');div.className='grow';
+      const left=r%2===0,dur=30+(r%4)*6;
+      div.style.top=(r*rowH-20)+'px';div.style.left=(-cell)+'px';div.style.gap=(cell-32)+'px';
+      div.style.animation=(left?'driftL':'driftR')+' '+dur+'s linear infinite';
+      let html='';for(let c=0;c<per;c++){const g=order[(r+c)%order.length];
+        html+='<svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#01696F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.13">'+g+'</svg>';}
+      div.innerHTML=html;host.appendChild(div);
+    }
+  })();
+
+  // ── live mini-mockups inside the dark mode cards (setInterval-driven so it
+  //    animates in this sandbox AND when hosted; first frame is static markup) ──
+  (function(){
+    function av(name,ini){return ini;}
+
+    // Kiosk: leaderboard crossfades This Week → Month → Quarter
+    (function(){
+      var board=document.getElementById('kioskBoard'),per=document.getElementById('kioskPeriod');
+      if(!board)return;
+      var P=[
+        {label:'This Week',rows:[['Marsha Singh','MS','TTD 24K'],['Anand Persad','AP','TTD 19K'],['Selina Mohammed','SM','TTD 17K']]},
+        {label:'This Month',rows:[['Marsha Singh','MS','TTD 96K'],['Selina Mohammed','SM','TTD 88K'],['Anand Persad','AP','TTD 81K']]},
+        {label:'This Quarter',rows:[['Selina Mohammed','SM','TTD 240K'],['Marsha Singh','MS','TTD 232K'],['Devin Lewis','DL','TTD 198K']]}
+      ];
+      function render(i){
+        per.textContent=P[i].label;
+        board.innerHTML=P[i].rows.map(function(r,idx){
+          return '<div class="krow'+(idx===0?' lead':'')+'"><span class="rank">'+(idx+1)+'</span>'
+            +'<span class="face">'+av(r[0],r[1])+'</span>'
+            +'<span class="knm">'+r[0]+'</span><span class="kval">'+r[2]+'</span></div>';
+        }).join('');
+      }
+      var i=0;
+      setInterval(function(){board.classList.add('swap');setTimeout(function(){i=(i+1)%P.length;render(i);board.classList.remove('swap');},330);},2800);
+    })();
+
+    // Meeting: run-of-show advances Branch → Exceptions → Recognition → Wrap
+    (function(){
+      var slide=document.getElementById('meetSlide'),steps=document.getElementById('meetSteps');
+      if(!slide)return;
+      function face(name,ini,sz){return '<span class="face" style="width:'+sz+'px;height:'+sz+'px;font-size:'+Math.round(sz*0.36)+'px;background:#01696F">'+av(name,ini)+'</span>';}
+      var S=[
+        {step:0,html:'<div class="roslabel">BRANCH · THIS WEEK</div><div class="mbig">TTD 142K</div><div style="font-size:12px;color:#B5AB9C;margin-top:4px">78% of TTD 182K floor · 14 advisors active</div><div class="mbar"><i style="width:78%"></i></div>'},
+        {step:1,html:'<div class="roslabel">EXCEPTIONS · BELOW THE FLOOR</div><div style="margin-top:9px"><div class="mexc">'+face('Devin Lewis','DL',26)+'<span class="en">Devin Lewis</span><span class="eb" style="color:#F2A4A0;background:rgba(217,83,79,.18)">BELOW</span></div><div class="mexc">'+face('Carla Joseph','CJ',26)+'<span class="en">Carla Joseph</span><span class="eb" style="color:#E8B73E;background:rgba(232,183,62,.16)">AT FLOOR</span></div></div>'},
+        {step:2,html:'<div class="roslabel" style="color:#E8B73E">★ RECOGNITION · CHAMPIONS</div><div class="mpod"><div class="col">'+face('Anand Persad','AP',34)+'<div class="pn">Anand</div><div class="bar" style="height:40px;width:50px;background:rgba(232,183,62,.18);border:1px solid rgba(232,183,62,.4);color:#E8B73E;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800">2</div></div><div class="col">'+face('Marsha Singh','MS',44)+'<div class="pn">Marsha</div><div class="bar" style="height:56px;width:56px;background:linear-gradient(180deg,#E8B73E,#E8B73Ecc);color:#0E0B07;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:17px">1</div></div><div class="col">'+face('Selina Mohammed','SM',32)+'<div class="pn">Selina</div><div class="bar" style="height:32px;width:48px;background:rgba(232,183,62,.18);border:1px solid rgba(232,183,62,.4);color:#E8B73E;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800">3</div></div></div>'},
+        {step:3,html:'<div class="roslabel">WRAP · ACTIONS CAPTURED</div><div class="mwrap"><div class="wr"><span class="wc">✓</span>Joint call booked — Devin &amp; UM, Thursday</div><div class="wr"><span class="wc">✓</span>Carla: 3 fact-finds before Friday</div><div class="wr"><span class="wc">✓</span>Campaign push — 2 policies to deliver</div></div>'}
+      ];
+      var dots=steps.children;
+      function render(i){slide.innerHTML=S[i].html;for(var k=0;k<dots.length;k++)dots[k].classList.toggle('on',k===S[i].step);}
+      var i=0;
+      setInterval(function(){slide.classList.add('swap');setTimeout(function(){i=(i+1)%S.length;render(i);slide.classList.remove('swap');},330);},2900);
+    })();
+  })();
+
+</script>
+
+<a class="wa-fab" href="https://wa.me/18687981014?text=Hi%2C%20I%27d%20like%20to%20learn%20more%20about%20AgencyTrack" target="_blank" rel="noopener" aria-label="Chat with us on WhatsApp">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3a9 9 0 0 0-7.74 13.6L3 21l4.55-1.2A9 9 0 1 0 12 3Z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M9.2 8.6c.2-.5.4-.5.7-.5h.5c.2 0 .4 0 .5.4.2.4.6 1.4.6 1.5.1.1.1.3 0 .4l-.4.6c-.1.2-.2.3-.1.5.1.2.6 1 1.3 1.6.9.8 1.6 1 1.8 1.1.2.1.4.1.5-.1l.6-.7c.2-.2.3-.2.5-.1l1.5.7c.2.1.4.2.4.3 0 .2 0 .7-.3 1.2-.2.5-1.2 1.1-1.7 1.1-.4 0-1 .2-3.3-.8-2.8-1.2-4.5-4-4.6-4.2-.1-.2-1-1.4-1-2.6 0-1.2.6-1.8.8-2.4Z" fill="#fff"/></svg>
+  <span>Chat on WhatsApp</span>
+</a>
+</body>
+</html>

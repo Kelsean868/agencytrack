@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Game Plan Loop — repo build status</title>
+<link rel="preconnect" href="https://api.fontshare.com" />
+<link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{ --primary:#01696f; --ink:#28251d; --ink-muted:#6b6560; --ink-faint:#a8a39c; --surface:#f7f6f2; --raised:#fff; --muted:#ebe8e1; --border:#e5e2db; --gold:#b07d1a; --gold-tint:rgba(176,125,26,0.12); --success:#2d7a4f; --success-tint:rgba(45,122,79,0.12); --warning:#b4530a; --warning-tint:rgba(180,83,10,0.12); --danger:#c0392b; --danger-tint:rgba(192,57,43,0.12); }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--surface); color:var(--ink); font-family:'Satoshi',sans-serif; -webkit-font-smoothing:antialiased; }
+  .wrap{ max-width:1060px; margin:0 auto; padding:40px 28px 80px; }
+  h1{ font-family:'Cabinet Grotesk',sans-serif; font-size:30px; font-weight:800; letter-spacing:-0.02em; margin:0 0 6px; }
+  .sub{ color:var(--ink-muted); font-size:14px; margin-bottom:22px; max-width:780px; line-height:1.55; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .counts{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:26px; }
+  .count{ flex:1; min-width:150px; border:1px solid var(--border); border-radius:13px; padding:14px 16px; background:var(--raised); border-left:4px solid var(--c); }
+  .count .n{ font-family:'Cabinet Grotesk',sans-serif; font-size:28px; font-weight:800; line-height:1; }
+  .count .l{ font-size:11.5px; color:var(--ink-muted); margin-top:5px; }
+  h2{ font-family:'Cabinet Grotesk',sans-serif; font-size:18px; font-weight:700; margin:30px 0 6px; display:flex; align-items:center; gap:9px; }
+  h2 .dot{ width:13px; height:13px; border-radius:4px; }
+  .h2sub{ font-size:12.5px; color:var(--ink-muted); margin:0 0 14px; }
+  .card{ background:var(--raised); border:1px solid var(--border); border-radius:13px; padding:15px 17px; margin-bottom:10px; border-left:4px solid var(--c); }
+  .card .top{ display:flex; align-items:flex-start; gap:10px; }
+  .stage{ font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; color:#fff; background:var(--c); border-radius:6px; padding:2px 7px; flex-shrink:0; margin-top:2px; }
+  .card h3{ margin:0; font-size:15.5px; font-weight:700; }
+  .card .design{ font-size:11px; color:var(--ink-faint); font-family:'JetBrains Mono',monospace; margin-top:1px; }
+  .card p{ margin:8px 0 0; font-size:12.5px; color:var(--ink-muted); line-height:1.55; }
+  .card p b{ color:var(--ink); }
+  .repo{ display:inline-block; font-family:'JetBrains Mono',monospace; font-size:10.5px; background:var(--muted); color:var(--ink-muted); border-radius:5px; padding:1px 6px; margin:2px 4px 0 0; }
+  .task{ margin-top:9px; padding-top:9px; border-top:1px dashed var(--border); font-size:12.5px; color:var(--ink); }
+  .task b{ font-weight:700; }
+  .pri{ font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px; margin-left:auto; flex-shrink:0; }
+  .pri.p1{ background:var(--danger-tint); color:var(--danger); }
+  .pri.p2{ background:var(--warning-tint); color:var(--warning); }
+  .pri.p3{ background:var(--gold-tint); color:var(--gold); }
+  .note{ margin-top:24px; padding:14px 17px; background:var(--muted); border-radius:12px; font-size:12.5px; color:var(--ink-muted); line-height:1.55; }
+  .note b{ color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Game Plan Loop — what's left to build</h1>
+  <div class="sub">Our loop designs mapped against the live <span class="mono">Kelsean868/agencytrack</span> repo (scanned <span class="mono">main</span>, June 2026). Grouped by status so you know exactly what to point Claude Code at. The tab IDs (e.g. <span class="mono">'planner'</span>) are what the app routes on — that's the unit of work in CC.</div>
+
+  <div class="counts">
+    <div class="count" style="--c:var(--danger)"><div class="n" style="color:var(--danger)">2</div><div class="l">🔴 Net-new — not built at all</div></div>
+    <div class="count" style="--c:var(--warning)"><div class="n" style="color:var(--warning)">2</div><div class="l">🟡 Built but gated / needs rewire</div></div>
+    <div class="count" style="--c:var(--gold)"><div class="n" style="color:var(--gold)">3</div><div class="l">🟢 Built — align to final redesign</div></div>
+    <div class="count" style="--c:var(--success)"><div class="n" style="color:var(--success)">6</div><div class="l">✅ Built &amp; live — done</div></div>
+  </div>
+
+  <!-- ── NOT BUILT ─────────────────────────────────────────────── -->
+  <h2><span class="dot" style="background:var(--danger)"></span>🔴 Not built — net-new (start here)</h2>
+  <p class="h2sub">No component exists in the repo. The <span class="mono">planner</span> tab is a "Coming soon" stub (in <span class="mono">comingSoonTabs.js</span>) with no render-switch case. This is the largest gap and the spine of the bottom half of the loop.</p>
+
+  <div class="card" style="--c:var(--danger)">
+    <div class="top"><span class="stage">⑤</span><div><h3>Planner &amp; Scheduler (agent)</h3><div class="design">design: AgencyTrack Planner &amp; Scheduler v2.html</div></div><span class="pri p1">PRIORITY 1</span></div>
+    <p>Book the week from the On-Track prescription + the hit-list. Mobile day/week views, desktop week-booking, activity-coded events (P.C / A.I / F.F.I / C.I), gaps, reschedule. <b>Nothing exists yet</b> — the tab is gated.</p>
+    <div><span class="repo">tabId: 'planner'</span><span class="repo">in COMING_SOON_TABS</span><span class="repo">no component dir</span></div>
+    <div class="task"><b>CC work:</b> un-gate <span class="mono">'planner'</span> in <span class="mono">comingSoonTabs.js</span> → build the Planner surface → add a render-switch case in AgentDashboard. Reads <span class="mono">weeklyTargets</span> + <span class="mono">hitList</span>; writes <span class="mono">plannerEvents</span>.</div>
+  </div>
+
+  <div class="card" style="--c:var(--danger)">
+    <div class="top"><span class="stage">⑤</span><div><h3>Manager personal planner</h3><div class="design">design: AgencyTrack Planner - Manager Surfaces.html</div></div><span class="pri p1">PRIORITY 1</span></div>
+    <p>Branch &amp; unit managers also sell and recruit — same <span class="mono">planner</span> tab in <span class="mono">PRODUCING_MANAGER_NAV</span>, plus the manager-only event types: <b>1-on-1, unit meeting, joint work, training</b>. Team planner views layer on top.</p>
+    <div><span class="repo">tabId: 'planner' (producingManager)</span><span class="repo">no component</span></div>
+    <div class="task"><b>CC work:</b> extend the Planner with the manager event types + team layer (same un-gate). Ships together with the agent Planner.</div>
+  </div>
+
+  <!-- ── GATED / REWIRE ───────────────────────────────────────── -->
+  <h2><span class="dot" style="background:var(--warning)"></span>🟡 Built but gated / needs rewire</h2>
+  <p class="h2sub">Component exists in the repo but is hidden behind a "Coming soon" gate, or needs wiring to the loop.</p>
+
+  <div class="card" style="--c:var(--warning)">
+    <div class="top"><span class="stage">⑤</span><div><h3>Prospect Prep (hit-list → book)</h3><div class="design">design: AgencyTrack Prospect Prep v2.html</div></div><span class="pri p2">PRIORITY 2</span></div>
+    <p>The component <b>already exists</b> (<span class="mono">ProspectInfoPanel.jsx</span>, 24KB) but the tab is gated coming-soon, so agents can't reach it. Needs un-gating and aligning to the <b>hit-list → book</b> flow (targeted call list whose successful close hands off to the sale-log).</p>
+    <div><span class="repo">tabId: 'prospect-info'</span><span class="repo">in COMING_SOON_TABS</span><span class="repo">ProspectInfoPanel.jsx exists</span></div>
+    <div class="task"><b>CC work:</b> remove <span class="mono">'prospect-info'</span> from COMING_SOON_TABS, restore the import + swap <span class="mono">&lt;ComingSoonPanel&gt;</span> for the real panel in AgentDashboard, then reconcile the panel against the v2 hit-list design.</div>
+  </div>
+
+  <div class="card" style="--c:var(--warning)">
+    <div class="top"><span class="stage">④</span><div><h3>On-Track engine — time-aware re-solve</h3><div class="design">design: AgencyTrack On-Track Engine.html</div></div><span class="pri p2">PRIORITY 2</span></div>
+    <p>The decomposition exists (<span class="mono">SuggestedWeekCard</span> composes the goal-decomposition engine over committed API + history ratios). What's <b>not</b> fully realized is the standalone time-aware loop: targets that <b>re-solve as weeks shrink and settled production lands</b>, surfaced as its own engine view.</p>
+    <div><span class="repo">GamePlanV2/SuggestedWeekCard.jsx</span><span class="repo">CommissionPlayground/</span></div>
+    <div class="task"><b>CC work:</b> confirm the weekly re-solve reads settled production + weeksLeft; promote the On-Track surface if it's to be more than the SuggestedWeek card. Likely an enhancement, not net-new.</div>
+  </div>
+
+  <!-- ── ALIGN ────────────────────────────────────────────────── -->
+  <h2><span class="dot" style="background:var(--gold)"></span>🟢 Built — align to the final redesign</h2>
+  <p class="h2sub">Shipped and live, but our later design decisions may not all be reflected. Verify against the design, then close the gaps — not net-new builds.</p>
+
+  <div class="card" style="--c:var(--gold)">
+    <div class="top"><span class="stage">①</span><div><h3>Money Needs + Allocator</h3><div class="design">design: Money Needs Merged.html + Build Notes</div></div><span class="pri p3">VERIFY</span></div>
+    <p>The merged allocator <b>shipped</b> (#738 — note <span class="mono">MoneyNeedsPanel.merged.test.jsx</span>). Verify it carries the final decisions: <b>license-aware lines</b> (show-not-grey), <b>A&amp;H as its own line</b>, <b>≤4 user-named products</b> (Life + General), 3-level worksheet disclosure, car split <b>33/67</b>, and Send → confirm → ack → <span class="mono">onOpenTab('game-plan')</span>.</p>
+    <div><span class="repo">MoneyNeedsPanel.jsx</span><span class="repo">MoneyNeedsAllocator.jsx</span><span class="repo">CommissionAnchorStrip.jsx</span><span class="repo">AwardProjectionStrip.jsx</span></div>
+    <div class="task"><b>CC work:</b> diff the shipped allocator against <span class="mono">Money Needs Merged - Build Notes.html</span>; close any gaps (named products schema ⚑A, ahSide ⚑C, playground payload ⚑E).</div>
+  </div>
+
+  <div class="card" style="--c:var(--gold)">
+    <div class="top"><span class="stage">⑤</span><div><h3>Campaigns + Hit-list link</h3><div class="design">design: AgencyTrack Campaigns.html</div></div><span class="pri p3">VERIFY</span></div>
+    <p>Campaigns are built (<span class="mono">CampaignPanel.jsx</span>, manager + agent seeding). Verify the <b>hit-list</b> tie-in: a campaign's targeted call list whose successful close flows into the Policy Ledger, and that agent-seeded vs manager-seeded campaigns share one model.</p>
+    <div><span class="repo">campaigns/CampaignPanel.jsx</span><span class="repo">CampaignCard.jsx</span></div>
+    <div class="task"><b>CC work:</b> confirm campaign → hit-list → book → sale wiring (design-around flag ⚑D, campaign seeding).</div>
+  </div>
+
+  <div class="card" style="--c:var(--gold)">
+    <div class="top"><span class="stage">③</span><div><h3>Game Plan hub</h3><div class="design">design: AgencyTrack Game Plan v2.html</div></div><span class="pri p3">VERIFY</span></div>
+    <p>Built through Slice 3b (<span class="mono">GamePlanV2/</span> — anchor strip, step rail, cascade, suggested week, review-commit). Verify it's the landing tab for the allocator's Send and that the money-needs → year-plan → monthly → commit cascade matches the final flow.</p>
+    <div><span class="repo">dashboard/GamePlanV2/index.jsx</span><span class="repo">ReviewCommitModal</span><span class="repo">SuggestedWeekCard</span></div>
+    <div class="task"><b>CC work:</b> confirm <span class="mono">onOpenTab('game-plan')</span> lands here pre-filled; otherwise no change.</div>
+  </div>
+
+  <!-- ── DONE ─────────────────────────────────────────────────── -->
+  <h2><span class="dot" style="background:var(--success)"></span>✅ Built &amp; live — done</h2>
+  <p class="h2sub">Present in the repo, routed, tested. No loop work needed beyond the verification items above.</p>
+
+  <div class="card" style="--c:var(--success)">
+    <div class="top"><span class="stage">⑥</span><div><h3>Daily Capture</h3></div></div>
+    <p>Log activity + sale-written entry. <span class="repo">daily/DailyCaptureV2.jsx (51KB)</span><span class="repo">DailyEntryModal</span><span class="repo">DailyFAB</span></p>
+  </div>
+  <div class="card" style="--c:var(--success)">
+    <div class="top"><span class="stage">⑦</span><div><h3>Policy Ledger</h3></div></div>
+    <p>Written → Submitted → Settled, pipeline strip, multi-application drill. <span class="repo">agent/PolicyLedgerPanel.jsx</span><span class="repo">policyLedger/PipelineStrip</span><span class="repo">PolicyCard</span><span class="repo">PolicyDrillDrawer</span></p>
+  </div>
+  <div class="card" style="--c:var(--success)">
+    <div class="top"><span class="stage">⑧</span><div><h3>Persistency gate</h3></div></div>
+    <p>Payout multiplier + at-risk book. <span class="repo">agent/PersistencyTab.jsx</span><span class="repo">persistency/PersistencyPlayground.jsx</span><span class="repo">manager/Pers*</span></p>
+  </div>
+  <div class="card" style="--c:var(--success)">
+    <div class="top"><span class="stage">⑧</span><div><h3>Awards</h3></div></div>
+    <p>Life-only tier engine + projection strip. <span class="repo">awards/AgentAwardsPanel.jsx</span><span class="repo">awardPrimitives.jsx</span><span class="repo">agent/AwardProjectionStrip.jsx</span></p>
+  </div>
+  <div class="card" style="--c:var(--success)">
+    <div class="top"><span class="stage">①</span><div><h3>Goals hub</h3></div></div>
+    <p>Gap analysis, derived income, awards reach, MDRT, recommend-lock. <span class="repo">goals/GapAnalysisPanel</span><span class="repo">DerivedIncomePanel</span><span class="repo">AwardsReachPanel</span><span class="repo">RecommendLockDrawer</span></p>
+  </div>
+  <div class="card" style="--c:var(--success)">
+    <div class="top"><span class="stage">④</span><div><h3>Commission Playground (decomposition)</h3></div></div>
+    <p>Goal-decomposition + cash-flow + mode mix. <span class="repo">goals/CommissionPlayground/</span><span class="repo">GoalDecompositionTab</span><span class="repo">commissionMath.js</span></p>
+  </div>
+
+  <div class="note">
+    <b>The one-line answer:</b> the only truly unbuilt screen is the <b>Planner &amp; Scheduler</b> (agent + manager personal planner) — it's a single gated <span class="mono">'planner'</span> tab with no component. After that, <b>Prospect Prep</b> exists but is gated (un-gate + align). Everything else in the loop is built; the rest is verifying the shipped surfaces match our final design decisions. <b>Point CC at <span class="mono">'planner'</span> first.</b>
+  </div>
+</div>
+</body>
+</html>

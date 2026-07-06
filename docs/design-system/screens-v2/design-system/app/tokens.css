@@ -1,0 +1,61 @@
+/* AgencyTrack App — Nexus tokens. Light default, dark under .dark scope. */
+:root{
+  /* surfaces */
+  --bg:#F7F6F2;
+  --surface:#FFFFFF;
+  --surfaceRaised:#FAFAF8;
+  --surfaceSoft:#F4F2EC;
+  --surfaceMute:#F0EFE9;
+  /* ink */
+  --ink:#28251D;
+  --inkMute:#6B6560;
+  --inkFaint:#A8A39C;
+  --inkDim:#CFCBC2;
+  /* rules */
+  --rule:#E5E2DB;
+  --ruleStrong:#CFCBC2;
+  /* brand */
+  --teal:#01696F;
+  --tealLight:#018A91;
+  --tealDark:#014E52;
+  --tealTint:#E6F4F4;
+  --gold:#B07D1A;
+  --goldTint:#FAEFD3;
+  --goldInk:#8A6010;
+  /* semantic */
+  --success:#2D7A4F;   --successTint:#E8F5EE;
+  --warning:#B45309;   --warningTint:#FEF3E2;
+  --danger:#C0392B;    --dangerTint:#FDE8E7;
+  --inkAccent:#5A3FA0; --inkAccentTint:#F0ECFF;
+  /* type */
+  --display:'Cabinet Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --sans:'Satoshi','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --mono:'JetBrains Mono','Menlo','SF Mono',monospace;
+  /* frame */
+  --app-w:1280px;
+  --app-h:800px;
+}
+
+.dark{
+  --bg:#1A1612;
+  --surface:#252019;
+  --surfaceRaised:#302A23;
+  --surfaceSoft:#1F1B17;
+  --surfaceMute:#1F1B17;
+  --ink:#F0EBE0;
+  --inkMute:#B8AEA0;
+  --inkFaint:#8A8074;
+  --inkDim:#4F473E;
+  --rule:rgba(240,235,224,0.08);
+  --ruleStrong:rgba(240,235,224,0.18);
+  --teal:#4AB5B8;
+  --tealLight:#6FD3D6;
+  --tealDark:#01696F;
+  --tealTint:rgba(74,181,184,0.14);
+  --gold:#E0AA3E;
+  --goldTint:rgba(224,170,62,0.14);
+  --success:#5DB876;   --successTint:rgba(93,184,118,0.14);
+  --warning:#E8B53E;   --warningTint:rgba(232,181,62,0.14);
+  --danger:#D96B5D;    --dangerTint:rgba(217,107,93,0.14);
+  --inkAccent:#A995E0; --inkAccentTint:rgba(169,149,224,0.14);
+}

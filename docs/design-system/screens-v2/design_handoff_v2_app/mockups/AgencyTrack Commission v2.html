@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Commission v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 520px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Commission v2 — anchored playground, visual activity ladder, mode-mix slider</h1>
+    <p>
+      Promoted from a collapsed card to a real top-level page. Opens with <b>"your reality"</b> (YTD earned, projected run-rate, gap to goal) so the playground answers <i>"close this gap"</i>, not <i>"play with math"</i>.
+      Goal Decomposition shows a 7-stage activity cascade (Income → API → Apps → CIs → Dials → Prospects) with the transform formula on each connector. Modal Targeting leads with the mode-mix slider and a stacked-by-mode 12-month cash-flow chart with cumulative overlay.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="commission-v2-shared.jsx"></script>
+  <script type="text/babel" src="commission-v2-tabs.jsx"></script>
+  <script type="text/babel" src="commission-v2-scenes.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="desktop"
+            title="Desktop — Commission tab v2"
+            subtitle="Light: Goal Decomposition with assumptions on the left and the activity ladder on the right (weekly cadence). Dark: Modal Targeting with the mode-mix slider hero and 12-month stacked cash flow."
+          >
+            <DCArtboard id="d-light" label="01 · Desktop · Light · Goal decomposition" width={APP_W} height={APP_H}>
+              <CommDesktopScene t={APP_LIGHT} tab="goal" cadence="weekly" />
+            </DCArtboard>
+            <DCArtboard id="d-dark" label="02 · Desktop · Dark · Modal targeting" width={APP_W} height={APP_H}>
+              <CommDesktopScene t={APP_DARK} tab="modal" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Mobile — Commission tab v2"
+            subtitle="Same anchor + tabs reflowed to a single column. Light shows the goal-decomp ladder, dark shows the modal-targeting flow."
+          >
+            <DCArtboard id="m-light" label="03 · Mobile · Light · Goal decomposition" width={M_W} height={M_H}>
+              <CommMobileScene t={APP_LIGHT} tab="goal" cadence="weekly" />
+            </DCArtboard>
+            <DCArtboard id="m-dark" label="04 · Mobile · Dark · Modal targeting" width={M_W} height={M_H}>
+              <CommMobileScene t={APP_DARK} tab="modal" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="manager"
+            title="Manager perspective — suggest-a-goal flow"
+            subtitle="Unit manager opens an agent's commission playground to send a stretch suggestion back. Banner makes ownership unambiguous, scenario chips swap to 'Her commitment vs Your suggestion', and the left CTA card flips from 'Set as my goal' to 'Send suggestion to Marsha' with the manager's note attached."
+          >
+            <DCArtboard id="d-mgr" label="05 · Desktop · Light · Manager view of Marsha's playground" width={APP_W} height={APP_H}>
+              <CommDesktopScene t={APP_LIGHT} tab="goal" cadence="weekly" managerView />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

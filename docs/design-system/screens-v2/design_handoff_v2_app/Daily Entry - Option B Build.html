@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Daily Entry — Option B (full) · prospecting + hours captured daily</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{--display:'Cabinet Grotesk',sans-serif;--sans:'Satoshi',sans-serif;--mono:'JetBrains Mono',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  body{font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.5;transition:background .3s,color .3s}
+  body.light{background:#EDEBE4;color:#28251D}
+  body.dark{background:#100D0B;color:#F0EBE0}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 30px 90px}
+
+  .head{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:8px}
+  .badge{width:50px;height:50px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#018A91}
+  body.dark .eyebrow{color:#4ab5b8}
+  h1{font-family:var(--display);font-weight:800;font-size:27px;letter-spacing:-.025em;margin-top:6px}
+  .sub{font-size:13.5px;opacity:.74;margin-top:8px;max-width:760px;text-wrap:pretty}
+  .controls{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .seg{display:flex;background:rgba(127,127,127,.12);border:1px solid rgba(127,127,127,.2);border-radius:10px;padding:3px}
+  .seg button{display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:7px;font-size:12px;font-weight:700;opacity:.6;min-height:38px}
+  .seg button.on{opacity:1;background:#01696F;color:#fff}
+  body.dark .seg button.on{background:#4ab5b8;color:#08201f}
+
+  .layout{display:grid;grid-template-columns:330px 1fr;gap:34px;margin-top:24px;align-items:start}
+  @media(max-width:900px){.layout{grid-template-columns:1fr;justify-items:center}}
+
+  /* phone */
+  .phone{width:330px;border-radius:42px;padding:12px;background:linear-gradient(165deg,#2c2823,#15120f);box-shadow:0 26px 56px rgba(0,0,0,.32),inset 0 0 0 1px rgba(255,255,255,.05);position:sticky;top:24px}
+  .screen{border-radius:31px;overflow:hidden;height:660px;position:relative;display:flex;flex-direction:column}
+  .app{--surface:#FFFFFF;--raised:#FAFAF8;--soft:#F4F2EC;--mute:#F0EFE9;--ink:#28251D;--inkMute:#6B6560;--inkFaint:#A8A39C;--inkDim:#CFCBC2;--rule:#E5E2DB;--ruleStrong:#CFCBC2;--teal:#01696F;--tealLight:#018A91;--tealDark:#014E52;--tealTint:#E6F4F4;--onTeal:#fff;--gold:#B07D1A;--goldTint:#FAEFD3;--violet:#5A3FA0;--violetTint:#F0ECFF;--success:#2D7A4F;--successTint:#E8F5EE;--warning:#B45309;--warningTint:#FEF3E2;
+    flex:1;display:flex;flex-direction:column;background:var(--bg,#F7F6F2);color:var(--ink);min-height:0}
+  body.dark .app{--surface:#252019;--raised:#302A23;--soft:#1F1B17;--mute:#211C18;--ink:#F0EBE0;--inkMute:#B8AEA0;--inkFaint:#8A8074;--inkDim:#4F473E;--rule:rgba(240,235,224,.08);--ruleStrong:rgba(240,235,224,.18);--teal:#4AB5B8;--tealLight:#6FD3D6;--tealDark:#9FE0E2;--tealTint:rgba(74,181,184,.14);--onTeal:#10201F;--gold:#E0AA3E;--goldTint:rgba(224,170,62,.14);--violet:#A995E0;--violetTint:rgba(169,149,224,.14);--success:#5DB876;--successTint:rgba(93,184,118,.14);--warning:#E8B53E;--warningTint:rgba(232,181,62,.14);--bg:#1A1612}
+  body.light .app{--bg:#F7F6F2}
+  .stat{height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-family:var(--mono);font-size:10px;font-weight:700;flex-shrink:0;background:var(--surface);color:var(--ink)}
+  .body{flex:1;overflow:auto;padding:13px 13px 0;display:flex;flex-direction:column;gap:9px;min-height:0}
+  .body::-webkit-scrollbar{width:0}
+
+  .mhead{display:flex;align-items:flex-start;gap:10px;flex-shrink:0}
+  .mhead .mt{font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:-.01em}
+  .mhead .ms{font-family:var(--mono);font-size:9px;color:var(--inkFaint);letter-spacing:.06em;margin-top:3px}
+  .modepill{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:99px;background:var(--tealTint);color:var(--teal);font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:6px}
+  .modepill .d{width:5px;height:5px;border-radius:50%;background:var(--teal)}
+  .streak{margin-left:auto;text-align:center;flex-shrink:0}
+  .streak .fl{width:38px;height:38px;border-radius:11px;background:linear-gradient(180deg,var(--gold),var(--warning));display:flex;align-items:center;justify-content:center;margin:0 auto}
+  .streak .fn{font-family:var(--display);font-weight:800;font-size:13px;margin-top:3px;line-height:1}
+  .streak .fk{font-family:var(--mono);font-size:7px;color:var(--inkFaint);letter-spacing:.08em}
+  .mhead .x{width:30px;height:30px;border-radius:9px;border:1px solid var(--rule);display:flex;align-items:center;justify-content:center;color:var(--inkFaint);flex-shrink:0}
+
+  .gcard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:11px 13px;flex-shrink:0}
+  .gcard.gold{border-color:color-mix(in srgb,var(--gold) 34%,transparent)}
+  .gcard.newc{border-color:color-mix(in srgb,var(--teal) 42%,transparent);box-shadow:0 0 0 3px var(--tealTint)}
+  .gch{display:flex;align-items:center;gap:8px}
+  .gch .dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+  .gch .gl{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .gch .nb{font-family:var(--mono);font-size:7.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:var(--tealTint);color:var(--teal);padding:2px 6px;border-radius:99px}
+  .gch .gc{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--inkFaint)}
+  .gch .gc.gold{color:var(--gold);font-weight:700}
+  .gch .chev{margin-left:6px;color:var(--inkFaint);transition:transform .2s;flex-shrink:0}
+  .gcard.collapsed .chev{transform:rotate(-90deg)}
+  .gch.tap{cursor:pointer}
+  .gbody{margin-top:4px;overflow:hidden}
+  .gcard.collapsed .gbody{display:none}
+  .gcard.collapsed .gsummary{display:flex}
+  .gsummary{display:none;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .gsummary .sc{font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--soft);border:1px solid var(--rule);color:var(--inkMute)}
+  .gsummary .sc.zero{opacity:.5}
+  .subwrap{margin:4px 0 2px;padding-top:6px;border-top:1px dashed var(--rule)}
+  .subtoggle{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;color:var(--violet);cursor:pointer;user-select:none}
+  .subtoggle .scaret{display:inline-block;transition:transform .2s;font-size:10px}
+  .subwrap:not(.collapsed) .subtoggle .scaret{transform:rotate(90deg)}
+  .subtoggle .subopt{margin-left:auto;font-family:var(--mono);font-size:8px;font-weight:600;color:var(--inkFaint);text-transform:uppercase;letter-spacing:.04em}
+  .subwrap.collapsed .subbody{display:none}
+  .subbody{margin-top:2px;padding-left:9px;border-left:2px solid var(--violetTint)}
+  .cov-li{display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid rgba(127,127,127,.12);font-size:12px}
+  .cov-li:last-child{border-bottom:none}
+  .cov-li .cv-s{font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(127,127,127,.7);width:14px;flex-shrink:0}
+  .cov-li .cv-n{flex:1}
+  .cov-li .cv-b{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:99px;white-space:nowrap}
+  .cv-b.daily{background:rgba(45,122,79,.14);color:#2D7A4F}
+  body.dark .cv-b.daily{background:rgba(93,184,118,.16);color:#5DB876}
+  .cv-b.add{background:rgba(176,125,26,.16);color:#8A6010}
+  body.dark .cv-b.add{background:rgba(224,170,62,.16);color:#E0AA3E}
+  .cv-b.wk{background:rgba(90,63,160,.14);color:#5A3FA0}
+  body.dark .cv-b.wk{background:rgba(169,149,224,.16);color:#a995e0}
+  /* week strip + back-fill */
+  .weekhdr{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .weekhdr .wl{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inkFaint)}
+  .weekhdr .wdays{display:flex;gap:3px;background:var(--soft);border:1px solid var(--rule);border-radius:7px;padding:2px}
+  .weekhdr .wdays .wb{font-family:var(--mono);font-size:8.5px;font-weight:700;padding:3px 7px;border-radius:5px;color:var(--inkMute);cursor:pointer}
+  .weekhdr .wdays .wb.on{background:var(--teal);color:var(--onTeal)}
+  .weekstrip{display:flex;gap:5px;flex-shrink:0}
+  .wd{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0 6px;border-radius:10px;border:1px solid var(--rule);background:var(--surface);cursor:pointer;min-height:52px;justify-content:center}
+  .wd .wd-d{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.04em;color:var(--inkFaint)}
+  .wd .wd-n{font-family:var(--display);font-weight:800;font-size:13px;color:var(--ink);line-height:1}
+  .wd .wd-i{width:13px;height:13px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700}
+  .wd.logged{background:var(--successTint);border-color:color-mix(in srgb,var(--success) 30%,transparent)}
+  .wd.logged .wd-i{background:var(--success);color:#fff}
+  .wd.today{border-color:var(--teal);box-shadow:0 0 0 2px var(--tealTint)}
+  .wd.today .wd-i{background:var(--teal);color:var(--onTeal)}
+  .wd.today .wd-d{color:var(--teal)}
+  .wd.missing{background:var(--warningTint);border-color:color-mix(in srgb,var(--warning) 36%,transparent)}
+  .wd.missing .wd-i{border:1.5px dashed var(--warning);color:var(--warning)}
+  .wd.missing .wd-d{color:var(--warning)}
+  .wd.upcoming{opacity:.6}
+  .wd.upcoming .wd-i{border:1.5px solid var(--ruleStrong)}
+  .wd.off{opacity:.42;background:var(--soft)}
+  .wd.off .wd-n{color:var(--inkFaint)}
+  .wd.sel{outline:2px solid var(--teal);outline-offset:1px}
+  .backfill-banner{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:var(--violetTint);border:1px solid color-mix(in srgb,var(--violet) 26%,transparent);font-size:11px;color:var(--violet);flex-shrink:0;text-wrap:pretty}
+  body.dark .backfill-banner{color:#c5b6ef}
+  .backfill-banner b{font-weight:700}
+  .ptspill{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 13px;border-radius:11px;flex-shrink:0;min-width:70px;background:linear-gradient(135deg,#F4CE5A,#D9981C);color:#3a2906;box-shadow:0 0 0 1px rgba(255,255,255,.3), 0 4px 14px rgba(0,0,0,.22)}
+  body.dark .savebtn .ptspill{background:linear-gradient(135deg,#F0C24A,#C98A1A);color:#241a04;box-shadow:0 0 0 1px rgba(255,255,255,.18), 0 4px 16px rgba(0,0,0,.4)}
+  .ptspill .pv{font-family:var(--display);font-weight:800;font-size:19px;line-height:1;letter-spacing:-.02em}
+  .ptspill .pv b{font-weight:800}
+  .ptspill .pv .u{font-size:10px;font-weight:700;opacity:.7;margin-left:1px}
+  .ptspill .pp{font-family:var(--mono);font-size:7.5px;font-weight:700;letter-spacing:.04em;opacity:.82;margin-top:3px;white-space:nowrap;text-transform:uppercase}
+  .ptsfloat{position:absolute;top:-7px;left:50%;transform:translate(-50%,4px);font-family:var(--display);font-weight:800;font-size:14px;color:#fff;background:var(--success);padding:1px 8px;border-radius:99px;opacity:0;pointer-events:none;box-shadow:0 3px 10px rgba(0,0,0,.28);white-space:nowrap}
+  .ptsfloat.go{animation:ptsfloat .85s cubic-bezier(.3,1.2,.5,1)}
+  @keyframes ptsfloat{0%{opacity:0;transform:translate(-50%,6px) scale(.8)}22%{opacity:1;transform:translate(-50%,-2px) scale(1.05)}100%{opacity:0;transform:translate(-50%,-22px) scale(1)}}
+  .ptspill.pulse{animation:ptspulse .45s ease}
+  @keyframes ptspulse{0%{transform:scale(1);box-shadow:0 0 0 1px rgba(255,255,255,.3),0 4px 14px rgba(0,0,0,.22)}40%{transform:scale(1.16);box-shadow:0 0 0 5px rgba(244,206,90,.55),0 6px 22px rgba(0,0,0,.3)}100%{transform:scale(1);box-shadow:0 0 0 1px rgba(255,255,255,.3),0 4px 14px rgba(0,0,0,.22)}}
+
+  .crow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--rule)}
+  .crow:last-child{border-bottom:none}
+  .crow .cl{font-size:12px;color:var(--ink);font-weight:600;min-width:0}
+  .crow .cl.zero{color:var(--inkMute);font-weight:500}
+  .stepper{display:flex;align-items:center;gap:7px;flex-shrink:0}
+  .sb{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--ruleStrong);background:var(--soft);color:var(--inkMute);user-select:none}
+  .sb:active{transform:scale(.92)}
+  .sb.plus{color:#fff;border:none}
+  .sv{min-width:24px;text-align:center;font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-.01em}
+  .sv.zero{color:var(--inkDim)}
+
+  .mrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--rule)}
+  .mrow:last-child{border-bottom:none}
+  .mrow .cl{font-size:12px;font-weight:600}
+  .mfield{display:flex;align-items:center;height:32px;width:118px;border-radius:8px;border:1px solid var(--ruleStrong);background:var(--surface);overflow:hidden;flex-shrink:0}
+  .mfield .cu{font-family:var(--mono);font-size:9px;color:var(--inkFaint);padding-left:9px}
+  .mfield .mv{flex:1;text-align:right;padding-right:10px;font-family:var(--display);font-weight:800;font-size:13px}
+  .advrow{display:flex;align-items:center;gap:7px;margin-top:7px;padding-top:7px;border-top:1px dashed var(--rule);color:var(--inkMute);font-size:11px;font-weight:600}
+  .advrow .opt{margin-left:auto;font-family:var(--mono);font-size:8px;color:var(--inkFaint)}
+
+  /* hours quick chips */
+  .hourstotal{display:flex;align-items:baseline;gap:6px;margin:8px 0 9px}
+  .hourstotal .hv{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.02em;color:var(--teal)}
+  .hourstotal .hk{font-family:var(--mono);font-size:9px;color:var(--inkFaint)}
+  .quickchips{display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap}
+  .qc{font-size:10.5px;font-weight:700;padding:6px 10px;border-radius:8px;background:var(--soft);border:1px solid var(--rule);color:var(--inkMute)}
+  .qc.on{background:var(--tealTint);color:var(--teal);border-color:color-mix(in srgb,var(--teal) 30%,transparent)}
+
+  .notecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:11px 13px;flex-shrink:0}
+  .notecard .nl{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint);margin-bottom:5px}
+  .notecard .nt{font-size:11.5px;color:var(--inkFaint);line-height:1.5}
+
+  .savebar{position:sticky;bottom:0;margin:0 -13px;padding:10px 13px 13px;background:linear-gradient(180deg,transparent,var(--bg) 30%);flex-shrink:0}
+  .savebtn{display:flex;align-items:center;gap:10px;padding:11px 15px;background:var(--teal);color:var(--onTeal);border-radius:13px}
+  .savebtn .st{flex:1}
+  .savebtn .st b{font-size:14px;font-weight:700;display:block}
+  .savebtn .st span{font-size:10px;opacity:.85;font-family:var(--mono)}
+  .savebtn .go{display:flex;align-items:center;gap:6px;padding:8px 13px;background:rgba(255,255,255,.18);border-radius:9px;font-size:13px;font-weight:700}
+  body.dark .savebtn .go{background:rgba(0,0,0,.2)}
+
+  /* sunday confirm view */
+  .sun-intro{background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 30%,transparent);border-radius:12px;padding:12px 14px;flex-shrink:0}
+  .sun-intro .si-t{font-family:var(--display);font-weight:800;font-size:15px;color:var(--ink)}
+  .sun-intro .si-s{font-size:11px;color:var(--inkMute);margin-top:3px}
+  .sun-sec{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:10px 13px;flex-shrink:0}
+  .sun-sec .ss-h{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+  .sun-sec .ss-h .dot{width:7px;height:7px;border-radius:2px}
+  .sun-sec .ss-h .ssl{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint);flex:1}
+  .sun-sec .ss-h .done{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--successTint);color:var(--success);padding:2px 7px;border-radius:99px}
+  .sun-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;font-size:11.5px}
+  .sun-row .sl{color:var(--inkMute)}
+  .sun-row .sv{font-family:var(--display);font-weight:800;font-size:12px;color:var(--ink)}
+  .sun-todo{background:var(--surface);border:1px solid color-mix(in srgb,var(--warning) 34%,transparent);border-radius:12px;padding:11px 13px;flex-shrink:0}
+  .sun-todo .stl{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--warning);margin-bottom:8px}
+  .sun-field{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--rule)}
+  .sun-field:last-child{border-bottom:none}
+  .sun-field .sf-ic{width:26px;height:26px;border-radius:8px;background:var(--warningTint);color:var(--warning);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px}
+  .sun-field .sf-t{flex:1;font-size:12px;font-weight:600}
+  .sun-field .sf-t small{display:block;font-size:9.5px;color:var(--inkFaint);font-weight:400;font-family:var(--mono);margin-top:1px}
+  .sun-field .sf-go{color:var(--inkFaint)}
+
+  /* annotations column */
+  .annos{display:flex;flex-direction:column;gap:13px}
+  .acard{background:rgba(127,127,127,.05);border:1px solid rgba(127,127,127,.16);border-radius:13px;padding:15px 17px}
+  .acard.newc{background:rgba(1,138,145,.07);border-color:rgba(1,138,145,.26)}
+  body.dark .acard.newc{background:rgba(74,181,184,.1);border-color:rgba(74,181,184,.3)}
+  .acard .ah{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  .acard .anum{width:22px;height:22px;border-radius:7px;background:#01696F;color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  body.dark .acard .anum{background:#4ab5b8;color:#08201f}
+  .acard.newc .anum{background:#B07D1A}body.dark .acard.newc .anum{background:#E0AA3E;color:#1a1410}
+  .acard .at{font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:-.01em}
+  .acard .atag{margin-left:auto;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:99px}
+  .acard .atag.new{background:rgba(1,138,145,.16);color:#018A91}body.dark .acard .atag.new{background:rgba(74,181,184,.18);color:#4ab5b8}
+  .acard .atag.same{background:rgba(127,127,127,.16);opacity:.7}
+  .acard .ad{font-size:12.5px;opacity:.78;text-wrap:pretty}
+  .acard .ad code{font-family:var(--mono);font-size:11px;background:rgba(127,127,127,.14);padding:1px 5px;border-radius:4px}
+  .acard .ad b{font-weight:700;opacity:1}
+  .hint{display:flex;gap:8px;align-items:flex-start;margin-top:9px;padding:9px 11px;border-radius:9px;background:rgba(127,127,127,.07);font-size:11px;opacity:.84}
+  .hint .hi{flex-shrink:0;opacity:.6}
+
+  .speed{display:flex;gap:14px;flex-wrap:wrap;margin-top:2px}
+  .speed .sp{flex:1;min-width:120px;background:rgba(127,127,127,.05);border:1px solid rgba(127,127,127,.16);border-radius:12px;padding:13px 15px}
+  .speed .sp .spv{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-.02em}
+  .speed .sp .spk{font-size:11px;opacity:.68;margin-top:3px;text-wrap:pretty}
+
+  .note{display:flex;gap:12px;background:rgba(127,127,127,.06);border:1px solid rgba(127,127,127,.16);border-radius:13px;padding:15px 18px;margin-top:14px}
+  .note .ni{width:22px;height:22px;border-radius:50%;background:#01696F;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono);font-weight:700;font-size:12px}
+  body.dark .note .ni{background:#4ab5b8;color:#08201f}
+  .note p{font-size:12.5px;opacity:.84;text-wrap:pretty}
+  .note b{font-weight:700;opacity:1}
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.55;margin:16px 0 4px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:rgba(127,127,127,.22)}
+  .hidden{display:none!important}
+</style>
+</head>
+<body class="light">
+<div class="wrap">
+
+  <div class="head">
+    <svg class="badge" viewBox="0 0 200 200" aria-hidden="true"><rect width="200" height="200" rx="46" fill="#014e52"/><rect x="72" y="118" width="11" height="22" rx="2.5" fill="#fff" fill-opacity=".4"/><rect x="89" y="104" width="11" height="36" rx="2.5" fill="#fff" fill-opacity=".7"/><rect x="106" y="88" width="11" height="52" rx="2.5" fill="#fff"/><circle cx="111" cy="80" r="5" fill="#4ecdc4"/></svg>
+    <div>
+      <div class="eyebrow">Daily Capture v2 · Option B — built out</div>
+      <h1>The fast daily log that fills the whole weekly</h1>
+      <p class="sub">Option B in full: one screen, all the weekly's prospecting captured in a grouped card, and — per your call — <b>hours worked now logged daily too</b>, plus the <b>servicing</b> fields the weekly needs. Steppers are live, so try the speed. Switch to <b>Sunday confirm</b> to see what's left at week-end.</p>
+    </div>
+    <div class="controls">
+      <div class="seg" id="viewSeg"><button data-view="entry" class="on">Daily entry</button><button data-view="sunday">Sunday confirm</button></div>
+      <div class="seg" id="themeSeg"><button data-theme="light" class="on">Light</button><button data-theme="dark">Dark</button></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- PHONE -->
+    <div class="phone"><div class="screen"><div class="app">
+      <div class="stat"><span>9:41</span><span>●●● ▾ ▮</span></div>
+
+      <!-- ENTRY VIEW -->
+      <div class="body" id="entryView">
+        <div class="mhead">
+          <div><div class="mt">Log Today</div><div class="ms" id="entryDate">THU · 27 NOV · WK 48</div><span class="modepill"><span class="d"></span>Daily</span></div>
+          <div class="streak"><div class="fl"><svg width="19" height="19" viewBox="0 0 24 24" fill="#fff"><path d="M12 2c-1 4-4 5-4 9 0 3 2 5 4 5s4-2 4-5c0-1 0-2 1-3 1 2 3 4 3 7 0 4-3 7-7 7-3.8 0-7-3-7-7 0-5 4-7 6-13z"/></svg></div><div class="fn">9</div><div class="fk">STREAK</div></div>
+          <div class="x">✕</div>
+        </div>
+
+        <div class="weekhdr">
+          <span class="wl">WK 48 · tap a day to fill or edit</span>
+          <div class="wdays"><span class="wb on">M–F</span><span class="wb">6-day</span><span class="wb">7-day</span></div>
+        </div>
+        <div class="weekstrip" id="weekstrip">
+          <div class="wd logged" data-day="Mon 24 Nov"><span class="wd-d">MON</span><span class="wd-n">24</span><span class="wd-i">✓</span></div>
+          <div class="wd logged" data-day="Tue 25 Nov"><span class="wd-d">TUE</span><span class="wd-n">25</span><span class="wd-i">✓</span></div>
+          <div class="wd logged" data-day="Wed 26 Nov"><span class="wd-d">WED</span><span class="wd-n">26</span><span class="wd-i">✓</span></div>
+          <div class="wd today sel" data-day="Thu 27 Nov"><span class="wd-d">THU</span><span class="wd-n">27</span><span class="wd-i">●</span></div>
+          <div class="wd upcoming" data-day="Fri 28 Nov"><span class="wd-d">FRI</span><span class="wd-n">28</span><span class="wd-i"></span></div>
+          <div class="wd off" data-day="Sat 29 Nov"><span class="wd-d">SAT</span><span class="wd-n">29</span><span class="wd-i"></span></div>
+          <div class="wd off" data-day="Sun 30 Nov"><span class="wd-d">SUN</span><span class="wd-n">30</span><span class="wd-i"></span></div>
+        </div>
+        <div class="backfill-banner hidden" id="backfillBanner"><span>✎</span><span id="backfillText"></span></div>
+
+        <!-- PROSPECTING & OUTREACH (the grouped channel card) -->
+        <div class="gcard collapsible" data-group="prospecting">
+          <div class="gch tap" data-toggle>
+            <span class="dot" style="background:var(--violet)"></span>
+            <span class="gl">Prospecting &amp; outreach</span>
+            <span class="gc" data-count>6/7</span>
+            <span class="chev"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg></span>
+          </div>
+          <div class="gsummary" data-summary></div>
+          <div class="gbody">
+            <div class="crow" data-row="letters"><span class="cl">Letters &amp; outreach</span><div class="stepper" data-key="letters" data-tone="var(--violet)"></div></div>
+            <div class="crow" data-row="seminars"><span class="cl">Seminars &amp; tradeshows</span><div class="stepper" data-key="seminars" data-tone="var(--violet)"></div></div>
+            <div class="crow" data-row="calls"><span class="cl">Calls / dials</span><div class="stepper" data-key="calls" data-tone="var(--violet)"></div></div>
+            <div class="crow" data-row="contacts"><span class="cl">Telephone contacts</span><div class="stepper" data-key="contacts" data-tone="var(--violet)"></div></div>
+            <div class="crow" data-row="f2f"><span class="cl">F2F approaches</span><div class="stepper" data-key="f2f" data-tone="var(--violet)"></div></div>
+            <div class="crow" data-row="social"><span class="cl">Social &amp; content</span><div class="stepper" data-key="social" data-tone="var(--violet)"></div></div>
+            <div class="subwrap collapsible collapsed">
+              <div class="subtoggle" data-toggle><span class="scaret">▸</span> break down by type<span class="subopt">optional · matches weekly</span></div>
+              <div class="gbody subbody">
+                <div class="crow" data-row="socPosts"><span class="cl">Posts published</span><div class="stepper" data-key="socPosts" data-tone="var(--violet)"></div></div>
+                <div class="crow" data-row="socContent"><span class="cl">Content pieces created</span><div class="stepper" data-key="socContent" data-tone="var(--violet)"></div></div>
+                <div class="crow" data-row="socEngage"><span class="cl">Engagements / replies</span><div class="stepper" data-key="socEngage" data-tone="var(--violet)"></div></div>
+              </div>
+            </div>
+            <div class="crow" data-row="newNames"><span class="cl">New names added</span><div class="stepper" data-key="newNames" data-tone="var(--violet)"></div></div>
+          </div>
+        </div>
+
+        <!-- APPOINTMENTS & FFI -->
+        <div class="gcard">
+          <div class="gch"><span class="dot" style="background:var(--teal)"></span><span class="gl">Appointments &amp; FFI</span><span class="gc" data-count>3/3</span></div>
+          <div class="gbody">
+            <div class="crow" data-row="appts"><span class="cl">Appointments set</span><div class="stepper" data-key="appts" data-tone="var(--teal)"></div></div>
+            <div class="crow" data-row="ffiSched"><span class="cl">FFIs scheduled</span><div class="stepper" data-key="ffiSched" data-tone="var(--teal)"></div></div>
+            <div class="crow" data-row="ffiDone"><span class="cl">FFIs conducted</span><div class="stepper" data-key="ffiDone" data-tone="var(--teal)"></div></div>
+          </div>
+        </div>
+
+        <!-- INTERVIEWS -->
+        <div class="gcard collapsible collapsed" data-group="interviews">
+          <div class="gch tap" data-toggle>
+            <span class="dot" style="background:var(--gold)"></span>
+            <span class="gl">Interviews</span>
+            <span class="gc" data-count>3/4</span>
+            <span class="chev"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg></span>
+          </div>
+          <div class="gsummary" data-summary></div>
+          <div class="gbody">
+            <div class="crow" data-row="newCI"><span class="cl">New CIs booked</span><div class="stepper" data-key="newCI" data-tone="var(--gold)"></div></div>
+            <div class="crow" data-row="oldCI"><span class="cl">Old CIs booked</span><div class="stepper" data-key="oldCI" data-tone="var(--gold)"></div></div>
+            <div class="crow" data-row="ciDone"><span class="cl">CIs conducted</span><div class="stepper" data-key="ciDone" data-tone="var(--gold)"></div></div>
+            <div class="crow" data-row="present"><span class="cl">Solution presentations</span><div class="stepper" data-key="present" data-tone="var(--gold)"></div></div>
+          </div>
+        </div>
+
+        <!-- PRODUCTION -->
+        <div class="gcard gold">
+          <div class="gch"><span class="dot" style="background:var(--gold)"></span><span class="gl">Production</span><span class="gc gold" id="credit">TTD 8.4K credit</span></div>
+          <div class="gbody">
+            <div class="crow" data-row="nbApps"><span class="cl">New business — apps</span><div class="stepper" data-key="nbApps" data-tone="var(--gold)"></div></div>
+            <div class="crow" data-row="lives"><span class="cl">Lives sold</span><div class="stepper" data-key="lives" data-tone="var(--gold)"></div></div>
+            <div class="mrow"><span class="cl">New business — API</span><div class="mfield"><span class="cu">TTD</span><span class="mv">8,400</span></div></div>
+            <div class="advrow">▸ PPP increases &amp; lumpsums<span class="opt">OPTIONAL</span></div>
+          </div>
+        </div>
+
+        <!-- DELIVERY & SERVICE — servicing the existing book (added) -->
+        <div class="gcard collapsible collapsed" data-group="servicing">
+          <div class="gch tap" data-toggle>
+            <span class="dot" style="background:var(--tealLight)"></span>
+            <span class="gl">Delivery &amp; service</span>
+            <span class="nb">★ added</span>
+            <span class="gc" data-count>3/3</span>
+            <span class="chev"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg></span>
+          </div>
+          <div class="gsummary" data-summary></div>
+          <div class="gbody">
+            <div class="crow" data-row="delivered"><span class="cl">Policies delivered</span><div class="stepper" data-key="delivered" data-tone="var(--tealLight)"></div></div>
+            <div class="crow" data-row="svcContacts"><span class="cl">Service contacts</span><div class="stepper" data-key="svcContacts" data-tone="var(--tealLight)"></div></div>
+            <div class="crow" data-row="oldNames"><span class="cl">Old names worked</span><div class="stepper" data-key="oldNames" data-tone="var(--tealLight)"></div></div>
+          </div>
+        </div>
+
+        <!-- HOURS WORKED — NEW daily -->
+        <div class="gcard newc">
+          <div class="gch"><span class="dot" style="background:var(--teal)"></span><span class="gl">Hours worked</span><span class="nb">★ now daily</span><span class="gc" id="hoursSum">8.0 h</span></div>
+          <div class="gbody">
+            <div class="quickchips" id="hourChips">
+              <span class="qc" data-preset="4">Half day · 4h</span>
+              <span class="qc on" data-preset="8">Full day · 8h</span>
+              <span class="qc" data-preset="10">Long day · 10h</span>
+            </div>
+            <div class="crow" data-row="office"><span class="cl">Office hours</span><div class="stepper" data-key="office" data-tone="var(--teal)" data-step="0.5"></div></div>
+            <div class="crow" data-row="field"><span class="cl">Field hours</span><div class="stepper" data-key="field" data-tone="var(--teal)" data-step="0.5"></div></div>
+          </div>
+        </div>
+
+        <div class="notecard">
+          <div class="nl">Note (optional)</div>
+          <div class="nt">Persaud family referral converted — two more in the pipeline for Friday.</div>
+        </div>
+
+        <div class="savebar"><div class="savebtn"><div class="st"><b id="saveTitle">Save today</b><span id="saveSub">8.4K API · 8h · rolls into WK 48</span></div><div class="ptspill" id="ptsPill"><span class="ptsfloat" id="ptsFloat"></span><div class="pv"><span id="ptsVal">116</span><span class="u">pts</span></div><div class="pp" id="ptsPace">pace 110 · ahead</div></div><div class="go">Log →</div></div></div>
+      </div>
+
+      <!-- SUNDAY CONFIRM VIEW -->
+      <div class="body hidden" id="sundayView">
+        <div class="mhead">
+          <div><div class="mt">Weekly Report</div><div class="ms">WK 48 · 5 DAYS LOGGED</div><span class="modepill"><span class="d"></span>Review</span></div>
+          <div class="x">✕</div>
+        </div>
+        <div class="sun-intro">
+          <div class="si-t">Almost done — your week's already here</div>
+          <div class="si-s">Daily logs filled everything below. Just confirm, then add this week's reflection.</div>
+        </div>
+        <div class="sun-sec">
+          <div class="ss-h"><span class="dot" style="background:var(--violet)"></span><span class="ssl">Prospecting &amp; outreach</span><span class="done">✓ from daily</span></div>
+          <div class="sun-row"><span class="sl">Letters · Seminars · Social</span><span class="sv">12 · 1 · 4</span></div>
+          <div class="sun-row"><span class="sl">Calls · Tel contacts · F2F</span><span class="sv">47 · 18 · 9</span></div>
+          <div class="sun-row"><span class="sl">New names added</span><span class="sv">8</span></div>
+        </div>
+        <div class="sun-sec">
+          <div class="ss-h"><span class="dot" style="background:var(--teal)"></span><span class="ssl">Sales &amp; production</span><span class="done">✓ from daily</span></div>
+          <div class="sun-row"><span class="sl">Approaches · CIs done · Presentations</span><span class="sv">22 · 4 · 5</span></div>
+          <div class="sun-row"><span class="sl">New business API · apps · lives</span><span class="sv">TTD 18.4K · 2 · 4</span></div>
+          <div class="sun-row"><span class="sl">Delivered · service · old names</span><span class="sv">3 · 11 · 14</span></div>
+        </div>
+        <div class="sun-sec">
+          <div class="ss-h"><span class="dot" style="background:var(--teal)"></span><span class="ssl">Hours worked</span><span class="done">✓ from daily</span></div>
+          <div class="sun-row"><span class="sl">Office + field, summed across 5 days</span><span class="sv">41 h</span></div>
+        </div>
+        <div class="sun-todo">
+          <div class="stl">⊘ Only this is left — the weekly-only bits</div>
+          <div class="sun-field"><span class="sf-ic">★</span><span class="sf-t">Rate your week<small>planning &amp; sales · 1–10</small></span><span class="sf-go">›</span></div>
+          <div class="sun-field"><span class="sf-ic">◎</span><span class="sf-t">Targets for next week<small>set your WK 49 goals</small></span><span class="sf-go">›</span></div>
+        </div>
+        <div class="savebar"><div class="savebtn"><div class="st"><b>Submit week</b><span>Hours &amp; prospecting already in</span></div><div class="ptspill"><div class="pv"><span>462</span> pts</div><div class="pp">of 550 floor ✓</div></div><div class="go">Submit →</div></div></div>
+      </div>
+
+    </div></div></div>
+
+    <!-- ANNOTATIONS -->
+    <div class="annos">
+      <div class="secttl" style="margin-top:0">This round — points · week strip · back-fill</div>
+
+      <div class="acard newc">
+        <div class="ah"><span class="anum">P</span><span class="at">Activity points — anchored, in the card</span><span class="atag new">New</span></div>
+        <div class="ad">Each logged activity earns points; the running total sits in the <b>Save / Submit card</b> with a quick <b>+N pulse</b> on each tap — <b>not</b> a floating badge that fights the inputs on a phone. A bare number is vanity, so it shows <b>pts vs daily pace</b> (pace = your weekly activity-point floor ÷ working days). Repo note: <b>there's no points table in the code yet</b> — these weights are a proposal, anchored to the real <b>weekly-standard floors</b> I found (<code>manager-v2-drill</code>: dials 40 · tel 10 · F2F 5 · FFI 3 · CI 2 · app 1). <b>Kyron ratifies the weights.</b></div>
+        <div style="margin-top:8px">
+          <div class="cov-li"><span class="cv-n">Dial · tel contact · F2F approach</span><span class="cv-b daily">1 · 2 · 3</span></div>
+          <div class="cov-li"><span class="cv-n">FFI conducted · solution present.</span><span class="cv-b daily">5 · 5</span></div>
+          <div class="cov-li"><span class="cv-n">CI booked · CI conducted</span><span class="cv-b daily">4 · 8</span></div>
+          <div class="cov-li"><span class="cv-n">Application written</span><span class="cv-b daily">15</span></div>
+          <div class="cov-li"><span class="cv-n">New name · letter · social · seminar</span><span class="cv-b daily">2 · 1 · 1 · 5</span></div>
+        </div>
+        <div class="hint"><span class="hi">⚑</span><span>Lives, hours, and the social breakdown carry <b>0 pts</b> — they're outcomes/detail, not funnel activity, so they don't double-count.</span></div>
+      </div>
+
+      <div class="acard newc">
+        <div class="ah"><span class="anum">W</span><span class="at">6- or 7-day weeks</span><span class="atag new">New</span></div>
+        <div class="ad">The <b>week strip</b> up top shows all seven days. Working days are a setting (<b>M–F / 6-day / 7-day</b>, top-right of the strip — tap it) and that denominator drives <b>pace, the daily points target, and streaks</b>. Days outside the schedule render dimmed and <b>never break a streak</b> or fire a “you didn't log” nudge — an agent can still log them, and they roll up the same way.</div>
+      </div>
+
+      <div class="acard newc">
+        <div class="ah"><span class="anum">B</span><span class="at">Back-fill a day</span><span class="atag new">New</span></div>
+        <div class="ad"><b>Tap any day in the strip to fill or edit it.</b> Logged days (green ✓) reopen for edits; a <b>missing</b> weekday shows amber as the catch-up cue. Editing a past day <b>re-syncs into the same WK 48 draft</b> via the aggregator. Only the <b>current open week</b> is editable — once submitted/committed it's read-only. <i>Try tapping Mon on the phone.</i></div>
+      </div>
+
+      <div class="secttl">Field audit — every weekly step has a daily home</div>
+      <div class="acard newc">
+        <div class="ah"><span class="anum">1</span><span class="at">Telephone contacts — added</span><span class="atag new">Audit</span></div>
+        <div class="ad">Going through the weekly step-by-step, the <b>Calls &amp; face-to-face</b> step splits into three: dials, <b>telephone contacts</b> (the ones who answered), and F2F approaches. The daily had dials and F2F but <b>not telephone contacts</b> — added to the prospecting card so the conversation-rate ratios the weekly computes aren't broken.</div>
+      </div>
+
+      <div class="acard newc">
+        <div class="ah"><span class="anum">2</span><span class="at">Social &amp; content — the collapsible, yes</span><span class="atag new">Your Q</span></div>
+        <div class="ad">You spotted the weekly's collapsible under social. <b>My recommendation: include it, but keep it collapsed.</b> The daily shows one <b>Social &amp; content</b> stepper for the headline count; tapping <b>“break down by type”</b> reveals the same sub-fields the weekly has (posts, content pieces, engagements). Most days the agent never opens it — so parity is there without slowing the common case. <i>Try it on the phone.</i></div>
+        <div class="hint"><span class="hi">⚑</span><span>Confirm the exact social sub-fields against the live wizard — I used posts / content / engagements as the likely set.</span></div>
+      </div>
+
+      <div class="acard newc">
+        <div class="ah"><span class="anum">3</span><span class="at">Lives sold — added</span><span class="atag new">Audit</span></div>
+        <div class="ad">The weekly's New business step captures <b>apps, lives sold, and API</b> as three distinct numbers. The daily had apps + API but <b>dropped lives</b> — added to the Production card so the weekly's lives total isn't a Sunday backfill.</div>
+      </div>
+
+      <div class="acard newc">
+        <div class="ah"><span class="anum">4</span><span class="at">Hours &amp; Delivery — captured daily</span><span class="atag new">Done</span></div>
+        <div class="ad"><b>Hours worked</b> (office + field, with quick chips) and <b>Delivery &amp; service</b> (delivered, service contacts, old names) are both logged daily now and sum into the weekly. Delivery stays collapsed since it's intermittent.</div>
+      </div>
+
+      <div class="acard">
+        <div class="ah"><span class="anum">5</span><span class="at">What stays weekly-only — on purpose</span><span class="atag same">Honest</span></div>
+        <div class="ad">Two things never go daily: the <b>five self-ratings</b> (planning / time / sales / prospecting / overall, 1–10) and the <b>reflection note</b> + <b>next-week goals</b>. Rating a single day or setting “next week’s” target mid-week is meaningless — these belong to the Sunday review and that's where they stay.</div>
+      </div>
+
+      <div class="acard">
+        <div class="ah"><span class="anum">6</span><span class="at">Every weekly step → its daily home</span><span class="atag same">Audit</span></div>
+        <div class="ad" style="margin-bottom:4px">The full pass, so nothing's assumed:</div>
+        <div class="cov-li"><span class="cv-s">1</span><span class="cv-n">Letters &amp; outreach</span><span class="cv-b daily">daily</span></div>
+        <div class="cov-li"><span class="cv-s">2</span><span class="cv-n">Seminars &amp; tradeshows</span><span class="cv-b daily">daily</span></div>
+        <div class="cov-li"><span class="cv-s">3</span><span class="cv-n">Calls · telephone contacts · F2F</span><span class="cv-b add">+contacts</span></div>
+        <div class="cov-li"><span class="cv-s">4</span><span class="cv-n">Social &amp; content (+ breakdown)</span><span class="cv-b add">+detail</span></div>
+        <div class="cov-li"><span class="cv-s">5</span><span class="cv-n">New names added</span><span class="cv-b daily">daily</span></div>
+        <div class="cov-li"><span class="cv-s">6</span><span class="cv-n">Approaches &amp; interviews</span><span class="cv-b daily">daily</span></div>
+        <div class="cov-li"><span class="cv-s">7</span><span class="cv-n">New business — apps · lives · API</span><span class="cv-b add">+lives</span></div>
+        <div class="cov-li"><span class="cv-s">8</span><span class="cv-n">Delivery &amp; service</span><span class="cv-b daily">daily</span></div>
+        <div class="cov-li"><span class="cv-s">9</span><span class="cv-n">Hours worked</span><span class="cv-b daily">daily</span></div>
+        <div class="cov-li"><span class="cv-s">10</span><span class="cv-n">Rate your week (5 ratings + note)</span><span class="cv-b wk">weekly</span></div>
+        <div class="cov-li"><span class="cv-s">11</span><span class="cv-n">Targets for next week</span><span class="cv-b wk">weekly</span></div>
+      </div>
+
+      <div class="acard">
+        <div class="ah"><span class="anum">7</span><span class="at">Sunday is confirm + reflect only</span><span class="atag same">Flow</span></div>
+        <div class="ad">Switch the toggle above: the weekly opens with all activity, sales, production, servicing <b>and hours</b> green from the week's logs. Only the two weekly-only fields are left to do.</div>
+      </div>
+
+      <div class="note">
+        <span class="ni">i</span>
+        <p><b>After the full audit, only ratings + next-week goals remain weekly.</b> Everything else the weekly report asks for now has a daily home — the gaps were <b>telephone contacts</b>, the <b>social breakdown</b>, and <b>lives sold</b>, all now in. Speed is protected by defaults-to-zero and collapse: the social breakdown and servicing stay closed until needed. Next I can spec the <b>aggregator field map</b> (every daily key → weekly rollup, including how counts sum and the social sub-fields fold in) so the build is unambiguous.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var STEP = {
+    letters:2, seminars:0, calls:12, contacts:5, f2f:1, social:1, socPosts:1, socContent:1, socEngage:3, newNames:3,
+    appts:3, ffiSched:2, ffiDone:1,
+    newCI:2, oldCI:1, ciDone:2, present:1,
+    nbApps:1, lives:2, delivered:1, svcContacts:4, oldNames:5, office:3, field:5
+  };
+  var GROUPS = {
+    prospecting:['letters','seminars','calls','contacts','f2f','social','newNames'],
+    interviews:['newCI','oldCI','ciDone','present'],
+    servicing:['delivered','svcContacts','oldNames']
+  };
+  var SUMMARY_LABEL = { letters:'Let', seminars:'Sem', calls:'Calls', contacts:'Tel', f2f:'F2F', social:'Soc', newNames:'Names', newCI:'New CI', oldCI:'Old CI', ciDone:'CI', present:'Pres', delivered:'Deliv', svcContacts:'Svc', oldNames:'Old names' };
+  var WEIGHTS = { letters:1, seminars:5, calls:1, contacts:2, f2f:3, social:1, socPosts:0, socContent:0, socEngage:0, newNames:2, appts:3, ffiSched:2, ffiDone:5, newCI:4, oldCI:4, ciDone:8, present:5, nbApps:15, lives:0, delivered:3, svcContacts:2, oldNames:1, office:0, field:0 };
+  var DAILY_PTS_TARGET = 110;
+  var inited = false;
+  var prevPts = null;
+
+  function fmt(k){ var v = STEP[k]; return (Math.round(v*10)%10===0)? String(v): v.toFixed(1); }
+
+  // build steppers
+  document.querySelectorAll('.stepper').forEach(function(st){
+    var key = st.dataset.key, tone = st.dataset.tone, step = parseFloat(st.dataset.step||'1');
+    st.innerHTML = '<span class="sb minus">\u2212</span><span class="sv">0</span><span class="sb plus" style="background:'+tone+'">+</span>';
+    function render(){
+      var v = STEP[key];
+      var sv = st.querySelector('.sv');
+      sv.textContent = (step<1)? fmt(key): v;
+      sv.classList.toggle('zero', v<=0);
+      var row = st.closest('[data-row]'); if(row){ row.querySelector('.cl').classList.toggle('zero', v<=0); }
+    }
+    st.querySelector('.minus').addEventListener('click', function(){ STEP[key]=Math.max(0,+(STEP[key]-step).toFixed(1)); render(); refresh(); });
+    st.querySelector('.plus').addEventListener('click', function(){ STEP[key]=+(STEP[key]+step).toFixed(1); render(); refresh(); });
+    render();
+  });
+
+  // collapsible cards
+  document.querySelectorAll('[data-toggle]').forEach(function(h){
+    h.addEventListener('click', function(){ h.closest('.collapsible').classList.toggle('collapsed'); });
+  });
+
+  // hour preset chips
+  document.querySelectorAll('#hourChips .qc').forEach(function(c){
+    c.addEventListener('click', function(){
+      var total = parseFloat(c.dataset.preset);
+      // split: keep field-heavy ratio ~ office 40% / field 60%
+      STEP.office = Math.round(total*0.4*2)/2; STEP.field = +(total - STEP.office).toFixed(1);
+      document.querySelectorAll('#hourChips .qc').forEach(function(x){ x.classList.toggle('on', x===c); });
+      // re-render the two hour steppers
+      document.querySelectorAll('.stepper[data-key=office],.stepper[data-key=field]').forEach(function(st){
+        var sv = st.querySelector('.sv'); sv.textContent = fmt(st.dataset.key); sv.classList.toggle('zero', STEP[st.dataset.key]<=0);
+      });
+      refresh();
+    });
+  });
+
+  function refresh(){
+    // group counts
+    document.querySelectorAll('.gcard[data-group]').forEach(function(card){
+      var keys = GROUPS[card.dataset.group];
+      var filled = keys.filter(function(k){return STEP[k]>0;}).length;
+      card.querySelector('[data-count]').textContent = filled+'/'+keys.length;
+      var sum = card.querySelector('[data-summary]');
+      if(sum){ sum.innerHTML = keys.map(function(k){ return '<span class="sc'+(STEP[k]>0?'':' zero')+'">'+SUMMARY_LABEL[k]+' '+fmt(k)+'</span>'; }).join(''); }
+    });
+    // hours sum
+    var h = +(STEP.office+STEP.field).toFixed(1);
+    document.getElementById('hoursSum').textContent = (Math.round(h*10)%10===0? h: h.toFixed(1))+' h';
+    document.getElementById('saveSub').textContent = '8.4K API · '+(Math.round(h*10)%10===0? h: h.toFixed(1))+'h · rolls into WK 48';
+    // activity points (anchored to weekly-standard floors)
+    var pts = 0; for (var wk in WEIGHTS){ pts += (STEP[wk]||0)*WEIGHTS[wk]; }
+    var pv = document.getElementById('ptsVal'); if(pv){ pv.textContent = Math.round(pts); }
+    var pace = document.getElementById('ptsPace');
+    if(pace){ pace.textContent = 'pace '+DAILY_PTS_TARGET+' · '+(pts>=DAILY_PTS_TARGET?'ahead':pts>=DAILY_PTS_TARGET*0.7?'on pace':'behind'); }
+    if(inited){ var pill=document.getElementById('ptsPill'); if(pill){ pill.classList.remove('pulse'); void pill.offsetWidth; pill.classList.add('pulse'); } }
+    if(inited && prevPts!=null && pts>prevPts){ var fl=document.getElementById('ptsFloat'); if(fl){ fl.textContent='+'+Math.round(pts-prevPts); fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go'); } }
+    prevPts = pts;
+    // toggle preset highlight off if custom
+    var total = STEP.office+STEP.field, match=false;
+    document.querySelectorAll('#hourChips .qc').forEach(function(x){ if(parseFloat(x.dataset.preset)===total){ x.classList.add('on'); match=true;} else x.classList.remove('on'); });
+  }
+  refresh();
+  inited = true;
+
+  // week strip — fill / edit / back-fill
+  var ws = document.getElementById('weekstrip');
+  if(ws){
+    ws.querySelectorAll('.wd').forEach(function(d){
+      d.addEventListener('click', function(){
+        ws.querySelectorAll('.wd').forEach(function(x){x.classList.remove('sel');});
+        d.classList.add('sel');
+        var p = d.dataset.day.toUpperCase().split(' ');
+        var ed = document.getElementById('entryDate'); if(ed){ ed.textContent = p[0]+' · '+p[1]+' '+p[2]+' · WK 48'; }
+        var bb = document.getElementById('backfillBanner'), bt = document.getElementById('backfillText'), stt = document.getElementById('saveTitle');
+        var nice = p[0].charAt(0)+p[0].slice(1).toLowerCase()+' '+p[1];
+        if(d.classList.contains('today')){ bb.classList.add('hidden'); if(stt) stt.textContent='Save today'; }
+        else if(d.classList.contains('logged')){ bb.classList.remove('hidden'); bt.innerHTML='<b>Editing '+nice+'</b> — changes re-sync to your WK 48 draft.'; if(stt) stt.textContent='Save changes'; }
+        else if(d.classList.contains('upcoming')){ bb.classList.remove('hidden'); bt.innerHTML='<b>Logging ahead for '+nice+'</b> — it rolls into WK 48 too.'; if(stt) stt.textContent='Save '+p[0]; }
+        else { bb.classList.remove('hidden'); bt.innerHTML='<b>'+nice+' is outside your Mon–Fri schedule</b> — log it anyway if you worked.'; if(stt) stt.textContent='Save '+p[0]; }
+      });
+    });
+    document.querySelectorAll('.wdays .wb').forEach(function(b){
+      b.addEventListener('click', function(){
+        document.querySelectorAll('.wdays .wb').forEach(function(x){x.classList.toggle('on',x===b);});
+        var sat=ws.querySelector('[data-day="Sat 29 Nov"]'), sun=ws.querySelector('[data-day="Sun 30 Nov"]');
+        sat.classList.remove('off','upcoming'); sun.classList.remove('off','upcoming');
+        if(b.textContent==='6-day'){ sat.classList.add('upcoming'); sun.classList.add('off'); }
+        else if(b.textContent==='7-day'){ sat.classList.add('upcoming'); sun.classList.add('upcoming'); }
+        else { sat.classList.add('off'); sun.classList.add('off'); }
+      });
+    });
+  }
+
+  // view + theme toggles
+  document.getElementById('viewSeg').addEventListener('click', function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    this.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});
+    document.getElementById('entryView').classList.toggle('hidden', b.dataset.view!=='entry');
+    document.getElementById('sundayView').classList.toggle('hidden', b.dataset.view!=='sunday');
+  });
+  document.getElementById('themeSeg').addEventListener('click', function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    document.body.className=b.dataset.theme;
+    this.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});
+  });
+})();
+</script>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" rx="40" fill="#01696F"/>
+    <rect x="44" y="48" width="112" height="26" rx="7" fill="#FAEFD3"/>
+    <rect x="44" y="86" width="112" height="26" rx="7" fill="#fff" fill-opacity=".55"/>
+    <rect x="44" y="124" width="112" height="26" rx="7" fill="#fff" fill-opacity=".9"/>
+    <circle cx="150" cy="61" r="7" fill="#4ecdc4"/>
+  </svg>
+</template>
+</body>
+</html>

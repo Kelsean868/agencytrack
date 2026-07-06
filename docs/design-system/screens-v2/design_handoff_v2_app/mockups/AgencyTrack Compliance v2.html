@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Compliance v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 600px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+    .ms-row:hover { background: rgba(1,105,111,0.04) !important; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Compliance v2 — who filed, who hasn't, one tap to nudge</h1>
+    <p>
+      The WAR governance surface, rebuilt to the v2 grammar. A <b>reality bar</b> leads with the team's filing state (filed % · on-time · late · not-in), then the lead content is exception-first: the agents who <b>haven't submitted</b>, each with a one-tap <b>Nudge</b> (and "Nudge all"). Below sits the full <b>filing roster</b> — status pill, submitted time, on-time streak. Clicking a row reuses the <b>coaching drawer</b> on the Weekly tab. Desktop light/dark, the nudge drill, and mobile.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="manager-v2-shared.jsx"></script>
+  <script type="text/babel" src="manager-v2-drill.jsx"></script>
+  <script type="text/babel" src="manager-v2-scenes.jsx"></script>
+  <script type="text/babel" src="mastersheet-v2-shared.jsx"></script>
+  <script type="text/babel" src="compliance-v2-shared.jsx"></script>
+  <script type="text/babel" src="compliance-v2-scenes.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="desktop"
+            title="Compliance — branch_manager (desktop)"
+            subtitle="Reality bar first (filed % · on-time · late · not-in), then the not-in lead with Nudge / Nudge all, then the full filing roster: status pill, submitted time, on-time streak. Light + dark."
+          >
+            <DCArtboard id="d-light" label="01 · Desktop · Light · Filing state" width={APP_W} height={APP_H}>
+              <ComplianceDesktopScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="d-dark" label="02 · Desktop · Dark · Filing state" width={APP_W} height={APP_H}>
+              <ComplianceDesktopScene t={APP_DARK} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="drill"
+            title="Nudge → coaching drawer (reused)"
+            subtitle="Clicking a not-in agent opens the shared coaching drawer on the Weekly Standard tab — the natural place to coach a late or missing filer — with the same nudge action inside."
+          >
+            <DCArtboard id="d-drill" label="03 · Desktop · Light · Coaching a missing filer" width={APP_W} height={APP_H}>
+              <ComplianceDesktopScene t={APP_LIGHT} drawer="drill" drillTab="weekly" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Compliance (mobile) + coaching sheet"
+            subtitle="Filing state as a stacked-bar mini, the not-in agents with Nudge, then the filed roster. Tapping an agent raises the coaching bottom sheet."
+          >
+            <DCArtboard id="m-light" label="04 · Mobile · Light · Filing state" width={M_W} height={M_H}>
+              <ComplianceMobileScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="m-drill" label="05 · Mobile · Light · Coaching sheet · Weekly" width={M_W} height={M_H}>
+              <ComplianceMobileScene t={APP_LIGHT} sheet="drill" sheetTab="weekly" />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

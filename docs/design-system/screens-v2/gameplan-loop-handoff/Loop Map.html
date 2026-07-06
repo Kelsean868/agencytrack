@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Game Plan Loop — map</title>
+<link rel="preconnect" href="https://api.fontshare.com" />
+<link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{ --primary:#01696f; --primary-tint:rgba(1,105,111,0.10); --ink:#28251d; --ink-muted:#6b6560; --ink-faint:#a8a39c; --surface:#f7f6f2; --raised:#fff; --muted:#ebe8e1; --border:#e5e2db; --gold:#b07d1a; --gold-tint:rgba(176,125,26,0.12); --success:#2d7a4f; --success-tint:rgba(45,122,79,0.12); --accent:#5a3fa0; --accent-tint:rgba(90,63,160,0.12); }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--surface); color:var(--ink); font-family:'Satoshi',sans-serif; -webkit-font-smoothing:antialiased; }
+  .wrap{ max-width:1180px; margin:0 auto; padding:40px 28px 80px; }
+  h1{ font-family:'Cabinet Grotesk',sans-serif; font-size:30px; font-weight:800; letter-spacing:-0.02em; margin:0 0 6px; }
+  .sub{ color:var(--ink-muted); font-size:14px; margin-bottom:26px; max-width:760px; line-height:1.55; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .ring{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .node{ background:var(--raised); border:1px solid var(--border); border-radius:15px; padding:16px 17px; position:relative; border-top:3px solid var(--c); }
+  .node .n{ position:absolute; top:-13px; right:14px; width:26px; height:26px; border-radius:50%; background:var(--c); color:#fff; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; }
+  .node h3{ font-family:'Cabinet Grotesk',sans-serif; margin:0 0 3px; font-size:16px; font-weight:700; }
+  .node .role{ font-size:9.5px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; font-family:'JetBrains Mono',monospace; color:var(--c); margin-bottom:8px; }
+  .node p{ margin:0 0 9px; font-size:11.5px; color:var(--ink-muted); line-height:1.5; }
+  .io{ display:flex; flex-direction:column; gap:3px; border-top:1px solid var(--border); padding-top:8px; }
+  .io span{ font-size:10px; font-family:'JetBrains Mono',monospace; }
+  .io .r{ color:var(--ink-muted); } .io .w{ color:var(--ink); font-weight:700; }
+  .file{ font-size:9.5px; color:var(--ink-faint); font-family:'JetBrains Mono',monospace; margin-top:8px; word-break:break-word; }
+  .arrow{ text-align:center; color:var(--ink-faint); font-size:18px; margin:2px 0; }
+  .band{ background:var(--primary); color:#fff; border-radius:16px; padding:18px 22px; margin:22px 0; }
+  .band h2{ font-family:'Cabinet Grotesk',sans-serif; margin:0 0 6px; font-size:18px; }
+  .band p{ margin:0; font-size:13px; opacity:0.94; line-height:1.55; }
+  .feedback{ margin-top:18px; padding:14px 18px; border:1.5px dashed var(--gold); border-radius:13px; background:var(--gold-tint); display:flex; align-items:center; gap:11px; }
+  .feedback b{ color:var(--ink); }
+  .legend{ display:flex; flex-wrap:wrap; gap:14px; margin:18px 0 4px; font-size:11.5px; color:var(--ink-muted); }
+  .legend i{ width:11px; height:11px; border-radius:3px; display:inline-block; vertical-align:middle; margin-right:5px; }
+  .section-label{ font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-faint); margin:26px 0 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The Game Plan Loop</h1>
+  <div class="sub">One self-reinforcing cycle. A life goal becomes a required commission, an API allocation, a weekly activity prescription, a booked week, logged activity, settled policies — and settled production flows back to re-solve the plan. Every surface is a view onto, or a transformation of, <b>one number chain</b>. Numbers in each card show what it <span class="mono" style="color:var(--ink-muted)">reads</span> and <span class="mono" style="color:var(--ink);font-weight:700">writes</span>.</div>
+
+  <div class="band">
+    <h2>The one invariant</h2>
+    <p>Life budget → required first-year commission → API targets → apps (<span class="mono">API ÷ avgPolicySize</span>, defined once) → weekly activity (P.C / A.I / F.F.I / C.I) → booked appts → logged activity → Written→Submitted→Settled policies → settled Life API → award tier → re-solve. No two surfaces compute the same step with different math. Only Life API drives awards.</p>
+  </div>
+
+  <div class="section-label">The cycle · ① → ⑧</div>
+  <div class="ring">
+    <div class="node" style="--c:var(--primary)"><div class="n">1</div><div class="role">Goal</div><h3>Money Needs + Allocator</h3><p>Budget worksheet → required commission → allocate across license-aware API lines &amp; products.</p><div class="io"><span class="r">reads moneyNeeds · licenseClass</span><span class="w">writes yearPlan.lines[].api</span></div><div class="file">Money Needs Merged.html · mn-merge*.jsx</div></div>
+    <div class="node" style="--c:var(--primary)"><div class="n">3</div><div class="role">Commit</div><h3>Game Plan hub</h3><p>The agreed plan. Allocator's Send lands here (tab, not route); commits the snapshot + ratios.</p><div class="io"><span class="r">reads yearPlan · moneyNeeds</span><span class="w">writes gamePlan</span></div><div class="file">Game Plan v2.html · gameplan-*.jsx</div></div>
+    <div class="node" style="--c:var(--accent)"><div class="n">4</div><div class="role">Decompose</div><h3>Playground + On-Track</h3><p>API → weekly activity. Time-aware: targets re-solve as weeks shrink &amp; production lands.</p><div class="io"><span class="r">reads gamePlan · settled</span><span class="w">writes weeklyTargets</span></div><div class="file">On-Track Engine.html · ontrack-*.jsx</div></div>
+    <div class="node" style="--c:var(--accent)"><div class="n">5</div><div class="role">Book</div><h3>Planner + Hit-list</h3><p>Book the week from the prescription &amp; the targeted call list (campaign/prospect-seeded).</p><div class="io"><span class="r">reads weeklyTargets · hitList</span><span class="w">writes plannerEvents</span></div><div class="file">Planner &amp; Scheduler v2 · Campaigns · Prospect Prep</div></div>
+  </div>
+  <div class="arrow">↓ &nbsp; the week happens &nbsp; ↓</div>
+  <div class="ring">
+    <div class="node" style="--c:var(--gold)"><div class="n">6</div><div class="role">Log</div><h3>Daily Capture</h3><p>Log the activity that actually happened; a kept appointment → "Sale written".</p><div class="io"><span class="r">reads plannerEvents</span><span class="w">writes activityLog → sale</span></div><div class="file">Daily Capture v2.html · dailycap-*.jsx</div></div>
+    <div class="node" style="--c:var(--gold)"><div class="n">7</div><div class="role">Record</div><h3>Policy Ledger</h3><p>One client → many apps. Written → Submitted → Settled. Policy # optional until settled.</p><div class="io"><span class="r">reads sale capture</span><span class="w">writes policies[].status</span></div><div class="file">Policy Ledger v2.html · app-policy-v2.jsx</div></div>
+    <div class="node" style="--c:var(--success)"><div class="n">8</div><div class="role">Bank</div><h3>Awards + Persistency</h3><p>Settled Life API → tier clears. Persistency gates the payout. Then it re-solves the plan.</p><div class="io"><span class="r">reads settled Life API</span><span class="w">writes award tier · payout</span></div><div class="file">Persistency v2.html · persistency-v2-*.jsx</div></div>
+    <div class="node" style="--c:var(--success)"><div class="n">↺</div><div class="role">Re-solve</div><h3>Back to the prescription</h3><p>Settled production updates the gap → ④ recomputes this week's activity. The loop closes.</p><div class="io"><span class="r">reads new settled total</span><span class="w">→ weeklyTargets re-solve</span></div><div class="file">interactive: Loop Prototype.html</div></div>
+  </div>
+
+  <div class="feedback">
+    <span class="mono" style="font-size:22px;color:var(--gold)">↺</span>
+    <div style="font-size:12.5px;color:var(--ink-muted);line-height:1.5"><b>The feedback edge is the point.</b> ⑧ settled production doesn't just bank a prize — it flows back into ④, shrinking the gap and re-solving this week's activity targets. Open <b>AgencyTrack Loop Prototype.html</b> to drive the full cycle and watch every number propagate.</div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--primary)"></i>Plan (goal → commit)</span>
+    <span><i style="background:var(--accent)"></i>Prescribe &amp; book</span>
+    <span><i style="background:var(--gold)"></i>Do &amp; record</span>
+    <span><i style="background:var(--success)"></i>Bank &amp; re-solve</span>
+  </div>
+
+  <div class="section-label">Also in the package</div>
+  <div class="sub" style="margin-bottom:0">Manager surfaces (branch &amp; unit managers sell + recruit — their own personal planner with 1-on-1 / unit meeting / joint work / training, plus team views): <b class="mono" style="font-size:12px">Planner - Manager Surfaces.html</b>. Goals hub: <b class="mono" style="font-size:12px">Goals v2.html</b>. Full data model, stage contracts, engines &amp; build order: <b class="mono" style="font-size:12px">LOOP_SPEC.md</b>.</div>
+</div>
+</body>
+</html>

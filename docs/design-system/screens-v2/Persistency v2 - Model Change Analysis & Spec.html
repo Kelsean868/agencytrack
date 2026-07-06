@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Persistency v2 — Model Change Analysis &amp; Implementation Spec</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #F7F6F2; --surface: #FFFFFF; --soft: #F4F2EC; --mute: #F0EFE9;
+    --ink: #28251D; --inkMute: #6B6560; --inkFaint: #A8A39C;
+    --rule: #E5E2DB; --ruleStrong: #CFCBC2;
+    --teal: #01696F; --tealDark: #014E52; --tealTint: #E6F4F4;
+    --gold: #B07D1A; --goldTint: #FAEFD3;
+    --success: #2D7A4F; --successTint: #E8F5EE;
+    --warning: #B45309; --warningTint: #FEF3E2;
+    --danger: #C0392B; --dangerTint: #FDE8E7;
+    --display: 'Cabinet Grotesk', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --sans: 'Satoshi', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --mono: 'JetBrains Mono', Menlo, 'SF Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .doc { box-sizing: border-box; max-width: 8.5in; margin: 0 auto; background: var(--bg);
+         padding: 56px clamp(24px, 5vw, 0.85in) 96px; }
+  .doc-frame { width: 100%; border-collapse: collapse; }
+  .doc-frame td { padding: 0; }
+  .hdr-space, .ftr-space { display: none; }
+
+  /* Masthead */
+  .eyebrow { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--teal); margin: 0 0 14px; display: flex; align-items: center; gap: 9px; }
+  .eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); }
+  h1 { font-family: var(--display); font-weight: 800; font-size: 34px; line-height: 1.08; letter-spacing: -0.02em; margin: 0 0 14px; text-wrap: balance; }
+  .lede { font-size: 16px; line-height: 1.6; color: var(--inkMute); margin: 0 0 18px; max-width: 62ch; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 10px; margin: 0 0 8px; padding-bottom: 26px; border-bottom: 2px solid var(--ink); }
+  .chip { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--inkMute); background: var(--surface); border: 1px solid var(--rule); border-radius: 999px; padding: 5px 11px; }
+  .chip b { color: var(--ink); font-weight: 700; }
+
+  h2 { font-family: var(--display); font-weight: 800; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--teal); margin: 42px 0 6px; display: flex; align-items: baseline; gap: 10px; }
+  h2 .num { font-family: var(--mono); font-size: 12px; color: var(--inkFaint); font-weight: 700; }
+  .h2sub { font-family: var(--display); font-weight: 800; font-size: 23px; line-height: 1.15; letter-spacing: -0.015em; color: var(--ink); margin: 0 0 16px; text-wrap: balance; }
+  h3 { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: -0.01em; color: var(--ink); margin: 22px 0 7px; }
+  p { font-size: 14.5px; line-height: 1.62; color: #38342B; margin: 0 0 12px; text-wrap: pretty; }
+  ul, ol { font-size: 14.5px; line-height: 1.6; color: #38342B; margin: 0 0 12px; padding-left: 20px; }
+  li { margin: 0 0 6px; text-wrap: pretty; }
+  li::marker { color: var(--teal); }
+  strong { font-weight: 700; color: var(--ink); }
+  code { font-family: var(--mono); font-size: 0.88em; background: var(--mute); border: 1px solid var(--rule); border-radius: 5px; padding: 1px 5px; color: var(--tealDark); }
+  em { font-style: normal; color: var(--teal); font-weight: 600; }
+
+  /* Formula block */
+  .formula { font-family: var(--mono); font-size: 13.5px; line-height: 1.7; background: var(--tealTint); border: 1px solid #BFE0E0; border-left: 3px solid var(--teal); border-radius: 8px; padding: 14px 16px; margin: 14px 0; color: var(--tealDark); white-space: pre-wrap; }
+  .formula .big { font-size: 15px; font-weight: 700; color: var(--ink); }
+
+  /* Callouts */
+  .callout { border-radius: 10px; padding: 14px 16px; margin: 16px 0; font-size: 13.5px; line-height: 1.58; }
+  .callout .tag { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; display: block; margin-bottom: 5px; }
+  .flag { background: var(--goldTint); border: 1px solid #E8CF8E; }
+  .flag .tag { color: var(--gold); }
+  .keypoint { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--teal); }
+  .keypoint .tag { color: var(--teal); }
+
+  /* Tables */
+  table.cmp { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  table.cmp th, table.cmp td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; line-height: 1.45; }
+  table.cmp thead th { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--inkMute); border-bottom: 1.5px solid var(--ruleStrong); background: var(--soft); font-weight: 700; }
+  table.cmp tbody th { font-weight: 700; color: var(--ink); width: 27%; }
+  table.cmp td.cur { color: var(--inkMute); }
+  table.cmp td.new { color: var(--ink); }
+  table.cmp .num { font-family: var(--mono); }
+  .pos { color: var(--success); font-weight: 700; }
+  .neg { color: var(--danger); font-weight: 700; }
+  table.cmp tr.total td, table.cmp tr.total th { border-top: 1.5px solid var(--ruleStrong); border-bottom: none; background: var(--soft); font-weight: 700; }
+
+  /* Stat tiles */
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }
+  .tile { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 13px 14px; }
+  .tile .k { font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--inkFaint); }
+  .tile .v { font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: -0.02em; margin-top: 4px; line-height: 1; }
+  .tile .s { font-size: 11px; color: var(--inkMute); margin-top: 5px; }
+
+  .caption { font-size: 11.5px; color: var(--inkFaint); font-family: var(--mono); margin: -6px 0 16px; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 34px 0; }
+
+  @page { size: letter; margin: 0; }
+  @media print {
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    html, body { margin: 0; padding: 0; background: #fff; }
+    .doc { max-width: none !important; margin: 0 !important; padding: 0 0.7in !important; background: #fff; }
+    .hdr-space, .ftr-space { display: table-cell; height: 0.7in; }
+    h1, h2, h3, .h2sub { break-after: avoid; }
+    table, figure, .formula, .callout, .tiles, .tile, tr { break-inside: avoid; }
+    p, li { orphans: 3; widows: 3; }
+  }
+</style>
+</head>
+<body>
+<main class="doc">
+<table class="doc-frame" role="presentation">
+<thead><tr><td class="hdr-space"></td></tr></thead>
+<tbody><tr><td>
+
+  <p class="eyebrow"><span class="dot"></span>AgencyTrack · Persistency · Model Change</p>
+  <h1>Persistency v2 — moving to a rolling, per-policy, time-weighted model</h1>
+  <p class="lede">Tatil is proposing a change to how persistency is calculated. This is the analysis: what changes versus how we operate today, what it does to the Persistency surface and the what-if Playground, and what we need to build to ship it behind a tenant-admin toggle we can flip when Tatil confirms — rumoured as early as July.</p>
+  <div class="meta">
+    <span class="chip">Source: <b>Supporting Notes — Persistency (Tatil)</b></span>
+    <span class="chip">Audience: <b>Product + Engineering</b></span>
+    <span class="chip">Switch target: <b>July (unconfirmed)</b></span>
+    <span class="chip">Rollout: <b>Tenant-wide flag</b></span>
+  </div>
+
+  <!-- 1 -->
+  <h2><span class="num">01</span> The short version</h2>
+  <div class="h2sub">A timing-blind portfolio ratio becomes a timing-aware, self-expiring per-policy score.</div>
+  <ul>
+    <li><strong>Today (v1):</strong> persistency is one aggregate ratio — <code>Net Settled ÷ Gross Settled</code> — over a fixed 12- or 24-month reporting window. A lapse counts against the agent for the <em>whole</em> window no matter when it happened.</li>
+    <li><strong>Proposed (v2):</strong> every policy is tracked individually across a rolling 24-month lifecycle. A lapse is a <em>debit</em> weighted by the months remaining to 24; a reinstatement is a <em>credit</em> for the remaining months. Impact declines over time and self-expires at 24 months. Persistency becomes <code>Credits − Debits</code>, time-weighted, traceable per policy and agent.</li>
+    <li><strong>Net effect:</strong> early lapses hurt more, late lapses hurt less, reinstating quickly recovers most of the penalty — and the number on screen changes for <em>every</em> agent the moment the model flips.</li>
+    <li><strong>How we ship it:</strong> a single tenant-wide <code>persistency_model</code> setting (v1 → v2) in Settings › Policy &amp; Thresholds, company-locked, default v1. One calc engine serves the reality bar, roster, playground, and awards so they never disagree.</li>
+  </ul>
+
+  <!-- 2 -->
+  <h2><span class="num">02</span> What does <em>not</em> change</h2>
+  <div class="h2sub">The input definitions carry over. Only the aggregation and weighting change.</div>
+  <p>The underlying business definitions in the notes are unchanged — keep these intact in both engines:</p>
+  <div class="formula"><span class="big">Gross Settled Business</span>
+= business settled in the period
+  − Not Takens + Increase PPPs + 10% Lumpsums
+
+<span class="big">Net Settled Business</span>
+= Gross Settled − lapses + reinstatements</div>
+  <p>What changes is the <strong>basis</strong> (portfolio → per-policy), the <strong>window</strong> (fixed report cycle → rolling 24 months from each policy's start), and the introduction of <strong>time-weighting</strong>.</p>
+
+  <!-- 3 -->
+  <h2><span class="num">03</span> How we calculate persistency today (v1)</h2>
+  <div class="h2sub">One ratio, one window, timing-blind.</div>
+  <div class="formula"><span class="big">Persistency = Net Settled ÷ Gross Settled × 100</span></div>
+  <p>As built in the repo: each agent's monthly persistency is derived from six manager-entered figures (gross settled, net settled, lapses, reinstatements, policies in force, policies issued), banded against an <strong>80% floor</strong> and a <strong>90% award gate</strong>, then averaged to a branch aggregate. Manager entry overrides agent self-entry and locks the month.</p>
+  <p>The properties that the notes call out as the problem:</p>
+  <ul>
+    <li>A lapse <strong>remains on the report for the full 12 or 24 months</strong> regardless of when it happened — a policy that lasted 6 months penalises the agent for the entire window.</li>
+    <li><strong>No distinction</strong> between an early lapse and a late one.</li>
+    <li>Reinstatement only adjusts aggregate totals <strong>within</strong> the reporting window; impact ends arbitrarily with the report period.</li>
+    <li>It is a <strong>lagging</strong>, portfolio-level indicator that can over- or under-penalise and is disconnected from the actual policy lifecycle.</li>
+  </ul>
+
+  <!-- 4 -->
+  <h2><span class="num">04</span> The proposed model (v2)</h2>
+  <div class="h2sub">Net Impact = Credits − Debits, weighted by months remaining to 24.</div>
+  <p>Every policy is followed for 24 months from its start. A lapse books a debit; a reinstatement books a credit; both are scaled by how much of the 24-month lifecycle is left when the event occurs, so impact declines over time and clears itself at 24 months (or after 24 premiums).</p>
+  <h3>The mechanics, concretely</h3>
+  <p>Let <code>rem(m) = max(0, 24 − m)</code> be the months remaining in the lifecycle at month <code>m</code>. For each policy <code>i</code> with annualised premium <code>API<sub>i</sub></code>:</p>
+  <div class="formula">debitMonths   = rem(lapseMonth)        if lapsed,      else 0
+creditMonths  = rem(reinstateMonth)    if reinstated,  else 0
+netPenaltyMonths = max(0, debitMonths − creditMonths)
+
+weightedDebit = API × netPenaltyMonths ÷ 24
+
+<span class="big">Persistency v2 = (Σ API − Σ weightedDebit) ÷ Σ API × 100</span></div>
+  <p>A neat identity falls out: a lapse-then-reinstate nets to <code>reinstateMonth − lapseMonth</code> penalty-months — the agent is charged only for the months the policy was <em>actually</em> lapsed.</p>
+
+  <h3>Worked examples (matching the notes)</h3>
+  <table class="cmp">
+    <thead><tr><th>Scenario</th><th>Debit</th><th>Credit</th><th>Net penalty</th><th>Penalty weight</th></tr></thead>
+    <tbody>
+      <tr><td>Lapse after <b>6</b> months (no reinstatement)</td><td class="num">18 mo</td><td class="num">—</td><td class="num">18 mo</td><td class="num neg">75%</td></tr>
+      <tr><td>Lapse after <b>18</b> months (no reinstatement)</td><td class="num">6 mo</td><td class="num">—</td><td class="num">6 mo</td><td class="num neg">25%</td></tr>
+      <tr><td>Lapse month <b>6</b>, reinstated month <b>10</b></td><td class="num">18 mo</td><td class="num pos">14 mo</td><td class="num">4 mo</td><td class="num">16.7%</td></tr>
+    </tbody>
+  </table>
+  <p class="caption">Same lapse, very different cost: month-6 lapse = 75% weight, month-18 lapse = 25%. Reinstating the month-6 lapse at month 10 collapses the penalty to ~17% — the notes' "4 months penalty equivalent."</p>
+
+  <div class="callout flag"><span class="tag">⚑ Needs sign-off from Tatil / actuarial</span>The notes give the mechanics and one worked example but <strong>not</strong> the exact book-level aggregation formula, nor whether weighting is API-weighted or policy-count, nor how a still-active policy contributes. The formula above is <strong>our proposed interpretation</strong> — it reproduces every number in the notes, but confirm it before we build the engine.</div>
+
+  <!-- 5 -->
+  <h2><span class="num">05</span> Current vs proposed — side by side</h2>
+  <div class="h2sub">Reproduced from the comparison table in the notes.</div>
+  <table class="cmp">
+    <thead><tr><th>Area</th><th>Current method (v1)</th><th>Proposed method (v2)</th></tr></thead>
+    <tbody>
+      <tr><th>Measurement basis</th><td class="cur">12-month / 24-month reporting cycles</td><td class="new">Rolling 24-month lifecycle per policy</td></tr>
+      <tr><th>Level of measurement</th><td class="cur">Aggregate (portfolio-level)</td><td class="new">Policy-level + agent-specific accountability</td></tr>
+      <tr><th>Persistency formula</th><td class="cur">Net Settled ÷ Gross Settled</td><td class="new">Net Impact = Credits − Debits (time-weighted)</td></tr>
+      <tr><th>Treatment of lapses</th><td class="cur">Remains on reports for fixed 12/24 months regardless of timing</td><td class="new">Debit applied only for remaining months to 24</td></tr>
+      <tr><th>Treatment of reinstatements</th><td class="cur">Adjusts aggregate totals within reporting window</td><td class="new">Creates temporary credit for remaining months to 24</td></tr>
+      <tr><th>Weighting mechanism</th><td class="cur">No weighting</td><td class="new">Weighted by months remaining (declining impact)</td></tr>
+      <tr><th>Timing sensitivity</th><td class="cur">No distinction between early vs late lapse</td><td class="new">Early lapses higher impact; late lapses reduced</td></tr>
+      <tr><th>Impact duration</th><td class="cur">Fixed (based on reporting cycle)</td><td class="new">Dynamic and self-expiring at 24 months</td></tr>
+      <tr><th>Expiry of impact</th><td class="cur">Ends with reporting period</td><td class="new">Auto-expires at 24 months or after 24 premiums</td></tr>
+      <tr><th>Transparency</th><td class="cur">Limited diagnostic capability</td><td class="new">Fully traceable per policy and agent</td></tr>
+      <tr><th>Operational view</th><td class="cur">Lagging indicator</td><td class="new">Real-time performance tracking</td></tr>
+      <tr><th>Fairness to agents</th><td class="cur">Can over-penalise or under-penalise</td><td class="new">Aligns accountability to actual policy lifecycle</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 6 -->
+  <h2><span class="num">06</span> Impact on the Persistency Playground</h2>
+  <div class="h2sub">This is the surface that changes most — the calc, the levers, and the coaching priority all shift.</div>
+  <p>Today the Playground treats the agent's book as one aggregate ratio. Its levers — "policies saved / month" and "additional clean API / quarter" — push a flat percentage-point bump and project a single new number against the 90% gate. Under v2 the projection has to be computed <strong>per policy and per timing</strong>, which changes the advice it gives.</p>
+
+  <h3>Same book, two numbers</h3>
+  <p>Take Priya Naidu's book — <code>TTD 13,000</code> gross, four policies currently lapsed. Under v1 her three unreinstated lapses (<code>TTD 3,640</code>) knock her to 72% — below the floor. Under v2 the <em>same book</em> re-weights to ~85.8%, because her largest lapse happened late in its lifecycle and barely dents the score:</p>
+  <table class="cmp">
+    <thead><tr><th>Policy</th><th>API</th><th>Status</th><th>v1 hit</th><th>v2 weighted debit</th></tr></thead>
+    <tbody>
+      <tr><td>A. Gopaul · WL</td><td class="num">1,200</td><td>lapsed m6</td><td class="num neg">−1,200</td><td class="num neg">−900 <span style="color:var(--inkFaint)">(18mo)</span></td></tr>
+      <tr><td>R. Mohammed · Term</td><td class="num">480</td><td>lapsed m4</td><td class="num neg">−480</td><td class="num neg">−400 <span style="color:var(--inkFaint)">(20mo)</span></td></tr>
+      <tr><td>K. Baksh · WL</td><td class="num">1,960</td><td>lapsed m18</td><td class="num neg">−1,960</td><td class="num neg">−490 <span style="color:var(--inkFaint)">(6mo)</span></td></tr>
+      <tr><td>D. Singh · Term</td><td class="num">660</td><td>lapsed m9 → reinst m11</td><td class="num pos">+0 <span style="color:var(--inkFaint)">(added back)</span></td><td class="num neg">−55 <span style="color:var(--inkFaint)">(2mo)</span></td></tr>
+      <tr><td>5 active policies</td><td class="num">8,700</td><td>in force</td><td class="num">0</td><td class="num">0</td></tr>
+      <tr class="total"><th>Book persistency</th><td class="num">13,000</td><td></td><td class="num neg">72.0%</td><td class="num pos">85.8%</td></tr>
+    </tbody>
+  </table>
+  <p class="caption">The flip from 72% (below floor) to 85.8% (watch band) comes purely from re-weighting — no policy changed. K. Baksh's late lapse drops from a full −1,960 hit to −490.</p>
+
+  <h3>The coaching priority flips</h3>
+  <p>This is the most important behavioural change for the Playground:</p>
+  <ul>
+    <li><strong>Under v1</strong>, the highest-leverage move is reinstating the <em>biggest-API</em> lapse (K. Baksh, <code>TTD 1,960</code>) — it adds the full amount back to Net, worth roughly <span class="pos">+15 pp</span>.</li>
+    <li><strong>Under v2</strong>, the highest-leverage move is reinstating the <em>earliest</em> lapse (A. Gopaul, lapsed month 6) — its debit is large and the credit recovered is large, so reinstating now is worth ~<span class="pos">+6 pp</span>, while reinstating K. Baksh is worth under <span class="pos">+2 pp</span>. And the value <strong>decays every month</strong> as <code>rem()</code> falls.</li>
+  </ul>
+  <p>So the Playground can no longer rank at-risk policies by API alone — it must rank by <strong>recoverable time-weighted credit</strong>, and it must surface the <em>decay</em> ("reinstating A. Gopaul this month is worth +6 pp; next month, +5 pp").</p>
+
+  <h3>What the Playground UI needs</h3>
+  <ul>
+    <li>Each at-risk policy shows <strong>months into lifecycle</strong>, its current time-weighted penalty, and the credit recoverable if reinstated now.</li>
+    <li>Levers become per-policy actions (reinstate / save before lapse) rather than abstract monthly counts — each with its own model-aware pp impact.</li>
+    <li>Policies past 24 months drop off automatically ("self-expired") and stop counting.</li>
+    <li>A provenance chip — <strong>"Model: v2 · rolling 24-mo"</strong> — so the agent knows which basis the projection uses.</li>
+  </ul>
+
+  <h3>Other surfaces touched</h3>
+  <ul>
+    <li><strong>Reality bar &amp; roster:</strong> the aggregate % and per-agent bands recompute from the new engine; "below floor / award-eligible" counts will move.</li>
+    <li><strong>Manager entry:</strong> the six monthly figures are <em>not sufficient</em> for v2 — it needs per-policy lapse and reinstatement <em>dates</em>. Entry shifts from typing totals to confirming a policy ledger.</li>
+    <li><strong>Awards / commission:</strong> anything gated on the 90% threshold (Eagles Club, MDRT eligibility) inherits the re-weighted numbers — confirm the gate stays at 90%.</li>
+    <li><strong>Exception alerts:</strong> "persistency below floor" triggers fire on the new basis.</li>
+  </ul>
+
+  <!-- 7 -->
+  <h2><span class="num">07</span> What we need to implement it</h2>
+  <div class="h2sub">A per-policy data grain, one switchable calc engine, and a tenant flag.</div>
+
+  <h3>7.1 — Data model (the biggest lift)</h3>
+  <p>v2 needs policy-grain records with dates, not monthly aggregates:</p>
+  <div class="formula">policy { id, agentId, startDate, status,
+         lapseDate?, reinstateDate?, api, premiumCount }</div>
+  <p>We already render a <strong>Policy Ledger</strong> surface, so the lapse/reinstate events likely exist — confirm it carries reliable <code>lapseDate</code> and <code>reinstateDate</code> per policy. If those dates are missing for historical policies, v2 cannot weight them (see restatement, below).</p>
+
+  <h3>7.2 — Calc engine</h3>
+  <p>Centralise into one pure function so every surface agrees:</p>
+  <div class="formula">persistency(book, model, asOf) → percent
+  // model ∈ { 'v1', 'v2' }</div>
+  <p>v1 and v2 sit behind one interface; the reality bar, roster, Playground, manager entry and awards all call it. No surface should compute persistency inline.</p>
+
+  <h3>7.3 — The tenant admin toggle</h3>
+  <ul>
+    <li>Add a <code>persistency_model</code> tenant setting: enum <code>v1 | v2</code>, <strong>default v1</strong>, company-locked — only the tenant admin can flip it.</li>
+    <li>It belongs in <strong>Settings › Policy &amp; Thresholds</strong>, directly beneath the existing "Persistency threshold (80%)" row, rendered as the standard locked segmented control.</li>
+    <li>Flipping it switches the engine for the entire tenant in one move (per your call — tenant-wide, not staged).</li>
+    <li>Gate the flip behind a confirm dialog — <em>"This restates persistency for the whole organisation"</em> — and capture an effective date for the audit log.</li>
+    <li>Every persistency surface renders a small provenance chip showing the active model so no one misreads a v2 number as v1.</li>
+  </ul>
+
+  <h3>7.4 — Restatement / cutover</h3>
+  <div class="callout keypoint"><span class="tag">Built as a second tenant toggle</span>Because Tatil hasn't confirmed whether v2 applies <strong>going forward only</strong> or <strong>restates history</strong>, we expose it as its own company-locked setting — <strong>Persistency restatement scope</strong> — beside the model switch, so we're ready either way:
+  <ul style="margin:8px 0 0">
+    <li><strong>Going forward</strong> — prior periods keep their original v1 basis; v2 applies from a defined "v2 epoch" date. Safe default; needs no historical lifecycle data.</li>
+    <li><strong>Restate history</strong> — all prior periods are recomputed under the active model. Cleaner comparisons, but requires reliable per-policy lapse/reinstate dates for older policies (see §7.1) — flag a fallback where they're missing.</li>
+  </ul></div>
+
+  <h3>7.5 — Rollout</h3>
+  <ol>
+    <li>Ship both engines; flag defaults to <code>v1</code> — zero visible change.</li>
+    <li>Enable <code>v2</code> in staging against a sample book; validate the engine reproduces Tatil's worked examples exactly.</li>
+    <li>On Tatil's written confirmation, the tenant admin flips the flag in production.</li>
+    <li>Keep the v1 engine in code for at least two reporting cycles for audit and one-click rollback.</li>
+  </ol>
+
+  <h3>7.6 — Risks</h3>
+  <ul>
+    <li><strong>Numbers move for everyone at once</strong> (72% → 85.8% in our example). Needs comms; award eligibility shifts the same day.</li>
+    <li><strong>Data gaps:</strong> a policy missing a lapse/reinstate date can't be weighted — define a fallback (e.g. treat as <code>rem()</code> at report start) and flag it in the UI.</li>
+    <li><strong>Definition ambiguity</strong> (§04 flag) — building before sign-off risks a re-do.</li>
+  </ul>
+
+  <!-- 8 -->
+  <h2><span class="num">08</span> Decisions we need from Tatil</h2>
+  <div class="keypoint callout"><span class="tag">Open questions to close before build</span>
+  <ul style="margin-bottom:0">
+    <li>Exact book-level aggregation formula + weighting basis (API-weighted vs policy-count)?</li>
+    <li>Do the <strong>80% floor</strong> and <strong>90% award gate</strong> stay unchanged under v2?</li>
+    <li>Are the Net / Gross Settled definitions unchanged? (notes suggest yes)</li>
+    <li>Going-forward only, or historical restatement?</li>
+    <li>When "24 months" and "24 premiums" diverge, which governs expiry?</li>
+    <li>Confirmed go-live date — is July real?</li>
+  </ul></div>
+
+  <hr />
+  <p style="font-size:12px;color:var(--inkFaint);font-family:var(--mono);">AgencyTrack · Persistency v2 analysis · prepared from "Supporting Notes — Persistency" · figures in the Priya example are illustrative and reproduce the notes' worked numbers · accompanies the interactive "Persistency Playground — v1 / v2" prototype.</p>
+
+</td></tr></tbody>
+<tfoot><tr><td class="ftr-space"></td></tr></tfoot>
+</table>
+</main>
+</body>
+</html>

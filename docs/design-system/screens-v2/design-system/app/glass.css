@@ -1,0 +1,57 @@
+/* Nexus Glass — hero-card tier ONLY. One glass card per screen, top-of-screen
+   summary. Glass is a surface treatment, never a content style. A tint that
+   can't clear AA doesn't ship. */
+:root{
+  /* LIGHT physics */
+  --glass-l-base: rgba(255,255,255,0.62);       /* opacity floor over named surfaces */
+  --glass-l-tint-teal: rgba(1,138,145,0.10);
+  --glass-l-tint-gold: rgba(176,125,26,0.10);
+  --glass-l-blur: 18px;
+  --glass-l-sat: 135%;
+  --glass-l-border: rgba(1,105,111,0.16);
+  --glass-l-hi: rgba(255,255,255,0.65);
+  --glass-l-shadow: 0 8px 28px rgba(38,35,28,0.10);
+  --glass-l-solid-teal: #EAF3F3;                /* opaque fallbacks (kiosk, reduced transparency) */
+  --glass-l-solid-gold: #F6EEDD;
+
+  /* DARK physics — thinner glass, brighter tint, light hairline */
+  --glass-d-base: rgba(28,25,20,0.55);
+  --glass-d-tint-teal: rgba(74,181,184,0.14);
+  --glass-d-tint-gold: rgba(232,183,62,0.12);
+  --glass-d-blur: 20px;
+  --glass-d-sat: 120%;
+  --glass-d-border: rgba(255,255,255,0.12);
+  --glass-d-hi: rgba(255,255,255,0.08);
+  --glass-d-shadow: 0 8px 28px rgba(0,0,0,0.45);
+  --glass-d-solid-teal: #15201F;
+  --glass-d-solid-gold: #221C12;
+}
+
+.glass{
+  position:relative;border-radius:18px;
+  background:linear-gradient(135deg,var(--tile-tint),transparent 70%), var(--glass-l-base);
+  -webkit-backdrop-filter:blur(var(--glass-l-blur)) saturate(var(--glass-l-sat));
+  backdrop-filter:blur(var(--glass-l-blur)) saturate(var(--glass-l-sat));
+  border:1px solid var(--glass-l-border);
+  box-shadow:var(--glass-l-shadow), inset 0 1px 0 var(--glass-l-hi);
+}
+.glass.teal{--tile-tint:var(--glass-l-tint-teal)}
+.glass.gold{--tile-tint:var(--glass-l-tint-gold)}
+
+.dark .glass{
+  background:linear-gradient(135deg,var(--tile-tint),transparent 70%), var(--glass-d-base);
+  -webkit-backdrop-filter:blur(var(--glass-d-blur)) saturate(var(--glass-d-sat));
+  backdrop-filter:blur(var(--glass-d-blur)) saturate(var(--glass-d-sat));
+  border:1px solid var(--glass-d-border);
+  box-shadow:var(--glass-d-shadow), inset 0 1px 0 var(--glass-d-hi);
+}
+.dark .glass.teal{--tile-tint:var(--glass-d-tint-teal)}
+.dark .glass.gold{--tile-tint:var(--glass-d-tint-gold)}
+
+/* opaque fallbacks — kiosk, reduced-transparency */
+@media (prefers-reduced-transparency: reduce){
+  .glass{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--glass-l-solid-teal)}
+  .glass.gold{background:var(--glass-l-solid-gold)}
+  .dark .glass{background:var(--glass-d-solid-teal)}
+  .dark .glass.gold{background:var(--glass-d-solid-gold)}
+}
