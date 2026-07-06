@@ -7,7 +7,20 @@
 
 ## The problem, measured
 
-The app feels janky because content **pops in after the `screen-enter` entrance animation completes** (`--dur-3` = 320ms fade, keyed on `activeTab` at the dashboard level). Verified across a full agent tab sweep + tenant-admin + spot manager checks:
+The app feels janky because content **pops in after the `screen-enter` entrance animation completes** (`--dur-3` = 320ms fade, keyed on `activeTab` at the dashboard level).
+
+**Coverage — full reload-isolation sweep of every accessible role (prod, 2026-07-06):**
+
+| role | tabs | FAIL/ERROR |
+|---|---|---|
+| agent | 13 | ~7 |
+| branch_manager | 26 | 11 |
+| unit_manager | 10 | 6 |
+| sales_manager | 18 | 10 |
+| tenant_admin | 6 | 2 |
+| platform_admin | — | no creds (uncovered) |
+
+Roughly **half of all data-backed tabs across every role** mount content after the fade. Crucially, the worst offenders are **shared panels reused across roles** — `production-report` (agent + BM + SM), `compliance` (BM + SM), `goals`, `game-plan`, `policy-ledger`, `team-perf` — so a shared fix hits every role at once. Representative offenders:
 
 | Surface | late repaint | loading state today | what mounts after the fade |
 |---|---|---|---|
