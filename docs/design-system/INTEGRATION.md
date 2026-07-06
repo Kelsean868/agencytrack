@@ -119,14 +119,26 @@ prototype), so surfaces/brand/semantic values were already equal.
 Vivid-gold + `--color-gold-ink` split — **✅ SHIPPED** (feat/nexus-gold-sweep; see
 [`gold-split-audit.md`](gold-split-audit.md); dark gold stays `#E0AA3E`) · local
 woff2 font wiring — Satoshi/Cabinet Grotesk now **self-hosted** (see §7); JetBrains
-Mono still CDN, no committed woff2 · glass-recipe reconciliation (`tokens/glass.css`
-vs the app's `--glass-*`) · `surfaceSoft` 5th
+Mono still CDN, no committed woff2 · `surfaceSoft` 5th
 surface tier · per-screen Track-J polish · wiring motion/skeleton/hero-ink tokens
 into components (state-design + motion work per redesign-addendum §1–§2).
 
 **Resolved since (see §8):** `AgentReportDocument.jsx` PDF palette (react-pdf hex,
 now a documented mirror of the light `:root` tokens) · the two `#fff` literals
 (kiosk Avatar, MiniViz).
+
+**Glass-recipe reconciliation — ✅ RECONCILED (no source change; #818 recon).**
+Moved out of deferred. The [#818 recon](../audits/glass-recon-2026-07-06.md) verified
+that the app's 20 S1 `--glass-l-*` / `--glass-d-*` tokens in
+[`src/index.css`](../../src/index.css) are **value-identical** to
+[`tokens/glass.css`](tokens/glass.css) — which was itself derived *from* the app
+("Source: app/glass.css"). The app additionally ships an **app-only `--glass-hero-*`
+superset** (S2 hero tier + certified `--hero-*` ink set) that `glass.css` has no
+equivalent for, and every live glass surface (13, all `.glass.hero.teal`) uses that
+superset. The bare S1 `.glass`/`.teal`/`.gold` classes render in **zero** components.
+Owner decisions (2026-07-06): keep the app's `--glass-tile-tint` naming (D3), leave
+all surfaces as-is (D2), no ink change (D4). Nothing to port — the reconciliation is
+a documentation close-out, not a values change.
 
 ## 7. Self-hosted fonts (Satoshi + Cabinet Grotesk)
 

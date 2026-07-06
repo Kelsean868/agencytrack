@@ -112,7 +112,9 @@ The Nexus v2 design system is canonical for **app** surfaces:
 - **Dark (both roles) = `#E0AA3E`** — already AA-normal as text (7.69:1 on surface), so no split is needed and dark `text-gold`/`text-gold-ink` render identically; vivid `#B07D1A` is NOT used in dark (it would drop to 4.46:1).
 - Promoting gold text to vivid requires certifying AA-large at its **actual** bg — never on assumption (e.g. the leaderboard champion value stays gold-ink because a gold-hued medal glow drops the worst case to 2.74:1).
 
-**Deferred to follow-ups (NOT yet done):** local woff2 font wiring, glass-recipe reconciliation (`tokens/glass.css`), `AgentReportDocument.jsx` hex, `surfaceSoft` 5th tier. See INTEGRATION.md.
+**Glass-recipe reconciliation — ✅ RECONCILED (no source change; #818 recon).** The app's 20 S1 `--glass-l-*`/`--glass-d-*` tokens are value-identical to `tokens/glass.css` (which was derived *from* the app), and the app ships an app-only `--glass-hero-*` superset `glass.css` lacks; every live glass surface is `.glass.hero.teal`. See [`docs/audits/glass-recon-2026-07-06.md`](docs/audits/glass-recon-2026-07-06.md) + INTEGRATION.md §6.
+
+**Deferred to follow-ups (NOT yet done):** local woff2 font wiring, `AgentReportDocument.jsx` hex, `surfaceSoft` 5th tier. See INTEGRATION.md.
 
 ### Tailwind utilities
 - `bg-surface` → page background (`var(--color-bg)`)
