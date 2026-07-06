@@ -18,6 +18,28 @@ export function Skeleton({ className = '', ...rest }) {
   return <div className={`bg-surface-muted motion-safe:animate-pulse ${className}`} aria-hidden="true" {...rest} />;
 }
 
+/**
+ * A value slot with a TEXT-IDENTICAL loading/ready tree: the SAME <span> renders in
+ * both states, so loading→ready is a text-content + className change — NOT a node
+ * insert/remove. Geometry stays stable via `reserveCh` (min-width in ch) +
+ * tabular-nums, so a shimmering placeholder reserves the width the real figure will
+ * take and there is no layout shift when data lands. Reduced-motion-safe.
+ *
+ * @param {boolean} loading
+ * @param {number} [reserveCh] min-width (ch) reserving the real value's width
+ * @param {React.ReactNode} children the real value (shown when not loading)
+ */
+export function SkeletonText({ loading, reserveCh, className = '', children }) {
+  return (
+    <span
+      className={`inline-block align-baseline tabular-nums ${loading ? 'rounded bg-surface-muted text-transparent motion-safe:animate-pulse select-none' : ''} ${className}`}
+      style={reserveCh ? { minWidth: `${reserveCh}ch` } : undefined}
+    >
+      {loading ? ' ' : children}
+    </span>
+  );
+}
+
 const VARIANTS = {
   hero: () => <Skeleton className="h-36 rounded-2xl" />,
   list: (rows) => (

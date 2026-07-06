@@ -2,7 +2,7 @@ import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { formatCurrency } from '../../../utils/formatters';
 import { statusToken } from '../../../lib/policyStatusTokens';
-import { Skeleton } from '../../ui/PanelSkeleton';
+import { SkeletonText } from '../../ui/PanelSkeleton';
 
 function formatSeal(date) {
   if (!date) return '';
@@ -15,19 +15,18 @@ function formatSeal(date) {
 /**
  * PlanCascade — Game Plan v2 "plan so far" (NEW chrome, read-only).
  *
- * Direction 1.5 (PR-U1): Money Needs + Year Plan collapse into one rung — the
- * Money Needs rung shows the commission need AND, once the merged allocator has
- * written the plan, the planned annual API. The Monthly and Review & Commit
- * rungs render as honest "Coming" states when the loop is gated off.
+ * Text-identical loading/ready tree: the rung STRUCTURE (Step 1/2/3 containers,
+ * labels, arrows) renders identically in loading AND ready; only the value figures
+ * swap via a geometry-stable SkeletonText. So loading→ready is a text-content
+ * update, not a rung mount — no late section mount, no layout shift. error renders
+ * in the same persisted shell; empty is native ("Not started" / "Coming").
  */
 function ComingRung({ step, title, desc }) {
   return (
     <div className="rounded-xl border border-dashed border-border bg-surface-raised p-3.5">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
-            {step}
-          </div>
+          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">{step}</div>
           <div className="mt-0.5 text-xs text-ink-muted">{desc}</div>
         </div>
         <span className="shrink-0 rounded-full bg-surface-muted px-2.5 py-1 font-mono text-[8.5px] font-bold uppercase tracking-wider text-ink-muted">
@@ -84,47 +83,31 @@ export default function PlanCascade({
       </div>
     );
   }
-  // Loading — skeleton the three rungs; keep the shell + header + arrows.
-  if (loading) {
-    return (
-      <div className="card" data-testid="game-plan-cascade" aria-busy="true" aria-label="Loading your plan">
-        <CascadeHeader />
-        <Skeleton className="h-20 rounded-xl" />
-        <CascadeArrow />
-        <Skeleton className="h-20 rounded-xl" />
-        <CascadeArrow />
-        <Skeleton className="h-20 rounded-xl" />
-      </div>
-    );
-  }
 
   const committedToken = statusToken('settled');
   return (
-    <div className="card" data-testid="game-plan-cascade">
-      <div className="mb-3 flex items-baseline gap-2">
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
-          The plan so far
-        </span>
-        <span className="font-mono text-[9px] text-ink-muted">Need → split → months</span>
-      </div>
+    <div className="card" data-testid="game-plan-cascade" aria-busy={loading || undefined}>
+      <CascadeHeader />
 
       <div className="rounded-xl border border-gold/30 bg-gold-tint p-3.5">
-        <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
-          Step 1 · Money Needs
-        </div>
+        <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">Step 1 · Money Needs</div>
         <div className="mt-1 flex items-center justify-between gap-3">
           <div className="text-xs text-ink-muted">Commission you must earn this year</div>
           <div className="whitespace-nowrap font-display text-xl font-extrabold tracking-tight text-ink">
-            {moneyNeedsFilled ? formatCurrency(commissionNeed) : 'Not started'}
+            <SkeletonText loading={loading} reserveCh={10}>
+              {moneyNeedsFilled ? formatCurrency(commissionNeed) : 'Not started'}
+            </SkeletonText>
           </div>
         </div>
         {yearPlanEnabled && (
           <div className="mt-2 flex items-center justify-between gap-3 border-t border-gold/20 pt-2">
             <div className="text-xs text-ink-muted">Planned annual API</div>
             <div className="whitespace-nowrap font-display text-base font-extrabold tracking-tight text-ink">
-              {yearPlanFilled ? formatCurrency(yearPlanTotalAPI) : (
-                <span className="font-sans text-sm font-medium text-ink-muted">Allocate to set</span>
-              )}
+              <SkeletonText loading={loading} reserveCh={10}>
+                {yearPlanFilled ? formatCurrency(yearPlanTotalAPI) : (
+                  <span className="font-sans text-sm font-medium text-ink-muted">Allocate to set</span>
+                )}
+              </SkeletonText>
             </div>
           </div>
         )}
@@ -133,20 +116,14 @@ export default function PlanCascade({
       <CascadeArrow />
       {yearPlanEnabled ? (
         <div className="rounded-xl border border-primary/30 bg-primary-tint p-3.5">
-          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
-            Step 2 · Monthly Plan
-          </div>
+          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">Step 2 · Monthly Plan</div>
           <div className="mt-1 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="text-xs text-ink-muted">Per-month target</div>
-              {monthlyPlanFilled && (
+              {!loading && monthlyPlanFilled && (
                 <div
                   className={`mt-1 font-mono text-[9px] font-bold ${
-                    monthlyYtdDelta > 0
-                      ? 'text-success-ink'
-                      : monthlyYtdDelta < 0
-                      ? 'text-danger-ink'
-                      : 'text-ink-muted'
+                    monthlyYtdDelta > 0 ? 'text-success-ink' : monthlyYtdDelta < 0 ? 'text-danger-ink' : 'text-ink-muted'
                   }`}
                   data-testid="monthly-ytd-badge"
                 >
@@ -159,9 +136,11 @@ export default function PlanCascade({
               )}
             </div>
             <div className="whitespace-nowrap font-display text-xl font-extrabold tracking-tight text-ink">
-              {monthlyPlanFilled
-                ? formatCurrency(monthlyPlanTotal / 12)
-                : <span className="font-sans text-sm font-medium text-ink-muted">Set in your plan</span>}
+              <SkeletonText loading={loading} reserveCh={10}>
+                {monthlyPlanFilled
+                  ? formatCurrency(monthlyPlanTotal / 12)
+                  : <span className="font-sans text-sm font-medium text-ink-muted">Set in your plan</span>}
+              </SkeletonText>
             </div>
           </div>
         </div>
@@ -173,29 +152,20 @@ export default function PlanCascade({
 
       {yearPlanEnabled ? (
         committed ? (
-          <div
-            className={`rounded-xl border border-success/30 ${committedToken.tint} p-3.5`}
-            data-testid="commit-rung-committed"
-          >
-            <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
-              Step 3 · Review &amp; Commit
-            </div>
+          <div className={`rounded-xl border border-success/30 ${committedToken.tint} p-3.5`} data-testid="commit-rung-committed">
+            <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">Step 3 · Review &amp; Commit</div>
             <div className="mt-1 flex items-center justify-between gap-3">
               <div className="text-xs text-ink-muted">
                 {committedAt ? `Committed · ${formatSeal(committedAt)} TT` : 'Committed'}
               </div>
-              <span
-                className={`shrink-0 rounded-full px-2.5 py-1 font-mono text-[8.5px] font-bold uppercase tracking-wider ${committedToken.tint} ${committedToken.text}`}
-              >
+              <span className={`shrink-0 rounded-full px-2.5 py-1 font-mono text-[8.5px] font-bold uppercase tracking-wider ${committedToken.tint} ${committedToken.text}`}>
                 Committed
               </span>
             </div>
           </div>
         ) : (
           <div className="rounded-xl border border-primary/30 bg-primary-tint p-3.5" data-testid="commit-rung-ready">
-            <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
-              Step 3 · Review &amp; Commit
-            </div>
+            <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">Step 3 · Review &amp; Commit</div>
             <div className="mt-1 flex items-center justify-between gap-3">
               <div className="text-xs text-ink-muted">Commit to your plan</div>
               <span className="shrink-0 rounded-full bg-surface-muted px-2.5 py-1 font-mono text-[8.5px] font-bold uppercase tracking-wider text-ink-muted">
