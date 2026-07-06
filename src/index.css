@@ -466,9 +466,12 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 @layer components {
   .btn-primary {
     @apply bg-primary text-white font-medium px-5 py-3 rounded-lg
-      hover:bg-primary-dark transition-colors duration-150
+      hover:bg-primary-dark transition-colors
       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
       disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
+    /* Motion tokens (redesign-addendum §2): --dur-1 hover, --ease-out. */
+    transition-duration: var(--dur-1);
+    transition-timing-function: var(--ease-out);
   }
 
   /* Dark-mode override: --color-primary lifts to #4ab5b8 in dark mode for
@@ -486,13 +489,17 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 
   .btn-secondary {
     @apply bg-card border border-border text-ink
-      font-medium px-5 py-3 rounded-lg hover:bg-surface-muted transition-colors duration-150
+      font-medium px-5 py-3 rounded-lg hover:bg-surface-muted transition-colors
       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary min-h-[44px];
+    transition-duration: var(--dur-1);
+    transition-timing-function: var(--ease-out);
   }
 
   .card {
     @apply bg-card rounded-xl p-6 shadow-sm border border-border
-      hover:shadow-md transition-shadow duration-200;
+      hover:shadow-md transition-shadow;
+    transition-duration: var(--dur-2);
+    transition-timing-function: var(--ease-out);
   }
 
   .input {
@@ -665,7 +672,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   border-radius: 14px;
   padding: 14px 8px 12px;
   text-align: center;
-  transition: transform 0.2s ease, border-color 0.2s, box-shadow 0.2s;
+  transition: transform var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
   position: relative;
 }
 
@@ -697,7 +704,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
     inset 0 -2px 4px rgba(0, 0, 0, 0.18),
     inset 0 2px 4px rgba(255, 255, 255, 0.4),
     0 2px 6px rgba(28, 26, 21, 0.08);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
 }
 
 .badge-medal::before {
@@ -1014,10 +1021,10 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
  * the GoalCarousel component so the surface stays still entirely. */
 @media (prefers-reduced-motion: no-preference) {
   .goal-slide-track {
-    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--dur-3) var(--ease-out);
   }
   .hero-donut .donut-fg {
-    transition: stroke-dashoffset 0.45s ease;
+    transition: stroke-dashoffset var(--dur-3) var(--ease-out);
   }
 }
 
@@ -1057,7 +1064,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   border-radius: 12px;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .activity-item { transition: background-color 0.15s; }
+  .activity-item { transition: background-color var(--dur-1) var(--ease-out); }
 }
 .activity-item:hover { background: var(--color-surface-muted); }
 .activity-icon {
@@ -1203,7 +1210,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   position: relative;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .sidebar-link { transition: background-color 0.15s ease, color 0.15s ease; }
+  .sidebar-link { transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
 }
 .sidebar-link svg {
   width: 17px;
@@ -1324,7 +1331,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .sidebar-nav-star.sidebar-nav-star-on { color: var(--color-primary); }
 .sidebar-nav-star.sidebar-nav-star-on svg { fill: currentColor; }
 @media (prefers-reduced-motion: no-preference) {
-  .sidebar-nav-star { transition: opacity 0.12s ease, color 0.12s ease; }
+  .sidebar-nav-star { transition: opacity var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
 }
 .sidebar-foot {
   margin-top: auto;
@@ -1384,7 +1391,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   cursor: pointer;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .sidebar-foot-action { transition: color 0.18s ease, border-color 0.18s ease; }
+  .sidebar-foot-action { transition: color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out); }
 }
 .sidebar-foot-action:hover {
   color: var(--color-danger);
@@ -1410,7 +1417,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .sidebar-collapse-btn {
-    transition: color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+    transition: color var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
   }
 }
 .sidebar-collapse-btn:hover {
@@ -1460,12 +1467,19 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   color: var(--color-bg);
   font-weight: 600;
   text-decoration: none;
-  transition: top 0.15s ease;
 }
 .skip-link:focus {
   top: 8px;
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+/* Motion token + reduced-motion gate for the off-screen→pinned slide. Was an
+   ungated `transition: top .15s ease` — the recon flagged it as the one
+   unguarded systemic transition; gated here for a uniform reduced-motion
+   contract. (In-family with the Phase-3 reduced-motion patches, beyond the 3
+   named holes — see PR notes.) */
+@media (prefers-reduced-motion: no-preference) {
+  .skip-link { transition: top var(--dur-1) var(--ease-out); }
 }
 
 .topbar-titles { min-width: 0; }
@@ -1503,7 +1517,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   font-family: inherit;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .topbar-search input { transition: border-color 0.15s ease, background-color 0.15s ease; }
+  .topbar-search input { transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out); }
 }
 .topbar-search input::placeholder { color: var(--color-text-faint); }
 .topbar-search input:focus {
@@ -1542,7 +1556,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   cursor: pointer;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .topbar-icon-btn { transition: color 0.18s ease, border-color 0.18s ease; }
+  .topbar-icon-btn { transition: color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out); }
 }
 .topbar-icon-btn:hover {
   color: var(--color-text);
@@ -1596,7 +1610,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   font-family: inherit;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .bottom-nav-item { transition: color 0.15s ease; }
+  .bottom-nav-item { transition: color var(--dur-1) var(--ease-out); }
 }
 .bottom-nav-item svg {
   width: 22px;
@@ -1642,7 +1656,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   box-shadow: 0 6px 16px rgb(var(--primary-channels) / 0.4), 0 2px 4px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .bottom-nav-fab { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .bottom-nav-fab { transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out); }
 }
 .bottom-nav-fab:hover {
   transform: translateY(-14px);
@@ -1728,7 +1742,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .mobile-nav-drawer {
-    animation: drawer-slide-up 0.22s ease-out;
+    animation: drawer-slide-up var(--dur-3) var(--ease-spring);
   }
 }
 @keyframes drawer-slide-up {
@@ -1838,7 +1852,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .role-bar-fill { transition: width 0.4s ease; }
+  .role-bar-fill { transition: width var(--dur-3) var(--ease-out); }
 }
 
 .role-bar-fill-primary { background: var(--color-primary); }
@@ -1879,4 +1893,54 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   font-size: 10px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* ══ Nexus v2 systemic motion (redesign-addendum §2) ═════════════════════════
+ * Screen-enter + staggered-assemble + sheet backdrop-fade, wired to the motion
+ * tokens (--dur-* / --ease-*). Everything is gated behind
+ * prefers-reduced-motion: no-preference and reverts to the base (visible) style
+ * at rest, so reduced-motion / print / PDF show content, never a pre-animation
+ * frame. No `forwards` fill on any of these, so at rest the element carries no
+ * transform — position:fixed descendants opened later keep a viewport
+ * containing block (see the dashboard screen-enter placement note in the PR). */
+@keyframes screen-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Stagger is TRANSFORM-ONLY (never opacity) per §2: a paused/throttled tab must
+ * never strand a block at opacity:0. `backwards` fill means the pre-delay frame
+ * is translateY(12px) — shifted but visible — not invisible. */
+@keyframes stagger-rise {
+  from { transform: translateY(12px); }
+  to   { transform: translateY(0); }
+}
+@keyframes sheet-backdrop-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Screen enter — content region fades + rises 8px on tab navigation. Applied
+   * at the DASHBOARD level around the keyed tab-content run, NOT at the Shell
+   * {children} wrapper: that mount point commingles position:fixed overlays
+   * (DailyFAB, QuickAddMenu, modals) and any transform on their ancestor would
+   * reparent their containing block for the animation's duration. */
+  .screen-enter { animation: screen-enter var(--dur-3) var(--ease-out); }
+
+  /* Staggered assemble — direct children rise in sequence (~40ms step),
+   * transform-only. Capped at 8 steps; later children share the max delay so a
+   * long list stays "light" rather than cascading for seconds. Opt-in: add the
+   * `.stagger` class to a container whose top-level blocks should assemble. */
+  .stagger > * { animation: stagger-rise var(--dur-3) var(--ease-out) backwards; }
+  .stagger > *:nth-child(1) { animation-delay: 0ms;   }
+  .stagger > *:nth-child(2) { animation-delay: 40ms;  }
+  .stagger > *:nth-child(3) { animation-delay: 80ms;  }
+  .stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .stagger > *:nth-child(7) { animation-delay: 240ms; }
+  .stagger > *:nth-child(n+8) { animation-delay: 280ms; }
+
+  /* Sheet backdrop fade — pairs with the spring slide on .mobile-nav-drawer
+   * (§2 sheet open = spring up + backdrop fade + lightly staggered items). */
+  .sheet-backdrop { animation: sheet-backdrop-fade var(--dur-3) var(--ease-out); }
 }

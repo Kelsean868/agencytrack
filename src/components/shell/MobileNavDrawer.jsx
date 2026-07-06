@@ -67,9 +67,10 @@ export default function MobileNavDrawer({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — §2 sheet: fades in (paired with the sheet's spring slide).
+          .sheet-backdrop is gated behind prefers-reduced-motion in index.css. */}
       <div
-        className="fixed inset-0 bg-black/40 z-40"
+        className="sheet-backdrop fixed inset-0 bg-black/40 z-40"
         onClick={onClose}
         aria-hidden="true"
         data-testid="nav-drawer-backdrop"
@@ -97,7 +98,9 @@ export default function MobileNavDrawer({
           </button>
         </div>
 
-        <nav aria-label="More navigation options">
+        {/* .stagger — §2 sheet "lightly staggered items"; transform-only rise,
+            gated behind prefers-reduced-motion in index.css. */}
+        <nav className="stagger" aria-label="More navigation options">
           {showWorkspaceToggle && typeof onWorkspaceChange === 'function' && (
             <div className="pt-2">
               <WorkspaceToggle workspace={workspace} onChange={onWorkspaceChange} idPrefix="drawer-ws" />

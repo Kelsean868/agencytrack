@@ -33,7 +33,7 @@ function RankIcon({ rank }) {
 
 function CompliancePct({ value }) {
   const display = useCountUp(value, { duration: 800 });
-  return <span className="animate-count-up">{Math.round(display)}%</span>;
+  return <span className="motion-reduce:animate-none animate-count-up">{Math.round(display)}%</span>;
 }
 
 export default function LastWeekRecapPanel({ allSubmissions, allUsers }) {
@@ -99,7 +99,7 @@ export default function LastWeekRecapPanel({ allSubmissions, allUsers }) {
           {topAgents.map(({ agentId, agentName, rank, totals, photoURL }, idx) => (
             <div
               key={agentId}
-              className="bg-card rounded-2xl flex items-center gap-5 px-6 py-4 animate-stagger-in"
+              className="bg-card rounded-2xl flex items-center gap-5 px-6 py-4 motion-reduce:animate-none animate-stagger-in"
               style={{ animationDelay: `${idx * 100}ms`, animationFillMode: 'both' }}
             >
               <RankIcon rank={rank} />

@@ -13,12 +13,12 @@ function fmtApi(n) {
 
 function CountUpApi({ value }) {
   const display = useCountUp(value, { duration: 1000 });
-  return <span className="animate-count-up">{fmtApi(display)}</span>;
+  return <span className="motion-reduce:animate-none animate-count-up">{fmtApi(display)}</span>;
 }
 
 function CountUpNum({ value }) {
   const display = useCountUp(value, { duration: 800 });
-  return <span className="animate-count-up">{Math.round(display)}</span>;
+  return <span className="motion-reduce:animate-none animate-count-up">{Math.round(display)}</span>;
 }
 
 export default function RunningTotalsPanel({ allSubmissions }) {

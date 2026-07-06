@@ -11,7 +11,7 @@ function formatValue(category, value) {
 export default function AOMCategoryColumn({ category, label, Icon, winner, index = 0 }) {
   return (
     <div
-      className="flex flex-col items-center justify-center gap-6 animate-stagger-in"
+      className="flex flex-col items-center justify-center gap-6 motion-reduce:animate-none animate-stagger-in"
       style={{ animationDelay: `${index * 150}ms`, animationFillMode: 'both' }}
     >
       <div className="flex items-center gap-3">
@@ -21,10 +21,11 @@ export default function AOMCategoryColumn({ category, label, Icon, winner, index
 
       {winner ? (
         <>
-          {/* Track J Kiosk v2 — wrap the Avatar in a presentation-gold
-              halo ring (animated, motion-reduce safe via Tailwind keyframe
-              + the @media (prefers-reduced-motion) reset in the global CSS).
-              Avatar component itself is unchanged. */}
+          {/* Track J Kiosk v2 — wrap the Avatar in a presentation-gold halo
+              ring. Motion-reduce safe via the `motion-reduce:animate-none`
+              Tailwind guard on the ring div below (there is NO global
+              prefers-reduced-motion reset — the app gates per-usage; see
+              index.css). Avatar component itself is unchanged. */}
           <div
             className="rounded-full motion-reduce:animate-none animate-kiosk-halo-gold"
             data-testid="aom-winner-halo"

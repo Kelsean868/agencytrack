@@ -110,7 +110,7 @@ export default function KioskShell({ tenantId, branchId }) {
       style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
     >
       {/* Crossfade: key forces remount + CSS fade-in on each panel change */}
-      <div key={panelKey} className="w-full h-full animate-kiosk-fade">
+      <div key={panelKey} className="w-full h-full motion-reduce:animate-none animate-kiosk-fade">
         <PanelComponent {...sharedProps} />
       </div>
       <FullscreenButton />

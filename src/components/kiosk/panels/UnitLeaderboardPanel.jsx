@@ -40,7 +40,7 @@ export default function UnitLeaderboardPanel({ allSubmissions, allUsers }) {
         {units.map(({ rank, unitName, agentCount, totalApi, avgApiPerAgent }, idx) => (
           <div
             key={rank}
-            className="bg-card rounded-2xl flex items-center px-8 py-5 gap-6 animate-stagger-in"
+            className="bg-card rounded-2xl flex items-center px-8 py-5 gap-6 motion-reduce:animate-none animate-stagger-in"
             style={{ animationDelay: `${idx * 100}ms`, animationFillMode: 'both' }}
           >
             <span

@@ -49,7 +49,7 @@ export default function ActivityLeaderboard({
           {agents.map((agent, idx) => (
             <div
               key={agent.agentId}
-              className="bg-card rounded-xl px-5 py-3 animate-stagger-in"
+              className="bg-card rounded-xl px-5 py-3 motion-reduce:animate-none animate-stagger-in"
               style={{ animationDelay: `${idx * 100}ms`, animationFillMode: 'both' }}
             >
               <div className="flex items-center gap-4">
