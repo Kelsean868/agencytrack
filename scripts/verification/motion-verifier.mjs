@@ -35,7 +35,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CASES = {
   agent:          { envPrefix: 'A11Y_AGENT',          defaultTestId: 'agent-tab-dashboard', targetTestId: 'agent-tab-history', targetLabel: 'History',     case: 'history' },
   branch_manager: { envPrefix: 'A11Y_BRANCH_MANAGER', defaultTestId: 'nav-overview',        targetTestId: 'nav-team-wars',     targetLabel: 'Weekly WARs', case: 'team-wars' },
+  unit_manager:   { envPrefix: 'A11Y_UNIT_MANAGER',   defaultTestId: 'nav-overview',        targetTestId: 'nav-team',          targetLabel: 'Team',        case: 'team' },
+  sales_manager:  { envPrefix: 'A11Y_SALES_MANAGER',  defaultTestId: 'nav-overview',        targetTestId: 'nav-team',          targetLabel: 'Team',        case: 'team' },
   tenant_admin:   { envPrefix: 'A11Y_TENANT_ADMIN',   defaultTestId: 'nav-dashboard',       targetTestId: 'nav-users',         targetLabel: 'All Users',   case: 'all-users' },
+  platform_admin: { envPrefix: 'A11Y_PLATFORM_ADMIN', defaultTestId: 'nav-dashboard',       targetTestId: 'nav-users',         targetLabel: 'All Users',   case: 'users' },
 };
 const VIEWPORT = { width: 1440, height: 900 };
 function arg(name, def) { const i = process.argv.indexOf(name); return i > -1 ? (process.argv[i + 1] ?? true) : def; }
@@ -151,11 +154,17 @@ async function enumerateTabs(page) {
   return out;
 }
 
-// NOTE: sweep is a DISCOVERY tool — it reliably identifies which tabs mount content
-// late (late-DOM attribution is per-tab correct). Absolute pop-in *timing* is inflated
-// by fetch contention (many tabs' Firestore reads in flight); use a single-role run
-// (--role X --target …) for precise ms on a specific tab. Producing-manager's 34-item
-// sidebar re-renders per active tab, so some below-fold tabs become unreachable mid-sweep.
+// Sweep measures every tab in ISOLATION: reload to the default view before each tab
+// so the full sidebar is present and there's no cross-tab fetch contention or takeover
+// residue. Some tabs (e.g. producing-manager "Weekly Report") are full-screen takeovers
+// that remove the sidebar; isolation recovers from them, and a takeover tab surfaces as
+// ERROR (no screen-enter) which is correct. Each tab is thus a clean cold measurement.
+async function reloadToDefault(page, baseUrl) {
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => document.body.textContent.length > 200, { timeout: 20_000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+}
+
 async function sweepRole(browser, role, baseUrl, token, runDir) {
   const base = CASES[role];
   const email = process.env[`${base.envPrefix}_EMAIL`];
@@ -171,8 +180,9 @@ async function sweepRole(browser, role, baseUrl, token, runDir) {
   safeLog(`${role}: sweeping ${tabs.length} tabs — ${tabs.map((t) => t.id).join(', ')}`);
   const client = await context.newCDPSession(page);
   for (const tab of tabs) {
-    // Each switch (prev tab -> this tab) is a cold first visit that replays screen-enter.
     try {
+      await reloadToDefault(page, baseUrl); // fresh default view + full sidebar, isolated from the prior tab
+      if (await page.locator(`[data-testid="${tab.testid}"]`).count() === 0) { safeLog(`  ${role}/${tab.id}: not present after reload — skip`); continue; }
       await page.evaluate(resetMotionMarks);
       const cap = await captureSwitch(page, client, tab.testid);
       const n = writeCase(runDir, role, tab.id, { ...base, case: tab.id, targetLabel: tab.label }, cap, baseUrl, reducedMotion);
