@@ -117,5 +117,34 @@ class TestRun(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(run, 'agent', 'cold', 'case.json')))
 
 
+class TestReducedMotion(unittest.TestCase):
+    def _meta(self, n):
+        return {'role': 'agent', 'case': 'x', 'condition': 'cold', 'reducedMotion': True,
+                'beaconBox': {'x': 0, 'y': 0, 'width': 10, 'height': 6},
+                'contentBox': {'x': 0, 'y': 6, 'width': 10, 'height': 4},
+                'frames': [{'index': i + 1, 'file': f'f{i}', 'tMs': i * 16.0} for i in range(n)]}
+
+    def test_reduced_motion_no_window_passes_even_with_content_change(self):
+        # Beacon stays neutral (no animation), but content still loads/changes —
+        # that is NOT a motion leak, so it must PASS.
+        frames = []
+        for i in range(5):
+            f = np.zeros((10, 10, 3), dtype=np.int16)
+            f[6:10, :, :] = i * 30  # content loading
+            frames.append(f)
+        m = M.compute_metrics(self._meta(5), frames)
+        self.assertEqual(m['verdict'], 'PASS')
+
+    def test_reduced_motion_window_detected_fails(self):
+        # A screen-enter window leaked despite reduced motion -> FAIL.
+        frames = []
+        for i in range(5):
+            f = np.zeros((10, 10, 3), dtype=np.int16)
+            f[0:6, :, :] = (0, 200, 0) if i < 2 else (200, 0, 0)
+            frames.append(f)
+        m = M.compute_metrics(self._meta(5), frames)
+        self.assertEqual(m['verdict'], 'FAIL')
+
+
 if __name__ == '__main__':
     unittest.main()
