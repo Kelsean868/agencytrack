@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Loader2, AlertCircle, RotateCw } from 'lucide-react';
+import { AlertCircle, RotateCw } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { getMoneyNeeds } from '../../../services/moneyNeedsService';
 import { getYearPlan, LINE_KEYS } from '../../../services/yearPlanService';
@@ -16,8 +16,32 @@ import PlanSuggestionsCard from './PlanSuggestionsCard';
 import SuggestedWeekCard from './SuggestedWeekCard';
 import MonthlyPlanModal from '../../agent/MonthlyPlanModal';
 import ReviewCommitModal from './ReviewCommitModal';
+import { Skeleton } from '../../ui/PanelSkeleton';
 
 const GAME_PLAN_LOOP_ENABLED = import.meta.env.VITE_GAME_PLAN_LOOP_ENABLED !== 'false';
+
+/**
+ * Loading scaffold that reserves Game Plan's REAL footprint — anchor strip, step
+ * rail (4 chips), cascade, and suggested-week card — so the screen-enter fade plays
+ * over a structurally-complete placeholder and the real sections fill IN PLACE
+ * (no layout jump, no spinner→content pop). Heights approximate the loaded sections
+ * and are eyeball-tunable. Shimmer is reduced-motion-safe (see PanelSkeleton).
+ */
+function GamePlanSkeleton() {
+  return (
+    <div className="space-y-4" role="status" aria-busy="true" aria-live="polite" aria-label="Loading your plan">
+      <Skeleton className="h-36 rounded-2xl" />
+      <div className="flex gap-2">
+        <Skeleton className="h-16 flex-1 rounded-xl" />
+        <Skeleton className="h-16 flex-1 rounded-xl" />
+        <Skeleton className="h-16 flex-1 rounded-xl" />
+        <Skeleton className="h-16 flex-1 rounded-xl" />
+      </div>
+      <Skeleton className="h-72 rounded-2xl" />
+      <Skeleton className="h-56 rounded-2xl" />
+    </div>
+  );
+}
 
 /**
  * GamePlanScreen — Game Plan v2 hub (Slice 1).
@@ -222,20 +246,7 @@ export default function GamePlanScreen({
         <p className="mt-0.5 text-xs text-ink-muted">Your year and monthly plans are visible to your managers.</p>
       </header>
 
-      {loading && (
-        <div className="space-y-4" aria-busy="true" aria-label="Loading your plan">
-          <div className="h-36 animate-pulse rounded-2xl bg-surface-muted" />
-          <div className="flex gap-2">
-            <div className="h-16 flex-1 animate-pulse rounded-xl bg-surface-muted" />
-            <div className="h-16 flex-1 animate-pulse rounded-xl bg-surface-muted" />
-            <div className="h-16 flex-1 animate-pulse rounded-xl bg-surface-muted" />
-            <div className="h-16 flex-1 animate-pulse rounded-xl bg-surface-muted" />
-          </div>
-          <div className="flex items-center justify-center py-6 text-ink-muted">
-            <Loader2 size={20} className="animate-spin" aria-hidden="true" />
-          </div>
-        </div>
-      )}
+      {loading && <GamePlanSkeleton />}
 
       {!loading && error && (
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card px-4 py-12 text-center">
