@@ -16,8 +16,13 @@ import numpy as np
 from PIL import Image
 
 # ── thresholds ───────────────────────────────────────────────────────────────
-POPIN_GAP_MS = 100.0        # FAIL needs gap above this AND magnitude above the next
-POPIN_MAG_PCT = 5.0         # ...and this % of content pixels changing after end
+# Calibrated from the first production run (2026-07-06): tenant_admin/all-users
+# showed a real 90ms / 5.4% late repaint (PASS under the initial 100ms/5% draft),
+# branch_manager/team-wars a minor 50-67ms / 0.66% one, agent/history clean (0/0).
+# 75ms + 3% flags the real tenant-admin pop-in while leaving the negligible
+# manager case and the clean agent case as PASS. Tunable.
+POPIN_GAP_MS = 75.0         # FAIL needs gap above this AND magnitude above the next
+POPIN_MAG_PCT = 3.0         # ...and this % of content pixels changing after end
 DROPPED_FRAME_RATIO = 0.20  # WARN above this
 SETTLE_DELTA = 2.0          # mean abs RGB delta at/below which a region is settled
 BEACON_DOMINANCE = 40       # channel-dominance margin for beacon classification

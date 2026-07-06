@@ -120,12 +120,23 @@ Rationale for the split: capture belongs with the Node/Playwright suite; the num
 diff + video assembly is ffmpeg-python/numpy's sweet spot. (Could collapse to pure-Node +
 ffmpeg-CLI later; kept split to use the installed `ffmpeg-python`.)
 
-## Thresholds (initial, tunable — first run calibrates them)
+## Thresholds (calibrated from the first production run, 2026-07-06)
 
-- **FAIL:** pop-in gap > **100ms** AND late-change magnitude > **5%**.
+- **FAIL:** pop-in gap > **75ms** AND late-change magnitude > **3%**.
 - **WARN:** dropped-frame ratio > **20%** during the window.
-- Documented at the top of `motion_analyze.py`; the first real run replaces guesses with
-  measured baselines.
+- Documented at the top of `motion_analyze.py`; tunable.
+
+First-run baselines (prod, `portal.agencytrack.app`) that calibrated the above:
+
+| surface | cond | pop-in gap | late% | verdict |
+|---|---|---|---|---|
+| agent / History | cold | 0ms | 0% | PASS (settles during the fade) |
+| branch_manager / Team WARs | cold | 49ms | 0.66% | PASS (negligible late element) |
+| tenant_admin / All Users | cold | **90.7ms** | **5.4%** | **FAIL** (real late repaint) |
+
+The initial 100ms/5% draft left the clear tenant-admin pop-in at PASS; 75ms/3% flags it.
+Cold ≈ warm delta curves ⇒ the late repaint is **structural** (a second layout/paint pass
+after the fade), not purely cold-fetch latency.
 
 ## Environment / auth
 
