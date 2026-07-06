@@ -8,9 +8,12 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   // Design-reference handoff bundles are not production code (raw mockup JSX with
   // undefined design tokens, etc.) — ignore them so they never drown lint.
-  // `design_handoff_v2_app` is a whole tracked bundle; `docs/**/mockups/**` covers
-  // the planner-handoff mockup dirs under docs/handoffs/.
-  globalIgnores(['dist', 'design_handoff_v2_app', 'docs/**/mockups/**']),
+  // `design_handoff_v2_app` is a whole tracked bundle; `docs/**` covers the entire
+  // docs tree — design-system reference JSX/JS (docs/design-system/, added in
+  // 0cad5971, ~90 files / 539 lint errors) plus planner-handoff mockups under
+  // docs/handoffs/. None of docs/ is app source. `docs/**/mockups/**` is retained
+  // (redundant under docs/**) so the prior explicit intent stays on record.
+  globalIgnores(['dist', 'design_handoff_v2_app', 'docs/**', 'docs/**/mockups/**']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
