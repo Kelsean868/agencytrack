@@ -118,16 +118,52 @@ Vivid-gold + `--color-gold-ink` split — **Phase-0 audit complete; sweep HELD f
 owner decision**, see [`gold-split-audit.md`](gold-split-audit.md) (dark gold stays
 `#E0AA3E`; ~6 borderline/entangled sites need owner greenlight before migration) ·
 local woff2 font wiring (`tokens/fonts.css` + 17 assets; app still loads Satoshi/Cabinet
-Grotesk/JetBrains Mono from CDN) · glass-recipe reconciliation (`tokens/glass.css`
+Grotesk now self-hosted — see §7; JetBrains Mono still CDN, no committed woff2) ·
+glass-recipe reconciliation (`tokens/glass.css`
 vs the app's `--glass-*`) · `surfaceSoft` 5th
 surface tier · per-screen Track-J polish · wiring motion/skeleton/hero-ink tokens
 into components (state-design + motion work per redesign-addendum §1–§2).
 
-**Resolved since (see §7):** `AgentReportDocument.jsx` PDF palette (react-pdf hex,
+**Resolved since (see §8):** `AgentReportDocument.jsx` PDF palette (react-pdf hex,
 now a documented mirror of the light `:root` tokens) · the two `#fff` literals
 (kiosk Avatar, MiniViz).
 
-## 7. Token-holdout reconciliation (PDF palette + stray literals)
+## 7. Self-hosted fonts (Satoshi + Cabinet Grotesk)
+
+The prior Fontshare CDN `@import` in [`src/index.css`](../../src/index.css) was
+**removed** and replaced with local `@font-face` blocks. Fonts now ship from the
+app tree at `src/assets/fonts/` (Vite fingerprints them into `dist/assets/*.woff2`),
+so first paint no longer depends on a third-party CDN round-trip.
+
+**Reskin discipline — zero visual change.** Only the exact weights the CDN was
+serving are self-hosted, at the same family names + `font-display: swap` the app
+already used, so rendering is unchanged:
+
+| Family | Weight | woff2 (in `src/assets/fonts/`) |
+|---|---|---|
+| Satoshi | 400 | `Satoshi-Regular.woff2` |
+| Satoshi | 500 | `Satoshi-Medium.woff2` |
+| Satoshi | 700 | `Satoshi-Bold.woff2` |
+| Cabinet Grotesk | 700 | `CabinetGrotesk-Bold.woff2` |
+| Cabinet Grotesk | 800 | `CabinetGrotesk-Extrabold.woff2` |
+
+Source woff2 copied from `docs/design-system/assets/fonts/` (`docs/` is reference,
+never a served runtime path). Blocks are written inline in `index.css` rather than
+importing the DS `tokens/fonts.css` (which enumerates the full 17-asset package) —
+minimal set, minimal surface.
+
+**Weight-600 note:** some Satoshi/Cabinet surfaces use `font-weight: 600` /
+`font-semibold`, but the Fontshare CDN never served a 600 face either — the browser
+already rounded to the nearest available weight. The self-hosted set reproduces that
+exactly; adding a 600 face would *change* rendering, so it was intentionally omitted.
+
+**JetBrains Mono (mono) — still CDN.** No JetBrains Mono woff2 is committed anywhere
+in the repo, so its Google Fonts `@import` is retained (`index.css:1`). This is the
+one remaining CDN font reference. **Rule 23 falsifier / follow-up:** commit a
+JetBrains Mono woff2 (400/500) to `src/assets/fonts/` and it can be self-hosted the
+same way, dropping the last CDN font dependency.
+
+## 8. Token-holdout reconciliation (PDF palette + stray literals)
 
 Closes the last two holdouts flagged in the recon
 ([`docs/audits/reskin-recon-2026-07-05.md`](../audits/reskin-recon-2026-07-05.md),
