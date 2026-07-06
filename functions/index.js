@@ -1494,7 +1494,16 @@ exports.onSubmissionWrite = functions.firestore
         .where('agentId', '==', agentId)
         .where('status', '==', 'submitted')
         .get();
-      const thisYear = new Date().getFullYear();
+      // Attribution year = the year of THIS submission's weekStarting (the Sunday
+      // the week begins), per the owner rule that annual/MDRT production attributes
+      // to the weekStarting year regardless of entry date — so a prior-year week
+      // entered in January counts toward the prior year, and a year-straddle week
+      // (e.g. weekStarting 2025-12-29) attributes ENTIRELY to 2025. Leading 4-char
+      // slice, NOT `new Date(weekStarting)` — a Date parse reads 'YYYY-MM-DD' as UTC
+      // midnight, i.e. the prior evening in T&T (permanent UTC-4), which could flip
+      // the year for a Jan-1 weekStarting. Malformed/empty → sums nothing (safe: no
+      // badge on bad data rather than a match-all `startsWith('')`).
+      const attributionYear = String(after.weekStarting ?? '').slice(0, 4);
       // EFF-004 correctness fix: sum YTD API via the canonical total-production
       // reader (NB.api + PPP.apiIncrease + LMPS.apiCredit; v1 apiSold/api/annualPremium
       // fallback) — the same reader used by the leaderboard ranking
@@ -1502,15 +1511,22 @@ exports.onSubmissionWrite = functions.firestore
       // so the MDRT badge stays consistent with the leaderboard doc it is written onto.
       // The old `d.data().apiSold` read dropped every v2 (`newBusiness.api`) submission
       // to 0, undercounting tenured v2 agents' MDRT YTD badge math.
-      const ytdAPI = ytdSnap.docs
-        .filter((d) => d.data().weekStarting?.startsWith(String(thisYear)))
-        .reduce((sum, d) => sum + extractTotalProductionCredit(d.data()), 0);
+      const ytdAPI = /^\d{4}$/.test(attributionYear)
+        ? ytdSnap.docs
+            .filter((d) => d.data().weekStarting?.startsWith(attributionYear))
+            .reduce((sum, d) => sum + extractTotalProductionCredit(d.data()), 0)
+        : 0;
 
       if (ytdAPI >= MDRT_QUALIFIED_API) {
         addIfNew('mdrt_qualified');
       } else {
+        // Pace is measured within the same attribution year, so a prior-year week
+        // entered late (year already over) yields a week-of-year past 26 → no pace.
+        // Date.UTC (not `new Date(y,0,1)`, which is midnight in the FUNCTION's local
+        // zone) so the Jan-1 base is UTC-consistent with Date.now() — same UTC-safety
+        // discipline as the attribution-year slice above (Gemini review on #808).
         const weekOfYear = Math.ceil(
-          (Date.now() - new Date(thisYear, 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000)
+          (Date.now() - Date.UTC(Number(attributionYear), 0, 1)) / (7 * 24 * 60 * 60 * 1000)
         );
         if (weekOfYear <= 26 && ytdAPI >= MDRT_PACE_API) addIfNew('mdrt_pace');
       }
