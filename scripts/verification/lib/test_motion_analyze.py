@@ -1,5 +1,9 @@
+import os
+import json
+import tempfile
 import unittest
 import numpy as np
+from PIL import Image as PILImage
 import motion_analyze as M
 
 
@@ -75,6 +79,42 @@ class TestMetrics(unittest.TestCase):
         m = M.compute_metrics(meta, frames)
         self.assertLessEqual(m['popinGapMs'], 40.0)
         self.assertEqual(m['verdict'], 'PASS')
+
+
+class TestRun(unittest.TestCase):
+    def _write_case(self, case_dir):
+        os.makedirs(case_dir, exist_ok=True)
+        meta = {'role': 'agent', 'case': 'history', 'condition': 'cold', 'targetLabel': 'History',
+                'reducedMotion': False, 'declaredDurationMs': 320.0,
+                'viewport': {'width': 100, 'height': 50},
+                'beaconBox': {'x': 0, 'y': 0, 'width': 100, 'height': 6},
+                'contentBox': {'x': 0, 'y': 6, 'width': 100, 'height': 44}, 'frames': [],
+                'animation': {'startPerfMs': 0, 'endPerfMs': 83}, 'longTasks': []}
+        for i in range(16):
+            f = np.zeros((50, 100, 3), dtype=np.uint8)
+            if 2 <= i < 5:
+                f[0:6, :, :] = (0, 200, 0)
+            elif i >= 5:
+                f[0:6, :, :] = (200, 0, 0)
+            if i >= 2:
+                f[6:50, :, :] = min(120, (i - 2) * 40)
+            if i >= 14:
+                f[20:44, :, :] = 220
+            name = f'frame_{i + 1:05d}.jpg'
+            PILImage.fromarray(f, 'RGB').save(os.path.join(case_dir, name), quality=95)
+            meta['frames'].append({'index': i + 1, 'file': name, 'tMs': round(i * 16.7, 1)})
+        with open(os.path.join(case_dir, 'meta.json'), 'w') as fh:
+            json.dump(meta, fh)
+
+    def test_analyze_run_writes_summary(self):
+        with tempfile.TemporaryDirectory() as run:
+            self._write_case(os.path.join(run, 'agent', 'cold'))
+            res = M.analyze_run(run)
+            self.assertTrue(os.path.exists(os.path.join(run, 'summary.json')))
+            self.assertTrue(os.path.exists(os.path.join(run, 'summary.md')))
+            self.assertEqual(len(res['cases']), 1)
+            self.assertEqual(res['cases'][0]['verdict'], 'FAIL')
+            self.assertTrue(os.path.exists(os.path.join(run, 'agent', 'cold', 'case.json')))
 
 
 if __name__ == '__main__':

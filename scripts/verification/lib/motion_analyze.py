@@ -7,6 +7,11 @@ and renders artifacts. Diff math is numpy; artifacts are ffmpeg.
 Thresholds are INITIAL — the first real run calibrates them against measured
 baselines. See docs/design/motion-jank-verifier.md.
 """
+import os
+import sys
+import json
+import glob
+import subprocess
 import numpy as np
 from PIL import Image
 
@@ -124,3 +129,89 @@ def compute_metrics(meta, frames):
                 'droppedFrameRatio': round(dropped / len(intervals), 2) if intervals else 0.0})
     out['verdict'] = verdict(out)
     return out
+
+
+def _render_artifacts(case_dir, meta, metrics):
+    """Assemble frames -> 4x slow-mo mp4 + gif via ffmpeg. Best-effort; a failure
+    here does not fail the analysis (artifacts are review aids, not the verdict)."""
+    frames = sorted(glob.glob(os.path.join(case_dir, 'frame_*.jpg')))
+    if not frames:
+        return
+    listfile = os.path.join(case_dir, '_frames.txt')
+    tMs = [fr['tMs'] for fr in meta['frames']]
+    durs = [max(0.001, (tMs[i + 1] - tMs[i]) / 1000.0) for i in range(len(tMs) - 1)] + [0.05]
+    with open(listfile, 'w') as fh:
+        for f, d in zip([os.path.basename(x) for x in frames], durs):
+            fh.write("file '%s'\nduration %.4f\n" % (f, d * 4))   # 4x slow-mo
+        fh.write("file '%s'\n" % os.path.basename(frames[-1]))
+    mp4 = os.path.join(case_dir, 'clip.mp4')
+    gif = os.path.join(case_dir, 'clip.gif')
+    try:
+        subprocess.run(['ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', listfile,
+                        '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-pix_fmt', 'yuv420p', mp4],
+                       cwd=case_dir, check=True, capture_output=True)
+        subprocess.run(['ffmpeg', '-y', '-i', mp4, '-vf', 'fps=15,scale=480:-1:flags=lanczos', gif],
+                       cwd=case_dir, check=True, capture_output=True)
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        metrics['artifactError'] = str(e)[:200]
+    finally:
+        if os.path.exists(listfile):
+            os.remove(listfile)
+
+
+def analyze_case(case_dir):
+    with open(os.path.join(case_dir, 'meta.json')) as fh:
+        meta = json.load(fh)
+    frames = [load_frame(os.path.join(case_dir, fr['file'])) for fr in meta['frames']]
+    metrics = compute_metrics(meta, frames)
+    metrics['targetLabel'] = meta.get('targetLabel')
+    _render_artifacts(case_dir, meta, metrics)
+    with open(os.path.join(case_dir, 'case.json'), 'w') as fh:
+        json.dump(metrics, fh, indent=2)
+    return metrics
+
+
+def analyze_run(run_dir):
+    cases = []
+    for meta_path in sorted(glob.glob(os.path.join(run_dir, '*', '*', 'meta.json'))):
+        cases.append(analyze_case(os.path.dirname(meta_path)))
+    summary = {'run': os.path.basename(run_dir.rstrip('/\\')), 'cases': cases}
+    with open(os.path.join(run_dir, 'summary.json'), 'w') as fh:
+        json.dump(summary, fh, indent=2)
+    _write_summary_md(run_dir, cases)
+    return summary
+
+
+def _write_summary_md(run_dir, cases):
+    lines = ['# Motion jank verifier - summary', '',
+             '| role | case | cond | declared | measured | animEnd(ms) | settle(ms) | **pop-in gap** | late% | dropped | verdict |',
+             '|---|---|---|---|---|---|---|---|---|---|---|']
+    for c in cases:
+        lines.append('| {role} | {case} | {condition} | {dec} | {meas} | {ae} | {st} | **{gap}** | {late} | {drop} | {verdict} |'.format(
+            role=c['role'], case=c['case'], condition=c['condition'],
+            dec=c.get('declaredDurationMs'), meas=c.get('measuredWindowMs'),
+            ae=c.get('animEndMs'), st=c.get('settleMs'), gap=c.get('popinGapMs'),
+            late=c.get('lateChangePct'), drop=c.get('droppedFrameRatio'), verdict=c['verdict']))
+    lines += ['', '## Delta curves (shape distinguishes pop-in spike vs count-up ramp vs spinner)']
+    for c in cases:
+        lines.append("- **{role}/{case}/{cond}** ({v}): {series}".format(
+            role=c['role'], case=c['case'], cond=c['condition'], v=c['verdict'],
+            series=' '.join(str(d) for d in c.get('deltaSeries', []))))
+    with open(os.path.join(run_dir, 'summary.md'), 'w', encoding='utf-8') as fh:
+        fh.write('\n'.join(lines) + '\n')
+
+
+def main(argv):
+    if len(argv) < 2:
+        print('usage: python motion_analyze.py <run_dir>')
+        return 2
+    res = analyze_run(argv[1])
+    fails = [c for c in res['cases'] if c['verdict'] in ('FAIL', 'ERROR')]
+    warns = [c for c in res['cases'] if c['verdict'] == 'WARN']
+    print('analyzed %d case(s): %d FAIL/ERROR, %d WARN. summary.md written.'
+          % (len(res['cases']), len(fails), len(warns)))
+    return 1 if fails else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))
