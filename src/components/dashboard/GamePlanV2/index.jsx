@@ -254,17 +254,27 @@ export default function GamePlanScreen({
   const [entranceReleased, setEntranceReleased] = useState(false);
   const [slowPath, setSlowPath] = useState(false);
 
+  // Entrance release — dataReady wins immediately; otherwise the ENTRANCE_CAP_MS
+  // cap releases it. Keying on dataReady/entranceReleased means the cap timer is
+  // cleared the instant data arrives, so no stray setState fires after release.
   useEffect(() => {
-    if (!gatedEntrance) return;
-    if (dataReady) setEntranceReleased(true);
-  }, [gatedEntrance, dataReady]);
-
-  useEffect(() => {
-    if (!gatedEntrance) return undefined;
+    if (!gatedEntrance || entranceReleased) return undefined;
+    if (dataReady) {
+      setEntranceReleased(true);
+      return undefined;
+    }
     const capId = setTimeout(() => setEntranceReleased(true), ENTRANCE_CAP_MS);
+    return () => clearTimeout(capId);
+  }, [gatedEntrance, dataReady, entranceReleased]);
+
+  // Slow-path reassurance after SLOW_PATH_MS while still loading. Also keyed on
+  // dataReady so the timer is cleared the moment data arrives — a fast load never
+  // triggers a late setSlowPath re-render of this screen.
+  useEffect(() => {
+    if (!gatedEntrance || dataReady) return undefined;
     const slowId = setTimeout(() => setSlowPath(true), SLOW_PATH_MS);
-    return () => { clearTimeout(capId); clearTimeout(slowId); };
-  }, [gatedEntrance]);
+    return () => clearTimeout(slowId);
+  }, [gatedEntrance, dataReady]);
 
   const openMoneyNeeds = () => onOpenTab?.('money-needs');
   const openGoals = () => onOpenTab?.('goals');
