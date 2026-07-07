@@ -603,7 +603,12 @@ export default function AgentDashboard() {
           replays each switch. Wraps ONLY the tab blocks — the fixed overlays
           (DailyFAB, QuickAddMenu, modals) above stay outside so the transform
           never reparents their containing block. Gated + degrades in index.css. */}
-      <div key={activeTab} className="screen-enter">
+      {/* POC (data-gated entrance): Game Plan OWNS its own entrance internally,
+          held until its data is ready (see GamePlanV2/index.jsx gatedEntrance).
+          Suppress the dashboard-level screen-enter for game-plan ONLY so the fade
+          plays once on populated content instead of firing on the skeleton — all
+          other tabs are unchanged. */}
+      <div key={activeTab} className={activeTab === 'game-plan' ? undefined : 'screen-enter'}>
       {/* ── DASHBOARD TAB (v2 home — Hero + PulseStrip + Recent) ── */}
       {activeTab === 'dashboard' && (
         loading ? (
@@ -722,6 +727,7 @@ export default function AgentDashboard() {
       {/* ── GAME PLAN HUB (v2 — Planning parent) ── */}
       {activeTab === 'game-plan' && (
         <GamePlanScreen
+          gatedEntrance
           committedAnnualAPI={goals?.personalAnnualAPI ?? null}
           onOpenTab={setActiveTab}
           avgPolicyAPI={goals?.playgroundAvgPolicyAPI ?? null}

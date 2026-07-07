@@ -19,6 +19,28 @@ import ReviewCommitModal from './ReviewCommitModal';
 
 const GAME_PLAN_LOOP_ENABLED = import.meta.env.VITE_GAME_PLAN_LOOP_ENABLED !== 'false';
 
+// POC — the data-gated entrance holds the screen-enter fade until data is ready,
+// capped so a slow fetch can't strand the user on the loading state.
+const ENTRANCE_CAP_MS = 400; // max-wait: release the fade even if data isn't ready
+const SLOW_PATH_MS = 2000;   // past this, show a subtle "taking longer" reassurance
+
+// prefers-reduced-motion — mirrors the GoalCarousel/Celebration pattern. Used only
+// by the POC data-gated entrance to skip the fade under reduced-motion. The
+// `.screen-enter` CSS is ALSO gated behind the same media query (index.css), so
+// this JS guard is belt-and-suspenders AND makes the reduced-motion path testable.
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(mq.matches);
+    const handler = (e) => setReduced(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return reduced;
+}
+
 /**
  * GamePlanScreen — Game Plan v2 hub (Slice 1).
  *
@@ -59,6 +81,12 @@ export default function GamePlanScreen({
   // S3b — notify AgentDashboard after a same-session commit/delete so the
   // Standard drawer stays in sync without a full page reload.
   onPlanChanged,
+  // POC (data-gated entrance) — opt-in. When true, this screen OWNS its own
+  // screen-enter fade, held until data is ready (or ENTRANCE_CAP_MS). The caller
+  // MUST also suppress its dashboard-level `.screen-enter` for this tab so the
+  // fade plays once on populated content instead of firing on the skeleton.
+  // Default false → byte-identical legacy behavior (ManagerDashboard, etc.).
+  gatedEntrance = false,
 }) {
   const { tenantId, user } = useAuth();
   const uid = user?.uid;
@@ -209,53 +237,100 @@ export default function GamePlanScreen({
   const stepsBuilt = (yearPlanFilled ? 1 : 0) + (monthlyPlanFilled ? 1 : 0) + (committed ? 1 : 0);
   const planBuiltPct = Math.round((stepsBuilt / TOTAL_STEPS) * 100);
 
+  // ── POC: data-gated whole-screen entrance ─────────────────────────────────
+  // Instead of firing the screen-enter immediately (which animates the skeleton,
+  // then the real values pop in as they paint = the residual pop), HOLD the
+  // entrance until the screen's primary data is ready — then play the fade+rise
+  // ONCE on populated content. `loading` is the single reliable ready-signal:
+  // every value-bearing panel (anchor/rail/cascade) derives from
+  // worksheet/yearPlan/monthlyPlan, all set BEFORE `loading` flips false. The
+  // weekly-plan / daily / SuggestedWeekCard inputs are honest stragglers with
+  // their own loading states — intentionally excluded (they'd never converge
+  // reliably; the brief accepts them filling in after). Cap at ENTRANCE_CAP_MS
+  // so a slow fetch can't strand the user on the loading state; past SLOW_PATH_MS
+  // show a subtle reassurance.
+  const reducedMotion = usePrefersReducedMotion();
+  const dataReady = !loading && !error;
+  const [entranceReleased, setEntranceReleased] = useState(false);
+  const [slowPath, setSlowPath] = useState(false);
+
+  useEffect(() => {
+    if (!gatedEntrance) return;
+    if (dataReady) setEntranceReleased(true);
+  }, [gatedEntrance, dataReady]);
+
+  useEffect(() => {
+    if (!gatedEntrance) return undefined;
+    const capId = setTimeout(() => setEntranceReleased(true), ENTRANCE_CAP_MS);
+    const slowId = setTimeout(() => setSlowPath(true), SLOW_PATH_MS);
+    return () => { clearTimeout(capId); clearTimeout(slowId); };
+  }, [gatedEntrance]);
+
   const openMoneyNeeds = () => onOpenTab?.('money-needs');
   const openGoals = () => onOpenTab?.('goals');
   const openMonthlyPlan = GAME_PLAN_LOOP_ENABLED ? () => setMonthlyPlanOpen(true) : undefined;
   const openReviewCommit = GAME_PLAN_LOOP_ENABLED ? () => setReviewCommitOpen(true) : undefined;
 
-  return (
-    <div className="mx-auto max-w-5xl space-y-4" data-testid="game-plan-hub">
-      <header>
-        <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink">Game Plan</h1>
-        <p className="mt-0.5 text-sm text-ink-muted">Build your {year} — what you need to earn, step by step.</p>
-        <p className="mt-0.5 text-xs text-ink-muted">Your year and monthly plans are visible to your managers.</p>
-      </header>
+  const headerBlock = (
+    <header>
+      <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink">Game Plan</h1>
+      <p className="mt-0.5 text-sm text-ink-muted">Build your {year} — what you need to earn, step by step.</p>
+      <p className="mt-0.5 text-xs text-ink-muted">Your year and monthly plans are visible to your managers.</p>
+    </header>
+  );
 
-      {loading && (
-        <div className="space-y-4" aria-busy="true" aria-label="Loading your plan">
-          <div className="h-36 animate-pulse rounded-2xl bg-surface-muted" />
-          <div className="flex gap-2">
-            <div className="h-16 flex-1 animate-pulse rounded-xl bg-surface-muted" />
-            <div className="h-16 flex-1 animate-pulse rounded-xl bg-surface-muted" />
-            <div className="h-16 flex-1 animate-pulse rounded-xl bg-surface-muted" />
-            <div className="h-16 flex-1 animate-pulse rounded-xl bg-surface-muted" />
-          </div>
-          <div className="flex items-center justify-center py-6 text-ink-muted">
-            <Loader2 size={20} className="animate-spin" aria-hidden="true" />
-          </div>
-        </div>
-      )}
-
-      {!loading && error && (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card px-4 py-12 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-danger/10 text-danger-ink">
-            <AlertCircle size={24} aria-hidden="true" />
-          </div>
-          <div>
-            <p className="font-semibold text-ink">Couldn&apos;t load your plan</p>
-            <p className="mt-1 text-sm text-ink-muted">{error}</p>
-          </div>
-          <button
-            type="button"
-            onClick={load}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary dark:bg-primary-dark px-5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 dark:hover:bg-primary-dark/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+  // Quiet loading state — no entrance animation. `slow` adds a subtle
+  // reassurance line once the wait exceeds SLOW_PATH_MS.
+  const renderLoading = (slow) => (
+    <div className="space-y-4" aria-busy="true" aria-label="Loading your plan" data-testid="game-plan-loading">
+      <div className="h-36 animate-pulse rounded-2xl bg-surface-muted" />
+      <div className="flex gap-2">
+        <div className="h-16 flex-1 animate-pulse rounded-xl bg-surface-muted" />
+        <div className="h-16 flex-1 animate-pulse rounded-xl bg-surface-muted" />
+        <div className="h-16 flex-1 animate-pulse rounded-xl bg-surface-muted" />
+        <div className="h-16 flex-1 animate-pulse rounded-xl bg-surface-muted" />
+      </div>
+      <div className="flex flex-col items-center justify-center gap-2 py-6 text-ink-muted">
+        <Loader2 size={20} className="animate-spin" aria-hidden="true" />
+        {slow && (
+          <p
+            className="text-xs text-ink-muted"
+            role="status"
+            aria-live="polite"
+            data-testid="game-plan-slow-message"
           >
-            <RotateCw size={15} aria-hidden="true" /> Retry
-          </button>
-        </div>
-      )}
+            Taking longer than expected…
+          </p>
+        )}
+      </div>
+    </div>
+  );
 
+  const errorBlock = (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card px-4 py-12 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-danger/10 text-danger-ink">
+        <AlertCircle size={24} aria-hidden="true" />
+      </div>
+      <div>
+        <p className="font-semibold text-ink">Couldn&apos;t load your plan</p>
+        <p className="mt-1 text-sm text-ink-muted">{error}</p>
+      </div>
+      <button
+        type="button"
+        onClick={load}
+        className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary dark:bg-primary-dark px-5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 dark:hover:bg-primary-dark/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <RotateCw size={15} aria-hidden="true" /> Retry
+      </button>
+    </div>
+  );
+
+  // Modals are position:fixed overlays — kept OUTSIDE the entrance wrapper so the
+  // one-shot screen-enter transform never reparents their containing block. They
+  // only open on user interaction (after the entrance has completed), so this is
+  // both correct and safe.
+  const modalsBlock = (
+    <>
       {monthlyPlanOpen && (
         <MonthlyPlanModal
           onClose={() => setMonthlyPlanOpen(false)}
@@ -283,71 +358,113 @@ export default function GamePlanScreen({
           onOpenMonthlyPlan={() => { setReviewCommitOpen(false); setMonthlyPlanOpen(true); }}
         />
       )}
+    </>
+  );
 
-      {!loading && !error && (
-        <>
-          <PlanAnchorStrip
-            year={year}
-            commissionNeed={commissionNeed}
-            afterTaxNeed={afterTaxNeed}
-            renewalsCover={renewalsCover}
-            grossNeed={grossNeed}
-            apiCommitment={committedAnnualAPI}
-            planBuiltPct={planBuiltPct}
-            stepsBuilt={stepsBuilt}
-            totalSteps={TOTAL_STEPS}
-            moneyNeedsFilled={moneyNeedsFilled}
-          />
+  const contentBlock = (
+    <>
+      <PlanAnchorStrip
+        year={year}
+        commissionNeed={commissionNeed}
+        afterTaxNeed={afterTaxNeed}
+        renewalsCover={renewalsCover}
+        grossNeed={grossNeed}
+        apiCommitment={committedAnnualAPI}
+        planBuiltPct={planBuiltPct}
+        stepsBuilt={stepsBuilt}
+        totalSteps={TOTAL_STEPS}
+        moneyNeedsFilled={moneyNeedsFilled}
+      />
 
-          <StepRail
-            moneyNeedsFilled={moneyNeedsFilled}
-            onOpenMoneyNeeds={openMoneyNeeds}
-            yearPlanFilled={yearPlanFilled}
-            onOpenMonthlyPlan={openMonthlyPlan}
-            monthlyPlanFilled={monthlyPlanFilled}
-            onOpenReviewCommit={openReviewCommit}
-            committed={committed}
-          />
+      <StepRail
+        moneyNeedsFilled={moneyNeedsFilled}
+        onOpenMoneyNeeds={openMoneyNeeds}
+        yearPlanFilled={yearPlanFilled}
+        onOpenMonthlyPlan={openMonthlyPlan}
+        monthlyPlanFilled={monthlyPlanFilled}
+        onOpenReviewCommit={openReviewCommit}
+        committed={committed}
+      />
 
-          <PlanCascade
-            commissionNeed={commissionNeed}
-            moneyNeedsFilled={moneyNeedsFilled}
-            yearPlanEnabled={GAME_PLAN_LOOP_ENABLED}
-            yearPlanTotalAPI={yearPlanTotalAPI}
-            yearPlanFilled={yearPlanFilled}
-            monthlyPlanFilled={monthlyPlanFilled}
-            monthlyPlanTotal={monthlyPlanTotal}
-            monthlyYtdDelta={monthlyYtdDelta}
-            committed={committed}
-            committedAt={committedAt}
-          />
+      <PlanCascade
+        commissionNeed={commissionNeed}
+        moneyNeedsFilled={moneyNeedsFilled}
+        yearPlanEnabled={GAME_PLAN_LOOP_ENABLED}
+        yearPlanTotalAPI={yearPlanTotalAPI}
+        yearPlanFilled={yearPlanFilled}
+        monthlyPlanFilled={monthlyPlanFilled}
+        monthlyPlanTotal={monthlyPlanTotal}
+        monthlyYtdDelta={monthlyYtdDelta}
+        committed={committed}
+        committedAt={committedAt}
+      />
 
-          {/* B3 — manager→agent plan suggestions (agent's own data; renders
-              nothing when there are none). Reads through the agent-own arm. */}
-          <PlanSuggestionsCard tenantId={tenantId} agentId={uid} />
+      {/* B3 — manager→agent plan suggestions (agent's own data; renders
+          nothing when there are none). Reads through the agent-own arm. */}
+      <PlanSuggestionsCard tenantId={tenantId} agentId={uid} />
 
-          <SuggestedWeekCard
-            committedAnnualAPI={committedAnnualAPI}
-            avgPolicyAPI={avgPolicyAPI}
-            prospectRatio={prospectRatio}
-            submissions={submissions}
-            floors={weeklyActivityFloors}
-            loading={dataLoading}
-            error={dataError}
-            onRetry={onRetry}
-            onBuildPlan={openGoals}
-            weekLabel={`Wk ${weekNum}`}
-            committedPlan={committedPlan}
-            onCommit={handleCommitPlan}
-            onDeletePlan={handleDeletePlan}
-            planBusy={planBusy}
-            planError={planError}
-            weekStart={weekStart}
-            weekSubmission={weekSubmission}
-            dailyDocs={dailyDocs}
-          />
-        </>
-      )}
+      <SuggestedWeekCard
+        committedAnnualAPI={committedAnnualAPI}
+        avgPolicyAPI={avgPolicyAPI}
+        prospectRatio={prospectRatio}
+        submissions={submissions}
+        floors={weeklyActivityFloors}
+        loading={dataLoading}
+        error={dataError}
+        onRetry={onRetry}
+        onBuildPlan={openGoals}
+        weekLabel={`Wk ${weekNum}`}
+        committedPlan={committedPlan}
+        onCommit={handleCommitPlan}
+        onDeletePlan={handleDeletePlan}
+        planBusy={planBusy}
+        planError={planError}
+        weekStart={weekStart}
+        weekSubmission={weekSubmission}
+        dailyDocs={dailyDocs}
+      />
+    </>
+  );
+
+  // ── POC (opt-in): data-gated entrance ──────────────────────────────────────
+  // Until the entrance releases (dataReady OR ENTRANCE_CAP_MS), show ONLY the
+  // quiet loading state — no header, no entrance animation. On release, mount the
+  // fully-populated screen inside a fresh `.screen-enter` wrapper so the fade+rise
+  // fires ONCE on real content (nothing arrives after → no post-animation pop).
+  // reducedMotion skips the class (CSS already suppresses it too); content just
+  // appears. If the cap fires while still loading, the wrapper animates the
+  // skeleton and content fills after — the accepted straggler tradeoff.
+  if (gatedEntrance) {
+    return (
+      <div className="mx-auto max-w-5xl space-y-4" data-testid="game-plan-hub">
+        {!entranceReleased ? (
+          renderLoading(slowPath)
+        ) : (
+          <div
+            key="gp-screen-enter"
+            className={reducedMotion ? undefined : 'screen-enter'}
+            data-testid="game-plan-entrance"
+          >
+            {headerBlock}
+            {loading && renderLoading(slowPath)}
+            {!loading && error && errorBlock}
+            {!loading && !error && contentBlock}
+          </div>
+        )}
+        {modalsBlock}
+      </div>
+    );
+  }
+
+  // Legacy (default) path — byte-for-byte the prior behavior. The caller's
+  // dashboard-level `.screen-enter` owns the entrance here.
+  return (
+    <div className="mx-auto max-w-5xl space-y-4" data-testid="game-plan-hub">
+      {headerBlock}
+      {loading && renderLoading(false)}
+      {!loading && error && errorBlock}
+      {modalsBlock}
+      {!loading && !error && contentBlock}
     </div>
   );
 }
