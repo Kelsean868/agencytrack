@@ -69,8 +69,8 @@ export default function Shell({
   // aren't already one tap away in the bottom nav or shown in the ★ Pinned row.
   const frequentExcludeTabIds = useMemo(() => {
     const s = new Set();
-    (bottomNavItems ?? []).forEach((i) => { if (i.tabId) s.add(i.tabId); });
-    (pinnedItems ?? []).forEach((i) => { if (i.tabId) s.add(i.tabId); });
+    (bottomNavItems ?? []).forEach((i) => { if (i?.tabId) s.add(i.tabId); });
+    (pinnedItems ?? []).forEach((i) => { if (i?.tabId) s.add(i.tabId); });
     return [...s];
   }, [bottomNavItems, pinnedItems]);
 

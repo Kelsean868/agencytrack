@@ -14,6 +14,11 @@ import { useState, useEffect, useMemo } from 'react';
 // per-device signal, so a device-local counter is the right model. Key is
 // namespaced per-user (`agencytrack-frequent-nav:{uid}`) so counts never bleed
 // across accounts on a shared browser (mirrors the usePinnedNav mirror key).
+//
+// State binds the counts to the scopeId they belong to ({ scopeId, counts }) so
+// the persist effect always writes to the correct key even across a user switch —
+// and the state updaters stay side-effect-free (persistence lives in its own
+// effect), honoring React's "updaters must be pure" contract.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const FREQUENT_KEY_PREFIX = 'agencytrack-frequent-nav';
@@ -47,33 +52,44 @@ function writeCounts(scopeId, counts) {
 export default function useFrequentNav({
   scopeId, activeTab, navItems = [], excludeTabIds = [], limit = 3,
 }) {
-  const [counts, setCounts] = useState(() => readCounts(scopeId));
+  // counts are bound to the scope they were read for — so a mid-session user
+  // switch can never persist one user's counts under another's key.
+  const [state, setState] = useState(() => ({ scopeId, counts: readCounts(scopeId) }));
 
-  // Re-read when the active user changes (shared browser).
-  useEffect(() => { setCounts(readCounts(scopeId)); }, [scopeId]);
+  // Re-sync when the active user changes (shared browser).
+  useEffect(() => {
+    setState({ scopeId, counts: readCounts(scopeId) });
+  }, [scopeId]);
 
-  // Count each navigation. Functional update + deps [scopeId, activeTab] fire
-  // exactly once per tab change (never a render loop — counts is not a dep).
+  // Count each navigation — pure updater (safe under Strict/concurrent double-invoke).
+  // The scope guard drops the increment on the transient render where scopeId has
+  // changed but the re-sync effect hasn't run yet.
   useEffect(() => {
     if (!scopeId || !activeTab) return;
-    setCounts((prev) => {
-      const next = { ...prev, [activeTab]: (prev[activeTab] ?? 0) + 1 };
-      writeCounts(scopeId, next);
-      return next;
+    setState((prev) => {
+      if (prev.scopeId !== scopeId) return prev;
+      return { scopeId, counts: { ...prev.counts, [activeTab]: (prev.counts[activeTab] ?? 0) + 1 } };
     });
   }, [scopeId, activeTab]);
 
+  // Persistence as a dedicated side effect — always targets the scope the counts
+  // belong to (state.scopeId), never the render-time scopeId.
+  useEffect(() => {
+    if (!state.scopeId) return;
+    writeCounts(state.scopeId, state.counts);
+  }, [state]);
+
   // Stable exclude key so the memo doesn't rerun on a fresh-but-equal array.
-  const excludeKey = excludeTabIds.join('|');
+  const excludeKey = (excludeTabIds ?? []).join('|');
 
   return useMemo(() => {
     const exclude = new Set(excludeKey ? excludeKey.split('|') : []);
-    const byTab = new Map(navItems.filter((i) => i.tabId).map((i) => [i.tabId, i]));
-    return Object.entries(counts)
+    const byTab = new Map((navItems ?? []).filter((i) => i?.tabId).map((i) => [i.tabId, i]));
+    return Object.entries(state.counts)
       .filter(([tabId, n]) => n > 0 && byTab.has(tabId) && !exclude.has(tabId))
       .sort((a, b) => b[1] - a[1])
       .map(([tabId]) => byTab.get(tabId))
       .filter((item) => item && item.disabled !== true)
       .slice(0, limit);
-  }, [counts, navItems, excludeKey, limit]);
+  }, [state, navItems, excludeKey, limit]);
 }

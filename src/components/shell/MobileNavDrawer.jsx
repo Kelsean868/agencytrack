@@ -23,7 +23,7 @@ import { groupBySectionLabel } from './navSections';
  * pinned rows for the workspace layout.
  */
 export default function MobileNavDrawer({
-  items, activeTab, setActiveTab, onClose, onAction, pinnedItems = [], frequentItems = [],
+  items = [], activeTab, setActiveTab, onClose, onAction, pinnedItems = [], frequentItems = [],
   showPinnedZone = true, showWorkspaceToggle = false, workspace, onWorkspaceChange,
 }) {
   const modalRef = useFocusTrap({ onEscape: onClose });
@@ -77,7 +77,11 @@ export default function MobileNavDrawer({
   };
 
   const sectionHeader = (label, key) => (
-    <div key={key} className="px-5 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
+    <div
+      key={key}
+      data-testid="nav-section-header"
+      className="px-5 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted"
+    >
       {label}
     </div>
   );

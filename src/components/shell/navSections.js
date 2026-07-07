@@ -23,6 +23,7 @@
  */
 export function buildSectionMap(items = []) {
   const map = new Map();
+  if (!Array.isArray(items)) return map;
   let current = null;
   for (const item of items) {
     if (item?.sectionLabel) current = item.sectionLabel;
@@ -42,6 +43,7 @@ export function buildSectionMap(items = []) {
  */
 export function groupBySectionLabel(items = []) {
   const groups = [];
+  if (!Array.isArray(items)) return groups;
   for (const item of items) {
     const label = item?.sectionLabel ?? null;
     const last = groups[groups.length - 1];

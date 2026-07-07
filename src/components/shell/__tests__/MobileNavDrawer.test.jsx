@@ -124,13 +124,14 @@ const GROUPED_ITEMS = [
 ];
 
 describe('MobileNavDrawer — grouped sections (More sheet v2)', () => {
-  it('renders a section header for each labelled group, in order', () => {
+  it('renders a section header for each labelled group, in DOM order', () => {
     render(
       <MobileNavDrawer items={GROUPED_ITEMS} activeTab="dashboard" setActiveTab={vi.fn()} onClose={vi.fn()} />
     );
-    for (const label of ['Planning', 'Tools', 'Account']) {
-      expect(screen.getByText(label)).toBeInTheDocument();
-    }
+    // Assert the actual DOM order of the section headers (Planning has two items
+    // but only one header; Tools and Account follow).
+    const headers = screen.getAllByTestId('nav-section-header').map((el) => el.textContent);
+    expect(headers).toEqual(['Planning', 'Tools', 'Account']);
     // Every item still renders as a row.
     expect(screen.getByText('Game Plan')).toBeInTheDocument();
     expect(screen.getByText('Profile')).toBeInTheDocument();

@@ -71,6 +71,24 @@ describe('useFrequentNav', () => {
     expect(localStorage.length).toBe(0);
   });
 
+  it('never writes one user\'s counts under another user\'s key on switch', () => {
+    // u1 builds history (a → b).
+    const { rerender } = renderHook((p) => useFrequentNav(p), {
+      initialProps: { scopeId: 'u1', navItems: NAV, excludeTabIds: [], limit: 3, activeTab: 'a' },
+    });
+    rerender({ scopeId: 'u1', navItems: NAV, excludeTabIds: [], limit: 3, activeTab: 'b' });
+    const u1Before = localStorage.getItem(frequentKey('u1'));
+    expect(JSON.parse(u1Before)).toEqual({ a: 1, b: 1 });
+
+    // Switch to u2 and navigate — must not touch u1's stored counts.
+    rerender({ scopeId: 'u2', navItems: NAV, excludeTabIds: [], limit: 3, activeTab: 'c' });
+    rerender({ scopeId: 'u2', navItems: NAV, excludeTabIds: [], limit: 3, activeTab: 'b' });
+
+    expect(localStorage.getItem(frequentKey('u1'))).toBe(u1Before);
+    const u2 = JSON.parse(localStorage.getItem(frequentKey('u2')));
+    expect(u2).toEqual({ c: 1, b: 1 });
+  });
+
   it('re-reads counts when the active user changes', () => {
     localStorage.setItem(frequentKey('u2'), JSON.stringify({ c: 5 }));
     const { result, rerender } = renderHook((p) => useFrequentNav(p), {

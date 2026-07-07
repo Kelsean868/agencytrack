@@ -24,10 +24,11 @@ describe('navSections — buildSectionMap', () => {
     expect(map.get('y')).toBe('Company');
   });
 
-  it('skips items without an id and tolerates empty input', () => {
+  it('skips items without an id and tolerates empty / null input', () => {
     const map = buildSectionMap([{ sectionLabel: 'Planning' }, { id: 'a' }]);
     expect(map.get('a')).toBe('Planning');
     expect(buildSectionMap()).toEqual(new Map());
+    expect(buildSectionMap(null)).toEqual(new Map());
   });
 });
 
@@ -60,5 +61,10 @@ describe('navSections — groupBySectionLabel', () => {
     expect(groups).toHaveLength(1);
     expect(groups[0].label).toBeNull();
     expect(groups[0].items.map((i) => i.id)).toEqual(['a', 'b']);
+  });
+
+  it('returns an empty array for null input (no crash)', () => {
+    expect(groupBySectionLabel(null)).toEqual([]);
+    expect(groupBySectionLabel()).toEqual([]);
   });
 });
