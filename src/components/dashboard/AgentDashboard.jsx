@@ -22,6 +22,7 @@ import { resolvePath } from '../wizard/WizardForm.helpers';
 import DailyCaptureV2 from '../daily/DailyCaptureV2';
 import { getDailyEntry, getDailyEntriesForWeek } from '../../services/dailyActivityService';
 import { getWeeklyPlan } from '../../services/weeklyPlanService';
+import { prefetchGamePlanYearDocs } from '../../services/gamePlanPrefetch';
 import CareerPortal from '../profile/CareerPortal';
 import ProfileScreen from '../profile/ProfileScreen';
 import ReportRangeModal from '../ui/ReportRangeModal';
@@ -217,6 +218,34 @@ export default function AgentDashboard() {
   }, [user?.uid, tenantId, currentWeek, thisYear]);
 
   useEffect(() => { loadCoreData(); }, [loadCoreData]);
+
+  // POC (feat/gp-prefetch): warm Game Plan's 3 year-docs during dashboard idle so
+  // the gated Game Plan entrance (feat/gp-data-gated-entrance) lands on populated
+  // content — beating the 400ms cap even on field networks (see gamePlanPrefetch.js
+  // for why listeners, not a one-time getDoc). AgentDashboard-only — the same opt-in
+  // surface as the gated entrance; ManagerDashboard / the default GamePlanScreen path
+  // are untouched. Background, non-blocking, failure-silent; Game Plan still fetches
+  // on mount as the fallback. AgentDashboard stays mounted across tab switches, so the
+  // listeners stay warm until the user opens Game Plan; torn down on unmount.
+  useEffect(() => {
+    if (!user?.uid || !tenantId) return undefined;
+    let unsub = () => {};
+    // Best-effort; the prefetch helper is already failure-silent, but wrap the call
+    // too so nothing here can ever break the dashboard.
+    const run = () => {
+      try { unsub = prefetchGamePlanYearDocs(tenantId, user.uid, thisYear); } catch { /* noop */ }
+    };
+    const hasIdle = typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function';
+    let cancel;
+    if (hasIdle) {
+      const handle = window.requestIdleCallback(run, { timeout: 2000 });
+      cancel = () => { if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(handle); };
+    } else {
+      const handle = setTimeout(run, 400);
+      cancel = () => clearTimeout(handle);
+    }
+    return () => { cancel(); if (typeof unsub === 'function') unsub(); };
+  }, [user?.uid, tenantId, thisYear]);
 
   // Pull-to-refresh — enabled on data-feed tabs only.
   // Explicitly excluded: game-plan, money-needs, and all planning/tool tabs
