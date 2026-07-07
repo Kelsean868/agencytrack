@@ -17,7 +17,7 @@ There are **two** migration docs in `screens-v2/`, from the same author lineage:
 | Layer | What it is | Status | Authoritative record |
 |---|---|---|---|
 | **L1 — Token-foundation reskin** | CSS-variable layer swap in `src/index.css` — "values change, plumbing stays" (token values, scope, fonts, gold, glass, motion) | **EXECUTED** (recon #811; PRs #813/#815/#816/#817/#820/#821) | [`INTEGRATION.md`](../design-system/INTEGRATION.md) + [`reskin-recon-2026-07-05.md`](reskin-recon-2026-07-05.md) + CLAUDE.md |
-| **L2 — Per-screen component port** | Porting the 34 v2 mockups' visual deltas into React components, screen by screen ("Track J") | **PARTLY done** (B1–B5, J1 shipped; J2 next), **largely PENDING** | The docs themselves (their genuinely-useful part) |
+| **L2 — Per-screen component port** | Porting the 34 v2 mockups' visual deltas into React components, screen by screen ("Track J") | **PARTLY done** (B-series + multiple per-screen v2 Slices shipped — see §7; Agent Dashboard J2 next), **largely PENDING** | The docs themselves (their genuinely-useful part) |
 
 The **executed record settles L1** (the token-strategy question) definitively. **Both docs are mostly about L2** — but **DOC-A conflates L2 with a *wrong* L1 token strategy** (build on the `_ds` bundle + `.nexus` camelCase tokens). **DOC-B pre-corrected that** and aligns with the executed L1 strategy, while a couple of its own L1 sub-claims went stale after PR #813.
 
@@ -147,7 +147,7 @@ These are the genuinely-useful items to carry forward. The **token foundation (L
 6. **Transactional email templates** — port `functions/email-templates/*` (monday/sunday nudge, password reset) vs `AgencyTrack Emails.html`. Inline-style/table HTML, not React; **`functions/` was out of the reskin scope** ([DOC-B:232,256–257](../design-system/screens-v2/AgencyTrack%20App%20-%20DS%20Audit%20%26%20Migration%20Plan%20v2%20%28Repo-Reconciled%29.html); [recon line 6](reskin-recon-2026-07-05.md)).
 7. **JetBrains Mono self-hosting** — commit woff2 (400/500) to `src/assets/fonts/`, drop the last CDN font ([INTEGRATION.md §7 follow-up](../design-system/INTEGRATION.md); [DOC-A:134](../design-system/screens-v2/AgencyTrack%20App%20-%20DS%20Audit%20%26%20Migration%20Plan.html)).
 
-**Adjacent (data, not screens — flagged in [DOC-B:235](../design-system/screens-v2/AgencyTrack%20App%20-%20DS%20Audit%20%26%20Migration%20Plan%20v2%20%28Repo-Reconciled%29.html)):** multi-branch AOM data model (blocks second-branch onboarding); restore the branch-scoped kiosk users-list (real names). These may already be tracked in `docs/FOLLOW_UPS.md` — **verify there before actioning** (not re-audited in this docs-only pass).
+**Adjacent (data, not screens — flagged in [DOC-B:235](../design-system/screens-v2/AgencyTrack%20App%20-%20DS%20Audit%20%26%20Migration%20Plan%20v2%20%28Repo-Reconciled%29.html)):** multi-branch AOM data model (blocks second-branch onboarding); restore the branch-scoped kiosk users-list (real names). **Cross-checked (2026-07-07): both are already banked and OPEN** in [`docs/FOLLOW_UPS.md:18–24`](../FOLLOW_UPS.md) under "SEC-012 kiosk branch-scoping — two follow-ups (banked 2026-07-05, PR #801 `3d7c391e`)" — item 1 = per-branch AOM doc model (🚨 blocks second-branch onboarding), item 2 = branch-scoped kiosk `users` list arm. Both are rules/data-model changes (human-merge + `firebase deploy`), so they are **not** part of Track-J screen work and are already tracked — no new FU needed.
 
 ---
 
@@ -160,13 +160,22 @@ These are the genuinely-useful items to carry forward. The **token foundation (L
 
 ---
 
-## 7 · Known gaps (Rule 22) & falsifiers (Rule 23)
+## 7 · Verification performed, residual gap (Rule 22) & falsifiers (Rule 23)
 
-- **Per-screen "Built" claims not independently re-verified.** DOC-B's §2 table asserts a target component exists for nearly every screen. I spot-verified the four DOC-A called "missing" (all exist) and CRO (absent), but did **not** open all ~34 components to confirm each "Built"/"Port-verify" status. The STILL-PENDING framing (item 2) treats them as *verify*, which is safe regardless.
-- **"Track J" ship-state is taken from the docs + INTEGRATION.md deferrals, not a full git audit.** B1–B5 / J1 "shipped" and "J2 is next" come from DOC-B's prose and INTEGRATION.md §6's "per-screen Track-J polish (deferred)"; I did not enumerate every Track-J PR. A future session should confirm the exact J-phase HEAD before picking up item 1/2.
-- **Adjacent data FUs (multi-branch AOM, kiosk users-list) not cross-checked against `docs/FOLLOW_UPS.md`** — flagged for verification, not asserted as open.
-- **DOC-B's cited main HEAD `9dcae1a3` ≠ current HEAD.** It reconciled against an earlier `main`; current is `f80d5ba1`. The L1 reskin PRs (#813–#821) landed in that window, which is exactly why DOC-B's token-layer sub-claims (B3/B4) drifted. This reconciliation is anchored to `f80d5ba1`.
-- **Falsifier for the classifications:** the SUPERSEDED verdicts (A1/A2/A9, B3) would be overturned only if the app later re-adopts `.nexus` scoping or the `_ds` bundle (INTEGRATION.md §1's own Rule-23 condition: a second themed region co-hosted in the same DOM). The STILL-PENDING verdicts would be overturned by evidence that a later Track-J PR already shipped that screen/CRO — check `git log origin/main --grep` for the specific surface before starting.
+**Verified 2026-07-07 (closing the process gaps this pass could close):**
+
+- **"Built" component existence — VERIFIED, not spot-checked.** All **48** top-level components named in DOC-B's §2 table resolve in `src/` (`git ls-files`, 0 missing), and all **20** sub-components (`HomeV2`, `GamePlanV2`, `CommissionPlayground`, `ManagerHeroSection`, `AOMCategorySection`, `KioskRoute`, etc.) resolve to ≥1 file each. Every "Built" claim in the doc's screen tables has a real target component on `main`.
+- **Track-J ship-state — git-enumerated.** `git log origin/main --grep="Track J"` confirms an active, multi-slice program: Daily Capture v2 (#426 `8e82ccab`), Policy Ledger v2 Slice 1 (#432 `5a24aa32`), Policy Reconciliation v2 Slice 1 (#434 `0136bcc8`), Game Plan Slice 1 + Money Needs re-home (#438 `33889a9f`), Weekly Planner Slice 1 (#445 `e94d747b`), plus the night-queue item series (#448–#467). All precede the doc's era (~#810), so the doc's per-screen "Built" statuses are **consistent** with the ship-state. **No "Agent Dashboard v2 / J2" ship exists on `main`** → the "J2 is next" note and its STILL-PENDING verdict (B6) hold at HEAD `f80d5ba1`. *(Terminology: the doc's "B1–B5 / J1 / J2" phase labels are the author's framing; on-`main` the work is named per-screen **Slices** + numbered night-queue **items** — a labeling difference, not a state difference.)*
+- **Adjacent data FUs — cross-checked.** Multi-branch AOM + branch-scoped kiosk users-list are **already banked and OPEN** at [`docs/FOLLOW_UPS.md:18–24`](../FOLLOW_UPS.md) (SEC-012 FUs, PR #801). Rules/data-model changes, not Track-J screen work — no new FU needed.
+
+**Residual gap that this pass could NOT close (genuine, inherent to a docs-only reconciliation):**
+
+- **Component *existence* is verified; visual-*delta drift* is not.** A "Built" component existing on `main` does **not** prove it visually matches its v2 mockup. The per-screen "Port / verify" work (still-pending item 2) is exactly that mockup-vs-live diff, and it requires rendering each screen — out of scope for this docs-only pass and the reason item 2 is framed as *verify*, not *done*.
+
+**Anchoring & falsifiers (Rule 23):**
+
+- **DOC-B's cited main HEAD `9dcae1a3` ≠ current HEAD `f80d5ba1`.** It reconciled against an earlier `main`; the L1 reskin PRs (#813–#821) landed in that window, which is exactly why DOC-B's token-layer sub-claims (B3/B4) drifted. This reconciliation is anchored to `f80d5ba1`.
+- **Falsifier for the verdicts:** the SUPERSEDED verdicts (A1/A2/A9, B3) would be overturned only if the app later re-adopts `.nexus` scoping or the `_ds` bundle (INTEGRATION.md §1's own Rule-23 condition: a second themed region co-hosted in the same DOM). A STILL-PENDING verdict would be overturned by evidence a later PR already shipped that screen/CRO — re-run `git log origin/main --grep` for the specific surface before starting.
 
 ---
 
