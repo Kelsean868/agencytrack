@@ -64,6 +64,14 @@ describe('PanelSkeleton', () => {
       const { container } = render(<PanelSkeleton variant="list" count={-5} />);
       expect(pulses(container)).toHaveLength(0);
     });
+
+    it('falls back to the variant default when count is non-numeric / NaN', () => {
+      const bad = render(<PanelSkeleton variant="list" count="invalid" />);
+      expect(pulses(bad.container)).toHaveLength(4); // DEFAULT_COUNT.list
+      const nan = render(<PanelSkeleton variant="table" count={NaN} columns={NaN} />);
+      // table default count (5) rows × default columns (4) + 1 header
+      expect(pulses(nan.container)).toHaveLength(1 + 5 * 4);
+    });
   });
 
   describe('geometry stability — each variant reserves a fixed box', () => {

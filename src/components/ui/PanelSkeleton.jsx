@@ -151,8 +151,13 @@ export default function PanelSkeleton({
 }) {
   const render = VARIANTS[variant] || VARIANTS.list;
   const resolvedVariant = VARIANTS[variant] ? variant : 'list';
-  const n = Math.max(0, Math.trunc(count ?? DEFAULT_COUNT[resolvedVariant] ?? 4));
-  const cols = Math.max(1, Math.trunc(columns));
+  // Defensive parse: a non-numeric prop (e.g. count="invalid") coerces to NaN,
+  // which Array.from silently treats as length 0 — an empty skeleton. Fall back
+  // to the variant default instead so a bad prop never renders nothing.
+  const rawCount = Number(count ?? DEFAULT_COUNT[resolvedVariant]);
+  const n = Number.isNaN(rawCount) ? DEFAULT_COUNT[resolvedVariant] : Math.max(0, Math.trunc(rawCount));
+  const rawCols = Number(columns);
+  const cols = Number.isNaN(rawCols) ? 4 : Math.max(1, Math.trunc(rawCols));
 
   return (
     <div
