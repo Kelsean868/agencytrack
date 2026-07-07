@@ -452,7 +452,7 @@ export default function GamePlanScreen({
         ) : (
           <div
             key="gp-screen-enter"
-            className={reducedMotion ? undefined : 'screen-enter'}
+            className={reducedMotion ? 'space-y-4' : 'screen-enter space-y-4'}
             data-testid="game-plan-entrance"
           >
             {headerBlock}
