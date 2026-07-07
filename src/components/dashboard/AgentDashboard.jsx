@@ -244,7 +244,7 @@ export default function AgentDashboard() {
       const handle = setTimeout(run, 400);
       cancel = () => clearTimeout(handle);
     }
-    return () => { cancel(); unsub(); };
+    return () => { cancel(); if (typeof unsub === 'function') unsub(); };
   }, [user?.uid, tenantId, thisYear]);
 
   // Pull-to-refresh — enabled on data-feed tabs only.
