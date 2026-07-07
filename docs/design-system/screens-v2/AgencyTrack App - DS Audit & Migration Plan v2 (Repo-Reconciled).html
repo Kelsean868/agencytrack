@@ -121,6 +121,23 @@
     <span>Confidential · Internal</span>
   </div>
 
+  <!-- ============================================================================
+       SUPERSEDED as the authoritative migration record (added 2026-07-07).
+       This repo-reconciled audit's TOKEN-STRATEGY premise (use the app's own
+       :root/.dark tokens, NOT the `_ds` bundle) MATCHES what was executed — but
+       it is NOT the authoritative record of the executed token-foundation
+       reskin. That record is docs/design-system/INTEGRATION.md. A few token-layer
+       sub-claims here are now stale — notably the §1 inkFaint "does not need the
+       token split ported" note: the AA split DID ship (PR #813). The per-screen
+       Track-J port (§2–§4) and the net-new CRO build (§3) remain GENUINE pending
+       work. Reconciliation + extracted still-pending list:
+       docs/audits/migration-doc-reconciliation-2026-07-07.md
+       ============================================================================ -->
+  <div style="border:2px solid #B45309;border-left-width:8px;background:#FEF3E2;color:#28251D;border-radius:10px;padding:14px 18px;margin:0 0 18px;font-family:'Satoshi','Helvetica Neue',Helvetica,Arial,sans-serif;">
+    <strong style="display:block;font-size:14px;margin-bottom:5px;color:#B45309;font-family:'Cabinet Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif;">⚠ SUPERSEDED as the authoritative plan — retained as a live Track-J input (2026-07-07)</strong>
+    <p style="margin:4px 0;font-size:12px;line-height:1.55;">The token-strategy premise here (port mockups into the app's own <code>:root</code>/<code>.dark</code> tokens, <strong>not</strong> the <code>_ds</code> bundle) <strong>matches</strong> the executed reskin. But the authoritative record of the executed token-foundation migration is <strong>docs/design-system/INTEGRATION.md</strong>, not this file, and a few token-layer sub-claims are now stale — notably the §1 <code>inkFaint</code> "does not need the token split ported" note (the AA split <strong>did</strong> ship in PR #813; <code>text-faint</code> is now <code>#7A7264</code> and <code>#A8A39C</code> is the separate non-text <code>ink-dim</code> role). The per-screen Track-J port (§2–§4) and the net-new CRO build (§3) remain <strong>genuine pending work</strong>. Reconciliation + extracted still-pending list: <strong>docs/audits/migration-doc-reconciliation-2026-07-07.md</strong>.</p>
+  </div>
+
   <p class="eyebrow">Design-system audit · reconciled against <code>Kelsean868/agencytrack@main</code></p>
   <h1>App DS Audit — Repo-Reconciled</h1>
   <p class="lede">The first draft audited the design-tool artefacts in isolation. This version reconciles them against the actual production codebase. The headline flips: this is <strong>not</strong> a from-scratch migration — it is <strong>finishing a per-screen port that is already ~80% built</strong>, plus one genuinely-new surface.</p>
