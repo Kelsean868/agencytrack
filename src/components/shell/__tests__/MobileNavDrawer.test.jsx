@@ -113,3 +113,72 @@ describe('MobileNavDrawer — row navigation', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 });
+
+// ── 5. More sheet v2 — grouped sections, Frequent row, Done button ─────────────
+
+const GROUPED_ITEMS = [
+  { id: 'game-plan',  label: 'Game Plan',  tabId: 'game-plan',  Icon: MockIcon, sectionLabel: 'Planning' },
+  { id: 'goals',      label: 'Goals',      tabId: 'goals',      Icon: MockIcon, sectionLabel: 'Planning' },
+  { id: 'commission', label: 'Commission', tabId: 'commission', Icon: MockIcon, sectionLabel: 'Tools' },
+  { id: 'profile',    label: 'Profile',    tabId: 'profile',    Icon: MockIcon, sectionLabel: 'Account' },
+];
+
+describe('MobileNavDrawer — grouped sections (More sheet v2)', () => {
+  it('renders a section header for each labelled group, in order', () => {
+    render(
+      <MobileNavDrawer items={GROUPED_ITEMS} activeTab="dashboard" setActiveTab={vi.fn()} onClose={vi.fn()} />
+    );
+    for (const label of ['Planning', 'Tools', 'Account']) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+    // Every item still renders as a row.
+    expect(screen.getByText('Game Plan')).toBeInTheDocument();
+    expect(screen.getByText('Profile')).toBeInTheDocument();
+  });
+
+  it('renders items without a section label as an unlabelled group (no crash)', () => {
+    render(
+      <MobileNavDrawer items={DRAWER_ITEMS} activeTab="dashboard" setActiveTab={vi.fn()} onClose={vi.fn()} />
+    );
+    expect(screen.getByText('Reports')).toBeInTheDocument();
+    expect(screen.getByText('Persistency')).toBeInTheDocument();
+  });
+});
+
+describe('MobileNavDrawer — Frequent row (More sheet v2)', () => {
+  it('renders a Frequent header + rows when frequentItems is non-empty', () => {
+    const FREQUENT = [{ id: 'commission', label: 'Commission', tabId: 'commission', Icon: MockIcon }];
+    render(
+      <MobileNavDrawer
+        items={GROUPED_ITEMS}
+        frequentItems={FREQUENT}
+        activeTab="dashboard"
+        setActiveTab={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+    expect(screen.getByText('Frequent')).toBeInTheDocument();
+    // Commission appears both in the Frequent row and in its Tools section.
+    expect(screen.getAllByText('Commission').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('omits the Frequent header when there is no history', () => {
+    render(
+      <MobileNavDrawer items={GROUPED_ITEMS} frequentItems={[]} activeTab="dashboard" setActiveTab={vi.fn()} onClose={vi.fn()} />
+    );
+    expect(screen.queryByText('Frequent')).toBeNull();
+  });
+});
+
+describe('MobileNavDrawer — Done button (More sheet v2)', () => {
+  it('renders a Done button that closes the sheet', () => {
+    const onClose = vi.fn();
+    render(
+      <MobileNavDrawer items={DRAWER_ITEMS} activeTab="dashboard" setActiveTab={vi.fn()} onClose={onClose} />
+    );
+    const done = screen.getByTestId('nav-drawer-done');
+    expect(done).toHaveTextContent('Done');
+    fireEvent.click(done);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+});

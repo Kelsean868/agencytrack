@@ -85,7 +85,7 @@ function StatCard({ label, value, sub, Icon }) {
 }
 
 export default function TenantAdminDashboard() {
-  const { userProfile, role, tenantId } = useAuth();
+  const { user, userProfile, role, tenantId } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const [users, setUsers] = useState([]);
@@ -157,6 +157,7 @@ export default function TenantAdminDashboard() {
       navItems={NAV_ITEMS}
       bottomNavItems={BOTTOM_NAV}
       drawerNavItems={DRAWER_NAV}
+      navScopeId={user?.uid}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
       userProfile={userProfile}

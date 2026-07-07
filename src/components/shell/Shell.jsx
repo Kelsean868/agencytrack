@@ -1,8 +1,10 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import MobileBottomNav from './MobileBottomNav';
 import { usePullToRefresh } from '../../hooks/usePullToRefresh';
+import { buildSectionMap } from './navSections';
+import useFrequentNav from '../../hooks/useFrequentNav';
 
 /**
  * Desktop sidebar shell + mobile bottom-nav (Design System v2 — B4).
@@ -40,6 +42,7 @@ export default function Shell({
   isPinned,
   onPin,
   onUnpin,
+  navScopeId,
   showPinnedZone = true,
   showWorkspaceToggle = false,
   workspace,
@@ -48,6 +51,36 @@ export default function Shell({
 }) {
   const mainRef = useRef(null);
   const ptrState = usePullToRefresh(mainRef, onPullRefresh ?? null);
+
+  // More sheet v2 — annotate the (already-filtered) drawer items with their
+  // resolved section label, filled forward from the FULL role nav so a
+  // filtered-out section lead never orphans its section (navSections). The drawer
+  // groups by this label into sidebar-mirroring sections.
+  const groupedDrawerItems = useMemo(() => {
+    if (!drawerNavItems) return drawerNavItems;
+    const sectionMap = buildSectionMap(navItems ?? []);
+    return drawerNavItems.map((item) => ({
+      ...item,
+      sectionLabel: sectionMap.get(item.id) ?? item.sectionLabel ?? null,
+    }));
+  }, [drawerNavItems, navItems]);
+
+  // Auto **Frequent** row (redesign-addendum §3) — most-visited destinations that
+  // aren't already one tap away in the bottom nav or shown in the ★ Pinned row.
+  const frequentExcludeTabIds = useMemo(() => {
+    const s = new Set();
+    (bottomNavItems ?? []).forEach((i) => { if (i.tabId) s.add(i.tabId); });
+    (pinnedItems ?? []).forEach((i) => { if (i.tabId) s.add(i.tabId); });
+    return [...s];
+  }, [bottomNavItems, pinnedItems]);
+
+  const frequentItems = useFrequentNav({
+    scopeId: navScopeId,
+    activeTab,
+    navItems,
+    excludeTabIds: frequentExcludeTabIds,
+    limit: 3,
+  });
 
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof document === 'undefined') return false;
@@ -110,11 +143,12 @@ export default function Shell({
       </div>
       <MobileBottomNav
         items={bottomNavItems}
-        drawerNavItems={drawerNavItems}
+        drawerNavItems={groupedDrawerItems}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onAction={onAction}
         pinnedItems={pinnedItems}
+        frequentItems={frequentItems}
         showPinnedZone={showPinnedZone}
         showWorkspaceToggle={showWorkspaceToggle}
         workspace={workspace}

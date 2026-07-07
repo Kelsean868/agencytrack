@@ -21,7 +21,7 @@ import MobileNavDrawer from './MobileNavDrawer';
  * slide-up "More" drawer. When provided, a 6th "More" button is appended.
  */
 export default function MobileBottomNav({
-  items, drawerNavItems, activeTab, setActiveTab, onAction, pinnedItems,
+  items, drawerNavItems, activeTab, setActiveTab, onAction, pinnedItems, frequentItems,
   showPinnedZone = true, showWorkspaceToggle = false, workspace, onWorkspaceChange,
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -97,6 +97,7 @@ export default function MobileBottomNav({
         <MobileNavDrawer
           items={drawerNavItems}
           pinnedItems={pinnedItems}
+          frequentItems={frequentItems}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onAction={onAction}
