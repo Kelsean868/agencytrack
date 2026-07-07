@@ -37,8 +37,8 @@ import ProfileScreen from '../profile/ProfileScreen';
  * entirely. They can be re-introduced when real surfaces ship.
  *
  * Branches: real surface (Track C C1) — routes to <BranchesPanel />.
- * Mobile bottom-nav still omits Branches; mobile coverage tracked as
- * a separate TA-MOBILE follow-up.
+ * Mobile: Branches and Profile are reachable via the "More" drawer
+ * (v2 nav reorder) — closes the former TA-MOBILE coverage gap.
  */
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard',      tabId: 'dashboard', Icon: LayoutGrid, sectionLabel: 'Company' },
@@ -51,13 +51,23 @@ const NAV_ITEMS = [
   { id: 'profile',   label: 'Profile',        tabId: 'profile',   Icon: UserCircle, sectionLabel: 'Account' },
 ];
 
+// Mobile bottom-nav — 5-slot v2 layout: 4 tabs + auto-appended "More". Profile
+// folded into the More drawer (v2 nav reorder). No FAB for tenant admin.
 const BOTTOM_NAV = [
   { id: 'dashboard', label: 'Dashboard', tabId: 'dashboard', Icon: LayoutGrid },
   { id: 'config',    label: 'Config',    tabId: 'config',    Icon: BookOpen },
   { id: 'users',     label: 'Users',     tabId: 'users',     Icon: Users },
   { id: 'campaigns', label: 'Campaigns', tabId: 'campaigns', Icon: Send },
-  { id: 'profile',   label: 'Profile',   tabId: 'profile',   Icon: UserCircle },
 ];
+
+// Mobile "More" drawer — every sidebar item not already in the bottom nav
+// (Branches + Profile). Wiring this drawer (previously TenantAdmin passed no
+// drawerNavItems, so no "More" button rendered) both folds Profile in per the v2
+// nav reorder and closes the latent TA-MOBILE gap where Branches was unreachable
+// on mobile. Static: derived from the two module-level constants above.
+const DRAWER_NAV = NAV_ITEMS.filter(
+  (item) => item.tabId && !BOTTOM_NAV.find((b) => b.tabId === item.tabId)
+);
 
 function StatCard({ label, value, sub, Icon }) {
   return (
@@ -146,6 +156,7 @@ export default function TenantAdminDashboard() {
     <Shell
       navItems={NAV_ITEMS}
       bottomNavItems={BOTTOM_NAV}
+      drawerNavItems={DRAWER_NAV}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
       userProfile={userProfile}

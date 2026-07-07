@@ -87,3 +87,29 @@ describe('MobileNavDrawer — dismiss', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 });
+
+// ── 4. A drawer row routes to its tab (v2 nav reorder: Profile → More) ─────────
+// Every role folds Profile into the More drawer as a { tabId: 'profile' } row.
+// This proves such a row navigates to the Profile screen (setActiveTab('profile'))
+// and dismisses the sheet — the contract the per-dashboard injections rely on.
+
+describe('MobileNavDrawer — row navigation', () => {
+  it('clicking a Profile row calls setActiveTab("profile") and closes the drawer', () => {
+    const setActiveTab = vi.fn();
+    const onClose = vi.fn();
+    const PROFILE_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Icon: MockIcon };
+    render(
+      <MobileNavDrawer
+        items={[...DRAWER_ITEMS, PROFILE_ITEM]}
+        activeTab="overview"
+        setActiveTab={setActiveTab}
+        onClose={onClose}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Profile'));
+
+    expect(setActiveTab).toHaveBeenCalledWith('profile');
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+});
