@@ -44,7 +44,7 @@ vi.mock('../../../utils/formatters', () => ({
 // what TenantAdminDashboard chose to render. Also renders children so tab
 // content is exercised.
 vi.mock('../../shell/Shell', () => ({
-  default: ({ navItems, bottomNavItems, activeTab, setActiveTab, topbarTitle, children }) => (
+  default: ({ navItems, bottomNavItems, drawerNavItems, activeTab, setActiveTab, topbarTitle, children }) => (
     <div data-testid="shell">
       <div data-testid="topbar-title">{topbarTitle}</div>
       <nav data-testid="ta-sidebar">
@@ -64,6 +64,18 @@ vi.mock('../../shell/Shell', () => ({
       <nav data-testid="ta-bottom-nav">
         {bottomNavItems.map((item) => (
           <span key={item.id} data-testid={`bottom-${item.id}`}>{item.label}</span>
+        ))}
+      </nav>
+      <nav data-testid="ta-drawer-nav">
+        {(drawerNavItems ?? []).map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            data-testid={`drawer-${item.id}`}
+            onClick={() => item.tabId && setActiveTab(item.tabId)}
+          >
+            {item.label}
+          </button>
         ))}
       </nav>
       <div data-testid="active-tab">{activeTab}</div>
@@ -236,6 +248,40 @@ describe('TenantAdminDashboard — tab routing', () => {
   it('clicking Profile sidebar routes to ProfileScreen', async () => {
     render(<TenantAdminDashboard />);
     fireEvent.click(screen.getByTestId('sidebar-profile'));
+    await waitFor(() => expect(screen.getByTestId('profile-screen')).toBeInTheDocument());
+  });
+});
+
+describe('TenantAdminDashboard — mobile nav v2 reorder', () => {
+  it('Profile is NOT in the mobile bottom nav', () => {
+    render(<TenantAdminDashboard />);
+    expect(screen.queryByTestId('bottom-profile')).toBeNull();
+  });
+
+  it('the bottom nav is exactly [Dashboard, Config, Users, Campaigns]', () => {
+    render(<TenantAdminDashboard />);
+    for (const id of ['dashboard', 'config', 'users', 'campaigns']) {
+      expect(screen.getByTestId(`bottom-${id}`)).toBeInTheDocument();
+    }
+    // Four tabs + the auto-appended "More" = a 5-slot nav.
+    expect(screen.getAllByTestId(/^bottom-/)).toHaveLength(4);
+  });
+
+  it('the "More" drawer is wired and contains Profile (not stranded)', () => {
+    render(<TenantAdminDashboard />);
+    const profile = screen.getByTestId('drawer-profile');
+    expect(profile).toBeInTheDocument();
+    expect(profile).toHaveTextContent('Profile');
+  });
+
+  it('the "More" drawer also surfaces Branches (closes the TA-MOBILE gap)', () => {
+    render(<TenantAdminDashboard />);
+    expect(screen.getByTestId('drawer-branches')).toBeInTheDocument();
+  });
+
+  it('clicking the drawer Profile row routes to ProfileScreen', async () => {
+    render(<TenantAdminDashboard />);
+    fireEvent.click(screen.getByTestId('drawer-profile'));
     await waitFor(() => expect(screen.getByTestId('profile-screen')).toBeInTheDocument());
   });
 });

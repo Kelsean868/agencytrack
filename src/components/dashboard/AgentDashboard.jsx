@@ -62,17 +62,27 @@ import FinancingSelfView from '../financing/FinancingSelfView';
 // Daily Log item appears only for daily/hybrid-mode agents (mirrors DailyFAB).
 // Coming-soon gating (prospect-info, planner) is applied inside getNavConfig.
 
-// Mobile bottom-nav — center ＋ is "Create" (Quick-Add, PR-3). Submit FAB
-// replaced; dot field is computed reactively inside the component so the
-// amber not-logged-today nudge mirrors the DailyFAB predicate exactly.
+// Mobile bottom-nav — 5-slot v2 layout: 2 tabs · center ＋ · 1 tab · More
+// (the "More" button is auto-appended by MobileBottomNav when drawerNavItems is
+// non-empty, so it is the 5th slot and the FAB sits dead-center). Center ＋ is
+// "Create" (Quick-Add, PR-3); its dot is computed reactively below so the amber
+// not-logged-today nudge mirrors the DailyFAB predicate exactly. Profile moved
+// OUT of the bottom nav INTO the More drawer (v2 nav reorder) — injected in
+// drawerNavItems below because AGENT_NAV has no profile row.
 const BOTTOM_NAV = [
-  { id: 'home',        label: 'Home',     tabId: 'dashboard',            Icon: ClipboardList },
-  { id: 'create',      label: 'Create',   action: 'quick-add',           Icon: FileText, fab: true },
-  { id: 'history',     label: 'History',  tabId: 'history',              Icon: History       },
+  { id: 'home',        label: 'Home',     tabId: 'dashboard',             Icon: ClipboardList },
+  { id: 'history',     label: 'History',  tabId: 'history',               Icon: History       },
+  { id: 'create',      label: 'Create',   action: 'quick-add',            Icon: FileText, fab: true },
   // Track J P6 — bottom-nav "Ranks" routes to the production-leaderboard tab.
-  { id: 'leaderboard', label: 'Ranks',    tabId: 'production-leaderboard', Icon: Star        },
-  { id: 'profile',     label: 'Profile',  tabId: 'profile',              Icon: UserCircle    },
+  { id: 'leaderboard', label: 'Ranks',    tabId: 'production-leaderboard', Icon: Star          },
 ];
+
+// Profile row for the mobile "More" drawer (v2 nav reorder). AGENT_NAV has no
+// profile item (desktop reaches Profile via the sidebar avatar), so removing
+// Profile from the bottom nav would strand it on mobile — this drawer row is its
+// mobile home. Routes to the existing activeTab === 'profile' screen, which hosts
+// its own Sign Out.
+const PROFILE_NAV_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Icon: UserCircle };
 
 export default function AgentDashboard() {
   const { user, userProfile, role, tenantId } = useAuth();
@@ -139,11 +149,17 @@ export default function AgentDashboard() {
 
   // Mobile More-drawer items: every nav entry whose tabId isn't already in
   // BOTTOM_NAV. Filtered by tabId — action items (Daily Log, Weekly Report)
-  // have no tabId and are intentionally excluded from the drawer.
+  // have no tabId and are intentionally excluded from the drawer. Profile is
+  // appended (v2 nav reorder): it left the bottom nav and AGENT_NAV has no
+  // profile row, so it must be injected here or mobile users would strand it.
+  // Guarded so it never duplicates if a profile row ever enters navItems.
   const drawerNavItems = useMemo(
-    () => navItems.filter(
-      (item) => item.tabId && !BOTTOM_NAV.find((b) => b.tabId === item.tabId)
-    ),
+    () => {
+      const derived = navItems.filter(
+        (item) => item.tabId && !BOTTOM_NAV.find((b) => b.tabId === item.tabId)
+      );
+      return derived.some((i) => i.tabId === 'profile') ? derived : [...derived, PROFILE_NAV_ITEM];
+    },
     [navItems]
   );
 

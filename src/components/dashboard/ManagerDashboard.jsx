@@ -118,25 +118,37 @@ const NAV_ITEMS = [
   { id: 'profile',     label: 'Profile',      tabId: 'profile',     Icon: UserCircle },
 ].map(item => item.tabId && MANAGER_COMING_SOON_TABS.has(item.tabId) ? { ...item, disabled: true } : item);
 
-// Mobile bottom-nav — SM/TA/PA (non-producing managers). Unchanged from B4.
+// Mobile bottom-nav — SM/TA/PA (non-producing managers). 5-slot v2 layout: 4 tabs
+// + auto-appended "More". Profile folded into the More drawer (v2 nav reorder);
+// NAV_ITEMS already carries a profile row, so the drawer derivation surfaces it
+// automatically once it leaves the bottom nav. No FAB for these roles.
 const BOTTOM_NAV = [
   { id: 'overview',    label: 'Dashboard', tabId: 'overview',    Icon: BarChart2     },
   { id: 'team',        label: 'Team',      tabId: 'team',        Icon: Users         },
   { id: 'mastersheet', label: 'Reports',   tabId: 'mastersheet', Icon: ClipboardList },
   { id: 'campaigns',   label: 'Campaigns', tabId: 'campaigns',   Icon: Gift          },
-  { id: 'profile',     label: 'Profile',   tabId: 'profile',     Icon: UserCircle    },
 ];
 
-// UM/BM mobile bottom-nav — center ＋ ("Create") opens Quick-Add sheet (PR-3).
-// Campaigns is omitted here; it lands in the More drawer via drawerNavItems.
+// UM/BM mobile bottom-nav — 5-slot v2 layout: 2 tabs · center ＋ · 1 tab · More
+// (the "More" button is auto-appended by MobileBottomNav, so it is the 5th slot
+// and the FAB sits dead-center). Center ＋ ("Create") opens the Quick-Add sheet
+// (PR-3). Profile folded into the More drawer (v2 nav reorder) — the
+// producingManager nav config has no profile row, so it is injected in
+// drawerNavItems below. Campaigns lands in More too.
 // Icon field omitted on the fab item — MobileBottomNav always renders Plus for fabs.
 const BOTTOM_NAV_PRODUCING = [
   { id: 'overview',    label: 'Dashboard', tabId: 'overview',    Icon: BarChart2     },
   { id: 'team',        label: 'Team',      tabId: 'team',        Icon: Users         },
   { id: 'create',      label: 'Create',    action: 'quick-add',  fab: true           },
   { id: 'mastersheet', label: 'Reports',   tabId: 'mastersheet', Icon: ClipboardList },
-  { id: 'profile',     label: 'Profile',   tabId: 'profile',     Icon: UserCircle    },
 ];
+
+// Profile row for the mobile "More" drawer (v2 nav reorder). Injected only when
+// the derived drawer lacks it — the producingManager nav config has no profile
+// row (UM/BM reach Profile via the sidebar avatar on desktop), whereas the
+// non-producing managers' NAV_ITEMS yields one automatically. Routes to the
+// existing activeTab === 'profile' screen, which hosts its own Sign Out.
+const PROFILE_NAV_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Icon: UserCircle };
 
 const MP_TABS = new Set(['mp-report', 'mp-goals', 'mp-game-plan', 'mp-money-needs', 'mp-history', 'mp-commission', 'mp-policies', 'mp-financing']);
 
@@ -260,7 +272,11 @@ export default function ManagerDashboard() {
   const drawerNavItems = useMemo(
     () => {
       const activeNav = isProducingManager ? BOTTOM_NAV_PRODUCING : BOTTOM_NAV;
-      return navItems.filter((item) => !activeNav.find((b) => b.id === item.id));
+      const derived = navItems.filter((item) => !activeNav.find((b) => b.id === item.id));
+      // Profile lives in the More drawer (v2 nav reorder). Non-producing managers'
+      // NAV_ITEMS already yields a profile row here; the producingManager config
+      // has none, so inject it. Guarded so it never duplicates.
+      return derived.some((i) => i.id === 'profile') ? derived : [...derived, PROFILE_NAV_ITEM];
     },
     [navItems, isProducingManager]
   );

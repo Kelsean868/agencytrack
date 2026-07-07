@@ -17,6 +17,7 @@ import { render } from '@testing-library/react';
 const captured = vi.hoisted(() => ({
   navItems:       null,
   bottomNavItems: null,
+  drawerNavItems: null,
   activeTab:      null,
 }));
 
@@ -88,9 +89,10 @@ vi.mock('../../../utils/buildActivityEvents', () => ({ buildActivityEvents: () =
 // ── Shell mock — captures nav props for assertion ────────────────────────────
 
 vi.mock('../../shell/Shell', () => ({
-  default: ({ children, navItems, bottomNavItems, activeTab }) => {
+  default: ({ children, navItems, bottomNavItems, drawerNavItems, activeTab }) => {
     captured.navItems       = navItems;
     captured.bottomNavItems = bottomNavItems;
+    captured.drawerNavItems = drawerNavItems;
     captured.activeTab      = activeTab;
     return React.createElement(
       'div',
@@ -144,6 +146,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   captured.navItems       = null;
   captured.bottomNavItems = null;
+  captured.drawerNavItems = null;
   captured.activeTab      = null;
   productionMountedRef.current = false;
 });
@@ -233,5 +236,47 @@ describe('AgentDashboard — Nav redesign PR-1 structure', () => {
     const dailyLog = captured.navItems.find((i) => i.id === 'daily-log');
     expect(dailyLog).toBeDefined();
     expect(dailyLog.action).toBe('log-today');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mobile nav v2 reorder — Profile → More drawer, centered ＋ FAB.
+//
+// The stranding guard: AGENT_NAV has no profile row, so Profile must be injected
+// into the drawer or removing it from the bottom nav would leave mobile agents
+// with NO route to Profile (the desktop sidebar avatar is hidden < 768px).
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('AgentDashboard — mobile nav v2 reorder', () => {
+  it('Profile is NOT in the mobile bottom nav', () => {
+    render(<AgentDashboard />);
+    expect(captured.bottomNavItems.find((i) => i.tabId === 'profile')).toBeUndefined();
+    expect(captured.bottomNavItems.find((i) => i.id === 'profile')).toBeUndefined();
+  });
+
+  it('Profile IS in the More drawer and routes to the profile tab (not stranded)', () => {
+    render(<AgentDashboard />);
+    const profile = captured.drawerNavItems.find((i) => i.tabId === 'profile');
+    expect(profile).toBeDefined();
+    expect(profile.label).toBe('Profile');
+    // Exactly one profile row — the inject guard must not duplicate.
+    expect(captured.drawerNavItems.filter((i) => i.tabId === 'profile')).toHaveLength(1);
+  });
+
+  it('the ＋ FAB is the center slot of the 5-slot nav (4 items + auto-appended More)', () => {
+    render(<AgentDashboard />);
+    // 4 bottom-nav items; MobileBottomNav auto-appends "More" as the 5th slot,
+    // so the FAB at index 2 renders dead-center.
+    expect(captured.bottomNavItems).toHaveLength(4);
+    const fabIndex = captured.bottomNavItems.findIndex((i) => i.fab === true);
+    expect(fabIndex).toBe(2);
+    expect(captured.bottomNavItems[fabIndex].action).toBe('quick-add');
+  });
+
+  it('bottom-nav order is Home · History · Create(＋) · Ranks', () => {
+    render(<AgentDashboard />);
+    expect(captured.bottomNavItems.map((i) => i.id)).toEqual([
+      'home', 'history', 'create', 'leaderboard',
+    ]);
   });
 });
