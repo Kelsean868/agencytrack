@@ -68,6 +68,10 @@ whole panel's. The trick: the **same `<span>` renders in both states**, so
 loading → ready is a text-content + className swap, never a node insert/remove.
 Width is reserved with `min-width` in `ch` + `tabular-nums`, so the shimmer
 occupies the width the real figure will take and nothing shifts when it lands.
+(The dynamic `ch` width is wired the sanctioned way — a `--skeleton-reserve-ch`
+CSS custom property consumed by a `min-w-[var(--skeleton-reserve-ch)]` Tailwind
+class — never a raw presentational inline style. Mirror this when composing new
+reserved slots.)
 
 ```jsx
 import { SkeletonText } from '../ui/PanelSkeleton';

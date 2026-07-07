@@ -132,7 +132,10 @@ describe('SkeletonText (geometry-stable value slot)', () => {
       </SkeletonText>,
     );
     const span = container.querySelector('span');
-    expect(span.style.minWidth).toBe('7ch');
+    // Width reserved via CSS custom property + Tailwind arbitrary class (no raw
+    // inline min-width — project UI rule).
+    expect(span.style.getPropertyValue('--skeleton-reserve-ch')).toBe('7ch');
+    expect(span.className).toContain('min-w-[var(--skeleton-reserve-ch)]');
     expect(span.className).toContain('text-transparent');
     expect(span.className).toContain('motion-safe:animate-pulse');
     expect(span.className).toContain('tabular-nums');
@@ -159,7 +162,7 @@ describe('SkeletonText (geometry-stable value slot)', () => {
       </SkeletonText>,
     );
     const before = container.querySelector('span');
-    expect(before.style.minWidth).toBe('9ch');
+    expect(before.style.getPropertyValue('--skeleton-reserve-ch')).toBe('9ch');
 
     rerender(
       <SkeletonText loading={false} reserveCh={9}>
@@ -170,12 +173,15 @@ describe('SkeletonText (geometry-stable value slot)', () => {
     // In-place fill: the same DOM node persists (no unmount/remount = no shift)…
     expect(after).toBe(before);
     // …and the reserved width is identical in both states.
-    expect(after.style.minWidth).toBe('9ch');
+    expect(after.style.getPropertyValue('--skeleton-reserve-ch')).toBe('9ch');
+    expect(after.className).toContain('min-w-[var(--skeleton-reserve-ch)]');
     expect(after.textContent).toBe('88.5%');
   });
 
-  it('omits the min-width style when reserveCh is not provided', () => {
+  it('omits the reservation (no var, no class) when reserveCh is not provided', () => {
     const { container } = render(<SkeletonText loading>x</SkeletonText>);
-    expect(container.querySelector('span').style.minWidth).toBe('');
+    const span = container.querySelector('span');
+    expect(span.style.getPropertyValue('--skeleton-reserve-ch')).toBe('');
+    expect(span.className).not.toContain('min-w-[var(--skeleton-reserve-ch)]');
   });
 });

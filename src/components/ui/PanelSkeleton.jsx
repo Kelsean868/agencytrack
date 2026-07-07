@@ -64,14 +64,21 @@ export function Skeleton({ className = '', ...rest }) {
  * @param {React.ReactNode} [children]  the real value (shown when not loading)
  */
 export function SkeletonText({ loading, reserveCh, className = '', children }) {
+  // Dynamic width can't be a static Tailwind class (JIT can't see a runtime
+  // value), so route it the sanctioned way: carry the value in a CSS custom
+  // property and consume it with a literal Tailwind arbitrary class — no raw
+  // presentational inline style (project UI rule; cf. AwardsWatchPanel's
+  // `--progress-target`).
   return (
     <span
       className={`inline-block align-baseline tabular-nums ${
+        reserveCh ? 'min-w-[var(--skeleton-reserve-ch)]' : ''
+      } ${
         loading
           ? 'rounded bg-surface-muted text-transparent motion-safe:animate-pulse select-none'
           : ''
       } ${className}`}
-      style={reserveCh ? { minWidth: `${reserveCh}ch` } : undefined}
+      style={reserveCh ? { '--skeleton-reserve-ch': `${reserveCh}ch` } : undefined}
     >
       {loading ? ' ' : children}
     </span>
