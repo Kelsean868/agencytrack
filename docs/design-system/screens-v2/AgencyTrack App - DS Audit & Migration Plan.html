@@ -93,6 +93,23 @@
     <span>Confidential · Internal</span>
   </div>
 
+  <!-- ============================================================================
+       SUPERSEDED — historical reference only (added 2026-07-07).
+       This is the first-draft, DESIGN-TOOL-ONLY audit. Its core prescription —
+       migrate the app onto the `_ds` bundle using `.nexus` / `.nexus.dark`
+       camelCase tokens — was NOT executed and was explicitly rejected. The
+       executed migration is the token-foundation reskin recorded in
+       docs/design-system/INTEGRATION.md (un-scoped to :root/.dark, kebab
+       --color-* names, channel substrate retained) + docs/audits/. Retained for
+       history only. Reconciliation (delta table + three-way classification +
+       extracted still-pending list):
+       docs/audits/migration-doc-reconciliation-2026-07-07.md
+       ============================================================================ -->
+  <div style="border:2px solid #C0392B;border-left-width:8px;background:#FDE8E7;color:#28251D;border-radius:10px;padding:14px 18px;margin:0 0 18px;font-family:'Satoshi','Helvetica Neue',Helvetica,Arial,sans-serif;">
+    <strong style="display:block;font-size:14px;margin-bottom:5px;color:#C0392B;font-family:'Cabinet Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif;">⚠ SUPERSEDED — historical reference only (2026-07-07)</strong>
+    <p style="margin:4px 0;font-size:12px;line-height:1.55;">This is the first-draft, <strong>design-tool-only</strong> audit. Its core prescription — migrate the app onto the <code>_ds</code> bundle using <code>.nexus</code> / <code>.nexus.dark</code> camelCase tokens — was <strong>not executed and was explicitly rejected</strong> (see the v2 repo-reconciled doc's §0, and the executed record). The actual migration is the token-foundation reskin recorded in <strong>docs/design-system/INTEGRATION.md</strong> (un-scoped to <code>:root</code>/<code>.dark</code>, kebab <code>--color-*</code> names, channel substrate retained) + <strong>docs/audits/</strong>. This file is retained as historical design reference only. Reconciliation: <strong>docs/audits/migration-doc-reconciliation-2026-07-07.md</strong>.</p>
+  </div>
+
   <p class="eyebrow">Design-system audit · Nexus app surfaces</p>
   <h1>App DS Audit &amp; Migration Plan</h1>
   <p class="lede">A screen-by-screen read of where the 39 Nexus app surfaces stand against the bound AgencyTrack design system, what has been redesigned but not yet built, and the order to migrate everything onto the canonical <code>_ds</code> component bundle. Agent surfaces are prioritised.</p>
