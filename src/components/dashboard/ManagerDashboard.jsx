@@ -148,7 +148,7 @@ const BOTTOM_NAV_PRODUCING = [
 // row (UM/BM reach Profile via the sidebar avatar on desktop), whereas the
 // non-producing managers' NAV_ITEMS yields one automatically. Routes to the
 // existing activeTab === 'profile' screen, which hosts its own Sign Out.
-const PROFILE_NAV_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Icon: UserCircle };
+const PROFILE_NAV_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Icon: UserCircle, sectionLabel: 'Account' };
 
 const MP_TABS = new Set(['mp-report', 'mp-goals', 'mp-game-plan', 'mp-money-needs', 'mp-history', 'mp-commission', 'mp-policies', 'mp-financing']);
 
@@ -451,6 +451,7 @@ export default function ManagerDashboard() {
       onWorkspaceChange={setWorkspace}
       bottomNavItems={isProducingManager ? BOTTOM_NAV_PRODUCING : BOTTOM_NAV}
       drawerNavItems={drawerNavItems}
+      navScopeId={user?.uid}
       onAction={handleMgrAction}
       activeTab={activeTab}
       setActiveTab={setActiveTab}

@@ -82,7 +82,7 @@ const BOTTOM_NAV = [
 // Profile from the bottom nav would strand it on mobile — this drawer row is its
 // mobile home. Routes to the existing activeTab === 'profile' screen, which hosts
 // its own Sign Out.
-const PROFILE_NAV_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Icon: UserCircle };
+const PROFILE_NAV_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Icon: UserCircle, sectionLabel: 'Account' };
 
 export default function AgentDashboard() {
   const { user, userProfile, role, tenantId } = useAuth();
@@ -574,6 +574,7 @@ export default function AgentDashboard() {
       })()}
       onSignOut={handleSignOut}
       onPullRefresh={PTR_AGENT_TABS.has(activeTab) ? onPullRefresh : undefined}
+      navScopeId={user?.uid}
       pinnedItems={pinnedItems}
       isPinned={isPinned}
       onPin={pin}
