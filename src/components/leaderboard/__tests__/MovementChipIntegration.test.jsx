@@ -17,7 +17,7 @@
 // (no chip). Non-viewer rows are also checked — chip MUST NOT render there.
 
 import React from 'react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import {
   AroundMeClusterDesktop,
@@ -25,6 +25,14 @@ import {
 } from '../AroundMeCluster';
 import { TailRow, PodiumCard } from '../ProductionLeaderboardSurface';
 import WhereYouRankPanel from '../../productionReport/WhereYouRankPanel';
+
+// §2 count-up — PodiumCard's API figure now animates via useCountUp on
+// mount. Mocked to the identity function so these tests observe the final
+// rendered state synchronously (this file doesn't assert PodiumCard's
+// numeral text, but the mock avoids a lingering real-timer rAF).
+vi.mock('../../../hooks/useCountUp', () => ({
+  useCountUp: (value) => value,
+}));
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 

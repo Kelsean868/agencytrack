@@ -10,7 +10,7 @@
 // Zero src changes.
 
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 import HeroCard from '../HeroCard';
@@ -18,6 +18,31 @@ import { MDRT_THRESHOLDS_2026 } from '../../../../config/mdrtThresholds/2026';
 import { formatCurrency } from '../../../../utils/formatters';
 
 const MDRT_THRESHOLD = MDRT_THRESHOLDS_2026.mdrt;
+
+// §2 count-up — HeroCard's YTD figure now animates via useCountUp on mount.
+// Force prefers-reduced-motion so the REAL hook (not a mock) takes its
+// synchronous "snap to target" branch — every test below observes the exact
+// final value immediately, and this doubles as the reduced-motion/
+// final-value correctness coverage (see the dedicated test at the bottom).
+function mockMatchMedia(reduced) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: (query) => ({
+      matches: reduced && query === '(prefers-reduced-motion: reduce)',
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}
+
+beforeEach(() => {
+  mockMatchMedia(true);
+});
 
 describe('HeroCard — progress + MDRT marker logic', () => {
   it('renders the YTD figure and a progressbar with the computed pct', () => {
@@ -69,5 +94,15 @@ describe('HeroCard — progress + MDRT marker logic', () => {
     render(<HeroCard ytdApi={1000} personalAnnualAPI={MDRT_THRESHOLD} onSubmit={onSubmit} />);
     fireEvent.click(screen.getByRole('button', { name: /submit weekly report/i }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('HeroCard — §2 count-up numeral (reduced-motion + final-value correctness)', () => {
+  it('renders the EXACT ytdApi value immediately under prefers-reduced-motion, including cents (no rounding drift)', () => {
+    // Non-round figure with cents — proves useCountUp's decimals:2 option
+    // preserves TTD money-correctness rather than truncating to a whole dollar.
+    const ytdApi = 123456.78;
+    render(<HeroCard ytdApi={ytdApi} personalAnnualAPI={MDRT_THRESHOLD * 2} onSubmit={() => {}} />);
+    expect(screen.getByText(formatCurrency(ytdApi))).toBeInTheDocument();
   });
 });

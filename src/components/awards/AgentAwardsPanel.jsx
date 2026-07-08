@@ -144,8 +144,14 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
 
   const totalTracked = Object.keys(awards).length;
 
+  // §2 staggered-assemble — the drill drawer is a fixed-position overlay
+  // rendered outside the `.stagger` container (same pattern as GamePlanV2's
+  // modalsBlock split): it only opens on click, well after the one-shot
+  // mount-time stagger animation has finished, so it never risks reparenting
+  // its own containing block mid-animation.
   return (
-    <div className="flex flex-col gap-6">
+    <>
+    <div className="flex flex-col gap-6 stagger">
 
       {/* Hero card */}
       {heroAward && <HeroAwardCard award={heroAward} />}
@@ -254,9 +260,10 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
           </div>
         </div>
       )}
-
-      {/* Drill drawer */}
-      {drawerAward && <AwardDrillDrawer award={drawerAward} onClose={() => setDrawerAwardId(null)} />}
     </div>
+
+      {/* Drill drawer — outside `.stagger` (fixed-position overlay; see note above) */}
+      {drawerAward && <AwardDrillDrawer award={drawerAward} onClose={() => setDrawerAwardId(null)} />}
+    </>
   );
 }

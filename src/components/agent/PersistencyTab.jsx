@@ -78,8 +78,13 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
     pct: Number.isFinite(r.persistency) ? Math.round(r.persistency * 1000) / 10 : null,
   })), [history]);
 
+  // §2 staggered-assemble — the self-entry form + playground are fixed-
+  // position overlays rendered outside the `.stagger` container (same
+  // pattern as GamePlanV2's modalsBlock split): they only open on click,
+  // well after the one-shot mount-time stagger animation has finished.
   return (
-    <div className="flex flex-col gap-4" data-testid="agent-persistency-tab">
+    <>
+    <div className="flex flex-col gap-4 stagger" data-testid="agent-persistency-tab">
       {error && (
         <div className="card flex items-center gap-2 text-sm text-danger-ink">
           <AlertCircle size={16} /> {error}
@@ -241,7 +246,10 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
           <Calculator size={14} /> Open Playground
         </button>
       </div>
+    </div>
 
+      {/* Self-entry form + Playground — outside `.stagger` (fixed-position
+          overlays; see note above) */}
       {editing && activeMonthKey && (
         <PersistencyEntryForm
           tenantId={tenantId}
@@ -265,6 +273,6 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
           onViewLapsedPolicies={onViewLapsedPolicies}
         />
       )}
-    </div>
+    </>
   );
 }

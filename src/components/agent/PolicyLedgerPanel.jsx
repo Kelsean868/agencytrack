@@ -246,8 +246,13 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
     const counts = filterCounts(policies);
     const visible = applyLedgerFilter(policies, { filter, search });
 
+    // §2 staggered-assemble — the drill drawer is a fixed-position overlay
+    // rendered outside the `.stagger` container (same pattern as GamePlanV2's
+    // modalsBlock split): it only opens on click, well after the one-shot
+    // mount-time stagger animation has finished.
     return (
-      <div className="flex flex-col gap-4" data-testid="policy-ledger-surface">
+      <>
+      <div className="flex flex-col gap-4 stagger" data-testid="policy-ledger-surface">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-ink">Policy Ledger</h2>
           <button
@@ -352,7 +357,9 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
             )}
           </>
         )}
+      </div>
 
+        {/* Drill drawer — outside `.stagger` (fixed-position overlay; see note above) */}
         {drawerPolicy && (
           <PolicyDrillDrawer
             policy={drawerPolicy}
@@ -362,13 +369,13 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
             transitionError={transitionError}
           />
         )}
-      </div>
+      </>
     );
   }
 
   // ── CREATE FORM (reused unchanged) ──
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 stagger">
       <div className="flex items-center gap-3">
         <button
           onClick={cancelCreate}

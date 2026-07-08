@@ -142,7 +142,7 @@ export default function AgentProductionView() {
   const aboveFloor = ytdApi >= ytdFloor;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 stagger">
       {/* Controls row */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <DataSourceBadge source="estimated" />

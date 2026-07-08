@@ -1,6 +1,21 @@
 import React from 'react';
 import { formatCurrency } from '../../../utils/formatters';
 import { statusToken } from '../../../lib/policyStatusTokens';
+import { useCountUp } from '../../../hooks/useCountUp';
+
+// §2 count-up — currency chip value. A standalone component so each chip
+// gets its own hook instance (map() can't call hooks directly). Ends at the
+// exact target (decimals:2 preserves cents — no rounding drift on TTD).
+function CountUpCurrency({ value }) {
+  const display = useCountUp(value, { duration: 900, decimals: 2 });
+  return <>{formatCurrency(display)}</>;
+}
+
+// The "Plan Built %" headline KPI — integer percent, no decimals.
+function CountUpPercent({ value }) {
+  const display = useCountUp(value, { duration: 900, decimals: 0 });
+  return <>{display}%</>;
+}
 
 /**
  * PlanAnchorStrip — Game Plan v2 hub anchor (NEW chrome, EXISTING data).
@@ -29,13 +44,15 @@ export default function PlanAnchorStrip({
   const draft = statusToken('soft');
   const apiSet = typeof apiCommitment === 'number' && apiCommitment > 0;
 
+  // §2 count-up — each chip's numeral counts up on load (raw !== null → animated
+  // via CountUpCurrency; raw === null → the honest static "—" not-yet-set state).
   const chips = [
-    { label: 'After-Tax Need', value: formatCurrency(afterTaxNeed), dot: 'bg-ink-muted' },
-    { label: 'Renewals Cover', value: formatCurrency(renewalsCover), dot: 'bg-success' },
-    { label: 'Commission Need', value: formatCurrency(commissionNeed), dot: 'bg-gold' },
+    { label: 'After-Tax Need', raw: afterTaxNeed, dot: 'bg-ink-muted' },
+    { label: 'Renewals Cover', raw: renewalsCover, dot: 'bg-success' },
+    { label: 'Commission Need', raw: commissionNeed, dot: 'bg-gold' },
     {
       label: 'API Commitment',
-      value: apiSet ? formatCurrency(apiCommitment) : '—',
+      raw: apiSet ? apiCommitment : null,
       hint: apiSet ? null : 'Set in your plan',
       dot: 'bg-primary',
     },
@@ -89,7 +106,7 @@ export default function PlanAnchorStrip({
             Plan Built
           </div>
           <div className="mt-1 font-display text-3xl font-extrabold leading-none tracking-tight text-ink">
-            {planBuiltPct}%
+            <CountUpPercent value={planBuiltPct} />
           </div>
           <div className="mt-1 font-mono text-[9px] text-ink-muted">
             {stepsBuilt} of {totalSteps} steps
@@ -106,7 +123,7 @@ export default function PlanAnchorStrip({
                 {c.label}
               </span>
               <span className="mt-0.5 whitespace-nowrap font-display text-sm font-extrabold tracking-tight text-ink">
-                {c.value}
+                {c.raw !== null ? <CountUpCurrency value={c.raw} /> : '—'}
                 {c.hint ? (
                   <span className="ml-1.5 font-sans text-[9px] font-medium text-ink-muted">{c.hint}</span>
                 ) : null}

@@ -122,7 +122,7 @@ export default function BranchManagerProductionView() {
   const visibleAgentCount = showAllAgents ? undefined : TOP_N_DEFAULT;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 stagger">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h2 className="text-base font-semibold text-ink">Production Report</h2>
         <div className="flex items-center gap-2">

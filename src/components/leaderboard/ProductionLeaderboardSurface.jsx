@@ -22,6 +22,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { formatCurrency } from '../../utils/formatters';
+import { useCountUp } from '../../hooks/useCountUp';
 import MedalCoin from '../ui/MedalCoin';
 import MovementChip from '../ui/MovementChip';
 import useLeaderboard from '../../hooks/useLeaderboard';
@@ -97,7 +98,10 @@ function PeriodChips({ value, onChange }) {
 // Exported for component tests in __tests__/MovementChipIntegration.test.jsx.
 // Render shape is identical when invoked internally vs externally.
 export function PodiumCard({ entry, label, isChampion = false, isCenter = false, isViewer = false }) {
-  const apiDisplay = formatCurrency(entry.periodApi ?? 0);
+  // §2 count-up — podium API figure counts up on load. decimals:2 preserves
+  // TTD cents exactly (no rounding drift on the final value).
+  const animatedApi = useCountUp(entry.periodApi ?? 0, { duration: 1000, decimals: 2 });
+  const apiDisplay = formatCurrency(animatedApi);
   return (
     <div
       className={`relative card flex flex-col items-center text-center overflow-hidden ${
@@ -449,7 +453,7 @@ export default function ProductionLeaderboardSurface({
   const headerEyebrowLabel = `★ Top of the board · ${period}`;
 
   return (
-    <div className="flex flex-col gap-5" data-testid="production-leaderboard-surface">
+    <div className="flex flex-col gap-5 stagger" data-testid="production-leaderboard-surface">
       {/* Track J banner re-home — last-week's tenant-wide champions.
           Period-independent (always last-week-completed), so it sits ABOVE
           the period chips. Reuses the unchanged WeeklyChampionsBanner;

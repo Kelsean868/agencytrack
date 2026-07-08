@@ -376,7 +376,7 @@ export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
   }, []);
 
   return (
-    <div>
+    <div className="stagger">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-bold text-ink flex items-center gap-2">

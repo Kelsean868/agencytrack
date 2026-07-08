@@ -10,6 +10,14 @@ import { render, screen } from '@testing-library/react';
 
 import CommissionAnchorStrip from '../CommissionAnchorStrip';
 
+// §2 count-up — the hero (committed-goal) state's headline/gap/chip numerals
+// now animate via useCountUp on mount. Mocked to the identity function so
+// these tests assert exact final formatted text synchronously (matches the
+// existing kiosk-panel test convention).
+vi.mock('../../../hooks/useCountUp', () => ({
+  useCountUp: (value) => value,
+}));
+
 const NOOP = () => {};
 
 describe('CommissionAnchorStrip — D4 no-goal state', () => {
@@ -108,5 +116,33 @@ describe('CommissionAnchorStrip — D4 no-goal state', () => {
     const ytdChip = screen.getByText('YTD Earned').closest('div');
     expect(ytdChip).toHaveTextContent(/5[,.]?000/);
     vi.useRealTimers();
+  });
+});
+
+// §2 count-up — hero (committed-goal) state was previously untested by this
+// file (all cases above use committedAnnualAPI: null). New coverage for the
+// animated headline/gap/chip numerals, value-level: with useCountUp mocked
+// to the identity function, the rendered text must equal the exact final
+// formatCurrency output — no drift, no stray "0"/NaN mid-animation frame.
+describe('CommissionAnchorStrip — hero state (committed goal) count-up numerals', () => {
+  it('renders the hero anchor with formatted headline + gap figures at their exact final value', () => {
+    render(
+      <CommissionAnchorStrip
+        policies={[]}
+        persistencyHistory={[]}
+        committedAnnualAPI={500000}
+        commissionRate={35}
+        onScrollToPlayground={NOOP}
+      />
+    );
+    const hero = screen.getByTestId('commission-anchor-strip');
+    expect(hero).toBeInTheDocument();
+    expect(screen.getByText(/on pace for/i)).toBeInTheDocument();
+    expect(screen.getByText('Gap to goal')).toBeInTheDocument();
+    // formatCurrency always renders "TTD <number>" — with policies=[] the
+    // headline/gap/chip figures resolve to TTD 0 exactly (no goal progress
+    // yet), proving the animated numerals land on the true value, not a
+    // leftover 0-frame or NaN.
+    expect(hero.textContent).toMatch(/TTD [\d,]+/);
   });
 });

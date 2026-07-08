@@ -32,6 +32,12 @@ vi.mock('../../../hooks/useLeaderboard', () => ({
 vi.mock('../../../hooks/useWeeklyChampions', () => ({
   default: hoisted.useWeeklyChampionsMock,
 }));
+// §2 count-up — PodiumCard's API figure now animates via useCountUp on
+// mount. Mocked to the identity function so this file's assertions observe
+// the final rendered state synchronously.
+vi.mock('../../../hooks/useCountUp', () => ({
+  useCountUp: (value) => value,
+}));
 
 import ProductionLeaderboardSurface from '../ProductionLeaderboardSurface';
 

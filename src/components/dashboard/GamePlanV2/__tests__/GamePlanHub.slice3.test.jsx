@@ -5,6 +5,14 @@ import StepRail from '../StepRail';
 import PlanCascade from '../PlanCascade';
 import PlanAnchorStrip from '../PlanAnchorStrip';
 
+// §2 count-up — PlanAnchorStrip's Plan-Built% + chip numerals now animate via
+// useCountUp on mount. Mocked to the identity function so these tests keep
+// asserting the exact final formatted text synchronously (matches the
+// existing kiosk-panel test convention — see src/components/kiosk/__tests__).
+vi.mock('../../../../hooks/useCountUp', () => ({
+  useCountUp: (value) => value,
+}));
+
 // Direction 1.5 (PR-U1): the rail/cascade collapsed from 4 steps to 3 —
 // Money Needs + Year Plan merged into one "Money Needs" step (the merged
 // allocator writes the yearPlan). Rail: Money Needs → Monthly → Review & Commit.

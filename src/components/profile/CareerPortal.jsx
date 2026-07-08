@@ -832,8 +832,13 @@ export default function CareerPortal({ submissions, user, persistencyData, ytdTo
   const nextLevel = CAREER_LEVELS.find(l => l.level === currentLevel.level + 1) ?? null;
   const estimateStr = nextLevel ? estimateWeeksToNextLevel(ytdAPI, nextLevel.minApi, weeklyPace) : null;
 
+  // §2 staggered-assemble — the level drill drawer is a fixed-position
+  // overlay rendered outside the `.stagger` container (same pattern as
+  // GamePlanV2's modalsBlock split): it only opens on click, well after the
+  // one-shot mount-time stagger animation has finished.
   return (
-    <div className="flex flex-col gap-5 pb-8">
+    <>
+    <div className="flex flex-col gap-5 pb-8 stagger">
 
       {/* 2-column: ladder (left) + sidebar cards (right) — stacked on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4">
@@ -865,8 +870,9 @@ export default function CareerPortal({ submissions, user, persistencyData, ytdTo
         </h3>
         <BadgeGrid submissions={submissions} />
       </section>
+    </div>
 
-      {/* Level drill drawer */}
+      {/* Level drill drawer — outside `.stagger` (fixed-position overlay; see note above) */}
       {drawerLevel !== null && (
         <LevelDrillDrawer
           level={drawerLevel}
@@ -880,6 +886,6 @@ export default function CareerPortal({ submissions, user, persistencyData, ytdTo
           onClose={() => setDrawerLevel(null)}
         />
       )}
-    </div>
+    </>
   );
 }

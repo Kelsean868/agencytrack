@@ -3,6 +3,20 @@ import { RotateCw } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { ytdEarned, runRate, gapToGoal, latestPersistency } from '../../utils/commissionAnchor';
 import { getTodayTT } from '../../utils/dateInputs';
+import { useCountUp } from '../../hooks/useCountUp';
+
+// §2 count-up — hero/KPI currency figures count up on load. decimals:2
+// preserves TTD cents exactly (no rounding drift at the end of the animation).
+function CountUpCurrency({ value }) {
+  const display = useCountUp(value, { duration: 900, decimals: 2 });
+  return <>{formatCurrency(display)}</>;
+}
+
+// Persistency % chip — integer percent, no decimals.
+function CountUpPercent({ value }) {
+  const display = useCountUp(value, { duration: 900, decimals: 0 });
+  return <>{display}%</>;
+}
 
 function ProvChip({ children, warning }) {
   return (
@@ -164,7 +178,7 @@ export default function CommissionAnchorStrip({
 
           <h2 className="mt-1.5 max-w-lg font-display text-2xl font-extrabold leading-tight tracking-tight text-[--hero-ink]">
             On pace for{' '}
-            <span className="text-[--hero-accent]">{formatCurrency(projected)}</span>{' '}
+            <span className="text-[--hero-accent]"><CountUpCurrency value={projected} /></span>{' '}
             in commission this year
           </h2>
 
@@ -202,7 +216,7 @@ export default function CommissionAnchorStrip({
             Gap to goal
           </div>
           <div className="font-display text-2xl font-extrabold leading-none tracking-tight text-[--hero-ink]">
-            {behind ? '−' : '+'} {formatCurrency(Math.abs(gap))}
+            {behind ? '−' : '+'} <CountUpCurrency value={Math.abs(gap)} />
           </div>
           <div className="font-mono text-[9px] text-[--hero-ink-muted-teal]">
             vs your committed goal
@@ -211,13 +225,13 @@ export default function CommissionAnchorStrip({
       </div>
 
       <div className="relative mt-4 flex flex-wrap gap-3">
-        <Chip label="YTD Earned" value={formatCurrency(earned)} />
-        <Chip label="Projected" value={formatCurrency(projected)} />
-        <Chip label="Goal" value={formatCurrency(goalComm)} />
+        <Chip label="YTD Earned" value={<CountUpCurrency value={earned} />} />
+        <Chip label="Projected" value={<CountUpCurrency value={projected} />} />
+        <Chip label="Goal" value={<CountUpCurrency value={goalComm} />} />
         {persResult && (
           <Chip
             label="Persistency · latest month"
-            value={`${Math.round(persResult.pct * 100)}%`}
+            value={<CountUpPercent value={Math.round(persResult.pct * 100)} />}
             dotClass="bg-[--hero-dot-success]"
           />
         )}
