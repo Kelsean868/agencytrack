@@ -199,7 +199,14 @@ export default function Sidebar({
         if (newFlat) onReorder(newFlat);
       }
       // A completed drag (even in place) must not also fire the row's click.
+      // The native trailing click — when the gesture's down+up land on the SAME
+      // element — fires synchronously right after pointerup, before a 0ms
+      // timeout. When the drag ends over a DIFFERENT row, no trailing click
+      // ever fires; without this timed clear the armed flag would silently
+      // swallow the user's NEXT legitimate sidebar click (caught by the 1.4
+      // live smoke: post-drag click on another row did not navigate).
       suppressClickRef.current = true;
+      setTimeout(() => { suppressClickRef.current = false; }, 0);
     }
     gestureRef.current = null;
     setDragUI(null);

@@ -93,6 +93,25 @@ describe('Sidebar drag-reorder — pointer (mouse)', () => {
     expect(onReorder).toHaveBeenCalled();
     expect(setActiveTab).not.toHaveBeenCalled();
   });
+
+  // Regression (caught by the 1.4 live smoke): when a drag's pointer-up lands
+  // over a DIFFERENT row than pointer-down, the browser fires NO trailing click
+  // for that gesture — so the armed suppress flag must not linger and swallow
+  // the user's NEXT legitimate click. The flag self-clears on a 0ms timeout.
+  it('a later independent click still navigates after a drag with no trailing click', async () => {
+    const { container, getByTestId, setActiveTab, onReorder } = renderSidebar();
+    const rows = stubRowRects(container);
+    fireEvent.pointerDown(rows[0], { pointerId: 1, pointerType: 'mouse', button: 0, clientX: 5, clientY: 20 });
+    fireEvent.pointerMove(rows[0], { pointerId: 1, pointerType: 'mouse', clientX: 5, clientY: 110 });
+    fireEvent.pointerUp(rows[0], { pointerId: 1, pointerType: 'mouse', clientX: 5, clientY: 110 });
+    expect(onReorder).toHaveBeenCalled();
+    // No trailing click fired (up landed over a different row). Flush the 0ms
+    // self-clear, then a fresh user click must navigate — this failed before
+    // the fix (the stale flag ate the click).
+    await new Promise((r) => setTimeout(r, 0));
+    fireEvent.click(getByTestId('nav-b'));
+    expect(setActiveTab).toHaveBeenCalledWith('b');
+  });
 });
 
 describe('Sidebar drag-reorder — touch long-press', () => {
