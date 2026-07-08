@@ -26,6 +26,16 @@ repeatable parts.
 > production identifier leaks into the staging config. If it fails, STOP — do not
 > grant staging authority.
 >
+> **Boundary of the guarantee (what a config check CANNOT catch).** The structural
+> proof holds only while the staging service account is **not** granted any IAM
+> role on the production project (`agencytrack-2a610`). A brand-new Firebase
+> project's service account has **no** access to other projects by default, so
+> this holds out of the box — but a *deliberate* cross-project IAM grant in Google
+> Cloud IAM would defeat it and is outside what `verify-isolation.mjs` can detect.
+> **Never grant the staging SA any role on the production project.** (Verify in
+> GCP Console → prod project → IAM: the `…@agencytrack-staging.iam.gserviceaccount.com`
+> member must be **absent**.)
+>
 > **This whole setup never deploys to production and never merges.** Deploys are an
 > explicit operator action (CLAUDE.md Rule 19); this branch holds at PR-open.
 
