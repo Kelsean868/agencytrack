@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
+import useFocusTrap from '../../hooks/useFocusTrap';
 
 const SLIDES = [
   {
@@ -52,13 +53,23 @@ export default function WelcomeScreen({ onComplete }) {
     else complete();
   }
 
+  const modalRef = useFocusTrap({ onEscape: complete, escapeDisabled: completing });
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="welcome-screen-heading"
+        className="relative bg-card rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden"
+      >
         {/* Skip button */}
         <button
+          type="button"
           onClick={complete}
-          className="absolute top-4 right-4 text-xs text-ink-muted hover:text-ink transition-colors"
+          disabled={completing}
+          className="absolute top-4 right-4 text-xs text-ink-muted hover:text-ink transition-colors disabled:opacity-50"
         >
           Skip
         </button>
@@ -76,7 +87,7 @@ export default function WelcomeScreen({ onComplete }) {
 
         {/* Slide content */}
         <div className="flex flex-col items-center text-center px-8 pt-4 pb-6 gap-4">
-          <h2 className="font-display font-bold text-xl text-ink leading-snug">{slide.title}</h2>
+          <h2 id="welcome-screen-heading" className="font-display font-bold text-xl text-ink leading-snug">{slide.title}</h2>
           <p className="text-sm text-ink-muted leading-relaxed">{slide.body}</p>
         </div>
 

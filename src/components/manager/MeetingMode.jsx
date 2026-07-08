@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { X, ChevronLeft, ChevronRight, AlertTriangle, BarChart2, Search } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { formatDateLabel } from '../../utils/validators';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
+import useFocusTrap from '../../hooks/useFocusTrap';
 
 function AgentAvatar({ photoURL, name, size = 40 }) {
   const initials = (name ?? 'A')
@@ -105,6 +106,7 @@ function RatingBar({ label, value }) {
 
 export default function MeetingMode({ submissions, selectedWeek, onClose }) {
   const { tenantId } = useAuth();
+  const modalRef = useFocusTrap({ onEscape: onClose });
   const [slide, setSlide]       = useState(0);
   const [mode, setMode]         = useState('group'); // 'group' | 'one-on-1'
   const [photoMap, setPhotoMap] = useState({});
@@ -191,15 +193,16 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     [totalSlides]
   );
 
+  // Escape + Tab-trap + focus-return are handled by useFocusTrap (modalRef)
+  // above; this effect owns only the presentation-mode arrow-key navigation.
   useEffect(() => {
     const handler = (e) => {
       if (e.key === 'ArrowRight') go(1);
       else if (e.key === 'ArrowLeft') go(-1);
-      else if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [go, onClose]);
+  }, [go]);
 
   const isOutlier = useCallback(
     (agent) => {
@@ -363,7 +366,14 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-presentation" data-meeting-mode="true">
+    <div
+      ref={modalRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Meeting mode presentation"
+      className="fixed inset-0 z-50 flex flex-col bg-presentation"
+      data-meeting-mode="true"
+    >
 
       {/* Top bar — 3-col grid */}
       <header className="grid grid-cols-3 items-center px-6 py-4 shrink-0">

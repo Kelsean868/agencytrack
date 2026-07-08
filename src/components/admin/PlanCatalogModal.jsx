@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Plus, Pencil, Trash2, CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
+import useFocusTrap from '../../hooks/useFocusTrap';
 import {
   getPolicyPlans,
   addPlan,
@@ -44,6 +45,7 @@ const EMPTY_PLAN_FORM = { name: '', class: 'whole_life', productLine: 'life' };
 const EMPTY_PROMOTE_FORM = { class: 'whole_life', productLine: 'life' };
 
 export default function PlanCatalogModal({ tenantId, onClose }) {
+  const modalRef = useFocusTrap({ onEscape: onClose });
   const [tab, setTab] = useState(0);
 
   const [plans, setPlans]               = useState([]);
@@ -184,6 +186,7 @@ export default function PlanCatalogModal({ tenantId, onClose }) {
 
   return (
     <div
+      ref={modalRef}
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"

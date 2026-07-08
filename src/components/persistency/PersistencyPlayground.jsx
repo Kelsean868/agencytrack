@@ -8,6 +8,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { X, Calculator, ExternalLink, AlertCircle } from 'lucide-react';
+import useFocusTrap from '../../hooks/useFocusTrap';
 import { projectPersistency, calculateShortfall } from '../../lib/persistency/calculations';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -60,6 +61,8 @@ export default function PersistencyPlayground({
   onClose,
   onViewLapsedPolicies,
 }) {
+  const modalRef = useFocusTrap({ onEscape: onClose });
+
   const current = useMemo(() => ({
     grossSettled:   currentRecord?.grossSettled   ?? 0,
     lapses:         currentRecord?.lapses         ?? 0,
@@ -97,6 +100,7 @@ export default function PersistencyPlayground({
 
   return (
     <div
+      ref={modalRef}
       role="dialog"
       aria-modal="true"
       aria-label="Persistency Playground"
@@ -119,7 +123,7 @@ export default function PersistencyPlayground({
           <button
             type="button"
             onClick={onClose}
-            className="h-9 w-9 rounded-lg hover:bg-card-raised flex items-center justify-center text-ink-muted"
+            className="h-11 w-11 -m-1 rounded-lg hover:bg-card-raised flex items-center justify-center text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             aria-label="Close"
           >
             <X size={16} />
@@ -268,7 +272,7 @@ export default function PersistencyPlayground({
           <button
             type="button"
             onClick={handleReset}
-            className="h-10 px-4 rounded-lg border border-border text-sm font-semibold text-ink-muted hover:bg-card-raised transition-colors"
+            className="h-11 px-4 rounded-lg border border-border text-sm font-semibold text-ink-muted hover:bg-card-raised transition-colors"
             data-testid="playground-reset-btn"
           >
             Reset
@@ -276,7 +280,7 @@ export default function PersistencyPlayground({
           <button
             type="button"
             onClick={onClose}
-            className="h-10 px-4 rounded-lg border border-border text-sm font-semibold text-ink hover:bg-card-raised transition-colors"
+            className="h-11 px-4 rounded-lg border border-border text-sm font-semibold text-ink hover:bg-card-raised transition-colors"
           >
             Close
           </button>

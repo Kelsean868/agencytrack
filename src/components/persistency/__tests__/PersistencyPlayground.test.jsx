@@ -218,3 +218,64 @@ describe('PersistencyPlayground', () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+// ── Dialog a11y contract (§4 dialog sweep) ───────────────────────────────────
+
+describe('PersistencyPlayground — dialog a11y', () => {
+  it('exposes role=dialog + aria-modal=true + aria-label', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={RICARDO_CURRENT} onClose={() => {}} />
+    );
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAttribute('aria-label', 'Persistency Playground');
+  });
+
+  it('calls onClose when Escape is pressed', () => {
+    const onClose = vi.fn();
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={RICARDO_CURRENT} onClose={onClose} />
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Tab from the last focusable element cycles back to the first (focus trap)', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={RICARDO_CURRENT} onClose={() => {}} />
+    );
+    const dialog = screen.getByRole('dialog');
+    const focusable = Array.from(
+      dialog.querySelectorAll(
+        'button:not([disabled]):not([aria-hidden="true"]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+      )
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    last.focus();
+    expect(document.activeElement).toBe(last);
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+  });
+
+  it('restores focus to the invoking element when the playground unmounts', () => {
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const { unmount } = render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={RICARDO_CURRENT} onClose={() => {}} />
+    );
+    unmount();
+    expect(document.activeElement).toBe(trigger);
+    document.body.removeChild(trigger);
+  });
+
+  it('header Close button and footer CTAs meet the 44px touch-target floor', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={RICARDO_CURRENT} onClose={() => {}} />
+    );
+    expect(screen.getByLabelText(/^Close$/).className).toMatch(/\bh-11\b/);
+    expect(screen.getByTestId('playground-reset-btn').className).toMatch(/\bh-11\b/);
+  });
+});

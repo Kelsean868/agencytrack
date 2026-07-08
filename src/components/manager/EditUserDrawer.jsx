@@ -14,6 +14,22 @@ import ConfirmDialog from '../ui/ConfirmDialog';
 
 const GAME_PLAN_LOOP_ENABLED = import.meta.env.VITE_GAME_PLAN_LOOP_ENABLED !== 'false';
 
+// Focus-trap query — mirrors useFocusTrap.js / BranchEditorModal's inline idiom.
+// Not swapped to the useFocusTrap hook here because EditUserDrawer intentionally
+// focuses the first FORM FIELD on open (firstFieldRef), not the hook's default
+// "first focusable descendant" (which would be the header Close button).
+function focusableWithin(node) {
+  if (!node) return [];
+  return Array.from(node.querySelectorAll(
+    'button:not([disabled]):not([aria-hidden="true"]),' +
+    '[href],' +
+    'input:not([disabled]),' +
+    'select:not([disabled]),' +
+    'textarea:not([disabled]),' +
+    '[tabindex]:not([tabindex="-1"])'
+  ));
+}
+
 // Mirror of functions/index.js CREATION_MATRIX. Two-sided gate: caller must be
 // able to create both the target's current role AND the target's new role.
 const CREATION_MATRIX = {
@@ -129,6 +145,8 @@ export default function EditUserDrawer({
   const [appearError, setAppearError] = useState(null);
 
   const firstFieldRef = useRef(null);
+  const modalRef = useRef(null);
+  const triggerRef = useRef(null);
 
   const roleChanged   = form.role !== (user?.role ?? '');
   const branchChanged = (form.branchId ?? '') !== (user?.branchId ?? '');
@@ -191,7 +209,20 @@ export default function EditUserDrawer({
     return () => { cancelled = true; };
   }, [canEditBranch, tenantId]);
 
-  // ESC + initial focus management.
+  // Trigger capture + focus return on close (mount/unmount only — must not
+  // re-run when `saving` toggles, or the "trigger" would become whatever is
+  // currently focused inside the drawer instead of the true external trigger).
+  useEffect(() => {
+    triggerRef.current = document.activeElement;
+    return () => {
+      const trigger = triggerRef.current;
+      if (trigger && typeof trigger.focus === 'function') trigger.focus();
+    };
+  }, []);
+
+  // ESC + initial focus management (initial focus goes to the first FORM
+  // FIELD, not the header Close button — an intentional deviation from the
+  // useFocusTrap hook default, preserved from before this a11y retrofit).
   useEffect(() => {
     const focusRaf = requestAnimationFrame(() => firstFieldRef.current?.focus());
     const onKey = (e) => {
@@ -206,6 +237,27 @@ export default function EditUserDrawer({
       document.removeEventListener('keydown', onKey);
     };
   }, [onClose, saving]);
+
+  // Focus trap: Tab/Shift+Tab cycle stays within the drawer.
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.key !== 'Tab') return;
+      const items = focusableWithin(modalRef.current);
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, []);
 
   function setField(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -515,6 +567,7 @@ export default function EditUserDrawer({
         className="flex-1 bg-black/40 border-0 p-0 m-0 cursor-pointer"
       />
       <div
+        ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-user-drawer-title"

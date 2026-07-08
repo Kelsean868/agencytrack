@@ -266,3 +266,54 @@ describe('Pending Review tab', () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+// ── Dialog a11y contract (§4 dialog sweep) ───────────────────────────────────
+
+describe('PlanCatalogModal — dialog a11y', () => {
+  it('exposes role=dialog + aria-modal=true + aria-labelledby', async () => {
+    renderModal();
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAttribute('aria-labelledby', 'plan-catalog-heading');
+  });
+
+  it('calls onClose when Escape is pressed', async () => {
+    const { onClose } = renderModal();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeInTheDocument());
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Tab from the last focusable element cycles back to the first (focus trap)', async () => {
+    hoisted.getPolicyPlans.mockResolvedValue({ plans: [ACTIVE_PLAN], pendingReview: [] });
+    renderModal();
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() =>
+      expect(screen.getByTestId(`edit-plan-${ACTIVE_PLAN.id}`)).toBeInTheDocument()
+    );
+    const focusable = Array.from(
+      dialog.querySelectorAll(
+        'button:not([disabled]):not([aria-hidden="true"]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+      )
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    last.focus();
+    expect(document.activeElement).toBe(last);
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+  });
+
+  it('restores focus to the invoking element when the modal unmounts', async () => {
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const onClose = vi.fn();
+    const { unmount } = render(<PlanCatalogModal tenantId={TENANT} onClose={onClose} />);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeInTheDocument());
+    unmount();
+    expect(document.activeElement).toBe(trigger);
+    document.body.removeChild(trigger);
+  });
+});
