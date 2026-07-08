@@ -127,4 +127,4 @@ SM cross-branch views (Phase 9) · Settings team-defaults cascade · payout-rele
 
 | Item | Model | Effort | Dispatched | Completed | Duration | Outcome |
 |---|---|---|---|---|---|---|
-| 1.6 Master Sheet control layer | opus (subagent) | inherited-default | 2026-07-08T19:29 | — | — | in-flight |
+| 1.6 Master Sheet control layer | opus (subagent) | inherited-default | 2026-07-08T19:46 (19:29 dispatch was interrupted before launch — never ran) | — | — | in-flight |
