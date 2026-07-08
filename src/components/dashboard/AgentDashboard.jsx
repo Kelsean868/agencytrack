@@ -56,6 +56,7 @@ import DerivedIncomePanel from '../goals/DerivedIncomePanel';
 import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
 import FinancingSelfView from '../financing/FinancingSelfView';
+import AgentReportView from '../profile/AgentReportView';
 
 // Agent sidebar nav is centralized in shell/navConfig.js (Nav redesign PR-1) —
 // resolved per-render via getNavConfig('agent', { showDailyCapture }) so the
@@ -856,6 +857,27 @@ export default function AgentDashboard() {
 
       {/* ── PRODUCTION REPORT TAB ── */}
       {activeTab === 'production-report' && <ProductionReportTab userRole={role} />}
+
+      {/* ── REPORT TAB (Tier 1 · 1.2 — live twin of the Performance Report PDF) ── */}
+      {activeTab === 'agent-report' && (
+        <AgentReportView
+          layout="wide"
+          submissions={allSubmissions}
+          settlements={settlements}
+          goals={goals}
+          persistency={persistency}
+          ruleset={awardsRuleset}
+          agentProfile={userProfile}
+          displayName={displayName}
+          roleLabel={roleLabel}
+          loading={loading}
+          error={Boolean(submissionsError)}
+          onRetry={loadCoreData}
+          onDownloadPDF={handleOpenReportModal}
+          generating={generating}
+          now={now}
+        />
+      )}
 
       {/* ── FINANCING SELF-VIEW TAB (Track K · K9 — read-only, own uid) ── */}
       {activeTab === 'financing' && <FinancingSelfView tenantId={tenantId} subjectUid={user?.uid} />}

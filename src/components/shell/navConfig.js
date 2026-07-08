@@ -37,7 +37,7 @@ import {
   // producing manager / manager (reuse the dashboards' existing icon set)
   ClipboardList, Activity, UserPlus, Users, Gift, LineChart, Trophy,
   CheckCircle2, TrendingUp, LayoutList, FileCheck, ClipboardCheck, Tv, Award,
-  Presentation, Banknote,
+  Presentation, Banknote, FileText,
 } from 'lucide-react';
 import { COMING_SOON_TABS } from '../../config/comingSoonTabs';
 
@@ -69,6 +69,8 @@ const AGENT_NAV = [
   { id: 'financing',         label: 'Financing',         tabId: 'financing',              Icon: Banknote,    testId: 'agent-tab-financing' },
   { id: 'prospect-info',     label: 'Prospect Prep',     tabId: 'prospect-info',          Icon: Search,      testId: 'agent-tab-prospect-info' },
   { id: 'production-report', label: 'Production Report', tabId: 'production-report',      Icon: BarChart2,   testId: 'agent-tab-production-report' },
+  // Tier 1 · 1.2 — live, in-app twin of the Agent Performance Report PDF.
+  { id: 'agent-report',      label: 'Report',            tabId: 'agent-report',           Icon: FileText,    testId: 'agent-tab-report' },
   // Recognition
   { id: 'leaderboard',       label: 'Leaderboard',       tabId: 'production-leaderboard', Icon: Star,        sectionLabel: 'Recognition', testId: 'agent-tab-leaderboard' },
   { id: 'awards',            label: 'Awards',            tabId: 'awards',                 Icon: Medal,       testId: 'agent-tab-awards' },
