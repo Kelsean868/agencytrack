@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+// Explicit React default import — required for Vitest compatibility per banked
+// rule (Vite applies the automatic JSX transform but Vitest does not always);
+// surfaced when CompanyConfigPanelFocus.test.jsx first mounted this directly.
+import React, { useState, useEffect, useCallback } from 'react';
 import { Pencil, AlertCircle, BookOpen } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getCompanyMinimums } from '../../services/goalsService';
@@ -176,7 +179,14 @@ export default function CompanyConfigPanel() {
               key={tile.key}
               type="button"
               onClick={() => setPlanCatalogOpen(true)}
-              disabled={loading}
+              // Disable only on the true initial load (no catalog data yet), NOT
+              // on the background refresh loadConfig() runs after the modal
+              // closes — that refresh flips `loading` true again, and disabling
+              // the tile mid-refresh makes useFocusTrap's focus-return no-op
+              // against a disabled trigger. planCatalog holds its prior value
+              // through a refresh, so this stays focusable then. (Tier-0
+              // dialog-a11y browser-smoke finding.)
+              disabled={loading && !planCatalog}
               className="config-tile config-tile-editable text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Manage policy plan catalog"
               data-testid="plan-catalog-tile"

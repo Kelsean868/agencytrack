@@ -159,6 +159,22 @@ export default function ManagerDashboard() {
   const [selectedWeek, setSelectedWeek]   = useState(getMostRecentSunday());
   const [meetingActive, setMeetingActive] = useState(false);
   const [meetingSubmissions, setMeetingSubmissions] = useState([]);
+  // MeetingMode replaces the entire dashboard while open (see the early return
+  // below), so its useFocusTrap captures a Start Meeting trigger that unmounts —
+  // the hook's focus-return then no-ops against a detached node. Re-focus the
+  // freshly remounted trigger here when the meeting closes. (Tier-0 dialog-a11y
+  // browser-smoke finding — the hook can't restore focus to an element that no
+  // longer exists; the owner of the unmount must.)
+  const startMeetingBtnRef = useRef(null);
+  const meetingWasActiveRef = useRef(false);
+  useEffect(() => {
+    if (meetingActive) {
+      meetingWasActiveRef.current = true;
+    } else if (meetingWasActiveRef.current) {
+      meetingWasActiveRef.current = false;
+      startMeetingBtnRef.current?.focus();
+    }
+  }, [meetingActive]);
 
   // Agent IDs, full profiles, and new-advisor count for manager awards.
   // newAdvisors = agents in scope whose contractStartDate falls in the current calendar year.
@@ -428,6 +444,7 @@ export default function ManagerDashboard() {
         </button>
       )}
       <button
+        ref={startMeetingBtnRef}
         type="button"
         onClick={handleStartMeeting}
         className="h-10 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
