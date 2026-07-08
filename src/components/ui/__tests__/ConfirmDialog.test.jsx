@@ -68,6 +68,13 @@ describe('ConfirmDialog — buttons', () => {
     expect(handler).toHaveBeenCalledOnce();
   });
 
+  it('close (X) button meets the 44px touch-target floor', () => {
+    render(<ConfirmDialog open={true} title="T" onConfirm={() => {}} onCancel={() => {}} />);
+    const closeBtn = screen.getByRole('button', { name: 'Close dialog' });
+    expect(closeBtn.className).toContain('w-11');
+    expect(closeBtn.className).toContain('h-11');
+  });
+
   it('confirm button fires onConfirm', () => {
     const handler = vi.fn();
     render(<ConfirmDialog open={true} title="T" onConfirm={handler} onCancel={() => {}} confirmLabel="Delete" />);
