@@ -87,16 +87,29 @@ async function shot(page, name) {
   }
 }
 
-const clearTimer = installGlobalTimeout(9 * 60 * 1000, () => {
+const clearTimer = installGlobalTimeout(17 * 60 * 1000, () => {
   console.log('\n── Partial results at timeout ──');
   for (const r of results) console.log(`  ${r.passed ? '✓' : '✗'} ${r.leg}: ${r.detail}`);
 });
 
 // ── Generic helpers ──────────────────────────────────────────────────────
 
+/**
+ * gotoTab — clicks a nav item by data-testid. Fails FAST and with a clearly
+ * distinguishable error when the item is disabled (aria-disabled="true" —
+ * the "Coming soon" gate pattern used across navConfig.js), instead of
+ * burning a 30s actionability-retry timeout trying to click an unclickable
+ * button. Callers can match `DISABLED_NAV:` to turn this into a SKIP rather
+ * than a hard FAIL.
+ */
 async function gotoTab(page, testid, { timeout = 12_000 } = {}) {
   const el = page.locator(`[data-testid="${testid}"]`).first();
   await el.waitFor({ state: 'visible', timeout });
+  const disabled = await el.getAttribute('aria-disabled');
+  if (disabled === 'true') {
+    const title = await el.getAttribute('title');
+    throw new Error(`DISABLED_NAV: [data-testid="${testid}"] is aria-disabled="true" (title="${title ?? ''}") — nav item is gated off on staging, not clickable`);
+  }
   await el.click();
 }
 
@@ -304,6 +317,105 @@ async function checkDarkContrast(page, { roleLabel, selectors }) {
   if (checked === 0) skip(`${roleLabel}-dark-contrast-overall`, 'no selectors resolved on this screen');
 }
 
+/**
+ * runReducedMotionLeg — shared reduced-motion check for any role. Fresh
+ * context with Playwright's `reducedMotion: 'reduce'` (which sets the
+ * `prefers-reduced-motion: reduce` media feature before first paint), logs
+ * in, optionally navigates to a tab, then asserts `.screen-enter`/`.stagger`
+ * carry NO active animation (computed animation-name: none) — capable of
+ * failing if the CSS's `@media (prefers-reduced-motion: no-preference)` gate
+ * in `src/index.css` is ever removed or mis-scoped.
+ */
+async function runReducedMotionLeg(browser, { roleLabel, email, password, navTestId }) {
+  const rmContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', ignoreHTTPSErrors: true });
+  let rmPage;
+  try {
+    await setupBypassSession(rmContext, BASE, TOKEN);
+    rmPage = await rmContext.newPage();
+    await loginRealForm(rmPage, email, password);
+    if (navTestId) {
+      try { await gotoTab(rmPage, navTestId, { timeout: 8000 }); await rmPage.waitForTimeout(800); } catch { /* best-effort */ }
+    }
+    await checkMotionClass(rmPage, { roleLabel, selector: '.screen-enter, .stagger', expectAnimating: false });
+  } catch (e) {
+    fail(`${roleLabel}-reduced-motion-fatal`, `reduced-motion leg crashed: ${e.message}`);
+  } finally {
+    await rmContext.close();
+  }
+}
+
+/**
+ * checkErrorRetryPristine — four-states error+Retry check in a BRAND-NEW
+ * context with firestore.googleapis.com aborted BEFORE first navigation
+ * (before login even). This avoids the same-session limitation discovered
+ * in the first pass: Firestore's persistentLocalCache (src/firebase.js:23-27)
+ * serves a cached snapshot through an aborted network once a panel/context
+ * has fetched that data before in the session, so a same-session
+ * abort-then-reload never actually reaches the error path.
+ *
+ * A pristine context has no local cache, so a genuinely-aborted network
+ * should force whatever error handling exists — either a panel-level error
+ * card (if login/shell somehow still resolves from other channels) or the
+ * login screen itself failing to progress (also a valid, capable-of-failing
+ * observation, reported honestly either way).
+ */
+async function checkErrorRetryPristine(browser, {
+  roleLabel, email, password, navTestId, errorSelector, retryTextSelector = 'button:has-text("Retry")',
+}) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
+  let page;
+  try {
+    await setupBypassSession(context, BASE, TOKEN);
+    page = await context.newPage();
+    // Abort BEFORE any navigation — the whole point of "pristine".
+    await page.route('**/firestore.googleapis.com/**', (route) => route.abort());
+
+    await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('input[type="email"]', { timeout: 20_000 }).catch(() => {});
+    await page.fill('input[type="email"]', email).catch(() => {});
+    await page.fill('input[type="password"]', password).catch(() => {});
+    await page.click('button[type="submit"]').catch(() => {});
+    // Auth itself goes through identitytoolkit.googleapis.com (not aborted),
+    // so sign-in should succeed even with Firestore blocked; what happens
+    // next (profile/role resolution, which IS Firestore) is the real test.
+    await page.waitForTimeout(3000);
+    if (navTestId) {
+      try { await gotoTab(page, navTestId, { timeout: 8000 }); } catch { /* shell may never render nav if role-resolution is stuck */ }
+    }
+    await page.waitForTimeout(2000);
+
+    const errCard = errorSelector ? page.locator(errorSelector) : page.locator('[role="alert"]').first();
+    const errAppeared = await errCard.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true).catch(() => false);
+    const shotPath = await shot(page, `${roleLabel}-pristine-error`);
+
+    if (errAppeared) {
+      const retryBtn = (errorSelector ? errCard : page).locator(retryTextSelector).first();
+      const retryCount = await retryBtn.count();
+      if (retryCount > 0) {
+        pass(`${roleLabel}-pristine-error-retry-render`, `error card rendered in a PRISTINE (no prior cache) context + visible Retry button (screenshot: ${shotPath})`);
+        await page.unroute('**/firestore.googleapis.com/**');
+        await retryBtn.click();
+        await page.waitForTimeout(2500);
+        pass(`${roleLabel}-pristine-error-retry-refire`, 'Retry clicked post-unroute in the pristine-context leg');
+      } else {
+        fail(`${roleLabel}-pristine-error-retry-render`, `error card rendered but no Retry button found inside it (screenshot: ${shotPath})`);
+      }
+    } else {
+      // Distinguish "shell never got past login/role-resolution" (a real,
+      // reportable gap — the whole app has no top-level error UI for this
+      // case) from "something else rendered fine" (worth naming honestly).
+      const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 300)).catch(() => '');
+      fail(`${roleLabel}-pristine-error-retry-render`, `no error card appeared within 10s in the pristine context (screenshot: ${shotPath}). Page body sample: "${bodyText.replace(/\s+/g, ' ').trim()}"`);
+      await page.unroute('**/firestore.googleapis.com/**').catch(() => {});
+    }
+  } catch (e) {
+    fail(`${roleLabel}-pristine-error-retry-fatal`, `pristine-context error leg crashed: ${e.message}`);
+    if (page) await shot(page, `${roleLabel}-pristine-error-fatal`);
+  } finally {
+    await context.close();
+  }
+}
+
 // ── AGENT role ───────────────────────────────────────────────────────────
 
 async function runAgent(browser) {
@@ -354,29 +466,41 @@ async function runAgent(browser) {
     skip(`${roleLabel}-tables`, 'MasterSheet / Users / Branches are manager+ surfaces — not applicable to agent role');
 
     // 5. PROSPECT SORT — capable-of-failing: parse ALL rows, assert every
-    // adjacent pair is non-decreasing.
-    await gotoTab(page, 'agent-tab-prospect-info');
-    await page.waitForTimeout(1500);
-    const listCount = await page.locator('[data-testid="prospect-info-list"]').count();
-    if (listCount === 0) {
-      skip(`${roleLabel}-prospect-sort`, 'prospect-info-empty — no prospect prep data seeded on staging tenant');
-    } else {
-      const dates = await page.evaluate(() => {
-        const rows = Array.from(document.querySelectorAll('[data-testid="prospect-info-list"] > *'));
-        return rows.map((r) => {
-          const m = r.textContent.match(/\d{4}-\d{2}-\d{2}/);
-          return m ? m[0] : null;
-        }).filter(Boolean);
-      });
-      if (dates.length < 2) {
-        skip(`${roleLabel}-prospect-sort`, `only ${dates.length} dated row(s) — need >=2 to prove sort order`);
+    // adjacent pair is non-decreasing. Isolated in its own try/catch so a
+    // disabled/unreachable nav item (or any other failure here) SKIPs or
+    // FAILs this one check without aborting the rest of the role's checks —
+    // a bare gotoTab() throw previously took down every downstream section.
+    try {
+      await gotoTab(page, 'agent-tab-prospect-info');
+      await page.waitForTimeout(1500);
+      const listCount = await page.locator('[data-testid="prospect-info-list"]').count();
+      if (listCount === 0) {
+        skip(`${roleLabel}-prospect-sort`, 'prospect-info-empty — no prospect prep data seeded on staging tenant');
       } else {
-        let outOfOrder = -1;
-        for (let i = 1; i < dates.length; i++) {
-          if (dates[i] < dates[i - 1]) { outOfOrder = i; break; }
+        const dates = await page.evaluate(() => {
+          const rows = Array.from(document.querySelectorAll('[data-testid="prospect-info-list"] > *'));
+          return rows.map((r) => {
+            const m = r.textContent.match(/\d{4}-\d{2}-\d{2}/);
+            return m ? m[0] : null;
+          }).filter(Boolean);
+        });
+        if (dates.length < 2) {
+          skip(`${roleLabel}-prospect-sort`, `only ${dates.length} dated row(s) — need >=2 to prove sort order`);
+        } else {
+          let outOfOrder = -1;
+          for (let i = 1; i < dates.length; i++) {
+            if (dates[i] < dates[i - 1]) { outOfOrder = i; break; }
+          }
+          if (outOfOrder === -1) pass(`${roleLabel}-prospect-sort`, `${dates.length} rows ascending: ${dates.join(', ')}`);
+          else fail(`${roleLabel}-prospect-sort`, `out of order at index ${outOfOrder}: ...${dates[outOfOrder - 1]}, ${dates[outOfOrder]}... (full: ${dates.join(', ')})`);
         }
-        if (outOfOrder === -1) pass(`${roleLabel}-prospect-sort`, `${dates.length} rows ascending: ${dates.join(', ')}`);
-        else fail(`${roleLabel}-prospect-sort`, `out of order at index ${outOfOrder}: ...${dates[outOfOrder - 1]}, ${dates[outOfOrder]}... (full: ${dates.join(', ')})`);
+      }
+    } catch (e) {
+      if (String(e.message).startsWith('DISABLED_NAV:')) {
+        skip(`${roleLabel}-prospect-sort`, `Prospect Prep nav item is disabled on staging ("Coming soon" gate) — ${e.message}`);
+      } else {
+        fail(`${roleLabel}-prospect-sort`, `errored: ${e.message}`);
+        await shot(page, `${roleLabel}-prospect-sort-FAIL`);
       }
     }
 
@@ -469,6 +593,14 @@ async function runAgent(browser) {
   } finally {
     await rmContext.close();
   }
+
+  // Pristine-context error+Retry — see checkErrorRetryPristine's doc comment
+  // for why the same-session abort-then-reload technique above (skipped)
+  // cannot force the error path once a panel has cached data.
+  await checkErrorRetryPristine(browser, {
+    roleLabel, email: ACCOUNTS.agent.email, password: ACCOUNTS.agent.password,
+    navTestId: 'agent-tab-policy-ledger', errorSelector: '[data-testid="ledger-error"]',
+  });
 
   // Dark theme leg.
   const darkContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
@@ -702,6 +834,15 @@ async function runBranchManager(browser) {
     await context.close();
   }
 
+  // Reduced-motion leg.
+  await runReducedMotionLeg(browser, { roleLabel, email: ACCOUNTS.branch_manager.email, password: ACCOUNTS.branch_manager.password });
+
+  // Pristine-context error+Retry (see checkErrorRetryPristine doc comment).
+  await checkErrorRetryPristine(browser, {
+    roleLabel, email: ACCOUNTS.branch_manager.email, password: ACCOUNTS.branch_manager.password,
+    navTestId: 'nav-overview', errorSelector: null,
+  });
+
   // Dark theme leg.
   const darkContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
   let darkPage;
@@ -893,6 +1034,15 @@ async function runTenantAdmin(browser) {
     await context.close();
   }
 
+  // Reduced-motion leg.
+  await runReducedMotionLeg(browser, { roleLabel, email: ACCOUNTS.tenant_admin.email, password: ACCOUNTS.tenant_admin.password });
+
+  // Pristine-context error+Retry (see checkErrorRetryPristine doc comment).
+  await checkErrorRetryPristine(browser, {
+    roleLabel, email: ACCOUNTS.tenant_admin.email, password: ACCOUNTS.tenant_admin.password,
+    navTestId: 'nav-dashboard', errorSelector: '[data-testid="tenant-dashboard-error"]',
+  });
+
   // Dark theme leg.
   const darkContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
   let darkPage;
@@ -950,17 +1100,35 @@ const ROLE_CHECK_CATEGORIES = {
 
 // ── Orchestrator ─────────────────────────────────────────────────────────
 
+// --role <agent|branch_manager|tenant_admin> restricts the run to one role —
+// lets a 3-role run (which can run long across dialogs/motion/four-states/
+// dark-theme/reduced-motion/pristine-context legs) be split into three
+// separate foreground invocations, each finishing well inside a single
+// terminal/CI timeout. Omit for the full 3-role run.
+const ROLE_FILTER = (() => {
+  const i = process.argv.indexOf('--role');
+  return i > -1 ? process.argv[i + 1] : null;
+})();
+
 async function run() {
   const browser = await chromium.launch();
   try {
     console.log(`\n=== Tier-0 staging smoke — ${BASE} ===`);
+    if (ROLE_FILTER) console.log(`Role filter: ${ROLE_FILTER}`);
     console.log(`Screenshots: ${SS_DIR}\n`);
 
-    for (const [roleKey, runner] of [
+    const ALL_ROLES = [
       ['agent', runAgent],
       ['branch_manager', runBranchManager],
       ['tenant_admin', runTenantAdmin],
-    ]) {
+    ];
+    const rolesToRun = ROLE_FILTER ? ALL_ROLES.filter(([k]) => k === ROLE_FILTER) : ALL_ROLES;
+    if (ROLE_FILTER && rolesToRun.length === 0) {
+      console.error(`--role ${ROLE_FILTER} does not match agent|branch_manager|tenant_admin`);
+      process.exit(2);
+    }
+
+    for (const [roleKey, runner] of rolesToRun) {
       console.log(`\n── ${roleKey.toUpperCase()} ─────────────────────────────────────`);
       const { email, password } = ACCOUNTS[roleKey];
       const pre = await preflightLogin(email, password);
