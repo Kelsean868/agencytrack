@@ -49,6 +49,7 @@ import NewAgentEmptyState from './NewAgentEmptyState';
 import ComingSoonPanel from '../ui/ComingSoonPanel';
 import { getNavConfig, tabTitleFromItems } from '../shell/navConfig';
 import usePinnedNav from '../../hooks/usePinnedNav';
+import useNavOrder from '../../hooks/useNavOrder';
 import useMenuLayout from '../../hooks/useMenuLayout';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
@@ -179,6 +180,11 @@ export default function AgentDashboard() {
   // ★ Pinned-nav (Nav redesign PR-2) — seeds + persistence + pin/unpin.
   const { pinnedItems, isPinned, pin, unpin } = usePinnedNav({
     tenantId, uid: user?.uid, configKey: 'agent', navItems,
+  });
+
+  // ★ Sidebar drag-reorder (Fable Tier 1 · 1.4) — persisted per-config order.
+  const { orderIds: navOrderIds, reorder: onNavReorder } = useNavOrder({
+    tenantId, uid: user?.uid, configKey: 'agent',
   });
 
   // Menu layout (Nav redesign PR-4) — agents are clamped to `pinned` at the
@@ -581,6 +587,8 @@ export default function AgentDashboard() {
       isPinned={isPinned}
       onPin={pin}
       onUnpin={unpin}
+      navOrderIds={navOrderIds}
+      onNavReorder={onNavReorder}
     >
       {/* Quick-Add FAB (desktop pencil) — opens popover on click. Hidden on
           mobile (<768px) via hidden md:flex in DailyFAB; the mobile center ＋

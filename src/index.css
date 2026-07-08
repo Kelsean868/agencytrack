@@ -1333,6 +1333,30 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 @media (prefers-reduced-motion: no-preference) {
   .sidebar-nav-star { transition: opacity var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
 }
+
+/* ★ Drag-reorder (Fable Tier 1 · 1.4) — within-section sidebar row reorder.
+   Grab cursor hints draggability; the actively dragged row lifts (ghost); a
+   teal drop line marks the insertion point. The dragged row's translateY is a
+   transient, data-driven inline transform (allowed per the inline-style carve-
+   out) — no CSS transition on it, so it tracks the pointer 1:1 and settles
+   instantly on drop (reduced-motion safe by construction). */
+.sidebar-link-row-draggable .sidebar-link { cursor: grab; }
+.sidebar-link-row-dragging { z-index: 5; }
+.sidebar-link-row-dragging .sidebar-link {
+  cursor: grabbing;
+  opacity: 0.9;
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-lg);
+  border-radius: 10px;
+}
+.sidebar-drop-line {
+  height: 2px;
+  margin: 1px 10px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  pointer-events: none;
+}
+
 .sidebar-foot {
   margin-top: auto;
   padding: 14px 10px 0;

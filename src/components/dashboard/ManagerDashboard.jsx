@@ -35,6 +35,7 @@ import ProfileScreen from '../profile/ProfileScreen';
 import Shell from '../shell/Shell';
 import { getNavConfig, getWorkspaceGroups } from '../shell/navConfig';
 import usePinnedNav from '../../hooks/usePinnedNav';
+import useNavOrder from '../../hooks/useNavOrder';
 import useMenuLayout from '../../hooks/useMenuLayout';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
 import KioskModeTab from '../kiosk/KioskModeTab';
@@ -308,6 +309,12 @@ export default function ManagerDashboard() {
     navItems:  fullNav,
   });
 
+  // ★ Sidebar drag-reorder (Fable Tier 1 · 1.4) — persisted per-config order,
+  // keyed by the same configKey the rest of the manager nav resolves under.
+  const { orderIds: navOrderIds, reorder: onNavReorder } = useNavOrder({
+    tenantId, uid: user?.uid, configKey: isProducingManager ? 'producingManager' : 'manager',
+  });
+
   const displayName  = userProfile?.name ?? userProfile?.email ?? 'Manager';
   const roleLabel    = getRoleLabel(role);
 
@@ -462,6 +469,8 @@ export default function ManagerDashboard() {
       isPinned={isProducingManager ? isPinned : undefined}
       onPin={isProducingManager ? pin : undefined}
       onUnpin={isProducingManager ? unpin : undefined}
+      navOrderIds={navOrderIds}
+      onNavReorder={onNavReorder}
       showPinnedZone={isProducingManager ? menuLayout !== 'workspace' : true}
       showWorkspaceToggle={isWorkspaceLayout}
       workspace={workspace}

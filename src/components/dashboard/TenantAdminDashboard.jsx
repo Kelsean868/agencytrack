@@ -21,6 +21,7 @@ import CampaignPanel from '../campaigns/CampaignPanel';
 import ProfileScreen from '../profile/ProfileScreen';
 import QuickAddMenu from '../shell/QuickAddMenu';
 import { getQuickAddActions } from '../shell/quickAddConfig';
+import useNavOrder from '../../hooks/useNavOrder';
 
 /**
  * TenantAdminDashboard (Design System v2 — B5, TA-CLEANUP).
@@ -99,6 +100,11 @@ function StatCard({ label, value, sub, Icon, loading }) {
 export default function TenantAdminDashboard() {
   const { user, userProfile, role, tenantId } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // ★ Sidebar drag-reorder (Fable Tier 1 · 1.4) — persisted per-config order.
+  const { orderIds: navOrderIds, reorder: onNavReorder } = useNavOrder({
+    tenantId, uid: user?.uid, configKey: 'tenantAdmin',
+  });
 
   // Quick-Add (Tier 1 · 1.3) — ＋ FAB fires the real create flows rather than
   // just routing to a tab. Each signal is a bump counter; BranchesPanel /
@@ -245,6 +251,8 @@ export default function TenantAdminDashboard() {
       bottomNavItems={BOTTOM_NAV}
       drawerNavItems={DRAWER_NAV}
       navScopeId={user?.uid}
+      navOrderIds={navOrderIds}
+      onNavReorder={onNavReorder}
       quickAddActions={getQuickAddActions('tenantAdmin')}
       onAction={handleAction}
       activeTab={activeTab}

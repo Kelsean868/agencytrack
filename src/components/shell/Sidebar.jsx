@@ -1,4 +1,4 @@
-import React, { Fragment, useMemo } from 'react';
+import React, { Fragment, useMemo, useRef, useState, useCallback } from 'react';
 import { LogOut, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import WorkspaceToggle from './WorkspaceToggle';
 
@@ -20,10 +20,37 @@ import WorkspaceToggle from './WorkspaceToggle';
  * renders above the first group (hidden when empty), and every row gets a star
  * pin/unpin toggle. Roles that pass no pinning props render exactly as before.
  *
+ * ★ Drag-reorder (Fable Tier 1 · 1.4): when `onReorder` is passed, regular
+ * (non-pinned-zone) rows become drag-reorderable WITHIN their section — pointer
+ * drag on desktop, long-press-armed drag on touch. On drop the new flat id order
+ * (all sections, only the dragged section reordered) is handed to `onReorder`;
+ * `navItems` are pre-ordered by the caller via `applyNavOrder`, so the Sidebar
+ * only reports the new order — it never reorders `navItems` itself. Cross-section
+ * moves are impossible (insertion index is clamped to the dragged item's section;
+ * leaving the section bounds snaps back). A click without movement past the
+ * threshold still navigates. The Pinned zone is NOT reorderable here (pins have
+ * their own model).
+ *
  * The collapse toggle only changes layout at >=1024px (the tablet
  * breakpoint forces 72px regardless). At <768px the whole sidebar
  * disappears — the bottom-nav owns mobile navigation.
  */
+
+// Movement (px) a press must exceed before it becomes a drag rather than a click.
+const DRAG_THRESHOLD = 5;
+// Movement (px) during the pre-long-press window that cancels the timer (the
+// user is scrolling, not arming a drag).
+const SCROLL_CANCEL = 10;
+// Long-press duration (ms) that arms drag mode on touch — prevents scroll hijack.
+const LONG_PRESS_MS = 450;
+
+function arrayMove(arr, from, to) {
+  const next = arr.slice();
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+
 export default function Sidebar({
   navItems,
   activeTab,
@@ -38,6 +65,7 @@ export default function Sidebar({
   isPinned,
   onPin,
   onUnpin,
+  onReorder,
   showPinnedZone = true,
   showWorkspaceToggle = false,
   workspace,
@@ -45,6 +73,7 @@ export default function Sidebar({
 }) {
   const sections = useMemo(() => groupBySection(navItems), [navItems]);
   const canPin = typeof onPin === 'function' && typeof onUnpin === 'function';
+  const canReorder = typeof onReorder === 'function';
   // ★ Pinned zone shows for `pinned` + `both` layouts (PR-2 behavior); the
   // `workspace` layout passes showPinnedZone={false} to hide it (decision #5).
   const renderPinnedZone = canPin && pinnedItems.length > 0 && showPinnedZone;
@@ -53,26 +82,176 @@ export default function Sidebar({
   const displayName = userProfile?.name ?? userProfile?.email ?? 'AgencyTrack User';
   const photoURL = userProfile?.photoURL ?? null;
 
-  const renderRow = (item, inPinnedZone = false) => {
+  // ── ★ Drag-reorder state ────────────────────────────────────────────────────
+  // dragUI drives render (ghost + drop line + live translate); gestureRef holds
+  // the live, mutable gesture across pointer events without re-render churn.
+  const [dragUI, setDragUI] = useState(null); // { id, sectionIdx, overIdx, dy } | null
+  const gestureRef = useRef(null);
+  const longPressTimerRef = useRef(null);
+  const suppressClickRef = useRef(false);
+  const rowElRef = useRef(new Map()); // item.id → row element (geometry source)
+  const sectionsRef = useRef(sections);
+  sectionsRef.current = sections;
+
+  const clearLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  // Insertion index within the dragged section from the pointer Y. Clamped to the
+  // section (never crosses into another section); returns the origin index when
+  // the pointer leaves the section's vertical bounds → visual snap-back.
+  const computeOverIdx = useCallback((clientY, sectionItems, fromIdx) => {
+    const rects = [];
+    sectionItems.forEach((it, idx) => {
+      const el = rowElRef.current.get(it.id);
+      if (el) rects.push({ idx, rect: el.getBoundingClientRect() });
+    });
+    if (rects.length === 0) return fromIdx;
+    if (clientY < rects[0].rect.top || clientY > rects[rects.length - 1].rect.bottom) {
+      return fromIdx; // outside section bounds → snap back to origin
+    }
+    for (const { idx, rect } of rects) {
+      if (clientY < rect.top + rect.height / 2) return idx;
+    }
+    return rects[rects.length - 1].idx;
+  }, []);
+
+  const computeNewFlatIds = useCallback((sectionIdx, fromIdx, toIdx) => {
+    const secs = sectionsRef.current;
+    if (!secs || !secs[sectionIdx]) return null;
+    const moved = arrayMove(secs[sectionIdx].items, fromIdx, toIdx);
+    const flat = [];
+    secs.forEach((s, i) => {
+      (i === sectionIdx ? moved : s.items).forEach((it) => flat.push(it.id));
+    });
+    return flat;
+  }, []);
+
+  const onRowPointerDown = useCallback((e, item, sectionIdx, fromIdx, sectionItems) => {
+    if (!canReorder) return;
+    // Ignore presses that start on the star toggle (it owns its own click).
+    if (e.target?.closest?.('.sidebar-nav-star')) return;
+    // Mouse: left button only.
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    clearLongPress();
+    gestureRef.current = {
+      pointerId: e.pointerId,
+      id: item.id,
+      sectionIdx,
+      fromIdx,
+      sectionItems,
+      startX: e.clientX,
+      startY: e.clientY,
+      pointerType: e.pointerType,
+      armed: e.pointerType !== 'touch', // touch waits for long-press
+      dragging: false,
+      overIdx: fromIdx,
+    };
+    if (e.pointerType === 'touch') {
+      longPressTimerRef.current = setTimeout(() => {
+        const g = gestureRef.current;
+        if (g && g.pointerId === e.pointerId) g.armed = true;
+      }, LONG_PRESS_MS);
+    } else {
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* jsdom / unsupported */ }
+    }
+  }, [canReorder]);
+
+  const onRowPointerMove = useCallback((e) => {
+    const g = gestureRef.current;
+    if (!g || g.pointerId !== e.pointerId) return;
+    const dx = e.clientX - g.startX;
+    const dy = e.clientY - g.startY;
+    const dist = Math.hypot(dx, dy);
+
+    // Touch, not yet armed: any real movement is a scroll → cancel the gesture.
+    if (g.pointerType === 'touch' && !g.armed) {
+      if (dist > SCROLL_CANCEL) {
+        clearLongPress();
+        gestureRef.current = null;
+      }
+      return;
+    }
+
+    if (!g.dragging) {
+      if (dist <= DRAG_THRESHOLD) return; // below threshold → still a potential click
+      g.dragging = true;
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* jsdom / unsupported */ }
+    }
+
+    const overIdx = computeOverIdx(e.clientY, g.sectionItems, g.fromIdx);
+    g.overIdx = overIdx;
+    setDragUI({ id: g.id, sectionIdx: g.sectionIdx, overIdx, dy });
+    if (e.cancelable) e.preventDefault(); // best-effort scroll suppression on touch
+  }, [computeOverIdx]);
+
+  const onRowPointerUp = useCallback((e) => {
+    const g = gestureRef.current;
+    clearLongPress();
+    if (!g || g.pointerId !== e.pointerId) { setDragUI(null); return; }
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* jsdom / unsupported */ }
+    if (g.dragging) {
+      if (g.overIdx !== g.fromIdx) {
+        const newFlat = computeNewFlatIds(g.sectionIdx, g.fromIdx, g.overIdx);
+        if (newFlat) onReorder(newFlat);
+      }
+      // A completed drag (even in place) must not also fire the row's click.
+      suppressClickRef.current = true;
+    }
+    gestureRef.current = null;
+    setDragUI(null);
+  }, [computeNewFlatIds, onReorder]);
+
+  const onRowPointerCancel = useCallback(() => {
+    clearLongPress();
+    gestureRef.current = null;
+    setDragUI(null); // snap back — no reorder
+  }, []);
+
+  const handleRowClick = (item, isDisabled) => {
+    if (suppressClickRef.current) { suppressClickRef.current = false; return; }
+    if (isDisabled) return;
+    if (item.tabId != null) setActiveTab(item.tabId);
+    else if (item.action != null) onAction?.(item.action);
+  };
+
+  const renderRow = (item, opts = {}) => {
+    const { inPinnedZone = false, sectionIdx = -1, indexInSection = -1, sectionItems = null } = opts;
     const Icon = item.Icon;
     const isActive = item.tabId != null && activeTab === item.tabId;
     const isDisabled = item.disabled === true;
     const isChild = item.child === true;
     const pinned = canPin && typeof isPinned === 'function' ? isPinned(item.id) : false;
+    const draggable = canReorder && !inPinnedZone;
+    const isDragging = draggable && dragUI?.id === item.id;
     // Pinned-zone rows get a distinct testid so a seeded item that ALSO appears
     // in its group doesn't render the same data-testid twice (Playwright strict
     // mode + tooling). Group rows keep the canonical nav testid.
     const testId = inPinnedZone ? `pinned-${item.id}` : (item.testId ?? `nav-${item.id}`);
+
+    const rowClass = `sidebar-link-row${draggable ? ' sidebar-link-row-draggable' : ''}${isDragging ? ' sidebar-link-row-dragging' : ''}`;
+    const rowStyle = isDragging && dragUI?.dy ? { transform: `translateY(${dragUI.dy}px)` } : undefined;
+
     return (
-      <div className="sidebar-link-row" key={inPinnedZone ? `pin-${item.id}` : item.id}>
+      <div
+        className={rowClass}
+        key={inPinnedZone ? `pin-${item.id}` : item.id}
+        style={rowStyle}
+        ref={draggable
+          ? (el) => { if (el) rowElRef.current.set(item.id, el); else rowElRef.current.delete(item.id); }
+          : undefined}
+        onPointerDown={draggable ? (e) => onRowPointerDown(e, item, sectionIdx, indexInSection, sectionItems) : undefined}
+        onPointerMove={draggable ? onRowPointerMove : undefined}
+        onPointerUp={draggable ? onRowPointerUp : undefined}
+        onPointerCancel={draggable ? onRowPointerCancel : undefined}
+      >
         <button
           type="button"
           className={`sidebar-link${isChild ? ' sidebar-link-child' : ''}${isActive ? ' active' : ''}${isDisabled ? ' sidebar-link-disabled' : ''}`}
-          onClick={() => {
-            if (isDisabled) return;
-            if (item.tabId != null) setActiveTab(item.tabId);
-            else if (item.action != null) onAction?.(item.action);
-          }}
+          onClick={() => handleRowClick(item, isDisabled)}
           aria-current={isActive ? 'page' : undefined}
           aria-disabled={isDisabled || undefined}
           tabIndex={isDisabled ? -1 : undefined}
@@ -143,11 +322,12 @@ export default function Sidebar({
 
       {/* ★ Pinned zone — above the toggle/first group; hidden when empty or for
           the workspace layout (showPinnedZone=false). For `both` it renders
-          above the My Work ⇄ My Team toggle (decision #5). */}
+          above the My Work ⇄ My Team toggle (decision #5). Pinned rows are NOT
+          drag-reorderable (pins own their order model). */}
       {renderPinnedZone && (
         <Fragment>
           <div className="sidebar-section">★ Pinned</div>
-          {pinnedItems.map((item) => renderRow(item, true))}
+          {pinnedItems.map((item) => renderRow(item, { inPinnedZone: true }))}
         </Fragment>
       )}
 
@@ -156,14 +336,28 @@ export default function Sidebar({
         <WorkspaceToggle workspace={workspace} onChange={onWorkspaceChange} idPrefix="sidebar-ws" />
       )}
 
-      {sections.map((section, idx) => (
-        <Fragment key={section.label ?? `s${idx}`}>
-          {section.label && (
-            <div className="sidebar-section">{section.label}</div>
-          )}
-          {section.items.map((item) => renderRow(item))}
-        </Fragment>
-      ))}
+      {sections.map((section, idx) => {
+        const showDropInSection = dragUI != null && dragUI.sectionIdx === idx;
+        return (
+          <Fragment key={section.label ?? `s${idx}`}>
+            {section.label && (
+              <div className="sidebar-section">{section.label}</div>
+            )}
+            {section.items.map((item, itemIdx) => (
+              <Fragment key={item.id}>
+                {showDropInSection && dragUI.overIdx === itemIdx && dragUI.id !== item.id && (
+                  <div className="sidebar-drop-line" aria-hidden="true" />
+                )}
+                {renderRow(item, {
+                  sectionIdx: idx,
+                  indexInSection: itemIdx,
+                  sectionItems: section.items,
+                })}
+              </Fragment>
+            ))}
+          </Fragment>
+        );
+      })}
 
       <div className="sidebar-foot">
         <button

@@ -8,6 +8,7 @@ import MobileBottomNav from './MobileBottomNav';
 import CommandPalette from './CommandPalette';
 import { usePullToRefresh } from '../../hooks/usePullToRefresh';
 import { buildSectionMap } from './navSections';
+import { applyNavOrder } from './navConfig';
 import useFrequentNav from '../../hooks/useFrequentNav';
 
 /**
@@ -46,6 +47,8 @@ export default function Shell({
   isPinned,
   onPin,
   onUnpin,
+  navOrderIds,
+  onNavReorder,
   navScopeId,
   quickAddActions,
   showPinnedZone = true,
@@ -56,6 +59,16 @@ export default function Shell({
 }) {
   const mainRef = useRef(null);
   const ptrState = usePullToRefresh(mainRef, onPullRefresh ?? null);
+
+  // ★ Drag-reorder (Fable Tier 1 · 1.4) — apply the saved per-config order to the
+  // DESKTOP SIDEBAR items ONLY (within-section). The bottom-nav, More drawer,
+  // command palette, and Frequent row deliberately keep the caller's original
+  // `navItems` — reorder scope is the sidebar (brief scope). No saved order (empty
+  // `navOrderIds`) returns `navItems` unchanged, so the sidebar renders identically.
+  const sidebarNavItems = useMemo(
+    () => applyNavOrder(navItems, navOrderIds),
+    [navItems, navOrderIds],
+  );
 
   // Command palette (Fable Tier 1 · 1.1). Cmd/Ctrl-K toggles it; the TopBar
   // search button also opens it. Lives here so every Shell-based dashboard gets
@@ -125,7 +138,7 @@ export default function Shell({
           WCAG 2.4.1). Visually hidden until focused (see .skip-link in index.css). */}
       <a href="#main-content" className="skip-link">Skip to main content</a>
       <Sidebar
-        navItems={navItems}
+        navItems={sidebarNavItems}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onAction={onAction}
@@ -138,6 +151,7 @@ export default function Shell({
         isPinned={isPinned}
         onPin={onPin}
         onUnpin={onUnpin}
+        onReorder={onNavReorder}
         showPinnedZone={showPinnedZone}
         showWorkspaceToggle={showWorkspaceToggle}
         workspace={workspace}

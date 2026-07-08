@@ -26,7 +26,11 @@ function prefsDocRef(tenantId, uid) {
  *
  * @param {string} tenantId
  * @param {string} uid
- * @returns {Promise<{ pinnedNav?: string[] }|null>}
+ * @returns {Promise<{ pinnedNav?: string[], menuLayout?: string, navOrder?: Record<string, string[]> }|null>}
+ *   `navOrder` (Tier 1 · 1.4) is a map keyed by navConfig key
+ *   (`agent` | `producingManager` | `manager` | `tenantAdmin`) → the user's
+ *   preferred ordered list of nav item ids for that config. Agent/manager nav
+ *   ids overlap, so the per-config map avoids id collisions a flat array would hit.
  */
 export async function getUserPrefs(tenantId, uid) {
   if (!tenantId || !uid) return null;
@@ -68,6 +72,34 @@ export async function setMenuLayout(tenantId, uid, menuLayout) {
   await setDoc(
     prefsDocRef(tenantId, uid),
     { menuLayout, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}
+
+/**
+ * Persist the sidebar nav-order preference for one nav config (Tier 1 · 1.4 —
+ * desktop sidebar drag-reorder). Stored under `navOrder.{configKey}` so distinct
+ * configs (agent / producingManager / manager / tenantAdmin) never clobber each
+ * other. Deep-merge-write: `{ merge: true }` merges the nested `navOrder` map, so
+ * a write for one config preserves the others (and the coexisting `pinnedNav` /
+ * `menuLayout`). Validation (dropping stale ids, within-section semantics) lives
+ * in `useNavOrder` + `applyNavOrder`; this writer only guards tenantId/uid/configKey.
+ *
+ * @param {string} tenantId
+ * @param {string} uid
+ * @param {string} configKey  navConfig key the order applies to
+ * @param {string[]} orderIds  ordered list of navConfig item ids
+ * @returns {Promise<void>}
+ */
+export async function setNavOrder(tenantId, uid, configKey, orderIds) {
+  if (!tenantId || !uid) throw new Error('setNavOrder requires tenantId and uid');
+  if (!configKey) throw new Error('setNavOrder requires a configKey');
+  await setDoc(
+    prefsDocRef(tenantId, uid),
+    {
+      navOrder: { [configKey]: Array.isArray(orderIds) ? orderIds : [] },
+      updatedAt: serverTimestamp(),
+    },
     { merge: true },
   );
 }

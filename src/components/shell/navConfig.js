@@ -258,6 +258,74 @@ export function getPinnedSeed(configKey) {
   return seed.filter((id) => validIds.has(id));
 }
 
+// ── ★ Nav order (Fable Tier 1 · 1.4 — desktop sidebar drag-reorder) ───────────
+/**
+ * Apply a saved per-config nav order to a resolved nav-item list — WITHIN each
+ * section only (locked decision #1: cross-section moves are never produced or
+ * applied). Sections are the same contiguous `sectionLabel`-led groups Sidebar's
+ * `groupBySection` derives.
+ *
+ * Semantics (locked decision #5):
+ *   - Within a section, items whose id appears in `orderIds` come first, ordered
+ *     by their index in `orderIds`.
+ *   - Items NOT in `orderIds` (e.g. a newly shipped nav item) keep their default
+ *     relative position, appended after the ordered ones at the section's end.
+ *   - The section header travels with whichever item ends up first in the section:
+ *     the new lead receives `sectionLabel`, every other row in the section has it
+ *     stripped — so `groupBySection` still reconstructs exactly one header per
+ *     section after reorder (a moved original-lead never spawns a phantom section).
+ *
+ * No saved order (empty/absent `orderIds`) returns `items` unchanged by reference,
+ * so the default nav renders byte-identical to today.
+ *
+ * @param {Array} items    resolved nav items (getNavConfig / getWorkspaceGroups output)
+ * @param {string[]} orderIds  saved order of nav-item ids for this config
+ * @returns {Array} reordered nav items in Sidebar's item shape
+ */
+export function applyNavOrder(items, orderIds) {
+  if (!Array.isArray(items) || items.length === 0) return items;
+  if (!Array.isArray(orderIds) || orderIds.length === 0) return items;
+
+  const rank = new Map();
+  orderIds.forEach((id, i) => { if (!rank.has(id)) rank.set(id, i); });
+
+  // Group into contiguous sections (same rule as Sidebar.groupBySection).
+  const sections = [];
+  let current = null;
+  for (const item of items) {
+    if (item.sectionLabel || current == null) {
+      current = { label: item.sectionLabel ?? null, items: [] };
+      sections.push(current);
+    }
+    current.items.push(item);
+  }
+
+  const out = [];
+  for (const section of sections) {
+    const ordered = section.items
+      .map((item, i) => ({ item, i }))
+      .sort((a, b) => {
+        const ra = rank.has(a.item.id) ? rank.get(a.item.id) : Infinity;
+        const rb = rank.has(b.item.id) ? rank.get(b.item.id) : Infinity;
+        if (ra !== rb) return ra - rb;       // both/one ordered → by saved index
+        return a.i - b.i;                    // both unordered → default order (stable)
+      })
+      .map(({ item }) => item);
+
+    ordered.forEach((item, idx) => {
+      const copy = { ...item };
+      if (idx === 0) {
+        if (section.label != null) copy.sectionLabel = section.label;
+        else delete copy.sectionLabel;
+      } else {
+        delete copy.sectionLabel;
+      }
+      out.push(copy);
+    });
+  }
+  return out;
+}
+
 // ── Workspace / Both layouts (Nav redesign PR-4) ──────────────────────────────
 // `workspace` and `both` are alternative PRESENTATIONS of the same producingManager
 // item set above — NOT a new item set (the governing invariant). The partition
