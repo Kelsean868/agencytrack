@@ -575,6 +575,7 @@ export default function AgentDashboard() {
       onSignOut={handleSignOut}
       onPullRefresh={PTR_AGENT_TABS.has(activeTab) ? onPullRefresh : undefined}
       navScopeId={user?.uid}
+      quickAddActions={getQuickAddActions('agent')}
       pinnedItems={pinnedItems}
       isPinned={isPinned}
       onPin={pin}

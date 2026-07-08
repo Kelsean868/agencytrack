@@ -469,6 +469,7 @@ export default function ManagerDashboard() {
       bottomNavItems={isProducingManager ? BOTTOM_NAV_PRODUCING : BOTTOM_NAV}
       drawerNavItems={drawerNavItems}
       navScopeId={user?.uid}
+      quickAddActions={getQuickAddActions(isProducingManager ? 'producingManager' : 'manager')}
       onAction={handleMgrAction}
       activeTab={activeTab}
       setActiveTab={setActiveTab}

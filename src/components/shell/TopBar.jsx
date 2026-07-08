@@ -1,3 +1,7 @@
+// Explicit React import — required for Vitest compatibility per banked rule
+// (Vite applies the automatic JSX transform but Vitest does not always);
+// surfaced when TopBar.test.jsx first mounted this directly (Tier 1 · 1.1).
+import React from 'react';
 import { Sun, Moon, Search } from 'lucide-react';
 import NotificationBell from '../ui/NotificationBell';
 import SyncIndicator from '../ui/SyncIndicator';
@@ -5,15 +9,19 @@ import SyncIndicator from '../ui/SyncIndicator';
 /**
  * Topbar chrome (Design System v2 — B4).
  *
- * Owns: page title + crumb (left), placeholder search field (centre, no-op
- * per PRD Q7), per-page action slot, SyncIndicator + NotificationBell +
- * dark-mode toggle (right).
+ * Owns: page title + crumb (left), command-palette search trigger (centre),
+ * per-page action slot, SyncIndicator + NotificationBell + dark-mode toggle
+ * (right).
+ *
+ * The centre search field is a button that opens the Cmd-K command palette
+ * (Fable Tier 1 · 1.1) — it was a no-op placeholder input before. Shell owns the
+ * palette state and passes `onOpenSearch`.
  *
  * Sign-out lives in the sidebar foot, NOT here (locked decision).
  *
  * At <768px the search and crumb collapse via @media in index.css.
  */
-export default function TopBar({ title, crumb, actions }) {
+export default function TopBar({ title, crumb, actions, onOpenSearch }) {
   const toggleDark = () => {
     const isDark = document.documentElement.classList.toggle('dark');
     try {
@@ -33,14 +41,17 @@ export default function TopBar({ title, crumb, actions }) {
         {crumb && <div className="topbar-crumb">{crumb}</div>}
       </div>
 
-      <div className="topbar-search">
+      <button
+        type="button"
+        className="topbar-search"
+        onClick={onOpenSearch}
+        aria-label="Search screens and actions (Command palette)"
+        aria-keyshortcuts="Meta+K Control+K"
+      >
         <Search size={14} aria-hidden="true" />
-        <input
-          type="search"
-          placeholder="Search…"
-          aria-label="Search"
-        />
-      </div>
+        <span className="topbar-search-placeholder">Search…</span>
+        <kbd className="topbar-search-kbd" aria-hidden="true">⌘K</kbd>
+      </button>
 
       <div className="topbar-actions">
         {actions}

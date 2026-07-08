@@ -1499,13 +1499,16 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Command-palette search trigger (Fable Tier 1 · 1.1) — a button styled like the
+   former placeholder input; opens the Cmd-K palette on click. */
 .topbar-search {
   margin-left: 16px;
   flex: 1;
   max-width: 280px;
   position: relative;
-}
-.topbar-search input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   padding: 9px 12px 9px 36px;
   border-radius: 9px;
@@ -1513,16 +1516,31 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   background: var(--color-surface-muted);
   font-size: 13px;
   color: var(--color-text);
-  outline: none;
   font-family: inherit;
+  cursor: pointer;
+  text-align: left;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .topbar-search input { transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out); }
+  .topbar-search { transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out); }
 }
-.topbar-search input::placeholder { color: var(--color-text-faint); }
-.topbar-search input:focus {
+.topbar-search:hover { background: var(--color-surface); }
+.topbar-search:focus-visible {
+  outline: none;
   border-color: var(--color-primary);
   background: var(--color-surface);
+}
+.topbar-search-placeholder { flex: 1; color: var(--color-text-faint); }
+.topbar-search-kbd {
+  flex-shrink: 0;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 5px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
 }
 .topbar-search svg {
   position: absolute;
