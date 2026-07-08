@@ -5,6 +5,42 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## React Query — DON'T-ADOPT (now); re-evaluate only on a real caching trigger (banked 2026-07-07, PR #830, MEDIUM — architecture)
+
+Recon (`docs/audits/react-query-adoption-recon-2026-07-07.md`) mapped all server-data fetch patterns for the motion pop-in rollout and recommended **not** adopting React Query at this time: the pop-in is a loading-state defect (skeletons fix the visible symptom directly — see the `PanelSkeleton` kit, PR #832) not a caching defect, and adding a foundational dependency + cache-invalidation mental model to a solo non-dev's pre-pilot codebase is poor cost/benefit right now. On the fit axis it is a clean match (only 3 live `onSnapshot` surfaces in the whole non-test tree; ~95% of reads already route through a uniform `src/services/` layer, so it can slot in panel-by-panel later with zero rework).
+
+**Re-evaluation trigger (Rule 23 falsifier — any one of):** a mutation→stale-read bug surfaces; shared data is measured refetching redundantly across panels; live-listener count crosses roughly a few dozen per session (today's curated prefetch-on-idle set from the popin-allroles sweep totals ~6 agent / ~4 UM-BM / ~1 SM / 0 TA). Strongest evidence to settle it either way: a `motion-verifier.mjs` sweep run again after the S1 skeleton rollout lands — if pop-in persists on panels that already have skeletons (per the `docs/audits/popin-allroles-sweep-2026-07-07.md` finding that `policy-ledger`'s existing skeleton did NOT fully fix its pop), that's evidence the defect is caching-shaped after all.
+
+**Not blocking anything today.** No action required unless the trigger fires.
+
+---
+
+## Motion pop-in rollout — skeleton kit built, not yet wired to any live panel (banked 2026-07-07, PR #832 harvest + PR #833 worklist, MEDIUM — pre-pilot polish)
+
+`src/components/ui/PanelSkeleton.jsx` (list/card-grid/metric-row/table variants, reduced-motion-safe) exists as a standalone kit but is deliberately not imported by any live component yet. The full panel-by-panel worklist (which panels get SKELETON vs PREFETCH vs BOTH, worst-first/shared-first rollout order) is in `docs/audits/popin-allroles-sweep-2026-07-07.md` — worst offenders are shared panels reused across roles (production-report 47% late-DOM, compliance 55%, leaderboard all 4 roles, policy-ledger 43% despite already having *a* skeleton — footprint-matched skeleton + S2 gentle reveal needed, not just any skeleton shape). Two design-system deltas are flagged in `docs/design-system/skeleton-kit.md` for the operator to settle at rollout time (fill = `bg-surface-muted`+pulse vs the addendum's `--skeleton` gradient token; variant vocabulary vs the addendum's `cards`/`table`/`timeline`/`detail` archetypes).
+
+**Also open:** extend the #829 dashboard-idle prefetch pattern (agent Game Plan only today) to `mp-game-plan` for BM/UM — the manager producer surface was outside the #829 PR's scope and still fails the pop-in check (BM 218ms/30% late, UM 145ms/16% late).
+
+---
+
+## Design-conformance backlog — 12 NEEDS-RULING operator decisions block sequencing (banked 2026-07-07, PR #836, HIGH — blocks the active build map)
+
+`docs/audits/design-conformance-2026-07-07.md` is now the active build map (see CONTEXT.md § Active track) but ~30 findings are NEEDS-RULING — valid design elements with no live equivalent where building them is a product/scope call, not a bug fix. The 14 enumerated in the PR body (command palette adopt-or-not, Persistency v2 rolling/per-policy model — Tatil sign-off pending, Policy Ledger campaign-proof lens + Awards provenance system scope, interactive Agent Report View vs download-only PDF, Settings v2 consolidated surface scope, Monthly Recruiting kanban vs no-CRM guardrail confirmation, Campaigns money-adjacent mechanic scope, WARs reviewer workflow, Team Planner vs Money-Needs-reader track confirmation, agent Prospect Prep tab gating, onboarding-wizard unwired-steps dead-code-vs-flow-to-wire, SM cross-branch views timing, Kiosk theatrical surface adopt-or-not, admin exception-lead home rule) block sequencing past the systemic-contract-sweep tier (§1 four-states/§2 motion/§4 focus-trap/§5 dense-table — Tier 0, no ruling needed, can start immediately). **Action:** operator works through the 14-item list; each ruling unblocks its dependent slice of the backlog.
+
+---
+
+## Data-architecture phase docs — net-new surfaces from #836 need dedicated design docs before dispatch (banked 2026-07-07, MEDIUM — process)
+
+Several #836 MISSING findings are **whole unbuilt surfaces with a real data-model shape** (CRO/back-office delivery register + 30-day clawback clock, Policy Ledger campaign-proof lens, Awards provenance system, interactive Agent Report View, Settings v2 consolidated surface) that don't yet have a Phase-7-8-PRD-style design doc the way Tracks D–H do (`docs/phase7-8-PRD.md` + `docs/phase7-8-implementation.md`). Dispatching straight from the conformance audit's one-line MISSING description risks under-specified Phase 1 audits (Methodology Rule 2/17) for anything that needs a new collection or write path. **Action:** before any of these five gets a kickoff brief, author a short design doc (collection shape, write surface, read surface, rules/index needs — the same checklist as CLAUDE.md's "Brief-completeness sub-bullet: enumerate the full architectural unit") rather than briefing directly from the audit line-item.
+
+---
+
+## Post-redesign promotion review — no rules/functions changes accumulated during the reskin+conformance-audit window (banked 2026-07-08, LOW — housekeeping/confirmation)
+
+The #824–#839 batch (motion verifier, Game Plan pop-in fix, mobile nav v2, design-docs reconciliation, staging setup) is entirely frontend/docs — `git log` confirms none of the 15 PRs touch `functions/` or `firestore.rules`/`firestore.indexes.json`. This is a **standing confirmation checkpoint, not an open task**: the next session that dispatches a rules- or functions-touching PR out of the design-conformance backlog (e.g. any NEEDS-RULING item that gains a write path) should re-run this check to confirm the promotion-review gate (CLAUDE.md § Workflow — "`firebase deploy` pre-flight", "Additive Firestore rules / Cloud Functions" carve-out) is applied fresh rather than assumed clean from this window. Re-open only if a rules/functions diff is found that bypassed review.
+
+---
+
 ## EFF Phase-1 — two follow-ups banked from PR #802 bot review (2026-07-05, LOW)
 
 Both surfaced by Gemini + CodeRabbit on the EFF Phase-1 render/read-hygiene PR and dispositioned as bank-not-implement (the frozen-`now` one is a DISAGREE the dispatcher may re-rule at merge; the chunk-util one is OUT-OF-SCOPE per the brief).
