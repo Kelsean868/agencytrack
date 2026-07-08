@@ -5,6 +5,8 @@ import { extractFields, extractTotalProductionCredit } from '../utils/extractFie
 import { buildManagerActivityEvents } from '../utils/buildManagerActivityEvents';
 import { computeEarnedBadges, BADGE_KEY_ORDER } from '../components/gamification/BadgeGrid';
 import { UM_MANDATORY_FILING_CUTOFF } from '../utils/complianceDerive';
+import { deriveExceptions } from '../utils/managerExceptions';
+import { resolveAnnualAPIFloor } from '../utils/tenureFloors';
 
 /**
  * useBranchOverview — composing hook for the M2 Manager Overview hero.
@@ -181,6 +183,56 @@ export function useBranchOverview(role, userProfile, tenantId) {
     [productionScopedSubs, userMap, now]
   );
 
+  // ── Exception-first lead (Fable 1.5) ──────────────────────────────────────
+  // Agents needing attention, derived read-light from data already loaded
+  // (ytdSubs + users + companyMinimums). Scoped to the same agents-only set
+  // that drives compliance. Persistency-/daily-activity-based exceptions are
+  // intentionally out of scope (that data is not loaded on the overview).
+  const exceptions = useMemo(
+    () => deriveExceptions({
+      users, subs: ytdSubs, companyMins, scopeIds: complianceScopeIds, now,
+    }),
+    [users, ytdSubs, companyMins, complianceScopeIds, now]
+  );
+
+  const needAttentionCount = exceptions.length;
+  const onPaceCount = Math.max(0, inScopeAgentCount - needAttentionCount);
+
+  // Rolled-up company floor for the cascade marker — sum of per-agent tenure
+  // floors across the in-scope agents (honest per-agent floors, not flat×count).
+  const companyFloorTotal = useMemo(() => {
+    const tenureApiFloors = companyMins?.tenureApiFloors;
+    return users
+      .filter((u) => u.role === 'agent' && complianceScopeIds.has(u.id))
+      .reduce(
+        (sum, u) => sum + resolveAnnualAPIFloor({ contractStartDate: u.contractStartDate, tenureApiFloors, now }),
+        0
+      );
+  }, [users, companyMins, complianceScopeIds, now]);
+
+  // Most-recent-week pulse (API / apps / FFI) — the last element of each KPI
+  // series (last4Weeks is oldest→newest). Null-safe when there is no data yet.
+  const weeklyPulse = useMemo(() => {
+    const last = (arr) => (arr.length ? arr[arr.length - 1] : 0);
+    return {
+      api: last(kpiData.api),
+      apps: last(kpiData.apps),
+      ffi: last(kpiData.ffi),
+    };
+  }, [kpiData]);
+
+  // Per-agent submission index for the drill drawer (reuses already-loaded
+  // ytdSubs — no per-open submission fetch). Keyed by agentId.
+  const submissionsByAgent = useMemo(() => {
+    const map = {};
+    ytdSubs.forEach((s) => {
+      const aid = s.agentId ?? s.userId ?? '';
+      if (!aid) return;
+      (map[aid] = map[aid] ?? []).push(s);
+    });
+    return map;
+  }, [ytdSubs]);
+
   // Team badge counts: { key, count } sorted by count desc, top 8
   const badgeCounts = useMemo(() => {
     if (productionScopedSubs.length === 0) return [];
@@ -217,5 +269,12 @@ export function useBranchOverview(role, userProfile, tenantId) {
     kpiData,
     activityEvents,
     badgeCounts,
+    // Fable 1.5 — exception-first lead + cascade strip
+    exceptions,
+    needAttentionCount,
+    onPaceCount,
+    companyFloorTotal,
+    weeklyPulse,
+    submissionsByAgent,
   };
 }
