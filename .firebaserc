@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "agencytrack-2a610"
+    "default": "agencytrack-2a610",
+    "staging": "agencytrack-staging"
   },
   "targets": {},
   "etags": {

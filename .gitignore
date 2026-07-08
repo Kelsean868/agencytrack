@@ -24,6 +24,10 @@ dist-ssr
 service-account-key.json
 scripts/service-account-key.json
 functions/service-account-key.json
+# Staging-project service account key — NEVER COMMIT (bare pattern covers all
+# depths; explicit functions/ path mirrors the prod-key entries above).
+service-account-key.staging.json
+functions/service-account-key.staging.json
 functions/seed-agent-names.cjs
 functions/seed-company-minimums.cjs
 
@@ -137,6 +141,9 @@ graphify-out/????-??-??/
 .env
 .env.*
 !.env.example
+# Staging env TEMPLATE only (no real keys). The real .env.staging stays ignored
+# by the .env.* rule above.
+!.env.staging.example
 
 # Motion verifier capture output (frames, meta, mp4/gif artifacts) — never committed
 scripts/verification/out/
