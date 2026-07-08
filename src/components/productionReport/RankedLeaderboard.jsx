@@ -1,4 +1,5 @@
 import React from 'react';
+import { Trophy } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
 /**
@@ -23,8 +24,10 @@ export default function RankedLeaderboard({
 
   if (visible.length === 0) {
     return (
-      <div className="text-center py-6 text-ink-muted text-sm">
-        No data for this period.
+      <div className="text-center py-6 flex flex-col items-center gap-2" data-testid="ranked-leaderboard-empty">
+        <Trophy size={20} className="text-ink-muted" aria-hidden="true" />
+        <p className="text-sm font-semibold text-ink">No {valueLabel.toLowerCase()} recorded yet</p>
+        <p className="text-xs text-ink-muted">Try a different time period using the toggle above.</p>
       </div>
     );
   }

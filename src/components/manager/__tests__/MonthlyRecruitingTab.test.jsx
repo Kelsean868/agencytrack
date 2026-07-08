@@ -256,7 +256,17 @@ describe('team view — branch_manager', () => {
     hoisted.mockGetRollupsForUpline.mockResolvedValue([]);
     renderTab();
     await flushMount();
+    expect(screen.getByTestId('recruiting-team-empty')).toBeInTheDocument();
     expect(screen.getByText(/no recruiting entries filed/i)).toBeInTheDocument();
+    expect(screen.getByText(/try a different month/i)).toBeInTheDocument();
+  });
+
+  it('0.1b — renders a PanelSkeleton (aria-busy) while team rollups are loading, not bare "Loading…" text', async () => {
+    hoisted.mockGetRollupsForUpline.mockReturnValue(new Promise(() => {}));
+    renderTab();
+    await act(async () => { await Promise.resolve(); });
+    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(screen.queryByText('Loading…')).toBeNull();
   });
 
   it('renders team rollup rows', async () => {
@@ -271,6 +281,16 @@ describe('team view — branch_manager', () => {
     await flushMount();
     expect(screen.getByText('Alice UM')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
+  });
+});
+
+describe('own-form 0.1b loading skeleton', () => {
+  it('renders a PanelSkeleton (aria-busy) while the own rollup is loading', async () => {
+    hoisted.mockGetRollup.mockReturnValue(new Promise(() => {}));
+    renderTab();
+    await act(async () => { await Promise.resolve(); });
+    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(screen.queryByText('Loading…')).toBeNull();
   });
 });
 

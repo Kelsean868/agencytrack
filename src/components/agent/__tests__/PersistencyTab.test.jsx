@@ -110,6 +110,17 @@ describe('agent PersistencyTab', () => {
     await waitFor(() => expect(screen.getByText(/No history yet/i)).toBeInTheDocument());
   });
 
+  describe('0.1b loading skeleton', () => {
+    it('renders a PanelSkeleton (aria-busy) before the first successful load, no "—" placeholder figures', () => {
+      hoisted.getAgentHistory.mockReturnValue(new Promise(() => {}));
+      hoisted.getAvailableMonths.mockReturnValue(new Promise(() => {}));
+      render(<PersistencyTab />);
+
+      expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
+      expect(screen.queryByTestId('agent-persistency-summary')).toBeNull();
+    });
+  });
+
   describe('§1 states contract (error / retry)', () => {
     it('renders a persistent inline error card with Retry when the load fails', async () => {
       hoisted.getAgentHistory.mockRejectedValueOnce(new Error('boom-history'));

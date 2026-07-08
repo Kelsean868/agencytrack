@@ -876,6 +876,7 @@ export default function AgentDashboard() {
           onDownload={handleOpenReportModal}
           generating={generating}
           weeklyTarget={resolvedMinimums?.weeklyActivityFloors?.api ?? 4800}
+          onStartReport={() => setShowWizard(true)}
         />
       )}
       </div>

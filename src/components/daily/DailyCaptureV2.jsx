@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { X, Plus, Loader2, Check, Minus, Flame } from 'lucide-react';
+import PanelSkeleton from '../ui/PanelSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import {
   saveDailyEntry,
@@ -762,17 +763,17 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
       {/* ── Body ── */}
       <main className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <Loader2 size={28} className="animate-spin text-primary" />
-            <p className="text-sm text-ink-muted mt-3">
-              {isBackfill ? 'Loading entry…' : "Loading today’s entry…"}
-            </p>
+          <div className="px-4 py-4 max-w-lg mx-auto">
+            <PanelSkeleton
+              variant="list"
+              count={4}
+              label={isBackfill ? 'Loading entry…' : 'Loading today’s entry…'}
+            />
           </div>
         ) : isTodaySunday ? (
           chipsLoading ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <Loader2 size={28} className="animate-spin text-primary" />
-              <p className="text-sm text-ink-muted mt-3">Loading weekly summary…</p>
+            <div className="px-4 py-4 max-w-lg mx-auto">
+              <PanelSkeleton variant="list" count={3} label="Loading weekly summary…" />
             </div>
           ) : (
             <SundayConfirmView

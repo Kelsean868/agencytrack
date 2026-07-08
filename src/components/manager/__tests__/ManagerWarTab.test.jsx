@@ -99,7 +99,7 @@ afterEach(() => {
 describe('ManagerWarTab — initial render', () => {
   it('shows loading state then renders the form', async () => {
     renderTab();
-    expect(screen.getByText('Loading…')).toBeInTheDocument();
+    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
     await flushMount();
     expect(screen.getByText('My Weekly Activity Report')).toBeInTheDocument();
   });

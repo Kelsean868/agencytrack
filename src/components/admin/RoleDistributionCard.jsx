@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import PanelSkeleton, { SkeletonText } from '../ui/PanelSkeleton';
 
 /**
  * Users-by-role distribution card (Design System v2 — B5, TA-CLEANUP).
@@ -45,31 +46,35 @@ export default function RoleDistributionCard({ users, loading }) {
             Users by role
           </h2>
           <p className="text-sm text-ink-muted mt-0.5">
-            {loading ? 'Loading…' : `Total: ${total}`}
+            <SkeletonText loading={loading} reserveCh={10}>{`Total: ${total}`}</SkeletonText>
           </p>
         </div>
       </div>
 
-      <div className="flex flex-col gap-3.5">
-        {ROLES.map((role) => {
-          const count = counts[role.key];
-          const widthPct = (count / safeTotal) * 100;
-          return (
-            <div key={role.key}>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-sm font-semibold text-ink">{role.label}</span>
-                <span className="text-sm font-bold text-ink">{count}</span>
+      {loading ? (
+        <PanelSkeleton variant="list" count={5} label="Loading users by role…" />
+      ) : (
+        <div className="flex flex-col gap-3.5">
+          {ROLES.map((role) => {
+            const count = counts[role.key];
+            const widthPct = (count / safeTotal) * 100;
+            return (
+              <div key={role.key}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-semibold text-ink">{role.label}</span>
+                  <span className="text-sm font-bold text-ink">{count}</span>
+                </div>
+                <div className="role-bar" role="presentation">
+                  <div
+                    className={`role-bar-fill role-bar-fill-${role.variant}`}
+                    style={{ width: `${widthPct}%` }}
+                  />
+                </div>
               </div>
-              <div className="role-bar" role="presentation">
-                <div
-                  className={`role-bar-fill role-bar-fill-${role.variant}`}
-                  style={{ width: `${widthPct}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
     </section>
   );

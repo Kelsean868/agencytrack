@@ -10,6 +10,7 @@ import {
 } from '../../services/managerStandardOverrideService';
 import { computeMissedActivities } from '../../utils/accountabilityFlag';
 import ManagerWarDetail from './ManagerWarDetail';
+import PanelSkeleton from '../ui/PanelSkeleton';
 
 export default function TeamWarsTab() {
   const { tenantId, role, userProfile } = useAuth();
@@ -100,9 +101,7 @@ export default function TeamWarsTab() {
       </div>
 
       {loading && (
-        <div className="flex items-center justify-center py-16">
-          <span className="text-text-muted text-sm">Loading…</span>
-        </div>
+        <PanelSkeleton variant="list" count={5} label="Loading team activity reports…" />
       )}
 
       {error && (

@@ -8,6 +8,7 @@ import { getRoleLabel, formatCurrency } from '../../utils/formatters';
 import { getTenantUsers, getAllYTDSubmissions } from '../../services/managerService';
 import { listBranches } from '../../services/branchService';
 import { extractFields } from '../../utils/extractFields';
+import { Skeleton } from '../ui/PanelSkeleton';
 import Shell from '../shell/Shell';
 import CompanyConfigPanel from '../admin/CompanyConfigPanel';
 import ActivityStandardsPanel from '../admin/ActivityStandardsPanel';
@@ -69,7 +70,7 @@ const DRAWER_NAV = NAV_ITEMS.filter(
   (item) => item.tabId && !BOTTOM_NAV.find((b) => b.tabId === item.tabId)
 );
 
-function StatCard({ label, value, sub, Icon }) {
+function StatCard({ label, value, sub, Icon, loading }) {
   return (
     <div className="card">
       <div className="flex items-start justify-between gap-3 mb-2">
@@ -78,8 +79,17 @@ function StatCard({ label, value, sub, Icon }) {
           <Icon size={16} aria-hidden="true" />
         </div>
       </div>
-      <p className="text-2xl font-bold text-ink">{value}</p>
-      {sub && <p className="text-xs text-ink-muted mt-1">{sub}</p>}
+      {loading ? (
+        <div className="flex flex-col gap-1.5" role="status" aria-label={`Loading ${label}`}>
+          <Skeleton className="h-7 w-20 rounded" />
+          <Skeleton className="h-3 w-28 rounded" />
+        </div>
+      ) : (
+        <>
+          <p className="text-2xl font-bold text-ink">{value}</p>
+          {sub && <p className="text-xs text-ink-muted mt-1">{sub}</p>}
+        </>
+      )}
     </div>
   );
 }
@@ -247,20 +257,23 @@ export default function TenantAdminDashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <StatCard
               label="Total API · YTD"
-              value={ytdLoading ? '—' : (ytdAPI != null ? formatCurrency(ytdAPI) : '—')}
-              sub={ytdLoading ? 'Loading…' : ytdError ? 'Failed to load' : 'Across all branches, all agents'}
+              loading={ytdLoading}
+              value={ytdAPI != null ? formatCurrency(ytdAPI) : '—'}
+              sub={ytdError ? 'Failed to load' : 'Across all branches, all agents'}
               Icon={TrendingUp}
             />
             <StatCard
               label="Active Users"
-              value={usersLoading ? '—' : usersError ? '—' : `${userStats.active} / ${userStats.total}`}
-              sub={usersLoading ? 'Loading…' : usersError ? 'Failed to load' : `${userStats.total - userStats.active} inactive`}
+              loading={usersLoading}
+              value={usersError ? '—' : `${userStats.active} / ${userStats.total}`}
+              sub={usersError ? 'Failed to load' : `${userStats.total - userStats.active} inactive`}
               Icon={Users}
             />
             <StatCard
               label="Active Branches"
-              value={usersLoading ? '—' : usersError ? '—' : `${userStats.branchCount}`}
-              sub={usersLoading ? 'Loading…' : usersError ? 'Failed to load' : (userStats.branchCount === 1 ? 'Active branch' : 'Active branches')}
+              loading={usersLoading}
+              value={usersError ? '—' : `${userStats.branchCount}`}
+              sub={usersError ? 'Failed to load' : (userStats.branchCount === 1 ? 'Active branch' : 'Active branches')}
               Icon={Building2}
             />
           </div>

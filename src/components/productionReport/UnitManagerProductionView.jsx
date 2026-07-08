@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import PanelSkeleton from '../ui/PanelSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { getTenantUsers, getAllYTDSubmissions } from '../../services/managerService';
 import { formatCurrency } from '../../utils/formatters';
@@ -126,7 +127,12 @@ export default function UnitManagerProductionView() {
   }));
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-ink-muted text-sm">Loading production data…</div>;
+    return (
+      <div className="flex flex-col gap-4" data-testid="unit-production-loading">
+        <PanelSkeleton variant="metric-row" count={4} label="Loading production data…" />
+        <PanelSkeleton variant="table" count={6} columns={5} />
+      </div>
+    );
   }
   if (error || (submissionsError && usersError)) {
     return (

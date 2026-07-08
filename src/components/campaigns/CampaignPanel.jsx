@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import StatusPill from '../ui/StatusPill';
 import TabPills from '../ui/TabPills';
-import { Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Megaphone } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useToast from '../../hooks/useToast';
 import {
@@ -53,7 +53,11 @@ function ProgressTable({ campaign, submissions, allUsers }) {
   }), [participantIds, campaign, submissions, allUsers]);
 
   if (submissions.length === 0) {
-    return <p className="text-xs text-ink-muted italic py-2">No submissions in this campaign period yet.</p>;
+    return (
+      <p className="text-xs text-ink-muted italic py-2">
+        No submissions in this campaign period yet — progress appears here once agents file their weekly reports.
+      </p>
+    );
   }
 
   const targets = campaign.targets ?? [];
@@ -654,10 +658,30 @@ export default function CampaignPanel() {
 
       {/* Campaign list */}
       {visibleCampaigns.length === 0 ? (
-        <div className="card text-center py-10">
-          <p className="text-sm text-ink-muted">
-            {listTab === 'active' ? 'No active campaigns.' : listTab === 'upcoming' ? 'No upcoming campaigns.' : 'No ended campaigns.'}
-          </p>
+        <div className="card text-center py-10 flex flex-col items-center gap-3" data-testid="campaign-list-empty">
+          <div className="p-3 rounded-full bg-surface-muted text-ink-muted">
+            <Megaphone size={24} aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-ink">
+              {listTab === 'active' ? 'No active campaigns' : listTab === 'upcoming' ? 'No upcoming campaigns' : 'No ended campaigns'}
+            </p>
+            <p className="text-sm text-ink-muted mt-0.5">
+              {canCreate
+                ? 'Create a campaign to motivate your team toward a shared goal.'
+                : `Check back later — you'll see ${listTab} campaigns here once your manager sets one up.`}
+            </p>
+          </div>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => { setEditing(null); setFormOpen(true); }}
+              className="min-h-[44px] mt-1 inline-flex items-center gap-2 px-4 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors"
+            >
+              <Plus size={16} aria-hidden="true" />
+              New Campaign
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-3">

@@ -87,7 +87,7 @@ describe('TeamWarsTab — initial render', () => {
   it('shows loading state then renders the list header', async () => {
     mockGetWarsForUpline.mockResolvedValue([]);
     render(<TeamWarsTab />);
-    expect(screen.getByText('Loading…')).toBeInTheDocument();
+    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
     await flush();
     expect(screen.getByText('Team Activity Reports')).toBeInTheDocument();
   });

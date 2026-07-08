@@ -68,3 +68,23 @@ describe('CampaignPanel — §1 states contract (error / retry)', () => {
     expect(getTenantUsers).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('CampaignPanel — 0.1b actionable empty (manager list)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCampaigns.mockResolvedValue([]);
+    getTenantUsers.mockResolvedValue([]);
+  });
+
+  it('shows a "New Campaign" CTA for a manager (canCreate) when the active-campaigns list is empty', async () => {
+    render(<CampaignPanel />);
+
+    const empty = await screen.findByTestId('campaign-list-empty');
+    expect(empty).toHaveTextContent(/no active campaigns/i);
+    const ctas = screen.getAllByRole('button', { name: /new campaign/i });
+    expect(ctas.length).toBeGreaterThan(0);
+    fireEvent.click(ctas[ctas.length - 1]);
+    // Opens the create-campaign form drawer.
+    await waitFor(() => expect(screen.getByText('Scope')).toBeInTheDocument());
+  });
+});

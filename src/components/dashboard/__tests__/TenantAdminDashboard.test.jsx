@@ -110,6 +110,7 @@ vi.mock('../../profile/ProfileScreen', () => ({
 }));
 
 import TenantAdminDashboard from '../TenantAdminDashboard';
+import { getAllYTDSubmissions } from '../../../services/managerService';
 
 describe('TenantAdminDashboard — no placeholder text', () => {
   beforeEach(() => {
@@ -131,6 +132,22 @@ describe('TenantAdminDashboard — no placeholder text', () => {
     });
     expect(screen.queryByText(/System Health/i)).toBeNull();
     expect(screen.queryByText(/Uptime monitoring/i)).toBeNull();
+  });
+});
+
+describe('TenantAdminDashboard — 0.1b stat tile loading skeleton', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders a skeleton (aria-busy) in the YTD stat tile instead of "—" while the fetch is pending', async () => {
+    getAllYTDSubmissions.mockReturnValue(new Promise(() => {}));
+    const { container } = render(<TenantAdminDashboard />);
+    await waitFor(() => {
+      expect(screen.getByText(/Total API · YTD/i)).toBeInTheDocument();
+    });
+    expect(container.querySelector('[aria-busy="true"], [role="status"]')).toBeTruthy();
+    expect(screen.queryByText('—')).toBeNull();
   });
 });
 

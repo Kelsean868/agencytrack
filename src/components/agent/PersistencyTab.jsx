@@ -16,6 +16,7 @@ import {
 } from '../../services/persistencyService';
 import PersistencyEntryForm from '../manager/PersistencyEntryForm';
 import PersistencyPlayground from '../persistency/PersistencyPlayground';
+import PanelSkeleton from '../ui/PanelSkeleton';
 
 function formatPct(decimal) {
   if (!Number.isFinite(decimal)) return '—';
@@ -77,6 +78,19 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
     monthKey: r.monthKey,
     pct: Number.isFinite(r.persistency) ? Math.round(r.persistency * 1000) / 10 : null,
   })), [history]);
+
+  // First paint only — before any successful load, show a skeleton instead of
+  // the "—" placeholder figures. Once data has loaded once, a Retry-driven
+  // reload keeps showing the existing content in place (matches the 0.1a
+  // error+Retry contract; only the very first render is a true unknown).
+  if (loading && monthKeys.length === 0 && !error) {
+    return (
+      <div className="flex flex-col gap-4" data-testid="agent-persistency-tab">
+        <PanelSkeleton variant="metric-row" count={1} label="Loading persistency…" />
+        <PanelSkeleton variant="list" count={3} />
+      </div>
+    );
+  }
 
   // §2 staggered-assemble — the self-entry form + playground are fixed-
   // position overlays rendered outside the `.stagger` container (same

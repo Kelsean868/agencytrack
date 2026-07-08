@@ -6,6 +6,7 @@ import { saveWarDraft, submitWar, getWar, getOwnJfwCount } from '../../services/
 import { getResolvedStandards } from '../../services/managerStandardOverrideService';
 import { computeMissedActivities } from '../../utils/accountabilityFlag';
 import AccountabilityFlagPanel from './AccountabilityFlagPanel';
+import PanelSkeleton, { SkeletonText } from '../ui/PanelSkeleton';
 
 const AUTOSAVE_DELAY = 1500;
 
@@ -171,8 +172,8 @@ export default function ManagerWarTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <span className="text-text-muted text-sm">Loading…</span>
+      <div className="max-w-2xl mx-auto">
+        <PanelSkeleton variant="list" count={4} label="Loading your weekly activity report…" />
       </div>
     );
   }
@@ -344,7 +345,9 @@ export default function ManagerWarTab() {
             </button>
           </span>
         ) : jfwCount === null ? (
-          <span className="text-xs text-text-muted" aria-label="Joint Field Work count loading">Loading…</span>
+          <span role="status" aria-label="Joint Field Work count loading">
+            <SkeletonText loading reserveCh={6} className="text-xs" />
+          </span>
         ) : (
           <ActualTarget
             actual={jfwCount}

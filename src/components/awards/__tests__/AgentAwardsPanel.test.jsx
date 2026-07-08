@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // ── Mock auth ────────────────────────────────────────────────────────────────
 vi.mock('../../../context/AuthContext', () => ({
@@ -236,5 +236,32 @@ describe('AgentAwardsPanel — §1 states contract (error / retry)', () => {
     });
     // Not the blocking full-failure card.
     expect(document.querySelector('[data-testid="agent-awards-error"]')).not.toBeInTheDocument();
+  });
+});
+
+describe('AgentAwardsPanel — 0.1b actionable empty (category filter)', () => {
+  it('switching to a category with no awards shows a "View all categories" CTA that resets the filter', async () => {
+    computeAgentAwards.mockReturnValue({});
+
+    render(
+      <AgentAwardsPanel
+        submissions={[{ id: 'sub-1' }]}
+        confirmedSettlements={SETTLEMENTS}
+        agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: false }}
+      />
+    );
+
+    // "All" is empty too (mocked computeAgentAwards returns no awards) but has no reset CTA.
+    expect(await screen.findByTestId('agent-awards-empty-category')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /view all categories/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^monthly$/i }));
+
+    expect(await screen.findByTestId('agent-awards-empty-category')).toHaveTextContent(/monthly/i);
+    const resetButton = screen.getByRole('button', { name: /view all categories/i });
+    fireEvent.click(resetButton);
+
+    // Back on "All" — reset CTA disappears again.
+    await waitFor(() => expect(screen.queryByRole('button', { name: /view all categories/i })).toBeNull());
   });
 });

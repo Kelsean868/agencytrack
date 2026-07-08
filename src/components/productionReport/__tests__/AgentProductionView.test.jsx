@@ -358,6 +358,19 @@ describe('AgentProductionView — where-you-rank panel', () => {
 // still shows.
 // ─────────────────────────────────────────────────────────────────────────────
 
+describe('AgentProductionView — 0.1b loading skeleton', () => {
+  it('renders a PanelSkeleton (aria-busy) while both sub-fetches are pending, never bare text', async () => {
+    hoisted.getAgentSubmissions.mockReturnValue(new Promise(() => {}));
+    hoisted.getTenantUsers.mockReturnValue(new Promise(() => {}));
+
+    render(<AgentProductionView />);
+
+    expect(screen.getByTestId('agent-production-loading')).toBeInTheDocument();
+    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(screen.queryByText(/Loading production data…/i)).toBeNull();
+  });
+});
+
 describe('AgentProductionView — §1 states contract (error / partial / retry)', () => {
   it('both sub-fetches failing renders a blocking error card with Retry', async () => {
     hoisted.getAgentSubmissions.mockRejectedValue(new Error('boom-subs'));

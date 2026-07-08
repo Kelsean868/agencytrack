@@ -11,6 +11,7 @@ import {
   setAgentOfMonth,
 } from '../../services/agentOfMonthService';
 import AOMCategorySection from './AOMCategorySection';
+import PanelSkeleton from '../ui/PanelSkeleton';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -169,7 +170,7 @@ export default function AgentOfMonthTab() {
       )}
 
       {loading && !candidates && (
-        <div className="py-16 text-center text-ink-muted text-sm">Loading candidates…</div>
+        <PanelSkeleton variant="card-grid" count={3} label="Loading candidates…" />
       )}
 
       {candidates && (

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import PanelSkeleton from '../ui/PanelSkeleton';
 
 /**
  * Branch overview card (Design System v2 — B5, TA-CLEANUP).
@@ -73,7 +74,7 @@ export default function BranchHealthCards({ users, branches, loading }) {
       </div>
 
       {loading && grouped.length === 0 ? (
-        <p className="text-sm text-ink-muted italic">Loading branches…</p>
+        <PanelSkeleton variant="list" count={3} label="Loading branches…" />
       ) : grouped.length === 0 ? (
         <p className="text-sm text-ink-muted italic">
           No branches found. Branches are derived from user records.

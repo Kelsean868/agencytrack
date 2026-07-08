@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Trophy, ChevronDown, ChevronRight, Loader2, AlertTriangle, CheckCircle, Plus, Trash2 } from 'lucide-react';
+import PanelSkeleton from '../ui/PanelSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { getAwardsRuleset, setAwardsRuleset } from '../../services/awardsRulesetService';
 
@@ -629,10 +630,7 @@ export default function AwardsRulesetPanel() {
       )}
 
       {loading && !loadError && (
-        <div className="flex items-center gap-2 py-6 text-ink-muted text-sm">
-          <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-          <span>Loading ruleset…</span>
-        </div>
+        <PanelSkeleton variant="list" count={5} label="Loading ruleset…" />
       )}
 
       {!loading && !loadError && formState && arrayState && (

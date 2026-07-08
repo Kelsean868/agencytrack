@@ -361,11 +361,12 @@ describe('DailyCaptureV2', () => {
     );
   });
 
-  it('loading spinner is shown while getDailyEntry is pending', () => {
+  it('loading skeleton (PanelSkeleton) is shown while getDailyEntry is pending', () => {
     // Never resolve so loading stays true
     hoisted.getDailyEntry.mockReturnValue(new Promise(() => {}));
     render(<DailyCaptureV2 onClose={vi.fn()} />);
-    expect(document.querySelector('.animate-spin')).toBeTruthy();
+    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(document.querySelector('.animate-spin')).toBeFalsy();
   });
 
   it('shows error message when getDailyEntry rejects', async () => {

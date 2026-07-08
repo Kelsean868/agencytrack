@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import PanelSkeleton from '../ui/PanelSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { getAgentSubmissions } from '../../services/submissionService';
 import { getTenantUsers } from '../../services/managerService';
@@ -151,7 +152,12 @@ export default function AgentProductionView() {
   const persDisplay = Number.isFinite(persDecimal) ? `${(persDecimal * 100).toFixed(1)}%` : '—';
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-ink-muted text-sm">Loading production data…</div>;
+    return (
+      <div className="flex flex-col gap-4" data-testid="agent-production-loading">
+        <PanelSkeleton variant="metric-row" count={3} label="Loading production data…" />
+        <PanelSkeleton variant="table" count={5} columns={4} />
+      </div>
+    );
   }
   if (error || (submissionsError && usersError)) {
     return (

@@ -86,7 +86,9 @@ describe('ProductionTable', () => {
 
   it('shows empty state message for empty rows', () => {
     render(<ProductionTable rows={[]} period="week" />);
+    expect(screen.getByTestId('production-table-empty')).toBeInTheDocument();
     expect(screen.getByText(/No production data/i)).toBeInTheDocument();
+    expect(screen.getByText(/Try a different time period/i)).toBeInTheDocument();
   });
 
   it('renders agent name', () => {
@@ -166,7 +168,9 @@ describe('RankedLeaderboard', () => {
 
   it('shows empty state for no entries', () => {
     render(<RankedLeaderboard entries={[]} />);
-    expect(screen.getByText(/No data/i)).toBeInTheDocument();
+    expect(screen.getByTestId('ranked-leaderboard-empty')).toBeInTheDocument();
+    expect(screen.getByText(/No api recorded yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/Try a different time period/i)).toBeInTheDocument();
   });
 
   it('renders all entries without topN', () => {

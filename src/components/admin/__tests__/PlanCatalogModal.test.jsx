@@ -71,6 +71,17 @@ beforeEach(() => {
   hoisted.dismissPendingPlan.mockResolvedValue();
 });
 
+// ── 0.1b loading skeleton ─────────────────────────────────────────────────────
+
+describe('PlanCatalogModal — 0.1b loading skeleton', () => {
+  it('renders a PanelSkeleton (aria-busy) while the catalog is loading', () => {
+    hoisted.getPolicyPlans.mockReturnValue(new Promise(() => {}));
+    renderModal();
+    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(document.querySelector('.animate-spin')).toBeNull();
+  });
+});
+
 // ── Active Plans tab ──────────────────────────────────────────────────────────
 
 describe('Active Plans tab', () => {

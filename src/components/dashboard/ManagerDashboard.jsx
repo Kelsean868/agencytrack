@@ -615,7 +615,7 @@ export default function ManagerDashboard() {
         {activeTab === 'mp-money-needs' && <MoneyNeedsPanel />}
 
         {activeTab === 'mp-history' && (
-          <HistoryTab submissions={myProd.allSubmissions} />
+          <HistoryTab submissions={myProd.allSubmissions} onStartReport={() => setShowWizard(true)} />
         )}
 
         {activeTab === 'mp-commission' && (

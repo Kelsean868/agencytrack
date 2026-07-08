@@ -41,7 +41,8 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { X, Check, AlertTriangle, RotateCcw, Loader2 } from 'lucide-react';
+import { X, Check, AlertTriangle, RotateCcw } from 'lucide-react';
+import PanelSkeleton from '../ui/PanelSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import WeekSoFarPanel from './v2chrome/WeekSoFarPanel';
 import ReviewSubmit from './v2chrome/ReviewSubmit';
@@ -681,13 +682,10 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
             </>
           ) : (
             <div
-              className="flex flex-col items-center justify-center py-16"
+              className="px-4 py-4 max-w-lg mx-auto"
               data-testid="wizard-v2-confirm-loading"
-              role="status"
-              aria-live="polite"
             >
-              <Loader2 size={28} className="animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
-              <p className="text-sm text-ink-muted mt-3">Loading your week…</p>
+              <PanelSkeleton variant="list" count={4} label="Loading your week…" />
             </div>
           )
         )}
@@ -727,13 +725,10 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
             </>
           ) : (
             <div
-              className="flex flex-col items-center justify-center py-16"
+              className="px-4 py-4 max-w-lg mx-auto"
               data-testid="wizard-v2-step-loading"
-              role="status"
-              aria-live="polite"
             >
-              <Loader2 size={28} className="animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
-              <p className="text-sm text-ink-muted mt-3">Loading your week…</p>
+              <PanelSkeleton variant="list" count={4} label="Loading your week…" />
             </div>
           )
         )}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Download, Loader2, ChevronRight, Flame } from 'lucide-react';
+import { Download, Loader2, ChevronRight, Flame, FileClock, Plus } from 'lucide-react';
 import { extractFields } from '../../utils/extractFields';
 import { computeSubmissionStreak } from '../../utils/submissionStreak';
 
@@ -442,7 +442,7 @@ function WeekCard({ s, prevS, sparkValues, onClick }) {
 }
 
 // ── HistoryTab (default export) ───────────────────────────────────────────────
-export default function HistoryTab({ submissions, onView, loading, onDownload, generating, weeklyTarget = 4800 }) {
+export default function HistoryTab({ submissions, onView, loading, onDownload, generating, weeklyTarget = 4800, onStartReport }) {
   const [filterStatus, setFilterStatus] = useState('all');
   const thisYear = new Date().getFullYear();
 
@@ -502,8 +502,24 @@ export default function HistoryTab({ submissions, onView, loading, onDownload, g
 
   if (!submissions?.length) {
     return (
-      <div className="card text-center py-12">
-        <p className="text-sm text-ink-muted">No submissions yet — start submitting weekly reports to see your history here.</p>
+      <div className="card text-center py-12 flex flex-col items-center gap-3" data-testid="history-empty-state">
+        <div className="p-3 rounded-full bg-primary/10 text-primary">
+          <FileClock size={28} aria-hidden="true" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-ink">No submissions yet</p>
+          <p className="text-sm text-ink-muted mt-0.5">Your weekly reports will show up here once you submit your first one.</p>
+        </div>
+        {onStartReport && (
+          <button
+            type="button"
+            onClick={onStartReport}
+            className="min-h-[44px] mt-1 inline-flex items-center gap-2 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors"
+          >
+            <Plus size={16} aria-hidden="true" />
+            Log your first report
+          </button>
+        )}
       </div>
     );
   }

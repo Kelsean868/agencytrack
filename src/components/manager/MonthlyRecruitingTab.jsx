@@ -16,6 +16,8 @@ import {
   saveRollupDraft, submitRollup, getRollup, getRollupsForUpline,
 } from '../../services/managerMonthlyRollupService';
 import { formatMonthKey, recentMonthKeys } from '../../utils/monthKeyHelpers';
+import { Users2 } from 'lucide-react';
+import PanelSkeleton from '../ui/PanelSkeleton';
 
 const CAN_FILE      = ['unit_manager', 'branch_manager', 'sales_manager'];
 const CAN_VIEW_TEAM = ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'];
@@ -181,9 +183,7 @@ export default function MonthlyRecruitingTab() {
             </div>
 
             {ownLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <span className="text-text-muted text-sm">Loading…</span>
-              </div>
+              <PanelSkeleton variant="list" count={3} label="Loading your recruiting rollup…" />
             ) : ownLoadError ? (
               <div
                 role="alert"
@@ -324,9 +324,7 @@ export default function MonthlyRecruitingTab() {
             </div>
 
             {teamLoading && (
-              <div className="flex items-center justify-center py-12">
-                <span className="text-text-muted text-sm">Loading…</span>
-              </div>
+              <PanelSkeleton variant="list" count={4} label="Loading team recruiting rollups…" />
             )}
 
             {teamError && (
@@ -343,8 +341,10 @@ export default function MonthlyRecruitingTab() {
             )}
 
             {!teamLoading && !teamError && rollups.length === 0 && (
-              <div className="rounded-xl bg-card p-8 text-center text-sm text-text-muted">
-                No recruiting entries filed for {formatMonthKey(teamMonth)}.
+              <div className="rounded-xl bg-card p-8 text-center flex flex-col items-center gap-2" data-testid="recruiting-team-empty">
+                <Users2 size={22} className="text-text-muted" aria-hidden="true" />
+                <p className="text-sm font-semibold text-text">No recruiting entries filed for {formatMonthKey(teamMonth)}</p>
+                <p className="text-xs text-text-muted">No one on your team has filed a rollup for this month yet — try a different month using the selector above.</p>
               </div>
             )}
 

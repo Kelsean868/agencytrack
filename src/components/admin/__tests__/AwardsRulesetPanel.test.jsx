@@ -40,6 +40,15 @@ function openSection(label) {
   fireEvent.click(btn);
 }
 
+describe('AwardsRulesetPanel — 0.1b loading skeleton', () => {
+  it('renders a PanelSkeleton (aria-busy) while the ruleset is loading', () => {
+    hoisted.mockGet.mockReturnValue(new Promise(() => {}));
+    const { container } = render(<AwardsRulesetPanel />);
+    expect(container.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(container.querySelector('.animate-spin')).toBeNull();
+  });
+});
+
 describe('AwardsRulesetPanel — array row editors', () => {
   it('add row increments the row count for activityAwards', async () => {
     await renderPanel();

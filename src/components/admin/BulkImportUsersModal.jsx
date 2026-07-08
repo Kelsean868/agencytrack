@@ -4,6 +4,7 @@ import {
   AlertCircle, Upload, Building2,
 } from 'lucide-react';
 import useFocusTrap from '../../hooks/useFocusTrap';
+import PanelSkeleton from '../ui/PanelSkeleton';
 import {
   parseCSV, prepareImport, runImport,
   buildErrorCSV, buildTemplateCSV, downloadCSV, generateBatchId, LIMITS,
@@ -316,10 +317,7 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
           {step === 1 && (
             <div className="flex flex-col gap-4">
               {branchesLoading && (
-                <div className="flex items-center gap-2 text-sm text-ink-muted py-6">
-                  <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-                  Loading branches…
-                </div>
+                <PanelSkeleton variant="list" count={2} label="Loading branches…" />
               )}
 
               {!branchesLoading && branchLoadError && (

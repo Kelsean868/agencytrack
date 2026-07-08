@@ -1,4 +1,5 @@
 import React from 'react';
+import { BarChart3 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
 /**
@@ -11,8 +12,10 @@ import { formatCurrency } from '../../utils/formatters';
 export default function ProductionTable({ rows = [], showRankColumn = false, period }) {
   if (rows.length === 0) {
     return (
-      <div className="text-center py-8 text-ink-muted text-sm">
-        No production data for this period.
+      <div className="text-center py-8 flex flex-col items-center gap-2" data-testid="production-table-empty">
+        <BarChart3 size={22} className="text-ink-muted" aria-hidden="true" />
+        <p className="text-sm font-semibold text-ink">No production data for this period</p>
+        <p className="text-xs text-ink-muted">Try a different time period using the toggle above.</p>
       </div>
     );
   }

@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Trophy } from 'lucide-react';
 import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../../utils/awardsEngine';
 import { formatCurrency } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
@@ -263,8 +263,27 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       )}
 
       {filteredAwards.length === 0 && (
-        <div className="card text-center py-10">
-          <p className="text-sm text-ink-muted">No awards in this category.</p>
+        <div className="card text-center py-10 flex flex-col items-center gap-3" data-testid="agent-awards-empty-category">
+          <div className="p-3 rounded-full bg-surface-muted text-ink-muted">
+            <Trophy size={24} aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-ink">No awards in this category</p>
+            <p className="text-sm text-ink-muted mt-0.5">
+              {activeCategory === 'All'
+                ? 'Awards appear here as your activity qualifies for them.'
+                : `Nothing tracked under ${activeCategory} yet — try another category.`}
+            </p>
+          </div>
+          {activeCategory !== 'All' && (
+            <button
+              type="button"
+              onClick={() => setActiveCategory('All')}
+              className="min-h-[44px] mt-1 inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+            >
+              View all categories
+            </button>
+          )}
         </div>
       )}
 

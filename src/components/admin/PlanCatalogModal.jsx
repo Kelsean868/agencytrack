@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Plus, Pencil, Trash2, CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
+import PanelSkeleton from '../ui/PanelSkeleton';
 import useFocusTrap from '../../hooks/useFocusTrap';
 import {
   getPolicyPlans,
@@ -247,9 +248,7 @@ export default function PlanCatalogModal({ tenantId, onClose }) {
           )}
 
           {loading && (
-            <div className="flex items-center gap-2 text-ink-muted text-sm py-6 justify-center">
-              <Loader2 size={16} className="animate-spin" /> Loading…
-            </div>
+            <PanelSkeleton variant="list" count={4} label="Loading plan catalog…" />
           )}
 
           {/* ── Active Plans tab ── */}
