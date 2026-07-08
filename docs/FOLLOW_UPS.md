@@ -23,7 +23,7 @@ Recon (`docs/audits/react-query-adoption-recon-2026-07-07.md`) mapped all server
 
 ---
 
-## Design-conformance backlog — 12 NEEDS-RULING operator decisions block sequencing (banked 2026-07-07, PR #836, HIGH — blocks the active build map)
+## Design-conformance backlog — 14 NEEDS-RULING operator decisions block sequencing (banked 2026-07-07, PR #836, HIGH — blocks the active build map)
 
 `docs/audits/design-conformance-2026-07-07.md` is now the active build map (see CONTEXT.md § Active track) but ~30 findings are NEEDS-RULING — valid design elements with no live equivalent where building them is a product/scope call, not a bug fix. The 14 enumerated in the PR body (command palette adopt-or-not, Persistency v2 rolling/per-policy model — Tatil sign-off pending, Policy Ledger campaign-proof lens + Awards provenance system scope, interactive Agent Report View vs download-only PDF, Settings v2 consolidated surface scope, Monthly Recruiting kanban vs no-CRM guardrail confirmation, Campaigns money-adjacent mechanic scope, WARs reviewer workflow, Team Planner vs Money-Needs-reader track confirmation, agent Prospect Prep tab gating, onboarding-wizard unwired-steps dead-code-vs-flow-to-wire, SM cross-branch views timing, Kiosk theatrical surface adopt-or-not, admin exception-lead home rule) block sequencing past the systemic-contract-sweep tier (§1 four-states/§2 motion/§4 focus-trap/§5 dense-table — Tier 0, no ruling needed, can start immediately). **Action:** operator works through the 14-item list; each ruling unblocks its dependent slice of the backlog.
 
