@@ -234,8 +234,15 @@ export default function PlanCatalogModal({ tenantId, onClose }) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
           {loadError && (
-            <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm">
-              <AlertCircle size={16} /> {loadError}
+            <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm flex-wrap">
+              <AlertCircle size={16} className="shrink-0" /> <span className="flex-1 min-w-[150px]">{loadError}</span>
+              <button
+                type="button"
+                onClick={load}
+                className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+              >
+                Retry
+              </button>
             </div>
           )}
 

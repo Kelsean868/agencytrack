@@ -179,6 +179,37 @@ describe('ManagerWarTab — loading an existing draft', () => {
   });
 });
 
+// ── §1 states contract — getWar failure must never silently fall through to
+// DEFAULT_FORM (which would mask an existing draft as a blank new report).
+
+describe('ManagerWarTab — §1 states contract (load error / retry)', () => {
+  it('renders a blocking error card with Retry when getWar fails (never falls through to a blank form)', async () => {
+    mockGetWar.mockRejectedValue(new Error('boom-getwar'));
+    renderTab();
+    await flushMount();
+
+    const card = screen.getByTestId('manager-war-error');
+    expect(card).toHaveAttribute('role', 'alert');
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    // The form itself must not render alongside the blocking error.
+    expect(screen.queryByLabelText('One-on-One Pipeline Reviews')).not.toBeInTheDocument();
+  });
+
+  it('Retry re-invokes getWar and recovers into the form', async () => {
+    mockGetWar.mockRejectedValueOnce(new Error('boom-getwar')).mockResolvedValueOnce(null);
+    renderTab();
+    await flushMount();
+    expect(screen.getByTestId('manager-war-error')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    await flushMount();
+
+    expect(mockGetWar).toHaveBeenCalledTimes(2);
+    expect(screen.queryByTestId('manager-war-error')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('One-on-One Pipeline Reviews')).toBeInTheDocument();
+  });
+});
+
 // ── Submitted WAR is read-only ────────────────────────────────────────────────
 
 describe('ManagerWarTab — submitted WAR is read-only', () => {
@@ -319,6 +350,20 @@ describe('ManagerWarTab — JFW count row', () => {
     expect(mockGetOwnJfwCount).toHaveBeenCalledWith(
       expect.objectContaining({ weekStart: '2026-05-17' }),
     );
+  });
+
+  it('clicking Retry on the JFW error re-invokes getOwnJfwCount and recovers', async () => {
+    mockGetOwnJfwCount.mockRejectedValueOnce(new Error('FAILED_PRECONDITION'));
+    renderTab();
+    await flushMount();
+    expect(screen.getByRole('alert')).toHaveTextContent(/error loading/i);
+
+    mockGetOwnJfwCount.mockResolvedValueOnce(3);
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    await flushMount();
+
+    expect(mockGetOwnJfwCount).toHaveBeenCalledTimes(2);
+    expect(screen.getByLabelText(/joint field work count: 3/i)).toBeInTheDocument();
   });
 
   it('recomputes count when the week selector changes', async () => {

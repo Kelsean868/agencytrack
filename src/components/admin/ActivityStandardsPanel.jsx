@@ -94,7 +94,16 @@ export default function ActivityStandardsPanel() {
       </div>
 
       {readError && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400 mb-3">{readError}</p>
+        <div role="alert" className="text-sm text-red-600 dark:text-red-400 mb-3 flex items-center gap-3 flex-wrap">
+          <span>{readError}</span>
+          <button
+            type="button"
+            onClick={loadStandards}
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       )}
 
       <div className="space-y-0">

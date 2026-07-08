@@ -285,3 +285,68 @@ describe('TenantAdminDashboard — mobile nav v2 reorder', () => {
     await waitFor(() => expect(screen.getByTestId('profile-screen')).toBeInTheDocument());
   });
 });
+
+describe('TenantAdminDashboard — §1 states contract (error / partial / retry)', () => {
+  // clearAllMocks() only resets call history, not implementations set via
+  // mockRejectedValue/mockResolvedValue — re-establish a known-good baseline
+  // before every test so one test's permanent-reject override can't leak
+  // into the next.
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const managerService = await import('../../../services/managerService');
+    const branchService = await import('../../../services/branchService');
+    managerService.getTenantUsers.mockResolvedValue([
+      { uid: 'u1', role: 'agent', branchId: 'branch_a', active: true },
+    ]);
+    managerService.getAllYTDSubmissions.mockResolvedValue([]);
+    branchService.listBranches.mockResolvedValue([]);
+  });
+
+  it('all 3 fetches failing renders a blocking error card with Retry (never a silent console.error swallow)', async () => {
+    const managerService = await import('../../../services/managerService');
+    const branchService = await import('../../../services/branchService');
+    managerService.getTenantUsers.mockRejectedValue(new Error('boom-users'));
+    managerService.getAllYTDSubmissions.mockRejectedValue(new Error('boom-ytd'));
+    branchService.listBranches.mockRejectedValue(new Error('boom-branches'));
+
+    render(<TenantAdminDashboard />);
+
+    await waitFor(() => expect(screen.getByTestId('tenant-dashboard-error')).toBeInTheDocument());
+    expect(screen.getByTestId('tenant-dashboard-error')).toHaveAttribute('role', 'alert');
+    // Stat tiles are not shown alongside a full-failure error card.
+    expect(screen.queryByText('Total API · YTD')).toBeNull();
+  });
+
+  it('Retry on full failure re-invokes all three failed loaders', async () => {
+    const managerService = await import('../../../services/managerService');
+    const branchService = await import('../../../services/branchService');
+    managerService.getTenantUsers.mockRejectedValueOnce(new Error('boom-users'))
+      .mockResolvedValueOnce([{ uid: 'u1', role: 'agent', branchId: 'b1', active: true }]);
+    managerService.getAllYTDSubmissions.mockRejectedValueOnce(new Error('boom-ytd'))
+      .mockResolvedValueOnce([]);
+    branchService.listBranches.mockRejectedValueOnce(new Error('boom-branches'))
+      .mockResolvedValueOnce([]);
+
+    render(<TenantAdminDashboard />);
+    await waitFor(() => expect(screen.getByTestId('tenant-dashboard-error')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(screen.getByText('Total API · YTD')).toBeInTheDocument());
+    expect(managerService.getTenantUsers).toHaveBeenCalledTimes(2);
+    expect(managerService.getAllYTDSubmissions).toHaveBeenCalledTimes(2);
+    expect(branchService.listBranches).toHaveBeenCalledTimes(2);
+  });
+
+  it('one of three fetches failing renders a partial-failure warning banner naming the count', async () => {
+    const managerService = await import('../../../services/managerService');
+    managerService.getAllYTDSubmissions.mockRejectedValue(new Error('boom-ytd'));
+
+    render(<TenantAdminDashboard />);
+
+    await waitFor(() => expect(screen.getByTestId('tenant-dashboard-partial')).toBeInTheDocument());
+    expect(screen.getByTestId('tenant-dashboard-partial')).toHaveTextContent('1 of 3 data sources failed to load');
+    // Available data still renders alongside the banner.
+    expect(screen.getByText('Total API · YTD')).toBeInTheDocument();
+  });
+});

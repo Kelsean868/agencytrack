@@ -177,3 +177,64 @@ describe('AgentAwardsPanel — usesPolicyLedger flag', () => {
     });
   });
 });
+
+describe('AgentAwardsPanel — §1 states contract (error / retry)', () => {
+  it('renders a persistent inline error card with Retry when the awards computation throws', () => {
+    computeAgentAwards.mockImplementation(() => { throw new Error('boom-compute'); });
+
+    render(
+      <AgentAwardsPanel
+        submissions={SETTLEMENTS}
+        confirmedSettlements={SETTLEMENTS}
+        agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: false }}
+      />
+    );
+
+    const card = document.querySelector('[data-testid="agent-awards-error"]');
+    expect(card).toBeInTheDocument();
+    expect(card).toHaveAttribute('role', 'alert');
+    expect(card.querySelector('button')).toHaveTextContent(/retry/i);
+  });
+
+  it('Retry re-invokes the policy ledger fetch (the panel\'s owned network call)', async () => {
+    computeAgentAwards.mockImplementation(() => { throw new Error('boom-compute'); });
+    getOwnPolicies.mockRejectedValueOnce(new Error('boom-ledger')).mockResolvedValueOnce([]);
+
+    render(
+      <AgentAwardsPanel
+        submissions={SETTLEMENTS}
+        confirmedSettlements={SETTLEMENTS}
+        agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: true }}
+      />
+    );
+
+    await waitFor(() => expect(getOwnPolicies).toHaveBeenCalledTimes(1));
+    const card = document.querySelector('[data-testid="agent-awards-error"]');
+    expect(card).toBeInTheDocument();
+
+    card.querySelector('button').click();
+
+    await waitFor(() => expect(getOwnPolicies).toHaveBeenCalledTimes(2));
+  });
+
+  it('a failed policy-ledger read alone (computation still succeeds) shows a partial-failure banner, not a blocking error', async () => {
+    computeAgentAwards.mockReturnValue({});
+    getOwnPolicies.mockRejectedValue(new Error('boom-ledger'));
+
+    render(
+      <AgentAwardsPanel
+        submissions={SETTLEMENTS}
+        confirmedSettlements={SETTLEMENTS}
+        agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: true }}
+      />
+    );
+
+    await waitFor(() => {
+      const banner = document.querySelector('[data-testid="agent-awards-ledger-partial"]');
+      expect(banner).toBeInTheDocument();
+      expect(banner).toHaveAttribute('role', 'alert');
+    });
+    // Not the blocking full-failure card.
+    expect(document.querySelector('[data-testid="agent-awards-error"]')).not.toBeInTheDocument();
+  });
+});

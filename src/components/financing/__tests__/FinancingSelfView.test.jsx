@@ -7,7 +7,7 @@
 // or a SHOWN value is missing/mis-valued, these fail.
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import FinancingSelfView from '../FinancingSelfView';
 import * as financingService from '../../../services/financingService';
 import { getProjectedBonus } from '../../../lib/financingProjectedBonus';
@@ -254,6 +254,25 @@ describe('FinancingSelfView — single derived reconciliation year', () => {
       // the genuine error reached the outer catch (logged), not silently nulled —
       // value-level: the exact error object, not just "some console.error fired"
       expect(errSpy).toHaveBeenCalledWith('[FinancingSelfView] load failed', genuine);
+    } finally {
+      errSpy.mockRestore();
+    }
+  });
+
+  it('§1 states contract — the error card has a wired Retry that re-invokes the same load path', async () => {
+    financingService.getFinancingTerms.mockRejectedValueOnce(new Error('boom-terms'));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
+      const card = await screen.findByTestId('financing-self-view');
+      expect(card).toHaveAttribute('role', 'alert');
+      expect(financingService.getFinancingTerms).toHaveBeenCalledTimes(1);
+
+      financingService.getFinancingTerms.mockResolvedValueOnce({ ...TERMS, financingStatus: 'not_on_financing' });
+      fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+      await waitFor(() => expect(screen.getByText(/not on financing/i)).toBeInTheDocument());
+      expect(financingService.getFinancingTerms).toHaveBeenCalledTimes(2);
     } finally {
       errSpy.mockRestore();
     }

@@ -349,3 +349,50 @@ describe('AgentProductionView — where-you-rank panel', () => {
     expect(screen.queryByTestId('where-you-rank-panel')).not.toBeInTheDocument();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §1 states contract — both sub-fetches previously swallowed via
+// `.catch(() => [])`, degrading silently to an empty-data render with only a
+// console.error. Both failing now renders a blocking error card with Retry;
+// one failing renders a partial-failure banner while the other's real data
+// still shows.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('AgentProductionView — §1 states contract (error / partial / retry)', () => {
+  it('both sub-fetches failing renders a blocking error card with Retry', async () => {
+    hoisted.getAgentSubmissions.mockRejectedValue(new Error('boom-subs'));
+    hoisted.getTenantUsers.mockRejectedValue(new Error('boom-users'));
+
+    render(<AgentProductionView />);
+
+    await waitFor(() => expect(screen.getByTestId('agent-production-error')).toBeInTheDocument());
+    expect(screen.getByTestId('agent-production-error')).toHaveAttribute('role', 'alert');
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+  });
+
+  it('Retry on full failure re-invokes both failed loaders and recovers', async () => {
+    hoisted.getAgentSubmissions.mockRejectedValueOnce(new Error('boom-subs')).mockResolvedValueOnce([]);
+    hoisted.getTenantUsers.mockRejectedValueOnce(new Error('boom-users')).mockResolvedValueOnce([]);
+
+    render(<AgentProductionView />);
+    await waitFor(() => expect(screen.getByTestId('agent-production-error')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(screen.queryByTestId('agent-production-error')).toBeNull());
+    expect(hoisted.getAgentSubmissions).toHaveBeenCalledTimes(2);
+    expect(hoisted.getTenantUsers).toHaveBeenCalledTimes(2);
+  });
+
+  it('one of two sub-fetches failing renders a partial-failure banner while still showing available data', async () => {
+    hoisted.getAgentSubmissions.mockRejectedValue(new Error('boom-subs'));
+    hoisted.getTenantUsers.mockResolvedValue([]);
+
+    render(<AgentProductionView />);
+
+    await waitFor(() => expect(screen.getByTestId('agent-production-partial')).toBeInTheDocument());
+    expect(screen.getByTestId('agent-production-partial')).toHaveTextContent('1 of 2 data sources failed to load');
+    // The rest of the surface still renders (not blocked by the partial failure).
+    expect(screen.getByTestId('agent-production-rank-pill')).toBeInTheDocument();
+  });
+});

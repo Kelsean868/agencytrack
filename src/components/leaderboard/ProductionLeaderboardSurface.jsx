@@ -325,7 +325,7 @@ export default function ProductionLeaderboardSurface({
   overrideBranchName,
 } = {}) {
   const [period, setPeriod] = useState('YTD');
-  const { loading, error, byPeriod, doc } = useLeaderboard(branchIdOverride);
+  const { loading, error, byPeriod, doc, reload } = useLeaderboard(branchIdOverride);
   const { champions, loading: championsLoading } = useWeeklyChampions();
   const { user, userProfile, role } = useAuth();
   const viewerUid    = user?.uid ?? null;
@@ -436,7 +436,7 @@ export default function ProductionLeaderboardSurface({
   // ── Error ──────────────────────────────────────────────────────────────────
   if (error) {
     return (
-      <div className="card flex flex-col items-center text-center py-12" data-testid="production-leaderboard-error">
+      <div role="alert" className="card flex flex-col items-center text-center py-12" data-testid="production-leaderboard-error">
         <p className="text-base font-bold font-display text-ink">
           Couldn't load the leaderboard
         </p>
@@ -445,6 +445,13 @@ export default function ProductionLeaderboardSurface({
             ? "You don't have access to this branch's rankings."
             : 'Try again in a moment — the leaderboard refreshes hourly.'}
         </p>
+        <button
+          type="button"
+          onClick={reload}
+          className="mt-3 min-h-[44px] px-4 rounded-lg bg-card border border-border text-ink text-sm font-semibold hover:bg-surface transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }

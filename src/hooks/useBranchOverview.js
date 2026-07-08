@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { getAllYTDSubmissions, getTenantUsers } from '../services/managerService';
 import { getBranchGoals, getUnitGoals, getCompanyMinimums } from '../services/goalsService';
 import { extractFields, extractTotalProductionCredit } from '../utils/extractFields';
@@ -24,6 +24,9 @@ export function useBranchOverview(role, userProfile, tenantId) {
   const [companyMins, setCompanyMins] = useState(null);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
+  // Bumped by reload() to force the effect below to re-run on demand (§1
+  // states contract — the error card's Retry button needs a real re-fetch).
+  const [reloadToken, setReloadToken] = useState(0);
 
   const year   = new Date().getFullYear();
   const unitId = userProfile?.unitId ?? null;
@@ -59,7 +62,9 @@ export function useBranchOverview(role, userProfile, tenantId) {
         setError('Failed to load team overview.');
       })
       .finally(() => setLoading(false));
-  }, [tenantId, role, unitId, year]);
+  }, [tenantId, role, unitId, year, reloadToken]);
+
+  const reload = useCallback(() => setReloadToken((t) => t + 1), []);
 
   // Compliance scope: agents only — drives inScopeAgentCount (goal fallback) and
   // the pre-cutoff denominator. Never includes UMs or BMs.
@@ -204,6 +209,7 @@ export function useBranchOverview(role, userProfile, tenantId) {
   return {
     loading,
     error,
+    reload,
     teamYTDAPI,
     teamAnnualGoal,
     goalSet,

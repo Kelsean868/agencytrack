@@ -111,6 +111,27 @@ describe('BranchesPanel — error state', () => {
     await screen.findByRole('alert');
     expect(screen.getByRole('button', { name: /add branch/i })).toBeDisabled();
   });
+
+  it('does not render the empty state alongside the error (exclusive states)', async () => {
+    render(<BranchesPanel />);
+    await screen.findByRole('alert');
+    expect(screen.queryByText(/No branches yet/i)).toBeNull();
+  });
+
+  it('the error alert has a wired Retry button that re-invokes the same load path', async () => {
+    render(<BranchesPanel />);
+    await screen.findByRole('alert');
+    expect(hoisted.listBranches).toHaveBeenCalledTimes(1);
+
+    hoisted.listBranches.mockResolvedValueOnce([BRANCH_ACTIVE]);
+    screen.getByRole('button', { name: /retry/i }).click();
+
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    expect(hoisted.listBranches).toHaveBeenCalledTimes(2);
+    expect(hoisted.getBranchManagers).toHaveBeenCalledTimes(2);
+    expect(hoisted.getAllUsers).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('South Branch')).toBeInTheDocument();
+  });
 });
 
 describe('BranchesPanel — empty state', () => {

@@ -200,6 +200,21 @@ describe('PolicyLedgerPanel — list view states', () => {
     );
   });
 
+  it('error banner is a persistent alert with a wired Retry that re-invokes the same load path', async () => {
+    hoisted.getOwnPolicies.mockRejectedValueOnce(new Error('network timeout'));
+    render(<PolicyLedgerPanel />);
+    await waitFor(() => expect(screen.getByTestId('ledger-error')).toBeInTheDocument());
+    expect(screen.getByTestId('ledger-error')).toHaveAttribute('role', 'alert');
+    expect(hoisted.getOwnPolicies).toHaveBeenCalledTimes(1);
+
+    hoisted.getOwnPolicies.mockResolvedValueOnce([]);
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(screen.queryByTestId('ledger-error')).toBeNull());
+    expect(hoisted.getOwnPolicies).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(/No policies yet/)).toBeInTheDocument();
+  });
+
   it('renders "New Policy" button in list view', async () => {
     hoisted.getOwnPolicies.mockResolvedValueOnce([]);
     render(<PolicyLedgerPanel />);

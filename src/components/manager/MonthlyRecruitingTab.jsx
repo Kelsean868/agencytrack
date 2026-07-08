@@ -9,7 +9,7 @@
  * Locked decision (I2 brief §Locked #1): NEVER store MM-YYYY.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getRoleLabel } from '../../utils/formatters';
 import {
@@ -34,6 +34,7 @@ export default function MonthlyRecruitingTab() {
   const [form,          setForm]          = useState(DEFAULT_FORM);
   const [ownStatus,     setOwnStatus]     = useState(null);   // null | 'draft' | 'submitted'
   const [ownLoading,    setOwnLoading]    = useState(canFile);
+  const [ownLoadError,  setOwnLoadError]  = useState(false);
   const [saving,        setSaving]        = useState(false);
   const [saveError,     setSaveError]     = useState('');
   const [savedAt,       setSavedAt]       = useState(null);
@@ -54,10 +55,14 @@ export default function MonthlyRecruitingTab() {
     unitId:      userProfile?.unitId   ?? null,  // null for BM/SM — see Item 3
   };
 
-  // Load own rollup when month changes
-  useEffect(() => {
+  // Load own rollup when month changes. §1 states contract — a failed load
+  // no longer silently falls through to DEFAULT_FORM (which would mask an
+  // existing draft as a blank new report); it renders a blocking error card
+  // with Retry instead.
+  const loadOwnRollup = useCallback(() => {
     if (!canFile || !user) return;
     setOwnLoading(true);
+    setOwnLoadError(false);
     setSubmitSuccess(false);
     setSubmitError('');
     setSaveError('');
@@ -76,12 +81,17 @@ export default function MonthlyRecruitingTab() {
         });
         setOwnStatus(r.status ?? null);
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error('[MonthlyRecruitingTab] own rollup load failed:', err);
+        setOwnLoadError(true);
+      })
       .finally(() => setOwnLoading(false));
   }, [ownMonth, user, tenantId, canFile]);
 
+  useEffect(() => { loadOwnRollup(); }, [loadOwnRollup]);
+
   // Load team rollups when teamMonth changes
-  useEffect(() => {
+  const loadTeamRollups = useCallback(() => {
     if (!canView) return;
     setTeamLoading(true);
     setTeamError(null);
@@ -93,6 +103,8 @@ export default function MonthlyRecruitingTab() {
       })
       .finally(() => setTeamLoading(false));
   }, [teamMonth, tenantId, role, branchId, canView]);
+
+  useEffect(() => { loadTeamRollups(); }, [loadTeamRollups]);
 
   const handleChange = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -171,6 +183,21 @@ export default function MonthlyRecruitingTab() {
             {ownLoading ? (
               <div className="flex items-center justify-center py-12">
                 <span className="text-text-muted text-sm">Loading…</span>
+              </div>
+            ) : ownLoadError ? (
+              <div
+                role="alert"
+                className="flex flex-col items-center gap-3 p-8 rounded-xl bg-danger/10 border border-danger/30 text-center"
+                data-testid="recruiting-own-error"
+              >
+                <p className="text-sm text-danger-ink font-medium">Couldn&apos;t load your recruiting rollup — check your connection and try again.</p>
+                <button
+                  type="button"
+                  onClick={loadOwnRollup}
+                  className="min-h-[44px] px-4 rounded-lg bg-card border border-border text-ink text-sm font-semibold hover:bg-surface transition-colors"
+                >
+                  Retry
+                </button>
               </div>
             ) : (
               <>
@@ -303,8 +330,15 @@ export default function MonthlyRecruitingTab() {
             )}
 
             {teamError && (
-              <div className="rounded-xl bg-card p-4 text-sm text-red-500" role="alert">
-                {teamError}
+              <div className="rounded-xl bg-card p-4 text-sm text-red-500 flex items-center justify-between gap-3 flex-wrap" role="alert">
+                <span>{teamError}</span>
+                <button
+                  type="button"
+                  onClick={loadTeamRollups}
+                  className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+                >
+                  Retry
+                </button>
               </div>
             )}
 

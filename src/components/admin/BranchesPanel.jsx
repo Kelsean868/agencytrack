@@ -220,10 +220,17 @@ export default function BranchesPanel() {
       {readError && (
         <div
           role="alert"
-          className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink flex items-start gap-2"
+          className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink flex items-start gap-2 flex-wrap"
         >
           <AlertCircle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-          <span>{readError}</span>
+          <span className="flex-1 min-w-[200px]">{readError}</span>
+          <button
+            type="button"
+            onClick={reload}
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -233,7 +240,7 @@ export default function BranchesPanel() {
             <div key={i} className="h-14 rounded-xl bg-border/30 animate-pulse" />
           ))}
         </div>
-      ) : sortedBranches.length === 0 ? (
+      ) : readError ? null : sortedBranches.length === 0 ? (
         <div className="text-center py-10 flex flex-col items-center gap-3">
           <Building2 size={40} className="text-border" aria-hidden="true" />
           <p className="text-sm text-ink-muted italic">

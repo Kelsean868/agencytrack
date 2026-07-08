@@ -23,7 +23,7 @@
 //   • PRIVATE fields (adjustmentPct, suggestedFinancing, notes, source, ALL audit
 //     metadata) are ABSENT FROM THE DOM — never rendered, not CSS-hidden.
 //   • The K7 miss/risk engine is never called and never rendered.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   getFinancingTerms,
   listFinancingMonths,
@@ -163,6 +163,10 @@ function Gate({ label, met }) {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function FinancingSelfView({ tenantId, subjectUid }) {
   const [state, setState] = useState({ status: 'loading' });
+  // Bumped by the error state's Retry button to force the effect below to
+  // re-run the same load path (§1 states contract).
+  const [reloadToken, setReloadToken] = useState(0);
+  const retry = useCallback(() => setReloadToken((t) => t + 1), []);
 
   useEffect(() => {
     // Reset to loading on every identity change so a subject switch never leaves
@@ -228,7 +232,7 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
     })();
 
     return () => { active = false; };
-  }, [tenantId, subjectUid]);
+  }, [tenantId, subjectUid, reloadToken]);
 
   if (state.status === 'loading') {
     return (
@@ -240,8 +244,19 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
 
   if (state.status === 'error') {
     return (
-      <div className="p-4 rounded-xl border border-danger/30 bg-danger/10 text-danger-ink text-sm" data-testid="financing-self-view">
-        We couldn't load your financing right now. Please try again.
+      <div
+        role="alert"
+        className="p-4 rounded-xl border border-danger/30 bg-danger/10 text-danger-ink text-sm flex items-center justify-between gap-3 flex-wrap"
+        data-testid="financing-self-view"
+      >
+        <span>We couldn&apos;t load your financing right now. Please try again.</span>
+        <button
+          type="button"
+          onClick={retry}
+          className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }

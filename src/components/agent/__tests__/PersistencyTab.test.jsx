@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 // Hoisted mock state.
 const hoisted = vi.hoisted(() => ({
@@ -108,5 +108,33 @@ describe('agent PersistencyTab', () => {
     hoisted.getAvailableMonths.mockResolvedValueOnce([]);
     render(<PersistencyTab />);
     await waitFor(() => expect(screen.getByText(/No history yet/i)).toBeInTheDocument());
+  });
+
+  describe('§1 states contract (error / retry)', () => {
+    it('renders a persistent inline error card with Retry when the load fails', async () => {
+      hoisted.getAgentHistory.mockRejectedValueOnce(new Error('boom-history'));
+      hoisted.getAvailableMonths.mockResolvedValueOnce([]);
+      render(<PersistencyTab />);
+
+      const card = await screen.findByTestId('agent-persistency-error');
+      expect(card).toHaveAttribute('role', 'alert');
+      expect(card).toHaveTextContent('boom-history');
+      expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    });
+
+    it('clicking Retry re-invokes the same load path and recovers', async () => {
+      hoisted.getAgentHistory.mockRejectedValueOnce(new Error('boom-history'));
+      hoisted.getAvailableMonths.mockResolvedValueOnce([]);
+      render(<PersistencyTab />);
+      await screen.findByTestId('agent-persistency-error');
+
+      hoisted.getAgentHistory.mockResolvedValueOnce([E3_RECORD({ persistency: 0.95 })]);
+      hoisted.getAvailableMonths.mockResolvedValueOnce(['2026-02']);
+      fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+      await waitFor(() => expect(screen.queryByTestId('agent-persistency-error')).toBeNull());
+      expect(hoisted.getAgentHistory).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('agent-persistency-summary')).toBeInTheDocument();
+    });
   });
 });

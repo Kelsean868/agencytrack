@@ -10,6 +10,7 @@ export default function ManagerOverviewTab({ role, userProfile, tenantId, onSubm
   const {
     loading,
     error,
+    reload,
     teamYTDAPI,
     teamAnnualGoal,
     goalSet,
@@ -21,11 +22,18 @@ export default function ManagerOverviewTab({ role, userProfile, tenantId, onSubm
 
   if (error) {
     return (
-      <div className="card flex items-start gap-3 text-danger-ink">
-        <AlertTriangle size={18} className="shrink-0 mt-0.5" />
-        <div>
+      <div role="alert" className="card flex items-start gap-3 text-danger-ink">
+        <AlertTriangle size={18} className="shrink-0 mt-0.5" aria-hidden="true" />
+        <div className="flex-1">
           <p className="font-semibold text-sm">Could not load overview</p>
           <p className="text-xs text-ink-muted mt-0.5">{error}</p>
+          <button
+            type="button"
+            onClick={reload}
+            className="mt-2 min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );

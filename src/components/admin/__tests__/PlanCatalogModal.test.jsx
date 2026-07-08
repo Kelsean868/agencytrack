@@ -317,3 +317,20 @@ describe('PlanCatalogModal — dialog a11y', () => {
     document.body.removeChild(trigger);
   });
 });
+
+describe('§1 states contract (error / retry)', () => {
+  it('renders a persistent inline error card with a wired Retry when the load fails', async () => {
+    hoisted.getPolicyPlans.mockRejectedValueOnce(new Error('boom-catalog'));
+    renderModal();
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('boom-catalog'));
+    expect(hoisted.getPolicyPlans).toHaveBeenCalledTimes(1);
+
+    hoisted.getPolicyPlans.mockResolvedValueOnce({ plans: [ACTIVE_PLAN], pendingReview: [] });
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(screen.queryByText('boom-catalog')).toBeNull());
+    expect(hoisted.getPolicyPlans).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('Whole Life Plus')).toBeInTheDocument();
+  });
+});

@@ -86,8 +86,16 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
     <>
     <div className="flex flex-col gap-4 stagger" data-testid="agent-persistency-tab">
       {error && (
-        <div className="card flex items-center gap-2 text-sm text-danger-ink">
-          <AlertCircle size={16} /> {error}
+        <div role="alert" className="card flex items-center gap-2 text-sm text-danger-ink flex-wrap" data-testid="agent-persistency-error">
+          <AlertCircle size={16} className="shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button
+            type="button"
+            onClick={load}
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
         </div>
       )}
 

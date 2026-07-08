@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../../utils/awardsEngine';
 import { formatCurrency } from '../../utils/formatters';
@@ -58,14 +58,26 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   const [drawerAwardId, setDrawerAwardId]    = useState(null);
   const { tenantId } = useAuth();
   const [ledgerPolicies, setLedgerPolicies] = useState(null);
+  const [ledgerError, setLedgerError] = useState(false);
   const usesPolicyLedger = Boolean(agentProfile?.usesPolicyLedger);
 
-  useEffect(() => {
+  // Retry-able: the only network fetch this panel owns (submissions/
+  // confirmedSettlements arrive as props from the parent). §1 states
+  // contract — a failed ledger read no longer silently degrades to an
+  // empty array with no trace; the error card's Retry re-invokes this.
+  const loadLedgerPolicies = useCallback(() => {
     if (!usesPolicyLedger || !tenantId || !agentProfile?.uid) return;
+    setLedgerError(false);
     getOwnPolicies(tenantId, agentProfile.uid)
       .then(setLedgerPolicies)
-      .catch(() => setLedgerPolicies([]));
+      .catch((e) => {
+        console.error('[AgentAwardsPanel] policy ledger load failed:', e);
+        setLedgerError(true);
+        setLedgerPolicies([]);
+      });
   }, [usesPolicyLedger, tenantId, agentProfile?.uid]);
+
+  useEffect(() => { loadLedgerPolicies(); }, [loadLedgerPolicies]);
 
   const activeConfirmedData = useMemo(() => {
     if (!usesPolicyLedger) return confirmedSettlements ?? [];
@@ -139,7 +151,25 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   }
 
   if (error) {
-    return <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>;
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-center gap-3 p-8 rounded-xl bg-danger/10 border border-danger/30 text-center"
+        data-testid="agent-awards-error"
+      >
+        <p className="text-sm text-danger-ink font-medium">{error}</p>
+        {ledgerError && (
+          <p className="text-xs text-ink-muted">Your policy ledger data failed to load — retry to try again.</p>
+        )}
+        <button
+          type="button"
+          onClick={loadLedgerPolicies}
+          className="min-h-[44px] px-4 rounded-lg bg-card border border-border text-ink text-sm font-semibold hover:bg-surface transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   const totalTracked = Object.keys(awards).length;
@@ -152,6 +182,25 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   return (
     <>
     <div className="flex flex-col gap-6 stagger">
+
+      {/* Partial-failure notice — policy ledger read failed but the panel
+          still rendered from whatever data resolved. */}
+      {ledgerError && (
+        <div
+          role="alert"
+          className="p-3 rounded-xl border border-warning/30 bg-warning/10 text-warning-ink text-sm flex items-center justify-between gap-3 flex-wrap"
+          data-testid="agent-awards-ledger-partial"
+        >
+          <span>Your policy ledger data failed to load — awards may be incomplete.</span>
+          <button
+            type="button"
+            onClick={loadLedgerPolicies}
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Hero card */}
       {heroAward && <HeroAwardCard award={heroAward} />}

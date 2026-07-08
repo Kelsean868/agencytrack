@@ -295,3 +295,57 @@ describe('month display convention', () => {
     }
   });
 });
+
+// ── §1 states contract — own-rollup load previously fell through silently to
+// DEFAULT_FORM on failure (`.catch(console.error)`); team-rollup error banner
+// existed but had no Retry.
+
+describe('§1 states contract — own rollup load error / retry', () => {
+  it('renders a blocking error card with Retry when getRollup fails (never falls through to a blank form)', async () => {
+    hoisted.mockGetRollup.mockRejectedValue(new Error('boom-getrollup'));
+    renderTab();
+    await flushMount();
+
+    const card = screen.getByTestId('recruiting-own-error');
+    expect(card).toHaveAttribute('role', 'alert');
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/candidates assessed/i)).not.toBeInTheDocument();
+  });
+
+  it('Retry re-invokes getRollup and recovers into the form', async () => {
+    hoisted.mockGetRollup.mockRejectedValueOnce(new Error('boom-getrollup')).mockResolvedValueOnce(null);
+    renderTab();
+    await flushMount();
+    expect(screen.getByTestId('recruiting-own-error')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    await flushMount();
+
+    expect(hoisted.mockGetRollup).toHaveBeenCalledTimes(2);
+    expect(screen.queryByTestId('recruiting-own-error')).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/candidates assessed/i)).toBeInTheDocument();
+  });
+});
+
+describe('§1 states contract — team rollup error / retry', () => {
+  beforeEach(() => {
+    hoisted.mockRole        = 'branch_manager';
+    hoisted.mockUserProfile = { name: 'Branch Manager 1', email: 'bm@test.com', branchId: 'branch-a', unitId: null };
+  });
+
+  it('the team error banner has a wired Retry that re-invokes getRollupsForUpline', async () => {
+    hoisted.mockGetRollupsForUpline.mockRejectedValueOnce(new Error('boom-team'));
+    renderTab();
+    await flushMount();
+
+    expect(screen.getByText(/unable to load team data/i)).toBeInTheDocument();
+    expect(hoisted.mockGetRollupsForUpline).toHaveBeenCalledTimes(1);
+
+    hoisted.mockGetRollupsForUpline.mockResolvedValueOnce([]);
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    await flushMount();
+
+    expect(hoisted.mockGetRollupsForUpline).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText(/unable to load team data/i)).not.toBeInTheDocument();
+  });
+});

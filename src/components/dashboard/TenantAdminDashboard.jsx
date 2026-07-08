@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  LayoutGrid, Building2, Users, BookOpen, Send, UserCircle, TrendingUp,
+  LayoutGrid, Building2, Users, BookOpen, Send, UserCircle, TrendingUp, AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -90,47 +90,84 @@ export default function TenantAdminDashboard() {
 
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState(false);
   const [branches, setBranches] = useState([]);
+  const [branchesError, setBranchesError] = useState(false);
   const [ytdAPI, setYtdAPI] = useState(null);
   const [ytdLoading, setYtdLoading] = useState(true);
+  const [ytdError, setYtdError] = useState(false);
+
+  // Guards setState-after-unmount without re-litigating cancellation per
+  // retry — a single mount-scoped flag covers the initial load and any
+  // number of manual retries.
+  const isMountedRef = useRef(true);
+  useEffect(() => () => { isMountedRef.current = false; }, []);
 
   // Load tenant users once. Shared between RoleDistributionCard,
   // BranchHealthCards, and the Active Users / Active Branches stat tiles.
-  useEffect(() => {
-    let cancelled = false;
+  // Retry-able: extracted so the error card's Retry button re-invokes the
+  // same fetch (§1 states contract — never a silent console.error swallow).
+  const loadUsers = useCallback(async () => {
     setUsersLoading(true);
-    getTenantUsers(tenantId)
-      .then((u) => { if (!cancelled) setUsers(u); })
-      .catch((err) => { if (!cancelled) console.error('Failed to load users:', err); })
-      .finally(() => { if (!cancelled) setUsersLoading(false); });
-    return () => { cancelled = true; };
+    setUsersError(false);
+    try {
+      const u = await getTenantUsers(tenantId);
+      if (isMountedRef.current) setUsers(u);
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      console.error('Failed to load users:', err);
+      setUsersError(true);
+    } finally {
+      if (isMountedRef.current) setUsersLoading(false);
+    }
   }, [tenantId]);
 
   // Load branches once for display-name resolution in BranchHealthCards.
-  // Failure is non-fatal — the card falls back to humanise/Unnamed-branch.
-  useEffect(() => {
-    let cancelled = false;
-    listBranches(tenantId)
-      .then((b) => { if (!cancelled) setBranches(b); })
-      .catch((err) => { if (!cancelled) console.error('Failed to load branches:', err); });
-    return () => { cancelled = true; };
+  const loadBranches = useCallback(async () => {
+    setBranchesError(false);
+    try {
+      const b = await listBranches(tenantId);
+      if (isMountedRef.current) setBranches(b);
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      console.error('Failed to load branches:', err);
+      setBranchesError(true);
+    }
   }, [tenantId]);
 
   // Aggregate YTD API. Pure derivation from existing service — no new
   // collection or query.
-  useEffect(() => {
-    let cancelled = false;
+  const loadYtd = useCallback(async () => {
     setYtdLoading(true);
-    getAllYTDSubmissions(tenantId)
-      .then((subs) => {
-        if (cancelled) return;
+    setYtdError(false);
+    try {
+      const subs = await getAllYTDSubmissions(tenantId);
+      if (isMountedRef.current) {
         const total = subs.reduce((sum, s) => sum + (extractFields(s).apiSold || 0), 0);
         setYtdAPI(total);
-      })
-      .catch((err) => { if (!cancelled) console.error('Failed to load YTD submissions:', err); })
-      .finally(() => { if (!cancelled) setYtdLoading(false); });
-    return () => { cancelled = true; };
+      }
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      console.error('Failed to load YTD submissions:', err);
+      setYtdError(true);
+    } finally {
+      if (isMountedRef.current) setYtdLoading(false);
+    }
   }, [tenantId]);
+
+  useEffect(() => { loadUsers(); }, [loadUsers]);
+  useEffect(() => { loadBranches(); }, [loadBranches]);
+  useEffect(() => { loadYtd(); }, [loadYtd]);
+
+  // Retry only the fetches that actually failed — used by both the
+  // full-failure error card and the partial-failure warning banner.
+  const retryFailed = useCallback(() => {
+    if (usersError) loadUsers();
+    if (branchesError) loadBranches();
+    if (ytdError) loadYtd();
+  }, [usersError, branchesError, ytdError, loadUsers, loadBranches, loadYtd]);
+
+  const failedCount = [usersError, branchesError, ytdError].filter(Boolean).length;
 
   const userStats = useMemo(() => {
     if (!Array.isArray(users) || users.length === 0) {
@@ -170,25 +207,60 @@ export default function TenantAdminDashboard() {
           on tab navigation. Keyed on activeTab. No fixed overlays in this
           dashboard's children. Gated + degrades in index.css. */}
       <div key={activeTab} className="screen-enter">
-      {activeTab === 'dashboard' && (
+      {activeTab === 'dashboard' && failedCount === 3 && (
+        <div
+          role="alert"
+          className="flex flex-col items-center gap-3 p-8 rounded-xl bg-danger/10 border border-danger/30 text-center"
+          data-testid="tenant-dashboard-error"
+        >
+          <AlertTriangle size={28} className="text-danger-ink" aria-hidden="true" />
+          <p className="text-sm text-danger-ink font-medium">Couldn&apos;t load dashboard data — check your connection and try again.</p>
+          <button
+            type="button"
+            onClick={retryFailed}
+            className="min-h-[44px] px-4 rounded-lg bg-card border border-border text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'dashboard' && failedCount > 0 && failedCount < 3 && (
+        <div
+          role="alert"
+          className="p-3 mb-3 rounded-xl border border-warning/30 bg-warning/10 text-warning-ink text-sm flex items-center justify-between gap-3 flex-wrap"
+          data-testid="tenant-dashboard-partial"
+        >
+          <span>{failedCount} of 3 data sources failed to load — showing what&apos;s available.</span>
+          <button
+            type="button"
+            onClick={retryFailed}
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'dashboard' && failedCount < 3 && (
         <div className="flex flex-col gap-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <StatCard
               label="Total API · YTD"
               value={ytdLoading ? '—' : (ytdAPI != null ? formatCurrency(ytdAPI) : '—')}
-              sub={ytdLoading ? 'Loading…' : 'Across all branches, all agents'}
+              sub={ytdLoading ? 'Loading…' : ytdError ? 'Failed to load' : 'Across all branches, all agents'}
               Icon={TrendingUp}
             />
             <StatCard
               label="Active Users"
-              value={usersLoading ? '—' : `${userStats.active} / ${userStats.total}`}
-              sub={usersLoading ? 'Loading…' : `${userStats.total - userStats.active} inactive`}
+              value={usersLoading ? '—' : usersError ? '—' : `${userStats.active} / ${userStats.total}`}
+              sub={usersLoading ? 'Loading…' : usersError ? 'Failed to load' : `${userStats.total - userStats.active} inactive`}
               Icon={Users}
             />
             <StatCard
               label="Active Branches"
-              value={usersLoading ? '—' : `${userStats.branchCount}`}
-              sub={usersLoading ? 'Loading…' : (userStats.branchCount === 1 ? 'Active branch' : 'Active branches')}
+              value={usersLoading ? '—' : usersError ? '—' : `${userStats.branchCount}`}
+              sub={usersLoading ? 'Loading…' : usersError ? 'Failed to load' : (userStats.branchCount === 1 ? 'Active branch' : 'Active branches')}
               Icon={Building2}
             />
           </div>

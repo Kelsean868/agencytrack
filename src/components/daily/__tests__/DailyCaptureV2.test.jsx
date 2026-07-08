@@ -206,6 +206,24 @@ describe('DailyCaptureV2', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
   });
 
+  it('§1 states contract — Retry on a save failure re-invokes saveDailyEntry (not the load path)', async () => {
+    const onClose = vi.fn();
+    hoisted.saveDailyEntry.mockRejectedValueOnce(new Error('boom-save'));
+    render(<DailyCaptureV2 onClose={onClose} />);
+    const save = await screen.findByTestId('dcv2-save');
+    fireEvent.click(save);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/save failed/i));
+    expect(hoisted.saveDailyEntry).toHaveBeenCalledTimes(1);
+    expect(hoisted.getDailyEntry).toHaveBeenCalledTimes(1); // unchanged — Retry must not re-trigger the load path
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
+    expect(hoisted.saveDailyEntry).toHaveBeenCalledTimes(2);
+    expect(hoisted.getDailyEntry).toHaveBeenCalledTimes(1);
+  });
+
   it('refreshes the count strip after a successful Save', async () => {
     hoisted.getDailyEntriesForWeek
       .mockResolvedValueOnce([])
@@ -357,6 +375,19 @@ describe('DailyCaptureV2', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     );
     expect(screen.getByRole('alert').textContent).toMatch(/could not load/i);
+  });
+
+  it('§1 states contract — Retry on a load failure re-invokes getDailyEntry (not a generic reload)', async () => {
+    hoisted.getDailyEntry.mockRejectedValueOnce(new Error('network'));
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    expect(hoisted.getDailyEntry).toHaveBeenCalledTimes(1);
+
+    hoisted.getDailyEntry.mockResolvedValueOnce(null);
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    expect(hoisted.getDailyEntry).toHaveBeenCalledTimes(2);
   });
 
   it('points pill shows non-zero when data has production (ffiConducted increment)', async () => {

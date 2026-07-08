@@ -175,3 +175,19 @@ describe('AwardsRulesetPanel — array row editors', () => {
     }
   });
 });
+
+describe('AwardsRulesetPanel — §1 states contract (error / retry)', () => {
+  it('renders a persistent inline error card with a wired Retry when the load fails', async () => {
+    hoisted.mockGet.mockRejectedValueOnce(new Error('boom-ruleset'));
+    render(<AwardsRulesetPanel />);
+
+    await waitFor(() => expect(screen.getByText('boom-ruleset')).toBeInTheDocument());
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+
+    hoisted.mockGet.mockResolvedValueOnce(JSON.parse(JSON.stringify(DEFAULT_RULESET_2026)));
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(screen.queryByText('boom-ruleset')).toBeNull());
+    expect(hoisted.mockGet).toHaveBeenCalledTimes(2);
+  });
+});

@@ -441,6 +441,10 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
   const [saving, setSaving]     = useState(false);
   const [savedAt, setSavedAt]   = useState(null);
   const [error, setError]       = useState('');
+  // Which action produced `error` — drives what the Retry button re-invokes
+  // (§1 states contract: Retry must re-run the SAME failed fetch/action).
+  const [errorKind, setErrorKind] = useState(''); // '' | 'load' | 'save'
+  const [loadRetryToken, setLoadRetryToken] = useState(0);
 
   // Collapsible section toggles
   const [pppExpanded,        setPppExpanded]        = useState(false);
@@ -460,6 +464,7 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
     if (!user?.uid) return;
     setLoading(true);
     setError('');
+    setErrorKind('');
     setSavedAt(null);
     // Reset to empty for the new date, then overlay with any saved data.
     setData(createEmptyDailyEntry(selectedDate, user.uid, agentName));
@@ -506,10 +511,11 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
         if (!active) return;
         console.error('Failed to load daily entry:', e);
         setError('Could not load entry — your save will overwrite.');
+        setErrorKind('load');
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [user?.uid, selectedDate, tenantId, agentName]);
+  }, [user?.uid, selectedDate, tenantId, agentName, loadRetryToken]);
 
   // ── Week-level read: chips + strip ───────────────────────────────────────
   const refreshWeekDocs = useCallback(async () => {
@@ -639,6 +645,7 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
     if (!user?.uid) return;
     setSaving(true);
     setError('');
+    setErrorKind('');
     try {
       // Daily doc MUST persist first (Decision #4).
       await saveDailyEntry(tenantId, user.uid, agentName, selectedDate, data);
@@ -668,8 +675,19 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
     } catch (e) {
       console.error('Save failed:', e);
       setError('Save failed — check your connection and try again.');
+      setErrorKind('save');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Retry re-invokes whichever action actually failed — the load effect (via
+  // a token bump) or the save handler — never a generic "reload the world".
+  const handleRetryError = () => {
+    if (errorKind === 'load') {
+      setLoadRetryToken((t) => t + 1);
+    } else if (errorKind === 'save') {
+      handleSave();
     }
   };
 
@@ -1045,9 +1063,16 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
             </div>
 
             {error && (
-              <p className="text-sm text-danger-ink" role="alert">
-                {error}
-              </p>
+              <div role="alert" className="flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-sm text-danger-ink flex-1">{error}</p>
+                <button
+                  type="button"
+                  onClick={handleRetryError}
+                  className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
             )}
           </div>
         )}

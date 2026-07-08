@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getRecentSundays } from '../../utils/validators';
 import { getRoleLabel } from '../../utils/formatters';
@@ -26,7 +26,7 @@ export default function TeamWarsTab() {
   // Map<managerId, resolvedStandards>. Failure leaves the map empty (no badges).
   const [listStandards,  setListStandards]  = useState(new Map());
 
-  useEffect(() => {
+  const loadWars = useCallback(() => {
     setLoading(true);
     setError(null);
     getWarsForUpline({ tenantId, weekStart, role, branchId })
@@ -37,6 +37,8 @@ export default function TeamWarsTab() {
       })
       .finally(() => setLoading(false));
   }, [tenantId, weekStart, role, branchId]);
+
+  useEffect(() => { loadWars(); }, [loadWars]);
 
   // I3a — bulk-resolve standards once per WAR list (org-default fetched once;
   // override docs fetched per-manager in parallel). Degrades silently — a
@@ -104,8 +106,15 @@ export default function TeamWarsTab() {
       )}
 
       {error && (
-        <div className="rounded-xl bg-card p-4 text-sm text-red-500" role="alert">
-          {error}
+        <div className="rounded-xl bg-card p-4 text-sm text-red-500 flex items-center justify-between gap-3 flex-wrap" role="alert">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={loadWars}
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
         </div>
       )}
 

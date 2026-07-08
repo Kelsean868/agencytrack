@@ -267,3 +267,30 @@ describe('useBranchOverview — production scope split (Slice 2.1a)', () => {
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §1 states contract — reload() is what powers ManagerOverviewTab's error-card
+// Retry button. It must actually re-invoke the same fetch path, not just
+// reset local state.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('useBranchOverview — reload()', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getTenantUsers.mockResolvedValue([{ id: 'a1', role: 'agent', unitId: null }]);
+    getAllYTDSubmissions.mockResolvedValue([]);
+  });
+
+  it('re-invokes all four parallel reads', async () => {
+    const { result } = renderHook(() =>
+      useBranchOverview('branch_manager', { unitId: null }, 'tenant-1')
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(getAllYTDSubmissions).toHaveBeenCalledTimes(1);
+    expect(getTenantUsers).toHaveBeenCalledTimes(1);
+
+    result.current.reload();
+
+    await waitFor(() => expect(getAllYTDSubmissions).toHaveBeenCalledTimes(2));
+    expect(getTenantUsers).toHaveBeenCalledTimes(2);
+  });
+});

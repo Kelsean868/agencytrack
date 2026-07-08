@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import StatusPill from '../ui/StatusPill';
 import TabPills from '../ui/TabPills';
-import { Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useToast from '../../hooks/useToast';
 import {
@@ -494,6 +494,7 @@ export default function CampaignPanel() {
   const [campaigns, setCampaigns] = useState([]);
   const [allUsers, setAllUsers]   = useState([]);
   const [loading, setLoading]     = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [listTab, setListTab]     = useState('active');
   const [formOpen, setFormOpen]   = useState(false);
   const [editing, setEditing]     = useState(null);
@@ -502,8 +503,12 @@ export default function CampaignPanel() {
 
   const canCreate = ['unit_manager', 'branch_manager', 'tenant_admin', 'platform_admin'].includes(role);
 
+  // Retry-able: extracted so the error card's Retry button re-invokes the
+  // same fetch (§1 states contract — never a silent console.error swallow).
   const load = useCallback(async () => {
     if (!tenantId) return;
+    setLoading(true);
+    setLoadError(false);
     try {
       const [camps, users] = await Promise.all([
         getCampaigns(tenantId),
@@ -511,7 +516,10 @@ export default function CampaignPanel() {
       ]);
       setCampaigns(camps);
       setAllUsers(users);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error('[CampaignPanel] load failed:', e);
+      setLoadError(true);
+    }
     finally { setLoading(false); }
   }, [tenantId]);
 
@@ -572,6 +580,26 @@ export default function CampaignPanel() {
     return (
       <div className="flex flex-col gap-3">
         {[0, 1, 2].map((i) => <div key={i} className="h-16 rounded-xl bg-border/40 animate-pulse" />)}
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-center gap-3 p-8 rounded-xl bg-danger/10 border border-danger/30 text-center"
+        data-testid="campaign-panel-error"
+      >
+        <AlertTriangle size={28} className="text-danger-ink" aria-hidden="true" />
+        <p className="text-sm text-danger-ink font-medium">Couldn&apos;t load campaigns — check your connection and try again.</p>
+        <button
+          type="button"
+          onClick={load}
+          className="min-h-[44px] px-4 rounded-lg bg-card border border-border text-ink text-sm font-semibold hover:bg-surface transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }

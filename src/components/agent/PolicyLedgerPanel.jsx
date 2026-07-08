@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Loader2, AlertCircle, ArrowLeft, Info, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PROSPECTING_SOURCES } from '../../services/prospectInfoService';
@@ -111,7 +111,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
   const [transitioning, setTransitioning] = useState(false);
   const [transitionError, setTransitionError] = useState(null);
 
-  useEffect(() => {
+  const loadLedger = useCallback(() => {
     if (!tenantId || !user?.uid) return;
     setLoading(true);
     Promise.all([
@@ -126,6 +126,8 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
       .catch((err) => setLoadError(err.message))
       .finally(() => setLoading(false));
   }, [tenantId, user?.uid]);
+
+  useEffect(() => { loadLedger(); }, [loadLedger]);
 
   useEffect(() => {
     if (initialForm) onPrefillConsumed?.();
@@ -273,12 +275,19 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
         )}
 
         {loadError && (
-          <div className="card text-center py-12 flex flex-col items-center gap-3" data-testid="ledger-error">
+          <div role="alert" className="card text-center py-12 flex flex-col items-center gap-3" data-testid="ledger-error">
             <div className="w-11 h-11 rounded-xl bg-danger-tint text-danger-ink flex items-center justify-center">
               <AlertCircle size={20} />
             </div>
             <p className="font-display font-extrabold text-[15px] text-ink">Couldn’t load your ledger</p>
             <p className="text-xs text-ink-muted">{loadError}</p>
+            <button
+              type="button"
+              onClick={loadLedger}
+              className="mt-1 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-border text-sm font-semibold text-ink hover:bg-surface-muted transition-colors"
+            >
+              Retry
+            </button>
           </div>
         )}
 
