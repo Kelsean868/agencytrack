@@ -9,10 +9,10 @@
 
 | Field | Value |
 |---|---|
-| Current tier | Tier 0 |
-| Tier gate | Tier-0 checkpoint: HOLD for operator staging review after Tier 0 completes |
-| Last session | 2026-07-08 — run start; checklist created |
-| Staging branch base | `c3b788d0` (main @ brief landing) |
+| Current tier | **Tier 0 COMPLETE — HOLDING at checkpoint for operator staging review** |
+| Tier gate | Tier 1 does not start until operator approves the Tier-0 staging review |
+| Last session | 2026-07-08 — Tier 0 built end-to-end (items 0.1–0.6, 8 work commits), staging index deployed |
+| Staging branch base | `c3b788d0` (main @ brief landing); Tier-0 HEAD `d3178618` |
 
 ## Promotion-review flags (rules / functions / indexes — ALL need human review before prod)
 
@@ -31,9 +31,27 @@
 | 0.5 Prospect sort bug: prospectInfoService.js orderBy desc→asc + composite index flip | NEEDS-HUMAN-REVIEW | Both `orderBy('intendedAppointmentDate', 'desc')` call sites in `getProspectInfo()` (UM-scoped query + BM+/default query — both feed the same single prep-list function; no separate history-view query exists in this file) flipped to `'asc'` so the most-imminent appointment sorts first. Matching composite index in `firestore.indexes.json` (`prospectInfo`: `agentUnitId` ASC + `intendedAppointmentDate` DESC, serving the UM-scoped query) flipped to `intendedAppointmentDate` ASC. The BM+/default query has no `where()` clause so it only needs Firestore's auto-built single-field index — unaffected by the composite flip. Docstring comment above `getProspectInfo` updated to match. Extended `prospectInfoService.test.js`'s three `getProspectInfo` describe blocks (agent/unit_manager/branch_manager) to assert `'asc'` instead of `'desc'`, renamed to describe soonest-first ordering. Verified no consumer (`ProspectInfoPanel.jsx`, `JointCallsTab.jsx`, `ProspectInfoTab.jsx`) does a client-side re-sort that assumed desc order. Gates green: lint 0 problems, full suite 255 files/4368 tests (matches stated baseline exactly, no flakes), build clean (pre-existing >700kB vendor-pdf chunk warning only). FLAG: index change = promotion review — must run `firebase deploy --only firestore:indexes` at promotion time. |
 | 0.6 Cleanup rulings: DELETE onboarding wizard step components (verify unwired); verify DailyEntryModal routing, delete if unrouted; AgentModePicker stays read-only (no picker) | DONE-IN-STAGING | Deleted all 7 files in `src/components/onboarding/steps/` (WizardCompletion/GamePlan/Goals/Identity/MoneyNeeds/Profile/Welcome) — `git grep` confirmed zero importers outside their own files across all of `src/` and no test files existed for any of them (`onboarding/__tests__/` holds only `WelcomeScreen.test.jsx`, which is untouched — WelcomeScreen.jsx itself was NOT touched, per instruction). `onboardingService.js` (saveWizardGamePlan/saveWizardMoneyNeeds/saveWizardProfile) is NOT imported by any of the deleted step files (checked each file's import list) so left as-is, out of this item's scope. Deleted `src/components/daily/DailyEntryModal.jsx` + its test `src/components/daily/__tests__/DailyEntryModal.test.jsx` — confirmed unrouted: `AgentDashboard.jsx` imports `DailyCaptureV2` (not DailyEntryModal), matches `FOLLOW_UPS.md`'s already-banked LOW FU ("Delete unconsumed DailyEntryModal.jsx", 2026-06-02) confirming it's been dead since PR #426. Cleaned up 3 dangling `vi.mock('../../daily/DailyEntryModal', ...)` stubs left over in `AgentDashboard.test.jsx` / `AgentDashboardNav.test.jsx` / `AgentDashboardPrefetch.test.jsx` (none of those suites actually exercise the mock — mechanical removal). AgentModePicker: confirmed no such component exists anywhere in `src/` (0 hits) — the audit's NEEDS-RULING item was specifically about `DailyCaptureV2.jsx` lacking an embedded mode-switcher w/ manager-lock per the `dailycap-mode.jsx` mockup; that surface still reads `loggingMode` read-only from profile, unchanged. Build: nothing added. **Finding (not actioned, out of scope):** `ProfileScreen.jsx` already has a pre-existing, unrelated self-service logging-mode picker gated to `role === 'agent'` (line 327) that WRITES `loggingMode` via `updateUserProfile` (Track E / E6 daily input, shipped well before this audit) — so the broader claim "agent-facing components must not write loggingMode" does not hold app-wide; it holds only for the Daily Capture surface itself, which is what the audit item and ruling were scoped to. Left untouched per "build nothing" + item scope. Gates green: lint 0 problems; full suite 254 files / 4354 tests (baseline 4368, −14 from removing `DailyEntryModal.test.jsx`); build clean (pre-existing >700kB vendor-pdf chunk warning only, no new warnings).|
 
-### Tier 0 summary
+### Tier 0 summary — COMPLETE 2026-07-08, holding for operator review
 
-_Pending._
+**All 6 items done** (0.5 as NEEDS-HUMAN-REVIEW for its index change; everything else DONE-IN-STAGING). No `firestore.rules` or `functions/` changes anywhere in Tier 0 — the sole promotion flag is the 0.5 composite index (see flags section above).
+
+**Commits on `staging`** (every one gates-green: lint 0, full suite, build clean):
+`a3778dd0` checklist · `20926a87` 0.2 dialogs · `15f724ec` 0.3 dense tables · `cd58da5e` 0.4 motion · `7e3c5aaf` ConfirmDialog 44px (operator-requested 0.2 follow-up) · `316be43b` 0.5 prospect sort + index · `adeec610` deploy note · `214ea26c` 0.6 cleanup · `2ab27cc0` 0.1a swallows/Retry/banners · `d3178618` 0.1b skeletons/empties.
+
+**Test suite:** 4302 (run baseline) → **4400 passing** (+112 new incl. dialog contracts, table contracts, reduced-motion count-up, Retry re-invocation, skeleton/empty states; −14 removed with dead DailyEntryModal). ~1,400 lines of dead code deleted (0.6).
+
+**Coverage highlights:** 7 modals + shared ConfirmDialog now meet the §4 dialog contract; MasterSheet/ProductionTable/RankedLeaderboard/All-Users/Branches meet §5 table mechanics; count-up on 6 hero/KPI surfaces + stagger entrances on 10 non-dashboard screens (all reduced-motion safe); ~20 surfaces swept to the §1 states contract — silent swallows killed (TenantAdminDashboard, CampaignPanel, 3 production views, ManagerWarTab, MonthlyRecruitingTab), Retry wired on 16+ error cards, partial-failure banners on 5 surfaces, PanelSkeleton kit's first live wiring across ~14 loading gates, actionable/honest empties on 8 surfaces. Prospect prep now sorts soonest-first (behavioral bug fix).
+
+**Operator review pointers (staging):**
+- Staging Vercel preview of the `staging` branch + `agencytrack-staging` Firestore (index already deployed by orchestrator).
+- Worth eyeballing: dialog Escape/trap/focus-return on the 7 retrofitted modals; dense-table sticky headers + card-scoped scroll (MasterSheet with many rows); count-up/stagger feel (and with OS reduced-motion ON → everything instant); error-card Retry (simulate offline); skeletons on slow connection; History/Campaigns empty-state CTAs; Prospect prep list order.
+- Deferred to this review by design: live `motion-verifier.mjs` run (needs running app + credentials).
+
+**Informational flags (no action taken, operator judgment):**
+1. `ProfileScreen.jsx` has a pre-existing agent-facing `loggingMode` self-service picker (Track E/E6, ~line 327) — in tension with the "AgentModePicker stays read-only" ruling's spirit, but pre-dates the audit and was out of 0.6's build-nothing scope. Ruling only barred building a NEW picker on the daily surface; nothing was built.
+2. Staging Firestore retains the old DESC prospect index (not in the file) — harmless; removable with `--force` deploy later.
+3. `BulkImportUsersModal.jsx` lacks `import React` (pre-existing; latent Vitest-crash-on-first-test risk; no test file exists today).
+4. ConfirmDialog nested-dialog Tab interplay (EditUserDrawer → ConfirmDialog both trapping) is pre-existing and untested — banked observation from 0.2.
 
 ---
 
@@ -88,3 +106,4 @@ SM cross-branch views (Phase 9) · Settings team-defaults cascade · payout-rele
 ## Session log
 
 - **2026-07-08 (session 1):** Run started. Brief pulled to main + merged into staging (`c3b788d0`). Checklist created. Beginning Tier 0.
+- **2026-07-08 (session 1, cont.):** Tier 0 COMPLETE — items 0.2, 0.3, 0.4, 0.5 (+staging index deploy), 0.6, 0.1a, 0.1b all landed on `staging` (HEAD `d3178618`), gates green at every commit (final: lint 0, 4400/4400, build clean). One promotion flag (0.5 index). **HOLDING at Tier-0 checkpoint — Tier 1 starts only on operator instruction.** Next session: read this file; if operator has approved, begin item 1.1 (Cmd-K palette).
