@@ -9,9 +9,9 @@
 
 | Field | Value |
 |---|---|
-| Current tier | **Tier 1 IN PROGRESS — 1.1–1.5 done; 1.6 + 1.1b pending** |
+| Current tier | **Tier 1 IN PROGRESS — 1.1–1.5 done; 1.6 IN-FLIGHT; 1.1b pending** |
 | Tier gate | Tier-0 checkpoint PASSED — operator ran the live-staging browser smoke (PASS-WITH-CAVEATS), 2 focus-return regressions fixed + approved; Tier 1 building |
-| Last session | 2026-07-08 (session 2) — Tier-0 browser-smoke remediation (2 dialog focus-return regressions fixed, 3 regression tests) then Tier 1 start |
+| Last session | 2026-07-08 (session 4, Opus orchestrator) — telemetry protocol added; dispatching 1.6 → 1.1b |
 | Staging branch base | `c3b788d0` (main @ brief landing); Tier-0 HEAD `d3178618`; post-checkpoint remediation HEAD — see session log |
 
 ## Promotion-review flags (rules / functions / indexes — ALL need human review before prod)
