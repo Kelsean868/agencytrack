@@ -188,8 +188,10 @@ export async function updateProspectInfo({
  *   where('agentUnitId','==',callerUid) for the rule's UM clause; BM+/SM/TA/PA
  *   tenant-scoped (no extra filter beyond path).
  *
+ * Prep-list ordering is soonest-first (ascending) — the most imminent
+ * appointment should surface at the top, not get buried at the bottom.
  * BM+ paths use the auto-built single-field index on intendedAppointmentDate.
- * The UM path uses the composite (agentUnitId asc, intendedAppointmentDate desc)
+ * The UM path uses the composite (agentUnitId asc, intendedAppointmentDate asc)
  * added in firestore.indexes.json.
  */
 export async function getProspectInfo({ tenantId, agentId, callerRole, callerUid }) {
@@ -200,10 +202,10 @@ export async function getProspectInfo({ tenantId, agentId, callerRole, callerUid
     q = query(
       ref,
       where('agentUnitId', '==', callerUid),
-      orderBy('intendedAppointmentDate', 'desc'),
+      orderBy('intendedAppointmentDate', 'asc'),
     );
   } else {
-    q = query(ref, orderBy('intendedAppointmentDate', 'desc'));
+    q = query(ref, orderBy('intendedAppointmentDate', 'asc'));
   }
 
   const snap = await getDocs(q);

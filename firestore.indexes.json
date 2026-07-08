@@ -209,7 +209,7 @@
         },
         {
           "fieldPath": "intendedAppointmentDate",
-          "order": "DESCENDING"
+          "order": "ASCENDING"
         }
       ]
     },

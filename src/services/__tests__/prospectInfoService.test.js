@@ -317,7 +317,7 @@ describe('updateProspectInfo', () => {
 });
 
 describe('getProspectInfo — agent', () => {
-  it('agent role queries by intendedAppointmentDate desc only (no scope filter)', async () => {
+  it('agent role queries by intendedAppointmentDate asc only (soonest-first, no scope filter)', async () => {
     hoisted.mockGetDocs.mockResolvedValue(makeSnap());
     await getProspectInfo({
       tenantId: 'tid', agentId: 'agentA', callerRole: 'agent', callerUid: 'agentA',
@@ -326,12 +326,12 @@ describe('getProspectInfo — agent', () => {
     expect(whereCalls.length).toBe(0); // no where clauses for agent
 
     const orderByCalls = hoisted.mockOrderBy.mock.calls;
-    expect(orderByCalls[0]).toEqual(['intendedAppointmentDate', 'desc']);
+    expect(orderByCalls[0]).toEqual(['intendedAppointmentDate', 'asc']);
   });
 });
 
 describe('getProspectInfo — unit_manager', () => {
-  it('UM queries with agentUnitId filter (rule requires it)', async () => {
+  it('UM queries with agentUnitId filter (rule requires it), ordered soonest-first', async () => {
     hoisted.mockGetDocs.mockResolvedValue(makeSnap());
     await getProspectInfo({
       tenantId: 'tid', agentId: 'agentA', callerRole: 'unit_manager', callerUid: 'um1',
@@ -340,12 +340,12 @@ describe('getProspectInfo — unit_manager', () => {
     expect(whereCalls).toContainEqual(['agentUnitId', '==', 'um1']);
 
     const orderByCalls = hoisted.mockOrderBy.mock.calls;
-    expect(orderByCalls[0]).toEqual(['intendedAppointmentDate', 'desc']);
+    expect(orderByCalls[0]).toEqual(['intendedAppointmentDate', 'asc']);
   });
 });
 
 describe('getProspectInfo — branch_manager (and above)', () => {
-  it('BM queries with no scope filter (tenant-scoped via path)', async () => {
+  it('BM queries with no scope filter (tenant-scoped via path), ordered soonest-first', async () => {
     hoisted.mockGetDocs.mockResolvedValue(makeSnap());
     await getProspectInfo({
       tenantId: 'tid', agentId: 'agentA', callerRole: 'branch_manager', callerUid: 'bm1',
@@ -355,7 +355,7 @@ describe('getProspectInfo — branch_manager (and above)', () => {
     expect(hasUnitFilter).toBe(false);
 
     const orderByCalls = hoisted.mockOrderBy.mock.calls;
-    expect(orderByCalls[0]).toEqual(['intendedAppointmentDate', 'desc']);
+    expect(orderByCalls[0]).toEqual(['intendedAppointmentDate', 'asc']);
   });
 });
 
