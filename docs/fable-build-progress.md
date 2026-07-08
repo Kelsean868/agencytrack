@@ -16,7 +16,7 @@
 
 ## Promotion-review flags (rules / functions / indexes — ALL need human review before prod)
 
-- `firestore.indexes.json` — prospectInfo composite index `intendedAppointmentDate` DESC→ASC (item 0.5). Must be deployed via `firebase deploy --only firestore:indexes` at promotion; staging deploy handled by orchestrator. **HUMAN-REVIEW-BEFORE-PROMOTION.**
+- `firestore.indexes.json` — prospectInfo composite index `intendedAppointmentDate` DESC→ASC (item 0.5). Must be deployed via `firebase deploy --only firestore:indexes` at promotion (prod). **HUMAN-REVIEW-BEFORE-PROMOTION.** Staging: deployed 2026-07-08 by orchestrator (`--project agencytrack-staging`, explicit-project + alias restored to default after); staging retains 1 stale index not in the file (the old DESC composite) — harmless, removable later with `--force`.
 
 ---
 
