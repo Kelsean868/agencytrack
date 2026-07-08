@@ -295,3 +295,27 @@ describe('BranchesPanel — total user count (all roles)', () => {
     expect(screen.getByText('1 agents, 1 future_role')).toBeInTheDocument();
   });
 });
+
+describe('BranchesPanel — §5 dense-table contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setup({ branches: [BRANCH_ACTIVE, BRANCH_INACTIVE] });
+  });
+
+  it('renders a live footer count with active/inactive breakdown', async () => {
+    render(<BranchesPanel />);
+    await waitFor(() => expect(screen.getByText('South Branch')).toBeInTheDocument());
+    const footer = screen.getByTestId('branches-roster-footer');
+    expect(footer).toHaveTextContent('2 branches');
+    expect(footer).toHaveTextContent('1 active');
+    expect(footer).toHaveTextContent('1 inactive');
+  });
+
+  it('header row is sticky (card-scoped scroll contract)', async () => {
+    const { container } = render(<BranchesPanel />);
+    await waitFor(() => expect(screen.getByText('South Branch')).toBeInTheDocument());
+    const headerCells = container.querySelectorAll('thead th');
+    expect(headerCells.length).toBeGreaterThan(0);
+    headerCells.forEach((th) => expect(th.className).toContain('sticky'));
+  });
+});

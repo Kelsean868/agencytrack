@@ -13,7 +13,7 @@ import { formatCurrency } from '../../utils/formatters';
  */
 export default function RankedLeaderboard({
   entries = [],
-  _valueLabel = 'API',
+  valueLabel = 'API',
   secondaryLabel,
   topN,
   currentEntityId,
@@ -36,41 +36,64 @@ export default function RankedLeaderboard({
     return 'bg-surface text-ink-muted';
   };
 
+  const showingSubset = Boolean(topN) && entries.length > visible.length;
+
   return (
-    <div className="flex flex-col gap-0 rounded-xl border border-border overflow-hidden bg-card">
-      {visible.map((entry) => {
-        const isMe = entry.id === currentEntityId;
-        return (
-          <div
-            key={entry.id ?? entry.name}
-            className={`flex items-center gap-3 px-4 py-3 border-b border-border last:border-0 transition-colors ${
-              isMe ? 'bg-primary/5' : 'hover:bg-surface'
-            }`}
-          >
-            <span
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${medalClass(entry.rank)}`}
+    <div className="flex flex-col rounded-xl border border-border overflow-hidden bg-card">
+      {/* Card-scoped vertical scroll (§5) + sticky header row */}
+      <div className="overflow-y-auto max-h-[70vh]">
+        <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-2 border-b border-border bg-surface text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
+          <span className="w-7 shrink-0 text-center">#</span>
+          <span className="flex-1">Agent</span>
+          <span className="text-right shrink-0">
+            {valueLabel}{secondaryLabel ? ` / ${secondaryLabel}` : ''}
+          </span>
+        </div>
+
+        {visible.map((entry) => {
+          const isMe = entry.id === currentEntityId;
+          return (
+            <div
+              key={entry.id ?? entry.name}
+              className={`flex items-center gap-3 px-4 py-3 border-b border-border last:border-0 transition-colors ${
+                isMe ? 'bg-primary/5' : 'hover:bg-surface'
+              }`}
             >
-              {entry.rank}
-            </span>
+              <span
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${medalClass(entry.rank)}`}
+              >
+                {entry.rank}
+              </span>
 
-            <span className={`flex-1 text-sm font-medium truncate ${isMe ? 'text-primary' : 'text-ink'}`}>
-              {entry.name}
-              {isMe && <span className="ml-1.5 text-[10px] text-primary/70">(you)</span>}
-            </span>
+              <span
+                className={`flex-1 text-sm font-medium truncate ${isMe ? 'text-primary' : 'text-ink'}`}
+                title={entry.name}
+              >
+                {entry.name}
+                {isMe && <span className="ml-1.5 text-[10px] text-primary/70">(you)</span>}
+              </span>
 
-            <div className="text-right shrink-0">
-              <p className={`text-sm font-semibold tabular-nums ${isMe ? 'text-primary' : 'text-ink'}`}>
-                {isCurrency ? formatCurrency(entry.value) : entry.value}
-              </p>
-              {secondaryLabel && entry.secondaryValue !== undefined && (
-                <p className="text-[10px] text-ink-muted tabular-nums">
-                  {entry.secondaryValue} {secondaryLabel}
+              <div className="text-right shrink-0">
+                <p className={`text-sm font-semibold tabular-nums ${isMe ? 'text-primary' : 'text-ink'}`}>
+                  {isCurrency ? formatCurrency(entry.value) : entry.value}
                 </p>
-              )}
+                {secondaryLabel && entry.secondaryValue !== undefined && (
+                  <p className="text-[10px] text-ink-muted tabular-nums">
+                    {entry.secondaryValue} {secondaryLabel}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+
+      {/* Live footer count (§5) */}
+      <div className="px-4 py-2 border-t border-border bg-surface text-xs text-ink-muted">
+        {showingSubset
+          ? `Showing ${visible.length} of ${entries.length}`
+          : `${entries.length} agent${entries.length !== 1 ? 's' : ''}`}
+      </div>
     </div>
   );
 }

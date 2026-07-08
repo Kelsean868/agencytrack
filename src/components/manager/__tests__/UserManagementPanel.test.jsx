@@ -218,3 +218,36 @@ describe('UserManagementPanel — Invite control', () => {
     expect(screen.queryByTestId('copy-link-input')).not.toBeInTheDocument();
   });
 });
+
+describe('UserManagementPanel — §5 dense-table contract', () => {
+  beforeEach(() => {
+    hoisted.getAllUsers.mockReset();
+  });
+
+  it('renders a live footer count with active/deactivated breakdown', async () => {
+    hoisted.getAllUsers.mockResolvedValue([ACTIVE_AGENT, INACTIVE_AGENT]);
+    render(<UserManagementPanel />);
+    await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
+    const footer = screen.getByTestId('user-roster-footer');
+    expect(footer).toHaveTextContent('2 users');
+    expect(footer).toHaveTextContent('1 active');
+    expect(footer).toHaveTextContent('1 deactivated');
+  });
+
+  it('renders an Active status pill for active users and Deactivated for inactive', async () => {
+    hoisted.getAllUsers.mockResolvedValue([ACTIVE_AGENT, INACTIVE_AGENT]);
+    render(<UserManagementPanel />);
+    await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
+    expect(screen.getByText('Active')).toBeInTheDocument();
+    expect(screen.getByText('Deactivated')).toBeInTheDocument();
+  });
+
+  it('header row is sticky (card-scoped scroll contract)', async () => {
+    hoisted.getAllUsers.mockResolvedValue([ACTIVE_AGENT]);
+    const { container } = render(<UserManagementPanel />);
+    await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
+    const headerCells = container.querySelectorAll('thead th');
+    expect(headerCells.length).toBeGreaterThan(0);
+    headerCells.forEach((th) => expect(th.className).toContain('sticky'));
+  });
+});

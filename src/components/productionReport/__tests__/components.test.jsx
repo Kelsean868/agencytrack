@@ -114,6 +114,43 @@ describe('ProductionTable', () => {
     const firstTh = container.querySelector('th');
     expect(firstTh).not.toHaveTextContent('#');
   });
+
+  // ── §5 dense-table contract ─────────────────────────────────────────────
+
+  it('renders a live footer count', () => {
+    render(<ProductionTable rows={rows} period="week" />);
+    expect(screen.getByText('1 agent')).toBeInTheDocument();
+  });
+
+  it('footer count pluralizes for multiple rows', () => {
+    const twoRows = [rows[0], { ...rows[0], label: 'Bob' }];
+    render(<ProductionTable rows={twoRows} period="week" />);
+    expect(screen.getByText('2 agents')).toBeInTheDocument();
+  });
+
+  it('truncated agent-name cell carries a title attribute', () => {
+    render(<ProductionTable rows={rows} period="week" />);
+    expect(screen.getByText('Alice')).toHaveAttribute('title', 'Alice');
+  });
+
+  it('header cells are sticky for the card-scoped scroll contract, first row pinned to top-0', () => {
+    const { container } = render(<ProductionTable rows={rows} period="week" />);
+    const headerRows = container.querySelectorAll('thead tr');
+    expect(headerRows.length).toBe(2);
+    headerRows[0].querySelectorAll('th').forEach((th) => {
+      expect(th.className).toContain('sticky');
+      expect(th.className).toContain('top-0');
+    });
+    headerRows[1].querySelectorAll('th').forEach((th) => {
+      expect(th.className).toContain('sticky');
+    });
+  });
+
+  it('numeric cells render tabular-nums', () => {
+    render(<ProductionTable rows={rows} period="week" />);
+    const totalCell = screen.getByText('TTD 18,000');
+    expect(totalCell.className).toContain('tabular-nums');
+  });
 });
 
 // ── RankedLeaderboard ─────────────────────────────────────────────────────────
@@ -158,5 +195,29 @@ describe('RankedLeaderboard', () => {
   it('does not show (you) when no currentEntityId', () => {
     render(<RankedLeaderboard entries={entries} />);
     expect(screen.queryByText('(you)')).not.toBeInTheDocument();
+  });
+
+  // ── §5 dense-table contract ─────────────────────────────────────────────
+
+  it('renders a sticky header row with the value label', () => {
+    const { container } = render(<RankedLeaderboard entries={entries} valueLabel="Avg API" />);
+    expect(screen.getByText('Avg API')).toBeInTheDocument();
+    const header = container.querySelector('.sticky.top-0');
+    expect(header).not.toBeNull();
+  });
+
+  it('renders a live footer count when unfiltered', () => {
+    render(<RankedLeaderboard entries={entries} />);
+    expect(screen.getByText('5 agents')).toBeInTheDocument();
+  });
+
+  it('renders "Showing N of M" in the footer when topN caps the list', () => {
+    render(<RankedLeaderboard entries={entries} topN={3} />);
+    expect(screen.getByText('Showing 3 of 5')).toBeInTheDocument();
+  });
+
+  it('truncated name cell carries a title attribute', () => {
+    render(<RankedLeaderboard entries={entries} />);
+    expect(screen.getByText('Alice')).toHaveAttribute('title', 'Alice');
   });
 });

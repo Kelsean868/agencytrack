@@ -40,6 +40,16 @@ const COLS = [
   { key: 'closingRatio',        label: 'Closing %',           ratio: true,                         minW: 'min-w-[80px]'  },
 ];
 
+// §5 dense-table contract: identity/status/badge columns stay left-aligned
+// text; every other column (counts, currency, ratios, days worked) is a
+// numeral and renders right-aligned + tabular-nums (inherited from the td
+// onto its child spans — font-variant-numeric is an inherited property).
+function isNumericCol(col) {
+  if (col.key === 'name' || col.key === 'status') return false;
+  if (col.weekend) return false; // Yes/No/— badge, not a numeral
+  return true;
+}
+
 function resolveName(sub, userNameMap) {
   if (sub.agentName)   return sub.agentName;
   if (sub.displayName) return sub.displayName;
@@ -255,7 +265,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   }
 
   const thBase =
-    'px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-ink-muted whitespace-nowrap border-b border-border';
+    'px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-muted whitespace-nowrap border-b border-border';
   const tdBase = 'px-3 py-3 text-sm border-b border-border/40';
 
   return (
@@ -320,8 +330,9 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         </div>
       )}
 
-      {/* Table — horizontally scrollable, first 2 columns sticky */}
-      <div className="overflow-x-auto rounded-xl border border-border bg-card">
+      {/* Table — card-scoped vertical + horizontal scroll (§5), sticky header,
+          first 2 columns sticky. Scroll lives inside this card, never the page. */}
+      <div className="overflow-x-auto overflow-y-auto max-h-[70vh] rounded-xl border border-border bg-card">
         <table className="text-sm border-separate border-spacing-0">
           <thead>
             <tr>
@@ -330,7 +341,9 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
                   key={col.key}
                   className={`
                     ${thBase} ${col.minW}
-                    ${col.sticky ? `sticky ${col.left} z-20 bg-surface` : 'bg-surface'}
+                    sticky top-0 bg-surface
+                    ${col.sticky ? `${col.left} z-30` : 'z-20'}
+                    ${isNumericCol(col) ? 'text-right' : 'text-left'}
                   `}
                 >
                   {col.label}
@@ -382,6 +395,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
                       key={col.key}
                       className={`
                         ${tdBase} ${col.minW}
+                        ${isNumericCol(col) ? 'text-right tabular-nums' : 'text-left'}
                         ${col.sticky
                           ? `sticky ${col.left} z-10 bg-card group-hover:bg-surface/50`
                           : 'group-hover:bg-surface/30'}
