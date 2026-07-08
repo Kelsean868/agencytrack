@@ -445,7 +445,7 @@ async function runAgent(browser) {
     if (policyCardCount > 0) {
       await checkDialog(page, {
         idPrefix: 'policy-drawer', roleLabel,
-        triggerSelector: '[data-testid^="policy-card-"]:first-of-type',
+        triggerSelector: '[data-testid^="policy-card-"]',
         dialogSelector: '[data-testid="policy-drawer"]',
         closeSelector: '[aria-label="Close"]',
       });
@@ -655,7 +655,7 @@ async function runBranchManager(browser) {
     if (editBtnCount > 0) {
       await checkDialog(page, {
         idPrefix: 'edit-user-drawer', roleLabel,
-        triggerSelector: '[data-testid^="user-edit-"]:first-of-type',
+        triggerSelector: '[data-testid^="user-edit-"]',
         dialogSelector: '[data-testid="edit-user-drawer"]',
         closeSelector: '[aria-label="Close drawer"]',
       });
@@ -675,7 +675,10 @@ async function runBranchManager(browser) {
     if (pgVisible) {
       await checkDialog(page, {
         idPrefix: 'persistency-playground', roleLabel,
-        triggerSelector: '[data-testid^="pers-roster-play-"]:first-of-type',
+        // NOTE: no `:first-of-type` — the Play button is the SECOND <button>
+        // among its row siblings (Edit comes first), so `:first-of-type`
+        // matches zero elements. checkDialog's own `.first()` handles firstness.
+        triggerSelector: '[data-testid^="pers-roster-play-"]',
         dialogSelector: '[data-testid="persistency-playground"]',
         closeSelector: '[aria-label="Close"]',
       });
@@ -895,7 +898,7 @@ async function runTenantAdmin(browser) {
     if ((await editBtn.count()) > 0) {
       await checkDialog(page, {
         idPrefix: 'edit-user-drawer', roleLabel,
-        triggerSelector: '[data-testid^="user-edit-"]:first-of-type',
+        triggerSelector: '[data-testid^="user-edit-"]',
         dialogSelector: '[data-testid="edit-user-drawer"]',
         closeSelector: '[aria-label="Close drawer"]',
       });
