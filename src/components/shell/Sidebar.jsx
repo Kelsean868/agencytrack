@@ -155,9 +155,15 @@ export default function Sidebar({
         const g = gestureRef.current;
         if (g && g.pointerId === e.pointerId) g.armed = true;
       }, LONG_PRESS_MS);
-    } else {
-      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* jsdom / unsupported */ }
     }
+    // Deliberately NO setPointerCapture here. Capturing on the row div at
+    // pointerdown retargets the whole gesture — including the eventual `click`
+    // — to the div, so the inner button's onClick never fires and a plain
+    // sidebar click stops navigating in real browsers (caught by the 1.4 live
+    // smoke; invisible to jsdom, whose setPointerCapture is a no-op and whose
+    // fireEvent.click dispatches straight to the button). onRowPointerMove
+    // captures at the moment the drag actually arms (past DRAG_THRESHOLD) —
+    // the only time capture is needed.
   }, [canReorder]);
 
   const onRowPointerMove = useCallback((e) => {
