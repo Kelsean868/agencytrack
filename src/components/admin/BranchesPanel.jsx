@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Plus, Building2, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useToast from '../../hooks/useToast';
@@ -63,8 +63,15 @@ function formatRoleBreakdown(roles) {
  * — those callsites are not modified in C1. When the new collection is
  * empty for a tenant, this panel renders the empty state; everything
  * else still works.
+ *
+ * openCreateSignal (Tier 1 · 1.3 — TenantAdminDashboard Quick-Add): an
+ * external trigger for the create modal. TenantAdminDashboard bumps this
+ * counter when its own Quick-Add "New branch" action fires; a change-only
+ * effect below (initial mount skipped) calls the same openCreate() path the
+ * "Add branch" button already uses. Defaults to 0 so existing callers/tests
+ * that don't pass it are unaffected and never auto-open on mount.
  */
-export default function BranchesPanel() {
+export default function BranchesPanel({ openCreateSignal = 0 }) {
   const { tenantId, user } = useAuth();
   const toast = useToast();
 
@@ -141,6 +148,31 @@ export default function BranchesPanel() {
     setEditorBranch(null);
     setEditorMode('create');
   }
+
+  // External create trigger (Tier 1 · 1.3, TenantAdminDashboard Quick-Add).
+  // BranchesPanel is only mounted while the Branches tab is active (see
+  // `activeTab === 'branches' && <BranchesPanel .../>` in TenantAdminDashboard)
+  // — it unmounts on every tab switch. That means Quick-Add's "New branch"
+  // action mounts this component FRESH, already carrying the nonzero signal it
+  // needs to react to; a naive "skip only the very first render" guard would
+  // never fire in that case. Instead this tracks the last-seen signal value
+  // (seeded at the prop's neutral default, 0) and opens whenever the value
+  // changes to something truthy — on first mount (arrived via Quick-Add) or on
+  // a later prop change while already mounted (Quick-Add fired again from this
+  // same tab). TenantAdminDashboard resets its own counter back to 0
+  // immediately after (its reset effect runs after this child effect, per
+  // React's child-before-parent passive-effect order within one commit), so a
+  // later plain tab click remounts with openCreateSignal back at 0 and never
+  // re-opens the modal.
+  const lastSeenCreateSignal = useRef(0);
+  useEffect(() => {
+    if (openCreateSignal === lastSeenCreateSignal.current) return;
+    lastSeenCreateSignal.current = openCreateSignal;
+    if (openCreateSignal > 0) {
+      setEditorBranch(null);
+      setEditorMode('create');
+    }
+  }, [openCreateSignal]);
 
   async function openEdit(branchId) {
     setEditorLoading(true);

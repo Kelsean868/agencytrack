@@ -12,6 +12,7 @@ const hoisted = vi.hoisted(() => ({
   resendInvite:       vi.fn(),
   getInviteLink:      vi.fn(),
   toastShow:          vi.fn(),
+  listBranches:       vi.fn(),
 }));
 
 vi.mock('../../../services/agentManagementService', () => ({
@@ -20,6 +21,14 @@ vi.mock('../../../services/agentManagementService', () => ({
   deactivateUser:    hoisted.deactivateUser,
   getUnitManagers:   hoisted.getUnitManagers,
   getBranchManagers: hoisted.getBranchManagers,
+}));
+
+// CreateUserDrawer (defined in the SUT file) fetches unit managers + branches
+// on mount for non-unit_manager callers. Only exercised once the drawer
+// actually opens — the openCreateSignal describe block below is the first
+// coverage in this file to mount it.
+vi.mock('../../../services/branchService', () => ({
+  listBranches: hoisted.listBranches,
 }));
 
 vi.mock('../../../services/userService', () => ({
@@ -249,5 +258,57 @@ describe('UserManagementPanel — §5 dense-table contract', () => {
     const headerCells = container.querySelectorAll('thead th');
     expect(headerCells.length).toBeGreaterThan(0);
     headerCells.forEach((th) => expect(th.className).toContain('sticky'));
+  });
+});
+
+describe('UserManagementPanel — openCreateSignal (Tier 1 · 1.3 external create trigger)', () => {
+  beforeEach(() => {
+    hoisted.getAllUsers.mockReset();
+    hoisted.getAllUsers.mockResolvedValue([ACTIVE_AGENT]);
+    // CreateUserDrawer (role: tenant_admin, per the top-of-file AuthContext
+    // mock) fetches unit managers + branches on mount — stub both so opening
+    // the drawer in these tests doesn't hit an unconfigured mock / real
+    // Firestore call.
+    hoisted.getUnitManagers.mockReset();
+    hoisted.getUnitManagers.mockResolvedValue([]);
+    hoisted.listBranches.mockReset();
+    hoisted.listBranches.mockResolvedValue([]);
+  });
+
+  it('does not auto-open the create drawer on initial render with the default signal', async () => {
+    render(<UserManagementPanel />);
+    await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
+    expect(screen.queryByText('Add New User')).toBeNull();
+  });
+
+  it('does not auto-open when explicitly mounted with openCreateSignal={0}', async () => {
+    render(<UserManagementPanel openCreateSignal={0} />);
+    await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
+    expect(screen.queryByText('Add New User')).toBeNull();
+  });
+
+  it('opens the create drawer immediately when MOUNTED FRESH with a nonzero signal (Quick-Add remount path)', async () => {
+    // TenantAdminDashboard's UserManagementPanel is conditionally rendered
+    // per tab, so it mounts fresh already carrying the Quick-Add signal —
+    // this is the real-world path, distinct from a prop change on an
+    // already-mounted instance (covered below).
+    render(<UserManagementPanel openCreateSignal={1} />);
+    await waitFor(() => expect(screen.getByText('Add New User')).toBeInTheDocument());
+  });
+
+  it('opens the create drawer when openCreateSignal CHANGES on an already-mounted instance', async () => {
+    const { rerender } = render(<UserManagementPanel openCreateSignal={0} />);
+    await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
+    expect(screen.queryByText('Add New User')).toBeNull();
+
+    rerender(<UserManagementPanel openCreateSignal={1} />);
+    await waitFor(() => expect(screen.getByText('Add New User')).toBeInTheDocument());
+  });
+
+  it('does not re-open when the signal changes but stays at 0 (e.g. a no-op re-render)', async () => {
+    const { rerender } = render(<UserManagementPanel openCreateSignal={0} />);
+    await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
+    rerender(<UserManagementPanel openCreateSignal={0} />);
+    expect(screen.queryByText('Add New User')).toBeNull();
   });
 });

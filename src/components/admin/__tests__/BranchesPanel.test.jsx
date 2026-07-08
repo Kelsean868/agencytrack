@@ -340,3 +340,49 @@ describe('BranchesPanel — §5 dense-table contract', () => {
     headerCells.forEach((th) => expect(th.className).toContain('sticky'));
   });
 });
+
+describe('BranchesPanel — openCreateSignal (Tier 1 · 1.3 external create trigger)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setup({ branches: [BRANCH_ACTIVE] });
+  });
+
+  it('does not auto-open the create modal on initial render with the default signal', async () => {
+    render(<BranchesPanel />);
+    await waitFor(() => expect(screen.getByText('South Branch')).toBeInTheDocument());
+    expect(screen.queryByTestId('branch-editor-modal')).toBeNull();
+  });
+
+  it('does not auto-open when explicitly mounted with openCreateSignal={0}', async () => {
+    render(<BranchesPanel openCreateSignal={0} />);
+    await waitFor(() => expect(screen.getByText('South Branch')).toBeInTheDocument());
+    expect(screen.queryByTestId('branch-editor-modal')).toBeNull();
+  });
+
+  it('opens the create modal immediately when MOUNTED FRESH with a nonzero signal (Quick-Add remount path)', async () => {
+    // TenantAdminDashboard's BranchesPanel is conditionally rendered per tab,
+    // so it mounts fresh already carrying the Quick-Add signal — this is the
+    // real-world path, distinct from a prop change on an already-mounted
+    // instance (covered below).
+    render(<BranchesPanel openCreateSignal={1} />);
+    await waitFor(() => expect(screen.getByText('South Branch')).toBeInTheDocument());
+    expect(screen.getByTestId('branch-editor-modal')).toHaveAttribute('data-mode', 'create');
+  });
+
+  it('opens the create modal when openCreateSignal CHANGES on an already-mounted instance', async () => {
+    const { rerender } = render(<BranchesPanel openCreateSignal={0} />);
+    await waitFor(() => expect(screen.getByText('South Branch')).toBeInTheDocument());
+    expect(screen.queryByTestId('branch-editor-modal')).toBeNull();
+
+    rerender(<BranchesPanel openCreateSignal={1} />);
+    await waitFor(() => expect(screen.getByTestId('branch-editor-modal')).toBeInTheDocument());
+    expect(screen.getByTestId('branch-editor-modal')).toHaveAttribute('data-mode', 'create');
+  });
+
+  it('does not re-open when the signal changes but stays at 0 (e.g. a no-op re-render)', async () => {
+    const { rerender } = render(<BranchesPanel openCreateSignal={0} />);
+    await waitFor(() => expect(screen.getByText('South Branch')).toBeInTheDocument());
+    rerender(<BranchesPanel openCreateSignal={0} />);
+    expect(screen.queryByTestId('branch-editor-modal')).toBeNull();
+  });
+});

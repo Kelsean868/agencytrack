@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, X, Loader2, UserCircle, AlertTriangle, Upload, Pencil, MailPlus, Link, ChevronDown, Copy } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -352,7 +352,16 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
   );
 }
 
-export default function UserManagementPanel() {
+/**
+ * openCreateSignal (Tier 1 · 1.3 — TenantAdminDashboard Quick-Add): an
+ * external trigger for the "Add User" create drawer. TenantAdminDashboard
+ * bumps this counter when its own Quick-Add "New user" action fires; a
+ * change-only effect below (initial mount skipped) opens the same
+ * CreateUserDrawer the "Add User" button already opens. Defaults to 0 so
+ * existing callers/tests that don't pass it are unaffected and never
+ * auto-open on mount.
+ */
+export default function UserManagementPanel({ openCreateSignal = 0 }) {
   const { role, user: currentUser, userProfile, tenantId } = useAuth();
   const toast = useToast();
 
@@ -394,6 +403,28 @@ export default function UserManagementPanel() {
   }, [showInactive, tenantId]);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
+
+  // External create trigger (Tier 1 · 1.3, TenantAdminDashboard Quick-Add).
+  // UserManagementPanel is only mounted while the Users tab is active (see
+  // `activeTab === 'users' && <UserManagementPanel .../>` in
+  // TenantAdminDashboard) — it unmounts on every tab switch. That means
+  // Quick-Add's "New user" action mounts this component FRESH, already
+  // carrying the nonzero signal it needs to react to; a naive "skip only the
+  // very first render" guard would never fire in that case. Instead this
+  // tracks the last-seen signal value (seeded at the prop's neutral default,
+  // 0) and opens the drawer whenever the value changes to something truthy —
+  // on first mount (arrived via Quick-Add) or on a later prop change while
+  // already mounted. TenantAdminDashboard resets its own counter back to 0
+  // immediately after (its reset effect runs after this child effect, per
+  // React's child-before-parent passive-effect order within one commit), so a
+  // later plain tab click remounts with openCreateSignal back at 0 and never
+  // re-opens the drawer.
+  const lastSeenCreateSignal = useRef(0);
+  useEffect(() => {
+    if (openCreateSignal === lastSeenCreateSignal.current) return;
+    lastSeenCreateSignal.current = openCreateSignal;
+    if (openCreateSignal > 0) setShowDrawer(true);
+  }, [openCreateSignal]);
 
   useEffect(() => {
     if (!copyLinkUser) return;

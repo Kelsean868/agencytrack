@@ -4,9 +4,12 @@
 // Every non-SOON key maps to an existing handler/route in the dashboard
 // (confirmed in Phase 0 source audit). No new screens are introduced.
 //
-// configKey mirrors navConfig.js: 'agent' | 'producingManager' | 'manager'.
-// The 'manager' (non-producing: SM/TA/PA) list is assigned here because
-// Phase 0 confirmed those roles route through ManagerDashboard.
+// configKey mirrors navConfig.js: 'agent' | 'producingManager' | 'manager'
+// | 'tenantAdmin'. The 'manager' (non-producing: SM/TA/PA) list is assigned
+// here because Phase 0 confirmed those roles route through ManagerDashboard.
+// 'tenantAdmin' (Tier 1 · 1.3) is TenantAdminDashboard's own Quick-Add menu —
+// it fires the real create flows (BranchesPanel / UserManagementPanel), not
+// route-to-tab-only actions.
 //
 // Action shape: { key, label, Icon, primary?, soon?, group? }
 //   • primary  → highlighted top action
@@ -16,6 +19,7 @@
 import {
   Pencil, FileText, Shield, Target, CalendarCheck,
   UserPlus, Presentation, TrendingUp, CalendarClock, Gift, NotebookPen,
+  Building2,
 } from 'lucide-react';
 
 const AGENT_ACTIONS = [
@@ -49,15 +53,25 @@ const MANAGER_ACTIONS = [
   { key: 'planner',            label: 'Schedule coaching', Icon: CalendarClock, group: 'team', soon: true  },
 ];
 
+// Tenant admin — fires the real create flows (Tier 1 · 1.3). 'new-branch'
+// routes to the Branches tab and bumps BranchesPanel's openCreateSignal;
+// 'new-user' routes to the Users tab and bumps UserManagementPanel's
+// openCreateSignal. No 'soon' items — both map to existing shipped surfaces.
+const TENANT_ADMIN_ACTIONS = [
+  { key: 'new-branch', label: 'New branch', Icon: Building2, primary: true },
+  { key: 'new-user',   label: 'New user',   Icon: UserPlus                 },
+];
+
 const CONFIGS = {
   agent:            AGENT_ACTIONS,
   producingManager: PRODUCING_MANAGER_ACTIONS,
   manager:          MANAGER_ACTIONS,
+  tenantAdmin:      TENANT_ADMIN_ACTIONS,
 };
 
 /**
  * Returns the ordered Quick-Add action list for a config role.
- * @param {'agent'|'producingManager'|'manager'} configKey
+ * @param {'agent'|'producingManager'|'manager'|'tenantAdmin'} configKey
  * @returns {Array<{ key, label, Icon, primary?, soon?, group? }>}
  */
 export function getQuickAddActions(configKey) {

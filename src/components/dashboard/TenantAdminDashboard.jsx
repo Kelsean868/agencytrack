@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  LayoutGrid, Building2, Users, BookOpen, Send, UserCircle, TrendingUp, AlertTriangle,
+  LayoutGrid, Building2, Users, BookOpen, Send, UserCircle, TrendingUp, AlertTriangle, Plus,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -19,6 +19,8 @@ import BranchesPanel from '../admin/BranchesPanel';
 import UserManagementPanel from '../manager/UserManagementPanel';
 import CampaignPanel from '../campaigns/CampaignPanel';
 import ProfileScreen from '../profile/ProfileScreen';
+import QuickAddMenu from '../shell/QuickAddMenu';
+import { getQuickAddActions } from '../shell/quickAddConfig';
 
 /**
  * TenantAdminDashboard (Design System v2 — B5, TA-CLEANUP).
@@ -97,6 +99,29 @@ function StatCard({ label, value, sub, Icon, loading }) {
 export default function TenantAdminDashboard() {
   const { user, userProfile, role, tenantId } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Quick-Add (Tier 1 · 1.3) — ＋ FAB fires the real create flows rather than
+  // just routing to a tab. Each signal is a bump counter; BranchesPanel /
+  // UserManagementPanel watch their own openCreateSignal prop (change-only,
+  // initial mount skipped) and open their existing create modal.
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [branchCreateSignal, setBranchCreateSignal] = useState(0);
+  const [userCreateSignal, setUserCreateSignal] = useState(0);
+
+  // Reset each create-signal back to its neutral baseline (0) right after
+  // firing. BranchesPanel / UserManagementPanel mount fresh whenever their
+  // tab activates (see the activeTab === 'branches' / 'users' conditionals
+  // below) — a signal left non-zero would incorrectly reopen the create
+  // modal on a later plain tab click. React fires child passive effects
+  // before parent passive effects within the same commit, so the panel's
+  // own openCreateSignal effect always observes the non-zero value first;
+  // this reset lands one render later and is inert once already consumed.
+  useEffect(() => {
+    if (branchCreateSignal !== 0) setBranchCreateSignal(0);
+  }, [branchCreateSignal]);
+  useEffect(() => {
+    if (userCreateSignal !== 0) setUserCreateSignal(0);
+  }, [userCreateSignal]);
 
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
@@ -199,12 +224,29 @@ export default function TenantAdminDashboard() {
     try { await signOut(); } catch (err) { console.error(err); }
   };
 
+  // Quick-Add action dispatch (Tier 1 · 1.3). 'quick-add' opens the menu;
+  // 'new-branch' / 'new-user' route to the owning tab AND bump that panel's
+  // create-signal so the real create modal opens (not just tab navigation).
+  const handleAction = (action) => {
+    if (action === 'quick-add') {
+      setShowQuickAdd(true);
+    } else if (action === 'new-branch') {
+      setActiveTab('branches');
+      setBranchCreateSignal((n) => n + 1);
+    } else if (action === 'new-user') {
+      setActiveTab('users');
+      setUserCreateSignal((n) => n + 1);
+    }
+  };
+
   return (
     <Shell
       navItems={NAV_ITEMS}
       bottomNavItems={BOTTOM_NAV}
       drawerNavItems={DRAWER_NAV}
       navScopeId={user?.uid}
+      quickAddActions={getQuickAddActions('tenantAdmin')}
+      onAction={handleAction}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
       userProfile={userProfile}
@@ -213,6 +255,32 @@ export default function TenantAdminDashboard() {
       topbarCrumb={`${roleLabel} · Tatil Life`}
       onSignOut={handleSignOut}
     >
+      {/* Quick-Add ＋ FAB — create-focused (not DailyFAB's "log today" pencil).
+          Visible at all viewport widths: TenantAdminDashboard's BOTTOM_NAV is a
+          locked 4-tab v2 layout (existing mobile-nav-reorder tests assert its
+          exact contents/order), so — unlike the producing-manager center-FAB
+          bottom-nav slot — the ＋ affordance here does not swap into that array.
+          Kept visible on mobile too (no `hidden md:flex`) so reachability holds
+          without touching the tested bottom-nav shape. See PR description for
+          the SKIP-AND-LOG on the bottom-nav-slot alternative. */}
+      <button
+        type="button"
+        onClick={() => setShowQuickAdd(true)}
+        className="fixed bottom-20 right-4 z-40 w-14 h-14 flex items-center justify-center rounded-full bg-primary dark:bg-primary-dark text-white shadow-lg hover:bg-primary/90 dark:hover:bg-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/60 focus:ring-offset-2"
+        aria-label="Quick add"
+        data-testid="tenant-admin-quick-add-fab"
+      >
+        <Plus size={22} aria-hidden="true" />
+      </button>
+
+      {showQuickAdd && (
+        <QuickAddMenu
+          actions={getQuickAddActions('tenantAdmin')}
+          onSelect={handleAction}
+          onClose={() => setShowQuickAdd(false)}
+        />
+      )}
+
       {/* ── Screen-enter (redesign-addendum §2): tab-content fades + rises 8px
           on tab navigation. Keyed on activeTab. No fixed overlays in this
           dashboard's children. Gated + degrades in index.css. */}
@@ -285,7 +353,7 @@ export default function TenantAdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'branches' && <BranchesPanel />}
+      {activeTab === 'branches' && <BranchesPanel openCreateSignal={branchCreateSignal} />}
 
       {activeTab === 'config' && (
         <>
@@ -295,7 +363,7 @@ export default function TenantAdminDashboard() {
         </>
       )}
 
-      {activeTab === 'users' && <UserManagementPanel />}
+      {activeTab === 'users' && <UserManagementPanel openCreateSignal={userCreateSignal} />}
 
       {activeTab === 'campaigns' && <CampaignPanel />}
 
