@@ -27,10 +27,10 @@ describe('getNavConfig — agent', () => {
     expect(items.find((i) => i.id === 'money-needs').child).toBe(true);
   });
 
-  it('Planner is un-gated (ships item 3.2); Prospect Prep stays disabled (SOON)', () => {
+  it('Planner (item 3.2) and Prospect Prep (item 3.5) are both un-gated', () => {
     const items = getNavConfig('agent', { showDailyCapture: true });
     expect(items.find((i) => i.id === 'planner').disabled).toBeFalsy();
-    expect(items.find((i) => i.id === 'prospect-info').disabled).toBe(true);
+    expect(items.find((i) => i.id === 'prospect-info').disabled).toBeFalsy();
   });
 
   it('Leaderboard points at the production-leaderboard tab', () => {

@@ -123,6 +123,7 @@ vi.mock('../../productionReport/ProductionReportTab', () => ({ default: () => nu
 vi.mock('../../agent/PersistencyTab',                 () => ({ default: () => null }));
 vi.mock('../../daily/DailyFAB',                       () => ({ default: () => null }));
 vi.mock('../../agent/PolicyLedgerPanel',              () => ({ default: () => React.createElement('div', { 'data-testid': 'policy-ledger-panel' }) }));
+vi.mock('../../agent/ProspectInfoPanel',              () => ({ default: () => React.createElement('div', { 'data-testid': 'prospect-info-panel' }) }));
 vi.mock('../../agent/MoneyNeedsPanel',                () => ({ default: () => React.createElement('div', { 'data-testid': 'money-needs-panel' }) }));
 vi.mock('../../goals/GapAnalysisPanel',               () => ({ default: () => React.createElement('div', { 'data-testid': 'gap-analysis-panel' }) }));
 vi.mock('../../goals/AwardsReachPanel',               () => ({ default: () => null }));
@@ -137,11 +138,11 @@ beforeEach(() => {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('AgentDashboard — coming-soon tab gating (pilot readiness)', () => {
-  it('prospect-info tab renders ComingSoonPanel, not the real panel', async () => {
+  it('prospect-info tab renders ProspectInfoPanel (un-gated item 3.5)', async () => {
     render(<AgentDashboard />);
     fireEvent.click(screen.getByTestId('go-prospect-info'));
-    await waitFor(() => expect(screen.getByText('Coming soon')).toBeInTheDocument());
-    expect(screen.queryByTestId('prospect-info-panel')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('prospect-info-panel')).toBeInTheDocument());
+    expect(screen.queryByText('Coming soon')).not.toBeInTheDocument();
   });
 
   it('goals tab renders GapAnalysisPanel (un-gated)', async () => {

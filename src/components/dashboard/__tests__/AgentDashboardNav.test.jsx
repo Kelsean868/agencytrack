@@ -225,9 +225,11 @@ describe('AgentDashboard — Nav redesign PR-1 structure', () => {
     expect(planner.disabled).toBeFalsy();
   });
 
-  it('Prospect Prep stays SOON (disabled via COMING_SOON_TABS)', () => {
+  it('Prospect Prep is present and un-gated (ships item 3.5)', () => {
     render(<AgentDashboard />);
-    expect(captured.navItems.find((i) => i.id === 'prospect-info')?.disabled).toBe(true);
+    const prospect = captured.navItems.find((i) => i.id === 'prospect-info');
+    expect(prospect).toBeDefined();
+    expect(prospect.disabled).toBeFalsy();
   });
 
   it('Daily Log is present for the default (hybrid) logging mode', () => {

@@ -46,8 +46,8 @@ import QuickAddMenu from '../shell/QuickAddMenu';
 import { getQuickAddActions } from '../shell/quickAddConfig';
 import AgentDashboardHomeV2 from './HomeV2';
 import NewAgentEmptyState from './NewAgentEmptyState';
-import ComingSoonPanel from '../ui/ComingSoonPanel';
 import AgentPlannerPanel from '../planner/AgentPlannerPanel';
+import ProspectInfoPanel from '../agent/ProspectInfoPanel';
 import { getNavConfig, tabTitleFromItems } from '../shell/navConfig';
 import usePinnedNav from '../../hooks/usePinnedNav';
 import useNavOrder from '../../hooks/useNavOrder';
@@ -809,8 +809,8 @@ export default function AgentDashboard() {
         )
       )}
 
-      {/* ── PROSPECT INFO (Joint-Call Prep) TAB ── */}
-      {activeTab === 'prospect-info' && <ComingSoonPanel label="Prospect Prep" />}
+      {/* ── PROSPECT INFO (Joint-Call Prep) TAB — un-gated item 3.5 ── */}
+      {activeTab === 'prospect-info' && <ProspectInfoPanel />}
 
       {/* ── PLANNER TAB (item 3.2 — agent Planner & Scheduler) ── */}
       {activeTab === 'planner' && (
