@@ -1603,21 +1603,21 @@ service cloud.firestore {
             && d.committedAt is timestamp
             && d.updatedAt is timestamp
             && (d.anchorAPIAtCommit == null || d.anchorAPIAtCommit is number)
-            && d.targets.keys().hasAll(['callsMade','contactsMade','factFindsCompleted',
+            && d.targets.keys().hasAll(['callsMade','telContacts','factFindsCompleted',
                                         'closingInterviewsKept','applicationsSubmitted'])
-            && d.targets.keys().hasOnly(['callsMade','contactsMade','factFindsCompleted',
+            && d.targets.keys().hasOnly(['callsMade','telContacts','factFindsCompleted',
                                          'closingInterviewsKept','applicationsSubmitted'])
             && d.targets.callsMade             is int && d.targets.callsMade             >= 0
-            && d.targets.contactsMade          is int && d.targets.contactsMade          >= 0
+            && d.targets.telContacts           is int && d.targets.telContacts           >= 0
             && d.targets.factFindsCompleted    is int && d.targets.factFindsCompleted    >= 0
             && d.targets.closingInterviewsKept is int && d.targets.closingInterviewsKept >= 0
             && d.targets.applicationsSubmitted is int && d.targets.applicationsSubmitted >= 0
-            && d.provenance.keys().hasAll(['callsMade','contactsMade','factFindsCompleted',
+            && d.provenance.keys().hasAll(['callsMade','telContacts','factFindsCompleted',
                                            'closingInterviewsKept','applicationsSubmitted'])
-            && d.provenance.keys().hasOnly(['callsMade','contactsMade','factFindsCompleted',
+            && d.provenance.keys().hasOnly(['callsMade','telContacts','factFindsCompleted',
                                             'closingInterviewsKept','applicationsSubmitted'])
             && d.provenance.callsMade             in ['derived','floor','agent']
-            && d.provenance.contactsMade          in ['derived','floor','agent']
+            && d.provenance.telContacts           in ['derived','floor','agent']
             && d.provenance.factFindsCompleted    in ['derived','floor','agent']
             && d.provenance.closingInterviewsKept in ['derived','floor','agent']
             && d.provenance.applicationsSubmitted in ['derived','floor','agent'];

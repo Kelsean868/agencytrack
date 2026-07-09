@@ -46,6 +46,9 @@
  *   28. Other agent deletes owner's plan                      → DENY
  *   LIST
  *   29. Agent self-list query                                 → DENY (no list arm)
+ *   KEY-DRIFT REGRESSION (C2 — weeklyPlanService real payload shape)
+ *   30. Real weeklyPlanService payload (targets.telContacts)   → ALLOW
+ *   31. Stale contactsMade-keyed payload (pre-fix shape)       → DENY (hasOnly)
  */
 
 import {
@@ -85,22 +88,38 @@ function planRef(db, agentId, week, tenantId = TENANT_ID) {
   return doc(db, `tenants/${tenantId}/weeklyPlans/${agentId}_${week}`);
 }
 
+// Matches the REAL payload shape weeklyPlanService.js writes (PLAN_METRIC_KEYS
+// in weeklyPlanAssembly.js) — telContacts, not contactsMade. See C2 (VH run):
+// rules previously required contactsMade, which no live writer ever sent.
 function validPayload(agentId) {
   return {
     agentId,
     tenantId: TENANT_ID,
     weekStart: new Date(`${WEEK}T04:00:00Z`),
     targets: {
-      callsMade: 100, contactsMade: 40, factFindsCompleted: 8,
+      callsMade: 100, telContacts: 40, factFindsCompleted: 8,
       closingInterviewsKept: 5, applicationsSubmitted: 3,
     },
     provenance: {
-      callsMade: 'derived', contactsMade: 'floor', factFindsCompleted: 'floor',
+      callsMade: 'derived', telContacts: 'floor', factFindsCompleted: 'floor',
       closingInterviewsKept: 'derived', applicationsSubmitted: 'agent',
     },
     anchorAPIAtCommit: 200000,
     committedAt: new Date(),
     updatedAt: new Date(),
+  };
+}
+
+// Pre-fix stale shape (what the rules WRONGLY required until C2): contactsMade
+// instead of telContacts in both targets and provenance.
+function stalePayload(agentId) {
+  const p = validPayload(agentId);
+  const { telContacts: tc, ...targetsRest } = p.targets;
+  const { telContacts: tcProv, ...provRest } = p.provenance;
+  return {
+    ...p,
+    targets: { ...targetsRest, contactsMade: tc },
+    provenance: { ...provRest, contactsMade: tcProv },
   };
 }
 
@@ -281,6 +300,16 @@ async function main() {
     await assertFails(getDoc(planRef(db, AGENT_A, WEEK)));
   });
 
+  // ── KEY-DRIFT REGRESSION (C2) ────────────────────────────────────────────────
+
+  await t('30. Real weeklyPlanService payload (targets.telContacts) → ALLOW', async () => {
+    await assertSucceeds(setDoc(planRef(agentA(), AGENT_A, '2026-08-23'), { ...validPayload(AGENT_A), weekStart: new Date('2026-08-23T04:00:00Z') }));
+  });
+
+  await t('31. Stale contactsMade-keyed payload (pre-fix shape) → DENY (hasOnly)', async () => {
+    await assertFails(setDoc(planRef(agentA(), AGENT_A, '2026-08-30'), { ...stalePayload(AGENT_A), weekStart: new Date('2026-08-30T04:00:00Z') }));
+  });
+
   // ── LIST ────────────────────────────────────────────────────────────────────
 
   await t('29. Agent self-list query → DENY (no list arm)', async () => {
@@ -310,7 +339,7 @@ async function main() {
 
   await testEnv.cleanup();
 
-  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed (29 expected)`);
+  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed (31 expected)`);
   if (failed > 0) process.exit(1);
 }
 
