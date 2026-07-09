@@ -1,0 +1,219 @@
+// Value-level tests for the Meeting Mode v2 derivation helpers — scene-sequence
+// derivation (with/without campaigns/celebrations), scorecard window math,
+// per-agent floor tiles (met/at/below boundaries), flag taxonomy, anniversaries.
+import { describe, it, expect } from 'vitest';
+import {
+  kpiStatus, floorTiles, classifyFlag, flagRank, latestPersistency,
+  avgLatestPersistency, deriveBranchWindows, deriveUnits, deriveAgentRuns,
+  deriveRecognition, deriveAnniversaries, deriveActiveCampaigns, deriveDeck,
+  lastNWeekStartings, monthOf, quarterOf, sixWeekSpark,
+} from '../MeetingMode.helpers';
+
+const sub = (over = {}) => ({
+  agentId: 'a1', status: 'submitted', weekStarting: '2026-06-28',
+  callsMade: 60, telContacts: 40, appointmentsSet: 20, ffiConducted: 10,
+  ciConducted: 10, applicationsSold: 1, livesSold: 1, apiSold: 5000,
+  referralsObtained: 100, ...over,
+});
+
+describe('kpiStatus met/at/below boundaries', () => {
+  it('>= floor is met', () => expect(kpiStatus(60, 60)).toBe('met'));
+  it('exactly 90% is at', () => expect(kpiStatus(54, 60)).toBe('at'));
+  it('just under 90% is below', () => expect(kpiStatus(53, 60)).toBe('below'));
+  it('floor 0 is always met', () => expect(kpiStatus(0, 0)).toBe('met'));
+});
+
+describe('floorTiles', () => {
+  it('builds 8 tiles with statuses from actuals', () => {
+    const tiles = floorTiles({ callsMade: 60, telContacts: 10, referralsNewLeads: 100 });
+    expect(tiles).toHaveLength(8);
+    expect(tiles.find((t) => t.key === 'callsMade').status).toBe('met');   // 60/60
+    expect(tiles.find((t) => t.key === 'telContacts').status).toBe('below'); // 10/40
+    expect(tiles.find((t) => t.key === 'referralsNewLeads').status).toBe('met');
+  });
+});
+
+describe('classifyFlag taxonomy', () => {
+  const okTiles = floorTiles({
+    callsMade: 60, telContacts: 40, appointmentsScheduled: 20, interviewsKept: 20,
+    factFindsCompleted: 10, closingInterviewsKept: 10, clientsSold: 1, referralsNewLeads: 100,
+  });
+  it('not submitted → report late', () => {
+    expect(classifyFlag({ submitted: false, tiles: okTiles, persistency: 90 }).key).toBe('report');
+  });
+  it('>=5 floors below → floor (danger)', () => {
+    const weak = floorTiles({ callsMade: 5 }); // only calls has a value; 7 below
+    expect(classifyFlag({ submitted: true, tiles: weak, persistency: 90 }).key).toBe('floor');
+    expect(classifyFlag({ submitted: true, tiles: weak, persistency: 90 }).tone).toBe('danger');
+  });
+  it('persistency < 80 → persistency flag', () => {
+    expect(classifyFlag({ submitted: true, tiles: okTiles, persistency: 72 }).key).toBe('persistency');
+  });
+  it('all good → on pace (null)', () => {
+    expect(classifyFlag({ submitted: true, tiles: okTiles, persistency: 90 }).key).toBeNull();
+  });
+  it('flagRank orders report < floor < persistency < on-pace', () => {
+    expect(flagRank('report')).toBeLessThan(flagRank('floor'));
+    expect(flagRank('floor')).toBeLessThan(flagRank('persistency'));
+    expect(flagRank('persistency')).toBeLessThan(flagRank(null));
+  });
+});
+
+describe('persistency helpers', () => {
+  it('latestPersistency takes the highest-month record', () => {
+    expect(latestPersistency([{ month: 3, persistency: 80 }, { month: 6, persistency: 72 }])).toBe(72);
+    expect(latestPersistency([])).toBeNull();
+  });
+  it('avgLatestPersistency averages across agents', () => {
+    const map = { a: [{ month: 6, persistency: 80 }], b: [{ month: 6, persistency: 90 }] };
+    expect(avgLatestPersistency(['a', 'b'], map)).toBe(85);
+    expect(avgLatestPersistency(['x'], map)).toBeNull();
+  });
+});
+
+describe('date windows', () => {
+  it('lastNWeekStartings returns n Sundays oldest-first ending at selectedWeek', () => {
+    const w = lastNWeekStartings('2026-06-28', 6);
+    expect(w).toHaveLength(6);
+    expect(w[5]).toBe('2026-06-28');
+    expect(w[4]).toBe('2026-06-21');
+  });
+  it('monthOf / quarterOf', () => {
+    expect(monthOf('2026-06-28')).toBe(6);
+    expect(quarterOf('2026-06-28')).toBe(2);
+    expect(quarterOf('2026-01-04')).toBe(1);
+  });
+});
+
+describe('deriveBranchWindows', () => {
+  it('WTD from this week; MTD/QTD/YTD windowed from ytdSubs; YTD flagged hero', () => {
+    const thisWeek = [sub({ apiSold: 5000, applicationsSold: 1 })];
+    const ytd = [
+      sub({ weekStarting: '2026-06-28', apiSold: 5000, applicationsSold: 1 }),
+      sub({ weekStarting: '2026-06-21', apiSold: 3000, applicationsSold: 2 }),
+      sub({ weekStarting: '2026-03-01', apiSold: 1000, applicationsSold: 1 }), // Q1 — outside QTD
+    ];
+    const w = deriveBranchWindows(thisWeek, ytd, {}, '2026-06-28', ['a1']);
+    const byK = Object.fromEntries(w.map((r) => [r.k, r]));
+    expect(byK.WTD.api).toBe(5000);
+    expect(byK.MTD.api).toBe(8000);   // both June subs
+    expect(byK.QTD.api).toBe(8000);   // Q2 only
+    expect(byK.YTD.api).toBe(9000);   // all three
+    expect(byK.YTD.hero).toBe(true);
+    expect(byK.WTD.pers).toBeNull();
+  });
+});
+
+describe('deriveUnits', () => {
+  const users = [
+    { id: 'a1', role: 'agent', unitId: 'u1' },
+    { id: 'a2', role: 'agent', unitId: 'u2' },
+  ];
+  it('rolls up per unit and ranks by YTD API', () => {
+    const ytd = [
+      { agentId: 'a1', weekStarting: '2026-06-28', apiSold: 3000, applicationsSold: 1 },
+      { agentId: 'a2', weekStarting: '2026-06-28', apiSold: 9000, applicationsSold: 2 },
+    ];
+    const units = deriveUnits(users, ytd, []);
+    expect(units).toHaveLength(2);
+    expect(units[0].id).toBe('u2'); // higher YTD ranks first
+    expect(units[0].rank).toBe(1);
+  });
+  it('returns [] when fewer than 2 units (units scene skips)', () => {
+    expect(deriveUnits([{ id: 'a1', role: 'agent', unitId: 'u1' }], [], [])).toEqual([]);
+  });
+});
+
+describe('deriveAgentRuns ordering + spark', () => {
+  it('orders exception-first then by week API', () => {
+    const subs = [
+      sub({ agentId: 'good', apiSold: 20000 }),                       // on pace
+      sub({ agentId: 'late', status: 'draft' }),                      // report
+      sub({ agentId: 'weak', callsMade: 1, telContacts: 1, appointmentsSet: 0, ffiConducted: 0, ciConducted: 0, applicationsSold: 0, livesSold: 0, referralsObtained: 0, apiSold: 0 }), // floor
+    ];
+    const runs = deriveAgentRuns(subs, [], [], {}, '2026-06-28');
+    expect(runs[0].flag.key).toBe('report');
+    expect(runs[1].flag.key).toBe('floor');
+    expect(runs[2].flag.key).toBeNull();
+  });
+  it('sixWeekSpark yields 6 values with the current week last', () => {
+    const ytd = [sub({ weekStarting: '2026-06-28', apiSold: 5000 }), sub({ weekStarting: '2026-06-21', apiSold: 3000 })];
+    const spark = sixWeekSpark('a1', ytd, '2026-06-28');
+    expect(spark).toHaveLength(6);
+    expect(spark[5]).toBe(5000);
+    expect(spark[4]).toBe(3000);
+    expect(spark[0]).toBe(0);
+  });
+});
+
+describe('deriveRecognition', () => {
+  it('podium top-3 by week API; unavailable when no producers', () => {
+    const runs = [
+      { id: 'a', weekApi: 100, activityScore: 5, flag: { key: null } },
+      { id: 'b', weekApi: 300, activityScore: 9, flag: { key: null } },
+      { id: 'c', weekApi: 200, activityScore: 7, flag: { key: null } },
+    ];
+    const rec = deriveRecognition(runs);
+    expect(rec.available).toBe(true);
+    expect(rec.producers.map((p) => p.id)).toEqual(['b', 'c', 'a']);
+    expect(rec.producers[0].rank).toBe(1);
+    expect(deriveRecognition([{ id: 'z', weekApi: 0, activityScore: 0, flag: { key: null } }]).available).toBe(false);
+  });
+});
+
+describe('deriveAnniversaries (contractStartDate; no DOB → birthdays excluded)', () => {
+  it('includes an anniversary falling in the meeting week window', () => {
+    const users = [
+      { id: 'a', name: 'Ann', contractStartDate: '2021-06-30' }, // 30 Jun in the 28 Jun..4 Jul window
+      { id: 'b', name: 'Bob', contractStartDate: '2020-12-01' }, // out of window
+      { id: 'c', name: 'Cid', contractStartDate: '2026-06-29' }, // 0 years — excluded
+    ];
+    const anns = deriveAnniversaries(users, '2026-06-28');
+    expect(anns).toHaveLength(1);
+    expect(anns[0].name).toBe('Ann');
+    expect(anns[0].years).toBe(5);
+  });
+  it('returns [] when nobody has an anniversary this week (scene skips)', () => {
+    expect(deriveAnniversaries([{ id: 'a', contractStartDate: '2020-01-01' }], '2026-06-28')).toEqual([]);
+  });
+});
+
+describe('deriveActiveCampaigns', () => {
+  it('keeps campaigns whose window contains today', () => {
+    const camps = [
+      { id: '1', startDate: '2026-06-01', endDate: '2026-07-31' },
+      { id: '2', startDate: '2026-01-01', endDate: '2026-02-01' },
+    ];
+    const active = deriveActiveCampaigns(camps, '2026-06-28');
+    expect(active.map((c) => c.id)).toEqual(['1']);
+  });
+});
+
+describe('deriveDeck — data-driven scene sequence', () => {
+  const base = {
+    runs: [{ id: 'a', flag: { key: null } }],
+    units: [], exceptions: [], recognition: { available: true, producers: [{ id: 'a', rank: 1 }] },
+    anniversaries: [], activeCampaigns: [], submissions: [{ agentId: 'a' }],
+  };
+  it('drops units/exceptions/celebrations/campaign when their data is absent', () => {
+    const { scenes, skipped } = deriveDeck(base);
+    expect(scenes).toEqual(['opening', 'branch', 'activity', 'production', 'agent:a', 'recognition', 'close']);
+    const skippedIds = skipped.map((s) => s.id);
+    expect(skippedIds).toEqual(expect.arrayContaining(['units', 'exceptions', 'celebrations', 'campaign']));
+  });
+  it('includes campaign + celebrations + exceptions + units when data exists', () => {
+    const full = {
+      ...base,
+      units: [{ id: 'u1' }, { id: 'u2' }],
+      exceptions: [{ id: 'a', flag: { key: 'floor' } }],
+      anniversaries: [{ id: 'a', years: 3 }],
+      activeCampaigns: [{ id: 'c1' }],
+    };
+    const { scenes } = deriveDeck(full);
+    expect(scenes).toEqual([
+      'opening', 'branch', 'units', 'activity', 'production',
+      'exceptions', 'agent:a', 'recognition', 'celebrations', 'campaign', 'close',
+    ]);
+    expect(scenes.length).toBe(11);
+  });
+});
