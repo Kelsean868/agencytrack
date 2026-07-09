@@ -570,4 +570,93 @@ export const LEGS = [
       }
     },
   },
+
+  // ── 11. D2 — Keyboard nav-reorder (Alt+Arrow within-section, aria-live, persists) ──
+  // NOTE: this leg exercises the Fable VH D2 keyboard-reorder affordance layered onto
+  // the 1.4 Sidebar drag machine. It will FAIL against any staging deploy that predates
+  // the D2 push (the deployed Sidebar has no Alt+Arrow handler and no `nav-reorder-live`
+  // region, so the move is a no-op). Pre-deploy proof lives in the Sidebar.reorder vitest
+  // suite; the orchestrator re-runs this leg post-deploy for the live confirmation.
+  {
+    id: 't2-d2-keyboard-reorder',
+    role: 'agent1',
+    desc: 'Agent sidebar keyboard reorder (D2): focus Awards in the Recognition section → Alt+ArrowDown moves it below Career Portal (aria-live announces "position 3 of 3"); FRESH context re-login shows the persisted order (Firestore navOrder reconcile); restored via Alt+ArrowUp. MUTATES prefs/app.navOrder (restored in-leg).',
+    async run({ browser, shot }) {
+      const AWARDS = 'agent-tab-awards';
+      const CAREER = 'agent-tab-career';
+      // DOM index of a nav row's button among the rendered sidebar links (-1 if absent).
+      const orderIndex = (page, tid) => page.evaluate((id) => {
+        const btns = [...document.querySelectorAll('.sidebar-link')];
+        return btns.findIndex((b) => b.getAttribute('data-testid') === id);
+      }, tid);
+
+      const ctx = await newLegContext(browser);
+      try {
+        const p = ctx.page;
+        await login(p, 'agent1');
+        await p.locator(tsel(AWARDS)).first().waitFor({ state: 'attached', timeout: 15_000 });
+        await p.waitForTimeout(600);
+
+        // Pre-state: Recognition renders [Leaderboard, Awards, Career] → Awards before Career.
+        const awardsBefore = await orderIndex(p, AWARDS);
+        const careerBefore = await orderIndex(p, CAREER);
+        if (!(awardsBefore >= 0 && careerBefore >= 0 && awardsBefore < careerBefore)) {
+          throw new Error(`precondition: expected Awards before Career in Recognition (awards=${awardsBefore}, career=${careerBefore}).`);
+        }
+
+        // Focus Awards and move it down one slot within its section.
+        await p.locator(tsel(AWARDS)).focus();
+        await p.keyboard.press('Alt+ArrowDown');
+        await p.waitForTimeout(400);
+
+        // aria-live announcement (this is the D2-specific assertion that fails pre-deploy).
+        const live = await p.locator(tsel('nav-reorder-live')).innerText().catch(() => '');
+        if (!/Awards moved to position 3 of 3 in Recognition/i.test(live)) {
+          await shot(p, 'FAIL-t2-d2-keyboard-reorder');
+          throw new Error(`D2 aria-live not announced (deploy predates D2?). Got nav-reorder-live="${live.replace(/\s+/g, ' ').slice(0, 160)}".`);
+        }
+        // Visual order changed: Career now precedes Awards.
+        const awardsAfter = await orderIndex(p, AWARDS);
+        const careerAfter = await orderIndex(p, CAREER);
+        if (!(careerAfter < awardsAfter)) {
+          throw new Error(`D2 visual reorder did not apply: expected Career before Awards (career=${careerAfter}, awards=${awardsAfter}).`);
+        }
+        await shot(p, 't2-d2-reordered');
+        assertLegHygiene(ctx);
+      } finally {
+        await ctx.context.close();
+      }
+
+      // FRESH context: the localStorage mirror is empty, so a persisted order can only
+      // come from the Firestore prefs/app.navOrder reconcile — proves the commit stuck.
+      const fresh = await newLegContext(browser);
+      try {
+        const p = fresh.page;
+        await login(p, 'agent1');
+        await p.locator(tsel(AWARDS)).first().waitFor({ state: 'attached', timeout: 15_000 });
+        // Allow the background getUserPrefs reconcile to apply the saved order.
+        await p.waitForFunction(() => {
+          const btns = [...document.querySelectorAll('.sidebar-link')];
+          const a = btns.findIndex((b) => b.getAttribute('data-testid') === 'agent-tab-awards');
+          const c = btns.findIndex((b) => b.getAttribute('data-testid') === 'agent-tab-career');
+          return a >= 0 && c >= 0 && c < a; // Career before Awards ⇒ persisted
+        }, { timeout: 12_000 }).catch(() => { throw new Error('D2 persistence: reordered order did not survive a fresh-context re-login (Firestore navOrder reconcile).'); });
+        await shot(p, 't2-d2-persisted');
+
+        // Restore default order: Awards back above Career (persists the revert).
+        await p.locator(tsel(AWARDS)).focus();
+        await p.keyboard.press('Alt+ArrowUp');
+        await p.waitForFunction(() => {
+          const btns = [...document.querySelectorAll('.sidebar-link')];
+          const a = btns.findIndex((b) => b.getAttribute('data-testid') === 'agent-tab-awards');
+          const c = btns.findIndex((b) => b.getAttribute('data-testid') === 'agent-tab-career');
+          return a >= 0 && c >= 0 && a < c; // Awards before Career ⇒ restored
+        }, { timeout: 10_000 }).catch(() => { throw new Error('D2 restore: could not return Awards above Career.'); });
+        assertLegHygiene(fresh);
+      } finally {
+        await fresh.context.close();
+      }
+      return 'D2 keyboard reorder: Awards→position 3 of 3 in Recognition (aria-live announced, visual order flipped); persisted across a fresh-context re-login (Firestore navOrder); restored to default in-leg.';
+    },
+  },
 ];

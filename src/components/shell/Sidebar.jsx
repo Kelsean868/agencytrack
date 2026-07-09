@@ -1,4 +1,4 @@
-import React, { Fragment, useMemo, useRef, useState, useCallback } from 'react';
+import React, { Fragment, useMemo, useRef, useState, useCallback, useLayoutEffect } from 'react';
 import { LogOut, ChevronLeft, ChevronRight, Star, Settings } from 'lucide-react';
 import WorkspaceToggle from './WorkspaceToggle';
 
@@ -30,6 +30,17 @@ import WorkspaceToggle from './WorkspaceToggle';
  * leaving the section bounds snaps back). A click without movement past the
  * threshold still navigates. The Pinned zone is NOT reorderable here (pins have
  * their own model).
+ *
+ * ★ Keyboard reorder (Fable VH · D2): the same draggable rows also reorder from
+ * the keyboard. With a row focused, Alt+ArrowUp / Alt+ArrowDown moves it one slot
+ * WITHIN its section (clamped at the section edges — never wraps, never crosses
+ * sections), committing atomically through the SAME `onReorder` path the pointer
+ * machine uses. There is no transient/uncommitted mode: each keystroke is a
+ * committed, `aria-live`-announced, persisted move (chosen over a mode+Enter model
+ * because it maps 1:1 onto the existing single-callback contract with zero
+ * divergent transient render state). Plain Arrow keys keep their default focus
+ * behavior; only Alt+Arrow reorders. Reduced-motion safe by construction — the
+ * move is an instant re-render, no animation.
  *
  * The collapse toggle only changes layout at >=1024px (the tablet
  * breakpoint forces 72px regardless). At <768px the whole sidebar
@@ -224,6 +235,45 @@ export default function Sidebar({
     setDragUI(null); // snap back — no reorder
   }, []);
 
+  // ── ★ Keyboard reorder state (Fable VH · D2) ────────────────────────────────
+  // A polite live region announces each committed move; after a keyboard move the
+  // parent re-orders `navItems`, so focus is explicitly returned to the moved row
+  // (React preserves the DOM node across the reorder, but we refocus deterministically
+  // so the interaction never drops focus in any engine).
+  const [reorderAnnouncement, setReorderAnnouncement] = useState('');
+  const pendingFocusIdRef = useRef(null);
+
+  const onRowKeyDown = useCallback((e, item, sectionIdx, fromIdx, sectionItems, sectionLabel) => {
+    if (!canReorder) return;
+    if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    // Own the gesture: stop the browser from also scrolling / moving focus.
+    e.preventDefault();
+    const dir = e.key === 'ArrowUp' ? -1 : 1;
+    const toIdx = fromIdx + dir;
+    const count = sectionItems.length;
+    const where = sectionLabel || 'this section';
+    if (toIdx < 0 || toIdx >= count) {
+      setReorderAnnouncement(`${item.label} is already ${dir < 0 ? 'first' : 'last'} in ${where}.`);
+      return;
+    }
+    const newFlat = computeNewFlatIds(sectionIdx, fromIdx, toIdx);
+    if (!newFlat) return;
+    pendingFocusIdRef.current = item.id;
+    setReorderAnnouncement(`${item.label} moved to position ${toIdx + 1} of ${count} in ${where}. Order saved.`);
+    onReorder(newFlat);
+  }, [canReorder, computeNewFlatIds, onReorder]);
+
+  // Return focus to the moved row after the parent re-orders `navItems`. Only a
+  // keyboard move sets pendingFocusId, so pointer reorders and initial mount are
+  // untouched (the ref is null → early return).
+  useLayoutEffect(() => {
+    const id = pendingFocusIdRef.current;
+    if (!id) return;
+    pendingFocusIdRef.current = null;
+    const btn = rowElRef.current.get(id)?.querySelector?.('.sidebar-link');
+    if (btn) btn.focus();
+  }, [navItems]);
+
   const handleRowClick = (item, isDisabled) => {
     if (suppressClickRef.current) { suppressClickRef.current = false; return; }
     if (isDisabled) return;
@@ -232,7 +282,7 @@ export default function Sidebar({
   };
 
   const renderRow = (item, opts = {}) => {
-    const { inPinnedZone = false, sectionIdx = -1, indexInSection = -1, sectionItems = null } = opts;
+    const { inPinnedZone = false, sectionIdx = -1, indexInSection = -1, sectionItems = null, sectionLabel = null } = opts;
     const Icon = item.Icon;
     const isActive = item.tabId != null && activeTab === item.tabId;
     const isDisabled = item.disabled === true;
@@ -265,6 +315,7 @@ export default function Sidebar({
           type="button"
           className={`sidebar-link${isChild ? ' sidebar-link-child' : ''}${isActive ? ' active' : ''}${isDisabled ? ' sidebar-link-disabled' : ''}`}
           onClick={() => handleRowClick(item, isDisabled)}
+          onKeyDown={draggable ? (e) => onRowKeyDown(e, item, sectionIdx, indexInSection, sectionItems, sectionLabel) : undefined}
           aria-current={isActive ? 'page' : undefined}
           aria-disabled={isDisabled || undefined}
           tabIndex={isDisabled ? -1 : undefined}
@@ -311,6 +362,11 @@ export default function Sidebar({
 
   return (
     <nav aria-label="Primary navigation" className="sidebar">
+      {/* ★ Keyboard-reorder announcements (Fable VH · D2) — visually hidden,
+          polite live region. Reuses the app's `sr-only` utility. */}
+      <div className="sr-only" role="status" aria-live="polite" data-testid="nav-reorder-live">
+        {reorderAnnouncement}
+      </div>
       <div className="sidebar-brand">
         <div className="sidebar-brand-mark" aria-hidden="true">
           <img
@@ -365,6 +421,7 @@ export default function Sidebar({
                   sectionIdx: idx,
                   indexInSection: itemIdx,
                   sectionItems: section.items,
+                  sectionLabel: section.label,
                 })}
               </Fragment>
             ))}
