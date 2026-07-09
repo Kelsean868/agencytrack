@@ -47,6 +47,7 @@ import { getQuickAddActions } from '../shell/quickAddConfig';
 import AgentDashboardHomeV2 from './HomeV2';
 import NewAgentEmptyState from './NewAgentEmptyState';
 import ComingSoonPanel from '../ui/ComingSoonPanel';
+import AgentPlannerPanel from '../planner/AgentPlannerPanel';
 import { getNavConfig, tabTitleFromItems } from '../shell/navConfig';
 import usePinnedNav from '../../hooks/usePinnedNav';
 import useNavOrder from '../../hooks/useNavOrder';
@@ -97,9 +98,12 @@ const PROFILE_NAV_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Ic
 const SETTINGS_NAV_ITEM = { id: 'settings', label: 'Settings', tabId: 'settings', Icon: Settings };
 
 export default function AgentDashboard() {
-  const { user, userProfile, role, tenantId } = useAuth();
+  const { user, userProfile, role, tenantId, branchId } = useAuth();
 
   const [activeTab, setActiveTab]             = useState('dashboard');
+  // Planner → Daily Capture handoff seed (screen 9). Set when the agent taps
+  // "Carry into today's log"; blank-fills DailyCaptureV2 for today, then cleared.
+  const [plannerSeed, setPlannerSeed]         = useState(null);
   const [prefillPolicy, setPrefillPolicy]     = useState(null);
   const [policyLedgerFilter, setPolicyLedgerFilter] = useState(null);
   const [showWizard, setShowWizard]           = useState(false);
@@ -584,8 +588,10 @@ export default function AgentDashboard() {
   if (showDailyModal) {
     return (
       <DailyCaptureV2
+        seedCounts={plannerSeed}
         onClose={() => {
           setShowDailyModal(false);
+          setPlannerSeed(null);
           refreshDailyEntry();
         }}
         onReviewSubmit={(week, draftHint) => {
@@ -805,6 +811,19 @@ export default function AgentDashboard() {
 
       {/* ── PROSPECT INFO (Joint-Call Prep) TAB ── */}
       {activeTab === 'prospect-info' && <ComingSoonPanel label="Prospect Prep" />}
+
+      {/* ── PLANNER TAB (item 3.2 — agent Planner & Scheduler) ── */}
+      {activeTab === 'planner' && (
+        <AgentPlannerPanel
+          tenantId={tenantId}
+          agentId={user?.uid}
+          agentUnitId={userProfile?.unitId ?? ''}
+          agentBranchId={branchId ?? ''}
+          callerRole={role}
+          weeklyFloors={resolvedMinimums?.weeklyActivityFloors}
+          onCarryToDaily={(seed) => { setPlannerSeed(seed); setShowDailyModal(true); }}
+        />
+      )}
 
       {/* ── POLICY LEDGER TAB ── */}
       {activeTab === 'policy-ledger' && (

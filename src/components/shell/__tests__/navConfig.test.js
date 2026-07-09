@@ -27,9 +27,9 @@ describe('getNavConfig — agent', () => {
     expect(items.find((i) => i.id === 'money-needs').child).toBe(true);
   });
 
-  it('Planner and Prospect Prep are disabled (SOON)', () => {
+  it('Planner is un-gated (ships item 3.2); Prospect Prep stays disabled (SOON)', () => {
     const items = getNavConfig('agent', { showDailyCapture: true });
-    expect(items.find((i) => i.id === 'planner').disabled).toBe(true);
+    expect(items.find((i) => i.id === 'planner').disabled).toBeFalsy();
     expect(items.find((i) => i.id === 'prospect-info').disabled).toBe(true);
   });
 
@@ -92,9 +92,9 @@ describe('getNavConfig — producingManager (no-regression mapping)', () => {
     expect(scopeOf('leaderboard')).toBe('BOTH');
   });
 
-  it('Planner is disabled (SOON)', () => {
+  it('Planner is un-gated (ships item 3.2 — Team Planner)', () => {
     const items = getNavConfig('producingManager', { role: 'unit_manager' });
-    expect(items.find((i) => i.id === 'planner').disabled).toBe(true);
+    expect(items.find((i) => i.id === 'planner').disabled).toBeFalsy();
   });
 });
 

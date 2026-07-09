@@ -218,11 +218,11 @@ describe('AgentDashboard — Nav redesign PR-1 structure', () => {
     expect(captured.navItems.find((i) => i.id === 'money-needs')?.child).toBe(true);
   });
 
-  it('Planner is present and disabled (SOON)', () => {
+  it('Planner is present and un-gated (ships item 3.2)', () => {
     render(<AgentDashboard />);
     const planner = captured.navItems.find((i) => i.id === 'planner');
     expect(planner).toBeDefined();
-    expect(planner.disabled).toBe(true);
+    expect(planner.disabled).toBeFalsy();
   });
 
   it('Prospect Prep stays SOON (disabled via COMING_SOON_TABS)', () => {

@@ -43,6 +43,29 @@ import { useCountUp } from '../../hooks/useCountUp';
 
 // ── Local helpers ──────────────────────────────────────────────────────────
 
+/**
+ * Blank-fill a daily entry from a Planner handoff seed (item 3.2 screen 9). Only
+ * fills fields whose current value is 0/blank — NEVER overwrites an existing
+ * logged value, so a partly-logged day is safe. Seed shape: flat count fields
+ * (dials/telContacts/qualifiedApproaches/ffiConducted/ciConducted) + a nested
+ * newBusiness { apps, api }. The agent still confirms/edits before Save.
+ */
+function blankFillSeed(entry, seed) {
+  if (!seed) return entry;
+  const next = { ...entry };
+  for (const [k, v] of Object.entries(seed)) {
+    if (k === 'newBusiness' && v && typeof v === 'object') {
+      const nb = { ...(next.newBusiness ?? {}) };
+      if ((parseFloat(nb.apps) || 0) === 0 && v.apps) nb.apps = v.apps;
+      if ((parseFloat(nb.api)  || 0) === 0 && v.api)  nb.api  = v.api;
+      next.newBusiness = nb;
+    } else if (typeof v === 'number' && v > 0) {
+      if ((parseFloat(next[k]) || 0) === 0) next[k] = v;
+    }
+  }
+  return next;
+}
+
 function weekdayLong(dateStr) {
   const d = new Date(dateStr + 'T12:00:00Z');
   return d.toLocaleDateString('en-TT', { weekday: 'long' }).toUpperCase();
@@ -487,7 +510,7 @@ function SundayConfirmView({ weekDocs, onClose, submitted, onReviewSubmit }) {
 
 // ── Main component ─────────────────────────────────────────────────────────
 
-export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
+export default function DailyCaptureV2({ onClose, onReviewSubmit, seedCounts = null }) {
   const { user, userProfile, tenantId, branchId } = useAuth();
   const agentName  = userProfile?.name ?? userProfile?.email ?? '';
   const today      = useMemo(() => getTodayTT(), []);
@@ -560,12 +583,15 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
     setDeliveryExpanded(false);
     setReflectionExpanded(false);
 
+    // Planner handoff seed (item 3.2 screen 9) applies to TODAY only, blank-fill.
+    const applySeed = seedCounts && selectedDate === today;
+
     let active = true;
     getDailyEntry(tenantId, user.uid, selectedDate)
       .then((existing) => {
         if (!active) return;
         if (existing) {
-          setData((prev) => ({ ...prev, ...existing }));
+          setData((prev) => blankFillSeed({ ...prev, ...existing }, applySeed ? seedCounts : null));
           if (
             existing.pppIncreases?.apps > 0 ||
             existing.pppIncreases?.apiIncrease > 0 ||
@@ -590,6 +616,11 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
           if (existing.hoursWorked != null || existing.wins || existing.blockers) {
             setReflectionExpanded(true);
           }
+          if (applySeed && (seedCounts.newCIBooked || seedCounts.ciConducted)) setInterviewsExpanded(true);
+        } else if (applySeed) {
+          // No saved entry yet — blank-fill the empty entry with the seed.
+          setData((prev) => blankFillSeed(prev, seedCounts));
+          if (seedCounts.ciConducted) setInterviewsExpanded(true);
         }
       })
       .catch((e) => {
@@ -600,7 +631,7 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [user?.uid, selectedDate, tenantId, agentName, loadRetryToken]);
+  }, [user?.uid, selectedDate, tenantId, agentName, loadRetryToken, seedCounts, today]);
 
   // ── Week-level read: chips + strip ───────────────────────────────────────
   const refreshWeekDocs = useCallback(async () => {

@@ -54,6 +54,7 @@ import DailyFAB from '../daily/DailyFAB';
 import QuickAddMenu from '../shell/QuickAddMenu';
 import { getQuickAddActions } from '../shell/quickAddConfig';
 import GamePlanScreen from './GamePlanV2';
+import TeamPlannerPanel from '../planner/manager/TeamPlannerPanel';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import HistoryTab from '../submissions/HistoryTab';
 import CommissionAnchorStrip from '../agent/CommissionAnchorStrip';
@@ -158,7 +159,7 @@ const SETTINGS_NAV_ITEM = { id: 'settings', label: 'Settings', tabId: 'settings'
 const MP_TABS = new Set(['mp-report', 'mp-goals', 'mp-game-plan', 'mp-money-needs', 'mp-history', 'mp-commission', 'mp-policies', 'mp-financing']);
 
 export default function ManagerDashboard() {
-  const { user, userProfile, role, tenantId } = useAuth();
+  const { user, userProfile, role, tenantId, branchId } = useAuth();
   const [showWizard, setShowWizard]       = useState(false);
   const [activeTab, setActiveTab]         = useState('overview');
   const [selectedWeek, setSelectedWeek]   = useState(getMostRecentSunday());
@@ -604,6 +605,16 @@ export default function ManagerDashboard() {
         {activeTab === 'agent-of-month' && <AgentOfMonthTab />}
 
         {activeTab === 'kiosk' && <KioskModeTab />}
+
+        {/* ── TEAM PLANNER (item 3.2 — read-only team week; coaching drill) ── */}
+        {activeTab === 'planner' && (
+          <TeamPlannerPanel
+            tenantId={tenantId}
+            callerRole={role}
+            uid={user?.uid}
+            branchId={branchId ?? userProfile?.branchId ?? null}
+          />
+        )}
 
         {/* ── MY PRODUCTION — own-production screens for UM/BM ── */}
         {/* mp-report handled via early return (WizardForm full-screen) */}

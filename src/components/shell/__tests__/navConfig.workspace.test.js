@@ -63,8 +63,8 @@ describe('getWorkspaceGroups — partition (Decision B + ruling #7)', () => {
     expect(ids(team).filter((id) => id === 'leaderboard')).toHaveLength(1);
   });
 
-  it('planner stays SOON (disabled) in My Work', () => {
-    expect(work.find((i) => i.id === 'planner').disabled).toBe(true);
+  it('planner is un-gated in My Work (ships item 3.2)', () => {
+    expect(work.find((i) => i.id === 'planner').disabled).toBeFalsy();
   });
 
   it('confirmed-dropped addendum labels never appear', () => {
