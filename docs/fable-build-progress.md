@@ -167,4 +167,5 @@ SM cross-branch views (Phase 9) · Settings team-defaults cascade · payout-rele
 | 2.5 Reports PDFs (Agent refined + Branch/Unit + Download CTAs + DataSourceBadge) | opus (subagent) | inherited-default | 2026-07-08T22:55 | 2026-07-08T23:26 | 31 min (529-API-error mid-run at ~23:15; resumed via SendMessage with tree intact, gates re-verified) | done |
 | 2.5 verify: real-engine PDF render guard + import-React fix | orchestrator | n/a (main loop) | 2026-07-08T23:26 | 2026-07-08T23:35 | 9 min | done — new engine test caught missing `import React` in BOTH new PDF docs on first run |
 | 2.6 History drill reskin + edit path + filters + heatmap | opus (subagent) | inherited-default | 2026-07-08T23:37 | 2026-07-08T23:57 | 20 min | done — edit path shipped FULL (wizard already week-generic); live smoke deferred (seed-less staging tenant; edit-path legs need submission data — banked below) |
-| 2.7 Awards pace narrative (hero + drawer) | sonnet (subagent) | inherited-default | 2026-07-08T23:58 | — | — | in-flight |
+| 2.7 Awards pace narrative (hero + drawer) | sonnet (subagent) | inherited-default | 2026-07-08T23:58 | 2026-07-09T00:11 | 13 min | done |
+| 2.8 Financing K9 PaydownArcHero + K7 BM roster (display only) | opus (subagent) | inherited-default | 2026-07-09T00:13 | — | — | in-flight |
