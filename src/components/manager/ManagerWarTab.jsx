@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CheckSquare, Square } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getRecentSundays } from '../../utils/validators';
-import { saveWarDraft, submitWar, getWar, getOwnJfwCount } from '../../services/managerWarService';
+import { saveWarDraft, submitWar, getWar, getOwnJfwCount, getOwnWarStreak } from '../../services/managerWarService';
 import { getResolvedStandards } from '../../services/managerStandardOverrideService';
-import { computeMissedActivities } from '../../utils/accountabilityFlag';
+import { computeMissedActivities, computeWarCompletion } from '../../utils/accountabilityFlag';
 import AccountabilityFlagPanel from './AccountabilityFlagPanel';
-import PanelSkeleton, { SkeletonText } from '../ui/PanelSkeleton';
+import WarCompletionRing from './WarCompletionRing';
+import WarStreakDots from './WarStreakDots';
+import PanelSkeleton, { Skeleton, SkeletonText } from '../ui/PanelSkeleton';
 
 const AUTOSAVE_DELAY = 1500;
 
@@ -40,6 +42,8 @@ export default function ManagerWarTab() {
   const [jfwCount, setJfwCount]         = useState(null);
   const [jfwError, setJfwError]         = useState(false);
   const [roleStds, setRoleStds]         = useState({});
+  const [streak, setStreak]             = useState(null);
+  const [streakError, setStreakError]   = useState(false);
 
   const saveTimer  = useRef(null);
   const savedTimer = useRef(null);
@@ -105,6 +109,24 @@ export default function ManagerWarTab() {
 
   useEffect(() => { loadJfwCount(); }, [loadJfwCount]);
 
+  // Fetch the 8-week filing streak (item 2.1 StreakDots). Independent of the
+  // selected week — always the trailing 8-Sunday window. Own-docs-by-docId read
+  // (getOwnWarStreak), so it works for every manager rank. Refreshed after a
+  // submit so the just-filed week flips to "filed".
+  const loadStreak = useCallback(() => {
+    if (!user) return;
+    setStreak(null);
+    setStreakError(false);
+    getOwnWarStreak({ tenantId, managerId: user.uid, weekStarts: getRecentSundays(8) })
+      .then(setStreak)
+      .catch((err) => {
+        console.error('WAR streak load failed:', err);
+        setStreakError(true);
+      });
+  }, [user, tenantId]);
+
+  useEffect(() => { loadStreak(); }, [loadStreak]);
+
   // Fetch resolved standards (org-default ?? override) for the owner (I1.3c-ii).
   // Failure is silent — overlay falls back to actual-only.
   useEffect(() => {
@@ -160,6 +182,7 @@ export default function ManagerWarTab() {
       await submitWar(tenantId, user.uid, managerName, weekStart, form, managerMeta);
       setStatus('submitted');
       setSubmitSuccess(true);
+      loadStreak();
     } catch (err) {
       console.error('WAR submit failed:', err);
       setSubmitError('Submit failed — check your connection and try again.');
@@ -169,6 +192,7 @@ export default function ManagerWarTab() {
   };
 
   const isSubmitted = status === 'submitted';
+  const completion = computeWarCompletion({ ...form, jfwCount: jfwCount ?? 0 }, roleStds);
 
   if (loading) {
     return (
@@ -235,6 +259,42 @@ export default function ManagerWarTab() {
           )}
         </div>
       )}
+
+      {/* Completion ring + 8-week filing streak (item 2.1) */}
+      <div className="bg-card rounded-2xl p-4 flex items-center gap-4">
+        <WarCompletionRing
+          pct={completion.pct}
+          met={completion.met}
+          total={completion.total}
+          size={52}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Completion</p>
+          <p className="text-sm text-text">
+            {completion.pct == null
+              ? 'No targets set yet'
+              : `${completion.met} of ${completion.total} targets met`}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
+            Filing streak
+          </span>
+          {streakError ? (
+            <button
+              type="button"
+              onClick={loadStreak}
+              className="min-h-[44px] px-2 text-xs font-semibold text-primary underline underline-offset-2"
+            >
+              Retry
+            </button>
+          ) : streak === null ? (
+            <Skeleton className="h-2 w-24 rounded-full" />
+          ) : (
+            <WarStreakDots history={streak.map((s) => s.filed).reverse()} />
+          )}
+        </div>
+      </div>
 
       {/* I3a Tier-1 accountability flag — visible when one or more standards
            are under target. Includes the auto-counted JFW in the comparison. */}

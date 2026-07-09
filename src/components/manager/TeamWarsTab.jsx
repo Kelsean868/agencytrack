@@ -3,14 +3,25 @@ import { useAuth } from '../../context/AuthContext';
 import { getRecentSundays } from '../../utils/validators';
 import { getRoleLabel } from '../../utils/formatters';
 import { AlertTriangle } from 'lucide-react';
-import { getWarsForUpline } from '../../services/managerWarService';
+import { getWarsForUpline, getWarsForUplineWeeks } from '../../services/managerWarService';
 import {
   getResolvedStandards,
   getResolvedStandardsForMany,
 } from '../../services/managerStandardOverrideService';
-import { computeMissedActivities } from '../../utils/accountabilityFlag';
+import { computeMissedActivities, computeWarCompletion } from '../../utils/accountabilityFlag';
 import ManagerWarDetail from './ManagerWarDetail';
+import WarCompletionRing from './WarCompletionRing';
+import WarStreakDots from './WarStreakDots';
+import StatusPill from '../ui/StatusPill';
 import PanelSkeleton from '../ui/PanelSkeleton';
+
+// Review-state pill for a submitted WAR (item 2.1). Draft/unsubmitted → null.
+function reviewPill(war) {
+  if (war.status !== 'submitted') return null;
+  if (war.reviewStatus === 'approved') return { variant: 'success', label: 'Approved' };
+  if (war.reviewStatus === 'changes_requested') return { variant: 'warning', label: 'Changes requested' };
+  return { variant: 'primary', label: 'To review' };
+}
 
 export default function TeamWarsTab() {
   const { tenantId, role, userProfile } = useAuth();
@@ -26,6 +37,9 @@ export default function TeamWarsTab() {
   // I3a — per-manager resolved standards for the list-row badges.
   // Map<managerId, resolvedStandards>. Failure leaves the map empty (no badges).
   const [listStandards,  setListStandards]  = useState(new Map());
+  // item 2.1 — per-manager 8-week filing streak. Map<managerId, Set<weekStart>>
+  // of weeks with a SUBMITTED WAR. Degrades silently to empty (no dots) on error.
+  const [streakByManager, setStreakByManager] = useState(new Map());
 
   const loadWars = useCallback(() => {
     setLoading(true);
@@ -61,6 +75,35 @@ export default function TeamWarsTab() {
     return () => { cancelled = true; };
   }, [tenantId, wars]);
 
+  // item 2.1 — one read for the whole surface (not per row): fetch the 8-week
+  // window for this scope, bucket submitted weeks by manager for the streak dots.
+  // Index-safe (BM: branchId+weekStart composite; SM+: weekStart single-field).
+  // Degrades silently to no dots on error, mirroring the list-standards effect.
+  useEffect(() => {
+    if (!tenantId) { setStreakByManager(new Map()); return; }
+    let cancelled = false;
+    getWarsForUplineWeeks({ tenantId, weekStarts: getRecentSundays(8), role, branchId })
+      .then((docs) => {
+        if (cancelled) return;
+        const m = new Map();
+        for (const d of docs) {
+          if (d.status !== 'submitted') continue;
+          if (!m.has(d.managerId)) m.set(d.managerId, new Set());
+          m.get(d.managerId).add(d.weekStart);
+        }
+        setStreakByManager(m);
+      })
+      .catch(() => { if (!cancelled) setStreakByManager(new Map()); });
+    return () => { cancelled = true; };
+  }, [tenantId, role, branchId]);
+
+  // Patch a reviewed WAR into local state so the row pill + drill update without
+  // a reload (item 2.1). docId === war.id ({managerId}_{weekStart}).
+  function handleReviewed(docId, updated) {
+    setWars((prev) => prev.map((w) => (w.id === docId ? { ...w, ...updated } : w)));
+    setSelectedWar((prev) => (prev && prev.id === docId ? { ...prev, ...updated } : prev));
+  }
+
   function handleSelectWar(war) {
     setSelectedWar(war);
     setResolvedStds({});
@@ -75,9 +118,22 @@ export default function TeamWarsTab() {
         warData={selectedWar}
         onBack={() => setSelectedWar(null)}
         resolvedStds={resolvedStds}
+        onReviewed={handleReviewed}
       />
     );
   }
+
+  // item 2.1 team stat strip counts, derived from the loaded week's WARs.
+  // NOTE (honest scope): a WAR doc exists only once a manager starts a draft or
+  // submits, so "NOT FILED" counts started-but-unsubmitted (draft) reports and
+  // the FILED denominator is reports STARTED this week. Managers who never
+  // created a WAR do not appear in the WAR query and are not counted here —
+  // surfacing never-started managers needs a downline-manager roster read,
+  // deferred to keep this surface read-light.
+  const filedWars     = wars.filter((w) => w.status === 'submitted');
+  const toReviewCount = filedWars.filter((w) => !w.reviewStatus).length;
+  const notFiledCount = wars.filter((w) => w.status !== 'submitted').length;
+  const orderedSundays = sundays.slice().reverse(); // oldest → newest for dots
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
@@ -99,6 +155,20 @@ export default function TeamWarsTab() {
           ))}
         </select>
       </div>
+
+      {/* Team stat strip (item 2.1) */}
+      {!loading && !error && (
+        <div
+          className="bg-card rounded-2xl p-4 flex flex-wrap items-center gap-x-6 gap-y-3"
+          data-testid="war-header-strip"
+        >
+          <StatStripItem label="Filed" value={`${filedWars.length}/${wars.length}`} tone="text-success" testid="war-stat-filed" />
+          <StatStripItem label="To review" value={toReviewCount} tone="text-primary" testid="war-stat-toreview" />
+          <StatStripItem label="Not filed" value={notFiledCount} tone="text-danger" testid="war-stat-notfiled" />
+          <div className="flex-1 min-w-0" />
+          <p className="text-xs text-text-muted">Reports due Monday 9 AM</p>
+        </div>
+      )}
 
       {loading && (
         <PanelSkeleton variant="list" count={5} label="Loading team activity reports…" />
@@ -126,13 +196,18 @@ export default function TeamWarsTab() {
       {!loading && !error && wars.length > 0 && (
         <div className="space-y-2">
           {wars.map((war) => {
-            const stds   = listStandards.get(war.managerId) ?? {};
-            const missed = computeMissedActivities(war, stds);
+            const stds       = listStandards.get(war.managerId) ?? {};
+            const missed     = computeMissedActivities(war, stds);
+            const completion = computeWarCompletion(war, stds);
+            const submitted  = streakByManager.get(war.managerId);
+            const history    = orderedSundays.map((ws) => submitted?.has(ws) ?? false);
             return (
               <WarSummaryRow
                 key={war.id}
                 war={war}
                 missedCount={missed.length}
+                completion={completion}
+                streakHistory={history}
                 onSelect={() => handleSelectWar(war)}
               />
             );
@@ -143,18 +218,36 @@ export default function TeamWarsTab() {
   );
 }
 
-function WarSummaryRow({ war, missedCount, onSelect }) {
+function StatStripItem({ label, value, tone, testid }) {
+  return (
+    <div data-testid={testid}>
+      <div className={`text-2xl font-bold leading-none tabular-nums ${tone}`}>{value}</div>
+      <div className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mt-1">{label}</div>
+    </div>
+  );
+}
+
+function WarSummaryRow({ war, missedCount, completion, streakHistory, onSelect }) {
   const roleLabel = getRoleLabel(war.managerRole);
+  const pill = reviewPill(war);
   return (
     <button
       type="button"
       onClick={onSelect}
       className="w-full text-left bg-card rounded-xl p-4 hover:bg-card-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start gap-3">
+        <WarCompletionRing
+          pct={completion.pct}
+          met={completion.met}
+          total={completion.total}
+          size={42}
+          stroke={4.5}
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold text-text">{war.managerName}</p>
+            {pill && <StatusPill variant={pill.variant} label={pill.label} />}
             {missedCount > 0 && (
               <span
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/15 text-warning-ink text-[10px] font-bold uppercase tracking-wide"
@@ -167,6 +260,9 @@ function WarSummaryRow({ war, missedCount, onSelect }) {
             )}
           </div>
           <p className="text-xs text-text-muted">{roleLabel}</p>
+          <div className="mt-1.5">
+            <WarStreakDots history={streakHistory} showLabel={false} />
+          </div>
         </div>
         <div className="text-right shrink-0">
           <p className="text-xs text-text-muted">JFW: {war.jfwCount ?? '—'}</p>

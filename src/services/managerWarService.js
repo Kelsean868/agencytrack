@@ -141,6 +141,49 @@ export async function getWarsForUpline({ tenantId, weekStart, role, branchId }) 
 }
 
 /**
+ * My-WAR 8-week filing streak (item 2.1 StreakDots on My WAR).
+ * Reads the owner's OWN docs by docId, allowed by the WAR `allow get` owner arm
+ * (resource.data.managerId == auth.uid, or the warId-prefix existence check when
+ * the doc is absent). Works for EVERY manager rank including unit_manager, which
+ * cannot run a `list` query. Read-light: one getDoc per week for a single
+ * manager, run in parallel. Returns an array aligned to `weekStarts` order —
+ * each entry { weekStart, filed } where filed = a submitted WAR exists.
+ */
+export async function getOwnWarStreak({ tenantId, managerId, weekStarts }) {
+  if (!managerId || !Array.isArray(weekStarts) || weekStarts.length === 0) return [];
+  const snaps = await Promise.all(
+    weekStarts.map((ws) =>
+      getDoc(doc(db, `tenants/${tenantId}/managerWeeklyReports/${warDocId(managerId, ws)}`)),
+    ),
+  );
+  return weekStarts.map((ws, i) => ({
+    weekStart: ws,
+    filed: snaps[i].exists() && snaps[i].data().status === 'submitted',
+  }));
+}
+
+/**
+ * Multi-week upline WAR fetch for the team-row 8-week streak dots (item 2.1).
+ * Same scope shape as getWarsForUpline (BM own-branch; SM+ tenant-wide) but
+ * across a set of weeks via a single `weekStart in [...]` query — read-light
+ * (one getDocs for the whole surface, not one per row). Index-safe on the
+ * indexes already in firestore.indexes.json:
+ *   BM (rank 2) → (branchId, weekStart) composite.
+ *   SM+ (rank ≥ 3) → weekStart single-field automatic index.
+ * Firestore `in` supports up to 30 values; the streak window is 8.
+ */
+export async function getWarsForUplineWeeks({ tenantId, weekStarts, role, branchId }) {
+  if (!Array.isArray(weekStarts) || weekStarts.length === 0) return [];
+  const coll = collection(db, `tenants/${tenantId}/managerWeeklyReports`);
+  const rank = getWarRoleRank(role);
+  const q = rank >= 3
+    ? query(coll, where('weekStart', 'in', weekStarts))
+    : query(coll, where('branchId', '==', branchId), where('weekStart', 'in', weekStarts));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
  * Count the manager's own completed joint-field-work calls for a given week.
  * Uses a collectionGroup query with authorUid + tenantId equality filters.
  * The tenantId where clause enforces tenant isolation at the query level (the rule's

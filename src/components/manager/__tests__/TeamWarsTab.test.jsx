@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 
 // ── Auth mock ─────────────────────────────────────────────────────────────────
 
@@ -16,12 +16,17 @@ vi.mock('../../../context/AuthContext', () => ({
 // ── Service mocks ─────────────────────────────────────────────────────────────
 
 const mockGetWarsForUpline           = vi.fn();
+const mockGetWarsForUplineWeeks      = vi.fn();
 const mockGetResolvedStandards        = vi.fn();
 const mockGetResolvedStandardsForMany = vi.fn();
 
 vi.mock('../../../services/managerWarService', () => ({
-  getWarsForUpline: (...args) => mockGetWarsForUpline(...args),
+  getWarsForUpline:      (...args) => mockGetWarsForUpline(...args),
+  getWarsForUplineWeeks: (...args) => mockGetWarsForUplineWeeks(...args),
 }));
+
+// ManagerWarDetail is mocked below (prevent deep render), so its own
+// managerWarService / useToast imports never resolve in this test tree.
 
 vi.mock('../../../services/managerStandardOverrideService', () => ({
   getResolvedStandards:        (...args) => mockGetResolvedStandards(...args),
@@ -79,6 +84,7 @@ const flush = () => act(async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetWarsForUpline.mockResolvedValue([]);
+  mockGetWarsForUplineWeeks.mockResolvedValue([]);
   mockGetResolvedStandards.mockResolvedValue({});
   mockGetResolvedStandardsForMany.mockResolvedValue(new Map());
 });
@@ -260,5 +266,97 @@ describe('TeamWarsTab — I3a per-row under badge', () => {
         { managerId: 'um1', managerRole: 'unit_manager' },
       ],
     });
+  });
+});
+
+// ── item 2.1 team stat strip ──────────────────────────────────────────────────
+
+describe('TeamWarsTab — team stat strip', () => {
+  const SUBMITTED_TO_REVIEW = { ...WAR_BM, managerId: 'a', managerName: 'A', status: 'submitted' };
+  const SUBMITTED_APPROVED  = { ...WAR_UM, managerId: 'b', managerName: 'B', status: 'submitted', reviewStatus: 'approved' };
+  const DRAFT               = { ...WAR_UM, id: 'c_w', managerId: 'c', managerName: 'C', status: 'draft' };
+
+  it('renders FILED x/y · TO REVIEW · NOT FILED + the due-Monday line', async () => {
+    mockGetWarsForUpline.mockResolvedValue([SUBMITTED_TO_REVIEW, SUBMITTED_APPROVED, DRAFT]);
+    render(<TeamWarsTab />);
+    await flush();
+    await flush();
+    expect(screen.getByTestId('war-stat-filed')).toHaveTextContent('2/3');
+    expect(screen.getByTestId('war-stat-toreview')).toHaveTextContent('1');
+    expect(screen.getByTestId('war-stat-notfiled')).toHaveTextContent('1');
+    expect(screen.getByText(/reports due monday 9 am/i)).toBeInTheDocument();
+  });
+
+  it('does not render the strip while loading', async () => {
+    mockGetWarsForUpline.mockResolvedValue([]);
+    render(<TeamWarsTab />);
+    // pre-flush: still loading
+    expect(screen.queryByTestId('war-header-strip')).not.toBeInTheDocument();
+    await flush();
+    expect(screen.getByTestId('war-header-strip')).toBeInTheDocument();
+  });
+});
+
+// ── item 2.1 review-state pill on rows ────────────────────────────────────────
+
+describe('TeamWarsTab — row review pill', () => {
+  it('shows "To review" for a submitted WAR with no review yet', async () => {
+    mockGetWarsForUpline.mockResolvedValue([{ ...WAR_BM, status: 'submitted' }]);
+    render(<TeamWarsTab />);
+    await flush();
+    await flush();
+    const row = screen.getByText('Branch Mgr 1').closest('button');
+    expect(row).toHaveTextContent(/to review/i);
+  });
+
+  it('shows "Approved" for a reviewed WAR', async () => {
+    mockGetWarsForUpline.mockResolvedValue([{ ...WAR_BM, status: 'submitted', reviewStatus: 'approved' }]);
+    render(<TeamWarsTab />);
+    await flush();
+    await flush();
+    const row = screen.getByText('Branch Mgr 1').closest('button');
+    expect(row).toHaveTextContent(/approved/i);
+  });
+});
+
+// ── item 2.1 streak dots bucketing ────────────────────────────────────────────
+
+describe('TeamWarsTab — streak dots', () => {
+  it('buckets submitted weeks per manager into the 8-week dots (filed count)', async () => {
+    mockGetWarsForUpline.mockResolvedValue([WAR_BM]); // bm1
+    // Sundays (mocked): ['2026-05-18','2026-05-11','2026-05-04']. Two submitted weeks.
+    mockGetWarsForUplineWeeks.mockResolvedValue([
+      { managerId: 'bm1', weekStart: '2026-05-18', status: 'submitted' },
+      { managerId: 'bm1', weekStart: '2026-05-04', status: 'submitted' },
+      { managerId: 'bm1', weekStart: '2026-05-11', status: 'draft' }, // not filed
+    ]);
+    render(<TeamWarsTab />);
+    await flush();
+    await flush();
+    const row = screen.getByText('Branch Mgr 1').closest('button');
+    expect(within(row).getByTestId('war-streak-dots'))
+      .toHaveAttribute('aria-label', 'Filed 2 of 3 recent weeks');
+  });
+
+  it('calls getWarsForUplineWeeks once with the trailing sundays + scope', async () => {
+    mockGetWarsForUpline.mockResolvedValue([WAR_BM]);
+    render(<TeamWarsTab />);
+    await flush();
+    await flush();
+    expect(mockGetWarsForUplineWeeks).toHaveBeenCalledWith({
+      tenantId: 'test-tenant',
+      weekStarts: ['2026-05-18', '2026-05-11', '2026-05-04'],
+      role: 'branch_manager',
+      branchId: 'branch-a',
+    });
+  });
+
+  it('degrades silently (no dots crash) when the weeks fetch rejects', async () => {
+    mockGetWarsForUpline.mockResolvedValue([WAR_BM]);
+    mockGetWarsForUplineWeeks.mockRejectedValue(new Error('network'));
+    render(<TeamWarsTab />);
+    await flush();
+    await flush();
+    expect(screen.getByText('Branch Mgr 1')).toBeInTheDocument();
   });
 });
