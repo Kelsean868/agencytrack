@@ -7,15 +7,27 @@
 // chips, branch aggregate cards, the consecutive-miss + >10% downward-adjustment
 // risk monitors, and the confirmed-draw / adjustment figures as a READ-ONLY table.
 //
-// DISPLAY-ONLY mandate (item 2.8): this surface renders standings, trajectories and
-// status — it holds NO write path. The two WRITE actions the mockup draws are
-// SKIP-LOGGED here, rendered as data/status only:
-//   • the per-agent suggested→confirmed OVERRIDE (setFinancingProration — sets the
-//     draw) — the drawer input is not built; the confirmed figure shows read-only.
-//   • the clause-5.3 "Notify Sales Admin" action (notifyFinancingAdjustment CF) —
-//     the >10% flag renders as a duty STATUS callout, not a wired button.
-// Both remain available on their own write surfaces (Proration tab / a future
-// notify item); this roster is the read view.
+// DISPLAY-ONLY scope (item 2.8, refined by orchestrator ruling): this surface
+// renders standings, trajectories and status — it holds NO money-write path. The
+// per-agent suggested→confirmed OVERRIDE (setFinancingProration — sets the draw)
+// stays SKIP-LOGGED: the drawer input is not built, the confirmed figure shows
+// read-only, and the write remains on the Proration tab.
+//
+// The clause-5.3 "Notify Sales Admin" affordance IS wired (restored per the
+// orchestrator ruling — the notifyFinancingAdjustment CF is a pure
+// notification/audit duty: bell doc + auditNudges append + cooldown marker + mail
+// doc, ZERO money movement, manager-confirmed fire, never an automatic
+// termination; the display-only hard stop covers money-release logic, not shipped
+// notify duties). It mirrors the pre-rewrite panel exactly: WRITE_ROLES gate in
+// lock-step with the CF's NOTIFY_ACTOR_ROLES, the CONFIRMED_BASES-filtered active
+// flag (via assembleRosterRow's hasAdjFlag — same findAdjustmentFlags +
+// CONFIRMED_BASES filter, latest wins), the 24h cooldown via the deterministic-ID
+// nudge record, and a direct manager-confirmed fire (the pre-rewrite idiom — no
+// extra confirm dialog; the click IS the confirmation). Cooldown reads are LAZY:
+// the NotifyDuty block mounts only on FLAGGED rows (rare), so the record GET is
+// per-flagged-agent, never a whole-roster fan-out. Success/failure surface INLINE
+// (§1), including an honest emailQueued=false note (the CF's email leg is
+// non-fatal by design).
 //
 // Read route (read-light, index reasoning): financing docs are keyed
 // financing/{agentId}_{YYYY_MM} and carry NO branchId field, and there is no
@@ -40,6 +52,12 @@ import {
   financingCeiling,
   financingMonthIndex,
 } from '../../services/financingService';
+import { getFinancingConfig } from '../../services/financingConfigService';
+import {
+  notifyFinancingAdjustment,
+  getFinancingNotifyRecord,
+  FINANCING_NOTIFY_COOLDOWN_MS,
+} from '../../services/financingNotifyService';
 import { monthKeyFromDate, getTodayTT } from '../../utils/dateInputs';
 import { formatCurrency, formatAdjustmentPct, initials } from '../../utils/formatters';
 import { MISS_CRITICAL_AT } from '../../lib/financingMissEngine';
@@ -55,6 +73,21 @@ import PanelSkeleton from '../ui/PanelSkeleton';
 // BM-and-up. UM is excluded (its own UnitFinancingRoster surface serves the unit).
 // platform_admin (tenantId:null) has no tenant context to monitor.
 const VIEW_ROLES = ['branch_manager', 'sales_manager', 'tenant_admin'];
+
+// Mirrors notifyFinancingAdjustment's NOTIFY_ACTOR_ROLES exactly — keeping the
+// panel gate in lock-step with the CF avoids surfacing a notify affordance the
+// server would reject. (Same set as VIEW_ROLES today; kept as a separate const so
+// a future view-role widening can never silently widen the fire gate.)
+const WRITE_ROLES = ['branch_manager', 'sales_manager', 'tenant_admin'];
+
+// "YYYY_MM" → "May 2026" for the notify payload's human month label.
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function monthKeyLabel(key) {
+  if (typeof key !== 'string') return '';
+  const [y, m] = key.split('_').map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return key;
+  return `${MONTH_NAMES[m - 1]} ${y}`;
+}
 
 // The financing DRAW window (SPEC §5: on_financing = months 1–12). Fixed contract
 // clock, not the 24-month agreement term (that clock lives on the K9 self-view).
@@ -124,6 +157,127 @@ function Stat({ label, value, tone = 'ink', testId }) {
   );
 }
 
+// ── Clause-5.3 notify affordance (restored per orchestrator ruling) ────────────
+// Mounts ONLY inside a flagged agent's risk-monitor card, so the cooldown record
+// GET fires lazily per flagged agent — never for the whole roster. The fire is
+// direct (manager-confirmed by design — the pre-rewrite idiom, no confirm dialog);
+// results surface inline per §1, honestly reflecting the CF's non-fatal email leg.
+function NotifyDuty({ tenantId, row, recipientUid, canNotify }) {
+  const [notifiedAt, setNotifiedAt] = useState(null); // epoch millis | null
+  const [checked, setChecked]       = useState(false); // cooldown read resolved
+  const [notifying, setNotifying]   = useState(false);
+  const [result, setResult]         = useState(null);  // { kind:'success'|'error', message }
+
+  const month = row.adjFlagMonth;
+
+  useEffect(() => {
+    let cancelled = false;
+    setNotifiedAt(null);
+    setChecked(false);
+    setResult(null);
+    if (!tenantId || !row.agentId || !month) { setChecked(true); return undefined; }
+    getFinancingNotifyRecord(tenantId, row.agentId, month)
+      .then((millis) => { if (!cancelled) { setNotifiedAt(millis); setChecked(true); } })
+      .catch(() => { if (!cancelled) setChecked(true); }); // absent/denied → not yet notified
+    return () => { cancelled = true; };
+  }, [tenantId, row.agentId, month]);
+
+  const onCooldown = notifiedAt != null && (Date.now() - notifiedAt) < FINANCING_NOTIFY_COOLDOWN_MS;
+  const untilLabel = onCooldown
+    ? new Date(notifiedAt + FINANCING_NOTIFY_COOLDOWN_MS).toLocaleString('en-TT', {
+        day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit',
+      })
+    : null;
+
+  const handleNotify = async () => {
+    if (!canNotify || !recipientUid || onCooldown || notifying) return;
+    setNotifying(true);
+    setResult(null);
+    try {
+      const res = await notifyFinancingAdjustment(row.agentId, month, {
+        adjustmentPct: row.adjFlagPct,
+        monthLabel: monthKeyLabel(month),
+        agentName: row.agentName,
+      });
+      if (res?.success) {
+        setNotifiedAt(Date.now());
+        setResult({
+          kind: 'success',
+          message: res.emailQueued === false
+            ? 'Sales Admin notified — duty logged (bell only; the email could not be queued).'
+            : 'Sales Admin notified — clause 5.3 duty logged.',
+        });
+      } else if (res?.reason === 'no-recipient') {
+        setResult({ kind: 'error', message: 'No notify recipient configured for this tenant.' });
+      } else if (res?.reason === 'recipient-not-found') {
+        setResult({ kind: 'error', message: 'The configured recipient no longer exists — update the financing config.' });
+      } else {
+        setResult({ kind: 'error', message: 'Notify failed. Please try again.' });
+      }
+    } catch (e) {
+      console.error('[FinancingRiskPanel] notify failed:', e);
+      setResult({ kind: 'error', message: 'Notify failed. Please try again.' });
+    } finally {
+      setNotifying(false);
+    }
+  };
+
+  // Defense-in-depth (the panel's role gate already excludes non-WRITE roles).
+  if (!canNotify) {
+    return (
+      <span
+        className="self-start inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-wide bg-surface-muted text-ink-muted border border-border"
+        data-testid={`financing-notify-status-${row.agentId}`}
+      >
+        <Mail size={11} aria-hidden="true" /> Notify Sales Admin · duty open
+      </span>
+    );
+  }
+
+  if (!recipientUid) {
+    return (
+      <div
+        className="flex items-center gap-2 text-xs text-ink-muted"
+        data-testid={`financing-notify-no-recipient-${row.agentId}`}
+      >
+        <AlertTriangle size={14} className="shrink-0" aria-hidden="true" />
+        No recipient configured — a tenant admin must set the financing notify recipient before this duty can be discharged.
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          type="button"
+          onClick={handleNotify}
+          disabled={!checked || onCooldown || notifying}
+          data-testid={`financing-notify-btn-${row.agentId}`}
+          className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg text-sm font-semibold text-white bg-primary dark:bg-primary-dark hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <Mail size={15} aria-hidden="true" />
+          {notifying ? 'Notifying…' : 'Notify Sales Admin'}
+        </button>
+        {onCooldown && (
+          <span className="text-xs text-ink-muted" data-testid={`financing-notify-cooldown-${row.agentId}`}>
+            Notified — re-enables {untilLabel}.
+          </span>
+        )}
+      </div>
+      {result && (
+        <p
+          role={result.kind === 'error' ? 'alert' : 'status'}
+          className={`text-xs ${result.kind === 'error' ? 'text-danger-ink' : 'text-success-ink'}`}
+          data-testid={`financing-notify-result-${row.agentId}`}
+        >
+          {result.message}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function FinancingRiskPanel() {
   const { role, tenantId } = useAuth();
   const [state, setState] = useState({ status: 'loading' });
@@ -140,7 +294,12 @@ export default function FinancingRiskPanel() {
     if (!tenantId) return;
 
     try {
-      const users = await getTenantUsers(tenantId); // BM → self-scoped to own branch
+      // Config rides the same cycle (ONE read per surface): notifyRecipientUid
+      // gates the clause-5.3 affordance on flagged rows.
+      const [users, cfg] = await Promise.all([
+        getTenantUsers(tenantId), // BM → self-scoped to own branch
+        getFinancingConfig(tenantId),
+      ]);
       const agents = (users || []).filter((u) => u.role === 'agent');
 
       // Compliance-v2 fan-out: one terms + ledger read per branch agent. allSettled
@@ -178,7 +337,13 @@ export default function FinancingRiskPanel() {
       // Aggregates ONLY from a fully-resolved read (never a branch total from a
       // partial fan-out — Compliance-v2).
       const aggregates = anyFailed ? null : computeRosterAggregates(rows);
-      setState({ status: 'ready', rows, aggregates, partial: anyFailed });
+      setState({
+        status: 'ready',
+        rows,
+        aggregates,
+        partial: anyFailed,
+        recipientUid: cfg?.notifyRecipientUid ?? null,
+      });
     } catch (e) {
       if (seq !== loadSeq.current) return; // stale failure — a newer load owns the state
       console.error('[FinancingRiskPanel] load failed', e);
@@ -236,9 +401,10 @@ export default function FinancingRiskPanel() {
     );
   }
 
-  const { rows, aggregates, partial } = state;
+  const { rows, aggregates, partial, recipientUid } = state;
   const missRows = rows.filter((r) => r.missSeverity !== 'none');
   const flagRows = rows.filter((r) => r.hasAdjFlag);
+  const canNotify = WRITE_ROLES.includes(role);
 
   return (
     <div className="flex flex-col gap-5" data-testid="financing-risk-panel" data-loading="false">
@@ -248,7 +414,7 @@ export default function FinancingRiskPanel() {
           className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold font-mono uppercase tracking-wide bg-card border border-border text-ink-muted"
           data-testid="financing-risk-readonly-tag"
         >
-          <Lock size={11} aria-hidden="true" /> Read-only view · confirm &amp; notify on their own tabs
+          <Lock size={11} aria-hidden="true" /> Display view · draw confirm on the Proration tab
         </span>
       </div>
 
@@ -346,13 +512,9 @@ export default function FinancingRiskPanel() {
                     A &gt;10% downward adjustment obliges a Sales-Admin notification by the 1st. The agent stays on financing; this is a reporting step for the clause-5.3 paper trail.
                   </p>
                 </div>
-                {/* DISPLAY ONLY: the notify ACTION is skip-logged — shown as a duty status, not a wired button. */}
-                <span
-                  className="self-start inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-wide bg-surface-muted text-ink-muted border border-border"
-                  data-testid={`financing-risk-notify-status-${r.agentId}`}
-                >
-                  <Mail size={11} aria-hidden="true" /> Notify Sales Admin · duty open
-                </span>
+                {/* Clause-5.3 notify affordance (restored per orchestrator ruling —
+                    pure notification/audit duty, zero money movement). */}
+                <NotifyDuty tenantId={tenantId} row={r} recipientUid={recipientUid} canNotify={canNotify} />
               </div>
             </div>
           ))}
