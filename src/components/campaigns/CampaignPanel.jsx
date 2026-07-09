@@ -9,7 +9,9 @@ import {
   getCampaignSubmissions,
 } from '../../services/campaignService';
 import { getTenantUsers } from '../../services/managerService';
-import { computeCampaignProgress } from '../../utils/campaignEngine';
+import { getPersistencyMapForYear } from '../../services/persistencyService';
+import { computeCampaignProgress, computeStandings, isTieredCampaign, persistencyPctForPeriod } from '../../utils/campaignEngine';
+import { CampaignStandingsBlock } from './CampaignStandings';
 import { formatCurrency, formatDateFriendly, getUnitDisplayName } from '../../utils/formatters';
 
 const METRIC_OPTIONS = [
@@ -28,6 +30,17 @@ function classifyDate(startDate, endDate) {
   if (t < startDate) return 'upcoming';
   if (t > endDate)   return 'ended';
   return 'active';
+}
+
+// Distinct calendar years spanned by [startDate, endDate] (YYYY-MM-DD strings).
+function campaignYears(startDate, endDate) {
+  const s = parseInt(String(startDate).slice(0, 4), 10);
+  const e = parseInt(String(endDate).slice(0, 4), 10);
+  if (!Number.isFinite(s)) return [new Date().getFullYear()];
+  const end = Number.isFinite(e) ? e : s;
+  const out = [];
+  for (let y = s; y <= end; y++) out.push(y);
+  return out;
 }
 
 
@@ -109,20 +122,73 @@ function CampaignRow({ campaign, canEdit, onEdit, onDelete, allUsers, tenantId }
   const [expanded, setExpanded] = useState(false);
   const [subs, setSubs] = useState([]);
   const [subsLoading, setSubsLoading] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [persByAgent, setPersByAgent] = useState({});
 
   const status = classifyDate(campaign.startDate, campaign.endDate);
+  const tiered = isTieredCampaign(campaign);
+
+  // Eligible participants for standings (id · name · unit), scope-resolved.
+  const participants = useMemo(() => {
+    const { type, unitIds = [], agentIds = [] } = campaign.scope ?? {};
+    const nameOf = (u, id) => u?.name ?? u?.displayName ?? u?.email ?? `Agent …${String(id).slice(-4)}`;
+    if (type === 'branch') {
+      return allUsers.filter((u) => u.role === 'agent').map((u) => ({ id: u.id, name: nameOf(u, u.id), unit: u.unitId ?? null }));
+    }
+    if (type === 'unit') {
+      return allUsers.filter((u) => u.role === 'agent' && unitIds.includes(u.unitId)).map((u) => ({ id: u.id, name: nameOf(u, u.id), unit: u.unitId ?? null }));
+    }
+    if (type === 'agent') {
+      return agentIds.map((id) => {
+        const u = allUsers.find((x) => x.id === id);
+        return { id, name: nameOf(u, id), unit: u?.unitId ?? null };
+      });
+    }
+    return [];
+  }, [campaign, allUsers]);
+
+  const standings = useMemo(
+    () => (tiered ? computeStandings(campaign, subs, participants, persByAgent) : []),
+    [tiered, campaign, subs, participants, persByAgent],
+  );
+  const hasPersistency = Object.keys(persByAgent).length > 0;
 
   const handleExpand = useCallback(async () => {
-    if (!expanded && subs.length === 0 && tenantId) {
+    if (!expanded && !dataLoaded && tenantId) {
       setSubsLoading(true);
       try {
         const data = await getCampaignSubmissions(tenantId, campaign.startDate, campaign.endDate);
         setSubs(data);
+        // Read-light persistency for the gate DISPLAY: one batched `in` query
+        // per spanned year (no new index — see getPersistencyMapForYear). Only
+        // fetched for tiered campaigns; failures degrade to "no data" pills.
+        if (tiered) {
+          try {
+            const opts = campaign.scope?.type === 'unit' && campaign.scope.unitIds?.length === 1
+              ? { unitId: campaign.scope.unitIds[0] } : {};
+            const maps = await Promise.all(
+              campaignYears(campaign.startDate, campaign.endDate).map((y) => getPersistencyMapForYear(tenantId, y, opts)),
+            );
+            const merged = {};
+            for (const m of maps) {
+              for (const [aid, recs] of Object.entries(m)) (merged[aid] = merged[aid] ?? []).push(...recs);
+            }
+            const pctByAgent = {};
+            for (const p of participants) {
+              const pct = persistencyPctForPeriod(merged[p.id] ?? [], campaign.startDate, campaign.endDate);
+              if (pct != null) pctByAgent[p.id] = pct;
+            }
+            setPersByAgent(pctByAgent);
+          } catch (e) {
+            console.error('[CampaignRow] persistency load failed:', e);
+          }
+        }
+        setDataLoaded(true);
       } catch (e) { console.error(e); }
       finally { setSubsLoading(false); }
     }
     setExpanded((v) => !v);
-  }, [expanded, subs.length, campaign, tenantId]);
+  }, [expanded, dataLoaded, campaign, tenantId, tiered, participants]);
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -165,11 +231,19 @@ function CampaignRow({ campaign, canEdit, onEdit, onDelete, allUsers, tenantId }
 
       {expanded && (
         <div className="border-t border-border px-4 py-3">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted mb-2">Participant Progress</p>
-          {subsLoading
-            ? <div className="h-16 rounded-lg bg-border/30 animate-pulse" />
-            : <ProgressTable campaign={campaign} submissions={subs} allUsers={allUsers} />
-          }
+          {tiered ? (
+            subsLoading
+              ? <div className="h-40 rounded-lg bg-border/30 animate-pulse" />
+              : <CampaignStandingsBlock campaign={campaign} standings={standings} hasPersistency={hasPersistency} />
+          ) : (
+            <>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted mb-2">Participant Progress</p>
+              {subsLoading
+                ? <div className="h-16 rounded-lg bg-border/30 animate-pulse" />
+                : <ProgressTable campaign={campaign} submissions={subs} allUsers={allUsers} />
+              }
+            </>
+          )}
         </div>
       )}
     </div>
@@ -183,10 +257,92 @@ const EMPTY_FORM = {
   scope: { type: 'branch', unitIds: [], agentIds: [] },
   targets: [{ metric: 'apiSold', threshold: '' }],
   status: 'active',
+  // v2 prize structure (all optional — legacy campaigns omit these entirely)
+  prizeStructure: 'none',       // 'none' | 'qualify' | 'placement' (UI selector)
+  standingsMetric: 'apiSold',   // ranking metric for tiered standings
+  persistencyGateEnabled: true,
+  tiers: [],                    // qualify: [{ level, name, api, apps, cash, voucher }]
+  placements: [
+    { rank: 1, prize: '' },
+    { rank: 2, prize: '' },
+    { rank: 3, prize: '' },
+  ],
+  kiosk: false,
+  meeting: false,
+  countsTowardAwards: true,
 };
 
+// Simple 44px accessible toggle row (visibility + awards linkage).
+function ToggleRow({ checked, onChange, label, sub }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`w-full min-h-[44px] flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-colors ${
+        checked ? 'bg-primary/5 border-primary/30' : 'bg-card border-border'
+      }`}
+    >
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-semibold text-ink">{label}</span>
+        {sub && <span className="block text-[11px] text-ink-muted mt-0.5">{sub}</span>}
+      </span>
+      <span className={`relative w-12 h-7 rounded-full shrink-0 transition-colors ${checked ? 'bg-primary dark:bg-primary-dark' : 'bg-surface-muted'}`}>
+        <span className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${checked ? 'left-6' : 'left-1'}`} />
+      </span>
+    </button>
+  );
+}
+
+// Map the form's UI shape → the persisted campaign doc. UI-only fields
+// (prizeStructure) are translated to the stored `structure`; number coercion
+// happens in campaignService (domain rule: never store numbers as strings).
+function buildCampaignPayload(f) {
+  const base = {
+    name: f.name, description: f.description, prize: f.prize,
+    startDate: f.startDate, endDate: f.endDate,
+    scope: f.scope, targets: f.targets, status: f.status,
+    kiosk: !!f.kiosk, meeting: !!f.meeting,
+    countsTowardAwards: f.countsTowardAwards !== false,
+  };
+  if (f.prizeStructure === 'qualify') {
+    base.structure = 'qualify';
+    base.standingsMetric = f.standingsMetric === 'applicationsSold' ? 'applicationsSold' : 'apiSold';
+    base.persistencyGateEnabled = f.persistencyGateEnabled !== false;
+    base.tiers = f.tiers;
+    base.placements = [];
+  } else if (f.prizeStructure === 'placement') {
+    base.structure = 'placement';
+    base.standingsMetric = f.standingsMetric === 'applicationsSold' ? 'applicationsSold' : 'apiSold';
+    base.persistencyGateEnabled = f.persistencyGateEnabled !== false;
+    base.placements = f.placements.filter((p) => String(p.prize).trim() !== '');
+    base.tiers = [];
+  } else {
+    // Legacy free-text prize — clear any prior structure (edit path).
+    base.structure = null;
+    base.tiers = [];
+    base.placements = [];
+  }
+  return base;
+}
+
 function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onClose }) {
-  const [form, setForm] = useState(initial ?? EMPTY_FORM);
+  const [form, setForm] = useState(() => {
+    if (!initial) return EMPTY_FORM;
+    return {
+      ...EMPTY_FORM,
+      ...initial,
+      prizeStructure: initial.structure ?? 'none',
+      tiers: initial.tiers ?? [],
+      placements: initial.placements?.length ? initial.placements : EMPTY_FORM.placements,
+      standingsMetric: initial.standingsMetric ?? 'apiSold',
+      persistencyGateEnabled: initial.persistencyGateEnabled !== false,
+      kiosk: !!initial.kiosk,
+      meeting: !!initial.meeting,
+      countsTowardAwards: initial.countsTowardAwards !== false,
+    };
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -248,13 +404,38 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
     setForm((f) => ({ ...f, targets: f.targets.filter((_, idx) => idx !== i) }));
   };
 
+  // ── Prize-tier + placement editing ──────────────────────────────────────────
+  const addTier = () => setForm((f) => {
+    const nextLevel = f.tiers.reduce((m, t) => Math.max(m, Number(t.level) || 0), 0) + 1;
+    return { ...f, tiers: [...f.tiers, { level: nextLevel, name: '', api: '', apps: '', cash: '', voucher: '' }] };
+  });
+  const updateTier = (i, key, val) => setForm((f) => {
+    const tiers = [...f.tiers];
+    tiers[i] = { ...tiers[i], [key]: val };
+    return { ...f, tiers };
+  });
+  const removeTier = (i) => setForm((f) => ({ ...f, tiers: f.tiers.filter((_, idx) => idx !== i) }));
+  const updatePlacement = (i, val) => setForm((f) => {
+    const placements = [...f.placements];
+    placements[i] = { ...placements[i], prize: val };
+    return { ...f, placements };
+  });
+
   const validate = () => {
     if (!form.name.trim()) return 'Campaign name is required.';
-    if (!form.prize.trim()) return 'Prize is required.';
+    if (form.prizeStructure === 'none' && !form.prize.trim()) return 'Prize is required.';
     if (!form.startDate || !form.endDate) return 'Start and end dates are required.';
     if (form.endDate <= form.startDate) return 'End date must be after start date.';
     if (form.targets.length === 0) return 'At least one metric target is required.';
     if (form.targets.some((t) => !(parseFloat(t.threshold) > 0))) return 'Each metric must have a threshold greater than 0.';
+    if (form.prizeStructure === 'qualify') {
+      if (form.tiers.length === 0) return 'Add at least one prize tier, or switch the prize structure to "Simple".';
+      if (form.tiers.some((t) => !t.name.trim())) return 'Each prize tier needs a name.';
+      if (form.tiers.some((t) => !(parseFloat(t.cash) > 0 || parseFloat(t.voucher) > 0))) return 'Each tier needs a cash or voucher prize.';
+    }
+    if (form.prizeStructure === 'placement') {
+      if (!(parseFloat(form.placements[0]?.prize) > 0)) return 'The 1st-place prize is required for a placement campaign.';
+    }
     return null;
   };
 
@@ -264,7 +445,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
     setSaving(true);
     setError('');
     try {
-      await onSave(form);
+      await onSave(buildCampaignPayload(form));
     } catch (e) {
       setError('Failed to save. Please try again.');
       console.error(e);
@@ -453,6 +634,169 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Prize structure (optional v2) */}
+          <div className="border-t border-border pt-4">
+            <p className="block text-xs font-semibold text-ink-muted mb-1">Prize Structure</p>
+            <p className="text-[11px] text-ink-muted mb-2">
+              Add tiers or a podium to unlock ranked standings, the persistency gate, and projected payouts. Leave as Simple to keep the free-text prize.
+            </p>
+            <div className="flex flex-col gap-2">
+              {[
+                { value: 'none', label: 'Simple', sub: 'Free-text prize (as before)' },
+                { value: 'qualify', label: 'Qualify tiers', sub: 'Hit a tier, win its prize — everyone who reaches it wins' },
+                { value: 'placement', label: 'Placement podium', sub: 'A race — top three by the metric take the prizes' },
+              ].map((opt) => (
+                <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="prizeStructure"
+                    value={opt.value}
+                    checked={form.prizeStructure === opt.value}
+                    onChange={() => set('prizeStructure', opt.value)}
+                    className="accent-primary mt-0.5"
+                  />
+                  <span className="flex flex-col text-sm text-ink">
+                    {opt.label}
+                    <span className="text-[11px] text-ink-muted font-normal">{opt.sub}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Standings metric + gate (shown for tiered structures) */}
+          {form.prizeStructure !== 'none' && (
+            <>
+              <div>
+                <label htmlFor="standings-metric" className="block text-xs font-semibold text-ink-muted mb-1">Rank standings by</label>
+                <select
+                  id="standings-metric"
+                  value={form.standingsMetric}
+                  onChange={(e) => set('standingsMetric', e.target.value)}
+                  className="w-full h-11 px-3 border border-border rounded-xl bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                >
+                  <option value="apiSold">API</option>
+                  <option value="applicationsSold">Applications</option>
+                </select>
+              </div>
+
+              <ToggleRow
+                checked={form.persistencyGateEnabled}
+                onChange={(v) => set('persistencyGateEnabled', v)}
+                label="Persistency gate"
+                sub="Scale each projected payout by quality — ≥90% full · 85–89% half · 80–84% quarter · <80% disqualified"
+              />
+            </>
+          )}
+
+          {/* Qualify tier editor */}
+          {form.prizeStructure === 'qualify' && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-gold-ink">Prize Tiers *</p>
+                <button type="button" onClick={addTier} className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors">
+                  + Add Tier
+                </button>
+              </div>
+              {form.tiers.length === 0 && (
+                <p className="text-[11px] text-ink-muted italic mb-2">No tiers yet — add Bronze/Silver/Gold-style levels with an API and apps minimum plus a cash or voucher prize.</p>
+              )}
+              <div className="flex flex-col gap-2">
+                {form.tiers.map((tr, i) => (
+                  <div key={i} className="rounded-xl border border-border bg-surface-raised p-3 flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-lg bg-gold text-white flex items-center justify-center font-display font-extrabold text-xs shrink-0">L{tr.level}</span>
+                      <input
+                        value={tr.name}
+                        onChange={(e) => updateTier(i, 'name', e.target.value)}
+                        placeholder="Tier name (e.g. Gold)"
+                        aria-label={`Tier ${i + 1} name`}
+                        className="flex-1 h-10 px-2 border border-border rounded-lg bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                      <button
+                        type="button"
+                        aria-label="Remove tier"
+                        onClick={() => removeTier(i)}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-ink-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { key: 'api', label: 'API min', ph: '250000' },
+                        { key: 'apps', label: 'Apps min', ph: '20' },
+                        { key: 'cash', label: 'Cash prize', ph: '10000' },
+                        { key: 'voucher', label: 'Voucher', ph: '1000' },
+                      ].map((fld) => (
+                        <div key={fld.key}>
+                          <label htmlFor={`tier-${i}-${fld.key}`} className="block text-[10px] font-mono text-ink-muted mb-0.5">{fld.label}</label>
+                          <input
+                            id={`tier-${i}-${fld.key}`}
+                            type="number"
+                            min="0"
+                            value={tr[fld.key]}
+                            onChange={(e) => updateTier(i, fld.key, e.target.value)}
+                            placeholder={fld.ph}
+                            className="w-full h-10 px-2 border border-border rounded-lg bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Placement editor */}
+          {form.prizeStructure === 'placement' && (
+            <div>
+              <p className="text-xs font-semibold text-gold-ink mb-2">Placement Prizes *</p>
+              <div className="flex flex-col gap-2">
+                {form.placements.map((p, i) => (
+                  <div key={p.rank} className="flex items-center gap-2">
+                    <span className="w-16 text-sm font-semibold text-ink shrink-0">
+                      {p.rank === 1 ? '1st' : p.rank === 2 ? '2nd' : '3rd'} place
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={p.prize}
+                      onChange={(e) => updatePlacement(i, e.target.value)}
+                      placeholder="Prize amount (TTD)"
+                      aria-label={`${p.rank === 1 ? '1st' : p.rank === 2 ? '2nd' : '3rd'} place prize`}
+                      className="flex-1 h-10 px-2 border border-border rounded-lg bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Visibility + awards linkage */}
+          <div className="border-t border-border pt-4 flex flex-col gap-2">
+            <p className="block text-xs font-semibold text-ink-muted">Where it shows</p>
+            <ToggleRow
+              checked={form.kiosk}
+              onChange={(v) => set('kiosk', v)}
+              label="Kiosk wall display"
+              sub="Rotate this campaign's leaderboard on the branch TV"
+            />
+            <ToggleRow
+              checked={form.meeting}
+              onChange={(v) => set('meeting', v)}
+              label="Meeting mode"
+              sub="Add a slide to the stand-up run-of-show"
+            />
+            <ToggleRow
+              checked={form.countsTowardAwards}
+              onChange={(v) => set('countsTowardAwards', v)}
+              label="Counts toward annual awards"
+              sub="Settled production rolls into agents' annual awards progress"
+            />
           </div>
 
           {/* Status */}

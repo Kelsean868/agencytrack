@@ -40,6 +40,28 @@ export async function getActiveCampaignsForAgent(tenantId, agentId, unitId) {
   });
 }
 
+// Coerce every numeric campaign field to a number before it hits Firestore
+// (domain rule: never store numbers as strings). Tiers/placements are the v2
+// prize-structure fields — optional and absent on legacy campaigns.
+const num = (v) => parseFloat(v) || 0;
+
+function sanitizeTiers(tiers) {
+  if (!Array.isArray(tiers)) return tiers;
+  return tiers.map((t) => ({
+    ...t,
+    level:   num(t.level),
+    api:     num(t.api),
+    apps:    num(t.apps),
+    cash:    num(t.cash),
+    voucher: num(t.voucher),
+  }));
+}
+
+function sanitizePlacements(placements) {
+  if (!Array.isArray(placements)) return placements;
+  return placements.map((p) => ({ ...p, rank: num(p.rank), prize: num(p.prize) }));
+}
+
 export async function createCampaign(tenantId, createdBy, createdByName, createdByRole, campaignData) {
   const targets = (campaignData.targets ?? []).map((t) => ({
     ...t,
@@ -49,6 +71,8 @@ export async function createCampaign(tenantId, createdBy, createdByName, created
   const ref = collection(db, `tenants/${tenantId}/campaigns`);
   const docRef = await addDoc(ref, {
     ...campaignData,
+    ...(campaignData.tiers !== undefined ? { tiers: sanitizeTiers(campaignData.tiers) } : {}),
+    ...(campaignData.placements !== undefined ? { placements: sanitizePlacements(campaignData.placements) } : {}),
     targets,
     tenantId,
     createdBy,
@@ -72,6 +96,8 @@ export async function updateCampaign(tenantId, campaignId, updates, previousStat
 
   const payload = { ...updates, updatedAt: serverTimestamp() };
   if (targets) payload.targets = targets;
+  if (updates.tiers !== undefined) payload.tiers = sanitizeTiers(updates.tiers);
+  if (updates.placements !== undefined) payload.placements = sanitizePlacements(updates.placements);
 
   await updateDoc(doc(db, `tenants/${tenantId}/campaigns/${campaignId}`), payload);
 
