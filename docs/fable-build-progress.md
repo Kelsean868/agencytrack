@@ -161,4 +161,5 @@ SM cross-branch views (Phase 9) · Settings team-defaults cascade · payout-rele
 | 2.2 contract layer: recruitingCandidates collection rules + emulator tests | orchestrator | n/a (main loop) | 2026-07-08T21:33 | 2026-07-08T21:38 | 5 min (20/20 new + 35/35 regression; staging rules deployed) | done — NEEDS-HUMAN-REVIEW (rules) |
 | 2.2 UI: kanban board + drill + targets/funnel + service | opus (subagent) | inherited-default | 2026-07-08T21:39 | 2026-07-08T22:01 | 22 min | done — NEEDS-HUMAN-REVIEW (rules-gated item) |
 | 2.2 live smoke: BM write-read-verify (create→advance→archive) | orchestrator | n/a (main loop) | 2026-07-08T22:01 | 2026-07-08T22:05 | 4 min (1 selector fix: rec-form-submit) | done — 6/6 PASS, clean console |
-| 2.3 TierGoalForm activity targets (FFI/CI/Dials) | sonnet (subagent) | inherited-default | 2026-07-08T22:06 | — | — | in-flight |
+| 2.3 TierGoalForm activity targets (FFI/CI/Dials) | sonnet (subagent) | inherited-default | 2026-07-08T22:06 | 2026-07-08T22:19 | 13 min | done — audit premise stale (shipped May, PR #381); +5 tests only |
+| 2.4 Settings v2 shell + My Preferences | opus (subagent) | inherited-default | 2026-07-08T22:21 | — | — | in-flight |
