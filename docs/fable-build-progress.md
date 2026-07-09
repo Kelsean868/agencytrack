@@ -123,7 +123,7 @@
 
 | Item | Status | Notes |
 |---|---|---|
-| 3.1 CRO / back-office: route role, Delivery Register, 30-day clawback clock, un-stub DeliveryStripCard | PENDING | Minimal Firestore collections as needed; FLAG rules |
+| 3.1 CRO / back-office: route role, Delivery Register, 30-day clawback clock, un-stub DeliveryStripCard | IN-PROGRESS | **Contract design locked (orchestrator recon, 2026-07-09):** (1) NO new collection — Track H `policies` already has `dateIssued` + status machine (submitted→settled→lapsed); Delivery Register = query surface over policies + NEW OPTIONAL fields `deliveryDate` (Timestamp) + `deliveredBy` (uid) + `deliveredAt` (ts) — the workshop-locked "Policy Delivery Date IN" column. Clawback clock = display derivation, 30d from `dateIssued`. DeliveryStripCard un-stub reads the agent's own policies (already permitted). (2) NEW `cro` ROLE (none exists anywhere — verified): custom claim + App.jsx route to a new CRO dashboard shell + policies rules arm (CRO tenant-wide read + delivery-fields-only write via hasOnly diff, mirroring the WAR-review-arm pattern) + `CREATABLE_ROLES` wiring (tenant_admin creates CROs) + seed note for staging claims. ALL rules/role changes NEEDS-HUMAN-REVIEW. Execution: orchestrator does rules arm + emulator tests + staging deploy; Opus builds the dashboard/register/strip UI. |
 | 3.2 Planner (agent) + Team Planner (manager) per agencytrack-planner-handoff/; un-gate planner tabIds | PENDING | |
 | 3.3 Meeting Mode v2 — 14–16-scene run-of-show per meeting-v2 mockups | PENDING | |
 | 3.4 Shell-gated builds (flag OFF): Persistency v2 rolling model UI, Policy Ledger campaign lens, Awards provenance panels | PENDING | |
@@ -189,3 +189,4 @@ SM cross-branch views (Phase 9) · Settings team-defaults cascade · payout-rele
 | 2.10 Daily Capture anchor strip + streak celebration; Goals celebrations | opus (subagent) | inherited-default | 2026-07-09T01:18 | 2026-07-09T01:44 | 26 min | done |
 | 2.11 Game Plan hub depth + Money Needs enrichments | opus (subagent) | inherited-default | 2026-07-09T01:46 | 2026-07-09T02:09 | 23 min | done — rev-5 spec: all 8 fixes verified already-shipped |
 | **TIER 2 rollup** | — | — | 2026-07-08T20:47 | 2026-07-09T02:09 | **~5h22m wall-clock · 11 items (+2 orchestrator contract layers, 3 live smokes, 2 verify/fix layers) · ~29 min avg per item** | 11/11 done |
+| 3.1 contract recon: role + delivery schema decisions | orchestrator | n/a (main loop) | 2026-07-09T02:10 | 2026-07-09T02:16 | 6 min | done — design locked in 3.1 row; build next |
