@@ -540,4 +540,43 @@ export const LEGS = [
       } finally { await ctx.context.close(); }
     },
   },
+
+  // ── 8. D3: Team Planner read-only for SM + TA (rank≥3 tenant-wide arm) ──
+  {
+    id: 't3-d3-sm-ta-team-planner',
+    role: 'sales_manager+tenant_admin',
+    desc: "D3: sales_manager AND tenant_admin each reach the read-only Team Planner (getTeamWeek rank≥3 tenant-wide arm; rules `allow list` admits both). Verifies Staging Agent One's booked week (≥5 active appts), the private-coaching trust marker, NO write/Book affordance (planner-book absent), and a read-only coaching drill. SM's nav item lives in ManagerDashboard NAV_ITEMS; TA's in TenantAdminDashboard NAV_ITEMS — both labelled 'Team Planner'.",
+    async run({ browser, shot }) {
+      const check = async (who) => {
+        const ctx = await newLegContext(browser);
+        try {
+          const p = ctx.page;
+          await login(p, who);
+          await gotoTab(p, 'Team Planner');
+          await p.locator(tsel('team-planner-rows')).waitFor({ state: 'attached', timeout: 15_000 });
+          await p.waitForTimeout(600);
+          // Agent-1 row present with a booked count ≥5 (tenant-wide read reaches A1).
+          const rowsTxt = await scopeText(p, 'team-planner-rows');
+          if (!/Staging Agent One/.test(rowsTxt)) throw new Error(`${who}: Staging Agent One not in team-planner rows`);
+          const a1Row = p.locator(`${tsel('team-planner-rows')} button`).filter({ hasText: 'Staging Agent One' }).first();
+          const bookedM = (await a1Row.innerText()).match(/(\d+)\s+booked this week/);
+          const booked = bookedM ? Number(bookedM[1]) : NaN;
+          if (!(booked >= 5)) throw new Error(`${who}: A1 booked=${booked} (expected ≥5)`);
+          // Read-only markers: private-coaching trust line + NO agent Book button.
+          await mustText(p, /Private coaching view|Read-only|read-only/i, `${who} trust/read-only marker`, 'body');
+          if (await p.locator(tsel('planner-book')).count()) throw new Error(`${who}: agent Book affordance (planner-book) present on team planner`);
+          // Drill opens the read-only coaching view.
+          await a1Row.click();
+          await p.locator(tsel('coaching-drill')).waitFor({ state: 'visible', timeout: 8_000 });
+          await mustText(p, /read-only/i, `${who} drill read-only`, 'coaching-drill');
+          await shot(p, `t3-d3-team-planner-${who}`);
+          assertLegHygiene(ctx);
+          return booked;
+        } finally { await ctx.context.close(); }
+      };
+      const smBooked = await check('sales_manager');
+      const taBooked = await check('tenant_admin');
+      return `D3 Team Planner read-only verified for SM (A1 ${smBooked} booked) + TA (A1 ${taBooked} booked); tenant-wide rank≥3 arm; trust marker present, no Book affordance, drill read-only. hygiene clean`;
+    },
+  },
 ];

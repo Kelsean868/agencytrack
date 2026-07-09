@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  LayoutGrid, Building2, Users, BookOpen, Send, UserCircle, TrendingUp, AlertTriangle, Plus, Settings,
+  LayoutGrid, Building2, Users, BookOpen, Send, UserCircle, TrendingUp, AlertTriangle, Plus, Settings, CalendarClock,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -18,6 +18,7 @@ import BranchHealthCards from '../admin/BranchHealthCards';
 import BranchesPanel from '../admin/BranchesPanel';
 import UserManagementPanel from '../manager/UserManagementPanel';
 import CampaignPanel from '../campaigns/CampaignPanel';
+import TeamPlannerPanel from '../planner/manager/TeamPlannerPanel';
 import ProfileScreen from '../profile/ProfileScreen';
 import SettingsScreen from '../settings/SettingsScreen';
 import QuickAddMenu from '../shell/QuickAddMenu';
@@ -49,6 +50,11 @@ const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard',      tabId: 'dashboard', Icon: LayoutGrid, sectionLabel: 'Company' },
   { id: 'branches',  label: 'Branches',       tabId: 'branches',  Icon: Building2 },
   { id: 'users',     label: 'All Users',      tabId: 'users',     Icon: Users },
+  // D3: Team Planner — read-only tenant-wide team-week coaching view (getTeamWeek
+  // rank≥3 arm serves TA tenant-wide; rules `allow list` arm admits tenant_admin).
+  // Desktop sidebar-only (mirrors Branches): not in BOTTOM_NAV; auto-flows into the
+  // mobile More drawer via DRAWER_NAV. No write affordance (upline is read-only).
+  { id: 'planner',   label: 'Team Planner',   tabId: 'planner',   Icon: CalendarClock },
 
   { id: 'config',    label: 'Company Config', tabId: 'config',    Icon: BookOpen,   sectionLabel: 'Configuration' },
   { id: 'campaigns', label: 'Campaigns',      tabId: 'campaigns', Icon: Send },
@@ -376,6 +382,16 @@ export default function TenantAdminDashboard() {
       )}
 
       {activeTab === 'users' && <UserManagementPanel openCreateSignal={userCreateSignal} />}
+
+      {/* ── D3: TEAM PLANNER — read-only tenant-wide team-week (rank≥3 arm) ── */}
+      {activeTab === 'planner' && (
+        <TeamPlannerPanel
+          tenantId={tenantId}
+          callerRole={role}
+          uid={user?.uid}
+          branchId={userProfile?.branchId ?? null}
+        />
+      )}
 
       {activeTab === 'campaigns' && <CampaignPanel />}
 

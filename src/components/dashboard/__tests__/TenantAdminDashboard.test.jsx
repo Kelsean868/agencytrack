@@ -105,6 +105,13 @@ vi.mock('../../manager/UserManagementPanel', () => ({
 vi.mock('../../campaigns/CampaignPanel', () => ({
   default: () => <div data-testid="campaign-panel">Campaign Panel</div>,
 }));
+vi.mock('../../planner/manager/TeamPlannerPanel', () => ({
+  default: (props) => (
+    <div data-testid="team-planner-panel" data-caller-role={props.callerRole}>
+      Team Planner Panel
+    </div>
+  ),
+}));
 vi.mock('../../profile/ProfileScreen', () => ({
   default: () => <div data-testid="profile-screen">Profile Screen</div>,
 }));
@@ -152,12 +159,19 @@ describe('TenantAdminDashboard — 0.1b stat tile loading skeleton', () => {
 });
 
 describe('TenantAdminDashboard — NAV_ITEMS shape', () => {
-  it('renders exactly the 6 expected sidebar nav items', () => {
+  it('renders exactly the 7 expected sidebar nav items (incl. D3 Team Planner)', () => {
     render(<TenantAdminDashboard />);
-    const expected = ['dashboard', 'branches', 'users', 'config', 'campaigns', 'profile'];
+    const expected = ['dashboard', 'branches', 'users', 'planner', 'config', 'campaigns', 'profile'];
     for (const id of expected) {
       expect(screen.getByTestId(`sidebar-${id}`)).toBeInTheDocument();
     }
+    // No extra sidebar items beyond the expected set.
+    expect(screen.getAllByTestId(/^sidebar-/)).toHaveLength(expected.length);
+  });
+
+  it('D3: Team Planner is in the Company section (inherits, no own header)', () => {
+    render(<TenantAdminDashboard />);
+    expect(screen.getByTestId('sidebar-planner').dataset.section).toBe('');
   });
 
   it('does not render Roles & Permissions / Audit Log / Billing / Settings sidebar items', () => {
@@ -267,6 +281,13 @@ describe('TenantAdminDashboard — tab routing', () => {
     fireEvent.click(screen.getByTestId('sidebar-profile'));
     await waitFor(() => expect(screen.getByTestId('profile-screen')).toBeInTheDocument());
   });
+
+  it('D3: clicking Team Planner sidebar mounts TeamPlannerPanel with callerRole=tenant_admin', async () => {
+    render(<TenantAdminDashboard />);
+    fireEvent.click(screen.getByTestId('sidebar-planner'));
+    await waitFor(() => expect(screen.getByTestId('team-planner-panel')).toBeInTheDocument());
+    expect(screen.getByTestId('team-planner-panel').dataset.callerRole).toBe('tenant_admin');
+  });
 });
 
 describe('TenantAdminDashboard — mobile nav v2 reorder', () => {
@@ -294,6 +315,13 @@ describe('TenantAdminDashboard — mobile nav v2 reorder', () => {
   it('the "More" drawer also surfaces Branches (closes the TA-MOBILE gap)', () => {
     render(<TenantAdminDashboard />);
     expect(screen.getByTestId('drawer-branches')).toBeInTheDocument();
+  });
+
+  it('D3: the "More" drawer surfaces Team Planner (sidebar-only, mirrors Branches)', () => {
+    render(<TenantAdminDashboard />);
+    expect(screen.getByTestId('drawer-planner')).toBeInTheDocument();
+    // BOTTOM_NAV stays the locked 4-tab set — Team Planner is NOT in it.
+    expect(screen.queryByTestId('bottom-planner')).toBeNull();
   });
 
   it('clicking the drawer Profile row routes to ProfileScreen', async () => {

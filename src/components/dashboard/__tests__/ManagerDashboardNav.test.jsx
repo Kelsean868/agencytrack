@@ -77,6 +77,7 @@ vi.mock('../../manager/ManagerWarTab',               () => ({ default: () => nul
 vi.mock('../../manager/TeamWarsTab',                 () => ({ default: () => null }));
 vi.mock('../../manager/MonthlyRecruitingTab',        () => ({ default: () => null }));
 vi.mock('../../manager/PolicyReconciliationPanel',   () => ({ default: () => null }));
+vi.mock('../../planner/manager/TeamPlannerPanel',    () => ({ default: () => null }));
 vi.mock('../../leaderboard/ProductionLeaderboardSurface', () => ({ default: () => null }));
 vi.mock('../../leaderboard/SmLeaderboardView',       () => ({ default: () => null }));
 vi.mock('../../gamification/Leaderboard',            () => ({ default: () => null }));
@@ -179,4 +180,34 @@ describe('ManagerDashboard mobile nav v2 — sales_manager (non-producing)', () 
       'overview', 'team', 'mastersheet', 'campaigns',
     ]);
   });
+
+  // ── D3: Team Planner nav item wired for sales_manager ────────────────────────
+  it('D3: sees the Team Planner sidebar item (id/tabId=planner), not disabled', () => {
+    mountWithRole('sales_manager');
+    const planner = hoisted.captured.navItems.find((i) => i.id === 'planner');
+    expect(planner).toBeDefined();
+    expect(planner.tabId).toBe('planner');
+    expect(planner.label).toBe('Team Planner');
+    expect(planner.disabled).not.toBe(true);
+  });
+
+  it('D3: Team Planner is NOT in the bottom nav (BOTTOM_NAV untouched)', () => {
+    mountWithRole('sales_manager');
+    expect(hoisted.captured.bottomNavItems.find((i) => i.id === 'planner')).toBeUndefined();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// D3: plain producing managers keep their existing planner wiring (via navConfig)
+// and the sales_manager-gated NAV_ITEMS row must NOT double-inject for them.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('ManagerDashboard — D3 Team Planner gating', () => {
+  it.each(['unit_manager', 'branch_manager'])(
+    '%s has exactly one planner nav item (from navConfig, no NAV_ITEMS duplicate)',
+    (role) => {
+      mountWithRole(role);
+      const planners = hoisted.captured.navItems.filter((i) => i.id === 'planner');
+      expect(planners).toHaveLength(1);
+    },
+  );
 });

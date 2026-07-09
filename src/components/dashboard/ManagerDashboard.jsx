@@ -7,7 +7,7 @@ import {
   Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
   Activity, UserPlus, ClipboardCheck, BookOpen, LayoutList,
-  NotebookPen, Target, Wallet, History, Zap, Banknote, Settings,
+  NotebookPen, Target, Wallet, History, Zap, Banknote, Settings, CalendarClock,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -85,6 +85,12 @@ const NAV_ITEMS = [
   // I2: Monthly Recruiting — UM/BM/SM file; BM/SM/TA/PA view the team
   { id: 'monthly-recruiting', label: 'Monthly Recruiting', tabId: 'monthly-recruiting', Icon: UserPlus },
   { id: 'team',        label: 'Team',         tabId: 'team',        Icon: Users },
+  // D3: Team Planner — read-only team-week coaching view. SM ONLY here: UM/BM reach
+  // the same 'planner' render-switch case via navConfig (PRODUCING_MANAGER_NAV);
+  // TA reaches it via TenantAdminDashboard's own nav; PA never routes to this
+  // dashboard. getTeamWeek's rank≥3 arm serves SM tenant-wide (rules `allow list`
+  // arm admits sales_manager). No write affordance (upline is read-only).
+  { id: 'planner',     label: 'Team Planner', tabId: 'planner',     Icon: CalendarClock, roles: ['sales_manager'], testId: 'tab-planner' },
   { id: 'campaigns',          label: 'Campaigns',         tabId: 'campaigns',          Icon: Gift },
   { id: 'production-report', label: 'Production Report', tabId: 'production-report', Icon: LineChart },
   { id: 'awards',            label: 'Awards',            tabId: 'awards',            Icon: Trophy },
