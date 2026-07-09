@@ -197,3 +197,4 @@ SM cross-branch views (Phase 9) · Settings team-defaults cascade · payout-rele
 | 3.1 contract layer: cro role rules arms + matrix + emulator/jest + staging deploys | orchestrator | n/a (main loop) | 2026-07-09T02:16 | 2026-07-09T02:38 | 22 min (84/84 rules; 377/377 jest; field aligned to shipped `policyDeliveryDate`) | done — NEEDS-HUMAN-REVIEW (new role) |
 | 3.1 UI: CRO dashboard + Delivery Register + clawback clock + DeliveryStripCard | opus (subagent) | inherited-default | 2026-07-09T02:11 | 2026-07-09T02:36 | 25 min | done — NEEDS-HUMAN-REVIEW (role-gated item) |
 | 3.1 seed + live smoke: real cro session, Arm E end-to-end | orchestrator | n/a (main loop) | 2026-07-09T02:36 | 2026-07-09T02:47 | 11 min | done — 4/5 PASS + 1 false-FAIL (chip copy "20d left" vs matcher); Arm E write ACCEPTED live, console clean |
+| 3.2 Planner (agent) + Team Planner (manager) | opus (subagent) | inherited-default | 2026-07-09T02:41 | — | — | in-flight |
