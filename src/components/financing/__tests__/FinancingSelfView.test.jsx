@@ -159,6 +159,40 @@ describe('FinancingSelfView — PRIVATE absence (falsifier)', () => {
   });
 });
 
+describe('FinancingSelfView — K9 paydown-arc hero', () => {
+  beforeEach(() => {
+    getProjectedBonus.mockResolvedValue(PROJECTED);
+  });
+
+  it('renders the glass hero with a projected clear date for a declining balance', async () => {
+    financingService.getFinancingTerms.mockResolvedValue(TERMS);
+    financingService.listFinancingMonths.mockResolvedValue([
+      { id: `${UID}_2026_01`, month: '2026_01', runningBalance: 6000, basisSource: 'settled-confirmed' },
+      { id: `${UID}_2026_02`, month: '2026_02', runningBalance: 4000, basisSource: 'settled-confirmed' },
+      { id: `${UID}_2026_03`, month: '2026_03', runningBalance: 2000, basisSource: 'settled-confirmed' },
+    ]);
+    render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
+    const hero = await screen.findByTestId('fsv-paydown-hero');
+    expect(hero).toBeInTheDocument();
+    expect(screen.getByTestId('fsv-paydown-headline').textContent).toMatch(/on track to clear/i);
+    // now-dot caption carries the live balance; a projected clear month is shown
+    expect(screen.getByTestId('fsv-paydown-now').textContent).toMatch(/2,000/);
+    expect(screen.getByTestId('fsv-paydown-clear').textContent).toMatch(/Projected clear ·\s*\w+/);
+  });
+
+  it('shows NO projected clear (honest copy, never NaN) for a flat balance', async () => {
+    financingService.getFinancingTerms.mockResolvedValue(TERMS);
+    financingService.listFinancingMonths.mockResolvedValue([
+      { id: `${UID}_2026_01`, month: '2026_01', runningBalance: 5000, basisSource: 'settled-confirmed' },
+      { id: `${UID}_2026_02`, month: '2026_02', runningBalance: 5000, basisSource: 'settled-confirmed' },
+    ]);
+    render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
+    await screen.findByTestId('fsv-paydown-hero');
+    expect(screen.getByTestId('fsv-paydown-clear').textContent).toMatch(/—/);
+    expect(screen.getByTestId('fsv-paydown-headline').textContent).not.toMatch(/NaN/);
+  });
+});
+
 describe('FinancingSelfView — reconciliation SHOWN path', () => {
   const RECON = {
     id: `${UID}_2026`,

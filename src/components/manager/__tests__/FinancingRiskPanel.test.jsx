@@ -1,267 +1,192 @@
+// Track K · K7 — FinancingRiskPanel (BM branch roster) tests.
+//
+// The panel was reshaped from a single-agent dropdown into a display-only branch
+// roster (item 2.8). These tests lock: the Compliance-v2 per-agent fan-out read
+// route (once-per-agent, not a collection query), the standing status-chip
+// derivation, the branch aggregate counts (full read only), partial-fan-out
+// degradation, and the DISPLAY-ONLY treatment of the clause-5.3 notify (rendered
+// as a duty status, never a wired button). The load is deterministic (allSettled
+// over a stable input map) — the previous file's agent-switch races are gone.
+//
+// financingService is mocked via importActual so the PURE helpers (financingCeiling,
+// financingMonthIndex) and the roster lib keep their real behavior; only the async
+// reads are stubbed.
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
   authValue: { role: 'branch_manager', tenantId: 't1' },
   getTenantUsers: vi.fn(),
+  getFinancingTerms: vi.fn(),
   listFinancingMonths: vi.fn(),
-  getFinancingConfig: vi.fn(),
-  notifyFinancingAdjustment: vi.fn(),
-  getFinancingNotifyRecord: vi.fn(),
-  showToast: vi.fn(),
 }));
 
 vi.mock('../../../context/AuthContext', () => ({ useAuth: () => hoisted.authValue }));
-vi.mock('../../../hooks/useToast', () => ({ default: () => ({ show: hoisted.showToast, dismiss: vi.fn() }) }));
 vi.mock('../../../services/managerService', () => ({ getTenantUsers: (...a) => hoisted.getTenantUsers(...a) }));
-vi.mock('../../../services/financingService', () => ({ listFinancingMonths: (...a) => hoisted.listFinancingMonths(...a) }));
-vi.mock('../../../services/financingConfigService', () => ({ getFinancingConfig: (...a) => hoisted.getFinancingConfig(...a) }));
-vi.mock('../../../services/financingNotifyService', () => ({
-  notifyFinancingAdjustment: (...a) => hoisted.notifyFinancingAdjustment(...a),
-  getFinancingNotifyRecord: (...a) => hoisted.getFinancingNotifyRecord(...a),
-  FINANCING_NOTIFY_COOLDOWN_MS: 24 * 60 * 60 * 1000,
-}));
+vi.mock('../../../services/financingService', async (importActual) => {
+  const actual = await importActual();
+  return {
+    ...actual,
+    getFinancingTerms: (...a) => hoisted.getFinancingTerms(...a),
+    listFinancingMonths: (...a) => hoisted.listFinancingMonths(...a),
+  };
+});
 
 import FinancingRiskPanel from '../FinancingRiskPanel';
 
-// Confirmed-basis row helpers.
-const miss = (month) => ({ month, actualAPI: 20000, validatingAPI: 30000, basisSource: 'settled-confirmed' });
-const meet = (month) => ({ month, actualAPI: 31000, validatingAPI: 30000, basisSource: 'settled-confirmed' });
-const flagRow = (month, adjustmentPct) => ({ month, actualAPI: 30000, validatingAPI: 30000, basisSource: 'settled-confirmed', managerFinancing: 1000, adjustmentPct });
-// A >10% cut on a PROVISIONAL (unconfirmed) basis — the CF rejects this as
-// condition-not-met, so the panel must not surface a clickable Notify for it.
-const provisionalFlagRow = (month, adjustmentPct) => ({ month, actualAPI: 30000, validatingAPI: 30000, basisSource: 'submitted-provisional', managerFinancing: 1000, adjustmentPct });
+// ── Ledger row helpers (settled-confirmed = the miss/flag basis) ──────────────
+const missMonth = (month, extra = {}) => ({ month, basisSource: 'settled-confirmed', actualAPI: 10000, validatingAPI: 30000, ...extra });
+const meetMonth = (month, extra = {}) => ({ month, basisSource: 'settled-confirmed', actualAPI: 31000, validatingAPI: 30000, ...extra });
 
-async function selectAgent() {
-  await waitFor(() => expect(screen.getByTestId('financing-risk-agent-select')).toBeInTheDocument());
-  fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-1' } });
+const TERMS = (status = 'on_financing') => ({
+  financingStatus: status,
+  effectiveDate: '2025-12-01',
+  agreedMonthlyFinancing: 8000,
+  currentMonthlyFinancing: 8000, // ceiling = 6 × 8000 = 48000
+});
+
+// Branch fixture: 4 financed agents (amber / behind / clean+flag / clean) + one
+// not-on-financing + one cleared (both must be EXCLUDED from the roster).
+const USERS = [
+  { id: 'a1', name: 'Ana Amber', role: 'agent' },
+  { id: 'a2', name: 'Ben Behind', role: 'agent' },
+  { id: 'a3', name: 'Cara Cut', role: 'agent' },
+  { id: 'a6', name: 'Fay Fine', role: 'agent' },
+  { id: 'a4', name: 'Dan Declined', role: 'agent' },
+  { id: 'a5', name: 'Eve Cleared', role: 'agent' },
+  { id: 'm1', name: 'Manager', role: 'unit_manager' }, // not an agent — never fanned as a row
+];
+
+const TERMS_BY_ID = {
+  a1: TERMS(), a2: TERMS(), a3: TERMS(), a6: TERMS(),
+  a4: TERMS('not_on_financing'),
+  a5: TERMS('cleared'),
+};
+
+const LEDGER_BY_ID = {
+  a1: [missMonth('2026_01', { managerFinancing: 4000, runningBalance: 5000 }), missMonth('2026_02', { managerFinancing: 4000, runningBalance: 9000 })], // 2 misses → amber
+  a2: [missMonth('2026_01', { managerFinancing: 3000 }), missMonth('2026_02', { managerFinancing: 3000 }), missMonth('2026_03', { managerFinancing: 3000, runningBalance: 12000 })], // 3 → behind
+  a3: [meetMonth('2026_02', { managerFinancing: 4300, adjustmentPct: 0.14, runningBalance: 31200 })], // clean + >10% cut → at-risk (flag)
+  a6: [meetMonth('2026_02', { managerFinancing: 5000, runningBalance: 10000 })], // clean → on-track
+  a4: [], a5: [],
+};
+
+function wireHappyPath() {
+  hoisted.getTenantUsers.mockResolvedValue(USERS);
+  hoisted.getFinancingTerms.mockImplementation((_t, id) => Promise.resolve(TERMS_BY_ID[id] ?? null));
+  hoisted.listFinancingMonths.mockImplementation((_t, id) => Promise.resolve(LEDGER_BY_ID[id] ?? []));
 }
 
-// CI resource-contention flake fix (banked FOLLOW_UPS.md; 3rd timeout occurrence
-// at PR #802). Several tests here chain multiple sequential `waitFor`/`findBy`
-// drains (mount → agent-select → ledger load → notify CF → cooldown read).
-// `test-setup.js` sets RTL `asyncUtilTimeout: 5000`, which equals vitest's default
-// 5000ms per-test budget — so on a starved CI runner a single slow poll can eat
-// the whole test's time window even though every service mock resolves instantly,
-// producing a test-level timeout (observed 5022ms) rather than an assertion
-// failure. Raising the file's per-test timeout gives the async chain headroom;
-// a genuine hang still fails (at 15s). Test-only — no product or behavior change.
-vi.setConfig({ testTimeout: 15000 });
-
-describe('FinancingRiskPanel', () => {
+describe('FinancingRiskPanel — BM branch roster (display only)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     hoisted.authValue = { role: 'branch_manager', tenantId: 't1' };
-    hoisted.getTenantUsers.mockResolvedValue([{ id: 'agent-1', name: 'Ana Agent', role: 'agent' }]);
-    hoisted.listFinancingMonths.mockResolvedValue([]);
-    hoisted.getFinancingConfig.mockResolvedValue({ notifyRecipientUid: 'cro-1' });
-    hoisted.getFinancingNotifyRecord.mockResolvedValue(null);
-    hoisted.notifyFinancingAdjustment.mockResolvedValue({ success: true, recipientUid: 'cro-1' });
+    wireHappyPath();
   });
 
-  it('gates non-managers (UM) out of the monitor', () => {
+  it('gates non-managers (UM) out of the branch monitor', () => {
     hoisted.authValue = { role: 'unit_manager', tenantId: 't1' };
     render(<FinancingRiskPanel />);
     expect(screen.getByText(/available to Branch Managers and above/i)).toBeInTheDocument();
   });
 
-  it('shows an empty-ledger prompt when the agent has no confirmed months', async () => {
+  it('fans out per-agent and renders a row only for actively-financed agents', async () => {
     render(<FinancingRiskPanel />);
-    await selectAgent();
-    await waitFor(() => expect(screen.getByText(/No financing ledger for/i)).toBeInTheDocument());
+    await screen.findByTestId('financing-risk-table');
+    expect(screen.getByTestId('financing-risk-row-a1')).toBeInTheDocument();
+    expect(screen.getByTestId('financing-risk-row-a2')).toBeInTheDocument();
+    expect(screen.getByTestId('financing-risk-row-a3')).toBeInTheDocument();
+    expect(screen.getByTestId('financing-risk-row-a6')).toBeInTheDocument();
+    // not_on_financing + cleared are excluded from the roster
+    expect(screen.queryByTestId('financing-risk-row-a4')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('financing-risk-row-a5')).not.toBeInTheDocument();
   });
 
-  it('amber at 2 consecutive misses', async () => {
-    hoisted.listFinancingMonths.mockResolvedValue([miss('2026_01'), miss('2026_02')]);
+  it('read route: reads terms + ledger exactly once per branch agent (fan-out, no re-reads)', async () => {
     render(<FinancingRiskPanel />);
-    await selectAgent();
-    const monitor = await screen.findByTestId('financing-risk-miss-monitor');
-    expect(monitor).toHaveAttribute('data-severity', 'amber');
-    expect(monitor).toHaveAttribute('data-count', '2');
-    expect(screen.queryByTestId('financing-risk-termination-flag')).not.toBeInTheDocument();
+    await screen.findByTestId('financing-risk-table');
+    const agentIds = USERS.filter((u) => u.role === 'agent').map((u) => u.id);
+    expect(hoisted.getFinancingTerms).toHaveBeenCalledTimes(agentIds.length);
+    expect(hoisted.listFinancingMonths).toHaveBeenCalledTimes(agentIds.length);
+    agentIds.forEach((id) => {
+      expect(hoisted.getFinancingTerms).toHaveBeenCalledWith('t1', id);
+      expect(hoisted.listFinancingMonths).toHaveBeenCalledWith('t1', id);
+    });
   });
 
-  it('critical at 3 — surfaces the 7.2c condition-met flag (FLAG ONLY)', async () => {
-    hoisted.listFinancingMonths.mockResolvedValue([miss('2026_01'), miss('2026_02'), miss('2026_03')]);
+  it('derives the standing status chip from the row risk signals (behind / at-risk / on-track)', async () => {
     render(<FinancingRiskPanel />);
-    await selectAgent();
-    const monitor = await screen.findByTestId('financing-risk-miss-monitor');
-    expect(monitor).toHaveAttribute('data-severity', 'critical');
-    const flag = screen.getByTestId('financing-risk-termination-flag');
-    expect(flag).toHaveTextContent(/not an automatic termination/i);
+    await screen.findByTestId('financing-risk-table');
+    expect(screen.getByTestId('financing-risk-status-a2')).toHaveAttribute('data-chip', 'behind');   // 3 misses
+    expect(screen.getByTestId('financing-risk-status-a1')).toHaveAttribute('data-chip', 'at-risk');  // amber
+    expect(screen.getByTestId('financing-risk-status-a3')).toHaveAttribute('data-chip', 'at-risk');  // >10% flag
+    expect(screen.getByTestId('financing-risk-status-a6')).toHaveAttribute('data-chip', 'on-track'); // clean
   });
 
-  it('a confirmed meet resets the streak', async () => {
-    hoisted.listFinancingMonths.mockResolvedValue([miss('2026_01'), miss('2026_02'), meet('2026_03')]);
+  it('computes branch aggregate cards from the full read', async () => {
     render(<FinancingRiskPanel />);
-    await selectAgent();
-    const monitor = await screen.findByTestId('financing-risk-miss-monitor');
-    expect(monitor).toHaveAttribute('data-count', '0');
-    expect(monitor).toHaveAttribute('data-severity', 'none');
+    await screen.findByTestId('financing-risk-reality');
+    expect(screen.getByTestId('frp-on-financing').textContent).toBe('4');
+    expect(screen.getByTestId('frp-at-risk').textContent).toBe('3');       // amber + behind + flag
+    expect(screen.getByTestId('frp-two-misses').textContent).toBe('2');    // a1(2) + a2(3)
+    expect(screen.getByTestId('frp-adj-flags').textContent).toBe('1');     // a3
+    expect(screen.getByTestId('frp-total-drawn').textContent).toMatch(/62,200/); // 9000+12000+31200+10000
+    expect(screen.getByTestId('frp-confirmed').textContent).toMatch(/16,300/);   // 4000+3000+4300+5000
   });
 
-  it('surfaces the >10% flag + notify affordance for a flagged month', async () => {
-    hoisted.listFinancingMonths.mockResolvedValue([flagRow('2026_05', 0.14)]);
+  it('surfaces the >10% flag as DATA + a notify DUTY STATUS — never a wired notify button', async () => {
     render(<FinancingRiskPanel />);
-    await selectAgent();
-    const flag = await screen.findByTestId('financing-risk-adjustment-flag');
-    expect(flag).toHaveAttribute('data-month', '2026_05');
-    expect(screen.getByTestId('financing-risk-adjustment-pct')).toHaveTextContent('−14%');
-    expect(screen.getByTestId('financing-notify-btn')).toBeEnabled();
+    await screen.findByTestId('financing-risk-adj-a3');
+    expect(screen.getByTestId('financing-risk-adj-pct-a3').textContent).toMatch(/−14%|-14%/);
+    // display-only: the notify action is skip-logged, rendered as a status pill
+    expect(screen.getByTestId('financing-risk-notify-status-a3')).toBeInTheDocument();
+    // no interactive notify control exists on this display-only surface
+    expect(screen.queryByRole('button', { name: /notify/i })).not.toBeInTheDocument();
   });
 
-  it('does NOT flag a <=10% routine adjustment', async () => {
-    hoisted.listFinancingMonths.mockResolvedValue([flagRow('2026_05', 0.05)]);
+  it('surfaces the 7.2c termination-condition flag for 3 confirmed misses (flag only)', async () => {
     render(<FinancingRiskPanel />);
-    await selectAgent();
-    await waitFor(() => expect(screen.getByText(/No .*10% downward adjustments flagged/i)).toBeInTheDocument());
-    expect(screen.queryByTestId('financing-notify-btn')).not.toBeInTheDocument();
+    await screen.findByTestId('financing-risk-miss-a2');
+    const card = screen.getByTestId('financing-risk-miss-a2');
+    expect(card).toHaveAttribute('data-severity', 'critical');
+    expect(card).toHaveAttribute('data-count', '3');
+    expect(screen.getByTestId('financing-risk-termination-a2')).toHaveTextContent(/not an automatic termination/i);
   });
 
-  it('does NOT surface a notify affordance for a PROVISIONAL >10% month (CF gate parity)', async () => {
-    // A provisional cut past 10% is unconfirmed — the CF returns condition-not-met
-    // and writes nothing. The panel must filter it out so no dead-end Notify shows.
-    hoisted.listFinancingMonths.mockResolvedValue([provisionalFlagRow('2026_05', 0.14)]);
-    render(<FinancingRiskPanel />);
-    await selectAgent();
-    await waitFor(() => expect(screen.getByText(/No .*10% downward adjustments flagged/i)).toBeInTheDocument());
-    expect(screen.queryByTestId('financing-risk-adjustment-flag')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('financing-notify-btn')).not.toBeInTheDocument();
-  });
-
-  it('ignores a more-recent PROVISIONAL flag and surfaces the CONFIRMED month as the active duty', async () => {
-    // Confirmed 0.14 cut at 2026_05 + a later provisional 0.18 cut at 2026_07.
-    // The confirmed-basis filter must run BEFORE the most-recent selection, so the
-    // active duty is the confirmed 2026_05 — NOT the more-recent provisional 2026_07.
-    hoisted.listFinancingMonths.mockResolvedValue([
-      flagRow('2026_05', 0.14),
-      provisionalFlagRow('2026_07', 0.18),
-    ]);
-    render(<FinancingRiskPanel />);
-    await selectAgent();
-    const flag = await screen.findByTestId('financing-risk-adjustment-flag');
-    expect(flag).toHaveAttribute('data-month', '2026_05');
-    expect(screen.getByTestId('financing-risk-adjustment-pct')).toHaveTextContent('−14%');
-    expect(screen.getByTestId('financing-notify-btn')).toBeEnabled();
-  });
-
-  it('disables the affordance with a "no recipient configured" state when unset', async () => {
-    hoisted.getFinancingConfig.mockResolvedValue({ notifyRecipientUid: null });
-    hoisted.listFinancingMonths.mockResolvedValue([flagRow('2026_05', 0.14)]);
-    render(<FinancingRiskPanel />);
-    await selectAgent();
-    await screen.findByTestId('financing-risk-adjustment-flag');
-    expect(screen.getByTestId('financing-notify-no-recipient')).toBeInTheDocument();
-    expect(screen.queryByTestId('financing-notify-btn')).not.toBeInTheDocument();
-  });
-
-  it('fires the notify CF and shows the cooldown after a successful notify', async () => {
-    hoisted.listFinancingMonths.mockResolvedValue([flagRow('2026_05', 0.14)]);
-    render(<FinancingRiskPanel />);
-    await selectAgent();
-    const btn = await screen.findByTestId('financing-notify-btn');
-    fireEvent.click(btn);
-    await waitFor(() => expect(hoisted.notifyFinancingAdjustment).toHaveBeenCalledWith(
-      'agent-1', '2026_05', expect.objectContaining({ adjustmentPct: 0.14 }),
-    ));
-    await waitFor(() => expect(screen.getByTestId('financing-notify-cooldown')).toBeInTheDocument());
-    expect(hoisted.showToast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'success' }));
-  });
-
-  it('renders the cooldown (button disabled) when a recent notify record exists', async () => {
-    hoisted.listFinancingMonths.mockResolvedValue([flagRow('2026_05', 0.14)]);
-    hoisted.getFinancingNotifyRecord.mockResolvedValue(Date.now() - 1000); // 1s ago → within 24h
-    render(<FinancingRiskPanel />);
-    await selectAgent();
-    await screen.findByTestId('financing-risk-adjustment-flag');
-    await waitFor(() => expect(screen.getByTestId('financing-notify-cooldown')).toBeInTheDocument());
-    expect(screen.getByTestId('financing-notify-btn')).toBeDisabled();
-  });
-
-  it('uses the most recent flagged month as the active duty', async () => {
-    hoisted.listFinancingMonths.mockResolvedValue([flagRow('2026_03', 0.12), flagRow('2026_07', 0.18)]);
-    render(<FinancingRiskPanel />);
-    await selectAgent();
-    const flag = await screen.findByTestId('financing-risk-adjustment-flag');
-    expect(flag).toHaveAttribute('data-month', '2026_07');
-    expect(screen.getByTestId('financing-risk-adjustment-pct')).toHaveTextContent('−18%');
-  });
-
-  // ── Async switch races (latestAgentReqRef guard) ──────────────────────────
-  it('drops a stale ledger load when the agent is switched mid-flight', async () => {
-    hoisted.getTenantUsers.mockResolvedValue([
-      { id: 'agent-1', name: 'Ana Agent', role: 'agent' },
-      { id: 'agent-2', name: 'Bob Agent', role: 'agent' },
-    ]);
-    let resolveAgent1;
-    hoisted.listFinancingMonths.mockImplementation((_t, agentId) =>
-      agentId === 'agent-1'
-        ? new Promise((res) => { resolveAgent1 = res; }) // hangs until we resolve it
-        : Promise.resolve([]),                            // agent-2: empty ledger
+  it('degrades to resolved-rows-only on a partial fan-out (aggregates hidden, banner shown)', async () => {
+    hoisted.getFinancingTerms.mockImplementation((_t, id) =>
+      id === 'a2' ? Promise.reject(new Error('boom')) : Promise.resolve(TERMS_BY_ID[id] ?? null),
     );
     render(<FinancingRiskPanel />);
-    await waitFor(() => expect(screen.getByTestId('financing-risk-agent-select')).toBeInTheDocument());
-
-    // Select agent-1 (load hangs), then switch to agent-2 (resolves empty).
-    fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-1' } });
-    fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-2' } });
-    await waitFor(() => expect(screen.getByText(/No financing ledger for Bob Agent/i)).toBeInTheDocument());
-
-    // The stale agent-1 load now resolves with a critical 3-miss ledger — it must
-    // NOT paint agent-1's termination flag onto agent-2's view.
-    resolveAgent1([miss('2026_01'), miss('2026_02'), miss('2026_03')]);
-    await waitFor(() => expect(screen.getByText(/No financing ledger for Bob Agent/i)).toBeInTheDocument());
-    expect(screen.queryByTestId('financing-risk-termination-flag')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('financing-risk-miss-monitor')).not.toBeInTheDocument();
+    await screen.findByTestId('financing-risk-partial');
+    // resolved rows still render; the failed agent is absent; aggregates suppressed
+    expect(screen.getByTestId('financing-risk-row-a1')).toBeInTheDocument();
+    expect(screen.queryByTestId('financing-risk-row-a2')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('financing-risk-reality')).not.toBeInTheDocument();
   });
 
-  it('does not stamp the cooldown on a new agent when a notify resolves after a switch', async () => {
-    hoisted.getTenantUsers.mockResolvedValue([
-      { id: 'agent-1', name: 'Ana Agent', role: 'agent' },
-      { id: 'agent-2', name: 'Bob Agent', role: 'agent' },
-    ]);
-    hoisted.listFinancingMonths.mockImplementation((_t, agentId) =>
-      agentId === 'agent-1' ? Promise.resolve([flagRow('2026_05', 0.14)]) : Promise.resolve([]),
+  it('renders the empty state when no branch agent is on financing', async () => {
+    hoisted.getFinancingTerms.mockImplementation((_t, id) =>
+      Promise.resolve(TERMS(id === 'a5' ? 'cleared' : 'not_on_financing')),
     );
-    let resolveNotify;
-    hoisted.notifyFinancingAdjustment.mockImplementation(() => new Promise((res) => { resolveNotify = res; }));
     render(<FinancingRiskPanel />);
-    await waitFor(() => expect(screen.getByTestId('financing-risk-agent-select')).toBeInTheDocument());
-
-    // Fire the notify for agent-1 (CF in flight), then switch to agent-2.
-    fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-1' } });
-    const btn = await screen.findByTestId('financing-notify-btn');
-    fireEvent.click(btn);
-    fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-2' } });
-    await waitFor(() => expect(screen.getByText(/No financing ledger for Bob Agent/i)).toBeInTheDocument());
-
-    // The stale notify success must NOT paint a cooldown chip on agent-2's view.
-    resolveNotify({ success: true, recipientUid: 'cro-1' });
-    await waitFor(() => expect(screen.getByText(/No financing ledger for Bob Agent/i)).toBeInTheDocument());
-    expect(screen.queryByTestId('financing-notify-cooldown')).not.toBeInTheDocument();
+    await screen.findByTestId('financing-risk-empty');
+    expect(screen.getByText(/No agents on financing in your branch/i)).toBeInTheDocument();
   });
 
-  it('clears ledger-derived state on switch so no mismatched cooldown read fires', async () => {
-    hoisted.getTenantUsers.mockResolvedValue([
-      { id: 'agent-1', name: 'Ana Agent', role: 'agent' },
-      { id: 'agent-2', name: 'Bob Agent', role: 'agent' },
-    ]);
-    hoisted.listFinancingMonths.mockImplementation((_t, agentId) =>
-      agentId === 'agent-1' ? Promise.resolve([flagRow('2026_05', 0.14)]) : Promise.resolve([]),
-    );
-    render(<FinancingRiskPanel />);
-    await waitFor(() => expect(screen.getByTestId('financing-risk-agent-select')).toBeInTheDocument());
-
-    // agent-1 carries a flag at 2026_05.
-    fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-1' } });
-    await screen.findByTestId('financing-risk-adjustment-flag');
-    hoisted.getFinancingNotifyRecord.mockClear();
-
-    // Switching to agent-2 must clear the derived activeFlag immediately — the
-    // cooldown read must NEVER fire with the new agent + the previous agent's month.
-    fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-2' } });
-    await waitFor(() => expect(screen.getByText(/No financing ledger for Bob Agent/i)).toBeInTheDocument());
-    expect(hoisted.getFinancingNotifyRecord).not.toHaveBeenCalledWith('t1', 'agent-2', '2026_05');
+  it('renders an error card with a wired Retry when the whole load throws', async () => {
+    hoisted.getTenantUsers.mockRejectedValue(new Error('no users'));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      render(<FinancingRiskPanel />);
+      await screen.findByTestId('financing-risk-retry');
+      // recover: Retry re-invokes the same load path
+      hoisted.getTenantUsers.mockResolvedValue(USERS);
+      screen.getByTestId('financing-risk-retry').click();
+      await screen.findByTestId('financing-risk-table');
+    } finally {
+      errSpy.mockRestore();
+    }
   });
 });

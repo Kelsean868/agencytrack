@@ -129,6 +129,19 @@ export function assembleRosterRow({ agent, terms, ledger, ceiling }) {
   };
 }
 
+// Roster status chip (K7 BM roster + K10a UM roster). Derives the quarter/standing
+// chip from the SAME risk signals assembleRosterRow already computes — NO new
+// thresholds are invented (Rule 17): critical consecutive-miss streak (7.2c
+// condition met) → 'behind'; an amber streak OR an open >10% downward-adjustment
+// flag → 'at-risk'; otherwise → 'on-track'. Returns { key, label, tone } where
+// tone maps to the app's success/warning/danger token families.
+export function deriveRosterRiskChip(row) {
+  if (row?.terminationConditionMet) return { key: 'behind', label: 'Behind', tone: 'danger' };
+  if (row?.missSeverity && row.missSeverity !== 'none') return { key: 'at-risk', label: 'At risk', tone: 'warning' };
+  if (row?.hasAdjFlag) return { key: 'at-risk', label: 'At risk', tone: 'warning' };
+  return { key: 'on-track', label: 'On track', tone: 'success' };
+}
+
 /**
  * Unit aggregates for the reality strip. Computed ONLY from the fully-resolved
  * row set — the caller MUST NOT pass a partial fan-out (Compliance-v2 pattern:

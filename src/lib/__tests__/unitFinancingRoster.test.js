@@ -3,6 +3,7 @@ import {
   isActivelyFinanced,
   assembleRosterRow,
   computeRosterAggregates,
+  deriveRosterRiskChip,
   ACTIVE_FINANCING_STATUSES,
 } from '../unitFinancingRoster';
 
@@ -166,5 +167,32 @@ describe('computeRosterAggregates', () => {
   it('is zero-safe for an empty roster', () => {
     const agg = computeRosterAggregates([]);
     expect(agg).toEqual({ onFinancing: 0, totalDrawn: 0, confirmedThisMonth: 0, atRisk: 0, twoPlusMisses: 0, adjWithBm: 0 });
+  });
+});
+
+describe('deriveRosterRiskChip', () => {
+  it("is 'behind' when the 7.2c termination condition is met (reuses the row's own signal)", () => {
+    const chip = deriveRosterRiskChip({ terminationConditionMet: true, missSeverity: 'critical', hasAdjFlag: false });
+    expect(chip).toEqual({ key: 'behind', label: 'Behind', tone: 'danger' });
+  });
+
+  it("is 'at-risk' for an amber miss streak", () => {
+    expect(deriveRosterRiskChip({ terminationConditionMet: false, missSeverity: 'amber', hasAdjFlag: false }))
+      .toEqual({ key: 'at-risk', label: 'At risk', tone: 'warning' });
+  });
+
+  it("is 'at-risk' for an open >10% adjustment flag with no miss streak", () => {
+    expect(deriveRosterRiskChip({ terminationConditionMet: false, missSeverity: 'none', hasAdjFlag: true }))
+      .toEqual({ key: 'at-risk', label: 'At risk', tone: 'warning' });
+  });
+
+  it("is 'on-track' for a clean row", () => {
+    expect(deriveRosterRiskChip({ terminationConditionMet: false, missSeverity: 'none', hasAdjFlag: false }))
+      .toEqual({ key: 'on-track', label: 'On track', tone: 'success' });
+  });
+
+  it('is on-track for an undefined/blank row (never throws, never NaN)', () => {
+    expect(deriveRosterRiskChip(undefined).key).toBe('on-track');
+    expect(deriveRosterRiskChip({}).key).toBe('on-track');
   });
 });
