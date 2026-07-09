@@ -5,6 +5,9 @@ import { formatCurrency } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
 import { getOwnPolicies, settlementShapeFromPolicies } from '../../services/policiesService';
 import { HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer } from './awardPrimitives';
+import { LedgerSourceChip } from './awardProvenance';
+import { deriveAwardProvenance } from '../../lib/awardProvenance';
+import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 
 const CATEGORY_TABS = ['All', 'Monthly', 'Quarterly', 'Annual', 'Club'];
 
@@ -60,6 +63,8 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   const [ledgerPolicies, setLedgerPolicies] = useState(null);
   const [ledgerError, setLedgerError] = useState(false);
   const usesPolicyLedger = Boolean(agentProfile?.usesPolicyLedger);
+  // Item 3.4 — awards provenance (flag OFF ⇒ chip + drawer panel absent).
+  const awardsProvenanceOn = useFeatureFlag('awardsProvenance');
 
   // Retry-able: the only network fetch this panel owns (submissions/
   // confirmedSettlements arrive as props from the parent). §1 states
@@ -122,6 +127,14 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
 
   // Derive drawer award from ID so it always reflects current computation state.
   const drawerAward = drawerAwardId ? (awards[drawerAwardId] ?? null) : null;
+
+  // Item 3.4 — provenance model for the open drawer (null unless flag is ON).
+  const drawerProvenance = useMemo(
+    () => (awardsProvenanceOn && drawerAward
+      ? deriveAwardProvenance(drawerAward, { usesPolicyLedger })
+      : null),
+    [awardsProvenanceOn, drawerAward, usesPolicyLedger],
+  );
 
   // Filter by active category tab
   const filteredAwards = useMemo(() => {
@@ -187,6 +200,13 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   return (
     <>
     <div className="flex flex-col gap-6 stagger">
+
+      {/* Item 3.4 — honest ledger-source chip (flag-gated) */}
+      {awardsProvenanceOn && (
+        <div className="flex" data-testid="agent-awards-source-chip">
+          <LedgerSourceChip sourceLive={usesPolicyLedger} source={usesPolicyLedger ? 'POLICY LEDGER' : 'CONFIRMED SETTLEMENTS'} />
+        </div>
+      )}
 
       {/* Partial-failure notice — policy ledger read failed but the panel
           still rendered from whatever data resolved. */}
@@ -336,7 +356,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
     </div>
 
       {/* Drill drawer — outside `.stagger` (fixed-position overlay; see note above) */}
-      {drawerAward && <AwardDrillDrawer award={drawerAward} onClose={() => setDrawerAwardId(null)} />}
+      {drawerAward && <AwardDrillDrawer award={drawerAward} onClose={() => setDrawerAwardId(null)} provenance={drawerProvenance} />}
     </>
   );
 }

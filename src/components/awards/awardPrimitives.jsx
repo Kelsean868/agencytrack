@@ -25,6 +25,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { formatCurrency, formatAwardPct, formatPaceWeeks, formatPaceRate, formatDateFriendly } from '../../utils/formatters';
+import { AwardProvenancePanel } from './awardProvenance';
 
 // §2.7 pace narrative — shared "no pace yet" honesty fallback. `pace` is
 // null when the award has no primary criterion or a '%'-unit one (see
@@ -285,7 +286,7 @@ export function AwardCard({ award, onClick }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // AwardDrillDrawer — Tier 3 slide-in detail panel
 // ─────────────────────────────────────────────────────────────────────────────
-export function AwardDrillDrawer({ award, onClose }) {
+export function AwardDrillDrawer({ award, onClose, provenance = null }) {
   const handleKey = useCallback((e) => { if (e.key === 'Escape') onClose(); }, [onClose]);
   useEffect(() => {
     if (!award) return;
@@ -439,6 +440,9 @@ export function AwardDrillDrawer({ award, onClose }) {
               )}
             </div>
           )}
+
+          {/* Item 3.4 — awards provenance (flag-gated; provenance null when OFF) */}
+          {provenance && <AwardProvenancePanel provenance={provenance} />}
 
           {award.note && (
             <div className="mt-4 p-3 rounded-xl bg-warning-tint border border-warning/30">

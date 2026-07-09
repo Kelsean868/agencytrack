@@ -16,7 +16,9 @@ import {
 } from '../../services/persistencyService';
 import PersistencyEntryForm from '../manager/PersistencyEntryForm';
 import PersistencyPlayground from '../persistency/PersistencyPlayground';
+import PersistencyV2Shell from '../persistency/PersistencyV2Shell';
 import PanelSkeleton from '../ui/PanelSkeleton';
+import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 
 function formatPct(decimal) {
   if (!Number.isFinite(decimal)) return '—';
@@ -26,6 +28,8 @@ function formatPct(decimal) {
 
 export default function PersistencyTab({ onViewLapsedPolicies }) {
   const { user, role, tenantId } = useAuth();
+  // Item 3.4 — v2 rolling-model preview (flag OFF ⇒ surface absent, byte-identical).
+  const persistencyV2On = useFeatureFlag('persistencyV2');
 
   const [history, setHistory] = useState([]);
   const [monthKeys, setMonthKeys] = useState([]);
@@ -268,6 +272,9 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
           <Calculator size={14} /> Open Playground
         </button>
       </div>
+
+      {/* Item 3.4 — v2 rolling-model preview (flag-gated; absent when OFF) */}
+      {persistencyV2On && <PersistencyV2Shell />}
     </div>
 
       {/* Self-entry form + Playground — outside `.stagger` (fixed-position

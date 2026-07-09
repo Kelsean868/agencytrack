@@ -169,6 +169,20 @@ describe('AwardDrillDrawer', () => {
     expect(closed).toBe(1);
   });
 
+  it('3.4 — renders the provenance panel only when a provenance prop is passed', () => {
+    const provenance = {
+      source: 'CONFIRMED SETTLEMENTS', sourceLive: false, unit: 'TTD',
+      settled: 150000, target: 200000, pct: 75,
+      segments: [{ kind: 'base', label: 'Settled production', value: 150000 }],
+      campaignPending: true, pending: null,
+    };
+    const { rerender } = render(<AwardDrillDrawer award={award} onClose={() => {}} />);
+    expect(screen.queryByTestId('award-provenance-panel')).not.toBeInTheDocument();
+    rerender(<AwardDrillDrawer award={award} onClose={() => {}} provenance={provenance} />);
+    expect(screen.getByTestId('award-provenance-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('award-provenance-campaign-pending')).toBeInTheDocument();
+  });
+
   it('closes when scrim backdrop is clicked', () => {
     let closed = 0;
     render(<AwardDrillDrawer award={award} onClose={() => { closed++; }} />);

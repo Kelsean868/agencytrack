@@ -10,6 +10,7 @@ import { applyLedgerFilter, filterCounts, LEDGER_FILTERS } from '../../lib/polic
 import PipelineStrip from './policyLedger/PipelineStrip';
 import PolicyCard from './policyLedger/PolicyCard';
 import PolicyDrillDrawer from './policyLedger/PolicyDrillDrawer';
+import CampaignLensPanel from './policyLedger/CampaignLensPanel';
 
 const FREQ_MULT = { A: 1, S: 2, Q: 4, M: 12 };
 const FREQ_LABELS = { A: 'Annual', S: 'Semi-Annual', Q: 'Quarterly', M: 'Monthly' };
@@ -309,6 +310,9 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
           <>
             {/* Tier 1 */}
             <PipelineStrip policies={policies} />
+
+            {/* Item 3.4 — campaign lens (flag-gated; renders null + no fetch when OFF) */}
+            <CampaignLensPanel policies={policies} />
 
             {/* Tier 2 — filter chips + search */}
             <div className="flex items-center gap-3 flex-wrap">

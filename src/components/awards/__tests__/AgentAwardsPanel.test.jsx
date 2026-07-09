@@ -44,6 +44,12 @@ vi.mock('../../../utils/formatters', () => ({
   formatCurrency: vi.fn((v) => `$${v}`),
 }));
 
+// ── Mock the 3.4 feature-flag hook (default OFF) ─────────────────────────────
+const mockUseFeatureFlag = vi.fn(() => false);
+vi.mock('../../../hooks/useFeatureFlag', () => ({
+  useFeatureFlag: (...a) => mockUseFeatureFlag(...a),
+}));
+
 import AgentAwardsPanel from '../AgentAwardsPanel';
 import { getOwnPolicies, settlementShapeFromPolicies } from '../../../services/policiesService';
 import { computeAgentAwards } from '../../../utils/awardsEngine';
@@ -59,6 +65,24 @@ beforeEach(() => {
   // Default computeAgentAwards to return an empty awards object
   computeAgentAwards.mockReturnValue({});
   getOwnPolicies.mockResolvedValue([]);
+  mockUseFeatureFlag.mockReturnValue(false);
+});
+
+describe('AgentAwardsPanel — 3.4 awards provenance flag', () => {
+  const SUBS = [{ weekStarting: '2026-05-04', agentId: BASE_PROFILE.uid }];
+
+  it('flag OFF — no ledger-source chip (byte-identical panel)', () => {
+    mockUseFeatureFlag.mockReturnValue(false);
+    render(<AgentAwardsPanel submissions={SUBS} confirmedSettlements={SETTLEMENTS} agentProfile={BASE_PROFILE} />);
+    expect(screen.queryByTestId('agent-awards-source-chip')).not.toBeInTheDocument();
+  });
+
+  it('flag ON — renders the honest ledger-source chip (settlements source)', () => {
+    mockUseFeatureFlag.mockImplementation((k) => k === 'awardsProvenance');
+    render(<AgentAwardsPanel submissions={SUBS} confirmedSettlements={SETTLEMENTS} agentProfile={BASE_PROFILE} />);
+    const chip = screen.getByTestId('agent-awards-source-chip');
+    expect(chip.textContent).toMatch(/FROM CONFIRMED SETTLEMENTS/);
+  });
 });
 
 describe('AgentAwardsPanel — usesPolicyLedger flag', () => {
