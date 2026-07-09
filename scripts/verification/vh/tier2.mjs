@@ -666,4 +666,55 @@ export const LEGS = [
       return `D2 keyboard reorder: ${mover} moved down in Recognition (aria-live announced, visual order flipped); persisted to a fresh-context re-login (Firestore navOrder, writer held open); pre-leg order restored.`;
     },
   },
+
+  // ── D1 (VH). Manager mp-game-plan prefetch — extends #829 to producing managers.
+  //   Login unit_manager → let the dashboard sit idle (~3s) so the idle-time Game
+  //   Plan prefetch (ManagerDashboard.jsx, gated to producing managers) has warmed
+  //   the manager's OWN moneyNeeds/yearPlan/monthlyPlan year-docs into the Firestore
+  //   cache → open the Game Plan tab → the POPULATED panel (anchor strip + the seeded
+  //   yearPlan total TTD 150,000, mirrors EXPECT.goals.umYearPlanTotal) must attach
+  //   quickly. game-plan-anchor is one of the inner nodes that pops in on a cold
+  //   cache (the #833 finding), so its attachment == real content, not the empty hub
+  //   shell. Timing cap is deliberately GENEROUS: prefetch is a warm-cache
+  //   optimization, not a hard SLA — the cold (un-prefetched) pop-in the fix targets
+  //   still settles ~0.7s, so <2.5s is a regression fence + hygiene check, not a
+  //   stopwatch. DEPLOY-GATED: the prefetch path is exercised only against a deploy
+  //   that INCLUDES the D1 change — this leg verifies fully after the orchestrator
+  //   deploys the staging branch. Against an un-prefetched deploy it still passes
+  //   (cold settle is under the cap); the before/after prefetch win is measured by
+  //   motion-verifier, not by this leg's wall-clock.
+  {
+    id: 't2-d1-manager-gameplan-prefetch',
+    role: 'unit_manager',
+    desc: 'producing-manager Game Plan opens fast + populated (TTD 150,000) after dashboard-idle prefetch; console clean',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        const p = ctx.page;
+        await login(p, 'unit_manager');
+        // Dashboard idle window: the prefetch fires via requestIdleCallback
+        // (timeout 2000ms) / a 400ms setTimeout fallback — 3s covers both plus
+        // Firestore listener-warm headroom before we tap Game Plan.
+        await p.waitForTimeout(3000);
+        const CAP_MS = 2500;
+        const t0 = Date.now();
+        await clickTid(p, 'nav-mp-game-plan');
+        // Populated readiness: wait for game-plan-anchor (a real inner node), not
+        // the game-plan-hub shell which attaches even in the empty/loading state.
+        await p.locator(tsel('game-plan-anchor')).first()
+          .waitFor({ state: 'attached', timeout: 15_000 });
+        // Value-level: the seeded yearPlan total must render (populated, not zero-state).
+        await mustText(p, currencyRe(150000), 'D1 Game Plan yearPlan total', 'body');
+        const elapsed = Date.now() - t0;
+        await shot(p, 't2-d1-manager-gameplan');
+        if (elapsed > CAP_MS) {
+          throw new Error(`D1 Game Plan populated content took ${elapsed}ms (> ${CAP_MS}ms generous cap) — prefetch warm-cache path may be broken.`);
+        }
+        assertLegHygiene(ctx);
+        return `unit_manager Game Plan opened populated (anchor + TTD 150,000 yearPlan total) in ${elapsed}ms (< ${CAP_MS}ms cap); console clean, zero prod requests. NOTE: prefetch path verified only against a deploy INCLUDING the D1 change.`;
+      } finally {
+        await ctx.context.close();
+      }
+    },
+  },
 ];

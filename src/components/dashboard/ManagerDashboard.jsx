@@ -54,6 +54,7 @@ import DailyFAB from '../daily/DailyFAB';
 import QuickAddMenu from '../shell/QuickAddMenu';
 import { getQuickAddActions } from '../shell/quickAddConfig';
 import GamePlanScreen from './GamePlanV2';
+import { prefetchGamePlanYearDocs } from '../../services/gamePlanPrefetch';
 import TeamPlannerPanel from '../planner/manager/TeamPlannerPanel';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import HistoryTab from '../submissions/HistoryTab';
@@ -226,6 +227,39 @@ export default function ManagerDashboard() {
     isProducingManager ? user?.uid : null,
     userProfile,
   );
+
+  // D1 (VH) — extend #829's Game Plan prefetch to producing managers: warm the
+  // manager's OWN Game Plan year-docs (moneyNeeds/yearPlan/monthlyPlan for their
+  // uid + current year — the exact set GamePlanScreen reads on mp-game-plan open)
+  // during dashboard idle, so the first open lands on populated content even on
+  // field networks. Same listener-warm approach as the agent side (see
+  // gamePlanPrefetch.js for why listeners, not a one-time getDoc). Opt-in scoped
+  // to producing managers (UM/BM) — the ONLY roles that render GamePlanScreen for
+  // their own uid; plain manager / sales_manager / tenant_admin / platform_admin
+  // never enter this path and never prefetch. Background, non-blocking,
+  // failure-silent; Game Plan still fetches on mount as the fallback.
+  // ManagerDashboard stays mounted across tab switches, so the listeners stay warm
+  // until the manager opens Game Plan; torn down on unmount.
+  const thisYear = new Date().getFullYear();
+  useEffect(() => {
+    if (!isProducingManager || !user?.uid || !tenantId) return undefined;
+    let unsub = () => {};
+    // Best-effort; the prefetch helper is already failure-silent, but wrap the
+    // call too so nothing here can ever break the dashboard.
+    const run = () => {
+      try { unsub = prefetchGamePlanYearDocs(tenantId, user.uid, thisYear); } catch { /* noop */ }
+    };
+    const hasIdle = typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function';
+    let cancel;
+    if (hasIdle) {
+      const handle = window.requestIdleCallback(run, { timeout: 2000 });
+      cancel = () => { if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(handle); };
+    } else {
+      const handle = setTimeout(run, 400);
+      cancel = () => clearTimeout(handle);
+    }
+    return () => { cancel(); if (typeof unsub === 'function') unsub(); };
+  }, [isProducingManager, user?.uid, tenantId, thisYear]);
 
   // E6 logging-mode: unset defaults to 'hybrid' (showDailyCTA = true).
   const mpLoggingMode = userProfile?.loggingMode ?? 'hybrid';
