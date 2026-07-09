@@ -29,3 +29,25 @@ describe('TopBar — command palette trigger', () => {
     expect(onOpenSearch).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('TopBar — mobile command-palette trigger (Fable Tier 1 · 1.1b)', () => {
+  it('renders a mobile search icon button with its own aria-label', () => {
+    render(<TopBar title="Dashboard" onOpenSearch={vi.fn()} />);
+    const btn = screen.getByRole('button', { name: /search — open command palette/i });
+    expect(btn).toBeInTheDocument();
+    expect(btn).toHaveClass('topbar-mobile-search');
+  });
+
+  it('calls the same onOpenSearch handler as the desktop pill when clicked', () => {
+    const onOpenSearch = vi.fn();
+    render(<TopBar title="Dashboard" onOpenSearch={onOpenSearch} />);
+    fireEvent.click(screen.getByRole('button', { name: /search — open command palette/i }));
+    expect(onOpenSearch).toHaveBeenCalledTimes(1);
+  });
+
+  it('the desktop search pill is still present alongside the mobile trigger', () => {
+    render(<TopBar title="Dashboard" onOpenSearch={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /search screens and actions/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /search — open command palette/i })).toBeInTheDocument();
+  });
+});

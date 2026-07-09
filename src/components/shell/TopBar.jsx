@@ -19,7 +19,13 @@ import SyncIndicator from '../ui/SyncIndicator';
  *
  * Sign-out lives in the sidebar foot, NOT here (locked decision).
  *
- * At <768px the search and crumb collapse via @media in index.css.
+ * At <768px the search and crumb collapse via @media in index.css. Mobile has
+ * no keyboard (no Cmd/Ctrl-K) and the desktop search pill is hidden there, so
+ * `.topbar-mobile-search` is an icon-only trigger for the SAME palette —
+ * visible only at mobile widths (inverse of `.topbar-search`'s hide rule,
+ * same @media block in index.css). It opens via the same `onOpenSearch`
+ * handler Shell already wires up; no second palette, no new state
+ * (Fable Tier 1 · 1.1b).
  */
 export default function TopBar({ title, crumb, actions, onOpenSearch }) {
   const toggleDark = () => {
@@ -54,6 +60,14 @@ export default function TopBar({ title, crumb, actions, onOpenSearch }) {
       </button>
 
       <div className="topbar-actions">
+        <button
+          type="button"
+          className="topbar-icon-btn topbar-mobile-search"
+          onClick={onOpenSearch}
+          aria-label="Search — open command palette"
+        >
+          <Search size={18} aria-hidden="true" />
+        </button>
         {actions}
         <SyncIndicator />
         <NotificationBell />

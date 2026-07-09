@@ -1609,6 +1609,16 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   outline-offset: 2px;
 }
 
+/* Mobile command-palette trigger (Fable Tier 1 · 1.1b) — icon-only button that
+ * opens the SAME Cmd-K palette as `.topbar-search`; mobile has no keyboard
+ * shortcut and `.topbar-search` hides at <768px (below), so this is the only
+ * mobile affordance. Reuses `.topbar-icon-btn` for sizing/hover/focus-visible
+ * (see above) — this class only toggles display, never forks that styling.
+ * Hidden at desktop by default; shown at mobile via the inverse rule in the
+ * `@media (max-width: 767px)` block below (mirrors `.topbar-search`'s hide
+ * rule there). */
+.topbar-mobile-search { display: none; }
+
 /* Shell content slot: holds the dashboard's tab content. The dashboard
  * keeps its own per-tab markup; the shell only owns chrome + the <main>
  * landmark. */
@@ -1821,6 +1831,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   }
   .topbar-search,
   .topbar-crumb { display: none; }
+  .topbar-mobile-search { display: grid; }
   .shell-content {
     padding: 16px 16px 108px; /* room for fixed bottom-nav + FAB lift */
   }
