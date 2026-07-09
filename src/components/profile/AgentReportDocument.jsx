@@ -32,6 +32,7 @@
  *    and coaching ratios, not the meeting-mode floor thresholds. Rendered as the
  *    honest activity + coaching-ratio + tenure-floor sections instead.
  */
+import React from 'react';
 import {
   Document, Page, View, Text, StyleSheet,
   Svg, Line, Path, Circle, Rect,

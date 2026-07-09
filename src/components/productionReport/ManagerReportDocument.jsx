@@ -30,6 +30,7 @@
  *  Rendered honestly with what the view supplies: totals, unit rollup, ranked
  *  roster (API + apps + bar), weekly compliance, and top performers.
  */
+import React from 'react';
 import {
   Document, Page, View, Text, StyleSheet, Svg, Circle, Rect,
 } from '@react-pdf/renderer';
