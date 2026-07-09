@@ -647,7 +647,13 @@ export default function ManagerDashboard() {
         {activeTab === 'mp-money-needs' && <MoneyNeedsPanel />}
 
         {activeTab === 'mp-history' && (
-          <HistoryTab submissions={myProd.allSubmissions} onStartReport={() => setShowWizard(true)} />
+          <HistoryTab
+            submissions={myProd.allSubmissions}
+            loading={myProd.loading}
+            weeklyTarget={myProd.companyMinimums?.weeklyActivityFloors?.api ?? 4800}
+            onStartReport={() => setShowWizard(true)}
+            onEditWeek={(weekStarting, sub) => openMpWizardForWeek(weekStarting, sub)}
+          />
         )}
 
         {activeTab === 'mp-commission' && (

@@ -29,7 +29,6 @@ import SettingsScreen from '../settings/SettingsScreen';
 import ReportRangeModal from '../ui/ReportRangeModal';
 import ProductionLeaderboardSurface from '../leaderboard/ProductionLeaderboardSurface';
 import AgentAwardsPanel from '../awards/AgentAwardsPanel';
-import SubmissionViewer from '../submissions/SubmissionViewer';
 import HistoryTab from '../submissions/HistoryTab';
 import { computeEarnedBadges } from '../gamification/BadgeGrid';
 import { buildActivityEvents } from '../../utils/buildActivityEvents';
@@ -103,7 +102,6 @@ export default function AgentDashboard() {
   const [showDailyModal, setShowDailyModal]   = useState(false);
   const [showQuickAdd,   setShowQuickAdd]     = useState(false);
   const [unlockDismissed, setUnlockDismissed] = useState(false);
-  const [viewingSubmission, setViewingSubmission] = useState(null);
   const [todayDailyEntry, setTodayDailyEntry] = useState(null);
   const [todayDailyChecked, setTodayDailyChecked] = useState(false);
 
@@ -628,14 +626,6 @@ export default function AgentDashboard() {
         />
       )}
 
-      {/* Submission viewer drawer */}
-      {viewingSubmission && (
-        <SubmissionViewer
-          submission={viewingSubmission}
-          onClose={() => setViewingSubmission(null)}
-        />
-      )}
-
       {/* Unlock banner */}
       {showUnlockBanner && (
         <button
@@ -921,12 +911,12 @@ export default function AgentDashboard() {
       {activeTab === 'history' && (
         <HistoryTab
           submissions={allSubmissions}
-          onView={setViewingSubmission}
           loading={loading}
           onDownload={handleOpenReportModal}
           generating={generating}
           weeklyTarget={resolvedMinimums?.weeklyActivityFloors?.api ?? 4800}
           onStartReport={() => setShowWizard(true)}
+          onEditWeek={(weekStarting, sub) => openWizardForWeek(weekStarting, sub)}
         />
       )}
       </div>

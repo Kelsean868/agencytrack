@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Download, Loader2, ChevronRight, Flame, FileClock, Plus } from 'lucide-react';
+import { Download, Loader2, ChevronRight, ArrowRight, Flame, FileClock, Plus, Search, Star, X } from 'lucide-react';
 import { extractFields } from '../../utils/extractFields';
 import { computeSubmissionStreak } from '../../utils/submissionStreak';
+import { getSubmissionAPI, isAwardWeek, longestStreakWeeks } from '../../utils/historyDerivations';
+import useFocusTrap from '../../hooks/useFocusTrap';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -26,20 +28,35 @@ function weekLabel(s) {
   return `Sun ${day}`;
 }
 
-function getSubmissionAPI(s) {
-  return parseFloat(s.apiSold) || extractFields(s).apiSold || 0;
-}
+const MONTH_ABBR = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function deriveStatus(s) {
   if (s.unlockedBy) return 'unlocked';
   return s.status ?? 'draft';
 }
 
+// The stored free-text reflection note (self-evaluation notes), used as the
+// mockup's italic week "note" snippet on cards + drill.
+function submissionNote(s) {
+  const f = extractFields(s);
+  return (f.evaluationNotes || '').trim();
+}
+
+// 5-category canonical dials sum (referral + follow-up + cold + seminar/tradeshow
+// + service). Missing seminar/tradeshow + service was the Gemini PR #390 bug.
+function dialsSum(s) {
+  return (parseInt(s.referralCalls)        || 0)
+       + (parseInt(s.followUpCalls)         || 0)
+       + (parseInt(s.coldCalls)             || 0)
+       + (parseInt(s.seminarTradeshowCalls) || 0)
+       + (parseInt(s.serviceCalls)          || 0);
+}
+
 function generateYearSundays(year) {
-  // Get the first Sunday of the year (or the last Sunday of the previous year that falls in the year range)
-  // Adjust to first Sunday of or before Jan 7
-  const jan4 = new Date(Date.UTC(year, 0, 4)); // always in week 1
-  const offset = jan4.getUTCDay(); // 0=Sun, so offset = days since last Sunday
+  // First Sunday of or before Jan 7 (always in ISO week 1 range for our purpose).
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const offset = jan4.getUTCDay();
   const firstSunday = new Date(Date.UTC(year, 0, 4 - offset));
 
   const sundays = [];
@@ -52,9 +69,17 @@ function generateYearSundays(year) {
   return sundays;
 }
 
+// Most-recent Sunday on or before today (ISO yyyy-mm-dd) — the "current week".
+function currentWeekStarting() {
+  const now = new Date();
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return d.toISOString().split('T')[0];
+}
+
 function computeAnchor(submissions, year, weeklyTarget) {
   const thisYearSubs = submissions.filter(s => s.weekStarting?.startsWith(String(year)));
-  const submitted    = thisYearSubs.filter(s => s.status === 'submitted');
+  const submitted    = thisYearSubs.filter(s => s.status === 'submitted' && !s.unlockedBy);
   const drafts       = thisYearSubs.filter(s => s.status !== 'submitted' && !s.unlockedBy);
   const unlocked     = thisYearSubs.filter(s => !!s.unlockedBy);
 
@@ -62,10 +87,8 @@ function computeAnchor(submissions, year, weeklyTarget) {
   const avgApi  = submitted.length > 0 ? Math.round(ytdAPI / submitted.length / 100) * 100 : 0;
   const award   = submitted.filter(s => getSubmissionAPI(s) >= weeklyTarget);
 
-  // Best week
   const bestWeek = submitted.reduce((a, b) => getSubmissionAPI(b) > getSubmissionAPI(a) ? b : a, submitted[0] ?? null);
 
-  // Streak — extracted to src/utils/submissionStreak.js (shared with v2 dashboard Pulse chip)
   const { currentStreak: current, longestStreak: longest } =
     computeSubmissionStreak(submissions, year);
 
@@ -186,8 +209,9 @@ function HistoryAnchorStrip({ anchor, year, weeklyTarget }) {
 }
 
 // ── YearHeatmap ───────────────────────────────────────────────────────────────
-function YearHeatmap({ submissions, year, weeklyTarget }) {
+function YearHeatmap({ submissions, year, weeklyTarget, bestWeekWs, awardWeekSet, streakWeekSet, longestStreak }) {
   const sundays = useMemo(() => generateYearSundays(year), [year]);
+  const currentWs = useMemo(() => currentWeekStarting(), []);
 
   const byWeekStart = useMemo(() => {
     const m = {};
@@ -216,12 +240,12 @@ function YearHeatmap({ submissions, year, weeklyTarget }) {
   let lastMonth = null;
   sundays.forEach((ws, i) => {
     const mo = ws.slice(5, 7);
-    if (mo !== lastMonth) { monthLabels.push({ i, label: ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][parseInt(mo, 10) - 1] }); lastMonth = mo; }
+    if (mo !== lastMonth) { monthLabels.push({ i, label: MONTH_ABBR[parseInt(mo, 10) - 1] }); lastMonth = mo; }
   });
 
   return (
     <div className="card p-4">
-      <div className="flex items-baseline justify-between mb-2">
+      <div className="flex items-baseline justify-between mb-2 flex-wrap gap-2">
         <p className="text-xs font-bold tracking-widest font-mono uppercase text-ink-muted">Year at a glance · {year}</p>
         <p className="text-[10px] text-ink-muted font-mono">Target {fmtTtdFull(weeklyTarget)}/wk</p>
       </div>
@@ -229,7 +253,7 @@ function YearHeatmap({ submissions, year, weeklyTarget }) {
       {/* Month labels */}
       <div className="relative h-4 mb-1">
         {monthLabels.map(({ i, label }) => (
-          <span key={label} className="absolute text-[9px] font-bold text-ink-muted font-mono tracking-widest" style={{ left: i * 20 }}>
+          <span key={`${label}-${i}`} className="absolute text-[9px] font-bold text-ink-muted font-mono tracking-widest" style={{ left: i * 20 }}>
             {label}
           </span>
         ))}
@@ -240,16 +264,47 @@ function YearHeatmap({ submissions, year, weeklyTarget }) {
         {sundays.map((ws) => {
           const s = byWeekStart[ws];
           const st = s ? deriveStatus(s) : null;
+          const isBest = ws === bestWeekWs;
+          const isAward = awardWeekSet.has(ws);
+          const isStreak = streakWeekSet.has(ws);
+          const isCurrent = ws === currentWs;
+          const titleBits = s
+            ? `${ws} · ${fmtTtdFull(getSubmissionAPI(s))} · ${st}`
+            : `${ws} · no submission`;
+          const enrich = [
+            isBest ? 'best week' : null,
+            isAward ? 'award-eligible' : null,
+            isStreak ? 'longest streak' : null,
+            isCurrent ? 'current week' : null,
+          ].filter(Boolean).join(' · ');
           return (
             <div
               key={ws}
-              title={s ? `${ws} · ${fmtTtdFull(getSubmissionAPI(s))} · ${st}` : `${ws} · no submission`}
-              style={{ width: 17, height: 17, flexShrink: 0 }}
-              className={`rounded-sm ${colorClass(s)} ${st === 'unlocked' ? 'border border-warning' : st === 'draft' ? 'border border-dashed border-border' : ''}`}
-            />
+              title={enrich ? `${titleBits} · ${enrich}` : titleBits}
+              style={{
+                width: 17, height: 17, flexShrink: 0, position: 'relative',
+                boxShadow: isStreak ? 'inset 0 -3px 0 0 var(--color-primary)' : undefined,
+              }}
+              className={[
+                'rounded-sm', colorClass(s),
+                st === 'unlocked' ? 'border border-warning' : st === 'draft' ? 'border border-dashed border-border' : '',
+                isBest ? 'outline outline-2 outline-gold outline-offset-1' : '',
+                isCurrent ? 'ring-2 ring-primary animate-pulse motion-reduce:animate-none' : '',
+              ].filter(Boolean).join(' ')}
+            >
+              {isAward && (
+                <span aria-hidden="true" className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-gold" />
+              )}
+            </div>
           );
         })}
       </div>
+
+      {longestStreak >= 2 && (
+        <p className="text-[10px] font-bold text-ink-muted font-mono tracking-wide mt-2">
+          <span className="text-primary">▬</span> Longest streak · {longestStreak} consecutive weeks
+        </p>
+      )}
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 mt-3">
@@ -271,13 +326,33 @@ function YearHeatmap({ submissions, year, weeklyTarget }) {
           <div className="w-2 h-2 rounded-sm bg-warning/25 border border-warning" />
           <span className="text-[9px] text-ink-muted font-mono tracking-wide">UNLOCKED</span>
         </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-sm bg-surface-muted outline outline-2 outline-gold outline-offset-1" />
+          <span className="text-[9px] text-ink-muted font-mono tracking-wide">BEST</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="relative w-2 h-2 rounded-sm bg-primary/40">
+            <span aria-hidden="true" className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-gold" />
+          </div>
+          <span className="text-[9px] text-ink-muted font-mono tracking-wide">AWARD</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-sm bg-primary/40 ring-2 ring-primary" />
+          <span className="text-[9px] text-ink-muted font-mono tracking-wide">THIS WK</span>
+        </div>
       </div>
     </div>
   );
 }
 
 // ── HistoryFilterRow ──────────────────────────────────────────────────────────
-function HistoryFilterRow({ activeFilter, setFilter, counts }) {
+function HistoryFilterRow({
+  activeFilter, setFilter, counts,
+  year, setYear, years,
+  month, setMonth,
+  awardOnly, setAwardOnly,
+  search, setSearch,
+}) {
   const tabs = [
     { key: 'all',       label: 'All weeks', count: counts.all },
     { key: 'submitted', label: 'Submitted', count: counts.submitted },
@@ -285,25 +360,80 @@ function HistoryFilterRow({ activeFilter, setFilter, counts }) {
     { key: 'unlocked',  label: 'Unlocked',  count: counts.unlocked },
   ];
   return (
-    <div className="flex items-center gap-1 p-1 rounded-xl border border-border bg-surface-muted overflow-x-auto">
-      {tabs.map(t => (
-        <button
-          key={t.key}
-          onClick={() => setFilter(t.key)}
-          className={`flex items-center gap-1.5 px-3 min-h-[36px] rounded-lg text-xs font-bold whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-            activeFilter === t.key
-              ? 'bg-card text-ink shadow-sm border border-border'
-              : 'text-ink-muted hover:text-ink'
-          }`}
-        >
-          {t.label}
-          {t.count > 0 && (
-            <span className={`text-[10px] font-bold px-1.5 rounded-full font-mono ${activeFilter === t.key ? 'bg-primary/15 text-primary' : 'text-ink-muted'}`}>
-              {t.count}
-            </span>
-          )}
-        </button>
-      ))}
+    <div className="flex flex-wrap items-center gap-2 flex-1">
+      {/* Status segmented */}
+      <div className="flex items-center gap-1 p-1 rounded-xl border border-border bg-surface-muted overflow-x-auto">
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setFilter(t.key)}
+            className={`flex items-center gap-1.5 px-3 min-h-[36px] rounded-lg text-xs font-bold whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+              activeFilter === t.key
+                ? 'bg-card text-ink shadow-sm border border-border'
+                : 'text-ink-muted hover:text-ink'
+            }`}
+          >
+            {t.label}
+            {t.count > 0 && (
+              <span className={`text-[10px] font-bold px-1.5 rounded-full font-mono ${activeFilter === t.key ? 'bg-primary/15 text-primary' : 'text-ink-muted'}`}>
+                {t.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Year dropdown */}
+      <select
+        aria-label="Filter by year"
+        value={year}
+        onChange={(e) => setYear(Number(e.target.value))}
+        className="min-h-[44px] px-3 rounded-lg border border-border bg-card text-xs font-bold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        {years.map(y => <option key={y} value={y}>{y}</option>)}
+      </select>
+
+      {/* Month dropdown */}
+      <select
+        aria-label="Filter by month"
+        value={month}
+        onChange={(e) => setMonth(e.target.value)}
+        className="min-h-[44px] px-3 rounded-lg border border-border bg-card text-xs font-bold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <option value="all">All months</option>
+        {MONTH_NAMES.map((name, i) => (
+          <option key={name} value={String(i + 1).padStart(2, '0')}>{name}</option>
+        ))}
+      </select>
+
+      {/* Award-weeks toggle */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={awardOnly}
+        onClick={() => setAwardOnly(v => !v)}
+        className={`inline-flex items-center gap-2 min-h-[44px] px-3 rounded-lg border text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+          awardOnly
+            ? 'bg-gold/15 border-gold/50 text-gold-ink'
+            : 'bg-card border-border text-ink-muted hover:text-ink'
+        }`}
+      >
+        <Star size={13} className={awardOnly ? 'fill-gold text-gold' : ''} aria-hidden="true" />
+        Award weeks
+      </button>
+
+      {/* Search */}
+      <div className="flex items-center gap-2 min-h-[44px] px-3 rounded-lg border border-border bg-card flex-1 min-w-[160px] focus-within:ring-2 focus-within:ring-primary">
+        <Search size={13} className="text-ink-muted shrink-0" aria-hidden="true" />
+        <input
+          type="text"
+          aria-label="Search notes and goals"
+          placeholder="Search notes, goals…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 min-w-0 bg-transparent outline-none text-xs text-ink placeholder:text-ink-muted"
+        />
+      </div>
     </div>
   );
 }
@@ -332,7 +462,7 @@ function MiniSpark({ values, current }) {
 }
 
 // ── WeekCard ──────────────────────────────────────────────────────────────────
-function WeekCard({ s, prevS, sparkValues, onClick }) {
+function WeekCard({ s, prevS, sparkValues, isBest, isAward, onClick }) {
   const st       = deriveStatus(s);
   const isDraft  = st === 'draft';
   const isUnlocked = st === 'unlocked';
@@ -340,13 +470,8 @@ function WeekCard({ s, prevS, sparkValues, onClick }) {
   const fields   = extractFields(s);
   const apps     = fields.applicationsSold ?? 0;
   const cis      = parseInt(s.ciConducted) || 0;
-  // Use the canonical 5-category sum: referral + follow-up + cold + seminar/tradeshow + service.
-  // Gemini PR #390: previously missing seminarTradeshowCalls + serviceCalls.
-  const dials    = (parseInt(s.referralCalls)          || 0)
-                 + (parseInt(s.followUpCalls)           || 0)
-                 + (parseInt(s.coldCalls)               || 0)
-                 + (parseInt(s.seminarTradeshowCalls)   || 0)
-                 + (parseInt(s.serviceCalls)            || 0);
+  const dials    = dialsSum(s);
+  const note     = submissionNote(s);
   const prevApi  = prevS ? getSubmissionAPI(prevS) : null;
   const apiDelta = prevApi !== null ? api - prevApi : null;
   const prevApps = prevS ? (extractFields(prevS).applicationsSold ?? 0) : null;
@@ -356,12 +481,12 @@ function WeekCard({ s, prevS, sparkValues, onClick }) {
   const statusBg = isUnlocked ? 'bg-warning/15 text-warning-ink' : isDraft ? 'bg-warning/15 text-warning-ink' : 'bg-success/15 text-success-ink';
   const statusLabel = isUnlocked ? 'Unlocked' : isDraft ? 'Draft' : 'Submitted';
 
-  const borderColor = isUnlocked ? 'border-warning/30' : isDraft ? 'border-border' : 'border-border';
+  const borderColor = isUnlocked ? 'border-warning/30' : 'border-border';
 
   return (
     <button
       onClick={onClick}
-      aria-label={`View submission from ${weekLabel(s)}`}
+      aria-label={`Open submission from ${weekLabel(s)}`}
       className={`card w-full text-left p-4 hover:shadow-md transition-shadow border ${borderColor}`}
     >
       {/* Top row */}
@@ -374,7 +499,20 @@ function WeekCard({ s, prevS, sparkValues, onClick }) {
             {s.weekStarting && (
               <span className="text-xs text-ink-muted font-mono">{s.weekStarting}</span>
             )}
+            {isBest && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-widest font-mono bg-gold/15 text-gold-ink">
+                ★ BEST WEEK
+              </span>
+            )}
+            {isAward && !isBest && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold tracking-widest font-mono bg-gold/15 text-gold-ink">
+                AWARD-ELIGIBLE
+              </span>
+            )}
           </div>
+          {note && (
+            <p className="text-xs text-ink-muted mt-1 italic line-clamp-1">“{note}”</p>
+          )}
           {isUnlocked && s.unlockedByName && (
             <p className="text-xs text-warning-ink mt-0.5 font-mono tracking-wide">
               UNLOCKED BY {s.unlockedByName.toUpperCase()} · NEEDS RESUBMIT
@@ -389,8 +527,8 @@ function WeekCard({ s, prevS, sparkValues, onClick }) {
       {/* KPI 4-up grid */}
       <div className="grid grid-cols-4 gap-2 mb-3">
         {[
-          { label: 'API',   value: `TTD ${fmtTtdShort(api)}`,  delta: apiDelta !== null ? Math.round(apiDelta / 100) : null, isCurrency: true },
-          { label: 'APPS',  value: apps,                         delta: appsDelta },
+          { label: 'API',   value: `TTD ${fmtTtdShort(api)}`,  delta: apiDelta !== null ? Math.round(apiDelta / 100) : null, deltaLabel: apiDelta ? fmtTtdShort(Math.abs(apiDelta)) : null },
+          { label: 'APPS',  value: apps,                         delta: appsDelta,  deltaLabel: appsDelta ? Math.abs(appsDelta) : null },
           { label: 'CIs',   value: cis,                          delta: null },
           { label: 'DIALS', value: dials,                        delta: null },
         ].map((k, i) => (
@@ -399,7 +537,7 @@ function WeekCard({ s, prevS, sparkValues, onClick }) {
               <span className="text-[9px] font-bold text-ink-muted font-mono tracking-widest">{k.label}</span>
               {k.delta !== null && k.delta !== 0 && (
                 <span className={`text-[8px] font-bold font-mono px-1 rounded-sm ${k.delta > 0 ? 'bg-success/15 text-success-ink' : 'bg-warning/15 text-warning-ink'}`}>
-                  {k.delta > 0 ? '▲' : '▼'}
+                  {k.delta > 0 ? '▲' : '▼'} {k.deltaLabel}
                 </span>
               )}
             </div>
@@ -410,7 +548,7 @@ function WeekCard({ s, prevS, sparkValues, onClick }) {
         ))}
       </div>
 
-      {/* Footer — spark + rating + view action */}
+      {/* Footer — spark + rating + action */}
       <div className="flex items-center gap-3 flex-wrap">
         {sparkValues && sparkValues.length > 0 && (
           <div className="flex items-center gap-2">
@@ -441,14 +579,237 @@ function WeekCard({ s, prevS, sparkValues, onClick }) {
   );
 }
 
+// ── HistoryDrillDrawer ────────────────────────────────────────────────────────
+// History-scoped action drawer. Replaces the generic SubmissionViewer for the
+// History surface (SubmissionViewer stays as-is for MasterSheet/Compliance).
+// §4 dialog contract via useFocusTrap. Status-driven footer CTA:
+//   submitted → Download PDF · draft → Continue editing · unlocked → Edit & resubmit
+function DrillRow({ label, value, big = false }) {
+  return (
+    <div className={`flex items-center justify-between px-3 py-2 ${big ? 'bg-primary/10' : ''}`}>
+      <span className={`text-xs ${big ? 'text-ink font-bold' : 'text-ink-muted'}`}>{label}</span>
+      <span className={`font-bold ${big ? 'text-sm text-primary' : 'text-xs text-ink'}`} style={big ? { fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.012em' } : undefined}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function DrillSection({ eyebrow, rows }) {
+  return (
+    <div className="mt-4">
+      <p className="text-[10px] font-bold tracking-widest font-mono uppercase text-ink-muted mb-2">{eyebrow}</p>
+      <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+        {rows.map((r, i) => <DrillRow key={i} label={r.label} value={r.value} big={r.big} />)}
+      </div>
+    </div>
+  );
+}
+
+function HistoryDrillDrawer({ s, prevS, onClose, onEditWeek, onDownload }) {
+  const drawerRef = useFocusTrap({ onEscape: onClose });
+  if (!s) return null;
+
+  const st = deriveStatus(s);
+  const isDraft = st === 'draft';
+  const isUnlocked = st === 'unlocked';
+  const isSubmitted = st === 'submitted';
+
+  const f = extractFields(s);
+  const prevF = prevS ? extractFields(prevS) : null;
+  const api = getSubmissionAPI(s);
+  const apps = f.applicationsSold ?? 0;
+  const cis = f.ciConducted ?? 0;
+  const dials = dialsSum(s);
+  const note = submissionNote(s);
+  const overall = f.overallRating || 0;
+
+  const prevApi = prevS ? getSubmissionAPI(prevS) : null;
+  const heroKpis = [
+    { eye: 'API',   value: fmtTtdFull(api), delta: prevApi !== null ? api - prevApi : null, isCurrency: true, tone: 'text-primary' },
+    { eye: 'APPS',  value: apps,            delta: prevF ? apps - (prevF.applicationsSold ?? 0) : null, tone: 'text-gold-ink' },
+    { eye: 'CIs',   value: cis,             delta: prevF ? cis - (prevF.ciConducted ?? 0) : null, tone: 'text-ink' },
+    { eye: 'DIALS', value: dials,           delta: prevS ? dials - dialsSum(prevS) : null, tone: 'text-ink' },
+  ];
+
+  const eyebrow = isUnlocked
+    ? `UNLOCKED${s.unlockedByName ? ` BY ${s.unlockedByName.toUpperCase()}` : ''}`
+    : isDraft ? 'DRAFT · NOT SUBMITTED' : 'SUBMITTED';
+  const eyebrowColor = isSubmitted ? 'text-primary' : 'text-warning-ink';
+
+  const avgPolicy = apps > 0 ? api / apps : 0;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-ink/20" aria-hidden="true" onClick={onClose} />
+      <div
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="history-drill-title"
+        className="fixed top-0 right-0 h-full z-50 w-full sm:w-[440px] max-w-full bg-card shadow-2xl flex flex-col"
+      >
+        {/* Close strip */}
+        <div className="flex justify-end px-4 pt-4 shrink-0">
+          <button
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full border border-border bg-surface-muted text-xs font-bold text-ink hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <X size={14} aria-hidden="true" /> Close
+          </button>
+        </div>
+
+        {/* Header */}
+        <div className="px-5 pt-2 pb-4 border-b border-border shrink-0">
+          <p className={`text-[10px] font-bold tracking-widest font-mono uppercase ${eyebrowColor}`}>{eyebrow}</p>
+          <h2 id="history-drill-title" className="text-xl font-bold text-ink mt-1" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.018em' }}>
+            {weekLabel(s)}
+          </h2>
+          {s.weekStarting && <p className="text-xs text-ink-muted font-mono mt-0.5">{s.weekStarting}</p>}
+          {note && <p className="text-xs text-ink-muted italic mt-2 leading-relaxed">“{note}”</p>}
+
+          {/* Hero KPI 2x2 with deltas */}
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            {heroKpis.map((k, i) => (
+              <div key={i} className="p-3 rounded-xl bg-surface-muted border border-border">
+                <div className="flex items-center justify-between">
+                  <span className={`text-[9px] font-bold tracking-widest font-mono uppercase ${k.tone}`}>{k.eye}</span>
+                  {k.delta !== null && k.delta !== 0 && (
+                    <span className={`text-[8px] font-bold font-mono px-1 rounded-sm ${k.delta > 0 ? 'bg-success/15 text-success-ink' : 'bg-warning/15 text-warning-ink'}`}>
+                      {k.delta > 0 ? '▲' : '▼'} {k.isCurrency ? fmtTtdShort(Math.abs(k.delta)) : Math.abs(k.delta)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-lg font-bold text-ink mt-1.5 leading-none" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.022em' }}>
+                  {k.value}
+                </p>
+                <p className="text-[9px] text-ink-muted font-mono mt-1">vs prev week</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Scrollable sections */}
+        <div className="flex-1 overflow-y-auto px-5 pb-5">
+          <DrillSection eyebrow="Production" rows={[
+            { label: 'New business apps', value: apps || '—' },
+            { label: 'New business API',  value: api > 0 ? fmtTtdFull(api) : '—', big: true },
+            { label: 'Lives sold',        value: (f.livesSold ?? 0) || '—' },
+            { label: 'Avg policy size',   value: avgPolicy > 0 ? fmtTtdFull(avgPolicy) : '—' },
+          ]} />
+          <DrillSection eyebrow="Activity" rows={[
+            { label: 'Total dials',        value: dials || '—' },
+            { label: 'Referral calls',     value: (parseInt(s.referralCalls) || 0) || '—' },
+            { label: 'Follow-up calls',    value: (parseInt(s.followUpCalls) || 0) || '—' },
+            { label: 'Cold calls',         value: (parseInt(s.coldCalls) || 0) || '—' },
+            { label: 'Seminar/tradeshow',  value: (parseInt(s.seminarTradeshowCalls) || 0) || '—' },
+            { label: 'Service calls',      value: (parseInt(s.serviceCalls) || 0) || '—' },
+            { label: 'Tel contacts',       value: (f.telContacts ?? 0) || '—' },
+            { label: 'F2F contacts',       value: (f.f2fContacts ?? 0) || '—' },
+          ]} />
+          <DrillSection eyebrow="Interviews" rows={[
+            { label: 'FFIs scheduled',  value: (f.ffisScheduled ?? 0) || '—' },
+            { label: 'FFIs conducted',  value: (f.ffiConducted ?? 0) || '—' },
+            { label: 'New CIs booked',  value: (f.newCIBooked ?? 0) || '—' },
+            { label: 'Old CIs booked',  value: (f.oldCIBooked ?? 0) || '—' },
+            { label: 'CIs conducted',   value: cis || '—' },
+          ]} />
+          {overall > 0 && (
+            <DrillSection eyebrow="Reflection" rows={[
+              { label: 'Planning',        value: f.planningEffectiveness ? `${f.planningEffectiveness}/10` : '—' },
+              { label: 'Time management', value: f.timeManagement ? `${f.timeManagement}/10` : '—' },
+              { label: 'Sales',           value: f.salesPerformance ? `${f.salesPerformance}/10` : '—' },
+              { label: 'Prospecting',     value: f.prospectingEffort ? `${f.prospectingEffort}/10` : '—' },
+              { label: 'Overall',         value: `${overall}/10`, big: true },
+            ]} />
+          )}
+          {(f.targetAPI > 0 || f.targetAppsSold > 0 || f.goalNotes) && (
+            <DrillSection eyebrow="Next week goals set" rows={[
+              { label: 'Target apps', value: (f.targetAppsSold ?? 0) || '—' },
+              { label: 'Target API',  value: f.targetAPI > 0 ? fmtTtdFull(f.targetAPI) : '—', big: true },
+              ...(f.goalNotes ? [{ label: 'Goal notes', value: f.goalNotes }] : []),
+            ]} />
+          )}
+        </div>
+
+        {/* Status-driven footer CTA */}
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-border bg-surface-muted shrink-0" data-testid="history-drill-footer">
+          {isSubmitted && (
+            <>
+              <p className="text-xs text-ink-muted leading-snug">Locked record · download a copy</p>
+              {onDownload && (
+                <button
+                  type="button"
+                  onClick={() => { onDownload(); onClose(); }}
+                  data-testid="drill-cta-download"
+                  className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-bold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <Download size={15} aria-hidden="true" /> Download PDF
+                </button>
+              )}
+            </>
+          )}
+          {isDraft && (
+            <>
+              <p className="text-xs text-ink-muted leading-snug">Draft saved · resume any time</p>
+              {onEditWeek && (
+                <button
+                  type="button"
+                  onClick={() => { onEditWeek(s.weekStarting, s); onClose(); }}
+                  data-testid="drill-cta-edit"
+                  className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-bold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  Continue editing <ArrowRight size={15} aria-hidden="true" />
+                </button>
+              )}
+            </>
+          )}
+          {isUnlocked && (
+            <>
+              <p className="text-xs text-warning-ink leading-snug">Manager unlocked this week · update &amp; resubmit</p>
+              {onEditWeek && (
+                <button
+                  type="button"
+                  onClick={() => { onEditWeek(s.weekStarting, s); onClose(); }}
+                  data-testid="drill-cta-edit"
+                  className="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-lg bg-warning text-white text-sm font-bold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning"
+                >
+                  Edit &amp; resubmit <ArrowRight size={15} aria-hidden="true" />
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── HistoryTab (default export) ───────────────────────────────────────────────
-export default function HistoryTab({ submissions, onView, loading, onDownload, generating, weeklyTarget = 4800, onStartReport }) {
+export default function HistoryTab({ submissions, loading, onDownload, generating, weeklyTarget = 4800, onStartReport, onEditWeek }) {
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterMonth, setFilterMonth]   = useState('all');
+  const [awardOnly, setAwardOnly]       = useState(false);
+  const [search, setSearch]             = useState('');
+  const [drillSub, setDrillSub]         = useState(null);
+
   const thisYear = new Date().getFullYear();
 
+  // Years available from the loaded submissions (desc), always including this year.
+  const years = useMemo(() => {
+    const set = new Set([thisYear]);
+    for (const s of submissions ?? []) {
+      const y = parseInt(s.weekStarting?.slice(0, 4), 10);
+      if (y) set.add(y);
+    }
+    return [...set].sort((a, b) => b - a);
+  }, [submissions, thisYear]);
+
+  const [filterYear, setFilterYear] = useState(thisYear);
+
   const anchor = useMemo(
-    () => computeAnchor(submissions ?? [], thisYear, weeklyTarget),
-    [submissions, thisYear, weeklyTarget]
+    () => computeAnchor(submissions ?? [], filterYear, weeklyTarget),
+    [submissions, filterYear, weeklyTarget]
   );
 
   // Sort submissions by weekStarting descending (most recent first)
@@ -457,21 +818,56 @@ export default function HistoryTab({ submissions, onView, loading, onDownload, g
     [submissions]
   );
 
-  const filtered = useMemo(() => {
-    if (filterStatus === 'all') return sorted;
-    if (filterStatus === 'unlocked') return sorted.filter(s => !!s.unlockedBy);
-    if (filterStatus === 'submitted') return sorted.filter(s => s.status === 'submitted' && !s.unlockedBy);
-    return sorted.filter(s => s.status !== 'submitted' && !s.unlockedBy);
-  }, [sorted, filterStatus]);
+  // Best-week / award-week / streak-week derivations for the SELECTED year.
+  const yearSubs = useMemo(
+    () => sorted.filter(s => s.weekStarting?.startsWith(String(filterYear))),
+    [sorted, filterYear]
+  );
+  const bestWeekWs = useMemo(() => {
+    const submitted = yearSubs.filter(s => s.status === 'submitted' && !s.unlockedBy);
+    if (submitted.length === 0) return null;
+    const best = submitted.reduce((a, b) => getSubmissionAPI(b) > getSubmissionAPI(a) ? b : a, submitted[0]);
+    return getSubmissionAPI(best) > 0 ? best.weekStarting : null;
+  }, [yearSubs]);
+  const awardWeekSet = useMemo(
+    () => new Set(yearSubs.filter(s => isAwardWeek(s, weeklyTarget)).map(s => s.weekStarting)),
+    [yearSubs, weeklyTarget]
+  );
+  const streakWeekSet = useMemo(
+    () => new Set(longestStreakWeeks(submissions ?? [], filterYear)),
+    [submissions, filterYear]
+  );
+
+  // Base scope (year + month + award + search) — status counts computed on top.
+  const scoped = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return sorted.filter(s => {
+      if (!s.weekStarting?.startsWith(String(filterYear))) return false;
+      if (filterMonth !== 'all' && s.weekStarting.slice(5, 7) !== filterMonth) return false;
+      if (awardOnly && !isAwardWeek(s, weeklyTarget)) return false;
+      if (q) {
+        const hay = `${submissionNote(s)} ${extractFields(s).goalNotes || ''} ${s.weekStarting} ${weekLabel(s)}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [sorted, filterYear, filterMonth, awardOnly, search, weeklyTarget]);
 
   const counts = useMemo(() => ({
-    all: sorted.length,
-    submitted: sorted.filter(s => s.status === 'submitted' && !s.unlockedBy).length,
-    draft: sorted.filter(s => s.status !== 'submitted' && !s.unlockedBy).length,
-    unlocked: sorted.filter(s => !!s.unlockedBy).length,
-  }), [sorted]);
+    all: scoped.length,
+    submitted: scoped.filter(s => s.status === 'submitted' && !s.unlockedBy).length,
+    draft: scoped.filter(s => s.status !== 'submitted' && !s.unlockedBy).length,
+    unlocked: scoped.filter(s => !!s.unlockedBy).length,
+  }), [scoped]);
 
-  // Build prevS map — for each submission find the immediately previous one by weekStarting
+  const filtered = useMemo(() => {
+    if (filterStatus === 'all') return scoped;
+    if (filterStatus === 'unlocked') return scoped.filter(s => !!s.unlockedBy);
+    if (filterStatus === 'submitted') return scoped.filter(s => s.status === 'submitted' && !s.unlockedBy);
+    return scoped.filter(s => s.status !== 'submitted' && !s.unlockedBy);
+  }, [scoped, filterStatus]);
+
+  // Build prevS map — immediately previous submission by weekStarting
   const prevSMap = useMemo(() => {
     const asc = [...sorted].reverse();
     const map = {};
@@ -527,30 +923,49 @@ export default function HistoryTab({ submissions, onView, loading, onDownload, g
   return (
     <div className="flex flex-col gap-4">
       {/* Anchor strip */}
-      <HistoryAnchorStrip anchor={anchor} year={thisYear} weeklyTarget={weeklyTarget} />
+      <HistoryAnchorStrip anchor={anchor} year={filterYear} weeklyTarget={weeklyTarget} />
 
       {/* Heatmap */}
-      <YearHeatmap submissions={submissions} year={thisYear} weeklyTarget={weeklyTarget} />
+      <YearHeatmap
+        submissions={yearSubs}
+        year={filterYear}
+        weeklyTarget={weeklyTarget}
+        bestWeekWs={bestWeekWs}
+        awardWeekSet={awardWeekSet}
+        streakWeekSet={streakWeekSet}
+        longestStreak={anchor.longestStreak}
+      />
 
       {/* Filter + download row */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <HistoryFilterRow activeFilter={filterStatus} setFilter={setFilterStatus} counts={counts} />
-        <div className="ml-auto">
-          <button
-            onClick={onDownload}
-            disabled={generating}
-            className="flex items-center gap-2 min-h-[36px] px-4 rounded-lg border border-primary text-primary text-xs font-bold hover:bg-primary/5 transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            {generating ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-            {generating ? 'Generating…' : 'Download report'}
-          </button>
-        </div>
+      <div className="flex items-start gap-2 flex-wrap">
+        <HistoryFilterRow
+          activeFilter={filterStatus}
+          setFilter={setFilterStatus}
+          counts={counts}
+          year={filterYear}
+          setYear={setFilterYear}
+          years={years}
+          month={filterMonth}
+          setMonth={setFilterMonth}
+          awardOnly={awardOnly}
+          setAwardOnly={setAwardOnly}
+          search={search}
+          setSearch={setSearch}
+        />
+        <button
+          onClick={onDownload}
+          disabled={generating}
+          className="flex items-center gap-2 min-h-[44px] px-4 rounded-lg border border-primary text-primary text-xs font-bold hover:bg-primary/5 transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          {generating ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+          {generating ? 'Generating…' : 'Download report'}
+        </button>
       </div>
 
       {/* Week cards */}
       {filtered.length === 0 ? (
         <div className="card text-center py-8">
-          <p className="text-sm text-ink-muted">No {filterStatus} submissions.</p>
+          <p className="text-sm text-ink-muted">No matching submissions.</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -562,11 +977,24 @@ export default function HistoryTab({ submissions, onView, loading, onDownload, g
                 s={s}
                 prevS={prevSMap[key]}
                 sparkValues={sparkMap[key]}
-                onClick={() => onView(s)}
+                isBest={s.weekStarting === bestWeekWs}
+                isAward={awardWeekSet.has(s.weekStarting)}
+                onClick={() => setDrillSub(s)}
               />
             );
           })}
         </div>
+      )}
+
+      {/* Drill drawer */}
+      {drillSub && (
+        <HistoryDrillDrawer
+          s={drillSub}
+          prevS={prevSMap[drillSub.id ?? drillSub.weekStarting]}
+          onClose={() => setDrillSub(null)}
+          onEditWeek={onEditWeek}
+          onDownload={onDownload}
+        />
       )}
     </div>
   );
