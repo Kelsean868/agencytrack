@@ -439,7 +439,7 @@ export const LEGS = [
   {
     id: 't2-campaign-standings',
     role: 'branch_manager',
-    desc: "BM Campaigns: expand 'Staging Sprint — Qualify' → agent-1 tier Gold + projected TTD 10,000; expand 'Staging Placement Dash' → agent-2 projected TTD 375 (×0.25 gate). Captures console/network on mismatch (orchestrator pre-finding: standings may render TTD 0).",
+    desc: "BM Campaigns: expand 'Staging Sprint — Qualify' → agent-1 API 122,000 + tier Gold + projected TTD 12,500 (cash 10,000 + voucher 2,500 combined, ×1.0 gate); expand 'Staging Placement Dash' → agent-2 projected TTD 375 (1,500 ×0.25 gate).",
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser);
       try {
@@ -455,7 +455,10 @@ export const LEGS = [
         await p.waitForTimeout(2000);
         const qualifyTxt = await scopeText(p, 'main');
         const a1Gold = /Staging Agent One[\s\S]{0,140}\bGold\b/i.test(qualifyTxt);
-        const a1Payout = /Staging Agent One[\s\S]{0,200}TTD\s*10,000/i.test(qualifyTxt);
+        // Standings PROJECTED combines cash + voucher (10,000 + 2,500), both
+        // gate-scaled ×1.0 — assert API 122,000 and the combined 12,500.
+        const a1Api = /Staging Agent One[\s\S]{0,140}TTD\s*122,000/i.test(qualifyTxt);
+        const a1Payout = a1Api && /Staging Agent One[\s\S]{0,260}TTD\s*12,500/i.test(qualifyTxt);
 
         // Expand Placement and read agent-2 projected 375.
         await p.getByRole('button', { name: /Staging Placement Dash/i }).first().click({ timeout: 10_000 }).catch(() => {});
@@ -471,14 +474,14 @@ export const LEGS = [
           const consoleErrs = ctx.capture.consoleMessages.filter((m) => m.type === 'error').map((m) => m.text.slice(0, 160));
           const netFails = ctx.capture.networkFailures.map((n) => `${n.failure}:${n.url.slice(0, 100)}`);
           throw new Error(
-            `CAMPAIGN STANDINGS BUG — expected: agent-1 Gold/TTD 10,000 (got Gold=${a1Gold}, 10k=${a1Payout}); `
+            `CAMPAIGN STANDINGS BUG — expected: agent-1 API 122,000 + Gold + projected 12,500 (got Gold=${a1Gold}, projected=${a1Payout}); `
             + `agent-2 TTD 375 (got=${a2Payout}). Standings="${stand}". `
             + `console.errors=${JSON.stringify(consoleErrs)}; network.failures=${JSON.stringify(netFails)}.`,
           );
         }
         await shot(p, 't2-campaign-standings');
         assertLegHygiene(ctx);
-        return 'Qualify: agent-1 Gold / TTD 10,000; Placement: agent-2 TTD 375 (×0.25 gate) — standings verified.';
+        return 'Qualify: agent-1 API 122,000 / Gold / projected TTD 12,500 (10,000 cash + 2,500 voucher, ×1.0 gate); Placement: agent-2 TTD 375 (1,500 ×0.25 gate) — standings verified.';
       } finally {
         await ctx.context.close();
       }

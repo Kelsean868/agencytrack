@@ -186,7 +186,12 @@ export async function getCampaignSubmissions(tenantId, startDate, endDate, scope
     where('weekStarting', '<=', endDate),
   ];
   const scoped = Boolean(scope.agentId || scope.unitId || scope.branchId);
-  if (scope.agentId)       clauses.push(where('agentId', '==', scope.agentId));
+  if (scope.agentId) {
+    // The only agentId composite is (agentId ASC, weekStarting DESC); a bare
+    // equality+range query demands the ASC pairing and throws requires-index.
+    // Explicit desc ordering rides the existing composite — no index change.
+    clauses.push(where('agentId', '==', scope.agentId), orderBy('weekStarting', 'desc'));
+  }
   else if (scope.unitId)   clauses.push(where('unitId', '==', scope.unitId));
   else if (scope.branchId) clauses.push(where('branchId', '==', scope.branchId));
   else clauses.push(where('status', '==', 'submitted'));

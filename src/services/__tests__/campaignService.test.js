@@ -58,10 +58,18 @@ describe('getCampaignSubmissions scoping', () => {
     expect(whereCalls()).toContainEqual({ field: 'unitId', op: '==', value: 'um-9' });
   });
 
-  it('agent scope: agentId equality clause', async () => {
+  it('agent scope: agentId equality clause + weekStarting desc orderBy (rides the existing agentId+weekStarting DESC composite)', async () => {
     hoisted.mockGetDocs.mockResolvedValue(makeSnap());
     await getCampaignSubmissions('t1', '2026-05-03', '2026-08-01', { agentId: 'a-1' });
     expect(whereCalls()).toContainEqual({ field: 'agentId', op: '==', value: 'a-1' });
+    expect(hoisted.mockOrderBy).toHaveBeenCalledWith('weekStarting', 'desc');
+  });
+
+  it('unit/branch scopes do NOT add orderBy (their composites are ASC)', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeSnap());
+    await getCampaignSubmissions('t1', '2026-05-03', '2026-08-01', { branchId: 'b-1' });
+    await getCampaignSubmissions('t1', '2026-05-03', '2026-08-01', { unitId: 'u-1' });
+    expect(hoisted.mockOrderBy).not.toHaveBeenCalled();
   });
 
   it('unscoped (TA/SM/PA): keeps the server-side status==submitted clause', async () => {
