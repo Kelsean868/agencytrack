@@ -1430,6 +1430,77 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // ── Tier-3 3.2: planner appointments (agent Planner + manager Team Planner) ──
+      // /tenants/{tid}/appointments/{apptId}  (auto-id)
+      // FLAT tenant collection (repo idiom: prospectInfo/policies), NOT the
+      // handoff's per-agent subcollection — the Team Planner needs cross-agent
+      // queries, and flat + denormalized scope fields avoids collectionGroup
+      // rules pitfalls. Owner (agent/producing manager) full write on OWN
+      // appointments; upline READ-ONLY (UM own unit, BM own branch, SM+/TA
+      // tenant-wide). No hard deletes — cancelled/postponed keep their doc
+      // (status flip + rescheduledToId link), per the planner handoff.
+      match /appointments/{apptId} {
+
+        function callerBranchId(tenantId) {
+          return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.branchId;
+        }
+
+        function validApptWrite() {
+          let d = request.resource.data;
+          return d.tenantId == tenantId
+            && d.agentId == request.auth.uid
+            && d.keys().hasAll([
+                 'tenantId', 'agentId', 'agentUnitId', 'agentBranchId',
+                 'date', 'startTime', 'durationMin', 'type', 'status',
+                 'note', 'createdAt', 'updatedAt'
+               ])
+            && d.date is string && d.date.matches('\\d{4}-\\d{2}-\\d{2}')
+            && d.startTime is string
+            && d.durationMin is int && d.durationMin > 0 && d.durationMin <= 720
+            && d.type in ['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE', 'FREE']
+            && d.status in ['scheduled', 'confirmed', 'kept', 'cancelled', 'postponed', 'done']
+            && d.note is string && d.note.size() <= 2000
+            && (!('apiAmount' in d) || d.apiAmount == null || (d.apiAmount is number && d.apiAmount >= 0));
+        }
+
+        allow create: if isSignedIn()
+          && getTenantId() == tenantId
+          && (isAgent() || isProducingManager())
+          && validApptWrite();
+
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.agentId == request.auth.uid
+          && validApptWrite();
+
+        allow get: if isSignedIn()
+          && getTenantId() == tenantId
+          && (resource.data.agentId == request.auth.uid
+              || getRole() in ['sales_manager', 'tenant_admin', 'platform_admin']
+              || (getRole() == 'branch_manager'
+                  && callerBranchId(tenantId) == resource.data.agentBranchId)
+              || (getRole() == 'unit_manager'
+                  && resource.data.agentUnitId == request.auth.uid));
+
+        // Query-safe split list arms (mirrors recruitingCandidates):
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.agentId == request.auth.uid;
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() == 'unit_manager'
+          && resource.data.agentUnitId == request.auth.uid;
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() == 'branch_manager'
+          && resource.data.agentBranchId == callerBranchId(tenantId);
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() in ['sales_manager', 'tenant_admin', 'platform_admin'];
+
+        allow delete: if false;
+      }
+
       // ── I1.3c-ii: per-manager activity standard overrides ────────────────────
       // /tenants/{tid}/managerActivityStandardOverrides/{managerId}
       // Fields: tenantId, managerId, updatedBy, updatedAt, + partial activity map.
