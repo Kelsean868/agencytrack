@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
+import useFocusTrap from '../../../hooks/useFocusTrap';
 import { useAuth } from '../../../context/AuthContext';
 import { formatCurrency } from '../../../utils/formatters';
 import { PROSPECTING_SOURCE_LABELS } from '../../../services/prospectInfoService';
@@ -38,6 +39,8 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
   const { tenantId, user } = useAuth();
   const today = getTodayTT();
 
+  const modalRef = useFocusTrap({ onEscape: onClose });
+
   const [history, setHistory] = useState(null);
   const [histError, setHistError] = useState(false);
 
@@ -55,13 +58,6 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
       .catch(() => { if (alive) { setHistory([]); setHistError(true); } });
     return () => { alive = false; };
   }, [tenantId, policy.id, user?.uid]);
-
-  // Keyboard close (Escape) — backdrop is a visual scrim only.
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   const t = policyToken(policy);
   const nodes = lifecycleNodes(policy);
@@ -89,6 +85,7 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
       data-testid="policy-drawer-backdrop"
     >
       <div
+        ref={modalRef}
         className="bg-card w-full sm:max-w-md sm:h-full rounded-t-2xl sm:rounded-none flex flex-col max-h-[90vh] sm:max-h-none overflow-y-auto shadow-lg"
         role="dialog"
         aria-modal="true"

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   X, Download, Loader2,
-  ClipboardList, FileText, Star, History, UserCircle,
+  ClipboardList, FileText, Star, History, UserCircle, Settings,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -25,10 +25,10 @@ import { getWeeklyPlan } from '../../services/weeklyPlanService';
 import { prefetchGamePlanYearDocs } from '../../services/gamePlanPrefetch';
 import CareerPortal from '../profile/CareerPortal';
 import ProfileScreen from '../profile/ProfileScreen';
+import SettingsScreen from '../settings/SettingsScreen';
 import ReportRangeModal from '../ui/ReportRangeModal';
 import ProductionLeaderboardSurface from '../leaderboard/ProductionLeaderboardSurface';
 import AgentAwardsPanel from '../awards/AgentAwardsPanel';
-import SubmissionViewer from '../submissions/SubmissionViewer';
 import HistoryTab from '../submissions/HistoryTab';
 import { computeEarnedBadges } from '../gamification/BadgeGrid';
 import { buildActivityEvents } from '../../utils/buildActivityEvents';
@@ -46,16 +46,26 @@ import QuickAddMenu from '../shell/QuickAddMenu';
 import { getQuickAddActions } from '../shell/quickAddConfig';
 import AgentDashboardHomeV2 from './HomeV2';
 import NewAgentEmptyState from './NewAgentEmptyState';
-import ComingSoonPanel from '../ui/ComingSoonPanel';
+import AgentPlannerPanel from '../planner/AgentPlannerPanel';
+import ProspectInfoPanel from '../agent/ProspectInfoPanel';
 import { getNavConfig, tabTitleFromItems } from '../shell/navConfig';
 import usePinnedNav from '../../hooks/usePinnedNav';
+import useNavOrder from '../../hooks/useNavOrder';
 import useMenuLayout from '../../hooks/useMenuLayout';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
+import GoalsCelebration from '../goals/GoalsCelebration';
+import { resolveGoalsCelebration } from '../../lib/celebrations';
+import {
+  getGoalsCelebrated,
+  setGoalsAnnualCelebrated,
+  setGoalsStreakCelebratedMax,
+} from '../../lib/celebrationPrefs';
 import DerivedIncomePanel from '../goals/DerivedIncomePanel';
 import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
 import FinancingSelfView from '../financing/FinancingSelfView';
+import AgentReportView from '../profile/AgentReportView';
 
 // Agent sidebar nav is centralized in shell/navConfig.js (Nav redesign PR-1) —
 // resolved per-render via getNavConfig('agent', { showDailyCapture }) so the
@@ -83,11 +93,17 @@ const BOTTOM_NAV = [
 // mobile home. Routes to the existing activeTab === 'profile' screen, which hosts
 // its own Sign Out.
 const PROFILE_NAV_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Icon: UserCircle, sectionLabel: 'Account' };
+// Settings v2 (Tier 2 · 2.4) — mobile More-drawer entry (desktop reaches Settings
+// via the sidebar-foot gear). No sectionLabel so it joins Profile's Account group.
+const SETTINGS_NAV_ITEM = { id: 'settings', label: 'Settings', tabId: 'settings', Icon: Settings };
 
 export default function AgentDashboard() {
-  const { user, userProfile, role, tenantId } = useAuth();
+  const { user, userProfile, role, tenantId, branchId } = useAuth();
 
   const [activeTab, setActiveTab]             = useState('dashboard');
+  // Planner → Daily Capture handoff seed (screen 9). Set when the agent taps
+  // "Carry into today's log"; blank-fills DailyCaptureV2 for today, then cleared.
+  const [plannerSeed, setPlannerSeed]         = useState(null);
   const [prefillPolicy, setPrefillPolicy]     = useState(null);
   const [policyLedgerFilter, setPolicyLedgerFilter] = useState(null);
   const [showWizard, setShowWizard]           = useState(false);
@@ -97,7 +113,6 @@ export default function AgentDashboard() {
   const [showDailyModal, setShowDailyModal]   = useState(false);
   const [showQuickAdd,   setShowQuickAdd]     = useState(false);
   const [unlockDismissed, setUnlockDismissed] = useState(false);
-  const [viewingSubmission, setViewingSubmission] = useState(null);
   const [todayDailyEntry, setTodayDailyEntry] = useState(null);
   const [todayDailyChecked, setTodayDailyChecked] = useState(false);
 
@@ -116,6 +131,9 @@ export default function AgentDashboard() {
   const [hierarchy, setHierarchy]               = useState(null);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [hierarchyError, setHierarchyError]     = useState(null);
+  // Goals-surface celebration takeover (annual hit / weekly-target streak).
+  // null = none showing. Fires once per marker (persisted per uid+year).
+  const [goalsCelebration, setGoalsCelebration] = useState(null);
   const [showWelcome, setShowWelcome]           = useState(false);
   const [submissionsError, setSubmissionsError] = useState(null);
   // S3b — committed plan + daily docs for the Standard drawer's plan-vs-actual rows.
@@ -158,7 +176,8 @@ export default function AgentDashboard() {
       const derived = navItems.filter(
         (item) => item.tabId && !BOTTOM_NAV.find((b) => b.tabId === item.tabId)
       );
-      return derived.some((i) => i.tabId === 'profile') ? derived : [...derived, PROFILE_NAV_ITEM];
+      const withProfile = derived.some((i) => i.tabId === 'profile') ? derived : [...derived, PROFILE_NAV_ITEM];
+      return withProfile.some((i) => i.tabId === 'settings') ? withProfile : [...withProfile, SETTINGS_NAV_ITEM];
     },
     [navItems]
   );
@@ -178,6 +197,11 @@ export default function AgentDashboard() {
   // ★ Pinned-nav (Nav redesign PR-2) — seeds + persistence + pin/unpin.
   const { pinnedItems, isPinned, pin, unpin } = usePinnedNav({
     tenantId, uid: user?.uid, configKey: 'agent', navItems,
+  });
+
+  // ★ Sidebar drag-reorder (Fable Tier 1 · 1.4) — persisted per-config order.
+  const { orderIds: navOrderIds, reorder: onNavReorder } = useNavOrder({
+    tenantId, uid: user?.uid, configKey: 'agent',
   });
 
   // Menu layout (Nav redesign PR-4) — agents are clamped to `pinned` at the
@@ -308,8 +332,11 @@ export default function AgentDashboard() {
     }
   }, [tenantId, user?.uid]);
 
+  // Load own policies lazily on the Commission tab AND the v2 home ('dashboard')
+  // — the home DeliveryStripCard needs the agent's settled/undelivered policies.
+  // Fires at most once (the `policies === null` guard); reuses the same fetch.
   useEffect(() => {
-    if (activeTab === 'commission' && policies === null) loadPolicies();
+    if ((activeTab === 'commission' || activeTab === 'dashboard') && policies === null) loadPolicies();
   }, [activeTab, loadPolicies, policies]);
 
   // Resolved personal annual API: agent's own commitment if set, else the
@@ -398,7 +425,11 @@ export default function AgentDashboard() {
         const subsMap = {};
         await Promise.all(
           camps.map(async (c) => {
-            const subs = await getCampaignSubmissions(tenantId, c.startDate, c.endDate).catch(() => []);
+            // Own-scoped read: the submissions list rule only allows an agent
+            // query constrained to their own agentId. Progress renders from own
+            // rows; cross-agent ranks stay unavailable for agents by design.
+            const subs = await getCampaignSubmissions(tenantId, c.startDate, c.endDate, { agentId: user.uid })
+              .catch((e) => { console.error('[AgentDashboard] campaign submissions load failed:', e); return []; });
             subsMap[c.id] = subs;
           })
         );
@@ -453,6 +484,33 @@ export default function AgentDashboard() {
       })
       .finally(() => setHierarchyLoading(false));
   }, [user?.uid, tenantId, userProfile?.unitId]);
+
+  // Goals celebration trigger — evaluate once data is ready + the Goals tab is
+  // open. Fire-and-forget: persist the marker so each moment fires ONCE (annual
+  // per year, streak per milestone). resolveGoalsCelebration returns null on the
+  // next pass once the marker is set, so this never loops. Quarter is skip-
+  // logged (no per-quarter target in the hierarchy — see GoalsCelebration).
+  useEffect(() => {
+    if (activeTab !== 'goals' || hierarchyLoading || !hierarchy || !user?.uid) return;
+    if (goalsCelebration) return; // already showing one
+    const weeklyTarget = resolvedMinimums?.weeklyActivityFloors?.api ?? 4800;
+    const celebrated = getGoalsCelebrated(user.uid, thisYear);
+    const result = resolveGoalsCelebration({
+      hierarchy,
+      ytdTotals,
+      submissions: allSubmissions,
+      year: thisYear,
+      weeklyTarget,
+      celebrated,
+    });
+    if (!result) return;
+    if (result.type === 'annual') setGoalsAnnualCelebrated(user.uid, thisYear);
+    else if (result.type === 'streak') setGoalsStreakCelebratedMax(user.uid, thisYear, result.milestone);
+    setGoalsCelebration(result);
+  }, [
+    activeTab, hierarchyLoading, hierarchy, ytdTotals, allSubmissions,
+    user?.uid, thisYear, resolvedMinimums, goalsCelebration,
+  ]);
 
   // Unlock banner
   const showUnlockBanner =
@@ -534,8 +592,10 @@ export default function AgentDashboard() {
   if (showDailyModal) {
     return (
       <DailyCaptureV2
+        seedCounts={plannerSeed}
         onClose={() => {
           setShowDailyModal(false);
+          setPlannerSeed(null);
           refreshDailyEntry();
         }}
         onReviewSubmit={(week, draftHint) => {
@@ -564,7 +624,7 @@ export default function AgentDashboard() {
       onAction={handleAction}
       userProfile={userProfile}
       roleLabel={roleLabel}
-      topbarTitle={tabTitleFromItems(navItems, activeTab, activeTab === 'profile' ? 'Profile' : 'Dashboard')}
+      topbarTitle={tabTitleFromItems(navItems, activeTab, activeTab === 'settings' ? 'Settings' : activeTab === 'profile' ? 'Profile' : 'Dashboard')}
       topbarCrumb={(() => {
         const d = new Date();
         const weekday = d.toLocaleDateString('en-TT', { weekday: 'long' });
@@ -575,10 +635,13 @@ export default function AgentDashboard() {
       onSignOut={handleSignOut}
       onPullRefresh={PTR_AGENT_TABS.has(activeTab) ? onPullRefresh : undefined}
       navScopeId={user?.uid}
+      quickAddActions={getQuickAddActions('agent')}
       pinnedItems={pinnedItems}
       isPinned={isPinned}
       onPin={pin}
       onUnpin={unpin}
+      navOrderIds={navOrderIds}
+      onNavReorder={onNavReorder}
     >
       {/* Quick-Add FAB (desktop pencil) — opens popover on click. Hidden on
           mobile (<768px) via hidden md:flex in DailyFAB; the mobile center ＋
@@ -610,14 +673,6 @@ export default function AgentDashboard() {
         <ReportRangeModal
           onGenerate={handleReportGenerate}
           onClose={() => setReportModalOpen(false)}
-        />
-      )}
-
-      {/* Submission viewer drawer */}
-      {viewingSubmission && (
-        <SubmissionViewer
-          submission={viewingSubmission}
-          onClose={() => setViewingSubmission(null)}
         />
       )}
 
@@ -690,6 +745,7 @@ export default function AgentDashboard() {
             campaignsLoading={campaignsLoading}
             campaignSubs={campaignSubs}
             agentUid={user?.uid}
+            policies={policies}
             showDailyCTA={showDailyCTA}
             todayDailyChecked={todayDailyChecked}
             todayDailyEntry={todayDailyEntry}
@@ -757,8 +813,21 @@ export default function AgentDashboard() {
         )
       )}
 
-      {/* ── PROSPECT INFO (Joint-Call Prep) TAB ── */}
-      {activeTab === 'prospect-info' && <ComingSoonPanel label="Prospect Prep" />}
+      {/* ── PROSPECT INFO (Joint-Call Prep) TAB — un-gated item 3.5 ── */}
+      {activeTab === 'prospect-info' && <ProspectInfoPanel />}
+
+      {/* ── PLANNER TAB (item 3.2 — agent Planner & Scheduler) ── */}
+      {activeTab === 'planner' && (
+        <AgentPlannerPanel
+          tenantId={tenantId}
+          agentId={user?.uid}
+          agentUnitId={userProfile?.unitId ?? ''}
+          agentBranchId={branchId ?? ''}
+          callerRole={role}
+          weeklyFloors={resolvedMinimums?.weeklyActivityFloors}
+          onCarryToDaily={(seed) => { setPlannerSeed(seed); setShowDailyModal(true); }}
+        />
+      )}
 
       {/* ── POLICY LEDGER TAB ── */}
       {activeTab === 'policy-ledger' && (
@@ -825,6 +894,17 @@ export default function AgentDashboard() {
         </>
       )}
 
+      {/* Goals celebration takeover (annual hit / weekly-target streak) */}
+      {goalsCelebration && (
+        <GoalsCelebration
+          celebration={goalsCelebration}
+          annualTarget={Number(hierarchy?.personal?.api) || 0}
+          ytdApi={Number(ytdTotals?.api) || 0}
+          streak={goalsCelebration.type === 'streak' ? goalsCelebration.milestone : 0}
+          onClose={() => setGoalsCelebration(null)}
+        />
+      )}
+
       {/* ── COMMISSION TAB ── */}
       {activeTab === 'commission' && (
         <div className="flex flex-col gap-4">
@@ -854,7 +934,30 @@ export default function AgentDashboard() {
       {activeTab === 'persistency' && <AgentPersistencyTab onViewLapsedPolicies={handleOpenLapsedPolicies} />}
 
       {/* ── PRODUCTION REPORT TAB ── */}
-      {activeTab === 'production-report' && <ProductionReportTab userRole={role} />}
+      {activeTab === 'production-report' && (
+        <ProductionReportTab userRole={role} onDownloadPDF={handleOpenReportModal} generating={generating} />
+      )}
+
+      {/* ── REPORT TAB (Tier 1 · 1.2 — live twin of the Performance Report PDF) ── */}
+      {activeTab === 'agent-report' && (
+        <AgentReportView
+          layout="wide"
+          submissions={allSubmissions}
+          settlements={settlements}
+          goals={goals}
+          persistency={persistency}
+          ruleset={awardsRuleset}
+          agentProfile={userProfile}
+          displayName={displayName}
+          roleLabel={roleLabel}
+          loading={loading}
+          error={Boolean(submissionsError)}
+          onRetry={loadCoreData}
+          onDownloadPDF={handleOpenReportModal}
+          generating={generating}
+          now={now}
+        />
+      )}
 
       {/* ── FINANCING SELF-VIEW TAB (Track K · K9 — read-only, own uid) ── */}
       {activeTab === 'financing' && <FinancingSelfView tenantId={tenantId} subjectUid={user?.uid} />}
@@ -867,15 +970,28 @@ export default function AgentDashboard() {
         <ProfileScreen menuLayout={menuLayout} onMenuLayoutChange={setMenuLayout} />
       )}
 
+      {/* ── SETTINGS TAB (Tier 2 · 2.4) ── */}
+      {activeTab === 'settings' && (
+        <SettingsScreen
+          role={role}
+          roleLabel={roleLabel}
+          userProfile={userProfile}
+          tenantId={tenantId}
+          uid={user?.uid}
+          onOpenProfile={() => setActiveTab('profile')}
+        />
+      )}
+
       {/* ── HISTORY TAB ── */}
       {activeTab === 'history' && (
         <HistoryTab
           submissions={allSubmissions}
-          onView={setViewingSubmission}
           loading={loading}
           onDownload={handleOpenReportModal}
           generating={generating}
           weeklyTarget={resolvedMinimums?.weeklyActivityFloors?.api ?? 4800}
+          onStartReport={() => setShowWizard(true)}
+          onEditWeek={(weekStarting, sub) => openWizardForWeek(weekStarting, sub)}
         />
       )}
       </div>

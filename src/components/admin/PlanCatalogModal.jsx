@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Plus, Pencil, Trash2, CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
+import PanelSkeleton from '../ui/PanelSkeleton';
+import useFocusTrap from '../../hooks/useFocusTrap';
 import {
   getPolicyPlans,
   addPlan,
@@ -44,6 +46,7 @@ const EMPTY_PLAN_FORM = { name: '', class: 'whole_life', productLine: 'life' };
 const EMPTY_PROMOTE_FORM = { class: 'whole_life', productLine: 'life' };
 
 export default function PlanCatalogModal({ tenantId, onClose }) {
+  const modalRef = useFocusTrap({ onEscape: onClose });
   const [tab, setTab] = useState(0);
 
   const [plans, setPlans]               = useState([]);
@@ -184,6 +187,7 @@ export default function PlanCatalogModal({ tenantId, onClose }) {
 
   return (
     <div
+      ref={modalRef}
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
@@ -231,15 +235,20 @@ export default function PlanCatalogModal({ tenantId, onClose }) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
           {loadError && (
-            <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm">
-              <AlertCircle size={16} /> {loadError}
+            <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm flex-wrap">
+              <AlertCircle size={16} className="shrink-0" /> <span className="flex-1 min-w-[150px]">{loadError}</span>
+              <button
+                type="button"
+                onClick={load}
+                className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+              >
+                Retry
+              </button>
             </div>
           )}
 
           {loading && (
-            <div className="flex items-center gap-2 text-ink-muted text-sm py-6 justify-center">
-              <Loader2 size={16} className="animate-spin" /> Loading…
-            </div>
+            <PanelSkeleton variant="list" count={4} label="Loading plan catalog…" />
           )}
 
           {/* ── Active Plans tab ── */}

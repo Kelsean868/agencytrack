@@ -7,7 +7,7 @@
 // or a SHOWN value is missing/mis-valued, these fail.
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import FinancingSelfView from '../FinancingSelfView';
 import * as financingService from '../../../services/financingService';
 import { getProjectedBonus } from '../../../lib/financingProjectedBonus';
@@ -159,6 +159,40 @@ describe('FinancingSelfView — PRIVATE absence (falsifier)', () => {
   });
 });
 
+describe('FinancingSelfView — K9 paydown-arc hero', () => {
+  beforeEach(() => {
+    getProjectedBonus.mockResolvedValue(PROJECTED);
+  });
+
+  it('renders the glass hero with a projected clear date for a declining balance', async () => {
+    financingService.getFinancingTerms.mockResolvedValue(TERMS);
+    financingService.listFinancingMonths.mockResolvedValue([
+      { id: `${UID}_2026_01`, month: '2026_01', runningBalance: 6000, basisSource: 'settled-confirmed' },
+      { id: `${UID}_2026_02`, month: '2026_02', runningBalance: 4000, basisSource: 'settled-confirmed' },
+      { id: `${UID}_2026_03`, month: '2026_03', runningBalance: 2000, basisSource: 'settled-confirmed' },
+    ]);
+    render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
+    const hero = await screen.findByTestId('fsv-paydown-hero');
+    expect(hero).toBeInTheDocument();
+    expect(screen.getByTestId('fsv-paydown-headline').textContent).toMatch(/on track to clear/i);
+    // now-dot caption carries the live balance; a projected clear month is shown
+    expect(screen.getByTestId('fsv-paydown-now').textContent).toMatch(/2,000/);
+    expect(screen.getByTestId('fsv-paydown-clear').textContent).toMatch(/Projected clear ·\s*\w+/);
+  });
+
+  it('shows NO projected clear (honest copy, never NaN) for a flat balance', async () => {
+    financingService.getFinancingTerms.mockResolvedValue(TERMS);
+    financingService.listFinancingMonths.mockResolvedValue([
+      { id: `${UID}_2026_01`, month: '2026_01', runningBalance: 5000, basisSource: 'settled-confirmed' },
+      { id: `${UID}_2026_02`, month: '2026_02', runningBalance: 5000, basisSource: 'settled-confirmed' },
+    ]);
+    render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
+    await screen.findByTestId('fsv-paydown-hero');
+    expect(screen.getByTestId('fsv-paydown-clear').textContent).toMatch(/—/);
+    expect(screen.getByTestId('fsv-paydown-headline').textContent).not.toMatch(/NaN/);
+  });
+});
+
 describe('FinancingSelfView — reconciliation SHOWN path', () => {
   const RECON = {
     id: `${UID}_2026`,
@@ -254,6 +288,25 @@ describe('FinancingSelfView — single derived reconciliation year', () => {
       // the genuine error reached the outer catch (logged), not silently nulled —
       // value-level: the exact error object, not just "some console.error fired"
       expect(errSpy).toHaveBeenCalledWith('[FinancingSelfView] load failed', genuine);
+    } finally {
+      errSpy.mockRestore();
+    }
+  });
+
+  it('§1 states contract — the error card has a wired Retry that re-invokes the same load path', async () => {
+    financingService.getFinancingTerms.mockRejectedValueOnce(new Error('boom-terms'));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
+      const card = await screen.findByTestId('financing-self-view');
+      expect(card).toHaveAttribute('role', 'alert');
+      expect(financingService.getFinancingTerms).toHaveBeenCalledTimes(1);
+
+      financingService.getFinancingTerms.mockResolvedValueOnce({ ...TERMS, financingStatus: 'not_on_financing' });
+      fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+      await waitFor(() => expect(screen.getByText(/not on financing/i)).toBeInTheDocument());
+      expect(financingService.getFinancingTerms).toHaveBeenCalledTimes(2);
     } finally {
       errSpy.mockRestore();
     }

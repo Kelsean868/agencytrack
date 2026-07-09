@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Loader2, AlertCircle, ArrowLeft, Info, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PROSPECTING_SOURCES } from '../../services/prospectInfoService';
@@ -10,6 +10,7 @@ import { applyLedgerFilter, filterCounts, LEDGER_FILTERS } from '../../lib/polic
 import PipelineStrip from './policyLedger/PipelineStrip';
 import PolicyCard from './policyLedger/PolicyCard';
 import PolicyDrillDrawer from './policyLedger/PolicyDrillDrawer';
+import CampaignLensPanel from './policyLedger/CampaignLensPanel';
 
 const FREQ_MULT = { A: 1, S: 2, Q: 4, M: 12 };
 const FREQ_LABELS = { A: 'Annual', S: 'Semi-Annual', Q: 'Quarterly', M: 'Monthly' };
@@ -111,7 +112,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
   const [transitioning, setTransitioning] = useState(false);
   const [transitionError, setTransitionError] = useState(null);
 
-  useEffect(() => {
+  const loadLedger = useCallback(() => {
     if (!tenantId || !user?.uid) return;
     setLoading(true);
     Promise.all([
@@ -126,6 +127,8 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
       .catch((err) => setLoadError(err.message))
       .finally(() => setLoading(false));
   }, [tenantId, user?.uid]);
+
+  useEffect(() => { loadLedger(); }, [loadLedger]);
 
   useEffect(() => {
     if (initialForm) onPrefillConsumed?.();
@@ -246,8 +249,13 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
     const counts = filterCounts(policies);
     const visible = applyLedgerFilter(policies, { filter, search });
 
+    // §2 staggered-assemble — the drill drawer is a fixed-position overlay
+    // rendered outside the `.stagger` container (same pattern as GamePlanV2's
+    // modalsBlock split): it only opens on click, well after the one-shot
+    // mount-time stagger animation has finished.
     return (
-      <div className="flex flex-col gap-4" data-testid="policy-ledger-surface">
+      <>
+      <div className="flex flex-col gap-4 stagger" data-testid="policy-ledger-surface">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-ink">Policy Ledger</h2>
           <button
@@ -268,12 +276,19 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
         )}
 
         {loadError && (
-          <div className="card text-center py-12 flex flex-col items-center gap-3" data-testid="ledger-error">
+          <div role="alert" className="card text-center py-12 flex flex-col items-center gap-3" data-testid="ledger-error">
             <div className="w-11 h-11 rounded-xl bg-danger-tint text-danger-ink flex items-center justify-center">
               <AlertCircle size={20} />
             </div>
             <p className="font-display font-extrabold text-[15px] text-ink">Couldn’t load your ledger</p>
             <p className="text-xs text-ink-muted">{loadError}</p>
+            <button
+              type="button"
+              onClick={loadLedger}
+              className="mt-1 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-border text-sm font-semibold text-ink hover:bg-surface-muted transition-colors"
+            >
+              Retry
+            </button>
           </div>
         )}
 
@@ -295,6 +310,9 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
           <>
             {/* Tier 1 */}
             <PipelineStrip policies={policies} />
+
+            {/* Item 3.4 — campaign lens (flag-gated; renders null + no fetch when OFF) */}
+            <CampaignLensPanel policies={policies} />
 
             {/* Tier 2 — filter chips + search */}
             <div className="flex items-center gap-3 flex-wrap">
@@ -352,7 +370,9 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
             )}
           </>
         )}
+      </div>
 
+        {/* Drill drawer — outside `.stagger` (fixed-position overlay; see note above) */}
         {drawerPolicy && (
           <PolicyDrillDrawer
             policy={drawerPolicy}
@@ -362,13 +382,13 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
             transitionError={transitionError}
           />
         )}
-      </div>
+      </>
     );
   }
 
   // ── CREATE FORM (reused unchanged) ──
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 stagger">
       <div className="flex items-center gap-3">
         <button
           onClick={cancelCreate}

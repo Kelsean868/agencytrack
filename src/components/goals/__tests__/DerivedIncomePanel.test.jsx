@@ -1,7 +1,14 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import DerivedIncomePanel from '../DerivedIncomePanel';
+
+// §2 count-up — the annual/monthly/YTD income figures now animate via
+// useCountUp on mount. Mocked to the identity function so these tests keep
+// observing the exact final rendered state synchronously.
+vi.mock('../../../hooks/useCountUp', () => ({
+  useCountUp: (value) => value,
+}));
 
 const baseHierarchy = {
   personal: { api: 120000, apps: 60, persistency: 90 },

@@ -256,6 +256,28 @@ export function rankAgentsByApps(agentTotalsArray) {
  * Returns { submitted, total, percent } for the given week.
  * total = active agents in roster (provisioning excluded — caller passes filtered roster).
  */
+/**
+ * deriveProductionDataSource({ settlements })
+ *
+ * Honest data-source signal for the production-report views' DataSourceBadge.
+ * Returns 'confirmed' when the view's rows are backed by confirmed settlement
+ * records, 'estimated' otherwise (rows derived from submitted weekly reports).
+ *
+ * The three production-report views (Agent / Unit / Branch) currently load
+ * submissions + users only — they never fetch settlements (read-light rule) —
+ * so this resolves to 'estimated' for all of them today. Wiring the badge
+ * through this derivation (rather than a hardcoded string) makes it honest and
+ * ready to flip to 'confirmed' the moment a view actually loads settlement rows.
+ * The per-period settled-state UPGRADE (SETTLED when a specific period's rows
+ * come from confirmed settlements) is intentionally deferred — it would require
+ * a per-period settlements fetch these views avoid.
+ */
+export function deriveProductionDataSource({ settlements } = {}) {
+  return Array.isArray(settlements) && settlements.length > 0
+    ? 'confirmed'
+    : 'estimated';
+}
+
 export function computeComplianceStats(submissions, agentRoster, weekStarting) {
   const submitted = new Set(
     (submissions ?? [])

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { avatarColor, deriveInitials } from '../../lib/kiosk/utils';
 
-const SIZE_PX = { sm: 24, md: 32, lg: 48, tv: 60, aom: 200 };
+const SIZE_PX = { sm: 24, md: 32, lg: 48, tv: 60, xl: 80, hero: 150, aom: 200 };
 
 // Preload via Image API to detect load failure without attaching onError to the
 // rendered <img> element (which would trigger jsx-a11y/no-noninteractive-element-interactions).

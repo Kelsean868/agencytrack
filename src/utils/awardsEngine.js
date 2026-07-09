@@ -530,6 +530,57 @@ export function computeAtRiskStatus(award, { weeksElapsed, periodWeeks }) {
 }
 
 // ──────────────────────────────────────────────────────
+// computeAwardPace
+// Pace-to-qualify narrative for an award's primary (first) criterion.
+//
+// Derivation (§2.7 — honesty rule): avg-per-week = criterion.current ÷
+// weeksElapsed-in-period, where weeksElapsed is the SAME value getPeriodCtx
+// already produces for computeAtRiskStatus above. This is the only rate the
+// loaded data honestly supports — submissions are read-light here (the panel
+// does not carry a guaranteed per-week breakdown for every award's
+// aggregation window, since monthly/quarterly/annual/club windows all
+// differ), but "period-total ÷ elapsed-weeks" is always derivable the moment
+// weeksElapsed is known. This mirrors YTD-credit ÷ ISO-weeks-elapsed for the
+// annual/club case and generalizes to monthly/quarterly via the same
+// getPeriodCtx weeksElapsed.
+//
+// Only meaningful for cumulative (non-ratio) criteria: '%'-unit criteria
+// (e.g. persistency) are not a "per-week" quantity — dividing a persistency
+// average by elapsed weeks does not describe a real rate — so this returns
+// null for those, and callers render no pace narrative.
+//
+// award: a single award object (makeAward shape, criteria[0] is primary)
+// weeksElapsed: number, from getPeriodCtx(award.category, currentDate)
+// currentDate: Date (or parseable) — used only to project a qualify date
+// Returns null (no primary criterion, or a '%'-unit criterion) or:
+//   { avgPerWeek, unit, gap, weeksToQualify, hasPace, projectedDateISO }
+//   - weeksToQualify / projectedDateISO are null when avgPerWeek <= 0 (no
+//     pace yet) or when gap <= 0 (criterion already met) — callers render an
+//     honest "no pace yet" fallback rather than Infinity/NaN in either case.
+// ──────────────────────────────────────────────────────
+export function computeAwardPace(award, weeksElapsed, currentDate) {
+  const prim = award?.criteria?.[0];
+  if (!prim || prim.unit === '%') return null;
+
+  const target = p(prim.target);
+  const current = p(prim.current);
+  const gap = Math.max(0, target - current);
+  const avgPerWeek = weeksElapsed > 0 ? current / weeksElapsed : 0;
+  const hasPace = avgPerWeek > 0;
+
+  let weeksToQualify = null;
+  let projectedDateISO = null;
+  if (hasPace && gap > 0) {
+    weeksToQualify = Math.max(1, Math.ceil(gap / avgPerWeek));
+    const now = currentDate instanceof Date ? currentDate : new Date(currentDate ?? Date.now());
+    const projected = new Date(now.getTime() + weeksToQualify * 7 * 86400000);
+    projectedDateISO = projected.toISOString().slice(0, 10);
+  }
+
+  return { avgPerWeek, unit: prim.unit, gap, weeksToQualify, hasPace, projectedDateISO };
+}
+
+// ──────────────────────────────────────────────────────
 // computeRatioTrends
 // submissions: array of submission docs
 // ──────────────────────────────────────────────────────

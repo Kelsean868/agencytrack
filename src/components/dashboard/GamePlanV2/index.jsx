@@ -12,6 +12,7 @@ import { weekNumber } from '../../../utils/dateHelpers';
 import PlanAnchorStrip from './PlanAnchorStrip';
 import StepRail from './StepRail';
 import PlanCascade from './PlanCascade';
+import PlanCommitCard from './PlanCommitCard';
 import PlanSuggestionsCard from './PlanSuggestionsCard';
 import SuggestedWeekCard from './SuggestedWeekCard';
 import MonthlyPlanModal from '../../agent/MonthlyPlanModal';
@@ -223,8 +224,10 @@ export default function GamePlanScreen({
   const monthlyPlanFilled = GAME_PLAN_LOOP_ENABLED &&
     (monthlyPlan?.targets ?? []).reduce((s, v) => s + (parseFloat(v) || 0), 0) > 0;
   const monthlyPlanTotal = monthlyPlan?.anchorAPI ?? 0;
+  const monthlyTargets = monthlyPlan?.targets ?? [];
+  const actualsByMonth = bucketActualsByMonth(submissions, year);
   const monthlyYtdDelta = monthlyPlanFilled
-    ? computeYtdDelta(bucketActualsByMonth(submissions, year), monthlyPlan.targets, currentMonthIndex)
+    ? computeYtdDelta(actualsByMonth, monthlyTargets, currentMonthIndex)
     : 0;
   const committed = GAME_PLAN_LOOP_ENABLED && monthlyPlan?.status === 'committed';
   const committedAt = committed
@@ -402,12 +405,28 @@ export default function GamePlanScreen({
         yearPlanEnabled={GAME_PLAN_LOOP_ENABLED}
         yearPlanTotalAPI={yearPlanTotalAPI}
         yearPlanFilled={yearPlanFilled}
+        yearPlanLines={yearPlan?.lines ?? null}
+        lineKeys={LINE_KEYS}
         monthlyPlanFilled={monthlyPlanFilled}
         monthlyPlanTotal={monthlyPlanTotal}
         monthlyYtdDelta={monthlyYtdDelta}
+        monthlyTargets={monthlyTargets}
+        monthlyActuals={actualsByMonth}
+        currentMonthIndex={currentMonthIndex}
         committed={committed}
         committedAt={committedAt}
       />
+
+      {GAME_PLAN_LOOP_ENABLED && (
+        <PlanCommitCard
+          moneyNeedsFilled={moneyNeedsFilled}
+          yearPlanFilled={yearPlanFilled}
+          monthlyPlanFilled={monthlyPlanFilled}
+          committed={committed}
+          committedAnnualAPI={committedAnnualAPI}
+          onOpenReviewCommit={openReviewCommit}
+        />
+      )}
 
       {/* B3 — manager→agent plan suggestions (agent's own data; renders
           nothing when there are none). Reads through the agent-own arm. */}

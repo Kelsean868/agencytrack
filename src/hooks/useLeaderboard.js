@@ -25,7 +25,7 @@
  *                 viewer's own); useful for downstream labels.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +39,10 @@ export default function useLeaderboard(branchIdOverride) {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const [docData, setDocData] = useState(null);
+  // Bumped by reload() to force the effect below to re-run on demand (§1
+  // states contract — the error card's Retry button needs a real re-fetch,
+  // not just a state reset).
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     if (!tenantId || !branchId) {
@@ -74,7 +78,9 @@ export default function useLeaderboard(branchIdOverride) {
     })();
 
     return () => { cancelled = true; };
-  }, [tenantId, branchId]);
+  }, [tenantId, branchId, reloadToken]);
+
+  const reload = useCallback(() => setReloadToken((t) => t + 1), []);
 
   const byPeriod = docData
     ? {
@@ -85,5 +91,5 @@ export default function useLeaderboard(branchIdOverride) {
       }
     : EMPTY_BY_PERIOD;
 
-  return { loading, error, doc: docData, byPeriod, branchId };
+  return { loading, error, doc: docData, byPeriod, branchId, reload };
 }

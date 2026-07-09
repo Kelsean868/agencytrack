@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, X, Loader2, UserCircle, AlertTriangle, Upload, Pencil, MailPlus, Link, ChevronDown, Copy } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -12,16 +12,20 @@ import { resendInvite, getInviteLink } from '../../services/userService';
 import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import { EMAIL_RE } from '../../utils/validators';
 import useToast from '../../hooks/useToast';
+import useFocusTrap from '../../hooks/useFocusTrap';
 import Avatar from '../ui/Avatar';
+import StatusPill from '../ui/StatusPill';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import EditUserDrawer from './EditUserDrawer';
 import BulkImportUsersModal from '../admin/BulkImportUsersModal';
 import BulkImportGoalsModal from '../admin/BulkImportGoalsModal';
 
 // Mirrors CREATION_MATRIX in functions/index.js
+// 'cro' (Tier-3 3.1): tenant-level back-office role — creatable by
+// platform_admin + tenant_admin, matching the CF matrix exactly.
 const CREATABLE_ROLES = {
-  platform_admin: ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
-  tenant_admin:   ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
+  platform_admin: ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent', 'cro'],
+  tenant_admin:   ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent', 'cro'],
   sales_manager:  ['branch_manager', 'unit_manager', 'agent'],
   branch_manager: ['unit_manager', 'agent'],
   unit_manager:   ['agent'],
@@ -33,11 +37,13 @@ const ROLE_DISPLAY = {
   sales_manager:  'Sales Manager',
   branch_manager: 'Branch Manager',
   unit_manager:   'Unit Manager',
+  cro:            'CRO',
   agent:          'Agent',
 };
 
 
 function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenantId }) {
+  const drawerRef = useFocusTrap({ onEscape: onClose });
   const creatableRoles = CREATABLE_ROLES[callerRole] ?? ['agent'];
   const isUnitManager  = callerRole === 'unit_manager';
 
@@ -140,11 +146,17 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
         onClick={onClose}
         className="flex-1 bg-black/40 border-0 p-0 m-0 cursor-pointer"
       />
-      <div className="w-full max-w-md bg-card shadow-2xl flex flex-col h-full overflow-hidden">
+      <div
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-user-drawer-title"
+        className="w-full max-w-md bg-card shadow-2xl flex flex-col h-full overflow-hidden"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <p className="text-sm font-bold text-ink">Add New User</p>
-          <button aria-label="Close create user drawer" onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-border/40 transition-colors">
+          <p id="create-user-drawer-title" className="text-sm font-bold text-ink">Add New User</p>
+          <button aria-label="Close create user drawer" onClick={onClose} className="w-11 h-11 -m-1.5 flex items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-border/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
             <X size={18} />
           </button>
         </div>
@@ -351,7 +363,16 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
   );
 }
 
-export default function UserManagementPanel() {
+/**
+ * openCreateSignal (Tier 1 · 1.3 — TenantAdminDashboard Quick-Add): an
+ * external trigger for the "Add User" create drawer. TenantAdminDashboard
+ * bumps this counter when its own Quick-Add "New user" action fires; a
+ * change-only effect below (initial mount skipped) opens the same
+ * CreateUserDrawer the "Add User" button already opens. Defaults to 0 so
+ * existing callers/tests that don't pass it are unaffected and never
+ * auto-open on mount.
+ */
+export default function UserManagementPanel({ openCreateSignal = 0 }) {
   const { role, user: currentUser, userProfile, tenantId } = useAuth();
   const toast = useToast();
 
@@ -393,6 +414,28 @@ export default function UserManagementPanel() {
   }, [showInactive, tenantId]);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
+
+  // External create trigger (Tier 1 · 1.3, TenantAdminDashboard Quick-Add).
+  // UserManagementPanel is only mounted while the Users tab is active (see
+  // `activeTab === 'users' && <UserManagementPanel .../>` in
+  // TenantAdminDashboard) — it unmounts on every tab switch. That means
+  // Quick-Add's "New user" action mounts this component FRESH, already
+  // carrying the nonzero signal it needs to react to; a naive "skip only the
+  // very first render" guard would never fire in that case. Instead this
+  // tracks the last-seen signal value (seeded at the prop's neutral default,
+  // 0) and opens the drawer whenever the value changes to something truthy —
+  // on first mount (arrived via Quick-Add) or on a later prop change while
+  // already mounted. TenantAdminDashboard resets its own counter back to 0
+  // immediately after (its reset effect runs after this child effect, per
+  // React's child-before-parent passive-effect order within one commit), so a
+  // later plain tab click remounts with openCreateSignal back at 0 and never
+  // re-opens the drawer.
+  const lastSeenCreateSignal = useRef(0);
+  useEffect(() => {
+    if (openCreateSignal === lastSeenCreateSignal.current) return;
+    lastSeenCreateSignal.current = openCreateSignal;
+    if (openCreateSignal > 0) setShowDrawer(true);
+  }, [openCreateSignal]);
 
   useEffect(() => {
     if (!copyLinkUser) return;
@@ -600,108 +643,136 @@ export default function UserManagementPanel() {
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-[2fr_2fr_1.5fr_1fr_auto] gap-3 px-3 text-[10px] font-bold uppercase tracking-wide text-ink-muted">
-            <span>Name</span>
-            <span>Email</span>
-            <span>Role</span>
-            <span>Joined</span>
-            <span>Actions</span>
-          </div>
-          {users.map((u) => {
-            const joinedDate = u.createdAt?.toDate?.().toISOString().slice(0, 10) ?? '';
-            const isInactive = u.active === false;
-            const canAct = CREATABLE_ROLES[role]?.includes(u.role) && u.uid !== currentUser?.uid;
-            return (
-              <div
-                key={u.uid ?? u.id}
-                className={`grid grid-cols-[2fr_2fr_1.5fr_1fr_auto] gap-3 items-center px-3 py-3 rounded-xl border ${
-                  isInactive
-                    ? 'bg-border/20 border-border/40 opacity-70'
-                    : 'bg-card border-border'
-                }`}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Avatar name={u.name} size="sm" />
-                  <div className="min-w-0">
-                    <span className="text-sm font-semibold text-ink truncate block">{u.name ?? '—'}</span>
-                    {isInactive && (
-                      <span className="text-[10px] font-bold text-danger-ink uppercase tracking-wide">Inactive</span>
-                    )}
-                  </div>
-                </div>
-                <span className="text-xs text-ink-muted truncate">{u.email ?? '—'}</span>
-                <span className="text-xs text-ink-muted">{getRoleLabel(u.role)}</span>
-                <span className="text-xs text-ink-muted">
-                  {joinedDate ? formatDateDisplay(joinedDate) : '—'}
-                </span>
-                <div className="flex justify-end items-center gap-1">
-                  {canAct && !isInactive && (
-                    <button
-                      type="button"
-                      onClick={() => setEditTarget(u)}
-                      aria-label={`Edit ${u.name ?? u.email ?? 'user'}`}
-                      data-testid={`user-edit-${u.uid ?? u.id}`}
-                      className="text-xs font-semibold text-ink-muted hover:text-ink bg-border/20 hover:bg-border/40 min-w-[44px] min-h-[44px] rounded-lg transition-colors flex items-center justify-center"
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          {/* Card-scoped vertical + horizontal scroll (§5) — scroll lives
+              inside this card, never the page. Narrow viewports rely on the
+              horizontal scroll here rather than a separate mobile layout. */}
+          <div className="overflow-x-auto overflow-y-auto max-h-[70vh]">
+            <table className="w-full text-sm border-separate border-spacing-0" aria-label="User roster">
+              <thead>
+                <tr>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[200px]">Name</th>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[200px]">Email</th>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[130px]">Role</th>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[100px]">Joined</th>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[90px]">Status</th>
+                  <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[140px]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u, i) => {
+                  const joinedDate = u.createdAt?.toDate?.().toISOString().slice(0, 10) ?? '';
+                  const isInactive = u.active === false;
+                  const canAct = CREATABLE_ROLES[role]?.includes(u.role) && u.uid !== currentUser?.uid;
+                  const zebra = i % 2 === 1 ? 'bg-card-raised/40' : '';
+                  return (
+                    <tr
+                      key={u.uid ?? u.id}
+                      className={`border-b border-border/60 last:border-0 ${zebra} ${isInactive ? 'opacity-70' : ''}`}
                     >
-                      <Pencil size={15} />
-                    </button>
-                  )}
-                  {canAct && !isInactive && (
-                    <div className="relative invite-menu-container">
-                      <button
-                        type="button"
-                        onClick={() => setInviteMenuUid((prev) => (prev === (u.uid ?? u.id) ? null : (u.uid ?? u.id)))}
-                        aria-label={`Invite options for ${u.name ?? u.email ?? 'user'}`}
-                        aria-expanded={inviteMenuUid === (u.uid ?? u.id)}
-                        aria-haspopup="true"
-                        data-testid={`user-invite-${u.uid ?? u.id}`}
-                        className="text-xs font-semibold text-ink-muted hover:text-ink bg-border/20 hover:bg-border/40 min-w-[44px] min-h-[44px] rounded-lg transition-colors flex items-center justify-center gap-0.5"
-                      >
-                        <Link size={14} /><ChevronDown size={11} />
-                      </button>
-                      {inviteMenuUid === (u.uid ?? u.id) && (
-                        <div
-                          role="menu"
-                          className="absolute right-0 top-full mt-1 z-20 bg-card border border-border rounded-xl shadow-md min-w-[160px] py-1 overflow-hidden"
-                        >
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => { setInviteMenuUid(null); handleCopyLink(u); }}
-                            className="w-full text-left text-xs font-medium text-ink-muted hover:text-ink hover:bg-border/30 px-3 py-2.5 flex items-center gap-2 transition-colors"
-                          >
-                            <Copy size={13} /> Copy link
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => { setInviteMenuUid(null); setResendTarget(u); }}
-                            className="w-full text-left text-xs font-medium text-ink-muted hover:text-ink hover:bg-border/30 px-3 py-2.5 flex items-center gap-2 transition-colors"
-                          >
-                            <MailPlus size={13} /> Resend email
-                          </button>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-2 min-w-0 max-w-[220px]">
+                          <Avatar name={u.name} size="sm" />
+                          <span className="text-sm font-semibold text-ink truncate block" title={u.name ?? ''}>
+                            {u.name ?? '—'}
+                          </span>
                         </div>
-                      )}
-                    </div>
-                  )}
-                  {canAct && (
-                    <button
-                      type="button"
-                      onClick={() => setDeactivateTarget(u)}
-                      className={`text-xs font-semibold px-2.5 min-h-[44px] rounded-lg transition-colors min-w-[80px] ${
-                        isInactive
-                          ? 'text-primary bg-primary/10 hover:bg-primary/20'
-                          : 'text-danger-ink bg-danger/10 hover:bg-danger/20'
-                      }`}
-                    >
-                      {isInactive ? 'Reactivate' : 'Deactivate'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                      </td>
+                      <td className="px-3 py-3 text-xs text-ink-muted">
+                        <span className="block truncate max-w-[220px]" title={u.email ?? ''}>{u.email ?? '—'}</span>
+                      </td>
+                      <td className="px-3 py-3 text-xs text-ink-muted whitespace-nowrap">{getRoleLabel(u.role)}</td>
+                      <td className="px-3 py-3 text-xs text-ink-muted whitespace-nowrap">
+                        {joinedDate ? formatDateDisplay(joinedDate) : '—'}
+                      </td>
+                      <td className="px-3 py-3">
+                        <StatusPill
+                          variant={isInactive ? 'danger' : 'success'}
+                          label={isInactive ? 'Deactivated' : 'Active'}
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex justify-end items-center gap-1">
+                          {canAct && !isInactive && (
+                            <button
+                              type="button"
+                              onClick={() => setEditTarget(u)}
+                              aria-label={`Edit ${u.name ?? u.email ?? 'user'}`}
+                              data-testid={`user-edit-${u.uid ?? u.id}`}
+                              className="text-xs font-semibold text-ink-muted hover:text-ink bg-border/20 hover:bg-border/40 min-w-[44px] min-h-[44px] rounded-lg transition-colors flex items-center justify-center"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                          )}
+                          {canAct && !isInactive && (
+                            <div className="relative invite-menu-container">
+                              <button
+                                type="button"
+                                onClick={() => setInviteMenuUid((prev) => (prev === (u.uid ?? u.id) ? null : (u.uid ?? u.id)))}
+                                aria-label={`Invite options for ${u.name ?? u.email ?? 'user'}`}
+                                aria-expanded={inviteMenuUid === (u.uid ?? u.id)}
+                                aria-haspopup="true"
+                                data-testid={`user-invite-${u.uid ?? u.id}`}
+                                className="text-xs font-semibold text-ink-muted hover:text-ink bg-border/20 hover:bg-border/40 min-w-[44px] min-h-[44px] rounded-lg transition-colors flex items-center justify-center gap-0.5"
+                              >
+                                <Link size={14} /><ChevronDown size={11} />
+                              </button>
+                              {inviteMenuUid === (u.uid ?? u.id) && (
+                                <div
+                                  role="menu"
+                                  className="absolute right-0 top-full mt-1 z-20 bg-card border border-border rounded-xl shadow-md min-w-[160px] py-1 overflow-hidden"
+                                >
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => { setInviteMenuUid(null); handleCopyLink(u); }}
+                                    className="w-full text-left text-xs font-medium text-ink-muted hover:text-ink hover:bg-border/30 px-3 py-2.5 flex items-center gap-2 transition-colors"
+                                  >
+                                    <Copy size={13} /> Copy link
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => { setInviteMenuUid(null); setResendTarget(u); }}
+                                    className="w-full text-left text-xs font-medium text-ink-muted hover:text-ink hover:bg-border/30 px-3 py-2.5 flex items-center gap-2 transition-colors"
+                                  >
+                                    <MailPlus size={13} /> Resend email
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {canAct && (
+                            <button
+                              type="button"
+                              onClick={() => setDeactivateTarget(u)}
+                              className={`text-xs font-semibold px-2.5 min-h-[44px] rounded-lg transition-colors min-w-[80px] ${
+                                isInactive
+                                  ? 'text-primary bg-primary/10 hover:bg-primary/20'
+                                  : 'text-danger-ink bg-danger/10 hover:bg-danger/20'
+                              }`}
+                            >
+                              {isInactive ? 'Reactivate' : 'Deactivate'}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Live footer count (§5) */}
+          <div
+            data-testid="user-roster-footer"
+            className="px-3 py-2 border-t border-border bg-surface text-xs text-ink-muted"
+          >
+            {users.length} user{users.length !== 1 ? 's' : ''} •{' '}
+            {users.filter((u) => u.active !== false).length} active •{' '}
+            {users.filter((u) => u.active === false).length} deactivated
+          </div>
         </div>
       )}
 

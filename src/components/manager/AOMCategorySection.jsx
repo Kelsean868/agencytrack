@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Award } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import Avatar from '../ui/Avatar';
 
@@ -44,9 +44,12 @@ export default function AOMCategorySection({
       )}
 
       {candidates.length === 0 ? (
-        <p className="text-sm text-ink-muted text-center py-4">
-          No submissions for this month yet.
-        </p>
+        <div className="flex flex-col items-center gap-1.5 py-4 text-center" data-testid="aom-category-empty">
+          <Award size={20} className="text-ink-muted" aria-hidden="true" />
+          <p className="text-sm text-ink-muted">
+            No submissions for this month yet — candidates appear once agents file weekly reports, or try the month toggle above.
+          </p>
+        </div>
       ) : (
         <ol aria-label={`${label} candidates`} className="flex flex-col divide-y divide-card-raised">
           {candidates.map((c) => {

@@ -660,3 +660,106 @@ describe('EditUserDrawer — licenseProfile dropdown', () => {
     expect(screen.getByLabelText(/License Profile/i)).toHaveValue('composite');
   });
 });
+
+// ── Dialog a11y contract (§4 dialog sweep) ───────────────────────────────────
+
+describe('EditUserDrawer — dialog a11y', () => {
+  it('exposes role=dialog + aria-modal=true', () => {
+    render(
+      <EditUserDrawer
+        user={AGENT}
+        callerRole="branch_manager"
+        callerProfile={BRANCH_MANAGER_PROFILE}
+        tenantId="t1"
+        onClose={() => {}}
+        onSaved={() => {}}
+      />
+    );
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAttribute('aria-labelledby', 'edit-user-drawer-title');
+  });
+
+  it('calls onClose when Escape is pressed', () => {
+    const onClose = vi.fn();
+    render(
+      <EditUserDrawer
+        user={AGENT}
+        callerRole="branch_manager"
+        callerProfile={BRANCH_MANAGER_PROFILE}
+        tenantId="t1"
+        onClose={onClose}
+        onSaved={() => {}}
+      />
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call onClose when Escape is pressed while saving', async () => {
+    hoisted.updateUserFields.mockImplementation(() => new Promise(() => {})); // never resolves
+    const onClose = vi.fn();
+    render(
+      <EditUserDrawer
+        user={AGENT}
+        callerRole="branch_manager"
+        callerProfile={BRANCH_MANAGER_PROFILE}
+        tenantId="t1"
+        onClose={onClose}
+        onSaved={() => {}}
+      />
+    );
+    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Changed Name' } });
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() => expect(hoisted.updateUserFields).toHaveBeenCalled());
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('Tab from the last focusable element cycles back to the first (focus trap)', () => {
+    render(
+      <EditUserDrawer
+        user={AGENT}
+        callerRole="branch_manager"
+        callerProfile={BRANCH_MANAGER_PROFILE}
+        tenantId="t1"
+        onClose={() => {}}
+        onSaved={() => {}}
+      />
+    );
+    const dialog = screen.getByRole('dialog');
+    const focusable = Array.from(
+      dialog.querySelectorAll(
+        'button:not([disabled]):not([aria-hidden="true"]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+      )
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    last.focus();
+    expect(document.activeElement).toBe(last);
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+  });
+
+  it('restores focus to the invoking element when the drawer unmounts', () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open drawer';
+    document.body.appendChild(trigger);
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+
+    const { unmount } = render(
+      <EditUserDrawer
+        user={AGENT}
+        callerRole="branch_manager"
+        callerProfile={BRANCH_MANAGER_PROFILE}
+        tenantId="t1"
+        onClose={() => {}}
+        onSaved={() => {}}
+      />
+    );
+    unmount();
+    expect(document.activeElement).toBe(trigger);
+    document.body.removeChild(trigger);
+  });
+});

@@ -11,6 +11,7 @@ export const ROLE_LABELS = {
   branch_manager: 'Branch Manager',
   unit_manager: 'Unit Manager',
   sales_manager: 'Sales Manager',
+  cro: 'CRO',
   agent: 'Agent',
 };
 
@@ -54,6 +55,30 @@ export const formatDateFriendly = (isoString) => {
   return new Date(isoString + 'T12:00:00Z').toLocaleDateString('en-TT', {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
   });
+};
+
+// Awards pace narrative (§2.7) — weeks-to-qualify display, capped at a sane
+// ceiling so a technically-correct-but-absurd "47 wks" never renders; an
+// operator reads "20+ wks" as "not close," which is the honest takeaway.
+// Returns null for null/zero/negative/non-finite input — callers fall back
+// to an honest "no pace yet" copy rather than ever showing NaN/Infinity.
+export const PACE_WEEKS_CAP = 20;
+export const formatPaceWeeks = (weeks) => {
+  if (weeks == null || !Number.isFinite(weeks) || weeks <= 0) return null;
+  if (weeks > PACE_WEEKS_CAP) return `${PACE_WEEKS_CAP}+ wks`;
+  return weeks === 1 ? '~1 wk' : `~${weeks} wks`;
+};
+
+// Awards pace narrative (§2.7) — "avg X/wk" rate display. TTD-denominated
+// criteria use formatCurrency (full value, not compact-K); other cumulative
+// units (e.g. apps) render a rounded count. Returns null for a non-finite or
+// non-positive rate — callers gate on this before rendering the pace line.
+export const formatPaceRate = (avgPerWeek, unit) => {
+  const num = parseFloat(avgPerWeek);
+  if (!Number.isFinite(num) || num <= 0) return null;
+  if (unit === 'TTD') return `${formatCurrency(num)}/wk`;
+  const rounded = Math.round(num);
+  return unit ? `${rounded.toLocaleString('en-TT')} ${unit}/wk` : `${rounded.toLocaleString('en-TT')}/wk`;
 };
 
 // Signed financing-adjustment label. adjustmentPct > 0 is a cut BELOW the amount

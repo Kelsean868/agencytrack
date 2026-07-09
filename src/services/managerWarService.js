@@ -1,5 +1,5 @@
 import {
-  doc, setDoc, getDoc, serverTimestamp,
+  doc, setDoc, getDoc, updateDoc, serverTimestamp,
   collection, collectionGroup, getDocs, query, where,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -104,6 +104,28 @@ export async function getWarById(tenantId, docId) {
 }
 
 /**
+ * Upline review of a SUBMITTED WAR (Tier-2 2.1 reviewer workflow).
+ * Writes ONLY the five review fields — the rules' reviewer arm enforces
+ * hasOnly on exactly this set, upline scope (strictly higher rank; BM
+ * branch-scoped; SM+ tenant-wide), status=='submitted', reviewedBy==auth.uid,
+ * and reviewNote ≤ 2000 chars. An owner resubmit (full setDoc) clears these
+ * fields by omission — a resubmitted WAR needs re-review.
+ */
+export async function reviewWar(tenantId, docId, { status, note, reviewerUid, reviewerName }) {
+  if (!['approved', 'changes_requested'].includes(status)) {
+    throw new Error(`reviewWar: invalid review status "${status}"`);
+  }
+  const ref = doc(db, `tenants/${tenantId}/managerWeeklyReports/${docId}`);
+  await updateDoc(ref, {
+    reviewStatus:   status,
+    reviewNote:     (note ?? '').slice(0, 2000),
+    reviewedBy:     reviewerUid,
+    reviewedByName: reviewerName ?? '',
+    reviewedAt:     serverTimestamp(),
+  });
+}
+
+/**
  * Fetch WARs for the upline browse view (I1.3b).
  * BM (rank 2): own-branch query (branchId + weekStart composite index).
  * SM+ (rank ≥ 3): tenant-wide query (weekStart single-field auto-index).
@@ -114,6 +136,49 @@ export async function getWarsForUpline({ tenantId, weekStart, role, branchId }) 
   const q = rank >= 3
     ? query(coll, where('weekStart', '==', weekStart))
     : query(coll, where('branchId', '==', branchId), where('weekStart', '==', weekStart));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * My-WAR 8-week filing streak (item 2.1 StreakDots on My WAR).
+ * Reads the owner's OWN docs by docId, allowed by the WAR `allow get` owner arm
+ * (resource.data.managerId == auth.uid, or the warId-prefix existence check when
+ * the doc is absent). Works for EVERY manager rank including unit_manager, which
+ * cannot run a `list` query. Read-light: one getDoc per week for a single
+ * manager, run in parallel. Returns an array aligned to `weekStarts` order —
+ * each entry { weekStart, filed } where filed = a submitted WAR exists.
+ */
+export async function getOwnWarStreak({ tenantId, managerId, weekStarts }) {
+  if (!managerId || !Array.isArray(weekStarts) || weekStarts.length === 0) return [];
+  const snaps = await Promise.all(
+    weekStarts.map((ws) =>
+      getDoc(doc(db, `tenants/${tenantId}/managerWeeklyReports/${warDocId(managerId, ws)}`)),
+    ),
+  );
+  return weekStarts.map((ws, i) => ({
+    weekStart: ws,
+    filed: snaps[i].exists() && snaps[i].data().status === 'submitted',
+  }));
+}
+
+/**
+ * Multi-week upline WAR fetch for the team-row 8-week streak dots (item 2.1).
+ * Same scope shape as getWarsForUpline (BM own-branch; SM+ tenant-wide) but
+ * across a set of weeks via a single `weekStart in [...]` query — read-light
+ * (one getDocs for the whole surface, not one per row). Index-safe on the
+ * indexes already in firestore.indexes.json:
+ *   BM (rank 2) → (branchId, weekStart) composite.
+ *   SM+ (rank ≥ 3) → weekStart single-field automatic index.
+ * Firestore `in` supports up to 30 values; the streak window is 8.
+ */
+export async function getWarsForUplineWeeks({ tenantId, weekStarts, role, branchId }) {
+  if (!Array.isArray(weekStarts) || weekStarts.length === 0) return [];
+  const coll = collection(db, `tenants/${tenantId}/managerWeeklyReports`);
+  const rank = getWarRoleRank(role);
+  const q = rank >= 3
+    ? query(coll, where('weekStart', 'in', weekStarts))
+    : query(coll, where('branchId', '==', branchId), where('weekStart', 'in', weekStarts));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }

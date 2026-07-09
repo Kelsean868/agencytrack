@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { formatCurrency } from '../../../utils/formatters';
 import { MDRT_THRESHOLDS_2026 } from '../../../config/mdrtThresholds/2026';
+import { useCountUp } from '../../../hooks/useCountUp';
 
 /**
  * HeroCard (v2 Agent Dashboard home).
@@ -14,6 +15,10 @@ import { MDRT_THRESHOLDS_2026 } from '../../../config/mdrtThresholds/2026';
  * in docs/FOLLOW_UPS.md.
  */
 export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
+  // §2 count-up — hero KPI numeral counts from 0 on load, gated by
+  // prefers-reduced-motion inside the hook (snaps straight to the exact
+  // ytdApi value, no rounding drift on TTD currency).
+  const displayYtdApi = useCountUp(ytdApi, { duration: 1000, decimals: 2 });
   const goal = personalAnnualAPI > 0 ? personalAnnualAPI : MDRT_THRESHOLDS_2026.mdrt;
   const pct = goal > 0 ? Math.min(100, Math.max(0, Math.round((ytdApi / goal) * 100))) : 0;
   // MDRT marker renders only when on-scale (MDRT ≤ goal). When MDRT exceeds the
@@ -45,7 +50,7 @@ export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
             fontFamily: '"Cabinet Grotesk", system-ui, sans-serif',
           }}
         >
-          {formatCurrency(ytdApi)}
+          {formatCurrency(displayYtdApi)}
         </p>
         <p className="text-sm text-[--hero-ink-muted-teal] mt-2">
           {pct}% of {formatCurrency(goal)} goal · {weeksLeft} {weeksLeft === 1 ? 'week' : 'weeks'} to year-end

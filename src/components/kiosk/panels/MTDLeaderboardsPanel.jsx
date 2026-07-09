@@ -1,6 +1,6 @@
 import React from 'react';
-import PeriodLeaderboardsPanel from './PeriodLeaderboardsPanel';
+import RankedLeaderboardPanel from './RankedLeaderboardPanel';
 
 export default function MTDLeaderboardsPanel(props) {
-  return <PeriodLeaderboardsPanel {...props} period="mtd" periodLabel="MTD" />;
+  return <RankedLeaderboardPanel {...props} period="mtd" />;
 }

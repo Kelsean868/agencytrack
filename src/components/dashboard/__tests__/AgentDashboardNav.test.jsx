@@ -105,7 +105,6 @@ vi.mock('../../shell/Shell', () => ({
 // ── Component blank stubs ────────────────────────────────────────────────────
 
 vi.mock('../../wizard/WizardForm',                   () => ({ default: () => null }));
-vi.mock('../../daily/DailyEntryModal',               () => ({ default: () => null }));
 vi.mock('../../goals/GapAnalysisPanel',              () => ({ default: () => null }));
 vi.mock('../../goals/CommissionPlayground',          () => ({ default: () => null }));
 vi.mock('../../profile/CareerPortal',                () => ({ default: () => null }));
@@ -219,16 +218,18 @@ describe('AgentDashboard — Nav redesign PR-1 structure', () => {
     expect(captured.navItems.find((i) => i.id === 'money-needs')?.child).toBe(true);
   });
 
-  it('Planner is present and disabled (SOON)', () => {
+  it('Planner is present and un-gated (ships item 3.2)', () => {
     render(<AgentDashboard />);
     const planner = captured.navItems.find((i) => i.id === 'planner');
     expect(planner).toBeDefined();
-    expect(planner.disabled).toBe(true);
+    expect(planner.disabled).toBeFalsy();
   });
 
-  it('Prospect Prep stays SOON (disabled via COMING_SOON_TABS)', () => {
+  it('Prospect Prep is present and un-gated (ships item 3.5)', () => {
     render(<AgentDashboard />);
-    expect(captured.navItems.find((i) => i.id === 'prospect-info')?.disabled).toBe(true);
+    const prospect = captured.navItems.find((i) => i.id === 'prospect-info');
+    expect(prospect).toBeDefined();
+    expect(prospect.disabled).toBeFalsy();
   });
 
   it('Daily Log is present for the default (hybrid) logging mode', () => {

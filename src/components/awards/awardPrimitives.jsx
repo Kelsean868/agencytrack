@@ -24,7 +24,15 @@
 
 import React, { useCallback, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { formatCurrency, formatAwardPct } from '../../utils/formatters';
+import { formatCurrency, formatAwardPct, formatPaceWeeks, formatPaceRate, formatDateFriendly } from '../../utils/formatters';
+import { AwardProvenancePanel } from './awardProvenance';
+
+// §2.7 pace narrative — shared "no pace yet" honesty fallback. `pace` is
+// null when the award has no primary criterion or a '%'-unit one (see
+// computeAwardPace's doc comment in awardsEngine.js); `weeksPhrase` is null
+// when avg-per-week is zero/negative or the gap is already closed. Either
+// case falls back to this copy rather than ever rendering NaN/Infinity.
+const NO_PACE_COPY = 'No pace data yet — check back after your next submission.';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AwardDonut — SVG progress ring
@@ -99,6 +107,13 @@ export function HeroAwardCard({ award, eyebrow = '★ Almost there' }) {
         ? `${Number(gap).toFixed(1)}%`
         : String(Math.round(gap));
 
+  // §2.7 — pace-to-qualify narrative. award.pace is attached by
+  // AgentAwardsPanel's computation (computeAwardPace); null for awards with
+  // no primary criterion or a '%'-unit one.
+  const pace = award.pace ?? null;
+  const weeksPhrase = pace ? formatPaceWeeks(pace.weeksToQualify) : null;
+  const rateLabel = pace ? formatPaceRate(pace.avgPerWeek, pace.unit) : null;
+
   return (
     <div
       className="card p-6 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6"
@@ -141,6 +156,14 @@ export function HeroAwardCard({ award, eyebrow = '★ Almost there' }) {
             </span>
             <span className="text-sm text-ink-muted">to qualify</span>
           </div>
+        )}
+
+        {pace && (
+          <p className="text-xs text-ink-muted mt-2.5 tabular-nums" data-testid="hero-pace-line">
+            {weeksPhrase && rateLabel
+              ? `${weeksPhrase} at your current pace · avg ${rateLabel}`
+              : NO_PACE_COPY}
+          </p>
         )}
       </div>
     </div>
@@ -263,7 +286,7 @@ export function AwardCard({ award, onClick }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // AwardDrillDrawer — Tier 3 slide-in detail panel
 // ─────────────────────────────────────────────────────────────────────────────
-export function AwardDrillDrawer({ award, onClose }) {
+export function AwardDrillDrawer({ award, onClose, provenance = null }) {
   const handleKey = useCallback((e) => { if (e.key === 'Escape') onClose(); }, [onClose]);
   useEffect(() => {
     if (!award) return;
@@ -277,6 +300,17 @@ export function AwardDrillDrawer({ award, onClose }) {
   // Gold split: this accent feeds only the 12px eyebrow label (small text), so
   // the qualified state uses gold-ink; vivid --color-gold would fail AA-normal.
   const accentColor = isQualified ? 'var(--color-gold-ink)' : 'var(--color-primary)';
+
+  // §2.7 — YOUR PACE block. Only meaningful pre-qualification; a qualified
+  // award has no gap left to pace toward. award.pace is null for awards with
+  // no primary criterion or a '%'-unit one (see computeAwardPace).
+  const pace = !isQualified ? (award.pace ?? null) : null;
+  const paceGapLabel = pace
+    ? (pace.unit === 'TTD' ? formatCurrency(pace.gap) : `${Math.round(pace.gap)} ${pace.unit || ''}`.trim())
+    : null;
+  const paceWeeksPhrase = pace ? formatPaceWeeks(pace.weeksToQualify) : null;
+  const paceRateLabel = pace ? formatPaceRate(pace.avgPerWeek, pace.unit) : null;
+  const paceProjected = pace?.projectedDateISO ? formatDateFriendly(pace.projectedDateISO) : null;
 
   return (
     <>
@@ -384,6 +418,31 @@ export function AwardDrillDrawer({ award, onClose }) {
               );
             })}
           </div>
+
+          {pace && (
+            <div
+              className="mt-4 p-3.5 rounded-xl border"
+              style={{ background: 'var(--color-primary-tint)', borderColor: 'color-mix(in srgb, var(--color-primary) 20%, transparent)' }}
+              data-testid="award-drawer-your-pace"
+            >
+              <p className="text-xs font-bold tracking-widest text-primary font-mono uppercase mb-2">
+                Your pace
+              </p>
+              {paceWeeksPhrase && paceRateLabel ? (
+                <p className="text-sm text-ink leading-relaxed tabular-nums">
+                  You&apos;re <span className="font-bold text-primary">{paceGapLabel}</span> from qualifying.
+                  {' '}At your avg pace of <span className="font-bold text-primary">{paceRateLabel}</span>,
+                  you&apos;ll qualify in <span className="font-bold text-primary">{paceWeeksPhrase}</span>
+                  {paceProjected ? ` (around ${paceProjected})` : ''}.
+                </p>
+              ) : (
+                <p className="text-sm text-ink-muted leading-relaxed">{NO_PACE_COPY}</p>
+              )}
+            </div>
+          )}
+
+          {/* Item 3.4 — awards provenance (flag-gated; provenance null when OFF) */}
+          {provenance && <AwardProvenancePanel provenance={provenance} />}
 
           {award.note && (
             <div className="mt-4 p-3 rounded-xl bg-warning-tint border border-warning/30">

@@ -3,6 +3,7 @@ import { Check } from 'lucide-react';
 import { formatCurrency } from '../../../utils/formatters';
 import { totalProductionAPI, totalApps } from '../../../lib/schema/wizardLive.computations';
 import { resolveLevel, LEVEL_THRESHOLDS } from '../../../lib/gamificationConfig.js';
+import { useCountUp } from '../../../hooks/useCountUp';
 
 /**
  * Wizard v2 PR3 — submit celebration.
@@ -27,6 +28,11 @@ export default function Celebration({
 }) {
   const liveAPI = totalProductionAPI(formData);
   const liveApps = totalApps(formData);
+
+  // §2 count-up — the two stat numerals count up on load. decimals:2 on the
+  // API figure preserves TTD cents exactly; earnedPoints is a whole number.
+  const displayAPI = useCountUp(liveAPI, { duration: 1000, decimals: 2 });
+  const displayEarnedPoints = useCountUp(earnedPoints, { duration: 900, decimals: 0 });
 
   const cumulative = priorPoints + earnedPoints;
   const currentLevel = resolveLevel(cumulative);
@@ -96,7 +102,7 @@ export default function Celebration({
           className="text-4xl sm:text-5xl font-display font-bold text-ink leading-none mt-2"
           style={{ letterSpacing: '-0.028em' }}
         >
-          {formatCurrency(liveAPI)}
+          {formatCurrency(displayAPI)}
         </p>
         <p className="text-xs text-ink-muted mt-2">
           Production API · {liveApps} apps
@@ -118,7 +124,7 @@ export default function Celebration({
             className="text-3xl font-display font-bold text-ink leading-none mt-1"
             style={{ letterSpacing: '-0.022em' }}
           >
-            +{earnedPoints} pts
+            +{displayEarnedPoints} pts
           </p>
           {isLevelUp ? (
             <p

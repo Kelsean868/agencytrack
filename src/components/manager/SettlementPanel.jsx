@@ -493,7 +493,16 @@ export default function SettlementPanel() {
             ))}
           </div>
         ) : error && settlements.length === 0 ? (
-          <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>
+          <div role="alert" className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink flex items-center justify-between gap-3 flex-wrap">
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={loadData}
+              className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+            >
+              Retry
+            </button>
+          </div>
         ) : settlements.length === 0 ? (
           <div className="card text-center py-8">
             <p className="text-sm text-ink-muted">No settlements recorded yet.</p>
@@ -501,7 +510,16 @@ export default function SettlementPanel() {
         ) : (
           <>
             {error && (
-              <div className="mb-3 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>
+              <div role="alert" className="mb-3 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink flex items-center justify-between gap-3 flex-wrap">
+                <span>{error}</span>
+                <button
+                  type="button"
+                  onClick={loadData}
+                  className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
             )}
             <div className="overflow-x-auto rounded-xl border border-border bg-surface-raised">
               <table className="text-sm w-full">

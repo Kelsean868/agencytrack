@@ -45,6 +45,8 @@ export default function AgentDashboardHomeV2({
   campaignsLoading,
   campaignSubs,
   agentUid,
+  // Tier-3 3.1 — agent's own policies (settled + undelivered → delivery strip)
+  policies,
   // S3b — plan-vs-actual Standard drawer
   committedPlan,
   weekDailyDocs,
@@ -233,7 +235,7 @@ export default function AgentDashboardHomeV2({
       <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4">
         <RecentCompact events={activityEvents} onViewAll={() => onOpenTab?.('history')} />
         <div className="flex flex-col gap-4">
-          <DeliveryStripCard />
+          <DeliveryStripCard policies={policies} />
           {!campaignsLoading && activeCampaigns?.length > 0 && (
             <div className="flex flex-col gap-3">
               {activeCampaigns.map((c) => (

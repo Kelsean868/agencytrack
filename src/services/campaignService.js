@@ -40,6 +40,28 @@ export async function getActiveCampaignsForAgent(tenantId, agentId, unitId) {
   });
 }
 
+// Coerce every numeric campaign field to a number before it hits Firestore
+// (domain rule: never store numbers as strings). Tiers/placements are the v2
+// prize-structure fields — optional and absent on legacy campaigns.
+const num = (v) => parseFloat(v) || 0;
+
+function sanitizeTiers(tiers) {
+  if (!Array.isArray(tiers)) return tiers;
+  return tiers.map((t) => ({
+    ...t,
+    level:   num(t.level),
+    api:     num(t.api),
+    apps:    num(t.apps),
+    cash:    num(t.cash),
+    voucher: num(t.voucher),
+  }));
+}
+
+function sanitizePlacements(placements) {
+  if (!Array.isArray(placements)) return placements;
+  return placements.map((p) => ({ ...p, rank: num(p.rank), prize: num(p.prize) }));
+}
+
 export async function createCampaign(tenantId, createdBy, createdByName, createdByRole, campaignData) {
   const targets = (campaignData.targets ?? []).map((t) => ({
     ...t,
@@ -49,6 +71,8 @@ export async function createCampaign(tenantId, createdBy, createdByName, created
   const ref = collection(db, `tenants/${tenantId}/campaigns`);
   const docRef = await addDoc(ref, {
     ...campaignData,
+    ...(campaignData.tiers !== undefined ? { tiers: sanitizeTiers(campaignData.tiers) } : {}),
+    ...(campaignData.placements !== undefined ? { placements: sanitizePlacements(campaignData.placements) } : {}),
     targets,
     tenantId,
     createdBy,
@@ -72,6 +96,8 @@ export async function updateCampaign(tenantId, campaignId, updates, previousStat
 
   const payload = { ...updates, updatedAt: serverTimestamp() };
   if (targets) payload.targets = targets;
+  if (updates.tiers !== undefined) payload.tiers = sanitizeTiers(updates.tiers);
+  if (updates.placements !== undefined) payload.placements = sanitizePlacements(updates.placements);
 
   await updateDoc(doc(db, `tenants/${tenantId}/campaigns/${campaignId}`), payload);
 
@@ -138,13 +164,52 @@ async function notifyCampaignParticipants(tenantId, campaign) {
   );
 }
 
-export async function getCampaignSubmissions(tenantId, startDate, endDate) {
-  const q = query(
-    collection(db, `tenants/${tenantId}/submissions`),
+/**
+ * Campaign-window submissions, scoped to what the caller's rules arm can prove.
+ *
+ * The submissions `list` rule requires role-scoped queries: an agent must
+ * constrain where('agentId','==',uid), a unit_manager where('unitId','==',uid),
+ * a branch_manager where('branchId','==',claim). The previous unscoped
+ * tenant-wide query was DENIED for all three (only TA/SM/PA could list), and
+ * callers' catch-fallbacks rendered standings as TTD 0 / "no data".
+ *
+ * Scoped shapes ride the existing composites (agentId|unitId|branchId +
+ * weekStarting); `status` is filtered client-side for scoped calls so no new
+ * 3-field composite is needed.
+ *
+ * @param {{agentId?: string, unitId?: string, branchId?: string}} scope —
+ *   pass exactly one key for agent/UM/BM callers; omit for TA/SM/PA.
+ */
+export async function getCampaignSubmissions(tenantId, startDate, endDate, scope = {}) {
+  const clauses = [
     where('weekStarting', '>=', startDate),
     where('weekStarting', '<=', endDate),
-    where('status', '==', 'submitted')
-  );
+  ];
+  const scoped = Boolean(scope.agentId || scope.unitId || scope.branchId);
+  if (scope.agentId) {
+    // The only agentId composite is (agentId ASC, weekStarting DESC); a bare
+    // equality+range query demands the ASC pairing and throws requires-index.
+    // Explicit desc ordering rides the existing composite — no index change.
+    clauses.push(where('agentId', '==', scope.agentId), orderBy('weekStarting', 'desc'));
+  }
+  else if (scope.unitId)   clauses.push(where('unitId', '==', scope.unitId));
+  else if (scope.branchId) clauses.push(where('branchId', '==', scope.branchId));
+  else clauses.push(where('status', '==', 'submitted'));
+  const q = query(collection(db, `tenants/${tenantId}/submissions`), ...clauses);
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return scoped ? rows.filter((r) => r.status === 'submitted') : rows;
+}
+
+/**
+ * Resolve the caller's getCampaignSubmissions scope from auth context.
+ * Mirrors the rules list arms exactly; TA/SM/PA get the unscoped (allowed)
+ * query. producing-manager submissions carry the manager's own unitId/branchId,
+ * so UM/BM scopes include their own producing rows.
+ */
+export function campaignSubsScopeFor(role, uid, branchId) {
+  if (role === 'branch_manager') return branchId ? { branchId } : { agentId: uid };
+  if (role === 'unit_manager') return { unitId: uid };
+  if (role === 'agent') return { agentId: uid };
+  return {};
 }

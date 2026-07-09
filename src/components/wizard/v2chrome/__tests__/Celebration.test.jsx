@@ -8,6 +8,13 @@ vi.mock('../../../../utils/formatters', () => ({
   formatCurrency: (v) => `TTD ${Math.round(Number(v) || 0).toLocaleString('en-US')}`,
 }));
 
+// §2 count-up — the API + earned-points stat numerals now animate via
+// useCountUp on mount. Mocked to the identity function so these tests keep
+// asserting the exact final formatted text synchronously.
+vi.mock('../../../../hooks/useCountUp', () => ({
+  useCountUp: (value) => value,
+}));
+
 const FORM = {
   newBusiness:  { apps: 2, api: 18400 },
   pppIncreases: { apps: 1, apiIncrease: 6000 },

@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import HistoryTab from '../HistoryTab';
 
 // Minimal submission fixture with all call types populated
@@ -64,5 +64,40 @@ describe('HistoryTab — WeekCard dials calculation', () => {
     // Assert correct (28) not buggy (12)
     expect(rendered).toBe(CORRECT_DIALS);
     expect(rendered).not.toBe(BUGGY_DIALS);
+  });
+});
+
+describe('HistoryTab — 0.1b actionable empty state', () => {
+  it('renders a CTA that invokes onStartReport when there are no submissions', () => {
+    const onStartReport = vi.fn();
+    render(
+      <HistoryTab
+        submissions={[]}
+        onView={vi.fn()}
+        loading={false}
+        onDownload={vi.fn()}
+        generating={false}
+        onStartReport={onStartReport}
+      />,
+    );
+    const empty = screen.getByTestId('history-empty-state');
+    expect(empty).toHaveTextContent(/no submissions yet/i);
+    const cta = screen.getByRole('button', { name: /log your first report/i });
+    fireEvent.click(cta);
+    expect(onStartReport).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the explanatory empty state without a CTA when onStartReport is not provided', () => {
+    render(
+      <HistoryTab
+        submissions={[]}
+        onView={vi.fn()}
+        loading={false}
+        onDownload={vi.fn()}
+        generating={false}
+      />,
+    );
+    expect(screen.getByTestId('history-empty-state')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /log your first report/i })).toBeNull();
   });
 });

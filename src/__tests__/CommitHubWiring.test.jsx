@@ -5,6 +5,13 @@ import StepRail from '../components/dashboard/GamePlanV2/StepRail';
 import PlanCascade from '../components/dashboard/GamePlanV2/PlanCascade';
 import PlanAnchorStrip from '../components/dashboard/GamePlanV2/PlanAnchorStrip';
 
+// §2 count-up — PlanAnchorStrip's Plan-Built% + chip numerals now animate via
+// useCountUp on mount. Mocked to the identity function so these tests keep
+// asserting the exact final formatted text synchronously.
+vi.mock('../hooks/useCountUp', () => ({
+  useCountUp: (value) => value,
+}));
+
 // ── StepRail ──────────────────────────────────────────────────────────────────
 
 describe('StepRail — Step 3 (Review & Commit) wiring', () => {

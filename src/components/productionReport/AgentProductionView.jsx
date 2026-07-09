@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Download, Loader2 } from 'lucide-react';
+import PanelSkeleton from '../ui/PanelSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { getAgentSubmissions } from '../../services/submissionService';
 import { getTenantUsers } from '../../services/managerService';
@@ -8,6 +10,7 @@ import { resolveAnnualAPIFloor } from '../../utils/tenureFloors';
 import {
   filterSubmissionsByPeriod,
   computeAgentTotals,
+  deriveProductionDataSource,
 } from '../../lib/productionReport/computations';
 import TimePeriodToggle from './TimePeriodToggle';
 import DataSourceBadge from './DataSourceBadge';
@@ -41,7 +44,7 @@ const PERIOD_CAPTION = {
   ytd:     'year',
 };
 
-export default function AgentProductionView() {
+export default function AgentProductionView({ onDownloadPDF, generating = false } = {}) {
   const { user, userProfile, tenantId } = useAuth();
   // P7 — read the P1 leaderboards aggregate (branch-scoped, agent-readable).
   // Replaces the self-only ranking that PR 397 dropped: Firestore rules deny
@@ -58,21 +61,40 @@ export default function AgentProductionView() {
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Per-source failure tracking — a sub-fetch failing no longer silently
+  // degrades to an empty array with no trace (§1 states contract). Both
+  // failed → full error card; one failed → partial-failure banner naming
+  // the count, with the other source's real data still shown.
+  const [submissionsError, setSubmissionsError] = useState(false);
+  const [usersError, setUsersError] = useState(false);
   // Authorized addition: most-recent E3 persistency record (dispatcher-approved, Phase 1 G3).
   // Independent effect; renders "—" until resolved or on error.
   const [persHistory, setPersHistory] = useState([]);
 
-  useEffect(() => {
+  const loadProduction = useCallback(() => {
     if (!user?.uid || !tenantId) return;
     setLoading(true);
+    setError(null);
+    setSubmissionsError(false);
+    setUsersError(false);
     Promise.all([
-      getAgentSubmissions(tenantId, user.uid).catch(() => []),
-      getTenantUsers(tenantId).catch(() => []),
+      getAgentSubmissions(tenantId, user.uid).catch((e) => {
+        console.error('[AgentProductionView] submissions failed:', e);
+        setSubmissionsError(true);
+        return [];
+      }),
+      getTenantUsers(tenantId).catch((e) => {
+        console.error('[AgentProductionView] users failed:', e);
+        setUsersError(true);
+        return [];
+      }),
     ]).then(([subs, users]) => {
       setAllSubmissions(subs);
       setAllUsers(users);
     }).catch(setError).finally(() => setLoading(false));
   }, [user?.uid, tenantId]);
+
+  useEffect(() => { loadProduction(); }, [loadProduction]);
 
   useEffect(() => {
     if (!user?.uid || !tenantId) return;
@@ -91,6 +113,10 @@ export default function AgentProductionView() {
   }), [allSubmissions]);
 
   const myTotals = periodTotals[period];
+
+  // Honest data-source signal. This view loads submissions only (no settlement
+  // fetch), so this resolves to 'estimated' — derived, not hardcoded.
+  const dataSource = deriveProductionDataSource({ settlements: [] });
 
   // YTD vs tenure-floor bar. Uses contractStartDate from userProfile (already loaded).
   // Falls back to 200,000 when contractStartDate is absent.
@@ -131,10 +157,31 @@ export default function AgentProductionView() {
   const persDisplay = Number.isFinite(persDecimal) ? `${(persDecimal * 100).toFixed(1)}%` : '—';
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-ink-muted text-sm">Loading production data…</div>;
+    return (
+      <div className="flex flex-col gap-4" data-testid="agent-production-loading">
+        <PanelSkeleton variant="metric-row" count={3} label="Loading production data…" />
+        <PanelSkeleton variant="table" count={5} columns={4} />
+      </div>
+    );
   }
-  if (error) {
-    return <div className="py-8 text-center text-danger-ink text-sm">Failed to load production data.</div>;
+  if (error || (submissionsError && usersError)) {
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-center gap-3 p-8 rounded-xl bg-danger/10 border border-danger/30 text-center"
+        data-testid="agent-production-error"
+      >
+        <AlertTriangle size={28} className="text-danger-ink" aria-hidden="true" />
+        <p className="text-sm text-danger-ink font-medium">Couldn&apos;t load production data — check your connection and try again.</p>
+        <button
+          type="button"
+          onClick={loadProduction}
+          className="min-h-[44px] px-4 rounded-lg bg-card border border-border text-ink text-sm font-semibold hover:bg-surface transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   const ytdApi = periodTotals.ytd.totalApi;
@@ -142,10 +189,47 @@ export default function AgentProductionView() {
   const aboveFloor = ytdApi >= ytdFloor;
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Controls row */}
+    <div className="flex flex-col gap-4 stagger">
+      {/* Partial-failure notice — one of the two sub-fetches failed while the
+          other resolved; the panel still renders with the available data. */}
+      {(submissionsError || usersError) && (
+        <div
+          role="alert"
+          className="p-3 rounded-xl border border-warning/30 bg-warning/10 text-warning-ink text-sm flex items-center justify-between gap-3 flex-wrap"
+          data-testid="agent-production-partial"
+        >
+          <span>1 of 2 data sources failed to load — showing what&apos;s available.</span>
+          <button
+            type="button"
+            onClick={loadProduction}
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Controls row. DataSourceBadge is honest-derived: this view loads
+          submissions only (no settlement fetch — read-light rule), so
+          deriveProductionDataSource resolves to 'estimated'. See its docstring
+          for the deferred per-period settled-state upgrade. */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <DataSourceBadge source="estimated" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <DataSourceBadge source={dataSource} />
+          {onDownloadPDF && (
+            <button
+              type="button"
+              onClick={onDownloadPDF}
+              disabled={generating}
+              data-testid="agent-production-download"
+              className="min-h-[44px] inline-flex items-center justify-center gap-2 px-4 rounded-lg border border-primary text-primary text-sm font-semibold hover:bg-primary/5 transition-colors disabled:opacity-60"
+            >
+              {generating
+                ? (<><Loader2 size={15} className="animate-spin" aria-hidden="true" /> Generating…</>)
+                : (<><Download size={15} aria-hidden="true" /> Download report</>)}
+            </button>
+          )}
+        </div>
         <TimePeriodToggle selected={period} onChange={setPeriod} />
       </div>
 

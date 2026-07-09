@@ -37,6 +37,33 @@ function focusableWithin(node) {
   return Array.from(node.querySelectorAll(FOCUSABLE_QUERY));
 }
 
+// A captured trigger is focusable only if it is still in the document and not
+// disabled. `.focus()` on a detached or disabled element silently no-ops, so
+// guarding here is what makes the difference between real focus-return and a
+// swallowed one.
+function isFocusable(el) {
+  return !!(el && el.isConnected && !el.disabled && typeof el.focus === 'function');
+}
+
+// Restore focus to the element that opened the modal. The trigger can be
+// transiently unfocusable at teardown time — a background refresh may have just
+// flipped it to `disabled`, or it may be mid-remount after a full-screen
+// takeover replaced it. Try immediately; if that no-ops, retry once after the
+// next paint, by which point the transient state has usually cleared. A trigger
+// that is permanently gone (unmounted with no replacement) can't be focused by
+// this hook — the consumer that owns the unmount must redirect focus itself.
+function restoreFocusTo(trigger) {
+  if (isFocusable(trigger)) {
+    trigger.focus();
+    if (document.activeElement === trigger) return;
+  }
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => {
+      if (isFocusable(trigger)) trigger.focus();
+    });
+  }
+}
+
 export default function useFocusTrap({ onEscape, escapeDisabled = false } = {}) {
   const modalRef = useRef(null);
   const triggerRef = useRef(null);
@@ -49,10 +76,7 @@ export default function useFocusTrap({ onEscape, escapeDisabled = false } = {}) 
     }
 
     return () => {
-      const trigger = triggerRef.current;
-      if (trigger && typeof trigger.focus === 'function') {
-        trigger.focus();
-      }
+      restoreFocusTo(triggerRef.current);
     };
   }, []);
 

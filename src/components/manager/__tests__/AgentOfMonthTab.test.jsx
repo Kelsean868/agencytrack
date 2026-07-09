@@ -114,6 +114,26 @@ describe('AgentOfMonthTab', () => {
     });
   });
 
+  it('0.1b — a category with no candidates shows an actionable explanatory empty (not bare "No data")', async () => {
+    mockGetCandidates.mockResolvedValue({ api: [], apps: [], activity: [] });
+    render(<AgentOfMonthTab />);
+    await waitFor(() => {
+      const empties = screen.getAllByTestId('aom-category-empty');
+      expect(empties.length).toBe(3);
+      expect(empties[0]).toHaveTextContent(/no submissions for this month yet/i);
+      expect(empties[0]).toHaveTextContent(/month toggle above/i);
+    });
+  });
+
+  it('0.1b — renders a PanelSkeleton (aria-busy) while candidates are loading, not bare "Loading candidates…" text', async () => {
+    mockGetCandidates.mockReturnValue(new Promise(() => {}));
+    render(<AgentOfMonthTab />);
+    await waitFor(() => {
+      expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
+    });
+    expect(screen.queryByText('Loading candidates…')).toBeNull();
+  });
+
   it('shows "No branch assigned" message when branchId is missing', () => {
     vi.doMock('../../../context/AuthContext', () => ({
       useAuth: () => ({ userProfile: {} }),

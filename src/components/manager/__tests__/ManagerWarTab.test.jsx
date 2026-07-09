@@ -28,13 +28,15 @@ const mockSaveWarDraft         = vi.fn().mockResolvedValue(undefined);
 const mockSubmitWar            = vi.fn().mockResolvedValue(undefined);
 const mockGetWar               = vi.fn().mockResolvedValue(null);
 const mockGetOwnJfwCount       = vi.fn().mockResolvedValue(0);
+const mockGetOwnWarStreak      = vi.fn().mockResolvedValue([]);
 const mockGetResolvedStandards = vi.fn().mockResolvedValue({});
 
 vi.mock('../../../services/managerWarService', () => ({
-  saveWarDraft:   (...args) => mockSaveWarDraft(...args),
-  submitWar:      (...args) => mockSubmitWar(...args),
-  getWar:         (...args) => mockGetWar(...args),
-  getOwnJfwCount: (...args) => mockGetOwnJfwCount(...args),
+  saveWarDraft:    (...args) => mockSaveWarDraft(...args),
+  submitWar:       (...args) => mockSubmitWar(...args),
+  getWar:          (...args) => mockGetWar(...args),
+  getOwnJfwCount:  (...args) => mockGetOwnJfwCount(...args),
+  getOwnWarStreak: (...args) => mockGetOwnWarStreak(...args),
 }));
 
 vi.mock('../../../services/managerStandardOverrideService', () => ({
@@ -86,6 +88,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockGetWar.mockResolvedValue(null);
   mockGetOwnJfwCount.mockResolvedValue(0);
+  mockGetOwnWarStreak.mockResolvedValue([]);
   mockGetResolvedStandards.mockResolvedValue({});
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
 });
@@ -99,7 +102,7 @@ afterEach(() => {
 describe('ManagerWarTab — initial render', () => {
   it('shows loading state then renders the form', async () => {
     renderTab();
-    expect(screen.getByText('Loading…')).toBeInTheDocument();
+    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
     await flushMount();
     expect(screen.getByText('My Weekly Activity Report')).toBeInTheDocument();
   });
@@ -176,6 +179,37 @@ describe('ManagerWarTab — loading an existing draft', () => {
     renderTab();
     await flushMount();
     expect(screen.getByText(/draft.*auto-saved/i)).toBeInTheDocument();
+  });
+});
+
+// ── §1 states contract — getWar failure must never silently fall through to
+// DEFAULT_FORM (which would mask an existing draft as a blank new report).
+
+describe('ManagerWarTab — §1 states contract (load error / retry)', () => {
+  it('renders a blocking error card with Retry when getWar fails (never falls through to a blank form)', async () => {
+    mockGetWar.mockRejectedValue(new Error('boom-getwar'));
+    renderTab();
+    await flushMount();
+
+    const card = screen.getByTestId('manager-war-error');
+    expect(card).toHaveAttribute('role', 'alert');
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    // The form itself must not render alongside the blocking error.
+    expect(screen.queryByLabelText('One-on-One Pipeline Reviews')).not.toBeInTheDocument();
+  });
+
+  it('Retry re-invokes getWar and recovers into the form', async () => {
+    mockGetWar.mockRejectedValueOnce(new Error('boom-getwar')).mockResolvedValueOnce(null);
+    renderTab();
+    await flushMount();
+    expect(screen.getByTestId('manager-war-error')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    await flushMount();
+
+    expect(mockGetWar).toHaveBeenCalledTimes(2);
+    expect(screen.queryByTestId('manager-war-error')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('One-on-One Pipeline Reviews')).toBeInTheDocument();
   });
 });
 
@@ -321,6 +355,20 @@ describe('ManagerWarTab — JFW count row', () => {
     );
   });
 
+  it('clicking Retry on the JFW error re-invokes getOwnJfwCount and recovers', async () => {
+    mockGetOwnJfwCount.mockRejectedValueOnce(new Error('FAILED_PRECONDITION'));
+    renderTab();
+    await flushMount();
+    expect(screen.getByRole('alert')).toHaveTextContent(/error loading/i);
+
+    mockGetOwnJfwCount.mockResolvedValueOnce(3);
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    await flushMount();
+
+    expect(mockGetOwnJfwCount).toHaveBeenCalledTimes(2);
+    expect(screen.getByLabelText(/joint field work count: 3/i)).toBeInTheDocument();
+  });
+
   it('recomputes count when the week selector changes', async () => {
     mockGetOwnJfwCount.mockResolvedValue(2);
     renderTab();
@@ -388,6 +436,58 @@ describe('ManagerWarTab — standards overlay', () => {
     renderTab();
     await flushMount();
     expect(screen.queryByLabelText(/standard (met|not met)/i)).not.toBeInTheDocument();
+  });
+});
+
+// ── item 2.1 My WAR completion ring + streak ──────────────────────────────────
+
+describe('ManagerWarTab — completion ring', () => {
+  it('shows a no-targets ring when no standards are resolved', async () => {
+    mockGetResolvedStandards.mockResolvedValue({});
+    renderTab();
+    await flushMount();
+    expect(screen.getByLabelText(/KPI completion: no targets set/i)).toBeInTheDocument();
+  });
+
+  it('computes completion from configured targets only (0 of 1 met → 0%)', async () => {
+    // One numeric target set; new-report form value is 0 → under → 0 of 1.
+    mockGetResolvedStandards.mockResolvedValue({ oneOnOnesConducted: 5 });
+    renderTab();
+    await flushMount();
+    expect(screen.getByLabelText(/KPI completion: 0% — 0 of 1 targets met/i)).toBeInTheDocument();
+  });
+});
+
+describe('ManagerWarTab — filing streak dots', () => {
+  it('renders streak dots from getOwnWarStreak (filed count)', async () => {
+    mockGetOwnWarStreak.mockResolvedValue([
+      { weekStart: '2026-05-17', filed: true },
+      { weekStart: '2026-05-10', filed: false },
+      { weekStart: '2026-05-03', filed: true },
+    ]);
+    renderTab();
+    await flushMount();
+    expect(screen.getByTestId('war-streak-dots'))
+      .toHaveAttribute('aria-label', 'Filed 2 of 3 recent weeks');
+  });
+
+  it('calls getOwnWarStreak with the trailing sundays for the signed-in manager', async () => {
+    renderTab();
+    await flushMount();
+    expect(mockGetOwnWarStreak).toHaveBeenCalledWith({
+      tenantId: 'test-tenant',
+      managerId: 'um1',
+      weekStarts: ['2026-05-17', '2026-05-10', '2026-05-03'],
+    });
+  });
+
+  it('shows a Retry affordance when the streak fetch rejects', async () => {
+    mockGetOwnWarStreak.mockRejectedValue(new Error('network'));
+    renderTab();
+    await flushMount();
+    // Streak area falls back to a Retry button; the rest of the form still renders.
+    expect(screen.getByText('My Weekly Activity Report')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
   });
 });
 

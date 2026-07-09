@@ -16,7 +16,7 @@ import {
   visibleLineKeys, allocApps, isDrilled, lineCommission, lineAPI, productAPI,
   effectiveLineRate, totalAllocatedCommission, seedAllocation,
   autoBalanceProducts, sumProductCommission, buildAllocationSummary,
-  allocationToYearPlan,
+  allocationToYearPlan, productBalance,
 } from '../../lib/moneyNeedsAllocation';
 
 const LICENSE_OPTIONS = [
@@ -100,6 +100,14 @@ function TheSeam({ required }) {
 function ProductDrillDrawer({ lineKey, line, onProducts, onAutoBalance, onBlur }) {
   const products = line.products ?? [];
   const lineCommissionTotal = sumProductCommission(products);
+  // Balance viz (2.11) — Σ products vs the line commission target (mn-merge.jsx).
+  const balance = productBalance(products, lineCommission(line));
+  const balanceTone = balance.state === 'balanced'
+    ? { pill: 'bg-success/15 text-success-ink', bar: 'bg-success', txt: 'text-success-ink' }
+    : { pill: 'bg-amber-500/15 text-amber-700 dark:text-amber-400', bar: 'bg-amber-500', txt: 'text-amber-700 dark:text-amber-400' };
+  const balanceLabel = balance.state === 'balanced'
+    ? 'BALANCED'
+    : `${balance.state === 'over' ? 'OVER' : 'UNDER'} ${formatCurrency(Math.abs(balance.delta))}`;
 
   function update(i, field, value) {
     const next = products.map((p, idx) => (idx === i ? { ...p, [field]: value } : p));
@@ -116,18 +124,44 @@ function ProductDrillDrawer({ lineKey, line, onProducts, onAutoBalance, onBlur }
 
   return (
     <div className="space-y-2 border-t border-border bg-surface-muted px-3 py-3" data-testid={`alloc-drill-${lineKey}`}>
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
           {LABEL[lineKey]} products
+        </span>
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${balanceTone.pill}`}
+          data-testid={`alloc-balance-pill-${lineKey}`}
+        >
+          {balance.state === 'balanced'
+            ? <Check size={11} aria-hidden="true" />
+            : <AlertCircle size={11} aria-hidden="true" />}
+          {balanceLabel}
         </span>
         <button
           type="button"
           onClick={() => onAutoBalance(lineKey)}
-          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-semibold text-ink-muted transition-colors hover:text-ink"
+          className="ml-auto inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-semibold text-ink-muted transition-colors hover:text-ink"
           data-testid={`alloc-balance-${lineKey}`}
         >
           <Scale size={13} aria-hidden="true" /> Distribute evenly
         </button>
+      </div>
+
+      {/* Segmented sum-bar — per-product split of the line commission. */}
+      <div className="flex items-center gap-2" data-testid={`alloc-sum-bar-${lineKey}`}>
+        <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-surface">
+          {balance.segments.map((seg, i) => (
+            <div
+              key={i}
+              className="h-full border-r border-surface-raised bg-primary last:border-r-0"
+              style={{ width: `${Math.min(seg.pct, 100)}%`, opacity: 1 - i * 0.18 }}
+              aria-hidden="true"
+            />
+          ))}
+        </div>
+        <span className={`shrink-0 font-mono text-[10px] font-bold tabular-nums ${balanceTone.txt}`}>
+          {formatCurrency(balance.sum)} / {formatCurrency(balance.target)}
+        </span>
       </div>
 
       {products.map((p, i) => (
@@ -414,6 +448,99 @@ function AckModal({ onClose, onContinue, summary }) {
   );
 }
 
+// ── Pre-send itemized confirm sheet (2.11) ───────────────────────────────────
+// Names exactly what hands over BEFORE the write. Confirm → the (unchanged)
+// write + ack; Cancel → dismiss, no write. Design intent: mn-merge.jsx
+// PlaygroundConfirm. §4 dialog contract via useFocusTrap (role/aria-modal/
+// Escape/focus-return); the write payload is byte-identical to the direct path.
+function ConfirmSheet({ onCancel, onConfirm, summary }) {
+  const ref = useFocusTrap({ onEscape: onCancel });
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+  const rows = summary.lines.filter((l) => l.commission > 0);
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center sm:p-4">
+      <div
+        ref={ref}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Confirm your targets"
+        data-testid="alloc-confirm-sheet"
+        className="flex max-h-[88vh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-surface-raised shadow-xl outline-none sm:max-w-md sm:rounded-2xl"
+      >
+        <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+            <Send size={18} className="text-primary" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-display text-base font-extrabold tracking-tight text-ink">Send to Game Plan</p>
+            <p className="mt-0.5 text-xs text-ink-muted">These targets become your plan&apos;s starting point.</p>
+          </div>
+        </div>
+
+        <div className="flex-1 space-y-2 overflow-y-auto px-5 py-4">
+          {rows.map((line) => (
+            <div
+              key={line.key}
+              className="rounded-xl border border-border bg-surface px-3.5 py-2.5"
+              data-testid={`confirm-line-${line.key}`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-display text-sm font-bold text-ink">{line.label}</span>
+                {line.key === 'life' && (
+                  <span className="rounded-full bg-gold/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-gold-ink">
+                    Awards
+                  </span>
+                )}
+                <span className="ml-auto font-mono text-sm font-bold text-primary tabular-nums">
+                  {formatCurrency(line.api)}
+                </span>
+              </div>
+              {line.products && line.products.filter((p) => p.commission > 0).length > 0 && (
+                <div className="mt-2 space-y-1 border-t border-dashed border-border pt-2">
+                  {line.products.filter((p) => p.commission > 0).map((p, i) => (
+                    <div key={i} className="flex items-center gap-2 text-[11px]">
+                      <span className="text-ink-muted">{p.name || `Product ${i + 1}`}</span>
+                      <span className="flex-1 border-b border-dotted border-border" aria-hidden="true" />
+                      <span className="font-mono font-bold text-ink tabular-nums">{formatCurrency(p.api)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+          <div className="rounded-lg bg-surface-muted px-3 py-2.5 text-[11px] leading-relaxed text-ink-muted">
+            Only <span className="font-semibold text-ink">Life</span> API drives the award projection.
+            Money Needs stays the source — edit there to change.
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 border-t border-border px-4 py-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            data-testid="alloc-confirm-cancel"
+            className="min-h-[44px] flex-1 rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            data-testid="alloc-confirm-send"
+            className="flex min-h-[44px] flex-[1.4] items-center justify-center gap-1.5 rounded-xl bg-primary px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:bg-primary-dark"
+          >
+            <Send size={14} aria-hidden="true" /> Send to Game Plan
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Always-visible allocation summary card ───────────────────────────────────
 // Mirrors the ack modal's line breakdown but adds per-product subtotals when a
 // line is drilled, so the agent sees the full decomposition while allocating.
@@ -495,6 +622,7 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
   const [alloc, setAlloc] = useState(() => seedAllocation(worksheet, user?.licenseProfile));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
   const [showAck, setShowAck] = useState(false);
   const [ruleset, setRuleset] = useState(DEFAULT_RULESET_2026);
 
@@ -632,8 +760,11 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
   useEffect(() => { allocRef.current = alloc; }, [alloc]);
   const handleBlur = useCallback(() => { persist(allocRef.current); }, [persist]);
 
-  // ── Send → confirm → ack → tab ──────────────────────────────────────────
-  function handleSend() {
+  // ── Send → confirm → write → ack → tab ────────────────────────────────────
+  // handleSend opens the itemized confirm sheet (NO write). commitSend performs
+  // the (unchanged) write — byte-identical payload — only after the agent
+  // confirms, then routes to the ack. The write path stays a single mechanism.
+  function commitSend() {
     const lifeLine = alloc.lines.life ?? {};
     const generalLine = alloc.lines.general ?? {};
     // Products carry commission (canonical) + derived API.
@@ -659,7 +790,12 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
     };
     localStorage.setItem(PLAYGROUND_INCOME_GOAL_KEY, JSON.stringify(payload));
     persist(alloc);
+    setShowConfirm(false);
     setShowAck(true);
+  }
+
+  function handleSend() {
+    setShowConfirm(true);
   }
 
   // Single derivation shared by AllocationSummaryCard (always visible) and
@@ -751,6 +887,14 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
         </button>
         {saving && <Loader2 size={14} className="animate-spin text-ink-muted" />}
       </div>
+
+      {showConfirm && (
+        <ConfirmSheet
+          onCancel={() => setShowConfirm(false)}
+          onConfirm={commitSend}
+          summary={allocSummary}
+        />
+      )}
 
       {showAck && (
         <AckModal

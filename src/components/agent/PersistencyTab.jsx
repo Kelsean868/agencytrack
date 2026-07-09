@@ -16,6 +16,9 @@ import {
 } from '../../services/persistencyService';
 import PersistencyEntryForm from '../manager/PersistencyEntryForm';
 import PersistencyPlayground from '../persistency/PersistencyPlayground';
+import PersistencyV2Shell from '../persistency/PersistencyV2Shell';
+import PanelSkeleton from '../ui/PanelSkeleton';
+import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 
 function formatPct(decimal) {
   if (!Number.isFinite(decimal)) return '—';
@@ -25,6 +28,8 @@ function formatPct(decimal) {
 
 export default function PersistencyTab({ onViewLapsedPolicies }) {
   const { user, role, tenantId } = useAuth();
+  // Item 3.4 — v2 rolling-model preview (flag OFF ⇒ surface absent, byte-identical).
+  const persistencyV2On = useFeatureFlag('persistencyV2');
 
   const [history, setHistory] = useState([]);
   const [monthKeys, setMonthKeys] = useState([]);
@@ -78,11 +83,37 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
     pct: Number.isFinite(r.persistency) ? Math.round(r.persistency * 1000) / 10 : null,
   })), [history]);
 
+  // First paint only — before any successful load, show a skeleton instead of
+  // the "—" placeholder figures. Once data has loaded once, a Retry-driven
+  // reload keeps showing the existing content in place (matches the 0.1a
+  // error+Retry contract; only the very first render is a true unknown).
+  if (loading && monthKeys.length === 0 && !error) {
+    return (
+      <div className="flex flex-col gap-4" data-testid="agent-persistency-tab">
+        <PanelSkeleton variant="metric-row" count={1} label="Loading persistency…" />
+        <PanelSkeleton variant="list" count={3} />
+      </div>
+    );
+  }
+
+  // §2 staggered-assemble — the self-entry form + playground are fixed-
+  // position overlays rendered outside the `.stagger` container (same
+  // pattern as GamePlanV2's modalsBlock split): they only open on click,
+  // well after the one-shot mount-time stagger animation has finished.
   return (
-    <div className="flex flex-col gap-4" data-testid="agent-persistency-tab">
+    <>
+    <div className="flex flex-col gap-4 stagger" data-testid="agent-persistency-tab">
       {error && (
-        <div className="card flex items-center gap-2 text-sm text-danger-ink">
-          <AlertCircle size={16} /> {error}
+        <div role="alert" className="card flex items-center gap-2 text-sm text-danger-ink flex-wrap" data-testid="agent-persistency-error">
+          <AlertCircle size={16} className="shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button
+            type="button"
+            onClick={load}
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -242,6 +273,12 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
         </button>
       </div>
 
+      {/* Item 3.4 — v2 rolling-model preview (flag-gated; absent when OFF) */}
+      {persistencyV2On && <PersistencyV2Shell />}
+    </div>
+
+      {/* Self-entry form + Playground — outside `.stagger` (fixed-position
+          overlays; see note above) */}
       {editing && activeMonthKey && (
         <PersistencyEntryForm
           tenantId={tenantId}
@@ -265,6 +302,6 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
           onViewLapsedPolicies={onViewLapsedPolicies}
         />
       )}
-    </div>
+    </>
   );
 }

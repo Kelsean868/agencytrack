@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // ── Auth mock (mutable — isUpline gate tests override role) ───────────────────
 
@@ -23,10 +23,25 @@ vi.mock('../ManagerOverrideModal', () => ({
   default: () => <div data-testid="override-modal" />,
 }));
 
+// reviewWar mock (item 2.1) — warDocId kept real-ish for the fallback path.
+const mockReviewWar = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../../services/managerWarService', () => ({
+  reviewWar: (...args) => mockReviewWar(...args),
+  warDocId: (managerId, weekStart) => `${managerId}_${weekStart}`,
+}));
+
+// useToast mock — component calls it at top level; no provider in the test tree.
+const mockToastShow = vi.fn();
+vi.mock('../../../hooks/useToast', () => ({
+  default: () => ({ show: mockToastShow, dismiss: vi.fn() }),
+}));
+
 import ManagerWarDetail from '../ManagerWarDetail';
 
 beforeEach(() => {
   mockAuth = { ...DEFAULT_MOCK_AUTH };
+  mockReviewWar.mockReset().mockResolvedValue(undefined);
+  mockToastShow.mockReset();
 });
 
 const BASE_WAR = {
@@ -263,5 +278,125 @@ describe('ManagerWarDetail — I3a accountability flag panel', () => {
   it('flags JFW when stored jfwCount < target', () => {
     renderDetail({ jfwCount: 1 }, vi.fn(), { jfwCount: 3 });
     expect(screen.getByTestId('accountability-flag-row-jfwCount')).toBeInTheDocument();
+  });
+});
+
+// ── item 2.1 CompletionRing ───────────────────────────────────────────────────
+
+describe('ManagerWarDetail — CompletionRing', () => {
+  it('renders a ring with the met/total from configured targets only', () => {
+    // BM_STANDARDS sets targets on 6 numeric + 2 boolean = 8 KPIs.
+    // BASE_WAR: names 5<10, interviews 2<4, recruits 1<2, training 1<2, jfw 2<3 → 5 under
+    // met: oneOnOnes 3<5 under too → actually 6 numeric under? compute: 1o1 3<5 under,
+    // names 5<10 under, interviews 2<4 under, recruits 1<2 under, training 1<2 under,
+    // jfw 2<3 under = 6 numeric under; booleans both met. met = 8-6 = 2 → 25%.
+    renderDetail({}, vi.fn(), BM_STANDARDS);
+    expect(screen.getByLabelText(/KPI completion: 25% — 2 of 8 targets met/i)).toBeInTheDocument();
+  });
+
+  it('renders a no-targets ring when no standards are configured', () => {
+    renderDetail({}, vi.fn(), {});
+    expect(screen.getByLabelText(/KPI completion: no targets set/i)).toBeInTheDocument();
+  });
+});
+
+// ── item 2.1 reviewer workflow ────────────────────────────────────────────────
+
+const UPLINE_SM = { ...DEFAULT_MOCK_AUTH, user: { uid: 'sm1' }, role: 'sales_manager',
+                    userProfile: { branchId: null, name: 'Sasha Mgr' } };
+
+describe('ManagerWarDetail — reviewer workflow gating', () => {
+  it('renders review controls for an upline caller on a submitted WAR', () => {
+    mockAuth = { ...UPLINE_SM };
+    renderDetail({ status: 'submitted' });
+    expect(screen.getByTestId('war-review-controls')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /approve war/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /request changes/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/leader's note/i)).toBeInTheDocument();
+  });
+
+  it('does NOT render review controls when the WAR is a draft', () => {
+    mockAuth = { ...UPLINE_SM };
+    renderDetail({ status: 'draft' });
+    expect(screen.queryByTestId('war-review-controls')).not.toBeInTheDocument();
+  });
+
+  it('does NOT render review controls when the caller is not upline', () => {
+    // UM (rank 1) viewing BM (rank 2) → not upline
+    mockAuth = { ...DEFAULT_MOCK_AUTH, user: { uid: 'um1' }, role: 'unit_manager',
+                 userProfile: { branchId: 'branch-a' } };
+    renderDetail({ status: 'submitted' });
+    expect(screen.queryByTestId('war-review-controls')).not.toBeInTheDocument();
+  });
+});
+
+describe('ManagerWarDetail — review actions', () => {
+  it('Approve calls reviewWar with docId + approved status + reviewer identity + note', async () => {
+    mockAuth = { ...UPLINE_SM };
+    const onReviewed = vi.fn();
+    render(
+      <ManagerWarDetail warData={{ ...BASE_WAR, status: 'submitted' }} onBack={vi.fn()} onReviewed={onReviewed} />,
+    );
+    fireEvent.change(screen.getByLabelText(/leader's note/i), { target: { value: 'Nice work' } });
+    fireEvent.click(screen.getByRole('button', { name: /approve war/i }));
+
+    await waitFor(() => expect(mockReviewWar).toHaveBeenCalledTimes(1));
+    expect(mockReviewWar).toHaveBeenCalledWith('test-tenant', 'bm1_2026-05-18', {
+      status: 'approved', note: 'Nice work', reviewerUid: 'sm1', reviewerName: 'Sasha Mgr',
+    });
+    await waitFor(() => expect(onReviewed).toHaveBeenCalledWith('bm1_2026-05-18',
+      expect.objectContaining({ reviewStatus: 'approved', reviewNote: 'Nice work' })));
+    // Success affordance (toast) fired
+    expect(mockToastShow).toHaveBeenCalledWith(expect.objectContaining({ variant: 'success' }));
+    // Review state now displayed in place (no reload)
+    expect(screen.getByTestId('war-review-state')).toBeInTheDocument();
+  });
+
+  it('Request changes calls reviewWar with changes_requested', async () => {
+    mockAuth = { ...UPLINE_SM };
+    render(<ManagerWarDetail warData={{ ...BASE_WAR, status: 'submitted' }} onBack={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /request changes/i }));
+    await waitFor(() => expect(mockReviewWar).toHaveBeenCalledWith(
+      'test-tenant', 'bm1_2026-05-18',
+      expect.objectContaining({ status: 'changes_requested' }),
+    ));
+  });
+
+  it('renders an inline error card + Retry when reviewWar rejects (denial path)', async () => {
+    mockAuth = { ...UPLINE_SM };
+    mockReviewWar.mockRejectedValueOnce(new Error('PERMISSION_DENIED'));
+    render(<ManagerWarDetail warData={{ ...BASE_WAR, status: 'submitted' }} onBack={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /approve war/i }));
+
+    const card = await screen.findByTestId('war-review-error');
+    expect(card).toHaveAttribute('role', 'alert');
+    expect(mockToastShow).toHaveBeenCalledWith(expect.objectContaining({ variant: 'error' }));
+
+    // Retry re-invokes reviewWar with the same action
+    mockReviewWar.mockResolvedValueOnce(undefined);
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    await waitFor(() => expect(mockReviewWar).toHaveBeenCalledTimes(2));
+  });
+
+  it('clamps the note to 2000 chars and shows a live count', async () => {
+    mockAuth = { ...UPLINE_SM };
+    render(<ManagerWarDetail warData={{ ...BASE_WAR, status: 'submitted' }} onBack={vi.fn()} />);
+    const textarea = screen.getByLabelText(/leader's note/i);
+    fireEvent.change(textarea, { target: { value: 'x'.repeat(2500) } });
+    expect(textarea.value).toHaveLength(2000);
+    expect(screen.getByText('2000/2000')).toBeInTheDocument();
+  });
+
+  it('shows existing review state (who/status/note) on the drill', () => {
+    mockAuth = { ...UPLINE_SM };
+    renderDetail({
+      status: 'submitted', reviewStatus: 'approved',
+      reviewNote: 'Approved last week', reviewedByName: 'Prior Reviewer',
+      reviewedAt: new Date('2026-05-20T12:00:00Z'),
+    });
+    const state = screen.getByTestId('war-review-state');
+    expect(state).toHaveTextContent(/Approved/);
+    expect(state).toHaveTextContent(/Prior Reviewer/);
+    expect(state).toHaveTextContent(/Approved last week/);
   });
 });

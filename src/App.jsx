@@ -21,6 +21,10 @@ import ChunkLoadErrorBoundary from './components/ui/ChunkLoadErrorBoundary';
 const AgentDashboard = lazy(() => import('./components/dashboard/AgentDashboard'));
 const ManagerDashboard = lazy(() => import('./components/dashboard/ManagerDashboard'));
 const TenantAdminDashboard = lazy(() => import('./components/dashboard/TenantAdminDashboard'));
+// Tier-3 3.1 — CRO (Customer Relationship Officer / back-office) gets its own
+// dedicated dashboard (Delivery Register), split like TenantAdmin. It is NOT a
+// manager role, so it is intentionally absent from MANAGER_ROLES below.
+const CRODashboard = lazy(() => import('./components/dashboard/CRODashboard'));
 
 // Tenant Admin gets a dedicated dashboard surface from B5 forward — the
 // company config write path lives there. The remaining manager-tier roles
@@ -123,6 +127,8 @@ function AppRoot() {
   let dashboard;
   if (role === 'tenant_admin') {
     dashboard = <TenantAdminDashboard />;
+  } else if (role === 'cro') {
+    dashboard = <CRODashboard />;
   } else if (MANAGER_ROLES.has(role)) {
     dashboard = <ManagerDashboard />;
   } else if (role === 'agent') {

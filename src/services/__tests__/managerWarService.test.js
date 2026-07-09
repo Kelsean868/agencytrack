@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
   mockSetDoc:           vi.fn(),
+  mockUpdateDoc:        vi.fn(),
   mockGetDoc:           vi.fn(),
   mockDoc:              vi.fn(),
   mockServerTimestamp:  vi.fn(() => ({ _type: 'serverTimestamp' })),
@@ -15,6 +16,7 @@ const hoisted = vi.hoisted(() => ({
 vi.mock('firebase/firestore', () => ({
   doc:             (...args) => hoisted.mockDoc(...args),
   setDoc:          (...args) => hoisted.mockSetDoc(...args),
+  updateDoc:       (...args) => hoisted.mockUpdateDoc(...args),
   getDoc:          (...args) => hoisted.mockGetDoc(...args),
   serverTimestamp: () => hoisted.mockServerTimestamp(),
   collection:      (...args) => hoisted.mockCollection(...args),
@@ -40,6 +42,7 @@ import {
   getWarById,
   getOwnJfwCount,
   getWarsForUpline,
+  reviewWar,
 } from '../managerWarService';
 
 const TENANT_ID   = 'test-tenant';
@@ -375,5 +378,41 @@ describe('getWarsForUpline', () => {
     expect(result.id).toBe('doc0');
     expect(result.jfwCount).toBe(2);
     expect(result.managerName).toBe('Branch Mgr 1');
+  });
+});
+
+describe('reviewWar (Tier-2 2.1 reviewer workflow)', () => {
+  beforeEach(() => {
+    hoisted.mockUpdateDoc.mockReset();
+    hoisted.mockUpdateDoc.mockResolvedValue(undefined);
+  });
+
+  it('writes EXACTLY the five review fields (rules hasOnly contract)', async () => {
+    await reviewWar('tenant-1', 'um1_2026-05-24', {
+      status: 'approved', note: 'good week', reviewerUid: 'bm1', reviewerName: 'BM One',
+    });
+    expect(hoisted.mockUpdateDoc).toHaveBeenCalledTimes(1);
+    const payload = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(Object.keys(payload).sort()).toEqual(
+      ['reviewNote', 'reviewStatus', 'reviewedAt', 'reviewedBy', 'reviewedByName']);
+    expect(payload.reviewStatus).toBe('approved');
+    expect(payload.reviewNote).toBe('good week');
+    expect(payload.reviewedBy).toBe('bm1');
+    expect(payload.reviewedByName).toBe('BM One');
+    expect(payload.reviewedAt).toEqual({ _type: 'serverTimestamp' });
+  });
+
+  it('clamps the note to 2000 chars (rules size guard)', async () => {
+    await reviewWar('tenant-1', 'um1_2026-05-24', {
+      status: 'changes_requested', note: 'x'.repeat(2500), reviewerUid: 'bm1', reviewerName: 'BM One',
+    });
+    expect(hoisted.mockUpdateDoc.mock.calls[0][1].reviewNote).toHaveLength(2000);
+  });
+
+  it('rejects an invalid review status without writing', async () => {
+    await expect(reviewWar('tenant-1', 'um1_2026-05-24', {
+      status: 'rejected', note: '', reviewerUid: 'bm1', reviewerName: 'BM One',
+    })).rejects.toThrow(/invalid review status/);
+    expect(hoisted.mockUpdateDoc).not.toHaveBeenCalled();
   });
 });

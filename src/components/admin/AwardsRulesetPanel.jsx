@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Trophy, ChevronDown, ChevronRight, Loader2, AlertTriangle, CheckCircle, Plus, Trash2 } from 'lucide-react';
+import PanelSkeleton from '../ui/PanelSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { getAwardsRuleset, setAwardsRuleset } from '../../services/awardsRulesetService';
 
@@ -614,18 +615,22 @@ export default function AwardsRulesetPanel() {
       {loadError && (
         <div
           role="alert"
-          className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300 flex items-start gap-2"
+          className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300 flex items-start gap-2 flex-wrap"
         >
           <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-          <span>{loadError}</span>
+          <span className="flex-1 min-w-[200px]">{loadError}</span>
+          <button
+            type="button"
+            onClick={loadRuleset}
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
         </div>
       )}
 
       {loading && !loadError && (
-        <div className="flex items-center gap-2 py-6 text-ink-muted text-sm">
-          <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-          <span>Loading ruleset…</span>
-        </div>
+        <PanelSkeleton variant="list" count={5} label="Loading ruleset…" />
       )}
 
       {!loading && !loadError && formState && arrayState && (

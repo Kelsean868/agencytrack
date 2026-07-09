@@ -16,7 +16,17 @@ if (isKioskPath) {
   // Kiosk always renders as dark — ignore user preference
   document.documentElement.classList.add('dark');
 } else {
-  if (localStorage.getItem('agencytrack-dark') === '1') {
+  // No-FOUC theme restore (Tier 2 · 2.4). Reads the canonical `agencytrack-theme`
+  // ('light' | 'dark' | 'system'), resolving System via matchMedia, and falls back
+  // to the legacy `agencytrack-dark` ('1'|'0') for users who only ever used the
+  // pre-2.4 binary toggle. Kept inline (no import) so it runs before React mounts.
+  const themeMode = localStorage.getItem('agencytrack-theme');
+  let dark;
+  if (themeMode === 'dark') dark = true;
+  else if (themeMode === 'light') dark = false;
+  else if (themeMode === 'system') dark = !!window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+  else dark = localStorage.getItem('agencytrack-dark') === '1'; // legacy fallback
+  if (dark) {
     document.documentElement.classList.add('dark');
   }
   if (localStorage.getItem('agencytrack-sidebar-collapsed') === '1') {

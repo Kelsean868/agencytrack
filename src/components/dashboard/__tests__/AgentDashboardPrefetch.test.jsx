@@ -82,7 +82,6 @@ vi.mock('../../shell/Shell', () => ({
 }));
 
 vi.mock('../../wizard/WizardForm',                   () => ({ default: () => null }));
-vi.mock('../../daily/DailyEntryModal',               () => ({ default: () => null }));
 vi.mock('../../goals/GapAnalysisPanel',              () => ({ default: () => null }));
 vi.mock('../../goals/CommissionPlayground',          () => ({ default: () => null }));
 vi.mock('../../profile/CareerPortal',                () => ({ default: () => null }));

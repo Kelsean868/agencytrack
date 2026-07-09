@@ -655,6 +655,155 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   .dark .glass.hero.gold { background: var(--glass-hero-d-gold-solid); }
 }
 
+/* ── Kiosk v2 theatrical scoreboard stage (3.6) ───────────────────────────
+ * Presentation-scoped, deep-dark broadcast surface for the kiosk wall. This
+ * is a PRESENTATION surface (like MeetingMode) — a FIXED dark stage is the
+ * design intent, deliberately distinct from BOTH the app `.dark` theme and
+ * the existing `--color-presentation` (#1a1612). The screens-v2 kiosk mockups
+ * mandate a deeper `#0E0B07` stage; these scoped custom properties carry the
+ * mockup's KIOSK palette. Theme-independent by design — the kiosk always
+ * renders as this stage regardless of the viewer's persisted light/dark
+ * choice. Gold/hot/teal mirror the existing `--color-presentation-*` accents;
+ * silver/bronze/teal-bright/deep + the stage surfaces are new here. */
+[data-kiosk] {
+  --kiosk-stage:          #0E0B07;
+  --kiosk-surface:        rgba(255, 248, 232, 0.05);
+  --kiosk-surface-raised: rgba(255, 248, 232, 0.08);
+  --kiosk-surface-solid:  #17130D; /* opaque fallback (no backdrop-filter / reduced-transparency) */
+  --kiosk-surface-raised-solid: #1E190F;
+  --kiosk-rule:           rgba(244, 239, 227, 0.08);
+  --kiosk-rule-strong:    rgba(244, 239, 227, 0.16);
+  --kiosk-text:           #f4efe3;
+  --kiosk-text-mute:      #b5ab9c;
+  --kiosk-text-faint:     #8a8070;
+  --kiosk-gold:           #e8b73e;
+  --kiosk-gold-glow:      rgba(232, 183, 62, 0.55);
+  --kiosk-gold-tint:      rgba(232, 183, 62, 0.14);
+  --kiosk-silver:         #c7cbd1;
+  --kiosk-silver-glow:    rgba(199, 203, 209, 0.4);
+  --kiosk-bronze:         #c08d6b;
+  --kiosk-bronze-glow:    rgba(192, 141, 107, 0.4);
+  --kiosk-bronze-light:   #fed7aa;
+  --kiosk-bronze-mid:     #c08d6b;
+  --kiosk-bronze-deep:    #92400e;
+  --kiosk-teal:           #4ab5b8;
+  --kiosk-teal-bright:    #7cd8db;
+  --kiosk-teal-deep:      #01696f;
+  --kiosk-teal-glow:      rgba(74, 181, 184, 0.45);
+  --kiosk-teal-tint:      rgba(74, 181, 184, 0.12);
+  --kiosk-hot:            #f26a55;
+  --kiosk-hot-glow:       rgba(242, 106, 85, 0.55);
+  --kiosk-hot-tint:       rgba(242, 106, 85, 0.14);
+  --kiosk-success:        #6bcb85;
+}
+
+/* Fixed dark stage — replaces the app-theme bg the kiosk previously leaked. */
+.kiosk-stage {
+  background-color: var(--kiosk-stage);
+  color: var(--kiosk-text);
+}
+
+/* Liquid-glass blob field + vignette backdrop (decorative, pointer-inert). */
+.kiosk-backdrop { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.kiosk-blob { position: absolute; border-radius: 9999px; filter: blur(44px); }
+.kiosk-blob-a { top: -20%; left: -15%; width: 70%; height: 80%;
+  background: radial-gradient(circle, var(--kiosk-teal-glow) 0%, transparent 65%); }
+.kiosk-blob-b { top: 30%; right: -18%; width: 65%; height: 70%;
+  background: radial-gradient(circle, rgba(232, 183, 62, 0.30) 0%, transparent 65%); }
+.kiosk-blob-c { bottom: -25%; left: 15%; width: 60%; height: 70%;
+  background: radial-gradient(circle, rgba(242, 106, 85, 0.26) 0%, transparent 65%); }
+.kiosk-vignette { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 40%, rgba(74, 181, 184, 0.05) 0%, transparent 55%); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .kiosk-blob-a { animation: kiosk-blob-a 22s ease-in-out infinite; }
+  .kiosk-blob-b { animation: kiosk-blob-b 26s ease-in-out infinite; }
+  .kiosk-blob-c { animation: kiosk-blob-c 30s ease-in-out infinite; }
+}
+@keyframes kiosk-blob-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(140px, 80px) scale(1.18); }
+  50% { transform: translate(-30px, 160px) scale(0.9); }
+  75% { transform: translate(-110px, 60px) scale(1.08); }
+}
+@keyframes kiosk-blob-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  30% { transform: translate(-160px, 80px) scale(1.12); }
+  55% { transform: translate(40px, -120px) scale(0.92); }
+  80% { transform: translate(120px, 30px) scale(1.05); }
+}
+@keyframes kiosk-blob-c {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(120px, -90px) scale(0.88); }
+  50% { transform: translate(-100px, -140px) scale(1.15); }
+  75% { transform: translate(-140px, 30px) scale(0.96); }
+}
+
+/* Glass card — semi-opaque over the stage so it stays legible even where
+ * backdrop-filter is unsupported (solid-enough default); blur is enhancement.
+ * `prefers-reduced-transparency: reduce` swaps to the fully-opaque solid. */
+.kiosk-glass {
+  background: var(--kiosk-surface);
+  border: 1px solid var(--kiosk-rule);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(170%);
+}
+.kiosk-glass-raised {
+  background: var(--kiosk-surface-raised);
+  border: 1px solid var(--kiosk-rule-strong);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .kiosk-glass {
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    background: var(--kiosk-surface-solid);
+  }
+  .kiosk-glass-raised {
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    background: var(--kiosk-surface-raised-solid);
+  }
+}
+
+/* Gradient medal coins — gold reuses --color-medal-1, silver --color-medal-6;
+ * bronze from scoped kiosk bronze tokens (no medal token matches the mockup
+ * bronze). Recognition theming within token discipline. */
+.kiosk-medal {
+  border-radius: 9999px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; flex-shrink: 0;
+  font-family: 'Cabinet Grotesk', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 800; letter-spacing: -0.04em;
+  box-shadow: inset 0 -3px 6px rgba(0, 0, 0, 0.22), inset 0 3px 6px rgba(255, 255, 255, 0.42);
+}
+.kiosk-medal-gold {
+  background: radial-gradient(circle at 32% 28%, var(--color-medal-1-light) 0%, var(--color-medal-1-mid) 50%, var(--color-medal-1-deep) 100%);
+}
+.kiosk-medal-silver {
+  background: radial-gradient(circle at 32% 28%, var(--color-medal-6-light) 0%, var(--color-medal-6-mid) 50%, var(--color-medal-6-deep) 100%);
+}
+.kiosk-medal-bronze {
+  background: radial-gradient(circle at 32% 28%, var(--kiosk-bronze-light) 0%, var(--kiosk-bronze-mid) 50%, var(--kiosk-bronze-deep) 100%);
+}
+.kiosk-medal-gold.kiosk-medal-glow   { box-shadow: inset 0 -3px 6px rgba(0,0,0,0.22), inset 0 3px 6px rgba(255,255,255,0.42), 0 0 24px var(--kiosk-gold-glow); }
+.kiosk-medal-silver.kiosk-medal-glow { box-shadow: inset 0 -3px 6px rgba(0,0,0,0.22), inset 0 3px 6px rgba(255,255,255,0.42), 0 0 24px var(--kiosk-silver-glow); }
+.kiosk-medal-bronze.kiosk-medal-glow { box-shadow: inset 0 -3px 6px rgba(0,0,0,0.22), inset 0 3px 6px rgba(255,255,255,0.42), 0 0 24px var(--kiosk-bronze-glow); }
+
+/* Soft breathing halo behind a champion avatar (gated for reduced-motion). */
+.kiosk-halo { position: absolute; border-radius: 9999px; pointer-events: none; }
+.kiosk-halo-gold   { background: radial-gradient(circle, var(--kiosk-gold-glow) 0%, transparent 65%); }
+.kiosk-halo-silver { background: radial-gradient(circle, var(--kiosk-silver-glow) 0%, transparent 65%); }
+.kiosk-halo-bronze { background: radial-gradient(circle, var(--kiosk-bronze-glow) 0%, transparent 65%); }
+.kiosk-halo-teal   { background: radial-gradient(circle, var(--kiosk-teal-glow) 0%, transparent 65%); }
+.kiosk-halo-hot    { background: radial-gradient(circle, var(--kiosk-hot-glow) 0%, transparent 65%); }
+@media (prefers-reduced-motion: no-preference) {
+  .kiosk-halo-breathe { animation: kiosk-glow-soft 4s ease-in-out infinite; }
+}
+@keyframes kiosk-glow-soft {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.9; }
+}
+
 /* ── Achievement badges (Medal v2 — glossy coin) ─────────────────────────
  * Lifted from mocks/concept-4-complete.html with two project-policy
  * adjustments: gradient/glow values reference --color-medal-* tokens, and
@@ -1144,7 +1293,18 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .shell {
   display: grid;
   grid-template-columns: 232px 1fr;
-  min-height: 100vh;
+  /* The shell owns exactly one viewport. `.shell-content` is the single scroll
+     region (redesign-addendum §5: "scroll inside the pane, never the page") —
+     which only works if the shell is HEIGHT-bounded to the viewport. With the
+     prior `min-height: 100vh` the pane grew with its content and never
+     overflowed, so its `overflow-y: auto` + `overscroll-behavior-y: contain`
+     silently swallowed wheel/trackpad scroll (the browser targeted the
+     non-scrolling pane and contain blocked chaining to the page). Bounding the
+     shell makes the pane the real scroller, so the wheel works. dvh keeps the
+     mobile browser chrome out of the height (100vh fallback for older engines). */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background: var(--color-bg);
 }
 
@@ -1216,6 +1376,20 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   width: 17px;
   height: 17px;
   flex-shrink: 0;
+}
+/* Label text — single line, truncated with ellipsis (redesign-addendum §5:
+   "Long names/values truncate with ellipsis (+ title), never wrap the row").
+   The button already carries title={item.label} (Sidebar.jsx), so the full
+   label stays available on hover. `flex: 1` lets the label own the row so any
+   trailing scope/count chip aligns to the right edge (mock badge pattern) and
+   the row keeps one consistent height — fixing the 2-line wrap on long labels
+   like "Persistency Entry" / "Team Reports" / "Team Awards". */
+.sidebar-link-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .sidebar-link:hover {
   background: var(--color-surface-muted);
@@ -1333,6 +1507,30 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 @media (prefers-reduced-motion: no-preference) {
   .sidebar-nav-star { transition: opacity var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
 }
+
+/* ★ Drag-reorder (Fable Tier 1 · 1.4) — within-section sidebar row reorder.
+   Grab cursor hints draggability; the actively dragged row lifts (ghost); a
+   teal drop line marks the insertion point. The dragged row's translateY is a
+   transient, data-driven inline transform (allowed per the inline-style carve-
+   out) — no CSS transition on it, so it tracks the pointer 1:1 and settles
+   instantly on drop (reduced-motion safe by construction). */
+.sidebar-link-row-draggable .sidebar-link { cursor: grab; }
+.sidebar-link-row-dragging { z-index: 5; }
+.sidebar-link-row-dragging .sidebar-link {
+  cursor: grabbing;
+  opacity: 0.9;
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-lg);
+  border-radius: 10px;
+}
+.sidebar-drop-line {
+  height: 2px;
+  margin: 1px 10px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  pointer-events: none;
+}
+
 .sidebar-foot {
   margin-top: auto;
   padding: 14px 10px 0;
@@ -1397,6 +1595,10 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   color: var(--color-danger);
   border-color: var(--color-border-strong);
 }
+/* Settings gear (Tier 2 · 2.4) — hovers to primary, not the sign-out danger red. */
+.sidebar-foot-action.is-settings:hover {
+  color: var(--color-primary);
+}
 .sidebar-foot-action:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
@@ -1434,6 +1636,9 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* Let the flex child (`.shell-content`) shrink below its content height and
+     become the scroll region inside the height-bounded shell. */
+  min-height: 0;
 }
 .topbar {
   display: flex;
@@ -1499,13 +1704,16 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Command-palette search trigger (Fable Tier 1 · 1.1) — a button styled like the
+   former placeholder input; opens the Cmd-K palette on click. */
 .topbar-search {
   margin-left: 16px;
   flex: 1;
   max-width: 280px;
   position: relative;
-}
-.topbar-search input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   padding: 9px 12px 9px 36px;
   border-radius: 9px;
@@ -1513,16 +1721,31 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   background: var(--color-surface-muted);
   font-size: 13px;
   color: var(--color-text);
-  outline: none;
   font-family: inherit;
+  cursor: pointer;
+  text-align: left;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .topbar-search input { transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out); }
+  .topbar-search { transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out); }
 }
-.topbar-search input::placeholder { color: var(--color-text-faint); }
-.topbar-search input:focus {
+.topbar-search:hover { background: var(--color-surface); }
+.topbar-search:focus-visible {
+  outline: none;
   border-color: var(--color-primary);
   background: var(--color-surface);
+}
+.topbar-search-placeholder { flex: 1; color: var(--color-text-faint); }
+.topbar-search-kbd {
+  flex-shrink: 0;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 5px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
 }
 .topbar-search svg {
   position: absolute;
@@ -1566,6 +1789,16 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
+
+/* Mobile command-palette trigger (Fable Tier 1 · 1.1b) — icon-only button that
+ * opens the SAME Cmd-K palette as `.topbar-search`; mobile has no keyboard
+ * shortcut and `.topbar-search` hides at <768px (below), so this is the only
+ * mobile affordance. Reuses `.topbar-icon-btn` for sizing/hover/focus-visible
+ * (see above) — this class only toggles display, never forks that styling.
+ * Hidden at desktop by default; shown at mobile via the inverse rule in the
+ * `@media (max-width: 767px)` block below (mirrors `.topbar-search`'s hide
+ * rule there). */
+.topbar-mobile-search { display: none; }
 
 /* Shell content slot: holds the dashboard's tab content. The dashboard
  * keeps its own per-tab markup; the shell only owns chrome + the <main>
@@ -1769,6 +2002,28 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   100% { transform: scale(0.4); opacity: 0; }
 }
 
+/* ── Celebration takeover (CelebrationTakeover.jsx) — 2.10. ───────────────
+   Shared by the Daily Capture streak takeover and the Goals celebrations.
+   `celebration-rise` is TRANSFORM-ONLY (no opacity) per redesign-addendum §2
+   so a paused/throttled tab can never strand content at opacity:0 — the base
+   style is the visible end-state. `celebration-medal-pop` + `-confetti-fall`
+   drive DECORATIVE (aria-hidden) elements only, and are gated at the React
+   layer behind prefers-reduced-motion (motion-safe:/motion-reduce:hidden). */
+@keyframes celebration-rise {
+  from { transform: translateY(12px); }
+  to   { transform: translateY(0); }
+}
+@keyframes celebration-medal-pop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  60%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes celebration-confetti-fall {
+  0%   { transform: translateY(0)     rotate(0deg);   opacity: 0; }
+  15%  {                                              opacity: 0.85; }
+  100% { transform: translateY(520px) rotate(560deg); opacity: 0; }
+}
+
 /* ── Responsive: mobile (<768px, hide sidebar, show bottom-nav) ──────── */
 @media (max-width: 767px) {
   .shell { grid-template-columns: 1fr; }
@@ -1779,6 +2034,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   }
   .topbar-search,
   .topbar-crumb { display: none; }
+  .topbar-mobile-search { display: grid; }
   .shell-content {
     padding: 16px 16px 108px; /* room for fixed bottom-nav + FAB lift */
   }

@@ -251,6 +251,110 @@ describe('GoalsPanel', () => {
       });
     });
 
+  });
+
+  // ── Tier goal forms — activity targets (FFI/CI/Dials, item 2.3) ────────────
+  // GoalLevelForm (shared by Unit/Branch/SM tabs) already ships optional
+  // FFIs/CIs/Dials inputs alongside the required Annual API/Apps fields
+  // (src/components/manager/GoalsPanel.jsx:194-209) and the service layer
+  // already strips empty/zero values before writing (goalsService.test.js).
+  // This block closes the one real gap: no test asserted the fields actually
+  // render in each tier form, or that typed values reach the service call.
+  describe('Tier goal forms — activity targets (FFI/CI/Dials)', () => {
+    function fieldInput(label) {
+      return screen.getByText(label).closest('div').querySelector('input');
+    }
+
+    it('renders the three optional activity-target inputs in the Branch tier form', async () => {
+      render(<GoalsPanel />);
+      const branchTab = await screen.findByRole('tab', { name: 'Branch' });
+      fireEvent.click(branchTab);
+      await waitFor(() => {
+        expect(screen.getByText('FFIs (optional)')).toBeInTheDocument();
+        expect(screen.getByText('CIs (optional)')).toBeInTheDocument();
+        expect(screen.getByText('Dials (optional)')).toBeInTheDocument();
+      });
+      // Required fields are unaffected — still present alongside the optional trio.
+      expect(screen.getByText('Annual API (TTD) *')).toBeInTheDocument();
+      expect(screen.getByText('Annual Apps *')).toBeInTheDocument();
+    });
+
+    it('renders the three optional activity-target inputs in the Unit tier form', async () => {
+      setRole('unit_manager');
+      render(<GoalsPanel />);
+      const unitTab = await screen.findByRole('tab', { name: 'Unit' });
+      fireEvent.click(unitTab);
+      await waitFor(() => {
+        expect(screen.getByText('FFIs (optional)')).toBeInTheDocument();
+        expect(screen.getByText('CIs (optional)')).toBeInTheDocument();
+        expect(screen.getByText('Dials (optional)')).toBeInTheDocument();
+      });
+    });
+
+    it('renders the three optional activity-target inputs in the SM tier form', async () => {
+      setRole('sales_manager');
+      hoisted.getSalesManagerGoals.mockResolvedValue(null);
+      render(<GoalsPanel />);
+      const smTab = await screen.findByRole('tab', { name: 'SM Target' });
+      fireEvent.click(smTab);
+      await waitFor(() => {
+        expect(screen.getByText('FFIs (optional)')).toBeInTheDocument();
+        expect(screen.getByText('CIs (optional)')).toBeInTheDocument();
+        expect(screen.getByText('Dials (optional)')).toBeInTheDocument();
+      });
+    });
+
+    it('passes typed activity-target values through to setBranchGoals on save (Branch tier)', async () => {
+      render(<GoalsPanel />);
+      const branchTab = await screen.findByRole('tab', { name: 'Branch' });
+      fireEvent.click(branchTab);
+      await screen.findByText('FFIs (optional)');
+
+      fireEvent.change(fieldInput('Annual API (TTD) *'), { target: { value: '5000000' } });
+      fireEvent.change(fieldInput('Annual Apps *'),       { target: { value: '400' } });
+      fireEvent.change(fieldInput('FFIs (optional)'),      { target: { value: '850' } });
+      fireEvent.change(fieldInput('CIs (optional)'),       { target: { value: '420' } });
+      fireEvent.change(fieldInput('Dials (optional)'),     { target: { value: '9000' } });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save Branch Goals' }));
+
+      await waitFor(() => {
+        expect(hoisted.setBranchGoals).toHaveBeenCalled();
+        const [, , payload] = hoisted.setBranchGoals.mock.calls.at(-1);
+        expect(payload).toEqual({
+          api:          '5000000',
+          apps:         '400',
+          ffiConducted: '850',
+          ciConducted:  '420',
+          dials:        '9000',
+        });
+      });
+    });
+
+    it('leaves activity-target fields blank in the payload when untouched (no zero-fill)', async () => {
+      render(<GoalsPanel />);
+      const branchTab = await screen.findByRole('tab', { name: 'Branch' });
+      fireEvent.click(branchTab);
+      await screen.findByText('FFIs (optional)');
+
+      fireEvent.change(fieldInput('Annual API (TTD) *'), { target: { value: '3000000' } });
+      fireEvent.change(fieldInput('Annual Apps *'),       { target: { value: '300' } });
+      // FFIs / CIs / Dials left untouched — component passes them through as ''
+      // and setBranchGoals (goalsService.test.js) strips '' / 0 before the write.
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save Branch Goals' }));
+
+      await waitFor(() => {
+        expect(hoisted.setBranchGoals).toHaveBeenCalled();
+        const [, , payload] = hoisted.setBranchGoals.mock.calls.at(-1);
+        expect(payload.ffiConducted).toBe('');
+        expect(payload.ciConducted).toBe('');
+        expect(payload.dials).toBe('');
+      });
+    });
+  });
+
+  describe('GapAnalysisPanel placement', () => {
     it('renders GapAnalysisPanel above the sub-tab row', async () => {
       render(<GoalsPanel />);
       const panel = await screen.findByTestId('gap-analysis-panel');

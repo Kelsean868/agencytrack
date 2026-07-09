@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // ── Mock auth ────────────────────────────────────────────────────────────────
 vi.mock('../../../context/AuthContext', () => ({
@@ -33,6 +33,7 @@ vi.mock('../../../utils/awardsEngine', () => ({
     ffiToDialRatio: { trailing4w: 0, trailing12w: 0, trend: 'flat' },
   })),
   computeAtRiskStatus: vi.fn(() => 'on_track'),
+  computeAwardPace: vi.fn(() => null),
   getPeriodCtx: vi.fn(() => ({ weeksElapsed: 1, periodWeeks: 4 })),
   nextTierDistance: vi.fn(() => null),
   isPersistencyOnlyBlock: vi.fn(() => false),
@@ -41,6 +42,12 @@ vi.mock('../../../utils/awardsEngine', () => ({
 // ── Mock formatters ──────────────────────────────────────────────────────────
 vi.mock('../../../utils/formatters', () => ({
   formatCurrency: vi.fn((v) => `$${v}`),
+}));
+
+// ── Mock the 3.4 feature-flag hook (default OFF) ─────────────────────────────
+const mockUseFeatureFlag = vi.fn(() => false);
+vi.mock('../../../hooks/useFeatureFlag', () => ({
+  useFeatureFlag: (...a) => mockUseFeatureFlag(...a),
 }));
 
 import AgentAwardsPanel from '../AgentAwardsPanel';
@@ -58,6 +65,24 @@ beforeEach(() => {
   // Default computeAgentAwards to return an empty awards object
   computeAgentAwards.mockReturnValue({});
   getOwnPolicies.mockResolvedValue([]);
+  mockUseFeatureFlag.mockReturnValue(false);
+});
+
+describe('AgentAwardsPanel — 3.4 awards provenance flag', () => {
+  const SUBS = [{ weekStarting: '2026-05-04', agentId: BASE_PROFILE.uid }];
+
+  it('flag OFF — no ledger-source chip (byte-identical panel)', () => {
+    mockUseFeatureFlag.mockReturnValue(false);
+    render(<AgentAwardsPanel submissions={SUBS} confirmedSettlements={SETTLEMENTS} agentProfile={BASE_PROFILE} />);
+    expect(screen.queryByTestId('agent-awards-source-chip')).not.toBeInTheDocument();
+  });
+
+  it('flag ON — renders the honest ledger-source chip (settlements source)', () => {
+    mockUseFeatureFlag.mockImplementation((k) => k === 'awardsProvenance');
+    render(<AgentAwardsPanel submissions={SUBS} confirmedSettlements={SETTLEMENTS} agentProfile={BASE_PROFILE} />);
+    const chip = screen.getByTestId('agent-awards-source-chip');
+    expect(chip.textContent).toMatch(/FROM CONFIRMED SETTLEMENTS/);
+  });
 });
 
 describe('AgentAwardsPanel — usesPolicyLedger flag', () => {
@@ -175,5 +200,93 @@ describe('AgentAwardsPanel — usesPolicyLedger flag', () => {
       );
       expect(settlementShapeFromPolicies).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('AgentAwardsPanel — §1 states contract (error / retry)', () => {
+  it('renders a persistent inline error card with Retry when the awards computation throws', () => {
+    computeAgentAwards.mockImplementation(() => { throw new Error('boom-compute'); });
+
+    render(
+      <AgentAwardsPanel
+        submissions={SETTLEMENTS}
+        confirmedSettlements={SETTLEMENTS}
+        agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: false }}
+      />
+    );
+
+    const card = document.querySelector('[data-testid="agent-awards-error"]');
+    expect(card).toBeInTheDocument();
+    expect(card).toHaveAttribute('role', 'alert');
+    expect(card.querySelector('button')).toHaveTextContent(/retry/i);
+  });
+
+  it('Retry re-invokes the policy ledger fetch (the panel\'s owned network call)', async () => {
+    computeAgentAwards.mockImplementation(() => { throw new Error('boom-compute'); });
+    getOwnPolicies.mockRejectedValueOnce(new Error('boom-ledger')).mockResolvedValueOnce([]);
+
+    render(
+      <AgentAwardsPanel
+        submissions={SETTLEMENTS}
+        confirmedSettlements={SETTLEMENTS}
+        agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: true }}
+      />
+    );
+
+    await waitFor(() => expect(getOwnPolicies).toHaveBeenCalledTimes(1));
+    const card = document.querySelector('[data-testid="agent-awards-error"]');
+    expect(card).toBeInTheDocument();
+
+    card.querySelector('button').click();
+
+    await waitFor(() => expect(getOwnPolicies).toHaveBeenCalledTimes(2));
+  });
+
+  it('a failed policy-ledger read alone (computation still succeeds) shows a partial-failure banner, not a blocking error', async () => {
+    computeAgentAwards.mockReturnValue({});
+    getOwnPolicies.mockRejectedValue(new Error('boom-ledger'));
+
+    render(
+      <AgentAwardsPanel
+        submissions={SETTLEMENTS}
+        confirmedSettlements={SETTLEMENTS}
+        agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: true }}
+      />
+    );
+
+    await waitFor(() => {
+      const banner = document.querySelector('[data-testid="agent-awards-ledger-partial"]');
+      expect(banner).toBeInTheDocument();
+      expect(banner).toHaveAttribute('role', 'alert');
+    });
+    // Not the blocking full-failure card.
+    expect(document.querySelector('[data-testid="agent-awards-error"]')).not.toBeInTheDocument();
+  });
+});
+
+describe('AgentAwardsPanel — 0.1b actionable empty (category filter)', () => {
+  it('switching to a category with no awards shows a "View all categories" CTA that resets the filter', async () => {
+    computeAgentAwards.mockReturnValue({});
+
+    render(
+      <AgentAwardsPanel
+        submissions={[{ id: 'sub-1' }]}
+        confirmedSettlements={SETTLEMENTS}
+        agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: false }}
+      />
+    );
+
+    // "All" is empty too (mocked computeAgentAwards returns no awards) but has no reset CTA.
+    expect(await screen.findByTestId('agent-awards-empty-category')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /view all categories/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^monthly$/i }));
+
+    expect(await screen.findByTestId('agent-awards-empty-category')).toHaveTextContent(/monthly/i);
+    const resetButton = screen.getByRole('button', { name: /view all categories/i });
+    fireEvent.click(resetButton);
+
+    // Back on "All" — reset CTA disappears again.
+    await waitFor(() => expect(screen.queryByRole('button', { name: /view all categories/i })).toBeNull());
   });
 });

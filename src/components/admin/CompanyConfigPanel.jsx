@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+// Explicit React default import — required for Vitest compatibility per banked
+// rule (Vite applies the automatic JSX transform but Vitest does not always);
+// surfaced when CompanyConfigPanelFocus.test.jsx first mounted this directly.
+import React, { useState, useEffect, useCallback } from 'react';
 import { Pencil, AlertCircle, BookOpen } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getCompanyMinimums } from '../../services/goalsService';
@@ -155,10 +158,17 @@ export default function CompanyConfigPanel() {
       {readError && (
         <div
           role="alert"
-          className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300 flex items-start gap-2"
+          className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300 flex items-start gap-2 flex-wrap"
         >
           <AlertCircle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-          <span>{readError}</span>
+          <span className="flex-1 min-w-[200px]">{readError}</span>
+          <button
+            type="button"
+            onClick={loadConfig}
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -169,7 +179,14 @@ export default function CompanyConfigPanel() {
               key={tile.key}
               type="button"
               onClick={() => setPlanCatalogOpen(true)}
-              disabled={loading}
+              // Disable only on the true initial load (no catalog data yet), NOT
+              // on the background refresh loadConfig() runs after the modal
+              // closes — that refresh flips `loading` true again, and disabling
+              // the tile mid-refresh makes useFocusTrap's focus-return no-op
+              // against a disabled trigger. planCatalog holds its prior value
+              // through a refresh, so this stays focusable then. (Tier-0
+              // dialog-a11y browser-smoke finding.)
+              disabled={loading && !planCatalog}
               className="config-tile config-tile-editable text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Manage policy plan catalog"
               data-testid="plan-catalog-tile"

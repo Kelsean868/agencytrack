@@ -1,6 +1,6 @@
 import React from 'react';
-import PeriodLeaderboardsPanel from './PeriodLeaderboardsPanel';
+import RankedLeaderboardPanel from './RankedLeaderboardPanel';
 
 export default function QTDLeaderboardsPanel(props) {
-  return <PeriodLeaderboardsPanel {...props} period="quarter" periodLabel="QTD" />;
+  return <RankedLeaderboardPanel {...props} period="quarter" />;
 }

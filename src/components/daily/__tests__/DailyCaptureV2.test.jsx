@@ -35,6 +35,7 @@ import {
   computeDayPoints,
   deriveWeekStripDays,
   computeStreak,
+  sumWeekApi,
 } from '../DailyCaptureV2.helpers';
 import { computeTotalProductionCredit, computeLumpsumCredit } from '../../../lib/schema/weeklyReport.computations';
 
@@ -206,6 +207,24 @@ describe('DailyCaptureV2', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
   });
 
+  it('§1 states contract — Retry on a save failure re-invokes saveDailyEntry (not the load path)', async () => {
+    const onClose = vi.fn();
+    hoisted.saveDailyEntry.mockRejectedValueOnce(new Error('boom-save'));
+    render(<DailyCaptureV2 onClose={onClose} />);
+    const save = await screen.findByTestId('dcv2-save');
+    fireEvent.click(save);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/save failed/i));
+    expect(hoisted.saveDailyEntry).toHaveBeenCalledTimes(1);
+    expect(hoisted.getDailyEntry).toHaveBeenCalledTimes(1); // unchanged — Retry must not re-trigger the load path
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
+    expect(hoisted.saveDailyEntry).toHaveBeenCalledTimes(2);
+    expect(hoisted.getDailyEntry).toHaveBeenCalledTimes(1);
+  });
+
   it('refreshes the count strip after a successful Save', async () => {
     hoisted.getDailyEntriesForWeek
       .mockResolvedValueOnce([])
@@ -343,11 +362,12 @@ describe('DailyCaptureV2', () => {
     );
   });
 
-  it('loading spinner is shown while getDailyEntry is pending', () => {
+  it('loading skeleton (PanelSkeleton) is shown while getDailyEntry is pending', () => {
     // Never resolve so loading stays true
     hoisted.getDailyEntry.mockReturnValue(new Promise(() => {}));
     render(<DailyCaptureV2 onClose={vi.fn()} />);
-    expect(document.querySelector('.animate-spin')).toBeTruthy();
+    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(document.querySelector('.animate-spin')).toBeFalsy();
   });
 
   it('shows error message when getDailyEntry rejects', async () => {
@@ -357,6 +377,19 @@ describe('DailyCaptureV2', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     );
     expect(screen.getByRole('alert').textContent).toMatch(/could not load/i);
+  });
+
+  it('§1 states contract — Retry on a load failure re-invokes getDailyEntry (not a generic reload)', async () => {
+    hoisted.getDailyEntry.mockRejectedValueOnce(new Error('network'));
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    expect(hoisted.getDailyEntry).toHaveBeenCalledTimes(1);
+
+    hoisted.getDailyEntry.mockResolvedValueOnce(null);
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    expect(hoisted.getDailyEntry).toHaveBeenCalledTimes(2);
   });
 
   it('points pill shows non-zero when data has production (ffiConducted increment)', async () => {
@@ -585,5 +618,119 @@ describe('aggregate-on-save (Phase 2.2)', () => {
     // And the post-save close still fires (save treated as successful).
     await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
     vi.useRealTimers();
+  });
+});
+
+// ─── sumWeekApi — pure ───────────────────────────────────────────────────────
+
+describe('sumWeekApi (pure)', () => {
+  it('sums newBusiness.api across docs; coerces missing to 0', () => {
+    expect(sumWeekApi([
+      { newBusiness: { api: 8400 } },
+      { newBusiness: { api: 10000 } },
+      { newBusiness: {} },
+      {},
+    ])).toBe(18400);
+  });
+
+  it('returns 0 for an empty/invalid list', () => {
+    expect(sumWeekApi([])).toBe(0);
+    expect(sumWeekApi(null)).toBe(0);
+  });
+});
+
+// ─── DailyAnchorStrip (WTD API vs weekly target) ─────────────────────────────
+
+describe('DailyAnchorStrip (integration)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-06-17T12:00:00Z') }); // Wednesday
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('renders WTD API summed from week docs vs the weekly floor target', async () => {
+    hoisted.getCompanyMinimums.mockResolvedValue({ weeklyActivityFloors: { api: 18000 } });
+    hoisted.getDailyEntriesForWeek.mockResolvedValue([
+      { date: '2026-06-15', newBusiness: { api: 8400 } },
+      { date: '2026-06-16', newBusiness: { api: 10000 } },
+    ]);
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    const strip = await screen.findByTestId('dcv2-anchor-strip');
+    await waitFor(() => expect(strip).toHaveAttribute('data-wtd-api', '18400'));
+    expect(strip).toHaveAttribute('data-target', '18000');
+    // 18400 / 18000 clamps to 100%.
+    expect(strip).toHaveAttribute('data-pct', '100');
+    expect(strip).toHaveTextContent(/weekly target cleared/i);
+  });
+
+  it('falls back to the code-default weekly target (4800) when floors omit api', async () => {
+    hoisted.getCompanyMinimums.mockResolvedValue({ weeklyActivityFloors: {} });
+    hoisted.getDailyEntriesForWeek.mockResolvedValue([
+      { date: '2026-06-15', newBusiness: { api: 1200 } },
+    ]);
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    const strip = await screen.findByTestId('dcv2-anchor-strip');
+    await waitFor(() => expect(strip).toHaveAttribute('data-target', '4800'));
+    expect(strip).toHaveAttribute('data-wtd-api', '1200');
+    expect(strip).toHaveAttribute('data-pct', '25'); // 1200/4800
+  });
+});
+
+// ─── Streak celebration takeover ─────────────────────────────────────────────
+
+describe('daily streak celebration (integration)', () => {
+  // Friday 2026-06-19 — a full Mon–Fri of logged days can reach a 5-day streak.
+  const FRIDAY = new Date('2026-06-19T12:00:00Z');
+  const fullWeekDocs = [
+    { date: '2026-06-15', newBusiness: { apps: 1, api: 1000 } },
+    { date: '2026-06-16', newBusiness: { apps: 1, api: 1000 } },
+    { date: '2026-06-17', newBusiness: { apps: 1, api: 1000 } },
+    { date: '2026-06-18', newBusiness: { apps: 1, api: 1000 } },
+    { date: '2026-06-19', newBusiness: { apps: 1, api: 1000 } },
+  ];
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'], now: FRIDAY });
+    window.localStorage.clear();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    window.localStorage.clear();
+  });
+
+  it('fires the takeover when a save crosses the 5-day milestone', async () => {
+    hoisted.getDailyEntriesForWeek.mockResolvedValue(fullWeekDocs); // post-save → streak 5
+    const onClose = vi.fn();
+    render(<DailyCaptureV2 onClose={onClose} />);
+    const save = await screen.findByTestId('dcv2-save');
+    fireEvent.click(save);
+    expect(await screen.findByTestId('daily-streak-celebration')).toBeInTheDocument();
+    // Celebrating suppresses the auto-close — the takeover owns dismissal.
+    expect(onClose).not.toHaveBeenCalled();
+    // Marker persisted so it will not re-fire.
+    expect(window.localStorage.getItem('agencytrack:celebrations:dailyStreakMax:agent1')).toBe('5');
+  });
+
+  it('does NOT re-fire when the 5-day milestone marker is already set', async () => {
+    window.localStorage.setItem('agencytrack:celebrations:dailyStreakMax:agent1', '5');
+    hoisted.getDailyEntriesForWeek.mockResolvedValue(fullWeekDocs);
+    const onClose = vi.fn();
+    render(<DailyCaptureV2 onClose={onClose} />);
+    const save = await screen.findByTestId('dcv2-save');
+    fireEvent.click(save);
+    // No takeover; the normal post-save close fires instead.
+    await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
+    expect(screen.queryByTestId('daily-streak-celebration')).not.toBeInTheDocument();
+  });
+
+  it('does NOT fire below the milestone (short streak)', async () => {
+    hoisted.getDailyEntriesForWeek.mockResolvedValue([
+      { date: '2026-06-19', newBusiness: { apps: 1, api: 1000 } },
+    ]); // streak 1
+    const onClose = vi.fn();
+    render(<DailyCaptureV2 onClose={onClose} />);
+    const save = await screen.findByTestId('dcv2-save');
+    fireEvent.click(save);
+    await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
+    expect(screen.queryByTestId('daily-streak-celebration')).not.toBeInTheDocument();
   });
 });

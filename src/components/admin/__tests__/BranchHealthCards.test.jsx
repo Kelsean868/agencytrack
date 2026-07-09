@@ -35,6 +35,12 @@ describe('BranchHealthCards — TA-CLEANUP', () => {
     expect(screen.getByText('2 agents')).toBeInTheDocument();
     expect(screen.getByText('1 agent')).toBeInTheDocument();
   });
+
+  it('0.1b — renders a PanelSkeleton (aria-busy) instead of "Loading branches…" text while loading', () => {
+    const { container } = render(<BranchHealthCards users={[]} branches={[]} loading />);
+    expect(container.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(screen.queryByText(/Loading branches…/i)).toBeNull();
+  });
 });
 
 describe('BranchHealthCards — branch-name resolution', () => {

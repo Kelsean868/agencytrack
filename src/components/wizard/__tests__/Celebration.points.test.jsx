@@ -3,6 +3,14 @@ import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import Celebration from '../v2chrome/Celebration.jsx';
 
+// §2 count-up — the earned-points stat numeral now animates via useCountUp
+// on mount. Mocked to the identity function so these tests keep asserting
+// the exact final text synchronously (matches the existing kiosk-panel test
+// convention).
+vi.mock('../../../hooks/useCountUp', () => ({
+  useCountUp: (value) => value,
+}));
+
 beforeAll(() => {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,

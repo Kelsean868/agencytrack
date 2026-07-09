@@ -1,41 +1,70 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Download, Loader2 } from 'lucide-react';
+import PanelSkeleton from '../ui/PanelSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { getTenantUsers, getAllYTDSubmissions } from '../../services/managerService';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, getUnitDisplayName } from '../../utils/formatters';
 import { getMostRecentSunday } from '../../utils/dateHelpers';
+import { generateUnitPDF } from '../../services/exportService';
 import {
   filterSubmissionsByPeriod,
   computeAgentTotals,
   computeUnitAggregates,
   rankAgentsByApi,
   computeComplianceStats,
+  deriveProductionDataSource,
 } from '../../lib/productionReport/computations';
 import TimePeriodToggle from './TimePeriodToggle';
 import DataSourceBadge from './DataSourceBadge';
 import ProductionTable from './ProductionTable';
 
+const PERIOD_LABEL = {
+  week: 'This week', mtd: 'Month to date', quarter: 'Quarter to date', ytd: 'Year to date',
+};
+
 export default function UnitManagerProductionView() {
   const { userProfile, tenantId } = useAuth();
+  const [generating, setGenerating] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
   const [period, setPeriod] = useState('week');
   const [allSubmissions, setAllSubmissions] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Per-source failure tracking — a sub-fetch failing no longer silently
+  // degrades to an empty array with no trace (§1 states contract). Both
+  // failed → full error card; one failed → partial-failure banner naming
+  // the count, with the other source's real data still shown.
+  const [submissionsError, setSubmissionsError] = useState(false);
+  const [usersError, setUsersError] = useState(false);
 
   const unitId = userProfile?.unitId;
   const currentWeek = useMemo(() => getMostRecentSunday(), []);
 
-  useEffect(() => {
+  const loadProduction = useCallback(() => {
     if (!tenantId) return;
     setLoading(true);
+    setError(null);
+    setSubmissionsError(false);
+    setUsersError(false);
     Promise.all([
-      getAllYTDSubmissions(tenantId).catch(() => []),
-      getTenantUsers(tenantId).catch(() => []),
+      getAllYTDSubmissions(tenantId).catch((e) => {
+        console.error('[UnitManagerProductionView] submissions failed:', e);
+        setSubmissionsError(true);
+        return [];
+      }),
+      getTenantUsers(tenantId).catch((e) => {
+        console.error('[UnitManagerProductionView] users failed:', e);
+        setUsersError(true);
+        return [];
+      }),
     ]).then(([subs, users]) => {
       setAllSubmissions(subs);
       setAllUsers(users);
     }).catch(setError).finally(() => setLoading(false));
   }, [tenantId]);
+
+  useEffect(() => { loadProduction(); }, [loadProduction]);
 
   const unitAgents = useMemo(
     () => allUsers.filter((u) => u.role === 'agent' && u.unitId === unitId && u.provisioning !== true),
@@ -105,22 +134,120 @@ export default function UnitManagerProductionView() {
     total: entry.totals.totalApi,
   }));
 
+  // Honest data-source signal — this view loads submissions only (no settlement
+  // fetch, read-light rule) → 'estimated', derived not hardcoded.
+  const dataSource = deriveProductionDataSource({ settlements: [] });
+
+  // Unit PDF export. Feeds the already-derived rows into generateUnitPDF — no
+  // refetch, no second math path (same computations utils as the surface).
+  const handleDownloadPDF = useCallback(async () => {
+    setPdfError(false);
+    setGenerating(true);
+    try {
+      await generateUnitPDF({
+        orgLabel: getUnitDisplayName(userProfile) ?? 'Unit',
+        managerName: userProfile?.name ?? null,
+        period,
+        periodLabel: PERIOD_LABEL[period] ?? 'Year to date',
+        totals: {
+          totalApi: aggregate.totalApi,
+          totalApps: aggregate.totalApps,
+          agentCount: aggregate.agentCount,
+          avgApiPerAgent: aggregate.avgApiPerAgent,
+        },
+        roster: rankedAgents.map((r) => ({
+          rank: r.rank,
+          name: r.agentName,
+          totalApi: r.totals.totalApi,
+          totalApps: r.totals.totalApps,
+        })),
+        compliance,
+        unitRank,
+        unitCount,
+      });
+    } catch (e) {
+      console.error('[UnitManagerProductionView] PDF failed:', e);
+      setPdfError(true);
+    } finally {
+      setGenerating(false);
+    }
+  }, [userProfile, period, aggregate, rankedAgents, compliance, unitRank, unitCount]);
+
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-ink-muted text-sm">Loading production data…</div>;
+    return (
+      <div className="flex flex-col gap-4" data-testid="unit-production-loading">
+        <PanelSkeleton variant="metric-row" count={4} label="Loading production data…" />
+        <PanelSkeleton variant="table" count={6} columns={5} />
+      </div>
+    );
   }
-  if (error) {
-    return <div className="py-8 text-center text-danger-ink text-sm">Failed to load production data.</div>;
+  if (error || (submissionsError && usersError)) {
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-center gap-3 p-8 rounded-xl bg-danger/10 border border-danger/30 text-center"
+        data-testid="unit-production-error"
+      >
+        <AlertTriangle size={28} className="text-danger-ink" aria-hidden="true" />
+        <p className="text-sm text-danger-ink font-medium">Couldn&apos;t load production data — check your connection and try again.</p>
+        <button
+          type="button"
+          onClick={loadProduction}
+          className="min-h-[44px] px-4 rounded-lg bg-card border border-border text-ink text-sm font-semibold hover:bg-surface transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 stagger">
+      {(submissionsError || usersError) && (
+        <div
+          role="alert"
+          className="p-3 rounded-xl border border-warning/30 bg-warning/10 text-warning-ink text-sm flex items-center justify-between gap-3 flex-wrap"
+          data-testid="unit-production-partial"
+        >
+          <span>1 of 2 data sources failed to load — showing what&apos;s available.</span>
+          <button
+            type="button"
+            onClick={loadProduction}
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h2 className="text-base font-semibold text-ink">Production Report</h2>
-        <div className="flex items-center gap-2">
-          <DataSourceBadge source="estimated" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <DataSourceBadge source={dataSource} />
+          <button
+            type="button"
+            onClick={handleDownloadPDF}
+            disabled={generating}
+            data-testid="unit-production-download"
+            className="min-h-[44px] inline-flex items-center justify-center gap-2 px-4 rounded-lg border border-primary text-primary text-sm font-semibold hover:bg-primary/5 transition-colors disabled:opacity-60"
+          >
+            {generating
+              ? (<><Loader2 size={15} className="animate-spin" aria-hidden="true" /> Generating…</>)
+              : (<><Download size={15} aria-hidden="true" /> Download report</>)}
+          </button>
           <TimePeriodToggle selected={period} onChange={setPeriod} />
         </div>
       </div>
+
+      {pdfError && (
+        <div
+          role="alert"
+          className="p-3 rounded-xl border border-danger/30 bg-danger/10 text-danger-ink text-sm flex items-center gap-2"
+          data-testid="unit-production-pdf-error"
+        >
+          <AlertTriangle size={16} aria-hidden="true" />
+          <span>Couldn&apos;t generate the report — please try again.</span>
+        </div>
+      )}
 
       {/* Unit aggregate */}
       <div className="card">

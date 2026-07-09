@@ -13,6 +13,7 @@ import {
   CAR_PERSONAL_PCT, CAR_BUSINESS_PCT, CAR_LOAN_LOANSDEBT_LINE_ID,
 } from '../../services/moneyNeedsService';
 import { formatCurrency } from '../../utils/formatters';
+import { compositionSegments } from '../../lib/moneyNeedsComposition';
 import MoneyNeedsAllocator from './MoneyNeedsAllocator';
 
 // Merged Money-Needs + Allocator surface — flag-gated, DEFAULT OFF. `=== 'true'`
@@ -402,6 +403,41 @@ function WorksheetLede() {
         You set your own income — there&apos;s no ceiling. So don&apos;t just plan to get by.
         Map out the life you actually want, and see exactly what you&apos;ll need to earn to make it real.
       </p>
+    </div>
+  );
+}
+
+// CompositionBar (item 2.11) — a 5-group segmented spine + "where the money
+// goes" % chips, derived from each group's groupAnnualTotal. Design intent:
+// mn-merge.jsx CompositionBar. Presentation only — no data-model change.
+function CompositionBar({ expenseGroups }) {
+  const { segments, total } = compositionSegments(expenseGroups, EXPENSE_GROUPS);
+  if (total <= 0 || segments.length === 0) return null;
+  return (
+    <div className="rounded-xl bg-card border border-border px-4 py-3" data-testid="mn-composition">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted mb-2">
+        Where the money goes
+      </p>
+      <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-surface-muted">
+        {segments.map((s) => (
+          <div
+            key={s.key}
+            className={s.dot}
+            style={{ width: `${s.pct}%` }}
+            data-testid={`mn-composition-seg-${s.key}`}
+            aria-hidden="true"
+          />
+        ))}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+        {segments.map((s) => (
+          <div key={s.key} className="flex items-center gap-1.5" data-testid={`mn-composition-chip-${s.key}`}>
+            <span className={`h-2 w-2 shrink-0 rounded-sm ${s.dot}`} aria-hidden="true" />
+            <span className="text-[11px] font-semibold text-ink">{s.label}</span>
+            <span className="text-[11px] text-ink-muted tabular-nums">{Math.round(s.pct)}%</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1178,6 +1214,9 @@ export default function MoneyNeedsPanel({ onOpenTab }) {
               onToggle={() => setOpenGroup((o) => (o === key ? null : key))}
             />
           ))}
+
+          {/* Composition spine (2.11) — where the annual budget goes, by group. */}
+          <CompositionBar expenseGroups={worksheet.expenseGroups} />
 
           {/* Grand-total budget line — closes the category block.
               Sources from worksheet.totalAnnualAfterTax, the identical field

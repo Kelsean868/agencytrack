@@ -110,6 +110,15 @@ async function main() {
       ...VALID_PAYLOAD,
       ...SETTLED_FIELDS,
     });
+    // Tier-3 3.1 Arm E: dedicated fixtures for CRO delivery tests
+    // (other fixtures get mutated by Arm A/B/C/D tests before the CRO block runs).
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-cro-settled`).set({
+      ...VALID_PAYLOAD,
+      ...SETTLED_FIELDS,
+    });
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-cro-submitted`).set({
+      ...VALID_PAYLOAD,
+    });
     // settled policy owned by agent-b in unit um-b —
     // used to test UM unit-scope DENY (um-a trying to confirm um-b's policy)
     await db.doc(`tenants/${TENANT_ID}/policies/policy-b1-settled`).set({
@@ -831,6 +840,44 @@ async function main() {
   );
 
   // ── Results ──
+  // ── Tier-3 3.1: CRO read arms + Arm E delivery confirmation ──────────────
+  const croDb = testEnv.authenticatedContext('cro-1', authToken('cro')).firestore();
+  const croOtherTenantDb = testEnv
+    .authenticatedContext('cro-x', { role: 'cro', tenantId: 'some-other-tenant' })
+    .firestore();
+  const deliveryWrite = (over = {}) => ({
+    policyDeliveryDate: Timestamp.now(),
+    deliveredBy: 'cro-1',
+    deliveredAt: Timestamp.now(),
+    ...over,
+  });
+
+  await run('CRO gets any tenant policy (read arm)', true, () =>
+    croDb.doc(`tenants/${TENANT_ID}/policies/policy-cro-settled`).get());
+  await run('CRO lists policies tenant-wide (read arm)', true, () =>
+    croDb.collection(`tenants/${TENANT_ID}/policies`).get());
+  await run('Cross-tenant CRO get', false, () =>
+    croOtherTenantDb.doc(`tenants/${TENANT_ID}/policies/policy-cro-settled`).get());
+  await run('CRO marks settled policy delivered (3 fields)', true, () =>
+    croDb.doc(`tenants/${TENANT_ID}/policies/policy-cro-settled`).update(deliveryWrite()));
+  await run('CRO delivery on a SUBMITTED policy', false, () =>
+    croDb.doc(`tenants/${TENANT_ID}/policies/policy-cro-submitted`).update(deliveryWrite()));
+  await run('CRO forges deliveredBy (!= auth.uid)', false, () =>
+    croDb.doc(`tenants/${TENANT_ID}/policies/policy-cro-settled`).update(deliveryWrite({ deliveredBy: 'someone-else', policyDeliveryDate: Timestamp.fromMillis(Date.now() - 60_000) })));
+  await run('CRO smuggles a non-delivery field (settledAPI)', false, () =>
+    croDb.doc(`tenants/${TENANT_ID}/policies/policy-cro-settled`).update({ ...deliveryWrite({ policyDeliveryDate: Timestamp.fromMillis(Date.now() - 120_000) }), settledAPI: 99999 }));
+  await run('CRO future policyDeliveryDate', false, () =>
+    croDb.doc(`tenants/${TENANT_ID}/policies/policy-cro-settled`).update(deliveryWrite({ policyDeliveryDate: Timestamp.fromMillis(Date.now() + 86_400_000) })));
+  await run('Agent attempts the delivery write on own settled policy', false, () =>
+    agentADb.doc(`tenants/${TENANT_ID}/policies/policy-a1-settled`).update({
+      policyDeliveryDate: Timestamp.now(), deliveredBy: 'agent-a', deliveredAt: Timestamp.now(),
+    }));
+  await run('CRO attempts a status change (settled -> lapsed)', false, () =>
+    croDb.doc(`tenants/${TENANT_ID}/policies/policy-cro-settled`).update({
+      status: 'lapsed', statusUpdatedAt: Timestamp.now(), dateLapsed: Timestamp.now(), lapseReason: 'x',
+    }));
+
+
   await testEnv.cleanup();
 
   const passed = results.filter((r) => r.pass).length;

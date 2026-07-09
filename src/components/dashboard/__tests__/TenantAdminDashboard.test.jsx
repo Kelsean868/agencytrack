@@ -105,11 +105,19 @@ vi.mock('../../manager/UserManagementPanel', () => ({
 vi.mock('../../campaigns/CampaignPanel', () => ({
   default: () => <div data-testid="campaign-panel">Campaign Panel</div>,
 }));
+vi.mock('../../planner/manager/TeamPlannerPanel', () => ({
+  default: (props) => (
+    <div data-testid="team-planner-panel" data-caller-role={props.callerRole}>
+      Team Planner Panel
+    </div>
+  ),
+}));
 vi.mock('../../profile/ProfileScreen', () => ({
   default: () => <div data-testid="profile-screen">Profile Screen</div>,
 }));
 
 import TenantAdminDashboard from '../TenantAdminDashboard';
+import { getAllYTDSubmissions } from '../../../services/managerService';
 
 describe('TenantAdminDashboard — no placeholder text', () => {
   beforeEach(() => {
@@ -134,13 +142,36 @@ describe('TenantAdminDashboard — no placeholder text', () => {
   });
 });
 
+describe('TenantAdminDashboard — 0.1b stat tile loading skeleton', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders a skeleton (aria-busy) in the YTD stat tile instead of "—" while the fetch is pending', async () => {
+    getAllYTDSubmissions.mockReturnValue(new Promise(() => {}));
+    const { container } = render(<TenantAdminDashboard />);
+    await waitFor(() => {
+      expect(screen.getByText(/Total API · YTD/i)).toBeInTheDocument();
+    });
+    expect(container.querySelector('[aria-busy="true"], [role="status"]')).toBeTruthy();
+    expect(screen.queryByText('—')).toBeNull();
+  });
+});
+
 describe('TenantAdminDashboard — NAV_ITEMS shape', () => {
-  it('renders exactly the 6 expected sidebar nav items', () => {
+  it('renders exactly the 7 expected sidebar nav items (incl. D3 Team Planner)', () => {
     render(<TenantAdminDashboard />);
-    const expected = ['dashboard', 'branches', 'users', 'config', 'campaigns', 'profile'];
+    const expected = ['dashboard', 'branches', 'users', 'planner', 'config', 'campaigns', 'profile'];
     for (const id of expected) {
       expect(screen.getByTestId(`sidebar-${id}`)).toBeInTheDocument();
     }
+    // No extra sidebar items beyond the expected set.
+    expect(screen.getAllByTestId(/^sidebar-/)).toHaveLength(expected.length);
+  });
+
+  it('D3: Team Planner is in the Company section (inherits, no own header)', () => {
+    render(<TenantAdminDashboard />);
+    expect(screen.getByTestId('sidebar-planner').dataset.section).toBe('');
   });
 
   it('does not render Roles & Permissions / Audit Log / Billing / Settings sidebar items', () => {
@@ -250,6 +281,13 @@ describe('TenantAdminDashboard — tab routing', () => {
     fireEvent.click(screen.getByTestId('sidebar-profile'));
     await waitFor(() => expect(screen.getByTestId('profile-screen')).toBeInTheDocument());
   });
+
+  it('D3: clicking Team Planner sidebar mounts TeamPlannerPanel with callerRole=tenant_admin', async () => {
+    render(<TenantAdminDashboard />);
+    fireEvent.click(screen.getByTestId('sidebar-planner'));
+    await waitFor(() => expect(screen.getByTestId('team-planner-panel')).toBeInTheDocument());
+    expect(screen.getByTestId('team-planner-panel').dataset.callerRole).toBe('tenant_admin');
+  });
 });
 
 describe('TenantAdminDashboard — mobile nav v2 reorder', () => {
@@ -279,9 +317,81 @@ describe('TenantAdminDashboard — mobile nav v2 reorder', () => {
     expect(screen.getByTestId('drawer-branches')).toBeInTheDocument();
   });
 
+  it('D3: the "More" drawer surfaces Team Planner (sidebar-only, mirrors Branches)', () => {
+    render(<TenantAdminDashboard />);
+    expect(screen.getByTestId('drawer-planner')).toBeInTheDocument();
+    // BOTTOM_NAV stays the locked 4-tab set — Team Planner is NOT in it.
+    expect(screen.queryByTestId('bottom-planner')).toBeNull();
+  });
+
   it('clicking the drawer Profile row routes to ProfileScreen', async () => {
     render(<TenantAdminDashboard />);
     fireEvent.click(screen.getByTestId('drawer-profile'));
     await waitFor(() => expect(screen.getByTestId('profile-screen')).toBeInTheDocument());
+  });
+});
+
+describe('TenantAdminDashboard — §1 states contract (error / partial / retry)', () => {
+  // clearAllMocks() only resets call history, not implementations set via
+  // mockRejectedValue/mockResolvedValue — re-establish a known-good baseline
+  // before every test so one test's permanent-reject override can't leak
+  // into the next.
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const managerService = await import('../../../services/managerService');
+    const branchService = await import('../../../services/branchService');
+    managerService.getTenantUsers.mockResolvedValue([
+      { uid: 'u1', role: 'agent', branchId: 'branch_a', active: true },
+    ]);
+    managerService.getAllYTDSubmissions.mockResolvedValue([]);
+    branchService.listBranches.mockResolvedValue([]);
+  });
+
+  it('all 3 fetches failing renders a blocking error card with Retry (never a silent console.error swallow)', async () => {
+    const managerService = await import('../../../services/managerService');
+    const branchService = await import('../../../services/branchService');
+    managerService.getTenantUsers.mockRejectedValue(new Error('boom-users'));
+    managerService.getAllYTDSubmissions.mockRejectedValue(new Error('boom-ytd'));
+    branchService.listBranches.mockRejectedValue(new Error('boom-branches'));
+
+    render(<TenantAdminDashboard />);
+
+    await waitFor(() => expect(screen.getByTestId('tenant-dashboard-error')).toBeInTheDocument());
+    expect(screen.getByTestId('tenant-dashboard-error')).toHaveAttribute('role', 'alert');
+    // Stat tiles are not shown alongside a full-failure error card.
+    expect(screen.queryByText('Total API · YTD')).toBeNull();
+  });
+
+  it('Retry on full failure re-invokes all three failed loaders', async () => {
+    const managerService = await import('../../../services/managerService');
+    const branchService = await import('../../../services/branchService');
+    managerService.getTenantUsers.mockRejectedValueOnce(new Error('boom-users'))
+      .mockResolvedValueOnce([{ uid: 'u1', role: 'agent', branchId: 'b1', active: true }]);
+    managerService.getAllYTDSubmissions.mockRejectedValueOnce(new Error('boom-ytd'))
+      .mockResolvedValueOnce([]);
+    branchService.listBranches.mockRejectedValueOnce(new Error('boom-branches'))
+      .mockResolvedValueOnce([]);
+
+    render(<TenantAdminDashboard />);
+    await waitFor(() => expect(screen.getByTestId('tenant-dashboard-error')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(screen.getByText('Total API · YTD')).toBeInTheDocument());
+    expect(managerService.getTenantUsers).toHaveBeenCalledTimes(2);
+    expect(managerService.getAllYTDSubmissions).toHaveBeenCalledTimes(2);
+    expect(branchService.listBranches).toHaveBeenCalledTimes(2);
+  });
+
+  it('one of three fetches failing renders a partial-failure warning banner naming the count', async () => {
+    const managerService = await import('../../../services/managerService');
+    managerService.getAllYTDSubmissions.mockRejectedValue(new Error('boom-ytd'));
+
+    render(<TenantAdminDashboard />);
+
+    await waitFor(() => expect(screen.getByTestId('tenant-dashboard-partial')).toBeInTheDocument());
+    expect(screen.getByTestId('tenant-dashboard-partial')).toHaveTextContent('1 of 3 data sources failed to load');
+    // Available data still renders alongside the banner.
+    expect(screen.getByText('Total API · YTD')).toBeInTheDocument();
   });
 });

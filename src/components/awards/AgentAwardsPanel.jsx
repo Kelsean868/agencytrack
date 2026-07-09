@@ -1,10 +1,13 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../../utils/awardsEngine';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { TrendingUp, TrendingDown, Minus, Trophy } from 'lucide-react';
+import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, computeAwardPace, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../../utils/awardsEngine';
 import { formatCurrency } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
 import { getOwnPolicies, settlementShapeFromPolicies } from '../../services/policiesService';
 import { HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer } from './awardPrimitives';
+import { LedgerSourceChip } from './awardProvenance';
+import { deriveAwardProvenance } from '../../lib/awardProvenance';
+import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 
 const CATEGORY_TABS = ['All', 'Monthly', 'Quarterly', 'Annual', 'Club'];
 
@@ -58,14 +61,28 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   const [drawerAwardId, setDrawerAwardId]    = useState(null);
   const { tenantId } = useAuth();
   const [ledgerPolicies, setLedgerPolicies] = useState(null);
+  const [ledgerError, setLedgerError] = useState(false);
   const usesPolicyLedger = Boolean(agentProfile?.usesPolicyLedger);
+  // Item 3.4 — awards provenance (flag OFF ⇒ chip + drawer panel absent).
+  const awardsProvenanceOn = useFeatureFlag('awardsProvenance');
 
-  useEffect(() => {
+  // Retry-able: the only network fetch this panel owns (submissions/
+  // confirmedSettlements arrive as props from the parent). §1 states
+  // contract — a failed ledger read no longer silently degrades to an
+  // empty array with no trace; the error card's Retry re-invokes this.
+  const loadLedgerPolicies = useCallback(() => {
     if (!usesPolicyLedger || !tenantId || !agentProfile?.uid) return;
+    setLedgerError(false);
     getOwnPolicies(tenantId, agentProfile.uid)
       .then(setLedgerPolicies)
-      .catch(() => setLedgerPolicies([]));
+      .catch((e) => {
+        console.error('[AgentAwardsPanel] policy ledger load failed:', e);
+        setLedgerError(true);
+        setLedgerPolicies([]);
+      });
   }, [usesPolicyLedger, tenantId, agentProfile?.uid]);
+
+  useEffect(() => { loadLedgerPolicies(); }, [loadLedgerPolicies]);
 
   const activeConfirmedData = useMemo(() => {
     if (!usesPolicyLedger) return confirmedSettlements ?? [];
@@ -85,14 +102,19 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       const rawAwards = computeAgentAwards(activeConfirmedData, submissions, agentProfile, now, ruleset);
       const awards = {};
       for (const [id, award] of Object.entries(rawAwards)) {
-        const paceStatus = computeAtRiskStatus(award, getPeriodCtx(award.category, now));
+        const periodCtx = getPeriodCtx(award.category, now);
+        const paceStatus = computeAtRiskStatus(award, periodCtx);
         const persistencyBlock = isPersistencyOnlyBlock(award);
         let tierGap = null;
         if (award.category === 'club' && !award.eligible) {
           const annualApi = award.criteria[0]?.current ?? 0;
           tierGap = nextTierDistance(annualApi, ruleset.clubAward.tiers);
         }
-        awards[id] = { ...award, paceStatus, persistencyBlock, tierGap };
+        // §2.7 pace narrative — same periodCtx.weeksElapsed already used for
+        // paceStatus above; see computeAwardPace's own doc comment for the
+        // honesty rule (period-total ÷ elapsed-weeks, null for '%' criteria).
+        const pace = computeAwardPace(award, periodCtx.weeksElapsed, now);
+        awards[id] = { ...award, paceStatus, persistencyBlock, tierGap, pace };
       }
       return { awards, ratioTrends: computeRatioTrends(submissions), error: null };
     } catch (e) {
@@ -105,6 +127,14 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
 
   // Derive drawer award from ID so it always reflects current computation state.
   const drawerAward = drawerAwardId ? (awards[drawerAwardId] ?? null) : null;
+
+  // Item 3.4 — provenance model for the open drawer (null unless flag is ON).
+  const drawerProvenance = useMemo(
+    () => (awardsProvenanceOn && drawerAward
+      ? deriveAwardProvenance(drawerAward, { usesPolicyLedger })
+      : null),
+    [awardsProvenanceOn, drawerAward, usesPolicyLedger],
+  );
 
   // Filter by active category tab
   const filteredAwards = useMemo(() => {
@@ -139,13 +169,63 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   }
 
   if (error) {
-    return <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>;
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-center gap-3 p-8 rounded-xl bg-danger/10 border border-danger/30 text-center"
+        data-testid="agent-awards-error"
+      >
+        <p className="text-sm text-danger-ink font-medium">{error}</p>
+        {ledgerError && (
+          <p className="text-xs text-ink-muted">Your policy ledger data failed to load — retry to try again.</p>
+        )}
+        <button
+          type="button"
+          onClick={loadLedgerPolicies}
+          className="min-h-[44px] px-4 rounded-lg bg-card border border-border text-ink text-sm font-semibold hover:bg-surface transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   const totalTracked = Object.keys(awards).length;
 
+  // §2 staggered-assemble — the drill drawer is a fixed-position overlay
+  // rendered outside the `.stagger` container (same pattern as GamePlanV2's
+  // modalsBlock split): it only opens on click, well after the one-shot
+  // mount-time stagger animation has finished, so it never risks reparenting
+  // its own containing block mid-animation.
   return (
-    <div className="flex flex-col gap-6">
+    <>
+    <div className="flex flex-col gap-6 stagger">
+
+      {/* Item 3.4 — honest ledger-source chip (flag-gated) */}
+      {awardsProvenanceOn && (
+        <div className="flex" data-testid="agent-awards-source-chip">
+          <LedgerSourceChip sourceLive={usesPolicyLedger} source={usesPolicyLedger ? 'POLICY LEDGER' : 'CONFIRMED SETTLEMENTS'} />
+        </div>
+      )}
+
+      {/* Partial-failure notice — policy ledger read failed but the panel
+          still rendered from whatever data resolved. */}
+      {ledgerError && (
+        <div
+          role="alert"
+          className="p-3 rounded-xl border border-warning/30 bg-warning/10 text-warning-ink text-sm flex items-center justify-between gap-3 flex-wrap"
+          data-testid="agent-awards-ledger-partial"
+        >
+          <span>Your policy ledger data failed to load — awards may be incomplete.</span>
+          <button
+            type="button"
+            onClick={loadLedgerPolicies}
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Hero card */}
       {heroAward && <HeroAwardCard award={heroAward} />}
@@ -208,8 +288,27 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       )}
 
       {filteredAwards.length === 0 && (
-        <div className="card text-center py-10">
-          <p className="text-sm text-ink-muted">No awards in this category.</p>
+        <div className="card text-center py-10 flex flex-col items-center gap-3" data-testid="agent-awards-empty-category">
+          <div className="p-3 rounded-full bg-surface-muted text-ink-muted">
+            <Trophy size={24} aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-ink">No awards in this category</p>
+            <p className="text-sm text-ink-muted mt-0.5">
+              {activeCategory === 'All'
+                ? 'Awards appear here as your activity qualifies for them.'
+                : `Nothing tracked under ${activeCategory} yet — try another category.`}
+            </p>
+          </div>
+          {activeCategory !== 'All' && (
+            <button
+              type="button"
+              onClick={() => setActiveCategory('All')}
+              className="min-h-[44px] mt-1 inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+            >
+              View all categories
+            </button>
+          )}
         </div>
       )}
 
@@ -254,9 +353,10 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
           </div>
         </div>
       )}
-
-      {/* Drill drawer */}
-      {drawerAward && <AwardDrillDrawer award={drawerAward} onClose={() => setDrawerAwardId(null)} />}
     </div>
+
+      {/* Drill drawer — outside `.stagger` (fixed-position overlay; see note above) */}
+      {drawerAward && <AwardDrillDrawer award={drawerAward} onClose={() => setDrawerAwardId(null)} provenance={drawerProvenance} />}
+    </>
   );
 }

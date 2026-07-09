@@ -64,6 +64,41 @@ describe('HeroAwardCard', () => {
     render(<HeroAwardCard award={award} eyebrow="★ Closest goal" />);
     expect(screen.getByText('★ Closest goal')).toBeInTheDocument();
   });
+
+  // §2.7 — pace-to-qualify narrative. award.pace is undefined in all the
+  // cases above (pre-existing awardPrimitives contract), so no pace line
+  // renders there — confirmed backward-compatible by the first case below.
+  it('renders no pace line when award.pace is absent (backward compatible)', () => {
+    const award = {
+      id: 'a', name: 'X', prize: 'Y', progressPercent: 50,
+      criteria: [{ label: 'L', target: 100, current: 50, met: false, unit: '' }],
+    };
+    render(<HeroAwardCard award={award} />);
+    expect(screen.queryByTestId('hero-pace-line')).toBeNull();
+  });
+
+  it('renders the pace line "~N wks at your current pace · avg TTD X/wk" when award.pace is present', () => {
+    const award = {
+      id: 'a', name: 'Production Silver', prize: 'Silver trophy', progressPercent: 75,
+      criteria: [{ label: 'Settled API', target: 200000, current: 156000, met: false, unit: 'TTD' }],
+      pace: { avgPerWeek: 22000, unit: 'TTD', gap: 44000, weeksToQualify: 2, hasPace: true },
+    };
+    render(<HeroAwardCard award={award} />);
+    const line = screen.getByTestId('hero-pace-line');
+    expect(line.textContent).toBe('~2 wks at your current pace · avg TTD 22,000/wk');
+  });
+
+  it('renders the honest no-pace fallback when award.pace.hasPace is false — no NaN/Infinity', () => {
+    const award = {
+      id: 'a', name: 'Production Silver', prize: 'Silver trophy', progressPercent: 5,
+      criteria: [{ label: 'Settled API', target: 200000, current: 0, met: false, unit: 'TTD' }],
+      pace: { avgPerWeek: 0, unit: 'TTD', gap: 200000, weeksToQualify: null, hasPace: false },
+    };
+    render(<HeroAwardCard award={award} />);
+    const line = screen.getByTestId('hero-pace-line');
+    expect(line.textContent).toBe('No pace data yet — check back after your next submission.');
+    expect(line.textContent).not.toMatch(/NaN|Infinity/);
+  });
 });
 
 describe('AwardCard', () => {
@@ -134,6 +169,20 @@ describe('AwardDrillDrawer', () => {
     expect(closed).toBe(1);
   });
 
+  it('3.4 — renders the provenance panel only when a provenance prop is passed', () => {
+    const provenance = {
+      source: 'CONFIRMED SETTLEMENTS', sourceLive: false, unit: 'TTD',
+      settled: 150000, target: 200000, pct: 75,
+      segments: [{ kind: 'base', label: 'Settled production', value: 150000 }],
+      campaignPending: true, pending: null,
+    };
+    const { rerender } = render(<AwardDrillDrawer award={award} onClose={() => {}} />);
+    expect(screen.queryByTestId('award-provenance-panel')).not.toBeInTheDocument();
+    rerender(<AwardDrillDrawer award={award} onClose={() => {}} provenance={provenance} />);
+    expect(screen.getByTestId('award-provenance-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('award-provenance-campaign-pending')).toBeInTheDocument();
+  });
+
   it('closes when scrim backdrop is clicked', () => {
     let closed = 0;
     render(<AwardDrillDrawer award={award} onClose={() => { closed++; }} />);
@@ -147,6 +196,52 @@ describe('AwardDrillDrawer', () => {
   it('returns null when award is null', () => {
     const { container } = render(<AwardDrillDrawer award={null} onClose={() => {}} />);
     expect(container.firstChild).toBeNull();
+  });
+
+  // §2.7 — YOUR PACE block.
+  it('renders no YOUR PACE block when award.pace is absent (backward compatible)', () => {
+    render(<AwardDrillDrawer award={award} onClose={() => {}} />);
+    expect(screen.queryByTestId('award-drawer-your-pace')).toBeNull();
+  });
+
+  it('YOUR PACE block renders avg/wk + remaining gap + projected qualify week', () => {
+    const awardWithPace = {
+      ...award,
+      eligible: false,
+      pace: {
+        avgPerWeek: 22000, unit: 'TTD', gap: 13000, weeksToQualify: 1,
+        hasPace: true, projectedDateISO: '2026-07-08',
+      },
+    };
+    render(<AwardDrillDrawer award={awardWithPace} onClose={() => {}} />);
+    const block = screen.getByTestId('award-drawer-your-pace');
+    expect(block.textContent).toContain('TTD 13,000');   // remaining gap
+    expect(block.textContent).toContain('TTD 22,000/wk'); // avg pace
+    expect(block.textContent).toContain('~1 wk');         // projection (weeks)
+    expect(block.textContent).toMatch(/2026|Jul/);        // projected date surfaced somewhere
+    expect(block.textContent).not.toMatch(/NaN|Infinity/);
+  });
+
+  it('YOUR PACE block is not rendered for a qualified award (no gap left to pace toward)', () => {
+    const qualifiedAward = {
+      ...award,
+      eligible: true,
+      pace: { avgPerWeek: 22000, unit: 'TTD', gap: 0, weeksToQualify: null, hasPace: true },
+    };
+    render(<AwardDrillDrawer award={qualifiedAward} onClose={() => {}} />);
+    expect(screen.queryByTestId('award-drawer-your-pace')).toBeNull();
+  });
+
+  it('YOUR PACE block shows the honest no-pace fallback when hasPace is false — no NaN/Infinity', () => {
+    const noPaceAward = {
+      ...award,
+      eligible: false,
+      pace: { avgPerWeek: 0, unit: 'TTD', gap: 200000, weeksToQualify: null, hasPace: false },
+    };
+    render(<AwardDrillDrawer award={noPaceAward} onClose={() => {}} />);
+    const block = screen.getByTestId('award-drawer-your-pace');
+    expect(block.textContent).toContain('No pace data yet');
+    expect(block.textContent).not.toMatch(/NaN|Infinity/);
   });
 });
 

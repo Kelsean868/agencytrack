@@ -1,9 +1,14 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+// Explicit React default import alongside the hooks — required for Vitest
+// compatibility per banked rule; surfaced when Shell.palette.test.jsx first
+// mounted Shell directly (Tier 1 · 1.1).
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import MobileBottomNav from './MobileBottomNav';
+import CommandPalette from './CommandPalette';
 import { usePullToRefresh } from '../../hooks/usePullToRefresh';
 import { buildSectionMap } from './navSections';
+import { applyNavOrder } from './navConfig';
 import useFrequentNav from '../../hooks/useFrequentNav';
 
 /**
@@ -42,7 +47,10 @@ export default function Shell({
   isPinned,
   onPin,
   onUnpin,
+  navOrderIds,
+  onNavReorder,
   navScopeId,
+  quickAddActions,
   showPinnedZone = true,
   showWorkspaceToggle = false,
   workspace,
@@ -51,6 +59,31 @@ export default function Shell({
 }) {
   const mainRef = useRef(null);
   const ptrState = usePullToRefresh(mainRef, onPullRefresh ?? null);
+
+  // ★ Drag-reorder (Fable Tier 1 · 1.4) — apply the saved per-config order to the
+  // DESKTOP SIDEBAR items ONLY (within-section). The bottom-nav, More drawer,
+  // command palette, and Frequent row deliberately keep the caller's original
+  // `navItems` — reorder scope is the sidebar (brief scope). No saved order (empty
+  // `navOrderIds`) returns `navItems` unchanged, so the sidebar renders identically.
+  const sidebarNavItems = useMemo(
+    () => applyNavOrder(navItems, navOrderIds),
+    [navItems, navOrderIds],
+  );
+
+  // Command palette (Fable Tier 1 · 1.1). Cmd/Ctrl-K toggles it; the TopBar
+  // search button also opens it. Lives here so every Shell-based dashboard gets
+  // it, driven by that dashboard's own navItems + quickAddActions (role-scoped).
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   // More sheet v2 — annotate the (already-filtered) drawer items with their
   // resolved section label, filled forward from the FULL role nav so a
@@ -105,7 +138,7 @@ export default function Shell({
           WCAG 2.4.1). Visually hidden until focused (see .skip-link in index.css). */}
       <a href="#main-content" className="skip-link">Skip to main content</a>
       <Sidebar
-        navItems={navItems}
+        navItems={sidebarNavItems}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onAction={onAction}
@@ -118,6 +151,7 @@ export default function Shell({
         isPinned={isPinned}
         onPin={onPin}
         onUnpin={onUnpin}
+        onReorder={onNavReorder}
         showPinnedZone={showPinnedZone}
         showWorkspaceToggle={showWorkspaceToggle}
         workspace={workspace}
@@ -128,6 +162,7 @@ export default function Shell({
           title={topbarTitle}
           crumb={topbarCrumb}
           actions={topbarActions}
+          onOpenSearch={() => setPaletteOpen(true)}
         />
         <main ref={mainRef} id="main-content" tabIndex={-1} className="shell-content">
           {(ptrState === 'pulling' || ptrState === 'refreshing') && (
@@ -154,6 +189,15 @@ export default function Shell({
         workspace={workspace}
         onWorkspaceChange={onWorkspaceChange}
       />
+      {paletteOpen && (
+        <CommandPalette
+          navItems={navItems}
+          quickAddActions={quickAddActions}
+          setActiveTab={setActiveTab}
+          onAction={onAction}
+          onClose={() => setPaletteOpen(false)}
+        />
+      )}
     </div>
   );
 }

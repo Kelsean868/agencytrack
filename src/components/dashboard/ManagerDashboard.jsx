@@ -7,7 +7,7 @@ import {
   Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
   Activity, UserPlus, ClipboardCheck, BookOpen, LayoutList,
-  NotebookPen, Target, Wallet, History, Zap, Banknote,
+  NotebookPen, Target, Wallet, History, Zap, Banknote, Settings, CalendarClock,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -32,9 +32,11 @@ import UserManagementPanel from '../manager/UserManagementPanel';
 import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
 import ManagerOverviewTab from './ManagerOverviewTab';
 import ProfileScreen from '../profile/ProfileScreen';
+import SettingsScreen from '../settings/SettingsScreen';
 import Shell from '../shell/Shell';
 import { getNavConfig, getWorkspaceGroups } from '../shell/navConfig';
 import usePinnedNav from '../../hooks/usePinnedNav';
+import useNavOrder from '../../hooks/useNavOrder';
 import useMenuLayout from '../../hooks/useMenuLayout';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
 import KioskModeTab from '../kiosk/KioskModeTab';
@@ -52,6 +54,8 @@ import DailyFAB from '../daily/DailyFAB';
 import QuickAddMenu from '../shell/QuickAddMenu';
 import { getQuickAddActions } from '../shell/quickAddConfig';
 import GamePlanScreen from './GamePlanV2';
+import { prefetchGamePlanYearDocs } from '../../services/gamePlanPrefetch';
+import TeamPlannerPanel from '../planner/manager/TeamPlannerPanel';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import HistoryTab from '../submissions/HistoryTab';
 import CommissionAnchorStrip from '../agent/CommissionAnchorStrip';
@@ -81,6 +85,12 @@ const NAV_ITEMS = [
   // I2: Monthly Recruiting — UM/BM/SM file; BM/SM/TA/PA view the team
   { id: 'monthly-recruiting', label: 'Monthly Recruiting', tabId: 'monthly-recruiting', Icon: UserPlus },
   { id: 'team',        label: 'Team',         tabId: 'team',        Icon: Users },
+  // D3: Team Planner — read-only team-week coaching view. SM ONLY here: UM/BM reach
+  // the same 'planner' render-switch case via navConfig (PRODUCING_MANAGER_NAV);
+  // TA reaches it via TenantAdminDashboard's own nav; PA never routes to this
+  // dashboard. getTeamWeek's rank≥3 arm serves SM tenant-wide (rules `allow list`
+  // arm admits sales_manager). No write affordance (upline is read-only).
+  { id: 'planner',     label: 'Team Planner', tabId: 'planner',     Icon: CalendarClock, roles: ['sales_manager'], testId: 'tab-planner' },
   { id: 'campaigns',          label: 'Campaigns',         tabId: 'campaigns',          Icon: Gift },
   { id: 'production-report', label: 'Production Report', tabId: 'production-report', Icon: LineChart },
   { id: 'awards',            label: 'Awards',            tabId: 'awards',            Icon: Trophy },
@@ -149,16 +159,35 @@ const BOTTOM_NAV_PRODUCING = [
 // non-producing managers' NAV_ITEMS yields one automatically. Routes to the
 // existing activeTab === 'profile' screen, which hosts its own Sign Out.
 const PROFILE_NAV_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Icon: UserCircle, sectionLabel: 'Account' };
+// Settings v2 (Tier 2 · 2.4) — mobile More-drawer entry (desktop reaches Settings
+// via the sidebar-foot gear). No sectionLabel so it joins Profile's Account group.
+const SETTINGS_NAV_ITEM = { id: 'settings', label: 'Settings', tabId: 'settings', Icon: Settings };
 
 const MP_TABS = new Set(['mp-report', 'mp-goals', 'mp-game-plan', 'mp-money-needs', 'mp-history', 'mp-commission', 'mp-policies', 'mp-financing']);
 
 export default function ManagerDashboard() {
-  const { user, userProfile, role, tenantId } = useAuth();
+  const { user, userProfile, role, tenantId, branchId } = useAuth();
   const [showWizard, setShowWizard]       = useState(false);
   const [activeTab, setActiveTab]         = useState('overview');
   const [selectedWeek, setSelectedWeek]   = useState(getMostRecentSunday());
   const [meetingActive, setMeetingActive] = useState(false);
   const [meetingSubmissions, setMeetingSubmissions] = useState([]);
+  // MeetingMode replaces the entire dashboard while open (see the early return
+  // below), so its useFocusTrap captures a Start Meeting trigger that unmounts —
+  // the hook's focus-return then no-ops against a detached node. Re-focus the
+  // freshly remounted trigger here when the meeting closes. (Tier-0 dialog-a11y
+  // browser-smoke finding — the hook can't restore focus to an element that no
+  // longer exists; the owner of the unmount must.)
+  const startMeetingBtnRef = useRef(null);
+  const meetingWasActiveRef = useRef(false);
+  useEffect(() => {
+    if (meetingActive) {
+      meetingWasActiveRef.current = true;
+    } else if (meetingWasActiveRef.current) {
+      meetingWasActiveRef.current = false;
+      startMeetingBtnRef.current?.focus();
+    }
+  }, [meetingActive]);
 
   // Agent IDs, full profiles, and new-advisor count for manager awards.
   // newAdvisors = agents in scope whose contractStartDate falls in the current calendar year.
@@ -204,6 +233,39 @@ export default function ManagerDashboard() {
     isProducingManager ? user?.uid : null,
     userProfile,
   );
+
+  // D1 (VH) — extend #829's Game Plan prefetch to producing managers: warm the
+  // manager's OWN Game Plan year-docs (moneyNeeds/yearPlan/monthlyPlan for their
+  // uid + current year — the exact set GamePlanScreen reads on mp-game-plan open)
+  // during dashboard idle, so the first open lands on populated content even on
+  // field networks. Same listener-warm approach as the agent side (see
+  // gamePlanPrefetch.js for why listeners, not a one-time getDoc). Opt-in scoped
+  // to producing managers (UM/BM) — the ONLY roles that render GamePlanScreen for
+  // their own uid; plain manager / sales_manager / tenant_admin / platform_admin
+  // never enter this path and never prefetch. Background, non-blocking,
+  // failure-silent; Game Plan still fetches on mount as the fallback.
+  // ManagerDashboard stays mounted across tab switches, so the listeners stay warm
+  // until the manager opens Game Plan; torn down on unmount.
+  const thisYear = new Date().getFullYear();
+  useEffect(() => {
+    if (!isProducingManager || !user?.uid || !tenantId) return undefined;
+    let unsub = () => {};
+    // Best-effort; the prefetch helper is already failure-silent, but wrap the
+    // call too so nothing here can ever break the dashboard.
+    const run = () => {
+      try { unsub = prefetchGamePlanYearDocs(tenantId, user.uid, thisYear); } catch { /* noop */ }
+    };
+    const hasIdle = typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function';
+    let cancel;
+    if (hasIdle) {
+      const handle = window.requestIdleCallback(run, { timeout: 2000 });
+      cancel = () => { if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(handle); };
+    } else {
+      const handle = setTimeout(run, 400);
+      cancel = () => clearTimeout(handle);
+    }
+    return () => { cancel(); if (typeof unsub === 'function') unsub(); };
+  }, [isProducingManager, user?.uid, tenantId, thisYear]);
 
   // E6 logging-mode: unset defaults to 'hybrid' (showDailyCTA = true).
   const mpLoggingMode = userProfile?.loggingMode ?? 'hybrid';
@@ -276,7 +338,8 @@ export default function ManagerDashboard() {
       // Profile lives in the More drawer (v2 nav reorder). Non-producing managers'
       // NAV_ITEMS already yields a profile row here; the producingManager config
       // has none, so inject it. Guarded so it never duplicates.
-      return derived.some((i) => i.id === 'profile') ? derived : [...derived, PROFILE_NAV_ITEM];
+      const withProfile = derived.some((i) => i.id === 'profile') ? derived : [...derived, PROFILE_NAV_ITEM];
+      return withProfile.some((i) => i.id === 'settings') ? withProfile : [...withProfile, SETTINGS_NAV_ITEM];
     },
     [navItems, isProducingManager]
   );
@@ -290,6 +353,12 @@ export default function ManagerDashboard() {
     uid:       isProducingManager ? user?.uid : undefined,
     configKey: isProducingManager ? 'producingManager' : null,
     navItems:  fullNav,
+  });
+
+  // ★ Sidebar drag-reorder (Fable Tier 1 · 1.4) — persisted per-config order,
+  // keyed by the same configKey the rest of the manager nav resolves under.
+  const { orderIds: navOrderIds, reorder: onNavReorder } = useNavOrder({
+    tenantId, uid: user?.uid, configKey: isProducingManager ? 'producingManager' : 'manager',
   });
 
   const displayName  = userProfile?.name ?? userProfile?.email ?? 'Manager';
@@ -428,6 +497,7 @@ export default function ManagerDashboard() {
         </button>
       )}
       <button
+        ref={startMeetingBtnRef}
         type="button"
         onClick={handleStartMeeting}
         className="h-10 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -445,6 +515,8 @@ export default function ManagerDashboard() {
       isPinned={isProducingManager ? isPinned : undefined}
       onPin={isProducingManager ? pin : undefined}
       onUnpin={isProducingManager ? unpin : undefined}
+      navOrderIds={navOrderIds}
+      onNavReorder={onNavReorder}
       showPinnedZone={isProducingManager ? menuLayout !== 'workspace' : true}
       showWorkspaceToggle={isWorkspaceLayout}
       workspace={workspace}
@@ -452,6 +524,7 @@ export default function ManagerDashboard() {
       bottomNavItems={isProducingManager ? BOTTOM_NAV_PRODUCING : BOTTOM_NAV}
       drawerNavItems={drawerNavItems}
       navScopeId={user?.uid}
+      quickAddActions={getQuickAddActions(isProducingManager ? 'producingManager' : 'manager')}
       onAction={handleMgrAction}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
@@ -573,6 +646,16 @@ export default function ManagerDashboard() {
 
         {activeTab === 'kiosk' && <KioskModeTab />}
 
+        {/* ── TEAM PLANNER (item 3.2 — read-only team week; coaching drill) ── */}
+        {activeTab === 'planner' && (
+          <TeamPlannerPanel
+            tenantId={tenantId}
+            callerRole={role}
+            uid={user?.uid}
+            branchId={branchId ?? userProfile?.branchId ?? null}
+          />
+        )}
+
         {/* ── MY PRODUCTION — own-production screens for UM/BM ── */}
         {/* mp-report handled via early return (WizardForm full-screen) */}
 
@@ -615,7 +698,13 @@ export default function ManagerDashboard() {
         {activeTab === 'mp-money-needs' && <MoneyNeedsPanel />}
 
         {activeTab === 'mp-history' && (
-          <HistoryTab submissions={myProd.allSubmissions} />
+          <HistoryTab
+            submissions={myProd.allSubmissions}
+            loading={myProd.loading}
+            weeklyTarget={myProd.companyMinimums?.weeklyActivityFloors?.api ?? 4800}
+            onStartReport={() => setShowWizard(true)}
+            onEditWeek={(weekStarting, sub) => openMpWizardForWeek(weekStarting, sub)}
+          />
         )}
 
         {activeTab === 'mp-commission' && (
@@ -650,6 +739,18 @@ export default function ManagerDashboard() {
 
         {activeTab === 'profile' && (
           <ProfileScreen menuLayout={menuLayout} onMenuLayoutChange={setMenuLayout} />
+        )}
+
+        {/* ── SETTINGS TAB (Tier 2 · 2.4) ── */}
+        {activeTab === 'settings' && (
+          <SettingsScreen
+            role={role}
+            roleLabel={roleLabel}
+            userProfile={userProfile}
+            tenantId={tenantId}
+            uid={user?.uid}
+            onOpenProfile={() => setActiveTab('profile')}
+          />
         )}
         </div>
     </Shell>

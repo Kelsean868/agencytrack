@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Plus, Building2, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useToast from '../../hooks/useToast';
@@ -8,6 +8,7 @@ import {
   setBranchActive,
 } from '../../services/branchService';
 import { getBranchManagers, getAllUsers } from '../../services/agentManagementService';
+import StatusPill from '../ui/StatusPill';
 import BranchEditorModal from './BranchEditorModal';
 import DeactivateBranchConfirmDialog from './DeactivateBranchConfirmDialog';
 
@@ -62,8 +63,15 @@ function formatRoleBreakdown(roles) {
  * — those callsites are not modified in C1. When the new collection is
  * empty for a tenant, this panel renders the empty state; everything
  * else still works.
+ *
+ * openCreateSignal (Tier 1 · 1.3 — TenantAdminDashboard Quick-Add): an
+ * external trigger for the create modal. TenantAdminDashboard bumps this
+ * counter when its own Quick-Add "New branch" action fires; a change-only
+ * effect below (initial mount skipped) calls the same openCreate() path the
+ * "Add branch" button already uses. Defaults to 0 so existing callers/tests
+ * that don't pass it are unaffected and never auto-open on mount.
  */
-export default function BranchesPanel() {
+export default function BranchesPanel({ openCreateSignal = 0 }) {
   const { tenantId, user } = useAuth();
   const toast = useToast();
 
@@ -140,6 +148,31 @@ export default function BranchesPanel() {
     setEditorBranch(null);
     setEditorMode('create');
   }
+
+  // External create trigger (Tier 1 · 1.3, TenantAdminDashboard Quick-Add).
+  // BranchesPanel is only mounted while the Branches tab is active (see
+  // `activeTab === 'branches' && <BranchesPanel .../>` in TenantAdminDashboard)
+  // — it unmounts on every tab switch. That means Quick-Add's "New branch"
+  // action mounts this component FRESH, already carrying the nonzero signal it
+  // needs to react to; a naive "skip only the very first render" guard would
+  // never fire in that case. Instead this tracks the last-seen signal value
+  // (seeded at the prop's neutral default, 0) and opens whenever the value
+  // changes to something truthy — on first mount (arrived via Quick-Add) or on
+  // a later prop change while already mounted (Quick-Add fired again from this
+  // same tab). TenantAdminDashboard resets its own counter back to 0
+  // immediately after (its reset effect runs after this child effect, per
+  // React's child-before-parent passive-effect order within one commit), so a
+  // later plain tab click remounts with openCreateSignal back at 0 and never
+  // re-opens the modal.
+  const lastSeenCreateSignal = useRef(0);
+  useEffect(() => {
+    if (openCreateSignal === lastSeenCreateSignal.current) return;
+    lastSeenCreateSignal.current = openCreateSignal;
+    if (openCreateSignal > 0) {
+      setEditorBranch(null);
+      setEditorMode('create');
+    }
+  }, [openCreateSignal]);
 
   async function openEdit(branchId) {
     setEditorLoading(true);
@@ -219,10 +252,17 @@ export default function BranchesPanel() {
       {readError && (
         <div
           role="alert"
-          className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink flex items-start gap-2"
+          className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink flex items-start gap-2 flex-wrap"
         >
           <AlertCircle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-          <span>{readError}</span>
+          <span className="flex-1 min-w-[200px]">{readError}</span>
+          <button
+            type="button"
+            onClick={reload}
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -232,7 +272,7 @@ export default function BranchesPanel() {
             <div key={i} className="h-14 rounded-xl bg-border/30 animate-pulse" />
           ))}
         </div>
-      ) : sortedBranches.length === 0 ? (
+      ) : readError ? null : sortedBranches.length === 0 ? (
         <div className="text-center py-10 flex flex-col items-center gap-3">
           <Building2 size={40} className="text-border" aria-hidden="true" />
           <p className="text-sm text-ink-muted italic">
@@ -240,75 +280,96 @@ export default function BranchesPanel() {
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-[2fr_2fr_1fr_1fr_auto] gap-3 px-3 text-[10px] font-bold uppercase tracking-wide text-ink-muted">
-            <span>Name</span>
-            <span>Manager</span>
-            <span>Users</span>
-            <span>Status</span>
-            <span>Actions</span>
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          {/* Card-scoped vertical + horizontal scroll (§5) — scroll lives
+              inside this card, never the page. */}
+          <div className="overflow-x-auto overflow-y-auto max-h-[70vh]">
+            <table className="w-full text-sm border-separate border-spacing-0" aria-label="Branches roster">
+              <thead>
+                <tr>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[160px]">Name</th>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[160px]">Manager</th>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[160px]">Users</th>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[100px]">Status</th>
+                  <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[150px]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedBranches.map((b, i) => {
+                  const manager = b.managerId ? managerById.get(b.managerId) : null;
+                  const managerLabel = manager?.name ?? manager?.email ?? (b.managerId ? '—' : 'Unassigned');
+                  const branchUsers = usersByBranch.get(b.id) ?? { total: 0, roles: {} };
+                  const userCount = branchUsers.total;
+                  const roleBreakdown = formatRoleBreakdown(branchUsers.roles);
+                  const inactive = b.isActive === false;
+                  const zebra = i % 2 === 1 ? 'bg-card-raised/40' : '';
+                  return (
+                    <tr
+                      key={b.id}
+                      className={`border-b border-border/60 last:border-0 ${zebra} ${inactive ? 'opacity-70' : ''}`}
+                    >
+                      <td className="px-3 py-3">
+                        <span className="block truncate max-w-[200px] text-sm font-semibold text-ink" title={b.name}>
+                          {b.name}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-xs text-ink-muted">
+                        <span className="block truncate max-w-[200px]" title={managerLabel}>{managerLabel}</span>
+                      </td>
+                      <td className="px-3 py-3 text-xs min-w-0" data-testid={`branch-user-count-${b.id}`}>
+                        <span className="text-ink-muted">{userCount} {userCount === 1 ? 'user' : 'users'}</span>
+                        {roleBreakdown && (
+                          <span className="block text-[10px] text-ink-muted truncate max-w-[180px]" title={roleBreakdown}>
+                            {roleBreakdown}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        <StatusPill
+                          variant={inactive ? 'muted' : 'success'}
+                          label={inactive ? 'Inactive' : 'Active'}
+                          className="uppercase tracking-wide"
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(b.id)}
+                            disabled={editorLoading}
+                            className="text-xs font-semibold px-2.5 h-8 rounded-lg text-primary bg-primary/10 hover:bg-primary/20 transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                          >
+                            {editorLoading ? <Loader2 size={13} className="animate-spin" aria-label="Loading" /> : 'Edit'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmTarget(b)}
+                            className={`text-xs font-semibold px-2.5 h-8 rounded-lg transition-colors min-w-[80px] ${
+                              inactive
+                                ? 'text-primary bg-primary/10 hover:bg-primary/20'
+                                : 'text-danger-ink bg-danger/10 hover:bg-danger/20'
+                            } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40`}
+                          >
+                            {inactive ? 'Reactivate' : 'Deactivate'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          {sortedBranches.map((b) => {
-            const manager = b.managerId ? managerById.get(b.managerId) : null;
-            const managerLabel = manager?.name ?? manager?.email ?? (b.managerId ? '—' : 'Unassigned');
-            const branchUsers = usersByBranch.get(b.id) ?? { total: 0, roles: {} };
-            const userCount = branchUsers.total;
-            const roleBreakdown = formatRoleBreakdown(branchUsers.roles);
-            const inactive = b.isActive === false;
-            return (
-              <div
-                key={b.id}
-                className={`grid grid-cols-[2fr_2fr_1fr_1fr_auto] gap-3 items-center px-3 py-3 rounded-xl border ${
-                  inactive
-                    ? 'bg-border/20 border-border/40 opacity-70'
-                    : 'bg-card border-border'
-                }`}
-              >
-                <span className="text-sm font-semibold text-ink truncate">{b.name}</span>
-                <span className="text-xs text-ink-muted truncate">{managerLabel}</span>
-                <div className="text-xs min-w-0" data-testid={`branch-user-count-${b.id}`}>
-                  <span className="text-ink-muted">{userCount} {userCount === 1 ? 'user' : 'users'}</span>
-                  {roleBreakdown && (
-                    <span className="block text-[10px] text-ink-muted truncate" title={roleBreakdown}>
-                      {roleBreakdown}
-                    </span>
-                  )}
-                </div>
-                <span>
-                  {inactive ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-ink-muted/10 text-ink-muted">
-                      Inactive
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-success/15 text-success-ink">
-                      Active
-                    </span>
-                  )}
-                </span>
-                <div className="flex justify-end gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(b.id)}
-                    disabled={editorLoading}
-                    className="text-xs font-semibold px-2.5 h-8 rounded-lg text-primary bg-primary/10 hover:bg-primary/20 transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                  >
-                    {editorLoading ? <Loader2 size={13} className="animate-spin" aria-label="Loading" /> : 'Edit'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmTarget(b)}
-                    className={`text-xs font-semibold px-2.5 h-8 rounded-lg transition-colors min-w-[80px] ${
-                      inactive
-                        ? 'text-primary bg-primary/10 hover:bg-primary/20'
-                        : 'text-danger-ink bg-danger/10 hover:bg-danger/20'
-                    } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40`}
-                  >
-                    {inactive ? 'Reactivate' : 'Deactivate'}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+
+          {/* Live footer count (§5) */}
+          <div
+            data-testid="branches-roster-footer"
+            className="px-3 py-2 border-t border-border bg-surface text-xs text-ink-muted"
+          >
+            {sortedBranches.length} branch{sortedBranches.length !== 1 ? 'es' : ''} •{' '}
+            {sortedBranches.filter((b) => b.isActive !== false).length} active •{' '}
+            {sortedBranches.filter((b) => b.isActive === false).length} inactive
+          </div>
         </div>
       )}
 

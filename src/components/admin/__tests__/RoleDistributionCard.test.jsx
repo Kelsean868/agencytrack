@@ -35,4 +35,10 @@ describe('RoleDistributionCard — TA-CLEANUP', () => {
     expect(screen.getByText('Sales Managers')).toBeInTheDocument();
     expect(screen.getByText('Tenant Admins')).toBeInTheDocument();
   });
+
+  it('0.1b — renders a PanelSkeleton (aria-busy) in place of the role bars while loading', () => {
+    const { container } = render(<RoleDistributionCard users={[]} loading />);
+    expect(container.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(screen.queryByText('Agents')).toBeNull();
+  });
 });

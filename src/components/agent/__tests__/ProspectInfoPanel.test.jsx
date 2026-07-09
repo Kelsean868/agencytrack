@@ -256,6 +256,50 @@ describe('ProspectInfoPanel — Log Policy CTA (F3.1)', () => {
   });
 });
 
+describe('ProspectInfoPanel — NextCallHero + readiness (item 3.5)', () => {
+  const futurePrep = {
+    id: 'hero1',
+    agentId: 'agent1',
+    clientName: 'Future Client',
+    clientAge: 40,
+    clientOccupation: 'Teacher',
+    prospectingSource: 'referral',
+    appointmentType: 'closing-interview',
+    objections: ['no-money'],
+    policyType: 'whole-life',
+    intendedAppointmentDate: '2099-01-15', // always upcoming → becomes the hero
+    createdBy: 'agent1',
+  };
+
+  it('renders NextCallHero for the soonest upcoming prep with the rehearsal aid', async () => {
+    mockGetProspectInfo.mockResolvedValue([futurePrep]);
+    render(<ProspectInfoPanel />);
+    await screen.findByTestId('next-call-hero');
+    // Objection rehearsal counter surfaces inside the hero
+    expect(screen.getByText(/smaller starter premium/i)).toBeInTheDocument();
+    // policyType present + objections listed → prepped
+    expect(screen.getByTestId('readiness-prepped')).toBeInTheDocument();
+  });
+
+  it('shows "Needs prep" when a prep lacks policyType/objections', async () => {
+    mockGetProspectInfo.mockResolvedValue([{
+      ...futurePrep, id: 'hero2', clientName: 'Bare Client', policyType: '', objections: [],
+    }]);
+    render(<ProspectInfoPanel />);
+    await screen.findByTestId('next-call-hero');
+    expect(screen.getByTestId('readiness-needs-prep')).toBeInTheDocument();
+  });
+
+  it('does NOT render a hero when every prep is overdue (all past-dated)', async () => {
+    mockGetProspectInfo.mockResolvedValue([{
+      ...futurePrep, id: 'past1', clientName: 'Past Client', intendedAppointmentDate: '2020-01-01',
+    }]);
+    render(<ProspectInfoPanel />);
+    await screen.findByText('Past Client');
+    expect(screen.queryByTestId('next-call-hero')).not.toBeInTheDocument();
+  });
+});
+
 describe('ProspectInfoPanel — socialPlatform conditional select (PR #319)', () => {
   it('platform select appears when prospectingSource is changed to social-media', async () => {
     mockGetProspectInfo.mockResolvedValue([]);

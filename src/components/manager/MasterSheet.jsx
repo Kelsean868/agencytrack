@@ -1,19 +1,29 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import React from 'react';
 import StatusPill from '../ui/StatusPill';
-import { Download, Search, MessageSquare, CalendarCheck } from 'lucide-react';
+import Avatar from '../ui/Avatar';
+import DataSourceBadge from '../productionReport/DataSourceBadge';
+import { Download, Search, MessageSquare, CalendarCheck, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useAppSettings, { readSettingsMirror } from '../../hooks/useAppSettings';
+import { isValidMasterSheetPreset, DEFAULT_MASTER_SHEET_PRESET } from '../../config/viewDefaults';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 import { extractFields, computeRatios, extractTotalProductionCredit } from '../../utils/extractFields';
+import { deriveExceptions } from '../../utils/managerExceptions';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 import CoachingNotesModal from './CoachingNotesModal';
 
-// Column definitions — drives both header and cell rendering
+// Column definitions — drives both header and cell rendering.
+// `rank` (leading #) + `name` are the two sticky-left identity columns (0.3's
+// "first 2 columns sticky" contract, now rank+name to match the mastersheet-v2
+// matrix mockup which pins # · Agent and lets Status scroll). Every other column
+// is a per-week activity numeral.
 const COLS = [
-  { key: 'name',                label: 'Agent',              sticky: true,  left: 'left-0',       minW: 'min-w-[160px]' },
-  { key: 'status',              label: 'Status',             sticky: true,  left: 'left-[160px]', minW: 'min-w-[90px]'  },
+  { key: 'rank',                label: '#',                  sticky: true,  left: 'left-0',       minW: 'w-12',        rankCol: true },
+  { key: 'name',                label: 'Agent',              sticky: true,  left: 'left-[48px]',  minW: 'min-w-[180px]' },
+  { key: 'status',              label: 'Status',                                                  minW: 'min-w-[110px]' },
   { key: 'prospectingTouches',  label: 'Prospect. Touches',                                       minW: 'min-w-[80px]'  },
   { key: 'personsReached',      label: 'Persons Reached',                                          minW: 'min-w-[80px]'  },
   { key: 'totalTelAttempts',    label: 'Tel Attempts',                                             minW: 'min-w-[80px]'  },
@@ -40,6 +50,47 @@ const COLS = [
   { key: 'closingRatio',        label: 'Closing %',           ratio: true,                         minW: 'min-w-[80px]'  },
 ];
 
+// Column presets (MasterActionBar in mastersheet-v2-shared). Identity columns
+// (# / Agent / Status) are always visible; each preset reveals a domain subset
+// of the ~25 activity columns. The live weekly WAR sheet carries no native
+// agent-recruiting or persistency-% columns (those live on the Recruiting tab /
+// monthly manager-entered persistency), so those two presets map to the nearest
+// honest single-week analogs (top-of-funnel name generation; post-sale
+// delivery/service) — documented as a mockup-vs-repo divergence, not fabricated.
+//
+// PERSISTENCE: preset lives in session-local useState (default 'All'). A saved
+// master-sheet view-default is Settings v2's job (item 2.4) — intentionally NOT
+// wired to localStorage/Firestore here.
+const IDENTITY_KEYS = new Set(['rank', 'name', 'status']);
+const PRESETS = {
+  All: null, // null = every column
+  Production: new Set([
+    'qualifiedApproaches', 'ffisScheduled', 'ffiConducted', 'solutionPresentations',
+    'newCIBooked', 'oldCIBooked', 'ciConducted', 'applicationsSold', 'livesSold',
+    'totalProductionCredit', 'weekendApi', 'targetAPI', 'targetAppsSold', 'closingRatio',
+  ]),
+  Recruiting: new Set([
+    'prospectingTouches', 'totalNewNames', 'personsReached', 'totalTelAttempts',
+    'f2fAttempts', 'contactsMade', 'qualifiedApproaches',
+  ]),
+  Compliance: new Set([
+    'daysWorked', 'weekendWorked', 'weekendApi', 'policiesDelivered',
+    'serviceContacts', 'targetAPI', 'targetAppsSold',
+  ]),
+  Persistency: new Set(['policiesDelivered', 'serviceContacts', 'livesSold']),
+};
+const PRESET_ORDER = ['All', 'Production', 'Recruiting', 'Compliance', 'Persistency'];
+
+// §5 dense-table contract: identity/status/rank columns stay left/center-aligned
+// text; every other column (counts, currency, ratios, days worked) is a numeral
+// and renders right-aligned + tabular-nums (inherited from the td onto its child
+// spans — font-variant-numeric is an inherited property).
+function isNumericCol(col) {
+  if (col.key === 'name' || col.key === 'status' || col.key === 'rank') return false;
+  if (col.weekend) return false; // Yes/No/— badge, not a numeral
+  return true;
+}
+
 function resolveName(sub, userNameMap) {
   if (sub.agentName)   return sub.agentName;
   if (sub.displayName) return sub.displayName;
@@ -58,10 +109,10 @@ function apiColorClass(apiSold, targetAPI) {
   return 'text-danger-ink font-semibold';
 }
 
-function SkeletonRow() {
+function SkeletonRow({ cols }) {
   return (
     <tr>
-      {COLS.map((c) => (
+      {cols.map((c) => (
         <td key={c.key} className={`px-3 py-3 border-b border-border/40 ${c.minW}`}>
           <div className="h-3 bg-border/60 rounded animate-pulse" />
         </td>
@@ -71,12 +122,36 @@ function SkeletonRow() {
 }
 
 export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
-  const { tenantId } = useAuth();
+  const { tenantId, user } = useAuth();
+  // Settings v2 (Tier 2 · 2.4) — the SAVED default column preset. Read-only here:
+  // changing the preset in this action bar is session-local (the persistent
+  // default is set in Settings), so an in-session override always wins over a
+  // late Firestore reconcile via `presetTouchedRef`.
+  const { settings } = useAppSettings({ tenantId, uid: user?.uid });
   const [submissions, setSubmissions]       = useState([]);
+  const [users, setUsers]                   = useState([]);
   const [userNameMap, setUserNameMap]       = useState({});
   const [loading, setLoading]               = useState(true);
   const [error, setError]                   = useState('');
   const [search, setSearch]                 = useState('');
+  // Seed from the saved default synchronously (localStorage-first mirror), so the
+  // sheet opens on the manager's preferred preset without a flash.
+  const [preset, setPreset] = useState(() => {
+    const m = readSettingsMirror(user?.uid).masterSheetPreset;
+    return isValidMasterSheetPreset(m) ? m : DEFAULT_MASTER_SHEET_PRESET;
+  });
+  // Once the user picks a preset this session, a late Firestore reconcile must not
+  // overwrite it (session-override-wins).
+  const presetTouchedRef = useRef(false);
+  const [exceptionsOnly, setExceptionsOnly] = useState(false);
+
+  // Adopt the saved default when it arrives from Firestore reconcile — but only
+  // if the user hasn't overridden the preset this session (session-override-wins).
+  useEffect(() => {
+    if (presetTouchedRef.current) return;
+    const saved = settings.masterSheetPreset;
+    if (isValidMasterSheetPreset(saved)) setPreset(saved);
+  }, [settings.masterSheetPreset]);
   const [viewingSubmission, setViewingSubmission] = useState(null);
   // F1 coaching notes: agentId/agentName/agentUnitId of the agent whose notes panel is open
   const [notesAgent, setNotesAgent] = useState(null);
@@ -92,6 +167,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
     ])
       .then(([subs, userList]) => {
         setSubmissions(subs);
+        setUsers(userList);
         const nameMap = {};
         userList.forEach((u) => {
           nameMap[u.id] = u.name ?? u.displayName ?? u.email ?? null;
@@ -105,16 +181,37 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
       .finally(() => setLoading(false));
   }, [selectedWeek, tenantId]);
 
-  const rows = useMemo(() => {
+  // Per-agent unit/level identity metadata, from the tenant user docs already
+  // loaded (no new read). Rendered only when present — never fabricated, never
+  // raw uids.
+  const userMeta = useMemo(() => {
+    const m = {};
+    users.forEach((u) => {
+      m[u.id] = {
+        unitName: u.unitName ?? u.unit ?? null,
+        level:    u.levelTitle ?? u.careerLevel ?? null,
+      };
+    });
+    return m;
+  }, [users]);
+
+  // All loaded rows, ranked by this-week production credit (descending). Rank is
+  // a true standing over the full loaded set — computed BEFORE search/exception
+  // filters so it stays stable as the operator filters.
+  const allRows = useMemo(() => {
     return submissions
       .map((sub) => {
         const f = extractFields(sub);
         const ratios = computeRatios(f);
         const personsReached = f.telContacts + f.f2fContacts;
+        const uid = sub.agentId ?? sub.userId ?? sub.id;
+        const meta = userMeta[uid] ?? {};
         return {
-          id:                   sub.agentId ?? sub.userId ?? sub.id,
+          id:                   uid,
           _submission:          sub,
           name:                 resolveName(sub, userNameMap),
+          unitName:             meta.unitName ?? null,
+          level:                meta.level ?? null,
           status:               sub.status ?? 'draft',
           prospectingTouches:   f.prospectingTouches,
           personsReached,
@@ -142,21 +239,87 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           closingRatio:         ratios.closingRatio,
         };
       })
-      .filter(
+      .sort((a, b) => (b.totalProductionCredit || 0) - (a.totalProductionCredit || 0))
+      .map((r, i) => ({ ...r, rank: i + 1 }));
+  }, [submissions, userNameMap, userMeta]);
+
+  // A row is a single-week "exception" if its report is not yet submitted (draft
+  // = unfinished this week). This is the only honest PER-ROW exception on a
+  // single-week surface — floor/pace/persistency/gone-quiet all require YTD +
+  // config that this surface intentionally does not load (see reality-bar note).
+  const rowIsException = (r) => r.status !== 'submitted';
+
+  const searchedRows = useMemo(
+    () =>
+      allRows.filter(
         (r) =>
           search.trim() === '' ||
           r.name.toLowerCase().includes(search.trim().toLowerCase())
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [submissions, userNameMap, search]);
+      ),
+    [allRows, search]
+  );
 
+  const displayRows = useMemo(
+    () => (exceptionsOnly ? searchedRows.filter(rowIsException) : searchedRows),
+    [searchedRows, exceptionsOnly]
+  );
+
+  // ── Reality bar stats (read-light) ────────────────────────────────────────
+  // MasterSheet loads ONLY the selected week (getWeeklySubmissions) — no YTD
+  // subs, no settlements, no companyMinimums. So the design's "YTD SETTLED API"
+  // cannot be shown honestly here; a heavy YTD/settlement fan-out is out of scope
+  // (read-light). We surface the WEEK's total production credit instead, badged
+  // "Estimated" via the shared DataSourceBadge (submitted, not settled),
+  // matching the app's settled-vs-submitted provenance pattern.
+  //
+  // ON PACE / EXCEPTIONS: the floor/pace exception classes in managerExceptions
+  // need YTD + the tenure floor config (neither loaded). Feeding single-week
+  // data to the engine would flag every filer "below floor" (one week vs the
+  // 200k default floor pro-rated) — misleading. So we reuse deriveExceptions for
+  // only the class it can derive honestly at single-week granularity: `report`
+  // (roster agents with no submission for the selected week). Floor/pace triage
+  // is the Team-Dashboard overview's job (item 1.5, which loads YTD; it applied
+  // the same read-light SKIP-AND-LOG boundary for persistency/quiet).
+  const agentUsers = useMemo(() => users.filter((u) => u?.role === 'agent'), [users]);
+  const reportExceptions = useMemo(
+    () =>
+      deriveExceptions({ users: agentUsers, subs: submissions, companyMins: null })
+        .filter((e) => e.type === 'report'),
+    [agentUsers, submissions]
+  );
+
+  const weekApiTotal = useMemo(
+    () => allRows.reduce((s, r) => s + (typeof r.totalProductionCredit === 'number' ? r.totalProductionCredit : 0), 0),
+    [allRows]
+  );
+  const filerCount    = allRows.length;
+  const submittedCount = useMemo(() => allRows.filter((r) => r.status === 'submitted').length, [allRows]);
+  const draftCount    = filerCount - submittedCount;
+  const rosterCount   = agentUsers.length || filerCount;
+  const nonFilerCount = reportExceptions.length;
+  const exceptionCount = nonFilerCount + draftCount;
+
+  const visibleCols = useMemo(
+    () =>
+      COLS.filter(
+        (c) => IDENTITY_KEYS.has(c.key) || preset === 'All' || PRESETS[preset]?.has(c.key)
+      ),
+    [preset]
+  );
+
+  // CSV export is RECORDS-COMPLETE: it always emits every column (ignores the
+  // active preset) and every row in the current SEARCH scope, ignoring the
+  // "only exceptions" toggle. Least-surprising for an exported record — a
+  // filtered on-screen view should not silently truncate the export. (Search is
+  // the one pre-existing filter export has always respected; left unchanged.)
   const exportCSV = () => {
     const headers = COLS.map((c) => c.label);
     const csvRows = [
       headers.join(','),
-      ...rows.map((r) =>
+      ...searchedRows.map((r) =>
         COLS.map((c) => {
           const v = r[c.key];
+          if (c.key === 'rank')   return v;
           if (c.key === 'name')   return `"${v}"`;
           if (c.key === 'status') return v;
           if (c.ratio)            return v === null ? '—' : `${v}%`;
@@ -177,26 +340,49 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
 
   function cellContent(col, row) {
     const v = row[col.key];
-    if (col.key === 'name') {
+    if (col.key === 'rank') {
+      // Gold top-3 treatment. Rank is small/normal text → text-gold-ink per the
+      // gold rule (vivid --color-gold is decoration-only in light; both roles map
+      // to #E0AA3E in dark). See gold-split-audit.md rank-medal precedent.
+      const gold = row.rank <= 3;
       return (
-        <div className="flex items-center gap-1.5">
-          <span className="font-medium text-ink whitespace-nowrap">{v}</span>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setNotesAgent({
-                agentId:    row.id,
-                agentName:  v,
-                agentUnitId: row._submission?.unitId ?? null,
-              });
-            }}
-            className="opacity-0 group-hover:opacity-100 focus:opacity-100 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-muted hover:text-primary hover:bg-primary/10 transition-all"
-            aria-label={`Coaching notes for ${v}`}
-            title="Coaching Notes"
-          >
-            <MessageSquare size={13} aria-hidden="true" />
-          </button>
+        <span
+          data-testid={`rank-${row.id}`}
+          className={`text-sm font-bold tabular-nums ${gold ? 'text-gold-ink' : 'text-ink-muted'}`}
+        >
+          {row.rank}
+        </span>
+      );
+    }
+    if (col.key === 'name') {
+      const subline = [row.unitName, row.level].filter(Boolean).join(' · ');
+      return (
+        <div className="flex items-center gap-2.5">
+          <Avatar name={v} size="sm" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium text-ink whitespace-nowrap">{v}</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setNotesAgent({
+                    agentId:    row.id,
+                    agentName:  v,
+                    agentUnitId: row._submission?.unitId ?? null,
+                  });
+                }}
+                className="opacity-0 group-hover:opacity-100 focus:opacity-100 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-muted hover:text-primary hover:bg-primary/10 transition-all"
+                aria-label={`Coaching notes for ${v}`}
+                title="Coaching Notes"
+              >
+                <MessageSquare size={13} aria-hidden="true" />
+              </button>
+            </div>
+            {subline && (
+              <div className="text-[11px] text-ink-muted whitespace-nowrap">{subline}</div>
+            )}
+          </div>
         </div>
       );
     }
@@ -215,9 +401,8 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
     if (col.weekend) {
       // Compact marker — info token (not alarm-red). Present iff the agent
       // logged on the opening Sunday or Saturday this week.
-      const state = v === true ? 'yes' : v === false ? 'no' : 'na';
       return (
-        <span data-testid={`weekend-marker-${row.id}`} data-weekend={state}>
+        <span data-testid={`weekend-marker-${row.id}`} data-weekend={v === true ? 'yes' : v === false ? 'no' : 'na'}>
           {v === true ? (
             <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium bg-primary/10 text-primary">
               <CalendarCheck size={13} aria-hidden="true" />
@@ -255,8 +440,11 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   }
 
   const thBase =
-    'px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-ink-muted whitespace-nowrap border-b border-border';
+    'px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-muted whitespace-nowrap border-b border-border';
   const tdBase = 'px-3 py-3 text-sm border-b border-border/40';
+
+  const colAlign = (col) =>
+    col.rankCol ? 'text-center' : isNumericCol(col) ? 'text-right tabular-nums' : 'text-left';
 
   return (
     <div className="flex flex-col gap-4">
@@ -277,6 +465,98 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           onClose={() => setViewingSubmission(null)}
         />
       )}
+
+      {/* Reality bar (MasterReality) — anchor-first team state above the table.
+          Read-light: every stat is computed from the single week already loaded. */}
+      <div
+        className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl border border-border bg-card px-4 py-3"
+        data-testid="mastersheet-reality"
+      >
+        <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-semibold text-ink">
+          <CalendarCheck size={14} className="text-ink-muted" aria-hidden="true" />
+          {formatDateFriendly(selectedWeek)}
+        </div>
+
+        <div className="hidden sm:block h-8 w-px bg-border" aria-hidden="true" />
+
+        <div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Week API</span>
+            <DataSourceBadge source="submitted" />
+          </div>
+          <div className="mt-0.5 text-lg font-semibold text-ink tabular-nums" data-testid="mastersheet-reality-weekapi">
+            {formatCurrency(weekApiTotal)}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Submitted</div>
+          <div className="mt-0.5 text-lg font-semibold text-ink tabular-nums" data-testid="mastersheet-reality-submitted">
+            {submittedCount} / {filerCount}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Filed</div>
+          <div className="mt-0.5 text-lg font-semibold text-ink tabular-nums" data-testid="mastersheet-reality-filed">
+            {filerCount} / {rosterCount}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Exceptions</div>
+          <div
+            className={`mt-0.5 text-lg font-semibold tabular-nums ${exceptionCount > 0 ? 'text-warning-ink' : 'text-ink'}`}
+            data-testid="mastersheet-reality-exceptions"
+          >
+            {exceptionCount}
+          </div>
+        </div>
+      </div>
+
+      {/* Action bar — column presets + exceptions toggle */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div
+          className="inline-flex flex-wrap gap-1 rounded-lg border border-border bg-surface p-1"
+          role="group"
+          aria-label="Column presets"
+        >
+          {PRESET_ORDER.map((p) => {
+            const active = preset === p;
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => { presetTouchedRef.current = true; setPreset(p); }}
+                aria-pressed={active}
+                className={`min-h-[44px] px-3 rounded-md text-sm font-semibold transition-colors ${
+                  active
+                    ? 'bg-card text-ink shadow-sm border border-border'
+                    : 'text-ink-muted hover:text-ink border border-transparent'
+                }`}
+              >
+                {p}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          type="button"
+          role="switch"
+          aria-checked={exceptionsOnly}
+          onClick={() => setExceptionsOnly((v) => !v)}
+          className={`min-h-[44px] inline-flex items-center gap-2 px-3 rounded-lg border text-sm font-semibold transition-colors ${
+            exceptionsOnly
+              ? 'bg-warning/15 border-warning/40 text-warning-ink'
+              : 'bg-card border-border text-ink-muted hover:text-ink'
+          }`}
+        >
+          <AlertTriangle size={14} aria-hidden="true" />
+          Only exceptions
+          <span className="tabular-nums text-xs">{exceptionCount}</span>
+        </button>
+      </div>
 
       {/* Controls */}
       <div className="flex flex-wrap gap-3 items-center">
@@ -306,7 +586,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
 
         <button
           onClick={exportCSV}
-          disabled={loading || rows.length === 0}
+          disabled={loading || searchedRows.length === 0}
           className="h-10 px-4 rounded-lg border border-border bg-card text-ink text-sm font-medium flex items-center gap-2 hover:bg-surface transition-colors disabled:opacity-50"
         >
           <Download size={14} />
@@ -320,17 +600,20 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         </div>
       )}
 
-      {/* Table — horizontally scrollable, first 2 columns sticky */}
-      <div className="overflow-x-auto rounded-xl border border-border bg-card">
+      {/* Table — card-scoped vertical + horizontal scroll (§5), sticky header,
+          first 2 columns (# + Agent) sticky. Scroll lives inside this card. */}
+      <div className="overflow-x-auto overflow-y-auto max-h-[70vh] rounded-xl border border-border bg-card">
         <table className="text-sm border-separate border-spacing-0">
           <thead>
             <tr>
-              {COLS.map((col) => (
+              {visibleCols.map((col) => (
                 <th
                   key={col.key}
                   className={`
                     ${thBase} ${col.minW}
-                    ${col.sticky ? `sticky ${col.left} z-20 bg-surface` : 'bg-surface'}
+                    sticky top-0 bg-surface
+                    ${col.sticky ? `${col.left} z-30` : 'z-20'}
+                    ${colAlign(col)}
                   `}
                 >
                   {col.label}
@@ -340,30 +623,36 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           </thead>
           <tbody>
             {loading &&
-              Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}
+              Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={visibleCols} />)}
 
-            {!loading && rows.length === 0 && (
+            {!loading && displayRows.length === 0 && (
               <tr>
-                <td colSpan={COLS.length} className="px-3 py-12">
-                  {/* Designed empty state (UX-001) — icon + headline + guidance,
-                      replacing the bare centered caption. Distinct copy for the
-                      search-filtered vs genuinely-empty week. */}
+                <td colSpan={visibleCols.length} className="px-3 py-12">
+                  {/* Designed empty state (UX-001) — icon + headline + guidance. */}
                   <div
                     className="flex flex-col items-center text-center gap-2"
                     data-testid="mastersheet-empty"
                   >
                     <div className="flex items-center justify-center w-12 h-12 rounded-full bg-surface text-ink-muted">
-                      {search.trim()
-                        ? <Search size={22} aria-hidden="true" />
-                        : <CalendarCheck size={22} aria-hidden="true" />}
+                      {exceptionsOnly
+                        ? <AlertTriangle size={22} aria-hidden="true" />
+                        : search.trim()
+                          ? <Search size={22} aria-hidden="true" />
+                          : <CalendarCheck size={22} aria-hidden="true" />}
                     </div>
                     <p className="text-sm font-semibold text-ink">
-                      {search.trim() ? 'No agents match your search' : 'No submissions yet this week'}
+                      {exceptionsOnly
+                        ? 'No exceptions in view'
+                        : search.trim()
+                          ? 'No agents match your search'
+                          : 'No submissions yet this week'}
                     </p>
                     <p className="text-xs text-ink-muted max-w-xs">
-                      {search.trim()
-                        ? 'Try a different name, or clear the search to see the full roster.'
-                        : 'Reports will appear here as your team submits them. Check back later or send a nudge from Compliance.'}
+                      {exceptionsOnly
+                        ? 'Every filed report in the current view is submitted. Turn off the filter to see the full roster.'
+                        : search.trim()
+                          ? 'Try a different name, or clear the search to see the full roster.'
+                          : 'Reports will appear here as your team submits them. Check back later or send a nudge from Compliance.'}
                     </p>
                   </div>
                 </td>
@@ -371,17 +660,18 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
             )}
 
             {!loading &&
-              rows.map((row) => (
+              displayRows.map((row) => (
                 <tr
                   key={row.id}
                   className="group cursor-pointer"
                   onClick={() => setViewingSubmission(row._submission)}
                 >
-                  {COLS.map((col) => (
+                  {visibleCols.map((col) => (
                     <td
                       key={col.key}
                       className={`
                         ${tdBase} ${col.minW}
+                        ${colAlign(col)}
                         ${col.sticky
                           ? `sticky ${col.left} z-10 bg-card group-hover:bg-surface/50`
                           : 'group-hover:bg-surface/30'}
@@ -398,9 +688,9 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
 
       {!loading && (
         <p className="text-xs text-ink-muted">
-          {rows.length} submission{rows.length !== 1 ? 's' : ''} •{' '}
-          {rows.filter((r) => r.status === 'submitted').length} submitted •{' '}
-          {rows.filter((r) => r.status === 'draft').length} draft
+          {searchedRows.length} submission{searchedRows.length !== 1 ? 's' : ''} •{' '}
+          {searchedRows.filter((r) => r.status === 'submitted').length} submitted •{' '}
+          {searchedRows.filter((r) => r.status === 'draft').length} draft
         </p>
       )}
     </div>

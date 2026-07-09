@@ -23,7 +23,7 @@
 //   • PRIVATE fields (adjustmentPct, suggestedFinancing, notes, source, ALL audit
 //     metadata) are ABSENT FROM THE DOM — never rendered, not CSS-hidden.
 //   • The K7 miss/risk engine is never called and never rendered.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   getFinancingTerms,
   listFinancingMonths,
@@ -33,6 +33,7 @@ import {
 } from '../../services/financingService';
 import { getProjectedBonus } from '../../lib/financingProjectedBonus';
 import { computeWindDownClocks } from '../../lib/financingReconciliation';
+import { computePaydownArcModel, ARC_VIEW } from '../../lib/financingPaydownArc';
 import { computeMonthsFromDate, getTodayTT } from '../../utils/dateInputs';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 import FinancingStatusBadge from '../manager/FinancingStatusBadge';
@@ -160,9 +161,159 @@ function Gate({ label, met }) {
   );
 }
 
+// ── K9 Paydown-arc hero (glass centerpiece) ─────────────────────────────────────
+// The locked Option-A hero: a running-balance arc-to-zero — actual paydown (solid)
+// + straight-line projection (dashed) at the current average paydown rate — with a
+// "now" dot, a "clear" dot, and the wind-down clock chips. DISPLAY ONLY: every
+// figure is derived from the ledger the view already loads (financingPaydownArc.js);
+// no writes, no draw/release logic. Static draw (no animation) → reduced-motion safe
+// by construction. On the .glass.hero.teal (dark teal) surface, arc strokes use the
+// certified hero-ink viz tokens (a dark-teal stroke would be invisible there).
+function ptsStr(points) {
+  return (points ?? []).map((p) => `${p.x},${p.y}`).join(' ');
+}
+
+function ClockChip({ label, value, sub, done = false }) {
+  return (
+    <div className="flex flex-col gap-0.5 rounded-xl px-4 py-3 bg-[--hero-chip-island] border border-[--hero-chip-border] min-w-[140px]">
+      <span className="font-mono text-[8px] font-bold uppercase tracking-widest text-[--hero-ink-muted-teal]">{label}</span>
+      <span className={`font-display font-extrabold text-lg tracking-tight tabular-nums ${done ? 'text-[--hero-dot-success]' : 'text-[--hero-ink]'}`}>{value}</span>
+      {sub && <span className="font-mono text-[8.5px] text-[--hero-ink-muted-teal]">{sub}</span>}
+    </div>
+  );
+}
+
+function PaydownArcHero({ terms, ledger, clocks }) {
+  const model = computePaydownArcModel({ ledger });
+  const { W, H, yBase, xLeft, xRight } = ARC_VIEW;
+  const { hasData, hasProjection, isSurplus, nowBalance, projectedClearMonths, projectedClearMonthKey, points } = model;
+
+  const monthsToWaiver = clocks ? Math.max(0, clocks.waiverServiceMonths - clocks.serviceMonths) : null;
+
+  // Honest headline copy — never NaN, never a fabricated date.
+  let headline;
+  if (!hasData) {
+    headline = 'Your balance and paydown trajectory will appear here once your first monthly statement is entered.';
+  } else if (isSurplus) {
+    headline = `You're ${formatCurrency(Math.abs(nowBalance))} in surplus — that's owed back to you, not owed by you.`;
+  } else if (hasProjection) {
+    const moWord = projectedClearMonths === 1 ? 'month' : 'months';
+    headline = `You're carrying ${formatCurrency(nowBalance)} — on track to clear it in about ${projectedClearMonths} ${moWord}${projectedClearMonthKey ? ` (by ${monthKeyLabel(projectedClearMonthKey)})` : ''} at your current pace.`;
+  } else {
+    headline = `You're carrying ${formatCurrency(nowBalance)}. A projected clear date appears once your balance is trending down.`;
+  }
+
+  const canDrawLine = points.actual.length >= 2;
+
+  return (
+    <section className="glass hero teal p-6 flex flex-col gap-3 relative overflow-hidden" data-testid="fsv-paydown-hero">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <FinancingStatusBadge status={terms.financingStatus} />
+        <div className="text-right">
+          <p className="font-mono text-[8px] font-bold uppercase tracking-widest text-[--hero-ink-muted-teal]">Started</p>
+          <p className="font-display font-extrabold text-sm text-[--hero-ink] tabular-nums">{formatDateDisplay(terms.effectiveDate)}</p>
+        </div>
+      </div>
+
+      <div>
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[--hero-ink-muted-teal]">Your balance · paying it down to zero</p>
+        <p className="font-display font-extrabold text-xl tracking-tight text-[--hero-ink] mt-1" data-testid="fsv-paydown-headline">{headline}</p>
+      </div>
+
+      {hasData && (
+        <div className="mt-1">
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            preserveAspectRatio="none"
+            className="block w-full h-auto"
+            role="img"
+            aria-label={
+              isSurplus
+                ? `Running balance in surplus of ${formatCurrency(Math.abs(nowBalance))}`
+                : `Running balance ${formatCurrency(nowBalance)}${hasProjection ? `, projected to clear in about ${projectedClearMonths} months` : ''}`
+            }
+          >
+            {/* zero baseline */}
+            <line x1={xLeft} y1={yBase} x2={xRight} y2={yBase} className="stroke-white/30" strokeWidth="1" strokeDasharray="3 3" />
+            {/* area under the actual line */}
+            {points.area.length > 0 && (
+              <polygon points={ptsStr(points.area)} className="fill-white/10" />
+            )}
+            {/* actual paydown — solid */}
+            {canDrawLine && (
+              <polyline
+                points={ptsStr(points.actual)}
+                fill="none"
+                className="text-[--hero-ink]"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+            {/* projected paydown — dashed */}
+            {hasProjection && (
+              <polyline
+                points={ptsStr([points.now, ...points.projected])}
+                fill="none"
+                className="text-[--hero-ink-muted-teal]"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeDasharray="5 5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+            {/* now dot */}
+            {points.now && (
+              <circle cx={points.now.x} cy={points.now.y} r="5" className="text-[--hero-ink]" fill="currentColor" />
+            )}
+            {/* clear dot (zero crossing) */}
+            {points.clear && (
+              <circle cx={points.clear.x} cy={points.clear.y} r="4.5" className="text-[--hero-dot-success]" fill="currentColor" stroke="#ffffff" strokeWidth="1.5" />
+            )}
+          </svg>
+          <div className="flex justify-between font-mono text-[8.5px] font-bold uppercase tracking-wide text-[--hero-ink-muted-teal] mt-1 gap-2 flex-wrap">
+            <span>Effective · {formatDateDisplay(terms.effectiveDate)}</span>
+            <span className="text-[--hero-ink]" data-testid="fsv-paydown-now">Now · {formatCurrency(nowBalance)}{isSurplus ? ' (surplus)' : ''}</span>
+            <span className={hasProjection ? 'text-[--hero-dot-success]' : ''} data-testid="fsv-paydown-clear">
+              {hasProjection ? `Projected clear · ${monthKeyLabel(projectedClearMonthKey)}` : 'Projected clear · —'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {clocks && (
+        <div className="flex gap-2.5 flex-wrap mt-1" data-testid="fsv-paydown-clocks">
+          <ClockChip
+            label="Running balance"
+            value={hasData ? `${formatCurrency(nowBalance)}${isSurplus ? ' (surplus)' : ''}` : '—'}
+            sub="negative = surplus"
+          />
+          <ClockChip
+            label="Months to 12-mo waiver"
+            value={clocks.serviceMet ? 'Earned' : `${monthsToWaiver} of ${clocks.waiverServiceMonths}`}
+            sub={`service ${clocks.serviceMonths} mo`}
+            done={clocks.serviceMet}
+          />
+          <ClockChip
+            label="Months to term"
+            value={`${clocks.termMonthsRemaining} left`}
+            sub={`${clocks.agreementTermMonths}-mo term`}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function FinancingSelfView({ tenantId, subjectUid }) {
   const [state, setState] = useState({ status: 'loading' });
+  // Bumped by the error state's Retry button to force the effect below to
+  // re-run the same load path (§1 states contract).
+  const [reloadToken, setReloadToken] = useState(0);
+  const retry = useCallback(() => setReloadToken((t) => t + 1), []);
 
   useEffect(() => {
     // Reset to loading on every identity change so a subject switch never leaves
@@ -228,7 +379,7 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
     })();
 
     return () => { active = false; };
-  }, [tenantId, subjectUid]);
+  }, [tenantId, subjectUid, reloadToken]);
 
   if (state.status === 'loading') {
     return (
@@ -240,8 +391,19 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
 
   if (state.status === 'error') {
     return (
-      <div className="p-4 rounded-xl border border-danger/30 bg-danger/10 text-danger-ink text-sm" data-testid="financing-self-view">
-        We couldn't load your financing right now. Please try again.
+      <div
+        role="alert"
+        className="p-4 rounded-xl border border-danger/30 bg-danger/10 text-danger-ink text-sm flex items-center justify-between gap-3 flex-wrap"
+        data-testid="financing-self-view"
+      >
+        <span>We couldn&apos;t load your financing right now. Please try again.</span>
+        <button
+          type="button"
+          onClick={retry}
+          className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -260,6 +422,9 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
 
   return (
     <div className="flex flex-col gap-5" data-testid="financing-self-view">
+
+      {/* ── HERO (glass) · paydown arc + wind-down clocks — the locked Option-A centerpiece ── */}
+      <PaydownArcHero terms={terms} ledger={ledger} clocks={clocks} />
 
       {/* ── Terms header ── */}
       <Card title="Your financing agreement" testId="fsv-terms">

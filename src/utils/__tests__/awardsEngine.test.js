@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeAgentAwards, computeManagerAwards, computeAtRiskStatus, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../awardsEngine';
+import { computeAgentAwards, computeManagerAwards, computeAtRiskStatus, computeAwardPace, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../awardsEngine';
 
 // Helper: build a manager settlement doc
 function settled(agentId, periodKey, settledAPI, settledApps, persistency = 0) {
@@ -781,5 +781,67 @@ describe('isPersistencyOnlyBlock', () => {
       criteria: [crit('persistency', 85, 90)],
     });
     expect(isPersistencyOnlyBlock(a)).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// computeAwardPace — §2.7 pace-to-qualify narrative
+// ─────────────────────────────────────────────────────────────────────────────
+describe('computeAwardPace', () => {
+  function awardWith(criterion) {
+    return { criteria: [criterion] };
+  }
+
+  it('gap 44K, avg 22K/wk → weeksToQualify 2 (fixture from the build brief)', () => {
+    // current 44000 over 2 weeksElapsed → avgPerWeek 22000; target 88000 → gap 44000
+    const award = awardWith({ label: 'Settled API', current: 44000, target: 88000, met: false, unit: 'TTD' });
+    const result = computeAwardPace(award, 2, new Date('2026-07-01'));
+    expect(result.avgPerWeek).toBe(22000);
+    expect(result.gap).toBe(44000);
+    expect(result.weeksToQualify).toBe(2);
+    expect(result.hasPace).toBe(true);
+  });
+
+  it('zero pace (no weeks elapsed yet) → hasPace false, weeksToQualify null, no NaN/Infinity', () => {
+    const award = awardWith({ label: 'Settled API', current: 0, target: 50000, met: false, unit: 'TTD' });
+    const result = computeAwardPace(award, 0, new Date('2026-07-01'));
+    expect(result.hasPace).toBe(false);
+    expect(result.avgPerWeek).toBe(0);
+    expect(result.weeksToQualify).toBeNull();
+    expect(result.projectedDateISO).toBeNull();
+    expect(Number.isFinite(result.avgPerWeek)).toBe(true);
+  });
+
+  it('negative-gap edge (current already ≥ target) → weeksToQualify null even with a positive pace', () => {
+    const award = awardWith({ label: 'Settled API', current: 60000, target: 50000, met: true, unit: 'TTD' });
+    const result = computeAwardPace(award, 3, new Date('2026-07-01'));
+    expect(result.hasPace).toBe(true);
+    expect(result.gap).toBe(0);
+    expect(result.weeksToQualify).toBeNull();
+  });
+
+  it('%-unit primary criterion → null (a ratio has no honest per-week rate)', () => {
+    const award = awardWith({ label: 'Avg Persistency', current: 88, target: 90, met: false, unit: '%' });
+    expect(computeAwardPace(award, 10, new Date())).toBeNull();
+  });
+
+  it('no criteria → null', () => {
+    expect(computeAwardPace({ criteria: [] }, 5, new Date())).toBeNull();
+  });
+
+  it('projects a qualify date weeksToQualify*7 days out from currentDate', () => {
+    const award = awardWith({ label: 'Settled API', current: 10000, target: 20000, met: false, unit: 'TTD' });
+    // avgPerWeek = 10000/1 = 10000/wk; gap = 10000 → weeksToQualify = 1
+    const result = computeAwardPace(award, 1, new Date('2026-07-01T00:00:00Z'));
+    expect(result.weeksToQualify).toBe(1);
+    expect(result.projectedDateISO).toBe('2026-07-08');
+  });
+
+  it('non-TTD cumulative unit (apps) still produces a pace — only % is excluded', () => {
+    const award = awardWith({ label: 'Apps Sold', current: 10, target: 24, met: false, unit: 'apps' });
+    const result = computeAwardPace(award, 5, new Date('2026-07-01'));
+    expect(result.avgPerWeek).toBe(2);
+    expect(result.gap).toBe(14);
+    expect(result.weeksToQualify).toBe(7);
   });
 });

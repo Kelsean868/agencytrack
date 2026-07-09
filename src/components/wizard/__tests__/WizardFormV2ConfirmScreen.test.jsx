@@ -61,7 +61,11 @@ describe('Wizard v3 — Confirm screen (fast-path entry)', () => {
     getDraft.mockReturnValueOnce(new Promise((res) => { resolveDraft = res; }));
     render(<WizardForm onClose={vi.fn()} initialWeek="2026-05-31" initialScreen="confirm" />);
     // Before the read resolves: loader shown; NOT WeekConfirmView, NOT the empty state.
-    expect(await screen.findByTestId('wizard-v2-confirm-loading')).toBeInTheDocument();
+    const loadingContainer = await screen.findByTestId('wizard-v2-confirm-loading');
+    expect(loadingContainer).toBeInTheDocument();
+    // 0.1b — the loader is a PanelSkeleton (aria-busy status region), not a spinner.
+    expect(loadingContainer.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(loadingContainer.querySelector('.animate-spin')).toBeFalsy();
     expect(screen.queryByTestId('week-confirm-view')).toBeNull();
     expect(screen.queryByText(/no activity logged/i)).toBeNull();
     // Resolve with a seeded daily-aggregated draft → Confirm view mounts, loader gone.
@@ -222,9 +226,12 @@ describe('Wizard — step-screen draft gate (BUG-101)', () => {
     getDraft.mockReturnValueOnce(new Promise((res) => { resolveDraft = res; }));
     render(<WizardForm onClose={vi.fn()} initialWeek="2026-05-31" />);
 
-    // Pre-resolve: loading spinner shown, step body NOT rendered (no editable
+    // Pre-resolve: loading skeleton shown, step body NOT rendered (no editable
     // inputs to type into and lose).
-    expect(await screen.findByTestId('wizard-v2-step-loading')).toBeInTheDocument();
+    const loadingContainer = await screen.findByTestId('wizard-v2-step-loading');
+    expect(loadingContainer).toBeInTheDocument();
+    // 0.1b — PanelSkeleton (aria-busy status region), not a spinner.
+    expect(loadingContainer.querySelector('[aria-busy="true"]')).toBeTruthy();
     expect(screen.queryByTestId('wizard-v2-step-1')).toBeNull();
 
     // Resolve with no draft (fresh week) → step 1 mounts, loader gone.

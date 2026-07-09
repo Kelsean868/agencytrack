@@ -325,16 +325,24 @@ service cloud.firestore {
       // unitId + branchId denormalized for UM/BM query filtering (mirrors submissions).
       // Manager two-arm confirmation update is DEFERRED to H1.2.
       match /policies/{policyId} {
+        // Tier-3 3.1: cro (back-office) reads policies tenant-wide — the
+        // Delivery Register is a query surface over this collection.
+        function isCroInTenant() {
+          return getRole() == 'cro' && getTenantId() == tenantId;
+        }
+
         allow get: if canAccessOwn(tenantId, resource.data.agentId)
           || (canManage(tenantId) && (
                getRole() != 'unit_manager'
                || resource.data.unitId == request.auth.uid
-             ));
+             ))
+          || isCroInTenant();
         allow list: if canAccessOwn(tenantId, resource.data.agentId)
           || (canManage(tenantId) && (
                getRole() != 'unit_manager'
                || resource.data.unitId == request.auth.uid
-             ));
+             ))
+          || isCroInTenant();
         allow create: if isSignedIn()
           && (isAgent() || isProducingManager())
           && getTenantId() == tenantId
@@ -432,6 +440,24 @@ service cloud.firestore {
           && request.resource.data.managerSettledAPI is number
           && request.resource.data.managerSettledAPI > 0
           && request.resource.data.hasDiscrepancy is bool;
+
+        // Arm E — CRO delivery confirmation (Tier-3 3.1, back-office role).
+        // The cro role marks a SETTLED policy delivered — touching ONLY the
+        // three delivery fields. `policyDeliveryDate` is the H1-deferred
+        // milestone field already stamped null at create (policiesService.js);
+        // deliveredBy pinned to auth.uid; delivery may be backdated (recorded
+        // after the fact) but never future. The 30-day clawback clock is
+        // DISPLAY-ONLY (derived from dateIssued), never stored. OR'd with the
+        // other arms by Firestore.
+        allow update: if isSignedIn()
+          && isCroInTenant()
+          && resource.data.status == 'settled'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['policyDeliveryDate', 'deliveredBy', 'deliveredAt'])
+          && request.resource.data.policyDeliveryDate is timestamp
+          && request.resource.data.policyDeliveryDate <= request.time
+          && request.resource.data.deliveredBy == request.auth.uid
+          && request.resource.data.deliveredAt is timestamp;
 
         // Arm D — BM-only settled→lapsed (H2c). Explicitly excludes UM and
         // canConfirmSettlements-only callers; only branch_manager / tenant_admin /
@@ -1199,7 +1225,12 @@ service cloud.firestore {
             && d.status in ['draft', 'submitted']
             && d.weekStart is string
             && d.managerRole in ['unit_manager', 'branch_manager', 'sales_manager']
-            && d.managerRoleRank == roleRank();
+            && d.managerRoleRank == roleRank()
+            // Review fields are reviewer-only (see the upline review arm below).
+            // Owner writes must never CONTAIN them — blocks self-approval while
+            // still letting a full-setDoc resubmit clear review state by
+            // omission (intended semantic: a resubmitted WAR needs re-review).
+            && !d.keys().hasAny(['reviewStatus', 'reviewNote', 'reviewedBy', 'reviewedByName', 'reviewedAt']);
         }
 
         allow create: if isSignedIn()
@@ -1211,6 +1242,24 @@ service cloud.firestore {
           && getTenantId() == tenantId
           && resource.data.managerId == request.auth.uid
           && validWarWrite();
+
+        // Tier-2 2.1 reviewer workflow: an upline manager (same scope as
+        // uplineCanRead — strictly higher rank; BM branch-scoped; SM+ tenant-
+        // wide) may review a SUBMITTED WAR, touching ONLY the review fields.
+        // Separate arm from the owner update (each `allow` evaluates
+        // independently). Reviewer identity is pinned to auth.uid.
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.status == 'submitted'
+          && uplineCanRead()
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['reviewStatus', 'reviewNote', 'reviewedBy', 'reviewedByName', 'reviewedAt'])
+          && request.resource.data.reviewStatus in ['approved', 'changes_requested']
+          && request.resource.data.reviewNote is string
+          && request.resource.data.reviewNote.size() <= 2000
+          && request.resource.data.reviewedBy == request.auth.uid
+          && request.resource.data.reviewedByName is string
+          && request.resource.data.reviewedAt is timestamp;
 
         // Single-doc: owner (or pre-write existence check via warId prefix) OR upline.
         // resource == null when doc doesn't exist (owner's pre-write getDoc check).
@@ -1294,6 +1343,160 @@ service cloud.firestore {
         allow list: if isSignedIn() && getTenantId() == tenantId
           && roleRank() >= 2
           && (resource.data.branchId == callerBranchId(tenantId) || roleRank() >= 3);
+
+        allow delete: if false;
+      }
+
+      // ── Tier-2 2.2: recruiting pipeline candidates (kanban CRM) ──────────────
+      // /tenants/{tid}/recruitingCandidates/{candidateId}  (auto-id)
+      // Operator ruling: the no-CRM guardrail is LIFTED for this surface only.
+      // Ownership: ownerUid = the manager driving the candidate. Creator must
+      // self-own; an in-scope senior (BM same-branch / SM+ / TA) may edit and
+      // reassign ownerUid (coaching moves). Agents have NO access.
+      // Board reads: UM lists own candidates (ownerUid == uid); BM lists own
+      // branch; SM+ tenant-wide. Equality-only queries — automatic single-field
+      // indexes, NO composite required (client-side sort; boards are tens of
+      // docs). No delete: candidates leave the board via status='archived'.
+      match /recruitingCandidates/{candidateId} {
+
+        function callerBranchId(tenantId) {
+          return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.branchId;
+        }
+
+        // BM is branch-scoped; SM/TA/PA tenant-wide. (Managers only — rank ≥ 2
+        // per roleRank(); UMs act through ownership, not scope.)
+        function seniorInScope() {
+          return getRole() in ['tenant_admin', 'platform_admin', 'sales_manager']
+            || (getRole() == 'branch_manager'
+                && callerBranchId(tenantId) == resource.data.branchId);
+        }
+
+        function validCandidateWrite() {
+          let d = request.resource.data;
+          return d.tenantId == tenantId
+            && d.keys().hasAll([
+                 'tenantId', 'branchId', 'ownerUid', 'ownerName', 'name',
+                 'stage', 'status', 'source', 'referrerName', 'note',
+                 'stageChangedAt', 'lastTouchAt', 'createdAt', 'updatedAt'
+               ])
+            && d.name is string && d.name.size() > 0 && d.name.size() <= 200
+            && d.stage in ['sourced', 'contacted', 'seminar', 'interview',
+                           'assessment', 'offer', 'licensing', 'licensed']
+            && d.status in ['active', 'archived']
+            && d.source is string && d.source.size() <= 200
+            && d.referrerName is string && d.referrerName.size() <= 200
+            && d.note is string && d.note.size() <= 2000
+            && d.ownerUid is string && d.ownerName is string
+            && d.branchId is string;
+        }
+
+        allow create: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() in ['unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin']
+          && request.resource.data.ownerUid == request.auth.uid
+          && validCandidateWrite();
+
+        // Owner, or an in-scope senior (who may also reassign ownerUid).
+        // tenantId + branchId are immutable in v1 (cross-branch transfer is a
+        // future ruling); owner edits may not change ownerUid (no self-transfer).
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
+          && validCandidateWrite()
+          && request.resource.data.branchId == resource.data.branchId
+          && (
+            (resource.data.ownerUid == request.auth.uid
+              && request.resource.data.ownerUid == resource.data.ownerUid)
+            || seniorInScope()
+          );
+
+        allow get: if isSignedIn()
+          && getTenantId() == tenantId
+          && (resource.data.ownerUid == request.auth.uid || seniorInScope());
+
+        // Query-safe arms, mirroring the WAR/rollup split-arm pattern:
+        // UM board: where('ownerUid','==',uid). BM board: where('branchId','==',own).
+        // SM+/TA: tenant-wide.
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.ownerUid == request.auth.uid;
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() == 'branch_manager'
+          && resource.data.branchId == callerBranchId(tenantId);
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() in ['sales_manager', 'tenant_admin', 'platform_admin'];
+
+        allow delete: if false;
+      }
+
+      // ── Tier-3 3.2: planner appointments (agent Planner + manager Team Planner) ──
+      // /tenants/{tid}/appointments/{apptId}  (auto-id)
+      // FLAT tenant collection (repo idiom: prospectInfo/policies), NOT the
+      // handoff's per-agent subcollection — the Team Planner needs cross-agent
+      // queries, and flat + denormalized scope fields avoids collectionGroup
+      // rules pitfalls. Owner (agent/producing manager) full write on OWN
+      // appointments; upline READ-ONLY (UM own unit, BM own branch, SM+/TA
+      // tenant-wide). No hard deletes — cancelled/postponed keep their doc
+      // (status flip + rescheduledToId link), per the planner handoff.
+      match /appointments/{apptId} {
+
+        function callerBranchId(tenantId) {
+          return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.branchId;
+        }
+
+        function validApptWrite() {
+          let d = request.resource.data;
+          return d.tenantId == tenantId
+            && d.agentId == request.auth.uid
+            && d.keys().hasAll([
+                 'tenantId', 'agentId', 'agentUnitId', 'agentBranchId',
+                 'date', 'startTime', 'durationMin', 'type', 'status',
+                 'note', 'createdAt', 'updatedAt'
+               ])
+            && d.date is string && d.date.matches('\\d{4}-\\d{2}-\\d{2}')
+            && d.startTime is string
+            && d.durationMin is int && d.durationMin > 0 && d.durationMin <= 720
+            && d.type in ['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE', 'FREE']
+            && d.status in ['scheduled', 'confirmed', 'kept', 'cancelled', 'postponed', 'done']
+            && d.note is string && d.note.size() <= 2000
+            && (!('apiAmount' in d) || d.apiAmount == null || (d.apiAmount is number && d.apiAmount >= 0));
+        }
+
+        allow create: if isSignedIn()
+          && getTenantId() == tenantId
+          && (isAgent() || isProducingManager())
+          && validApptWrite();
+
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.agentId == request.auth.uid
+          && validApptWrite();
+
+        allow get: if isSignedIn()
+          && getTenantId() == tenantId
+          && (resource.data.agentId == request.auth.uid
+              || getRole() in ['sales_manager', 'tenant_admin', 'platform_admin']
+              || (getRole() == 'branch_manager'
+                  && callerBranchId(tenantId) == resource.data.agentBranchId)
+              || (getRole() == 'unit_manager'
+                  && resource.data.agentUnitId == request.auth.uid));
+
+        // Query-safe split list arms (mirrors recruitingCandidates):
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.agentId == request.auth.uid;
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() == 'unit_manager'
+          && resource.data.agentUnitId == request.auth.uid;
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() == 'branch_manager'
+          && resource.data.agentBranchId == callerBranchId(tenantId);
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() in ['sales_manager', 'tenant_admin', 'platform_admin'];
 
         allow delete: if false;
       }
@@ -1400,21 +1603,21 @@ service cloud.firestore {
             && d.committedAt is timestamp
             && d.updatedAt is timestamp
             && (d.anchorAPIAtCommit == null || d.anchorAPIAtCommit is number)
-            && d.targets.keys().hasAll(['callsMade','contactsMade','factFindsCompleted',
+            && d.targets.keys().hasAll(['callsMade','telContacts','factFindsCompleted',
                                         'closingInterviewsKept','applicationsSubmitted'])
-            && d.targets.keys().hasOnly(['callsMade','contactsMade','factFindsCompleted',
+            && d.targets.keys().hasOnly(['callsMade','telContacts','factFindsCompleted',
                                          'closingInterviewsKept','applicationsSubmitted'])
             && d.targets.callsMade             is int && d.targets.callsMade             >= 0
-            && d.targets.contactsMade          is int && d.targets.contactsMade          >= 0
+            && d.targets.telContacts           is int && d.targets.telContacts           >= 0
             && d.targets.factFindsCompleted    is int && d.targets.factFindsCompleted    >= 0
             && d.targets.closingInterviewsKept is int && d.targets.closingInterviewsKept >= 0
             && d.targets.applicationsSubmitted is int && d.targets.applicationsSubmitted >= 0
-            && d.provenance.keys().hasAll(['callsMade','contactsMade','factFindsCompleted',
+            && d.provenance.keys().hasAll(['callsMade','telContacts','factFindsCompleted',
                                            'closingInterviewsKept','applicationsSubmitted'])
-            && d.provenance.keys().hasOnly(['callsMade','contactsMade','factFindsCompleted',
+            && d.provenance.keys().hasOnly(['callsMade','telContacts','factFindsCompleted',
                                             'closingInterviewsKept','applicationsSubmitted'])
             && d.provenance.callsMade             in ['derived','floor','agent']
-            && d.provenance.contactsMade          in ['derived','floor','agent']
+            && d.provenance.telContacts           in ['derived','floor','agent']
             && d.provenance.factFindsCompleted    in ['derived','floor','agent']
             && d.provenance.closingInterviewsKept in ['derived','floor','agent']
             && d.provenance.applicationsSubmitted in ['derived','floor','agent'];

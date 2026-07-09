@@ -12,10 +12,20 @@ const hoisted = vi.hoisted(() => ({
   getPolicyHistory:       vi.fn(),
   getPolicyPlans:         vi.fn(),
   useAuth:                vi.fn(),
+  useFeatureFlag:         vi.fn(() => false),
+  getActiveCampaignsForAgent: vi.fn(),
 }));
 
 vi.mock('../../../context/AuthContext', () => ({
   useAuth: hoisted.useAuth,
+}));
+
+vi.mock('../../../hooks/useFeatureFlag', () => ({
+  useFeatureFlag: hoisted.useFeatureFlag,
+}));
+
+vi.mock('../../../services/campaignService', () => ({
+  getActiveCampaignsForAgent: hoisted.getActiveCampaignsForAgent,
 }));
 
 vi.mock('../../../services/policiesService', () => ({
@@ -98,6 +108,28 @@ beforeEach(() => {
   hoisted.transitionPolicyStatus.mockResolvedValue();
   hoisted.getPolicyHistory.mockResolvedValue([]);
   hoisted.getPolicyPlans.mockResolvedValue({ plans: [], pendingReview: [] });
+  hoisted.useFeatureFlag.mockReturnValue(false);
+  hoisted.getActiveCampaignsForAgent.mockResolvedValue([]);
+});
+
+describe('PolicyLedgerPanel — 3.4 campaign lens flag', () => {
+  it('flag OFF — the campaign lens is absent (byte-identical ledger)', async () => {
+    hoisted.useFeatureFlag.mockReturnValue(false);
+    hoisted.getOwnPolicies.mockResolvedValue([makePolicy({ id: 'p1' })]);
+    render(<PolicyLedgerPanel />);
+    await waitFor(() => expect(screen.getByTestId('policy-ledger-surface')).toBeInTheDocument());
+    expect(screen.queryByTestId('campaign-lens-panel')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('campaign-lens-empty')).not.toBeInTheDocument();
+    expect(hoisted.getActiveCampaignsForAgent).not.toHaveBeenCalled();
+  });
+
+  it('flag ON — the campaign lens mounts inside the list view', async () => {
+    hoisted.useFeatureFlag.mockImplementation((k) => k === 'policyLedgerCampaignLens');
+    hoisted.getOwnPolicies.mockResolvedValue([makePolicy({ id: 'p1' })]);
+    hoisted.getActiveCampaignsForAgent.mockResolvedValue([]); // no active → empty lens state
+    render(<PolicyLedgerPanel />);
+    await waitFor(() => expect(screen.getByTestId('campaign-lens-empty')).toBeInTheDocument());
+  });
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -198,6 +230,21 @@ describe('PolicyLedgerPanel — list view states', () => {
     await waitFor(() =>
       expect(screen.getByText(/network timeout/)).toBeInTheDocument()
     );
+  });
+
+  it('error banner is a persistent alert with a wired Retry that re-invokes the same load path', async () => {
+    hoisted.getOwnPolicies.mockRejectedValueOnce(new Error('network timeout'));
+    render(<PolicyLedgerPanel />);
+    await waitFor(() => expect(screen.getByTestId('ledger-error')).toBeInTheDocument());
+    expect(screen.getByTestId('ledger-error')).toHaveAttribute('role', 'alert');
+    expect(hoisted.getOwnPolicies).toHaveBeenCalledTimes(1);
+
+    hoisted.getOwnPolicies.mockResolvedValueOnce([]);
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(screen.queryByTestId('ledger-error')).toBeNull());
+    expect(hoisted.getOwnPolicies).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(/No policies yet/)).toBeInTheDocument();
   });
 
   it('renders "New Policy" button in list view', async () => {

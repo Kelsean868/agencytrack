@@ -1,6 +1,14 @@
 import React from 'react';
 import { PiggyBank, TrendingUp, CalendarDays, Info, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
+import { useCountUp } from '../../hooks/useCountUp';
+
+// §2 count-up — derived-income KPI figures count up on load. decimals:2
+// preserves TTD cents exactly (no rounding drift at the end of the animation).
+function CountUpCurrency({ value }) {
+  const display = useCountUp(value, { duration: 900, decimals: 2 });
+  return <>{formatCurrency(display)}</>;
+}
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 function LoadingSkeleton() {
@@ -152,7 +160,7 @@ export default function DerivedIncomePanel({ hierarchy, ytdTotals, commissionRat
             style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.02em' }}
             data-testid="derived-annual-income"
           >
-            {formatCurrency(annualIncome)}
+            <CountUpCurrency value={annualIncome} />
           </p>
           <p className="text-[10px] text-ink-muted">/year</p>
         </div>
@@ -168,7 +176,7 @@ export default function DerivedIncomePanel({ hierarchy, ytdTotals, commissionRat
             </p>
           </div>
           <p className="text-xl font-bold text-ink" style={{ fontFamily: '"Cabinet Grotesk", system-ui' }}>
-            {formatCurrency(perMonth)}
+            <CountUpCurrency value={perMonth} />
           </p>
           <p className="text-[10px] text-ink-muted">/mo</p>
         </div>
@@ -181,7 +189,7 @@ export default function DerivedIncomePanel({ hierarchy, ytdTotals, commissionRat
             </p>
           </div>
           <p className="text-xl font-bold text-ink" style={{ fontFamily: '"Cabinet Grotesk", system-ui' }}>
-            {formatCurrency(ytdEarned)}
+            <CountUpCurrency value={ytdEarned} />
           </p>
           {ytdPct !== null && (
             <p className="text-[10px] text-ink-muted">{ytdPct}% of annual</p>

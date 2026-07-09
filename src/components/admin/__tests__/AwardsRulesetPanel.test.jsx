@@ -40,6 +40,15 @@ function openSection(label) {
   fireEvent.click(btn);
 }
 
+describe('AwardsRulesetPanel — 0.1b loading skeleton', () => {
+  it('renders a PanelSkeleton (aria-busy) while the ruleset is loading', () => {
+    hoisted.mockGet.mockReturnValue(new Promise(() => {}));
+    const { container } = render(<AwardsRulesetPanel />);
+    expect(container.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(container.querySelector('.animate-spin')).toBeNull();
+  });
+});
+
 describe('AwardsRulesetPanel — array row editors', () => {
   it('add row increments the row count for activityAwards', async () => {
     await renderPanel();
@@ -173,5 +182,21 @@ describe('AwardsRulesetPanel — array row editors', () => {
     for (const key of Object.keys(DEFAULT_RULESET_2026)) {
       expect(payload).toHaveProperty(key);
     }
+  });
+});
+
+describe('AwardsRulesetPanel — §1 states contract (error / retry)', () => {
+  it('renders a persistent inline error card with a wired Retry when the load fails', async () => {
+    hoisted.mockGet.mockRejectedValueOnce(new Error('boom-ruleset'));
+    render(<AwardsRulesetPanel />);
+
+    await waitFor(() => expect(screen.getByText('boom-ruleset')).toBeInTheDocument());
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+
+    hoisted.mockGet.mockResolvedValueOnce(JSON.parse(JSON.stringify(DEFAULT_RULESET_2026)));
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(screen.queryByText('boom-ruleset')).toBeNull());
+    expect(hoisted.mockGet).toHaveBeenCalledTimes(2);
   });
 });

@@ -7,7 +7,7 @@
 // Appointment-bound by design (§0 guardrail): intendedAppointmentDate REQUIRED.
 // NOT a prospect pipeline or CRM.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { UserSearch, Pencil, Check, Plus, ChevronDown, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -21,10 +21,13 @@ import {
   POLICY_TYPES,
 } from '../../services/prospectInfoService';
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../../utils/prospectingConstants';
+import { formatDMY, deriveReadiness, pickNextCall, todayISO } from '../../utils/prospectPrep';
+import NextCallHero from '../prospect/NextCallHero';
+import ApptBadge from '../prospect/ApptBadge';
+import ObjectionRehearsal from '../prospect/ObjectionRehearsal';
 
 const SOURCE_LABEL      = PROSPECTING_SOURCE_LABELS;
 const APPT_TYPE_LABEL   = Object.fromEntries(APPOINTMENT_TYPES.map((a) => [a.value, a.label]));
-const OBJECTION_LABEL   = Object.fromEntries(OBJECTIONS.map((o) => [o.value, o.label]));
 const POLICY_TYPE_LABEL = Object.fromEntries(POLICY_TYPES.map((p) => [p.value, p.label]));
 
 const BLANK_FORM = {
@@ -43,9 +46,10 @@ function toggleObjection(arr, value) {
   return arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
 }
 
-function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
+function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep, today, initialEditing = false, onCloseEdit }) {
   const { tenantId } = useAuth();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEditing);
+  const { prepped } = deriveReadiness(prep);
   const [form, setForm]       = useState({
     clientName:              prep.clientName              ?? '',
     clientAge:               prep.clientAge               ?? '',
@@ -89,6 +93,7 @@ function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
       });
       setEditing(false);
       onSaved({ ...prep, ...form });
+      onCloseEdit?.();
     } catch (e) {
       console.error('Failed to update prospect-info:', e);
       setErr('Save failed — check connection.');
@@ -111,6 +116,7 @@ function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
     });
     setErr('');
     setEditing(false);
+    onCloseEdit?.();
   };
 
   return (
@@ -123,8 +129,9 @@ function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
           <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-success/10 text-success-ink">
             {SOURCE_LABEL[prep.prospectingSource] ?? prep.prospectingSource}
           </span>
+          <ApptBadge intendedDate={prep.intendedAppointmentDate} today={today} prepped={prepped} />
           <span className="text-[11px] text-ink-muted">
-            {prep.intendedAppointmentDate || '—'}
+            {formatDMY(prep.intendedAppointmentDate) || '—'}
           </span>
         </div>
         {isAuthor && !editing && (
@@ -155,13 +162,7 @@ function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
             </p>
           )}
           {Array.isArray(prep.objections) && prep.objections.length > 0 && (
-            <div className="flex flex-wrap gap-1 pt-1">
-              {prep.objections.map((o) => (
-                <span key={o} className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-warning/10 text-warning-ink">
-                  {OBJECTION_LABEL[o] ?? o}
-                </span>
-              ))}
-            </div>
+            <ObjectionRehearsal objections={prep.objections} className="pt-1" />
           )}
           {isAuthor && onCreatePolicyFromPrep && (
             <div className="pt-2 mt-1 border-t border-border">
@@ -315,6 +316,16 @@ export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
   const [form, setForm]             = useState(BLANK_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [addError, setAddError]     = useState('');
+  const [heroEditing, setHeroEditing] = useState(false);
+
+  const today    = useMemo(() => todayISO(), []);
+  const heroPrep = useMemo(() => pickNextCall(preps, today), [preps, today]);
+  // The hero is the soonest upcoming call; the list below shows every other prep
+  // (overdue + later-than-soonest). When no upcoming call exists, the list holds all.
+  const listPreps = useMemo(
+    () => (heroPrep ? preps.filter((p) => p.id !== heroPrep.id) : preps),
+    [preps, heroPrep],
+  );
 
   const set = (field) => (e) => {
     setForm((s) => ({ ...s, [field]: e.target.value }));
@@ -376,7 +387,7 @@ export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
   }, []);
 
   return (
-    <div>
+    <div className="stagger">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-bold text-ink flex items-center gap-2">
@@ -571,16 +582,47 @@ export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
       )}
 
       {!loading && !error && preps.length > 0 && (
-        <div className="flex flex-col gap-3" data-testid="prospect-info-list">
-          {preps.map((prep) => (
+        <div className="flex flex-col gap-4">
+          {/* Hero: the soonest upcoming joint call. Editing swaps in its PrepCard. */}
+          {heroPrep && !heroEditing && (
+            <NextCallHero
+              prep={heroPrep}
+              today={today}
+              onEdit={() => setHeroEditing(true)}
+              onLogPolicy={onCreatePolicyFromPrep ? (p) => onCreatePolicyFromPrep(p) : undefined}
+            />
+          )}
+          {heroPrep && heroEditing && (
             <PrepCard
-              key={prep.id}
-              prep={prep}
-              isAuthor={prep.createdBy === agentId}
+              prep={heroPrep}
+              isAuthor={heroPrep.createdBy === agentId}
               onSaved={handleEditSaved}
               onCreatePolicyFromPrep={onCreatePolicyFromPrep}
+              today={today}
+              initialEditing
+              onCloseEdit={() => setHeroEditing(false)}
             />
-          ))}
+          )}
+
+          {listPreps.length > 0 && (
+            <div className="flex flex-col gap-3" data-testid="prospect-info-list">
+              {heroPrep && (
+                <p className="text-[10px] font-bold tracking-wider text-ink-muted uppercase">
+                  Later · {listPreps.length}
+                </p>
+              )}
+              {listPreps.map((prep) => (
+                <PrepCard
+                  key={prep.id}
+                  prep={prep}
+                  isAuthor={prep.createdBy === agentId}
+                  onSaved={handleEditSaved}
+                  onCreatePolicyFromPrep={onCreatePolicyFromPrep}
+                  today={today}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -100,7 +100,7 @@ describe('ProspectInfoTab — read-only render', () => {
     expect(screen.getByText('42 yrs · Engineer')).toBeInTheDocument();
     expect(screen.getByText('2nd Interview')).toBeInTheDocument();
     expect(screen.getByText('Referral')).toBeInTheDocument();
-    expect(screen.getByText('2026-06-01')).toBeInTheDocument();
+    expect(screen.getByText('01-06-2026')).toBeInTheDocument();
     expect(screen.getByText('No Money')).toBeInTheDocument();
     expect(screen.getByText('No Hurry')).toBeInTheDocument();
   });
