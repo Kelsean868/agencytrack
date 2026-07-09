@@ -1,5 +1,5 @@
 import {
-  doc, setDoc, getDoc, serverTimestamp,
+  doc, setDoc, getDoc, updateDoc, serverTimestamp,
   collection, collectionGroup, getDocs, query, where,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -101,6 +101,28 @@ export async function getWarById(tenantId, docId) {
   const ref = doc(db, `tenants/${tenantId}/managerWeeklyReports/${docId}`);
   const snap = await getDoc(ref);
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+/**
+ * Upline review of a SUBMITTED WAR (Tier-2 2.1 reviewer workflow).
+ * Writes ONLY the five review fields — the rules' reviewer arm enforces
+ * hasOnly on exactly this set, upline scope (strictly higher rank; BM
+ * branch-scoped; SM+ tenant-wide), status=='submitted', reviewedBy==auth.uid,
+ * and reviewNote ≤ 2000 chars. An owner resubmit (full setDoc) clears these
+ * fields by omission — a resubmitted WAR needs re-review.
+ */
+export async function reviewWar(tenantId, docId, { status, note, reviewerUid, reviewerName }) {
+  if (!['approved', 'changes_requested'].includes(status)) {
+    throw new Error(`reviewWar: invalid review status "${status}"`);
+  }
+  const ref = doc(db, `tenants/${tenantId}/managerWeeklyReports/${docId}`);
+  await updateDoc(ref, {
+    reviewStatus:   status,
+    reviewNote:     (note ?? '').slice(0, 2000),
+    reviewedBy:     reviewerUid,
+    reviewedByName: reviewerName ?? '',
+    reviewedAt:     serverTimestamp(),
+  });
 }
 
 /**

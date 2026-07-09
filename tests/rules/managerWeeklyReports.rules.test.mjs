@@ -30,6 +30,12 @@
  *           18 SM tenant-wide ALLOW · 19 UM reads BM (rank) DENY · 20 peer UM DENY
  *   LIST    21 BM own-branch ALLOW · 22 SM tenant-wide ALLOW · 23 UM DENY (rank<2)
  *           24 BM cross-branch list DENY
+ *   REVIEW (Tier-2 2.1 upline reviewer arm)
+ *           25 BM approve same-branch UM submitted ALLOW · 26 BM re-review ALLOW
+ *           27 peer-rank UM DENY · 28 cross-branch BM DENY · 29 owner self-review DENY
+ *           30 reviewer touches non-review field DENY · 31 review a DRAFT DENY
+ *           32 forged reviewedBy DENY · 33 owner full-setDoc resubmit clears review ALLOW
+ *           34 SM reviews BM tenant-wide ALLOW · 35 oversize reviewNote DENY
  */
 
 import {
@@ -38,7 +44,7 @@ import {
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
 import {
-  getDoc, setDoc, doc, collection, getDocs, query, where,
+  getDoc, setDoc, updateDoc, doc, collection, getDocs, query, where,
 } from 'firebase/firestore';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'agencytrack-2a610';
@@ -57,6 +63,8 @@ const AGENT_ID = 'agent1';
 const X_ID     = 'x1';  // cross-tenant
 
 const WEEK = '2026-05-17'; // a Sunday; warId = {managerId}_{WEEK}
+const WEEK2 = '2026-05-24'; // Sunday; review-arm fixtures (submitted)
+const WEEK3 = '2026-05-31'; // Sunday; already-reviewed fixture
 
 function authToken(role, tenantId = TENANT_ID) {
   return { role, tenantId };
@@ -104,6 +112,15 @@ async function seedDocs(testEnv) {
     // Pre-seed UM1's WAR (exists) for update/read tests; BM1's WAR for downline-read test.
     await setDoc(warRef(db, UM1_ID, WEEK), validPayload(UM1_ID, 'unit_manager',   1, BRANCH_A, UM1_ID));
     await setDoc(warRef(db, BM1_ID, WEEK), validPayload(BM1_ID, 'branch_manager', 2, BRANCH_A, null));
+
+    // Tier-2 2.1 review-arm fixtures: SUBMITTED WARs (review requires status=='submitted').
+    await setDoc(warRef(db, UM1_ID, WEEK2), { ...validPayload(UM1_ID, 'unit_manager',   1, BRANCH_A, UM1_ID), weekStart: WEEK2, status: 'submitted' });
+    await setDoc(warRef(db, BM1_ID, WEEK2), { ...validPayload(BM1_ID, 'branch_manager', 2, BRANCH_A, null),   weekStart: WEEK2, status: 'submitted' });
+    // Already-reviewed WAR for the owner-resubmit-clears-review case.
+    await setDoc(warRef(db, UM1_ID, WEEK3), {
+      ...validPayload(UM1_ID, 'unit_manager', 1, BRANCH_A, UM1_ID), weekStart: WEEK3, status: 'submitted',
+      reviewStatus: 'changes_requested', reviewNote: 'tighten 1:1 cadence', reviewedBy: BM1_ID, reviewedByName: 'BM One', reviewedAt: new Date(),
+    });
   });
 }
 
@@ -242,8 +259,60 @@ async function main() {
       where('branchId', '==', BRANCH_A))));
   });
 
+  // ── REVIEW (Tier-2 2.1 upline reviewer arm) ────────────────────────────────
+  console.log('');
+  console.log('review arm:');
+  const review = (over = {}) => ({
+    reviewStatus: 'approved', reviewNote: 'good week', reviewedBy: BM1_ID,
+    reviewedByName: 'BM One', reviewedAt: new Date(), ...over,
+  });
+  await t('25. BM approves same-branch UM submitted WAR → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    await assertSucceeds(updateDoc(warRef(db, UM1_ID, WEEK2), review()));
+  });
+  await t('26. BM re-reviews (changes_requested + note) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    await assertSucceeds(updateDoc(warRef(db, UM1_ID, WEEK2), review({ reviewStatus: 'changes_requested', reviewNote: 'log the joint work' })));
+  });
+  await t('27. Peer-rank UM attempts review → DENY', async () => {
+    const db = testEnv.authenticatedContext(UM2_ID, authToken('unit_manager')).firestore();
+    await assertFails(updateDoc(warRef(db, UM1_ID, WEEK2), review({ reviewedBy: UM2_ID, reviewedByName: 'UM Two', reviewNote: 'peer note' })));
+  });
+  await t('28. Cross-branch BM attempts review → DENY', async () => {
+    const db = testEnv.authenticatedContext(BM2_ID, authToken('branch_manager')).firestore();
+    await assertFails(updateDoc(warRef(db, UM1_ID, WEEK2), review({ reviewedBy: BM2_ID, reviewedByName: 'BM Two', reviewNote: 'xbranch note' })));
+  });
+  await t('29. Owner self-review → DENY (validWarWrite bans review keys; upline arm needs higher rank)', async () => {
+    const db = testEnv.authenticatedContext(UM1_ID, authToken('unit_manager')).firestore();
+    await assertFails(updateDoc(warRef(db, UM1_ID, WEEK2), review({ reviewedBy: UM1_ID, reviewedByName: 'UM One', reviewNote: 'self note' })));
+  });
+  await t('30. Reviewer also bumps a non-review field → DENY (hasOnly)', async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    await assertFails(updateDoc(warRef(db, UM1_ID, WEEK2), { ...review({ reviewNote: 'sneaky' }), oneOnOnesConducted: 99 }));
+  });
+  await t('31. Review a DRAFT WAR → DENY (status gate)', async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    await assertFails(updateDoc(warRef(db, UM1_ID, WEEK), review({ reviewNote: 'draft review attempt' })));
+  });
+  await t('32. Forged reviewedBy (!= auth.uid) → DENY', async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    await assertFails(updateDoc(warRef(db, UM1_ID, WEEK2), review({ reviewedBy: SM1_ID, reviewNote: 'forged identity' })));
+  });
+  await t('33. Owner full-setDoc resubmit clears review state → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(UM1_ID, authToken('unit_manager')).firestore();
+    await assertSucceeds(setDoc(warRef(db, UM1_ID, WEEK3), { ...validPayload(UM1_ID, 'unit_manager', 1, BRANCH_A, UM1_ID), weekStart: WEEK3, status: 'submitted', oneOnOnesConducted: 4 }));
+  });
+  await t('34. SM reviews BM WAR tenant-wide → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(SM1_ID, authToken('sales_manager')).firestore();
+    await assertSucceeds(updateDoc(warRef(db, BM1_ID, WEEK2), review({ reviewedBy: SM1_ID, reviewedByName: 'SM One', reviewNote: 'solid branch week' })));
+  });
+  await t('35. Oversize reviewNote (>2000 chars) → DENY', async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    await assertFails(updateDoc(warRef(db, UM1_ID, WEEK2), review({ reviewNote: 'x'.repeat(2001) })));
+  });
+
   await testEnv.cleanup();
-  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed (24 expected)`);
+  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed (35 expected)`);
   if (failed > 0) process.exit(1);
 }
 

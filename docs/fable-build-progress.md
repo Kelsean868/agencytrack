@@ -16,6 +16,8 @@
 
 ## Promotion-review flags (rules / functions / indexes — ALL need human review before prod)
 
+- `firestore.rules` — **WAR reviewer arm (item 2.1)**: new upline-only `allow update` on `managerWeeklyReports` (review fields hasOnly-scoped: reviewStatus/reviewNote/reviewedBy/reviewedByName/reviewedAt; status=='submitted' gate; reviewedBy pinned to auth.uid; note ≤2000) + `validWarWrite` now bans review keys in owner writes (blocks self-approval; owner full-setDoc resubmit clears review state by omission — intended re-review semantic). 35/35 emulator rules tests (11 new review cases incl. peer/cross-branch/self-review/field-smuggling/draft/forged-identity/oversize denials). Must be deployed via `firebase deploy --only firestore:rules` at promotion (prod). **HUMAN-REVIEW-BEFORE-PROMOTION.** Staging: deployed 2026-07-08 by orchestrator (explicit `--project agencytrack-staging`, alias restored after).
+
 - `firestore.indexes.json` — prospectInfo composite index `intendedAppointmentDate` DESC→ASC (item 0.5). Must be deployed via `firebase deploy --only firestore:indexes` at promotion (prod). **HUMAN-REVIEW-BEFORE-PROMOTION.** Staging: deployed 2026-07-08 by orchestrator (`--project agencytrack-staging`, explicit-project + alias restored to default after); staging retains 1 stale index not in the file (the old DESC composite) — harmless, removable later with `--force`.
 
 ---
@@ -85,7 +87,7 @@
 
 | Item | Status | Notes |
 |---|---|---|
-| 2.1 WARs reviewer workflow (Approve/Request changes + Leader's note) + completion ring + streak dots + team stat strip | PENDING | |
+| 2.1 WARs reviewer workflow (Approve/Request changes + Leader's note) + completion ring + streak dots + team stat strip | IN-PROGRESS | **Contract layer DONE (orchestrator — rules/functions-touching work is Fable's own per brief routing):** reviewer data contract locked (5 fields), `firestore.rules` upline review arm + owner self-approval ban (see Promotion-review flags), 35/35 emulator tests, `reviewWar()` in managerWarService.js (updateDoc, exactly the 5 hasOnly keys, note clamped 2000, invalid-status throws; 3 unit tests). Rules deployed to staging. **UI half dispatched to Opus subagent** — drill Approve/Request-changes + Leader's note (via reviewWar), CompletionRing, StreakDots, WarHeaderStrip team stat strip. |
 | 2.2 Monthly Recruiting kanban CRM (8-stage pipeline, candidate cards, RecDrillDrawer, targets/funnel) | PENDING | CRM guardrail lifted for this surface (operator-ruled) |
 | 2.3 TierGoalForm activity targets (FFI/CI/Dials) | PENDING | |
 | 2.4 Settings v2 — shell + My Preferences only; team-defaults cascade = pre-ruled SKIP | PENDING | |
@@ -147,3 +149,5 @@ SM cross-branch views (Phase 9) · Settings team-defaults cascade · payout-rele
 | 1.1b cross-role live smoke (staging) | orchestrator | n/a (main loop) | 2026-07-08T20:21 | 2026-07-08T20:26 | 5 min (2 runs; 2 smoke-selector fixes) | done |
 | CreateUserDrawer §4 retrofit (smoke find, 0.2-family) | orchestrator | n/a (main loop) | 2026-07-08T20:26 | 2026-07-08T20:35 | 9 min (incl. full gates) | done |
 | Staging functions deploy (env setup, Part E) | orchestrator | n/a (main loop) | 2026-07-08T20:15 | 2026-07-08T20:40 (final wave in flight at commit time) | ~25 min (3 waves — first silently failed on cold Cloud Build) | done |
+| 2.1 contract layer: rules review arm + emulator tests + reviewWar service | orchestrator | n/a (main loop) | 2026-07-08T20:47 | 2026-07-08T20:58 | 11 min (35/35 emulator; staging rules deployed) | done — NEEDS-HUMAN-REVIEW (rules) |
+| 2.1 UI: reviewer workflow + ring/dots/stat strip | opus (subagent) | inherited-default | 2026-07-08T20:58 | — | — | in-flight |

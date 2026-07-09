@@ -1199,7 +1199,12 @@ service cloud.firestore {
             && d.status in ['draft', 'submitted']
             && d.weekStart is string
             && d.managerRole in ['unit_manager', 'branch_manager', 'sales_manager']
-            && d.managerRoleRank == roleRank();
+            && d.managerRoleRank == roleRank()
+            // Review fields are reviewer-only (see the upline review arm below).
+            // Owner writes must never CONTAIN them — blocks self-approval while
+            // still letting a full-setDoc resubmit clear review state by
+            // omission (intended semantic: a resubmitted WAR needs re-review).
+            && !d.keys().hasAny(['reviewStatus', 'reviewNote', 'reviewedBy', 'reviewedByName', 'reviewedAt']);
         }
 
         allow create: if isSignedIn()
@@ -1211,6 +1216,24 @@ service cloud.firestore {
           && getTenantId() == tenantId
           && resource.data.managerId == request.auth.uid
           && validWarWrite();
+
+        // Tier-2 2.1 reviewer workflow: an upline manager (same scope as
+        // uplineCanRead — strictly higher rank; BM branch-scoped; SM+ tenant-
+        // wide) may review a SUBMITTED WAR, touching ONLY the review fields.
+        // Separate arm from the owner update (each `allow` evaluates
+        // independently). Reviewer identity is pinned to auth.uid.
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.status == 'submitted'
+          && uplineCanRead()
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['reviewStatus', 'reviewNote', 'reviewedBy', 'reviewedByName', 'reviewedAt'])
+          && request.resource.data.reviewStatus in ['approved', 'changes_requested']
+          && request.resource.data.reviewNote is string
+          && request.resource.data.reviewNote.size() <= 2000
+          && request.resource.data.reviewedBy == request.auth.uid
+          && request.resource.data.reviewedByName is string
+          && request.resource.data.reviewedAt is timestamp;
 
         // Single-doc: owner (or pre-write existence check via warId prefix) OR upline.
         // resource == null when doc doesn't exist (owner's pre-write getDoc check).
