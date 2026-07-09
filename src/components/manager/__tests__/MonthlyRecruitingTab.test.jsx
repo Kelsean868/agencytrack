@@ -1,371 +1,148 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 
-// ── Hoisted mock fns (avoid TDZ issues with vi.mock hoisting) ─────────────────
+const DAY = 86_400_000;
+const NOW = Date.now();
 
 const hoisted = vi.hoisted(() => ({
-  mockUser:        { uid: 'um1' },
-  mockUserProfile: { name: 'Unit Manager 1', email: 'um@test.com', branchId: 'branch-a', unitId: 'um1' },
-  mockRole:        'unit_manager',
-  mockTenantId:    'test-tenant',
-  mockSaveRollupDraft:    vi.fn().mockResolvedValue(undefined),
-  mockSubmitRollup:       vi.fn().mockResolvedValue(undefined),
-  mockGetRollup:          vi.fn().mockResolvedValue(null),
-  mockGetRollupsForUpline: vi.fn().mockResolvedValue([]),
+  mockRole: 'branch_manager',
+  mockGetBoard: vi.fn(),
 }));
-
-// ── Auth mock ─────────────────────────────────────────────────────────────────
 
 vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({
-    user:        hoisted.mockUser,
-    userProfile: hoisted.mockUserProfile,
-    role:        hoisted.mockRole,
-    tenantId:    hoisted.mockTenantId,
+    user: { uid: 'bm1' },
+    userProfile: { name: 'Branch Mgr', email: 'bm@test.com', branchId: 'branch-a' },
+    role: hoisted.mockRole,
+    tenantId: 'test-tenant',
   }),
 }));
 
-// ── Service mocks ─────────────────────────────────────────────────────────────
+// Keep the real service (constants + isStalled + daysInStage) but stub the query.
+vi.mock('../../../services/recruitingService', async (importActual) => {
+  const actual = await importActual();
+  return { ...actual, getCandidatesForBoard: (...a) => hoisted.mockGetBoard(...a) };
+});
 
-vi.mock('../../../services/managerMonthlyRollupService', () => ({
-  saveRollupDraft:     (...args) => hoisted.mockSaveRollupDraft(...args),
-  submitRollup:        (...args) => hoisted.mockSubmitRollup(...args),
-  getRollup:           (...args) => hoisted.mockGetRollup(...args),
-  getRollupsForUpline: (...args) => hoisted.mockGetRollupsForUpline(...args),
-}));
-
-vi.mock('../../../services/managerWarService', () => ({
-  getWarRoleRank: () => 1,
-}));
-
-// ── monthKeyHelpers mock — stable list ────────────────────────────────────────
-
-vi.mock('../../../utils/monthKeyHelpers', () => ({
-  recentMonthKeys: () => ['2026-05', '2026-04', '2026-03'],
-  currentMonthKey: () => '2026-05',
-  formatMonthKey:  (k) => {
-    const m = k.match(/^(\d{4})-(\d{2})$/);
-    return m ? `${m[2]}-${m[1]}` : k;
-  },
-  parseMonthKey: (d) => {
-    const m = d.match(/^(\d{2})-(\d{4})$/);
-    return m ? `${m[2]}-${m[1]}` : d;
-  },
-}));
-
-// ── formatters mock ───────────────────────────────────────────────────────────
-
-vi.mock('../../../utils/formatters', () => ({
-  getRoleLabel: (role) => ({
-    unit_manager:   'Unit Manager',
-    branch_manager: 'Branch Manager',
-    sales_manager:  'Sales Manager',
-  }[role] ?? role),
+// The retained rollup + the two drawers are exercised by their own suites.
+vi.mock('../MonthlyRecruitingRollup', () => ({ default: () => <div data-testid="rollup-stub" /> }));
+vi.mock('../RecCandidateForm', () => ({ default: () => <div data-testid="form-stub" /> }));
+vi.mock('../RecDrillDrawer', () => ({
+  default: ({ candidate }) => <div data-testid="drill-stub">{candidate.name}</div>,
 }));
 
 import MonthlyRecruitingTab from '../MonthlyRecruitingTab';
 
-/** Flush pending effects + async state updates (mirrors ManagerWarTab.test.jsx pattern). */
-const flushMount = () =>
-  act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-  });
+const fixtures = () => [
+  { id: 'c1', name: 'Sourced Sam',    stage: 'sourced',    status: 'active', ownerUid: 'bm1', ownerName: 'Branch Mgr', stageChangedAt: NOW - 2 * DAY },
+  { id: 'c2', name: 'Stalled Steve',  stage: 'contacted',  status: 'active', ownerUid: 'um2', ownerName: 'Unit Two',   stageChangedAt: NOW - 15 * DAY },
+  { id: 'c7', name: 'Edge Eddie',     stage: 'seminar',    status: 'active', ownerUid: 'bm1', ownerName: 'Branch Mgr', stageChangedAt: NOW - 14 * DAY },
+  { id: 'c3', name: 'Offer Olga',     stage: 'offer',      status: 'active', ownerUid: 'bm1', ownerName: 'Branch Mgr', stageChangedAt: NOW - 3 * DAY },
+  { id: 'c4', name: 'Licensing Lena', stage: 'licensing',  status: 'active', ownerUid: 'bm1', ownerName: 'Branch Mgr', stageChangedAt: NOW - 1 * DAY },
+  { id: 'c5', name: 'Hired Hank',     stage: 'licensed',   status: 'active', ownerUid: 'bm1', ownerName: 'Branch Mgr', stageChangedAt: NOW - 5 * DAY, licensedAt: NOW - 5 * DAY },
+  { id: 'c6', name: 'Archived Amy',   stage: 'contacted',  status: 'archived', ownerUid: 'bm1', ownerName: 'Branch Mgr', stageChangedAt: NOW - 30 * DAY },
+];
 
-
-function renderTab() {
-  return render(<MonthlyRecruitingTab />);
-}
+const flush = () => act(async () => { await Promise.resolve(); await Promise.resolve(); });
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Restore UM defaults after each test (tests that need BM override hoisted values)
-  hoisted.mockUser        = { uid: 'um1' };
-  hoisted.mockUserProfile = { name: 'Unit Manager 1', email: 'um@test.com', branchId: 'branch-a', unitId: 'um1' };
-  hoisted.mockRole        = 'unit_manager';
-  hoisted.mockTenantId    = 'test-tenant';
-  hoisted.mockGetRollup.mockResolvedValue(null);
-  hoisted.mockGetRollupsForUpline.mockResolvedValue([]);
-  hoisted.mockSaveRollupDraft.mockResolvedValue(undefined);
-  hoisted.mockSubmitRollup.mockResolvedValue(undefined);
+  hoisted.mockRole = 'branch_manager';
+  hoisted.mockGetBoard.mockResolvedValue(fixtures());
 });
 
-// ── Rendering (unit_manager role) ─────────────────────────────────────────────
-
-describe('rendering — unit_manager', () => {
-  it('shows own-form heading', async () => {
-    renderTab();
-    await flushMount();
-    expect(screen.getByRole('heading', { name: /my monthly recruiting/i })).toBeInTheDocument();
+describe('board rendering', () => {
+  it('renders all 8 stage columns and one card per active candidate', async () => {
+    render(<MonthlyRecruitingTab />);
+    await flush();
+    const board = screen.getByTestId('rec-board');
+    // 8 stage columns (each a <section> with aria-label)
+    expect(within(board).getAllByRole('region')).toHaveLength(8);
+    // 6 active candidates (archived c6 excluded)
+    expect(screen.getAllByTestId('rec-candidate-card')).toHaveLength(6);
+    expect(screen.queryByText('Archived Amy')).not.toBeInTheDocument();
   });
 
-  it('shows month picker with MM-YYYY display labels', async () => {
-    renderTab();
-    await flushMount();
-    const picker = screen.getByRole('combobox', { name: /select month/i });
-    expect(picker).toBeInTheDocument();
-    expect(picker.querySelector('option[value="2026-05"]').textContent).toBe('05-2026');
+  it('computes funnel counts from the active set', async () => {
+    render(<MonthlyRecruitingTab />);
+    await flush();
+    expect(screen.getByTestId('rec-funnel-in')).toHaveTextContent('6');       // in pipeline (active)
+    expect(screen.getByTestId('rec-funnel-near')).toHaveTextContent('2');     // offer + licensing
+    expect(screen.getByTestId('rec-funnel-stalled')).toHaveTextContent('1');  // only the 15-day one
+    expect(screen.getByTestId('rec-funnel-hired')).toHaveTextContent('1');    // licensed this year
   });
 
-  it('shows candidatesAssessed and agentsContracted fields', async () => {
-    renderTab();
-    await flushMount();
-    expect(screen.getByLabelText(/candidates assessed/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/agents contracted/i)).toBeInTheDocument();
+  it('applies the 14-day stalled boundary (strict >): 15d stalled, 14d not', async () => {
+    render(<MonthlyRecruitingTab />);
+    await flush();
+    const stalledCard = screen.getByText('Stalled Steve').closest('button');
+    expect(within(stalledCard).getByText(/15d stalled/i)).toBeInTheDocument();
+    const edgeCard = screen.getByText('Edge Eddie').closest('button');
+    expect(within(edgeCard).getByText(/14d in stage/i)).toBeInTheDocument();
+    expect(within(edgeCard).queryByText(/stalled/i)).not.toBeInTheDocument();
   });
 
-  it('shows Save Draft and Submit buttons', async () => {
-    renderTab();
-    await flushMount();
-    expect(screen.getByRole('button', { name: /save draft/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^submit$/i })).toBeInTheDocument();
-  });
-
-  it('does NOT show team view for unit_manager', async () => {
-    renderTab();
-    await flushMount();
-    expect(screen.queryByRole('heading', { name: /team monthly recruiting/i })).not.toBeInTheDocument();
-  });
-
-  it('shows provisional help text on candidatesAssessed', async () => {
-    renderTab();
-    await flushMount();
-    expect(screen.getByText(/definition provisional/i)).toBeInTheDocument();
+  it('opens the drill drawer when a card is clicked', async () => {
+    render(<MonthlyRecruitingTab />);
+    await flush();
+    fireEvent.click(screen.getByText('Offer Olga'));
+    expect(screen.getByTestId('drill-stub')).toHaveTextContent('Offer Olga');
   });
 });
 
-// ── Loading existing rollup ───────────────────────────────────────────────────
-
-describe('loading existing rollup', () => {
-  it('populates form fields from existing doc', async () => {
-    hoisted.mockGetRollup.mockResolvedValue({
-      candidatesAssessed: 3, agentsContracted: 1,
-      notes: 'Pipeline notes', status: 'draft',
-    });
-    renderTab();
-    await flushMount();
-    expect(screen.getByLabelText(/candidates assessed/i).value).toBe('3');
-    expect(screen.getByLabelText(/agents contracted/i).value).toBe('1');
-  });
-
-  it('shows Submitted state and hides action buttons when status is submitted', async () => {
-    hoisted.mockGetRollup.mockResolvedValue({
-      candidatesAssessed: 2, agentsContracted: 0, notes: '', status: 'submitted',
-    });
-    renderTab();
-    await flushMount();
-    expect(screen.getByText('Submitted')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /save draft/i })).not.toBeInTheDocument();
+describe('owner filter chips (BM sees >1 owner)', () => {
+  it('filters the board to a single owner', async () => {
+    render(<MonthlyRecruitingTab />);
+    await flush();
+    // Two owners → chips shown
+    fireEvent.click(screen.getByRole('button', { name: /^Unit Two$/ }));
+    // Only um2's single candidate remains
+    expect(screen.getAllByTestId('rec-candidate-card')).toHaveLength(1);
+    expect(screen.getByText('Stalled Steve')).toBeInTheDocument();
+    expect(screen.queryByText('Offer Olga')).not.toBeInTheDocument();
+    expect(screen.getByTestId('rec-funnel-in')).toHaveTextContent('1');
   });
 });
 
-// ── Save Draft ────────────────────────────────────────────────────────────────
-
-describe('Save Draft', () => {
-  it('calls saveRollupDraft with correct tenant/manager/month args', async () => {
-    renderTab();
-    await flushMount();
-    fireEvent.change(screen.getByLabelText(/candidates assessed/i), { target: { value: '2' } });
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /save draft/i }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    expect(hoisted.mockSaveRollupDraft).toHaveBeenCalledOnce();
-    const [tenantId, managerId, managerName, monthKey] = hoisted.mockSaveRollupDraft.mock.calls[0];
-    expect(tenantId).toBe('test-tenant');
-    expect(managerId).toBe('um1');
-    expect(managerName).toBe('Unit Manager 1');
-    expect(monthKey).toBe('2026-05');
+describe('four-states', () => {
+  it('shows the actionable empty state with an add CTA', async () => {
+    hoisted.mockGetBoard.mockResolvedValue([]);
+    render(<MonthlyRecruitingTab />);
+    await flush();
+    expect(screen.getByTestId('rec-board-empty')).toBeInTheDocument();
+    expect(screen.getByTestId('rec-empty-add')).toBeInTheDocument();
+    expect(screen.queryByTestId('rec-board')).not.toBeInTheDocument();
   });
 
-  it('shows Saved ✓ feedback after successful save', async () => {
-    renderTab();
-    await flushMount();
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /save draft/i }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    expect(screen.getByText(/saved ✓/i)).toBeInTheDocument();
-  });
-
-  it('shows save error on failure', async () => {
-    hoisted.mockSaveRollupDraft.mockRejectedValue(new Error('network error'));
-    renderTab();
-    await flushMount();
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /save draft/i }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    expect(screen.getByText(/save failed/i)).toBeInTheDocument();
-  });
-});
-
-// ── Submit ────────────────────────────────────────────────────────────────────
-
-describe('Submit', () => {
-  it('calls submitRollup and shows success status', async () => {
-    renderTab();
-    await flushMount();
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    expect(hoisted.mockSubmitRollup).toHaveBeenCalledOnce();
-    expect(screen.getByRole('status')).toHaveTextContent(/submitted/i);
-  });
-
-  it('shows submit error on failure', async () => {
-    hoisted.mockSubmitRollup.mockRejectedValue(new Error('permission denied'));
-    renderTab();
-    await flushMount();
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    expect(screen.getByRole('alert')).toHaveTextContent(/submit failed/i);
-  });
-});
-
-// ── Team view (branch_manager role) ──────────────────────────────────────────
-// Branch manager tests override hoisted.mockRole + mockUserProfile before render.
-
-describe('team view — branch_manager', () => {
-  beforeEach(() => {
-    hoisted.mockUser        = { uid: 'bm1' };
-    hoisted.mockUserProfile = { name: 'BM One', email: 'bm@test.com', branchId: 'branch-a', unitId: null };
-    hoisted.mockRole        = 'branch_manager';
-  });
-
-  it('shows both own-form and team-view headings for branch_manager', async () => {
-    renderTab();
-    await flushMount();
-    const headings = screen.getAllByRole('heading', { level: 2 });
-    const texts = headings.map((h) => h.textContent);
-    expect(texts.some((t) => /my monthly recruiting/i.test(t))).toBe(true);
-    expect(texts.some((t) => /team monthly recruiting/i.test(t))).toBe(true);
-  });
-
-  it('shows empty state when no team rollups', async () => {
-    hoisted.mockGetRollupsForUpline.mockResolvedValue([]);
-    renderTab();
-    await flushMount();
-    expect(screen.getByTestId('recruiting-team-empty')).toBeInTheDocument();
-    expect(screen.getByText(/no recruiting entries filed/i)).toBeInTheDocument();
-    expect(screen.getByText(/try a different month/i)).toBeInTheDocument();
-  });
-
-  it('0.1b — renders a PanelSkeleton (aria-busy) while team rollups are loading, not bare "Loading…" text', async () => {
-    hoisted.mockGetRollupsForUpline.mockReturnValue(new Promise(() => {}));
-    renderTab();
-    await act(async () => { await Promise.resolve(); });
-    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
-    expect(screen.queryByText('Loading…')).toBeNull();
-  });
-
-  it('renders team rollup rows', async () => {
-    hoisted.mockGetRollupsForUpline.mockResolvedValue([
-      {
-        id: 'um1_2026-05', managerId: 'um1', managerName: 'Alice UM',
-        managerRole: 'unit_manager', candidatesAssessed: 3, agentsContracted: 1,
-        status: 'submitted',
-      },
-    ]);
-    renderTab();
-    await flushMount();
-    expect(screen.getByText('Alice UM')).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
-  });
-});
-
-describe('own-form 0.1b loading skeleton', () => {
-  it('renders a PanelSkeleton (aria-busy) while the own rollup is loading', async () => {
-    hoisted.mockGetRollup.mockReturnValue(new Promise(() => {}));
-    renderTab();
-    await act(async () => { await Promise.resolve(); });
-    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
-    expect(screen.queryByText('Loading…')).toBeNull();
-  });
-});
-
-// ── Month display convention ──────────────────────────────────────────────────
-
-describe('month display convention', () => {
-  it('picker option values are YYYY-MM (store format)', async () => {
-    renderTab();
-    await flushMount();
-    const picker = screen.getByRole('combobox', { name: /select month/i });
-    for (const opt of Array.from(picker.querySelectorAll('option'))) {
-      expect(opt.value).toMatch(/^\d{4}-\d{2}$/);
-    }
-  });
-
-  it('picker option labels are MM-YYYY (display format)', async () => {
-    renderTab();
-    await flushMount();
-    const picker = screen.getByRole('combobox', { name: /select month/i });
-    for (const opt of Array.from(picker.querySelectorAll('option'))) {
-      expect(opt.textContent).toMatch(/^\d{2}-\d{4}$/);
-    }
-  });
-});
-
-// ── §1 states contract — own-rollup load previously fell through silently to
-// DEFAULT_FORM on failure (`.catch(console.error)`); team-rollup error banner
-// existed but had no Retry.
-
-describe('§1 states contract — own rollup load error / retry', () => {
-  it('renders a blocking error card with Retry when getRollup fails (never falls through to a blank form)', async () => {
-    hoisted.mockGetRollup.mockRejectedValue(new Error('boom-getrollup'));
-    renderTab();
-    await flushMount();
-
-    const card = screen.getByTestId('recruiting-own-error');
-    expect(card).toHaveAttribute('role', 'alert');
-    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
-    expect(screen.queryByLabelText(/candidates assessed/i)).not.toBeInTheDocument();
-  });
-
-  it('Retry re-invokes getRollup and recovers into the form', async () => {
-    hoisted.mockGetRollup.mockRejectedValueOnce(new Error('boom-getrollup')).mockResolvedValueOnce(null);
-    renderTab();
-    await flushMount();
-    expect(screen.getByTestId('recruiting-own-error')).toBeInTheDocument();
-
+  it('shows an error state with Retry that reloads', async () => {
+    hoisted.mockGetBoard.mockRejectedValueOnce(new Error('boom'));
+    render(<MonthlyRecruitingTab />);
+    await flush();
+    expect(screen.getByTestId('rec-board-error')).toBeInTheDocument();
+    // Retry → second call resolves with fixtures
     fireEvent.click(screen.getByRole('button', { name: /retry/i }));
-    await flushMount();
+    await flush();
+    expect(screen.queryByTestId('rec-board-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('rec-board')).toBeInTheDocument();
+  });
 
-    expect(hoisted.mockGetRollup).toHaveBeenCalledTimes(2);
-    expect(screen.queryByTestId('recruiting-own-error')).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/candidates assessed/i)).toBeInTheDocument();
+  it('shows a loading skeleton before data resolves', async () => {
+    let resolve;
+    hoisted.mockGetBoard.mockReturnValue(new Promise((r) => { resolve = r; }));
+    render(<MonthlyRecruitingTab />);
+    expect(screen.getByLabelText(/loading recruiting pipeline/i)).toBeInTheDocument();
+    await act(async () => { resolve(fixtures()); await Promise.resolve(); });
   });
 });
 
-describe('§1 states contract — team rollup error / retry', () => {
-  beforeEach(() => {
-    hoisted.mockRole        = 'branch_manager';
-    hoisted.mockUserProfile = { name: 'Branch Manager 1', email: 'bm@test.com', branchId: 'branch-a', unitId: null };
-  });
-
-  it('the team error banner has a wired Retry that re-invokes getRollupsForUpline', async () => {
-    hoisted.mockGetRollupsForUpline.mockRejectedValueOnce(new Error('boom-team'));
-    renderTab();
-    await flushMount();
-
-    expect(screen.getByText(/unable to load team data/i)).toBeInTheDocument();
-    expect(hoisted.mockGetRollupsForUpline).toHaveBeenCalledTimes(1);
-
-    hoisted.mockGetRollupsForUpline.mockResolvedValueOnce([]);
-    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
-    await flushMount();
-
-    expect(hoisted.mockGetRollupsForUpline).toHaveBeenCalledTimes(2);
-    expect(screen.queryByText(/unable to load team data/i)).not.toBeInTheDocument();
+describe('add candidate', () => {
+  it('opens the create form from the header button', async () => {
+    render(<MonthlyRecruitingTab />);
+    await flush();
+    expect(screen.queryByTestId('form-stub')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('rec-add-candidate'));
+    expect(screen.getByTestId('form-stub')).toBeInTheDocument();
   });
 });
