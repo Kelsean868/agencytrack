@@ -261,10 +261,15 @@ async function main() {
 
   // ── 11 (early). CRO user — idempotent re-seed (auth + claims + user doc) ──
   console.log('\n── A11: CRO account ──');
+  const croPassword = process.env.STAGING_SEED_PASSWORD || CRO_PASSWORD_FALLBACK;
   let cro = await auth.getUserByEmail(EMAILS.cro).catch(() => null);
   if (!cro) {
-    cro = await auth.createUser({ email: EMAILS.cro, password: process.env.STAGING_SEED_PASSWORD || CRO_PASSWORD_FALLBACK, displayName: NAMES.cro });
+    cro = await auth.createUser({ email: EMAILS.cro, password: croPassword, displayName: NAMES.cro });
     console.log(`  [auth] created cro ${cro.uid}`);
+  } else {
+    // Password sync on every run (mirrors seed-staging.mjs) so the account
+    // always matches STAGING_SEED_PASSWORD in .env.staging.
+    await auth.updateUser(cro.uid, { password: croPassword });
   }
   await auth.setCustomUserClaims(cro.uid, { role: 'cro', tenantId: TENANT_ID, ownedBranchIds: ['*'] });
   uid.cro = cro.uid;
