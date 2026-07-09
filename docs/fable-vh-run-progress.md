@@ -10,8 +10,8 @@
 
 | Field | Value |
 |---|---|
-| Current phase | **B/C interleaved — T0-T2 built + verified; C1 fixed; Tier-3 + crosscut next** |
-| Last session | 2026-07-09 (session 1, Fable orchestrator) — Phases A + B(T0-T2) + C1 fix |
+| Current phase | **RUN COMPLETE — A + B + C + D all done. Final suite 32 PASS / 0 FAIL / 1 SKIP (kiosk = NEEDS-OPS IAM grant). Holding for operator review.** |
+| Last session | 2026-07-09 (session 1, Fable orchestrator, continuous) — full run start-to-finish |
 | Staging branch base | `fa5fa29c` (main w/ VH brief merged into staging) |
 | Staging URL | `https://agencytrack-git-staging-kyron-marchan-s-projects.vercel.app` |
 | Accounts | staging-{tenant-admin, branch-manager, unit-manager, agent-1, agent-2, cro}@agencytrack-staging.test (tenant `staging_test`, branch `staging_branch`) |
@@ -80,9 +80,9 @@ _(populated from Phase-B FAILs: reproduce 2x → root-cause → classify (a) Run
 
 | Item | Status | Notes |
 |---|---|---|
-| D1 Manager mp-game-plan prefetch (extend #829 gamePlanPrefetch.js to ManagerDashboard idle; motion-verifier before/after on manager transition) | DONE-IN-STAGING (AFTER-run pending deploy) | Commit `9d889262` (Opus build, orchestrator-reviewed). Idle `requestIdleCallback` (+400ms fallback) listener-warm of the producing manager's OWN moneyNeeds/yearPlan/monthlyPlan — the exact doc set GamePlanV2 reads; opt-in `isProducingManager` only (SM/TA/plain-manager never prefetch); teardown + silent-degrade. 8 new tests (`ManagerDashboardPrefetch.test.jsx`, AgentDashboardPrefetch idiom). Gates lint 0 · 5055 (MeetingMode flake isolated 10/10) · build clean. **Motion BEFORE (staging, pre-D1 deploy): cold mp-game-plan pop-in 417.4ms / late 34.78% FAIL (#833 reproduced — 5 nodes pop at +368ms); warm 0.0ms PASS.** AFTER run post-deploy expected → ~0ms (converges on warm baseline). Leg `t2-d1-manager-gameplan-prefetch` (regression fence: populated + hygiene + generous 2.5s cap). |
+| D1 Manager mp-game-plan prefetch (extend #829 gamePlanPrefetch.js to ManagerDashboard idle; motion-verifier before/after on manager transition) | DONE-IN-STAGING (AFTER-run pending deploy) | Commit `9d889262` (Opus build, orchestrator-reviewed). Idle `requestIdleCallback` (+400ms fallback) listener-warm of the producing manager's OWN moneyNeeds/yearPlan/monthlyPlan — the exact doc set GamePlanV2 reads; opt-in `isProducingManager` only (SM/TA/plain-manager never prefetch); teardown + silent-degrade. 8 new tests (`ManagerDashboardPrefetch.test.jsx`, AgentDashboardPrefetch idiom). Gates lint 0 · 5055 (MeetingMode flake isolated 10/10) · build clean. **Motion BEFORE (staging, pre-D1 deploy): cold mp-game-plan pop-in 417.4ms / late 34.78% FAIL (#833 reproduced — 5 nodes pop at +368ms); warm 0.0ms PASS.** AFTER run post-deploy expected → ~0ms (converges on warm baseline). Leg `t2-d1-manager-gameplan-prefetch` (regression fence: populated + hygiene + generous 2.5s cap). **Motion AFTER (post-deploy, orchestrator-run): cold pop-in 417.4ms → 0.0ms, late 34.78% → 0.04%, FAIL → PASS, "what pops in: none" — #833 closed empirically. Leg PASS live (134ms populated open).** |
 | D2 Keyboard nav-reorder (Alt+ArrowUp/Down within section, aria-live, useNavOrder persistence, reduced-motion safe) | DONE-IN-STAGING | Commit `13233189` (Opus build, orchestrator-reviewed). **Model: commit-on-every-Alt+Arrow** (no mode state) — each keystroke is an atomic section-clamped move through the SAME `onReorder`/`useNavOrder` path as the pointer machine (zero divergent transient state; Escape-cancel unnecessary — the inverse keystroke reverses; reduced-motion safe by construction, no animation added). sr-only polite live region announces moves/edges/saves; focus follows the moved row (`pendingFocusIdRef` + layout effect). Preserved: plain arrows, click nav, pointer drag, pinned-zone, star toggles. 8 new keyboard tests (Sidebar.reorder 15/15); gates lint 0 · 5047/5047 · build clean. Live leg `t2-d2-keyboard-reorder` (deploy-gated — first live run in the canonical suite pass). |
-| D3 SM/TA Team Planner nav (wire existing TeamPlannerPanel for sales_manager + tenant_admin; read-only, same trust marker) | PENDING | |
+| D3 SM/TA Team Planner nav (wire existing TeamPlannerPanel for sales_manager + tenant_admin; read-only, same trust marker) | DONE-IN-STAGING | Commit `22c12b20` (Opus build, orchestrator-reviewed). Rules pre-check FIRST: appointments `allow list` already carries a dedicated SM/TA/PA tenant-wide arm admitting getTeamWeek's rank≥3 shape — zero rules/service changes. SM: role-gated NAV_ITEMS row (render block was already role-agnostic); TA: sidebar Company-section item + render block, BOTTOM_NAV untouched (More-drawer auto-flow). 7 new tests incl. exactly-one-planner-item guards. Gates lint 0 · 5062/5062 · build clean. **Live-smoked post-deploy: `t3-d3-sm-ta-team-planner` PASS — SM + TA both see A1's 16 booked, trust marker, no write affordances, read-only drill, through the real deployed rules.** Seed A13 added a staging sales_manager account (`cc28eb32`) to make the SM half live-testable. |
 
 ## OPERATOR-RULED (this run)
 
@@ -95,6 +95,54 @@ Noticeboard collection · kiosk per-slide config persistence · prospect callbac
 
 ---
 
+## FINAL SMOKE TABLE (canonical closing run, 2026-07-09 13:24 — deploy `22c12b20`, fresh seed 92 docs)
+
+| Tier | Leg | Role(s) | Status | Key value-level evidence |
+|---|---|---|---|---|
+| 0 | sanity-deploy-reachable | anon | PASS | login form via bypass; clean |
+| 0 | sanity-agent1-login-populated | agent1 | PASS | YTD 122,000 exact + 9-wk streak |
+| 1 | t1-palette-agent-desktop | agent1 | PASS | dialog contract; filter→Enter navigates |
+| 1 | t1-palette-bm-desktop | branch_manager | PASS | Actions group; →Master Sheet reality bar |
+| 1 | t1-palette-agent-mobile | agent1 | PASS | 44×44 trigger; open + Escape |
+| 1 | t1-agent-report-populated | agent1 | PASS | hero 122,000 + apps 22 + floor 49% (extractFields path) |
+| 1 | t1-admin-quick-add | tenant_admin | PASS | FAB → real CreateUserDrawer + branch modal (never submitted) |
+| 1 | t1-nav-drag-reorder | agent1 | PASS | drag persisted to FRESH context (Firestore round-trip) + restored |
+| 1 | t1-exception-lead-drill | branch_manager | PASS | A2 flagged floor/danger, A1 clean; drill Report = 8,500 |
+| 1 | t1-master-sheet | branch_manager | PASS | W0 bar 0/1·1/2·2·3,000; presets; exceptions filter; W(-1) WEEK API 26,200 |
+| 2 | t2-war-review-roundtrip | BM+UM | PASS | approve + request-changes pills live thru deployed rules; self-review denied |
+| 2 | t2-recruiting-kanban | branch_manager | PASS | stalled badge; advance persisted after reload |
+| 2 | t2-settings-roundtrip | agent1 | PASS | theme + default-period persisted + restored |
+| 2 | t2-pdf-download-ctas | agent1 | PASS | generation fired (no byte diff) |
+| 2 | t2-history-edit-path | agent1 | PASS | 9 wks + best 22K; draft→wizard on that week |
+| 2 | t2-awards-pace-line | agent1 | PASS | gap 128,000 · avg/wk band-checked · 122,000 of 250,000 |
+| 2 | t2-financing-k9-k7 | agent1+BM | PASS | K9 balance 11,000 + Sep-2026 projection; K7 'At risk' (2 misses + −15%) |
+| 2 | t2-campaign-standings | branch_manager | PASS | qualify 122,000/Gold/12,500; placement 375 (×0.25 gate) — post-C1 fix |
+| 2 | t2-daily-anchor-strip | agent1 | PASS | WTD 3,000 of 4,800; celebration honestly absent (C4) |
+| 2 | t2-game-plan-hub | agent1 | PASS | 60/20/20 + 250,000 + 20,833/mo; month strip May>June>July |
+| 2 | t2-d2-keyboard-reorder | agent1 | PASS | D2 live: aria-live + swap + Firestore persistence + restore |
+| 2 | t2-d1-manager-gameplan-prefetch | unit_manager | PASS | populated open 134ms; hygiene clean |
+| 3 | t3-cro-delivery-register | cro | PASS | 4/2/2 tabs; Arm-E mark-delivered persisted |
+| 3 | t3-appt-churn-postpone | agent1 | PASS | postpone-with-rebook created link, verified post-reload |
+| 3 | t3-team-planner-readonly | UM+BM | PASS | A1 16 booked; trust marker; read-only |
+| 3 | t3-meeting-mode-deck | branch_manager | PASS | 9 scenes = hand-derivation; Units + Celebrations honestly dropped |
+| 3 | t3-flag-gated-shells | agent1 | PASS | 3 shells ON; lens 5/1/0 of 6; fail-closed OFF spot-check + restore |
+| 3 | t3-prospect-prep | agent1 | PASS | hero Marsha TODAY prepped + 2 chips; TOMORROW/IN 4 DAYS/3 DAYS AGO tones |
+| 3 | t3-kiosk | kiosk | **SKIP** | staging IAM gap (NEEDS-OPS grant above); **prod-isolation VERIFIED CLEAN** |
+| 3 | t3-d3-sm-ta-team-planner | SM+TA | PASS | D3 live: both roles, 16 booked, read-only, tenant-wide arm |
+| xc | xc-reduced-motion | agent1 | PASS | hero snaps to exact 122,000; animations disabled |
+| xc | xc-dark-contrast | agent1+BM | PASS | zero serious/critical contrast violations (axe) on new surfaces |
+| xc | xc-console-isolation | agent1+BM+cro | PASS | console-clean + zero agencytrack-2a610 requests |
+
+**TOTAL: 33 legs — 32 PASS / 0 FAIL / 1 SKIP.** Every leg asserts console-clean + zero-prod-requests; every PASS is value-level. Prod project contacted ZERO times across the entire run.
+
+## VERIFICATION SUMMARY (brief §Verification — orchestrator self-check)
+
+- ✅ Checklist current; TIMING LOG complete from item 1.
+- ✅ Final smoke table: every Run-1 surface PASS across roles except kiosk = SKIP with an ops-actionable reason (IAM grant command provided); console-clean; zero prod requests (asserted per-leg + dedicated isolation leg).
+- ✅ All Phase-C code fixes red-verified (C1 regression tests failed 5/5 without the fix) + re-smoked live. Gates green at every commit (final local suite 5062/5062).
+- ✅ NEW promotion-review flags: **NONE** — this run changed no rules, no indexes, no functions (C1 fixed client-side riding existing composites; D1–D3 are client-only). C2 (weeklyPlans `telContacts` vs rules `contactsMade`) is a pre-existing drift NEEDING A RULING, documented in Phase C — no change made.
+- Operator follow-ups banked: kiosk IAM grant (NEEDS-OPS) · C2 ruling · C3 owner-facing WAR-review display (product) · C4 streak-milestone reachability (product) · cosmetic: campaign standings sub-line shows raw unit uid.
+
 ## Session log
 
 - **2026-07-09 (session 1):** Run started. Read VH brief + Run-1 brief AUTHORITY + Run-1 progress doc. Verified staging worktree (`C:/Projects/at-fable-staging`, branch `staging`, HEAD `fa5fa29c`), staging SA key present + `.env.staging` present (STAGING_BASE_URL, VERCEL_BYPASS_TOKEN, STAGING_SEED_PASSWORD). Checklist created. Beginning Phase A: schema-truth extraction (Rule 17) → seed-fixtures.mjs authoring → orchestrator-verified execution against staging.
@@ -102,6 +150,7 @@ Noticeboard collection · kiosk per-slide config persistence · prospect callbac
 
 - **2026-07-09 (session 1, cont. 2):** **Phase B T0–T2 + Phase C1.** Suite skeleton (runner/helpers/expectations/tier0) orchestrator-authored + live-tested (`d34cda18`); password sync fix (accounts now track STAGING_SEED_PASSWORD). Tier-1 (Opus, 8 legs) + Tier-2 (Opus, 10 legs) built in parallel + committed `e68cd93c`; orchestrator full-suite verification: **19 PASS / 1 FAIL / 0 SKIP** — the FAIL being C1. C1 root-caused (rules-scoping denial + swallow cascade) and fixed (campaignService scope + both callers), red-verified, gates green (lint 0 · 5037/5037 · build clean). Seed extended: A1b dailyActivity family (WTD 3,000 across Mon–Wed docs; 91 docs total) + DAILY expectations + daily-anchor leg updated. C2/C3/C4 findings banked. Next: push → redeploy → re-smoke campaign+daily legs → dispatch Tier-3 + crosscut.
 
+- **2026-07-09 (session 1, FINAL):** **RUN COMPLETE.** D1 committed `9d889262` + motion AFTER verified (cold 417.4→0.0ms — #833 closed). A13 SM account `cc28eb32`. D3 committed `22c12b20`, live-smoked post-deploy. Closing canonical suite: **33 legs — 32 PASS / 0 FAIL / 1 SKIP** (kiosk NEEDS-OPS). Zero new promotion flags. Staging left pristine (fresh seed; smoke mutations reset by re-seed; nav-order prefs benign). Holding for operator review.
 - **2026-07-09 (session 1, cont. 3):** C1/C1b re-smoked GREEN post-deploy (`t2-campaign-standings` PASS with exact 122,000/Gold/12,500 + gated 375; `t2-daily-anchor-strip` PASS WTD 3,000, requires-index error gone) — Tier-2 now 10/10. Tier-3 + crosscut built + run (Opus): 9 PASS / 1 SKIP (kiosk = staging IAM gap, surfaced as NEEDS-OPS; prod-isolation verified clean). D2 keyboard nav-reorder built (Opus) + committed `13233189` (gates 5047/5047). Suite registered in SMOKES.md; T3+XC committed `cf4c08a3` + pushed. D1 (manager game-plan prefetch) dispatched. Canonical full-suite run queued post-deploy behind a fresh seed.
 
 ## TIMING LOG
@@ -126,4 +175,15 @@ Noticeboard collection · kiosk per-slide config persistence · prospect callbac
 | C: D2-leg order-relative fix + t1 flush hardening + live re-run | fable (orchestrator) | inherited-default | 2026-07-09T08:53 | 2026-07-09T08:58 | ~5 min | D2 leg PASS live — suite 30 PASS / 1 SKIP |
 | D1: manager game-plan prefetch build + BEFORE motion numbers | opus (subagent) | inherited-default | 2026-07-09T08:52 | 2026-07-09T09:12 | 20.0 min | done — gates green; cold 417.4ms FAIL baseline captured |
 | A13: sales_manager seed account | fable (orchestrator) | inherited-default | 2026-07-09T09:15 | 2026-07-09T09:18 | ~3 min | done — 92 docs |
-| D3: SM/TA Team Planner nav build (dispatched) | opus (subagent) | inherited-default | 2026-07-09T09:19 | | | in-flight |
+| D3: SM/TA Team Planner nav build | opus (subagent) | inherited-default | 2026-07-09T09:19 | 2026-07-09T09:35 | 15.4 min | done — gates green, rules pre-verified |
+| FINAL: deploy + fresh seed + canonical 33-leg suite + D1 motion AFTER | fable (orchestrator) | inherited-default | 2026-07-09T09:36 | 2026-07-09T09:58 | ~22 min | **32 PASS / 0 FAIL / 1 SKIP; D1 cold 417.4→0.0ms PASS** |
+
+### Per-phase rollup
+
+| Phase | Wall time (approx) | Subagent time | Outcome |
+|---|---|---|---|
+| Setup + A (seed) | ~65 min | 3 Sonnet extractors ≈ 16 min combined | 12 fixture families, 92 docs, idempotent |
+| B (suite) | ~2h interleaved | 3 Opus builders ≈ 116 min combined | 33 legs across 6 roles, all value-level |
+| C (fixes) | ~55 min (overlapped B) | — (orchestrator) | C1+C1b fixed+red-verified; C2-C4 logged |
+| D (follow-ups) | ~50 min | 3 Opus builders ≈ 46 min combined | D1 (417→0ms) · D2 · D3 all live-smoked |
+| **Total run** | **~3h 50m continuous** | 9 subagent dispatches | 32/33 green; 0 new promotion flags |
