@@ -12,6 +12,7 @@ import { resendInvite, getInviteLink } from '../../services/userService';
 import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import { EMAIL_RE } from '../../utils/validators';
 import useToast from '../../hooks/useToast';
+import useFocusTrap from '../../hooks/useFocusTrap';
 import Avatar from '../ui/Avatar';
 import StatusPill from '../ui/StatusPill';
 import ConfirmDialog from '../ui/ConfirmDialog';
@@ -39,6 +40,7 @@ const ROLE_DISPLAY = {
 
 
 function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenantId }) {
+  const drawerRef = useFocusTrap({ onEscape: onClose });
   const creatableRoles = CREATABLE_ROLES[callerRole] ?? ['agent'];
   const isUnitManager  = callerRole === 'unit_manager';
 
@@ -141,11 +143,17 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
         onClick={onClose}
         className="flex-1 bg-black/40 border-0 p-0 m-0 cursor-pointer"
       />
-      <div className="w-full max-w-md bg-card shadow-2xl flex flex-col h-full overflow-hidden">
+      <div
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-user-drawer-title"
+        className="w-full max-w-md bg-card shadow-2xl flex flex-col h-full overflow-hidden"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <p className="text-sm font-bold text-ink">Add New User</p>
-          <button aria-label="Close create user drawer" onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-border/40 transition-colors">
+          <p id="create-user-drawer-title" className="text-sm font-bold text-ink">Add New User</p>
+          <button aria-label="Close create user drawer" onClick={onClose} className="w-11 h-11 -m-1.5 flex items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-border/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
             <X size={18} />
           </button>
         </div>

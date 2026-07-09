@@ -311,4 +311,23 @@ describe('UserManagementPanel — openCreateSignal (Tier 1 · 1.3 external creat
     rerender(<UserManagementPanel openCreateSignal={0} />);
     expect(screen.queryByText('Add New User')).toBeNull();
   });
+
+  it('create drawer meets the dialog contract: role=dialog, aria-modal, labelled title, 44px close', async () => {
+    render(<UserManagementPanel openCreateSignal={1} />);
+    await waitFor(() => expect(screen.getByText('Add New User')).toBeInTheDocument());
+
+    const dialog = screen.getByRole('dialog', { name: 'Add New User' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+
+    const closeBtn = screen.getByRole('button', { name: 'Close create user drawer' });
+    expect(closeBtn.className).toContain('w-11');
+    expect(closeBtn.className).toContain('h-11');
+  });
+
+  it('create drawer closes on Escape', async () => {
+    render(<UserManagementPanel openCreateSignal={1} />);
+    await waitFor(() => expect(screen.getByText('Add New User')).toBeInTheDocument());
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByText('Add New User')).toBeNull());
+  });
 });
