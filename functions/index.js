@@ -175,15 +175,18 @@ async function getAgentsToNudge(weekStarting) {
 
 // Who can create whom. Deactivation uses the same matrix (can-create ↔ can-deactivate).
 const CREATION_MATRIX = {
-  platform_admin: ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
-  tenant_admin:   ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
+  // 'cro' (Tier-3 3.1): tenant-level back-office role — reads policies
+  // tenant-wide, records deliveries (rules Arm E). Created by admins only.
+  platform_admin: ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent', 'cro'],
+  tenant_admin:   ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent', 'cro'],
   sales_manager:  ['branch_manager', 'unit_manager', 'agent'],
   branch_manager: ['unit_manager', 'agent'],
   unit_manager:   ['agent'],
 };
 
 function deriveOwnedBranchIds(targetRole, callerBranchId) {
-  if (['platform_admin', 'tenant_admin', 'sales_manager'].includes(targetRole)) return ['*'];
+  // cro is tenant-level (like SM/TA): back-office scope spans all branches.
+  if (['platform_admin', 'tenant_admin', 'sales_manager', 'cro'].includes(targetRole)) return ['*'];
   if (targetRole === 'branch_manager' || targetRole === 'unit_manager') return [callerBranchId];
   return null; // agents: field absent
 }

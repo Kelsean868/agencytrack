@@ -325,16 +325,24 @@ service cloud.firestore {
       // unitId + branchId denormalized for UM/BM query filtering (mirrors submissions).
       // Manager two-arm confirmation update is DEFERRED to H1.2.
       match /policies/{policyId} {
+        // Tier-3 3.1: cro (back-office) reads policies tenant-wide — the
+        // Delivery Register is a query surface over this collection.
+        function isCroInTenant() {
+          return getRole() == 'cro' && getTenantId() == tenantId;
+        }
+
         allow get: if canAccessOwn(tenantId, resource.data.agentId)
           || (canManage(tenantId) && (
                getRole() != 'unit_manager'
                || resource.data.unitId == request.auth.uid
-             ));
+             ))
+          || isCroInTenant();
         allow list: if canAccessOwn(tenantId, resource.data.agentId)
           || (canManage(tenantId) && (
                getRole() != 'unit_manager'
                || resource.data.unitId == request.auth.uid
-             ));
+             ))
+          || isCroInTenant();
         allow create: if isSignedIn()
           && (isAgent() || isProducingManager())
           && getTenantId() == tenantId
@@ -432,6 +440,24 @@ service cloud.firestore {
           && request.resource.data.managerSettledAPI is number
           && request.resource.data.managerSettledAPI > 0
           && request.resource.data.hasDiscrepancy is bool;
+
+        // Arm E — CRO delivery confirmation (Tier-3 3.1, back-office role).
+        // The cro role marks a SETTLED policy delivered — touching ONLY the
+        // three delivery fields. `policyDeliveryDate` is the H1-deferred
+        // milestone field already stamped null at create (policiesService.js);
+        // deliveredBy pinned to auth.uid; delivery may be backdated (recorded
+        // after the fact) but never future. The 30-day clawback clock is
+        // DISPLAY-ONLY (derived from dateIssued), never stored. OR'd with the
+        // other arms by Firestore.
+        allow update: if isSignedIn()
+          && isCroInTenant()
+          && resource.data.status == 'settled'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['policyDeliveryDate', 'deliveredBy', 'deliveredAt'])
+          && request.resource.data.policyDeliveryDate is timestamp
+          && request.resource.data.policyDeliveryDate <= request.time
+          && request.resource.data.deliveredBy == request.auth.uid
+          && request.resource.data.deliveredAt is timestamp;
 
         // Arm D — BM-only settled→lapsed (H2c). Explicitly excludes UM and
         // canConfirmSettlements-only callers; only branch_manager / tenant_admin /
