@@ -296,6 +296,14 @@ describe('UserManagementPanel — openCreateSignal (Tier 1 · 1.3 external creat
     await waitFor(() => expect(screen.getByText('Add New User')).toBeInTheDocument());
   });
 
+  // Tier-3 3.1 — CREATABLE_ROLES gating: a tenant_admin (top-of-file useAuth
+  // mock) can create a CRO, mirroring the CF CREATION_MATRIX.
+  it('offers the CRO role in the create-user role picker for a tenant_admin', async () => {
+    render(<UserManagementPanel openCreateSignal={1} />);
+    await waitFor(() => expect(screen.getByText('Add New User')).toBeInTheDocument());
+    expect(screen.getByRole('option', { name: 'CRO' })).toBeInTheDocument();
+  });
+
   it('opens the create drawer when openCreateSignal CHANGES on an already-mounted instance', async () => {
     const { rerender } = render(<UserManagementPanel openCreateSignal={0} />);
     await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());

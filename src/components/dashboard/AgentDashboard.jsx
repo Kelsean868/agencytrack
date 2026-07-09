@@ -328,8 +328,11 @@ export default function AgentDashboard() {
     }
   }, [tenantId, user?.uid]);
 
+  // Load own policies lazily on the Commission tab AND the v2 home ('dashboard')
+  // — the home DeliveryStripCard needs the agent's settled/undelivered policies.
+  // Fires at most once (the `policies === null` guard); reuses the same fetch.
   useEffect(() => {
-    if (activeTab === 'commission' && policies === null) loadPolicies();
+    if ((activeTab === 'commission' || activeTab === 'dashboard') && policies === null) loadPolicies();
   }, [activeTab, loadPolicies, policies]);
 
   // Resolved personal annual API: agent's own commitment if set, else the
@@ -732,6 +735,7 @@ export default function AgentDashboard() {
             campaignsLoading={campaignsLoading}
             campaignSubs={campaignSubs}
             agentUid={user?.uid}
+            policies={policies}
             showDailyCTA={showDailyCTA}
             todayDailyChecked={todayDailyChecked}
             todayDailyEntry={todayDailyEntry}

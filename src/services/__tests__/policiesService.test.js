@@ -17,6 +17,7 @@ const hoisted = vi.hoisted(() => {
     mockTimestamp:       { fromDate: vi.fn((d) => ({ _type: 'timestamp', ms: d.getTime() })) },
     mockWriteBatch:      vi.fn(() => mockBatch),
     mockDoc:             vi.fn((...args) => ({ _ref: args })),
+    mockUpdateDoc:       vi.fn().mockResolvedValue(undefined),
     mockBatchUpdate,
     mockBatchSet,
     mockBatchCommit,
@@ -34,9 +35,11 @@ vi.mock('firebase/firestore', () => ({
   Timestamp:       hoisted.mockTimestamp,
   writeBatch:      (...args) => hoisted.mockWriteBatch(...args),
   doc:             (...args) => hoisted.mockDoc(...args),
+  updateDoc:       (...args) => hoisted.mockUpdateDoc(...args),
 }));
 
-import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory, confirmPolicy, lapsePolicy, settlementShapeFromPolicies } from '../policiesService';
+import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory, confirmPolicy, lapsePolicy, settlementShapeFromPolicies, getDeliverablePolicies, recordPolicyDelivery } from '../policiesService';
+import { getTodayTT } from '../../utils/dateInputs';
 
 const mockProfile = {
   uid: 'uid-1',
@@ -695,5 +698,58 @@ describe('settlementShapeFromPolicies', () => {
     expect(ledgerRow.periodKey).toBe(settlementDoc.periodKey);
     // persistency starts at 0 — caller responsibility to merge
     expect(ledgerRow.persistency).toBe(0);
+  });
+});
+
+// ── Tier-3 3.1: CRO Delivery Register ───────────────────────────────────────
+describe('getDeliverablePolicies', () => {
+  it('queries settled policies with a SINGLE equality filter and NO orderBy (index-safe)', async () => {
+    hoisted.mockGetDocs.mockResolvedValueOnce({
+      docs: [{ id: 'p1', data: () => ({ status: 'settled', ownerName: 'A' }) }],
+    });
+    const res = await getDeliverablePolicies('t1');
+
+    // exactly one where(), on status == 'settled'
+    expect(hoisted.mockWhere).toHaveBeenCalledTimes(1);
+    expect(hoisted.mockWhere).toHaveBeenCalledWith('status', '==', 'settled');
+    // no orderBy → no composite index required
+    expect(hoisted.mockOrderBy).not.toHaveBeenCalled();
+    expect(res).toEqual([{ id: 'p1', status: 'settled', ownerName: 'A' }]);
+  });
+});
+
+describe('recordPolicyDelivery', () => {
+  it('writes EXACTLY the three delivery contract fields (hasOnly Arm E)', async () => {
+    await recordPolicyDelivery('t1', 'p1', { deliveredBy: 'cro-uid', deliveryDate: '2026-05-10' });
+    expect(hoisted.mockUpdateDoc).toHaveBeenCalledOnce();
+    const [, payload] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(Object.keys(payload).sort()).toEqual(['deliveredAt', 'deliveredBy', 'policyDeliveryDate']);
+    expect(payload.deliveredBy).toBe('cro-uid');
+    expect(payload.policyDeliveryDate).toEqual({ _type: 'timestamp', ms: Date.parse('2026-05-10T04:00:00Z') });
+    expect(payload.deliveredAt).toEqual({ _type: 'serverTimestamp' });
+  });
+
+  it('defaults the delivery date to today (TT) when omitted', async () => {
+    await recordPolicyDelivery('t1', 'p1', { deliveredBy: 'cro-uid' });
+    const [, payload] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(payload.policyDeliveryDate).toEqual({ _type: 'timestamp', ms: Date.parse(`${getTodayTT()}T04:00:00Z`) });
+  });
+
+  it('rejects a future delivery date client-side (never writes)', async () => {
+    const future = '2999-12-31';
+    await expect(recordPolicyDelivery('t1', 'p1', { deliveredBy: 'cro-uid', deliveryDate: future }))
+      .rejects.toThrow(/future/i);
+    expect(hoisted.mockUpdateDoc).not.toHaveBeenCalled();
+  });
+
+  it('requires deliveredBy', async () => {
+    await expect(recordPolicyDelivery('t1', 'p1', {})).rejects.toThrow(/deliveredBy/i);
+    expect(hoisted.mockUpdateDoc).not.toHaveBeenCalled();
+  });
+
+  it('rejects a malformed delivery date', async () => {
+    await expect(recordPolicyDelivery('t1', 'p1', { deliveredBy: 'cro-uid', deliveryDate: '10/05/2026' }))
+      .rejects.toThrow(/YYYY-MM-DD/);
+    expect(hoisted.mockUpdateDoc).not.toHaveBeenCalled();
   });
 });

@@ -1,12 +1,12 @@
 import { db } from '../firebase';
 import {
   collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, Timestamp,
-  writeBatch, doc,
+  writeBatch, doc, updateDoc,
 } from 'firebase/firestore';
 import { PROSPECTING_SOURCES } from './prospectInfoService';
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../utils/prospectingConstants';
 import { isLegalAgentTransition } from '../constants/policyLifecycle';
-import { parseDateOnlyTT } from '../utils/dateInputs';
+import { parseDateOnlyTT, getTodayTT } from '../utils/dateInputs';
 
 const VALID_SOURCES          = new Set(PROSPECTING_SOURCES.map((s) => s.value));
 const VALID_PRODUCT_LINES    = new Set(['life', 'ah', 'property', 'motor']);
@@ -320,6 +320,61 @@ export async function getPolicyHistory(tenantId, policyId, agentId) {
 // Re-exported from src/lib/policiesDerivation.js (single source of truth).
 // The harness imports from policiesDerivation.js directly to avoid the client-SDK chain.
 export { settlementShapeFromPolicies } from '../lib/policiesDerivation';
+
+/**
+ * getDeliverablePolicies — the CRO Delivery Register read (Tier-3 3.1).
+ *
+ * Returns every SETTLED policy in the tenant. The register splits these
+ * client-side into undelivered (`policyDeliveryDate == null`) vs delivered.
+ *
+ * Query shape: a SINGLE equality filter (`status == 'settled'`) with NO
+ * orderBy. Firestore serves single-equality/no-orderBy queries from the
+ * automatic per-field index — no composite index is required. Sorting (by
+ * clawback urgency) is done client-side in the panel. The rules `allow list`
+ * arm accepts this read via `isCroInTenant()` (the tenant path already scopes
+ * the collection; the CRO arm needs no extra where() clause, unlike the agent
+ * arm which must filter by agentId).
+ *
+ * @param {string} tenantId
+ * @returns {Promise<object[]>} settled policy docs ({ id, ...data })
+ */
+export async function getDeliverablePolicies(tenantId) {
+  const ref = collection(db, 'tenants', tenantId, 'policies');
+  const snap = await getDocs(query(ref, where('status', '==', 'settled')));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * recordPolicyDelivery — CRO marks a settled policy delivered (Tier-3 3.1,
+ * rules Arm E). Writes EXACTLY the three delivery contract fields via a plain
+ * updateDoc so the rule's `hasOnly(['policyDeliveryDate','deliveredBy',
+ * 'deliveredAt'])` diff-check holds:
+ *   - policyDeliveryDate: Timestamp (the chosen delivery day, TT-local midnight;
+ *     defaults to today; NEVER future — enforced client-side here and in rules)
+ *   - deliveredBy: the acting CRO's uid (rules pin this to request.auth.uid)
+ *   - deliveredAt: serverTimestamp (audit stamp)
+ *
+ * The 30-day clawback clock is a display derivation (utils/clawbackClock.js) and
+ * is NEVER written here.
+ *
+ * @param {string} tenantId
+ * @param {string} policyId
+ * @param {{ deliveredBy: string, deliveryDate?: string }} opts
+ *        deliveryDate is a "YYYY-MM-DD" string; omitted → today (TT).
+ */
+export async function recordPolicyDelivery(tenantId, policyId, { deliveredBy, deliveryDate } = {}) {
+  if (!deliveredBy) throw new Error('deliveredBy is required');
+  const dateStr = deliveryDate || getTodayTT();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) throw new Error('deliveryDate must be YYYY-MM-DD');
+  if (dateStr > getTodayTT()) throw new Error('Delivery date cannot be in the future');
+
+  const policyRef = doc(db, 'tenants', tenantId, 'policies', policyId);
+  await updateDoc(policyRef, {
+    policyDeliveryDate: Timestamp.fromDate(parseDateOnlyTT(dateStr)),
+    deliveredBy,
+    deliveredAt: serverTimestamp(),
+  });
+}
 
 export async function getPoliciesForManager(tenantId, scope) {
   const ref = collection(db, 'tenants', tenantId, 'policies');

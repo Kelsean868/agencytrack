@@ -21,9 +21,11 @@ import BulkImportUsersModal from '../admin/BulkImportUsersModal';
 import BulkImportGoalsModal from '../admin/BulkImportGoalsModal';
 
 // Mirrors CREATION_MATRIX in functions/index.js
+// 'cro' (Tier-3 3.1): tenant-level back-office role — creatable by
+// platform_admin + tenant_admin, matching the CF matrix exactly.
 const CREATABLE_ROLES = {
-  platform_admin: ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
-  tenant_admin:   ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
+  platform_admin: ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent', 'cro'],
+  tenant_admin:   ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent', 'cro'],
   sales_manager:  ['branch_manager', 'unit_manager', 'agent'],
   branch_manager: ['unit_manager', 'agent'],
   unit_manager:   ['agent'],
@@ -35,6 +37,7 @@ const ROLE_DISPLAY = {
   sales_manager:  'Sales Manager',
   branch_manager: 'Branch Manager',
   unit_manager:   'Unit Manager',
+  cro:            'CRO',
   agent:          'Agent',
 };
 

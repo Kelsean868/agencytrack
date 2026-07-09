@@ -32,15 +32,18 @@ function focusableWithin(node) {
 
 // Mirror of functions/index.js CREATION_MATRIX. Two-sided gate: caller must be
 // able to create both the target's current role AND the target's new role.
+// 'cro' (Tier-3 3.1): tenant-level back-office role — mirrors CF CREATION_MATRIX
+// (creatable/editable by platform_admin + tenant_admin) and is cross-branch
+// (tenant-level scope, no single branch), like sales_manager.
 const CREATION_MATRIX = {
-  platform_admin: ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
-  tenant_admin:   ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
+  platform_admin: ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent', 'cro'],
+  tenant_admin:   ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent', 'cro'],
   sales_manager:  ['branch_manager', 'unit_manager', 'agent'],
   branch_manager: ['unit_manager', 'agent'],
   unit_manager:   ['agent'],
 };
 
-const CROSS_BRANCH_ROLES = ['platform_admin', 'tenant_admin', 'sales_manager'];
+const CROSS_BRANCH_ROLES = ['platform_admin', 'tenant_admin', 'sales_manager', 'cro'];
 
 const ROLE_DISPLAY = {
   platform_admin: 'Platform Admin',
@@ -48,6 +51,7 @@ const ROLE_DISPLAY = {
   sales_manager:  'Sales Manager',
   branch_manager: 'Branch Manager',
   unit_manager:   'Unit Manager',
+  cro:            'CRO',
   agent:          'Agent',
 };
 

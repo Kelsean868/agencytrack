@@ -11,6 +11,7 @@ export const ROLE_LABELS = {
   branch_manager: 'Branch Manager',
   unit_manager: 'Unit Manager',
   sales_manager: 'Sales Manager',
+  cro: 'CRO',
   agent: 'Agent',
 };
 
