@@ -204,4 +204,5 @@ SM cross-branch views (Phase 9) · Settings team-defaults cascade · payout-rele
 | 3.2 live smoke: agent booking write-read on deployed rules/composites | orchestrator | n/a (main loop) | 2026-07-09T03:13 | 2026-07-09T03:16 | 3 min | done — 4/4 PASS, clean console |
 | 3.3 Meeting Mode v2 (14–16-scene run-of-show) | opus (subagent) | inherited-default | 2026-07-09T03:18 | 2026-07-09T03:38 | 20 min | done — 11 honest scenes (birthdays/awards-reach/quick-actions/remote skip-logged w/ evidence) |
 | 3.4 Flag-gated shells: Persistency v2 UI + Policy Ledger lens + Awards provenance | opus (subagent) | inherited-default | 2026-07-09T03:41 | 2026-07-09T04:10 | 29 min | done — flags fail-closed OFF; brief's featureFlags premise corrected (pattern didn't exist); no rules change |
-| 3.5 Prospect Prep: un-gate + NextCallHero + rehearsal aid + readiness | opus (subagent) | inherited-default | 2026-07-09T04:12 | — | — | in-flight |
+| 3.5 Prospect Prep: un-gate + NextCallHero + rehearsal aid + readiness | opus (subagent) | inherited-default | 2026-07-09T04:12 | 2026-07-09T04:31 | 19 min | done — readiness criteria flagged operator-tunable (pure fn) |
+| 3.6 Kiosk v2 theatrical (LAST, droppable — window held, building) | opus (subagent) | inherited-default | 2026-07-09T04:34 | — | — | in-flight |
