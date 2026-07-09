@@ -1421,6 +1421,10 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   color: var(--color-danger);
   border-color: var(--color-border-strong);
 }
+/* Settings gear (Tier 2 · 2.4) — hovers to primary, not the sign-out danger red. */
+.sidebar-foot-action.is-settings:hover {
+  color: var(--color-primary);
+}
 .sidebar-foot-action:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;

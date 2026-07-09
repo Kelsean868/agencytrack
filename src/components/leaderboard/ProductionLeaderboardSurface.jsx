@@ -20,7 +20,7 @@
  * Reachable behind a TEMPORARY route only — no primary-nav swap (P6's job).
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { formatCurrency } from '../../utils/formatters';
 import { useCountUp } from '../../hooks/useCountUp';
 import MedalCoin from '../ui/MedalCoin';
@@ -32,6 +32,12 @@ import WeeklyChampionsBanner from '../gamification/WeeklyChampionsBanner';
 import LeaderboardScopeControl from './LeaderboardScopeControl';
 import { applyScope, unitOptionsFromRanking } from '../../lib/leaderboard/scopeFilter';
 import { useAuth } from '../../context/AuthContext';
+import useAppSettings from '../../hooks/useAppSettings';
+import { isValidPeriod } from '../../config/viewDefaults';
+
+// Settings v2 (Tier 2 · 2.4) — map the stored semantic period to this surface's
+// period key. Absent/invalid → the surface keeps its built-in YTD default.
+const SETTINGS_PERIOD_TO_KEY = { week: 'WK', month: 'MTD', quarter: 'QTD', year: 'YTD' };
 import {
   computeAroundMe,
   VISIBLE_MAX_DESKTOP,
@@ -327,7 +333,16 @@ export default function ProductionLeaderboardSurface({
   const [period, setPeriod] = useState('YTD');
   const { loading, error, byPeriod, doc, reload } = useLeaderboard(branchIdOverride);
   const { champions, loading: championsLoading } = useWeeklyChampions();
-  const { user, userProfile, role } = useAuth();
+  const { user, userProfile, role, tenantId } = useAuth();
+  // Settings v2 (Tier 2 · 2.4) — seed the initial period from the saved default.
+  // An in-session period change wins over a late reconcile (session-override-wins).
+  const { settings } = useAppSettings({ tenantId, uid: user?.uid });
+  const periodTouchedRef = useRef(false);
+  useEffect(() => {
+    if (periodTouchedRef.current) return;
+    const saved = settings.defaultPeriod;
+    if (isValidPeriod(saved) && SETTINGS_PERIOD_TO_KEY[saved]) setPeriod(SETTINGS_PERIOD_TO_KEY[saved]);
+  }, [settings.defaultPeriod]);
   const viewerUid    = user?.uid ?? null;
   const viewerName   = userProfile?.name ?? null;
   const viewerBranch = overrideBranchName ?? userProfile?.branchName ?? null;
@@ -520,7 +535,7 @@ export default function ProductionLeaderboardSurface({
             (scopeRoleOverride ?? role) === 'branch_manager') && (
             <div aria-hidden="true" className="hidden sm:block w-px h-7 bg-border" />
           )}
-          <PeriodChips value={period} onChange={setPeriod} />
+          <PeriodChips value={period} onChange={(k) => { periodTouchedRef.current = true; setPeriod(k); }} />
         </div>
       </div>
 

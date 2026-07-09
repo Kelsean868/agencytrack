@@ -26,7 +26,10 @@ function prefsDocRef(tenantId, uid) {
  *
  * @param {string} tenantId
  * @param {string} uid
- * @returns {Promise<{ pinnedNav?: string[], menuLayout?: string, navOrder?: Record<string, string[]> }|null>}
+ * @returns {Promise<{ pinnedNav?: string[], menuLayout?: string, navOrder?: Record<string, string[]>, settings?: Record<string, *> }|null>}
+ *   `settings` (Tier 2 · 2.4) is the Settings v2 view-defaults map
+ *   (`masterSheetPreset`, `defaultPeriod`, …). Theme is device-local (localStorage),
+ *   not in this map.
  *   `navOrder` (Tier 1 · 1.4) is a map keyed by navConfig key
  *   (`agent` | `producingManager` | `manager` | `tenantAdmin`) → the user's
  *   preferred ordered list of nav item ids for that config. Agent/manager nav
@@ -100,6 +103,35 @@ export async function setNavOrder(tenantId, uid, configKey, orderIds) {
       navOrder: { [configKey]: Array.isArray(orderIds) ? orderIds : [] },
       updatedAt: serverTimestamp(),
     },
+    { merge: true },
+  );
+}
+
+/**
+ * Persist a single App-settings value (Fable Tier 2 · 2.4 — Settings v2 · My
+ * Preferences view-defaults). Stored under `settings.{key}` so each pref (e.g.
+ * `masterSheetPreset`, `defaultPeriod`) is written independently. Deep-merge:
+ * `{ merge: true }` merges the nested `settings` map, so a write for one key
+ * preserves the others (and the coexisting `pinnedNav` / `menuLayout` / `navOrder`).
+ * ONLY the touched key is written — the caller never rebuilds the whole map, so
+ * two devices editing different settings never clobber each other's key.
+ *
+ * Theme is intentionally NOT stored here — it stays a device-local localStorage
+ * pref (see `src/lib/theme.js`), matching the pre-2.4 dark-toggle behavior and
+ * the no-FOUC first-paint restore.
+ *
+ * @param {string} tenantId
+ * @param {string} uid
+ * @param {string} key    settings key (e.g. 'masterSheetPreset' | 'defaultPeriod')
+ * @param {*} value       serializable value
+ * @returns {Promise<void>}
+ */
+export async function setAppSetting(tenantId, uid, key, value) {
+  if (!tenantId || !uid) throw new Error('setAppSetting requires tenantId and uid');
+  if (!key) throw new Error('setAppSetting requires a key');
+  await setDoc(
+    prefsDocRef(tenantId, uid),
+    { settings: { [key]: value }, updatedAt: serverTimestamp() },
     { merge: true },
   );
 }

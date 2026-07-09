@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  LayoutGrid, Building2, Users, BookOpen, Send, UserCircle, TrendingUp, AlertTriangle, Plus,
+  LayoutGrid, Building2, Users, BookOpen, Send, UserCircle, TrendingUp, AlertTriangle, Plus, Settings,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -19,6 +19,7 @@ import BranchesPanel from '../admin/BranchesPanel';
 import UserManagementPanel from '../manager/UserManagementPanel';
 import CampaignPanel from '../campaigns/CampaignPanel';
 import ProfileScreen from '../profile/ProfileScreen';
+import SettingsScreen from '../settings/SettingsScreen';
 import QuickAddMenu from '../shell/QuickAddMenu';
 import { getQuickAddActions } from '../shell/quickAddConfig';
 import useNavOrder from '../../hooks/useNavOrder';
@@ -69,9 +70,12 @@ const BOTTOM_NAV = [
 // drawerNavItems, so no "More" button rendered) both folds Profile in per the v2
 // nav reorder and closes the latent TA-MOBILE gap where Branches was unreachable
 // on mobile. Static: derived from the two module-level constants above.
-const DRAWER_NAV = NAV_ITEMS.filter(
-  (item) => item.tabId && !BOTTOM_NAV.find((b) => b.tabId === item.tabId)
-);
+const DRAWER_NAV = [
+  ...NAV_ITEMS.filter((item) => item.tabId && !BOTTOM_NAV.find((b) => b.tabId === item.tabId)),
+  // Settings v2 (Tier 2 · 2.4) — mobile More-drawer entry (desktop reaches Settings
+  // via the sidebar-foot gear). No sectionLabel so it joins Profile's Account group.
+  { id: 'settings', label: 'Settings', tabId: 'settings', Icon: Settings },
+];
 
 function StatCard({ label, value, sub, Icon, loading }) {
   return (
@@ -376,6 +380,18 @@ export default function TenantAdminDashboard() {
       {activeTab === 'campaigns' && <CampaignPanel />}
 
       {activeTab === 'profile' && <ProfileScreen />}
+
+      {/* ── SETTINGS TAB (Tier 2 · 2.4) ── */}
+      {activeTab === 'settings' && (
+        <SettingsScreen
+          role={role}
+          roleLabel={roleLabel}
+          userProfile={userProfile}
+          tenantId={tenantId}
+          uid={user?.uid}
+          onOpenProfile={() => setActiveTab('profile')}
+        />
+      )}
       </div>
     </Shell>
   );

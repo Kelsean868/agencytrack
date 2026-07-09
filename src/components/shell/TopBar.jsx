@@ -5,6 +5,7 @@ import React from 'react';
 import { Sun, Moon, Search } from 'lucide-react';
 import NotificationBell from '../ui/NotificationBell';
 import SyncIndicator from '../ui/SyncIndicator';
+import { useTheme } from '../../lib/theme';
 
 /**
  * Topbar chrome (Design System v2 — B4).
@@ -28,14 +29,13 @@ import SyncIndicator from '../ui/SyncIndicator';
  * (Fable Tier 1 · 1.1b).
  */
 export default function TopBar({ title, crumb, actions, onOpenSearch }) {
-  const toggleDark = () => {
-    const isDark = document.documentElement.classList.toggle('dark');
-    try {
-      localStorage.setItem('agencytrack-dark', isDark ? '1' : '0');
-    } catch {
-      /* localStorage may be unavailable; toggle still works for the session */
-    }
-  };
+  // Binary dark toggle, driven through the shared theme module so it stays a
+  // single source of truth with the Settings v2 Light/Dark/System control (Tier 2
+  // · 2.4). Toggling from here always resolves to an explicit light/dark mode;
+  // System remains selectable from Settings. The Sun/Moon icons key off the
+  // `dark` class (set by the module), so they stay correct in every mode.
+  const { isDark, setMode } = useTheme();
+  const toggleDark = () => setMode(isDark ? 'light' : 'dark');
 
   return (
     <header className="topbar">

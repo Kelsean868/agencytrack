@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import React from 'react';
 import StatusPill from '../ui/StatusPill';
 import Avatar from '../ui/Avatar';
 import DataSourceBadge from '../productionReport/DataSourceBadge';
 import { Download, Search, MessageSquare, CalendarCheck, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useAppSettings, { readSettingsMirror } from '../../hooks/useAppSettings';
+import { isValidMasterSheetPreset, DEFAULT_MASTER_SHEET_PRESET } from '../../config/viewDefaults';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
@@ -120,15 +122,36 @@ function SkeletonRow({ cols }) {
 }
 
 export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
-  const { tenantId } = useAuth();
+  const { tenantId, user } = useAuth();
+  // Settings v2 (Tier 2 · 2.4) — the SAVED default column preset. Read-only here:
+  // changing the preset in this action bar is session-local (the persistent
+  // default is set in Settings), so an in-session override always wins over a
+  // late Firestore reconcile via `presetTouchedRef`.
+  const { settings } = useAppSettings({ tenantId, uid: user?.uid });
   const [submissions, setSubmissions]       = useState([]);
   const [users, setUsers]                   = useState([]);
   const [userNameMap, setUserNameMap]       = useState({});
   const [loading, setLoading]               = useState(true);
   const [error, setError]                   = useState('');
   const [search, setSearch]                 = useState('');
-  const [preset, setPreset]                 = useState('All');
+  // Seed from the saved default synchronously (localStorage-first mirror), so the
+  // sheet opens on the manager's preferred preset without a flash.
+  const [preset, setPreset] = useState(() => {
+    const m = readSettingsMirror(user?.uid).masterSheetPreset;
+    return isValidMasterSheetPreset(m) ? m : DEFAULT_MASTER_SHEET_PRESET;
+  });
+  // Once the user picks a preset this session, a late Firestore reconcile must not
+  // overwrite it (session-override-wins).
+  const presetTouchedRef = useRef(false);
   const [exceptionsOnly, setExceptionsOnly] = useState(false);
+
+  // Adopt the saved default when it arrives from Firestore reconcile — but only
+  // if the user hasn't overridden the preset this session (session-override-wins).
+  useEffect(() => {
+    if (presetTouchedRef.current) return;
+    const saved = settings.masterSheetPreset;
+    if (isValidMasterSheetPreset(saved)) setPreset(saved);
+  }, [settings.masterSheetPreset]);
   const [viewingSubmission, setViewingSubmission] = useState(null);
   // F1 coaching notes: agentId/agentName/agentUnitId of the agent whose notes panel is open
   const [notesAgent, setNotesAgent] = useState(null);
@@ -504,7 +527,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
               <button
                 key={p}
                 type="button"
-                onClick={() => setPreset(p)}
+                onClick={() => { presetTouchedRef.current = true; setPreset(p); }}
                 aria-pressed={active}
                 className={`min-h-[44px] px-3 rounded-md text-sm font-semibold transition-colors ${
                   active

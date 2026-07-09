@@ -7,7 +7,7 @@ import {
   Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
   Activity, UserPlus, ClipboardCheck, BookOpen, LayoutList,
-  NotebookPen, Target, Wallet, History, Zap, Banknote,
+  NotebookPen, Target, Wallet, History, Zap, Banknote, Settings,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -32,6 +32,7 @@ import UserManagementPanel from '../manager/UserManagementPanel';
 import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
 import ManagerOverviewTab from './ManagerOverviewTab';
 import ProfileScreen from '../profile/ProfileScreen';
+import SettingsScreen from '../settings/SettingsScreen';
 import Shell from '../shell/Shell';
 import { getNavConfig, getWorkspaceGroups } from '../shell/navConfig';
 import usePinnedNav from '../../hooks/usePinnedNav';
@@ -150,6 +151,9 @@ const BOTTOM_NAV_PRODUCING = [
 // non-producing managers' NAV_ITEMS yields one automatically. Routes to the
 // existing activeTab === 'profile' screen, which hosts its own Sign Out.
 const PROFILE_NAV_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Icon: UserCircle, sectionLabel: 'Account' };
+// Settings v2 (Tier 2 · 2.4) — mobile More-drawer entry (desktop reaches Settings
+// via the sidebar-foot gear). No sectionLabel so it joins Profile's Account group.
+const SETTINGS_NAV_ITEM = { id: 'settings', label: 'Settings', tabId: 'settings', Icon: Settings };
 
 const MP_TABS = new Set(['mp-report', 'mp-goals', 'mp-game-plan', 'mp-money-needs', 'mp-history', 'mp-commission', 'mp-policies', 'mp-financing']);
 
@@ -293,7 +297,8 @@ export default function ManagerDashboard() {
       // Profile lives in the More drawer (v2 nav reorder). Non-producing managers'
       // NAV_ITEMS already yields a profile row here; the producingManager config
       // has none, so inject it. Guarded so it never duplicates.
-      return derived.some((i) => i.id === 'profile') ? derived : [...derived, PROFILE_NAV_ITEM];
+      const withProfile = derived.some((i) => i.id === 'profile') ? derived : [...derived, PROFILE_NAV_ITEM];
+      return withProfile.some((i) => i.id === 'settings') ? withProfile : [...withProfile, SETTINGS_NAV_ITEM];
     },
     [navItems, isProducingManager]
   );
@@ -677,6 +682,18 @@ export default function ManagerDashboard() {
 
         {activeTab === 'profile' && (
           <ProfileScreen menuLayout={menuLayout} onMenuLayoutChange={setMenuLayout} />
+        )}
+
+        {/* ── SETTINGS TAB (Tier 2 · 2.4) ── */}
+        {activeTab === 'settings' && (
+          <SettingsScreen
+            role={role}
+            roleLabel={roleLabel}
+            userProfile={userProfile}
+            tenantId={tenantId}
+            uid={user?.uid}
+            onOpenProfile={() => setActiveTab('profile')}
+          />
         )}
         </div>
     </Shell>

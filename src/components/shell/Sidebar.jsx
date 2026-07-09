@@ -1,5 +1,5 @@
 import React, { Fragment, useMemo, useRef, useState, useCallback } from 'react';
-import { LogOut, ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import { LogOut, ChevronLeft, ChevronRight, Star, Settings } from 'lucide-react';
 import WorkspaceToggle from './WorkspaceToggle';
 
 /**
@@ -385,6 +385,18 @@ export default function Sidebar({
           <div className="sidebar-foot-name">{displayName}</div>
           {roleLabel && <div className="sidebar-foot-role">{roleLabel}</div>}
         </div>
+        {/* Settings v2 (Tier 2 · 2.4) — off the avatar menu per the mockup IA.
+            Shared across all three dashboards (they each render an `activeTab
+            === 'settings'` block). Mobile reaches Settings via the More drawer. */}
+        <button
+          type="button"
+          className="sidebar-foot-action is-settings"
+          onClick={() => setActiveTab('settings')}
+          aria-label="Settings"
+          title="Settings"
+        >
+          <Settings size={16} />
+        </button>
         <button
           type="button"
           className="sidebar-foot-action"

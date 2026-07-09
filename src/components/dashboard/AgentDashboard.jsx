@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   X, Download, Loader2,
-  ClipboardList, FileText, Star, History, UserCircle,
+  ClipboardList, FileText, Star, History, UserCircle, Settings,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -25,6 +25,7 @@ import { getWeeklyPlan } from '../../services/weeklyPlanService';
 import { prefetchGamePlanYearDocs } from '../../services/gamePlanPrefetch';
 import CareerPortal from '../profile/CareerPortal';
 import ProfileScreen from '../profile/ProfileScreen';
+import SettingsScreen from '../settings/SettingsScreen';
 import ReportRangeModal from '../ui/ReportRangeModal';
 import ProductionLeaderboardSurface from '../leaderboard/ProductionLeaderboardSurface';
 import AgentAwardsPanel from '../awards/AgentAwardsPanel';
@@ -85,6 +86,9 @@ const BOTTOM_NAV = [
 // mobile home. Routes to the existing activeTab === 'profile' screen, which hosts
 // its own Sign Out.
 const PROFILE_NAV_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Icon: UserCircle, sectionLabel: 'Account' };
+// Settings v2 (Tier 2 · 2.4) — mobile More-drawer entry (desktop reaches Settings
+// via the sidebar-foot gear). No sectionLabel so it joins Profile's Account group.
+const SETTINGS_NAV_ITEM = { id: 'settings', label: 'Settings', tabId: 'settings', Icon: Settings };
 
 export default function AgentDashboard() {
   const { user, userProfile, role, tenantId } = useAuth();
@@ -160,7 +164,8 @@ export default function AgentDashboard() {
       const derived = navItems.filter(
         (item) => item.tabId && !BOTTOM_NAV.find((b) => b.tabId === item.tabId)
       );
-      return derived.some((i) => i.tabId === 'profile') ? derived : [...derived, PROFILE_NAV_ITEM];
+      const withProfile = derived.some((i) => i.tabId === 'profile') ? derived : [...derived, PROFILE_NAV_ITEM];
+      return withProfile.some((i) => i.tabId === 'settings') ? withProfile : [...withProfile, SETTINGS_NAV_ITEM];
     },
     [navItems]
   );
@@ -571,7 +576,7 @@ export default function AgentDashboard() {
       onAction={handleAction}
       userProfile={userProfile}
       roleLabel={roleLabel}
-      topbarTitle={tabTitleFromItems(navItems, activeTab, activeTab === 'profile' ? 'Profile' : 'Dashboard')}
+      topbarTitle={tabTitleFromItems(navItems, activeTab, activeTab === 'settings' ? 'Settings' : activeTab === 'profile' ? 'Profile' : 'Dashboard')}
       topbarCrumb={(() => {
         const d = new Date();
         const weekday = d.toLocaleDateString('en-TT', { weekday: 'long' });
@@ -896,6 +901,18 @@ export default function AgentDashboard() {
       {/* ── PROFILE TAB ── */}
       {activeTab === 'profile' && (
         <ProfileScreen menuLayout={menuLayout} onMenuLayoutChange={setMenuLayout} />
+      )}
+
+      {/* ── SETTINGS TAB (Tier 2 · 2.4) ── */}
+      {activeTab === 'settings' && (
+        <SettingsScreen
+          role={role}
+          roleLabel={roleLabel}
+          userProfile={userProfile}
+          tenantId={tenantId}
+          uid={user?.uid}
+          onOpenProfile={() => setActiveTab('profile')}
+        />
       )}
 
       {/* ── HISTORY TAB ── */}
