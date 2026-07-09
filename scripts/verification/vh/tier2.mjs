@@ -590,73 +590,80 @@ export const LEGS = [
         return btns.findIndex((b) => b.getAttribute('data-testid') === id);
       }, tid);
 
+      let mover, other; // assigned in the writer context, used by the reader
+      // WRITER stays OPEN until the reader confirms persistence — closing it
+      // early strands the fire-and-forget navOrder write in its IndexedDB
+      // before ACK (the t1-nav-drag-reorder lesson).
       const ctx = await newLegContext(browser);
+      let fresh = null;
       try {
         const p = ctx.page;
         await login(p, 'agent1');
         await p.locator(tsel(AWARDS)).first().waitFor({ state: 'attached', timeout: 15_000 });
         await p.waitForTimeout(600);
 
-        // Pre-state: Recognition renders [Leaderboard, Awards, Career] → Awards before Career.
-        const awardsBefore = await orderIndex(p, AWARDS);
-        const careerBefore = await orderIndex(p, CAREER);
-        if (!(awardsBefore >= 0 && careerBefore >= 0 && awardsBefore < careerBefore)) {
-          throw new Error(`precondition: expected Awards before Career in Recognition (awards=${awardsBefore}, career=${careerBefore}).`);
-        }
+        // ORDER-RELATIVE design (no absolute precondition): whichever of
+        // Awards/Career currently renders FIRST is the mover — immune to
+        // navOrder residue from earlier legs.
+        const aIdx = await orderIndex(p, AWARDS);
+        const cIdx = await orderIndex(p, CAREER);
+        if (aIdx < 0 || cIdx < 0) throw new Error(`precondition: Awards/Career rows absent (awards=${aIdx}, career=${cIdx}).`);
+        mover = aIdx < cIdx ? AWARDS : CAREER;
+        other = aIdx < cIdx ? CAREER : AWARDS;
 
-        // Focus Awards and move it down one slot within its section.
-        await p.locator(tsel(AWARDS)).focus();
+        // Focus the mover and move it down one slot within its section.
+        await p.locator(tsel(mover)).focus();
         await p.keyboard.press('Alt+ArrowDown');
         await p.waitForTimeout(400);
 
-        // aria-live announcement (this is the D2-specific assertion that fails pre-deploy).
+        // aria-live announcement (the D2-specific assertion that fails pre-deploy).
         const live = await p.locator(tsel('nav-reorder-live')).innerText().catch(() => '');
-        if (!/Awards moved to position 3 of 3 in Recognition/i.test(live)) {
+        if (!/moved to position \d+ of \d+ in Recognition/i.test(live)) {
           await shot(p, 'FAIL-t2-d2-keyboard-reorder');
           throw new Error(`D2 aria-live not announced (deploy predates D2?). Got nav-reorder-live="${live.replace(/\s+/g, ' ').slice(0, 160)}".`);
         }
-        // Visual order changed: Career now precedes Awards.
-        const awardsAfter = await orderIndex(p, AWARDS);
-        const careerAfter = await orderIndex(p, CAREER);
-        if (!(careerAfter < awardsAfter)) {
-          throw new Error(`D2 visual reorder did not apply: expected Career before Awards (career=${careerAfter}, awards=${awardsAfter}).`);
+        // Visual order changed: the other row now precedes the mover.
+        const moverAfter = await orderIndex(p, mover);
+        const otherAfter = await orderIndex(p, other);
+        if (!(otherAfter < moverAfter)) {
+          throw new Error(`D2 visual reorder did not apply: expected ${other} before ${mover} (got ${otherAfter} vs ${moverAfter}).`);
         }
         await shot(p, 't2-d2-reordered');
+        // Writer stays open — give the write time to reach the server.
+        await p.waitForTimeout(3000);
+
+        // READER: fresh context, empty localStorage mirror — a persisted order
+        // can only come from the Firestore prefs/app.navOrder reconcile.
+        fresh = await newLegContext(browser);
+        const pf = fresh.page;
+        await login(pf, 'agent1');
+        await pf.locator(tsel(mover)).first().waitFor({ state: 'attached', timeout: 15_000 });
+        await pf.waitForFunction(([m, o]) => {
+          const btns = [...document.querySelectorAll('.sidebar-link')];
+          const mi = btns.findIndex((b) => b.getAttribute('data-testid') === m);
+          const oi = btns.findIndex((b) => b.getAttribute('data-testid') === o);
+          return mi >= 0 && oi >= 0 && oi < mi; // other before mover => persisted
+        }, [mover, other], { timeout: 15_000 }).catch(() => { throw new Error('D2 persistence: reordered order did not survive a fresh-context re-login (Firestore navOrder reconcile).'); });
+        await shot(pf, 't2-d2-persisted');
+
+        // Restore the pre-leg order via keyboard in the reader (both contexts
+        // stay open through the flush so the revert write ACKs too).
+        await pf.locator(tsel(mover)).focus();
+        await pf.keyboard.press('Alt+ArrowUp');
+        await pf.waitForFunction(([m, o]) => {
+          const btns = [...document.querySelectorAll('.sidebar-link')];
+          const mi = btns.findIndex((b) => b.getAttribute('data-testid') === m);
+          const oi = btns.findIndex((b) => b.getAttribute('data-testid') === o);
+          return mi >= 0 && oi >= 0 && mi < oi; // mover back above other => restored
+        }, [mover, other], { timeout: 10_000 }).catch(() => { throw new Error('D2 restore: could not move the row back up.'); });
+        await pf.waitForTimeout(4000); // restore-write flush headroom
+        assertLegHygiene(fresh);
         assertLegHygiene(ctx);
       } finally {
+        if (fresh) await fresh.context.close();
         await ctx.context.close();
       }
-
-      // FRESH context: the localStorage mirror is empty, so a persisted order can only
-      // come from the Firestore prefs/app.navOrder reconcile — proves the commit stuck.
-      const fresh = await newLegContext(browser);
-      try {
-        const p = fresh.page;
-        await login(p, 'agent1');
-        await p.locator(tsel(AWARDS)).first().waitFor({ state: 'attached', timeout: 15_000 });
-        // Allow the background getUserPrefs reconcile to apply the saved order.
-        await p.waitForFunction(() => {
-          const btns = [...document.querySelectorAll('.sidebar-link')];
-          const a = btns.findIndex((b) => b.getAttribute('data-testid') === 'agent-tab-awards');
-          const c = btns.findIndex((b) => b.getAttribute('data-testid') === 'agent-tab-career');
-          return a >= 0 && c >= 0 && c < a; // Career before Awards ⇒ persisted
-        }, { timeout: 12_000 }).catch(() => { throw new Error('D2 persistence: reordered order did not survive a fresh-context re-login (Firestore navOrder reconcile).'); });
-        await shot(p, 't2-d2-persisted');
-
-        // Restore default order: Awards back above Career (persists the revert).
-        await p.locator(tsel(AWARDS)).focus();
-        await p.keyboard.press('Alt+ArrowUp');
-        await p.waitForFunction(() => {
-          const btns = [...document.querySelectorAll('.sidebar-link')];
-          const a = btns.findIndex((b) => b.getAttribute('data-testid') === 'agent-tab-awards');
-          const c = btns.findIndex((b) => b.getAttribute('data-testid') === 'agent-tab-career');
-          return a >= 0 && c >= 0 && a < c; // Awards before Career ⇒ restored
-        }, { timeout: 10_000 }).catch(() => { throw new Error('D2 restore: could not return Awards above Career.'); });
-        assertLegHygiene(fresh);
-      } finally {
-        await fresh.context.close();
-      }
-      return 'D2 keyboard reorder: Awards→position 3 of 3 in Recognition (aria-live announced, visual order flipped); persisted across a fresh-context re-login (Firestore navOrder); restored to default in-leg.';
+      return `D2 keyboard reorder: ${mover} moved down in Recognition (aria-live announced, visual order flipped); persisted to a fresh-context re-login (Firestore navOrder, writer held open); pre-leg order restored.`;
     },
   },
 ];

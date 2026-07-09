@@ -315,7 +315,7 @@ export const LEGS = [
         if (restored.join(',') !== before.join(',')) {
           throw new Error(`restore failed: order is ${restored.join(',')}, expected ${before.join(',')}`);
         }
-        await pa.waitForTimeout(2500); // let the restore write flush before teardown
+        await pa.waitForTimeout(5000); // restore-write flush headroom (raced at 2.5s once — left navOrder residue for a later leg)
         await shot(pa, 't1-nav-drag-restored');
         assertLegHygiene(ctxA);
         return `drag swapped Career↕Awards in Recognition; persisted to a FRESH context (${expected}) via Firestore round-trip (writer held open for ACK); original order restored (${before.join(',')}); hygiene clean`;
