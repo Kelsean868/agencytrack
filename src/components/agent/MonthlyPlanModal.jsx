@@ -7,6 +7,7 @@ import {
 import {
   balanceDelta, autoDistributeRemainder, seedEvenSplit,
   monthEditable, bucketActualsByMonth, monthlyPace, ytdDelta, recoveryPace, absorbShortfall,
+  monthlyVarianceChips,
 } from '../../lib/monthlyPlanMath';
 import { getTodayTT } from '../../utils/dateInputs';
 import { formatCurrency } from '../../utils/formatters';
@@ -162,6 +163,27 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
   const recovery = phase === 'allocating' && targets
     ? recoveryPace(yearPlanAPI, actuals, currentMonthIndex)
     : null;
+
+  // "To finish the month" nudge chips — derived honestly from the pace math above
+  // (item 2.11). Activity-count chips (FFIs / open quotes) aren't derivable here.
+  const monthName = MONTH_NAMES[currentMonthIndex];
+  const varianceChips = phase === 'allocating' && targets
+    ? monthlyVarianceChips({ currentPace, recovery, ytd })
+    : [];
+  const chipLabel = (chip) => {
+    switch (chip.kind) {
+      case 'to-finish-api':
+        return `${formatCurrency(chip.value)} to clear ${monthName}`;
+      case 'to-finish-apps':
+        return `≈ ${chip.value.toFixed(1)} apps to clear ${monthName}`;
+      case 'ytd-behind':
+        return `${formatCurrency(chip.value)} behind pace`;
+      case 'recovery-stretch':
+        return `${formatCurrency(chip.value)}/mo to recover`;
+      default:
+        return '';
+    }
+  };
 
   const deltaAbs = Math.abs(delta);
   const balanceLabel =
@@ -409,6 +431,21 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
                   </div>
                 )}
               </div>
+
+              {/* To-finish-the-month nudge chips (2.11) — honest pace derivations */}
+              {varianceChips.length > 0 && (
+                <div className="flex flex-wrap gap-2" data-testid="monthly-variance-chips">
+                  {varianceChips.map((chip) => (
+                    <span
+                      key={chip.key}
+                      data-testid={`variance-chip-${chip.kind}`}
+                      className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-ink"
+                    >
+                      {chipLabel(chip)}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               {/* Month target grid */}
               <div>

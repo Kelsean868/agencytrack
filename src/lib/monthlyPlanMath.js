@@ -327,3 +327,41 @@ export function absorbShortfall(targets, anchorAPI, actualByMonth, currentMonthI
 
   return next;
 }
+
+/**
+ * monthlyVarianceChips — textual "to finish the month" nudges (item 2.11),
+ * derived HONESTLY from the pace math the Monthly Plan modal already computes.
+ * Returns structured descriptors (numbers, not formatted strings) so the caller
+ * owns TTD/apps formatting and the derivation stays unit-testable.
+ *
+ * Kinds emitted (only when their source figure is meaningful):
+ *   - 'to-finish-api'    value = currentPace.toFinishAPI   (behind on this month)
+ *   - 'to-finish-apps'   value = currentPace.toFinishApps  (apps to finish month)
+ *   - 'ytd-behind'       value = |ytd|                     (behind pace YTD)
+ *   - 'recovery-stretch' value = recovery.pacePerMonth     (stretch recovery pace)
+ *
+ * The mockup's activity-count chips ("Book 2 more FFIs", "Convert the 3 open
+ * quotes") are NOT derivable here — no FFI/open-quote figures reach this modal —
+ * so they are skip-logged (2.11 report), not fabricated.
+ *
+ * @returns {Array<{ key:string, kind:string, value:number }>}
+ */
+export function monthlyVarianceChips({ currentPace, recovery, ytd } = {}) {
+  const chips = [];
+  const toFinishAPI = parseFloat(currentPace?.toFinishAPI) || 0;
+  const toFinishApps = parseFloat(currentPace?.toFinishApps) || 0;
+  if (toFinishAPI > 0) {
+    chips.push({ key: 'to-finish-api', kind: 'to-finish-api', value: toFinishAPI });
+    if (toFinishApps > 0) {
+      chips.push({ key: 'to-finish-apps', kind: 'to-finish-apps', value: toFinishApps });
+    }
+  }
+  const ytdNum = parseFloat(ytd);
+  if (Number.isFinite(ytdNum) && ytdNum < 0) {
+    chips.push({ key: 'ytd-behind', kind: 'ytd-behind', value: Math.abs(ytdNum) });
+  }
+  if (recovery?.isStretch && (parseFloat(recovery?.pacePerMonth) || 0) > 0) {
+    chips.push({ key: 'recovery-stretch', kind: 'recovery-stretch', value: parseFloat(recovery.pacePerMonth) });
+  }
+  return chips;
+}

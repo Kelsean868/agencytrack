@@ -189,6 +189,35 @@ export function sumProductCommission(products) {
   return (products ?? []).reduce((s, p) => s + num(p.commission), 0);
 }
 
+// Balance epsilon (TTD) — Σ products within this of the line target reads BALANCED.
+// Mirrors the mockup's `Math.abs(bal) < 2500` threshold (mn-merge.jsx ProductDrill).
+export const PRODUCT_BALANCE_EPSILON = 2500;
+
+// productBalance — the mockup's ProductDrill balance viz (BALANCED / OVER / UNDER
+// pill + segmented sum-bar). Pure so the state boundaries are unit-testable.
+//   sum      = Σ product.commission
+//   delta    = sum − lineTarget  (>0 over-allocated, <0 under)
+//   state    = 'balanced' (|delta| < EPSILON) | 'over' | 'under'
+//   segments = per-product width fractions of max(target, sum, 1)
+// NOTE: in this app's commission-canonical model a DRILLED line keeps
+// line.commission === Σ products by construction, so the live pill reads
+// BALANCED; the segmented sum-bar is the always-useful part (per-product split).
+export function productBalance(products, lineTarget) {
+  const list = products ?? [];
+  const sum = sumProductCommission(list);
+  const target = num(lineTarget);
+  const delta = sum - target;
+  const state = Math.abs(delta) < PRODUCT_BALANCE_EPSILON
+    ? 'balanced'
+    : delta > 0 ? 'over' : 'under';
+  const denom = Math.max(target, sum, 1);
+  const segments = list.map((p) => ({
+    commission: num(p.commission),
+    pct: (num(p.commission) / denom) * 100,
+  }));
+  return { sum, target, delta, state, segments };
+}
+
 // Σ derived product API (Σ commission ÷ rate).
 export function sumProductAPI(products) {
   return (products ?? []).reduce((s, p) => s + productAPI(p), 0);

@@ -230,7 +230,11 @@ describe('MoneyNeedsAllocator — Send → Game Plan', () => {
   it('writes the extended playground payload and continues to game-plan', async () => {
     const onOpenTab = vi.fn();
     render(<MoneyNeedsAllocator worksheet={makeWorksheet()} onOpenTab={onOpenTab} />);
+    // 2.11: Send opens the confirm sheet FIRST — no write yet.
     fireEvent.click(screen.getByTestId('alloc-send-btn'));
+    expect(localStorage.getItem('agencytrack-playground-income-goal')).toBeNull();
+    const sheet = await screen.findByTestId('alloc-confirm-sheet');
+    fireEvent.click(within(sheet).getByTestId('alloc-confirm-send'));
 
     const stored = JSON.parse(localStorage.getItem('agencytrack-playground-income-goal'));
     expect(stored.value).toBe(100000);              // #738 contract preserved
@@ -314,10 +318,55 @@ describe('MoneyNeedsAllocator — AllocationSummaryCard', () => {
     const card = screen.getByTestId('alloc-summary-card');
     expect(card.textContent).toMatch(/Allocate above/i);
   });
+});
 
-  it('ack modal (no regression) still shows the line-level subset from buildAllocationSummary', async () => {
-    render(<MoneyNeedsAllocator worksheet={makeSummaryWorksheet()} onOpenTab={vi.fn()} />);
+describe('MoneyNeedsAllocator — pre-send confirm sheet (2.11)', () => {
+  it('does not write until confirm; Cancel dismisses without writing', async () => {
+    render(<MoneyNeedsAllocator worksheet={makeWorksheet()} onOpenTab={vi.fn()} />);
     fireEvent.click(screen.getByTestId('alloc-send-btn'));
+    const sheet = await screen.findByTestId('alloc-confirm-sheet');
+    // Itemized per-line summary present (Life seeded > 0)
+    expect(within(sheet).getByTestId('confirm-line-life')).toBeTruthy();
+    // No write yet
+    expect(localStorage.getItem('agencytrack-playground-income-goal')).toBeNull();
+    // Cancel → no write, sheet gone
+    fireEvent.click(within(sheet).getByTestId('alloc-confirm-cancel'));
+    await waitFor(() => expect(screen.queryByTestId('alloc-confirm-sheet')).toBeNull());
+    expect(localStorage.getItem('agencytrack-playground-income-goal')).toBeNull();
+  });
+
+  it('writes the byte-identical payload only after confirm', async () => {
+    render(<MoneyNeedsAllocator worksheet={makeWorksheet()} onOpenTab={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('alloc-send-btn'));
+    const sheet = await screen.findByTestId('alloc-confirm-sheet');
+    fireEvent.click(within(sheet).getByTestId('alloc-confirm-send'));
+    const stored = JSON.parse(localStorage.getItem('agencytrack-playground-income-goal'));
+    // Same #738 contract + extension the direct path produced
+    expect(stored.value).toBe(100000);
+    expect(stored.preTaxAlreadyApplied).toBe(true);
+    expect(stored.allocation.lines.life.commission).toBe(35000);
+    expect(stored.allocation.lines.life.api).toBeCloseTo(100000);
+  });
+});
+
+describe('MoneyNeedsAllocator — ProductDrill balance viz (2.11)', () => {
+  it('shows a BALANCED pill + sum-bar after drilling Life', async () => {
+    render(<MoneyNeedsAllocator worksheet={makeWorksheet()} />);
+    fireEvent.click(screen.getByTestId('alloc-drill-toggle-life'));
+    await screen.findByTestId('alloc-drill-life');
+    // Commission-canonical: drilled line stays balanced by construction.
+    expect(screen.getByTestId('alloc-balance-pill-life').textContent).toMatch(/BALANCED/);
+    expect(screen.getByTestId('alloc-sum-bar-life')).toBeTruthy();
+  });
+});
+
+describe('MoneyNeedsAllocator — ack modal (after confirm)', () => {
+  it('ack modal (no regression) still shows the line-level subset from buildAllocationSummary', async () => {
+    const worksheet = makeWorksheet({ firstYearCommissionsTargets: { life: 35000, ah: 10000, property: 0, motor: 0 } });
+    render(<MoneyNeedsAllocator worksheet={worksheet} onOpenTab={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('alloc-send-btn'));
+    const sheet = await screen.findByTestId('alloc-confirm-sheet');
+    fireEvent.click(within(sheet).getByTestId('alloc-confirm-send'));
     const ack = await screen.findByTestId('alloc-ack-modal');
     // Ack renders Life + A&H (both seeded > 0); General (0) is filtered out.
     expect(within(ack).getByText('Life')).toBeTruthy();

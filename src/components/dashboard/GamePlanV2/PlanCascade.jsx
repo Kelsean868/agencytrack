@@ -2,6 +2,63 @@ import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { formatCurrency } from '../../../utils/formatters';
 import { statusToken } from '../../../lib/policyStatusTokens';
+import { allocationSegments, miniMonthBuckets } from '../../../lib/planCascadeViz';
+
+// AllocationBar — segmented split of the planned annual API across the funded
+// loop lines + a legend of dot · label · % chips (design: gameplan-pages.jsx).
+function AllocationBar({ lines, lineKeys }) {
+  const { segments } = allocationSegments(lines, lineKeys);
+  if (segments.length === 0) return null;
+  return (
+    <div className="mt-2" data-testid="cascade-allocation-bar">
+      <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full">
+        {segments.map((s) => (
+          <div
+            key={s.key}
+            className={s.dot}
+            style={{ width: `${s.pct}%` }}
+            data-testid={`cascade-alloc-seg-${s.key}`}
+            aria-hidden="true"
+          />
+        ))}
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+        {segments.map((s) => (
+          <div key={s.key} className="flex items-center gap-1" data-testid={`cascade-alloc-legend-${s.key}`}>
+            <span className={`h-2 w-2 shrink-0 rounded-sm ${s.dot}`} aria-hidden="true" />
+            <span className="font-mono text-[9px] font-bold text-ink">{s.label}</span>
+            <span className="font-mono text-[9px] text-ink-muted">{Math.round(s.pct)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// MiniMonthStrip — 12 tiny bars: past/current show actual, future shows target
+// (design: gameplan-pages.jsx). Current month is gold, settled teal, future muted.
+function MiniMonthStrip({ targets, actuals, currentMonthIndex }) {
+  const buckets = miniMonthBuckets(targets, actuals, currentMonthIndex);
+  return (
+    <div className="mt-2 flex h-11 items-end gap-0.5" data-testid="cascade-mini-months" aria-hidden="true">
+      {buckets.map((b) => (
+        <div key={b.monthIndex} className="flex flex-1 flex-col items-center">
+          <div
+            className={`w-full rounded-sm ${
+              b.kind === 'future'
+                ? 'bg-surface-muted'
+                : b.kind === 'current'
+                ? 'bg-gold'
+                : 'bg-primary'
+            }`}
+            style={{ height: `${b.heightPct}%` }}
+            data-testid={`cascade-month-${b.monthIndex}`}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function formatSeal(date) {
   if (!date) return '';
@@ -52,9 +109,14 @@ export default function PlanCascade({
   yearPlanEnabled,
   yearPlanTotalAPI,
   yearPlanFilled,
+  yearPlanLines = null,
+  lineKeys,
   monthlyPlanFilled = false,
   monthlyPlanTotal = 0,
   monthlyYtdDelta = 0,
+  monthlyTargets = [],
+  monthlyActuals = [],
+  currentMonthIndex = 0,
   committed = false,
   committedAt = null,
 }) {
@@ -87,6 +149,9 @@ export default function PlanCascade({
               )}
             </div>
           </div>
+        )}
+        {yearPlanEnabled && yearPlanFilled && (
+          <AllocationBar lines={yearPlanLines} lineKeys={lineKeys} />
         )}
       </div>
 
@@ -124,6 +189,13 @@ export default function PlanCascade({
                 : <span className="font-sans text-sm font-medium text-ink-muted">Set in your plan</span>}
             </div>
           </div>
+          {monthlyPlanFilled && (
+            <MiniMonthStrip
+              targets={monthlyTargets}
+              actuals={monthlyActuals}
+              currentMonthIndex={currentMonthIndex}
+            />
+          )}
         </div>
       ) : (
         <ComingRung step="Step 2 · Monthly Plan" title="Monthly Plan" desc="Broken into 12 months" />
