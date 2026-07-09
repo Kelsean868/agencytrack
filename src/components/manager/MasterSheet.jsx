@@ -166,7 +166,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
     users.forEach((u) => {
       m[u.id] = {
         unitName: u.unitName ?? u.unit ?? null,
-        level:    u.level ?? u.tier ?? null,
+        level:    u.levelTitle ?? u.careerLevel ?? null,
       };
     });
     return m;
