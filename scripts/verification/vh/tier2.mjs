@@ -13,7 +13,7 @@
  *                      live behind the `sidebar-ws-toggle-team` toggle.
  */
 import { newLegContext, login, assertLegHygiene, currencyRe } from './vh-helpers.mjs';
-import { W } from './expectations.mjs';
+import { DAILY, W } from './expectations.mjs';
 import { selectReactOption } from '../lib/walk-helpers.mjs';
 
 // ── tier2-private helpers ─────────────────────────────────────────────────────
@@ -489,7 +489,7 @@ export const LEGS = [
   {
     id: 't2-daily-anchor-strip',
     role: 'agent1',
-    desc: 'Agent Daily Log: WTD anchor strip renders weekly API floor TTD 4,800; WTD sums DAILY-capture docs (none seeded ⇒ 0). No streak celebration on open/reload (daily-streak fires only post-save at a milestone; seed has no daily docs). Reports expectation deviation (brief expected 3,000 = weekly-draft, a different data path).',
+    desc: 'Agent Daily Log: anchor strip renders weekly API floor TTD 4,800 and WTD = sum of seeded dailyActivity docs (A1b family, DAILY.wtd). Celebration asserted absent unless DAILY.milestoneReachable (week-scoped streak: milestone 5 only reachable Fri/Sat; 10/20 unreachable — banked VH finding).',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser);
       try {
@@ -503,8 +503,8 @@ export const LEGS = [
         await mustText(p, currencyRe(4800), 'weekly API floor 4,800', 'dcv2-anchor-strip');
         // WTD sums daily-capture docs; seed created none ⇒ honest 0 (data-wtd-api="0").
         const wtd = await p.locator(tsel('dcv2-anchor-strip')).getAttribute('data-wtd-api');
-        if (wtd !== '0') {
-          throw new Error(`daily anchor WTD expected 0 (no seeded daily-capture docs), got data-wtd-api="${wtd}".`);
+        if (wtd !== String(DAILY.wtd)) {
+          throw new Error(`daily anchor WTD expected ${DAILY.wtd} (A1b seeded daily docs), got data-wtd-api="${wtd}".`);
         }
         // Fire-once semantics: no celebration overlay on open.
         if (await p.locator(tsel('daily-streak-celebration')).count()) {
@@ -519,7 +519,7 @@ export const LEGS = [
         }
         await shot(p, 't2-daily-anchor');
         assertLegHygiene(ctx);
-        return 'Daily anchor strip: floor TTD 4,800 asserted; WTD=0 (daily-capture docs, none seeded — brief\'s 3,000 is the weekly-draft, a separate path: EXPECTATION DEVIATION reported). Streak celebration correctly absent on open+reload (daily-streak needs seeded daily docs to reach a milestone).';
+        return `Daily anchor strip: floor TTD 4,800 + WTD ${DAILY.wtd} (${DAILY.days} seeded daily docs); celebration correctly absent on open+reload (streak-if-logged-today=${DAILY.streakAfterLoggingToday}, milestone 5 unreachable today).`;
       } finally {
         await ctx.context.close();
       }

@@ -151,3 +151,16 @@ export const EXPECT = {
 
   prodProjectMarker: 'agencytrack-2a610', // must appear in ZERO network requests
 };
+
+// Daily capture (A1b seed family): WTD = sum of seeded dailyActivity
+// newBusiness.api for this week's weekdays strictly before today (Sun skipped).
+// Mirrors seed-fixtures.mjs DAY_API exactly.
+const DAY_API = { 1: 800, 2: 1200, 3: 1000, 4: 900, 5: 600, 6: 500 };
+export const DAILY = (() => {
+  const dow = new Date(`${TODAY}T12:00:00Z`).getUTCDay();
+  let wtd = 0, days = 0;
+  for (let d = 1; d < dow; d++) { wtd += DAY_API[d]; days += 1; }
+  // Streak if the smoke logs today: elapsed weekdays + today (week-scoped).
+  const streakAfterLoggingToday = dow === 0 ? 0 : days + 1;
+  return { wtd, days, streakAfterLoggingToday, milestoneReachable: streakAfterLoggingToday >= 5 };
+})();

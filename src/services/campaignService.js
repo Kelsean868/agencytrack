@@ -164,13 +164,47 @@ async function notifyCampaignParticipants(tenantId, campaign) {
   );
 }
 
-export async function getCampaignSubmissions(tenantId, startDate, endDate) {
-  const q = query(
-    collection(db, `tenants/${tenantId}/submissions`),
+/**
+ * Campaign-window submissions, scoped to what the caller's rules arm can prove.
+ *
+ * The submissions `list` rule requires role-scoped queries: an agent must
+ * constrain where('agentId','==',uid), a unit_manager where('unitId','==',uid),
+ * a branch_manager where('branchId','==',claim). The previous unscoped
+ * tenant-wide query was DENIED for all three (only TA/SM/PA could list), and
+ * callers' catch-fallbacks rendered standings as TTD 0 / "no data".
+ *
+ * Scoped shapes ride the existing composites (agentId|unitId|branchId +
+ * weekStarting); `status` is filtered client-side for scoped calls so no new
+ * 3-field composite is needed.
+ *
+ * @param {{agentId?: string, unitId?: string, branchId?: string}} scope —
+ *   pass exactly one key for agent/UM/BM callers; omit for TA/SM/PA.
+ */
+export async function getCampaignSubmissions(tenantId, startDate, endDate, scope = {}) {
+  const clauses = [
     where('weekStarting', '>=', startDate),
     where('weekStarting', '<=', endDate),
-    where('status', '==', 'submitted')
-  );
+  ];
+  const scoped = Boolean(scope.agentId || scope.unitId || scope.branchId);
+  if (scope.agentId)       clauses.push(where('agentId', '==', scope.agentId));
+  else if (scope.unitId)   clauses.push(where('unitId', '==', scope.unitId));
+  else if (scope.branchId) clauses.push(where('branchId', '==', scope.branchId));
+  else clauses.push(where('status', '==', 'submitted'));
+  const q = query(collection(db, `tenants/${tenantId}/submissions`), ...clauses);
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return scoped ? rows.filter((r) => r.status === 'submitted') : rows;
+}
+
+/**
+ * Resolve the caller's getCampaignSubmissions scope from auth context.
+ * Mirrors the rules list arms exactly; TA/SM/PA get the unscoped (allowed)
+ * query. producing-manager submissions carry the manager's own unitId/branchId,
+ * so UM/BM scopes include their own producing rows.
+ */
+export function campaignSubsScopeFor(role, uid, branchId) {
+  if (role === 'branch_manager') return branchId ? { branchId } : { agentId: uid };
+  if (role === 'unit_manager') return { unitId: uid };
+  if (role === 'agent') return { agentId: uid };
+  return {};
 }

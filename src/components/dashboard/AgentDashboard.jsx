@@ -425,7 +425,11 @@ export default function AgentDashboard() {
         const subsMap = {};
         await Promise.all(
           camps.map(async (c) => {
-            const subs = await getCampaignSubmissions(tenantId, c.startDate, c.endDate).catch(() => []);
+            // Own-scoped read: the submissions list rule only allows an agent
+            // query constrained to their own agentId. Progress renders from own
+            // rows; cross-agent ranks stay unavailable for agents by design.
+            const subs = await getCampaignSubmissions(tenantId, c.startDate, c.endDate, { agentId: user.uid })
+              .catch((e) => { console.error('[AgentDashboard] campaign submissions load failed:', e); return []; });
             subsMap[c.id] = subs;
           })
         );

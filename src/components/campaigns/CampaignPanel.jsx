@@ -7,6 +7,7 @@ import useToast from '../../hooks/useToast';
 import {
   getCampaigns, createCampaign, updateCampaign, deleteCampaign,
   getCampaignSubmissions,
+  campaignSubsScopeFor,
 } from '../../services/campaignService';
 import { getTenantUsers } from '../../services/managerService';
 import { getPersistencyMapForYear } from '../../services/persistencyService';
@@ -118,7 +119,7 @@ function ProgressTable({ campaign, submissions, allUsers }) {
 }
 
 // ─── Campaign list row ────────────────────────────────────────────────────────
-function CampaignRow({ campaign, canEdit, onEdit, onDelete, allUsers, tenantId }) {
+function CampaignRow({ campaign, canEdit, onEdit, onDelete, allUsers, tenantId, subsScope }) {
   const [expanded, setExpanded] = useState(false);
   const [subs, setSubs] = useState([]);
   const [subsLoading, setSubsLoading] = useState(false);
@@ -157,7 +158,7 @@ function CampaignRow({ campaign, canEdit, onEdit, onDelete, allUsers, tenantId }
     if (!expanded && !dataLoaded && tenantId) {
       setSubsLoading(true);
       try {
-        const data = await getCampaignSubmissions(tenantId, campaign.startDate, campaign.endDate);
+        const data = await getCampaignSubmissions(tenantId, campaign.startDate, campaign.endDate, subsScope);
         setSubs(data);
         // Read-light persistency for the gate DISPLAY: one batched `in` query
         // per spanned year (no new index — see getPersistencyMapForYear). Only
@@ -188,7 +189,7 @@ function CampaignRow({ campaign, canEdit, onEdit, onDelete, allUsers, tenantId }
       finally { setSubsLoading(false); }
     }
     setExpanded((v) => !v);
-  }, [expanded, dataLoaded, campaign, tenantId, tiered, participants]);
+  }, [expanded, dataLoaded, campaign, tenantId, tiered, participants, subsScope]);
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -839,6 +840,11 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
 // ─── Main panel ───────────────────────────────────────────────────────────────
 export default function CampaignPanel() {
   const { user, userProfile, role, tenantId } = useAuth();
+  // Rules-provable submissions scope for standings reads (see campaignService).
+  const subsScope = useMemo(
+    () => campaignSubsScopeFor(role, user?.uid, userProfile?.branchId),
+    [role, user?.uid, userProfile?.branchId],
+  );
   const [campaigns, setCampaigns] = useState([]);
   const [allUsers, setAllUsers]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -1038,6 +1044,7 @@ export default function CampaignPanel() {
               onDelete={(camp) => setDeletingId(camp.id)}
               allUsers={allUsers}
               tenantId={tenantId}
+              subsScope={subsScope}
             />
           ))}
         </div>

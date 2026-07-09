@@ -349,6 +349,40 @@ async function main() {
     ...subBody(3000, 1, true),
   }, `submissions/${uid.a1}_${W0} DRAFT api=3000`);
 
+  // ── A1b. Daily capture — A1 dailyActivity docs for this week's elapsed
+  // weekdays (Mon..yesterday, Sundays never logged). Drives the DailyAnchorStrip
+  // WTD (sumWeekApi over newBusiness.api) + count-strip chips + streak.
+  // NOTE: computeStreak is week-scoped and skips Sundays, so max streak = 6 and
+  // the 5-day milestone is only reachable Fri/Sat (10/20 milestones are
+  // unreachable dead config — banked VH finding).
+  console.log('\n── A1b: daily activity (agent-1, this week) ──');
+  const DAY_API = { 1: 800, 2: 1200, 3: 1000, 4: 900, 5: 600, 6: 500 }; // Mon..Sat
+  {
+    const todayD = new Date(`${TODAY}T12:00:00Z`);
+    for (let dow = 1; dow < todayD.getUTCDay(); dow++) {  // strictly before today, skip Sun(0)
+      const date = addDays(W0, dow);
+      const api = DAY_API[dow];
+      await put(T.collection('users').doc(uid.a1).collection('dailyActivity').doc(date), {
+        version: 1, weeklyReportVersion: 2,
+        date, weekStarting: W0, agentId: uid.a1, agentName: NAMES.a1,
+        prospectingLettersSent: 1, seminarsConducted: 0, dials: 12, telContacts: 8,
+        f2fAttempts: 4, qualifiedApproaches: 3,
+        socialPostsTotal: 1, socialEngagementTotal: 6, socialInboxEnquiries: 0, namesFromSocial: 0,
+        socialPlatformBreakdown: { facebook: 1, instagram: 0, whatsapp: 0, linkedin: 0 },
+        appointmentsSet: 2, ffisScheduled: 2, ffiConducted: 1, solutionPresentations: 1,
+        newCIBooked: 1, oldCIBooked: 0, ciConducted: 1,
+        newBusiness: { apps: dow === 2 ? 1 : 0, api }, pppIncreases: { apps: 0, apiIncrease: 0 },
+        lumpsums: { grossAmount: 0 }, livesSold: dow === 2 ? 1 : 0,
+        policiesDelivered: 0, serviceContacts: 1,
+        newNamesAdded: 2, oldNamesWorked: 1,
+        officeHours: 3, fieldHours: 5,
+        hoursWorked: null, wins: '', blockers: '', notes: 'VH fixture',
+        isCatchUp: false, catchUpStartDate: null, catchUpEndDate: null,
+        createdAt: tsAt(date, 23), updatedAt: tsAt(date, 23),
+      }, `users/${uid.a1}/dailyActivity/${date} api=${api}`);
+    }
+  }
+
   // ── A2. WARs ──
   console.log('\n── A2: manager weekly reports ──');
   const warDoc = (who, name, role, rank, weekStart, status, vals) => ({

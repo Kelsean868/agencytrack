@@ -9,7 +9,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({
     user: { uid: 'u1' },
-    userProfile: { name: 'Test Manager', email: 'manager@example.com' },
+    userProfile: { name: 'Test Manager', email: 'manager@example.com', branchId: 'branch-7' },
     role: 'branch_manager',
     tenantId: 'tenant-test',
   }),
@@ -19,13 +19,18 @@ vi.mock('../../../hooks/useToast', () => ({
   default: () => ({ show: vi.fn(), dismiss: vi.fn() }),
 }));
 
-vi.mock('../../../services/campaignService', () => ({
-  getCampaigns: vi.fn(),
-  createCampaign: vi.fn(),
-  updateCampaign: vi.fn(),
-  deleteCampaign: vi.fn(),
-  getCampaignSubmissions: vi.fn(),
-}));
+vi.mock('../../../services/campaignService', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    getCampaigns: vi.fn(),
+    createCampaign: vi.fn(),
+    updateCampaign: vi.fn(),
+    deleteCampaign: vi.fn(),
+    getCampaignSubmissions: vi.fn(),
+    // Real scope resolver — the scope-passing regression test asserts its output.
+    campaignSubsScopeFor: actual.campaignSubsScopeFor,
+  };
+});
 
 vi.mock('../../../services/managerService', () => ({
   getTenantUsers: vi.fn(),
@@ -161,6 +166,18 @@ describe('CampaignPanel — 2.9 tiered standings (display-only)', () => {
     expect(screen.queryByText(/participant progress/i)).toBeNull();
     // Persistency gate strip renders (display).
     expect(screen.getByText(/persistency gate/i)).toBeInTheDocument();
+  });
+
+  it("expanding a row requests submissions with the caller's rules-provable scope (BM -> branchId) — VH Phase-C regression", async () => {
+    getCampaigns.mockResolvedValue([QUALIFY_CAMPAIGN]);
+    render(<CampaignPanel />);
+
+    fireEvent.click(await screen.findByText('Q1 Fast Start'));
+
+    await waitFor(() => expect(getCampaignSubmissions).toHaveBeenCalled());
+    expect(getCampaignSubmissions).toHaveBeenCalledWith(
+      'tenant-test', ACTIVE_START, ACTIVE_END, { branchId: 'branch-7' },
+    );
   });
 
   it('a placement campaign expands into the podium', async () => {
