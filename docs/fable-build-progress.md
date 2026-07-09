@@ -9,9 +9,9 @@
 
 | Field | Value |
 |---|---|
-| Current tier | **Tier 1 COMPLETE (1.1–1.6 + 1.1b) — Tier 2 next (continuous, no checkpoint)** |
+| Current tier | **Tier 2 COMPLETE (2.1–2.11) — Tier 3 next (continuous)** |
 | Tier gate | Tier-0 checkpoint PASSED — operator ran the live-staging browser smoke (PASS-WITH-CAVEATS), 2 focus-return regressions fixed + approved; Tier 1 building |
-| Last session | 2026-07-08 (session 5, Fable orchestrator) — 1.6 + 1.1b landed; CreateUserDrawer retrofit; staging functions deployed |
+| Last session | 2026-07-09 (session 5 cont., Fable orchestrator) — Tier 2 complete end-to-end; Tier 3 opening at 3.1 |
 | Staging branch base | `c3b788d0` (main @ brief landing); Tier-0 HEAD `d3178618`; post-checkpoint remediation HEAD — see session log |
 
 ## Promotion-review flags (rules / functions / indexes — ALL need human review before prod)
@@ -103,6 +103,22 @@
 
 ---
 
+### Tier 2 summary — COMPLETE 2026-07-09 (continuous into Tier 3)
+
+**All 11 items done.** 2 promotion-gated NEEDS-HUMAN-REVIEW (2.1 WAR reviewer rules arm · 2.2 recruitingCandidates new collection — both emulator-tested and deployed to staging); 9 DONE-IN-STAGING. One item (2.3) was a stale-audit finding — the feature had shipped in May (PR #381); coverage added instead of a rebuild. 2.11's rev-5 fix spec: all 8 fixes verified already-shipped, none blindly re-applied.
+
+**Work commits:** `e250ecc2`+`4f2c9052` 2.1 · `f9829645`+`82ce5631` 2.2 · `a88060a5` 2.3 · `b8f7bf8c` 2.4 · `9c08c40b`+`19f528eb` 2.5 (+engine guard) · `e2c4e7fb` 2.6 · `4557155c` 2.7 · `2a2deafd`+`315bba28` 2.8 (+notify restoration) · `e3b22fcb` 2.9 · `858be570` 2.10 · `51e814b3` 2.11. Gates green at every commit; suite **4516 → 4813** across the tier (+~300 net).
+
+**Live smokes (staging):** 2.1 team-wars strip + in-query 2/2 · 2.2 full write-read-verify (create→advance→archive) 6/6 · 2.4 settings/theme round-trip 6/6 — all clean-console. Other items RTL-verified only: the seed-less staging tenant limits data-dependent legs (History edit path, financing arc/roster, campaigns standings, celebrations). **Banked for operator: seed staging (`scripts/staging/seed-staging.mjs` + submissions/financing fixtures) to deepen the Tier-2/3 review pass.**
+
+**Orchestrator verification catches this tier:** 2.5's new real-engine PDF test caught missing `import React` in both new PDF documents on first run; 2.8's display-only over-application (unwired clause-5.3 notify duty) caught and reversed by ruling; MasterSheet level-field guess corrected in 1.6's verify (careerLevel).
+
+**Hard-stop compliance:** no payout-release/draw-release logic anywhere (2.8 + 2.9 explicitly display-only; the campaigns "Confirm & release" close-flow was NOT built). No prod contact. All firebase commands staging-scoped with explicit `--project` + alias restore.
+
+**Carried observations:** campaigns nested-button DOM warning (pre-existing, surfaced by new tests); goals streak stat card shows milestone not true streak (cosmetic); financing roster read-only drawer omitted (minor); `notifyFinancingAdjustment` staging CF exercised only via unit tests.
+
+---
+
 ## TIER 3 — Net-new surfaces
 
 | Item | Status | Notes |
@@ -171,4 +187,5 @@ SM cross-branch views (Phase 9) · Settings team-defaults cascade · payout-rele
 | 2.8 Financing K9 PaydownArcHero + K7 BM roster (display only) | opus (subagent) | inherited-default | 2026-07-09T00:13 | 2026-07-09T00:52 | 39 min (incl. orchestrator ruling + corrective resume: agent had unwired the shipped clause-5.3 notify duty over-applying the display-only mandate; CF verified notification-only → restoration ordered, landed `315bba28` with lazy cooldown reads + emailQueued honesty) | done |
 | 2.9 Campaigns UI-only (standings/tiers/podium/gate display/projected payouts) | opus (subagent) | inherited-default | 2026-07-09T00:54 | 2026-07-09T01:16 | 22 min | done — payout-release NOT built (hard stop); campaigns rules verified permissive (no flag) |
 | 2.10 Daily Capture anchor strip + streak celebration; Goals celebrations | opus (subagent) | inherited-default | 2026-07-09T01:18 | 2026-07-09T01:44 | 26 min | done |
-| 2.11 Game Plan hub depth + Money Needs enrichments | opus (subagent) | inherited-default | 2026-07-09T01:46 | — | — | in-flight |
+| 2.11 Game Plan hub depth + Money Needs enrichments | opus (subagent) | inherited-default | 2026-07-09T01:46 | 2026-07-09T02:09 | 23 min | done — rev-5 spec: all 8 fixes verified already-shipped |
+| **TIER 2 rollup** | — | — | 2026-07-08T20:47 | 2026-07-09T02:09 | **~5h22m wall-clock · 11 items (+2 orchestrator contract layers, 3 live smokes, 2 verify/fix layers) · ~29 min avg per item** | 11/11 done |
