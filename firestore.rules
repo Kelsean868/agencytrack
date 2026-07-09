@@ -1321,6 +1321,89 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // ── Tier-2 2.2: recruiting pipeline candidates (kanban CRM) ──────────────
+      // /tenants/{tid}/recruitingCandidates/{candidateId}  (auto-id)
+      // Operator ruling: the no-CRM guardrail is LIFTED for this surface only.
+      // Ownership: ownerUid = the manager driving the candidate. Creator must
+      // self-own; an in-scope senior (BM same-branch / SM+ / TA) may edit and
+      // reassign ownerUid (coaching moves). Agents have NO access.
+      // Board reads: UM lists own candidates (ownerUid == uid); BM lists own
+      // branch; SM+ tenant-wide. Equality-only queries — automatic single-field
+      // indexes, NO composite required (client-side sort; boards are tens of
+      // docs). No delete: candidates leave the board via status='archived'.
+      match /recruitingCandidates/{candidateId} {
+
+        function callerBranchId(tenantId) {
+          return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.branchId;
+        }
+
+        // BM is branch-scoped; SM/TA/PA tenant-wide. (Managers only — rank ≥ 2
+        // per roleRank(); UMs act through ownership, not scope.)
+        function seniorInScope() {
+          return getRole() in ['tenant_admin', 'platform_admin', 'sales_manager']
+            || (getRole() == 'branch_manager'
+                && callerBranchId(tenantId) == resource.data.branchId);
+        }
+
+        function validCandidateWrite() {
+          let d = request.resource.data;
+          return d.tenantId == tenantId
+            && d.keys().hasAll([
+                 'tenantId', 'branchId', 'ownerUid', 'ownerName', 'name',
+                 'stage', 'status', 'source', 'referrerName', 'note',
+                 'stageChangedAt', 'lastTouchAt', 'createdAt', 'updatedAt'
+               ])
+            && d.name is string && d.name.size() > 0 && d.name.size() <= 200
+            && d.stage in ['sourced', 'contacted', 'seminar', 'interview',
+                           'assessment', 'offer', 'licensing', 'licensed']
+            && d.status in ['active', 'archived']
+            && d.source is string && d.source.size() <= 200
+            && d.referrerName is string && d.referrerName.size() <= 200
+            && d.note is string && d.note.size() <= 2000
+            && d.ownerUid is string && d.ownerName is string
+            && d.branchId is string;
+        }
+
+        allow create: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() in ['unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin']
+          && request.resource.data.ownerUid == request.auth.uid
+          && validCandidateWrite();
+
+        // Owner, or an in-scope senior (who may also reassign ownerUid).
+        // tenantId + branchId are immutable in v1 (cross-branch transfer is a
+        // future ruling); owner edits may not change ownerUid (no self-transfer).
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
+          && validCandidateWrite()
+          && request.resource.data.branchId == resource.data.branchId
+          && (
+            (resource.data.ownerUid == request.auth.uid
+              && request.resource.data.ownerUid == resource.data.ownerUid)
+            || seniorInScope()
+          );
+
+        allow get: if isSignedIn()
+          && getTenantId() == tenantId
+          && (resource.data.ownerUid == request.auth.uid || seniorInScope());
+
+        // Query-safe arms, mirroring the WAR/rollup split-arm pattern:
+        // UM board: where('ownerUid','==',uid). BM board: where('branchId','==',own).
+        // SM+/TA: tenant-wide.
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.ownerUid == request.auth.uid;
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() == 'branch_manager'
+          && resource.data.branchId == callerBranchId(tenantId);
+        allow list: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() in ['sales_manager', 'tenant_admin', 'platform_admin'];
+
+        allow delete: if false;
+      }
+
       // ── I1.3c-ii: per-manager activity standard overrides ────────────────────
       // /tenants/{tid}/managerActivityStandardOverrides/{managerId}
       // Fields: tenantId, managerId, updatedBy, updatedAt, + partial activity map.
