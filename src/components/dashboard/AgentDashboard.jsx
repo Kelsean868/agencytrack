@@ -869,7 +869,9 @@ export default function AgentDashboard() {
       {activeTab === 'persistency' && <AgentPersistencyTab onViewLapsedPolicies={handleOpenLapsedPolicies} />}
 
       {/* ── PRODUCTION REPORT TAB ── */}
-      {activeTab === 'production-report' && <ProductionReportTab userRole={role} />}
+      {activeTab === 'production-report' && (
+        <ProductionReportTab userRole={role} onDownloadPDF={handleOpenReportModal} generating={generating} />
+      )}
 
       {/* ── REPORT TAB (Tier 1 · 1.2 — live twin of the Performance Report PDF) ── */}
       {activeTab === 'agent-report' && (

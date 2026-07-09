@@ -1,14 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Download, Loader2 } from 'lucide-react';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { getTenantUsers, getAllYTDSubmissions } from '../../services/managerService';
 import { formatCurrency, getUnitDisplayName } from '../../utils/formatters';
+import { getMostRecentSunday } from '../../utils/dateHelpers';
+import { generateBranchPDF } from '../../services/exportService';
 import {
   filterSubmissionsByPeriod,
   computeAgentTotals,
   computeBranchAggregates,
   rankAgentsByApi,
+  computeComplianceStats,
+  deriveProductionDataSource,
 } from '../../lib/productionReport/computations';
 import TimePeriodToggle from './TimePeriodToggle';
 import DataSourceBadge from './DataSourceBadge';
@@ -16,9 +20,15 @@ import ProductionTable from './ProductionTable';
 import RankedLeaderboard from './RankedLeaderboard';
 
 const TOP_N_DEFAULT = 10;
+const PERIOD_LABEL = {
+  week: 'This week', mtd: 'Month to date', quarter: 'Quarter to date', ytd: 'Year to date',
+};
 
 export default function BranchManagerProductionView() {
-  const { tenantId } = useAuth();
+  const { userProfile, tenantId } = useAuth();
+  const [generating, setGenerating] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
+  const currentWeek = useMemo(() => getMostRecentSunday(), []);
   const [period, setPeriod] = useState('week');
   const [allSubmissions, setAllSubmissions] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
@@ -133,6 +143,54 @@ export default function BranchManagerProductionView() {
     highlight: true,
   }];
 
+  // Compliance for the current week — same util the Unit view uses, computed
+  // from already-loaded data (no refetch).
+  const compliance = useMemo(
+    () => computeComplianceStats(allSubmissions, activeAgents, currentWeek),
+    [allSubmissions, activeAgents, currentWeek]
+  );
+
+  // Honest data-source signal — submissions only (read-light) → 'estimated'.
+  const dataSource = deriveProductionDataSource({ settlements: [] });
+
+  // Branch PDF export — feeds already-derived rows into generateBranchPDF (no
+  // refetch, same computations utils as the surface).
+  const handleDownloadPDF = useCallback(async () => {
+    setPdfError(false);
+    setGenerating(true);
+    try {
+      await generateBranchPDF({
+        orgLabel: userProfile?.branchName ?? 'Branch',
+        managerName: userProfile?.name ?? null,
+        period,
+        periodLabel: PERIOD_LABEL[period] ?? 'Year to date',
+        totals: {
+          totalApi: branchAggregate.totalApi,
+          totalApps: branchAggregate.totalApps,
+          agentCount: branchAggregate.agentCount,
+          unitCount: branchAggregate.unitCount,
+          avgApiPerAgent: branchAggregate.avgApiPerAgent,
+        },
+        units: unitLeaderboardEntries.map((u) => ({
+          id: u.id, name: u.name, avgApiPerAgent: u.value, agentCount: u.secondaryValue,
+        })),
+        roster: rankedAgents.map((r) => ({
+          rank: r.rank,
+          name: r.agentName,
+          unit: unitsMap[r.unitId] ?? null,
+          totalApi: r.totals.totalApi,
+          totalApps: r.totals.totalApps,
+        })),
+        compliance,
+      });
+    } catch (e) {
+      console.error('[BranchManagerProductionView] PDF failed:', e);
+      setPdfError(true);
+    } finally {
+      setGenerating(false);
+    }
+  }, [userProfile, period, branchAggregate, unitLeaderboardEntries, rankedAgents, unitsMap, compliance]);
+
   if (loading) {
     return (
       <div className="flex flex-col gap-4" data-testid="branch-production-loading">
@@ -184,11 +242,33 @@ export default function BranchManagerProductionView() {
 
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h2 className="text-base font-semibold text-ink">Production Report</h2>
-        <div className="flex items-center gap-2">
-          <DataSourceBadge source="estimated" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <DataSourceBadge source={dataSource} />
+          <button
+            type="button"
+            onClick={handleDownloadPDF}
+            disabled={generating}
+            data-testid="branch-production-download"
+            className="min-h-[44px] inline-flex items-center justify-center gap-2 px-4 rounded-lg border border-primary text-primary text-sm font-semibold hover:bg-primary/5 transition-colors disabled:opacity-60"
+          >
+            {generating
+              ? (<><Loader2 size={15} className="animate-spin" aria-hidden="true" /> Generating…</>)
+              : (<><Download size={15} aria-hidden="true" /> Download report</>)}
+          </button>
           <TimePeriodToggle selected={period} onChange={setPeriod} />
         </div>
       </div>
+
+      {pdfError && (
+        <div
+          role="alert"
+          className="p-3 rounded-xl border border-danger/30 bg-danger/10 text-danger-ink text-sm flex items-center gap-2"
+          data-testid="branch-production-pdf-error"
+        >
+          <AlertTriangle size={16} aria-hidden="true" />
+          <span>Couldn&apos;t generate the report — please try again.</span>
+        </div>
+      )}
 
       {/* @@hero-pane-start */}
       {/* Branch aggregate */}

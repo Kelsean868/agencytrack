@@ -58,6 +58,49 @@ export async function generateAgentPDF({
   URL.revokeObjectURL(url);
 }
 
+// ── generateBranchPDF / generateUnitPDF ───────────────────────────────────────
+// Manager (Branch / Unit) Performance Report PDFs. The refined replacement for
+// the raw CSV (exportBranchCSV, kept intact below for its own export path).
+//
+// The CALLING VIEW passes rows it has ALREADY derived through the shared
+// lib/productionReport/computations utils — this function does NO refetching and
+// no re-derivation (ManagerReportDocument.buildManagerReportModel only
+// normalises the passed rows for layout). @react-pdf engine + document are
+// dynamically imported so the heavy PDF chunk stays out of the entry bundle.
+async function generateManagerPDF(scope, input) {
+  const [{ pdf }, mod] = await Promise.all([
+    import('@react-pdf/renderer'),
+    import('../components/productionReport/ManagerReportDocument'),
+  ]);
+  const DocComponent = scope === 'unit' ? mod.UnitReportDocument : mod.BranchReportDocument;
+
+  const doc = createElement(DocComponent, input);
+  const blob = await pdf(doc).toBlob();
+  const url  = URL.createObjectURL(blob);
+
+  const today   = new Date().toISOString().slice(0, 10);
+  const safeOrg = String(input?.orgLabel ?? scope).replace(/[^\w-]+/g, '_').replace(/_+/g, '_');
+  const kind    = scope === 'unit' ? 'Unit' : 'Branch';
+
+  const a = document.createElement('a');
+  a.href     = url;
+  a.download = `AgencyTrack_${kind}_Report_${safeOrg}_${today}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// input: { orgLabel, managerName, period, periodLabel, totals, units, roster, compliance }
+export function generateBranchPDF(input) {
+  return generateManagerPDF('branch', input);
+}
+
+// input: { orgLabel, managerName, period, periodLabel, totals, roster, compliance, unitRank, unitCount }
+export function generateUnitPDF(input) {
+  return generateManagerPDF('unit', input);
+}
+
 // ── exportBranchCSV ───────────────────────────────────────────────────────────
 // users: array of user docs
 // submissions: array of all YTD submission docs

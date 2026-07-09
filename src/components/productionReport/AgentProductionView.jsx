@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Download, Loader2 } from 'lucide-react';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { getAgentSubmissions } from '../../services/submissionService';
@@ -10,6 +10,7 @@ import { resolveAnnualAPIFloor } from '../../utils/tenureFloors';
 import {
   filterSubmissionsByPeriod,
   computeAgentTotals,
+  deriveProductionDataSource,
 } from '../../lib/productionReport/computations';
 import TimePeriodToggle from './TimePeriodToggle';
 import DataSourceBadge from './DataSourceBadge';
@@ -43,7 +44,7 @@ const PERIOD_CAPTION = {
   ytd:     'year',
 };
 
-export default function AgentProductionView() {
+export default function AgentProductionView({ onDownloadPDF, generating = false } = {}) {
   const { user, userProfile, tenantId } = useAuth();
   // P7 — read the P1 leaderboards aggregate (branch-scoped, agent-readable).
   // Replaces the self-only ranking that PR 397 dropped: Firestore rules deny
@@ -112,6 +113,10 @@ export default function AgentProductionView() {
   }), [allSubmissions]);
 
   const myTotals = periodTotals[period];
+
+  // Honest data-source signal. This view loads submissions only (no settlement
+  // fetch), so this resolves to 'estimated' — derived, not hardcoded.
+  const dataSource = deriveProductionDataSource({ settlements: [] });
 
   // YTD vs tenure-floor bar. Uses contractStartDate from userProfile (already loaded).
   // Falls back to 200,000 when contractStartDate is absent.
@@ -204,9 +209,27 @@ export default function AgentProductionView() {
         </div>
       )}
 
-      {/* Controls row */}
+      {/* Controls row. DataSourceBadge is honest-derived: this view loads
+          submissions only (no settlement fetch — read-light rule), so
+          deriveProductionDataSource resolves to 'estimated'. See its docstring
+          for the deferred per-period settled-state upgrade. */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <DataSourceBadge source="estimated" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <DataSourceBadge source={dataSource} />
+          {onDownloadPDF && (
+            <button
+              type="button"
+              onClick={onDownloadPDF}
+              disabled={generating}
+              data-testid="agent-production-download"
+              className="min-h-[44px] inline-flex items-center justify-center gap-2 px-4 rounded-lg border border-primary text-primary text-sm font-semibold hover:bg-primary/5 transition-colors disabled:opacity-60"
+            >
+              {generating
+                ? (<><Loader2 size={15} className="animate-spin" aria-hidden="true" /> Generating…</>)
+                : (<><Download size={15} aria-hidden="true" /> Download report</>)}
+            </button>
+          )}
+        </div>
         <TimePeriodToggle selected={period} onChange={setPeriod} />
       </div>
 
