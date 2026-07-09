@@ -32,6 +32,7 @@ export const ACCOUNTS = {
   branch_manager: { email: 'staging-branch-manager@agencytrack-staging.test', password: PASSWORD, name: 'Staging Branch Manager' },
   tenant_admin:   { email: 'staging-tenant-admin@agencytrack-staging.test',   password: PASSWORD, name: 'Staging Tenant Admin' },
   cro:            { email: 'staging-cro@agencytrack-staging.test',            password: PASSWORD, name: 'Staging CRO' },
+  sales_manager:  { email: 'staging-sales-manager@agencytrack-staging.test',  password: PASSWORD, name: 'Staging Sales Manager' },
 };
 
 export const EXPECT = {

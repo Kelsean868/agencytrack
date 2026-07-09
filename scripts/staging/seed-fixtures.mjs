@@ -277,6 +277,24 @@ async function main() {
     uid: uid.cro, role: 'cro', tenantId: TENANT_ID, name: NAMES.cro, email: EMAILS.cro, active: true,
   }, `users/${uid.cro} (cro)`);
 
+  // ── A13. Sales-manager account (D3 Team Planner smoke needs an SM login) ──
+  console.log('\n── A13: sales_manager account ──');
+  const SM_EMAIL = 'staging-sales-manager@agencytrack-staging.test';
+  let sm = await auth.getUserByEmail(SM_EMAIL).catch(() => null);
+  if (!sm) {
+    sm = await auth.createUser({ email: SM_EMAIL, password: croPassword, displayName: 'Staging Sales Manager' });
+    console.log(`  [auth] created sm ${sm.uid}`);
+  } else {
+    await auth.updateUser(sm.uid, { password: croPassword }); // env password sync
+  }
+  // Cross-branch role: ownedBranchIds ['*'] mirrors deriveOwnedBranchIds.
+  await auth.setCustomUserClaims(sm.uid, { role: 'sales_manager', tenantId: TENANT_ID, branchId: BRANCH_ID, ownedBranchIds: ['*'] });
+  uid.sm = sm.uid;
+  await put(T.collection('users').doc(uid.sm), {
+    uid: uid.sm, role: 'sales_manager', tenantId: TENANT_ID, name: 'Staging Sales Manager',
+    email: SM_EMAIL, branchId: BRANCH_ID, ownedBranchIds: ['*'], active: true,
+  }, `users/${uid.sm} (sales_manager)`);
+
   // ── Cleanup: orphan user docs (same synthetic email, wrong doc id) ──
   console.log('\n── Cleanup: orphan user docs ──');
   const allEmails = Object.values(EMAILS);
