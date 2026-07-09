@@ -9,7 +9,7 @@
 
 | Field | Value |
 |---|---|
-| Current tier | **Tier 2 COMPLETE (2.1–2.11) — Tier 3 next (continuous)** |
+| Current tier | **RUN COMPLETE IN STAGING — all 4 tiers built (Tier 0 ✅ checkpoint-passed · Tier 1 ✅ · Tier 2 ✅ · Tier 3 ✅). Awaiting operator staging review + promotion rulings.** |
 | Tier gate | Tier-0 checkpoint PASSED — operator ran the live-staging browser smoke (PASS-WITH-CAVEATS), 2 focus-return regressions fixed + approved; Tier 1 building |
 | Last session | 2026-07-09 (session 5 cont., Fable orchestrator) — Tier 3: 3.1 CRO + 3.2 Planner + 3.3 Meeting Mode v2 done-in-staging |
 | Staging branch base | `c3b788d0` (main @ brief landing); Tier-0 HEAD `d3178618`; post-checkpoint remediation HEAD — see session log |
@@ -136,11 +136,23 @@
 
 ---
 
+### Tier 3 summary — COMPLETE 2026-07-09 · RUN COMPLETE IN STAGING
+
+**All 6 net-new surfaces done** (3.1 + 3.2 NEEDS-HUMAN-REVIEW — new role + new collection; 3.3–3.6 DONE-IN-STAGING). Suite **4302 (run start) → 5029** (+727 net). Highlights: CRO role routed end-to-end and live-smoked with a REAL cro session (Arm E write accepted by deployed rules); Planner shipped on a flat appointments collection (20/20 emulator + live booking smoke 4/4); Meeting Mode v2 is an honest 11-scene data-driven deck; three shells sit behind fail-closed feature flags (a corrected brief premise — no flags pattern existed); Prospect Prep un-gated with the mockup's objection taxonomy; Kiosk v2 theatrical stage with campaign panels consuming 2.9's kiosk flag.
+
+**Promotion-review flags (5, all staging-deployed, all HUMAN-REVIEW-BEFORE-PROMOTION):** 0.5 prospect index flip · 2.1 WAR reviewer rules arm · 2.2 recruitingCandidates collection · 3.1 cro role (rules + functions CREATION_MATRIX) · 3.2 appointments collection (rules + 3 composites). Full details in the flags section at top.
+
+**Banked for operator rulings / follow-ups:** staging seed depth (submissions/financing fixtures) for deeper review smokes · noticeboard collection contract · kiosk per-slide config persistence · planner prospect `callbackDueAt` extension · manager plan-review (PlanManagerBanner) · SM/TA Team Planner nav · keyboard nav-reorder · 1.5/2.10/3.5 operator-tunable constants (pace thresholds, stalled 14d, readiness criteria) · mobile presenter remote · Settings density substrate.
+
+---
+
 ## PRE-RULED SKIPS (do not build)
 
 SM cross-branch views (Phase 9) · Settings team-defaults cascade · payout-release logic · _ds demo ports · data-layer re-architecture (banked separate phase).
 
 ## Session log
+
+- **2026-07-09 (session 5, FINAL):** **RUN COMPLETE.** Tier 3 closed: 3.3 Meeting Mode v2 (`389d2cc7`), 3.4 flag-gated shells (`10507856`), 3.5 Prospect Prep (`fe541fe3`), 3.6 Kiosk theatrical (`3db7c936`). Every queue item across Tiers 0–3 is DONE-IN-STAGING or NEEDS-HUMAN-REVIEW (rules/role/collection items). Gates green at every commit; final suite 5029/5029. The staging branch is ready for the operator's full review pass; promotion requires the 5 flagged deploys + human sign-off per the flags section. NEXT SESSION (if any): this file is current — no in-flight work.
 
 - **2026-07-09 (session 5, cont. 3):** **3.1 CRO/back-office COMPLETE in staging (NEEDS-HUMAN-REVIEW — new role).** Contract `ad607d06` (orchestrator: cro role rules arms + Arm E on the shipped `policyDeliveryDate` field + CREATION_MATRIX; 84/84 rules emulator, 377/377 functions jest; rules + 4 functions deployed to staging). UI `0b64948b` (Opus: CRODashboard via Shell, Delivery Register w/ clawback clock, DeliveryStripCard un-stubbed, +35 tests, 4848/4848). Orchestrator seeded a staging CRO (`staging-cro@…`, claims via Admin SDK w/ project-id guard) + one settled policy, then live-smoked the REAL cro session: routing ✓ tenant-wide read ✓ **Arm E delivery write accepted by deployed rules ✓** console clean ✓ (one false-FAIL: chip copy "20d left" vs smoke matcher — screenshot-verified correct). Register screenshot shows full conformance (tiles/tabs/dense table/TTD/DD-MM-YYYY). Next: 3.2 Planner.
 
@@ -205,4 +217,6 @@ SM cross-branch views (Phase 9) · Settings team-defaults cascade · payout-rele
 | 3.3 Meeting Mode v2 (14–16-scene run-of-show) | opus (subagent) | inherited-default | 2026-07-09T03:18 | 2026-07-09T03:38 | 20 min | done — 11 honest scenes (birthdays/awards-reach/quick-actions/remote skip-logged w/ evidence) |
 | 3.4 Flag-gated shells: Persistency v2 UI + Policy Ledger lens + Awards provenance | opus (subagent) | inherited-default | 2026-07-09T03:41 | 2026-07-09T04:10 | 29 min | done — flags fail-closed OFF; brief's featureFlags premise corrected (pattern didn't exist); no rules change |
 | 3.5 Prospect Prep: un-gate + NextCallHero + rehearsal aid + readiness | opus (subagent) | inherited-default | 2026-07-09T04:12 | 2026-07-09T04:31 | 19 min | done — readiness criteria flagged operator-tunable (pure fn) |
-| 3.6 Kiosk v2 theatrical (LAST, droppable — window held, building) | opus (subagent) | inherited-default | 2026-07-09T04:34 | — | — | in-flight |
+| 3.6 Kiosk v2 theatrical (LAST, droppable — window held, building) | opus (subagent) | inherited-default | 2026-07-09T04:34 | 2026-07-09T05:00 | 26 min | done — noticeboard + per-slide config persistence skip-logged (need new collections/write paths) |
+| **TIER 3 rollup** | — | — | 2026-07-09T02:10 | 2026-07-09T05:00 | **~2h50m wall-clock · 6 items (+2 orchestrator contract layers, 2 live smokes incl. real-cro Arm E, 1 staging seed) · ~28 min avg** | 6/6 done |
+| **RUN rollup (telemetry-covered span: 1.6 → 3.6)** | — | — | 2026-07-08T19:46 | 2026-07-09T05:00 | **~9h14m wall-clock across Tiers 1(tail)+2+3 · 19 telemetry-logged work items · Tier-0 + 1.1–1.5 pre-protocol (see item rows)** | run complete |
