@@ -200,4 +200,6 @@ SM cross-branch views (Phase 9) · Settings team-defaults cascade · payout-rele
 | 3.1 UI: CRO dashboard + Delivery Register + clawback clock + DeliveryStripCard | opus (subagent) | inherited-default | 2026-07-09T02:11 | 2026-07-09T02:36 | 25 min | done — NEEDS-HUMAN-REVIEW (role-gated item) |
 | 3.1 seed + live smoke: real cro session, Arm E end-to-end | orchestrator | n/a (main loop) | 2026-07-09T02:36 | 2026-07-09T02:47 | 11 min | done — 4/5 PASS + 1 false-FAIL (chip copy "20d left" vs matcher); Arm E write ACCEPTED live, console clean |
 | 3.2 contract layer: appointments collection rules + indexes + emulator tests | orchestrator | n/a (main loop) | 2026-07-09T02:41 | 2026-07-09T02:45 | 4 min (20/20; 2 escape-collapse fixes) | done — NEEDS-HUMAN-REVIEW (new collection) |
-| 3.2 UI: agent Planner + Team Planner + un-gate tabs | opus (subagent) | inherited-default | 2026-07-09T02:46 | — | — | in-flight |
+| 3.2 UI: agent Planner + Team Planner + un-gate tabs | opus (subagent) | inherited-default | 2026-07-09T02:46 | 2026-07-09T03:13 | 27 min | done — NEEDS-HUMAN-REVIEW (collection-gated) |
+| 3.2 live smoke: agent booking write-read on deployed rules/composites | orchestrator | n/a (main loop) | 2026-07-09T03:13 | 2026-07-09T03:16 | 3 min | done — 4/4 PASS, clean console |
+| 3.3 Meeting Mode v2 (14–16-scene run-of-show) | opus (subagent) | inherited-default | 2026-07-09T03:18 | — | — | in-flight |
