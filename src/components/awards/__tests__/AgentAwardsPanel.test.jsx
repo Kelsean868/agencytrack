@@ -33,6 +33,7 @@ vi.mock('../../../utils/awardsEngine', () => ({
     ffiToDialRatio: { trailing4w: 0, trailing12w: 0, trend: 'flat' },
   })),
   computeAtRiskStatus: vi.fn(() => 'on_track'),
+  computeAwardPace: vi.fn(() => null),
   getPeriodCtx: vi.fn(() => ({ weeksElapsed: 1, periodWeeks: 4 })),
   nextTierDistance: vi.fn(() => null),
   isPersistencyOnlyBlock: vi.fn(() => false),

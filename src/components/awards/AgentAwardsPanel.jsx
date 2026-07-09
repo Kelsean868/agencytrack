@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { TrendingUp, TrendingDown, Minus, Trophy } from 'lucide-react';
-import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../../utils/awardsEngine';
+import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, computeAwardPace, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../../utils/awardsEngine';
 import { formatCurrency } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
 import { getOwnPolicies, settlementShapeFromPolicies } from '../../services/policiesService';
@@ -97,14 +97,19 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       const rawAwards = computeAgentAwards(activeConfirmedData, submissions, agentProfile, now, ruleset);
       const awards = {};
       for (const [id, award] of Object.entries(rawAwards)) {
-        const paceStatus = computeAtRiskStatus(award, getPeriodCtx(award.category, now));
+        const periodCtx = getPeriodCtx(award.category, now);
+        const paceStatus = computeAtRiskStatus(award, periodCtx);
         const persistencyBlock = isPersistencyOnlyBlock(award);
         let tierGap = null;
         if (award.category === 'club' && !award.eligible) {
           const annualApi = award.criteria[0]?.current ?? 0;
           tierGap = nextTierDistance(annualApi, ruleset.clubAward.tiers);
         }
-        awards[id] = { ...award, paceStatus, persistencyBlock, tierGap };
+        // §2.7 pace narrative — same periodCtx.weeksElapsed already used for
+        // paceStatus above; see computeAwardPace's own doc comment for the
+        // honesty rule (period-total ÷ elapsed-weeks, null for '%' criteria).
+        const pace = computeAwardPace(award, periodCtx.weeksElapsed, now);
+        awards[id] = { ...award, paceStatus, persistencyBlock, tierGap, pace };
       }
       return { awards, ratioTrends: computeRatioTrends(submissions), error: null };
     } catch (e) {
