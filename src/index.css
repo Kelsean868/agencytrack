@@ -1366,6 +1366,20 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   height: 17px;
   flex-shrink: 0;
 }
+/* Label text — single line, truncated with ellipsis (redesign-addendum §5:
+   "Long names/values truncate with ellipsis (+ title), never wrap the row").
+   The button already carries title={item.label} (Sidebar.jsx), so the full
+   label stays available on hover. `flex: 1` lets the label own the row so any
+   trailing scope/count chip aligns to the right edge (mock badge pattern) and
+   the row keeps one consistent height — fixing the 2-line wrap on long labels
+   like "Persistency Entry" / "Team Reports" / "Team Awards". */
+.sidebar-link-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .sidebar-link:hover {
   background: var(--color-surface-muted);
   color: var(--color-text);
