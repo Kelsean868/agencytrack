@@ -2,77 +2,132 @@ import React from 'react';
 import { render, screen, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import KioskShell from '../KioskShell';
-import { PANEL_ORDER, PANEL_DURATIONS } from '../../../lib/kiosk/kioskConfig';
+import {
+  getKioskYTDSubmissions,
+  getKioskTenantUsers,
+  getKioskAgentOfMonth,
+  getKioskCampaigns,
+} from '../../../lib/kiosk/kioskServices';
+import { deriveKioskCelebrations } from '../../../lib/kiosk/kioskCelebrations';
 
 // Mock all panel components to simple identifiable divs
-vi.mock('../panels/WelcomePanel',          () => ({ default: () => <div data-panel="welcome" /> }));
-vi.mock('../panels/AgentOfMonthPanel',    () => ({ default: () => <div data-panel="agentOfMonth" /> }));
-vi.mock('../panels/BranchOverviewPanel',   () => ({ default: () => <div data-panel="branchOverview" /> }));
-vi.mock('../panels/RunningTotalsPanel',    () => ({ default: () => <div data-panel="branchRunningTotals" /> }));
-vi.mock('../panels/UnitLeaderboardPanel',  () => ({ default: () => <div data-panel="unitLeaderboard" /> }));
-vi.mock('../panels/LastWeekRecapPanel',    () => ({ default: () => <div data-panel="lastWeekRecap" /> }));
-vi.mock('../panels/YTDLeaderboardsPanel',  () => ({ default: () => <div data-panel="ytdLeaderboards" /> }));
-vi.mock('../panels/QTDLeaderboardsPanel',  () => ({ default: () => <div data-panel="qtdLeaderboards" /> }));
-vi.mock('../panels/MTDLeaderboardsPanel',  () => ({ default: () => <div data-panel="mtdLeaderboards" /> }));
-vi.mock('../panels/WeekLeaderboardsPanel', () => ({ default: () => <div data-panel="weekLeaderboards" /> }));
-vi.mock('../panels/WeeklyActivityPanel',   () => ({ default: () => <div data-panel="weeklyActivity" /> }));
-vi.mock('../panels/AwardsWatchPanel',      () => ({ default: () => <div data-panel="awardsWatch" /> }));
-vi.mock('../panels/CompliancePanel',       () => ({ default: () => <div data-panel="compliance" /> }));
-vi.mock('../FullscreenButton',             () => ({ default: () => <button data-testid="fullscreen-btn" /> }));
+vi.mock('../panels/WelcomePanel',            () => ({ default: () => <div data-panel="welcome" /> }));
+vi.mock('../panels/AgentOfMonthPanel',       () => ({ default: () => <div data-panel="agentOfMonth" /> }));
+vi.mock('../panels/BranchOverviewPanel',     () => ({ default: () => <div data-panel="branchOverview" /> }));
+vi.mock('../panels/RunningTotalsPanel',      () => ({ default: () => <div data-panel="branchRunningTotals" /> }));
+vi.mock('../panels/UnitLeaderboardPanel',    () => ({ default: () => <div data-panel="unitLeaderboard" /> }));
+vi.mock('../panels/LastWeekRecapPanel',      () => ({ default: () => <div data-panel="lastWeekRecap" /> }));
+vi.mock('../panels/YTDLeaderboardsPanel',    () => ({ default: () => <div data-panel="ytdLeaderboards" /> }));
+vi.mock('../panels/QTDLeaderboardsPanel',    () => ({ default: () => <div data-panel="qtdLeaderboards" /> }));
+vi.mock('../panels/MTDLeaderboardsPanel',    () => ({ default: () => <div data-panel="mtdLeaderboards" /> }));
+vi.mock('../panels/WeekLeaderboardsPanel',   () => ({ default: () => <div data-panel="weekLeaderboards" /> }));
+vi.mock('../panels/WeeklyActivityPanel',     () => ({ default: () => <div data-panel="weeklyActivity" /> }));
+vi.mock('../panels/AwardsWatchPanel',        () => ({ default: () => <div data-panel="awardsWatch" /> }));
+vi.mock('../panels/CompliancePanel',         () => ({ default: () => <div data-panel="compliance" /> }));
+vi.mock('../panels/CampaignLeaderboardPanel', () => ({ default: ({ campaign }) => <div data-panel="campaignLeaderboards" data-campaign={campaign?.id ?? ''} /> }));
+vi.mock('../panels/CelebrationsPanel',       () => ({ default: () => <div data-panel="celebrations" /> }));
+vi.mock('../FullscreenButton',               () => ({ default: () => <button data-testid="fullscreen-btn" /> }));
 
 vi.mock('../../../lib/kiosk/kioskServices', () => ({
-  getKioskYTDSubmissions: vi.fn().mockResolvedValue([]),
-  getKioskTenantUsers: vi.fn().mockResolvedValue([]),
-  getKioskAgentOfMonth: vi.fn().mockResolvedValue(null),
+  getKioskYTDSubmissions: vi.fn(),
+  getKioskTenantUsers: vi.fn(),
+  getKioskAgentOfMonth: vi.fn(),
+  getKioskCampaigns: vi.fn(),
 }));
 
-describe('KioskShell', () => {
-  beforeEach(() => { vi.useFakeTimers(); });
+vi.mock('../../../lib/kiosk/kioskCelebrations', () => ({
+  deriveKioskCelebrations: vi.fn(() => []),
+}));
+
+const THIS_YEAR = new Date().getFullYear();
+const SUBS = [
+  { id: 's1', agentId: 'a1', weekStarting: `${THIS_YEAR}-01-07`, status: 'submitted', newBusiness: { api: 90000, apps: 5 }, version: 2 },
+];
+const USERS = [{ id: 'a1', role: 'agent', name: 'Alice' }];
+const AOM = { api: { agentUid: 'a1', agentName: 'Alice', achievementValue: 90000 } };
+
+function setData({ subs = [], users = [], aom = null, campaigns = [], celebrations = [] } = {}) {
+  getKioskYTDSubmissions.mockResolvedValue(subs);
+  getKioskTenantUsers.mockResolvedValue(users);
+  getKioskAgentOfMonth.mockResolvedValue(aom);
+  getKioskCampaigns.mockResolvedValue(campaigns);
+  deriveKioskCelebrations.mockReturnValue(celebrations);
+}
+
+async function mountShell() {
+  await act(async () => {
+    render(<KioskShell tenantId="t1" branchId="b1" />);
+    await vi.runOnlyPendingTimersAsync();
+  });
+}
+
+// Advance one rotation step (60s exceeds the max panel duration of 45s so
+// exactly one panel-advance fires per pulse), collecting the visible panel.
+async function collectRotation(steps) {
+  const seen = [];
+  for (let i = 0; i < steps; i += 1) {
+    const el = document.querySelector('[data-panel]');
+    seen.push(el?.getAttribute('data-panel'));
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+  }
+  return seen;
+}
+
+describe('KioskShell — dynamic rotation (3.6)', () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); });
   afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
-  async function mountShell() {
-    let container;
-    await act(async () => {
-      ({ container } = render(<KioskShell tenantId="t1" branchId="b1" />));
-      // Let the async fetchData resolve
-      await vi.runAllTimersAsync();
-    });
-    return container;
-  }
-
-  it('renders all 13 panels in PANEL_ORDER sequence', async () => {
+  it('renders the theatrical stage + overlay chrome', async () => {
+    setData({ subs: SUBS, users: USERS, aom: AOM });
     await mountShell();
-
-    for (const panelKey of PANEL_ORDER) {
-      expect(document.querySelector(`[data-panel="${panelKey}"]`)).not.toBeNull();
-
-      await act(async () => {
-        vi.advanceTimersByTime(PANEL_DURATIONS[panelKey] * 1000);
-      });
-    }
-  });
-
-  it('PANEL_ORDER has exactly 13 entries', () => {
-    expect(PANEL_ORDER.length).toBe(13);
-  });
-
-  it('agentOfMonth is at slot #2 (index 1)', () => {
-    expect(PANEL_ORDER[1]).toBe('agentOfMonth');
-  });
-
-  it('branchRunningTotals is at slot #4 (index 3)', () => {
-    expect(PANEL_ORDER[3]).toBe('branchRunningTotals');
-  });
-
-  it('FullscreenButton is mounted inside the shell', async () => {
-    await mountShell();
+    expect(document.querySelector('[data-kiosk="true"].kiosk-stage')).not.toBeNull();
+    expect(document.querySelector('.kiosk-backdrop')).not.toBeNull();
+    expect(screen.getByTestId('kiosk-chapter-overlay')).toBeInTheDocument();
+    expect(screen.getByTestId('kiosk-progress-dots')).toBeInTheDocument();
     expect(screen.getByTestId('fullscreen-btn')).toBeInTheDocument();
   });
 
-  it('each panel in PANEL_DURATIONS has a positive duration', () => {
-    for (const [key, secs] of Object.entries(PANEL_DURATIONS)) {
-      expect(secs).toBeGreaterThan(0);
-      expect(PANEL_ORDER).toContain(key);
-    }
+  it('with full data (no campaigns/celebrations) rotates through the 13 base panels', async () => {
+    setData({ subs: SUBS, users: USERS, aom: AOM });
+    await mountShell();
+    const seen = new Set(await collectRotation(16));
+    expect(seen).toContain('welcome');
+    expect(seen).toContain('agentOfMonth');
+    expect(seen).toContain('ytdLeaderboards');
+    expect(seen).toContain('compliance');
+    expect(seen).not.toContain('campaignLeaderboards');
+    expect(seen).not.toContain('celebrations');
+  });
+
+  it('empty data collapses the rotation to the welcome slide (empty-skip)', async () => {
+    setData({ subs: [], users: [], aom: null });
+    await mountShell();
+    const seen = await collectRotation(5);
+    // No submissions + no AOM winner → every data panel dropped; only welcome.
+    expect(new Set(seen)).toEqual(new Set(['welcome']));
+  });
+
+  it('inserts a campaign panel per flagged campaign when data is present', async () => {
+    setData({
+      subs: SUBS,
+      users: USERS,
+      aom: AOM,
+      campaigns: [{ id: 'c1', name: 'Xmas', status: 'active', kiosk: true, scope: { type: 'branch' } }],
+    });
+    await mountShell();
+    const seen = new Set(await collectRotation(18));
+    expect(seen).toContain('campaignLeaderboards');
+  });
+
+  it('inserts the celebrations panel when there are celebrations', async () => {
+    setData({
+      subs: SUBS,
+      users: USERS,
+      aom: AOM,
+      celebrations: [{ id: 'a1', name: 'Alice', years: 5, dateLabel: '01-08', initials: 'A' }],
+    });
+    await mountShell();
+    const seen = new Set(await collectRotation(18));
+    expect(seen).toContain('celebrations');
   });
 });

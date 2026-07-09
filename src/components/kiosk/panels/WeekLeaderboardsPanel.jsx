@@ -1,6 +1,6 @@
 import React from 'react';
-import PeriodLeaderboardsPanel from './PeriodLeaderboardsPanel';
+import RankedLeaderboardPanel from './RankedLeaderboardPanel';
 
 export default function WeekLeaderboardsPanel(props) {
-  return <PeriodLeaderboardsPanel {...props} period="week" periodLabel="This Week" />;
+  return <RankedLeaderboardPanel {...props} period="week" />;
 }

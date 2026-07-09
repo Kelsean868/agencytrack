@@ -6,6 +6,7 @@ import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import useToast from '../../hooks/useToast';
 import { APP_URL } from '../../constants/brand';
+import { PANEL_ORDER, PANEL_LABELS } from '../../lib/kiosk/kioskConfig';
 
 const KIOSK_BASE = `${APP_URL}/kiosk`;
 
@@ -203,6 +204,46 @@ export default function KioskModeTab() {
           })}
         </div>
       )}
+
+      {/* 3.6: read-only rotation config. Per-slide manager enable/disable has
+          no persisted write path today (kiosk tokens are the only kiosk config
+          doc, and adding a settings doc is a rules change out of this scope),
+          so the default rotation is shown read-only. Campaign + Celebration
+          panels auto-appear only when they have data. */}
+      <section className="mt-10" aria-labelledby="kiosk-panels-heading">
+        <h3 id="kiosk-panels-heading" className="text-base font-semibold text-ink">
+          Panels shown on the kiosk
+        </h3>
+        <p className="text-ink-muted text-sm mt-1">
+          The wall rotates through these panels. Panels with no data for the week
+          are skipped automatically. Per-slide scheduling is coming soon.
+        </p>
+        <ul className="mt-4 grid grid-cols-2 gap-2">
+          {PANEL_ORDER.map((key) => (
+            <li
+              key={key}
+              className="flex items-center justify-between bg-card border border-card-raised rounded-lg px-3 py-2"
+            >
+              <span className="text-ink text-sm">{PANEL_LABELS[key] ?? key}</span>
+              <span className="text-xs font-medium text-success-ink bg-success-tint rounded-full px-2 py-0.5">
+                On
+              </span>
+            </li>
+          ))}
+          <li className="flex items-center justify-between bg-card border border-card-raised rounded-lg px-3 py-2">
+            <span className="text-ink text-sm">{PANEL_LABELS.campaignLeaderboards}</span>
+            <span className="text-xs font-medium text-ink-muted bg-surface-raised rounded-full px-2 py-0.5">
+              When flagged
+            </span>
+          </li>
+          <li className="flex items-center justify-between bg-card border border-card-raised rounded-lg px-3 py-2">
+            <span className="text-ink text-sm">{PANEL_LABELS.celebrations}</span>
+            <span className="text-xs font-medium text-ink-muted bg-surface-raised rounded-full px-2 py-0.5">
+              When any
+            </span>
+          </li>
+        </ul>
+      </section>
     </div>
   );
 }

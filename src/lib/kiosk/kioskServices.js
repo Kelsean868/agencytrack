@@ -46,3 +46,27 @@ export async function getKioskAgentOfMonth(tenantId) {
   }
   return data;
 }
+
+// 3.6: kiosk-flagged campaign leaderboards. The campaigns read rule
+// (firestore.rules ~L841) permits any tenant member — the kiosk token carries
+// `tenantId`, so no rules change is needed. Single-field inequality on
+// startDate → no composite index required; the active-window + kiosk-flag
+// filter is applied in JS. Only campaigns explicitly opted onto the wall
+// (`kiosk === true`, item 2.9's flag) and currently active are returned.
+export async function getKioskCampaigns(tenantId) {
+  if (!tenantId) return [];
+  const today = new Date().toISOString().slice(0, 10);
+  const q = query(
+    collection(kioskDb, `tenants/${tenantId}/campaigns`),
+    where('startDate', '<=', today),
+  );
+  const snap = await getDocs(q);
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((c) =>
+      c.kiosk === true &&
+      c.status !== 'draft' &&
+      typeof c.endDate === 'string' &&
+      c.endDate.slice(0, 10) >= today
+    );
+}

@@ -12,8 +12,31 @@ export const PANEL_DURATIONS = {
   weeklyActivity:    35,
   awardsWatch:       30,
   compliance:        25,
+  // Dynamic panels (3.6) — spliced into the rotation only when they have data.
+  campaignLeaderboards: 35,
+  celebrations:      30,
 };
-// Total cycle: 410s ≈ 6.8 minutes
+// Total cycle: 410s ≈ 6.8 minutes (base); dynamic panels extend it.
+
+// Short labels for the rotation position/chapter overlay + the (read-only)
+// KioskModeTab panel-config surface.
+export const PANEL_LABELS = {
+  welcome:             'Welcome',
+  agentOfMonth:        'Agent of the Month',
+  branchOverview:      'Branch Overview',
+  branchRunningTotals: 'Running Totals',
+  unitLeaderboard:     'Unit Leaderboard',
+  lastWeekRecap:       'Last Week Recap',
+  ytdLeaderboards:     'YTD Leaderboard',
+  qtdLeaderboards:     'Quarter to Date',
+  mtdLeaderboards:     'Month to Date',
+  weekLeaderboards:    'This Week',
+  weeklyActivity:      'Weekly Activity',
+  awardsWatch:         'Awards Watch',
+  compliance:          'Compliance',
+  campaignLeaderboards: 'Campaign',
+  celebrations:        'Celebrations',
+};
 
 export const PANEL_ORDER = [
   'welcome',
