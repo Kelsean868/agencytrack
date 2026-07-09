@@ -53,6 +53,13 @@ import useNavOrder from '../../hooks/useNavOrder';
 import useMenuLayout from '../../hooks/useMenuLayout';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
+import GoalsCelebration from '../goals/GoalsCelebration';
+import { resolveGoalsCelebration } from '../../lib/celebrations';
+import {
+  getGoalsCelebrated,
+  setGoalsAnnualCelebrated,
+  setGoalsStreakCelebratedMax,
+} from '../../lib/celebrationPrefs';
 import DerivedIncomePanel from '../goals/DerivedIncomePanel';
 import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
@@ -120,6 +127,9 @@ export default function AgentDashboard() {
   const [hierarchy, setHierarchy]               = useState(null);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [hierarchyError, setHierarchyError]     = useState(null);
+  // Goals-surface celebration takeover (annual hit / weekly-target streak).
+  // null = none showing. Fires once per marker (persisted per uid+year).
+  const [goalsCelebration, setGoalsCelebration] = useState(null);
   const [showWelcome, setShowWelcome]           = useState(false);
   const [submissionsError, setSubmissionsError] = useState(null);
   // S3b — committed plan + daily docs for the Standard drawer's plan-vs-actual rows.
@@ -463,6 +473,33 @@ export default function AgentDashboard() {
       })
       .finally(() => setHierarchyLoading(false));
   }, [user?.uid, tenantId, userProfile?.unitId]);
+
+  // Goals celebration trigger — evaluate once data is ready + the Goals tab is
+  // open. Fire-and-forget: persist the marker so each moment fires ONCE (annual
+  // per year, streak per milestone). resolveGoalsCelebration returns null on the
+  // next pass once the marker is set, so this never loops. Quarter is skip-
+  // logged (no per-quarter target in the hierarchy — see GoalsCelebration).
+  useEffect(() => {
+    if (activeTab !== 'goals' || hierarchyLoading || !hierarchy || !user?.uid) return;
+    if (goalsCelebration) return; // already showing one
+    const weeklyTarget = resolvedMinimums?.weeklyActivityFloors?.api ?? 4800;
+    const celebrated = getGoalsCelebrated(user.uid, thisYear);
+    const result = resolveGoalsCelebration({
+      hierarchy,
+      ytdTotals,
+      submissions: allSubmissions,
+      year: thisYear,
+      weeklyTarget,
+      celebrated,
+    });
+    if (!result) return;
+    if (result.type === 'annual') setGoalsAnnualCelebrated(user.uid, thisYear);
+    else if (result.type === 'streak') setGoalsStreakCelebratedMax(user.uid, thisYear, result.milestone);
+    setGoalsCelebration(result);
+  }, [
+    activeTab, hierarchyLoading, hierarchy, ytdTotals, allSubmissions,
+    user?.uid, thisYear, resolvedMinimums, goalsCelebration,
+  ]);
 
   // Unlock banner
   const showUnlockBanner =
@@ -828,6 +865,17 @@ export default function AgentDashboard() {
             />
           </div>
         </>
+      )}
+
+      {/* Goals celebration takeover (annual hit / weekly-target streak) */}
+      {goalsCelebration && (
+        <GoalsCelebration
+          celebration={goalsCelebration}
+          annualTarget={Number(hierarchy?.personal?.api) || 0}
+          ytdApi={Number(ytdTotals?.api) || 0}
+          streak={goalsCelebration.type === 'streak' ? goalsCelebration.milestone : 0}
+          onClose={() => setGoalsCelebration(null)}
+        />
       )}
 
       {/* ── COMMISSION TAB ── */}

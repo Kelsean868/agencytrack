@@ -1825,6 +1825,28 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   100% { transform: scale(0.4); opacity: 0; }
 }
 
+/* ── Celebration takeover (CelebrationTakeover.jsx) — 2.10. ───────────────
+   Shared by the Daily Capture streak takeover and the Goals celebrations.
+   `celebration-rise` is TRANSFORM-ONLY (no opacity) per redesign-addendum §2
+   so a paused/throttled tab can never strand content at opacity:0 — the base
+   style is the visible end-state. `celebration-medal-pop` + `-confetti-fall`
+   drive DECORATIVE (aria-hidden) elements only, and are gated at the React
+   layer behind prefers-reduced-motion (motion-safe:/motion-reduce:hidden). */
+@keyframes celebration-rise {
+  from { transform: translateY(12px); }
+  to   { transform: translateY(0); }
+}
+@keyframes celebration-medal-pop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  60%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes celebration-confetti-fall {
+  0%   { transform: translateY(0)     rotate(0deg);   opacity: 0; }
+  15%  {                                              opacity: 0.85; }
+  100% { transform: translateY(520px) rotate(560deg); opacity: 0; }
+}
+
 /* ── Responsive: mobile (<768px, hide sidebar, show bottom-nav) ──────── */
 @media (max-width: 767px) {
   .shell { grid-template-columns: 1fr; }

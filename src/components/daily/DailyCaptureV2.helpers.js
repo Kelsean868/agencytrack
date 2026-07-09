@@ -22,6 +22,17 @@ function sumPathIntsAcross(entries, key, sub) {
 }
 
 /**
+ * Sum week-to-date production API across a list of daily docs.
+ * Reads newBusiness.api (the same key deriveCountStripChips reads for apps).
+ * @param {Array<object>} weekDocs - this agent's dailyActivity docs for the week
+ * @returns {number} total WTD API (TTD)
+ */
+export function sumWeekApi(weekDocs) {
+  const entries = Array.isArray(weekDocs) ? weekDocs : [];
+  return entries.reduce((acc, e) => acc + floatOrZero(e?.newBusiness?.api), 0);
+}
+
+/**
  * Derive the four week-to-date count-strip chips from a list of daily docs.
  * @param {Array<object>} weekDocs - this agent's dailyActivity docs for the week
  * @returns {{appr:number, ffi:number, ci:number, apps:number}}

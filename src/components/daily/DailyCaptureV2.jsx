@@ -29,9 +29,17 @@ import {
   elapsedWorkingDays,
   computePaceState,
   computeWeekToDatePoints,
+  sumWeekApi,
 } from './DailyCaptureV2.helpers';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../utils/weeklyActivityFloors';
 import { getCompanyMinimums } from '../../services/goalsService';
+import CelebrationTakeover from '../ui/CelebrationTakeover';
+import { resolveStreakCelebration } from '../../lib/celebrations';
+import {
+  getDailyStreakCelebratedMax,
+  setDailyStreakCelebratedMax,
+} from '../../lib/celebrationPrefs';
+import { useCountUp } from '../../hooks/useCountUp';
 
 // ── Local helpers ──────────────────────────────────────────────────────────
 
@@ -256,6 +264,78 @@ function CountStrip({ chips, loading }) {
   );
 }
 
+/** Week-to-date anchor — WTD production API vs the weekly API target (the
+ *  company activity floor, `weeklyActivityFloors.api`, the same source
+ *  HistoryTab's award-week logic uses). Four-states: loading → dash; target
+ *  always known (code default 4800), so the target line always ships.
+ *
+ *  Mode-provenance tag SKIPPED: the app stores only `userProfile.loggingMode`,
+ *  written solely by the agent's own ProfileScreen — there is no setter-
+ *  attribution field, so a "Your choice / Set by your manager" distinction
+ *  cannot be derived honestly. (Skip-logged in the 2.10 build notes.) */
+function DailyAnchorStrip({ wtdApi, weeklyTarget, loading }) {
+  const hasTarget = weeklyTarget > 0;
+  const pct = hasTarget ? Math.min(100, Math.round((wtdApi / weeklyTarget) * 100)) : 0;
+  const hit = hasTarget && wtdApi >= weeklyTarget;
+  return (
+    <div
+      data-testid="dcv2-anchor-strip"
+      data-wtd-api={wtdApi}
+      data-target={hasTarget ? weeklyTarget : ''}
+      data-pct={hasTarget ? pct : ''}
+      className="mt-3 rounded-lg bg-card-raised border border-border/60 px-3 py-2"
+    >
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <span className="text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+          Week to date · API
+        </span>
+        <span className="text-xs font-semibold text-ink tabular-nums">
+          {loading ? '–' : formatCurrency(wtdApi)}
+          {!loading && hasTarget && (
+            <span className="text-ink-muted font-normal"> / {formatCurrency(weeklyTarget)}</span>
+          )}
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-border/40 overflow-hidden" aria-hidden="true">
+        <div
+          className={`h-1.5 rounded-full transition-all duration-500 ${hit ? 'bg-primary' : 'bg-primary/70'}`}
+          style={{ width: `${loading ? 0 : pct}%` }}
+        />
+      </div>
+      {!loading && hasTarget && (
+        <p className="text-[10px] text-ink-muted mt-1 text-right">
+          {hit ? 'Weekly target cleared' : `${pct}% of weekly target`}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Daily streak-milestone celebration takeover. Owns its count-up hooks so the
+ *  shared CelebrationTakeover primitive stays presentational. Only mounts when
+ *  a milestone fires (fire-and-forget; the save is already committed). */
+function DailyStreakTakeover({ milestone, streak, apiCredit, onClose }) {
+  const shownStreak = useCountUp(streak, { duration: 900, decimals: 0 });
+  const stats = [{ label: 'DAY STREAK', value: String(shownStreak), highlight: true }];
+  if (apiCredit > 0) stats.push({ label: 'TODAY', value: formatCurrency(apiCredit) });
+  return (
+    <CelebrationTakeover
+      open
+      onClose={onClose}
+      medal="flame"
+      accent="warning"
+      eyebrow="STREAK MILESTONE"
+      title={<>{milestone} days logged<br />in a row</>}
+      body={`You logged today and hit a ${milestone}-day streak — consistency is how the week's number gets built.`}
+      stats={stats}
+      primaryCta={{ label: 'Keep it going', onClick: onClose }}
+      confettiColors={['gold', 'warning', 'primary']}
+      testId="daily-streak-celebration"
+      labelId="daily-streak-celebration-title"
+    />
+  );
+}
+
 /** Horizontal Sun–Sat day selector for back-fill navigation (7 chips; Sunday
  *  renders as an off-chip). */
 function WeekStrip({ days, selectedDate, onSelect }) {
@@ -460,6 +540,10 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
   const [weeklyFloors,  setWeeklyFloors]  = useState(null);
   const [workingDays,   setWorkingDays]   = useState(5);
 
+  // Streak-milestone celebration (fire-and-forget; set only after a save that
+  // crosses a milestone). null = no takeover showing.
+  const [celebration,   setCelebration]   = useState(null);
+
   // ── Load entry for selectedDate whenever it changes ──────────────────────
   useEffect(() => {
     if (!user?.uid) return;
@@ -525,8 +609,10 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
     try {
       const docs = await getDailyEntriesForWeek(tenantId, user.uid, weekStarting);
       setWeekDocs(docs);
+      return docs;
     } catch (e) {
       console.error('Week docs read failed:', e);
+      return null;
     } finally {
       setChipsLoading(false);
     }
@@ -572,6 +658,13 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
   const chips     = useMemo(() => deriveCountStripChips(weekDocs), [weekDocs]);
   const stripDays = useMemo(() => deriveWeekStripDays(weekDocs, today, weekStarting, workingDays), [weekDocs, today, weekStarting, workingDays]);
   const streak    = useMemo(() => computeStreak(weekDocs, today), [weekDocs, today]);
+  // WTD anchor: sum of saved daily API vs the weekly API target (company floor,
+  // same source HistoryTab uses). Code default (4800) applies until floors load.
+  const wtdApi         = useMemo(() => sumWeekApi(weekDocs), [weekDocs]);
+  const weeklyApiTarget = useMemo(
+    () => Number(weeklyFloors?.api ?? DEFAULT_WEEKLY_ACTIVITY_FLOORS.api) || 0,
+    [weeklyFloors],
+  );
   const dayPoints        = useMemo(() => computeDayPoints(data), [data]);
   const weekPoints       = useMemo(
     () => computeWeekToDatePoints(weekDocs, selectedDate, data),
@@ -651,7 +744,7 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
       // Daily doc MUST persist first (Decision #4).
       await saveDailyEntry(tenantId, user.uid, agentName, selectedDate, data);
       setSavedAt(new Date());
-      await refreshWeekDocs();
+      const postSaveDocs = await refreshWeekDocs();
       // Best-effort: recompute the current week's weekly DRAFT from the daily
       // entries so the Sunday review + #687 deep-link wizard are pre-filled
       // before the Sunday 23:00 cron. aggregateCurrentWeekDaily merges (rollup
@@ -672,7 +765,30 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
       } catch (aggErr) {
         console.error('Weekly-draft aggregation after save failed (daily log saved):', aggErr);
       }
-      setTimeout(() => onClose?.(), 600);
+
+      // Fire-and-forget streak celebration — the save is already committed, so
+      // any failure here must never surface as a save failure. Evaluate against
+      // the authoritative post-save week docs (includes the day just written).
+      let celebrating = false;
+      try {
+        const newStreak = computeStreak(postSaveDocs ?? weekDocs, today);
+        const celebratedMax = getDailyStreakCelebratedMax(user.uid);
+        const { milestone, nextCelebratedMax } = resolveStreakCelebration({
+          streak: newStreak,
+          celebratedMax,
+        });
+        // Keep the persisted marker in sync (run-reset clamp) regardless of fire.
+        setDailyStreakCelebratedMax(user.uid, nextCelebratedMax);
+        if (milestone) {
+          celebrating = true;
+          setCelebration({ milestone, streak: newStreak, apiCredit: dayProductionCredit });
+        }
+      } catch (celErr) {
+        console.error('Streak celebration evaluation failed (daily log saved):', celErr);
+      }
+
+      // Only auto-close when not celebrating — the takeover owns dismissal.
+      if (!celebrating) setTimeout(() => onClose?.(), 600);
     } catch (e) {
       console.error('Save failed:', e);
       setError('Save failed — check your connection and try again.');
@@ -753,6 +869,15 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
             days={stripDays}
             selectedDate={selectedDate}
             onSelect={(date) => setSelectedDate(date)}
+          />
+        )}
+
+        {/* WTD anchor — API vs weekly target (weekday form only) */}
+        {!isTodaySunday && (
+          <DailyAnchorStrip
+            wtdApi={wtdApi}
+            weeklyTarget={weeklyApiTarget}
+            loading={chipsLoading}
           />
         )}
 
@@ -1139,6 +1264,16 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
             )}
           </button>
         </footer>
+      )}
+
+      {/* Streak-milestone celebration takeover (layers over the entry) */}
+      {celebration && (
+        <DailyStreakTakeover
+          milestone={celebration.milestone}
+          streak={celebration.streak}
+          apiCredit={celebration.apiCredit}
+          onClose={() => { setCelebration(null); onClose?.(); }}
+        />
       )}
     </div>
   );
