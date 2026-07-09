@@ -311,11 +311,14 @@ export function AroundMeClusterMobile({
   const barRef = useRef(null);
 
   // Collapse on scroll-away (any meaningful scroll collapses the expanded sheet).
+  // Capture phase so this fires for the real scroll region — the `.shell-content`
+  // pane (redesign §5 scrolls the pane, not the window; scroll events don't bubble,
+  // but a capturing window listener still sees a descendant scroller's events).
   useEffect(() => {
     if (!expanded) return undefined;
     const onScroll = () => setExpanded(false);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    return () => window.removeEventListener('scroll', onScroll, { capture: true });
   }, [expanded]);
 
   // Collapse on outside-tap.

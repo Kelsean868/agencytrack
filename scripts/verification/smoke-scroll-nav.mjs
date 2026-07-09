@@ -117,6 +117,50 @@ async function measureScroll(page) {
   });
 }
 
+// ── real wheel-scroll probe — the D1 CORE check ─────────────────────────────
+// The staging bug: content is reachable programmatically (scrollTop / scrollbar
+// drag) but the mouse wheel + trackpad are SWALLOWED. A programmatic reachability
+// check (scrollTo) passes right through it — so we must dispatch a REAL wheel over
+// the content pane and confirm the scroll position actually moved.
+async function wheelProbe(page) {
+  await page.evaluate(() => { const sc = document.querySelector('.shell-content'); if (sc) sc.scrollTop = 0; window.scrollTo(0, 0); });
+  const before = await page.evaluate(() => {
+    const sc = document.querySelector('.shell-content');
+    return {
+      scScrollable: sc ? sc.scrollHeight - sc.clientHeight : 0,
+      pageScrollable: document.documentElement.scrollHeight - window.innerHeight,
+    };
+  });
+  const scrollableBy = Math.max(before.scScrollable, before.pageScrollable);
+  if (scrollableBy <= 40) return { scrollableBy, wheelMoved: 0, wheelOk: true }; // nothing to scroll — not a defect
+  await page.mouse.move(Math.round(VIEWPORT_W * 0.62), Math.round(VIEWPORT_H * 0.5)); // over the content pane
+  await page.mouse.wheel(0, 500);
+  await page.waitForTimeout(250);
+  const moved = await page.evaluate(() => {
+    const sc = document.querySelector('.shell-content');
+    return Math.round((sc ? sc.scrollTop : 0) + window.scrollY);
+  });
+  return { scrollableBy, wheelMoved: moved, wheelOk: moved > 40 };
+}
+
+// One screen: real wheel probe (primary) + programmatic reachability + clip audit
+// (diagnostic). Returns a result row. Shared by the sidebar-tab + footer loops.
+async function checkScreen(page, role, theme, label) {
+  const w = await wheelProbe(page);
+  const m = await measureScroll(page);
+  await page.evaluate(() => { const sc = document.querySelector('.shell-content'); if (sc) sc.scrollTop = 0; window.scrollTo(0, 0); });
+  const broken = !w.wheelOk || m.unreachablePx > UNREACHABLE_PX;
+  if (process.env.SHOT_ALL) {
+    await page.screenshot({ path: path.join(SHOT_DIR, `screen-${role}-${theme}-${label.replace(/\W+/g, '_') || 'x'}.png`) }).catch(() => {});
+  }
+  let shot;
+  if (broken) {
+    shot = path.join(SHOT_DIR, `broken-${role}-${theme}-${label.replace(/\W+/g, '_')}.png`);
+    await page.screenshot({ path: shot }).catch(() => {});
+  }
+  return { kind: 'scroll', role, theme, label, ...m, ...w, shot, verdict: broken ? 'BROKEN' : 'ok' };
+}
+
 // ── enumerate the currently-rendered sidebar tabs ───────────────────────────
 async function readSidebar(page) {
   return page.evaluate(() => {
@@ -194,24 +238,9 @@ async function run() {
             results.push({ kind: 'scroll', role: role.key, theme, label: row.label, verdict: 'skip(overlay)' });
             continue;
           }
-          const m = await measureScroll(page);
-          // reset scroll to top so the screenshot shows the on-load viewport
-          await page.evaluate(() => { const sc = document.querySelector('.shell-content'); if (sc) sc.scrollTop = 0; window.scrollTo(0, 0); });
-          // unreachablePx is the fail signal (content below fold, no scroller reaches it).
-          // clips[] is diagnostic-only: overflow-hidden boxes taller than their content are
-          // usually decorative (glow/gradient containment) with content fully reachable.
-          const broken = m.unreachablePx > UNREACHABLE_PX;
-          if (process.env.SHOT_ALL) {
-            const s = path.join(SHOT_DIR, `screen-${role.key}-${theme}-${row.label.replace(/\W+/g, '_') || 'x'}.png`);
-            await page.screenshot({ path: s }).catch(() => {});
-          }
-          if (broken) {
-            anyFail = true;
-            const shot = path.join(SHOT_DIR, `broken-${role.key}-${theme}-${row.label.replace(/\W+/g, '_')}.png`);
-            await page.screenshot({ path: shot }).catch(() => {});
-            m.shot = shot;
-          }
-          results.push({ kind: 'scroll', role: role.key, theme, label: row.label, ...m, verdict: broken ? 'BROKEN' : 'ok' });
+          const res = await checkScreen(page, role.key, theme, row.label);
+          if (res.verdict === 'BROKEN') anyFail = true;
+          results.push(res);
         }
 
         // Footer-reached screens (Profile, Settings) — not sidebar tabs.
@@ -220,15 +249,9 @@ async function run() {
           if (!ok) { results.push({ kind: 'scroll', role: role.key, theme, label, verdict: 'skip(not-found)' }); continue; }
           await page.waitForTimeout(1100);
           if (!(await page.locator('.shell-content').count())) continue;
-          const m = await measureScroll(page);
-          await page.evaluate(() => { const sc = document.querySelector('.shell-content'); if (sc) sc.scrollTop = 0; window.scrollTo(0, 0); });
-          // unreachablePx is the fail signal (content below fold, no scroller reaches it).
-          // clips[] is diagnostic-only: overflow-hidden boxes taller than their content are
-          // usually decorative (glow/gradient containment) with content fully reachable.
-          const broken = m.unreachablePx > UNREACHABLE_PX;
-          if (process.env.SHOT_ALL) { const s = path.join(SHOT_DIR, `screen-${role.key}-${theme}-${label}.png`); await page.screenshot({ path: s }).catch(() => {}); }
-          if (broken) anyFail = true;
-          results.push({ kind: 'scroll', role: role.key, theme, label, ...m, verdict: broken ? 'BROKEN' : 'ok' });
+          const res = await checkScreen(page, role.key, theme, label);
+          if (res.verdict === 'BROKEN') anyFail = true;
+          results.push(res);
         }
         await context.close();
       }
@@ -246,8 +269,9 @@ async function run() {
       console.log(`  · ${r.role}/${r.theme} ${r.label.padEnd(22)} ${r.verdict}`);
     } else {
       const tag = r.verdict === 'BROKEN' ? 'BROKEN' : 'ok    ';
+      const wheelStr = r.scrollableBy > 40 ? `wheelMoved=${String(r.wheelMoved).padStart(4)}/${r.scrollableBy}px` : 'wheel=n/a(fits)  ';
       const clipStr = r.clips && r.clips.length ? `  CLIPS=[${r.clips.map((c) => `${c.cls}:${c.hiddenPx}px`).join(' | ')}]` : '';
-      console.log(`  ${tag} ${r.role}/${r.theme} ${r.label.padEnd(22)} unreachable=${String(r.unreachablePx).padStart(5)}px  pageScroll=${r.pageScrollable}  shellScroll=${r.shellScrollable}${clipStr}${r.shot ? '  → ' + path.basename(r.shot) : ''}`);
+      console.log(`  ${tag} ${r.role}/${r.theme} ${r.label.padEnd(22)} ${wheelStr}  unreachable=${String(r.unreachablePx).padStart(5)}px${clipStr}${r.shot ? '  → ' + path.basename(r.shot) : ''}`);
     }
   }
   const brokenScroll = results.filter((r) => r.kind === 'scroll' && r.verdict === 'BROKEN');

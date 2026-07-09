@@ -1293,7 +1293,18 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .shell {
   display: grid;
   grid-template-columns: 232px 1fr;
-  min-height: 100vh;
+  /* The shell owns exactly one viewport. `.shell-content` is the single scroll
+     region (redesign-addendum §5: "scroll inside the pane, never the page") —
+     which only works if the shell is HEIGHT-bounded to the viewport. With the
+     prior `min-height: 100vh` the pane grew with its content and never
+     overflowed, so its `overflow-y: auto` + `overscroll-behavior-y: contain`
+     silently swallowed wheel/trackpad scroll (the browser targeted the
+     non-scrolling pane and contain blocked chaining to the page). Bounding the
+     shell makes the pane the real scroller, so the wheel works. dvh keeps the
+     mobile browser chrome out of the height (100vh fallback for older engines). */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background: var(--color-bg);
 }
 
@@ -1625,6 +1636,9 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* Let the flex child (`.shell-content`) shrink below its content height and
+     become the scroll region inside the height-bounded shell. */
+  min-height: 0;
 }
 .topbar {
   display: flex;
