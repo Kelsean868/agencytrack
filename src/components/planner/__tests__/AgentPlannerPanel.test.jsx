@@ -19,7 +19,7 @@ vi.mock('../../../services/prospectInfoService', () => ({
 }));
 
 import AgentPlannerPanel from '../AgentPlannerPanel';
-import { getAgentWeek, setAppointmentStatus } from '../../../services/plannerService';
+import { getAgentWeek, setAppointmentStatus, updateAppointment } from '../../../services/plannerService';
 import { getProspectInfo } from '../../../services/prospectInfoService';
 
 const TODAY = getTodayTT();
@@ -107,5 +107,52 @@ describe('AgentPlannerPanel', () => {
     expect(screen.getByTestId('churn-dialog')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Mark kept' }));
     await waitFor(() => expect(setAppointmentStatus).toHaveBeenCalledWith('t1', 'a1', 'kept'));
+  });
+
+  it('exposes an "Edit details" action in the churn dialog for an own appointment', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'a1', date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled', note: 'Original note' },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    expect(screen.getByTestId('churn-dialog')).toBeInTheDocument();
+    expect(screen.getByTestId('churn-action-edit')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit details' })).toBeInTheDocument();
+  });
+
+  it('opens the sheet in edit mode prefilled with the appointment values', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'a1', date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled', note: 'Original note' },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('churn-action-edit'));
+    // Sheet opens in edit mode (title switches) with the current values hydrated.
+    expect(screen.getByTestId('appointment-sheet')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Edit appointment' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Date')).toHaveValue(TODAY);
+    expect(screen.getByLabelText('Start time')).toHaveValue('09:00');
+    expect(screen.getByLabelText(/Note/)).toHaveValue('Original note');
+    // Create-only affordance is absent in edit mode.
+    expect(screen.queryByTestId('appt-save-another')).not.toBeInTheDocument();
+  });
+
+  it('saves an edit through updateAppointment with the changed fields', async () => {
+    updateAppointment.mockResolvedValue();
+    getAgentWeek
+      .mockResolvedValueOnce([{ id: 'a1', date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled', note: 'Original note' }])
+      .mockResolvedValue([{ id: 'a1', date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled', note: 'Reviewed note' }]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('churn-action-edit'));
+    fireEvent.change(screen.getByLabelText(/Note/), { target: { value: 'Reviewed note' } });
+    fireEvent.click(screen.getByTestId('appt-save'));
+    await waitFor(() => expect(updateAppointment).toHaveBeenCalledWith(
+      't1', 'a1',
+      expect.objectContaining({ note: 'Reviewed note', startTime: '09:00', type: 'PC' }),
+    ));
   });
 });

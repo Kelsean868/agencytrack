@@ -226,6 +226,7 @@ export const LEGS = [
           // Read-only markers: private-coaching trust line + NO agent Book button.
           await mustText(p, /Private coaching view|Read-only|read-only/i, `${who} trust/read-only marker`, 'body');
           if (await p.locator(tsel('planner-book')).count()) throw new Error(`${who}: agent Book affordance (planner-book) present on team planner`);
+          if (await p.locator(tsel('churn-action-edit')).count()) throw new Error(`${who}: appointment edit affordance (churn-action-edit) present on team planner`);
           // Drill opens the read-only coaching view.
           await a1Row.click();
           await p.locator(tsel('coaching-drill')).waitFor({ state: 'visible', timeout: 8_000 });
@@ -577,6 +578,62 @@ export const LEGS = [
       const smBooked = await check('sales_manager');
       const taBooked = await check('tenant_admin');
       return `D3 Team Planner read-only verified for SM (A1 ${smBooked} booked) + TA (A1 ${taBooked} booked); tenant-wide rank≥3 arm; trust marker present, no Book affordance, drill read-only. hygiene clean`;
+    },
+  },
+
+  // ── 9. Appointment edit-in-place on an OWN appointment (agent-1) — MUTATES appts ──
+  {
+    id: 't3-appt-edit-own',
+    role: 'agent1',
+    desc: "Agent Planner Today view: edit an OWN appt (vhfix-appt-t1, TODAY 09:00 PC) in place via churn→Edit details→AppointmentSheet(mode:edit). Change startTime 09:00→08:15 and note→sentinel, save (updateAppointment), reload → the card persists the new time (8:15 AM) AND the sentinel note at value level. Edit targets a DIFFERENT appt than t3-appt-churn-postpone (which mutates vhfix-appt-d2a at +2d) — no cross-leg interference. Idempotent across re-runs (edits to fixed values); MUTATES appointments (re-seed resets).",
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        const p = ctx.page;
+        await login(p, 'agent1');
+        await clickTid(p, 'agent-tab-planner');
+        // Today view is the default — the 09:00 PC own appt renders as a card.
+        const origId = 'vhfix-appt-t1';
+        const card = p.locator(tsel(`appt-card-${origId}`));
+        await card.waitFor({ state: 'visible', timeout: 15_000 });
+
+        // Churn → Edit details → the sheet opens in edit mode, prefilled.
+        await card.click();
+        await p.locator(tsel('churn-dialog')).waitFor({ state: 'visible', timeout: 8_000 });
+        await clickTid(p, 'churn-action-edit');
+        await p.locator(tsel('appointment-sheet')).waitFor({ state: 'visible', timeout: 8_000 });
+        await mustText(p, /Edit appointment/i, 'sheet is in edit mode', 'appointment-sheet');
+
+        // Change a value pair to fixed sentinels (idempotent on re-run).
+        const SENTINEL_NOTE = 'VH edit sentinel — F11 slice 1a';
+        await p.locator('#appt-time').fill('08:15');
+        await p.locator('#appt-note').fill(SENTINEL_NOTE);
+        await p.waitForTimeout(200);
+        await clickTid(p, 'appt-save');
+        await p.locator(tsel('appointment-sheet')).waitFor({ state: 'detached', timeout: 12_000 });
+        await p.waitForTimeout(1000);
+        await shot(p, 't3-appt-edited');
+
+        // RE-READ (full reload) — reload lands on the default dashboard tab, so
+        // re-navigate to the planner (Today is the default view) before re-reading.
+        await reload(p);
+        await clickTid(p, 'agent-tab-planner');
+        const cardAfter = p.locator(tsel(`appt-card-${origId}`));
+        await cardAfter.waitFor({ state: 'visible', timeout: 12_000 });
+        const cardTxt = (await cardAfter.innerText()).replace(/\s+/g, ' ');
+        if (!/8:15\s*AM/i.test(cardTxt)) {
+          await shot(p, 'FAIL-t3-appt-edit-time');
+          throw new Error(`edited start time (8:15 AM) not persisted after reload — got "${cardTxt.slice(0, 160)}"`);
+        }
+        if (!cardTxt.includes(SENTINEL_NOTE)) {
+          await shot(p, 'FAIL-t3-appt-edit-note');
+          throw new Error(`edited note sentinel not persisted after reload — got "${cardTxt.slice(0, 200)}"`);
+        }
+        await shot(p, 't3-appt-edit-verified');
+
+        assertLegHygiene(ctx);
+        return `Edit-in-place via churn→Edit details: vhfix-appt-t1 startTime→08:15 (8:15 AM) + note→sentinel, saved via updateAppointment and persisted after reload (value-level). hygiene clean`;
+      } finally { await ctx.context.close(); }
     },
   },
 ];
