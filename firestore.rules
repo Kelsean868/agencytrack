@@ -1460,7 +1460,14 @@ service cloud.firestore {
             && d.type in ['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE', 'FREE']
             && d.status in ['scheduled', 'confirmed', 'kept', 'cancelled', 'postponed', 'done']
             && d.note is string && d.note.size() <= 2000
-            && (!('apiAmount' in d) || d.apiAmount == null || (d.apiAmount is number && d.apiAmount >= 0));
+            && (!('apiAmount' in d) || d.apiAmount == null || (d.apiAmount is number && d.apiAmount >= 0))
+            // Recurrence metadata (optional; concrete-materialized series). All
+            // absent on one-off appointments (backward-compatible).
+            && (!('seriesId' in d) || d.seriesId is string)
+            && (!('repeatRule' in d) || d.repeatRule in ['daily', 'weekly', 'custom'])
+            && (!('daysOfWeek' in d) || d.daysOfWeek is list)
+            && (!('seriesPos' in d) || (d.seriesPos is int && d.seriesPos > 0 && d.seriesPos <= 52))
+            && (!('seriesTotal' in d) || (d.seriesTotal is int && d.seriesTotal > 0 && d.seriesTotal <= 52));
         }
 
         allow create: if isSignedIn()

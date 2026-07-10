@@ -724,4 +724,103 @@ export const LEGS = [
       } finally { await ctx.context.close(); }
     },
   },
+
+  // ── 10. Appointment RECURRENCE — create weekly series + postpone one instance ──
+  {
+    id: 't3-appt-recurrence',
+    role: 'agent1',
+    desc: "Agent Planner: book a WEEKLY series of 4 anchored today via the AppointmentSheet REPEATS field (preview reads 'Books 4 appointments'; CTA 'Book series' → createRecurringAppointments materializes 4 concrete instance docs) → reload → today's instance renders the ↻ series badge + mono series line ('Every <Wd> · 1 of 4'). Then POSTPONE that instance via the scope-LOCKED postpone sheet ('Just this one' live / 'Whole series — use Edit' disabled) → reload → the original flips to Postponed + dimmed + retained with the 'series stays' note, and a NEW rebooked appt appears at the moved time (write-read-verify, full reload). Shipped Planner Week view is current-week-only, so cross-week series instances aren't UI-visible — 'other instances unchanged' is proved by (a) the preview booking 4, (b) the scope-lock making postpone single-instance by construction, (c) the retained series metadata. MUTATES appointments with a 'vhleg-recur' note sentinel (seed-fixtures deletes them on re-seed).",
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        const p = ctx.page;
+        const RUN_TOKEN = `vhleg-recur ${Date.now()}`;
+        await login(p, 'agent1');
+        await clickTid(p, 'agent-tab-planner');
+        await p.locator(tsel('planner-book')).waitFor({ state: 'visible', timeout: 15_000 });
+
+        // ── Create a weekly series of 4 anchored today ──
+        await clickTid(p, 'planner-book');
+        await p.locator(tsel('appointment-sheet')).waitFor({ state: 'visible', timeout: 8_000 });
+        await p.locator('#appt-note').fill(RUN_TOKEN);
+        await clickTid(p, 'repeat-rule-weekly');
+        await p.locator(tsel('ends-count')).waitFor({ state: 'visible', timeout: 6_000 });
+        await p.locator(tsel('repeat-count-input')).fill('4');
+        await p.waitForTimeout(300);
+        // Plain-language preview confirms the materialization count BEFORE booking.
+        await mustText(p, /Books 4 appointments/, 'series preview count', 'series-preview');
+        await mustText(p, /Book series/, 'CTA switches to Book series', 'appt-save');
+        await shot(p, 't3-recur-create');
+        await clickTid(p, 'appt-save');
+        await p.locator(tsel('appointment-sheet')).waitFor({ state: 'detached', timeout: 12_000 });
+        await p.waitForTimeout(1000);
+
+        // ── Reload → today's instance carries the ↻ series line ──
+        await reload(p);
+        await clickTid(p, 'agent-tab-planner');
+        await p.locator(tsel('planner-view-today')).waitFor({ state: 'visible', timeout: 12_000 });
+        await p.waitForTimeout(600);
+        const seriesCard = p.locator('[data-testid^="appt-card-"]').filter({ hasText: RUN_TOKEN }).first();
+        await seriesCard.waitFor({ state: 'visible', timeout: 10_000 });
+        const cardTxt = (await seriesCard.innerText()).replace(/\s+/g, ' ');
+        if (!/Every\b/.test(cardTxt) || !/of 4/.test(cardTxt)) {
+          await shot(p, 'FAIL-t3-recur-series-line');
+          throw new Error(`series line missing on created instance — got "${cardTxt.slice(0, 200)}"`);
+        }
+        await shot(p, 't3-recur-series-row');
+
+        // ── Postpone THIS instance via the scope-locked postpone sheet ──
+        await seriesCard.click();
+        await p.locator(tsel('churn-dialog')).waitFor({ state: 'visible', timeout: 8_000 });
+        await clickTid(p, 'churn-action-postpone');
+        await p.locator(tsel('appointment-sheet')).waitFor({ state: 'visible', timeout: 8_000 });
+        // Scope is LOCKED: "Just this one" live, "Whole series — use Edit" disabled.
+        await mustText(p, /Postpone appointment/i, 'postpone sheet title', 'appointment-sheet');
+        if (!(await p.locator(tsel('postpone-scope-just-this')).count())) {
+          throw new Error('postpone scope "Just this one" chip absent');
+        }
+        const disabledChip = p.locator(tsel('postpone-scope-series-disabled'));
+        if (!(await disabledChip.count())) throw new Error('postpone scope "Whole series" disabled chip absent');
+        if ((await disabledChip.getAttribute('aria-disabled')) !== 'true') {
+          throw new Error('"Whole series" chip is not aria-disabled (scope not locked)');
+        }
+        await mustText(p, /series stays/i, 'postpone consequence panel', 'postpone-consequence');
+        await shot(p, 't3-recur-postpone-sheet');
+        // Move to a distinct time on the SAME day (stays visible in Today view).
+        await p.locator('#appt-time').fill('15:45');
+        await p.waitForTimeout(200);
+        await clickTid(p, 'appt-save'); // "Move this one"
+        await p.locator(tsel('appointment-sheet')).waitFor({ state: 'detached', timeout: 12_000 });
+        await p.waitForTimeout(1200);
+
+        // ── Reload → after-state: original Postponed + dimmed + series-stays note;
+        //    a NEW rebooked appt at 3:45 PM present ──
+        await reload(p);
+        await clickTid(p, 'agent-tab-planner');
+        await p.locator(tsel('planner-view-today')).waitFor({ state: 'visible', timeout: 12_000 });
+        await p.waitForTimeout(700);
+        const tokenCards = p.locator('[data-testid^="appt-card-"]').filter({ hasText: RUN_TOKEN });
+        const postponedCard = tokenCards.filter({ hasText: /Postponed/i }).first();
+        await postponedCard.waitFor({ state: 'attached', timeout: 10_000 });
+        const postTxt = (await postponedCard.innerText()).replace(/\s+/g, ' ');
+        if (!/Postponed/i.test(postTxt)) {
+          await shot(p, 'FAIL-t3-recur-not-postponed');
+          throw new Error('series instance did not flip to Postponed after reload');
+        }
+        if (!/series stays/i.test(postTxt)) {
+          await shot(p, 'FAIL-t3-recur-no-series-note');
+          throw new Error('postponed series instance missing the "series stays" note');
+        }
+        const bodyTxt = await scopeText(p, 'body');
+        if (!/3:45\s*PM/i.test(bodyTxt)) {
+          await shot(p, 'FAIL-t3-recur-rebook-missing');
+          throw new Error('rebooked appointment (3:45 PM) not found after reload');
+        }
+        await shot(p, 't3-recur-after');
+
+        assertLegHygiene(ctx);
+        return 'Recurrence: weekly series of 4 booked via UI (preview "Books 4 appointments" → createRecurringAppointments); today instance rendered ↻ series line ("Every … of 4"); postpone scope-LOCKED to "Just this one" (series chip aria-disabled); after reload original Postponed+dimmed+retained with "series stays" note + new 3:45 PM rebook present. hygiene clean';
+      } finally { await ctx.context.close(); }
+    },
+  },
 ];

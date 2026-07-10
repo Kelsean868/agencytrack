@@ -33,10 +33,11 @@
 
 import {
   addDoc, updateDoc, doc, collection, getDocs,
-  query, where, orderBy, serverTimestamp,
+  query, where, orderBy, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getWarRoleRank } from './managerWarService';
+import { expandSeriesDates, MAX_SERIES_INSTANCES } from '../components/planner/recurrence.helpers';
 
 // ── Activity types (selling ladder + free blocks) ────────────────────────────
 // Order = the mockup's timeline/legend order. `label` is the display code with
@@ -130,6 +131,47 @@ function buildCreatePayload(tenantId, data, meta) {
 export async function createAppointment(tenantId, data, meta) {
   const ref = await addDoc(apptCollection(tenantId), buildCreatePayload(tenantId, data, meta));
   return ref.id;
+}
+
+/**
+ * Create a RECURRING series — materializes N concrete appointment docs (one per
+ * occurrence), each carrying series metadata so every instance is self-describing
+ * (fits the no-delete / honest-week model: churn is per-instance status flips).
+ *
+ * `recurrence` = { repeatRule: 'daily'|'weekly'|'custom', daysOfWeek?: string[],
+ * endCondition: { type:'count', count } | { type:'date', onDate } }. Occurrence
+ * dates come from expandSeriesDates (hard-capped at MAX_SERIES_INSTANCES). All
+ * instances are committed in a single writeBatch (atomic; 52 ≪ the 500 cap).
+ *
+ * @returns {Promise<{ seriesId: string, count: number, dates: string[] }>}
+ */
+export async function createRecurringAppointments(tenantId, data, recurrence, meta) {
+  const { repeatRule, daysOfWeek = [], endCondition } = recurrence || {};
+  const dates = expandSeriesDates({ startDate: data.date, repeatRule, daysOfWeek, endCondition })
+    .slice(0, MAX_SERIES_INSTANCES);
+  if (!dates.length) throw new Error('Recurrence produced no occurrences.');
+
+  const coll = apptCollection(tenantId);
+  const seriesId = doc(coll).id; // mint a stable grouping id (Firestore auto-id)
+  const total = dates.length;
+  const batch = writeBatch(db);
+
+  dates.forEach((date, i) => {
+    const base = buildCreatePayload(tenantId, { ...data, date }, meta);
+    batch.set(doc(coll), {
+      ...base,
+      seriesId,
+      repeatRule,
+      seriesPos: i + 1,
+      seriesTotal: total,
+      // daysOfWeek is only meaningful for custom cadence — omit otherwise so the
+      // stored shape stays minimal (extra keys are contract-safe either way).
+      ...(repeatRule === 'custom' && daysOfWeek.length ? { daysOfWeek } : {}),
+    });
+  });
+
+  await batch.commit();
+  return { seriesId, count: total, dates };
 }
 
 /**

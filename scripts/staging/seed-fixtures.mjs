@@ -649,6 +649,18 @@ async function main() {
 
   // ── A9. Appointments (A1 planner week) ──
   console.log('\n── A9: appointments ──');
+  // Cleanup: the t3-appt-recurrence VH leg CREATES series docs via the UI with
+  // auto-ids (a fixed-id .set() re-seed can't reset them). The leg tags every doc
+  // it writes with a 'vhleg-recur' note sentinel; delete them here so staging
+  // never accumulates smoke-created series across runs. Admin SDK bypasses rules.
+  {
+    const apptSnap = await T.collection('appointments').get();
+    let legDel = 0;
+    for (const d of apptSnap.docs) {
+      if (String(d.data().note || '').includes('vhleg-recur')) { await d.ref.delete(); legDel += 1; }
+    }
+    if (legDel) console.log(`  [del] ${legDel} vhleg-recur appointment(s) from a prior smoke run`);
+  }
   const appt = (id, base) => put(T.collection('appointments').doc(id), {
     tenantId: TENANT_ID, agentId: uid.a1, agentUnitId: uid.um, agentBranchId: BRANCH_ID,
     date: base.date, startTime: base.t, durationMin: base.dur ?? 30,
