@@ -43,6 +43,13 @@ vi.mock('../../../services/managerStandardOverrideService', () => ({
   getResolvedStandards: (...args) => mockGetResolvedStandards(...args),
 }));
 
+// Own-production source for the MyWarCard hero metric row (item E). extractFields
+// + extractTotalProductionCredit + formatCurrency stay real (pure readers).
+const mockGetAgentSubmissions = vi.fn().mockResolvedValue([]);
+vi.mock('../../../services/submissionService', () => ({
+  getAgentSubmissions: (...args) => mockGetAgentSubmissions(...args),
+}));
+
 // ── Validators mock (stable Sunday list) ─────────────────────────────────────
 
 vi.mock('../../../utils/validators', () => ({
@@ -90,6 +97,7 @@ beforeEach(() => {
   mockGetOwnJfwCount.mockResolvedValue(0);
   mockGetOwnWarStreak.mockResolvedValue([]);
   mockGetResolvedStandards.mockResolvedValue({});
+  mockGetAgentSubmissions.mockResolvedValue([]);
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
 });
 
@@ -636,5 +644,64 @@ describe('ManagerWarTab — F9 review status pill', () => {
     await flushMount();
     expect(screen.queryByTestId('my-war-review-state')).not.toBeInTheDocument();
     expect(screen.queryByTestId('my-war-review-note-toggle')).not.toBeInTheDocument();
+  });
+});
+
+// ── item E — My WAR hero (MyWarCard production metric row) ─────────────────────
+
+describe('ManagerWarTab — My WAR hero production metrics', () => {
+  beforeEach(() => {
+    // Reduced-motion → useCountUp snaps to the final value synchronously, so the
+    // hero API numeral is deterministic without flushing requestAnimationFrame.
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: true,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      addListener: vi.fn(), removeListener: vi.fn(),
+    });
+  });
+
+  it('renders the hero with the three metric labels + completion ring', async () => {
+    renderTab();
+    await flushMount();
+    const hero = screen.getByTestId('my-war-hero');
+    expect(hero).toBeInTheDocument();
+    expect(hero).toHaveTextContent(/My API/i);
+    expect(hero).toHaveTextContent(/Applications/i);
+    expect(hero).toHaveTextContent(/Filing streak/i);
+    expect(screen.getByTestId('war-completion-ring')).toBeInTheDocument();
+  });
+
+  it('shows the own-week API and applications from the manager submission', async () => {
+    mockGetAgentSubmissions.mockResolvedValue([
+      {
+        id: 'um1_2026-05-17', weekStarting: '2026-05-17', status: 'submitted',
+        version: 2, newBusiness: { api: 5200, apps: 1 }, totalProductionCredit: 5200,
+      },
+    ]);
+    renderTab();
+    await flushMount();
+    await flushMount();
+    expect(screen.getByTestId('my-war-hero-api')).toHaveTextContent(/TTD\s*5,200/);
+    expect(screen.getByTestId('my-war-hero-apps')).toHaveTextContent(/^1$/);
+  });
+
+  it('renders a clean zero-state when the manager has no own submission for the week', async () => {
+    mockGetAgentSubmissions.mockResolvedValue([]);
+    renderTab();
+    await flushMount();
+    await flushMount();
+    expect(screen.getByTestId('my-war-hero-api')).toHaveTextContent(/TTD\s*0/);
+    expect(screen.getByTestId('my-war-hero-apps')).toHaveTextContent(/^0$/);
+  });
+
+  it('shows a dash (no crash) when the own-production fetch fails', async () => {
+    mockGetAgentSubmissions.mockRejectedValue(new Error('boom'));
+    renderTab();
+    await flushMount();
+    await flushMount();
+    expect(screen.getByTestId('my-war-hero-api')).toHaveTextContent('—');
+    expect(screen.getByTestId('my-war-hero-apps')).toHaveTextContent('—');
+    // Rest of the form still renders — the hero fetch failure is non-blocking.
+    expect(screen.getByText('My Weekly Activity Report')).toBeInTheDocument();
   });
 });

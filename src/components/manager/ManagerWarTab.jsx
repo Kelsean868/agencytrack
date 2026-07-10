@@ -4,6 +4,10 @@ import { useAuth } from '../../context/AuthContext';
 import { getRecentSundays } from '../../utils/validators';
 import { saveWarDraft, submitWar, getWar, getOwnJfwCount, getOwnWarStreak } from '../../services/managerWarService';
 import { getResolvedStandards } from '../../services/managerStandardOverrideService';
+import { getAgentSubmissions } from '../../services/submissionService';
+import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
+import { formatCurrency } from '../../utils/formatters';
+import { useCountUp } from '../../hooks/useCountUp';
 import { computeMissedActivities, computeWarCompletion } from '../../utils/accountabilityFlag';
 import AccountabilityFlagPanel from './AccountabilityFlagPanel';
 import WarCompletionRing from './WarCompletionRing';
@@ -63,6 +67,12 @@ export default function ManagerWarTab() {
   const [roleStds, setRoleStds]         = useState({});
   const [streak, setStreak]             = useState(null);
   const [streakError, setStreakError]   = useState(false);
+  // Producing manager's OWN weekly sales submission for the selected week —
+  // drives the MyWarCard "MY API · THIS WEEK" + "APPLICATIONS" metric row. Same
+  // submissions pipeline agents use (getAgentSubmissions → extractFields), so no
+  // new read path. null = loading; { api, apps, hasSub } once resolved.
+  const [ownProd, setOwnProd]           = useState(null);
+  const [ownProdError, setOwnProdError] = useState(false);
   // Upline review surfaced read-only on the owner's my-war (F9). Seeded from the
   // loaded WAR doc; null when the week has no review yet.
   const [review, setReview]             = useState(null);
@@ -161,6 +171,36 @@ export default function ManagerWarTab() {
 
   useEffect(() => { loadStreak(); }, [loadStreak]);
 
+  // Fetch the producing manager's OWN weekly submission for the selected week
+  // (MyWarCard production metric row). Reuses getAgentSubmissions + the canonical
+  // extractFields readers (same pipeline as useMyProduction). A manager with no
+  // own submission for the week resolves to a clean zero ({ api:0, apps:0 }),
+  // never a crash. Failure surfaces a retry affordance in the hero.
+  const loadOwnProd = useCallback(() => {
+    if (!user || !tenantId) return;
+    setOwnProd(null);
+    setOwnProdError(false);
+    getAgentSubmissions(tenantId, user.uid)
+      .then((subs) => {
+        const sub = (subs || []).find((s) => s.weekStarting === weekStart);
+        if (!sub) {
+          setOwnProd({ api: 0, apps: 0, hasSub: false });
+          return;
+        }
+        setOwnProd({
+          api:    extractTotalProductionCredit(sub),
+          apps:   parseFloat(extractFields(sub).applicationsSold) || 0,
+          hasSub: true,
+        });
+      })
+      .catch((err) => {
+        console.error('[ManagerWarTab] own-production load failed:', err);
+        setOwnProdError(true);
+      });
+  }, [weekStart, user, tenantId]);
+
+  useEffect(() => { loadOwnProd(); }, [loadOwnProd]);
+
   // Fetch resolved standards (org-default ?? override) for the owner (I1.3c-ii).
   // Failure is silent — overlay falls back to actual-only.
   useEffect(() => {
@@ -229,6 +269,11 @@ export default function ManagerWarTab() {
   const completion = computeWarCompletion({ ...form, jfwCount: jfwCount ?? 0 }, roleStds);
   const reviewMeta = review?.reviewStatus ? REVIEW_META[review.reviewStatus] : null;
 
+  // §2 count-up on the hero money KPI only (mirrors HeroCard.jsx precedent) —
+  // reduced-motion snap is handled inside the hook. Apps is a small integer
+  // count and stays static, matching the shipped hero convention.
+  const displayApi = useCountUp(ownProd?.api ?? 0, { duration: 1000, decimals: 2 });
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto">
@@ -295,41 +340,114 @@ export default function ManagerWarTab() {
         </div>
       )}
 
-      {/* Completion ring + 8-week filing streak (item 2.1) */}
-      <div className="bg-card rounded-2xl p-4 flex items-center gap-4">
-        <WarCompletionRing
-          pct={completion.pct}
-          met={completion.met}
-          total={completion.total}
-          size={52}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Completion</p>
-          <p className="text-sm text-text">
-            {completion.pct == null
-              ? 'No targets set yet'
-              : `${completion.met} of ${completion.total} targets met`}
-          </p>
+      {/* My WAR hero (MyWarCard conformance, Run3 item E) — completion ring +
+           own-production metric row (MY API · THIS WEEK / APPLICATIONS / FILING
+           STREAK) on the shipped glass-hero teal surface. The ring + streak dots
+           use the `hero` variant so their viz colors stay legible on teal. */}
+      <section
+        className="glass hero teal relative overflow-hidden rounded-2xl"
+        style={{ padding: '18px 20px' }}
+        data-testid="my-war-hero"
+      >
+        {/* Ring + completion headline */}
+        <div className="relative flex items-center gap-4">
+          <WarCompletionRing
+            pct={completion.pct}
+            met={completion.met}
+            total={completion.total}
+            size={52}
+            variant="hero"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-[--hero-ink-muted-teal] font-mono">
+              My WAR · {weekStart}
+            </p>
+            <p className="text-[--hero-ink] font-semibold mt-1">
+              {completion.pct == null
+                ? 'No targets set yet'
+                : `${completion.met} of ${completion.total} targets met`}
+            </p>
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
-            Filing streak
-          </span>
-          {streakError ? (
-            <button
-              type="button"
-              onClick={loadStreak}
-              className="min-h-[44px] px-2 text-xs font-semibold text-primary underline underline-offset-2"
-            >
-              Retry
-            </button>
-          ) : streak === null ? (
-            <Skeleton className="h-2 w-24 rounded-full" />
-          ) : (
-            <WarStreakDots history={streak.map((s) => s.filed).reverse()} />
-          )}
+
+        {/* Production metric row — the producing manager also sells */}
+        <div className="relative mt-4 grid grid-cols-3 gap-2.5">
+          {/* MY API · THIS WEEK (money → count-up) */}
+          <div className="rounded-xl px-3 py-2.5 bg-[--hero-chip-island] border border-[--hero-chip-border]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[--hero-ink-muted-teal] font-mono">
+              My API · This week
+            </p>
+            {ownProdError ? (
+              <p
+                className="text-[--hero-ink] font-bold tabular-nums mt-1"
+                style={{ fontSize: 18 }}
+                data-testid="my-war-hero-api"
+              >
+                —
+              </p>
+            ) : ownProd === null ? (
+              <div className="mt-2"><Skeleton className="h-4 w-16 rounded" /></div>
+            ) : (
+              <p
+                className="text-[--hero-ink] font-bold tabular-nums mt-1"
+                style={{ fontSize: 18, fontFamily: '"Cabinet Grotesk", system-ui, sans-serif' }}
+                data-testid="my-war-hero-api"
+              >
+                {formatCurrency(displayApi)}
+              </p>
+            )}
+          </div>
+
+          {/* APPLICATIONS (integer count → static) */}
+          <div className="rounded-xl px-3 py-2.5 bg-[--hero-chip-island] border border-[--hero-chip-border]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[--hero-ink-muted-teal] font-mono">
+              Applications
+            </p>
+            {ownProdError ? (
+              <p
+                className="text-[--hero-ink] font-bold tabular-nums mt-1"
+                style={{ fontSize: 18 }}
+                data-testid="my-war-hero-apps"
+              >
+                —
+              </p>
+            ) : ownProd === null ? (
+              <div className="mt-2"><Skeleton className="h-4 w-10 rounded" /></div>
+            ) : (
+              <p
+                className="text-[--hero-ink] font-bold tabular-nums mt-1"
+                style={{ fontSize: 18 }}
+                data-testid="my-war-hero-apps"
+              >
+                {ownProd.apps}
+              </p>
+            )}
+          </div>
+
+          {/* FILING STREAK — recognition (gold label); dots via getOwnWarStreak,
+               skeleton + retry preserved. */}
+          <div className="rounded-xl px-3 py-2.5 bg-[--hero-chip-island] border border-[--hero-chip-border]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[--hero-ink-muted-gold] font-mono">
+              Filing streak
+            </p>
+            <div className="mt-2 min-h-[20px] flex items-center">
+              {streakError ? (
+                <button
+                  type="button"
+                  onClick={loadStreak}
+                  className="min-h-[44px] text-xs font-semibold text-[--hero-ink] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                >
+                  Retry
+                </button>
+              ) : streak === null ? (
+                <Skeleton className="h-2 w-20 rounded-full" />
+              ) : (
+                <WarStreakDots history={streak.map((s) => s.filed).reverse()} variant="hero" />
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Upline review status (F9) — read-only mirror of the BM-side review pill
            (same StatusPill variant + label + reviewer line as ManagerWarDetail).
