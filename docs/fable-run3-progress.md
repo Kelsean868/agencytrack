@@ -7,9 +7,9 @@ Brief: [`docs/briefs/fable-run3-kickoff.md`](briefs/fable-run3-kickoff.md).
 
 | Item | Status | Notes |
 |------|--------|-------|
-| 0.1 Run docs committed | 🔄 in progress | this commit |
-| 0.2 H1 seeder env-guard (Sonnet) | ⬜ | |
-| 0.3 Baseline re-seed + full VH suite | ⬜ | expect 33/33 (t2-financing-k9-k7 flake tolerated) |
+| 0.1 Run docs committed | ✅ | `63dddd74` |
+| 0.2 H1 seeder env-guard (Sonnet) | ✅ | `31f817b6` — guard before any init/mutation; red-verify exit 1 zero writes; green 92 docs |
+| 0.3 Baseline re-seed + full VH suite | 🔄 | re-seed done via H1 green-verify; full suite running |
 | H2 harden t2-financing-k9-k7 | ⬜ | |
 | H3 MasterSheet collapse → "Persons Reached" | ⬜ | |
 | H4 jointCalls index reconcile | ⬜ | |
@@ -29,7 +29,10 @@ Brief: [`docs/briefs/fable-run3-kickoff.md`](briefs/fable-run3-kickoff.md).
 
 | Item | Model | Started (TT) | Ended | Outcome | SHA(s) |
 |------|-------|--------------|-------|---------|--------|
-| recon | Fable (orchestrator) | 23:xx | — | env/layout verified; H5 found no-op | — |
+| recon | Fable (orchestrator) | 23:xx | 23:xx | env/layout verified; H5 found no-op | — |
+| H1 | Sonnet | 23:xx | +2.5min | ✅ guard added, red/green verified, lint clean | `31f817b6` |
+| R1 | Opus | 23:xx | — | 🔄 rebase in progress | — |
+| baseline VH | orchestrator (bg) | 23:xx | — | 🔄 running | — |
 
 ## DECISIONS-NEEDED
 
