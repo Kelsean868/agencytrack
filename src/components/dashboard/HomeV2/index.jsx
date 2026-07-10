@@ -16,6 +16,7 @@ import NeedsActionBanner from './NeedsActionBanner';
 import RecentCompact from './RecentCompact';
 import DeliveryStripCard from './DeliveryStripCard';
 import StandardDetail from './StandardDetail';
+import FilingStreakCelebration from './FilingStreakCelebration';
 import CampaignCard from '../../campaigns/CampaignCard';
 import MyPointsCard from '../../gamification/MyPointsCard';
 
@@ -264,6 +265,14 @@ export default function AgentDashboardHomeV2({
           onOpenGamePlan={() => { setDrawer(null); onOpenTab?.('game-plan'); }}
         />
       )}
+
+      {/* Filing-streak milestone celebration — fires on load when the weekly
+          filing streak crosses an un-celebrated rung (once per milestone/year). */}
+      <FilingStreakCelebration
+        allSubmissions={allSubmissions}
+        agentUid={agentUid}
+        year={thisYear}
+      />
     </div>
   );
 }

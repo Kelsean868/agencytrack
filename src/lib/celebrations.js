@@ -30,6 +30,12 @@ export const DAILY_STREAK_MILESTONES = Object.freeze([5, 10, 20]);
 // goals-v2-celebrate shows an 8-week run; rungs bracket it.
 export const GOALS_WEEKLY_STREAK_MILESTONES = Object.freeze([4, 8, 12]);
 
+// Weekly FILING streak (consecutive weeks with a submitted weekly report —
+// computeSubmissionStreak.currentStreak). No pinned values existed for the
+// filing streak, so these are the operator's Run-3 defaults. Fires on the home
+// surface that owns the streak display, via the shared resolveStreakCelebration.
+export const FILING_WEEKLY_STREAK_MILESTONES = Object.freeze([5, 10, 25, 52]);
+
 // ── Streak-milestone resolver (shared by daily + goals streak) ──────────────
 
 /**
