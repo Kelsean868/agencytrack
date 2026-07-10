@@ -499,7 +499,14 @@ export const LEGS = [
         const prevWeek = W(-1);
         const prevTotal = 26200;
         await weekSel.selectOption(prevWeek);
-        await p.waitForTimeout(800);
+        // Wait deterministically for the prior week's data to render (the funnel
+        // re-render + refetch can outlast a fixed timeout on cold staging) — poll
+        // until the 3 submitted rows are present rather than reading a stale value.
+        await p.waitForFunction(
+          () => document.querySelectorAll('tbody [data-testid^="rank-"]').length === 3,
+          { timeout: 15_000 },
+        ).catch(() => {});
+        await p.waitForTimeout(300);
         const r1 = await readReality(p);
         if (!currencyRe(prevTotal).test(r1.weekapi || '')) {
           await shot(p, 'FAIL-t1-master-sheet-prevweek');
