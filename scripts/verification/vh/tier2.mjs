@@ -106,31 +106,48 @@ export const LEGS = [
         await bm.context.close();
       }
 
-      // ── UM side: own submitted WAR shows the review + NO self-review controls ──
+      // ── UM side: own my-war surfaces the upline review (F9) + NO self-review controls ──
+      // F9 flipped the former "pill ABSENT (finding)" note into hard assertions:
+      // the owner's my-war MUST render the review pill + reviewer name for the
+      // approved week, and the note-disclosure affordance MUST reveal the note
+      // text for the changes-requested week. Self-review-denied assertion kept.
       const um = await newLegContext(browser);
-      let umPill = 'not-found';
       try {
         const p = um.page;
         await login(p, 'unit_manager');
         await clickTid(p, 'nav-my-war');
         await p.locator('select').first().waitFor({ state: 'attached', timeout: 15_000 });
         await p.waitForTimeout(800);
-        await selectReactOption(p, p.locator('select').first(), W(-1)); // 2026-06-28 (approved)
+
+        // W(-1)=2026-06-28 (approved): pill + reviewer name (F9 hard assert).
+        await selectReactOption(p, p.locator('select').first(), W(-1));
         await p.waitForTimeout(1800);
-        // Required WRITE-DENIED assertion: owner cannot self-review → controls absent.
+        // Required WRITE-DENIED assertion (unchanged): owner cannot self-review → controls absent.
         const controls = await p.locator(tsel('war-review-controls')).count();
         if (controls > 0) throw new Error('SELF-REVIEW LEAK: war-review-controls rendered on UM own WAR (owner should be denied review).');
-        // Owner-surface review pill (best-effort — recorded honestly if the surface renders it differently).
-        const umTxt = await scopeText(p, 'main');
-        umPill = /Approved/i.test(umTxt) ? 'Approved shown'
-          : umTxt.includes(APPROVE_NOTE) ? 'leader-note shown'
-          : 'review indicator NOT surfaced on owner my-war (finding)';
+        await p.locator(tsel('my-war-review-state')).waitFor({ state: 'visible', timeout: 12_000 });
+        await mustText(p, /Approved/i, 'UM my-war approved → pill', 'my-war-review-state');
+        await mustText(p, /Reviewed by Staging Branch Manager/i, 'UM my-war approved → reviewer name', 'my-war-review-state');
         await shot(p, 't2-war-um-side');
+
+        // W(-2)=2026-06-21 (changes requested): pill + note affordance reveals the note (F9 hard assert).
+        await selectReactOption(p, p.locator('select').first(), W(-2));
+        await p.waitForTimeout(1800);
+        await p.locator(tsel('my-war-review-state')).waitFor({ state: 'visible', timeout: 12_000 });
+        await mustText(p, /Changes requested/i, 'UM my-war changes → pill', 'my-war-review-state');
+        // The leader's note sits behind a disclosure affordance — click to reveal, then assert the text.
+        await p.locator(tsel('my-war-review-note-toggle')).click({ timeout: 8000 });
+        await p.locator(tsel('my-war-review-note')).waitFor({ state: 'visible', timeout: 8000 });
+        const noteRe = new RegExp(CHANGES_NOTE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        await mustText(p, noteRe, 'UM my-war changes → note revealed', 'my-war-review-note');
+        await shot(p, 't2-war-um-changes');
         assertLegHygiene(um);
       } finally {
         await um.context.close();
       }
-      return `BM approved UM 06-28 (+reviewer name) & requested-changes UM 06-21 — both pills re-read; UM own WAR: self-review controls ABSENT (denied); owner pill: ${umPill}.`;
+      return 'BM approved UM 06-28 (+reviewer name) & requested-changes UM 06-21 — both pills re-read; '
+        + 'UM my-war: self-review controls ABSENT (denied); owner review pill + reviewer name shown for the '
+        + 'approved week; changes-requested note affordance reveals the note text.';
     },
   },
 

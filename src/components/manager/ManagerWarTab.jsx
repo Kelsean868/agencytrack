@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { CheckSquare, Square } from 'lucide-react';
+import { CheckSquare, Square, MessageSquare, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getRecentSundays } from '../../utils/validators';
 import { saveWarDraft, submitWar, getWar, getOwnJfwCount, getOwnWarStreak } from '../../services/managerWarService';
@@ -8,9 +8,28 @@ import { computeMissedActivities, computeWarCompletion } from '../../utils/accou
 import AccountabilityFlagPanel from './AccountabilityFlagPanel';
 import WarCompletionRing from './WarCompletionRing';
 import WarStreakDots from './WarStreakDots';
+import StatusPill from '../ui/StatusPill';
 import PanelSkeleton, { Skeleton, SkeletonText } from '../ui/PanelSkeleton';
 
 const AUTOSAVE_DELAY = 1500;
+
+// Upline-review presentation — mirrors ManagerWarDetail's REVIEW_META so the
+// owner's read-only pill uses the identical StatusPill variant + label the BM
+// review surface writes. Block-local copy (same pattern as WAR_ROLE_RANKS in
+// managerWarService); FU banked to hoist the shared review-meta constants.
+const REVIEW_META = {
+  approved:          { variant: 'success', label: 'Approved' },
+  changes_requested: { variant: 'warning', label: 'Changes requested' },
+};
+
+function formatReviewedAt(ts) {
+  if (!ts) return '';
+  const d = typeof ts.toDate === 'function' ? ts.toDate()
+          : ts instanceof Date ? ts
+          : new Date(ts);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-TT', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 const DEFAULT_FORM = {
   oneOnOnesConducted:   0,
@@ -44,6 +63,10 @@ export default function ManagerWarTab() {
   const [roleStds, setRoleStds]         = useState({});
   const [streak, setStreak]             = useState(null);
   const [streakError, setStreakError]   = useState(false);
+  // Upline review surfaced read-only on the owner's my-war (F9). Seeded from the
+  // loaded WAR doc; null when the week has no review yet.
+  const [review, setReview]             = useState(null);
+  const [noteOpen, setNoteOpen]         = useState(false);
 
   const saveTimer  = useRef(null);
   const savedTimer = useRef(null);
@@ -67,23 +90,34 @@ export default function ManagerWarTab() {
     setLoadError(false);
     setSubmitSuccess(false);
     setSubmitError('');
+    setNoteOpen(false);
     getWar(tenantId, user.uid, weekStart)
       .then((war) => {
         if (!war) {
           setForm(DEFAULT_FORM);
           setStatus(null);
+          setReview(null);
           return;
         }
-        // Strip identity/meta fields; keep only form-editable fields
+        // Strip identity/meta AND upline-review fields; keep only form-editable
+        // fields. Review fields are surfaced read-only via `review` state below —
+        // they must NOT flow into `form` (sanitizeWar drops them on save anyway).
         const {
           id: _id, managerId: _mid, managerName: _mn, tenantId: _tid,
           weekStart: _ws, managerRole: _mr, managerRoleRank: _rr,
           branchId: _bid, unitId: _uid, jfwCount: _jfw,
           status: s, createdAt: _ca, updatedAt: _ua, submittedAt: _sa,
+          reviewStatus, reviewNote, reviewedByName, reviewedAt,
+          reviewedBy: _rb,
           ...fields
         } = war;
         setForm((prev) => ({ ...prev, ...fields }));
         setStatus(s ?? null);
+        setReview(
+          reviewStatus
+            ? { reviewStatus, reviewNote: reviewNote ?? '', reviewedByName: reviewedByName ?? '', reviewedAt: reviewedAt ?? null }
+            : null,
+        );
       })
       .catch((err) => {
         console.error('[ManagerWarTab] load failed:', err);
@@ -193,6 +227,7 @@ export default function ManagerWarTab() {
 
   const isSubmitted = status === 'submitted';
   const completion = computeWarCompletion({ ...form, jfwCount: jfwCount ?? 0 }, roleStds);
+  const reviewMeta = review?.reviewStatus ? REVIEW_META[review.reviewStatus] : null;
 
   if (loading) {
     return (
@@ -295,6 +330,56 @@ export default function ManagerWarTab() {
           )}
         </div>
       </div>
+
+      {/* Upline review status (F9) — read-only mirror of the BM-side review pill
+           (same StatusPill variant + label + reviewer line as ManagerWarDetail).
+           Renders only when the loaded WAR carries a review; the leader's note
+           sits behind a disclosure affordance (custom button + aria-expanded,
+           the app's disclosure idiom). No review yet → nothing rendered. */}
+      {reviewMeta && (
+        <div
+          className="bg-card rounded-2xl p-5 space-y-2"
+          data-testid="my-war-review-state"
+        >
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+              Review
+            </h3>
+            <StatusPill variant={reviewMeta.variant} label={reviewMeta.label} />
+          </div>
+          <p className="text-xs text-text-muted">
+            {review.reviewedByName ? `Reviewed by ${review.reviewedByName}` : 'Reviewed'}
+            {formatReviewedAt(review.reviewedAt) ? ` · ${formatReviewedAt(review.reviewedAt)}` : ''}
+          </p>
+          {review.reviewNote && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setNoteOpen((o) => !o)}
+                aria-expanded={noteOpen}
+                className="min-h-[44px] inline-flex items-center gap-1.5 text-sm font-semibold text-primary rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                data-testid="my-war-review-note-toggle"
+              >
+                <MessageSquare size={15} aria-hidden="true" />
+                {noteOpen ? "Hide leader's note" : "View leader's note"}
+                <ChevronDown
+                  size={15}
+                  aria-hidden="true"
+                  className={`transition-transform ${noteOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {noteOpen && (
+                <p
+                  className="mt-1 text-sm text-text whitespace-pre-wrap"
+                  data-testid="my-war-review-note"
+                >
+                  {review.reviewNote}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* I3a Tier-1 accountability flag — visible when one or more standards
            are under target. Includes the auto-counted JFW in the comparison. */}

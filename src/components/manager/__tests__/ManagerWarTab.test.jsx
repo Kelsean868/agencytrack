@@ -570,3 +570,71 @@ describe('ManagerWarTab — I3a accountability flag panel', () => {
     expect(screen.getByTestId('accountability-flag-panel')).toHaveTextContent(/2 standards under target/i);
   });
 });
+
+// ── F9 — upline review status surfaced read-only on the owner's my-war ────────
+
+const reviewedWar = (overrides = {}) => ({
+  id: 'um1_2026-05-17', managerId: 'um1', tenantId: 'test-tenant',
+  weekStart: '2026-05-17', managerRole: 'unit_manager', managerRoleRank: 1,
+  branchId: 'branch-a', unitId: 'um1', jfwCount: 0, status: 'submitted',
+  oneOnOnesConducted: 2, namesSourced: 3, interviewsConducted: 1,
+  recruitsInFirstWeeks: 0, trainingSessions: 1, trainingTopic: '',
+  unitMeetingHeld: false, attendanceCount: null, dashboardReviewDone: true,
+  ...overrides,
+});
+
+describe('ManagerWarTab — F9 review status pill', () => {
+  it('renders the Approved pill with the reviewer name when the WAR is approved', async () => {
+    mockGetWar.mockResolvedValue(reviewedWar({
+      reviewStatus: 'approved',
+      reviewedBy: 'bm1',
+      reviewedByName: 'Branch Manager 1',
+      reviewNote: '',
+      reviewedAt: new Date('2026-05-20T12:00:00Z'),
+    }));
+    renderTab();
+    await flushMount();
+
+    const block = screen.getByTestId('my-war-review-state');
+    expect(block).toBeInTheDocument();
+    expect(block).toHaveTextContent(/Approved/);
+    expect(block).toHaveTextContent(/Reviewed by Branch Manager 1/);
+    // No note on this review → no disclosure affordance.
+    expect(screen.queryByTestId('my-war-review-note-toggle')).not.toBeInTheDocument();
+  });
+
+  it('renders the Changes requested pill with a note affordance that reveals the note', async () => {
+    mockGetWar.mockResolvedValue(reviewedWar({
+      reviewStatus: 'changes_requested',
+      reviewedBy: 'bm1',
+      reviewedByName: 'Branch Manager 1',
+      reviewNote: 'Please revise the fact-find counts.',
+      reviewedAt: new Date('2026-05-20T12:00:00Z'),
+    }));
+    renderTab();
+    await flushMount();
+
+    const block = screen.getByTestId('my-war-review-state');
+    expect(block).toHaveTextContent(/Changes requested/);
+    expect(block).toHaveTextContent(/Reviewed by Branch Manager 1/);
+
+    // Note is behind a disclosure — hidden until the affordance is clicked.
+    expect(screen.queryByTestId('my-war-review-note')).not.toBeInTheDocument();
+    const toggle = screen.getByTestId('my-war-review-note-toggle');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTestId('my-war-review-note'))
+      .toHaveTextContent('Please revise the fact-find counts.');
+  });
+
+  it('renders no review block when the WAR has no review fields', async () => {
+    mockGetWar.mockResolvedValue(reviewedWar()); // no reviewStatus
+    renderTab();
+    await flushMount();
+    expect(screen.queryByTestId('my-war-review-state')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('my-war-review-note-toggle')).not.toBeInTheDocument();
+  });
+});
