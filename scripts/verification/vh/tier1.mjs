@@ -407,7 +407,7 @@ export const LEGS = [
   {
     id: 't1-master-sheet',
     role: 'branch_manager',
-    desc: 'Master Sheet W0 (2026-07-05): reality bar 0/1 submitted · 1/2 filed · 2 exceptions · TTD 3,000; column presets toggle columns; Only-exceptions filters to the A1 draft row; prior week 2026-06-28 WEEK API total verified with exceptions→empty filter',
+    desc: 'Master Sheet FUNNEL W0: reality bar 0/1 submitted · 1/2 filed · 2 exceptions · TTD 3,000; funnel collapsed-by-default then expand-one-stage; two group KPIs (Prospecting 65, Contact Attempts 40) verified == sub-column sums at value level; RANK BY API↔NEW NAMES sort chip; Only-exceptions filters to the A1 draft row; prior week WEEK API total verified with exceptions→empty filter',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser);
       try {
@@ -433,26 +433,49 @@ export const LEGS = [
           if (!re.test(val || '')) throw new Error(`W0 ${label}="${val}" !~ ${re}`);
         }
 
-        // (b) Column presets: Production shows API (TTD); Recruiting shows NEW NAMES
-        // and hides API (TTD). Scope to the preset group (labels collide with nav).
-        const presets = p.locator('[role="group"][aria-label="Column presets"]');
-        const header = p.locator('table thead');
-        await presets.getByRole('button', { name: 'Production', exact: true }).click();
-        await p.waitForTimeout(300);
-        if (!/API \(TTD\)/i.test((await header.textContent()) || '')) throw new Error('Production preset missing "API (TTD)" column');
-        await presets.getByRole('button', { name: 'Recruiting', exact: true }).click();
-        await p.waitForTimeout(300);
-        const recHead = (await header.textContent()) || '';
-        if (!/NEW NAMES/i.test(recHead)) throw new Error('Recruiting preset missing "NEW NAMES" column');
-        if (/API \(TTD\)/i.test(recHead)) throw new Error('Recruiting preset still shows "API (TTD)" (should hide)');
-        // Run3 H3: contactsMade display column collapsed into "Persons Reached" —
-        // assert the collapse holds in the Recruiting preset and in All.
-        if (!/PERSONS REACHED/i.test(recHead)) throw new Error('Recruiting preset missing "Persons Reached" column (H3 collapse)');
-        if (/CONTACTS MADE/i.test(recHead)) throw new Error('Recruiting preset still shows "Contacts Made" (H3 collapse regressed)');
-        await presets.getByRole('button', { name: 'All', exact: true }).click();
-        await p.waitForTimeout(300);
-        const allHead = (await header.textContent()) || '';
-        if (/CONTACTS MADE/i.test(allHead)) throw new Error('All preset still shows "Contacts Made" (H3 collapse regressed)');
+        // (b) FUNNEL collapse/expand + value-level KPI sums. Only the A1 DRAFT
+        // row exists at W0, seeded from the STRONG subBody (seed-fixtures.mjs):
+        //   ① Prospecting Total = letters(10) + seminars(0) + coldCalls(40)
+        //      + referralCalls(15) = 65
+        //   ② Contact Attempts Total = Tel(followUpCalls 10 + seminarTradeshowCalls 5
+        //      = 15) + F2F(f2fAttempts 25) = 40
+        // Both are re-derived below and cross-checked against the rendered
+        // sub-column cells (fc-<key>-<uid> carry a data-value).
+        const cellCount = (prefix) => p.locator(`[data-testid^="${prefix}"]`).count();
+        const cellVal = async (prefix) => Number(await p.locator(`[data-testid^="${prefix}"]`).first().getAttribute('data-value'));
+        const viewGrp = p.locator('[role="group"][aria-label="Funnel detail view"]');
+        const rankByGrp = p.locator('[role="group"][aria-label="Rank by"]');
+
+        // Collapsed default: Prospecting KPI present, its sub-columns hidden.
+        if ((await cellCount('fc-pTot-')) !== 1) throw new Error('W0 collapsed default: Prospecting KPI cell missing');
+        if ((await cellCount('fc-letters-')) !== 0) throw new Error('W0 collapsed default leaked Prospecting sub-columns');
+
+        // Expand one stage → its sub-columns appear in place.
+        await p.getByRole('button', { name: /expand prospecting activities/i }).click();
+        await p.waitForTimeout(250);
+        if ((await cellCount('fc-letters-')) !== 1) throw new Error('Expand Prospecting did not reveal sub-columns');
+        await p.getByRole('button', { name: /expand contact attempts/i }).click();
+        await p.waitForTimeout(250);
+
+        // Value-level: TWO group KPIs === sum of their seeded sub-columns.
+        const pTot = await cellVal('fc-pTot-');
+        const pSum = (await cellVal('fc-letters-')) + (await cellVal('fc-seminars-')) + (await cellVal('fc-canvass-')) + (await cellVal('fc-refCalls-'));
+        if (pTot !== pSum || pTot !== 65) throw new Error(`Prospecting KPI ${pTot} !== sub-sum ${pSum} / seed 65`);
+        const caTot = await cellVal('fc-caTot-');
+        const caSum = (await cellVal('fc-telAtt-')) + (await cellVal('fc-f2fAtt-'));
+        if (caTot !== caSum || caTot !== 40) throw new Error(`Contact Attempts KPI ${caTot} !== sub-sum ${caSum} / seed 40`);
+
+        // RANK BY preset — API ↔ NEW NAMES (moves terminal emphasis + sort chip).
+        await rankByGrp.getByRole('button', { name: 'New Names', exact: true }).click();
+        await p.waitForTimeout(250);
+        if (!/08 NEW NAMES ↓/i.test((await p.locator('[data-testid="funnel-chips"]').textContent()) || '')) {
+          throw new Error('RANK BY New Names did not set the NEW NAMES sort chip');
+        }
+        await rankByGrp.getByRole('button', { name: 'API', exact: true }).click();
+        await p.waitForTimeout(250);
+        // Collapse back so (c) reads a clean, totals-only table.
+        await viewGrp.getByRole('button', { name: 'Totals', exact: true }).click();
+        await p.waitForTimeout(250);
 
         // (c) Only-exceptions at W0 → exactly the A1 draft row.
         const rankCount = () => p.locator('tbody [data-testid^="rank-"]').count();
@@ -493,7 +516,7 @@ export const LEGS = [
         await toggle.click();
         await shot(p, 't1-master-sheet-prevweek');
         assertLegHygiene(ctx);
-        return `W0 reality bar 0/1·1/2·2·${r0.weekapi}; presets toggle API(TTD)↔NEW NAMES; Only-exceptions→1 A1 draft row; ${prevWeek} WEEK API ${r1.weekapi}, exceptions 1 (A2 non-filer), row filter ${prevRowsBefore}→0; hygiene clean`;
+        return `W0 reality bar 0/1·1/2·2·${r0.weekapi}; funnel collapsed→expand; Prospecting KPI 65 & Contact Attempts KPI 40 == sub-column sums (value level); RANK BY API↔NEW NAMES chip; Only-exceptions→1 A1 draft row; ${prevWeek} WEEK API ${r1.weekapi}, exceptions 1 (A2 non-filer), row filter ${prevRowsBefore}→0; hygiene clean`;
       } finally { await ctx.context.close(); }
     },
   },
