@@ -1502,7 +1502,13 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
-.sidebar-nav-star.sidebar-nav-star-on { color: var(--color-primary); }
+/* ★ De-emphasis (Run3 F8): a PINNED star drops from the brand-teal accent to the
+   muted ink token — lower salience, cognitive-load reduction. Pinned-ness stays
+   perceivable via the filled glyph (fill below) + always-on opacity (rule above)
+   + the ★ Pinned zone at the top of the sidebar (redundant cue). --color-text-muted
+   is the sidebar's own inactive-star token and clears ≥3:1 non-text contrast in
+   both themes (this control is also the interactive pin/unpin toggle). */
+.sidebar-nav-star.sidebar-nav-star-on { color: var(--color-text-muted); }
 .sidebar-nav-star.sidebar-nav-star-on svg { fill: currentColor; }
 @media (prefers-reduced-motion: no-preference) {
   .sidebar-nav-star { transition: opacity var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }

@@ -353,7 +353,13 @@ export default function Sidebar({
             aria-label={`${pinned ? 'Unpin' : 'Pin'} ${item.label}`}
             onClick={() => (pinned ? onUnpin(item.id) : onPin(item.id))}
           >
-            <Star size={14} />
+            {/* ★ De-emphasis (Run3 F8): the pin star on a PINNED row renders one
+                step smaller (14→12) and drops from the brand-teal accent to the
+                muted ink token (CSS below) — cognitive-load reduction on the menu.
+                The 44px button hit target (index.css) is unchanged: this control
+                is also the pin/unpin toggle, so it stays fully operable. Unpinned
+                rows keep size 14. */}
+            <Star size={pinned ? 12 : 14} />
           </button>
         )}
       </div>
