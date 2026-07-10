@@ -93,5 +93,6 @@ Design authority: [`docs/design-system/screens-v2/design_handoff_sheet_celebrati
 
 ### Verbatim origin line (E2)
 ```
-(filled in the E2 commit — see below)
+871625e8 docs(run4): E1 39/39 + final handoff (E2)
 ```
+(Recorded post-E2-push per Run-3 housekeeping pattern; this recording commit follows it.)
