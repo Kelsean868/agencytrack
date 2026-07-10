@@ -207,6 +207,21 @@ if (isDryRun) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PASSWORD ENV GUARD — abort before ANY mutation (including the CRO / sales_
+// manager Auth password resets in sections A11/A13 below) if STAGING_SEED_
+// PASSWORD is unset. Without this, a careless invocation missing
+// --env-file=.env.staging would silently fall back to CRO_PASSWORD_FALLBACK
+// and reset those two accounts' Auth passwords on every run.
+// ─────────────────────────────────────────────────────────────────────────────
+if (!process.env.STAGING_SEED_PASSWORD) {
+  console.error('\n============================================================');
+  console.error('  SEED ABORTED — STAGING_SEED_PASSWORD is not set.');
+  console.error('  Run with: node --env-file=.env.staging scripts/staging/seed-fixtures.mjs --apply');
+  console.error('============================================================');
+  process.exit(1);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GUARDS (copied from seed-staging.mjs — abort before any write).
 // ─────────────────────────────────────────────────────────────────────────────
 function abort(msg) {
