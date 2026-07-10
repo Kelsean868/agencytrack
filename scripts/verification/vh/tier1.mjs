@@ -406,8 +406,14 @@ export const LEGS = [
         const recHead = (await header.textContent()) || '';
         if (!/NEW NAMES/i.test(recHead)) throw new Error('Recruiting preset missing "NEW NAMES" column');
         if (/API \(TTD\)/i.test(recHead)) throw new Error('Recruiting preset still shows "API (TTD)" (should hide)');
+        // Run3 H3: contactsMade display column collapsed into "Persons Reached" —
+        // assert the collapse holds in the Recruiting preset and in All.
+        if (!/PERSONS REACHED/i.test(recHead)) throw new Error('Recruiting preset missing "Persons Reached" column (H3 collapse)');
+        if (/CONTACTS MADE/i.test(recHead)) throw new Error('Recruiting preset still shows "Contacts Made" (H3 collapse regressed)');
         await presets.getByRole('button', { name: 'All', exact: true }).click();
         await p.waitForTimeout(300);
+        const allHead = (await header.textContent()) || '';
+        if (/CONTACTS MADE/i.test(allHead)) throw new Error('All preset still shows "Contacts Made" (H3 collapse regressed)');
 
         // (c) Only-exceptions at W0 → exactly the A1 draft row.
         const rankCount = () => p.locator('tbody [data-testid^="rank-"]').count();
