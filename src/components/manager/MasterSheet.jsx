@@ -8,6 +8,8 @@ import {
   Plus, Minus, ArrowUp, ArrowDown, ChevronsUpDown, X, SlidersHorizontal,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useAppSettings from '../../hooks/useAppSettings';
+import { DEFAULT_MASTER_SHEET_PRESET, isValidMasterSheetPreset } from '../../config/viewDefaults';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
@@ -83,7 +85,15 @@ function FunnelCell({ col, value, terminalKey, rowId }) {
 }
 
 export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
-  const { tenantId } = useAuth();
+  const { tenantId, user } = useAuth();
+  // Settings v2 (Fable Run4 polish Item 2) — "Default RANK BY" seeds the initial
+  // RANK BY value. Read ONLY at mount (the lazy useState initializer below runs
+  // once, on the first render): a legacy 5-preset string or an absent value both
+  // fail closed to the API default. Session RANK BY changes inside the sheet
+  // stay local/ephemeral — they never write back to this setting, and a
+  // background Firestore reconcile that resolves after mount does not retroactively
+  // change an already-open sheet's rank order.
+  const { settings } = useAppSettings({ tenantId, uid: user?.uid });
   const [submissions, setSubmissions] = useState([]);
   const [users, setUsers]             = useState([]);
   const [userNameMap, setUserNameMap] = useState({});
@@ -92,11 +102,18 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   const [search, setSearch]           = useState('');
   const [exceptionsOnly, setExceptionsOnly] = useState(false);
 
-  // Funnel view state (session-local — the design's "persist per user" is a
-  // future Settings surface, intentionally not a new write path here).
+  // Funnel view state (session-local — expand/sort/filters are NOT persisted;
+  // only the RANK BY *default* comes from Settings, and only at mount). Mirrors
+  // `pickPreset`'s pairing of `preset` + `sort` exactly, so a settings-driven
+  // 'newNames' default actually ranks the table by New Names on first paint —
+  // not just tint the terminal column while rows sit in API order.
+  const initialPreset = isValidMasterSheetPreset(settings.masterSheetPreset)
+    ? settings.masterSheetPreset : DEFAULT_MASTER_SHEET_PRESET;
   const [expanded, setExpanded] = useState(() => new Set()); // default: all collapsed → totals only
-  const [sort, setSort]         = useState(null);            // {key, dir} | null (null = production-credit rank)
-  const [preset, setPreset]     = useState('api');           // RANK BY: 'api' | 'newNames'
+  const [sort, setSort]         = useState(() => (           // {key, dir} | null (null = production-credit rank)
+    initialPreset === 'newNames' ? { key: 'newNames', dir: 'desc' } : null
+  ));
+  const [preset, setPreset]     = useState(() => initialPreset); // RANK BY: 'api' | 'newNames'
 
   // Filters (scene 06) — unit · weekly-report · no-log. STATUS + LEVEL chips from
   // the mockup are intentionally NOT built here — see src/utils/funnelFilters.js

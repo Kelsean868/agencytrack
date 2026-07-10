@@ -6,11 +6,22 @@
 // it is READ.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Master Sheet column presets — value === label (matches MasterSheet.PRESET_ORDER).
-// The column-set mapping itself stays in MasterSheet (PRESETS); this is only the
-// order + validity list the Settings control offers.
-export const MASTER_SHEET_PRESETS = ['All', 'Production', 'Recruiting', 'Compliance', 'Persistency'];
-export const DEFAULT_MASTER_SHEET_PRESET = 'All';
+// Master Sheet "Default RANK BY" (Fable Run4 polish Item 2 / DECISIONS-NEEDED #4
+// option b — repurposed from the old 5-column-preset picker). The funnel Master
+// Sheet rebuild (`MasterSheet.jsx`) replaced column presets with a RANK BY
+// segmented control offering exactly these two values ('api' | 'newNames' —
+// MasterSheet's own internal RANK BY state); this Settings row now sets which
+// one the sheet opens with, consulted ONLY at mount (session RANK BY changes
+// inside the sheet stay local/ephemeral, never written back here).
+//
+// Storage key is UNCHANGED (`settings.masterSheetPreset`, still written via
+// `setAppSetting(tenantId, uid, 'masterSheetPreset', value)`) — this is a
+// same-key repurpose, not a migration. Any legacy 5-preset string (All /
+// Production / Recruiting / Compliance / Persistency) or an absent value both
+// fail closed to the API default via `isValidMasterSheetPreset`.
+export const MASTER_SHEET_PRESETS = ['api', 'newNames'];
+export const MASTER_SHEET_PRESET_LABELS = { api: 'API', newNames: 'New Names' };
+export const DEFAULT_MASTER_SHEET_PRESET = 'api';
 export function isValidMasterSheetPreset(v) {
   return MASTER_SHEET_PRESETS.includes(v);
 }
