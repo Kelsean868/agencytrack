@@ -668,7 +668,13 @@ async function main() {
   // Rest of week.
   await appt('vhfix-appt-d1a', { date: addDays(TODAY, 1), t: '09:30', dur: 60, type: 'FFI', prospectId: 'vhfix-pp-tomorrow' });
   await appt('vhfix-appt-d1b', { date: addDays(TODAY, 1), t: '11:00', type: 'PC' });
-  await appt('vhfix-appt-d2a', { date: addDays(TODAY, 2), t: '10:00', dur: 60, type: 'CI' });
+  // vhfix-appt-d2a is the t3-appt-churn-postpone target: it must be UPCOMING and
+  // INSIDE the current Sun–Sat planner week. A fixed +2d spills into next week on
+  // Fri/Sat runs (leg authored on a Thursday; first broke on a Friday run) — clamp
+  // to Saturday, and push the time late if the clamp collapses onto TODAY (Sat runs)
+  // so the appt is still upcoming at test time.
+  const d2aOff = Math.min(2, 6 - ttNow().getUTCDay());
+  await appt('vhfix-appt-d2a', { date: addDays(TODAY, d2aOff), t: d2aOff === 0 ? '22:30' : '10:00', dur: 60, type: 'CI' });
   await appt('vhfix-appt-d2b', { date: addDays(TODAY, 2), t: '15:00', dur: 45, type: 'AI' });
   await appt('vhfix-appt-d3a', { date: addDays(TODAY, 3), t: '09:00', type: 'PC' });
   await appt('vhfix-appt-d3b', { date: addDays(TODAY, 3), t: '13:00', type: 'SC' });

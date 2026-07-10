@@ -141,7 +141,7 @@ export const LEGS = [
   {
     id: 't3-appt-churn-postpone',
     role: 'agent1',
-    desc: 'Agent Planner Week view: postpone an in-week upcoming appt (vhfix-appt-d2a, +2d AI) through the churn→Postpone→rebook flow; reload → original flips to Postponed AND a NEW appt appears at the rebooked slot (postponeWithRebook writes original.status=postponed + rescheduledToId→new; the link field is data-only, verified transitively via the status flip + new-appt presence). NOTE: the brief said "+3d SC" but +3d falls on next week (today is Thursday) so it is outside the current planner week view — used the +2d appt instead. MUTATES appointments (re-seed resets).',
+    desc: 'Agent Planner Week view: postpone an in-week upcoming appt (vhfix-appt-d2a, seeded at min(+2d, Saturday) so it never spills into next week — Run 4 fix; fixed +2d broke on Fri/Sat runs) through the churn→Postpone→rebook flow; reload → original flips to Postponed AND a NEW appt appears at the rebooked slot (postponeWithRebook writes original.status=postponed + rescheduledToId→new; the link field is data-only, verified transitively via the status flip + new-appt presence). MUTATES appointments (re-seed resets).',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser);
       try {
