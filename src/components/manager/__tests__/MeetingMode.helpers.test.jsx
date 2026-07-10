@@ -197,7 +197,7 @@ describe('deriveDeck — data-driven scene sequence', () => {
   };
   it('drops units/exceptions/celebrations/campaign when their data is absent', () => {
     const { scenes, skipped } = deriveDeck(base);
-    expect(scenes).toEqual(['opening', 'branch', 'activity', 'production', 'agent:a', 'recognition', 'close']);
+    expect(scenes).toEqual(['opening', 'branch', 'activity', 'production', 'funnel', 'agent:a', 'recognition', 'close']);
     const skippedIds = skipped.map((s) => s.id);
     expect(skippedIds).toEqual(expect.arrayContaining(['units', 'exceptions', 'celebrations', 'campaign']));
   });
@@ -211,9 +211,9 @@ describe('deriveDeck — data-driven scene sequence', () => {
     };
     const { scenes } = deriveDeck(full);
     expect(scenes).toEqual([
-      'opening', 'branch', 'units', 'activity', 'production',
+      'opening', 'branch', 'units', 'activity', 'production', 'funnel',
       'exceptions', 'agent:a', 'recognition', 'celebrations', 'campaign', 'close',
     ]);
-    expect(scenes.length).toBe(11);
+    expect(scenes.length).toBe(12);
   });
 });

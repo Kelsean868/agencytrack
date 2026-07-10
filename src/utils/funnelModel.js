@@ -168,6 +168,15 @@ export function computeInterviewsKept(rows) {
   return rows.reduce((s, r) => s + (r.ffiCond || 0) + (r.ciCond || 0), 0);
 }
 
+// Single-week funnel "exception" predicate — a report not yet submitted (a draft
+// is an unfinished week). Shared by the Master Sheet exceptions toggle and the
+// Meeting-Mode projection scene so the exceptions cut means the SAME thing on
+// both surfaces. `row` carries a `status` string ('submitted' | 'draft' | …);
+// anything other than 'submitted' (incl. absent) is an exception.
+export function funnelRowIsException(row) {
+  return (row?.status ?? 'draft') !== 'submitted';
+}
+
 // Per-column team totals across a row set (each row is a computeFunnelRow result).
 export function computeFunnelTotals(rows, cols = FUNNEL_COLS) {
   const tot = {};

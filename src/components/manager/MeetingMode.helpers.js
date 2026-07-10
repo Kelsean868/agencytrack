@@ -384,7 +384,7 @@ export function deriveActiveCampaigns(campaigns, today) {
 // ── The deck — scene availability drives MEETING_ORDER ──
 
 export const SCENE_SEQUENCE = [
-  'opening', 'branch', 'units', 'activity', 'production',
+  'opening', 'branch', 'units', 'activity', 'production', 'funnel',
   'exceptions', 'agents', 'recognition', 'celebrations', 'campaign', 'close',
 ];
 
@@ -408,6 +408,10 @@ export function deriveDeck({ runs, units, exceptions, recognition, anniversaries
 
   if (hasSubs) scenes.push('production');
   else skipped.push({ id: 'production', reason: 'no submissions this week' });
+
+  // The Master Sheet funnel, projected into the room (sheet-in-the-room).
+  if (hasSubs) scenes.push('funnel');
+  else skipped.push({ id: 'funnel', reason: 'no submissions this week' });
 
   if (exceptions.length > 0) scenes.push('exceptions');
   else skipped.push({ id: 'exceptions', reason: 'no agents flagged for attention' });

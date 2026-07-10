@@ -18,7 +18,7 @@
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { newLegContext, login, gotoTab, assertLegHygiene } from './vh-helpers.mjs';
-import { EXPECT, BASE } from './expectations.mjs';
+import { EXPECT, BASE, W } from './expectations.mjs';
 
 // ── tier3-private helpers ─────────────────────────────────────────────────────
 const tsel = (id) => `[data-testid="${id}"]`;
@@ -246,7 +246,7 @@ export const LEGS = [
   {
     id: 't3-meeting-mode-deck',
     role: 'branch_manager',
-    desc: 'Meeting Mode (Start Meeting, week=W0): deck = 9 scenes [Opening · Branch · Activity · Production · Needs-attention · Staging Agent One · Recognition · Campaign · Wrap-up]. Units DROPPED (1 unit) and Celebrations DROPPED (2024 anniversaries outside July window) — hand-derived from MeetingMode.helpers deriveDeck for the W0 submissions ([A1 draft] via getWeeklySubmissions, no status filter).',
+    desc: 'Meeting Mode (Start Meeting, week=W0): deck = 10 scenes [Opening · Branch · Activity · Production · Master-Sheet-funnel · Needs-attention · Staging Agent One · Recognition · Campaign · Wrap-up]. Units DROPPED (1 unit) and Celebrations DROPPED (2024 anniversaries outside July window) — hand-derived from MeetingMode.helpers deriveDeck for the W0 submissions ([A1 draft] via getWeeklySubmissions, no status filter). The funnel "sheet-in-the-room" scene is gated on hasSubs (present at W0).',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser, { reducedMotion: true });
       try {
@@ -263,14 +263,15 @@ export const LEGS = [
         const headTxt = (await header.innerText()).replace(/\s+/g, ' ');
         const totalM = headTxt.match(/\/\s*(\d{2})/);
         const total = totalM ? Number(totalM[1]) : NaN;
-        if (total !== 9) throw new Error(`deck total=${total} (expected 9). header="${headTxt}"`);
+        if (total !== 10) throw new Error(`deck total=${total} (expected 10). header="${headTxt}"`);
 
-        // Walk all 9 scenes; each expected scene body phrase must surface in order.
+        // Walk all 10 scenes; each expected scene body phrase must surface in order.
         const expected = [
           /Good morning, team/i,               // opening
           /Where the branch stands/i,          // branch
           /activity & result|activity &amp; result/i, // activity
           /Everyone.s numbers/i,               // production
+          /The Master Sheet/i,                 // funnel (sheet-in-the-room)
           /Who to stop on this week/i,         // exceptions
           /Staging Agent One/i,                // agent:A1
           /Recognize the room/i,               // recognition
@@ -284,7 +285,7 @@ export const LEGS = [
           const txt = (await main.innerText()).replace(/\s+/g, ' ');
           if (!expected[i].test(txt)) {
             await shot(p, `FAIL-t3-meeting-scene-${i}`);
-            throw new Error(`scene ${i + 1}/9 did not match /${expected[i].source}/. Got: "${txt.slice(0, 160)}"`);
+            throw new Error(`scene ${i + 1}/10 did not match /${expected[i].source}/. Got: "${txt.slice(0, 160)}"`);
           }
           // Units / Celebrations must NEVER surface (dropped scenes).
           if (/How the units are moving|Work anniversaries/i.test(txt)) {
@@ -295,7 +296,94 @@ export const LEGS = [
         }
         await shot(p, 't3-meeting-deck');
         assertLegHygiene(ctx);
-        return `Meeting deck = 9 scenes (Opening→Branch→Activity→Production→Needs-attention→Staging Agent One→Recognition→Campaign→Wrap-up); Units + Celebrations correctly dropped. hygiene clean`;
+        return `Meeting deck = 10 scenes (Opening→Branch→Activity→Production→Master-Sheet-funnel→Needs-attention→Staging Agent One→Recognition→Campaign→Wrap-up); Units + Celebrations correctly dropped. hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
+  // ── 4b. Meeting Mode funnel "sheet-in-the-room" (branch_manager, W(-1)) ──
+  {
+    id: 't3-meeting-funnel-sheet',
+    role: 'branch_manager',
+    desc: 'Meeting Mode Master-Sheet funnel scene at W(-1) (3 SUBMITTED strong filers: A1 12,500 · BM 8,500 · UM 5,200). Reuses funnelModel: expand Prospecting + Contact Attempts → the rank-1 row KPI == its sub-column sum (Prospecting 65, Contact Attempts 40 — same seed anchors as t1-master-sheet); TOTALS row API == 26,200 and Prospecting Total == 195 (65×3). EXCEPTIONS cut reduces 3 rows → 0 (all submitted, none draft). Meeting week driven via the Master Sheet week selector before Start Meeting. Value-level, console-clean, zero prod requests.',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser, { reducedMotion: true });
+      try {
+        const p = ctx.page;
+        await login(p, 'branch_manager');
+
+        // Drive the shared selectedWeek to W(-1) via the Master Sheet selector
+        // (ManagerDashboard passes selectedWeek straight into Start Meeting).
+        await gotoTab(p, 'Master Sheet');
+        await p.waitForSelector('[data-testid="mastersheet-reality"]', { timeout: 12_000 });
+        const prevWeek = W(-1);
+        await p.locator('select[aria-label="Select week"]').selectOption(prevWeek);
+        await p.waitForFunction(
+          () => document.querySelectorAll('tbody [data-testid^="rank-"]').length === 3,
+          { timeout: 15_000 },
+        );
+        await p.waitForTimeout(300);
+
+        // Start Meeting → deck loads for W(-1); walk to the funnel scene.
+        await p.getByRole('button', { name: /Start Meeting/i }).first().click({ timeout: 12_000 });
+        await p.locator('[data-meeting-mode="true"]').waitFor({ state: 'visible', timeout: 20_000 });
+        await p.getByText(/Good morning, team/i).first().waitFor({ state: 'visible', timeout: 20_000 });
+
+        const funnel = p.locator('[data-testid="meeting-funnel-scene"]');
+        let reached = false;
+        for (let i = 0; i < 8 && !reached; i += 1) {
+          await p.keyboard.press('ArrowRight');
+          await p.waitForTimeout(400);
+          reached = await funnel.isVisible().catch(() => false);
+        }
+        if (!reached) throw new Error('funnel sheet-in-the-room scene never surfaced in the W(-1) deck');
+        await p.getByText('The Master Sheet').first().waitFor({ state: 'visible', timeout: 8_000 });
+
+        const cellVal = async (sel) => Number(await p.locator(sel).first().getAttribute('data-value'));
+        const rowCount = () => p.locator('[data-testid^="mfrow-"]').count();
+
+        // 3 submitted filers this week.
+        if ((await rowCount()) !== 3) throw new Error(`funnel rows=${await rowCount()} (expected 3 at W(-1))`);
+
+        // Expand Prospecting + Contact Attempts, then verify KPI == sub-sum on the
+        // rank-1 row (first in DOM), and the seeded strong-week anchors.
+        await p.getByRole('button', { name: /expand prospecting activities/i }).click();
+        await p.waitForTimeout(250);
+        await p.getByRole('button', { name: /expand contact attempts/i }).click();
+        await p.waitForTimeout(250);
+
+        const pTot = await cellVal('[data-testid^="mfc-pTot-"]');
+        const pSum = (await cellVal('[data-testid^="mfc-letters-"]'))
+          + (await cellVal('[data-testid^="mfc-seminars-"]'))
+          + (await cellVal('[data-testid^="mfc-canvass-"]'))
+          + (await cellVal('[data-testid^="mfc-refCalls-"]'));
+        if (pTot !== pSum || pTot !== 65) throw new Error(`funnel Prospecting KPI ${pTot} !== sub-sum ${pSum} / seed 65`);
+        const caTot = await cellVal('[data-testid^="mfc-caTot-"]');
+        const caSum = (await cellVal('[data-testid^="mfc-telAtt-"]')) + (await cellVal('[data-testid^="mfc-f2fAtt-"]'));
+        if (caTot !== caSum || caTot !== 40) throw new Error(`funnel Contact Attempts KPI ${caTot} !== sub-sum ${caSum} / seed 40`);
+
+        // Totals row: terminal API == 26,200; Prospecting Total == 195 (65×3).
+        const totApi = await cellVal('[data-testid="mftot-api"]');
+        if (totApi !== 26200) throw new Error(`funnel totals API=${totApi} (expected 26200 = 12500+8500+5200)`);
+        const totP = await cellVal('[data-testid="mftot-pTot"]');
+        if (totP !== 195) throw new Error(`funnel totals Prospecting=${totP} (expected 195 = 65×3)`);
+
+        await shot(p, 't3-meeting-funnel-sheet');
+
+        // EXCEPTIONS cut → all 3 are submitted (no drafts) → 0 rows.
+        await p.locator('[data-testid="meeting-funnel-exceptions"]').click();
+        await p.waitForTimeout(400);
+        const afterCut = await rowCount();
+        if (afterCut !== 0) throw new Error(`funnel exceptions cut rows=${afterCut} (expected 0 — no draft filers at W(-1))`);
+        if ((await p.locator('[data-testid="meeting-funnel-empty"]').count()) !== 1) {
+          throw new Error('funnel exceptions cut did not render the empty state');
+        }
+        await p.locator('[data-testid="meeting-funnel-exceptions"]').click(); // back off
+        await p.waitForTimeout(250);
+
+        await shot(p, 't3-meeting-funnel-exceptions');
+        assertLegHygiene(ctx);
+        return `W(-1) funnel sheet-in-the-room: 3 filers; Prospecting KPI 65 & Contact Attempts KPI 40 == sub-column sums (value level); totals API 26,200 & Prospecting 195 (65×3); exceptions cut 3→0 (empty state). hygiene clean`;
       } finally { await ctx.context.close(); }
     },
   },

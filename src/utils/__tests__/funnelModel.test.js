@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   FUNNEL_GROUPS, FUNNEL_COLS, FUNNEL_TOGGLABLE_IDS,
-  computeFunnelRow, funnelView, computeInterviewsKept, computeFunnelTotals,
+  computeFunnelRow, funnelView, computeInterviewsKept, computeFunnelTotals, funnelRowIsException,
 } from '../funnelModel';
 import { computeTotalNewNames } from '../extractFields';
 
@@ -132,6 +132,31 @@ describe('funnelModel — team totals & Interviews Kept', () => {
   it('Interviews Kept = FFI Conducted + CI Conducted across rows', () => {
     const rows = [computeFunnelRow(F, SUB), computeFunnelRow(F, SUB)];
     expect(computeInterviewsKept(rows)).toBe((9 + 8) * 2); // 34
+  });
+});
+
+describe('funnelModel — funnelRowIsException (shared exceptions-cut predicate)', () => {
+  it('a submitted row is NOT an exception', () => {
+    expect(funnelRowIsException({ status: 'submitted' })).toBe(false);
+  });
+  it('a draft row IS an exception', () => {
+    expect(funnelRowIsException({ status: 'draft' })).toBe(true);
+  });
+  it('any non-submitted status (incl. absent/undefined) is an exception', () => {
+    expect(funnelRowIsException({ status: 'in_review' })).toBe(true);
+    expect(funnelRowIsException({})).toBe(true);
+    expect(funnelRowIsException(null)).toBe(true);
+    expect(funnelRowIsException(undefined)).toBe(true);
+  });
+  it('filtering a mixed row set to exceptions drops every submitted row', () => {
+    const rows = [
+      { id: 'a', status: 'submitted' },
+      { id: 'b', status: 'draft' },
+      { id: 'c', status: 'submitted' },
+    ];
+    expect(rows.filter(funnelRowIsException).map((r) => r.id)).toEqual(['b']);
+    // An all-submitted set reduces to zero exceptions (the W(-1) seed case).
+    expect(rows.slice(0, 1).concat(rows[2]).filter(funnelRowIsException)).toHaveLength(0);
   });
 });
 

@@ -30,6 +30,7 @@ import { getPersistencyMapForYear } from '../../services/persistencyService';
 import { getCampaigns } from '../../services/campaignService';
 import { computeStandings, isTieredCampaign } from '../../utils/campaignEngine';
 import { CampaignStandingsBlock } from '../campaigns/CampaignStandings';
+import FunnelMeetingScene from './FunnelMeetingScene';
 import {
   deriveWeekPulse, deriveBranchWindows, deriveUnits, deriveAgentRuns,
   deriveExceptions, deriveRecognition, deriveAnniversaries, deriveActiveCampaigns,
@@ -611,6 +612,7 @@ function presenterNote(sceneId, model) {
   if (sceneId === 'units') return 'Call the leading unit, then the one that needs to move.';
   if (sceneId === 'activity') return 'Scan the floor breaches — they are who we stop on next.';
   if (sceneId === 'production') return 'Point out the year total and the top producers.';
+  if (sceneId === 'funnel') return 'Work the sheet live — collapse to totals, expand a stage, or search a name.';
   if (sceneId === 'exceptions') {
     const names = model.exceptions.map((r) => r.name).join(', ');
     return names ? `Call out: ${names}.` : 'Review who needs attention.';
@@ -631,7 +633,7 @@ function presenterNote(sceneId, model) {
 function sceneLabel(sceneId, model) {
   const base = {
     opening: 'Opening', branch: 'Branch scorecard', units: 'Units', activity: 'Activity sheet',
-    production: 'Production sheet', exceptions: 'Needs attention', recognition: 'Recognition',
+    production: 'Production sheet', funnel: 'Master Sheet', exceptions: 'Needs attention', recognition: 'Recognition',
     celebrations: 'Celebrations', campaign: 'Campaign', close: 'Wrap-up',
   };
   if (base[sceneId]) return base[sceneId];
@@ -795,6 +797,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     if (sid === 'units') return <UnitsScene units={model.units} />;
     if (sid === 'activity') return <ActivityScene runs={model.runs} />;
     if (sid === 'production') return <ProductionScene rows={model.prodRows} />;
+    if (sid === 'funnel') return <FunnelMeetingScene submissions={submissions} selectedWeek={selectedWeek} />;
     if (sid === 'exceptions') return <ExceptionsScene exceptions={model.exceptions} selectedWeek={selectedWeek} />;
     if (sid === 'recognition') return <RecognitionScene recognition={model.recognition} />;
     if (sid === 'celebrations') return <CelebrationsScene anniversaries={model.anniversaries} />;

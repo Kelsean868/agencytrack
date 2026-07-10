@@ -15,7 +15,7 @@ import { extractFields, extractTotalProductionCredit } from '../../utils/extract
 import { deriveExceptions } from '../../utils/managerExceptions';
 import {
   FUNNEL_GROUPS, FUNNEL_COLS, FUNNEL_TOGGLABLE_IDS, FUNNEL_LEAD_W, FUNNEL_LEAD_LEFT,
-  funnelView, computeFunnelRow, computeInterviewsKept, computeFunnelTotals,
+  funnelView, computeFunnelRow, computeInterviewsKept, computeFunnelTotals, funnelRowIsException,
 } from '../../utils/funnelModel';
 import {
   FUNNEL_REPORT_OPTS, DEFAULT_FUNNEL_FILTERS,
@@ -172,7 +172,8 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   }, [submissions, userNameMap, userMeta]);
 
   // A single-week "exception" = report not yet submitted (draft = unfinished).
-  const rowIsException = (r) => r.status !== 'submitted';
+  // Uses the shared funnelRowIsException predicate (also used by the Meeting-Mode
+  // projection scene) directly at its call site below.
 
   const searchedRows = useMemo(
     () => allRows.filter(
@@ -189,7 +190,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   );
 
   const filteredRows = useMemo(
-    () => (exceptionsOnly ? panelFilteredRows.filter(rowIsException) : panelFilteredRows),
+    () => (exceptionsOnly ? panelFilteredRows.filter(funnelRowIsException) : panelFilteredRows),
     [panelFilteredRows, exceptionsOnly]
   );
 
