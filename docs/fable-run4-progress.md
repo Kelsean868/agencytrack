@@ -15,7 +15,7 @@ Design authority: [`docs/design-system/screens-v2/design_handoff_sheet_celebrati
 | Item 2 Filters panel (Opus) | ✅ | `a003f85d` — new pure `funnelFilters.js` (16 tests) + UNIT segmented + FILTERS popover (report chips, no-log switch, dismissible chips, CLEAR ALL). Suite 5122 green, deploy success, legs `t1-master-sheet` + new `t1-master-sheet-filters` both PASS (2 filters → 1 BM row, totals API 8,500, reality bar unfiltered 26,200, chip-clear restores 3). Omitted-as-unbuildable: STATUS taxonomy (needs YTD+companyMinimums read path), LEVEL (no level field on user docs), unit friendly names — banked |
 | Item 3 FunnelMeetingScene (Opus) | ✅ | `09cb1168` — scene-local projection renderer (presentation tokens) reusing funnelModel un-forked; shared `funnelRowIsException` lifted into model; deck 9→10 scenes ('funnel' after 'production', hasSubs-gated); no new read paths. Suite 5134 green; legs `t3-meeting-funnel-sheet` (new, value-level: Prospecting KPI 65 & CA 40 == sums, totals 26,200/195, exceptions cut 3→0) + `t3-meeting-mode-deck` (10 scenes) + both t1 master-sheet legs PASS |
 | Item 4 Streak celebration reskin (Sonnet) | ✅ | `876ff6ca` — skin-only: gold poster-scale milestone hero, medal coin, STREAK/BEST/NEXT chips, teal CTA, ESC pill; 52-wk starred variant. Thresholds/fire-once mechanics untouched (celebrations.js:37, celebrationPrefs.js:70-78 unedited); `login()` dismiss selector preserved (single `aria-label="Dismiss celebration"` control). Suite 5138 green; `t2-filing-streak-milestone` + adjacent `t2-daily-anchor-strip` (auto-dismiss proof) both PASS w/ screenshots |
-| Item 5 Planner recurrence (Opus) | ⏳ | |
+| Item 5 Planner recurrence (Opus) | ✅ | `ce3b9643` — schema `seriesId/repeatRule/daysOfWeek/seriesPos/seriesTotal` (all optional, backward-compat; `seriesEnd`+`postponedFrom` dropped — self-describing instances); concrete materialization via atomic writeBatch, cap 52; validApptWrite extended (optional-key pattern), emulator 28/28; Never chip disabled-dashed "soon"; edit-this-only shipped, edit-all-future BANKED (needs composite index + batch — disabled row); FREE blocks recur too. Suite 5157 green; legs `t3-appt-recurrence` (new) + churn-postpone + edit-own all PASS; seeder `vhleg-recur` cleanup proven (5 del → 0). Rules deployed to staging via deploy-staging.ps1 (orchestrator, per brief's explicit dispatch; agent held per Rule 19) |
 | Item 6 1-on-1 recon doc (Sonnet) | ✅ | `20ac7cae` — docs/audits/one-on-one-recon-2026-07-10.md (validity-SHA header @ bf881e4f). Scene 08 is read-only display; today's surfaces are two UNWIRED components (AgentDrillDrawer 3-tab + CoachingNotesModal 3-tab); commitment logging needs human-gated rules; 10 one-line design questions banked in doc §4 |
 | E1 re-seed + full suite | ⏳ | |
 | E2 final doc + push | ⏳ | |
@@ -33,6 +33,8 @@ Design authority: [`docs/design-system/screens-v2/design_handoff_sheet_celebrati
 | Item 2 filters panel | Opus | 14:30 | +21.4 min | ✅ 2 legs PASS | `a003f85d` |
 | Item 3 meeting scene | Opus | 14:55 | +23.8 min | ✅ 4 legs PASS | `09cb1168` |
 | Item 4 streak reskin | Sonnet | 15:20 | +40.0 min | ✅ 2 legs PASS | `876ff6ca` |
+| Item 5 recurrence | Opus | 16:02 | +47.5 min | ✅ 3 legs PASS, emulator 28/28 | `ce3b9643` |
+| staging rules deploy | Fable (orchestrator) | 16:55 | 17:02 | ✅ rules+indexes+functions → agencytrack-staging only | — |
 
 ## DECISIONS-NEEDED
 
@@ -63,6 +65,8 @@ Design authority: [`docs/design-system/screens-v2/design_handoff_sheet_celebrati
 - Item-2 semantics: reality bar unfiltered (mockup), totals row follows filtered set, CSV stays search-scope; no-log = daysWorked absent (shipped NO-LOG badge semantic), not "no submission" (non-filers have no row).
 - Item-3 gaps: funnel projection scene not axe'd specifically (weakest spot: Draft tag `text-warning` on `bg-warning/15` over dark); exceptions-cut "keeps draft row" direction unit-only live; narrow-viewport projection scroll unverified beyond default meeting frame.
 - Item-4 gap: reduced-motion static variant + dark-mode of the reskinned takeover not live-verified (code mirrors shipped CelebrationTakeover pattern; xc-reduced-motion at E1 covers dashboard hero, not the takeover). Quick manual OS-level check recommended pre-promotion.
+- Item-5 gaps: "other series instances unchanged" verified indirectly (future-week instances not UI-visible in current-week view — safe by construction, no positive assertion); custom-days + end-by-date series unit-tested only (weekly-by-count live-smoked); state-3 choice sheet has one live option until edit-all-future ships.
+- Item-5 banked: edit-this-and-all-future needs cross-week `(agentId, seriesId, date)` query + composite index + multi-doc batch — deferred whole, no half-correct series edit. `Never` end condition deferred (DECISIONS #3).
 
 ## Handoff
 
