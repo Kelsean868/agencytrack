@@ -734,4 +734,52 @@ export const LEGS = [
       }
     },
   },
+
+  // ── F10 (C4). Filing-streak milestone celebration (agent home) ──
+  //   The A1 fixture has a 9-week filing streak (9 submitted weekly reports,
+  //   W(-9)..W(-1) — seed-fixtures A1_WEEKS). With FILING_WEEKLY_STREAK_MILESTONES
+  //   [5, 10, 25, 52] and NO celebratedMax persisted (fresh context = empty
+  //   localStorage), opening the home surface fires the milestone-5 takeover.
+  //   Device-local only (localStorage marker, per-year) — NOT a Firestore mutation,
+  //   and the marker is discarded when the leg's context closes, so the leg is
+  //   idempotent across suite runs with no re-seed / reset needed (same class as
+  //   t2-settings-roundtrip's device-local state). The in-leg reload proves the
+  //   fire-once guarantee (marker persisted within the surviving context).
+  {
+    id: 't2-filing-streak-milestone',
+    role: 'agent1',
+    desc: 'Agent home: 9-week filing streak (A1 seeded) crosses milestone 5 → FilingStreakCelebration takeover fires on first load (FILING STREAK · 5 WEEKS); dismiss → gone; reload → stays absent (per-year celebratedMax persisted, fire-once). Device-local localStorage marker only — no Firestore mutation; discarded with the context.',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        const p = ctx.page;
+        await login(p, 'agent1'); // default tab = dashboard (home) where the streak lives
+        const takeover = p.locator(tsel('filing-streak-celebration'));
+
+        // Fires on load: the seeded 9-week streak crosses the uncelebrated rung 5.
+        await takeover.waitFor({ state: 'visible', timeout: 20_000 });
+        await mustText(p, /FILING STREAK.{0,4}5 WEEKS/i, 'filing-streak milestone-5 copy', 'filing-streak-celebration');
+        await shot(p, 't2-filing-streak-fired');
+
+        // Dismiss via the primary CTA → takeover unmounts.
+        await clickTid(p, 'celebration-primary-cta');
+        await takeover.waitFor({ state: 'detached', timeout: 8_000 });
+
+        // Reload: the per-year celebratedMax (now 5) survives in this context, so
+        // the fire-once guarantee holds — no re-fire from the same seeded streak.
+        await p.reload({ waitUntil: 'domcontentloaded' });
+        await p.waitForFunction(() => document.body.textContent.length > 200, { timeout: 20_000 });
+        await p.waitForTimeout(2500); // give the on-load effect its chance to (not) fire
+        if (await takeover.count()) {
+          await shot(p, 'FAIL-t2-filing-streak-refired');
+          throw new Error('filing-streak celebration re-fired after reload (celebratedMax marker should suppress it).');
+        }
+        await shot(p, 't2-filing-streak-after-reload');
+        assertLegHygiene(ctx);
+        return 'Filing-streak milestone: 9-week streak fired the milestone-5 takeover on home load (FILING STREAK · 5 WEEKS); dismissed cleanly; stayed absent after reload (per-year celebratedMax fire-once). Device-local marker only, no Firestore mutation; console clean, zero prod requests.';
+      } finally {
+        await ctx.context.close();
+      }
+    },
+  },
 ];
