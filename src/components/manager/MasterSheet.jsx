@@ -5,7 +5,7 @@ import Avatar from '../ui/Avatar';
 import DataSourceBadge from '../productionReport/DataSourceBadge';
 import {
   Download, Search, MessageSquare, CalendarCheck, AlertTriangle,
-  Plus, Minus, ArrowUp, ArrowDown, ChevronsUpDown, X,
+  Plus, Minus, ArrowUp, ArrowDown, ChevronsUpDown, X, SlidersHorizontal,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
@@ -17,6 +17,10 @@ import {
   FUNNEL_GROUPS, FUNNEL_COLS, FUNNEL_TOGGLABLE_IDS, FUNNEL_LEAD_W, FUNNEL_LEAD_LEFT,
   funnelView, computeFunnelRow, computeInterviewsKept, computeFunnelTotals,
 } from '../../utils/funnelModel';
+import {
+  FUNNEL_REPORT_OPTS, DEFAULT_FUNNEL_FILTERS,
+  deriveUnitOptions, funnelFiltersCount, applyFunnelFilters, buildFilterChips,
+} from '../../utils/funnelFilters';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 import CoachingNotesModal from './CoachingNotesModal';
 
@@ -94,6 +98,13 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   const [sort, setSort]         = useState(null);            // {key, dir} | null (null = production-credit rank)
   const [preset, setPreset]     = useState('api');           // RANK BY: 'api' | 'newNames'
 
+  // Filters (scene 06) — unit · weekly-report · no-log. STATUS + LEVEL chips from
+  // the mockup are intentionally NOT built here — see src/utils/funnelFilters.js
+  // for the honesty rationale (this read-light single-week surface loads neither
+  // YTD/tenure-floor data for STATUS nor any level field for LEVEL).
+  const [filters, setFilters]         = useState(DEFAULT_FUNNEL_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   const [viewingSubmission, setViewingSubmission] = useState(null);
   const [notesAgent, setNotesAgent] = useState(null);
   const scrollRef = useRef(null);
@@ -125,6 +136,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
     const m = {};
     users.forEach((u) => {
       m[u.id] = {
+        unitId:   u.unitId ?? null,
         unitName: u.unitName ?? u.unit ?? null,
         level:    u.levelTitle ?? u.careerLevel ?? null,
       };
@@ -146,6 +158,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           id:          uid,
           _submission: sub,
           name:        resolveName(sub, userNameMap),
+          unitId:      sub.unitId ?? meta.unitId ?? null,
           unitName:    meta.unitName ?? null,
           level:       meta.level ?? null,
           status:      sub.status ?? 'draft',
@@ -168,10 +181,44 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
     [allRows, search]
   );
 
-  const filteredRows = useMemo(
-    () => (exceptionsOnly ? searchedRows.filter(rowIsException) : searchedRows),
-    [searchedRows, exceptionsOnly]
+  // Filters panel conditions (unit · report · no-log) compose AFTER search and
+  // BEFORE the exceptions toggle + sort, so all view controls stack predictably.
+  const panelFilteredRows = useMemo(
+    () => applyFunnelFilters(searchedRows, filters),
+    [searchedRows, filters]
   );
+
+  const filteredRows = useMemo(
+    () => (exceptionsOnly ? panelFilteredRows.filter(rowIsException) : panelFilteredRows),
+    [panelFilteredRows, exceptionsOnly]
+  );
+
+  // Unit options derive from the loaded roster (no unit-name fetch — read-light).
+  const unitOptions  = useMemo(() => deriveUnitOptions(allRows), [allRows]);
+  const filtersCount = funnelFiltersCount(filters);
+  const filterChips  = useMemo(() => buildFilterChips(filters, unitOptions), [filters, unitOptions]);
+
+  const setFilterPatch = (patch) => setFilters((prev) => ({ ...prev, ...patch }));
+  const resetFilters   = () => setFilters(DEFAULT_FUNNEL_FILTERS);
+  const toggleReport   = (k) => setFilters((prev) => ({
+    ...prev,
+    reports: prev.reports.includes(k) ? prev.reports.filter((x) => x !== k) : [...prev.reports, k],
+  }));
+
+  // Week change resets filters (they are week-scoped view state) so a unit that
+  // no longer exists in the new week can't silently empty the table.
+  useEffect(() => {
+    setFilters(DEFAULT_FUNNEL_FILTERS);
+    setFiltersOpen(false);
+  }, [selectedWeek]);
+
+  // Escape closes the filters popover.
+  useEffect(() => {
+    if (!filtersOpen) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setFiltersOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [filtersOpen]);
 
   // Tri-state sort applies over the filtered set; null → production-credit rank.
   const displayRows = useMemo(() => {
@@ -238,7 +285,8 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   };
 
   // CSV export is RECORDS-COMPLETE: every funnel sub-column + KPI, every row in
-  // the current SEARCH scope (ignores collapse + the exceptions toggle).
+  // the current SEARCH scope (ignores collapse, the exceptions toggle, AND the
+  // filters panel — same "records-complete" contract as the exceptions toggle).
   const exportCSV = () => {
     const leadHeaders = ['Rank', 'Agent', 'Unit', 'Status'];
     const colHeaders = FUNNEL_COLS.map((c) => {
@@ -343,8 +391,9 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         </div>
       </div>
 
-      {/* Action bar — VIEW (collapse/expand all) · RANK BY (terminal emphasis) · exceptions */}
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Action bar — VIEW · RANK BY · UNIT · FILTERS · exceptions.
+          `relative` anchors the filters popover to this row. */}
+      <div className="relative flex flex-wrap items-center gap-3">
         <div className="inline-flex items-center gap-2">
           <span className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">View</span>
           <div className="inline-flex gap-1 rounded-lg border border-border bg-surface p-1" role="group" aria-label="Funnel detail view">
@@ -361,6 +410,60 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           </div>
         </div>
 
+        {/* UNIT — only when the loaded week actually spans more than one unit
+            (staging carries no unit NAMES, so labels fall back — see funnelFilters). */}
+        {unitOptions.length > 1 && (
+          <div className="inline-flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Unit</span>
+            <div className="inline-flex flex-wrap gap-1 rounded-lg border border-border bg-surface p-1" role="group" aria-label="Filter by unit">
+              <button
+                type="button"
+                data-testid="funnel-unit-all"
+                onClick={() => setFilterPatch({ unit: 'all' })}
+                aria-pressed={filters.unit === 'all'}
+                className={segBtn(filters.unit === 'all')}
+              >
+                All
+              </button>
+              {unitOptions.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  data-testid={`funnel-unit-${u.id}`}
+                  onClick={() => setFilterPatch({ unit: u.id })}
+                  aria-pressed={filters.unit === u.id}
+                  className={segBtn(filters.unit === u.id)}
+                >
+                  {u.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* FILTERS — opens the popover; badge = active-condition count. */}
+        <button
+          type="button"
+          data-testid="funnel-filters-toggle"
+          onClick={() => setFiltersOpen((v) => !v)}
+          aria-expanded={filtersOpen}
+          aria-haspopup="dialog"
+          className={`min-h-[44px] inline-flex items-center gap-2 px-3 rounded-lg border text-sm font-semibold transition-colors ${
+            filtersOpen || filtersCount > 0 ? 'bg-primary-tint border-primary/40 text-primary' : 'bg-card border-border text-ink-muted hover:text-ink'
+          }`}
+        >
+          <SlidersHorizontal size={14} aria-hidden="true" />
+          Filters
+          {filtersCount > 0 && (
+            <span
+              data-testid="funnel-filters-badge"
+              className="min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white dark:bg-primary-dark text-[10px] font-bold flex items-center justify-center tabular-nums"
+            >
+              {filtersCount}
+            </span>
+          )}
+        </button>
+
         <button
           type="button"
           role="switch"
@@ -374,6 +477,79 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           Only exceptions
           <span className="tabular-nums text-xs">{exceptionCount}</span>
         </button>
+
+        {/* Filters popover — unit is in the action bar; this panel carries the
+            weekly-report + no-log conditions. STATUS/LEVEL omitted (see module). */}
+        {filtersOpen && (
+          <div
+            role="dialog"
+            aria-label="Master Sheet filters"
+            data-testid="funnel-filters-panel"
+            className="absolute top-full right-0 mt-2 z-40 w-[320px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-card shadow-lg p-4"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm font-semibold text-ink">Filters</span>
+              <div className="flex-1" />
+              <button
+                type="button"
+                data-testid="funnel-filters-reset"
+                onClick={resetFilters}
+                className="min-h-[44px] px-3 rounded-lg text-[11px] font-bold uppercase tracking-wide text-ink-muted hover:text-ink transition-colors"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(false)}
+                className="min-h-[44px] px-4 rounded-lg bg-primary text-white dark:bg-primary-dark text-[11px] font-bold uppercase tracking-wide transition-colors"
+              >
+                Done
+              </button>
+            </div>
+
+            <div className="mb-3">
+              <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-ink-muted mb-2">Weekly report</div>
+              <div className="flex flex-wrap gap-2">
+                {FUNNEL_REPORT_OPTS.map(([k, label]) => {
+                  const on = filters.reports.includes(k);
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      data-testid={`funnel-report-${k}`}
+                      onClick={() => toggleReport(k)}
+                      aria-pressed={on}
+                      className={`min-h-[44px] px-3 rounded-full border text-xs font-bold tracking-wide transition-colors ${
+                        on ? 'bg-primary-tint border-primary/40 text-primary' : 'bg-surface border-border text-ink-muted hover:text-ink'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={filters.noLog}
+              data-testid="funnel-nolog"
+              onClick={() => setFilterPatch({ noLog: !filters.noLog })}
+              className={`w-full min-h-[44px] inline-flex items-center gap-3 px-3 rounded-lg border text-sm font-semibold transition-colors ${
+                filters.noLog ? 'bg-warning/15 border-warning/40 text-warning-ink' : 'bg-surface border-border text-ink-muted hover:text-ink'
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className={`relative w-7 h-4 rounded-full transition-colors ${filters.noLog ? 'bg-warning' : 'bg-ink-dim'}`}
+              >
+                <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-card transition-all ${filters.noLog ? 'right-0.5' : 'left-0.5'}`} />
+              </span>
+              No daily log this week only
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Week selector · search · CSV */}
@@ -412,20 +588,51 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         </button>
       </div>
 
-      {/* Active-condition chips — dismissible; × resets. */}
-      {sortChip && (
+      {/* Active-condition chips — every sort + filter renders as a dismissible
+          chip; × clears that one condition. CLEAR ALL appears at ≥2 chips. */}
+      {(sortChip || filterChips.length > 0) && (
         <div className="flex flex-wrap gap-2 items-center" data-testid="funnel-chips">
-          <span className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full bg-surface border border-border text-[10px] font-bold tracking-wide text-ink-muted">
-            SORT · {sortChip}
+          {sortChip && (
+            <span className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full bg-surface border border-border text-[10px] font-bold tracking-wide text-ink-muted">
+              SORT · {sortChip}
+              <button
+                type="button"
+                onClick={() => { setSort(null); }}
+                aria-label="Clear sort"
+                className="w-5 h-5 rounded-full border border-[rgb(var(--border-strong-channels))] flex items-center justify-center text-ink-muted hover:text-ink"
+              >
+                <X size={11} aria-hidden="true" />
+              </button>
+            </span>
+          )}
+          {filterChips.map((chip) => (
+            <span
+              key={chip.key}
+              data-testid={`funnel-chip-${chip.key}`}
+              className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full bg-surface border border-border text-[10px] font-bold tracking-wide text-ink-muted"
+            >
+              {chip.text}
+              <button
+                type="button"
+                onClick={() => setFilterPatch(chip.patch)}
+                aria-label={`Clear ${chip.text}`}
+                data-testid={`funnel-chip-${chip.key}-clear`}
+                className="w-5 h-5 rounded-full border border-[rgb(var(--border-strong-channels))] flex items-center justify-center text-ink-muted hover:text-ink"
+              >
+                <X size={11} aria-hidden="true" />
+              </button>
+            </span>
+          ))}
+          {(Number(Boolean(sortChip)) + filterChips.length) > 1 && (
             <button
               type="button"
-              onClick={() => { setSort(null); }}
-              aria-label="Clear sort"
-              className="w-5 h-5 rounded-full border border-[rgb(var(--border-strong-channels))] flex items-center justify-center text-ink-muted hover:text-ink"
+              data-testid="funnel-chips-clear-all"
+              onClick={() => { setSort(null); resetFilters(); }}
+              className="px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary hover:underline"
             >
-              <X size={11} aria-hidden="true" />
+              Clear all
             </button>
-          </span>
+          )}
         </div>
       )}
 

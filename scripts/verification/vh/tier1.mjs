@@ -528,6 +528,97 @@ export const LEGS = [
     },
   },
 
+  // ── 6b. Master Sheet FILTERS panel — compose two filters, clear via chip (branch_manager) ──
+  {
+    id: 't1-master-sheet-filters',
+    role: 'branch_manager',
+    desc: 'Master Sheet FUNNEL W(-1) filters: 3 filers (A1+UM in unit, BM in __branch_direct__). Open FILTERS panel; WEEKLY REPORT=Submitted keeps 3 (inclusive match); + UNIT=Branch direct → exactly 1 row (BM), badge 2, two chips, totals API == BM 8,500 (totals follow filtered set), reality bar UNCHANGED at TTD 26,200 (ignores filters); clear UNIT chip × → full roster 3 returns; clear report chip → 0 chips',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        await login(ctx.page, 'branch_manager');
+        const p = ctx.page;
+        await gotoTab(p, 'Master Sheet');
+        await p.waitForSelector('[data-testid="mastersheet-reality"]', { timeout: 12_000 });
+
+        const rankCount = () => p.locator('tbody [data-testid^="rank-"]').count();
+        const ftotApi = async () => Number(await p.locator('[data-testid="ftot-api"]').first().getAttribute('data-value'));
+
+        // W(-1): 3 SUBMITTED filers (A1 12,500 + UM 5,200 + BM 8,500 = 26,200).
+        const prevWeek = W(-1);
+        const weekSel = p.locator('select[aria-label="Select week"]');
+        await weekSel.selectOption(prevWeek);
+        await p.waitForFunction(
+          () => document.querySelectorAll('tbody [data-testid^="rank-"]').length === 3,
+          { timeout: 15_000 },
+        );
+        await p.waitForTimeout(300);
+
+        const realityBefore = (await readReality(p)).weekapi;
+        if (!currencyRe(26200).test(realityBefore || '')) {
+          await shot(p, 'FAIL-t1-master-sheet-filters-baseline');
+          throw new Error(`${prevWeek} baseline WEEK API="${realityBefore}" !~ ${currencyRe(26200)}`);
+        }
+        if ((await rankCount()) !== 3) throw new Error(`${prevWeek} baseline rows != 3`);
+
+        // Open the FILTERS popover (aria-expanded + panel visible).
+        const filtersBtn = p.locator('[data-testid="funnel-filters-toggle"]');
+        await filtersBtn.click();
+        await p.waitForSelector('[data-testid="funnel-filters-panel"]', { state: 'visible', timeout: 6_000 });
+        if ((await filtersBtn.getAttribute('aria-expanded')) !== 'true') throw new Error('FILTERS toggle aria-expanded != true when open');
+
+        // Filter 1 — WEEKLY REPORT = Submitted. All 3 are submitted → inclusive, stays 3.
+        await p.locator('[data-testid="funnel-report-submitted"]').click();
+        await p.waitForTimeout(300);
+        const afterReport = await rankCount();
+        if (afterReport !== 3) throw new Error(`report=Submitted rows=${afterReport} (expected 3 — all submitted)`);
+
+        // Filter 2 — UNIT = Branch direct (BM's __branch_direct__ unit). 3 → 1.
+        const unitBtn = p.locator('[data-testid="funnel-unit-__branch_direct__"]');
+        if ((await unitBtn.count()) !== 1) throw new Error('UNIT control missing the Branch-direct option at W(-1)');
+        await unitBtn.click();
+        await p.waitForTimeout(300);
+
+        const afterBoth = await rankCount();
+        if (afterBoth !== 1) throw new Error(`Submitted ∩ Branch-direct rows=${afterBoth} (expected 1 — BM only)`);
+        const bodyText = (await p.locator('tbody').textContent()) || '';
+        if (!bodyText.includes('Staging Branch Manager')) throw new Error('filtered single row is not the Branch Manager');
+
+        // Badge counts both conditions; two dismissible chips present.
+        const badge = (await p.locator('[data-testid="funnel-filters-badge"]').textContent())?.trim();
+        if (badge !== '2') throw new Error(`FILTERS badge="${badge}" (expected 2)`);
+        for (const key of ['unit', 'report']) {
+          if ((await p.locator(`[data-testid="funnel-chip-${key}"]`).count()) !== 1) throw new Error(`missing active-filter chip: ${key}`);
+        }
+
+        // Totals row follows the FILTERED set (BM API 8,500); reality bar does NOT.
+        const totApi = await ftotApi();
+        if (totApi !== 8500) throw new Error(`totals API=${totApi} (expected 8500 = BM only)`);
+        const realityAfter = (await readReality(p)).weekapi;
+        if (!currencyRe(26200).test(realityAfter || '')) throw new Error(`reality bar changed under filters: "${realityAfter}" (expected unchanged TTD 26,200)`);
+
+        // Close the panel, then clear the UNIT condition via its chip × → roster returns to 3.
+        await p.locator('[data-testid="funnel-filters-panel"] button', { hasText: 'Done' }).first().click().catch(() => {});
+        await p.waitForTimeout(150);
+        await p.locator('[data-testid="funnel-chip-unit-clear"]').click();
+        await p.waitForTimeout(300);
+        const afterClearUnit = await rankCount();
+        if (afterClearUnit !== 3) throw new Error(`after clearing UNIT chip rows=${afterClearUnit} (expected 3 — full roster returns)`);
+
+        // Clear the remaining report chip → no chips, no badge, still 3 rows.
+        await p.locator('[data-testid="funnel-chip-report-clear"]').click();
+        await p.waitForTimeout(300);
+        if ((await p.locator('[data-testid="funnel-chips"]').count()) !== 0) throw new Error('active-filter chips container should be gone after clearing all');
+        if ((await p.locator('[data-testid="funnel-filters-badge"]').count()) !== 0) throw new Error('FILTERS badge should be gone with no active filters');
+        if ((await rankCount()) !== 3) throw new Error('roster not fully restored after clearing all filters');
+
+        await shot(p, 't1-master-sheet-filters');
+        assertLegHygiene(ctx);
+        return `W(-1) 3 filers; report=Submitted→3; +unit=Branch-direct→1 (BM), badge 2, 2 chips, totals API 8500, reality bar unchanged 26,200; clear UNIT chip→3; clear report chip→0 chips/3 rows; hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
   // ── 7. Pinned-tab star de-emphasis (agent1) ──
   {
     id: 't1-pinned-tab-deemphasis',
