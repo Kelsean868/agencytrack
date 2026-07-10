@@ -138,4 +138,10 @@ screenshots: C:\Projects\at-fable-staging\out\vh-smoke\02-54-49
 
 ## Final origin line
 
-(appended post-push)
+Verbatim `git log origin/staging --oneline -1` after the E2 push:
+
+```
+86f44a40 docs(run3): E1 36/36 + final smoke table + morning handoff (E2)
+```
+
+(One tiny housekeeping commit follows to record this line itself.)
