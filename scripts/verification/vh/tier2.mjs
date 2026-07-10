@@ -790,7 +790,8 @@ export const LEGS = [
       const ctx = await newLegContext(browser);
       try {
         const p = ctx.page;
-        await login(p, 'agent1'); // default tab = dashboard (home) where the streak lives
+        // Opt out of the login helper's celebration auto-dismiss — the takeover IS this leg's subject.
+        await login(p, 'agent1', { dismissCelebration: false }); // default tab = dashboard (home) where the streak lives
         const takeover = p.locator(tsel('filing-streak-celebration'));
 
         // Fires on load: the seeded 9-week streak crosses the uncelebrated rung 5.
