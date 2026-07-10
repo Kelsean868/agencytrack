@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Master Sheet · Funnel</title>
+  <link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/tokens/fonts.css" />
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    a { color: #01696F; } a:hover { color: #014E52; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 640px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+    .ms-row:hover { background: var(--ms-hover, rgba(1,105,111,0.04)) !important; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Master Sheet — the reporting table as an explicit funnel</h1>
+    <p>
+      The 23-column sheet regrouped into <b>8 funnel stages</b>. <b>Collapsed by default</b> — every stage shows only its KPI band — with a
+      <b> VIEW toggle</b> (TOTALS ↔ + DETAILS) and <b>per-stage +/− toggles</b> in the group header to expand any stage's sub-columns in place.
+      Stage KPIs close each group (parts → outcome) as tonal bands: neutral ink wash + 700 weight, <b>teal reserved for the terminal KPI (API)</b>.
+      <b>Any column header sorts on click</b> — ↓, then ↑, then a third click restores the default listing (YTD rank); the active sort also shows as a
+      dismissible chip. A <b>FILTERS panel</b> (status · level · weekly report · no-log) joins the UNIT segmented control, with every active condition
+      rendered as a chip with ×. Two-tier header and Agent + Status stay pinned through both scroll axes; a team totals row pins to the bottom.
+      The small <b>IK</b> tag links FFI + CI Conducted to “Interviews Kept”.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="manager-v2-shared.jsx"></script>
+  <script type="text/babel" src="manager-v2-drill.jsx"></script>
+  <script type="text/babel" src="mastersheet-v2-shared.jsx"></script>
+  <script type="text/babel" src="mastersheet-funnel-data.jsx"></script>
+  <script type="text/babel" src="mastersheet-funnel-table.jsx"></script>
+  <script type="text/babel" src="mastersheet-funnel-scenes.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="funnel"
+            title="The funnel sheet — collapsed to totals by default"
+            subtitle="Default view: every stage collapsed to its KPI — the whole funnel fits without scroll. Expand any stage with the +/− in its group header, or flip VIEW to + DETAILS for everything. Click a KPI header to sort; UNIT filters the roster; the reality bar and exceptions toggle carry over unchanged. These artboards are live — click around."
+          >
+            <DCArtboard id="f-light" label="01 · Desktop · Light · totals only (default)" width={APP_W} height={APP_H}>
+              <FunnelDesktopScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="f-dark" label="02 · Desktop · Dark · totals only (default)" width={APP_W} height={APP_H}>
+              <FunnelDesktopScene t={APP_DARK} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="sticky"
+            title="Full detail — sticky anatomy, scrolled to the close"
+            subtitle="All stages expanded (+ DETAILS), pre-scrolled mid-sheet: the two-tier header and the pinned Agent + Status columns survive horizontal scroll — a soft shadow on the Status edge marks the seam. Collapse any single stage back to its total with the − in its header."
+          >
+            <DCArtboard id="f-scrolled" label="03 · Desktop · Light · all details · scrolled to 05–08" width={APP_W} height={APP_H}>
+              <FunnelDesktopScene t={APP_LIGHT} scrollToGroup="ffi" defaultExpanded={['p','ca','cm','ffi','ci','res','ref']} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="triage"
+            title="Triage, sorting, filtering"
+            subtitle="Sorting is tri-state on every column: ↓ → ↑ → back to the default YTD listing (the sort chip's × does the same). The FILTERS panel stacks status · level · weekly-report · no-log conditions on top of the UNIT control; every active condition is a dismissible chip. “Exceptions” stays as the one-tap triage. RANK BY flips terminal emphasis to NEW NAMES."
+          >
+            <DCArtboard id="f-exc" label="04 · Desktop · Light · only exceptions" width={APP_W} height={APP_H}>
+              <FunnelDesktopScene t={APP_LIGHT} exceptionsOn />
+            </DCArtboard>
+            <DCArtboard id="f-names" label="05 · Desktop · Light · NEW NAMES preset · Referrals expanded" width={APP_W} height={APP_H}>
+              <FunnelDesktopScene t={APP_LIGHT} preset="newNames" scrollToGroup="ref" defaultExpanded={['ref']} />
+            </DCArtboard>
+            <DCArtboard id="f-filters" label="06 · Desktop · Light · Filters panel open · status + level active" width={APP_W} height={APP_H}>
+              <FunnelDesktopScene t={APP_LIGHT} filtersOpen defaultFilters={{ statuses: ['pace', 'quiet', 'floor'], levels: ['L1', 'L2'] }} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="drill"
+            title="Row → coaching drawer (reused)"
+            subtitle="Clicking any row slides in the same 5-tab coaching drawer used across every manager surface — header and goals adapt to the clicked agent; it opens on the Weekly tab, the depth view behind the row's funnel numbers. A pinned footer routes deeper: the agent's full performance report (↗ opens Agent Report View), or straight into a 1-on-1 — a full-frame meeting takeover with the agent's week as 8 stage tiles + the weekly standard strip. Live in every artboard here."
+          >
+            <DCArtboard id="f-drill" label="07 · Desktop · Light · row drill · Devin Lewis · Weekly" width={APP_W} height={APP_H}>
+              <FunnelDesktopScene t={APP_LIGHT} drillAgent="Devin Lewis" drillTab="weekly" />
+            </DCArtboard>
+            <DCArtboard id="f-oneonone" label="08 · Desktop · Light · 1-on-1 mode · Devin Lewis" width={APP_W} height={APP_H}>
+              <FunnelDesktopScene t={APP_LIGHT} drillAgent="Devin Lewis" oneOnOne />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="meeting"
+            title="Branch meeting mode — the sheet in the room"
+            subtitle="The same table, projected (16:9, deep projection dark). Everything stays workable mid-meeting: VIEW totals ↔ + details, per-stage +/− toggles, header-click sorting (↓ ↑ reset), a live agent search, and the exceptions cut — so the room can go from the funnel overview to one stage's detail without leaving the slide. (The full Meeting Mode deck redesign is the next deliverable.)"
+          >
+            <DCArtboard id="f-meeting" label="09 · Meeting · Projection dark · totals — live controls" width={1280} height={720}>
+              <FunnelMeetingScene />
+            </DCArtboard>
+            <DCArtboard id="f-meeting-det" label="10 · Meeting · FFIs + CIs expanded · sorted by CI Conducted" width={1280} height={720}>
+              <FunnelMeetingScene defaultExpanded={['ffi', 'ci']} defaultSort={{ key: 'ciCond', dir: 'desc' }} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="narrow"
+            title="Narrow viewport — scroll by stage, not by pixel"
+            subtitle="~834px strategy: the lead column condenses (status becomes a dot on the name), unit filter becomes compact chips, and a stage scrubber above the table jumps the horizontal scroll to any of the 8 stages. Per-stage +/− and KPI-header sorting work the same. Shown parked on 05 · FFI, expanded."
+          >
+            <DCArtboard id="f-narrow" label="11 · Narrow 834 · Light · parked on FFIs" width={834} height={680}>
+              <FunnelNarrowScene t={APP_LIGHT} activeStage="ffi" defaultExpanded={['ffi']} />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
