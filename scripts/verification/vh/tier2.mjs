@@ -400,10 +400,15 @@ export const LEGS = [
         const p = a1.page;
         await login(p, 'agent1');
         await gotoAgent(p, 'agent-tab-financing', 'fsv-paydown-hero');
-        await mustText(p, currencyRe(11000), 'K9 current balance 11,000', 'fsv-paydown-now');
-        // Projection present (declining ledger → clear-month rendered).
-        await mustText(p, /clear it in about|PROJECTED CLEAR|months?/i, 'K9 projection narrative', 'fsv-paydown-hero');
-        await mustText(p, /SEP 2026|Sep 2026/i, 'K9 projected clear month', 'fsv-paydown-hero');
+        try {
+          await mustText(p, currencyRe(11000), 'K9 current balance 11,000', 'fsv-paydown-now');
+          // Projection present (declining ledger → clear-month rendered).
+          await mustText(p, /clear it in about|PROJECTED CLEAR|months?/i, 'K9 projection narrative', 'fsv-paydown-hero');
+          await mustText(p, /SEP 2026|Sep 2026/i, 'K9 projected clear month', 'fsv-paydown-hero');
+        } catch (e) {
+          await shot(p, 'FAIL-t2-financing-k9');
+          throw e;
+        }
         await shot(p, 't2-financing-k9');
         assertLegHygiene(a1);
       } finally {
@@ -419,13 +424,25 @@ export const LEGS = [
         await clickTid(p, 'nav-financing');
         await p.locator(tsel('financing-subview-risk')).waitFor({ state: 'visible', timeout: 15_000 });
         await clickTid(p, 'financing-subview-risk');
-        await p.locator(tsel('financing-risk-panel')).waitFor({ state: 'attached', timeout: 12_000 });
-        await p.waitForTimeout(800);
-        await mustText(p, /Staging Agent Two/, 'K7 at-risk agent', 'financing-risk-panel');
-        await mustText(p, /at\s*risk/i, 'K7 AT RISK chip', 'financing-risk-panel');
-        await mustText(p, /\b1\b/, 'K7 at-risk count = 1', 'frp-at-risk');
-        await mustText(p, /2 consecutive misses|2 misses/i, 'K7 two-miss monitor', 'financing-risk-panel');
-        await mustText(p, /−?-?15%|15%/, 'K7 −15% adjustment flag', 'financing-risk-panel');
+        const riskPanel = p.locator(tsel('financing-risk-panel'));
+        await riskPanel.waitFor({ state: 'attached', timeout: 12_000 });
+        try {
+          // Known flake: the panel shell (financing-risk-panel) can attach on
+          // first paint before its async-fetched roster rows land — a fixed
+          // post-navigation timeout races that fetch. Explicitly await the K7
+          // roster ROW itself (Staging Agent Two) with a generous timeout so
+          // the assertions below run against real content, not first paint.
+          await riskPanel.getByText(/Staging Agent Two/i).first()
+            .waitFor({ state: 'attached', timeout: 20_000 });
+          await mustText(p, /Staging Agent Two/, 'K7 at-risk agent', 'financing-risk-panel');
+          await mustText(p, /at\s*risk/i, 'K7 AT RISK chip', 'financing-risk-panel');
+          await mustText(p, /\b1\b/, 'K7 at-risk count = 1', 'frp-at-risk');
+          await mustText(p, /2 consecutive misses|2 misses/i, 'K7 two-miss monitor', 'financing-risk-panel');
+          await mustText(p, /−?-?15%|15%/, 'K7 −15% adjustment flag', 'financing-risk-panel');
+        } catch (e) {
+          await shot(p, 'FAIL-t2-financing-k7');
+          throw e;
+        }
         await shot(p, 't2-financing-k7');
         assertLegHygiene(bm);
       } finally {
