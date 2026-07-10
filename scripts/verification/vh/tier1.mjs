@@ -75,6 +75,45 @@ async function readReality(page) {
   return { weekapi, submitted, filed, exceptions };
 }
 
+/**
+ * Read the pin/unpin star treatment for a sidebar row by its canonical
+ * data-testid (the GROUP row, not the ★ Pinned-zone alias). Resolves the two
+ * candidate ink tokens to rgb() in-page so the color compare is theme-agnostic.
+ */
+async function readPinStar(page, navTestId) {
+  return page.evaluate((tid) => {
+    const rows = [...document.querySelectorAll('.sidebar-link-row')];
+    const row = rows.find((r) => r.querySelector(`[data-testid="${tid}"]`));
+    const btn = row?.querySelector('.sidebar-nav-star') || null;
+    const svg = btn?.querySelector('svg') || null;
+    const probe = document.createElement('span');
+    probe.style.position = 'absolute';
+    probe.style.color = 'var(--color-text-muted)';
+    document.body.appendChild(probe);
+    const mutedRgb = getComputedStyle(probe).color;
+    probe.style.color = 'var(--color-primary)';
+    const primaryRgb = getComputedStyle(probe).color;
+    probe.remove();
+    return {
+      found: !!btn,
+      on: btn ? btn.classList.contains('sidebar-nav-star-on') : null,
+      svgW: svg ? svg.getAttribute('width') : null,
+      color: btn ? getComputedStyle(btn).color : null,
+      mutedRgb,
+      primaryRgb,
+    };
+  }, navTestId);
+}
+
+/** Click the pin/unpin star for a sidebar row by its canonical data-testid. */
+async function clickPinStar(page, navTestId) {
+  const row = page.locator('.sidebar-link-row', { has: page.locator(`[data-testid="${navTestId}"]`) }).first();
+  await row.scrollIntoViewIfNeeded();
+  await row.hover(); // reveal the star (opacity:0 until row hover / pinned)
+  await row.locator('.sidebar-nav-star').first().click();
+  await page.waitForTimeout(400);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const LEGS = [
@@ -455,6 +494,63 @@ export const LEGS = [
         await shot(p, 't1-master-sheet-prevweek');
         assertLegHygiene(ctx);
         return `W0 reality bar 0/1·1/2·2·${r0.weekapi}; presets toggle API(TTD)↔NEW NAMES; Only-exceptions→1 A1 draft row; ${prevWeek} WEEK API ${r1.weekapi}, exceptions 1 (A2 non-filer), row filter ${prevRowsBefore}→0; hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
+  // ── 7. Pinned-tab star de-emphasis (agent1) ──
+  {
+    id: 't1-pinned-tab-deemphasis',
+    role: 'agent1',
+    desc: 'agent1 desktop: pin a non-seeded tab (leaderboard) via its sidebar star, then assert VALUE-LEVEL that the PINNED star is de-emphasized (svg width 12 + sidebar-nav-star-on + muted-ink color, NOT brand primary) while an UNPINNED tab (awards) keeps the full treatment (svg width 14, no on-class); original pin state restored. MUTATES prefs/app.pinnedNav.',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      const P = 'agent-tab-leaderboard'; // pin target — not in the agent seed
+      const U = 'agent-tab-awards';      // unpinned control — not in the agent seed
+      let pinnedByLeg = false;
+      let unpinnedByLeg = false;
+      try {
+        await login(ctx.page, 'agent1');
+        const p = ctx.page;
+        await p.waitForSelector(`[data-testid="${P}"]`, { timeout: 12_000 });
+        // Let the once-on-mount pinned-nav reconcile settle before mutating pins.
+        await p.waitForTimeout(1500);
+
+        // Capture baseline + normalize: P must be pinned, U must be unpinned.
+        const pBase = await readPinStar(p, P);
+        const uBase = await readPinStar(p, U);
+        if (!pBase.found) throw new Error(`no pin star on ${P}`);
+        if (!uBase.found) throw new Error(`no pin star on ${U}`);
+        if (!pBase.on) { await clickPinStar(p, P); pinnedByLeg = true; }
+        if (uBase.on) { await clickPinStar(p, U); unpinnedByLeg = true; }
+        await p.mouse.move(4, 4); // off any row → avoid the :hover color override
+        await p.waitForTimeout(150);
+
+        // PINNED star: reduced size + on-class + muted (explicitly NOT brand primary).
+        const pinned = await readPinStar(p, P);
+        if (!pinned.on) throw new Error(`${P} star missing sidebar-nav-star-on after pin`);
+        if (pinned.svgW !== '12') throw new Error(`pinned star size=${pinned.svgW} (expected 12)`);
+        if (pinned.color !== pinned.mutedRgb) throw new Error(`pinned star color=${pinned.color} != muted ${pinned.mutedRgb}`);
+        if (pinned.color === pinned.primaryRgb) throw new Error(`pinned star still brand-primary ${pinned.color} (de-emphasis not applied)`);
+
+        // UNPINNED control: unchanged — full size + no on-class.
+        const unpinned = await readPinStar(p, U);
+        if (unpinned.on) throw new Error(`${U} unexpectedly carries sidebar-nav-star-on`);
+        if (unpinned.svgW !== '14') throw new Error(`unpinned star size=${unpinned.svgW} (expected 14)`);
+
+        await shot(p, 't1-pinned-tab-deemphasis');
+
+        // Restore original pin state (leave prefs/app.pinnedNav value-for-value).
+        if (pinnedByLeg) { await clickPinStar(p, P); }
+        if (unpinnedByLeg) { await clickPinStar(p, U); }
+        await p.waitForTimeout(3000); // fire-and-forget pinnedNav write flush headroom
+        const pEnd = await readPinStar(p, P);
+        const uEnd = await readPinStar(p, U);
+        if (pEnd.on !== pBase.on || uEnd.on !== uBase.on) {
+          throw new Error(`restore failed: P.on ${pBase.on}->${pEnd.on}, U.on ${uBase.on}->${uEnd.on}`);
+        }
+        assertLegHygiene(ctx);
+        return `pinned star de-emphasized (size 12, muted ink ${pinned.color}, not primary ${pinned.primaryRgb}); unpinned control unchanged (size 14, no on-class); pin state restored (P=${pEnd.on}, U=${uEnd.on}); hygiene clean`;
       } finally { await ctx.context.close(); }
     },
   },
