@@ -128,6 +128,18 @@ export const LEGS = [
         await p.locator(tsel('my-war-review-state')).waitFor({ state: 'visible', timeout: 12_000 });
         await mustText(p, /Approved/i, 'UM my-war approved → pill', 'my-war-review-state');
         await mustText(p, /Reviewed by Staging Branch Manager/i, 'UM my-war approved → reviewer name', 'my-war-review-state');
+
+        // Item E — My WAR hero (MyWarCard conformance): structure + deterministic
+        // own-production for W(-1) (seed UM_WEEKS = api 5,200 / apps 1).
+        await p.locator(tsel('my-war-hero')).waitFor({ state: 'visible', timeout: 12_000 });
+        await mustText(p, /MY API/i, 'UM my-war hero → API label', 'my-war-hero');
+        await mustText(p, /APPLICATIONS/i, 'UM my-war hero → apps label', 'my-war-hero');
+        await mustText(p, /FILING STREAK/i, 'UM my-war hero → streak label', 'my-war-hero');
+        await p.locator(tsel('war-streak-dots')).waitFor({ state: 'visible', timeout: 8000 });
+        await p.locator(tsel('my-war-hero-api')).waitFor({ state: 'visible', timeout: 12_000 });
+        await p.waitForTimeout(1200); // let the API count-up settle to the exact seed value
+        await mustText(p, /TTD\s*5,200/, 'UM my-war hero → API value W(-1)', 'my-war-hero-api');
+        await mustText(p, /^\s*1\s*$/, 'UM my-war hero → apps value W(-1)', 'my-war-hero-apps');
         await shot(p, 't2-war-um-side');
 
         // W(-2)=2026-06-21 (changes requested): pill + note affordance reveals the note (F9 hard assert).
@@ -135,6 +147,12 @@ export const LEGS = [
         await p.waitForTimeout(1800);
         await p.locator(tsel('my-war-review-state')).waitFor({ state: 'visible', timeout: 12_000 });
         await mustText(p, /Changes requested/i, 'UM my-war changes → pill', 'my-war-review-state');
+
+        // Item E — hero own-production for W(-2) (seed UM_WEEKS = api 7,500 / apps 2).
+        await p.locator(tsel('my-war-hero-api')).waitFor({ state: 'visible', timeout: 12_000 });
+        await p.waitForTimeout(1200);
+        await mustText(p, /TTD\s*7,500/, 'UM my-war hero → API value W(-2)', 'my-war-hero-api');
+        await mustText(p, /^\s*2\s*$/, 'UM my-war hero → apps value W(-2)', 'my-war-hero-apps');
         // The leader's note sits behind a disclosure affordance — click to reveal, then assert the text.
         await p.locator(tsel('my-war-review-note-toggle')).click({ timeout: 8000 });
         await p.locator(tsel('my-war-review-note')).waitFor({ state: 'visible', timeout: 8000 });
@@ -147,7 +165,9 @@ export const LEGS = [
       }
       return 'BM approved UM 06-28 (+reviewer name) & requested-changes UM 06-21 — both pills re-read; '
         + 'UM my-war: self-review controls ABSENT (denied); owner review pill + reviewer name shown for the '
-        + 'approved week; changes-requested note affordance reveals the note text.';
+        + 'approved week; changes-requested note affordance reveals the note text; '
+        + 'My WAR hero (item E) renders the MY API/APPLICATIONS/FILING STREAK metric row with the seed '
+        + 'own-production values (W-1 5,200/1, W-2 7,500/2).';
     },
   },
 

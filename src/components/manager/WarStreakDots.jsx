@@ -13,10 +13,20 @@ import React from 'react';
  *
  * @param {boolean[]} history      filed flags, oldest → newest
  * @param {boolean} [showLabel=true]  append the "N wks" caption
+ * @param {'default'|'hero'} [variant='default']  'hero' swaps the dot fills +
+ *   caption to certified glass-hero viz tokens so the dots stay legible on the
+ *   dark-teal `.glass.hero.teal` surface (light-card `bg-success` + muted-ink
+ *   caption would wash out there).
  */
-export default function WarStreakDots({ history, showLabel = true, className = '' }) {
+export default function WarStreakDots({ history, showLabel = true, className = '', variant = 'default' }) {
   const weeks = Array.isArray(history) ? history : [];
   const filedCount = weeks.filter(Boolean).length;
+  const isHero = variant === 'hero';
+  const filedClass = isHero ? 'bg-[--hero-dot-success]' : 'bg-success';
+  const missedClass = isHero
+    ? 'bg-white/10 border border-[--hero-chip-border]'
+    : 'bg-danger/20 border border-danger/40';
+  const labelClass = isHero ? 'text-[--hero-ink-muted-teal]' : 'text-text-muted';
 
   return (
     <div
@@ -32,15 +42,13 @@ export default function WarStreakDots({ history, showLabel = true, className = '
             <span
               key={i}
               title={`${weeksAgo} week${weeksAgo === 1 ? '' : 's'} ago — ${filed ? 'filed' : 'not filed'}`}
-              className={`h-2 w-2 rounded-[3px] ${
-                filed ? 'bg-success' : 'bg-danger/20 border border-danger/40'
-              }`}
+              className={`h-2 w-2 rounded-[3px] ${filed ? filedClass : missedClass}`}
             />
           );
         })}
       </div>
       {showLabel && weeks.length > 0 && (
-        <span className="text-[10px] text-text-muted tabular-nums">{weeks.length} wks</span>
+        <span className={`text-[10px] tabular-nums ${labelClass}`}>{weeks.length} wks</span>
       )}
     </div>
   );
