@@ -249,24 +249,30 @@ export default function UnitManagerProductionView() {
         </div>
       )}
 
-      {/* Unit aggregate */}
-      <div className="card">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-4">Unit Aggregate</p>
+      {/* @@hero-pane-start */}
+      {/* Unit aggregate — hero parity with the BM sibling (BranchManagerProductionView) */}
+      <div className="glass hero teal p-6">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[--hero-ink-muted-teal] mb-4">Unit Aggregate</p>
         <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-[130px]">
-            <p className="text-xs text-ink-muted">Total API</p>
-            <p className="text-2xl font-bold text-primary tabular-nums">{formatCurrency(aggregate.totalApi)}</p>
+            <p className="text-xs text-[--hero-ink-muted-teal]">Total API</p>
+            <p className="text-2xl font-bold text-[--hero-ink] tabular-nums">{formatCurrency(aggregate.totalApi)}</p>
           </div>
           <div className="flex-1 min-w-[80px]">
-            <p className="text-xs text-ink-muted">Apps</p>
-            <p className="text-2xl font-bold text-ink tabular-nums">{aggregate.totalApps}</p>
+            <p className="text-xs text-[--hero-ink-muted-teal]">Apps</p>
+            <p className="text-2xl font-bold text-[--hero-ink] tabular-nums">{aggregate.totalApps}</p>
           </div>
           <div className="flex-1 min-w-[130px]">
-            <p className="text-xs text-ink-muted">Avg API / Agent</p>
-            <p className="text-2xl font-bold text-ink tabular-nums">{formatCurrency(aggregate.avgApiPerAgent)}</p>
+            <p className="text-xs text-[--hero-ink-muted-teal]">Avg API / Agent</p>
+            <p className="text-2xl font-bold text-[--hero-ink] tabular-nums">{formatCurrency(aggregate.avgApiPerAgent)}</p>
+          </div>
+          <div className="flex-1 min-w-[100px]">
+            <p className="text-xs text-[--hero-ink-muted-teal]">Agents</p>
+            <p className="text-2xl font-bold text-[--hero-ink] tabular-nums">{aggregate.agentCount}</p>
           </div>
         </div>
       </div>
+      {/* @@hero-pane-end */}
 
       {/* Compliance */}
       <div className="card">
