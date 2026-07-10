@@ -1,11 +1,19 @@
 // @vitest-environment jsdom
 //
-// Sidebar — pin-star de-emphasis (Run3 F8).
-// The pin/unpin star on a PINNED row renders one step smaller (14→12) and carries
-// the `sidebar-nav-star-on` class (which the stylesheet maps to the muted ink
-// token, dropping the brand-teal accent). Unpinned rows are unchanged: size 14,
-// no `sidebar-nav-star-on` class. The star stays a real <button> (44px hit target
-// in CSS) because it is also the interactive pin/unpin toggle.
+// Sidebar — pin-star de-emphasis v2 (Run4 polish — operator-locked, supersedes
+// Run3 F8's size/contrast reduction).
+//
+// New rule: the pin/unpin star renders FILLED (`sidebar-nav-star-filled`,
+// brand-teal) ONLY when the row sits in the ★ Pinned zone itself. Everywhere
+// else the tab's pin affordance appears (its home/group section), the star
+// stays OUTLINE regardless of whether the item is currently pinned — position
+// (which zone) + fill-vs-outline carry the "this is pinned" signal now, not
+// size or muted color (F8's size-12/muted-color treatment is removed). Size is
+// uniform (14) in both zones. Opacity (`sidebar-nav-star-pinned`, always-visible
+// vs reveal-on-hover) still tracks pinned STATE independently of the zone-driven
+// fill — a pinned item's home-row star stays glanceable without hovering, just
+// outlined instead of filled. The star stays a real <button> (44px hit target in
+// CSS) because it is also the interactive pin/unpin toggle.
 
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
@@ -37,22 +45,39 @@ const baseProps = {
 
 const svgW = (btn) => btn.querySelector('svg')?.getAttribute('width');
 
-describe('Sidebar — pin-star de-emphasis (Run3 F8)', () => {
-  it('the pinned row star renders reduced (size 12 + on-class), unpinned star is unchanged (size 14, no on-class)', () => {
+describe('Sidebar — pin-star de-emphasis v2 (Run4 polish)', () => {
+  it('the ★ Pinned-zone star renders FILLED (brand-teal); the SAME item\'s home-row star renders OUTLINE', () => {
     render(<Sidebar {...baseProps} />);
 
-    // Weekly Report is pinned → its star(s) read "Unpin Weekly Report". It renders
-    // both in the ★ Pinned zone and in its group row; BOTH must be de-emphasized.
-    const pinnedStars = screen.getAllByLabelText('Unpin Weekly Report');
-    expect(pinnedStars.length).toBeGreaterThanOrEqual(2);
-    for (const star of pinnedStars) {
-      expect(star).toHaveClass('sidebar-nav-star-on');
-      expect(svgW(star)).toBe('12');
-    }
+    // Weekly Report is pinned → it renders in BOTH the ★ Pinned zone (canonical
+    // testid `pinned-mp-report`) and its home section (canonical testid `nav-mp-report`).
+    const stars = screen.getAllByLabelText('Unpin Weekly Report');
+    expect(stars.length).toBe(2);
 
-    // Leaderboard is NOT pinned → its star reads "Pin Leaderboard": full size, no on-class.
+    const pinnedZoneRow = document.querySelector('[data-testid="pinned-mp-report"]').closest('.sidebar-link-row');
+    const homeRow = document.querySelector('[data-testid="nav-mp-report"]').closest('.sidebar-link-row');
+    const pinnedZoneStar = pinnedZoneRow.querySelector('.sidebar-nav-star');
+    const homeStar = homeRow.querySelector('.sidebar-nav-star');
+
+    // ★ Pinned zone: filled + carries the "pinned" opacity class too.
+    expect(pinnedZoneStar).toHaveClass('sidebar-nav-star-filled');
+    expect(pinnedZoneStar).toHaveClass('sidebar-nav-star-pinned');
+    expect(svgW(pinnedZoneStar)).toBe('14');
+
+    // Home section: NEVER filled, even though this item IS pinned — only the
+    // opacity/always-visible class applies, position gates the fill.
+    expect(homeStar).not.toHaveClass('sidebar-nav-star-filled');
+    expect(homeStar).toHaveClass('sidebar-nav-star-pinned');
+    expect(svgW(homeStar)).toBe('14');
+  });
+
+  it('an UNPINNED tab renders outline in its home section (unchanged) and never appears in the ★ Pinned zone', () => {
+    render(<Sidebar {...baseProps} />);
+
+    expect(screen.queryByTestId('pinned-leaderboard')).not.toBeInTheDocument();
     const unpinnedStar = screen.getByLabelText('Pin Leaderboard');
-    expect(unpinnedStar).not.toHaveClass('sidebar-nav-star-on');
+    expect(unpinnedStar).not.toHaveClass('sidebar-nav-star-filled');
+    expect(unpinnedStar).not.toHaveClass('sidebar-nav-star-pinned');
     expect(svgW(unpinnedStar)).toBe('14');
   });
 
