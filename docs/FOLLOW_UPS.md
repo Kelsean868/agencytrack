@@ -5,6 +5,70 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Seeder env-file foot-gun — `seed-fixtures.mjs` silently resets staging/sales_manager passwords without `--env-file` (banked 2026-07-09, promotion session, MEDIUM — operator safety)
+
+`scripts/staging/seed-fixtures.mjs` syncs Auth passwords for `cro`/`sales_manager` fixture accounts at ~L272/L288 from an env var that is `undefined` when the script is run without `--env-file=.env.staging` — the fallback silently resets the account password to a falsy/default value instead of failing. Cost this promotion session: 3 false `LOGIN-AUTH-ERROR` legs before the missing flag was diagnosed. **Fix:** make the script fail loudly (throw) if the password env var is unset, or explicitly document "env-file required" in `SMOKES.md` next to this script's entry.
+
+---
+
+## VH leg `t2-financing-k9-k7` flaky on first paint — no FAIL screenshot captured (banked 2026-07-09, promotion session, LOW — verification hygiene)
+
+During the Nexus v2 promotion's VH suite run, the K7 at-risk roster assertion in `t2-financing-k9-k7` fired on first paint once (`Got: ""`), then passed 3/3 on isolated re-runs — a render-timing race, not a real regression. Harden the wait condition to explicitly await the roster row (rather than a generic settle wait), and attach the page to the assertion's throw path so a future failure produces a FAIL screenshot (none was captured this time, making the first occurrence harder to diagnose than necessary).
+
+---
+
+## MasterSheet stale local key — `contactsMade` display variable should be renamed `personsReached` (banked 2026-07-09, promotion session, LOW — housekeeping/clarity)
+
+`src/components/manager/MasterSheet.jsx` builds its display row with a local `contactsMade: personsReached` mapping — display-only, never persisted, but the key name is stale relative to the post-Daily-Capture-v2 `personsReached` rename (see the already-tracked `telContacts`/`contactsMade` floor-key rename elsewhere in this doc). Rename the local variable + column header to `personsReached`-consistent naming for clarity; no data or rules impact.
+
+---
+
+## Index-file drift — `jointCalls` composite exists in prod but not in `firestore.indexes.json` (banked 2026-07-09, promotion session, LOW — housekeeping)
+
+The `jointCalls` composite index (`authorUid ASC, appointmentDate ASC`) exists in the production Firestore console but has no matching entry in `firestore.indexes.json` — it surfaces as a deletion prompt on every subsequent `firebase deploy --only firestore:indexes` (as seen during this promotion's backend deploy, where the deletion was declined to avoid breaking the live index). Reconcile by either committing the index definition to `firestore.indexes.json` (if it's still in use) or confirming it's obsolete and deleting it from the console.
+
+---
+
+## Stale prod IAM binding — expired conditional grant on `cloudbuild` service agent (banked 2026-07-09, promotion session, LOW — housekeeping)
+
+An expired conditional IAM binding (`cloudbuild-connection-setup`, condition `request.time < 2026-05-26`) grants `roles/secretmanager.admin` to the Cloud Build service agent in the production project. The condition has already expired, so the binding is inert — clean it up during a future IAM-hygiene pass (no urgency, no active risk).
+
+---
+
+## HARD DEADLINE — Node 20 gen-1 Cloud Functions runtime decommission 2026-10-30 (banked 2026-07-09, promotion session, HIGH — infra deadline)
+
+Google decommissions the Node 20 gen-1 Cloud Functions runtime on 2026-10-30 — functions deploys will start failing after this date without a runtime upgrade (Node 20 was already deprecated 2026-04-30; see § Pending operational state in CONTEXT.md). Additionally, the `firebase-functions` SDK is pinned at 4.9.0 (outdated; upgrading to ≥5.1.0 has breaking changes). **Schedule a dedicated runtime-upgrade window well before October** — this is not a routine housekeeping item, it is a hard external deadline that will break deploys if missed.
+
+---
+
+## Rebase `chore/tier0-smoke` onto main before it goes any staler (banked 2026-07-09, promotion session, MEDIUM — branch hygiene)
+
+The `chore/tier0-smoke` branch holds 3 real, not-yet-on-main commits (`smoke-tier0-staging.mjs`, +1153 lines; role-filter fixes; a `SMOKES.md` row) but predates the Nexus v2 redesign — rebasing it surfaces ~264 phantom-conflict files and ~32k phantom deletions against redesign-touched files. **Resolution rule for the rebase:** every conflict on a redesign-touched file resolves to "keep main" — only the branch's genuine additions (the new smoke script, the role-filter fixes, the SMOKES.md row) should apply on top. Then open the PR and hold for review. **Do NOT merge the branch as-is** — a naive merge would revert large parts of the redesign.
+
+---
+
+## Motion-verifier prod run — optional, needs `A11Y_<ROLE>_EMAIL`/`PASSWORD` env vars (banked 2026-07-09, promotion session, LOW — optional verification)
+
+The `motion-verifier.mjs` script (built in PR #824) was skipped during this promotion's Phase 3 verification in favor of eyeball acceptance — the promotion session's environment didn't have the `A11Y_<ROLE>_EMAIL`/`A11Y_<ROLE>_PASSWORD` credentials wired for a scripted run. If an objective (non-eyeball) motion baseline on the live prod redesign is wanted, wire the credentials and re-run the verifier against prod.
+
+---
+
+## Run-3 candidate worklist — hero-card conformance gaps (banked 2026-07-09, PR #848 recon, MEDIUM — design-conformance backlog)
+
+PR #848's read-only hero-card conformance recon (`docs/audits/hero-card-conformance-2026-07-09.md`) cross-referenced canonical `screens-v2/*.html` mockups against every live screen across all roles and found **7 distinct MISSING build items** (grounding the "no blanket hero cards" ruling in evidence — the design itself is selective about heroes, not blanket). These are good candidates for the next build batch ("Run 3") once picked up from the design-conformance backlog (PR #836):
+
+1. **Agent Daily Capture (modal) anchor hero** — `src/components/daily/DailyCaptureV2.jsx:686-742` collapsed to a slim sticky header (inline flame badge only); mockup calls for a headline sentence + week-to-date progress bar (`screens-v2/dailycap-shared.jsx:149-189`, `DailyAnchorStrip`).
+2. **Agent Prospect Prep hero** — feature not built at all; `AgentDashboard.jsx:761` renders `<ComingSoonPanel label="Prospect Prep" />`. Mockup: `screens-v2/prospect-pages.jsx:5-86` (`NextCallHero`).
+3. **Financing self-view hero** (shared component, 2 mounts — agent `financing` tab + producing-manager `mp-financing` tab) — `src/components/financing/FinancingSelfView.jsx:265-308` is a flat card; mockup (`design_handoff_track_k/Track K Financing Self-View - Build.html`) specifies a narrative headline + wind-down clock treatment.
+4. **UM Team Reports hero-class gap** — `src/components/productionReport/UnitManagerProductionView.jsx:126` renders the same aggregate content as the BM view but as a plain `.card`, not a hero — likely an oversight, not a deliberate distinction.
+5. **My WAR hero (UM/BM)** — `src/components/manager/ManagerWarTab.jsx` is a plain form; mockup (`screens-v2/war-v2-desktop.jsx:38-93`, `MyWarCard`) specifies a completion ring + production summary row.
+6. **Money Needs hero — flag-flip only, not a build item.** The hero component (`TheSeam` in `MoneyNeedsPanel.jsx`/`MoneyNeedsAllocator.jsx`) already exists but is gated behind `VITE_MONEY_NEEDS_MERGED_ENABLED`, default OFF in production. Sizing: **S** — this is a rollout/regression-check item, not new build.
+7. **Meeting Mode opening/summary slide hero (BM)** — `src/components/manager/MeetingMode.jsx:234-263` is a flat 2×2 equal-weight stat grid; mockup (`AgencyTrack Meeting Mode v2.html:154-155`) specifies one primary metric + cascade-bar chart + 3 secondary counts (anchor-first hierarchy).
+
+**Data-architecture design docs for net-new #836 surfaces** (CRO/back-office delivery register, Policy Ledger campaign-proof lens, Awards provenance system, interactive Agent Report View, Settings v2) are tracked separately — see the existing "Data-architecture phase docs" item below; not duplicated here.
+
+---
+
 ## React Query — DON'T-ADOPT (now); re-evaluate only on a real caching trigger (banked 2026-07-07, PR #830, MEDIUM — architecture)
 
 Recon (`docs/audits/react-query-adoption-recon-2026-07-07.md`) mapped all server-data fetch patterns for the motion pop-in rollout and recommended **not** adopting React Query at this time: the pop-in is a loading-state defect (skeletons fix the visible symptom directly — see the `PanelSkeleton` kit, PR #832) not a caching defect, and adding a foundational dependency + cache-invalidation mental model to a solo non-dev's pre-pilot codebase is poor cost/benefit right now. On the fit axis it is a clean match (only 3 live `onSnapshot` surfaces in the whole non-test tree; ~95% of reads already route through a uniform `src/services/` layer, so it can slot in panel-by-panel later with zero rework).
