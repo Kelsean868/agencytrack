@@ -68,13 +68,14 @@ function AppointmentCard({ appt, prospectName, onChurn }) {
   );
 }
 
-/** Churn action dialog (screen 5) — Kept · Reschedule · Postpone · Cancel. */
+/** Churn action dialog (screen 5) — Kept · Edit · Reschedule · Postpone · Cancel. */
 function ChurnDialog({ appt, onAction, onClose, saving }) {
   const trapRef = useFocusTrap({ onEscape: onClose, escapeDisabled: saving });
   const actions = [
-    { key: 'kept',      label: 'Mark kept',   variant: 'primary' },
-    { key: 'reschedule', label: 'Reschedule', variant: 'plain' },
-    { key: 'postpone',  label: 'Postpone',    variant: 'plain' },
+    { key: 'kept',      label: 'Mark kept',    variant: 'primary' },
+    { key: 'edit',      label: 'Edit details', variant: 'plain' },
+    { key: 'reschedule', label: 'Reschedule',  variant: 'plain' },
+    { key: 'postpone',  label: 'Postpone',     variant: 'plain' },
     { key: 'cancel',    label: 'Cancel appointment', variant: 'danger' },
   ];
   return (
@@ -94,6 +95,7 @@ function ChurnDialog({ appt, onAction, onClose, saving }) {
             key={a.key}
             type="button"
             disabled={saving}
+            data-testid={`churn-action-${a.key}`}
             onClick={() => onAction(a.key, appt)}
             className={`min-h-[44px] rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 ${
               a.variant === 'primary'
@@ -221,6 +223,22 @@ export default function AgentPlannerPanel({
   };
 
   const handleChurnAction = async (action, appt) => {
+    if (action === 'edit') {
+      // Edit-in-place: open the same sheet in edit mode, prefilled with the
+      // appointment's current values. Save routes through handleSheetSave's edit
+      // branch → updateAppointment (immutable agent-scope pins are never sent).
+      setChurn(null);
+      setSheet({
+        mode: 'edit',
+        initial: {
+          id: appt.id,
+          type: appt.type, date: appt.date, startTime: appt.startTime,
+          durationMin: appt.durationMin, prospectId: appt.prospectId,
+          freeBlockLabel: appt.freeBlockLabel, note: appt.note, apiAmount: appt.apiAmount,
+        },
+      });
+      return;
+    }
     if (action === 'reschedule' || action === 'postpone') {
       // Rebook: retain the original as postponed + link forward to the new appt.
       setChurn(null);
