@@ -150,6 +150,34 @@ describe('MasterSheet — 1.6 control layer', () => {
     expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
   });
 
+  it('collapses contactsMade+personsReached to a single "Persons Reached" column (display-only dedup)', async () => {
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
+
+    // "Contacts Made" no longer exists as a column — the two identical-value
+    // columns collapse to the single "Persons Reached" header.
+    expect(screen.getByRole('columnheader', { name: 'Persons Reached' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Contacts Made' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Contacts Made')).not.toBeInTheDocument();
+
+    // Value correctness: personsReached = telContacts + f2fContacts = 5 + 3 = 8
+    // (FIELDS fixture) — read from the cell under the "Persons Reached" header
+    // specifically, since Tel Attempts is also 8 in this fixture and a bare
+    // text search for "8" would collide across columns.
+    const headers = screen.getAllByRole('columnheader');
+    const colIndex = headers.findIndex((h) => h.textContent === 'Persons Reached');
+    expect(colIndex).toBeGreaterThan(-1);
+    const activeRow = screen.getByText('Active Agent').closest('tr');
+    const cells = within(activeRow).getAllByRole('cell');
+    expect(cells[colIndex].textContent.trim()).toBe('8');
+
+    // Recruiting preset still surfaces Persons Reached (Contacts Made removed
+    // from the preset's column-key set too, so it can't reappear there either).
+    fireEvent.click(screen.getByRole('button', { name: 'Recruiting' }));
+    expect(screen.getByRole('columnheader', { name: 'Persons Reached' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Contacts Made' })).not.toBeInTheDocument();
+  });
+
   it('"only exceptions" toggle filters rows to unsubmitted (draft) agents', async () => {
     render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
     await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());

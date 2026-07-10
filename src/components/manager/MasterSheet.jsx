@@ -28,7 +28,6 @@ const COLS = [
   { key: 'personsReached',      label: 'Persons Reached',                                          minW: 'min-w-[80px]'  },
   { key: 'totalTelAttempts',    label: 'Tel Attempts',                                             minW: 'min-w-[80px]'  },
   { key: 'f2fAttempts',         label: 'F2F Att.',                                                 minW: 'min-w-[80px]'  },
-  { key: 'contactsMade',        label: 'Contacts Made',                                            minW: 'min-w-[80px]'  },
   { key: 'qualifiedApproaches', label: 'Qual. App.',                                               minW: 'min-w-[80px]'  },
   { key: 'ffisScheduled',       label: 'FFI Sched.',                                               minW: 'min-w-[80px]'  },
   { key: 'ffiConducted',        label: 'FFI Done',                                                 minW: 'min-w-[80px]'  },
@@ -71,7 +70,7 @@ const PRESETS = {
   ]),
   Recruiting: new Set([
     'prospectingTouches', 'totalNewNames', 'personsReached', 'totalTelAttempts',
-    'f2fAttempts', 'contactsMade', 'qualifiedApproaches',
+    'f2fAttempts', 'qualifiedApproaches',
   ]),
   Compliance: new Set([
     'daysWorked', 'weekendWorked', 'weekendApi', 'policiesDelivered',
@@ -217,7 +216,6 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           personsReached,
           totalTelAttempts:     f.totalTelAttempts,
           f2fAttempts:          f.f2fAttempts,
-          contactsMade:         personsReached,
           qualifiedApproaches:  f.qualifiedApproaches,
           ffisScheduled:        f.ffisScheduled,
           ffiConducted:         f.ffiConducted,
