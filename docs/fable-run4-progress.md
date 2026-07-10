@@ -17,9 +17,9 @@ Design authority: [`docs/design-system/screens-v2/design_handoff_sheet_celebrati
 | Item 4 Streak celebration reskin (Sonnet) | ✅ | `876ff6ca` — skin-only: gold poster-scale milestone hero, medal coin, STREAK/BEST/NEXT chips, teal CTA, ESC pill; 52-wk starred variant. Thresholds/fire-once mechanics untouched (celebrations.js:37, celebrationPrefs.js:70-78 unedited); `login()` dismiss selector preserved (single `aria-label="Dismiss celebration"` control). Suite 5138 green; `t2-filing-streak-milestone` + adjacent `t2-daily-anchor-strip` (auto-dismiss proof) both PASS w/ screenshots |
 | Item 5 Planner recurrence (Opus) | ✅ | `ce3b9643` — schema `seriesId/repeatRule/daysOfWeek/seriesPos/seriesTotal` (all optional, backward-compat; `seriesEnd`+`postponedFrom` dropped — self-describing instances); concrete materialization via atomic writeBatch, cap 52; validApptWrite extended (optional-key pattern), emulator 28/28; Never chip disabled-dashed "soon"; edit-this-only shipped, edit-all-future BANKED (needs composite index + batch — disabled row); FREE blocks recur too. Suite 5157 green; legs `t3-appt-recurrence` (new) + churn-postpone + edit-own all PASS; seeder `vhleg-recur` cleanup proven (5 del → 0). Rules deployed to staging via deploy-staging.ps1 (orchestrator, per brief's explicit dispatch; agent held per Rule 19) |
 | Item 6 1-on-1 recon doc (Sonnet) | ✅ | `20ac7cae` — docs/audits/one-on-one-recon-2026-07-10.md (validity-SHA header @ bf881e4f). Scene 08 is read-only display; today's surfaces are two UNWIRED components (AgentDrillDrawer 3-tab + CoachingNotesModal 3-tab); commitment logging needs human-gated rules; 10 one-line design questions banked in doc §4 |
-| E1 re-seed + full suite | ⏳ | |
-| E2 final doc + push | ⏳ | |
-| E3 HOLD | ⏳ | |
+| E1 re-seed + full suite | ✅ | re-seed 93 docs, then **39/39 PASS, 0 FAIL, 0 SKIP** (36 pre-existing + t1-master-sheet-filters + t3-meeting-funnel-sheet + t3-appt-recurrence; Items 1/4 extended existing legs). Run against DEPLOYED recurrence rules. No regressions, no reverts. Log: out/run4-e1-final-vh.log |
+| E2 final doc + push | ✅ | this commit; verbatim origin line below |
+| E3 HOLD | ✅ | no merges to main, no prod, nothing further |
 
 ## Dispatch / telemetry
 
@@ -34,7 +34,8 @@ Design authority: [`docs/design-system/screens-v2/design_handoff_sheet_celebrati
 | Item 3 meeting scene | Opus | 14:55 | +23.8 min | ✅ 4 legs PASS | `09cb1168` |
 | Item 4 streak reskin | Sonnet | 15:20 | +40.0 min | ✅ 2 legs PASS | `876ff6ca` |
 | Item 5 recurrence | Opus | 16:02 | +47.5 min | ✅ 3 legs PASS, emulator 28/28 | `ce3b9643` |
-| staging rules deploy | Fable (orchestrator) | 16:55 | 17:02 | ✅ rules+indexes+functions → agencytrack-staging only | — |
+| staging rules deploy | Fable (orchestrator) | ~16:30 | ~16:37 | ✅ rules+indexes+functions → agencytrack-staging only | — |
+| E1 full suite (39 legs, bg) | orchestrator | 16:39 | ~17:00 | ✅ 39/39 | — |
 
 ## DECISIONS-NEEDED
 
@@ -70,4 +71,27 @@ Design authority: [`docs/design-system/screens-v2/design_handoff_sheet_celebrati
 
 ## Handoff
 
-(populated at E2)
+### Shipped to staging (all live-verified against the staging deploy + deployed rules)
+| What | Commits | Live proof |
+|---|---|---|
+| CD handoff relocation + catalog precedence | `c0351e1e` | n/a (docs) |
+| VH fixture date-math fix (churn leg Fri/Sat trap) | `391c73fa` | leg re-run PASS; E1 PASS |
+| Item 1 — Funnel Master Sheet (8 stages, funnelModel, RANK BY) | `b626f03d` `7148b0b1` `9c4d1250` `c05d6e97` | t1-master-sheet PASS (KPI==sums value-level) |
+| Item 2 — Filters panel (UNIT + report/no-log, chips) | `a003f85d` | t1-master-sheet-filters PASS (2 filters → 1 row → chip-clear restore) |
+| Item 3 — FunnelMeetingScene (deck scene 5 of 10) | `09cb1168` | t3-meeting-funnel-sheet + t3-meeting-mode-deck PASS |
+| Item 4 — Streak celebration reskin (skin-only) | `876ff6ca` | t2-filing-streak-milestone + adjacent auto-dismiss PASS |
+| Item 5 — Planner recurrence (series create/badge/scope-locked postpone) | `ce3b9643` + rules deploy | t3-appt-recurrence PASS (write-read-verify); emulator 28/28 |
+| Item 6 — 1-on-1 recon doc | `20ac7cae` | n/a (read-only, validity-SHA header) |
+
+### Operator attention queue (ordered)
+1. **DECISIONS-NEEDED #1/#2** — FLAGGED-A/B funnel mappings built with defaults; flip points `funnelModel.js:99` / `:132-134`.
+2. **DECISIONS-NEEDED #3** — recurrence `Never`: currently disabled-dashed "soon" chip; needs rolling-horizon ruling.
+3. **DECISIONS-NEEDED #4** — Settings "Default Master Sheet preset" dropdown is now a no-op writer; choose remove/repurpose/leave.
+4. **Item 6 doc §4** — 10 one-line 1-on-1 design questions.
+5. Pre-promotion manual checks banked: celebration reskin reduced-motion + dark; funnel projection scene axe pass; filters popover dark contrast.
+6. Banked build follow-ups: STATUS filters (needs YTD+companyMinimums read path), LEVEL filter (needs level field), unit friendly names, edit-this-and-all-future (needs composite index + batch), converted-service-calls config toggle (locked: do not build until ruled).
+
+### Verbatim origin line (E2)
+```
+(filled in the E2 commit — see below)
+```
