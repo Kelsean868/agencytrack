@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import FilingStreakCelebration from '../FilingStreakCelebration';
 
 const YEAR = 2026;
@@ -35,9 +35,55 @@ describe('FilingStreakCelebration', () => {
       <FilingStreakCelebration allSubmissions={submittedWeeks(9)} agentUid={AGENT} year={YEAR} />,
     );
     expect(screen.getByTestId('filing-streak-celebration')).toBeInTheDocument();
+    // Eyebrow keeps the "FILING STREAK · N WEEKS" shape (VH leg
+    // t2-filing-streak-milestone asserts this literal text).
     expect(screen.getByText(/FILING STREAK · 5 WEEKS/i)).toBeInTheDocument();
+    // Hero — the milestone number itself, rendered large/gold.
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('weeks filed in a row')).toBeInTheDocument();
     // Marker persisted so a reload cannot re-fire the same rung.
     expect(window.localStorage.getItem(FILING_KEY)).toBe('5');
+  });
+
+  it('shows the STREAK / BEST / NEXT MILESTONE chips', () => {
+    render(
+      <FilingStreakCelebration allSubmissions={submittedWeeks(9)} agentUid={AGENT} year={YEAR} />,
+    );
+    const stats = screen.getByTestId('celebration-stats');
+    expect(stats).toHaveTextContent('STREAK');
+    expect(stats).toHaveTextContent('5 wks');
+    expect(stats).toHaveTextContent('BEST');
+    expect(stats).toHaveTextContent('NEXT MILESTONE');
+    expect(stats).toHaveTextContent('10 wks');
+  });
+
+  it('shows the annual 52-week variant copy and THIS YEAR chip', () => {
+    render(
+      <FilingStreakCelebration allSubmissions={submittedWeeks(52)} agentUid={AGENT} year={YEAR} />,
+    );
+    expect(screen.getByText(/★ FILING STREAK · A FULL YEAR/i)).toBeInTheDocument();
+    expect(screen.getByText('52')).toBeInTheDocument();
+    const stats = screen.getByTestId('celebration-stats');
+    expect(stats).toHaveTextContent('THIS YEAR');
+    expect(stats).toHaveTextContent('52 / 52');
+  });
+
+  it('a single "Dismiss celebration" control exists and closes the takeover', () => {
+    render(
+      <FilingStreakCelebration allSubmissions={submittedWeeks(9)} agentUid={AGENT} year={YEAR} />,
+    );
+    const dismissButtons = screen.getAllByLabelText('Dismiss celebration');
+    expect(dismissButtons).toHaveLength(1);
+    fireEvent.click(dismissButtons[0]);
+    expect(screen.queryByTestId('filing-streak-celebration')).not.toBeInTheDocument();
+  });
+
+  it('the primary CTA ("Keep filing") closes the takeover', () => {
+    render(
+      <FilingStreakCelebration allSubmissions={submittedWeeks(9)} agentUid={AGENT} year={YEAR} />,
+    );
+    fireEvent.click(screen.getByTestId('celebration-primary-cta'));
+    expect(screen.queryByTestId('filing-streak-celebration')).not.toBeInTheDocument();
   });
 
   it('does NOT fire below the first milestone (short streak)', () => {

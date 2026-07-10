@@ -2029,6 +2029,14 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   15%  {                                              opacity: 0.85; }
   100% { transform: translateY(520px) rotate(560deg); opacity: 0; }
 }
+/* Expanding/fading ring around the streak-takeover medal (2.11 reskin —
+   FilingStreakCelebration.jsx). Decorative (aria-hidden), motion-safe only —
+   the annual (52-week) rung adds a second, STATIC (non-animated) ring on top
+   of this one per the mockup, so this keyframe stays scoped to the base ring. */
+@keyframes celebration-ring {
+  0%   { transform: scale(0.85); opacity: 0.55; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
 
 /* ── Responsive: mobile (<768px, hide sidebar, show bottom-nav) ──────── */
 @media (max-width: 767px) {
