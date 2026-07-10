@@ -3,91 +3,38 @@ import React from 'react';
 import StatusPill from '../ui/StatusPill';
 import Avatar from '../ui/Avatar';
 import DataSourceBadge from '../productionReport/DataSourceBadge';
-import { Download, Search, MessageSquare, CalendarCheck, AlertTriangle } from 'lucide-react';
+import {
+  Download, Search, MessageSquare, CalendarCheck, AlertTriangle,
+  Plus, Minus, ArrowUp, ArrowDown, ChevronsUpDown, X,
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import useAppSettings, { readSettingsMirror } from '../../hooks/useAppSettings';
-import { isValidMasterSheetPreset, DEFAULT_MASTER_SHEET_PRESET } from '../../config/viewDefaults';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
-import { extractFields, computeRatios, extractTotalProductionCredit } from '../../utils/extractFields';
+import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
 import { deriveExceptions } from '../../utils/managerExceptions';
+import {
+  FUNNEL_GROUPS, FUNNEL_COLS, FUNNEL_TOGGLABLE_IDS, FUNNEL_LEAD_W, FUNNEL_LEAD_LEFT,
+  funnelView, computeFunnelRow, computeInterviewsKept, computeFunnelTotals,
+} from '../../utils/funnelModel';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 import CoachingNotesModal from './CoachingNotesModal';
 
-// Column definitions — drives both header and cell rendering.
-// `rank` (leading #) + `name` are the two sticky-left identity columns (0.3's
-// "first 2 columns sticky" contract, now rank+name to match the mastersheet-v2
-// matrix mockup which pins # · Agent and lets Status scroll). Every other column
-// is a per-week activity numeral.
-const COLS = [
-  { key: 'rank',                label: '#',                  sticky: true,  left: 'left-0',       minW: 'w-12',        rankCol: true },
-  { key: 'name',                label: 'Agent',              sticky: true,  left: 'left-[48px]',  minW: 'min-w-[180px]' },
-  { key: 'status',              label: 'Status',                                                  minW: 'min-w-[110px]' },
-  { key: 'prospectingTouches',  label: 'Prospect. Touches',                                       minW: 'min-w-[80px]'  },
-  { key: 'personsReached',      label: 'Persons Reached',                                          minW: 'min-w-[80px]'  },
-  { key: 'totalTelAttempts',    label: 'Tel Attempts',                                             minW: 'min-w-[80px]'  },
-  { key: 'f2fAttempts',         label: 'F2F Att.',                                                 minW: 'min-w-[80px]'  },
-  { key: 'qualifiedApproaches', label: 'Qual. App.',                                               minW: 'min-w-[80px]'  },
-  { key: 'ffisScheduled',       label: 'FFI Sched.',                                               minW: 'min-w-[80px]'  },
-  { key: 'ffiConducted',        label: 'FFI Done',                                                 minW: 'min-w-[80px]'  },
-  { key: 'solutionPresentations',label: 'Solutions',                                               minW: 'min-w-[80px]'  },
-  { key: 'newCIBooked',         label: 'New CI',                                                   minW: 'min-w-[80px]'  },
-  { key: 'oldCIBooked',         label: 'Old CI',                                                   minW: 'min-w-[80px]'  },
-  { key: 'ciConducted',         label: 'Total CI',                                                 minW: 'min-w-[80px]'  },
-  { key: 'applicationsSold',    label: 'Sales',                                                    minW: 'min-w-[80px]'  },
-  { key: 'livesSold',           label: 'Lives',                                                    minW: 'min-w-[80px]'  },
-  { key: 'totalProductionCredit', label: 'API (TTD)',         currency: true, conditional: true,   minW: 'min-w-[110px]' },
-  { key: 'daysWorked',          label: 'Days Wkd',           daysWorked: true,                    minW: 'min-w-[80px]'  },
-  { key: 'weekendWorked',       label: 'Weekend',            weekend: true,                       minW: 'min-w-[90px]'  },
-  { key: 'weekendApi',          label: 'Wknd API',           currency: true,                      minW: 'min-w-[110px]' },
-  { key: 'policiesDelivered',   label: 'Delivered',                                                minW: 'min-w-[80px]'  },
-  { key: 'serviceContacts',     label: 'Service',                                                  minW: 'min-w-[80px]'  },
-  { key: 'totalNewNames',       label: 'New Names',                                                minW: 'min-w-[80px]'  },
-  { key: 'targetAPI',           label: 'Next Wk API',         currency: true,                      minW: 'min-w-[110px]' },
-  { key: 'targetAppsSold',      label: 'Next Wk Apps',                                             minW: 'min-w-[80px]'  },
-  { key: 'closingRatio',        label: 'Closing %',           ratio: true,                         minW: 'min-w-[80px]'  },
-];
+// ── Dense-table styling helpers (Nexus v2 funnel edition) ────────────────────
+// Emphasis is weight + tone, not colour alone. Teal is reserved for the terminal
+// KPI band (API) only. The two KPI/terminal washes auto-theme because the CSS-var
+// channels flip in `.dark` (see src/index.css).
+const KPI_WASH   = 'bg-[rgb(var(--text-channels)/0.05)] dark:bg-[rgb(var(--text-channels)/0.055)]';
+const TERM_WASH  = 'bg-[rgb(var(--primary-channels)/0.085)] dark:bg-[rgb(var(--primary-channels)/0.11)]';
+// Group boundary hairline (--border-strong-channels; `border` has no strong tier).
+const RULE_STRONG = 'border-l border-[rgb(var(--border-strong-channels))]';
+// 6px scroll shadow marking the pinned lead seam.
+const SEAM_SHADOW = 'shadow-[6px_0_8px_-6px_rgba(38,35,28,0.10)] dark:shadow-[6px_0_8px_-6px_rgba(0,0,0,0.45)]';
 
-// Column presets (MasterActionBar in mastersheet-v2-shared). Identity columns
-// (# / Agent / Status) are always visible; each preset reveals a domain subset
-// of the ~25 activity columns. The live weekly WAR sheet carries no native
-// agent-recruiting or persistency-% columns (those live on the Recruiting tab /
-// monthly manager-entered persistency), so those two presets map to the nearest
-// honest single-week analogs (top-of-funnel name generation; post-sale
-// delivery/service) — documented as a mockup-vs-repo divergence, not fabricated.
-//
-// PERSISTENCE: preset lives in session-local useState (default 'All'). A saved
-// master-sheet view-default is Settings v2's job (item 2.4) — intentionally NOT
-// wired to localStorage/Firestore here.
-const IDENTITY_KEYS = new Set(['rank', 'name', 'status']);
-const PRESETS = {
-  All: null, // null = every column
-  Production: new Set([
-    'qualifiedApproaches', 'ffisScheduled', 'ffiConducted', 'solutionPresentations',
-    'newCIBooked', 'oldCIBooked', 'ciConducted', 'applicationsSold', 'livesSold',
-    'totalProductionCredit', 'weekendApi', 'targetAPI', 'targetAppsSold', 'closingRatio',
-  ]),
-  Recruiting: new Set([
-    'prospectingTouches', 'totalNewNames', 'personsReached', 'totalTelAttempts',
-    'f2fAttempts', 'qualifiedApproaches',
-  ]),
-  Compliance: new Set([
-    'daysWorked', 'weekendWorked', 'weekendApi', 'policiesDelivered',
-    'serviceContacts', 'targetAPI', 'targetAppsSold',
-  ]),
-  Persistency: new Set(['policiesDelivered', 'serviceContacts', 'livesSold']),
-};
-const PRESET_ORDER = ['All', 'Production', 'Recruiting', 'Compliance', 'Persistency'];
-
-// §5 dense-table contract: identity/status/rank columns stay left/center-aligned
-// text; every other column (counts, currency, ratios, days worked) is a numeral
-// and renders right-aligned + tabular-nums (inherited from the td onto its child
-// spans — font-variant-numeric is an inherited property).
-function isNumericCol(col) {
-  if (col.key === 'name' || col.key === 'status' || col.key === 'rank') return false;
-  if (col.weekend) return false; // Yes/No/— badge, not a numeral
-  return true;
+// Compact TTD money for the dense API column: "TTD 24.4K" (weekly scale).
+function apiText(n) {
+  const v = Number(n) || 0;
+  return v >= 1000 ? `${(v / 1000).toFixed(1)}K` : `${v}`;
 }
 
 function resolveName(sub, userNameMap) {
@@ -99,61 +46,57 @@ function resolveName(sub, userNameMap) {
   return uid ? `Agent ${uid.slice(-6)}` : '—';
 }
 
-
-function apiColorClass(apiSold, targetAPI) {
-  if (!targetAPI) return '';
-  const pct = (apiSold / targetAPI) * 100;
-  if (pct >= 80) return 'text-success-ink font-semibold';
-  if (pct >= 50) return 'text-warning-ink font-semibold';
-  return 'text-danger-ink font-semibold';
-}
-
-function SkeletonRow({ cols }) {
+// One numeric funnel body cell — sub-column, stage KPI, or the terminal API band.
+function FunnelCell({ col, value, terminalKey, rowId }) {
+  const isTerm = col.key === terminalKey;
+  const isKpi = col.kpi;
+  const zero = !value;
+  const tid = `fc-${col.key}-${rowId}`;
+  const base = `px-2.5 py-2 text-right tabular-nums whitespace-nowrap ${col.groupStart ? RULE_STRONG : ''}`;
+  if (isTerm) {
+    return (
+      <td data-testid={tid} data-value={value} className={`${base} ${TERM_WASH} text-[12px] font-bold text-primary`} style={{ width: col.w }}>
+        {col.money
+          ? <span><span className="text-[8.5px] font-semibold tracking-wide text-primary/70 mr-0.5">TTD</span>{apiText(value)}</span>
+          : (zero ? <span className="text-ink-dim">—</span> : value)}
+      </td>
+    );
+  }
+  if (isKpi) {
+    return (
+      <td data-testid={tid} data-value={value} className={`${base} ${KPI_WASH} text-[12px] font-bold ${zero ? 'text-ink-dim' : 'text-ink'}`} style={{ width: col.w }}>
+        {col.money
+          ? <span><span className="text-[8.5px] font-semibold tracking-wide text-ink-muted mr-0.5">TTD</span>{apiText(value)}</span>
+          : (zero ? '—' : value)}
+      </td>
+    );
+  }
   return (
-    <tr>
-      {cols.map((c) => (
-        <td key={c.key} className={`px-3 py-3 border-b border-border/40 ${c.minW}`}>
-          <div className="h-3 bg-border/60 rounded animate-pulse" />
-        </td>
-      ))}
-    </tr>
+    <td data-testid={tid} data-value={value} className={`${base} text-[11.5px] font-normal ${zero ? 'text-ink-dim' : 'text-ink-muted'}`} style={{ width: col.w }}>
+      {zero ? '—' : value}
+    </td>
   );
 }
 
 export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
-  const { tenantId, user } = useAuth();
-  // Settings v2 (Tier 2 · 2.4) — the SAVED default column preset. Read-only here:
-  // changing the preset in this action bar is session-local (the persistent
-  // default is set in Settings), so an in-session override always wins over a
-  // late Firestore reconcile via `presetTouchedRef`.
-  const { settings } = useAppSettings({ tenantId, uid: user?.uid });
-  const [submissions, setSubmissions]       = useState([]);
-  const [users, setUsers]                   = useState([]);
-  const [userNameMap, setUserNameMap]       = useState({});
-  const [loading, setLoading]               = useState(true);
-  const [error, setError]                   = useState('');
-  const [search, setSearch]                 = useState('');
-  // Seed from the saved default synchronously (localStorage-first mirror), so the
-  // sheet opens on the manager's preferred preset without a flash.
-  const [preset, setPreset] = useState(() => {
-    const m = readSettingsMirror(user?.uid).masterSheetPreset;
-    return isValidMasterSheetPreset(m) ? m : DEFAULT_MASTER_SHEET_PRESET;
-  });
-  // Once the user picks a preset this session, a late Firestore reconcile must not
-  // overwrite it (session-override-wins).
-  const presetTouchedRef = useRef(false);
+  const { tenantId } = useAuth();
+  const [submissions, setSubmissions] = useState([]);
+  const [users, setUsers]             = useState([]);
+  const [userNameMap, setUserNameMap] = useState({});
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState('');
+  const [search, setSearch]           = useState('');
   const [exceptionsOnly, setExceptionsOnly] = useState(false);
 
-  // Adopt the saved default when it arrives from Firestore reconcile — but only
-  // if the user hasn't overridden the preset this session (session-override-wins).
-  useEffect(() => {
-    if (presetTouchedRef.current) return;
-    const saved = settings.masterSheetPreset;
-    if (isValidMasterSheetPreset(saved)) setPreset(saved);
-  }, [settings.masterSheetPreset]);
+  // Funnel view state (session-local — the design's "persist per user" is a
+  // future Settings surface, intentionally not a new write path here).
+  const [expanded, setExpanded] = useState(() => new Set()); // default: all collapsed → totals only
+  const [sort, setSort]         = useState(null);            // {key, dir} | null (null = production-credit rank)
+  const [preset, setPreset]     = useState('api');           // RANK BY: 'api' | 'newNames'
+
   const [viewingSubmission, setViewingSubmission] = useState(null);
-  // F1 coaching notes: agentId/agentName/agentUnitId of the agent whose notes panel is open
   const [notesAgent, setNotesAgent] = useState(null);
+  const scrollRef = useRef(null);
 
   const sundays = getLastNSundays(8);
 
@@ -168,9 +111,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         setSubmissions(subs);
         setUsers(userList);
         const nameMap = {};
-        userList.forEach((u) => {
-          nameMap[u.id] = u.name ?? u.displayName ?? u.email ?? null;
-        });
+        userList.forEach((u) => { nameMap[u.id] = u.name ?? u.displayName ?? u.email ?? null; });
         setUserNameMap(nameMap);
       })
       .catch((e) => {
@@ -180,9 +121,6 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
       .finally(() => setLoading(false));
   }, [selectedWeek, tenantId]);
 
-  // Per-agent unit/level identity metadata, from the tenant user docs already
-  // loaded (no new read). Rendered only when present — never fabricated, never
-  // raw uids.
   const userMeta = useMemo(() => {
     const m = {};
     users.forEach((u) => {
@@ -194,259 +132,157 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
     return m;
   }, [users]);
 
-  // All loaded rows, ranked by this-week production credit (descending). Rank is
-  // a true standing over the full loaded set — computed BEFORE search/exception
-  // filters so it stays stable as the operator filters.
+  // All loaded rows, ranked by this-week production credit (desc). Rank is a true
+  // standing over the full loaded set — computed BEFORE search/exception/sort so
+  // it stays stable as the operator filters or re-sorts.
   const allRows = useMemo(() => {
     return submissions
       .map((sub) => {
         const f = extractFields(sub);
-        const ratios = computeRatios(f);
-        const personsReached = f.telContacts + f.f2fContacts;
+        const v = computeFunnelRow(f, sub);
         const uid = sub.agentId ?? sub.userId ?? sub.id;
         const meta = userMeta[uid] ?? {};
         return {
-          id:                   uid,
-          _submission:          sub,
-          name:                 resolveName(sub, userNameMap),
-          unitName:             meta.unitName ?? null,
-          level:                meta.level ?? null,
-          status:               sub.status ?? 'draft',
-          prospectingTouches:   f.prospectingTouches,
-          personsReached,
-          totalTelAttempts:     f.totalTelAttempts,
-          f2fAttempts:          f.f2fAttempts,
-          qualifiedApproaches:  f.qualifiedApproaches,
-          ffisScheduled:        f.ffisScheduled,
-          ffiConducted:         f.ffiConducted,
-          solutionPresentations: f.solutionPresentations,
-          newCIBooked:          f.newCIBooked,
-          oldCIBooked:          f.oldCIBooked,
-          ciConducted:          f.ciConducted,
-          applicationsSold:     f.applicationsSold,
-          livesSold:            f.livesSold,
-          totalProductionCredit: extractTotalProductionCredit(sub),
-          daysWorked:           f.daysWorked,
-          weekendWorked:        f.weekendWorked,
-          weekendApi:           f.weekendApi,
-          targetAPI:            f.targetAPI,
-          policiesDelivered:    f.policiesDelivered,
-          serviceContacts:      f.serviceContacts,
-          totalNewNames:        f.totalNewNames,
-          targetAppsSold:       f.targetAppsSold,
-          closingRatio:         ratios.closingRatio,
+          id:          uid,
+          _submission: sub,
+          name:        resolveName(sub, userNameMap),
+          unitName:    meta.unitName ?? null,
+          level:       meta.level ?? null,
+          status:      sub.status ?? 'draft',
+          logged:      (f.daysWorked ?? null) != null,
+          api:         extractTotalProductionCredit(sub),
+          v,
         };
       })
-      .sort((a, b) => (b.totalProductionCredit || 0) - (a.totalProductionCredit || 0))
+      .sort((a, b) => (b.api || 0) - (a.api || 0))
       .map((r, i) => ({ ...r, rank: i + 1 }));
   }, [submissions, userNameMap, userMeta]);
 
-  // A row is a single-week "exception" if its report is not yet submitted (draft
-  // = unfinished this week). This is the only honest PER-ROW exception on a
-  // single-week surface — floor/pace/persistency/gone-quiet all require YTD +
-  // config that this surface intentionally does not load (see reality-bar note).
+  // A single-week "exception" = report not yet submitted (draft = unfinished).
   const rowIsException = (r) => r.status !== 'submitted';
 
   const searchedRows = useMemo(
-    () =>
-      allRows.filter(
-        (r) =>
-          search.trim() === '' ||
-          r.name.toLowerCase().includes(search.trim().toLowerCase())
-      ),
+    () => allRows.filter(
+      (r) => search.trim() === '' || r.name.toLowerCase().includes(search.trim().toLowerCase())
+    ),
     [allRows, search]
   );
 
-  const displayRows = useMemo(
+  const filteredRows = useMemo(
     () => (exceptionsOnly ? searchedRows.filter(rowIsException) : searchedRows),
     [searchedRows, exceptionsOnly]
   );
 
-  // ── Reality bar stats (read-light) ────────────────────────────────────────
-  // MasterSheet loads ONLY the selected week (getWeeklySubmissions) — no YTD
-  // subs, no settlements, no companyMinimums. So the design's "YTD SETTLED API"
-  // cannot be shown honestly here; a heavy YTD/settlement fan-out is out of scope
-  // (read-light). We surface the WEEK's total production credit instead, badged
-  // "Estimated" via the shared DataSourceBadge (submitted, not settled),
-  // matching the app's settled-vs-submitted provenance pattern.
-  //
-  // ON PACE / EXCEPTIONS: the floor/pace exception classes in managerExceptions
-  // need YTD + the tenure floor config (neither loaded). Feeding single-week
-  // data to the engine would flag every filer "below floor" (one week vs the
-  // 200k default floor pro-rated) — misleading. So we reuse deriveExceptions for
-  // only the class it can derive honestly at single-week granularity: `report`
-  // (roster agents with no submission for the selected week). Floor/pace triage
-  // is the Team-Dashboard overview's job (item 1.5, which loads YTD; it applied
-  // the same read-light SKIP-AND-LOG boundary for persistency/quiet).
+  // Tri-state sort applies over the filtered set; null → production-credit rank.
+  const displayRows = useMemo(() => {
+    if (!sort) return filteredRows;
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...filteredRows].sort((a, b) => dir * ((b.v[sort.key] || 0) - (a.v[sort.key] || 0)));
+  }, [filteredRows, sort]);
+
+  // ── Reality bar stats (read-light — single week only) ──────────────────────
   const agentUsers = useMemo(() => users.filter((u) => u?.role === 'agent'), [users]);
   const reportExceptions = useMemo(
-    () =>
-      deriveExceptions({ users: agentUsers, subs: submissions, companyMins: null })
-        .filter((e) => e.type === 'report'),
+    () => deriveExceptions({ users: agentUsers, subs: submissions, companyMins: null }).filter((e) => e.type === 'report'),
     [agentUsers, submissions]
   );
-
   const weekApiTotal = useMemo(
-    () => allRows.reduce((s, r) => s + (typeof r.totalProductionCredit === 'number' ? r.totalProductionCredit : 0), 0),
+    () => allRows.reduce((s, r) => s + (typeof r.api === 'number' ? r.api : 0), 0),
     [allRows]
   );
-  const filerCount    = allRows.length;
+  const filerCount     = allRows.length;
   const submittedCount = useMemo(() => allRows.filter((r) => r.status === 'submitted').length, [allRows]);
-  const draftCount    = filerCount - submittedCount;
-  const rosterCount   = agentUsers.length || filerCount;
-  const nonFilerCount = reportExceptions.length;
+  const draftCount     = filerCount - submittedCount;
+  const rosterCount    = agentUsers.length || filerCount;
+  const nonFilerCount  = reportExceptions.length;
   const exceptionCount = nonFilerCount + draftCount;
 
-  const visibleCols = useMemo(
-    () =>
-      COLS.filter(
-        (c) => IDENTITY_KEYS.has(c.key) || preset === 'All' || PRESETS[preset]?.has(c.key)
-      ),
-    [preset]
-  );
+  const terminalKey = preset === 'newNames' ? 'newNames' : 'api';
+  const view = useMemo(() => funnelView(expanded), [expanded]);
+  const totals = useMemo(() => computeFunnelTotals(displayRows.map((r) => r.v), view.cols), [displayRows, view]);
+  const interviewsKept = useMemo(() => computeInterviewsKept(displayRows.map((r) => r.v)), [displayRows]);
 
-  // CSV export is RECORDS-COMPLETE: it always emits every column (ignores the
-  // active preset) and every row in the current SEARCH scope, ignoring the
-  // "only exceptions" toggle. Least-surprising for an exported record — a
-  // filtered on-screen view should not silently truncate the export. (Search is
-  // the one pre-existing filter export has always respected; left unchanged.)
+  const allOpen   = FUNNEL_TOGGLABLE_IDS.every((id) => expanded.has(id));
+  const allClosed = expanded.size === 0;
+
+  // ── View controls ──────────────────────────────────────────────────────────
+  const toggleGroup = (id) => setExpanded((prev) => {
+    const n = new Set(prev);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    return n;
+  });
+  const expandAll   = () => setExpanded(new Set(FUNNEL_TOGGLABLE_IDS));
+  const collapseAll = () => setExpanded(new Set());
+
+  // Tri-state: click ↓ (desc) → ↑ (asc) → clear back to default rank order.
+  const onSort = (key) => setSort((prev) => {
+    if (!prev || prev.key !== key) return { key, dir: 'desc' };
+    if (prev.dir === 'desc') return { key, dir: 'asc' };
+    return null;
+  });
+
+  // RANK BY preset: sets the sort AND moves the terminal teal emphasis.
+  const pickPreset = (k) => {
+    setPreset(k);
+    setSort({ key: k === 'newNames' ? 'newNames' : 'api', dir: 'desc' });
+  };
+
+  // Narrow-viewport stage scrubber — scroll a group into view after the sticky
+  // lead columns.
+  const scrollToGroup = (groupId) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let x = 0;
+    for (const c of view.cols) { if (c.groupId === groupId) break; x += c.w; }
+    el.scrollLeft = x;
+  };
+
+  // CSV export is RECORDS-COMPLETE: every funnel sub-column + KPI, every row in
+  // the current SEARCH scope (ignores collapse + the exceptions toggle).
   const exportCSV = () => {
-    const headers = COLS.map((c) => c.label);
+    const leadHeaders = ['Rank', 'Agent', 'Unit', 'Status'];
+    const colHeaders = FUNNEL_COLS.map((c) => {
+      const g = FUNNEL_GROUPS.find((gg) => gg.id === c.groupId);
+      return `${g.short} ${c.label}`;
+    });
     const csvRows = [
-      headers.join(','),
-      ...searchedRows.map((r) =>
-        COLS.map((c) => {
-          const v = r[c.key];
-          if (c.key === 'rank')   return v;
-          if (c.key === 'name')   return `"${v}"`;
-          if (c.key === 'status') return v;
-          if (c.ratio)            return v === null ? '—' : `${v}%`;
-          if (c.weekend)          return v === true ? 'Yes' : v === false ? 'No' : '—';
-          if (c.currency)         return typeof v === 'number' ? v.toFixed(2) : '—';
-          return v ?? '—';
-        }).join(',')
-      ),
+      [...leadHeaders, ...colHeaders].join(','),
+      ...searchedRows.map((r) => [
+        r.rank,
+        `"${r.name}"`,
+        `"${r.unitName ?? ''}"`,
+        r.status,
+        ...FUNNEL_COLS.map((c) => r.v[c.key] ?? 0),
+      ].join(',')),
     ];
     const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `master-sheet-${selectedWeek}.csv`;
+    a.download = `master-sheet-funnel-${selectedWeek}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  function cellContent(col, row) {
-    const v = row[col.key];
-    if (col.key === 'rank') {
-      // Gold top-3 treatment. Rank is small/normal text → text-gold-ink per the
-      // gold rule (vivid --color-gold is decoration-only in light; both roles map
-      // to #E0AA3E in dark). See gold-split-audit.md rank-medal precedent.
-      const gold = row.rank <= 3;
-      return (
-        <span
-          data-testid={`rank-${row.id}`}
-          className={`text-sm font-bold tabular-nums ${gold ? 'text-gold-ink' : 'text-ink-muted'}`}
-        >
-          {row.rank}
-        </span>
-      );
-    }
-    if (col.key === 'name') {
-      const subline = [row.unitName, row.level].filter(Boolean).join(' · ');
-      return (
-        <div className="flex items-center gap-2.5">
-          <Avatar name={v} size="sm" />
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="font-medium text-ink whitespace-nowrap">{v}</span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setNotesAgent({
-                    agentId:    row.id,
-                    agentName:  v,
-                    agentUnitId: row._submission?.unitId ?? null,
-                  });
-                }}
-                className="opacity-0 group-hover:opacity-100 focus:opacity-100 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-muted hover:text-primary hover:bg-primary/10 transition-all"
-                aria-label={`Coaching notes for ${v}`}
-                title="Coaching Notes"
-              >
-                <MessageSquare size={13} aria-hidden="true" />
-              </button>
-            </div>
-            {subline && (
-              <div className="text-[11px] text-ink-muted whitespace-nowrap">{subline}</div>
-            )}
-          </div>
-        </div>
-      );
-    }
-    if (col.key === 'status') {
-      return <StatusPill variant={v === 'submitted' ? 'success' : 'warning'} label={v === 'submitted' ? 'Submitted' : 'Draft'} />;
-    }
-    if (col.daysWorked) {
-      // Emergent effort: distinct days the agent logged. Absent (weekly-mode
-      // agent, never logs daily) → `—`, never 0.
-      return (
-        <span className="text-ink tabular-nums" data-testid={`days-worked-${row.id}`}>
-          {v == null ? '—' : v}
-        </span>
-      );
-    }
-    if (col.weekend) {
-      // Compact marker — info token (not alarm-red). Present iff the agent
-      // logged on the opening Sunday or Saturday this week.
-      return (
-        <span data-testid={`weekend-marker-${row.id}`} data-weekend={v === true ? 'yes' : v === false ? 'no' : 'na'}>
-          {v === true ? (
-            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium bg-primary/10 text-primary">
-              <CalendarCheck size={13} aria-hidden="true" />
-              <span className="sr-only">Worked weekend</span>
-              <span aria-hidden="true">Yes</span>
-            </span>
-          ) : (
-            <span className="text-ink-muted">
-              <span className="sr-only">{v === false ? 'No weekend work' : 'No daily data'}</span>
-              <span aria-hidden="true">—</span>
-            </span>
-          )}
-        </span>
-      );
-    }
-    if (col.currency && col.conditional) {
-      return (
-        <span className={`whitespace-nowrap ${apiColorClass(row.totalProductionCredit, row.targetAPI)}`}>
-          {formatCurrency(v)}
-        </span>
-      );
-    }
-    if (col.currency) {
-      // weekendApi is null for non-daily submissions — render `—`, not $0.00.
-      return (
-        <span className="whitespace-nowrap text-ink-muted">
-          {v == null ? '—' : formatCurrency(v)}
-        </span>
-      );
-    }
-    if (col.ratio) {
-      return <span className="text-ink">{v === null ? '—' : `${v}%`}</span>;
-    }
-    return <span className="text-ink">{v ?? '—'}</span>;
-  }
+  const sortChip = sort
+    ? (() => {
+        const col = FUNNEL_COLS.find((c) => c.key === sort.key);
+        if (!col) return null;
+        return `${col.groupNum} ${col.label.toUpperCase()} ${sort.dir === 'desc' ? '↓' : '↑'}`;
+      })()
+    : null;
 
-  const thBase =
-    'px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-muted whitespace-nowrap border-b border-border';
-  const tdBase = 'px-3 py-3 text-sm border-b border-border/40';
+  const segBtn = (active) =>
+    `min-h-[44px] px-3 rounded-md text-xs font-bold tracking-wide uppercase transition-colors ${
+      active ? 'bg-card text-primary shadow-sm border border-border' : 'text-ink-muted hover:text-ink border border-transparent'
+    }`;
 
-  const colAlign = (col) =>
-    col.rankCol ? 'text-center' : isNumericCol(col) ? 'text-right tabular-nums' : 'text-left';
+  // Two-tier header row heights (dense desktop table).
+  const T1_H = 'h-8';        // group tier
+  const SUB_TOP = 'top-8';   // sub tier sticks below the 32px group tier
 
   return (
     <div className="flex flex-col gap-4">
-      {/* F1: Coaching notes modal — per-agent, no submission required */}
       {notesAgent && (
         <CoachingNotesModal
           agentId={notesAgent.agentId}
@@ -456,16 +292,11 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         />
       )}
 
-      {/* Submission viewer drawer */}
       {viewingSubmission && (
-        <SubmissionViewer
-          submission={viewingSubmission}
-          onClose={() => setViewingSubmission(null)}
-        />
+        <SubmissionViewer submission={viewingSubmission} onClose={() => setViewingSubmission(null)} />
       )}
 
-      {/* Reality bar (MasterReality) — anchor-first team state above the table.
-          Read-light: every stat is computed from the single week already loaded. */}
+      {/* Reality bar — anchor-first team state (read-light; single week). */}
       <div
         className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl border border-border bg-card px-4 py-3"
         data-testid="mastersheet-reality"
@@ -512,31 +343,22 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         </div>
       </div>
 
-      {/* Action bar — column presets + exceptions toggle */}
+      {/* Action bar — VIEW (collapse/expand all) · RANK BY (terminal emphasis) · exceptions */}
       <div className="flex flex-wrap items-center gap-3">
-        <div
-          className="inline-flex flex-wrap gap-1 rounded-lg border border-border bg-surface p-1"
-          role="group"
-          aria-label="Column presets"
-        >
-          {PRESET_ORDER.map((p) => {
-            const active = preset === p;
-            return (
-              <button
-                key={p}
-                type="button"
-                onClick={() => { presetTouchedRef.current = true; setPreset(p); }}
-                aria-pressed={active}
-                className={`min-h-[44px] px-3 rounded-md text-sm font-semibold transition-colors ${
-                  active
-                    ? 'bg-card text-ink shadow-sm border border-border'
-                    : 'text-ink-muted hover:text-ink border border-transparent'
-                }`}
-              >
-                {p}
-              </button>
-            );
-          })}
+        <div className="inline-flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">View</span>
+          <div className="inline-flex gap-1 rounded-lg border border-border bg-surface p-1" role="group" aria-label="Funnel detail view">
+            <button type="button" onClick={collapseAll} aria-pressed={allClosed} className={segBtn(allClosed)}>Totals</button>
+            <button type="button" onClick={expandAll} aria-pressed={allOpen} className={segBtn(allOpen)}>+ Details</button>
+          </div>
+        </div>
+
+        <div className="inline-flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Rank by</span>
+          <div className="inline-flex gap-1 rounded-lg border border-border bg-surface p-1" role="group" aria-label="Rank by">
+            <button type="button" onClick={() => pickPreset('api')} aria-pressed={preset === 'api'} className={segBtn(preset === 'api')}>API</button>
+            <button type="button" onClick={() => pickPreset('newNames')} aria-pressed={preset === 'newNames'} className={segBtn(preset === 'newNames')}>New Names</button>
+          </div>
         </div>
 
         <button
@@ -545,9 +367,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           aria-checked={exceptionsOnly}
           onClick={() => setExceptionsOnly((v) => !v)}
           className={`min-h-[44px] inline-flex items-center gap-2 px-3 rounded-lg border text-sm font-semibold transition-colors ${
-            exceptionsOnly
-              ? 'bg-warning/15 border-warning/40 text-warning-ink'
-              : 'bg-card border-border text-ink-muted hover:text-ink'
+            exceptionsOnly ? 'bg-warning/15 border-warning/40 text-warning-ink' : 'bg-card border-border text-ink-muted hover:text-ink'
           }`}
         >
           <AlertTriangle size={14} aria-hidden="true" />
@@ -556,13 +376,13 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         </button>
       </div>
 
-      {/* Controls */}
+      {/* Week selector · search · CSV */}
       <div className="flex flex-wrap gap-3 items-center">
         <select
           aria-label="Select week"
           value={selectedWeek}
           onChange={(e) => setSelectedWeek(e.target.value)}
-          className="h-10 px-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="h-11 px-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
           {sundays.map((d, i) => (
             <option key={d} value={d}>
@@ -578,72 +398,154 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search agent…"
-            className="w-full h-10 pl-8 pr-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="w-full h-11 pl-8 pr-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
 
         <button
           onClick={exportCSV}
           disabled={loading || searchedRows.length === 0}
-          className="h-10 px-4 rounded-lg border border-border bg-card text-ink text-sm font-medium flex items-center gap-2 hover:bg-surface transition-colors disabled:opacity-50"
+          className="h-11 px-4 rounded-lg border border-border bg-card text-ink text-sm font-medium flex items-center gap-2 hover:bg-surface transition-colors disabled:opacity-50"
         >
           <Download size={14} />
           Export CSV
         </button>
       </div>
 
-      {error && (
-        <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">
-          {error}
+      {/* Active-condition chips — dismissible; × resets. */}
+      {sortChip && (
+        <div className="flex flex-wrap gap-2 items-center" data-testid="funnel-chips">
+          <span className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full bg-surface border border-border text-[10px] font-bold tracking-wide text-ink-muted">
+            SORT · {sortChip}
+            <button
+              type="button"
+              onClick={() => { setSort(null); }}
+              aria-label="Clear sort"
+              className="w-5 h-5 rounded-full border border-[rgb(var(--border-strong-channels))] flex items-center justify-center text-ink-muted hover:text-ink"
+            >
+              <X size={11} aria-hidden="true" />
+            </button>
+          </span>
         </div>
       )}
 
-      {/* Table — card-scoped vertical + horizontal scroll (§5), sticky header,
-          first 2 columns (# + Agent) sticky. Scroll lives inside this card. */}
-      <div className="overflow-x-auto overflow-y-auto max-h-[70vh] rounded-xl border border-border bg-card">
-        <table className="text-sm border-separate border-spacing-0">
+      {error && (
+        <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>
+      )}
+
+      {/* Narrow-viewport stage scrubber — jump-to-stage on narrow widths. */}
+      <div className="md:hidden -mb-1 flex flex-nowrap gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Jump to funnel stage">
+        {FUNNEL_GROUPS.map((g) => (
+          <button
+            key={g.id}
+            type="button"
+            onClick={() => scrollToGroup(g.id)}
+            className="shrink-0 inline-flex items-center gap-1 px-2.5 py-2 rounded-full border border-border bg-surface text-[10px] font-bold tracking-wide text-ink-muted whitespace-nowrap"
+          >
+            <span className="text-primary">{g.num}</span>{g.short}
+          </button>
+        ))}
+      </div>
+
+      {/* Table — card-scoped scroll on BOTH axes; two-tier sticky header; sticky
+          lead columns; pinned totals row. */}
+      <div ref={scrollRef} className="overflow-x-auto overflow-y-auto max-h-[70vh] rounded-xl border border-border bg-card">
+        <table className="border-separate border-spacing-0" style={{ minWidth: FUNNEL_LEAD_W.reduce((a, b) => a + b, 0) + view.cols.reduce((a, c) => a + c.w, 0) }}>
           <thead>
+            {/* Tier 1 — funnel stage groups; click a group to expand / collapse it. */}
             <tr>
-              {visibleCols.map((col) => (
-                <th
-                  key={col.key}
-                  className={`
-                    ${thBase} ${col.minW}
-                    sticky top-0 bg-surface
-                    ${col.sticky ? `${col.left} z-30` : 'z-20'}
-                    ${colAlign(col)}
-                  `}
-                >
-                  {col.label}
-                </th>
-              ))}
+              <th
+                colSpan={3}
+                className={`${T1_H} sticky top-0 left-0 z-40 bg-surface-muted border-b border-border ${SEAM_SHADOW} px-3 text-left text-[8.5px] font-bold tracking-[0.14em] uppercase text-ink-muted whitespace-nowrap`}
+                style={{ width: FUNNEL_LEAD_W.reduce((a, b) => a + b, 0) }}
+              >
+                The Funnel →
+              </th>
+              {view.groups.map((g) => {
+                const togglable = g.id !== 'qa';
+                return (
+                  <th
+                    key={g.id}
+                    colSpan={g.vcols.length}
+                    className={`${T1_H} sticky top-0 z-30 bg-surface-muted border-b border-border ${RULE_STRONG} p-0`}
+                  >
+                    <button
+                      type="button"
+                      onClick={togglable ? () => toggleGroup(g.id) : undefined}
+                      disabled={!togglable}
+                      aria-expanded={togglable ? g.open : undefined}
+                      aria-label={togglable ? `${g.open ? 'Collapse' : 'Expand'} ${g.label}` : undefined}
+                      className={`w-full h-full flex items-center gap-1.5 pl-2.5 pr-2 ${togglable ? 'cursor-pointer hover:bg-[rgb(var(--text-channels)/0.04)]' : 'cursor-default'}`}
+                    >
+                      <span className="text-[9px] font-bold tracking-wide text-primary">{g.num}</span>
+                      <span className="text-[8.5px] font-bold tracking-[0.11em] uppercase text-ink-muted truncate">{g.open ? g.label : g.short}</span>
+                      {togglable && (
+                        <span className="ml-auto w-3.5 h-3.5 shrink-0 rounded border border-[rgb(var(--border-strong-channels))] bg-surface flex items-center justify-center text-ink-muted" aria-hidden="true">
+                          {g.open ? <Minus size={9} /> : <Plus size={9} />}
+                        </span>
+                      )}
+                    </button>
+                  </th>
+                );
+              })}
+            </tr>
+            {/* Tier 2 — sub-columns; every column header sorts (tri-state). */}
+            <tr>
+              <th className={`${SUB_TOP} sticky left-0 z-40 bg-surface border-b border-[rgb(var(--border-strong-channels))] px-2 py-1.5 text-center text-[8.5px] font-semibold uppercase tracking-wide text-ink-muted`} style={{ width: FUNNEL_LEAD_W[0] }}>#</th>
+              <th className={`${SUB_TOP} sticky z-40 bg-surface border-b border-[rgb(var(--border-strong-channels))] px-2 py-1.5 text-left text-[8.5px] font-semibold uppercase tracking-wide text-ink-muted`} style={{ width: FUNNEL_LEAD_W[1], left: FUNNEL_LEAD_LEFT[1] }}>Agent · Unit</th>
+              <th className={`${SUB_TOP} sticky z-40 bg-surface border-b border-[rgb(var(--border-strong-channels))] ${SEAM_SHADOW} px-2 py-1.5 text-left text-[8.5px] font-semibold uppercase tracking-wide text-ink-muted`} style={{ width: FUNNEL_LEAD_W[2], left: FUNNEL_LEAD_LEFT[2] }}>Status</th>
+              {view.cols.map((c) => {
+                const isTerm = c.key === terminalKey;
+                const sorted = sort && sort.key === c.key;
+                const washCls = isTerm ? `${TERM_WASH} text-primary` : c.kpi ? `${KPI_WASH} text-ink` : 'text-ink-muted';
+                return (
+                  <th
+                    key={c.key}
+                    aria-sort={sorted ? (sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}
+                    className={`${SUB_TOP} sticky z-30 bg-surface border-b border-[rgb(var(--border-strong-channels))] ${c.groupStart ? RULE_STRONG : ''} p-0`}
+                    style={{ width: c.w }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onSort(c.key)}
+                      title={`Sort by ${c.label} — ↓, ↑, then back to default`}
+                      className={`w-full h-full flex items-center justify-end gap-1 px-2.5 py-1.5 text-[8.5px] font-semibold uppercase tracking-wide whitespace-nowrap ${washCls} ${c.kpi ? 'font-bold' : ''}`}
+                    >
+                      <span>{c.label}</span>
+                      {c.ik && (
+                        <span className="ml-0.5 px-1 rounded border border-[rgb(var(--border-strong-channels))] text-[7.5px] font-bold tracking-wide text-ink-muted" aria-label="Interviews Kept contributor">IK</span>
+                      )}
+                      {sorted
+                        ? (sort.dir === 'desc' ? <ArrowDown size={10} aria-hidden="true" /> : <ArrowUp size={10} aria-hidden="true" />)
+                        : (c.kpi ? <ChevronsUpDown size={10} className="text-ink-dim" aria-hidden="true" /> : null)}
+                    </button>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
+
           <tbody>
             {loading &&
-              Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={visibleCols} />)}
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}>
+                  {[...FUNNEL_LEAD_W.map((w, j) => ({ w, k: `l${j}` })), ...view.cols].map((c, j) => (
+                    <td key={c.k ?? c.key ?? j} className="px-2.5 py-2.5 border-b border-border/40" style={{ width: c.w }}>
+                      <div className="h-3 bg-border/60 rounded animate-pulse" />
+                    </td>
+                  ))}
+                </tr>
+              ))}
 
             {!loading && displayRows.length === 0 && (
               <tr>
-                <td colSpan={visibleCols.length} className="px-3 py-12">
-                  {/* Designed empty state (UX-001) — icon + headline + guidance. */}
-                  <div
-                    className="flex flex-col items-center text-center gap-2"
-                    data-testid="mastersheet-empty"
-                  >
+                <td colSpan={3 + view.cols.length} className="px-3 py-12">
+                  <div className="flex flex-col items-center text-center gap-2" data-testid="mastersheet-empty">
                     <div className="flex items-center justify-center w-12 h-12 rounded-full bg-surface text-ink-muted">
-                      {exceptionsOnly
-                        ? <AlertTriangle size={22} aria-hidden="true" />
-                        : search.trim()
-                          ? <Search size={22} aria-hidden="true" />
-                          : <CalendarCheck size={22} aria-hidden="true" />}
+                      {exceptionsOnly ? <AlertTriangle size={22} aria-hidden="true" /> : search.trim() ? <Search size={22} aria-hidden="true" /> : <CalendarCheck size={22} aria-hidden="true" />}
                     </div>
                     <p className="text-sm font-semibold text-ink">
-                      {exceptionsOnly
-                        ? 'No exceptions in view'
-                        : search.trim()
-                          ? 'No agents match your search'
-                          : 'No submissions yet this week'}
+                      {exceptionsOnly ? 'No exceptions in view' : search.trim() ? 'No agents match your search' : 'No submissions yet this week'}
                     </p>
                     <p className="text-xs text-ink-muted max-w-xs">
                       {exceptionsOnly
@@ -657,39 +559,97 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
               </tr>
             )}
 
-            {!loading &&
-              displayRows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="group cursor-pointer"
-                  onClick={() => setViewingSubmission(row._submission)}
-                >
-                  {visibleCols.map((col) => (
-                    <td
-                      key={col.key}
-                      className={`
-                        ${tdBase} ${col.minW}
-                        ${colAlign(col)}
-                        ${col.sticky
-                          ? `sticky ${col.left} z-10 bg-card group-hover:bg-surface/50`
-                          : 'group-hover:bg-surface/30'}
-                      `}
-                    >
-                      {cellContent(col, row)}
-                    </td>
+            {!loading && displayRows.map((row, ri) => {
+              const zebra = ri % 2 === 1;
+              const rowBg = zebra ? 'bg-surface-raised' : 'bg-card';
+              const gold = row.rank <= 3;
+              return (
+                <tr key={row.id} className="group cursor-pointer" onClick={() => setViewingSubmission(row._submission)}>
+                  {/* Rank */}
+                  <td className={`sticky left-0 z-20 ${rowBg} group-hover:bg-surface/60 border-b border-border/60 px-2 py-2 text-center align-middle`} style={{ width: FUNNEL_LEAD_W[0] }}>
+                    <span data-testid={`rank-${row.id}`} className={`text-sm font-bold tabular-nums ${gold ? 'text-gold-ink' : 'text-ink-muted'}`}>{row.rank}</span>
+                  </td>
+                  {/* Agent · Unit */}
+                  <td className={`sticky z-20 ${rowBg} group-hover:bg-surface/60 border-b border-border/60 px-2 py-2 text-left align-middle`} style={{ width: FUNNEL_LEAD_W[1], left: FUNNEL_LEAD_LEFT[1] }}>
+                    <div className="flex items-center gap-2.5">
+                      <Avatar name={row.name} size="sm" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[12px] font-semibold text-ink whitespace-nowrap">{row.name}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNotesAgent({ agentId: row.id, agentName: row.name, agentUnitId: row._submission?.unitId ?? null });
+                            }}
+                            className="opacity-0 group-hover:opacity-100 focus:opacity-100 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-muted hover:text-primary hover:bg-primary/10 transition-all"
+                            aria-label={`Coaching notes for ${row.name}`}
+                            title="Coaching Notes"
+                          >
+                            <MessageSquare size={13} aria-hidden="true" />
+                          </button>
+                        </div>
+                        <div className="text-[9px] font-medium uppercase tracking-wide text-ink-muted whitespace-nowrap">
+                          {row.unitName || 'Unit —'}{!row.logged ? ' · NO LOG' : ''}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  {/* Status */}
+                  <td className={`sticky z-20 ${rowBg} group-hover:bg-surface/60 border-b border-border/60 ${SEAM_SHADOW} px-2 py-2 text-left align-middle`} style={{ width: FUNNEL_LEAD_W[2], left: FUNNEL_LEAD_LEFT[2] }}>
+                    <StatusPill variant={row.status === 'submitted' ? 'success' : 'warning'} label={row.status === 'submitted' ? 'Submitted' : 'Draft'} />
+                  </td>
+                  {/* Funnel cells */}
+                  {view.cols.map((c) => (
+                    <FunnelCell key={c.key} col={c} value={row.v[c.key]} terminalKey={terminalKey} rowId={row.id} />
                   ))}
                 </tr>
-              ))}
+              );
+            })}
           </tbody>
+
+          {!loading && displayRows.length > 0 && (
+            <tfoot>
+              <tr>
+                <td colSpan={3} className={`sticky bottom-0 left-0 z-30 bg-surface-muted border-t border-[rgb(var(--border-strong-channels))] ${SEAM_SHADOW} px-3 py-2 text-left text-[9px] font-bold tracking-[0.13em] uppercase text-ink-muted whitespace-nowrap`}>
+                  Branch · {displayRows.length} agents
+                </td>
+                {view.cols.map((c) => {
+                  const isTerm = c.key === terminalKey;
+                  const washCls = isTerm ? `${TERM_WASH} text-primary` : c.kpi ? `${KPI_WASH} text-ink` : 'text-ink-muted';
+                  return (
+                    <td
+                      key={c.key}
+                      data-testid={`ftot-${c.key}`}
+                      data-value={totals[c.key]}
+                      className={`sticky bottom-0 z-20 bg-surface-muted border-t border-[rgb(var(--border-strong-channels))] ${c.groupStart ? RULE_STRONG : ''} px-2.5 py-2 text-right tabular-nums whitespace-nowrap ${washCls} ${isTerm || c.kpi ? 'text-[12px] font-bold' : 'text-[11px] font-medium'}`}
+                      style={{ width: c.w }}
+                    >
+                      {c.money
+                        ? <span><span className="text-[8.5px] opacity-60 mr-0.5">TTD</span>{apiText(totals[c.key])}</span>
+                        : totals[c.key]}
+                    </td>
+                  );
+                })}
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 
+      {/* Footer — counts + the Interviews Kept derivation. */}
       {!loading && (
-        <p className="text-xs text-ink-muted">
-          {searchedRows.length} submission{searchedRows.length !== 1 ? 's' : ''} •{' '}
-          {searchedRows.filter((r) => r.status === 'submitted').length} submitted •{' '}
-          {searchedRows.filter((r) => r.status === 'draft').length} draft
-        </p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
+          <span>
+            {searchedRows.length} submission{searchedRows.length !== 1 ? 's' : ''} •{' '}
+            {searchedRows.filter((r) => r.status === 'submitted').length} submitted •{' '}
+            {searchedRows.filter((r) => r.status === 'draft').length} draft
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-ink-muted" data-testid="funnel-ik-footer">
+            <span className="px-1 rounded border border-[rgb(var(--border-strong-channels))] text-[7.5px] font-bold tracking-wide">IK</span>
+            FFI + CI Conducted = Interviews Kept · {interviewsKept} this week
+          </span>
+        </div>
       )}
     </div>
   );
