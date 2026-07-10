@@ -316,10 +316,12 @@ export default function ManagerWarTab() {
               : 'New report'}
           </p>
         </div>
+        {/* Week NAVIGATION stays enabled on submitted weeks — only the form
+            fields lock (a disabled picker would trap the user on the first
+            submitted week they view). */}
         <select
           value={weekStart}
           onChange={(e) => setWeekStart(e.target.value)}
-          disabled={isSubmitted}
           aria-label="Select week"
           className="h-11 px-3 rounded-lg bg-card border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
         >

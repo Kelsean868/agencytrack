@@ -253,6 +253,12 @@ describe('ManagerWarTab — submitted WAR is read-only', () => {
     await flushMount();
     expect(screen.queryByRole('button', { name: /submit report/i })).not.toBeInTheDocument();
   });
+
+  it('keeps the week selector ENABLED (navigation must not lock on submitted weeks)', async () => {
+    renderTab();
+    await flushMount();
+    expect(screen.getByLabelText('Select week')).toBeEnabled();
+  });
 });
 
 // ── Auto-save ─────────────────────────────────────────────────────────────────
