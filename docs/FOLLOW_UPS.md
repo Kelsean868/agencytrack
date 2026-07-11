@@ -5,6 +5,113 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Company Config v2 — next major track: every business-policy constant tenant-configurable (banked 2026-07-10, promotion session, HIGH — next major track)
+
+Grounded in `docs/audits/tenant-config-audit-2026-07-10.md`. **Operator-locked principle:** every business-policy constant is tenant-configurable; the current Tatil Life values become defaults, not hardcoded floors. Three tiers, by write surface: **Tier 1** — src-only reads (frontend constants a tenant admin could safely override without touching the backend). **Tier 2** — CF-read constants (needs runtime config plumbing; also the moment to fix the existing ESM/CJS dual-copy drift in `functions/lib/gamificationConfig.js` / `src/lib/gamificationConfig.js`). **Tier 3** — rules-enforced values, case-by-case (each one is a `firestore.rules` change, human-merge-gated). **Never configurable, by design:** payout-release logic, `tenantId`/auth mechanics, date-storage format, schema-validation shapes. The four §4.3 audit corrections below (pace-warning constants, clawback/at-risk windows, career-level labels, activity-standards system) are the concrete Tier-1/Tier-2 candidate inventory this track works from; the MDRT naming collision is a Tier-2 case study. Sequence: audit → rule which items are Tier 1/2/3 → build Tier 1 first (cheapest, no deploy risk) → Tier 2 (needs the ESM/CJS drift fix as a prerequisite) → Tier 3 case-by-case with human-merge.
+
+---
+
+## MDRT naming collision — three different "MDRT" numbers, one label (banked 2026-07-10, promotion session, MEDIUM — Company Config v2 candidate)
+
+`functions/lib/gamificationConfig.js` hardcodes `mdrt_qualified: ytdApi >= 688,800` and `mdrt_pace: ytdApi >= 344,400` (the T&T MDRT commission-method figures, half-year pace target) — both CF-side, both labeled "MDRT." Separately, the awards ruleset (`getMergedAwardsRuleset`/`DEFAULT_RULESET_2026`) carries its own **500,000** tenant-configurable awards threshold, also MDRT-adjacent. Three numbers, one name, no shared source. Cross-reference: this is an escalation of the already-tracked "third independent MDRT threshold source" finding (this file, § EFF-004 follow-ups area — `functions/lib/gamificationConfig.js` hardcoded badge stubs, independent of `MDRT_THRESHOLDS_2026`) — that finding flagged the collision; this entry frames the resolution path. **Resolve during Company Config v2 Tier 2** (gamificationConfig is exactly the CF-read-constant case that tier's ESM/CJS-drift fix targets): either reconcile the naming (distinct labels for the badge-gate figure vs. the awards-threshold figure) or reconcile the values (one config source, multiple derived gates) — an operator ruling, not a mechanical fix.
+
+---
+
+## Financing ruleset code comment overclaims configurability (banked 2026-07-10, promotion session, LOW — housekeeping, Company Config v2 adjacent)
+
+A code comment in the financing ruleset config (`src/config/financingRuleset/2026.js`, per `docs/audits/tenant-config-audit-2026-07-10.md`) claims the ruleset is tenant-configurable, but there is zero override plumbing — no admin UI, no per-tenant Firestore doc read, nothing consuming a non-default value. Correct the comment to state the ruleset is a **source-code default only** (not yet wired for override) so it doesn't mislead a future reader into assuming a config surface exists. If/when Company Config v2 reaches financing, this becomes a real Tier-1 or Tier-2 candidate; until then, the comment should say so honestly.
+
+---
+
+## Master Sheet STATUS filters — need a YTD + companyMinimums read path (banked 2026-07-10, Run 4 Item 2, MEDIUM — feature completeness)
+
+The funnel Master Sheet's filters panel (`src/utils/funnelFilters.js`, `src/components/manager/MasterSheet.jsx`, PR #852-adjacent Run 4 work) deliberately omitted the mockup's STATUS chips (On track/Off pace/Gone quiet/Report late/Persistency↓/Below floor) — honestly, not silently: they require YTD API + `companyMinimums` tenure floors (+ persistency) loaded on a surface that currently only reads the single selected week. `deriveExceptions()` is called here with `companyMins: null` and single-week submissions only. Building this means adding a YTD/floor read path to Master Sheet — a real scope increase, not a small filter tweak. "Report late" is currently served by the existing reality-bar Exceptions count / Only-exceptions toggle as a partial substitute.
+
+---
+
+## Master Sheet LEVEL filter — blocked on a populated career-level field (banked 2026-07-10, Run 4 Item 2, MEDIUM — feature completeness, data-dependency)
+
+The funnel Master Sheet's filters panel omitted the mockup's LEVEL (L1–L4) chips — `careerLevel` exists only as free-text CSV-import data on user docs (`BulkImportUsersModal.jsx`, `userImportService.js`), unpopulated for real users and with no defined level taxonomy behind it (see the related, already-tracked Track J2 trailing-2-year-average career-level qualification work). Building this filter needs the career-level field populated and a defined level taxonomy first — decide alongside Company Config v2's Tier-1 "labels catalog" candidate (§4.3(c) of the tenant-config audit) rather than inventing a second, disconnected level scheme.
+
+---
+
+## Master Sheet — unit friendly names absent (banked 2026-07-10, Run 4 Item 2, LOW — display polish)
+
+The funnel Master Sheet's UNIT filter falls back to raw ids (`Unit <last4>`) because no unit-name lookup is loaded on this surface. Populate friendly unit names (there is presumably a `/tenants/{tid}/meta/branches`-style enumerated list or unit-name field elsewhere in the app — locate it) and thread it into `deriveUnitOptions` (`src/utils/funnelFilters.js`).
+
+---
+
+## Company Config toggle — "count converted service calls as Tel Contacts" (banked 2026-07-10, Run 4 Item 1, LOW — explicitly DO NOT BUILD until ruled)
+
+The funnel Master Sheet's Contacts Made / Contact Attempts mapping deliberately excludes `serviceCalls` from every funnel sum (servicing ≠ new-business activity; `src/utils/funnelModel.js` — `serviceCalls` stays visible in the drill/detail view so nothing leaves the record). A possible future refinement: a Company Config toggle letting a tenant opt IN to counting converted service calls as Tel Contacts, default OFF. **Do not build this until the operator rules on it** — it's a product decision, not a mechanical gap.
+
+---
+
+## Planner recurrence — `ENDS=Never` rolling-horizon materializer (banked 2026-07-10, Run 4 Item 5, MEDIUM — feature completeness)
+
+Planner recurrence (`src/utils/plannerRecurrence.js`-adjacent, `firestore.rules` `validApptWrite()`, shipped via the Runs 3+4 promotion, PR #853/`0d5662ef`) materializes concrete instance docs (`seriesId`/`seriesPos`/`seriesTotal`, capped at 52) and requires a real end condition (On date / After # times) — the mockup's `ENDS=Never` chip ships disabled ("soon") rather than built, because concrete materialization and an infinite end condition are structurally in tension. Resolving this needs either (a) a rolling-horizon materializer (periodically extend the series N instances ahead, e.g. via a scheduled CF) or (b) a virtual-expansion read model instead of concrete docs (a bigger rearchitecture). **Shares composite-index work with the "edit this-and-all-future" item below** — both need a cross-week `(agentId, seriesId, date)` query shape, so scope them together rather than building the index twice.
+
+---
+
+## Planner recurrence — "edit this and all future" instances (banked 2026-07-10, Run 4 Item 5, MEDIUM — feature completeness)
+
+The recurrence edit-scope choice sheet (mockup state 3) currently ships only "Edit this appointment only" — the shipped Run-3 edit-in-place path (ChurnDialog → AppointmentSheet mode:'edit' → `updateAppointment`) extends cleanly to a single instance but not to a whole future series. "Edit this and all future" needs a **new composite index** `(agentId, seriesId, date)` (to find all future-dated instances of a series in one query) **+ a multi-doc batch write** (to apply the edit across them, past instances untouched per the locked "past never changes" rule). Deliberately shipped as a disabled row rather than half-correct. **Shares the composite-index work with the `ENDS=Never` item above** — plan and build both index needs together.
+
+---
+
+## Run 4 pre-promotion manual checks not done this cycle — carry to next Phase 0 (banked 2026-07-10, Run 4, MEDIUM — verification gap)
+
+Three manual/visual checks were banked as gaps during Run 4's build (per-item Rule 22 self-critique in `docs/fable-run4-progress.md`) and were NOT closed before the Runs 3+4 promotion:
+1. **Streak-celebration reskin** (`src/components/dashboard/HomeV2/FilingStreakCelebration.jsx`) — the `prefers-reduced-motion` static variant and dark-mode rendering were never live-verified (only default light/no-motion-preference was screenshot-proven).
+2. **FunnelMeetingScene** — not axe-run specifically; weakest spot is the `Draft` tag (`text-warning` on `bg-warning/15`) over the projection-dark surface.
+3. **Master Sheet filters popover** — not spot-checked for dark-mode contrast (the popover reuses already-theme-aware tokens, but no explicit check was run).
+
+Carry all three to the next cycle's Phase 0 before further build work on these surfaces.
+
+---
+
+## 1-on-1 takeover — needs a real design pass (banked 2026-07-10, Run 4 Item 6 recon, MEDIUM — design/product, blocks any build)
+
+`docs/audits/one-on-one-recon-2026-07-10.md` (validity-SHA header: staging @ `bf881e4f`) found the funnel mockup's scene 08 "1-on-1 mode" is read-only number display only — no talking points, no in-room note capture, no action/commitment logging — and that the premise of "one drill drawer" is wrong: today there are two **unwired** surfaces (`AgentDrillDrawer`, 3-tab, opened from Team Dashboard; `CoachingNotesModal`, 3-tab, opened from Master Sheet row hover). §4 of the recon doc lists 10 open one-line design questions (drawer unification, notes agent-visible vs. manager-private, commitment schema, full-screen vs. tabbed, role gating, real-time vs. snapshot data, cross-agent scope, session grouping, and whether the standard-strip floors should read from `weeklyActivityFloors.js` instead of the mockup's mismatched hardcoded numbers). Any commitment/action-item logging or cross-agent open-commitments query needs a `firestore.rules` change (human-merge-gated per CLAUDE.md). Needs a real design pass before any build — this is not build-ready today.
+
+---
+
+## Vercel preview env scoping — confirm branch previews get no live backend (banked 2026-07-10, promotion session, LOW — security hygiene, confirm-only)
+
+Feature-branch Vercel previews are public. Firebase Auth's authorized-domains allowlist currently blocks them from authenticating (confirmed the hard way during the Run-4 polish PR #852 — a feature-branch preview's login failed with a CORS rejection from `identitytoolkit.googleapis.com`, isolating cleanly to Auth before any app code ran) — this is good, it means a public preview can't reach a live backend today. **Action:** confirm this is by design (env-var scoping) rather than accidental, so a future Vercel/Firebase config change doesn't silently open a public preview to live data. No code change — a configuration confirmation.
+
+---
+
+## Vitest on Windows — worker contention flakes under concurrent runs (banked 2026-07-10, Run 4, LOW — tooling hygiene)
+
+Launching multiple concurrent full `npx vitest run` processes on this Windows dev environment produces `STACK_TRACE_ERROR` worker-contention flakes (observed repeatedly across Run 4's build agents) — not real test regressions, confirmed by re-running singly. Current workaround: **serialize test-suite runs, never launch two full-suite `vitest run` invocations concurrently.** Worth a `pool`/`poolOptions` config look (`vite.config.js`) to see if a `forks`/`singleFork` or reduced-concurrency setting fixes this at the tool level instead of relying on operator/agent discipline — one Run-4 agent's attempted `--pool=forks --singleFork` fix produced a DIFFERENT failure mode (66 spurious cross-file `matchMedia` teardown-pollution failures), so the fix isn't a one-line flag flip.
+
+---
+
+## Recon docs must carry a validity-SHA header — new standing rule (banked 2026-07-10, Run 4, LOW — process, candidate CLAUDE.md rule)
+
+Adopted mid-Run-4 after two stale-anchor incidents (recon docs whose claims drifted from the codebase state they described, discovered only when a later session tried to act on them). New convention: every read-only recon/audit doc's first line states the exact HEAD SHA it describes (e.g. `> Validity: describes staging @ \`<sha>\` (DATE). Re-verify claims against HEAD before acting on this doc.`) — applied to `docs/audits/one-on-one-recon-2026-07-10.md` this run. **Candidate for codifying into `CLAUDE.md` § Methodology requirements** as a numbered rule (this file only tracks it as a follow-up per this sync's file-scope restriction — the actual rule addition is a separate, small docs PR).
+
+---
+
+## ~~Run-4 FLAGGED-A — funnel Contact-Attempts "Tel" composition~~ — RESOLVED (operator ruling, kept as built, 2026-07-10)
+
+~~`src/utils/funnelModel.js:99` — the funnel Master Sheet's Contact-Attempts "Tel" sub-column was built as `followUpCalls + seminarTradeshowCalls` pending operator confirmation (the two tel channels not assigned to Prospecting, fitting the "attempts to reach a known person" principle). Operator confirmed the default — no code change. Flip point remains `funnelModel.js:99` (one line) if ever revisited.~~
+
+---
+
+## ~~Run-4 FLAGGED-B — funnel Referrals-group decomposition~~ — RESOLVED (operator ruling, kept as built, 2026-07-10)
+
+~~`src/utils/funnelModel.js:132-134` — the funnel Master Sheet's Referrals group Total was built as the canonical `computeTotalNewNames()` import, with Referrals = `referralsObtained` and New Names = the 4 non-referral channels (avoids double-counting `referralsObtained`, which the canonical total already includes). Operator confirmed the default — no code change. Flip point remains `funnelModel.js:132-134` (two lines) if ever revisited.~~
+
+---
+
+## ~~DECISIONS-NEEDED #4 — orphaned "Default Master Sheet preset" Settings control~~ — RESOLVED (operator ruled option b — repurpose, shipped PR #852 `ee4794f9`)
+
+~~`src/components/settings/SettingsScreen.jsx` — the funnel Master Sheet replaced the old 5-preset mechanic with a RANK BY segmented control, orphaning the Settings "Default Master Sheet preset" dropdown (it wrote a pref nothing read). Operator ruled option (b) repurpose: the control is now "Default RANK BY" (`api`/`newNames`), read once at Master Sheet mount via `src/config/viewDefaults.js`; legacy preset strings or an absent value fail closed to the API default. Live-verified against staging post-merge (`t1-master-sheet` leg, 2026-07-11).~~
+
+---
+
 ## Seeder env-file foot-gun — `seed-fixtures.mjs` silently resets staging/sales_manager passwords without `--env-file` (banked 2026-07-09, promotion session, MEDIUM — operator safety)
 
 `scripts/staging/seed-fixtures.mjs` syncs Auth passwords for `cro`/`sales_manager` fixture accounts at ~L272/L288 from an env var that is `undefined` when the script is run without `--env-file=.env.staging` — the fallback silently resets the account password to a falsy/default value instead of failing. Cost this promotion session: 3 false `LOGIN-AUTH-ERROR` legs before the missing flag was diagnosed. **Fix:** make the script fail loudly (throw) if the password env var is unset, or explicitly document "env-file required" in `SMOKES.md` next to this script's entry.
@@ -6349,6 +6456,8 @@ Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31. Expande
 - **Claude Code GitHub Action** — `@claude` PR review via the official action; keeps the reviewer in the same model family as the dispatcher.
 
 **Action:** evaluate the three (setup cost, signal quality, cost), pick one, wire it to PRs against `main`, and update the §6 (amendment-v3) external-reviewer triage references from "Gemini" to the chosen reviewer. Note: external review was a NO-OP for most of the Track J overnight queue (Gemini posted on #465 but was silent on the other batch PRs) — whatever replaces it should be verified to actually post before relying on the §6 gate.
+
+**Update (banked 2026-07-10, promotion session): CodeRabbit was chosen and is already wired** (`coderabbitai` app-login, no workflow file needed; confirmed posting both a reviews-channel and a summary-comment on PRs — see CLAUDE.md § Methodology Rule 21). **One week out from the 2026-07-17 sunset**, the remaining action is narrower than the original item: confirm CodeRabbit's coverage is solid on its own (not just as a Gemini backup) before Gemini goes fully silent, and do a final cleanup pass on any remaining "Gemini" references in briefs/CLAUDE.md once the sunset date passes.
 
 Banked: Track J morning task (2026-06-04), from the PR #465 Gemini sunset notice.
 
