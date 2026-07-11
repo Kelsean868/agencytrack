@@ -178,7 +178,12 @@ export function GhostButton({ children, danger, small, onClick, disabled, ...res
 }
 
 /** Editable numeric-week milestone chips (add/remove) — Recognition & Gamification streak milestones. */
-export function MilestoneChips({ value = [], onChange, changed, disabled }) {
+export function MilestoneChips({ value: rawValue, onChange, changed, disabled }) {
+  // Default parameters only catch `undefined` — a registry item whose `def`
+  // is (or a config read resolves to) an explicit `null` sails straight
+  // through `= []` and crashes on the .map() below. Guard defensively here
+  // regardless of what the caller passes (Run 5 org.levels incident).
+  const value = Array.isArray(rawValue) ? rawValue : [];
   const [adding, setAdding] = useState('');
   const commit = () => {
     const n = parseInt(adding, 10);
@@ -234,7 +239,9 @@ export function MilestoneChips({ value = [], onChange, changed, disabled }) {
 }
 
 /** Editable text chips (e.g. career-level names). */
-export function TextChips({ value = [], onChange, changed, disabled }) {
+export function TextChips({ value: rawValue, onChange, changed, disabled }) {
+  // See MilestoneChips — `= []` default params don't catch an explicit null.
+  const value = Array.isArray(rawValue) ? rawValue : [];
   return (
     <span className="inline-flex items-center gap-1.5 flex-wrap justify-end max-w-[480px]">
       {value.map((s, i) => (
@@ -256,7 +263,10 @@ export function TextChips({ value = [], onChange, changed, disabled }) {
 const th = 'font-mono text-[9.5px] font-bold tracking-[.12em] uppercase text-ink-muted pb-2 text-left';
 
 /** Tenure-band minimums table — editable; last band is open-ended (∞ OPEN, disabled). */
-export function BandsTable({ value = [], onChange, changed, disabled }) {
+export function BandsTable({ value: rawValue, onChange, changed, disabled }) {
+  // See MilestoneChips (ConfigControls.jsx) — `= []` default params don't
+  // catch an explicit null.
+  const value = Array.isArray(rawValue) ? rawValue : [];
   const upd = (i, patch) => onChange(value.map((b, j) => (j === i ? { ...b, ...patch } : b)));
   return (
     <div className="overflow-x-auto w-full">
@@ -326,7 +336,10 @@ export function BandsTable({ value = [], onChange, changed, disabled }) {
 }
 
 /** Weekly company-floor activity standards — editable; per-manager override count is read-only. */
-export function StandardsTable({ value = [], onChange, changed, disabled }) {
+export function StandardsTable({ value: rawValue, onChange, changed, disabled }) {
+  // See MilestoneChips (ConfigControls.jsx) — `= []` default params don't
+  // catch an explicit null.
+  const value = Array.isArray(rawValue) ? rawValue : [];
   const upd = (i, patch) => onChange(value.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   return (
     <div className="overflow-x-auto w-full">
@@ -398,7 +411,10 @@ function pointsRowDisplay(r) {
   };
 }
 
-export function PointsTable({ value = [], onChange, changed, disabled }) {
+export function PointsTable({ value: rawValue, onChange, changed, disabled }) {
+  // See MilestoneChips (ConfigControls.jsx) — `= []` default params don't
+  // catch an explicit null.
+  const value = Array.isArray(rawValue) ? rawValue : [];
   const upd = (i, patch) => onChange(value.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   return (
     <div className="overflow-x-auto w-full">
@@ -469,7 +485,10 @@ export function PointsTable({ value = [], onChange, changed, disabled }) {
  * dim to opacity-60 (earned badges are never revoked; only new-season
  * qualification stops).
  */
-export function AwardsRulesetTable({ value = [], onChange, changed, disabled }) {
+export function AwardsRulesetTable({ value: rawValue, onChange, changed, disabled }) {
+  // See MilestoneChips (ConfigControls.jsx) — `= []` default params don't
+  // catch an explicit null.
+  const value = Array.isArray(rawValue) ? rawValue : [];
   const upd = (i, patch) => onChange(value.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   return (
     <div className="overflow-x-auto w-full">

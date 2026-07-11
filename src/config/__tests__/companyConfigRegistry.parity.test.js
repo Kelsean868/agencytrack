@@ -243,9 +243,29 @@ describe('registry-wide invariants', () => {
     expect(offenders.map((i) => ({ id: i.id, docId: i.storage.docId }))).toEqual([]);
   });
 
-  it('unbacked items always render as null def (never a fabricated value)', () => {
-    const offenders = ALL_ITEMS.filter((item) => item.unbacked === true && item.def !== null);
+  // Array-rendered list types — every list-consuming control in ConfigControls.jsx
+  // (TextChips/MilestoneChips/BandsTable/PointsTable) calls value.map() and must
+  // never receive `null`/`undefined`. 'standards' and 'awardsRuleset' are
+  // deliberately excluded: 'standards' is a per-role object map (or unset — see
+  // ActivityStandardsEditor's `value || {}` guard), and 'awardsRuleset' is a
+  // bypass marker CompanyConfigSurface never actually renders through the
+  // generic control dispatcher. Neither has array semantics.
+  const ARRAY_LIST_TYPES = new Set(['textchips', 'milestones', 'bands', 'points']);
+
+  it('unbacked items render as null (scalar) or [] (list-typed) — never a fabricated value', () => {
+    const offenders = ALL_ITEMS.filter((item) => {
+      if (item.unbacked !== true) return false;
+      if (ARRAY_LIST_TYPES.has(item.type)) return !(Array.isArray(item.def) && item.def.length === 0);
+      return item.def !== null;
+    });
     expect(offenders.map((i) => i.id)).toEqual([]);
+  });
+
+  it('no array-rendered list-typed item has a null/undefined default (Run 5.1 org.levels crash)', () => {
+    const offenders = ALL_ITEMS.filter(
+      (item) => ARRAY_LIST_TYPES.has(item.type) && !Array.isArray(item.def),
+    );
+    expect(offenders.map((i) => ({ id: i.id, type: i.type, def: i.def }))).toEqual([]);
   });
 
   it('ALL_ITEMS and ITEMS_BY_ID stay in sync (no duplicate ids)', () => {
