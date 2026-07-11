@@ -4,6 +4,26 @@ Run start (TT): 2026-07-10 day (semi-attended). Start HEAD: `7ce74cf0` (staging)
 Brief: [`docs/briefs/fable-run4-kickoff.md`](briefs/fable-run4-kickoff.md).
 Design authority: [`docs/design-system/screens-v2/design_handoff_sheet_celebrations_planner/`](design-system/screens-v2/design_handoff_sheet_celebrations_planner/README.md).
 
+## Post-run polish (2026-07-10/11, same operator thread)
+
+Three small items, dispatched after Run 4's E3 HOLD:
+
+1. **Pin de-emphasis v2** (supersedes Run-3 F8): filled+teal star only in the ★ Pinned zone; outline everywhere else regardless of pinned state; F8's size/contrast reduction removed. `src/components/shell/Sidebar.jsx`, `src/index.css`. Leg renamed `t1-pinned-tab-deemphasis` → `t1-pin-zone-signal`, rewritten for the zone-based contract.
+2. **Settings repurpose** (DECISIONS-NEEDED #4, option b): "Default Master Sheet preset" → "Default RANK BY" (`api`/`newNames`), read once at Master Sheet mount, legacy/absent values fail-closed to API. `src/config/viewDefaults.js`, `src/components/settings/SettingsScreen.jsx`, `src/components/manager/MasterSheet.jsx`. `t1-master-sheet` extended (not `t2-settings-roundtrip`, which runs as agent1 and can't see the manager-only sheet).
+3. **Tenant-config audit correction** — PR #851 §4.3 four claims corrected with grep-verified citations (pace-warning constants split correctly across `managerExceptions.js` + `planVariance.js`; clawback 30d/7d confirmed; career-level table debunked, CF `LEVEL_THRESHOLDS` cited instead; activity-standards system confirmed fully built). Recurrence-`Never` follow-up banked at §4.4.
+
+**PR #852** (`fix/run4-polish` → `staging`): commits `00370741` + `ee4794f9`, merged `7100f089`. Gates 1-6 (lint/suite 5162/build/push/deploy) green at PR time; live smoke (gate 7) was blocked pre-merge by a Firebase Auth authorized-domains CORS rejection on the feature-branch preview hostname (first time this environment needed pre-merge feature-branch verification — every prior Run-4 leg verified against staging's own deploy). Not worked around (Auth config left untouched, operator's call).
+
+**Post-merge live verification (2026-07-11, staging deploy `7100f089`, re-seeded):**
+```
+✓ PASS [T1] t1-pin-zone-signal — ★ Pinned-zone star FILLED (rgb(1, 105, 111), size 14); SAME item's home-section star OUTLINE (rgb(107, 101, 96), size 14, never filled); unpinned control has no pinned-zone alias + outline home star; pin state restored (P=false, U=false); hygiene clean
+✓ PASS [T1] t1-master-sheet — ...; Settings "Default RANK BY"→New Names seeded initial mount RANK BY (aria-pressed) via reload, restored to API + re-verified via second reload; hygiene clean
+✓ PASS [T1] t1-master-sheet-filters — ...; hygiene clean (regression check, unaffected)
+```
+Both polish items now fully live-verified, console-clean, zero prod requests. Gate 7 gap closed.
+
+PR #851 confirmed OPEN post-amendment, head `5826c9dd`, not merged.
+
 ## Checklist
 
 | Item | Status | Notes |
