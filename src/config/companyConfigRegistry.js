@@ -431,7 +431,7 @@ export const CONFIG_SECTIONS = {
             desc: 'Career level is per-user free text today, entered at import/edit time (validated only for max length) — there is no company-wide level taxonomy or threshold table to default from.',
             type: 'textchips',
             lock: 'soon',
-            def: null,
+            def: [], // list-typed items must default to [], never null — see ConfigControls.jsx list-control hardening.
             unbacked: true,
             source: 'src/services/userImportService.js:190-197 (careerLevel free-text validation)',
           },

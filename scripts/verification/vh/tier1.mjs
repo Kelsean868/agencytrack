@@ -907,8 +907,40 @@ export const LEGS = [
         if (!auditReset) throw new Error('no configAudit entry found for unit_manager.jfwCount -> "DEFAULT"');
         if (auditReset.section !== 'Activity Standards') throw new Error(`reset audit section="${auditReset.section}" (expected "Activity Standards")`);
 
+        // ── Run 5.1 regression: walk ALL 12 rail sections, assert each renders
+        // its body without tripping ChunkLoadErrorBoundary. This is the check
+        // that should have caught the org.levels null-crash — 5252 unit tests
+        // and 41 VH legs all passed while a whole section threw, because none
+        // of them realized a render of every section. The error boundary is a
+        // class component with local state — once tripped it does NOT recover
+        // on its own, so any section that crashes here would also fail every
+        // section walked after it, making a silent per-section skip impossible.
+        const ALL_SECTIONS = [
+          ['identity', 'Identity & Branding'],
+          ['org', 'Organization'],
+          ['targets', 'Targets & Minimums'],
+          ['cadence', 'Reporting Cadence'],
+          ['activity', 'Activity Standards'],
+          ['recognition', 'Recognition & Gamification'],
+          ['awards', 'Awards & Clubs'],
+          ['financing', 'Financing Thresholds'],
+          ['kiosk', 'Kiosk'],
+          ['policy', 'Policy & Delivery'],
+          ['flags', 'Feature Flags'],
+          ['data', 'Data & Privacy'],
+        ];
+        for (const [key, label] of ALL_SECTIONS) {
+          await p.locator(`[data-testid="ccfg-rail-${key}"]`).click();
+          await p.waitForTimeout(350);
+          const boundaryTripped = await p.locator('[data-testid="state-chunk-error"]').count();
+          if (boundaryTripped > 0) throw new Error(`section "${key}" (${label}) tripped ChunkLoadErrorBoundary`);
+          const heading = p.getByRole('heading', { name: label, exact: true });
+          await heading.waitFor({ state: 'attached', timeout: 6_000 });
+        }
+        await shot(p, 't1-company-config-all-sections');
+
         assertLegHygiene(ctx);
-        return `⌘F "pace-warning" jumped flags→targets (rail switched, targets.pace flash-highlighted); JFW unit_manager 5 saved (toast "Saved 1 change"), fresh reload shows 5 + custom-state reset affordance; Firestore unit_manager.jfwCount=5 (audit settingId=unit_manager.jfwCount, section=Activity Standards, who=${auditSave.who}, to=5); Reset→save→Firestore key ABSENT (audit to=DEFAULT), row back to 'default' (no Reset/Undo link, JFW control reads 0 — bare items suppress the DEFAULT tag itself per ConfigRow's intentional bare-item rule); hygiene clean`;
+        return `⌘F "pace-warning" jumped flags→targets (rail switched, targets.pace flash-highlighted); JFW unit_manager 5 saved (toast "Saved 1 change"), fresh reload shows 5 + custom-state reset affordance; Firestore unit_manager.jfwCount=5 (audit settingId=unit_manager.jfwCount, section=Activity Standards, who=${auditSave.who}, to=5); Reset→save→Firestore key ABSENT (audit to=DEFAULT), row back to 'default' (no Reset/Undo link, JFW control reads 0 — bare items suppress the DEFAULT tag itself per ConfigRow's intentional bare-item rule); all 12 rail sections render their heading with no ChunkLoadErrorBoundary trip (Run 5.1 org.levels-crash regression check); hygiene clean`;
       } finally { await ctx.context.close(); }
     },
   },
