@@ -18,7 +18,7 @@
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { newLegContext, login, gotoTab, assertLegHygiene } from './vh-helpers.mjs';
-import { EXPECT, BASE } from './expectations.mjs';
+import { EXPECT, BASE, W } from './expectations.mjs';
 
 // ── tier3-private helpers ─────────────────────────────────────────────────────
 const tsel = (id) => `[data-testid="${id}"]`;
@@ -141,7 +141,7 @@ export const LEGS = [
   {
     id: 't3-appt-churn-postpone',
     role: 'agent1',
-    desc: 'Agent Planner Week view: postpone an in-week upcoming appt (vhfix-appt-d2a, +2d AI) through the churn→Postpone→rebook flow; reload → original flips to Postponed AND a NEW appt appears at the rebooked slot (postponeWithRebook writes original.status=postponed + rescheduledToId→new; the link field is data-only, verified transitively via the status flip + new-appt presence). NOTE: the brief said "+3d SC" but +3d falls on next week (today is Thursday) so it is outside the current planner week view — used the +2d appt instead. MUTATES appointments (re-seed resets).',
+    desc: 'Agent Planner Week view: postpone an in-week upcoming appt (vhfix-appt-d2a, seeded at min(+2d, Saturday) so it never spills into next week — Run 4 fix; fixed +2d broke on Fri/Sat runs) through the churn→Postpone→rebook flow; reload → original flips to Postponed AND a NEW appt appears at the rebooked slot (postponeWithRebook writes original.status=postponed + rescheduledToId→new; the link field is data-only, verified transitively via the status flip + new-appt presence). MUTATES appointments (re-seed resets).',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser);
       try {
@@ -226,6 +226,7 @@ export const LEGS = [
           // Read-only markers: private-coaching trust line + NO agent Book button.
           await mustText(p, /Private coaching view|Read-only|read-only/i, `${who} trust/read-only marker`, 'body');
           if (await p.locator(tsel('planner-book')).count()) throw new Error(`${who}: agent Book affordance (planner-book) present on team planner`);
+          if (await p.locator(tsel('churn-action-edit')).count()) throw new Error(`${who}: appointment edit affordance (churn-action-edit) present on team planner`);
           // Drill opens the read-only coaching view.
           await a1Row.click();
           await p.locator(tsel('coaching-drill')).waitFor({ state: 'visible', timeout: 8_000 });
@@ -245,7 +246,7 @@ export const LEGS = [
   {
     id: 't3-meeting-mode-deck',
     role: 'branch_manager',
-    desc: 'Meeting Mode (Start Meeting, week=W0): deck = 9 scenes [Opening · Branch · Activity · Production · Needs-attention · Staging Agent One · Recognition · Campaign · Wrap-up]. Units DROPPED (1 unit) and Celebrations DROPPED (2024 anniversaries outside July window) — hand-derived from MeetingMode.helpers deriveDeck for the W0 submissions ([A1 draft] via getWeeklySubmissions, no status filter).',
+    desc: 'Meeting Mode (Start Meeting, week=W0): deck = 10 scenes [Opening · Branch · Activity · Production · Master-Sheet-funnel · Needs-attention · Staging Agent One · Recognition · Campaign · Wrap-up]. Units DROPPED (1 unit) and Celebrations DROPPED (2024 anniversaries outside July window) — hand-derived from MeetingMode.helpers deriveDeck for the W0 submissions ([A1 draft] via getWeeklySubmissions, no status filter). The funnel "sheet-in-the-room" scene is gated on hasSubs (present at W0).',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser, { reducedMotion: true });
       try {
@@ -262,14 +263,15 @@ export const LEGS = [
         const headTxt = (await header.innerText()).replace(/\s+/g, ' ');
         const totalM = headTxt.match(/\/\s*(\d{2})/);
         const total = totalM ? Number(totalM[1]) : NaN;
-        if (total !== 9) throw new Error(`deck total=${total} (expected 9). header="${headTxt}"`);
+        if (total !== 10) throw new Error(`deck total=${total} (expected 10). header="${headTxt}"`);
 
-        // Walk all 9 scenes; each expected scene body phrase must surface in order.
+        // Walk all 10 scenes; each expected scene body phrase must surface in order.
         const expected = [
           /Good morning, team/i,               // opening
           /Where the branch stands/i,          // branch
           /activity & result|activity &amp; result/i, // activity
           /Everyone.s numbers/i,               // production
+          /The Master Sheet/i,                 // funnel (sheet-in-the-room)
           /Who to stop on this week/i,         // exceptions
           /Staging Agent One/i,                // agent:A1
           /Recognize the room/i,               // recognition
@@ -283,7 +285,7 @@ export const LEGS = [
           const txt = (await main.innerText()).replace(/\s+/g, ' ');
           if (!expected[i].test(txt)) {
             await shot(p, `FAIL-t3-meeting-scene-${i}`);
-            throw new Error(`scene ${i + 1}/9 did not match /${expected[i].source}/. Got: "${txt.slice(0, 160)}"`);
+            throw new Error(`scene ${i + 1}/10 did not match /${expected[i].source}/. Got: "${txt.slice(0, 160)}"`);
           }
           // Units / Celebrations must NEVER surface (dropped scenes).
           if (/How the units are moving|Work anniversaries/i.test(txt)) {
@@ -294,7 +296,94 @@ export const LEGS = [
         }
         await shot(p, 't3-meeting-deck');
         assertLegHygiene(ctx);
-        return `Meeting deck = 9 scenes (Opening→Branch→Activity→Production→Needs-attention→Staging Agent One→Recognition→Campaign→Wrap-up); Units + Celebrations correctly dropped. hygiene clean`;
+        return `Meeting deck = 10 scenes (Opening→Branch→Activity→Production→Master-Sheet-funnel→Needs-attention→Staging Agent One→Recognition→Campaign→Wrap-up); Units + Celebrations correctly dropped. hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
+  // ── 4b. Meeting Mode funnel "sheet-in-the-room" (branch_manager, W(-1)) ──
+  {
+    id: 't3-meeting-funnel-sheet',
+    role: 'branch_manager',
+    desc: 'Meeting Mode Master-Sheet funnel scene at W(-1) (3 SUBMITTED strong filers: A1 12,500 · BM 8,500 · UM 5,200). Reuses funnelModel: expand Prospecting + Contact Attempts → the rank-1 row KPI == its sub-column sum (Prospecting 65, Contact Attempts 40 — same seed anchors as t1-master-sheet); TOTALS row API == 26,200 and Prospecting Total == 195 (65×3). EXCEPTIONS cut reduces 3 rows → 0 (all submitted, none draft). Meeting week driven via the Master Sheet week selector before Start Meeting. Value-level, console-clean, zero prod requests.',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser, { reducedMotion: true });
+      try {
+        const p = ctx.page;
+        await login(p, 'branch_manager');
+
+        // Drive the shared selectedWeek to W(-1) via the Master Sheet selector
+        // (ManagerDashboard passes selectedWeek straight into Start Meeting).
+        await gotoTab(p, 'Master Sheet');
+        await p.waitForSelector('[data-testid="mastersheet-reality"]', { timeout: 12_000 });
+        const prevWeek = W(-1);
+        await p.locator('select[aria-label="Select week"]').selectOption(prevWeek);
+        await p.waitForFunction(
+          () => document.querySelectorAll('tbody [data-testid^="rank-"]').length === 3,
+          { timeout: 15_000 },
+        );
+        await p.waitForTimeout(300);
+
+        // Start Meeting → deck loads for W(-1); walk to the funnel scene.
+        await p.getByRole('button', { name: /Start Meeting/i }).first().click({ timeout: 12_000 });
+        await p.locator('[data-meeting-mode="true"]').waitFor({ state: 'visible', timeout: 20_000 });
+        await p.getByText(/Good morning, team/i).first().waitFor({ state: 'visible', timeout: 20_000 });
+
+        const funnel = p.locator('[data-testid="meeting-funnel-scene"]');
+        let reached = false;
+        for (let i = 0; i < 8 && !reached; i += 1) {
+          await p.keyboard.press('ArrowRight');
+          await p.waitForTimeout(400);
+          reached = await funnel.isVisible().catch(() => false);
+        }
+        if (!reached) throw new Error('funnel sheet-in-the-room scene never surfaced in the W(-1) deck');
+        await p.getByText('The Master Sheet').first().waitFor({ state: 'visible', timeout: 8_000 });
+
+        const cellVal = async (sel) => Number(await p.locator(sel).first().getAttribute('data-value'));
+        const rowCount = () => p.locator('[data-testid^="mfrow-"]').count();
+
+        // 3 submitted filers this week.
+        if ((await rowCount()) !== 3) throw new Error(`funnel rows=${await rowCount()} (expected 3 at W(-1))`);
+
+        // Expand Prospecting + Contact Attempts, then verify KPI == sub-sum on the
+        // rank-1 row (first in DOM), and the seeded strong-week anchors.
+        await p.getByRole('button', { name: /expand prospecting activities/i }).click();
+        await p.waitForTimeout(250);
+        await p.getByRole('button', { name: /expand contact attempts/i }).click();
+        await p.waitForTimeout(250);
+
+        const pTot = await cellVal('[data-testid^="mfc-pTot-"]');
+        const pSum = (await cellVal('[data-testid^="mfc-letters-"]'))
+          + (await cellVal('[data-testid^="mfc-seminars-"]'))
+          + (await cellVal('[data-testid^="mfc-canvass-"]'))
+          + (await cellVal('[data-testid^="mfc-refCalls-"]'));
+        if (pTot !== pSum || pTot !== 65) throw new Error(`funnel Prospecting KPI ${pTot} !== sub-sum ${pSum} / seed 65`);
+        const caTot = await cellVal('[data-testid^="mfc-caTot-"]');
+        const caSum = (await cellVal('[data-testid^="mfc-telAtt-"]')) + (await cellVal('[data-testid^="mfc-f2fAtt-"]'));
+        if (caTot !== caSum || caTot !== 40) throw new Error(`funnel Contact Attempts KPI ${caTot} !== sub-sum ${caSum} / seed 40`);
+
+        // Totals row: terminal API == 26,200; Prospecting Total == 195 (65×3).
+        const totApi = await cellVal('[data-testid="mftot-api"]');
+        if (totApi !== 26200) throw new Error(`funnel totals API=${totApi} (expected 26200 = 12500+8500+5200)`);
+        const totP = await cellVal('[data-testid="mftot-pTot"]');
+        if (totP !== 195) throw new Error(`funnel totals Prospecting=${totP} (expected 195 = 65×3)`);
+
+        await shot(p, 't3-meeting-funnel-sheet');
+
+        // EXCEPTIONS cut → all 3 are submitted (no drafts) → 0 rows.
+        await p.locator('[data-testid="meeting-funnel-exceptions"]').click();
+        await p.waitForTimeout(400);
+        const afterCut = await rowCount();
+        if (afterCut !== 0) throw new Error(`funnel exceptions cut rows=${afterCut} (expected 0 — no draft filers at W(-1))`);
+        if ((await p.locator('[data-testid="meeting-funnel-empty"]').count()) !== 1) {
+          throw new Error('funnel exceptions cut did not render the empty state');
+        }
+        await p.locator('[data-testid="meeting-funnel-exceptions"]').click(); // back off
+        await p.waitForTimeout(250);
+
+        await shot(p, 't3-meeting-funnel-exceptions');
+        assertLegHygiene(ctx);
+        return `W(-1) funnel sheet-in-the-room: 3 filers; Prospecting KPI 65 & Contact Attempts KPI 40 == sub-column sums (value level); totals API 26,200 & Prospecting 195 (65×3); exceptions cut 3→0 (empty state). hygiene clean`;
       } finally { await ctx.context.close(); }
     },
   },
@@ -577,6 +666,161 @@ export const LEGS = [
       const smBooked = await check('sales_manager');
       const taBooked = await check('tenant_admin');
       return `D3 Team Planner read-only verified for SM (A1 ${smBooked} booked) + TA (A1 ${taBooked} booked); tenant-wide rank≥3 arm; trust marker present, no Book affordance, drill read-only. hygiene clean`;
+    },
+  },
+
+  // ── 9. Appointment edit-in-place on an OWN appointment (agent-1) — MUTATES appts ──
+  {
+    id: 't3-appt-edit-own',
+    role: 'agent1',
+    desc: "Agent Planner Today view: edit an OWN appt (vhfix-appt-t1, TODAY 09:00 PC) in place via churn→Edit details→AppointmentSheet(mode:edit). Change startTime 09:00→08:15 and note→sentinel, save (updateAppointment), reload → the card persists the new time (8:15 AM) AND the sentinel note at value level. Edit targets a DIFFERENT appt than t3-appt-churn-postpone (which mutates vhfix-appt-d2a at +2d) — no cross-leg interference. Idempotent across re-runs (edits to fixed values); MUTATES appointments (re-seed resets).",
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        const p = ctx.page;
+        await login(p, 'agent1');
+        await clickTid(p, 'agent-tab-planner');
+        // Today view is the default — the 09:00 PC own appt renders as a card.
+        const origId = 'vhfix-appt-t1';
+        const card = p.locator(tsel(`appt-card-${origId}`));
+        await card.waitFor({ state: 'visible', timeout: 15_000 });
+
+        // Churn → Edit details → the sheet opens in edit mode, prefilled.
+        await card.click();
+        await p.locator(tsel('churn-dialog')).waitFor({ state: 'visible', timeout: 8_000 });
+        await clickTid(p, 'churn-action-edit');
+        await p.locator(tsel('appointment-sheet')).waitFor({ state: 'visible', timeout: 8_000 });
+        await mustText(p, /Edit appointment/i, 'sheet is in edit mode', 'appointment-sheet');
+
+        // Change a value pair to fixed sentinels (idempotent on re-run).
+        const SENTINEL_NOTE = 'VH edit sentinel — F11 slice 1a';
+        await p.locator('#appt-time').fill('08:15');
+        await p.locator('#appt-note').fill(SENTINEL_NOTE);
+        await p.waitForTimeout(200);
+        await clickTid(p, 'appt-save');
+        await p.locator(tsel('appointment-sheet')).waitFor({ state: 'detached', timeout: 12_000 });
+        await p.waitForTimeout(1000);
+        await shot(p, 't3-appt-edited');
+
+        // RE-READ (full reload) — reload lands on the default dashboard tab, so
+        // re-navigate to the planner (Today is the default view) before re-reading.
+        await reload(p);
+        await clickTid(p, 'agent-tab-planner');
+        const cardAfter = p.locator(tsel(`appt-card-${origId}`));
+        await cardAfter.waitFor({ state: 'visible', timeout: 12_000 });
+        const cardTxt = (await cardAfter.innerText()).replace(/\s+/g, ' ');
+        if (!/8:15\s*AM/i.test(cardTxt)) {
+          await shot(p, 'FAIL-t3-appt-edit-time');
+          throw new Error(`edited start time (8:15 AM) not persisted after reload — got "${cardTxt.slice(0, 160)}"`);
+        }
+        if (!cardTxt.includes(SENTINEL_NOTE)) {
+          await shot(p, 'FAIL-t3-appt-edit-note');
+          throw new Error(`edited note sentinel not persisted after reload — got "${cardTxt.slice(0, 200)}"`);
+        }
+        await shot(p, 't3-appt-edit-verified');
+
+        assertLegHygiene(ctx);
+        return `Edit-in-place via churn→Edit details: vhfix-appt-t1 startTime→08:15 (8:15 AM) + note→sentinel, saved via updateAppointment and persisted after reload (value-level). hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
+  // ── 10. Appointment RECURRENCE — create weekly series + postpone one instance ──
+  {
+    id: 't3-appt-recurrence',
+    role: 'agent1',
+    desc: "Agent Planner: book a WEEKLY series of 4 anchored today via the AppointmentSheet REPEATS field (preview reads 'Books 4 appointments'; CTA 'Book series' → createRecurringAppointments materializes 4 concrete instance docs) → reload → today's instance renders the ↻ series badge + mono series line ('Every <Wd> · 1 of 4'). Then POSTPONE that instance via the scope-LOCKED postpone sheet ('Just this one' live / 'Whole series — use Edit' disabled) → reload → the original flips to Postponed + dimmed + retained with the 'series stays' note, and a NEW rebooked appt appears at the moved time (write-read-verify, full reload). Shipped Planner Week view is current-week-only, so cross-week series instances aren't UI-visible — 'other instances unchanged' is proved by (a) the preview booking 4, (b) the scope-lock making postpone single-instance by construction, (c) the retained series metadata. MUTATES appointments with a 'vhleg-recur' note sentinel (seed-fixtures deletes them on re-seed).",
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        const p = ctx.page;
+        const RUN_TOKEN = `vhleg-recur ${Date.now()}`;
+        await login(p, 'agent1');
+        await clickTid(p, 'agent-tab-planner');
+        await p.locator(tsel('planner-book')).waitFor({ state: 'visible', timeout: 15_000 });
+
+        // ── Create a weekly series of 4 anchored today ──
+        await clickTid(p, 'planner-book');
+        await p.locator(tsel('appointment-sheet')).waitFor({ state: 'visible', timeout: 8_000 });
+        await p.locator('#appt-note').fill(RUN_TOKEN);
+        await clickTid(p, 'repeat-rule-weekly');
+        await p.locator(tsel('ends-count')).waitFor({ state: 'visible', timeout: 6_000 });
+        await p.locator(tsel('repeat-count-input')).fill('4');
+        await p.waitForTimeout(300);
+        // Plain-language preview confirms the materialization count BEFORE booking.
+        await mustText(p, /Books 4 appointments/, 'series preview count', 'series-preview');
+        await mustText(p, /Book series/, 'CTA switches to Book series', 'appt-save');
+        await shot(p, 't3-recur-create');
+        await clickTid(p, 'appt-save');
+        await p.locator(tsel('appointment-sheet')).waitFor({ state: 'detached', timeout: 12_000 });
+        await p.waitForTimeout(1000);
+
+        // ── Reload → today's instance carries the ↻ series line ──
+        await reload(p);
+        await clickTid(p, 'agent-tab-planner');
+        await p.locator(tsel('planner-view-today')).waitFor({ state: 'visible', timeout: 12_000 });
+        await p.waitForTimeout(600);
+        const seriesCard = p.locator('[data-testid^="appt-card-"]').filter({ hasText: RUN_TOKEN }).first();
+        await seriesCard.waitFor({ state: 'visible', timeout: 10_000 });
+        const cardTxt = (await seriesCard.innerText()).replace(/\s+/g, ' ');
+        if (!/Every\b/.test(cardTxt) || !/of 4/.test(cardTxt)) {
+          await shot(p, 'FAIL-t3-recur-series-line');
+          throw new Error(`series line missing on created instance — got "${cardTxt.slice(0, 200)}"`);
+        }
+        await shot(p, 't3-recur-series-row');
+
+        // ── Postpone THIS instance via the scope-locked postpone sheet ──
+        await seriesCard.click();
+        await p.locator(tsel('churn-dialog')).waitFor({ state: 'visible', timeout: 8_000 });
+        await clickTid(p, 'churn-action-postpone');
+        await p.locator(tsel('appointment-sheet')).waitFor({ state: 'visible', timeout: 8_000 });
+        // Scope is LOCKED: "Just this one" live, "Whole series — use Edit" disabled.
+        await mustText(p, /Postpone appointment/i, 'postpone sheet title', 'appointment-sheet');
+        if (!(await p.locator(tsel('postpone-scope-just-this')).count())) {
+          throw new Error('postpone scope "Just this one" chip absent');
+        }
+        const disabledChip = p.locator(tsel('postpone-scope-series-disabled'));
+        if (!(await disabledChip.count())) throw new Error('postpone scope "Whole series" disabled chip absent');
+        if ((await disabledChip.getAttribute('aria-disabled')) !== 'true') {
+          throw new Error('"Whole series" chip is not aria-disabled (scope not locked)');
+        }
+        await mustText(p, /series stays/i, 'postpone consequence panel', 'postpone-consequence');
+        await shot(p, 't3-recur-postpone-sheet');
+        // Move to a distinct time on the SAME day (stays visible in Today view).
+        await p.locator('#appt-time').fill('15:45');
+        await p.waitForTimeout(200);
+        await clickTid(p, 'appt-save'); // "Move this one"
+        await p.locator(tsel('appointment-sheet')).waitFor({ state: 'detached', timeout: 12_000 });
+        await p.waitForTimeout(1200);
+
+        // ── Reload → after-state: original Postponed + dimmed + series-stays note;
+        //    a NEW rebooked appt at 3:45 PM present ──
+        await reload(p);
+        await clickTid(p, 'agent-tab-planner');
+        await p.locator(tsel('planner-view-today')).waitFor({ state: 'visible', timeout: 12_000 });
+        await p.waitForTimeout(700);
+        const tokenCards = p.locator('[data-testid^="appt-card-"]').filter({ hasText: RUN_TOKEN });
+        const postponedCard = tokenCards.filter({ hasText: /Postponed/i }).first();
+        await postponedCard.waitFor({ state: 'attached', timeout: 10_000 });
+        const postTxt = (await postponedCard.innerText()).replace(/\s+/g, ' ');
+        if (!/Postponed/i.test(postTxt)) {
+          await shot(p, 'FAIL-t3-recur-not-postponed');
+          throw new Error('series instance did not flip to Postponed after reload');
+        }
+        if (!/series stays/i.test(postTxt)) {
+          await shot(p, 'FAIL-t3-recur-no-series-note');
+          throw new Error('postponed series instance missing the "series stays" note');
+        }
+        const bodyTxt = await scopeText(p, 'body');
+        if (!/3:45\s*PM/i.test(bodyTxt)) {
+          await shot(p, 'FAIL-t3-recur-rebook-missing');
+          throw new Error('rebooked appointment (3:45 PM) not found after reload');
+        }
+        await shot(p, 't3-recur-after');
+
+        assertLegHygiene(ctx);
+        return 'Recurrence: weekly series of 4 booked via UI (preview "Books 4 appointments" → createRecurringAppointments); today instance rendered ↻ series line ("Every … of 4"); postpone scope-LOCKED to "Just this one" (series chip aria-disabled); after reload original Postponed+dimmed+retained with "series stays" note + new 3:45 PM rebook present. hygiene clean';
+      } finally { await ctx.context.close(); }
     },
   },
 ];

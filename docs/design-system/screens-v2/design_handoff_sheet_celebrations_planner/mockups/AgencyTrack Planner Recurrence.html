@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Planner · Recurrence states</title>
+  <link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/tokens/fonts.css" />
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    a { color: #01696F; } a:hover { color: #014E52; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 620px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Planner — recurrence states</h1>
+    <p>
+      Recurring appointments inside the shipped Planner language (AppointmentSheet bottom sheet, ApptRow timeline).
+      <b>Create</b>: a Repeats rule (none / daily / weekly / custom days) that reveals an <b>end condition</b> (never / on date / after # times)
+      and a plain-language series preview before booking. <b>On the calendar</b>: a ↻ badge beside the activity chip + a series line
+      ("Every Tue · 4 of 12 · ends Sep 8"). <b>Editing</b> asks instance-vs-series first — past appointments never change.
+      <b>Postpone</b> is scope-locked to just this one, with the timeline state after showing the instance moved and the series untouched.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="planner-base/design-canvas.jsx"></script>
+  <script type="text/babel" src="planner-base/app-tokens.jsx"></script>
+  <script type="text/babel" src="planner-base/app-motion.jsx"></script>
+  <script type="text/babel" src="planner-base/app-shell.jsx"></script>
+  <script type="text/babel" src="planner-base/app-mobile.jsx"></script>
+  <script type="text/babel" src="planner-base/planner-shared.jsx"></script>
+  <script type="text/babel" src="planner-base/planner-mobile-a.jsx"></script>
+  <script type="text/babel" src="planner-recurrence.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="create"
+            title="Create — repeat rule + end condition"
+            subtitle="The AppointmentSheet gains one field: Repeats (none / daily / weekly / custom days). Choosing a rule reveals Ends (never / on date / after # times) and a plain-language teal preview of exactly what gets booked — no surprise series. Custom days opens a 7-day picker (44px targets)."
+          >
+            <DCArtboard id="r-weekly" label="01 · Create · Weekly · ends after 12 times" width={M_W} height={M_H}>
+              <RecCreateSheet t={APP_LIGHT} rule="weekly" end="count" />
+            </DCArtboard>
+            <DCArtboard id="r-custom" label="02 · Create · Custom days (Tue + Thu) · ends on date" width={M_W} height={M_H}>
+              <RecCreateSheet t={APP_LIGHT} rule="custom" end="date" days={['TUE', 'THU']} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="calendar"
+            title="Series on the calendar"
+            subtitle="Recurring items carry a ↻ badge beside the activity chip and a mono series line under the card body: the rule, the position, the end (“Every Tue · 4 of 12 · ends Sep 8”). One-off appointments are untouched — the indicator only appears where a series exists."
+          >
+            <DCArtboard id="r-day" label="03 · Today · two series among one-offs" width={M_W} height={M_H}>
+              <RecTimeline t={APP_LIGHT} appts={REC_DAY} sub="6 booked · 2 repeating" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="edit"
+            title="Editing a series — the choice comes first"
+            subtitle="Tapping edit on a recurring item raises the choice sheet BEFORE any form: this appointment only, or this and all future — with the consequence spelled out under each. Past appointments never change; the note says so."
+          >
+            <DCArtboard id="r-choice" label="04 · Edit · instance vs series choice" width={M_W} height={M_H}>
+              <RecEditChoice t={APP_LIGHT} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="postpone"
+            title="Postpone one instance"
+            subtitle="Postpone is deliberately scope-locked: “Just this one” is the only live option (whole-series changes go through Edit). The amber panel states the consequence in the series grammar. After: the Tue instance sits dimmed with “Moved to Thu · series stays every Tue” — retained, never deleted."
+          >
+            <DCArtboard id="r-postpone" label="05 · Postpone · just this one" width={M_W} height={M_H}>
+              <RecPostponeSheet t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="r-after" label="06 · Timeline after · instance moved, series intact" width={M_W} height={M_H}>
+              <RecTimeline t={APP_LIGHT} appts={REC_DAY_POSTPONED} sub="1 postponed · series unchanged" />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

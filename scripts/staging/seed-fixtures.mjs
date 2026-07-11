@@ -207,6 +207,21 @@ if (isDryRun) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PASSWORD ENV GUARD — abort before ANY mutation (including the CRO / sales_
+// manager Auth password resets in sections A11/A13 below) if STAGING_SEED_
+// PASSWORD is unset. Without this, a careless invocation missing
+// --env-file=.env.staging would silently fall back to CRO_PASSWORD_FALLBACK
+// and reset those two accounts' Auth passwords on every run.
+// ─────────────────────────────────────────────────────────────────────────────
+if (!process.env.STAGING_SEED_PASSWORD) {
+  console.error('\n============================================================');
+  console.error('  SEED ABORTED — STAGING_SEED_PASSWORD is not set.');
+  console.error('  Run with: node --env-file=.env.staging scripts/staging/seed-fixtures.mjs --apply');
+  console.error('============================================================');
+  process.exit(1);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GUARDS (copied from seed-staging.mjs — abort before any write).
 // ─────────────────────────────────────────────────────────────────────────────
 function abort(msg) {
@@ -634,6 +649,18 @@ async function main() {
 
   // ── A9. Appointments (A1 planner week) ──
   console.log('\n── A9: appointments ──');
+  // Cleanup: the t3-appt-recurrence VH leg CREATES series docs via the UI with
+  // auto-ids (a fixed-id .set() re-seed can't reset them). The leg tags every doc
+  // it writes with a 'vhleg-recur' note sentinel; delete them here so staging
+  // never accumulates smoke-created series across runs. Admin SDK bypasses rules.
+  {
+    const apptSnap = await T.collection('appointments').get();
+    let legDel = 0;
+    for (const d of apptSnap.docs) {
+      if (String(d.data().note || '').includes('vhleg-recur')) { await d.ref.delete(); legDel += 1; }
+    }
+    if (legDel) console.log(`  [del] ${legDel} vhleg-recur appointment(s) from a prior smoke run`);
+  }
   const appt = (id, base) => put(T.collection('appointments').doc(id), {
     tenantId: TENANT_ID, agentId: uid.a1, agentUnitId: uid.um, agentBranchId: BRANCH_ID,
     date: base.date, startTime: base.t, durationMin: base.dur ?? 30,
@@ -653,7 +680,13 @@ async function main() {
   // Rest of week.
   await appt('vhfix-appt-d1a', { date: addDays(TODAY, 1), t: '09:30', dur: 60, type: 'FFI', prospectId: 'vhfix-pp-tomorrow' });
   await appt('vhfix-appt-d1b', { date: addDays(TODAY, 1), t: '11:00', type: 'PC' });
-  await appt('vhfix-appt-d2a', { date: addDays(TODAY, 2), t: '10:00', dur: 60, type: 'CI' });
+  // vhfix-appt-d2a is the t3-appt-churn-postpone target: it must be UPCOMING and
+  // INSIDE the current Sun–Sat planner week. A fixed +2d spills into next week on
+  // Fri/Sat runs (leg authored on a Thursday; first broke on a Friday run) — clamp
+  // to Saturday, and push the time late if the clamp collapses onto TODAY (Sat runs)
+  // so the appt is still upcoming at test time.
+  const d2aOff = Math.min(2, 6 - ttNow().getUTCDay());
+  await appt('vhfix-appt-d2a', { date: addDays(TODAY, d2aOff), t: d2aOff === 0 ? '22:30' : '10:00', dur: 60, type: 'CI' });
   await appt('vhfix-appt-d2b', { date: addDays(TODAY, 2), t: '15:00', dur: 45, type: 'AI' });
   await appt('vhfix-appt-d3a', { date: addDays(TODAY, 3), t: '09:00', type: 'PC' });
   await appt('vhfix-appt-d3b', { date: addDays(TODAY, 3), t: '13:00', type: 'SC' });

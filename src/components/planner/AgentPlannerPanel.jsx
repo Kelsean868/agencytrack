@@ -7,7 +7,7 @@ import { formatCurrency } from '../../utils/formatters';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../utils/weeklyActivityFloors';
 import { getProspectInfo } from '../../services/prospectInfoService';
 import {
-  getAgentWeek, createAppointment, updateAppointment,
+  getAgentWeek, createAppointment, createRecurringAppointments, updateAppointment,
   setAppointmentStatus, postponeWithRebook,
 } from '../../services/plannerService';
 import {
@@ -15,8 +15,12 @@ import {
   deriveFollowups, deriveSeedFromKept, formatTime12, dayLabel,
   RETIRED_STATUSES,
 } from './planner.helpers';
+import {
+  seriesRowLabel, cadenceLabel, nextOccurrenceDate, slotDayLabel, formatShortDate,
+} from './recurrence.helpers';
 import { ActivityChip, ApptStatusPill } from './plannerPrimitives';
-import AppointmentSheet from './AppointmentSheet';
+import AppointmentSheet, { SeriesBadge } from './AppointmentSheet';
+import SeriesEditChoice from './SeriesEditChoice';
 
 const VIEWS = [
   { key: 'today',     label: 'Today' },
@@ -32,24 +36,43 @@ const WEEK_COUNTER_ROWS = [
   { type: 'PC',  floorKey: 'callsMade',             label: 'P.C' },
 ];
 
-/** One appointment row — time · type · prospect/free label · status. */
-function AppointmentCard({ appt, prospectName, onChurn }) {
+/** One appointment row — time · type · prospect/free label · status. Recurring
+ * items carry a ↻ badge + a mono series line under a dashed hairline (state 2);
+ * a postponed series instance shows the "moved / series stays" note (state 5). */
+function AppointmentCard({ appt, prospectName, onChurn, resolveAppt }) {
   const retired = RETIRED_STATUSES.has(appt.status);
+  const isSeries = Boolean(appt.seriesId);
   const label = appt.type === 'FREE'
     ? (appt.freeBlockLabel || 'Free block')
     : (prospectName || 'Prospect');
+
+  const cadence = isSeries
+    ? cadenceLabel({ repeatRule: appt.repeatRule, daysOfWeek: appt.daysOfWeek, startDate: appt.date })
+    : '';
+  const activeSeriesLine = isSeries && !retired
+    ? seriesRowLabel({
+      repeatRule: appt.repeatRule, daysOfWeek: appt.daysOfWeek, startDate: appt.date,
+      seriesPos: appt.seriesPos, seriesTotal: appt.seriesTotal,
+    })
+    : '';
+  // A postponed series instance: resolve where it moved (if the rebooked appt is
+  // in the loaded week) and note the series is untouched.
+  const movedTo = isSeries && appt.status === 'postponed' && appt.rescheduledToId
+    ? resolveAppt?.(appt.rescheduledToId)
+    : null;
+
   return (
     <button
       type="button"
       onClick={() => onChurn(appt)}
       data-testid={`appt-card-${appt.id}`}
-      className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+      className={`w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-colors ${
         retired
           ? 'bg-card border-border/50 opacity-60'
           : 'bg-card border-border hover:border-primary/40'
       }`}
     >
-      <div className="shrink-0 w-16">
+      <div className="shrink-0 w-16 pt-0.5">
         <span className={`text-sm font-semibold tabular-nums ${retired ? 'text-ink-muted line-through' : 'text-ink'}`}>
           {formatTime12(appt.startTime)}
         </span>
@@ -57,24 +80,47 @@ function AppointmentCard({ appt, prospectName, onChurn }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <ActivityChip type={appt.type} />
+          {isSeries && <SeriesBadge />}
           <span className={`text-sm font-medium truncate ${retired ? 'text-ink-muted line-through' : 'text-ink'}`}>
             {label}
           </span>
         </div>
         {appt.note && <p className="text-xs text-ink-muted mt-0.5 truncate">{appt.note}</p>}
+
+        {activeSeriesLine && (
+          <div className="mt-2 pt-2 border-t border-dashed border-border">
+            <span data-testid={`appt-series-line-${appt.id}`} className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-ink-muted">
+              <SeriesBadge size={12} /> {activeSeriesLine}
+            </span>
+          </div>
+        )}
+
+        {isSeries && appt.status === 'postponed' && (
+          <div className="mt-2 pt-2 border-t border-dashed border-border flex flex-col gap-1">
+            {movedTo && (
+              <span className="text-[11px] font-semibold text-warning-ink">
+                Moved to {slotDayLabel(movedTo.date)} · {formatTime12(movedTo.startTime)}
+              </span>
+            )}
+            <span data-testid={`appt-series-line-${appt.id}`} className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-ink-muted">
+              <SeriesBadge size={12} /> Only this one moved · series stays {cadence}
+            </span>
+          </div>
+        )}
       </div>
       <ApptStatusPill status={appt.status} />
     </button>
   );
 }
 
-/** Churn action dialog (screen 5) — Kept · Reschedule · Postpone · Cancel. */
+/** Churn action dialog (screen 5) — Kept · Edit · Reschedule · Postpone · Cancel. */
 function ChurnDialog({ appt, onAction, onClose, saving }) {
   const trapRef = useFocusTrap({ onEscape: onClose, escapeDisabled: saving });
   const actions = [
-    { key: 'kept',      label: 'Mark kept',   variant: 'primary' },
-    { key: 'reschedule', label: 'Reschedule', variant: 'plain' },
-    { key: 'postpone',  label: 'Postpone',    variant: 'plain' },
+    { key: 'kept',      label: 'Mark kept',    variant: 'primary' },
+    { key: 'edit',      label: 'Edit details', variant: 'plain' },
+    { key: 'reschedule', label: 'Reschedule',  variant: 'plain' },
+    { key: 'postpone',  label: 'Postpone',     variant: 'plain' },
     { key: 'cancel',    label: 'Cancel appointment', variant: 'danger' },
   ];
   return (
@@ -94,6 +140,7 @@ function ChurnDialog({ appt, onAction, onClose, saving }) {
             key={a.key}
             type="button"
             disabled={saving}
+            data-testid={`churn-action-${a.key}`}
             onClick={() => onAction(a.key, appt)}
             className={`min-h-[44px] rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 ${
               a.variant === 'primary'
@@ -155,6 +202,9 @@ export default function AgentPlannerPanel({
   const [churn, setChurn] = useState(null);
   const [churnSaving, setChurnSaving] = useState(false);
 
+  // Series edit-scope choice sheet (state 3)
+  const [seriesChoice, setSeriesChoice] = useState(null); // null | appt
+
   const load = useCallback(() => {
     if (!tenantId || !agentId) return;
     setLoading(true);
@@ -176,6 +226,12 @@ export default function AgentPlannerPanel({
   );
 
   const byDate = useMemo(() => groupByDate(appts), [appts]);
+  const apptById = useMemo(() => {
+    const m = new Map();
+    for (const a of appts) m.set(a.id, a);
+    return m;
+  }, [appts]);
+  const resolveAppt = useCallback((id) => apptById.get(id) || null, [apptById]);
   const todayAppts = useMemo(() => sortByStartTime(byDate.get(today) || []), [byDate, today]);
   const followups = useMemo(
     () => deriveFollowups(prospects, appts, today), [prospects, appts, today],
@@ -198,16 +254,25 @@ export default function AgentPlannerPanel({
 
   // ── Write handlers ─────────────────────────────────────────────────────────
   const openBook = (presetDate) =>
-    setSheet({ mode: 'create', initial: presetDate ? { date: presetDate, startTime: '09:00' } : { date: today, startTime: '09:00' } });
+    setSheet({
+      mode: 'create',
+      showRepeat: true,
+      initial: presetDate ? { date: presetDate, startTime: '09:00' } : { date: today, startTime: '09:00' },
+    });
 
   const handleSheetSave = async (data, addAnother) => {
     setSheetSaving(true);
     setSheetError('');
     try {
       if (sheet?.rebookFrom) {
+        // Postpone/reschedule rebook: the new appt is a plain one-off (series
+        // metadata is intentionally not carried forward — the moved instance
+        // detaches; the original retains its series link as postponed).
         await postponeWithRebook(tenantId, sheet.rebookFrom, data, meta);
       } else if (sheet?.mode === 'edit' && sheet.initial?.id) {
         await updateAppointment(tenantId, sheet.initial.id, data);
+      } else if (data.recurrence) {
+        await createRecurringAppointments(tenantId, data, data.recurrence, meta);
       } else {
         await createAppointment(tenantId, data, meta);
       }
@@ -220,13 +285,46 @@ export default function AgentPlannerPanel({
     }
   };
 
+  const openEditSheet = (appt) => setSheet({
+    mode: 'edit',
+    initial: {
+      id: appt.id,
+      type: appt.type, date: appt.date, startTime: appt.startTime,
+      durationMin: appt.durationMin, prospectId: appt.prospectId,
+      freeBlockLabel: appt.freeBlockLabel, note: appt.note, apiAmount: appt.apiAmount,
+    },
+  });
+
   const handleChurnAction = async (action, appt) => {
+    if (action === 'edit') {
+      // Edit-in-place. For a SERIES instance, raise the scope-choice sheet first
+      // (state 3): "this only" routes to the standard edit path; series-wide edit
+      // is deferred. One-offs open the edit sheet directly.
+      setChurn(null);
+      if (appt.seriesId) { setSeriesChoice(appt); return; }
+      openEditSheet(appt);
+      return;
+    }
     if (action === 'reschedule' || action === 'postpone') {
       // Rebook: retain the original as postponed + link forward to the new appt.
+      // A SERIES instance postpone is scope-LOCKED to "just this one" (state 4) —
+      // series-wide moves go via Edit — with an amber consequence panel.
       setChurn(null);
+      const isSeriesPostpone = action === 'postpone' && Boolean(appt.seriesId);
+      const nextDate = isSeriesPostpone
+        ? nextOccurrenceDate({ date: appt.date, repeatRule: appt.repeatRule, daysOfWeek: appt.daysOfWeek })
+        : null;
       setSheet({
         mode: 'create',
         rebookFrom: appt.id,
+        seriesPostpone: isSeriesPostpone
+          ? {
+            pos: appt.seriesPos, total: appt.seriesTotal,
+            origDateLabel: slotDayLabel(appt.date),
+            cadence: cadenceLabel({ repeatRule: appt.repeatRule, daysOfWeek: appt.daysOfWeek, startDate: appt.date }),
+            nextLabel: nextDate ? `${formatShortDate(nextDate)}, ${formatTime12(appt.startTime)}` : '',
+          }
+          : null,
         initial: {
           type: appt.type, date: appt.date, startTime: appt.startTime,
           durationMin: appt.durationMin, prospectId: appt.prospectId,
@@ -323,7 +421,7 @@ export default function AgentPlannerPanel({
                 </div>
               ) : (
                 todayAppts.map((a) => (
-                  <AppointmentCard key={a.id} appt={a} prospectName={prospectName(a.prospectId)} onChurn={setChurn} />
+                  <AppointmentCard key={a.id} appt={a} prospectName={prospectName(a.prospectId)} onChurn={setChurn} resolveAppt={resolveAppt} />
                 ))
               )}
 
@@ -396,7 +494,7 @@ export default function AgentPlannerPanel({
                       ) : (
                         <div className="flex flex-col gap-2">
                           {dayAppts.map((a) => (
-                            <AppointmentCard key={a.id} appt={a} prospectName={prospectName(a.prospectId)} onChurn={setChurn} />
+                            <AppointmentCard key={a.id} appt={a} prospectName={prospectName(a.prospectId)} onChurn={setChurn} resolveAppt={resolveAppt} />
                           ))}
                         </div>
                       )}
@@ -428,7 +526,7 @@ export default function AgentPlannerPanel({
                     {f.overdue && <ApptStatusPill status="postponed" />}
                     <button
                       type="button"
-                      onClick={() => setSheet({ mode: 'create', initial: { date: today, startTime: '09:00', prospectId: f.id, type: 'FFI' } })}
+                      onClick={() => setSheet({ mode: 'create', showRepeat: true, initial: { date: today, startTime: '09:00', prospectId: f.id, type: 'FFI' } })}
                       className="min-h-[44px] px-3 rounded-lg bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-colors"
                     >
                       Book
@@ -448,8 +546,22 @@ export default function AgentPlannerPanel({
           prospects={prospects}
           saving={sheetSaving}
           error={sheetError}
+          showRepeat={Boolean(sheet.showRepeat)}
+          seriesPostpone={sheet.seriesPostpone ?? null}
           onSave={handleSheetSave}
           onClose={() => { setSheet(null); setSheetError(''); }}
+        />
+      )}
+
+      {seriesChoice && (
+        <SeriesEditChoice
+          contextLine={`${seriesChoice.type === 'FREE'
+            ? (seriesChoice.freeBlockLabel || 'Free block')
+            : (prospectName(seriesChoice.prospectId) || 'Prospect')} · ${cadenceLabel({
+              repeatRule: seriesChoice.repeatRule, daysOfWeek: seriesChoice.daysOfWeek, startDate: seriesChoice.date,
+            })}${seriesChoice.seriesPos && seriesChoice.seriesTotal ? ` · ${seriesChoice.seriesPos} of ${seriesChoice.seriesTotal}` : ''}`}
+          onEditThisOnly={() => { const a = seriesChoice; setSeriesChoice(null); openEditSheet(a); }}
+          onClose={() => setSeriesChoice(null)}
         />
       )}
 

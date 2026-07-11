@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   DAILY_STREAK_MILESTONES,
   GOALS_WEEKLY_STREAK_MILESTONES,
+  FILING_WEEKLY_STREAK_MILESTONES,
   resolveStreakCelebration,
   currentAwardStreak,
   resolveGoalsCelebration,
@@ -53,6 +54,37 @@ describe('resolveStreakCelebration', () => {
     // New run climbs back to 5 — fires again.
     const again = resolveStreakCelebration({ streak: 5, celebratedMax: 0 });
     expect(again.milestone).toBe(5);
+  });
+});
+
+describe('resolveStreakCelebration — filing milestones (5/10/25/52)', () => {
+  const M = FILING_WEEKLY_STREAK_MILESTONES;
+
+  it('exports the filing milestone set', () => {
+    expect(FILING_WEEKLY_STREAK_MILESTONES).toEqual([5, 10, 25, 52]);
+  });
+
+  it('does NOT fire below the first rung (streak 4)', () => {
+    expect(resolveStreakCelebration({ streak: 4, celebratedMax: 0, milestones: M }).milestone).toBeNull();
+  });
+
+  it('fires 5 when a 9-week streak crosses it uncelebrated (seed case)', () => {
+    const r = resolveStreakCelebration({ streak: 9, celebratedMax: 0, milestones: M });
+    expect(r.milestone).toBe(5);
+    expect(r.nextCelebratedMax).toBe(5);
+  });
+
+  it('fires each higher rung once as the streak climbs (10 → 25 → 52)', () => {
+    expect(resolveStreakCelebration({ streak: 10, celebratedMax: 5, milestones: M }).milestone).toBe(10);
+    expect(resolveStreakCelebration({ streak: 25, celebratedMax: 10, milestones: M }).milestone).toBe(25);
+    expect(resolveStreakCelebration({ streak: 52, celebratedMax: 25, milestones: M }).milestone).toBe(52);
+  });
+
+  it('does NOT re-fire when celebratedMax >= the streak-reached rung', () => {
+    // Already celebrated 5, still at 9 (highest rung reached is 5) → no re-fire.
+    expect(resolveStreakCelebration({ streak: 9, celebratedMax: 5, milestones: M }).milestone).toBeNull();
+    // Exactly at a rung already celebrated.
+    expect(resolveStreakCelebration({ streak: 10, celebratedMax: 10, milestones: M }).milestone).toBeNull();
   });
 });
 

@@ -1494,7 +1494,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 }
 .sidebar-link-row:hover .sidebar-nav-star,
 .sidebar-nav-star:focus-visible,
-.sidebar-nav-star.sidebar-nav-star-on {
+.sidebar-nav-star.sidebar-nav-star-pinned {
   opacity: 1;
 }
 .sidebar-nav-star:hover { color: var(--color-text); }
@@ -1502,8 +1502,20 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
-.sidebar-nav-star.sidebar-nav-star-on { color: var(--color-primary); }
-.sidebar-nav-star.sidebar-nav-star-on svg { fill: currentColor; }
+/* ★ Pin de-emphasis v2 (Run4 polish — operator-locked, supersedes Run3 F8's
+   size/contrast reduction): the star renders FILLED + brand-teal ONLY while its
+   row sits in the ★ Pinned zone itself (`sidebar-nav-star-filled`, set only for
+   inPinnedZone rows in Sidebar.jsx). Everywhere else the star renders with the
+   base outline treatment (--color-text-muted, unfilled) regardless of pinned
+   state — position (which zone) + fill-vs-outline carry the "this is pinned"
+   signal now, not size or color de-emphasis. The base --color-text-muted clears
+   ≥3:1 non-text/icon contrast in both themes (~5.7:1 light, ~7.4:1 dark on
+   --color-surface), so the outline glyph stays AA-safe everywhere it renders.
+   `sidebar-nav-star-pinned` (opacity only, set whenever the row's item IS pinned,
+   in either zone) keeps a pinned item's home-row star glanceable without
+   hovering — it's just outlined instead of filled. */
+.sidebar-nav-star.sidebar-nav-star-filled { color: var(--color-primary); }
+.sidebar-nav-star.sidebar-nav-star-filled svg { fill: currentColor; }
 @media (prefers-reduced-motion: no-preference) {
   .sidebar-nav-star { transition: opacity var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
 }
@@ -2022,6 +2034,14 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   0%   { transform: translateY(0)     rotate(0deg);   opacity: 0; }
   15%  {                                              opacity: 0.85; }
   100% { transform: translateY(520px) rotate(560deg); opacity: 0; }
+}
+/* Expanding/fading ring around the streak-takeover medal (2.11 reskin —
+   FilingStreakCelebration.jsx). Decorative (aria-hidden), motion-safe only —
+   the annual (52-week) rung adds a second, STATIC (non-animated) ring on top
+   of this one per the mockup, so this keyframe stays scoped to the base ring. */
+@keyframes celebration-ring {
+  0%   { transform: scale(0.85); opacity: 0.55; }
+  100% { transform: scale(1.35); opacity: 0; }
 }
 
 /* ── Responsive: mobile (<768px, hide sidebar, show bottom-nav) ──────── */

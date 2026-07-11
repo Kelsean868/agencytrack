@@ -132,9 +132,28 @@ async function main() {
   await t('20. Owner delete -> DENY (no hard deletes)', () =>
     assertFails(deleteDoc(apptRef(agent1Db, A1))));
 
+  console.log(''); console.log('recurrence (series metadata):');
+  const series = { seriesId: 'ser-1', repeatRule: 'weekly', seriesPos: 4, seriesTotal: 12 };
+  await t('21. Valid weekly series instance -> ALLOW', () =>
+    assertSucceeds(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, series))));
+  await t('22. Bad repeatRule (monthly) -> DENY', () =>
+    assertFails(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, { ...series, repeatRule: 'monthly' }))));
+  await t('23. Non-int seriesPos -> DENY', () =>
+    assertFails(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, { ...series, seriesPos: 1.5 }))));
+  await t('24. seriesPos out of range (0) -> DENY', () =>
+    assertFails(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, { ...series, seriesPos: 0 }))));
+  await t('25. seriesTotal > 52 -> DENY', () =>
+    assertFails(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, { ...series, seriesTotal: 100 }))));
+  await t('26. Custom cadence with daysOfWeek list -> ALLOW', () =>
+    assertSucceeds(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, { ...series, repeatRule: 'custom', daysOfWeek: ['TUE', 'THU'] }))));
+  await t('27. daysOfWeek not a list -> DENY', () =>
+    assertFails(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, { ...series, repeatRule: 'custom', daysOfWeek: 'TUE' }))));
+  await t('28. Forged agentId on a series instance -> DENY', () =>
+    assertFails(addDoc(coll(agent1Db), validAppt(AGENT2, 'um2', BRANCH_B, series))));
+
   await testEnv.cleanup();
   console.log('');
-  console.log(`${passed + failed} tests: ${passed} passed, ${failed} failed (20 expected)`);
+  console.log(`${passed + failed} tests: ${passed} passed, ${failed} failed (28 expected)`);
   if (failed > 0) process.exit(1);
 }
 

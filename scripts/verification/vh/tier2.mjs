@@ -106,31 +106,68 @@ export const LEGS = [
         await bm.context.close();
       }
 
-      // ── UM side: own submitted WAR shows the review + NO self-review controls ──
+      // ── UM side: own my-war surfaces the upline review (F9) + NO self-review controls ──
+      // F9 flipped the former "pill ABSENT (finding)" note into hard assertions:
+      // the owner's my-war MUST render the review pill + reviewer name for the
+      // approved week, and the note-disclosure affordance MUST reveal the note
+      // text for the changes-requested week. Self-review-denied assertion kept.
       const um = await newLegContext(browser);
-      let umPill = 'not-found';
       try {
         const p = um.page;
         await login(p, 'unit_manager');
         await clickTid(p, 'nav-my-war');
         await p.locator('select').first().waitFor({ state: 'attached', timeout: 15_000 });
         await p.waitForTimeout(800);
-        await selectReactOption(p, p.locator('select').first(), W(-1)); // 2026-06-28 (approved)
+
+        // W(-1)=2026-06-28 (approved): pill + reviewer name (F9 hard assert).
+        await selectReactOption(p, p.locator('select').first(), W(-1));
         await p.waitForTimeout(1800);
-        // Required WRITE-DENIED assertion: owner cannot self-review → controls absent.
+        // Required WRITE-DENIED assertion (unchanged): owner cannot self-review → controls absent.
         const controls = await p.locator(tsel('war-review-controls')).count();
         if (controls > 0) throw new Error('SELF-REVIEW LEAK: war-review-controls rendered on UM own WAR (owner should be denied review).');
-        // Owner-surface review pill (best-effort — recorded honestly if the surface renders it differently).
-        const umTxt = await scopeText(p, 'main');
-        umPill = /Approved/i.test(umTxt) ? 'Approved shown'
-          : umTxt.includes(APPROVE_NOTE) ? 'leader-note shown'
-          : 'review indicator NOT surfaced on owner my-war (finding)';
+        await p.locator(tsel('my-war-review-state')).waitFor({ state: 'visible', timeout: 12_000 });
+        await mustText(p, /Approved/i, 'UM my-war approved → pill', 'my-war-review-state');
+        await mustText(p, /Reviewed by Staging Branch Manager/i, 'UM my-war approved → reviewer name', 'my-war-review-state');
+
+        // Item E — My WAR hero (MyWarCard conformance): structure + deterministic
+        // own-production for W(-1) (seed UM_WEEKS = api 5,200 / apps 1).
+        await p.locator(tsel('my-war-hero')).waitFor({ state: 'visible', timeout: 12_000 });
+        await mustText(p, /MY API/i, 'UM my-war hero → API label', 'my-war-hero');
+        await mustText(p, /APPLICATIONS/i, 'UM my-war hero → apps label', 'my-war-hero');
+        await mustText(p, /FILING STREAK/i, 'UM my-war hero → streak label', 'my-war-hero');
+        await p.locator(tsel('war-streak-dots')).waitFor({ state: 'visible', timeout: 8000 });
+        await p.locator(tsel('my-war-hero-api')).waitFor({ state: 'visible', timeout: 12_000 });
+        await p.waitForTimeout(1200); // let the API count-up settle to the exact seed value
+        await mustText(p, /TTD\s*5,200/, 'UM my-war hero → API value W(-1)', 'my-war-hero-api');
+        await mustText(p, /^\s*1\s*$/, 'UM my-war hero → apps value W(-1)', 'my-war-hero-apps');
         await shot(p, 't2-war-um-side');
+
+        // W(-2)=2026-06-21 (changes requested): pill + note affordance reveals the note (F9 hard assert).
+        await selectReactOption(p, p.locator('select').first(), W(-2));
+        await p.waitForTimeout(1800);
+        await p.locator(tsel('my-war-review-state')).waitFor({ state: 'visible', timeout: 12_000 });
+        await mustText(p, /Changes requested/i, 'UM my-war changes → pill', 'my-war-review-state');
+
+        // Item E — hero own-production for W(-2) (seed UM_WEEKS = api 7,500 / apps 2).
+        await p.locator(tsel('my-war-hero-api')).waitFor({ state: 'visible', timeout: 12_000 });
+        await p.waitForTimeout(1200);
+        await mustText(p, /TTD\s*7,500/, 'UM my-war hero → API value W(-2)', 'my-war-hero-api');
+        await mustText(p, /^\s*2\s*$/, 'UM my-war hero → apps value W(-2)', 'my-war-hero-apps');
+        // The leader's note sits behind a disclosure affordance — click to reveal, then assert the text.
+        await p.locator(tsel('my-war-review-note-toggle')).click({ timeout: 8000 });
+        await p.locator(tsel('my-war-review-note')).waitFor({ state: 'visible', timeout: 8000 });
+        const noteRe = new RegExp(CHANGES_NOTE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        await mustText(p, noteRe, 'UM my-war changes → note revealed', 'my-war-review-note');
+        await shot(p, 't2-war-um-changes');
         assertLegHygiene(um);
       } finally {
         await um.context.close();
       }
-      return `BM approved UM 06-28 (+reviewer name) & requested-changes UM 06-21 — both pills re-read; UM own WAR: self-review controls ABSENT (denied); owner pill: ${umPill}.`;
+      return 'BM approved UM 06-28 (+reviewer name) & requested-changes UM 06-21 — both pills re-read; '
+        + 'UM my-war: self-review controls ABSENT (denied); owner review pill + reviewer name shown for the '
+        + 'approved week; changes-requested note affordance reveals the note text; '
+        + 'My WAR hero (item E) renders the MY API/APPLICATIONS/FILING STREAK metric row with the seed '
+        + 'own-production values (W-1 5,200/1, W-2 7,500/2).';
     },
   },
 
@@ -400,10 +437,15 @@ export const LEGS = [
         const p = a1.page;
         await login(p, 'agent1');
         await gotoAgent(p, 'agent-tab-financing', 'fsv-paydown-hero');
-        await mustText(p, currencyRe(11000), 'K9 current balance 11,000', 'fsv-paydown-now');
-        // Projection present (declining ledger → clear-month rendered).
-        await mustText(p, /clear it in about|PROJECTED CLEAR|months?/i, 'K9 projection narrative', 'fsv-paydown-hero');
-        await mustText(p, /SEP 2026|Sep 2026/i, 'K9 projected clear month', 'fsv-paydown-hero');
+        try {
+          await mustText(p, currencyRe(11000), 'K9 current balance 11,000', 'fsv-paydown-now');
+          // Projection present (declining ledger → clear-month rendered).
+          await mustText(p, /clear it in about|PROJECTED CLEAR|months?/i, 'K9 projection narrative', 'fsv-paydown-hero');
+          await mustText(p, /SEP 2026|Sep 2026/i, 'K9 projected clear month', 'fsv-paydown-hero');
+        } catch (e) {
+          await shot(p, 'FAIL-t2-financing-k9');
+          throw e;
+        }
         await shot(p, 't2-financing-k9');
         assertLegHygiene(a1);
       } finally {
@@ -419,13 +461,25 @@ export const LEGS = [
         await clickTid(p, 'nav-financing');
         await p.locator(tsel('financing-subview-risk')).waitFor({ state: 'visible', timeout: 15_000 });
         await clickTid(p, 'financing-subview-risk');
-        await p.locator(tsel('financing-risk-panel')).waitFor({ state: 'attached', timeout: 12_000 });
-        await p.waitForTimeout(800);
-        await mustText(p, /Staging Agent Two/, 'K7 at-risk agent', 'financing-risk-panel');
-        await mustText(p, /at\s*risk/i, 'K7 AT RISK chip', 'financing-risk-panel');
-        await mustText(p, /\b1\b/, 'K7 at-risk count = 1', 'frp-at-risk');
-        await mustText(p, /2 consecutive misses|2 misses/i, 'K7 two-miss monitor', 'financing-risk-panel');
-        await mustText(p, /−?-?15%|15%/, 'K7 −15% adjustment flag', 'financing-risk-panel');
+        const riskPanel = p.locator(tsel('financing-risk-panel'));
+        await riskPanel.waitFor({ state: 'attached', timeout: 12_000 });
+        try {
+          // Known flake: the panel shell (financing-risk-panel) can attach on
+          // first paint before its async-fetched roster rows land — a fixed
+          // post-navigation timeout races that fetch. Explicitly await the K7
+          // roster ROW itself (Staging Agent Two) with a generous timeout so
+          // the assertions below run against real content, not first paint.
+          await riskPanel.getByText(/Staging Agent Two/i).first()
+            .waitFor({ state: 'attached', timeout: 20_000 });
+          await mustText(p, /Staging Agent Two/, 'K7 at-risk agent', 'financing-risk-panel');
+          await mustText(p, /at\s*risk/i, 'K7 AT RISK chip', 'financing-risk-panel');
+          await mustText(p, /\b1\b/, 'K7 at-risk count = 1', 'frp-at-risk');
+          await mustText(p, /2 consecutive misses|2 misses/i, 'K7 two-miss monitor', 'financing-risk-panel');
+          await mustText(p, /−?-?15%|15%/, 'K7 −15% adjustment flag', 'financing-risk-panel');
+        } catch (e) {
+          await shot(p, 'FAIL-t2-financing-k7');
+          throw e;
+        }
         await shot(p, 't2-financing-k7');
         assertLegHygiene(bm);
       } finally {
@@ -712,6 +766,55 @@ export const LEGS = [
         }
         assertLegHygiene(ctx);
         return `unit_manager Game Plan opened populated (anchor + TTD 150,000 yearPlan total) in ${elapsed}ms (< ${CAP_MS}ms cap); console clean, zero prod requests. NOTE: prefetch path verified only against a deploy INCLUDING the D1 change.`;
+      } finally {
+        await ctx.context.close();
+      }
+    },
+  },
+
+  // ── F10 (C4). Filing-streak milestone celebration (agent home) ──
+  //   The A1 fixture has a 9-week filing streak (9 submitted weekly reports,
+  //   W(-9)..W(-1) — seed-fixtures A1_WEEKS). With FILING_WEEKLY_STREAK_MILESTONES
+  //   [5, 10, 25, 52] and NO celebratedMax persisted (fresh context = empty
+  //   localStorage), opening the home surface fires the milestone-5 takeover.
+  //   Device-local only (localStorage marker, per-year) — NOT a Firestore mutation,
+  //   and the marker is discarded when the leg's context closes, so the leg is
+  //   idempotent across suite runs with no re-seed / reset needed (same class as
+  //   t2-settings-roundtrip's device-local state). The in-leg reload proves the
+  //   fire-once guarantee (marker persisted within the surviving context).
+  {
+    id: 't2-filing-streak-milestone',
+    role: 'agent1',
+    desc: 'Agent home: 9-week filing streak (A1 seeded) crosses milestone 5 → FilingStreakCelebration takeover fires on first load (FILING STREAK · 5 WEEKS); dismiss → gone; reload → stays absent (per-year celebratedMax persisted, fire-once). Device-local localStorage marker only — no Firestore mutation; discarded with the context.',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        const p = ctx.page;
+        // Opt out of the login helper's celebration auto-dismiss — the takeover IS this leg's subject.
+        await login(p, 'agent1', { dismissCelebration: false }); // default tab = dashboard (home) where the streak lives
+        const takeover = p.locator(tsel('filing-streak-celebration'));
+
+        // Fires on load: the seeded 9-week streak crosses the uncelebrated rung 5.
+        await takeover.waitFor({ state: 'visible', timeout: 20_000 });
+        await mustText(p, /FILING STREAK.{0,4}5 WEEKS/i, 'filing-streak milestone-5 copy', 'filing-streak-celebration');
+        await shot(p, 't2-filing-streak-fired');
+
+        // Dismiss via the primary CTA → takeover unmounts.
+        await clickTid(p, 'celebration-primary-cta');
+        await takeover.waitFor({ state: 'detached', timeout: 8_000 });
+
+        // Reload: the per-year celebratedMax (now 5) survives in this context, so
+        // the fire-once guarantee holds — no re-fire from the same seeded streak.
+        await p.reload({ waitUntil: 'domcontentloaded' });
+        await p.waitForFunction(() => document.body.textContent.length > 200, { timeout: 20_000 });
+        await p.waitForTimeout(2500); // give the on-load effect its chance to (not) fire
+        if (await takeover.count()) {
+          await shot(p, 'FAIL-t2-filing-streak-refired');
+          throw new Error('filing-streak celebration re-fired after reload (celebratedMax marker should suppress it).');
+        }
+        await shot(p, 't2-filing-streak-after-reload');
+        assertLegHygiene(ctx);
+        return 'Filing-streak milestone: 9-week streak fired the milestone-5 takeover on home load (FILING STREAK · 5 WEEKS); dismissed cleanly; stayed absent after reload (per-year celebratedMax fire-once). Device-local marker only, no Firestore mutation; console clean, zero prod requests.';
       } finally {
         await ctx.context.close();
       }

@@ -126,6 +126,18 @@ describe('UnitManagerProductionView — download CTA feeds generateUnitPDF', () 
     await screen.findByTestId('unit-production-download');
     expect(screen.getByText('Estimated')).toBeInTheDocument();
   });
+
+  it('renders the Unit Aggregate as a glass hero with the Agents stat (BM parity)', async () => {
+    render(<UnitManagerProductionView />);
+    const label = await screen.findByText('Unit Aggregate');
+    const pane = label.closest('div');
+    expect(pane.className).toContain('glass');
+    expect(pane.className).toContain('hero');
+    expect(pane.className).toContain('teal');
+    expect(screen.getByText('Agents')).toBeInTheDocument();
+    // one agent in the fixture roster
+    expect(screen.getByText('Agents').nextElementSibling).toHaveTextContent('1');
+  });
 });
 
 describe('BranchManagerProductionView — download CTA feeds generateBranchPDF', () => {

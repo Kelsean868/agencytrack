@@ -136,10 +136,11 @@ describe('MeetingMode — run-of-show', () => {
 
   it('agenda rail is shown on the agent scene and jumps when clicked', async () => {
     await renderLoaded();
-    // opening(0) → branch → activity → production → agent(4): the rail shows on
-    // the agent scene. Deck: opening, branch, activity, production, agent,
-    // recognition, close (units/exceptions/celebrations/campaign skip — no data).
-    for (let i = 0; i < 4; i += 1) fireEvent.keyDown(document, { key: 'ArrowRight' });
+    // opening(0) → branch → activity → production → funnel → agent(5): the rail
+    // shows on the agent scene. Deck: opening, branch, activity, production,
+    // funnel, agent, recognition, close (units/exceptions/celebrations/campaign
+    // skip — no data).
+    for (let i = 0; i < 5; i += 1) fireEvent.keyDown(document, { key: 'ArrowRight' });
     await waitFor(() => expect(screen.getByText(/This week's activity/i)).toBeInTheDocument());
     // The rail lists every scene; clicking "Branch scorecard" jumps back to it.
     fireEvent.click(screen.getByRole('button', { name: 'Branch scorecard' }));

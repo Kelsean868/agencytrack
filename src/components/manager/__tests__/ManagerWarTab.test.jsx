@@ -43,6 +43,13 @@ vi.mock('../../../services/managerStandardOverrideService', () => ({
   getResolvedStandards: (...args) => mockGetResolvedStandards(...args),
 }));
 
+// Own-production source for the MyWarCard hero metric row (item E). extractFields
+// + extractTotalProductionCredit + formatCurrency stay real (pure readers).
+const mockGetAgentSubmissions = vi.fn().mockResolvedValue([]);
+vi.mock('../../../services/submissionService', () => ({
+  getAgentSubmissions: (...args) => mockGetAgentSubmissions(...args),
+}));
+
 // ── Validators mock (stable Sunday list) ─────────────────────────────────────
 
 vi.mock('../../../utils/validators', () => ({
@@ -90,6 +97,7 @@ beforeEach(() => {
   mockGetOwnJfwCount.mockResolvedValue(0);
   mockGetOwnWarStreak.mockResolvedValue([]);
   mockGetResolvedStandards.mockResolvedValue({});
+  mockGetAgentSubmissions.mockResolvedValue([]);
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
 });
 
@@ -244,6 +252,12 @@ describe('ManagerWarTab — submitted WAR is read-only', () => {
     renderTab();
     await flushMount();
     expect(screen.queryByRole('button', { name: /submit report/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps the week selector ENABLED (navigation must not lock on submitted weeks)', async () => {
+    renderTab();
+    await flushMount();
+    expect(screen.getByLabelText('Select week')).toBeEnabled();
   });
 });
 
@@ -568,5 +582,132 @@ describe('ManagerWarTab — I3a accountability flag panel', () => {
     renderTab();
     await flushMount();
     expect(screen.getByTestId('accountability-flag-panel')).toHaveTextContent(/2 standards under target/i);
+  });
+});
+
+// ── F9 — upline review status surfaced read-only on the owner's my-war ────────
+
+const reviewedWar = (overrides = {}) => ({
+  id: 'um1_2026-05-17', managerId: 'um1', tenantId: 'test-tenant',
+  weekStart: '2026-05-17', managerRole: 'unit_manager', managerRoleRank: 1,
+  branchId: 'branch-a', unitId: 'um1', jfwCount: 0, status: 'submitted',
+  oneOnOnesConducted: 2, namesSourced: 3, interviewsConducted: 1,
+  recruitsInFirstWeeks: 0, trainingSessions: 1, trainingTopic: '',
+  unitMeetingHeld: false, attendanceCount: null, dashboardReviewDone: true,
+  ...overrides,
+});
+
+describe('ManagerWarTab — F9 review status pill', () => {
+  it('renders the Approved pill with the reviewer name when the WAR is approved', async () => {
+    mockGetWar.mockResolvedValue(reviewedWar({
+      reviewStatus: 'approved',
+      reviewedBy: 'bm1',
+      reviewedByName: 'Branch Manager 1',
+      reviewNote: '',
+      reviewedAt: new Date('2026-05-20T12:00:00Z'),
+    }));
+    renderTab();
+    await flushMount();
+
+    const block = screen.getByTestId('my-war-review-state');
+    expect(block).toBeInTheDocument();
+    expect(block).toHaveTextContent(/Approved/);
+    expect(block).toHaveTextContent(/Reviewed by Branch Manager 1/);
+    // No note on this review → no disclosure affordance.
+    expect(screen.queryByTestId('my-war-review-note-toggle')).not.toBeInTheDocument();
+  });
+
+  it('renders the Changes requested pill with a note affordance that reveals the note', async () => {
+    mockGetWar.mockResolvedValue(reviewedWar({
+      reviewStatus: 'changes_requested',
+      reviewedBy: 'bm1',
+      reviewedByName: 'Branch Manager 1',
+      reviewNote: 'Please revise the fact-find counts.',
+      reviewedAt: new Date('2026-05-20T12:00:00Z'),
+    }));
+    renderTab();
+    await flushMount();
+
+    const block = screen.getByTestId('my-war-review-state');
+    expect(block).toHaveTextContent(/Changes requested/);
+    expect(block).toHaveTextContent(/Reviewed by Branch Manager 1/);
+
+    // Note is behind a disclosure — hidden until the affordance is clicked.
+    expect(screen.queryByTestId('my-war-review-note')).not.toBeInTheDocument();
+    const toggle = screen.getByTestId('my-war-review-note-toggle');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTestId('my-war-review-note'))
+      .toHaveTextContent('Please revise the fact-find counts.');
+  });
+
+  it('renders no review block when the WAR has no review fields', async () => {
+    mockGetWar.mockResolvedValue(reviewedWar()); // no reviewStatus
+    renderTab();
+    await flushMount();
+    expect(screen.queryByTestId('my-war-review-state')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('my-war-review-note-toggle')).not.toBeInTheDocument();
+  });
+});
+
+// ── item E — My WAR hero (MyWarCard production metric row) ─────────────────────
+
+describe('ManagerWarTab — My WAR hero production metrics', () => {
+  beforeEach(() => {
+    // Reduced-motion → useCountUp snaps to the final value synchronously, so the
+    // hero API numeral is deterministic without flushing requestAnimationFrame.
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: true,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      addListener: vi.fn(), removeListener: vi.fn(),
+    });
+  });
+
+  it('renders the hero with the three metric labels + completion ring', async () => {
+    renderTab();
+    await flushMount();
+    const hero = screen.getByTestId('my-war-hero');
+    expect(hero).toBeInTheDocument();
+    expect(hero).toHaveTextContent(/My API/i);
+    expect(hero).toHaveTextContent(/Applications/i);
+    expect(hero).toHaveTextContent(/Filing streak/i);
+    expect(screen.getByTestId('war-completion-ring')).toBeInTheDocument();
+  });
+
+  it('shows the own-week API and applications from the manager submission', async () => {
+    mockGetAgentSubmissions.mockResolvedValue([
+      {
+        id: 'um1_2026-05-17', weekStarting: '2026-05-17', status: 'submitted',
+        version: 2, newBusiness: { api: 5200, apps: 1 }, totalProductionCredit: 5200,
+      },
+    ]);
+    renderTab();
+    await flushMount();
+    await flushMount();
+    expect(screen.getByTestId('my-war-hero-api')).toHaveTextContent(/TTD\s*5,200/);
+    expect(screen.getByTestId('my-war-hero-apps')).toHaveTextContent(/^1$/);
+  });
+
+  it('renders a clean zero-state when the manager has no own submission for the week', async () => {
+    mockGetAgentSubmissions.mockResolvedValue([]);
+    renderTab();
+    await flushMount();
+    await flushMount();
+    expect(screen.getByTestId('my-war-hero-api')).toHaveTextContent(/TTD\s*0/);
+    expect(screen.getByTestId('my-war-hero-apps')).toHaveTextContent(/^0$/);
+  });
+
+  it('shows a dash (no crash) when the own-production fetch fails', async () => {
+    mockGetAgentSubmissions.mockRejectedValue(new Error('boom'));
+    renderTab();
+    await flushMount();
+    await flushMount();
+    expect(screen.getByTestId('my-war-hero-api')).toHaveTextContent('—');
+    expect(screen.getByTestId('my-war-hero-apps')).toHaveTextContent('—');
+    // Rest of the form still renders — the hero fetch failure is non-blocking.
+    expect(screen.getByText('My Weekly Activity Report')).toBeInTheDocument();
   });
 });

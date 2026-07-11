@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+let docSeq = 0;
 const hoisted = vi.hoisted(() => ({
   mockAddDoc:     vi.fn(),
   mockUpdateDoc:  vi.fn(),
@@ -7,14 +8,19 @@ const hoisted = vi.hoisted(() => ({
   mockQuery:      vi.fn((...args) => ({ _query: args })),
   mockWhere:      vi.fn((field, op, value) => ({ _where: { field, op, value } })),
   mockOrderBy:    vi.fn((field, dir) => ({ _orderBy: { field, dir } })),
-  mockDoc:        vi.fn((...args) => ({ _doc: args })),
   mockCollection: vi.fn((...args) => ({ _collection: args })),
   mockServerTimestamp: vi.fn(() => ({ _type: 'serverTimestamp' })),
+  mockBatchSet:    vi.fn(),
+  mockBatchCommit: vi.fn(() => Promise.resolve()),
 }));
+// doc() mints a fresh id on every call (mirrors Firestore auto-id) so the series
+// grouping id + per-instance refs are distinguishable.
+const mockDoc = vi.fn((...args) => ({ id: `auto-${docSeq += 1}`, _doc: args }));
+const mockWriteBatch = vi.fn(() => ({ set: hoisted.mockBatchSet, commit: hoisted.mockBatchCommit }));
 
 vi.mock('firebase/firestore', () => ({
   collection:      (...a) => hoisted.mockCollection(...a),
-  doc:             (...a) => hoisted.mockDoc(...a),
+  doc:             (...a) => mockDoc(...a),
   addDoc:          (...a) => hoisted.mockAddDoc(...a),
   updateDoc:       (...a) => hoisted.mockUpdateDoc(...a),
   getDocs:         (...a) => hoisted.mockGetDocs(...a),
@@ -22,10 +28,11 @@ vi.mock('firebase/firestore', () => ({
   where:           (...a) => hoisted.mockWhere(...a),
   orderBy:         (...a) => hoisted.mockOrderBy(...a),
   serverTimestamp: () => hoisted.mockServerTimestamp(),
+  writeBatch:      (...a) => mockWriteBatch(...a),
 }));
 
 import {
-  createAppointment, updateAppointment, setAppointmentStatus,
+  createAppointment, createRecurringAppointments, updateAppointment, setAppointmentStatus,
   postponeWithRebook, getAgentDay, getAgentWeek, getTeamWeek,
   TYPE_KEYS, STATUS_KEYS,
 } from '../plannerService';
@@ -88,6 +95,50 @@ describe('createAppointment', () => {
     hoisted.mockAddDoc.mockClear();
     await createAppointment('t1', { type: 'CI', freeBlockLabel: 'Training', date: '2026-06-22', startTime: '10:00' }, META);
     expect(hoisted.mockAddDoc.mock.calls[0][1].freeBlockLabel).toBeUndefined();
+  });
+});
+
+describe('createRecurringAppointments', () => {
+  it('batch-writes one doc per occurrence, each with series metadata', async () => {
+    const res = await createRecurringAppointments('t1', {
+      type: 'PC', date: '2026-07-14', startTime: '17:00', durationMin: 60, note: 'dial block',
+    }, { repeatRule: 'weekly', endCondition: { type: 'count', count: 4 } }, META);
+
+    expect(res.count).toBe(4);
+    expect(res.dates).toEqual(['2026-07-14', '2026-07-21', '2026-07-28', '2026-08-04']);
+    expect(hoisted.mockBatchSet).toHaveBeenCalledTimes(4);
+    expect(hoisted.mockBatchCommit).toHaveBeenCalledTimes(1);
+
+    const payloads = hoisted.mockBatchSet.mock.calls.map((c) => c[1]);
+    // Every instance shares one seriesId and carries pos/total + the contract keys.
+    const seriesIds = new Set(payloads.map((p) => p.seriesId));
+    expect(seriesIds.size).toBe(1);
+    expect([...seriesIds][0]).toBe(res.seriesId);
+    payloads.forEach((p, i) => {
+      expect(p.repeatRule).toBe('weekly');
+      expect(p.seriesPos).toBe(i + 1);
+      expect(p.seriesTotal).toBe(4);
+      expect(p.date).toBe(res.dates[i]);
+      expect(p.agentId).toBe('agent-1');
+      expect(p.agentUnitId).toBe('um-9');
+      expect(p.type).toBe('PC');
+      expect(p).not.toHaveProperty('daysOfWeek'); // weekly omits daysOfWeek
+    });
+  });
+
+  it('stores daysOfWeek only for custom cadence', async () => {
+    const res = await createRecurringAppointments('t1', {
+      type: 'FREE', date: '2026-07-14', startTime: '12:00', durationMin: 60, freeBlockLabel: 'Prospecting time',
+    }, { repeatRule: 'custom', daysOfWeek: ['TUE', 'THU'], endCondition: { type: 'count', count: 3 } }, META);
+    expect(res.count).toBe(3);
+    const payloads = hoisted.mockBatchSet.mock.calls.map((c) => c[1]);
+    payloads.forEach((p) => expect(p.daysOfWeek).toEqual(['TUE', 'THU']));
+  });
+
+  it('throws when the recurrence yields no occurrences', async () => {
+    await expect(createRecurringAppointments('t1', { date: '' },
+      { repeatRule: 'weekly', endCondition: { type: 'count', count: 4 } }, META))
+      .rejects.toThrow(/no occurrences/i);
   });
 });
 

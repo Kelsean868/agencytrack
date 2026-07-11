@@ -62,6 +62,21 @@ export function setDailyStreakCelebratedMax(uid, value) {
   writeInt(dailyStreakKey(uid), Number(value) || 0);
 }
 
+// ── Weekly FILING streak (consecutive submitted weekly reports), per year ───
+// Year-scoped like the goals streak (currentStreak is itself year-scoped), so a
+// new year re-celebrates cleanly. persist-on-fire only — the same "fires ONCE
+// per milestone, no re-fire on reload" guarantee the goals streak marker gives.
+
+const filingStreakKey = (uid, year) => `${NS}:filingStreakMax:${uid}:${year}`;
+
+export function getFilingStreakCelebratedMax(uid, year) {
+  return readInt(filingStreakKey(uid, year));
+}
+
+export function setFilingStreakCelebratedMax(uid, year, value) {
+  writeInt(filingStreakKey(uid, year), Number(value) || 0);
+}
+
 // ── Goals surface (annual + weekly-target streak), scoped per year ──────────
 
 const goalsAnnualKey = (uid, year) => `${NS}:goalsAnnual:${uid}:${year}`;

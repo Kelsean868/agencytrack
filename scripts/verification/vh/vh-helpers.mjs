@@ -53,8 +53,13 @@ export async function newLegContext(browser, { viewport = { width: 1280, height:
   return { context, page, capture, prodRequests, pageErrors };
 }
 
-/** Real login-form login (Run-1 pattern; viewport-agnostic readiness check). */
-export async function login(page, who) {
+/** Real login-form login (Run-1 pattern; viewport-agnostic readiness check).
+ * dismissCelebration (default true): fresh contexts have empty localStorage, so
+ * an on-load celebration takeover (e.g. the Run3 filing-streak milestone — the
+ * seeded 9-wk streak crosses rung 5) can cover the viewport (inset-0 z-60) and
+ * intercept a leg's first click. Legs whose SUBJECT is the celebration pass
+ * { dismissCelebration: false }. */
+export async function login(page, who, { dismissCelebration = true } = {}) {
   const acct = ACCOUNTS[who];
   if (!acct) throw new Error(`unknown account key: ${who}`);
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
@@ -68,6 +73,15 @@ export async function login(page, who) {
   ]).catch(() => 'timeout');
   if (outcome !== 'rendered') throw new Error(`LOGIN-${outcome.toUpperCase()}: ${acct.email}`);
   await page.waitForTimeout(1500);
+  if (dismissCelebration) {
+    const dismiss = page.locator('[aria-label="Dismiss celebration"]');
+    try {
+      await dismiss.waitFor({ state: 'visible', timeout: 2_500 });
+      await dismiss.click();
+      await dismiss.waitFor({ state: 'detached', timeout: 5_000 });
+      await page.waitForTimeout(300);
+    } catch { /* no celebration fired — normal for most roles/tabs */ }
+  }
 }
 
 /** Navigate the sidebar (desktop) to a tab by its visible label. */

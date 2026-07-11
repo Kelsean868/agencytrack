@@ -1,16 +1,39 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { CheckSquare, Square } from 'lucide-react';
+import { CheckSquare, Square, MessageSquare, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getRecentSundays } from '../../utils/validators';
 import { saveWarDraft, submitWar, getWar, getOwnJfwCount, getOwnWarStreak } from '../../services/managerWarService';
 import { getResolvedStandards } from '../../services/managerStandardOverrideService';
+import { getAgentSubmissions } from '../../services/submissionService';
+import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
+import { formatCurrency } from '../../utils/formatters';
+import { useCountUp } from '../../hooks/useCountUp';
 import { computeMissedActivities, computeWarCompletion } from '../../utils/accountabilityFlag';
 import AccountabilityFlagPanel from './AccountabilityFlagPanel';
 import WarCompletionRing from './WarCompletionRing';
 import WarStreakDots from './WarStreakDots';
+import StatusPill from '../ui/StatusPill';
 import PanelSkeleton, { Skeleton, SkeletonText } from '../ui/PanelSkeleton';
 
 const AUTOSAVE_DELAY = 1500;
+
+// Upline-review presentation — mirrors ManagerWarDetail's REVIEW_META so the
+// owner's read-only pill uses the identical StatusPill variant + label the BM
+// review surface writes. Block-local copy (same pattern as WAR_ROLE_RANKS in
+// managerWarService); FU banked to hoist the shared review-meta constants.
+const REVIEW_META = {
+  approved:          { variant: 'success', label: 'Approved' },
+  changes_requested: { variant: 'warning', label: 'Changes requested' },
+};
+
+function formatReviewedAt(ts) {
+  if (!ts) return '';
+  const d = typeof ts.toDate === 'function' ? ts.toDate()
+          : ts instanceof Date ? ts
+          : new Date(ts);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-TT', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 const DEFAULT_FORM = {
   oneOnOnesConducted:   0,
@@ -44,6 +67,16 @@ export default function ManagerWarTab() {
   const [roleStds, setRoleStds]         = useState({});
   const [streak, setStreak]             = useState(null);
   const [streakError, setStreakError]   = useState(false);
+  // Producing manager's OWN weekly sales submission for the selected week —
+  // drives the MyWarCard "MY API · THIS WEEK" + "APPLICATIONS" metric row. Same
+  // submissions pipeline agents use (getAgentSubmissions → extractFields), so no
+  // new read path. null = loading; { api, apps, hasSub } once resolved.
+  const [ownProd, setOwnProd]           = useState(null);
+  const [ownProdError, setOwnProdError] = useState(false);
+  // Upline review surfaced read-only on the owner's my-war (F9). Seeded from the
+  // loaded WAR doc; null when the week has no review yet.
+  const [review, setReview]             = useState(null);
+  const [noteOpen, setNoteOpen]         = useState(false);
 
   const saveTimer  = useRef(null);
   const savedTimer = useRef(null);
@@ -67,23 +100,34 @@ export default function ManagerWarTab() {
     setLoadError(false);
     setSubmitSuccess(false);
     setSubmitError('');
+    setNoteOpen(false);
     getWar(tenantId, user.uid, weekStart)
       .then((war) => {
         if (!war) {
           setForm(DEFAULT_FORM);
           setStatus(null);
+          setReview(null);
           return;
         }
-        // Strip identity/meta fields; keep only form-editable fields
+        // Strip identity/meta AND upline-review fields; keep only form-editable
+        // fields. Review fields are surfaced read-only via `review` state below —
+        // they must NOT flow into `form` (sanitizeWar drops them on save anyway).
         const {
           id: _id, managerId: _mid, managerName: _mn, tenantId: _tid,
           weekStart: _ws, managerRole: _mr, managerRoleRank: _rr,
           branchId: _bid, unitId: _uid, jfwCount: _jfw,
           status: s, createdAt: _ca, updatedAt: _ua, submittedAt: _sa,
+          reviewStatus, reviewNote, reviewedByName, reviewedAt,
+          reviewedBy: _rb,
           ...fields
         } = war;
         setForm((prev) => ({ ...prev, ...fields }));
         setStatus(s ?? null);
+        setReview(
+          reviewStatus
+            ? { reviewStatus, reviewNote: reviewNote ?? '', reviewedByName: reviewedByName ?? '', reviewedAt: reviewedAt ?? null }
+            : null,
+        );
       })
       .catch((err) => {
         console.error('[ManagerWarTab] load failed:', err);
@@ -126,6 +170,36 @@ export default function ManagerWarTab() {
   }, [user, tenantId]);
 
   useEffect(() => { loadStreak(); }, [loadStreak]);
+
+  // Fetch the producing manager's OWN weekly submission for the selected week
+  // (MyWarCard production metric row). Reuses getAgentSubmissions + the canonical
+  // extractFields readers (same pipeline as useMyProduction). A manager with no
+  // own submission for the week resolves to a clean zero ({ api:0, apps:0 }),
+  // never a crash. Failure surfaces a retry affordance in the hero.
+  const loadOwnProd = useCallback(() => {
+    if (!user || !tenantId) return;
+    setOwnProd(null);
+    setOwnProdError(false);
+    getAgentSubmissions(tenantId, user.uid)
+      .then((subs) => {
+        const sub = (subs || []).find((s) => s.weekStarting === weekStart);
+        if (!sub) {
+          setOwnProd({ api: 0, apps: 0, hasSub: false });
+          return;
+        }
+        setOwnProd({
+          api:    extractTotalProductionCredit(sub),
+          apps:   parseFloat(extractFields(sub).applicationsSold) || 0,
+          hasSub: true,
+        });
+      })
+      .catch((err) => {
+        console.error('[ManagerWarTab] own-production load failed:', err);
+        setOwnProdError(true);
+      });
+  }, [weekStart, user, tenantId]);
+
+  useEffect(() => { loadOwnProd(); }, [loadOwnProd]);
 
   // Fetch resolved standards (org-default ?? override) for the owner (I1.3c-ii).
   // Failure is silent — overlay falls back to actual-only.
@@ -193,6 +267,12 @@ export default function ManagerWarTab() {
 
   const isSubmitted = status === 'submitted';
   const completion = computeWarCompletion({ ...form, jfwCount: jfwCount ?? 0 }, roleStds);
+  const reviewMeta = review?.reviewStatus ? REVIEW_META[review.reviewStatus] : null;
+
+  // §2 count-up on the hero money KPI only (mirrors HeroCard.jsx precedent) —
+  // reduced-motion snap is handled inside the hook. Apps is a small integer
+  // count and stays static, matching the shipped hero convention.
+  const displayApi = useCountUp(ownProd?.api ?? 0, { duration: 1000, decimals: 2 });
 
   if (loading) {
     return (
@@ -236,10 +316,12 @@ export default function ManagerWarTab() {
               : 'New report'}
           </p>
         </div>
+        {/* Week NAVIGATION stays enabled on submitted weeks — only the form
+            fields lock (a disabled picker would trap the user on the first
+            submitted week they view). */}
         <select
           value={weekStart}
           onChange={(e) => setWeekStart(e.target.value)}
-          disabled={isSubmitted}
           aria-label="Select week"
           className="h-11 px-3 rounded-lg bg-card border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
         >
@@ -260,41 +342,164 @@ export default function ManagerWarTab() {
         </div>
       )}
 
-      {/* Completion ring + 8-week filing streak (item 2.1) */}
-      <div className="bg-card rounded-2xl p-4 flex items-center gap-4">
-        <WarCompletionRing
-          pct={completion.pct}
-          met={completion.met}
-          total={completion.total}
-          size={52}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Completion</p>
-          <p className="text-sm text-text">
-            {completion.pct == null
-              ? 'No targets set yet'
-              : `${completion.met} of ${completion.total} targets met`}
-          </p>
+      {/* My WAR hero (MyWarCard conformance, Run3 item E) — completion ring +
+           own-production metric row (MY API · THIS WEEK / APPLICATIONS / FILING
+           STREAK) on the shipped glass-hero teal surface. The ring + streak dots
+           use the `hero` variant so their viz colors stay legible on teal. */}
+      <section
+        className="glass hero teal relative overflow-hidden rounded-2xl"
+        style={{ padding: '18px 20px' }}
+        data-testid="my-war-hero"
+      >
+        {/* Ring + completion headline */}
+        <div className="relative flex items-center gap-4">
+          <WarCompletionRing
+            pct={completion.pct}
+            met={completion.met}
+            total={completion.total}
+            size={52}
+            variant="hero"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-[--hero-ink-muted-teal] font-mono">
+              My WAR · {weekStart}
+            </p>
+            <p className="text-[--hero-ink] font-semibold mt-1">
+              {completion.pct == null
+                ? 'No targets set yet'
+                : `${completion.met} of ${completion.total} targets met`}
+            </p>
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
-            Filing streak
-          </span>
-          {streakError ? (
-            <button
-              type="button"
-              onClick={loadStreak}
-              className="min-h-[44px] px-2 text-xs font-semibold text-primary underline underline-offset-2"
-            >
-              Retry
-            </button>
-          ) : streak === null ? (
-            <Skeleton className="h-2 w-24 rounded-full" />
-          ) : (
-            <WarStreakDots history={streak.map((s) => s.filed).reverse()} />
+
+        {/* Production metric row — the producing manager also sells */}
+        <div className="relative mt-4 grid grid-cols-3 gap-2.5">
+          {/* MY API · THIS WEEK (money → count-up) */}
+          <div className="rounded-xl px-3 py-2.5 bg-[--hero-chip-island] border border-[--hero-chip-border]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[--hero-ink-muted-teal] font-mono">
+              My API · This week
+            </p>
+            {ownProdError ? (
+              <p
+                className="text-[--hero-ink] font-bold tabular-nums mt-1"
+                style={{ fontSize: 18 }}
+                data-testid="my-war-hero-api"
+              >
+                —
+              </p>
+            ) : ownProd === null ? (
+              <div className="mt-2"><Skeleton className="h-4 w-16 rounded" /></div>
+            ) : (
+              <p
+                className="text-[--hero-ink] font-bold tabular-nums mt-1"
+                style={{ fontSize: 18, fontFamily: '"Cabinet Grotesk", system-ui, sans-serif' }}
+                data-testid="my-war-hero-api"
+              >
+                {formatCurrency(displayApi)}
+              </p>
+            )}
+          </div>
+
+          {/* APPLICATIONS (integer count → static) */}
+          <div className="rounded-xl px-3 py-2.5 bg-[--hero-chip-island] border border-[--hero-chip-border]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[--hero-ink-muted-teal] font-mono">
+              Applications
+            </p>
+            {ownProdError ? (
+              <p
+                className="text-[--hero-ink] font-bold tabular-nums mt-1"
+                style={{ fontSize: 18 }}
+                data-testid="my-war-hero-apps"
+              >
+                —
+              </p>
+            ) : ownProd === null ? (
+              <div className="mt-2"><Skeleton className="h-4 w-10 rounded" /></div>
+            ) : (
+              <p
+                className="text-[--hero-ink] font-bold tabular-nums mt-1"
+                style={{ fontSize: 18 }}
+                data-testid="my-war-hero-apps"
+              >
+                {ownProd.apps}
+              </p>
+            )}
+          </div>
+
+          {/* FILING STREAK — recognition (gold label); dots via getOwnWarStreak,
+               skeleton + retry preserved. */}
+          <div className="rounded-xl px-3 py-2.5 bg-[--hero-chip-island] border border-[--hero-chip-border]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[--hero-ink-muted-gold] font-mono">
+              Filing streak
+            </p>
+            <div className="mt-2 min-h-[20px] flex items-center">
+              {streakError ? (
+                <button
+                  type="button"
+                  onClick={loadStreak}
+                  className="min-h-[44px] text-xs font-semibold text-[--hero-ink] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                >
+                  Retry
+                </button>
+              ) : streak === null ? (
+                <Skeleton className="h-2 w-20 rounded-full" />
+              ) : (
+                <WarStreakDots history={streak.map((s) => s.filed).reverse()} variant="hero" />
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Upline review status (F9) — read-only mirror of the BM-side review pill
+           (same StatusPill variant + label + reviewer line as ManagerWarDetail).
+           Renders only when the loaded WAR carries a review; the leader's note
+           sits behind a disclosure affordance (custom button + aria-expanded,
+           the app's disclosure idiom). No review yet → nothing rendered. */}
+      {reviewMeta && (
+        <div
+          className="bg-card rounded-2xl p-5 space-y-2"
+          data-testid="my-war-review-state"
+        >
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+              Review
+            </h3>
+            <StatusPill variant={reviewMeta.variant} label={reviewMeta.label} />
+          </div>
+          <p className="text-xs text-text-muted">
+            {review.reviewedByName ? `Reviewed by ${review.reviewedByName}` : 'Reviewed'}
+            {formatReviewedAt(review.reviewedAt) ? ` · ${formatReviewedAt(review.reviewedAt)}` : ''}
+          </p>
+          {review.reviewNote && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setNoteOpen((o) => !o)}
+                aria-expanded={noteOpen}
+                className="min-h-[44px] inline-flex items-center gap-1.5 text-sm font-semibold text-primary rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                data-testid="my-war-review-note-toggle"
+              >
+                <MessageSquare size={15} aria-hidden="true" />
+                {noteOpen ? "Hide leader's note" : "View leader's note"}
+                <ChevronDown
+                  size={15}
+                  aria-hidden="true"
+                  className={`transition-transform ${noteOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {noteOpen && (
+                <p
+                  className="mt-1 text-sm text-text whitespace-pre-wrap"
+                  data-testid="my-war-review-note"
+                >
+                  {review.reviewNote}
+                </p>
+              )}
+            </div>
           )}
         </div>
-      </div>
+      )}
 
       {/* I3a Tier-1 accountability flag — visible when one or more standards
            are under target. Includes the auto-counted JFW in the comparison. */}

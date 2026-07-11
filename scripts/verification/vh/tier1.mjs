@@ -75,6 +75,67 @@ async function readReality(page) {
   return { weekapi, submitted, filed, exceptions };
 }
 
+/**
+ * Read the pin/unpin star treatment for a sidebar row. `zone: 'group'` (default)
+ * reads the row's canonical/home-section testid; `zone: 'pinned'` reads the
+ * ★ Pinned-zone alias. The alias testid is `pinned-<navConfig item.id>`, which
+ * can DIFFER from the canonical group testid passed in here (navConfig items
+ * often set an explicit longer `testId`, e.g. id `leaderboard` → group testid
+ * `agent-tab-leaderboard`, but the pinned-zone alias is still `pinned-leaderboard`
+ * — built from `item.id`, not `item.testId`) — so the pinned-zone row is
+ * correlated by its RENDERED LABEL TEXT (shared by both zone renders of the
+ * same item) rather than by re-deriving a testid. Resolves the two candidate
+ * ink tokens to rgb() in-page so the color compare is theme-agnostic.
+ *
+ * Pin de-emphasis v2 (Run4 polish — supersedes Run3 F8's size/contrast
+ * reduction): the star is FILLED + brand-teal (`sidebar-nav-star-filled`) ONLY
+ * in the ★ Pinned zone; the group/home-section star stays OUTLINE regardless
+ * of pinned state. Size is uniform (14) in both zones now.
+ */
+async function readPinStar(page, navTestId, zone = 'group') {
+  return page.evaluate(({ tid, zone }) => {
+    const rows = [...document.querySelectorAll('.sidebar-link-row')];
+    const groupRow = rows.find((r) => r.querySelector(`[data-testid="${tid}"]`));
+    let row = groupRow;
+    if (zone === 'pinned') {
+      const label = groupRow?.querySelector('.sidebar-link-label')?.textContent?.trim();
+      row = label
+        ? rows.find((r) => r !== groupRow
+            && r.querySelector('[data-testid^="pinned-"]')
+            && r.querySelector('.sidebar-link-label')?.textContent?.trim() === label)
+        : null;
+    }
+    const btn = row?.querySelector('.sidebar-nav-star') || null;
+    const svg = btn?.querySelector('svg') || null;
+    const probe = document.createElement('span');
+    probe.style.position = 'absolute';
+    probe.style.color = 'var(--color-text-muted)';
+    document.body.appendChild(probe);
+    const mutedRgb = getComputedStyle(probe).color;
+    probe.style.color = 'var(--color-primary)';
+    const primaryRgb = getComputedStyle(probe).color;
+    probe.remove();
+    return {
+      found: !!btn,
+      filled: btn ? btn.classList.contains('sidebar-nav-star-filled') : null,
+      pressed: btn ? btn.getAttribute('aria-pressed') === 'true' : null,
+      svgW: svg ? svg.getAttribute('width') : null,
+      color: btn ? getComputedStyle(btn).color : null,
+      mutedRgb,
+      primaryRgb,
+    };
+  }, { tid: navTestId, zone });
+}
+
+/** Click the pin/unpin star for a sidebar row by its canonical data-testid. */
+async function clickPinStar(page, navTestId) {
+  const row = page.locator('.sidebar-link-row', { has: page.locator(`[data-testid="${navTestId}"]`) }).first();
+  await row.scrollIntoViewIfNeeded();
+  await row.hover(); // reveal the star (opacity:0 until row hover / pinned)
+  await row.locator('.sidebar-nav-star').first().click();
+  await page.waitForTimeout(400);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const LEGS = [
@@ -368,7 +429,7 @@ export const LEGS = [
   {
     id: 't1-master-sheet',
     role: 'branch_manager',
-    desc: 'Master Sheet W0 (2026-07-05): reality bar 0/1 submitted · 1/2 filed · 2 exceptions · TTD 3,000; column presets toggle columns; Only-exceptions filters to the A1 draft row; prior week 2026-06-28 WEEK API total verified with exceptions→empty filter',
+    desc: 'Master Sheet FUNNEL W0: reality bar 0/1 submitted · 1/2 filed · 2 exceptions · TTD 3,000; funnel collapsed-by-default then expand-one-stage; two group KPIs (Prospecting 65, Contact Attempts 40) verified == sub-column sums at value level; RANK BY API↔NEW NAMES sort chip; Only-exceptions filters to the A1 draft row; prior week WEEK API total verified with exceptions→empty filter; Settings "Default RANK BY" (Run4 polish Item 2) set→New Names→reload seeds the Master Sheet\'s initial RANK BY at mount (no click), then restored to API + re-verified via a second reload. MUTATES prefs/app.settings.masterSheetPreset (restored).',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser);
       try {
@@ -394,20 +455,49 @@ export const LEGS = [
           if (!re.test(val || '')) throw new Error(`W0 ${label}="${val}" !~ ${re}`);
         }
 
-        // (b) Column presets: Production shows API (TTD); Recruiting shows NEW NAMES
-        // and hides API (TTD). Scope to the preset group (labels collide with nav).
-        const presets = p.locator('[role="group"][aria-label="Column presets"]');
-        const header = p.locator('table thead');
-        await presets.getByRole('button', { name: 'Production', exact: true }).click();
-        await p.waitForTimeout(300);
-        if (!/API \(TTD\)/i.test((await header.textContent()) || '')) throw new Error('Production preset missing "API (TTD)" column');
-        await presets.getByRole('button', { name: 'Recruiting', exact: true }).click();
-        await p.waitForTimeout(300);
-        const recHead = (await header.textContent()) || '';
-        if (!/NEW NAMES/i.test(recHead)) throw new Error('Recruiting preset missing "NEW NAMES" column');
-        if (/API \(TTD\)/i.test(recHead)) throw new Error('Recruiting preset still shows "API (TTD)" (should hide)');
-        await presets.getByRole('button', { name: 'All', exact: true }).click();
-        await p.waitForTimeout(300);
+        // (b) FUNNEL collapse/expand + value-level KPI sums. Only the A1 DRAFT
+        // row exists at W0, seeded from the STRONG subBody (seed-fixtures.mjs):
+        //   ① Prospecting Total = letters(10) + seminars(0) + coldCalls(40)
+        //      + referralCalls(15) = 65
+        //   ② Contact Attempts Total = Tel(followUpCalls 10 + seminarTradeshowCalls 5
+        //      = 15) + F2F(f2fAttempts 25) = 40
+        // Both are re-derived below and cross-checked against the rendered
+        // sub-column cells (fc-<key>-<uid> carry a data-value).
+        const cellCount = (prefix) => p.locator(`[data-testid^="${prefix}"]`).count();
+        const cellVal = async (prefix) => Number(await p.locator(`[data-testid^="${prefix}"]`).first().getAttribute('data-value'));
+        const viewGrp = p.locator('[role="group"][aria-label="Funnel detail view"]');
+        const rankByGrp = p.locator('[role="group"][aria-label="Rank by"]');
+
+        // Collapsed default: Prospecting KPI present, its sub-columns hidden.
+        if ((await cellCount('fc-pTot-')) !== 1) throw new Error('W0 collapsed default: Prospecting KPI cell missing');
+        if ((await cellCount('fc-letters-')) !== 0) throw new Error('W0 collapsed default leaked Prospecting sub-columns');
+
+        // Expand one stage → its sub-columns appear in place.
+        await p.getByRole('button', { name: /expand prospecting activities/i }).click();
+        await p.waitForTimeout(250);
+        if ((await cellCount('fc-letters-')) !== 1) throw new Error('Expand Prospecting did not reveal sub-columns');
+        await p.getByRole('button', { name: /expand contact attempts/i }).click();
+        await p.waitForTimeout(250);
+
+        // Value-level: TWO group KPIs === sum of their seeded sub-columns.
+        const pTot = await cellVal('fc-pTot-');
+        const pSum = (await cellVal('fc-letters-')) + (await cellVal('fc-seminars-')) + (await cellVal('fc-canvass-')) + (await cellVal('fc-refCalls-'));
+        if (pTot !== pSum || pTot !== 65) throw new Error(`Prospecting KPI ${pTot} !== sub-sum ${pSum} / seed 65`);
+        const caTot = await cellVal('fc-caTot-');
+        const caSum = (await cellVal('fc-telAtt-')) + (await cellVal('fc-f2fAtt-'));
+        if (caTot !== caSum || caTot !== 40) throw new Error(`Contact Attempts KPI ${caTot} !== sub-sum ${caSum} / seed 40`);
+
+        // RANK BY preset — API ↔ NEW NAMES (moves terminal emphasis + sort chip).
+        await rankByGrp.getByRole('button', { name: 'New Names', exact: true }).click();
+        await p.waitForTimeout(250);
+        if (!/08 NEW NAMES ↓/i.test((await p.locator('[data-testid="funnel-chips"]').textContent()) || '')) {
+          throw new Error('RANK BY New Names did not set the NEW NAMES sort chip');
+        }
+        await rankByGrp.getByRole('button', { name: 'API', exact: true }).click();
+        await p.waitForTimeout(250);
+        // Collapse back so (c) reads a clean, totals-only table.
+        await viewGrp.getByRole('button', { name: 'Totals', exact: true }).click();
+        await p.waitForTimeout(250);
 
         // (c) Only-exceptions at W0 → exactly the A1 draft row.
         const rankCount = () => p.locator('tbody [data-testid^="rank-"]').count();
@@ -431,7 +521,14 @@ export const LEGS = [
         const prevWeek = W(-1);
         const prevTotal = 26200;
         await weekSel.selectOption(prevWeek);
-        await p.waitForTimeout(800);
+        // Wait deterministically for the prior week's data to render (the funnel
+        // re-render + refetch can outlast a fixed timeout on cold staging) — poll
+        // until the 3 submitted rows are present rather than reading a stale value.
+        await p.waitForFunction(
+          () => document.querySelectorAll('tbody [data-testid^="rank-"]').length === 3,
+          { timeout: 15_000 },
+        ).catch(() => {});
+        await p.waitForTimeout(300);
         const r1 = await readReality(p);
         if (!currencyRe(prevTotal).test(r1.weekapi || '')) {
           await shot(p, 'FAIL-t1-master-sheet-prevweek');
@@ -447,8 +544,213 @@ export const LEGS = [
         if (prevRowsAfter !== 0) throw new Error(`${prevWeek} Only-exceptions rows=${prevRowsAfter} (expected 0 — no submitted row is an exception)`);
         await toggle.click();
         await shot(p, 't1-master-sheet-prevweek');
+
+        // (e) Settings-driven "Default RANK BY" (Fable Run4 polish Item 2 —
+        // DECISIONS-NEEDED #4 option b, repurposed from the retired 5-preset
+        // picker). Settings writes prefs/app.settings.masterSheetPreset; the
+        // funnel Master Sheet reads it ONLY at mount as its initial RANK BY —
+        // a full reload forces the fresh mount this proves. Set default → New
+        // Names → reload → Master Sheet opens with New Names ALREADY pressed
+        // (no click). Then restore the default to API and re-verify via a
+        // second reload (write-read-verify both directions).
+        await p.locator('button[aria-label="Settings"]').click({ timeout: 12_000 });
+        await p.locator('[data-testid="settings-mastersheet-rankby-newNames"]').waitFor({ state: 'visible', timeout: 12_000 });
+        await p.locator('[data-testid="settings-mastersheet-rankby-newNames"]').click();
+        await p.waitForTimeout(1200); // fire-and-forget settings write flush headroom (mirror is synchronous; this is Firestore/UI headroom)
+
+        await p.reload({ waitUntil: 'domcontentloaded' });
+        await p.waitForFunction(() => document.body.textContent.length > 200, { timeout: 20_000 });
+        await p.waitForTimeout(800);
+        await gotoTab(p, 'Master Sheet');
+        await p.waitForSelector('[data-testid="mastersheet-reality"]', { timeout: 12_000 });
+        await weekSel.selectOption(W(0));
+        await p.waitForTimeout(500);
+
+        const rankByAfterReload = p.locator('[role="group"][aria-label="Rank by"]');
+        const newNamesPressed = await rankByAfterReload.getByRole('button', { name: 'New Names', exact: true }).getAttribute('aria-pressed');
+        if (newNamesPressed !== 'true') throw new Error(`Settings default "New Names" did not seed the initial RANK BY at mount (aria-pressed=${newNamesPressed})`);
+        const apiPressedAfterReload = await rankByAfterReload.getByRole('button', { name: 'API', exact: true }).getAttribute('aria-pressed');
+        if (apiPressedAfterReload !== 'false') throw new Error(`API RANK BY unexpectedly pressed after New-Names default (aria-pressed=${apiPressedAfterReload})`);
+        await shot(p, 't1-master-sheet-rankby-default');
+
+        // Restore the Settings default back to API + re-verify via a second reload.
+        await p.locator('button[aria-label="Settings"]').click({ timeout: 12_000 });
+        await p.locator('[data-testid="settings-mastersheet-rankby-api"]').waitFor({ state: 'visible', timeout: 12_000 });
+        await p.locator('[data-testid="settings-mastersheet-rankby-api"]').click();
+        await p.waitForTimeout(1200);
+        await p.reload({ waitUntil: 'domcontentloaded' });
+        await p.waitForFunction(() => document.body.textContent.length > 200, { timeout: 20_000 });
+        await p.waitForTimeout(800);
+        await gotoTab(p, 'Master Sheet');
+        await p.waitForSelector('[data-testid="mastersheet-reality"]', { timeout: 12_000 });
+        const rankByRestored = p.locator('[role="group"][aria-label="Rank by"]');
+        const apiPressedRestored = await rankByRestored.getByRole('button', { name: 'API', exact: true }).getAttribute('aria-pressed');
+        if (apiPressedRestored !== 'true') throw new Error(`Settings default restore to API failed (aria-pressed=${apiPressedRestored})`);
+
         assertLegHygiene(ctx);
-        return `W0 reality bar 0/1·1/2·2·${r0.weekapi}; presets toggle API(TTD)↔NEW NAMES; Only-exceptions→1 A1 draft row; ${prevWeek} WEEK API ${r1.weekapi}, exceptions 1 (A2 non-filer), row filter ${prevRowsBefore}→0; hygiene clean`;
+        return `W0 reality bar 0/1·1/2·2·${r0.weekapi}; funnel collapsed→expand; Prospecting KPI 65 & Contact Attempts KPI 40 == sub-column sums (value level); RANK BY API↔NEW NAMES chip; Only-exceptions→1 A1 draft row; ${prevWeek} WEEK API ${r1.weekapi}, exceptions 1 (A2 non-filer), row filter ${prevRowsBefore}→0; Settings "Default RANK BY"→New Names seeded initial mount RANK BY (aria-pressed) via reload, restored to API + re-verified via second reload; hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
+  // ── 6b. Master Sheet FILTERS panel — compose two filters, clear via chip (branch_manager) ──
+  {
+    id: 't1-master-sheet-filters',
+    role: 'branch_manager',
+    desc: 'Master Sheet FUNNEL W(-1) filters: 3 filers (A1+UM in unit, BM in __branch_direct__). Open FILTERS panel; WEEKLY REPORT=Submitted keeps 3 (inclusive match); + UNIT=Branch direct → exactly 1 row (BM), badge 2, two chips, totals API == BM 8,500 (totals follow filtered set), reality bar UNCHANGED at TTD 26,200 (ignores filters); clear UNIT chip × → full roster 3 returns; clear report chip → 0 chips',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        await login(ctx.page, 'branch_manager');
+        const p = ctx.page;
+        await gotoTab(p, 'Master Sheet');
+        await p.waitForSelector('[data-testid="mastersheet-reality"]', { timeout: 12_000 });
+
+        const rankCount = () => p.locator('tbody [data-testid^="rank-"]').count();
+        const ftotApi = async () => Number(await p.locator('[data-testid="ftot-api"]').first().getAttribute('data-value'));
+
+        // W(-1): 3 SUBMITTED filers (A1 12,500 + UM 5,200 + BM 8,500 = 26,200).
+        const prevWeek = W(-1);
+        const weekSel = p.locator('select[aria-label="Select week"]');
+        await weekSel.selectOption(prevWeek);
+        await p.waitForFunction(
+          () => document.querySelectorAll('tbody [data-testid^="rank-"]').length === 3,
+          { timeout: 15_000 },
+        );
+        await p.waitForTimeout(300);
+
+        const realityBefore = (await readReality(p)).weekapi;
+        if (!currencyRe(26200).test(realityBefore || '')) {
+          await shot(p, 'FAIL-t1-master-sheet-filters-baseline');
+          throw new Error(`${prevWeek} baseline WEEK API="${realityBefore}" !~ ${currencyRe(26200)}`);
+        }
+        if ((await rankCount()) !== 3) throw new Error(`${prevWeek} baseline rows != 3`);
+
+        // Open the FILTERS popover (aria-expanded + panel visible).
+        const filtersBtn = p.locator('[data-testid="funnel-filters-toggle"]');
+        await filtersBtn.click();
+        await p.waitForSelector('[data-testid="funnel-filters-panel"]', { state: 'visible', timeout: 6_000 });
+        if ((await filtersBtn.getAttribute('aria-expanded')) !== 'true') throw new Error('FILTERS toggle aria-expanded != true when open');
+
+        // Filter 1 — WEEKLY REPORT = Submitted. All 3 are submitted → inclusive, stays 3.
+        await p.locator('[data-testid="funnel-report-submitted"]').click();
+        await p.waitForTimeout(300);
+        const afterReport = await rankCount();
+        if (afterReport !== 3) throw new Error(`report=Submitted rows=${afterReport} (expected 3 — all submitted)`);
+
+        // Filter 2 — UNIT = Branch direct (BM's __branch_direct__ unit). 3 → 1.
+        const unitBtn = p.locator('[data-testid="funnel-unit-__branch_direct__"]');
+        if ((await unitBtn.count()) !== 1) throw new Error('UNIT control missing the Branch-direct option at W(-1)');
+        await unitBtn.click();
+        await p.waitForTimeout(300);
+
+        const afterBoth = await rankCount();
+        if (afterBoth !== 1) throw new Error(`Submitted ∩ Branch-direct rows=${afterBoth} (expected 1 — BM only)`);
+        const bodyText = (await p.locator('tbody').textContent()) || '';
+        if (!bodyText.includes('Staging Branch Manager')) throw new Error('filtered single row is not the Branch Manager');
+
+        // Badge counts both conditions; two dismissible chips present.
+        const badge = (await p.locator('[data-testid="funnel-filters-badge"]').textContent())?.trim();
+        if (badge !== '2') throw new Error(`FILTERS badge="${badge}" (expected 2)`);
+        for (const key of ['unit', 'report']) {
+          if ((await p.locator(`[data-testid="funnel-chip-${key}"]`).count()) !== 1) throw new Error(`missing active-filter chip: ${key}`);
+        }
+
+        // Totals row follows the FILTERED set (BM API 8,500); reality bar does NOT.
+        const totApi = await ftotApi();
+        if (totApi !== 8500) throw new Error(`totals API=${totApi} (expected 8500 = BM only)`);
+        const realityAfter = (await readReality(p)).weekapi;
+        if (!currencyRe(26200).test(realityAfter || '')) throw new Error(`reality bar changed under filters: "${realityAfter}" (expected unchanged TTD 26,200)`);
+
+        // Close the panel, then clear the UNIT condition via its chip × → roster returns to 3.
+        await p.locator('[data-testid="funnel-filters-panel"] button', { hasText: 'Done' }).first().click().catch(() => {});
+        await p.waitForTimeout(150);
+        await p.locator('[data-testid="funnel-chip-unit-clear"]').click();
+        await p.waitForTimeout(300);
+        const afterClearUnit = await rankCount();
+        if (afterClearUnit !== 3) throw new Error(`after clearing UNIT chip rows=${afterClearUnit} (expected 3 — full roster returns)`);
+
+        // Clear the remaining report chip → no chips, no badge, still 3 rows.
+        await p.locator('[data-testid="funnel-chip-report-clear"]').click();
+        await p.waitForTimeout(300);
+        if ((await p.locator('[data-testid="funnel-chips"]').count()) !== 0) throw new Error('active-filter chips container should be gone after clearing all');
+        if ((await p.locator('[data-testid="funnel-filters-badge"]').count()) !== 0) throw new Error('FILTERS badge should be gone with no active filters');
+        if ((await rankCount()) !== 3) throw new Error('roster not fully restored after clearing all filters');
+
+        await shot(p, 't1-master-sheet-filters');
+        assertLegHygiene(ctx);
+        return `W(-1) 3 filers; report=Submitted→3; +unit=Branch-direct→1 (BM), badge 2, 2 chips, totals API 8500, reality bar unchanged 26,200; clear UNIT chip→3; clear report chip→0 chips/3 rows; hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
+  // ── 7. Pin de-emphasis v2 — zone-based fill signal (agent1) ──
+  // Supersedes t1-pinned-tab-deemphasis (Run3 F8's size/contrast reduction).
+  {
+    id: 't1-pin-zone-signal',
+    role: 'agent1',
+    desc: 'agent1 desktop: pin a non-seeded tab (leaderboard) via its sidebar star, then assert VALUE-LEVEL the new zone-based signal — the ★ Pinned-zone star is FILLED + brand-primary (svg width 14) while the SAME item\'s home-section star stays OUTLINE + muted-ink (svg width 14, never filled) — and an UNPINNED tab (awards) has no ★ Pinned-zone alias at all and keeps its home-section star outline. Original pin state restored. MUTATES prefs/app.pinnedNav.',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      const P = 'agent-tab-leaderboard'; // pin target — not in the agent seed
+      const U = 'agent-tab-awards';      // unpinned control — not in the agent seed
+      let pinnedByLeg = false;
+      let unpinnedByLeg = false;
+      try {
+        await login(ctx.page, 'agent1');
+        const p = ctx.page;
+        await p.waitForSelector(`[data-testid="${P}"]`, { timeout: 12_000 });
+        // Let the once-on-mount pinned-nav reconcile settle before mutating pins.
+        await p.waitForTimeout(1500);
+
+        // Capture baseline (home-zone `aria-pressed` is the state signal now — the
+        // home-zone fill class no longer tracks pinned state) + normalize: P must
+        // be pinned, U must be unpinned.
+        const pBase = await readPinStar(p, P);
+        const uBase = await readPinStar(p, U);
+        if (!pBase.found) throw new Error(`no pin star on ${P}`);
+        if (!uBase.found) throw new Error(`no pin star on ${U}`);
+        if (!pBase.pressed) { await clickPinStar(p, P); pinnedByLeg = true; }
+        if (uBase.pressed) { await clickPinStar(p, U); unpinnedByLeg = true; }
+        await p.mouse.move(4, 4); // off any row → avoid the :hover color override
+        await p.waitForTimeout(150);
+
+        // P home-section star: pinned STATE (aria-pressed) but OUTLINE — never
+        // filled outside the ★ Pinned zone, muted ink, full size 14.
+        const pHome = await readPinStar(p, P, 'group');
+        if (!pHome.pressed) throw new Error(`${P} home star not aria-pressed after pin`);
+        if (pHome.filled) throw new Error(`${P} home star unexpectedly FILLED (zone-based outline rule not applied)`);
+        if (pHome.svgW !== '14') throw new Error(`${P} home star size=${pHome.svgW} (expected 14)`);
+        if (pHome.color !== pHome.mutedRgb) throw new Error(`${P} home star color=${pHome.color} != muted ${pHome.mutedRgb}`);
+
+        // P ★ Pinned-zone star: FILLED + brand-primary, full size 14.
+        const pZone = await readPinStar(p, P, 'pinned');
+        if (!pZone.found) throw new Error(`${P} has no ★ Pinned-zone row`);
+        if (!pZone.filled) throw new Error(`${P} pinned-zone star not FILLED`);
+        if (pZone.svgW !== '14') throw new Error(`${P} pinned-zone star size=${pZone.svgW} (expected 14)`);
+        if (pZone.color !== pZone.primaryRgb) throw new Error(`${P} pinned-zone star color=${pZone.color} != primary ${pZone.primaryRgb}`);
+
+        // U home-section star: unpinned, outline, no ★ Pinned-zone alias exists.
+        const uHome = await readPinStar(p, U, 'group');
+        if (uHome.pressed) throw new Error(`${U} unexpectedly aria-pressed`);
+        if (uHome.filled) throw new Error(`${U} home star unexpectedly FILLED`);
+        if (uHome.svgW !== '14') throw new Error(`${U} home star size=${uHome.svgW} (expected 14)`);
+        const uZone = await readPinStar(p, U, 'pinned');
+        if (uZone.found) throw new Error(`${U} unexpectedly has a ★ Pinned-zone row while unpinned`);
+
+        await shot(p, 't1-pin-zone-signal');
+
+        // Restore original pin state (leave prefs/app.pinnedNav value-for-value).
+        if (pinnedByLeg) { await clickPinStar(p, P); }
+        if (unpinnedByLeg) { await clickPinStar(p, U); }
+        await p.waitForTimeout(3000); // fire-and-forget pinnedNav write flush headroom
+        const pEnd = await readPinStar(p, P);
+        const uEnd = await readPinStar(p, U);
+        if (pEnd.pressed !== pBase.pressed || uEnd.pressed !== uBase.pressed) {
+          throw new Error(`restore failed: P.pressed ${pBase.pressed}->${pEnd.pressed}, U.pressed ${uBase.pressed}->${uEnd.pressed}`);
+        }
+        assertLegHygiene(ctx);
+        return `★ Pinned-zone star FILLED (${pZone.color}, size 14); SAME item's home-section star OUTLINE (${pHome.color}, size 14, never filled); unpinned control has no pinned-zone alias + outline home star; pin state restored (P=${pEnd.pressed}, U=${uEnd.pressed}); hygiene clean`;
       } finally { await ctx.context.close(); }
     },
   },

@@ -6,6 +6,8 @@ import {
   getGoalsCelebrated,
   setGoalsAnnualCelebrated,
   setGoalsStreakCelebratedMax,
+  getFilingStreakCelebratedMax,
+  setFilingStreakCelebratedMax,
 } from '../celebrationPrefs';
 
 beforeEach(() => {
@@ -36,6 +38,21 @@ describe('celebrationPrefs — goals (per year)', () => {
     expect(getGoalsCelebrated('agentA', 2026)).toEqual({ annual: true, streakMax: 8 });
     // Different year is independent.
     expect(getGoalsCelebrated('agentA', 2027)).toEqual({ annual: false, streakMax: 0 });
+  });
+});
+
+describe('celebrationPrefs — filing streak (per year)', () => {
+  it('defaults to 0 when unset', () => {
+    expect(getFilingStreakCelebratedMax('agentA', 2026)).toBe(0);
+  });
+
+  it('round-trips a value scoped per uid + year', () => {
+    setFilingStreakCelebratedMax('agentA', 2026, 5);
+    expect(getFilingStreakCelebratedMax('agentA', 2026)).toBe(5);
+    // Different year is independent.
+    expect(getFilingStreakCelebratedMax('agentA', 2027)).toBe(0);
+    // Different uid is independent.
+    expect(getFilingStreakCelebratedMax('agentB', 2026)).toBe(0);
   });
 });
 

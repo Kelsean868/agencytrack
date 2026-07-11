@@ -21,11 +21,16 @@ import React, { useEffect, useState } from 'react';
  * @param {number} [total]    configured-target count (for the aria label)
  * @param {number} [size=48]  px diameter
  * @param {number} [stroke=5] px ring thickness
+ * @param {'default'|'hero'} [variant='default']  'hero' swaps to the certified
+ *   glass-hero viz tokens (track + arc + numeral) so the ring stays legible on
+ *   the dark-teal `.glass.hero.teal` surface, where the light-card success/
+ *   warning/danger + `text-text` numeral would be invisible.
  */
-export default function WarCompletionRing({ pct, met = 0, total = 0, size = 48, stroke = 5, className = '' }) {
+export default function WarCompletionRing({ pct, met = 0, total = 0, size = 48, stroke = 5, className = '', variant = 'default' }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  const isHero = variant === 'hero';
   const hasData = pct != null;
   const safePct = hasData ? Math.max(0, Math.min(100, Math.round(pct))) : 0;
   const r = (size - stroke) / 2;
@@ -33,10 +38,15 @@ export default function WarCompletionRing({ pct, met = 0, total = 0, size = 48, 
   const offset = mounted ? circ * (1 - safePct / 100) : circ;
 
   const ringColor = !hasData
-    ? 'var(--color-ink-dim)'
-    : safePct >= 80 ? 'var(--color-success)'
-    : safePct >= 50 ? 'var(--color-warning)'
-    : 'var(--color-danger)';
+    ? (isHero ? 'var(--hero-chip-border)' : 'var(--color-ink-dim)')
+    : isHero
+      ? safePct >= 80 ? 'var(--hero-dot-success)'
+        : safePct >= 50 ? 'var(--hero-dot-warning)'
+        : 'var(--hero-dot-danger)'
+      : safePct >= 80 ? 'var(--color-success)'
+        : safePct >= 50 ? 'var(--color-warning)'
+        : 'var(--color-danger)';
+  const trackColor = isHero ? 'var(--hero-chip-border)' : 'var(--color-surface-muted)';
 
   const label = hasData
     ? `KPI completion: ${safePct}% — ${met} of ${total} targets met`
@@ -55,7 +65,7 @@ export default function WarCompletionRing({ pct, met = 0, total = 0, size = 48, 
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="var(--color-surface-muted)"
+          stroke={trackColor}
           strokeWidth={stroke}
         />
         {hasData && (
@@ -75,7 +85,7 @@ export default function WarCompletionRing({ pct, met = 0, total = 0, size = 48, 
       </svg>
       <span
         aria-hidden="true"
-        className={`absolute inset-0 flex items-center justify-center font-bold text-text tabular-nums ${size <= 44 ? 'text-xs' : 'text-sm'}`}
+        className={`absolute inset-0 flex items-center justify-center font-bold tabular-nums ${isHero ? 'text-[--hero-ink]' : 'text-text'} ${size <= 44 ? 'text-xs' : 'text-sm'}`}
       >
         {hasData ? safePct : '—'}
       </span>

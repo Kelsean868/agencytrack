@@ -71,6 +71,22 @@ describe('TeamPlannerPanel', () => {
     expect(screen.getByText('This week · read-only')).toBeInTheDocument();
   });
 
+  it('exposes no appointment edit affordance (read-only guarantee)', async () => {
+    getTeamWeek.mockResolvedValue([
+      { id: 'x1', agentId: 'agent-1', date: TODAY, startTime: '09:00', type: 'CI', status: 'scheduled' },
+    ]);
+    getTenantUsers.mockResolvedValue([{ id: 'agent-1', name: 'Marsha Singh' }]);
+    render(<TeamPlannerPanel tenantId="t1" callerRole="unit_manager" uid="um-9" branchId="b7" />);
+    await waitFor(() => expect(screen.getByTestId('team-row-agent-1')).toBeInTheDocument());
+    // Drilling into an agent opens the read-only coaching view, never the
+    // agent's churn dialog or its edit action.
+    fireEvent.click(screen.getByTestId('team-row-agent-1'));
+    expect(screen.getByTestId('coaching-drill')).toBeInTheDocument();
+    expect(screen.queryByTestId('churn-dialog')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('churn-action-edit')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit details' })).not.toBeInTheDocument();
+  });
+
   it('shows the empty state when no bookings exist this week', async () => {
     render(<TeamPlannerPanel tenantId="t1" callerRole="unit_manager" uid="um-9" branchId="b7" />);
     await waitFor(() => expect(screen.getByTestId('team-planner-empty')).toBeInTheDocument());
