@@ -10,6 +10,7 @@ import EmailVerificationHandler from './components/auth/EmailVerificationHandler
 import ToastProvider from './components/ui/ToastProvider';
 import ReloadPrompt from './components/ui/ReloadPrompt';
 import ChunkLoadErrorBoundary from './components/ui/ChunkLoadErrorBoundary';
+import { ConfigProvider } from './context/ConfigProvider';
 
 // EFF-002 code-splitting — the three role dashboards are the heaviest single-mount
 // surfaces in the app and were all eager-imported into the entry chunk, so every
@@ -101,7 +102,7 @@ const ProvisioningScreen = () => (
 );
 
 function AppRoot() {
-  const { role, loading, isAuthenticated, userProfile } = useAuth();
+  const { role, loading, isAuthenticated, userProfile, tenantId } = useAuth();
 
   // Firebase auth action links (password reset) land here with ?mode=resetPassword&oobCode=…
   // Intercept before auth/role logic so the handler renders for unauthenticated users.
@@ -144,10 +145,16 @@ function AppRoot() {
   // — e.g. a stale cached index.html requesting a chunk hash a redeploy deleted —
   // and shows a themed reload fallback instead of white-screening. Suspense
   // catches loading; the boundary catches load failure.
+  // ConfigProvider hydrates tenant config here — the single seam where tenantId
+  // is resolved and an authenticated dashboard is about to mount. Forward-only:
+  // it makes config available to the new Company Config surface without touching
+  // any existing consumer's read path.
   return (
-    <ChunkLoadErrorBoundary>
-      <Suspense fallback={<LoadingScreen />}>{dashboard}</Suspense>
-    </ChunkLoadErrorBoundary>
+    <ConfigProvider tenantId={tenantId}>
+      <ChunkLoadErrorBoundary>
+        <Suspense fallback={<LoadingScreen />}>{dashboard}</Suspense>
+      </ChunkLoadErrorBoundary>
+    </ConfigProvider>
   );
 }
 

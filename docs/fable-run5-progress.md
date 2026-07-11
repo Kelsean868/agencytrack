@@ -10,8 +10,8 @@ Real-defaults sources: [`docs/audits/company-config-recon-2026-07-11.md`](audits
 | Item | Status | Notes |
 |------|--------|-------|
 | 0.1 Handoff relocation + catalog + recon landing | ✅ | `325f539b`; hygiene fix `02d8d58f` (untracked 799 Run-4 `out/` debris swept by broad add; sha256 credential check: both literal fixture passwords byte-identical to already-tracked staging values — no new exposure, no rotation) |
-| 0.2 Run docs committed | ⏳ | this commit |
-| 0.3 Baseline re-seed + full VH suite (39 legs) | ⏳ | |
+| 0.2 Run docs committed | ✅ | `7eae1f48` |
+| 0.3 Baseline re-seed + full VH suite (39 legs) | ✅ | re-seed 94 docs → **39/39 PASS, 0 FAIL, 0 SKIP**. Log: out/run5-baseline-vh.log |
 | Item 1 Config substrate (configService + registry + ConfigProvider) | ⏳ | |
 | Item 2 Shell + row grammar (Company Config route) | ⏳ | |
 | Item 3 Audit log (configAudit + rules arm, emulator-first) | ⏳ | |
