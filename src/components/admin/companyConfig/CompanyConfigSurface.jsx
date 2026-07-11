@@ -277,10 +277,15 @@ export default function CompanyConfigSurface() {
   // short-circuits locked items to 'HARDCODED'/'PLATFORM'; stripping the lock
   // (and honoring item.value / unbacked first) yields the real value.
   const paletteValuePreview = useCallback(
-    (item) =>
-      item?.unbacked
+    (item) => {
+      // Null guard mirrors valuePreview's own `if (!item) return ''` — the
+      // palette only ever passes real registry items, but the else-branch
+      // dereferences item.id, so guard defensively (Gemini review, PR #857).
+      if (!item) return '';
+      return item.unbacked
         ? '—'
-        : item?.value ?? valuePreview({ ...item, lock: undefined }, effective(item.id)),
+        : item.value ?? valuePreview({ ...item, lock: undefined }, effective(item.id));
+    },
     [effective],
   );
 
