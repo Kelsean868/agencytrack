@@ -147,3 +147,6 @@ graphify-out/????-??-??/
 
 # Motion verifier capture output (frames, meta, mp4/gif artifacts) — never committed
 scripts/verification/out/
+
+# Company Config handoff — embedded DS render kit (second token copy; canonical DS lives at docs/design-system/tokens/)
+docs/design-system/screens-v2/design_handoff_company_config/_ds/

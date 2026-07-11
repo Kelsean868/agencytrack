@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AgencyTrack — Company Config (working prototype)</title>
+<link rel="icon" type="image/svg+xml" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/assets/favicon.svg" />
+<link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/tokens/brand.css">
+<link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/tokens/marketing.css">
+<link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/tokens/app.css">
+<link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/tokens/glass.css">
+<link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/components/app/nexus-patterns.css">
+<link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/components/app/nexus-nav.css">
+<link rel="stylesheet" href="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="_ds/agencytrack-design-system-ad1cd77a-1bcf-4449-a9f6-c870361300fb/_ds_bundle.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; }
+  body { background: #F0EEE9; font-family: 'Satoshi', sans-serif; }
+  a { color: var(--teal, #01696F); }
+  a:hover { color: #014E52; }
+  .ccp-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font: 700 9.5px var(--mono); letter-spacing: .08em; flex-shrink: 0; white-space: nowrap; }
+  .ccp-input:focus { border-color: var(--teal) !important; box-shadow: 0 0 0 3px var(--tealTint); }
+  .ccp-ghost { transition: border-color .15s ease, background .15s ease; }
+  .ccp-ghost:hover { border-color: var(--teal); }
+  .ccp-ghost.is-danger:hover { background: var(--dangerTint); }
+  .ccp-railitem:hover { background: var(--surfaceMute); }
+  .ccp-railitem[style*="tealTint"]:hover { background: var(--tealTint); }
+  .ccp-link:hover { text-decoration: underline; }
+  .ccp-xbtn:hover { color: var(--danger) !important; }
+  .ccp-segbtn { transition: background .15s ease, color .15s ease; }
+  @keyframes ccpflash { 0% { background: var(--tealTint); } 70% { background: var(--tealTint); } 100% { background: transparent; } }
+  .ccp-flash { animation: ccpflash 2s ease; }
+  .ccp-tablewrap { scrollbar-width: thin; padding-bottom: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    .ccp-flash { animation: none; background: var(--tealTint); }
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(120,112,100,.25); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="cc-proto-data.jsx"></script>
+<script type="text/babel" src="cc-proto-controls.jsx"></script>
+<script type="text/babel" src="cc-proto-app.jsx"></script>
+<script type="text/babel" src="cc-proto-main.jsx"></script>
+<script type="text/babel">
+  ReactDOM.createRoot(document.getElementById('root')).render(<CcpApp />);
+</script>
+</body>
+</html>

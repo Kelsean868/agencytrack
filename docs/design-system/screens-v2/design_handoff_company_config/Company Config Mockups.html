@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Company Config (Tenant Admin)</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    a { color: #01696F; } a:hover { color: #014E52; }
+    .intro { position: fixed; top: 18px; left: 18px; z-index: 50; background: #fff; border: 1px solid #e5e2db; border-radius: 14px; box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08); padding: 14px 18px; max-width: 700px; color: #28251d; }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Company Config — the tenant admin's counterpart to Settings v2</h1>
+    <p>
+      One surface where an admin shapes AgencyTrack for the whole company. <b>12 sections</b> in a grouped left rail (Brand / Standards / Recognition / Operations / Platform) with a teal dot marking customized sections, plus <b>⌘F find-a-setting</b> that jumps across sections — the find-anything-in-10-seconds answer. Every row speaks one grammar: <b>DEFAULT</b> (inherited, editable) · <b>CUSTOM</b> (teal dot + "changed by · date" + reset) · <b>PLATFORM-MANAGED</b> · <b>HARDCODED · UNLOCKS BY TIER</b>. Locked treatments are <b>temporary release states</b> — the Unlock Plan artboard maps every hardcoded value to Tier 1 (src-only reads) or Tier 2 (CF-read constants), all fail-closed (absent = current behavior). Feature flags carry deliberately loud enable affordances.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="company-config-shared.jsx"></script>
+  <script type="text/babel" src="company-config-scenes.jsx"></script>
+  <script type="text/babel" src="company-config-mobile.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="targets"
+            title="Section overview — Targets & Minimums"
+            subtitle="Tenure-band minimums as an editable table (name, range, floor — drag to reorder, add band), pace-warning % shown in the changed state with provenance + reset, and the MDRT threshold shipping read-only under the HARDCODED · COMING SOON treatment. Light + dark."
+          >
+            <DCArtboard id="targets-light" label="01 · Targets & Minimums · Light" width={APP_W} height={APP_H}>
+              <AdminShell t={APP_LIGHT} active="config" title="Company Config" subtitle="How AgencyTrack runs for Tatil Life">
+                <TargetsScene t={APP_LIGHT} />
+              </AdminShell>
+            </DCArtboard>
+            <DCArtboard id="targets-dark" label="02 · Targets & Minimums · Dark" width={APP_W} height={APP_H}>
+              <AdminShell t={APP_DARK} active="config" title="Company Config" subtitle="How AgencyTrack runs for Tatil Life">
+                <TargetsScene t={APP_DARK} />
+              </AdminShell>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="search"
+            title="Find a setting in under 10 seconds"
+            subtitle="The rail's five groups keep 12 sections scannable; ⌘F searches setting names across all of them. Results carry their section breadcrumb and current value — ↵ jumps straight to the row. Here: 'mdrt' surfaces hits in three different sections."
+          >
+            <DCArtboard id="search-open" label="03 · ⌘F · Search within config" width={APP_W} height={APP_H}>
+              <AdminShell t={APP_LIGHT} active="config" title="Company Config" subtitle="How AgencyTrack runs for Tatil Life">
+                <SearchScene t={APP_LIGHT} />
+              </AdminShell>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="recognition"
+            title="Recognition & Gamification"
+            subtitle="Gold eyebrows — the one place gold is allowed. Points scale as an editable table, streak milestones as removable number chips, leaderboard visibility as a segmented scope (shown overridden by a previous admin), celebration intensity with a reduced-motion promise."
+          >
+            <DCArtboard id="recog-light" label="04 · Recognition & Gamification · Light" width={APP_W} height={APP_H}>
+              <AdminShell t={APP_LIGHT} active="config" title="Company Config" subtitle="How AgencyTrack runs for Tatil Life">
+                <RecognitionScene t={APP_LIGHT} />
+              </AdminShell>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="flags"
+            title="Feature Flags — fail-closed"
+            subtitle="Absent = OFF, stated plainly (NOT SET → OFF). Each flag carries its mono key + a plain-language description. The enable affordance is danger-styled because a flip changes the product for all 214 users at once; enabled flags get ON + provenance + a quiet Disable."
+          >
+            <DCArtboard id="flags-light" label="05 · Feature Flags · Light" width={APP_W} height={APP_H}>
+              <AdminShell t={APP_LIGHT} active="config" title="Company Config" subtitle="How AgencyTrack runs for Tatil Life">
+                <FlagsScene t={APP_LIGHT} />
+              </AdminShell>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="grammar"
+            title="Setting-row grammar — the locked/default duality"
+            subtitle="The visual system every section reuses: DEFAULT is quiet (faint mono tag, fully editable) · CUSTOM is teal (dot, field border, provenance, reset) · PLATFORM-MANAGED is grey + lock · HARDCODED is warning-toned and names its unlock tier. Both locked states are temporary — when a tier ships, the row keeps its layout and just loses the chip."
+          >
+            <DCArtboard id="grammar-spec" label="06 · Row grammar · four states" width={900} height={560}>
+              <GrammarSpecimen t={APP_LIGHT} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="unlock"
+            title="Unlock plan — every setting becomes editable"
+            subtitle="The engineering map behind the locked treatments. Tier 1 (src-only reads, cheap — most of the win): points scale, streaks, award/club values, career names, delivery bands, kiosk timing, warning % — config doc + fail-closed defaults, replicating awards' existing override plumbing. Tier 2 (CF-read constants, moderate): nudge schedules, onSubmissionWrite points, MDRT pace, tenure bands — CFs read config at runtime, collapsing the ESM/CJS dual-copy into one Firestore source of truth."
+          >
+            <DCArtboard id="unlock-plan" label="07 · Unlock plan · Tier 1 + Tier 2" width={1060} height={640}>
+              <UnlockPlan t={APP_LIGHT} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Mobile — list → drill-in"
+            subtitle="The 12 sections become a grouped list (same five groups, same teal customized-dot), search on top. Drilling into Targets & Minimums: bands as compact cards with an Edit affordance, the overridden pace field with provenance + reset, MDRT coming-soon, sticky save above the nav."
+          >
+            <DCArtboard id="m-list" label="08 · Mobile · Section list" width={M_W} height={M_H}>
+              <CfgMobileList t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="m-section" label="09 · Mobile · Targets & Minimums" width={M_W} height={M_H}>
+              <CfgMobileSection t={APP_LIGHT} />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
