@@ -77,17 +77,17 @@ describe('SettingsScreen — honesty rule (skipped prefs absent)', () => {
 });
 
 describe('SettingsScreen — view-default role gating', () => {
-  it('shows the Master Sheet preset for a manager and writes on change', () => {
+  it('shows the Default RANK BY control for a manager and writes on change', () => {
     render(<SettingsScreen {...baseProps} />);
-    expect(screen.getByText('Master Sheet preset')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('settings-mastersheet-preset-Production'));
-    expect(setSetting).toHaveBeenCalledWith('masterSheetPreset', 'Production');
+    expect(screen.getByText('Default RANK BY')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('settings-mastersheet-rankby-newNames'));
+    expect(setSetting).toHaveBeenCalledWith('masterSheetPreset', 'newNames');
   });
 
-  it('hides the Master Sheet preset for an agent (no such surface)', () => {
+  it('hides the Default RANK BY control for an agent (no such surface)', () => {
     // `role`/`roleLabel` spread so jsx-a11y doesn't read the literal `role` as an ARIA role.
     render(<SettingsScreen {...baseProps} {...{ role: 'agent', roleLabel: 'Agent' }} />);
-    expect(screen.queryByText('Master Sheet preset')).toBeNull();
+    expect(screen.queryByText('Default RANK BY')).toBeNull();
     // agents still get the leaderboard default-period control
     expect(screen.getByText('Default time period')).toBeInTheDocument();
   });
@@ -95,7 +95,7 @@ describe('SettingsScreen — view-default role gating', () => {
   it('hides both view-defaults for a tenant admin (no leaderboard / master sheet)', () => {
     render(<SettingsScreen {...baseProps} {...{ role: 'tenant_admin', roleLabel: 'Tenant Admin' }} />);
     expect(screen.queryByText('Default time period')).toBeNull();
-    expect(screen.queryByText('Master Sheet preset')).toBeNull();
+    expect(screen.queryByText('Default RANK BY')).toBeNull();
   });
 
   it('writes the default period on change', () => {

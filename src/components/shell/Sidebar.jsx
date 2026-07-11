@@ -348,18 +348,26 @@ export default function Sidebar({
         {canPin && (
           <button
             type="button"
-            className={`sidebar-nav-star${pinned ? ' sidebar-nav-star-on' : ''}`}
+            className={`sidebar-nav-star${pinned ? ' sidebar-nav-star-pinned' : ''}${inPinnedZone ? ' sidebar-nav-star-filled' : ''}`}
             aria-pressed={pinned}
             aria-label={`${pinned ? 'Unpin' : 'Pin'} ${item.label}`}
             onClick={() => (pinned ? onUnpin(item.id) : onPin(item.id))}
           >
-            {/* ★ De-emphasis (Run3 F8): the pin star on a PINNED row renders one
-                step smaller (14→12) and drops from the brand-teal accent to the
-                muted ink token (CSS below) — cognitive-load reduction on the menu.
-                The 44px button hit target (index.css) is unchanged: this control
-                is also the pin/unpin toggle, so it stays fully operable. Unpinned
-                rows keep size 14. */}
-            <Star size={pinned ? 12 : 14} />
+            {/* ★ Pin de-emphasis v2 (Run4 polish — operator-locked, supersedes Run3
+                F8's size/contrast reduction): the star renders FILLED + brand-teal
+                ONLY while this row sits in the ★ Pinned zone itself (inPinnedZone).
+                Everywhere else the tab's pin affordance appears — its home section —
+                the star stays OUTLINE regardless of pinned state: WHICH ZONE you're
+                looking at + fill-vs-outline now carry the "this is pinned" signal,
+                not size or muted color. Size is uniform (14) in both zones — F8's
+                smaller-size treatment is removed because it conflicted with this
+                position-based signal. Opacity (always-visible vs reveal-on-hover)
+                still tracks pinned STATE via `sidebar-nav-star-pinned` (CSS below),
+                independent of the zone-driven fill class — a pinned item's home-row
+                star stays glanceable without hovering, just outlined instead of
+                filled. The 44px button hit target (index.css) is unchanged: this
+                control is also the pin/unpin toggle, so it stays fully operable. */}
+            <Star size={14} />
           </button>
         )}
       </div>

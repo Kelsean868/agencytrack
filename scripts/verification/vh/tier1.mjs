@@ -76,14 +76,35 @@ async function readReality(page) {
 }
 
 /**
- * Read the pin/unpin star treatment for a sidebar row by its canonical
- * data-testid (the GROUP row, not the ★ Pinned-zone alias). Resolves the two
- * candidate ink tokens to rgb() in-page so the color compare is theme-agnostic.
+ * Read the pin/unpin star treatment for a sidebar row. `zone: 'group'` (default)
+ * reads the row's canonical/home-section testid; `zone: 'pinned'` reads the
+ * ★ Pinned-zone alias. The alias testid is `pinned-<navConfig item.id>`, which
+ * can DIFFER from the canonical group testid passed in here (navConfig items
+ * often set an explicit longer `testId`, e.g. id `leaderboard` → group testid
+ * `agent-tab-leaderboard`, but the pinned-zone alias is still `pinned-leaderboard`
+ * — built from `item.id`, not `item.testId`) — so the pinned-zone row is
+ * correlated by its RENDERED LABEL TEXT (shared by both zone renders of the
+ * same item) rather than by re-deriving a testid. Resolves the two candidate
+ * ink tokens to rgb() in-page so the color compare is theme-agnostic.
+ *
+ * Pin de-emphasis v2 (Run4 polish — supersedes Run3 F8's size/contrast
+ * reduction): the star is FILLED + brand-teal (`sidebar-nav-star-filled`) ONLY
+ * in the ★ Pinned zone; the group/home-section star stays OUTLINE regardless
+ * of pinned state. Size is uniform (14) in both zones now.
  */
-async function readPinStar(page, navTestId) {
-  return page.evaluate((tid) => {
+async function readPinStar(page, navTestId, zone = 'group') {
+  return page.evaluate(({ tid, zone }) => {
     const rows = [...document.querySelectorAll('.sidebar-link-row')];
-    const row = rows.find((r) => r.querySelector(`[data-testid="${tid}"]`));
+    const groupRow = rows.find((r) => r.querySelector(`[data-testid="${tid}"]`));
+    let row = groupRow;
+    if (zone === 'pinned') {
+      const label = groupRow?.querySelector('.sidebar-link-label')?.textContent?.trim();
+      row = label
+        ? rows.find((r) => r !== groupRow
+            && r.querySelector('[data-testid^="pinned-"]')
+            && r.querySelector('.sidebar-link-label')?.textContent?.trim() === label)
+        : null;
+    }
     const btn = row?.querySelector('.sidebar-nav-star') || null;
     const svg = btn?.querySelector('svg') || null;
     const probe = document.createElement('span');
@@ -96,13 +117,14 @@ async function readPinStar(page, navTestId) {
     probe.remove();
     return {
       found: !!btn,
-      on: btn ? btn.classList.contains('sidebar-nav-star-on') : null,
+      filled: btn ? btn.classList.contains('sidebar-nav-star-filled') : null,
+      pressed: btn ? btn.getAttribute('aria-pressed') === 'true' : null,
       svgW: svg ? svg.getAttribute('width') : null,
       color: btn ? getComputedStyle(btn).color : null,
       mutedRgb,
       primaryRgb,
     };
-  }, navTestId);
+  }, { tid: navTestId, zone });
 }
 
 /** Click the pin/unpin star for a sidebar row by its canonical data-testid. */
@@ -407,7 +429,7 @@ export const LEGS = [
   {
     id: 't1-master-sheet',
     role: 'branch_manager',
-    desc: 'Master Sheet FUNNEL W0: reality bar 0/1 submitted · 1/2 filed · 2 exceptions · TTD 3,000; funnel collapsed-by-default then expand-one-stage; two group KPIs (Prospecting 65, Contact Attempts 40) verified == sub-column sums at value level; RANK BY API↔NEW NAMES sort chip; Only-exceptions filters to the A1 draft row; prior week WEEK API total verified with exceptions→empty filter',
+    desc: 'Master Sheet FUNNEL W0: reality bar 0/1 submitted · 1/2 filed · 2 exceptions · TTD 3,000; funnel collapsed-by-default then expand-one-stage; two group KPIs (Prospecting 65, Contact Attempts 40) verified == sub-column sums at value level; RANK BY API↔NEW NAMES sort chip; Only-exceptions filters to the A1 draft row; prior week WEEK API total verified with exceptions→empty filter; Settings "Default RANK BY" (Run4 polish Item 2) set→New Names→reload seeds the Master Sheet\'s initial RANK BY at mount (no click), then restored to API + re-verified via a second reload. MUTATES prefs/app.settings.masterSheetPreset (restored).',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser);
       try {
@@ -522,8 +544,51 @@ export const LEGS = [
         if (prevRowsAfter !== 0) throw new Error(`${prevWeek} Only-exceptions rows=${prevRowsAfter} (expected 0 — no submitted row is an exception)`);
         await toggle.click();
         await shot(p, 't1-master-sheet-prevweek');
+
+        // (e) Settings-driven "Default RANK BY" (Fable Run4 polish Item 2 —
+        // DECISIONS-NEEDED #4 option b, repurposed from the retired 5-preset
+        // picker). Settings writes prefs/app.settings.masterSheetPreset; the
+        // funnel Master Sheet reads it ONLY at mount as its initial RANK BY —
+        // a full reload forces the fresh mount this proves. Set default → New
+        // Names → reload → Master Sheet opens with New Names ALREADY pressed
+        // (no click). Then restore the default to API and re-verify via a
+        // second reload (write-read-verify both directions).
+        await p.locator('button[aria-label="Settings"]').click({ timeout: 12_000 });
+        await p.locator('[data-testid="settings-mastersheet-rankby-newNames"]').waitFor({ state: 'visible', timeout: 12_000 });
+        await p.locator('[data-testid="settings-mastersheet-rankby-newNames"]').click();
+        await p.waitForTimeout(1200); // fire-and-forget settings write flush headroom (mirror is synchronous; this is Firestore/UI headroom)
+
+        await p.reload({ waitUntil: 'domcontentloaded' });
+        await p.waitForFunction(() => document.body.textContent.length > 200, { timeout: 20_000 });
+        await p.waitForTimeout(800);
+        await gotoTab(p, 'Master Sheet');
+        await p.waitForSelector('[data-testid="mastersheet-reality"]', { timeout: 12_000 });
+        await weekSel.selectOption(W(0));
+        await p.waitForTimeout(500);
+
+        const rankByAfterReload = p.locator('[role="group"][aria-label="Rank by"]');
+        const newNamesPressed = await rankByAfterReload.getByRole('button', { name: 'New Names', exact: true }).getAttribute('aria-pressed');
+        if (newNamesPressed !== 'true') throw new Error(`Settings default "New Names" did not seed the initial RANK BY at mount (aria-pressed=${newNamesPressed})`);
+        const apiPressedAfterReload = await rankByAfterReload.getByRole('button', { name: 'API', exact: true }).getAttribute('aria-pressed');
+        if (apiPressedAfterReload !== 'false') throw new Error(`API RANK BY unexpectedly pressed after New-Names default (aria-pressed=${apiPressedAfterReload})`);
+        await shot(p, 't1-master-sheet-rankby-default');
+
+        // Restore the Settings default back to API + re-verify via a second reload.
+        await p.locator('button[aria-label="Settings"]').click({ timeout: 12_000 });
+        await p.locator('[data-testid="settings-mastersheet-rankby-api"]').waitFor({ state: 'visible', timeout: 12_000 });
+        await p.locator('[data-testid="settings-mastersheet-rankby-api"]').click();
+        await p.waitForTimeout(1200);
+        await p.reload({ waitUntil: 'domcontentloaded' });
+        await p.waitForFunction(() => document.body.textContent.length > 200, { timeout: 20_000 });
+        await p.waitForTimeout(800);
+        await gotoTab(p, 'Master Sheet');
+        await p.waitForSelector('[data-testid="mastersheet-reality"]', { timeout: 12_000 });
+        const rankByRestored = p.locator('[role="group"][aria-label="Rank by"]');
+        const apiPressedRestored = await rankByRestored.getByRole('button', { name: 'API', exact: true }).getAttribute('aria-pressed');
+        if (apiPressedRestored !== 'true') throw new Error(`Settings default restore to API failed (aria-pressed=${apiPressedRestored})`);
+
         assertLegHygiene(ctx);
-        return `W0 reality bar 0/1·1/2·2·${r0.weekapi}; funnel collapsed→expand; Prospecting KPI 65 & Contact Attempts KPI 40 == sub-column sums (value level); RANK BY API↔NEW NAMES chip; Only-exceptions→1 A1 draft row; ${prevWeek} WEEK API ${r1.weekapi}, exceptions 1 (A2 non-filer), row filter ${prevRowsBefore}→0; hygiene clean`;
+        return `W0 reality bar 0/1·1/2·2·${r0.weekapi}; funnel collapsed→expand; Prospecting KPI 65 & Contact Attempts KPI 40 == sub-column sums (value level); RANK BY API↔NEW NAMES chip; Only-exceptions→1 A1 draft row; ${prevWeek} WEEK API ${r1.weekapi}, exceptions 1 (A2 non-filer), row filter ${prevRowsBefore}→0; Settings "Default RANK BY"→New Names seeded initial mount RANK BY (aria-pressed) via reload, restored to API + re-verified via second reload; hygiene clean`;
       } finally { await ctx.context.close(); }
     },
   },
@@ -619,11 +684,12 @@ export const LEGS = [
     },
   },
 
-  // ── 7. Pinned-tab star de-emphasis (agent1) ──
+  // ── 7. Pin de-emphasis v2 — zone-based fill signal (agent1) ──
+  // Supersedes t1-pinned-tab-deemphasis (Run3 F8's size/contrast reduction).
   {
-    id: 't1-pinned-tab-deemphasis',
+    id: 't1-pin-zone-signal',
     role: 'agent1',
-    desc: 'agent1 desktop: pin a non-seeded tab (leaderboard) via its sidebar star, then assert VALUE-LEVEL that the PINNED star is de-emphasized (svg width 12 + sidebar-nav-star-on + muted-ink color, NOT brand primary) while an UNPINNED tab (awards) keeps the full treatment (svg width 14, no on-class); original pin state restored. MUTATES prefs/app.pinnedNav.',
+    desc: 'agent1 desktop: pin a non-seeded tab (leaderboard) via its sidebar star, then assert VALUE-LEVEL the new zone-based signal — the ★ Pinned-zone star is FILLED + brand-primary (svg width 14) while the SAME item\'s home-section star stays OUTLINE + muted-ink (svg width 14, never filled) — and an UNPINNED tab (awards) has no ★ Pinned-zone alias at all and keeps its home-section star outline. Original pin state restored. MUTATES prefs/app.pinnedNav.',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser);
       const P = 'agent-tab-leaderboard'; // pin target — not in the agent seed
@@ -637,29 +703,42 @@ export const LEGS = [
         // Let the once-on-mount pinned-nav reconcile settle before mutating pins.
         await p.waitForTimeout(1500);
 
-        // Capture baseline + normalize: P must be pinned, U must be unpinned.
+        // Capture baseline (home-zone `aria-pressed` is the state signal now — the
+        // home-zone fill class no longer tracks pinned state) + normalize: P must
+        // be pinned, U must be unpinned.
         const pBase = await readPinStar(p, P);
         const uBase = await readPinStar(p, U);
         if (!pBase.found) throw new Error(`no pin star on ${P}`);
         if (!uBase.found) throw new Error(`no pin star on ${U}`);
-        if (!pBase.on) { await clickPinStar(p, P); pinnedByLeg = true; }
-        if (uBase.on) { await clickPinStar(p, U); unpinnedByLeg = true; }
+        if (!pBase.pressed) { await clickPinStar(p, P); pinnedByLeg = true; }
+        if (uBase.pressed) { await clickPinStar(p, U); unpinnedByLeg = true; }
         await p.mouse.move(4, 4); // off any row → avoid the :hover color override
         await p.waitForTimeout(150);
 
-        // PINNED star: reduced size + on-class + muted (explicitly NOT brand primary).
-        const pinned = await readPinStar(p, P);
-        if (!pinned.on) throw new Error(`${P} star missing sidebar-nav-star-on after pin`);
-        if (pinned.svgW !== '12') throw new Error(`pinned star size=${pinned.svgW} (expected 12)`);
-        if (pinned.color !== pinned.mutedRgb) throw new Error(`pinned star color=${pinned.color} != muted ${pinned.mutedRgb}`);
-        if (pinned.color === pinned.primaryRgb) throw new Error(`pinned star still brand-primary ${pinned.color} (de-emphasis not applied)`);
+        // P home-section star: pinned STATE (aria-pressed) but OUTLINE — never
+        // filled outside the ★ Pinned zone, muted ink, full size 14.
+        const pHome = await readPinStar(p, P, 'group');
+        if (!pHome.pressed) throw new Error(`${P} home star not aria-pressed after pin`);
+        if (pHome.filled) throw new Error(`${P} home star unexpectedly FILLED (zone-based outline rule not applied)`);
+        if (pHome.svgW !== '14') throw new Error(`${P} home star size=${pHome.svgW} (expected 14)`);
+        if (pHome.color !== pHome.mutedRgb) throw new Error(`${P} home star color=${pHome.color} != muted ${pHome.mutedRgb}`);
 
-        // UNPINNED control: unchanged — full size + no on-class.
-        const unpinned = await readPinStar(p, U);
-        if (unpinned.on) throw new Error(`${U} unexpectedly carries sidebar-nav-star-on`);
-        if (unpinned.svgW !== '14') throw new Error(`unpinned star size=${unpinned.svgW} (expected 14)`);
+        // P ★ Pinned-zone star: FILLED + brand-primary, full size 14.
+        const pZone = await readPinStar(p, P, 'pinned');
+        if (!pZone.found) throw new Error(`${P} has no ★ Pinned-zone row`);
+        if (!pZone.filled) throw new Error(`${P} pinned-zone star not FILLED`);
+        if (pZone.svgW !== '14') throw new Error(`${P} pinned-zone star size=${pZone.svgW} (expected 14)`);
+        if (pZone.color !== pZone.primaryRgb) throw new Error(`${P} pinned-zone star color=${pZone.color} != primary ${pZone.primaryRgb}`);
 
-        await shot(p, 't1-pinned-tab-deemphasis');
+        // U home-section star: unpinned, outline, no ★ Pinned-zone alias exists.
+        const uHome = await readPinStar(p, U, 'group');
+        if (uHome.pressed) throw new Error(`${U} unexpectedly aria-pressed`);
+        if (uHome.filled) throw new Error(`${U} home star unexpectedly FILLED`);
+        if (uHome.svgW !== '14') throw new Error(`${U} home star size=${uHome.svgW} (expected 14)`);
+        const uZone = await readPinStar(p, U, 'pinned');
+        if (uZone.found) throw new Error(`${U} unexpectedly has a ★ Pinned-zone row while unpinned`);
+
+        await shot(p, 't1-pin-zone-signal');
 
         // Restore original pin state (leave prefs/app.pinnedNav value-for-value).
         if (pinnedByLeg) { await clickPinStar(p, P); }
@@ -667,11 +746,11 @@ export const LEGS = [
         await p.waitForTimeout(3000); // fire-and-forget pinnedNav write flush headroom
         const pEnd = await readPinStar(p, P);
         const uEnd = await readPinStar(p, U);
-        if (pEnd.on !== pBase.on || uEnd.on !== uBase.on) {
-          throw new Error(`restore failed: P.on ${pBase.on}->${pEnd.on}, U.on ${uBase.on}->${uEnd.on}`);
+        if (pEnd.pressed !== pBase.pressed || uEnd.pressed !== uBase.pressed) {
+          throw new Error(`restore failed: P.pressed ${pBase.pressed}->${pEnd.pressed}, U.pressed ${uBase.pressed}->${uEnd.pressed}`);
         }
         assertLegHygiene(ctx);
-        return `pinned star de-emphasized (size 12, muted ink ${pinned.color}, not primary ${pinned.primaryRgb}); unpinned control unchanged (size 14, no on-class); pin state restored (P=${pEnd.on}, U=${uEnd.on}); hygiene clean`;
+        return `★ Pinned-zone star FILLED (${pZone.color}, size 14); SAME item's home-section star OUTLINE (${pHome.color}, size 14, never filled); unpinned control has no pinned-zone alias + outline home star; pin state restored (P=${pEnd.pressed}, U=${uEnd.pressed}); hygiene clean`;
       } finally { await ctx.context.close(); }
     },
   },

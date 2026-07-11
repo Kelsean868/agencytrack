@@ -5,7 +5,7 @@ import { Sun, Moon, Monitor, UserCog, ChevronRight } from 'lucide-react';
 import { useTheme } from '../../lib/theme';
 import useAppSettings from '../../hooks/useAppSettings';
 import {
-  MASTER_SHEET_PRESETS, DEFAULT_MASTER_SHEET_PRESET, isValidMasterSheetPreset,
+  MASTER_SHEET_PRESETS, MASTER_SHEET_PRESET_LABELS, DEFAULT_MASTER_SHEET_PRESET, isValidMasterSheetPreset,
   PERIOD_OPTIONS, DEFAULT_PERIOD, isValidPeriod,
 } from '../../config/viewDefaults';
 
@@ -22,7 +22,9 @@ import {
  *   • Theme (Light/Dark/System) → `src/lib/theme.js` (same source of truth as the
  *     topbar toggle; System resolves via matchMedia and tracks the OS live).
  *   • Default time period → seeds the production-leaderboard surface's period.
- *   • Master Sheet preset (managers only) → seeds the Master Sheet's column preset.
+ *   • Default RANK BY (managers only) → seeds the funnel Master Sheet's initial
+ *     RANK BY value at mount (Run4 polish Item 2 — repurposed from the retired
+ *     column-preset picker; same storage key, new value set).
  *   • Notifications → the app has no toggleable notification-pref substrate today
  *     (push is a future release); the one real control — the daily reminder time —
  *     lives in Profile, so we link there instead of rendering dead toggles.
@@ -145,15 +147,15 @@ function MyPreferences({ role, tenantId, uid, onOpenProfile }) {
           )}
           {showMasterSheet && (
             <Row
-              title="Master Sheet preset"
-              desc="Which column set the team Master Sheet loads first."
+              title="Default RANK BY"
+              desc="Which order the team Master Sheet ranks agents in when it opens."
             >
               <Segmented
-                name="settings-mastersheet-preset"
-                ariaLabel="Master Sheet preset"
+                name="settings-mastersheet-rankby"
+                ariaLabel="Default RANK BY"
                 value={presetValue}
                 onChange={(v) => setSetting('masterSheetPreset', v)}
-                options={MASTER_SHEET_PRESETS.map((p) => ({ value: p, label: p }))}
+                options={MASTER_SHEET_PRESETS.map((p) => ({ value: p, label: MASTER_SHEET_PRESET_LABELS[p] }))}
               />
             </Row>
           )}

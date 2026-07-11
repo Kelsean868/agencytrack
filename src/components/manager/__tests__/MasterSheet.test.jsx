@@ -23,6 +23,20 @@ vi.mock('../../../context/AuthContext', () => ({
 vi.mock('../CoachingNotesModal', () => ({ default: () => null }));
 vi.mock('../../submissions/SubmissionViewer', () => ({ default: () => null }));
 
+// Settings v2 mock (Fable Run4 polish Item 2) — controls the "Default RANK BY"
+// value MasterSheet reads at mount. Default `{}` reproduces the pre-existing
+// hardcoded 'api' default exactly, so every test below that doesn't set
+// `settingsValue` is unaffected by this mock. `setSettingMock` is a STABLE
+// reference (not re-created per render) so tests can assert on call count —
+// in-sheet RANK BY clicks must never call it (session-local, not persisted).
+let settingsValue = {};
+const setSettingMock = vi.fn();
+vi.mock('../../../hooks/useAppSettings', () => ({
+  __esModule: true,
+  default: () => ({ settings: settingsValue, setSetting: setSettingMock }),
+}));
+beforeEach(() => { settingsValue = {}; setSettingMock.mockClear(); });
+
 import MasterSheet from '../MasterSheet';
 
 // Flat-schema submission (extractFields flat path). Active agent, submitted,
@@ -231,5 +245,47 @@ describe('MasterSheet funnel — table structure (sticky lead, both-axis scroll)
     const rankTd = screen.getByTestId('rank-agent-1').closest('td');
     expect(rankTd.className).toContain('sticky');
     expect(rankTd.className).toContain('left-0');
+  });
+});
+
+describe('MasterSheet funnel — Settings-driven "Default RANK BY" (Fable Run4 polish Item 2)', () => {
+  beforeEach(() => { vi.clearAllMocks(); setup(); });
+
+  it('a valid Settings default ("newNames") seeds the initial RANK BY at mount — no click needed', async () => {
+    settingsValue = { masterSheetPreset: 'newNames' };
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    expect(screen.getByRole('button', { name: 'New Names' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'API', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    // sort was paired with preset at mount (mirrors pickPreset), not left null.
+    expect(screen.getByTestId('funnel-chips')).toHaveTextContent(/08 NEW NAMES ↓/i);
+  });
+
+  it('a legacy 5-preset string (the retired column-preset picker) fails closed to the API default, no crash', async () => {
+    settingsValue = { masterSheetPreset: 'Production' };
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    expect(screen.getByRole('button', { name: 'API', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'New Names' })).toHaveAttribute('aria-pressed', 'false');
+    // Default rank (sort=null) — no active-condition chip on a fresh mount.
+    expect(screen.queryByTestId('funnel-chips')).not.toBeInTheDocument();
+  });
+
+  it('an absent Settings value falls back to the API default, no crash', async () => {
+    settingsValue = {};
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    expect(screen.getByRole('button', { name: 'API', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByTestId('funnel-chips')).not.toBeInTheDocument();
+  });
+
+  it('clicking RANK BY inside the sheet is session-local/ephemeral — it never writes back to Settings', async () => {
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    fireEvent.click(screen.getByRole('button', { name: 'New Names' }));
+    expect(screen.getByRole('button', { name: 'New Names' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'API', exact: true }));
+    expect(screen.getByRole('button', { name: 'API', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    expect(setSettingMock).not.toHaveBeenCalled();
   });
 });
