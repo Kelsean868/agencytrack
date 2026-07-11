@@ -126,7 +126,10 @@ export default function ConfigRow({
       </div>
 
       <div className="flex items-center gap-2.5 flex-wrap justify-end shrink-0 max-w-full pt-0.5">
-        {state === 'default' && (
+        {/* bare table items suppress the row-level DEFAULT tag — with the table
+            wrapping below the label it floats mid-card and reads as if it
+            belongs to one table row (Run 5 visual probe finding). */}
+        {state === 'default' && !item?.bare && (
           <span
             data-testid={`ccfg-row-${item.id}-default-tag`}
             className="font-mono text-[9.5px] font-bold tracking-[.08em] text-ink-muted shrink-0"

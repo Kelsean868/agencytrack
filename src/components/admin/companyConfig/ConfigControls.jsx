@@ -260,19 +260,18 @@ export function BandsTable({ value = [], onChange, changed, disabled }) {
   const upd = (i, patch) => onChange(value.map((b, j) => (j === i ? { ...b, ...patch } : b)));
   return (
     <div className="overflow-x-auto w-full">
-      <div className="min-w-[700px]">
-        <div className="grid gap-3 items-center" style={{ gridTemplateColumns: '92px 1fr 148px 138px 34px' }}>
+      <div className="min-w-[560px]">
+        <div className="grid gap-3 items-center" style={{ gridTemplateColumns: '92px 1fr 148px 34px' }}>
           <div className={th}>Band</div>
           <div className={th}>Tenure (months)</div>
           <div className={`${th} text-right`}>Annual API floor</div>
-          <div className={`${th} text-right`}>Weekly floor</div>
           <div />
         </div>
         {value.map((b, i) => (
           <div
             key={i}
             className="grid gap-3 items-center py-1.5 border-t border-border"
-            style={{ gridTemplateColumns: '92px 1fr 148px 138px 34px' }}
+            style={{ gridTemplateColumns: '92px 1fr 148px 34px' }}
           >
             <TextControl value={b.band} onChange={(v) => upd(i, { band: v })} changed={changed} disabled={disabled} w={72} mono />
             <span className="flex items-center gap-1.5">
@@ -291,9 +290,6 @@ export function BandsTable({ value = [], onChange, changed, disabled }) {
             </span>
             <span className="text-right">
               <CurrencyControl value={b.floor} onChange={(v) => upd(i, { floor: v })} changed={changed} disabled={disabled} />
-            </span>
-            <span className="text-right font-mono text-[12px] text-ink-muted">
-              {formatTTD(Math.round((b.floor || 0) / 48))}
             </span>
             {!disabled && value.length > 1 ? (
               <button
@@ -320,7 +316,7 @@ export function BandsTable({ value = [], onChange, changed, disabled }) {
               <Plus size={13} aria-hidden="true" /> Add band
             </GhostButton>
             <span className="text-[11px] text-ink-muted leading-snug">
-              Bands must cover month 0 onward with no gaps — the last band stays open-ended. Weekly floors derive automatically (annual ÷ 48).
+              Bands must cover month 0 onward with no gaps — the last band stays open-ended.
             </span>
           </div>
         )}
@@ -379,23 +375,57 @@ export function StandardsTable({ value = [], onChange, changed, disabled }) {
   );
 }
 
-/** Points/activity table — editable name, mono code, points; add/delete. */
+/**
+ * Points/activity table — editable name, mono code, points; add/delete.
+ *
+ * Row-shape tolerance: consumers feed three REAL shapes —
+ *   { act, code, pts }            (editable catalog rows, prototype shape)
+ *   { key, pts }                  (POINTS_WEIGHTS, registry rec.points)
+ *   { level, threshold, title }   (LEVEL_THRESHOLDS, registry rec.levels)
+ * The latter two are read-only (soon-locked) this run; when `disabled`, cells
+ * render as plain mono text (full key visible, no fake input chrome).
+ */
+const humanizeKey = (k) =>
+  String(k)
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/^./, (c) => c.toUpperCase());
+
+function pointsRowDisplay(r) {
+  return {
+    label: r.act ?? r.title ?? (r.key != null ? humanizeKey(r.key) : ''),
+    code: r.code ?? r.key ?? (r.level != null ? `L${r.level}` : ''),
+    pts: r.pts ?? r.threshold ?? 0,
+  };
+}
+
 export function PointsTable({ value = [], onChange, changed, disabled }) {
   const upd = (i, patch) => onChange(value.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   return (
     <div className="overflow-x-auto w-full">
       <div className="min-w-[380px]">
-        <div className="grid gap-3 items-center" style={{ gridTemplateColumns: '1fr 88px 84px 34px' }}>
+        <div className="grid gap-3 items-center" style={{ gridTemplateColumns: disabled ? '1fr 180px 84px 34px' : '1fr 88px 84px 34px' }}>
           <div className={th}>Activity</div>
           <div className={th}>Code</div>
           <div className={`${th} text-right`}>Points</div>
           <div />
         </div>
-        {value.map((r, i) => (
+        {value.map((r, i) => {
+          const d = pointsRowDisplay(r);
+          if (disabled) {
+            return (
+              <div key={i} className="grid gap-3 items-center py-2 border-t border-border" style={{ gridTemplateColumns: '1fr 180px 84px 34px' }}>
+                <span className="text-[13px] font-semibold text-ink-muted">{d.label}</span>
+                <span className="font-mono text-[11.5px] text-ink-muted break-all">{d.code}</span>
+                <span className="text-right font-mono text-[13px] font-bold text-ink-muted">{d.pts}</span>
+                <span />
+              </div>
+            );
+          }
+          return (
           <div key={i} className="grid gap-3 items-center py-1.5 border-t border-border" style={{ gridTemplateColumns: '1fr 88px 84px 34px' }}>
-            <TextControl value={r.act} onChange={(v) => upd(i, { act: v })} changed={changed} disabled={disabled} w="100%" />
+            <TextControl value={d.label} onChange={(v) => upd(i, { act: v })} changed={changed} disabled={disabled} w="100%" />
             <TextControl
-              value={r.code}
+              value={d.code}
               onChange={(v) => upd(i, { code: v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5) })}
               changed={changed}
               disabled={disabled}
@@ -403,12 +433,12 @@ export function PointsTable({ value = [], onChange, changed, disabled }) {
               mono
             />
             <span className="text-right">
-              <NumberControl value={r.pts} onChange={(v) => upd(i, { pts: v })} changed={changed} disabled={disabled} w={64} />
+              <NumberControl value={d.pts} onChange={(v) => upd(i, { pts: v })} changed={changed} disabled={disabled} w={64} />
             </span>
-            {!disabled && value.length > 1 ? (
+            {value.length > 1 ? (
               <button
                 type="button"
-                aria-label={`Delete ${r.act || 'activity'}`}
+                aria-label={`Delete ${d.label || 'activity'}`}
                 onClick={() => onChange(value.filter((_, j) => j !== i))}
                 className="text-ink-muted hover:text-danger-ink p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
@@ -416,7 +446,8 @@ export function PointsTable({ value = [], onChange, changed, disabled }) {
               </button>
             ) : <span />}
           </div>
-        ))}
+          );
+        })}
         {!disabled && (
           <div className="flex items-center gap-3.5 pt-2.5 border-t border-border mt-1">
             <GhostButton small onClick={() => onChange([...value, { act: 'New activity', code: 'NEW', pts: 1 }])}>
