@@ -4,6 +4,8 @@ import { useAuth } from '../../../context/AuthContext';
 import useToast from '../../../hooks/useToast';
 import { getConfigAudit } from '../../../services/configAuditService';
 import { BOOLEAN_STANDARDS } from '../../../services/managerActivityStandardsService';
+import { getManagerActivityStandardOverrideCounts } from '../../../services/managerStandardOverrideService';
+import { getTenantUsers } from '../../../services/managerService';
 import {
   CONFIG_GROUPS,
   CONFIG_SECTIONS,
@@ -124,11 +126,13 @@ function ActivityStandardsEditor({ item, value, onChange, changed, disabled, ove
                   />
                 )}
               </span>
-              {/* Override counts unavailable: managerActivityStandardOverrides has
-                  `allow list: if false` — tenant_admin cannot query it (build FINDING). */}
+              {/* Override counts come from the TA/PA read-only list arm on
+                  managerActivityStandardOverrides (Run 5 DECISIONS-NEEDED #1),
+                  attributed by the override manager's role. Null (fetch failed /
+                  not yet loaded) renders an em-dash. */}
               <span
                 className="text-[11px] text-ink-muted"
-                title={count == null ? 'Override counts need a rules extension — banked' : undefined}
+                title={count == null ? 'Override counts unavailable' : undefined}
               >
                 {count == null ? '—' : `${count} manager${count === 1 ? '' : 's'} override this`}
               </span>
@@ -170,6 +174,7 @@ export default function CompanyConfigSurface() {
     () => typeof window !== 'undefined' && window.matchMedia?.(NARROW_QUERY).matches,
   );
   const [mobileSection, setMobileSection] = useState(null); // narrow drill-in
+  const [overrideCountsByRole, setOverrideCountsByRole] = useState(null);
 
   const contentRef = useRef(null);
   const pendingJump = useRef(null);
@@ -199,6 +204,27 @@ export default function CompanyConfigSurface() {
   }, []);
 
   useEffect(() => () => window.clearTimeout(flashTimer.current), []);
+
+  // Override-count indicator (Run 5 DECISIONS-NEEDED #1): fetch the tenant's
+  // manager roster once per tenant, build managerId→role, and count overrides
+  // per role/key via the TA/PA list arm. Degrades to null (→ em-dash) on any
+  // failure; never blocks render.
+  useEffect(() => {
+    if (!tenantId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const users = await getTenantUsers(tenantId);
+        const rolesByManagerId = {};
+        (users || []).forEach((u) => { if (u?.id) rolesByManagerId[u.id] = u.role; });
+        const result = await getManagerActivityStandardOverrideCounts({ tenantId, rolesByManagerId });
+        if (!cancelled) setOverrideCountsByRole(result);
+      } catch {
+        if (!cancelled) setOverrideCountsByRole(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [tenantId]);
 
   // Palette jump: switch section, then scroll the row into view via container
   // scrollTop math (~84px offset — README forbids scrollIntoView) + flash 2s.
@@ -246,7 +272,17 @@ export default function CompanyConfigSurface() {
     setHistLoading(false);
   }, [tenantId]);
 
-  const paletteValuePreview = useCallback((item) => valuePreview(item, effective(item.id)), [effective]);
+  // Palette must show the REAL value exactly as the row does — mirrors
+  // ConfigRow's platform-value binding (Run 5 DECISIONS-NEEDED #2). valuePreview
+  // short-circuits locked items to 'HARDCODED'/'PLATFORM'; stripping the lock
+  // (and honoring item.value / unbacked first) yields the real value.
+  const paletteValuePreview = useCallback(
+    (item) =>
+      item?.unbacked
+        ? '—'
+        : item?.value ?? valuePreview({ ...item, lock: undefined }, effective(item.id)),
+    [effective],
+  );
 
   // ── Row renderers ──────────────────────────────────────────────────────────
   const renderRow = useCallback((item) => {
@@ -272,7 +308,7 @@ export default function CompanyConfigSurface() {
             onChange={(next) => setDraftValue(item.id, next)}
             changed={changed}
             disabled={false}
-            overrideCounts={null}
+            overrideCounts={overrideCountsByRole?.[item.storage.keyPath] ?? null}
           />
         </ConfigRow>
       );
@@ -298,7 +334,7 @@ export default function CompanyConfigSurface() {
         )}
       </ConfigRow>
     );
-  }, [rowState, effective, docs, undoDraft, stageReset, setDraftValue, flashId]);
+  }, [rowState, effective, docs, undoDraft, stageReset, setDraftValue, flashId, overrideCountsByRole]);
 
   const renderGroup = useCallback((sectionKey, section, group) => {
     // Awards catalog exception (Item D): the group hosting the awardsRuleset item

@@ -773,11 +773,28 @@ export const LEGS = [
   {
     id: 't1-company-config',
     role: 'tenant_admin',
-    desc: 'tenant_admin Company Config: from Feature Flags section, ⌘F "pace-warning" jumps to targets.pace (rail switches flags→targets, row flash-highlighted); edit Activity Standards unit_manager JFW to 5 → SaveBar "1 unsaved change" → Save → toast "Saved 1 change" → fresh page reload + re-navigate shows JFW=5 + custom-state Reset affordance; Admin-SDK verify managerActivityStandards.unit_manager.jfwCount===5 (number) + newest configAudit entry (settingId=unit_manager.jfwCount, section=Activity Standards, who=tenant_admin uid, to="5"); click Reset to default → Save → Admin-SDK verify the jfwCount KEY IS ABSENT (not null/undefined — deleted) + a second configAudit entry (to="DEFAULT"), row back to \'default\' (no Reset/Undo link, JFW control reads 0 — bare/table items like Activity Standards intentionally suppress ConfigRow\'s row-level DEFAULT tag, per ConfigRow.jsx\'s `state === \'default\' && !item?.bare` guard). MUTATES tenants/staging_test/config/managerActivityStandards (restored to absent by the leg\'s own reset step; re-seed also resets it).',
+    desc: 'tenant_admin Company Config: from Feature Flags section, ⌘F "pace-warning" jumps to targets.pace (rail switches flags→targets, row flash-highlighted); edit Activity Standards unit_manager JFW to 5 → SaveBar "1 unsaved change" → Save → toast "Saved 1 change" → fresh page reload + re-navigate shows JFW=5 + custom-state Reset affordance; Admin-SDK verify managerActivityStandards.unit_manager.jfwCount===5 (number) + newest configAudit entry (settingId=unit_manager.jfwCount, section=Activity Standards, who=tenant_admin uid, to="5"); click Reset to default → Save → Admin-SDK verify the jfwCount KEY IS ABSENT (not null/undefined — deleted) + a second configAudit entry (to="DEFAULT"), row back to \'default\' (no Reset/Undo link, JFW control reads 0 — bare/table items like Activity Standards intentionally suppress ConfigRow\'s row-level DEFAULT tag, per ConfigRow.jsx\'s `state === \'default\' && !item?.bare` guard). Also asserts (Run 5 rulings): palette locked-setting preview shows the REAL value ("SETTLED API ONLY" for aw.basis, not HARDCODED/PLATFORM); a seeded unit_manager JFW override renders "1 manager override this" in the Manager-overrides column (not the em-dash) — depends on the LIVE TA/PA list arm on managerActivityStandardOverrides. MUTATES tenants/staging_test/config/managerActivityStandards (restored to absent by the leg\'s own reset step; re-seed also resets it) AND seeds/deletes tenants/staging_test/managerActivityStandardOverrides/<unit_manager uid> (created before the surface mounts, deleted in finally; re-seed also resets it).',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser);
+      // Run 5 DECISIONS-NEEDED #1: seed ONE unit_manager override BEFORE the
+      // surface mounts so its on-mount override-count fetch sees it. Cleaned up
+      // in finally. Depends on the TA/PA list arm being LIVE (orchestrator deploy).
+      let ovrRef = null;
       try {
         const p = ctx.page;
+
+        const seedDb = getAdminDb();
+        const seedAuth = getAdminAuth();
+        const umSeedUser = await seedAuth.getUserByEmail(ACCOUNTS.unit_manager.email);
+        ovrRef = seedDb.doc(`tenants/${ADMIN_TENANT_ID}/managerActivityStandardOverrides/${umSeedUser.uid}`);
+        await ovrRef.set({
+          managerId: umSeedUser.uid,
+          tenantId:  ADMIN_TENANT_ID,
+          jfwCount:  7, // per-manager override (independent of the org-default edit below)
+          updatedBy: umSeedUser.uid,
+          updatedAt: new Date(),
+        });
+
         await login(p, 'tenant_admin');
         await gotoTab(p, 'Company Config');
         await p.waitForSelector('[data-testid="ccfg-surface"]', { timeout: 12_000 });
@@ -817,12 +834,43 @@ export const LEGS = [
         }
         await shot(p, 't1-company-config-jump');
 
+        // ── Palette honesty (Run 5 DECISIONS-NEEDED #2): locked settings show
+        //    the REAL value, not the 'HARDCODED'/'PLATFORM' lock label. aw.basis
+        //    is lock:'platform' with literal value 'SETTLED API ONLY'. ─────────
+        await p.keyboard.press('Control+f');
+        await palette.waitFor({ state: 'attached', timeout: 8_000 });
+        await paletteInput.fill('Qualification basis');
+        await results.first().waitFor({ state: 'attached', timeout: 6_000 });
+        const lockedResultText = (await results.first().innerText()).replace(/\s+/g, ' ');
+        if (/HARDCODED|PLATFORM/.test(lockedResultText)) {
+          throw new Error(`palette locked-setting preview still shows lock label: "${lockedResultText}"`);
+        }
+        if (!/SETTLED API ONLY/i.test(lockedResultText)) {
+          throw new Error(`palette locked-setting preview="${lockedResultText}" (expected real value "SETTLED API ONLY")`);
+        }
+        await paletteInput.press('Escape');
+        await palette.waitFor({ state: 'detached', timeout: 6_000 });
+
         // ── Edit Activity Standards: unit_manager JFW → 5 ────────────────────
         await p.locator('[data-testid="ccfg-rail-activity"]').click();
         await p.waitForTimeout(400);
         const umRow = p.locator('[data-testid="ccfg-row-act.standards.unit_manager"]');
         await umRow.waitFor({ state: 'attached', timeout: 10_000 });
         const jfwInput = (scope) => scope.locator('div.grid', { hasText: 'Joint Field Work (JFW)' }).first().locator('input[aria-label="value"]');
+
+        // ── Override count (Run 5 DECISIONS-NEEDED #1): the seeded unit_manager
+        //    JFW override renders "1 manager override this" in the row's Manager
+        //    overrides column (not the em-dash). Waiting for the text to appear
+        //    also waits out the on-mount count fetch. Depends on the LIVE list arm. ─
+        const jfwGrid = umRow.locator('div.grid', { hasText: 'Joint Field Work (JFW)' }).first();
+        const jfwOvrCell = jfwGrid.getByText(/manager override this/i);
+        await jfwOvrCell.waitFor({ state: 'attached', timeout: 8_000 });
+        const jfwOvrText = (await jfwOvrCell.innerText()).replace(/\s+/g, ' ').trim();
+        if (!/^1 manager override this$/i.test(jfwOvrText)) {
+          throw new Error(`JFW override-count cell="${jfwOvrText}" (expected "1 manager override this")`);
+        }
+        await shot(p, 't1-company-config-override-count');
+
         await jfwInput(umRow).fill('5');
         await p.waitForTimeout(300);
 
@@ -940,8 +988,11 @@ export const LEGS = [
         await shot(p, 't1-company-config-all-sections');
 
         assertLegHygiene(ctx);
-        return `⌘F "pace-warning" jumped flags→targets (rail switched, targets.pace flash-highlighted); JFW unit_manager 5 saved (toast "Saved 1 change"), fresh reload shows 5 + custom-state reset affordance; Firestore unit_manager.jfwCount=5 (audit settingId=unit_manager.jfwCount, section=Activity Standards, who=${auditSave.who}, to=5); Reset→save→Firestore key ABSENT (audit to=DEFAULT), row back to 'default' (no Reset/Undo link, JFW control reads 0 — bare items suppress the DEFAULT tag itself per ConfigRow's intentional bare-item rule); all 12 rail sections render their heading with no ChunkLoadErrorBoundary trip (Run 5.1 org.levels-crash regression check); hygiene clean`;
-      } finally { await ctx.context.close(); }
+        return `⌘F "pace-warning" jumped flags→targets (rail switched, targets.pace flash-highlighted); palette locked-setting (aw.basis) shows REAL value "SETTLED API ONLY" (not HARDCODED/PLATFORM); seeded unit_manager JFW override renders "1 manager override this" (not em-dash); JFW unit_manager 5 saved (toast "Saved 1 change"), fresh reload shows 5 + custom-state reset affordance; Firestore unit_manager.jfwCount=5 (audit settingId=unit_manager.jfwCount, section=Activity Standards, who=${auditSave.who}, to=5); Reset→save→Firestore key ABSENT (audit to=DEFAULT), row back to 'default' (no Reset/Undo link, JFW control reads 0 — bare items suppress the DEFAULT tag itself per ConfigRow's intentional bare-item rule); all 12 rail sections render their heading with no ChunkLoadErrorBoundary trip (Run 5.1 org.levels-crash regression check); seeded override cleaned up; hygiene clean`;
+      } finally {
+        if (ovrRef) { try { await ovrRef.delete(); } catch { /* best-effort cleanup */ } }
+        await ctx.context.close();
+      }
     },
   },
 
