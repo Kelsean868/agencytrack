@@ -13,7 +13,8 @@
 import {
   newLegContext, login, gotoTab, assertLegHygiene, currencyRe,
 } from './vh-helpers.mjs';
-import { EXPECT, W } from './expectations.mjs';
+import { EXPECT, W, ACCOUNTS } from './expectations.mjs';
+import { getAdminDb, getAdminAuth, ADMIN_TENANT_ID } from './admin-read.mjs';
 
 // ── tier1-private helpers ────────────────────────────────────────────────────
 
@@ -73,6 +74,19 @@ async function readReality(page) {
   const filed = await t('mastersheet-reality-filed');
   const exceptions = await t('mastersheet-reality-exceptions');
   return { weekapi, submitted, filed, exceptions };
+}
+
+/**
+ * Newest configAudit entry matching an exact (settingId, to) pair — used by
+ * the Company Config legs to prove a write landed with the right shape
+ * (from the raw stored doc, not the surface's own display re-derivation).
+ * Reads newest-first (mirrors configAuditService.getConfigAudit's own query)
+ * and returns the first match, so a residual entry from a prior smoke run
+ * with the same settingId/to never masks the leg's own just-written entry.
+ */
+async function auditNewest(db, tenantId, settingId, toValue, { limit = 8 } = {}) {
+  const snap = await db.collection(`tenants/${tenantId}/configAudit`).orderBy('at', 'desc').limit(limit).get();
+  return snap.docs.map((d) => d.data()).find((e) => e.settingId === settingId && e.to === toValue) || null;
 }
 
 /**
@@ -751,6 +765,229 @@ export const LEGS = [
         }
         assertLegHygiene(ctx);
         return `★ Pinned-zone star FILLED (${pZone.color}, size 14); SAME item's home-section star OUTLINE (${pHome.color}, size 14, never filled); unpinned control has no pinned-zone alias + outline home star; pin state restored (P=${pEnd.pressed}, U=${uEnd.pressed}); hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
+  // ── 8. Company Config — ⌘F jump + Activity Standards edit/reset (tenant_admin) — MUTATES managerActivityStandards then restores by reset ──
+  {
+    id: 't1-company-config',
+    role: 'tenant_admin',
+    desc: 'tenant_admin Company Config: from Feature Flags section, ⌘F "pace-warning" jumps to targets.pace (rail switches flags→targets, row flash-highlighted); edit Activity Standards unit_manager JFW to 5 → SaveBar "1 unsaved change" → Save → toast "Saved 1 change" → fresh page reload + re-navigate shows JFW=5 + custom-state Reset affordance; Admin-SDK verify managerActivityStandards.unit_manager.jfwCount===5 (number) + newest configAudit entry (settingId=unit_manager.jfwCount, section=Activity Standards, who=tenant_admin uid, to="5"); click Reset to default → Save → Admin-SDK verify the jfwCount KEY IS ABSENT (not null/undefined — deleted) + a second configAudit entry (to="DEFAULT"), row back to \'default\' (no Reset/Undo link, JFW control reads 0 — bare/table items like Activity Standards intentionally suppress ConfigRow\'s row-level DEFAULT tag, per ConfigRow.jsx\'s `state === \'default\' && !item?.bare` guard). MUTATES tenants/staging_test/config/managerActivityStandards (restored to absent by the leg\'s own reset step; re-seed also resets it).',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        const p = ctx.page;
+        await login(p, 'tenant_admin');
+        await gotoTab(p, 'Company Config');
+        await p.waitForSelector('[data-testid="ccfg-surface"]', { timeout: 12_000 });
+
+        // Start from a DIFFERENT section so the palette jump below is a real
+        // section switch, not a no-op (default active section is 'targets').
+        await p.locator('[data-testid="ccfg-rail-flags"]').click();
+        await p.waitForTimeout(400);
+
+        // ── ⌘F → "pace-warning" → Enter → jumps to targets.pace ──────────────
+        await p.keyboard.press('Control+f');
+        const palette = p.locator('[role="dialog"][aria-label="Find a setting"]');
+        await palette.waitFor({ state: 'attached', timeout: 8_000 });
+        const paletteInput = p.locator('[data-testid="ccfg-palette-input"]');
+        await paletteInput.fill('pace-warning');
+        const results = p.locator('[data-testid="ccfg-palette-result"]');
+        await results.first().waitFor({ state: 'attached', timeout: 6_000 });
+        const resultCount = await results.count();
+        if (resultCount !== 1) throw new Error(`"pace-warning" query matched ${resultCount} results (expected exactly 1 — not unique)`);
+        const resultText = (await results.first().innerText()).replace(/\s+/g, ' ');
+        if (!/Pace-warning threshold/i.test(resultText)) throw new Error(`palette result="${resultText}" (expected Pace-warning threshold)`);
+        await paletteInput.press('Enter');
+        await palette.waitFor({ state: 'detached', timeout: 6_000 });
+
+        // Section switched flags → targets (rail aria-current).
+        const railTargets = p.locator('[data-testid="ccfg-rail-targets"]');
+        if ((await railTargets.getAttribute('aria-current')) !== 'true') {
+          throw new Error('palette jump did not switch the rail to the "targets" section');
+        }
+        // Target row present + flash-highlighted (ConfigRow's bg-primary-tint
+        // treatment, cleared 2s after the jump — read within the window).
+        const paceRow = p.locator('[data-testid="ccfg-row-targets.pace"]');
+        await paceRow.waitFor({ state: 'attached', timeout: 6_000 });
+        const paceRowClass = (await paceRow.getAttribute('class')) || '';
+        if (!paceRowClass.includes('bg-primary-tint')) {
+          throw new Error(`targets.pace row not flash-highlighted after jump (class="${paceRowClass}")`);
+        }
+        await shot(p, 't1-company-config-jump');
+
+        // ── Edit Activity Standards: unit_manager JFW → 5 ────────────────────
+        await p.locator('[data-testid="ccfg-rail-activity"]').click();
+        await p.waitForTimeout(400);
+        const umRow = p.locator('[data-testid="ccfg-row-act.standards.unit_manager"]');
+        await umRow.waitFor({ state: 'attached', timeout: 10_000 });
+        const jfwInput = (scope) => scope.locator('div.grid', { hasText: 'Joint Field Work (JFW)' }).first().locator('input[aria-label="value"]');
+        await jfwInput(umRow).fill('5');
+        await p.waitForTimeout(300);
+
+        const saveBar = p.locator('[data-testid="ccfg-savebar"]');
+        await saveBar.waitFor({ state: 'attached', timeout: 6_000 });
+        const saveBarText = (await saveBar.innerText()) || '';
+        if (!/1 unsaved change/i.test(saveBarText)) throw new Error(`SaveBar="${saveBarText}" (expected "1 unsaved change")`);
+        await p.locator('[data-testid="ccfg-savebar-save"]').click();
+
+        const toast = p.locator('[data-testid="toast-success"]');
+        await toast.waitFor({ state: 'attached', timeout: 8_000 });
+        const toastText = (await toast.innerText()) || '';
+        if (!/Saved 1 change/i.test(toastText)) throw new Error(`toast="${toastText}" (expected "Saved 1 change")`);
+        await shot(p, 't1-company-config-saved');
+
+        // ── Write-read-verify through the UI: fresh reload + re-navigate ─────
+        await p.reload({ waitUntil: 'domcontentloaded' });
+        await p.waitForFunction(() => document.body.textContent.length > 200, { timeout: 20_000 });
+        await p.waitForTimeout(800);
+        await gotoTab(p, 'Company Config');
+        await p.waitForSelector('[data-testid="ccfg-surface"]', { timeout: 12_000 });
+        await p.locator('[data-testid="ccfg-rail-activity"]').click();
+        await p.waitForTimeout(400);
+        const umRowAfterReload = p.locator('[data-testid="ccfg-row-act.standards.unit_manager"]');
+        await umRowAfterReload.waitFor({ state: 'attached', timeout: 10_000 });
+        const jfwValueAfterReload = await jfwInput(umRowAfterReload).inputValue();
+        if (jfwValueAfterReload !== '5') throw new Error(`JFW value after reload="${jfwValueAfterReload}" (expected "5")`);
+        const resetBtn = p.locator('[data-testid="ccfg-row-act.standards.unit_manager-reset"]');
+        await resetBtn.waitFor({ state: 'attached', timeout: 6_000 });
+        await shot(p, 't1-company-config-reloaded');
+
+        // ── Direct Firestore verify (Admin SDK) ──────────────────────────────
+        const db = getAdminDb();
+        const masRef = db.doc(`tenants/${ADMIN_TENANT_ID}/config/managerActivityStandards`);
+        const masDoc = (await masRef.get()).data() || {};
+        const umMap = masDoc.unit_manager || {};
+        if (typeof umMap.jfwCount !== 'number' || umMap.jfwCount !== 5) {
+          throw new Error(`Firestore unit_manager.jfwCount=${JSON.stringify(umMap.jfwCount)} (expected number 5)`);
+        }
+
+        const auditSave = await auditNewest(db, ADMIN_TENANT_ID, 'unit_manager.jfwCount', '5');
+        if (!auditSave) throw new Error('no configAudit entry found for unit_manager.jfwCount -> "5"');
+        if (auditSave.section !== 'Activity Standards') throw new Error(`audit section="${auditSave.section}" (expected "Activity Standards")`);
+        if (!auditSave.who) throw new Error('audit entry missing "who" (actor uid)');
+        if (!auditSave.whoName) throw new Error('audit entry missing "whoName"');
+        const auth = getAdminAuth();
+        const taUser = await auth.getUserByEmail(ACCOUNTS.tenant_admin.email);
+        if (auditSave.who !== taUser.uid) throw new Error(`audit who="${auditSave.who}" (expected tenant_admin uid ${taUser.uid})`);
+
+        // ── Reset to default → save → Admin-SDK verify KEY ABSENT ────────────
+        await resetBtn.click();
+        await p.waitForTimeout(300);
+        const saveBar2 = p.locator('[data-testid="ccfg-savebar"]');
+        await saveBar2.waitFor({ state: 'attached', timeout: 6_000 });
+        const saveBar2Text = (await saveBar2.innerText()) || '';
+        if (!/1 unsaved change/i.test(saveBar2Text)) throw new Error(`SaveBar (reset)="${saveBar2Text}" (expected "1 unsaved change")`);
+        await p.locator('[data-testid="ccfg-savebar-save"]').click();
+        await p.waitForTimeout(1500); // refresh() re-fetch + row re-render to 'default'
+        // 'act.standards.*' items are `bare` (registry: bare:true) — ConfigRow
+        // deliberately suppresses the row-level DEFAULT tag for bare/table items
+        // (src/components/admin/companyConfig/ConfigRow.jsx: `state === 'default'
+        // && !item?.bare`, commit 0b69b769 "bare DEFAULT tag" visual-probe fix —
+        // landed on this shared staging branch mid-session, corrected below).
+        // Prove 'default' state via the row's OTHER state-exclusive affordances
+        // instead: no Reset link (rules out 'custom'), no Undo/unsaved banner
+        // (rules out 'draft'/'reset'), and the JFW control itself reads back 0
+        // (the code default) — value-level, not selector-presence-only.
+        await p.locator('[data-testid="ccfg-savebar"]').waitFor({ state: 'detached', timeout: 8_000 });
+        const resetBtnGone = await p.locator('[data-testid="ccfg-row-act.standards.unit_manager-reset"]').count();
+        const undoBtnGone = await p.locator('[data-testid="ccfg-row-act.standards.unit_manager-undo"]').count();
+        if (resetBtnGone !== 0) throw new Error(`Reset link still present after reset+save (count=${resetBtnGone}) — row not back to 'default'`);
+        if (undoBtnGone !== 0) throw new Error(`Undo link still present after reset+save (count=${undoBtnGone}) — row still 'draft'/'reset'`);
+        const jfwValueAfterReset = await jfwInput(p.locator('[data-testid="ccfg-row-act.standards.unit_manager"]')).inputValue();
+        if (jfwValueAfterReset !== '0') throw new Error(`JFW control after reset+save="${jfwValueAfterReset}" (expected "0", the code default)`);
+        await shot(p, 't1-company-config-reset');
+
+        const masDoc2 = (await masRef.get()).data() || {};
+        const umMap2 = masDoc2.unit_manager || {};
+        if ('jfwCount' in umMap2) throw new Error(`Firestore unit_manager still has jfwCount=${JSON.stringify(umMap2.jfwCount)} after reset (expected key ABSENT)`);
+
+        const auditReset = await auditNewest(db, ADMIN_TENANT_ID, 'unit_manager.jfwCount', 'DEFAULT');
+        if (!auditReset) throw new Error('no configAudit entry found for unit_manager.jfwCount -> "DEFAULT"');
+        if (auditReset.section !== 'Activity Standards') throw new Error(`reset audit section="${auditReset.section}" (expected "Activity Standards")`);
+
+        assertLegHygiene(ctx);
+        return `⌘F "pace-warning" jumped flags→targets (rail switched, targets.pace flash-highlighted); JFW unit_manager 5 saved (toast "Saved 1 change"), fresh reload shows 5 + custom-state reset affordance; Firestore unit_manager.jfwCount=5 (audit settingId=unit_manager.jfwCount, section=Activity Standards, who=${auditSave.who}, to=5); Reset→save→Firestore key ABSENT (audit to=DEFAULT), row back to 'default' (no Reset/Undo link, JFW control reads 0 — bare items suppress the DEFAULT tag itself per ConfigRow's intentional bare-item rule); hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
+  // ── 9. Company Config — Feature Flags disable/re-enable roundtrip (tenant_admin) — toggles persistencyV2 OFF then back ON, ending at the seeded state ──
+  {
+    id: 't1-company-config-flags',
+    role: 'tenant_admin',
+    desc: 'tenant_admin Company Config → Feature Flags: persistencyV2 seeded ON (Disable button present); Disable → Admin-SDK verify featureFlags/featureFlagsMeta persistencyV2 KEY ABSENT (not false) + newest configAudit entry ON→OFF (section=featureFlags); re-enable via the danger confirm strip ("effective immediately" copy) → Enable now → row shows provenance "Enabled by …" → Admin-SDK verify featureFlags.persistencyV2===true (strict boolean) + featureFlagsMeta.persistencyV2={who,whoName,date} + newest configAudit entry OFF→ON. Ends at the seeded ON state. MUTATES tenants/staging_test/config/settings.featureFlags.persistencyV2 transiently (restored ON by the leg itself; re-seed also resets it).',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        const p = ctx.page;
+        await login(p, 'tenant_admin');
+        await gotoTab(p, 'Company Config');
+        await p.waitForSelector('[data-testid="ccfg-surface"]', { timeout: 12_000 });
+        await p.locator('[data-testid="ccfg-rail-flags"]').click();
+        await p.waitForTimeout(400);
+
+        for (const key of ['persistencyV2', 'policyLedgerCampaignLens', 'awardsProvenance']) {
+          await p.locator(`[data-testid="ccfg-flag-${key}"]`).waitFor({ state: 'attached', timeout: 8_000 });
+        }
+        const flagRow = p.locator('[data-testid="ccfg-flag-persistencyV2"]');
+        if ((await p.locator('[data-testid="ccfg-flag-disable-persistencyV2"]').count()) !== 1) {
+          throw new Error('persistencyV2 not showing ON (Disable button absent) at leg start — seed expectation is ON');
+        }
+        await shot(p, 't1-company-config-flags-on');
+
+        const db = getAdminDb();
+        const settingsRef = db.doc(`tenants/${ADMIN_TENANT_ID}/config/settings`);
+
+        // ── Disable ──────────────────────────────────────────────────────────
+        await p.locator('[data-testid="ccfg-flag-disable-persistencyV2"]').click();
+        await p.locator('[data-testid="ccfg-flag-enable-persistencyV2"]').waitFor({ state: 'attached', timeout: 8_000 });
+        const offChipText = (await flagRow.innerText())?.replace(/\s+/g, ' ') || '';
+        if (!/NOT SET.*OFF/i.test(offChipText)) throw new Error(`flag row after disable="${offChipText}" (expected NOT SET → OFF chip)`);
+        await shot(p, 't1-company-config-flags-off');
+
+        let settingsDoc = (await settingsRef.get()).data() || {};
+        let ff = settingsDoc.featureFlags || {};
+        let ffMeta = settingsDoc.featureFlagsMeta || {};
+        if ('persistencyV2' in ff) throw new Error(`Firestore featureFlags still has persistencyV2 key after disable (value=${JSON.stringify(ff.persistencyV2)})`);
+        if ('persistencyV2' in ffMeta) throw new Error('Firestore featureFlagsMeta still has persistencyV2 key after disable');
+
+        const auditOff = await auditNewest(db, ADMIN_TENANT_ID, 'persistencyV2', 'OFF');
+        if (!auditOff) throw new Error('no configAudit entry found for persistencyV2 -> "OFF"');
+        if (auditOff.section !== 'featureFlags') throw new Error(`audit(OFF) section="${auditOff.section}" (expected "featureFlags")`);
+        if (auditOff.from !== 'ON') throw new Error(`audit(OFF) from="${auditOff.from}" (expected "ON")`);
+
+        // ── Re-enable via the danger confirm flow ───────────────────────────
+        await p.locator('[data-testid="ccfg-flag-enable-persistencyV2"]').click();
+        const confirmStrip = p.locator('[data-testid="ccfg-flag-confirm-persistencyV2"]');
+        await confirmStrip.waitFor({ state: 'attached', timeout: 6_000 });
+        const confirmText = (await confirmStrip.innerText()) || '';
+        if (!/effective immediately/i.test(confirmText)) throw new Error(`confirm strip="${confirmText}" (expected "effective immediately" copy)`);
+        await shot(p, 't1-company-config-flags-confirm');
+        await p.locator('[data-testid="ccfg-flag-confirm-enable-persistencyV2"]').click();
+        await p.locator('[data-testid="ccfg-flag-disable-persistencyV2"]').waitFor({ state: 'attached', timeout: 8_000 });
+        await p.waitForTimeout(300);
+        const onRowText = (await flagRow.innerText()) || '';
+        if (!/Enabled by/i.test(onRowText)) throw new Error(`flag row after re-enable="${onRowText}" (expected "Enabled by <name>" provenance line)`);
+        await shot(p, 't1-company-config-flags-on-again');
+
+        settingsDoc = (await settingsRef.get()).data() || {};
+        ff = settingsDoc.featureFlags || {};
+        ffMeta = settingsDoc.featureFlagsMeta || {};
+        if (ff.persistencyV2 !== true) throw new Error(`Firestore featureFlags.persistencyV2=${JSON.stringify(ff.persistencyV2)} (expected strict boolean true)`);
+        const meta = ffMeta.persistencyV2;
+        if (!meta || !meta.who || !meta.whoName || !meta.date) {
+          throw new Error(`Firestore featureFlagsMeta.persistencyV2=${JSON.stringify(meta)} (expected {who, whoName, date})`);
+        }
+
+        const auditOn = await auditNewest(db, ADMIN_TENANT_ID, 'persistencyV2', 'ON');
+        if (!auditOn) throw new Error('no configAudit entry found for persistencyV2 -> "ON"');
+        if (auditOn.section !== 'featureFlags') throw new Error(`audit(ON) section="${auditOn.section}" (expected "featureFlags")`);
+        if (auditOn.from !== 'OFF') throw new Error(`audit(ON) from="${auditOn.from}" (expected "OFF")`);
+
+        assertLegHygiene(ctx);
+        return `persistencyV2 seeded ON; Disable→Firestore featureFlags/featureFlagsMeta key ABSENT (audit ON→OFF, section=featureFlags); re-enable via confirm strip ("effective immediately")→Firestore featureFlags.persistencyV2===true + featureFlagsMeta{who=${meta.who}} (audit OFF→ON); ends at seeded ON; hygiene clean`;
       } finally { await ctx.context.close(); }
     },
   },
