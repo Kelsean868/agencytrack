@@ -10,9 +10,7 @@ import { listBranches } from '../../services/branchService';
 import { extractFields } from '../../utils/extractFields';
 import { Skeleton } from '../ui/PanelSkeleton';
 import Shell from '../shell/Shell';
-import CompanyConfigPanel from '../admin/CompanyConfigPanel';
-import ActivityStandardsPanel from '../admin/ActivityStandardsPanel';
-import AwardsRulesetPanel from '../admin/AwardsRulesetPanel';
+import CompanyConfigSurface from '../admin/companyConfig/CompanyConfigSurface';
 import RoleDistributionCard from '../admin/RoleDistributionCard';
 import BranchHealthCards from '../admin/BranchHealthCards';
 import BranchesPanel from '../admin/BranchesPanel';
@@ -373,13 +371,7 @@ export default function TenantAdminDashboard() {
 
       {activeTab === 'branches' && <BranchesPanel openCreateSignal={branchCreateSignal} />}
 
-      {activeTab === 'config' && (
-        <>
-          <CompanyConfigPanel />
-          <ActivityStandardsPanel />
-          <AwardsRulesetPanel />
-        </>
-      )}
+      {activeTab === 'config' && <CompanyConfigSurface />}
 
       {activeTab === 'users' && <UserManagementPanel openCreateSignal={userCreateSignal} />}
 

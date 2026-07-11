@@ -147,6 +147,21 @@ describe('savePlainValues (plain-legacy mode)', () => {
 
     expect(auditSetCalls()).toHaveLength(3);
   });
+
+  it('meta (Run 5): applies sectionLabel + fromValues to the audit entries (non-breaking)', async () => {
+    await savePlainValues(
+      't1',
+      'managerActivityStandards',
+      { 'unit_manager.jfwCount': 8 },
+      ACTOR,
+      { fromValues: { 'unit_manager.jfwCount': 5 }, sectionLabel: 'Activity Standards' },
+    );
+    const audit = auditSetCalls()[0][1];
+    expect(audit.settingId).toBe('unit_manager.jfwCount');
+    expect(audit.section).toBe('Activity Standards'); // human label, not docId
+    expect(audit.from).toBe('5'); // display-stringified prior value
+    expect(audit.to).toBe('8');
+  });
 });
 
 describe('resetPlainValues (plain-legacy mode — diff-only reset)', () => {
@@ -170,6 +185,22 @@ describe('resetPlainValues (plain-legacy mode — diff-only reset)', () => {
     await resetPlainValues('t1', 'managerActivityStandards', ['unit_manager.jfwCount'], ACTOR);
     expect(hoisted.batch.update).not.toHaveBeenCalled();
     expect(hoisted.batch.commit).not.toHaveBeenCalled();
+  });
+
+  it('meta (Run 5): sectionLabel overrides the audit section (non-breaking)', async () => {
+    hoisted.mockGetDoc.mockResolvedValue({ exists: () => true, data: () => ({}) });
+    await resetPlainValues(
+      't1',
+      'managerActivityStandards',
+      ['unit_manager.jfwCount'],
+      ACTOR,
+      { 'unit_manager.jfwCount': 5 },
+      { sectionLabel: 'Activity Standards' },
+    );
+    const audit = auditSetCalls()[0][1];
+    expect(audit.section).toBe('Activity Standards');
+    expect(audit.to).toBe('DEFAULT');
+    expect(audit.from).toBe('5');
   });
 });
 

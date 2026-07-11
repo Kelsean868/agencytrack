@@ -84,11 +84,10 @@ vi.mock('../../shell/Shell', () => ({
   ),
 }));
 
-vi.mock('../../admin/CompanyConfigPanel', () => ({
-  default: () => <div data-testid="company-config-panel">Company Config Panel</div>,
-}));
-vi.mock('../../admin/AwardsRulesetPanel', () => ({
-  default: () => <div data-testid="awards-ruleset-panel">Awards Ruleset Panel</div>,
+// Company Config tab now renders the unified Company Config surface (Run 5),
+// which replaced the three stacked admin panels.
+vi.mock('../../admin/companyConfig/CompanyConfigSurface', () => ({
+  default: () => <div data-testid="company-config-surface">Company Config Surface</div>,
 }));
 vi.mock('../../admin/RoleDistributionCard', () => ({
   default: () => <div data-testid="role-distribution-card">Role Distribution</div>,
@@ -258,16 +257,10 @@ describe('TenantAdminDashboard — tab routing', () => {
     await waitFor(() => expect(screen.getByTestId('user-management-panel')).toBeInTheDocument());
   });
 
-  it('clicking Company Config sidebar routes to CompanyConfigPanel', async () => {
+  it('clicking Company Config sidebar routes to the Company Config surface', async () => {
     render(<TenantAdminDashboard />);
     fireEvent.click(screen.getByTestId('sidebar-config'));
-    await waitFor(() => expect(screen.getByTestId('company-config-panel')).toBeInTheDocument());
-  });
-
-  it('clicking Company Config sidebar also renders AwardsRulesetPanel', async () => {
-    render(<TenantAdminDashboard />);
-    fireEvent.click(screen.getByTestId('sidebar-config'));
-    await waitFor(() => expect(screen.getByTestId('awards-ruleset-panel')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('company-config-surface')).toBeInTheDocument());
   });
 
   it('clicking Campaigns sidebar routes to CampaignPanel', async () => {

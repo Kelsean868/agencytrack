@@ -175,8 +175,14 @@ export async function resetConfigValues(tenantId, docId, keys, actor, fromValues
  * @param {string} docId
  * @param {Record<string, unknown>} updates  `{ [dotPath]: plainValue }` e.g. `'unit_manager.jfwCount': 5`
  * @param {{uid: string, name: string}} actor
+ * @param {{fromValues?: Record<string, unknown>, sectionLabel?: string}} [meta]
+ *   Optional, NON-BREAKING (Run 5, Item 2A). `fromValues` (keyed by dot-path)
+ *   supplies the audit `from` display value; `sectionLabel` overrides the audit
+ *   `section` with a human label (e.g. 'Activity Standards') instead of `docId`.
+ *   Both default to the pre-extension behavior when omitted.
  */
-export async function savePlainValues(tenantId, docId, updates, actor) {
+export async function savePlainValues(tenantId, docId, updates, actor, meta = {}) {
+  const { fromValues = {}, sectionLabel } = meta;
   const batch = writeBatch(db);
   const ref = configDocRef(tenantId, docId);
   const payload = { updatedBy: actor?.uid ?? null, updatedAt: serverTimestamp() };
@@ -185,7 +191,13 @@ export async function savePlainValues(tenantId, docId, updates, actor) {
     addAuditEntryToBatch(
       batch,
       tenantId,
-      buildAuditEntry({ settingId: dotPath, section: docId, from: null, to: toDisplay(value), actor }),
+      buildAuditEntry({
+        settingId: dotPath,
+        section: sectionLabel ?? docId,
+        from: toDisplay(fromValues[dotPath]),
+        to: toDisplay(value),
+        actor,
+      }),
     );
   }
   batch.set(ref, payload, { merge: true });
@@ -203,8 +215,12 @@ export async function savePlainValues(tenantId, docId, updates, actor) {
  * @param {string[]} dotPaths
  * @param {{uid: string, name: string}} actor
  * @param {Record<string, unknown>} [fromValues]  prior values (for audit `from`), keyed by dot-path
+ * @param {{sectionLabel?: string}} [meta]  Optional, NON-BREAKING (Run 5, Item 2A).
+ *   `sectionLabel` overrides the audit `section` with a human label; omitted →
+ *   the pre-extension behavior (`section = docId`).
  */
-export async function resetPlainValues(tenantId, docId, dotPaths, actor, fromValues = {}) {
+export async function resetPlainValues(tenantId, docId, dotPaths, actor, fromValues = {}, meta = {}) {
+  const { sectionLabel } = meta;
   const ref = configDocRef(tenantId, docId);
   const snap = await getDoc(ref);
   if (!snap.exists()) return; // absent = already default; nothing to delete
@@ -217,7 +233,7 @@ export async function resetPlainValues(tenantId, docId, dotPaths, actor, fromVal
       tenantId,
       buildAuditEntry({
         settingId: dotPath,
-        section: docId,
+        section: sectionLabel ?? docId,
         from: toDisplay(fromValues[dotPath]),
         to: 'DEFAULT',
         actor,

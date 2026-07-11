@@ -74,11 +74,17 @@ export default function ConfigRow({
           <p className="text-[11.5px] text-ink-muted mt-0.5 leading-snug max-w-[520px]">{item.desc}</p>
         )}
 
-        {state === 'custom' && provenance && (
+        {state === 'custom' && (
           <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-            <span className="text-[11px] text-ink-muted">
-              Changed by <span className="font-semibold text-ink">{provenance.whoName}</span> · {provenance.date}
-            </span>
+            {/* Changed-by line renders only when provenance is known. The Reset
+                affordance renders for every custom row — legacy-backed settings
+                (e.g. activity standards) carry no per-key editor name but must
+                still be resettable (Run 5 wiring). */}
+            {provenance && (
+              <span className="text-[11px] text-ink-muted">
+                Changed by <span className="font-semibold text-ink">{provenance.whoName}</span> · {provenance.date}
+              </span>
+            )}
             <button
               type="button"
               onClick={onReset}
@@ -131,7 +137,12 @@ export default function ConfigRow({
 
         {isPlatform && (
           <span className="font-mono text-[12.5px] font-bold text-ink-muted">
-            {item?.unbacked ? '—' : valuePreview(item, effectiveValue)}
+            {/* README row grammar state 4: the REAL value renders in mono next to
+                the PLATFORM chip (e.g. "SETTLED API ONLY"). valuePreview's lock
+                short-circuit is palette-only copy — strip the lock for row display. */}
+            {item?.unbacked
+              ? '—'
+              : item?.value ?? valuePreview({ ...item, lock: undefined }, effectiveValue)}
           </span>
         )}
 
