@@ -201,6 +201,34 @@ describe('JointCallsTab — add call', () => {
   });
 });
 
+describe('JointCallsTab — fetch failure handling (A4 alignment)', () => {
+  it('renders a visible error banner when getJointCalls rejects (sibling baseline)', async () => {
+    mockGetJointCalls.mockRejectedValue(new Error('boom'));
+    render(<JointCallsTab {...defaultProps} />);
+    await waitFor(() =>
+      expect(screen.getByText('Failed to load joint calls. Please try again.')).toBeInTheDocument()
+    );
+  });
+
+  it('renders a visible error banner when getProspectInfo rejects, matching the getJointCalls failure class', async () => {
+    mockGetJointCalls.mockResolvedValue([]);
+    mockGetProspectInfo.mockRejectedValue(new Error('boom'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<JointCallsTab {...defaultProps} />);
+
+    // Same observable behavior class as the getJointCalls sibling failure:
+    // a rendered, user-facing error message (not just a silent console.error).
+    await waitFor(() =>
+      expect(screen.getByText('Failed to load prospect preps. Please try again.')).toBeInTheDocument()
+    );
+    // console.error is preserved, matching the sibling's idiom.
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to load prospect preps:', expect.any(Error));
+
+    consoleSpy.mockRestore();
+  });
+});
+
 describe('JointCallsTab — tabbed modal integration (smoke)', () => {
   it('renders without crash for default agent context', () => {
     mockGetJointCalls.mockResolvedValue([]);
