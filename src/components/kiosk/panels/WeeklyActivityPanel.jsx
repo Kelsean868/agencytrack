@@ -2,9 +2,11 @@ import React, { useMemo } from 'react';
 import { Activity, TrendingUp } from 'lucide-react';
 import { filterSubmissionsByPeriod } from '../../../lib/productionReport/computations';
 import { extractFields } from '../../../utils/extractFields';
+import { buildSubmissionNameMap } from '../../../lib/kiosk/utils';
 import ActivityLeaderboard from './ActivityLeaderboard';
 
 function buildActivityAgents(weekSubs, allUsers, computeTotal, breakdownDefs) {
+  const nameByAgent = buildSubmissionNameMap(weekSubs);
   const agentMap = {};
   for (const sub of weekSubs) {
     const aid = sub.agentId ?? sub.userId ?? '';
@@ -31,7 +33,7 @@ function buildActivityAgents(weekSubs, allUsers, computeTotal, breakdownDefs) {
 
     return {
       agentId,
-      agentName: user.name || user.displayName || 'Agent',
+      agentName: user.name || user.displayName || nameByAgent.get(agentId) || 'Agent',
       photoURL: user.photoURL ?? null,
       total,
       breakdown,

@@ -10,8 +10,8 @@ vi.mock('../Avatar', () => ({
 
 const YEAR = new Date().getFullYear();
 const WK = `${YEAR}-01-07`;
-const sub = (agentId, api, apps) => ({
-  agentId, weekStarting: WK, status: 'submitted', version: 2,
+const sub = (agentId, api, apps, agentName) => ({
+  agentId, agentName, weekStarting: WK, status: 'submitted', version: 2,
   newBusiness: { api, apps },
 });
 
@@ -62,5 +62,29 @@ describe('RankedLeaderboardPanel (3.6)', () => {
   it('shows an empty state when there is no production for the period', () => {
     render(<RankedLeaderboardPanel period="ytd" allSubmissions={[]} allUsers={USERS} />);
     expect(screen.getByText(/no production for this period/i)).toBeInTheDocument();
+  });
+
+  // SEC-012: when the kiosk cannot list users (allUsers=[]), the podium must
+  // still show real names sourced from the submission-carried agentName rather
+  // than degrading every agent to "Agent".
+  it('resolves names from submission agentName when the roster is empty', () => {
+    const namedSubs = [
+      sub('a1', 100000, 5, 'Alice'),
+      sub('a2', 80000, 8, 'Bob'),
+      sub('a3', 60000, 3, 'Carol'),
+    ];
+    render(<RankedLeaderboardPanel period="ytd" allSubmissions={namedSubs} allUsers={[]} />);
+    const champion = document.querySelector('[data-testid="podium-card-rank-1"]');
+    expect(champion.textContent).toContain('Alice');
+    expect(champion.textContent).not.toContain('Agent');
+  });
+
+  it('prefers the roster name over the submission name when both exist', () => {
+    // Roster says "Alice", submission carries a stale "Old Alice" — roster wins.
+    const namedSubs = [sub('a1', 100000, 5, 'Old Alice')];
+    render(<RankedLeaderboardPanel period="ytd" allSubmissions={namedSubs} allUsers={[{ id: 'a1', name: 'Alice' }]} />);
+    const champion = document.querySelector('[data-testid="podium-card-rank-1"]');
+    expect(champion.textContent).toContain('Alice');
+    expect(champion.textContent).not.toContain('Old Alice');
   });
 });

@@ -5,6 +5,7 @@ import {
   computeAgentTotals,
 } from '../../../lib/productionReport/computations';
 import { useCountUp } from '../../../hooks/useCountUp';
+import { buildSubmissionNameMap } from '../../../lib/kiosk/utils';
 
 function fmtApi(n) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
@@ -37,6 +38,7 @@ function PctDisplay({ value }) {
 export default function AwardsWatchPanel({ allSubmissions, allUsers }) {
   const { inContention, achieved } = useMemo(() => {
     const ytd = filterSubmissionsByPeriod(allSubmissions, 'ytd');
+    const nameByAgent = buildSubmissionNameMap(ytd);
     const byAgent = {};
     for (const sub of ytd) {
       const aid = sub.agentId ?? sub.userId ?? '';
@@ -48,7 +50,7 @@ export default function AwardsWatchPanel({ allSubmissions, allUsers }) {
       const user = allUsers.find((u) => u.id === agentId) ?? {};
       return {
         agentId,
-        agentName: user.name || user.displayName || 'Agent',
+        agentName: user.name || user.displayName || nameByAgent.get(agentId) || 'Agent',
         totals: computeAgentTotals(subs),
       };
     });
