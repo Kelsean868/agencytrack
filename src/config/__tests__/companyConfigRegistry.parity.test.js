@@ -27,6 +27,7 @@ import {
 import { DEFAULT_FINANCING_RULESET_2026 } from '../financingRuleset/2026';
 import { MDRT_THRESHOLDS_2026 } from '../mdrtThresholds/2026';
 import { CLAWBACK_DAYS, AT_RISK_DAYS } from '../../utils/clawbackClock';
+import { PERSISTENCY_GATE_BANDS, GATE_BAND_RANGE_LABELS } from '../../utils/campaignEngine';
 import { POLL_INTERVAL_MS } from '../../lib/kiosk/kioskConfig';
 import { FEATURE_FLAG_KEYS } from '../../services/featureFlagsService';
 import {
@@ -188,6 +189,34 @@ describe('recognition — points, levels, milestones', () => {
   // CJS from a Vitest src test, so this is a literal + citation.
   it('rec.streakBadges matches the CF streak-badge thresholds [4, 8, 13] (functions/index.js:1485-1487)', () => {
     expect(ITEMS_BY_ID['rec.streakBadges'].def).toEqual([4, 8, 13]);
+  });
+});
+
+describe('recognition — campaign persistency gate (src/utils/campaignEngine.js)', () => {
+  const GATE_ITEM_IDS = ['rec.gate.90', 'rec.gate.85', 'rec.gate.80', 'rec.gate.dq'];
+
+  it('registers exactly one row per gate band, in band order', () => {
+    expect(GATE_ITEM_IDS).toHaveLength(PERSISTENCY_GATE_BANDS.length);
+    GATE_ITEM_IDS.forEach((id) => expect(ITEMS_BY_ID[id]).toBeDefined());
+  });
+
+  it('each row def is the real band payout label (the same label standings render)', () => {
+    GATE_ITEM_IDS.forEach((id, i) => {
+      expect(ITEMS_BY_ID[id].def).toBe(PERSISTENCY_GATE_BANDS[i].label);
+    });
+  });
+
+  it('each row label carries the canonical range label for its band', () => {
+    GATE_ITEM_IDS.forEach((id, i) => {
+      expect(ITEMS_BY_ID[id].label).toBe(`Persistency ${GATE_BAND_RANGE_LABELS[i]}`);
+    });
+  });
+
+  it('gate rows are read-only this run (lock: soon) — no write path exists for the gate', () => {
+    GATE_ITEM_IDS.forEach((id) => {
+      expect(ITEMS_BY_ID[id].lock).toBe('soon');
+      expect(ITEMS_BY_ID[id].storage).toBeUndefined();
+    });
   });
 });
 
