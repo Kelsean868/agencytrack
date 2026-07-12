@@ -345,3 +345,126 @@ describe('F — initialStep prop (Q4 v3 shell)', () => {
     expect(screen.getByTestId('wizard-v2-step-counter')).toHaveTextContent('Step 1 of 12');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G — draft-read FAILURE guard (data-integrity)
+//
+// A getDraft READ FAILURE must NOT fall through to a fresh, auto-saving form —
+// that would overwrite the very draft the read failed to load. On failure the
+// wizard surfaces an error card, hides the step form + footer, hard-guards
+// autosave, and offers Retry to re-run the load.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('G — draft-read failure guard', () => {
+  it('absent draft (null) → fresh step form, NO error card', async () => {
+    hoisted.getDraftMock.mockResolvedValue(null);
+
+    renderWizard();
+    await waitForModal();
+
+    // Fresh form renders; no error card.
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-v2-step-1')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('wizard-v2-draft-error')).toBeNull();
+    expect(screen.getByTestId('wizard-v2-footer')).toBeInTheDocument();
+  });
+
+  describe('read failure → error card + no autosave (fake timers)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('getDraft rejects → error card + Retry shown, step form + footer NOT rendered, no saveDraft after 1500ms', async () => {
+      hoisted.getDraftMock.mockRejectedValue(new Error('network down'));
+
+      renderWizard();
+      // Same microtask-drain rationale as suite C: fake timers are installed, so
+      // waitFor would deadlock. Drain the getDraft rejection chain (reject
+      // propagates through the empty .then to the .catch) → setState.
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Error card + Retry surfaced.
+      expect(screen.getByTestId('wizard-v2-draft-error')).toBeInTheDocument();
+      expect(screen.getByTestId('wizard-v2-draft-error-retry')).toBeInTheDocument();
+      // Form body + footer suppressed (no editable/navigable surface over the
+      // unread draft).
+      expect(screen.queryByTestId('wizard-v2-step-1')).toBeNull();
+      expect(screen.queryByTestId('wizard-v2-footer')).toBeNull();
+
+      // Advance past the autosave debounce — doSave.current fires but is guarded
+      // by `if (draftLoadError) return`; saveDraft must NOT run (no overwrite).
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1500);
+      });
+      expect(hoisted.saveDraftMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Retry re-runs the load (real timers)', () => {
+    it('Retry → getDraft called again; success with a draft loads its fields', async () => {
+      hoisted.getDraftMock
+        .mockRejectedValueOnce(new Error('network down'))
+        .mockResolvedValue({
+          status:       'draft',
+          agentId:      'agent-1',
+          weekStarting: WEEK,
+          updatedAt:    null,
+          submittedAt:  null,
+          coldCalls:    7,
+        });
+
+      renderWizard();
+      await waitForModal();
+      await waitFor(() => {
+        expect(screen.getByTestId('wizard-v2-draft-error')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('wizard-v2-draft-error-retry'));
+
+      // Error clears, form returns.
+      await waitFor(() => {
+        expect(screen.queryByTestId('wizard-v2-draft-error')).toBeNull();
+        expect(screen.getByTestId('wizard-v2-step-1')).toBeInTheDocument();
+      });
+      // getDraft ran twice: once on mount (failed), once on Retry (succeeded).
+      expect(hoisted.getDraftMock).toHaveBeenCalledTimes(2);
+
+      // The retried draft's field is really in formData (survives to submit).
+      clickThroughToSubmit();
+      await waitFor(() => expect(hoisted.submitReportMock).toHaveBeenCalledTimes(1));
+      expect(hoisted.submitReportMock.mock.calls[0][4].coldCalls).toBe(7);
+    });
+
+    it('Retry → success with null draft yields a fresh wizard (defaults)', async () => {
+      hoisted.getDraftMock
+        .mockRejectedValueOnce(new Error('network down'))
+        .mockResolvedValue(null);
+
+      renderWizard();
+      await waitForModal();
+      await waitFor(() => {
+        expect(screen.getByTestId('wizard-v2-draft-error')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('wizard-v2-draft-error-retry'));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('wizard-v2-draft-error')).toBeNull();
+        expect(screen.getByTestId('wizard-v2-step-1')).toBeInTheDocument();
+      });
+      expect(hoisted.getDraftMock).toHaveBeenCalledTimes(2);
+
+      // Fresh form → INITIAL_DATA defaults submit through.
+      clickThroughToSubmit();
+      await waitFor(() => expect(hoisted.submitReportMock).toHaveBeenCalledTimes(1));
+      expect(hoisted.submitReportMock.mock.calls[0][4].coldCalls).toBe(0);
+    });
+  });
+});
