@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
   getManagerActivityStandards,
@@ -85,6 +85,37 @@ export async function getResolvedStandards({ tenantId, managerId, role }) {
  * @param {Array<{ managerId: string, managerRole: string }>} args.managers
  * @returns {Promise<Map<string, object>>}
  */
+/**
+ * Counts, per manager role and per standard key, how many managers have an
+ * override set for that key. The override doc does NOT store role (forgery
+ * prevention reads it from the user doc), so the caller supplies a
+ * managerId→role map. Returns { [role]: { [key]: count } }; a key with zero
+ * overrides is simply absent (→ the indicator renders an em-dash).
+ * Requires the tenant_admin/platform_admin list arm on the collection.
+ *
+ * @param {object} args
+ * @param {string} args.tenantId
+ * @param {Record<string, string>} args.rolesByManagerId managerId → role
+ * @returns {Promise<Record<string, Record<string, number>>>}
+ */
+export async function getManagerActivityStandardOverrideCounts({ tenantId, rolesByManagerId }) {
+  const counts = {};
+  const snap = await getDocs(collection(db, `tenants/${tenantId}/managerActivityStandardOverrides`));
+  snap.forEach((docSnap) => {
+    const role = rolesByManagerId?.[docSnap.id];
+    if (!role) return; // manager role unknown/missing → skip
+    const data = docSnap.data() || {};
+    for (const key of ACTIVITY_KEYS) {
+      const val = data[key];
+      if (val !== undefined && val !== null) {
+        if (!counts[role]) counts[role] = {};
+        counts[role][key] = (counts[role][key] || 0) + 1;
+      }
+    }
+  });
+  return counts;
+}
+
 export async function getResolvedStandardsForMany({ tenantId, managers }) {
   const result = new Map();
   if (!managers || managers.length === 0) return result;

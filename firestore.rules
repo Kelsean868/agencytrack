@@ -1625,7 +1625,14 @@ service cloud.firestore {
           && getTenantId() == tenantId
           && uplineInScope();
 
-        allow list: if false;
+        // Read-only list arm for the Company Config override-count indicator
+        // (Run 5 DECISIONS-NEEDED #1). tenant_admin in-tenant + platform_admin
+        // (cross-tenant by design — matches every other TA/PA read arm, e.g.
+        // the config block ~line 657). Managers + agents still DENY. The
+        // forgery-prevention write arms above are unchanged.
+        allow list: if isSignedIn()
+          && getRole() in ['platform_admin', 'tenant_admin']
+          && (getRole() == 'platform_admin' || getTenantId() == tenantId);
       }
 
       // ── Weekly Planner v2 Slice 2: agent-set committed weekly plan ────────────
