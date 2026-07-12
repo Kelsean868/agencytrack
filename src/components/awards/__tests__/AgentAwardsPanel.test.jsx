@@ -264,6 +264,50 @@ describe('AgentAwardsPanel — §1 states contract (error / retry)', () => {
   });
 });
 
+describe('AgentAwardsPanel — §1 top-level empty (no submissions)', () => {
+  it('renders an honest descriptive empty with no CTA when there are no submissions at all', () => {
+    render(
+      <AgentAwardsPanel
+        submissions={[]}
+        confirmedSettlements={[]}
+        agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: false }}
+      />
+    );
+
+    const empty = screen.getByTestId('agent-awards-top-empty');
+    expect(empty).toBeInTheDocument();
+    expect(empty).toHaveTextContent(/start submitting weekly reports/i);
+    // No fabricated CTA — this state has no real navigation target from this panel.
+    expect(empty.querySelector('button')).toBeNull();
+  });
+});
+
+describe('AgentAwardsPanel — §1 loading skeleton (policy-ledger fetch)', () => {
+  it('renders PanelSkeleton instead of the (artificially empty) award groups while the policy ledger is loading', async () => {
+    let resolveLedger;
+    getOwnPolicies.mockReturnValue(new Promise((resolve) => { resolveLedger = resolve; }));
+
+    render(
+      <AgentAwardsPanel
+        submissions={[{ id: 'sub-1', weekStarting: '2026-05-04', agentId: BASE_PROFILE.uid }]}
+        confirmedSettlements={SETTLEMENTS}
+        agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: true }}
+      />
+    );
+
+    const loading = screen.getByTestId('agent-awards-loading');
+    expect(loading).toBeInTheDocument();
+    expect(loading.querySelectorAll('[role="status"]').length).toBeGreaterThan(0);
+    // The category-tab/award-group chrome (only rendered once past the loading
+    // gate) must not be showing yet.
+    expect(screen.queryByText(/awards tracked/i)).not.toBeInTheDocument();
+
+    resolveLedger([]);
+    await waitFor(() => expect(screen.queryByTestId('agent-awards-loading')).not.toBeInTheDocument());
+    expect(await screen.findByText(/awards tracked/i)).toBeInTheDocument();
+  });
+});
+
 describe('AgentAwardsPanel — 0.1b actionable empty (category filter)', () => {
   it('switching to a category with no awards shows a "View all categories" CTA that resets the filter', async () => {
     computeAgentAwards.mockReturnValue({});

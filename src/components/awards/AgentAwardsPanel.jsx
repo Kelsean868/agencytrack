@@ -8,6 +8,7 @@ import { HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer } from './award
 import { LedgerSourceChip } from './awardProvenance';
 import { deriveAwardProvenance } from '../../lib/awardProvenance';
 import { useFeatureFlag } from '../../hooks/useFeatureFlag';
+import PanelSkeleton from '../ui/PanelSkeleton';
 
 const CATEGORY_TABS = ['All', 'Monthly', 'Quarterly', 'Annual', 'Club'];
 
@@ -162,8 +163,34 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
 
   if (!submissions?.length) {
     return (
-      <div className="card text-center py-12">
-        <p className="text-sm text-ink-muted">Start submitting weekly reports to see your awards progress.</p>
+      <div className="card text-center py-12 flex flex-col items-center gap-3" data-testid="agent-awards-top-empty">
+        <div className="p-3 rounded-full bg-surface-muted text-ink-muted">
+          <Trophy size={24} aria-hidden="true" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-ink">No awards progress yet</p>
+          {/* Honest descriptive empty (§1) — the only real action here is
+              submitting weekly activity elsewhere in the app; this panel has
+              no navigation prop to jump there, so no CTA is fabricated. */}
+          <p className="text-sm text-ink-muted mt-0.5">
+            Start submitting weekly reports to see your awards progress build here.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // §1 loading skeleton — the policy-ledger fetch is this panel's own async
+  // dependency (see loadLedgerPolicies above). Without this gate, the award
+  // groups below render from an artificially empty activeConfirmedData while
+  // ledgerPolicies is still null — every award reads as 0% progress instead
+  // of a loading state.
+  const ledgerLoading = usesPolicyLedger && ledgerPolicies === null && !ledgerError;
+  if (ledgerLoading) {
+    return (
+      <div className="flex flex-col gap-6" data-testid="agent-awards-loading">
+        <PanelSkeleton variant="card-grid" count={4} label="Loading your awards…" />
+        <PanelSkeleton variant="metric-row" count={4} />
       </div>
     );
   }

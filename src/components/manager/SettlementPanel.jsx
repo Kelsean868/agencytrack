@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import SaveButton from '../ui/SaveButton';
 import { useAuth } from '../../context/AuthContext';
@@ -256,33 +256,45 @@ export default function SettlementPanel() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto rounded-xl border border-border bg-card">
-                <table className="text-sm w-full">
-                  <thead>
-                    <tr className="bg-surface border-b border-border">
-                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted whitespace-nowrap">Agent</th>
-                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted">Period</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted">API</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted">Apps</th>
-                      <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted">Persist</th>
-                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted">By</th>
-                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {settlements.slice(0, visibleCount).map((s) => (
-                      <tr key={s.id} className="hover:bg-surface/60 transition-colors">
-                        <td className="px-3 py-2.5 font-medium text-ink whitespace-nowrap">{agentName(s.agentId)}</td>
-                        <td className="px-3 py-2.5 text-ink-muted whitespace-nowrap">{periodLabel(s.periodKey)}</td>
-                        <td className="px-3 py-2.5 text-right text-ink whitespace-nowrap">{formatCurrency(s.settledAPI)}</td>
-                        <td className="px-3 py-2.5 text-right text-ink">{s.settledApps ?? '—'}</td>
-                        <td className="px-3 py-2.5 text-right text-ink">{s.persistency != null ? `${s.persistency}%` : '—'}</td>
-                        <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{s.confirmedByName ?? '—'}</td>
-                        <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{formatTs(s.confirmedAt)}</td>
+              {/* §5 dense-table contract — same treatment as the BM history
+                  table below (card-scoped scroll + per-cell sticky header +
+                  tabular-nums + live footer count). */}
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="overflow-x-auto overflow-y-auto max-h-[70vh]">
+                  <table className="text-sm w-full border-separate border-spacing-0">
+                    <thead>
+                      <tr>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted whitespace-nowrap border-b border-border sticky top-0 z-10 bg-surface">Agent</th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted border-b border-border sticky top-0 z-10 bg-surface">Period</th>
+                        <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted border-b border-border sticky top-0 z-10 bg-surface">API</th>
+                        <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted border-b border-border sticky top-0 z-10 bg-surface">Apps</th>
+                        <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted border-b border-border sticky top-0 z-10 bg-surface">Persist</th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted border-b border-border sticky top-0 z-10 bg-surface">By</th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted border-b border-border sticky top-0 z-10 bg-surface">Date</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {settlements.slice(0, visibleCount).map((s) => (
+                        <tr key={s.id} className="hover:bg-surface/60 transition-colors">
+                          <td className="px-3 py-2.5 font-medium text-ink whitespace-nowrap">{agentName(s.agentId)}</td>
+                          <td className="px-3 py-2.5 text-ink-muted whitespace-nowrap">{periodLabel(s.periodKey)}</td>
+                          <td className="px-3 py-2.5 text-right text-ink tabular-nums whitespace-nowrap">{formatCurrency(s.settledAPI)}</td>
+                          <td className="px-3 py-2.5 text-right text-ink tabular-nums">{s.settledApps ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-right text-ink tabular-nums">{s.persistency != null ? `${s.persistency}%` : '—'}</td>
+                          <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{s.confirmedByName ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{formatTs(s.confirmedAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Live footer count (§5) — honest about loaded-vs-total when paginated. */}
+                <div className="px-3 py-2 border-t border-border bg-surface text-xs text-ink-muted" data-testid="settlement-um-footer-count">
+                  {visibleCount < settlements.length
+                    ? `Showing ${Math.min(visibleCount, settlements.length)} of ${settlements.length} settlement${settlements.length !== 1 ? 's' : ''}`
+                    : `${settlements.length} settlement${settlements.length !== 1 ? 's' : ''}`}
+                </div>
               </div>
 
               {settlements.length > visibleCount && (
@@ -311,6 +323,10 @@ export default function SettlementPanel() {
       </div>
     );
   }
+
+  // §5 dense-table — the paginated slice backing both the row map and the
+  // honest "loaded vs total" footer count below.
+  const visibleSettlements = settlements.slice(0, visibleCount);
 
   return (
     <div className="flex flex-col gap-6">
@@ -521,65 +537,78 @@ export default function SettlementPanel() {
                 </button>
               </div>
             )}
-            <div className="overflow-x-auto rounded-xl border border-border bg-surface-raised">
-              <table className="text-sm w-full">
-                <thead>
-                  <tr className="bg-surface border-b border-border">
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted whitespace-nowrap">Agent</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted">Period</th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted">API</th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted">Apps</th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted">Persist</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted">By</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted">Date</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-ink-muted">Del</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {settlements.slice(0, visibleCount).map((s) => (
-                    <tr key={s.id} className="hover:bg-surface/60 transition-colors">
-                      <td className="px-3 py-2.5 font-medium text-ink whitespace-nowrap">{agentName(s.agentId)}</td>
-                      <td className="px-3 py-2.5 text-ink-muted whitespace-nowrap">{periodLabel(s.periodKey)}</td>
-                      <td className="px-3 py-2.5 text-right text-ink whitespace-nowrap">{formatCurrency(s.settledAPI)}</td>
-                      <td className="px-3 py-2.5 text-right text-ink">{s.settledApps ?? '—'}</td>
-                      <td className="px-3 py-2.5 text-right text-ink">{s.persistency != null ? `${s.persistency}%` : '—'}</td>
-                      <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{s.confirmedByName ?? '—'}</td>
-                      <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{formatTs(s.confirmedAt)}</td>
-                      <td className="px-3 py-2.5 text-center">
-                        {deletingId === s.id ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <p className="text-[10px] text-danger-ink leading-tight max-w-[100px]">
-                              Delete {agentName(s.agentId)} — {periodLabel(s.periodKey)}?
-                            </p>
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => setDeletingId(null)}
-                                className="h-6 px-2 rounded border border-border text-[10px] text-ink-muted hover:text-ink transition-colors"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={() => handleDelete(s)}
-                                className="h-6 px-2 rounded bg-danger text-white text-[10px] font-semibold hover:bg-danger/90 transition-colors"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleDelete(s)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-danger/60 hover:text-danger hover:bg-danger/10 transition-colors mx-auto"
-                            aria-label="Delete settlement"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </td>
+            {/* §5 dense-table contract — card-scoped vertical scroll + sticky
+                header (each <th> carries its own bg, matching ProductionTable's
+                per-cell sticky idiom) + tabular-nums on numeric columns +
+                live footer count (loaded-vs-total, honest about pagination). */}
+            <div className="rounded-xl border border-border bg-surface-raised overflow-hidden">
+              <div className="overflow-x-auto overflow-y-auto max-h-[70vh]">
+                <table className="text-sm w-full border-separate border-spacing-0">
+                  <thead>
+                    <tr>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted whitespace-nowrap border-b border-border sticky top-0 z-10 bg-surface">Agent</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted border-b border-border sticky top-0 z-10 bg-surface">Period</th>
+                      <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted border-b border-border sticky top-0 z-10 bg-surface">API</th>
+                      <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted border-b border-border sticky top-0 z-10 bg-surface">Apps</th>
+                      <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted border-b border-border sticky top-0 z-10 bg-surface">Persist</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted border-b border-border sticky top-0 z-10 bg-surface">By</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted border-b border-border sticky top-0 z-10 bg-surface">Date</th>
+                      <th className="px-3 py-2.5 text-center text-xs font-semibold text-ink-muted border-b border-border sticky top-0 z-10 bg-surface">Del</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {visibleSettlements.map((s) => (
+                      <tr key={s.id} className="hover:bg-surface/60 transition-colors">
+                        <td className="px-3 py-2.5 font-medium text-ink whitespace-nowrap">{agentName(s.agentId)}</td>
+                        <td className="px-3 py-2.5 text-ink-muted whitespace-nowrap">{periodLabel(s.periodKey)}</td>
+                        <td className="px-3 py-2.5 text-right text-ink tabular-nums whitespace-nowrap">{formatCurrency(s.settledAPI)}</td>
+                        <td className="px-3 py-2.5 text-right text-ink tabular-nums">{s.settledApps ?? '—'}</td>
+                        <td className="px-3 py-2.5 text-right text-ink tabular-nums">{s.persistency != null ? `${s.persistency}%` : '—'}</td>
+                        <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{s.confirmedByName ?? '—'}</td>
+                        <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{formatTs(s.confirmedAt)}</td>
+                        <td className="px-3 py-2.5 text-center">
+                          {deletingId === s.id ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <p className="text-[10px] text-danger-ink leading-tight max-w-[100px]">
+                                Delete {agentName(s.agentId)} — {periodLabel(s.periodKey)}?
+                              </p>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => setDeletingId(null)}
+                                  className="h-6 px-2 rounded border border-border text-[10px] text-ink-muted hover:text-ink transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(s)}
+                                  className="h-6 px-2 rounded bg-danger text-white text-[10px] font-semibold hover:bg-danger/90 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleDelete(s)}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg text-danger/60 hover:text-danger hover:bg-danger/10 transition-colors mx-auto"
+                              aria-label="Delete settlement"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Live footer count (§5) — honest about loaded-vs-total when paginated. */}
+              <div className="px-3 py-2 border-t border-border bg-surface text-xs text-ink-muted" data-testid="settlement-history-footer-count">
+                {visibleSettlements.length < settlements.length
+                  ? `Showing ${visibleSettlements.length} of ${settlements.length} settlement${settlements.length !== 1 ? 's' : ''}`
+                  : `${settlements.length} settlement${settlements.length !== 1 ? 's' : ''}`}
+              </div>
             </div>
 
             {settlements.length > visibleCount && (
