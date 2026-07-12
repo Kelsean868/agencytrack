@@ -5,7 +5,9 @@ import { render, screen } from '@testing-library/react';
 import BranchKPIStrip from '../BranchKPIStrip.jsx';
 
 vi.mock('../KPICard', () => ({
-  default: ({ label }) => <div data-testid="kpi-card">{label}</div>,
+  default: ({ label, values }) => (
+    <div data-testid="kpi-card" data-values={JSON.stringify(values)}>{label}</div>
+  ),
 }));
 
 const KPIS_4W = {
@@ -22,12 +24,18 @@ describe('BranchKPIStrip — loading', () => {
     expect(pulses.length).toBeGreaterThan(0);
     expect(screen.queryByTestId('kpi-card')).toBeNull();
   });
+
+  it('renders 5 skeleton tiles (4 weekly KPIs + Active Agents)', () => {
+    const { container } = render(<BranchKPIStrip kpiData={{}} loading />);
+    const pulses = container.querySelectorAll('.h-\\[140px\\].animate-pulse');
+    expect(pulses.length).toBe(5);
+  });
 });
 
 describe('BranchKPIStrip — with data', () => {
-  it('renders all 4 KPICard instances', () => {
-    render(<BranchKPIStrip kpiData={KPIS_4W} loading={false} />);
-    expect(screen.getAllByTestId('kpi-card')).toHaveLength(4);
+  it('renders all 5 KPICard instances (4 weekly + Active Agents)', () => {
+    render(<BranchKPIStrip kpiData={KPIS_4W} loading={false} activeAgentCount={12} />);
+    expect(screen.getAllByTestId('kpi-card')).toHaveLength(5);
   });
 
   it('renders Compliance Rate label', () => {
@@ -67,5 +75,31 @@ describe('BranchKPIStrip — with data', () => {
     render(<BranchKPIStrip kpiData={oneWeek} loading={false} />);
     expect(document.body.textContent).not.toContain('▲');
     expect(document.body.textContent).not.toContain('▼');
+  });
+});
+
+describe('BranchKPIStrip — Active Agents card', () => {
+  it('renders Active Agents label', () => {
+    render(<BranchKPIStrip kpiData={KPIS_4W} loading={false} activeAgentCount={12} />);
+    expect(screen.getByText('Active Agents')).toBeInTheDocument();
+  });
+
+  it('passes the active agent count through as a single-element values array', () => {
+    render(<BranchKPIStrip kpiData={KPIS_4W} loading={false} activeAgentCount={12} />);
+    const card = screen.getByText('Active Agents');
+    expect(card.getAttribute('data-values')).toBe(JSON.stringify([12]));
+  });
+
+  it('passes an empty values array when activeAgentCount is absent (no fabricated count)', () => {
+    render(<BranchKPIStrip kpiData={KPIS_4W} loading={false} />);
+    const card = screen.getByText('Active Agents');
+    expect(card.getAttribute('data-values')).toBe(JSON.stringify([]));
+  });
+
+  it('is excluded from the W/W trend pill row (no historical headcount series exists)', () => {
+    render(<BranchKPIStrip kpiData={KPIS_4W} loading={false} activeAgentCount={12} />);
+    // 4 weekly-trend pills (Compliance/API/Apps/FFI) only — Active Agents never
+    // gets a pill since there is no per-week count to compare against.
+    expect(screen.queryByText(/Active Agents ▲|Active Agents ▼|Active Agents —/)).toBeNull();
   });
 });
