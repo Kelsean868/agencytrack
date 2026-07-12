@@ -13,7 +13,10 @@
  *                      live behind the `sidebar-ws-toggle-team` toggle.
  */
 import { newLegContext, login, assertLegHygiene, currencyRe } from './vh-helpers.mjs';
-import { DAILY, W } from './expectations.mjs';
+import {
+  DAILY, W, TODAY, weekLabel, A1_MONTH_ORDER, A1_MONTH_ORDER_LABEL,
+  sumDayApiThrough, appsThrough,
+} from './expectations.mjs';
 import { selectReactOption } from '../lib/walk-helpers.mjs';
 
 // ── tier2-private helpers ─────────────────────────────────────────────────────
@@ -340,7 +343,7 @@ export const LEGS = [
   {
     id: 't2-history-edit-path',
     role: 'agent1',
-    desc: 'Agent History: 9 submitted weeks + best week (2026-05-31) + award markers; open 2026-07-05 DRAFT row → viewer → Continue editing opens WizardForm on that week; exit without submitting. NOTE: Continue-editing may autosave the (already-draft) week.',
+    desc: 'Agent History: 9 submitted weeks + best week (W(-5), positional — the seed\'s max-API week) + award markers; open the W0 DRAFT row → viewer → Continue editing opens WizardForm on that week; exit without submitting. NOTE: Continue-editing may autosave the (already-draft) week.',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser);
       try {
@@ -354,18 +357,24 @@ export const LEGS = [
         await mustText(p, /9\s*OF\s*52\s*WEEKS\s*SUBMITTED/i, 'submitted-count header');
         await mustText(p, /TTD\s*122K/i, 'YTD API compact');
         await mustText(p, /BEST WEEK/i, 'best-week marker');
-        // Best week is the 2026-05-31 row @ TTD 22K (seed bestWeekApi=22000).
-        const bestRow = p.locator('[aria-label="Open submission from Sun 31 May"]');
+        // Best week is the seed's positional max — W(-5) @ 22,000 (seed-fixtures.mjs
+        // A1_WEEKS: w:-5 is the only entry annotated "best week"). Its calendar date
+        // (and therefore its "Sun DD Mon" aria-label) shifts as TODAY advances, so
+        // the label is derived via weekLabel() (mirrors HistoryTab.jsx's own
+        // formatter) rather than hardcoded to a specific date.
+        const bestWeekLabel = weekLabel(W(-5));
+        const bestRow = p.locator(`[aria-label="Open submission from ${bestWeekLabel}"]`);
         await bestRow.waitFor({ state: 'attached', timeout: 8000 });
         const bestTxt = await bestRow.innerText();
         if (!/★?\s*BEST WEEK/i.test(bestTxt) || !/TTD\s*22K/i.test(bestTxt)) {
           throw new Error(`best-week row mismatch: "${bestTxt.replace(/\s+/g, ' ').slice(0, 120)}"`);
         }
 
-        // Open the DRAFT (2026-07-05) row → read-only viewer showing that week.
-        await p.locator('[aria-label="Open submission from Sun 05 Jul"]').click({ timeout: 8000 });
+        // Open the DRAFT (W0) row → read-only viewer showing that week.
+        const draftLabel = weekLabel(W(0));
+        await p.locator(`[aria-label="Open submission from ${draftLabel}"]`).click({ timeout: 8000 });
         await p.locator('[role="dialog"]').waitFor({ state: 'visible', timeout: 10_000 });
-        await mustText(p, /2026-07-05/, 'viewer week identity', '[role="dialog"]');
+        await mustText(p, new RegExp(W(0)), 'viewer week identity', '[role="dialog"]');
         await mustText(p, /DRAFT/i, 'viewer draft status', '[role="dialog"]');
 
         // Continue editing → WizardForm (wizard-v2-modal) opens ON that week.
@@ -380,7 +389,7 @@ export const LEGS = [
         else await p.keyboard.press('Escape');
         await p.waitForTimeout(1000);
         assertLegHygiene(ctx);
-        return '9 submitted weeks + best-week 2026-05-31 (TTD 22K) verified; draft row 2026-07-05 → viewer → Continue editing opened WizardForm on that week; exited without submitting.';
+        return `9 submitted weeks + best-week ${W(-5)} (${bestWeekLabel}, TTD 22K) verified; draft row ${W(0)} → viewer → Continue editing opened WizardForm on that week; exited without submitting.`;
       } finally {
         await ctx.context.close();
       }
@@ -546,13 +555,65 @@ export const LEGS = [
   {
     id: 't2-daily-anchor-strip',
     role: 'agent1',
-    desc: 'Agent Daily Log: anchor strip renders weekly API floor TTD 4,800 and WTD = sum of seeded dailyActivity docs (A1b family, DAILY.wtd). Celebration asserted absent unless DAILY.milestoneReachable (week-scoped streak: milestone 5 only reachable Fri/Sat; 10/20 unreachable — banked VH finding).',
+    desc: 'Agent Daily Log, weekday (dow>=1): anchor strip renders weekly API floor TTD 4,800 and WTD = sum of seeded dailyActivity docs (A1b family, DAILY.wtd). Celebration asserted absent unless DAILY.milestoneReachable. On Sunday (dow===0): DailyCaptureV2 gates the anchor strip off entirely (`{!isTodaySunday && <DailyAnchorStrip/>}`, DailyCaptureV2.jsx:906-913) and renders SundayConfirmView (completed-week rollup) instead — asserted as the TRUE Sunday state (strip genuinely absent by design, not a bug), plus the honest zero rollup (seed-fixtures A1b\'s daily-doc loop is a no-op on a Sunday run: `for (dow=1; dow<getUTCDay(); dow++)` never executes when getUTCDay()===0).',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser);
       try {
         const p = ctx.page;
         await login(p, 'agent1');
         await clickTid(p, 'agent-tab-daily-log');
+
+        const dow = new Date(`${TODAY}T12:00:00Z`).getUTCDay();
+        if (dow === 0) {
+          // Sunday: no anchor strip — DailyCaptureV2 renders "Review week" +
+          // SundayConfirmView (a read-only rollup of the COMPLETED PRIOR week,
+          // not the just-started current week) instead of the Mon-Sat logging
+          // form. Wait on that heading rather than the (never-mounted)
+          // anchor-strip testid.
+          await p.getByText(/Review week/i).first().waitFor({ state: 'visible', timeout: 15_000 });
+          await p.waitForTimeout(800);
+          if (await p.locator(tsel('dcv2-anchor-strip')).count()) {
+            throw new Error('dcv2-anchor-strip unexpectedly present on Sunday (DailyCaptureV2 gates it off via isTodaySunday — check for regression).');
+          }
+          const bodyTxt = (await scopeText(p, 'body')).replace(/\s+/g, ' ');
+          if (!/Your week from daily logs/i.test(bodyTxt)) {
+            throw new Error(`SundayConfirmView heading not found. Got: "${bodyTxt.slice(0, 240)}"`);
+          }
+          // The completed-prior-week rollup is NOT necessarily zero — A1b
+          // writes CONSECUTIVE weekdays starting Monday, and residue from
+          // whatever day the seed last ran can leave 0-6 days logged in that
+          // week. Read the LIVE "Days logged" count N and derive the expected
+          // API/apps sum from N via the shared DAY_API model (sumDayApiThrough/
+          // appsThrough) rather than assuming a fixed day-count or amount.
+          const daysMatch = bodyTxt.match(/Days logged\s*(\d+)\s*\/\s*5/i);
+          if (!daysMatch) {
+            throw new Error(`SundayConfirmView "Days logged" row not found. Got: "${bodyTxt.slice(0, 240)}"`);
+          }
+          const n = Number(daysMatch[1]);
+          const expectedApi = sumDayApiThrough(n);
+          const expectedApps = appsThrough(n);
+          const expectedFfiCi = n; // A1b seeds ffiConducted=1, ciConducted=1 per day
+          if (!new RegExp(`FFIs conducted\\D{0,10}${expectedFfiCi}\\b`, 'i').test(bodyTxt)) {
+            throw new Error(`SundayConfirmView FFIs conducted mismatch (expected ${expectedFfiCi} for N=${n} days). Got: "${bodyTxt.slice(0, 240)}"`);
+          }
+          if (!new RegExp(`CIs conducted\\D{0,10}${expectedFfiCi}\\b`, 'i').test(bodyTxt)) {
+            throw new Error(`SundayConfirmView CIs conducted mismatch (expected ${expectedFfiCi} for N=${n} days). Got: "${bodyTxt.slice(0, 240)}"`);
+          }
+          if (!new RegExp(`Apps written\\D{0,10}${expectedApps}\\b`, 'i').test(bodyTxt)) {
+            throw new Error(`SundayConfirmView Apps written mismatch (expected ${expectedApps} for N=${n} days). Got: "${bodyTxt.slice(0, 240)}"`);
+          }
+          if (!currencyRe(expectedApi).test(bodyTxt)) {
+            throw new Error(`SundayConfirmView API rollup mismatch (expected TTD ${expectedApi.toLocaleString('en-US')} for N=${n} days, per DAY_API[1..${n}]). Got: "${bodyTxt.slice(0, 240)}"`);
+          }
+          if (await p.locator(tsel('daily-streak-celebration')).count()) {
+            throw new Error('unexpected streak celebration on Sunday review.');
+          }
+          await shot(p, 't2-daily-anchor');
+          assertLegHygiene(ctx);
+          return `Sunday state (dow=0): dcv2-anchor-strip correctly ABSENT (DailyCaptureV2 gates it off via isTodaySunday); SundayConfirmView rendered instead ("Review week" + completed-prior-week rollup: ${n}/5 days logged, API TTD ${expectedApi.toLocaleString('en-US')}, apps ${expectedApps}, FFI/CI ${expectedFfiCi} each — all derived from N via the shared DAY_API model); celebration correctly absent.`;
+        }
+
+        // Weekday path (dow>=1) — unchanged behavior/assertions.
         await p.locator(tsel('dcv2-anchor-strip')).waitFor({ state: 'visible', timeout: 15_000 });
         await p.waitForTimeout(800);
 
@@ -587,7 +648,7 @@ export const LEGS = [
   {
     id: 't2-game-plan-hub',
     role: 'agent1',
-    desc: 'Agent Game Plan: AllocationBar legend Life 60% / A&H 20% / General 20% (150k/50k/50k) + API commitment TTD 250,000 + monthly target TTD 20,833; MiniMonthStrip bar heights reflect seeded actuals (May 70,900 > June 51,100 > July 0).',
+    desc: 'Agent Game Plan: AllocationBar legend Life 60% / A&H 20% / General 20% (150k/50k/50k) + API commitment TTD 250,000 + monthly target TTD 20,833; MiniMonthStrip bar heights reflect seeded actuals, ranked by A1_MONTH_ORDER (computed from the positional A1_WEEKS model — the calendar months + rank shift as TODAY advances, so this is NOT a fixed May>June>July shape).',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser);
       try {
@@ -606,19 +667,32 @@ export const LEGS = [
         await mustText(p, /20,833/, 'monthly target 20,833', 'game-plan-hub');
 
         // MiniMonthStrip: seeded monthly buckets are height-only bars (aria-hidden, no text).
-        // Value-level check via relative heights: May(4)=70,900 > June(5)=51,100 > July(6)=0.
+        // Value-level check via relative heights, ranked by the POSITIONAL model
+        // (A1_MONTH_ORDER — derived from A1_WEEKS grouped by each W(k)'s calendar
+        // month; see expectations.mjs). Which months are highest is NOT assumed —
+        // it's computed fresh each run, since W(k) crosses month boundaries as
+        // TODAY advances (the prior May>June>July hardcode broke on rollover).
         const h = async (i) => {
           const style = await p.locator(tsel(`cascade-month-${i}`)).getAttribute('style');
           const m = (style || '').match(/height:\s*([\d.]+)%/);
           return m ? parseFloat(m[1]) : NaN;
         };
-        const [may, jun, jul] = [await h(4), await h(5), await h(6)];
-        if (!(may > jun && jun > jul)) {
-          throw new Error(`MiniMonthStrip heights not monotonic for seeded actuals: May=${may}% June=${jun}% July=${jul}% (expected 70,900 > 51,100 > 0).`);
+        const heights = {};
+        for (const idx of A1_MONTH_ORDER) heights[idx] = await h(idx);
+        for (let i = 0; i < A1_MONTH_ORDER.length - 1; i++) {
+          const a = A1_MONTH_ORDER[i], b = A1_MONTH_ORDER[i + 1];
+          if (!(heights[a] > heights[b])) {
+            throw new Error(
+              `MiniMonthStrip heights not monotonic for seeded actuals: `
+              + `cascade-month-${a}=${heights[a]}% cascade-month-${b}=${heights[b]}% `
+              + `(expected desc order per computed buckets: ${A1_MONTH_ORDER_LABEL}).`,
+            );
+          }
         }
         await shot(p, 't2-game-plan');
         assertLegHygiene(ctx);
-        return `Game Plan: AllocationBar 60/20/20 + API 250,000 + monthly 20,833; MiniMonthStrip heights May ${may}% > June ${jun}% > July ${jul}% (seeded 70,900>51,100>0).`;
+        const heightsStr = A1_MONTH_ORDER.map((i) => `m${i}=${heights[i]}%`).join(' > ');
+        return `Game Plan: AllocationBar 60/20/20 + API 250,000 + monthly 20,833; MiniMonthStrip heights ${heightsStr} (computed bucket order: ${A1_MONTH_ORDER_LABEL}).`;
       } finally {
         await ctx.context.close();
       }
