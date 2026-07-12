@@ -439,6 +439,53 @@ export const LEGS = [
     },
   },
 
+  // ── 5b. Exception lead panel + AgentDrill — TENANT-WIDE on TenantAdminDashboard (tenant_admin, Run 6 S5) ──
+  {
+    id: 't1-admin-exception-lead',
+    role: 'tenant_admin',
+    desc: 'tenant_admin dashboard: ExceptionLeadPanel (tenant-wide, scopeIds=null, S5) flags Staging Agent Two (danger tone, type=floor), NOT Staging Agent One; row click → AgentDrillDrawer → Report tab shows A2 YTD 8,500; drawer closed via Escape',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        await login(ctx.page, 'tenant_admin');
+        const p = ctx.page;
+        // TenantAdminDashboard mounts on the 'dashboard' tab by default (matches
+        // t1-admin-quick-add — no gotoTab needed).
+        const panel = p.locator('[data-testid="exception-lead-panel"]');
+        await panel.waitFor({ state: 'attached', timeout: 12_000 });
+        const list = p.locator('[data-testid="exception-lead-list"]');
+        // 4 concurrent data sources feed this surface (users/branches/ytd/
+        // companyMins, per S5's TOTAL_DATA_SOURCES) — allow more headroom than
+        // the manager leg's single-source-family load.
+        await list.waitFor({ state: 'attached', timeout: 15_000 });
+        // Agent Two flagged; Agent One NOT flagged (mirrors t1-exception-lead-drill).
+        const listText = (await list.textContent()) || '';
+        if (!listText.includes('Staging Agent Two')) throw new Error('Staging Agent Two not in tenant-wide exception list');
+        if (listText.includes('Staging Agent One')) throw new Error('Staging Agent One unexpectedly flagged');
+        const row = list.locator('button', { hasText: 'Staging Agent Two' }).first();
+        const tone = await row.evaluate((el) => {
+          const danger = el.querySelector('.text-danger-ink');
+          return { hasDanger: !!danger, type: el.getAttribute('data-type') };
+        });
+        if (!tone.hasDanger) throw new Error(`A2 exception row not danger-toned (type=${tone.type})`);
+        if (tone.type !== 'floor') throw new Error(`A2 exception row type="${tone.type}" (expected "floor")`);
+        // Drill → Report tab → AgentReportView hero shows A2 YTD 8,500.
+        await row.click();
+        const drawer = p.locator('[data-testid="agent-drill-drawer"]');
+        await drawer.waitFor({ state: 'attached', timeout: 8_000 });
+        await p.locator('[data-testid="drill-tab-report"]').click();
+        await p.waitForTimeout(1200); // lazy per-agent reads settle
+        await drawer.getByText(currencyRe(EXPECT.a2.ytdApi)).first().waitFor({ state: 'attached', timeout: 12_000 });
+        await shot(p, 't1-admin-exception-lead');
+        // Close via Escape (useFocusTrap onEscape → AgentDrillDrawer's onClose).
+        await p.keyboard.press('Escape');
+        await drawer.waitFor({ state: 'detached', timeout: 6_000 });
+        assertLegHygiene(ctx);
+        return `TenantAdminDashboard ExceptionLeadPanel (tenant-wide) flags Staging Agent Two (danger, type=${tone.type}), not Agent One; drill Report tab shows A2 YTD ${EXPECT.a2.ytdApi}; drawer closed via Escape; hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
   // ── 6. Master Sheet reality bar / presets / exceptions toggle (branch_manager) ──
   {
     id: 't1-master-sheet',
@@ -993,6 +1040,43 @@ export const LEGS = [
         if (ovrRef) { try { await ovrRef.delete(); } catch { /* best-effort cleanup */ } }
         await ctx.context.close();
       }
+    },
+  },
+
+  // ── 8b. Company Config — CAMPAIGN PERSISTENCY GATE rows (Recognition & Gamification, tenant_admin, Run 6) — READ-ONLY, no mutation ──
+  {
+    id: 't1-company-config-gate',
+    role: 'tenant_admin',
+    desc: 'tenant_admin Company Config → Recognition & Gamification: CAMPAIGN PERSISTENCY GATE group renders 4 read-only rows (rec.gate.90/.85/.80/.dq) with the real payout-share values 100%/50%/25%/DQ (mono text control), each control disabled (no editable affordance) and chipped HARDCODED · UNLOCKS SOON. READ-ONLY — no mutation.',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        await login(ctx.page, 'tenant_admin');
+        const p = ctx.page;
+        await gotoTab(p, 'Company Config');
+        await p.waitForSelector('[data-testid="ccfg-surface"]', { timeout: 12_000 });
+        await p.locator('[data-testid="ccfg-rail-recognition"]').click();
+        await p.waitForTimeout(400);
+
+        const GATE_ROWS = [
+          ['rec.gate.90', '100%'],
+          ['rec.gate.85', '50%'],
+          ['rec.gate.80', '25%'],
+          ['rec.gate.dq', 'DQ'],
+        ];
+        for (const [id, expected] of GATE_ROWS) {
+          const row = p.locator(`[data-testid="ccfg-row-${id}"]`);
+          await row.waitFor({ state: 'attached', timeout: 10_000 });
+          const input = row.locator('input[aria-label="value"]');
+          const val = await input.inputValue();
+          if (val !== expected) throw new Error(`${id} value="${val}" (expected "${expected}")`);
+          if (!(await input.isDisabled())) throw new Error(`${id} control is NOT disabled (row is editable — expected read-only SOON row)`);
+          await row.locator(`[data-testid="ccfg-row-${id}-soon-chip"]`).waitFor({ state: 'attached', timeout: 4_000 });
+        }
+        await shot(p, 't1-company-config-gate');
+        assertLegHygiene(ctx);
+        return `Recognition → CAMPAIGN PERSISTENCY GATE: rec.gate.90/.85/.80/.dq render real values 100%/50%/25%/DQ, all disabled (read-only) with HARDCODED · UNLOCKS SOON chip; hygiene clean`;
+      } finally { await ctx.context.close(); }
     },
   },
 
