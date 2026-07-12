@@ -53,7 +53,7 @@ The old doc claimed **~92 MISSING + ~30 NEEDS-RULING + ~22 DELIBERATE-DIVERGENCE
 | §1 — **skeleton-not-spinner** | 4 sites | **resolved** | `PanelSkeleton` now wired across **~28 non-test files** (Daily Capture, Wizard, AwardsRuleset, PlanCatalog, recruiting, WARs, production views, admin dashboard, …) |
 | §2 — **count-up** | absent | **resolved** | `useCountUp` consumed by ~20 components incl. `HeroCard.jsx:21`, `PlanAnchorStrip`, `CommissionAnchorStrip`, kiosk panels. *(Per-block **stagger** still thin — §4 residual.)* |
 | §4 — **dialog focus-trap/Escape/return** | 7 dialogs failing | **7/7 resolved** | `useFocusTrap` on DeactivateBranchConfirmDialog:22, PlanCatalogModal:49, WelcomeScreen:56, PolicyDrillDrawer:42, PersistencyPlayground:64, MeetingMode:682; EditUserDrawer:216-260 (documented inline equivalent) |
-| §5 — **dense tables** | incomplete | **MasterSheet resolved** (sticky `top-0` + tabular-nums + `<tfoot>` after Run-4 funnel rebuild, `MasterSheet.jsx:684,837`); All-Users + Branches now real sticky tables; **ProductionTable/RankedLeaderboard/Settlements** still lack footer/sticky (§4 residual) |
+| §5 — **dense tables** | incomplete | **MasterSheet resolved** (sticky `top-0` + tabular-nums + `<tfoot>` after Run-4 funnel rebuild, `MasterSheet.jsx:684,837`); All-Users + Branches now real sticky tables; **ProductionTable + RankedLeaderboard also resolved** — sticky header + sticky rank/agent columns + live footer count (`ProductionTable.jsx:27-116`), sticky header + §5 footer count (`RankedLeaderboard.jsx:46-99`), both self-annotated "§5" *(orchestrator correction, Run 6 — this row's first draft repeated the old audit's claim)*; **Settlements** is the real residual (no sticky header / tabular-nums, `SettlementPanel.jsx:522-565`) |
 | §4/UI — **44px targets** | Persistency 36–40px | **resolved** | `PersistencyPlayground.jsx:125` close `h-11 w-11`, CTAs `h-11` (one tertiary link remains `h-9`) |
 
 ---
@@ -227,7 +227,7 @@ Remaining real work at HEAD `e65fe143`, grouped for actionability. Severity/effo
 
 ### Tier 0 — small systemic residuals (cheap, high polish ROI)
 1. **Four-states holdouts** (S each): add Retry to `gamification/Leaderboard.jsx:142`, `ManagerAwardsPanel.jsx:216`, manager-side `PersistencyTab.jsx:238`. — the only panels the Tier-0 sweep missed.
-2. **Dense-table footers/sticky** (S): footer count on `ProductionTable.jsx` + `RankedLeaderboard.jsx`; sticky header + `tabular-nums` on `SettlementPanel.jsx:522-565`. **[R]**
+2. **Dense-table sticky/tabular** (S): sticky header + `tabular-nums` on `SettlementPanel.jsx:522-565` only. *(ProductionTable + RankedLeaderboard footer/sticky verified already shipped — orchestrator correction, Run 6; see the §4-contracts tally above.)* **[R]**
 3. **Per-block stagger** (S): hero/list stagger where only count-up shipped (`HomeV2`, Leaderboard podium tail-row bar-grow). **[R]**
 4. **Nav mobile polish** (S): mobile-tab reorder (N4), ⋮ affordance (N5), adaptive More-label (N6).
 5. **Awards §1 finish** (S): loading skeleton + top-level empty CTA + drawer footer CTA on `AgentAwardsPanel.jsx`. **[R]**
