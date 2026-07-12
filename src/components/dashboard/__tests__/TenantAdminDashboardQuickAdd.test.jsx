@@ -49,6 +49,10 @@ vi.mock('../../../services/managerService', () => ({
 vi.mock('../../../services/branchService', () => ({
   listBranches: vi.fn().mockResolvedValue([]),
 }));
+// S5: exception-lead panel's deriveExceptions needs company minimums.
+vi.mock('../../../services/goalsService', () => ({
+  getCompanyMinimums: vi.fn().mockResolvedValue(null),
+}));
 vi.mock('../../../utils/extractFields', () => ({ extractFields: () => ({ apiSold: 0 }) }));
 vi.mock('../../../utils/formatters', () => ({
   formatCurrency: (v) => `$${v}`,

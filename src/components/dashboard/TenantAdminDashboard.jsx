@@ -7,7 +7,9 @@ import { signOut } from '../../services/authService';
 import { getRoleLabel, formatCurrency } from '../../utils/formatters';
 import { getTenantUsers, getAllYTDSubmissions } from '../../services/managerService';
 import { listBranches } from '../../services/branchService';
+import { getCompanyMinimums } from '../../services/goalsService';
 import { extractFields } from '../../utils/extractFields';
+import { deriveExceptions } from '../../utils/managerExceptions';
 import { Skeleton } from '../ui/PanelSkeleton';
 import Shell from '../shell/Shell';
 import CompanyConfigSurface from '../admin/companyConfig/CompanyConfigSurface';
@@ -22,6 +24,8 @@ import SettingsScreen from '../settings/SettingsScreen';
 import QuickAddMenu from '../shell/QuickAddMenu';
 import { getQuickAddActions } from '../shell/quickAddConfig';
 import useNavOrder from '../../hooks/useNavOrder';
+import ExceptionLeadPanel from './ExceptionLeadPanel';
+import AgentDrillDrawer from '../manager/AgentDrillDrawer';
 
 /**
  * TenantAdminDashboard (Design System v2 — B5, TA-CLEANUP).
@@ -143,8 +147,18 @@ export default function TenantAdminDashboard() {
   const [branches, setBranches] = useState([]);
   const [branchesError, setBranchesError] = useState(false);
   const [ytdAPI, setYtdAPI] = useState(null);
+  const [ytdSubs, setYtdSubs] = useState([]);
   const [ytdLoading, setYtdLoading] = useState(true);
   const [ytdError, setYtdError] = useState(false);
+  // Company minimums — needed by deriveExceptions for the tenant-wide
+  // exception-lead panel below (S5). Not previously loaded on this surface.
+  const [companyMins, setCompanyMins] = useState(null);
+  const [companyMinsLoading, setCompanyMinsLoading] = useState(true);
+  const [companyMinsError, setCompanyMinsError] = useState(false);
+
+  // Stable "now" so the exceptions memo doesn't churn identity every render
+  // (matches useBranchOverview's EFF-009 pattern).
+  const now = useMemo(() => new Date(), []);
 
   // Guards setState-after-unmount without re-litigating cancellation per
   // retry — a single mount-scoped flag covers the initial load and any
@@ -185,7 +199,9 @@ export default function TenantAdminDashboard() {
   }, [tenantId]);
 
   // Aggregate YTD API. Pure derivation from existing service — no new
-  // collection or query.
+  // collection or query. Also retains the raw submissions array (ytdSubs)
+  // for the exception-lead derivation below — the aggregate total alone
+  // isn't enough to derive per-agent exceptions.
   const loadYtd = useCallback(async () => {
     setYtdLoading(true);
     setYtdError(false);
@@ -194,6 +210,7 @@ export default function TenantAdminDashboard() {
       if (isMountedRef.current) {
         const total = subs.reduce((sum, s) => sum + (extractFields(s).apiSold || 0), 0);
         setYtdAPI(total);
+        setYtdSubs(subs);
       }
     } catch (err) {
       if (!isMountedRef.current) return;
@@ -204,9 +221,28 @@ export default function TenantAdminDashboard() {
     }
   }, [tenantId]);
 
+  // Company minimums (tenure API floors) — feeds deriveExceptions' pace math.
+  // Read-only, tenant-scoped config; every signed-in tenant user (including
+  // tenant_admin) already has rules-level read access (config/{docId}).
+  const loadCompanyMins = useCallback(async () => {
+    setCompanyMinsLoading(true);
+    setCompanyMinsError(false);
+    try {
+      const mins = await getCompanyMinimums(tenantId);
+      if (isMountedRef.current) setCompanyMins(mins);
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      console.error('Failed to load company minimums:', err);
+      setCompanyMinsError(true);
+    } finally {
+      if (isMountedRef.current) setCompanyMinsLoading(false);
+    }
+  }, [tenantId]);
+
   useEffect(() => { loadUsers(); }, [loadUsers]);
   useEffect(() => { loadBranches(); }, [loadBranches]);
   useEffect(() => { loadYtd(); }, [loadYtd]);
+  useEffect(() => { loadCompanyMins(); }, [loadCompanyMins]);
 
   // Retry only the fetches that actually failed — used by both the
   // full-failure error card and the partial-failure warning banner.
@@ -214,9 +250,46 @@ export default function TenantAdminDashboard() {
     if (usersError) loadUsers();
     if (branchesError) loadBranches();
     if (ytdError) loadYtd();
-  }, [usersError, branchesError, ytdError, loadUsers, loadBranches, loadYtd]);
+    if (companyMinsError) loadCompanyMins();
+  }, [usersError, branchesError, ytdError, companyMinsError, loadUsers, loadBranches, loadYtd, loadCompanyMins]);
 
-  const failedCount = [usersError, branchesError, ytdError].filter(Boolean).length;
+  // Total data sources feeding this dashboard tab — kept as a named constant
+  // (not a magic number) since the full-failure gate and partial-failure
+  // banner both need to agree on it.
+  const TOTAL_DATA_SOURCES = 4;
+  const failedCount = [usersError, branchesError, ytdError, companyMinsError].filter(Boolean).length;
+
+  // Tenant-wide exception lead (S5, operator-ruled: tenant admins get the
+  // needs-attention view too, no exemption). Reuses the SAME canonical
+  // deriveExceptions the manager overview uses — no forked math. scopeIds is
+  // left null so ALL tenant agents are considered (tenant-wide, not
+  // branch-scoped), matching this surface's tenant-wide framing elsewhere.
+  const exceptions = useMemo(
+    () => deriveExceptions({ users, subs: ytdSubs, companyMins, scopeIds: null, now }),
+    [users, ytdSubs, companyMins, now]
+  );
+  const exceptionsLoading = usersLoading || ytdLoading || companyMinsLoading;
+  // Company-minimums failure alone doesn't block the exception list — it just
+  // falls back to default tenure floors (see resolveAnnualAPIFloor) — but a
+  // failure in the actual source data (users/subs) makes the list untrustworthy.
+  const exceptionsError = usersError || ytdError;
+
+  // Per-agent submission index for the drill drawer — reuses ytdSubs (no
+  // per-open fetch), same shape as useBranchOverview.submissionsByAgent.
+  const submissionsByAgent = useMemo(() => {
+    const map = {};
+    ytdSubs.forEach((s) => {
+      const aid = s.agentId ?? s.userId ?? '';
+      if (!aid) return;
+      (map[aid] = map[aid] ?? []).push(s);
+    });
+    return map;
+  }, [ytdSubs]);
+
+  // Coaching drill drawer — opened by an exception row. AgentDrillDrawer's
+  // reads (settlements/goals/persistency/goal-hierarchy) are all gated by
+  // canManage(tenantId), which includes tenant_admin — no rules gap.
+  const [drillAgent, setDrillAgent] = useState(null);
 
   const userStats = useMemo(() => {
     if (!Array.isArray(users) || users.length === 0) {
@@ -301,7 +374,7 @@ export default function TenantAdminDashboard() {
           on tab navigation. Keyed on activeTab. No fixed overlays in this
           dashboard's children. Gated + degrades in index.css. */}
       <div key={activeTab} className="screen-enter">
-      {activeTab === 'dashboard' && failedCount === 3 && (
+      {activeTab === 'dashboard' && failedCount === TOTAL_DATA_SOURCES && (
         <div
           role="alert"
           className="flex flex-col items-center gap-3 p-8 rounded-xl bg-danger/10 border border-danger/30 text-center"
@@ -319,13 +392,13 @@ export default function TenantAdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'dashboard' && failedCount > 0 && failedCount < 3 && (
+      {activeTab === 'dashboard' && failedCount > 0 && failedCount < TOTAL_DATA_SOURCES && (
         <div
           role="alert"
           className="p-3 mb-3 rounded-xl border border-warning/30 bg-warning/10 text-warning-ink text-sm flex items-center justify-between gap-3 flex-wrap"
           data-testid="tenant-dashboard-partial"
         >
-          <span>{failedCount} of 3 data sources failed to load — showing what&apos;s available.</span>
+          <span>{failedCount} of {TOTAL_DATA_SOURCES} data sources failed to load — showing what&apos;s available.</span>
           <button
             type="button"
             onClick={retryFailed}
@@ -336,7 +409,7 @@ export default function TenantAdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'dashboard' && failedCount < 3 && (
+      {activeTab === 'dashboard' && failedCount < TOTAL_DATA_SOURCES && (
         <div className="flex flex-col gap-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <StatCard
@@ -361,6 +434,20 @@ export default function TenantAdminDashboard() {
               Icon={Building2}
             />
           </div>
+
+          {/* Exception-first lead (S5, operator-ruled — no admin exemption).
+              Tenant-wide (all branches/agents), placed after the at-a-glance
+              stat tiles and before the general role/branch breakdown below —
+              mirrors the manager overview's "lead above general stats"
+              placement philosophy given this surface's stat tiles (not a
+              cascade hero) are the closest analog to that hero strip. */}
+          <ExceptionLeadPanel
+            exceptions={exceptions}
+            loading={exceptionsLoading}
+            error={exceptionsError}
+            onRetry={retryFailed}
+            onDrill={(e) => setDrillAgent(e)}
+          />
 
           <div className="tenant-admin-grid-2col">
             <RoleDistributionCard users={users} loading={usersLoading} />
@@ -401,6 +488,18 @@ export default function TenantAdminDashboard() {
         />
       )}
       </div>
+
+      {/* Coaching drill drawer — overlay, not scoped to the dashboard tab
+          content (mirrors QuickAddMenu's placement as a Shell-level sibling). */}
+      {drillAgent && (
+        <AgentDrillDrawer
+          key={drillAgent.agentId}
+          agent={drillAgent}
+          submissions={submissionsByAgent[drillAgent.agentId] ?? []}
+          tenantId={tenantId}
+          onClose={() => setDrillAgent(null)}
+        />
+      )}
     </Shell>
   );
 }
