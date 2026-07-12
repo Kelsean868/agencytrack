@@ -276,8 +276,15 @@ export function TailRow({ entry, leaderApi, isLast, isViewer = false }) {
       </div>
       <div className="px-3">
         <div className="h-1 rounded-full bg-surface-muted overflow-hidden">
+          {/* §2 bar-grow (design-conformance row 137 residual) — the fill
+              scales in from the left on mount via the shipped --dur-3/
+              --ease-out tokens. transform:scaleX only (never a width
+              transition), so the already-final `width: {pct}%` layout box
+              never shifts — only its visual scale animates. Degrades to the
+              full bar immediately under reduced-motion (bar-grow-x's
+              `animation` is gated in index.css). */}
           <div
-            className="h-1 rounded-full bg-gradient-to-r from-primary-dark to-primary"
+            className="h-1 rounded-full bg-gradient-to-r from-primary-dark to-primary bar-grow-x"
             style={{ width: `${pctOfLeader}%` }}
             aria-label={`${Math.round(pctOfLeader)}% of leader`}
           />
@@ -544,10 +551,18 @@ export default function ProductionLeaderboardSurface({
         <EmptyState periodLabel={activeLabel} />
       ) : (
         <>
-          {/* Podium — [#2, #1, #3] order on desktop; #1 hero on mobile */}
+          {/* Podium — [#2, #1, #3] order on desktop; #1 hero on mobile.
+              §2 per-card stagger (design-conformance row 137 residual): the
+              shipped `.stagger` class (index.css) is applied to each visible
+              podium row so its direct children — the individual PodiumCards —
+              rise in sequence rather than as one monolithic block. Nested
+              inside the outer surface-level `.stagger` on the root container
+              below; CSS scopes each `.stagger` to its OWN direct children, so
+              the two layers compose without conflict. Transform-only, degrades
+              to static under reduced-motion like every other v2 stagger. */}
           <div data-testid="podium" className="flex flex-col gap-3">
             {/* Mobile: #1 hero (full-width) + #2/#3 side-by-side */}
-            <div className="sm:hidden flex flex-col gap-3">
+            <div className="sm:hidden stagger flex flex-col gap-3">
               {podium[0] && (
                 <PodiumCard
                   entry={podium[0]}
@@ -558,7 +573,7 @@ export default function ProductionLeaderboardSurface({
                 />
               )}
               {(podium[1] || podium[2]) && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="stagger grid grid-cols-2 gap-3">
                   {podium[1] && (
                     <PodiumCard
                       entry={podium[1]}
@@ -579,7 +594,7 @@ export default function ProductionLeaderboardSurface({
 
             {/* Desktop: 3-up in [#2, #1, #3] visual order, #1 elevated */}
             <div
-              className="hidden sm:grid items-end gap-3.5"
+              className="hidden sm:grid stagger items-end gap-3.5"
               style={{ gridTemplateColumns: '1fr 1.15fr 1fr' }}
             >
               {podium[1] && (

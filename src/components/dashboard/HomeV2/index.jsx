@@ -199,56 +199,68 @@ export default function AgentDashboardHomeV2({
   const showNudge = showDailyCTA && todayDailyChecked && !todayDailyEntry;
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
+      {/* §2 "staggered assemble" (redesign-addendum §2 + design-conformance
+          2026-07-12 row 85 residual) — the screen's top-level blocks rise in
+          sequence via the shipped `.stagger` class (index.css; transform-only,
+          nth-child delay, degrades to static under reduced-motion). Scoped to
+          the always-synchronous flow blocks only — StandardDetail and
+          FilingStreakCelebration render `position: fixed` overlays later
+          (user/data-triggered, not part of initial assemble) and are kept
+          OUTSIDE this wrapper so the animation never targets a fixed-position
+          element directly (mirrors the AgentDashboard.jsx screen-enter comment
+          on keeping fixed overlays out of transform-animated ancestors). */}
+      <div className="stagger flex flex-col gap-4">
 
-      {/* Submissions error banner */}
-      {submissionsError && (
-        <div
-          role="alert"
-          className="flex items-start gap-3 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger-ink"
-        >
-          <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-          <p className="text-sm font-medium">
-            {submissionsError === 'permission-denied'
-              ? 'Could not load your activity data — permission denied. Contact your manager if this persists.'
-              : 'Could not load your activity data. Check your connection and refresh.'}
-          </p>
-        </div>
-      )}
+        {/* Submissions error banner */}
+        {submissionsError && (
+          <div
+            role="alert"
+            className="flex items-start gap-3 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger-ink"
+          >
+            <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+            <p className="text-sm font-medium">
+              {submissionsError === 'permission-denied'
+                ? 'Could not load your activity data — permission denied. Contact your manager if this persists.'
+                : 'Could not load your activity data. Check your connection and refresh.'}
+            </p>
+          </div>
+        )}
 
-      {/* Needs-action banner (above Hero) */}
-      {showNudge && <NeedsActionBanner onLog={onLogToday} />}
+        {/* Needs-action banner (above Hero) */}
+        {showNudge && <NeedsActionBanner onLog={onLogToday} />}
 
-      {/* Hero */}
-      <HeroCard
-        ytdApi={ytdTotals?.api ?? 0}
-        personalAnnualAPI={personalAnnualAPI}
-        onSubmit={onSubmit}
-      />
+        {/* Hero */}
+        <HeroCard
+          ytdApi={ytdTotals?.api ?? 0}
+          personalAnnualAPI={personalAnnualAPI}
+          onSubmit={onSubmit}
+        />
 
-      {/* Pulse strip */}
-      <PulseStrip pulses={pulses} activeKey={drawer === 'standard' ? 'standard' : null} onChipClick={handleChipClick} />
+        {/* Pulse strip */}
+        <PulseStrip pulses={pulses} activeKey={drawer === 'standard' ? 'standard' : null} onChipClick={handleChipClick} />
 
-      {/* My Points — personal gamification card (self-contained, reads leaderboard/{uid}) */}
-      <MyPointsCard />
+        {/* My Points — personal gamification card (self-contained, reads leaderboard/{uid}) */}
+        <MyPointsCard />
 
-      {/* Recent panel — 2-col on lg+ */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4">
-        <RecentCompact events={activityEvents} onViewAll={() => onOpenTab?.('history')} />
-        <div className="flex flex-col gap-4">
-          <DeliveryStripCard policies={policies} />
-          {!campaignsLoading && activeCampaigns?.length > 0 && (
-            <div className="flex flex-col gap-3">
-              {activeCampaigns.map((c) => (
-                <CampaignCard
-                  key={c.id}
-                  campaign={c}
-                  submissions={campaignSubs?.[c.id] ?? []}
-                  agentId={agentUid}
-                />
-              ))}
-            </div>
-          )}
+        {/* Recent panel — 2-col on lg+ */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4">
+          <RecentCompact events={activityEvents} onViewAll={() => onOpenTab?.('history')} />
+          <div className="flex flex-col gap-4">
+            <DeliveryStripCard policies={policies} />
+            {!campaignsLoading && activeCampaigns?.length > 0 && (
+              <div className="flex flex-col gap-3">
+                {activeCampaigns.map((c) => (
+                  <CampaignCard
+                    key={c.id}
+                    campaign={c}
+                    submissions={campaignSubs?.[c.id] ?? []}
+                    agentId={agentUid}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -273,6 +285,6 @@ export default function AgentDashboardHomeV2({
         agentUid={agentUid}
         year={thisYear}
       />
-    </div>
+    </>
   );
 }
