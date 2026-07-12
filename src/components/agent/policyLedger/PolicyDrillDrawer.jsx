@@ -113,7 +113,12 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
               {policy.policyNumber ? `#${policy.policyNumber}` : '# PENDING'}
             </span>
           </div>
-          {policy.planName && <p className="text-[12px] text-ink-muted mt-1.5">{policy.planName}</p>}
+          {(policy.planName || (policy.insuredName && policy.insuredName !== policy.ownerName)) && (
+            <p className="text-[12px] text-ink-muted mt-1.5">
+              {policy.insuredName && policy.insuredName !== policy.ownerName ? `Insured · ${policy.insuredName} · ` : ''}
+              {policy.planName}
+            </p>
+          )}
           <div className="flex items-center gap-3 mt-3">
             <span className={`px-2.5 py-[3px] rounded-full font-mono text-[10px] font-bold tracking-[0.1em] uppercase ${t.tint} ${t.text}`}>
               {policyPillLabel(policy)}
