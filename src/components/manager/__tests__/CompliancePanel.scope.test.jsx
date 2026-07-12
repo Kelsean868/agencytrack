@@ -55,6 +55,23 @@ const USERS_SIX_UNITS = Array.from({ length: 6 }, (_, i) => ({
   id: `agent${i}`, name: `Agent ${i}`, role: 'agent', unitId: `u${i}`, unitName: `Unit ${i}`,
 }));
 
+// A5 — CBTT population must honor the same ScopeSwitch unit filter as the
+// rest of the panel (cbttComplianceFlag is a per-agent field-read; a unit cut
+// makes regulatory sense the same way the filing roster's unit cut does).
+// One provisional (overdue) agent per unit, so each unit contributes exactly
+// one CBTT row when in scope.
+const USERS_MULTI_UNIT_CBTT = [
+  { id: 'agentA', name: 'Ann Agent',  role: 'agent', unitId: 'u1', unitName: 'Alpha Unit' },
+  {
+    id: 'agentB', name: 'Bob Agent', role: 'agent', unitId: 'u1', unitName: 'Alpha Unit',
+    licenseStatus: 'provisional', contractStartDate: '2020-01-01',
+  },
+  {
+    id: 'agentC', name: 'Cara Agent', role: 'agent', unitId: 'u2', unitName: 'Beta Unit',
+    licenseStatus: 'provisional', contractStartDate: '2020-01-01',
+  },
+];
+
 function renderPanel() {
   return render(<CompliancePanel selectedWeek={WEEK} setSelectedWeek={() => {}} />);
 }
@@ -164,5 +181,54 @@ describe('CompliancePanel — S4 explicit ScopeSwitch', () => {
 
     await user.selectOptions(screen.getByTestId('compliance-scope-unit-select'), 'u2');
     await waitFor(() => expect(screen.getAllByTestId('compliance-roster-row')).toHaveLength(1));
+  });
+
+  describe('A5 — CBTT License Compliance honors the active scope', () => {
+    test('Branch scope (default) shows CBTT rows for every unit — unchanged baseline', async () => {
+      hoisted.getTenantUsers.mockResolvedValue(USERS_MULTI_UNIT_CBTT);
+      renderPanel();
+      await screen.findByTestId('compliance-reality-bar');
+      await screen.findByTestId('compliance-cbtt-section');
+
+      const rows = await screen.findAllByTestId('compliance-cbtt-row');
+      expect(rows.map((r) => r.getAttribute('data-uid')).sort()).toEqual(['agentB', 'agentC']);
+    });
+
+    test('selecting a unit filters CBTT rows to that unit only', async () => {
+      hoisted.getTenantUsers.mockResolvedValue(USERS_MULTI_UNIT_CBTT);
+      renderPanel();
+      await screen.findByTestId('compliance-reality-bar');
+      await screen.findAllByTestId('compliance-cbtt-row');
+
+      // Select Beta Unit (u2) — only agentC's flag belongs to it.
+      await user.click(screen.getByTestId('compliance-scope-unit-u2'));
+
+      await waitFor(async () => {
+        const rows = screen.getAllByTestId('compliance-cbtt-row');
+        expect(rows).toHaveLength(1);
+      });
+      const rows = screen.getAllByTestId('compliance-cbtt-row');
+      expect(rows[0]).toHaveAttribute('data-uid', 'agentC');
+      expect(screen.queryByText('Bob Agent')).not.toBeInTheDocument();
+
+      // Restore Branch — both provisional agents' flags are back.
+      await user.click(screen.getByTestId('compliance-scope-branch'));
+      await waitFor(() => expect(screen.getAllByTestId('compliance-cbtt-row')).toHaveLength(2));
+    });
+
+    test('selecting a unit with no provisional agents shows the empty CBTT state, not the other unit\'s rows', async () => {
+      hoisted.getTenantUsers.mockResolvedValue(USERS_MULTI_UNIT_CBTT);
+      renderPanel();
+      await screen.findByTestId('compliance-reality-bar');
+      await screen.findAllByTestId('compliance-cbtt-row');
+
+      // Alpha Unit (u1) has agentA (no license fields) + agentB (provisional) —
+      // sanity check the filter is per-agent, not per-unit-has-any-flag.
+      await user.click(screen.getByTestId('compliance-scope-unit-u1'));
+      await waitFor(() => {
+        const rows = screen.getAllByTestId('compliance-cbtt-row');
+        expect(rows.map((r) => r.getAttribute('data-uid'))).toEqual(['agentB']);
+      });
+    });
   });
 });

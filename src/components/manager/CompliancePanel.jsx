@@ -327,8 +327,15 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
     }
   };
 
+  // CBTT rows are per-agent (license status + contract start date live on the
+  // individual user doc — cbttComplianceFlag never reads anything above agent
+  // scope), so this is the same population as scopedRoster: honor the active
+  // ScopeSwitch unit filter instead of silently reading the full branch roster.
+  const scopedUserIds = useMemo(() => new Set(scopedRoster.map((r) => r.id)), [scopedRoster]);
+
   const cbttFlags = useMemo(() => {
     return users
+      .filter((u) => scopedUserIds.has(u.id))
       .map((u) => {
         const flag = cbttComplianceFlag(u);
         if (!flag) return null;
@@ -336,7 +343,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
       })
       .filter(Boolean)
       .sort((a, b) => a.flag.daysRemaining - b.flag.daysRemaining);
-  }, [users]);
+  }, [users, scopedUserIds]);
 
   // ── Lens-driven reality bar config ────────────────────────────────────────────
   const realityBar = useMemo(() => {
@@ -687,7 +694,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
                 : `${flag.daysRemaining} day${flag.daysRemaining !== 1 ? 's' : ''} remaining`;
               const deadlineLabel = flag.deadline.toLocaleDateString('en-TT', { month: 'short', day: 'numeric', year: 'numeric' });
               return (
-                <div key={id} className={`flex items-start justify-between gap-3 px-4 py-3 rounded-xl border ${rowCls}`}>
+                <div key={id} data-testid="compliance-cbtt-row" data-uid={id} className={`flex items-start justify-between gap-3 px-4 py-3 rounded-xl border ${rowCls}`}>
                   <div>
                     <p className="text-sm font-medium text-ink">{name}</p>
                     <p className="text-xs text-ink-muted mt-0.5">
