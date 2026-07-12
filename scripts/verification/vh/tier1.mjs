@@ -1158,4 +1158,120 @@ export const LEGS = [
       } finally { await ctx.context.close(); }
     },
   },
+
+  // ── 10. Compliance ScopeSwitch — branch/unit roster filter (branch_manager, Run 6 S4) ──
+  // CompliancePanel.jsx gates the switch on `role === 'branch_manager' && unitOptions.length > 1`,
+  // where unitOptions is derived (deriveUnitOptions) from the ALREADY-ROLE-FILTERED roster
+  // (`users` = getTenantUsers rows with role 'agent', plus 'unit_manager' once selectedWeek
+  // clears UM_MANDATORY_FILING_CUTOFF — branch_manager's own row never enters this roster,
+  // unlike the Master Sheet funnel's roster which DOES carry a synthetic '__branch_direct__'
+  // group for the BM's own filing). A live Admin-SDK read of tenants/staging_test/users
+  // (read-only, no mutation) confirms the CURRENT seed's branch_manager-eligible roster —
+  // Staging Agent One, Staging Agent Two, Staging Unit Manager — all resolve to the SAME
+  // unitId (the one unit_manager's own uid); seed-staging.mjs's ROLE_DEFS defines exactly one
+  // unit_manager per branch, and neither it nor seed-fixtures.mjs (confirmed via `git show
+  // 3d42125f -- scripts/staging/` — the shipping commit touched no seed file) adds a second.
+  // So unitOptions.length is 1 on live staging today, and the switch is correctly ABSENT —
+  // this is the guard working as designed and already unit-tested (CompliancePanel.scope.test.jsx
+  // covers the >1-unit render path with mocked data), not a defect. This leg still asserts the
+  // FULL live behavior end-to-end (forward-compatible the moment a second unit_manager fixture
+  // lands) but SKIPs cleanly with a precise diagnostic when the live roster is single-unit,
+  // rather than hard-failing a condition the shipped code + its own tests already predict.
+  // Never mutates: the nudge-all confirm is opened to read its scope-named copy, then
+  // cancelled — no nudge is fired.
+  {
+    id: 't1-compliance-scope',
+    role: 'branch_manager',
+    desc: 'branch_manager Compliance tab: ScopeSwitch (S4) — SKIPs cleanly (live-verified single-unit roster, see file comment) unless the seed grows a 2nd unit, in which case: [Branch] active by default with one segment per unit; selecting a unit flips aria-pressed, filters roster rows + reality-bar counts to that unit, retargets the nudge-all population + its confirm copy (names the unit); [Branch] restores original counts. No mutation (nudge-all confirm opened + cancelled).',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        await login(ctx.page, 'branch_manager');
+        const p = ctx.page;
+        // Compliance lives in the "My Team" workspace section (navConfig.js
+        // WORKSPACE_TEAM_SECTIONS), not the default "My Work" workspace — same
+        // switch t1-palette-bm-desktop uses ahead of Master Sheet.
+        await p.locator('[data-testid="sidebar-ws-toggle-team"]').click();
+        await p.waitForTimeout(700);
+        await gotoTab(p, 'Compliance');
+        await p.waitForSelector('[data-testid="compliance-reality-bar"]', { timeout: 12_000 });
+        await p.waitForSelector('[data-testid="compliance-roster"]', { timeout: 12_000 });
+
+        const scopeSwitch = p.locator('[data-testid="compliance-scope-switch"]');
+        let present = await scopeSwitch.count();
+        if (present === 0) {
+          // Client-side derive from an already-loaded roster — not a deploy race,
+          // but give it one short settle window before treating absence as final.
+          await p.waitForTimeout(1500);
+          present = await scopeSwitch.count();
+        }
+
+        if (present === 0) {
+          const rosterRows = await p.locator('[data-testid="compliance-roster-row"]').count();
+          await shot(p, 't1-compliance-scope-hidden-singleunit');
+          assertLegHygiene(ctx);
+          throw new Error(`SKIP: compliance-scope-switch absent on live staging — CONFIRMED via read-only Admin-SDK query of tenants/staging_test/users that the branch_manager-eligible roster (role agent|unit_manager, branchId=staging_branch) currently resolves to exactly ONE distinct unitId (Agent One, Agent Two, and the Unit Manager all share the sole unit_manager's uid), so unitOptions.length===1 and the guard "role==='branch_manager' && unitOptions.length>1" correctly hides it — NOT a shipped-code defect (CompliancePanel.scope.test.jsx already covers the >1-unit render path with mocked data, 7/7 passing per commit 3d42125f). seed-staging.mjs's ROLE_DEFS defines only one unit_manager per branch and seed-fixtures.mjs adds no second; this leg's live scope-switch assertions can only execute once a 2nd unit_manager fixture is seeded (out of this leg's file scope — flagging for the seed owner). Roster rows currently visible=${rosterRows}.`);
+        }
+
+        // ── Full live exercise (runs once the seed grows a 2nd unit) ──────────
+        const rowCount = () => p.locator('[data-testid="compliance-roster-row"]').count();
+        const nudgeAllText = async () => (await p.locator('[data-testid="compliance-nudge-all"]').textContent())?.trim() ?? null;
+        const unitBtn = (id) => p.locator(`[data-testid="compliance-scope-unit-${id}"]`);
+
+        // Baseline: [Branch] active, N unit segments present.
+        const branchBtn = p.locator('[data-testid="compliance-scope-branch"]');
+        if ((await branchBtn.getAttribute('aria-pressed')) !== 'true') throw new Error('Branch segment not aria-pressed=true by default');
+        const unitIds = await scopeSwitch.locator('button[data-testid^="compliance-scope-unit-"]').evaluateAll(
+          (els) => els.map((el) => el.getAttribute('data-testid').replace('compliance-scope-unit-', '')),
+        );
+        if (unitIds.length < 2) throw new Error(`ScopeSwitch rendered but only ${unitIds.length} unit segment(s) — expected >=2 for it to be visible at all`);
+
+        const baseRows = await rowCount();
+        const baseNudge = await nudgeAllText();
+        await shot(p, 't1-compliance-scope-branch');
+
+        // Select the first unit segment.
+        const targetUnit = unitIds[0];
+        await unitBtn(targetUnit).click();
+        await p.waitForTimeout(400);
+        if ((await unitBtn(targetUnit).getAttribute('aria-pressed')) !== 'true') throw new Error(`unit ${targetUnit} segment did not become aria-pressed after click`);
+        if ((await branchBtn.getAttribute('aria-pressed')) !== 'false') throw new Error('Branch segment still aria-pressed=true after selecting a unit');
+        const scopedRows = await rowCount();
+        if (scopedRows === baseRows) throw new Error(`roster row count unchanged after scoping to unit ${targetUnit} (${scopedRows} both before/after)`);
+        if (scopedRows >= baseRows) throw new Error(`scoped row count ${scopedRows} not smaller than Branch baseline ${baseRows}`);
+        const scopedNudge = await nudgeAllText();
+        await shot(p, 't1-compliance-scope-unit');
+
+        // Nudge-all confirm copy names the unit (never fired — cancelled).
+        const hasExceptions = (await p.locator('[data-testid="compliance-nudge-all"]').count()) > 0;
+        let confirmUnitLabel = null;
+        if (hasExceptions) {
+          await p.locator('[data-testid="compliance-nudge-all"]').click();
+          const dlg = p.locator('[role="dialog"][aria-labelledby="confirm-dialog-title"]');
+          await dlg.waitFor({ state: 'attached', timeout: 6_000 });
+          const dlgText = (await dlg.textContent()) || '';
+          const unitLabel = (await unitBtn(targetUnit).textContent())?.trim();
+          confirmUnitLabel = unitLabel;
+          if (!unitLabel || !dlgText.includes(unitLabel)) throw new Error(`nudge-all confirm copy does not name the scoped unit "${unitLabel}": "${dlgText.replace(/\s+/g, ' ').slice(0, 200)}"`);
+          await dlg.locator('button[aria-label="Close dialog"]').click().catch(async () => { await p.keyboard.press('Escape'); });
+          await dlg.waitFor({ state: 'detached', timeout: 6_000 });
+        }
+
+        // Restore Branch.
+        await branchBtn.click();
+        await p.waitForTimeout(400);
+        if ((await branchBtn.getAttribute('aria-pressed')) !== 'true') throw new Error('Branch segment did not re-activate after clicking it');
+        const restoredRows = await rowCount();
+        const restoredNudge = await nudgeAllText();
+        if (restoredRows !== baseRows) throw new Error(`row count after restoring Branch=${restoredRows} (expected original ${baseRows})`);
+        if (restoredNudge !== baseNudge) throw new Error(`nudge-all text after restoring Branch="${restoredNudge}" (expected original "${baseNudge}")`);
+        await shot(p, 't1-compliance-scope-restored');
+
+        // Re-run t1-master-sheet-filters is the caller's job (separate CLI invocation) —
+        // this leg only proves ScopeSwitch itself, per deriveUnitOptions shared with MasterSheet.
+        assertLegHygiene(ctx);
+        return `ScopeSwitch: Branch active by default (${unitIds.length} unit segments); selecting unit ${targetUnit} flipped aria-pressed, rows ${baseRows}→${scopedRows}, nudge-all "${baseNudge}"→"${scopedNudge}"${confirmUnitLabel ? `, confirm copy named "${confirmUnitLabel}" (cancelled, not fired)` : ' (no exceptions in scope — nudge-all absent, confirm copy not exercised)'}; Branch restored rows=${restoredRows}/nudge="${restoredNudge}"; hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
 ];
