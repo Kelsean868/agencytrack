@@ -10,6 +10,7 @@ import { classifyWeek, onTimeStreak, UM_MANDATORY_FILING_CUTOFF } from '../../ut
 import { sendComplianceNudge, getNudgeRecords, NUDGE_TYPE, PLAN_NUDGE_TYPE } from '../../services/nudgeService';
 import { getWeeklyPlan } from '../../services/weeklyPlanService';
 import { unlockSubmission } from '../../services/unlockService';
+import { deriveUnitOptions } from '../../utils/funnelFilters';
 import useToast from '../../hooks/useToast';
 import StatusPill from '../ui/StatusPill';
 import ConfirmDialog from '../ui/ConfirmDialog';
@@ -166,21 +167,56 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [users, weekData, selectedWeek]);
 
+  // ── Scope switch (S4) — explicit BRANCH MANAGER unit filter ───────────────────
+  // Segments = [Branch] + one per unit present in the (unfiltered) roster.
+  // Reuses MasterSheet's funnelFilters.deriveUnitOptions for id/label resolution
+  // (same label-sort + synthetic "Unit ####" fallback when unitName is absent) —
+  // same resolution the app already ships for the sibling unit-filter control.
+  //
+  // Who sees it: unit_manager is single-scope BY PERMISSION (getTenantUsers scopes
+  // their roster to their own unit already) — no switch, honest single-scope
+  // surface. sales_manager reaches this panel via ManagerDashboard too, but
+  // getTenantUsers applies NO scope filter for that role (tenant-wide roster,
+  // not branch-shaped) — per brief carve-out, current behavior (no switch,
+  // scopeLabel = "the company") is kept rather than inventing cross-branch UI.
+  // tenant_admin does not reach CompliancePanel (routes to TenantAdminDashboard).
+  const unitOptions = useMemo(
+    () => deriveUnitOptions(roster.map((r) => ({ unitId: r.unitId, unitName: r.unit }))),
+    [roster],
+  );
+  const [scopeUnit, setScopeUnit] = useState('all'); // 'all' = Branch (default; unchanged behavior)
+  const showScopeSwitch = role === 'branch_manager' && unitOptions.length > 1;
+
+  // Defensive reset — if the selected unit drops out of the roster (e.g. a
+  // week/role change resolves a different set of units), fall back to Branch
+  // instead of silently filtering to an empty roster.
+  useEffect(() => {
+    if (scopeUnit !== 'all' && !unitOptions.some((o) => o.id === scopeUnit)) setScopeUnit('all');
+  }, [unitOptions, scopeUnit]);
+
+  // View-state only (useState, no persistence/Firestore writes). Filters the
+  // roster that everything else in the panel — reality bar, counts, exceptions,
+  // nudge-all population, the filing roster list — is derived from.
+  const scopedRoster = useMemo(
+    () => (showScopeSwitch && scopeUnit !== 'all' ? roster.filter((r) => r.unitId === scopeUnit) : roster),
+    [roster, scopeUnit, showScopeSwitch],
+  );
+
   const counts = useMemo(() => {
     let onTime = 0, late = 0, notIn = 0;
-    roster.forEach((r) => {
+    scopedRoster.forEach((r) => {
       if (r.status === 'on-time') onTime += 1;
       else if (r.status === 'late') late += 1;
       else notIn += 1;
     });
-    const total = roster.length;
+    const total = scopedRoster.length;
     return { onTime, late, notIn, total, filed: onTime + late };
-  }, [roster]);
+  }, [scopedRoster]);
 
-  const exceptions = useMemo(() => roster.filter((r) => r.status === 'not-in'), [roster]);
+  const exceptions = useMemo(() => scopedRoster.filter((r) => r.status === 'not-in'), [scopedRoster]);
 
   // Plan lens stays agents-only regardless of UM cutoff (filing lens only — Phase 3).
-  const agentRoster = useMemo(() => roster.filter((r) => r.role === 'agent'), [roster]);
+  const agentRoster = useMemo(() => scopedRoster.filter((r) => r.role === 'agent'), [scopedRoster]);
 
   // ── Plan adoption (S3) — locked deterministic-ID get-fan-out, no list/index ────
   // For each roster agent, GET weeklyPlans/{uid}_{weekStart}; absent (or a denied
@@ -233,11 +269,13 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
     return () => { cancelled = true; };
   }, [activeKey, activeType, selectedWeek, tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const scopeLabel = role === 'unit_manager'
-    ? (userProfile?.unitName || 'your unit')
-    : role === 'branch_manager'
-      ? (userProfile?.branchName || 'your branch')
-      : 'the company';
+  const scopeLabel = showScopeSwitch && scopeUnit !== 'all'
+    ? (unitOptions.find((o) => o.id === scopeUnit)?.label || 'the selected unit')
+    : role === 'unit_manager'
+      ? (userProfile?.unitName || 'your unit')
+      : role === 'branch_manager'
+        ? (userProfile?.branchName || 'your branch')
+        : 'the company';
 
   const handleNudge = async (uid) => {
     setNudgingUids((s) => new Set(s).add(uid));
@@ -424,6 +462,9 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
             <option key={d} value={d}>{i === 0 ? `This week — ${formatDateFriendly(d)}` : formatDateFriendly(d)}</option>
           ))}
         </select>
+        {showScopeSwitch && (
+          <ScopeSwitch options={unitOptions} active={scopeUnit} onChange={setScopeUnit} />
+        )}
         <span className="text-xs text-ink-muted">{counts.total} agent{counts.total !== 1 ? 's' : ''}</span>
       </div>
 
@@ -554,7 +595,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
         {counts.total === 0 ? (
           <p className="px-4 py-6 text-sm text-ink-muted">No agents in scope.</p>
         ) : (
-          roster.map((r) => {
+          scopedRoster.map((r) => {
             const submitted = r.status !== 'not-in' && !!r.submission?.id;
             return (
               <div
@@ -684,6 +725,68 @@ function LensTab({ active, onClick, label, count, testid }) {
         {count}
       </span>
     </button>
+  );
+}
+
+// Dense-roster safety (S4 functional spec): >5 unit segments collapse into a
+// select beside the [Branch] button rather than an unbounded segmented row.
+const SCOPE_SWITCH_SEGMENT_MAX = 5;
+
+// Explicit BRANCH scope filter — segmented pill grammar ported from the
+// design mockup's ScopeSwitch (manager-v2-shared.jsx:278), matched to the
+// same real-token segmented-button style MasterSheet already ships for its
+// unit filter (`segBtn` in MasterSheet.jsx) so the app carries one visual
+// language for "filter roster by unit," not two.
+function ScopeSwitch({ options, active, onChange }) {
+  const segBtn = (isActive) =>
+    `min-h-[44px] px-3 rounded-md text-xs font-bold tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 ${
+      isActive ? 'bg-card text-primary shadow-sm border border-border' : 'text-ink-muted hover:text-ink border border-transparent'
+    }`;
+  const collapse = options.length > SCOPE_SWITCH_SEGMENT_MAX;
+  return (
+    <div
+      className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-border bg-surface p-1"
+      role="group"
+      aria-label="Filter by unit"
+      data-testid="compliance-scope-switch"
+    >
+      <button
+        type="button"
+        data-testid="compliance-scope-branch"
+        onClick={() => onChange('all')}
+        aria-pressed={active === 'all'}
+        className={segBtn(active === 'all')}
+      >
+        Branch
+      </button>
+      {collapse ? (
+        <select
+          aria-label="Filter by unit"
+          data-testid="compliance-scope-unit-select"
+          value={active === 'all' ? '' : active}
+          onChange={(e) => onChange(e.target.value || 'all')}
+          className="h-11 px-2 rounded-md border border-transparent bg-transparent text-xs font-bold text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/40"
+        >
+          <option value="">Unit…</option>
+          {options.map((o) => (
+            <option key={o.id} value={o.id}>{o.label}</option>
+          ))}
+        </select>
+      ) : (
+        options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            data-testid={`compliance-scope-unit-${o.id}`}
+            onClick={() => onChange(o.id)}
+            aria-pressed={active === o.id}
+            className={segBtn(active === o.id)}
+          >
+            {o.label}
+          </button>
+        ))
+      )}
+    </div>
   );
 }
 
