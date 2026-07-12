@@ -81,10 +81,13 @@ export default function KioskShell({ tenantId, branchId }) {
         getKioskYTDSubmissions(tenantId, branchId),
         // getKioskTenantUsers lists users, which the kiosk rules do not grant
         // (kiosk has `get`, not `list` — the users read-split in SHAKEDOWN-002
-        // dropped the kiosk list arm). Degrade to [] so a denied users-list does
-        // not reject the whole Promise.all and blank submissions/AOM too; panels
-        // fall back to a generic "Agent" label. FU: restore a branch-scoped
-        // kiosk users-list for real names.
+        // dropped the kiosk list arm, and re-adding one would widen bulk
+        // email/phone enumeration to a lobby token). Degrade to [] so a denied
+        // users-list does not reject the whole Promise.all and blank
+        // submissions/AOM too. SEC-012: leaderboard/podium/activity panels now
+        // resolve agent names from the submission-carried `agentName`
+        // (buildSubmissionNameMap) so names survive an empty roster; photos and
+        // roster-only panels (celebrations, compliance) still need the list.
         getKioskTenantUsers(tenantId).catch(() => []),
         getKioskAgentOfMonth(tenantId).catch(() => null),
         // 3.6: kiosk-flagged campaigns. Degrade to [] on any read failure so a
