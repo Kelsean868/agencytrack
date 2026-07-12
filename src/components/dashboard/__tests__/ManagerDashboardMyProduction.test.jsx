@@ -32,6 +32,7 @@ vi.mock('../../../hooks/useMyProduction', () => ({
 
 // ── Inert service mocks ───────────────────────────────────────────────────────
 vi.mock('../../../services/authService',      () => ({ signOut: vi.fn() }));
+vi.mock('../../../hooks/useToast', () => ({ default: () => ({ show: vi.fn(), dismiss: vi.fn() }) }));
 vi.mock('../../../services/managerService',   () => ({
   getWeeklySubmissions: vi.fn().mockResolvedValue([]),
   getTenantUsers:       vi.fn().mockResolvedValue([]),
@@ -146,21 +147,21 @@ import ManagerDashboard from '../ManagerDashboard';
 const EMPTY_MY_PROD = {
   allSubmissions: [], goals: null, companyMinimums: null,
   persistency: [], settlements: [], awardsRuleset: {},
-  loading: false, hierarchy: null, hierarchyLoading: false, hierarchyError: null,
+  loading: false, loadError: false, hierarchy: null, hierarchyLoading: false, hierarchyError: null,
   policies: null, policiesLoading: false, policiesError: false,
   loadPolicies: vi.fn(), reload: vi.fn(), currentWeek: '2026-06-22',
   ytdTotals: { api: 0, apps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 },
   ytdPersistency: null,
 };
 
-function mountWithRole(role, profileOverrides = {}) {
+function mountWithRole(role, profileOverrides = {}, myProdOverrides = {}) {
   hoisted.useAuthMock.mockReturnValue({
     user:        { uid: `${role}-uid` },
     userProfile: { name: 'Test User', branchId: 'south', ...profileOverrides },
     tenantId:    'tatillife_south',
     role,
   });
-  hoisted.useMyProductionMock.mockReturnValue(EMPTY_MY_PROD);
+  hoisted.useMyProductionMock.mockReturnValue({ ...EMPTY_MY_PROD, ...myProdOverrides });
   return render(<ManagerDashboard />);
 }
 
@@ -307,5 +308,38 @@ describe('ManagerDashboard — DailyFAB on My Production tabs', () => {
     mountWithRole('unit_manager', { loggingMode: 'wizard' });
     fireEvent.click(screen.getByTestId('nav-mp-goals'));
     expect(screen.queryByTestId('mp-daily-fab')).not.toBeInTheDocument();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §1 silent-swallow fix — myProd.loadError surfaces a retry-able error card on
+// My Production tabs (mirrors the myProd.policiesError + onRetry pattern).
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('ManagerDashboard — My Production loadError card', () => {
+  it('shows the error card + Retry on an mp-* tab when loadError is true', () => {
+    mountWithRole('unit_manager', {}, { loadError: true });
+    fireEvent.click(screen.getByTestId('nav-mp-goals'));
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load your production");
+  });
+
+  it('Retry calls myProd.reload', () => {
+    const reload = vi.fn();
+    mountWithRole('unit_manager', {}, { loadError: true, reload });
+    fireEvent.click(screen.getByTestId('nav-mp-goals'));
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not show the error card when loadError is false', () => {
+    mountWithRole('unit_manager');
+    fireEvent.click(screen.getByTestId('nav-mp-goals'));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('does not show the error card on a non-mp tab even when loadError is true', () => {
+    mountWithRole('unit_manager', {}, { loadError: true });
+    // Default active tab is 'overview' — not in MP_TABS.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

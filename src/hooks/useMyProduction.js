@@ -30,12 +30,18 @@ export function useMyProduction(tenantId, uid, userProfile) {
   const [policies, setPolicies] = useState(null);
   const [policiesLoading, setPoliciesLoading] = useState(false);
   const [policiesError, setPoliciesError] = useState(false);
+  // §1 silent-swallow fix: surfaces a failure of the primary submissions read
+  // (the rest of the section — ytdTotals, GapAnalysisPanel, HistoryTab,
+  // CommissionPlayground — all derive from allSubmissions, so a silent []
+  // fallback here reads as "no production" instead of "couldn't load").
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(() => {
     if (!uid || !tenantId) return;
     setLoading(true);
+    setLoadError(false);
     Promise.all([
-      getAgentSubmissions(tenantId, uid).catch(() => []),
+      getAgentSubmissions(tenantId, uid).catch((err) => { setLoadError(true); throw err; }),
       getGoals(tenantId, uid).catch(() => null),
       getAgentHistory(tenantId, uid, 12).catch(() => []),
       getSettlements(tenantId, uid, thisYear).catch(() => []),
@@ -109,7 +115,7 @@ export function useMyProduction(tenantId, uid, userProfile) {
 
   return {
     allSubmissions, goals, companyMinimums, persistency, settlements, awardsRuleset,
-    loading, hierarchy, hierarchyLoading, hierarchyError,
+    loading, loadError, hierarchy, hierarchyLoading, hierarchyError,
     policies, policiesLoading, policiesError, loadPolicies,
     ytdTotals, ytdPersistency,
     reload: load,

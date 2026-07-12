@@ -8,8 +8,10 @@ import {
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
   Activity, UserPlus, ClipboardCheck, BookOpen, LayoutList,
   NotebookPen, Target, Wallet, History, Zap, Banknote, Settings, CalendarClock,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useToast from '../../hooks/useToast';
 import { signOut } from '../../services/authService';
 import { getRoleLabel } from '../../utils/formatters';
 import { getMostRecentSunday } from '../../utils/dateHelpers';
@@ -167,6 +169,7 @@ const MP_TABS = new Set(['mp-report', 'mp-goals', 'mp-game-plan', 'mp-money-need
 
 export default function ManagerDashboard() {
   const { user, userProfile, role, tenantId, branchId } = useAuth();
+  const toast = useToast();
   const [showWizard, setShowWizard]       = useState(false);
   const [activeTab, setActiveTab]         = useState('overview');
   const [selectedWeek, setSelectedWeek]   = useState(getMostRecentSunday());
@@ -407,6 +410,7 @@ export default function ManagerDashboard() {
       setMeetingActive(true);
     } catch (e) {
       console.error('Failed to load meeting data:', e);
+      toast.show({ variant: 'error', message: "Couldn't load meeting data. Please try again.", duration: 4000 });
     }
   };
 
@@ -424,6 +428,7 @@ export default function ManagerDashboard() {
       exportBranchCSV(userList, subs, persMap);
     } catch (err) {
       console.error('Branch CSV export failed:', err);
+      toast.show({ variant: 'error', message: "Couldn't export the branch CSV. Please try again.", duration: 4000 });
     }
   };
 
@@ -658,6 +663,27 @@ export default function ManagerDashboard() {
 
         {/* ── MY PRODUCTION — own-production screens for UM/BM ── */}
         {/* mp-report handled via early return (WizardForm full-screen) */}
+
+        {/* §1 silent-swallow fix: the primary submissions read backing this
+            whole section (ytdTotals, GapAnalysisPanel, HistoryTab,
+            CommissionPlayground) failed — mirrors the myProd.policiesError +
+            onRetry={myProd.loadPolicies} error-card pattern below. */}
+        {MP_TABS.has(activeTab) && myProd.loadError && (
+          <div role="alert" className="card flex items-start gap-3 text-danger-ink mb-4">
+            <AlertTriangle size={18} className="shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="flex-1">
+              <p className="font-semibold text-sm">Couldn&apos;t load your production</p>
+              <p className="text-xs text-ink-muted mt-0.5">Check your connection and retry.</p>
+              <button
+                type="button"
+                onClick={myProd.reload}
+                className="mt-2 min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
 
         {activeTab === 'mp-goals' && (
           <>

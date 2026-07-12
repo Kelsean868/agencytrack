@@ -35,6 +35,7 @@ vi.mock('../../../context/AuthContext', () => ({
 
 // ── Service mocks (all inert — none of this matters for the leaderboard tab)
 vi.mock('../../../services/authService', () => ({ signOut: vi.fn() }));
+vi.mock('../../../hooks/useToast', () => ({ default: () => ({ show: vi.fn(), dismiss: vi.fn() }) }));
 vi.mock('../../../services/managerService', () => ({
   getWeeklySubmissions: vi.fn().mockResolvedValue([]),
   getTenantUsers:       vi.fn().mockResolvedValue([]),

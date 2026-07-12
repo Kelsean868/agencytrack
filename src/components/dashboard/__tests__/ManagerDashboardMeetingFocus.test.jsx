@@ -24,6 +24,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 const hoisted = vi.hoisted(() => ({
   useAuthMock:         vi.fn(),
   useMyProductionMock: vi.fn(),
+  toastShow:           vi.fn(),
 }));
 
 vi.mock('../../../context/AuthContext', () => ({ useAuth: hoisted.useAuthMock }));
@@ -31,6 +32,7 @@ vi.mock('../../../hooks/useMyProduction', () => ({ useMyProduction: hoisted.useM
 
 // ── Inert service mocks ───────────────────────────────────────────────────────
 vi.mock('../../../services/authService',      () => ({ signOut: vi.fn() }));
+vi.mock('../../../hooks/useToast', () => ({ default: () => ({ show: hoisted.toastShow, dismiss: vi.fn() }) }));
 vi.mock('../../../services/managerService',   () => ({
   getWeeklySubmissions: vi.fn().mockResolvedValue([]),
   getTenantUsers:       vi.fn().mockResolvedValue([]),
@@ -93,6 +95,7 @@ vi.mock('../../shell/Shell', () => ({
 }));
 
 import ManagerDashboard from '../ManagerDashboard';
+import { getWeeklySubmissions } from '../../../services/managerService';
 
 const EMPTY_MY_PROD = {
   allSubmissions: [], goals: null, companyMinimums: null,
@@ -137,5 +140,24 @@ describe('ManagerDashboard — focus-return after Meeting Mode closes', () => {
       const remounted = screen.getByRole('button', { name: /start meeting/i });
       expect(document.activeElement).toBe(remounted);
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §1 silent-swallow fix — handleStartMeeting surfaces a failure toast (in
+// addition to the existing console.error) instead of swallowing silently.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('ManagerDashboard — Start Meeting failure toast', () => {
+  it('shows a failure toast when the meeting data load fails', async () => {
+    getWeeklySubmissions.mockRejectedValueOnce(new Error('boom'));
+    render(<ManagerDashboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: /start meeting/i }));
+
+    await waitFor(() => expect(hoisted.toastShow).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'error' })
+    ));
+    // Meeting never opens — the whole dashboard (incl. this button) stays mounted.
+    expect(screen.getByRole('button', { name: /start meeting/i })).toBeInTheDocument();
   });
 });
