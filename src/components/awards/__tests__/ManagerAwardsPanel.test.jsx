@@ -10,7 +10,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 
 vi.mock('../../../services/settlementService', () => ({
   getSettlementsForUnit: vi.fn(() => Promise.resolve([])),
@@ -39,6 +39,7 @@ vi.mock('../BmAtRiskPanel', () => ({
 
 import ManagerAwardsPanel from '../ManagerAwardsPanel';
 import { computeManagerAwards } from '../../../utils/awardsEngine';
+import { getSettlementsForUnit } from '../../../services/settlementService';
 
 const QUALIFIED_AWARD = {
   id: 'production_award',
@@ -376,5 +377,49 @@ describe('ManagerAwardsPanel — drill drawer', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByTestId('award-drill-drawer')).not.toBeInTheDocument();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Error state + Retry (§1(b) four-states holdouts)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('ManagerAwardsPanel — error state + Retry', () => {
+  it('renders an error card with role="alert" and a Retry button when the load fails', async () => {
+    getSettlementsForUnit.mockRejectedValueOnce(new Error('boom'));
+    render(
+      <ManagerAwardsPanel
+        agentIds={['a1', 'a2']}
+        currentDate={new Date('2026-05-11')}
+        role={DEFAULT_ROLE}
+        tenantId="tatil"
+      />,
+    );
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    expect(screen.getByText('Failed to load settlement data.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+  });
+
+  it('clicking Retry re-invokes the load (getSettlementsForUnit called again) and recovers on success', async () => {
+    getSettlementsForUnit.mockRejectedValueOnce(new Error('boom'));
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
+    render(
+      <ManagerAwardsPanel
+        agentIds={['a1', 'a2']}
+        currentDate={new Date('2026-05-11')}
+        role={DEFAULT_ROLE}
+        tenantId="tatil"
+      />,
+    );
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+
+    const callsBeforeRetry = getSettlementsForUnit.mock.calls.length;
+    getSettlementsForUnit.mockResolvedValueOnce([]);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    });
+
+    await waitFor(() => expect(getSettlementsForUnit.mock.calls.length).toBe(callsBeforeRetry + 1));
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(screen.getByTestId('manager-awards-panel')).toBeInTheDocument();
   });
 });

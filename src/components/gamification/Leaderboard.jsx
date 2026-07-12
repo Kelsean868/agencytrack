@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { collection, query, orderBy, where, onSnapshot, getDocs } from 'firebase/firestore';
-import { Flame, Trophy } from 'lucide-react';
+import { AlertTriangle, Flame, Trophy } from 'lucide-react';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { getLastNSundays } from '../../utils/dateHelpers';
@@ -63,6 +63,12 @@ export default function Leaderboard() {
   const [championsLoading, setChampionsLoading] = useState(true);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState('');
+  // Retry affordance for the onSnapshot subscription below (§1(b) four-states
+  // holdouts). onSnapshot has no imperative "refetch" — the established
+  // tear-down-and-re-subscribe idiom is to bump a nonce the subscription
+  // effect depends on, forcing the effect to unsubscribe the old listener
+  // and attach a fresh one.
+  const [retryKey, setRetryKey]           = useState(0);
 
   const isManager = role && ['unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'].includes(role);
 
@@ -71,6 +77,8 @@ export default function Leaderboard() {
 
   useEffect(() => {
     if (!tenantId) return;
+    setLoading(true);
+    setError('');
     const q = query(
       collection(db, `tenants/${tenantId}/leaderboard`),
       orderBy('points', 'desc')
@@ -88,7 +96,9 @@ export default function Leaderboard() {
       }
     );
     return unsub;
-  }, [tenantId]);
+  }, [tenantId, retryKey]);
+
+  const handleRetry = () => setRetryKey((k) => k + 1);
 
   useEffect(() => {
     if (!tenantId) return;
@@ -151,7 +161,19 @@ export default function Leaderboard() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>
+      <div role="alert" className="p-4 rounded-xl bg-danger/10 border border-danger/30 flex items-start gap-3">
+        <AlertTriangle size={18} className="text-danger-ink shrink-0 mt-0.5" aria-hidden="true" />
+        <div className="flex-1">
+          <p className="text-sm text-danger-ink font-medium">{error}</p>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="mt-2 min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
     );
   }
 
