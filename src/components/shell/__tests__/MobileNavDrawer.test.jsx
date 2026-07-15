@@ -50,6 +50,55 @@ describe('MobileBottomNav — More button', () => {
   });
 });
 
+// ── 1b. More slot icon + adaptive label (N5/N6) ──────────────────────────────
+
+describe('MobileBottomNav — More slot icon + adaptive label', () => {
+  it('renders the vertical MoreVertical glyph (not the horizontal MoreHorizontal)', () => {
+    render(
+      <MobileBottomNav
+        items={BOTTOM_ITEMS}
+        drawerNavItems={DRAWER_ITEMS}
+        activeTab="overview"
+        setActiveTab={vi.fn()}
+      />
+    );
+    const moreButton = screen.getByTestId('bottomnav-more');
+    expect(moreButton.querySelector('svg.lucide-ellipsis-vertical, svg.lucide-more-vertical')).toBeTruthy();
+  });
+
+  it('shows the generic "More" label and no active state when the active tab is a primary bottom-nav item', () => {
+    render(
+      <MobileBottomNav
+        items={BOTTOM_ITEMS}
+        drawerNavItems={DRAWER_ITEMS}
+        activeTab="overview"
+        setActiveTab={vi.fn()}
+      />
+    );
+    const moreButton = screen.getByTestId('bottomnav-more');
+    expect(moreButton).toHaveTextContent('More');
+    expect(moreButton).not.toHaveClass('active');
+    expect(moreButton).not.toHaveAttribute('aria-current');
+    expect(moreButton).toHaveAttribute('aria-label', 'More');
+  });
+
+  it('shows the drawer item\'s own label + active state when that item is the active tab', () => {
+    render(
+      <MobileBottomNav
+        items={BOTTOM_ITEMS}
+        drawerNavItems={DRAWER_ITEMS}
+        activeTab="reports"
+        setActiveTab={vi.fn()}
+      />
+    );
+    const moreButton = screen.getByTestId('bottomnav-more');
+    expect(moreButton).toHaveTextContent('Reports');
+    expect(moreButton).toHaveClass('active');
+    expect(moreButton).toHaveAttribute('aria-current', 'page');
+    expect(moreButton).toHaveAttribute('aria-label', 'More — currently Reports');
+  });
+});
+
 // ── 2. Backdrop click dismisses the drawer ────────────────────────────────────
 
 describe('MobileNavDrawer — dismiss', () => {
