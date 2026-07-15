@@ -433,8 +433,26 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
     setSubmitting(true);
     try {
       await submitReport(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0, targetUnitId, branchId);
-      setEarnedPoints(computePoints(sanitize(formData, userProfile?.commissionRate ?? 0)));
+      const sanitized = sanitize(formData, userProfile?.commissionRate ?? 0);
+      setEarnedPoints(computePoints(sanitized));
       setDraftStatus('submitted');
+      // Celebration's "View submission" CTA reuses the SAME
+      // viewingSubmission/submissionData/<SubmissionViewer> mechanism the
+      // "already submitted" interstitial uses (see below). Populate it here
+      // with the exact shape `submitReport` just persisted, so the celebration
+      // screen can open the viewer with no extra Firestore read.
+      setSubmissionData({
+        ...sanitized,
+        userId: user.uid,
+        agentId: user.uid,
+        agentName,
+        unitId: targetUnitId,
+        branchId,
+        weekStarting,
+        status: 'submitted',
+        updatedAt: new Date(),
+        submittedAt: new Date(),
+      });
       setScreen('done');
     } catch (e) {
       setError('Submission failed. Please try again.');
@@ -835,9 +853,12 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
           <Celebration
             formData={formData}
             weekStartingLabel={formatDateFriendly(weekStarting)}
+            weekStarting={weekStarting}
+            commissionRate={userProfile?.commissionRate ?? 0}
             earnedPoints={earnedPoints}
             priorPoints={priorPoints}
             onClose={onClose}
+            onViewSubmission={() => setViewingSubmission(true)}
           />
         )}
 

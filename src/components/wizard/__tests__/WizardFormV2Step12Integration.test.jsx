@@ -37,6 +37,10 @@ vi.mock('../../../services/submissionService', () => ({
 
 vi.mock('../../../utils/dateHelpers', () => ({
   getLastNSundaysForDropdown: () => [{ value: '2026-05-31', label: 'May 31, 2026' }],
+  // Celebration's gold WEEK-N medal calls this on submit — stubbed so the
+  // submit→Celebration mount in this file doesn't crash on an undefined
+  // import from the mocked module.
+  weekNumber: () => 22,
 }));
 
 vi.mock('../../../utils/formatters', () => ({

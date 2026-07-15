@@ -33,6 +33,10 @@ vi.mock('../../../utils/dateHelpers', () => ({
     { value: '2026-05-31', label: 'May 31, 2026' },
     { value: '2026-05-24', label: 'May 24, 2026' },
   ],
+  // Celebration's gold WEEK-N medal calls this on submit — stubbed so a
+  // submit→Celebration mount in this file (if ever exercised) doesn't crash
+  // on an undefined import from the mocked module.
+  weekNumber: () => 22,
 }));
 
 vi.mock('../../../utils/formatters', () => ({
