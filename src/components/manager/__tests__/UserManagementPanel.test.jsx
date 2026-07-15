@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 
 // Hoisted mocks — applied before the SUT and its transitive imports run.
 const hoisted = vi.hoisted(() => ({
@@ -74,6 +74,44 @@ const INACTIVE_AGENT = {
   active:  false,
 };
 
+// Roster v2 (Tier-4 #17) fixtures — one user per hierarchy role so search /
+// role-chip filters / RoleChip / Branch·Unit resolution all have real
+// distinct rows to exercise. UNIT_MANAGER carries an explicit unitName so
+// getUnitDisplayName() resolves a literal label rather than the "<name>'s
+// Unit" fallback, matching CreateUserDrawer's unit_manager form field.
+const BRANCH_FIXTURE = { id: 'branch-1', name: 'Phoenix Branch', isActive: true };
+
+const UNIT_MANAGER = {
+  uid: 'um-1', id: 'um-1', role: 'unit_manager',
+  name: 'Uma Manager', email: 'uma@example.com', active: true,
+  branchId: 'branch-1', unitName: 'Phoenix Unit',
+};
+const BRANCH_MANAGER = {
+  uid: 'bm-1', id: 'bm-1', role: 'branch_manager',
+  name: 'Bree Manager', email: 'bree@example.com', active: true,
+  branchId: 'branch-1',
+};
+const SALES_MANAGER = {
+  uid: 'sm-1', id: 'sm-1', role: 'sales_manager',
+  name: 'Sam Sales', email: 'sam@example.com', active: true,
+};
+const TENANT_ADMIN = {
+  uid: 'ta-1', id: 'ta-1', role: 'tenant_admin',
+  name: 'Tina Admin', email: 'tina@example.com', active: true,
+};
+// Agent assigned to UNIT_MANAGER's unit — the unitId is the unit manager's
+// own uid (see buildUserDoc in scripts/staging/seed-staging.mjs and
+// CreateUserDrawer's unit <select> options, both keyed by `um.uid`).
+const AGENT_WITH_UNIT = {
+  uid: 'agent-3', id: 'agent-3', role: 'agent',
+  name: 'Andy Agent', email: 'andy@example.com', active: true,
+  branchId: 'branch-1', unitId: 'um-1',
+};
+const FULL_ROSTER = [
+  ACTIVE_AGENT, INACTIVE_AGENT, UNIT_MANAGER, BRANCH_MANAGER,
+  SALES_MANAGER, TENANT_ADMIN, AGENT_WITH_UNIT,
+];
+
 const FAKE_LINK = 'https://agencytrack.vercel.app/__/auth/action?oobCode=FAKETOKEN';
 
 // Clipboard mock
@@ -87,6 +125,11 @@ describe('UserManagementPanel — Invite control', () => {
     hoisted.resendInvite.mockReset();
     hoisted.getInviteLink.mockReset();
     hoisted.toastShow.mockReset();
+    // Roster v2 (Tier-4 #17) — the main panel now loads branches directly
+    // (Branch·Unit column resolution), not just CreateUserDrawer. Default to
+    // an empty list; individual tests override when branch names matter.
+    hoisted.listBranches.mockReset();
+    hoisted.listBranches.mockResolvedValue([]);
     navigator.clipboard.writeText.mockReset().mockResolvedValue(undefined);
   });
 
@@ -231,6 +274,8 @@ describe('UserManagementPanel — Invite control', () => {
 describe('UserManagementPanel — §5 dense-table contract', () => {
   beforeEach(() => {
     hoisted.getAllUsers.mockReset();
+    hoisted.listBranches.mockReset();
+    hoisted.listBranches.mockResolvedValue([]);
   });
 
   it('renders a live footer count with active/deactivated breakdown', async () => {
@@ -247,8 +292,12 @@ describe('UserManagementPanel — §5 dense-table contract', () => {
     hoisted.getAllUsers.mockResolvedValue([ACTIVE_AGENT, INACTIVE_AGENT]);
     render(<UserManagementPanel />);
     await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
-    expect(screen.getByText('Active')).toBeInTheDocument();
-    expect(screen.getByText('Deactivated')).toBeInTheDocument();
+    // Scoped to the table — roster v2's stat strip also renders standalone
+    // "Active" / "Deactivated" tile labels (user-stat-active / -deactivated),
+    // so an unscoped getByText would now match more than one element.
+    const table = screen.getByRole('table', { name: 'User roster' });
+    expect(within(table).getByText('Active')).toBeInTheDocument();
+    expect(within(table).getByText('Deactivated')).toBeInTheDocument();
   });
 
   it('header row is sticky (card-scoped scroll contract)', async () => {
@@ -337,5 +386,169 @@ describe('UserManagementPanel — openCreateSignal (Tier 1 · 1.3 external creat
     await waitFor(() => expect(screen.getByText('Add New User')).toBeInTheDocument());
     fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByText('Add New User')).toBeNull());
+  });
+});
+
+describe('UserManagementPanel — roster v2 (Tier-4 #17: stat strip, search, role filters, RoleChip, Branch·Unit)', () => {
+  beforeEach(() => {
+    hoisted.getAllUsers.mockReset();
+    hoisted.getAllUsers.mockResolvedValue(FULL_ROSTER);
+    hoisted.listBranches.mockReset();
+    hoisted.listBranches.mockResolvedValue([BRANCH_FIXTURE]);
+  });
+
+  async function renderRoster() {
+    render(<UserManagementPanel />);
+    await waitFor(() => expect(screen.getByText('Andy Agent')).toBeInTheDocument());
+  }
+
+  // ── Stat strip ───────────────────────────────────────────────────────────
+
+  it('stat strip shows total / active / deactivated + one tile per role present', async () => {
+    await renderRoster();
+    expect(screen.getByTestId('user-stat-total')).toHaveTextContent('7');
+    expect(screen.getByTestId('user-stat-active')).toHaveTextContent('6');
+    expect(screen.getByTestId('user-stat-deactivated')).toHaveTextContent('1');
+    expect(screen.getByTestId('user-stat-role-agent')).toHaveTextContent('3');
+    expect(screen.getByTestId('user-stat-role-unit_manager')).toHaveTextContent('1');
+    expect(screen.getByTestId('user-stat-role-branch_manager')).toHaveTextContent('1');
+    expect(screen.getByTestId('user-stat-role-sales_manager')).toHaveTextContent('1');
+    expect(screen.getByTestId('user-stat-role-tenant_admin')).toHaveTextContent('1');
+    // No cro/platform_admin in the fixture roster — those tiles must not render.
+    expect(screen.queryByTestId('user-stat-role-cro')).toBeNull();
+    expect(screen.queryByTestId('user-stat-role-platform_admin')).toBeNull();
+  });
+
+  it('stat strip reflects the full roster even while search/filters narrow the table', async () => {
+    await renderRoster();
+    fireEvent.change(screen.getByTestId('user-search-input'), { target: { value: 'andy' } });
+    await waitFor(() => expect(screen.queryByText('Tina Admin')).toBeNull());
+    // Stat strip totals are unchanged — they summarize the full roster, not
+    // the filtered table.
+    expect(screen.getByTestId('user-stat-total')).toHaveTextContent('7');
+    expect(screen.getByTestId('user-stat-role-agent')).toHaveTextContent('3');
+  });
+
+  // ── Search ───────────────────────────────────────────────────────────────
+
+  it('search narrows the table by name (case-insensitive substring)', async () => {
+    await renderRoster();
+    fireEvent.change(screen.getByTestId('user-search-input'), { target: { value: 'ANDY' } });
+    await waitFor(() => {
+      expect(screen.getByText('Andy Agent')).toBeInTheDocument();
+      expect(screen.queryByText('Active Agent')).toBeNull();
+      expect(screen.queryByText('Tina Admin')).toBeNull();
+    });
+  });
+
+  it('search narrows the table by email', async () => {
+    await renderRoster();
+    fireEvent.change(screen.getByTestId('user-search-input'), { target: { value: 'sam@example' } });
+    await waitFor(() => {
+      expect(screen.getByText('Sam Sales')).toBeInTheDocument();
+      expect(screen.queryByText('Andy Agent')).toBeNull();
+    });
+  });
+
+  it('search with no matches shows the empty state with a Clear filters affordance', async () => {
+    await renderRoster();
+    fireEvent.change(screen.getByTestId('user-search-input'), { target: { value: 'nobody-matches-this' } });
+    await waitFor(() => expect(screen.getByTestId('user-roster-empty-filtered')).toBeInTheDocument());
+    expect(screen.getByText(/No users match your search or filters/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('user-clear-filters-empty'));
+    await waitFor(() => expect(screen.getByText('Andy Agent')).toBeInTheDocument());
+    expect(screen.getByTestId('user-search-input')).toHaveValue('');
+  });
+
+  // ── Role filter chips ────────────────────────────────────────────────────
+
+  it('role filter chip narrows the table to that role only', async () => {
+    await renderRoster();
+    fireEvent.click(screen.getByTestId('role-filter-unit_manager'));
+    await waitFor(() => {
+      expect(screen.getByText('Uma Manager')).toBeInTheDocument();
+      expect(screen.queryByText('Andy Agent')).toBeNull();
+      expect(screen.queryByText('Tina Admin')).toBeNull();
+    });
+    expect(screen.getByTestId('role-filter-unit_manager')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('multiple role filter chips compose with OR (any selected role shows)', async () => {
+    await renderRoster();
+    fireEvent.click(screen.getByTestId('role-filter-sales_manager'));
+    fireEvent.click(screen.getByTestId('role-filter-tenant_admin'));
+    await waitFor(() => {
+      expect(screen.getByText('Sam Sales')).toBeInTheDocument();
+      expect(screen.getByText('Tina Admin')).toBeInTheDocument();
+      expect(screen.queryByText('Andy Agent')).toBeNull();
+      expect(screen.queryByText('Uma Manager')).toBeNull();
+    });
+  });
+
+  it('role filter chip toggles off on second click', async () => {
+    await renderRoster();
+    const chip = screen.getByTestId('role-filter-agent');
+    fireEvent.click(chip);
+    await waitFor(() => expect(screen.queryByText('Tina Admin')).toBeNull());
+    fireEvent.click(chip);
+    await waitFor(() => expect(screen.getByText('Tina Admin')).toBeInTheDocument());
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  // ── Search + role filter compose (AND) ───────────────────────────────────
+
+  it('search and role filter compose with AND semantics', async () => {
+    await renderRoster();
+    fireEvent.click(screen.getByTestId('role-filter-agent'));
+    fireEvent.change(screen.getByTestId('user-search-input'), { target: { value: 'andy' } });
+    await waitFor(() => {
+      // Matches role=agent AND name contains "andy" → only Andy Agent.
+      expect(screen.getByText('Andy Agent')).toBeInTheDocument();
+      expect(screen.queryByText('Active Agent')).toBeNull(); // agent role, but name doesn't match search
+      expect(screen.queryByText('Tina Admin')).toBeNull();    // matches neither
+    });
+
+    // Clear filters affordance appears once any filter is active, and resets both.
+    fireEvent.click(screen.getByTestId('user-clear-filters'));
+    await waitFor(() => expect(screen.getByText('Tina Admin')).toBeInTheDocument());
+    expect(screen.getByTestId('user-search-input')).toHaveValue('');
+    expect(screen.getByTestId('role-filter-agent')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  // ── RoleChip ─────────────────────────────────────────────────────────────
+
+  it('RoleChip renders the correct label for each role in the table', async () => {
+    await renderRoster();
+    const table = screen.getByRole('table', { name: 'User roster' });
+    expect(within(table).getAllByTestId('role-chip-agent')).toHaveLength(3);
+    expect(within(table).getByTestId('role-chip-unit_manager')).toHaveTextContent('Unit Manager');
+    expect(within(table).getByTestId('role-chip-branch_manager')).toHaveTextContent('Branch Manager');
+    expect(within(table).getByTestId('role-chip-sales_manager')).toHaveTextContent('Sales Manager');
+    expect(within(table).getByTestId('role-chip-tenant_admin')).toHaveTextContent('Tenant Admin');
+  });
+
+  // ── Branch · Unit column ─────────────────────────────────────────────────
+
+  it('Branch·Unit column resolves branch + unit display names for an agent', async () => {
+    await renderRoster();
+    // AGENT_WITH_UNIT.branchId → BRANCH_FIXTURE.name; unitId → UNIT_MANAGER's
+    // own uid → getUnitDisplayName(UNIT_MANAGER) → its explicit unitName.
+    expect(screen.getByTestId('user-branch-unit-agent-3')).toHaveTextContent('Phoenix Branch · Phoenix Unit');
+  });
+
+  it('Branch·Unit column resolves a unit_manager\'s own unit (not via unitId)', async () => {
+    await renderRoster();
+    expect(screen.getByTestId('user-branch-unit-um-1')).toHaveTextContent('Phoenix Branch · Phoenix Unit');
+  });
+
+  it('Branch·Unit column shows branch only when no unit applies', async () => {
+    await renderRoster();
+    expect(screen.getByTestId('user-branch-unit-bm-1')).toHaveTextContent('Phoenix Branch');
+  });
+
+  it('Branch·Unit column shows an em dash when neither branch nor unit resolve', async () => {
+    await renderRoster();
+    expect(screen.getByTestId('user-branch-unit-sm-1')).toHaveTextContent('—');
   });
 });
