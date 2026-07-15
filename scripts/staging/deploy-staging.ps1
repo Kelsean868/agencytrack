@@ -29,7 +29,14 @@
 #>
 
 param(
-  [switch]$DryRun
+  [switch]$DryRun,
+  # Optional surface scoping: any subset of 'rules', 'indexes', 'functions'.
+  # Default = all three (original behavior). Added Run 8 so a rules-only
+  # change can deploy without re-shipping functions (functions runtime is an
+  # ABSOLUTE STOP in unattended runs). All prod-refusal guards apply
+  # regardless of scope.
+  [ValidateSet('rules', 'indexes', 'functions')]
+  [string[]]$Only = @('rules', 'indexes', 'functions')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -99,32 +106,38 @@ if ($StagingProject -eq $ProdProject) { Abort 'target equals production -- refus
 if ($DryRun) {
   Write-Host ''
   Write-Host 'DRY RUN -- would deploy the following to STAGING only:' -ForegroundColor Yellow
-  Write-Host "  firebase deploy --only firestore:rules   --project $StagingProject"
-  Write-Host "  firebase deploy --only firestore:indexes --project $StagingProject"
-  Write-Host "  firebase deploy --only functions         --project $StagingProject"
+  if ($Only -contains 'rules')     { Write-Host "  firebase deploy --only firestore:rules   --project $StagingProject" }
+  if ($Only -contains 'indexes')   { Write-Host "  firebase deploy --only firestore:indexes --project $StagingProject" }
+  if ($Only -contains 'functions') { Write-Host "  firebase deploy --only functions         --project $StagingProject" }
   Write-Host ''
   Write-Host 'No deploy performed (DryRun).' -ForegroundColor Yellow
   exit 0
 }
 
-# -- Deploy -- each surface, explicit --project, exit-code checked ---------------
-Write-Host ''
-Write-Host "Deploying firestore:rules to $StagingProject..." -ForegroundColor Cyan
-firebase deploy --only firestore:rules --project $StagingProject
-if ($LASTEXITCODE -ne 0) { Abort "firestore:rules deploy failed (exit $LASTEXITCODE)." }
+# -- Deploy -- each selected surface, explicit --project, exit-code checked ------
+if ($Only -contains 'rules') {
+  Write-Host ''
+  Write-Host "Deploying firestore:rules to $StagingProject..." -ForegroundColor Cyan
+  firebase deploy --only firestore:rules --project $StagingProject
+  if ($LASTEXITCODE -ne 0) { Abort "firestore:rules deploy failed (exit $LASTEXITCODE)." }
+}
 
-Write-Host ''
-Write-Host "Deploying firestore:indexes to $StagingProject..." -ForegroundColor Cyan
-firebase deploy --only firestore:indexes --project $StagingProject
-if ($LASTEXITCODE -ne 0) { Abort "firestore:indexes deploy failed (exit $LASTEXITCODE)." }
+if ($Only -contains 'indexes') {
+  Write-Host ''
+  Write-Host "Deploying firestore:indexes to $StagingProject..." -ForegroundColor Cyan
+  firebase deploy --only firestore:indexes --project $StagingProject
+  if ($LASTEXITCODE -ne 0) { Abort "firestore:indexes deploy failed (exit $LASTEXITCODE)." }
+}
 
-Write-Host ''
-Write-Host "Deploying functions to $StagingProject..." -ForegroundColor Cyan
-firebase deploy --only functions --project $StagingProject
-if ($LASTEXITCODE -ne 0) { Abort "functions deploy failed (exit $LASTEXITCODE)." }
+if ($Only -contains 'functions') {
+  Write-Host ''
+  Write-Host "Deploying functions to $StagingProject..." -ForegroundColor Cyan
+  firebase deploy --only functions --project $StagingProject
+  if ($LASTEXITCODE -ne 0) { Abort "functions deploy failed (exit $LASTEXITCODE)." }
+}
 
 Write-Host ''
 Write-Host '============================================================' -ForegroundColor Green
 Write-Host "  STAGING DEPLOY COMPLETE -- $StagingProject" -ForegroundColor Green
-Write-Host "  rules + indexes + functions deployed to staging only." -ForegroundColor Green
+Write-Host "  deployed to staging only: $($Only -join ' + ')." -ForegroundColor Green
 Write-Host '============================================================' -ForegroundColor Green

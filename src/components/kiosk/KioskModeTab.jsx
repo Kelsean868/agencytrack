@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import useToast from '../../hooks/useToast';
 import { APP_URL } from '../../constants/brand';
 import { PANEL_ORDER, PANEL_LABELS } from '../../lib/kiosk/kioskConfig';
+import { getKioskConfig, setKioskDisabledPanels } from '../../lib/kiosk/kioskConfigService';
 
 const KIOSK_BASE = `${APP_URL}/kiosk`;
 
@@ -21,7 +22,7 @@ function formatDate(ts) {
 }
 
 export default function KioskModeTab() {
-  const { tenantId } = useAuth();
+  const { tenantId, branchId, user } = useAuth();
   const { show: showToast } = useToast();
   const [tokens, setTokens]     = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -29,6 +30,10 @@ export default function KioskModeTab() {
   const [revokingId, setRevokingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [error, setError]       = useState(null);
+  // Tier-3 #15: per-branch panel enable/disable. `disabledPanels` holds the
+  // keys a manager has turned OFF; a panel is "enabled" when NOT in this list.
+  const [disabledPanels, setDisabledPanels] = useState([]);
+  const [savingKey, setSavingKey] = useState(null);
 
   const loadTokens = useCallback(async () => {
     if (!tenantId) return;
@@ -100,6 +105,42 @@ export default function KioskModeTab() {
     }
     setCopiedId(tokenId);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // Tier-3 #15: load the branch's saved panel config. A read failure / absent
+  // doc degrades to all-enabled ([]), matching the kiosk display's fail-open.
+  useEffect(() => {
+    if (!tenantId || !branchId) return;
+    let cancelled = false;
+    getKioskConfig(tenantId, branchId)
+      .then((cfg) => { if (!cancelled) setDisabledPanels(cfg.disabledPanels); })
+      .catch(() => { /* degrade to all-enabled */ });
+    return () => { cancelled = true; };
+  }, [tenantId, branchId]);
+
+  const togglePanel = async (key) => {
+    if (!branchId || savingKey) return;
+    const label = PANEL_LABELS[key] ?? key;
+    const wasDisabled = disabledPanels.includes(key);
+    const prev = disabledPanels;
+    const next = wasDisabled
+      ? disabledPanels.filter((k) => k !== key)
+      : [...disabledPanels, key];
+    // Optimistic update, then persist; revert on failure.
+    setDisabledPanels(next);
+    setSavingKey(key);
+    try {
+      await setKioskDisabledPanels(tenantId, branchId, user?.uid, next);
+      showToast({
+        message: wasDisabled ? `${label} shown on kiosk` : `${label} hidden from kiosk`,
+        variant: 'success',
+      });
+    } catch {
+      setDisabledPanels(prev);
+      showToast({ message: 'Failed to update panel — try again', variant: 'error' });
+    } finally {
+      setSavingKey(null);
+    }
   };
 
   return (
@@ -205,31 +246,63 @@ export default function KioskModeTab() {
         </div>
       )}
 
-      {/* 3.6: read-only rotation config. Per-slide manager enable/disable has
-          no persisted write path today (kiosk tokens are the only kiosk config
-          doc, and adding a settings doc is a rules change out of this scope),
-          so the default rotation is shown read-only. Campaign + Celebration
-          panels auto-appear only when they have data. */}
+      {/* Tier-3 #15: per-slide manager enable/disable. Toggling a panel OFF
+          persists it into kioskConfig/{branchId}.disabledPanels; the kiosk
+          display reads the same doc and skips disabled panels. Panels with no
+          data for the week are STILL skipped automatically on top of this.
+          Campaign + Celebration panels stay auto (data-driven), so they remain
+          read-only status pills. */}
       <section className="mt-10" aria-labelledby="kiosk-panels-heading">
         <h3 id="kiosk-panels-heading" className="text-base font-semibold text-ink">
           Panels shown on the kiosk
         </h3>
         <p className="text-ink-muted text-sm mt-1">
-          The wall rotates through these panels. Panels with no data for the week
-          are skipped automatically. Per-slide scheduling is coming soon.
+          Toggle which panels the wall rotates through. Panels with no data for
+          the week are skipped automatically regardless of this setting.
         </p>
+        {!branchId && (
+          <p className="mt-3 px-3 py-2 rounded-lg bg-surface-raised text-ink-muted text-sm">
+            Panel scheduling is per branch. Your account has no branch assigned,
+            so these controls are unavailable.
+          </p>
+        )}
         <ul className="mt-4 grid grid-cols-2 gap-2">
-          {PANEL_ORDER.map((key) => (
-            <li
-              key={key}
-              className="flex items-center justify-between bg-card border border-card-raised rounded-lg px-3 py-2"
-            >
-              <span className="text-ink text-sm">{PANEL_LABELS[key] ?? key}</span>
-              <span className="text-xs font-medium text-success-ink bg-success-tint rounded-full px-2 py-0.5">
-                On
-              </span>
-            </li>
-          ))}
+          {PANEL_ORDER.map((key) => {
+            const enabled = !disabledPanels.includes(key);
+            const label = PANEL_LABELS[key] ?? key;
+            const busy = savingKey === key;
+            return (
+              <li
+                key={key}
+                className="flex items-center justify-between bg-card border border-card-raised rounded-lg pl-3 pr-2 py-1"
+              >
+                <span className="text-ink text-sm">{label}</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={enabled}
+                  aria-label={`${label} panel — ${enabled ? 'shown, tap to hide' : 'hidden, tap to show'}`}
+                  data-testid={`kiosk-panel-toggle-${key}`}
+                  disabled={!branchId || busy}
+                  onClick={() => togglePanel(key)}
+                  className="relative shrink-0 h-11 w-11 flex items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`inline-flex h-6 w-10 items-center rounded-full px-0.5 transition-colors ${
+                      enabled ? 'bg-primary dark:bg-primary-dark' : 'bg-ink-dim'
+                    }`}
+                  >
+                    <span
+                      className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                        enabled ? 'translate-x-4' : 'translate-x-0'
+                      } ${busy ? 'animate-pulse' : ''}`}
+                    />
+                  </span>
+                </button>
+              </li>
+            );
+          })}
           <li className="flex items-center justify-between bg-card border border-card-raised rounded-lg px-3 py-2">
             <span className="text-ink text-sm">{PANEL_LABELS.campaignLeaderboards}</span>
             <span className="text-xs font-medium text-ink-muted bg-surface-raised rounded-full px-2 py-0.5">

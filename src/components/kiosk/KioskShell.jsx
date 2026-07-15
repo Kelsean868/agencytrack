@@ -12,6 +12,7 @@ import {
   getKioskTenantUsers,
   getKioskAgentOfMonth,
   getKioskCampaigns,
+  getKioskDisabledPanels,
 } from '../../lib/kiosk/kioskServices';
 
 import AgentOfMonthPanel        from './panels/AgentOfMonthPanel';
@@ -64,6 +65,7 @@ export default function KioskShell({ tenantId, branchId }) {
   const [allUsers, setAllUsers] = useState([]);
   const [agentOfMonthData, setAgentOfMonthData] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
+  const [disabledPanels, setDisabledPanels] = useState([]);
   const [loading, setLoading] = useState(true);
   // A3: distinguishes "first fetch ever failed, no last-good data exists yet"
   // from "a later poll failed but we already have data to keep showing" — a
@@ -77,7 +79,7 @@ export default function KioskShell({ tenantId, branchId }) {
 
   const fetchData = useCallback(async () => {
     try {
-      const [subs, users, aom, camps] = await Promise.all([
+      const [subs, users, aom, camps, disabled] = await Promise.all([
         getKioskYTDSubmissions(tenantId, branchId),
         // getKioskTenantUsers lists users, which the kiosk rules do not grant
         // (kiosk has `get`, not `list` — the users read-split in SHAKEDOWN-002
@@ -93,11 +95,16 @@ export default function KioskShell({ tenantId, branchId }) {
         // 3.6: kiosk-flagged campaigns. Degrade to [] on any read failure so a
         // campaigns-rule change or absent collection never blanks the wall.
         getKioskCampaigns(tenantId).catch(() => []),
+        // Tier-3 #15: manager per-branch panel enable/disable. Degrade to []
+        // (all panels enabled — current behavior) on any denied/network/absent
+        // read so a missing config doc never blanks or breaks the wall.
+        getKioskDisabledPanels(tenantId, branchId).catch(() => []),
       ]);
       setAllSubmissions(subs);
       setAllUsers(users);
       setAgentOfMonthData(aom);
       setCampaigns(camps);
+      setDisabledPanels(disabled);
       hasLoadedOnce.current = true;
       setReconnecting(false);
     } catch {
@@ -142,8 +149,13 @@ export default function KioskShell({ tenantId, branchId }) {
 
     const hasCelebrations = deriveKioskCelebrations(allUsers).length > 0;
 
-    return buildKioskRotation(PANEL_ORDER, { flaggedCampaigns, hasCelebrations, droppedKeys });
-  }, [allSubmissions, allUsers, agentOfMonthData, campaigns]);
+    return buildKioskRotation(PANEL_ORDER, {
+      flaggedCampaigns,
+      hasCelebrations,
+      droppedKeys,
+      disabledKeys: new Set(disabledPanels),
+    });
+  }, [allSubmissions, allUsers, agentOfMonthData, campaigns, disabledPanels]);
 
   const safeIndex = rotation.length > 0 ? panelIndex % rotation.length : 0;
   const entry = rotation[safeIndex] ?? { key: 'welcome' };

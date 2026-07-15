@@ -983,6 +983,33 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // Tier-3 #15: per-branch kiosk rotation config. A manager toggles which
+      // static rotation panels are shown on the wall; the kiosk display reads
+      // its OWN branch's config (doc-id == branchId) to skip disabled panels.
+      // Unlike agentOfMonth (CF/Admin write), this is a CLIENT-side manager
+      // write, so it is subject to these rules. Read mirrors the branch-scoped
+      // kiosk arm (doc-id vs token.branchId, as in /leaderboards); write mirrors
+      // the branches/kioskTokens canManage arm plus field validation:
+      //   - exactly { disabledPanels, updatedBy, updatedAt }
+      //   - updatedBy == caller uid
+      //   - disabledPanels is a list, size-capped, drawn only from the known
+      //     kioskConfig.js PANEL_ORDER keys (rejects non-string / unknown keys).
+      match /kioskConfig/{branchId} {
+        allow get: if canManage(tenantId)
+          || (kioskCanRead(tenantId) && branchId == request.auth.token.branchId);
+        allow write: if canManage(tenantId)
+          && request.resource.data.keys().hasOnly(['disabledPanels', 'updatedBy', 'updatedAt'])
+          && request.resource.data.updatedBy == request.auth.uid
+          && request.resource.data.disabledPanels is list
+          && request.resource.data.disabledPanels.size() <= 13
+          && request.resource.data.disabledPanels.hasOnly([
+               'welcome', 'agentOfMonth', 'branchOverview', 'branchRunningTotals',
+               'unitLeaderboard', 'lastWeekRecap', 'ytdLeaderboards', 'qtdLeaderboards',
+               'mtdLeaderboards', 'weekLeaderboards', 'weeklyActivity', 'awardsWatch',
+               'compliance'
+             ]);
+      }
+
       // F1 (Track F): coaching notes — manager-chain private, agent EXCLUDED.
       //
       // Privacy model: rank-based visibility chain.

@@ -26,6 +26,20 @@ export async function getKioskYTDSubmissions(tenantId, branchId) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+// Tier-3 #15: per-branch panel enable/disable, read from the kiosk display side
+// via kioskDb. The kiosk token carries `branchId`, and the rules `get` arm gates
+// on doc-id == token.branchId. Returns the disabled-panel key list; degrades to
+// [] (all panels enabled) on absent doc / missing context / malformed field so
+// the wall falls back to current all-enabled behavior. The KioskShell caller
+// additionally wraps this in `.catch(() => [])` for the denied/network path.
+export async function getKioskDisabledPanels(tenantId, branchId) {
+  if (!tenantId || !branchId) return [];
+  const snap = await getDoc(doc(kioskDb, `tenants/${tenantId}/kioskConfig/${branchId}`));
+  if (!snap.exists()) return [];
+  const data = snap.data();
+  return Array.isArray(data.disabledPanels) ? data.disabledPanels : [];
+}
+
 export async function getKioskTenantUsers(tenantId) {
   const snap = await getDocs(collection(kioskDb, `tenants/${tenantId}/users`));
   return snap.docs
