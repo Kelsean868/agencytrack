@@ -150,7 +150,11 @@ export default function CampaignLeaderboardPanel({ campaign, allSubmissions = []
     for (const s of windowed) {
       const aid = s.agentId ?? s.userId ?? '';
       if (!aid || byId[aid]) continue;
-      byId[aid] = { id: aid, name: 'Agent', unit: null, photoURL: null };
+      // SEC-012: allUsers may be denied to the kiosk, so fall back to the
+      // agentName carried on the submission itself (privacy-safe — already on
+      // the wall) before the generic "Agent" label.
+      const subName = typeof s.agentName === 'string' ? s.agentName.trim() : '';
+      byId[aid] = { id: aid, name: subName || 'Agent', unit: null, photoURL: null };
     }
     const participants = Object.values(byId);
     const rows = computeStandings(campaign, windowed, participants, {});

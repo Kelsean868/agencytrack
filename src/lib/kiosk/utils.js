@@ -35,6 +35,34 @@ export function deriveInitials(name) {
     .toUpperCase();
 }
 
+// SEC-012 — privacy-safe agent-name fallback for the kiosk wall.
+//
+// The kiosk auth context can `get` a single user doc (firestore.rules users
+// `get` has a branch-scoped kiosk arm) but CANNOT `list` the users collection
+// (the users `list` arm grants only `canManage` — the SHAKEDOWN-002 read-split
+// intentionally dropped the kiosk list arm, and re-adding one would widen bulk
+// email/phone enumeration to a lobby token). So `getKioskTenantUsers` is denied
+// and KioskShell degrades `allUsers` to [], collapsing every roster-derived name
+// to the generic "Agent".
+//
+// Submissions ALREADY carry `agentName` (written by submissionService
+// submitReport / saveDraft) and are already kiosk-readable (branch-scoped
+// submissions list). Building a name lookup from them adds NO new read surface
+// and surfaces NO field beyond the display name the wall already shows — so it
+// is a privacy-safe fallback that needs no rules change. Returns a
+// Map<agentId, name>; first non-empty agentName per agent wins (a given agent's
+// submissions all carry the same name).
+export function buildSubmissionNameMap(submissions) {
+  const map = new Map();
+  for (const s of submissions ?? []) {
+    const aid = s?.agentId ?? s?.userId;
+    if (!aid || map.has(aid)) continue;
+    const name = typeof s?.agentName === 'string' ? s.agentName.trim() : '';
+    if (name) map.set(aid, name);
+  }
+  return map;
+}
+
 // Token validation — mirrors the logic in functions/kiosk/validateToken.js.
 // `data` is the Firestore document data object. `now` is injectable for tests.
 export function validateTokenData(data, tenantId, now = new Date()) {

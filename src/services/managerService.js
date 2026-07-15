@@ -1,7 +1,22 @@
 import {
-  collection, query, where, getDocs,
+  collection, query, where, getDocs, getCountFromServer,
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+
+/**
+ * getTenantUserCount — server-side aggregate count of all docs under
+ * tenants/{tid}/users. Used by the Company Config surface (Run 5) for the
+ * "applied to N users at {company}" save/flag toasts. Cheap (aggregate, no doc
+ * transfer). Caller is expected to fail-soft on reject (toast omits the number).
+ *
+ * @param {string} tenantId
+ * @returns {Promise<number>}
+ */
+export async function getTenantUserCount(tenantId) {
+  const col = collection(db, `tenants/${tenantId}/users`);
+  const snap = await getCountFromServer(col);
+  return snap.data().count;
+}
 
 export async function getWeeklySubmissions(tenantId, weekStarting) {
   const { claims } = await auth.currentUser.getIdTokenResult();

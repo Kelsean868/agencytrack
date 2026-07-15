@@ -2,13 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
   mockGetDoc:    vi.fn(),
+  mockGetDocs:   vi.fn(),
   mockSetDoc:    vi.fn(),
   mockDeleteDoc: vi.fn(),
 }));
 
 vi.mock('firebase/firestore', () => ({
   doc:             (_db, path) => ({ __ref: path }),
+  collection:      (_db, path) => ({ __ref: path }),
   getDoc:          (...args) => hoisted.mockGetDoc(...args),
+  getDocs:         (...args) => hoisted.mockGetDocs(...args),
   setDoc:          (...args) => hoisted.mockSetDoc(...args),
   deleteDoc:       (...args) => hoisted.mockDeleteDoc(...args),
   serverTimestamp: () => '__SERVER_TIMESTAMP__',
@@ -30,12 +33,19 @@ import {
   clearManagerActivityStandardOverride,
   getResolvedStandards,
   getResolvedStandardsForMany,
+  getManagerActivityStandardOverrideCounts,
 } from '../managerStandardOverrideService';
 
-const { mockGetDoc, mockSetDoc, mockDeleteDoc } = hoisted;
+const { mockGetDoc, mockGetDocs, mockSetDoc, mockDeleteDoc } = hoisted;
+
+// Build a snapshot whose forEach yields { id, data() } for each entry.
+function snapshotOf(docs) {
+  return { forEach: (cb) => docs.forEach((d) => cb({ id: d.id, data: () => d.data })) };
+}
 
 beforeEach(() => {
   mockGetDoc.mockReset();
+  mockGetDocs.mockReset();
   mockSetDoc.mockReset();
   mockDeleteDoc.mockReset();
   vi.mocked(getManagerActivityStandards).mockReset();
@@ -267,5 +277,92 @@ describe('getResolvedStandardsForMany', () => {
     expect(result.get('um1')).toEqual({ namesSourced: 10 });
     // Override rejected → fall back to org-default
     expect(result.get('um2')).toEqual({ namesSourced: 5 });
+  });
+});
+
+// ── getManagerActivityStandardOverrideCounts (Run5 override-count indicator) ──
+
+describe('getManagerActivityStandardOverrideCounts', () => {
+  it('attributes each override to the correct role, per key', async () => {
+    mockGetDocs.mockResolvedValue(
+      snapshotOf([
+        { id: 'um1', data: { tenantId: 't1', managerId: 'um1', jfwCount: 3, updatedBy: 'bm1' } },
+        { id: 'bm1', data: { tenantId: 't1', managerId: 'bm1', jfwCount: 4, updatedBy: 'sm1' } },
+      ]),
+    );
+    const result = await getManagerActivityStandardOverrideCounts({
+      tenantId: 't1',
+      rolesByManagerId: { um1: 'unit_manager', bm1: 'branch_manager' },
+    });
+    expect(result).toEqual({
+      unit_manager:   { jfwCount: 1 },
+      branch_manager: { jfwCount: 1 },
+    });
+    // Queried the right collection path.
+    const [ref] = mockGetDocs.mock.calls[0];
+    expect(ref.__ref).toBe('tenants/t1/managerActivityStandardOverrides');
+  });
+
+  it('a key with no overrides is ABSENT (not 0)', async () => {
+    mockGetDocs.mockResolvedValue(
+      snapshotOf([{ id: 'um1', data: { jfwCount: 2 } }]),
+    );
+    const result = await getManagerActivityStandardOverrideCounts({
+      tenantId: 't1',
+      rolesByManagerId: { um1: 'unit_manager' },
+    });
+    expect(result.unit_manager.jfwCount).toBe(1);
+    expect('namesSourced' in result.unit_manager).toBe(false);
+  });
+
+  it('counts multiple managers of the same role for the same key', async () => {
+    mockGetDocs.mockResolvedValue(
+      snapshotOf([
+        { id: 'um1', data: { jfwCount: 2 } },
+        { id: 'um2', data: { jfwCount: 5 } },
+      ]),
+    );
+    const result = await getManagerActivityStandardOverrideCounts({
+      tenantId: 't1',
+      rolesByManagerId: { um1: 'unit_manager', um2: 'unit_manager' },
+    });
+    expect(result.unit_manager.jfwCount).toBe(2);
+  });
+
+  it('skips docs whose manager role is unknown', async () => {
+    mockGetDocs.mockResolvedValue(
+      snapshotOf([
+        { id: 'um1',   data: { jfwCount: 2 } },
+        { id: 'ghost', data: { jfwCount: 9 } },
+      ]),
+    );
+    const result = await getManagerActivityStandardOverrideCounts({
+      tenantId: 't1',
+      rolesByManagerId: { um1: 'unit_manager' },
+    });
+    expect(result).toEqual({ unit_manager: { jfwCount: 1 } });
+  });
+
+  it('ignores null/undefined override values (not counted)', async () => {
+    mockGetDocs.mockResolvedValue(
+      snapshotOf([{ id: 'um1', data: { jfwCount: null, namesSourced: 3 } }]),
+    );
+    const result = await getManagerActivityStandardOverrideCounts({
+      tenantId: 't1',
+      rolesByManagerId: { um1: 'unit_manager' },
+    });
+    expect('jfwCount' in result.unit_manager).toBe(false);
+    expect(result.unit_manager.namesSourced).toBe(1);
+  });
+
+  it('counts boolean-standard overrides (e.g. unitMeetingHeld)', async () => {
+    mockGetDocs.mockResolvedValue(
+      snapshotOf([{ id: 'um1', data: { unitMeetingHeld: true } }]),
+    );
+    const result = await getManagerActivityStandardOverrideCounts({
+      tenantId: 't1',
+      rolesByManagerId: { um1: 'unit_manager' },
+    });
+    expect(result.unit_manager.unitMeetingHeld).toBe(1);
   });
 });

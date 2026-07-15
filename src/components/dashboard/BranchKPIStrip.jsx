@@ -8,13 +8,13 @@ const BRANCH_KPIS = [
   { key: 'ffi',        label: 'Weekly FFI',       isCurrency: false },
 ];
 
-export default function BranchKPIStrip({ kpiData, loading }) {
+export default function BranchKPIStrip({ kpiData, loading, activeAgentCount }) {
   if (loading) {
     return (
       <div className="mb-6">
         <div className="h-3 w-48 rounded bg-border/30 animate-pulse mb-3" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="h-[140px] rounded-xl bg-border/30 animate-pulse" />
           ))}
         </div>
@@ -24,13 +24,19 @@ export default function BranchKPIStrip({ kpiData, loading }) {
 
   const weeks = kpiData?.compliance?.length ?? 0;
 
+  // Active Agents is a current-roster snapshot, not a weekly time series —
+  // there is no per-week historical headcount to trend against. A single-
+  // element values array gives KPICard's existing "No prior data" / no-
+  // sparkline fallback honestly, without fabricating a fake trend.
+  const hasActiveAgentCount = Number.isFinite(activeAgentCount);
+
   return (
     <div className="mb-6">
       <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
         Team Activity — Last {weeks} Week{weeks !== 1 ? 's' : ''}
       </p>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-3">
         {BRANCH_KPIS.map((kpi) => (
           <KPICard
             key={kpi.key}
@@ -39,6 +45,11 @@ export default function BranchKPIStrip({ kpiData, loading }) {
             isCurrency={kpi.isCurrency}
           />
         ))}
+        <KPICard
+          label="Active Agents"
+          values={hasActiveAgentCount ? [activeAgentCount] : []}
+          isCurrency={false}
+        />
       </div>
 
       {weeks >= 2 && (

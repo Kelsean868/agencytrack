@@ -246,7 +246,7 @@ console.log(`[seed-fixtures] GUARD 2 passed — Admin app project is ${resolvedP
 
 const db = admin.firestore();
 const auth = admin.auth();
-const { Timestamp, FieldValue } = admin.firestore;
+const { Timestamp, FieldValue, FieldPath } = admin.firestore;
 const T = db.collection('tenants').doc(TENANT_ID);
 
 const now = () => Timestamp.now();
@@ -254,8 +254,15 @@ const tsAt = (dateStr, hh = 22) => Timestamp.fromDate(new Date(`${dateStr}T${Str
 const daysAgoTs = (n, hh = 14) => tsAt(addDays(TODAY, -n), hh);
 
 let writes = 0;
+// Every path this run writes — the sweep below deletes week-keyed residue
+// docs (uid_YYYY-MM-DD ids) that a PREVIOUS run wrote but this run did not
+// re-write. Without it, the W(k)-relative doc-id scheme leaks one stale doc
+// per subject per collection every time the week rolls over (Sunday), and
+// YTD-derived leg expectations drift (caught Run 7 baseline, 2026-07-12).
+const writtenPaths = new Set();
 async function put(ref, data, label) {
   await ref.set(data);
+  writtenPaths.add(ref.path);
   writes += 1;
   console.log(`  [set] ${label}`);
 }
@@ -724,7 +731,36 @@ async function main() {
     createdAt: now(), createdBy: uid.ta,
   }, 'kioskTokens/vhfix-kiosk-token');
 
-  console.log(`\n[seed-fixtures] DONE — ${writes} docs written to ${STAGING_PROJECT}/tenants/${TENANT_ID}. Re-runnable (resets fixtures).`);
+  // ── Residue sweep (week-keyed collections) ──
+  // The submissions / managerWeeklyReports / weeklyPlans fixtures use
+  // `${uid}_${sunday}` doc ids computed relative to W0. When W0 advances
+  // (every Sunday), the previous run's oldest docs fall out of this run's
+  // write set and would linger, silently inflating YTD/streak/plan counts.
+  // Delete any uid_YYYY-MM-DD doc for a seeded subject that this run did
+  // NOT just write. Named crumb docs (non-uid_date ids, e.g. Run-1
+  // smoke-cro-delivery-1) are untouched by construction.
+  console.log('\n── residue sweep (week-keyed fixtures) ──');
+  let sweeps = 0;
+  const WEEK_KEYED = ['submissions', 'managerWeeklyReports', 'weeklyPlans'];
+  const SUBJECTS = [uid.a1, uid.a2, uid.um, uid.bm];
+  for (const coll of WEEK_KEYED) {
+    for (const u of SUBJECTS) {
+      const snap = await T.collection(coll)
+        .where(FieldPath.documentId(), '>=', `${u}_`)
+        .where(FieldPath.documentId(), '<', `${u}_`)
+        .get();
+      for (const d of snap.docs) {
+        if (!new RegExp(`^${u}_\\d{4}-\\d{2}-\\d{2}$`).test(d.id)) continue;
+        if (writtenPaths.has(d.ref.path)) continue;
+        await d.ref.delete();
+        sweeps += 1;
+        console.log(`  [del] ${coll}/${d.id} (stale week-keyed residue)`);
+      }
+    }
+  }
+  console.log(sweeps ? `  swept ${sweeps} stale doc(s)` : '  no residue found');
+
+  console.log(`\n[seed-fixtures] DONE — ${writes} docs written, ${sweeps} stale swept — ${STAGING_PROJECT}/tenants/${TENANT_ID}. Re-runnable (resets fixtures).`);
 }
 
 main().catch((err) => { console.error('[seed-fixtures] FATAL:', err); process.exit(1); });

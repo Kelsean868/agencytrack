@@ -230,6 +230,13 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
   // before formData is seeded. resolvePath routes empty weeks to 'full', so a
   // loaded Confirm always has data.
   const [draftLoaded, setDraftLoaded]   = useState(false);
+  // BUG-DATALOSS: a getDraft READ FAILURE (network/permission) must NOT fall
+  // through to a fresh, auto-saving form — the debounced doSave would then
+  // overwrite the very draft the read failed to load. draftLoadError gates the
+  // form body (an error card replaces the steps), suppresses the footer/nav,
+  // and hard-guards doSave. Retry bumps draftReloadNonce to re-run the load.
+  const [draftLoadError, setDraftLoadError]   = useState(false);
+  const [draftReloadNonce, setDraftReloadNonce] = useState(0);
   const [lastWeekData, setLastWeekData] = useState(null);
   const [recentSubmissions, setRecentSubmissions] = useState([]);
   const [draftStatus, setDraftStatus]   = useState(null);
@@ -277,12 +284,18 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
     // No setDraftLoaded(false) reset here: WizardForm remounts on every open
     // (showWizard toggles mount/unmount), so draftLoaded starts false per open.
     // Adding a synchronous reset perturbs the fake-timer autosave RTL tests.
+    // Depend on `user?.uid` (primitive), NOT `user` (fresh object every render
+    // via useAuth — same trap the getRecentSubmissions effect above documents).
+    // With `user` this effect re-fired on every render, which would auto-re-run
+    // getDraft on the error-triggered re-render and silently self-clear
+    // draftLoadError before the agent could act — defeating the guard + Retry.
     getDraft(tenantId, user.uid, weekStarting)
       .then((draft) => {
         // Flip in-band with the other setters (NOT via a trailing .finally) so
         // the promise chain stays then→catch — the autosave RTL tests drain
         // exactly those two ticks inside act(); a third link would hang them.
         setDraftLoaded(true);
+        setDraftLoadError(false); // success clears any prior read error (incl. after Retry)
         if (!draft) {
           setDraftStatus(null);
           setSubmissionData(null);
@@ -298,13 +311,20 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
           setFormData((prev) => ({ ...prev, ...fields }));
         }
       })
-      .catch((e) => { console.error(e); setDraftLoaded(true); });
-  }, [weekStarting, user, tenantId]);
+      // A genuine read failure — surface it and PREVENT the overwrite. Set the
+      // error flag in-band with the setters (chain stays exactly then→catch, no
+      // extra link). draftLoadError gates the form + guards doSave so the
+      // unread draft is never clobbered by a fresh-form autosave.
+      .catch((e) => { console.error(e); setDraftLoaded(true); setDraftLoadError(true); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStarting, user?.uid, tenantId, draftReloadNonce]);
 
   // Always-current save executor — assigned on every render so the online
   // handler and the retry button always capture the latest closure values.
   doSave.current = async () => {
-    if (!weekStarting || !user || draftStatus === 'submitted') return;
+    // Belt-and-braces: never write while the draft read failed (draftLoadError).
+    // Reassigned every render, so it captures the current draftLoadError value.
+    if (!weekStarting || !user || draftStatus === 'submitted' || draftLoadError) return;
     setSaving(true);
     setStickyError(false);     // legitimate replacement — clear sticky before new attempt
     try {
@@ -374,6 +394,16 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
   const handleManualSave = useCallback(() => {
     clearTimeout(saveTimer.current);
     doSave.current();
+  }, []);
+
+  // Retry after a failed draft read: clear the error, drop back to the loading
+  // skeleton, and bump the nonce so the getDraft effect re-runs. On success the
+  // effect's .then clears draftLoadError and the normal flow resumes (draft
+  // loads, or a fresh form if the week has no draft).
+  const handleDraftReload = useCallback(() => {
+    setDraftLoadError(false);
+    setDraftLoaded(false);
+    setDraftReloadNonce((n) => n + 1);
   }, []);
 
   const handleDateSelect = (date) => {
@@ -520,6 +550,37 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
     });
   })();
 
+  // Draft-read-failure card — replaces the form body while draftLoadError is
+  // set (data-integrity: no editable/auto-saving form over an unread draft).
+  // Established error-card idiom: role="alert" + AlertTriangle + ≥44px Retry.
+  const draftLoadErrorCard = (
+    <div className="px-4 py-4 max-w-lg mx-auto">
+      <div
+        role="alert"
+        className="card flex items-start gap-3 text-danger-ink"
+        data-testid="wizard-v2-draft-error"
+      >
+        <AlertTriangle size={18} className="shrink-0 mt-0.5" aria-hidden="true" />
+        <div className="flex-1">
+          <p className="font-semibold text-sm">Couldn&apos;t load your saved draft</p>
+          <p className="text-xs text-ink-muted mt-0.5">
+            We couldn&apos;t reach your saved report for this week. Your work hasn&apos;t
+            been changed — check your connection and try again.
+          </p>
+          <button
+            type="button"
+            onClick={handleDraftReload}
+            className="mt-2 min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+            data-testid="wizard-v2-draft-error-retry"
+          >
+            <RotateCcw size={14} aria-hidden="true" />
+            Retry
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div
       className="fixed inset-0 z-50 bg-bg flex flex-col"
@@ -551,7 +612,7 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
           </h1>
         </div>
         <div className="flex items-start gap-2 shrink-0">
-          {screen === 'step' && (
+          {screen === 'step' && !draftLoadError && (
             <AutosaveChip
               saving={saving}
               savedAt={savedAt}
@@ -572,8 +633,9 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
         </div>
       </header>
 
-      {/* Phase progress rail — only during the step flow */}
-      {screen === 'step' && (
+      {/* Phase progress rail — only during the step flow (suppressed while the
+          draft-load error card owns the body — nav must be inert then) */}
+      {screen === 'step' && !draftLoadError && (
         <div className="px-4 pb-3 shrink-0">
           <PhaseProgress
             currentStep={step}
@@ -643,7 +705,9 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
             Gated on draftLoaded so the aggregated data never flashes the
             "No activity logged" empty state at this trust-sensitive moment. */}
         {screen === 'confirm' && (
-          draftLoaded ? (
+          draftLoadError ? (
+            draftLoadErrorCard
+          ) : draftLoaded ? (
             <>
               {/* Points-earned-vs-floor readout — end-of-week context, not pace. */}
               <div data-testid="wizard-v2-confirm-points" className="max-w-lg mx-auto px-4 pt-4">
@@ -700,7 +764,9 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
             screen='submitted' in the same batch, a submitted week transitions
             loading→interstitial with no editable-input window. */}
         {screen === 'step' && (
-          draftLoaded ? (
+          draftLoadError ? (
+            draftLoadErrorCard
+          ) : draftLoaded ? (
             <>
               {step === FINAL_STEP && (
                 <div className="px-4 pb-6 max-w-2xl mx-auto" data-testid={`wizard-v2-step-${step}`}>
@@ -780,8 +846,9 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
         )}
       </main>
 
-      {/* Desktop WeekSoFarPanel — right rail, lg+ only, hidden on Review (step 12). */}
-      {screen === 'step' && step !== FINAL_STEP && (
+      {/* Desktop WeekSoFarPanel — right rail, lg+ only, hidden on Review (step 12)
+          and while the draft-load error card owns the body. */}
+      {screen === 'step' && step !== FINAL_STEP && !draftLoadError && (
         <aside
           className="hidden lg:flex border-l border-border bg-bg overflow-y-auto px-4 py-4"
           aria-label="Live week-so-far panel"
@@ -800,8 +867,9 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
       )}
       </div>
 
-      {/* Mobile WeekSoFarPanel — collapsed strip, hidden on Review (step 12). */}
-      {screen === 'step' && step !== FINAL_STEP && (
+      {/* Mobile WeekSoFarPanel — collapsed strip, hidden on Review (step 12)
+          and while the draft-load error card owns the body. */}
+      {screen === 'step' && step !== FINAL_STEP && !draftLoadError && (
         <div className="lg:hidden px-4 pb-2 shrink-0">
           <WeekSoFarPanel
             formData={formData}
@@ -825,8 +893,11 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
       )}
 
       {/* Footer nav — Back · "STEP N OF 12" · Next-with-title.
-          12 = the mockup's full rail length (review step 12 ships in PR3). */}
-      {screen === 'step' && (
+          12 = the mockup's full rail length (review step 12 ships in PR3).
+          Suppressed while draftLoadError owns the body: a live Submit here would
+          write fresh/empty formData over the unread draft (the overwrite we
+          exist to prevent), and Next/Back navigation must be inert too. */}
+      {screen === 'step' && !draftLoadError && (
         <footer
           className="grid items-center px-4 py-4 border-t border-border bg-card shrink-0 gap-3"
           style={{ gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1.6fr)' }}

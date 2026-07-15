@@ -21,6 +21,17 @@ export function addDays(dateStr, n) {
 export const W0 = (() => { const n = ttNow(); return addDays(ymd(n), -n.getUTCDay()); })();
 export const W = (k) => addDays(W0, k * 7);
 
+// weekLabel — mirrors HistoryTab.jsx's own weekLabel() EXACTLY (src/components/
+// submissions/HistoryTab.jsx:24-29: `Sun ${d.toLocaleDateString('en-TT', {
+// day: '2-digit', month: 'short' })}`), so a leg can build the same
+// `aria-label="Open submission from ${weekLabel(s)}"` selector the app renders,
+// regardless of which calendar date W(k) resolves to on the day the suite runs.
+export function weekLabel(dateStr) {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  const day = d.toLocaleDateString('en-TT', { day: '2-digit', month: 'short' });
+  return `Sun ${day}`;
+}
+
 export const BASE = process.env.STAGING_BASE_URL
   || 'https://agencytrack-git-staging-kyron-marchan-s-projects.vercel.app';
 
@@ -156,7 +167,21 @@ export const EXPECT = {
 // Daily capture (A1b seed family): WTD = sum of seeded dailyActivity
 // newBusiness.api for this week's weekdays strictly before today (Sun skipped).
 // Mirrors seed-fixtures.mjs DAY_API exactly.
-const DAY_API = { 1: 800, 2: 1200, 3: 1000, 4: 900, 5: 600, 6: 500 };
+export const DAY_API = { 1: 800, 2: 1200, 3: 1000, 4: 900, 5: 600, 6: 500 };
+// A1b writes CONSECUTIVE weekdays starting Monday (dow=1): seed-fixtures.mjs's
+// `for (dow=1; dow<todayD.getUTCDay(); dow++)` loop, so N seeded days always
+// means "Mon..the Nth weekday" — never an arbitrary subset. Any run whose
+// prior-week completed rollup shows N days logged (SundayConfirmView, or a
+// re-seed on a non-Sunday day) can derive its expected API/apps sum from N
+// alone, without knowing which literal day-of-week the seed ran on.
+export function sumDayApiThrough(n) {
+  let s = 0;
+  for (let d = 1; d <= n; d++) s += DAY_API[d] || 0;
+  return s;
+}
+// A1b's newBusiness.apps is 1 only on Tuesday (dow===2), else 0 — so the
+// week-to-date apps sum is 1 once N>=2 seeded days, else 0.
+export function appsThrough(n) { return n >= 2 ? 1 : 0; }
 export const DAILY = (() => {
   const dow = new Date(`${TODAY}T12:00:00Z`).getUTCDay();
   let wtd = 0, days = 0;
@@ -165,3 +190,34 @@ export const DAILY = (() => {
   const streakAfterLoggingToday = dow === 0 ? 0 : days + 1;
   return { wtd, days, streakAfterLoggingToday, milestoneReachable: streakAfterLoggingToday >= 5 };
 })();
+
+// Game Plan hub — MiniMonthStrip month buckets (item 2.11's PlanCascade +
+// planCascadeViz.miniMonthBuckets / monthlyPlanMath.bucketActualsByMonth).
+// Mirrors seed-fixtures.mjs A1_WEEKS EXACTLY (submitted weeks only — the W0
+// DRAFT is intentionally excluded here: bucketActualsByMonth sums whatever
+// `submissions` array the dashboard fetched, and the 9 SUBMITTED weeks are the
+// only amounts this suite can hand-verify independent of draft-inclusion
+// behavior). W(k) shifts across month boundaries as TODAY advances, so which
+// calendar month each week (and therefore each month-bucket's rank) lands in is
+// NOT stable — it must be recomputed from W(k), never hardcoded to a specific
+// month name/order.
+const A1_WEEKS_API = [
+  { w: -9, api: 11500 }, { w: -8, api: 12800 }, { w: -7, api: 11200 }, { w: -6, api: 13400 },
+  { w: -5, api: 22000 }, { w: -4, api: 12600 }, { w: -3, api: 11800 }, { w: -2, api: 14200 },
+  { w: -1, api: 12500 },
+];
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function monthIndexOf(dateStr) { return Number(dateStr.slice(5, 7)) - 1; } // 0-indexed, mirrors Date#getMonth()
+export const A1_MONTH_BUCKETS = (() => {
+  const buckets = Array(12).fill(0);
+  for (const { w, api } of A1_WEEKS_API) buckets[monthIndexOf(W(w))] += api;
+  return buckets;
+})();
+// Distinct month indices actually touched by the 9 submitted weeks, ranked by
+// bucket total DESCENDING — the expected relative MiniMonthStrip bar-height
+// order (whichever calendar months they land in this run).
+export const A1_MONTH_ORDER = [...new Set(A1_WEEKS_API.map(({ w }) => monthIndexOf(W(w))))]
+  .sort((a, b) => A1_MONTH_BUCKETS[b] - A1_MONTH_BUCKETS[a]);
+export const A1_MONTH_ORDER_LABEL = A1_MONTH_ORDER
+  .map((i) => `${MONTH_NAMES[i]} ${A1_MONTH_BUCKETS[i].toLocaleString('en-US')}`)
+  .join(' > ');

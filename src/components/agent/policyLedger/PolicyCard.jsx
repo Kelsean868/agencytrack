@@ -68,7 +68,12 @@ export default function PolicyCard({ policy, onOpen }) {
           <span className={`font-mono text-[10px] font-bold tracking-[0.06em] ml-2.5 ${noNumber ? 'text-warning-ink' : 'text-ink-muted'}`}>
             {noNumber ? '# PENDING' : `#${policy.policyNumber}`}
           </span>
-          {policy.planName && <p className="text-[11px] text-ink-muted mt-0.5 truncate">{policy.planName}</p>}
+          {(policy.planName || (policy.insuredName && policy.insuredName !== policy.ownerName)) && (
+            <p className="text-[11px] text-ink-muted mt-0.5 truncate">
+              {policy.insuredName && policy.insuredName !== policy.ownerName ? `Insured · ${policy.insuredName} · ` : ''}
+              {policy.planName}
+            </p>
+          )}
         </div>
         <span className={`shrink-0 px-2.5 py-[3px] rounded-full font-mono text-[10px] font-bold tracking-[0.1em] uppercase ${t.tint} ${t.text}`}>
           {policyPillLabel(policy)}

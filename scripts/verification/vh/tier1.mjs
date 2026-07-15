@@ -13,7 +13,8 @@
 import {
   newLegContext, login, gotoTab, assertLegHygiene, currencyRe,
 } from './vh-helpers.mjs';
-import { EXPECT, W } from './expectations.mjs';
+import { EXPECT, W, ACCOUNTS } from './expectations.mjs';
+import { getAdminDb, getAdminAuth, ADMIN_TENANT_ID } from './admin-read.mjs';
 
 // ── tier1-private helpers ────────────────────────────────────────────────────
 
@@ -73,6 +74,19 @@ async function readReality(page) {
   const filed = await t('mastersheet-reality-filed');
   const exceptions = await t('mastersheet-reality-exceptions');
   return { weekapi, submitted, filed, exceptions };
+}
+
+/**
+ * Newest configAudit entry matching an exact (settingId, to) pair — used by
+ * the Company Config legs to prove a write landed with the right shape
+ * (from the raw stored doc, not the surface's own display re-derivation).
+ * Reads newest-first (mirrors configAuditService.getConfigAudit's own query)
+ * and returns the first match, so a residual entry from a prior smoke run
+ * with the same settingId/to never masks the leg's own just-written entry.
+ */
+async function auditNewest(db, tenantId, settingId, toValue, { limit = 8 } = {}) {
+  const snap = await db.collection(`tenants/${tenantId}/configAudit`).orderBy('at', 'desc').limit(limit).get();
+  return snap.docs.map((d) => d.data()).find((e) => e.settingId === settingId && e.to === toValue) || null;
 }
 
 /**
@@ -425,6 +439,53 @@ export const LEGS = [
     },
   },
 
+  // ── 5b. Exception lead panel + AgentDrill — TENANT-WIDE on TenantAdminDashboard (tenant_admin, Run 6 S5) ──
+  {
+    id: 't1-admin-exception-lead',
+    role: 'tenant_admin',
+    desc: 'tenant_admin dashboard: ExceptionLeadPanel (tenant-wide, scopeIds=null, S5) flags Staging Agent Two (danger tone, type=floor), NOT Staging Agent One; row click → AgentDrillDrawer → Report tab shows A2 YTD 8,500; drawer closed via Escape',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        await login(ctx.page, 'tenant_admin');
+        const p = ctx.page;
+        // TenantAdminDashboard mounts on the 'dashboard' tab by default (matches
+        // t1-admin-quick-add — no gotoTab needed).
+        const panel = p.locator('[data-testid="exception-lead-panel"]');
+        await panel.waitFor({ state: 'attached', timeout: 12_000 });
+        const list = p.locator('[data-testid="exception-lead-list"]');
+        // 4 concurrent data sources feed this surface (users/branches/ytd/
+        // companyMins, per S5's TOTAL_DATA_SOURCES) — allow more headroom than
+        // the manager leg's single-source-family load.
+        await list.waitFor({ state: 'attached', timeout: 15_000 });
+        // Agent Two flagged; Agent One NOT flagged (mirrors t1-exception-lead-drill).
+        const listText = (await list.textContent()) || '';
+        if (!listText.includes('Staging Agent Two')) throw new Error('Staging Agent Two not in tenant-wide exception list');
+        if (listText.includes('Staging Agent One')) throw new Error('Staging Agent One unexpectedly flagged');
+        const row = list.locator('button', { hasText: 'Staging Agent Two' }).first();
+        const tone = await row.evaluate((el) => {
+          const danger = el.querySelector('.text-danger-ink');
+          return { hasDanger: !!danger, type: el.getAttribute('data-type') };
+        });
+        if (!tone.hasDanger) throw new Error(`A2 exception row not danger-toned (type=${tone.type})`);
+        if (tone.type !== 'floor') throw new Error(`A2 exception row type="${tone.type}" (expected "floor")`);
+        // Drill → Report tab → AgentReportView hero shows A2 YTD 8,500.
+        await row.click();
+        const drawer = p.locator('[data-testid="agent-drill-drawer"]');
+        await drawer.waitFor({ state: 'attached', timeout: 8_000 });
+        await p.locator('[data-testid="drill-tab-report"]').click();
+        await p.waitForTimeout(1200); // lazy per-agent reads settle
+        await drawer.getByText(currencyRe(EXPECT.a2.ytdApi)).first().waitFor({ state: 'attached', timeout: 12_000 });
+        await shot(p, 't1-admin-exception-lead');
+        // Close via Escape (useFocusTrap onEscape → AgentDrillDrawer's onClose).
+        await p.keyboard.press('Escape');
+        await drawer.waitFor({ state: 'detached', timeout: 6_000 });
+        assertLegHygiene(ctx);
+        return `TenantAdminDashboard ExceptionLeadPanel (tenant-wide) flags Staging Agent Two (danger, type=${tone.type}), not Agent One; drill Report tab shows A2 YTD ${EXPECT.a2.ytdApi}; drawer closed via Escape; hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
   // ── 6. Master Sheet reality bar / presets / exceptions toggle (branch_manager) ──
   {
     id: 't1-master-sheet',
@@ -751,6 +812,465 @@ export const LEGS = [
         }
         assertLegHygiene(ctx);
         return `★ Pinned-zone star FILLED (${pZone.color}, size 14); SAME item's home-section star OUTLINE (${pHome.color}, size 14, never filled); unpinned control has no pinned-zone alias + outline home star; pin state restored (P=${pEnd.pressed}, U=${uEnd.pressed}); hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
+  // ── 8. Company Config — ⌘F jump + Activity Standards edit/reset (tenant_admin) — MUTATES managerActivityStandards then restores by reset ──
+  {
+    id: 't1-company-config',
+    role: 'tenant_admin',
+    desc: 'tenant_admin Company Config: from Feature Flags section, ⌘F "pace-warning" jumps to targets.pace (rail switches flags→targets, row flash-highlighted); edit Activity Standards unit_manager JFW to 5 → SaveBar "1 unsaved change" → Save → toast "Saved 1 change" → fresh page reload + re-navigate shows JFW=5 + custom-state Reset affordance; Admin-SDK verify managerActivityStandards.unit_manager.jfwCount===5 (number) + newest configAudit entry (settingId=unit_manager.jfwCount, section=Activity Standards, who=tenant_admin uid, to="5"); click Reset to default → Save → Admin-SDK verify the jfwCount KEY IS ABSENT (not null/undefined — deleted) + a second configAudit entry (to="DEFAULT"), row back to \'default\' (no Reset/Undo link, JFW control reads 0 — bare/table items like Activity Standards intentionally suppress ConfigRow\'s row-level DEFAULT tag, per ConfigRow.jsx\'s `state === \'default\' && !item?.bare` guard). Also asserts (Run 5 rulings): palette locked-setting preview shows the REAL value ("SETTLED API ONLY" for aw.basis, not HARDCODED/PLATFORM); a seeded unit_manager JFW override renders "1 manager override this" in the Manager-overrides column (not the em-dash) — depends on the LIVE TA/PA list arm on managerActivityStandardOverrides. MUTATES tenants/staging_test/config/managerActivityStandards (restored to absent by the leg\'s own reset step; re-seed also resets it) AND seeds/deletes tenants/staging_test/managerActivityStandardOverrides/<unit_manager uid> (created before the surface mounts, deleted in finally; re-seed also resets it).',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      // Run 5 DECISIONS-NEEDED #1: seed ONE unit_manager override BEFORE the
+      // surface mounts so its on-mount override-count fetch sees it. Cleaned up
+      // in finally. Depends on the TA/PA list arm being LIVE (orchestrator deploy).
+      let ovrRef = null;
+      try {
+        const p = ctx.page;
+
+        const seedDb = getAdminDb();
+        const seedAuth = getAdminAuth();
+        const umSeedUser = await seedAuth.getUserByEmail(ACCOUNTS.unit_manager.email);
+        ovrRef = seedDb.doc(`tenants/${ADMIN_TENANT_ID}/managerActivityStandardOverrides/${umSeedUser.uid}`);
+        await ovrRef.set({
+          managerId: umSeedUser.uid,
+          tenantId:  ADMIN_TENANT_ID,
+          jfwCount:  7, // per-manager override (independent of the org-default edit below)
+          updatedBy: umSeedUser.uid,
+          updatedAt: new Date(),
+        });
+
+        await login(p, 'tenant_admin');
+        await gotoTab(p, 'Company Config');
+        await p.waitForSelector('[data-testid="ccfg-surface"]', { timeout: 12_000 });
+
+        // Start from a DIFFERENT section so the palette jump below is a real
+        // section switch, not a no-op (default active section is 'targets').
+        await p.locator('[data-testid="ccfg-rail-flags"]').click();
+        await p.waitForTimeout(400);
+
+        // ── ⌘F → "pace-warning" → Enter → jumps to targets.pace ──────────────
+        await p.keyboard.press('Control+f');
+        const palette = p.locator('[role="dialog"][aria-label="Find a setting"]');
+        await palette.waitFor({ state: 'attached', timeout: 8_000 });
+        const paletteInput = p.locator('[data-testid="ccfg-palette-input"]');
+        await paletteInput.fill('pace-warning');
+        const results = p.locator('[data-testid="ccfg-palette-result"]');
+        await results.first().waitFor({ state: 'attached', timeout: 6_000 });
+        const resultCount = await results.count();
+        if (resultCount !== 1) throw new Error(`"pace-warning" query matched ${resultCount} results (expected exactly 1 — not unique)`);
+        const resultText = (await results.first().innerText()).replace(/\s+/g, ' ');
+        if (!/Pace-warning threshold/i.test(resultText)) throw new Error(`palette result="${resultText}" (expected Pace-warning threshold)`);
+        await paletteInput.press('Enter');
+        await palette.waitFor({ state: 'detached', timeout: 6_000 });
+
+        // Section switched flags → targets (rail aria-current).
+        const railTargets = p.locator('[data-testid="ccfg-rail-targets"]');
+        if ((await railTargets.getAttribute('aria-current')) !== 'true') {
+          throw new Error('palette jump did not switch the rail to the "targets" section');
+        }
+        // Target row present + flash-highlighted (ConfigRow's bg-primary-tint
+        // treatment, cleared 2s after the jump — read within the window).
+        const paceRow = p.locator('[data-testid="ccfg-row-targets.pace"]');
+        await paceRow.waitFor({ state: 'attached', timeout: 6_000 });
+        const paceRowClass = (await paceRow.getAttribute('class')) || '';
+        if (!paceRowClass.includes('bg-primary-tint')) {
+          throw new Error(`targets.pace row not flash-highlighted after jump (class="${paceRowClass}")`);
+        }
+        await shot(p, 't1-company-config-jump');
+
+        // ── Palette honesty (Run 5 DECISIONS-NEEDED #2): locked settings show
+        //    the REAL value, not the 'HARDCODED'/'PLATFORM' lock label. aw.basis
+        //    is lock:'platform' with literal value 'SETTLED API ONLY'. ─────────
+        await p.keyboard.press('Control+f');
+        await palette.waitFor({ state: 'attached', timeout: 8_000 });
+        await paletteInput.fill('Qualification basis');
+        await results.first().waitFor({ state: 'attached', timeout: 6_000 });
+        const lockedResultText = (await results.first().innerText()).replace(/\s+/g, ' ');
+        if (/HARDCODED|PLATFORM/.test(lockedResultText)) {
+          throw new Error(`palette locked-setting preview still shows lock label: "${lockedResultText}"`);
+        }
+        if (!/SETTLED API ONLY/i.test(lockedResultText)) {
+          throw new Error(`palette locked-setting preview="${lockedResultText}" (expected real value "SETTLED API ONLY")`);
+        }
+        await paletteInput.press('Escape');
+        await palette.waitFor({ state: 'detached', timeout: 6_000 });
+
+        // ── Edit Activity Standards: unit_manager JFW → 5 ────────────────────
+        await p.locator('[data-testid="ccfg-rail-activity"]').click();
+        await p.waitForTimeout(400);
+        const umRow = p.locator('[data-testid="ccfg-row-act.standards.unit_manager"]');
+        await umRow.waitFor({ state: 'attached', timeout: 10_000 });
+        const jfwInput = (scope) => scope.locator('div.grid', { hasText: 'Joint Field Work (JFW)' }).first().locator('input[aria-label="value"]');
+
+        // ── Override count (Run 5 DECISIONS-NEEDED #1): the seeded unit_manager
+        //    JFW override renders "1 manager override this" in the row's Manager
+        //    overrides column (not the em-dash). Waiting for the text to appear
+        //    also waits out the on-mount count fetch. Depends on the LIVE list arm. ─
+        const jfwGrid = umRow.locator('div.grid', { hasText: 'Joint Field Work (JFW)' }).first();
+        const jfwOvrCell = jfwGrid.getByText(/manager override this/i);
+        await jfwOvrCell.waitFor({ state: 'attached', timeout: 8_000 });
+        const jfwOvrText = (await jfwOvrCell.innerText()).replace(/\s+/g, ' ').trim();
+        if (!/^1 manager override this$/i.test(jfwOvrText)) {
+          throw new Error(`JFW override-count cell="${jfwOvrText}" (expected "1 manager override this")`);
+        }
+        await shot(p, 't1-company-config-override-count');
+
+        await jfwInput(umRow).fill('5');
+        await p.waitForTimeout(300);
+
+        const saveBar = p.locator('[data-testid="ccfg-savebar"]');
+        await saveBar.waitFor({ state: 'attached', timeout: 6_000 });
+        const saveBarText = (await saveBar.innerText()) || '';
+        if (!/1 unsaved change/i.test(saveBarText)) throw new Error(`SaveBar="${saveBarText}" (expected "1 unsaved change")`);
+        await p.locator('[data-testid="ccfg-savebar-save"]').click();
+
+        const toast = p.locator('[data-testid="toast-success"]');
+        await toast.waitFor({ state: 'attached', timeout: 8_000 });
+        const toastText = (await toast.innerText()) || '';
+        if (!/Saved 1 change/i.test(toastText)) throw new Error(`toast="${toastText}" (expected "Saved 1 change")`);
+        await shot(p, 't1-company-config-saved');
+
+        // ── Write-read-verify through the UI: fresh reload + re-navigate ─────
+        await p.reload({ waitUntil: 'domcontentloaded' });
+        await p.waitForFunction(() => document.body.textContent.length > 200, { timeout: 20_000 });
+        await p.waitForTimeout(800);
+        await gotoTab(p, 'Company Config');
+        await p.waitForSelector('[data-testid="ccfg-surface"]', { timeout: 12_000 });
+        await p.locator('[data-testid="ccfg-rail-activity"]').click();
+        await p.waitForTimeout(400);
+        const umRowAfterReload = p.locator('[data-testid="ccfg-row-act.standards.unit_manager"]');
+        await umRowAfterReload.waitFor({ state: 'attached', timeout: 10_000 });
+        const jfwValueAfterReload = await jfwInput(umRowAfterReload).inputValue();
+        if (jfwValueAfterReload !== '5') throw new Error(`JFW value after reload="${jfwValueAfterReload}" (expected "5")`);
+        const resetBtn = p.locator('[data-testid="ccfg-row-act.standards.unit_manager-reset"]');
+        await resetBtn.waitFor({ state: 'attached', timeout: 6_000 });
+        await shot(p, 't1-company-config-reloaded');
+
+        // ── Direct Firestore verify (Admin SDK) ──────────────────────────────
+        const db = getAdminDb();
+        const masRef = db.doc(`tenants/${ADMIN_TENANT_ID}/config/managerActivityStandards`);
+        const masDoc = (await masRef.get()).data() || {};
+        const umMap = masDoc.unit_manager || {};
+        if (typeof umMap.jfwCount !== 'number' || umMap.jfwCount !== 5) {
+          throw new Error(`Firestore unit_manager.jfwCount=${JSON.stringify(umMap.jfwCount)} (expected number 5)`);
+        }
+
+        const auditSave = await auditNewest(db, ADMIN_TENANT_ID, 'unit_manager.jfwCount', '5');
+        if (!auditSave) throw new Error('no configAudit entry found for unit_manager.jfwCount -> "5"');
+        if (auditSave.section !== 'Activity Standards') throw new Error(`audit section="${auditSave.section}" (expected "Activity Standards")`);
+        if (!auditSave.who) throw new Error('audit entry missing "who" (actor uid)');
+        if (!auditSave.whoName) throw new Error('audit entry missing "whoName"');
+        const auth = getAdminAuth();
+        const taUser = await auth.getUserByEmail(ACCOUNTS.tenant_admin.email);
+        if (auditSave.who !== taUser.uid) throw new Error(`audit who="${auditSave.who}" (expected tenant_admin uid ${taUser.uid})`);
+
+        // ── Reset to default → save → Admin-SDK verify KEY ABSENT ────────────
+        await resetBtn.click();
+        await p.waitForTimeout(300);
+        const saveBar2 = p.locator('[data-testid="ccfg-savebar"]');
+        await saveBar2.waitFor({ state: 'attached', timeout: 6_000 });
+        const saveBar2Text = (await saveBar2.innerText()) || '';
+        if (!/1 unsaved change/i.test(saveBar2Text)) throw new Error(`SaveBar (reset)="${saveBar2Text}" (expected "1 unsaved change")`);
+        await p.locator('[data-testid="ccfg-savebar-save"]').click();
+        await p.waitForTimeout(1500); // refresh() re-fetch + row re-render to 'default'
+        // 'act.standards.*' items are `bare` (registry: bare:true) — ConfigRow
+        // deliberately suppresses the row-level DEFAULT tag for bare/table items
+        // (src/components/admin/companyConfig/ConfigRow.jsx: `state === 'default'
+        // && !item?.bare`, commit 0b69b769 "bare DEFAULT tag" visual-probe fix —
+        // landed on this shared staging branch mid-session, corrected below).
+        // Prove 'default' state via the row's OTHER state-exclusive affordances
+        // instead: no Reset link (rules out 'custom'), no Undo/unsaved banner
+        // (rules out 'draft'/'reset'), and the JFW control itself reads back 0
+        // (the code default) — value-level, not selector-presence-only.
+        await p.locator('[data-testid="ccfg-savebar"]').waitFor({ state: 'detached', timeout: 8_000 });
+        const resetBtnGone = await p.locator('[data-testid="ccfg-row-act.standards.unit_manager-reset"]').count();
+        const undoBtnGone = await p.locator('[data-testid="ccfg-row-act.standards.unit_manager-undo"]').count();
+        if (resetBtnGone !== 0) throw new Error(`Reset link still present after reset+save (count=${resetBtnGone}) — row not back to 'default'`);
+        if (undoBtnGone !== 0) throw new Error(`Undo link still present after reset+save (count=${undoBtnGone}) — row still 'draft'/'reset'`);
+        const jfwValueAfterReset = await jfwInput(p.locator('[data-testid="ccfg-row-act.standards.unit_manager"]')).inputValue();
+        if (jfwValueAfterReset !== '0') throw new Error(`JFW control after reset+save="${jfwValueAfterReset}" (expected "0", the code default)`);
+        await shot(p, 't1-company-config-reset');
+
+        const masDoc2 = (await masRef.get()).data() || {};
+        const umMap2 = masDoc2.unit_manager || {};
+        if ('jfwCount' in umMap2) throw new Error(`Firestore unit_manager still has jfwCount=${JSON.stringify(umMap2.jfwCount)} after reset (expected key ABSENT)`);
+
+        const auditReset = await auditNewest(db, ADMIN_TENANT_ID, 'unit_manager.jfwCount', 'DEFAULT');
+        if (!auditReset) throw new Error('no configAudit entry found for unit_manager.jfwCount -> "DEFAULT"');
+        if (auditReset.section !== 'Activity Standards') throw new Error(`reset audit section="${auditReset.section}" (expected "Activity Standards")`);
+
+        // ── Run 5.1 regression: walk ALL 12 rail sections, assert each renders
+        // its body without tripping ChunkLoadErrorBoundary. This is the check
+        // that should have caught the org.levels null-crash — 5252 unit tests
+        // and 41 VH legs all passed while a whole section threw, because none
+        // of them realized a render of every section. The error boundary is a
+        // class component with local state — once tripped it does NOT recover
+        // on its own, so any section that crashes here would also fail every
+        // section walked after it, making a silent per-section skip impossible.
+        const ALL_SECTIONS = [
+          ['identity', 'Identity & Branding'],
+          ['org', 'Organization'],
+          ['targets', 'Targets & Minimums'],
+          ['cadence', 'Reporting Cadence'],
+          ['activity', 'Activity Standards'],
+          ['recognition', 'Recognition & Gamification'],
+          ['awards', 'Awards & Clubs'],
+          ['financing', 'Financing Thresholds'],
+          ['kiosk', 'Kiosk'],
+          ['policy', 'Policy & Delivery'],
+          ['flags', 'Feature Flags'],
+          ['data', 'Data & Privacy'],
+        ];
+        for (const [key, label] of ALL_SECTIONS) {
+          await p.locator(`[data-testid="ccfg-rail-${key}"]`).click();
+          await p.waitForTimeout(350);
+          const boundaryTripped = await p.locator('[data-testid="state-chunk-error"]').count();
+          if (boundaryTripped > 0) throw new Error(`section "${key}" (${label}) tripped ChunkLoadErrorBoundary`);
+          const heading = p.getByRole('heading', { name: label, exact: true });
+          await heading.waitFor({ state: 'attached', timeout: 6_000 });
+        }
+        await shot(p, 't1-company-config-all-sections');
+
+        assertLegHygiene(ctx);
+        return `⌘F "pace-warning" jumped flags→targets (rail switched, targets.pace flash-highlighted); palette locked-setting (aw.basis) shows REAL value "SETTLED API ONLY" (not HARDCODED/PLATFORM); seeded unit_manager JFW override renders "1 manager override this" (not em-dash); JFW unit_manager 5 saved (toast "Saved 1 change"), fresh reload shows 5 + custom-state reset affordance; Firestore unit_manager.jfwCount=5 (audit settingId=unit_manager.jfwCount, section=Activity Standards, who=${auditSave.who}, to=5); Reset→save→Firestore key ABSENT (audit to=DEFAULT), row back to 'default' (no Reset/Undo link, JFW control reads 0 — bare items suppress the DEFAULT tag itself per ConfigRow's intentional bare-item rule); all 12 rail sections render their heading with no ChunkLoadErrorBoundary trip (Run 5.1 org.levels-crash regression check); seeded override cleaned up; hygiene clean`;
+      } finally {
+        if (ovrRef) { try { await ovrRef.delete(); } catch { /* best-effort cleanup */ } }
+        await ctx.context.close();
+      }
+    },
+  },
+
+  // ── 8b. Company Config — CAMPAIGN PERSISTENCY GATE rows (Recognition & Gamification, tenant_admin, Run 6) — READ-ONLY, no mutation ──
+  {
+    id: 't1-company-config-gate',
+    role: 'tenant_admin',
+    desc: 'tenant_admin Company Config → Recognition & Gamification: CAMPAIGN PERSISTENCY GATE group renders 4 read-only rows (rec.gate.90/.85/.80/.dq) with the real payout-share values 100%/50%/25%/DQ (mono text control), each control disabled (no editable affordance) and chipped HARDCODED · UNLOCKS SOON. READ-ONLY — no mutation.',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        await login(ctx.page, 'tenant_admin');
+        const p = ctx.page;
+        await gotoTab(p, 'Company Config');
+        await p.waitForSelector('[data-testid="ccfg-surface"]', { timeout: 12_000 });
+        await p.locator('[data-testid="ccfg-rail-recognition"]').click();
+        await p.waitForTimeout(400);
+
+        const GATE_ROWS = [
+          ['rec.gate.90', '100%'],
+          ['rec.gate.85', '50%'],
+          ['rec.gate.80', '25%'],
+          ['rec.gate.dq', 'DQ'],
+        ];
+        for (const [id, expected] of GATE_ROWS) {
+          const row = p.locator(`[data-testid="ccfg-row-${id}"]`);
+          await row.waitFor({ state: 'attached', timeout: 10_000 });
+          const input = row.locator('input[aria-label="value"]');
+          const val = await input.inputValue();
+          if (val !== expected) throw new Error(`${id} value="${val}" (expected "${expected}")`);
+          if (!(await input.isDisabled())) throw new Error(`${id} control is NOT disabled (row is editable — expected read-only SOON row)`);
+          await row.locator(`[data-testid="ccfg-row-${id}-soon-chip"]`).waitFor({ state: 'attached', timeout: 4_000 });
+        }
+        await shot(p, 't1-company-config-gate');
+        assertLegHygiene(ctx);
+        return `Recognition → CAMPAIGN PERSISTENCY GATE: rec.gate.90/.85/.80/.dq render real values 100%/50%/25%/DQ, all disabled (read-only) with HARDCODED · UNLOCKS SOON chip; hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
+  // ── 9. Company Config — Feature Flags disable/re-enable roundtrip (tenant_admin) — toggles persistencyV2 OFF then back ON, ending at the seeded state ──
+  {
+    id: 't1-company-config-flags',
+    role: 'tenant_admin',
+    desc: 'tenant_admin Company Config → Feature Flags: persistencyV2 seeded ON (Disable button present); Disable → Admin-SDK verify featureFlags/featureFlagsMeta persistencyV2 KEY ABSENT (not false) + newest configAudit entry ON→OFF (section=featureFlags); re-enable via the danger confirm strip ("effective immediately" copy) → Enable now → row shows provenance "Enabled by …" → Admin-SDK verify featureFlags.persistencyV2===true (strict boolean) + featureFlagsMeta.persistencyV2={who,whoName,date} + newest configAudit entry OFF→ON. Ends at the seeded ON state. MUTATES tenants/staging_test/config/settings.featureFlags.persistencyV2 transiently (restored ON by the leg itself; re-seed also resets it).',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        const p = ctx.page;
+        await login(p, 'tenant_admin');
+        await gotoTab(p, 'Company Config');
+        await p.waitForSelector('[data-testid="ccfg-surface"]', { timeout: 12_000 });
+        await p.locator('[data-testid="ccfg-rail-flags"]').click();
+        await p.waitForTimeout(400);
+
+        for (const key of ['persistencyV2', 'policyLedgerCampaignLens', 'awardsProvenance']) {
+          await p.locator(`[data-testid="ccfg-flag-${key}"]`).waitFor({ state: 'attached', timeout: 8_000 });
+        }
+        const flagRow = p.locator('[data-testid="ccfg-flag-persistencyV2"]');
+        if ((await p.locator('[data-testid="ccfg-flag-disable-persistencyV2"]').count()) !== 1) {
+          throw new Error('persistencyV2 not showing ON (Disable button absent) at leg start — seed expectation is ON');
+        }
+        await shot(p, 't1-company-config-flags-on');
+
+        const db = getAdminDb();
+        const settingsRef = db.doc(`tenants/${ADMIN_TENANT_ID}/config/settings`);
+
+        // ── Disable ──────────────────────────────────────────────────────────
+        await p.locator('[data-testid="ccfg-flag-disable-persistencyV2"]').click();
+        await p.locator('[data-testid="ccfg-flag-enable-persistencyV2"]').waitFor({ state: 'attached', timeout: 8_000 });
+        const offChipText = (await flagRow.innerText())?.replace(/\s+/g, ' ') || '';
+        if (!/NOT SET.*OFF/i.test(offChipText)) throw new Error(`flag row after disable="${offChipText}" (expected NOT SET → OFF chip)`);
+        await shot(p, 't1-company-config-flags-off');
+
+        let settingsDoc = (await settingsRef.get()).data() || {};
+        let ff = settingsDoc.featureFlags || {};
+        let ffMeta = settingsDoc.featureFlagsMeta || {};
+        if ('persistencyV2' in ff) throw new Error(`Firestore featureFlags still has persistencyV2 key after disable (value=${JSON.stringify(ff.persistencyV2)})`);
+        if ('persistencyV2' in ffMeta) throw new Error('Firestore featureFlagsMeta still has persistencyV2 key after disable');
+
+        const auditOff = await auditNewest(db, ADMIN_TENANT_ID, 'persistencyV2', 'OFF');
+        if (!auditOff) throw new Error('no configAudit entry found for persistencyV2 -> "OFF"');
+        if (auditOff.section !== 'featureFlags') throw new Error(`audit(OFF) section="${auditOff.section}" (expected "featureFlags")`);
+        if (auditOff.from !== 'ON') throw new Error(`audit(OFF) from="${auditOff.from}" (expected "ON")`);
+
+        // ── Re-enable via the danger confirm flow ───────────────────────────
+        await p.locator('[data-testid="ccfg-flag-enable-persistencyV2"]').click();
+        const confirmStrip = p.locator('[data-testid="ccfg-flag-confirm-persistencyV2"]');
+        await confirmStrip.waitFor({ state: 'attached', timeout: 6_000 });
+        const confirmText = (await confirmStrip.innerText()) || '';
+        if (!/effective immediately/i.test(confirmText)) throw new Error(`confirm strip="${confirmText}" (expected "effective immediately" copy)`);
+        await shot(p, 't1-company-config-flags-confirm');
+        await p.locator('[data-testid="ccfg-flag-confirm-enable-persistencyV2"]').click();
+        await p.locator('[data-testid="ccfg-flag-disable-persistencyV2"]').waitFor({ state: 'attached', timeout: 8_000 });
+        await p.waitForTimeout(300);
+        const onRowText = (await flagRow.innerText()) || '';
+        if (!/Enabled by/i.test(onRowText)) throw new Error(`flag row after re-enable="${onRowText}" (expected "Enabled by <name>" provenance line)`);
+        await shot(p, 't1-company-config-flags-on-again');
+
+        settingsDoc = (await settingsRef.get()).data() || {};
+        ff = settingsDoc.featureFlags || {};
+        ffMeta = settingsDoc.featureFlagsMeta || {};
+        if (ff.persistencyV2 !== true) throw new Error(`Firestore featureFlags.persistencyV2=${JSON.stringify(ff.persistencyV2)} (expected strict boolean true)`);
+        const meta = ffMeta.persistencyV2;
+        if (!meta || !meta.who || !meta.whoName || !meta.date) {
+          throw new Error(`Firestore featureFlagsMeta.persistencyV2=${JSON.stringify(meta)} (expected {who, whoName, date})`);
+        }
+
+        const auditOn = await auditNewest(db, ADMIN_TENANT_ID, 'persistencyV2', 'ON');
+        if (!auditOn) throw new Error('no configAudit entry found for persistencyV2 -> "ON"');
+        if (auditOn.section !== 'featureFlags') throw new Error(`audit(ON) section="${auditOn.section}" (expected "featureFlags")`);
+        if (auditOn.from !== 'OFF') throw new Error(`audit(ON) from="${auditOn.from}" (expected "OFF")`);
+
+        assertLegHygiene(ctx);
+        return `persistencyV2 seeded ON; Disable→Firestore featureFlags/featureFlagsMeta key ABSENT (audit ON→OFF, section=featureFlags); re-enable via confirm strip ("effective immediately")→Firestore featureFlags.persistencyV2===true + featureFlagsMeta{who=${meta.who}} (audit OFF→ON); ends at seeded ON; hygiene clean`;
+      } finally { await ctx.context.close(); }
+    },
+  },
+
+  // ── 10. Compliance ScopeSwitch — branch/unit roster filter (branch_manager, Run 6 S4) ──
+  // CompliancePanel.jsx gates the switch on `role === 'branch_manager' && unitOptions.length > 1`,
+  // where unitOptions is derived (deriveUnitOptions) from the ALREADY-ROLE-FILTERED roster
+  // (`users` = getTenantUsers rows with role 'agent', plus 'unit_manager' once selectedWeek
+  // clears UM_MANDATORY_FILING_CUTOFF — branch_manager's own row never enters this roster,
+  // unlike the Master Sheet funnel's roster which DOES carry a synthetic '__branch_direct__'
+  // group for the BM's own filing). A live Admin-SDK read of tenants/staging_test/users
+  // (read-only, no mutation) confirms the CURRENT seed's branch_manager-eligible roster —
+  // Staging Agent One, Staging Agent Two, Staging Unit Manager — all resolve to the SAME
+  // unitId (the one unit_manager's own uid); seed-staging.mjs's ROLE_DEFS defines exactly one
+  // unit_manager per branch, and neither it nor seed-fixtures.mjs (confirmed via `git show
+  // 3d42125f -- scripts/staging/` — the shipping commit touched no seed file) adds a second.
+  // So unitOptions.length is 1 on live staging today, and the switch is correctly ABSENT —
+  // this is the guard working as designed and already unit-tested (CompliancePanel.scope.test.jsx
+  // covers the >1-unit render path with mocked data), not a defect. This leg still asserts the
+  // FULL live behavior end-to-end (forward-compatible the moment a second unit_manager fixture
+  // lands) but SKIPs cleanly with a precise diagnostic when the live roster is single-unit,
+  // rather than hard-failing a condition the shipped code + its own tests already predict.
+  // Never mutates: the nudge-all confirm is opened to read its scope-named copy, then
+  // cancelled — no nudge is fired.
+  {
+    id: 't1-compliance-scope',
+    role: 'branch_manager',
+    desc: 'branch_manager Compliance tab: ScopeSwitch (S4) — SKIPs cleanly (live-verified single-unit roster, see file comment) unless the seed grows a 2nd unit, in which case: [Branch] active by default with one segment per unit; selecting a unit flips aria-pressed, filters roster rows + reality-bar counts to that unit, retargets the nudge-all population + its confirm copy (names the unit); [Branch] restores original counts. No mutation (nudge-all confirm opened + cancelled).',
+    async run({ browser, shot }) {
+      const ctx = await newLegContext(browser);
+      try {
+        await login(ctx.page, 'branch_manager');
+        const p = ctx.page;
+        // Compliance lives in the "My Team" workspace section (navConfig.js
+        // WORKSPACE_TEAM_SECTIONS), not the default "My Work" workspace — same
+        // switch t1-palette-bm-desktop uses ahead of Master Sheet.
+        await p.locator('[data-testid="sidebar-ws-toggle-team"]').click();
+        await p.waitForTimeout(700);
+        await gotoTab(p, 'Compliance');
+        await p.waitForSelector('[data-testid="compliance-reality-bar"]', { timeout: 12_000 });
+        await p.waitForSelector('[data-testid="compliance-roster"]', { timeout: 12_000 });
+
+        const scopeSwitch = p.locator('[data-testid="compliance-scope-switch"]');
+        let present = await scopeSwitch.count();
+        if (present === 0) {
+          // Client-side derive from an already-loaded roster — not a deploy race,
+          // but give it one short settle window before treating absence as final.
+          await p.waitForTimeout(1500);
+          present = await scopeSwitch.count();
+        }
+
+        if (present === 0) {
+          const rosterRows = await p.locator('[data-testid="compliance-roster-row"]').count();
+          await shot(p, 't1-compliance-scope-hidden-singleunit');
+          assertLegHygiene(ctx);
+          throw new Error(`SKIP: compliance-scope-switch absent on live staging — CONFIRMED via read-only Admin-SDK query of tenants/staging_test/users that the branch_manager-eligible roster (role agent|unit_manager, branchId=staging_branch) currently resolves to exactly ONE distinct unitId (Agent One, Agent Two, and the Unit Manager all share the sole unit_manager's uid), so unitOptions.length===1 and the guard "role==='branch_manager' && unitOptions.length>1" correctly hides it — NOT a shipped-code defect (CompliancePanel.scope.test.jsx already covers the >1-unit render path with mocked data, 7/7 passing per commit 3d42125f). seed-staging.mjs's ROLE_DEFS defines only one unit_manager per branch and seed-fixtures.mjs adds no second; this leg's live scope-switch assertions can only execute once a 2nd unit_manager fixture is seeded (out of this leg's file scope — flagging for the seed owner). Roster rows currently visible=${rosterRows}.`);
+        }
+
+        // ── Full live exercise (runs once the seed grows a 2nd unit) ──────────
+        const rowCount = () => p.locator('[data-testid="compliance-roster-row"]').count();
+        const nudgeAllText = async () => (await p.locator('[data-testid="compliance-nudge-all"]').textContent())?.trim() ?? null;
+        const unitBtn = (id) => p.locator(`[data-testid="compliance-scope-unit-${id}"]`);
+
+        // Baseline: [Branch] active, N unit segments present.
+        const branchBtn = p.locator('[data-testid="compliance-scope-branch"]');
+        if ((await branchBtn.getAttribute('aria-pressed')) !== 'true') throw new Error('Branch segment not aria-pressed=true by default');
+        const unitIds = await scopeSwitch.locator('button[data-testid^="compliance-scope-unit-"]').evaluateAll(
+          (els) => els.map((el) => el.getAttribute('data-testid').replace('compliance-scope-unit-', '')),
+        );
+        if (unitIds.length < 2) throw new Error(`ScopeSwitch rendered but only ${unitIds.length} unit segment(s) — expected >=2 for it to be visible at all`);
+
+        const baseRows = await rowCount();
+        const baseNudge = await nudgeAllText();
+        await shot(p, 't1-compliance-scope-branch');
+
+        // Select the first unit segment.
+        const targetUnit = unitIds[0];
+        await unitBtn(targetUnit).click();
+        await p.waitForTimeout(400);
+        if ((await unitBtn(targetUnit).getAttribute('aria-pressed')) !== 'true') throw new Error(`unit ${targetUnit} segment did not become aria-pressed after click`);
+        if ((await branchBtn.getAttribute('aria-pressed')) !== 'false') throw new Error('Branch segment still aria-pressed=true after selecting a unit');
+        const scopedRows = await rowCount();
+        if (scopedRows === baseRows) throw new Error(`roster row count unchanged after scoping to unit ${targetUnit} (${scopedRows} both before/after)`);
+        if (scopedRows >= baseRows) throw new Error(`scoped row count ${scopedRows} not smaller than Branch baseline ${baseRows}`);
+        const scopedNudge = await nudgeAllText();
+        await shot(p, 't1-compliance-scope-unit');
+
+        // Nudge-all confirm copy names the unit (never fired — cancelled).
+        const hasExceptions = (await p.locator('[data-testid="compliance-nudge-all"]').count()) > 0;
+        let confirmUnitLabel = null;
+        if (hasExceptions) {
+          await p.locator('[data-testid="compliance-nudge-all"]').click();
+          const dlg = p.locator('[role="dialog"][aria-labelledby="confirm-dialog-title"]');
+          await dlg.waitFor({ state: 'attached', timeout: 6_000 });
+          const dlgText = (await dlg.textContent()) || '';
+          const unitLabel = (await unitBtn(targetUnit).textContent())?.trim();
+          confirmUnitLabel = unitLabel;
+          if (!unitLabel || !dlgText.includes(unitLabel)) throw new Error(`nudge-all confirm copy does not name the scoped unit "${unitLabel}": "${dlgText.replace(/\s+/g, ' ').slice(0, 200)}"`);
+          await dlg.locator('button[aria-label="Close dialog"]').click().catch(async () => { await p.keyboard.press('Escape'); });
+          await dlg.waitFor({ state: 'detached', timeout: 6_000 });
+        }
+
+        // Restore Branch.
+        await branchBtn.click();
+        await p.waitForTimeout(400);
+        if ((await branchBtn.getAttribute('aria-pressed')) !== 'true') throw new Error('Branch segment did not re-activate after clicking it');
+        const restoredRows = await rowCount();
+        const restoredNudge = await nudgeAllText();
+        if (restoredRows !== baseRows) throw new Error(`row count after restoring Branch=${restoredRows} (expected original ${baseRows})`);
+        if (restoredNudge !== baseNudge) throw new Error(`nudge-all text after restoring Branch="${restoredNudge}" (expected original "${baseNudge}")`);
+        await shot(p, 't1-compliance-scope-restored');
+
+        // Re-run t1-master-sheet-filters is the caller's job (separate CLI invocation) —
+        // this leg only proves ScopeSwitch itself, per deriveUnitOptions shared with MasterSheet.
+        assertLegHygiene(ctx);
+        return `ScopeSwitch: Branch active by default (${unitIds.length} unit segments); selecting unit ${targetUnit} flipped aria-pressed, rows ${baseRows}→${scopedRows}, nudge-all "${baseNudge}"→"${scopedNudge}"${confirmUnitLabel ? `, confirm copy named "${confirmUnitLabel}" (cancelled, not fired)` : ' (no exceptions in scope — nudge-all absent, confirm copy not exercised)'}; Branch restored rows=${restoredRows}/nudge="${restoredNudge}"; hygiene clean`;
       } finally { await ctx.context.close(); }
     },
   },

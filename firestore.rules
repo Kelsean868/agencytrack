@@ -629,11 +629,65 @@ service cloud.firestore {
 
       match /config/{docId} {
         allow read:  if isSignedIn() && getTenantId() == tenantId;
+
+        // Run 5 Item 5 — featureFlags allowlist. On config/settings, any change to
+        // the featureFlags / featureFlagsMeta maps may only add, modify, or remove
+        // the allowlisted keys. Server-side mirror of ALLOWED_FLAG_KEYS
+        // (src/services/configService.js) and ALLOWED_FLAGS
+        // (scripts/verification/vh/flag-toggle.cjs) — a deliberate triple-copy;
+        // src/services/__tests__/flagAllowlist.cross-check.test.js guards the drift.
+        // request.resource.data is the POST-MERGE doc, so unchanged pre-existing
+        // keys never appear in the diff — only keys this write adds, modifies, or
+        // removes are evaluated. On doc-create resource == null (old maps → {}).
+        function ccfgFlagKeysAllowed() {
+          let allowed = ['persistencyV2', 'policyLedgerCampaignLens', 'awardsProvenance'];
+          let oldFlags = resource == null ? {} : resource.data.get('featureFlags', {});
+          let newFlags = request.resource.data.get('featureFlags', {});
+          let oldMeta  = resource == null ? {} : resource.data.get('featureFlagsMeta', {});
+          let newMeta  = request.resource.data.get('featureFlagsMeta', {});
+          return newFlags.diff(oldFlags).affectedKeys().hasOnly(allowed)
+              && newMeta.diff(oldMeta).affectedKeys().hasOnly(allowed);
+        }
+
         // SEC: tenant-scope guard. platform_admin is cross-tenant by design;
         // tenant_admin must be writing into their own tenant's config.
-        allow write: if isSignedIn()
+        // create/update additionally enforce the featureFlags allowlist on
+        // config/settings; delete keeps the original role/tenant check unchanged.
+        allow create, update: if isSignedIn()
+          && getRole() in ['platform_admin', 'tenant_admin']
+          && (getRole() == 'platform_admin' || getTenantId() == tenantId)
+          && (docId != 'settings' || ccfgFlagKeysAllowed());
+        allow delete: if isSignedIn()
           && getRole() in ['platform_admin', 'tenant_admin']
           && (getRole() == 'platform_admin' || getTenantId() == tenantId);
+      }
+
+      // Run 5 Item 3 — append-only tenant config audit trail. One entry per changed
+      // setting, written in the SAME batch as the config mutation
+      // (src/services/configAuditService.js buildAuditEntry). Entries are immutable:
+      // no update, no delete. `at` is a serverTimestamp() the rules engine sees as
+      // request.time; `who` must be the authenticated writer. `from`/`to` are
+      // display strings that MAY be null (first-set / envelope saves write from: null;
+      // toDisplay() returns null for null/undefined values). `correction` is an
+      // optional slice-2 reason string.
+      match /configAudit/{entryId} {
+        allow read: if isSignedIn()
+          && getRole() in ['platform_admin', 'tenant_admin']
+          && (getRole() == 'platform_admin' || getTenantId() == tenantId);
+        allow create: if isSignedIn()
+          && getRole() in ['platform_admin', 'tenant_admin']
+          && (getRole() == 'platform_admin' || getTenantId() == tenantId)
+          && request.resource.data.keys().hasAll(['settingId', 'section', 'from', 'to', 'who', 'whoName', 'at'])
+          && request.resource.data.keys().hasOnly(['settingId', 'section', 'from', 'to', 'who', 'whoName', 'at', 'correction'])
+          && request.resource.data.settingId is string
+          && request.resource.data.section is string
+          && (request.resource.data.from is string || request.resource.data.from == null)
+          && (request.resource.data.to is string || request.resource.data.to == null)
+          && request.resource.data.who == request.auth.uid
+          && request.resource.data.whoName is string
+          && request.resource.data.at == request.time
+          && (!('correction' in request.resource.data) || request.resource.data.correction is string);
+        allow update, delete: if false;
       }
 
       match /settlements/{docId} {
@@ -1571,7 +1625,14 @@ service cloud.firestore {
           && getTenantId() == tenantId
           && uplineInScope();
 
-        allow list: if false;
+        // Read-only list arm for the Company Config override-count indicator
+        // (Run 5 DECISIONS-NEEDED #1). tenant_admin in-tenant + platform_admin
+        // (cross-tenant by design — matches every other TA/PA read arm, e.g.
+        // the config block ~line 657). Managers + agents still DENY. The
+        // forgery-prevention write arms above are unchanged.
+        allow list: if isSignedIn()
+          && getRole() in ['platform_admin', 'tenant_admin']
+          && (getRole() == 'platform_admin' || getTenantId() == tenantId);
       }
 
       // ── Weekly Planner v2 Slice 2: agent-set committed weekly plan ────────────

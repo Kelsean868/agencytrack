@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertTriangle, Shield } from 'lucide-react';
 import { signIn, sendPasswordReset } from '../../services/authService';
 
 function getErrorMessage(code) {
@@ -114,6 +114,7 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [capsLockOn, setCapsLockOn] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -127,6 +128,15 @@ export default function LoginScreen() {
       setError(getErrorMessage(err.code));
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  function handlePasswordKeyEvent(e) {
+    // Caps-lock trust affordance (design ref: docs/design-system/screens-v2/auth-v2.jsx
+    // PasswordField `caps` prop). getModifierState is only reliable on key
+    // events, so both keydown and keyup drive this — not blur/focus.
+    if (typeof e.getModifierState === 'function') {
+      setCapsLockOn(e.getModifierState('CapsLock'));
     }
   }
 
@@ -205,6 +215,8 @@ export default function LoginScreen() {
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                onKeyDown={handlePasswordKeyEvent}
+                onKeyUp={handlePasswordKeyEvent}
                 className="input pr-12"
               />
               {/* Track J — password reveal toggle (UI-only). Toggles the
@@ -223,10 +235,31 @@ export default function LoginScreen() {
                   : <Eye size={18} aria-hidden="true" />}
               </button>
             </div>
+            {/* Caps-lock trust affordance — quiet inline hint, present-but-empty
+                so aria-live="polite" reliably announces it appearing/clearing. */}
+            <p
+              aria-live="polite"
+              data-testid="caps-lock-hint"
+              className="mt-1.5 min-h-[1rem] text-xs text-warning-ink flex items-center gap-1.5"
+            >
+              {capsLockOn && (
+                <>
+                  <AlertTriangle size={12} className="shrink-0" aria-hidden="true" />
+                  Caps Lock is on
+                </>
+              )}
+            </p>
           </div>
 
           {error && (
-            <p className="text-sm text-danger-ink" role="alert">{error}</p>
+            <div
+              role="alert"
+              data-testid="login-error-card"
+              className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink flex items-start gap-2"
+            >
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+              <span>{error}</span>
+            </div>
           )}
 
           {resetSent && (
@@ -254,6 +287,28 @@ export default function LoginScreen() {
           >
             {resetLoading ? 'Sending…' : 'Forgot password?'}
           </button>
+        </div>
+
+        {/* Help footer + trust line — design ref: docs/design-system/screens-v2/auth-v2.jsx
+            LoginV2 "Help footer" block. "Contact your manager" renders as
+            plain emphasized text, NOT a link — there is no real support
+            contact target (email/phone) wired anywhere in this app for
+            agents to reach; every other "Contact your manager" instance in
+            the codebase (ResetPasswordHandler, KioskRoute, HomeV2,
+            DerivedIncomePanel) is plain text for the same reason. Fabricating
+            a mailto:/tel: link here would point at a target that doesn't
+            exist. */}
+        <div
+          className="mt-6 pt-4 border-t border-border text-center"
+          data-testid="login-help-footer"
+        >
+          <p className="text-xs text-ink-muted">
+            Trouble signing in? <span className="text-primary font-semibold">Contact your manager</span>
+          </p>
+          <p className="mt-2 text-[10px] text-ink-muted flex items-center justify-center gap-1">
+            <Shield size={11} aria-hidden="true" />
+            Secured by Tatil Life
+          </p>
         </div>
 
       </main>

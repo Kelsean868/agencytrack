@@ -8,6 +8,7 @@ import {
 } from '../../../lib/productionReport/computations';
 import Avatar from '../Avatar';
 import { useCountUp } from '../../../hooks/useCountUp';
+import { buildSubmissionNameMap } from '../../../lib/kiosk/utils';
 
 function fmtApi(n) {
   if (n >= 1_000_000) return `TTD ${(n / 1_000_000).toFixed(2)}M`;
@@ -47,6 +48,7 @@ export default function LastWeekRecapPanel({ allSubmissions, allUsers }) {
     const activeAgents = allUsers.filter((u) => u.role === 'agent');
     const comp = computeComplianceStats(lastWeekSubs, activeAgents, sunStr);
 
+    const nameByAgent = buildSubmissionNameMap(lastWeekSubs);
     const byAgent = {};
     for (const sub of lastWeekSubs) {
       const aid = sub.agentId ?? sub.userId ?? '';
@@ -58,7 +60,7 @@ export default function LastWeekRecapPanel({ allSubmissions, allUsers }) {
       const user = allUsers.find((u) => u.id === agentId) ?? {};
       return {
         agentId,
-        agentName: user.name || user.displayName || 'Agent',
+        agentName: user.name || user.displayName || nameByAgent.get(agentId) || 'Agent',
         unitId: user.unitId ?? '',
         photoURL: user.photoURL ?? null,
         totals: computeAgentTotals(subs),

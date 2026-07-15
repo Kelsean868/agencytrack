@@ -101,7 +101,7 @@ export default function ManagerOverviewTab({ role, userProfile, tenantId, onSubm
       />
 
       {/* General stats — KPI strip + recognition/recent, below the lead */}
-      <BranchKPIStrip kpiData={kpiData} loading={loading} />
+      <BranchKPIStrip kpiData={kpiData} loading={loading} activeAgentCount={inScopeAgentCount} />
 
       <div className="g4-mix mb-6">
         <BranchActivityFeed events={activityEvents} loading={loading} />

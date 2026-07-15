@@ -73,22 +73,22 @@ export default function PersistencyTab() {
   const [editingAgentUid, setEditingAgentUid]     = useState(null);
   const [playgroundAgentUid, setPlaygroundAgentUid] = useState(null);
 
-  // Load available months.
-  useEffect(() => {
+  // Load available months. Extracted to a stable callback so the error
+  // card's Retry button (§1(b) four-states holdouts) can re-invoke it
+  // alongside loadRecords below — either load can be the one that failed.
+  const loadMonths = useCallback(async () => {
     if (!scopeId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const months = await getAvailableMonths(tenantId, scope, scopeId);
-        if (cancelled) return;
-        setMonthKeys(months);
-        setMonthKey((prev) => prev ?? months[0] ?? null);
-      } catch (e) {
-        if (!cancelled) setError(e.message ?? 'Failed to load months.');
-      }
-    })();
-    return () => { cancelled = true; };
+    try {
+      setError('');
+      const months = await getAvailableMonths(tenantId, scope, scopeId);
+      setMonthKeys(months);
+      setMonthKey((prev) => prev ?? months[0] ?? null);
+    } catch (e) {
+      setError(e.message ?? 'Failed to load months.');
+    }
   }, [scope, scopeId, tenantId]);
+
+  useEffect(() => { loadMonths(); }, [loadMonths]);
 
   // Load roster + records for selected month.
   const loadRecords = useCallback(async () => {
@@ -115,6 +115,13 @@ export default function PersistencyTab() {
   }, [monthKey, scopeId, scope, tenantId]);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
+
+  // Retry affordance for the error card below — re-invokes both loaders
+  // since either one may have been the source of the failure.
+  const handleRetry = useCallback(() => {
+    loadMonths();
+    loadRecords();
+  }, [loadMonths, loadRecords]);
 
   // Load sparkline data: last 6 available months' branch/unit aggregate.
   useEffect(() => {
@@ -236,8 +243,16 @@ export default function PersistencyTab() {
       />
 
       {error && (
-        <div className="card flex items-center gap-2 text-sm text-danger-ink">
-          <AlertCircle size={16} /> {error}
+        <div role="alert" className="card flex items-center gap-2 text-sm text-danger-ink">
+          <AlertCircle size={16} className="shrink-0" aria-hidden="true" />
+          <span className="flex-1">{error}</span>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="min-h-[44px] px-3 rounded-lg border border-border bg-card text-ink text-xs font-semibold hover:bg-surface transition-colors shrink-0"
+          >
+            Retry
+          </button>
         </div>
       )}
 

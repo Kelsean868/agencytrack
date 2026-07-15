@@ -2220,3 +2220,19 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
    * (§2 sheet open = spring up + backdrop fade + lightly staggered items). */
   .sheet-backdrop { animation: sheet-backdrop-fade var(--dur-3) var(--ease-out); }
 }
+
+/* §2 residual — bar-grow (design-conformance-2026-07-12 row 137: production
+ * leaderboard tail-row %-of-leader bar). transform-only (scaleX), never a
+ * width transition, so a box whose layout width is already final via inline
+ * `width: {pct}%` never causes reflow — only its visual scale animates in.
+ * `transform-origin` is set unconditionally (inert without the animation);
+ * the `animation` itself is gated so reduced-motion renders the bar at its
+ * full width immediately, matching every other v2 motion. */
+@keyframes bar-grow-x {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.bar-grow-x { transform-origin: left center; }
+@media (prefers-reduced-motion: no-preference) {
+  .bar-grow-x { animation: bar-grow-x var(--dur-3) var(--ease-out) both; }
+}

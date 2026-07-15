@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 const hoisted = vi.hoisted(() => ({
   useAuth: vi.fn(),
@@ -87,6 +87,55 @@ describe('Leaderboard', () => {
     await waitFor(() =>
       expect(screen.getByText(/Failed to load leaderboard/i)).toBeInTheDocument()
     );
+  });
+
+  it('error card renders role="alert" with a Retry affordance', async () => {
+    hoisted.onSnapshot.mockImplementation((_q, _onNext, onError) => {
+      onError(new Error('permission denied'));
+      return () => {};
+    });
+    hoisted.getDocs.mockResolvedValue(makeSnap([]));
+    render(<Leaderboard />);
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+  });
+
+  it('clicking Retry tears down and re-subscribes the onSnapshot listener', async () => {
+    hoisted.onSnapshot.mockImplementation((_q, _onNext, onError) => {
+      onError(new Error('permission denied'));
+      return () => {};
+    });
+    hoisted.getDocs.mockResolvedValue(makeSnap([]));
+    render(<Leaderboard />);
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+
+    expect(hoisted.onSnapshot).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(hoisted.onSnapshot).toHaveBeenCalledTimes(2));
+  });
+
+  it('Retry recovers to normal content once the re-subscription succeeds', async () => {
+    let call = 0;
+    hoisted.onSnapshot.mockImplementation((_q, onNext, onError) => {
+      call += 1;
+      if (call === 1) {
+        onError(new Error('permission denied'));
+      } else {
+        onNext(makeSnap([
+          { id: 'd1', userId: 'u1', agentName: 'Alice', points: 500, levelTitle: 'Elite', badges: [], isBranchManagerUnit: false },
+        ]));
+      }
+      return () => {};
+    });
+    hoisted.getDocs.mockResolvedValue(makeSnap([]));
+    render(<Leaderboard />);
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(screen.getByText('#1')).toBeInTheDocument();
   });
 
   it('shows empty state message when no docs', async () => {

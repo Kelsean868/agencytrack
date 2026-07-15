@@ -5,6 +5,7 @@ import {
   rankAgentsByApi,
 } from '../../../lib/productionReport/computations';
 import { ttdK } from '../../../lib/kiosk/kioskFormat';
+import { buildSubmissionNameMap } from '../../../lib/kiosk/utils';
 import { useCountUp } from '../../../hooks/useCountUp';
 import Avatar from '../Avatar';
 import KioskMedal from '../KioskMedal';
@@ -117,6 +118,7 @@ function TailRow({ agent, maxApi }) {
 export default function RankedLeaderboardPanel({ period = 'ytd', allSubmissions = [], allUsers = [] }) {
   const ranked = useMemo(() => {
     const filtered = filterSubmissionsByPeriod(allSubmissions, period);
+    const nameByAgent = buildSubmissionNameMap(filtered);
     const byAgent = {};
     for (const sub of filtered) {
       const aid = sub.agentId ?? sub.userId ?? '';
@@ -127,7 +129,7 @@ export default function RankedLeaderboardPanel({ period = 'ytd', allSubmissions 
       const user = allUsers.find((u) => u.id === agentId) ?? {};
       return {
         agentId,
-        agentName: user.name || user.displayName || 'Agent',
+        agentName: user.name || user.displayName || nameByAgent.get(agentId) || 'Agent',
         photoURL: user.photoURL ?? null,
         unitId: user.unitId ?? '',
         unitLabel: user.unitId ? `Unit ${String(user.unitId).slice(-4)}` : '',

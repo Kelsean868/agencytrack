@@ -15,7 +15,8 @@
  * + `getAwardsRuleset` data path are PRESERVED unchanged.
  */
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { computeManagerAwards } from '../../utils/awardsEngine';
 import { getSettlementsForUnit } from '../../services/settlementService';
 import { getMergedAwardsRuleset } from '../../services/awardsRulesetService';
@@ -172,10 +173,14 @@ export default function ManagerAwardsPanel({
   }, [currentDate]);
   const year = now.getFullYear();
 
-  useEffect(() => {
-    if (!agentIds?.length) { setLoading(false); return; }
+  // Extracted to a stable callback so the error card's Retry button (§1(b)
+  // four-states holdouts) can re-invoke the same load rather than only being
+  // able to re-run on prop change.
+  const loadAwardsData = useCallback(() => {
+    if (!agentIds?.length) { setLoading(false); return undefined; }
     setLoading(true);
-    Promise.all([
+    setError('');
+    return Promise.all([
       getSettlementsForUnit(tenantId, agentIds, year),
       getMergedAwardsRuleset(tenantId, year).catch(() => DEFAULT_RULESET_2026),
       getAllYTDSubmissions(tenantId).catch(() => []),
@@ -188,6 +193,8 @@ export default function ManagerAwardsPanel({
       .catch((e) => { console.error(e); setError('Failed to load settlement data.'); })
       .finally(() => setLoading(false));
   }, [tenantId, agentIds, year]);
+
+  useEffect(() => { loadAwardsData(); }, [loadAwardsData]);
 
   const awards = useMemo(
     () => computeManagerAwards(settlements, agentIds, {}, { newAdvisors }, now, role, ruleset),
@@ -224,7 +231,21 @@ export default function ManagerAwardsPanel({
   }
 
   if (error) {
-    return <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>;
+    return (
+      <div role="alert" className="p-4 rounded-xl bg-danger/10 border border-danger/30 flex items-start gap-3">
+        <AlertTriangle size={18} className="text-danger-ink shrink-0 mt-0.5" aria-hidden="true" />
+        <div className="flex-1">
+          <p className="text-sm text-danger-ink font-medium">{error}</p>
+          <button
+            type="button"
+            onClick={loadAwardsData}
+            className="mt-2 min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (!agentIds?.length) {

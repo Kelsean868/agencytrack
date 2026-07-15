@@ -47,9 +47,14 @@ export function useBranchOverview(role, userProfile, tenantId) {
         ? getUnitGoals(tenantId, unitId, year).catch(() => null)
         : getBranchGoals(tenantId, year).catch(() => null);
 
+    // §1 silent-swallow fix: getAllYTDSubmissions/getTenantUsers are the
+    // primary reads — no per-arm .catch here, so a failure propagates to the
+    // outer .catch below and surfaces via `error` (ManagerOverviewTab's error
+    // card + Retry). goalRead and getCompanyMinimums stay self-catching —
+    // deliberate config-degradation semantics (goal/floor fallbacks).
     Promise.all([
-      getAllYTDSubmissions(tenantId).catch(() => []),
-      getTenantUsers(tenantId).catch(() => []),
+      getAllYTDSubmissions(tenantId),
+      getTenantUsers(tenantId),
       goalRead,
       getCompanyMinimums(tenantId).catch(() => null),
     ])

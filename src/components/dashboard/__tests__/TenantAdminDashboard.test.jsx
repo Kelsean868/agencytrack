@@ -31,13 +31,27 @@ vi.mock('../../../services/branchService', () => ({
   listBranches: vi.fn().mockResolvedValue([]),
 }));
 
+// S5: exception-lead panel needs company minimums (tenure API floors) via
+// deriveExceptions. Not previously loaded on this surface.
+vi.mock('../../../services/goalsService', () => ({
+  getCompanyMinimums: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock('../../../utils/extractFields', () => ({
   extractFields: (s) => (s.id === 's1' ? { apiSold: 100 } : { apiSold: 50 }),
+  // deriveExceptions (via managerExceptions.js) calls this for every
+  // submission bucketed to a real agentId. Existing tests' mock submissions
+  // carry no agentId so this never fires for them; the S5 exception tests
+  // below supply `totalProductionCredit` directly on their mock subs.
+  extractTotalProductionCredit: (s) => Number(s?.totalProductionCredit) || 0,
 }));
 
 vi.mock('../../../utils/formatters', () => ({
   formatCurrency: (v) => `$${v}`,
   getRoleLabel: () => 'Tenant Admin',
+  // deriveExceptions (via managerExceptions.js) calls this unconditionally
+  // per in-scope agent while building each candidate row.
+  initials: (name) => String(name ?? '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('') || '—',
 }));
 
 // Shell mock — exposes the navItems prop list so tests can assert against
@@ -84,11 +98,10 @@ vi.mock('../../shell/Shell', () => ({
   ),
 }));
 
-vi.mock('../../admin/CompanyConfigPanel', () => ({
-  default: () => <div data-testid="company-config-panel">Company Config Panel</div>,
-}));
-vi.mock('../../admin/AwardsRulesetPanel', () => ({
-  default: () => <div data-testid="awards-ruleset-panel">Awards Ruleset Panel</div>,
+// Company Config tab now renders the unified Company Config surface (Run 5),
+// which replaced the three stacked admin panels.
+vi.mock('../../admin/companyConfig/CompanyConfigSurface', () => ({
+  default: () => <div data-testid="company-config-surface">Company Config Surface</div>,
 }));
 vi.mock('../../admin/RoleDistributionCard', () => ({
   default: () => <div data-testid="role-distribution-card">Role Distribution</div>,
@@ -258,16 +271,10 @@ describe('TenantAdminDashboard — tab routing', () => {
     await waitFor(() => expect(screen.getByTestId('user-management-panel')).toBeInTheDocument());
   });
 
-  it('clicking Company Config sidebar routes to CompanyConfigPanel', async () => {
+  it('clicking Company Config sidebar routes to the Company Config surface', async () => {
     render(<TenantAdminDashboard />);
     fireEvent.click(screen.getByTestId('sidebar-config'));
-    await waitFor(() => expect(screen.getByTestId('company-config-panel')).toBeInTheDocument());
-  });
-
-  it('clicking Company Config sidebar also renders AwardsRulesetPanel', async () => {
-    render(<TenantAdminDashboard />);
-    fireEvent.click(screen.getByTestId('sidebar-config'));
-    await waitFor(() => expect(screen.getByTestId('awards-ruleset-panel')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('company-config-surface')).toBeInTheDocument());
   });
 
   it('clicking Campaigns sidebar routes to CampaignPanel', async () => {
@@ -336,23 +343,31 @@ describe('TenantAdminDashboard — §1 states contract (error / partial / retry)
   // mockRejectedValue/mockResolvedValue — re-establish a known-good baseline
   // before every test so one test's permanent-reject override can't leak
   // into the next.
+  //
+  // S5 note: this surface now has 4 data sources (users, branches, YTD subs,
+  // company minimums) — the failure-count contract tests below were updated
+  // from "3" to "4" accordingly (TOTAL_DATA_SOURCES in the component).
   beforeEach(async () => {
     vi.clearAllMocks();
     const managerService = await import('../../../services/managerService');
     const branchService = await import('../../../services/branchService');
+    const goalsService = await import('../../../services/goalsService');
     managerService.getTenantUsers.mockResolvedValue([
       { uid: 'u1', role: 'agent', branchId: 'branch_a', active: true },
     ]);
     managerService.getAllYTDSubmissions.mockResolvedValue([]);
     branchService.listBranches.mockResolvedValue([]);
+    goalsService.getCompanyMinimums.mockResolvedValue(null);
   });
 
-  it('all 3 fetches failing renders a blocking error card with Retry (never a silent console.error swallow)', async () => {
+  it('all 4 fetches failing renders a blocking error card with Retry (never a silent console.error swallow)', async () => {
     const managerService = await import('../../../services/managerService');
     const branchService = await import('../../../services/branchService');
+    const goalsService = await import('../../../services/goalsService');
     managerService.getTenantUsers.mockRejectedValue(new Error('boom-users'));
     managerService.getAllYTDSubmissions.mockRejectedValue(new Error('boom-ytd'));
     branchService.listBranches.mockRejectedValue(new Error('boom-branches'));
+    goalsService.getCompanyMinimums.mockRejectedValue(new Error('boom-mins'));
 
     render(<TenantAdminDashboard />);
 
@@ -362,15 +377,18 @@ describe('TenantAdminDashboard — §1 states contract (error / partial / retry)
     expect(screen.queryByText('Total API · YTD')).toBeNull();
   });
 
-  it('Retry on full failure re-invokes all three failed loaders', async () => {
+  it('Retry on full failure re-invokes all four failed loaders', async () => {
     const managerService = await import('../../../services/managerService');
     const branchService = await import('../../../services/branchService');
+    const goalsService = await import('../../../services/goalsService');
     managerService.getTenantUsers.mockRejectedValueOnce(new Error('boom-users'))
       .mockResolvedValueOnce([{ uid: 'u1', role: 'agent', branchId: 'b1', active: true }]);
     managerService.getAllYTDSubmissions.mockRejectedValueOnce(new Error('boom-ytd'))
       .mockResolvedValueOnce([]);
     branchService.listBranches.mockRejectedValueOnce(new Error('boom-branches'))
       .mockResolvedValueOnce([]);
+    goalsService.getCompanyMinimums.mockRejectedValueOnce(new Error('boom-mins'))
+      .mockResolvedValueOnce(null);
 
     render(<TenantAdminDashboard />);
     await waitFor(() => expect(screen.getByTestId('tenant-dashboard-error')).toBeInTheDocument());
@@ -381,17 +399,90 @@ describe('TenantAdminDashboard — §1 states contract (error / partial / retry)
     expect(managerService.getTenantUsers).toHaveBeenCalledTimes(2);
     expect(managerService.getAllYTDSubmissions).toHaveBeenCalledTimes(2);
     expect(branchService.listBranches).toHaveBeenCalledTimes(2);
+    expect(goalsService.getCompanyMinimums).toHaveBeenCalledTimes(2);
   });
 
-  it('one of three fetches failing renders a partial-failure warning banner naming the count', async () => {
+  it('one of four fetches failing renders a partial-failure warning banner naming the count', async () => {
     const managerService = await import('../../../services/managerService');
     managerService.getAllYTDSubmissions.mockRejectedValue(new Error('boom-ytd'));
 
     render(<TenantAdminDashboard />);
 
     await waitFor(() => expect(screen.getByTestId('tenant-dashboard-partial')).toBeInTheDocument());
-    expect(screen.getByTestId('tenant-dashboard-partial')).toHaveTextContent('1 of 3 data sources failed to load');
+    expect(screen.getByTestId('tenant-dashboard-partial')).toHaveTextContent('1 of 4 data sources failed to load');
     // Available data still renders alongside the banner.
     expect(screen.getByText('Total API · YTD')).toBeInTheDocument();
+  });
+});
+
+describe('TenantAdminDashboard — S5 exception-lead panel (tenant-wide, operator-ruled)', () => {
+  // Baseline: one flagged agent (no reports at all this year) + one agent
+  // with a filed, unremarkable report — both tenant-wide (no branch/unit
+  // scoping in the tenant_admin surface). Uses a real contractStartDate so
+  // resolveAnnualAPIFloor + deriveExceptions run their real (unmocked) math.
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const branchService = await import('../../../services/branchService');
+    const goalsService = await import('../../../services/goalsService');
+    branchService.listBranches.mockResolvedValue([]);
+    goalsService.getCompanyMinimums.mockResolvedValue(null);
+  });
+
+  it('renders the exception panel heading and a flagged agent row from real derived data', async () => {
+    const managerService = await import('../../../services/managerService');
+    managerService.getTenantUsers.mockResolvedValue([
+      {
+        id: 'agent-flagged', uid: 'agent-flagged', role: 'agent', name: 'Alex Behind',
+        branchId: 'branch_a', unitId: 'unit_a', active: true, contractStartDate: '2020-01-01',
+      },
+      {
+        id: 'agent-filed', uid: 'agent-filed', role: 'agent', name: 'Sam Filer',
+        branchId: 'branch_a', unitId: 'unit_a', active: true, contractStartDate: '2020-01-01',
+      },
+    ]);
+    // Only agent-filed has a submission this year — agent-flagged has none,
+    // which deriveExceptions surfaces as a "No reports" exception once a
+    // latestWeek exists for the tenant (agent-filed's week). agent-filed's
+    // credit is set far above any possible pace target (frac-independent)
+    // so it never itself trips the floor/pace exception arms. Year computed
+    // from the real clock (deriveExceptions filters subs by the current
+    // year) rather than hardcoded, so the test doesn't rot at year rollover.
+    const thisYear = new Date().getFullYear();
+    managerService.getAllYTDSubmissions.mockResolvedValue([
+      { agentId: 'agent-filed', weekStarting: `${thisYear}-01-04`, totalProductionCredit: 10000000 },
+    ]);
+
+    render(<TenantAdminDashboard />);
+
+    await waitFor(() => expect(screen.getByTestId('exception-lead-panel')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('exception-lead-list')).toBeInTheDocument());
+    expect(screen.getByText('Alex Behind')).toBeInTheDocument();
+    expect(screen.getByTestId('exception-row-agent-flagged')).toBeInTheDocument();
+    // The on-pace filer is not itself an exception row.
+    expect(screen.queryByTestId('exception-row-agent-filed')).toBeNull();
+  });
+
+  it('renders the honest "All clear" empty state when no agent has an exception', async () => {
+    const managerService = await import('../../../services/managerService');
+    managerService.getTenantUsers.mockResolvedValue([]);
+    managerService.getAllYTDSubmissions.mockResolvedValue([]);
+
+    render(<TenantAdminDashboard />);
+
+    await waitFor(() => expect(screen.getByTestId('exception-lead-empty')).toBeInTheDocument());
+    expect(screen.getByText('All clear')).toBeInTheDocument();
+  });
+
+  it('renders the exception panel error state when the backing user fetch fails', async () => {
+    const managerService = await import('../../../services/managerService');
+    managerService.getTenantUsers.mockRejectedValue(new Error('boom-users'));
+    managerService.getAllYTDSubmissions.mockResolvedValue([]);
+
+    render(<TenantAdminDashboard />);
+
+    // usersError alone keeps failedCount (1) below TOTAL_DATA_SOURCES (4), so
+    // the dashboard content (and the panel within it) still renders — this
+    // exercises the panel's own error state, not the page-level error card.
+    await waitFor(() => expect(screen.getByTestId('exception-lead-error')).toBeInTheDocument());
   });
 });

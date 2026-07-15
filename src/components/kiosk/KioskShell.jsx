@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   PANEL_DURATIONS,
   PANEL_ORDER,
@@ -65,6 +65,15 @@ export default function KioskShell({ tenantId, branchId }) {
   const [agentOfMonthData, setAgentOfMonthData] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  // A3: distinguishes "first fetch ever failed, no last-good data exists yet"
+  // from "a later poll failed but we already have data to keep showing" — a
+  // ref (not state) so the check inside fetchData's catch always reads the
+  // current value rather than the value captured when the memoized callback
+  // was created.
+  const hasLoadedOnce = useRef(false);
+  // Drives the quiet "Reconnecting…" indicator. Only ever set true when
+  // hasLoadedOnce is still false (see catch below); cleared on any success.
+  const [reconnecting, setReconnecting] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -72,10 +81,13 @@ export default function KioskShell({ tenantId, branchId }) {
         getKioskYTDSubmissions(tenantId, branchId),
         // getKioskTenantUsers lists users, which the kiosk rules do not grant
         // (kiosk has `get`, not `list` — the users read-split in SHAKEDOWN-002
-        // dropped the kiosk list arm). Degrade to [] so a denied users-list does
-        // not reject the whole Promise.all and blank submissions/AOM too; panels
-        // fall back to a generic "Agent" label. FU: restore a branch-scoped
-        // kiosk users-list for real names.
+        // dropped the kiosk list arm, and re-adding one would widen bulk
+        // email/phone enumeration to a lobby token). Degrade to [] so a denied
+        // users-list does not reject the whole Promise.all and blank
+        // submissions/AOM too. SEC-012: leaderboard/podium/activity panels now
+        // resolve agent names from the submission-carried `agentName`
+        // (buildSubmissionNameMap) so names survive an empty roster; photos and
+        // roster-only panels (celebrations, compliance) still need the list.
         getKioskTenantUsers(tenantId).catch(() => []),
         getKioskAgentOfMonth(tenantId).catch(() => null),
         // 3.6: kiosk-flagged campaigns. Degrade to [] on any read failure so a
@@ -86,8 +98,19 @@ export default function KioskShell({ tenantId, branchId }) {
       setAllUsers(users);
       setAgentOfMonthData(aom);
       setCampaigns(camps);
+      hasLoadedOnce.current = true;
+      setReconnecting(false);
     } catch {
-      // Silent on poll failures — stale data is better than a crash.
+      // Refresh failures (last-good data already on screen) stay silent —
+      // stale data beats an error card on a lobby TV. But an INITIAL-load
+      // failure has no last-good data to fall back to, which would otherwise
+      // blank the wall with zero signal — surface a quiet reconnecting
+      // indicator for that path only. The poll loop below already retries on
+      // the same 5-minute cadence regardless of outcome, so "reconnecting" is
+      // honest; a later successful poll clears it via the branch above.
+      if (!hasLoadedOnce.current) {
+        setReconnecting(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -138,6 +161,28 @@ export default function KioskShell({ tenantId, branchId }) {
     return (
       <div className="fixed inset-0 kiosk-stage flex items-center justify-center" data-kiosk="true">
         <div className="w-10 h-10 border-2 border-presentation-accent border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // A3: initial-load failure, no last-good data yet — quiet indicator, not an
+  // error card. No Retry button: nobody is at the keyboard on a lobby TV, the
+  // 5-minute poll loop above IS the retry.
+  if (reconnecting) {
+    return (
+      <div className="fixed inset-0 kiosk-stage flex items-center justify-center" data-kiosk="true">
+        <div
+          className="flex items-center gap-2.5 px-4 py-2.5 rounded-full kiosk-glass"
+          data-testid="kiosk-reconnecting"
+        >
+          <span
+            className="w-2 h-2 rounded-full bg-presentation-muted motion-reduce:animate-none animate-kiosk-pulse-dot"
+            aria-hidden="true"
+          />
+          <span className="text-[0.7rem] font-mono uppercase tracking-[0.16em] text-presentation-muted">
+            Reconnecting&hellip;
+          </span>
+        </div>
       </div>
     );
   }

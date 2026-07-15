@@ -31,6 +31,7 @@ vi.mock('../../../hooks/useMyProduction', () => ({
 
 // ── Inert service mocks ───────────────────────────────────────────────────────
 vi.mock('../../../services/authService',      () => ({ signOut: vi.fn() }));
+vi.mock('../../../hooks/useToast', () => ({ default: () => ({ show: vi.fn(), dismiss: vi.fn() }) }));
 vi.mock('../../../services/managerService',   () => ({
   getWeeklySubmissions: vi.fn().mockResolvedValue([]),
   getTenantUsers:       vi.fn().mockResolvedValue([]),

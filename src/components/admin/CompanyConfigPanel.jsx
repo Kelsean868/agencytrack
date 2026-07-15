@@ -34,7 +34,13 @@ import PlanCatalogModal from './PlanCatalogModal';
  *     in B5, so the copy now matches scope).
  *   - Click opens <EditConfigModal /> with current value pre-seeded.
  */
-export default function CompanyConfigPanel() {
+/**
+ * @param {object} props
+ * @param {boolean} [props.embedded]  When true, suppresses the outer `card`
+ *   chrome so the panel can be hosted inside another surface (Run 5 Item E:
+ *   LegacyMinimumsModal). Default false → byte-identical prior behavior.
+ */
+export default function CompanyConfigPanel({ embedded = false }) {
   const { tenantId, user } = useAuth();
 
   const [config, setConfig] = useState(null);
@@ -133,7 +139,7 @@ export default function CompanyConfigPanel() {
   ];
 
   return (
-    <section aria-labelledby="company-config-heading" className="card">
+    <section aria-labelledby="company-config-heading" className={embedded ? '' : 'card'}>
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h2 id="company-config-heading" className="text-lg font-bold text-ink">

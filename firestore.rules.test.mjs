@@ -495,12 +495,45 @@ describe('managerActivityStandardOverrides — delete', () => {
   });
 });
 
-describe('managerActivityStandardOverrides — list always DENY', () => {
-  it('BM list query DENY (allow list: if false)', async () => {
+describe('managerActivityStandardOverrides — list (Run5 override-count arm)', () => {
+  it('tenant_admin in-tenant list ALLOW (override-count indicator)', async () => {
+    await seed();
+    await seedOverride('um1');
+    const ctx = testEnv.authenticatedContext('ta1', { role: 'tenant_admin', tenantId: TENANT_ID });
+    await assertSucceeds(getDocs(query(collection(ctx.firestore(), OVR_PATH))));
+  });
+
+  it('platform_admin list ALLOW (cross-tenant by design)', async () => {
+    await seed();
+    await seedOverride('um1');
+    // PA authenticated in a DIFFERENT tenant context still reads TENANT_ID's collection.
+    const ctx = testEnv.authenticatedContext('pa1', { role: 'platform_admin', tenantId: 'other-tenant' });
+    await assertSucceeds(getDocs(query(collection(ctx.firestore(), OVR_PATH))));
+  });
+
+  it('branch_manager list DENY', async () => {
     await seed();
     const ctx = testEnv.authenticatedContext('bm1', tok('bm1', 'branch_manager'));
-    const q = query(collection(ctx.firestore(), OVR_PATH));
-    await assertFails(getDocs(q));
+    await assertFails(getDocs(query(collection(ctx.firestore(), OVR_PATH))));
+  });
+
+  it('unit_manager list DENY', async () => {
+    await seed();
+    const ctx = testEnv.authenticatedContext('um1', tok('um1', 'unit_manager'));
+    await assertFails(getDocs(query(collection(ctx.firestore(), OVR_PATH))));
+  });
+
+  it('agent list DENY', async () => {
+    await seed();
+    const ctx = testEnv.authenticatedContext('agent1', { role: 'agent', tenantId: TENANT_ID });
+    await assertFails(getDocs(query(collection(ctx.firestore(), OVR_PATH))));
+  });
+
+  it('cross-tenant tenant_admin list DENY', async () => {
+    await seed();
+    // TA of a different tenant may not list TENANT_ID's overrides.
+    const ctx = testEnv.authenticatedContext('ta2', { role: 'tenant_admin', tenantId: 'other-tenant' });
+    await assertFails(getDocs(query(collection(ctx.firestore(), OVR_PATH))));
   });
 });
 

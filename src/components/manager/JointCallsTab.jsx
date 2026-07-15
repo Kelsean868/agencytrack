@@ -312,7 +312,8 @@ export default function JointCallsTab({ agentId, agentUnitId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
 
-  const [preps, setPreps] = useState([]);
+  const [preps, setPreps]           = useState([]);
+  const [prepsError, setPrepsError] = useState('');
 
   const [form, setForm]             = useState(BLANK_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -338,9 +339,13 @@ export default function JointCallsTab({ agentId, agentUnitId }) {
 
   useEffect(() => {
     if (!agentId || !role || !tenantId) return;
+    setPrepsError('');
     getProspectInfo({ tenantId, agentId, callerRole: role, callerUid: user?.uid })
       .then(setPreps)
-      .catch((err) => console.error('Failed to load prospect preps:', err));
+      .catch((err) => {
+        console.error('Failed to load prospect preps:', err);
+        setPrepsError('Failed to load prospect preps. Please try again.');
+      });
   }, [tenantId, agentId, role, user?.uid]);
 
   const handleAdd = useCallback(async (e) => {
@@ -394,6 +399,12 @@ export default function JointCallsTab({ agentId, agentUnitId }) {
         {!loading && error && (
           <div className="p-3 rounded-xl border border-danger/30 bg-danger/10 text-sm text-danger-ink">
             {error}
+          </div>
+        )}
+
+        {prepsError && (
+          <div className="p-3 rounded-xl border border-danger/30 bg-danger/10 text-sm text-danger-ink">
+            {prepsError}
           </div>
         )}
 

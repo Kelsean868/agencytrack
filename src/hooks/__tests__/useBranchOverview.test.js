@@ -38,6 +38,7 @@ vi.mock('../../components/gamification/BadgeGrid', () => ({
 }));
 
 import { getAllYTDSubmissions, getTenantUsers } from '../../services/managerService';
+import { getBranchGoals, getCompanyMinimums } from '../../services/goalsService';
 import { useBranchOverview } from '../useBranchOverview';
 
 const WEEK      = '2026-06-08'; // pre-cutoff (< 2026-06-14)
@@ -292,5 +293,53 @@ describe('useBranchOverview — reload()', () => {
 
     await waitFor(() => expect(getAllYTDSubmissions).toHaveBeenCalledTimes(2));
     expect(getTenantUsers).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §1 silent-swallow fix — primary-read failures must reach `error`; the
+// goalRead/getCompanyMinimums config arms stay self-catching (degrade, not fail).
+// ─────────────────────────────────────────────────────────────────────────────
+describe('useBranchOverview — §1 error propagation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('getAllYTDSubmissions rejection sets error (and loading false)', async () => {
+    getTenantUsers.mockResolvedValue([]);
+    getAllYTDSubmissions.mockRejectedValue(new Error('boom'));
+
+    const { result } = renderHook(() =>
+      useBranchOverview('branch_manager', {}, 'tenant-1')
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.error).toBe('Failed to load team overview.');
+  });
+
+  it('getTenantUsers rejection sets error (and loading false)', async () => {
+    getAllYTDSubmissions.mockResolvedValue([]);
+    getTenantUsers.mockRejectedValue(new Error('boom'));
+
+    const { result } = renderHook(() =>
+      useBranchOverview('branch_manager', {}, 'tenant-1')
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.error).toBe('Failed to load team overview.');
+  });
+
+  it('a goalRead/getCompanyMinimums-only rejection does NOT set error (semantic degradation preserved)', async () => {
+    getAllYTDSubmissions.mockResolvedValue([]);
+    getTenantUsers.mockResolvedValue([]);
+    getBranchGoals.mockRejectedValue(new Error('goal read down'));
+    getCompanyMinimums.mockRejectedValue(new Error('minimums read down'));
+
+    const { result } = renderHook(() =>
+      useBranchOverview('branch_manager', {}, 'tenant-1')
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.error).toBeNull();
   });
 });

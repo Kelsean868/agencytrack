@@ -379,7 +379,14 @@ function FieldRow({ id, label, type, value, error, onChange, onBlur }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function AwardsRulesetPanel() {
+/**
+ * @param {object} props
+ * @param {boolean} [props.embedded]  When true, suppresses the outer `card mt-4`
+ *   chrome AND the Trophy header block so the panel can be hosted inside the
+ *   Company Config surface's gold "AWARD CATALOG" group card (Run 5, Item D:
+ *   the awards exception). Default false → byte-identical prior behavior.
+ */
+export default function AwardsRulesetPanel({ embedded = false }) {
   const { tenantId, user } = useAuth();
 
   const [ruleset,          setRuleset]          = useState(null);
@@ -596,21 +603,27 @@ export default function AwardsRulesetPanel() {
   }
 
   return (
-    <section aria-labelledby="awards-ruleset-heading" className="card mt-4">
-      <div className="flex items-start gap-3 mb-5">
-        <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
-          <Trophy size={18} aria-hidden="true" />
+    <section
+      aria-labelledby={embedded ? undefined : 'awards-ruleset-heading'}
+      aria-label={embedded ? 'Awards ruleset — 2026' : undefined}
+      className={embedded ? '' : 'card mt-4'}
+    >
+      {!embedded && (
+        <div className="flex items-start gap-3 mb-5">
+          <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+            <Trophy size={18} aria-hidden="true" />
+          </div>
+          <div>
+            <h2 id="awards-ruleset-heading" className="text-lg font-bold text-ink">
+              Awards Ruleset — 2026
+            </h2>
+            <p className="text-sm text-ink-muted mt-0.5">
+              Configure award thresholds and criteria for agents and managers.
+              Saving writes the complete ruleset (all 16 groups, scalars and arrays).
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 id="awards-ruleset-heading" className="text-lg font-bold text-ink">
-            Awards Ruleset — 2026
-          </h2>
-          <p className="text-sm text-ink-muted mt-0.5">
-            Configure award thresholds and criteria for agents and managers.
-            Saving writes the complete ruleset (all 16 groups, scalars and arrays).
-          </p>
-        </div>
-      </div>
+      )}
 
       {loadError && (
         <div

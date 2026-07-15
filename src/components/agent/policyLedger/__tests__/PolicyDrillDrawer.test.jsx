@@ -72,6 +72,35 @@ describe('PolicyDrillDrawer', () => {
     await waitFor(() => expect(hoisted.getPolicyHistory).toHaveBeenCalled());
   });
 
+  it('renders only the plan name when insured matches owner', async () => {
+    render(
+      <PolicyDrillDrawer
+        policy={makePolicy({ planName: 'Tatil Term 20' })}
+        onClose={() => {}}
+        onTransition={() => {}}
+        transitioning={false}
+        transitionError={null}
+      />
+    );
+    expect(screen.getByText('Tatil Term 20')).toBeInTheDocument();
+    expect(screen.queryByText(/Insured ·/)).not.toBeInTheDocument();
+    await waitFor(() => expect(hoisted.getPolicyHistory).toHaveBeenCalled());
+  });
+
+  it('prefixes the plan line with "Insured · <name>" when insured differs from owner', async () => {
+    render(
+      <PolicyDrillDrawer
+        policy={makePolicy({ ownerName: 'Devon Holder', insuredName: 'Marisa Holder', planName: 'Tatil Term 20' })}
+        onClose={() => {}}
+        onTransition={() => {}}
+        transitioning={false}
+        transitionError={null}
+      />
+    );
+    expect(screen.getByText('Insured · Marisa Holder · Tatil Term 20')).toBeInTheDocument();
+    await waitFor(() => expect(hoisted.getPolicyHistory).toHaveBeenCalled());
+  });
+
   it('calls onClose when the header Close button is clicked', async () => {
     const onClose = vi.fn();
     render(

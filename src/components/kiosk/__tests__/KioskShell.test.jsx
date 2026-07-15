@@ -9,6 +9,7 @@ import {
   getKioskCampaigns,
 } from '../../../lib/kiosk/kioskServices';
 import { deriveKioskCelebrations } from '../../../lib/kiosk/kioskCelebrations';
+import { POLL_INTERVAL_MS } from '../../../lib/kiosk/kioskConfig';
 
 // Mock all panel components to simple identifiable divs
 vi.mock('../panels/WelcomePanel',            () => ({ default: () => <div data-panel="welcome" /> }));
@@ -129,5 +130,65 @@ describe('KioskShell — dynamic rotation (3.6)', () => {
     await mountShell();
     const seen = new Set(await collectRotation(18));
     expect(seen).toContain('celebrations');
+  });
+});
+
+describe('KioskShell — initial-load reconnecting indicator (A3)', () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); });
+  afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
+
+  it('initial fetch failure (no last-good data yet) shows the quiet reconnecting indicator, not a panel', async () => {
+    getKioskYTDSubmissions.mockRejectedValueOnce(new Error('network down'));
+    getKioskTenantUsers.mockResolvedValue([]);
+    getKioskAgentOfMonth.mockResolvedValue(null);
+    getKioskCampaigns.mockResolvedValue([]);
+    deriveKioskCelebrations.mockReturnValue([]);
+
+    await mountShell();
+
+    expect(screen.getByTestId('kiosk-reconnecting')).toBeInTheDocument();
+    expect(screen.getByText(/Reconnecting/)).toBeInTheDocument();
+    // Not a full error card, not any content panel, and no Retry control.
+    expect(document.querySelector('[data-panel]')).toBeNull();
+    expect(screen.queryByRole('button', { name: /retry/i })).toBeNull();
+  });
+
+  it('a subsequent successful poll clears the indicator and renders content (retry loop honored)', async () => {
+    getKioskYTDSubmissions.mockRejectedValueOnce(new Error('network down'));
+    getKioskTenantUsers.mockResolvedValue([]);
+    getKioskAgentOfMonth.mockResolvedValue(null);
+    getKioskCampaigns.mockResolvedValue([]);
+    deriveKioskCelebrations.mockReturnValue([]);
+
+    await mountShell();
+    expect(screen.getByTestId('kiosk-reconnecting')).toBeInTheDocument();
+
+    // Same 5-minute poll cadence retries the initial-load failure — next
+    // poll succeeds with real data.
+    setData({ subs: SUBS, users: USERS, aom: AOM });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+    });
+
+    expect(screen.queryByTestId('kiosk-reconnecting')).toBeNull();
+    expect(document.querySelector('[data-panel]')).not.toBeNull();
+    expect(getKioskYTDSubmissions).toHaveBeenCalledTimes(2);
+  });
+
+  it('a refresh failure after success stays silent — no indicator, last-good content persists', async () => {
+    setData({ subs: SUBS, users: USERS, aom: AOM });
+    await mountShell();
+    expect(screen.queryByTestId('kiosk-reconnecting')).toBeNull();
+    expect(document.querySelector('[data-panel]')).not.toBeNull();
+
+    // Next poll fails outright — this is a REFRESH failure (last-good data
+    // already on screen), which must stay completely silent.
+    getKioskYTDSubmissions.mockRejectedValueOnce(new Error('network down'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+    });
+
+    expect(screen.queryByTestId('kiosk-reconnecting')).toBeNull();
+    expect(document.querySelector('[data-panel]')).not.toBeNull();
   });
 });
