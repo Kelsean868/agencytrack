@@ -14,6 +14,8 @@ import {
   DEFAULT_WEEKLY_ACTIVITY_FLOORS,
   deriveWeeklyFloorActuals,
 } from '../../utils/weeklyActivityFloors';
+import { computeAgentAwards } from '../../utils/awardsEngine';
+import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
 
 // ── Small date utilities (weekStarting / contractStartDate are YYYY-MM-DD) ──
 
@@ -381,18 +383,78 @@ export function deriveActiveCampaigns(campaigns, today) {
   });
 }
 
+// ── Awards within reach — reuses the established awardsEngine derivation
+//    (computeAgentAwards) verbatim; no new award math. `confirmedData` is
+//    intentionally [] — MeetingMode does not load settlements (a genuinely
+//    new fan-out per-agent settlement fetch would be required to do
+//    otherwise; see the item's scope note). computeAgentAwards already
+//    degrades honestly to `submittedData`-estimated aggregates when
+//    confirmedData is empty (dataSource: 'estimated' on every affected
+//    award), which is the same fallback ManagerAwardsPanel uses when its
+//    own ruleset/settlement fetch fails — not invented here. `ruleset` is
+//    the static DEFAULT_RULESET_2026 (no fetch); a tenant's merged/custom
+//    ruleset is not reflected. ──
+
+export const AWARDS_WITHIN_REACH_MIN_PCT = 60; // "within reach" floor (not yet earned)
+export const AWARDS_WITHIN_REACH_LIMIT = 5;    // top-N agent+award pairs for the scene
+
+/** One row per agent — their single closest in-contention award (>= the
+ *  within-reach floor, not yet eligible), sorted by progress desc, capped
+ *  to AWARDS_WITHIN_REACH_LIMIT. `currentDate` should be a real "now" (not
+ *  `selectedWeek`) — matches AgentAwardsPanel/ManagerAwardsPanel usage. */
+export function deriveAwardsWithinReach(users, ytdSubs, currentDate, ruleset = DEFAULT_RULESET_2026) {
+  const agents = (users || []).filter((u) => u.role === 'agent');
+  const subs = ytdSubs || [];
+  const pairs = [];
+
+  agents.forEach((agent) => {
+    const agentSubs = subs.filter((s) => (s.agentId ?? s.userId) === agent.id);
+    const awards = computeAgentAwards([], agentSubs, agent, currentDate, ruleset);
+
+    let best = null;
+    Object.values(awards).forEach((a) => {
+      if (a.eligible || !a.inContention) return;
+      if (a.progressPercent < AWARDS_WITHIN_REACH_MIN_PCT) return;
+      if (!best || a.progressPercent > best.progressPercent) best = a;
+    });
+    if (!best) return;
+
+    const prim = best.criteria?.[0];
+    if (!prim) return;
+    const name = agent.name ?? agent.displayName ?? agent.email ?? 'Advisor';
+    pairs.push({
+      id: `${agent.id}:${best.id}`,
+      agentId: agent.id,
+      agentName: name,
+      initials: initialsOf(name),
+      unitLabel: agent.unitId ? `Unit ${String(agent.unitId).slice(-4)}` : '',
+      awardId: best.id,
+      awardName: best.name,
+      prize: best.prize,
+      progressPercent: best.progressPercent,
+      valueUnit: prim.unit,
+      current: prim.current,
+      target: prim.target,
+      gap: Math.max(0, prim.target - prim.current),
+    });
+  });
+
+  pairs.sort((a, b) => b.progressPercent - a.progressPercent);
+  return pairs.slice(0, AWARDS_WITHIN_REACH_LIMIT);
+}
+
 // ── The deck — scene availability drives MEETING_ORDER ──
 
 export const SCENE_SEQUENCE = [
   'opening', 'branch', 'units', 'activity', 'production', 'funnel',
-  'exceptions', 'agents', 'recognition', 'celebrations', 'campaign', 'close',
+  'exceptions', 'agents', 'recognition', 'celebrations', 'awards', 'campaign', 'close',
 ];
 
 /**
  * Given the derived model, produce the ordered scene-id list (agents expanded
  * to one scene per run) plus a skip log naming every dropped scene + why.
  */
-export function deriveDeck({ runs, units, exceptions, recognition, anniversaries, activeCampaigns, submissions }) {
+export function deriveDeck({ runs, units, exceptions, recognition, anniversaries, activeCampaigns, submissions, awardsWithinReach }) {
   const scenes = [];
   const skipped = [];
   const hasSubs = (submissions || []).length > 0;
@@ -424,6 +486,9 @@ export function deriveDeck({ runs, units, exceptions, recognition, anniversaries
 
   if (anniversaries.length > 0) scenes.push('celebrations');
   else skipped.push({ id: 'celebrations', reason: 'no work anniversaries this week (birthdays not derivable — no DOB on user docs)' });
+
+  if ((awardsWithinReach || []).length > 0) scenes.push('awards');
+  else skipped.push({ id: 'awards', reason: 'no agent within reach of an award threshold (< 60% progress or already qualified)' });
 
   if (activeCampaigns.length > 0) scenes.push('campaign');
   else skipped.push({ id: 'campaign', reason: 'no active campaigns' });

@@ -5,7 +5,8 @@ import { describe, it, expect } from 'vitest';
 import {
   kpiStatus, floorTiles, classifyFlag, flagRank, latestPersistency,
   avgLatestPersistency, deriveBranchWindows, deriveUnits, deriveAgentRuns,
-  deriveRecognition, deriveAnniversaries, deriveActiveCampaigns, deriveDeck,
+  deriveRecognition, deriveAnniversaries, deriveActiveCampaigns,
+  deriveAwardsWithinReach, deriveDeck,
   lastNWeekStartings, monthOf, quarterOf, sixWeekSpark,
 } from '../MeetingMode.helpers';
 
@@ -189,31 +190,78 @@ describe('deriveActiveCampaigns', () => {
   });
 });
 
+describe('deriveAwardsWithinReach — reuses computeAgentAwards, no new award math', () => {
+  const agentSub = (agentId, api) => ({
+    agentId, status: 'submitted', weekStarting: '2026-03-01', apiSold: api, applicationsSold: 0,
+  });
+  const CURRENT = new Date('2026-06-15'); // same year as fixture weeks; unrelated to real wall-clock
+
+  it('surfaces a single in-contention, not-yet-eligible award (MDRT: 250k inContention, 500k threshold)', () => {
+    const users = [{ id: 'a1', role: 'agent', name: 'Ann', unitId: 'u1' }];
+    const ytd = [agentSub('a1', 320000)]; // 64% of MDRT's 500k threshold
+    const pairs = deriveAwardsWithinReach(users, ytd, CURRENT);
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0]).toMatchObject({
+      agentId: 'a1', agentName: 'Ann', awardId: 'mdrt', awardName: 'MDRT',
+      valueUnit: 'TTD', current: 320000, target: 500000, gap: 180000,
+    });
+    expect(pairs[0].progressPercent).toBe(64);
+  });
+
+  it('excludes an agent whose best award is in-contention but under the 60% floor', () => {
+    const users = [{ id: 'a2', role: 'agent', name: 'Bea' }];
+    const ytd = [agentSub('a2', 260000)]; // inContention (>=250k) but only 52% of 500k
+    expect(deriveAwardsWithinReach(users, ytd, CURRENT)).toEqual([]);
+  });
+
+  it('excludes an award the agent has already qualified for (eligible)', () => {
+    const users = [{ id: 'a3', role: 'agent', name: 'Cy' }];
+    const ytd = [agentSub('a3', 600000)]; // eligible for MDRT (>= 500k threshold)
+    expect(deriveAwardsWithinReach(users, ytd, CURRENT)).toEqual([]);
+  });
+
+  it('sorts multiple agents by progress desc', () => {
+    const users = [
+      { id: 'lo', role: 'agent', name: 'Lo' },
+      { id: 'hi', role: 'agent', name: 'Hi' },
+    ];
+    const ytd = [agentSub('lo', 300000), agentSub('hi', 450000)]; // 60% vs 90%
+    const pairs = deriveAwardsWithinReach(users, ytd, CURRENT);
+    expect(pairs.map((p) => p.agentId)).toEqual(['hi', 'lo']);
+  });
+
+  it('ignores non-agent users and returns [] when nobody qualifies', () => {
+    const users = [{ id: 'm1', role: 'branch_manager', name: 'Mgr' }];
+    expect(deriveAwardsWithinReach(users, [agentSub('m1', 320000)], CURRENT)).toEqual([]);
+  });
+});
+
 describe('deriveDeck — data-driven scene sequence', () => {
   const base = {
     runs: [{ id: 'a', flag: { key: null } }],
     units: [], exceptions: [], recognition: { available: true, producers: [{ id: 'a', rank: 1 }] },
-    anniversaries: [], activeCampaigns: [], submissions: [{ agentId: 'a' }],
+    anniversaries: [], activeCampaigns: [], submissions: [{ agentId: 'a' }], awardsWithinReach: [],
   };
-  it('drops units/exceptions/celebrations/campaign when their data is absent', () => {
+  it('drops units/exceptions/celebrations/awards/campaign when their data is absent', () => {
     const { scenes, skipped } = deriveDeck(base);
     expect(scenes).toEqual(['opening', 'branch', 'activity', 'production', 'funnel', 'agent:a', 'recognition', 'close']);
     const skippedIds = skipped.map((s) => s.id);
-    expect(skippedIds).toEqual(expect.arrayContaining(['units', 'exceptions', 'celebrations', 'campaign']));
+    expect(skippedIds).toEqual(expect.arrayContaining(['units', 'exceptions', 'celebrations', 'awards', 'campaign']));
   });
-  it('includes campaign + celebrations + exceptions + units when data exists', () => {
+  it('includes campaign + celebrations + awards + exceptions + units when data exists', () => {
     const full = {
       ...base,
       units: [{ id: 'u1' }, { id: 'u2' }],
       exceptions: [{ id: 'a', flag: { key: 'floor' } }],
       anniversaries: [{ id: 'a', years: 3 }],
       activeCampaigns: [{ id: 'c1' }],
+      awardsWithinReach: [{ id: 'a:mdrt', agentId: 'a', awardId: 'mdrt' }],
     };
     const { scenes } = deriveDeck(full);
     expect(scenes).toEqual([
       'opening', 'branch', 'units', 'activity', 'production', 'funnel',
-      'exceptions', 'agent:a', 'recognition', 'celebrations', 'campaign', 'close',
+      'exceptions', 'agent:a', 'recognition', 'celebrations', 'awards', 'campaign', 'close',
     ]);
-    expect(scenes.length).toBe(12);
+    expect(scenes.length).toBe(13);
   });
 });
