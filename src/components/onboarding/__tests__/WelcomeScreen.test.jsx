@@ -44,6 +44,35 @@ describe('WelcomeScreen', () => {
   });
 });
 
+// ── Per-slide themed icons (A-8, Fable Tier-4 #20) ───────────────────────────
+
+describe('WelcomeScreen — per-slide themed icons', () => {
+  const iconClassBySlideIndex = [
+    'lucide-sparkles',
+    'lucide-clipboard-list',
+    'lucide-trending-up',
+    'lucide-party-popper',
+  ];
+
+  it('renders a distinct icon for each slide, in order', () => {
+    const { container } = render(<WelcomeScreen onComplete={() => {}} />);
+
+    iconClassBySlideIndex.forEach((expectedClass, i) => {
+      const iconTile = screen.getByTestId('welcome-slide-icon');
+      expect(iconTile.querySelector(`svg.${expectedClass}`)).toBeInTheDocument();
+      if (i < iconClassBySlideIndex.length - 1) {
+        fireEvent.click(screen.getByRole('button', { name: /^Next$/ }));
+      }
+    });
+    // Sanity: exactly one icon tile is ever mounted (not stacked/leaked across slides).
+    expect(container.querySelectorAll('[data-testid="welcome-slide-icon"]').length).toBe(1);
+  });
+
+  it('all four icons are distinct from one another (no accidental duplicate)', () => {
+    expect(new Set(iconClassBySlideIndex).size).toBe(iconClassBySlideIndex.length);
+  });
+});
+
 // ── Dialog a11y contract (§4 dialog sweep) ───────────────────────────────────
 
 describe('WelcomeScreen — dialog a11y', () => {

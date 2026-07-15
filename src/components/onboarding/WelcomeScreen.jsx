@@ -1,27 +1,34 @@
 import React, { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Sparkles, ClipboardList, TrendingUp, PartyPopper } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import useFocusTrap from '../../hooks/useFocusTrap';
 
+// A-8 (Fable Tier-4 #20) — each slide gets a themed icon in place of the
+// persistent brand mark, matched to its content: welcome/hub, weekly
+// logging, progress tracking, and a celebratory close.
 const SLIDES = [
   {
     title: 'Welcome to AgencyTrack',
     body: "Your personal sales performance hub. Track your weekly activity, measure progress toward your goals, and stay on top of every target — all in one place.",
+    Icon: Sparkles,
   },
   {
     title: 'Your Weekly Report',
     body: "Every week, tap 'Start Weekly Report' to log your activity. It takes less than 5 minutes. Submit before Monday 9:00 AM to stay compliant.",
+    Icon: ClipboardList,
   },
   {
     title: 'Track Your Progress',
     body: "Your dashboard shows your KPIs, award progress, and where you stand against your targets. Check the Career tab to see your path to the next level.",
+    Icon: TrendingUp,
   },
   {
     title: "You're All Set",
     body: "Your manager will guide you through the rest. If you ever need to revisit this tour, ask your manager to reset it for you.",
     isLast: true,
+    Icon: PartyPopper,
   },
 ];
 
@@ -74,15 +81,16 @@ export default function WelcomeScreen({ onComplete }) {
           Skip
         </button>
 
-        {/* Brand mark — persistent across all slides */}
+        {/* Per-slide themed icon (A-8) — replaces the persistent brand mark;
+            decorative (lucide sets aria-hidden by default), the heading + body
+            carry the meaning. */}
         <div className="flex justify-center pt-10 pb-0">
-          <img
-            src="/icons.svg"
-            alt="AgencyTrack"
-            width="112"
-            height="112"
-            className="w-28 h-28 dark:ring-1 dark:ring-white/10 rounded-[22px]"
-          />
+          <div
+            className="w-28 h-28 rounded-[22px] bg-primary/10 dark:ring-1 dark:ring-white/10 flex items-center justify-center"
+            data-testid="welcome-slide-icon"
+          >
+            <slide.Icon size={48} strokeWidth={1.75} className="text-primary" />
+          </div>
         </div>
 
         {/* Slide content */}
