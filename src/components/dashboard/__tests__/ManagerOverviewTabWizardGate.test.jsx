@@ -26,6 +26,8 @@ vi.mock('../ManagerHeroSection', () => ({ default: () => null }));
 vi.mock('../BranchKPIStrip',     () => ({ default: () => null }));
 vi.mock('../BranchActivityFeed', () => ({ default: () => null }));
 vi.mock('../TeamMedalsPanel',    () => ({ default: () => null }));
+vi.mock('../ChampionsPanel',     () => ({ default: () => null }));
+vi.mock('../MyWeekPanel',        () => ({ default: () => null }));
 
 import ManagerOverviewTab from '../ManagerOverviewTab';
 

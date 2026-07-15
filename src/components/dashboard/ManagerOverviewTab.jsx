@@ -6,6 +6,8 @@ import ExceptionLeadPanel from './ExceptionLeadPanel';
 import BranchKPIStrip from './BranchKPIStrip';
 import BranchActivityFeed from './BranchActivityFeed';
 import TeamMedalsPanel from './TeamMedalsPanel';
+import ChampionsPanel from './ChampionsPanel';
+import MyWeekPanel from './MyWeekPanel';
 import AgentDrillDrawer from '../manager/AgentDrillDrawer';
 
 // Scope label for the cascade strip / drill context — the manager's own scope.
@@ -48,6 +50,9 @@ export default function ManagerOverviewTab({ role, userProfile, tenantId, onSubm
     companyFloorTotal = 0,
     weeklyPulse = { api: 0, apps: 0, ffi: 0 },
     submissionsByAgent = {},
+    // A-1 ChampionsPanel — ranked weekly champions, derived from the same
+    // already-loaded, already-scoped submissions (see useBranchOverview).
+    weeklyChampions = [],
   } = useBranchOverview(role, userProfile, tenantId);
 
   // Coaching drill drawer — opened by an exception row (or, later, a roster row).
@@ -100,12 +105,24 @@ export default function ManagerOverviewTab({ role, userProfile, tenantId, onSubm
         onDrill={(e) => setDrillAgent(e)}
       />
 
+      {/* A-2 — the manager's OWN current week ("player-coach" — producing
+          managers also sell). Self-contained (own fetch), read-only. */}
+      <div className="mb-6">
+        <MyWeekPanel />
+      </div>
+
       {/* General stats — KPI strip + recognition/recent, below the lead */}
       <BranchKPIStrip kpiData={kpiData} loading={loading} activeAgentCount={inScopeAgentCount} />
 
       <div className="g4-mix mb-6">
         <BranchActivityFeed events={activityEvents} loading={loading} />
-        <TeamMedalsPanel badgeCounts={badgeCounts} loading={loading} />
+        {/* A-1 ChampionsPanel sits ABOVE TeamMedalsPanel in the sidebar column
+            per design intent (manager-v2-shared.jsx) — TeamMedalsPanel itself
+            is unchanged. */}
+        <div className="flex flex-col gap-6">
+          <ChampionsPanel champions={weeklyChampions} loading={loading} />
+          <TeamMedalsPanel badgeCounts={badgeCounts} loading={loading} />
+        </div>
       </div>
 
       {onSubmitReport && (
