@@ -201,6 +201,7 @@ if (isDryRun) {
   console.log(`  users/{a1,um}/yearPlan+monthlyPlan ${YEAR} committed; weeklyPlans/{a1}_${W0}`);
   console.log(`  config/settings  featureFlags {persistencyV2,policyLedgerCampaignLens,awardsProvenance}=true`);
   console.log(`  kioskTokens/vhfix-kiosk-token`);
+  console.log(`  users/vhfix-um2  2nd unit_manager, doc-only, no Auth account (t1-compliance-scope fixture)`);
   console.log(`  cleanup          orphan user docs (email matches synthetic account, id != auth uid)`);
   console.log('\n[dry-run complete — no key required, no writes performed]');
   process.exit(0);
@@ -328,6 +329,50 @@ async function main() {
       console.log(`  [del] users/${d.id} — orphan doc for ${em} (no auth backing)`);
     }
   }
+
+  // ── A14. Second unit_manager (doc-only, Run 8 Tier B — t1-compliance-scope) ──
+  // t1-compliance-scope (tier1.mjs) SKIPs because the branch_manager-eligible
+  // compliance roster (role agent|unit_manager, branchId=staging_branch)
+  // previously resolved to exactly ONE distinct unitId — CompliancePanel's
+  // ScopeSwitch only renders when unitOptions.length>1. Fixing this needs a
+  // 2nd distinct unitId in that roster.
+  //
+  // DEVIATION FROM ORIGINAL 2-FIXTURE DESIGN (Rule 17 — verified against
+  // source, not assumed): the original design added BOTH a 2nd unit_manager
+  // AND a 3rd agent under them. Verified against source that this is
+  // unnecessary — CompliancePanel's roster/unitOptions include unit_manager
+  // ROWS directly (a unit_manager's own doc carries unitId = own doc id, per
+  // seed-staging.mjs buildUserDoc), so a bare 2nd unit_manager with NO agents
+  // already produces 2 distinct unitIds. Adding an agent (vhfix-agent-3) was
+  // traced to ripple far wider: it would flip src/components/manager/
+  // MeetingMode.helpers.js deriveUnits() (role==='agent' grouped by unitId)
+  // to 2 units, which changes deriveDeck()'s `units.length >= 2` gate and
+  // ADDS a whole new "Units" scene to the Meeting Mode deck (t3-meeting-mode-
+  // deck / t3-meeting-funnel-sheet both hard-assert deck=10 scenes with Units
+  // DROPPED) — plus it would inflate MasterSheet's `agentUsers` (role===
+  // 'agent') roster/exception counts on EVERY week (t1-master-sheet's W0
+  // "2 exceptions"/"1/2 filed" and W(-1) "1 exception" assertions). A bare
+  // unit_manager doc (role !== 'agent') is invisible to both of those —
+  // deriveUnits, MasterSheet's agentUsers, useBranchOverview's
+  // complianceScopeIds (inScopeAgentCount/ExceptionLeadPanel), exportService's
+  // production-report roster, and TeamWarsTab (query-driven off actual WAR
+  // docs, not a roster) all filter/derive strictly on role==='agent' or on
+  // actual submission/WAR docs — none of which this fixture ever creates. The
+  // ONLY confirmed ripple is the tenant-wide All Users roster (any-role tenant
+  // count), fixed up in smoke-run8-items.mjs's a3-all-users-roster leg.
+  //
+  // No Auth account: no VH leg logs in as this unit_manager, so a Firestore
+  // user doc alone is sufficient — firestore.rules' users `allow list` for
+  // branch_manager checks only `resource.data.branchId == callerBranchId`,
+  // never that the doc id matches a real Auth uid. Fixed id `vhfix-um2` (not
+  // a real uid) — idempotent, matches the vhfix-* fixture convention.
+  console.log('\n── A14: 2nd unit_manager (doc-only, t1-compliance-scope fixture) ──');
+  await put(T.collection('users').doc('vhfix-um2'), {
+    uid: 'vhfix-um2', tenantId: TENANT_ID, role: 'unit_manager',
+    name: 'Staging Unit Manager Two', email: 'vhfix-um2@agencytrack-staging.test',
+    branchId: BRANCH_ID, unitId: 'vhfix-um2', active: true,
+    createdAt: now(), createdBy: 'seed-fixtures (t1-compliance-scope fixture, no Auth account)',
+  }, 'users/vhfix-um2 (2nd unit_manager, doc-only — t1-compliance-scope fixture)');
 
   // ── A1. Submissions ──
   console.log('\n── A1: submissions ──');
