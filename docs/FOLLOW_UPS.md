@@ -18,258 +18,321 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| External code reviewer — Gemini sunsets 2026-07-17; choose a replacement (MEDIUM, dated, banked 2... | MEDIUM | — | 2026-07-17 | 3884 |
-| HARD DEADLINE — Node 20 gen-1 Cloud Functions runtime decommission 2026-10-30 (banked 2026-07-09,... | HIGH | — | 2026-10-30 | 411 |
-| Functions runtime + SDK upgrade — Node.js 20 EOL + `firebase-functions` 4.x → 5.x (MEDIUM with ha... | MEDIUM | — | 2026-10-30 | 2182 |
-| Company Config v2 — next major track: every business-policy constant tenant-configurable (banked ... | HIGH | — | — | 270 |
-| Design-conformance backlog — 14 NEEDS-RULING operator decisions block sequencing (banked 2026-07-... | HIGH | — | — | 475 |
-| Functions runtime + firebase-functions SDK upgrade — Node 20 EOL + SDK 4.9.0 → ≥5.1.0 (banked 202... | HIGH | — | — | 1042 |
-| Onboarding tenure — manager confirmation surface (banked PR #649, 2026-06-15, HIGH — near-term) | HIGH | — | — | 1310 |
-| tatillife_smoke tenant — post-prod-run live verification (banked PR #674 `3730035`, HIGH until run) *(verification uncertain)* | HIGH | — | — | 1482 |
-| H3 FLIP-GATE — `usesPolicyLedger:true` requires end-to-end parity validation before any agent is ... | HIGH | — | — | 2638 |
-| MDRT naming collision — three different "MDRT" numbers, one label (banked 2026-07-10, promotion s... | MEDIUM | — | — | 278 |
-| Master Sheet STATUS filters — need a YTD + companyMinimums read path (banked 2026-07-10, Run 4 It... | MEDIUM | — | — | 294 |
-| Master Sheet LEVEL filter — blocked on a populated career-level field (banked 2026-07-10, Run 4 I... | MEDIUM | — | — | 302 |
-| Planner recurrence — `ENDS=Never` rolling-horizon materializer (banked 2026-07-10, Run 4 Item 5, ... | MEDIUM | — | — | 326 |
-| Planner recurrence — "edit this and all future" instances (banked 2026-07-10, Run 4 Item 5, MEDIU... | MEDIUM | — | — | 334 |
-| Run 4 pre-promotion manual checks not done this cycle — carry to next Phase 0 (banked 2026-07-10,... | MEDIUM | — | — | 342 |
-| 1-on-1 takeover — needs a real design pass (banked 2026-07-10, Run 4 Item 6 recon, MEDIUM — desig... | MEDIUM | — | — | 355 |
-| Seeder env-file foot-gun — `seed-fixtures.mjs` silently resets staging/sales_manager passwords wi... | MEDIUM | — | — | 387 |
-| Rebase `chore/tier0-smoke` onto main before it goes any staler (banked 2026-07-09, promotion sess... | MEDIUM | — | — | 419 |
-| Run-3 candidate worklist — hero-card conformance gaps (banked 2026-07-09, PR #848 recon, MEDIUM —... | MEDIUM | — | — | 435 |
-| React Query — DON'T-ADOPT (now); re-evaluate only on a real caching trigger (banked 2026-07-07, P... | MEDIUM | — | — | 453 |
-| Motion pop-in rollout — skeleton kit built, not yet wired to any live panel (banked 2026-07-07, P... | MEDIUM | — | — | 465 |
-| Data-architecture phase docs — net-new surfaces from #836 need dedicated design docs before dispa... | MEDIUM | — | — | 483 |
-| Game Plan manager surface — Fork B: whole-plan suggest-back (banked 2026-07-03, PR #785 post-merg... | MEDIUM | — | — | 591 |
-| EFF-002 Phase 2 — per-manager-tab code-splitting + Rollup `manualChunks` vendor/icon grouping (ba... | MEDIUM | — | — | 666 |
-| `tatillife_south` null-unitId agent — data fix, live tenant (banked 2026-07-03, PR #785 Phase 0.4... | MEDIUM | — | — | 701 |
-| Track K · K7 → server-side 24h-windowed cooldown enforcement in `notifyFinancingAdjustment` CF (b... | MEDIUM | Track K | — | 745 |
-| Pre-pilot CodeRabbit codebase audit over money/legal/security surfaces (banked K7-cleanup, 2026-0... | MEDIUM | K7 | — | 796 |
-| Track K · K6 → garnish incentive-payments component needs an incentives ledger source (banked K6,... | MEDIUM | Track K | — | 837 |
-| Track K · K2 — RollForwardCheck reconciliation advisory (banked K2, 2026-06-25, MEDIUM — design c... | MEDIUM | Track K | — | 885 |
-| Money Needs merged allocator — general 6% premium-tax handling (banked merged-allocator PR, 2026-... | MEDIUM | — | — | 911 |
-| Nav redesign — producing-manager "MINE" surfaces have no own-producer route yet (banked PR-1 nav-... | MEDIUM | — | — | 977 |
-| MonthlyPlanModal — Gemini hardening pass (banked PR #671, 2026-06-17, LOW-MED) | MEDIUM | — | — | 1217 |
-| GoalsPanel SelfTab unmount loses in-progress PolicyLedgerPanel entries (banked PR #653, 2026-06-1... | MEDIUM | — | — | 1277 |
-| Onboarding identity — CF-based agentNumber uniqueness check (banked PR #646, 2026-06-15, MEDIUM) | MEDIUM | — | — | 1324 |
-| Gamification — leaderboard reset-model decision (banked 2026-06-10, MEDIUM pre-scale) | MEDIUM | — | — | 1727 |
-| Daily Capture anchor strip — targets + dials chip (MEDIUM, banked 2026-06-02 from Daily Capture v... | MEDIUM | — | — | 2008 |
-| Daily Capture reporting-mode governance subsystem (MEDIUM, banked 2026-06-02 from Daily Capture v... | MEDIUM | — | — | 2029 |
-| Social-channel inclusion in canonical aggregations — should `namesFromSocial` count toward app-wi... | MEDIUM | — | — | 2101 |
-| Wizard v2 — Decision-A SUGGESTED-atom + goal-seeding (MEDIUM, banked 2026-06-01 from Wizard v2 PR... | MEDIUM | — | — | 2153 |
-| SM access to ManagerAwardsPanel + BmAtRiskPanel — deliberate decision needed (MEDIUM, banked 2026... | MEDIUM | — | — | 2230 |
-| Phase 9 — SM target: multi-territory branch-based resolution (MEDIUM, banked 2026-05-28) | MEDIUM | — | — | 2308 |
-| Phase 9 — SM write-model inconsistency: SM can write unitGoals but not branchGoals (MEDIUM, banke... | MEDIUM | — | — | 2322 |
-| Branch protection: require CI status checks before merge (MEDIUM, banked 2026-05-28) | MEDIUM | — | — | 2381 |
-| Smoke script cleanup discipline — stray policies/notifications accumulate on test agent (MEDIUM, ... | MEDIUM | — | — | 2400 |
-| Leaderboard ranking not filtered by `active` flag (MEDIUM, banked 2026-05-24) | MEDIUM | — | — | 2622 |
-| Track J fast-follow — Tenant-Admin in-app editor for the tenure band table (MEDIUM, banked 2026-0... | MEDIUM | Track J | — | 2794 |
-| Permanent test-data cleanup utility (MEDIUM, surfaced 2026-05-08 during C3) | MEDIUM | — | — | 2932 |
-| Extract `CsvImportModalShell` (MEDIUM, surfaced 2026-05-08 during C3) | MEDIUM | — | — | 2962 |
-| Kiosk team activity slideshow (MEDIUM, concept locked 2026-05-10) | MEDIUM | — | — | 3115 |
-| SCOPE-1 — Tenant-wide persistency aggregate helper (MEDIUM, post-pilot) | MEDIUM | — | — | 3208 |
-| SCOPE-2 — Tighten persistency `allow list` rule (MEDIUM, post-pilot) | MEDIUM | — | — | 3220 |
-| TEST-N — Build Firebase rules-testing harness (MEDIUM, post-pilot) | MEDIUM | — | — | 3242 |
-| Track J (V2 Redesign) — Game Plan v2 — remaining slices (MEDIUM, banked 2026-06-03, PR #438) | MEDIUM | Track J | — | 3577 |
-| Track J (V2 Redesign) — Wire BranchManagerProductionView ranked table + standalone Leaderboard po... | MEDIUM | Track J | — | 3685 |
-| Track J (V2 Redesign) — App-wide `text-gold` + adjacent contrast pass (MEDIUM/DESIGN, banked 2026... | MEDIUM | Track J | — | 3840 |
-| Financing ruleset code comment overclaims configurability (banked 2026-07-10, promotion session, ... | LOW | — | — | 286 |
-| Master Sheet — unit friendly names absent (banked 2026-07-10, Run 4 Item 2, LOW — display polish) | LOW | — | — | 310 |
-| Company Config toggle — "count converted service calls as Tel Contacts" (banked 2026-07-10, Run 4... | LOW | — | — | 318 |
-| Vercel preview env scoping — confirm branch previews get no live backend (banked 2026-07-10, prom... | LOW | — | — | 363 |
-| Vitest on Windows — worker contention flakes under concurrent runs (banked 2026-07-10, Run 4, LOW... | LOW | — | — | 371 |
-| Recon docs must carry a validity-SHA header — new standing rule (banked 2026-07-10, Run 4, LOW — ... | LOW | — | — | 379 |
-| VH leg `t2-financing-k9-k7` flaky on first paint — no FAIL screenshot captured (banked 2026-07-09... | LOW | — | — | 395 |
-| Stale prod IAM binding — expired conditional grant on `cloudbuild` service agent (banked 2026-07-... *(verification uncertain)* | LOW | — | — | 403 |
-| Motion-verifier prod run — optional, needs `A11Y_<ROLE>_EMAIL`/`PASSWORD` env vars (banked 2026-0... | LOW | — | — | 427 |
-| Post-redesign promotion review — no rules/functions changes accumulated during the reskin+conform... | LOW | — | — | 491 |
-| EFF Phase-1 — two follow-ups banked from PR #802 bot review (2026-07-05, LOW) | LOW | — | — | 499 |
-| QuickAddMenu (mobile ＋ bottom sheet) lacks a visible close affordance (LOW, a11y-parity) | LOW | — | — | 555 |
-| Wizard draft-gate — two CodeRabbit nitpicks banked from PR #794 (LOW, deferred as out-of-scope) | LOW | — | — | 563 |
-| PR-B3 housekeeping — stale pre-deploy comment in `smoke-plan-suggestions-b3.mjs` (banked 2026-07-... | LOW | — | — | 609 |
-| PR #791 — `live-b3-post-deploy.mjs` hardening (banked 2026-07-04, LOW — Rule 21 out-of-scope carry) | LOW | — | — | 621 |
-| PR-B3 fast-follow — notify-on-send ping for plan suggestions (banked 2026-07-04, LOW — K10b prece... | LOW | K10b | — | 689 |
-| `onFinancingEscalationCreate` — filter inactive BM recipients + friendly reason labels (banked 20... | LOW | — | — | 715 |
-| CI maintenance — workflows target deprecated Node 20 actions (banked 2026-07-03, LOW — CI hygiene) | LOW | — | — | 729 |
-| Track K · K10a → roster does not surface the 24-month agreement-term clock for wind-down agents (... | LOW | Track K | — | 739 |
-| Track K · K7 → `setFinancingConfig` merge-overwrite guard when a 2nd config field lands (banked K... | LOW | Track K | — | 755 |
-| Track K · K7 → defensive `typeof`-string guard on the CF recipient read (banked K7, 2026-06-26, L... | LOW | Track K | — | 761 |
-| Track K · K7 → reset `selectedAgent` on `tenantId` change in FinancingRiskPanel (banked K7, 2026-... | LOW | Track K | — | 767 |
-| Track K · K7 → `mailErr?.message` optional chaining in CF mail catch (banked K7 post-merge, 2026-... | LOW | Track K | — | 773 |
-| Track K · K7 → `monthLabel` client-supplied in CF notification body (banked K7 post-merge CR fina... | LOW | Track K | — | 779 |
-| `verify-financing-notify-k7-live.mjs` hardening — config-mutation window + env read (banked K7-cl... | LOW | K7 | — | 785 |
-| Escape unescaped table-cell pipes in CONTEXT docs (banked K6 fast-follow, 2026-06-26, LOW cosmetic) | LOW | K6 | — | 802 |
-| Client-side `serviceMonths` integer validation in `reconcileFinancing()` (banked K6 fast-follow, ... | LOW | K6 | — | 810 |
-| CLAUDE.md persistency annotation — `0-100` annotation is stale (banked K4, 2026-06-25, LOW doc-fix) | LOW | K4 | — | 818 |
-| Track K · K3 adapter — doc note correction: `isStaff` and `lapsedSurrenderedUnder2yrAPI` sourcing... | LOW | Track K | — | 826 |
-| Track K · K3 — ruleset figures are 2026 placeholders pending confirmation (banked K3, 2026-06-25,... | LOW | Track K | — | 867 |
-| Track K · K4 — Q2+ adapter uses `dateSubmitted` bucketing; cross-quarter policies may be missed (... | LOW | Track K | — | 873 |
-| SettlementPanel — `loadData` weak overlapping-resolution race (banked FU-H1, 2026-06-25, LOW — no... | LOW | — | — | 879 |
-| Track K — lift agent-selection into FinancingTab (banked K2, 2026-06-25, LOW — UX) | LOW | Track K | — | 893 |
-| Track K · K5 — `getOwnPolicies` → shared `getPoliciesByAgent` rename (banked K5, 2026-06-25, LOW ... | LOW | Track K | — | 899 |
-| Track K · K3+K5 — `managerSettledAPI` precedence in financing/bonus Gross (banked K5, 2026-06-25,... | LOW | Track K | — | 905 |
-| Money Needs merged allocator — per-product avg-policy divisor (banked merged-allocator PR, 2026-0... | LOW | — | — | 921 |
-| yearPlanAllocation.js — orphaned 4-line allocation helper (banked PR-U2, 2026-06-25, LOW — dead-c... | LOW | — | — | 929 |
-| Review-coverage gap — PR #744 (U1) shipped on Gemini-only review (banked PR-U2, 2026-06-25, LOW —... | LOW | — | — | 937 |
-| GoalDecompositionTab — taxConnector label misleading when preTaxAlreadyApplied=true (banked PR #7... | LOW | — | — | 943 |
-| GoalDecompositionTab + MoneyNeedsPanel — shared localStorage key (banked PR #734, 2026-06-23, LOW) | LOW | — | — | 953 |
-| Nav redesign — PR-4 LOW follow-ups (banked PR #731, 2026-06-23) | LOW | — | — | 969 |
-| WeekConfirmView steppers — test the type-then-click-button race (banked Wizard v3 Phase 1, 2026-0... | LOW | — | — | 991 |
-| Producing-manager fast-path Confirm — deferred Sunday smoke leg (banked PR #724, 2026-06-22, LOW) | LOW | — | — | 997 |
-| Producing-manager fast-path — Gemini backstop nits (banked PR #724 post-merge Gemini, 2026-06-22,... | LOW | — | — | 1009 |
-| PM-2 smoke — BM own-data write-seeding for value-level read (banked PR #719, 2026-06-21, LOW) | LOW | — | — | 1018 |
-| MoneyNeedsPanel amount inputs — `=== 0 ? '' :` idiom vs `\|\| ''` for null safety (banked PR #718 G... | LOW | — | — | 1024 |
-| Money Needs 1.7 — per-line renewal sub-chips need a data source (banked PR #706, 2026-06-21, LOW) | LOW | — | — | 1030 |
-| MonthlyPlanModal:41 — `todayTT.split` lacks a null guard (banked PR #708 Gemini OUT-OF-SCOPE, 202... | LOW | — | — | 1036 |
-| Wizard v3 — "Target Dials" semantics: cold-calls-only vs total calls (product Q, banked 2026-06-2... | LOW | — | — | 1067 |
-| A11Y smoke agent — no unstarted-but-fillable week, so the walk's own write-read-verify never runs... | LOW | — | — | 1077 |
-| Rules-test harness — `FIRESTORE_EMULATOR_HOST` parse is not IPv6-safe (banked PR #703 Gemini, 202... | LOW | — | — | 1091 |
-| CONTRACT: remove `weeklyActivityFloors.contactsMade` from companyMinimums (LOW — after #685 merge... | LOW | — | — | 1105 |
-| Daily Capture v2 Phase 2 — back-fill strip selected-state visual (banked PR #686, LOW) | LOW | — | — | 1121 |
-| Daily Capture v2 Phase 2 — axe baseline re-sync vs fresh main (banked PR #686, LOW) | LOW | — | — | 1131 |
-| Daily Capture v2 — wizard direct-entry default carries the Sunday edge (banked PR #688, LOW) | LOW | — | — | 1141 |
-| Daily Capture v2 — aggregate-on-save could be non-blocking (Gemini #1, banked PR #688, LOW) | LOW | — | — | 1153 |
-| ProfileScreen.todayLocalDate — catch-up entry dated browser-local, not TT (banked PR #688, LOW) | LOW | — | — | 1165 |
-| getMostRecentSunday peripheral read/display selectors — browser-local week (banked PR #688, LOW) | LOW | — | — | 1177 |
-| team-roster data layer (#682) — Gemini LOW robustness items (banked PR #683 post-merge, 2026-06-1... | LOW | — | — | 1189 |
-| Update-button reload — event-driven hardening (banked PR #681 review, 2026-06-17, LOW) | LOW | — | — | 1203 |
-| SW navigation strategy — NetworkFirst app shell (Option B) (banked PR #673 sw-version-update-prom... | LOW | — | — | 1261 |
-| Policy ledger producing-manager write — UM Arm A + Arm B other-owner DENY emulator cases (banked ... | LOW | — | — | 1294 |
-| Onboarding tenure — rule-level cross-field floor: `monthsInIndustry >= monthsAtTatil` (banked PR ... | LOW | — | — | 1338 |
-| Plan-lens UM compliance — do UMs commit weekly plans? (banked PR #640, 2026-06-15, LOW) | LOW | — | — | 1354 |
-| Awards reach pins — Firestore persistence for cross-device sync (banked PR #641, 2026-06-15, LOW) | LOW | — | — | 1370 |
-| CommissionPlayground `submissions={[]}` in manager GoalsPanel — pure rate-calculator vs live data... | LOW | — | — | 1384 |
-| Smoke hardening — confirm deployed SHA before asserting (banked PR #643, 2026-06-15, LOW) | LOW | — | — | 1398 |
-| goalsService — blanket .catch(() => null) on agent-doc reads (banked 2026-06-13, LOW) | LOW | — | — | 1414 |
-| `VITE_GAME_PLAN_LOOP_ENABLED` kill-switch — remove once planning loop is stable (banked 2026-06-1... | LOW | — | — | 1428 |
-| Bulk pilot-roster provisioning + link export (banked 2026-06-12, LOW) | LOW | — | — | 1438 |
-| Copy invite link — Create-time link affordance (banked 2026-06-11, LOW) | LOW | — | — | 1450 |
-| Money Needs — per-tenant taxonomy via `config/budgetCategories` (banked 2026-06-11, LOW) | LOW | — | — | 1466 |
-| #547 deferred-verify: branch dropdown verified live via provisioning (banked 2026-06-10, LOW) *(verification uncertain)* | LOW | — | — | 1502 |
-| AgentReportDocument — add seminarsConducted + tradeshowsAttended to PDF (banked 2026-06-10, LOW) | LOW | — | — | 1521 |
-| Dashboard background Firestore permission error — investigate listener (banked 2026-06-10, LOW) | LOW | — | — | 1535 |
-| computePoints — structural bypass of extractFields (banked 2026-06-10, downgraded 2026-06-11, LOW) | LOW | — | — | 1551 |
-| LoginPattern backdrop — extract to shared component (banked 2026-06-09, LOW) | LOW | — | — | 1569 |
-| recoverEmail action mode unhandled — falls through to LoginScreen (banked 2026-06-10, LOW) | LOW | — | — | 1585 |
-| BadgeGrid → gamificationConfig reconciliation (banked 2026-06-10, LOW) | LOW | — | — | 1615 |
-| `managerWeeklyReports` — `validWarWrite()` hasAll-only, no hasOnly guard (banked 2026-06-15, LOW) | LOW | — | — | 1639 |
-| Playwright best-practices sweep — verification scripts (banked 2026-06-08, LOW) | LOW | — | — | 1651 |
-| setupBypassSession SPOF (LOW, informational) *(verification uncertain)* | LOW | — | — | 1715 |
-| Gamification — API-vs-app-count weighting review (banked 2026-06-10, LOW) | LOW | — | — | 1745 |
-| Gamification — optional dials-points cap (banked 2026-06-10, LOW) | LOW | — | — | 1759 |
-| leaderboardAggregate: `loadInputs` year derivation — make TT-consistent (banked 2026-06-14, LOW) | LOW | — | — | 1831 |
-| Weekly Planner S2 derived-state live walk (LOW, banked from Weekly Planner v2 Slice 3a, carried f... | LOW | — | — | 1942 |
-| Over-goal MDRT marker treatment on the HeroCard (LOW, banked 2026-06-03 from HeroCard marker-labe... | LOW | — | — | 1956 |
-| Daily Capture streak mechanics (LOW until prioritized, banked 2026-06-02 from Daily Capture v2 Sl... | LOW | — | — | 2051 |
-| Trailing autosave permission error after submit — cosmetic console noise (LOW, banked 2026-06-01 ... *(verification uncertain)* | LOW | — | — | 2074 |
-| Wizard v2 PR2 — mobile expand-to-sheet variant (LOW, banked 2026-06-01 from Wizard v2 PR2) | LOW | — | — | 2132 |
-| Track J — Cyril agents have goals + policies but no seeded submissions (LOW, banked 2026-06-03 fr... | LOW | Track J | — | 2263 |
-| Track J — SM picker default-to-populated-branch UX nicety (LOW, banked 2026-06-01 from PR #411 li... | LOW | Track J | — | 2281 |
-| Track F — peer-BM branch-scoped exclusion (LOW, banked 2026-05-27) | LOW | Track F | — | 2334 |
-| H3 Phase 2 real-data parity sweep — re-run when agent has ≥10 settled policies (LOW, banked 2026-... | LOW | — | — | 2353 |
-| F2.2 unarchive — archive is one-way in UI; add field-flip path when needed (LOW, banked 2026-05-27) | LOW | — | — | 2367 |
-| H4 — contributedPolicyIds array growth on long-lived pending entries (LOW, banked 2026-05-28) | LOW | — | — | 2428 |
-| CF emulator integration tests for FieldValue writes (LOW, banked 2026-05-28) | LOW | — | — | 2442 |
-| H3 existing-policy date migration (LOW, banked 2026-05-28) | LOW | — | — | 2458 |
-| H3 — `validate()` raw `new Date()` date guards (LOW, banked 2026-05-28) | LOW | — | — | 2477 |
-| H3 — `getTodayTT()` en-CA locale dependency note (LOW, banked 2026-05-28) | LOW | — | — | 2491 |
-| Wizard `SOCIAL_PLATFORMS` TikTok expansion — consider adding for symmetric posts-vs-leads cross-t... | LOW | — | — | 2505 |
-| moneyNeeds `shareWithSm` owner-update arm is UI-gated only — no rule enforcement (LOW, banked 202... | LOW | — | — | 2523 |
-| Track I I2 — Monthly recruiting standards + accountability flag (LOW, banked 2026-05-23) | LOW | Track I | — | 2537 |
-| Track I I2 — `recruitsInFirstWeeks` auto-derive from `contractStartDate` (LOW, banked 2026-05-23) | LOW | Track I | — | 2551 |
-| Track I I2 — Head-of-sales definitional confirmation for `candidatesAssessed` + `agentsContracted... | LOW | Track I | — | 2565 |
-| Track I I2 — Possible compliance edit-freeze for submitted monthly rollups (LOW, banked 2026-05-23) | LOW | Track I | — | 2584 |
-| terminatedAt timestamp + D4 net-new refinement (LOW, banked 2026-05-24) | LOW | — | — | 2601 |
-| `deactivateUser` CF — wrap naked awaits in try/catch for diagnostics (LOW, banked 2026-05-24) | LOW | — | — | 2660 |
-| TOOLING — extract + unit-test the 16 inline CFs in `functions/index.js` (LOW, banked 2026-05-22) | LOW | — | — | 2687 |
-| Track I I3b — `escalationLogic.js` ↔ `accountabilityFlag.js` sync (LOW, banked 2026-05-22) | LOW | Track I | — | 2705 |
-| Track I I3 — 2-consecutive-week intensifier (LOW, banked 2026-05-22) | LOW | Track I | — | 2724 |
-| Track I I3 — `ManagerDashboard` Overview accountability chip (LOW, banked 2026-05-22) | LOW | Track I | — | 2738 |
-| I §6 — Default new agents to `licenseStatus: 'provisional'` at creation (LOW, banked 2026-05-24) | LOW | — | — | 2752 |
-| BOA-teardown — remove `BOA` from `prospectingSource` once legacy docs are backfilled (LOW, banked... | LOW | — | — | 2770 |
-| Track J3 → Track I — Manager levels 8–10 production model (LOW, banked 2026-05-20) | LOW | Track J3 | — | 2814 |
-| Verify PR #166 shakedown harness fixes via runtime re-run (LOW, deferred 2026-05-15) | LOW | — | — | 2828 |
-| Delete tenant_admin historical test submissions (LOW, backfill cleanup) | LOW | — | — | 2853 |
-| Delete branch_manager historical test submissions (LOW, backfill cleanup) | LOW | — | — | 2859 |
-| Migrate EditConfigModal + BranchEditorModal to useFocusTrap (LOW, filed during C2) | LOW | — | — | 2911 |
-| Goal-doc audit-field naming inconsistency (LOW, surfaced 2026-05-08 during C3) | LOW | — | — | 2994 |
-| Defaults-warn banner positive-render test (LOW, surfaced 2026-05-08 during C3 extended verification) | LOW | — | — | 3086 |
-| `Bulk Import Goals` CTA label wraps at 390px (LOW, surfaced 2026-05-08 during C3 Q1 design review) | LOW | — | — | 3098 |
-| Kiosk per-branch customization (LOW, deferred 2026-05-10) | LOW | — | — | 3145 |
-| fieldHelpers / extractFields consolidation (LOW, banked 2026-05-10) | LOW | — | — | 3171 |
-| PERF-1 — `getAvailableMonths` tenant-wide unfiltered query (LOW, post-pilot) | LOW | — | — | 3232 |
-| WALK-2 — Agent self-write path coverage for persistency walks (LOW, post-pilot) | LOW | — | — | 3254 |
-| FU-I — Parameterize hardcoded TENANT_ID constants in seed/cleanup/shakedown scripts (LOW) | LOW | FU-I | — | 3305 |
-| Cross-branch test fixture: A11Y_BRANCH_MANAGER_2 (LOW, banked PR #266) | LOW | — | — | 3456 |
-| `managerActivityStandardOverrides` update arm: pin managerId/tenantId immutable (LOW, banked PR #... | LOW | — | — | 3472 |
-| Track H — isBdoDso / monthsInIndustry / monthsAtTatil — no UI write path (LOW, banked H1 PR #300) | LOW | Track H | — | 3486 |
-| Track H — orphan `jointCalls` CG index reconciliation (LOW, banked H1 PR #300) *(verification uncertain)* | LOW | Track H | — | 3503 |
-| Track J (V2 Redesign) — Shell brand subline requires new data-fetch (LOW, banked 2026-05-30, PR #... | LOW | Track J | — | 3517 |
-| Track J (V2 Redesign) — `surfaceSoft` token revisit across V2 screens (LOW, banked 2026-05-30, PR... | LOW | Track J | — | 3535 |
-| Track J (V2 Redesign) — Component test coverage for CareerPortal / HistoryTab / AgentAwardsPanel ... | LOW | Track J | — | 3551 |
-| awardsEngine.js per-line filter gap (LOW, banked 2026-06-13, Slice 2b design) | LOW | — | — | 3602 |
-| Pre-existing color-contrast failures outside the sidebar (LOW, banked 2026-05-30, PR #392) *(verification uncertain)* | LOW | — | — | 3624 |
-| Track J (V2 Redesign) — HeroCard YoY-delta chip deferred (LOW, banked 2026-05-30, PR #393) | LOW | Track J | — | 3651 |
-| Track J (V2 Redesign) — DeliveryStripCard stubbed to null; wire to Track H policies (LOW, banked ... | LOW | Track J | — | 3665 |
-| Track J (V2 Redesign) — AgentProductionView floor bar uses hardcoded default tenure bands; does n... | LOW | Track J | — | 3702 |
-| Track J (V2 Redesign) — Dual-consumable computations.js — eliminate the CJS twin entirely (LOW, b... | LOW | Track J | — | 3716 |
-| Track J (V2 Redesign) — P1b leaderboard CF: multi-tenant iteration (LOW, banked 2026-05-31, PR #400) | LOW | Track J | — | 3735 |
-| Track J (V2 Redesign) — P1b leaderboard CF: on-write trigger optimization (LOW, banked 2026-05-31... | LOW | Track J | — | 3749 |
-| Track J (V2 Redesign) — P3 Production Leaderboard: converge the kiosk medal onto ui/MedalCoin (LO... | LOW | Track J | — | 3779 |
-| `DailyEntryModal.test.jsx` timer flap — first strike, watch (LOW/TEST-STABILITY, banked 2026-06-05) | LOW | — | — | 3822 |
-| Track J (V2 Redesign) — GamePlanV2 component test coverage: `PlanAnchorStrip` + `PlanCascade` (LO... | LOW | Track J | — | 3903 |
-| Settlements manager reads — tenant-scope (no unitId/branchId on docs) (LOW, banked 2026-06-05) | LOW | — | — | 3915 |
-| Gamification — badge eligibility thresholds machine-readable in config (banked 2026-06-10, LOW) | LOW | — | — | 3936 |
-| yearPlan rules — field=path cross-checks + licenseProfile/status value constraints (LOW, banked 2... | LOW | — | — | 3963 |
-| .mjs emulator rules tests — manual-only, not wired into CI (LOW, banked 2026-06-11, PR #571) | LOW | — | — | 3985 |
-| SEC-012 kiosk branch-scoping — two follow-ups banked (2026-07-05, PR #801 `3d7c391e`) | — | SEC-012 | — | 511 |
-| A11y sweep L1-5b — UX-001 designed empty state shipped; A11Y-002 + A11Y-003 verified NOT-actionab... | — | — | — | 523 |
-| A11y sweep L1-5a — RESOLVED (2026-07-05, PR `fix/a11y-h1-topbar-skiplink`) + one banked wayfindin... | — | — | — | 535 |
-| BUG-102 — Week number disagrees between dashboard topbar and Daily Capture — RESOLVED (2026-07-05... | — | — | — | 545 |
-| Goals v3 closure sweep — two items resolved, two banked (2026-07-04, PR #792 `41935ef8` goals-v3-... | — | — | — | 575 |
-| EFF-004 follow-ups — MDRT badge backfill · threshold reconcile · YTD year-attribution (banked 202... | — | — | — | 638 |
-| L1-1/L1-2 follow-ups — badge semantics · test-mock consolidation · mdrt_pace hardening · mdrt_pac... | — | — | — | 652 |
-| Track K · K1 — admin corrective / backward status transition (banked K1, 2026-06-25, deferred per... | — | Track K | — | 845 |
-| Track K · A.4 Staff-policy credit-filter — staff `'exclude'` path needs a ledger flag (carry from... | — | Track K | — | 853 |
-| Track K · K3 — live-data wiring adapter for the bonus engine (banked K3, 2026-06-25, lands with K8) | — | Track K | — | 861 |
-| Nav redesign — mobile pin edit-mode (banked PR-2 nav-pr2-pinned, 2026-06-22, deferred this PR) | — | — | — | 963 |
-| Producing-manager fast-path — `mp-report` direct-nav stays full-path (scope note, banked PR #724,... | — | — | — | 1003 |
-| seed-first-tenant-admin — service-account-key-archived.json as fallback key (banked 2026-06-09, X... | — | — | — | 1601 |
-| Nexus Glass S3 sweep — hero census canon (banked 2026-06-07, PR #534) | — | — | — | 1668 |
-| Nexus Glass recipe HTMLs — AA tables need regeneration from module outputs (banked 2026-06-06, PR... | — | — | — | 1773 |
-| SettlementPanel — TT-year derivation and display (C-001 / C-002) (banked 2026-06-06, Gemini harvest) | — | — | — | 1799 |
-| Functions day — leaderboardAggregate hardening + S3b nudge CF (banked 2026-06-06, Gemini harvest) | — | — | — | 1815 |
-| GoalDecompositionTab — sort-stability + NaN guard (banked 2026-06-06, Gemini harvest) | — | — | — | 1843 |
-| LoginScreen — responsive backdrop on narrow viewports (banked 2026-06-06, Gemini harvest) | — | — | — | 1857 |
-| Persistency Mgr v2 — remaining slices (banked 2026-06-05 from Persistency Mgr v2 S1, PR #505) | — | — | — | 1869 |
-| Manager-program backlog | — | — | — | 1899 |
-| Weekly-activity planner — remaining slices (banked 2026-06-03 from Weekly Planner v2 Slice 1, PR ... | — | — | — | 1920 |
-| Policy Ledger v2 — deferred slices (banked 2026-06-02 from Policy Ledger v2 Slice 1 PR #432) | — | — | — | 1970 |
-| Policy Reconciliation v2 — Slice 2 (deferred, banked 2026-06-03 from Policy Reconciliation v2 Sli... | — | — | — | 1989 |
-| HIGH#4 — Programmatic walkthroughs miss state-persistence interactions (surfaced 2026-05-08) | — | — | — | 2867 |
-| A11Y dark-mode story — CLOSED in PR7 | — | — | — | 3020 |
-| React Compiler adoption — already documented below; left in place for context | — | — | — | 3040 |
-| React Compiler adoption (long-term, conditional) | — | — | — | 3044 |
-| SEC-9b — Cross-tenant isolation audit | — | SEC-9b | — | 3058 |
-| Login screen logo | — | — | — | 3072 |
-| Add CI step for Firestore index deployment (POST-PILOT, banked 2026-05-12 during pilot-readiness ... | — | — | — | 3268 |
-| Phase 7-8 Pre-Track Verifications | — | Track Verifications | — | 3326 |
-| Workshop-Driven Roadmap Revision Items (2026-05-20) | — | — | — | 3346 |
-| Track I I1.3a — Full-freshness jointCalls-write trigger (banked PR #258) | — | Track I | — | 3373 |
-| Track F F1 — Coaching Notes deferred items (banked PR #242) | — | Track F | — | 3390 |
-| Track F F2 — Joint-Call Log deferred items (banked PR #244) | — | Track F | — | 3410 |
-| Track F F3 — Prospect-Info deferred items (banked PR #246) | — | Track F | — | 3432 |
-| Track J (V2 Redesign) — P1b leaderboard CF: reconciled-production swap point (FU-2 reference, ban... | — | Track J | — | 3765 |
-| `CompliancePanel.nudge.test.jsx` timing flap — stabilize with proper async waits (**RE-OPENED — s... | — | — | — | 3793 |
-| DataSourceBadge "Estimated" — `bg-warning/15 text-warning` light-mode contrast (added PR #403) *(verification uncertain)* | — | — | — | 3852 |
-| AgentProductionView hero avatar — `bg-primary text-white` dark-mode contrast (added PR #403) *(verification uncertain)* | — | — | — | 3862 |
+| External code reviewer — Gemini sunsets 2026-07-17; choose a replacement (MEDIUM, dated, banked 2... | MEDIUM | — | 2026-07-17 | 3951 |
+| HARD DEADLINE — Node 20 gen-1 Cloud Functions runtime decommission 2026-10-30 (banked 2026-07-09,... | HIGH | — | 2026-10-30 | 474 |
+| Functions runtime + SDK upgrade — Node.js 20 EOL + `firebase-functions` 4.x → 5.x (MEDIUM with ha... | MEDIUM | — | 2026-10-30 | 2249 |
+| Company Config v2 — next major track: every business-policy constant tenant-configurable (banked ... | HIGH | — | — | 331 |
+| Design-conformance backlog — 14 NEEDS-RULING operator decisions block sequencing (banked 2026-07-... | HIGH | — | — | 538 |
+| Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases ... | HIGH | — | — | 276 |
+| Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion sess... | MEDIUM | — | — | 284 |
+| VH leg `t1-compliance-scope` — seed gap unresolved, carried Run 6 → Run 7 → Runs 5-7 promotion (b... | MEDIUM | — | — | 300 |
+| `featureFlags` allowlist is a deliberate triple-copy — consolidate when flags become config-drive... | LOW | — | — | 292 |
+| Run-7 ranked next-list — carried forward, not yet dispatched (banked 2026-07-15, from `docs/fable... | — | — | — | 308 |
+| Run-7 DECISIONS-NEEDED — none banked this run (informational, 2026-07-15) | — | — | — | 323 |
+| Functions runtime + firebase-functions SDK upgrade — Node 20 EOL + SDK 4.9.0 → ≥5.1.0 (banked 202... | HIGH | — | — | 1109 |
+| Onboarding tenure — manager confirmation surface (banked PR #649, 2026-06-15, HIGH — near-term) | HIGH | — | — | 1377 |
+| tatillife_smoke tenant — post-prod-run live verification (banked PR #674 `3730035`, HIGH until run) *(verification uncertain)* | HIGH | — | — | 1549 |
+| H3 FLIP-GATE — `usesPolicyLedger:true` requires end-to-end parity validation before any agent is ... | HIGH | — | — | 2705 |
+| MDRT naming collision — three different "MDRT" numbers, one label (banked 2026-07-10, promotion s... | MEDIUM | — | — | 341 |
+| Master Sheet STATUS filters — need a YTD + companyMinimums read path (banked 2026-07-10, Run 4 It... | MEDIUM | — | — | 357 |
+| Master Sheet LEVEL filter — blocked on a populated career-level field (banked 2026-07-10, Run 4 I... | MEDIUM | — | — | 365 |
+| Planner recurrence — `ENDS=Never` rolling-horizon materializer (banked 2026-07-10, Run 4 Item 5, ... | MEDIUM | — | — | 389 |
+| Planner recurrence — "edit this and all future" instances (banked 2026-07-10, Run 4 Item 5, MEDIU... | MEDIUM | — | — | 397 |
+| Run 4 pre-promotion manual checks not done this cycle — carry to next Phase 0 (banked 2026-07-10,... | MEDIUM | — | — | 405 |
+| 1-on-1 takeover — needs a real design pass (banked 2026-07-10, Run 4 Item 6 recon, MEDIUM — desig... | MEDIUM | — | — | 418 |
+| Seeder env-file foot-gun — `seed-fixtures.mjs` silently resets staging/sales_manager passwords wi... | MEDIUM | — | — | 450 |
+| Rebase `chore/tier0-smoke` onto main before it goes any staler (banked 2026-07-09, promotion sess... | MEDIUM | — | — | 482 |
+| Run-3 candidate worklist — hero-card conformance gaps (banked 2026-07-09, PR #848 recon, MEDIUM —... | MEDIUM | — | — | 498 |
+| React Query — DON'T-ADOPT (now); re-evaluate only on a real caching trigger (banked 2026-07-07, P... | MEDIUM | — | — | 516 |
+| Motion pop-in rollout — skeleton kit built, not yet wired to any live panel (banked 2026-07-07, P... | MEDIUM | — | — | 528 |
+| Data-architecture phase docs — net-new surfaces from #836 need dedicated design docs before dispa... | MEDIUM | — | — | 550 |
+| Game Plan manager surface — Fork B: whole-plan suggest-back (banked 2026-07-03, PR #785 post-merg... | MEDIUM | — | — | 658 |
+| EFF-002 Phase 2 — per-manager-tab code-splitting + Rollup `manualChunks` vendor/icon grouping (ba... | MEDIUM | — | — | 733 |
+| `tatillife_south` null-unitId agent — data fix, live tenant (banked 2026-07-03, PR #785 Phase 0.4... | MEDIUM | — | — | 768 |
+| Track K · K7 → server-side 24h-windowed cooldown enforcement in `notifyFinancingAdjustment` CF (b... | MEDIUM | Track K | — | 812 |
+| Pre-pilot CodeRabbit codebase audit over money/legal/security surfaces (banked K7-cleanup, 2026-0... | MEDIUM | K7 | — | 863 |
+| Track K · K6 → garnish incentive-payments component needs an incentives ledger source (banked K6,... | MEDIUM | Track K | — | 904 |
+| Track K · K2 — RollForwardCheck reconciliation advisory (banked K2, 2026-06-25, MEDIUM — design c... | MEDIUM | Track K | — | 952 |
+| Money Needs merged allocator — general 6% premium-tax handling (banked merged-allocator PR, 2026-... | MEDIUM | — | — | 978 |
+| Nav redesign — producing-manager "MINE" surfaces have no own-producer route yet (banked PR-1 nav-... | MEDIUM | — | — | 1044 |
+| MonthlyPlanModal — Gemini hardening pass (banked PR #671, 2026-06-17, LOW-MED) | MEDIUM | — | — | 1284 |
+| GoalsPanel SelfTab unmount loses in-progress PolicyLedgerPanel entries (banked PR #653, 2026-06-1... | MEDIUM | — | — | 1344 |
+| Onboarding identity — CF-based agentNumber uniqueness check (banked PR #646, 2026-06-15, MEDIUM) | MEDIUM | — | — | 1391 |
+| Gamification — leaderboard reset-model decision (banked 2026-06-10, MEDIUM pre-scale) | MEDIUM | — | — | 1794 |
+| Daily Capture anchor strip — targets + dials chip (MEDIUM, banked 2026-06-02 from Daily Capture v... | MEDIUM | — | — | 2075 |
+| Daily Capture reporting-mode governance subsystem (MEDIUM, banked 2026-06-02 from Daily Capture v... | MEDIUM | — | — | 2096 |
+| Social-channel inclusion in canonical aggregations — should `namesFromSocial` count toward app-wi... | MEDIUM | — | — | 2168 |
+| Wizard v2 — Decision-A SUGGESTED-atom + goal-seeding (MEDIUM, banked 2026-06-01 from Wizard v2 PR... | MEDIUM | — | — | 2220 |
+| SM access to ManagerAwardsPanel + BmAtRiskPanel — deliberate decision needed (MEDIUM, banked 2026... | MEDIUM | — | — | 2297 |
+| Phase 9 — SM target: multi-territory branch-based resolution (MEDIUM, banked 2026-05-28) | MEDIUM | — | — | 2375 |
+| Phase 9 — SM write-model inconsistency: SM can write unitGoals but not branchGoals (MEDIUM, banke... | MEDIUM | — | — | 2389 |
+| Branch protection: require CI status checks before merge (MEDIUM, banked 2026-05-28) | MEDIUM | — | — | 2448 |
+| Smoke script cleanup discipline — stray policies/notifications accumulate on test agent (MEDIUM, ... | MEDIUM | — | — | 2467 |
+| Leaderboard ranking not filtered by `active` flag (MEDIUM, banked 2026-05-24) | MEDIUM | — | — | 2689 |
+| Track J fast-follow — Tenant-Admin in-app editor for the tenure band table (MEDIUM, banked 2026-0... | MEDIUM | Track J | — | 2861 |
+| Permanent test-data cleanup utility (MEDIUM, surfaced 2026-05-08 during C3) | MEDIUM | — | — | 2999 |
+| Extract `CsvImportModalShell` (MEDIUM, surfaced 2026-05-08 during C3) | MEDIUM | — | — | 3029 |
+| Kiosk team activity slideshow (MEDIUM, concept locked 2026-05-10) | MEDIUM | — | — | 3182 |
+| SCOPE-1 — Tenant-wide persistency aggregate helper (MEDIUM, post-pilot) | MEDIUM | — | — | 3275 |
+| SCOPE-2 — Tighten persistency `allow list` rule (MEDIUM, post-pilot) | MEDIUM | — | — | 3287 |
+| TEST-N — Build Firebase rules-testing harness (MEDIUM, post-pilot) | MEDIUM | — | — | 3309 |
+| Track J (V2 Redesign) — Game Plan v2 — remaining slices (MEDIUM, banked 2026-06-03, PR #438) | MEDIUM | Track J | — | 3644 |
+| Track J (V2 Redesign) — Wire BranchManagerProductionView ranked table + standalone Leaderboard po... | MEDIUM | Track J | — | 3752 |
+| Track J (V2 Redesign) — App-wide `text-gold` + adjacent contrast pass (MEDIUM/DESIGN, banked 2026... | MEDIUM | Track J | — | 3907 |
+| Financing ruleset code comment overclaims configurability (banked 2026-07-10, promotion session, ... | LOW | — | — | 349 |
+| Master Sheet — unit friendly names absent (banked 2026-07-10, Run 4 Item 2, LOW — display polish) | LOW | — | — | 373 |
+| Company Config toggle — "count converted service calls as Tel Contacts" (banked 2026-07-10, Run 4... | LOW | — | — | 381 |
+| Vercel preview env scoping — confirm branch previews get no live backend (banked 2026-07-10, prom... | LOW | — | — | 426 |
+| Vitest on Windows — worker contention flakes under concurrent runs (banked 2026-07-10, Run 4, LOW... | LOW | — | — | 434 |
+| Recon docs must carry a validity-SHA header — new standing rule (banked 2026-07-10, Run 4, LOW — ... | LOW | — | — | 442 |
+| VH leg `t2-financing-k9-k7` flaky on first paint — no FAIL screenshot captured (banked 2026-07-09... | LOW | — | — | 458 |
+| Stale prod IAM binding — expired conditional grant on `cloudbuild` service agent (banked 2026-07-... *(verification uncertain)* | LOW | — | — | 466 |
+| Motion-verifier prod run — optional, needs `A11Y_<ROLE>_EMAIL`/`PASSWORD` env vars (banked 2026-0... | LOW | — | — | 490 |
+| Post-redesign promotion review — no rules/functions changes accumulated during the reskin+conform... | LOW | — | — | 558 |
+| EFF Phase-1 — two follow-ups banked from PR #802 bot review (2026-07-05, LOW) | LOW | — | — | 566 |
+| QuickAddMenu (mobile ＋ bottom sheet) lacks a visible close affordance (LOW, a11y-parity) | LOW | — | — | 622 |
+| Wizard draft-gate — two CodeRabbit nitpicks banked from PR #794 (LOW, deferred as out-of-scope) | LOW | — | — | 630 |
+| PR-B3 housekeeping — stale pre-deploy comment in `smoke-plan-suggestions-b3.mjs` (banked 2026-07-... | LOW | — | — | 676 |
+| PR #791 — `live-b3-post-deploy.mjs` hardening (banked 2026-07-04, LOW — Rule 21 out-of-scope carry) | LOW | — | — | 688 |
+| PR-B3 fast-follow — notify-on-send ping for plan suggestions (banked 2026-07-04, LOW — K10b prece... | LOW | K10b | — | 756 |
+| `onFinancingEscalationCreate` — filter inactive BM recipients + friendly reason labels (banked 20... | LOW | — | — | 782 |
+| CI maintenance — workflows target deprecated Node 20 actions (banked 2026-07-03, LOW — CI hygiene) | LOW | — | — | 796 |
+| Track K · K10a → roster does not surface the 24-month agreement-term clock for wind-down agents (... | LOW | Track K | — | 806 |
+| Track K · K7 → `setFinancingConfig` merge-overwrite guard when a 2nd config field lands (banked K... | LOW | Track K | — | 822 |
+| Track K · K7 → defensive `typeof`-string guard on the CF recipient read (banked K7, 2026-06-26, L... | LOW | Track K | — | 828 |
+| Track K · K7 → reset `selectedAgent` on `tenantId` change in FinancingRiskPanel (banked K7, 2026-... | LOW | Track K | — | 834 |
+| Track K · K7 → `mailErr?.message` optional chaining in CF mail catch (banked K7 post-merge, 2026-... | LOW | Track K | — | 840 |
+| Track K · K7 → `monthLabel` client-supplied in CF notification body (banked K7 post-merge CR fina... | LOW | Track K | — | 846 |
+| `verify-financing-notify-k7-live.mjs` hardening — config-mutation window + env read (banked K7-cl... | LOW | K7 | — | 852 |
+| Escape unescaped table-cell pipes in CONTEXT docs (banked K6 fast-follow, 2026-06-26, LOW cosmetic) | LOW | K6 | — | 869 |
+| Client-side `serviceMonths` integer validation in `reconcileFinancing()` (banked K6 fast-follow, ... | LOW | K6 | — | 877 |
+| CLAUDE.md persistency annotation — `0-100` annotation is stale (banked K4, 2026-06-25, LOW doc-fix) | LOW | K4 | — | 885 |
+| Track K · K3 adapter — doc note correction: `isStaff` and `lapsedSurrenderedUnder2yrAPI` sourcing... | LOW | Track K | — | 893 |
+| Track K · K3 — ruleset figures are 2026 placeholders pending confirmation (banked K3, 2026-06-25,... | LOW | Track K | — | 934 |
+| Track K · K4 — Q2+ adapter uses `dateSubmitted` bucketing; cross-quarter policies may be missed (... | LOW | Track K | — | 940 |
+| SettlementPanel — `loadData` weak overlapping-resolution race (banked FU-H1, 2026-06-25, LOW — no... | LOW | — | — | 946 |
+| Track K — lift agent-selection into FinancingTab (banked K2, 2026-06-25, LOW — UX) | LOW | Track K | — | 960 |
+| Track K · K5 — `getOwnPolicies` → shared `getPoliciesByAgent` rename (banked K5, 2026-06-25, LOW ... | LOW | Track K | — | 966 |
+| Track K · K3+K5 — `managerSettledAPI` precedence in financing/bonus Gross (banked K5, 2026-06-25,... | LOW | Track K | — | 972 |
+| Money Needs merged allocator — per-product avg-policy divisor (banked merged-allocator PR, 2026-0... | LOW | — | — | 988 |
+| yearPlanAllocation.js — orphaned 4-line allocation helper (banked PR-U2, 2026-06-25, LOW — dead-c... | LOW | — | — | 996 |
+| Review-coverage gap — PR #744 (U1) shipped on Gemini-only review (banked PR-U2, 2026-06-25, LOW —... | LOW | — | — | 1004 |
+| GoalDecompositionTab — taxConnector label misleading when preTaxAlreadyApplied=true (banked PR #7... | LOW | — | — | 1010 |
+| GoalDecompositionTab + MoneyNeedsPanel — shared localStorage key (banked PR #734, 2026-06-23, LOW) | LOW | — | — | 1020 |
+| Nav redesign — PR-4 LOW follow-ups (banked PR #731, 2026-06-23) | LOW | — | — | 1036 |
+| WeekConfirmView steppers — test the type-then-click-button race (banked Wizard v3 Phase 1, 2026-0... | LOW | — | — | 1058 |
+| Producing-manager fast-path Confirm — deferred Sunday smoke leg (banked PR #724, 2026-06-22, LOW) | LOW | — | — | 1064 |
+| Producing-manager fast-path — Gemini backstop nits (banked PR #724 post-merge Gemini, 2026-06-22,... | LOW | — | — | 1076 |
+| PM-2 smoke — BM own-data write-seeding for value-level read (banked PR #719, 2026-06-21, LOW) | LOW | — | — | 1085 |
+| MoneyNeedsPanel amount inputs — `=== 0 ? '' :` idiom vs `\|\| ''` for null safety (banked PR #718 G... | LOW | — | — | 1091 |
+| Money Needs 1.7 — per-line renewal sub-chips need a data source (banked PR #706, 2026-06-21, LOW) | LOW | — | — | 1097 |
+| MonthlyPlanModal:41 — `todayTT.split` lacks a null guard (banked PR #708 Gemini OUT-OF-SCOPE, 202... | LOW | — | — | 1103 |
+| Wizard v3 — "Target Dials" semantics: cold-calls-only vs total calls (product Q, banked 2026-06-2... | LOW | — | — | 1134 |
+| A11Y smoke agent — no unstarted-but-fillable week, so the walk's own write-read-verify never runs... | LOW | — | — | 1144 |
+| Rules-test harness — `FIRESTORE_EMULATOR_HOST` parse is not IPv6-safe (banked PR #703 Gemini, 202... | LOW | — | — | 1158 |
+| CONTRACT: remove `weeklyActivityFloors.contactsMade` from companyMinimums (LOW — after #685 merge... | LOW | — | — | 1172 |
+| Daily Capture v2 Phase 2 — back-fill strip selected-state visual (banked PR #686, LOW) | LOW | — | — | 1188 |
+| Daily Capture v2 Phase 2 — axe baseline re-sync vs fresh main (banked PR #686, LOW) | LOW | — | — | 1198 |
+| Daily Capture v2 — wizard direct-entry default carries the Sunday edge (banked PR #688, LOW) | LOW | — | — | 1208 |
+| Daily Capture v2 — aggregate-on-save could be non-blocking (Gemini #1, banked PR #688, LOW) | LOW | — | — | 1220 |
+| ProfileScreen.todayLocalDate — catch-up entry dated browser-local, not TT (banked PR #688, LOW) | LOW | — | — | 1232 |
+| getMostRecentSunday peripheral read/display selectors — browser-local week (banked PR #688, LOW) | LOW | — | — | 1244 |
+| team-roster data layer (#682) — Gemini LOW robustness items (banked PR #683 post-merge, 2026-06-1... | LOW | — | — | 1256 |
+| Update-button reload — event-driven hardening (banked PR #681 review, 2026-06-17, LOW) | LOW | — | — | 1270 |
+| SW navigation strategy — NetworkFirst app shell (Option B) (banked PR #673 sw-version-update-prom... | LOW | — | — | 1328 |
+| Policy ledger producing-manager write — UM Arm A + Arm B other-owner DENY emulator cases (banked ... | LOW | — | — | 1361 |
+| Onboarding tenure — rule-level cross-field floor: `monthsInIndustry >= monthsAtTatil` (banked PR ... | LOW | — | — | 1405 |
+| Plan-lens UM compliance — do UMs commit weekly plans? (banked PR #640, 2026-06-15, LOW) | LOW | — | — | 1421 |
+| Awards reach pins — Firestore persistence for cross-device sync (banked PR #641, 2026-06-15, LOW) | LOW | — | — | 1437 |
+| CommissionPlayground `submissions={[]}` in manager GoalsPanel — pure rate-calculator vs live data... | LOW | — | — | 1451 |
+| Smoke hardening — confirm deployed SHA before asserting (banked PR #643, 2026-06-15, LOW) | LOW | — | — | 1465 |
+| goalsService — blanket .catch(() => null) on agent-doc reads (banked 2026-06-13, LOW) | LOW | — | — | 1481 |
+| `VITE_GAME_PLAN_LOOP_ENABLED` kill-switch — remove once planning loop is stable (banked 2026-06-1... | LOW | — | — | 1495 |
+| Bulk pilot-roster provisioning + link export (banked 2026-06-12, LOW) | LOW | — | — | 1505 |
+| Copy invite link — Create-time link affordance (banked 2026-06-11, LOW) | LOW | — | — | 1517 |
+| Money Needs — per-tenant taxonomy via `config/budgetCategories` (banked 2026-06-11, LOW) | LOW | — | — | 1533 |
+| #547 deferred-verify: branch dropdown verified live via provisioning (banked 2026-06-10, LOW) *(verification uncertain)* | LOW | — | — | 1569 |
+| AgentReportDocument — add seminarsConducted + tradeshowsAttended to PDF (banked 2026-06-10, LOW) | LOW | — | — | 1588 |
+| Dashboard background Firestore permission error — investigate listener (banked 2026-06-10, LOW) | LOW | — | — | 1602 |
+| computePoints — structural bypass of extractFields (banked 2026-06-10, downgraded 2026-06-11, LOW) | LOW | — | — | 1618 |
+| LoginPattern backdrop — extract to shared component (banked 2026-06-09, LOW) | LOW | — | — | 1636 |
+| recoverEmail action mode unhandled — falls through to LoginScreen (banked 2026-06-10, LOW) | LOW | — | — | 1652 |
+| BadgeGrid → gamificationConfig reconciliation (banked 2026-06-10, LOW) | LOW | — | — | 1682 |
+| `managerWeeklyReports` — `validWarWrite()` hasAll-only, no hasOnly guard (banked 2026-06-15, LOW) | LOW | — | — | 1706 |
+| Playwright best-practices sweep — verification scripts (banked 2026-06-08, LOW) | LOW | — | — | 1718 |
+| setupBypassSession SPOF (LOW, informational) *(verification uncertain)* | LOW | — | — | 1782 |
+| Gamification — API-vs-app-count weighting review (banked 2026-06-10, LOW) | LOW | — | — | 1812 |
+| Gamification — optional dials-points cap (banked 2026-06-10, LOW) | LOW | — | — | 1826 |
+| leaderboardAggregate: `loadInputs` year derivation — make TT-consistent (banked 2026-06-14, LOW) | LOW | — | — | 1898 |
+| Weekly Planner S2 derived-state live walk (LOW, banked from Weekly Planner v2 Slice 3a, carried f... | LOW | — | — | 2009 |
+| Over-goal MDRT marker treatment on the HeroCard (LOW, banked 2026-06-03 from HeroCard marker-labe... | LOW | — | — | 2023 |
+| Daily Capture streak mechanics (LOW until prioritized, banked 2026-06-02 from Daily Capture v2 Sl... | LOW | — | — | 2118 |
+| Trailing autosave permission error after submit — cosmetic console noise (LOW, banked 2026-06-01 ... *(verification uncertain)* | LOW | — | — | 2141 |
+| Wizard v2 PR2 — mobile expand-to-sheet variant (LOW, banked 2026-06-01 from Wizard v2 PR2) | LOW | — | — | 2199 |
+| Track J — Cyril agents have goals + policies but no seeded submissions (LOW, banked 2026-06-03 fr... | LOW | Track J | — | 2330 |
+| Track J — SM picker default-to-populated-branch UX nicety (LOW, banked 2026-06-01 from PR #411 li... | LOW | Track J | — | 2348 |
+| Track F — peer-BM branch-scoped exclusion (LOW, banked 2026-05-27) | LOW | Track F | — | 2401 |
+| H3 Phase 2 real-data parity sweep — re-run when agent has ≥10 settled policies (LOW, banked 2026-... | LOW | — | — | 2420 |
+| F2.2 unarchive — archive is one-way in UI; add field-flip path when needed (LOW, banked 2026-05-27) | LOW | — | — | 2434 |
+| H4 — contributedPolicyIds array growth on long-lived pending entries (LOW, banked 2026-05-28) | LOW | — | — | 2495 |
+| CF emulator integration tests for FieldValue writes (LOW, banked 2026-05-28) | LOW | — | — | 2509 |
+| H3 existing-policy date migration (LOW, banked 2026-05-28) | LOW | — | — | 2525 |
+| H3 — `validate()` raw `new Date()` date guards (LOW, banked 2026-05-28) | LOW | — | — | 2544 |
+| H3 — `getTodayTT()` en-CA locale dependency note (LOW, banked 2026-05-28) | LOW | — | — | 2558 |
+| Wizard `SOCIAL_PLATFORMS` TikTok expansion — consider adding for symmetric posts-vs-leads cross-t... | LOW | — | — | 2572 |
+| moneyNeeds `shareWithSm` owner-update arm is UI-gated only — no rule enforcement (LOW, banked 202... | LOW | — | — | 2590 |
+| Track I I2 — Monthly recruiting standards + accountability flag (LOW, banked 2026-05-23) | LOW | Track I | — | 2604 |
+| Track I I2 — `recruitsInFirstWeeks` auto-derive from `contractStartDate` (LOW, banked 2026-05-23) | LOW | Track I | — | 2618 |
+| Track I I2 — Head-of-sales definitional confirmation for `candidatesAssessed` + `agentsContracted... | LOW | Track I | — | 2632 |
+| Track I I2 — Possible compliance edit-freeze for submitted monthly rollups (LOW, banked 2026-05-23) | LOW | Track I | — | 2651 |
+| terminatedAt timestamp + D4 net-new refinement (LOW, banked 2026-05-24) | LOW | — | — | 2668 |
+| `deactivateUser` CF — wrap naked awaits in try/catch for diagnostics (LOW, banked 2026-05-24) | LOW | — | — | 2727 |
+| TOOLING — extract + unit-test the 16 inline CFs in `functions/index.js` (LOW, banked 2026-05-22) | LOW | — | — | 2754 |
+| Track I I3b — `escalationLogic.js` ↔ `accountabilityFlag.js` sync (LOW, banked 2026-05-22) | LOW | Track I | — | 2772 |
+| Track I I3 — 2-consecutive-week intensifier (LOW, banked 2026-05-22) | LOW | Track I | — | 2791 |
+| Track I I3 — `ManagerDashboard` Overview accountability chip (LOW, banked 2026-05-22) | LOW | Track I | — | 2805 |
+| I §6 — Default new agents to `licenseStatus: 'provisional'` at creation (LOW, banked 2026-05-24) | LOW | — | — | 2819 |
+| BOA-teardown — remove `BOA` from `prospectingSource` once legacy docs are backfilled (LOW, banked... | LOW | — | — | 2837 |
+| Track J3 → Track I — Manager levels 8–10 production model (LOW, banked 2026-05-20) | LOW | Track J3 | — | 2881 |
+| Verify PR #166 shakedown harness fixes via runtime re-run (LOW, deferred 2026-05-15) | LOW | — | — | 2895 |
+| Delete tenant_admin historical test submissions (LOW, backfill cleanup) | LOW | — | — | 2920 |
+| Delete branch_manager historical test submissions (LOW, backfill cleanup) | LOW | — | — | 2926 |
+| Migrate EditConfigModal + BranchEditorModal to useFocusTrap (LOW, filed during C2) | LOW | — | — | 2978 |
+| Goal-doc audit-field naming inconsistency (LOW, surfaced 2026-05-08 during C3) | LOW | — | — | 3061 |
+| Defaults-warn banner positive-render test (LOW, surfaced 2026-05-08 during C3 extended verification) | LOW | — | — | 3153 |
+| `Bulk Import Goals` CTA label wraps at 390px (LOW, surfaced 2026-05-08 during C3 Q1 design review) | LOW | — | — | 3165 |
+| Kiosk per-branch customization (LOW, deferred 2026-05-10) | LOW | — | — | 3212 |
+| fieldHelpers / extractFields consolidation (LOW, banked 2026-05-10) | LOW | — | — | 3238 |
+| PERF-1 — `getAvailableMonths` tenant-wide unfiltered query (LOW, post-pilot) | LOW | — | — | 3299 |
+| WALK-2 — Agent self-write path coverage for persistency walks (LOW, post-pilot) | LOW | — | — | 3321 |
+| FU-I — Parameterize hardcoded TENANT_ID constants in seed/cleanup/shakedown scripts (LOW) | LOW | FU-I | — | 3372 |
+| Cross-branch test fixture: A11Y_BRANCH_MANAGER_2 (LOW, banked PR #266) | LOW | — | — | 3523 |
+| `managerActivityStandardOverrides` update arm: pin managerId/tenantId immutable (LOW, banked PR #... | LOW | — | — | 3539 |
+| Track H — isBdoDso / monthsInIndustry / monthsAtTatil — no UI write path (LOW, banked H1 PR #300) | LOW | Track H | — | 3553 |
+| Track H — orphan `jointCalls` CG index reconciliation (LOW, banked H1 PR #300) *(verification uncertain)* | LOW | Track H | — | 3570 |
+| Track J (V2 Redesign) — Shell brand subline requires new data-fetch (LOW, banked 2026-05-30, PR #... | LOW | Track J | — | 3584 |
+| Track J (V2 Redesign) — `surfaceSoft` token revisit across V2 screens (LOW, banked 2026-05-30, PR... | LOW | Track J | — | 3602 |
+| Track J (V2 Redesign) — Component test coverage for CareerPortal / HistoryTab / AgentAwardsPanel ... | LOW | Track J | — | 3618 |
+| awardsEngine.js per-line filter gap (LOW, banked 2026-06-13, Slice 2b design) | LOW | — | — | 3669 |
+| Pre-existing color-contrast failures outside the sidebar (LOW, banked 2026-05-30, PR #392) *(verification uncertain)* | LOW | — | — | 3691 |
+| Track J (V2 Redesign) — HeroCard YoY-delta chip deferred (LOW, banked 2026-05-30, PR #393) | LOW | Track J | — | 3718 |
+| Track J (V2 Redesign) — DeliveryStripCard stubbed to null; wire to Track H policies (LOW, banked ... | LOW | Track J | — | 3732 |
+| Track J (V2 Redesign) — AgentProductionView floor bar uses hardcoded default tenure bands; does n... | LOW | Track J | — | 3769 |
+| Track J (V2 Redesign) — Dual-consumable computations.js — eliminate the CJS twin entirely (LOW, b... | LOW | Track J | — | 3783 |
+| Track J (V2 Redesign) — P1b leaderboard CF: multi-tenant iteration (LOW, banked 2026-05-31, PR #400) | LOW | Track J | — | 3802 |
+| Track J (V2 Redesign) — P1b leaderboard CF: on-write trigger optimization (LOW, banked 2026-05-31... | LOW | Track J | — | 3816 |
+| Track J (V2 Redesign) — P3 Production Leaderboard: converge the kiosk medal onto ui/MedalCoin (LO... | LOW | Track J | — | 3846 |
+| `DailyEntryModal.test.jsx` timer flap — first strike, watch (LOW/TEST-STABILITY, banked 2026-06-05) | LOW | — | — | 3889 |
+| Track J (V2 Redesign) — GamePlanV2 component test coverage: `PlanAnchorStrip` + `PlanCascade` (LO... | LOW | Track J | — | 3970 |
+| Settlements manager reads — tenant-scope (no unitId/branchId on docs) (LOW, banked 2026-06-05) | LOW | — | — | 3982 |
+| Gamification — badge eligibility thresholds machine-readable in config (banked 2026-06-10, LOW) | LOW | — | — | 4003 |
+| yearPlan rules — field=path cross-checks + licenseProfile/status value constraints (LOW, banked 2... | LOW | — | — | 4030 |
+| .mjs emulator rules tests — manual-only, not wired into CI (LOW, banked 2026-06-11, PR #571) | LOW | — | — | 4052 |
+| SEC-012 kiosk branch-scoping — two follow-ups banked (2026-07-05, PR #801 `3d7c391e`) | — | SEC-012 | — | 578 |
+| A11y sweep L1-5b — UX-001 designed empty state shipped; A11Y-002 + A11Y-003 verified NOT-actionab... | — | — | — | 590 |
+| A11y sweep L1-5a — RESOLVED (2026-07-05, PR `fix/a11y-h1-topbar-skiplink`) + one banked wayfindin... | — | — | — | 602 |
+| BUG-102 — Week number disagrees between dashboard topbar and Daily Capture — RESOLVED (2026-07-05... | — | — | — | 612 |
+| Goals v3 closure sweep — two items resolved, two banked (2026-07-04, PR #792 `41935ef8` goals-v3-... | — | — | — | 642 |
+| EFF-004 follow-ups — MDRT badge backfill · threshold reconcile · YTD year-attribution (banked 202... | — | — | — | 705 |
+| L1-1/L1-2 follow-ups — badge semantics · test-mock consolidation · mdrt_pace hardening · mdrt_pac... | — | — | — | 719 |
+| Track K · K1 — admin corrective / backward status transition (banked K1, 2026-06-25, deferred per... | — | Track K | — | 912 |
+| Track K · A.4 Staff-policy credit-filter — staff `'exclude'` path needs a ledger flag (carry from... | — | Track K | — | 920 |
+| Track K · K3 — live-data wiring adapter for the bonus engine (banked K3, 2026-06-25, lands with K8) | — | Track K | — | 928 |
+| Nav redesign — mobile pin edit-mode (banked PR-2 nav-pr2-pinned, 2026-06-22, deferred this PR) | — | — | — | 1030 |
+| Producing-manager fast-path — `mp-report` direct-nav stays full-path (scope note, banked PR #724,... | — | — | — | 1070 |
+| seed-first-tenant-admin — service-account-key-archived.json as fallback key (banked 2026-06-09, X... | — | — | — | 1668 |
+| Nexus Glass S3 sweep — hero census canon (banked 2026-06-07, PR #534) | — | — | — | 1735 |
+| Nexus Glass recipe HTMLs — AA tables need regeneration from module outputs (banked 2026-06-06, PR... | — | — | — | 1840 |
+| SettlementPanel — TT-year derivation and display (C-001 / C-002) (banked 2026-06-06, Gemini harvest) | — | — | — | 1866 |
+| Functions day — leaderboardAggregate hardening + S3b nudge CF (banked 2026-06-06, Gemini harvest) | — | — | — | 1882 |
+| GoalDecompositionTab — sort-stability + NaN guard (banked 2026-06-06, Gemini harvest) | — | — | — | 1910 |
+| LoginScreen — responsive backdrop on narrow viewports (banked 2026-06-06, Gemini harvest) | — | — | — | 1924 |
+| Persistency Mgr v2 — remaining slices (banked 2026-06-05 from Persistency Mgr v2 S1, PR #505) | — | — | — | 1936 |
+| Manager-program backlog | — | — | — | 1966 |
+| Weekly-activity planner — remaining slices (banked 2026-06-03 from Weekly Planner v2 Slice 1, PR ... | — | — | — | 1987 |
+| Policy Ledger v2 — deferred slices (banked 2026-06-02 from Policy Ledger v2 Slice 1 PR #432) | — | — | — | 2037 |
+| Policy Reconciliation v2 — Slice 2 (deferred, banked 2026-06-03 from Policy Reconciliation v2 Sli... | — | — | — | 2056 |
+| HIGH#4 — Programmatic walkthroughs miss state-persistence interactions (surfaced 2026-05-08) | — | — | — | 2934 |
+| A11Y dark-mode story — CLOSED in PR7 | — | — | — | 3087 |
+| React Compiler adoption — already documented below; left in place for context | — | — | — | 3107 |
+| React Compiler adoption (long-term, conditional) | — | — | — | 3111 |
+| SEC-9b — Cross-tenant isolation audit | — | SEC-9b | — | 3125 |
+| Login screen logo | — | — | — | 3139 |
+| Add CI step for Firestore index deployment (POST-PILOT, banked 2026-05-12 during pilot-readiness ... | — | — | — | 3335 |
+| Phase 7-8 Pre-Track Verifications | — | Track Verifications | — | 3393 |
+| Workshop-Driven Roadmap Revision Items (2026-05-20) | — | — | — | 3413 |
+| Track I I1.3a — Full-freshness jointCalls-write trigger (banked PR #258) | — | Track I | — | 3440 |
+| Track F F1 — Coaching Notes deferred items (banked PR #242) | — | Track F | — | 3457 |
+| Track F F2 — Joint-Call Log deferred items (banked PR #244) | — | Track F | — | 3477 |
+| Track F F3 — Prospect-Info deferred items (banked PR #246) | — | Track F | — | 3499 |
+| Track J (V2 Redesign) — P1b leaderboard CF: reconciled-production swap point (FU-2 reference, ban... | — | Track J | — | 3832 |
+| `CompliancePanel.nudge.test.jsx` timing flap — stabilize with proper async waits (**RE-OPENED — s... | — | — | — | 3860 |
+| DataSourceBadge "Estimated" — `bg-warning/15 text-warning` light-mode contrast (added PR #403) *(verification uncertain)* | — | — | — | 3919 |
+| AgentProductionView hero avatar — `bg-primary text-white` dark-mode contrast (added PR #403) *(verification uncertain)* | — | — | — | 3929 |
 
+
+---
+
+## Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases (banked 2026-07-15, Runs 5-7 promotion session, HIGH — caused a rollback scare)
+
+A prod-verification pass this promotion ran against `https://agencytrack.vercel.app` instead of the canonical `https://portal.agencytrack.app` (the locked App-host invariant, CONTEXT.md § App host). The wrong-URL run produced false crash reports and triggered a rollback scare before the mistake was caught. **Action:** any verification tooling/workflow doc (`scripts/exploration-walk.cjs`, the feature-branch-preview-verify rule, this promotion's manual walkthrough steps) must hard-pin `https://portal.agencytrack.app` for production checks and explicitly reject/flag any `*.vercel.app` URL as a non-canonical alias before proceeding. Cross-reference: CONTEXT.md § App host — single-source two-constant invariant (PR #672 `82314e3`) already locks the canonical host; this FU is about enforcing that invariant in the verification tooling itself, not re-litigating the host.
+
+---
+
+---
+
+## Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion session, MEDIUM — confirm + retire)
+
+The wrong-URL verification above only produced a false crash/rollback scare because `agencytrack.vercel.app` resolves to *something* — confirm what: a live stale-bundle deployment reachable at a guessable URL (minor exposure/confusion risk), a Vercel default project alias that happens to also serve the current production build (in which case no action needed beyond documentation), or a dangling preview. **Action:** check the Vercel dashboard's deployment list for this alias, confirm which build it serves and whether it auto-updates with `main`, and decide whether to retire/unalias it or leave it as a documented secondary alias. Do not assume it is harmless without checking.
+
+---
+
+---
+
+## `featureFlags` allowlist is a deliberate triple-copy — consolidate when flags become config-driven (banked 2026-07-15, Runs 5-7 promotion session, LOW — Tier-2 note)
+
+Company Config slice 1's Feature Flags panel enforces its allowlist in **three** places by design: `firestore.rules` (the diff-scoped guard on `config/settings`, evaluating only changed flag keys so an empty diff passes), `configService`'s `ALLOWED_FLAG_KEYS`, and `flag-toggle.cjs`'s `ALLOWED_FLAGS`. A cross-check test guards the three from drifting apart today. **Note for Company Config v2 Tier 2** (see § Company Config v2 below): once flags become fully config-driven (a Firestore-read allowlist rather than three hardcoded copies), this triple-copy consolidates into one source — don't rebuild the cross-check test pattern for Tier 2 flags, replace it with the config-driven read.
+
+---
+
+---
+
+## VH leg `t1-compliance-scope` — seed gap unresolved, carried Run 6 → Run 7 → Runs 5-7 promotion (banked 2026-06-xx Run 6, still open, MEDIUM — test-infra)
+
+`seed-staging.mjs` provisions exactly one `unit_manager` per branch, so a multi-unit BM roster can never occur on staging and the `t1-compliance-scope` VH leg SKIPs indefinitely — its full assertion path (CBTT section compliance scoping across 2+ units under one BM) has only ever been proven RTL-side, never live. Deliberately not seeded across Run 6 or Run 7 — a second UM + agents would ripple through the value-level expectations of many of the 44 VH legs and needs its own run with expectation updates. Still the documented 1-SKIP in the "44 legs: 43 PASS / 0 FAIL / 1 SKIP" no-regressions gate through this promotion. **Action:** dedicate a session to seed the 2nd `unit_manager` fixture + update the rippled leg expectations, then let `t1-compliance-scope` run its full path live for the first time (treat the first live activation as a shakedown, per the Run 6 note).
+
+---
+
+---
+
+## Run-7 ranked next-list — carried forward, not yet dispatched (banked 2026-07-15, from `docs/fable-run7-progress.md` § Ranked next-list, at-fable-staging repo)
+
+Six items ranked for the next Fable/autonomous session, none started:
+
+1. **Persistency KPI card** (Team Dashboard B-3 half) — needs either a precomputed branch-persistency aggregate (leaderboards-style CF-written doc) or an accepted O(agents) fan-out on the overview.
+2. **Kiosk roster parity** (SEC-012 B-1 remainder) — celebrations/compliance/photos panels still degrade on the kiosk when the users list is denied (this is the same gap as the still-open remainder noted in § SEC-012 kiosk branch-scoping below — same root cause, do not double-track). Clean fix noted: a CF-written `leaderboards/{branchId}`-style branch-roster aggregate carrying name+photo+unit only (no email/phone) — no rules widening.
+3. **Campaign proof export** (Policy Ledger B-2 remainder) — a small CSV of `lens.contributions` (policy, plan, state, value); needs a new util, no existing export covers the shape.
+4. **Team Dashboard #6 remainder** — ranked ChampionsPanel (vs count grid) + MyWeekPanel player-coach own-week view.
+5. **Build-map next-window candidates** — Tier-1 #7 AgentDrillDrawer completion (Notes/Joint-Work tabs + RecommendGoal), Tier-2 #10 Commission scenarios, Tier-4 #17 All Users roster — all M-sized.
+6. **ATTENDED-ONLY (do not autonomously start):** Policy Reconciliation 8-flag/8-way discrepancy taxonomy (already tracked, see § Policy Reconciliation v2 — Slice 2 below — do not duplicate), the Node 20 / `firebase-functions` SDK migration (already tracked, 2026-10-30 hard deadline, see § Node 20 entries), any payout-release write path (money-adjacent, human-gated by standing rule).
+
+---
+
+---
+
+## Run-7 DECISIONS-NEEDED — none banked this run (informational, 2026-07-15)
+
+Run 7's own DECISIONS-NEEDED section (`docs/fable-run7-progress.md`) is empty — Run 7's Tier A closed out all 5 of Run 6's outstanding operator rulings (A1 WizardForm draft-load failure surfacing, A2 WizardForm:342 absent→0 confirmed-as-designed, A3 kiosk quiet reconnecting indicator, A4 JointCallsTab prospect-prep failure surfacing, A5 CBTT ScopeSwitch honoring) and banked no new open decisions. Nothing to carry forward under this heading for this promotion — noted so a future sync doesn't assume an item was silently dropped.
+
+---
 
 ---
 
 ## Company Config v2 — next major track: every business-policy constant tenant-configurable (banked 2026-07-10, promotion session, HIGH — next major track)
 
 Grounded in `docs/audits/tenant-config-audit-2026-07-10.md`. **Operator-locked principle:** every business-policy constant is tenant-configurable; the current Tatil Life values become defaults, not hardcoded floors. Three tiers, by write surface: **Tier 1** — src-only reads (frontend constants a tenant admin could safely override without touching the backend). **Tier 2** — CF-read constants (needs runtime config plumbing; also the moment to fix the existing ESM/CJS dual-copy drift in `functions/lib/gamificationConfig.js` / `src/lib/gamificationConfig.js`). **Tier 3** — rules-enforced values, case-by-case (each one is a `firestore.rules` change, human-merge-gated). **Never configurable, by design:** payout-release logic, `tenantId`/auth mechanics, date-storage format, schema-validation shapes. The four §4.3 audit corrections below (pace-warning constants, clawback/at-risk windows, career-level labels, activity-standards system) are the concrete Tier-1/Tier-2 candidate inventory this track works from; the MDRT naming collision is a Tier-2 case study. Sequence: audit → rule which items are Tier 1/2/3 → build Tier 1 first (cheapest, no deploy risk) → Tier 2 (needs the ESM/CJS drift fix as a prerequisite) → Tier 3 case-by-case with human-merge.
+
+**Slice 1 SHIPPED 2026-07-15 (Runs 5-7 promotion, MERGE_SHA `10670bd7`) — track continues, NOT fully resolved.** Delivered: the 12-section registry-driven tenant-admin surface (`ConfigProvider`/`useConfig`, diff-only storage, `configAudit` trail), 3 sections live-wired for real writes (Targets & Minimums, Activity Standards, Awards & Clubs) plus the Feature Flags panel (fail-closed, prod-verified `NOT SET → OFF` on all 3 shells), and the Organization-section crash fix. The remaining 8 sections ship read-only ("Ships read-only for now — editing lands with its unlock tier") — this is Tier 1 scaffolding, not the Tier 1/2/3 rollout itself. **Still open:** the actual Tier 1 build-out for the read-only sections, Tier 2 (needs the ESM/CJS gamificationConfig drift fix first), Tier 3 case-by-case rules work, and the §4.3 audit corrections + MDRT naming collision below.
 
 ---
 
@@ -474,7 +537,11 @@ Recon (`docs/audits/react-query-adoption-recon-2026-07-07.md`) mapped all server
 
 ## Design-conformance backlog — 14 NEEDS-RULING operator decisions block sequencing (banked 2026-07-07, PR #836, HIGH — blocks the active build map)
 
-`docs/audits/design-conformance-2026-07-07.md` is now the active build map (see CONTEXT.md § Active track) but ~30 findings are NEEDS-RULING — valid design elements with no live equivalent where building them is a product/scope call, not a bug fix. The 14 enumerated in the PR body (command palette adopt-or-not, Persistency v2 rolling/per-policy model — Tatil sign-off pending, Policy Ledger campaign-proof lens + Awards provenance system scope, interactive Agent Report View vs download-only PDF, Settings v2 consolidated surface scope, Monthly Recruiting kanban vs no-CRM guardrail confirmation, Campaigns money-adjacent mechanic scope, WARs reviewer workflow, Team Planner vs Money-Needs-reader track confirmation, agent Prospect Prep tab gating, onboarding-wizard unwired-steps dead-code-vs-flow-to-wire, SM cross-branch views timing, Kiosk theatrical surface adopt-or-not, admin exception-lead home rule) block sequencing past the systemic-contract-sweep tier (§1 four-states/§2 motion/§4 focus-trap/§5 dense-table — Tier 0, no ruling needed, can start immediately). **Action:** operator works through the 14-item list; each ruling unblocks its dependent slice of the backlog.
+**SUPERSEDED pointer 2026-07-15:** `docs/audits/design-conformance-2026-07-07.md` (referenced below) was revalidated by `docs/audits/design-conformance-2026-07-12.md` (Rule-17 revalidation against staging HEAD `e65fe143`) — ~76% of the old ~92 MISSING findings had already shipped across Runs 1-5. **The 2026-07-12 doc is now the active build map**, not the 07-07 one; its §4 STILL-VALID backlog (~24 open + ~26 partial-residuals) is what remains. This entry's 14-item NEEDS-RULING list below is still open and unaffected by the revalidation (it was never part of the resolved-findings count) — do not lose it, just redirect any "active build map" reference to the 07-12 doc.
+
+**Tier 0 systemic sweep SHIPPED 2026-07-15 (Runs 5-7 promotion, MERGE_SHA `10670bd7`).** The "§1 four-states/§2 motion/§4 focus-trap/§5 dense-table — Tier 0, no ruling needed" clause below is now DONE — the full Tier-0 systemic sweep shipped this promotion (four-states/swallow-disposition including the dead-error-card reconnect fix, focus-trap verify, dense-table, motion), prod-verified (Tier-0 "manager dashboard renders, error cards absent under success" check passed on `portal.agencytrack.app`). **What remains open: only the 14-item NEEDS-RULING list itself** (below) — nothing has been ruled on it this promotion; it still blocks sequencing past Tier 0 into the rest of the backlog.
+
+`docs/audits/design-conformance-2026-07-07.md` was the active build map (see CONTEXT.md § Active track — now superseded per the note above) but ~30 findings are NEEDS-RULING — valid design elements with no live equivalent where building them is a product/scope call, not a bug fix. The 14 enumerated in the PR body (command palette adopt-or-not, Persistency v2 rolling/per-policy model — Tatil sign-off pending, Policy Ledger campaign-proof lens + Awards provenance system scope, interactive Agent Report View vs download-only PDF, Settings v2 consolidated surface scope, Monthly Recruiting kanban vs no-CRM guardrail confirmation, Campaigns money-adjacent mechanic scope, WARs reviewer workflow, Team Planner vs Money-Needs-reader track confirmation, agent Prospect Prep tab gating, onboarding-wizard unwired-steps dead-code-vs-flow-to-wire, SM cross-branch views timing, Kiosk theatrical surface adopt-or-not, admin exception-lead home rule) block sequencing past the systemic-contract-sweep tier (§1 four-states/§2 motion/§4 focus-trap/§5 dense-table — Tier 0, now SHIPPED, see above). **Action:** operator works through the 14-item list; each ruling unblocks its dependent slice of the backlog. Note the campaign-persistency-gate display rows shipped this promotion (Company Config Recognition section) do NOT close the "Campaigns money-adjacent mechanic scope" ruling — that item is about interactive campaign standings/payout mechanics, not the read-only config display; leave it open.
 
 ---
 
@@ -510,11 +577,11 @@ Both surfaced by Gemini + CodeRabbit on the EFF Phase-1 render/read-hygiene PR a
 
 ## SEC-012 kiosk branch-scoping — two follow-ups banked (2026-07-05, PR #801 `3d7c391e`)
 
-Banked from the SEC-012 fix (kiosk reads branch-scoped in `firestore.rules` + `getKioskYTDSubmissions` client filter). **SHIPPED + rules DEPLOYED 2026-07-05** (post-deploy prod kiosk ALLOW verified live; emulator 17/17 DENY). These two follow-ups remain OPEN.
+Banked from the SEC-012 fix (kiosk reads branch-scoped in `firestore.rules` + `getKioskYTDSubmissions` client filter). **SHIPPED + rules DEPLOYED 2026-07-05** (post-deploy prod kiosk ALLOW verified live; emulator 17/17 DENY). Of the two follow-ups banked then, #2 is **PARTIALLY RESOLVED** by the Runs 5-7 promotion (see below); #1 remains fully OPEN.
 
 1. **🚨 BLOCKS SECOND-BRANCH ONBOARDING — AgentOfMonth is a shared per-month doc, not per-branch.** `functions/agentOfMonth/setAgentOfMonth.js:100` writes `tenants/{tid}/agentOfMonth/{monthKey}` (one doc per month per tenant, `{merge:true}`), stamped with a single `branchId` = the last writer's branch. The SEC-012 fix branch-scopes the kiosk AOM read by `resource.data.branchId == request.auth.token.branchId`, which is correct for the single-branch Tatil pilot but breaks once a tenant has 2+ branches: a Branch-A kiosk is denied the current month's AOM whenever Branch-B wrote it last (and vice-versa), and two branches' category winners collide in one doc. Clean fix = data-model change to per-branch AOM docs (e.g. `agentOfMonth/{monthKey}_{branchId}` or a `{branchId}` subcollection), touching the write CF (`setAgentOfMonth`), both read paths (`agentOfMonthService.getAgentOfMonth`, `kioskServices.getKioskAgentOfMonth`), `AgentOfMonthTab`, and the AOM rule. **Must ship before any second branch is onboarded.**
 
-2. **Restore a branch-scoped kiosk users-list (real agent names/photos on the kiosk).** `getKioskTenantUsers` (`src/lib/kiosk/kioskServices.js:21`) does an unfiltered `users` collection list, which the kiosk rules have denied since the SHAKEDOWN-002 read→get/list split dropped the kiosk list arm (kiosk has `get`, not `list`). The SEC-012 PR made that denial non-fatal (`.catch(() => [])` in `KioskShell`) so the kiosk still loads submissions/leaderboards/AOM and panels fall back to a generic "Agent" label — but agent names/photos are absent on the kiosk leaderboards. To restore: add a branch-scoped kiosk `list` arm to the `users` rule (`kioskCanRead(tenantId) && resource.data.branchId == request.auth.token.branchId`) and thread `branchId` into `getKioskTenantUsers` with a `where('branchId','==',branchId)` filter. Deferred from the SEC-012 PR to avoid opening a new kiosk authorization surface (users-list) on a security fix — the kiosk is functional without it (degraded labels only). Adds a rules surface → human-merge + `firebase deploy --only firestore:rules`.
+2. **~~Restore a branch-scoped kiosk users-list (real agent names/photos on the kiosk).~~ PARTIALLY RESOLVED 2026-07-15 — real agent NAMES fixed via a different approach than proposed here; roster-only panels (photos/celebrations/compliance) still degrade.** Runs 5-7 (commit `57567868`, Run 7 B-1) fixed the degraded-name problem WITHOUT widening the users-list rules surface this item originally proposed: `KioskShell`/`buildSubmissionNameMap` now sources agent names from the kiosk-already-readable `submissions` docs (which carry `agentName`), threaded into the 5 wired panels — zero new read surface, no rules change. **Prod-verified 2026-07-15** (MERGE_SHA `10670bd7`, `portal.agencytrack.app/kiosk/...`): "Last Week Recap" and "YTD Leaderboard" panels render real names (e.g. "Smoke Agent", "Smoke Roster One–Four", "Smoke Unit Manager"), not the generic "Agent" fallback. **What's still open (the actual remainder of this item):** roster-only panels that need real per-agent PHOTOS or a full roster list independent of a submission (celebrations, compliance, photos) remain deliberately degraded — this needs the CF-written `leaderboards/{branchId}`-style branch-roster aggregate (name+photo+unit only, no email/phone) noted in the original proposal and restated in § Run-7 ranked next-list item 2 above. The original "add a branch-scoped kiosk `list` arm to the `users` rule" approach was explicitly rejected in favor of the submission-sourced fix (avoids opening a new kiosk authorization surface) — do not re-propose it; build the roster-aggregate CF instead.
 
 ---
 
