@@ -19,6 +19,28 @@ vi.mock('../../../services/persistencyService', () => ({
   getAgentHistory: vi.fn().mockResolvedValue([]),
 }));
 
+const mockUser = { uid: 'bm1' };
+const mockRole = 'branch_manager';
+vi.mock('../../../context/AuthContext', () => ({
+  useAuth: () => ({ user: mockUser, role: mockRole, tenantId: 't1' }),
+}));
+
+vi.mock('../../../services/jointCallsService', () => ({
+  getJointCalls: vi.fn().mockResolvedValue([]),
+  MEETING_TYPES: [
+    { value: 'demonstration', label: 'Demonstration' },
+    { value: 'observation', label: 'Observation' },
+    { value: 'collaboration', label: 'Collaboration' },
+  ],
+  NEEDS_COVERED: [
+    { value: 'income_protection', label: 'Income Protection' },
+    { value: 'other', label: 'Other' },
+  ],
+}));
+vi.mock('../../../services/prospectInfoService', () => ({
+  getProspectInfo: vi.fn().mockResolvedValue([]),
+}));
+
 // AgentReportView is exercised by its own tests — here we only assert the drill
 // hosts it (narrow layout) and threads the agent's submissions into it.
 vi.mock('../../profile/AgentReportView', () => ({
@@ -33,6 +55,8 @@ import AgentDrillDrawer from '../AgentDrillDrawer';
 import { getSettlements } from '../../../services/settlementService';
 import { getGoalHierarchy } from '../../../services/goalsService';
 import { getAgentHistory } from '../../../services/persistencyService';
+import { getJointCalls } from '../../../services/jointCallsService';
+import { getProspectInfo } from '../../../services/prospectInfoService';
 
 const agent = {
   agentId: 'a1', name: 'Devin Lewis', initials: 'DL', unitId: 'S02',
@@ -96,6 +120,94 @@ describe('AgentDrillDrawer', () => {
     render(<AgentDrillDrawer agent={agent} submissions={submissions} tenantId="t1" onClose={() => {}} />);
     fireEvent.click(screen.getByTestId('drill-tab-goals'));
     expect(await screen.findByTestId('drill-goals-unavailable')).toBeInTheDocument();
+  });
+
+  describe('Joint Work tab', () => {
+    it('renders the tab and fetches read-only via the caller identity from useAuth', async () => {
+      getJointCalls.mockResolvedValue([]);
+      getProspectInfo.mockResolvedValue([]);
+      render(<AgentDrillDrawer agent={agent} submissions={submissions} tenantId="t1" onClose={() => {}} />);
+      fireEvent.click(screen.getByTestId('drill-tab-jointwork'));
+      await waitFor(() => {
+        expect(getJointCalls).toHaveBeenCalledWith({ tenantId: 't1', agentId: 'a1', callerRole: 'branch_manager', callerUid: 'bm1' });
+        expect(getProspectInfo).toHaveBeenCalledWith({ tenantId: 't1', agentId: 'a1', callerRole: 'branch_manager', callerUid: 'bm1' });
+      });
+    });
+
+    it('shows a loading skeleton while the reads are pending', () => {
+      getJointCalls.mockReturnValue(new Promise(() => {}));
+      getProspectInfo.mockReturnValue(new Promise(() => {}));
+      render(<AgentDrillDrawer agent={agent} submissions={submissions} tenantId="t1" onClose={() => {}} />);
+      fireEvent.click(screen.getByTestId('drill-tab-jointwork'));
+      expect(screen.getByTestId('drill-jointwork-loading')).toBeInTheDocument();
+    });
+
+    it('shows an error card with Retry when the read fails, and Retry re-fetches', async () => {
+      getJointCalls.mockRejectedValueOnce(new Error('denied'));
+      getProspectInfo.mockResolvedValue([]);
+      render(<AgentDrillDrawer agent={agent} submissions={submissions} tenantId="t1" onClose={() => {}} />);
+      fireEvent.click(screen.getByTestId('drill-tab-jointwork'));
+      expect(await screen.findByTestId('drill-jointwork-error')).toBeInTheDocument();
+
+      getJointCalls.mockResolvedValueOnce([]);
+      fireEvent.click(screen.getByTestId('drill-jointwork-retry'));
+      expect(await screen.findByTestId('drill-jointwork-empty')).toBeInTheDocument();
+    });
+
+    it('shows the honest empty state when there are no preps or calls', async () => {
+      getJointCalls.mockResolvedValue([]);
+      getProspectInfo.mockResolvedValue([]);
+      render(<AgentDrillDrawer agent={agent} submissions={submissions} tenantId="t1" onClose={() => {}} />);
+      fireEvent.click(screen.getByTestId('drill-tab-jointwork'));
+      const empty = await screen.findByTestId('drill-jointwork-empty');
+      expect(empty).toHaveTextContent('No joint work logged');
+    });
+
+    it('renders the prep + call log + summary counts when data is present, and stays read-only (no add/edit/archive controls)', async () => {
+      getJointCalls.mockResolvedValue([
+        {
+          id: 'c1', agentId: 'a1', meetingType: 'observation', needCovered: 'income_protection',
+          appointmentDate: '2026-06-21', appointmentKept: true, saleMade: false, coachingMinutes: 25,
+          comments: 'Devin led; I observed.', archived: false,
+        },
+        {
+          id: 'c2', agentId: 'a1', meetingType: 'demonstration', needCovered: 'other',
+          appointmentDate: '2026-06-14', appointmentKept: true, saleMade: true, coachingMinutes: 40,
+          comments: '', archived: false,
+        },
+        {
+          id: 'c3', agentId: 'a1', meetingType: 'observation', needCovered: 'other',
+          appointmentDate: '2026-06-01', appointmentKept: false, saleMade: false, coachingMinutes: 0,
+          comments: '', archived: true, // archived — must be excluded
+        },
+      ]);
+      getProspectInfo.mockResolvedValue([
+        { id: 'p1', clientName: 'Anita Gopaul', appointmentType: 'closing-interview', policyType: 'whole-life', intendedAppointmentDate: '2026-06-28' },
+      ]);
+      render(<AgentDrillDrawer agent={agent} submissions={submissions} tenantId="t1" onClose={() => {}} />);
+      fireEvent.click(screen.getByTestId('drill-tab-jointwork'));
+
+      const list = await screen.findByTestId('drill-jointwork-list');
+      expect(list).toBeInTheDocument();
+
+      // Summary counts exclude the archived call.
+      expect(screen.getByTestId('drill-jointwork-summary-calls')).toHaveTextContent('2');
+      expect(screen.getByTestId('drill-jointwork-summary-kept')).toHaveTextContent('2');
+      expect(screen.getByTestId('drill-jointwork-summary-sales')).toHaveTextContent('1');
+
+      // Prep row.
+      expect(screen.getByTestId('drill-jointwork-prep-row')).toHaveTextContent('Anita Gopaul');
+
+      // Call rows — only the two non-archived calls render.
+      expect(screen.getAllByTestId('drill-jointwork-call-row')).toHaveLength(2);
+      expect(screen.getByText('Devin led; I observed.')).toBeInTheDocument();
+
+      // Read-only: no write affordances anywhere in the tab body.
+      expect(screen.queryByRole('button', { name: /log joint call/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^add$/i })).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/archive joint call/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/edit joint call/i)).not.toBeInTheDocument();
+    });
   });
 
   it('close button and Escape both dismiss', async () => {
