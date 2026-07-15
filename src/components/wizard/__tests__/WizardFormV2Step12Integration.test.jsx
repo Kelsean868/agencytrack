@@ -14,8 +14,8 @@
 // WizardFormV2PayloadIdentity.test.jsx + ReviewSubmit.test.jsx.
 
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 
 vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({
@@ -157,5 +157,122 @@ describe('PR3 Submit from step 12 → Celebration', () => {
     fireEvent.click(screen.getByTestId('wizard-v2-next'));
     await waitFor(() => expect(screen.getByTestId('wizard-v2-celebration')).toBeInTheDocument());
     expect(screen.getByText(/May 31, 2026/)).toBeInTheDocument();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Run 8 A-9 — trailing autosave race guard on submit.
+//
+// Each step change (re)schedules a 1500ms debounced autosave timer
+// (WizardForm.jsx's `saveTimer`). Before the fix, `handleSubmit` never
+// canceled that pending timer, so submitting within 1.5s of the last step
+// change let the trailing `saveDraft` fire DURING the `submitReport` await
+// (draftStatus still 'draft') — denied by Firestore's submitted-doc write
+// rules, surfacing as a console "Auto-save failed: Missing or insufficient
+// permissions" + sticky save-failed indicator under the celebration. The fix
+// (1) clears the pending timer synchronously at the top of `handleSubmit`,
+// before `submitReport` is awaited, and (2) adds `submitting` to
+// `doSave.current`'s early-return guard as a second line of defense.
+//
+// These tests hold `submitReport` open with a controllable promise and
+// advance PAST the 1500ms debounce window WHILE it is still in flight — the
+// exact window the pre-fix bug fired in — then assert the trailing
+// `saveDraft` never runs. Real-timer act-tick idioms don't fit this window
+// (would require an actual 1.5s+ sleep), so this block locally fakes
+// setTimeout/clearTimeout, mirroring WizardFormSaveStatus.test.jsx's pattern:
+// `waitFor`'s interval-based polling is faked too and can hang, so these
+// tests use direct `act()` + manual `Promise.resolve()` ticks instead of
+// `waitFor` throughout.
+describe('Run 8 A-9 — trailing autosave race guard on submit', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Render, drain the mount-time getDraft/getRecentSubmissions reads, and
+   *  walk Next through all 11 steps to land on step 12 (Review) — mirrors
+   *  `advanceToStep`, but avoids `waitFor` since fake timers are active. */
+  async function fakeTimersAdvanceToStep12() {
+    render(<WizardForm onClose={vi.fn()} initialWeek="2026-05-31" />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('wizard-v2-modal')).toBeInTheDocument();
+    for (let n = 1; n < 12; n++) {
+      fireEvent.click(screen.getByTestId('wizard-v2-next'));
+    }
+    expect(screen.getByTestId('wizard-v2-step-counter')).toHaveTextContent('Step 12 of 12');
+  }
+
+  it('never calls saveDraft after Submit, even when the debounce window elapses mid-submit', async () => {
+    const { saveDraft, submitReport } = await import('../../../services/submissionService');
+    let resolveSubmit;
+    submitReport.mockImplementation(() => new Promise((res) => { resolveSubmit = res; }));
+
+    await fakeTimersAdvanceToStep12();
+    saveDraft.mockClear();
+
+    // Submit — handleSubmit's clearTimeout(saveTimer.current) fires
+    // synchronously here, before submitReport is awaited.
+    fireEvent.click(screen.getByTestId('wizard-v2-next'));
+    expect(saveDraft).not.toHaveBeenCalled();
+
+    // Advance well past the 1500ms debounce window WHILE submitReport is
+    // still in flight — the pre-fix bug's trailing timer would fire here.
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(saveDraft).not.toHaveBeenCalled();
+
+    // Resolve submitReport and let the submit finish.
+    await act(async () => {
+      resolveSubmit();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(submitReport).toHaveBeenCalledTimes(1);
+    expect(saveDraft).not.toHaveBeenCalled();
+    expect(screen.getByTestId('wizard-v2-celebration')).toBeInTheDocument();
+  });
+
+  it('never logs "Auto-save failed" around a submit within the debounce window (rules-denial simulation)', async () => {
+    const { saveDraft, submitReport } = await import('../../../services/submissionService');
+    // Simulates the real-world symptom: a trailing autosave denied by
+    // Firestore's submitted-doc write rules.
+    saveDraft.mockRejectedValue(new Error('Missing or insufficient permissions'));
+    let resolveSubmit;
+    submitReport.mockImplementation(() => new Promise((res) => { resolveSubmit = res; }));
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await fakeTimersAdvanceToStep12();
+
+    fireEvent.click(screen.getByTestId('wizard-v2-next')); // Submit Report
+
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      resolveSubmit();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(submitReport).toHaveBeenCalledTimes(1);
+    expect(saveDraft).not.toHaveBeenCalled();
+    const autoSaveFailedLogs = consoleErrorSpy.mock.calls.filter(
+      (args) => typeof args[0] === 'string' && args[0].includes('Auto-save failed')
+    );
+    expect(autoSaveFailedLogs).toHaveLength(0);
+
+    consoleErrorSpy.mockRestore();
   });
 });

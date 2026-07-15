@@ -324,7 +324,12 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
   doSave.current = async () => {
     // Belt-and-braces: never write while the draft read failed (draftLoadError).
     // Reassigned every render, so it captures the current draftLoadError value.
-    if (!weekStarting || !user || draftStatus === 'submitted' || draftLoadError) return;
+    // `submitting` closes the post-submit trailing-autosave race: a timer
+    // scheduled by the last pre-submit form change would otherwise fire during
+    // the submitReport await (draftStatus still 'draft') and be denied by the
+    // submitted-doc write rules — console error + sticky save-failed indicator
+    // under the celebration. (Run 8 A-9; surfaced by the a5 live smoke.)
+    if (!weekStarting || !user || draftStatus === 'submitted' || draftLoadError || submitting) return;
     setSaving(true);
     setStickyError(false);     // legitimate replacement — clear sticky before new attempt
     try {
@@ -430,6 +435,9 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
       setError("This week's report has already been submitted and cannot be changed.");
       return;
     }
+    // Cancel any pending debounced autosave — its write would race the submit
+    // and be denied once the doc flips to submitted (Run 8 A-9).
+    clearTimeout(saveTimer.current);
     setSubmitting(true);
     try {
       await submitReport(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0, targetUnitId, branchId);
