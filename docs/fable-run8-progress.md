@@ -8,10 +8,11 @@ Active build map: [`docs/audits/design-conformance-2026-07-12.md`](audits/design
 
 | Item | Status | Notes |
 |------|--------|-------|
-| 0.1 Run docs committed | 🚧 | this commit |
-| 0.2 Baseline re-seed + full VH suite (~44 legs, 1 expected SKIP) | ⏳ | |
-| Phase 0 selection written before building | ⏳ | |
-| Tier A items | ⏳ | |
+| 0.1 Run docs committed | ✅ | `7e2c22f5` |
+| 0.2 Baseline re-seed + full VH suite (~44 legs, 1 expected SKIP) | ✅ | re-seed 91 docs (0 stale — Run-7 residue sweep confirmed active) → **44 legs: 42 PASS / 1 FAIL / 1 SKIP**; the 1 FAIL (`t2-pdf-download-ctas`, LOGIN-TIMEOUT) re-run solo → PASS (flake: agent1 logged in cleanly on adjacent legs same run). Effective **43/44 + expected SKIP = CLEAN**, full scope authorized. Log: out/run8-baseline-vh.log |
+| Phase 0 selection written before building | ✅ | `1b9a4d54` — 8 items + 2 stretch; § Phase 0 selection below |
+| Tier A items | 🚧 | A-4 ✅ `41885ff5` (live-smoked: 6-row CSV, meta rows, filename) · A-7 ✅ `2b16e760` (live-smoked: ⋮ glyph + adaptive "Persistency" label + revert) · A-8 ✅ `843af4e4` (unit-covered; first-run-only surface — live smoke waived) · A-3 ✅ `1ac958f1` (live-smoked: stat strip 7/7/0+agents 2, search→2, chip-compose→honest empty, clear→7) · A-1/A-2 ✅ `fa0fe12e` (live-smoked: honest W0 empty states + Not-started pill) · A-6 ✅ `58ff208b` + rules deployed via `deploy-staging.ps1 -Only rules` (live-smoked WRITE-READ-VERIFY: compliance OFF → kiosk rotation 13→12 → restore → 13) · A-5 ✅ `b84d5e60` build + **A-9 fix in flight** (see below) |
+| **A-9 (in-run addition): post-submit trailing-autosave race** | 🚧 | REAL finding surfaced by the a5 live smoke's console-clean gate: handleSubmit never canceled the pending 1500ms autosave timer → trailing saveDraft fires during the submitReport await → rules (correctly) deny the write to the submitted doc → console error + sticky "save failed" indicator under the celebration. PRE-EXISTING (not an A-5 regression — the A-5 submissionData block is not in the autosave effect deps). Fix: clearTimeout in handleSubmit + `submitting` in doSave guard. Regression test dispatched. |
 | Tier B seed hardening (optional fill) | ⏳ | |
 | E1 re-seed + full suite (no-regressions gate) | ⏳ | |
 | E2 final doc + push | ⏳ | |
@@ -21,7 +22,19 @@ Active build map: [`docs/audits/design-conformance-2026-07-12.md`](audits/design
 
 | Item / part | Model | Started (TT) | Ended | Outcome | SHA(s) |
 |------|-------|--------------|-------|---------|--------|
-| 0.1 run docs | Fable (orchestrator) | | | | |
+| 0.1 run docs | Fable (orchestrator) | ~06:55 | ~07:05 | ✅ | `7e2c22f5` |
+| 0.2 baseline seed + suite + flake re-run | Fable (orchestrator) | ~07:05 | ~07:20 | ✅ 42/1/1 → flake re-run PASS | — |
+| Phase 0 verification + selection | Fable (orchestrator, Opus floor) | ~07:06 | ~07:15 | ✅ (parallel with 0.2) | `1b9a4d54` |
+| A-7+A-8 nav polish + onboarding icons | **Sonnet** | ~07:17 | +4.9 min | ✅ 39/39, lint 0 | `2b16e760` `843af4e4` |
+| A-4 campaign proof CSV | **Sonnet** | ~07:17 | +8.0 min | ✅ 65 tests, lint 0 | `41885ff5` |
+| A-7/A-4 live smokes | Fable (orchestrator) | ~07:35 | ~07:50 | ✅ 2/2 PASS (two smoke-side bugs fixed: CSV blank-line arithmetic; unsafe first-drawer-item pick → shell-preserving tab list) | `ca70b7a0` |
+| A-3 All Users roster v2 | **Sonnet** | ~07:17 | +22.3 min | ✅ 32/32, lint 0 (1 justified deviation: read-only listBranches — brief anchor stale) | `1ac958f1` |
+| A-5 celebration polish | **Sonnet** | ~07:35 | +22.4 min | ✅ 247/248 (1 known flake green solo), lint 0, build ok | `b84d5e60` |
+| A-1/A-2 Team Dashboard panels | **Sonnet** | ~07:17 | +25.1 min | ✅ 355/355, lint 0, build ok | `fa0fe12e` |
+| A-6 kiosk toggles + rules (investigate: orchestrator; build: Opus) | **Opus 4.8** | ~07:40 | +17.8 min | ✅ 130 unit + 14 emulator rules + 17 regression rules, lint 0 | `58ff208b` |
+| A-6 rules deploy (staging only) | Fable (orchestrator) | ~08:20 | ~08:25 | ✅ dry-run guards → rules released; `-Only` scope param added to deploy-staging.ps1 (guards unchanged) to avoid re-shipping functions (ABSOLUTE STOP) | in `58ff208b` |
+| A-3/A-12/A-6 live smokes | Fable (orchestrator) | ~08:30 | ~09:10 | ✅ 3/3 PASS after smoke-side fixes (copy expectation; BM My-Team workspace toggle; aria-state polling vs fixed waits) | — |
+| A-5 live smoke → **A-9 finding** | Fable (orchestrator) | ~09:10 | 🚧 | walk completed but console-clean gate caught the REAL pre-existing post-submit autosave race (§ checklist A-9); 2-line fix applied, test dispatched | — |
 
 ## Phase 0 selection (written before building; selector: Fable orchestrator, satisfies the Opus floor)
 
