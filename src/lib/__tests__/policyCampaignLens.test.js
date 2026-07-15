@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   policyContribution, derivePolicyLens, lensFilterCounts, LENS_FILTERS,
+  buildCampaignProofExport,
 } from '../policyCampaignLens';
 
 const CAMPAIGN = {
@@ -80,5 +81,58 @@ describe('lensFilterCounts', () => {
     const counts = lensFilterCounts(lens.contributions);
     expect(counts).toEqual({ all: 3, counts: 1, pending: 1, excluded: 1 });
     expect(LENS_FILTERS.map((f) => f.key)).toEqual(['all', 'counts', 'pending', 'excluded']);
+  });
+});
+
+describe('buildCampaignProofExport', () => {
+  it('returns null when there is no lens', () => {
+    expect(buildCampaignProofExport(null, [])).toBeNull();
+  });
+
+  it('builds one row per contribution, in every state, with raw (non-currency) values', () => {
+    const policies = [
+      P({ id: 'a', ownerName: 'A. Gopaul', policyClass: 'whole_life', status: 'settled', settledAPI: 21600 }),
+      P({ id: 'b', ownerName: 'K. Baksh', policyClass: 'term', status: 'submitted' }),
+      P({ id: 'c', ownerName: 'R. Mohammed', policyClass: 'whole_life', status: 'lapsed' }),
+    ];
+    const lens = derivePolicyLens(policies, CAMPAIGN, {});
+    const proof = buildCampaignProofExport(lens, policies);
+
+    expect(proof.campaignName).toBe('November Sprint');
+    expect(proof.headers).toEqual(['Policy Owner', 'Plan / Class', 'Qualification', 'API (TTD)']);
+    expect(proof.rows).toHaveLength(3);
+    expect(proof.rows).toEqual(
+      expect.arrayContaining([
+        ['A. Gopaul', 'whole_life', 'COUNTS', 21600],
+        ['K. Baksh', 'term', 'PENDING', 0],
+        ['R. Mohammed', 'whole_life', 'EXCLUDED', 0],
+      ]),
+    );
+  });
+
+  it('prefers planName over policyClass, and falls back to em-dash when neither is set', () => {
+    const policies = [P({ id: 'a', ownerName: 'A. Gopaul', planName: 'Premier Whole Life', policyClass: 'whole_life' })];
+    const lens = derivePolicyLens(policies, CAMPAIGN, {});
+    const [row] = buildCampaignProofExport(lens, policies).rows;
+    expect(row[1]).toBe('Premier Whole Life');
+
+    const noClass = [P({ id: 'a', ownerName: 'A. Gopaul', planName: null, policyClass: null })];
+    const lensNoClass = derivePolicyLens(noClass, CAMPAIGN, {});
+    const [rowNoClass] = buildCampaignProofExport(lensNoClass, noClass).rows;
+    expect(rowNoClass[1]).toBe('—');
+  });
+
+  it('falls back to "Policy" for the owner label when the policy is missing from the lookup', () => {
+    const policies = [P({ id: 'a' })];
+    const lens = derivePolicyLens(policies, CAMPAIGN, {});
+    // Pass an empty policies array so buildCampaignProofExport can't resolve id "a".
+    const proof = buildCampaignProofExport(lens, []);
+    expect(proof.rows[0][0]).toBe('Policy');
+  });
+
+  it('returns zero rows for an empty policy list (contributions is empty, not absent)', () => {
+    const lens = derivePolicyLens([], CAMPAIGN, {});
+    const proof = buildCampaignProofExport(lens, []);
+    expect(proof.rows).toEqual([]);
   });
 });

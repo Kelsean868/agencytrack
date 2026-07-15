@@ -9,8 +9,10 @@
  * filter chips · "Export proof"). Contributions are DERIVED honestly from the
  * already-loaded policies + the campaign window (see policyCampaignLens.js);
  * the API target comes from the campaign's tier ladder when present and renders
- * a documented pending target otherwise. Export proof is not wired, so its
- * control is disabled with an honest tooltip.
+ * a documented pending target otherwise. Export proof (Run-7 banked follow-up,
+ * build-map Tier-2 #12 residual) downloads a client-side CSV of the lens's
+ * contributions — enabled only when there is at least one contribution to
+ * export; otherwise it stays honestly disabled with a tooltip.
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Download, Target } from 'lucide-react';
@@ -19,8 +21,9 @@ import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import { getActiveCampaignsForAgent } from '../../../services/campaignService';
 import { formatCurrency } from '../../../utils/formatters';
 import {
-  derivePolicyLens, lensFilterCounts, LENS_FILTERS,
+  derivePolicyLens, lensFilterCounts, LENS_FILTERS, buildCampaignProofExport,
 } from '../../../lib/policyCampaignLens';
+import { buildCsvContent, downloadCsv, slugifyForFilename } from '../../../lib/csvExport';
 import PanelSkeleton from '../../ui/PanelSkeleton';
 
 const BADGE = {
@@ -47,7 +50,7 @@ export function ContributionBadge({ contribution }) {
   );
 }
 
-function LensStrip({ lens }) {
+function LensStrip({ lens, onExportProof, canExport }) {
   const targetLabel = lens.api.target != null
     ? `${formatCurrency(lens.api.current)} of ${formatCurrency(lens.api.target)}`
     : `${formatCurrency(lens.api.current)} counted · target pending`;
@@ -92,10 +95,13 @@ function LensStrip({ lens }) {
       <div className="flex items-center gap-2 flex-wrap">
         <button
           type="button"
-          disabled
-          aria-disabled="true"
-          title="Proof export isn't available yet."
-          className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold opacity-60 cursor-not-allowed"
+          onClick={canExport ? onExportProof : undefined}
+          disabled={!canExport}
+          aria-disabled={!canExport}
+          title={canExport ? 'Download a CSV of this campaign\'s contribution proof.' : 'No contributions yet — nothing to export.'}
+          className={`min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold ${
+            canExport ? 'hover:opacity-90 transition-opacity' : 'opacity-60 cursor-not-allowed'
+          }`}
           data-testid="campaign-lens-export"
         >
           <Download size={14} /> Export proof
@@ -149,6 +155,22 @@ export default function CampaignLensPanel({ policies }) {
     [policies, selected],
   );
   const counts = useMemo(() => lensFilterCounts(lens?.contributions), [lens]);
+  const proof = useMemo(() => buildCampaignProofExport(lens, policies), [lens, policies]);
+  const canExport = Boolean(proof?.rows?.length);
+
+  const handleExportProof = () => {
+    if (!proof || !canExport) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const csvRows = [
+      ['Campaign', proof.campaignName],
+      ['Generated', today],
+      [],
+      proof.headers,
+      ...proof.rows,
+    ];
+    const filename = `campaign-proof-${slugifyForFilename(proof.campaignName)}-${today}.csv`;
+    downloadCsv(filename, buildCsvContent(csvRows));
+  };
 
   // Flag OFF ⇒ surface entirely absent (no fetch, no markup).
   if (!flagOn) return null;
@@ -224,7 +246,7 @@ export default function CampaignLensPanel({ policies }) {
         </div>
       )}
 
-      <LensStrip lens={lens} />
+      <LensStrip lens={lens} onExportProof={handleExportProof} canExport={canExport} />
 
       {/* Lens filter chips */}
       <div className="flex gap-1 p-1 bg-surface-muted border border-border rounded-[10px] self-start" role="tablist" aria-label="Filter contributions">

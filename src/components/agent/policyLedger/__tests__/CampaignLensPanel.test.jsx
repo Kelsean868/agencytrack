@@ -51,8 +51,44 @@ describe('CampaignLensPanel', () => {
     expect(screen.getByTestId('contribution-badge-counts')).toBeInTheDocument();
     expect(screen.getByTestId('lens-filter-all')).toBeInTheDocument();
     expect(screen.getByTestId('lens-filter-counts')).toBeInTheDocument();
-    // Export proof is present but disabled (not wired)
-    expect(screen.getByTestId('campaign-lens-export')).toBeDisabled();
+    // Export proof is present and ENABLED — contributions exist for this lens
+    expect(screen.getByTestId('campaign-lens-export')).toBeEnabled();
+  });
+
+  it('disables Export proof with an honest tooltip when there are no contributions', async () => {
+    hoisted.useFeatureFlag.mockReturnValue(true);
+    render(<CampaignLensPanel policies={[]} />);
+    await waitFor(() => expect(screen.getByTestId('campaign-lens-strip')).toBeInTheDocument());
+    const btn = screen.getByTestId('campaign-lens-export');
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute('title', 'No contributions yet — nothing to export.');
+  });
+
+  it('downloads a CSV proof export when Export proof is clicked', async () => {
+    hoisted.useFeatureFlag.mockReturnValue(true);
+    const createObjectURL = vi.fn(() => 'blob:mock-url');
+    const revokeObjectURL = vi.fn();
+    window.URL.createObjectURL = createObjectURL;
+    window.URL.revokeObjectURL = revokeObjectURL;
+    const clickSpy = vi.fn();
+    const origCreateElement = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+      const el = origCreateElement(tag);
+      if (tag === 'a') el.click = clickSpy;
+      return el;
+    });
+
+    render(<CampaignLensPanel policies={POLICIES} />);
+    await waitFor(() => expect(screen.getByTestId('campaign-lens-strip')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('campaign-lens-export'));
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    const blobArg = createObjectURL.mock.calls[0][0];
+    expect(blobArg.type).toBe('text/csv;charset=utf-8;');
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+
+    document.createElement.mockRestore();
   });
 
   it('filters the contribution list by state', async () => {

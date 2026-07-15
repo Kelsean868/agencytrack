@@ -1,0 +1,118 @@
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import {
+  escapeCsvField, buildCsvContent, slugifyForFilename, downloadCsv,
+} from '../csvExport';
+
+describe('escapeCsvField', () => {
+  it('leaves plain values unchanged', () => {
+    expect(escapeCsvField('Cheryl Gonzales')).toBe('Cheryl Gonzales');
+    expect(escapeCsvField(7200)).toBe('7200');
+  });
+
+  it('returns empty string for null/undefined', () => {
+    expect(escapeCsvField(null)).toBe('');
+    expect(escapeCsvField(undefined)).toBe('');
+  });
+
+  it('quote-wraps a value containing a comma', () => {
+    expect(escapeCsvField('Gonzales, Cheryl')).toBe('"Gonzales, Cheryl"');
+  });
+
+  it('quote-wraps and doubles embedded quotes', () => {
+    expect(escapeCsvField('5\' 10" tall')).toBe('"5\' 10"" tall"');
+  });
+
+  it('quote-wraps a value containing a newline or carriage return', () => {
+    expect(escapeCsvField('line1\nline2')).toBe('"line1\nline2"');
+    expect(escapeCsvField('line1\rline2')).toBe('"line1\rline2"');
+  });
+});
+
+describe('buildCsvContent', () => {
+  it('joins rows with CRLF and cells with commas', () => {
+    const content = buildCsvContent([
+      ['Owner', 'API (TTD)'],
+      ['A. Gopaul', 21600],
+    ]);
+    expect(content).toBe('Owner,API (TTD)\r\nA. Gopaul,21600');
+  });
+
+  it('escapes cells needing quoting inside a full table', () => {
+    const content = buildCsvContent([
+      ['Owner', 'Note'],
+      ['R, Mohammed', 'contains "quotes"'],
+    ]);
+    expect(content).toBe('Owner,Note\r\n"R, Mohammed","contains ""quotes"""');
+  });
+
+  it('handles ragged rows (e.g. a 2-column meta row before a wider table)', () => {
+    const content = buildCsvContent([
+      ['Campaign', 'November Sprint'],
+      [],
+      ['Owner', 'Plan', 'State', 'API (TTD)'],
+    ]);
+    expect(content).toBe('Campaign,November Sprint\r\n\r\nOwner,Plan,State,API (TTD)');
+  });
+
+  it('returns empty string for empty/undefined input', () => {
+    expect(buildCsvContent([])).toBe('');
+    expect(buildCsvContent(undefined)).toBe('');
+  });
+});
+
+describe('slugifyForFilename', () => {
+  it('lowercases and replaces non-alphanumeric runs with a single dash', () => {
+    expect(slugifyForFilename('November Sprint')).toBe('november-sprint');
+    expect(slugifyForFilename('Staging Sprint — Qualify')).toBe('staging-sprint-qualify');
+  });
+
+  it('trims leading/trailing dashes', () => {
+    expect(slugifyForFilename('  !!Bonus Round!!  ')).toBe('bonus-round');
+  });
+
+  it('falls back to "export" for empty/undefined/symbol-only input', () => {
+    expect(slugifyForFilename('')).toBe('export');
+    expect(slugifyForFilename(undefined)).toBe('export');
+    expect(slugifyForFilename('***')).toBe('export');
+  });
+});
+
+describe('downloadCsv', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('creates a Blob, an anchor with the right filename, clicks it, and revokes the URL', () => {
+    const createObjectURL = vi.fn(() => 'blob:mock-url');
+    const revokeObjectURL = vi.fn();
+    window.URL.createObjectURL = createObjectURL;
+    window.URL.revokeObjectURL = revokeObjectURL;
+
+    const clickSpy = vi.fn();
+    const origCreateElement = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+      const el = origCreateElement(tag);
+      if (tag === 'a') el.click = clickSpy;
+      return el;
+    });
+    const appendSpy = vi.spyOn(document.body, 'appendChild');
+    const removeSpy = vi.spyOn(document.body, 'removeChild');
+
+    downloadCsv('campaign-proof-november-sprint-2026-07-15.csv', 'a,b\r\n1,2');
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    const blobArg = createObjectURL.mock.calls[0][0];
+    expect(blobArg).toBeInstanceOf(Blob);
+    expect(blobArg.type).toBe('text/csv;charset=utf-8;');
+
+    expect(appendSpy).toHaveBeenCalledTimes(1);
+    const anchor = appendSpy.mock.calls[0][0];
+    expect(anchor.tagName).toBe('A');
+    expect(anchor.download).toBe('campaign-proof-november-sprint-2026-07-15.csv');
+    expect(anchor.href).toBe('blob:mock-url');
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(removeSpy).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+  });
+});
