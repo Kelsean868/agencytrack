@@ -234,7 +234,13 @@ describe('AgentAwardsPanel — §1 states contract (error / retry)', () => {
     );
 
     await waitFor(() => expect(getOwnPolicies).toHaveBeenCalledTimes(1));
-    const card = document.querySelector('[data-testid="agent-awards-error"]');
+    // The call-count check above can pass on waitFor's very first (synchronous)
+    // poll, since getOwnPolicies is invoked inside the mount effect before this
+    // line runs — it does NOT guarantee the promise's .catch → setLedgerError →
+    // re-render chain has committed yet. A bare document.querySelector right
+    // after is a real race (fails intermittently under CI's slower scheduling);
+    // findByTestId polls until the error card actually renders.
+    const card = await screen.findByTestId('agent-awards-error');
     expect(card).toBeInTheDocument();
 
     card.querySelector('button').click();
@@ -254,14 +260,22 @@ describe('AgentAwardsPanel — §1 states contract (error / retry)', () => {
       />
     );
 
-    await waitFor(() => {
-      const banner = document.querySelector('[data-testid="agent-awards-ledger-partial"]');
-      expect(banner).toBeInTheDocument();
-      expect(banner).toHaveAttribute('role', 'alert');
-    });
+    // Two renders sit on this test's critical path: the initial ledgerLoading
+    // gate, then the effect-driven re-render once getOwnPolicies rejects and
+    // setLedgerError/setLedgerPolicies commit. Under CI's documented full-suite
+    // parallel resource contention (see the asyncUtilTimeout comment in
+    // src/test-setup.js) that chain has been observed to occasionally exceed
+    // the shared 5000ms budget even though it resolves in well under 50ms
+    // locally — this test gets its own wider timeout rather than raising the
+    // global default for every other test in the suite.
+    await waitFor(() => expect(getOwnPolicies).toHaveBeenCalledTimes(1));
+
+    const banner = await screen.findByTestId('agent-awards-ledger-partial');
+    expect(banner).toBeInTheDocument();
+    expect(banner).toHaveAttribute('role', 'alert');
     // Not the blocking full-failure card.
     expect(document.querySelector('[data-testid="agent-awards-error"]')).not.toBeInTheDocument();
-  });
+  }, 10000);
 });
 
 describe('AgentAwardsPanel — §1 top-level empty (no submissions)', () => {
