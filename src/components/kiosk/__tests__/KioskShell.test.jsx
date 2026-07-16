@@ -7,6 +7,7 @@ import {
   getKioskTenantUsers,
   getKioskAgentOfMonth,
   getKioskCampaigns,
+  getKioskDisabledPanels,
 } from '../../../lib/kiosk/kioskServices';
 import { deriveKioskCelebrations } from '../../../lib/kiosk/kioskCelebrations';
 import { POLL_INTERVAL_MS } from '../../../lib/kiosk/kioskConfig';
@@ -34,6 +35,7 @@ vi.mock('../../../lib/kiosk/kioskServices', () => ({
   getKioskTenantUsers: vi.fn(),
   getKioskAgentOfMonth: vi.fn(),
   getKioskCampaigns: vi.fn(),
+  getKioskDisabledPanels: vi.fn(),
 }));
 
 vi.mock('../../../lib/kiosk/kioskCelebrations', () => ({
@@ -47,11 +49,12 @@ const SUBS = [
 const USERS = [{ id: 'a1', role: 'agent', name: 'Alice' }];
 const AOM = { api: { agentUid: 'a1', agentName: 'Alice', achievementValue: 90000 } };
 
-function setData({ subs = [], users = [], aom = null, campaigns = [], celebrations = [] } = {}) {
+function setData({ subs = [], users = [], aom = null, campaigns = [], celebrations = [], disabledPanels = [] } = {}) {
   getKioskYTDSubmissions.mockResolvedValue(subs);
   getKioskTenantUsers.mockResolvedValue(users);
   getKioskAgentOfMonth.mockResolvedValue(aom);
   getKioskCampaigns.mockResolvedValue(campaigns);
+  getKioskDisabledPanels.mockResolvedValue(disabledPanels);
   deriveKioskCelebrations.mockReturnValue(celebrations);
 }
 
@@ -131,6 +134,34 @@ describe('KioskShell — dynamic rotation (3.6)', () => {
     const seen = new Set(await collectRotation(18));
     expect(seen).toContain('celebrations');
   });
+
+  // Tier-3 #15: manager per-branch panel enable/disable.
+  it('honors kioskConfig.disabledPanels — disabled base panels are excluded from the rotation', async () => {
+    setData({
+      subs: SUBS,
+      users: USERS,
+      aom: AOM,
+      disabledPanels: ['agentOfMonth', 'compliance'],
+    });
+    await mountShell();
+    const seen = new Set(await collectRotation(16));
+    expect(seen).not.toContain('agentOfMonth');
+    expect(seen).not.toContain('compliance');
+    // Non-disabled panels still rotate.
+    expect(seen).toContain('ytdLeaderboards');
+    expect(seen).toContain('welcome');
+  });
+
+  it('degrades to all-enabled when the disabledPanels read fails (fail-open)', async () => {
+    setData({ subs: SUBS, users: USERS, aom: AOM });
+    getKioskDisabledPanels.mockRejectedValueOnce(new Error('permission-denied'));
+    await mountShell();
+    const seen = new Set(await collectRotation(16));
+    // A denied config read must NOT blank the wall — full rotation persists.
+    expect(seen).toContain('agentOfMonth');
+    expect(seen).toContain('compliance');
+    expect(seen).toContain('welcome');
+  });
 });
 
 describe('KioskShell — initial-load reconnecting indicator (A3)', () => {
@@ -142,6 +173,7 @@ describe('KioskShell — initial-load reconnecting indicator (A3)', () => {
     getKioskTenantUsers.mockResolvedValue([]);
     getKioskAgentOfMonth.mockResolvedValue(null);
     getKioskCampaigns.mockResolvedValue([]);
+    getKioskDisabledPanels.mockResolvedValue([]);
     deriveKioskCelebrations.mockReturnValue([]);
 
     await mountShell();
@@ -158,6 +190,7 @@ describe('KioskShell — initial-load reconnecting indicator (A3)', () => {
     getKioskTenantUsers.mockResolvedValue([]);
     getKioskAgentOfMonth.mockResolvedValue(null);
     getKioskCampaigns.mockResolvedValue([]);
+    getKioskDisabledPanels.mockResolvedValue([]);
     deriveKioskCelebrations.mockReturnValue([]);
 
     await mountShell();

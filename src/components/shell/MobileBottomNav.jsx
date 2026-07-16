@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import { MoreVertical, Plus } from 'lucide-react';
 import MobileNavDrawer from './MobileNavDrawer';
 
 /**
@@ -27,6 +27,15 @@ export default function MobileBottomNav({
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   if (!items || items.length === 0) return null;
+
+  // N6 — adaptive More label: when the active tab lives behind the More
+  // sheet (a drawer-only item, not one of the primary bottom-nav slots),
+  // show that item's own short label + active state on the More slot
+  // instead of the generic "More", so mobile agents can see where they are
+  // without opening the sheet.
+  const activeDrawerItem = drawerNavItems?.find(
+    (item) => item.tabId != null && item.tabId === activeTab
+  );
 
   return (
     <>
@@ -82,13 +91,15 @@ export default function MobileBottomNav({
         {drawerNavItems && drawerNavItems.length > 0 && (
           <button
             type="button"
-            className="bottom-nav-item"
+            className={`bottom-nav-item${activeDrawerItem ? ' active' : ''}`}
             onClick={() => setDrawerOpen(true)}
             aria-haspopup="dialog"
+            aria-current={activeDrawerItem ? 'page' : undefined}
+            aria-label={activeDrawerItem ? `More — currently ${activeDrawerItem.label}` : 'More'}
             data-testid="bottomnav-more"
           >
-            <MoreHorizontal size={22} />
-            <span>More</span>
+            <MoreVertical size={22} />
+            <span>{activeDrawerItem ? activeDrawerItem.label : 'More'}</span>
           </button>
         )}
       </nav>

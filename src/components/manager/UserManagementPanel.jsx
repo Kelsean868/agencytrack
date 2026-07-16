@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, X, Loader2, UserCircle, AlertTriangle, Upload, Pencil, MailPlus, Link, ChevronDown, Copy } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Plus, X, Loader2, UserCircle, AlertTriangle, Upload, Pencil, MailPlus, Link, ChevronDown, Copy, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   createUser,
@@ -9,7 +9,7 @@ import {
 } from '../../services/agentManagementService';
 import { listBranches } from '../../services/branchService';
 import { resendInvite, getInviteLink } from '../../services/userService';
-import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
+import { formatDateDisplay, formatDateFriendly, getUnitDisplayName } from '../../utils/formatters';
 import { EMAIL_RE } from '../../utils/validators';
 import useToast from '../../hooks/useToast';
 import useFocusTrap from '../../hooks/useFocusTrap';
@@ -41,6 +41,61 @@ const ROLE_DISPLAY = {
   agent:          'Agent',
 };
 
+// All Users roster v2 (Tier-4 #17) — hierarchy order, lowest → highest, used
+// to render stat-strip role tiles in a stable, predictable order and to skip
+// roles absent from the loaded roster (honest counts, no zero-tiles).
+const ROLE_ORDER = ['agent', 'cro', 'unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'];
+
+// Role filter chips (point 3 of the brief) — deliberately the 5 org-hierarchy
+// roles only. platform_admin (Kyron-only, cross-tenant) and cro (rare
+// back-office role) are still shown/counted elsewhere (RoleChip, stat strip)
+// but omitted from the filter row to keep it scannable.
+const ROLE_FILTER_OPTIONS = ['agent', 'unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin'];
+
+// RoleChip color mapping — reuses existing AA-verified token pairs already
+// live elsewhere in the app (StatusPill's primary/success/warning/danger/muted
+// variants + the gold-tint/gold-ink "Manager-set" pill idiom from
+// FinancingTermsSetup.jsx / MonthlyStatementEntry.jsx) rather than inventing
+// new color combinations. Only 6 distinct token pairs exist for 7 roles, so
+// cro intentionally shares agent's neutral "muted" treatment — both are the
+// lowest rung of their respective ladders (field IC vs. back-office IC), and
+// the chip's label text (not just color) disambiguates them.
+const ROLE_CHIP_CLASS = {
+  platform_admin: 'bg-danger/15 text-danger-ink',
+  tenant_admin:   'bg-warning/15 text-warning-ink',
+  sales_manager:  'bg-gold-tint text-gold-ink',
+  branch_manager: 'bg-success/15 text-success-ink',
+  unit_manager:   'bg-primary/10 text-primary',
+  cro:            'bg-border/60 text-ink-muted',
+  agent:          'bg-border/60 text-ink-muted',
+};
+
+function RoleChip({ role }) {
+  const cls = ROLE_CHIP_CLASS[role] ?? 'bg-border/60 text-ink-muted';
+  return (
+    <span
+      data-testid={`role-chip-${role ?? 'unknown'}`}
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${cls}`}
+    >
+      {ROLE_DISPLAY[role] ?? role ?? 'Unknown'}
+    </span>
+  );
+}
+
+// Compact stat tile — smaller footprint than TenantAdminDashboard's StatCard
+// (no loading/sub-label states needed here; the roster is already in memory
+// by the time this renders) but shares its card/label/value visual idiom.
+function StatTile({ label, value, testid }) {
+  return (
+    <div
+      data-testid={testid}
+      className="rounded-xl border border-border bg-card px-3 py-2 min-w-[92px] flex flex-col gap-0.5"
+    >
+      <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted whitespace-nowrap">{label}</p>
+      <p className="text-lg font-bold text-ink tabular-nums">{value}</p>
+    </div>
+  );
+}
 
 function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenantId }) {
   const drawerRef = useFocusTrap({ onEscape: onClose });
@@ -383,6 +438,17 @@ export default function UserManagementPanel({ openCreateSignal = 0 }) {
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showBulkImportGoals, setShowBulkImportGoals] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
+  // Roster v2 (Tier-4 #17) — search + role-filter chips are client-side view
+  // state over the already-loaded `users` list. No new Firestore reads for
+  // either. `branches` IS a new read (see loadBranches below) — needed to
+  // resolve branchId → display name for the Branch·Unit column; unitId
+  // resolves for free against the already-loaded `users` roster instead
+  // (unitId is the assigned unit manager's own uid — see buildUserDoc in
+  // scripts/staging/seed-staging.mjs and CreateUserDrawer's unit <select>
+  // above, both of which set/populate it that way).
+  const [searchQuery, setSearchQuery]   = useState('');
+  const [roleFilter, setRoleFilter]     = useState(() => new Set());
+  const [branches, setBranches]         = useState([]);
   const [editTarget, setEditTarget]     = useState(null);
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [deactivating, setDeactivating] = useState(false);
@@ -414,6 +480,92 @@ export default function UserManagementPanel({ openCreateSignal = 0 }) {
   }, [showInactive, tenantId]);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
+
+  // Branch names for the Branch·Unit column (roster v2, Tier-4 #17). Best-
+  // effort: a failed load just leaves branch names unresolved (em dash
+  // fallback in resolveBranchUnit below) rather than blocking the roster.
+  useEffect(() => {
+    if (!tenantId) return;
+    let cancelled = false;
+    listBranches(tenantId)
+      .then((list) => { if (!cancelled) setBranches(list ?? []); })
+      .catch((err) => {
+        console.error('[UserManagementPanel] loadBranches:', err);
+        if (!cancelled) setBranches([]);
+      });
+    return () => { cancelled = true; };
+  }, [tenantId]);
+
+  // uid → user lookup over the full (unfiltered) roster — resolves an
+  // agent's unitId (the assigned unit manager's uid) to that manager's own
+  // doc so getUnitDisplayName() can read their name/unitName field.
+  const usersByUid = useMemo(() => {
+    const m = {};
+    users.forEach((u) => { m[u.uid ?? u.id] = u; });
+    return m;
+  }, [users]);
+
+  const branchesById = useMemo(() => {
+    const m = {};
+    branches.forEach((b) => { m[b.id] = b; });
+    return m;
+  }, [branches]);
+
+  function resolveBranchUnit(u) {
+    const branchName = u.branchId ? (branchesById[u.branchId]?.name ?? null) : null;
+    let unitName = null;
+    if (u.role === 'unit_manager') {
+      unitName = getUnitDisplayName(u);
+    } else if (u.unitId) {
+      const um = usersByUid[u.unitId];
+      unitName = um ? getUnitDisplayName(um) : null;
+    }
+    if (!branchName && !unitName) return '—';
+    if (branchName && unitName) return `${branchName} · ${unitName}`;
+    return branchName ?? unitName;
+  }
+
+  // Stat strip (point 1) — always reflects the full loaded roster (honors
+  // the "Show inactive" toggle, same as `users`), independent of the
+  // search/role-filter view below. That keeps it an honest at-a-glance
+  // roster overview even while the table itself is narrowed by filters.
+  const stats = useMemo(() => {
+    const total = users.length;
+    const active = users.filter((u) => u.active !== false).length;
+    const byRole = {};
+    users.forEach((u) => { byRole[u.role] = (byRole[u.role] ?? 0) + 1; });
+    return { total, active, deactivated: total - active, byRole };
+  }, [users]);
+
+  function toggleRoleFilter(r) {
+    setRoleFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(r)) next.delete(r); else next.add(r);
+      return next;
+    });
+  }
+
+  function clearFilters() {
+    setSearchQuery('');
+    setRoleFilter(new Set());
+  }
+
+  const hasActiveFilters = searchQuery.trim() !== '' || roleFilter.size > 0;
+
+  // Search (point 2) + role chips (point 3) compose with AND semantics —
+  // both narrow the same view. Multiple selected role chips compose with OR
+  // against each other (show ANY selected role), matched against the
+  // MasterSheet toggle-chip idiom.
+  const filteredUsers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return users.filter((u) => {
+      if (roleFilter.size > 0 && !roleFilter.has(u.role)) return false;
+      if (!q) return true;
+      const name = (u.name ?? '').toLowerCase();
+      const email = (u.email ?? '').toLowerCase();
+      return name.includes(q) || email.includes(q);
+    });
+  }, [users, searchQuery, roleFilter]);
 
   // External create trigger (Tier 1 · 1.3, TenantAdminDashboard Quick-Add).
   // UserManagementPanel is only mounted while the Users tab is active (see
@@ -616,6 +768,80 @@ export default function UserManagementPanel({ openCreateSignal = 0 }) {
         </div>
       </div>
 
+      {/* Stat strip (point 1) — total / active / deactivated + one tile per
+          role present in the loaded roster. Reflects the full roster, not
+          the search/filter-narrowed table below. */}
+      {!loading && !loadError && users.length > 0 && (
+        <div className="flex flex-wrap gap-2" data-testid="user-stat-strip">
+          <StatTile testid="user-stat-total" label="Total" value={stats.total} />
+          <StatTile testid="user-stat-active" label="Active" value={stats.active} />
+          <StatTile testid="user-stat-deactivated" label="Deactivated" value={stats.deactivated} />
+          {ROLE_ORDER.filter((r) => stats.byRole[r] > 0).map((r) => (
+            <StatTile
+              key={r}
+              testid={`user-stat-role-${r}`}
+              label={ROLE_DISPLAY[r] ?? r}
+              value={stats.byRole[r]}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Search + role filter chips (points 2–3) — client-side over the
+          already-loaded `users` list, no new reads. */}
+      {!loading && !loadError && users.length > 0 && (
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative flex-1 min-w-[180px] max-w-xs">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search name or email…"
+              aria-label="Search users by name or email"
+              data-testid="user-search-input"
+              className="w-full h-11 pl-8 pr-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+          <div
+            className="inline-flex flex-wrap gap-1.5"
+            role="group"
+            aria-label="Filter by role"
+            data-testid="user-role-filter-chips"
+          >
+            {ROLE_FILTER_OPTIONS.map((r) => {
+              const on = roleFilter.has(r);
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  data-testid={`role-filter-${r}`}
+                  onClick={() => toggleRoleFilter(r)}
+                  aria-pressed={on}
+                  className={`min-h-[44px] px-3 rounded-full border text-xs font-bold tracking-wide transition-colors ${
+                    on
+                      ? 'bg-primary-tint border-primary/40 text-primary'
+                      : 'bg-surface border-border text-ink-muted hover:text-ink'
+                  }`}
+                >
+                  {ROLE_DISPLAY[r]}
+                </button>
+              );
+            })}
+          </div>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              data-testid="user-clear-filters"
+              className="min-h-[44px] px-2 text-xs font-semibold text-ink-muted hover:text-ink underline underline-offset-2 transition-colors"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Table */}
       {loading ? (
         <div className="flex flex-col gap-2">
@@ -642,6 +868,19 @@ export default function UserManagementPanel({ openCreateSignal = 0 }) {
             {showInactive ? 'No users found.' : 'No users yet — create the first user above.'}
           </p>
         </div>
+      ) : filteredUsers.length === 0 ? (
+        <div className="card text-center py-10 flex flex-col items-center gap-3" data-testid="user-roster-empty-filtered">
+          <UserCircle size={40} className="text-border" />
+          <p className="text-sm text-ink-muted italic">No users match your search or filters.</p>
+          <button
+            type="button"
+            onClick={clearFilters}
+            data-testid="user-clear-filters-empty"
+            className="text-xs font-medium text-primary underline underline-offset-2"
+          >
+            Clear filters
+          </button>
+        </div>
       ) : (
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           {/* Card-scoped vertical + horizontal scroll (§5) — scroll lives
@@ -654,13 +893,21 @@ export default function UserManagementPanel({ openCreateSignal = 0 }) {
                   <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[200px]">Name</th>
                   <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[200px]">Email</th>
                   <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[130px]">Role</th>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[160px]">Branch · Unit</th>
                   <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[100px]">Joined</th>
                   <th className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[90px]">Status</th>
                   <th className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-wide text-ink-muted border-b border-border sticky top-0 z-20 bg-surface min-w-[140px]">Actions</th>
+                  {/* Roster v2 (Tier-4 #17), point 6: a "Last active" column is
+                      intentionally NOT built — no lastActive field exists on
+                      user docs yet (verified against agentManagementService.js
+                      getAllUsers, buildUserDoc in seed-staging.mjs, and
+                      EditUserDrawer's field set). Skip-logged pending a
+                      write-path change (e.g. stamping lastActive on login or
+                      submission write) — see final report for follow-up note. */}
                 </tr>
               </thead>
               <tbody>
-                {users.map((u, i) => {
+                {filteredUsers.map((u, i) => {
                   const joinedDate = u.createdAt?.toDate?.().toISOString().slice(0, 10) ?? '';
                   const isInactive = u.active === false;
                   const canAct = CREATABLE_ROLES[role]?.includes(u.role) && u.uid !== currentUser?.uid;
@@ -681,7 +928,18 @@ export default function UserManagementPanel({ openCreateSignal = 0 }) {
                       <td className="px-3 py-3 text-xs text-ink-muted">
                         <span className="block truncate max-w-[220px]" title={u.email ?? ''}>{u.email ?? '—'}</span>
                       </td>
-                      <td className="px-3 py-3 text-xs text-ink-muted whitespace-nowrap">{getRoleLabel(u.role)}</td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <RoleChip role={u.role} />
+                      </td>
+                      <td className="px-3 py-3 text-xs text-ink-muted">
+                        <span
+                          data-testid={`user-branch-unit-${u.uid ?? u.id}`}
+                          className="block truncate max-w-[200px]"
+                          title={resolveBranchUnit(u)}
+                        >
+                          {resolveBranchUnit(u)}
+                        </span>
+                      </td>
                       <td className="px-3 py-3 text-xs text-ink-muted whitespace-nowrap">
                         {joinedDate ? formatDateDisplay(joinedDate) : '—'}
                       </td>
@@ -769,9 +1027,17 @@ export default function UserManagementPanel({ openCreateSignal = 0 }) {
             data-testid="user-roster-footer"
             className="px-3 py-2 border-t border-border bg-surface text-xs text-ink-muted"
           >
-            {users.length} user{users.length !== 1 ? 's' : ''} •{' '}
-            {users.filter((u) => u.active !== false).length} active •{' '}
-            {users.filter((u) => u.active === false).length} deactivated
+            {/* Unfiltered: identical text to the pre-v2 footer (byte-for-byte,
+                since filteredUsers === users with no search/role filter
+                active). Filtered: "N of M shown" makes the narrowing visible
+                without duplicating the stat strip's full-roster totals. */}
+            {hasActiveFilters ? (
+              <>{filteredUsers.length} of {users.length} user{users.length !== 1 ? 's' : ''} shown •{' '}</>
+            ) : (
+              <>{filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} •{' '}</>
+            )}
+            {filteredUsers.filter((u) => u.active !== false).length} active •{' '}
+            {filteredUsers.filter((u) => u.active === false).length} deactivated
           </div>
         </div>
       )}

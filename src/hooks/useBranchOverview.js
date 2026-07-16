@@ -7,6 +7,8 @@ import { computeEarnedBadges, BADGE_KEY_ORDER } from '../components/gamification
 import { UM_MANDATORY_FILING_CUTOFF } from '../utils/complianceDerive';
 import { deriveExceptions } from '../utils/managerExceptions';
 import { resolveAnnualAPIFloor } from '../utils/tenureFloors';
+import { rankWeeklyChampions } from '../utils/weeklyChampions';
+import { getMostRecentSunday } from '../utils/dateHelpers';
 
 /**
  * useBranchOverview — composing hook for the M2 Manager Overview hero.
@@ -263,6 +265,17 @@ export function useBranchOverview(role, userProfile, tenantId) {
       .map((key) => ({ key, count: counts[key] }));
   }, [productionScopedSubs]);
 
+  // This week's ranked champions (A-1, ChampionsPanel) — reuses the SAME
+  // already-loaded, already role/branch/unit-scoped productionScopedSubs
+  // (zero new Firestore reads). Ranked by weekly API via rankWeeklyChampions
+  // (weeklyChampions.js), the same derivation ProductionLeaderboardSurface's
+  // WeeklyChampionsBanner already consumes for its single-winner view.
+  const currentWeekStarting = useMemo(() => getMostRecentSunday(), []);
+  const weeklyChampions = useMemo(
+    () => rankWeeklyChampions(productionScopedSubs, currentWeekStarting),
+    [productionScopedSubs, currentWeekStarting]
+  );
+
   return {
     loading,
     error,
@@ -281,5 +294,7 @@ export function useBranchOverview(role, userProfile, tenantId) {
     companyFloorTotal,
     weeklyPulse,
     submissionsByAgent,
+    weeklyChampions,
+    currentWeekStarting,
   };
 }

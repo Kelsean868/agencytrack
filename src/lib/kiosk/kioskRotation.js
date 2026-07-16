@@ -18,6 +18,12 @@
  * @param {Array}    opts.flaggedCampaigns     [{ id, ... }] active + kiosk-flagged, non-empty
  * @param {boolean}  opts.hasCelebrations      true when there is ≥1 celebration this week
  * @param {Set<string>|string[]} opts.droppedKeys base keys to drop (reported empty)
+ * @param {Set<string>|string[]} opts.disabledKeys base keys a manager turned OFF
+ *   (kioskConfig.disabledPanels). Excluded from the rotation BEFORE the empty-drop
+ *   logic; the welcome-slide fallback below is never suppressed (result-empty is
+ *   backfilled regardless of what was disabled). Dynamic campaign/celebration
+ *   panels remain auto — a disabled `weekLeaderboards`/`awardsWatch` still marks
+ *   the splice position for them.
  * @returns {Array<{ key: string, campaignId?: string }>}
  */
 export function buildKioskRotation(baseOrder = [], opts = {}) {
@@ -25,13 +31,15 @@ export function buildKioskRotation(baseOrder = [], opts = {}) {
     flaggedCampaigns = [],
     hasCelebrations = false,
     droppedKeys = [],
+    disabledKeys = [],
   } = opts;
 
   const dropped = droppedKeys instanceof Set ? droppedKeys : new Set(droppedKeys);
+  const disabled = disabledKeys instanceof Set ? disabledKeys : new Set(disabledKeys);
   const result = [];
 
   for (const key of baseOrder) {
-    if (!dropped.has(key)) {
+    if (!dropped.has(key) && !disabled.has(key)) {
       result.push({ key });
     }
 

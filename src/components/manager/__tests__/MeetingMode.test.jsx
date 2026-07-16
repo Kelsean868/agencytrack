@@ -138,12 +138,46 @@ describe('MeetingMode — run-of-show', () => {
     await renderLoaded();
     // opening(0) → branch → activity → production → funnel → agent(5): the rail
     // shows on the agent scene. Deck: opening, branch, activity, production,
-    // funnel, agent, recognition, close (units/exceptions/celebrations/campaign
-    // skip — no data).
+    // funnel, agent, recognition, close (units/exceptions/celebrations/awards/
+    // campaign skip — no data).
     for (let i = 0; i < 5; i += 1) fireEvent.keyDown(document, { key: 'ArrowRight' });
     await waitFor(() => expect(screen.getByText(/This week's activity/i)).toBeInTheDocument());
     // The rail lists every scene; clicking "Branch scorecard" jumps back to it.
     fireEvent.click(screen.getByRole('button', { name: 'Branch scorecard' }));
     await waitFor(() => expect(screen.getByText(/Where the branch stands/)).toBeInTheDocument());
+  });
+
+  it('skip-logs the awards scene when nobody is within reach — deck lands on close at index 7', async () => {
+    await renderLoaded();
+    // Default fixture's YTD is the same tiny (apiSold=24000) week used for
+    // `submissions` — nowhere near any award's in-contention floor, so
+    // deriveDeck skips 'awards' and close is the 8th (index-7) scene.
+    for (let i = 0; i < 7; i += 1) fireEvent.keyDown(document, { key: 'ArrowRight' });
+    await waitFor(() => expect(screen.getByText(/That's the room/)).toBeInTheDocument());
+  });
+});
+
+describe('MeetingMode — awards within reach scene', () => {
+  const YEAR = new Date().getFullYear(); // annual-only award math; year must match real "now"
+
+  it('renders an in-reach award card once an agent crosses the 60% floor', async () => {
+    const users = [{ id: 'agent-1', name: 'Alice Agent', role: 'agent', unitId: 'u1', photoURL: null }];
+    const weekSub = SUBMISSIONS[0];
+    // A large annual-only submission (MDRT: 250k inContention, 500k threshold,
+    // no apps/persistency gate) pushes agent-1 to 64% — comfortably over the
+    // 60% within-reach floor and short of the 500k eligible threshold.
+    const ytdSub = { agentId: 'agent-1', status: 'submitted', weekStarting: `${YEAR}-03-01`, apiSold: 320000, applicationsSold: 0 };
+    hoisted.getTenantUsers.mockResolvedValue(users);
+    hoisted.getAllYTDSubmissions.mockResolvedValue([ytdSub]);
+
+    render(<MeetingMode submissions={[weekSub]} selectedWeek="2026-06-28" onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByText(/Good morning, team/)).toBeInTheDocument());
+    // opening(0) branch(1) activity(2) production(3) funnel(4) agent(5)
+    // recognition(6) awards(7).
+    for (let i = 0; i < 7; i += 1) fireEvent.keyDown(document, { key: 'ArrowRight' });
+    await waitFor(() => expect(screen.getByTestId('awards-within-reach-scene')).toBeInTheDocument());
+    expect(screen.getByText('MDRT')).toBeInTheDocument();
+    expect(screen.getByText('Alice Agent')).toBeInTheDocument();
+    expect(screen.getAllByTestId('awards-reach-card')).toHaveLength(1);
   });
 });

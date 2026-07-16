@@ -144,3 +144,29 @@ export const LENS_FILTERS = [
   { key: 'pending', label: 'Pending' },
   { key: 'excluded', label: 'Excluded' },
 ];
+
+/**
+ * buildCampaignProofExport(lens, policies) — shapes the CSV row data for the
+ * lens's "Export proof" control (Run-7 banked follow-up, build-map Tier-2
+ * #12 residual). Pure data shaping only — no DOM/Blob side effects, so it is
+ * unit-testable like the rest of this module. Exports EVERY contribution
+ * (not just the currently-filtered view) so the proof reflects the full
+ * picture: counts, pending, AND excluded — an honest export, not a
+ * cherry-picked one. Values are raw numbers (no currency prefix) so the CSV
+ * stays spreadsheet-friendly; the header row names the unit.
+ */
+export function buildCampaignProofExport(lens, policies) {
+  if (!lens) return null;
+  const policyById = Object.fromEntries((policies ?? []).map((p) => [p.id, p]));
+  const headers = ['Policy Owner', 'Plan / Class', 'Qualification', 'API (TTD)'];
+  const rows = Object.entries(lens.contributions ?? {}).map(([id, c]) => {
+    const p = policyById[id];
+    return [
+      p?.ownerName || 'Policy',
+      p?.planName || p?.policyClass || '—',
+      c.state.toUpperCase(),
+      c.value,
+    ];
+  });
+  return { headers, rows, campaignName: lens.name };
+}

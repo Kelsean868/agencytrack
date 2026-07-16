@@ -1182,7 +1182,7 @@ export const LEGS = [
   {
     id: 't1-compliance-scope',
     role: 'branch_manager',
-    desc: 'branch_manager Compliance tab: ScopeSwitch (S4) — SKIPs cleanly (live-verified single-unit roster, see file comment) unless the seed grows a 2nd unit, in which case: [Branch] active by default with one segment per unit; selecting a unit flips aria-pressed, filters roster rows + reality-bar counts to that unit, retargets the nudge-all population + its confirm copy (names the unit); [Branch] restores original counts. No mutation (nudge-all confirm opened + cancelled).',
+    desc: 'branch_manager Compliance tab: ScopeSwitch (S4) — Run 8 Tier B added a 2nd unit_manager fixture (vhfix-um2, doc-only, no Auth account — seed-fixtures.mjs § A14), so the branch roster now resolves to 2 distinct unitIds and this leg runs its FULL live exercise (previously SKIPped on a single-unit roster): [Branch] active by default with one segment per unit; selecting a unit flips aria-pressed, filters roster rows + reality-bar counts to that unit, retargets the nudge-all population + its confirm copy (names the unit); [Branch] restores original counts. No mutation (nudge-all confirm opened + cancelled). SKIP guard retained below in case the fixture ever regresses.',
     async run({ browser, shot }) {
       const ctx = await newLegContext(browser);
       try {
@@ -1210,7 +1210,7 @@ export const LEGS = [
           const rosterRows = await p.locator('[data-testid="compliance-roster-row"]').count();
           await shot(p, 't1-compliance-scope-hidden-singleunit');
           assertLegHygiene(ctx);
-          throw new Error(`SKIP: compliance-scope-switch absent on live staging — CONFIRMED via read-only Admin-SDK query of tenants/staging_test/users that the branch_manager-eligible roster (role agent|unit_manager, branchId=staging_branch) currently resolves to exactly ONE distinct unitId (Agent One, Agent Two, and the Unit Manager all share the sole unit_manager's uid), so unitOptions.length===1 and the guard "role==='branch_manager' && unitOptions.length>1" correctly hides it — NOT a shipped-code defect (CompliancePanel.scope.test.jsx already covers the >1-unit render path with mocked data, 7/7 passing per commit 3d42125f). seed-staging.mjs's ROLE_DEFS defines only one unit_manager per branch and seed-fixtures.mjs adds no second; this leg's live scope-switch assertions can only execute once a 2nd unit_manager fixture is seeded (out of this leg's file scope — flagging for the seed owner). Roster rows currently visible=${rosterRows}.`);
+          throw new Error(`SKIP: compliance-scope-switch absent on live staging — unitOptions.length<=1, so the guard "role==='branch_manager' && unitOptions.length>1" hides the switch. Since Run 8 Tier B (seed-fixtures.mjs § A14), the seed provisions a 2nd unit_manager (vhfix-um2, branchId=staging_branch, unitId=self) specifically to keep this >1 — if this SKIP fires, the fixture is missing or the branch_manager-eligible roster (role agent|unit_manager, branchId=staging_branch) has regressed to a single distinct unitId. Re-run scripts/staging/seed-fixtures.mjs --apply and confirm users/vhfix-um2 exists in tenants/staging_test before treating this as a shipped-code defect (CompliancePanel.scope.test.jsx already covers the >1-unit render path with mocked data, 7/7 passing per commit 3d42125f). Roster rows currently visible=${rosterRows}.`);
         }
 
         // ── Full live exercise (runs once the seed grows a 2nd unit) ──────────

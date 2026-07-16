@@ -17,7 +17,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  X, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw, Gift,
+  X, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw, Gift, Award,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { formatDateLabel } from '../../utils/validators';
@@ -34,7 +34,7 @@ import FunnelMeetingScene from './FunnelMeetingScene';
 import {
   deriveWeekPulse, deriveBranchWindows, deriveUnits, deriveAgentRuns,
   deriveExceptions, deriveRecognition, deriveAnniversaries, deriveActiveCampaigns,
-  deriveDeck, latestPersistency,
+  deriveAwardsWithinReach, deriveDeck, latestPersistency,
 } from './MeetingMode.helpers';
 
 // ── Small formatters / primitives ──
@@ -534,6 +534,73 @@ function CelebrationsScene({ anniversaries }) {
   );
 }
 
+// Format a raw award value/gap by its criterion unit — mirrors HeroAwardCard's
+// gapLabel logic in awardPrimitives.jsx (duplicated deliberately per that
+// file's own documented precedent of inline-duplicated formatting; not a new
+// shared module).
+function awardValueLabel(unit, v) {
+  if (unit === 'TTD') return formatCurrency(v);
+  if (unit === '%') return `${Number(v).toFixed(1)}%`;
+  return `${Math.round(v)}`;
+}
+
+function AwardsWithinReachScene({ pairs }) {
+  return (
+    <div className="flex-1 overflow-y-auto" data-testid="awards-within-reach-scene">
+      <div className="stagger flex flex-col gap-6 px-10 py-8 w-full">
+        <div className="text-center">
+          <Eyebrow className="text-presentation-gold">★ Within reach · awards &amp; incentives</Eyebrow>
+          <h2 className="mt-2 text-4xl font-display font-bold text-presentation-text">Who&apos;s close — let&apos;s push them over</h2>
+          <p className="mt-2 text-sm text-presentation-muted">The system tracks every award. Here&apos;s who could earn one with a strong final stretch.</p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-4">
+          {pairs.map((p) => (
+            <div
+              key={p.id}
+              data-testid="awards-reach-card"
+              className="w-64 rounded-2xl p-5 border border-presentation-gold/30 bg-presentation-text/5 flex flex-col"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-presentation-gold/15 text-presentation-gold shrink-0">
+                  <Award size={16} />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-sm font-display font-bold text-presentation-text truncate" title={p.awardName}>{p.awardName}</div>
+                  {p.prize && <div className="text-[0.65rem] text-presentation-muted truncate" title={p.prize}>{p.prize}</div>}
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-end gap-1.5">
+                <span className="text-3xl font-display font-bold text-presentation-gold tabular-nums leading-none">{Math.round(p.progressPercent)}</span>
+                <span className="text-sm font-display font-bold text-presentation-gold">%</span>
+                <span className="text-xs text-presentation-muted pb-0.5">there</span>
+              </div>
+              <div className="mt-2.5 h-1.5 rounded-full bg-presentation-text/10 overflow-hidden">
+                <div className="h-1.5 rounded-full bg-presentation-gold" style={{ width: `${Math.min(100, Math.round(p.progressPercent))}%` }} />
+              </div>
+              <div className="mt-1.5 flex justify-between text-[0.65rem] font-mono text-presentation-muted tabular-nums">
+                <span>{awardValueLabel(p.valueUnit, p.current)}</span>
+                <span>{awardValueLabel(p.valueUnit, p.target)}</span>
+              </div>
+
+              <div className="mt-auto pt-4 border-t border-presentation-border flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-full flex items-center justify-center text-[0.6rem] font-bold bg-presentation-accent/15 text-presentation-accent shrink-0">{p.initials}</span>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-presentation-text truncate">{p.agentName}</div>
+                  {p.unitLabel && <div className="text-[0.65rem] text-presentation-muted">{p.unitLabel}</div>}
+                </div>
+              </div>
+              <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-presentation-gold/15 text-presentation-gold text-[0.7rem] font-bold text-center tabular-nums">
+                {awardValueLabel(p.valueUnit, p.gap)} to go
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CampaignScene({ campaigns, ytdSubs, users, persMap }) {
   // Reuse item 2.9's standings display. Standings are derived read-light from the
   // already-loaded YTD submissions windowed to each campaign, with the users as
@@ -619,6 +686,7 @@ function presenterNote(sceneId, model) {
   }
   if (sceneId === 'recognition') return 'Let them clap. Ask the top producer to share one thing that worked.';
   if (sceneId === 'celebrations') return 'Read the names out — a round of applause for the anniversaries.';
+  if (sceneId === 'awards') return 'Name names — tell each one exactly what closes the gap this month.';
   if (sceneId === 'campaign') return 'Name who is close to qualifying and what closes the gap.';
   if (sceneId === 'close') return '';
   if (sceneId.startsWith('agent:')) {
@@ -634,7 +702,7 @@ function sceneLabel(sceneId, model) {
   const base = {
     opening: 'Opening', branch: 'Branch scorecard', units: 'Units', activity: 'Activity sheet',
     production: 'Production sheet', funnel: 'Master Sheet', exceptions: 'Needs attention', recognition: 'Recognition',
-    celebrations: 'Celebrations', campaign: 'Campaign', close: 'Wrap-up',
+    celebrations: 'Celebrations', awards: 'Within reach', campaign: 'Campaign', close: 'Wrap-up',
   };
   if (base[sceneId]) return base[sceneId];
   if (sceneId.startsWith('agent:')) {
@@ -687,6 +755,11 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
   const [data, setData] = useState(null); // { users, ytdSubs, persMap, campaigns }
   const [reloadToken, setReloadToken] = useState(0);
 
+  // Stable "now" for the awards-within-reach derivation (computeAgentAwards'
+  // monthly/quarterly/annual period math) — matches the AgentAwardsPanel /
+  // ManagerAwardsPanel pattern of a real "now", not the meeting's selectedWeek.
+  const now = useMemo(() => new Date(), []);
+
   // ── One load gate on open — reuse the dashboard's own service calls ──
   useEffect(() => {
     if (!tenantId) { setLoading(false); return; }
@@ -729,7 +802,8 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     const recognition = deriveRecognition(runs);
     const anniversaries = deriveAnniversaries(users, selectedWeek);
     const activeCampaigns = deriveActiveCampaigns(campaigns, undefined);
-    const { scenes, skipped } = deriveDeck({ runs, units, exceptions, recognition, anniversaries, activeCampaigns, submissions });
+    const awardsWithinReach = deriveAwardsWithinReach(users, ytdSubs, now);
+    const { scenes, skipped } = deriveDeck({ runs, units, exceptions, recognition, anniversaries, activeCampaigns, submissions, awardsWithinReach });
 
     // Windowed production rows (per agent) from YTD subs — WTD from this week's
     // run, MTD/QTD/YTD windowed by the month/quarter/year of `selectedWeek`.
@@ -753,8 +827,8 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
       onPace: runs.filter((r) => r.flag.key === null).length,
       attention: exceptions.length,
     };
-    return { pulse, windows, units, runs, exceptions, recognition, anniversaries, activeCampaigns, scenes, skipped, prodRows, counts, users, ytdSubs, persMap };
-  }, [data, submissions, selectedWeek]);
+    return { pulse, windows, units, runs, exceptions, recognition, anniversaries, activeCampaigns, awardsWithinReach, scenes, skipped, prodRows, counts, users, ytdSubs, persMap };
+  }, [data, submissions, selectedWeek, now]);
 
   const scenes = model?.scenes ?? [];
   const total = scenes.length;
@@ -801,6 +875,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     if (sid === 'exceptions') return <ExceptionsScene exceptions={model.exceptions} selectedWeek={selectedWeek} />;
     if (sid === 'recognition') return <RecognitionScene recognition={model.recognition} />;
     if (sid === 'celebrations') return <CelebrationsScene anniversaries={model.anniversaries} />;
+    if (sid === 'awards') return <AwardsWithinReachScene pairs={model.awardsWithinReach} />;
     if (sid === 'campaign') return <CampaignScene campaigns={model.activeCampaigns} ytdSubs={model.ytdSubs} users={model.users} persMap={model.persMap} />;
     if (sid === 'close') return <CloseScene runs={model.runs} exceptions={model.exceptions} recognition={model.recognition} selectedWeek={selectedWeek} />;
     if (sid && sid.startsWith('agent:')) {

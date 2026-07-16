@@ -55,4 +55,58 @@ describe('buildKioskRotation (3.6)', () => {
     const out = buildKioskRotation(BASE, { droppedKeys: BASE });
     expect(out).toEqual([{ key: 'welcome' }]);
   });
+
+  // Tier-3 #15: manager per-panel enable/disable.
+  it('excludes manager-disabled base keys (Set)', () => {
+    const out = buildKioskRotation(BASE, {
+      disabledKeys: new Set(['agentOfMonth', 'compliance']),
+    });
+    const keys = out.map((e) => e.key);
+    expect(keys).not.toContain('agentOfMonth');
+    expect(keys).not.toContain('compliance');
+    expect(keys).toContain('welcome');
+    expect(keys).toContain('weekLeaderboards');
+  });
+
+  it('accepts disabledKeys as an array', () => {
+    const out = buildKioskRotation(BASE, { disabledKeys: ['welcome'] });
+    expect(out.map((e) => e.key)).not.toContain('welcome');
+  });
+
+  it('disabling every base key still falls back to the welcome slide (fallback not suppressed)', () => {
+    const out = buildKioskRotation(BASE, { disabledKeys: BASE });
+    expect(out).toEqual([{ key: 'welcome' }]);
+  });
+
+  it('dynamic campaign panels stay auto even when the weekLeaderboards anchor is disabled', () => {
+    const out = buildKioskRotation(BASE, {
+      disabledKeys: ['weekLeaderboards'],
+      flaggedCampaigns: [{ id: 'c1' }],
+    });
+    const keys = out.map((e) => e.key);
+    expect(keys).not.toContain('weekLeaderboards');
+    // Campaign panel still spliced at the (now-disabled) anchor's position.
+    expect(keys).toContain('campaignLeaderboards');
+    expect(out.find((e) => e.key === 'campaignLeaderboards').campaignId).toBe('c1');
+  });
+
+  it('celebrations stay auto even when the awardsWatch anchor is disabled', () => {
+    const out = buildKioskRotation(BASE, {
+      disabledKeys: ['awardsWatch'],
+      hasCelebrations: true,
+    });
+    const keys = out.map((e) => e.key);
+    expect(keys).not.toContain('awardsWatch');
+    expect(keys).toContain('celebrations');
+  });
+
+  it('disabledKeys and droppedKeys compose (both excluded)', () => {
+    const out = buildKioskRotation(BASE, {
+      disabledKeys: ['agentOfMonth'],
+      droppedKeys: ['compliance'],
+    });
+    const keys = out.map((e) => e.key);
+    expect(keys).not.toContain('agentOfMonth');
+    expect(keys).not.toContain('compliance');
+  });
 });

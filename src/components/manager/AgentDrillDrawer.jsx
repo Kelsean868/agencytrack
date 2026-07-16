@@ -18,17 +18,25 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { X, Lock, AlertTriangle, Target, FileWarning } from 'lucide-react';
 import useFocusTrap from '../../hooks/useFocusTrap';
-import { formatCurrency, initials as toInitials } from '../../utils/formatters';
+import { useAuth } from '../../context/AuthContext';
+import { formatCurrency, formatDateDisplay, initials as toInitials } from '../../utils/formatters';
 import { getSettlements } from '../../services/settlementService';
 import { getGoals, getGoalHierarchy } from '../../services/goalsService';
 import { getAgentHistory } from '../../services/persistencyService';
+import { getJointCalls, MEETING_TYPES, NEEDS_COVERED } from '../../services/jointCallsService';
+import { getProspectInfo } from '../../services/prospectInfoService';
+import PanelSkeleton from '../ui/PanelSkeleton';
 import AgentReportView from '../profile/AgentReportView';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'report', label: 'Report' },
   { id: 'goals', label: 'Goals' },
+  { id: 'jointwork', label: 'Joint Work' },
 ];
+
+const MEETING_LABEL = Object.fromEntries(MEETING_TYPES.map((m) => [m.value, m.label]));
+const NEEDS_LABEL = Object.fromEntries(NEEDS_COVERED.map((n) => [n.value, n.label]));
 
 const TYPE_ICON = { floor: AlertTriangle, pace: Target, report: FileWarning };
 
@@ -159,8 +167,172 @@ function DrillGoals({ hierarchy, loading, firstName }) {
   );
 }
 
+// ── Joint Work (read-only) ──────────────────────────────────────────────────
+// Ported design intent from screens-v2 manager-v2-drill.jsx DrillJointWork:
+// agent-authored prep (read-only) up top, manager-authored joint-call log
+// below. This slice is READ-ONLY — no add-call form, no edit, no archive, no
+// prep-link picker. Logging/editing joint calls stays in JointCallsTab via
+// CoachingNotesModal; this tab is coaching context only.
+//
+// Independently loaded (own status machine, not folded into the drawer's
+// shared Promise.all) so a real fetch failure surfaces its own error+Retry
+// rather than degrading silently into an empty list like the Goals cascade.
+function SummaryStat({ label, value, testId }) {
+  return (
+    <div className="p-2.5 rounded-lg border border-border bg-card text-center" data-testid={testId}>
+      <p className="font-display text-lg font-extrabold text-ink tabular-nums">{value}</p>
+      <p className="text-[10px] font-bold font-mono uppercase tracking-wide text-ink-muted mt-0.5">{label}</p>
+    </div>
+  );
+}
+
+function PrepRow({ prep }) {
+  const apptLabel = prep.appointmentType === 'closing-interview'
+    ? 'Closing Interview'
+    : prep.appointmentType === '2nd-interview'
+      ? '2nd Interview'
+      : (prep.appointmentType || '—');
+  return (
+    <div className="p-3 rounded-xl border border-primary/30 bg-primary/5" data-testid="drill-jointwork-prep-row">
+      <div className="flex items-center gap-2 flex-wrap mb-1">
+        <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase text-primary bg-card">
+          {apptLabel}
+        </span>
+        <span className="ml-auto text-[11px] text-ink-muted">{formatDateDisplay(prep.intendedAppointmentDate)}</span>
+      </div>
+      <p className="text-sm font-semibold text-ink">{prep.clientName || '—'}</p>
+      {prep.policyType && <p className="text-xs text-ink-muted mt-0.5">{prep.policyType}</p>}
+    </div>
+  );
+}
+
+function CallRow({ call }) {
+  return (
+    <div className="p-3 rounded-xl border border-border bg-card-raised" data-testid="drill-jointwork-call-row">
+      <div className="flex items-center gap-2 flex-wrap mb-1">
+        <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase text-primary bg-primary/10">
+          {MEETING_LABEL[call.meetingType] ?? call.meetingType}
+        </span>
+        <span className="ml-auto text-[11px] text-ink-muted">{formatDateDisplay(call.appointmentDate)}</span>
+      </div>
+      <p className="text-xs text-ink-muted">
+        {NEEDS_LABEL[call.needCovered] ?? call.needCovered}
+        {' · '}
+        {call.appointmentKept ? 'Kept' : 'Not kept'}
+        {' · '}
+        {call.saleMade ? 'Sale made' : 'No sale'}
+      </p>
+      {call.comments && (
+        <p className="text-xs text-ink mt-1.5 whitespace-pre-wrap break-words">{call.comments}</p>
+      )}
+    </div>
+  );
+}
+
+function DrillJointWork({ tenantId, agentId, role, callerUid }) {
+  const [state, setState] = useState({ status: 'loading' });
+  const seq = useRef(0);
+
+  const load = useCallback(async () => {
+    if (!tenantId || !agentId) return;
+    const mySeq = ++seq.current;
+    setState({ status: 'loading' });
+    try {
+      const [rawCalls, preps] = await Promise.all([
+        getJointCalls({ tenantId, agentId, callerRole: role, callerUid }),
+        getProspectInfo({ tenantId, agentId, callerRole: role, callerUid }),
+      ]);
+      if (mySeq !== seq.current) return;
+      setState({ status: 'ready', calls: rawCalls.filter((c) => !c.archived), preps });
+    } catch (e) {
+      if (mySeq !== seq.current) return;
+      console.error('[AgentDrillDrawer] joint work load failed', e);
+      setState({ status: 'error' });
+    }
+  }, [tenantId, agentId, role, callerUid]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (state.status === 'loading') {
+    return (
+      <div data-testid="drill-jointwork-loading">
+        <PanelSkeleton variant="list" count={3} label="Loading joint work…" />
+      </div>
+    );
+  }
+
+  if (state.status === 'error') {
+    return (
+      <div className="p-6 rounded-xl border border-danger/30 bg-danger/10 text-center" data-testid="drill-jointwork-error">
+        <p className="text-sm font-semibold text-danger-ink">Couldn&rsquo;t load joint work</p>
+        <p className="text-xs text-ink-muted mt-1">Check your connection and try again.</p>
+        <button
+          type="button"
+          onClick={load}
+          data-testid="drill-jointwork-retry"
+          className="mt-3 min-h-[44px] px-4 rounded-lg border border-danger/30 text-sm font-semibold text-danger-ink hover:bg-danger/10 transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const { calls = [], preps = [] } = state;
+
+  if (calls.length === 0 && preps.length === 0) {
+    return (
+      <NeutralCard
+        title="No joint work logged"
+        body="No joint-call preps or observations yet for this agent."
+        testId="drill-jointwork-empty"
+      />
+    );
+  }
+
+  const kept = calls.filter((c) => c.appointmentKept).length;
+  const sales = calls.filter((c) => c.saleMade).length;
+
+  return (
+    <div className="flex flex-col gap-4" data-testid="drill-jointwork-list">
+      {calls.length > 0 && (
+        <div className="grid grid-cols-3 gap-2" data-testid="drill-jointwork-summary">
+          <SummaryStat label="Calls" value={calls.length} testId="drill-jointwork-summary-calls" />
+          <SummaryStat label="Kept" value={kept} testId="drill-jointwork-summary-kept" />
+          <SummaryStat label="Sales" value={sales} testId="drill-jointwork-summary-sales" />
+        </div>
+      )}
+
+      {preps.length > 0 && (
+        <div>
+          <p className="text-[10px] font-bold font-mono uppercase tracking-widest text-ink-muted mb-2">
+            Upcoming prep · read-only
+          </p>
+          <div className="flex flex-col gap-2">
+            {preps.map((p) => <PrepRow key={p.id} prep={p} />)}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <p className="text-[10px] font-bold font-mono uppercase tracking-widest text-ink-muted mb-2">
+          Joint-call log
+        </p>
+        {calls.length === 0 ? (
+          <p className="text-xs text-ink-muted" data-testid="drill-jointwork-log-empty">No joint-call observations logged yet.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {calls.map((c) => <CallRow key={c.id} call={c} />)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AgentDrillDrawer({ agent, submissions = [], tenantId, onClose }) {
   const modalRef = useFocusTrap({ onEscape: onClose });
+  const { role, user } = useAuth();
   const [tab, setTab] = useState('overview');
   const [dataState, setDataState] = useState({ status: 'loading' });
   const loadSeq = useRef(0);
@@ -289,6 +461,9 @@ export default function AgentDrillDrawer({ agent, submissions = [], tenantId, on
             )}
             {tab === 'goals' && (
               <DrillGoals hierarchy={dataState.hierarchy} loading={reportLoading} firstName={firstName} />
+            )}
+            {tab === 'jointwork' && (
+              <DrillJointWork tenantId={tenantId} agentId={agent.agentId} role={role} callerUid={user?.uid} />
             )}
           </div>
         </div>
