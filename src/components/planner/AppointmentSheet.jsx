@@ -50,6 +50,8 @@ const DAY_GLYPH = { MON: 'M', TUE: 'T', WED: 'W', THU: 'T', FRI: 'F', SAT: 'S', 
  */
 export default function AppointmentSheet({
   mode = 'create',
+  variant = null,
+  seriesInstance = false,
   initial = null,
   prospects = [],
   appointments = [],
@@ -180,13 +182,16 @@ export default function AppointmentSheet({
     setEndCount((n) => Math.max(1, Math.min(MAX_SERIES_INSTANCES, Number(n || 1) + delta)));
   };
 
+  const isReschedule = variant === 'reschedule';
   const titleId = 'appt-sheet-title';
   const title = seriesPostpone
     ? 'Postpone appointment'
-    : mode === 'edit' ? 'Edit appointment' : 'Book appointment';
+    : isReschedule ? 'Reschedule appointment'
+      : mode === 'edit' ? 'Edit appointment' : 'Book appointment';
   const primaryLabel = seriesPostpone
     ? 'Move this one'
-    : repeating ? 'Book series' : 'Save';
+    : isReschedule ? 'Reschedule'
+      : repeating ? 'Book series' : 'Save';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -217,6 +222,20 @@ export default function AppointmentSheet({
         </div>
 
         <div className="px-4 py-4 flex flex-col gap-4">
+          {/* Reschedule of a series instance (F3b) — single-doc update, so only
+              this occurrence moves; the rest of the series is untouched. */}
+          {isReschedule && seriesInstance && (
+            <div
+              data-testid="reschedule-series-note"
+              className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/30 px-3 py-2"
+            >
+              <SeriesBadge size={14} />
+              <span className="text-xs font-medium text-ink-muted">
+                Only this occurrence moves · series unchanged
+              </span>
+            </div>
+          )}
+
           {/* Series postpone — scope lock + context (state 4) */}
           {seriesPostpone && (
             <div className="flex flex-col gap-3" data-testid="postpone-series-block">

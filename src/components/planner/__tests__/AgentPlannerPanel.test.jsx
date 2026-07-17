@@ -921,3 +921,132 @@ describe('bulk operations (Run 9 A5)', () => {
     expect(screen.getByTestId('planner-view-today')).toHaveAttribute('aria-selected', 'true');
   });
 });
+
+describe('reschedule update-in-place (Run 9 F3b — R4)', () => {
+  it('reschedule saves via updateAppointment on the SAME doc — never rebook, never create', async () => {
+    updateAppointment.mockResolvedValue();
+    getAgentWeek
+      .mockResolvedValueOnce([{ id: 'a1', date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled' }])
+      .mockResolvedValue([{ id: 'a1', date: '2026-09-15', startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled' }]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('churn-action-reschedule'));
+    // Re-titled sheet, edit mechanics (no rebook grammar).
+    expect(screen.getByRole('heading', { name: 'Reschedule appointment' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-09-15' } });
+    fireEvent.click(screen.getByTestId('appt-save'));
+
+    await waitFor(() => expect(updateAppointment).toHaveBeenCalledWith(
+      't1', 'a1', expect.objectContaining({ date: '2026-09-15' }),
+    ));
+    // Identity preserved — the SAME doc id, not a rebooked/created new doc.
+    expect(updateAppointment.mock.calls[0][1]).toBe('a1');
+    expect(postponeWithRebook).not.toHaveBeenCalled();
+    expect(createAppointment).not.toHaveBeenCalled();
+  });
+
+  it('rescheduling a SERIES instance keeps series metadata (no series keys in the patch, same id, no scope sheet)', async () => {
+    updateAppointment.mockResolvedValue();
+    getAgentWeek.mockResolvedValue([
+      {
+        id: 'a3', date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled',
+        seriesId: 'series-1', repeatRule: 'weekly', seriesPos: 2, seriesTotal: 6,
+      },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a3')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('appt-card-a3'));
+    fireEvent.click(screen.getByTestId('churn-action-reschedule'));
+    // Reschedule opens the sheet DIRECTLY — no SeriesEditChoice (contrast with Edit) —
+    // and shows the "only this occurrence moves" note.
+    expect(screen.queryByTestId('series-edit-choice')).not.toBeInTheDocument();
+    expect(screen.getByTestId('reschedule-series-note')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-09-16' } });
+    fireEvent.click(screen.getByTestId('appt-save'));
+
+    await waitFor(() => expect(updateAppointment).toHaveBeenCalled());
+    const [tid, id, data] = updateAppointment.mock.calls[0];
+    expect(tid).toBe('t1');
+    expect(id).toBe('a3'); // same doc — series linkage intact
+    // The write carries NO series metadata: the stored linkage survives untouched.
+    expect(data).not.toHaveProperty('seriesId');
+    expect(data).not.toHaveProperty('seriesPos');
+    expect(data).not.toHaveProperty('seriesTotal');
+    expect(data).not.toHaveProperty('repeatRule');
+    expect(data).not.toHaveProperty('daysOfWeek');
+  });
+
+  it('undo of a reschedule writes the prior date/startTime back, toasting "Undid: Reschedule"', async () => {
+    updateAppointment.mockResolvedValue();
+    getAgentWeek
+      .mockResolvedValueOnce([{ id: 'a1', date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled' }])
+      .mockResolvedValue([{ id: 'a1', date: '2026-09-15', startTime: '14:00', durationMin: 30, type: 'PC', status: 'scheduled' }]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('churn-action-reschedule'));
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-09-15' } });
+    fireEvent.change(screen.getByLabelText('Start time'), { target: { value: '14:00' } });
+    fireEvent.click(screen.getByTestId('appt-save'));
+    await waitFor(() => expect(updateAppointment).toHaveBeenCalledWith(
+      't1', 'a1', expect.objectContaining({ date: '2026-09-15', startTime: '14:00' }),
+    ));
+    await waitFor(() => expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument());
+
+    updateAppointment.mockClear();
+    ctrlZ();
+    // Undo writes back the PRIOR date/startTime (A1 diff mechanic — buildUpdatePatch
+    // skips the undefined optional-field diffs, so only real priors land).
+    await waitFor(() => expect(updateAppointment).toHaveBeenCalledWith(
+      't1', 'a1', expect.objectContaining({ date: TODAY, startTime: '09:00' }),
+    ));
+    await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Undid: Reschedule', variant: 'info' }),
+    ));
+  });
+});
+
+describe('postpone regression (unchanged by F3b)', () => {
+  it('postpone still rebooks via postponeWithRebook — never an update-in-place', async () => {
+    postponeWithRebook.mockResolvedValue('new-1');
+    updateAppointment.mockResolvedValue();
+    getAgentWeek.mockResolvedValue([
+      { id: 'a1', date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled' },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('churn-action-postpone'));
+    expect(screen.getByTestId('appointment-sheet')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('appt-save'));
+
+    await waitFor(() => expect(postponeWithRebook).toHaveBeenCalledWith('t1', 'a1', expect.any(Object), expect.any(Object)));
+    expect(updateAppointment).not.toHaveBeenCalled();
+  });
+
+  it('series postpone still renders the scope-lock + amber consequence panel', async () => {
+    getAgentWeek.mockResolvedValue([
+      {
+        id: 'a3', date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled',
+        seriesId: 'series-1', repeatRule: 'weekly', seriesPos: 2, seriesTotal: 6,
+      },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a3')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('appt-card-a3'));
+    fireEvent.click(screen.getByTestId('churn-action-postpone'));
+    expect(screen.getByRole('heading', { name: 'Postpone appointment' })).toBeInTheDocument();
+    expect(screen.getByTestId('postpone-series-block')).toBeInTheDocument();
+    expect(screen.getByTestId('postpone-scope-series-disabled')).toBeInTheDocument();
+    expect(screen.getByTestId('postpone-consequence')).toBeInTheDocument();
+    // Reschedule is NOT offered as a series-scope choice here — it's a separate churn action.
+    expect(screen.queryByTestId('reschedule-series-note')).not.toBeInTheDocument();
+  });
+});

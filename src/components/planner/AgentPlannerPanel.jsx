@@ -517,14 +517,16 @@ export default function AgentPlannerPanel({
     setSheetError('');
     try {
       if (sheet?.rebookFrom) {
-        // Postpone/reschedule rebook: the new appt is a plain one-off (series
-        // metadata is intentionally not carried forward — the moved instance
-        // detaches; the original retains its series link as postponed).
+        // Postpone rebook (F3b: reschedule NO LONGER uses this path — it is now
+        // an update-in-place on the same doc, see the edit branch below).
+        // Postpone keeps the rebook+tombstone grammar: the new appt is a plain
+        // one-off (series metadata is intentionally not carried forward — the
+        // moved instance detaches; the original retains its series link as
+        // postponed).
         const originalId = sheet.rebookFrom;
-        const label = sheet.rebookAction === 'reschedule' ? 'Reschedule' : 'Postpone';
         const newIdRef = { current: await postponeWithRebook(tenantId, originalId, data, meta) };
         history.push({
-          label,
+          label: 'Postpone',
           // Redo re-creates docs (fresh id each time) — newIdRef tracks the
           // current rebooked doc id so a following undo targets it (A1 req 2).
           undo: async () => { await undoPostpone(tenantId, originalId, newIdRef.current); },
@@ -543,7 +545,10 @@ export default function AgentPlannerPanel({
         await updateAppointment(tenantId, apptId, data);
         if (Object.keys(patch).length > 0) {
           history.push({
-            label: 'Edit appointment',
+            // F3b: a reschedule is an edit-in-place variant — same doc, same
+            // id, series metadata untouched (never in the patch allowlist).
+            // Only the history label differs so the toast reads "Reschedule".
+            label: sheet.variant === 'reschedule' ? 'Reschedule' : 'Edit appointment',
             // Undo writes back the prior values of EXACTLY the patched keys —
             // never the whole appointment (A1 req 2).
             undo: async () => { await updateAppointment(tenantId, apptId, prior); },
@@ -581,9 +586,14 @@ export default function AgentPlannerPanel({
     }
   };
 
-  const openEditSheet = useCallback((appt) => {
+  const openEditSheet = useCallback((appt, opts = {}) => {
     setSheet({
       mode: 'edit',
+      // F3b: `variant:'reschedule'` reuses the edit mechanics (same-doc
+      // updateAppointment) but re-titles the sheet + relabels the undo entry.
+      // `seriesInstance` drives the "only this occurrence moves" note row.
+      variant: opts.variant ?? null,
+      seriesInstance: Boolean(appt.seriesId),
       initial: {
         id: appt.id,
         type: appt.type, date: appt.date, startTime: appt.startTime,
@@ -612,19 +622,30 @@ export default function AgentPlannerPanel({
       setTemplatePrompt(appt);
       return;
     }
-    if (action === 'reschedule' || action === 'postpone') {
-      // Rebook: retain the original as postponed + link forward to the new appt.
-      // A SERIES instance postpone is scope-LOCKED to "just this one" (state 4) —
-      // series-wide moves go via Edit — with an amber consequence panel.
+    if (action === 'reschedule') {
+      // F3b (R4): Reschedule is an update-IN-PLACE on the SAME doc — identity
+      // and series linkage preserved (contrast with postpone's rebook +
+      // tombstone). Reuses the edit sheet via the `reschedule` variant. A
+      // series instance reschedule is inherently "just this one" (a single-doc
+      // update touches no other instance), so it opens the sheet directly with
+      // a note row — it does NOT raise SeriesEditChoice the way Edit does.
       setChurn(null);
-      const isSeriesPostpone = action === 'postpone' && Boolean(appt.seriesId);
+      openEditSheet(appt, { variant: 'reschedule' });
+      return;
+    }
+    if (action === 'postpone') {
+      // Postpone: retain the original as postponed + link forward to the new
+      // appt (rebook + tombstone — unchanged by F3b). A SERIES instance
+      // postpone is scope-LOCKED to "just this one" (state 4) — series-wide
+      // moves go via Edit — with an amber consequence panel.
+      setChurn(null);
+      const isSeriesPostpone = Boolean(appt.seriesId);
       const nextDate = isSeriesPostpone
         ? nextOccurrenceDate({ date: appt.date, repeatRule: appt.repeatRule, daysOfWeek: appt.daysOfWeek })
         : null;
       setSheet({
         mode: 'create',
         rebookFrom: appt.id,
-        rebookAction: action, // 'reschedule' | 'postpone' — history label + future F3 branch point
         seriesPostpone: isSeriesPostpone
           ? {
             pos: appt.seriesPos, total: appt.seriesTotal,
@@ -1126,6 +1147,8 @@ export default function AgentPlannerPanel({
       {sheet && (
         <AppointmentSheet
           mode={sheet.mode}
+          variant={sheet.variant ?? null}
+          seriesInstance={Boolean(sheet.seriesInstance)}
           initial={sheet.initial}
           prospects={prospects}
           appointments={appts}

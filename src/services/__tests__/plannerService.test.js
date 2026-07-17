@@ -185,6 +185,26 @@ describe('updateAppointment', () => {
     expect(patch).not.toHaveProperty('agentUnitId');
     expect(patch).not.toHaveProperty('agentBranchId');
   });
+
+  // F3b (R4): reschedule is an update-in-place that must NEVER let series
+  // metadata be edited through the patch path — the allowlist has no series
+  // keys, so any that are passed are silently dropped and the stored series
+  // linkage survives untouched.
+  it('strips series metadata (seriesId/seriesPos/seriesTotal/repeatRule/daysOfWeek)', async () => {
+    hoisted.mockUpdateDoc.mockResolvedValue();
+    await updateAppointment('t1', 'a1', {
+      date: '2026-08-01', startTime: '10:00',
+      seriesId: 'HACK', seriesPos: 99, seriesTotal: 99, repeatRule: 'daily', daysOfWeek: ['MON'],
+    });
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(patch.date).toBe('2026-08-01');
+    expect(patch.startTime).toBe('10:00');
+    expect(patch).not.toHaveProperty('seriesId');
+    expect(patch).not.toHaveProperty('seriesPos');
+    expect(patch).not.toHaveProperty('seriesTotal');
+    expect(patch).not.toHaveProperty('repeatRule');
+    expect(patch).not.toHaveProperty('daysOfWeek');
+  });
 });
 
 describe('setAppointmentStatus', () => {
