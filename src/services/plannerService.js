@@ -23,7 +23,10 @@
  *   SM+/TA (≥3):  unfiltered (date range only)
  * Composites exist for (agentId,date) (agentUnitId,date) (agentBranchId,date);
  * day/week reads stay inside these shapes (equality on the scope key + a date
- * range). NO deletes — cancel/postpone flip status (+ rescheduledToId on rebook).
+ * range). NO USER-FACING deletes — cancel/postpone flip status (+
+ * rescheduledToId on rebook). Run 9 A1 adds `deleteAppointment` / the owner
+ * `allow delete` rules arm SOLELY as the undo/redo history's undo-create and
+ * undo-postpone inverses — no delete affordance is exposed in the UI.
  *
  * Because updateDoc() merges, a partial update's merged request.resource.data
  * retains every required key, so partial writes are contract-safe as long as no
@@ -32,7 +35,7 @@
  */
 
 import {
-  addDoc, updateDoc, doc, collection, getDocs,
+  addDoc, updateDoc, deleteDoc, doc, collection, getDocs,
   query, where, orderBy, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -143,7 +146,12 @@ export async function createAppointment(tenantId, data, meta) {
  * dates come from expandSeriesDates (hard-capped at MAX_SERIES_INSTANCES). All
  * instances are committed in a single writeBatch (atomic; 52 ≪ the 500 cap).
  *
- * @returns {Promise<{ seriesId: string, count: number, dates: string[] }>}
+ * `ids` (Run 9 A1 addition): per-instance doc ids in date order, resolved via
+ * pre-minted `doc(coll)` refs so callers know every id before the batch
+ * commits — the planner's undo/redo history uses this to batch-delete a
+ * series create on undo. Non-breaking addition alongside the existing keys.
+ *
+ * @returns {Promise<{ seriesId: string, count: number, dates: string[], ids: string[] }>}
  */
 export async function createRecurringAppointments(tenantId, data, recurrence, meta) {
   const { repeatRule, daysOfWeek = [], endCondition } = recurrence || {};
@@ -155,10 +163,12 @@ export async function createRecurringAppointments(tenantId, data, recurrence, me
   const seriesId = doc(coll).id; // mint a stable grouping id (Firestore auto-id)
   const total = dates.length;
   const batch = writeBatch(db);
+  const refs = dates.map(() => doc(coll)); // pre-mint per-instance refs so ids are known before commit
+  const ids = refs.map((r) => r.id);
 
   dates.forEach((date, i) => {
     const base = buildCreatePayload(tenantId, { ...data, date }, meta);
-    batch.set(doc(coll), {
+    batch.set(refs[i], {
       ...base,
       seriesId,
       repeatRule,
@@ -171,7 +181,18 @@ export async function createRecurringAppointments(tenantId, data, recurrence, me
   });
 
   await batch.commit();
-  return { seriesId, count: total, dates };
+  return { seriesId, count: total, dates, ids };
+}
+
+/**
+ * Hard delete a single appointment. Run 9 A1: this function exists SOLELY as
+ * the undo-create inverse for the planner's undo/redo history (undoing a
+ * just-created appointment deletes it outright). No UI delete affordance is
+ * added anywhere in the app — cancel/postpone remain the only user-facing
+ * "remove" actions, which stay status flips (never a real delete).
+ */
+export async function deleteAppointment(tenantId, apptId) {
+  await deleteDoc(apptRef(tenantId, apptId));
 }
 
 /**
@@ -222,6 +243,23 @@ export async function postponeWithRebook(tenantId, originalApptId, newData, meta
     updatedAt: serverTimestamp(),
   });
   return newId;
+}
+
+/**
+ * Undo-postpone inverse (Run 9 A1): reverses a `postponeWithRebook` call —
+ * deletes the newly-rebooked appointment and flips the original back to
+ * status:'scheduled' with rescheduledToId cleared. `rescheduledToId` is NOT
+ * in `updateAppointment`'s patch allowlist, so it is written directly here,
+ * mirroring `postponeWithRebook`'s own style (direct updateDoc, not the
+ * allowlisted helper).
+ */
+export async function undoPostpone(tenantId, originalApptId, newApptId) {
+  await deleteDoc(apptRef(tenantId, newApptId));
+  await updateDoc(apptRef(tenantId, originalApptId), {
+    status: 'scheduled',
+    rescheduledToId: null,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 // ── Read paths ───────────────────────────────────────────────────────────────

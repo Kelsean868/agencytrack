@@ -4,6 +4,7 @@ let docSeq = 0;
 const hoisted = vi.hoisted(() => ({
   mockAddDoc:     vi.fn(),
   mockUpdateDoc:  vi.fn(),
+  mockDeleteDoc:  vi.fn(),
   mockGetDocs:    vi.fn(),
   mockQuery:      vi.fn((...args) => ({ _query: args })),
   mockWhere:      vi.fn((field, op, value) => ({ _where: { field, op, value } })),
@@ -23,6 +24,7 @@ vi.mock('firebase/firestore', () => ({
   doc:             (...a) => mockDoc(...a),
   addDoc:          (...a) => hoisted.mockAddDoc(...a),
   updateDoc:       (...a) => hoisted.mockUpdateDoc(...a),
+  deleteDoc:       (...a) => hoisted.mockDeleteDoc(...a),
   getDocs:         (...a) => hoisted.mockGetDocs(...a),
   query:           (...a) => hoisted.mockQuery(...a),
   where:           (...a) => hoisted.mockWhere(...a),
@@ -33,7 +35,8 @@ vi.mock('firebase/firestore', () => ({
 
 import {
   createAppointment, createRecurringAppointments, updateAppointment, setAppointmentStatus,
-  postponeWithRebook, getAgentDay, getAgentWeek, getTeamWeek,
+  postponeWithRebook, deleteAppointment, undoPostpone,
+  getAgentDay, getAgentWeek, getTeamWeek,
   TYPE_KEYS, STATUS_KEYS,
 } from '../plannerService';
 
@@ -126,6 +129,15 @@ describe('createRecurringAppointments', () => {
     });
   });
 
+  it('returns per-instance ids (Run 9 A1) in date order, one per occurrence', async () => {
+    const res = await createRecurringAppointments('t1', {
+      type: 'PC', date: '2026-07-14', startTime: '17:00', durationMin: 60, note: 'dial block',
+    }, { repeatRule: 'weekly', endCondition: { type: 'count', count: 3 } }, META);
+    expect(res.ids).toHaveLength(3);
+    expect(new Set(res.ids).size).toBe(3); // all distinct
+    expect(res.ids).not.toContain(res.seriesId); // seriesId is its own mint, not an instance id
+  });
+
   it('stores daysOfWeek only for custom cadence', async () => {
     const res = await createRecurringAppointments('t1', {
       type: 'FREE', date: '2026-07-14', startTime: '12:00', durationMin: 60, freeBlockLabel: 'Prospecting time',
@@ -185,6 +197,28 @@ describe('postponeWithRebook', () => {
     const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
     expect(patch.status).toBe('postponed');
     expect(patch.rescheduledToId).toBe('new-99');
+  });
+});
+
+describe('deleteAppointment', () => {
+  it('deletes the doc at the given tenant/appt path', async () => {
+    hoisted.mockDeleteDoc.mockResolvedValue();
+    await deleteAppointment('t1', 'a1');
+    expect(hoisted.mockDeleteDoc).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('undoPostpone', () => {
+  it('deletes the new appt then flips the original back to scheduled with rescheduledToId cleared', async () => {
+    hoisted.mockDeleteDoc.mockResolvedValue();
+    hoisted.mockUpdateDoc.mockResolvedValue();
+    await undoPostpone('t1', 'orig-1', 'new-99');
+    expect(hoisted.mockDeleteDoc).toHaveBeenCalledTimes(1);
+    expect(hoisted.mockUpdateDoc).toHaveBeenCalledTimes(1);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(patch.status).toBe('scheduled');
+    expect(patch.rescheduledToId).toBeNull();
+    expect(patch.updatedAt).toEqual({ _type: 'serverTimestamp' });
   });
 });
 

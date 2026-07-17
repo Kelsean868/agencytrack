@@ -8,7 +8,7 @@ import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../utils/weeklyActivityFloors
 import { getProspectInfo } from '../../services/prospectInfoService';
 import {
   getAgentWeek, createAppointment, createRecurringAppointments, updateAppointment,
-  setAppointmentStatus, postponeWithRebook,
+  setAppointmentStatus, postponeWithRebook, deleteAppointment, undoPostpone,
 } from '../../services/plannerService';
 import {
   weekRange, buildWeekDates, groupByDate, sortByStartTime,
@@ -21,6 +21,22 @@ import {
 import { ActivityChip, ApptStatusPill } from './plannerPrimitives';
 import AppointmentSheet, { SeriesBadge } from './AppointmentSheet';
 import SeriesEditChoice from './SeriesEditChoice';
+import usePlannerHistory from './usePlannerHistory';
+import useToast from '../../hooks/useToast';
+
+// Fields openEditSheet hydrates into sheet.initial — the exact set undo/redo
+// for an edit compares against to isolate "the fields that were patched"
+// (Run 9 A1 requirement 2: undo writes prior values of EXACTLY those keys).
+const EDIT_PATCH_FIELDS = [
+  'type', 'date', 'startTime', 'durationMin',
+  'prospectId', 'freeBlockLabel', 'note', 'apiAmount',
+];
+
+function isFormFieldTarget(el) {
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable === true;
+}
 
 const VIEWS = [
   { key: 'today',     label: 'Today' },
@@ -205,6 +221,12 @@ export default function AgentPlannerPanel({
   // Series edit-scope choice sheet (state 3)
   const [seriesChoice, setSeriesChoice] = useState(null); // null | appt
 
+  // Run 9 A1: undo/redo history + toast. `history` is the single hook
+  // instance for this mounted panel — its `push` is forward-compatible with
+  // a later bulk-ops feature (A5) pushing its own entries through it.
+  const history = usePlannerHistory();
+  const toast = useToast();
+
   const load = useCallback(() => {
     if (!tenantId || !agentId) return;
     setLoading(true);
@@ -268,13 +290,57 @@ export default function AgentPlannerPanel({
         // Postpone/reschedule rebook: the new appt is a plain one-off (series
         // metadata is intentionally not carried forward — the moved instance
         // detaches; the original retains its series link as postponed).
-        await postponeWithRebook(tenantId, sheet.rebookFrom, data, meta);
+        const originalId = sheet.rebookFrom;
+        const label = sheet.rebookAction === 'reschedule' ? 'Reschedule' : 'Postpone';
+        const newIdRef = { current: await postponeWithRebook(tenantId, originalId, data, meta) };
+        history.push({
+          label,
+          // Redo re-creates docs (fresh id each time) — newIdRef tracks the
+          // current rebooked doc id so a following undo targets it (A1 req 2).
+          undo: async () => { await undoPostpone(tenantId, originalId, newIdRef.current); },
+          redo: async () => { newIdRef.current = await postponeWithRebook(tenantId, originalId, data, meta); },
+        });
       } else if (sheet?.mode === 'edit' && sheet.initial?.id) {
-        await updateAppointment(tenantId, sheet.initial.id, data);
+        const apptId = sheet.initial.id;
+        const patch = {};
+        const prior = {};
+        EDIT_PATCH_FIELDS.forEach((k) => {
+          if (data[k] !== sheet.initial[k]) {
+            patch[k] = data[k];
+            prior[k] = sheet.initial[k];
+          }
+        });
+        await updateAppointment(tenantId, apptId, data);
+        if (Object.keys(patch).length > 0) {
+          history.push({
+            label: 'Edit appointment',
+            // Undo writes back the prior values of EXACTLY the patched keys —
+            // never the whole appointment (A1 req 2).
+            undo: async () => { await updateAppointment(tenantId, apptId, prior); },
+            redo: async () => { await updateAppointment(tenantId, apptId, patch); },
+          });
+        }
       } else if (data.recurrence) {
-        await createRecurringAppointments(tenantId, data, data.recurrence, meta);
+        const recurrence = data.recurrence;
+        const created = await createRecurringAppointments(tenantId, data, recurrence, meta);
+        const idsRef = { current: created.ids };
+        history.push({
+          label: `Create series (${created.count})`,
+          undo: async () => {
+            await Promise.all(idsRef.current.map((id) => deleteAppointment(tenantId, id)));
+          },
+          redo: async () => {
+            const res = await createRecurringAppointments(tenantId, data, recurrence, meta);
+            idsRef.current = res.ids;
+          },
+        });
       } else {
-        await createAppointment(tenantId, data, meta);
+        const idRef = { current: await createAppointment(tenantId, data, meta) };
+        history.push({
+          label: 'Create appointment',
+          undo: async () => { await deleteAppointment(tenantId, idRef.current); },
+          redo: async () => { idRef.current = await createAppointment(tenantId, data, meta); },
+        });
       }
       await load();
       if (!addAnother) setSheet(null);
@@ -317,6 +383,7 @@ export default function AgentPlannerPanel({
       setSheet({
         mode: 'create',
         rebookFrom: appt.id,
+        rebookAction: action, // 'reschedule' | 'postpone' — history label + future F3 branch point
         seriesPostpone: isSeriesPostpone
           ? {
             pos: appt.seriesPos, total: appt.seriesTotal,
@@ -335,7 +402,18 @@ export default function AgentPlannerPanel({
     }
     setChurnSaving(true);
     try {
-      await setAppointmentStatus(tenantId, appt.id, action === 'cancel' ? 'cancelled' : 'kept');
+      const priorStatus = appt.status;
+      const priorApiAmount = appt.apiAmount;
+      const newStatus = action === 'cancel' ? 'cancelled' : 'kept';
+      await setAppointmentStatus(tenantId, appt.id, newStatus);
+      history.push({
+        label: action === 'cancel' ? 'Cancel appointment' : 'Mark kept',
+        undo: async () => {
+          await setAppointmentStatus(tenantId, appt.id, priorStatus,
+            priorApiAmount !== undefined ? { apiAmount: priorApiAmount } : {});
+        },
+        redo: async () => { await setAppointmentStatus(tenantId, appt.id, newStatus); },
+      });
       await load();
       setChurn(null);
     } catch {
@@ -345,6 +423,56 @@ export default function AgentPlannerPanel({
       setChurnSaving(false);
     }
   };
+
+  // Run 9 A1: undo/redo runners — reload from Firestore, then toast the
+  // action by label. A failed undo/redo (service rejects) surfaces an error
+  // toast instead; the history hook itself restores the popped entry so the
+  // action stays retryable.
+  const runUndo = useCallback(async () => {
+    try {
+      const entry = await history.undo();
+      if (!entry) return;
+      await load();
+      toast.show({ message: `Undid: ${entry.label}`, variant: 'info' });
+    } catch {
+      toast.show({ message: 'Could not undo — check your connection and try again.', variant: 'error' });
+    }
+  }, [history, load, toast]);
+
+  const runRedo = useCallback(async () => {
+    try {
+      const entry = await history.redo();
+      if (!entry) return;
+      await load();
+      toast.show({ message: `Redid: ${entry.label}`, variant: 'info' });
+    } catch {
+      toast.show({ message: 'Could not redo — check your connection and try again.', variant: 'error' });
+    }
+  }, [history, load, toast]);
+
+  // Ctrl/Cmd+Z undo, Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z redo. Ignored while a
+  // planner sheet/dialog is open (sheet, churn, seriesChoice) or while the
+  // event target is a form field / contenteditable — never steals a keystroke
+  // mid-typing. Distinct keys from Shell.jsx's Ctrl/Cmd+K palette, so no
+  // collision. Active only while this panel is mounted.
+  useEffect(() => {
+    const dialogOpen = Boolean(sheet || churn || seriesChoice);
+    function onKeyDown(e) {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      if (dialogOpen) return;
+      if (isFormFieldTarget(e.target)) return;
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        runUndo();
+      } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
+        e.preventDefault();
+        runRedo();
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [sheet, churn, seriesChoice, runUndo, runRedo]);
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (

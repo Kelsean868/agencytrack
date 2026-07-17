@@ -1586,7 +1586,11 @@ service cloud.firestore {
           && getTenantId() == tenantId
           && getRole() in ['sales_manager', 'tenant_admin', 'platform_admin'];
 
-        allow delete: if false;
+        // Run 9 A1: owner-scoped delete — exists solely as the undo-create inverse;
+        // UI exposes no delete affordance.
+        allow delete: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.agentId == request.auth.uid;
       }
 
       // ── I1.3c-ii: per-manager activity standard overrides ────────────────────
