@@ -173,7 +173,7 @@ export default function StrategicPlanDashboard() {
         </div>
       ) : (
         <>
-          <StrategicPlanCover meta={plan.meta} />
+          <StrategicPlanCover plan={plan} />
           <AgentPerformanceTracker agents={plan.agents} loading={plan.loading} error={plan.agents.error} onRetry={plan.reload} />
           <ProductionSummary production={plan.production} loading={plan.loading} error={plan.production?.error} onRetry={plan.reload} />
           <PeriodMetrics periodMetrics={plan.periodMetrics} loading={plan.loading} error={plan.periodMetrics?.error} onRetry={plan.reload} />

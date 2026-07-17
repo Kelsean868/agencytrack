@@ -8,10 +8,10 @@ import { getCandidatesForBoard } from '../services/recruitingService';
 import { getBranch } from '../services/branchService';
 import { producingRoster } from '../lib/strategicPlan/unitGrouping';
 import { periodSettlementByAgent } from '../lib/strategicPlan/settledTwinRun';
-import { yearWindow, defaultPeriod } from '../lib/strategicPlan/periodModel';
+import { yearWindow, defaultPeriod, periodElapsedFraction } from '../lib/strategicPlan/periodModel';
 import {
-  assembleAgentTrackerRows, assembleProductionSummary, assemblePeriodMetrics,
-  assembleOrgStructure, assembleRecruitment,
+  assembleAgentTrackerRows, assembleTrackerSummary, assembleProductionSummary,
+  assemblePeriodMetrics, assembleOrgStructure, assembleRecruitment,
 } from '../lib/strategicPlan/assembleModel';
 
 // Track K — Strategic Plan data hook. THE single math path: fetches branch-scoped
@@ -99,26 +99,29 @@ export function useStrategicPlan(branchId, period) {
       roster, persistencyByAgent, goalsByAgent, branchName, authorName,
     } = raw;
 
+    const now = new Date();
     const fy = yearWindow(year);
+    const elapsed = periodElapsedFraction(fy, now);
     const settledByAgent = periodSettlementByAgent(branchPolicies, fy);
 
     const rows = assembleAgentTrackerRows({
-      roster, ytdSubmissions: branchSubs, settledByAgent, persistencyByAgent, goalsByAgent, year,
+      roster, ytdSubmissions: branchSubs, settledByAgent, persistencyByAgent, goalsByAgent, year, elapsed,
     });
+    const trackerSummary = assembleTrackerSummary({ rows, elapsed });
     const production = assembleProductionSummary({
-      ytdSubmissions: branchSubs, policies: branchPolicies, branchGoals, persistencyByAgent, year,
+      ytdSubmissions: branchSubs, policies: branchPolicies, branchGoals, persistencyByAgent, year, now,
     });
     const periodMetrics = assemblePeriodMetrics({
-      ytdSubmissions: branchSubs, policies: branchPolicies, branchGoals, roster, period: effPeriod,
+      ytdSubmissions: branchSubs, policies: branchPolicies, branchGoals, roster, period: effPeriod, now,
     });
     const orgStructure = assembleOrgStructure({
-      branchUsers, ytdSubmissions: branchSubs, policies: branchPolicies, year,
+      branchUsers, ytdSubmissions: branchSubs, policies: branchPolicies, year, settledByAgent,
     });
     const recruitment = assembleRecruitment({ candidates: branchCandidates });
 
     return {
       meta: { branchId, branchName, authorName, period: effPeriod, generatedAt: new Date().toISOString() },
-      agents: { rows, empty: rows.length === 0, error: !!sectionErr.production },
+      agents: { rows, summary: trackerSummary, empty: rows.length === 0, error: !!sectionErr.production },
       production: { ...production, error: !!sectionErr.production },
       periodMetrics: { ...periodMetrics, error: !!sectionErr.production },
       orgStructure: { ...orgStructure, error: false },

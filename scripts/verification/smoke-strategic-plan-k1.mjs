@@ -119,14 +119,17 @@ async function run(theme) {
 
     // B — granularity toggle (Period Metrics 4 ↔ 2)
     const hasPeriodTable = await page.locator('[data-testid="sp-period-table"]').count() > 0;
+    // Count window rows EXCLUDING the always-present FY summary row.
+    const periodRows = () => page.evaluate(() =>
+      document.querySelectorAll('[data-testid^="sp-period-row-"]:not([data-testid="sp-period-row-FY"])').length);
     if (hasPeriodTable) {
-      const q = await countTestidPrefix(page, 'sp-period-row-');
+      const q = await periodRows();
       await page.click('[data-testid="sp-granularity-half"]');
       await page.waitForTimeout(600);
-      const h = await countTestidPrefix(page, 'sp-period-row-');
+      const h = await periodRows();
       await page.click('[data-testid="sp-granularity-quarter"]');
       await page.waitForTimeout(600);
-      const q2 = await countTestidPrefix(page, 'sp-period-row-');
+      const q2 = await periodRows();
       r.checks.granularity = { quarterRows: q, halfRows: h, quarterAgain: q2, pass: q === 4 && h === 2 && q2 === 4 };
     } else {
       r.checks.granularity = { skipped: 'no period data in foil branch', pass: true };

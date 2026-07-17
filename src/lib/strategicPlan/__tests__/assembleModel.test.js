@@ -97,14 +97,37 @@ describe('assembleProductionSummary (p9)', () => {
   });
 });
 
+describe('assembleAgentTrackerRows — pace objective (CD mockup)', () => {
+  const fy = yearWindow(YEAR);
+  const settledByAgent = periodSettlementByAgent(policies, fy);
+  it('objYtd prorates the annual quota by elapsed; pace % = net ÷ objYtd', () => {
+    const rows = assembleAgentTrackerRows({
+      roster, ytdSubmissions: submissions, settledByAgent, persistencyByAgent, goalsByAgent, year: YEAR, elapsed: 0.5,
+    });
+    const a = rows.find((r) => r.id === 'ag1');
+    expect(a.objYtd).toBe(120000 * 0.5);           // 60000
+    expect(a.apiPacePct).toBeCloseTo((6000 / 60000) * 100, 5); // 10%
+    expect(a.apiPctObj).toBeCloseTo((6000 / 120000) * 100, 5); // raw annual 5%
+  });
+});
+
 describe('assemblePeriodMetrics (p18)', () => {
   const branchGoals = { api: 1200000, apps: 240 };
 
-  it('quarter granularity → 4 rows; half → 2 rows', () => {
+  it('quarter granularity → 4 rows; half → 2 rows; FY summary present', () => {
     const q = assemblePeriodMetrics({ ytdSubmissions: submissions, policies, branchGoals, roster, period: { year: YEAR, granularity: 'quarter' } });
     expect(q.rows).toHaveLength(4);
+    expect(q.fy.isFy).toBe(true);
     const h = assemblePeriodMetrics({ ytdSubmissions: submissions, policies, branchGoals, roster, period: { year: YEAR, granularity: 'half' } });
     expect(h.rows).toHaveLength(2);
+  });
+
+  it('manpower goal reads optional branchGoals.manpower; null when absent', () => {
+    const withGoal = assemblePeriodMetrics({ ytdSubmissions: submissions, policies, branchGoals: { ...branchGoals, manpower: 16 }, roster, period: { year: YEAR, granularity: 'quarter' } });
+    expect(withGoal.manpowerGoal).toBe(16);
+    expect(withGoal.manpowerActual).toBe(roster.length);
+    const noGoal = assemblePeriodMetrics({ ytdSubmissions: submissions, policies, branchGoals, roster, period: { year: YEAR, granularity: 'quarter' } });
+    expect(noGoal.manpowerGoal).toBeNull();
   });
 
   it('goal prorates to the window; actual = net settled; variance = actual − goal', () => {
@@ -117,13 +140,26 @@ describe('assemblePeriodMetrics (p18)', () => {
 });
 
 describe('assembleOrgStructure (p8/14-17)', () => {
-  it('groups units with head + advisors and rolls up unit net API', () => {
-    const org = assembleOrgStructure({ branchUsers: roster, ytdSubmissions: submissions, policies, year: YEAR });
+  const fy = yearWindow(YEAR);
+  const settledByAgent = periodSettlementByAgent(policies, fy);
+  const branchUsers = [
+    ...roster,
+    { id: 'bm1', role: 'branch_manager', name: 'Boss BM' },
+    { id: 'cro1', role: 'cro', name: 'Back Office' },
+  ];
+  it('groups units, rolls up unit net API, and attaches per-advisor net', () => {
+    const org = assembleOrgStructure({ branchUsers, ytdSubmissions: submissions, policies, year: YEAR, settledByAgent });
     expect(org.unitCount).toBe(1);
     const unit = org.units[0];
     expect(unit.headName).toBe('Trainee Tom');
     expect(unit.advisorCount).toBe(1);
-    expect(unit.ytdNetApi).toBe(8000); // head um1 (2000) + agent ag1 (6000)
+    expect(unit.ytdNetApi).toBe(8000);          // head um1 (2000) + agent ag1 (6000)
+    expect(unit.advisors[0].netApi).toBe(6000); // ag1 per-advisor net
+  });
+  it('surfaces the branch author and admin staff', () => {
+    const org = assembleOrgStructure({ branchUsers, ytdSubmissions: submissions, policies, year: YEAR, settledByAgent });
+    expect(org.author.name).toBe('Boss BM');
+    expect(org.admins.map((a) => a.name)).toContain('Back Office');
   });
 });
 

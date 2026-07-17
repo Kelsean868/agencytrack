@@ -16,3 +16,12 @@ export function pctVariant(pct) {
   if (pct < 80) return 'warning';
   return 'success';
 }
+
+// Pace band (CD mockup spBand): a PACE-relative % (net ÷ prorated objective).
+// ≥100 ON PACE (success) · ≥85 AT FLOOR (warning) · else BELOW (danger).
+export function paceBand(pacePct) {
+  if (pacePct == null) return { variant: 'muted', label: '—' };
+  if (pacePct >= 100) return { variant: 'success', label: 'ON PACE' };
+  if (pacePct >= 85) return { variant: 'warning', label: 'AT FLOOR' };
+  return { variant: 'danger', label: 'BELOW' };
+}
