@@ -19,6 +19,12 @@
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
 | External code reviewer — Gemini sunsets 2026-07-17; choose a replacement (MEDIUM, dated, banked 2... | MEDIUM | — | 2026-07-17 | 4033 |
+| BIG ONE — the real planner-completion track (E1–E5) is UNBUILT (banked 2026-07-17, promotion sess... | HIGH | — | — | 477 |
+| Register the six Run-9 standing smokes in SMOKES.md (banked 2026-07-17, promotion session, MEDIUM... | MEDIUM | — | — | 439 |
+| Appointment template count cap is client-side only — hardening candidate (banked 2026-07-17, prom... | LOW | — | — | 461 |
+| Panel keydown stale-closure exposure under rapid state churn (banked 2026-07-17, promotion sessio... | LOW | — | — | 469 |
+| Run 9 operator rulings — recorded as settled (banked 2026-07-17, promotion session) | — | — | — | 447 |
+| Process lesson — design authority is the repo file, not a stale in-chat snippet (banked 2026-07-1... | — | — | — | 493 |
 | HARD DEADLINE — Node 20 gen-1 Cloud Functions runtime decommission 2026-10-30 (banked 2026-07-09,... | HIGH | — | 2026-10-30 | 556 |
 | Functions runtime + SDK upgrade — Node.js 20 EOL + `firebase-functions` 4.x → 5.x (MEDIUM with ha... | MEDIUM | — | 2026-10-30 | 2331 |
 | Company Config v2 — next major track: every business-policy constant tenant-configurable (banked ... | HIGH | — | — | 413 |
@@ -436,6 +442,68 @@ A code comment in the financing ruleset config (`src/config/financingRuleset/202
 
 ---
 
+## Register the six Run-9 standing smokes in SMOKES.md (banked 2026-07-17, promotion session, MEDIUM — verification hygiene)
+
+Run 9 (promoted to prod PR #862, `d0e74c12`, 2026-07-13) shipped six new standing smokes — `scripts/verification/smoke-run9-{a1-undo,a2-shortcuts,a3-conflicts,a4-templates,a5-bulk,f3e-series}.mjs` — covering undo/redo, keyboard shortcuts, conflict detection, appointment templates, bulk operations, and series-edit propagation respectively. None are yet registered in `scripts/verification/SMOKES.md` (the descriptive, non-CI-enforced catalogue). **Action:** add one row per script to SMOKES.md following the existing catalogue format before they're relied on as a regression baseline for future planner work.
+
+---
+
+---
+
+## Run 9 operator rulings — recorded as settled (banked 2026-07-17, promotion session)
+
+Three rulings confirmed during Run 9 (promoted PR #862, `d0e74c12`, 2026-07-13):
+
+1. **Postpone stays tombstone/rebook-style, distinct from reschedule-in-place.** Reschedule-in-place (F3b) replaces rebook only for churn "Reschedule" actions; "Postpone" keeps its existing tombstone-and-rebook behavior unchanged.
+2. **Owner-scoped appointment delete arm kept.** The `firestore.rules` change from `allow delete: if false` to owner-scoped (`resource.data.agentId == uid`) is confirmed as intended — undo-create inverse only, no UI affordance to delete directly.
+3. **Series-edit propagation extensions confirmed:** date never propagates across series edits; propagation targets `scheduled`/`confirmed` appointments only; diffs are changed-fields-only with value normalization (not a blanket overwrite).
+
+No further action — these are settled design decisions, not open items.
+
+---
+
+---
+
+## Appointment template count cap is client-side only — hardening candidate (banked 2026-07-17, promotion session, LOW — hardening)
+
+Run 9's A4 (appointment templates) enforces a 20-template cap client-side, non-transactionally. There is no `firestore.rules`-level count enforcement, so a client bypassing the UI (or a race between concurrent writes) could exceed 20 templates per agent. Not a security issue (templates are owner-scoped, `hasOnly` 11-key locked) — a data-hygiene cap only. **Action:** bank as a hardening candidate; revisit if template sprawl becomes a real problem, or add a rules-level count check if/when Company Config v2-style rules tooling makes that cheap.
+
+---
+
+---
+
+## Panel keydown stale-closure exposure under rapid state churn (banked 2026-07-17, promotion session, LOW — not observed live, watch)
+
+Run 9's A2 (keyboard shortcuts) introduced panel-level keydown handlers. Under rapid state churn, a keydown handler closing over stale state is a known risk class for this pattern (handler captures a state snapshot at attach time rather than reading current state). Not observed live during Run 9's verification — banked as a watch item. **Action:** if this resurfaces (a shortcut acting on stale panel state), fix with ref-based latest-state reads rather than re-deriving the handler on every render.
+
+---
+
+---
+
+## BIG ONE — the real planner-completion track (E1–E5) is UNBUILT (banked 2026-07-17, promotion session, HIGH — active build map, do not confuse with Run 9)
+
+Run 9 built six features (A1–A5 undo/redo/shortcuts/conflicts/templates/bulk + F3 series propagation) that are real, live in prod (`d0e74c12`), and valuable — but they are **not** the "planner and scheduler v2" redesign named in `docs/design-system/proposals/planner-scheduler-v2/README.md`. That README's actual spec is **five different features**, all still unbuilt:
+
+- **E1** — desktop 3-day + week views
+- **E2** — drag-drop reschedule (wires to the existing `postponeWithRebook`)
+- **E3** — running-late cascade (gap-smart, prospect-notify)
+- **E4** — per-appointment notes thread (travels with `prospectId`)
+- **E5** — collapsed-rail space adaptation
+
+This is the genuine planner-completion track, still ahead, and now sits on the `seriesId` + reschedule-in-place foundation Run 9 just laid (F3's composite index and propagation model are direct prerequisites for E2/E3). **Action:** needs its own recon-then-build session sourced from `docs/design-system/proposals/planner-scheduler-v2/README.md` directly — do not reuse Run 9's brief or progress docs as the starting point, they describe different, already-shipped work.
+
+---
+
+---
+
+## Process lesson — design authority is the repo file, not a stale in-chat snippet (banked 2026-07-17, promotion session, informational — Rule 17 application)
+
+Run 9 was dispatched against an earlier/mismatched README pasted in-chat rather than the actual `docs/design-system/proposals/planner-scheduler-v2/README.md` in the repo handoff folder — the six features it built (A1–A5 + F3) are real and shipped, but they are not the five E1–E5 features the folder's README actually specifies (see the BIG ONE entry above). **Lesson:** design authority for any build brief is the file in the repo handoff folder, verified at brief-time, never a snippet pasted earlier in the conversation — apply the same Rule 17 ("source verification at authoring time") discipline already standing for code/rules/index claims to design-source claims as well. **Action:** none beyond banking the lesson; future briefs touching design proposals must open and quote the actual repo file before locking scope.
+
+---
+
+---
+
 ## Master Sheet STATUS filters — need a YTD + companyMinimums read path (banked 2026-07-10, Run 4 Item 2, MEDIUM — feature completeness)
 
 The funnel Master Sheet's filters panel (`src/utils/funnelFilters.js`, `src/components/manager/MasterSheet.jsx`, PR #852-adjacent Run 4 work) deliberately omitted the mockup's STATUS chips (On track/Off pace/Gone quiet/Report late/Persistency↓/Below floor) — honestly, not silently: they require YTD API + `companyMinimums` tenure floors (+ persistency) loaded on a surface that currently only reads the single selected week. `deriveExceptions()` is called here with `companyMins: null` and single-week submissions only. Building this means adding a YTD/floor read path to Master Sheet — a real scope increase, not a small filter tweak. "Report late" is currently served by the existing reality-bar Exceptions count / Only-exceptions toggle as a partial substitute.
@@ -476,9 +544,9 @@ Planner recurrence (`src/utils/plannerRecurrence.js`-adjacent, `firestore.rules`
 
 ---
 
-## Planner recurrence — "edit this and all future" instances (banked 2026-07-10, Run 4 Item 5, MEDIUM — feature completeness)
+## Planner recurrence — "edit this and all future" instances — RESOLVED (banked 2026-07-10, Run 4 Item 5; shipped as Run 9 F3, evidence `d0e74c12`)
 
-The recurrence edit-scope choice sheet (mockup state 3) currently ships only "Edit this appointment only" — the shipped Run-3 edit-in-place path (ChurnDialog → AppointmentSheet mode:'edit' → `updateAppointment`) extends cleanly to a single instance but not to a whole future series. "Edit this and all future" needs a **new composite index** `(agentId, seriesId, date)` (to find all future-dated instances of a series in one query) **+ a multi-doc batch write** (to apply the edit across them, past instances untouched per the locked "past never changes" rule). Deliberately shipped as a disabled row rather than half-correct. **Shares the composite-index work with the `ENDS=Never` item above** — plan and build both index needs together.
+**RESOLVED 2026-07-16, promoted to prod 2026-07-13/PR #862 `d0e74c12`.** The recurrence edit-scope choice sheet (mockup state 3) originally shipped only "Edit this appointment only" — Run 9's F3 landed series-wide edit propagation (this/this-and-future/all) via `045434ef` (F3c series composite index + F3d edit propagation), with the new composite index `(agentId, seriesId, date)` this entry called for, plus F3e live smoke (14/14) and F3a+F3b post-deploy verification. No further action; the `ENDS=Never` rolling-horizon item directly above remains open and unrelated to this closure (it's a different structural gap — infinite end condition vs. concrete materialization).
 
 ---
 
