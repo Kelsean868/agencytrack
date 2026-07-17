@@ -305,3 +305,32 @@ Ordered by blocking severity. Nothing should be briefed until these are ruled.
 - **Run 9's six features were taken as out-of-scope on the operator's word,** not independently audited for E1–E5 collisions beyond the F3b/postpone split and the A5 selection model. A5 bulk-select and A1 undo both surfaced as E2 interactions only because I went looking; there may be more in A2/A3/A4 that a full Run 9 diff read would surface.
 - **`prospectInfoService` was read at its write surface** (`addProspectInfo`, `:96–134`) and grep-confirmed across services/schema. If a phone lives on a *different* prospect-ish collection I didn't enumerate, E3-a softens. I consider this unlikely — the grep was broad — but it is the finding with the largest consequence if wrong.
 - **Not verified:** that the shipped 3 appointments composites are actually `Enabled` in the Firebase Console (read from `firestore.indexes.json`, not Console), and no lint/test/build was run (read-only mode, correctly).
+
+---
+
+## 13. OPERATOR RULINGS (2026-07-13)
+
+All 11 DECISIONS-NEEDED from §11 are dispositioned below. These rulings **govern the build briefs** — where a ruling overrides a recon recommendation, the ruling wins. Item numbers match §11.
+
+| # | Item | Ruling |
+|---|---|---|
+| **1** | **E2 mutation** | **ACCEPTED** the §3 correction. Drag-drop calls **`updateAppointment(tenantId, apptId, { date, startTime })`** — both keys are in the `buildUpdatePatch` allowlist — **NOT `postponeWithRebook`**. The README instruction is stale (pre-Run-9); shipped code + the F3b regression test govern. |
+| **2** | **E3 notify** | **Ship WITHOUT Call/WhatsApp notify (option b).** No prospect phone field exists, and adding one reopens the locked "demographics OUT" ruling. **Bank "prospect contact fields" as a separate product decision** (out of scope for E1–E5). E3 stays **pure-client**. |
+| **3** | **E4 storage** | **SUBCOLLECTION** — `appointments/{id}/notes/{noteId}` — **OVERRIDING the recon's array-on-doc recommendation.** Rationale: the array path rests on the `hasAll`-passes-unvalidated premise the recon itself flags as *reasoned, not emulator-tested* (§12); a subcollection gets a **clean independent rules arm with per-note validation** and **cannot bloat the appointment doc**. The recon's "array serves the week-board read budget" argument does **not** apply — the week grid never reads notes (they render only on appointment-open). **Run B item; Phase 1 must emulator-test the rules regardless.** |
+| **4** | **E4 prospectId index** | **DEFERRED.** With subcollection storage + "notes travel with the prospect" pushed to **Run B phase 2**, the `(agentId, prospectId, date)` composite is **not needed for the core thread**. Re-derive if/when cross-appointment surfacing is actually built. |
+| **5** | **E1 IA collision** | **NEST** the `Day / 3-day / Week` density toggle **UNDER the existing Week tab.** Keep `Today · Week · Follow-ups` as the top-level modes; density is a **sub-control within Week**. Today stays single-day. |
+| **6** | **E1/E2 breakpoint** | **`lg:` (1024) for BOTH** the board and drag. The 768–1023 touch-capable band gets **no drag-drop** (no touch-DnD implementation); below `lg:` keeps the single-column planner + churn-dialog reschedule path. |
+| **7** | **E3 cascade scope** | **CLAMP at the day boundary** — never cross midnight; surface a **"can't fit today"** row for overflow. **Already-late-chained** appointments **re-derive from CURRENT (pushed) times**, not original booked times. |
+| **8** | **E4 legacy note** | **READ-TIME SYNTHESIS, thread-only going forward.** The legacy `note` string surfaces as a **synthesized first thread entry** (never written back); the booking sheet writes to the **thread**, and **stops writing `note`**. **No dual-write.** Run B. |
+| **9** | **E1 shift-click** | **SCOPE within-column.** Cross-column selection is **individual-click only**. Avoids the day-major-vs-row-major DOM-order break in `visibleSelectableIds` (§2, E1-b). |
+| **10** | **E1/E2 arrow keys** | **Coupled to #5:** since density is now a sub-toggle, view-cycling **no longer needs the Arrow keys** — so Arrows become **cross-column card navigation** + (with a modifier) **E2's keyboard-move alternative**. Concrete key binding to be specified in the build brief. |
+| **11** | **E3 trigger** | **`scheduled` \| `confirmed` ONLY** trigger the running-late prompt. `RETIRED_STATUSES` (`kept` \| `cancelled` \| `postponed` \| `done`) **never** trigger it. |
+
+### The split (locked)
+
+- **Run A — autonomous, pure-client:** **E1 + E5 + E2 + E3 (without notify)**. `lg:`-gated, **no rules / no index changes**, normal merge channel.
+- **Run B — attended:** **E4 alone** — subcollection storage + a **new rules arm** with per-note validation. **Phase 1 must emulator-verify the `hasAll` premise before building.** The `prospectId`-cross-appointment surfacing is **phase 2** of Run B (deferred index per #4).
+
+### Carried-forward caveat (Rule 22, §12 item 1)
+
+**No mockup pixel review was done in this recon.** The **Run A build MUST open `mockups/AgencyTrack Planner & Scheduler v2.html`** (§10, artboards F1–F12) and match the **visual intent** — grip dots, ghosted origin, lift/tilt, cascade preview with struck-through old times — **not build from the structural description alone.** F1–F12 were enumerated by grepping labels out of the HTML, never rendered.
