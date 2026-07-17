@@ -79,10 +79,107 @@ export function dayLabel(dateStr) {
   return `${wd} ${d.getUTCDate()}`;
 }
 
+/**
+ * 'YYYY-MM-DD' + N days → 'YYYY-MM-DD' (UTC-noon math, same discipline as
+ * buildWeekDates — immune to DST/local-timezone edges). Malformed input is
+ * returned unchanged (defensive, mirrors formatTime12's fallback contract).
+ * Run 9 A5: powers the bulk-move "shift by ±N days" mode.
+ */
+export function shiftDateStr(dateStr, days) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr ?? ''))) return dateStr;
+  const d = new Date(dateStr + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + (Number(days) || 0));
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // Statuses that RETAIN a slot but read as "no longer active" (dimmed/struck).
 export const RETIRED_STATUSES = new Set(['cancelled', 'postponed']);
 // Statuses that count as the plan being carried out.
 export const COMPLETED_STATUSES = new Set(['kept', 'done']);
+
+// ── Conflict detection (Run 9 A3 — R7: warn-only, never blocks) ─────────────
+
+/**
+ * Parse a { startTime: 'HH:mm', durationMin } pair into a clamped [start, end)
+ * minute-of-day interval. Returns null for anything malformed or missing —
+ * callers skip such appointments defensively rather than throwing. Cross-
+ * midnight duration (start + durationMin > 24:00) is clamped at 1440
+ * (midnight), same-date only — it never spills into the next date's window.
+ */
+function parseApptInterval(appt) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(appt?.startTime ?? ''));
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  if (!Number.isFinite(h) || !Number.isFinite(min) || h < 0 || h > 23 || min < 0 || min > 59) return null;
+  const duration = Number(appt.durationMin);
+  if (!Number.isFinite(duration) || duration <= 0) return null;
+  const start = h * 60 + min;
+  const end = Math.min(start + duration, 24 * 60);
+  return { start, end };
+}
+
+/** Half-open interval intersection — touching (a.end === b.start) is NOT an overlap. */
+function intervalsOverlap(a, b) {
+  return a.start < b.end && b.start < a.end;
+}
+
+/**
+ * detectConflicts — ids of appointments that overlap another NON-RETIRED
+ * appointment on the SAME date. FREE blocks participate (booking over your
+ * own blocked time is exactly what deserves a warning). Malformed/missing
+ * `startTime`/`durationMin` are skipped defensively, never thrown. R7:
+ * warn-only — the returned Set is for rendering badges, never for gating a
+ * save.
+ * @param {Array} appts
+ * @returns {Set<string>} conflicting appointment ids
+ */
+export function detectConflicts(appts = []) {
+  const conflicts = new Set();
+  const byDate = new Map();
+  for (const a of appts) {
+    if (!a || !a.date || RETIRED_STATUSES.has(a.status)) continue;
+    const interval = parseApptInterval(a);
+    if (!interval) continue;
+    if (!byDate.has(a.date)) byDate.set(a.date, []);
+    byDate.get(a.date).push({ id: a.id, ...interval });
+  }
+  for (const list of byDate.values()) {
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        if (intervalsOverlap(list[i], list[j])) {
+          conflicts.add(list[i].id);
+          conflicts.add(list[j].id);
+        }
+      }
+    }
+  }
+  return conflicts;
+}
+
+/**
+ * findConflictingAppointment — given a candidate `{ date, startTime, durationMin }`
+ * (typically live, unsaved sheet form state) and the loaded week's
+ * appointments, returns the FIRST other non-retired appointment on the same
+ * date whose interval overlaps the candidate's, or null if none. `excludeId`
+ * omits the appointment currently being edited (edit-mode self-exclusion).
+ * Same malformed-input and RETIRED_STATUSES rules as `detectConflicts`.
+ */
+export function findConflictingAppointment(candidate, appts = [], excludeId = null) {
+  if (!candidate?.date) return null;
+  const candidateInterval = parseApptInterval(candidate);
+  if (!candidateInterval) return null;
+  for (const a of appts) {
+    if (!a || a.id === excludeId || a.date !== candidate.date || RETIRED_STATUSES.has(a.status)) continue;
+    const interval = parseApptInterval(a);
+    if (!interval) continue;
+    if (intervalsOverlap(candidateInterval, interval)) return a;
+  }
+  return null;
+}
 
 // ── Follow-up derivation (client-side; honest signal) ────────────────────────
 

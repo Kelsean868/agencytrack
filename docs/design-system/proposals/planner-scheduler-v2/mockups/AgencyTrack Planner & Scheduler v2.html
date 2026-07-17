@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Planner &amp; Scheduler v2</title>
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 580px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Planner &amp; Scheduler — the day-planning + booking surface (new agent feature)</h1>
+    <p>
+      Digitizes the paper <b>Weekly Planner</b> booklet: agents book a week of appointments into time slots, work the day, and report results — and the plan <b>pre-fills the report</b>. An <b>activity manager</b>, not a CRM. Real activity types (<b>P.C / S.C / A.I / F.F.I / C.I</b>, Sales, free blocks), TTD, Trinidad names. Three flows tuned for speed: <b>phone-day booking</b> across a 2-month horizon, <b>daily churn</b> (cancel → reschedule / fill the freed slot), and the <b>plan→report evening handoff</b>. Mobile-first with a desktop week-booking board. Every screen in light + dark, with empty / loading / error states. Drag cards to reorder · click <b>Focus</b> (or ⤢) for fullscreen · ←/→ to step.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="planner-shared.jsx"></script>
+  <script type="text/babel" src="planner-mobile-a.jsx"></script>
+  <script type="text/babel" src="planner-mobile-b.jsx"></script>
+  <script type="text/babel" src="planner-states.jsx"></script>
+  <script type="text/babel" src="planner-desktop.jsx"></script>
+  <script type="text/babel" src="planner-desktop-screens.jsx"></script>
+  <script type="text/babel" src="planner-feedback.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection id="today" title="1 · Today — home"
+            subtitle="Default landing. Time-ordered timeline with a live NOW marker and visible empty gaps, a day-pulse, a 'follow-ups due' strip, and the thumb-reachable quick-add (the center FAB). Plus the first-run empty state and the offline error state — both matter for a daily tool.">
+            <DCArtboard id="today-light" label="01 · Today · Light" width={M_W} height={M_H}><PlannerToday t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="today-dark" label="02 · Today · Dark" width={M_W} height={M_H}><PlannerToday t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="today-empty" label="03 · Empty · nothing booked" width={M_W} height={M_H}><EmptyToday t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="today-loading" label="04 · Loading · skeleton" width={M_W} height={M_H}><LoadingDay t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="today-error" label="05 · Error · offline" width={M_W} height={M_H}><ErrorState t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="today-desk-l" label="06 · Today · Desktop · Light" width={APP_W} height={APP_H}><PlannerTodayDesk t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="today-desk-d" label="07 · Today · Desktop · Dark" width={APP_W} height={APP_H}><PlannerTodayDesk t={APP_DARK} /></DCArtboard>
+          </DCSection>
+
+          <DCSection id="day" title="2 · Day timeline"
+            subtitle="A selected day as a time-ordered list. Each appointment is a card: time, prospect (or free-block label), activity type, status. Empty gaps render as dashed, tappable 'tap to book' strips with the free duration. Day-to-day arrows in the header.">
+            <DCArtboard id="day-light" label="06 · Day · Light" width={M_W} height={M_H}><PlannerDay t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="day-dark" label="07 · Day · Dark" width={M_W} height={M_H}><PlannerDay t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="day-desk-l" label="08 · Day · Desktop · Light" width={APP_W} height={APP_H}><PlannerDayDesk t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="day-desk-d" label="09 · Day · Desktop · Dark" width={APP_W} height={APP_H}><PlannerDayDesk t={APP_DARK} /></DCArtboard>
+          </DCSection>
+
+          <DCSection id="week" title="3 · Forward day-strip + week booking  ⭐ phone-day flow"
+            subtitle="The booking surface. A horizontally-scrollable strip of upcoming days (≈2-month horizon) with a per-day load/density count — NOT a month grid, NOT a calendar. Below it the selected week as a 7-day list with a running counter vs the weekly minimum (CIs booked 6/10, visibly short), and an 'add' under each day.">
+            <DCArtboard id="week-light" label="08 · Week booking · Light" width={M_W} height={M_H}><PlannerWeek t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="week-dark" label="09 · Week booking · Dark" width={M_W} height={M_H}><PlannerWeek t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="week-desk-l" label="10 · Week board · Desktop · Light" width={APP_W} height={APP_H}><PlannerDesktop t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="week-desk-d" label="11 · Week board · Desktop · Dark" width={APP_W} height={APP_H}><PlannerDesktop t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="threeday-l" label="12 · 3-day view · Desktop · Light ⭐ new" width={APP_W} height={APP_H}><Planner3Day t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="threeday-d" label="13 · 3-day view · Desktop · Dark ⭐ new" width={APP_W} height={APP_H}><Planner3Day t={APP_DARK} /></DCArtboard>
+          </DCSection>
+
+          <DCSection id="feedback" title="10 · Feedback round — drag to reschedule + running late ⭐ new"
+            subtitle="From user feedback. (1) Desktop gets a Day / 3-day / Week view toggle — the 3-day view lives in section 3 above. (2) Drag & drop: grab any appointment card (grip dots) and drop it on a gap — within a day to change time, across day columns to change day; the drop target highlights teal and the origin card ghosts. (3) Running late: when a meeting passes its scheduled end unmarked, the system prompts — and it's gap-smart: if a large space follows the next meeting, it suggests pushing the NEXT MEETING ONLY (“a 1h40m gap follows your 1:00 — the rest of today is unaffected”), with ‘everything after this’ as the alternative; +10/20/30 push, cascade preview, and call/WhatsApp the affected prospect with a prepared heads-up. (4) Notes on every meeting: timestamped notes attached to the appointment, travelling with the prospect — past meetings' notes surface on the prep card. (5) Collapsed menu: when the sidebar condenses to a 64px icon rail, the content region reclaims the ~168px — day columns widen and the day-strip shows more days; all views are fluid (1fr columns), never fixed-width.">
+            <DCArtboard id="drag-3day" label="F1 · Drag to reschedule · 3-day · mid-drag" width={APP_W} height={APP_H}><Planner3Day t={APP_LIGHT} drag /></DCArtboard>
+            <DCArtboard id="drag-week" label="F2 · Drag across days · Week board · mid-drag" width={APP_W} height={APP_H}><WeekDragDesk t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="late-sheet-l" label="F3 · Running late · Sheet · Light" width={M_W} height={M_H}><RunningLateSheet t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="late-sheet-d" label="F4 · Running late · Sheet · Dark" width={M_W} height={M_H}><RunningLateSheet t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="late-desk-l" label="F5 · Running late · Desktop · Light" width={APP_W} height={APP_H}><RunningLateDesk t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="late-desk-d" label="F6 · Running late · Desktop · Dark" width={APP_W} height={APP_H}><RunningLateDesk t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="notes-sheet-l" label="F7 · Meeting notes · Sheet · Light" width={M_W} height={M_H}><MeetingNotesSheet t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="notes-sheet-d" label="F8 · Meeting notes · Sheet · Dark" width={M_W} height={M_H}><MeetingNotesSheet t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="notes-desk-l" label="F9 · Meeting notes · Desktop · Light" width={APP_W} height={APP_H}><MeetingNotesDesk t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="notes-desk-d" label="F10 · Meeting notes · Desktop · Dark" width={APP_W} height={APP_H}><MeetingNotesDesk t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="collapsed-week" label="F11 · Collapsed menu · Week board fills the space" width={APP_W} height={APP_H}><PlannerDesktop t={APP_LIGHT} collapsed /></DCArtboard>
+            <DCArtboard id="collapsed-3day" label="F12 · Collapsed menu · 3-day view fills the space" width={APP_W} height={APP_H}><Planner3Day t={APP_LIGHT} collapsed /></DCArtboard>
+          </DCSection>
+
+          <DCSection id="add" title="4 · Add / edit appointment (bottom sheet)  ⭐ phone-day flow"
+            subtitle="Fast entry for booking-day. Pick an existing prospect (search) OR a free block; set time, length, and activity type. Optimized for rapid repeat entry — 'Save & add another' sits beside Save. The saved-toast state shows the booked confirmation + undo.">
+            <DCArtboard id="add-prospect" label="10 · Pick prospect · search" width={M_W} height={M_H}><AddSheet t={APP_LIGHT} mode="prospect" /></DCArtboard>
+            <DCArtboard id="add-free" label="11 · Free block" width={M_W} height={M_H}><AddSheet t={APP_LIGHT} mode="free" /></DCArtboard>
+            <DCArtboard id="add-saved" label="12 · Saved · add another" width={M_W} height={M_H}><AddSheet t={APP_LIGHT} mode="prospect" toast /></DCArtboard>
+            <DCArtboard id="add-dark" label="13 · Pick prospect · Dark" width={M_W} height={M_H}><AddSheet t={APP_DARK} mode="prospect" /></DCArtboard>
+            <DCArtboard id="add-desk-l" label="14 · Add · Desktop dialog · Light" width={APP_W} height={APP_H}><AddDesk t={APP_LIGHT} mode="prospect" /></DCArtboard>
+            <DCArtboard id="add-desk-d" label="15 · Add · Desktop dialog · Dark" width={APP_W} height={APP_H}><AddDesk t={APP_DARK} mode="free" /></DCArtboard>
+          </DCSection>
+
+          <DCSection id="churn" title="5 · Status churn  ⭐ daily-churn flow"
+            subtitle="Tap an appointment → quick actions: Kept · Reschedule (change time) · Postpone · Cancel. Cancelled & postponed records are RETAINED — shown dimmed / struck-through, never deleted — so the week stays an honest record.">
+            <DCArtboard id="churn-sheet" label="14 · Quick actions sheet" width={M_W} height={M_H}><ChurnSheet t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="churn-retained" label="15 · Retained · cancelled + postponed" width={M_W} height={M_H}><ChurnRetained t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="churn-dark" label="16 · Retained · Dark" width={M_W} height={M_H}><ChurnRetained t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="churn-desk-l" label="17 · Quick actions · Desktop · Light" width={APP_W} height={APP_H}><ChurnDesk t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="churn-desk-d" label="18 · Quick actions · Desktop · Dark" width={APP_W} height={APP_H}><ChurnDesk t={APP_DARK} /></DCArtboard>
+          </DCSection>
+
+          <DCSection id="freed" title="6 · Freed-slot suggested fill  ⭐ daily-churn flow"
+            subtitle="When an appointment is cancelled, the freed slot surfaces a 'fill this slot' prompt offering: a due follow-up, a 'ready anytime' waitlist prospect, or 'log as prospecting time' — turning a hole in the day back into activity in one tap.">
+            <DCArtboard id="freed-light" label="17 · Fill the freed slot · Light" width={M_W} height={M_H}><FreedFill t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="freed-dark" label="18 · Fill the freed slot · Dark" width={M_W} height={M_H}><FreedFill t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="freed-desk-l" label="19 · Fill slot · Desktop · Light" width={APP_W} height={APP_H}><FreedDesk t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="freed-desk-d" label="20 · Fill slot · Desktop · Dark" width={APP_W} height={APP_H}><FreedDesk t={APP_DARK} /></DCArtboard>
+          </DCSection>
+
+          <DCSection id="followups" title="7 · Follow-up worklist"
+            subtitle="Prospects whose callback date is due, batched into one list. Each row: name, why due ('said call back month-end'), and actions — Book · Snooze · Re-qualify · Release. About half of these convert, so the list is central, not secondary. Includes the all-caught-up empty state.">
+            <DCArtboard id="followups-light" label="19 · Follow-ups · Light" width={M_W} height={M_H}><Followups t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="followups-dark" label="20 · Follow-ups · Dark" width={M_W} height={M_H}><Followups t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="followups-empty" label="21 · Empty · all caught up" width={M_W} height={M_H}><EmptyFollowups t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="followups-desk-l" label="22 · Worklist · Desktop · Light" width={APP_W} height={APP_H}><FollowupsDesk t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="followups-desk-d" label="23 · Worklist · Desktop · Dark" width={APP_W} height={APP_H}><FollowupsDesk t={APP_DARK} /></DCArtboard>
+          </DCSection>
+
+          <DCSection id="prep" title="8 · Prep card"
+            subtitle="Tap an appointment → prospect history, logged objections (with how they were handled), product interest, last contact. Includes a 'Copy WhatsApp confirmation' button — copies a message the agent pastes & sends manually; the app never sends.">
+            <DCArtboard id="prep-light" label="22 · Prep card · Light" width={M_W} height={M_H}><PrepCard t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="prep-dark" label="23 · Prep card · Dark" width={M_W} height={M_H}><PrepCard t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="prep-desk-l" label="24 · Prep · Desktop · Light" width={APP_W} height={APP_H}><PrepDesk t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="prep-desk-d" label="25 · Prep · Desktop · Dark" width={APP_W} height={APP_H}><PrepDesk t={APP_DARK} /></DCArtboard>
+          </DCSection>
+
+          <DCSection id="handoff" title="9 · Plan → actual handoff  ⭐ the core payoff"
+            subtitle="End-of-day capture, PRE-FILLED from what was planned and kept — the agent confirms rather than re-types. Kept appointments map straight to report fields (activity counts + a written sale's API); the postponed item rebooks itself. Confirm → terminal 'Day logged' state that flows into the weekly report.">
+            <DCArtboard id="handoff-light" label="24 · Evening pre-fill · Light" width={M_W} height={M_H}><Handoff t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="handoff-dark" label="25 · Evening pre-fill · Dark" width={M_W} height={M_H}><Handoff t={APP_DARK} /></DCArtboard>
+            <DCArtboard id="handoff-done" label="26 · Confirmed · Day logged" width={M_W} height={M_H}><Handoff t={APP_LIGHT} done /></DCArtboard>
+            <DCArtboard id="handoff-desk-l" label="27 · Evening pre-fill · Desktop · Light" width={APP_W} height={APP_H}><HandoffDesk t={APP_LIGHT} /></DCArtboard>
+            <DCArtboard id="handoff-desk-d" label="28 · Evening pre-fill · Desktop · Dark" width={APP_W} height={APP_H}><HandoffDesk t={APP_DARK} /></DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

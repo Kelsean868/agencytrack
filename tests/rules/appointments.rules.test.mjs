@@ -8,7 +8,10 @@
  * Contract: flat tenant collection; owner (agent/producing-manager) creates/
  * updates OWN appointments (agentId pinned to auth.uid, full validApptWrite
  * shape); upline READ-ONLY (UM own unit via agentUnitId, BM own branch via
- * caller's user-doc branchId, SM+/TA tenant-wide); split list arms; no deletes.
+ * caller's user-doc branchId, SM+/TA tenant-wide); split list arms.
+ * Run 9 A1: owner-scoped `allow delete` arm added — exists solely as the
+ * undo-create inverse for the planner's undo/redo history; no UI delete
+ * affordance exists. Upline / peer / unauthenticated delete remains denied.
  */
 import {
   initializeTestEnvironment, assertFails, assertSucceeds,
@@ -129,31 +132,43 @@ async function main() {
     assertSucceeds(getDoc(apptRef(um1Db, A1))));
   await t('19. Cross-branch BM gets doc -> DENY', () =>
     assertFails(getDoc(apptRef(bm2Db, A1))));
-  await t('20. Owner delete -> DENY (no hard deletes)', () =>
-    assertFails(deleteDoc(apptRef(agent1Db, A1))));
+  console.log(''); console.log('delete (Run 9 A1 — owner-scoped undo-create inverse):');
+  const unauthDb = testEnv.unauthenticatedContext().firestore();
+  await t('20. Unauthenticated delete -> DENY', () =>
+    assertFails(deleteDoc(apptRef(unauthDb, A1))));
+  await t('21. Peer agent deletes another agent\'s appt -> DENY', () =>
+    assertFails(deleteDoc(apptRef(agent2Db, A1))));
+  await t('22. unit_manager (upline) delete -> DENY', () =>
+    assertFails(deleteDoc(apptRef(um1Db, A1))));
+  await t('23. branch_manager (upline) delete -> DENY', () =>
+    assertFails(deleteDoc(apptRef(bm1Db, A1))));
+  await t('24. sales_manager (upline) delete -> DENY', () =>
+    assertFails(deleteDoc(apptRef(sm1Db, A1))));
+  await t('25. Owner deletes own appt -> ALLOW', () =>
+    assertSucceeds(deleteDoc(apptRef(agent1Db, A1))));
 
   console.log(''); console.log('recurrence (series metadata):');
   const series = { seriesId: 'ser-1', repeatRule: 'weekly', seriesPos: 4, seriesTotal: 12 };
-  await t('21. Valid weekly series instance -> ALLOW', () =>
+  await t('26. Valid weekly series instance -> ALLOW', () =>
     assertSucceeds(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, series))));
-  await t('22. Bad repeatRule (monthly) -> DENY', () =>
+  await t('27. Bad repeatRule (monthly) -> DENY', () =>
     assertFails(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, { ...series, repeatRule: 'monthly' }))));
-  await t('23. Non-int seriesPos -> DENY', () =>
+  await t('28. Non-int seriesPos -> DENY', () =>
     assertFails(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, { ...series, seriesPos: 1.5 }))));
-  await t('24. seriesPos out of range (0) -> DENY', () =>
+  await t('29. seriesPos out of range (0) -> DENY', () =>
     assertFails(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, { ...series, seriesPos: 0 }))));
-  await t('25. seriesTotal > 52 -> DENY', () =>
+  await t('30. seriesTotal > 52 -> DENY', () =>
     assertFails(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, { ...series, seriesTotal: 100 }))));
-  await t('26. Custom cadence with daysOfWeek list -> ALLOW', () =>
+  await t('31. Custom cadence with daysOfWeek list -> ALLOW', () =>
     assertSucceeds(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, { ...series, repeatRule: 'custom', daysOfWeek: ['TUE', 'THU'] }))));
-  await t('27. daysOfWeek not a list -> DENY', () =>
+  await t('32. daysOfWeek not a list -> DENY', () =>
     assertFails(addDoc(coll(agent1Db), validAppt(AGENT1, UM1, BRANCH_A, { ...series, repeatRule: 'custom', daysOfWeek: 'TUE' }))));
-  await t('28. Forged agentId on a series instance -> DENY', () =>
+  await t('33. Forged agentId on a series instance -> DENY', () =>
     assertFails(addDoc(coll(agent1Db), validAppt(AGENT2, 'um2', BRANCH_B, series))));
 
   await testEnv.cleanup();
   console.log('');
-  console.log(`${passed + failed} tests: ${passed} passed, ${failed} failed (28 expected)`);
+  console.log(`${passed + failed} tests: ${passed} passed, ${failed} failed (33 expected)`);
   if (failed > 0) process.exit(1);
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Loader2, Search, Repeat, Minus, Plus } from 'lucide-react';
+import { X, Loader2, Search, Repeat, Minus, Plus, AlertTriangle, Bookmark, Trash2 } from 'lucide-react';
 import useFocusTrap from '../../hooks/useFocusTrap';
 import {
   APPOINTMENT_TYPES, FREE_BLOCK_LABELS,
@@ -8,7 +8,7 @@ import {
   DOW_PICKER_ORDER, MAX_SERIES_INSTANCES, buildSeriesPreview,
   dayOfWeekKey, slotDayLabel,
 } from './recurrence.helpers';
-import { formatTime12 } from './planner.helpers';
+import { formatTime12, findConflictingAppointment } from './planner.helpers';
 
 const REPEAT_CHIPS = [
   { key: 'none',   label: 'None',        repeats: false },
@@ -33,19 +33,36 @@ const DAY_GLYPH = { MON: 'M', TUE: 'T', WED: 'W', THU: 'T', FRI: 'F', SAT: 'S', 
  * one" is the only live scope; "Whole series — use Edit" is a disabled chip — with
  * an amber consequence panel. Series-wide changes go through Edit, never Postpone.
  *
+ * Conflict warning (`appointments`, Run 9 A3): when the chosen date/startTime/
+ * durationMin overlaps another non-retired appointment in the loaded week, an
+ * amber `aria-live="polite"` line names the clash. R7: warn-only — the Save
+ * button is never disabled by a conflict.
+ *
+ * Templates (`templates`, Run 9 A4, create-only): a compact picker row above the
+ * type control lets the agent apply a saved appointment SHAPE — fills type /
+ * startTime / durationMin / note / freeBlockLabel / apiAmount into the form
+ * (date stays as chosen). The row is hidden entirely when the agent has no
+ * templates. A per-template delete affordance calls `onDeleteTemplate(id)`.
+ *
  * Owns local form state; the parent owns the Firestore write (via onSave) and
  * passes `saving` / `error`. On a bad write the parent keeps the sheet open and
  * sets `error` — an inline role=alert card renders below the actions.
  */
 export default function AppointmentSheet({
   mode = 'create',
+  variant = null,
+  scope = null,
+  seriesInstance = false,
   initial = null,
   prospects = [],
+  appointments = [],
+  templates = [],
   saving = false,
   error = '',
   showRepeat = false,
   seriesPostpone = null,
   onSave,
+  onDeleteTemplate,
   onClose,
 }) {
   const trapRef = useFocusTrap({ onEscape: onClose, escapeDisabled: saving });
@@ -96,6 +113,19 @@ export default function AppointmentSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repeating, date, startTime, repeatRule, customDays, endType, endCount, endOnDate]);
 
+  // Run 9 A3: conflict detection against the loaded week (`appointments`,
+  // passed by the parent) — R7 warn-only, never blocks. Edit mode excludes
+  // the appointment being edited from the comparison (self-overlap is not a
+  // conflict). Recomputes live as the agent adjusts date/time/duration.
+  const conflict = useMemo(
+    () => findConflictingAppointment(
+      { date, startTime, durationMin },
+      appointments,
+      mode === 'edit' ? initial?.id : null,
+    ),
+    [date, startTime, durationMin, appointments, mode, initial],
+  );
+
   const buildData = () => ({
     type, date, startTime, durationMin, note,
     prospectId: isFree ? '' : prospectId,
@@ -126,6 +156,20 @@ export default function AppointmentSheet({
     }
   };
 
+  // Run 9 A4: apply a saved template — fills the appointment SHAPE into the
+  // form (type/time/duration/note/free label/api). Date is deliberately left
+  // as the agent's chosen date (templates carry no date).
+  const applyTemplate = (tpl) => {
+    setType(tpl.type ?? 'PC');
+    setStartTime(tpl.startTime ?? '09:00');
+    setDuration(String(tpl.durationMin ?? 30));
+    setNote(tpl.note ?? '');
+    setFreeLabel(tpl.freeBlockLabel ?? FREE_BLOCK_LABELS[0]);
+    setApiAmount(tpl.apiAmount != null ? String(tpl.apiAmount) : '');
+  };
+
+  const showTemplates = mode === 'create' && !seriesPostpone && templates.length > 0;
+
   const pickRule = (key) => {
     setRepeatRule(key);
     if (key === 'custom' && customDays.length === 0 && date) {
@@ -139,13 +183,23 @@ export default function AppointmentSheet({
     setEndCount((n) => Math.max(1, Math.min(MAX_SERIES_INSTANCES, Number(n || 1) + delta)));
   };
 
+  const isReschedule = variant === 'reschedule';
+  // Run 9 F3d: series field-propagation edit ("this and future" / "all"). The
+  // per-occurrence DATE is intentionally locked (a propagated date would collapse
+  // the series onto one day — use Reschedule to move a single occurrence); every
+  // other field flows to the matching instances.
+  const isSeriesPropagate = variant === 'series-propagate';
   const titleId = 'appt-sheet-title';
   const title = seriesPostpone
     ? 'Postpone appointment'
-    : mode === 'edit' ? 'Edit appointment' : 'Book appointment';
+    : isReschedule ? 'Reschedule appointment'
+      : isSeriesPropagate ? 'Edit series'
+        : mode === 'edit' ? 'Edit appointment' : 'Book appointment';
   const primaryLabel = seriesPostpone
     ? 'Move this one'
-    : repeating ? 'Book series' : 'Save';
+    : isReschedule ? 'Reschedule'
+      : isSeriesPropagate ? 'Apply to series'
+        : repeating ? 'Book series' : 'Save';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -176,6 +230,36 @@ export default function AppointmentSheet({
         </div>
 
         <div className="px-4 py-4 flex flex-col gap-4">
+          {/* Series field propagation (F3d) — names the exact set of occurrences
+              the edit will touch (scope-dependent copy). */}
+          {isSeriesPropagate && (
+            <div
+              data-testid="series-propagate-scope-line"
+              className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/30 px-3 py-2"
+            >
+              <SeriesBadge size={14} />
+              <span className="text-xs font-medium text-ink-muted">
+                {scope === 'all'
+                  ? 'Applies to all current + future occurrences'
+                  : 'Applies to this and all future occurrences'}
+              </span>
+            </div>
+          )}
+
+          {/* Reschedule of a series instance (F3b) — single-doc update, so only
+              this occurrence moves; the rest of the series is untouched. */}
+          {isReschedule && seriesInstance && (
+            <div
+              data-testid="reschedule-series-note"
+              className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/30 px-3 py-2"
+            >
+              <SeriesBadge size={14} />
+              <span className="text-xs font-medium text-ink-muted">
+                Only this occurrence moves · series unchanged
+              </span>
+            </div>
+          )}
+
           {/* Series postpone — scope lock + context (state 4) */}
           {seriesPostpone && (
             <div className="flex flex-col gap-3" data-testid="postpone-series-block">
@@ -203,6 +287,43 @@ export default function AppointmentSheet({
                     Whole series — use Edit
                   </span>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Templates picker (Run 9 A4, create-only) — apply a saved shape.
+              Hidden entirely when the agent has no templates. */}
+          {showTemplates && (
+            <div data-testid="appt-template-picker">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted mb-2 uppercase tracking-wide">
+                <Bookmark size={12} aria-hidden="true" /> Templates
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {templates.map((tpl) => (
+                  <span
+                    key={tpl.id}
+                    className="inline-flex items-center rounded-full border border-border bg-card-raised overflow-hidden"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => applyTemplate(tpl)}
+                      data-testid={`template-apply-${tpl.id}`}
+                      title="Apply this template"
+                      className="min-h-[44px] pl-3 pr-2 text-xs font-semibold text-ink-muted hover:text-primary transition-colors max-w-[12rem] truncate"
+                    >
+                      {tpl.name}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteTemplate?.(tpl.id)}
+                      data-testid={`template-delete-${tpl.id}`}
+                      aria-label={`Delete template ${tpl.name}`}
+                      className="min-h-[44px] px-2 flex items-center justify-center text-ink-muted hover:text-danger-ink border-l border-border transition-colors"
+                    >
+                      <Trash2 size={14} aria-hidden="true" />
+                    </button>
+                  </span>
+                ))}
               </div>
             </div>
           )}
@@ -303,9 +424,17 @@ export default function AppointmentSheet({
                 id="appt-date"
                 type="date"
                 value={date}
+                disabled={isSeriesPropagate}
                 onChange={(e) => setDate(e.target.value)}
-                className="h-11 px-3 rounded-lg bg-surface border border-border text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className={`h-11 px-3 rounded-lg bg-surface border border-border text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/40 ${
+                  isSeriesPropagate ? 'opacity-60 cursor-not-allowed' : ''
+                }`}
               />
+              {isSeriesPropagate && (
+                <span data-testid="series-propagate-date-note" className="text-[11px] text-ink-muted">
+                  Dates stay per-occurrence · use Reschedule to move one
+                </span>
+              )}
             </div>
             <div className="flex flex-col gap-1">
               <label htmlFor="appt-time" className="text-sm font-medium text-ink">Start time</label>
@@ -332,6 +461,21 @@ export default function AppointmentSheet({
               ))}
             </select>
           </div>
+
+          {/* Conflict warning (Run 9 A3, R7 warn-only — save stays enabled) */}
+          {conflict && (
+            <div
+              role="status"
+              aria-live="polite"
+              data-testid="appt-conflict-warning"
+              className="flex items-center gap-1.5 rounded-lg bg-warning/10 border border-warning/30 px-3 py-2"
+            >
+              <AlertTriangle size={14} className="text-warning-ink shrink-0" aria-hidden="true" />
+              <span className="text-xs font-medium text-warning-ink">
+                Overlaps your {formatTime12(conflict.startTime)} appointment
+              </span>
+            </div>
+          )}
 
           {/* REPEATS — recurrence rule (create only) */}
           {showRepeat && (

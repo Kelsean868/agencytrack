@@ -23,7 +23,10 @@
  *   SM+/TA (≥3):  unfiltered (date range only)
  * Composites exist for (agentId,date) (agentUnitId,date) (agentBranchId,date);
  * day/week reads stay inside these shapes (equality on the scope key + a date
- * range). NO deletes — cancel/postpone flip status (+ rescheduledToId on rebook).
+ * range). NO USER-FACING deletes — cancel/postpone flip status (+
+ * rescheduledToId on rebook). Run 9 A1 adds `deleteAppointment` / the owner
+ * `allow delete` rules arm SOLELY as the undo/redo history's undo-create and
+ * undo-postpone inverses — no delete affordance is exposed in the UI.
  *
  * Because updateDoc() merges, a partial update's merged request.resource.data
  * retains every required key, so partial writes are contract-safe as long as no
@@ -32,7 +35,7 @@
  */
 
 import {
-  addDoc, updateDoc, doc, collection, getDocs,
+  addDoc, updateDoc, deleteDoc, doc, collection, getDocs,
   query, where, orderBy, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -143,7 +146,12 @@ export async function createAppointment(tenantId, data, meta) {
  * dates come from expandSeriesDates (hard-capped at MAX_SERIES_INSTANCES). All
  * instances are committed in a single writeBatch (atomic; 52 ≪ the 500 cap).
  *
- * @returns {Promise<{ seriesId: string, count: number, dates: string[] }>}
+ * `ids` (Run 9 A1 addition): per-instance doc ids in date order, resolved via
+ * pre-minted `doc(coll)` refs so callers know every id before the batch
+ * commits — the planner's undo/redo history uses this to batch-delete a
+ * series create on undo. Non-breaking addition alongside the existing keys.
+ *
+ * @returns {Promise<{ seriesId: string, count: number, dates: string[], ids: string[] }>}
  */
 export async function createRecurringAppointments(tenantId, data, recurrence, meta) {
   const { repeatRule, daysOfWeek = [], endCondition } = recurrence || {};
@@ -155,10 +163,12 @@ export async function createRecurringAppointments(tenantId, data, recurrence, me
   const seriesId = doc(coll).id; // mint a stable grouping id (Firestore auto-id)
   const total = dates.length;
   const batch = writeBatch(db);
+  const refs = dates.map(() => doc(coll)); // pre-mint per-instance refs so ids are known before commit
+  const ids = refs.map((r) => r.id);
 
   dates.forEach((date, i) => {
     const base = buildCreatePayload(tenantId, { ...data, date }, meta);
-    batch.set(doc(coll), {
+    batch.set(refs[i], {
       ...base,
       seriesId,
       repeatRule,
@@ -171,16 +181,30 @@ export async function createRecurringAppointments(tenantId, data, recurrence, me
   });
 
   await batch.commit();
-  return { seriesId, count: total, dates };
+  return { seriesId, count: total, dates, ids };
 }
 
 /**
- * Owner field edit — time / duration / type / note / prospect / free label /
- * apiAmount. NEVER changes agentId / agentUnitId / agentBranchId / tenantId
- * (stripped here even if a caller passes them — they are immutable pins the
- * update rule re-validates via the hasAll floor on the merged doc).
+ * Hard delete a single appointment. Run 9 A1: this function exists SOLELY as
+ * the undo-create inverse for the planner's undo/redo history (undoing a
+ * just-created appointment deletes it outright). No UI delete affordance is
+ * added anywhere in the app — cancel/postpone remain the only user-facing
+ * "remove" actions, which stay status flips (never a real delete).
  */
-export async function updateAppointment(tenantId, apptId, patch) {
+export async function deleteAppointment(tenantId, apptId) {
+  await deleteDoc(apptRef(tenantId, apptId));
+}
+
+/**
+ * Shared owner-edit patch allowlist (Run 9 A5 extraction) — the SINGLE place
+ * the updatable field set is defined. `updateAppointment` and
+ * `bulkUpdateAppointments` both build their write payloads here, so a bulk op
+ * can never write a field a single edit couldn't. NEVER passes through
+ * agentId / agentUnitId / agentBranchId / tenantId (immutable pins the update
+ * rule re-validates via the hasAll floor on the merged doc). Always stamps
+ * updatedAt: serverTimestamp().
+ */
+function buildUpdatePatch(patch = {}) {
   const clean = { updatedAt: serverTimestamp() };
   if (patch.date          !== undefined) clean.date = trimStr(patch.date, 10);
   if (patch.startTime     !== undefined) clean.startTime = trimStr(patch.startTime, 5);
@@ -191,7 +215,64 @@ export async function updateAppointment(tenantId, apptId, patch) {
   if (patch.prospectId    !== undefined) clean.prospectId = trimStr(patch.prospectId, 200);
   if (patch.freeBlockLabel !== undefined) clean.freeBlockLabel = trimStr(patch.freeBlockLabel, 120);
   if (patch.apiAmount     !== undefined) clean.apiAmount = coerceApi(patch.apiAmount);
-  await updateDoc(apptRef(tenantId, apptId), clean);
+  return clean;
+}
+
+/**
+ * Owner field edit — time / duration / type / note / prospect / free label /
+ * apiAmount. Field allowlist lives in buildUpdatePatch (shared with the A5
+ * bulk path).
+ */
+export async function updateAppointment(tenantId, apptId, patch) {
+  await updateDoc(apptRef(tenantId, apptId), buildUpdatePatch(patch));
+}
+
+// Firestore hard-caps a WriteBatch at 500 writes; chunk at 400 for headroom
+// (Run 9 A5, operator ruling R6).
+export const BULK_CHUNK_SIZE = 400;
+
+/**
+ * Bulk owner edit (Run 9 A5) — applies per-doc patches through the SAME
+ * allowlist as updateAppointment (buildUpdatePatch), so bulk writes are
+ * exactly as constrained as single edits. `updates` = [{ id, patch }].
+ *
+ * Chunked at BULK_CHUNK_SIZE (400) writes per writeBatch — headroom under
+ * Firestore's 500 cap — and chunks commit SEQUENTIALLY: chunk N+1's batch is
+ * only built after chunk N's commit resolves. If a chunk commit fails, this
+ * THROWS with an error naming how many chunks (and docs) committed vs total —
+ * the caller surfaces it; a partial apply is NEVER silent (R6). Rules
+ * evaluate client-SDK batch writes per-doc, so each update passes the same
+ * owner + validApptWrite arm a single update does.
+ *
+ * @returns {Promise<{count: number}>} count = total docs written.
+ */
+export async function bulkUpdateAppointments(tenantId, updates = []) {
+  if (updates.length === 0) return { count: 0 };
+  const chunks = [];
+  for (let i = 0; i < updates.length; i += BULK_CHUNK_SIZE) {
+    chunks.push(updates.slice(i, i + BULK_CHUNK_SIZE));
+  }
+  let committedChunks = 0;
+  let committedDocs = 0;
+  for (const chunk of chunks) {
+    const batch = writeBatch(db);
+    for (const { id, patch } of chunk) {
+      batch.update(apptRef(tenantId, id), buildUpdatePatch(patch));
+    }
+    try {
+      await batch.commit();
+    } catch (err) {
+      throw new Error(
+        `Bulk update stopped: ${committedChunks} of ${chunks.length} batches committed ` +
+        `(${committedDocs} of ${updates.length} appointments applied). ` +
+        `${err?.message || 'Commit failed.'}`,
+        { cause: err },
+      );
+    }
+    committedChunks += 1;
+    committedDocs += chunk.length;
+  }
+  return { count: committedDocs };
 }
 
 /**
@@ -224,6 +305,23 @@ export async function postponeWithRebook(tenantId, originalApptId, newData, meta
   return newId;
 }
 
+/**
+ * Undo-postpone inverse (Run 9 A1): reverses a `postponeWithRebook` call —
+ * deletes the newly-rebooked appointment and flips the original back to
+ * status:'scheduled' with rescheduledToId cleared. `rescheduledToId` is NOT
+ * in `updateAppointment`'s patch allowlist, so it is written directly here,
+ * mirroring `postponeWithRebook`'s own style (direct updateDoc, not the
+ * allowlisted helper).
+ */
+export async function undoPostpone(tenantId, originalApptId, newApptId) {
+  await deleteDoc(apptRef(tenantId, newApptId));
+  await updateDoc(apptRef(tenantId, originalApptId), {
+    status: 'scheduled',
+    rescheduledToId: null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 // ── Read paths ───────────────────────────────────────────────────────────────
 
 /** Owner day read — (agentId, date) equality shape. Sorted by startTime. */
@@ -250,6 +348,27 @@ export async function getAgentWeek(tenantId, agentId, weekStart, weekEnd) {
     where('agentId', '==', agentId),
     where('date', '>=', weekStart),
     where('date', '<=', weekEnd),
+    orderBy('date', 'asc'),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * Series read (Run 9 F3c) — every concrete instance of one series in date order,
+ * across weeks. Owner-scoped: `(agentId, seriesId)` equality + `orderBy('date')`
+ * is served by the additive `(agentId ASC, seriesId ASC, date ASC)` composite.
+ * agentId==uid keeps it inside the owner `allow list` rules arm. Powers F3d's
+ * "edit this and future / edit all" propagation (the loaded week only ever holds
+ * 7 days of a series — the propagation window spans the whole series).
+ *
+ * @returns {Promise<Array<{id:string}>>} instances, ascending by date.
+ */
+export async function getSeriesInstances(tenantId, agentId, seriesId) {
+  const q = query(
+    apptCollection(tenantId),
+    where('agentId', '==', agentId),
+    where('seriesId', '==', seriesId),
     orderBy('date', 'asc'),
   );
   const snap = await getDocs(q);

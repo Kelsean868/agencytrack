@@ -1586,7 +1586,66 @@ service cloud.firestore {
           && getTenantId() == tenantId
           && getRole() in ['sales_manager', 'tenant_admin', 'platform_admin'];
 
-        allow delete: if false;
+        // Run 9 A1: owner-scoped delete — exists solely as the undo-create inverse;
+        // UI exposes no delete affordance.
+        allow delete: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.agentId == request.auth.uid;
+      }
+
+      // ── Run 9 A4: reusable appointment templates ──────────────────────────────
+      // /tenants/{tid}/appointmentTemplates/{templateId}  (auto-id)
+      // A template is a reusable appointment SHAPE (no date / prospect / series).
+      // PERSONAL: owner (agent/producing manager) full CRUD on OWN templates;
+      // NO manager read arms (unlike appointments — templates are private to the
+      // agent). agentId pinned to the caller's uid (forgery-proof). hasOnly locks
+      // the doc to exactly the 11 contract keys.
+      match /appointmentTemplates/{templateId} {
+
+        function validTemplateWrite() {
+          let d = request.resource.data;
+          return d.tenantId == tenantId
+            && d.agentId == request.auth.uid
+            && d.keys().hasOnly([
+                 'tenantId', 'agentId', 'name', 'type', 'startTime',
+                 'durationMin', 'note', 'createdAt', 'updatedAt',
+                 'freeBlockLabel', 'apiAmount'
+               ])
+            && d.keys().hasAll([
+                 'tenantId', 'agentId', 'name', 'type', 'startTime',
+                 'durationMin', 'note', 'createdAt', 'updatedAt'
+               ])
+            && d.name is string && d.name.size() >= 1 && d.name.size() <= 60
+            && d.type in ['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE', 'FREE']
+            && d.startTime is string && d.startTime.matches('\\d{2}:\\d{2}')
+            && d.durationMin is int && d.durationMin > 0 && d.durationMin <= 720
+            && d.note is string && d.note.size() <= 2000
+            && (!('apiAmount' in d) || d.apiAmount == null || (d.apiAmount is number && d.apiAmount >= 0))
+            && (!('freeBlockLabel' in d) || d.freeBlockLabel is string);
+        }
+
+        allow create: if isSignedIn()
+          && getTenantId() == tenantId
+          && (isAgent() || isProducingManager())
+          && validTemplateWrite();
+
+        // Update additionally requires the EXISTING doc to be owned by the
+        // caller — validTemplateWrite alone validates only the incoming doc,
+        // whose agentId an attacker could set to themselves (hijack).
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
+          && (isAgent() || isProducingManager())
+          && resource.data.agentId == request.auth.uid
+          && validTemplateWrite();
+
+        // Owner-only reads (personal templates — no upline arms).
+        allow get, list: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.agentId == request.auth.uid;
+
+        allow delete: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.agentId == request.auth.uid;
       }
 
       // ── I1.3c-ii: per-manager activity standard overrides ────────────────────
