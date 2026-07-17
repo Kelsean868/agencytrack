@@ -13,8 +13,9 @@ function StageDots({ stageIndex, hired, dropped }) {
   return (
     <div className="flex items-center gap-1" aria-hidden="true">
       {STAGE_KEYS.map((k, i) => {
-        const done = i < stageIndex;
-        const here = i === stageIndex && !dropped;
+        // A hired candidate has completed the final (licensed) stage — fill it too.
+        const done = i < stageIndex || (hired && i === stageIndex);
+        const here = i === stageIndex && !dropped && !hired;
         return (
           <span
             key={k}

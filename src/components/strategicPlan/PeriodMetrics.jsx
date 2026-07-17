@@ -15,8 +15,11 @@ function StateChip({ state }) {
 }
 
 const signedNum = (v) => (v == null ? '—' : `${v < 0 ? '−' : '+'}${fmtNum(Math.abs(v))}`);
+// Null variance is neutral (—), never success-green; negative danger, else success.
+const varCls = (v) => (v == null ? 'text-ink-muted' : v < 0 ? 'text-danger-ink' : 'text-success-ink');
 
 function Row({ r, testid }) {
+  const manpowerVar = r.manpowerGoal == null ? null : r.manpowerActual - r.manpowerGoal;
   return (
     <tr data-testid={testid} className={`border-b border-border/50 ${r.isFy ? 'bg-surface-muted/50' : ''}`}>
       <td className="py-2 pr-3 text-left font-mono text-xs font-bold uppercase tracking-wide">
@@ -25,17 +28,15 @@ function Row({ r, testid }) {
       {/* APPS */}
       <td className="px-2 py-2 text-right font-mono tabular-nums text-ink-muted">{fmtNum(r.appGoal)}</td>
       <td className="px-2 py-2 text-right font-mono tabular-nums font-semibold text-ink">{fmtNum(r.appActual)}</td>
-      <td className={`px-2 py-2 text-right font-mono tabular-nums ${r.appVariance != null && r.appVariance < 0 ? 'text-danger-ink' : 'text-success-ink'}`}>{signedNum(r.appVariance)}</td>
+      <td className={`px-2 py-2 text-right font-mono tabular-nums ${varCls(r.appVariance)}`}>{signedNum(r.appVariance)}</td>
       {/* API */}
       <td className="px-2 py-2 text-right font-mono tabular-nums text-ink-muted">{fmtTTD(r.apiGoal)}</td>
       <td className="px-2 py-2 text-right font-mono tabular-nums font-semibold text-ink">{fmtTTD(r.apiActual)}</td>
-      <td className={`px-2 py-2 text-right font-mono tabular-nums ${r.apiVariance != null && r.apiVariance < 0 ? 'text-danger-ink' : 'text-success-ink'}`}>{fmtSignedTTD(r.apiVariance)}</td>
+      <td className={`px-2 py-2 text-right font-mono tabular-nums ${varCls(r.apiVariance)}`}>{fmtSignedTTD(r.apiVariance)}</td>
       {/* MANPOWER */}
       <td className="px-2 py-2 text-right font-mono tabular-nums text-ink-muted">{r.manpowerGoal == null ? '—' : fmtNum(r.manpowerGoal)}</td>
       <td className="px-2 py-2 text-right font-mono tabular-nums font-semibold text-ink">{fmtNum(r.manpowerActual)}</td>
-      <td className={`px-2 py-2 text-right font-mono tabular-nums ${r.manpowerGoal != null && (r.manpowerActual - r.manpowerGoal) < 0 ? 'text-danger-ink' : 'text-success-ink'}`}>
-        {r.manpowerGoal == null ? '—' : signedNum(r.manpowerActual - r.manpowerGoal)}
-      </td>
+      <td className={`px-2 py-2 text-right font-mono tabular-nums ${varCls(manpowerVar)}`}>{signedNum(manpowerVar)}</td>
       <td className="px-2 py-2 text-center">{r.isFy ? <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-ink-muted">YTD</span> : <StateChip state={r.state} />}</td>
     </tr>
   );

@@ -10,6 +10,17 @@ function periodLabel(period) {
 }
 
 export default function StrategicPlanCover({ plan }) {
+  // Loading: render a slim hero skeleton rather than "Branch" + placeholder metrics
+  // as if they were loaded content.
+  if (plan?.loading || !plan?.meta) {
+    return (
+      <section data-testid="sp-cover" className="rounded-2xl p-6 glass hero teal shadow-sm" aria-busy="true">
+        <div className="h-3 w-40 rounded bg-[--hero-ink]/15" />
+        <div className="mt-3 h-8 w-64 rounded bg-[--hero-ink]/15" />
+        <div className="mt-4 h-3 w-28 rounded bg-[--hero-ink]/10" />
+      </section>
+    );
+  }
   const meta = plan?.meta;
   const prod = plan?.production;
   const pm = plan?.periodMetrics;
