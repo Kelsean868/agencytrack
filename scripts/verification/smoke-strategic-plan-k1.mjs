@@ -26,7 +26,7 @@
 import { chromium } from 'playwright';
 import { AxeBuilder } from '@axe-core/playwright';
 import { readFileSync } from 'fs';
-import { setupBypassSession } from './lib/walk-helpers.mjs';
+import { setupBypassSession, captureConsoleAndNetwork, formatCaptureReport } from './lib/walk-helpers.mjs';
 
 function loadEnv() {
   try {
@@ -50,7 +50,10 @@ const IS_PROD = URL.startsWith('https://');
 const BYPASS_TOKEN = process.env.VERCEL_BYPASS_TOKEN;
 const EMAIL = process.env.A11Y_BRANCH_MANAGER_EMAIL;
 const PASS = process.env.A11Y_BRANCH_MANAGER_PASSWORD;
-const PREEXISTING_AXE = new Set(['color-contrast']);
+// The Strategic Plan is a NET-NEW surface with zero pre-existing axe debt to
+// grandfather, so NO serious/critical rule is exempted — any (incl. color-contrast)
+// fails the gate.
+const PREEXISTING_AXE = new Set();
 const SECTIONS = ['agents', 'production', 'period-metrics', 'org', 'recruitment'];
 
 if (IS_PROD && !BYPASS_TOKEN) { console.error('Missing VERCEL_BYPASS_TOKEN for prod URL'); process.exit(1); }
@@ -80,6 +83,9 @@ async function run(theme) {
   const errors = [];
   if (IS_PROD) await setupBypassSession(context, URL, BYPASS_TOKEN);
   const page = await context.newPage();
+  // Canonical console + network capture (banked pattern) — surfaces network
+  // failures the manual listener would miss.
+  const capture = captureConsoleAndNetwork(page);
   page.on('console', (m) => {
     if (m.type() !== 'error') return;
     const t = m.text();
@@ -129,12 +135,18 @@ async function run(theme) {
     // C — producing-UM row + D — net values
     const agentRows = await countTestidPrefix(page, 'sp-agent-row-');
     const unitHeadRows = await page.locator('[data-testid^="sp-agent-row-"]', { hasText: 'Unit head' }).count();
+    const netCells = await countTestidPrefix(page, 'sp-agent-net-');
     const netValues = await page.evaluate(() =>
       [...document.querySelectorAll('[data-testid^="sp-agent-net-"]')].map((el) => el.textContent.trim()).slice(0, 12));
+    // Enforceable: when the foil branch HAS advisors, every row must render a
+    // net-settled cell (proves the per-agent twin-run path ran end-to-end).
+    // Zero advisors → explicit preview-data skip (not a silent pass).
+    const rosterEmptySkip = agentRows === 0;
     r.checks.roster = {
-      agentRows, unitHeadRows, netValues,
+      agentRows, unitHeadRows, netCells, netValues,
       umNote: unitHeadRows > 0 ? 'producing UM row present' : 'no producing UM in foil branch (covered at unit level)',
-      pass: true,
+      skip: rosterEmptySkip ? 'no advisors in foil branch — preview-data skip' : undefined,
+      pass: rosterEmptySkip || netCells === agentRows,
     };
 
     // E — present mode open/close
@@ -162,7 +174,8 @@ async function run(theme) {
     const newAxeRules = axeRuleIds.filter((id) => !PREEXISTING_AXE.has(id));
     r.checks.axe = { nodes: axeSC.length, ruleIds: axeRuleIds, newAxeRules, offenders: axeSC.filter((n) => newAxeRules.includes(n.id)).slice(0, 4), pass: newAxeRules.length === 0 };
 
-    r.checks.console = { errors: errors.length, sample: errors.slice(0, 3), pass: errors.length === 0 };
+    const netFailures = (capture.networkFailures || []).length;
+    r.checks.console = { errors: errors.length, netFailures, sample: errors.slice(0, 3), pass: errors.length === 0 && netFailures === 0 };
     r.pass = Object.values(r.checks).every((c) => c.pass);
     RESULTS.push(r);
 
@@ -174,7 +187,8 @@ async function run(theme) {
     console.log(`  E present: ${JSON.stringify(r.checks.present)}`);
     console.log(`  F axe serious/critical: ${axeSC.length} node(s), rules=[${axeRuleIds.join(', ') || 'none'}], NEW-vs-main=[${newAxeRules.join(', ') || 'none'}] → ${r.checks.axe.pass ? 'PASS' : 'FAIL'}`);
     if (newAxeRules.length) r.checks.axe.offenders.forEach((n) => console.log(`      NEW axe ${n.id}: ${n.target}`));
-    console.log(`  console errors=${errors.length}${errors.length ? ' → ' + errors.slice(0, 2).join(' | ') : ''}`);
+    console.log(`  console errors=${errors.length} · network failures=${r.checks.console.netFailures}${errors.length ? ' → ' + errors.slice(0, 2).join(' | ') : ''}`);
+    formatCaptureReport(capture); // prints its own console/network summary block
     console.log(`  [${theme}] → ${r.pass ? 'PASS' : 'FAIL'}`);
   } catch (e) {
     r.pass = false; r.fatal = String(e).slice(0, 240);
