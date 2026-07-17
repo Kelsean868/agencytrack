@@ -79,6 +79,22 @@ export function dayLabel(dateStr) {
   return `${wd} ${d.getUTCDate()}`;
 }
 
+/**
+ * 'YYYY-MM-DD' + N days → 'YYYY-MM-DD' (UTC-noon math, same discipline as
+ * buildWeekDates — immune to DST/local-timezone edges). Malformed input is
+ * returned unchanged (defensive, mirrors formatTime12's fallback contract).
+ * Run 9 A5: powers the bulk-move "shift by ±N days" mode.
+ */
+export function shiftDateStr(dateStr, days) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr ?? ''))) return dateStr;
+  const d = new Date(dateStr + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + (Number(days) || 0));
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // Statuses that RETAIN a slot but read as "no longer active" (dimmed/struck).
 export const RETIRED_STATUSES = new Set(['cancelled', 'postponed']);
 // Statuses that count as the plan being carried out.

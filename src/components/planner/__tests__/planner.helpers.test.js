@@ -3,6 +3,7 @@ import {
   buildWeekDates, weekRange, sortByStartTime, groupByDate, groupByAgent,
   formatTime12, dayLabel, deriveFollowups, deriveSeedFromKept,
   PLAN_TO_DAILY_FIELD, detectConflicts, findConflictingAppointment,
+  shiftDateStr,
 } from '../planner.helpers';
 
 describe('week/day math', () => {
@@ -218,5 +219,29 @@ describe('findConflictingAppointment (sheet live-candidate check, Run 9 A3)', ()
     expect(findConflictingAppointment({ startTime: '10:00', durationMin: 30 }, week)).toBeNull();
     expect(findConflictingAppointment({ date: '2026-06-22', startTime: 'bad', durationMin: 30 }, week)).toBeNull();
     expect(findConflictingAppointment({ date: '2026-06-22', startTime: '10:00', durationMin: null }, week)).toBeNull();
+  });
+});
+
+describe('shiftDateStr (Run 9 A5 bulk move ±N days)', () => {
+  it('shifts forward and backward within a month', () => {
+    expect(shiftDateStr('2026-07-15', 3)).toBe('2026-07-18');
+    expect(shiftDateStr('2026-07-15', -3)).toBe('2026-07-12');
+  });
+  it('crosses month and year boundaries correctly', () => {
+    expect(shiftDateStr('2026-07-31', 1)).toBe('2026-08-01');
+    expect(shiftDateStr('2026-12-31', 1)).toBe('2027-01-01');
+    expect(shiftDateStr('2026-01-01', -1)).toBe('2025-12-31');
+  });
+  it('handles leap-day math (2028 is a leap year)', () => {
+    expect(shiftDateStr('2028-02-28', 1)).toBe('2028-02-29');
+    expect(shiftDateStr('2026-02-28', 1)).toBe('2026-03-01');
+  });
+  it('zero shift returns the same date', () => {
+    expect(shiftDateStr('2026-07-15', 0)).toBe('2026-07-15');
+  });
+  it('returns malformed input unchanged (defensive)', () => {
+    expect(shiftDateStr('bad-date', 3)).toBe('bad-date');
+    expect(shiftDateStr('', 3)).toBe('');
+    expect(shiftDateStr(null, 3)).toBeNull();
   });
 });

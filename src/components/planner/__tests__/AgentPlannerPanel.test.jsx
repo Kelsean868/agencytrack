@@ -20,6 +20,7 @@ vi.mock('../../../services/plannerService', async (importActual) => {
     postponeWithRebook:  vi.fn(),
     deleteAppointment:   vi.fn(),
     undoPostpone:        vi.fn(),
+    bulkUpdateAppointments: vi.fn(),
   };
 });
 vi.mock('../../../services/prospectInfoService', () => ({
@@ -39,9 +40,11 @@ import AgentPlannerPanel from '../AgentPlannerPanel';
 import {
   getAgentWeek, setAppointmentStatus, updateAppointment,
   createAppointment, deleteAppointment, postponeWithRebook, undoPostpone,
+  bulkUpdateAppointments,
 } from '../../../services/plannerService';
 import { getProspectInfo } from '../../../services/prospectInfoService';
 import { listTemplates, saveTemplate, deleteTemplate } from '../../../services/appointmentTemplateService';
+import { shiftDateStr } from '../planner.helpers';
 
 const TODAY = getTodayTT();
 const BASE_PROPS = {
@@ -594,5 +597,327 @@ describe('conflict detection (Run 9 A3 — R7 warn-only)', () => {
     fireEvent.click(screen.getByTestId('planner-view-week'));
     await waitFor(() => expect(screen.getByTestId('appt-conflict-a1')).toBeInTheDocument());
     expect(screen.getByTestId('appt-conflict-a2')).toBeInTheDocument();
+  });
+});
+
+describe('bulk operations (Run 9 A5)', () => {
+  const LIVE_3 = [
+    { id: 'a1', date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled' },
+    { id: 'a2', date: TODAY, startTime: '11:00', durationMin: 30, type: 'FFI', status: 'scheduled' },
+    { id: 'a3', date: TODAY, startTime: '13:00', durationMin: 30, type: 'CI', status: 'scheduled' },
+  ];
+
+  it('Select toggle enters selection mode: bulk bar + checkboxes appear, card taps toggle selection instead of opening churn', async () => {
+    getAgentWeek.mockResolvedValue(LIVE_3);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    expect(screen.getByTestId('planner-bulk-bar')).toBeInTheDocument();
+    expect(screen.getByText('0 selected')).toBeInTheDocument();
+    expect(screen.getByTestId('appt-select-a1')).toBeInTheDocument();
+    expect(screen.getByTestId('appt-select-a2')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    // Selection, not churn.
+    expect(screen.queryByTestId('churn-dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+    expect(screen.getByTestId('appt-card-a1')).toHaveAttribute('aria-pressed', 'true');
+
+    // Plain click again deselects.
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    expect(screen.getByText('0 selected')).toBeInTheDocument();
+  });
+
+  it('retired (cancelled/postponed) cards are NOT selectable — no checkbox, click is a no-op', async () => {
+    getAgentWeek.mockResolvedValue([
+      ...LIVE_3,
+      { id: 'a4', date: TODAY, startTime: '15:00', durationMin: 30, type: 'PC', status: 'cancelled' },
+      { id: 'a5', date: TODAY, startTime: '16:00', durationMin: 30, type: 'PC', status: 'postponed' },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a4')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    expect(screen.queryByTestId('appt-select-a4')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('appt-select-a5')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('appt-card-a4'));
+    expect(screen.getByText('0 selected')).toBeInTheDocument();
+    expect(screen.queryByTestId('churn-dialog')).not.toBeInTheDocument();
+  });
+
+  it('shift-click selects the range between the last-clicked card and this one (visible order)', async () => {
+    getAgentWeek.mockResolvedValue(LIVE_3);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('appt-card-a3'), { shiftKey: true });
+    expect(screen.getByText('3 selected')).toBeInTheDocument();
+    expect(screen.getByTestId('appt-card-a2')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('bulk cancel: confirmation sheet always shows, confirm calls the service with status patches, toasts, exits selection mode', async () => {
+    bulkUpdateAppointments.mockResolvedValue({ count: 2 });
+    getAgentWeek.mockResolvedValue(LIVE_3);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('appt-card-a2'));
+    fireEvent.click(screen.getByTestId('bulk-cancel'));
+
+    const confirmSheet = screen.getByTestId('bulk-cancel-confirm');
+    expect(confirmSheet).toBeInTheDocument();
+    expect(confirmSheet).toHaveTextContent('Cancel 2 appointments?');
+    // No cap warning under 200.
+    expect(screen.queryByTestId('bulk-cap-ack')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('bulk-cancel-confirm-apply'));
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
+      { id: 'a1', patch: { status: 'cancelled' } },
+      { id: 'a2', patch: { status: 'cancelled' } },
+    ]));
+    await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Cancelled 2 appointments', variant: 'info' }),
+    ));
+    // Selection mode exited.
+    await waitFor(() => expect(screen.queryByTestId('planner-bulk-bar')).not.toBeInTheDocument());
+    expect(screen.queryByTestId('bulk-cancel-confirm')).not.toBeInTheDocument();
+  });
+
+  it('bulk move (set-date mode): applies the chosen date to every selected appointment', async () => {
+    bulkUpdateAppointments.mockResolvedValue({ count: 2 });
+    getAgentWeek.mockResolvedValue(LIVE_3);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('appt-card-a3'));
+    fireEvent.click(screen.getByTestId('bulk-move'));
+
+    expect(screen.getByTestId('bulk-move-sheet')).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('bulk-move-date'), { target: { value: '2026-09-01' } });
+    fireEvent.click(screen.getByTestId('bulk-move-apply'));
+
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
+      { id: 'a1', patch: { date: '2026-09-01' } },
+      { id: 'a3', patch: { date: '2026-09-01' } },
+    ]));
+    await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Moved 2 appointments', variant: 'info' }),
+    ));
+    await waitFor(() => expect(screen.queryByTestId('planner-bulk-bar')).not.toBeInTheDocument());
+  });
+
+  it('bulk move (shift mode): shifts each appointment relative to its OWN date', async () => {
+    bulkUpdateAppointments.mockResolvedValue({ count: 1 });
+    getAgentWeek.mockResolvedValue(LIVE_3);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    fireEvent.click(screen.getByTestId('appt-card-a2'));
+    fireEvent.click(screen.getByTestId('bulk-move'));
+
+    fireEvent.click(screen.getByTestId('bulk-move-mode-shift'));
+    fireEvent.click(screen.getByTestId('bulk-move-shift-plus')); // 1 -> 2
+    expect(screen.getByTestId('bulk-move-shift-value')).toHaveTextContent('+2 days');
+    fireEvent.click(screen.getByTestId('bulk-move-apply'));
+
+    const expected = shiftDateStr(TODAY, 2);
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
+      { id: 'a2', patch: { date: expected } },
+    ]));
+  });
+
+  it('R6 cap gate: selecting >200 requires the acknowledgement tick before the confirm button enables', async () => {
+    const MANY = Array.from({ length: 201 }, (_, i) => ({
+      id: `b${i}`,
+      date: TODAY,
+      startTime: `${String(Math.floor(i / 12)).padStart(2, '0')}:${String((i % 12) * 5).padStart(2, '0')}`,
+      durationMin: 5,
+      type: 'PC',
+      status: 'scheduled',
+    }));
+    bulkUpdateAppointments.mockResolvedValue({ count: 201 });
+    getAgentWeek.mockResolvedValue(MANY);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-b0')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    fireEvent.click(screen.getByTestId('appt-card-b0'));
+    fireEvent.click(screen.getByTestId('appt-card-b200'), { shiftKey: true });
+    expect(screen.getByText('201 selected')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('bulk-cancel'));
+    const sheet = screen.getByTestId('bulk-cancel-confirm');
+    // NB: the component renders a typographic apostrophe (&rsquo;) — match loosely.
+    expect(sheet).toHaveTextContent(/changing 201 appointments/);
+    const apply = screen.getByTestId('bulk-cancel-confirm-apply');
+    expect(apply).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('bulk-cap-ack'));
+    expect(apply).not.toBeDisabled();
+    fireEvent.click(apply);
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledTimes(1));
+    expect(bulkUpdateAppointments.mock.calls[0][1]).toHaveLength(201);
+  });
+
+  it("pushes ONE undo entry per bulk op — Ctrl+Z writes back each doc's PRIOR values", async () => {
+    bulkUpdateAppointments.mockResolvedValue({ count: 2 });
+    getAgentWeek.mockResolvedValue([
+      { id: 'a1', date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled' },
+      { id: 'a2', date: TODAY, startTime: '11:00', durationMin: 30, type: 'FFI', status: 'confirmed' },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('appt-card-a2'));
+    fireEvent.click(screen.getByTestId('bulk-cancel'));
+    fireEvent.click(screen.getByTestId('bulk-cancel-confirm-apply'));
+    await waitFor(() => expect(screen.queryByTestId('planner-bulk-bar')).not.toBeInTheDocument());
+
+    bulkUpdateAppointments.mockClear();
+    ctrlZ();
+    // Undo writes back each doc's PRIOR status (scheduled / confirmed — not a blanket value).
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
+      { id: 'a1', patch: { status: 'scheduled' } },
+      { id: 'a2', patch: { status: 'confirmed' } },
+    ]));
+    await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Undid: Bulk cancel (2)', variant: 'info' }),
+    ));
+
+    // Redo replays the forward patches.
+    bulkUpdateAppointments.mockClear();
+    ctrlY();
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
+      { id: 'a1', patch: { status: 'cancelled' } },
+      { id: 'a2', patch: { status: 'cancelled' } },
+    ]));
+  });
+
+  it("undo after a bulk move writes back each doc's PRIOR date", async () => {
+    bulkUpdateAppointments.mockResolvedValue({ count: 1 });
+    getAgentWeek.mockResolvedValue(LIVE_3);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('bulk-move'));
+    fireEvent.change(screen.getByTestId('bulk-move-date'), { target: { value: '2026-09-01' } });
+    fireEvent.click(screen.getByTestId('bulk-move-apply'));
+    await waitFor(() => expect(screen.queryByTestId('planner-bulk-bar')).not.toBeInTheDocument());
+
+    bulkUpdateAppointments.mockClear();
+    ctrlZ();
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
+      { id: 'a1', patch: { date: TODAY } },
+    ]));
+    await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Undid: Bulk move (1)', variant: 'info' }),
+    ));
+  });
+
+  it('surfaces a failed bulk op via an error toast (never silent) and stays in selection mode', async () => {
+    bulkUpdateAppointments.mockRejectedValue(new Error(
+      'Bulk update stopped: 1 of 2 batches committed (400 of 450 appointments applied). boom',
+    ));
+    getAgentWeek.mockResolvedValue(LIVE_3);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('bulk-cancel'));
+    fireEvent.click(screen.getByTestId('bulk-cancel-confirm-apply'));
+
+    await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'error',
+        message: expect.stringContaining('1 of 2 batches committed'),
+      }),
+    ));
+    // Selection retained for retry; the confirm sheet closed.
+    expect(screen.getByTestId('planner-bulk-bar')).toBeInTheDocument();
+    expect(screen.queryByTestId('bulk-cancel-confirm')).not.toBeInTheDocument();
+  });
+
+  it('Escape exits selection mode when no dialog is open', async () => {
+    getAgentWeek.mockResolvedValue(LIVE_3);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    expect(screen.getByTestId('planner-bulk-bar')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('planner-bulk-bar')).not.toBeInTheDocument();
+    // Re-entering selection mode starts from a cleared selection.
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    expect(screen.getByText('0 selected')).toBeInTheDocument();
+  });
+
+  it('Escape with a bulk sheet open closes the SHEET (focus trap), not selection mode', async () => {
+    getAgentWeek.mockResolvedValue(LIVE_3);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('bulk-move'));
+    expect(screen.getByTestId('bulk-move-sheet')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('bulk-move-sheet')).not.toBeInTheDocument());
+    expect(screen.getByTestId('planner-bulk-bar')).toBeInTheDocument();
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+  });
+
+  it('exiting selection mode via the toggle clears the selection and hides checkboxes', async () => {
+    getAgentWeek.mockResolvedValue(LIVE_3);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    expect(screen.queryByTestId('planner-bulk-bar')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('appt-select-a1')).not.toBeInTheDocument();
+    // Cards are churn-tappable again.
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    expect(screen.getByTestId('churn-dialog')).toBeInTheDocument();
+  });
+
+  it('the bulk-clear button exits selection mode', async () => {
+    getAgentWeek.mockResolvedValue(LIVE_3);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('bulk-clear'));
+    expect(screen.queryByTestId('planner-bulk-bar')).not.toBeInTheDocument();
+  });
+
+  it('A2 plain-key shortcuts stay functional while selection mode is ON (arrows still switch views)', async () => {
+    getAgentWeek.mockResolvedValue(LIVE_3);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-select-toggle'));
+    fireEvent.keyDown(document, { key: 'ArrowRight' });
+    expect(screen.getByTestId('planner-view-week')).toHaveAttribute('aria-selected', 'true');
+    fireEvent.keyDown(document, { key: 'ArrowLeft' });
+    expect(screen.getByTestId('planner-view-today')).toHaveAttribute('aria-selected', 'true');
   });
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { CalendarClock, Plus, RotateCw, ArrowRight, CheckCircle2, ClipboardCheck, HelpCircle, AlertTriangle } from 'lucide-react';
+import { CalendarClock, Plus, RotateCw, ArrowRight, CheckCircle2, ClipboardCheck, HelpCircle, AlertTriangle, ListChecks, Check } from 'lucide-react';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import useFocusTrap from '../../hooks/useFocusTrap';
 import { getTodayTT } from '../../utils/dateInputs';
@@ -9,6 +9,7 @@ import { getProspectInfo } from '../../services/prospectInfoService';
 import {
   getAgentWeek, createAppointment, createRecurringAppointments, updateAppointment,
   setAppointmentStatus, postponeWithRebook, deleteAppointment, undoPostpone,
+  bulkUpdateAppointments,
 } from '../../services/plannerService';
 import {
   listTemplates, saveTemplate, deleteTemplate,
@@ -16,7 +17,7 @@ import {
 import {
   weekRange, buildWeekDates, groupByDate, sortByStartTime,
   deriveFollowups, deriveSeedFromKept, formatTime12, dayLabel,
-  RETIRED_STATUSES, detectConflicts,
+  RETIRED_STATUSES, detectConflicts, shiftDateStr,
 } from './planner.helpers';
 import {
   seriesRowLabel, cadenceLabel, nextOccurrenceDate, slotDayLabel, formatShortDate,
@@ -25,6 +26,8 @@ import { ActivityChip, ApptStatusPill } from './plannerPrimitives';
 import AppointmentSheet, { SeriesBadge } from './AppointmentSheet';
 import SeriesEditChoice from './SeriesEditChoice';
 import TemplateNameSheet from './TemplateNameSheet';
+import BulkMoveSheet from './BulkMoveSheet';
+import BulkCancelConfirmSheet from './BulkCancelConfirmSheet';
 import PlannerShortcutsSheet from './PlannerShortcutsSheet';
 import usePlannerHistory from './usePlannerHistory';
 import useToast from '../../hooks/useToast';
@@ -71,9 +74,26 @@ const WEEK_COUNTER_ROWS = [
 
 /** One appointment row — time · type · prospect/free label · status. Recurring
  * items carry a ↻ badge + a mono series line under a dashed hairline (state 2);
- * a postponed series instance shows the "moved / series stays" note (state 5). */
-function AppointmentCard({ appt, prospectName, onChurn, resolveAppt, conflicted }) {
+ * a postponed series instance shows the "moved / series stays" note (state 5).
+ * Run 9 A5: in selection mode a live card shows a leading checkbox and a tap
+ * toggles selection instead of opening churn; retired (cancelled/postponed)
+ * cards are NOT selectable — they're already terminal, so bulk ops target
+ * live appointments only. */
+function AppointmentCard({
+  appt, prospectName, onChurn, resolveAppt, conflicted,
+  selectMode = false, selected = false, onToggleSelect,
+}) {
   const retired = RETIRED_STATUSES.has(appt.status);
+  const selectable = selectMode && !retired;
+  const handleClick = (e) => {
+    if (selectMode) {
+      // Selection mode owns the tap: live cards toggle, retired cards no-op
+      // (never open churn mid-selection).
+      if (selectable) onToggleSelect?.(appt, e.shiftKey);
+      return;
+    }
+    onChurn(appt);
+  };
   const isSeries = Boolean(appt.seriesId);
   const label = appt.type === 'FREE'
     ? (appt.freeBlockLabel || 'Free block')
@@ -97,14 +117,28 @@ function AppointmentCard({ appt, prospectName, onChurn, resolveAppt, conflicted 
   return (
     <button
       type="button"
-      onClick={() => onChurn(appt)}
+      onClick={handleClick}
       data-testid={`appt-card-${appt.id}`}
+      aria-pressed={selectMode ? selected : undefined}
       className={`w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-colors ${
         retired
           ? 'bg-card border-border/50 opacity-60'
+          : selected
+          ? 'bg-primary/5 border-primary ring-1 ring-primary/40'
           : 'bg-card border-border hover:border-primary/40'
       }`}
     >
+      {selectable && (
+        <span
+          data-testid={`appt-select-${appt.id}`}
+          aria-hidden="true"
+          className={`shrink-0 mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+            selected ? 'bg-primary dark:bg-primary-dark border-primary text-white' : 'bg-card border-border'
+          }`}
+        >
+          {selected && <Check size={14} />}
+        </span>
+      )}
       <div className="shrink-0 w-16 pt-0.5">
         <span className={`text-sm font-semibold tabular-nums ${retired ? 'text-ink-muted line-through' : 'text-ink'}`}>
           {formatTime12(appt.startTime)}
@@ -267,6 +301,15 @@ export default function AgentPlannerPanel({
   const history = usePlannerHistory();
   const toast = useToast();
 
+  // Run 9 A5: bulk-operations selection mode. `selected` is a Set of live
+  // appointment ids; `lastClickedRef` anchors shift-click range selection.
+  // `bulkSheet` = null | 'move' | 'cancel' (the two bulk action sheets).
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState(() => new Set());
+  const [bulkSheet, setBulkSheet] = useState(null);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const lastClickedRef = useRef(null);
+
   const load = useCallback(() => {
     if (!tenantId || !agentId) return;
     setLoading(true);
@@ -319,6 +362,133 @@ export default function AgentPlannerPanel({
   const meta = useMemo(
     () => ({ agentId, agentUnitId, agentBranchId }), [agentId, agentUnitId, agentBranchId],
   );
+
+  // ── Run 9 A5: selection mode ───────────────────────────────────────────────
+
+  // The selectable (live) appointment ids in the CURRENT view's visible order.
+  // Derived from the same arrays the render maps over, so index order here IS
+  // DOM order — shift-click ranges resolve against it (A5 req 2).
+  const visibleSelectableIds = useMemo(() => {
+    const live = (list) => list.filter((a) => !RETIRED_STATUSES.has(a.status)).map((a) => a.id);
+    if (view === 'today') return live(todayAppts);
+    if (view === 'week') {
+      return weekDates.flatMap((d) => live(sortByStartTime(byDate.get(d) || [])));
+    }
+    return []; // follow-ups view renders no appointment cards
+  }, [view, todayAppts, weekDates, byDate]);
+
+  // Prune selection whenever the loaded week changes — an id that vanished or
+  // flipped retired (e.g. cancelled via undo replay) must never linger in the
+  // set and get patched by a later bulk op. IMPORTANT: bail WITHOUT dispatching
+  // when there is nothing to prune — an unconditional setSelected here (even a
+  // bail-out updater) schedules React work on every week load and measurably
+  // widens the commit→effect-resubscribe window the A2 keyboard listener
+  // depends on (surfaced as a full-suite-only flake in the `e` shortcut test).
+  useEffect(() => {
+    if (selected.size === 0) return;
+    const pruned = [...selected].filter((id) => {
+      const a = apptById.get(id);
+      return a && !RETIRED_STATUSES.has(a.status);
+    });
+    if (pruned.length === selected.size) return;
+    setSelected(new Set(pruned));
+  }, [apptById, selected]);
+
+  const exitSelectMode = useCallback(() => {
+    setSelectMode(false);
+    setSelected(new Set());
+    setBulkSheet(null);
+    lastClickedRef.current = null;
+  }, []);
+
+  // Plain click toggles one id; shift-click selects the RANGE between the
+  // last-clicked card and this one within the current view's visible order.
+  const toggleSelect = useCallback((appt, shiftKey) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const anchor = lastClickedRef.current;
+      if (shiftKey && anchor && anchor !== appt.id) {
+        const order = visibleSelectableIds;
+        const ai = order.indexOf(anchor);
+        const bi = order.indexOf(appt.id);
+        if (ai !== -1 && bi !== -1) {
+          const [lo, hi] = ai < bi ? [ai, bi] : [bi, ai];
+          for (let i = lo; i <= hi; i += 1) next.add(order[i]);
+          lastClickedRef.current = appt.id;
+          return next;
+        }
+      }
+      if (next.has(appt.id)) next.delete(appt.id);
+      else next.add(appt.id);
+      lastClickedRef.current = appt.id;
+      return next;
+    });
+  }, [visibleSelectableIds]);
+
+  // The selected appointments' CURRENT loaded state — priors for undo are
+  // captured from here BEFORE the bulk write applies (A5 req 6).
+  const selectedAppts = useMemo(
+    () => [...selected].map((id) => apptById.get(id)).filter(Boolean),
+    [selected, apptById],
+  );
+
+  // Shared bulk runner: write → push ONE undo entry → reload → toast → exit
+  // selection mode. On failure the service throws naming committed-vs-total
+  // chunks (R6: never silently partial) — surfaced verbatim in an error
+  // toast, and the week reloads so any partially-committed chunks render
+  // honestly. Selection is kept on failure so the agent can retry.
+  const runBulk = useCallback(async ({ label, updates, priors, successMessage }) => {
+    setBulkSaving(true);
+    try {
+      await bulkUpdateAppointments(tenantId, updates);
+      history.push({
+        label,
+        undo: async () => { await bulkUpdateAppointments(tenantId, priors); },
+        redo: async () => { await bulkUpdateAppointments(tenantId, updates); },
+      });
+      await load();
+      toast.show({ message: successMessage, variant: 'info' });
+      exitSelectMode();
+    } catch (err) {
+      await load();
+      toast.show({
+        message: err?.message || 'Bulk update failed — check your connection and try again.',
+        variant: 'error',
+      });
+      setBulkSheet(null);
+    } finally {
+      setBulkSaving(false);
+    }
+  }, [tenantId, history, load, toast, exitSelectMode]);
+
+  const handleBulkMove = useCallback(async ({ mode, date, shiftDays }) => {
+    const targets = selectedAppts;
+    if (targets.length === 0) return;
+    const updates = targets.map((a) => ({
+      id: a.id,
+      patch: { date: mode === 'shift' ? shiftDateStr(a.date, shiftDays) : date },
+    }));
+    const priors = targets.map((a) => ({ id: a.id, patch: { date: a.date } }));
+    await runBulk({
+      label: `Bulk move (${targets.length})`,
+      updates,
+      priors,
+      successMessage: `Moved ${targets.length} ${targets.length === 1 ? 'appointment' : 'appointments'}`,
+    });
+  }, [selectedAppts, runBulk]);
+
+  const handleBulkCancel = useCallback(async () => {
+    const targets = selectedAppts;
+    if (targets.length === 0) return;
+    const updates = targets.map((a) => ({ id: a.id, patch: { status: 'cancelled' } }));
+    const priors = targets.map((a) => ({ id: a.id, patch: { status: a.status } }));
+    await runBulk({
+      label: `Bulk cancel (${targets.length})`,
+      updates,
+      priors,
+      successMessage: `Cancelled ${targets.length} ${targets.length === 1 ? 'appointment' : 'appointments'}`,
+    });
+  }, [selectedAppts, runBulk]);
 
   // Week counters — booked (non-retired) count per type vs floor.
   const weekCounters = useMemo(() => {
@@ -599,7 +769,7 @@ export default function AgentPlannerPanel({
   // from Shell.jsx's Ctrl/Cmd+K palette, so no collision. Active only while
   // this panel is mounted.
   useEffect(() => {
-    const dialogOpen = Boolean(sheet || churn || seriesChoice || shortcutsOpen || templatePrompt);
+    const dialogOpen = Boolean(sheet || churn || seriesChoice || shortcutsOpen || templatePrompt || bulkSheet);
     function onKeyDown(e) {
       if ((e.metaKey || e.ctrlKey) && !e.altKey) {
         if (dialogOpen) return;
@@ -618,6 +788,18 @@ export default function AgentPlannerPanel({
       // Never touch any other modifier combo we don't own.
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (isFormFieldTarget(e.target)) return;
+
+      // Run 9 A5: Escape exits selection mode — but ONLY when no dialog is
+      // open (open dialogs own Escape via their focus traps; this guard keeps
+      // the two from fighting over one keystroke).
+      if (e.key === 'Escape') {
+        if (dialogOpen) return;
+        if (selectMode) {
+          e.preventDefault();
+          exitSelectMode();
+        }
+        return;
+      }
 
       if (e.key === '?') {
         if (dialogOpen) return;
@@ -658,7 +840,8 @@ export default function AgentPlannerPanel({
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [
-    sheet, churn, seriesChoice, shortcutsOpen, templatePrompt, runUndo, runRedo,
+    sheet, churn, seriesChoice, shortcutsOpen, templatePrompt, bulkSheet, selectMode,
+    exitSelectMode, runUndo, runRedo,
     view, weekStart, today, openBook, handleChurnAction, resolveAppt, moveCardFocus,
   ]);
 
@@ -672,6 +855,19 @@ export default function AgentPlannerPanel({
           <h1 className="text-lg font-bold text-ink">Planner</h1>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+            data-testid="planner-select-toggle"
+            aria-pressed={selectMode}
+            className={`inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl border text-sm font-semibold transition-colors ${
+              selectMode
+                ? 'bg-primary/10 text-primary border-primary/30'
+                : 'border-border text-ink-muted hover:text-ink hover:bg-surface'
+            }`}
+          >
+            <ListChecks size={16} aria-hidden="true" /> Select
+          </button>
           <button
             type="button"
             onClick={() => setShortcutsOpen(true)}
@@ -716,6 +912,44 @@ export default function AgentPlannerPanel({
         ))}
       </div>
 
+      {/* Run 9 A5: selection count bar — visible whenever selection mode is on. */}
+      {selectMode && (
+        <div
+          data-testid="planner-bulk-bar"
+          className="flex items-center gap-2 flex-wrap mb-4 p-2 rounded-xl bg-primary/5 border border-primary/30"
+        >
+          <span className="text-sm font-semibold text-ink px-2" aria-live="polite">
+            {selected.size} selected
+          </span>
+          <button
+            type="button"
+            onClick={() => setBulkSheet('move')}
+            disabled={selected.size === 0 || bulkSaving}
+            data-testid="bulk-move"
+            className="min-h-[44px] px-3 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary transition-colors disabled:opacity-50"
+          >
+            Move
+          </button>
+          <button
+            type="button"
+            onClick={() => setBulkSheet('cancel')}
+            disabled={selected.size === 0 || bulkSaving}
+            data-testid="bulk-cancel"
+            className="min-h-[44px] px-3 rounded-xl border border-danger/40 text-danger-ink text-sm font-semibold hover:bg-danger/5 transition-colors disabled:opacity-50"
+          >
+            Cancel appointments
+          </button>
+          <button
+            type="button"
+            onClick={exitSelectMode}
+            data-testid="bulk-clear"
+            className="min-h-[44px] px-3 ml-auto rounded-xl text-sm font-semibold text-ink-muted hover:text-ink transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <PanelSkeleton variant="list" count={4} label="Loading your planner…" />
       ) : error ? (
@@ -748,7 +982,7 @@ export default function AgentPlannerPanel({
                 </div>
               ) : (
                 todayAppts.map((a) => (
-                  <AppointmentCard key={a.id} appt={a} prospectName={prospectName(a.prospectId)} onChurn={setChurn} resolveAppt={resolveAppt} conflicted={conflicts.has(a.id)} />
+                  <AppointmentCard key={a.id} appt={a} prospectName={prospectName(a.prospectId)} onChurn={setChurn} resolveAppt={resolveAppt} conflicted={conflicts.has(a.id)} selectMode={selectMode} selected={selected.has(a.id)} onToggleSelect={toggleSelect} />
                 ))
               )}
 
@@ -821,7 +1055,7 @@ export default function AgentPlannerPanel({
                       ) : (
                         <div className="flex flex-col gap-2">
                           {dayAppts.map((a) => (
-                            <AppointmentCard key={a.id} appt={a} prospectName={prospectName(a.prospectId)} onChurn={setChurn} resolveAppt={resolveAppt} conflicted={conflicts.has(a.id)} />
+                            <AppointmentCard key={a.id} appt={a} prospectName={prospectName(a.prospectId)} onChurn={setChurn} resolveAppt={resolveAppt} conflicted={conflicts.has(a.id)} selectMode={selectMode} selected={selected.has(a.id)} onToggleSelect={toggleSelect} />
                           ))}
                         </div>
                       )}
@@ -868,6 +1102,25 @@ export default function AgentPlannerPanel({
 
       {shortcutsOpen && (
         <PlannerShortcutsSheet onClose={() => setShortcutsOpen(false)} />
+      )}
+
+      {bulkSheet === 'move' && (
+        <BulkMoveSheet
+          count={selected.size}
+          defaultDate={today}
+          saving={bulkSaving}
+          onApply={handleBulkMove}
+          onClose={() => setBulkSheet(null)}
+        />
+      )}
+
+      {bulkSheet === 'cancel' && (
+        <BulkCancelConfirmSheet
+          count={selected.size}
+          saving={bulkSaving}
+          onConfirm={handleBulkCancel}
+          onClose={() => setBulkSheet(null)}
+        />
       )}
 
       {sheet && (

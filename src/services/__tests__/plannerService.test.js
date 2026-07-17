@@ -12,12 +12,25 @@ const hoisted = vi.hoisted(() => ({
   mockCollection: vi.fn((...args) => ({ _collection: args })),
   mockServerTimestamp: vi.fn(() => ({ _type: 'serverTimestamp' })),
   mockBatchSet:    vi.fn(),
+  mockBatchUpdate: vi.fn(),
   mockBatchCommit: vi.fn(() => Promise.resolve()),
 }));
 // doc() mints a fresh id on every call (mirrors Firestore auto-id) so the series
 // grouping id + per-instance refs are distinguishable.
 const mockDoc = vi.fn((...args) => ({ id: `auto-${docSeq += 1}`, _doc: args }));
-const mockWriteBatch = vi.fn(() => ({ set: hoisted.mockBatchSet, commit: hoisted.mockBatchCommit }));
+// Each writeBatch() call returns a distinct instance whose set/update/commit
+// spies ALSO route through the shared hoisted fns — per-batch assertions (A5
+// chunking) and aggregate assertions (existing series tests) both work.
+const batchInstances = [];
+const mockWriteBatch = vi.fn(() => {
+  const inst = {
+    set:    vi.fn((...a) => hoisted.mockBatchSet(...a)),
+    update: vi.fn((...a) => hoisted.mockBatchUpdate(...a)),
+    commit: vi.fn((...a) => hoisted.mockBatchCommit(...a)),
+  };
+  batchInstances.push(inst);
+  return inst;
+});
 
 vi.mock('firebase/firestore', () => ({
   collection:      (...a) => hoisted.mockCollection(...a),
@@ -35,9 +48,9 @@ vi.mock('firebase/firestore', () => ({
 
 import {
   createAppointment, createRecurringAppointments, updateAppointment, setAppointmentStatus,
-  postponeWithRebook, deleteAppointment, undoPostpone,
+  postponeWithRebook, deleteAppointment, undoPostpone, bulkUpdateAppointments,
   getAgentDay, getAgentWeek, getTeamWeek,
-  TYPE_KEYS, STATUS_KEYS,
+  TYPE_KEYS, STATUS_KEYS, BULK_CHUNK_SIZE,
 } from '../plannerService';
 
 function makeSnap(...docs) {
@@ -45,7 +58,11 @@ function makeSnap(...docs) {
 }
 const whereCalls = () => hoisted.mockWhere.mock.calls.map(([field, op, value]) => ({ field, op, value }));
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => {
+  vi.clearAllMocks();
+  batchInstances.length = 0;
+  hoisted.mockBatchCommit.mockImplementation(() => Promise.resolve());
+});
 
 const META = { agentId: 'agent-1', agentUnitId: 'um-9', agentBranchId: 'branch-7' };
 
@@ -219,6 +236,91 @@ describe('undoPostpone', () => {
     expect(patch.status).toBe('scheduled');
     expect(patch.rescheduledToId).toBeNull();
     expect(patch.updatedAt).toEqual({ _type: 'serverTimestamp' });
+  });
+});
+
+describe('bulkUpdateAppointments (Run 9 A5)', () => {
+  const makeUpdates = (n) =>
+    Array.from({ length: n }, (_, i) => ({ id: `appt-${i}`, patch: { date: '2026-07-20' } }));
+
+  it('exports a 400 chunk size (headroom under Firestore\'s 500 cap)', () => {
+    expect(BULK_CHUNK_SIZE).toBe(400);
+  });
+
+  it('chunks 450 updates into 2 batches (400 + 50) and commits sequentially', async () => {
+    const commitOrder = [];
+    hoisted.mockBatchCommit.mockImplementation(() => {
+      commitOrder.push(`commit-${commitOrder.length + 1}`);
+      return Promise.resolve();
+    });
+
+    const res = await bulkUpdateAppointments('t1', makeUpdates(450));
+
+    expect(res).toEqual({ count: 450 });
+    expect(batchInstances).toHaveLength(2);
+    expect(batchInstances[0].update).toHaveBeenCalledTimes(400);
+    expect(batchInstances[1].update).toHaveBeenCalledTimes(50);
+    expect(batchInstances[0].commit).toHaveBeenCalledTimes(1);
+    expect(batchInstances[1].commit).toHaveBeenCalledTimes(1);
+    expect(commitOrder).toEqual(['commit-1', 'commit-2']);
+    // Sequential: the SECOND batch's updates were all staged AFTER the first
+    // batch's commit resolved.
+    const firstCommitOrder = batchInstances[0].commit.mock.invocationCallOrder[0];
+    const secondBatchFirstUpdate = batchInstances[1].update.mock.invocationCallOrder[0];
+    expect(secondBatchFirstUpdate).toBeGreaterThan(firstCommitOrder);
+  });
+
+  it('a single sub-cap list uses one batch and returns {count}', async () => {
+    const res = await bulkUpdateAppointments('t1', makeUpdates(3));
+    expect(res).toEqual({ count: 3 });
+    expect(batchInstances).toHaveLength(1);
+    expect(batchInstances[0].update).toHaveBeenCalledTimes(3);
+  });
+
+  it('throws naming committed-vs-total chunks and docs when a later chunk fails (never silent)', async () => {
+    hoisted.mockBatchCommit
+      .mockImplementationOnce(() => Promise.resolve())
+      .mockImplementationOnce(() => Promise.reject(new Error('firestore unavailable')));
+
+    await expect(bulkUpdateAppointments('t1', makeUpdates(450)))
+      .rejects.toThrow(/1 of 2 batches committed \(400 of 450 appointments applied\)/);
+  });
+
+  it('stops at the first failed chunk — the next chunk\'s batch is never built', async () => {
+    hoisted.mockBatchCommit.mockImplementationOnce(() => Promise.reject(new Error('boom')));
+
+    await expect(bulkUpdateAppointments('t1', makeUpdates(450)))
+      .rejects.toThrow(/0 of 2 batches committed \(0 of 450 appointments applied\)/);
+    expect(batchInstances).toHaveLength(1); // chunk 2's writeBatch never created
+  });
+
+  it('runs every patch through the SAME allowlist as updateAppointment (pins stripped, updatedAt stamped)', async () => {
+    await bulkUpdateAppointments('t1', [
+      { id: 'a1', patch: { date: '2026-07-21', agentId: 'HACK', tenantId: 'HACK', agentUnitId: 'HACK' } },
+      { id: 'a2', patch: { status: 'cancelled', bogusKey: 'nope' } },
+    ]);
+    const [, movePatch] = hoisted.mockBatchUpdate.mock.calls[0];
+    expect(movePatch.date).toBe('2026-07-21');
+    expect(movePatch.updatedAt).toEqual({ _type: 'serverTimestamp' });
+    expect(movePatch).not.toHaveProperty('agentId');
+    expect(movePatch).not.toHaveProperty('tenantId');
+    expect(movePatch).not.toHaveProperty('agentUnitId');
+    const [, cancelPatch] = hoisted.mockBatchUpdate.mock.calls[1];
+    expect(cancelPatch.status).toBe('cancelled');
+    expect(cancelPatch).not.toHaveProperty('bogusKey');
+  });
+
+  it('rejects an invalid status value through the allowlist (not written)', async () => {
+    await bulkUpdateAppointments('t1', [{ id: 'a1', patch: { status: 'obliterated' } }]);
+    const [, patch] = hoisted.mockBatchUpdate.mock.calls[0];
+    expect(patch).not.toHaveProperty('status');
+    expect(patch.updatedAt).toEqual({ _type: 'serverTimestamp' });
+  });
+
+  it('no-ops an empty updates list ({count: 0}, no batch)', async () => {
+    const res = await bulkUpdateAppointments('t1', []);
+    expect(res).toEqual({ count: 0 });
+    expect(batchInstances).toHaveLength(0);
   });
 });
 

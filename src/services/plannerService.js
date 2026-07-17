@@ -196,12 +196,15 @@ export async function deleteAppointment(tenantId, apptId) {
 }
 
 /**
- * Owner field edit — time / duration / type / note / prospect / free label /
- * apiAmount. NEVER changes agentId / agentUnitId / agentBranchId / tenantId
- * (stripped here even if a caller passes them — they are immutable pins the
- * update rule re-validates via the hasAll floor on the merged doc).
+ * Shared owner-edit patch allowlist (Run 9 A5 extraction) — the SINGLE place
+ * the updatable field set is defined. `updateAppointment` and
+ * `bulkUpdateAppointments` both build their write payloads here, so a bulk op
+ * can never write a field a single edit couldn't. NEVER passes through
+ * agentId / agentUnitId / agentBranchId / tenantId (immutable pins the update
+ * rule re-validates via the hasAll floor on the merged doc). Always stamps
+ * updatedAt: serverTimestamp().
  */
-export async function updateAppointment(tenantId, apptId, patch) {
+function buildUpdatePatch(patch = {}) {
   const clean = { updatedAt: serverTimestamp() };
   if (patch.date          !== undefined) clean.date = trimStr(patch.date, 10);
   if (patch.startTime     !== undefined) clean.startTime = trimStr(patch.startTime, 5);
@@ -212,7 +215,64 @@ export async function updateAppointment(tenantId, apptId, patch) {
   if (patch.prospectId    !== undefined) clean.prospectId = trimStr(patch.prospectId, 200);
   if (patch.freeBlockLabel !== undefined) clean.freeBlockLabel = trimStr(patch.freeBlockLabel, 120);
   if (patch.apiAmount     !== undefined) clean.apiAmount = coerceApi(patch.apiAmount);
-  await updateDoc(apptRef(tenantId, apptId), clean);
+  return clean;
+}
+
+/**
+ * Owner field edit — time / duration / type / note / prospect / free label /
+ * apiAmount. Field allowlist lives in buildUpdatePatch (shared with the A5
+ * bulk path).
+ */
+export async function updateAppointment(tenantId, apptId, patch) {
+  await updateDoc(apptRef(tenantId, apptId), buildUpdatePatch(patch));
+}
+
+// Firestore hard-caps a WriteBatch at 500 writes; chunk at 400 for headroom
+// (Run 9 A5, operator ruling R6).
+export const BULK_CHUNK_SIZE = 400;
+
+/**
+ * Bulk owner edit (Run 9 A5) — applies per-doc patches through the SAME
+ * allowlist as updateAppointment (buildUpdatePatch), so bulk writes are
+ * exactly as constrained as single edits. `updates` = [{ id, patch }].
+ *
+ * Chunked at BULK_CHUNK_SIZE (400) writes per writeBatch — headroom under
+ * Firestore's 500 cap — and chunks commit SEQUENTIALLY: chunk N+1's batch is
+ * only built after chunk N's commit resolves. If a chunk commit fails, this
+ * THROWS with an error naming how many chunks (and docs) committed vs total —
+ * the caller surfaces it; a partial apply is NEVER silent (R6). Rules
+ * evaluate client-SDK batch writes per-doc, so each update passes the same
+ * owner + validApptWrite arm a single update does.
+ *
+ * @returns {Promise<{count: number}>} count = total docs written.
+ */
+export async function bulkUpdateAppointments(tenantId, updates = []) {
+  if (updates.length === 0) return { count: 0 };
+  const chunks = [];
+  for (let i = 0; i < updates.length; i += BULK_CHUNK_SIZE) {
+    chunks.push(updates.slice(i, i + BULK_CHUNK_SIZE));
+  }
+  let committedChunks = 0;
+  let committedDocs = 0;
+  for (const chunk of chunks) {
+    const batch = writeBatch(db);
+    for (const { id, patch } of chunk) {
+      batch.update(apptRef(tenantId, id), buildUpdatePatch(patch));
+    }
+    try {
+      await batch.commit();
+    } catch (err) {
+      throw new Error(
+        `Bulk update stopped: ${committedChunks} of ${chunks.length} batches committed ` +
+        `(${committedDocs} of ${updates.length} appointments applied). ` +
+        `${err?.message || 'Commit failed.'}`,
+        { cause: err },
+      );
+    }
+    committedChunks += 1;
+    committedDocs += chunk.length;
+  }
+  return { count: committedDocs };
 }
 
 /**
