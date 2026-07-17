@@ -104,3 +104,81 @@ describe('AppointmentSheet conflict warning (Run 9 A3, R7 warn-only)', () => {
     expect(screen.queryByTestId('appt-conflict-warning')).not.toBeInTheDocument();
   });
 });
+
+/**
+ * Run 9 A4 — templates picker. Create-only; hidden entirely when there are no
+ * templates. Applying a template fills the appointment SHAPE (type / time /
+ * duration / note / free label / api) into the form, leaving the chosen date.
+ */
+describe('AppointmentSheet templates picker (Run 9 A4)', () => {
+  const TPL = {
+    id: 'tpl-1', name: 'Morning FFI', type: 'FFI',
+    startTime: '09:30', durationMin: 90, note: 'bring quote', apiAmount: null,
+  };
+
+  it('is hidden entirely when the agent has no templates', () => {
+    render(
+      <AppointmentSheet
+        mode="create"
+        initial={{ date: '2026-06-22', startTime: '09:00' }}
+        templates={[]}
+        onSave={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('appt-template-picker')).not.toBeInTheDocument();
+  });
+
+  it('is hidden in edit mode even with templates present', () => {
+    render(
+      <AppointmentSheet
+        mode="edit"
+        initial={{ id: 'a1', date: '2026-06-22', startTime: '09:00', durationMin: 30 }}
+        templates={[TPL]}
+        onSave={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('appt-template-picker')).not.toBeInTheDocument();
+  });
+
+  it('applying a template fills type / start time / duration / note into the form', () => {
+    render(
+      <AppointmentSheet
+        mode="create"
+        initial={{ date: '2026-06-22', startTime: '08:00' }}
+        templates={[TPL]}
+        onSave={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    // Duration control starts at the initial default (30).
+    expect(screen.getByLabelText('Length (minutes)')).toHaveValue('30');
+
+    fireEvent.click(screen.getByTestId('template-apply-tpl-1'));
+
+    expect(screen.getByLabelText('Start time')).toHaveValue('09:30');
+    expect(screen.getByLabelText('Length (minutes)')).toHaveValue('90');
+    expect(screen.getByLabelText(/^Note/)).toHaveValue('bring quote');
+    // FFI type button is now pressed.
+    expect(screen.getByRole('button', { name: 'F.F.I' })).toHaveAttribute('aria-pressed', 'true');
+    // Date is left as chosen (templates carry no date).
+    expect(screen.getByLabelText('Date')).toHaveValue('2026-06-22');
+  });
+
+  it('fires onDeleteTemplate with the template id from the delete affordance', () => {
+    const onDeleteTemplate = vi.fn();
+    render(
+      <AppointmentSheet
+        mode="create"
+        initial={{ date: '2026-06-22', startTime: '08:00' }}
+        templates={[TPL]}
+        onSave={vi.fn()}
+        onDeleteTemplate={onDeleteTemplate}
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('template-delete-tpl-1'));
+    expect(onDeleteTemplate).toHaveBeenCalledWith('tpl-1');
+  });
+});

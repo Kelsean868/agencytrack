@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Loader2, Search, Repeat, Minus, Plus, AlertTriangle } from 'lucide-react';
+import { X, Loader2, Search, Repeat, Minus, Plus, AlertTriangle, Bookmark, Trash2 } from 'lucide-react';
 import useFocusTrap from '../../hooks/useFocusTrap';
 import {
   APPOINTMENT_TYPES, FREE_BLOCK_LABELS,
@@ -38,6 +38,12 @@ const DAY_GLYPH = { MON: 'M', TUE: 'T', WED: 'W', THU: 'T', FRI: 'F', SAT: 'S', 
  * amber `aria-live="polite"` line names the clash. R7: warn-only — the Save
  * button is never disabled by a conflict.
  *
+ * Templates (`templates`, Run 9 A4, create-only): a compact picker row above the
+ * type control lets the agent apply a saved appointment SHAPE — fills type /
+ * startTime / durationMin / note / freeBlockLabel / apiAmount into the form
+ * (date stays as chosen). The row is hidden entirely when the agent has no
+ * templates. A per-template delete affordance calls `onDeleteTemplate(id)`.
+ *
  * Owns local form state; the parent owns the Firestore write (via onSave) and
  * passes `saving` / `error`. On a bad write the parent keeps the sheet open and
  * sets `error` — an inline role=alert card renders below the actions.
@@ -47,11 +53,13 @@ export default function AppointmentSheet({
   initial = null,
   prospects = [],
   appointments = [],
+  templates = [],
   saving = false,
   error = '',
   showRepeat = false,
   seriesPostpone = null,
   onSave,
+  onDeleteTemplate,
   onClose,
 }) {
   const trapRef = useFocusTrap({ onEscape: onClose, escapeDisabled: saving });
@@ -145,6 +153,20 @@ export default function AppointmentSheet({
     }
   };
 
+  // Run 9 A4: apply a saved template — fills the appointment SHAPE into the
+  // form (type/time/duration/note/free label/api). Date is deliberately left
+  // as the agent's chosen date (templates carry no date).
+  const applyTemplate = (tpl) => {
+    setType(tpl.type ?? 'PC');
+    setStartTime(tpl.startTime ?? '09:00');
+    setDuration(String(tpl.durationMin ?? 30));
+    setNote(tpl.note ?? '');
+    setFreeLabel(tpl.freeBlockLabel ?? FREE_BLOCK_LABELS[0]);
+    setApiAmount(tpl.apiAmount != null ? String(tpl.apiAmount) : '');
+  };
+
+  const showTemplates = mode === 'create' && !seriesPostpone && templates.length > 0;
+
   const pickRule = (key) => {
     setRepeatRule(key);
     if (key === 'custom' && customDays.length === 0 && date) {
@@ -222,6 +244,43 @@ export default function AppointmentSheet({
                     Whole series — use Edit
                   </span>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Templates picker (Run 9 A4, create-only) — apply a saved shape.
+              Hidden entirely when the agent has no templates. */}
+          {showTemplates && (
+            <div data-testid="appt-template-picker">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted mb-2 uppercase tracking-wide">
+                <Bookmark size={12} aria-hidden="true" /> Templates
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {templates.map((tpl) => (
+                  <span
+                    key={tpl.id}
+                    className="inline-flex items-center rounded-full border border-border bg-card-raised overflow-hidden"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => applyTemplate(tpl)}
+                      data-testid={`template-apply-${tpl.id}`}
+                      title="Apply this template"
+                      className="min-h-[44px] pl-3 pr-2 text-xs font-semibold text-ink-muted hover:text-primary transition-colors max-w-[12rem] truncate"
+                    >
+                      {tpl.name}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteTemplate?.(tpl.id)}
+                      data-testid={`template-delete-${tpl.id}`}
+                      aria-label={`Delete template ${tpl.name}`}
+                      className="min-h-[44px] px-2 flex items-center justify-center text-ink-muted hover:text-danger-ink border-l border-border transition-colors"
+                    >
+                      <Trash2 size={14} aria-hidden="true" />
+                    </button>
+                  </span>
+                ))}
               </div>
             </div>
           )}

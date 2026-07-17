@@ -25,6 +25,12 @@ vi.mock('../../../services/plannerService', async (importActual) => {
 vi.mock('../../../services/prospectInfoService', () => ({
   getProspectInfo: vi.fn(),
 }));
+vi.mock('../../../services/appointmentTemplateService', () => ({
+  listTemplates:  vi.fn(),
+  saveTemplate:   vi.fn(),
+  deleteTemplate: vi.fn(),
+  TEMPLATE_CAP:   20,
+}));
 vi.mock('../../../hooks/useToast', () => ({
   default: () => ({ show: hoisted.useToastShow, dismiss: vi.fn() }),
 }));
@@ -35,6 +41,7 @@ import {
   createAppointment, deleteAppointment, postponeWithRebook, undoPostpone,
 } from '../../../services/plannerService';
 import { getProspectInfo } from '../../../services/prospectInfoService';
+import { listTemplates, saveTemplate, deleteTemplate } from '../../../services/appointmentTemplateService';
 
 const TODAY = getTodayTT();
 const BASE_PROPS = {
@@ -53,6 +60,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   getAgentWeek.mockResolvedValue([]);
   getProspectInfo.mockResolvedValue([]);
+  listTemplates.mockResolvedValue([]);
 });
 
 describe('AgentPlannerPanel', () => {
@@ -174,6 +182,72 @@ describe('AgentPlannerPanel', () => {
     await waitFor(() => expect(updateAppointment).toHaveBeenCalledWith(
       't1', 'a1',
       expect.objectContaining({ note: 'Reviewed note', startTime: '09:00', type: 'PC' }),
+    ));
+  });
+});
+
+describe('AgentPlannerPanel — templates (Run 9 A4)', () => {
+  const APPT = { id: 'a1', date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled', note: 'Dial block' };
+
+  it('save-as-template opens the name prompt (default name) and saves + toasts success', async () => {
+    saveTemplate.mockResolvedValue('tpl-new');
+    getAgentWeek.mockResolvedValue([APPT]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('churn-save-template'));
+
+    const nameSheet = screen.getByTestId('template-name-sheet');
+    expect(nameSheet).toBeInTheDocument();
+    // Default name = "<TYPE> · <h:mm A>".
+    expect(screen.getByTestId('template-name-input')).toHaveValue('PC · 9:00 AM');
+
+    fireEvent.click(screen.getByTestId('template-name-save'));
+
+    await waitFor(() => expect(saveTemplate).toHaveBeenCalledWith(
+      't1',
+      expect.objectContaining({ name: 'PC · 9:00 AM', type: 'PC', startTime: '09:00', durationMin: 30, note: 'Dial block' }),
+      expect.objectContaining({ agentId: 'agent-1' }),
+    ));
+    await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'success' }),
+    ));
+  });
+
+  it('surfaces the friendly cap error as an error toast (20-cap path)', async () => {
+    saveTemplate.mockRejectedValue(new Error('You can keep up to 20 templates — delete one to save another.'));
+    getAgentWeek.mockResolvedValue([APPT]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('appt-card-a1'));
+    fireEvent.click(screen.getByTestId('churn-save-template'));
+    fireEvent.click(screen.getByTestId('template-name-save'));
+
+    await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'error',
+        message: 'You can keep up to 20 templates — delete one to save another.',
+      }),
+    ));
+  });
+
+  it('renders the templates picker in the book sheet and deletes via the affordance', async () => {
+    deleteTemplate.mockResolvedValue();
+    listTemplates.mockResolvedValue([
+      { id: 'tpl-1', name: 'Morning FFI', type: 'FFI', startTime: '09:30', durationMin: 90, note: '', apiAmount: null },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-book')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('planner-book'));
+    expect(screen.getByTestId('appt-template-picker')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('template-delete-tpl-1'));
+    await waitFor(() => expect(deleteTemplate).toHaveBeenCalledWith('t1', 'tpl-1'));
+    await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'info' }),
     ));
   });
 });

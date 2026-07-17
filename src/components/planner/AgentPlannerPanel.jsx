@@ -11,6 +11,9 @@ import {
   setAppointmentStatus, postponeWithRebook, deleteAppointment, undoPostpone,
 } from '../../services/plannerService';
 import {
+  listTemplates, saveTemplate, deleteTemplate,
+} from '../../services/appointmentTemplateService';
+import {
   weekRange, buildWeekDates, groupByDate, sortByStartTime,
   deriveFollowups, deriveSeedFromKept, formatTime12, dayLabel,
   RETIRED_STATUSES, detectConflicts,
@@ -21,6 +24,7 @@ import {
 import { ActivityChip, ApptStatusPill } from './plannerPrimitives';
 import AppointmentSheet, { SeriesBadge } from './AppointmentSheet';
 import SeriesEditChoice from './SeriesEditChoice';
+import TemplateNameSheet from './TemplateNameSheet';
 import PlannerShortcutsSheet from './PlannerShortcutsSheet';
 import usePlannerHistory from './usePlannerHistory';
 import useToast from '../../hooks/useToast';
@@ -159,6 +163,7 @@ function ChurnDialog({ appt, onAction, onClose, saving }) {
     { key: 'edit',      label: 'Edit details', variant: 'plain' },
     { key: 'reschedule', label: 'Reschedule',  variant: 'plain' },
     { key: 'postpone',  label: 'Postpone',     variant: 'plain' },
+    { key: 'save-template', label: 'Save as template', variant: 'plain', testid: 'churn-save-template' },
     { key: 'cancel',    label: 'Cancel appointment', variant: 'danger' },
   ];
   return (
@@ -178,7 +183,7 @@ function ChurnDialog({ appt, onAction, onClose, saving }) {
             key={a.key}
             type="button"
             disabled={saving}
-            data-testid={`churn-action-${a.key}`}
+            data-testid={a.testid ?? `churn-action-${a.key}`}
             onClick={() => onAction(a.key, appt)}
             className={`min-h-[44px] rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 ${
               a.variant === 'primary'
@@ -243,6 +248,13 @@ export default function AgentPlannerPanel({
   // Series edit-scope choice sheet (state 3)
   const [seriesChoice, setSeriesChoice] = useState(null); // null | appt
 
+  // Run 9 A4: appointment templates. Loaded once per panel mount (+ after a
+  // save/delete); errors degrade silently to no-templates. `templatePrompt`
+  // holds the appointment whose shape is being saved (name-prompt sheet open).
+  const [templates, setTemplates] = useState([]);
+  const [templatePrompt, setTemplatePrompt] = useState(null); // null | appt
+  const [templateSaving, setTemplateSaving] = useState(false);
+
   // Run 9 A2: keyboard-shortcuts reference sheet + a ref scoping the roving
   // up/down focus query to whichever view's appointment cards are actually
   // in the DOM right now (today/week/followups render mutually exclusively).
@@ -269,6 +281,19 @@ export default function AgentPlannerPanel({
   }, [tenantId, agentId, weekStart, weekEnd, callerRole]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Run 9 A4: load the agent's templates. Errors are swallowed (no console —
+  // the picker simply stays hidden), so a rules/network hiccup never breaks
+  // the planner. Re-run after a save/delete to keep the picker fresh.
+  const loadTemplates = useCallback(() => {
+    if (!tenantId || !agentId) return;
+    listTemplates(tenantId, agentId)
+      .then(setTemplates)
+      // Intentionally silent: degrade to no-templates rather than surfacing.
+      .catch(() => { /* no-op — picker hides when empty */ });
+  }, [tenantId, agentId]);
+
+  useEffect(() => { loadTemplates(); }, [loadTemplates]);
 
   const prospectName = useCallback(
     (id) => prospects.find((p) => p.id === id)?.clientName || null,
@@ -410,6 +435,13 @@ export default function AgentPlannerPanel({
       openEditSheet(appt);
       return;
     }
+    if (action === 'save-template') {
+      // Save-as-template: open the name-prompt sheet (not the undo history —
+      // A4 req 6: template save/delete are NOT undoable).
+      setChurn(null);
+      setTemplatePrompt(appt);
+      return;
+    }
     if (action === 'reschedule' || action === 'postpone') {
       // Rebook: retain the original as postponed + link forward to the new appt.
       // A SERIES instance postpone is scope-LOCKED to "just this one" (state 4) —
@@ -489,6 +521,48 @@ export default function AgentPlannerPanel({
     }
   }, [history, load, toast]);
 
+  // Run 9 A4: save the prompted appointment's shape as a template. Enforces the
+  // service's friendly cap (surfaces its error message on the 21st). NOT pushed
+  // to the undo history (A4 req 6).
+  const handleSaveTemplate = useCallback(async (name) => {
+    const appt = templatePrompt;
+    if (!appt) return;
+    setTemplateSaving(true);
+    try {
+      await saveTemplate(tenantId, {
+        name,
+        type: appt.type,
+        startTime: appt.startTime,
+        durationMin: appt.durationMin,
+        note: appt.note,
+        freeBlockLabel: appt.freeBlockLabel,
+        apiAmount: appt.apiAmount,
+      }, meta);
+      setTemplatePrompt(null);
+      loadTemplates();
+      toast.show({ message: `Saved template: ${name}`, variant: 'success' });
+    } catch (err) {
+      toast.show({
+        message: err?.message || 'Could not save template — check your connection and try again.',
+        variant: 'error',
+      });
+    } finally {
+      setTemplateSaving(false);
+    }
+  }, [templatePrompt, tenantId, meta, loadTemplates, toast]);
+
+  // Run 9 A4: delete a template (from the sheet picker). Toast on success; NOT
+  // undoable (A4 req 6).
+  const handleDeleteTemplate = useCallback(async (id) => {
+    try {
+      await deleteTemplate(tenantId, id);
+      loadTemplates();
+      toast.show({ message: 'Template deleted', variant: 'info' });
+    } catch {
+      toast.show({ message: 'Could not delete template — check your connection and try again.', variant: 'error' });
+    }
+  }, [tenantId, loadTemplates, toast]);
+
   // Run 9 A2: roving focus through the visible appointment cards (up/down).
   // Scoped to `contentRef` — only the currently-rendered view's cards are in
   // that subtree, so this never reaches into a hidden view. Wraps at the ends
@@ -525,7 +599,7 @@ export default function AgentPlannerPanel({
   // from Shell.jsx's Ctrl/Cmd+K palette, so no collision. Active only while
   // this panel is mounted.
   useEffect(() => {
-    const dialogOpen = Boolean(sheet || churn || seriesChoice || shortcutsOpen);
+    const dialogOpen = Boolean(sheet || churn || seriesChoice || shortcutsOpen || templatePrompt);
     function onKeyDown(e) {
       if ((e.metaKey || e.ctrlKey) && !e.altKey) {
         if (dialogOpen) return;
@@ -584,7 +658,7 @@ export default function AgentPlannerPanel({
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [
-    sheet, churn, seriesChoice, shortcutsOpen, runUndo, runRedo,
+    sheet, churn, seriesChoice, shortcutsOpen, templatePrompt, runUndo, runRedo,
     view, weekStart, today, openBook, handleChurnAction, resolveAppt, moveCardFocus,
   ]);
 
@@ -802,12 +876,23 @@ export default function AgentPlannerPanel({
           initial={sheet.initial}
           prospects={prospects}
           appointments={appts}
+          templates={templates}
           saving={sheetSaving}
           error={sheetError}
           showRepeat={Boolean(sheet.showRepeat)}
           seriesPostpone={sheet.seriesPostpone ?? null}
           onSave={handleSheetSave}
+          onDeleteTemplate={handleDeleteTemplate}
           onClose={() => { setSheet(null); setSheetError(''); }}
+        />
+      )}
+
+      {templatePrompt && (
+        <TemplateNameSheet
+          defaultName={`${templatePrompt.type} · ${formatTime12(templatePrompt.startTime)}`}
+          saving={templateSaving}
+          onSave={handleSaveTemplate}
+          onClose={() => setTemplatePrompt(null)}
         />
       )}
 
