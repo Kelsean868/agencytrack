@@ -5,7 +5,7 @@
 | Run | 9 (unattended, staging) |
 | Kickoff brief | `docs/briefs/fable-run9-kickoff.md` |
 | Start HEAD | `d5158968` |
-| Current phase | **A5 bulk operations** |
+| Current phase | **F3 series edit propagation (fenced)** |
 
 ## Item table
 
@@ -17,7 +17,7 @@
 | A2 keyboard shortcuts | DONE | `28d4a432` | 9/9 PASS (`smoke-run9-a2-shortcuts.mjs`) | map: n/?/arrows/e + reference sheet; A1 handler extended, no ⌘K collision |
 | A3 conflict detection | DONE | `0b2d70bd` | 8/8 PASS (`smoke-run9-a3-conflicts.mjs`) | client-only; R7 warn-never-block verified live (save enabled with warning showing) |
 | A4 templates | DONE | `c8c3f553`+`7d88092f` | 9/9 PASS (`smoke-run9-a4-templates.mjs`) | emulator 24/24 (incl. orchestrator hijack-fence fix on update arm) + appointments 33/33 regression; rules deployed; owner-only isolation verified live as agent2 |
-| A5 bulk operations | pending | — | — | |
+| A5 bulk operations | DONE | `74553eb1` | 7/7 PASS (`smoke-run9-a5-bulk.mjs`) | admin-read value-level: soft-delete R5 + undo-restore + move-in-place verified in Firestore; R6 chunking unit-proven (400/450 split, partial-failure throw) |
 | F3a seriesId at creation | pending | — | — | ALREADY SHIPPED — verify+smoke only (see brief §Rule-17) |
 | F3b reschedule update-in-place | pending | — | — | current = rebook+tombstone, not delete+create (see brief) |
 | F3c composite index | pending | — | — | verify query shape first |
@@ -44,3 +44,5 @@
 - **2026-07-16:** Run 9 start. Staging worktree `C:/Projects/at-fable-staging` verified (branch `staging`, HEAD `d5158968`, `.env.staging` present, staging SA key path per vh/admin-read). Rule-17 premise sweep done (4 corrections banked, see brief). Task list created.
 
 - **2026-07-16 (cont.):** A3 smoke surfaced two staging-data traps, both banked: (1) `seed-fixtures --apply` does NOT sweep non-fixture appointment residue — added `scripts/staging/sweep-nonfixture-appointments.mjs` (dual staging guard, dry-run default); (2) sheet default durationMin=30, so :00/:30 pairs only TOUCH under half-open semantics — overlap smokes must offset <30min. Neither was a product defect.
+
+- **2026-07-17:** Tier A COMPLETE (A1-A5 all live-verified). A5 builder hit one transient API ENOTFOUND mid-read (no edits lost; resumed clean — infrastructure note, not a strike against the build). A5 flagged a pre-existing A2 stale-closure flake risk in the panel keydown handler under test load — banked as follow-up, watch in E1. Entering F3 (fenced): dispatch order F3a+F3b (verify + reschedule-in-place), then F3c+F3d (index + propagation), F3e smoke last.
