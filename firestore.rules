@@ -1624,9 +1624,18 @@ service cloud.firestore {
             && (!('freeBlockLabel' in d) || d.freeBlockLabel is string);
         }
 
-        allow create, update: if isSignedIn()
+        allow create: if isSignedIn()
           && getTenantId() == tenantId
           && (isAgent() || isProducingManager())
+          && validTemplateWrite();
+
+        // Update additionally requires the EXISTING doc to be owned by the
+        // caller — validTemplateWrite alone validates only the incoming doc,
+        // whose agentId an attacker could set to themselves (hijack).
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
+          && (isAgent() || isProducingManager())
+          && resource.data.agentId == request.auth.uid
           && validTemplateWrite();
 
         // Owner-only reads (personal templates — no upline arms).

@@ -119,6 +119,14 @@ async function main() {
   await t('17. unit_manager lists by agentId -> DENY', () =>
     assertFails(getDocs(query(coll(um1Db), where('agentId', '==', AGENT1)))));
 
+  console.log(''); console.log('update (owner-only — hijack fence, Run 9 orchestrator fix):');
+  await t('21a. Owner updates own template -> ALLOW', () =>
+    assertSucceeds(setDoc(tplRef(agent1Db, T1), validTemplate(AGENT1, { name: 'Renamed block' }))));
+  await t('21b. Peer agent update-hijack (rewrites agentId to self) -> DENY', () =>
+    assertFails(setDoc(tplRef(agent2Db, T1), validTemplate(AGENT2, { name: 'stolen' }))));
+  await t('21c. Peer agent update keeping owner agentId -> DENY (forged-owner write)', () =>
+    assertFails(setDoc(tplRef(agent2Db, T1), validTemplate(AGENT1, { name: 'defaced' }))));
+
   console.log(''); console.log('delete (owner-only):');
   const unauthDb = testEnv.unauthenticatedContext().firestore();
   await t('18. Unauthenticated delete -> DENY', () =>
@@ -132,7 +140,7 @@ async function main() {
 
   await testEnv.cleanup();
   console.log('');
-  console.log(`${passed + failed} tests: ${passed} passed, ${failed} failed (21 expected)`);
+  console.log(`${passed + failed} tests: ${passed} passed, ${failed} failed (24 expected)`);
   if (failed > 0) process.exit(1);
 }
 
