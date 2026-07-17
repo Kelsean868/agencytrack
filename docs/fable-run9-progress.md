@@ -5,7 +5,7 @@
 | Run | 9 (unattended, staging) |
 | Kickoff brief | `docs/briefs/fable-run9-kickoff.md` |
 | Start HEAD | `d5158968` |
-| Current phase | **A3 conflict detection** |
+| Current phase | **A4 templates** |
 
 ## Item table
 
@@ -15,7 +15,7 @@
 | 0.2 baseline | DONE | n/a | **44 PASS / 0 FAIL / 0 SKIP** | seed 93 docs; kiosk now PASS |
 | A1 undo/redo | DONE | `4aab6bef` | 4/4 PASS (`smoke-run9-a1-undo.mjs`) | emulator 33/33; rules deployed (-Only rules); toast + hard-delete + prior-value restore verified live |
 | A2 keyboard shortcuts | DONE | `28d4a432` | 9/9 PASS (`smoke-run9-a2-shortcuts.mjs`) | map: n/?/arrows/e + reference sheet; A1 handler extended, no ⌘K collision |
-| A3 conflict detection | pending | — | — | |
+| A3 conflict detection | DONE | `0b2d70bd` | 8/8 PASS (`smoke-run9-a3-conflicts.mjs`) | client-only; R7 warn-never-block verified live (save enabled with warning showing) |
 | A4 templates | pending | — | — | new collection + rules arm |
 | A5 bulk operations | pending | — | — | |
 | F3a seriesId at creation | pending | — | — | ALREADY SHIPPED — verify+smoke only (see brief §Rule-17) |
@@ -42,3 +42,5 @@
 ## Log
 
 - **2026-07-16:** Run 9 start. Staging worktree `C:/Projects/at-fable-staging` verified (branch `staging`, HEAD `d5158968`, `.env.staging` present, staging SA key path per vh/admin-read). Rule-17 premise sweep done (4 corrections banked, see brief). Task list created.
+
+- **2026-07-16 (cont.):** A3 smoke surfaced two staging-data traps, both banked: (1) `seed-fixtures --apply` does NOT sweep non-fixture appointment residue — added `scripts/staging/sweep-nonfixture-appointments.mjs` (dual staging guard, dry-run default); (2) sheet default durationMin=30, so :00/:30 pairs only TOUCH under half-open semantics — overlap smokes must offset <30min. Neither was a product defect.
