@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { getTodayTT } from '../../../utils/dateInputs';
 
 const hoisted = vi.hoisted(() => ({
@@ -316,5 +317,147 @@ describe('undo/redo (Run 9 A1)', () => {
     await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Undid: Postpone', variant: 'info' }),
     ));
+  });
+});
+
+describe('keyboard shortcuts (Run 9 A2)', () => {
+  const TWO_APPTS = [
+    { id: 'a1', date: TODAY, startTime: '09:00', type: 'PC', status: 'scheduled' },
+    { id: 'a2', date: TODAY, startTime: '11:00', type: 'FFI', status: 'scheduled' },
+  ];
+
+  function pressKey(key, opts = {}) {
+    fireEvent.keyDown(document, { key, ...opts });
+  }
+
+  it('n opens the booking sheet (same as the Book button)', async () => {
+    getAgentWeek.mockResolvedValue([]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-today-empty')).toBeInTheDocument());
+    pressKey('n');
+    expect(screen.getByTestId('appointment-sheet')).toBeInTheDocument();
+  });
+
+  it('ignores n when the event target is a form field', async () => {
+    getAgentWeek.mockResolvedValue([]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-today-empty')).toBeInTheDocument());
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    fireEvent.keyDown(input, { key: 'n' });
+    expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument();
+    document.body.removeChild(input);
+  });
+
+  it('? (Shift+/) opens the shortcuts reference sheet, listing A1 undo/redo, and Escape closes it', async () => {
+    getAgentWeek.mockResolvedValue([]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-today-empty')).toBeInTheDocument());
+    pressKey('?', { shiftKey: true });
+    const dialog = screen.getByTestId('planner-shortcuts-sheet');
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByText(/Undo the last action/)).toBeInTheDocument();
+    expect(screen.getByText(/Redo the last undone action/)).toBeInTheDocument();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('planner-shortcuts-sheet')).not.toBeInTheDocument());
+  });
+
+  it('the header "?" icon button also opens the shortcuts sheet', async () => {
+    getAgentWeek.mockResolvedValue([]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-shortcuts-open')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('planner-shortcuts-open'));
+    expect(screen.getByTestId('planner-shortcuts-sheet')).toBeInTheDocument();
+  });
+
+  it('plain-key shortcuts (including ?) are ignored while another planner sheet is open', async () => {
+    getAgentWeek.mockResolvedValue([]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-today-empty')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('planner-book'));
+    expect(screen.getByTestId('appointment-sheet')).toBeInTheDocument();
+
+    pressKey('?', { shiftKey: true });
+    expect(screen.queryByTestId('planner-shortcuts-sheet')).not.toBeInTheDocument();
+
+    pressKey('ArrowRight');
+    expect(screen.getByTestId('planner-view-today')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('ArrowLeft/ArrowRight cycle the view pills Today <-> Week <-> Follow-ups and clamp at the ends', async () => {
+    getAgentWeek.mockResolvedValue([]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-view-today')).toHaveAttribute('aria-selected', 'true'));
+
+    pressKey('ArrowRight');
+    expect(screen.getByTestId('planner-view-week')).toHaveAttribute('aria-selected', 'true');
+    pressKey('ArrowRight');
+    expect(screen.getByTestId('planner-view-followups')).toHaveAttribute('aria-selected', 'true');
+    pressKey('ArrowRight'); // clamped — no further view past the last one
+    expect(screen.getByTestId('planner-view-followups')).toHaveAttribute('aria-selected', 'true');
+
+    pressKey('ArrowLeft');
+    expect(screen.getByTestId('planner-view-week')).toHaveAttribute('aria-selected', 'true');
+    pressKey('ArrowLeft');
+    expect(screen.getByTestId('planner-view-today')).toHaveAttribute('aria-selected', 'true');
+    pressKey('ArrowLeft'); // clamped — no further view before the first one
+    expect(screen.getByTestId('planner-view-today')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('ArrowDown/ArrowUp rove focus through the visible appointment cards, wrapping at the ends', async () => {
+    getAgentWeek.mockResolvedValue(TWO_APPTS);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a2')).toBeInTheDocument());
+
+    pressKey('ArrowDown'); // nothing focused yet -> first card
+    expect(screen.getByTestId('appt-card-a1')).toHaveFocus();
+    pressKey('ArrowDown');
+    expect(screen.getByTestId('appt-card-a2')).toHaveFocus();
+    pressKey('ArrowDown'); // wraps past the last card back to the first
+    expect(screen.getByTestId('appt-card-a1')).toHaveFocus();
+    pressKey('ArrowUp'); // wraps back to the last card
+    expect(screen.getByTestId('appt-card-a2')).toHaveFocus();
+  });
+
+  it('Enter on a focused appointment card opens the churn dialog via native <button> activation (no duplicate handler)', async () => {
+    getAgentWeek.mockResolvedValue(TWO_APPTS);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+    screen.getByTestId('appt-card-a1').focus();
+    await userEvent.keyboard('{Enter}');
+    expect(screen.getByTestId('churn-dialog')).toBeInTheDocument();
+  });
+
+  it('e opens Edit for the focused (non-series) appointment card', async () => {
+    getAgentWeek.mockResolvedValue(TWO_APPTS);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+    screen.getByTestId('appt-card-a1').focus();
+    pressKey('e');
+    expect(screen.getByTestId('appointment-sheet')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Edit appointment' })).toBeInTheDocument();
+  });
+
+  it('e on a focused SERIES card raises the SeriesEditChoice scope sheet instead of editing directly', async () => {
+    getAgentWeek.mockResolvedValue([
+      {
+        id: 'a3', date: TODAY, startTime: '09:00', type: 'PC', status: 'scheduled',
+        seriesId: 'series-1', repeatRule: 'weekly', daysOfWeek: ['MON'],
+      },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a3')).toBeInTheDocument());
+    screen.getByTestId('appt-card-a3').focus();
+    pressKey('e');
+    expect(screen.getByTestId('series-edit-choice')).toBeInTheDocument();
+    expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument();
+  });
+
+  it('e is a no-op when no appointment card is focused', async () => {
+    getAgentWeek.mockResolvedValue(TWO_APPTS);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+    pressKey('e');
+    expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument();
   });
 });

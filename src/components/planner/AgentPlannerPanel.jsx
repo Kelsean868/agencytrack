@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { CalendarClock, Plus, RotateCw, ArrowRight, CheckCircle2, ClipboardCheck } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { CalendarClock, Plus, RotateCw, ArrowRight, CheckCircle2, ClipboardCheck, HelpCircle } from 'lucide-react';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import useFocusTrap from '../../hooks/useFocusTrap';
 import { getTodayTT } from '../../utils/dateInputs';
@@ -21,6 +21,7 @@ import {
 import { ActivityChip, ApptStatusPill } from './plannerPrimitives';
 import AppointmentSheet, { SeriesBadge } from './AppointmentSheet';
 import SeriesEditChoice from './SeriesEditChoice';
+import PlannerShortcutsSheet from './PlannerShortcutsSheet';
 import usePlannerHistory from './usePlannerHistory';
 import useToast from '../../hooks/useToast';
 
@@ -36,6 +37,18 @@ function isFormFieldTarget(el) {
   if (!el) return false;
   const tag = el.tagName;
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable === true;
+}
+
+// Run 9 A2: the `e` shortcut resolves the appointment id from the
+// data-testid of the DOM-focused card (set by the up/down roving-focus
+// shortcut, or by a direct Tab/click) — never a separate "selected id" piece
+// of React state, so focus and "which appointment the shortcut acts on" can
+// never drift apart.
+function focusedApptId() {
+  const el = document.activeElement;
+  const testid = el && typeof el.getAttribute === 'function' ? el.getAttribute('data-testid') : null;
+  const m = testid ? /^appt-card-(.+)$/.exec(testid) : null;
+  return m ? m[1] : null;
 }
 
 const VIEWS = [
@@ -221,6 +234,12 @@ export default function AgentPlannerPanel({
   // Series edit-scope choice sheet (state 3)
   const [seriesChoice, setSeriesChoice] = useState(null); // null | appt
 
+  // Run 9 A2: keyboard-shortcuts reference sheet + a ref scoping the roving
+  // up/down focus query to whichever view's appointment cards are actually
+  // in the DOM right now (today/week/followups render mutually exclusively).
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const contentRef = useRef(null);
+
   // Run 9 A1: undo/redo history + toast. `history` is the single hook
   // instance for this mounted panel — its `push` is forward-compatible with
   // a later bulk-ops feature (A5) pushing its own entries through it.
@@ -275,12 +294,16 @@ export default function AgentPlannerPanel({
   }, [appts, floors]);
 
   // ── Write handlers ─────────────────────────────────────────────────────────
-  const openBook = (presetDate) =>
+  // useCallback: referenced directly by the Run 9 A2 keyboard-shortcuts effect
+  // below (the `n` shortcut), which needs a stable identity to avoid
+  // resubscribing its document listener on every render.
+  const openBook = useCallback((presetDate) => {
     setSheet({
       mode: 'create',
       showRepeat: true,
       initial: presetDate ? { date: presetDate, startTime: '09:00' } : { date: today, startTime: '09:00' },
     });
+  }, [today]);
 
   const handleSheetSave = async (data, addAnother) => {
     setSheetSaving(true);
@@ -351,17 +374,21 @@ export default function AgentPlannerPanel({
     }
   };
 
-  const openEditSheet = (appt) => setSheet({
-    mode: 'edit',
-    initial: {
-      id: appt.id,
-      type: appt.type, date: appt.date, startTime: appt.startTime,
-      durationMin: appt.durationMin, prospectId: appt.prospectId,
-      freeBlockLabel: appt.freeBlockLabel, note: appt.note, apiAmount: appt.apiAmount,
-    },
-  });
+  const openEditSheet = useCallback((appt) => {
+    setSheet({
+      mode: 'edit',
+      initial: {
+        id: appt.id,
+        type: appt.type, date: appt.date, startTime: appt.startTime,
+        durationMin: appt.durationMin, prospectId: appt.prospectId,
+        freeBlockLabel: appt.freeBlockLabel, note: appt.note, apiAmount: appt.apiAmount,
+      },
+    });
+  }, []);
 
-  const handleChurnAction = async (action, appt) => {
+  // useCallback: referenced directly by the Run 9 A2 keyboard-shortcuts effect
+  // below (the `e` shortcut) — same reason as openBook above.
+  const handleChurnAction = useCallback(async (action, appt) => {
     if (action === 'edit') {
       // Edit-in-place. For a SERIES instance, raise the scope-choice sheet first
       // (state 3): "this only" routes to the standard edit path; series-wide edit
@@ -422,7 +449,7 @@ export default function AgentPlannerPanel({
     } finally {
       setChurnSaving(false);
     }
-  };
+  }, [openEditSheet, tenantId, history, load]);
 
   // Run 9 A1: undo/redo runners — reload from Firestore, then toast the
   // action by label. A failed undo/redo (service rejects) surfaces an error
@@ -450,29 +477,104 @@ export default function AgentPlannerPanel({
     }
   }, [history, load, toast]);
 
-  // Ctrl/Cmd+Z undo, Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z redo. Ignored while a
-  // planner sheet/dialog is open (sheet, churn, seriesChoice) or while the
-  // event target is a form field / contenteditable — never steals a keystroke
-  // mid-typing. Distinct keys from Shell.jsx's Ctrl/Cmd+K palette, so no
-  // collision. Active only while this panel is mounted.
+  // Run 9 A2: roving focus through the visible appointment cards (up/down).
+  // Scoped to `contentRef` — only the currently-rendered view's cards are in
+  // that subtree, so this never reaches into a hidden view. Wraps at the ends
+  // (last ↓ → first, first ↑ → last); if nothing is focused yet, ↓ starts at
+  // the first card and ↑ starts at the last. Pure DOM query + .focus() — no
+  // extra "selected id" state to keep in sync with real focus.
+  const moveCardFocus = useCallback((delta) => {
+    const container = contentRef.current;
+    if (!container) return;
+    const cards = Array.from(container.querySelectorAll('button[data-testid^="appt-card-"]'));
+    if (cards.length === 0) return;
+    const activeIndex = cards.indexOf(document.activeElement);
+    const nextIndex = activeIndex === -1
+      ? (delta > 0 ? 0 : cards.length - 1)
+      : (activeIndex + delta + cards.length) % cards.length;
+    cards[nextIndex]?.focus();
+  }, []);
+
+  // Keyboard shortcuts (Run 9 A1 + A2 — single listener, extended coherently
+  // rather than layering a second document keydown handler):
+  //   Ctrl/Cmd+Z undo, Ctrl/Cmd+Y (or +Shift+Z) redo         — A1
+  //   n            open the booking sheet (= the Book button) — A2
+  //   ?  (Shift+/) open the shortcuts reference sheet          — A2
+  //   ←/→          cycle Today ↔ Week ↔ Follow-ups (clamped)   — A2
+  //   ↑/↓          rove focus through the visible appt cards   — A2
+  //   e            edit the DOM-focused appt card (same path
+  //                the churn dialog's Edit action uses, so a
+  //                series instance still raises SeriesEditChoice) — A2
+  // All shortcuts are ignored while a planner sheet/dialog is open (sheet,
+  // churn, seriesChoice, shortcutsOpen) or while the event target is a form
+  // field / contenteditable — never steals a keystroke mid-typing. Every
+  // plain-key shortcut additionally requires NO modifier held (Shift
+  // included) except `?`, which is only reachable via Shift+/. Distinct keys
+  // from Shell.jsx's Ctrl/Cmd+K palette, so no collision. Active only while
+  // this panel is mounted.
   useEffect(() => {
-    const dialogOpen = Boolean(sheet || churn || seriesChoice);
+    const dialogOpen = Boolean(sheet || churn || seriesChoice || shortcutsOpen);
     function onKeyDown(e) {
-      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
-      if (dialogOpen) return;
+      if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+        if (dialogOpen) return;
+        if (isFormFieldTarget(e.target)) return;
+        const key = e.key.toLowerCase();
+        if (key === 'z' && !e.shiftKey) {
+          e.preventDefault();
+          runUndo();
+        } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
+          e.preventDefault();
+          runRedo();
+        }
+        return;
+      }
+
+      // Never touch any other modifier combo we don't own.
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (isFormFieldTarget(e.target)) return;
-      const key = e.key.toLowerCase();
-      if (key === 'z' && !e.shiftKey) {
+
+      if (e.key === '?') {
+        if (dialogOpen) return;
         e.preventDefault();
-        runUndo();
-      } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
+        setShortcutsOpen(true);
+        return;
+      }
+      // Every remaining shortcut is plain-key only — Shift (or any other
+      // modifier) held bails out here.
+      if (e.shiftKey || dialogOpen) return;
+
+      if (e.key === 'n') {
         e.preventDefault();
-        runRedo();
+        openBook(view === 'today' ? today : weekStart);
+        return;
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const idx = VIEWS.findIndex((v) => v.key === view);
+        const delta = e.key === 'ArrowRight' ? 1 : -1;
+        const nextIdx = Math.min(VIEWS.length - 1, Math.max(0, idx + delta));
+        setView(VIEWS[nextIdx].key);
+        return;
+      }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        moveCardFocus(e.key === 'ArrowDown' ? 1 : -1);
+        return;
+      }
+      if (e.key === 'e') {
+        const id = focusedApptId();
+        const appt = id ? resolveAppt(id) : null;
+        if (!appt) return;
+        e.preventDefault();
+        handleChurnAction('edit', appt);
       }
     }
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [sheet, churn, seriesChoice, runUndo, runRedo]);
+  }, [
+    sheet, churn, seriesChoice, shortcutsOpen, runUndo, runRedo,
+    view, weekStart, today, openBook, handleChurnAction, resolveAppt, moveCardFocus,
+  ]);
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -483,14 +585,25 @@ export default function AgentPlannerPanel({
           <CalendarClock size={20} className="text-primary" aria-hidden="true" />
           <h1 className="text-lg font-bold text-ink">Planner</h1>
         </div>
-        <button
-          type="button"
-          onClick={() => openBook(view === 'today' ? today : weekStart)}
-          data-testid="planner-book"
-          className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary transition-colors"
-        >
-          <Plus size={16} aria-hidden="true" /> Book
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShortcutsOpen(true)}
+            data-testid="planner-shortcuts-open"
+            aria-label="Keyboard shortcuts"
+            className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-xl border border-border text-ink-muted hover:text-ink hover:bg-surface transition-colors"
+          >
+            <HelpCircle size={18} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => openBook(view === 'today' ? today : weekStart)}
+            data-testid="planner-book"
+            className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary transition-colors"
+          >
+            <Plus size={16} aria-hidden="true" /> Book
+          </button>
+        </div>
       </div>
 
       {/* View pills */}
@@ -531,7 +644,7 @@ export default function AgentPlannerPanel({
           </button>
         </div>
       ) : (
-        <>
+        <div ref={contentRef}>
           {/* ── TODAY ── */}
           {view === 'today' && (
             <div className="flex flex-col gap-3 stagger">
@@ -664,7 +777,11 @@ export default function AgentPlannerPanel({
               )}
             </div>
           )}
-        </>
+        </div>
+      )}
+
+      {shortcutsOpen && (
+        <PlannerShortcutsSheet onClose={() => setShortcutsOpen(false)} />
       )}
 
       {sheet && (
