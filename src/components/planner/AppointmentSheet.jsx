@@ -51,6 +51,7 @@ const DAY_GLYPH = { MON: 'M', TUE: 'T', WED: 'W', THU: 'T', FRI: 'F', SAT: 'S', 
 export default function AppointmentSheet({
   mode = 'create',
   variant = null,
+  scope = null,
   seriesInstance = false,
   initial = null,
   prospects = [],
@@ -183,15 +184,22 @@ export default function AppointmentSheet({
   };
 
   const isReschedule = variant === 'reschedule';
+  // Run 9 F3d: series field-propagation edit ("this and future" / "all"). The
+  // per-occurrence DATE is intentionally locked (a propagated date would collapse
+  // the series onto one day — use Reschedule to move a single occurrence); every
+  // other field flows to the matching instances.
+  const isSeriesPropagate = variant === 'series-propagate';
   const titleId = 'appt-sheet-title';
   const title = seriesPostpone
     ? 'Postpone appointment'
     : isReschedule ? 'Reschedule appointment'
-      : mode === 'edit' ? 'Edit appointment' : 'Book appointment';
+      : isSeriesPropagate ? 'Edit series'
+        : mode === 'edit' ? 'Edit appointment' : 'Book appointment';
   const primaryLabel = seriesPostpone
     ? 'Move this one'
     : isReschedule ? 'Reschedule'
-      : repeating ? 'Book series' : 'Save';
+      : isSeriesPropagate ? 'Apply to series'
+        : repeating ? 'Book series' : 'Save';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -222,6 +230,22 @@ export default function AppointmentSheet({
         </div>
 
         <div className="px-4 py-4 flex flex-col gap-4">
+          {/* Series field propagation (F3d) — names the exact set of occurrences
+              the edit will touch (scope-dependent copy). */}
+          {isSeriesPropagate && (
+            <div
+              data-testid="series-propagate-scope-line"
+              className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/30 px-3 py-2"
+            >
+              <SeriesBadge size={14} />
+              <span className="text-xs font-medium text-ink-muted">
+                {scope === 'all'
+                  ? 'Applies to all current + future occurrences'
+                  : 'Applies to this and all future occurrences'}
+              </span>
+            </div>
+          )}
+
           {/* Reschedule of a series instance (F3b) — single-doc update, so only
               this occurrence moves; the rest of the series is untouched. */}
           {isReschedule && seriesInstance && (
@@ -400,9 +424,17 @@ export default function AppointmentSheet({
                 id="appt-date"
                 type="date"
                 value={date}
+                disabled={isSeriesPropagate}
                 onChange={(e) => setDate(e.target.value)}
-                className="h-11 px-3 rounded-lg bg-surface border border-border text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className={`h-11 px-3 rounded-lg bg-surface border border-border text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/40 ${
+                  isSeriesPropagate ? 'opacity-60 cursor-not-allowed' : ''
+                }`}
               />
+              {isSeriesPropagate && (
+                <span data-testid="series-propagate-date-note" className="text-[11px] text-ink-muted">
+                  Dates stay per-occurrence · use Reschedule to move one
+                </span>
+              )}
             </div>
             <div className="flex flex-col gap-1">
               <label htmlFor="appt-time" className="text-sm font-medium text-ink">Start time</label>

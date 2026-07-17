@@ -7,9 +7,9 @@ import { formatCurrency } from '../../utils/formatters';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../utils/weeklyActivityFloors';
 import { getProspectInfo } from '../../services/prospectInfoService';
 import {
-  getAgentWeek, createAppointment, createRecurringAppointments, updateAppointment,
-  setAppointmentStatus, postponeWithRebook, deleteAppointment, undoPostpone,
-  bulkUpdateAppointments,
+  getAgentWeek, getSeriesInstances, createAppointment, createRecurringAppointments,
+  updateAppointment, setAppointmentStatus, postponeWithRebook, deleteAppointment,
+  undoPostpone, bulkUpdateAppointments,
 } from '../../services/plannerService';
 import {
   listTemplates, saveTemplate, deleteTemplate,
@@ -39,6 +39,39 @@ const EDIT_PATCH_FIELDS = [
   'type', 'date', 'startTime', 'durationMin',
   'prospectId', 'freeBlockLabel', 'note', 'apiAmount',
 ];
+
+// Run 9 F3d: fields that propagate across a series edit ("this and future" /
+// "all"). NEVER date (a propagated date collapses the series onto one day),
+// never status, never series metadata.
+const PROPAGATE_FIELDS = [
+  'type', 'startTime', 'durationMin', 'prospectId', 'freeBlockLabel', 'note', 'apiAmount',
+];
+// Only these statuses are propagation targets — retired (cancelled/postponed) and
+// completed (kept/done) instances are records, never rewritten (extends R1).
+const PROPAGATE_STATUSES = new Set(['scheduled', 'confirmed']);
+
+/**
+ * Normalize a propagate field for the changed-field diff. The sheet stores
+ * durationMin/apiAmount as strings and blanks optional fields to '' or null,
+ * while a hydrated instance carries numbers / undefined — so a raw `!==` (the
+ * literal A1 edit idiom) spuriously flags unchanged optional/numeric fields.
+ * Normalizing both sides realizes "only genuinely-changed fields propagate"
+ * (deliberate, banked deviation from A1's raw diff — A1 masks the same latent
+ * mismatch by always re-writing the full doc; propagation writes only the
+ * changed keys, so it cannot tolerate a phantom diff).
+ */
+function normalizePropagateValue(key, v) {
+  if (key === 'apiAmount') {
+    if (v == null || v === '') return null;
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  if (key === 'durationMin') {
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) ? n : null;
+  }
+  return String(v ?? '');
+}
 
 function isFormFieldTarget(el) {
   if (!el) return false;
@@ -516,6 +549,67 @@ export default function AgentPlannerPanel({
     setSheetSaving(true);
     setSheetError('');
     try {
+      if (sheet?.variant === 'series-propagate' && sheet.initial?.id) {
+        // Run 9 F3d — series field propagation ("this and future" / "all").
+        // Diff the changed fields (never date) against the tapped instance's
+        // hydrated values, then apply them to every in-window instance whose
+        // status is scheduled/confirmed. Self-contained: owns its write error
+        // handling (close + error toast, A5 idiom) so the outer catch's
+        // inline-error path never applies to a bulk propagation.
+        const changed = {};
+        PROPAGATE_FIELDS.forEach((k) => {
+          if (normalizePropagateValue(k, data[k]) !== normalizePropagateValue(k, sheet.initial[k])) {
+            changed[k] = data[k];
+          }
+        });
+        if (Object.keys(changed).length === 0) { setSheet(null); return; }
+        try {
+          const instances = await getSeriesInstances(tenantId, agentId, sheet.seriesId);
+          // Scope anchor (TT today): "all" = date >= today; "this and future" =
+          // date >= the tapped instance's date. Past instances never in-window (R1).
+          const anchorDate = sheet.scope === 'future' ? sheet.initial.date : today;
+          const inWindow = instances.filter((inst) => String(inst.date) >= anchorDate);
+          const targets = inWindow.filter((inst) => PROPAGATE_STATUSES.has(inst.status));
+          const skipped = inWindow.length - targets.length;
+          if (targets.length === 0) {
+            toast.show({ message: 'No scheduled occurrences to update', variant: 'info' });
+            setSheet(null);
+            return;
+          }
+          const updates = targets.map((inst) => ({ id: inst.id, patch: { ...changed } }));
+          // Priors capture EACH instance's own current values for the changed
+          // keys — undo restores per-instance state (R2), never a blanket value.
+          const priors = targets.map((inst) => {
+            const prior = {};
+            Object.keys(changed).forEach((k) => { prior[k] = inst[k]; });
+            return { id: inst.id, patch: prior };
+          });
+          await bulkUpdateAppointments(tenantId, updates);
+          history.push({
+            label: `Edit series (${targets.length})`,
+            undo: async () => { await bulkUpdateAppointments(tenantId, priors); },
+            redo: async () => { await bulkUpdateAppointments(tenantId, updates); },
+          });
+          await load();
+          toast.show({
+            message: skipped > 0
+              ? `Updated ${targets.length} of ${inWindow.length} — ${skipped} completed/cancelled kept as-is`
+              : `Updated ${targets.length} ${targets.length === 1 ? 'occurrence' : 'occurrences'}`,
+            variant: 'info',
+          });
+          setSheet(null);
+        } catch (err) {
+          // Render committed chunks honestly, then surface the service's
+          // count-naming message verbatim (never silently partial — R6).
+          await load();
+          toast.show({
+            message: err?.message || 'Could not update the series — check your connection and try again.',
+            variant: 'error',
+          });
+          setSheet(null);
+        }
+        return;
+      }
       if (sheet?.rebookFrom) {
         // Postpone rebook (F3b: reschedule NO LONGER uses this path — it is now
         // an update-in-place on the same doc, see the edit branch below).
@@ -591,8 +685,12 @@ export default function AgentPlannerPanel({
       mode: 'edit',
       // F3b: `variant:'reschedule'` reuses the edit mechanics (same-doc
       // updateAppointment) but re-titles the sheet + relabels the undo entry.
+      // F3d: `variant:'series-propagate'` + `scope:'future'|'all'` drives the
+      // series field-propagation edit; `seriesId` is the propagation query key.
       // `seriesInstance` drives the "only this occurrence moves" note row.
       variant: opts.variant ?? null,
+      scope: opts.scope ?? null,
+      seriesId: appt.seriesId ?? null,
       seriesInstance: Boolean(appt.seriesId),
       initial: {
         id: appt.id,
@@ -1148,6 +1246,7 @@ export default function AgentPlannerPanel({
         <AppointmentSheet
           mode={sheet.mode}
           variant={sheet.variant ?? null}
+          scope={sheet.scope ?? null}
           seriesInstance={Boolean(sheet.seriesInstance)}
           initial={sheet.initial}
           prospects={prospects}
@@ -1180,6 +1279,8 @@ export default function AgentPlannerPanel({
               repeatRule: seriesChoice.repeatRule, daysOfWeek: seriesChoice.daysOfWeek, startDate: seriesChoice.date,
             })}${seriesChoice.seriesPos && seriesChoice.seriesTotal ? ` · ${seriesChoice.seriesPos} of ${seriesChoice.seriesTotal}` : ''}`}
           onEditThisOnly={() => { const a = seriesChoice; setSeriesChoice(null); openEditSheet(a); }}
+          onEditFuture={() => { const a = seriesChoice; setSeriesChoice(null); openEditSheet(a, { variant: 'series-propagate', scope: 'future' }); }}
+          onEditAll={() => { const a = seriesChoice; setSeriesChoice(null); openEditSheet(a, { variant: 'series-propagate', scope: 'all' }); }}
           onClose={() => setSeriesChoice(null)}
         />
       )}

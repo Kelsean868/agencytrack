@@ -13,6 +13,7 @@ vi.mock('../../../services/plannerService', async (importActual) => {
   return {
     ...actual,
     getAgentWeek:        vi.fn(),
+    getSeriesInstances:  vi.fn(),
     createAppointment:   vi.fn(),
     createRecurringAppointments: vi.fn(),
     updateAppointment:   vi.fn(),
@@ -38,13 +39,13 @@ vi.mock('../../../hooks/useToast', () => ({
 
 import AgentPlannerPanel from '../AgentPlannerPanel';
 import {
-  getAgentWeek, setAppointmentStatus, updateAppointment,
+  getAgentWeek, getSeriesInstances, setAppointmentStatus, updateAppointment,
   createAppointment, deleteAppointment, postponeWithRebook, undoPostpone,
   bulkUpdateAppointments,
 } from '../../../services/plannerService';
 import { getProspectInfo } from '../../../services/prospectInfoService';
 import { listTemplates, saveTemplate, deleteTemplate } from '../../../services/appointmentTemplateService';
-import { shiftDateStr } from '../planner.helpers';
+import { shiftDateStr, buildWeekDates } from '../planner.helpers';
 
 const TODAY = getTodayTT();
 const BASE_PROPS = {
@@ -1048,5 +1049,244 @@ describe('postpone regression (unchanged by F3b)', () => {
     expect(screen.getByTestId('postpone-consequence')).toBeInTheDocument();
     // Reschedule is NOT offered as a series-scope choice here — it's a separate churn action.
     expect(screen.queryByTestId('reschedule-series-note')).not.toBeInTheDocument();
+  });
+});
+
+describe('series edit propagation (Run 9 F3d — R1/R2)', () => {
+  const instance = (over) => ({
+    date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled',
+    note: 'orig', seriesId: 's-1', repeatRule: 'weekly', ...over,
+  });
+
+  function openChooser(cardId) {
+    fireEvent.click(screen.getByTestId(`appt-card-${cardId}`));
+    fireEvent.click(screen.getByTestId('churn-action-edit'));
+    return screen.getByTestId('series-edit-choice');
+  }
+
+  it('a series card raises the chooser with three live scope options', async () => {
+    getAgentWeek.mockResolvedValue([instance({ id: 'a1' })]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+    openChooser('a1');
+    expect(screen.getByTestId('series-edit-this-only')).toBeInTheDocument();
+    expect(screen.getByTestId('series-edit-future')).toBeInTheDocument();
+    expect(screen.getByTestId('series-edit-all')).toBeInTheDocument();
+    // The old disabled "soon" treatment is gone.
+    expect(screen.queryByTestId('series-edit-all-future')).not.toBeInTheDocument();
+  });
+
+  it('"this only" opens the plain single-doc Edit sheet — a regression of the F3b path, not propagate', async () => {
+    getAgentWeek.mockResolvedValue([instance({ id: 'a1' })]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+    openChooser('a1');
+    fireEvent.click(screen.getByTestId('series-edit-this-only'));
+    expect(screen.getByRole('heading', { name: 'Edit appointment' })).toBeInTheDocument();
+    expect(screen.queryByTestId('series-propagate-scope-line')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Date')).not.toBeDisabled();
+  });
+
+  it('"this and future" opens the propagate sheet — title, scope line, disabled date + note', async () => {
+    getAgentWeek.mockResolvedValue([instance({ id: 'a1' })]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+    openChooser('a1');
+    fireEvent.click(screen.getByTestId('series-edit-future'));
+    expect(screen.getByRole('heading', { name: 'Edit series' })).toBeInTheDocument();
+    expect(screen.getByTestId('series-propagate-scope-line'))
+      .toHaveTextContent('Applies to this and all future occurrences');
+    expect(screen.getByTestId('series-propagate-date-note')).toBeInTheDocument();
+    expect(screen.getByLabelText('Date')).toBeDisabled();
+  });
+
+  it('"all" opens the propagate sheet whose scope line names current + future', async () => {
+    getAgentWeek.mockResolvedValue([instance({ id: 'a1' })]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+    openChooser('a1');
+    fireEvent.click(screen.getByTestId('series-edit-all'));
+    expect(screen.getByTestId('series-propagate-scope-line'))
+      .toHaveTextContent('Applies to all current + future occurrences');
+  });
+
+  it('propagates ONLY changed fields to scheduled/confirmed in-window instances; excludes past; skips completed/cancelled; never writes date', async () => {
+    const PAST = shiftDateStr(TODAY, -7);
+    const FUT1 = shiftDateStr(TODAY, 7);
+    const FUT2 = shiftDateStr(TODAY, 14);
+    const FUT3 = shiftDateStr(TODAY, 21);
+    bulkUpdateAppointments.mockResolvedValue({ count: 2 });
+    getAgentWeek.mockResolvedValue([instance({ id: 'anchor' })]);
+    getSeriesInstances.mockResolvedValue([
+      instance({ id: 'past',      date: PAST,  status: 'scheduled' }),
+      instance({ id: 'anchor',    date: TODAY, status: 'scheduled' }),
+      instance({ id: 'fut1',      date: FUT1,  status: 'confirmed' }),
+      instance({ id: 'futCancel', date: FUT2,  status: 'cancelled' }),
+      instance({ id: 'futKept',   date: FUT3,  status: 'kept' }),
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-anchor')).toBeInTheDocument());
+    openChooser('anchor');
+    fireEvent.click(screen.getByTestId('series-edit-future'));
+
+    fireEvent.change(screen.getByLabelText(/Note/), { target: { value: 'updated' } });
+    fireEvent.click(screen.getByTestId('appt-save'));
+
+    await waitFor(() => expect(getSeriesInstances).toHaveBeenCalledWith('t1', 'agent-1', 's-1'));
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledTimes(1));
+    const [, updates] = bulkUpdateAppointments.mock.calls[0];
+    // Past excluded (< anchor); cancelled + kept skipped; only scheduled/confirmed remain.
+    expect(updates.map((u) => u.id)).toEqual(['anchor', 'fut1']);
+    // Only the changed field — no date / status / series metadata.
+    updates.forEach((u) => expect(u.patch).toEqual({ note: 'updated' }));
+    await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Updated 2 of 4 — 2 completed/cancelled kept as-is',
+        variant: 'info',
+      }),
+    ));
+    await waitFor(() => expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument());
+  });
+
+  it('future scope anchors on the TAPPED occurrence date (earlier in-window occurrences excluded)', async () => {
+    const SAT = buildWeekDates(TODAY)[6]; // last day of the loaded week — always renders + >= today
+    const NEXT = shiftDateStr(SAT, 7);
+    bulkUpdateAppointments.mockResolvedValue({ count: 3 });
+    getAgentWeek.mockResolvedValue([instance({ id: 'sat', date: SAT })]);
+    getSeriesInstances.mockResolvedValue([
+      instance({ id: 'today', date: TODAY }),
+      instance({ id: 'sat',   date: SAT }),
+      instance({ id: 'next',  date: NEXT }),
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-view-week')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('planner-view-week'));
+    await waitFor(() => expect(screen.getByTestId('appt-card-sat')).toBeInTheDocument());
+    openChooser('sat');
+    fireEvent.click(screen.getByTestId('series-edit-future'));
+    fireEvent.change(screen.getByLabelText(/Note/), { target: { value: 'updated' } });
+    fireEvent.click(screen.getByTestId('appt-save'));
+
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledTimes(1));
+    const ids = bulkUpdateAppointments.mock.calls[0][1].map((u) => u.id);
+    // Anchor = the tapped Saturday → only date >= SAT. Computed from the spec so
+    // the assertion is weekday-agnostic (on Saturdays TODAY === SAT and 'today'
+    // is legitimately included).
+    const expected = [
+      { id: 'today', date: TODAY }, { id: 'sat', date: SAT }, { id: 'next', date: NEXT },
+    ].filter((i) => i.date >= SAT).map((i) => i.id);
+    expect(ids).toEqual(expected);
+  });
+
+  it('all scope anchors on TODAY — the today-dated occurrence is always included', async () => {
+    const SAT = buildWeekDates(TODAY)[6];
+    const NEXT = shiftDateStr(SAT, 7);
+    bulkUpdateAppointments.mockResolvedValue({ count: 3 });
+    getAgentWeek.mockResolvedValue([instance({ id: 'sat', date: SAT })]);
+    getSeriesInstances.mockResolvedValue([
+      instance({ id: 'today', date: TODAY }),
+      instance({ id: 'sat',   date: SAT }),
+      instance({ id: 'next',  date: NEXT }),
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-view-week')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('planner-view-week'));
+    await waitFor(() => expect(screen.getByTestId('appt-card-sat')).toBeInTheDocument());
+    openChooser('sat');
+    fireEvent.click(screen.getByTestId('series-edit-all'));
+    fireEvent.change(screen.getByLabelText(/Note/), { target: { value: 'updated' } });
+    fireEvent.click(screen.getByTestId('appt-save'));
+
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledTimes(1));
+    const ids = bulkUpdateAppointments.mock.calls[0][1].map((u) => u.id);
+    expect(ids).toEqual(['today', 'sat', 'next']); // every non-past occurrence
+  });
+
+  it('captures each instance\'s OWN prior value; undo restores per-instance state (R2), toasts "Undid: Edit series (N)"', async () => {
+    bulkUpdateAppointments.mockResolvedValue({ count: 2 });
+    getAgentWeek.mockResolvedValue([instance({ id: 'anchor', startTime: '09:00' })]);
+    getSeriesInstances.mockResolvedValue([
+      instance({ id: 'anchor', date: TODAY, startTime: '09:00' }),
+      instance({ id: 'fut1', date: shiftDateStr(TODAY, 7), startTime: '10:30' }),
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-anchor')).toBeInTheDocument());
+    openChooser('anchor');
+    fireEvent.click(screen.getByTestId('series-edit-future'));
+    fireEvent.change(screen.getByLabelText('Start time'), { target: { value: '14:00' } });
+    fireEvent.click(screen.getByTestId('appt-save'));
+
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
+      { id: 'anchor', patch: { startTime: '14:00' } },
+      { id: 'fut1', patch: { startTime: '14:00' } },
+    ]));
+    await waitFor(() => expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument());
+
+    bulkUpdateAppointments.mockClear();
+    ctrlZ();
+    // Undo writes back EACH doc's own prior startTime, not a blanket value.
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
+      { id: 'anchor', patch: { startTime: '09:00' } },
+      { id: 'fut1', patch: { startTime: '10:30' } },
+    ]));
+    await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Undid: Edit series (2)', variant: 'info' }),
+    ));
+  });
+
+  it('an empty diff (no field changed) closes the sheet without querying the series or writing', async () => {
+    getAgentWeek.mockResolvedValue([instance({ id: 'anchor' })]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-anchor')).toBeInTheDocument());
+    openChooser('anchor');
+    fireEvent.click(screen.getByTestId('series-edit-future'));
+    fireEvent.click(screen.getByTestId('appt-save')); // nothing changed
+
+    await waitFor(() => expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument());
+    expect(getSeriesInstances).not.toHaveBeenCalled();
+    expect(bulkUpdateAppointments).not.toHaveBeenCalled();
+  });
+
+  it('when only completed/cancelled instances remain in-window, nothing is written', async () => {
+    getAgentWeek.mockResolvedValue([instance({ id: 'anchor', status: 'kept' })]);
+    getSeriesInstances.mockResolvedValue([
+      instance({ id: 'anchor', date: TODAY, status: 'kept' }),
+      instance({ id: 'fut1', date: shiftDateStr(TODAY, 7), status: 'cancelled' }),
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-anchor')).toBeInTheDocument());
+    openChooser('anchor');
+    fireEvent.click(screen.getByTestId('series-edit-future'));
+    fireEvent.change(screen.getByLabelText(/Note/), { target: { value: 'updated' } });
+    fireEvent.click(screen.getByTestId('appt-save'));
+
+    await waitFor(() => expect(getSeriesInstances).toHaveBeenCalled());
+    expect(bulkUpdateAppointments).not.toHaveBeenCalled();
+    await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'No scheduled occurrences to update', variant: 'info' }),
+    ));
+    await waitFor(() => expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument());
+  });
+
+  it('a failed bulk propagation surfaces the service message verbatim (never silent) and closes the sheet', async () => {
+    bulkUpdateAppointments.mockRejectedValue(new Error(
+      'Bulk update stopped: 1 of 2 batches committed (400 of 450 appointments applied). boom',
+    ));
+    getAgentWeek.mockResolvedValue([instance({ id: 'anchor' })]);
+    getSeriesInstances.mockResolvedValue([instance({ id: 'anchor', date: TODAY })]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-anchor')).toBeInTheDocument());
+    openChooser('anchor');
+    fireEvent.click(screen.getByTestId('series-edit-future'));
+    fireEvent.change(screen.getByLabelText(/Note/), { target: { value: 'updated' } });
+    fireEvent.click(screen.getByTestId('appt-save'));
+
+    await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'error',
+        message: expect.stringContaining('1 of 2 batches committed'),
+      }),
+    ));
+    await waitFor(() => expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument());
   });
 });

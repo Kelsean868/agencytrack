@@ -49,7 +49,7 @@ vi.mock('firebase/firestore', () => ({
 import {
   createAppointment, createRecurringAppointments, updateAppointment, setAppointmentStatus,
   postponeWithRebook, deleteAppointment, undoPostpone, bulkUpdateAppointments,
-  getAgentDay, getAgentWeek, getTeamWeek,
+  getAgentDay, getAgentWeek, getSeriesInstances, getTeamWeek,
   TYPE_KEYS, STATUS_KEYS, BULK_CHUNK_SIZE,
 } from '../plannerService';
 
@@ -366,6 +366,23 @@ describe('getAgentWeek', () => {
     expect(w).toContainEqual({ field: 'date', op: '>=', value: '2026-06-21' });
     expect(w).toContainEqual({ field: 'date', op: '<=', value: '2026-06-27' });
     expect(hoisted.mockOrderBy).toHaveBeenCalledWith('date', 'asc');
+  });
+});
+
+describe('getSeriesInstances (Run 9 F3c)', () => {
+  it('queries (agentId, seriesId) equality with orderBy date asc and maps id + data', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeSnap(
+      { id: 'i1', date: '2026-07-14', seriesId: 's-1' },
+      { id: 'i2', date: '2026-07-21', seriesId: 's-1' },
+    ));
+    const out = await getSeriesInstances('t1', 'agent-1', 's-1');
+    const w = whereCalls();
+    expect(w).toContainEqual({ field: 'agentId', op: '==', value: 'agent-1' });
+    expect(w).toContainEqual({ field: 'seriesId', op: '==', value: 's-1' });
+    expect(w.some((c) => c.field === 'date')).toBe(false); // no date filter — whole series
+    expect(hoisted.mockOrderBy).toHaveBeenCalledWith('date', 'asc');
+    expect(out.map((d) => d.id)).toEqual(['i1', 'i2']);
+    expect(out[0]).toMatchObject({ id: 'i1', date: '2026-07-14', seriesId: 's-1' });
   });
 });
 

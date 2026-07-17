@@ -355,6 +355,27 @@ export async function getAgentWeek(tenantId, agentId, weekStart, weekEnd) {
 }
 
 /**
+ * Series read (Run 9 F3c) — every concrete instance of one series in date order,
+ * across weeks. Owner-scoped: `(agentId, seriesId)` equality + `orderBy('date')`
+ * is served by the additive `(agentId ASC, seriesId ASC, date ASC)` composite.
+ * agentId==uid keeps it inside the owner `allow list` rules arm. Powers F3d's
+ * "edit this and future / edit all" propagation (the loaded week only ever holds
+ * 7 days of a series — the propagation window spans the whole series).
+ *
+ * @returns {Promise<Array<{id:string}>>} instances, ascending by date.
+ */
+export async function getSeriesInstances(tenantId, agentId, seriesId) {
+  const q = query(
+    apptCollection(tenantId),
+    where('agentId', '==', agentId),
+    where('seriesId', '==', seriesId),
+    orderBy('date', 'asc'),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
  * Team week read — role-split per the locked contract. Returns ALL team docs in
  * the [weekStart, weekEnd] range; callers group by agent + day. READ-ONLY (no
  * upline write arm exists).
