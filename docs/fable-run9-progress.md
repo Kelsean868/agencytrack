@@ -5,7 +5,7 @@
 | Run | 9 (unattended, staging) |
 | Kickoff brief | `docs/briefs/fable-run9-kickoff.md` |
 | Start HEAD | `d5158968` |
-| Current phase | **A4 templates** |
+| Current phase | **A5 bulk operations** |
 
 ## Item table
 
@@ -16,7 +16,7 @@
 | A1 undo/redo | DONE | `4aab6bef` | 4/4 PASS (`smoke-run9-a1-undo.mjs`) | emulator 33/33; rules deployed (-Only rules); toast + hard-delete + prior-value restore verified live |
 | A2 keyboard shortcuts | DONE | `28d4a432` | 9/9 PASS (`smoke-run9-a2-shortcuts.mjs`) | map: n/?/arrows/e + reference sheet; A1 handler extended, no ⌘K collision |
 | A3 conflict detection | DONE | `0b2d70bd` | 8/8 PASS (`smoke-run9-a3-conflicts.mjs`) | client-only; R7 warn-never-block verified live (save enabled with warning showing) |
-| A4 templates | pending | — | — | new collection + rules arm |
+| A4 templates | DONE | `c8c3f553`+`7d88092f` | 9/9 PASS (`smoke-run9-a4-templates.mjs`) | emulator 24/24 (incl. orchestrator hijack-fence fix on update arm) + appointments 33/33 regression; rules deployed; owner-only isolation verified live as agent2 |
 | A5 bulk operations | pending | — | — | |
 | F3a seriesId at creation | pending | — | — | ALREADY SHIPPED — verify+smoke only (see brief §Rule-17) |
 | F3b reschedule update-in-place | pending | — | — | current = rebook+tombstone, not delete+create (see brief) |
