@@ -31,6 +31,7 @@ export default function StrategicPlanDashboard() {
   const isCrossBranch = CROSS_BRANCH_ROLES.has(role);
 
   const [branches, setBranches] = useState([]);
+  const [branchesLoaded, setBranchesLoaded] = useState(!isCrossBranch);
   const [selectedBranchId, setSelectedBranchId] = useState(isCrossBranch ? null : branchId);
   const [period, setPeriod] = useState(defaultPeriod());
   const [presenting, setPresenting] = useState(false);
@@ -46,16 +47,18 @@ export default function StrategicPlanDashboard() {
         setBranches(activeBranches);
         setSelectedBranchId((cur) => cur ?? activeBranches[0]?.id ?? null);
       })
-      .catch(() => { if (active) setBranches([]); });
+      .catch(() => { if (active) setBranches([]); })
+      .finally(() => { if (active) setBranchesLoaded(true); });
     return () => { active = false; };
   }, [isCrossBranch, tenantId]);
 
   const plan = useStrategicPlan(selectedBranchId, period);
 
-  const years = useMemo(() => {
-    const y = new Date().getFullYear();
-    return [y + 1, y, y - 1, y - 2];
-  }, []);
+  // Phase 1: current plan year only. Historical/future years need a year-scoped
+  // submissions fetch (getAllYTDSubmissions is hardcoded to the current year) — a
+  // Phase 2 concern; offering past years here would mix current-year submissions
+  // with past-year quotas/policies.
+  const years = useMemo(() => [new Date().getFullYear()], []);
 
   async function handleExport() {
     if (exporting || plan.loading) return;
@@ -152,14 +155,18 @@ export default function StrategicPlanDashboard() {
           <a
             key={s.id}
             href={`#${s.id}`}
-            className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-ink-muted hover:text-ink"
+            className="inline-flex min-h-[44px] items-center rounded-full border border-border bg-card px-3 text-xs font-medium text-ink-muted hover:text-ink"
           >
             {s.label}
           </a>
         ))}
       </nav>
 
-      {plan.error ? (
+      {isCrossBranch && branchesLoaded && !selectedBranchId ? (
+        <div className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-ink-muted" data-testid="sp-no-branch">
+          No active branches to plan. Create a branch first.
+        </div>
+      ) : plan.error ? (
         <div className="rounded-2xl border border-border bg-card p-10 text-center" role="alert">
           <p className="text-sm font-medium text-danger-ink">Couldn’t load the strategic plan.</p>
           <button type="button" onClick={plan.reload} className="mt-2 min-h-[44px] text-sm text-primary underline">Retry</button>

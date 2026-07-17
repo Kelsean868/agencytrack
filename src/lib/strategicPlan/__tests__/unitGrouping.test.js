@@ -16,8 +16,15 @@ describe('unitGrouping — title + experience', () => {
     expect(roleLabel('nonsense')).toBe('Agent');
   });
 
-  it('experienceYears computes whole years; null when absent/malformed', () => {
+  it('displayTitle treats a blank levelTitle as absent (falls to careerLevel)', () => {
+    expect(displayTitle({ role: 'unit_manager', levelTitle: '', careerLevel: 'Trainee Manager' })).toBe('Trainee Manager');
+    expect(displayTitle({ role: 'unit_manager', levelTitle: '   ', careerLevel: '' })).toBe('Unit Manager');
+  });
+
+  it('experienceYears computes whole years by calendar anniversary; null when absent/malformed', () => {
     expect(experienceYears('2021-01-01', new Date('2026-06-01T00:00:00Z'))).toBe(5);
+    // anniversary not yet reached this year → one fewer completed year
+    expect(experienceYears('2021-08-01', new Date('2026-06-01T00:00:00Z'))).toBe(4);
     expect(experienceYears(null)).toBeNull();
     expect(experienceYears('garbage')).toBeNull();
     expect(experienceYears('2030-01-01', new Date('2026-01-01T00:00:00Z'))).toBe(0);

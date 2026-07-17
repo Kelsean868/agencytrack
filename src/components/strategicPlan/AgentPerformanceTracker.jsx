@@ -43,17 +43,27 @@ export default function AgentPerformanceTracker({ agents, loading, error, onRetr
                   className="border-b border-border/50 hover:bg-surface-muted/60"
                 >
                   <td className="py-2 pr-3">
-                    <button
-                      type="button"
-                      onClick={() => onDrillAgent?.(r.id)}
-                      className="min-h-[44px] text-left"
-                    >
-                      <span className="font-medium text-ink">{r.name}</span>
-                      <span className="ml-2 text-xs text-ink-muted">{r.title}</span>
-                      {r.isUnitHead && (
-                        <StatusPill variant="primary" label="Unit head" className="ml-2" />
-                      )}
-                    </button>
+                    {(() => {
+                      const label = (
+                        <>
+                          <span className="font-medium text-ink">{r.name}</span>
+                          <span className="ml-2 text-xs text-ink-muted">{r.title}</span>
+                          {r.isUnitHead && (
+                            <StatusPill variant="primary" label="Unit head" className="ml-2" />
+                          )}
+                        </>
+                      );
+                      // Only render an interactive control when a drill handler exists
+                      // (Phase 1 does not wire one) — a handler-less button is a dead
+                      // a11y control. Falls back to a non-interactive span.
+                      return onDrillAgent ? (
+                        <button type="button" onClick={() => onDrillAgent(r.id)} className="inline-flex min-h-[44px] items-center text-left">
+                          {label}
+                        </button>
+                      ) : (
+                        <span className="inline-flex min-h-[44px] items-center">{label}</span>
+                      );
+                    })()}
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums text-ink-muted">{fmtYears(r.experienceYears)}</td>
                   <td className="px-2 py-2 text-right tabular-nums text-ink">{fmtNum(r.calls)}</td>

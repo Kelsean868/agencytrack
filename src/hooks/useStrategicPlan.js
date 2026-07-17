@@ -36,7 +36,9 @@ export function useStrategicPlan(branchId, period) {
   const [sectionErr, setSectionErr] = useState({});
 
   const load = useCallback(async () => {
-    if (!tenantId || !branchId || !user?.uid) return;
+    // No branch to plan (cross-branch role with no active branches, or before a
+    // branch is picked): resolve to a not-loading empty state, not a stuck spinner.
+    if (!tenantId || !branchId || !user?.uid) { setRaw(null); setError(false); setLoading(false); return; }
     setLoading(true);
     setError(false);
     setSectionErr({});

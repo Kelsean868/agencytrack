@@ -169,7 +169,7 @@ export default function StrategicPlanMode({ plan, onClose }) {
           <span className="font-mono text-xs text-presentation-muted">
             {String(clamped + 1).padStart(2, '0')} <span className="text-presentation-muted/60">/ {String(total).padStart(2, '0')}</span>
           </span>
-          <button type="button" onClick={onClose} aria-label="Close presentation" className="text-presentation-muted hover:text-presentation-text">
+          <button type="button" onClick={onClose} aria-label="Close presentation" className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-presentation-muted hover:text-presentation-text">
             <X size={22} />
           </button>
         </div>
@@ -183,7 +183,7 @@ export default function StrategicPlanMode({ plan, onClose }) {
               key={s.id}
               type="button"
               onClick={() => jump(i)}
-              className={`mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${
+              className={`mb-1 flex min-h-[44px] w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${
                 i === clamped ? 'bg-presentation-text/10 font-bold text-presentation-text' : 'text-presentation-muted hover:text-presentation-text'
               }`}
             >

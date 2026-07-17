@@ -24,22 +24,27 @@ export function roleLabel(role) {
 }
 
 // Title via fallback (existing display pattern, MasterSheet.jsx:158 /
-// AgentDashboard.jsx:571): levelTitle ?? careerLevel ?? roleLabel(role).
-// Renders "Trainee Manager" wherever careerLevel carries it; falls to the role
-// label when blank. No new user-doc field.
+// AgentDashboard.jsx:571): levelTitle → careerLevel → roleLabel(role). Renders
+// "Trainee Manager" wherever careerLevel carries it; falls to the role label when
+// blank. Blank/whitespace-only strings are treated as absent (a stored ''
+// levelTitle must not shadow a real careerLevel). No new user-doc field.
+const nonBlank = (s) => (typeof s === 'string' && s.trim() ? s : null);
 export function displayTitle(user) {
-  return user?.levelTitle ?? user?.careerLevel ?? roleLabel(user?.role);
+  return nonBlank(user?.levelTitle) ?? nonBlank(user?.careerLevel) ?? roleLabel(user?.role);
 }
 
-// Whole years between contractStartDate ("YYYY-MM-DD") and `now`. null when the
-// date is absent/malformed; 0 for a future date.
+// Whole completed years between contractStartDate ("YYYY-MM-DD") and `now`, by
+// calendar anniversary (not average-year-length division — that undercounts).
+// null when the date is absent/malformed; 0 for a future date.
 export function experienceYears(contractStartDate, now = new Date()) {
   if (!contractStartDate || typeof contractStartDate !== 'string') return null;
   const start = new Date(`${contractStartDate.slice(0, 10)}T00:00:00Z`);
   if (Number.isNaN(start.getTime())) return null;
-  const ms = now.getTime() - start.getTime();
-  if (ms < 0) return 0;
-  return Math.floor(ms / (365.25 * 24 * 3600 * 1000));
+  if (now.getTime() < start.getTime()) return 0;
+  let years = now.getUTCFullYear() - start.getUTCFullYear();
+  const monthDelta = now.getUTCMonth() - start.getUTCMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && now.getUTCDate() < start.getUTCDate())) years -= 1;
+  return Math.max(0, years);
 }
 
 const PRODUCING_ROLES = new Set(['agent', 'unit_manager']);
