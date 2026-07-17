@@ -5,7 +5,7 @@
 | Run | 9 (unattended, staging) |
 | Kickoff brief | `docs/briefs/fable-run9-kickoff.md` |
 | Start HEAD | `d5158968` |
-| Current phase | **A2 keyboard shortcuts** |
+| Current phase | **A3 conflict detection** |
 
 ## Item table
 
@@ -14,7 +14,7 @@
 | 0.1 run docs | DONE | `19ffeef6` | n/a | |
 | 0.2 baseline | DONE | n/a | **44 PASS / 0 FAIL / 0 SKIP** | seed 93 docs; kiosk now PASS |
 | A1 undo/redo | DONE | `4aab6bef` | 4/4 PASS (`smoke-run9-a1-undo.mjs`) | emulator 33/33; rules deployed (-Only rules); toast + hard-delete + prior-value restore verified live |
-| A2 keyboard shortcuts | pending | — | — | |
+| A2 keyboard shortcuts | DONE | `28d4a432` | 9/9 PASS (`smoke-run9-a2-shortcuts.mjs`) | map: n/?/arrows/e + reference sheet; A1 handler extended, no ⌘K collision |
 | A3 conflict detection | pending | — | — | |
 | A4 templates | pending | — | — | new collection + rules arm |
 | A5 bulk operations | pending | — | — | |
