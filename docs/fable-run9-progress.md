@@ -5,7 +5,7 @@
 | Run | 9 (unattended, staging) |
 | Kickoff brief | `docs/briefs/fable-run9-kickoff.md` |
 | Start HEAD | `d5158968` |
-| Current phase | **F3 series edit propagation (fenced)** |
+| Current phase | **E1 run-end regression gate** |
 
 ## Item table
 
@@ -20,9 +20,9 @@
 | A5 bulk operations | DONE | `74553eb1` | 7/7 PASS (`smoke-run9-a5-bulk.mjs`) | admin-read value-level: soft-delete R5 + undo-restore + move-in-place verified in Firestore; R6 chunking unit-proven (400/450 split, partial-failure throw) |
 | F3a seriesId at creation | DONE (verify) | `0041a66e` | covered by F3e | stamping + rules cites confirmed; NO backfill anywhere (R3); existing test covers shared seriesId |
 | F3b reschedule update-in-place | DONE | `0041a66e` | 3/3 planner VH legs PASS post-deploy | reschedule split from postpone; same-doc update, series metadata survives via allowlist; postpone byte-for-byte unchanged |
-| F3c composite index | pending | — | — | verify query shape first |
-| F3d propagation UI + batch | pending | — | — | |
-| F3e series smoke | pending | — | — | |
+| F3c composite index | DONE | `045434ef` | leg0 PASS (index serves) | (agentId ASC, seriesId ASC, date ASC) additive; deployed -Only indexes |
+| F3d propagation UI + batch | DONE | `045434ef` | see F3e | 3-way chooser live; scheduled/confirmed-only targets; date never propagates; bulk-undo integrated |
+| F3e series smoke | DONE | (this commit) | **14/14 PASS** (`smoke-run9-f3e-series.mjs`) | R1+R2+R4 proven value-level vs cross-week admin-seeded series; undo of reschedule verified |
 | E1 regression gate | pending | — | — | reserve, mandatory |
 | E2 final doc | pending | — | — | |
 
