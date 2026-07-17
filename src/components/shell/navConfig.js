@@ -131,6 +131,9 @@ const PRODUCING_MANAGER_NAV = [
   { id: 'policy-reconciliation', label: 'Reconciliation', tabId: 'policy-reconciliation', Icon: ClipboardCheck },
   { id: 'agent-of-month',        label: 'Agent of Month', tabId: 'agent-of-month',        Icon: Trophy,       roles: ['branch_manager'] },
   { id: 'kiosk',                 label: 'Kiosk Mode',     tabId: 'kiosk',                 Icon: Tv,           roles: ['branch_manager'] },
+  // Track K — Strategic Plan. BM-only ("Agency Manager" owns it; UM excluded).
+  // SM/TA/PA reach it via the non-producing NAV_ITEMS path in ManagerDashboard.
+  { id: 'strategic-plan',        label: 'Strategic Plan', tabId: 'strategic-plan',        Icon: Presentation, roles: ['branch_manager'], testId: 'tab-strategic-plan' },
   // Recognition
   { id: 'leaderboard',           label: 'Leaderboard',    tabId: 'leaderboard',           Icon: Star,         sectionLabel: 'Recognition', scope: 'BOTH' },
 ];
@@ -352,7 +355,7 @@ const WORKSPACE_TEAM_SECTIONS = [
   { label: 'My Team', ids: [
     'overview', 'team', 'mastersheet', 'team-wars', 'monthly-recruiting', 'goals',
     'team-game-plans', 'persistency', 'compliance', 'campaigns', 'production-report', 'awards',
-    'team-perf', 'settlements', 'financing', 'unit-financing', 'policy-reconciliation', 'agent-of-month', 'kiosk',
+    'team-perf', 'settlements', 'financing', 'unit-financing', 'policy-reconciliation', 'agent-of-month', 'kiosk', 'strategic-plan',
   ] },
 ];
 const WORKSPACE_RECOGNITION_IDS = ['leaderboard'];
