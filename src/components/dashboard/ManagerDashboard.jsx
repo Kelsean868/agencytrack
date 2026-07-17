@@ -42,6 +42,7 @@ import useNavOrder from '../../hooks/useNavOrder';
 import useMenuLayout from '../../hooks/useMenuLayout';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
 import KioskModeTab from '../kiosk/KioskModeTab';
+import StrategicPlanDashboard from '../strategicPlan/StrategicPlanDashboard';
 import AgentOfMonthTab from '../manager/AgentOfMonthTab';
 import ManagerWarTab from '../manager/ManagerWarTab';
 import TeamWarsTab from '../manager/TeamWarsTab';
@@ -125,6 +126,9 @@ const NAV_ITEMS = [
   { id: 'mp-policies',    label: 'Policies',      tabId: 'mp-policies',    Icon: BookOpen,    roles: ['unit_manager', 'branch_manager'] },
   // E6: agent of the month — branch_manager+ only (unit_manager excluded)
   { id: 'agent-of-month', label: 'Agent of Month', tabId: 'agent-of-month', Icon: Trophy, roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'] },
+  // Track K — Strategic Plan dashboard. "Agency Manager" (= Branch Manager) owns
+  // it; SM/TA/PA pick any in-scope branch. UM excluded (branch-level surface).
+  { id: 'strategic-plan', label: 'Strategic Plan', tabId: 'strategic-plan', Icon: Presentation, roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'], testId: 'tab-strategic-plan' },
   // E5: kiosk tab — branch_manager+ only (unit_manager excluded)
   { id: 'kiosk',       label: 'Kiosk',        tabId: 'kiosk',       Icon: Tv,            roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'] },
   { id: 'profile',     label: 'Profile',      tabId: 'profile',     Icon: UserCircle },
@@ -650,6 +654,8 @@ export default function ManagerDashboard() {
         {activeTab === 'agent-of-month' && <AgentOfMonthTab />}
 
         {activeTab === 'kiosk' && <KioskModeTab />}
+
+        {activeTab === 'strategic-plan' && <StrategicPlanDashboard />}
 
         {/* ── TEAM PLANNER (item 3.2 — read-only team week; coaching drill) ── */}
         {activeTab === 'planner' && (

@@ -206,6 +206,41 @@ export async function getPersistencyMapForYear(tenantId, year, opts = {}) {
   return map;
 }
 
+// Track K — returns `{ agentId: [E3-records...] }` for an EXPLICIT set of agent
+// ids in a given year. Unlike getPersistencyMapForYear (which derives its ids
+// from role === 'agent' users), this accepts the caller's roster verbatim so a
+// producing Unit/Trainee Manager's own persistency is included (dispatcher
+// RULING 3). Same `agentId in [...] + year ==` equality-class query as
+// getPersistencyMapForYear — no composite index; each ≤30-id batch is wrapped so
+// a rules-denied read is skipped silently. Client-only read (no rules change).
+export async function getPersistencyForAgentIds(tenantId, year, agentIds) {
+  const ids = (agentIds || []).filter(Boolean);
+  if (ids.length === 0) return {};
+  const map = {};
+  const batches = [];
+  for (let i = 0; i < ids.length; i += 30) {
+    batches.push(ids.slice(i, i + 30));
+  }
+  await Promise.all(batches.map(async (batch) => {
+    try {
+      const q = query(
+        collection(db, `tenants/${tenantId}/persistency`),
+        where('agentId', 'in', batch),
+        where('year', '==', year),
+      );
+      const snap = await getDocs(q);
+      snap.docs.forEach((d) => {
+        const rec = d.data();
+        if (!isE3Doc(rec)) return;
+        (map[rec.agentId] = map[rec.agentId] ?? []).push(rec);
+      });
+    } catch {
+      // Read denied by rules — skip this batch silently.
+    }
+  }));
+  return map;
+}
+
 // Returns oldest-first array of E3 records for a single agent, capped at
 // lastNMonths. Used by the agent trend chart.
 export async function getAgentHistory(tenantId, agentUid, lastNMonths = 12) {

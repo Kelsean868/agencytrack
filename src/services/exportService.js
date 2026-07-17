@@ -58,6 +58,34 @@ export async function generateAgentPDF({
   URL.revokeObjectURL(url);
 }
 
+// ── generateBranchPlanPDF (Track K) ─────────────────────────────────────────
+// Renders the Strategic Plan snapshot. `plan` is the useStrategicPlan model
+// verbatim ({ meta, agents, production, periodMetrics, orgStructure, recruitment })
+// — the SAME single math path as the dashboard + presentation mode; the document
+// re-derives nothing. Engine + document are dynamically imported (EFF-011 pattern)
+// so the heavy PDF chunk stays out of the entry bundle.
+export async function generateBranchPlanPDF(plan) {
+  const [{ pdf }, { BranchPlanDocument }] = await Promise.all([
+    import('@react-pdf/renderer'),
+    import('../components/strategicPlan/BranchPlanDocument'),
+  ]);
+
+  const doc = createElement(BranchPlanDocument, { plan });
+  const blob = await pdf(doc).toBlob();
+  const url = URL.createObjectURL(blob);
+
+  const safeBranch = (plan?.meta?.branchName ?? 'Branch').replace(/\s+/g, '_');
+  const yr = plan?.meta?.period?.year ?? new Date().getFullYear();
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `AgencyTrack_StrategicPlan_${safeBranch}_${yr}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // ── generateBranchPDF / generateUnitPDF ───────────────────────────────────────
 // Manager (Branch / Unit) Performance Report PDFs. The refined replacement for
 // the raw CSV (exportBranchCSV, kept intact below for its own export path).
