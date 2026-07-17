@@ -461,3 +461,64 @@ describe('keyboard shortcuts (Run 9 A2)', () => {
     expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument();
   });
 });
+
+describe('conflict detection (Run 9 A3 — R7 warn-only)', () => {
+  it('badges both cards when two appointments overlap on the same date', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'a1', date: TODAY, startTime: '10:00', durationMin: 60, type: 'PC', status: 'scheduled' },
+      { id: 'a2', date: TODAY, startTime: '10:30', durationMin: 30, type: 'FFI', status: 'scheduled' },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+    expect(screen.getByTestId('appt-conflict-a1')).toBeInTheDocument();
+    expect(screen.getByTestId('appt-conflict-a2')).toBeInTheDocument();
+    expect(screen.getAllByText('Overlaps')).toHaveLength(2);
+  });
+
+  it('does not badge non-overlapping appointments', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'a1', date: TODAY, startTime: '09:00', durationMin: 30, type: 'PC', status: 'scheduled' },
+      { id: 'a2', date: TODAY, startTime: '11:00', durationMin: 30, type: 'FFI', status: 'scheduled' },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+    expect(screen.queryByTestId('appt-conflict-a1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('appt-conflict-a2')).not.toBeInTheDocument();
+  });
+
+  it('does not badge a RETIRED (cancelled) appointment even if its old slot overlaps another', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'a1', date: TODAY, startTime: '10:00', durationMin: 60, type: 'PC', status: 'scheduled' },
+      { id: 'a2', date: TODAY, startTime: '10:15', durationMin: 30, type: 'FFI', status: 'cancelled' },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
+    // a1 no longer overlaps anything active (a2 is retired) — neither carries the badge.
+    expect(screen.queryByTestId('appt-conflict-a1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('appt-conflict-a2')).not.toBeInTheDocument();
+  });
+
+  it('never obscures the status pill — both the conflict badge and status pill render', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'a1', date: TODAY, startTime: '10:00', durationMin: 60, type: 'PC', status: 'scheduled' },
+      { id: 'a2', date: TODAY, startTime: '10:30', durationMin: 30, type: 'FFI', status: 'scheduled' },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-conflict-a1')).toBeInTheDocument());
+    const card = screen.getByTestId('appt-card-a1');
+    expect(card).toHaveTextContent('Overlaps');
+    expect(card).toHaveTextContent('Scheduled');
+  });
+
+  it('badges both cards in the Week view too', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'a1', date: TODAY, startTime: '10:00', durationMin: 60, type: 'PC', status: 'scheduled' },
+      { id: 'a2', date: TODAY, startTime: '10:30', durationMin: 30, type: 'FFI', status: 'scheduled' },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-view-week')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('planner-view-week'));
+    await waitFor(() => expect(screen.getByTestId('appt-conflict-a1')).toBeInTheDocument());
+    expect(screen.getByTestId('appt-conflict-a2')).toBeInTheDocument();
+  });
+});

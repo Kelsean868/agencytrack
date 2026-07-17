@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Loader2, Search, Repeat, Minus, Plus } from 'lucide-react';
+import { X, Loader2, Search, Repeat, Minus, Plus, AlertTriangle } from 'lucide-react';
 import useFocusTrap from '../../hooks/useFocusTrap';
 import {
   APPOINTMENT_TYPES, FREE_BLOCK_LABELS,
@@ -8,7 +8,7 @@ import {
   DOW_PICKER_ORDER, MAX_SERIES_INSTANCES, buildSeriesPreview,
   dayOfWeekKey, slotDayLabel,
 } from './recurrence.helpers';
-import { formatTime12 } from './planner.helpers';
+import { formatTime12, findConflictingAppointment } from './planner.helpers';
 
 const REPEAT_CHIPS = [
   { key: 'none',   label: 'None',        repeats: false },
@@ -33,6 +33,11 @@ const DAY_GLYPH = { MON: 'M', TUE: 'T', WED: 'W', THU: 'T', FRI: 'F', SAT: 'S', 
  * one" is the only live scope; "Whole series — use Edit" is a disabled chip — with
  * an amber consequence panel. Series-wide changes go through Edit, never Postpone.
  *
+ * Conflict warning (`appointments`, Run 9 A3): when the chosen date/startTime/
+ * durationMin overlaps another non-retired appointment in the loaded week, an
+ * amber `aria-live="polite"` line names the clash. R7: warn-only — the Save
+ * button is never disabled by a conflict.
+ *
  * Owns local form state; the parent owns the Firestore write (via onSave) and
  * passes `saving` / `error`. On a bad write the parent keeps the sheet open and
  * sets `error` — an inline role=alert card renders below the actions.
@@ -41,6 +46,7 @@ export default function AppointmentSheet({
   mode = 'create',
   initial = null,
   prospects = [],
+  appointments = [],
   saving = false,
   error = '',
   showRepeat = false,
@@ -95,6 +101,19 @@ export default function AppointmentSheet({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repeating, date, startTime, repeatRule, customDays, endType, endCount, endOnDate]);
+
+  // Run 9 A3: conflict detection against the loaded week (`appointments`,
+  // passed by the parent) — R7 warn-only, never blocks. Edit mode excludes
+  // the appointment being edited from the comparison (self-overlap is not a
+  // conflict). Recomputes live as the agent adjusts date/time/duration.
+  const conflict = useMemo(
+    () => findConflictingAppointment(
+      { date, startTime, durationMin },
+      appointments,
+      mode === 'edit' ? initial?.id : null,
+    ),
+    [date, startTime, durationMin, appointments, mode, initial],
+  );
 
   const buildData = () => ({
     type, date, startTime, durationMin, note,
@@ -332,6 +351,21 @@ export default function AppointmentSheet({
               ))}
             </select>
           </div>
+
+          {/* Conflict warning (Run 9 A3, R7 warn-only — save stays enabled) */}
+          {conflict && (
+            <div
+              role="status"
+              aria-live="polite"
+              data-testid="appt-conflict-warning"
+              className="flex items-center gap-1.5 rounded-lg bg-warning/10 border border-warning/30 px-3 py-2"
+            >
+              <AlertTriangle size={14} className="text-warning-ink shrink-0" aria-hidden="true" />
+              <span className="text-xs font-medium text-warning-ink">
+                Overlaps your {formatTime12(conflict.startTime)} appointment
+              </span>
+            </div>
+          )}
 
           {/* REPEATS — recurrence rule (create only) */}
           {showRepeat && (

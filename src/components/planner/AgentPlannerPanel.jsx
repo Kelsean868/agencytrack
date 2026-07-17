@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { CalendarClock, Plus, RotateCw, ArrowRight, CheckCircle2, ClipboardCheck, HelpCircle } from 'lucide-react';
+import { CalendarClock, Plus, RotateCw, ArrowRight, CheckCircle2, ClipboardCheck, HelpCircle, AlertTriangle } from 'lucide-react';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import useFocusTrap from '../../hooks/useFocusTrap';
 import { getTodayTT } from '../../utils/dateInputs';
@@ -13,7 +13,7 @@ import {
 import {
   weekRange, buildWeekDates, groupByDate, sortByStartTime,
   deriveFollowups, deriveSeedFromKept, formatTime12, dayLabel,
-  RETIRED_STATUSES,
+  RETIRED_STATUSES, detectConflicts,
 } from './planner.helpers';
 import {
   seriesRowLabel, cadenceLabel, nextOccurrenceDate, slotDayLabel, formatShortDate,
@@ -68,7 +68,7 @@ const WEEK_COUNTER_ROWS = [
 /** One appointment row — time · type · prospect/free label · status. Recurring
  * items carry a ↻ badge + a mono series line under a dashed hairline (state 2);
  * a postponed series instance shows the "moved / series stays" note (state 5). */
-function AppointmentCard({ appt, prospectName, onChurn, resolveAppt }) {
+function AppointmentCard({ appt, prospectName, onChurn, resolveAppt, conflicted }) {
   const retired = RETIRED_STATUSES.has(appt.status);
   const isSeries = Boolean(appt.seriesId);
   const label = appt.type === 'FREE'
@@ -110,6 +110,15 @@ function AppointmentCard({ appt, prospectName, onChurn, resolveAppt }) {
         <div className="flex items-center gap-2 flex-wrap">
           <ActivityChip type={appt.type} />
           {isSeries && <SeriesBadge />}
+          {conflicted && (
+            <span
+              data-testid={`appt-conflict-${appt.id}`}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/15 text-warning-ink text-[10px] font-bold uppercase tracking-wide"
+            >
+              <AlertTriangle size={10} aria-hidden="true" />
+              Overlaps
+            </span>
+          )}
           <span className={`text-sm font-medium truncate ${retired ? 'text-ink-muted line-through' : 'text-ink'}`}>
             {label}
           </span>
@@ -273,6 +282,9 @@ export default function AgentPlannerPanel({
     return m;
   }, [appts]);
   const resolveAppt = useCallback((id) => apptById.get(id) || null, [apptById]);
+  // Run 9 A3: conflict detection scoped to the LOADED WEEK (`appts`) — R7
+  // warn-only, never blocks. Recomputed whenever the loaded week changes.
+  const conflicts = useMemo(() => detectConflicts(appts), [appts]);
   const todayAppts = useMemo(() => sortByStartTime(byDate.get(today) || []), [byDate, today]);
   const followups = useMemo(
     () => deriveFollowups(prospects, appts, today), [prospects, appts, today],
@@ -662,7 +674,7 @@ export default function AgentPlannerPanel({
                 </div>
               ) : (
                 todayAppts.map((a) => (
-                  <AppointmentCard key={a.id} appt={a} prospectName={prospectName(a.prospectId)} onChurn={setChurn} resolveAppt={resolveAppt} />
+                  <AppointmentCard key={a.id} appt={a} prospectName={prospectName(a.prospectId)} onChurn={setChurn} resolveAppt={resolveAppt} conflicted={conflicts.has(a.id)} />
                 ))
               )}
 
@@ -735,7 +747,7 @@ export default function AgentPlannerPanel({
                       ) : (
                         <div className="flex flex-col gap-2">
                           {dayAppts.map((a) => (
-                            <AppointmentCard key={a.id} appt={a} prospectName={prospectName(a.prospectId)} onChurn={setChurn} resolveAppt={resolveAppt} />
+                            <AppointmentCard key={a.id} appt={a} prospectName={prospectName(a.prospectId)} onChurn={setChurn} resolveAppt={resolveAppt} conflicted={conflicts.has(a.id)} />
                           ))}
                         </div>
                       )}
@@ -789,6 +801,7 @@ export default function AgentPlannerPanel({
           mode={sheet.mode}
           initial={sheet.initial}
           prospects={prospects}
+          appointments={appts}
           saving={sheetSaving}
           error={sheetError}
           showRepeat={Boolean(sheet.showRepeat)}

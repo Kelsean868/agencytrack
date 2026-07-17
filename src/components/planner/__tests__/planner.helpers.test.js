@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildWeekDates, weekRange, sortByStartTime, groupByDate, groupByAgent,
   formatTime12, dayLabel, deriveFollowups, deriveSeedFromKept,
-  PLAN_TO_DAILY_FIELD,
+  PLAN_TO_DAILY_FIELD, detectConflicts, findConflictingAppointment,
 } from '../planner.helpers';
 
 describe('week/day math', () => {
@@ -102,5 +102,121 @@ describe('deriveSeedFromKept (plan→handoff math)', () => {
       PC: 'dials', SC: 'telContacts', AI: 'qualifiedApproaches',
       FFI: 'ffiConducted', CI: 'ciConducted',
     });
+  });
+});
+
+describe('detectConflicts (Run 9 A3 — R7 warn-only, never blocks)', () => {
+  it('flags two overlapping appointments on the same date', () => {
+    const appts = [
+      { id: 'a1', date: '2026-06-22', startTime: '10:00', durationMin: 60, status: 'scheduled' },
+      { id: 'a2', date: '2026-06-22', startTime: '10:30', durationMin: 30, status: 'scheduled' },
+    ];
+    expect(detectConflicts(appts)).toEqual(new Set(['a1', 'a2']));
+  });
+
+  it('does NOT flag touching-not-overlapping appointments (10:00-11:00 + 11:00-12:00)', () => {
+    const appts = [
+      { id: 'a1', date: '2026-06-22', startTime: '10:00', durationMin: 60, status: 'scheduled' },
+      { id: 'a2', date: '2026-06-22', startTime: '11:00', durationMin: 60, status: 'scheduled' },
+    ];
+    expect(detectConflicts(appts)).toEqual(new Set());
+  });
+
+  it('flags identical start times as a conflict', () => {
+    const appts = [
+      { id: 'a1', date: '2026-06-22', startTime: '09:00', durationMin: 30, status: 'scheduled' },
+      { id: 'a2', date: '2026-06-22', startTime: '09:00', durationMin: 30, status: 'scheduled' },
+    ];
+    expect(detectConflicts(appts)).toEqual(new Set(['a1', 'a2']));
+  });
+
+  it('excludes RETIRED (cancelled/postponed) appointments from conflict detection', () => {
+    const appts = [
+      { id: 'a1', date: '2026-06-22', startTime: '10:00', durationMin: 60, status: 'scheduled' },
+      { id: 'a2', date: '2026-06-22', startTime: '10:30', durationMin: 30, status: 'cancelled' },
+      { id: 'a3', date: '2026-06-22', startTime: '10:45', durationMin: 15, status: 'postponed' },
+    ];
+    // a1 no longer overlaps anything active — a2/a3 are retired and excluded entirely.
+    expect(detectConflicts(appts)).toEqual(new Set());
+  });
+
+  it('FREE blocks participate in conflict detection (booking over your own blocked time warns)', () => {
+    const appts = [
+      { id: 'a1', date: '2026-06-22', startTime: '10:00', durationMin: 60, type: 'FREE', status: 'scheduled' },
+      { id: 'a2', date: '2026-06-22', startTime: '10:15', durationMin: 30, type: 'PC', status: 'scheduled' },
+    ];
+    expect(detectConflicts(appts)).toEqual(new Set(['a1', 'a2']));
+  });
+
+  it('never flags appointments on different dates', () => {
+    const appts = [
+      { id: 'a1', date: '2026-06-22', startTime: '10:00', durationMin: 60, status: 'scheduled' },
+      { id: 'a2', date: '2026-06-23', startTime: '10:00', durationMin: 60, status: 'scheduled' },
+    ];
+    expect(detectConflicts(appts)).toEqual(new Set());
+  });
+
+  it('clamps cross-midnight duration at 24:00 — same-date only, no next-day spillover', () => {
+    const appts = [
+      // 23:30 + 90min would run to 25:00 unclamped; clamped to 24:00 (1440).
+      { id: 'a1', date: '2026-06-22', startTime: '23:30', durationMin: 90, status: 'scheduled' },
+      // Overlaps the clamped 23:30-24:00 window.
+      { id: 'a2', date: '2026-06-22', startTime: '23:45', durationMin: 60, status: 'scheduled' },
+      // A same-clock-time appointment the NEXT day must never be treated as
+      // a continuation of the clamped window.
+      { id: 'a3', date: '2026-06-23', startTime: '00:00', durationMin: 30, status: 'scheduled' },
+    ];
+    expect(detectConflicts(appts)).toEqual(new Set(['a1', 'a2']));
+  });
+
+  it('skips appointments with malformed/missing startTime or durationMin, never throws', () => {
+    const appts = [
+      { id: 'a1', date: '2026-06-22', startTime: '10:00', durationMin: 60, status: 'scheduled' },
+      { id: 'a2', date: '2026-06-22', startTime: null, durationMin: 30, status: 'scheduled' },
+      { id: 'a3', date: '2026-06-22', startTime: '10:15', durationMin: undefined, status: 'scheduled' },
+      { id: 'a4', date: '2026-06-22', startTime: 'not-a-time', durationMin: 30, status: 'scheduled' },
+      { id: 'a5', date: '2026-06-22', startTime: '10:15', durationMin: 0, status: 'scheduled' },
+    ];
+    expect(() => detectConflicts(appts)).not.toThrow();
+    expect(detectConflicts(appts)).toEqual(new Set());
+  });
+
+  it('returns an empty Set for an empty/undefined list', () => {
+    expect(detectConflicts([])).toEqual(new Set());
+    expect(detectConflicts()).toEqual(new Set());
+  });
+});
+
+describe('findConflictingAppointment (sheet live-candidate check, Run 9 A3)', () => {
+  const week = [
+    { id: 'a1', date: '2026-06-22', startTime: '10:00', durationMin: 60, status: 'scheduled' },
+    { id: 'a2', date: '2026-06-22', startTime: '14:00', durationMin: 30, status: 'cancelled' },
+  ];
+
+  it('finds the overlapping appointment for a candidate slot', () => {
+    const candidate = { date: '2026-06-22', startTime: '10:30', durationMin: 30 };
+    expect(findConflictingAppointment(candidate, week)?.id).toBe('a1');
+  });
+
+  it('returns null when the candidate does not overlap anything', () => {
+    const candidate = { date: '2026-06-22', startTime: '11:00', durationMin: 30 };
+    expect(findConflictingAppointment(candidate, week)).toBeNull();
+  });
+
+  it('ignores a RETIRED appointment even if the candidate overlaps its slot', () => {
+    const candidate = { date: '2026-06-22', startTime: '14:00', durationMin: 30 };
+    expect(findConflictingAppointment(candidate, week)).toBeNull();
+  });
+
+  it('excludes the appointment being edited via excludeId (edit-mode self-exclusion)', () => {
+    const candidate = { date: '2026-06-22', startTime: '10:00', durationMin: 60 };
+    // Without exclusion, a1 would "conflict with itself".
+    expect(findConflictingAppointment(candidate, week, 'a1')).toBeNull();
+  });
+
+  it('returns null for a candidate with malformed/missing date, startTime, or durationMin', () => {
+    expect(findConflictingAppointment({ startTime: '10:00', durationMin: 30 }, week)).toBeNull();
+    expect(findConflictingAppointment({ date: '2026-06-22', startTime: 'bad', durationMin: 30 }, week)).toBeNull();
+    expect(findConflictingAppointment({ date: '2026-06-22', startTime: '10:00', durationMin: null }, week)).toBeNull();
   });
 });
