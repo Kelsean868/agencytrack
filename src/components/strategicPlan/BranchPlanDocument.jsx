@@ -20,9 +20,13 @@ const C = {
   inkFaint: '#7a7264',
   border: '#e5e2db',
   success: '#2d7a4f',
+  warning: '#b45309',
   danger: '#c0392b',
   white: '#ffffff',
 };
+
+// Pace band color (mirrors planFormat.paceBand): ≥100 success · ≥85 warning · else danger.
+const paceColor = (p) => (p == null ? C.textMuted : p >= 100 ? C.success : p >= 85 ? C.warning : C.danger);
 
 const fmtTTD = (v) => (v == null ? '—' : formatCurrency(v));
 const fmtNum = (v) => (v == null ? '—' : Math.round(v).toLocaleString('en-TT'));
@@ -98,6 +102,7 @@ export function BranchPlanDocument({ plan }) {
           <Text style={[s.th, s.right, { flex: 1 }]}>Persist.</Text>
           <Text style={[s.th, s.right, { flex: 2 }]}>API Net</Text>
           <Text style={[s.th, s.right, { flex: 1 }]}>% Obj</Text>
+          <Text style={[s.th, s.right, { flex: 1 }]}>Pace</Text>
         </View>
         {agents.map((r) => (
           <View style={s.tr} key={r.id} wrap={false}>
@@ -105,7 +110,10 @@ export function BranchPlanDocument({ plan }) {
             <Text style={[s.tdMuted, s.right, { flex: 1 }]}>{fmtYears(r.experienceYears)}</Text>
             <Text style={[s.td, s.right, { flex: 1 }]}>{fmtPct(r.persistencyPct)}</Text>
             <Text style={[s.td, s.right, { flex: 2 }]}>{fmtTTD(r.apiNetSettled)}</Text>
-            <Text style={[s.td, s.right, { flex: 1, color: r.apiPctObj != null && r.apiPctObj < 50 ? C.danger : C.success }]}>{fmtPct(r.apiPctObj)}</Text>
+            {/* % Obj = net ÷ ANNUAL quota (head-office figure) — neutral ink, unbanded */}
+            <Text style={[s.td, s.right, { flex: 1 }]}>{fmtPct(r.apiPctObj)}</Text>
+            {/* Pace = net ÷ prorated objective — banded */}
+            <Text style={[s.td, s.right, { flex: 1, color: paceColor(r.apiPacePct) }]}>{fmtPct(r.apiPacePct)}</Text>
           </View>
         ))}
         {agents.length === 0 && <Text style={[s.tdMuted, { marginTop: 8 }]}>No advisors in this branch.</Text>}
