@@ -18,7 +18,10 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| External code reviewer — Gemini sunsets 2026-07-17; choose a replacement (MEDIUM, dated, banked 2... | MEDIUM | — | 2026-07-17 | 4033 |
+| External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track) | HIGH | — | overdue (was 2026-07-17) | ~4130 |
+| Track K Phase 2 — narrative `branchPlans` (new collection, HUMAN-MERGE) + PPTX + manpower setter + per-branch `branchGoals` keying (banked 2026-07-21, #864 close) | HIGH | Track K | — | ~288 |
+| Track K Phase 3 — classification quotas + real monthly quota model (banked 2026-07-21, #864 close) | MEDIUM | Track K | — | ~288 |
+| Track K — seeded Net-vs-Gross integration assertion (unit-only today; needs seeded foil branch) (banked 2026-07-21, #864 close) | MEDIUM | Track K | — | ~288 |
 | BIG ONE — the real planner-completion track (E1–E5) is UNBUILT (banked 2026-07-17, promotion sess... | HIGH | — | — | 477 |
 | Register the six Run-9 standing smokes in SMOKES.md (banked 2026-07-17, promotion session, MEDIUM... | MEDIUM | — | — | 439 |
 | Appointment template count cap is client-side only — hardening candidate (banked 2026-07-17, prom... | LOW | — | — | 461 |
@@ -284,6 +287,19 @@
 
 
 ---
+
+## Track K Strategic Plan — banked follow-ups from Phase 1 close (banked 2026-07-21, PR #864 squash `ebb168f1`, dispatcher-ruled sweep)
+
+Track K Phase 1 (Branch Manager Strategic Plan dashboard — client-only, single math path in `src/lib/strategicPlan/`, presentation mode, PDF export) shipped via [#864](https://github.com/Kelsean868/agencytrack/pull/864). Design authority: `docs/design-system/screens-v2/stratplan-handoff/`; execution record: the PR thread (§4 dispatcher ruling 2026-07-17 + %Obj/Pace label-split ruling are committed into `docs/briefs/track-K-strategic-plan-phase1-brief.md` §4 Amendment). Banked per the merge ruling:
+
+- **Phase 2 (HIGH — next Track K slice, needs a kickoff brief per Rule 10):**
+  - **Narrative `branchPlans` collection** — periodic branch plan docs (narrative sections, quotas snapshot, status). Recommended shape + rules approach in the 2026-07-21 recon report (`tenants/{tid}/branchPlans/{branchId}_{year}`; BM-write-own-branch via the SEC-4 `callerBranchId` pattern, SM/TA/PA read — mirror `recruitingCandidates.seniorInScope()` / `managerWeeklyReports.uplineCanRead()`). **New collection + rules = ALWAYS HUMAN-MERGE.**
+  - **PPTX export** (deck-native handoff; PDF shipped in P1 via `BranchPlanDocument`).
+  - **Manpower goal SETTER** — P1 reads the optional `branchGoals.manpower` field ("—"/"goal not set" when absent, per dispatcher ruling); the write surface (GoalsPanel or Company Config) is Phase 2.
+  - **Per-branch `branchGoals` keying** — `branchGoals/{year}` is tenant-level today (fine for the single-branch pilot); multi-branch needs `{branchId}_{year}` keying + migration of the existing doc.
+- **Phase 3 (MEDIUM):** classification quotas (actuals-by-class already derivable from policy `productLine`/`policyClass`; quota-side has no classification split anywhere) + a **real monthly quota model** (P1 prorates annual ÷ 12; no monthly quota exists at any goals tier).
+- **Seeded Net-vs-Gross integration assertion (MEDIUM — verification):** the settled-then-lapsed → "in Gross, not Net" assertion is proven at unit level only (`src/lib/strategicPlan/__tests__/settledTwinRun.test.js`; the twin-run reuses `settlementShapeFromPolicies` per RULING 2). The live smoke (`scripts/verification/smoke-strategic-plan-k1.mjs`) renders net `TTD 0` because the A11Y foil branch has no seeded settled policies — seeding prod was correctly refused (Rule 3 STOP). When a seeded foil branch exists: seed one settled + one settled-then-lapsed policy for a foil agent, re-run the smoke, and assert the value-level split. Brief AC#4 accepted as unit-level by operator ruling 2026-07-21.
+- **Secondary-reviewer decision (HIGH, PROMOTED):** see § External code reviewer above — promoted out of this sweep to "next decision up" with #864's CodeRabbit rate-limit evidence.
 
 ## Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases (banked 2026-07-15, Runs 5-7 promotion session, HIGH — caused a rollback scare)
 
@@ -4098,9 +4114,11 @@ Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31. Expande
 
 ---
 
-## External code reviewer — Gemini sunsets 2026-07-17; choose a replacement (MEDIUM, dated, banked 2026-06-04)
+## External code reviewer — Gemini sunset PASSED 2026-07-17; secondary-reviewer decision is NOW OPEN (PROMOTED MEDIUM → HIGH 2026-07-21, post-#864; originally banked 2026-06-04)
 
-**Deadline: 2026-07-17.** Gemini consumer code review (the external automated reviewer wired to PRs) sunsets on 2026-07-17 per its own in-PR notice (surfaced on PR #465 review). Before that date, choose and wire a replacement external reviewer so the §6-style "external review triage" gate keeps a real second opinion:
+**PROMOTED to HIGH — next decision up, before the next backend-touching track (operator ruling 2026-07-21, PR #864 merge session).** The deadline passed: Gemini sunset 2026-07-17 and reviewer coverage is now genuinely thin. Evidence from Track K P1 (#864): CodeRabbit (free tier) **declined the final two commits with "Review rate limited"** — rate limits fire exactly when several commits land in one session, which is the normal working pattern. On #864 the unreviewed commits were harmless (label swap + banked a11y idiom); the same gap on a `firestore.rules` or Cloud Functions change is a different story. Settle this BEFORE the next rules/CF-touching track rather than after.
+
+**Original body (context):** Gemini consumer code review (the external automated reviewer wired to PRs) sunset on 2026-07-17 per its own in-PR notice (surfaced on PR #465 review). Choose and wire a replacement external reviewer so the §6-style "external review triage" gate keeps a real second opinion:
 
 **Candidates:**
 - **GitHub Copilot code review** — native GitHub PR review, low setup.
