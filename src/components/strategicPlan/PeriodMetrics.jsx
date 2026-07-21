@@ -72,7 +72,8 @@ export default function PeriodMetrics({ periodMetrics, loading, error, onRetry }
           onRetry={onRetry}
         >
           {pm && (
-            <div className="overflow-x-auto">
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG scrollable-region-focusable
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Period metrics table">
               <table className="w-full min-w-[760px] border-collapse text-sm" data-testid="sp-period-table">
                 <thead>
                   <tr className="font-mono text-[10px] font-bold uppercase tracking-wider text-primary">

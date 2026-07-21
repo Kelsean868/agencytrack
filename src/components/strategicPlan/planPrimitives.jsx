@@ -29,10 +29,12 @@ const TONE = {
 // Glass hero stat strip — one teal-glass card per section summary. `items` is a
 // list of { k (label), v (value), sub?, tone? }. Values that don't fit scroll
 // horizontally inside the card (page body never scrolls sideways).
-export function StatHero({ items, testid }) {
+export function StatHero({ items, testid, label = 'Section summary' }) {
   return (
     <div className="glass hero teal rounded-2xl px-1 py-4 shadow-sm" data-testid={testid}>
-      <div className="flex min-w-0 items-stretch gap-0 overflow-x-auto">
+      {/* Scrollable at narrow widths → WCAG scrollable-region-focusable (FinancingSelfView precedent) */}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+      <div className="flex min-w-0 items-stretch gap-0 overflow-x-auto" tabIndex={0} role="region" aria-label={label}>
         {items.map((it, i) => (
           <div
             key={it.k}

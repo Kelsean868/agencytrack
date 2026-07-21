@@ -71,7 +71,8 @@ export default function RecruitmentPipeline({ recruitment, loading, error, onRet
               </div>
 
               {/* Candidate rows */}
-              <div className="overflow-x-auto">
+              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG scrollable-region-focusable */}
+              <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Recruitment candidates table">
                 <table className="w-full min-w-[720px] border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left font-mono text-[10px] uppercase tracking-wider text-ink-muted">

@@ -58,7 +58,10 @@ export default function AgentPerformanceTracker({ agents, loading, error, onRetr
           emptyLabel="No advisors in this branch yet."
           onRetry={onRetry}
         >
-          <div className="overflow-x-auto">
+          {/* WCAG scrollable-region-focusable: role="region" + tabIndex 0 is the
+              canonical fix (FinancingSelfView precedent). */}
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Agent performance table">
             <table className="w-full min-w-[1100px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-right font-mono text-[10px] uppercase tracking-wider text-ink-muted">
