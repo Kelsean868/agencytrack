@@ -73,8 +73,9 @@ useStrategicPlan(branchId, period) -> {
 
 Assemble by **reusing** these existing pure functions / services (do not re-derive):
 - Activity funnel + team totals: `computeFunnelRow` / `computeFunnelTotals` (`funnelModel.js:23–148`, `:181–185`).
-- Branch windows (WTD/MTD/QTD/YTD): `deriveBranchWindows` (`MeetingMode.helpers.js:197–219`). Extend window keying to honor `period.granularity` (quarter vs half) — this is the one net-new window-math addition; keep it a pure helper.
-- Unit rollups: `deriveUnits` (`MeetingMode.helpers.js:225–251`).
+- Window sums (quarter/half keyed): `lib/strategicPlan/periodModel.js` — net-new pure helper (replaces `deriveBranchWindows`; see §4 Amendment). Sums API via `extractTotalProductionCredit` only; empty window → true empty (no substitution).
+- Gross/Net twin-run: `lib/strategicPlan/settledTwinRun.js` — net-new pure helper reusing `settlementShapeFromPolicies` twice (see §4 Amendment).
+- Unit grouping + producing roster: `lib/strategicPlan/unitGrouping.js` — net-new pure helper (replaces `deriveUnits`; agents + producing UMs; single-unit renders; see §4 Amendment).
 - Production 3-way: submitted via `extractTotalProductionCredit` (`teamRoster.js:56–58`); gross settled `settledAPI` / `settledApps` (`policiesDerivation.js:42`, `settlementService.js:54–57`); net settled = calendar-period settled minus lapsed (`policiesDerivation.js:33`).
 - Persistency (branch): `aggregatePersistency` — sum numerators/denominators, never average percentages (`calculations.js:58–80`).
 - Branch quota: `branchGoals/{year}` via `goalsService` (`goalsService.js:269–285`); unit quotas summable via `getUnitGoals` per UM uid.
@@ -170,6 +171,43 @@ Canonical tokens: `docs/design-system/tokens/app.css` (v2, AA-reconciled) + `bra
 CC re-verifies each file:line before writing; hard-stop and report if any has drifted.
 
 ---
+
+## §4 Amendment — dispatcher ruling 2026-07-17
+
+CC's Rule-17 re-verification surfaced four internal contradictions in §4's reuse
+list. The dispatcher ruled all four valid; the reuse list above is corrected to
+match. All net-new work is three pure, testable, client-only helpers + AgentTrackerRow
+assembly — no rules/schema/functions change.
+
+**RULING 1 — drop `deriveBranchWindows` (blockers 1+2+3).** It read `f.apiSold`
+(V2 → `newBusiness.api` only, dropping PPP + lumpsum credit), averaged persistency
+percentages (`calculations.js:52-57` marks this CRITICAL/wrong), and substituted an
+adjacent window's submissions on an empty window. Replaced by `periodModel.js`, keyed
+to quarter/half, which: sums production ONLY via `extractTotalProductionCredit`
+(the single production accessor for EVERY slide — never `apiSold`/`newBusiness.api`);
+aggregates persistency ONLY via `aggregatePersistency` (sum numerators/denominators,
+never average); and returns a TRUE empty state for an empty window (no substitution).
+
+**RULING 2 — Gross/Net twin-run (blocker 4).** §4 cited `policiesDerivation.js:42`
+for gross and `:33` for net, but both lines are inside `settlementShapeFromPolicies`,
+which returns NET only (its `:33` filter drops lapsed). No gross derivation existed.
+`settledTwinRun.js` runs the same `settlementShapeFromPolicies` coercion/date-grouping
+twice, both filtered to the plan period by `dateIssued`: Net = `status === 'settled'`
+(lapsed excluded) → the % Objective Achieved denominator; Gross = ever-settled
+(`status in ['settled','lapsed']`, lapsed re-labeled 'settled'). Viability confirmed:
+the settled→lapsed transition preserves `settledAPI` + `dateIssued` (firestore.rules:465-472).
+
+**RULING 3 — drop `deriveUnits`, fix roster (smaller).** `deriveUnits` carried a
+`<2-unit → []` guard and an agent-only filter. `unitGrouping.js` groups the branch
+roster by `unitId` (unit head = the user whose uid === unitId), renders single-unit
+branches normally, and defines the producing roster (for the Agent Tracker AND all
+production rollups) as agents PLUS producing Unit/Trainee Managers — a UM's own
+production is their unit-head line. Not filtered to `role === 'agent'`.
+
+**Smoke additions (folded into §10):** (a) a policy that settled then lapsed within
+the period appears in Gross Settled but NOT Net Settled for that agent; (b) a producing
+Trainee/Unit Manager appears as a row in the Agent Performance Tracker. Both are also
+covered at unit level (`settledTwinRun.test.js`, `assembleModel.test.js`).
 
 ## 12. Phase 2 preview (not this dispatch)
 
