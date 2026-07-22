@@ -90,6 +90,8 @@ Position the whole section as: *"Your total infrastructure cost is under TTD 5,0
 
 ## 4. License pricing recommendation — Tatil Life
 
+> ⚠ **SUPERSEDED (2026-07-22, same day).** This section was priced against a firm 350-seat deployment. Actual Tatil headcount is **190 advisors today with 350 as a growth target**, which changes both the deal size and the pricing *structure* (straight band pricing would penalise them for recruiting). Corrected positions live in §5 of `docs/strategy/tatil-phase0-internal-crib-2026-07-22.md`. Fold into a Rev C once Phase 0 confirms the seat count and growth timeline. The market anchors, structure logic, and contract terms below remain valid.
+
 ### Market anchors (verified July 2026)
 US insurance agency-management SaaS runs roughly **US$49–200/user/month**, clustering near US$99–109 (AgencyBloc US$109/user/mo; HawkSoft US$99/user/mo; EZLynx ~US$49–200+ by module). Those are multi-tenant SaaS list prices where the vendor carries hosting. AgencyTrack's offer is *stronger* on enterprise dimensions (white-label, single-tenant, their infrastructure, their compliance perimeter, Entra SSO) and *weaker* on vendor dimensions (solo founder, v1, no reference customers yet, smaller-market purchasing power).
 
