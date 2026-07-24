@@ -31,7 +31,6 @@
 | Design-conformance backlog — 14 NEEDS-RULING operator decisions block sequencing (banked 2026-07-... | HIGH | — | — | 620 |
 | Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases ... | HIGH | — | — | 282 |
 | Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion sess... | MEDIUM | — | — | 290 |
-| VH leg `t1-compliance-scope` — RESOLVED (Run 8 Tier B, 2nd-`unit_manager` fixture; evidence `ef4e7c... | — | — | — | 306 |
 | `featureFlags` allowlist is a deliberate triple-copy — consolidate when flags become config-drive... | LOW | — | — | 298 |
 | Run-7 ranked next-list — PARTIALLY CLOSED by Run 8 (campaign export, Team Dashboard #6, All Users... | — | — | — | 314 |
 | Run-7 DECISIONS-NEEDED — none banked this run (informational, 2026-07-15) | — | — | — | 329 |
@@ -49,7 +48,6 @@
 | Master Sheet STATUS filters — need a YTD + companyMinimums read path (banked 2026-07-10, Run 4 It... | MEDIUM | — | — | 439 |
 | Master Sheet LEVEL filter — blocked on a populated career-level field (banked 2026-07-10, Run 4 I... | MEDIUM | — | — | 447 |
 | Planner recurrence — `ENDS=Never` rolling-horizon materializer (banked 2026-07-10, Run 4 Item 5, ... | MEDIUM | — | — | 471 |
-| Planner recurrence — "edit this and all future" instances (banked 2026-07-10, Run 4 Item 5, MEDIU... | MEDIUM | — | — | 479 |
 | Run 4 pre-promotion manual checks not done this cycle — carry to next Phase 0 (banked 2026-07-10,... | MEDIUM | — | — | 487 |
 | 1-on-1 takeover — needs a real design pass (banked 2026-07-10, Run 4 Item 6 recon, MEDIUM — desig... | MEDIUM | — | — | 500 |
 | Seeder env-file foot-gun — `seed-fixtures.mjs` silently resets staging/sales_manager passwords wi... | MEDIUM | — | — | 532 |

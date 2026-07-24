@@ -83,10 +83,7 @@ const HERO_COMPONENTS = [
     name: 'PipelineStrip (Policy Ledger)',
     path: 'src/components/agent/policyLedger/PipelineStrip.jsx',
   },
-  {
-    name: 'ManagerHeroSection',
-    path: 'src/components/dashboard/ManagerHeroSection.jsx',
-  },
+  // (ManagerHeroSection removed Run A Tier 1 §7 — orphaned dead code, deleted.)
   // ── S3 sweep — PR #534: mixed files with @@hero-pane-start/end markers ─────
   // Guard scans only the extracted hero block; non-hero sections are not scanned.
   {

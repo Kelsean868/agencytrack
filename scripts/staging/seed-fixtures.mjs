@@ -28,6 +28,7 @@
  *   recruiting    src/services/recruitingService.js; rules validCandidateWrite
  *   appointments  src/services/plannerService.js; rules validApptWrite
  *   prospectInfo  src/services/prospectInfoService.js (users/{uid}/prospectInfo subcoll)
+ *   jointCalls    src/services/jointCallsService.js (users/{uid}/jointCalls subcoll)
  *   yearPlan/monthlyPlan/weeklyPlans  yearPlanService/monthlyPlanService/weeklyPlanService
  *   kiosk         functions/kiosk/validateToken.js; lib/kiosk/kioskServices.js
  *
@@ -198,6 +199,7 @@ if (isDryRun) {
   console.log(`  recruitingCandidates  8 candidates across all stages (1 stalled, 1 licensed)`);
   console.log(`  appointments     A1 week: today mixed + free block + SALE, rest of week, postpone/rebook pair`);
   console.log(`  users/{a1}/prospectInfo  4 preps (today/tomorrow prepped, +4d unprepped, -3d overdue)`);
+  console.log(`  users/{a1}/jointCalls  5 obs — 4 UM-authored (1 archived) + 1 BM-authored; 2 prep-linked`);
   console.log(`  users/{a1,um}/yearPlan+monthlyPlan ${YEAR} committed; weeklyPlans/{a1}_${W0}`);
   console.log(`  config/settings  featureFlags {persistencyV2,policyLedgerCampaignLens,awardsProvenance}=true`);
   console.log(`  kioskTokens/vhfix-kiosk-token`);
@@ -760,6 +762,50 @@ async function main() {
   await pp('vhfix-pp-tomorrow', { name: 'Devon Ramkissoon', age: 41, occ: 'Contractor', src: 'existing-client', at: '2nd-interview',     pt: 'term-life',     obj: ['no-need'],              date: addDays(TODAY, 1) });
   await pp('vhfix-pp-upcoming', { name: 'Alicia Charles',   age: 29, occ: 'Nurse',      src: 'cold-call',       at: '2nd-interview',     pt: '',              obj: [],                       date: addDays(TODAY, 4) });
   await pp('vhfix-pp-overdue',  { name: 'Kern Baptiste',    age: 52, occ: 'Retired',    src: 'orphan',          at: 'closing-interview', pt: 'final-expense', obj: ['no-confidence'],        date: addDays(TODAY, -3) });
+
+  // ── A14. Joint calls (Meeting-mode JointCallsTab; agent a1 observed) ──
+  // Feeds JointCallsTab, which was verifying as an empty state (Run A Tier 1 §1,
+  // dispatcher ruling D1 — jointCalls is the only genuinely-absent family).
+  // Visibility (src/services/jointCallsService.js getJointCalls):
+  //   unit_manager query filters agentUnitId == callerUid AND authorRoleRank <= 1
+  //   branch_manager+ query filters authorRoleRank <= callerRank (no unit filter).
+  // ⇒ UM-authored (rank 1) rows are visible to the UM (agentUnitId == uid.um) AND
+  //   the BM; the single BM-authored (rank 2) row is BM-only. One archived row
+  //   proves the client-side `!c.archived` list filter. prospectInfoId links to
+  //   real a1 prospectInfo docs so the "Prep:" link chip renders.
+  // Fixed vhfix-jc-* ids + .set() ⇒ re-run RESETS (undoes smoke edits/archives).
+  // Subcollection under users/{a1} inherits the appointment-adjacent rules
+  // surface; Admin SDK bypasses rules, but the shape mirrors the service write.
+  console.log('\n── A14: joint calls ──');
+  const jc = (id, base) => put(
+    T.collection('users').doc(uid.a1).collection('jointCalls').doc(id),
+    {
+      agentId: uid.a1, tenantId: TENANT_ID, agentUnitId: uid.um,
+      authorUid:  base.byBm ? uid.bm : uid.um,
+      authorName: base.byBm ? NAMES.bm : NAMES.um,
+      authorRole: base.byBm ? 'branch_manager' : 'unit_manager',
+      authorRoleRank: base.byBm ? 2 : 1,
+      appointmentDate: base.date,
+      appointmentTime: base.time ?? '',
+      appointmentKept: base.kept ?? true,
+      nextMeetingDate: base.kept === false ? (base.next ?? '') : '',
+      meetingType: base.mt,
+      needCovered: base.need,
+      comments: base.comments ?? '',
+      saleMade: base.sale ?? false,
+      coachingMinutes: base.coaching ?? 0,
+      trainingIdentified: base.training ?? '',
+      prospectInfoId: base.prep ?? '',
+      ...(base.archived ? { archived: true } : {}),
+      createdAt: daysAgoTs(base.ago), updatedAt: now(),
+    },
+    `jointCalls/${id} ${base.byBm ? 'BM' : 'UM'}-authored${base.archived ? ' [archived]' : ''}`,
+  );
+  await jc('vhfix-jc-1', { ago: 5, date: addDays(TODAY, -5), time: '10:30', kept: true, sale: true, mt: 'demonstration', need: 'income_protection', coaching: 20, comments: 'Strong needs discovery; agent closed on an income-protection rider.', training: 'Objection handling on premium affordability.', prep: 'vhfix-pp-today' });
+  await jc('vhfix-jc-2', { ago: 3, date: addDays(TODAY, -3), time: '14:00', kept: false, next: addDays(TODAY, 4), mt: 'observation', need: 'education_funding', coaching: 25, comments: 'Prospect deferred — rebooked. Coach agent on urgency framing.', training: 'Urgency / fact-find depth.' });
+  await jc('vhfix-jc-3', { ago: 1, date: addDays(TODAY, -1), time: '09:00', kept: true, sale: false, mt: 'collaboration', need: 'retirement_planning', coaching: 15, comments: 'Joint fact-find; agent led, I supported on the annuity math.', prep: 'vhfix-pp-tomorrow' });
+  await jc('vhfix-jc-4-bm', { byBm: true, ago: 2, date: addDays(TODAY, -2), time: '11:15', kept: true, sale: true, mt: 'demonstration', need: 'business_protection', coaching: 30, comments: 'BM ride-along; keyman-cover demo, agent handled the DI cross-sell well.', training: 'Business-market prospecting.' });
+  await jc('vhfix-jc-5-archived', { archived: true, ago: 8, date: addDays(TODAY, -8), time: '16:00', kept: true, sale: false, mt: 'observation', need: 'final_expenses', coaching: 10, comments: 'Superseded observation (archived — should not render in the list).' });
 
   // ── A12. Feature flags (merge — preserves companyName/currency etc.) ──
   console.log('\n── A12: feature flags ──');

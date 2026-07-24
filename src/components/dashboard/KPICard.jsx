@@ -1,13 +1,19 @@
+import React from 'react';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
-export default function KPICard({ label, values = [], isCurrency = false }) {
+export default function KPICard({ label, values = [], isCurrency = false, isPercent = false }) {
   const current = values.length > 0 ? values[values.length - 1] : 0;
   const last    = values.length > 1 ? values[values.length - 2] : null;
   const delta   = last !== null ? current - last : null;
 
-  const fmt = (v) => isCurrency ? formatCurrency(v) : v.toLocaleString();
+  // isPercent renders a "%" suffix (rate KPIs stored 0–100, e.g. Compliance Rate);
+  // isCurrency wins if both are set. Delta reuses fmt, so trends read "+2% vs last week".
+  const fmt = (v) =>
+    isCurrency ? formatCurrency(v)
+    : isPercent ? `${v.toLocaleString()}%`
+    : v.toLocaleString();
 
   const deltaClass =
     delta === null || delta === 0 ? 'text-ink-muted' :
