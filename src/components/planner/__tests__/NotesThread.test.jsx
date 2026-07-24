@@ -45,9 +45,11 @@ describe('NotesThread — E4', () => {
     expect(screen.getByTestId('note-add-btn')).toBeDisabled();          // saving
   });
 
-  it('is read-only (no add field) when onAdd is absent', () => {
+  it('is read-only (no add field) when onAdd is absent, but still renders each note\'s text', () => {
     render(<NotesThread thread={THREAD} />);
     expect(screen.queryByTestId('note-add-input')).toBeNull();
     expect(screen.getAllByTestId('note-entry')).toHaveLength(2);
+    expect(screen.getByText('legacy note')).toBeInTheDocument();
+    expect(screen.getByText('live-meeting note')).toBeInTheDocument();
   });
 });

@@ -579,9 +579,12 @@ export default function AgentPlannerPanel({
   );
 
   // "Keep schedule" — dismiss the prompt for this appt so the banner stops.
+  // Capture the late item first, then dispatch both setters separately (never a
+  // setState inside another setter's updater — that can double-fire).
   const handleLateKeep = useCallback(() => {
-    setLateSheet((cur) => { if (cur) setLateDismissed((prev) => new Set(prev).add(cur.id)); return null; });
-  }, []);
+    if (lateSheet) setLateDismissed((prev) => new Set(prev).add(lateSheet.id));
+    setLateSheet(null);
+  }, [lateSheet]);
 
   // "Wrap up · mark Kept" — the existing setAppointmentStatus path.
   const handleLateWrapKept = useCallback(async () => {

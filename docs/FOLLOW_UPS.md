@@ -35,6 +35,7 @@
 | `featureFlags` allowlist is a deliberate triple-copy — consolidate when flags become config-drive... | LOW | — | — | 298 |
 | Desktop planner board — shift-click range select keys off mobile view state (banked 2026-07-24, Run A Tier 2 E1) | LOW | — | — | 4220 |
 | Desktop planner board — Arrow ←/→ view-cycling inert on the board (banked 2026-07-24, Run A Tier 2 E1) | LOW | — | — | 4232 |
+| Staging smoke run-isolation — per-run unique IDs + finally-cleanup (banked 2026-07-24, Run A Tier 2, CodeRabbit #866) | LOW | — | — | 4263 |
 | Run-7 ranked next-list — PARTIALLY CLOSED by Run 8 (campaign export, Team Dashboard #6, All Users... | — | — | — | 314 |
 | Run-7 DECISIONS-NEEDED — none banked this run (informational, 2026-07-15) | — | — | — | 329 |
 | Design-conformance 2026-07-13 revalidation — 11 NEEDS-RULING items ruled by operator; backlog upd... | HIGH | — | — | 337 |
@@ -4257,3 +4258,17 @@ E4 shipped the notes thread + "notes travel with the prospect" at **THIS-WEEK sc
 **Priority:** MEDIUM — the notes thread + this-week surfacing already deliver E4's core; cross-time is the completeness extension.
 
 Banked: Run A Tier 2 E4, 2026-07-24.
+
+---
+
+## Staging smoke run-isolation — per-run unique IDs + finally-cleanup (banked 2026-07-24, Run A Tier 2, LOW — verification hygiene)
+
+CodeRabbit (#866) flagged that the Run-A planner acceptance smokes (`smoke-e1-desktop-board.mjs`, `smoke-e3-running-late.mjs`, `smoke-e4-notes-thread.mjs`) create fixed-time sentinel appointments and rely on `seed-fixtures.mjs --apply` to reset residue, rather than generating a per-run unique identifier, scoping all write-read assertions to it, and removing mutations in a `finally` block even when verification fails.
+
+**Current state (deliberate):** these follow the ESTABLISHED planner-smoke convention — the six Run-9 smokes (`smoke-run9-*.mjs`) all note "residue: … ; re-seed resets" and do not self-clean. Adopting run-isolation for only the three new smokes would make the planner-smoke suite inconsistent.
+
+**To do (suite-wide, not per-smoke):** decide the convention for the mutating planner smokes — either (a) standardize on a per-run unique token + `finally` cleanup (the self-cleaning idiom the financing smokes already use), or (b) keep the re-seed-resets convention and document it as the standard. If (a), apply across all `smoke-run9-*` + the three Run-A smokes together.
+
+**Priority:** LOW — the smokes are correct today (re-seed resets); this is consistency + fail-safe-cleanup hygiene.
+
+Banked: Run A Tier 2, CodeRabbit #866, 2026-07-24.

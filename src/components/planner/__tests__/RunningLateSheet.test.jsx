@@ -54,9 +54,11 @@ describe('RunningLateSheet — E3', () => {
     expect(screen.getByTestId('late-affected-b')).toHaveTextContent('10:30');
   });
 
-  it('notify shows a copy-message button; Call/WhatsApp only with a phone', () => {
+  it('notify shows a copy-message button naming the affected prospect; Call/WhatsApp only with a phone', () => {
     renderSheet({ prospectPhone: () => null });
-    expect(screen.getAllByTestId('late-notify-copy').length).toBeGreaterThan(0);
+    const row = screen.getByTestId('late-notify-row');       // one row — the next appt (Ben)
+    expect(row).toHaveTextContent('Ben');
+    expect(screen.getByTestId('late-notify-copy')).toHaveTextContent('Copy message');
     expect(screen.queryByTestId('late-notify-call')).toBeNull();
     expect(screen.queryByTestId('late-notify-whatsapp')).toBeNull();
   });
