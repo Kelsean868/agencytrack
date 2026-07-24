@@ -16,7 +16,7 @@
  * MUTATES appointments (residue: 3 scheduled appts; sweeper resets).
  */
 import { chromium } from 'playwright';
-import { newLegContext, login, assertLegHygiene } from './vh/vh-helpers.mjs';
+import { newLegContext, login, assertLegHygiene, TABLET_VIEWPORT, assertSingleColumnPlanner } from './vh/vh-helpers.mjs';
 import { getAdminDb, ADMIN_TENANT_ID } from './vh/admin-read.mjs';
 
 const tsel = (id) => `[data-testid="${id}"]`;
@@ -24,7 +24,7 @@ const TIMES = ['19:00', '19:40', '20:20'];
 const LABELS = ['7:00 PM', '7:40 PM', '8:20 PM'];
 
 const browser = await chromium.launch();
-const ctx = await newLegContext(browser);
+const ctx = await newLegContext(browser, { viewport: TABLET_VIEWPORT });
 const p = ctx.page;
 let failed = 0;
 const log = (s, d) => { console.log(`  ${s} ${d}`); if (s === 'FAIL') failed++; };
@@ -43,6 +43,10 @@ try {
   await login(p, 'agent1');
   await p.locator(tsel('agent-tab-planner')).first().click({ timeout: 15_000 });
   await p.locator(tsel('planner-book')).waitFor({ state: 'visible', timeout: 15_000 });
+
+  // E1 drift guard: assert the preserved single-column layer (not the desktop board)
+  const layer = await assertSingleColumnPlanner(p);
+  log(layer.ok ? 'PASS' : 'FAIL', `E1 drift guard: single-column layer (pills=${layer.pillsPresent} board-absent=${layer.boardAbsent})`);
 
   // 1. Create 3 appointments
   const ids = [];

@@ -120,6 +120,33 @@ export function assertLegHygiene({ capture, prodRequests, pageErrors }) {
   }
 }
 
+/**
+ * Tablet viewport for the Run-9 planner smokes (Run A Tier 2 / Option 1). 900px
+ * is ≥768 (sidebar rail shows → the existing agent-tab-planner nav works) and
+ * <1024 (below the E1 desktop-board breakpoint → single-column planner). Single
+ * source of truth for the value the E1 drift guard below reasons about.
+ */
+export const TABLET_VIEWPORT = { width: 900, height: 800 };
+
+/**
+ * Planner E1 drift guard (Run A Tier 2 / Option 1). Confirms we are on the
+ * PRESERVED single-column planner layer, NOT the E1 desktop board. The six
+ * Run-9 smokes run at 900×800 — the sidebar rail shows at ≥768px (so the
+ * existing agent-tab-planner nav works) while 900 stays below the E1 desktop
+ * board breakpoint (lg = 1024), so the planner renders its single-column views.
+ * If the sidebar(768) or board(1024) breakpoint ever moves across 900, these
+ * smokes would silently start verifying the wrong layer — this makes that fail
+ * loudly. Positive: a single-column view pill is present. Negative: the E1
+ * board root testid is absent.
+ * @returns {Promise<{pillsPresent:boolean, boardAbsent:boolean, ok:boolean}>}
+ */
+export async function assertSingleColumnPlanner(page) {
+  const td = (id) => `[data-testid="${id}"]`;
+  const pillsPresent = await page.locator(td('planner-view-today')).first().isVisible().catch(() => false);
+  const boardAbsent = !(await page.locator(td('planner-desktop-board')).first().isVisible().catch(() => false));
+  return { pillsPresent, boardAbsent, ok: pillsPresent && boardAbsent };
+}
+
 /** Screenshot helper (best-effort). */
 export function shotFactory(dir) {
   mkdirSync(dir, { recursive: true });

@@ -27,7 +27,7 @@
  * MUTATES appointments (residue: run9-f3e-* docs; sweeper removes).
  */
 import { chromium } from 'playwright';
-import { newLegContext, login, assertLegHygiene } from './vh/vh-helpers.mjs';
+import { newLegContext, login, assertLegHygiene, TABLET_VIEWPORT, assertSingleColumnPlanner } from './vh/vh-helpers.mjs';
 import { getAdminDb, ADMIN_TENANT_ID } from './vh/admin-read.mjs';
 
 const tsel = (id) => `[data-testid="${id}"]`;
@@ -88,7 +88,7 @@ log(indexOk ? 'PASS' : 'FAIL', 'leg0: (agentId, seriesId, date) composite serves
 if (!indexOk) process.exit(1);
 
 const browser = await chromium.launch();
-const ctx = await newLegContext(browser);
+const ctx = await newLegContext(browser, { viewport: TABLET_VIEWPORT });
 const p = ctx.page;
 
 async function openWeek() {
@@ -115,6 +115,10 @@ async function editVia(cardId, scopeTid, fill) {
 try {
   await login(p, 'agent1');
   await openWeek();
+
+  // E1 drift guard: assert the preserved single-column layer (not the desktop board)
+  const layer = await assertSingleColumnPlanner(p);
+  log(layer.ok ? 'PASS' : 'FAIL', `E1 drift guard: single-column layer (pills=${layer.pillsPresent} board-absent=${layer.boardAbsent})`);
 
   // Leg 1: this-only edit on Sat instance (R2 setup)
   await editVia(IDS[3], 'series-edit-this-only', async () => {

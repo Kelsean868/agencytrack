@@ -17,7 +17,7 @@
  * deleted; sweep-nonfixture-appointments.mjs resets appts).
  */
 import { chromium } from 'playwright';
-import { newLegContext, login, assertLegHygiene } from './vh/vh-helpers.mjs';
+import { newLegContext, login, assertLegHygiene, TABLET_VIEWPORT, assertSingleColumnPlanner } from './vh/vh-helpers.mjs';
 
 const tsel = (id) => `[data-testid="${id}"]`;
 
@@ -26,12 +26,16 @@ let failed = 0;
 const log = (s, d) => { console.log(`  ${s} ${d}`); if (s === 'FAIL') failed++; };
 
 // ── agent1 context ──
-const ctx1 = await newLegContext(browser);
+const ctx1 = await newLegContext(browser, { viewport: TABLET_VIEWPORT });
 const p = ctx1.page;
 try {
   await login(p, 'agent1');
   await p.locator(tsel('agent-tab-planner')).first().click({ timeout: 15_000 });
   await p.locator(tsel('planner-book')).waitFor({ state: 'visible', timeout: 15_000 });
+
+  // E1 drift guard: assert the preserved single-column layer (not the desktop board)
+  const layer = await assertSingleColumnPlanner(p);
+  log(layer.ok ? 'PASS' : 'FAIL', `E1 drift guard: single-column layer (pills=${layer.pillsPresent} board-absent=${layer.boardAbsent})`);
 
   // 1. Book a 10:40 appt, save it as a template
   await p.locator(tsel('planner-book')).click();
@@ -86,7 +90,7 @@ try {
 } finally { await ctx1.context.close(); }
 
 // ── 3. agent2: picker absent (owner-only live) ──
-const ctx2 = await newLegContext(browser);
+const ctx2 = await newLegContext(browser, { viewport: TABLET_VIEWPORT });
 try {
   const p2 = ctx2.page;
   await login(p2, 'agent2');
@@ -105,7 +109,7 @@ try {
 } finally { await ctx2.context.close(); }
 
 // ── 4. cleanup: agent1 deletes the template ──
-const ctx3 = await newLegContext(browser);
+const ctx3 = await newLegContext(browser, { viewport: TABLET_VIEWPORT });
 try {
   const p3 = ctx3.page;
   await login(p3, 'agent1');
