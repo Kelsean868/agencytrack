@@ -49,7 +49,26 @@
 | `docs/FOLLOW_UPS.md` (index only) | Removed 2 stale index rows (`t1-compliance-scope` RESOLVED; `planner recurrence — edit-this-and-all-future` body RESOLVED `d0e74c12`). **No body dispositions changed.** |
 | "Medal trio" stale FU claim (per ruling) | Recorded: recon `trackj-recon-2026-07-07.md:63` "Medal trio orphaned (cleanup FU)" annotated STALE — no confirmable 3-file trio; `MedalCoin.jsx` LIVE (`ChampionsPanel`, `ProductionLeaderboardSurface`). Cleanup FU retired. |
 
-### ⚠️ SURFACED CONFLICT — CI does not run on `staging` PRs (blocks the item-6 CI-green gate)
+### ✅ RESOLVED — CI + CodeRabbit now run on staging PRs (Option A, dispatcher-authorized 2026-07-24)
+
+The staging-PR-bypasses-both-gates conflict (below) was resolved by **Option A** (commit `8e93b588`):
+- `ci.yml` `pull_request.branches` → `[main, staging]` → **CI now fires on #865 and went GREEN** (`lint-and-build` SUCCESS + `functions-tests` SUCCESS with the v5/v6 actions) — item 6's CI-green acceptance criterion is **closed**.
+- `.coderabbit.yaml` `reviews.auto_review.base_branches` → `[main, staging]` (ONLY that key; `path_filters` untouched) → CodeRabbit auto-reviews staging PRs going forward (Tier 2/3 need no manual trigger).
+
+**Reviewer disposition (Rule 21) — CodeRabbit review on #865 (3 actionable + 1 nitpick):**
+| Finding | Disposition | Action |
+|---|---|---|
+| `ci.yml` checkout — `persist-credentials: false` | **IMPLEMENT** | Applied both jobs (`d64b0105`) — CI does no authenticated git after checkout. |
+| `walk-helpers.mjs` — `assertProductionHost` should parse origin, allow only the exact prod origin | **IMPLEMENT** | Rewrote to URL-origin allowlist (`https://portal.agencytrack.app` only) — robust vs query/fragment/port + rejects spoofed subdomains & unparseable input (`d64b0105`). |
+| `KPICard.test.jsx` — strengthen currency-precedence to value-level | **IMPLEMENT** | Now asserts exact `TTD 44,000` + rejects `44000%`/`44,000%`/`TTD 44,000%` (`d64b0105`). |
+| Nitpick: bump to `checkout@v7`/`setup-node@v7` | **DISAGREE** | Dispatcher ruled v5/v6 (verified current 2026-07-24); recorded ruling outranks the bot. Flagged for dispatcher awareness (bot claims v7 exists). |
+| Gemini | **OBSOLETE** | Consumer version sunset — "all code review activity has officially ceased." Confirms the `gemini-review.yml` deletion. |
+
+**Amended PR HEAD (Rule 20): `d64b0105`** (was `7f6698dd` at first PR-ready report; `8e93b588` Option A; `d64b0105` CodeRabbit fixes). CI re-running on `d64b0105`.
+
+<details><summary>Original surfaced conflict (kept for the record)</summary>
+
+#### CI does not run on `staging` PRs (blocked the item-6 CI-green gate) — RESOLVED above
 
 `.github/workflows/ci.yml` triggers on `on: pull_request: branches: [main]`. A PR from `run-a-tier1-hygiene` → **`staging`** does NOT match, so **neither `lint-and-build` nor `functions-tests` will run on any Run A PR into staging.** Consequences:
 - The dispatcher's item-6 acceptance ("CI green = acceptance") **cannot be observed on the Tier 1 PR** — the bumped actions only execute when a PR targets `main` (i.e. the eventual staging→prod promotion PR).
@@ -59,7 +78,9 @@
 1. **Add `staging` to the ci.yml `pull_request.branches` list** so CI runs on staging PRs (behavioral CI change beyond "action version bumps" — needs authorization; would let the bumps be CI-verified now).
 2. **Waive CI-on-PR for staging PRs** (Rule 13): Run A staging PRs verify via LOCAL lint+test+build only; CI (incl. the bumped actions) is exercised at the staging→prod promotion PR (targets main). Bank a deferred-verification note.
 
-**Recommendation:** Option 1 (it makes the brief's whole staging-PR flow actually gated), but it is the dispatcher's call. Local lint+test+build green stands as this run's verification substrate regardless.
+**Recommendation:** Option 1 (it makes the brief's whole staging-PR flow actually gated), but it is the dispatcher's call. Local lint+test+build green stands as this run's verification substrate regardless. → **Dispatcher chose Option A (extended); resolved above.**
+
+</details>
 
 ### Verification (local — CI-parity)
 - **Lint:** ✅ clean (`npm run lint`, 0 errors / 0 warnings).
@@ -75,7 +96,13 @@
 ---
 
 ## TIER 2 — Planner E1–E5
-_Pending Tier 1 PR-open + HOLD. Per-tier drift check to run before cutting the branch._
+
+**Design authority:** Phase-0-verified [`docs/design-system/proposals/planner-scheduler-v2/README.md`](../design-system/proposals/planner-scheduler-v2/README.md) ONLY. Build order E1 → E5 → E2 → E4 → E3.
+
+### Per-tier drift check (Tier 2 touch-set: staging vs main) — ✅ PASS
+8 existing planner files E1–E5 build on, diffed `origin/staging` vs `origin/main`: **ALL 8 byte-identical** — `AgentPlannerPanel.jsx`, `AppointmentSheet.jsx`, `planner.helpers.js`, `plannerPrimitives.jsx`, `recurrence.helpers.js`, `usePlannerHistory.js`, `services/plannerService.js`, `index.css`. New E1–E5 files can't drift. Cleared to build off `origin/staging`. Tier 2 has no file overlap with Tier 1 (planner vs seeder/verification/CI/dashboard), so sequential merge into staging is clean.
+
+_Branch cut + E1 build pending CI-green confirmation on `d64b0105` (per dispatcher GO)._
 
 ## TIER 3 — Track J conformance closeout
 _Pending. Requires Tier 1 fixtures on the run's staging lineage._
