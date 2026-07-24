@@ -24,10 +24,12 @@ describe('KPICard — value formatting', () => {
     expect(screen.queryByText('9%')).toBeNull();
   });
 
-  it('isCurrency takes precedence over isPercent (no bare "%" leaks)', () => {
+  it('isCurrency takes precedence over isPercent (renders the exact TTD value, never a "%")', () => {
     render(<KPICard label="Weekly API" values={[44000]} isCurrency isPercent />);
+    expect(screen.getByText('TTD 44,000')).toBeInTheDocument();
     expect(screen.queryByText('44000%')).toBeNull();
-    expect(screen.getByText(/44,000/)).toBeInTheDocument();
+    expect(screen.queryByText('44,000%')).toBeNull();
+    expect(screen.queryByText('TTD 44,000%')).toBeNull();
   });
 
   it('percentage delta also carries the "%" suffix', () => {

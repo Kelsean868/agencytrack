@@ -184,19 +184,27 @@ export async function setupBypassSession(context, baseUrl, token) {
 // PREVIEW_HOST — those caller-supplied preview targets are intended and are NOT
 // affected by this pin. The guard below fails loudly if a future edit ever
 // re-points the production constant at a Vercel alias.
+const PROD_ORIGIN = 'https://portal.agencytrack.app';
 function assertProductionHost(url) {
-  if (/\.vercel\.app(?:[:/]|$)/i.test(url)) {
+  // Origin-exact allowlist (parse, don't pattern-match): only portal.agencytrack.app
+  // over https may be the production target. Parsing the URL makes this immune to
+  // query/fragment/port trickery that a substring/regex check would miss, and
+  // rejects EVERY non-prod host — the *.vercel.app rollback-scare alias being the
+  // one that actually bit. Unparseable input is rejected too.
+  let origin = null;
+  try { origin = new URL(url).origin; } catch { /* origin stays null → reject */ }
+  if (origin !== PROD_ORIGIN) {
     throw new Error(
-      `[verification] Refusing a *.vercel.app alias as the PRODUCTION target: ${url}. ` +
-      `Production verification is pinned to portal.agencytrack.app ONLY ` +
-      `(Run A Tier 1 §3 / rollback-scare incident). A preview or staging smoke must ` +
-      `pass its alias explicitly via SMOKE_PREVIEW_URL / SMOKE_BASE_URL, never the ` +
-      `production path.`,
+      `[verification] Refusing "${url}" as the PRODUCTION target — production ` +
+      `verification is pinned to ${PROD_ORIGIN} ONLY (Run A Tier 1 §3 / rollback-` +
+      `scare incident: a *.vercel.app alias once stood in for prod). A preview or ` +
+      `staging smoke must pass its alias explicitly via SMOKE_PREVIEW_URL / ` +
+      `SMOKE_BASE_URL, never the production path.`,
     );
   }
   return url;
 }
-const PROD_URL = assertProductionHost('https://portal.agencytrack.app');
+const PROD_URL = assertProductionHost(PROD_ORIGIN);
 
 /**
  * resolvePreviewUrl — resolves the Vercel target for a smoke run.
