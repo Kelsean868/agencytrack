@@ -17,7 +17,7 @@
  * MUTATES appointments (residue: one 11:10 AM sentinel; re-seed resets).
  */
 import { chromium } from 'playwright';
-import { newLegContext, login, assertLegHygiene } from './vh/vh-helpers.mjs';
+import { newLegContext, login, assertLegHygiene, TABLET_VIEWPORT, assertSingleColumnPlanner } from './vh/vh-helpers.mjs';
 
 const tsel = (id) => `[data-testid="${id}"]`;
 
@@ -42,7 +42,7 @@ async function createAt(p, hhmm) {
 }
 
 const browser = await chromium.launch();
-const ctx = await newLegContext(browser);
+const ctx = await newLegContext(browser, { viewport: TABLET_VIEWPORT });
 const p = ctx.page;
 let failed = 0;
 const results = [];
@@ -51,6 +51,10 @@ const log = (s, d) => { results.push(`${s} ${d}`); console.log(`  ${s} ${d}`); i
 try {
   await login(p, 'agent1');
   await openPlanner(p);
+
+  // E1 drift guard: assert the preserved single-column layer (not the desktop board)
+  const layer = await assertSingleColumnPlanner(p);
+  log(layer.ok ? 'PASS' : 'FAIL', `E1 drift guard: single-column layer (pills=${layer.pillsPresent} board-absent=${layer.boardAbsent})`);
 
   // ── Leg 1: create → undo (in-session) → redo → reload → persisted ──
   await createAt(p, '11:10');

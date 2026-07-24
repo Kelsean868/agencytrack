@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { getTodayTT } from '../../../utils/dateInputs';
@@ -22,6 +22,7 @@ vi.mock('../../../services/plannerService', async (importActual) => {
     deleteAppointment:   vi.fn(),
     undoPostpone:        vi.fn(),
     bulkUpdateAppointments: vi.fn(),
+    addAppointmentNote:  vi.fn(),
   };
 });
 vi.mock('../../../services/prospectInfoService', () => ({
@@ -41,7 +42,7 @@ import AgentPlannerPanel from '../AgentPlannerPanel';
 import {
   getAgentWeek, getSeriesInstances, setAppointmentStatus, updateAppointment,
   createAppointment, deleteAppointment, postponeWithRebook, undoPostpone,
-  bulkUpdateAppointments,
+  bulkUpdateAppointments, addAppointmentNote,
 } from '../../../services/plannerService';
 import { getProspectInfo } from '../../../services/prospectInfoService';
 import { listTemplates, saveTemplate, deleteTemplate } from '../../../services/appointmentTemplateService';
@@ -1288,5 +1289,110 @@ describe('series edit propagation (Run 9 F3d — R1/R2)', () => {
       }),
     ));
     await waitFor(() => expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument());
+  });
+});
+
+// ── Planner v2 E1/E5: desktop board (lg+) ──────────────────────────────────
+// isDesktop is matchMedia-driven; jsdom has no matchMedia, so the tests above
+// exercise the mobile layer. Here we stub matchMedia → desktop and assert the
+// board replaces the single-column view pills (the drift-guard premise the six
+// Run-9 smokes rely on), while the interactive card + Follow-ups view survive.
+describe('AgentPlannerPanel — E1 desktop board (lg+)', () => {
+  const realMatchMedia = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: true, media: query,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+    }));
+  });
+  afterEach(() => { window.matchMedia = realMatchMedia; });
+
+  it('at lg+ renders the desktop board instead of the single-column view pills', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'x1', date: TODAY, startTime: '09:00', type: 'FFI', durationMin: 60, status: 'scheduled' },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-desktop-board')).toBeInTheDocument());
+    // Mobile view pills are NOT rendered on the desktop board (drift-guard premise).
+    expect(screen.queryByTestId('planner-view-today')).toBeNull();
+    expect(screen.queryByTestId('planner-view-week')).toBeNull();
+    // The board's own toggle is present, including the preserved Follow-ups view.
+    expect(screen.getByTestId('planner-span-3day')).toBeInTheDocument();
+    expect(screen.getByTestId('planner-span-followups')).toBeInTheDocument();
+    // The seeded appt renders as a real card (churn/select wiring preserved).
+    expect(screen.getByTestId('appt-card-x1')).toBeInTheDocument();
+  });
+
+  it('switching the board toggle to Week renders 7 day columns', async () => {
+    getAgentWeek.mockResolvedValue([]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-desktop-board')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('planner-span-week'));
+    await waitFor(() => {
+      const cols = document.querySelectorAll('[data-testid^="planner-day-col-"]');
+      expect(cols).toHaveLength(7);
+    });
+  });
+
+  it('E2: dropping a card on another day column calls postponeWithRebook with the new date (undo-able)', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'x1', date: TODAY, startTime: '09:00', durationMin: 60, type: 'FFI', status: 'scheduled' },
+    ]);
+    postponeWithRebook.mockResolvedValue('new-id');
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-desktop-board')).toBeInTheDocument());
+    // default span 3day → today + next two; drop x1 onto the +1 day column
+    const dtInit = { dataTransfer: { setData: vi.fn(), effectAllowed: '' } };
+    fireEvent.dragStart(screen.getByTestId('planner-drag-x1'), dtInit);
+    const nextDay = shiftDateStr(TODAY, 1);
+    fireEvent.drop(screen.getByTestId(`planner-day-col-${nextDay}`), dtInit);
+    await waitFor(() => expect(postponeWithRebook).toHaveBeenCalledWith(
+      't1', 'x1',
+      expect.objectContaining({ date: nextDay, startTime: '09:00', type: 'FFI' }),
+      expect.objectContaining({ agentId: 'agent-1' }),
+    ));
+  });
+});
+
+// ── Planner v2 E4: per-appointment notes (add-note) ────────────────────────
+describe('AgentPlannerPanel — E4 add-note', () => {
+  it('adding a note in the edit sheet calls addAppointmentNote (during=true for a live today appt)', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'x1', date: TODAY, startTime: '09:00', durationMin: 60, type: 'FFI', status: 'scheduled', note: '' },
+    ]);
+    addAppointmentNote.mockResolvedValue();
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-x1')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('appt-card-x1'));               // churn dialog
+    await waitFor(() => expect(screen.getByTestId('churn-dialog')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('churn-action-edit'));          // → edit sheet
+    await waitFor(() => expect(screen.getByTestId('note-add-input')).toBeInTheDocument());
+    fireEvent.change(screen.getByTestId('note-add-input'), { target: { value: 'call went well' } });
+    fireEvent.click(screen.getByTestId('note-add-btn'));
+    await waitFor(() => expect(addAppointmentNote).toHaveBeenCalledWith(
+      't1', 'x1', expect.objectContaining({ text: 'call went well', during: true }),
+    ));
+  });
+});
+
+// ── Planner v2 E3: running-late cascade ────────────────────────────────────
+describe('AgentPlannerPanel — E3 running-late', () => {
+  it('churn "Running late" opens the cascade sheet; push calls bulkUpdateAppointments with shifted times', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'a', date: TODAY, startTime: '09:00', durationMin: 60, status: 'scheduled', type: 'FFI' },
+      { id: 'b', date: TODAY, startTime: '11:00', durationMin: 30, status: 'scheduled', type: 'CI' },
+    ]);
+    bulkUpdateAppointments.mockResolvedValue({ count: 1 });
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('appt-card-a'));
+    await waitFor(() => expect(screen.getByTestId('churn-dialog')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('churn-running-late'));
+    await waitFor(() => expect(screen.getByTestId('running-late-sheet')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('late-push-apply'));   // default +20 / next
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
+      { id: 'b', patch: { startTime: '11:20' } },
+    ]));
   });
 });

@@ -99,10 +99,40 @@ The staging-PR-bypasses-both-gates conflict (below) was resolved by **Option A**
 
 **Design authority:** Phase-0-verified [`docs/design-system/proposals/planner-scheduler-v2/README.md`](../design-system/proposals/planner-scheduler-v2/README.md) ONLY. Build order E1 → E5 → E2 → E4 → E3.
 
-### Per-tier drift check (Tier 2 touch-set: staging vs main) — ✅ PASS
-8 existing planner files E1–E5 build on, diffed `origin/staging` vs `origin/main`: **ALL 8 byte-identical** — `AgentPlannerPanel.jsx`, `AppointmentSheet.jsx`, `planner.helpers.js`, `plannerPrimitives.jsx`, `recurrence.helpers.js`, `usePlannerHistory.js`, `services/plannerService.js`, `index.css`. New E1–E5 files can't drift. Cleared to build off `origin/staging`. Tier 2 has no file overlap with Tier 1 (planner vs seeder/verification/CI/dashboard), so sequential merge into staging is clean.
+### Re-base + drift check (dispatcher ruling) — ✅ PASS
+After Tier 1 PR #865 merged into `staging` (squash `4e7a287b`), the Tier 2 branch was **re-cut off the updated `origin/staging`** and the drift check re-run on **14 files** (8 planner + the 6 `smoke-run9-*.mjs`) vs `origin/main`: **ALL 14 byte-identical, 0 drift.** `useIsDesktop.js` carried forward as the first commit.
 
-_Branch cut + E1 build pending CI-green confirmation on `d64b0105` (per dispatcher GO)._
+### E1/Run-9 smoke conflict → Option 1 (dispatcher ruling)
+E1's desktop board (renders at `lg`≥1024) would replace the single-column views the 6 Run-9 smokes drive at their 1280px default. Resolution: pin the 6 smokes to **900×800** (sidebar rail ≥768 keeps `agent-tab-planner` nav; <1024 keeps the single-column layer) + a **drift guard** (`assertSingleColumnPlanner`: view pill present + `planner-desktop-board` absent) so a breakpoint move fails loudly. E1 board root testid locked = `planner-desktop-board`.
+
+### Commits (branch `run-a-tier2-planner`)
+| # | SHA | What |
+|---|-----|------|
+| 1 | `e32a7f24` | `useIsDesktop` hook (matchMedia, `lg`, jsdom-safe) |
+| 2 | `2885f781` | Option A: 6 Run-9 smokes → 900×800 + drift guard + SMOKES.md note |
+| 3 | `43f1e5f4` | **E1 + E5**: `PlannerDesktopBoard.jsx` (Day/3-day/Week/Follow-ups toggle, fluid columns, `dense` week cards) · `AgentPlannerPanel` `isDesktop` branch (board vs mobile views) + `renderCard` render-prop (churn/select preserved) + shared `followupsList` (desktop keeps Follow-ups) + **E5** `max-w-none` on desktop · `smoke-e1-desktop-board.mjs` acceptance smoke (1280×800, write-read-verify) + SMOKES.md row |
+
+**E1 verification:** lint 0 · build ✓ · `PlannerDesktopBoard.test.jsx` 9/9 · `AgentPlannerPanel.test.jsx` 68/68 (66 existing + 2 desktop-switch). Full suite: two runs each failed **one different** `AgentPlannerPanel` A5-bulk test under heavy local parallel load (R6-cap, then per-op undo-entry); the A5 cluster passes **15/15 ×3** and the file **68/68 ×3** in isolation → pre-existing pattern-2 timing flake (E1 is inert in the jsdom mobile path A5 runs in). Annotated on the existing MEDIUM CI-vs-local FU (`FOLLOW_UPS.md`). **CI on PR-open is the authoritative full-suite gate.**
+
+**E1 acceptance smoke — deferred-to-staging (not a waiver).** `smoke-e1-desktop-board.mjs` is auth-dependent (real login), so it runs against **staging after merge**, not on the feature preview (preview can't clear the Firebase authorized-domains allowlist — intended per the brief's VERIFICATION STANDARD). RTL covers the board's component logic (11 tests); the smoke is the real-DOM + real-Firestore write-read-verify, run post-merge.
+
+**E2 — drag-drop reschedule (committed).** Board cards are draggable (grip affordance, retired cards excluded); dragging reveals drop targets — day **columns** (drop = change DAY, keep time) and per-day **gap slots** (drop = change TIME to the hole after the prior card, `computeDayGaps`). On drop, `AgentPlannerPanel.handleReschedule` calls the **EXISTING `postponeWithRebook`** (mirrors the churn Postpone path's history entry + `undoPostpone` inverse — **no propagation reimplement**, per ruling). A series instance moves just itself (single-doc rebook) and the card's existing "Only this one moved · series stays" note shows. The churn dialog stays the tap path + keyboard-accessible reschedule alternative (drag zones carry a justified `jsx-a11y` disable citing it). Column drop handler is always-attached + reads a synchronous ref, so HTML5 DnD works without a re-render race. **Verify:** lint 0 (1 justified a11y-disable) · build ✓ · `PlannerDesktopBoard.test.jsx` 13/13 (+4 E2) · `AgentPlannerPanel.test.jsx` 69/69 (+1 E2 drop→postponeWithRebook) · `planner.helpers.test.js` 36/36 (+6 gap/time-math) · `smoke-e2-drag-reschedule.mjs` acceptance smoke (1280×800, DnD write-read-verify) + SMOKES.md row.
+
+**E4 — per-appointment notes thread (committed; Option-1 ruling, this-week scope, deploy-free).**
+
+**D3 precondition evidence (firestore.rules, read-only — never edited):**
+
+| Concern | Finding |
+|---|---|
+| **Notes storage** (appointment-scoped `notes[]` field) | `validApptWrite()` (rules:1529–1552) uses `hasAll([...])`, **not `hasOnly`** → an extra `notes[]` field is permitted (documented coarse-validation design). `allow update` (1559–1562) gates on `resource.data.agentId == request.auth.uid`. **No rules edit needed.** `updateAppointment`'s allowlist doesn't cover `notes`, so E4 uses a dedicated `addAppointmentNote` (`arrayUnion`; note `at` = client ISO string, never `serverTimestamp()` inside an array). |
+| **Own-scope `prospectId` read** | `allow list` arm #1 (rules:1574–1576) = `resource.data.agentId == request.auth.uid`. **Owner field = `agentId`.** A `where('agentId','==',uid) where('prospectId','==',pid)` query is permitted (own-scoped; no cross-agent). This-week scope uses loaded data (no query); cross-time (query + `(agentId,prospectId)` index + deploy) → MEDIUM FU. |
+| **Cross-agent** | Not built (D3: cross-agent = NEEDS-HUMAN-REVIEW). The read is `agentId`-scoped. |
+
+**Build:** `addAppointmentNote` service (`arrayUnion`, client ISO `at`, `during` "THIS MEETING" flag) · `readNoteThread` (legacy `note` surfaced as first thread entry on migrate-read) · `prospectNoteHistory` (this-week own-scope) · `appointmentIsActive` · `NotesThread.jsx` (thread + add-note + "This meeting" tag, read-only when no `onAdd`) · `AppointmentSheet` renders the editable thread (plain edit only) + read-only prospect-history · `AgentPlannerPanel.handleAddNote` (during from `appointmentIsActive`; reload). **No rules edit, no index, no deploy.** **Verify:** lint 0 · build ✓ · `planner.helpers.test.js` 45/45 (+9 E4) · `NotesThread.test.jsx` 5/5 · `AppointmentSheet.test.jsx` 13/13 (+3 E4) · `AgentPlannerPanel.test.jsx` 70/70 (+1 add-note→addAppointmentNote) · `smoke-e4-notes-thread.mjs` (900×800 write-read-verify + prospect surfacing) + SMOKES.md row. Cross-time history banked MEDIUM FU (`FOLLOW_UPS.md`). **PR-body limitation:** pre-this-week notes don't surface until the FU ships.
+
+**E3 — running-late cascade (committed; last E-feature).** Pure gap-smart math in `planner.helpers.js`: `findRunningLate` (earliest un-churned today appt past its end vs a client tick) + `computeLateCascade(appts, lateAppt, pushMin, scope)` (affected/unaffected + `gapAfterNextMin` → `recommendedScope`: "next" when the gap absorbs the push, else "all"). UI: `RunningLateSheet` (what-moves radios, +10/+20/+30, live cascade preview old→new struck, actions Push/Keep/Wrap-Kept). **Notify is D4-compliant DISPLAY-ONLY:** `tel:` / `wa.me` deep-links (only when the prospect has a phone) + copy-to-clipboard prepared message — **no CF, no API, no send path.** Surfacing: an auto **banner** (client tick, TT-local) when an appt overran + a churn "Running late" action (deterministic). `handlePushLate` batches the shifts through the EXISTING `bulkUpdateAppointments` (undo restores prior startTimes) — no new mutation path. **Verify:** lint 0 · build ✓ · `planner.helpers.test.js` 52/52 (+7 E3) · `RunningLateSheet.test.jsx` 6/6 · `AgentPlannerPanel.test.jsx` 71/71 (+1 churn→sheet→push→bulkUpdate) · `smoke-e3-running-late.mjs` (900×800 write-read-verify) + SMOKES.md row.
+
+**TIER 2 COMPLETE — E1 · E5 · E2 · E4 · E3 all committed on `run-a-tier2-planner`.** Opening the Tier 2 PR into `staging`; HOLD at PR-open (CodeRabbit auto-fires via the Option-A base_branches).
 
 ## TIER 3 — Track J conformance closeout
 _Pending. Requires Tier 1 fixtures on the run's staging lineage._

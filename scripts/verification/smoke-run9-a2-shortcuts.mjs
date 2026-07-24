@@ -10,12 +10,12 @@
  * open a second surface. READ-ONLY (no saves). Hygiene asserted.
  */
 import { chromium } from 'playwright';
-import { newLegContext, login, assertLegHygiene } from './vh/vh-helpers.mjs';
+import { newLegContext, login, assertLegHygiene, TABLET_VIEWPORT, assertSingleColumnPlanner } from './vh/vh-helpers.mjs';
 
 const tsel = (id) => `[data-testid="${id}"]`;
 
 const browser = await chromium.launch();
-const ctx = await newLegContext(browser);
+const ctx = await newLegContext(browser, { viewport: TABLET_VIEWPORT });
 const p = ctx.page;
 let failed = 0;
 const log = (s, d) => { console.log(`  ${s} ${d}`); if (s === 'FAIL') failed++; };
@@ -24,6 +24,11 @@ try {
   await login(p, 'agent1');
   await p.locator(tsel('agent-tab-planner')).first().click({ timeout: 15_000 });
   await p.locator(tsel('planner-book')).waitFor({ state: 'visible', timeout: 15_000 });
+
+  // E1 drift guard: assert the preserved single-column layer (not the desktop board)
+  const layer = await assertSingleColumnPlanner(p);
+  log(layer.ok ? 'PASS' : 'FAIL', `E1 drift guard: single-column layer (pills=${layer.pillsPresent} board-absent=${layer.boardAbsent})`);
+
   await p.locator('body').click({ position: { x: 5, y: 5 } }); // ensure no form focus
 
   // n → booking sheet

@@ -8,7 +8,8 @@ import {
   DOW_PICKER_ORDER, MAX_SERIES_INSTANCES, buildSeriesPreview,
   dayOfWeekKey, slotDayLabel,
 } from './recurrence.helpers';
-import { formatTime12, findConflictingAppointment } from './planner.helpers';
+import { formatTime12, findConflictingAppointment, prospectNoteHistory } from './planner.helpers';
+import NotesThread from './NotesThread';
 
 const REPEAT_CHIPS = [
   { key: 'none',   label: 'None',        repeats: false },
@@ -61,6 +62,11 @@ export default function AppointmentSheet({
   error = '',
   showRepeat = false,
   seriesPostpone = null,
+  // E4 notes thread (edit mode) + this-week prospect-note surfacing.
+  noteThread = [],
+  onAddNote,
+  noteSaving = false,
+  duringActive = false,
   onSave,
   onDeleteTemplate,
   onClose,
@@ -124,6 +130,13 @@ export default function AppointmentSheet({
       mode === 'edit' ? initial?.id : null,
     ),
     [date, startTime, durationMin, appointments, mode, initial],
+  );
+
+  // E4 (this-week scope): the selected prospect's notes from the loaded week's
+  // OTHER appointments (own-scoped — `appointments` is the agent's loaded week).
+  const prospectHistory = useMemo(
+    () => prospectNoteHistory(appointments, prospectId, initial?.id),
+    [appointments, prospectId, initial],
   );
 
   const buildData = () => ({
@@ -414,6 +427,19 @@ export default function AppointmentSheet({
             </div>
           )}
 
+          {/* E4 (this-week scope): the selected prospect's prior notes from the
+              loaded week's other appointments — booking context, read-only. */}
+          {!isFree && selectedProspect && prospectHistory.length > 0 && (
+            <div data-testid="prospect-note-history" className="rounded-xl bg-primary/5 border border-primary/20 px-3 py-2.5">
+              <NotesThread
+                label={`Prior notes · ${selectedProspect.clientName}`}
+                thread={prospectHistory.map((h) => ({
+                  text: h.text, during: h.during, fromDate: slotDayLabel(h.date), at: null,
+                }))}
+              />
+            </div>
+          )}
+
           {/* Date + time */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
@@ -666,6 +692,18 @@ export default function AppointmentSheet({
               className="px-3 py-2 rounded-lg bg-surface border border-border text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
+
+          {/* E4 notes thread — plain edit of a single appointment only (not
+              series-propagate / reschedule / postpone). Add-note writes to the
+              appointment-scoped notes[]; "This meeting" is tagged when active. */}
+          {mode === 'edit' && !variant && onAddNote && (
+            <NotesThread
+              thread={noteThread}
+              onAdd={onAddNote}
+              saving={noteSaving}
+              duringActive={duringActive}
+            />
+          )}
 
           {/* Series postpone — amber consequence panel (state 4) */}
           {seriesPostpone && (
