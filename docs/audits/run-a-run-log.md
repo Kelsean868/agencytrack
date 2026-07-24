@@ -118,7 +118,19 @@ E1's desktop board (renders at `lg`≥1024) would replace the single-column view
 
 **E2 — drag-drop reschedule (committed).** Board cards are draggable (grip affordance, retired cards excluded); dragging reveals drop targets — day **columns** (drop = change DAY, keep time) and per-day **gap slots** (drop = change TIME to the hole after the prior card, `computeDayGaps`). On drop, `AgentPlannerPanel.handleReschedule` calls the **EXISTING `postponeWithRebook`** (mirrors the churn Postpone path's history entry + `undoPostpone` inverse — **no propagation reimplement**, per ruling). A series instance moves just itself (single-doc rebook) and the card's existing "Only this one moved · series stays" note shows. The churn dialog stays the tap path + keyboard-accessible reschedule alternative (drag zones carry a justified `jsx-a11y` disable citing it). Column drop handler is always-attached + reads a synchronous ref, so HTML5 DnD works without a re-render race. **Verify:** lint 0 (1 justified a11y-disable) · build ✓ · `PlannerDesktopBoard.test.jsx` 13/13 (+4 E2) · `AgentPlannerPanel.test.jsx` 69/69 (+1 E2 drop→postponeWithRebook) · `planner.helpers.test.js` 36/36 (+6 gap/time-math) · `smoke-e2-drag-reschedule.mjs` acceptance smoke (1280×800, DnD write-read-verify) + SMOKES.md row.
 
-_Next: E4 → E3 (D3 firestore.rules READ before E4; D4 deep-links only)._
+**E4 — per-appointment notes thread (committed; Option-1 ruling, this-week scope, deploy-free).**
+
+**D3 precondition evidence (firestore.rules, read-only — never edited):**
+
+| Concern | Finding |
+|---|---|
+| **Notes storage** (appointment-scoped `notes[]` field) | `validApptWrite()` (rules:1529–1552) uses `hasAll([...])`, **not `hasOnly`** → an extra `notes[]` field is permitted (documented coarse-validation design). `allow update` (1559–1562) gates on `resource.data.agentId == request.auth.uid`. **No rules edit needed.** `updateAppointment`'s allowlist doesn't cover `notes`, so E4 uses a dedicated `addAppointmentNote` (`arrayUnion`; note `at` = client ISO string, never `serverTimestamp()` inside an array). |
+| **Own-scope `prospectId` read** | `allow list` arm #1 (rules:1574–1576) = `resource.data.agentId == request.auth.uid`. **Owner field = `agentId`.** A `where('agentId','==',uid) where('prospectId','==',pid)` query is permitted (own-scoped; no cross-agent). This-week scope uses loaded data (no query); cross-time (query + `(agentId,prospectId)` index + deploy) → MEDIUM FU. |
+| **Cross-agent** | Not built (D3: cross-agent = NEEDS-HUMAN-REVIEW). The read is `agentId`-scoped. |
+
+**Build:** `addAppointmentNote` service (`arrayUnion`, client ISO `at`, `during` "THIS MEETING" flag) · `readNoteThread` (legacy `note` surfaced as first thread entry on migrate-read) · `prospectNoteHistory` (this-week own-scope) · `appointmentIsActive` · `NotesThread.jsx` (thread + add-note + "This meeting" tag, read-only when no `onAdd`) · `AppointmentSheet` renders the editable thread (plain edit only) + read-only prospect-history · `AgentPlannerPanel.handleAddNote` (during from `appointmentIsActive`; reload). **No rules edit, no index, no deploy.** **Verify:** lint 0 · build ✓ · `planner.helpers.test.js` 45/45 (+9 E4) · `NotesThread.test.jsx` 5/5 · `AppointmentSheet.test.jsx` 13/13 (+3 E4) · `AgentPlannerPanel.test.jsx` 70/70 (+1 add-note→addAppointmentNote) · `smoke-e4-notes-thread.mjs` (900×800 write-read-verify + prospect surfacing) + SMOKES.md row. Cross-time history banked MEDIUM FU (`FOLLOW_UPS.md`). **PR-body limitation:** pre-this-week notes don't surface until the FU ships.
+
+_Next: E3 (cascade math + UI; notify = tel:/wa.me deep-links + clipboard only, no send path). HOLD at Tier 2 PR-open._
 
 ## TIER 3 — Track J conformance closeout
 _Pending. Requires Tier 1 fixtures on the run's staging lineage._

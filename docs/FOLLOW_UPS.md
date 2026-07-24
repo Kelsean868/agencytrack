@@ -31,6 +31,7 @@
 | Design-conformance backlog — 14 NEEDS-RULING operator decisions block sequencing (banked 2026-07-... | HIGH | — | — | 620 |
 | Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases ... | HIGH | — | — | 282 |
 | Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion sess... | MEDIUM | — | — | 290 |
+| E4 cross-time prospect notes history — `(agentId, prospectId)` composite index + deploy (rules-permitted per D3); this-week scope shipped Run A Tier 2 E4 | MEDIUM | — | — | 4246 |
 | `featureFlags` allowlist is a deliberate triple-copy — consolidate when flags become config-drive... | LOW | — | — | 298 |
 | Desktop planner board — shift-click range select keys off mobile view state (banked 2026-07-24, Run A Tier 2 E1) | LOW | — | — | 4220 |
 | Desktop planner board — Arrow ←/→ view-cycling inert on the board (banked 2026-07-24, Run A Tier 2 E1) | LOW | — | — | 4232 |
@@ -4240,3 +4241,19 @@ The Run-9 A2 keyboard shortcut `ArrowLeft` / `ArrowRight` cycles the mobile `vie
 **Priority:** LOW — keyboard nicety; mouse/tap on the board toggle works, and ↑/↓/e/n all function.
 
 Banked: Run A Tier 2 E1, 2026-07-24. Listed as a known limitation in the Tier 2 PR body.
+
+---
+
+## E4 cross-time prospect notes history (banked 2026-07-24, Run A Tier 2 E4, MEDIUM — feature completeness)
+
+E4 shipped the notes thread + "notes travel with the prospect" at **THIS-WEEK scope** (Option-1 ruling, deploy-free): `prospectNoteHistory` (`src/components/planner/planner.helpers.js`) surfaces a prospect's prior notes from the **already-loaded** week's appointments. Notes from the prospect's **pre-this-week** appointments do not surface until this FU ships.
+
+**To build:** a client query `where('agentId','==',uid) where('prospectId','==',pid)` over `tenants/{tid}/appointments`, aggregating `readNoteThread` across ALL of the agent's own appointments for that prospect (cross-time). Wire it into `AppointmentSheet`'s prospect-history section (merge with the this-week set, dedupe).
+
+**Rules:** ALREADY PERMITTED — `allow list` arm #1 (`firestore.rules:1574-1576`, `resource.data.agentId == request.auth.uid`; owner field = `agentId`), recorded as D3 precondition evidence in `docs/audits/run-a-run-log.md`. **No rules edit needed.**
+
+**Index (the gating cost):** requires a NEW composite index `(agentId ASC, prospectId ASC)` in `firestore.indexes.json` + a deploy (`firebase deploy --only firestore:indexes`) — a dispatcher/human action (Rule 19: CC never deploys). Build the client query to **graceful-degrade** (catch → empty, like `loadTemplates`) so the app never breaks if the index isn't live yet; the cross-time notes simply don't surface until the index deploys.
+
+**Priority:** MEDIUM — the notes thread + this-week surfacing already deliver E4's core; cross-time is the completeness extension.
+
+Banked: Run A Tier 2 E4, 2026-07-24.

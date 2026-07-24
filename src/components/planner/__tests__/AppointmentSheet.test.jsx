@@ -182,3 +182,53 @@ describe('AppointmentSheet templates picker (Run 9 A4)', () => {
     expect(onDeleteTemplate).toHaveBeenCalledWith('tpl-1');
   });
 });
+
+// ── E4 notes thread + this-week prospect surfacing ─────────────────────────
+describe('AppointmentSheet — E4 notes', () => {
+  it('edit mode renders the notes thread with existing entries + an add field', () => {
+    render(
+      <AppointmentSheet
+        mode="edit"
+        initial={{ id: 'a1', date: '2026-07-24', startTime: '09:00', type: 'FFI', durationMin: 30 }}
+        appointments={[]}
+        noteThread={[{ at: null, text: 'prior', during: false, legacy: true }]}
+        onAddNote={vi.fn()}
+        onSave={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('notes-thread')).toBeInTheDocument();
+    expect(screen.getByText('prior')).toBeInTheDocument();
+    expect(screen.getByTestId('note-add-input')).toBeInTheDocument();
+  });
+
+  it("surfaces the prospect's prior notes (this-week) when booking for a prospect", () => {
+    render(
+      <AppointmentSheet
+        mode="create"
+        initial={{ date: '2026-07-24', startTime: '09:00', prospectId: 'p1' }}
+        prospects={[{ id: 'p1', clientName: 'Marsha Singh' }]}
+        appointments={[{ id: 'past', date: '2026-07-20', prospectId: 'p1', note: 'prior FFI note', notes: [] }]}
+        onSave={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const hist = screen.getByTestId('prospect-note-history');
+    expect(hist).toHaveTextContent('Marsha Singh');
+    expect(hist).toHaveTextContent('prior FFI note');
+  });
+
+  it('does not render an editable notes thread in create mode (no appointment yet)', () => {
+    render(
+      <AppointmentSheet
+        mode="create"
+        initial={{ date: '2026-07-24', startTime: '09:00' }}
+        appointments={[]}
+        onAddNote={vi.fn()}
+        onSave={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('note-add-input')).toBeNull();
+  });
+});

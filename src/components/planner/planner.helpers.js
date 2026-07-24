@@ -251,6 +251,70 @@ export function deriveFollowups(prospects = [], appointments = [], today) {
       String(a.intendedAppointmentDate).localeCompare(String(b.intendedAppointmentDate)));
 }
 
+// ── E4: per-appointment notes thread ─────────────────────────────────────────
+
+/**
+ * readNoteThread — merge an appointment's timestamped `notes[]` with its legacy
+ * single `note` string into one display thread (oldest-first). The legacy note
+ * surfaces as the FIRST entry on migrate-read (README E4: "keep the legacy note
+ * as the first thread entry"), tagged `legacy` so it sorts ahead and is never
+ * duplicated once it has also been re-saved into the thread. Each thread entry:
+ * `{ at, text, during, legacy? }` — `at` is a client ISO string (or null for the
+ * legacy entry). Defensive: non-array `notes` / missing fields are tolerated.
+ * @returns {Array<{at:(string|null), text:string, during:boolean, legacy?:boolean}>}
+ */
+export function readNoteThread(appt) {
+  const raw = Array.isArray(appt?.notes) ? appt.notes : [];
+  const thread = raw
+    .filter((n) => n && typeof n.text === 'string' && n.text.trim())
+    .map((n) => ({ at: n.at ?? null, text: n.text, during: Boolean(n.during) }));
+  const legacy = String(appt?.note ?? '').trim();
+  // Surface the legacy note only when it isn't already present as a thread entry.
+  if (legacy && !thread.some((n) => n.text === legacy)) {
+    thread.unshift({ at: null, text: legacy, during: false, legacy: true });
+  }
+  return thread.sort((a, b) => {
+    if (a.legacy) return -1;
+    if (b.legacy) return 1;
+    return String(a.at ?? '').localeCompare(String(b.at ?? ''));
+  });
+}
+
+/**
+ * prospectNoteHistory — E4 "notes travel with the prospect" (THIS-WEEK scope,
+ * deploy-free per the Option-1 ruling). Aggregates note-thread entries from the
+ * OTHER loaded appointments (`appts`, i.e. the current week) that share the same
+ * `prospectId`, excluding the appointment being viewed. Each returned row carries
+ * its source appointment's `date` so the booking sheet can show "from Mon 22".
+ * Cross-time history (pre-this-week) is a banked follow-up needing a composite
+ * index — see FOLLOW_UPS. Owner-scoped by construction (`appts` is the agent's
+ * own loaded week).
+ * @returns {Array<{date:string, text:string, during:boolean}>}
+ */
+export function prospectNoteHistory(appts = [], prospectId, excludeApptId = null) {
+  if (!prospectId) return [];
+  const out = [];
+  for (const a of appts) {
+    if (a.id === excludeApptId || a.prospectId !== prospectId) continue;
+    for (const n of readNoteThread(a)) {
+      if (n.text) out.push({ date: a.date, text: n.text, during: n.during });
+    }
+  }
+  return out;
+}
+
+/**
+ * appointmentIsActive — E4 "THIS MEETING" gate: a note added while the appt is
+ * happening is tagged `during`. Active = a non-retired, non-completed appointment
+ * dated `today` (TT). (Time-of-day window is intentionally not required — a note
+ * added the day of the meeting is "this meeting"; the compact card doesn't tick
+ * per-minute.)
+ */
+export function appointmentIsActive(appt, today) {
+  if (!appt || appt.date !== today) return false;
+  return !RETIRED_STATUSES.has(appt.status) && !COMPLETED_STATUSES.has(appt.status);
+}
+
 // ── Plan → Daily Capture seed (screen 9 handoff payoff) ──────────────────────
 
 /**

@@ -22,6 +22,7 @@ vi.mock('../../../services/plannerService', async (importActual) => {
     deleteAppointment:   vi.fn(),
     undoPostpone:        vi.fn(),
     bulkUpdateAppointments: vi.fn(),
+    addAppointmentNote:  vi.fn(),
   };
 });
 vi.mock('../../../services/prospectInfoService', () => ({
@@ -41,7 +42,7 @@ import AgentPlannerPanel from '../AgentPlannerPanel';
 import {
   getAgentWeek, getSeriesInstances, setAppointmentStatus, updateAppointment,
   createAppointment, deleteAppointment, postponeWithRebook, undoPostpone,
-  bulkUpdateAppointments,
+  bulkUpdateAppointments, addAppointmentNote,
 } from '../../../services/plannerService';
 import { getProspectInfo } from '../../../services/prospectInfoService';
 import { listTemplates, saveTemplate, deleteTemplate } from '../../../services/appointmentTemplateService';
@@ -1350,6 +1351,27 @@ describe('AgentPlannerPanel — E1 desktop board (lg+)', () => {
       't1', 'x1',
       expect.objectContaining({ date: nextDay, startTime: '09:00', type: 'FFI' }),
       expect.objectContaining({ agentId: 'agent-1' }),
+    ));
+  });
+});
+
+// ── Planner v2 E4: per-appointment notes (add-note) ────────────────────────
+describe('AgentPlannerPanel — E4 add-note', () => {
+  it('adding a note in the edit sheet calls addAppointmentNote (during=true for a live today appt)', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'x1', date: TODAY, startTime: '09:00', durationMin: 60, type: 'FFI', status: 'scheduled', note: '' },
+    ]);
+    addAppointmentNote.mockResolvedValue();
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-x1')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('appt-card-x1'));               // churn dialog
+    await waitFor(() => expect(screen.getByTestId('churn-dialog')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('churn-action-edit'));          // → edit sheet
+    await waitFor(() => expect(screen.getByTestId('note-add-input')).toBeInTheDocument());
+    fireEvent.change(screen.getByTestId('note-add-input'), { target: { value: 'call went well' } });
+    fireEvent.click(screen.getByTestId('note-add-btn'));
+    await waitFor(() => expect(addAppointmentNote).toHaveBeenCalledWith(
+      't1', 'x1', expect.objectContaining({ text: 'call went well', during: true }),
     ));
   });
 });

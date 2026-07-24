@@ -9,7 +9,7 @@ import { getProspectInfo } from '../../services/prospectInfoService';
 import {
   getAgentWeek, getSeriesInstances, createAppointment, createRecurringAppointments,
   updateAppointment, setAppointmentStatus, postponeWithRebook, deleteAppointment,
-  undoPostpone, bulkUpdateAppointments,
+  undoPostpone, bulkUpdateAppointments, addAppointmentNote,
 } from '../../services/plannerService';
 import {
   listTemplates, saveTemplate, deleteTemplate,
@@ -18,6 +18,7 @@ import {
   weekRange, buildWeekDates, groupByDate, sortByStartTime,
   deriveFollowups, deriveSeedFromKept, formatTime12, dayLabel,
   RETIRED_STATUSES, detectConflicts, shiftDateStr,
+  readNoteThread, appointmentIsActive,
 } from './planner.helpers';
 import {
   seriesRowLabel, cadenceLabel, nextOccurrenceDate, slotDayLabel, formatShortDate,
@@ -315,6 +316,7 @@ export default function AgentPlannerPanel({
   const [sheet, setSheet] = useState(null); // null | { mode, initial, rebookFrom }
   const [sheetSaving, setSheetSaving] = useState(false);
   const [sheetError, setSheetError] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false); // E4 add-note in-flight
 
   // Churn dialog
   const [churn, setChurn] = useState(null);
@@ -518,6 +520,27 @@ export default function AgentPlannerPanel({
       toast.show({ message: 'Could not move — check your connection and try again.', variant: 'error' });
     }
   }, [tenantId, meta, history, load, toast]);
+
+  // Planner v2 E4: append a note to the edited appointment's thread. `during`
+  // ("THIS MEETING") is set when the appointment is active today. Appointment-
+  // scoped (addAppointmentNote → arrayUnion on the appt doc); NOT undoable (a
+  // note is a record, like a template save). Reload reflects the new entry.
+  const handleAddNote = useCallback(async (text) => {
+    const apptId = sheet?.initial?.id;
+    if (!apptId) return;
+    const appt = resolveAppt(apptId);
+    const during = appt ? appointmentIsActive(appt, today) : false;
+    setNoteSaving(true);
+    try {
+      await addAppointmentNote(tenantId, apptId, { text, during });
+      await load();
+      toast.show({ message: 'Note added', variant: 'info' });
+    } catch {
+      toast.show({ message: 'Could not add note — check your connection and try again.', variant: 'error' });
+    } finally {
+      setNoteSaving(false);
+    }
+  }, [sheet, resolveAppt, today, tenantId, load, toast]);
 
   // Shared bulk runner: write → push ONE undo entry → reload → toast → exit
   // selection mode. On failure the service throws naming committed-vs-total
@@ -1052,6 +1075,12 @@ export default function AgentPlannerPanel({
     </div>
   );
 
+  // E4: the edited appointment's note thread + "active" (THIS MEETING) flag,
+  // derived live from the loaded appts so a just-added note re-renders the sheet.
+  const editAppt = sheet?.mode === 'edit' && sheet.initial?.id ? resolveAppt(sheet.initial.id) : null;
+  const noteThread = editAppt ? readNoteThread(editAppt) : [];
+  const noteDuringActive = editAppt ? appointmentIsActive(editAppt, today) : false;
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className={`${isDesktop ? 'max-w-none' : 'max-w-3xl mx-auto'} px-4 py-6 screen-enter`}>
@@ -1334,6 +1363,10 @@ export default function AgentPlannerPanel({
           error={sheetError}
           showRepeat={Boolean(sheet.showRepeat)}
           seriesPostpone={sheet.seriesPostpone ?? null}
+          noteThread={noteThread}
+          onAddNote={handleAddNote}
+          noteSaving={noteSaving}
+          duringActive={noteDuringActive}
           onSave={handleSheetSave}
           onDeleteTemplate={handleDeleteTemplate}
           onClose={() => { setSheet(null); setSheetError(''); }}

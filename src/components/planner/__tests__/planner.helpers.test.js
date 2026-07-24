@@ -4,6 +4,7 @@ import {
   formatTime12, dayLabel, deriveFollowups, deriveSeedFromKept,
   PLAN_TO_DAILY_FIELD, detectConflicts, findConflictingAppointment,
   shiftDateStr, addMinutesToTime, computeDayGaps,
+  readNoteThread, prospectNoteHistory, appointmentIsActive,
 } from '../planner.helpers';
 
 describe('week/day math', () => {
@@ -283,5 +284,64 @@ describe('computeDayGaps (E2 drop slots)', () => {
       { key: 'gap-top', startTime: '08:00' },
       { key: 'gap-after-x', startTime: '09:30' },
     ]);
+  });
+});
+
+describe('readNoteThread (E4 migrate-read)', () => {
+  it('surfaces the legacy note as the first entry when no notes[] yet', () => {
+    const t = readNoteThread({ note: 'legacy text', notes: [] });
+    expect(t).toEqual([{ at: null, text: 'legacy text', during: false, legacy: true }]);
+  });
+  it('merges legacy note (first) + notes[] sorted oldest→newest', () => {
+    const t = readNoteThread({
+      note: 'legacy',
+      notes: [
+        { at: '2026-07-24T14:00:00.000Z', text: 'second', during: true },
+        { at: '2026-07-24T09:00:00.000Z', text: 'first', during: false },
+      ],
+    });
+    expect(t.map((n) => n.text)).toEqual(['legacy', 'first', 'second']);
+    expect(t[0].legacy).toBe(true);
+    expect(t[2].during).toBe(true);
+  });
+  it('does NOT duplicate the legacy note once it is also a thread entry', () => {
+    const t = readNoteThread({ note: 'dup', notes: [{ at: '2026-07-24T09:00:00.000Z', text: 'dup' }] });
+    expect(t).toHaveLength(1);
+  });
+  it('tolerates missing / malformed notes and empty text', () => {
+    expect(readNoteThread({})).toEqual([]);
+    expect(readNoteThread({ notes: [{ text: '  ' }, { at: 'x' }] })).toEqual([]);
+  });
+});
+
+describe('prospectNoteHistory (E4 this-week surfacing)', () => {
+  const appts = [
+    { id: 'cur', prospectId: 'p1', notes: [{ at: '2026-07-24T09:00:00.000Z', text: 'current appt note' }] },
+    { id: 'past', date: '2026-07-20', prospectId: 'p1', note: 'prior FFI note', notes: [] },
+    { id: 'other', date: '2026-07-21', prospectId: 'p2', notes: [{ at: 'x', text: 'someone else' }] },
+  ];
+  it('returns other-appointment notes for the same prospect, excluding the current appt', () => {
+    const out = prospectNoteHistory(appts, 'p1', 'cur');
+    expect(out).toEqual([{ date: '2026-07-20', text: 'prior FFI note', during: false }]);
+  });
+  it('returns [] with no prospectId', () => {
+    expect(prospectNoteHistory(appts, '', 'cur')).toEqual([]);
+  });
+  it('never crosses prospects', () => {
+    const out = prospectNoteHistory(appts, 'p1', 'cur');
+    expect(out.some((n) => n.text === 'someone else')).toBe(false);
+  });
+});
+
+describe('appointmentIsActive (E4 THIS MEETING gate)', () => {
+  const TODAY = '2026-07-24';
+  it('true for a non-retired, non-completed appt dated today', () => {
+    expect(appointmentIsActive({ date: TODAY, status: 'scheduled' }, TODAY)).toBe(true);
+    expect(appointmentIsActive({ date: TODAY, status: 'confirmed' }, TODAY)).toBe(true);
+  });
+  it('false for other days, retired, or completed', () => {
+    expect(appointmentIsActive({ date: '2026-07-23', status: 'scheduled' }, TODAY)).toBe(false);
+    expect(appointmentIsActive({ date: TODAY, status: 'cancelled' }, TODAY)).toBe(false);
+    expect(appointmentIsActive({ date: TODAY, status: 'kept' }, TODAY)).toBe(false);
   });
 });
