@@ -95,6 +95,42 @@ export function shiftDateStr(dateStr, days) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+/**
+ * 'HH:mm' + minutes → 'HH:mm' (clamped to 23:59, same-day). Malformed input or a
+ * result past midnight returns null (caller falls back). Used by the E2 drag
+ * gap-slot model to derive a drop-slot's suggested start from the preceding
+ * appointment's end.
+ */
+export function addMinutesToTime(hhmm, mins) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm ?? ''));
+  if (!m) return null;
+  const total = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + (Number(mins) || 0);
+  if (!Number.isFinite(total) || total < 0 || total > 23 * 60 + 59) return null;
+  const h = Math.floor(total / 60);
+  const min = total % 60;
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+}
+
+/**
+ * computeDayGaps — the E2 drag drop-slots for one day column: a "top" slot
+ * (start-of-day) plus one slot AFTER each rendered card, whose suggested start
+ * is that card's end time (`startTime + durationMin` — the "hole" the README's
+ * gap model targets). Dropping a dragged card into a slot changes its time to
+ * the slot's `startTime` (and its date to the column's day). Cards missing a
+ * parseable end contribute no after-slot (defensive). Pure — no date math beyond
+ * addMinutesToTime.
+ * @returns {Array<{key:string, startTime:string}>}
+ */
+export function computeDayGaps(dayAppts = []) {
+  const sorted = sortByStartTime(dayAppts);
+  const zones = [{ key: 'gap-top', startTime: '08:00' }];
+  for (const a of sorted) {
+    const end = addMinutesToTime(a.startTime, a.durationMin);
+    if (end) zones.push({ key: `gap-after-${a.id}`, startTime: end });
+  }
+  return zones;
+}
+
 // Statuses that RETAIN a slot but read as "no longer active" (dimmed/struck).
 export const RETIRED_STATUSES = new Set(['cancelled', 'postponed']);
 // Statuses that count as the plan being carried out.

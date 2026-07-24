@@ -491,6 +491,34 @@ export default function AgentPlannerPanel({
     />
   ), [prospectName, resolveAppt, conflicts, selectMode, selected, toggleSelect]);
 
+  // Planner v2 E2: drag-drop reschedule → the EXISTING postponeWithRebook (drag
+  // is a faster path to the same move, not a new mutation — no propagation
+  // reimplement). Mirrors the churn Postpone path's history entry (undoPostpone
+  // inverse). A SERIES instance moves just itself (single-doc rebook); the
+  // original tombstones as 'postponed' and the card's existing series note shows
+  // ("Only this one moved · series stays"). No-op when the slot is unchanged.
+  const handleReschedule = useCallback(async (appt, target) => {
+    if (!target || (target.date === appt.date && target.startTime === appt.startTime)) return;
+    const newData = {
+      type: appt.type, date: target.date, startTime: target.startTime,
+      durationMin: appt.durationMin, prospectId: appt.prospectId,
+      freeBlockLabel: appt.freeBlockLabel, note: appt.note,
+    };
+    try {
+      const newIdRef = { current: await postponeWithRebook(tenantId, appt.id, newData, meta) };
+      history.push({
+        label: 'Reschedule (drag)',
+        undo: async () => { await undoPostpone(tenantId, appt.id, newIdRef.current); },
+        redo: async () => { newIdRef.current = await postponeWithRebook(tenantId, appt.id, newData, meta); },
+      });
+      await load();
+      toast.show({ message: 'Appointment moved', variant: 'info' });
+    } catch {
+      await load();
+      toast.show({ message: 'Could not move — check your connection and try again.', variant: 'error' });
+    }
+  }, [tenantId, meta, history, load, toast]);
+
   // Shared bulk runner: write → push ONE undo entry → reload → toast → exit
   // selection mode. On failure the service throws naming committed-vs-total
   // chunks (R6: never silently partial) — surfaced verbatim in an error
@@ -1155,6 +1183,7 @@ export default function AgentPlannerPanel({
               byDate={byDate}
               onBook={openBook}
               renderCard={renderCard}
+              onReschedule={handleReschedule}
               followupsSlot={followupsList}
               followupsCount={followups.length}
             />

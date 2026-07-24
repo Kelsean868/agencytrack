@@ -116,7 +116,9 @@ E1's desktop board (renders at `lg`≥1024) would replace the single-column view
 
 **E1 acceptance smoke — deferred-to-staging (not a waiver).** `smoke-e1-desktop-board.mjs` is auth-dependent (real login), so it runs against **staging after merge**, not on the feature preview (preview can't clear the Firebase authorized-domains allowlist — intended per the brief's VERIFICATION STANDARD). RTL covers the board's component logic (11 tests); the smoke is the real-DOM + real-Firestore write-read-verify, run post-merge.
 
-_Next: E2 → E4 → E3 (D3 firestore.rules READ before E4; D4 deep-links only)._
+**E2 — drag-drop reschedule (committed).** Board cards are draggable (grip affordance, retired cards excluded); dragging reveals drop targets — day **columns** (drop = change DAY, keep time) and per-day **gap slots** (drop = change TIME to the hole after the prior card, `computeDayGaps`). On drop, `AgentPlannerPanel.handleReschedule` calls the **EXISTING `postponeWithRebook`** (mirrors the churn Postpone path's history entry + `undoPostpone` inverse — **no propagation reimplement**, per ruling). A series instance moves just itself (single-doc rebook) and the card's existing "Only this one moved · series stays" note shows. The churn dialog stays the tap path + keyboard-accessible reschedule alternative (drag zones carry a justified `jsx-a11y` disable citing it). Column drop handler is always-attached + reads a synchronous ref, so HTML5 DnD works without a re-render race. **Verify:** lint 0 (1 justified a11y-disable) · build ✓ · `PlannerDesktopBoard.test.jsx` 13/13 (+4 E2) · `AgentPlannerPanel.test.jsx` 69/69 (+1 E2 drop→postponeWithRebook) · `planner.helpers.test.js` 36/36 (+6 gap/time-math) · `smoke-e2-drag-reschedule.mjs` acceptance smoke (1280×800, DnD write-read-verify) + SMOKES.md row.
+
+_Next: E4 → E3 (D3 firestore.rules READ before E4; D4 deep-links only)._
 
 ## TIER 3 — Track J conformance closeout
 _Pending. Requires Tier 1 fixtures on the run's staging lineage._

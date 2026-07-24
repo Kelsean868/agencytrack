@@ -108,3 +108,68 @@ describe('PlannerDesktopBoard — E1 desktop day-column board', () => {
     expect(onBook).toHaveBeenCalledWith(TODAY);
   });
 });
+
+// ── E2 drag-drop reschedule ────────────────────────────────────────────────
+describe('PlannerDesktopBoard — E2 drag-drop', () => {
+  const byDateE2 = new Map([
+    [TODAY, [
+      { id: 'a1', startTime: '09:00', durationMin: 30, type: 'FFI', status: 'scheduled' },
+      { id: 'a2', startTime: '13:00', durationMin: 60, type: 'CI', status: 'scheduled' },
+    ]],
+    ['2026-07-25', [{ id: 'a3', startTime: '10:00', durationMin: 30, type: 'PC', status: 'cancelled' }]],
+  ]);
+  const dt = () => ({ setData: vi.fn(), effectAllowed: '' });
+
+  function renderE2(props = {}) {
+    return render(
+      <PlannerDesktopBoard
+        span="3day" onSpanChange={vi.fn()} today={TODAY} weekDates={WEEK_DATES}
+        byDate={byDateE2} onBook={vi.fn()} renderCard={renderCard}
+        onReschedule={vi.fn()} {...props}
+      />,
+    );
+  }
+
+  it('live cards are draggable; retired cards are not', () => {
+    renderE2();
+    expect(screen.getByTestId('planner-drag-a1')).toHaveAttribute('draggable', 'true');
+    // a3 is cancelled → not draggable
+    expect(screen.getByTestId('planner-drag-a3')).not.toHaveAttribute('draggable', 'true');
+  });
+
+  it('gap slots appear only while dragging', () => {
+    renderE2();
+    expect(screen.queryByTestId(`planner-gap-${TODAY}-gap-top`)).toBeNull();
+    fireEvent.dragStart(screen.getByTestId('planner-drag-a1'), { dataTransfer: dt() });
+    expect(screen.getByTestId(`planner-gap-${TODAY}-gap-top`)).toBeInTheDocument();
+    expect(screen.getByTestId(`planner-gap-${TODAY}-gap-after-a1`)).toBeInTheDocument();
+    fireEvent.dragEnd(screen.getByTestId('planner-drag-a1'));
+    expect(screen.queryByTestId(`planner-gap-${TODAY}-gap-top`)).toBeNull();
+  });
+
+  it('dropping a card on another day column reschedules to that DAY, keeping the time', () => {
+    const onReschedule = vi.fn();
+    renderE2({ onReschedule });
+    fireEvent.dragStart(screen.getByTestId('planner-drag-a1'), { dataTransfer: dt() });
+    const nextCol = screen.getByTestId('planner-day-col-2026-07-25');
+    fireEvent.dragOver(nextCol, { dataTransfer: dt() });
+    fireEvent.drop(nextCol, { dataTransfer: dt() });
+    expect(onReschedule).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'a1' }),
+      { date: '2026-07-25', startTime: '09:00' },
+    );
+  });
+
+  it('dropping a card into a gap slot reschedules to that TIME (the hole after the prior card)', () => {
+    const onReschedule = vi.fn();
+    renderE2({ onReschedule });
+    fireEvent.dragStart(screen.getByTestId('planner-drag-a2'), { dataTransfer: dt() });
+    // gap-after-a1 = a1 end = 09:00 + 30m = 09:30, in today's column
+    const gap = screen.getByTestId(`planner-gap-${TODAY}-gap-after-a1`);
+    fireEvent.drop(gap, { dataTransfer: dt() });
+    expect(onReschedule).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'a2' }),
+      { date: TODAY, startTime: '09:30' },
+    );
+  });
+});

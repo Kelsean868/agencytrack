@@ -3,7 +3,7 @@ import {
   buildWeekDates, weekRange, sortByStartTime, groupByDate, groupByAgent,
   formatTime12, dayLabel, deriveFollowups, deriveSeedFromKept,
   PLAN_TO_DAILY_FIELD, detectConflicts, findConflictingAppointment,
-  shiftDateStr,
+  shiftDateStr, addMinutesToTime, computeDayGaps,
 } from '../planner.helpers';
 
 describe('week/day math', () => {
@@ -243,5 +243,45 @@ describe('shiftDateStr (Run 9 A5 bulk move ±N days)', () => {
     expect(shiftDateStr('bad-date', 3)).toBe('bad-date');
     expect(shiftDateStr('', 3)).toBe('');
     expect(shiftDateStr(null, 3)).toBeNull();
+  });
+});
+
+describe('addMinutesToTime (E2 gap-slot time math)', () => {
+  it('adds minutes within the day', () => {
+    expect(addMinutesToTime('09:00', 60)).toBe('10:00');
+    expect(addMinutesToTime('09:30', 45)).toBe('10:15');
+    expect(addMinutesToTime('23:00', 30)).toBe('23:30');
+  });
+  it('returns null past midnight or on malformed input', () => {
+    expect(addMinutesToTime('23:30', 60)).toBeNull(); // 24:30 > 23:59
+    expect(addMinutesToTime('bad', 30)).toBeNull();
+    expect(addMinutesToTime('', 30)).toBeNull();
+  });
+  it('treats a non-numeric delta as 0', () => {
+    expect(addMinutesToTime('09:00', undefined)).toBe('09:00');
+  });
+});
+
+describe('computeDayGaps (E2 drop slots)', () => {
+  it('empty day → just the top slot', () => {
+    expect(computeDayGaps([])).toEqual([{ key: 'gap-top', startTime: '08:00' }]);
+  });
+  it('one after-slot per card, at that card end time, in time order', () => {
+    const appts = [
+      { id: 'b', startTime: '13:00', durationMin: 60 },
+      { id: 'a', startTime: '09:00', durationMin: 30 },
+    ];
+    expect(computeDayGaps(appts)).toEqual([
+      { key: 'gap-top', startTime: '08:00' },
+      { key: 'gap-after-a', startTime: '09:30' },
+      { key: 'gap-after-b', startTime: '14:00' },
+    ]);
+  });
+  it('a card whose end has no parseable time contributes no after-slot', () => {
+    const appts = [{ id: 'x', startTime: '09:00', durationMin: 30 }, { id: 'y', startTime: 'bad', durationMin: 30 }];
+    expect(computeDayGaps(appts)).toEqual([
+      { key: 'gap-top', startTime: '08:00' },
+      { key: 'gap-after-x', startTime: '09:30' },
+    ]);
   });
 });

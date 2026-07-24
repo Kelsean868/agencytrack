@@ -1333,4 +1333,23 @@ describe('AgentPlannerPanel — E1 desktop board (lg+)', () => {
       expect(cols).toHaveLength(7);
     });
   });
+
+  it('E2: dropping a card on another day column calls postponeWithRebook with the new date (undo-able)', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'x1', date: TODAY, startTime: '09:00', durationMin: 60, type: 'FFI', status: 'scheduled' },
+    ]);
+    postponeWithRebook.mockResolvedValue('new-id');
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-desktop-board')).toBeInTheDocument());
+    // default span 3day → today + next two; drop x1 onto the +1 day column
+    const dtInit = { dataTransfer: { setData: vi.fn(), effectAllowed: '' } };
+    fireEvent.dragStart(screen.getByTestId('planner-drag-x1'), dtInit);
+    const nextDay = shiftDateStr(TODAY, 1);
+    fireEvent.drop(screen.getByTestId(`planner-day-col-${nextDay}`), dtInit);
+    await waitFor(() => expect(postponeWithRebook).toHaveBeenCalledWith(
+      't1', 'x1',
+      expect.objectContaining({ date: nextDay, startTime: '09:00', type: 'FFI' }),
+      expect.objectContaining({ agentId: 'agent-1' }),
+    ));
+  });
 });

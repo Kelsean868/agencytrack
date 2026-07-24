@@ -1,9 +1,11 @@
-import React from 'react';
-import { Plus } from 'lucide-react';
-import { sortByStartTime, dayLabel, shiftDateStr } from './planner.helpers';
+import React, { useState, useRef } from 'react';
+import { Plus, GripVertical } from 'lucide-react';
+import {
+  sortByStartTime, dayLabel, shiftDateStr, computeDayGaps, RETIRED_STATUSES,
+} from './planner.helpers';
 
 /**
- * PlannerDesktopBoard — Planner v2 E1 desktop multi-day board.
+ * PlannerDesktopBoard — Planner v2 E1 desktop multi-day board + E2 drag-drop.
  *
  * Renders side-by-side day columns for the selected span (Day / 3 days / Week),
  * mounted only at the `lg` breakpoint by AgentPlannerPanel (via useIsDesktop).
@@ -14,19 +16,21 @@ import { sortByStartTime, dayLabel, shiftDateStr } from './planner.helpers';
  * conflict / series wiring the mobile views use — the board is a layout, not a
  * fork of the interaction model.
  *
+ * E2 drag-drop: each live card is draggable (grip affordance). Dragging shows
+ * drop targets — the day columns (drop = change DAY, keep time) and per-day gap
+ * slots between cards (drop = change TIME to that hole, and that column's day).
+ * On drop the parent's `onReschedule(appt, { date, startTime })` calls the
+ * EXISTING `postponeWithRebook` (drag is a faster path to the same move, not a
+ * new mutation). Retired cards are not draggable. The churn dialog stays the tap
+ * path (and the only mobile path) + the keyboard alternative.
+ *
  * Span → columns:
  *   day  → [today]
  *   3day → [today, today+1, today+2]      (today-anchored)
  *   week → the Sun–Sat weekDates          (calendar week)
  * Week uses `dense` cards (README: "week = compact chips") in tighter columns.
- *
- * No date math of its own beyond `shiftDateStr` (the banked A5 helper) — grouping
- * and sorting reuse `byDate` / `sortByStartTime` from planner.helpers.
  */
 
-// Day-span options (render the column grid). Follow-ups is appended as a 4th
-// toggle option so desktop keeps the follow-ups view the single-column layout
-// had — it renders the parent-provided `followupsSlot`, not columns.
 const BOARD_SPANS = [
   { key: 'day', label: 'Day', days: 1 },
   { key: '3day', label: '3 days', days: 3 },
@@ -43,6 +47,7 @@ export default function PlannerDesktopBoard({
   byDate,
   onBook,
   renderCard,
+  onReschedule,
   followupsSlot = null,
   followupsCount = 0,
 }) {
@@ -51,6 +56,30 @@ export default function PlannerDesktopBoard({
     ? weekDates
     : Array.from({ length: span === '3day' ? 3 : 1 }, (_, i) => shiftDateStr(today, i));
   const dense = span === 'week';
+
+  // E2 drag state. draggedApptRef holds the full appt (not serialized through
+  // dataTransfer — a component ref is simpler and the board never leaves this
+  // tree); dropZone is the currently hovered target key (for the teal highlight).
+  const [draggingId, setDraggingId] = useState(null);
+  const [dropZone, setDropZone] = useState(null);
+  const draggedApptRef = useRef(null);
+
+  const startDrag = (e, a) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', a.id); // Firefox needs data to start a drag
+    draggedApptRef.current = a;
+    setDraggingId(a.id);
+  };
+  const endDrag = () => {
+    setDraggingId(null);
+    setDropZone(null);
+    draggedApptRef.current = null;
+  };
+  const drop = (target) => {
+    const a = draggedApptRef.current;
+    endDrag();
+    if (a) onReschedule?.(a, target);
+  };
 
   return (
     <div data-testid="planner-desktop-board">
@@ -98,11 +127,33 @@ export default function PlannerDesktopBoard({
         {columns.map((date) => {
           const dayAppts = sortByStartTime(byDate.get(date) || []);
           const isToday = date === today;
+          const colDropId = `col-${date}`;
+          const gaps = draggingId ? computeDayGaps(dayAppts) : [];
+          const gapZone = (zone) => {
+            const zoneKey = `${date}-${zone.key}`;
+            return (
+              <div
+                key={zoneKey}
+                data-testid={`planner-gap-${zoneKey}`}
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropZone(zoneKey); }}
+                onDrop={(e) => { e.preventDefault(); e.stopPropagation(); drop({ date, startTime: zone.startTime }); }}
+                className={`rounded transition-all ${
+                  dropZone === zoneKey ? 'h-8 bg-primary/25 border-2 border-dashed border-primary/50' : 'h-2'
+                }`}
+                aria-hidden="true"
+              />
+            );
+          };
           return (
+            // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- E2 drag-drop day-change target (mouse-only progressive enhancement); the keyboard-accessible reschedule path is the churn dialog's Reschedule/Postpone per the planner-scheduler-v2 README
             <div
               key={date}
               data-testid={`planner-day-col-${date}`}
-              className="rounded-xl bg-card border border-border p-3 min-w-0 flex flex-col"
+              onDragOver={(e) => { e.preventDefault(); if (draggingId) setDropZone(colDropId); }}
+              onDrop={(e) => { e.preventDefault(); drop({ date, startTime: draggedApptRef.current?.startTime }); }}
+              className={`rounded-xl bg-card border p-3 min-w-0 flex flex-col transition-colors ${
+                dropZone === colDropId ? 'border-primary ring-2 ring-primary/40' : 'border-border'
+              }`}
             >
               <div className="flex items-center justify-between gap-1 mb-2">
                 <span className={`text-sm font-semibold truncate ${isToday ? 'text-primary' : 'text-ink'}`}>
@@ -119,12 +170,42 @@ export default function PlannerDesktopBoard({
                 </button>
               </div>
               {dayAppts.length === 0 ? (
-                <p data-testid={`planner-day-empty-${date}`} className="text-xs text-ink-muted italic">
-                  No appointments
-                </p>
+                <>
+                  {draggingId && gapZone({ key: 'gap-top', startTime: '08:00' })}
+                  <p data-testid={`planner-day-empty-${date}`} className="text-xs text-ink-muted italic">
+                    No appointments
+                  </p>
+                </>
               ) : (
                 <div className={`flex flex-col ${dense ? 'gap-1.5' : 'gap-2'}`}>
-                  {dayAppts.map((a) => renderCard(a, { dense }))}
+                  {gaps[0] && gapZone(gaps[0])}
+                  {dayAppts.map((a, i) => {
+                    const retired = RETIRED_STATUSES.has(a.status);
+                    return (
+                      <React.Fragment key={a.id}>
+                        <div
+                          draggable={!retired}
+                          onDragStart={retired ? undefined : (e) => startDrag(e, a)}
+                          onDragEnd={retired ? undefined : endDrag}
+                          data-testid={`planner-drag-${a.id}`}
+                          className={`relative ${retired ? '' : 'cursor-grab active:cursor-grabbing'} ${
+                            draggingId === a.id ? 'opacity-35' : ''
+                          }`}
+                        >
+                          {!retired && (
+                            <span
+                              className="absolute left-0.5 top-1/2 -translate-y-1/2 text-ink-dim pointer-events-none opacity-40"
+                              aria-hidden="true"
+                            >
+                              <GripVertical size={14} />
+                            </span>
+                          )}
+                          {renderCard(a, { dense })}
+                        </div>
+                        {gaps[i + 1] && gapZone(gaps[i + 1])}
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
               )}
             </div>
