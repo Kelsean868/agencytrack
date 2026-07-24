@@ -19,6 +19,7 @@ import {
   deriveFollowups, deriveSeedFromKept, formatTime12, dayLabel,
   RETIRED_STATUSES, detectConflicts, shiftDateStr,
   readNoteThread, appointmentIsActive,
+  findRunningLate, computeLateCascade,
 } from './planner.helpers';
 import {
   seriesRowLabel, cadenceLabel, nextOccurrenceDate, slotDayLabel, formatShortDate,
@@ -32,6 +33,7 @@ import BulkCancelConfirmSheet from './BulkCancelConfirmSheet';
 import PlannerShortcutsSheet from './PlannerShortcutsSheet';
 import usePlannerHistory from './usePlannerHistory';
 import PlannerDesktopBoard from './PlannerDesktopBoard';
+import RunningLateSheet from './RunningLateSheet';
 import useToast from '../../hooks/useToast';
 import useIsDesktop from '../../hooks/useIsDesktop';
 
@@ -99,6 +101,14 @@ const VIEWS = [
   { key: 'week',      label: 'Week' },
   { key: 'followups', label: 'Follow-ups' },
 ];
+
+// Current local 'HH:mm' — the E3 running-late tick. Field agents run in TT, so
+// local time matches getTodayTT's date basis; the churn "Running late" action is
+// a timezone-independent manual entry regardless.
+function currentTimeHHmm() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
 
 // Week-counter rows: booked (non-retired) planner appts of a type vs the weekly
 // floor for the matching activity.
@@ -230,6 +240,9 @@ function ChurnDialog({ appt, onAction, onClose, saving }) {
   const trapRef = useFocusTrap({ onEscape: onClose, escapeDisabled: saving });
   const actions = [
     { key: 'kept',      label: 'Mark kept',    variant: 'primary' },
+    ...(['scheduled', 'confirmed'].includes(appt.status)
+      ? [{ key: 'running-late', label: 'Running late', variant: 'plain', testid: 'churn-running-late' }]
+      : []),
     { key: 'edit',      label: 'Edit details', variant: 'plain' },
     { key: 'reschedule', label: 'Reschedule',  variant: 'plain' },
     { key: 'postpone',  label: 'Postpone',     variant: 'plain' },
@@ -317,6 +330,18 @@ export default function AgentPlannerPanel({
   const [sheetSaving, setSheetSaving] = useState(false);
   const [sheetError, setSheetError] = useState('');
   const [noteSaving, setNoteSaving] = useState(false); // E4 add-note in-flight
+
+  // E3 running-late cascade: the appt being addressed, write-in-flight, the set
+  // of appts the agent chose to "Keep schedule" on (so the banner stops nagging),
+  // and a 1-minute tick that re-evaluates the overdue signal.
+  const [lateSheet, setLateSheet] = useState(null);
+  const [lateSaving, setLateSaving] = useState(false);
+  const [lateDismissed, setLateDismissed] = useState(() => new Set());
+  const [nowTime, setNowTime] = useState(() => currentTimeHHmm());
+  useEffect(() => {
+    const id = setInterval(() => setNowTime(currentTimeHHmm()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Churn dialog
   const [churn, setChurn] = useState(null);
@@ -541,6 +566,75 @@ export default function AgentPlannerPanel({
       setNoteSaving(false);
     }
   }, [sheet, resolveAppt, today, tenantId, load, toast]);
+
+  // ── E3 running-late cascade ────────────────────────────────────────────────
+  // The overdue signal (earliest un-churned today appt whose end has passed).
+  const lateCandidate = useMemo(
+    () => findRunningLate(todayAppts, today, nowTime),
+    [todayAppts, today, nowTime],
+  );
+  const prospectPhone = useCallback(
+    (id) => { const pr = prospects.find((x) => x.id === id); return pr?.phone ?? pr?.clientPhone ?? null; },
+    [prospects],
+  );
+
+  // "Keep schedule" — dismiss the prompt for this appt so the banner stops.
+  const handleLateKeep = useCallback(() => {
+    setLateSheet((cur) => { if (cur) setLateDismissed((prev) => new Set(prev).add(cur.id)); return null; });
+  }, []);
+
+  // "Wrap up · mark Kept" — the existing setAppointmentStatus path.
+  const handleLateWrapKept = useCallback(async () => {
+    const appt = lateSheet;
+    if (!appt) return;
+    setLateSaving(true);
+    try {
+      const priorStatus = appt.status;
+      await setAppointmentStatus(tenantId, appt.id, 'kept');
+      history.push({
+        label: 'Mark kept',
+        undo: async () => { await setAppointmentStatus(tenantId, appt.id, priorStatus); },
+        redo: async () => { await setAppointmentStatus(tenantId, appt.id, 'kept'); },
+      });
+      await load();
+      setLateSheet(null);
+    } catch {
+      toast.show({ message: 'Could not update — check your connection and try again.', variant: 'error' });
+    } finally {
+      setLateSaving(false);
+    }
+  }, [lateSheet, tenantId, history, load, toast]);
+
+  // "Push back +N & notify" — batch the affected time shifts through the SAME
+  // bulk write path (no new mutation path); undo restores each prior startTime.
+  const handlePushLate = useCallback(async (pushMin, scope) => {
+    const appt = lateSheet;
+    if (!appt) return;
+    const { affected } = computeLateCascade(appts, appt, pushMin, scope);
+    if (affected.length === 0) { setLateSheet(null); return; }
+    const updates = affected.map((a) => ({ id: a.id, patch: { startTime: a.newStartTime } }));
+    const priors = affected.map((a) => ({ id: a.id, patch: { startTime: a.oldStartTime } }));
+    setLateSaving(true);
+    try {
+      await bulkUpdateAppointments(tenantId, updates);
+      history.push({
+        label: `Running late +${pushMin}m (${affected.length})`,
+        undo: async () => { await bulkUpdateAppointments(tenantId, priors); },
+        redo: async () => { await bulkUpdateAppointments(tenantId, updates); },
+      });
+      await load();
+      toast.show({
+        message: `Pushed ${affected.length} ${affected.length === 1 ? 'appointment' : 'appointments'} +${pushMin}m`,
+        variant: 'info',
+      });
+      setLateSheet(null);
+    } catch (err) {
+      await load();
+      toast.show({ message: err?.message || 'Could not push — check your connection and try again.', variant: 'error' });
+    } finally {
+      setLateSaving(false);
+    }
+  }, [lateSheet, appts, tenantId, history, load, toast]);
 
   // Shared bulk runner: write → push ONE undo entry → reload → toast → exit
   // selection mode. On failure the service throws naming committed-vs-total
@@ -781,6 +875,12 @@ export default function AgentPlannerPanel({
   // useCallback: referenced directly by the Run 9 A2 keyboard-shortcuts effect
   // below (the `e` shortcut) — same reason as openBook above.
   const handleChurnAction = useCallback(async (action, appt) => {
+    if (action === 'running-late') {
+      // E3: open the running-late cascade sheet for this appointment.
+      setChurn(null);
+      setLateSheet(appt);
+      return;
+    }
     if (action === 'edit') {
       // Edit-in-place. For a SERIES instance, raise the scope-choice sheet first
       // (state 3): "this only" routes to the standard edit path; series-wide edit
@@ -965,7 +1065,7 @@ export default function AgentPlannerPanel({
   // from Shell.jsx's Ctrl/Cmd+K palette, so no collision. Active only while
   // this panel is mounted.
   useEffect(() => {
-    const dialogOpen = Boolean(sheet || churn || seriesChoice || shortcutsOpen || templatePrompt || bulkSheet);
+    const dialogOpen = Boolean(sheet || churn || seriesChoice || shortcutsOpen || templatePrompt || bulkSheet || lateSheet);
     function onKeyDown(e) {
       if ((e.metaKey || e.ctrlKey) && !e.altKey) {
         if (dialogOpen) return;
@@ -1036,7 +1136,7 @@ export default function AgentPlannerPanel({
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [
-    sheet, churn, seriesChoice, shortcutsOpen, templatePrompt, bulkSheet, selectMode,
+    sheet, churn, seriesChoice, shortcutsOpen, templatePrompt, bulkSheet, lateSheet, selectMode,
     exitSelectMode, runUndo, runRedo,
     view, weekStart, today, openBook, handleChurnAction, resolveAppt, moveCardFocus,
   ]);
@@ -1186,6 +1286,25 @@ export default function AgentPlannerPanel({
             Clear
           </button>
         </div>
+      )}
+
+      {/* E3: running-late banner — auto-surfaced when an appt overran its end
+          un-churned; opens the cascade sheet. Suppressed once the agent picks
+          "Keep schedule" for that appt. */}
+      {lateCandidate && !lateDismissed.has(lateCandidate.id) && !lateSheet && (
+        <button
+          type="button"
+          onClick={() => setLateSheet(lateCandidate)}
+          data-testid="running-late-banner"
+          className="w-full flex items-center gap-2 mb-4 p-3 rounded-xl bg-warning/10 border border-warning/30 text-left hover:bg-warning/15 transition-colors"
+        >
+          <AlertTriangle size={16} className="text-warning-ink shrink-0" aria-hidden="true" />
+          <span className="text-sm font-semibold text-warning-ink flex-1">
+            Running late on your {formatTime12(lateCandidate.startTime)}
+            {lateCandidate.prospectId ? ` · ${prospectName(lateCandidate.prospectId) || 'Prospect'}` : ''}?
+          </span>
+          <span className="text-xs font-semibold text-warning-ink underline shrink-0">Sort it out</span>
+        </button>
       )}
 
       {loading ? (
@@ -1402,6 +1521,20 @@ export default function AgentPlannerPanel({
           saving={churnSaving}
           onAction={handleChurnAction}
           onClose={() => setChurn(null)}
+        />
+      )}
+
+      {lateSheet && (
+        <RunningLateSheet
+          lateAppt={lateSheet}
+          appts={appts}
+          prospectName={prospectName}
+          prospectPhone={prospectPhone}
+          saving={lateSaving}
+          onPush={handlePushLate}
+          onKeep={handleLateKeep}
+          onWrapKept={handleLateWrapKept}
+          onClose={() => setLateSheet(null)}
         />
       )}
     </div>

@@ -5,6 +5,7 @@ import {
   PLAN_TO_DAILY_FIELD, detectConflicts, findConflictingAppointment,
   shiftDateStr, addMinutesToTime, computeDayGaps,
   readNoteThread, prospectNoteHistory, appointmentIsActive,
+  findRunningLate, computeLateCascade,
 } from '../planner.helpers';
 
 describe('week/day math', () => {
@@ -343,5 +344,67 @@ describe('appointmentIsActive (E4 THIS MEETING gate)', () => {
     expect(appointmentIsActive({ date: '2026-07-23', status: 'scheduled' }, TODAY)).toBe(false);
     expect(appointmentIsActive({ date: TODAY, status: 'cancelled' }, TODAY)).toBe(false);
     expect(appointmentIsActive({ date: TODAY, status: 'kept' }, TODAY)).toBe(false);
+  });
+});
+
+describe('findRunningLate (E3 overdue signal)', () => {
+  const TODAY = '2026-07-24';
+  const appts = [
+    { id: 'a', date: TODAY, startTime: '09:00', durationMin: 60, status: 'scheduled' }, // ends 10:00
+    { id: 'b', date: TODAY, startTime: '11:00', durationMin: 60, status: 'scheduled' }, // ends 12:00
+    { id: 'k', date: TODAY, startTime: '08:00', durationMin: 30, status: 'kept' },       // completed → ignored
+  ];
+  it('returns the earliest un-churned appt whose end is before now', () => {
+    // now 10:30 → a ended 10:00 (overdue), b ends 12:00 (not yet)
+    expect(findRunningLate(appts, TODAY, '10:30').id).toBe('a');
+  });
+  it('returns null when nothing has overrun yet', () => {
+    expect(findRunningLate(appts, TODAY, '09:30')).toBeNull(); // a still in progress
+  });
+  it('ignores completed / retired appts and other days', () => {
+    expect(findRunningLate(appts, TODAY, '08:45')).toBeNull(); // only kept 'k' ended → ignored
+    expect(findRunningLate(appts, '2026-07-25', '23:00')).toBeNull(); // no appts that day
+  });
+});
+
+describe('computeLateCascade (E3 gap-smart)', () => {
+  const TODAY = '2026-07-24';
+  // late 'a' 09:00-10:00; next 'b' 10:00-10:30; then 'c' 13:00 (big gap after b)
+  const appts = [
+    { id: 'a', date: TODAY, startTime: '09:00', durationMin: 60, status: 'scheduled', prospectId: 'pa' },
+    { id: 'b', date: TODAY, startTime: '10:00', durationMin: 30, status: 'scheduled', prospectId: 'pb' },
+    { id: 'c', date: TODAY, startTime: '13:00', durationMin: 60, status: 'scheduled', prospectId: 'pc' },
+  ];
+  const late = appts[0];
+  it("scope 'next' shifts only the next appt; recommends 'next' when the gap absorbs the push", () => {
+    const r = computeLateCascade(appts, late, 20, 'next');
+    expect(r.affected).toEqual([{ id: 'b', prospectId: 'pb', type: undefined, oldStartTime: '10:00', newStartTime: '10:20' }]);
+    expect(r.unaffected.map((x) => x.id)).toEqual(['c']);
+    // gap after b (10:30) to c (13:00) = 150m ≥ 20 → recommend 'next'
+    expect(r.gapAfterNextMin).toBe(150);
+    expect(r.recommendedScope).toBe('next');
+  });
+  it("scope 'all' cascades every later appt by the push", () => {
+    const r = computeLateCascade(appts, late, 20, 'all');
+    expect(r.affected.map((x) => `${x.id}:${x.newStartTime}`)).toEqual(['b:10:20', 'c:13:20']);
+    expect(r.unaffected).toEqual([]);
+  });
+  it("recommends 'all' when the gap after next is smaller than the push", () => {
+    const tight = [
+      { id: 'a', date: TODAY, startTime: '09:00', durationMin: 60, status: 'scheduled' },
+      { id: 'b', date: TODAY, startTime: '10:00', durationMin: 30, status: 'scheduled' }, // ends 10:30
+      { id: 'c', date: TODAY, startTime: '10:40', durationMin: 30, status: 'scheduled' }, // gap 10m < 20
+    ];
+    expect(computeLateCascade(tight, tight[0], 20, 'next').recommendedScope).toBe('all');
+  });
+  it('excludes retired/completed appts and appts before the late one', () => {
+    const mixed = [
+      { id: 'before', date: TODAY, startTime: '08:00', durationMin: 30, status: 'scheduled' },
+      { id: 'a', date: TODAY, startTime: '09:00', durationMin: 60, status: 'scheduled' },
+      { id: 'gone', date: TODAY, startTime: '10:00', durationMin: 30, status: 'cancelled' },
+      { id: 'b', date: TODAY, startTime: '11:00', durationMin: 30, status: 'scheduled' },
+    ];
+    const r = computeLateCascade(mixed, mixed[1], 10, 'all');
+    expect(r.affected.map((x) => x.id)).toEqual(['b']); // before + cancelled excluded
   });
 });

@@ -136,6 +136,78 @@ export const RETIRED_STATUSES = new Set(['cancelled', 'postponed']);
 // Statuses that count as the plan being carried out.
 export const COMPLETED_STATUSES = new Set(['kept', 'done']);
 
+/** 'HH:mm' → minutes-of-day (0–1439), or null on malformed input. */
+function minutesOfDay(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm ?? ''));
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  if (h < 0 || h > 23 || min < 0 || min > 59) return null;
+  return h * 60 + min;
+}
+
+// ── E3: running-late cascade (gap-smart) ─────────────────────────────────────
+
+/**
+ * findRunningLate — the "you're behind" signal: the EARLIEST non-retired,
+ * non-completed appointment on `today` whose end (`startTime + durationMin`) is
+ * already before `nowTime` ('HH:mm'). It should have been churned by now. Returns
+ * that appointment, or null when nothing is overdue. Pure — the panel's client
+ * tick supplies `nowTime` (TT).
+ */
+export function findRunningLate(appts = [], today, nowTime) {
+  const nowMin = minutesOfDay(nowTime);
+  if (nowMin == null) return null;
+  const overdue = appts
+    .filter((a) => a && a.date === today
+      && !RETIRED_STATUSES.has(a.status) && !COMPLETED_STATUSES.has(a.status))
+    .map((a) => ({ a, startMin: minutesOfDay(a.startTime), dur: Number(a.durationMin) || 0 }))
+    .filter((x) => x.startMin != null && x.startMin + x.dur < nowMin)
+    .sort((x, y) => x.startMin - y.startMin);
+  return overdue.length ? overdue[0].a : null;
+}
+
+/**
+ * computeLateCascade — gap-smart running-late math (README E3). Given the day's
+ * `appts`, the `lateAppt` that overran, a `pushMin` (10/20/30) and a `scope`
+ * ('next' | 'all'), returns:
+ *   - `following`: the day's still-active appointments AT/AFTER the late one
+ *   - `affected`:  the ones that shift under `scope`, each `{id, oldStartTime,
+ *                  newStartTime, prospectId, type}`
+ *   - `unaffected`: the following appts NOT shifted
+ *   - `gapAfterNextMin`: the gap (min) after the NEXT appt (Infinity if none) —
+ *                  drives `recommendedScope`
+ *   - `recommendedScope`: 'next' when that gap ≥ the push (the push absorbs, the
+ *                  rest is unaffected), else 'all' (cascade the day)
+ * Pure — no clock read. Cross-midnight pushes clamp (addMinutesToTime → null →
+ * no shift for that row).
+ */
+export function computeLateCascade(appts = [], lateAppt, pushMin, scope = 'next') {
+  const push = Number(pushMin) || 0;
+  const lateStart = minutesOfDay(lateAppt?.startTime) ?? 0;
+  const following = sortByStartTime(
+    appts.filter((a) => a && a.id !== lateAppt?.id
+      && a.date === lateAppt?.date
+      && !RETIRED_STATUSES.has(a.status) && !COMPLETED_STATUSES.has(a.status)
+      && (minutesOfDay(a.startTime) ?? -1) >= lateStart),
+  );
+  let gapAfterNextMin = Infinity;
+  if (following.length >= 2) {
+    const nextEnd = (minutesOfDay(following[0].startTime) ?? 0) + (Number(following[0].durationMin) || 0);
+    gapAfterNextMin = (minutesOfDay(following[1].startTime) ?? 0) - nextEnd;
+  }
+  const recommendedScope = gapAfterNextMin >= push ? 'next' : 'all';
+  const shiftList = scope === 'all' ? following : following.slice(0, 1);
+  const affected = shiftList.map((a) => ({
+    id: a.id, prospectId: a.prospectId, type: a.type,
+    oldStartTime: a.startTime,
+    newStartTime: addMinutesToTime(a.startTime, push) ?? a.startTime,
+  }));
+  const affectedIds = new Set(affected.map((x) => x.id));
+  const unaffected = following.filter((a) => !affectedIds.has(a.id));
+  return { following, affected, unaffected, gapAfterNextMin, recommendedScope };
+}
+
 // ── Conflict detection (Run 9 A3 — R7: warn-only, never blocks) ─────────────
 
 /**

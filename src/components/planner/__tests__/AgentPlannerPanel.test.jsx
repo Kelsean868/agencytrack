@@ -1375,3 +1375,24 @@ describe('AgentPlannerPanel — E4 add-note', () => {
     ));
   });
 });
+
+// ── Planner v2 E3: running-late cascade ────────────────────────────────────
+describe('AgentPlannerPanel — E3 running-late', () => {
+  it('churn "Running late" opens the cascade sheet; push calls bulkUpdateAppointments with shifted times', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'a', date: TODAY, startTime: '09:00', durationMin: 60, status: 'scheduled', type: 'FFI' },
+      { id: 'b', date: TODAY, startTime: '11:00', durationMin: 30, status: 'scheduled', type: 'CI' },
+    ]);
+    bulkUpdateAppointments.mockResolvedValue({ count: 1 });
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('appt-card-a')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('appt-card-a'));
+    await waitFor(() => expect(screen.getByTestId('churn-dialog')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('churn-running-late'));
+    await waitFor(() => expect(screen.getByTestId('running-late-sheet')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('late-push-apply'));   // default +20 / next
+    await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
+      { id: 'b', patch: { startTime: '11:20' } },
+    ]));
+  });
+});
