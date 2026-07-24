@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { getTodayTT } from '../../../utils/dateInputs';
@@ -1288,5 +1288,49 @@ describe('series edit propagation (Run 9 F3d — R1/R2)', () => {
       }),
     ));
     await waitFor(() => expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument());
+  });
+});
+
+// ── Planner v2 E1/E5: desktop board (lg+) ──────────────────────────────────
+// isDesktop is matchMedia-driven; jsdom has no matchMedia, so the tests above
+// exercise the mobile layer. Here we stub matchMedia → desktop and assert the
+// board replaces the single-column view pills (the drift-guard premise the six
+// Run-9 smokes rely on), while the interactive card + Follow-ups view survive.
+describe('AgentPlannerPanel — E1 desktop board (lg+)', () => {
+  const realMatchMedia = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: true, media: query,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+    }));
+  });
+  afterEach(() => { window.matchMedia = realMatchMedia; });
+
+  it('at lg+ renders the desktop board instead of the single-column view pills', async () => {
+    getAgentWeek.mockResolvedValue([
+      { id: 'x1', date: TODAY, startTime: '09:00', type: 'FFI', durationMin: 60, status: 'scheduled' },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-desktop-board')).toBeInTheDocument());
+    // Mobile view pills are NOT rendered on the desktop board (drift-guard premise).
+    expect(screen.queryByTestId('planner-view-today')).toBeNull();
+    expect(screen.queryByTestId('planner-view-week')).toBeNull();
+    // The board's own toggle is present, including the preserved Follow-ups view.
+    expect(screen.getByTestId('planner-span-3day')).toBeInTheDocument();
+    expect(screen.getByTestId('planner-span-followups')).toBeInTheDocument();
+    // The seeded appt renders as a real card (churn/select wiring preserved).
+    expect(screen.getByTestId('appt-card-x1')).toBeInTheDocument();
+  });
+
+  it('switching the board toggle to Week renders 7 day columns', async () => {
+    getAgentWeek.mockResolvedValue([]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-desktop-board')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('planner-span-week'));
+    await waitFor(() => {
+      const cols = document.querySelectorAll('[data-testid^="planner-day-col-"]');
+      expect(cols).toHaveLength(7);
+    });
   });
 });

@@ -99,10 +99,22 @@ The staging-PR-bypasses-both-gates conflict (below) was resolved by **Option A**
 
 **Design authority:** Phase-0-verified [`docs/design-system/proposals/planner-scheduler-v2/README.md`](../design-system/proposals/planner-scheduler-v2/README.md) ONLY. Build order E1 → E5 → E2 → E4 → E3.
 
-### Per-tier drift check (Tier 2 touch-set: staging vs main) — ✅ PASS
-8 existing planner files E1–E5 build on, diffed `origin/staging` vs `origin/main`: **ALL 8 byte-identical** — `AgentPlannerPanel.jsx`, `AppointmentSheet.jsx`, `planner.helpers.js`, `plannerPrimitives.jsx`, `recurrence.helpers.js`, `usePlannerHistory.js`, `services/plannerService.js`, `index.css`. New E1–E5 files can't drift. Cleared to build off `origin/staging`. Tier 2 has no file overlap with Tier 1 (planner vs seeder/verification/CI/dashboard), so sequential merge into staging is clean.
+### Re-base + drift check (dispatcher ruling) — ✅ PASS
+After Tier 1 PR #865 merged into `staging` (squash `4e7a287b`), the Tier 2 branch was **re-cut off the updated `origin/staging`** and the drift check re-run on **14 files** (8 planner + the 6 `smoke-run9-*.mjs`) vs `origin/main`: **ALL 14 byte-identical, 0 drift.** `useIsDesktop.js` carried forward as the first commit.
 
-_Branch cut + E1 build pending CI-green confirmation on `d64b0105` (per dispatcher GO)._
+### E1/Run-9 smoke conflict → Option 1 (dispatcher ruling)
+E1's desktop board (renders at `lg`≥1024) would replace the single-column views the 6 Run-9 smokes drive at their 1280px default. Resolution: pin the 6 smokes to **900×800** (sidebar rail ≥768 keeps `agent-tab-planner` nav; <1024 keeps the single-column layer) + a **drift guard** (`assertSingleColumnPlanner`: view pill present + `planner-desktop-board` absent) so a breakpoint move fails loudly. E1 board root testid locked = `planner-desktop-board`.
+
+### Commits (branch `run-a-tier2-planner`)
+| # | SHA | What |
+|---|-----|------|
+| 1 | `e32a7f24` | `useIsDesktop` hook (matchMedia, `lg`, jsdom-safe) |
+| 2 | `2885f781` | Option A: 6 Run-9 smokes → 900×800 + drift guard + SMOKES.md note |
+| 3 | _pending_ | **E1 + E5**: `PlannerDesktopBoard.jsx` (Day/3-day/Week/Follow-ups toggle, fluid columns, `dense` week cards) · `AgentPlannerPanel` `isDesktop` branch (board vs mobile views) + `renderCard` render-prop (churn/select preserved) + shared `followupsList` (desktop keeps Follow-ups) + **E5** `max-w-none` on desktop · `smoke-e1-desktop-board.mjs` acceptance smoke (1280×800, write-read-verify) + SMOKES.md row |
+
+**E1 verification:** lint 0 · build ✓ · `PlannerDesktopBoard.test.jsx` 9/9 · `AgentPlannerPanel.test.jsx` 68/68 (66 existing + 2 desktop-switch) · full suite 5575/5576 with the 1 failure = the pre-existing timing-sensitive R6 bulk-cap test under heavy parallel load (file passes 68/68 in isolation ×3; R6 runs in the mobile layer, untouched by E1) — re-confirming.
+
+_Next: E2 → E4 → E3 (D3 firestore.rules READ before E4; D4 deep-links only)._
 
 ## TIER 3 — Track J conformance closeout
 _Pending. Requires Tier 1 fixtures on the run's staging lineage._

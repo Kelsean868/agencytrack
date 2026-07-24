@@ -30,7 +30,9 @@ import BulkMoveSheet from './BulkMoveSheet';
 import BulkCancelConfirmSheet from './BulkCancelConfirmSheet';
 import PlannerShortcutsSheet from './PlannerShortcutsSheet';
 import usePlannerHistory from './usePlannerHistory';
+import PlannerDesktopBoard from './PlannerDesktopBoard';
 import useToast from '../../hooks/useToast';
+import useIsDesktop from '../../hooks/useIsDesktop';
 
 // Fields openEditSheet hydrates into sheet.initial — the exact set undo/redo
 // for an edit compares against to isolate "the fields that were patched"
@@ -114,7 +116,7 @@ const WEEK_COUNTER_ROWS = [
  * live appointments only. */
 function AppointmentCard({
   appt, prospectName, onChurn, resolveAppt, conflicted,
-  selectMode = false, selected = false, onToggleSelect,
+  selectMode = false, selected = false, onToggleSelect, dense = false,
 }) {
   const retired = RETIRED_STATUSES.has(appt.status);
   const selectable = selectMode && !retired;
@@ -153,7 +155,7 @@ function AppointmentCard({
       onClick={handleClick}
       data-testid={`appt-card-${appt.id}`}
       aria-pressed={selectMode ? selected : undefined}
-      className={`w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-colors ${
+      className={`w-full text-left flex items-start ${dense ? 'gap-2 p-2' : 'gap-3 p-3'} rounded-xl border transition-colors ${
         retired
           ? 'bg-card border-border/50 opacity-60'
           : selected
@@ -194,7 +196,7 @@ function AppointmentCard({
             {label}
           </span>
         </div>
-        {appt.note && <p className="text-xs text-ink-muted mt-0.5 truncate">{appt.note}</p>}
+        {!dense && appt.note && <p className="text-xs text-ink-muted mt-0.5 truncate">{appt.note}</p>}
 
         {activeSeriesLine && (
           <div className="mt-2 pt-2 border-t border-dashed border-border">
@@ -298,6 +300,12 @@ export default function AgentPlannerPanel({
   const floors = weeklyFloors ?? DEFAULT_WEEKLY_ACTIVITY_FLOORS;
 
   const [view, setView] = useState('today');
+  // Planner v2 E1/E5: at lg+ the panel renders the side-by-side desktop board
+  // (PlannerDesktopBoard) instead of the single-column mobile views, and drops
+  // the width cap. isDesktop is matchMedia-driven (false in jsdom → tests keep
+  // the mobile layout + its unique appt-card testids).
+  const isDesktop = useIsDesktop();
+  const [desktopSpan, setDesktopSpan] = useState('3day');
   const [appts, setAppts] = useState([]);
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -464,6 +472,24 @@ export default function AgentPlannerPanel({
     () => [...selected].map((id) => apptById.get(id)).filter(Boolean),
     [selected, apptById],
   );
+
+  // Planner v2 E1: render-prop the desktop board uses so every board card keeps
+  // the exact churn / select / conflict / series wiring the mobile views use —
+  // the board is a layout, not a fork of the interaction model.
+  const renderCard = useCallback((a, opts = {}) => (
+    <AppointmentCard
+      key={a.id}
+      appt={a}
+      prospectName={prospectName(a.prospectId)}
+      onChurn={setChurn}
+      resolveAppt={resolveAppt}
+      conflicted={conflicts.has(a.id)}
+      selectMode={selectMode}
+      selected={selected.has(a.id)}
+      onToggleSelect={toggleSelect}
+      dense={opts.dense}
+    />
+  ), [prospectName, resolveAppt, conflicts, selectMode, selected, toggleSelect]);
 
   // Shared bulk runner: write → push ONE undo entry → reload → toast → exit
   // selection mode. On failure the service throws naming committed-vs-total
@@ -964,9 +990,43 @@ export default function AgentPlannerPanel({
     view, weekStart, today, openBook, handleChurnAction, resolveAppt, moveCardFocus,
   ]);
 
+  // Follow-ups list — shared by the mobile Follow-ups view and the desktop
+  // board's Follow-ups slot, so desktop keeps this view (E1: via the board's
+  // 4th toggle option) that the single-column layout had.
+  const followupsList = (
+    <div className="flex flex-col gap-3 stagger">
+      {followups.length === 0 ? (
+        <div data-testid="planner-followups-empty" className="rounded-xl bg-card border border-border p-8 text-center">
+          <CheckCircle2 size={28} className="text-primary mx-auto mb-2" aria-hidden="true" />
+          <p className="text-base font-semibold text-ink">All caught up</p>
+          <p className="text-sm text-ink-muted mt-1">No prospects are waiting on a callback.</p>
+        </div>
+      ) : (
+        followups.map((f) => (
+          <div key={f.id} data-testid={`followup-row-${f.id}`} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-ink truncate">{f.clientName}</p>
+              <p className="text-xs text-ink-muted">
+                {f.overdue ? 'Overdue · ' : 'Due '}intended {f.intendedAppointmentDate}
+              </p>
+            </div>
+            {f.overdue && <ApptStatusPill status="postponed" />}
+            <button
+              type="button"
+              onClick={() => setSheet({ mode: 'create', showRepeat: true, initial: { date: today, startTime: '09:00', prospectId: f.id, type: 'FFI' } })}
+              className="min-h-[44px] px-3 rounded-lg bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-colors"
+            >
+              Book
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  );
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 screen-enter">
+    <div className={`${isDesktop ? 'max-w-none' : 'max-w-3xl mx-auto'} px-4 py-6 screen-enter`}>
       {/* Header */}
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
@@ -1007,7 +1067,8 @@ export default function AgentPlannerPanel({
         </div>
       </div>
 
-      {/* View pills */}
+      {/* View pills — mobile only; desktop uses the board's own view toggle */}
+      {!isDesktop && (
       <div className="flex gap-2 mb-4" role="tablist" aria-label="Planner views">
         {VIEWS.map((v) => (
           <button
@@ -1030,6 +1091,7 @@ export default function AgentPlannerPanel({
           </button>
         ))}
       </div>
+      )}
 
       {/* Run 9 A5: selection count bar — visible whenever selection mode is on. */}
       {selectMode && (
@@ -1084,6 +1146,20 @@ export default function AgentPlannerPanel({
         </div>
       ) : (
         <div ref={contentRef}>
+          {isDesktop ? (
+            <PlannerDesktopBoard
+              span={desktopSpan}
+              onSpanChange={setDesktopSpan}
+              today={today}
+              weekDates={weekDates}
+              byDate={byDate}
+              onBook={openBook}
+              renderCard={renderCard}
+              followupsSlot={followupsList}
+              followupsCount={followups.length}
+            />
+          ) : (
+          <>
           {/* ── TODAY ── */}
           {view === 'today' && (
             <div className="flex flex-col gap-3 stagger">
@@ -1186,35 +1262,8 @@ export default function AgentPlannerPanel({
           )}
 
           {/* ── FOLLOW-UPS ── */}
-          {view === 'followups' && (
-            <div className="flex flex-col gap-3 stagger">
-              {followups.length === 0 ? (
-                <div data-testid="planner-followups-empty" className="rounded-xl bg-card border border-border p-8 text-center">
-                  <CheckCircle2 size={28} className="text-primary mx-auto mb-2" aria-hidden="true" />
-                  <p className="text-base font-semibold text-ink">All caught up</p>
-                  <p className="text-sm text-ink-muted mt-1">No prospects are waiting on a callback.</p>
-                </div>
-              ) : (
-                followups.map((f) => (
-                  <div key={f.id} data-testid={`followup-row-${f.id}`} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-ink truncate">{f.clientName}</p>
-                      <p className="text-xs text-ink-muted">
-                        {f.overdue ? 'Overdue · ' : 'Due '}intended {f.intendedAppointmentDate}
-                      </p>
-                    </div>
-                    {f.overdue && <ApptStatusPill status="postponed" />}
-                    <button
-                      type="button"
-                      onClick={() => setSheet({ mode: 'create', showRepeat: true, initial: { date: today, startTime: '09:00', prospectId: f.id, type: 'FFI' } })}
-                      className="min-h-[44px] px-3 rounded-lg bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-colors"
-                    >
-                      Book
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
+          {view === 'followups' && followupsList}
+          </>
           )}
         </div>
       )}
