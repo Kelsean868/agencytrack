@@ -2,7 +2,9 @@ import React from 'react';
 import KPICard from './KPICard';
 
 const BRANCH_KPIS = [
-  { key: 'compliance', label: 'Compliance Rate', isCurrency: false },
+  // Compliance Rate is a 0–100 percentage — isPercent renders the "%" suffix
+  // (was rendering a bare "13"). The others are counts / currency.
+  { key: 'compliance', label: 'Compliance Rate', isCurrency: false, isPercent: true },
   { key: 'api',        label: 'Weekly API',       isCurrency: true  },
   { key: 'apps',       label: 'Weekly Apps',      isCurrency: false },
   { key: 'ffi',        label: 'Weekly FFI',       isCurrency: false },
@@ -43,6 +45,7 @@ export default function BranchKPIStrip({ kpiData, loading, activeAgentCount }) {
             label={kpi.label}
             values={kpiData?.[kpi.key] ?? []}
             isCurrency={kpi.isCurrency}
+            isPercent={kpi.isPercent ?? false}
           />
         ))}
         <KPICard
