@@ -110,9 +110,11 @@ E1's desktop board (renders at `lg`≥1024) would replace the single-column view
 |---|-----|------|
 | 1 | `e32a7f24` | `useIsDesktop` hook (matchMedia, `lg`, jsdom-safe) |
 | 2 | `2885f781` | Option A: 6 Run-9 smokes → 900×800 + drift guard + SMOKES.md note |
-| 3 | _pending_ | **E1 + E5**: `PlannerDesktopBoard.jsx` (Day/3-day/Week/Follow-ups toggle, fluid columns, `dense` week cards) · `AgentPlannerPanel` `isDesktop` branch (board vs mobile views) + `renderCard` render-prop (churn/select preserved) + shared `followupsList` (desktop keeps Follow-ups) + **E5** `max-w-none` on desktop · `smoke-e1-desktop-board.mjs` acceptance smoke (1280×800, write-read-verify) + SMOKES.md row |
+| 3 | `43f1e5f4` | **E1 + E5**: `PlannerDesktopBoard.jsx` (Day/3-day/Week/Follow-ups toggle, fluid columns, `dense` week cards) · `AgentPlannerPanel` `isDesktop` branch (board vs mobile views) + `renderCard` render-prop (churn/select preserved) + shared `followupsList` (desktop keeps Follow-ups) + **E5** `max-w-none` on desktop · `smoke-e1-desktop-board.mjs` acceptance smoke (1280×800, write-read-verify) + SMOKES.md row |
 
-**E1 verification:** lint 0 · build ✓ · `PlannerDesktopBoard.test.jsx` 9/9 · `AgentPlannerPanel.test.jsx` 68/68 (66 existing + 2 desktop-switch) · full suite 5575/5576 with the 1 failure = the pre-existing timing-sensitive R6 bulk-cap test under heavy parallel load (file passes 68/68 in isolation ×3; R6 runs in the mobile layer, untouched by E1) — re-confirming.
+**E1 verification:** lint 0 · build ✓ · `PlannerDesktopBoard.test.jsx` 9/9 · `AgentPlannerPanel.test.jsx` 68/68 (66 existing + 2 desktop-switch). Full suite: two runs each failed **one different** `AgentPlannerPanel` A5-bulk test under heavy local parallel load (R6-cap, then per-op undo-entry); the A5 cluster passes **15/15 ×3** and the file **68/68 ×3** in isolation → pre-existing pattern-2 timing flake (E1 is inert in the jsdom mobile path A5 runs in). Annotated on the existing MEDIUM CI-vs-local FU (`FOLLOW_UPS.md`). **CI on PR-open is the authoritative full-suite gate.**
+
+**E1 acceptance smoke — deferred-to-staging (not a waiver).** `smoke-e1-desktop-board.mjs` is auth-dependent (real login), so it runs against **staging after merge**, not on the feature preview (preview can't clear the Firebase authorized-domains allowlist — intended per the brief's VERIFICATION STANDARD). RTL covers the board's component logic (11 tests); the smoke is the real-DOM + real-Firestore write-read-verify, run post-merge.
 
 _Next: E2 → E4 → E3 (D3 firestore.rules READ before E4; D4 deep-links only)._
 

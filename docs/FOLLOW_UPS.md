@@ -32,6 +32,8 @@
 | Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases ... | HIGH | — | — | 282 |
 | Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion sess... | MEDIUM | — | — | 290 |
 | `featureFlags` allowlist is a deliberate triple-copy — consolidate when flags become config-drive... | LOW | — | — | 298 |
+| Desktop planner board — shift-click range select keys off mobile view state (banked 2026-07-24, Run A Tier 2 E1) | LOW | — | — | 4220 |
+| Desktop planner board — Arrow ←/→ view-cycling inert on the board (banked 2026-07-24, Run A Tier 2 E1) | LOW | — | — | 4232 |
 | Run-7 ranked next-list — PARTIALLY CLOSED by Run 8 (campaign export, Team Dashboard #6, All Users... | — | — | — | 314 |
 | Run-7 DECISIONS-NEEDED — none banked this run (informational, 2026-07-15) | — | — | — | 329 |
 | Design-conformance 2026-07-13 revalidation — 11 NEEDS-RULING items ruled by operator; backlog upd... | HIGH | — | — | 337 |
@@ -393,6 +395,8 @@ PR #861 fixed two CI-only failures in `AgentAwardsPanel.test.jsx` (from the Run-
 2. **Shared `asyncUtilTimeout` budget under CI parallel-load contention:** `src/test-setup.js` sets `configure({ asyncUtilTimeout: 5000 })` globally, tuned for CI resource contention under full-suite parallel runs. A test whose critical path chains multiple render cycles behind one `waitFor`/`findBy*` call can still occasionally exceed that shared budget under worst-case CI load even when it resolves in <50ms locally — this is not a test bug, but such tests may need their own wider per-test timeout (the `it(name, fn, timeoutMs)` third argument) rather than either ignoring the flake or raising the global budget for every other test in the suite.
 
 **Action:** before Tier-0 error-state tests (four-states/swallow-disposition sweep, Run 6/7) are relied on to gate a future promotion, audit the other panels in that sweep for pattern 1 specifically (bare DOM query immediately after a call-count-only `waitFor`) — it is silent until CI scheduling happens to expose it, exactly as it did here. Pattern 2 is lower-risk (already has a documented, CI-tuned budget) but worth spot-checking for any test whose critical path is unusually long (2+ chained render cycles).
+
+**Annotation (Run A Tier 2, 2026-07-24) — the `AgentPlannerPanel` A5 bulk cluster exhibits pattern 2.** During E1, two separate full `vitest run` invocations each failed exactly ONE `AgentPlannerPanel.test.jsx` **"bulk operations (Run 9 A5)"** test — a **different** test each run (first the R6 >200-cap-tick gate, then "pushes ONE undo entry per bulk op") — under heavy local parallel load (`environment` ~1400s). The same file passes **68/68 in isolation ×3** and the A5 bulk subset **15/15 ×3**. Non-deterministic, different-test-each-time = pattern 2 (shared `asyncUtilTimeout` budget exceeded under parallel-load contention), not a logic bug: the E1 changes are inert in the jsdom mobile path these tests exercise (`useIsDesktop` no-ops without `matchMedia`; the board never mounts). When this cluster is audited, the candidate fix is a **wider per-test timeout** (`it(name, fn, ms)`) on the multi-render-cycle A5 bulk tests, not a global budget raise. (Distinct from the Windows *concurrent-run* worker-contention flake below, which is about launching two `vitest run` processes at once; this is a single run's internal parallelism.)
 
 ---
 
@@ -4212,3 +4216,27 @@ Banked: yearPlan data-foundation PR #571, 2026-06-11.
 **Priority:** LOW. Manual coverage today is better than no coverage; risk grows as the rules surface expands.
 
 Banked: yearPlan data-foundation PR #571, 2026-06-11.
+
+---
+
+## Desktop planner board — shift-click range select keys off mobile view state (banked 2026-07-24, Run A Tier 2 E1, LOW — UX polish)
+
+The E1 desktop board (`PlannerDesktopBoard`, mounted at `lg`≥1024 by `AgentPlannerPanel`) reuses the existing Run-9 A5 selection model. `visibleSelectableIds` (the shift-click range order) is derived from the mobile `view` state (`today` / `week` / `followups`), which the desktop board does not drive — the board uses its own `desktopSpan`. Consequence at desktop: **per-card toggle select works**, but **shift-click *range* select** resolves against the mobile `view`'s order (default `today`), so a range across the board's multi-day columns won't select as expected. Single-select + bulk Move/Cancel are fully functional. Not a data-safety issue (no wrong writes — selection only). The A5 bulk smoke runs at 900×800 (mobile layer) where shift-range works.
+
+**Fix shape:** derive `visibleSelectableIds` from the board's rendered columns when `isDesktop` (flatten the visible day columns' live appt ids in DOM order), mirroring the mobile derivation. Small, contained to `AgentPlannerPanel`.
+
+**Priority:** LOW — power-user affordance, degrades gracefully to single-select.
+
+Banked: Run A Tier 2 E1, 2026-07-24. Listed as a known limitation in the Tier 2 PR body.
+
+---
+
+## Desktop planner board — Arrow ←/→ view-cycling inert on the board (banked 2026-07-24, Run A Tier 2 E1, LOW — UX polish)
+
+The Run-9 A2 keyboard shortcut `ArrowLeft` / `ArrowRight` cycles the mobile `view` (Today ↔ Week ↔ Follow-ups). At desktop the board renders from `desktopSpan` (Day / 3-day / Week / Follow-ups), not `view`, so ←/→ changes the (unrendered) `view` state and is **visually inert** on the board. The other A2 shortcuts work at desktop: `n` (book), `?` (shortcuts), `↑/↓` (rove board cards — the cards are inside `contentRef`), `e` (edit focused card), undo/redo.
+
+**Fix shape:** when `isDesktop`, map ←/→ to cycle `desktopSpan` through `BOARD_SPANS` (+ Follow-ups) instead of `view`. Small, contained to the keydown handler in `AgentPlannerPanel`.
+
+**Priority:** LOW — keyboard nicety; mouse/tap on the board toggle works, and ↑/↓/e/n all function.
+
+Banked: Run A Tier 2 E1, 2026-07-24. Listed as a known limitation in the Tier 2 PR body.
