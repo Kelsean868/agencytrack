@@ -42,6 +42,23 @@ const addD = (d, n) => new Date(d.getTime() + n * 86400 * 1000);
 const today = ttNow();
 const DATES = [iso(addD(today, -4)), iso(addD(today, -2)), iso(today), iso(addD(today, 1)), iso(addD(today, 3))];
 
+// SATURDAY GUARD — skip-not-fail (the header's "run another day", enforced).
+// Instance 4 is dated today+1 and is the ONLY seeded instance besides today's
+// that must RENDER a card (legs 1 + 3 drive `appt-card-run9-f3e-4`; the past
+// instances and next-Monday are asserted via admin reads only). The single-column
+// planner's Week view renders buildWeekDates(today) = Sun–Sat, so on a SATURDAY
+// run today+1 is the NEXT week's Sunday and that card can never appear — the leg
+// times out on a precondition, not a defect. (Widening the panel's data load to
+// today+2 in #867 does not help: the mobile Week view still renders Sun–Sat only.)
+// Exits 0 so a scheduled/batch run reports SKIP rather than a false FAIL.
+if (today.getUTCDay() === 6) {
+  console.log('  SKIP f3e — TT today is SATURDAY, so instance 4 (today+1) falls outside');
+  console.log('       this week\'s Sun–Sat render range and cannot render a card.');
+  console.log(`       Seeded dates would be: ${DATES.join(', ')}`);
+  console.log('\n══ F3E SMOKE: SKIPPED (Saturday precondition — re-run Sun–Fri) ══');
+  process.exit(0);
+}
+
 const db = getAdminDb();
 const T = db.collection(`tenants/${ADMIN_TENANT_ID}/appointments`);
 

@@ -5,14 +5,15 @@
  *
  * TABLET viewport (900×800 — single-column planner). Drives the running-late
  * cascade via the deterministic churn "Running late" action, write-read-verify:
- *   1. Book two late-evening appointments today (A 10:05 PM, B 10:35 PM) so B is
+ *   1. Book two afternoon appointments today (A 4:35 PM, B 5:05 PM) so B is
  *      unambiguously the NEXT after A (no business-hours fixtures collide).
  *   2. Churn A → "Running late" → the cascade sheet previews B shifting +20
- *      (10:35 → 10:55 PM), next-scope default.
- *   3. Push +20 → bulkUpdate shifts B → RELOAD → B now reads 10:55 PM, A
+ *      (5:05 → 5:25 PM), next-scope default.
+ *   3. Push +20 → bulkUpdate shifts B → RELOAD → B now reads 5:25 PM, A
  *      unchanged.
  * Hygiene: console-clean + zero prod (agencytrack-2a610) requests.
- * MUTATES appointments (residue: two late-evening appts, B pushed; re-seed resets).
+ * MUTATES appointments (residue: two afternoon appts in the free 16:15–19:00 band,
+ * B pushed; sweep-nonfixture-appointments.mjs --apply clears it).
  */
 import { chromium } from 'playwright';
 import { newLegContext, login, assertLegHygiene, TABLET_VIEWPORT } from './vh/vh-helpers.mjs';
@@ -28,9 +29,20 @@ const tsel = (id) => `[data-testid="${id}"]`;
 const inDom = async (loc, timeout = 8_000) => {
   try { await loc.first().waitFor({ state: 'attached', timeout }); return true; } catch { return false; }
 };
-const A_TIME = '22:05'; const A_12 = '10:05 PM';
-const B_TIME = '22:35'; const B_12 = '10:35 PM';
-const B_PUSHED_12 = '10:55 PM';
+// SLOT BAND: 16:35 / 17:05 — deliberately inside the free 16:15–19:00 window.
+// The staging planner-smoke slot map (each booking defaults to 30 min, so each
+// entry occupies start→start+30). Pick from a gap, and never leave residue that
+// overlaps another smoke's ASSERTED slot:
+//   a4 10:40 · a1 11:10 13:40 14:20 · e1 14:25 · e2 15:35 · e4 15:45
+//   >>> free: 16:15–19:00 <<<   a5 19:00 19:40 20:20 · a3 21:00 21:10 →23:00
+// Previously this smoke used 22:05/22:35 — and 22:35+30 = 23:05 OVERLAPPED the
+// 23:00 slot that run9-a3 moves its appointment to and then asserts "conflict
+// warning cleared". A3 correctly warned about this smoke's leftover, so A3 failed
+// on a real overlap (2026-07-25 rerun). Nothing between A and B keeps B the
+// cascade's `following[0]`, which the +20 push assertion depends on.
+const A_TIME = '16:35'; const A_12 = '4:35 PM';
+const B_TIME = '17:05'; const B_12 = '5:05 PM';
+const B_PUSHED_12 = '5:25 PM';
 
 async function openPlanner(p) {
   await p.locator(tsel('agent-tab-planner')).first().click({ timeout: 15_000 });
@@ -67,7 +79,7 @@ try {
   await p.locator(tsel('churn-running-late')).click();
   await p.locator(tsel('running-late-sheet')).waitFor({ state: 'visible', timeout: 8_000 });
 
-  // Default +20 / next: preview should show B shifting to 10:55 PM.
+  // Default +20 / next: preview should show B shifting to 5:25 PM.
   const sheetTxt = await p.locator(tsel('running-late-sheet')).innerText();
   const previews = sheetTxt.includes(B_12) && sheetTxt.includes(B_PUSHED_12);
   log(previews ? 'PASS' : 'FAIL', `preview shows B ${B_12} → ${B_PUSHED_12} (${previews})`);
@@ -76,7 +88,7 @@ try {
   await p.locator(tsel('running-late-sheet')).waitFor({ state: 'detached', timeout: 12_000 }).catch(() => {});
   await p.waitForTimeout(1200);
 
-  // RELOAD → B persisted at 10:55 PM, A unchanged at 10:05 PM.
+  // RELOAD → B persisted at 5:25 PM, A unchanged at 4:35 PM.
   await p.reload({ waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(1500);
   await openPlanner(p);
