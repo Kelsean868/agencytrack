@@ -31,6 +31,7 @@
 | Design-conformance backlog — 14 NEEDS-RULING operator decisions block sequencing (banked 2026-07-... | HIGH | — | — | 620 |
 | Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases ... | HIGH | — | — | 282 |
 | Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion sess... | MEDIUM | — | — | 290 |
+| R-11 login-stamp + All Users LAST-activity — REQUIRES firestore.rules edit (hasOnly allowlist or manager-readable location); bundle with the E4 index FU as a "rules + indexes attended window" | HIGH | — | — | 4282 |
 | E4 cross-time prospect notes history — `(agentId, prospectId)` composite index + deploy (rules-permitted per D3); this-week scope shipped Run A Tier 2 E4 | MEDIUM | — | — | 4246 |
 | `featureFlags` allowlist is a deliberate triple-copy — consolidate when flags become config-drive... | LOW | — | — | 298 |
 | Desktop planner board — shift-click range select keys off mobile view state (banked 2026-07-24, Run A Tier 2 E1) | LOW | — | — | 4220 |
@@ -4276,3 +4277,32 @@ CodeRabbit (#866) flagged that the Run-A planner acceptance smokes (`smoke-e1-de
 **Priority:** LOW — the smokes are correct today (re-seed resets); this is consistency + fail-safe-cleanup hygiene.
 
 Banked: Run A Tier 2, CodeRabbit #866, 2026-07-24.
+
+---
+
+## R-11 login-stamp + All Users LAST-activity — REQUIRES a firestore.rules edit (banked 2026-07-25, Run A Tier 3b, HIGH-ish / attended)
+
+**STOPPED in Run A Tier 3b — not buildable client-side as ruled.** The R-11 ruling assumed a client-side own-doc write on auth; the rules surface forbids it.
+
+**Evidence — the users self-write arm uses `hasOnly([...])`, an EXHAUSTIVE allowlist** (contrast the `appointments` block's coarse `hasAll` floor, which is why E4's `notes[]` needed no rules change):
+
+| Self-write arm (`request.auth.uid == userId`) | Allowed keys |
+|---|---|
+| general | `hasSeenWelcome, photoURL, bio, phone, loggingMode, dailyNudgeTime, updatedAt, email, licenseProfile` |
+| `unit_manager` | `unitName, hasSeenWelcome, photoURL, bio, phone, loggingMode, dailyNudgeTime, updatedAt` |
+
+No login-stamp field appears in either arm, and no `lastLoginAt` / `lastActiveAt` / `lastSeen` field exists anywhere in `src/`, `functions/`, or `firestore.rules`. Any key outside `hasOnly` is REJECTED.
+
+**The relocation escape hatch fails on the read half.** `users/{uid}/prefs/{prefId}` (`firestore.rules:2031-2033`) is `allow read, write: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid` — the stamp WRITE would work there, but the "**All Users** LAST-activity **column**" needs a manager to read the stamp **across users**, and that block has **no manager read arm**.
+
+**To build, one of these rules edits is required:**
+1. add a login-stamp field (e.g. `lastLoginAt`) to the users self-write `hasOnly` allowlist — both arms — so the client can stamp its own doc, which managers already read via the existing `allow list`; **or**
+2. add a manager read arm to a manager-readable location holding the stamp.
+
+⇒ **Human-merge + manual deploy** (`firebase deploy --only firestore:rules`), per Rule 19 and the standing absolute stop on rules.
+
+**Bundle this with the E4 cross-time prospect-notes index FU** (needs `(agentId, prospectId)` in `firestore.indexes.json` + `firebase deploy --only firestore:indexes`) as a single **"rules + indexes attended window"** item — one attended session covering both deploy-gated backend deltas.
+
+**Explicitly rejected during the run (endorsed by the dispatcher):** repurposing an already-allowed field such as `updatedAt` as a pseudo-login-stamp. `updatedAt` moves on any profile edit, so the column would show "activity" that never happened — a **lying column** is worse than an absent one.
+
+Banked: Run A Tier 3b, 2026-07-25.

@@ -135,3 +135,34 @@ export async function setAppSetting(tenantId, uid, key, value) {
     { merge: true },
   );
 }
+
+/** Max saved Commission scenarios per agent (R-06). Keeps the single prefs doc
+ *  small and the chip row scannable; mirrors the appointment-template cap idiom. */
+export const COMMISSION_SCENARIO_CAP = 6;
+
+/**
+ * Persist the agent's saved Commission-Playground scenarios (Tier 3b R-06).
+ *
+ * Storage: the SAME single `prefs/app` doc, merge-written as a
+ * `commissionScenarios` array — so it never clobbers pinnedNav / menuLayout /
+ * navOrder / settings, and needs no second read.
+ *
+ * Privacy: the `prefs/{prefId}` rules block is `request.auth.uid == uid` for BOTH
+ * read and write, with NO manager arm — so scenarios are own-write and
+ * agent-private BY CONSTRUCTION (R-06: "no shared/manager visibility"), with no
+ * firestore.rules change and no composite index.
+ *
+ * @param {string} tenantId
+ * @param {string} uid
+ * @param {Array<{id:string,label:string,savedAt:string,inputs:object,freqKey:string}>} scenarios
+ * @returns {Promise<void>}
+ */
+export async function setCommissionScenarios(tenantId, uid, scenarios) {
+  if (!tenantId || !uid) throw new Error('setCommissionScenarios requires tenantId and uid');
+  const safe = (Array.isArray(scenarios) ? scenarios : []).slice(0, COMMISSION_SCENARIO_CAP);
+  await setDoc(
+    prefsDocRef(tenantId, uid),
+    { commissionScenarios: safe, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}

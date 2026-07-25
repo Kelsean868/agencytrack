@@ -2,7 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { History, Info, Check } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { setGoals } from '../../../../services/goalsService';
+import {
+  getUserPrefs, setCommissionScenarios, COMMISSION_SCENARIO_CAP,
+} from '../../../../services/userPrefsService';
 import { formatCurrency } from '../../../../utils/formatters';
+import SavedScenarioChips from '../components/SavedScenarioChips';
 import {
   decomposeFromIncome,
   deriveRatiosFromHistory,
@@ -172,6 +176,63 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   const [showConfirm, setShowConfirm]           = useState(false);
   const [preTaxAlreadyApplied, setPtaFlag]      = useState(false);
 
+  // ── R-06: saved scenario chips (agent-private, own-write) ──────────────────
+  // Persisted on the shared `users/{uid}/prefs/app` doc via userPrefsService
+  // (merge-write). That rules arm is `request.auth.uid == uid` for read AND
+  // write with NO manager arm, so scenarios are private by construction — no
+  // firestore.rules change, no index, no shared/manager visibility to leak.
+  const [scenarios, setScenarios]     = useState([]);
+  const [scenarioSaving, setScenSaving] = useState(false);
+  const [activeScenarioId, setActiveScenarioId] = useState(null);
+
+  useEffect(() => {
+    if (!tenantId || !user?.uid) return;
+    let alive = true;
+    getUserPrefs(tenantId, user.uid)
+      .then((prefs) => { if (alive) setScenarios(Array.isArray(prefs?.commissionScenarios) ? prefs.commissionScenarios : []); })
+      // Degrade silently to "no scenarios" — never block the playground on a
+      // prefs read (same contract as the nav-prefs consumers).
+      .catch(() => { /* no-op */ });
+    return () => { alive = false; };
+  }, [tenantId, user?.uid]);
+
+  const persistScenarios = async (next) => {
+    setScenarios(next);           // optimistic — the chip row is a preference, not money
+    setScenSaving(true);
+    try {
+      await setCommissionScenarios(tenantId, user.uid, next);
+    } catch {
+      setError('Could not save the scenario — check your connection and try again.');
+    } finally {
+      setScenSaving(false);
+    }
+  };
+
+  const handleScenarioSave = (label) => {
+    const entry = {
+      id: `sc-${Date.now()}`,
+      label,
+      savedAt: new Date().toISOString(),   // client ISO — never a serverTimestamp inside an array
+      inputs: { ...inputs },
+      freqKey,
+    };
+    setActiveScenarioId(entry.id);
+    persistScenarios([...scenarios, entry].slice(0, COMMISSION_SCENARIO_CAP));
+  };
+
+  const handleScenarioApply = (s) => {
+    // Merge over the defaults so a scenario saved before a new input key was
+    // added still applies cleanly (missing key → default, never undefined).
+    setInputs({ ...DEFAULT_DECOMPOSITION_INPUTS, ...(s.inputs || {}) });
+    if (s.freqKey) setFreqKey(s.freqKey);
+    setActiveScenarioId(s.id);
+  };
+
+  const handleScenarioDelete = (id) => {
+    if (activeScenarioId === id) setActiveScenarioId(null);
+    persistScenarios(scenarios.filter((s) => s.id !== id));
+  };
+
   useEffect(() => {
     const stored = localStorage.getItem('agencytrack-playground-income-goal');
     if (stored) {
@@ -279,6 +340,16 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
           </p>
         </div>
       )}
+
+      {/* R-06 saved-scenario chips — sit above the inputs they restore. */}
+      <SavedScenarioChips
+        scenarios={scenarios}
+        activeId={activeScenarioId}
+        saving={scenarioSaving}
+        onApply={handleScenarioApply}
+        onSave={handleScenarioSave}
+        onDelete={handleScenarioDelete}
+      />
 
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Income Assumptions</p>
