@@ -1,14 +1,21 @@
 # Track-J Recon — Per-Screen Reskin-vs-Redesign Map
 
-> ⚠️ **PORT-STATUS COUNTS SUPERSEDED — 2026-07-07 snapshot.**
+> ⚠️ **PORT-STATUS COUNTS SUPERSEDED BY [`docs/track-j-port-ledger.md`](../track-j-port-ledger.md) (2026-07-25).**
 > The SHIPPED/PARTIAL/PENDING counts (16 / 6 / **12 PENDING**) and per-screen status
 > column below were verified against the tree on **2026-07-07**, BEFORE Run 9 (planner,
 > promoted `d0e74c12`, 2026-07-13) and the **Run A Track J conformance closeout**. Treat
-> the status column as a historical snapshot, not current state — for current Track-J
-> state see [`docs/CONTEXT.md`](../CONTEXT.md) and the Run A run log. The RESKIN vs
-> REDESIGN **classification** and the per-screen mockup↔live diffs remain valid and are
-> unaffected; only the *port-status counts* have drifted.
-> _(Banner added Run A Tier 1 §5, 2026-07-24.)_
+> the status column as a historical snapshot, not current state.
+>
+> **The named successor for port status is the rebuilt ledger** — `docs/track-j-port-ledger.md`,
+> rebuilt from ground truth against `origin/staging` @ `8a1a17e4` on 2026-07-25 (37-row spine:
+> 28 ported · 8 partial · 0 pending · 1 gated). It absorbs the 5 handoff-only built screens this
+> recon never inventoried and corrects five rows (6, 24, 25, 26, 27) that this snapshot and its
+> predecessor both over-rated.
+>
+> The RESKIN vs REDESIGN **classification** and the per-screen mockup↔live diffs remain valid
+> and are **explicitly NOT superseded** — this document stays the authority on the *nature* of
+> each port. Only the *port-status counts* have drifted.
+> _(Banner added Run A Tier 1 §5, 2026-07-24; successor named 2026-07-25.)_
 
 **Date:** 2026-07-07 · **Branch:** `recon/trackj-surface` · **Mode:** READ-ONLY recon (one file write, no source edits, no deploy, no merge) · **Scope:** pure frontend + email templates (`src/`, `functions/email-templates/`; broader `functions/` not inventoried)
 **Base:** `origin/main` @ `f80d5ba1` (migration-doc reconciliation was cut at `9dcae1a3`, 2026-07-05; only motion-verifier #824 + recon commits sit between — no screen-port state changed)
