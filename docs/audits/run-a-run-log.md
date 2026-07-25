@@ -144,3 +144,34 @@ _Pending. Requires Tier 1 fixtures on the run's staging lineage._
 - **CI-trigger conflict is unresolved by design** (surfaced above) — the item-6 bumps are locally sound but not CI-exercised until a main-targeting PR.
 - **Net-vs-Gross assertion is a value-level CI stand-in**, not a live staging integration read; it mirrors the seeded a2 fixtures by value (Rule 17 provenance) but does not itself query staging.
 - **Doc-sweep banners are judgment-framed.** The recon banner scopes staleness to "port-status counts" while asserting the classification "remains valid"; if any per-screen classification has also drifted post-Run-9, the banner under-claims (the medal-trio cell was the one such drift found and corrected).
+
+---
+
+## POST-MERGE STAGING SMOKES (Tier 2 → staging `f22c57f8`) — results + diagnosis
+
+**Seeder:** CLEAN on the 2nd run (1st aborted: missing service-account key, since supplied). 100 docs → `agencytrack-staging/tenants/staging_test`, 9 stale swept, `jointCalls` fixtures `vhfix-jc-1..5` live. Tier 3a's fixture prerequisite is satisfied.
+
+**Smoke results (run at TT Friday 2026-07-24, BEFORE the successful seed):**
+
+| Smoke | Result | Disposition |
+|---|---|---|
+| E1 desktop board | **12/12 PASS** | E1 verified live on staging. |
+| E2 drag-reschedule | 1 FAIL (moved card not on +1-day column after reload; toast + tombstone PASSED) | **SMOKE-SIDE BUG (mine)** — fixed. |
+| E4, E3, A1, A2, A3, A5 | FAIL — `agent-tab-planner` click intercepted by the pin star (`aria-label="Unpin Planner"`, `sidebar-nav-star-pinned`) | **REAL PRODUCT DEFECT** — fixed. |
+| A4 templates | same star intercept ×3 contexts | same fix. |
+| f3e series | aborted pre-run (then-missing service-account key) | not a code failure; rerun. |
+
+### Defect 1 — REAL PRODUCT BUG: the pin star swallows every sidebar nav click in the 72px rail
+`src/index.css` — the **desktop-collapsed** rail correctly hides the star (`.sidebar-collapsed .sidebar-nav-star { display: none }`), but the **tablet block (768–1023px) omitted `.sidebar-nav-star` from its hide-list while its own comment claims "Same hide-list as the collapsed desktop rule"** — a copy-paste omission.
+
+Geometry: in a 72px rail the nav row is **56px** (72 − 2×8 padding) while the star is `position:absolute; right:2px; width:44px; z-index:1` → it covers **x=10→54, 79% of the row, including the row centre (x=28)**. Consequence for REAL USERS at 768–1023px: clicking a nav icon hits the star, not the link — a pinned row **unpins** instead of navigating; an unpinned row's star is `opacity:0` but still hit-testable (opacity does not remove pointer events) so it **pins** instead of navigating. The expanded 232px sidebar is unaffected (row 208px, star x=162→206, centre x=104), which is why E1/E2 at 1280×800 passed while every 900×800 smoke failed — and why this stayed latent until the Option-1 viewport pin exposed it.
+
+**Fix:** add `.sidebar-nav-star` to the tablet hide-list (parity with the collapsed rule). **Guard:** `src/utils/__tests__/sidebar-rail-star-guard.test.js` — asserts BOTH rail contexts hide the star + pins the star geometry the math depends on. The guard strips CSS comments before analysis and was **verified to fail when the fix is reverted** (a first draft passed on reverted source because the explanatory comment mentioning `.sidebar-nav-star` satisfied the selector regex — a can't-fail test, caught by the negative control).
+
+### Defect 2 — REAL PRODUCT BUG found while diagnosing: board span reaches outside the loaded week
+The board's Day/3-day spans are **today-anchored** (`today, +1, +2`) but data loaded only the Sun–Sat week, so late in the week those columns fell outside the queried range and rendered **silently empty** (on a Friday the 3-day board's third column is next Sunday). **Fix:** the load window now ends at `max(weekEnd, today+2)`; `weekCounters` is scoped back to `weekStart..weekEnd` so a next-week appointment can never inflate this week's booked-vs-floor counters. 2 new tests.
+
+### Defect 3 — SMOKE-SIDE (mine): `isVisible()` used for data-presence assertions
+E2's failing assertion used `.isVisible()` on a card inside a day column — **violating banked lesson #7** (Playwright treats content scrolled out of view inside an `overflow` container as not visible). The write side is proven by the PASSING toast + tombstone; the card was rendered but below the fold in a Saturday column carrying prior-seed residue. **Fix:** all 14 data-presence checks across the four E-smokes now assert **DOM attachment** (`inDom`, also timing-robust post-reload); negative checks use a short timeout; E2 gained a **self-diagnosing** line that names which columns actually hold the card, so a future failure distinguishes wrong-target-date from not-rendered.
+
+**Note (E2, honest):** Friday+1 = Saturday is INSIDE the loaded week, so Defect 2 does not explain E2 — lesson #7 is the cause, and Defect 2 was found independently (it would have bitten a Saturday run).

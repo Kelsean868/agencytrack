@@ -19,6 +19,16 @@ import { newLegContext, login, assertLegHygiene } from './vh/vh-helpers.mjs';
 
 const tsel = (id) => `[data-testid="${id}"]`;
 
+// Banked lesson #7: a DATA-PRESENCE check must not use isVisible() — Playwright
+// treats content scrolled out of view inside an overflow container (a day column,
+// the sheet's max-h/overflow-y body) as not visible, so a persisted card/note
+// that merely sat below the fold read as a FAIL. Assert DOM attachment instead
+// (also timing-robust right after a reload). Use isVisible() only when the
+// human-visible viewport itself is the assertion.
+const inDom = async (loc, timeout = 8_000) => {
+  try { await loc.first().waitFor({ state: 'attached', timeout }); return true; } catch { return false; }
+};
+
 async function openBoard(p) {
   await p.locator(tsel('agent-tab-planner')).first().click({ timeout: 15_000 });
   await p.locator(tsel('planner-desktop-board')).waitFor({ state: 'visible', timeout: 15_000 });
@@ -38,11 +48,12 @@ try {
   await openBoard(p);
 
   // 0. Board is the desktop layer (not the single-column mobile views).
-  const board = await p.locator(tsel('planner-desktop-board')).isVisible().catch(() => false);
-  const mobilePillsGone = !(await p.locator(tsel('planner-view-today')).isVisible().catch(() => false));
+  const board = await inDom(p.locator(tsel('planner-desktop-board')));
+  // Negative check → short timeout (an absent element must not cost the full wait).
+  const mobilePillsGone = !(await inDom(p.locator(tsel('planner-view-today')), 1_500));
   log(board && mobilePillsGone ? 'PASS' : 'FAIL', `desktop board renders, mobile pills absent (board=${board} pills-absent=${mobilePillsGone})`);
   for (const id of ['planner-span-day', 'planner-span-3day', 'planner-span-week', 'planner-span-followups']) {
-    const present = await p.locator(tsel(id)).isVisible().catch(() => false);
+    const present = await inDom(p.locator(tsel(id)));
     log(present ? 'PASS' : 'FAIL', `toggle option present: ${id} (${present})`);
   }
 
@@ -79,7 +90,7 @@ try {
   await p.waitForTimeout(1200);
 
   const todayCol = p.locator('[data-testid^="planner-day-col-"]').first();
-  const beforeReload = await todayCol.locator('button[data-testid^="appt-card-"]:has-text("2:25 PM")').first().isVisible().catch(() => false);
+  const beforeReload = await inDom(todayCol.locator('button[data-testid^="appt-card-"]:has-text("2:25 PM")').first());
   log(beforeReload ? 'PASS' : 'FAIL', `sentinel 2:25 PM card in today column pre-reload (${beforeReload})`);
 
   // RELOAD → the board must re-render the persisted appointment.
@@ -88,9 +99,8 @@ try {
   await openBoard(p);
   await p.locator(tsel('planner-span-day')).click();
   await p.waitForTimeout(400);
-  const persisted = await p.locator('[data-testid^="planner-day-col-"]').first()
-    .locator('button[data-testid^="appt-card-"]:has-text("2:25 PM")').first()
-    .isVisible().catch(() => false);
+  const persisted = await inDom(p.locator('[data-testid^="planner-day-col-"]').first()
+    .locator('button[data-testid^="appt-card-"]:has-text("2:25 PM")'));
   log(persisted ? 'PASS' : 'FAIL', `sentinel 2:25 PM card persisted in board after reload (${persisted})`);
 
   assertLegHygiene(ctx);

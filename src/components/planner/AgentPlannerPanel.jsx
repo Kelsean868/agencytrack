@@ -311,6 +311,17 @@ export default function AgentPlannerPanel({
   const today = useMemo(() => getTodayTT(), []);
   const { start: weekStart, end: weekEnd } = useMemo(() => weekRange(today), [today]);
   const weekDates = useMemo(() => buildWeekDates(today), [today]);
+  // E1 fix: the desktop board's Day/3-day spans are TODAY-anchored (today, +1,
+  // +2), so late in the week they reach PAST Saturday — e.g. on a Friday the
+  // 3-day board's third column is next Sunday. The Sun–Sat week load alone left
+  // those columns silently empty (data outside the queried range), so the load
+  // window ends at whichever is later: this week's Saturday or today+2. ISO
+  // 'YYYY-MM-DD' strings compare lexicographically, so max() is a string compare.
+  // Week-SEMANTIC derivations must still use weekStart..weekEnd (see weekCounters).
+  const loadEnd = useMemo(() => {
+    const spanEnd = shiftDateStr(today, 2);
+    return spanEnd > weekEnd ? spanEnd : weekEnd;
+  }, [today, weekEnd]);
   const floors = weeklyFloors ?? DEFAULT_WEEKLY_ACTIVITY_FLOORS;
 
   const [view, setView] = useState('today');
@@ -383,13 +394,13 @@ export default function AgentPlannerPanel({
     setLoading(true);
     setError(false);
     Promise.all([
-      getAgentWeek(tenantId, agentId, weekStart, weekEnd),
+      getAgentWeek(tenantId, agentId, weekStart, loadEnd),
       getProspectInfo({ tenantId, agentId, callerRole, callerUid: agentId }).catch(() => []),
     ])
       .then(([a, p]) => { setAppts(a); setProspects(p); })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [tenantId, agentId, weekStart, weekEnd, callerRole]);
+  }, [tenantId, agentId, weekStart, loadEnd, callerRole]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -699,13 +710,18 @@ export default function AgentPlannerPanel({
 
   // Week counters — booked (non-retired) count per type vs floor.
   const weekCounters = useMemo(() => {
-    const weekAppts = appts.filter((a) => !RETIRED_STATUSES.has(a.status));
+    // Scoped to weekStart..weekEnd, NOT the whole loaded range: the load window
+    // now extends past Saturday to cover the board's today-anchored spans (see
+    // loadEnd), and a next-week appointment must never inflate THIS week's
+    // booked-vs-floor counters.
+    const weekAppts = appts.filter((a) => !RETIRED_STATUSES.has(a.status)
+      && a.date >= weekStart && a.date <= weekEnd);
     return WEEK_COUNTER_ROWS.map((row) => ({
       ...row,
       booked: weekAppts.filter((a) => a.type === row.type).length,
       target: Number(floors?.[row.floorKey]) || 0,
     }));
-  }, [appts, floors]);
+  }, [appts, floors, weekStart, weekEnd]);
 
   // ── Write handlers ─────────────────────────────────────────────────────────
   // useCallback: referenced directly by the Run 9 A2 keyboard-shortcuts effect

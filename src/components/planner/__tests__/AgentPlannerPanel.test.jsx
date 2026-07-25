@@ -1396,3 +1396,38 @@ describe('AgentPlannerPanel — E3 running-late', () => {
     ]));
   });
 });
+
+// ── E1 fix: board span vs loaded data range (post-merge smoke finding) ─────
+// The board's Day/3-day spans are TODAY-anchored, so late in the week they reach
+// past Saturday. The load window must cover today+2, while week-semantic
+// derivations (counters) stay scoped to Sun–Sat.
+describe('AgentPlannerPanel — load window covers the board span', () => {
+  it('queries through today+2 even when that crosses the week boundary', async () => {
+    getAgentWeek.mockResolvedValue([]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(getAgentWeek).toHaveBeenCalled());
+    const [, , rangeStart, rangeEnd] = getAgentWeek.mock.calls[0];
+    const weekDates = buildWeekDates(TODAY);
+    const spanEnd = shiftDateStr(TODAY, 2);
+    expect(rangeStart).toBe(weekDates[0]);                    // Sunday
+    // End is whichever is later: this week's Saturday or today+2.
+    expect(rangeEnd).toBe(spanEnd > weekDates[6] ? spanEnd : weekDates[6]);
+    expect(rangeEnd >= spanEnd).toBe(true);                   // the +2 column is always covered
+  });
+
+  it('week counters ignore appointments outside Sun–Sat (no inflation from the wider load)', async () => {
+    const weekDates = buildWeekDates(TODAY);
+    const beyond = shiftDateStr(weekDates[6], 1);             // the Sunday AFTER this week
+    getAgentWeek.mockResolvedValue([
+      { id: 'in',  date: weekDates[6], startTime: '09:00', durationMin: 60, type: 'CI', status: 'scheduled' },
+      { id: 'out', date: beyond,       startTime: '09:00', durationMin: 60, type: 'CI', status: 'scheduled' },
+    ]);
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-view-week')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('planner-view-week'));
+    const counters = await screen.findByTestId('planner-week-counters');
+    // Value-level: the C.I row counts ONLY the in-week CI → "C.I1/10", never "C.I2/".
+    expect(counters.textContent).toContain('C.I1/');
+    expect(counters.textContent).not.toContain('C.I2/');
+  });
+});
