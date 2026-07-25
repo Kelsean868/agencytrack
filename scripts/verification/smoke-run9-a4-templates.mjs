@@ -134,8 +134,23 @@ try {
       await p3.waitForTimeout(700);
       deleted += 1;
     }
-    const gone = (await p3.locator('[data-testid^="template-delete-"]').count()) === 0;
-    log(gone ? 'PASS' : 'FAIL', `templates deleted (${deleted}); picker hidden again (0 templates)`);
+    // AUTHORITATIVE zero-state: re-load and re-open the picker rather than
+    // trusting the in-sheet delete-control count, which only reflects the
+    // optimistic post-delete `templates` state in the open sheet. A reload
+    // re-reads through listTemplates → Firestore, so "0 templates" means the
+    // deletes actually PERSISTED (the same reason the earlier legs reload).
+    await p3.reload({ waitUntil: 'domcontentloaded' });
+    await p3.waitForTimeout(1500);
+    await p3.locator(tsel('agent-tab-planner')).first().click({ timeout: 15_000 });
+    await p3.locator(tsel('planner-book')).waitFor({ state: 'visible', timeout: 15_000 });
+    await p3.locator(tsel('planner-book')).click();
+    await p3.locator(tsel('appointment-sheet')).waitFor({ state: 'visible', timeout: 8_000 });
+    const remaining = await p3.locator('[data-testid^="template-delete-"]').count();
+    const pickerBack = await p3.locator(tsel('appt-template-picker'))
+      .waitFor({ state: 'visible', timeout: 2_000 }).then(() => true).catch(() => false);
+    const gone = remaining === 0 && !pickerBack;
+    log(gone ? 'PASS' : 'FAIL',
+      `templates deleted (${deleted}); 0 templates persisted after reload (remaining=${remaining} picker=${pickerBack})`);
   } else {
     log('FAIL', 'cleanup: picker not found for delete');
   }
