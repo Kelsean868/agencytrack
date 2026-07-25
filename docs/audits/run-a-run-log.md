@@ -199,3 +199,26 @@ Two independent causes, app behaving **correctly** in both:
 
 ### Root operational cause (the missed step)
 `sweep-nonfixture-appointments.mjs`'s own header: *"Smoke runs accumulate appointment residue … that `seed-fixtures --apply` does **NOT** sweep."* The rerun ran the seeder but **not** the sweeper, so every prior run's auto-id appointments were still live. `SMOKES.md` now carries this as an explicit PRE-REQ (sweeper → seeder → smokes) plus the slot-band rule.
+
+---
+
+## POST-#868 RERUN (staging `9b7f8b7f`) — A3 re-diagnosed: my residue theory was WRONG; ONE fixture collision explains all 3 legs
+
+Sweeper deleted 22 non-fixture appointments; seeder clean (100 docs, 0 stale). **E3 ALL PASS** at the new 16:35/17:05 band. **A4 ALL PASS** (3 templates deleted, 0 remain — the orphan diagnosis is proven). **A3 failed identically on swept + freshly seeded state, disproving my residue diagnosis.**
+
+### A3 — the dispatcher's `vhfix-appt-d2a` hypothesis is CONFIRMED, and stronger than suspected
+`seed-fixtures.mjs:743` — `vhfix-appt-d2a` is `t: d2aOff === 0 ? '22:30' : '10:00'` with **`dur: 60`**, and `d2aOff = Math.min(2, 6 - ttNow().getUTCDay())` (L742). On a **SATURDAY** that is `min(2, 0) = 0`, so the fixture lands on **TODAY at 22:30–23:30** — the seeder's own comment (L737-741) documents this deliberate clamp ("push the time late if the clamp collapses onto TODAY (Sat runs) so the appt is still upcoming"). Duration is **60, not 30**, so it does not merely reach 23:00 — it **contains** A3's entire 23:00–23:30 target.
+
+Half-open overlap arithmetic (`a.start < b.end && b.start < a.end`), verified numerically:
+| Interval | vs `d2a` 22:30–23:30 |
+|---|---|
+| B moved to **23:00–23:30** | **OVERLAPS** → sheet warning correctly stayed; B correctly KEPT its badge |
+| A at **21:00–21:30** | no overlap → A's badge correctly CLEARED |
+
+**All three failing legs are the app being CORRECT.** Decoding the signature: `A=false` means *no badge* — i.e. **A cleared, which is the right answer**; the failures are driven by `B=true`, which is also right because B genuinely overlapped the fixture. (The prose reading "A's badge persists" inverts the flag's meaning.) Leg 2 PASSED, which independently proves both badges rendered and were visible — so there was no visibility/asymmetry problem and **no badge-recompute defect**. `detectConflicts` remains a full symmetric pairwise recompute over `[appts]`; it cannot flag one side of a pair without the other.
+
+**Fix (smoke-side, ONE cause):** B now moves to **`FREE_SLOT = 18:00`**, mid-gap in the verified-free **17:35–19:00** window — free every day of the week, with margin on both sides. The file now carries the **full slot map** (all six today-fixtures with durations + all eight smokes' bands + the three free gaps), per the dispatcher's instruction to check ALL fixture bands this time. Same error class as my E3 band collision — but against **fixtures**, and only on Saturdays.
+
+**Hardening (explicitly NOT the cause):** `badgeVisible` and the sheet-warning checks now assert DOM attachment rather than `isVisible()`. Both are conditional renders (`{conflicted && …}`, `{conflict && …}`) so absence === unmounted === no conflict; `isVisible()` also false-negatives on a card scrolled out of the 900×800 viewport, and leg 1's *negative* assertion could have false-PASSED on an off-view node. Labeled in-file as hardening only.
+
+**Self-diagnosing dump added:** on a `FREE_SLOT` collision the smoke now prints today's booked slots + points at the slot map + reminds about the Saturday d2a placement — this failure class has now cost two staging round-trips. It reads the DOM with the sheet still open (closing it would break the following `appt-save` and cascade one failure into several).
