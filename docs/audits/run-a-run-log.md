@@ -249,3 +249,28 @@ Code trace (authoritative), end to end:
 The rendered label and the actual derivation agree, so R-08's ruling is satisfied **as built** — no product change required.
 
 **Live evidence half:** `smoke-r08-champions-ranking.mjs` (new, registered) — READ-ONLY, `branch_manager`, no writes/residue so the sweeper rule does not apply. It asserts the label verbatim, that exactly one of ranked-list / honest-empty renders, and — when ranked — API-**descending** order, every value **> 0**, capped at **3**; screenshot artifact to `out/r08/<stamp>/champions.png` (gitignored). Assertions are value-level and fixture-name-free so they survive reseeds. **Operator run pending** — that's the screenshot the ruling asks for.
+
+### 3b — R-11 login-stamp + All Users LAST-activity: **STOP (per standing ruling)**
+
+**Mechanism verified against `firestore.rules` (READ-only, never edited):**
+
+The users self-write arm uses **`hasOnly([...])`** — an *exhaustive* allowlist, unlike the `appointments` block's coarse `hasAll` floor (which is why E4's `notes[]` was permitted without a rules change):
+
+| Self-write arm (`request.auth.uid == userId`) | Allowed keys |
+|---|---|
+| general | `hasSeenWelcome, photoURL, bio, phone, loggingMode, dailyNudgeTime, updatedAt, email, licenseProfile` |
+| `unit_manager` | `unitName, hasSeenWelcome, photoURL, bio, phone, loggingMode, dailyNudgeTime, updatedAt` |
+
+**No login-stamp field is in either list, and no `lastLoginAt`/`lastActiveAt`/`lastSeen` field exists anywhere in `src/`, `functions/`, or the rules.** Any key outside `hasOnly` causes the write to be REJECTED, so a client-side own-doc login stamp **cannot** be written as things stand.
+
+**The relocation escape hatch also fails.** `users/{uid}/prefs/{prefId}` (`firestore.rules:2031-2033`) is `allow read, write: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid` — the *write* half would work, but the feature's second half ("**All Users** LAST-activity **column**") requires a manager to read the stamp **across users**, and that rule has **no manager read arm** at all. So the column cannot be populated from `prefs` either.
+
+⇒ Every available path requires a **`firestore.rules` edit** (add the field to the users `hasOnly` allowlist, or add a manager read arm to `prefs`). Per the brief's STANDING ABSOLUTE STOPS — *"`firestore.rules` — any change is a STOP, not a build"* — and the R-11 ruling's own condition, **this item STOPS.** Explicitly NOT done: repurposing an already-allowed field (e.g. writing `updatedAt` as a pseudo-login-stamp), which would corrupt that field's meaning and fake conformance.
+
+### 3b — R-06 Commission saved-scenario chips: **mechanism conflict — needs a ruling**
+
+The ruling specifies **"profile-doc, own-write, agent-private"**. The profile doc (`users/{uid}`) is governed by the **same `hasOnly` allowlist above**, which contains no scenarios/chips field ⇒ **the literal "profile-doc" mechanism is blocked** by the identical constraint that stops R-11.
+
+**A clean no-rules-change alternative exists:** `users/{uid}/prefs/{prefId}` — unconstrained doc shape, own-uid read+write, **no manager read arm** (so it is agent-private *by construction*, which is exactly what the ruling asks for), reachable through the existing `src/services/userPrefsService.js` (reuse, not reinvent). A single known-id doc (e.g. `prefs/commissionScenarios`) needs **no composite index** either.
+
+That is a **storage-mechanism change vs the ruling**, so per Rule 1 (surface before architectural decisions) and this run's escalation rule (brief-vs-repo conflict ⇒ STOP, do not improvise), **it is surfaced rather than decided.** Build is ready to proceed the moment it is approved.
