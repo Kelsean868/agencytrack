@@ -204,7 +204,7 @@ describe('DailyCaptureV2', () => {
     render(<DailyCaptureV2 onClose={onClose} />);
     const save = await screen.findByTestId('dcv2-save');
     fireEvent.click(save);
-    await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
   it('§1 states contract — Retry on a save failure re-invokes saveDailyEntry (not the load path)', async () => {
@@ -220,7 +220,7 @@ describe('DailyCaptureV2', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /retry/i }));
 
-    await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(hoisted.saveDailyEntry).toHaveBeenCalledTimes(2);
     expect(hoisted.getDailyEntry).toHaveBeenCalledTimes(1);
   });
@@ -616,7 +616,7 @@ describe('aggregate-on-save (Phase 2.2)', () => {
     // The thrown aggregation must NOT surface a save error (Decision #4).
     expect(screen.queryByText(/save failed/i)).not.toBeInTheDocument();
     // And the post-save close still fires (save treated as successful).
-    await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
     vi.useRealTimers();
   });
 });
@@ -718,10 +718,27 @@ describe('daily streak celebration (integration)', () => {
     const save = await screen.findByTestId('dcv2-save');
     fireEvent.click(save);
     // No takeover; the normal post-save close fires instead.
-    await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(screen.queryByTestId('daily-streak-celebration')).not.toBeInTheDocument();
   });
 
+  // FLAKE FIX — this is the test that failed in CI on PR #868 (the first flake
+  // in this family PROVEN in CI: a verification-only PR the unit suite never
+  // loads, green on a zero-change re-run). Its recorded error was
+  // `expected "spy" to be called at least once` — the save→onClose `waitFor`
+  // below, not the negative streak assertion.
+  //
+  // Root cause is NOT the shared global budget: every `waitFor(onClose)` in
+  // this file passed `{ timeout: 2000 }`, which OVERRIDES the CI-tuned global
+  // `asyncUtilTimeout: 5000` (src/test-setup.js) DOWNWARD. Under parallel-load
+  // contention the save→close chain exceeds 2s and fails while 3s of the
+  // intended budget goes unused. Note this makes the previously-prescribed
+  // remedy (a wider per-test `it(name, fn, ms)` timeout) INEFFECTIVE here — the
+  // inner waitFor caps itself regardless of the test budget.
+  //
+  // Fix: drop the self-narrowing override at all 5 sites in this file so they
+  // inherit the 5000ms global. This RAISES nothing — it stops these tests
+  // opting OUT of a budget that was already tuned for CI contention.
   it('does NOT fire below the milestone (short streak)', async () => {
     hoisted.getDailyEntriesForWeek.mockResolvedValue([
       { date: '2026-06-19', newBusiness: { apps: 1, api: 1000 } },
@@ -730,7 +747,7 @@ describe('daily streak celebration (integration)', () => {
     render(<DailyCaptureV2 onClose={onClose} />);
     const save = await screen.findByTestId('dcv2-save');
     fireEvent.click(save);
-    await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(screen.queryByTestId('daily-streak-celebration')).not.toBeInTheDocument();
   });
 });
