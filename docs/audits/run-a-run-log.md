@@ -286,3 +286,18 @@ That is a **storage-mechanism change vs the ruling**, so per Rule 1 (surface bef
 **Built:** `setCommissionScenarios(tenantId, uid, scenarios)` (merge-write, service-layer cap `COMMISSION_SCENARIO_CAP = 6`) · `SavedScenarioChips.jsx` (four states: empty-invitation / saving / list / at-cap-with-reason; apply + delete per chip; 44px targets; token classes only) · wired into `GoalDecompositionTab` where `inputs` + `freqKey` live, with an optimistic chip row, silent-degrade prefs read, and apply-merges-over-defaults so a scenario saved before a new input key still restores cleanly. `savedAt` is a **client ISO string** — never a `serverTimestamp` sentinel, which Firestore rejects inside array elements (banked).
 
 **Verify:** lint 0 · build ✓ · `SavedScenarioChips` 8/8 · `userPrefsService.commissionScenarios` 6/6 (asserts the private path, the merge contract — only `commissionScenarios` + `updatedAt` written so sibling prefs are never clobbered — the cap, non-array coercion, and the throw-without-ids guard) · existing goals suite 149/149 unchanged.
+
+### 3b — Commission §4.7: 1 built · 1 pending-evidence · 1 **STOP (no design authority)**
+
+| Sub-item | Outcome |
+|---|---|
+| **Daily-cadence chip** | **BUILT** (`d4d2aaf0`). Rule 17 first: the canonical mockup AND all three design-conformance audits call for a "Daily" chip but are **silent on working-vs-calendar days**, so per the ruling it ships as a documented derivation — `DAILY_DIVISOR = WEEKLY_DIVISOR (43 selling weeks) × SELLING_DAYS_PER_WEEK (6) = 258`. Working days is the only basis consistent with the chain (the annual figure is already a 43-**selling**-week year; ÷365 would mix bases). `SELLING_DAYS_PER_WEEK` is duplicated from `planVariance.PACE_WORKING_DAYS` rather than imported to keep `goalDecomposition` dependency-free, and a **drift-guard test** (negative-control verified) fails loudly if they diverge. |
+| **Hero persistency stat** | **LIKELY CONFORMANT — pending render evidence** (dispatcher disposition). `CommissionAnchorStrip.jsx:231-236` already renders a `Persistency · latest month` chip, conditional on `persResult`; the seeder does seed persistency for a1/a2 (`seed-fixtures.mjs:669`). No duplicate built. Closes on the R-08 evidence run. |
+| **Two-column rail+ladder** | **STOP — no design authority exists.** |
+
+**Two-column STOP evidence (Rule 17 / escalation rule):**
+- `docs/audits/design-conformance-2026-07-12.md:113-115` and `-13.md:110-112` list **exactly three** Commission items — saved-scenario chips, manager suggest-a-goal-back, Daily cadence chip. **No layout/column finding for Commission in either audit.**
+- The **only** "two-column" reference in `trackj-recon-2026-07-07.md` is **row 27, Production Report** (`ProductionTable` + `RankedLeaderboard`) — a different screen entirely.
+- The canonical mockup `docs/design-system/screens-v2/commission-v2-scenes.jsx` contains **no grid/column layout classes at all** to port toward.
+
+⇒ The brief attributes this sub-item to "the visual-pass findings and the screens-v2 mockup", but neither the mockup nor any tracked audit describes a two-column rail+ladder for Commission. Building one would mean **inventing a layout from an unverified premise — the exact Run 9 failure mode the Phase 0 anchor rule exists to prevent.** Per this run's escalation rule (design-authority mismatch ⇒ STOP, never improvise), this sub-item **STOPS pending either the visual-pass document that states the intended layout, or a dispatcher ruling describing it.** The other two §4.7 sub-items are unaffected.
