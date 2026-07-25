@@ -71,7 +71,7 @@ silently reconciled.
 | 16 | Agent Report View v2 | **PORTED** | #397 `e17cb55` + #403 `b12dda1` | `productionReport/AgentProductionView.jsx` | `AgentReportDocument.jsx` HEX-only by design (exempt) |
 | 17 | Settings v2 | **PORTED** | `b8f7bf8c` (2.4) · `ee4794f9` | `settings/SettingsScreen.jsx` | |
 | 18 | Manager Dashboard v2 | **PORTED** | `8f39d02c` (1.5) · `fa0fe12e` · `9c7759a8` | `dashboard/{ManagerOverviewTab,ChampionsPanel,MyWeekPanel,ExceptionLeadPanel,CascadeAnchorStrip,BranchKPIStrip}` | R-08 verified conformant in #870 |
-| 19 | Master Sheet v2 | **PARTIAL** | `b626f03d` + `7148b0b1` + `a003f85d` | `manager/MasterSheet.jsx` | 8-stage funnel + filters shipped. **STATUS chips = open PR #871** — see § Row-19 detail |
+| 19 | Master Sheet v2 | **PARTIAL** | `b626f03d` + `7148b0b1` + `a003f85d` | `manager/MasterSheet.jsx` | 8-stage funnel + filters shipped. **STATUS chips = open PR #871, now carrying a blocking pre-merge condition** — see § Row-19 detail |
 | 20 | Compliance v2 | **PORTED** | `3d42125f` (S4) · `233650b4` | `manager/CompliancePanel.jsx` | |
 | 21 | Weekly WARs | **PORTED** | `4f2c9052` (2.1) · `138fda81` · `75717d6d` | `manager/{ManagerWarTab,ManagerWarDetail,TeamWarsTab,WarCompletionRing,WarStreakDots}` | |
 | 22 | Monthly Recruiting | **PORTED** | `82ce5631` (2.2) | `manager/{MonthlyRecruitingTab,RecDrillDrawer,recruitingVisuals}` | |
@@ -144,9 +144,15 @@ Both halves are **still open**, for narrower and more precise reasons than banke
 | **Dials chip on the strip** | **NOT shipped.** `dials` is captured and scored, but the WTD count strip is still the original four chips. | `DailyCaptureV2.helpers.js:40-48` — `deriveCountStripChips` returns exactly `{appr, ffi, ci, apps}`. The `Dials` row exists only in `SundayConfirmView` (`DailyCaptureV2.jsx:431`), a different surface. The field itself is live (`:969` `StepperRow label="Dials (total calls)"`; `:55` maps it to the `coldCalls` points bucket). |
 | **Manager-set targets** | **NOT shipped.** A target *is* rendered, but it is the tenant-wide company floor, never a per-agent manager-set value. | `:695-697` — `weeklyApiTarget = Number(weeklyFloors?.api ?? DEFAULT_WEEKLY_ACTIVITY_FLOORS.api)`, with the in-source comment *"company floor, same source HistoryTab uses. Code default (4800) applies until floors load."* `DailyAnchorStrip` (`:299-330`) and `computePaceState` (`:709-715`) both consume it. No per-agent read exists. |
 
-**Recommended FU re-scope:** split into (a) *add a Dials chip to `deriveCountStripChips`* — small, self-contained;
-and (b) *per-agent manager-set daily/weekly targets to replace the company-floor fallback* — the actual
-head-of-sales ask, and a schema + write-path question, not a UI one.
+**FU re-scope — APPROVED and APPLIED 2026-07-25** (dispatcher, Wave 1 item 2). `docs/FOLLOW_UPS.md`
+§ *Daily Capture anchor strip* is now split into **Half A** (add a Dials chip to `deriveCountStripChips`
+— SMALL, self-contained, no schema/rules/read change) and **Half B** (per-agent manager-set targets to
+replace the company-floor fallback — MEDIUM, the actual head-of-sales ask, a goals-hierarchy read-path
+and provenance question). The original body is preserved there under a `<details>` drift trail.
+
+**Rule 11 note:** the original FU body asserted that capturing daily dials required a *new schema field*.
+That premise is **stale** — `dials` is live, captured at `:969`, and already feeds the points path via
+`helpers.js:55`. Four of the original six scope steps were obsolete. Corrected in the re-scope.
 
 ---
 
@@ -164,9 +170,14 @@ PR #871 (`post-run-a/master-sheet-status`, 7 files, +912/−29) is **correctly s
    vocabulary only, and `MeetingMode.helpers.js:97-101` explicitly declines to derive it. #871 maps it to
    `deriveExceptions`' existing "No reports" kind rather than inventing a recency threshold — isolated in
    `exceptionToStatusKey`, four lines.
-3. **Threshold divergence worth a ruling** — three surfaces carry three literals for the persistency floor:
-   `MeetingMode.helpers.js` `< 80` (percentage), `getCompanyMinimums` default `90`, `calculations.js`
-   `PERS_FLOOR = 0.80` / `PERS_GATE = 0.90` (decimal). Candidate for Company Config v2 Tier 1.
+3. **Threshold divergence — RULED 2026-07-25: this is now a blocking pre-merge condition on #871.**
+   Three surfaces carry three literals for the persistency floor: `MeetingMode.helpers.js` `< 80`
+   (percentage), `getCompanyMinimums` default `90`, `calculations.js` `PERS_FLOOR = 0.80` /
+   `PERS_GATE = 0.90` (decimal). **#871 must not merge until these reconcile to one canonical constant**
+   — its STATUS chips band agents on a persistency floor, and merging would add a fourth consumer of an
+   already-ambiguous number on a money-adjacent surface. `calculations.js` is the canonical export and
+   decimal is the stored shape. Tracked at `docs/FOLLOW_UPS.md` § Persistency threshold — three surfaces,
+   three literals.
 
 Also recorded from the PR: the "unit friendly names" LOW FU is **not a code gap** — `unitLabel`,
 `deriveUnitOptions` and `userMeta` all already prefer a real name; user docs simply carry no `unitName`.
