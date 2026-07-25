@@ -66,13 +66,20 @@ function mediaBlock(re) {
   return mediaBlocks(re)[0] ?? null;
 }
 
-/** True when `body` contains a `display:none` rule whose selector list includes `.sidebar-nav-star`. */
-function hidesNavStar(body) {
-  // Split into declarations blocks: `<selectors> { <decls> }`
+/**
+ * True when ONE rule inside `body` both (a) has a selector list matching
+ * `selectorRe` and (b) declares `display:none`. Deliberately single-rule: an
+ * earlier draft tested "block mentions the selector" AND "block hides something"
+ * as two independent conditions, which could pass by combining selectors from
+ * two DIFFERENT rules (e.g. a colour rule naming the star + an unrelated
+ * display:none rule). The pairing must hold within one rule to mean anything.
+ */
+function hidesSelector(body, selectorRe) {
+  // Split into declaration blocks: `<selectors> { <decls> }`
   const rules = body.match(/[^{}]+\{[^{}]*\}/g) || [];
   return rules.some((rule) => {
     const [selectors, decls] = rule.split('{');
-    if (!/\.sidebar-nav-star\b/.test(selectors)) return false;
+    if (!selectorRe.test(selectors)) return false;
     return /display\s*:\s*none/.test(decls);
   });
 }
@@ -82,7 +89,7 @@ describe('sidebar 72px rail — pin star must not overlay the nav link', () => {
     const body = mediaBlock(/@media\s*\(min-width:\s*768px\)\s*and\s*\(max-width:\s*1023px\)/);
     expect(body, 'tablet @media block not found in src/index.css').toBeTruthy();
     expect(
-      hidesNavStar(body),
+      hidesSelector(body, /\.sidebar-nav-star\b/),
       'The 768–1023px rail must include .sidebar-nav-star in its display:none hide-list — '
       + 'otherwise the 44px star covers the 56px nav row centre and intercepts every nav click.',
     ).toBe(true);
@@ -93,8 +100,10 @@ describe('sidebar 72px rail — pin star must not overlay the nav link', () => {
     // the file has several min-width:1024px blocks, so check them all.
     const bodies = mediaBlocks(/@media\s*\(min-width:\s*1024px\)/);
     expect(bodies.length, 'no ≥1024px @media block found in src/index.css').toBeGreaterThan(0);
+    // Single-rule requirement: the SAME rule must carry the collapsed-scoped
+    // star selector AND display:none (see hidesSelector's note).
     const guarded = bodies.some(
-      (b) => /\.sidebar-collapsed\s+\.sidebar-nav-star/.test(b) && hidesNavStar(b),
+      (b) => hidesSelector(b, /\.sidebar-collapsed\s+\.sidebar-nav-star\b/),
     );
     expect(
       guarded,
