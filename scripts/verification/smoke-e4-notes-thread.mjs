@@ -18,6 +18,16 @@ import { chromium } from 'playwright';
 import { newLegContext, login, assertLegHygiene, TABLET_VIEWPORT } from './vh/vh-helpers.mjs';
 
 const tsel = (id) => `[data-testid="${id}"]`;
+
+// Banked lesson #7: a DATA-PRESENCE check must not use isVisible() — Playwright
+// treats content scrolled out of view inside an overflow container (a day column,
+// the sheet's max-h/overflow-y body) as not visible, so a persisted card/note
+// that merely sat below the fold read as a FAIL. Assert DOM attachment instead
+// (also timing-robust right after a reload). Use isVisible() only when the
+// human-visible viewport itself is the assertion.
+const inDom = async (loc, timeout = 8_000) => {
+  try { await loc.first().waitFor({ state: 'attached', timeout }); return true; } catch { return false; }
+};
 const PROSPECT = 'Marsha';
 const SENTINEL_TIME = '15:45';
 const SENTINEL_12 = '3:45 PM';
@@ -65,7 +75,7 @@ try {
   await p.locator(tsel('note-add-input')).fill(NOTE);
   await p.locator(tsel('note-add-btn')).click();
   await p.waitForTimeout(1500);
-  const addedNow = await p.locator(tsel('notes-thread')).getByText(NOTE).first().isVisible().catch(() => false);
+  const addedNow = await inDom(p.locator(tsel('notes-thread')).getByText(NOTE).first());
   log(addedNow ? 'PASS' : 'FAIL', `note appears in thread immediately (${addedNow})`);
   // close the sheet
   await p.keyboard.press('Escape');
@@ -75,7 +85,7 @@ try {
   await p.waitForTimeout(1500);
   await openPlanner(p);
   await openSentinelEdit(p);
-  const persisted = await p.locator(tsel('notes-thread')).getByText(NOTE).first().isVisible().catch(() => false);
+  const persisted = await inDom(p.locator(tsel('notes-thread')).getByText(NOTE).first());
   log(persisted ? 'PASS' : 'FAIL', `note persisted in thread after reload (${persisted})`);
   await p.keyboard.press('Escape');
   await p.locator(tsel('appointment-sheet')).waitFor({ state: 'detached', timeout: 8_000 }).catch(() => {});
@@ -85,7 +95,7 @@ try {
   await p.locator(tsel('appointment-sheet')).waitFor({ state: 'visible', timeout: 8_000 });
   await pickProspect(p);
   await p.waitForTimeout(400);
-  const historyShown = await p.locator(tsel('prospect-note-history')).isVisible().catch(() => false);
+  const historyShown = await inDom(p.locator(tsel('prospect-note-history')));
   const historyHasNote = historyShown && /e4-marsha-note/.test(await p.locator(tsel('prospect-note-history')).innerText());
   log(historyHasNote ? 'PASS' : 'FAIL', `prior note surfaces on booking sheet for the same prospect (shown=${historyShown} hasNote=${historyHasNote})`);
   await p.keyboard.press('Escape');

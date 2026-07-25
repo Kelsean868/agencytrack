@@ -20,6 +20,16 @@ import { newLegContext, login, assertLegHygiene } from './vh/vh-helpers.mjs';
 
 const tsel = (id) => `[data-testid="${id}"]`;
 
+// Banked lesson #7: a DATA-PRESENCE check must not use isVisible() — Playwright
+// treats content scrolled out of view inside an overflow container (a day column,
+// the sheet's max-h/overflow-y body) as not visible, so a persisted card/note
+// that merely sat below the fold read as a FAIL. Assert DOM attachment instead
+// (also timing-robust right after a reload). Use isVisible() only when the
+// human-visible viewport itself is the assertion.
+const inDom = async (loc, timeout = 8_000) => {
+  try { await loc.first().waitFor({ state: 'attached', timeout }); return true; } catch { return false; }
+};
+
 // TT "today" + tomorrow as the board renders them (America/Port_of_Spain, UTC-4).
 const todayTT = () => {
   const now = new Date(Date.now() - 4 * 3600 * 1000);
@@ -61,7 +71,7 @@ try {
 
   const todayCol = () => p.locator(tsel(`planner-day-col-${TODAY}`));
   const nextCol = () => p.locator(tsel(`planner-day-col-${NEXT}`));
-  const sentinelInToday = await todayCol().locator('button[data-testid^="appt-card-"]:has-text("3:35 PM")').first().isVisible().catch(() => false);
+  const sentinelInToday = await inDom(todayCol().locator('button[data-testid^="appt-card-"]:has-text("3:35 PM")').first());
   log(sentinelInToday ? 'PASS' : 'FAIL', `sentinel 3:35 PM booked on today column (${sentinelInToday})`);
 
   // 2. Drag the sentinel card → the +1-day column (HTML5 DnD via real DataTransfer).
@@ -88,8 +98,19 @@ try {
   await p.locator(tsel('planner-span-3day')).click();
   await p.waitForTimeout(500);
 
-  const movedToNext = await nextCol().locator('button[data-testid^="appt-card-"]:has-text("3:35 PM")').first().isVisible().catch(() => false);
+  const movedToNext = await inDom(nextCol().locator('button[data-testid^="appt-card-"]:has-text("3:35 PM")').first());
   log(movedToNext ? 'PASS' : 'FAIL', `moved appt (3:35 PM) now on the +1-day column after reload (${movedToNext})`);
+  if (!movedToNext) {
+    // Self-diagnosing: name the columns that DO hold a 3:35 PM card, so a future
+    // failure distinguishes "wrong target date" from "not rendered / not written".
+    const cols = await p.locator('[data-testid^="planner-day-col-"]').all();
+    const found = [];
+    for (const col of cols) {
+      const id = await col.getAttribute('data-testid').catch(() => '?');
+      if (/3:35\s*PM/.test(await col.innerText().catch(() => ''))) found.push(id);
+    }
+    console.log(`     diag: columns containing a 3:35 PM card → ${found.length ? found.join(', ') : 'NONE'} (expected planner-day-col-${NEXT})`);
+  }
 
   // Original tombstone: today still holds a 3:35 PM card, now marked Postponed.
   const todayText = await todayCol().innerText().catch(() => '');

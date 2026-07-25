@@ -18,6 +18,16 @@ import { chromium } from 'playwright';
 import { newLegContext, login, assertLegHygiene, TABLET_VIEWPORT } from './vh/vh-helpers.mjs';
 
 const tsel = (id) => `[data-testid="${id}"]`;
+
+// Banked lesson #7: a DATA-PRESENCE check must not use isVisible() — Playwright
+// treats content scrolled out of view inside an overflow container (a day column,
+// the sheet's max-h/overflow-y body) as not visible, so a persisted card/note
+// that merely sat below the fold read as a FAIL. Assert DOM attachment instead
+// (also timing-robust right after a reload). Use isVisible() only when the
+// human-visible viewport itself is the assertion.
+const inDom = async (loc, timeout = 8_000) => {
+  try { await loc.first().waitFor({ state: 'attached', timeout }); return true; } catch { return false; }
+};
 const A_TIME = '22:05'; const A_12 = '10:05 PM';
 const B_TIME = '22:35'; const B_12 = '10:35 PM';
 const B_PUSHED_12 = '10:55 PM';
@@ -48,7 +58,7 @@ try {
 
   await book(p, A_TIME);
   await book(p, B_TIME);
-  const bBefore = await cardAt(p, B_12).isVisible().catch(() => false);
+  const bBefore = await inDom(cardAt(p, B_12));
   log(bBefore ? 'PASS' : 'FAIL', `booked A ${A_12} + B ${B_12} (B present ${bBefore})`);
 
   // Churn A → Running late → cascade sheet.
@@ -70,8 +80,8 @@ try {
   await p.reload({ waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(1500);
   await openPlanner(p);
-  const bPushed = await cardAt(p, B_PUSHED_12).isVisible().catch(() => false);
-  const aSame = await cardAt(p, A_12).isVisible().catch(() => false);
+  const bPushed = await inDom(cardAt(p, B_PUSHED_12));
+  const aSame = await inDom(cardAt(p, A_12));
   log(bPushed ? 'PASS' : 'FAIL', `B persisted at ${B_PUSHED_12} after reload (${bPushed})`);
   log(aSame ? 'PASS' : 'FAIL', `A unchanged at ${A_12} (${aSame})`);
 
