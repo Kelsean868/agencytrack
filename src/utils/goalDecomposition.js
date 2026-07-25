@@ -28,6 +28,27 @@ export const roundToWhole = (v) => Math.round(parseFloat(v));
 // weekly period divisor). Annual chain ÷ WEEKLY_DIVISOR → weekly target.
 export const WEEKLY_DIVISOR = 43;
 
+// Daily period divisor (Tier 3b §4.7 daily-cadence chip). DERIVED, not invented:
+// WEEKLY_DIVISOR (43 selling weeks) × PACE_WORKING_DAYS (6, the Mon–Sat working
+// days already used by planVariance's pace math) = 258 SELLING DAYS.
+//
+// Rule 17 note: the canonical Commission v2 mockup and the design-conformance
+// audits (2026-07-07 / -12 / -13) all call for a "Daily" cadence chip but are
+// SILENT on whether a day means a working day or a calendar day. Working days
+// is the only basis consistent with the rest of this chain — the annual figure
+// is already a 43-SELLING-week year, so dividing it by calendar days (365) would
+// mix bases and understate the true per-selling-day target. Dispatcher-approved
+// 2026-07-25 as a derivation; revisit only if a ruling states a calendar basis.
+//
+// SELLING_DAYS_PER_WEEK is DUPLICATED from planVariance's PACE_WORKING_DAYS
+// rather than imported: this module is deliberately DEPENDENCY-FREE (the shared
+// pure engine for both the Commission Playground and the Game Plan hub), and
+// importing planVariance would drag extractFields + weeklyPlanAssembly in
+// transitively for one integer. A test asserts the two stay equal, so drift
+// fails loudly instead of silently skewing every daily figure.
+export const SELLING_DAYS_PER_WEEK = 6;
+export const DAILY_DIVISOR = WEEKLY_DIVISOR * SELLING_DAYS_PER_WEEK; // 258
+
 // Default decomposition inputs (formerly DEFAULT_INPUTS in GoalDecompositionTab).
 export const DEFAULT_DECOMPOSITION_INPUTS = Object.freeze({
   incomeGoal:      300000,

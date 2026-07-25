@@ -135,3 +135,63 @@ export async function setAppSetting(tenantId, uid, key, value) {
     { merge: true },
   );
 }
+
+/**
+ * Normalize one saved scenario before it is written. Enforces the project's
+ * domain rule that numerics are stored as NUMBERS, never strings (CLAUDE.md:
+ * "All numeric fields: parseFloat() enforced before saving to Firestore" /
+ * "Never store numeric values as strings"). The decomposition inputs reach us
+ * as numbers from `NumField`'s parseFloat-on-change, but a scenario restored
+ * from an older doc — or any future caller — must not be able to smuggle a
+ * numeric string into the engine, where it would silently corrupt the math.
+ * Non-numeric input values are dropped rather than coerced to NaN.
+ */
+function normalizeScenario(s) {
+  const rawInputs = s.inputs && typeof s.inputs === 'object' ? s.inputs : {};
+  const inputs = {};
+  for (const [k, v] of Object.entries(rawInputs)) {
+    const n = parseFloat(v);
+    if (Number.isFinite(n)) inputs[k] = n;
+  }
+  return {
+    id: s.id,
+    label: s.label,
+    savedAt: typeof s.savedAt === 'string' ? s.savedAt : new Date().toISOString(),
+    freqKey: typeof s.freqKey === 'string' ? s.freqKey : 'annual',
+    inputs,
+  };
+}
+
+/** Max saved Commission scenarios per agent (R-06). Keeps the single prefs doc
+ *  small and the chip row scannable; mirrors the appointment-template cap idiom. */
+export const COMMISSION_SCENARIO_CAP = 6;
+
+/**
+ * Persist the agent's saved Commission-Playground scenarios (Tier 3b R-06).
+ *
+ * Storage: the SAME single `prefs/app` doc, merge-written as a
+ * `commissionScenarios` array — so it never clobbers pinnedNav / menuLayout /
+ * navOrder / settings, and needs no second read.
+ *
+ * Privacy: the `prefs/{prefId}` rules block is `request.auth.uid == uid` for BOTH
+ * read and write, with NO manager arm — so scenarios are own-write and
+ * agent-private BY CONSTRUCTION (R-06: "no shared/manager visibility"), with no
+ * firestore.rules change and no composite index.
+ *
+ * @param {string} tenantId
+ * @param {string} uid
+ * @param {Array<{id:string,label:string,savedAt:string,inputs:object,freqKey:string}>} scenarios
+ * @returns {Promise<void>}
+ */
+export async function setCommissionScenarios(tenantId, uid, scenarios) {
+  if (!tenantId || !uid) throw new Error('setCommissionScenarios requires tenantId and uid');
+  const safe = (Array.isArray(scenarios) ? scenarios : [])
+    .filter((s) => s && typeof s.id === 'string' && typeof s.label === 'string')
+    .slice(0, COMMISSION_SCENARIO_CAP)
+    .map(normalizeScenario);
+  await setDoc(
+    prefsDocRef(tenantId, uid),
+    { commissionScenarios: safe, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}

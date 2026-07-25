@@ -222,3 +222,114 @@ Half-open overlap arithmetic (`a.start < b.end && b.start < a.end`), verified nu
 **Hardening (explicitly NOT the cause):** `badgeVisible` and the sheet-warning checks now assert DOM attachment rather than `isVisible()`. Both are conditional renders (`{conflicted && …}`, `{conflict && …}`) so absence === unmounted === no conflict; `isVisible()` also false-negatives on a card scrolled out of the 900×800 viewport, and leg 1's *negative* assertion could have false-PASSED on an off-view node. Labeled in-file as hardening only.
 
 **Self-diagnosing dump added:** on a `FREE_SLOT` collision the smoke now prints today's booked slots + points at the slot map + reminds about the Saturday d2a placement — this failure class has now cost two staging round-trips. It reads the DOM with the sheet still open (closing it would break the following `appt-save` and cascade one failure into several).
+
+---
+
+## TIER 3 — Track J conformance closeout
+
+**Branch:** `run-a-tier3-conformance` (cut off `origin/staging` @ `c20210e8`)
+**Note:** the branch alias is 64 chars (> the 63-char DNS label limit) — preview verification must use the immutable per-deployment URL, not the branch alias (banked #785 lesson).
+
+### A3 closeout + process correction (dispatcher note)
+A3 finally passed **9/9** after sweep + reseed; the first rerun had failed on residue from *this session's own earlier failed A3 runs* (leftover 21:00 bookings tripping the exactly-1 card check with "found 2"). **My "no sweep required" call was wrong in practice** — a mutating smoke that FAILS still leaves the bookings it already made, so those strand into the next attempt. `SMOKES.md` is updated from guidance to a **HARD RULE: the sweeper is an unconditional prerequisite before ANY mutating smoke run OR rerun.** The slot-band note now also says to check FIXTURE bands *including durations*, not just other smokes.
+
+### Per-tier drift check (Tier 3 touch-set: staging vs main) — ✅ PASS
+13 files diffed `origin/staging` vs `origin/main`: **12 byte-identical**; the single drift is `src/index.css`, which is **our own #867 rail-star fix** (staging-side, additive — verified by reading the diff: it is exactly the `.sidebar-nav-star` hide-list entry + its comment). No independent main-side movement on any Tier 3 file. Main is 8 commits ahead on unrelated lineage (the known CONTEXT/FOLLOW_UPS promotion-time divergence already logged). **Cleared to build.**
+
+### 3a — R-08 ChampionsPanel: **CONFORMANT — closing as verification, no build**
+
+Code trace (authoritative), end to end:
+| Step | Evidence |
+|---|---|
+| Derivation | `useBranchOverview.js:274-277` — `rankWeeklyChampions(productionScopedSubs, currentWeekStarting)`, `currentWeekStarting = getMostRecentSunday()` ⇒ **"this week"** |
+| Ranking | `src/utils/weeklyChampions.js:85-101` — sorts `b.api - a.api` **DESC** (ties by `agentName`), **filters `api > 0`**, `slice(0, topN=3)` ⇒ **"Ranked by API"**, and an honest empty state rather than a podium of zeros |
+| Scoping | `productionScopedSubs` is already role/branch/unit-scoped; **zero new Firestore reads** |
+| Render | `ManagerOverviewTab.jsx:123` → `<ChampionsPanel champions={weeklyChampions}>`; `ChampionsPanel.jsx:71` renders the literal **"Ranked by API, this week"** |
+
+The rendered label and the actual derivation agree, so R-08's ruling is satisfied **as built** — no product change required.
+
+**Live evidence half:** `smoke-r08-champions-ranking.mjs` (new, registered) — READ-ONLY, `branch_manager`, no writes/residue so the sweeper rule does not apply. It asserts the label verbatim, that exactly one of ranked-list / honest-empty renders, and — when ranked — API-**descending** order, every value **> 0**, capped at **3**; screenshot artifact to `out/r08/<stamp>/champions.png` (gitignored). Assertions are value-level and fixture-name-free so they survive reseeds. **Operator run pending** — that's the screenshot the ruling asks for.
+
+### 3b — R-11 login-stamp + All Users LAST-activity: **STOP (per standing ruling)**
+
+**Mechanism verified against `firestore.rules` (READ-only, never edited):**
+
+The users self-write arm uses **`hasOnly([...])`** — an *exhaustive* allowlist, unlike the `appointments` block's coarse `hasAll` floor (which is why E4's `notes[]` was permitted without a rules change):
+
+| Self-write arm (`request.auth.uid == userId`) | Allowed keys |
+|---|---|
+| general | `hasSeenWelcome, photoURL, bio, phone, loggingMode, dailyNudgeTime, updatedAt, email, licenseProfile` |
+| `unit_manager` | `unitName, hasSeenWelcome, photoURL, bio, phone, loggingMode, dailyNudgeTime, updatedAt` |
+
+**No login-stamp field is in either list, and no `lastLoginAt`/`lastActiveAt`/`lastSeen` field exists anywhere in `src/`, `functions/`, or the rules.** Any key outside `hasOnly` causes the write to be REJECTED, so a client-side own-doc login stamp **cannot** be written as things stand.
+
+**The relocation escape hatch also fails.** `users/{uid}/prefs/{prefId}` (`firestore.rules:2031-2033`) is `allow read, write: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid` — the *write* half would work, but the feature's second half ("**All Users** LAST-activity **column**") requires a manager to read the stamp **across users**, and that rule has **no manager read arm** at all. So the column cannot be populated from `prefs` either.
+
+⇒ Every available path requires a **`firestore.rules` edit** (add the field to the users `hasOnly` allowlist, or add a manager read arm to `prefs`). Per the brief's STANDING ABSOLUTE STOPS — *"`firestore.rules` — any change is a STOP, not a build"* — and the R-11 ruling's own condition, **this item STOPS.** Explicitly NOT done: repurposing an already-allowed field (e.g. writing `updatedAt` as a pseudo-login-stamp), which would corrupt that field's meaning and fake conformance.
+
+### 3b — R-06 Commission saved-scenario chips: **mechanism conflict — needs a ruling**
+
+The ruling specifies **"profile-doc, own-write, agent-private"**. The profile doc (`users/{uid}`) is governed by the **same `hasOnly` allowlist above**, which contains no scenarios/chips field ⇒ **the literal "profile-doc" mechanism is blocked** by the identical constraint that stops R-11.
+
+**A clean no-rules-change alternative exists:** `users/{uid}/prefs/{prefId}` — unconstrained doc shape, own-uid read+write, **no manager read arm** (so it is agent-private *by construction*, which is exactly what the ruling asks for), reachable through the existing `src/services/userPrefsService.js` (reuse, not reinvent). A single known-id doc (e.g. `prefs/commissionScenarios`) needs **no composite index** either.
+
+That is a **storage-mechanism change vs the ruling**, so per Rule 1 (surface before architectural decisions) and this run's escalation rule (brief-vs-repo conflict ⇒ STOP, do not improvise), **it is surfaced rather than decided.** Build is ready to proceed the moment it is approved.
+
+**R-11 FU re-banked** per the ruling: `FOLLOW_UPS.md` now carries the full `hasOnly` evidence (both self-arms verbatim), the two possible rules edits, the human-merge + manual-deploy requirement, and the instruction to bundle it with the E4 `(agentId, prospectId)` index FU as a single **"rules + indexes attended window"**. The rejected `updatedAt` pseudo-stamp is recorded with its rationale (a stamp that moves on any profile edit makes the column lie).
+
+### 3b — R-06 Commission saved-scenario chips: **BUILT** (mechanism variance approved)
+
+**Mechanism variance (approved by dispatcher):** the ruling said "profile-doc"; `users/{uid}` is governed by the `hasOnly` allowlist above, so scenarios live on **`users/{uid}/prefs/app`** instead — written through the **existing** `userPrefsService` as a merge field. The dispatcher confirmed "profile-doc" was mechanism shorthand, not a binding path, and that the ruling's real constraints hold.
+
+**Why this satisfies R-06's constraints by construction:** the `prefs/{prefId}` rules arm is `request.auth.uid == uid` for **read AND write**, with **no manager arm at all** — so the slice is own-write and agent-private structurally; there is no shared/manager visibility to build, leak, or regress. **No `firestore.rules` change. No composite index** (single known-id doc). Sub-variance noted honestly: the service's established pattern is ONE `prefs/app` doc merge-written per feature (`pinnedNav`, `menuLayout`, `navOrder`, `settings`), so scenarios are a `commissionScenarios` **field** on that doc rather than a separate `prefs/commissionScenarios` doc — that is what "via the existing userPrefsService" implies, and it avoids a second read.
+
+**Built:** `setCommissionScenarios(tenantId, uid, scenarios)` (merge-write, service-layer cap `COMMISSION_SCENARIO_CAP = 6`) · `SavedScenarioChips.jsx` (four states: empty-invitation / saving / list / at-cap-with-reason; apply + delete per chip; 44px targets; token classes only) · wired into `GoalDecompositionTab` where `inputs` + `freqKey` live, with an optimistic chip row, silent-degrade prefs read, and apply-merges-over-defaults so a scenario saved before a new input key still restores cleanly. `savedAt` is a **client ISO string** — never a `serverTimestamp` sentinel, which Firestore rejects inside array elements (banked).
+
+**Verify:** lint 0 · build ✓ · `SavedScenarioChips` 8/8 · `userPrefsService.commissionScenarios` 6/6 (asserts the private path, the merge contract — only `commissionScenarios` + `updatedAt` written so sibling prefs are never clobbered — the cap, non-array coercion, and the throw-without-ids guard) · existing goals suite 149/149 unchanged.
+
+### 3b — Commission §4.7: 1 built · 1 pending-evidence · 1 **STOP (no design authority)**
+
+| Sub-item | Outcome |
+|---|---|
+| **Daily-cadence chip** | **BUILT** (`d4d2aaf0`). Rule 17 first: the canonical mockup AND all three design-conformance audits call for a "Daily" chip but are **silent on working-vs-calendar days**, so per the ruling it ships as a documented derivation — `DAILY_DIVISOR = WEEKLY_DIVISOR (43 selling weeks) × SELLING_DAYS_PER_WEEK (6) = 258`. Working days is the only basis consistent with the chain (the annual figure is already a 43-**selling**-week year; ÷365 would mix bases). `SELLING_DAYS_PER_WEEK` is duplicated from `planVariance.PACE_WORKING_DAYS` rather than imported to keep `goalDecomposition` dependency-free, and a **drift-guard test** (negative-control verified) fails loudly if they diverge. |
+| **Hero persistency stat** | **LIKELY CONFORMANT — pending render evidence** (dispatcher disposition). `CommissionAnchorStrip.jsx:231-236` already renders a `Persistency · latest month` chip, conditional on `persResult`; the seeder does seed persistency for a1/a2 (`seed-fixtures.mjs:669`). No duplicate built. Closes on the R-08 evidence run. |
+| **Two-column rail+ladder** | **STOP — no design authority exists.** |
+
+**Two-column STOP evidence (Rule 17 / escalation rule):**
+- `docs/audits/design-conformance-2026-07-12.md:113-115` and `-13.md:110-112` list **exactly three** Commission items — saved-scenario chips, manager suggest-a-goal-back, Daily cadence chip. **No layout/column finding for Commission in either audit.**
+- The **only** "two-column" reference in `trackj-recon-2026-07-07.md` is **row 27, Production Report** (`ProductionTable` + `RankedLeaderboard`) — a different screen entirely.
+- The canonical mockup `docs/design-system/screens-v2/commission-v2-scenes.jsx` contains **no grid/column layout classes at all** to port toward.
+
+⇒ The brief attributes this sub-item to "the visual-pass findings and the screens-v2 mockup", but neither the mockup nor any tracked audit describes a two-column rail+ladder for Commission. Building one would mean **inventing a layout from an unverified premise — the exact Run 9 failure mode the Phase 0 anchor rule exists to prevent.** Per this run's escalation rule (design-authority mismatch ⇒ STOP, never improvise), this sub-item **STOPS pending either the visual-pass document that states the intended layout, or a dispatcher ruling describing it.** The other two §4.7 sub-items are unaffected.
+
+### 3b — Master Sheet STATUS filters: **SCOPED, NOT BUILT** (carried, per completion-honesty guidance)
+
+Ruled buildable, but sizing it against source showed it is **not a small item**, and the run's remaining budget could not do it to standard. Per the dispatcher's explicit guidance (*"per-item completion honesty beats coverage"*), it is **carried with a precise spec** rather than half-built.
+
+**Why it is bigger than it reads:** `MasterSheet` loads only the **selected week** (`:97/:168`), hard-passes `companyMins: null` (`:251`), and never loads persistency — while `funnelFilters.js:9-16` defines STATUS as a **YTD** taxonomy of six bands (On track · Off pace · Gone quiet · Report late · **Pers. ↓** · Below floor) requiring the **pro-rata tenure floor**. So the honest scope is **three new reads** (YTD subs · companyMinimums · persistency) + a money-adjacent band derivation + role-scoping verification on each new read + value-level boundary tests. The existing in-code deferral at `:118-121` says exactly this. **LEVEL remains blocked** (unpopulated career-level field) — unchanged.
+
+Full spec banked in `FOLLOW_UPS.md` so the next session starts at build, not discovery.
+
+### 3c — mechanical conformance: **NOT STARTED** (carried)
+
+All four items (hero-card worklist · motion pop-in wiring · handoff-vs-screens-v2 reconciliation · gold-contrast usages) are carried verbatim to `FOLLOW_UPS.md`, with a note to **verify each item's design authority is in-repo before building** — Run A stopped two items precisely because the claimed authority did not exist.
+
+---
+
+## TIER 3 — closing summary
+
+| Item | Outcome |
+|---|---|
+| Drift check @ branch-cut | ✅ PASS (12/13 identical; the one drift is our own #867 fix) |
+| Sweeper HARD RULE | ✅ banked (unconditional before any mutating run **or rerun**) |
+| **3a R-08 ChampionsPanel** | ✅ **CONFORMANT — closed as verification**, no build; evidence smoke written + registered (operator run pending) |
+| 3a `tatillife_smoke` live verification | ⏸️ prod-side, operator-run (existing prod smokes' hard guards apply) |
+| **3b R-06 scenario chips** | ✅ **BUILT** + write-read-verify smoke; mechanism variance approved and recorded |
+| **3b R-11 login stamp** | 🛑 **STOP** — rules `hasOnly` allowlist; FU re-banked for the "rules + indexes attended window" |
+| **3b §4.7 daily-cadence chip** | ✅ **BUILT** (258 = 43×6, documented derivation + negative-control-verified drift guard) |
+| 3b §4.7 hero persistency stat | ⏸️ **likely conformant** — already rendered; closes on the R-08 evidence run |
+| 3b §4.7 two-column rail+ladder | 🛑 **STOP → DROPPED** by ruling (chat-sourced claim, no in-repo authority); FU banked |
+| **3b Master Sheet STATUS** | ⏸️ **carried** with full spec (3 reads + 6-band taxonomy); LEVEL stays blocked |
+| **3c mechanical ×4** | ⏸️ **carried** verbatim |
+
+**Operator rerun list at PR-open (batched):** `smoke-r08-champions-ranking.mjs` (R-08 evidence + confirms the persistency chip renders) · `smoke-r06-scenario-chips.mjs` · `smoke-run9-f3e-series.mjs` (Sun–Fri only — self-SKIPs Saturday).

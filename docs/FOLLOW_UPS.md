@@ -31,6 +31,10 @@
 | Design-conformance backlog — 14 NEEDS-RULING operator decisions block sequencing (banked 2026-07-... | HIGH | — | — | 620 |
 | Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases ... | HIGH | — | — | 282 |
 | Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion sess... | MEDIUM | — | — | 290 |
+| R-11 login-stamp + All Users LAST-activity — REQUIRES firestore.rules edit (hasOnly allowlist or manager-readable location); bundle with the E4 index FU as a "rules + indexes attended window" | HIGH | — | — | 4282 |
+| Master Sheet STATUS filter chips — scoped NOT built (3 new reads + 6-band taxonomy); LEVEL stays blocked (banked Run A Tier 3b) | MEDIUM | — | — | 4329 |
+| Tier 3c mechanical conformance — carried from Run A (hero-card worklist · motion pop-in wiring · handoff-vs-screens-v2 · gold-contrast usages) | LOW | — | — | 4348 |
+| Commission layout — unverified two-column claim; needs a REAL mockup into screens-v2 first (banked Run A Tier 3b) | LOW | — | — | 4312 |
 | E4 cross-time prospect notes history — `(agentId, prospectId)` composite index + deploy (rules-permitted per D3); this-week scope shipped Run A Tier 2 E4 | MEDIUM | — | — | 4246 |
 | `featureFlags` allowlist is a deliberate triple-copy — consolidate when flags become config-drive... | LOW | — | — | 298 |
 | Desktop planner board — shift-click range select keys off mobile view state (banked 2026-07-24, Run A Tier 2 E1) | LOW | — | — | 4220 |
@@ -4276,3 +4280,81 @@ CodeRabbit (#866) flagged that the Run-A planner acceptance smokes (`smoke-e1-de
 **Priority:** LOW — the smokes are correct today (re-seed resets); this is consistency + fail-safe-cleanup hygiene.
 
 Banked: Run A Tier 2, CodeRabbit #866, 2026-07-24.
+
+---
+
+## R-11 login-stamp + All Users LAST-activity — REQUIRES a firestore.rules edit (banked 2026-07-25, Run A Tier 3b, HIGH-ish / attended)
+
+**STOPPED in Run A Tier 3b — not buildable client-side as ruled.** The R-11 ruling assumed a client-side own-doc write on auth; the rules surface forbids it.
+
+**Evidence — the users self-write arm uses `hasOnly([...])`, an EXHAUSTIVE allowlist** (contrast the `appointments` block's coarse `hasAll` floor, which is why E4's `notes[]` needed no rules change):
+
+| Self-write arm (`request.auth.uid == userId`) | Allowed keys |
+|---|---|
+| general | `hasSeenWelcome, photoURL, bio, phone, loggingMode, dailyNudgeTime, updatedAt, email, licenseProfile` |
+| `unit_manager` | `unitName, hasSeenWelcome, photoURL, bio, phone, loggingMode, dailyNudgeTime, updatedAt` |
+
+No login-stamp field appears in either arm, and no `lastLoginAt` / `lastActiveAt` / `lastSeen` field exists anywhere in `src/`, `functions/`, or `firestore.rules`. Any key outside `hasOnly` is REJECTED.
+
+**The relocation escape hatch fails on the read half.** `users/{uid}/prefs/{prefId}` (`firestore.rules:2031-2033`) is `allow read, write: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid` — the stamp WRITE would work there, but the "**All Users** LAST-activity **column**" needs a manager to read the stamp **across users**, and that block has **no manager read arm**.
+
+**To build, one of these rules edits is required:**
+1. add a login-stamp field (e.g. `lastLoginAt`) to the users self-write `hasOnly` allowlist — both arms — so the client can stamp its own doc, which managers already read via the existing `allow list`; **or**
+2. add a manager read arm to a manager-readable location holding the stamp.
+
+⇒ **Human-merge + manual deploy** (`firebase deploy --only firestore:rules`), per Rule 19 and the standing absolute stop on rules.
+
+**Bundle this with the E4 cross-time prospect-notes index FU** (needs `(agentId, prospectId)` in `firestore.indexes.json` + `firebase deploy --only firestore:indexes`) as a single **"rules + indexes attended window"** item — one attended session covering both deploy-gated backend deltas.
+
+**Explicitly rejected during the run (endorsed by the dispatcher):** repurposing an already-allowed field such as `updatedAt` as a pseudo-login-stamp. `updatedAt` moves on any profile edit, so the column would show "activity" that never happened — a **lying column** is worse than an absent one.
+
+Banked: Run A Tier 3b, 2026-07-25.
+
+---
+
+## Commission layout — unverified two-column claim, needs a real mockup first (banked 2026-07-25, Run A Tier 3b, LOW)
+
+An **in-chat visual pass** (2026-07, pre-Run-A; pasted at run kickoff, never banked to a repo document) claimed the Commission Playground drifts from a **two-column rail+ladder** layout. Run A Tier 3b STOPPED the item: **no in-repo design authority for it exists.**
+
+Evidence gathered during the STOP:
+- `docs/audits/design-conformance-2026-07-12.md:113-115` and `-2026-07-13.md:110-112` list **exactly three** Commission items (saved-scenario chips · manager suggest-a-goal-back · Daily cadence chip). **Neither audit contains a Commission layout/column finding.**
+- The only "two-column" reference in `docs/audits/trackj-recon-2026-07-07.md` is **row 27 — Production Report** (`ProductionTable` + `RankedLeaderboard`), a different screen.
+- The canonical mockup `docs/design-system/screens-v2/commission-v2-scenes.jsx` has **no grid/column layout classes** to port toward.
+
+Corroborating that chat-sourced design claims need provenance-checking: the **same** visual pass's other Commission claim ("missing persistency stat in the hero") turned out to be **absent data, not absent code** — `CommissionAnchorStrip.jsx:231-236` already renders the chip.
+
+**IF pursued:** run a Claude Design pass that produces a REAL mockup file into `docs/design-system/screens-v2/`, then build against **that file** as the design authority. **Do NOT build from this FU's text** — it records a claim, not a design.
+
+**Priority:** LOW. Banked: Run A Tier 3b, 2026-07-25 (dispatcher ruling: item DROPPED from Tier 3).
+
+---
+
+## Master Sheet STATUS filter chips — scoped, NOT built (banked 2026-07-25, Run A Tier 3b, MEDIUM)
+
+Ruled buildable in Run A Tier 3b but **carried, not built** — the run's remaining budget could not do it to standard, and per-item completion honesty was preferred over coverage (dispatcher guidance). This entry converts the item into a precise spec so the next session starts at build, not discovery.
+
+**What exists.** `MasterSheet.jsx:118-121` carries an explicit, deliberate deferral: *"STATUS + LEVEL chips from the mockup are intentionally NOT built here … [no] YTD/tenure-floor data for STATUS nor any level field for LEVEL."* `funnelFilters.js:9-16` names the exact taxonomy: **On track · Off pace · Gone quiet · Report late · Pers. ↓ · Below floor**, and states STATUS "needs the pro-rata tenure floor".
+
+**What must be built (the real scope — three new reads):**
+1. **YTD submissions** — `MasterSheet` currently loads only the SELECTED WEEK (`submissions` state, `:97/:168`). STATUS is a YTD-performance taxonomy, so it needs a year-scoped read (or to consume one the manager surfaces already hold — check `useBranchOverview`'s `ytdSubs` before adding a fourth fetch).
+2. **companyMinimums** — currently hard-passed as `null` (`:251`, `deriveExceptions({ …, companyMins: null })`). Needed for the floor bands.
+3. **Persistency** — the "Pers. ↓" chip needs persistency history, which this component does not load at all.
+
+Plus: pro-rata tenure floor via the existing `resolveAnnualAPIFloor` (`src/utils/tenureFloors.js`, already used by `useBranchOverview`) — reuse, do NOT reimplement; the six-band derivation as a pure tested helper (mirror `funnelFilters`' existing pure-function style); chip UI + `DEFAULT_FUNNEL_FILTERS` extension; role-scoping check on any new read (UM own-unit / BM own-branch) before it ships.
+
+**LEVEL stays BLOCKED** — no populated career-level field (`MasterSheet.jsx:158` maps `levelTitle ?? careerLevel ?? null`, unpopulated). Unchanged by this FU.
+
+**Priority:** MEDIUM. Money-adjacent (floors) — value-level tests required on the band boundaries.
+
+---
+
+## Tier 3c mechanical conformance — carried from Run A (banked 2026-07-25, LOW–MEDIUM)
+
+Four mechanical items ruled in-scope for Run A Tier 3c but **not started** — the run ended at the Tier 3 PR with budget spent on 3a/3b. Carried verbatim so nothing is lost:
+
+1. **Run-3 hero-card conformance worklist** (MEDIUM) — the hero-card items from the Run-3 worklist.
+2. **Motion pop-in wiring to the first live panels** (LOW) — the motion kit already exists (`screen-enter` / `--dur-*` / `--ease-*` in `src/index.css`, plus `useCountUp`); this is **wiring only**, no new kit.
+3. **`design_handoff_v2_app/mockups/` vs `screens-v2/` reconciliation** (LOW, docs-level) — `screens-v2` + `redesign-addendum` remain canonical; this is a docs reconciliation, not a port.
+4. **Gold-contrast usage fixes** (LOW) — fix **usages only**, NEVER token values (`--color-gold` / `--color-gold-ink` are canonical in `app.css` v2; see the gold-split rule in CLAUDE.md).
+
+**Note for whoever picks these up:** verify each item's design authority IS in-repo before building — Run A STOPPED two items (Commission two-column layout; R-11 login stamp) precisely because the claimed authority did not exist in any tracked document or the rules surface permitted no path.
