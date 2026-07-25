@@ -222,3 +222,30 @@ Half-open overlap arithmetic (`a.start < b.end && b.start < a.end`), verified nu
 **Hardening (explicitly NOT the cause):** `badgeVisible` and the sheet-warning checks now assert DOM attachment rather than `isVisible()`. Both are conditional renders (`{conflicted && …}`, `{conflict && …}`) so absence === unmounted === no conflict; `isVisible()` also false-negatives on a card scrolled out of the 900×800 viewport, and leg 1's *negative* assertion could have false-PASSED on an off-view node. Labeled in-file as hardening only.
 
 **Self-diagnosing dump added:** on a `FREE_SLOT` collision the smoke now prints today's booked slots + points at the slot map + reminds about the Saturday d2a placement — this failure class has now cost two staging round-trips. It reads the DOM with the sheet still open (closing it would break the following `appt-save` and cascade one failure into several).
+
+---
+
+## TIER 3 — Track J conformance closeout
+
+**Branch:** `run-a-tier3-conformance` (cut off `origin/staging` @ `c20210e8`)
+**Note:** the branch alias is 64 chars (> the 63-char DNS label limit) — preview verification must use the immutable per-deployment URL, not the branch alias (banked #785 lesson).
+
+### A3 closeout + process correction (dispatcher note)
+A3 finally passed **9/9** after sweep + reseed; the first rerun had failed on residue from *this session's own earlier failed A3 runs* (leftover 21:00 bookings tripping the exactly-1 card check with "found 2"). **My "no sweep required" call was wrong in practice** — a mutating smoke that FAILS still leaves the bookings it already made, so those strand into the next attempt. `SMOKES.md` is updated from guidance to a **HARD RULE: the sweeper is an unconditional prerequisite before ANY mutating smoke run OR rerun.** The slot-band note now also says to check FIXTURE bands *including durations*, not just other smokes.
+
+### Per-tier drift check (Tier 3 touch-set: staging vs main) — ✅ PASS
+13 files diffed `origin/staging` vs `origin/main`: **12 byte-identical**; the single drift is `src/index.css`, which is **our own #867 rail-star fix** (staging-side, additive — verified by reading the diff: it is exactly the `.sidebar-nav-star` hide-list entry + its comment). No independent main-side movement on any Tier 3 file. Main is 8 commits ahead on unrelated lineage (the known CONTEXT/FOLLOW_UPS promotion-time divergence already logged). **Cleared to build.**
+
+### 3a — R-08 ChampionsPanel: **CONFORMANT — closing as verification, no build**
+
+Code trace (authoritative), end to end:
+| Step | Evidence |
+|---|---|
+| Derivation | `useBranchOverview.js:274-277` — `rankWeeklyChampions(productionScopedSubs, currentWeekStarting)`, `currentWeekStarting = getMostRecentSunday()` ⇒ **"this week"** |
+| Ranking | `src/utils/weeklyChampions.js:85-101` — sorts `b.api - a.api` **DESC** (ties by `agentName`), **filters `api > 0`**, `slice(0, topN=3)` ⇒ **"Ranked by API"**, and an honest empty state rather than a podium of zeros |
+| Scoping | `productionScopedSubs` is already role/branch/unit-scoped; **zero new Firestore reads** |
+| Render | `ManagerOverviewTab.jsx:123` → `<ChampionsPanel champions={weeklyChampions}>`; `ChampionsPanel.jsx:71` renders the literal **"Ranked by API, this week"** |
+
+The rendered label and the actual derivation agree, so R-08's ruling is satisfied **as built** — no product change required.
+
+**Live evidence half:** `smoke-r08-champions-ranking.mjs` (new, registered) — READ-ONLY, `branch_manager`, no writes/residue so the sweeper rule does not apply. It asserts the label verbatim, that exactly one of ranked-list / honest-empty renders, and — when ranked — API-**descending** order, every value **> 0**, capped at **3**; screenshot artifact to `out/r08/<stamp>/champions.png` (gitignored). Assertions are value-level and fixture-name-free so they survive reseeds. **Operator run pending** — that's the screenshot the ruling asks for.
