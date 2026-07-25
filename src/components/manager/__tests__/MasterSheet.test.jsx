@@ -9,16 +9,28 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 
 const hoisted = vi.hoisted(() => ({
-  getWeeklySubmissions: vi.fn(),
-  getTenantUsers:       vi.fn(),
+  getWeeklySubmissions:    vi.fn(),
+  getTenantUsers:          vi.fn(),
+  getAllYTDSubmissions:    vi.fn(),
+  getCompanyMinimums:      vi.fn(),
+  getPersistencyMapForYear: vi.fn(),
 }));
 
 vi.mock('../../../services/managerService', () => ({
   getWeeklySubmissions: hoisted.getWeeklySubmissions,
   getTenantUsers:       hoisted.getTenantUsers,
+  getAllYTDSubmissions: hoisted.getAllYTDSubmissions,
+}));
+vi.mock('../../../services/goalsService', () => ({
+  getCompanyMinimums: hoisted.getCompanyMinimums,
+}));
+vi.mock('../../../services/persistencyService', () => ({
+  getPersistencyMapForYear: hoisted.getPersistencyMapForYear,
 }));
 vi.mock('../../../context/AuthContext', () => ({
-  useAuth: () => ({ tenantId: 't1', user: { uid: 'u1' } }),
+  useAuth: () => ({
+    tenantId: 't1', user: { uid: 'u1' }, userProfile: null, role: 'branch_manager', branchId: 'b1',
+  }),
 }));
 vi.mock('../CoachingNotesModal', () => ({ default: () => null }));
 vi.mock('../../submissions/SubmissionViewer', () => ({ default: () => null }));
@@ -69,9 +81,15 @@ const SUB_B = {
   serviceCalls: 1, daysWorked: 3,
 };
 
-function setup(subs = [SUB_A, SUB_B]) {
+// The STATUS read wave defaults to "landed but empty" — the band derivation is
+// available, and with an empty roster no row carries a band. Tests that care
+// about bands override these three mocks explicitly.
+function setup(subs = [SUB_A, SUB_B], users = []) {
   hoisted.getWeeklySubmissions.mockResolvedValue(subs);
-  hoisted.getTenantUsers.mockResolvedValue([]);
+  hoisted.getTenantUsers.mockResolvedValue(users);
+  hoisted.getAllYTDSubmissions.mockResolvedValue([]);
+  hoisted.getCompanyMinimums.mockResolvedValue({ annualAPI: 200000 });
+  hoisted.getPersistencyMapForYear.mockResolvedValue({});
 }
 const flushLoad = () => waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
 
@@ -287,5 +305,115 @@ describe('MasterSheet funnel — Settings-driven "Default RANK BY" (Fable Run4 p
     fireEvent.click(screen.getByRole('button', { name: 'API', exact: true }));
     expect(screen.getByRole('button', { name: 'API', exact: true })).toHaveAttribute('aria-pressed', 'true');
     expect(setSettingMock).not.toHaveBeenCalled();
+  });
+});
+
+// ── STATUS filters (YTD + companyMinimums + persistency read wave) ───────────
+describe('MasterSheet funnel — STATUS filters', () => {
+  // Roster + YTD history that puts the two sheet agents in different bands.
+  // A 200,000 flat floor (fallback: no contractStartDate) pro-rated to the
+  // pinned date; agent-1 clears it comfortably, agent-2 is deep below.
+  const USERS = [
+    { id: 'agent-1', role: 'agent', name: 'Active Agent' },
+    { id: 'agent-2', role: 'agent', name: 'Draft Agent' },
+  ];
+  const YTD = [
+    { agentId: 'agent-1', weekStarting: '2026-06-28', status: 'submitted', totalProductionCredit: 400000 },
+    { agentId: 'agent-2', weekStarting: '2026-06-28', status: 'submitted', totalProductionCredit: 500 },
+  ];
+
+  const openFilters = () => fireEvent.click(screen.getByTestId('funnel-filters-toggle'));
+
+  beforeEach(() => { vi.clearAllMocks(); setup([SUB_A, SUB_B], USERS); });
+
+  it('renders the six mockup bands once the YTD read wave lands', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+    ['ontrack', 'pace', 'quiet', 'report', 'persistency', 'floor'].forEach((k) => {
+      expect(screen.getByTestId(`funnel-status-${k}`)).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('funnel-status-unavailable')).not.toBeInTheDocument();
+  });
+
+  // NEGATIVE CONTROL — a failed YTD read must hide the chips entirely rather
+  // than offer bands that would filter against nothing.
+  it('hides the chips when the YTD read fails', async () => {
+    hoisted.getAllYTDSubmissions.mockRejectedValue(new Error('denied'));
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-unavailable')).toBeInTheDocument());
+    expect(screen.queryByTestId('funnel-status-group')).not.toBeInTheDocument();
+  });
+
+  // NEGATIVE CONTROL — the floor config is equally load-bearing.
+  it('hides the chips when the companyMinimums read fails', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    hoisted.getCompanyMinimums.mockRejectedValue(new Error('denied'));
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-unavailable')).toBeInTheDocument());
+    expect(screen.queryByTestId('funnel-status-group')).not.toBeInTheDocument();
+  });
+
+  it('selecting a band filters the table to that band and chips the condition', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('funnel-status-floor'));
+    expect(screen.getByTestId('funnel-status-floor')).toHaveAttribute('aria-pressed', 'true');
+
+    // agent-2 is ~0.4% of its pro-rata floor pace; agent-1 clears it.
+    await waitFor(() => expect(screen.queryByText('Active Agent')).not.toBeInTheDocument());
+    expect(screen.getByText('Draft Agent')).toBeInTheDocument();
+    expect(screen.getByTestId('funnel-filters-badge')).toHaveTextContent('1');
+    expect(screen.getByTestId('funnel-chips')).toHaveTextContent('STATUS · BELOW FLOOR');
+  });
+
+  it('a persistency reading below the floor bands an otherwise on-pace agent', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    hoisted.getPersistencyMapForYear.mockResolvedValue({
+      'agent-1': [{ year: 2026, month: 5, persistency: 0.42 }],
+    });
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('funnel-status-persistency'));
+    await waitFor(() => expect(screen.queryByText('Draft Agent')).not.toBeInTheDocument());
+    expect(screen.getByText('Active Agent')).toBeInTheDocument();
+  });
+
+  it('scopes the persistency read to the caller branch (rules-scoped read)', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    await waitFor(() => expect(hoisted.getPersistencyMapForYear).toHaveBeenCalled());
+    expect(hoisted.getPersistencyMapForYear).toHaveBeenCalledWith(
+      't1', expect.any(Number), { branchId: 'b1' },
+    );
+  });
+
+  it('clearing the STATUS chip restores every row', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('funnel-status-floor'));
+    await waitFor(() => expect(screen.queryByText('Active Agent')).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('funnel-status-floor'));
+    await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
+    expect(screen.queryByTestId('funnel-filters-badge')).not.toBeInTheDocument();
   });
 });

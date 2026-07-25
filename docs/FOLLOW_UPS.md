@@ -35,7 +35,6 @@
 | Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases ... | HIGH | — | — | 282 |
 | Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion sess... | MEDIUM | — | — | 290 |
 | R-11 login-stamp + All Users LAST-activity — REQUIRES firestore.rules edit (hasOnly allowlist or manager-readable location); bundle with the E4 index FU as a "rules + indexes attended window" | HIGH | — | — | 4282 |
-| Master Sheet STATUS filter chips — scoped NOT built (3 new reads + 6-band taxonomy); LEVEL stays blocked (banked Run A Tier 3b) | MEDIUM | — | — | 4329 |
 | Tier 3c mechanical conformance — carried from Run A (hero-card worklist · motion pop-in wiring · handoff-vs-screens-v2 · gold-contrast usages) | LOW | — | — | 4348 |
 | Commission layout — unverified two-column claim; needs a REAL mockup into screens-v2 first (banked Run A Tier 3b) | LOW | — | — | 4312 |
 | E4 cross-time prospect notes history — `(agentId, prospectId)` composite index + deploy (rules-permitted per D3); this-week scope shipped Run A Tier 2 E4 | MEDIUM | — | — | 4246 |
@@ -57,7 +56,6 @@
 | tatillife_smoke tenant — post-prod-run live verification (banked PR #674 `3730035`, HIGH until run) *(verification uncertain)* | HIGH | — | — | 1631 |
 | H3 FLIP-GATE — `usesPolicyLedger:true` requires end-to-end parity validation before any agent is ... | HIGH | — | — | 2787 |
 | MDRT naming collision — three different "MDRT" numbers, one label (banked 2026-07-10, promotion s... | MEDIUM | — | — | 423 |
-| Master Sheet STATUS filters — need a YTD + companyMinimums read path (banked 2026-07-10, Run 4 It... | MEDIUM | — | — | 439 |
 | Master Sheet LEVEL filter — blocked on a populated career-level field (banked 2026-07-10, Run 4 I... | MEDIUM | — | — | 447 |
 | Planner recurrence — `ENDS=Never` rolling-horizon materializer (banked 2026-07-10, Run 4 Item 5, ... | MEDIUM | — | — | 471 |
 | Run 4 pre-promotion manual checks not done this cycle — carry to next Phase 0 (banked 2026-07-10,... | MEDIUM | — | — | 487 |
@@ -634,6 +632,8 @@ Run 9 was dispatched against an earlier/mismatched README pasted in-chat rather 
 ## Master Sheet STATUS filters — need a YTD + companyMinimums read path (banked 2026-07-10, Run 4 Item 2, MEDIUM — feature completeness)
 
 The funnel Master Sheet's filters panel (`src/utils/funnelFilters.js`, `src/components/manager/MasterSheet.jsx`, PR #852-adjacent Run 4 work) deliberately omitted the mockup's STATUS chips (On track/Off pace/Gone quiet/Report late/Persistency↓/Below floor) — honestly, not silently: they require YTD API + `companyMinimums` tenure floors (+ persistency) loaded on a surface that currently only reads the single selected week. `deriveExceptions()` is called here with `companyMins: null` and single-week submissions only. Building this means adding a YTD/floor read path to Master Sheet — a real scope increase, not a small filter tweak. "Report late" is currently served by the existing reality-bar Exceptions count / Only-exceptions toggle as a partial substitute.
+
+**RESOLVED 2026-07-25 (PR into `staging`, branch `post-run-a/master-sheet-status`).** Built per the Run A Tier 3b spec below. See that entry's RESOLVED note for the derivation contract, the one semantic judgement made, and the two residual items (LEVEL still blocked; unit friendly names are a data gap, not a code gap).
 
 ---
 
@@ -4512,6 +4512,38 @@ Plus: pro-rata tenure floor via the existing `resolveAnnualAPIFloor` (`src/utils
 **LEVEL stays BLOCKED** — no populated career-level field (`MasterSheet.jsx:158` maps `levelTitle ?? careerLevel ?? null`, unpopulated). Unchanged by this FU.
 
 **Priority:** MEDIUM. Money-adjacent (floors) — value-level tests required on the band boundaries.
+
+---
+
+**RESOLVED 2026-07-25 — built on branch `post-run-a/master-sheet-status`, PR into `staging` (HOLDS unmerged pending the staging→main promotion).**
+
+**What shipped.** New pure module `src/utils/funnelStatus.js` (`FUNNEL_STATUS_OPTS` · `exceptionToStatusKey` · `latestPersistency` · `buildStatusMap`), a `statuses` condition threaded through `funnelFilters.js` (default / count / predicate / dismissible chip), and a second, week-independent read wave in `MasterSheet.jsx` feeding it.
+
+**The three reads, all via existing service files — no new query written.**
+1. `getAllYTDSubmissions(tenantId)` (managerService) — already role-scoped server-side (UM → own unit, BM → own branch, TA/PA → tenant).
+2. `getCompanyMinimums(tenantId)` (goalsService) — supplies `tenureApiFloors`.
+3. `getPersistencyMapForYear(tenantId, year, opts)` (persistencyService) — scoped explicitly (`{unitId}` for UM, `{branchId}` for BM) because its per-agent reads are otherwise silently dropped by rules.
+
+The wave is keyed on `[tenantId, role, unitId, branchId]`, NOT `selectedWeek` — year-scoped data must not re-fetch on every week change. Each arm self-catches.
+
+**Derivation contract — zero invented constants.** The bands reuse shipped engines rather than opening a second math path:
+- `floor` / `pace` / `report` / `quiet` ← `deriveExceptions` (`utils/managerExceptions.js`), the existing single-source-of-truth for "needs attention". Its pace arms are already pro-rated against `resolveAnnualAPIFloor`, and it is already mutually exclusive per agent. Nothing was re-ranked or re-implemented.
+- `persistency` ← `PERS_FLOOR` (0.80), the canonical exported threshold in `lib/persistency/calculations.js`. Persistency is a DECIMAL there, not a percentage. Only the latest single month's stored value is read — never an average across months (that module's explicit anti-average rule).
+- `ontrack` ← the residue, assigned ONLY when the derivation actually ran.
+
+**Priority order:** `floor > pace > quiet > report > persistency > ontrack`. Production bands keep `deriveExceptions`' own severity ordering verbatim; persistency is applied first and overwritten by any production band, so it lands only on an otherwise-clean agent.
+
+**⚠ ONE SEMANTIC JUDGEMENT, flagged for review.** "Gone quiet" has no in-repo derivation — the mockup (`mastersheet-funnel-scenes.jsx` `FUNNEL_STATUS_OPTS`) supplies the vocabulary only, and `MeetingMode.helpers.js:97-101` glosses it as "daily-recency" while explicitly declining to derive it. Rather than invent a recency threshold, `quiet` is mapped to `deriveExceptions`' existing **"No reports"** kind (filed nothing all year while the branch filed). It invents no constant and preserves the engine's own ranking ("No reports" 60 > "Report late" 55). **If the operator wants `quiet` to mean daily-log recency instead, that is a threshold decision and a separate slice** — the mapping is isolated in `exceptionToStatusKey`, one function, four lines.
+
+**Unavailable ≠ On track.** If the YTD or companyMinimums read fails, `statusMap` is `null`: the chips are replaced by an honest note, no row carries a band, and an active STATUS condition never matches an unbanded row. A fabricated "On track" was the failure mode being designed against.
+
+**Verification.** 24 new value-level tests in `funnelStatus.test.js` (band boundaries probed on both sides of 0.50 / 0.85 / `PERS_FLOOR`; a same-money-different-tenure negative control proving the floor actually drives the band; negative controls for unmapped exception shapes, absent persistency, and no-branch-activity), 13 new in `funnelFilters.test.js` (including: an unbanded row is excluded by *every* band), 7 new component tests in `MasterSheet.test.jsx` (chips render / both read-failure paths hide them / filtering / persistency banding / branch-scoped read assertion / chip clearing). Full local suite **365 files, 5687 tests, all pass**; lint 0; build green. A fixture-sanity guard in the new test file caught a wrong production-credit field name during authoring — kept as a permanent non-vacuousness check.
+
+**Residuals (NOT closed by this work):**
+- **LEVEL stays BLOCKED** — unchanged, no populated career-level field.
+- **Unit friendly names (the LOW FU below) is a DATA gap, not a code gap.** `unitLabel(id, name)` already prefers a real name, `deriveUnitOptions` already reads `row.unitName`, and `MasterSheet`'s `userMeta` already maps `u.unitName ?? u.unit`. The raw-id fallback appears because the user docs carry no unit name — nothing in the read path to fix. That FU's body should be re-scoped to "populate `unitName` on user docs" rather than "thread a lookup into `deriveUnitOptions`".
+- **Threshold divergence worth a ruling:** `MeetingMode.helpers.js` flags persistency below **80 on a percentage scale**, `getCompanyMinimums` defaults `persistency: 90`, and `lib/persistency/calculations.js` exports `PERS_FLOOR = 0.80` / `PERS_GATE = 0.90` as decimals. This module uses `PERS_FLOOR`. Three surfaces, three literals — worth consolidating into Company Config v2's Tier-1 pass.
+- **Read cost:** `getPersistencyMapForYear` internally re-reads the tenant roster, so the sheet now issues a second `getTenantUsers`. Acceptable (the wave is off the paint path) but a candidate for the same consolidation.
 
 ---
 

@@ -10,7 +10,9 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import useAppSettings from '../../hooks/useAppSettings';
 import { DEFAULT_MASTER_SHEET_PRESET, isValidMasterSheetPreset } from '../../config/viewDefaults';
-import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
+import { getWeeklySubmissions, getTenantUsers, getAllYTDSubmissions } from '../../services/managerService';
+import { getCompanyMinimums } from '../../services/goalsService';
+import { getPersistencyMapForYear } from '../../services/persistencyService';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
@@ -20,9 +22,10 @@ import {
   funnelView, computeFunnelRow, computeInterviewsKept, computeFunnelTotals, funnelRowIsException,
 } from '../../utils/funnelModel';
 import {
-  FUNNEL_REPORT_OPTS, DEFAULT_FUNNEL_FILTERS,
+  FUNNEL_REPORT_OPTS, FUNNEL_STATUS_OPTS, DEFAULT_FUNNEL_FILTERS,
   deriveUnitOptions, funnelFiltersCount, applyFunnelFilters, buildFilterChips,
 } from '../../utils/funnelFilters';
+import { buildStatusMap } from '../../utils/funnelStatus';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 import CoachingNotesModal from './CoachingNotesModal';
 
@@ -85,7 +88,7 @@ function FunnelCell({ col, value, terminalKey, rowId }) {
 }
 
 export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
-  const { tenantId, user } = useAuth();
+  const { tenantId, user, userProfile, role, branchId } = useAuth();
   // Settings v2 (Fable Run4 polish Item 2) — "Default RANK BY" seeds the initial
   // RANK BY value. Read ONLY at mount (the lazy useState initializer below runs
   // once, on the first render): a legacy 5-preset string or an absent value both
@@ -115,10 +118,17 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   ));
   const [preset, setPreset]     = useState(() => initialPreset); // RANK BY: 'api' | 'newNames'
 
-  // Filters (scene 06) — unit · weekly-report · no-log. STATUS + LEVEL chips from
-  // the mockup are intentionally NOT built here — see src/utils/funnelFilters.js
-  // for the honesty rationale (this read-light single-week surface loads neither
-  // YTD/tenure-floor data for STATUS nor any level field for LEVEL).
+  // STATUS-band inputs. These are a SECOND, slower read wave that is deliberately
+  // decoupled from the sheet's primary week load: the table paints on the primary
+  // wave, and the STATUS chips appear when (and only when) this wave lands. Each
+  // arm self-catches — a denied/failed read leaves the band derivation off and the
+  // chips hidden, never a fabricated "On track". (LEVEL chips stay unbuilt: no
+  // populated career-level field — see src/utils/funnelFilters.js.)
+  const [ytdSubs, setYtdSubs]           = useState(null);
+  const [companyMins, setCompanyMins]   = useState(null);
+  const [persistencyMap, setPersistencyMap] = useState(null);
+
+  // Filters (scene 06) — unit · status · weekly-report · no-log.
   const [filters, setFilters]         = useState(DEFAULT_FUNNEL_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -149,6 +159,35 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
       .finally(() => setLoading(false));
   }, [selectedWeek, tenantId]);
 
+  // ── STATUS-band read wave (year-scoped, so NOT keyed on selectedWeek) ───────
+  // Reads go through service files only. `getAllYTDSubmissions` applies its own
+  // role scope server-side (UM → own unit, BM → own branch, TA/PA → tenant);
+  // `getPersistencyMapForYear` needs the scope passed explicitly or its per-agent
+  // reads are silently dropped by rules, so it is scoped the same way here.
+  const scopeUnitId = userProfile?.unitId ?? null;
+  useEffect(() => {
+    if (!tenantId) return undefined;
+    let cancelled = false;
+
+    const persistencyOpts =
+      role === 'unit_manager' && scopeUnitId ? { unitId: scopeUnitId }
+        : role === 'branch_manager' && branchId ? { branchId }
+          : {};
+
+    Promise.all([
+      getAllYTDSubmissions(tenantId).catch(() => null),
+      getCompanyMinimums(tenantId).catch(() => null),
+      getPersistencyMapForYear(tenantId, new Date().getFullYear(), persistencyOpts).catch(() => null),
+    ]).then(([subs, mins, pers]) => {
+      if (cancelled) return;
+      setYtdSubs(subs);
+      setCompanyMins(mins);
+      setPersistencyMap(pers);
+    });
+
+    return () => { cancelled = true; };
+  }, [tenantId, role, scopeUnitId, branchId]);
+
   const userMeta = useMemo(() => {
     const m = {};
     users.forEach((u) => {
@@ -160,6 +199,22 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
     });
     return m;
   }, [users]);
+
+  // STATUS bands, keyed by agent id. Available ONLY once the second read wave has
+  // landed with both of the derivation's required inputs (YTD submissions + the
+  // tenure-floor config). `null` means "not derivable" — the chips stay hidden and
+  // no row gets a band, rather than every row defaulting to a hollow "On track".
+  // Scoped to the agents actually on the sheet, so no agent whose YTD data this
+  // caller cannot read is banded.
+  const statusMap = useMemo(() => {
+    if (!ytdSubs || !companyMins) return null;
+    const scopeIds = new Set(submissions.map((s) => s.agentId ?? s.userId ?? s.id).filter(Boolean));
+    return buildStatusMap({
+      users, ytdSubs, companyMins, persistencyByAgent: persistencyMap, scopeIds,
+    });
+  }, [ytdSubs, companyMins, persistencyMap, users, submissions]);
+
+  const statusAvailable = statusMap !== null;
 
   // All loaded rows, ranked by this-week production credit (desc). Rank is a true
   // standing over the full loaded set — computed BEFORE search/exception/sort so
@@ -178,6 +233,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           unitId:      sub.unitId ?? meta.unitId ?? null,
           unitName:    meta.unitName ?? null,
           level:       meta.level ?? null,
+          statusBand:  statusMap?.[uid] ?? null,
           status:      sub.status ?? 'draft',
           logged:      (f.daysWorked ?? null) != null,
           api:         extractTotalProductionCredit(sub),
@@ -186,7 +242,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
       })
       .sort((a, b) => (b.api || 0) - (a.api || 0))
       .map((r, i) => ({ ...r, rank: i + 1 }));
-  }, [submissions, userNameMap, userMeta]);
+  }, [submissions, userNameMap, userMeta, statusMap]);
 
   // A single-week "exception" = report not yet submitted (draft = unfinished).
   // Uses the shared funnelRowIsException predicate (also used by the Meeting-Mode
@@ -221,6 +277,10 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   const toggleReport   = (k) => setFilters((prev) => ({
     ...prev,
     reports: prev.reports.includes(k) ? prev.reports.filter((x) => x !== k) : [...prev.reports, k],
+  }));
+  const toggleStatus   = (k) => setFilters((prev) => ({
+    ...prev,
+    statuses: prev.statuses.includes(k) ? prev.statuses.filter((x) => x !== k) : [...prev.statuses, k],
   }));
 
   // Week change resets filters (they are week-scoped view state) so a unit that
@@ -497,7 +557,8 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         </button>
 
         {/* Filters popover — unit is in the action bar; this panel carries the
-            weekly-report + no-log conditions. STATUS/LEVEL omitted (see module). */}
+            status + weekly-report + no-log conditions. LEVEL stays omitted (no
+            populated career-level field — see src/utils/funnelFilters.js). */}
         {filtersOpen && (
           <div
             role="dialog"
@@ -523,6 +584,39 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
               >
                 Done
               </button>
+            </div>
+
+            {/* STATUS — rendered only once the band derivation is actually
+                available. While the second read wave is in flight (or if it
+                failed) the group is replaced by an honest note rather than
+                chips that would filter against nothing. */}
+            <div className="mb-3">
+              <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-ink-muted mb-2">Status</div>
+              {statusAvailable ? (
+                <div className="flex flex-wrap gap-2" data-testid="funnel-status-group">
+                  {FUNNEL_STATUS_OPTS.map(([k, label]) => {
+                    const on = filters.statuses.includes(k);
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        data-testid={`funnel-status-${k}`}
+                        onClick={() => toggleStatus(k)}
+                        aria-pressed={on}
+                        className={`min-h-[44px] px-3 rounded-full border text-xs font-bold tracking-wide transition-colors ${
+                          on ? 'bg-primary-tint border-primary/40 text-primary' : 'bg-surface border-border text-ink-muted hover:text-ink'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p data-testid="funnel-status-unavailable" className="text-xs text-ink-muted">
+                  Year-to-date pace data is still loading.
+                </p>
+              )}
             </div>
 
             <div className="mb-3">
