@@ -301,3 +301,35 @@ That is a **storage-mechanism change vs the ruling**, so per Rule 1 (surface bef
 - The canonical mockup `docs/design-system/screens-v2/commission-v2-scenes.jsx` contains **no grid/column layout classes at all** to port toward.
 
 ⇒ The brief attributes this sub-item to "the visual-pass findings and the screens-v2 mockup", but neither the mockup nor any tracked audit describes a two-column rail+ladder for Commission. Building one would mean **inventing a layout from an unverified premise — the exact Run 9 failure mode the Phase 0 anchor rule exists to prevent.** Per this run's escalation rule (design-authority mismatch ⇒ STOP, never improvise), this sub-item **STOPS pending either the visual-pass document that states the intended layout, or a dispatcher ruling describing it.** The other two §4.7 sub-items are unaffected.
+
+### 3b — Master Sheet STATUS filters: **SCOPED, NOT BUILT** (carried, per completion-honesty guidance)
+
+Ruled buildable, but sizing it against source showed it is **not a small item**, and the run's remaining budget could not do it to standard. Per the dispatcher's explicit guidance (*"per-item completion honesty beats coverage"*), it is **carried with a precise spec** rather than half-built.
+
+**Why it is bigger than it reads:** `MasterSheet` loads only the **selected week** (`:97/:168`), hard-passes `companyMins: null` (`:251`), and never loads persistency — while `funnelFilters.js:9-16` defines STATUS as a **YTD** taxonomy of six bands (On track · Off pace · Gone quiet · Report late · **Pers. ↓** · Below floor) requiring the **pro-rata tenure floor**. So the honest scope is **three new reads** (YTD subs · companyMinimums · persistency) + a money-adjacent band derivation + role-scoping verification on each new read + value-level boundary tests. The existing in-code deferral at `:118-121` says exactly this. **LEVEL remains blocked** (unpopulated career-level field) — unchanged.
+
+Full spec banked in `FOLLOW_UPS.md` so the next session starts at build, not discovery.
+
+### 3c — mechanical conformance: **NOT STARTED** (carried)
+
+All four items (hero-card worklist · motion pop-in wiring · handoff-vs-screens-v2 reconciliation · gold-contrast usages) are carried verbatim to `FOLLOW_UPS.md`, with a note to **verify each item's design authority is in-repo before building** — Run A stopped two items precisely because the claimed authority did not exist.
+
+---
+
+## TIER 3 — closing summary
+
+| Item | Outcome |
+|---|---|
+| Drift check @ branch-cut | ✅ PASS (12/13 identical; the one drift is our own #867 fix) |
+| Sweeper HARD RULE | ✅ banked (unconditional before any mutating run **or rerun**) |
+| **3a R-08 ChampionsPanel** | ✅ **CONFORMANT — closed as verification**, no build; evidence smoke written + registered (operator run pending) |
+| 3a `tatillife_smoke` live verification | ⏸️ prod-side, operator-run (existing prod smokes' hard guards apply) |
+| **3b R-06 scenario chips** | ✅ **BUILT** + write-read-verify smoke; mechanism variance approved and recorded |
+| **3b R-11 login stamp** | 🛑 **STOP** — rules `hasOnly` allowlist; FU re-banked for the "rules + indexes attended window" |
+| **3b §4.7 daily-cadence chip** | ✅ **BUILT** (258 = 43×6, documented derivation + negative-control-verified drift guard) |
+| 3b §4.7 hero persistency stat | ⏸️ **likely conformant** — already rendered; closes on the R-08 evidence run |
+| 3b §4.7 two-column rail+ladder | 🛑 **STOP → DROPPED** by ruling (chat-sourced claim, no in-repo authority); FU banked |
+| **3b Master Sheet STATUS** | ⏸️ **carried** with full spec (3 reads + 6-band taxonomy); LEVEL stays blocked |
+| **3c mechanical ×4** | ⏸️ **carried** verbatim |
+
+**Operator rerun list at PR-open (batched):** `smoke-r08-champions-ranking.mjs` (R-08 evidence + confirms the persistency chip renders) · `smoke-r06-scenario-chips.mjs` · `smoke-run9-f3e-series.mjs` (Sun–Fri only — self-SKIPs Saturday).
