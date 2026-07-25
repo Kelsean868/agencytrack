@@ -175,3 +175,27 @@ The board's Day/3-day spans are **today-anchored** (`today, +1, +2`) but data lo
 E2's failing assertion used `.isVisible()` on a card inside a day column — **violating banked lesson #7** (Playwright treats content scrolled out of view inside an `overflow` container as not visible). The write side is proven by the PASSING toast + tombstone; the card was rendered but below the fold in a Saturday column carrying prior-seed residue. **Fix:** all 14 data-presence checks across the four E-smokes now assert **DOM attachment** (`inDom`, also timing-robust post-reload); negative checks use a short timeout; E2 gained a **self-diagnosing** line that names which columns actually hold the card, so a future failure distinguishes wrong-target-date from not-rendered.
 
 **Note (E2, honest):** Friday+1 = Saturday is INSIDE the loaded week, so Defect 2 does not explain E2 — lesson #7 is the cause, and Defect 2 was found independently (it would have bitten a Saturday run).
+
+---
+
+## POST-#867 RERUN (staging `c02c7386`, Vercel confirmed) — Tier 2 GREEN; 3 residual failures diagnosed
+
+**GREEN (fully): E1 · E2 · E3 · E4 · A1 · A2 · A5.** The star fix + load-range fix are **proven live**, and E2's read-back now passes — all five Tier 2 features (E1/E5/E2/E4/E3) are verified end-to-end on staging.
+
+**All three residual failures are in Run-9-feature smokes and NONE is a product defect.** Verified mechanism for each:
+
+### f3e — documented precondition violation, NOT a #867 side-effect
+`smoke-run9-f3e-series.mjs:12-13` (its own header): *"assumes today(TT) < Saturday; on a Saturday run instance 4 collapses onto today — **run another day**."* Line 43: `DATES = [today-4, today-2, today, today+1, today+3]` → the timed-out card `run9-f3e-4` is **today+1**. The rerun ran on **Saturday 2026-07-25** (verified: `ttNow().getUTCDay() === 6`), so that instance is Sunday 07-26, while the single-column Week view renders only `buildWeekDates(today)` = Sun 07-19…Sat 07-25 → the card cannot render.
+**#867 is exonerated with mechanism:** it widened the *data* load to `max(weekEnd, today+2)` (so 07-26 IS now fetched), but the mobile Week view still renders Sun–Sat only — so #867 neither caused nor could fix this. **Fix:** Saturday **skip-not-fail** guard (exit 0 + explicit note), enforcing the header's own instruction so a scheduled run reports SKIP instead of a false FAIL.
+
+### A3 — residue, and one collision was MY smoke's fault
+Two independent causes, app behaving **correctly** in both:
+1. **My E3 smoke caused failure #1.** E3 booked `22:35` with the default 30 min → **22:35–23:05**, which genuinely overlaps the **23:00** slot A3 moves its appointment to before asserting "warning cleared" (`a3:79-81`). A3 correctly warned about my leftover. **Fix:** E3's slot band moved to the free **16:35/17:05** window (16:15–19:00), with the full cross-smoke slot map documented in the file (`a5` already owns 19:00/19:40/20:20, which is why 19:0x was not an option).
+2. **A3's own repeat-run residue caused #2/#3.** A3 leaves a 21:00 appt every run, so the next run's fresh 21:00 overlaps the leftover and card A's badge legitimately persists. A3's own header (`a3:7`) already states *"zero-badge assertions are NOT valid on staging"* — legs 2/3 assert exactly that, so they require a swept collection. **Fix:** operational — run the sweeper first (below); A3's assertions left intact (changing them would change what it verifies).
+**Dispatcher hypothesis disproven by code:** "conflict recompute touches only the moved appt" is not how it works — `detectConflicts(appts)` is a full pairwise recompute over the entire loaded set, memoized on `[appts]`; there is no per-appointment incremental path.
+
+### A4 — residue + a residue-fragile assertion
+`a4:121` deletes only the **first** template, then `a4:123-124` asserts *the picker is hidden* (= "0 templates"). The 3 earlier star-blocked runs each died mid-flight **after** saving a template, so orphans remained and one delete could not empty the list. The delete path itself worked. Compounding it: **nothing sweeps `appointmentTemplates`** — `sweep-nonfixture-appointments.mjs` covers appointments ONLY (0 hits for the collection). **Fix:** the cleanup leg now deletes **every** template (bounded loop) and asserts on the delete-button count, so it is both correct and doubles as the template sweeper.
+
+### Root operational cause (the missed step)
+`sweep-nonfixture-appointments.mjs`'s own header: *"Smoke runs accumulate appointment residue … that `seed-fixtures --apply` does **NOT** sweep."* The rerun ran the seeder but **not** the sweeper, so every prior run's auto-id appointments were still live. `SMOKES.md` now carries this as an explicit PRE-REQ (sweeper → seeder → smokes) plus the slot-band rule.
