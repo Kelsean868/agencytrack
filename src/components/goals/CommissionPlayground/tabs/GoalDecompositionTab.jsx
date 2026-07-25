@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { History, Info, Check } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { setGoals } from '../../../../services/goalsService';
@@ -189,11 +189,21 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   const [scenarioSaving, setScenSaving] = useState(false);
   const [activeScenarioId, setActiveScenarioId] = useState(null);
 
+  // `mutatedRef` closes a hydration RACE: a slow getUserPrefs resolving AFTER the
+  // agent has already saved or deleted locally would otherwise clobber that
+  // mutation with pre-mutation server state. Once any local mutation has
+  // happened, hydration results are ignored (the local list is authoritative —
+  // it is also what was just written).
+  const mutatedRef = useRef(false);
+
   useEffect(() => {
-    if (!tenantId || !user?.uid) return;
+    if (!tenantId || !user?.uid) return undefined;
     let alive = true;
     getUserPrefs(tenantId, user.uid)
-      .then((prefs) => { if (alive) setScenarios(Array.isArray(prefs?.commissionScenarios) ? prefs.commissionScenarios : []); })
+      .then((prefs) => {
+        if (!alive || mutatedRef.current) return;   // unmounted, or a local write already won
+        setScenarios(Array.isArray(prefs?.commissionScenarios) ? prefs.commissionScenarios : []);
+      })
       // Degrade silently to "no scenarios" — never block the playground on a
       // prefs read (same contract as the nav-prefs consumers).
       .catch(() => { /* no-op */ });
@@ -201,11 +211,19 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   }, [tenantId, user?.uid]);
 
   const persistScenarios = async (next) => {
+    // Capture the pre-optimistic state so a failed write can be ROLLED BACK —
+    // otherwise the chip row keeps showing a scenario that was never persisted,
+    // i.e. the UI lies about server state until the next reload.
+    const prevScenarios = scenarios;
+    const prevActiveId  = activeScenarioId;
+    mutatedRef.current = true;
     setScenarios(next);           // optimistic — the chip row is a preference, not money
     setScenSaving(true);
     try {
       await setCommissionScenarios(tenantId, user.uid, next);
     } catch {
+      setScenarios(prevScenarios);
+      setActiveScenarioId(prevActiveId);
       setError('Could not save the scenario — check your connection and try again.');
     } finally {
       setScenSaving(false);

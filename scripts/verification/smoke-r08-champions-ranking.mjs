@@ -91,7 +91,10 @@ try {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const dir = join('out', 'r08', stamp);
   mkdirSync(dir, { recursive: true });
-  await p.locator(tsel('champions-panel')).screenshot({ path: join(dir, 'champions.png') }).catch(() => {});
+  // NOT swallowed: the screenshot IS R-08's required evidence artifact, so a
+  // failure here must fail the smoke rather than print a path to a file that
+  // does not exist. The outer catch marks the run failed.
+  await p.locator(tsel('champions-panel')).screenshot({ path: join(dir, 'champions.png') });
   console.log(`     evidence: ${join(dir, 'champions.png')}`);
 
   assertLegHygiene(ctx);

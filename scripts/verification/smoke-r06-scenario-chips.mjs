@@ -107,6 +107,20 @@ try {
   failed++;
   console.error('SMOKE ERROR:', e.message);
 } finally {
+  // GUARANTEED CLEANUP — a smoke that fails mid-run must not strand the chip it
+  // created. This is the residue lesson banked as a HARD RULE this run (a failed
+  // A3 run's leftovers broke the next attempt); the happy path deletes the chip
+  // in step 5, this covers every OTHER exit path. Best-effort and silent: it
+  // must never mask the real failure above.
+  try {
+    const leftover = p.locator('[data-testid^="scenario-apply-"]').filter({ hasText: LABEL });
+    if (await leftover.count()) {
+      const tid = await leftover.first().getAttribute('data-testid');
+      await p.locator(tsel(`scenario-delete-${String(tid).replace('scenario-apply-', '')}`)).click();
+      await p.waitForTimeout(1200);
+      console.log(`     cleanup: removed stranded chip "${LABEL}"`);
+    }
+  } catch { /* best-effort — never mask the primary failure */ }
   await ctx.context.close();
   await browser.close();
 }

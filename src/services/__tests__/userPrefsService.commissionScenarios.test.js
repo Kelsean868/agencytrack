@@ -47,11 +47,29 @@ describe('setCommissionScenarios (R-06)', () => {
     expect(payload.commissionScenarios[0].savedAt).not.toBe('__ts__');
   });
 
-  it(`enforces the ${COMMISSION_SCENARIO_CAP}-scenario cap at the service layer`, async () => {
+  it(`keeps the FIRST ${COMMISSION_SCENARIO_CAP} scenarios in order when over the cap`, async () => {
     const tooMany = Array.from({ length: COMMISSION_SCENARIO_CAP + 4 }, (_, i) => scenario(i));
     await setCommissionScenarios('t1', 'u1', tooMany);
     const [, payload] = hoisted.setDoc.mock.calls[0];
-    expect(payload.commissionScenarios).toHaveLength(COMMISSION_SCENARIO_CAP);
+    // Identity + ORDER, not just length — a reversed or substituted set would
+    // pass a length-only assertion while silently dropping the wrong scenarios.
+    expect(payload.commissionScenarios.map((s) => s.id))
+      .toEqual(tooMany.slice(0, COMMISSION_SCENARIO_CAP).map((s) => s.id));
+  });
+
+  it('normalizes numerics to NUMBERS and drops malformed scenarios (domain rule)', async () => {
+    await setCommissionScenarios('t1', 'u1', [
+      { ...scenario(0), inputs: { incomeGoal: '425000', taxRate: 25, junk: 'abc' } },
+      { label: 'no id — malformed' },
+      null,
+    ]);
+    const [, payload] = hoisted.setDoc.mock.calls[0];
+    expect(payload.commissionScenarios).toHaveLength(1);           // malformed entries dropped
+    const [only] = payload.commissionScenarios;
+    expect(only.inputs.incomeGoal).toBe(425000);                    // string → number
+    expect(typeof only.inputs.incomeGoal).toBe('number');
+    expect(only.inputs.taxRate).toBe(25);
+    expect(only.inputs).not.toHaveProperty('junk');                 // non-numeric dropped, not NaN
   });
 
   it('coerces a non-array to an empty list rather than writing garbage', async () => {

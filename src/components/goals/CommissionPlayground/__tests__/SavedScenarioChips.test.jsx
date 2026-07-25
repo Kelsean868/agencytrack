@@ -70,11 +70,14 @@ describe('SavedScenarioChips — R-06', () => {
       .toHaveTextContent(`${COMMISSION_SCENARIO_CAP}/${COMMISSION_SCENARIO_CAP}`);
   });
 
-  it('marks the active scenario chip distinctly from the others', () => {
-    const { container } = render(<SavedScenarioChips scenarios={mk(2)} activeId="sc-1" />);
-    const chips = container.querySelectorAll('span.inline-flex.items-center.rounded-full');
-    // The active chip carries the primary border; the inactive one does not.
-    const actives = [...chips].filter((c) => c.className.includes('border-primary'));
-    expect(actives).toHaveLength(1);
+  it('marks THE active scenario chip (sc-1) distinctly, and not the inactive one (sc-0)', () => {
+    render(<SavedScenarioChips scenarios={mk(2)} activeId="sc-1" />);
+    // Identify each chip by ITS OWN scenario, not by counting — a count-only
+    // assertion passes even if the styling lands on the wrong chip.
+    const activeChip   = screen.getByTestId('scenario-apply-sc-1').closest('span');
+    const inactiveChip = screen.getByTestId('scenario-apply-sc-0').closest('span');
+    expect(activeChip.className).toContain('border-primary');
+    expect(inactiveChip.className).not.toContain('border-primary');
+    expect(inactiveChip.className).toContain('border-border');
   });
 });
