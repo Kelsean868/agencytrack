@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   FUNNEL_STATUS_OPTS,
   FUNNEL_STATUS_KEYS,
+  ROW_REACHABLE_STATUS_KEYS,
+  ROW_REACHABLE_STATUS_OPTS,
   exceptionToStatusKey,
   latestPersistency,
   buildStatusMap,
@@ -55,6 +57,52 @@ describe('FUNNEL_STATUS_OPTS', () => {
     expect(FUNNEL_STATUS_OPTS.map(([, l]) => l)).toEqual([
       'On track', 'Off pace', 'Gone quiet', 'Report late', 'Pers. ↓', 'Below floor',
     ]);
+  });
+});
+
+// Locks the review finding (CodeRabbit, PR #871): the Master Sheet is a
+// filers-only table, so a row-holding agent can essentially never be 'quiet'
+// ("No reports" = zero submissions this year). Offering the chip would ship a
+// filter that always returns an empty table.
+describe('row reachability — why this surface offers five of the six bands', () => {
+  it('excludes exactly "quiet" from the row-reachable set', () => {
+    expect(ROW_REACHABLE_STATUS_KEYS).toEqual(['ontrack', 'pace', 'report', 'persistency', 'floor']);
+    expect(ROW_REACHABLE_STATUS_KEYS).not.toContain('quiet');
+    // Labels are still sourced from the full mockup vocabulary.
+    expect(ROW_REACHABLE_STATUS_OPTS.map(([, l]) => l)).toEqual([
+      'On track', 'Off pace', 'Report late', 'Pers. ↓', 'Below floor',
+    ]);
+  });
+
+  // THE REASON, proven rather than asserted: scope the derivation to the agents
+  // that actually have a row (filed the selected week) and 'quiet' cannot occur.
+  it('no agent who filed the selected week is ever banded quiet', () => {
+    const week = '2026-06-28';
+    const users = [agent('a1'), agent('a2'), agent('a3')];
+    const ytdSubs = [
+      sub('a1', week, VETERAN_PACE * 2),    // ontrack
+      sub('a2', week, VETERAN_PACE * 0.6),  // pace
+      sub('a3', week, 100),                 // floor
+    ];
+    // scopeIds = the row set: everyone who filed this week.
+    const map = buildStatusMap({
+      users, ytdSubs, companyMins: COMPANY_MINS, scopeIds: new Set(['a1', 'a2', 'a3']), now: NOW,
+    });
+    expect(Object.values(map)).not.toContain('quiet');
+  });
+
+  // And the converse: 'quiet' IS still derivable by the engine — it is the
+  // SURFACE that cannot show it, not the mapping that is wrong. (An agent with
+  // no row is banded quiet only when they are in scope, which on this sheet
+  // they are not.)
+  it('buildStatusMap still bands a genuine non-filer quiet when scoped in', () => {
+    const map = buildStatusMap({
+      users: [agent('filer'), agent('silent')],
+      ytdSubs: [sub('filer', '2026-06-28', 400000)],
+      companyMins: COMPANY_MINS,
+      now: NOW,
+    });
+    expect(map.silent).toBe('quiet');
   });
 });
 

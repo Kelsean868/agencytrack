@@ -22,7 +22,7 @@ import {
   funnelView, computeFunnelRow, computeInterviewsKept, computeFunnelTotals, funnelRowIsException,
 } from '../../utils/funnelModel';
 import {
-  FUNNEL_REPORT_OPTS, FUNNEL_STATUS_OPTS, DEFAULT_FUNNEL_FILTERS,
+  FUNNEL_REPORT_OPTS, ROW_REACHABLE_STATUS_OPTS, DEFAULT_FUNNEL_FILTERS,
   deriveUnitOptions, funnelFiltersCount, applyFunnelFilters, buildFilterChips,
 } from '../../utils/funnelFilters';
 import { buildStatusMap } from '../../utils/funnelStatus';
@@ -594,7 +594,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
               <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-ink-muted mb-2">Status</div>
               {statusAvailable ? (
                 <div className="flex flex-wrap gap-2" data-testid="funnel-status-group">
-                  {FUNNEL_STATUS_OPTS.map(([k, label]) => {
+                  {ROW_REACHABLE_STATUS_OPTS.map(([k, label]) => {
                     const on = filters.statuses.includes(k);
                     return (
                       <button

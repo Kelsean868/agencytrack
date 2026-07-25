@@ -326,16 +326,29 @@ describe('MasterSheet funnel — STATUS filters', () => {
 
   beforeEach(() => { vi.clearAllMocks(); setup([SUB_A, SUB_B], USERS); });
 
-  it('renders the six mockup bands once the YTD read wave lands', async () => {
+  it('renders the five row-reachable bands once the YTD read wave lands', async () => {
     hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
     render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
     await flushLoad();
     openFilters();
     await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
-    ['ontrack', 'pace', 'quiet', 'report', 'persistency', 'floor'].forEach((k) => {
+    ['ontrack', 'pace', 'report', 'persistency', 'floor'].forEach((k) => {
       expect(screen.getByTestId(`funnel-status-${k}`)).toBeInTheDocument();
     });
     expect(screen.queryByTestId('funnel-status-unavailable')).not.toBeInTheDocument();
+  });
+
+  // Review finding (CodeRabbit, #871): this is a filers-only table, so a
+  // row-holding agent can never be "Gone quiet" — the chip would always return
+  // an empty table. It is omitted for the same reason LEVEL and "Missing" are.
+  it('does NOT offer the "Gone quiet" chip — no row on this surface can hold it', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+    expect(screen.queryByTestId('funnel-status-quiet')).not.toBeInTheDocument();
+    expect(screen.queryByText('Gone quiet')).not.toBeInTheDocument();
   });
 
   // NEGATIVE CONTROL — a failed YTD read must hide the chips entirely rather

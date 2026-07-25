@@ -23,10 +23,13 @@
 //               a row on this surface, so it is out of scope for a row filter.
 //   • no-log  — !row.logged (the shipped "NO LOG" badge = daysWorked absent).
 
-import { FUNNEL_STATUS_OPTS } from './funnelStatus';
+import { FUNNEL_STATUS_OPTS, ROW_REACHABLE_STATUS_OPTS } from './funnelStatus';
 
 // Re-export so the component keeps a single filters-module import surface.
-export { FUNNEL_STATUS_OPTS };
+// FUNNEL_STATUS_OPTS is the full mockup vocabulary (used for chip LABELS);
+// ROW_REACHABLE_STATUS_OPTS is what this filers-only surface can actually
+// offer — see the row-reachability note in funnelStatus.js.
+export { FUNNEL_STATUS_OPTS, ROW_REACHABLE_STATUS_OPTS };
 
 // Weekly-report options — ONLY the two states an existing table row can hold.
 // (A non-filer has no row; "Missing" is surfaced by the reality bar, not here.)

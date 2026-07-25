@@ -59,6 +59,35 @@ export const FUNNEL_STATUS_OPTS = [
 
 export const FUNNEL_STATUS_KEYS = FUNNEL_STATUS_OPTS.map(([k]) => k);
 
+// ── Row-reachability: why the Master Sheet offers FIVE of the six ───────────
+// The Master Sheet is a FILERS-ONLY table — a row exists only for an agent with
+// a submission in the selected week (`getWeeklySubmissions`). `funnelFilters.js`
+// records the same constraint for the report family ("Missing" is not a row
+// here, it is a reality-bar number).
+//
+// 'quiet' is defined below as `deriveExceptions`' "No reports" — an agent with
+// ZERO submissions this year. An agent who filed the selected week necessarily
+// has ≥1 submission this year, so a row-holding agent is essentially never
+// 'quiet'. Offering the chip anyway would ship a control that always returns an
+// empty table — a lying filter, worse than an absent one. (This was caught in
+// review on the PR that introduced it; see the CodeRabbit thread.)
+//
+// So the chip is OMITTED from this surface, exactly as LEVEL and "Missing" are,
+// and for the same reason: the row set cannot hold the value. `FUNNEL_STATUS_OPTS`
+// keeps the full mockup vocabulary — `exceptionToStatusKey`'s mapping is correct
+// and stays intact; it is the SURFACE that cannot express it.
+//
+// ⚠ OPEN QUESTION FOR THE OPERATOR (do not resolve autonomously): making
+// "Gone quiet" meaningful here requires EITHER (a) rendering non-filers as rows
+// — a different table, not a filter change — OR (b) redefining it as a recency
+// signal ("filed, but not for N weeks"), which needs an N nobody has ruled on.
+// Both are out of scope for the read-path work this module was built for.
+export const ROW_REACHABLE_STATUS_KEYS = Object.freeze(['ontrack', 'pace', 'report', 'persistency', 'floor']);
+
+export const ROW_REACHABLE_STATUS_OPTS = FUNNEL_STATUS_OPTS.filter(
+  ([k]) => ROW_REACHABLE_STATUS_KEYS.includes(k),
+);
+
 // `deriveExceptions` result → status band key. Returns null for any shape this
 // module does not claim (defensive: a future exception type must be mapped
 // explicitly here rather than silently colouring rows).
