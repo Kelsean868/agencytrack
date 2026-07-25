@@ -13,6 +13,7 @@ import {
   roundTo10,
   roundToWhole,
   WEEKLY_DIVISOR,
+  DAILY_DIVISOR,
   DEFAULT_DECOMPOSITION_INPUTS,
 } from '../../../../utils/goalDecomposition';
 
@@ -22,6 +23,9 @@ const PERIODS = [
   { key: 'quarterly', label: 'Quarter', display: 'Quarter', divisor: 4             },
   { key: 'monthly',   label: 'Month',   display: 'Month',   divisor: 10            },
   { key: 'weekly',    label: 'Week',    display: 'Week',    divisor: WEEKLY_DIVISOR },
+  // §4.7 daily-cadence chip. DAILY_DIVISOR = 43 selling weeks × 6 selling days
+  // = 258 (derivation + Rule 17 note live on the constant in goalDecomposition).
+  { key: 'daily',     label: 'Day',     display: 'Day',     divisor: DAILY_DIVISOR  },
 ];
 
 function NumField({ label, value, onChange, prefix, step = 1, min = 0, badge }) {

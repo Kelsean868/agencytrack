@@ -308,3 +308,19 @@ describe('buildPaceRows — floor-above-plan renders clamped, no special state',
     expect(row('closingInterviewsKept').provenance).toBe('derived');
   });
 });
+
+// ── Tier 3b §4.7: daily-cadence divisor drift guard ────────────────────────
+// goalDecomposition is deliberately dependency-free, so it DUPLICATES this
+// module's PACE_WORKING_DAYS as SELLING_DAYS_PER_WEEK rather than importing it
+// (importing would drag extractFields + weeklyPlanAssembly into a pure engine).
+// This guard makes that duplication safe: if either constant moves, the daily
+// cadence figures silently skew, so fail loudly here instead.
+describe('daily-cadence divisor stays in sync with pace working days', () => {
+  it('SELLING_DAYS_PER_WEEK (goalDecomposition) === PACE_WORKING_DAYS (planVariance)', async () => {
+    const { SELLING_DAYS_PER_WEEK, DAILY_DIVISOR, WEEKLY_DIVISOR } = await import('../goalDecomposition');
+    expect(SELLING_DAYS_PER_WEEK).toBe(PACE_WORKING_DAYS);
+    // and the derived divisor is exactly weeks × days (258), not a magic number
+    expect(DAILY_DIVISOR).toBe(WEEKLY_DIVISOR * PACE_WORKING_DAYS);
+    expect(DAILY_DIVISOR).toBe(258);
+  });
+});
