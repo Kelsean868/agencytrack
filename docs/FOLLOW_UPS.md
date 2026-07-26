@@ -49,6 +49,7 @@
 | Run 8 banked follow-ups — carried forward, not yet dispatched (banked 2026-07-16, from `docs/fabl... | — | — | — | 351 |
 | Persistency v2 (NEW calc methodology, R-07) — Tatil-gated PROPOSAL, ATTENDED-ONLY (banked 2026-07... | HIGH | — | — | 369 |
 | CI-vs-local test-timing gap — Tier-0 error-state tests can pass locally 5x, fail in CI (banked 20... | MEDIUM | — | — | 384 |
+| Flake family scope — **PR #872's fix set is provably INCOMPLETE**; ≥3 further members named (MeetingMode ArrowRight, BranchesPanel Retry, the A2 `e` SERIES sibling) + 1 unnamed. DO NOT widen #872 — audit continues after it lands (banked 2026-07-26, PR #875 session) | MEDIUM | — | — | 384 |
 | Node 20 → Node 24 — CI deprecation now firing directly (checkout@v4/setup-node@v4), not only in f... | HIGH | — | 2026-10-30 | 397 |
 | Reconcile `design_handoff_v2_app/mockups/` (Downloads, Track J bundle) against `docs/design-syste... | MEDIUM | Track J | — | 405 |
 | Functions runtime + firebase-functions SDK upgrade — Node 20 EOL + SDK 4.9.0 → ≥5.1.0 (banked 202... | HIGH | — | — | 1191 |
@@ -423,6 +424,52 @@ PR #861 fixed two CI-only failures in `AgentAwardsPanel.test.jsx` (from the Run-
 **Third instance — and the first PROVEN in CI (2026-07-25, PR #868).** `DailyCaptureV2.test.jsx > daily streak celebration (integration) > "does NOT fire below the milestone (short streak)"` failed in CI with `AssertionError: expected "spy" to be called at least once` (361 files passed, 1 failed) on a **verification-only PR** that touched three `scripts/verification/*.mjs` smokes + two docs — i.e. nothing the unit suite loads, so the change cannot be causal. It passed locally in isolation AND as the full 48-test file, the identical file had passed CI on #867 an hour earlier, and **re-running the failed CI job with zero code change went green** — the cleanest flake proof available. So the family is now three tests across two files (`AgentPlannerPanel` A5-bulk + A2-`e`, `DailyCaptureV2` streak-celebration), all pattern 2.
 
 **Why this now matters more than "just re-run it":** three flakes in one session means a red CI on this repo no longer reliably distinguishes a real regression from scheduling noise, which erodes the merge gate itself. When audited, prefer the per-test timeout (`it(name, fn, ms)`) on these specific multi-render-cycle integration tests over raising the global `asyncUtilTimeout` for all ~5600 tests, and consider recording each confirmed flake here so the pattern-2 population is enumerable rather than anecdotal. (Distinct from the Windows *concurrent-run* worker-contention flake below, which is about launching two `vitest run` processes at once; this is a single run's internal parallelism.)
+
+---
+
+---
+
+## Flake family scope — PR #872's fix set is provably INCOMPLETE (banked 2026-07-26, PR #875 session, MEDIUM — test-infra audit, follow-on to #872)
+
+> **DO NOT WIDEN PR #872.** It is green and queued; re-opening it to chase these would stall a landed fix for an audit that is not finished. This entry is the *follow-on*: the audit continues **after** #872 lands, starting from the population below.
+
+**Claim, stated plainly: the four tests PR #872 fixes are not the whole family.** At least three further members were observed in a single session (2026-07-26, the planner week-nav track), two of them in files that session's diff never touched. #872's characterisation work (three mechanisms, not one) remains correct and valuable — it is the *population* that was under-counted, not the analysis.
+
+### Named population
+
+**Already fixed by #872 (four targets, each negative-controlled there):**
+
+1. `DailyCaptureV2 > daily streak celebration (integration) > "does NOT fire below the milestone (short streak)"` — self-narrowing `waitFor({timeout: 2000})`
+2. `AgentPlannerPanel > keyboard shortcuts (Run 9 A2) > "e opens Edit for the focused … card"` — commit→effect-resubscribe race
+3. `AgentPlannerPanel > bulk operations (Run 9 A5) > "R6 cap gate: selecting >200 …"` — per-test budget, 201-card render
+4. `AgentPlannerPanel > bulk operations (Run 9 A5) > "pushes ONE undo entry per bulk op — Ctrl+Z writes back each doc's PRIOR values"` — five chained `waitFor`s in one 5s budget
+
+**NOT covered by #872 — observed 2026-07-26:**
+
+5. `AgentPlannerPanel > keyboard shortcuts (Run 9 A2) > "e on a focused SERIES card raises the SeriesEditChoice scope sheet instead of editing directly"` — a **sibling of target 2, not the same test**. Both exercise the `e` shortcut; #872 fixes only the first. If target 2's mechanism is the resubscribe race, this one almost certainly shares it and wants the same `await userEvent.keyboard('e')` treatment. **Cheapest next step: check whether #872's fix generalises to it.**
+6. `MeetingMode > run-of-show > "ArrowRight advances from opening to the branch scorecard"` — failed at **5021ms** (timeout). `src/components/manager/`, an entirely different subsystem from the planner.
+7. `BranchesPanel > "the error alert has a wired Retry button that re-invokes the same load path"` (`src/components/admin/__tests__/BranchesPanel.test.jsx:121`, failing at `:133`) — failed **in CI**, with the DOM dump showing skeleton (`animate-pulse`) placeholders still mounted, i.e. the query ran before load resolved.
+8. **One unnamed member.** An earlier full-suite run in the same session showed exactly one failure that cleared before its name was captured. Recorded as unnamed rather than silently dropped — and as a process lesson: capture the failing test name *before* re-running, because a passing re-run destroys the evidence.
+
+### Shared signature
+
+- **~5020ms timeouts.** Members 4, 6 and the session's other timeout failures all landed at 5021–5023ms — Vitest's default 5s per-test budget, exhausted. (Member 2 is the documented exception: it fails at ~31ms on an assertion, which is why #872 concluded three mechanisms rather than one.)
+- **Non-deterministic, different test each run.** Three consecutive isolated runs of `AgentPlannerPanel.test.jsx` gave: 1 failure (member 4) → 73/73 → 73/73. Two consecutive full-suite runs gave: 2 failures (members 5 + 6) → 5746/5746.
+
+### Key evidence — why this is not the diff's fault
+
+**Members appear in files the triggering diff never touches.** This is the load-bearing observation:
+
+- member 7 failed CI on a commit whose diff was **four `.md` files** — nothing the unit suite loads, so the change cannot be causal (the same proof standard already banked for the #868 instance, where a re-run with zero code change went green — which is exactly what happened here too);
+- member 6 lives in `src/components/manager/`, which the planner week-nav diff does not touch at all.
+
+Causality was checked, not assumed, for the one member that *was* plausibly related: member 5 sits in the keydown effect whose dependency array that session modified. Ruled out — `useIsDesktop` returns a plain `useState` boolean and `matchMedia` is unstubbed in that describe, so the added dep is a constant `false` and cannot change re-subscription count.
+
+### Action
+
+After #872 lands: (a) re-run the full suite N×10 on both CI and a local machine, collecting every failing test name; (b) classify each against #872's three mechanisms; (c) check whether #872's fix for target 2 generalises to member 5; (d) name the unnamed member 8 or retire it. Do **not** raise the global `asyncUtilTimeout` — that was explicitly off the table in #872 and stays off.
+
+**Falsification (Rule 23):** overturned if, after #872 lands, a 10× full-suite run on both CI and local is clean — at which point members 5–8 were collateral of the four now-fixed tests rather than independent members, and this entry closes. Do not close it on a single green run; the family's defining property is that it passes most of the time.
 
 ---
 
