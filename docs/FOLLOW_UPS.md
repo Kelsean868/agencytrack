@@ -508,17 +508,51 @@ Run 9's A2 (keyboard shortcuts) introduced panel-level keydown handlers. Under r
 
 ---
 
-## BIG ONE — the real planner-completion track (E1–E5) is UNBUILT (banked 2026-07-17, promotion session, HIGH — active build map, do not confuse with Run 9)
+## ~~BIG ONE — the real planner-completion track (E1–E5) is UNBUILT~~ → **E1–E5 ALL SHIPPED** (banked 2026-07-17; corrected 2026-07-26, planner week-nav track)
 
-Run 9 built six features (A1–A5 undo/redo/shortcuts/conflicts/templates/bulk + F3 series propagation) that are real, live in prod (`d0e74c12`), and valuable — but they are **not** the "planner and scheduler v2" redesign named in `docs/design-system/proposals/planner-scheduler-v2/README.md`. That README's actual spec is **five different features**, all still unbuilt:
+> **CORRECTION 2026-07-26 — the "entirely unbuilt" claim below was already stale when written into this entry's later revisions, and is now wholly wrong.** All five features exist in `src/components/planner/` on `main` (`219cf324`) and were verified file-by-file during the planner week-nav Phase 0 recon:
+>
+> | Item | Status | Evidence on `main` |
+> |---|---|---|
+> | **E1** desktop 3-day + week views | ✅ SHIPPED | `PlannerDesktopBoard.jsx` (Day/3-day/Week/Follow-ups toggle, `grid-cols-N` fluid columns) |
+> | **E2** drag-drop reschedule | ✅ SHIPPED | `PlannerDesktopBoard.jsx` drag handlers → `AgentPlannerPanel.handleReschedule` → the existing `postponeWithRebook` |
+> | **E3** running-late cascade | ✅ SHIPPED | `RunningLateSheet.jsx` + `planner.helpers.js` `findRunningLate`/`computeLateCascade` |
+> | **E4** per-appointment notes thread | ✅ SHIPPED | `NotesThread.jsx` + `addAppointmentNote` + `readNoteThread`/`prospectNoteHistory` |
+> | **E5** collapsed-rail space adaptation | ✅ SHIPPED | `AgentPlannerPanel.jsx` `max-w-none` on the `isDesktop` branch |
+>
+> Each also has standing acceptance smokes registered in `scripts/verification/SMOKES.md` (`smoke-e1-desktop-board.mjs`, `smoke-e2-drag-reschedule.mjs`, `smoke-e3-running-late.mjs`, `smoke-e4-notes-thread.mjs`). The work landed in the Run A Tier 2 window (2026-07-24) — two of this file's own Active-follow-up rows already say so ("Desktop planner board — shift-click range select…", "…Arrow ←/→ view-cycling inert on the board", both tagged *Run A Tier 2 E1*), so the file has been internally contradictory since then.
+>
+> **Why it went stale:** this entry was banked at the Run 9 promotion to flag a scope mismatch, and nothing re-audited it when the E-series actually shipped a week later. **Lesson (compounding the Rule 17 design-source lesson already banked below):** an entry that asserts *absence* is the kind most likely to rot silently — nothing about building the thing forces an edit here. A HIGH "X is unbuilt" follow-up should be re-verified against source at the start of any session that touches X, not trusted.
+>
+> **Remaining real gaps** (small, tracked separately in the Active follow-ups table — do NOT re-open this entry for them): desktop-board shift-click range selection keys off mobile view state; Arrow ←/→ view-cycling is inert on the board; E4's cross-time prospect-notes history still needs its `(agentId, prospectId)` composite index. Week navigation across the board and mobile views — never specified by the design authority — shipped in the planner week-nav track (2026-07-26).
 
-- **E1** — desktop 3-day + week views
-- **E2** — drag-drop reschedule (wires to the existing `postponeWithRebook`)
-- **E3** — running-late cascade (gap-smart, prospect-notify)
-- **E4** — per-appointment notes thread (travels with `prospectId`)
-- **E5** — collapsed-rail space adaptation
+_Original entry, preserved for the record:_
 
-This is the genuine planner-completion track, still ahead, and now sits on the `seriesId` + reschedule-in-place foundation Run 9 just laid (F3's composite index and propagation model are direct prerequisites for E2/E3). **Action:** needs its own recon-then-build session sourced from `docs/design-system/proposals/planner-scheduler-v2/README.md` directly — do not reuse Run 9's brief or progress docs as the starting point, they describe different, already-shipped work.
+~~Run 9 built six features (A1–A5 undo/redo/shortcuts/conflicts/templates/bulk + F3 series propagation) that are real, live in prod (`d0e74c12`), and valuable — but they are **not** the "planner and scheduler v2" redesign named in `docs/design-system/proposals/planner-scheduler-v2/README.md`. That README's actual spec is **five different features**, all still unbuilt: E1 desktop 3-day + week views · E2 drag-drop reschedule · E3 running-late cascade · E4 per-appointment notes thread · E5 collapsed-rail space adaptation. This is the genuine planner-completion track, still ahead, and now sits on the `seriesId` + reschedule-in-place foundation Run 9 just laid.~~ **The scope-mismatch observation was correct at banking time; the "unbuilt" status is not — see the correction above.**
+
+---
+
+## Staging branch re-baseline — RESOLVED 2026-07-26 (five-cycle debt cleared)
+
+The `staging` git branch was deleted by GitHub `deleteBranchOnMerge` on the Run 8 merge (PR #860) and never recreated, leaving five consecutive promotion cycles (Nexus v2/#849, Runs 3+4/#853, Runs 5-7/#858, Run 8/#860, Run 9/#862 — plus the Run A promotion/#874) that shipped without ever re-baselining staging. Tracked in `docs/CONTEXT.md` § Pending operational state.
+
+**Resolved 2026-07-26** at the start of the planner week-nav track, on dispatcher ruling. Notable: the orphaned LOCAL `staging` branch (`a31d52d7`, still checked out in the `at-fable-staging` worktree) turned out to be a **direct ancestor of `origin/main`** (`git merge-base --is-ancestor` confirmed), so the "recreation" was a **pure fast-forward**, not a divergent reset — no commits were discarded and no history was rewritten. Sequence: fast-forwarded the local branch to `origin/main` (`219cf324`) in the `at-fable-staging` worktree, then `git push -u origin staging`. `origin/staging == origin/main == 219cf324`. The 5 untracked persistency-v2 proposal artifacts in that worktree were untouched (a fast-forward does not disturb untracked files).
+
+**Note for the next dispatch:** the `at-fable-staging` worktree is now correctly pointed at a live, current `staging` — the "will need repointing before the next Fable dispatch" caveat in CONTEXT.md is discharged. **Falsification (Rule 23):** this is overturned if `git ls-remote --heads origin` stops listing `staging`, or if `origin/staging` diverges from `main` without a deliberate promotion in flight.
+
+---
+
+## Appointment created-in-error path — distinct from churn (banked 2026-07-26, planner week-nav track, LOW)
+
+A general delete affordance for appointments was proposed during the planner week-nav track and **DROPPED at Phase 0 on design-authority grounds.** Retained churn is the deliberate product model, not an omission:
+
+- `docs/design-system/proposals/planner-scheduler-v2/mockups/planner-mobile-b.jsx:108` — *"Cancelled & postponed stay on record — nothing is deleted."* (the caption of a dedicated artboard, "5b · Retained churn")
+- `mockups/planner-shared.jsx:63` — *"timeline (dimmed/struck), never deleted."*
+- `firestore.rules` (appointments block) — the owner-scoped `allow delete` arm carries the matching intent in code: *"exists solely as the undo-create inverse; UI exposes no delete affordance."*
+
+Churn patterns are manager coaching signal, so erasing them destroys the data the surface exists to produce. **The mechanics already exist** if this is ever revisited — `plannerService.deleteAppointment` and the owner-scoped rules arm are both live, consumed today ONLY by Ctrl+Z undo-create and the bulk-create inverse — so no rules change would be needed; the question is purely product, not technical.
+
+**Action:** none unless a genuine mis-keyed-entry need emerges from pilot use. If it does, scope it narrowly against that authority — e.g. creator-only, same-session, before any status change — rather than as a general delete. Do not treat the existing rules arm as licence to add one.
 
 ---
 

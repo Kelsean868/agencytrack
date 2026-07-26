@@ -1,45 +1,40 @@
 import React from 'react';
 import StatusPill from '../ui/StatusPill';
 import { APPOINTMENT_TYPES, APPOINTMENT_STATUSES } from '../../services/plannerService';
+import { TYPE_TONE } from './plannerTone';
 
 /**
  * Planner primitives — ActivityChip (type code + tone) and ApptStatusPill
  * (status → shared StatusPill variant). Tokens only; no invented hex.
  *
- * Tone mapping (handoff §6): calls (P.C/S.C) read low-emphasis neutral; the
- * interview ladder (A.I/F.F.I) reads teal; C.I is solid teal (the money type,
- * white text paired with dark:bg-primary-dark per UI rule D6); Sale reads gold
- * (strong gold tint + gold-ink text, AA-safe — a full gold fill would fail
- * AA-large for the label, so "solid gold" is expressed as a strong tint + dot);
- * Free is a dashed neutral block. The repo ships no violet token, so the
- * handoff's violet "call" hue maps to the neutral family (documented divergence).
+ * The tone maps live in `plannerTone.js` (this file may only export components,
+ * per react-refresh/only-export-components) — see that file for the §6 tone
+ * rationale and the dense-card left-rail mapping.
  */
 
 const TYPE_LABEL = Object.fromEntries(APPOINTMENT_TYPES.map((t) => [t.key, t.label]));
 const TYPE_NAME  = Object.fromEntries(APPOINTMENT_TYPES.map((t) => [t.key, t.name]));
 
-const TYPE_TONE = {
-  PC:   { chip: 'bg-card-raised text-ink-muted border border-border',       dot: 'bg-ink-dim' },
-  SC:   { chip: 'bg-card-raised text-ink-muted border border-border',       dot: 'bg-ink-dim' },
-  AI:   { chip: 'bg-primary/10 text-primary border border-primary/20',      dot: 'bg-primary' },
-  FFI:  { chip: 'bg-primary/10 text-primary border border-primary/20',      dot: 'bg-primary' },
-  CI:   { chip: 'bg-primary text-white dark:bg-primary-dark border border-primary dark:border-primary-dark', dot: 'bg-white' },
-  SALE: { chip: 'bg-gold/20 text-gold-ink border border-gold/50',           dot: 'bg-gold' },
-  FREE: { chip: 'bg-transparent text-ink-muted border border-dashed border-border', dot: 'bg-ink-dim' },
+const CHIP_SIZE = {
+  md: 'gap-1 px-2 py-0.5 rounded-md text-[11px]',
+  // Dense/week-column chip — the mockup's `size="s"`.
+  sm: 'gap-0.5 px-1 py-0 rounded text-[9.5px]',
 };
 
 /**
  * ActivityChip — the type code (P.C / F.F.I / Sale …) with its tone.
  * @param {string} type   one of the contract TYPE keys
  * @param {boolean} [dot] render a leading tone dot
+ * @param {'md'|'sm'} [size] `sm` is the dense week-column chip
  */
-export function ActivityChip({ type, dot = false, className = '' }) {
+export function ActivityChip({ type, dot = false, size = 'md', className = '' }) {
   const tone = TYPE_TONE[type] ?? TYPE_TONE.FREE;
   const label = TYPE_LABEL[type] ?? type;
   return (
     <span
       className={[
-        'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold whitespace-nowrap',
+        'inline-flex items-center font-mono font-semibold whitespace-nowrap',
+        CHIP_SIZE[size] ?? CHIP_SIZE.md,
         tone.chip,
         className,
       ].filter(Boolean).join(' ')}

@@ -16,7 +16,7 @@ import {
 } from '../../services/appointmentTemplateService';
 import {
   weekRange, buildWeekDates, groupByDate, sortByStartTime,
-  deriveFollowups, deriveSeedFromKept, formatTime12, dayLabel,
+  deriveFollowups, deriveSeedFromKept, formatTime12, dayLabel, weekRangeLabel,
   RETIRED_STATUSES, detectConflicts, shiftDateStr,
   readNoteThread, appointmentIsActive,
   findRunningLate, computeLateCascade,
@@ -25,6 +25,7 @@ import {
   seriesRowLabel, cadenceLabel, nextOccurrenceDate, slotDayLabel, formatShortDate,
 } from './recurrence.helpers';
 import { ActivityChip, ApptStatusPill } from './plannerPrimitives';
+import { typeBarClass } from './plannerTone';
 import AppointmentSheet, { SeriesBadge } from './AppointmentSheet';
 import SeriesEditChoice from './SeriesEditChoice';
 import TemplateNameSheet from './TemplateNameSheet';
@@ -33,6 +34,7 @@ import BulkCancelConfirmSheet from './BulkCancelConfirmSheet';
 import PlannerShortcutsSheet from './PlannerShortcutsSheet';
 import usePlannerHistory from './usePlannerHistory';
 import PlannerDesktopBoard from './PlannerDesktopBoard';
+import PlannerWeekNav from './PlannerWeekNav';
 import RunningLateSheet from './RunningLateSheet';
 import useToast from '../../hooks/useToast';
 import useIsDesktop from '../../hooks/useIsDesktop';
@@ -125,7 +127,7 @@ const WEEK_COUNTER_ROWS = [
  * toggles selection instead of opening churn; retired (cancelled/postponed)
  * cards are NOT selectable — they're already terminal, so bulk ops target
  * live appointments only. */
-function AppointmentCard({
+export function AppointmentCard({
   appt, prospectName, onChurn, resolveAppt, conflicted,
   selectMode = false, selected = false, onToggleSelect, dense = false,
 }) {
@@ -160,13 +162,90 @@ function AppointmentCard({
     ? resolveAppt?.(appt.rescheduledToId)
     : null;
 
+  // ── Dense (week-column) card ────────────────────────────────────────────────
+  // A port of the design board's `DeskApptChip` (mockups/planner-desktop.jsx),
+  // NOT a squeezed copy of the roomy row. A week column is ~131px wide at
+  // 1280px with the sidebar expanded, which the roomy layout cannot hold: its
+  // fixed `w-16` time box wraps every 2-digit hour ("10:00 AM") to two lines,
+  // its status pill cannot shrink (whitespace-nowrap + no shrink-0) and
+  // overflowed the card by ~49px — spilling into the NEXT day column — and the
+  // prospect name was squeezed to 0px, i.e. invisible. Measured on the real
+  // components before the fix; see the PR body for the geometry table.
+  //
+  // The mockup's answer is a STACK: [time · type chip] over [name, ellipsized],
+  // with STATUS carried by a 3px left rail + opacity + line-through instead of
+  // a pill there is no room for. The pill's information is preserved for
+  // assistive tech via an sr-only line (the ActivityFeed.jsx:77 idiom).
+  if (dense) {
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        data-testid={`appt-card-${appt.id}`}
+        data-dense="true"
+        aria-pressed={selectMode ? selected : undefined}
+        className={`w-full text-left flex flex-col gap-1 p-2 min-w-0 rounded-lg border border-l-[3px] transition-colors ${
+          typeBarClass(appt.type, appt.status)
+        } ${
+          retired
+            ? 'bg-card border-border/50 opacity-60'
+            : selected
+            ? 'bg-primary/5 border-primary ring-1 ring-primary/40'
+            : 'bg-card border-border hover:border-primary/40'
+        }`}
+      >
+        <span className="sr-only">Status: {appt.status}. </span>
+        <span className="flex items-center gap-1.5 min-w-0">
+          {selectable && (
+            <span
+              data-testid={`appt-select-${appt.id}`}
+              aria-hidden="true"
+              className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                selected ? 'bg-primary dark:bg-primary-dark border-primary text-white' : 'bg-card border-border'
+              }`}
+            >
+              {selected && <Check size={11} />}
+            </span>
+          )}
+          {/* One line, always: no fixed-width box to wrap a 2-digit hour. */}
+          <span className={`shrink-0 text-[10px] font-mono font-semibold tabular-nums whitespace-nowrap ${
+            retired ? 'text-ink-muted line-through' : 'text-ink-muted'
+          }`}>
+            {formatTime12(appt.startTime)}
+          </span>
+          <ActivityChip type={appt.type} size="sm" />
+          {conflicted && (
+            <span
+              data-testid={`appt-conflict-${appt.id}`}
+              aria-label="Overlaps another appointment"
+              className="shrink-0 text-warning-ink"
+            >
+              <AlertTriangle size={11} aria-hidden="true" />
+            </span>
+          )}
+        </span>
+        <span className={`block text-xs font-semibold truncate ${
+          retired ? 'text-ink-muted line-through' : 'text-ink'
+        }`}>
+          {label}
+        </span>
+        {isSeries && (
+          <span className="flex items-center gap-1 text-[10px] font-mono text-ink-muted truncate">
+            <SeriesBadge size={12} />
+            {appt.status === 'postponed' ? 'moved · series stays' : cadence}
+          </span>
+        )}
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
       onClick={handleClick}
       data-testid={`appt-card-${appt.id}`}
       aria-pressed={selectMode ? selected : undefined}
-      className={`w-full text-left flex items-start ${dense ? 'gap-2 p-2' : 'gap-3 p-3'} rounded-xl border transition-colors ${
+      className={`w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-colors ${
         retired
           ? 'bg-card border-border/50 opacity-60'
           : selected
@@ -207,7 +286,7 @@ function AppointmentCard({
             {label}
           </span>
         </div>
-        {!dense && appt.note && <p className="text-xs text-ink-muted mt-0.5 truncate">{appt.note}</p>}
+        {appt.note && <p className="text-xs text-ink-muted mt-0.5 truncate">{appt.note}</p>}
 
         {activeSeriesLine && (
           <div className="mt-2 pt-2 border-t border-dashed border-border">
@@ -230,7 +309,10 @@ function AppointmentCard({
           </div>
         )}
       </div>
-      <ApptStatusPill status={appt.status} />
+      {/* shrink-0: StatusPill is whitespace-nowrap, so without this it cannot
+          shrink below its label and overflows the card in narrow columns —
+          the same mechanism the dense branch above sidesteps entirely. */}
+      <ApptStatusPill status={appt.status} className="shrink-0" />
     </button>
   );
 }
@@ -309,8 +391,33 @@ export default function AgentPlannerPanel({
   onCarryToDaily,
 }) {
   const today = useMemo(() => getTodayTT(), []);
-  const { start: weekStart, end: weekEnd } = useMemo(() => weekRange(today), [today]);
-  const weekDates = useMemo(() => buildWeekDates(today), [today]);
+
+  // ── Week navigation (single source of week truth) ──────────────────────────
+  // `anchorDate` is any date inside the VIEWED week; every week-scoped
+  // derivation below hangs off it, and both the mobile Week view and the
+  // desktop board render the same PlannerWeekNav bound to it. `today` stays the
+  // real TT today and continues to drive the today-scoped surfaces (Today view,
+  // follow-ups, end-of-day handoff, running-late banner) — the two must not be
+  // conflated, which is why navigation never rewrites `today`.
+  const [anchorDate, setAnchorDate] = useState(today);
+  const { start: weekStart, end: weekEnd } = useMemo(() => weekRange(anchorDate), [anchorDate]);
+  const weekDates = useMemo(() => buildWeekDates(anchorDate), [anchorDate]);
+  const currentWeekStart = useMemo(() => weekRange(today).start, [today]);
+  const isCurrentWeek = weekStart === currentWeekStart;
+
+  // INVARIANT — today-scoped surfaces are only reachable while the anchor is
+  // home. `appts` holds exactly the VIEWED week, so on a navigated week
+  // `byDate.get(today)` is empty and every today-derived value (todayAppts,
+  // seed, lateCandidate) would silently read as "nothing today"; `deriveFollowups`
+  // would likewise mark genuinely-booked prospects as unbooked, because its
+  // `booked` set is built from the loaded appointments. Rather than paying for a
+  // second always-current-week query, week navigation is confined to
+  // week-scoped contexts and `goToday()` snaps home whenever a today-scoped one
+  // is opened (see the view/span change handlers below).
+  const goPrevWeek = useCallback(() => setAnchorDate((d) => shiftDateStr(d, -7)), []);
+  const goNextWeek = useCallback(() => setAnchorDate((d) => shiftDateStr(d, 7)), []);
+  const goToday = useCallback(() => setAnchorDate(today), [today]);
+
   // E1 fix: the desktop board's Day/3-day spans are TODAY-anchored (today, +1,
   // +2), so late in the week they reach PAST Saturday — e.g. on a Friday the
   // 3-day board's third column is next Sunday. The Sun–Sat week load alone left
@@ -318,10 +425,18 @@ export default function AgentPlannerPanel({
   // window ends at whichever is later: this week's Saturday or today+2. ISO
   // 'YYYY-MM-DD' strings compare lexicographically, so max() is a string compare.
   // Week-SEMANTIC derivations must still use weekStart..weekEnd (see weekCounters).
+  // The today+2 arm is CURRENT-WEEK ONLY (#867 semantics preserved exactly): on a
+  // navigated week the spans are anchored to that week's Sunday, so extending the
+  // window past its Saturday would fetch days no column can show.
   const loadEnd = useMemo(() => {
+    if (!isCurrentWeek) return weekEnd;
     const spanEnd = shiftDateStr(today, 2);
     return spanEnd > weekEnd ? spanEnd : weekEnd;
-  }, [today, weekEnd]);
+  }, [today, weekEnd, isCurrentWeek]);
+
+  // Day/3-day column anchor: today while home (today-anchored spans), else the
+  // viewed week's Sunday — a today-anchored span means nothing in another week.
+  const columnStart = isCurrentWeek ? today : weekStart;
   const floors = weeklyFloors ?? DEFAULT_WEEKLY_ACTIVITY_FLOORS;
 
   const [view, setView] = useState('today');
@@ -331,6 +446,19 @@ export default function AgentPlannerPanel({
   // the mobile layout + its unique appt-card testids).
   const isDesktop = useIsDesktop();
   const [desktopSpan, setDesktopSpan] = useState('3day');
+  // Item 3: week-span tombstone visibility. UI-only, defaults to SHOWING per the
+  // retained-churn design authority; never persisted, never affects the query.
+  const [showPostponed, setShowPostponed] = useState(true);
+
+  // The two snap-home handlers that enforce the navigation invariant above.
+  const changeView = useCallback((next) => {
+    if (next !== 'week') goToday();
+    setView(next);
+  }, [goToday]);
+  const changeSpan = useCallback((next) => {
+    if (next === 'followups') goToday();
+    setDesktopSpan(next);
+  }, [goToday]);
   const [appts, setAppts] = useState([]);
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1136,7 +1264,9 @@ export default function AgentPlannerPanel({
         const idx = VIEWS.findIndex((v) => v.key === view);
         const delta = e.key === 'ArrowRight' ? 1 : -1;
         const nextIdx = Math.min(VIEWS.length - 1, Math.max(0, idx + delta));
-        setView(VIEWS[nextIdx].key);
+        // changeView (not setView) so the keyboard path honours the snap-home
+        // invariant exactly like a tap does.
+        changeView(VIEWS[nextIdx].key);
         return;
       }
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -1157,7 +1287,7 @@ export default function AgentPlannerPanel({
   }, [
     sheet, churn, seriesChoice, shortcutsOpen, templatePrompt, bulkSheet, lateSheet, selectMode,
     exitSelectMode, runUndo, runRedo,
-    view, weekStart, today, openBook, handleChurnAction, resolveAppt, moveCardFocus,
+    view, weekStart, today, openBook, handleChurnAction, resolveAppt, moveCardFocus, changeView,
   ]);
 
   // Follow-ups list — shared by the mobile Follow-ups view and the desktop
@@ -1252,7 +1382,7 @@ export default function AgentPlannerPanel({
             type="button"
             role="tab"
             aria-selected={view === v.key}
-            onClick={() => setView(v.key)}
+            onClick={() => changeView(v.key)}
             data-testid={`planner-view-${v.key}`}
             className={`min-h-[44px] px-4 rounded-xl text-sm font-semibold border transition-colors ${
               view === v.key
@@ -1310,7 +1440,10 @@ export default function AgentPlannerPanel({
       {/* E3: running-late banner — auto-surfaced when an appt overran its end
           un-churned; opens the cascade sheet. Suppressed once the agent picks
           "Keep schedule" for that appt. */}
-      {lateCandidate && !lateDismissed.has(lateCandidate.id) && !lateSheet && (
+      {/* isCurrentWeek: on a navigated week `appts` holds that week only, so the
+          signal would be structurally absent anyway — gating it makes the
+          suppression deliberate and testable rather than incidental. */}
+      {isCurrentWeek && lateCandidate && !lateDismissed.has(lateCandidate.id) && !lateSheet && (
         <button
           type="button"
           onClick={() => setLateSheet(lateCandidate)}
@@ -1344,8 +1477,9 @@ export default function AgentPlannerPanel({
           {isDesktop ? (
             <PlannerDesktopBoard
               span={desktopSpan}
-              onSpanChange={setDesktopSpan}
+              onSpanChange={changeSpan}
               today={today}
+              columnStart={columnStart}
               weekDates={weekDates}
               byDate={byDate}
               onBook={openBook}
@@ -1353,6 +1487,17 @@ export default function AgentPlannerPanel({
               onReschedule={handleReschedule}
               followupsSlot={followupsList}
               followupsCount={followups.length}
+              showPostponed={showPostponed}
+              onToggleShowPostponed={setShowPostponed}
+              weekNav={(
+                <PlannerWeekNav
+                  rangeLabel={weekRangeLabel(weekStart, weekEnd)}
+                  isCurrentWeek={isCurrentWeek}
+                  onPrev={goPrevWeek}
+                  onNext={goNextWeek}
+                  onToday={goToday}
+                />
+              )}
             />
           ) : (
           <>
@@ -1406,6 +1551,31 @@ export default function AgentPlannerPanel({
           {/* ── WEEK ── */}
           {view === 'week' && (
             <div className="flex flex-col gap-4">
+              {/* Week navigation — the SAME control and the SAME anchorDate the
+                  desktop board uses; mobile and desktop cannot drift. */}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <PlannerWeekNav
+                  rangeLabel={weekRangeLabel(weekStart, weekEnd)}
+                  isCurrentWeek={isCurrentWeek}
+                  onPrev={goPrevWeek}
+                  onNext={goNextWeek}
+                  onToday={goToday}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPostponed((v) => !v)}
+                  data-testid="planner-toggle-postponed-mobile"
+                  aria-pressed={showPostponed}
+                  className={`min-h-[44px] px-3 rounded-xl border text-xs font-semibold transition-colors ${
+                    showPostponed
+                      ? 'bg-card border-border text-ink-muted hover:text-ink'
+                      : 'bg-primary/10 border-primary/30 text-primary'
+                  }`}
+                >
+                  {showPostponed ? 'Hide postponed' : 'Show postponed'}
+                </button>
+              </div>
+
               {/* Weekly counters vs floor */}
               <div className="grid grid-cols-3 gap-2" data-testid="planner-week-counters">
                 {weekCounters.map((c) => {
@@ -1425,7 +1595,12 @@ export default function AgentPlannerPanel({
               {/* 7-day list */}
               <div className="flex flex-col gap-3 stagger">
                 {weekDates.map((d) => {
-                  const dayAppts = sortByStartTime(byDate.get(d) || []);
+                  const allDay = sortByStartTime(byDate.get(d) || []);
+                  // Presentation-only tombstone filter (see the board's copy).
+                  const dayAppts = showPostponed
+                    ? allDay
+                    : allDay.filter((a) => a.status !== 'postponed');
+                  const hiddenCount = allDay.length - dayAppts.length;
                   return (
                     <div key={d} className="rounded-xl bg-card border border-border p-3">
                       <div className="flex items-center justify-between mb-2">
@@ -1449,6 +1624,11 @@ export default function AgentPlannerPanel({
                             <AppointmentCard key={a.id} appt={a} prospectName={prospectName(a.prospectId)} onChurn={setChurn} resolveAppt={resolveAppt} conflicted={conflicts.has(a.id)} selectMode={selectMode} selected={selected.has(a.id)} onToggleSelect={toggleSelect} />
                           ))}
                         </div>
+                      )}
+                      {hiddenCount > 0 && (
+                        <p data-testid={`planner-day-hidden-${d}`} className="mt-1.5 text-[10px] font-mono text-ink-muted">
+                          +{hiddenCount} postponed hidden
+                        </p>
                       )}
                     </div>
                   );
