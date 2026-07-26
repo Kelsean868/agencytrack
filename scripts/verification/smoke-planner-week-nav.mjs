@@ -143,8 +143,11 @@ try {
 
     // ── Leg 7: postponed toggle defaults to SHOWING ────────────────────────
     const toggle = p.locator(tsel('planner-toggle-postponed'));
+    // aria-pressed tracks HIDING (F3): default = postponed SHOWN = hide OFF.
     const togglePressed = await toggle.getAttribute('aria-pressed');
-    log(togglePressed === 'true' ? 'PASS' : 'FAIL', `[${theme}] postponed default = SHOWING (aria-pressed=${togglePressed})`);
+    const toggleLabel = (await toggle.innerText()).trim();
+    log(togglePressed === 'false' ? 'PASS' : 'FAIL', `[${theme}] postponed default = SHOWING → hide-toggle OFF (aria-pressed=${togglePressed})`);
+    log(toggleLabel === 'Hide postponed' ? 'PASS' : 'FAIL', `[${theme}] toggle label is constant, never contradicts pressed state ("${toggleLabel}")`);
 
     // ── Legs 5 + 6: geometry guard + dense contract ────────────────────────
     const geo = await p.evaluate(() => {

@@ -16,9 +16,13 @@
  *      2-digit hours, so the dense card must not use it.
  *   2. NO status pill — StatusPill is whitespace-nowrap and cannot shrink; the
  *      status moves to a left rail + opacity + line-through.
- *   3. Status still reaches assistive tech (sr-only), so dropping the visual
- *      pill costs nothing semantically.
+ *   3. Status still reaches assistive tech (sr-only).
  *   4. The name truncates gracefully rather than being squeezed to nothing.
+ *   5. Cancelled vs postponed is distinguishable WITHOUT colour. Point 3 alone
+ *      is not sufficient: sr-only serves screen readers, but a sighted
+ *      colour-blind user got no signal at all once the pill was dropped, since
+ *      both retired states share opacity-60 + line-through and differed only by
+ *      rail hue (danger red vs warning amber). A glyph carries it — see F4.
  */
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
@@ -69,13 +73,38 @@ describe('AppointmentCard — dense week-column variant', () => {
 
   it('renders NO status pill — the pill is what overflowed the column', () => {
     renderCard({ status: 'scheduled' });
-    // The visible pill label must be absent from the rendered text.
+    // LEAF-scoped (external review F10). Reading ancestors' textContent pulls in
+    // the sr-only status line, so the old version only avoided a false match
+    // because sr-only emits lowercase `scheduled` while the pill label is
+    // `Scheduled` — a case coincidence, not an assertion. Compare leaf nodes,
+    // case-insensitively, so the test fails if a pill ever returns.
     const card = screen.getByTestId('appt-card-x1');
-    const visible = [...card.querySelectorAll('*')]
-      .filter((el) => !el.classList.contains('sr-only'))
-      .map((el) => el.textContent)
-      .join(' ');
-    expect(visible).not.toMatch(/Scheduled/);
+    const leafText = [...card.querySelectorAll('*')]
+      .filter((el) => el.children.length === 0 && !el.classList.contains('sr-only'))
+      .map((el) => el.textContent.trim());
+    expect(leafText.some((t) => /^scheduled$/i.test(t))).toBe(false);
+  });
+
+  // ── F4: non-chromatic retired marker (WCAG 1.4.1) ─────────────────────────
+  // Dense drops the pill, so cancelled and postponed would otherwise differ ONLY
+  // by rail hue (danger red vs warning amber) — both also carry opacity-60 and
+  // line-through. A shape must carry the distinction.
+  it('F4: cancelled and postponed are distinguishable WITHOUT colour', () => {
+    const { unmount } = renderCard({ status: 'cancelled' });
+    const cancelledMark = screen.getByTitle('Cancelled');
+    expect(cancelledMark).toBeInTheDocument();
+    unmount();
+
+    renderCard({ status: 'postponed' });
+    expect(screen.getByTitle('Postponed — moved')).toBeInTheDocument();
+    // ...and the two markers are not the same glyph.
+    expect(screen.queryByTitle('Cancelled')).toBeNull();
+  });
+
+  it('F4: live appointments carry no retired marker', () => {
+    renderCard({ status: 'scheduled' });
+    expect(screen.queryByTitle('Cancelled')).toBeNull();
+    expect(screen.queryByTitle('Postponed — moved')).toBeNull();
   });
 
   it('still exposes the status to assistive tech (sr-only parity)', () => {

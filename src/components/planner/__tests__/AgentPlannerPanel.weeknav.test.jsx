@@ -7,13 +7,22 @@
  * current-week-ONLY scoping is provable: on a navigated week the query must be
  * exactly that week's Sun..Sat, with no today-anchored tail.
  *
- * jsdom has no matchMedia → `useIsDesktop` is false → these drive the MOBILE
- * Week view. That is deliberate: mobile and desktop share ONE anchorDate, so
- * proving the anchor contract on either surface proves it for both, and the
- * mobile path needs no matchMedia shim.
+ * jsdom has no matchMedia → `useIsDesktop` is false → the suites below drive the
+ * MOBILE Week view by default.
+ *
+ * CORRECTED RATIONALE (external review F9). An earlier version of this comment
+ * claimed that because mobile and desktop share one `anchorDate`, "proving the
+ * anchor contract on either surface proves it for both". That overclaims. The
+ * anchor STATE is shared, but the desktop path has its OWN handler
+ * (`changeSpan`), its own snap-home trigger set, its own `columnStart` wiring,
+ * and its own keyboard behaviour — none of which the mobile path exercises. Two
+ * real defects (a silent week-jump from Arrow ←/→ on the board, and the Book
+ * button prefilling today while another week is displayed) lived precisely in
+ * that uncovered gap. The final describe block below closes it with the
+ * matchMedia stub already used in the sibling AgentPlannerPanel.test.jsx.
  */
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 // 2026-07-24 is a FRIDAY → this week = Sun 2026-07-19 … Sat 2026-07-25.
@@ -199,7 +208,8 @@ describe('AgentPlannerPanel — postponed tombstones (mobile Week view)', () => 
   it('defaults to showing postponed, per the retained-churn design authority', async () => {
     getAgentWeek.mockResolvedValue(weekWithTombstones);
     await openWeekView();
-    expect(screen.getByTestId('planner-toggle-postponed-mobile')).toHaveAttribute('aria-pressed', 'true');
+    // aria-pressed tracks HIDING (F3): default = shown = hide OFF.
+    expect(screen.getByTestId('planner-toggle-postponed-mobile')).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByTestId('appt-card-tomb')).toBeInTheDocument();
   });
 
@@ -214,5 +224,113 @@ describe('AgentPlannerPanel — postponed tombstones (mobile Week view)', () => 
     expect(screen.getByTestId('planner-day-hidden-2026-07-22')).toHaveTextContent('+1 postponed hidden');
     // Presentation only: the data layer was never touched.
     expect(getAgentWeek.mock.calls.length).toBe(callsBefore);
+  });
+});
+
+// ── DESKTOP BOARD (external review F9 — the previously-uncovered surface) ────
+// The board path has its own handler (`changeSpan`), its own snap-home trigger
+// set, and its own `columnStart` wiring. Stub matchMedia → desktop, exactly as
+// the sibling AgentPlannerPanel.test.jsx does.
+describe('AgentPlannerPanel — week navigation on the DESKTOP board', () => {
+  const realMatchMedia = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: true, media: query,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+    }));
+  });
+  afterEach(() => { window.matchMedia = realMatchMedia; });
+
+  async function openBoard() {
+    render(<AgentPlannerPanel {...BASE_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('planner-desktop-board')).toBeInTheDocument());
+  }
+
+  it('renders the SAME week nav on the board, bound to the same anchor', async () => {
+    await openBoard();
+    expect(screen.getByTestId('planner-week-nav')).toBeInTheDocument();
+    expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Jul 19 – 25');
+    expect(screen.queryByTestId('planner-week-today')).toBeNull();
+  });
+
+  it('columnStart: 3-day columns are TODAY-anchored while home', async () => {
+    await openBoard();
+    // Default span is 3day; today is the fixed Friday.
+    expect(screen.getByTestId(`planner-day-col-${FRIDAY}`)).toBeInTheDocument();
+    expect(screen.getByTestId('planner-day-col-2026-07-25')).toBeInTheDocument();
+    expect(screen.getByTestId('planner-day-col-2026-07-26')).toBeInTheDocument();
+  });
+
+  it('columnStart: 3-day columns anchor to the VIEWED week\'s Sunday once navigated', async () => {
+    await openBoard();
+    fireEvent.click(screen.getByTestId('planner-week-next'));
+    await waitFor(() => expect(lastRange().start).toBe(NEXT_WEEK.start));
+    // Sun/Mon/Tue of the navigated week — NOT today+0/1/2.
+    expect(screen.getByTestId('planner-day-col-2026-07-26')).toBeInTheDocument();
+    expect(screen.getByTestId('planner-day-col-2026-07-27')).toBeInTheDocument();
+    expect(screen.getByTestId('planner-day-col-2026-07-28')).toBeInTheDocument();
+    expect(screen.queryByTestId(`planner-day-col-${FRIDAY}`)).toBeNull();
+  });
+
+  it('changeSpan: opening Follow-ups snaps the anchor home', async () => {
+    await openBoard();
+    fireEvent.click(screen.getByTestId('planner-week-next'));
+    await waitFor(() => expect(lastRange().start).toBe(NEXT_WEEK.start));
+    fireEvent.click(screen.getByTestId('planner-span-followups'));
+    await waitFor(() => expect(lastRange()).toEqual({ start: THIS_WEEK.start, end: SPAN_END }));
+  });
+
+  it('changeSpan: switching between week-scoped spans does NOT snap home', async () => {
+    await openBoard();
+    fireEvent.click(screen.getByTestId('planner-week-next'));
+    await waitFor(() => expect(lastRange().start).toBe(NEXT_WEEK.start));
+    fireEvent.click(screen.getByTestId('planner-span-week'));
+    // Still on the navigated week — day/3-day/week are all week-scoped.
+    expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Jul 26 – Aug 1');
+    fireEvent.click(screen.getByTestId('planner-span-day'));
+    expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Jul 26 – Aug 1');
+  });
+
+  it('the week nav is hidden on Follow-ups (not a week-scoped view)', async () => {
+    await openBoard();
+    fireEvent.click(screen.getByTestId('planner-span-followups'));
+    await waitFor(() => expect(screen.queryByTestId('planner-week-nav')).toBeNull());
+  });
+
+  // F2 REGRESSION GUARD: Arrow ←/→ drives the MOBILE view pills, which are not
+  // rendered on the board. Before the fix it still ran `changeView`, firing the
+  // snap-home invariant and yanking the board back to the current week with no
+  // visible cause. It must stay inert here.
+  it('F2: Arrow ←/→ does NOT move the week on the desktop board', async () => {
+    await openBoard();
+    fireEvent.click(screen.getByTestId('planner-week-next'));
+    await waitFor(() => expect(lastRange().start).toBe(NEXT_WEEK.start));
+    const callsBefore = getAgentWeek.mock.calls.length;
+
+    fireEvent.keyDown(document, { key: 'ArrowLeft' });
+    fireEvent.keyDown(document, { key: 'ArrowRight' });
+    fireEvent.keyDown(document, { key: 'ArrowRight' });
+
+    // Anchor unmoved, and no reload was triggered.
+    expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Jul 26 – Aug 1');
+    expect(getAgentWeek.mock.calls.length).toBe(callsBefore);
+  });
+
+  // F1 REGRESSION GUARD: the follow-ups badge is derived from the LOADED week,
+  // so it must not be shown at all while navigated away.
+  it('F1: the follow-ups badge is suppressed on a navigated week', async () => {
+    getProspectInfo.mockResolvedValue([
+      { id: 'p1', clientName: 'A', intendedAppointmentDate: '2026-07-20' },
+      { id: 'p2', clientName: 'B', intendedAppointmentDate: '2026-07-21' },
+    ]);
+    await openBoard();
+    // Home: the badge shows a real count.
+    await waitFor(() => expect(screen.getByTestId('planner-span-followups')).toHaveTextContent('(2)'));
+
+    fireEvent.click(screen.getByTestId('planner-week-next'));
+    await waitFor(() => expect(lastRange().start).toBe(NEXT_WEEK.start));
+    // Navigated: no count rendered rather than a wrong one.
+    expect(screen.getByTestId('planner-span-followups')).not.toHaveTextContent('(');
   });
 });

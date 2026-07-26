@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { CalendarClock, Plus, RotateCw, ArrowRight, CheckCircle2, ClipboardCheck, HelpCircle, AlertTriangle, ListChecks, Check } from 'lucide-react';
+import { CalendarClock, Plus, RotateCw, ArrowRight, CheckCircle2, ClipboardCheck, HelpCircle, AlertTriangle, ListChecks, Check, X } from 'lucide-react';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import useFocusTrap from '../../hooks/useFocusTrap';
 import { getTodayTT } from '../../utils/dateInputs';
@@ -221,6 +221,30 @@ export function AppointmentCard({
             {formatTime12(appt.startTime)}
           </span>
           <ActivityChip type={appt.type} size="sm" />
+          {/* NON-CHROMATIC retired marker (external review F4, WCAG 1.4.1).
+              Dense drops the status pill, which left cancelled and postponed
+              distinguishable ONLY by the left-rail hue — danger red vs warning
+              amber, the classic protan/deutan confusion pair — since both also
+              carry opacity-60 + line-through. A shape carries the distinction
+              instead: ✕ = cancelled, → = moved/postponed.
+              PROVENANCE GAP: the design board's dense chip (DeskApptChip) has
+              NO postponed branch at all — it handles only `cancelled` — and its
+              roomy ApptRow separates the two by a coloured DOT, also chromatic.
+              The only non-chromatic distinction anywhere in the mockups is the
+              status pill's LABEL, which is precisely what dense cannot fit. So
+              this marker is not ported from the board; it is the a11y floor
+              applied where the board is silent. */}
+          {retired && (
+            <span
+              className="shrink-0 text-ink-muted"
+              title={appt.status === 'cancelled' ? 'Cancelled' : 'Postponed — moved'}
+              aria-hidden="true"
+            >
+              {appt.status === 'cancelled'
+                ? <X size={11} strokeWidth={2.5} />
+                : <ArrowRight size={11} strokeWidth={2.5} />}
+            </span>
+          )}
           {conflicted && (
             <span
               data-testid={`appt-conflict-${appt.id}`}
@@ -1273,6 +1297,14 @@ export default function AgentPlannerPanel({
         return;
       }
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        // DESKTOP BAIL (external review F2). On the desktop board the mobile
+        // view pills are not rendered and `view` is vestigial (stuck at its
+        // 'today' default), so cycling it is invisible — but it now also fires
+        // the snap-home invariant, which YANKS THE BOARD BACK to the current
+        // week with no visible cause. This key path was previously inert on the
+        // board (a banked FU says so); it must stay inert rather than become a
+        // silent week jump. The board's own span toggle is the desktop path.
+        if (isDesktop) return;
         e.preventDefault();
         const idx = VIEWS.findIndex((v) => v.key === view);
         const delta = e.key === 'ArrowRight' ? 1 : -1;
@@ -1301,6 +1333,7 @@ export default function AgentPlannerPanel({
     sheet, churn, seriesChoice, shortcutsOpen, templatePrompt, bulkSheet, lateSheet, selectMode,
     exitSelectMode, runUndo, runRedo,
     view, weekStart, today, openBook, handleChurnAction, resolveAppt, moveCardFocus, changeView,
+    isDesktop,
   ]);
 
   // Follow-ups list — shared by the mobile Follow-ups view and the desktop
@@ -1404,7 +1437,14 @@ export default function AgentPlannerPanel({
             }`}
           >
             {v.label}
-            {v.key === 'followups' && followups.length > 0 && (
+            {/* isCurrentWeek (external review F1): `followups` is derived from
+                the LOADED week, and `deriveFollowups` builds its "already
+                booked" set from those appointments — so on a navigated week
+                prospects booked in the CURRENT week look unbooked and the count
+                INFLATES. The list itself is always correct (opening Follow-ups
+                snaps the anchor home first); only this badge could lie, so it is
+                suppressed rather than shown wrong. */}
+            {v.key === 'followups' && isCurrentWeek && followups.length > 0 && (
               <span className="ml-1.5 text-[11px] font-mono">({followups.length})</span>
             )}
           </button>
@@ -1499,7 +1539,8 @@ export default function AgentPlannerPanel({
               renderCard={renderCard}
               onReschedule={handleReschedule}
               followupsSlot={followupsList}
-              followupsCount={followups.length}
+              // 0 hides the badge entirely — see the F1 note on the mobile pill.
+              followupsCount={isCurrentWeek ? followups.length : 0}
               showPostponed={showPostponed}
               onToggleShowPostponed={setShowPostponed}
               weekNav={(
@@ -1578,14 +1619,16 @@ export default function AgentPlannerPanel({
                   type="button"
                   onClick={() => setShowPostponed((v) => !v)}
                   data-testid="planner-toggle-postponed-mobile"
-                  aria-pressed={showPostponed}
+                  // See the board's copy: aria-pressed tracks HIDING, not
+                  // showing, so it can never contradict the label (F3).
+                  aria-pressed={!showPostponed}
                   className={`min-h-[44px] px-3 rounded-xl border text-xs font-semibold transition-colors ${
                     showPostponed
                       ? 'bg-card border-border text-ink-muted hover:text-ink'
                       : 'bg-primary/10 border-primary/30 text-primary'
                   }`}
                 >
-                  {showPostponed ? 'Hide postponed' : 'Show postponed'}
+                  Hide postponed
                 </button>
               </div>
 

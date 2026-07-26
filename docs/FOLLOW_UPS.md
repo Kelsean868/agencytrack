@@ -544,6 +544,20 @@ The `staging` git branch was deleted by GitHub `deleteBranchOnMerge` on the Run 
 
 ---
 
+## Planner week-nav — external-review residue (banked 2026-07-26, PR #875 attended reviewer-only pass, LOW ×5)
+
+Five findings from the external review of PR #875 that were dispositioned BANK rather than fix-before-merge. F1–F4 and F9 were fixed in-PR; these are the remainder. None is a data-integrity or security issue.
+
+- **F5 — desktop "Book" and the `n` shortcut prefill TODAY while another week is displayed.** `AgentPlannerPanel.jsx`, header Book button + the `n` branch: both use `openBook(view === 'today' ? today : weekStart)`. On desktop `view` is vestigial and permanently `'today'` (the mobile pills are never rendered), so the date is always today even when the board shows, say, Aug 2–8. The per-column `+` buttons are correct — they pass their own date. **Fix:** use `columnStart` (or `weekStart`) when `isDesktop`. Note this shares a root cause with the now-fixed F2: `view` is mobile-only state being read on the desktop path.
+- **F6 — `today` is captured once at mount; week navigation gives that staleness new teeth.** `const today = useMemo(() => getTodayTT(), [])`. In a long-lived session crossing midnight — and especially a Saturday→Sunday week rollover — `currentWeekStart` goes stale, so `isCurrentWeek` can be TRUE for **last** week: the Today snap-back hides itself while a non-current week is displayed, and the today+2 load arm re-enables for the wrong week. The staleness pre-dates this track (`todayAppts`, `seed`, `lateCandidate` all read it); week navigation adds the new failure modes. **Fix:** recompute `today` on the existing 60-second `nowTime` tick, or re-derive on visibility-change.
+- **F7 — "No appointments" and "+N postponed hidden" render together.** `PlannerDesktopBoard.jsx`: when every appointment in a day is postponed and the filter is on, the column shows both the empty state and the hidden-count note. Honest but self-contradictory. **Fix:** suppress the empty state when `hiddenCount > 0`, or reword to "No live appointments".
+- **F8 — `weekRangeLabel` never emits a year, and returns `''` on malformed input.** `planner.helpers.js`. With unlimited navigation, "Jan 4 – 10" is ambiguous once you are months out; the empty-string fallback also leaves the nav's `aria-live` region announcing nothing. **Fix:** append the year when it differs from `today`'s, and fall back to the raw ISO range rather than `''`.
+- **F10 — RESOLVED in-PR.** The dense-card "no status pill" assertion compared ancestor `textContent` (which includes the sr-only status line) and passed only because sr-only emits lowercase `scheduled` while the pill label is `Scheduled`. Tightened to leaf-node, case-insensitive comparison in the same commit as the F1–F4/F9 fixes. Recorded here because the *class* of defect — an assertion that passes for an accidental reason — is worth recognising elsewhere.
+
+**Falsification (Rule 23):** F5/F6 are overturned if `view` stops being read on the desktop path and `today` becomes reactive, respectively — at which point re-verify with the desktop-stubbed panel tests added for F9 rather than assuming.
+
+---
+
 ## Appointment created-in-error path — distinct from churn (banked 2026-07-26, planner week-nav track, LOW)
 
 A general delete affordance for appointments was proposed during the planner week-nav track and **DROPPED at Phase 0 on design-authority grounds.** Retained churn is the deliberate product model, not an omission:
@@ -650,6 +664,15 @@ Carry all three to the next cycle's Phase 0 before further build work on these s
 | `agencytrack-git-staging-kyron-marchan-s-projects.vercel.app` | **LOGIN-OK** |
 | `agencytrack-git-feat-planner-week-nav-kyron-marchan-s-projects.vercel.app` | **AUTH-ERROR** ("Incorrect email or password") |
 
+**DECISIVE EVIDENCE — added by the external reviewer (2026-07-26, F12).** The login differential above proves only *"not staging"*; it does **not** by itself prove *"production"*, which is what this entry asserts. The reviewer settled it directly and read-only, by fetching each deployed bundle and reading its baked-in Firebase config:
+
+| Deployment | `authDomain` in the served bundle |
+|---|---|
+| `agencytrack-git-staging-…` | `agencytrack-staging` |
+| `agencytrack-git-feat-planner-week-nav-…` | **`agencytrack-2a610`** ← PRODUCTION |
+
+Cite **this** table, not the login differential, when the claim is questioned: it is a direct observation of the artifact rather than an inference from a failed credential, and it is reproducible without any account. Method: `setupBypassSession` → `GET /login` → fetch each `script[src]` / loaded `.js` chunk → match `/([a-z0-9-]*agencytrack[a-z0-9-]*)\.firebaseapp\.com/`. (A `projectId:"…"` match is unreliable — it did not appear in the emitted chunks; the `authDomain` host does.)
+
 **Why the old entry misread this.** The observed symptom in PR #852 (a feature-branch preview failing to authenticate) is real — but the cause is **not** an authorized-domains allowlist protecting the backend. The staging account simply **does not exist in the production project**, so the credential is rejected. The old entry read "login failed" as "the preview cannot reach a live backend," which inverts the actual risk.
 
 **The real risk this creates.** A preview driven with **production** credentials would authenticate normally and **read and write the live tenant**. Anyone smoke-testing a feature-branch preview with a real account — the exact thing CLAUDE.md § Workflow tells us to do before merging ("Always smoke-test the preview URL in incognito") — is operating against production. For a READ-only click-through that is merely surprising; for any **mutating** smoke it writes to live data. This is why the old "this is good, a public preview can't reach a live backend today" reassurance is actively misleading and has been struck.
@@ -660,7 +683,19 @@ Carry all three to the next cycle's Phase 0 before further build work on these s
 
 `smoke-planner-week-nav.mjs` now carries a **pre-write project guard**: before the first write it decodes observed request URLs (Firestore URL-**encodes** `projects%2F<id>`, so a naive `/projects/([a-z0-9-]+)/` regex finds nothing), asserts the resolved project is `agencytrack-staging`, asserts zero `agencytrack-2a610` traffic, and **aborts before mutating** on either failure. This matters because `assertLegHygiene` only checks prod-cleanliness at the **END** of a run — i.e. after the write has already landed.
 
-Generalize it: lift the guard into a shared helper (`vh/vh-helpers.mjs` or `lib/walk-helpers.mjs`) and call it in **every mutating smoke** before its first write — same discipline as the seeder's existing two guards (project + tenant abort). Candidates: all `smoke-run9-*`, `smoke-e1/e2/e3/e4-*`, `smoke-r06-*`, and any future mutating smoke. Read-only smokes do not need it.
+**SPEC CHANGED 2026-07-26 by the external review (F11) — this is NO LONGER a positional pre-write check.** The shipped version has two weaknesses that must not be generalized as-is:
+
+1. **Positional, not enforcing.** It runs once, before the *single* known write. Add a second write leg later and it is silently uncovered — the guard does not intercept anything, it just happens to sit earlier in the script.
+2. **It edits the evidence.** It mutates `ctx.capture.consoleMessages` to get past `assertLegHygiene`. Bounded and logged, but "adjust the capture until the gate passes" is a pattern that **will** be copied into smokes where it hides something real.
+
+**Build it as a NETWORK INTERCEPTOR instead.** In the shared context factory (`newLegContext`), attach a route handler that inspects every request and **aborts outright** any Firestore/Firebase call whose resolved project is not the expected one — decode the URL first (Firestore URL-**encodes** `projects%2F<id>`) and match `authDomain`/`projects/` alike. Properties this buys that the positional check cannot:
+
+- covers **every** write path, present and future, including ones added years later;
+- fails at the **request** layer, so a stray prod write is impossible rather than merely unlikely;
+- needs **no** capture mutation — nothing to sanitize after the fact, because the bad request never happens;
+- applies to reads too, so a misconfigured target cannot even *read* live data.
+
+Keep the fail-closed posture: abort the run when the expected project cannot be positively identified. Read-only smokes benefit as well, so wire it in the factory rather than per-smoke. Still **its own small PR**, not bundled into #875. When it lands, simplify `smoke-planner-week-nav.mjs` to drop both its positional guard and the `consoleMessages` mutation.
 
 ### Remedy (b) — CONFIG: **OPERATOR ACTION ITEM**
 

@@ -225,7 +225,9 @@ describe('PlannerDesktopBoard — postponed tombstones (presentation only)', () 
 
   it('defaults to SHOWING postponed (retained-churn design authority)', () => {
     renderBoard({ span: 'week', byDate: withPostponed, renderCard: card });
-    expect(screen.getByTestId('planner-toggle-postponed')).toHaveAttribute('aria-pressed', 'true');
+    // aria-pressed tracks HIDING (F3), so the default (postponed shown) is 'false'.
+    expect(screen.getByTestId('planner-toggle-postponed')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('planner-toggle-postponed')).toHaveTextContent('Hide postponed');
     expect(screen.getByTestId('card-tomb1')).toBeInTheDocument();
     expect(screen.getByTestId('card-tomb2')).toBeInTheDocument();
   });

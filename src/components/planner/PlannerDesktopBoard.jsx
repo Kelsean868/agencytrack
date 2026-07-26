@@ -145,14 +145,21 @@ export default function PlannerDesktopBoard({
             type="button"
             onClick={() => onToggleShowPostponed?.(!showPostponed)}
             data-testid="planner-toggle-postponed"
-            aria-pressed={showPostponed}
+            // aria-pressed tracks whether HIDING IS ACTIVE, matching the
+            // constant label (external review F3). The old pairing —
+            // a label that flipped to "Hide postponed" while aria-pressed was
+            // TRUE for SHOWN — announced "Hide postponed, pressed" at the exact
+            // moment postponed were visible, i.e. exactly backwards. A toggle
+            // button's label must name the thing being toggled and stay put;
+            // the pressed state carries on/off. Visual state is the active fill.
+            aria-pressed={!showPostponed}
             className={`min-h-[44px] px-3 rounded-xl border text-xs font-semibold transition-colors ${
               showPostponed
                 ? 'bg-card border-border text-ink-muted hover:text-ink'
                 : 'bg-primary/10 border-primary/30 text-primary'
             }`}
           >
-            {showPostponed ? 'Hide postponed' : 'Show postponed'}
+            Hide postponed
           </button>
         </div>
       )}
