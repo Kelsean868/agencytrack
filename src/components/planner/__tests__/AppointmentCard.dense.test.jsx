@@ -23,12 +23,10 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-
-vi.mock('../../../services/plannerService', async (importActual) => {
-  const actual = await importActual();
-  return { ...actual };
-});
-
+// No vi.mock here on purpose: `src/firebase.js` is GLOBALLY stubbed by the
+// firebaseTestStubPlugin (CLAUDE.md § Test Policy), so importing the real
+// plannerService is safe. A `{ ...actual }` pass-through factory would mock
+// nothing while implying it did.
 import { AppointmentCard } from '../AgentPlannerPanel';
 
 const base = {

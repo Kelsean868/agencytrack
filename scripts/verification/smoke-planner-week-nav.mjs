@@ -36,6 +36,9 @@
  */
 import { chromium } from 'playwright';
 import { newLegContext, login, assertLegHygiene } from './vh/vh-helpers.mjs';
+// NOTE: formatCaptureReport lives in lib/walk-helpers, NOT vh/vh-helpers, and it
+// PRINTS (returns void) — do not wrap it in console.log.
+import { formatCaptureReport } from './lib/walk-helpers.mjs';
 
 const tsel = (id) => `[data-testid="${id}"]`;
 const SENTINEL_TIME_24 = '19:45';
@@ -65,8 +68,19 @@ async function setTheme(p, dark) {
   await p.waitForTimeout(250);
 }
 
-const browser = await chromium.launch();
-const ctx = await newLegContext(browser); // default 1280×800 (desktop)
+// Setup sits OUTSIDE the main try/finally, so a throw from newLegContext (context
+// creation or setupBypassSession) would otherwise leak an already-launched
+// browser process. Guard it explicitly.
+let browser;
+let ctx;
+try {
+  browser = await chromium.launch();
+  ctx = await newLegContext(browser); // default 1280×800 (desktop)
+} catch (e) {
+  console.error('SMOKE SETUP ERROR:', e.message);
+  if (browser) await browser.close();
+  process.exit(1);
+}
 const p = ctx.page;
 
 // Firebase project ids observed on the wire. Firestore's Listen/Write channels
@@ -281,26 +295,33 @@ try {
       .filter((f) => /\/_vercel\/(insights|speed-insights)\/script\.js/.test(typeof f === 'string' ? f : (f.url ?? '')))
       .length;
     if (vercelOnly404 > 0) {
-      const before = ctx.capture.consoleMessages.length;
-      ctx.capture.consoleMessages = ctx.capture.consoleMessages
-        .filter((m) => !/Failed to load resource.*404/.test(typeof m === 'string' ? m : (m.text ?? '')));
-      console.log(`       NOTE: dropped ${before - ctx.capture.consoleMessages.length} localhost-only 404 console error(s) `
-        + `(${vercelOnly404} × _vercel insights script, absent off-platform). Strict on a real staging URL.`);
+      // BOUNDED removal: drop at most as many 404 messages as there were
+      // _vercel-insights network failures. A console message carries no URL, so
+      // an unbounded filter would also swallow an UNRELATED local 404 that
+      // merely co-occurred — masking a real regression under this allowance.
+      let budget = vercelOnly404;
+      const kept = [];
+      for (const m of ctx.capture.consoleMessages) {
+        const text = typeof m === 'string' ? m : (m.text ?? '');
+        if (budget > 0 && /Failed to load resource.*404/.test(text)) { budget -= 1; continue; }
+        kept.push(m);
+      }
+      const dropped = ctx.capture.consoleMessages.length - kept.length;
+      ctx.capture.consoleMessages = kept;
+      console.log(`       NOTE: dropped ${dropped} of ${vercelOnly404} allowed localhost-only 404 console error(s) `
+        + '(_vercel insights scripts, absent off-platform). Any FURTHER 404 still fails. Strict on a real staging URL.');
     }
   }
 
+  formatCaptureReport(ctx.capture);
   assertLegHygiene(ctx);
   log('PASS', `hygiene: console-clean + zero prod requests${isLocal ? ' (localhost run — see NOTE above)' : ''}`);
 } catch (e) {
   failed++;
   console.error('SMOKE ERROR:', e.message);
-  // Name the actual failing URLs — "Failed to load resource" alone is not
-  // diagnosable, and a hygiene failure otherwise costs a whole extra run.
-  const fails = ctx.capture?.networkFailures ?? [];
-  if (fails.length) {
-    console.error('  network failures:');
-    fails.slice(0, 12).forEach((f) => console.error(`    ${typeof f === 'string' ? f : (f.url ?? JSON.stringify(f))}`));
-  }
+  // Print the full capture on the failure path too — "Failed to load resource"
+  // alone is not diagnosable, and a hygiene failure otherwise costs an extra run.
+  if (ctx?.capture) formatCaptureReport(ctx.capture);
 } finally {
   await ctx.context.close();
   await browser.close();
