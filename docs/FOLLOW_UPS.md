@@ -103,7 +103,7 @@
 | Financing ruleset code comment overclaims configurability (banked 2026-07-10, promotion session, ... | LOW | — | — | 431 |
 | Master Sheet — unit friendly names absent (banked 2026-07-10, Run 4 Item 2, LOW — display polish) | LOW | — | — | 455 |
 | Company Config toggle — "count converted service calls as Tel Contacts" (banked 2026-07-10, Run 4... | LOW | — | — | 463 |
-| Vercel preview env scoping — confirm branch previews get no live backend (banked 2026-07-10, prom... | LOW | — | — | 508 |
+| ⚠️ **Feature-branch Vercel previews are bound to PRODUCTION Firebase** — overturns the old "previews can't reach a live backend" claim (re-banked 2026-07-26, planner week-nav; remedy (a) = generalize the pre-write project guard, own small PR; remedy (b) = OPERATOR binds staging env to Vercel's Preview environment) | **HIGH** | — | — | 508 |
 | Vitest on Windows — worker contention flakes under concurrent runs (banked 2026-07-10, Run 4, LOW... | LOW | — | — | 516 |
 | Recon docs must carry a validity-SHA header — new standing rule (banked 2026-07-10, Run 4, LOW — ... | LOW | — | — | 524 |
 | VH leg `t2-financing-k9-k7` flaky on first paint — no FAIL screenshot captured (banked 2026-07-09... | LOW | — | — | 540 |
@@ -472,7 +472,9 @@ A code comment in the financing ruleset config (`src/config/financingRuleset/202
 
 ## Register the six Run-9 standing smokes in SMOKES.md (banked 2026-07-17, promotion session, MEDIUM — verification hygiene)
 
-Run 9 (promoted to prod PR #862, `d0e74c12`, 2026-07-13) shipped six new standing smokes — `scripts/verification/smoke-run9-{a1-undo,a2-shortcuts,a3-conflicts,a4-templates,a5-bulk,f3e-series}.mjs` — covering undo/redo, keyboard shortcuts, conflict detection, appointment templates, bulk operations, and series-edit propagation respectively. None are yet registered in `scripts/verification/SMOKES.md` (the descriptive, non-CI-enforced catalogue). **Action:** add one row per script to SMOKES.md following the existing catalogue format before they're relied on as a regression baseline for future planner work.
+> **RESOLVED / STALE — corrected 2026-07-26 (planner week-nav track).** All six ARE registered in `scripts/verification/SMOKES.md`, each with a full row (run mode, prereqs, residue, source anchors), plus a shared run-mode note covering the `900×800` viewport choice and `assertSingleColumnPlanner`. Verified by reading the catalogue during this track's smoke registration. The action below is already done — **no work remains**; the entry is kept struck through because it was cited as open as recently as this track's Phase 0. Same rot pattern as the § BIG ONE correction: an entry asserting a gap is not forced to change when the gap is closed.
+
+~~Run 9 (promoted to prod PR #862, `d0e74c12`, 2026-07-13) shipped six new standing smokes — `scripts/verification/smoke-run9-{a1-undo,a2-shortcuts,a3-conflicts,a4-templates,a5-bulk,f3e-series}.mjs` — covering undo/redo, keyboard shortcuts, conflict detection, appointment templates, bulk operations, and series-edit propagation respectively. None are yet registered in `scripts/verification/SMOKES.md` (the descriptive, non-CI-enforced catalogue). **Action:** add one row per script to SMOKES.md following the existing catalogue format before they're relied on as a regression baseline for future planner work.~~
 
 ---
 
@@ -635,9 +637,38 @@ Carry all three to the next cycle's Phase 0 before further build work on these s
 
 ---
 
-## Vercel preview env scoping — confirm branch previews get no live backend (banked 2026-07-10, promotion session, LOW — security hygiene, confirm-only)
+## ⚠️ Feature-branch Vercel previews are bound to PRODUCTION Firebase (banked 2026-07-10 as LOW; **OVERTURNED + re-banked HIGH 2026-07-26**, planner week-nav track)
 
-Feature-branch Vercel previews are public. Firebase Auth's authorized-domains allowlist currently blocks them from authenticating (confirmed the hard way during the Run-4 polish PR #852 — a feature-branch preview's login failed with a CORS rejection from `identitytoolkit.googleapis.com`, isolating cleanly to Auth before any app code ran) — this is good, it means a public preview can't reach a live backend today. **Action:** confirm this is by design (env-var scoping) rather than accidental, so a future Vercel/Firebase config change doesn't silently open a public preview to live data. No code change — a configuration confirmation.
+> **THE PREVIOUS ENTRY WAS WRONG IN ITS MECHANISM, AND THE ERROR WAS SAFETY-RELEVANT.** It is preserved struck through at the bottom. Read the correction first.
+
+**Corrected finding.** A feature-branch Vercel preview is **not** sandboxed from live data. Vercel's staging Firebase env vars are bound to the **`staging` branch specifically**, not to the Preview *environment* — so a branch cut off `staging` builds against **PRODUCTION Firebase (`agencytrack-2a610`)**.
+
+**Evidence (same credentials, same minute, 2026-07-26).** Identical scripted login as the staging A11Y agent (`staging-agent-1@agencytrack-staging.test`), driven through `setupBypassSession`, against two deployments:
+
+| Target | Result |
+|---|---|
+| `agencytrack-git-staging-kyron-marchan-s-projects.vercel.app` | **LOGIN-OK** |
+| `agencytrack-git-feat-planner-week-nav-kyron-marchan-s-projects.vercel.app` | **AUTH-ERROR** ("Incorrect email or password") |
+
+**Why the old entry misread this.** The observed symptom in PR #852 (a feature-branch preview failing to authenticate) is real — but the cause is **not** an authorized-domains allowlist protecting the backend. The staging account simply **does not exist in the production project**, so the credential is rejected. The old entry read "login failed" as "the preview cannot reach a live backend," which inverts the actual risk.
+
+**The real risk this creates.** A preview driven with **production** credentials would authenticate normally and **read and write the live tenant**. Anyone smoke-testing a feature-branch preview with a real account — the exact thing CLAUDE.md § Workflow tells us to do before merging ("Always smoke-test the preview URL in incognito") — is operating against production. For a READ-only click-through that is merely surprising; for any **mutating** smoke it writes to live data. This is why the old "this is good, a public preview can't reach a live backend today" reassurance is actively misleading and has been struck.
+
+**Falsification (Rule 23):** overturned if a feature-branch preview is shown to carry `agencytrack-staging` in its bundle (`grep agencytrack-staging dist/assets/*.js` on a preview-equivalent build) **and** a staging account logs into it — i.e. if remedy (b) below lands, or if Vercel env scoping changes. Re-verify with the same two-target login comparison; do not assume.
+
+### Remedy (a) — CODE: generalize the pre-write project guard to every mutating smoke · **OWN SMALL PR, do not bundle**
+
+`smoke-planner-week-nav.mjs` now carries a **pre-write project guard**: before the first write it decodes observed request URLs (Firestore URL-**encodes** `projects%2F<id>`, so a naive `/projects/([a-z0-9-]+)/` regex finds nothing), asserts the resolved project is `agencytrack-staging`, asserts zero `agencytrack-2a610` traffic, and **aborts before mutating** on either failure. This matters because `assertLegHygiene` only checks prod-cleanliness at the **END** of a run — i.e. after the write has already landed.
+
+Generalize it: lift the guard into a shared helper (`vh/vh-helpers.mjs` or `lib/walk-helpers.mjs`) and call it in **every mutating smoke** before its first write — same discipline as the seeder's existing two guards (project + tenant abort). Candidates: all `smoke-run9-*`, `smoke-e1/e2/e3/e4-*`, `smoke-r06-*`, and any future mutating smoke. Read-only smokes do not need it.
+
+### Remedy (b) — CONFIG: **OPERATOR ACTION ITEM**
+
+Bind the staging Firebase env vars to Vercel's **Preview environment**, not only to the `staging` branch, so every feature-branch preview builds against `agencytrack-staging`. Until then, treat every feature-branch preview as **production-bound** and never point a mutating smoke at one. Interim workaround, proven in the planner week-nav track: build with `npm run build -- --mode staging` (vite mode precedence makes `.env.staging` override `.env.local`), verify the bundle (`agencytrack-staging` present, **zero** `agencytrack-2a610`), and serve locally.
+
+_Original entry, preserved struck through:_
+
+~~**Vercel preview env scoping — confirm branch previews get no live backend (LOW).** Feature-branch Vercel previews are public. Firebase Auth's authorized-domains allowlist currently blocks them from authenticating (confirmed the hard way during the Run-4 polish PR #852 — a feature-branch preview's login failed with a CORS rejection from `identitytoolkit.googleapis.com`, isolating cleanly to Auth before any app code ran) — this is good, it means a public preview can't reach a live backend today.~~ **The symptom was real; the mechanism and the "this is good" conclusion were both wrong — see above.**
 
 ---
 
