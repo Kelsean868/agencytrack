@@ -195,7 +195,14 @@ export function AppointmentCard({
         }`}
       >
         <span className="sr-only">Status: {appt.status}. </span>
-        <span className="flex items-center gap-1.5 min-w-0">
+        {/* flex-wrap is the safety valve: the time is shrink-0 and the type chip
+            is whitespace-nowrap, so their combined MIN-content (~85px for a
+            2-digit hour + the widest label, "F.F.I") can exceed the ~81px
+            content box of the narrowest week column — the row then overflowed
+            the card by 4px. Wrapping degrades to two lines in that pathological
+            case instead of spilling. Metrics match the mockup's DeskApptChip
+            (time 9.5px, gap 4-5px), which keeps the one-line case the norm. */}
+        <span className="flex flex-wrap items-center gap-1 min-w-0">
           {selectable && (
             <span
               data-testid={`appt-select-${appt.id}`}
@@ -208,7 +215,7 @@ export function AppointmentCard({
             </span>
           )}
           {/* One line, always: no fixed-width box to wrap a 2-digit hour. */}
-          <span className={`shrink-0 text-[10px] font-mono font-semibold tabular-nums whitespace-nowrap ${
+          <span className={`shrink-0 text-[9.5px] font-mono font-semibold tabular-nums whitespace-nowrap ${
             retired ? 'text-ink-muted line-through' : 'text-ink-muted'
           }`}>
             {formatTime12(appt.startTime)}
@@ -229,10 +236,16 @@ export function AppointmentCard({
         }`}>
           {label}
         </span>
+        {/* `truncate` does NOT work on a flex container — text-overflow does not
+            apply to flex boxes, so the cadence text overflowed the card by ~4px
+            (caught by the smoke's geometry guard, not by jsdom). The container
+            gets min-w-0 and the TEXT gets its own truncating span. */}
         {isSeries && (
-          <span className="flex items-center gap-1 text-[10px] font-mono text-ink-muted truncate">
+          <span className="flex items-center gap-1 min-w-0 text-[10px] font-mono text-ink-muted">
             <SeriesBadge size={12} />
-            {appt.status === 'postponed' ? 'moved · series stays' : cadence}
+            <span className="truncate">
+              {appt.status === 'postponed' ? 'moved · series stays' : cadence}
+            </span>
           </span>
         )}
       </button>

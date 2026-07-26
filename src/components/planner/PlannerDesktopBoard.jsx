@@ -203,7 +203,7 @@ export default function PlannerDesktopBoard({
                   narrow week column never clips the day identity the way the
                   old single-line "Wed 22 · Today" did. */}
               <div className="flex items-start justify-between gap-1 mb-2">
-                <span className="min-w-0">
+                <span className="min-w-0" data-testid={`planner-day-head-${date}`}>
                   <span className={`block text-[9px] font-mono font-bold tracking-widest ${isToday ? 'text-primary' : 'text-ink-muted'}`}>
                     {dow}
                   </span>

@@ -68,6 +68,19 @@ async function setTheme(p, dark) {
 const browser = await chromium.launch();
 const ctx = await newLegContext(browser); // default 1280×800 (desktop)
 const p = ctx.page;
+
+// Firebase project ids observed on the wire. Firestore's Listen/Write channels
+// carry the project URL-ENCODED (`projects%2F<id>%2Fdatabases`), so a naive
+// `/projects/([a-z0-9-]+)/` regex over resource entries finds NOTHING — decode
+// first and watch real requests rather than performance entries (WebChannel
+// streams do not reliably appear as resource entries).
+const seenProjects = new Set();
+p.on('request', (req) => {
+  let u = req.url();
+  try { u = decodeURIComponent(u); } catch { /* keep raw */ }
+  const m = /projects\/([a-z0-9-]+)/.exec(u);
+  if (m) seenProjects.add(m[1]);
+});
 let failed = 0;
 const log = (s, d) => { console.log(`  ${s} ${d}`); if (s === 'FAIL') failed++; };
 
@@ -121,17 +134,40 @@ try {
 
     // ── Legs 5 + 6: geometry guard + dense contract ────────────────────────
     const geo = await p.evaluate(() => {
-      const out = { cards: 0, cardOverflow: 0, colSpill: 0, missingDense: 0, withPill: 0, headerClipped: 0 };
+      const out = {
+        cards: 0, cardOverflow: 0, colSpill: 0, missingDense: 0, withPill: 0, headerClipped: 0,
+        offenders: [],
+      };
       const PILL = /^(Scheduled|Confirmed|Kept|Postponed|Cancelled|Done)$/;
       document.querySelectorAll('[data-testid^="planner-day-col-"]').forEach((col) => {
         const colR = col.getBoundingClientRect();
-        col.querySelectorAll('span.block').forEach((s) => {
-          if (s.scrollWidth > s.clientWidth + 1) out.headerClipped += 1;
-        });
+        // Scope the clip check to the HEADER ONLY. A day column also contains
+        // card NAME spans, which are `truncate` BY DESIGN (graceful ellipsis) —
+        // counting those as "clipped headers" is a false positive.
+        const head = col.querySelector('[data-testid^="planner-day-head-"]');
+        if (head) {
+          head.querySelectorAll('span').forEach((s) => {
+            if (s.scrollWidth > s.clientWidth + 1) {
+              out.headerClipped += 1;
+              out.offenders.push(`header:${head.getAttribute('data-testid')}:"${s.textContent.trim()}":${s.scrollWidth}v${s.clientWidth}`);
+            }
+          });
+        }
         col.querySelectorAll('button[data-testid^="appt-card-"]').forEach((card) => {
           out.cards += 1;
+          const id = card.getAttribute('data-testid');
           if (card.getAttribute('data-dense') !== 'true') out.missingDense += 1;
-          if (card.scrollWidth > card.clientWidth + 1) out.cardOverflow += 1;
+          if (card.scrollWidth > card.clientWidth + 1) {
+            out.cardOverflow += 1;
+            // Name the widest offending descendant so the cause is diagnosable
+            // from the log alone, without a second investigation run.
+            let worst = null;
+            card.querySelectorAll('*').forEach((el) => {
+              const w = el.getBoundingClientRect().width;
+              if (!worst || w > worst.w) worst = { w: Math.round(w), t: el.textContent.trim().slice(0, 24), c: el.className };
+            });
+            out.offenders.push(`card:${id}:${card.scrollWidth}v${card.clientWidth}:widest="${worst?.t}"(${worst?.w}px)`);
+          }
           if (card.getBoundingClientRect().right > colR.right + 1) out.colSpill += 1;
           const visible = [...card.querySelectorAll('*')]
             .filter((el) => !el.classList.contains('sr-only'))
@@ -141,6 +177,7 @@ try {
       });
       return out;
     });
+    if (geo.offenders.length) console.log(`       offenders[${theme}]: ${geo.offenders.join(' | ')}`);
     if (geo.cards === 0) {
       log('FAIL', `[${theme}] geometry guard had NO cards to measure — seed fixtures first (sweeper + seed-fixtures)`);
     } else {
@@ -159,14 +196,7 @@ try {
   // branch deploy, whether that preview inherits staging Firebase env is a
   // Vercel-config question this script must not assume. So: prove the target is
   // staging BEFORE writing anything, and abort loudly if it is not.
-  const projects = await p.evaluate(() => {
-    const ids = new Set();
-    performance.getEntriesByType('resource').forEach((r) => {
-      const m = /\/projects\/([a-z0-9-]+)\//.exec(r.name);
-      if (m) ids.add(m[1]);
-    });
-    return [...ids];
-  });
+  const projects = [...seenProjects];
   const sawProd = ctx.prodRequests.length > 0 || projects.includes('agencytrack-2a610');
   const sawStaging = projects.includes('agencytrack-staging');
   if (sawProd) {
@@ -236,11 +266,41 @@ try {
   log(backLabelFuture === futureLabel ? 'PASS' : 'FAIL',
     `re-navigation lands on the same week (${futureLabel} → ${backLabelFuture})`);
 
+  // LOCALHOST-ONLY hygiene allowance. `/_vercel/insights/script.js` and
+  // `/_vercel/speed-insights/script.js` are injected by the Vercel PLATFORM, so
+  // they 404 whenever this build is served off-platform (the documented fallback
+  // when a feature-branch preview does not carry staging Firebase env). The
+  // shared CONSOLE_ALLOWLIST already intends to ignore `/_vercel/`, but a 404
+  // surfaces as the generic "Failed to load resource…" string with no URL in it,
+  // so the existing pattern cannot match. Scoped THREE ways so a real staging
+  // run stays fully strict: localhost target only, 404s only, and only when the
+  // matching network failure is a `_vercel` insights script.
+  const isLocal = /^https?:\/\/localhost[:/]/.test(process.env.STAGING_BASE_URL ?? '');
+  if (isLocal && ctx.capture?.consoleMessages) {
+    const vercelOnly404 = (ctx.capture.networkFailures ?? [])
+      .filter((f) => /\/_vercel\/(insights|speed-insights)\/script\.js/.test(typeof f === 'string' ? f : (f.url ?? '')))
+      .length;
+    if (vercelOnly404 > 0) {
+      const before = ctx.capture.consoleMessages.length;
+      ctx.capture.consoleMessages = ctx.capture.consoleMessages
+        .filter((m) => !/Failed to load resource.*404/.test(typeof m === 'string' ? m : (m.text ?? '')));
+      console.log(`       NOTE: dropped ${before - ctx.capture.consoleMessages.length} localhost-only 404 console error(s) `
+        + `(${vercelOnly404} × _vercel insights script, absent off-platform). Strict on a real staging URL.`);
+    }
+  }
+
   assertLegHygiene(ctx);
-  log('PASS', 'hygiene: console-clean + zero prod requests');
+  log('PASS', `hygiene: console-clean + zero prod requests${isLocal ? ' (localhost run — see NOTE above)' : ''}`);
 } catch (e) {
   failed++;
   console.error('SMOKE ERROR:', e.message);
+  // Name the actual failing URLs — "Failed to load resource" alone is not
+  // diagnosable, and a hygiene failure otherwise costs a whole extra run.
+  const fails = ctx.capture?.networkFailures ?? [];
+  if (fails.length) {
+    console.error('  network failures:');
+    fails.slice(0, 12).forEach((f) => console.error(`    ${typeof f === 'string' ? f : (f.url ?? JSON.stringify(f))}`));
+  }
 } finally {
   await ctx.context.close();
   await browser.close();
