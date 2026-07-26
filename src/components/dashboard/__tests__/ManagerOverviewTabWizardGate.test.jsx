@@ -22,7 +22,6 @@ vi.mock('../../../hooks/useBranchOverview', () => ({
   }),
 }));
 
-vi.mock('../ManagerHeroSection', () => ({ default: () => null }));
 vi.mock('../BranchKPIStrip',     () => ({ default: () => null }));
 vi.mock('../BranchActivityFeed', () => ({ default: () => null }));
 vi.mock('../TeamMedalsPanel',    () => ({ default: () => null }));

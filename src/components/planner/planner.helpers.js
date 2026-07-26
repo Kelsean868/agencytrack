@@ -95,10 +95,118 @@ export function shiftDateStr(dateStr, days) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+/**
+ * 'HH:mm' + minutes → 'HH:mm' (clamped to 23:59, same-day). Malformed input or a
+ * result past midnight returns null (caller falls back). Used by the E2 drag
+ * gap-slot model to derive a drop-slot's suggested start from the preceding
+ * appointment's end.
+ */
+export function addMinutesToTime(hhmm, mins) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm ?? ''));
+  if (!m) return null;
+  const total = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + (Number(mins) || 0);
+  if (!Number.isFinite(total) || total < 0 || total > 23 * 60 + 59) return null;
+  const h = Math.floor(total / 60);
+  const min = total % 60;
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+}
+
+/**
+ * computeDayGaps — the E2 drag drop-slots for one day column: a "top" slot
+ * (start-of-day) plus one slot AFTER each rendered card, whose suggested start
+ * is that card's end time (`startTime + durationMin` — the "hole" the README's
+ * gap model targets). Dropping a dragged card into a slot changes its time to
+ * the slot's `startTime` (and its date to the column's day). Cards missing a
+ * parseable end contribute no after-slot (defensive). Pure — no date math beyond
+ * addMinutesToTime.
+ * @returns {Array<{key:string, startTime:string}>}
+ */
+export function computeDayGaps(dayAppts = []) {
+  const sorted = sortByStartTime(dayAppts);
+  const zones = [{ key: 'gap-top', startTime: '08:00' }];
+  for (const a of sorted) {
+    const end = addMinutesToTime(a.startTime, a.durationMin);
+    if (end) zones.push({ key: `gap-after-${a.id}`, startTime: end });
+  }
+  return zones;
+}
+
 // Statuses that RETAIN a slot but read as "no longer active" (dimmed/struck).
 export const RETIRED_STATUSES = new Set(['cancelled', 'postponed']);
 // Statuses that count as the plan being carried out.
 export const COMPLETED_STATUSES = new Set(['kept', 'done']);
+
+/** 'HH:mm' → minutes-of-day (0–1439), or null on malformed input. */
+function minutesOfDay(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm ?? ''));
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  if (h < 0 || h > 23 || min < 0 || min > 59) return null;
+  return h * 60 + min;
+}
+
+// ── E3: running-late cascade (gap-smart) ─────────────────────────────────────
+
+/**
+ * findRunningLate — the "you're behind" signal: the EARLIEST non-retired,
+ * non-completed appointment on `today` whose end (`startTime + durationMin`) is
+ * already before `nowTime` ('HH:mm'). It should have been churned by now. Returns
+ * that appointment, or null when nothing is overdue. Pure — the panel's client
+ * tick supplies `nowTime` (TT).
+ */
+export function findRunningLate(appts = [], today, nowTime) {
+  const nowMin = minutesOfDay(nowTime);
+  if (nowMin == null) return null;
+  const overdue = appts
+    .filter((a) => a && a.date === today
+      && !RETIRED_STATUSES.has(a.status) && !COMPLETED_STATUSES.has(a.status))
+    .map((a) => ({ a, startMin: minutesOfDay(a.startTime), dur: Number(a.durationMin) || 0 }))
+    .filter((x) => x.startMin != null && x.startMin + x.dur < nowMin)
+    .sort((x, y) => x.startMin - y.startMin);
+  return overdue.length ? overdue[0].a : null;
+}
+
+/**
+ * computeLateCascade — gap-smart running-late math (README E3). Given the day's
+ * `appts`, the `lateAppt` that overran, a `pushMin` (10/20/30) and a `scope`
+ * ('next' | 'all'), returns:
+ *   - `following`: the day's still-active appointments AT/AFTER the late one
+ *   - `affected`:  the ones that shift under `scope`, each `{id, oldStartTime,
+ *                  newStartTime, prospectId, type}`
+ *   - `unaffected`: the following appts NOT shifted
+ *   - `gapAfterNextMin`: the gap (min) after the NEXT appt (Infinity if none) —
+ *                  drives `recommendedScope`
+ *   - `recommendedScope`: 'next' when that gap ≥ the push (the push absorbs, the
+ *                  rest is unaffected), else 'all' (cascade the day)
+ * Pure — no clock read. Cross-midnight pushes clamp (addMinutesToTime → null →
+ * no shift for that row).
+ */
+export function computeLateCascade(appts = [], lateAppt, pushMin, scope = 'next') {
+  const push = Number(pushMin) || 0;
+  const lateStart = minutesOfDay(lateAppt?.startTime) ?? 0;
+  const following = sortByStartTime(
+    appts.filter((a) => a && a.id !== lateAppt?.id
+      && a.date === lateAppt?.date
+      && !RETIRED_STATUSES.has(a.status) && !COMPLETED_STATUSES.has(a.status)
+      && (minutesOfDay(a.startTime) ?? -1) >= lateStart),
+  );
+  let gapAfterNextMin = Infinity;
+  if (following.length >= 2) {
+    const nextEnd = (minutesOfDay(following[0].startTime) ?? 0) + (Number(following[0].durationMin) || 0);
+    gapAfterNextMin = (minutesOfDay(following[1].startTime) ?? 0) - nextEnd;
+  }
+  const recommendedScope = gapAfterNextMin >= push ? 'next' : 'all';
+  const shiftList = scope === 'all' ? following : following.slice(0, 1);
+  const affected = shiftList.map((a) => ({
+    id: a.id, prospectId: a.prospectId, type: a.type,
+    oldStartTime: a.startTime,
+    newStartTime: addMinutesToTime(a.startTime, push) ?? a.startTime,
+  }));
+  const affectedIds = new Set(affected.map((x) => x.id));
+  const unaffected = following.filter((a) => !affectedIds.has(a.id));
+  return { following, affected, unaffected, gapAfterNextMin, recommendedScope };
+}
 
 // ── Conflict detection (Run 9 A3 — R7: warn-only, never blocks) ─────────────
 
@@ -213,6 +321,70 @@ export function deriveFollowups(prospects = [], appointments = [], today) {
     }))
     .sort((a, b) =>
       String(a.intendedAppointmentDate).localeCompare(String(b.intendedAppointmentDate)));
+}
+
+// ── E4: per-appointment notes thread ─────────────────────────────────────────
+
+/**
+ * readNoteThread — merge an appointment's timestamped `notes[]` with its legacy
+ * single `note` string into one display thread (oldest-first). The legacy note
+ * surfaces as the FIRST entry on migrate-read (README E4: "keep the legacy note
+ * as the first thread entry"), tagged `legacy` so it sorts ahead and is never
+ * duplicated once it has also been re-saved into the thread. Each thread entry:
+ * `{ at, text, during, legacy? }` — `at` is a client ISO string (or null for the
+ * legacy entry). Defensive: non-array `notes` / missing fields are tolerated.
+ * @returns {Array<{at:(string|null), text:string, during:boolean, legacy?:boolean}>}
+ */
+export function readNoteThread(appt) {
+  const raw = Array.isArray(appt?.notes) ? appt.notes : [];
+  const thread = raw
+    .filter((n) => n && typeof n.text === 'string' && n.text.trim())
+    .map((n) => ({ at: n.at ?? null, text: n.text, during: Boolean(n.during) }));
+  const legacy = String(appt?.note ?? '').trim();
+  // Surface the legacy note only when it isn't already present as a thread entry.
+  if (legacy && !thread.some((n) => n.text === legacy)) {
+    thread.unshift({ at: null, text: legacy, during: false, legacy: true });
+  }
+  return thread.sort((a, b) => {
+    if (a.legacy) return -1;
+    if (b.legacy) return 1;
+    return String(a.at ?? '').localeCompare(String(b.at ?? ''));
+  });
+}
+
+/**
+ * prospectNoteHistory — E4 "notes travel with the prospect" (THIS-WEEK scope,
+ * deploy-free per the Option-1 ruling). Aggregates note-thread entries from the
+ * OTHER loaded appointments (`appts`, i.e. the current week) that share the same
+ * `prospectId`, excluding the appointment being viewed. Each returned row carries
+ * its source appointment's `date` so the booking sheet can show "from Mon 22".
+ * Cross-time history (pre-this-week) is a banked follow-up needing a composite
+ * index — see FOLLOW_UPS. Owner-scoped by construction (`appts` is the agent's
+ * own loaded week).
+ * @returns {Array<{date:string, text:string, during:boolean}>}
+ */
+export function prospectNoteHistory(appts = [], prospectId, excludeApptId = null) {
+  if (!prospectId) return [];
+  const out = [];
+  for (const a of appts) {
+    if (a.id === excludeApptId || a.prospectId !== prospectId) continue;
+    for (const n of readNoteThread(a)) {
+      if (n.text) out.push({ date: a.date, text: n.text, during: n.during });
+    }
+  }
+  return out;
+}
+
+/**
+ * appointmentIsActive — E4 "THIS MEETING" gate: a note added while the appt is
+ * happening is tagged `during`. Active = a non-retired, non-completed appointment
+ * dated `today` (TT). (Time-of-day window is intentionally not required — a note
+ * added the day of the meeting is "this meeting"; the compact card doesn't tick
+ * per-minute.)
+ */
+export function appointmentIsActive(appt, today) {
+  if (!appt || appt.date !== today) return false;
+  return !RETIRED_STATUSES.has(appt.status) && !COMPLETED_STATUSES.has(appt.status);
 }
 
 // ── Plan → Daily Capture seed (screen 9 handoff payoff) ──────────────────────

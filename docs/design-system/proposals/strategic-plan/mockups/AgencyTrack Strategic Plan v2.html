@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AgencyTrack — Strategic Plan v2</title>
+<link rel="preconnect" href="https://api.fontshare.com" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+#root { height: 100vh; }
+a { color: #01696F; } a:hover { color: #014E52; }
+.intro { position: fixed; top: 18px; left: 18px; z-index: 50; background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px; box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08); padding: 14px 18px; max-width: 600px; color: #28251d; }
+.intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+.intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+.intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.intro b { color: #28251d; }
+</style>
+</head>
+<body>
+<div class="intro">
+<h1><span class="dot"></span>Strategic Plan — the Branch Manager's annual operating document, live</h1>
+<p>The paper strategic-plan binder as a Nexus surface. One scrollable document — cover, <b>agent tracker</b> (18-col funnel + Submitted / Gross / Net settled API, red-amber-green banding vs prorated objective), <b>production summary</b>, <b>period metrics</b> (QUARTER / HALF toggle — light frame shows quarters, dark shows halves), <b>org structure</b> and <b>recruitment pipeline</b>. Each section opens on one teal-glass summary card. <b>Present</b> flips it into the always-dark projection mode: agenda rail, one section per slide, prev / next. TTD throughout, Trinidad sample data. Drag cards to reorder · <b>Focus</b> (⤢) for fullscreen.</p>
+</div>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="app-tokens.jsx"></script>
+<script type="text/babel" src="app-motion.jsx"></script>
+<script type="text/babel" src="app-shell.jsx"></script>
+<script type="text/babel" src="stratplan-shared.jsx"></script>
+<script type="text/babel" src="stratplan-sections.jsx"></script>
+<script type="text/babel" src="stratplan-sections2.jsx"></script>
+<script type="text/babel" src="stratplan-scenes.jsx"></script>
+<script type="text/babel">
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection id="dashboard" title="1 · Strategic Plan — dashboard (Branch Manager)"
+        subtitle="The scrollable manager surface: control bar (branch · year · QUARTER/HALF granularity · Present · Export PDF), then six stacked sections, each led by a teal-glass summary card. Light frame runs quarter granularity; dark frame runs half-year granularity — §04's rows switch with it.">
+        <DCArtboard id="dash-light" label="01 · Dashboard · Light · Quarter" width={APP_W} height={3410}><StratDashboard t={APP_LIGHT} granularity="quarter" /></DCArtboard>
+        <DCArtboard id="dash-dark" label="02 · Dashboard · Dark · Half" width={APP_W} height={3340}><StratDashboard t={APP_DARK} granularity="half" /></DCArtboard>
+      </DCSection>
+      <DCSection id="present" title="2 · Presentation mode — projected to leadership"
+        subtitle="Always-dark, high-contrast, one section per slide. Left agenda rail is click-to-jump; prev/next (48px) bottom-right; ESC exits back to the dashboard. Shown: the Agent Tracker and Period Metrics slides.">
+        <DCArtboard id="pres-tracker" label="03 · Present · Slide 2 · Agent tracker" width={1600} height={900}><StratSlide slide="tracker" /></DCArtboard>
+        <DCArtboard id="pres-period" label="04 · Present · Slide 4 · Period metrics" width={1600} height={900}><StratSlide slide="period" /></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

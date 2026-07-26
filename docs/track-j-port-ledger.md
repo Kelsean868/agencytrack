@@ -1,5 +1,16 @@
 # Track J — V2 Redesign port-completeness ledger
 
+> ⚠️ **SUPERSEDED (port-status column) — do not treat the "18 of 34" headline as current.**
+> This is a **2026-06-03** snapshot. Port status was re-verified against the tree on
+> **2026-07-07** by [`docs/audits/trackj-recon-2026-07-07.md`](audits/trackj-recon-2026-07-07.md)
+> (16 SHIPPED + 6 PARTIAL + 12 PENDING = 22/34 with shipped work), which is the newer
+> authority for the count. That recon in turn predates Run 9 (planner, promoted `d0e74c12`,
+> 2026-07-13) and the **Run A Track J conformance closeout** — so even the recon's counts
+> have since drifted. For current Track-J state see [`docs/CONTEXT.md`](CONTEXT.md) and the
+> Run A run log. The RESKIN/REDESIGN classification and the 34-row canonical spine below
+> remain valid; only the *port-status column* is stale.
+> _(Banner added Run A Tier 1 §5, 2026-07-24.)_
+
 **Snapshot date:** 2026-06-03 (main HEAD `8ba044f` post-#445 Track J — Game Plan v2 (Slice 1: hub shell + Money Needs re-home via #438; Weekly Planner suggested-week card + decomposition extraction via #445). Row 7 advances PENDING → PARTIAL. Headline: 18 of 34.)
 
 **Source of truth:** `design_handoff_v2_app/mockups/` — 35 `.html` files, of which **34 are canonical screens** per the v2 handoff README §6 (`app-leaderboard-around-me.html` is an auxiliary artboard inside the Leaderboard screen, not a separate canonical screen).

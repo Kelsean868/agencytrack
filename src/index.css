@@ -1963,6 +1963,18 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   .sidebar-section,
   .sidebar-link span,
   .sidebar-link .badge,
+  /* ★ MUST stay in this hide-list (parity with the collapsed-desktop rule
+     above, which the comment claims). In a 72px rail the nav row is 56px wide
+     while `.sidebar-nav-star` is `position:absolute; right:2px; width:44px` —
+     it covers x=10→54, i.e. 79% of the row INCLUDING the row centre (x=28),
+     and carries `z-index:1`. Leaving it rendered here makes the star swallow
+     every nav click at 768–1023px: a pinned row unpins instead of navigating,
+     and an unpinned row's star is opacity:0 but still hit-testable (opacity
+     does not remove pointer events), so it pins instead of navigating. This
+     selector was omitted when the block was copied from the collapsed rule;
+     found by the Run-A 900×800 planner smokes (7 smokes failed with
+     "click intercepted by … aria-label='Unpin Planner'"). */
+  .sidebar-nav-star,
   .sidebar-foot-info,
   .sidebar-collapse-btn { display: none; }
   .sidebar-link { justify-content: center; padding: 10px 8px; }

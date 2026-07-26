@@ -19,6 +19,21 @@ vi.mock('../../../../services/goalsService', () => ({
 }));
 vi.mock('../components/CashFlowChart', () => ({ default: () => null }));
 
+// R-06 scenario chips: control the prefs round-trip so the optimistic-update
+// ROLLBACK and the hydration RACE can be exercised deterministically.
+// Defaults MUST be promise-returning: the tab calls getUserPrefs().then() on
+// mount, so a bare vi.fn() (undefined) throws during render and takes every
+// unrelated test in this file down with it.
+const prefsMock = vi.hoisted(() => ({
+  getUserPrefs: vi.fn(() => Promise.resolve(null)),
+  setCommissionScenarios: vi.fn(() => Promise.resolve()),
+}));
+vi.mock('../../../../services/userPrefsService', () => ({
+  getUserPrefs: (...a) => prefsMock.getUserPrefs(...a),
+  setCommissionScenarios: (...a) => prefsMock.setCommissionScenarios(...a),
+  COMMISSION_SCENARIO_CAP: 6,
+}));
+
 // Suppress recharts ResizeObserver in jsdom
 globalThis.ResizeObserver = class { observe() {}; unobserve() {}; disconnect() {} };
 
@@ -152,5 +167,54 @@ describe('GoalDecompositionTab — D5 parked RTL baseline', () => {
     const newVal = screen.getByTestId('commission-confirm-new');
     // Normal gross-up: 900k / (1-0.25) = 1,200,000 pre-tax → apiToWrite > 0.
     expect(parseFloat(newVal.textContent.replace(/[^0-9.]/g, ''))).toBeGreaterThan(0);
+  });
+});
+
+// ── R-06 scenario chips: the two correctness fixes from CodeRabbit #870 ──────
+describe('GoalDecompositionTab — R-06 scenario persistence', () => {
+  const TAB_PROPS = { submissions: [], agentId: 'a1', tenantId: 't1' };
+
+  beforeEach(() => {
+    prefsMock.getUserPrefs.mockReset();
+    prefsMock.setCommissionScenarios.mockReset();
+  });
+
+  it('ROLLS BACK the optimistic chip when the write fails (UI must not claim a save that never landed)', async () => {
+    prefsMock.getUserPrefs.mockResolvedValue({ commissionScenarios: [] });
+    prefsMock.setCommissionScenarios.mockRejectedValue(new Error('offline'));
+
+    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('scenario-chips')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('scenario-save-open'));
+    fireEvent.change(screen.getByTestId('scenario-name-input'), { target: { value: 'Doomed' } });
+    fireEvent.click(screen.getByTestId('scenario-save-confirm'));
+
+    // It appears optimistically, then the failed write must remove it again.
+    await waitFor(() => expect(prefsMock.setCommissionScenarios).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(screen.queryByText('Doomed')).toBeNull();
+      expect(screen.getByTestId('scenario-chips-empty')).toBeInTheDocument();
+    });
+  });
+
+  it('does NOT let a slow prefs hydration clobber a scenario saved before it resolved', async () => {
+    // getUserPrefs resolves LATE and with stale (empty) server state.
+    let resolveHydration;
+    prefsMock.getUserPrefs.mockReturnValue(new Promise((res) => { resolveHydration = res; }));
+    prefsMock.setCommissionScenarios.mockResolvedValue();
+
+    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('scenario-chips')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('scenario-save-open'));
+    fireEvent.change(screen.getByTestId('scenario-name-input'), { target: { value: 'Survivor' } });
+    fireEvent.click(screen.getByTestId('scenario-save-confirm'));
+    await waitFor(() => expect(screen.getByText('Survivor')).toBeInTheDocument());
+
+    // NOW the stale hydration lands — pre-fix this wiped the just-saved chip.
+    resolveHydration({ commissionScenarios: [] });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.getByText('Survivor')).toBeInTheDocument();
   });
 });

@@ -174,6 +174,38 @@ export async function setupBypassSession(context, baseUrl, token) {
 // Each encodes a hard-won lesson so per-screen smokes never re-derive it.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// PRODUCTION VERIFICATION HOST — HARD-PINNED (Run A Tier 1 §3).
+// portal.agencytrack.app is the ONLY production verification target (brief
+// §Production-verification-URL). A *.vercel.app alias must NEVER stand in for
+// production: the stray `agencytrack.vercel.app` deployment (the prior value of
+// this constant) once served a production smoke, read as a live regression, and
+// triggered a rollback scare. Preview & staging smokes still pass their own
+// *.vercel.app alias EXPLICITLY via SMOKE_PREVIEW_URL / SMOKE_BASE_URL /
+// PREVIEW_HOST — those caller-supplied preview targets are intended and are NOT
+// affected by this pin. The guard below fails loudly if a future edit ever
+// re-points the production constant at a Vercel alias.
+const PROD_ORIGIN = 'https://portal.agencytrack.app';
+function assertProductionHost(url) {
+  // Origin-exact allowlist (parse, don't pattern-match): only portal.agencytrack.app
+  // over https may be the production target. Parsing the URL makes this immune to
+  // query/fragment/port trickery that a substring/regex check would miss, and
+  // rejects EVERY non-prod host — the *.vercel.app rollback-scare alias being the
+  // one that actually bit. Unparseable input is rejected too.
+  let origin = null;
+  try { origin = new URL(url).origin; } catch { /* origin stays null → reject */ }
+  if (origin !== PROD_ORIGIN) {
+    throw new Error(
+      `[verification] Refusing "${url}" as the PRODUCTION target — production ` +
+      `verification is pinned to ${PROD_ORIGIN} ONLY (Run A Tier 1 §3 / rollback-` +
+      `scare incident: a *.vercel.app alias once stood in for prod). A preview or ` +
+      `staging smoke must pass its alias explicitly via SMOKE_PREVIEW_URL / ` +
+      `SMOKE_BASE_URL, never the production path.`,
+    );
+  }
+  return url;
+}
+const PROD_URL = assertProductionHost(PROD_ORIGIN);
+
 /**
  * resolvePreviewUrl — resolves the Vercel target for a smoke run.
  *
@@ -187,7 +219,10 @@ export async function setupBypassSession(context, baseUrl, token) {
  * @returns {string} SMOKE_PREVIEW_URL if set, else the production URL.
  */
 export function resolvePreviewUrl() {
-  return process.env.SMOKE_PREVIEW_URL ?? 'https://agencytrack.vercel.app';
+  // No preview override → PRODUCTION, which is hard-pinned to portal.agencytrack.app
+  // (see PROD_URL above, Run A Tier 1 §3). A caller-supplied SMOKE_PREVIEW_URL may be a
+  // *.vercel.app PR/staging alias — that is intended and untouched.
+  return process.env.SMOKE_PREVIEW_URL ?? PROD_URL;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -203,8 +238,8 @@ export function resolvePreviewUrl() {
 //   3. finishSmoke — print the summary and process.exit() explicitly (success OR
 //      failure) so a lingering SDK connection can never keep the process alive.
 // ─────────────────────────────────────────────────────────────────────────────
-
-const PROD_URL = 'https://agencytrack.vercel.app';
+// (PROD_URL is defined once, hard-pinned to portal.agencytrack.app, in the
+//  SMOKE-HARNESS PRIMITIVES section above — Run A Tier 1 §3.)
 
 export function resolveSmokeBaseUrl({ defaultHost } = {}) {
   const argv = process.argv.slice(2);
@@ -424,7 +459,7 @@ export async function hardReloadAndAwaitReady(page) {
  * block into each smoke.
  *
  * @param {import('playwright').Page} page
- * @param {string} baseUrl - Base URL, no trailing slash (e.g. 'https://agencytrack.vercel.app').
+ * @param {string} baseUrl - Base URL, no trailing slash (e.g. 'https://portal.agencytrack.app').
  * @param {string} email
  * @param {string} password
  */

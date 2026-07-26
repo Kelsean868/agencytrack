@@ -9,7 +9,7 @@ import { getProspectInfo } from '../../services/prospectInfoService';
 import {
   getAgentWeek, getSeriesInstances, createAppointment, createRecurringAppointments,
   updateAppointment, setAppointmentStatus, postponeWithRebook, deleteAppointment,
-  undoPostpone, bulkUpdateAppointments,
+  undoPostpone, bulkUpdateAppointments, addAppointmentNote,
 } from '../../services/plannerService';
 import {
   listTemplates, saveTemplate, deleteTemplate,
@@ -18,6 +18,8 @@ import {
   weekRange, buildWeekDates, groupByDate, sortByStartTime,
   deriveFollowups, deriveSeedFromKept, formatTime12, dayLabel,
   RETIRED_STATUSES, detectConflicts, shiftDateStr,
+  readNoteThread, appointmentIsActive,
+  findRunningLate, computeLateCascade,
 } from './planner.helpers';
 import {
   seriesRowLabel, cadenceLabel, nextOccurrenceDate, slotDayLabel, formatShortDate,
@@ -30,7 +32,10 @@ import BulkMoveSheet from './BulkMoveSheet';
 import BulkCancelConfirmSheet from './BulkCancelConfirmSheet';
 import PlannerShortcutsSheet from './PlannerShortcutsSheet';
 import usePlannerHistory from './usePlannerHistory';
+import PlannerDesktopBoard from './PlannerDesktopBoard';
+import RunningLateSheet from './RunningLateSheet';
 import useToast from '../../hooks/useToast';
+import useIsDesktop from '../../hooks/useIsDesktop';
 
 // Fields openEditSheet hydrates into sheet.initial — the exact set undo/redo
 // for an edit compares against to isolate "the fields that were patched"
@@ -97,6 +102,14 @@ const VIEWS = [
   { key: 'followups', label: 'Follow-ups' },
 ];
 
+// Current local 'HH:mm' — the E3 running-late tick. Field agents run in TT, so
+// local time matches getTodayTT's date basis; the churn "Running late" action is
+// a timezone-independent manual entry regardless.
+function currentTimeHHmm() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 // Week-counter rows: booked (non-retired) planner appts of a type vs the weekly
 // floor for the matching activity.
 const WEEK_COUNTER_ROWS = [
@@ -114,7 +127,7 @@ const WEEK_COUNTER_ROWS = [
  * live appointments only. */
 function AppointmentCard({
   appt, prospectName, onChurn, resolveAppt, conflicted,
-  selectMode = false, selected = false, onToggleSelect,
+  selectMode = false, selected = false, onToggleSelect, dense = false,
 }) {
   const retired = RETIRED_STATUSES.has(appt.status);
   const selectable = selectMode && !retired;
@@ -153,7 +166,7 @@ function AppointmentCard({
       onClick={handleClick}
       data-testid={`appt-card-${appt.id}`}
       aria-pressed={selectMode ? selected : undefined}
-      className={`w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-colors ${
+      className={`w-full text-left flex items-start ${dense ? 'gap-2 p-2' : 'gap-3 p-3'} rounded-xl border transition-colors ${
         retired
           ? 'bg-card border-border/50 opacity-60'
           : selected
@@ -194,7 +207,7 @@ function AppointmentCard({
             {label}
           </span>
         </div>
-        {appt.note && <p className="text-xs text-ink-muted mt-0.5 truncate">{appt.note}</p>}
+        {!dense && appt.note && <p className="text-xs text-ink-muted mt-0.5 truncate">{appt.note}</p>}
 
         {activeSeriesLine && (
           <div className="mt-2 pt-2 border-t border-dashed border-border">
@@ -227,6 +240,9 @@ function ChurnDialog({ appt, onAction, onClose, saving }) {
   const trapRef = useFocusTrap({ onEscape: onClose, escapeDisabled: saving });
   const actions = [
     { key: 'kept',      label: 'Mark kept',    variant: 'primary' },
+    ...(['scheduled', 'confirmed'].includes(appt.status)
+      ? [{ key: 'running-late', label: 'Running late', variant: 'plain', testid: 'churn-running-late' }]
+      : []),
     { key: 'edit',      label: 'Edit details', variant: 'plain' },
     { key: 'reschedule', label: 'Reschedule',  variant: 'plain' },
     { key: 'postpone',  label: 'Postpone',     variant: 'plain' },
@@ -295,9 +311,26 @@ export default function AgentPlannerPanel({
   const today = useMemo(() => getTodayTT(), []);
   const { start: weekStart, end: weekEnd } = useMemo(() => weekRange(today), [today]);
   const weekDates = useMemo(() => buildWeekDates(today), [today]);
+  // E1 fix: the desktop board's Day/3-day spans are TODAY-anchored (today, +1,
+  // +2), so late in the week they reach PAST Saturday — e.g. on a Friday the
+  // 3-day board's third column is next Sunday. The Sun–Sat week load alone left
+  // those columns silently empty (data outside the queried range), so the load
+  // window ends at whichever is later: this week's Saturday or today+2. ISO
+  // 'YYYY-MM-DD' strings compare lexicographically, so max() is a string compare.
+  // Week-SEMANTIC derivations must still use weekStart..weekEnd (see weekCounters).
+  const loadEnd = useMemo(() => {
+    const spanEnd = shiftDateStr(today, 2);
+    return spanEnd > weekEnd ? spanEnd : weekEnd;
+  }, [today, weekEnd]);
   const floors = weeklyFloors ?? DEFAULT_WEEKLY_ACTIVITY_FLOORS;
 
   const [view, setView] = useState('today');
+  // Planner v2 E1/E5: at lg+ the panel renders the side-by-side desktop board
+  // (PlannerDesktopBoard) instead of the single-column mobile views, and drops
+  // the width cap. isDesktop is matchMedia-driven (false in jsdom → tests keep
+  // the mobile layout + its unique appt-card testids).
+  const isDesktop = useIsDesktop();
+  const [desktopSpan, setDesktopSpan] = useState('3day');
   const [appts, setAppts] = useState([]);
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -307,6 +340,19 @@ export default function AgentPlannerPanel({
   const [sheet, setSheet] = useState(null); // null | { mode, initial, rebookFrom }
   const [sheetSaving, setSheetSaving] = useState(false);
   const [sheetError, setSheetError] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false); // E4 add-note in-flight
+
+  // E3 running-late cascade: the appt being addressed, write-in-flight, the set
+  // of appts the agent chose to "Keep schedule" on (so the banner stops nagging),
+  // and a 1-minute tick that re-evaluates the overdue signal.
+  const [lateSheet, setLateSheet] = useState(null);
+  const [lateSaving, setLateSaving] = useState(false);
+  const [lateDismissed, setLateDismissed] = useState(() => new Set());
+  const [nowTime, setNowTime] = useState(() => currentTimeHHmm());
+  useEffect(() => {
+    const id = setInterval(() => setNowTime(currentTimeHHmm()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Churn dialog
   const [churn, setChurn] = useState(null);
@@ -348,13 +394,13 @@ export default function AgentPlannerPanel({
     setLoading(true);
     setError(false);
     Promise.all([
-      getAgentWeek(tenantId, agentId, weekStart, weekEnd),
+      getAgentWeek(tenantId, agentId, weekStart, loadEnd),
       getProspectInfo({ tenantId, agentId, callerRole, callerUid: agentId }).catch(() => []),
     ])
       .then(([a, p]) => { setAppts(a); setProspects(p); })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [tenantId, agentId, weekStart, weekEnd, callerRole]);
+  }, [tenantId, agentId, weekStart, loadEnd, callerRole]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -465,6 +511,145 @@ export default function AgentPlannerPanel({
     [selected, apptById],
   );
 
+  // Planner v2 E1: render-prop the desktop board uses so every board card keeps
+  // the exact churn / select / conflict / series wiring the mobile views use —
+  // the board is a layout, not a fork of the interaction model.
+  const renderCard = useCallback((a, opts = {}) => (
+    <AppointmentCard
+      key={a.id}
+      appt={a}
+      prospectName={prospectName(a.prospectId)}
+      onChurn={setChurn}
+      resolveAppt={resolveAppt}
+      conflicted={conflicts.has(a.id)}
+      selectMode={selectMode}
+      selected={selected.has(a.id)}
+      onToggleSelect={toggleSelect}
+      dense={opts.dense}
+    />
+  ), [prospectName, resolveAppt, conflicts, selectMode, selected, toggleSelect]);
+
+  // Planner v2 E2: drag-drop reschedule → the EXISTING postponeWithRebook (drag
+  // is a faster path to the same move, not a new mutation — no propagation
+  // reimplement). Mirrors the churn Postpone path's history entry (undoPostpone
+  // inverse). A SERIES instance moves just itself (single-doc rebook); the
+  // original tombstones as 'postponed' and the card's existing series note shows
+  // ("Only this one moved · series stays"). No-op when the slot is unchanged.
+  const handleReschedule = useCallback(async (appt, target) => {
+    if (!target || (target.date === appt.date && target.startTime === appt.startTime)) return;
+    const newData = {
+      type: appt.type, date: target.date, startTime: target.startTime,
+      durationMin: appt.durationMin, prospectId: appt.prospectId,
+      freeBlockLabel: appt.freeBlockLabel, note: appt.note,
+    };
+    try {
+      const newIdRef = { current: await postponeWithRebook(tenantId, appt.id, newData, meta) };
+      history.push({
+        label: 'Reschedule (drag)',
+        undo: async () => { await undoPostpone(tenantId, appt.id, newIdRef.current); },
+        redo: async () => { newIdRef.current = await postponeWithRebook(tenantId, appt.id, newData, meta); },
+      });
+      await load();
+      toast.show({ message: 'Appointment moved', variant: 'info' });
+    } catch {
+      await load();
+      toast.show({ message: 'Could not move — check your connection and try again.', variant: 'error' });
+    }
+  }, [tenantId, meta, history, load, toast]);
+
+  // Planner v2 E4: append a note to the edited appointment's thread. `during`
+  // ("THIS MEETING") is set when the appointment is active today. Appointment-
+  // scoped (addAppointmentNote → arrayUnion on the appt doc); NOT undoable (a
+  // note is a record, like a template save). Reload reflects the new entry.
+  const handleAddNote = useCallback(async (text) => {
+    const apptId = sheet?.initial?.id;
+    if (!apptId) return;
+    const appt = resolveAppt(apptId);
+    const during = appt ? appointmentIsActive(appt, today) : false;
+    setNoteSaving(true);
+    try {
+      await addAppointmentNote(tenantId, apptId, { text, during });
+      await load();
+      toast.show({ message: 'Note added', variant: 'info' });
+    } catch {
+      toast.show({ message: 'Could not add note — check your connection and try again.', variant: 'error' });
+    } finally {
+      setNoteSaving(false);
+    }
+  }, [sheet, resolveAppt, today, tenantId, load, toast]);
+
+  // ── E3 running-late cascade ────────────────────────────────────────────────
+  // The overdue signal (earliest un-churned today appt whose end has passed).
+  const lateCandidate = useMemo(
+    () => findRunningLate(todayAppts, today, nowTime),
+    [todayAppts, today, nowTime],
+  );
+  const prospectPhone = useCallback(
+    (id) => { const pr = prospects.find((x) => x.id === id); return pr?.phone ?? pr?.clientPhone ?? null; },
+    [prospects],
+  );
+
+  // "Keep schedule" — dismiss the prompt for this appt so the banner stops.
+  // Capture the late item first, then dispatch both setters separately (never a
+  // setState inside another setter's updater — that can double-fire).
+  const handleLateKeep = useCallback(() => {
+    if (lateSheet) setLateDismissed((prev) => new Set(prev).add(lateSheet.id));
+    setLateSheet(null);
+  }, [lateSheet]);
+
+  // "Wrap up · mark Kept" — the existing setAppointmentStatus path.
+  const handleLateWrapKept = useCallback(async () => {
+    const appt = lateSheet;
+    if (!appt) return;
+    setLateSaving(true);
+    try {
+      const priorStatus = appt.status;
+      await setAppointmentStatus(tenantId, appt.id, 'kept');
+      history.push({
+        label: 'Mark kept',
+        undo: async () => { await setAppointmentStatus(tenantId, appt.id, priorStatus); },
+        redo: async () => { await setAppointmentStatus(tenantId, appt.id, 'kept'); },
+      });
+      await load();
+      setLateSheet(null);
+    } catch {
+      toast.show({ message: 'Could not update — check your connection and try again.', variant: 'error' });
+    } finally {
+      setLateSaving(false);
+    }
+  }, [lateSheet, tenantId, history, load, toast]);
+
+  // "Push back +N & notify" — batch the affected time shifts through the SAME
+  // bulk write path (no new mutation path); undo restores each prior startTime.
+  const handlePushLate = useCallback(async (pushMin, scope) => {
+    const appt = lateSheet;
+    if (!appt) return;
+    const { affected } = computeLateCascade(appts, appt, pushMin, scope);
+    if (affected.length === 0) { setLateSheet(null); return; }
+    const updates = affected.map((a) => ({ id: a.id, patch: { startTime: a.newStartTime } }));
+    const priors = affected.map((a) => ({ id: a.id, patch: { startTime: a.oldStartTime } }));
+    setLateSaving(true);
+    try {
+      await bulkUpdateAppointments(tenantId, updates);
+      history.push({
+        label: `Running late +${pushMin}m (${affected.length})`,
+        undo: async () => { await bulkUpdateAppointments(tenantId, priors); },
+        redo: async () => { await bulkUpdateAppointments(tenantId, updates); },
+      });
+      await load();
+      toast.show({
+        message: `Pushed ${affected.length} ${affected.length === 1 ? 'appointment' : 'appointments'} +${pushMin}m`,
+        variant: 'info',
+      });
+      setLateSheet(null);
+    } catch (err) {
+      await load();
+      toast.show({ message: err?.message || 'Could not push — check your connection and try again.', variant: 'error' });
+    } finally {
+      setLateSaving(false);
+    }
+  }, [lateSheet, appts, tenantId, history, load, toast]);
+
   // Shared bulk runner: write → push ONE undo entry → reload → toast → exit
   // selection mode. On failure the service throws naming committed-vs-total
   // chunks (R6: never silently partial) — surfaced verbatim in an error
@@ -525,13 +710,18 @@ export default function AgentPlannerPanel({
 
   // Week counters — booked (non-retired) count per type vs floor.
   const weekCounters = useMemo(() => {
-    const weekAppts = appts.filter((a) => !RETIRED_STATUSES.has(a.status));
+    // Scoped to weekStart..weekEnd, NOT the whole loaded range: the load window
+    // now extends past Saturday to cover the board's today-anchored spans (see
+    // loadEnd), and a next-week appointment must never inflate THIS week's
+    // booked-vs-floor counters.
+    const weekAppts = appts.filter((a) => !RETIRED_STATUSES.has(a.status)
+      && a.date >= weekStart && a.date <= weekEnd);
     return WEEK_COUNTER_ROWS.map((row) => ({
       ...row,
       booked: weekAppts.filter((a) => a.type === row.type).length,
       target: Number(floors?.[row.floorKey]) || 0,
     }));
-  }, [appts, floors]);
+  }, [appts, floors, weekStart, weekEnd]);
 
   // ── Write handlers ─────────────────────────────────────────────────────────
   // useCallback: referenced directly by the Run 9 A2 keyboard-shortcuts effect
@@ -704,6 +894,12 @@ export default function AgentPlannerPanel({
   // useCallback: referenced directly by the Run 9 A2 keyboard-shortcuts effect
   // below (the `e` shortcut) — same reason as openBook above.
   const handleChurnAction = useCallback(async (action, appt) => {
+    if (action === 'running-late') {
+      // E3: open the running-late cascade sheet for this appointment.
+      setChurn(null);
+      setLateSheet(appt);
+      return;
+    }
     if (action === 'edit') {
       // Edit-in-place. For a SERIES instance, raise the scope-choice sheet first
       // (state 3): "this only" routes to the standard edit path; series-wide edit
@@ -888,7 +1084,7 @@ export default function AgentPlannerPanel({
   // from Shell.jsx's Ctrl/Cmd+K palette, so no collision. Active only while
   // this panel is mounted.
   useEffect(() => {
-    const dialogOpen = Boolean(sheet || churn || seriesChoice || shortcutsOpen || templatePrompt || bulkSheet);
+    const dialogOpen = Boolean(sheet || churn || seriesChoice || shortcutsOpen || templatePrompt || bulkSheet || lateSheet);
     function onKeyDown(e) {
       if ((e.metaKey || e.ctrlKey) && !e.altKey) {
         if (dialogOpen) return;
@@ -959,14 +1155,54 @@ export default function AgentPlannerPanel({
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [
-    sheet, churn, seriesChoice, shortcutsOpen, templatePrompt, bulkSheet, selectMode,
+    sheet, churn, seriesChoice, shortcutsOpen, templatePrompt, bulkSheet, lateSheet, selectMode,
     exitSelectMode, runUndo, runRedo,
     view, weekStart, today, openBook, handleChurnAction, resolveAppt, moveCardFocus,
   ]);
 
+  // Follow-ups list — shared by the mobile Follow-ups view and the desktop
+  // board's Follow-ups slot, so desktop keeps this view (E1: via the board's
+  // 4th toggle option) that the single-column layout had.
+  const followupsList = (
+    <div className="flex flex-col gap-3 stagger">
+      {followups.length === 0 ? (
+        <div data-testid="planner-followups-empty" className="rounded-xl bg-card border border-border p-8 text-center">
+          <CheckCircle2 size={28} className="text-primary mx-auto mb-2" aria-hidden="true" />
+          <p className="text-base font-semibold text-ink">All caught up</p>
+          <p className="text-sm text-ink-muted mt-1">No prospects are waiting on a callback.</p>
+        </div>
+      ) : (
+        followups.map((f) => (
+          <div key={f.id} data-testid={`followup-row-${f.id}`} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-ink truncate">{f.clientName}</p>
+              <p className="text-xs text-ink-muted">
+                {f.overdue ? 'Overdue · ' : 'Due '}intended {f.intendedAppointmentDate}
+              </p>
+            </div>
+            {f.overdue && <ApptStatusPill status="postponed" />}
+            <button
+              type="button"
+              onClick={() => setSheet({ mode: 'create', showRepeat: true, initial: { date: today, startTime: '09:00', prospectId: f.id, type: 'FFI' } })}
+              className="min-h-[44px] px-3 rounded-lg bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-colors"
+            >
+              Book
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  );
+
+  // E4: the edited appointment's note thread + "active" (THIS MEETING) flag,
+  // derived live from the loaded appts so a just-added note re-renders the sheet.
+  const editAppt = sheet?.mode === 'edit' && sheet.initial?.id ? resolveAppt(sheet.initial.id) : null;
+  const noteThread = editAppt ? readNoteThread(editAppt) : [];
+  const noteDuringActive = editAppt ? appointmentIsActive(editAppt, today) : false;
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 screen-enter">
+    <div className={`${isDesktop ? 'max-w-none' : 'max-w-3xl mx-auto'} px-4 py-6 screen-enter`}>
       {/* Header */}
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
@@ -1007,7 +1243,8 @@ export default function AgentPlannerPanel({
         </div>
       </div>
 
-      {/* View pills */}
+      {/* View pills — mobile only; desktop uses the board's own view toggle */}
+      {!isDesktop && (
       <div className="flex gap-2 mb-4" role="tablist" aria-label="Planner views">
         {VIEWS.map((v) => (
           <button
@@ -1030,6 +1267,7 @@ export default function AgentPlannerPanel({
           </button>
         ))}
       </div>
+      )}
 
       {/* Run 9 A5: selection count bar — visible whenever selection mode is on. */}
       {selectMode && (
@@ -1069,6 +1307,25 @@ export default function AgentPlannerPanel({
         </div>
       )}
 
+      {/* E3: running-late banner — auto-surfaced when an appt overran its end
+          un-churned; opens the cascade sheet. Suppressed once the agent picks
+          "Keep schedule" for that appt. */}
+      {lateCandidate && !lateDismissed.has(lateCandidate.id) && !lateSheet && (
+        <button
+          type="button"
+          onClick={() => setLateSheet(lateCandidate)}
+          data-testid="running-late-banner"
+          className="w-full flex items-center gap-2 mb-4 p-3 rounded-xl bg-warning/10 border border-warning/30 text-left hover:bg-warning/15 transition-colors"
+        >
+          <AlertTriangle size={16} className="text-warning-ink shrink-0" aria-hidden="true" />
+          <span className="text-sm font-semibold text-warning-ink flex-1">
+            Running late on your {formatTime12(lateCandidate.startTime)}
+            {lateCandidate.prospectId ? ` · ${prospectName(lateCandidate.prospectId) || 'Prospect'}` : ''}?
+          </span>
+          <span className="text-xs font-semibold text-warning-ink underline shrink-0">Sort it out</span>
+        </button>
+      )}
+
       {loading ? (
         <PanelSkeleton variant="list" count={4} label="Loading your planner…" />
       ) : error ? (
@@ -1084,6 +1341,21 @@ export default function AgentPlannerPanel({
         </div>
       ) : (
         <div ref={contentRef}>
+          {isDesktop ? (
+            <PlannerDesktopBoard
+              span={desktopSpan}
+              onSpanChange={setDesktopSpan}
+              today={today}
+              weekDates={weekDates}
+              byDate={byDate}
+              onBook={openBook}
+              renderCard={renderCard}
+              onReschedule={handleReschedule}
+              followupsSlot={followupsList}
+              followupsCount={followups.length}
+            />
+          ) : (
+          <>
           {/* ── TODAY ── */}
           {view === 'today' && (
             <div className="flex flex-col gap-3 stagger">
@@ -1186,35 +1458,8 @@ export default function AgentPlannerPanel({
           )}
 
           {/* ── FOLLOW-UPS ── */}
-          {view === 'followups' && (
-            <div className="flex flex-col gap-3 stagger">
-              {followups.length === 0 ? (
-                <div data-testid="planner-followups-empty" className="rounded-xl bg-card border border-border p-8 text-center">
-                  <CheckCircle2 size={28} className="text-primary mx-auto mb-2" aria-hidden="true" />
-                  <p className="text-base font-semibold text-ink">All caught up</p>
-                  <p className="text-sm text-ink-muted mt-1">No prospects are waiting on a callback.</p>
-                </div>
-              ) : (
-                followups.map((f) => (
-                  <div key={f.id} data-testid={`followup-row-${f.id}`} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-ink truncate">{f.clientName}</p>
-                      <p className="text-xs text-ink-muted">
-                        {f.overdue ? 'Overdue · ' : 'Due '}intended {f.intendedAppointmentDate}
-                      </p>
-                    </div>
-                    {f.overdue && <ApptStatusPill status="postponed" />}
-                    <button
-                      type="button"
-                      onClick={() => setSheet({ mode: 'create', showRepeat: true, initial: { date: today, startTime: '09:00', prospectId: f.id, type: 'FFI' } })}
-                      className="min-h-[44px] px-3 rounded-lg bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-colors"
-                    >
-                      Book
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
+          {view === 'followups' && followupsList}
+          </>
           )}
         </div>
       )}
@@ -1256,6 +1501,10 @@ export default function AgentPlannerPanel({
           error={sheetError}
           showRepeat={Boolean(sheet.showRepeat)}
           seriesPostpone={sheet.seriesPostpone ?? null}
+          noteThread={noteThread}
+          onAddNote={handleAddNote}
+          noteSaving={noteSaving}
+          duringActive={noteDuringActive}
           onSave={handleSheetSave}
           onDeleteTemplate={handleDeleteTemplate}
           onClose={() => { setSheet(null); setSheetError(''); }}
@@ -1291,6 +1540,20 @@ export default function AgentPlannerPanel({
           saving={churnSaving}
           onAction={handleChurnAction}
           onClose={() => setChurn(null)}
+        />
+      )}
+
+      {lateSheet && (
+        <RunningLateSheet
+          lateAppt={lateSheet}
+          appts={appts}
+          prospectName={prospectName}
+          prospectPhone={prospectPhone}
+          saving={lateSaving}
+          onPush={handlePushLate}
+          onKeep={handleLateKeep}
+          onWrapKept={handleLateWrapKept}
+          onClose={() => setLateSheet(null)}
         />
       )}
     </div>

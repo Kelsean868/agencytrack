@@ -34,8 +34,15 @@
 | Design-conformance backlog — 14 NEEDS-RULING operator decisions block sequencing (banked 2026-07-... | HIGH | — | — | 620 |
 | Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases ... | HIGH | — | — | 282 |
 | Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion sess... | MEDIUM | — | — | 290 |
-| VH leg `t1-compliance-scope` — RESOLVED (Run 8 Tier B, 2nd-`unit_manager` fixture; evidence `ef4e7c... | — | — | — | 306 |
+| R-11 login-stamp + All Users LAST-activity — REQUIRES firestore.rules edit (hasOnly allowlist or manager-readable location); bundle with the E4 index FU as a "rules + indexes attended window" | HIGH | — | — | 4282 |
+| Master Sheet STATUS filter chips — scoped NOT built (3 new reads + 6-band taxonomy); LEVEL stays blocked (banked Run A Tier 3b) | MEDIUM | — | — | 4329 |
+| Tier 3c mechanical conformance — carried from Run A (hero-card worklist · motion pop-in wiring · handoff-vs-screens-v2 · gold-contrast usages) | LOW | — | — | 4348 |
+| Commission layout — unverified two-column claim; needs a REAL mockup into screens-v2 first (banked Run A Tier 3b) | LOW | — | — | 4312 |
+| E4 cross-time prospect notes history — `(agentId, prospectId)` composite index + deploy (rules-permitted per D3); this-week scope shipped Run A Tier 2 E4 | MEDIUM | — | — | 4246 |
 | `featureFlags` allowlist is a deliberate triple-copy — consolidate when flags become config-drive... | LOW | — | — | 298 |
+| Desktop planner board — shift-click range select keys off mobile view state (banked 2026-07-24, Run A Tier 2 E1) | LOW | — | — | 4220 |
+| Desktop planner board — Arrow ←/→ view-cycling inert on the board (banked 2026-07-24, Run A Tier 2 E1) | LOW | — | — | 4232 |
+| Staging smoke run-isolation — per-run unique IDs + finally-cleanup (banked 2026-07-24, Run A Tier 2, CodeRabbit #866) | LOW | — | — | 4263 |
 | Run-7 ranked next-list — PARTIALLY CLOSED by Run 8 (campaign export, Team Dashboard #6, All Users... | — | — | — | 314 |
 | Run-7 DECISIONS-NEEDED — none banked this run (informational, 2026-07-15) | — | — | — | 329 |
 | Design-conformance 2026-07-13 revalidation — 11 NEEDS-RULING items ruled by operator; backlog upd... | HIGH | — | — | 337 |
@@ -52,7 +59,6 @@
 | Master Sheet STATUS filters — need a YTD + companyMinimums read path (banked 2026-07-10, Run 4 It... | MEDIUM | — | — | 439 |
 | Master Sheet LEVEL filter — blocked on a populated career-level field (banked 2026-07-10, Run 4 I... | MEDIUM | — | — | 447 |
 | Planner recurrence — `ENDS=Never` rolling-horizon materializer (banked 2026-07-10, Run 4 Item 5, ... | MEDIUM | — | — | 471 |
-| Planner recurrence — "edit this and all future" instances (banked 2026-07-10, Run 4 Item 5, MEDIU... | MEDIUM | — | — | 479 |
 | Run 4 pre-promotion manual checks not done this cycle — carry to next Phase 0 (banked 2026-07-10,... | MEDIUM | — | — | 487 |
 | 1-on-1 takeover — needs a real design pass (banked 2026-07-10, Run 4 Item 6 recon, MEDIUM — desig... | MEDIUM | — | — | 500 |
 | Seeder env-file foot-gun — `seed-fixtures.mjs` silently resets staging/sales_manager passwords wi... | MEDIUM | — | — | 532 |
@@ -411,6 +417,12 @@ PR #861 fixed two CI-only failures in `AgentAwardsPanel.test.jsx` (from the Run-
 2. **Shared `asyncUtilTimeout` budget under CI parallel-load contention:** `src/test-setup.js` sets `configure({ asyncUtilTimeout: 5000 })` globally, tuned for CI resource contention under full-suite parallel runs. A test whose critical path chains multiple render cycles behind one `waitFor`/`findBy*` call can still occasionally exceed that shared budget under worst-case CI load even when it resolves in <50ms locally — this is not a test bug, but such tests may need their own wider per-test timeout (the `it(name, fn, timeoutMs)` third argument) rather than either ignoring the flake or raising the global budget for every other test in the suite.
 
 **Action:** before Tier-0 error-state tests (four-states/swallow-disposition sweep, Run 6/7) are relied on to gate a future promotion, audit the other panels in that sweep for pattern 1 specifically (bare DOM query immediately after a call-count-only `waitFor`) — it is silent until CI scheduling happens to expose it, exactly as it did here. Pattern 2 is lower-risk (already has a documented, CI-tuned budget) but worth spot-checking for any test whose critical path is unusually long (2+ chained render cycles).
+
+**Annotation (Run A Tier 2, 2026-07-24) — the `AgentPlannerPanel` A5 bulk cluster exhibits pattern 2.** During E1, two separate full `vitest run` invocations each failed exactly ONE `AgentPlannerPanel.test.jsx` **"bulk operations (Run 9 A5)"** test — a **different** test each run (first the R6 >200-cap-tick gate, then "pushes ONE undo entry per bulk op") — under heavy local parallel load (`environment` ~1400s). The same file passes **68/68 in isolation ×3** and the A5 bulk subset **15/15 ×3**. Non-deterministic, different-test-each-time = pattern 2 (shared `asyncUtilTimeout` budget exceeded under parallel-load contention), not a logic bug: the E1 changes are inert in the jsdom mobile path these tests exercise (`useIsDesktop` no-ops without `matchMedia`; the board never mounts). When this cluster is audited, the candidate fix is a **wider per-test timeout** (`it(name, fn, ms)`) on the multi-render-cycle A5 bulk tests, not a global budget raise. **Second observation (Run A Tier 3 fix branch, 2026-07-24):** adding 2 tests to `AgentPlannerPanel.test.jsx` tipped ONE file-level run into failing both an A5 bulk test AND the A2 `"e opens Edit for the focused … card"` test; both passed in isolation and the file then ran 73/73 twice. Note the A2 failure is a *different* mechanism from pattern 2 — it failed in 31ms (an assertion, not a timeout), i.e. the commit→effect-resubscribe race its own source comment documents (`AgentPlannerPanel.jsx`, the `selected`-prune effect note). Audit both together: A5 wants a wider timeout, A2 wants a deterministic wait on the keydown listener being re-subscribed.
+
+**Third instance — and the first PROVEN in CI (2026-07-25, PR #868).** `DailyCaptureV2.test.jsx > daily streak celebration (integration) > "does NOT fire below the milestone (short streak)"` failed in CI with `AssertionError: expected "spy" to be called at least once` (361 files passed, 1 failed) on a **verification-only PR** that touched three `scripts/verification/*.mjs` smokes + two docs — i.e. nothing the unit suite loads, so the change cannot be causal. It passed locally in isolation AND as the full 48-test file, the identical file had passed CI on #867 an hour earlier, and **re-running the failed CI job with zero code change went green** — the cleanest flake proof available. So the family is now three tests across two files (`AgentPlannerPanel` A5-bulk + A2-`e`, `DailyCaptureV2` streak-celebration), all pattern 2.
+
+**Why this now matters more than "just re-run it":** three flakes in one session means a red CI on this repo no longer reliably distinguishes a real regression from scheduling noise, which erodes the merge gate itself. When audited, prefer the per-test timeout (`it(name, fn, ms)`) on these specific multi-render-cycle integration tests over raising the global `asyncUtilTimeout` for all ~5600 tests, and consider recording each confirmed flake here so the pattern-2 population is enumerable rather than anecdotal. (Distinct from the Windows *concurrent-run* worker-contention flake below, which is about launching two `vitest run` processes at once; this is a single run's internal parallelism.)
 
 ---
 
@@ -4232,3 +4244,135 @@ Banked: yearPlan data-foundation PR #571, 2026-06-11.
 **Priority:** LOW. Manual coverage today is better than no coverage; risk grows as the rules surface expands.
 
 Banked: yearPlan data-foundation PR #571, 2026-06-11.
+
+---
+
+## Desktop planner board — shift-click range select keys off mobile view state (banked 2026-07-24, Run A Tier 2 E1, LOW — UX polish)
+
+The E1 desktop board (`PlannerDesktopBoard`, mounted at `lg`≥1024 by `AgentPlannerPanel`) reuses the existing Run-9 A5 selection model. `visibleSelectableIds` (the shift-click range order) is derived from the mobile `view` state (`today` / `week` / `followups`), which the desktop board does not drive — the board uses its own `desktopSpan`. Consequence at desktop: **per-card toggle select works**, but **shift-click *range* select** resolves against the mobile `view`'s order (default `today`), so a range across the board's multi-day columns won't select as expected. Single-select + bulk Move/Cancel are fully functional. Not a data-safety issue (no wrong writes — selection only). The A5 bulk smoke runs at 900×800 (mobile layer) where shift-range works.
+
+**Fix shape:** derive `visibleSelectableIds` from the board's rendered columns when `isDesktop` (flatten the visible day columns' live appt ids in DOM order), mirroring the mobile derivation. Small, contained to `AgentPlannerPanel`.
+
+**Priority:** LOW — power-user affordance, degrades gracefully to single-select.
+
+Banked: Run A Tier 2 E1, 2026-07-24. Listed as a known limitation in the Tier 2 PR body.
+
+---
+
+## Desktop planner board — Arrow ←/→ view-cycling inert on the board (banked 2026-07-24, Run A Tier 2 E1, LOW — UX polish)
+
+The Run-9 A2 keyboard shortcut `ArrowLeft` / `ArrowRight` cycles the mobile `view` (Today ↔ Week ↔ Follow-ups). At desktop the board renders from `desktopSpan` (Day / 3-day / Week / Follow-ups), not `view`, so ←/→ changes the (unrendered) `view` state and is **visually inert** on the board. The other A2 shortcuts work at desktop: `n` (book), `?` (shortcuts), `↑/↓` (rove board cards — the cards are inside `contentRef`), `e` (edit focused card), undo/redo.
+
+**Fix shape:** when `isDesktop`, map ←/→ to cycle `desktopSpan` through `BOARD_SPANS` (+ Follow-ups) instead of `view`. Small, contained to the keydown handler in `AgentPlannerPanel`.
+
+**Priority:** LOW — keyboard nicety; mouse/tap on the board toggle works, and ↑/↓/e/n all function.
+
+Banked: Run A Tier 2 E1, 2026-07-24. Listed as a known limitation in the Tier 2 PR body.
+
+---
+
+## E4 cross-time prospect notes history (banked 2026-07-24, Run A Tier 2 E4, MEDIUM — feature completeness)
+
+E4 shipped the notes thread + "notes travel with the prospect" at **THIS-WEEK scope** (Option-1 ruling, deploy-free): `prospectNoteHistory` (`src/components/planner/planner.helpers.js`) surfaces a prospect's prior notes from the **already-loaded** week's appointments. Notes from the prospect's **pre-this-week** appointments do not surface until this FU ships.
+
+**To build:** a client query `where('agentId','==',uid) where('prospectId','==',pid)` over `tenants/{tid}/appointments`, aggregating `readNoteThread` across ALL of the agent's own appointments for that prospect (cross-time). Wire it into `AppointmentSheet`'s prospect-history section (merge with the this-week set, dedupe).
+
+**Rules:** ALREADY PERMITTED — `allow list` arm #1 (`firestore.rules:1574-1576`, `resource.data.agentId == request.auth.uid`; owner field = `agentId`), recorded as D3 precondition evidence in `docs/audits/run-a-run-log.md`. **No rules edit needed.**
+
+**Index (the gating cost):** requires a NEW composite index `(agentId ASC, prospectId ASC)` in `firestore.indexes.json` + a deploy (`firebase deploy --only firestore:indexes`) — a dispatcher/human action (Rule 19: CC never deploys). Build the client query to **graceful-degrade** (catch → empty, like `loadTemplates`) so the app never breaks if the index isn't live yet; the cross-time notes simply don't surface until the index deploys.
+
+**Priority:** MEDIUM — the notes thread + this-week surfacing already deliver E4's core; cross-time is the completeness extension.
+
+Banked: Run A Tier 2 E4, 2026-07-24.
+
+---
+
+## Staging smoke run-isolation — per-run unique IDs + finally-cleanup (banked 2026-07-24, Run A Tier 2, LOW — verification hygiene)
+
+CodeRabbit (#866) flagged that the Run-A planner acceptance smokes (`smoke-e1-desktop-board.mjs`, `smoke-e3-running-late.mjs`, `smoke-e4-notes-thread.mjs`) create fixed-time sentinel appointments and rely on `seed-fixtures.mjs --apply` to reset residue, rather than generating a per-run unique identifier, scoping all write-read assertions to it, and removing mutations in a `finally` block even when verification fails.
+
+**Current state (deliberate):** these follow the ESTABLISHED planner-smoke convention — the six Run-9 smokes (`smoke-run9-*.mjs`) all note "residue: … ; re-seed resets" and do not self-clean. Adopting run-isolation for only the three new smokes would make the planner-smoke suite inconsistent.
+
+**To do (suite-wide, not per-smoke):** decide the convention for the mutating planner smokes — either (a) standardize on a per-run unique token + `finally` cleanup (the self-cleaning idiom the financing smokes already use), or (b) keep the re-seed-resets convention and document it as the standard. If (a), apply across all `smoke-run9-*` + the three Run-A smokes together.
+
+**Priority:** LOW — the smokes are correct today (re-seed resets); this is consistency + fail-safe-cleanup hygiene.
+
+Banked: Run A Tier 2, CodeRabbit #866, 2026-07-24.
+
+---
+
+## R-11 login-stamp + All Users LAST-activity — REQUIRES a firestore.rules edit (banked 2026-07-25, Run A Tier 3b, HIGH-ish / attended)
+
+**STOPPED in Run A Tier 3b — not buildable client-side as ruled.** The R-11 ruling assumed a client-side own-doc write on auth; the rules surface forbids it.
+
+**Evidence — the users self-write arm uses `hasOnly([...])`, an EXHAUSTIVE allowlist** (contrast the `appointments` block's coarse `hasAll` floor, which is why E4's `notes[]` needed no rules change):
+
+| Self-write arm (`request.auth.uid == userId`) | Allowed keys |
+|---|---|
+| general | `hasSeenWelcome, photoURL, bio, phone, loggingMode, dailyNudgeTime, updatedAt, email, licenseProfile` |
+| `unit_manager` | `unitName, hasSeenWelcome, photoURL, bio, phone, loggingMode, dailyNudgeTime, updatedAt` |
+
+No login-stamp field appears in either arm, and no `lastLoginAt` / `lastActiveAt` / `lastSeen` field exists anywhere in `src/`, `functions/`, or `firestore.rules`. Any key outside `hasOnly` is REJECTED.
+
+**The relocation escape hatch fails on the read half.** `users/{uid}/prefs/{prefId}` (`firestore.rules:2031-2033`) is `allow read, write: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid` — the stamp WRITE would work there, but the "**All Users** LAST-activity **column**" needs a manager to read the stamp **across users**, and that block has **no manager read arm**.
+
+**To build, one of these rules edits is required:**
+1. add a login-stamp field (e.g. `lastLoginAt`) to the users self-write `hasOnly` allowlist — both arms — so the client can stamp its own doc, which managers already read via the existing `allow list`; **or**
+2. add a manager read arm to a manager-readable location holding the stamp.
+
+⇒ **Human-merge + manual deploy** (`firebase deploy --only firestore:rules`), per Rule 19 and the standing absolute stop on rules.
+
+**Bundle this with the E4 cross-time prospect-notes index FU** (needs `(agentId, prospectId)` in `firestore.indexes.json` + `firebase deploy --only firestore:indexes`) as a single **"rules + indexes attended window"** item — one attended session covering both deploy-gated backend deltas.
+
+**Explicitly rejected during the run (endorsed by the dispatcher):** repurposing an already-allowed field such as `updatedAt` as a pseudo-login-stamp. `updatedAt` moves on any profile edit, so the column would show "activity" that never happened — a **lying column** is worse than an absent one.
+
+Banked: Run A Tier 3b, 2026-07-25.
+
+---
+
+## Commission layout — unverified two-column claim, needs a real mockup first (banked 2026-07-25, Run A Tier 3b, LOW)
+
+An **in-chat visual pass** (2026-07, pre-Run-A; pasted at run kickoff, never banked to a repo document) claimed the Commission Playground drifts from a **two-column rail+ladder** layout. Run A Tier 3b STOPPED the item: **no in-repo design authority for it exists.**
+
+Evidence gathered during the STOP:
+- `docs/audits/design-conformance-2026-07-12.md:113-115` and `-2026-07-13.md:110-112` list **exactly three** Commission items (saved-scenario chips · manager suggest-a-goal-back · Daily cadence chip). **Neither audit contains a Commission layout/column finding.**
+- The only "two-column" reference in `docs/audits/trackj-recon-2026-07-07.md` is **row 27 — Production Report** (`ProductionTable` + `RankedLeaderboard`), a different screen.
+- The canonical mockup `docs/design-system/screens-v2/commission-v2-scenes.jsx` has **no grid/column layout classes** to port toward.
+
+Corroborating that chat-sourced design claims need provenance-checking: the **same** visual pass's other Commission claim ("missing persistency stat in the hero") turned out to be **absent data, not absent code** — `CommissionAnchorStrip.jsx:231-236` already renders the chip.
+
+**IF pursued:** run a Claude Design pass that produces a REAL mockup file into `docs/design-system/screens-v2/`, then build against **that file** as the design authority. **Do NOT build from this FU's text** — it records a claim, not a design.
+
+**Priority:** LOW. Banked: Run A Tier 3b, 2026-07-25 (dispatcher ruling: item DROPPED from Tier 3).
+
+---
+
+## Master Sheet STATUS filter chips — scoped, NOT built (banked 2026-07-25, Run A Tier 3b, MEDIUM)
+
+Ruled buildable in Run A Tier 3b but **carried, not built** — the run's remaining budget could not do it to standard, and per-item completion honesty was preferred over coverage (dispatcher guidance). This entry converts the item into a precise spec so the next session starts at build, not discovery.
+
+**What exists.** `MasterSheet.jsx:118-121` carries an explicit, deliberate deferral: *"STATUS + LEVEL chips from the mockup are intentionally NOT built here … [no] YTD/tenure-floor data for STATUS nor any level field for LEVEL."* `funnelFilters.js:9-16` names the exact taxonomy: **On track · Off pace · Gone quiet · Report late · Pers. ↓ · Below floor**, and states STATUS "needs the pro-rata tenure floor".
+
+**What must be built (the real scope — three new reads):**
+1. **YTD submissions** — `MasterSheet` currently loads only the SELECTED WEEK (`submissions` state, `:97/:168`). STATUS is a YTD-performance taxonomy, so it needs a year-scoped read (or to consume one the manager surfaces already hold — check `useBranchOverview`'s `ytdSubs` before adding a fourth fetch).
+2. **companyMinimums** — currently hard-passed as `null` (`:251`, `deriveExceptions({ …, companyMins: null })`). Needed for the floor bands.
+3. **Persistency** — the "Pers. ↓" chip needs persistency history, which this component does not load at all.
+
+Plus: pro-rata tenure floor via the existing `resolveAnnualAPIFloor` (`src/utils/tenureFloors.js`, already used by `useBranchOverview`) — reuse, do NOT reimplement; the six-band derivation as a pure tested helper (mirror `funnelFilters`' existing pure-function style); chip UI + `DEFAULT_FUNNEL_FILTERS` extension; role-scoping check on any new read (UM own-unit / BM own-branch) before it ships.
+
+**LEVEL stays BLOCKED** — no populated career-level field (`MasterSheet.jsx:158` maps `levelTitle ?? careerLevel ?? null`, unpopulated). Unchanged by this FU.
+
+**Priority:** MEDIUM. Money-adjacent (floors) — value-level tests required on the band boundaries.
+
+---
+
+## Tier 3c mechanical conformance — carried from Run A (banked 2026-07-25, LOW–MEDIUM)
+
+Four mechanical items ruled in-scope for Run A Tier 3c but **not started** — the run ended at the Tier 3 PR with budget spent on 3a/3b. Carried verbatim so nothing is lost:
+
+1. **Run-3 hero-card conformance worklist** (MEDIUM) — the hero-card items from the Run-3 worklist.
+2. **Motion pop-in wiring to the first live panels** (LOW) — the motion kit already exists (`screen-enter` / `--dur-*` / `--ease-*` in `src/index.css`, plus `useCountUp`); this is **wiring only**, no new kit.
+3. **`design_handoff_v2_app/mockups/` vs `screens-v2/` reconciliation** (LOW, docs-level) — `screens-v2` + `redesign-addendum` remain canonical; this is a docs reconciliation, not a port.
+4. **Gold-contrast usage fixes** (LOW) — fix **usages only**, NEVER token values (`--color-gold` / `--color-gold-ink` are canonical in `app.css` v2; see the gold-split rule in CLAUDE.md).
+
+**Note for whoever picks these up:** verify each item's design authority IS in-repo before building — Run A STOPPED two items (Commission two-column layout; R-11 login stamp) precisely because the claimed authority did not exist in any tracked document or the rules surface permitted no path.

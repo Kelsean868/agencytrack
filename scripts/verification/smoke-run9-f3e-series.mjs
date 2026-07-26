@@ -27,7 +27,7 @@
  * MUTATES appointments (residue: run9-f3e-* docs; sweeper removes).
  */
 import { chromium } from 'playwright';
-import { newLegContext, login, assertLegHygiene } from './vh/vh-helpers.mjs';
+import { newLegContext, login, assertLegHygiene, TABLET_VIEWPORT, assertSingleColumnPlanner } from './vh/vh-helpers.mjs';
 import { getAdminDb, ADMIN_TENANT_ID } from './vh/admin-read.mjs';
 
 const tsel = (id) => `[data-testid="${id}"]`;
@@ -41,6 +41,23 @@ const addD = (d, n) => new Date(d.getTime() + n * 86400 * 1000);
 
 const today = ttNow();
 const DATES = [iso(addD(today, -4)), iso(addD(today, -2)), iso(today), iso(addD(today, 1)), iso(addD(today, 3))];
+
+// SATURDAY GUARD — skip-not-fail (the header's "run another day", enforced).
+// Instance 4 is dated today+1 and is the ONLY seeded instance besides today's
+// that must RENDER a card (legs 1 + 3 drive `appt-card-run9-f3e-4`; the past
+// instances and next-Monday are asserted via admin reads only). The single-column
+// planner's Week view renders buildWeekDates(today) = Sun–Sat, so on a SATURDAY
+// run today+1 is the NEXT week's Sunday and that card can never appear — the leg
+// times out on a precondition, not a defect. (Widening the panel's data load to
+// today+2 in #867 does not help: the mobile Week view still renders Sun–Sat only.)
+// Exits 0 so a scheduled/batch run reports SKIP rather than a false FAIL.
+if (today.getUTCDay() === 6) {
+  console.log('  SKIP f3e — TT today is SATURDAY, so instance 4 (today+1) falls outside');
+  console.log('       this week\'s Sun–Sat render range and cannot render a card.');
+  console.log(`       Seeded dates would be: ${DATES.join(', ')}`);
+  console.log('\n══ F3E SMOKE: SKIPPED (Saturday precondition — re-run Sun–Fri) ══');
+  process.exit(0);
+}
 
 const db = getAdminDb();
 const T = db.collection(`tenants/${ADMIN_TENANT_ID}/appointments`);
@@ -88,7 +105,7 @@ log(indexOk ? 'PASS' : 'FAIL', 'leg0: (agentId, seriesId, date) composite serves
 if (!indexOk) process.exit(1);
 
 const browser = await chromium.launch();
-const ctx = await newLegContext(browser);
+const ctx = await newLegContext(browser, { viewport: TABLET_VIEWPORT });
 const p = ctx.page;
 
 async function openWeek() {
@@ -115,6 +132,10 @@ async function editVia(cardId, scopeTid, fill) {
 try {
   await login(p, 'agent1');
   await openWeek();
+
+  // E1 drift guard: assert the preserved single-column layer (not the desktop board)
+  const layer = await assertSingleColumnPlanner(p);
+  log(layer.ok ? 'PASS' : 'FAIL', `E1 drift guard: single-column layer (pills=${layer.pillsPresent} board-absent=${layer.boardAbsent})`);
 
   // Leg 1: this-only edit on Sat instance (R2 setup)
   await editVia(IDS[3], 'series-edit-this-only', async () => {

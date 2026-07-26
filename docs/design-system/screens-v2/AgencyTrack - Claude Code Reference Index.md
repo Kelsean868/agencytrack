@@ -25,14 +25,19 @@ sibling `.jsx` files, `doc-page.js`, and the `_ds/` bundle, so they only render 
 
 ## The three real builds (where effort goes)
 
-Everything else is verify-vs-mockup. These are net-new / not-routed in the repo:
+Everything else is verify-vs-mockup. These three were the net-new / not-routed builds at
+authoring time — **all three have since SHIPPED** (status refreshed Run A Tier 1 §5, 2026-07-24;
+note the 2026-07-07 recon still listed CRO as pending — it predated the CRO ship):
 
-- **CRO / back-office** — `AgencyTrack CRO.html` + CRO Build Handoff. Role not routed; Delivery
-  Register + clawback clock are new.
-- **Planner (agent)** — `planner-scheduler-handoff/` + Planner Build Handoff. `planner` tab is
-  gated coming-soon in `navConfig.js`; un-gate and build.
-- **Team Planner (manager)** — `planner-manager-handoff/`. Coaching tier; four trust constraints
-  enforced at the security-rules layer.
+- **CRO / back-office** — `AgencyTrack CRO.html` + CRO Build Handoff. **SHIPPED & routed** —
+  `role === 'cro'` routes to `CRODashboard` (`src/App.jsx:131`); `DeliveryRegisterPanel` +
+  `ClawbackChip` live under `src/components/cro/`.
+- **Planner (agent)** — `planner-scheduler-handoff/` + Planner Build Handoff. **SHIPPED & un-gated** —
+  `COMING_SOON_TABS` no longer contains `planner` (`src/config/comingSoonTabs.js`); `AgentPlannerPanel`
+  renders live. The E1–E5 enhancements are the separate Run A Planner track, per
+  `docs/design-system/proposals/planner-scheduler-v2/README.md`.
+- **Team Planner (manager)** — `planner-manager-handoff/`. **SHIPPED** — `TeamPlannerPanel.jsx` live;
+  coaching-tier trust constraints enforced at the security-rules layer.
 
 ---
 

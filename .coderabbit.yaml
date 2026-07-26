@@ -85,6 +85,13 @@ reviews:
   auto_review:
     enabled: true
     drafts: false           # don't review draft PRs
+    # Auto-review PRs into these base branches. `staging` is the Run A integration
+    # branch (feature → staging → one promotion to main); without it CodeRabbit
+    # skips staging PRs (non-default base). `main` listed explicitly so default-
+    # branch review is never dropped. Regex-matched by CodeRabbit.
+    base_branches:
+      - "main"
+      - "staging"
 
 chat:
   auto_reply: true

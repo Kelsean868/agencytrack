@@ -1,14 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { History, Info, Check } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { setGoals } from '../../../../services/goalsService';
+import {
+  getUserPrefs, setCommissionScenarios, COMMISSION_SCENARIO_CAP,
+} from '../../../../services/userPrefsService';
 import { formatCurrency } from '../../../../utils/formatters';
+import SavedScenarioChips from '../components/SavedScenarioChips';
 import {
   decomposeFromIncome,
   deriveRatiosFromHistory,
   roundTo10,
   roundToWhole,
   WEEKLY_DIVISOR,
+  DAILY_DIVISOR,
   DEFAULT_DECOMPOSITION_INPUTS,
 } from '../../../../utils/goalDecomposition';
 
@@ -18,6 +23,9 @@ const PERIODS = [
   { key: 'quarterly', label: 'Quarter', display: 'Quarter', divisor: 4             },
   { key: 'monthly',   label: 'Month',   display: 'Month',   divisor: 10            },
   { key: 'weekly',    label: 'Week',    display: 'Week',    divisor: WEEKLY_DIVISOR },
+  // §4.7 daily-cadence chip. DAILY_DIVISOR = 43 selling weeks × 6 selling days
+  // = 258 (derivation + Rule 17 note live on the constant in goalDecomposition).
+  { key: 'daily',     label: 'Day',     display: 'Day',     divisor: DAILY_DIVISOR  },
 ];
 
 function NumField({ label, value, onChange, prefix, step = 1, min = 0, badge }) {
@@ -172,6 +180,81 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   const [showConfirm, setShowConfirm]           = useState(false);
   const [preTaxAlreadyApplied, setPtaFlag]      = useState(false);
 
+  // ── R-06: saved scenario chips (agent-private, own-write) ──────────────────
+  // Persisted on the shared `users/{uid}/prefs/app` doc via userPrefsService
+  // (merge-write). That rules arm is `request.auth.uid == uid` for read AND
+  // write with NO manager arm, so scenarios are private by construction — no
+  // firestore.rules change, no index, no shared/manager visibility to leak.
+  const [scenarios, setScenarios]     = useState([]);
+  const [scenarioSaving, setScenSaving] = useState(false);
+  const [activeScenarioId, setActiveScenarioId] = useState(null);
+
+  // `mutatedRef` closes a hydration RACE: a slow getUserPrefs resolving AFTER the
+  // agent has already saved or deleted locally would otherwise clobber that
+  // mutation with pre-mutation server state. Once any local mutation has
+  // happened, hydration results are ignored (the local list is authoritative —
+  // it is also what was just written).
+  const mutatedRef = useRef(false);
+
+  useEffect(() => {
+    if (!tenantId || !user?.uid) return undefined;
+    let alive = true;
+    getUserPrefs(tenantId, user.uid)
+      .then((prefs) => {
+        if (!alive || mutatedRef.current) return;   // unmounted, or a local write already won
+        setScenarios(Array.isArray(prefs?.commissionScenarios) ? prefs.commissionScenarios : []);
+      })
+      // Degrade silently to "no scenarios" — never block the playground on a
+      // prefs read (same contract as the nav-prefs consumers).
+      .catch(() => { /* no-op */ });
+    return () => { alive = false; };
+  }, [tenantId, user?.uid]);
+
+  const persistScenarios = async (next) => {
+    // Capture the pre-optimistic state so a failed write can be ROLLED BACK —
+    // otherwise the chip row keeps showing a scenario that was never persisted,
+    // i.e. the UI lies about server state until the next reload.
+    const prevScenarios = scenarios;
+    const prevActiveId  = activeScenarioId;
+    mutatedRef.current = true;
+    setScenarios(next);           // optimistic — the chip row is a preference, not money
+    setScenSaving(true);
+    try {
+      await setCommissionScenarios(tenantId, user.uid, next);
+    } catch {
+      setScenarios(prevScenarios);
+      setActiveScenarioId(prevActiveId);
+      setError('Could not save the scenario — check your connection and try again.');
+    } finally {
+      setScenSaving(false);
+    }
+  };
+
+  const handleScenarioSave = (label) => {
+    const entry = {
+      id: `sc-${Date.now()}`,
+      label,
+      savedAt: new Date().toISOString(),   // client ISO — never a serverTimestamp inside an array
+      inputs: { ...inputs },
+      freqKey,
+    };
+    setActiveScenarioId(entry.id);
+    persistScenarios([...scenarios, entry].slice(0, COMMISSION_SCENARIO_CAP));
+  };
+
+  const handleScenarioApply = (s) => {
+    // Merge over the defaults so a scenario saved before a new input key was
+    // added still applies cleanly (missing key → default, never undefined).
+    setInputs({ ...DEFAULT_DECOMPOSITION_INPUTS, ...(s.inputs || {}) });
+    if (s.freqKey) setFreqKey(s.freqKey);
+    setActiveScenarioId(s.id);
+  };
+
+  const handleScenarioDelete = (id) => {
+    if (activeScenarioId === id) setActiveScenarioId(null);
+    persistScenarios(scenarios.filter((s) => s.id !== id));
+  };
+
   useEffect(() => {
     const stored = localStorage.getItem('agencytrack-playground-income-goal');
     if (stored) {
@@ -279,6 +362,16 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
           </p>
         </div>
       )}
+
+      {/* R-06 saved-scenario chips — sit above the inputs they restore. */}
+      <SavedScenarioChips
+        scenarios={scenarios}
+        activeId={activeScenarioId}
+        saving={scenarioSaving}
+        onApply={handleScenarioApply}
+        onSave={handleScenarioSave}
+        onDelete={handleScenarioDelete}
+      />
 
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Income Assumptions</p>

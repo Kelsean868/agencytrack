@@ -17,7 +17,7 @@
  * deleted; sweep-nonfixture-appointments.mjs resets appts).
  */
 import { chromium } from 'playwright';
-import { newLegContext, login, assertLegHygiene } from './vh/vh-helpers.mjs';
+import { newLegContext, login, assertLegHygiene, TABLET_VIEWPORT, assertSingleColumnPlanner } from './vh/vh-helpers.mjs';
 
 const tsel = (id) => `[data-testid="${id}"]`;
 
@@ -26,12 +26,16 @@ let failed = 0;
 const log = (s, d) => { console.log(`  ${s} ${d}`); if (s === 'FAIL') failed++; };
 
 // ── agent1 context ──
-const ctx1 = await newLegContext(browser);
+const ctx1 = await newLegContext(browser, { viewport: TABLET_VIEWPORT });
 const p = ctx1.page;
 try {
   await login(p, 'agent1');
   await p.locator(tsel('agent-tab-planner')).first().click({ timeout: 15_000 });
   await p.locator(tsel('planner-book')).waitFor({ state: 'visible', timeout: 15_000 });
+
+  // E1 drift guard: assert the preserved single-column layer (not the desktop board)
+  const layer = await assertSingleColumnPlanner(p);
+  log(layer.ok ? 'PASS' : 'FAIL', `E1 drift guard: single-column layer (pills=${layer.pillsPresent} board-absent=${layer.boardAbsent})`);
 
   // 1. Book a 10:40 appt, save it as a template
   await p.locator(tsel('planner-book')).click();
@@ -86,7 +90,7 @@ try {
 } finally { await ctx1.context.close(); }
 
 // ── 3. agent2: picker absent (owner-only live) ──
-const ctx2 = await newLegContext(browser);
+const ctx2 = await newLegContext(browser, { viewport: TABLET_VIEWPORT });
 try {
   const p2 = ctx2.page;
   await login(p2, 'agent2');
@@ -105,7 +109,7 @@ try {
 } finally { await ctx2.context.close(); }
 
 // ── 4. cleanup: agent1 deletes the template ──
-const ctx3 = await newLegContext(browser);
+const ctx3 = await newLegContext(browser, { viewport: TABLET_VIEWPORT });
 try {
   const p3 = ctx3.page;
   await login(p3, 'agent1');
@@ -114,10 +118,39 @@ try {
   await p3.locator(tsel('planner-book')).click();
   await p3.locator(tsel('appointment-sheet')).waitFor({ state: 'visible', timeout: 8_000 });
   if (await p3.locator(tsel('appt-template-picker')).waitFor({ state: 'visible', timeout: 8_000 }).then(() => true).catch(() => false)) {
-    await p3.locator('[data-testid^="template-delete-"]').first().click();
+    // Delete EVERY template, not just the first. The final assertion is
+    // "picker hidden = 0 templates", which is only valid once the list is empty
+    // — and nothing sweeps `appointmentTemplates` (sweep-nonfixture-
+    // appointments.mjs covers appointments ONLY), so a run killed mid-flight
+    // leaves orphans that make a single delete insufficient. That is exactly
+    // what failed on the 2026-07-25 rerun (3 earlier runs died at the sidebar
+    // star intercept, each having saved a template). Deleting all also makes
+    // this leg the de-facto template sweeper.
+    let deleted = 0;
+    for (let i = 0; i < 25; i += 1) {
+      const rows = await p3.locator('[data-testid^="template-delete-"]').count();
+      if (rows === 0) break;
+      await p3.locator('[data-testid^="template-delete-"]').first().click();
+      await p3.waitForTimeout(700);
+      deleted += 1;
+    }
+    // AUTHORITATIVE zero-state: re-load and re-open the picker rather than
+    // trusting the in-sheet delete-control count, which only reflects the
+    // optimistic post-delete `templates` state in the open sheet. A reload
+    // re-reads through listTemplates → Firestore, so "0 templates" means the
+    // deletes actually PERSISTED (the same reason the earlier legs reload).
+    await p3.reload({ waitUntil: 'domcontentloaded' });
     await p3.waitForTimeout(1500);
-    const gone = !(await p3.locator(tsel('appt-template-picker')).isVisible().catch(() => false));
-    log(gone ? 'PASS' : 'FAIL', 'template deleted; picker hidden again (0 templates)');
+    await p3.locator(tsel('agent-tab-planner')).first().click({ timeout: 15_000 });
+    await p3.locator(tsel('planner-book')).waitFor({ state: 'visible', timeout: 15_000 });
+    await p3.locator(tsel('planner-book')).click();
+    await p3.locator(tsel('appointment-sheet')).waitFor({ state: 'visible', timeout: 8_000 });
+    const remaining = await p3.locator('[data-testid^="template-delete-"]').count();
+    const pickerBack = await p3.locator(tsel('appt-template-picker'))
+      .waitFor({ state: 'visible', timeout: 2_000 }).then(() => true).catch(() => false);
+    const gone = remaining === 0 && !pickerBack;
+    log(gone ? 'PASS' : 'FAIL',
+      `templates deleted (${deleted}); 0 templates persisted after reload (remaining=${remaining} picker=${pickerBack})`);
   } else {
     log('FAIL', 'cleanup: picker not found for delete');
   }

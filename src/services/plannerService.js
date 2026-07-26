@@ -36,7 +36,7 @@
 
 import {
   addDoc, updateDoc, deleteDoc, doc, collection, getDocs,
-  query, where, orderBy, serverTimestamp, writeBatch,
+  query, where, orderBy, serverTimestamp, writeBatch, arrayUnion,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getWarRoleRank } from './managerWarService';
@@ -225,6 +225,25 @@ function buildUpdatePatch(patch = {}) {
  */
 export async function updateAppointment(tenantId, apptId, patch) {
   await updateDoc(apptRef(tenantId, apptId), buildUpdatePatch(patch));
+}
+
+/**
+ * E4: append one entry to an appointment's timestamped `notes[]` thread. Uses
+ * arrayUnion so concurrent adds don't clobber each other. The entry's `at` is a
+ * CLIENT ISO string — NEVER serverTimestamp() (Firestore rejects the sentinel
+ * inside array elements; banked). `notes` is an extra field the coarse
+ * validApptWrite() floor allows (hasAll, not hasOnly); `allow update` still gates
+ * on owner (agentId == uid), so this stays appointment-scoped + owner-only. The
+ * legacy single `note` field is left untouched (readNoteThread merges it).
+ * @param {string} text  note body (trimmed/capped by the caller/UI)
+ * @param {boolean} during  "THIS MEETING" tag — note taken while the appt is active
+ */
+export async function addAppointmentNote(tenantId, apptId, { text, during = false, at }) {
+  const entry = { text: String(text ?? '').slice(0, 2000), during: Boolean(during), at: at ?? new Date().toISOString() };
+  await updateDoc(apptRef(tenantId, apptId), {
+    notes: arrayUnion(entry),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 // Firestore hard-caps a WriteBatch at 500 writes; chunk at 400 for headroom

@@ -5,8 +5,12 @@ import { render, screen } from '@testing-library/react';
 import BranchKPIStrip from '../BranchKPIStrip.jsx';
 
 vi.mock('../KPICard', () => ({
-  default: ({ label, values }) => (
-    <div data-testid="kpi-card" data-values={JSON.stringify(values)}>{label}</div>
+  default: ({ label, values, isPercent }) => (
+    <div
+      data-testid="kpi-card"
+      data-values={JSON.stringify(values)}
+      data-percent={String(!!isPercent)}
+    >{label}</div>
   ),
 }));
 
@@ -56,6 +60,15 @@ describe('BranchKPIStrip — with data', () => {
   it('renders Weekly FFI label', () => {
     render(<BranchKPIStrip kpiData={KPIS_4W} loading={false} />);
     expect(screen.getByText('Weekly FFI')).toBeInTheDocument();
+  });
+
+  it('passes isPercent only to the Compliance Rate card (so it renders "%", others do not)', () => {
+    render(<BranchKPIStrip kpiData={KPIS_4W} loading={false} activeAgentCount={12} />);
+    expect(screen.getByText('Compliance Rate').getAttribute('data-percent')).toBe('true');
+    expect(screen.getByText('Weekly API').getAttribute('data-percent')).toBe('false');
+    expect(screen.getByText('Weekly Apps').getAttribute('data-percent')).toBe('false');
+    expect(screen.getByText('Weekly FFI').getAttribute('data-percent')).toBe('false');
+    expect(screen.getByText('Active Agents').getAttribute('data-percent')).toBe('false');
   });
 
   it('renders week count in strip heading', () => {
