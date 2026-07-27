@@ -18,6 +18,7 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| Promotion deletes `staging`, silently auto-retargeting every open PR onto `main` — fired twice; put #872 + #873 into main ungated. RECOMMENDS a CI guard; needs dispatcher decision (banked 2026-07-26, PR #871 session) | HIGH | — | — | 430 |
 | External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track) | HIGH | — | overdue (was 2026-07-17) | ~4130 |
 | Track K Phase 2 — narrative `branchPlans` (new collection, HUMAN-MERGE) + PPTX + manpower setter + per-branch `branchGoals` keying (banked 2026-07-21, #864 close) | HIGH | Track K | — | ~288 |
 | Track K Phase 3 — classification quotas + real monthly quota model (banked 2026-07-21, #864 close) | MEDIUM | Track K | — | ~288 |
@@ -35,6 +36,7 @@
 | Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases ... | HIGH | — | — | 282 |
 | Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion sess... | MEDIUM | — | — | 290 |
 | R-11 login-stamp + All Users LAST-activity — REQUIRES firestore.rules edit (hasOnly allowlist or manager-readable location); bundle with the E4 index FU as a "rules + indexes attended window" | HIGH | — | — | 4282 |
+| Persistency threshold sites left un-consolidated deliberately (campaignEngine gate bands · config-registry label · tenant-configurable companyMinimums) — note so a future sweep doesn't treat them as misses (banked 2026-07-26, PR #871) | LOW | — | — | 470 |
 | Tier 3c mechanical conformance — carried from Run A (hero-card worklist · motion pop-in wiring · handoff-vs-screens-v2 · gold-contrast usages) | LOW | — | — | 4348 |
 | Commission layout — unverified two-column claim; needs a REAL mockup into screens-v2 first (banked Run A Tier 3b) | LOW | — | — | 4312 |
 | E4 cross-time prospect notes history — `(agentId, prospectId)` composite index + deploy (rules-permitted per D3); this-week scope shipped Run A Tier 2 E4 | MEDIUM | — | — | 4246 |
@@ -424,6 +426,65 @@ PR #861 fixed two CI-only failures in `AgentAwardsPanel.test.jsx` (from the Run-
 **Why this now matters more than "just re-run it":** three flakes in one session means a red CI on this repo no longer reliably distinguishes a real regression from scheduling noise, which erodes the merge gate itself. When audited, prefer the per-test timeout (`it(name, fn, ms)`) on these specific multi-render-cycle integration tests over raising the global `asyncUtilTimeout` for all ~5600 tests, and consider recording each confirmed flake here so the pattern-2 population is enumerable rather than anecdotal. (Distinct from the Windows *concurrent-run* worker-contention flake below, which is about launching two `vitest run` processes at once; this is a single run's internal parallelism.)
 
 ---
+
+---
+
+## Promotion deletes `staging`, silently orphaning every open PR onto `main` (banked 2026-07-26, PR #871 session, HIGH — process/CI, recurring)
+
+**This is not hypothetical and it is not new. It has now fired twice, and on 2026-07-26 it put two PRs into `main` that had never passed the staging gate.**
+
+### Mechanism
+
+The repo has **"automatically delete head branches" enabled** (`deleteBranchOnMerge: true` — banked in CLAUDE.md § Post-merge local cleanup, where the documented `git branch -D` cleanup step *depends* on it). A staging→main promotion PR has `staging` as its **head** branch, so merging the promotion deletes `staging`.
+
+GitHub's documented behaviour when a base branch is deleted is to **auto-retarget every open PR based on it to the repository's default branch** — here, `main`. No notification, no review request, no CI signal. The PR simply now says "into main".
+
+### Confirmed blast radius (verified via the Timeline API, `automatic_base_change_succeeded` events)
+
+| PR | Event timestamp | Outcome |
+|---|---|---|
+| #871 | 2026-07-26T19:13:32Z | Caught before merge. Retargeted back to `staging` + rebased in this session. |
+| #872 | 2026-07-26T19:13:32Z | **MERGED INTO `main`** (`d3fe88e4`) — bypassed the staging gate. |
+| #873 | 2026-07-26T19:13:33Z | **MERGED INTO `main`** (`0eb89f31`) — bypassed the staging gate. |
+
+All three retargeted in the same second, on the #874 promotion merge. #872/#873 were docs+tests only, so the damage was procedural rather than functional — **that was luck, not a control.** The same event would have carried product code into production-tracking `main` just as silently.
+
+Prior occurrence: `staging` was also deleted on the #860 promotion (recorded in CONTEXT.md — "the `staging` git branch no longer exists (deleted on PR #860 merge)"). It was treated as a one-off re-baseline chore rather than as this failure mode.
+
+### The other 5 open PRs are NOT affected
+
+Audited the same way — #825, #854, #621, #546, #543, #540, #398 carry **no** base-change event of any kind. They were cut against `main` originally and are simply stale (May 31 – July 11). They need triage, but not for this reason.
+
+### Recommendation — CI guard (primary), and why not the alternatives
+
+**RECOMMENDED: add a required CI job that fails any PR targeting `main` whose head branch is not `staging`** (plus an explicit escape hatch, e.g. a `promotion` or `hotfix` label, for dispatcher-authorised direct-to-main work).
+
+Reasoning — it is the only option that satisfies all four constraints:
+1. **It is enforceable here.** Branch protection is not platform-enforced on this plan (CLAUDE.md § Workflow), so merge gates are procedural. A CI job is the one mechanism that actually blocks.
+2. **It guards the harm, not just one cause.** Auto-retarget is only one route to "wrong thing merges into main". The guard catches a hand-picked wrong base too.
+3. **It would have caught #872 and #873.** Disabling auto-delete would have prevented the retarget, but nothing would have stopped a manually mis-based PR.
+4. **It is version-controlled and reviewable** — it lives in `.github/workflows/`, is visible in diffs, and cannot be silently toggled off in a settings pane.
+
+**Considered and NOT recommended:**
+
+- **Disable "automatically delete head branches."** Directly prevents this trigger, but has wide blast radius for a narrow problem: the banked post-merge cleanup sequence explicitly relies on the auto-prune (`git branch -D` is documented as correct *because* the remote ref is already gone). Turning it off litters the remote with every merged feature branch and invalidates a documented rule. It also still permits a manually mis-based PR.
+- **Branch protection on `main`.** Unavailable — not platform-enforced on the current plan. This is already recorded doctrine.
+- **Change the repo default branch to `staging`.** Genuinely elegant: auto-retarget would then send orphans to `staging`, the correct destination, and new PRs would default correctly. Rejected as *primary* because it is a silent, wide-reaching setting change (clone defaults, new-PR defaults, and anything keying off the default branch) to fix a problem a guard addresses head-on. Worth revisiting as a **supplement** if the dispatcher wants belt-and-braces.
+- **Runbook step: recreate `staging` immediately post-promotion.** Cheap and worth doing regardless, but it is process, not enforcement — and this failure has already recurred once under process-only handling. Pair it with the guard; do not rely on it alone.
+
+**Do not change repo settings from this session** — flagged for the dispatcher. The CI guard is the only item here that lands as a normal reviewable PR.
+
+---
+
+## Persistency threshold sites left un-consolidated, deliberately (banked 2026-07-26, PR #871 session, LOW — note, not a defect)
+
+Recorded so a future "consolidate the persistency constants" sweep does not treat these as misses. PR #871 single-sourced the floor/gate pair into `src/lib/persistency/calculations.js` (decimal canonical, with derived `PERS_FLOOR_PCT` / `PERS_GATE_PCT`). These were examined and intentionally left alone:
+
+- **`src/utils/campaignEngine.js` `PERSISTENCY_GATE_BANDS`** — a 4-band payout multiplier (`≥90` ×1.0, `≥85` ×0.5, `≥80` ×0.25, else DQ) on its own documented 0–100 scale, explicitly operator-tunable and self-described as "one source of truth" for its domain. Its 80/85/90 boundaries *coincide* with the floor/gate numbers but are a different concept (campaign payout scaling, not at-risk banding or award eligibility). Folding it into the floor/gate pair would couple campaign economics to award policy. **Leave separate.**
+- **`src/config/companyConfigRegistry.js:348`** — the label string `'Persistency <80%'` is documentation *describing* `PERSISTENCY_GATE_BANDS[3]` in the Company Config surface, and it names its own source file inline. It follows whatever that engine does; interpolating a constant into a descriptive registry label adds coupling for no correctness gain.
+- **`companyMinimums.persistency`** — its *default* now derives from `PERS_GATE_PCT`, but the value remains tenant-configurable and `stored.persistency` still wins. It is a floor on an agent's self-set annual **goal**, not a performance band. **Do not collapse it into `PERS_FLOOR`.**
+
+An anti-collapse test in `calculations.test.js` ("floor and gate are NOT the same threshold — do not consolidate them") will fail loudly if a future refactor unifies the pair.
 
 ---
 
@@ -4544,7 +4605,8 @@ The wave is keyed on `[tenantId, role, unitId, branchId]`, NOT `selectedWeek` �
 **Residuals (NOT closed by this work):**
 - **LEVEL stays BLOCKED** — unchanged, no populated career-level field.
 - **Unit friendly names (the LOW FU below) is a DATA gap, not a code gap.** `unitLabel(id, name)` already prefers a real name, `deriveUnitOptions` already reads `row.unitName`, and `MasterSheet`'s `userMeta` already maps `u.unitName ?? u.unit`. The raw-id fallback appears because the user docs carry no unit name — nothing in the read path to fix. That FU's body should be re-scoped to "populate `unitName` on user docs" rather than "thread a lookup into `deriveUnitOptions`".
-- **Threshold divergence worth a ruling:** `MeetingMode.helpers.js` flags persistency below **80 on a percentage scale**, `getCompanyMinimums` defaults `persistency: 90`, and `lib/persistency/calculations.js` exports `PERS_FLOOR = 0.80` / `PERS_GATE = 0.90` as decimals. This module uses `PERS_FLOOR`. Three surfaces, three literals — worth consolidating into Company Config v2's Tier-1 pass.
+- ~~**Threshold divergence worth a ruling:**~~ **RESOLVED in this PR (2026-07-26)** — and the original framing was wrong, which matters. Rule 17 verification found this was **not** one constant fractured three ways: `PERS_FLOOR` (0.80, at-risk band) and `PERS_GATE` (0.90, award eligibility) are **two distinct money thresholds**, and `companyMinimums.persistency` (90) is a **third, unrelated concept** — a tenant-configurable minimum on an agent's self-set annual *goal*. Consolidating them to one constant, as originally suggested, would have changed agent-facing outcomes in both directions. What was genuinely wrong was the **unit** divergence and the duplication, now fixed: canonical home is `lib/persistency/calculations.js` (decimal), with derived `PERS_FLOOR_PCT` / `PERS_GATE_PCT` companions, and six sites re-pointed at them. An anti-collapse test guards the distinction. See the two commits on this branch, and the sibling LOW note "Persistency threshold sites left un-consolidated, deliberately" for what was examined and left alone.
+- **Escalation from that verification — 3 live defects fixed in this PR (own commit):** `MeetingMode.helpers.js`'s `latestPersistency` returned the E3 **decimal** unchanged while all three of its consumers expect a **percentage**. Consequences on real data: (1) every agent holding a persistency record was falsely flagged "Persistency ↓" reading "1% persistency"; (2) the branch scorecard rendered ~0–1% for healthy branches; (3) Meeting Mode campaign standings dropped every advisor into the `DQ` band with a ×0 payout multiplier. The pre-existing tests fed **percentage** fixtures — values that never occur in production — which is why it survived. Fixtures corrected to decimals; 4-case regression block added, negative-controlled.
 - **Read cost:** `getPersistencyMapForYear` internally re-reads the tenant roster, so the sheet now issues a second `getTenantUsers`. Acceptable (the wave is off the paint path) but a candidate for the same consolidation.
 
 ---
