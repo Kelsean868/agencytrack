@@ -127,6 +127,10 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   const [ytdSubs, setYtdSubs]           = useState(null);
   const [companyMins, setCompanyMins]   = useState(null);
   const [persistencyMap, setPersistencyMap] = useState(null);
+  // Distinguishes "the wave has not landed" from "it landed and the reads
+  // failed" — the two states look identical in the inputs above but need
+  // different copy (see the STATUS group).
+  const [statusReadFailed, setStatusReadFailed] = useState(false);
 
   // Filters (scene 06) — unit · status · weekly-report · no-log.
   const [filters, setFilters]         = useState(DEFAULT_FUNNEL_FILTERS);
@@ -190,6 +194,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         : role === 'branch_manager' && branchId ? { branchId }
           : {};
 
+    setStatusReadFailed(false);
     Promise.all([
       getAllYTDSubmissions(tenantId).catch(() => null),
       getCompanyMinimums(tenantId).catch(() => null),
@@ -199,6 +204,10 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
       setYtdSubs(subs);
       setCompanyMins(mins);
       setPersistencyMap(pers);
+      // Each arm self-catches to null, so this `.then` always runs — which means
+      // "inputs still null" here is a TERMINAL failure, not work in progress.
+      // Without this flag the panel below would claim "still loading" forever.
+      if (!subs || !mins) setStatusReadFailed(true);
     });
 
     return () => { cancelled = true; };
@@ -661,7 +670,9 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
                 </>
               ) : (
                 <p data-testid="funnel-status-unavailable" className="text-xs text-ink-muted">
-                  Year-to-date pace data is still loading.
+                  {statusReadFailed
+                    ? 'Year-to-date pace data could not be loaded, so status bands are unavailable. Reopen the sheet to retry.'
+                    : 'Year-to-date pace data is still loading.'}
                 </p>
               )}
             </div>

@@ -234,22 +234,19 @@ describe('PERS_*_PCT percent companions', () => {
     expect(PERS_GATE - PERS_FLOOR).toBeCloseTo(0.10, 10);
   });
 
-  // ── Negative control: scale confusion ──
-  // The defect class this whole reconciliation exists to prevent is a DECIMAL
-  // persistency being compared against a PERCENT threshold. Assert the two
-  // scales are not interchangeable, so a decimal-vs-percent mix-up cannot
-  // silently satisfy a comparison.
-  it('a decimal persistency is never validly compared against a _PCT threshold', () => {
+  // The decimal thresholds must classify a realistic stored value correctly —
+  // this is the assertion that fails if either constant is ever retyped on the
+  // wrong scale (e.g. PERS_GATE = 90).
+  //
+  // A previous version of this test also asserted `0.94 < PERS_FLOOR_PCT` and
+  // `0.94 < PERS_GATE_PCT` to "prove" the scales are not interchangeable. Those
+  // are arithmetic tautologies (0.94 < 80 is true for every possible value of
+  // the code under test) — they document the defect rather than guarding
+  // against it, and would keep passing after any regression. Removed.
+  it('the decimal thresholds classify a realistic stored decimal correctly', () => {
     const decimalPersistency = 0.94; // 94% — comfortably award-eligible
-
-    // Correct: decimal vs decimal.
     expect(decimalPersistency >= PERS_GATE).toBe(true);
     expect(decimalPersistency < PERS_FLOOR).toBe(false);
-
-    // Wrong: decimal vs percent. A healthy 94% agent reads as catastrophically
-    // below floor. This is exactly the MeetingMode defect fixed in this PR.
-    expect(decimalPersistency < PERS_FLOOR_PCT).toBe(true);
-    expect(decimalPersistency >= PERS_GATE_PCT).toBe(false);
   });
 });
 

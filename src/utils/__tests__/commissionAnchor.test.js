@@ -297,14 +297,24 @@ describe('latestPersistency', () => {
       { monthKey: '2026-02', persistency: 0.85 },
     ];
     const result = latestPersistency(history);
-    expect(result.pct).toBe(0.92);
+    // `decimal`, not `pct` — the stored E3 value is a decimal in [0, 1+].
+    expect(result.decimal).toBe(0.92);
     expect(result.monthKey).toBe('2026-03');
   });
 
   it('handles single-entry history', () => {
     const result = latestPersistency([{ monthKey: '2026-05', persistency: 0.95 }]);
-    expect(result.pct).toBe(0.95);
+    expect(result.decimal).toBe(0.95);
     expect(result.monthKey).toBe('2026-05');
+  });
+
+  // Scale lock: the returned field is the raw decimal, never a pre-scaled
+  // percentage. A future edit that multiplies here would double-convert at the
+  // consumer (CommissionAnchorStrip does `* 100`), rendering 9500%.
+  it('returns the DECIMAL, not a percentage', () => {
+    const result = latestPersistency([{ monthKey: '2026-05', persistency: 0.95 }]);
+    expect(result.decimal).toBeLessThanOrEqual(1.5);
+    expect(result.decimal).not.toBe(95);
   });
 
   it('returns null when latest record has no persistency', () => {
