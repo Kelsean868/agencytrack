@@ -28,13 +28,13 @@ import PanelSkeleton from '../ui/PanelSkeleton';
 import { getTenantUsers, getAllYTDSubmissions } from '../../services/managerService';
 import { getPersistencyMapForYear } from '../../services/persistencyService';
 import { getCampaigns } from '../../services/campaignService';
-import { computeStandings, isTieredCampaign } from '../../utils/campaignEngine';
+import { computeStandings, isTieredCampaign, persistencyPctForPeriod } from '../../utils/campaignEngine';
 import { CampaignStandingsBlock } from '../campaigns/CampaignStandings';
 import FunnelMeetingScene from './FunnelMeetingScene';
 import {
   deriveWeekPulse, deriveBranchWindows, deriveUnits, deriveAgentRuns,
   deriveExceptions, deriveRecognition, deriveAnniversaries, deriveActiveCampaigns,
-  deriveAwardsWithinReach, deriveDeck, latestPersistency,
+  deriveAwardsWithinReach, deriveDeck,
 } from './MeetingMode.helpers';
 
 // ── Small formatters / primitives ──
@@ -604,20 +604,42 @@ function AwardsWithinReachScene({ pairs }) {
 function CampaignScene({ campaigns, ytdSubs, users, persMap }) {
   // Reuse item 2.9's standings display. Standings are derived read-light from the
   // already-loaded YTD submissions windowed to each campaign, with the users as
-  // participants + the latest per-agent persistency as the gate input. The
-  // reused block renders on an app `bg-card` surface (its intended token set),
-  // hosted on the presentation stage.
-  const persByAgent = useMemo(() => {
-    const out = {};
-    Object.keys(persMap || {}).forEach((id) => { out[id] = latestPersistency(persMap[id]); });
-    return out;
-  }, [persMap]);
+  // participants + the per-agent persistency gate input. The reused block renders
+  // on an app `bg-card` surface (its intended token set), hosted on the
+  // presentation stage.
   const participants = useMemo(
     () => (users || []).filter((u) => u.role === 'agent').map((u) => ({ id: u.id, name: u.name ?? u.displayName ?? 'Agent', unit: u.unitId ?? null })),
     [users]
   );
   const campaign = campaigns[0];
   const tiered = isTieredCampaign(campaign);
+
+  // GATE INPUT — must match the canonical campaign surface exactly.
+  //
+  // `campaignEngine.persistencyByAgent` is documented "(percentage 0–100)", and
+  // CampaignPanel (the primary campaign surface) builds it with
+  // `persistencyPctForPeriod`. This scene previously used MeetingMode's own
+  // `latestPersistency`, which was wrong three ways at once:
+  //   • SCALE — it returned the raw E3 decimal, so gateBandFor(0.95) fell
+  //     through to the {min: 0, payout: 0} DQ band and disqualified EVERY
+  //     advisor with a x0 multiplier on their projected prize;
+  //   • METHOD — a single latest month, where the gate is defined over the
+  //     campaign PERIOD and must aggregate numerator/denominator rather than
+  //     take one month (calculations.js' explicit anti-average rule);
+  //   • PRECISION — unrounded, rendering "95.23809523809523%" in the gate pill.
+  // Latest-month and period-aggregate can land in DIFFERENT payout bands, so
+  // this is a money difference, not a cosmetic one. Single-sourcing the helper
+  // means the deck and the Campaigns surface can never quote an advisor two
+  // different multipliers.
+  const persByAgent = useMemo(() => {
+    if (!campaign) return {};
+    const out = {};
+    for (const id of Object.keys(persMap || {})) {
+      const pct = persistencyPctForPeriod(persMap[id], campaign.startDate, campaign.endDate);
+      if (pct != null) out[id] = pct;
+    }
+    return out;
+  }, [persMap, campaign]);
   const standings = useMemo(() => {
     if (!tiered) return [];
     const start = typeof campaign.startDate === 'string' ? campaign.startDate.slice(0, 10) : '';
