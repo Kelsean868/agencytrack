@@ -5,7 +5,7 @@ import useFocusTrap from '../../../hooks/useFocusTrap';
 import { getTodayTT } from '../../../utils/dateInputs';
 import { getTenantUsers } from '../../../services/managerService';
 import { getCompanyMinimums } from '../../../services/goalsService';
-import { getTeamWeek } from '../../../services/plannerService';
+import { getTeamWeek, isSellingType } from '../../../services/plannerService';
 import {
   weekRange, buildWeekDates, groupByAgent, groupByDate, sortByStartTime,
   formatTime12, dayLabel, RETIRED_STATUSES,
@@ -147,7 +147,11 @@ export default function TeamPlannerPanel({ tenantId, callerRole, uid, branchId }
         return {
           agentId,
           name: nameOf(agentId),
-          total: active.length,
+          // SELLING types only. This is a coaching number: a manager reading
+          // "12 booked" must not be seeing 5 selling appointments plus 7 admin
+          // blocks. Support work and non-production blocks still render in the
+          // drill (nothing is hidden) — they just don't inflate the headline.
+          total: active.filter((a) => isSellingType(a.type)).length,
           counters: COUNTER_ROWS.map((r) => ({
             ...r,
             booked: active.filter((a) => a.type === r.type).length,
@@ -205,7 +209,7 @@ export default function TeamPlannerPanel({ tenantId, callerRole, uid, branchId }
             >
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-ink truncate">{r.name}</p>
-                <p className="text-xs text-ink-muted">{r.total} booked this week</p>
+                <p className="text-xs text-ink-muted">{r.total} selling booked this week</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {r.counters.map((c) => {

@@ -42,19 +42,113 @@ import { db } from '../firebase';
 import { getWarRoleRank } from './managerWarService';
 import { expandSeriesDates, MAX_SERIES_INSTANCES } from '../components/planner/recurrence.helpers';
 
-// ── Activity types (selling ladder + free blocks) ────────────────────────────
-// Order = the mockup's timeline/legend order. `label` is the display code with
-// dots (P.C, S.C, …); `short` is the storage/enum key (contract TYPE set).
+// ── Activity types (selling ladder + support work + blocks) ──────────────────
+// Order = the mockup's timeline/legend order for the original seven; the nine
+// added types follow. `label` is the display code with dots (P.C, S.C, …) or a
+// short word (Sale, Free, Paper …); the key is the storage/enum key (contract
+// TYPE set, mirrored in firestore.rules — see the allowlist note below).
+//
+// LABEL BUDGET IS LOAD-BEARING (≤5 chars). The dense week-column card gives the
+// [time · type chip] row roughly an 81px content box at the narrowest column
+// (131.4px at 1280px with the sidebar expanded); today's worst case `F.F.I`
+// already exceeds it by ~4px and relies on the card's `flex-wrap` safety valve.
+// Every label here is ≤5 chars so wrapping stays the exception, not the norm.
+// See the dense-card comment in AgentPlannerPanel.jsx before lengthening any.
+//
+// FUTURE TENANT CONFIG — READ BEFORE MAKING THIS LIST CONFIGURABLE. This list is
+// hardcoded deliberately. A per-tenant type set CANNOT be expressed as the
+// literal allowlist that `firestore.rules` uses today (`d.type in [...]` in both
+// validApptWrite and validTemplateWrite): a tenant-varying set would need either
+// a `get()` against the tenant config doc on every appointment write (a billed
+// read per write) or relaxing the rule from a value check to a shape check. When
+// that layer is built, mirror the `weeklyActivityFloors` precedent —
+// `Object.freeze(DEFAULT_…)` here, tenant override at `config/companyMinimums`,
+// consumers merging `{ ...DEFAULT, ...(config ?? {}) }` — and resolve the rules
+// question explicitly rather than by omission.
 export const APPOINTMENT_TYPES = [
-  { key: 'PC',   label: 'P.C',  name: 'Prospecting call' },
-  { key: 'SC',   label: 'S.C',  name: 'Seen call' },
-  { key: 'AI',   label: 'A.I',  name: 'Approach interview' },
-  { key: 'FFI',  label: 'F.F.I', name: 'Fact-finding interview' },
-  { key: 'CI',   label: 'C.I',  name: 'Closing interview' },
-  { key: 'SALE', label: 'Sale', name: 'Life / annuity written' },
-  { key: 'FREE', label: 'Free', name: 'Training · seminar · prospecting time · personal' },
+  { key: 'PC',    label: 'P.C',   name: 'Prospecting call' },
+  { key: 'SC',    label: 'S.C',   name: 'Seen call' },
+  { key: 'AI',    label: 'A.I',   name: 'Approach interview' },
+  { key: 'FFI',   label: 'F.F.I', name: 'Fact-finding interview' },
+  { key: 'CI',    label: 'C.I',   name: 'Closing interview' },
+  { key: 'SALE',  label: 'Sale',  name: 'Life / annuity written' },
+  { key: 'FREE',  label: 'Free',  name: 'Training · seminar · prospecting time · personal' },
+  // Support work — client-linked, but not itself a selling interview.
+  { key: 'PROP',  label: 'Prop',  name: 'Solution / proposal writing' },
+  { key: 'PAPER', label: 'Paper', name: 'Writing / submitting applications' },
+  { key: 'COLL',  label: 'Coll',  name: 'Premium collection' },
+  { key: 'DEL',   label: 'Del',   name: 'Policy delivery' },
+  // Blocks — booked time that is not a client appointment.
+  { key: 'SEM',   label: 'Sem',   name: 'Company seminar' },
+  { key: 'TRADE', label: 'Trade', name: 'Tradeshow' },
+  { key: 'MTG',   label: 'Mtg',   name: 'Branch meeting' },
+  { key: 'TRAIN', label: 'Train', name: 'Training / CPD' },
+  { key: 'ADMIN', label: 'Admin', name: 'Admin work' },
 ];
 export const TYPE_KEYS = APPOINTMENT_TYPES.map((t) => t.key);
+
+/**
+ * SELLING_TYPE_KEYS — the types that count as selling ACTIVITY for any
+ * "how much did you book / do" total. Everything not in this set (support work,
+ * blocks, and the legacy `FREE`) is logged-but-not-counted: it still occupies a
+ * slot and still records `durationMin`, it just never inflates an activity total
+ * a manager or agent reads as production effort.
+ *
+ * `SEM` / `TRADE` are IN: a company seminar and a tradeshow are prospecting
+ * activity (they are also the two block types the weekly-floor `callsMade`
+ * 4-sum already counts on the WAR side, via `computeProspectingCallsActual`'s
+ * `seminarTradeshow` term).
+ *
+ * NOTE this is deliberately NOT the same axis as the picker groups in
+ * PICKER_GROUPS — `SEM`/`TRADE` sit in the Block group but count as selling.
+ * Grouping answers "where does the agent find it"; this set answers "does it
+ * count". Consumers: the booked-vs-floor totals in TeamPlannerPanel and the
+ * kept-count in planner.helpers' deriveSeedFromKept.
+ *
+ * The booked-vs-floor PER-TYPE counters (WEEK_COUNTER_ROWS / COUNTER_ROWS) do
+ * NOT consume this set — they filter by exact type equality against CI/FFI/PC,
+ * so every type outside those three is already inert for them by construction.
+ */
+export const SELLING_TYPE_KEYS = Object.freeze(
+  ['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE', 'SEM', 'TRADE'],
+);
+
+/** True when a type counts toward selling-activity totals. */
+export function isSellingType(type) {
+  return SELLING_TYPE_KEYS.includes(type);
+}
+
+/**
+ * PICKER_GROUPS — the booking sheet's mode structure (ordered). Ports the design
+ * authority's mode pattern (the agent sheet's existing Prospect / Free-block
+ * toggle, widened to three modes the way the manager sheet's four-mode stream
+ * selector does) rather than growing a flat 16-button grid, which would put
+ * `A.I` (Approach interview) two buttons from `Admin`.
+ *
+ * `FREE` stays in the Block group, last, and keeps its FREE_BLOCK_LABELS chip
+ * row — untouched for backward compatibility.
+ */
+export const PICKER_GROUPS = Object.freeze([
+  { key: 'prospect', label: 'Prospect', types: ['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE'] },
+  { key: 'support',  label: 'Support',  types: ['PROP', 'PAPER', 'COLL', 'DEL'] },
+  { key: 'block',    label: 'Block',    types: ['SEM', 'TRADE', 'MTG', 'TRAIN', 'ADMIN', 'FREE'] },
+]);
+
+/**
+ * Types that may attach a prospect. Selling types always could; Support types
+ * are client-linked in practice (a delivery or a collection is FOR someone), so
+ * they get the same optional attach. Block types attach nothing — `FREE` shows
+ * its label chip row instead, and the other blocks show neither.
+ */
+export const PROSPECT_ATTACH_TYPES = Object.freeze([
+  ...PICKER_GROUPS[0].types,
+  ...PICKER_GROUPS[1].types,
+]);
+
+/** The picker group a type belongs to ('prospect' | 'support' | 'block'). */
+export function groupOfType(type) {
+  return PICKER_GROUPS.find((g) => g.types.includes(type))?.key ?? 'prospect';
+}
 
 // ── Status set (contract STATUS enum) ────────────────────────────────────────
 export const APPOINTMENT_STATUSES = [
