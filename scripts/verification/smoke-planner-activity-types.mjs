@@ -184,12 +184,40 @@ try {
     log(counterShapeOk ? 'PASS' : 'FAIL',
       `booked-vs-floor counters render as <booked>/<target> (${JSON.stringify(before)})`);
 
+    // ⚠ RETURN TO TODAY VIEW BEFORE BOOKING. `weekCounterText()` above has a
+    // SIDE EFFECT — it clicks the Week pill to reach the counters, which only
+    // render in Week view. The Book CTA then presets the new appointment's date
+    // from the ACTIVE view:
+    //     openBook(view === 'today' ? today : weekStart)   [AgentPlannerPanel]
+    // so booking from Week view silently dates the sentinel to the week's
+    // SUNDAY, not today. That is exactly what made the first post-deploy run
+    // report `persisted=false`: on Monday 2026-07-27 the sentinel was written to
+    // Sunday 2026-07-26 — it persisted perfectly, but the post-reload view
+    // (which resets to Today) does not contain that date. Verified by an
+    // Admin-SDK read: the doc existed server-side with `date: '2026-07-26'`.
+    //
+    // Clicking Today first makes the preset `today` by construction, using the
+    // app's own notion of "today" rather than any timezone maths in the smoke.
+    // NOTE this bug is INVISIBLE on a Sunday run (weekStart === today), which is
+    // why it survived review — do not assume a green Sunday run exonerates it.
+    await p.locator(tsel('planner-view-today')).click();
+    await p.waitForTimeout(400);
+
     await p.locator(tsel('planner-book')).click({ timeout: 15_000 });
     await p.locator(tsel('appt-type-group-block')).waitFor({ state: 'visible', timeout: 10_000 });
     await p.locator(tsel('appt-type-group-block')).click();
     await p.waitForTimeout(200);
     await p.locator(tsel('appt-type-ADMIN')).click();
     await p.getByLabel('Start time').fill(SENTINEL_TIME_24);
+
+    // Capture the date actually being saved and put it in every downstream
+    // message. Without this the previous failure read only "persisted=false",
+    // which is indistinguishable between "did not persist" and "persisted on a
+    // date this view cannot show" — the difference between a smoke bug and a
+    // product defect, and a whole diagnosis cycle to tell them apart.
+    const bookedDate = await p.locator('#appt-date').inputValue();
+    log('PASS', `sentinel will be booked on ${bookedDate} at ${SENTINEL_TIME_24} (date read from the sheet, not assumed)`);
+
     await p.getByRole('button', { name: /^Save$/ }).click();
     await p.waitForTimeout(2_500);
 
@@ -220,11 +248,17 @@ try {
       log('FAIL', 'counter-inflation NOT VERIFIED — needs a real non-selling booking to be meaningful.');
       return;
     }
+    // Assert persistence in WEEK view, not whatever view the reload happens to
+    // restore. Week is a superset that contains `today` on every weekday, so the
+    // assertion no longer depends on the reload's default view matching the
+    // booked date — the coupling that produced the previous false failure. This
+    // also reads the counters, so `after` is captured in the same view as
+    // `before` (both via weekCounterText).
+    const after = await weekCounterText(p);
     const persisted = await inDom(sentinel(), 10_000);
     log(persisted ? 'PASS' : 'FAIL',
-      `sentinel survives a reload — written, then re-read from Firestore (persisted=${persisted})`);
+      `sentinel booked ${bookedDate} survives a reload — re-read from Firestore in Week view (persisted=${persisted})`);
 
-    const after = await weekCounterText(p);
     log(before === after ? 'PASS' : 'FAIL',
       `booked-vs-floor counters UNCHANGED by a real non-selling booking (${JSON.stringify(before)} → ${JSON.stringify(after)})`);
   });

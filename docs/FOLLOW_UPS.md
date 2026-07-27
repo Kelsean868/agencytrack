@@ -24,6 +24,7 @@
 | Planner type-taxonomy collisions deferred by hardcoding — `MTG` vs manager `UNIT`, and `PERS` vs `FREE`+Personal (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
 | `SALE` absent from the design authority's agent picker but shipping in the app — pre-existing divergence, NOT introduced by the activity-types work (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
 | SEM/TRADE count for the manager headline but NOT the agent's kept-count — same kept seminar reads differently to the two roles; settle when types become tenant-configurable (reviewer pass on #878, banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
+| `assertLegHygiene` never asserts on `networkFailures` — a failed network call is printed but cannot fail any smoke, suite-wide; "hygiene PASS" is not evidence calls succeeded (found diagnosing the first post-deploy planner run, banked 2026-07-27) | MEDIUM | Verification | — | see § Planner activity types |
 | Mutating planner smokes leave residue by design — no self-teardown; needs a shared Admin-SDK helper across all 7 (raised by CodeRabbit on #878, banked 2026-07-27) | LOW | Verification | — | see § Planner activity types |
 | Two divergent planner design-authority trees (`proposals/planner-scheduler-v2/` vs `screens-v2/agencytrack-planner-handoff/`) — never diffed file-by-file (banked 2026-07-27) | LOW | Design system | — | see § Planner activity types |
 | External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track) | HIGH | — | overdue (was 2026-07-17) | ~4130 |
@@ -658,7 +659,24 @@ The delta is `SEM`/`TRADE`. Consequence: **the same kept seminar counts toward t
 
 Not a bug and deliberately not reconciled: collapsing the sets would break one of the two purposes. **Settle when types become tenant-configurable**, since that work has to decide whether "counts as activity" and "seeds a field" are one axis or two — at which point this asymmetry is either formalised (and surfaced in the UI) or removed. Verified during review that neither set is used where the other belongs: `isSellingType` has exactly one consumer (`TeamPlannerPanel:154`), `SEEDS_DAILY_CAPTURE` exactly one (`planner.helpers:480`).
 
-### 6. LOW — mutating planner smokes leave residue by design; no self-teardown
+### 6. MEDIUM — `assertLegHygiene` never asserts on `networkFailures` (every smoke, not just this one)
+
+Found while diagnosing the first post-deploy run of `smoke-planner-activity-types.mjs`. `assertLegHygiene` (`scripts/verification/vh/vh-helpers.mjs`) checks exactly two things:
+
+1. `prodRequests` — zero production traffic, and
+2. unallowlisted **console errors**.
+
+It does **not** look at `capture.networkFailures` at all. Those are collected by `captureConsoleAndNetwork` and *printed* by `formatCaptureReport`, but nothing ever fails on them. So **a failed network call is visible in the log and invisible to the gate** — across every smoke in the suite, not just this one.
+
+Concretely, that run reported `hygiene: console-clean + zero prod requests` **PASS** while the capture showed two `net::ERR_ABORTED` entries. Both turned out benign (see below), but the point stands: hygiene passing is not evidence that network calls succeeded, and it is easy to read it as though it were.
+
+**Calibration banked from the same run — `ERR_ABORTED` in this codebase is usually teardown, and that is now *proven*, not assumed.** The Firestore **Write** channel showed `ERR_ABORTED`, and an Admin-SDK read confirmed the document it was writing **persisted correctly**. So an aborted channel in these captures is demonstrably compatible with a fully successful operation. The second abort, on the `resolveSalesManagerUid` callable, is the same class: it is fired from a dashboard-mount effect and **every call site wraps it in `.catch(() => null)`** (`AgentDashboard.jsx:476`, `useMyProduction.js:67`, `GoalsPanel.jsx:469`/`1094`), so it degrades to `smUid = null` by design and the goal hierarchy still loads. `ERR_ABORTED` is a client-side cancellation status — a genuine Cloud Function failure returns an HTTP error with a body, not an abort.
+
+**Why this is MEDIUM rather than LOW:** the `.catch(() => null)` that makes the callable non-fatal also makes a *real* failure of it silent — no console error, so hygiene stays green and the smoke cannot tell "aborted at teardown" from "failed every time". Today that is masked by the fact that `smUid` is optional.
+
+**Scope when built:** decide deliberately what `networkFailures` should gate on — a blanket assert would fail every smoke on teardown aborts, so it needs an allowlist (navigation-time aborts on long-lived Firestore channels, `_vercel` insights off-platform) plus a hard failure for anything else, ideally with the request URL in the message. Do it once in `assertLegHygiene` so all smokes inherit it.
+
+### 7. LOW — mutating planner smokes leave residue by design; no self-teardown
 
 Raised by CodeRabbit on the activity-types PR (#878) against `smoke-planner-activity-types.mjs`: the ADMIN sentinel it books survives the run, because the sweeper is a **pre-run** prerequisite rather than a teardown.
 
@@ -669,7 +687,7 @@ Raised by CodeRabbit on the activity-types PR (#878) against `smoke-planner-acti
 
 **Scope when built:** add an Admin-SDK teardown helper (mirroring `sweep-nonfixture-appointments.mjs`'s query) callable from a smoke's `finally`, and adopt it across all seven planner smokes so the residue contract becomes "self-cleaning" uniformly rather than per-file. Low severity because the residue is non-selling and provably cannot move any counter this PR touches — but it does accumulate until the next sweep.
 
-### 7. LOW — two divergent planner design-authority trees, never diffed
+### 8. LOW — two divergent planner design-authority trees, never diffed
 
 The repo carries **two** planner mockup trees that disagree:
 
