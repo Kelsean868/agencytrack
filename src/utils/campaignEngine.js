@@ -69,10 +69,33 @@ export function isTieredCampaign(campaign) {
   return false;
 }
 
-// Average persistency (as a whole-number percentage) for the campaign period,
-// derived from an agent's monthly E3 persistency records. Uses the SUM-based
-// aggregate (never an average of percentages — see calculations.js). Returns
-// null when there is no usable record in the period.
+// Distinct calendar years spanned by [startDate, endDate] (YYYY-MM-DD strings).
+//
+// Lives here, not in a component, because it is HALF of the gate contract: a
+// caller that feeds `persistencyPctForPeriod` a record set narrower than these
+// years computes the gate over a partial period and can land the advisor in a
+// different payout band than the surface next door. Both campaign surfaces
+// (CampaignPanel, MeetingMode's CampaignScene) load through this.
+export function campaignYears(startDate, endDate) {
+  const s = parseInt(String(startDate).slice(0, 4), 10);
+  const e = parseInt(String(endDate).slice(0, 4), 10);
+  if (!Number.isFinite(s)) return [new Date().getFullYear()];
+  const end = Number.isFinite(e) ? e : s;
+  const out = [];
+  for (let y = s; y <= end; y++) out.push(y);
+  return out;
+}
+
+// Persistency (as a whole-number percentage) for the campaign period, derived
+// from an agent's monthly E3 persistency records. Uses the SUM-based aggregate
+// (never an average of percentages — see calculations.js).
+//
+// Returns null when NO record falls inside the period. It does NOT fall back to
+// the caller's whole record set: this number scales a payout, and an aggregate
+// computed over the wrong months is a confident wrong multiplier. `gateBandFor`
+// maps null to a "no data" pill and `computeStandings` maps a null band to a ×1
+// multiplier — i.e. the advisor is neither paid on a fabricated figure nor
+// disqualified by one. Abstaining is the safe direction; guessing is not.
 export function persistencyPctForPeriod(records, startDate, endDate) {
   if (!Array.isArray(records) || records.length === 0) return null;
   const startKey = String(startDate ?? '').slice(0, 7); // YYYY-MM
@@ -80,8 +103,8 @@ export function persistencyPctForPeriod(records, startDate, endDate) {
   const inRange = records.filter(
     (r) => r && r.monthKey && String(r.monthKey) >= startKey && String(r.monthKey) <= endKey,
   );
-  const pool = inRange.length ? inRange : records;
-  const { aggregatedPersistency, sumGrossSettled } = aggregatePersistency(pool);
+  if (!inRange.length) return null;
+  const { aggregatedPersistency, sumGrossSettled } = aggregatePersistency(inRange);
   if (!(sumGrossSettled > 0)) return null;
   return Math.round(aggregatedPersistency * 100);
 }
