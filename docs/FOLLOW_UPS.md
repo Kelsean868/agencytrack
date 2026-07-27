@@ -517,7 +517,21 @@ An anti-collapse test in `calculations.test.js` ("floor and gate are NOT the sam
 
 ### Named population
 
-**NEW MEMBER OBSERVED 2026-07-26 (PR #871 session) — `AgentPlannerPanel.weeknav.test.jsx > "navigation is unlimited — three weeks forward keeps stepping"`.** Failed once in CI on PR #871's run `30229429795`, then **passed on a clean re-run of the same commit** with no code change. Passes locally (20/20, and inside a full 372-file / 5803-test local run). Note the provenance: this test arrived with **PR #875** (`e963660e`), whose own `lint-and-build` passed — so it is flaky from birth rather than broken by a later change, and PR #871 does not touch `src/components/planner/` at all. Same CI-only, timing-sensitive signature as the rest of the family. Adds a **fifth** named member to the population below.
+**THREE NEW MEMBERS OBSERVED 2026-07-26/27 (PR #871 session) — and the shared mechanism is now visible: it is LOAD, not any individual test.**
+
+All three are heavy component tests that time out at **exactly ~5000ms** (the default per-test timeout) under full-suite parallel execution, and all three pass comfortably in isolation. PR #871's diff touches **zero** files under `src/components/planner/` or `src/components/wizard/` — verified with `git diff --name-only origin/staging...HEAD`.
+
+| Member | Where it failed | In isolation |
+|---|---|---|
+| `AgentPlannerPanel.weeknav.test.jsx > "navigation is unlimited — three weeks forward keeps stepping"` | CI run `30229429795`; **passed on a clean re-run of the same commit**, no code change | 20/20, ×1 |
+| `WizardFormV2Characterization.test.jsx > G — draft-read failure guard` | local full suite (2 failures); passed later in the same file on a subsequent run | 20/20, ×3 |
+| `AgentPlannerPanel.test.jsx > bulk operations (Run 9 A5) > "pushes ONE undo entry per bulk op"` | local full suite, 5046ms | 73/73, ×1 |
+
+**The weeknav member arrived with PR #875 (`e963660e`), whose own `lint-and-build` passed** — flaky from birth, not broken by a later change.
+
+**Mechanism hypothesis (falsifiable, per Rule 23):** these are not three independent bugs but one resource-contention failure — Vitest's default 5000ms per-test timeout is not generous enough for the heaviest jsdom component mounts when N workers compete for CPU. Predictions: (a) the specific test that fails should vary run-to-run on the same commit — **already observed**, three different tests across three consecutive full runs; (b) raising `testTimeout` or reducing worker concurrency should make them all disappear together; (c) the set should skew toward the largest component test files. **Overturned if** a member is found that fails deterministically in isolation, or if one is traced to a genuine product race — either would mean the family is not one mechanism and the fix must be per-test.
+
+**Suggested first move for the audit:** rather than stabilising members one at a time (#872's approach, which #876 already showed to be incomplete), test the mechanism directly — raise `testTimeout` in `vite.config.js` and see whether the whole family goes quiet. Cheap to try, and it either confirms or falsifies the hypothesis in one run.
 
 **Already fixed by #872 (four targets, each negative-controlled there):**
 
