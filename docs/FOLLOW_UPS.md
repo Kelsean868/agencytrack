@@ -496,6 +496,8 @@ An anti-collapse test in `calculations.test.js` ("floor and gate are NOT the sam
 
 ### Named population
 
+**NEW MEMBER OBSERVED 2026-07-26 (PR #871 session) — `AgentPlannerPanel.weeknav.test.jsx > "navigation is unlimited — three weeks forward keeps stepping"`.** Failed once in CI on PR #871's run `30229429795`, then **passed on a clean re-run of the same commit** with no code change. Passes locally (20/20, and inside a full 372-file / 5803-test local run). Note the provenance: this test arrived with **PR #875** (`e963660e`), whose own `lint-and-build` passed — so it is flaky from birth rather than broken by a later change, and PR #871 does not touch `src/components/planner/` at all. Same CI-only, timing-sensitive signature as the rest of the family. Adds a **fifth** named member to the population below.
+
 **Already fixed by #872 (four targets, each negative-controlled there):**
 
 1. `DailyCaptureV2 > daily streak celebration (integration) > "does NOT fire below the milestone (short streak)"` — self-narrowing `waitFor({timeout: 2000})`
