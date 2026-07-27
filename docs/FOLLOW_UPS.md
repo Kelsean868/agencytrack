@@ -460,6 +460,30 @@ The four named tests were characterized individually and fixed individually. **T
 
 **Pattern-1 re-audit (the FU's own Action item) — result: NO recurrence found.** Scanned every `.test.jsx` for the PR #861 shape (a bare DOM query immediately following a call-count-only `waitFor`). All ~30 hits are one of: an assertion on the **mock object** (`toHaveBeenCalledWith`, `.mock.calls[…]`) — structurally immune, no re-render dependency; or a **negative** DOM assertion (`.not.toBeInTheDocument()` / `.toBeNull()`) gated by a precondition that makes the wait meaningful (e.g. the streak tests' `onClose` only fires when `!celebrating`, so the wait itself proves the branch). **No positive "expect element present" DOM query racing a re-render was found outside the already-fixed #861 sites.** *Limits of this claim (falsification):* the scan was a 2-line-lookahead regex over `.test.jsx` only, so a bare DOM query 3+ lines after the `waitFor`, or one reached via a helper function, would not have been caught. Overturned by any future CI-only failure whose error is "unable to find element" immediately after a call-count `waitFor`.
 
+**FIFTH data point — 2026-07-27, PR #878 CI — and it OVERTURNS the pattern-1 re-audit above.**
+
+`DailyCaptureV2.test.jsx > 'stepper "+" increments the bound storage key and Save writes it'` failed **in CI only** (`lint-and-build`, run `30282874572`). Local: the same commit ran the full suite **5842/5842 green**. Error, verbatim:
+
+> `→ Unable to find an accessible element with the role "button" and name /FFIs conducted increase/i`
+
+The shape:
+
+```js
+render(<DailyCaptureV2 onClose={vi.fn()} />);
+await screen.findByTestId('dcv2-save');                                    // resolves on the FIRST commit carrying Save
+const inc = screen.getByRole('button', { name: /FFIs conducted increase/i }); // BARE query — the stepper rows commit later
+```
+
+**This is pattern 1** — a bare positive DOM query racing a re-render — and it is **outside the #861 fix set**, which the re-audit above concluded did not exist. That paragraph stated its own falsifier:
+
+> *"Overturned by any future CI-only failure whose error is 'unable to find element' immediately after a call-count `waitFor`."*
+
+Consider it overturned. **The reason the scan missed it is instructive and should shape the re-scan:** the audit's regex looked for a bare query following a **call-count `waitFor`**. Here the preceding await is a **`findByTestId`** — a *different* element's presence gate. That is the same defect (waiting on element A, then synchronously querying element B, which commits on a later paint) but it does not match the searched shape at all. `DailyCaptureV2` loads company minimums / weekly floors on a separate async path from the Save button, so Save can paint a frame before the stepper rows exist.
+
+**Corrected scan shape for whoever closes this FU:** any bare `getBy*` / `queryBy*` for element **B** following an `await findBy*`/`waitFor` on element **A**, where A ≠ B. The mock-object carve-out in the re-audit ("structurally immune") still holds — the assertion that failed here is a DOM query, not a mock assertion — but the carve-out was doing more work than it should have, because it was applied to a scan that never looked at `findBy*` gates.
+
+**Not fixed in #878** — out of that PR's scope (planner activity types; `DailyCaptureV2` shares no module with its diff, and its own second commit touched only the planner sheet, seeder, smoke and docs). Recorded here as the FU's own evidence. Fix when this FU is worked: gate on the element actually being queried (`await screen.findByRole('button', { name: /FFIs conducted increase/i })`), and re-scan under the corrected shape above.
+
 **Not done / weaknesses to carry forward:**
 
 1. **None of the four was reproduced locally on demand.** They are load-dependent by nature; the fixes rest on mechanism analysis plus negative controls, not on a red-to-green reproduction. Real confirmation is the absence of recurrence across subsequent CI runs.
