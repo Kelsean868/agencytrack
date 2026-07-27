@@ -1538,7 +1538,15 @@ service cloud.firestore {
             && d.date is string && d.date.matches('\\d{4}-\\d{2}-\\d{2}')
             && d.startTime is string
             && d.durationMin is int && d.durationMin > 0 && d.durationMin <= 720
-            && d.type in ['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE', 'FREE']
+            // 16 keys = TYPE_KEYS in src/services/plannerService.js. These two
+            // allowlists (validApptWrite + validTemplateWrite) are the ONLY
+            // server-side gate on the type value — they must be extended in the
+            // same change as APPOINTMENT_TYPES, and a deploy is required before
+            // any new key can be written. A future per-tenant type set cannot be
+            // a literal here; see the FUTURE TENANT CONFIG note in plannerService.
+            && d.type in ['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE', 'FREE',
+                          'PROP', 'PAPER', 'COLL', 'DEL',
+                          'SEM', 'TRADE', 'MTG', 'TRAIN', 'ADMIN']
             && d.status in ['scheduled', 'confirmed', 'kept', 'cancelled', 'postponed', 'done']
             && d.note is string && d.note.size() <= 2000
             && (!('apiAmount' in d) || d.apiAmount == null || (d.apiAmount is number && d.apiAmount >= 0))
@@ -1616,7 +1624,15 @@ service cloud.firestore {
                  'durationMin', 'note', 'createdAt', 'updatedAt'
                ])
             && d.name is string && d.name.size() >= 1 && d.name.size() <= 60
-            && d.type in ['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE', 'FREE']
+            // 16 keys = TYPE_KEYS in src/services/plannerService.js. These two
+            // allowlists (validApptWrite + validTemplateWrite) are the ONLY
+            // server-side gate on the type value — they must be extended in the
+            // same change as APPOINTMENT_TYPES, and a deploy is required before
+            // any new key can be written. A future per-tenant type set cannot be
+            // a literal here; see the FUTURE TENANT CONFIG note in plannerService.
+            && d.type in ['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE', 'FREE',
+                          'PROP', 'PAPER', 'COLL', 'DEL',
+                          'SEM', 'TRADE', 'MTG', 'TRAIN', 'ADMIN']
             && d.startTime is string && d.startTime.matches('\\d{2}:\\d{2}')
             && d.durationMin is int && d.durationMin > 0 && d.durationMin <= 720
             && d.note is string && d.note.size() <= 2000

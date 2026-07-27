@@ -437,10 +437,36 @@ export const PLAN_TO_DAILY_FIELD = {
 };
 
 /**
+ * The types a kept appointment can actually CARRY into Daily Capture: the
+ * mapped count fields above, plus SALE (handled separately as apps + API).
+ * Derived from PLAN_TO_DAILY_FIELD rather than restated, so adding a mapping
+ * can never leave this stale.
+ *
+ * Deliberately NOT imported from plannerService's `SELLING_TYPE_KEYS`, for two
+ * reasons. (1) Import graph: `plannerService` imports `recurrence.helpers`,
+ * which imports THIS module — importing plannerService here would close a
+ * three-module cycle that does not exist today. (2) Semantics: the two sets
+ * answer different questions. `SELLING_TYPE_KEYS` is "does it count as selling
+ * activity" (it includes SEM/TRADE); this is "does it seed a Daily Capture
+ * field" (it does not — a kept seminar carries nothing). The CTA this figure
+ * labels is specifically about carrying, so the narrower set is the honest one.
+ */
+const SEEDS_DAILY_CAPTURE = new Set([...Object.keys(PLAN_TO_DAILY_FIELD), 'SALE']);
+
+/**
  * Build a Daily-Capture seed from the day's KEPT (or done) appointments.
  * Returns flat count fields + a nested newBusiness { apps, api } so the caller
  * can blank-fill DailyCaptureV2's entry state. Only appointments dated `date`
  * with a completed status contribute.
+ *
+ * `keptCount` counts only types in SEEDS_DAILY_CAPTURE. It labels the
+ * carry-to-Daily-Capture CTA ("N kept appointments today"), so it must describe
+ * what is actually being carried: support work and blocks map to no Daily
+ * Capture field, so counting them overstated the CTA. This also fixes the same
+ * pre-existing overstatement for `FREE`, which was counted here before the nine
+ * new types existed. The `counts` / `newBusiness` payload was already correct —
+ * `PLAN_TO_DAILY_FIELD` returns undefined for anything unmapped and the write is
+ * skipped — so only the label figure changes.
  *
  * @returns {{ counts: object, newBusiness: {apps:number, api:number}, keptCount:number }}
  */
@@ -451,6 +477,7 @@ export function deriveSeedFromKept(appointments = [], date) {
   for (const a of appointments) {
     if (a.date !== date) continue;
     if (!COMPLETED_STATUSES.has(a.status)) continue;
+    if (!SEEDS_DAILY_CAPTURE.has(a.type)) continue;
     keptCount += 1;
     if (a.type === 'SALE') {
       newBusiness.apps += 1;

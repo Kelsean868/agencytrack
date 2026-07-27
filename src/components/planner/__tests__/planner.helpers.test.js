@@ -116,8 +116,46 @@ describe('deriveSeedFromKept (plan→handoff math)', () => {
     expect(seed.counts.ffiConducted).toBe(1);   // 1× FFI
     expect(seed.counts.ciConducted).toBe(1);    // 1× kept CI (scheduled excluded)
     expect(seed.newBusiness).toEqual({ apps: 1, api: 1500 });
-    // 6 completed on 06-22: PC,PC,FFI,CI,SALE,FREE (scheduled CI + other-day PC excluded).
-    expect(seed.keptCount).toBe(6);
+    // 5, not 6: PC,PC,FFI,CI,SALE carry into Daily Capture. The kept FREE does
+    // NOT — it seeds no field, so counting it overstated the CTA. This was a
+    // pre-existing defect for FREE, fixed here alongside the nine new types.
+    expect(seed.keptCount).toBe(5);
+  });
+
+  // §2B guard — the CTA figure must describe what is actually carried.
+  it('excludes support work and blocks from keptCount, and carries nothing for them', () => {
+    const withNewTypes = [
+      { date: '2026-06-22', type: 'CI',    status: 'kept' },
+      { date: '2026-06-22', type: 'PAPER', status: 'kept' },   // support → no field
+      { date: '2026-06-22', type: 'DEL',   status: 'kept' },   // support → no field
+      { date: '2026-06-22', type: 'ADMIN', status: 'kept' },   // block   → no field
+      { date: '2026-06-22', type: 'SEM',   status: 'kept' },   // counts as selling,
+      //                                                          but seeds no field
+    ];
+    const seed = deriveSeedFromKept(withNewTypes, '2026-06-22');
+    expect(seed.keptCount).toBe(1);                 // the CI alone
+    expect(seed.counts).toEqual({ ciConducted: 1 });
+    expect(seed.newBusiness).toEqual({ apps: 0, api: 0 });
+  });
+
+  // NEGATIVE CONTROL for the guard above: if the SEEDS_DAILY_CAPTURE filter were
+  // removed, keptCount would count all five completed appointments. Asserting
+  // the wrong value here is what the filter prevents — this test fails if the
+  // filter is deleted, which is the point.
+  it('negative control — an unfiltered keptCount would be 5, not 1', () => {
+    const withNewTypes = [
+      { date: '2026-06-22', type: 'CI',    status: 'kept' },
+      { date: '2026-06-22', type: 'PAPER', status: 'kept' },
+      { date: '2026-06-22', type: 'DEL',   status: 'kept' },
+      { date: '2026-06-22', type: 'ADMIN', status: 'kept' },
+      { date: '2026-06-22', type: 'SEM',   status: 'kept' },
+    ];
+    const completedOnDay = withNewTypes.filter(
+      (a) => a.date === '2026-06-22' && ['kept', 'done'].includes(a.status),
+    ).length;
+    expect(completedOnDay).toBe(5);
+    expect(deriveSeedFromKept(withNewTypes, '2026-06-22').keptCount)
+      .not.toBe(completedOnDay);
   });
   it('exposes the plan→daily field map', () => {
     expect(PLAN_TO_DAILY_FIELD).toMatchObject({
