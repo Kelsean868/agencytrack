@@ -22,7 +22,7 @@
 | Track K Phase 2 — narrative `branchPlans` (new collection, HUMAN-MERGE) + PPTX + manpower setter + per-branch `branchGoals` keying (banked 2026-07-21, #864 close) | HIGH | Track K | — | ~288 |
 | Track K Phase 3 — classification quotas + real monthly quota model (banked 2026-07-21, #864 close) | MEDIUM | Track K | — | ~288 |
 | Track K — seeded Net-vs-Gross integration assertion (unit-only today; needs seeded foil branch) (banked 2026-07-21, #864 close) | MEDIUM | Track K | — | ~288 |
-| BIG ONE — the real planner-completion track (E1–E5) is UNBUILT (banked 2026-07-17, promotion sess... | HIGH | — | — | 477 |
+| ~~BIG ONE — the real planner-completion track (E1–E5) is UNBUILT~~ — RESOLVED, Run A Tier 2 #866, promoted #874 `219cf324`, 2026-07-26 (E1-E5 verified live in `src/components/planner/` against source) | — | — | — | 511 |
 | Register the six Run-9 standing smokes in SMOKES.md (banked 2026-07-17, promotion session, MEDIUM... | MEDIUM | — | — | 439 |
 | Appointment template count cap is client-side only — hardening candidate (banked 2026-07-17, prom... | LOW | — | — | 461 |
 | Panel keydown stale-closure exposure under rapid state churn (banked 2026-07-17, promotion sessio... | LOW | — | — | 469 |
@@ -508,17 +508,23 @@ Run 9's A2 (keyboard shortcuts) introduced panel-level keydown handlers. Under r
 
 ---
 
-## BIG ONE — the real planner-completion track (E1–E5) is UNBUILT (banked 2026-07-17, promotion session, HIGH — active build map, do not confuse with Run 9)
+## ~~BIG ONE — the real planner-completion track (E1–E5) is UNBUILT~~ — RESOLVED (Run A Tier 2, PR #866 `f22c57f8`, promoted to prod via #874 `219cf324`, 2026-07-26)
 
-Run 9 built six features (A1–A5 undo/redo/shortcuts/conflicts/templates/bulk + F3 series propagation) that are real, live in prod (`d0e74c12`), and valuable — but they are **not** the "planner and scheduler v2" redesign named in `docs/design-system/proposals/planner-scheduler-v2/README.md`. That README's actual spec is **five different features**, all still unbuilt:
+**RESOLVED.** All five features this entry called unbuilt shipped in Run A Tier 2 and are now live in production, verified directly against source at `219cf324` (not asserted from memory — Rule 17):
 
-- **E1** — desktop 3-day + week views
-- **E2** — drag-drop reschedule (wires to the existing `postponeWithRebook`)
-- **E3** — running-late cascade (gap-smart, prospect-notify)
-- **E4** — per-appointment notes thread (travels with `prospectId`)
-- **E5** — collapsed-rail space adaptation
+- **E1** — desktop 3-day + week views → `PlannerDesktopBoard.jsx` (Day/3-day/Week + Follow-ups toggle, `useIsDesktop` matchMedia-branched)
+- **E2** — drag-drop reschedule → `PlannerDesktopBoard.jsx` drag handlers, wired to the existing `postponeWithRebook` (no propagation reimplement, as this entry required)
+- **E3** — running-late cascade → `RunningLateSheet.jsx` + gap-smart `computeLateCascade`, batches through the existing `bulkUpdateAppointments`
+- **E4** — per-appointment notes thread → `NotesThread.jsx` + `addAppointmentNote` (`arrayUnion`); ships at this-week prospect-history scope, cross-time scope banked separately (see the E4 cross-time FU)
+- **E5** — collapsed-rail space adaptation → desktop drops the `max-w-3xl` cap (`max-w-none`) so the board reclaims sidebar space
 
-This is the genuine planner-completion track, still ahead, and now sits on the `seriesId` + reschedule-in-place foundation Run 9 just laid (F3's composite index and propagation model are direct prerequisites for E2/E3). **Action:** needs its own recon-then-build session sourced from `docs/design-system/proposals/planner-scheduler-v2/README.md` directly — do not reuse Run 9's brief or progress docs as the starting point, they describe different, already-shipped work.
+Six standing acceptance smokes are registered in `scripts/verification/SMOKES.md` (`smoke-e1-desktop-board.mjs`, `smoke-e2-drag-reschedule.mjs`, `smoke-e3-running-late.mjs`, `smoke-e4-notes-thread.mjs`, plus the six Run-9 smokes re-pinned to the mobile 900×800 layer with a single-column drift guard). Three small residuals from this build are separately banked (LOW/MEDIUM, listed just above this entry): desktop shift-click range-select keys off mobile view state, Arrow ←/→ view-cycling is inert on the board, and E4's cross-time (pre-this-week) prospect-notes history needs a composite index + deploy.
+
+**Why this sat stale:** the entry asserts *absence*, and nothing about building the feature forces an edit to a doc that merely claims it doesn't exist yet. Banked as a process point, not a new FU: entries of the shape "X is unbuilt" should be re-verified against source at the start of any session that touches X, not trusted from a prior banking date.
+
+_Original entry, preserved for the record:_
+
+~~Run 9 built six features (A1–A5 undo/redo/shortcuts/conflicts/templates/bulk + F3 series propagation) that are real, live in prod (`d0e74c12`), and valuable — but they are **not** the "planner and scheduler v2" redesign named in `docs/design-system/proposals/planner-scheduler-v2/README.md`. That README's actual spec is **five different features**, all still unbuilt: E1 desktop 3-day + week views · E2 drag-drop reschedule (wires to the existing `postponeWithRebook`) · E3 running-late cascade (gap-smart, prospect-notify) · E4 per-appointment notes thread (travels with `prospectId`) · E5 collapsed-rail space adaptation. This is the genuine planner-completion track, still ahead, and now sits on the `seriesId` + reschedule-in-place foundation Run 9 just laid. **Action:** needs its own recon-then-build session sourced from `docs/design-system/proposals/planner-scheduler-v2/README.md` directly — do not reuse Run 9's brief or progress docs as the starting point, they describe different, already-shipped work.~~
 
 ---
 
