@@ -45,11 +45,14 @@
 // ABSTENTION RULE (see pass 3 in buildStatusMap): 'ontrack' is the only band
 // that makes a POSITIVE claim — "nothing is wrong with this agent". Every other
 // band reports something observed. So 'ontrack' requires BOTH gates to have
-// actually been evaluated: an agent with no usable persistency reading is left
-// UNBANDED rather than asserted healthy. An unbanded agent is simply absent
-// from the returned map, and is excluded by every chip including 'ontrack'.
+// actually been evaluated: an agent with no usable persistency reading is
+// banded STATUS_NODATA_KEY ('nodata') rather than asserted healthy.
 // A surface that abstains is safe; a surface that says "On track" over a
 // missing reading is a lie a manager will act on.
+//
+// 'nodata' is a DATA-AVAILABILITY state, not a sixth verdict. It is a named key
+// (not an absence) so the sheet can render and filter it — see its declaration
+// for why silent absence would read as a broken surface.
 
 import { deriveExceptions } from './managerExceptions';
 import { PERS_FLOOR } from '../lib/persistency/calculations';
@@ -66,7 +69,23 @@ export const FUNNEL_STATUS_OPTS = [
   ['floor', 'Below floor'],
 ];
 
-export const FUNNEL_STATUS_KEYS = FUNNEL_STATUS_OPTS.map(([k]) => k);
+// The abstention state. NOT part of the mockup's six-band vocabulary — it is a
+// data-availability state, not a performance verdict, and it is deliberately
+// worded to say so. An agent lands here when the derivation RAN but had no
+// usable persistency reading for them, so 'ontrack' could not be honestly
+// asserted (see the abstention rule below).
+//
+// It is a real key rather than an absence so the surface can SHOW it: a manager
+// seeing rows that match no band would read the sheet as broken, and the
+// actionable fact — "these agents have no persistency on file, go enter it" —
+// would be invisible. Abstention should inform, not look like a gap.
+export const STATUS_NODATA_KEY = 'nodata';
+export const STATUS_NODATA_LABEL = 'No persistency data';
+
+export const FUNNEL_STATUS_KEYS = [
+  ...FUNNEL_STATUS_OPTS.map(([k]) => k),
+  STATUS_NODATA_KEY,
+];
 
 // ── Row-reachability: why the Master Sheet offers FIVE of the six ───────────
 // The Master Sheet is a FILERS-ONLY table — a row exists only for an agent with
@@ -91,11 +110,18 @@ export const FUNNEL_STATUS_KEYS = FUNNEL_STATUS_OPTS.map(([k]) => k);
 // — a different table, not a filter change — OR (b) redefining it as a recency
 // signal ("filed, but not for N weeks"), which needs an N nobody has ruled on.
 // Both are out of scope for the read-path work this module was built for.
-export const ROW_REACHABLE_STATUS_KEYS = Object.freeze(['ontrack', 'pace', 'report', 'persistency', 'floor']);
+export const ROW_REACHABLE_STATUS_KEYS = Object.freeze([
+  'ontrack', 'pace', 'report', 'persistency', 'floor', STATUS_NODATA_KEY,
+]);
 
-export const ROW_REACHABLE_STATUS_OPTS = FUNNEL_STATUS_OPTS.filter(
-  ([k]) => ROW_REACHABLE_STATUS_KEYS.includes(k),
-);
+// 'nodata' is appended LAST and carries its own label — it is offered as a real
+// chip so an operator can pull up exactly the agents whose persistency is
+// missing. Rendering should treat it as informational (muted), not as a
+// severity band alongside the five verdicts.
+export const ROW_REACHABLE_STATUS_OPTS = [
+  ...FUNNEL_STATUS_OPTS.filter(([k]) => ROW_REACHABLE_STATUS_KEYS.includes(k)),
+  [STATUS_NODATA_KEY, STATUS_NODATA_LABEL],
+];
 
 // `deriveExceptions` result → status band key. Returns null for any shape this
 // module does not claim (defensive: a future exception type must be mapped
@@ -191,16 +217,20 @@ export function buildStatusMap({
   // 'ontrack' is the only band that is a positive claim about an agent nothing
   // flagged. Reaching it requires clearing BOTH gates, so it may only be
   // asserted when both were actually evaluated. If the persistency read failed
-  // (or returned nothing for this agent), the agent is left UNBANDED — the row
-  // renders without a band and is excluded by every STATUS chip, including
-  // 'ontrack' itself.
+  // (or returned nothing for this agent), the agent is re-banded to the
+  // explicit STATUS_NODATA_KEY state instead — never 'ontrack'.
+  //
+  // It becomes a NAMED state rather than a deletion so the surface can show it.
+  // Dropping the key would leave the row matching no chip at all, which reads
+  // as a broken sheet and hides the actionable fact ("no persistency on file
+  // for these agents"). Abstention should inform, not look like a gap.
   //
   // A band assigned by pass 1 or pass 2 is untouched: those are evidenced
   // findings and stay valid regardless of what else was unavailable. The
   // failure mode being designed against is a below-floor agent silently
   // reading "On track" because the persistency arm never ran.
   for (const id of Object.keys(map)) {
-    if (map[id] === 'ontrack' && !hasPersReading.has(id)) delete map[id];
+    if (map[id] === 'ontrack' && !hasPersReading.has(id)) map[id] = STATUS_NODATA_KEY;
   }
 
   return map;

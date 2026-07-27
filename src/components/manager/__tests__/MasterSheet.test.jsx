@@ -435,6 +435,62 @@ describe('MasterSheet funnel — STATUS filters', () => {
     expect(screen.queryByTestId('funnel-filters-badge')).not.toBeInTheDocument();
   });
 
+  // ── Abstention presentation (dispatcher ruling 2026-07-27) ──
+  // Strict abstention is KEPT, but it must not look like a broken sheet: an
+  // agent with no persistency reading gets a named, visible, filterable state
+  // plus a note saying why and what to do — never a silent gap.
+  describe('unbanded agents render a distinct "no persistency data" state', () => {
+    it('offers a nodata chip with a count, and an explanatory note', async () => {
+      hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+      hoisted.getPersistencyMapForYear.mockResolvedValue({}); // read OK, no records
+      render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+      await flushLoad();
+      openFilters();
+      await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+      // The chip exists, is labelled as an availability state, and is counted.
+      const chip = screen.getByTestId('funnel-status-nodata');
+      expect(chip).toHaveTextContent(/No persistency data/i);
+      expect(chip).toHaveTextContent(/·\s*1/); // only agent-1 clears production
+
+      // And the sheet SAYS why, actionably.
+      const note = screen.getByTestId('funnel-status-nodata-note');
+      expect(note).toHaveTextContent(/no persistency/i);
+      expect(note).toHaveTextContent(/not rated on track or at risk/i);
+    });
+
+    it('the nodata chip filters to exactly those agents', async () => {
+      hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+      hoisted.getPersistencyMapForYear.mockResolvedValue({});
+      render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+      await flushLoad();
+      openFilters();
+      await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByTestId('funnel-status-nodata'));
+      // agent-1 is production-clean but unmeasured → nodata. agent-2 is below
+      // floor → an EVIDENCED band, so it is filtered out, not lumped in here.
+      await waitFor(() => expect(screen.queryByText('Draft Agent')).not.toBeInTheDocument());
+      expect(screen.getByText('Active Agent')).toBeInTheDocument();
+    });
+
+    // NEGATIVE CONTROL — with persistency present, the state does not appear.
+    it('no nodata note when every agent has a reading', async () => {
+      hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+      hoisted.getPersistencyMapForYear.mockResolvedValue({
+        'agent-1': [{ year: 2026, month: 5, persistency: 0.95 }],
+        'agent-2': [{ year: 2026, month: 5, persistency: 0.95 }],
+      });
+      render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+      await flushLoad();
+      openFilters();
+      await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+      expect(screen.queryByTestId('funnel-status-nodata-note')).not.toBeInTheDocument();
+      expect(screen.getByTestId('funnel-status-nodata')).not.toHaveTextContent(/·\s*[1-9]/);
+    });
+  });
+
   // ── Scope change (CodeRabbit finding #3, dispatcher-ruled FIX) ──
   // Bands derived from a prior scope's YTD / floors / persistency are WRONG
   // DATA for the roster now on screen, not merely stale. On a scope change the

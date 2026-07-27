@@ -77,13 +77,20 @@ describe('FUNNEL_STATUS_OPTS', () => {
 // ("No reports" = zero submissions this year). Offering the chip would ship a
 // filter that always returns an empty table.
 describe('row reachability — why this surface offers five of the six bands', () => {
-  it('excludes exactly "quiet" from the row-reachable set', () => {
-    expect(ROW_REACHABLE_STATUS_KEYS).toEqual(['ontrack', 'pace', 'report', 'persistency', 'floor']);
-    expect(ROW_REACHABLE_STATUS_KEYS).not.toContain('quiet');
-    // Labels are still sourced from the full mockup vocabulary.
-    expect(ROW_REACHABLE_STATUS_OPTS.map(([, l]) => l)).toEqual([
-      'On track', 'Off pace', 'Report late', 'Pers. ↓', 'Below floor',
+  it('excludes exactly "quiet", and appends the nodata availability state', () => {
+    expect(ROW_REACHABLE_STATUS_KEYS).toEqual([
+      'ontrack', 'pace', 'report', 'persistency', 'floor', 'nodata',
     ]);
+    expect(ROW_REACHABLE_STATUS_KEYS).not.toContain('quiet');
+    // The five verdict labels are still sourced from the mockup vocabulary;
+    // 'nodata' is appended LAST with its own label — it is a data-availability
+    // state, not a sixth severity band, and must never be ordered among them.
+    expect(ROW_REACHABLE_STATUS_OPTS.map(([, l]) => l)).toEqual([
+      'On track', 'Off pace', 'Report late', 'Pers. ↓', 'Below floor', 'No persistency data',
+    ]);
+    expect(ROW_REACHABLE_STATUS_OPTS.at(-1)[0]).toBe('nodata');
+    // It is NOT part of the mockup's six-band vocabulary.
+    expect(FUNNEL_STATUS_OPTS.map(([k]) => k)).not.toContain('nodata');
   });
 
   // THE REASON, proven rather than asserted: scope the derivation to the agents
@@ -299,7 +306,7 @@ describe('buildStatusMap — persistency band', () => {
       now: NOW,
     });
     expect(map.a1).not.toBe('persistency');
-    expect('a1' in map).toBe(false); // abstained, not asserted healthy
+    expect(map.a1).toBe('nodata'); // abstained — a NAMED state, not an absence
   });
 
   it('a production band outranks a persistency band on the same agent', () => {
@@ -338,8 +345,9 @@ describe('buildStatusMap — abstention when health is unevidenced', () => {
       now: NOW,
     });
     expect(Object.values(map)).not.toContain('ontrack');
-    expect('a1' in map).toBe(false);
-    expect('a2' in map).toBe(false);
+    // Named, not dropped — the sheet must be able to render and filter these.
+    expect(map.a1).toBe('nodata');
+    expect(map.a2).toBe('nodata');
   });
 
   // The ruling's explicit constraint: abstain on the CLAIM, do not hide the surface.
@@ -352,7 +360,7 @@ describe('buildStatusMap — abstention when health is unevidenced', () => {
       now: NOW,
     });
     expect(map.sinking).toBe('floor');  // evidenced from production — survives
-    expect('fine' in map).toBe(false);  // unevidenced health — abstained
+    expect(map.fine).toBe('nodata');    // unevidenced health — abstained, but VISIBLE
   });
 
   // NEGATIVE CONTROL for the whole rule. This is the exact scenario CodeRabbit
@@ -376,7 +384,7 @@ describe('buildStatusMap — abstention when health is unevidenced', () => {
       now: NOW,
     });
     expect(readFailed.a1).not.toBe('ontrack'); // must NOT flip to healthy
-    expect(readFailed.a1).toBeUndefined();
+    expect(readFailed.a1).toBe('nodata');      // says "unknown", not "fine"
   });
 
   it('a per-agent gap abstains for that agent only, not the whole roster', () => {
@@ -388,7 +396,7 @@ describe('buildStatusMap — abstention when health is unevidenced', () => {
       now: NOW,
     });
     expect(map.measured).toBe('ontrack');
-    expect('unmeasured' in map).toBe(false);
+    expect(map.unmeasured).toBe('nodata');
   });
 });
 

@@ -25,7 +25,7 @@ import {
   FUNNEL_REPORT_OPTS, ROW_REACHABLE_STATUS_OPTS, DEFAULT_FUNNEL_FILTERS,
   deriveUnitOptions, funnelFiltersCount, applyFunnelFilters, buildFilterChips,
 } from '../../utils/funnelFilters';
-import { buildStatusMap } from '../../utils/funnelStatus';
+import { buildStatusMap, STATUS_NODATA_KEY } from '../../utils/funnelStatus';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 import CoachingNotesModal from './CoachingNotesModal';
 
@@ -231,6 +231,19 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   }, [ytdSubs, companyMins, persistencyMap, users, submissions]);
 
   const statusAvailable = statusMap !== null;
+
+  // How many ROWS on this sheet carry the abstention state. Counted over the
+  // sheet's own agents (not the whole map) so the number matches what the chip
+  // actually filters to.
+  const noDataCount = useMemo(() => {
+    if (!statusMap) return 0;
+    let n = 0;
+    for (const s of submissions) {
+      const uid = s.agentId ?? s.userId ?? s.id;
+      if (uid && statusMap[uid] === STATUS_NODATA_KEY) n += 1;
+    }
+    return n;
+  }, [statusMap, submissions]);
 
   // All loaded rows, ranked by this-week production credit (desc). Rank is a true
   // standing over the full loaded set — computed BEFORE search/exception/sort so
@@ -609,25 +622,43 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
             <div className="mb-3">
               <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-ink-muted mb-2">Status</div>
               {statusAvailable ? (
-                <div className="flex flex-wrap gap-2" data-testid="funnel-status-group">
-                  {ROW_REACHABLE_STATUS_OPTS.map(([k, label]) => {
-                    const on = filters.statuses.includes(k);
-                    return (
-                      <button
-                        key={k}
-                        type="button"
-                        data-testid={`funnel-status-${k}`}
-                        onClick={() => toggleStatus(k)}
-                        aria-pressed={on}
-                        className={`min-h-[44px] px-3 rounded-full border text-xs font-bold tracking-wide transition-colors ${
-                          on ? 'bg-primary-tint border-primary/40 text-primary' : 'bg-surface border-border text-ink-muted hover:text-ink'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
+                <>
+                  <div className="flex flex-wrap gap-2" data-testid="funnel-status-group">
+                    {ROW_REACHABLE_STATUS_OPTS.map(([k, label]) => {
+                      const on = filters.statuses.includes(k);
+                      // 'nodata' is a data-availability state, not a verdict —
+                      // dashed + muted so it never reads as a sixth severity band.
+                      const isNoData = k === STATUS_NODATA_KEY;
+                      const off = isNoData
+                        ? 'bg-surface border-dashed border-border text-ink-muted hover:text-ink'
+                        : 'bg-surface border-border text-ink-muted hover:text-ink';
+                      const count = isNoData ? noDataCount : null;
+                      return (
+                        <button
+                          key={k}
+                          type="button"
+                          data-testid={`funnel-status-${k}`}
+                          onClick={() => toggleStatus(k)}
+                          aria-pressed={on}
+                          className={`min-h-[44px] px-3 rounded-full border text-xs font-bold tracking-wide transition-colors ${
+                            on ? 'bg-primary-tint border-primary/40 text-primary' : off
+                          }`}
+                        >
+                          {label}{count != null ? ` · ${count}` : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Say WHY those rows carry no verdict, and make it actionable.
+                      Without this the abstention reads as a broken sheet. */}
+                  {noDataCount > 0 && (
+                    <p data-testid="funnel-status-nodata-note" className="mt-2 text-[11px] text-ink-muted">
+                      {noDataCount} {noDataCount === 1 ? 'agent has' : 'agents have'} no persistency
+                      on file, so {noDataCount === 1 ? 'it is' : 'they are'} not rated on track or
+                      at risk — enter their monthly persistency to band {noDataCount === 1 ? 'it' : 'them'}.
+                    </p>
+                  )}
+                </>
               ) : (
                 <p data-testid="funnel-status-unavailable" className="text-xs text-ink-muted">
                   Year-to-date pace data is still loading.
