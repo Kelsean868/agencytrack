@@ -169,6 +169,22 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
     if (!tenantId) return undefined;
     let cancelled = false;
 
+    // Drop the previous scope's STATUS inputs BEFORE the new request starts.
+    // Bands derived from a prior scope's YTD/floors/persistency are not merely
+    // stale, they are WRONG DATA for the roster now on screen. Nulling them
+    // makes `statusMap` null for the duration of the fetch, so the chips hide
+    // behind the honest "unavailable" note instead of colouring the new rows
+    // from the old scope's numbers.
+    setYtdSubs(null);
+    setCompanyMins(null);
+    setPersistencyMap(null);
+
+    // Any active STATUS condition is dropped with them. A retained chip would
+    // filter the new sheet against bands that no longer exist — silently hiding
+    // rows with no visible cause. Other filter facets are scope-independent and
+    // are deliberately left alone.
+    setFilters((f) => (f.statuses?.length ? { ...f, statuses: [] } : f));
+
     const persistencyOpts =
       role === 'unit_manager' && scopeUnitId ? { unitId: scopeUnitId }
         : role === 'branch_manager' && branchId ? { branchId }

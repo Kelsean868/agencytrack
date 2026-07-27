@@ -27,11 +27,16 @@ vi.mock('../../../services/goalsService', () => ({
 vi.mock('../../../services/persistencyService', () => ({
   getPersistencyMapForYear: hoisted.getPersistencyMapForYear,
 }));
+// Mutable so a test can change the caller's SCOPE (role / branch / unit) between
+// renders — the scoped STATUS read wave is keyed on exactly those fields.
+const DEFAULT_AUTH = {
+  tenantId: 't1', user: { uid: 'u1' }, userProfile: null, role: 'branch_manager', branchId: 'b1',
+};
+let authValue = { ...DEFAULT_AUTH };
 vi.mock('../../../context/AuthContext', () => ({
-  useAuth: () => ({
-    tenantId: 't1', user: { uid: 'u1' }, userProfile: null, role: 'branch_manager', branchId: 'b1',
-  }),
+  useAuth: () => authValue,
 }));
+beforeEach(() => { authValue = { ...DEFAULT_AUTH }; });
 vi.mock('../CoachingNotesModal', () => ({ default: () => null }));
 vi.mock('../../submissions/SubmissionViewer', () => ({ default: () => null }));
 
@@ -428,5 +433,71 @@ describe('MasterSheet funnel — STATUS filters', () => {
     fireEvent.click(screen.getByTestId('funnel-status-floor'));
     await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
     expect(screen.queryByTestId('funnel-filters-badge')).not.toBeInTheDocument();
+  });
+
+  // ── Scope change (CodeRabbit finding #3, dispatcher-ruled FIX) ──
+  // Bands derived from a prior scope's YTD / floors / persistency are WRONG
+  // DATA for the roster now on screen, not merely stale. On a scope change the
+  // STATUS inputs are dropped before the new request starts, and any active
+  // STATUS chip goes with them.
+  describe('scope change discards prior-scope STATUS state', () => {
+    it('drops the previous scope\'s bands instead of colouring the new roster with them', async () => {
+      hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+      const { rerender } = render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+      await flushLoad();
+      openFilters();
+      await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+      // Never resolves — holds the sheet in the mid-fetch window that the fix targets.
+      hoisted.getAllYTDSubmissions.mockReturnValue(new Promise(() => {}));
+      hoisted.getCompanyMinimums.mockReturnValue(new Promise(() => {}));
+      hoisted.getPersistencyMapForYear.mockReturnValue(new Promise(() => {}));
+
+      authValue = { ...DEFAULT_AUTH, branchId: 'b2' }; // caller moves branch
+      rerender(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+
+      // Chips must fall back to the honest unavailable note, NOT keep rendering
+      // bands computed from branch b1's numbers.
+      await waitFor(() => expect(screen.getByTestId('funnel-status-unavailable')).toBeInTheDocument());
+      expect(screen.queryByTestId('funnel-status-group')).not.toBeInTheDocument();
+    });
+
+    it('clears an active STATUS chip so it cannot filter against bands that no longer exist', async () => {
+      hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+      const { rerender } = render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+      await flushLoad();
+      openFilters();
+      await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByTestId('funnel-status-floor'));
+      await waitFor(() => expect(screen.queryByText('Active Agent')).not.toBeInTheDocument());
+      expect(screen.getByTestId('funnel-filters-badge')).toBeInTheDocument();
+
+      authValue = { ...DEFAULT_AUTH, branchId: 'b2' };
+      rerender(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+
+      // The filter is gone, so no row is hidden with no visible cause.
+      await waitFor(() => expect(screen.queryByTestId('funnel-filters-badge')).not.toBeInTheDocument());
+      expect(screen.getByText('Active Agent')).toBeInTheDocument();
+    });
+
+    // NEGATIVE CONTROL — a same-scope re-render must NOT clear anything, or the
+    // fix would make the STATUS chips unusable in ordinary operation.
+    it('a re-render with UNCHANGED scope preserves both the bands and the chip', async () => {
+      hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+      const { rerender } = render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+      await flushLoad();
+      openFilters();
+      await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByTestId('funnel-status-floor'));
+      await waitFor(() => expect(screen.queryByText('Active Agent')).not.toBeInTheDocument());
+
+      rerender(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />); // same scope
+
+      expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument();
+      expect(screen.getByTestId('funnel-filters-badge')).toBeInTheDocument();
+      expect(screen.queryByText('Active Agent')).not.toBeInTheDocument();
+    });
   });
 });
