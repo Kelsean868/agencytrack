@@ -485,6 +485,32 @@ Consider it overturned. **The reason the scan missed it is instructive and shoul
 
 **Not fixed in #878** — out of that PR's scope (planner activity types; `DailyCaptureV2` shares no module with its diff, and its own second commit touched only the planner sheet, seeder, smoke and docs). Recorded here as the FU's own evidence. Fix when this FU is worked: gate on the element actually being queried (`await screen.findByRole('button', { name: /FFIs conducted increase/i })`), and re-scan under the corrected shape above.
 
+**SIXTH data point — 2026-07-27, the #878 smoke-fix branch — #872's OWN FIXES ARE RE-FIRING.**
+
+This is the strongest evidence in the FU so far, because the branch that observed it **changed only `scripts/`** (a smoke file + `SMOKES.md`) — **zero `src/` files**. A test failure on such a diff is *definitionally* not caused by the change, which removes the usual ambiguity.
+
+Across three consecutive local full-suite runs on one unchanged tree:
+
+| Run | Result | Failing test |
+|---|---|---|
+| 1 | 5842/5843 | `MeetingMode > agenda rail is shown on the agent scene` |
+| 2 | 5841/5843 | `MeetingMode > skip-logs the awards scene…` **+** `AgentPlannerPanel > A5 > undo after a bulk move writes back each doc's PRIOR date` |
+| 3 | 5842/5843 | `AgentPlannerPanel > A2 > 'e' on a focused SERIES card raises the SeriesEditChoice…` |
+
+Both failing files pass **85/85 in isolation** on the same tree.
+
+**Two of these are tests #872 explicitly fixed and declared closed:**
+- the **A2 `e` shortcut**, fixed at the mechanism (`await userEvent.keyboard('e')`, an act-wrapped async dispatch replacing a synchronous `fireEvent.keyDown` against a possibly-stale listener), and
+- the **A5 bulk pair**, widened to `it(…, 20000)`.
+
+Both are firing again under load. So the remedies were **necessary but not sufficient** — they raised the threshold rather than removing the race. Note the A5 undo test failing *despite* a 20 s per-test budget: that is not a budget problem at all, which means the "widen the timeout" class of fix is the wrong tool for it.
+
+**No failure repeated across runs** — the population rotates, which is the signature of a shared environmental contention effect rather than four independent per-test bugs. Worth considering whether the real remedy is at the runner level (`maxConcurrency` / pool sizing / `fileParallelism`) rather than per-test, since chasing individual tests has now produced two rounds of fixes that did not hold.
+
+*Environment note, offered as a confound rather than an excuse:* this machine was running three worktrees with installed `node_modules`, and an `npm install` had crashed with `STATUS_STACK_BUFFER_OVERRUN` (`0xC0000409`) shortly before. Contention was plausibly higher than CI's. That does not explain the A2/A5 recurrence away — CI is also contended — but it should be weighed before concluding the fixes regressed rather than were never sufficient.
+
+**Not fixed here** — scripts-only branch. Recorded as the FU's own evidence, per note 3's instruction to capture the identity of any observed full-suite failure.
+
 **Not done / weaknesses to carry forward:**
 
 1. **None of the four was reproduced locally on demand.** They are load-dependent by nature; the fixes rest on mechanism analysis plus negative controls, not on a red-to-green reproduction. Real confirmation is the absence of recurrence across subsequent CI runs.
