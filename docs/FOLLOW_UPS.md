@@ -36,7 +36,8 @@
 | Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases ... | HIGH | — | — | 282 |
 | Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion sess... | MEDIUM | — | — | 290 |
 | R-11 login-stamp + All Users LAST-activity — REQUIRES firestore.rules edit (hasOnly allowlist or manager-readable location); bundle with the E4 index FU as a "rules + indexes attended window" | HIGH | — | — | 4282 |
-| Persistency threshold sites left un-consolidated deliberately (campaignEngine gate bands · config-registry label · tenant-configurable companyMinimums) — note so a future sweep doesn't treat them as misses (banked 2026-07-26, PR #871) | LOW | — | — | 470 |
+| `agentReportModel` + `agentReportPdfModel` `latestPersistencyPercent` use a `v <= 1 ? v*100 : v` heuristic — a valid persistency > 1 (reinstatements > lapses) renders as "1%". Sweep-found, NOT fixed, one line × two files (banked 2026-07-27, PR #871) | MEDIUM | — | — | 470 |
+| Persistency threshold sites left un-consolidated deliberately (campaignEngine gate bands · config-registry label · tenant-configurable companyMinimums) — note so a future sweep doesn't treat them as misses (banked 2026-07-26, PR #871) | LOW | — | — | 495 |
 | Tier 3c mechanical conformance — carried from Run A (hero-card worklist · motion pop-in wiring · handoff-vs-screens-v2 · gold-contrast usages) | LOW | — | — | 4348 |
 | Commission layout — unverified two-column claim; needs a REAL mockup into screens-v2 first (banked Run A Tier 3b) | LOW | — | — | 4312 |
 | E4 cross-time prospect notes history — `(agentId, prospectId)` composite index + deploy (rules-permitted per D3); this-week scope shipped Run A Tier 2 E4 | MEDIUM | — | — | 4246 |
@@ -473,6 +474,26 @@ Reasoning — it is the only option that satisfies all four constraints:
 - **Runbook step: recreate `staging` immediately post-promotion.** Cheap and worth doing regardless, but it is process, not enforcement — and this failure has already recurred once under process-only handling. Pair it with the guard; do not rely on it alone.
 
 **Do not change repo settings from this session** — flagged for the dispatcher. The CI guard is the only item here that lands as a normal reviewable PR.
+
+---
+
+## `latestPersistency*` scale sweep — one residual edge-case defect (banked 2026-07-27, PR #871 session, LOW–MEDIUM — NOT fixed, needs a ruling)
+
+Dispatcher-ordered sweep of every same-named persistency accessor after the Meeting Mode decimal-vs-percent defect, on the principle that **their own tests are not evidence** (the Meeting Mode bug survived because its fixtures used percentages that production never produces).
+
+| Site | Returns | Consumer expects | Verdict |
+|---|---|---|---|
+| `MeetingMode.helpers.latestPersistency` | *was* decimal | percent | **DEFECT — fixed in this PR** |
+| `utils/funnelStatus.latestPersistency` | decimal | decimal (`PERS_FLOOR`) | ✅ correct, documented |
+| `lib/strategicPlan.latestPersistencyPct` | percent (`* 100`) | percent | ✅ correct, documented |
+| `utils/commissionAnchor.latestPersistency` | decimal in a field **named `pct`** | consumer does `* 100` at `CommissionAnchorStrip.jsx:234` | ✅ correct — **misleading field name only** |
+| `profile/agentReportModel` + `agentReportPdfModel` `latestPersistencyPercent` | `v <= 1 ? v * 100 : v` | percent | ⚠️ **edge-case defect — see below** |
+
+**The residual defect.** Both `agentReport*` modules (documented mirrors of each other) coerce with the heuristic `v <= 1 ? v * 100 : v`. `calculations.js` **explicitly permits persistency > 1** ("can return > 1 when reinstatements outpace lapses (rare but valid)") and has a test pinning it. So a genuine `1.05` (=105%) fails the `<= 1` branch and renders as **"1%"** in the agent report and PDF — the same lie class this PR exists to remove, on a top performer.
+
+**Why the heuristic is unnecessary, not just wrong:** every persistency read path filters to E3 docs — `getPersistencyMapForYear`, `getPersistencyForAgentIds`, and `getAgentHistory` all `.filter(isE3Doc)` — and E3 stores decimals only. A legacy 0–100 doc cannot reach these functions, so the dual-scale guess has nothing to guard.
+
+**Recommended fix (NOT applied — out of the ruled scope, one line × two files):** replace the heuristic with an unconditional `v * 100`, plus a value-level test at `persistency = 1.05` → `105`. Deliberately left for a ruling rather than folded in silently.
 
 ---
 
