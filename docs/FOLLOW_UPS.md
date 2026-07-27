@@ -23,6 +23,7 @@
 | Planner duration reporting — `durationMin` is captured on every appointment but NOTHING sums it anywhere; "time recorded" needs only a reporting surface (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
 | Planner type-taxonomy collisions deferred by hardcoding — `MTG` vs manager `UNIT`, and `PERS` vs `FREE`+Personal (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
 | `SALE` absent from the design authority's agent picker but shipping in the app — pre-existing divergence, NOT introduced by the activity-types work (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
+| SEM/TRADE count for the manager headline but NOT the agent's kept-count — same kept seminar reads differently to the two roles; settle when types become tenant-configurable (reviewer pass on #878, banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
 | Mutating planner smokes leave residue by design — no self-teardown; needs a shared Admin-SDK helper across all 7 (raised by CodeRabbit on #878, banked 2026-07-27) | LOW | Verification | — | see § Planner activity types |
 | Two divergent planner design-authority trees (`proposals/planner-scheduler-v2/` vs `screens-v2/agencytrack-planner-handoff/`) — never diffed file-by-file (banked 2026-07-27) | LOW | Design system | — | see § Planner activity types |
 | External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track) | HIGH | — | overdue (was 2026-07-17) | ~4130 |
@@ -616,7 +617,20 @@ The design authority's agent booking sheet renders `['PC','SC','AI','FFI','CI']`
 
 **Pre-existing divergence — NOT introduced by the activity-types work**, which preserved `SALE` in the Prospect group exactly as it shipped. Recorded so it is not later misattributed to that PR. Needs a product call (is booking a "Sale" as a future appointment meaningful, or is a sale only ever an outcome?) before any code change.
 
-### 5. LOW — mutating planner smokes leave residue by design; no self-teardown
+### 5. LOW — SEM/TRADE read differently to an agent and to their manager
+
+Surfaced by the reviewer pass on #878. Two sets answer two genuinely different questions, and each is correct in isolation:
+
+| Set | Question | Members |
+|---|---|---|
+| `SELLING_TYPE_KEYS` (`plannerService.js`) | "does it count as selling **activity**?" | `PC SC AI FFI CI SALE` **`SEM TRADE`** |
+| `SEEDS_DAILY_CAPTURE` (`planner.helpers.js`) | "does it seed a Daily Capture **field**?" | `PC SC AI FFI CI SALE` |
+
+The delta is `SEM`/`TRADE`. Consequence: **the same kept seminar counts toward the manager's "N selling booked this week" but not toward the agent's own "N kept appointments today."** Neither number is wrong for its own purpose — a seminar *is* prospecting activity, and it *does* carry nothing into Daily Capture — but the two roles get different signals about the same event, with no affordance explaining why.
+
+Not a bug and deliberately not reconciled: collapsing the sets would break one of the two purposes. **Settle when types become tenant-configurable**, since that work has to decide whether "counts as activity" and "seeds a field" are one axis or two — at which point this asymmetry is either formalised (and surfaced in the UI) or removed. Verified during review that neither set is used where the other belongs: `isSellingType` has exactly one consumer (`TeamPlannerPanel:154`), `SEEDS_DAILY_CAPTURE` exactly one (`planner.helpers:480`).
+
+### 6. LOW — mutating planner smokes leave residue by design; no self-teardown
 
 Raised by CodeRabbit on the activity-types PR (#878) against `smoke-planner-activity-types.mjs`: the ADMIN sentinel it books survives the run, because the sweeper is a **pre-run** prerequisite rather than a teardown.
 
@@ -627,7 +641,7 @@ Raised by CodeRabbit on the activity-types PR (#878) against `smoke-planner-acti
 
 **Scope when built:** add an Admin-SDK teardown helper (mirroring `sweep-nonfixture-appointments.mjs`'s query) callable from a smoke's `finally`, and adopt it across all seven planner smokes so the residue contract becomes "self-cleaning" uniformly rather than per-file. Low severity because the residue is non-selling and provably cannot move any counter this PR touches — but it does accumulate until the next sweep.
 
-### 6. LOW — two divergent planner design-authority trees, never diffed
+### 7. LOW — two divergent planner design-authority trees, never diffed
 
 The repo carries **two** planner mockup trees that disagree:
 

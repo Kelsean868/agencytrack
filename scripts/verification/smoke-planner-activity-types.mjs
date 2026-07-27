@@ -178,7 +178,13 @@ try {
 
   // ── Legs 2 + 3: write-read-verify + counters do not inflate ──────────────
   const before = await counterText(p);
-  log(before.length > 0 ? 'PASS' : 'FAIL', `booked-vs-floor counters render (${JSON.stringify(before)})`);
+  // Assert the SHAPE, not merely non-emptiness — `before.length > 0` passed on
+  // any content at all, including an error string, while claiming the counters
+  // render. Each counter reads "<booked>/<target>" with an en-dash when no floor
+  // is configured, so require at least one such pair.
+  const counterShapeOk = /\d+\s*\/\s*(\d+|–)/.test(before);
+  log(counterShapeOk ? 'PASS' : 'FAIL',
+    `booked-vs-floor counters render as <booked>/<target> (${JSON.stringify(before)})`);
 
   await bookCta(p).click({ timeout: 15_000 });
   await p.locator(tsel('appt-type-group-block')).waitFor({ state: 'visible', timeout: 10_000 });
@@ -191,8 +197,9 @@ try {
 
   const sentinel = () => p.locator(`${tsel('planner-desktop-board')} :text("${SENTINEL_TIME_12}")`);
   const wrote = await inDom(sentinel(), 10_000);
+  const deployGated = !wrote && sawPermissionDenied;
 
-  if (!wrote && sawPermissionDenied) {
+  if (deployGated) {
     // THE DEPLOY GATE. Name it precisely so nobody spends a debugging cycle on it.
     log('FAIL', 'DEPLOY-GATED: the write was rejected by firestore.rules. '
       + 'This is EXPECTED until `firebase deploy --only firestore:rules` has run against this project. '
@@ -204,14 +211,29 @@ try {
   await p.reload({ waitUntil: 'domcontentloaded' });
   await openBoard(p);
   await p.waitForTimeout(1_200);
-  const persisted = await inDom(sentinel(), 10_000);
-  log(persisted === wrote ? 'PASS' : 'FAIL',
-    `sentinel survives a reload — matches the write result (wrote=${wrote}, persisted=${persisted})`);
 
-  const after = await counterText(p);
-  const countersUnchanged = before === after;
-  log(countersUnchanged ? 'PASS' : 'FAIL',
-    `booked-vs-floor counters UNCHANGED by a non-selling booking (${JSON.stringify(before)} → ${JSON.stringify(after)})`);
+  // ⚠ BOTH assertions below are GATED ON `wrote`, and report FAIL — never a
+  // silent pass — when the write never landed. Previously they compared
+  // `persisted === wrote` and `before === after`, which are BOTH trivially
+  // satisfied when nothing was written: a deploy-gated run reported them green
+  // having proved nothing. Since this smoke is the evidence that the rules
+  // deploy worked, an assertion that can pass without a successful write is
+  // worse than no assertion. Do not "simplify" these back.
+  if (!wrote) {
+    log('FAIL', `persistence NOT VERIFIED — the write never landed (deployGated=${deployGated}). `
+      + 'Reported as FAIL rather than skipped: this leg cannot be green without a real write.');
+    log('FAIL', 'counter-inflation NOT VERIFIED — needs a real non-selling booking to be meaningful. '
+      + 'Reported as FAIL rather than skipped, for the same reason.');
+  } else {
+    const persisted = await inDom(sentinel(), 10_000);
+    log(persisted ? 'PASS' : 'FAIL',
+      `sentinel survives a reload — written, then re-read from Firestore (persisted=${persisted})`);
+
+    const after = await counterText(p);
+    const countersUnchanged = before === after;
+    log(countersUnchanged ? 'PASS' : 'FAIL',
+      `booked-vs-floor counters UNCHANGED by a real non-selling booking (${JSON.stringify(before)} → ${JSON.stringify(after)})`);
+  }
 
   // ── Leg 5: manager headline excludes it, drill still shows it ────────────
   // A role switch gets its OWN context — clearing cookies mid-context leaves the
@@ -226,16 +248,29 @@ try {
   await mp.locator(tsel('team-planner-rows')).waitFor({ state: 'visible', timeout: 15_000 });
 
   const headline = await mp.locator(tsel('team-planner-rows')).innerText();
-  const saysSelling = /selling booked this week/.test(headline);
-  log(saysSelling ? 'PASS' : 'FAIL',
-    `manager headline is labelled as SELLING-only, not a raw booking count (${saysSelling})`);
+  // SCOPE OF THIS ASSERTION — read before trusting it. It verifies the headline
+  // is LABELLED selling-only and renders a real integer. It does NOT verify the
+  // exclusion ARITHMETIC: the smoke has no independent expected value here, and
+  // deriving one from the fixtures would just restate the implementation. The
+  // arithmetic is covered by the value-level unit test with a negative control
+  // (TeamPlannerPanel.test.jsx — "counts only selling types in the per-agent
+  // headline total"). SMOKES.md is worded to match this scope; keep them in step.
+  const headlineMatch = /(\d+) selling booked this week/.exec(headline);
+  log(headlineMatch ? 'PASS' : 'FAIL',
+    `manager headline is labelled selling-only and renders an integer count (${headlineMatch ? headlineMatch[0] : headline.slice(0, 80)})`);
 
   await mp.locator('[data-testid^="team-row-"]').first().click();
   await mp.locator(tsel('coaching-drill')).waitFor({ state: 'visible', timeout: 10_000 });
-  const drillText = await mp.locator(tsel('coaching-drill')).innerText();
-  const drillShowsExcluded = /Admin|Del/.test(drillText);
+  // Read the drill's chips by their `data-type`, not by regex over its text.
+  // The old check was `/Admin|Del/` over innerText: an OR (so one type present
+  // satisfied a claim about two) and substring-prone (a prospect named "Delroy"
+  // would have matched). Require BOTH non-selling types, by exact type key.
+  const drillTypes = await mp.locator(tsel('coaching-drill')).evaluate(
+    (el) => [...el.querySelectorAll('[data-type]')].map((c) => c.getAttribute('data-type')),
+  );
+  const drillShowsExcluded = drillTypes.includes('ADMIN') && drillTypes.includes('DEL');
   log(drillShowsExcluded ? 'PASS' : 'FAIL',
-    `coaching drill still shows the excluded non-selling work — nothing is hidden (${drillShowsExcluded})`);
+    `coaching drill still shows BOTH excluded non-selling types — nothing is hidden (${JSON.stringify(drillTypes)})`);
 
   formatCaptureReport(ctx.capture);
   assertLegHygiene(ctx);

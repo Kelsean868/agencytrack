@@ -464,9 +464,22 @@ const SEEDS_DAILY_CAPTURE = new Set([...Object.keys(PLAN_TO_DAILY_FIELD), 'SALE'
  * what is actually being carried: support work and blocks map to no Daily
  * Capture field, so counting them overstated the CTA. This also fixes the same
  * pre-existing overstatement for `FREE`, which was counted here before the nine
- * new types existed. The `counts` / `newBusiness` payload was already correct —
- * `PLAN_TO_DAILY_FIELD` returns undefined for anything unmapped and the write is
- * skipped — so only the label figure changes.
+ * new types existed.
+ *
+ * TWO things change, not one — an earlier version of this comment claimed only
+ * the label figure moved, which was FALSE:
+ *   1. the figure itself, and
+ *   2. **the visibility of the whole end-of-day handoff banner**, because
+ *      `AgentPlannerPanel.jsx` gates it on `seed.keptCount > 0`. A day of only
+ *      kept blocks / support work (or, previously, only a kept `FREE`) now
+ *      renders NO banner at all where it used to render one.
+ * That second effect is ENDORSED, not incidental (dispatcher ruling, 2026-07-27):
+ * a "Carry into today's log" button that carries nothing is worse than no
+ * banner. Do not restore the old behaviour by widening this set.
+ *
+ * The `counts` / `newBusiness` PAYLOAD is genuinely unchanged — every type that
+ * could contribute is in SEEDS_DAILY_CAPTURE, and `PLAN_TO_DAILY_FIELD` already
+ * returned undefined for anything unmapped.
  *
  * @returns {{ counts: object, newBusiness: {apps:number, api:number}, keptCount:number }}
  */

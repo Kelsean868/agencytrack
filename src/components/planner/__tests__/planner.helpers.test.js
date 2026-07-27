@@ -138,6 +138,25 @@ describe('deriveSeedFromKept (plan→handoff math)', () => {
     expect(seed.newBusiness).toEqual({ apps: 0, api: 0 });
   });
 
+  // ENDORSED BEHAVIOUR GUARD (dispatcher ruling 2026-07-27). keptCount === 0 on a
+  // block-only day is what HIDES the end-of-day handoff banner entirely
+  // (AgentPlannerPanel gates it on `seed.keptCount > 0`) — a "Carry into today's
+  // log" button that carries nothing is worse than no banner. This is deliberate,
+  // so it gets a test: if someone widens the set to "fix" the missing banner,
+  // this fails and points them at the ruling.
+  it('returns keptCount 0 for a block-only day — the banner is meant to disappear', () => {
+    const blocksOnly = [
+      { date: '2026-06-22', type: 'ADMIN', status: 'kept' },
+      { date: '2026-06-22', type: 'TRAIN', status: 'kept' },
+      { date: '2026-06-22', type: 'FREE',  status: 'kept' },
+      { date: '2026-06-22', type: 'SEM',   status: 'kept' },
+    ];
+    const seed = deriveSeedFromKept(blocksOnly, '2026-06-22');
+    expect(seed.keptCount).toBe(0);
+    expect(seed.counts).toEqual({});
+    expect(seed.newBusiness).toEqual({ apps: 0, api: 0 });
+  });
+
   // NEGATIVE CONTROL for the guard above: if the SEEDS_DAILY_CAPTURE filter were
   // removed, keptCount would count all five completed appointments. Asserting
   // the wrong value here is what the filter prevents — this test fails if the
