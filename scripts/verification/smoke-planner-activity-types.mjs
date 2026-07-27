@@ -279,8 +279,14 @@ try {
       const solidSeen  = SOLID_EXPECTED.filter((t) => tone[t] !== undefined);
       const dashedSeen = DASHED_EXPECTED.filter((t) => tone[t] !== undefined);
 
+      // Both sides assert an EXACT value. `tone[t] !== 'dashed'` would have been
+      // the asymmetry the comment above denies: it passes for 'none', 'hidden',
+      // 'dotted', 'double', 'groove', 'ridge', 'inset' and 'outset' — so a
+      // selling chip losing its border entirely (computed 'none') would have
+      // silently PASSED. The first real run confirms 'solid' is the literal
+      // computed value for all seven selling chips in both themes.
       const solidOk = solidSeen.length >= MIN_TONE_SAMPLES
-        && solidSeen.every((t) => tone[t] !== 'dashed');
+        && solidSeen.every((t) => tone[t] === 'solid');
       const dashedOk = dashedSeen.length >= MIN_TONE_SAMPLES
         && dashedSeen.every((t) => tone[t] === 'dashed');
 

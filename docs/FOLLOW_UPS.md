@@ -485,9 +485,11 @@ Consider it overturned. **The reason the scan missed it is instructive and shoul
 
 **Not fixed in #878** — out of that PR's scope (planner activity types; `DailyCaptureV2` shares no module with its diff, and its own second commit touched only the planner sheet, seeder, smoke and docs). Recorded here as the FU's own evidence. Fix when this FU is worked: gate on the element actually being queried (`await screen.findByRole('button', { name: /FFIs conducted increase/i })`), and re-scan under the corrected shape above.
 
-**SIXTH data point — 2026-07-27, the #878 smoke-fix branch — #872's OWN FIXES ARE RE-FIRING.**
+**SIXTH data point — 2026-07-27, the #879 smoke-fix branch — #872's fixed tests re-fire LOCALLY but held in CI.**
 
-This is the strongest evidence in the FU so far, because the branch that observed it **changed only `scripts/`** (a smoke file + `SMOKES.md`) — **zero `src/` files**. A test failure on such a diff is *definitionally* not caused by the change, which removes the usual ambiguity.
+⚠ **Read the CI result before acting on this entry.** An earlier draft of this note claimed "#872's own fixes are re-firing" full stop. That **overstated the evidence** and is corrected here: the identical tree then passed `lint-and-build` **green in CI** (run `30293147196`), i.e. the full suite ran clean on GitHub's runner. So the accurate claim is narrower — *these tests re-fire under contention heavier than CI's*, not *the fixes regressed*. The correction is left visible rather than rewritten away, because the overstatement is itself the lesson: a local-only failure streak is weak evidence until CI is checked, and it is easy to bank a confident-sounding conclusion from it.
+
+What remains genuinely useful is that the observing branch **changed only `scripts/`** (a smoke file + `SMOKES.md`) — **zero `src/` files**. A test failure on such a diff is *definitionally* not caused by the change, which removes the usual attribution ambiguity even though the failures turned out to be environmental.
 
 Across three consecutive local full-suite runs on one unchanged tree:
 
@@ -503,7 +505,7 @@ Both failing files pass **85/85 in isolation** on the same tree.
 - the **A2 `e` shortcut**, fixed at the mechanism (`await userEvent.keyboard('e')`, an act-wrapped async dispatch replacing a synchronous `fireEvent.keyDown` against a possibly-stale listener), and
 - the **A5 bulk pair**, widened to `it(…, 20000)`.
 
-Both are firing again under load. So the remedies were **necessary but not sufficient** — they raised the threshold rather than removing the race. Note the A5 undo test failing *despite* a 20 s per-test budget: that is not a budget problem at all, which means the "widen the timeout" class of fix is the wrong tool for it.
+Both fired again locally. Given CI held, the defensible reading is that the remedies **raised the threshold without removing the race** — sufficient for CI's contention level, not for a heavier one. Note the A5 undo test failing *despite* a 20 s per-test budget: that is not a budget problem at all, so the "widen the timeout" class of fix is the wrong tool for that one specifically, independent of how contended the machine is.
 
 **No failure repeated across runs** — the population rotates, which is the signature of a shared environmental contention effect rather than four independent per-test bugs. Worth considering whether the real remedy is at the runner level (`maxConcurrency` / pool sizing / `fileParallelism`) rather than per-test, since chasing individual tests has now produced two rounds of fixes that did not hold.
 
