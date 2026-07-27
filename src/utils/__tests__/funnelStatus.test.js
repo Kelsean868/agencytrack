@@ -34,6 +34,17 @@ function sub(agentId, weekStarting, api) {
   return { agentId, weekStarting, status: 'submitted', totalProductionCredit: api };
 }
 
+// A healthy persistency reading for each id. Required by any test that expects
+// 'ontrack': under the abstention rule that band is a positive claim and is only
+// asserted when a persistency reading actually exists (buildStatusMap pass 3).
+// Tests about PRODUCTION banding use this so the persistency arm is satisfied
+// and does not mask what they are actually probing.
+function healthyPers(...ids) {
+  const out = {};
+  for (const id of ids) out[id] = [{ year: 2026, month: 5, persistency: 0.95 }];
+  return out;
+}
+
 // Sanity-check the fixture's assumed credit extraction before relying on it.
 describe('fixture sanity', () => {
   it('a single submission credits its full API (non-vacuous fixtures)', () => {
@@ -41,6 +52,7 @@ describe('fixture sanity', () => {
       users: [agent('a1')],
       ytdSubs: [sub('a1', '2026-06-28', VETERAN_PACE * 2)],
       companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('a1'),
       now: NOW,
     });
     // Double the pace target must NOT be a pace exception — proves the fixture's
@@ -159,6 +171,7 @@ describe('buildStatusMap — band boundaries (value-level)', () => {
       users: [agent('a1')],
       ytdSubs: [sub('a1', week, ytdApi)],
       companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('a1'),
       now: NOW,
     }).a1;
   }
@@ -197,6 +210,7 @@ describe('buildStatusMap — band boundaries (value-level)', () => {
       ],
       ytdSubs: [sub('rookie', week, api), sub('vet', week, api)],
       companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('rookie', 'vet'),
       now: NOW,
     });
     expect(map.rookie).toBe('ontrack');
@@ -223,6 +237,7 @@ describe('buildStatusMap — report bands', () => {
         sub('late', '2026-06-21', 400000), // on pace, but not the latest week
       ],
       companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('current', 'late'),
       now: NOW,
     });
     expect(map.current).toBe('ontrack');
@@ -236,6 +251,7 @@ describe('buildStatusMap — report bands', () => {
       users: [agent('a1'), agent('a2')],
       ytdSubs: [],
       companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('a1', 'a2'),
       now: NOW,
     });
     expect(map.a1).toBe('ontrack');
@@ -270,8 +286,11 @@ describe('buildStatusMap — persistency band', () => {
     expect(map.a1).toBe('ontrack');
   });
 
-  // NEGATIVE CONTROL — an absent persistency reading is not a failing one.
-  it('no persistency record leaves the agent ontrack', () => {
+  // NEGATIVE CONTROL — an absent persistency reading is not a FAILING one.
+  // It is also not a passing one: the agent is left unbanded, never 'persistency'.
+  // (Ruling 2026-07-27 reversed the previous 'ontrack' expectation here — see
+  // the abstention block below for the full rationale.)
+  it('no persistency record does NOT band the agent persistency', () => {
     const map = buildStatusMap({
       users: [agent('a1')],
       ytdSubs: [clean('a1')],
@@ -279,7 +298,8 @@ describe('buildStatusMap — persistency band', () => {
       persistencyByAgent: { other: [{ year: 2026, month: 5, persistency: 0.10 }] },
       now: NOW,
     });
-    expect(map.a1).toBe('ontrack');
+    expect(map.a1).not.toBe('persistency');
+    expect('a1' in map).toBe(false); // abstained, not asserted healthy
   });
 
   it('a production band outranks a persistency band on the same agent', () => {
@@ -294,12 +314,91 @@ describe('buildStatusMap — persistency band', () => {
   });
 });
 
+// ── Abstention rule (dispatcher ruling 2026-07-27, CodeRabbit finding #2) ──
+//
+// 'ontrack' is the only band that makes a POSITIVE claim about an agent. It may
+// therefore only be asserted when BOTH gates actually ran. If the persistency
+// read failed — or simply returned nothing for this agent — the agent is left
+// UNBANDED rather than reported healthy. Chips are NOT hidden wholesale: every
+// evidenced band still lands.
+//
+// Direction matters: asserting unevidenced health is the harmful failure; a
+// surface that abstains is safe, a surface that says "On track" over a missing
+// reading is a lie a manager acts on.
+describe('buildStatusMap — abstention when health is unevidenced', () => {
+  const week = '2026-06-28';
+  const clean = (id) => sub(id, week, 400000);
+
+  it('persistency map entirely null → nobody is asserted ontrack', () => {
+    const map = buildStatusMap({
+      users: [agent('a1'), agent('a2')],
+      ytdSubs: [clean('a1'), clean('a2')],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: null, // the read failed
+      now: NOW,
+    });
+    expect(Object.values(map)).not.toContain('ontrack');
+    expect('a1' in map).toBe(false);
+    expect('a2' in map).toBe(false);
+  });
+
+  // The ruling's explicit constraint: abstain on the CLAIM, do not hide the surface.
+  it('evidenced bands still land when the persistency read failed', () => {
+    const map = buildStatusMap({
+      users: [agent('sinking'), agent('fine')],
+      ytdSubs: [sub('sinking', week, 1000), clean('fine')], // 'sinking' is deep below floor
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: null,
+      now: NOW,
+    });
+    expect(map.sinking).toBe('floor');  // evidenced from production — survives
+    expect('fine' in map).toBe(false);  // unevidenced health — abstained
+  });
+
+  // NEGATIVE CONTROL for the whole rule. This is the exact scenario CodeRabbit
+  // flagged: a below-floor agent reading "On track" because the persistency arm
+  // never ran. Remove pass 3 from buildStatusMap and this test fails.
+  it('an agent who WOULD band persistency is never shown ontrack when the read failed', () => {
+    const withRead = buildStatusMap({
+      users: [agent('a1')],
+      ytdSubs: [clean('a1')],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: { a1: [{ year: 2026, month: 5, persistency: 0.55 }] },
+      now: NOW,
+    });
+    expect(withRead.a1).toBe('persistency'); // the truth, when measured
+
+    const readFailed = buildStatusMap({
+      users: [agent('a1')],
+      ytdSubs: [clean('a1')],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: null, // same agent, reading unavailable
+      now: NOW,
+    });
+    expect(readFailed.a1).not.toBe('ontrack'); // must NOT flip to healthy
+    expect(readFailed.a1).toBeUndefined();
+  });
+
+  it('a per-agent gap abstains for that agent only, not the whole roster', () => {
+    const map = buildStatusMap({
+      users: [agent('measured'), agent('unmeasured')],
+      ytdSubs: [clean('measured'), clean('unmeasured')],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('measured'), // 'unmeasured' has no record
+      now: NOW,
+    });
+    expect(map.measured).toBe('ontrack');
+    expect('unmeasured' in map).toBe(false);
+  });
+});
+
 describe('buildStatusMap — scope and shape', () => {
   it('only agents are banded; managers are absent from the map', () => {
     const map = buildStatusMap({
       users: [agent('a1'), { id: 'um1', role: 'unit_manager' }],
       ytdSubs: [sub('a1', '2026-06-28', 400000)],
       companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('a1', 'um1'),
       now: NOW,
     });
     expect(map.a1).toBe('ontrack');
@@ -311,6 +410,7 @@ describe('buildStatusMap — scope and shape', () => {
       users: [agent('in'), agent('out')],
       ytdSubs: [sub('in', '2026-06-28', 400000)],
       companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('in', 'out'),
       scopeIds: new Set(['in']),
       now: NOW,
     });

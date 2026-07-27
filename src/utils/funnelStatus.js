@@ -41,6 +41,15 @@
 // verbatim; persistency is a lagging quality signal applied only to an agent
 // who is otherwise production-clean. 'ontrack' is the residue — and it is
 // assigned ONLY when the derivation actually ran (see `statusAvailable`).
+//
+// ABSTENTION RULE (see pass 3 in buildStatusMap): 'ontrack' is the only band
+// that makes a POSITIVE claim — "nothing is wrong with this agent". Every other
+// band reports something observed. So 'ontrack' requires BOTH gates to have
+// actually been evaluated: an agent with no usable persistency reading is left
+// UNBANDED rather than asserted healthy. An unbanded agent is simply absent
+// from the returned map, and is excluded by every chip including 'ontrack'.
+// A surface that abstains is safe; a surface that says "On track" over a
+// missing reading is a lie a manager will act on.
 
 import { deriveExceptions } from './managerExceptions';
 import { PERS_FLOOR } from '../lib/persistency/calculations';
@@ -144,7 +153,9 @@ export function buildStatusMap({
 } = {}) {
   const map = {};
 
-  // Every scoped agent starts 'ontrack'; the passes below demote.
+  // Every scoped agent starts 'ontrack'; the passes below demote. This is
+  // PROVISIONAL — pass 3 revokes it for any agent whose clean bill of health
+  // is not actually evidenced.
   for (const u of users ?? []) {
     if (u?.role !== 'agent') continue;
     if (scopeIds && !scopeIds.has(u.id)) continue;
@@ -152,11 +163,16 @@ export function buildStatusMap({
   }
 
   // Pass 1 — persistency (lowest priority, so it is applied first and any
-  // production band below overwrites it).
+  // production band below overwrites it). Also records WHICH agents we hold a
+  // usable persistency reading for; pass 3 needs that to tell "measured and
+  // fine" apart from "never measured".
+  const hasPersReading = new Set();
   if (persistencyByAgent) {
     for (const id of Object.keys(map)) {
       const p = latestPersistency(persistencyByAgent[id]);
-      if (p !== null && p < PERS_FLOOR) map[id] = 'persistency';
+      if (p === null) continue;
+      hasPersReading.add(id);
+      if (p < PERS_FLOOR) map[id] = 'persistency';
     }
   }
 
@@ -168,6 +184,23 @@ export function buildStatusMap({
   for (const ex of exceptions) {
     const key = exceptionToStatusKey(ex);
     if (key && ex.agentId in map) map[ex.agentId] = key;
+  }
+
+  // Pass 3 — ABSTAIN rather than assert unevidenced health.
+  //
+  // 'ontrack' is the only band that is a positive claim about an agent nothing
+  // flagged. Reaching it requires clearing BOTH gates, so it may only be
+  // asserted when both were actually evaluated. If the persistency read failed
+  // (or returned nothing for this agent), the agent is left UNBANDED — the row
+  // renders without a band and is excluded by every STATUS chip, including
+  // 'ontrack' itself.
+  //
+  // A band assigned by pass 1 or pass 2 is untouched: those are evidenced
+  // findings and stay valid regardless of what else was unavailable. The
+  // failure mode being designed against is a below-floor agent silently
+  // reading "On track" because the persistency arm never ran.
+  for (const id of Object.keys(map)) {
+    if (map[id] === 'ontrack' && !hasPersReading.has(id)) delete map[id];
   }
 
   return map;
