@@ -6,6 +6,7 @@ import {
   shiftDateStr, addMinutesToTime, computeDayGaps,
   readNoteThread, prospectNoteHistory, appointmentIsActive,
   findRunningLate, computeLateCascade,
+  dayHeaderParts, weekRangeLabel,
 } from '../planner.helpers';
 
 describe('week/day math', () => {
@@ -54,6 +55,24 @@ describe('display helpers', () => {
   });
   it('dayLabel renders weekday + day-of-month', () => {
     expect(dayLabel('2026-06-22')).toBe('Mon 22');
+  });
+
+  it('dayHeaderParts splits the week-column header into DOW + day number', () => {
+    expect(dayHeaderParts('2026-06-22')).toEqual({ dow: 'MON', day: '22' });
+    expect(dayHeaderParts('2026-07-05')).toEqual({ dow: 'SUN', day: '5' });
+  });
+
+  it('weekRangeLabel omits the repeated month within one month', () => {
+    expect(weekRangeLabel('2026-07-19', '2026-07-25')).toBe('Jul 19 – 25');
+  });
+
+  it('weekRangeLabel names both months when the week spans a boundary', () => {
+    expect(weekRangeLabel('2026-06-28', '2026-07-04')).toBe('Jun 28 – Jul 4');
+  });
+
+  it('weekRangeLabel returns empty string on malformed input (never throws)', () => {
+    expect(weekRangeLabel('bad', '2026-07-25')).toBe('');
+    expect(weekRangeLabel(undefined, undefined)).toBe('');
   });
 });
 

@@ -103,7 +103,7 @@
 | Financing ruleset code comment overclaims configurability (banked 2026-07-10, promotion session, ... | LOW | — | — | 431 |
 | Master Sheet — unit friendly names absent (banked 2026-07-10, Run 4 Item 2, LOW — display polish) | LOW | — | — | 455 |
 | Company Config toggle — "count converted service calls as Tel Contacts" (banked 2026-07-10, Run 4... | LOW | — | — | 463 |
-| Vercel preview env scoping — confirm branch previews get no live backend (banked 2026-07-10, prom... | LOW | — | — | 508 |
+| ⚠️ **Feature-branch Vercel previews are bound to PRODUCTION Firebase** — overturns the old "previews can't reach a live backend" claim (re-banked 2026-07-26, planner week-nav; remedy (a) = generalize the pre-write project guard, own small PR; remedy (b) = OPERATOR binds staging env to Vercel's Preview environment) | **HIGH** | — | — | 508 |
 | Vitest on Windows — worker contention flakes under concurrent runs (banked 2026-07-10, Run 4, LOW... | LOW | — | — | 516 |
 | Recon docs must carry a validity-SHA header — new standing rule (banked 2026-07-10, Run 4, LOW — ... | LOW | — | — | 524 |
 | VH leg `t2-financing-k9-k7` flaky on first paint — no FAIL screenshot captured (banked 2026-07-09... | LOW | — | — | 540 |
@@ -472,7 +472,9 @@ A code comment in the financing ruleset config (`src/config/financingRuleset/202
 
 ## Register the six Run-9 standing smokes in SMOKES.md (banked 2026-07-17, promotion session, MEDIUM — verification hygiene)
 
-Run 9 (promoted to prod PR #862, `d0e74c12`, 2026-07-13) shipped six new standing smokes — `scripts/verification/smoke-run9-{a1-undo,a2-shortcuts,a3-conflicts,a4-templates,a5-bulk,f3e-series}.mjs` — covering undo/redo, keyboard shortcuts, conflict detection, appointment templates, bulk operations, and series-edit propagation respectively. None are yet registered in `scripts/verification/SMOKES.md` (the descriptive, non-CI-enforced catalogue). **Action:** add one row per script to SMOKES.md following the existing catalogue format before they're relied on as a regression baseline for future planner work.
+> **RESOLVED / STALE — corrected 2026-07-26 (planner week-nav track).** All six ARE registered in `scripts/verification/SMOKES.md`, each with a full row (run mode, prereqs, residue, source anchors), plus a shared run-mode note covering the `900×800` viewport choice and `assertSingleColumnPlanner`. Verified by reading the catalogue during this track's smoke registration. The action below is already done — **no work remains**; the entry is kept struck through because it was cited as open as recently as this track's Phase 0. Same rot pattern as the § BIG ONE correction: an entry asserting a gap is not forced to change when the gap is closed.
+
+~~Run 9 (promoted to prod PR #862, `d0e74c12`, 2026-07-13) shipped six new standing smokes — `scripts/verification/smoke-run9-{a1-undo,a2-shortcuts,a3-conflicts,a4-templates,a5-bulk,f3e-series}.mjs` — covering undo/redo, keyboard shortcuts, conflict detection, appointment templates, bulk operations, and series-edit propagation respectively. None are yet registered in `scripts/verification/SMOKES.md` (the descriptive, non-CI-enforced catalogue). **Action:** add one row per script to SMOKES.md following the existing catalogue format before they're relied on as a regression baseline for future planner work.~~
 
 ---
 
@@ -508,17 +510,65 @@ Run 9's A2 (keyboard shortcuts) introduced panel-level keydown handlers. Under r
 
 ---
 
-## BIG ONE — the real planner-completion track (E1–E5) is UNBUILT (banked 2026-07-17, promotion session, HIGH — active build map, do not confuse with Run 9)
+## ~~BIG ONE — the real planner-completion track (E1–E5) is UNBUILT~~ → **E1–E5 ALL SHIPPED** (banked 2026-07-17; corrected 2026-07-26, planner week-nav track)
 
-Run 9 built six features (A1–A5 undo/redo/shortcuts/conflicts/templates/bulk + F3 series propagation) that are real, live in prod (`d0e74c12`), and valuable — but they are **not** the "planner and scheduler v2" redesign named in `docs/design-system/proposals/planner-scheduler-v2/README.md`. That README's actual spec is **five different features**, all still unbuilt:
+> **CORRECTION 2026-07-26 — the "entirely unbuilt" claim below was already stale when written into this entry's later revisions, and is now wholly wrong.** All five features exist in `src/components/planner/` on `main` (`219cf324`) and were verified file-by-file during the planner week-nav Phase 0 recon:
+>
+> | Item | Status | Evidence on `main` |
+> |---|---|---|
+> | **E1** desktop 3-day + week views | ✅ SHIPPED | `PlannerDesktopBoard.jsx` (Day/3-day/Week/Follow-ups toggle, `grid-cols-N` fluid columns) |
+> | **E2** drag-drop reschedule | ✅ SHIPPED | `PlannerDesktopBoard.jsx` drag handlers → `AgentPlannerPanel.handleReschedule` → the existing `postponeWithRebook` |
+> | **E3** running-late cascade | ✅ SHIPPED | `RunningLateSheet.jsx` + `planner.helpers.js` `findRunningLate`/`computeLateCascade` |
+> | **E4** per-appointment notes thread | ✅ SHIPPED | `NotesThread.jsx` + `addAppointmentNote` + `readNoteThread`/`prospectNoteHistory` |
+> | **E5** collapsed-rail space adaptation | ✅ SHIPPED | `AgentPlannerPanel.jsx` `max-w-none` on the `isDesktop` branch |
+>
+> Each also has standing acceptance smokes registered in `scripts/verification/SMOKES.md` (`smoke-e1-desktop-board.mjs`, `smoke-e2-drag-reschedule.mjs`, `smoke-e3-running-late.mjs`, `smoke-e4-notes-thread.mjs`). The work landed in the Run A Tier 2 window (2026-07-24) — two of this file's own Active-follow-up rows already say so ("Desktop planner board — shift-click range select…", "…Arrow ←/→ view-cycling inert on the board", both tagged *Run A Tier 2 E1*), so the file has been internally contradictory since then.
+>
+> **Why it went stale:** this entry was banked at the Run 9 promotion to flag a scope mismatch, and nothing re-audited it when the E-series actually shipped a week later. **Lesson (compounding the Rule 17 design-source lesson already banked below):** an entry that asserts *absence* is the kind most likely to rot silently — nothing about building the thing forces an edit here. A HIGH "X is unbuilt" follow-up should be re-verified against source at the start of any session that touches X, not trusted.
+>
+> **Remaining real gaps** (small, tracked separately in the Active follow-ups table — do NOT re-open this entry for them): desktop-board shift-click range selection keys off mobile view state; Arrow ←/→ view-cycling is inert on the board; E4's cross-time prospect-notes history still needs its `(agentId, prospectId)` composite index. Week navigation across the board and mobile views — never specified by the design authority — shipped in the planner week-nav track (2026-07-26).
 
-- **E1** — desktop 3-day + week views
-- **E2** — drag-drop reschedule (wires to the existing `postponeWithRebook`)
-- **E3** — running-late cascade (gap-smart, prospect-notify)
-- **E4** — per-appointment notes thread (travels with `prospectId`)
-- **E5** — collapsed-rail space adaptation
+_Original entry, preserved for the record:_
 
-This is the genuine planner-completion track, still ahead, and now sits on the `seriesId` + reschedule-in-place foundation Run 9 just laid (F3's composite index and propagation model are direct prerequisites for E2/E3). **Action:** needs its own recon-then-build session sourced from `docs/design-system/proposals/planner-scheduler-v2/README.md` directly — do not reuse Run 9's brief or progress docs as the starting point, they describe different, already-shipped work.
+~~Run 9 built six features (A1–A5 undo/redo/shortcuts/conflicts/templates/bulk + F3 series propagation) that are real, live in prod (`d0e74c12`), and valuable — but they are **not** the "planner and scheduler v2" redesign named in `docs/design-system/proposals/planner-scheduler-v2/README.md`. That README's actual spec is **five different features**, all still unbuilt: E1 desktop 3-day + week views · E2 drag-drop reschedule · E3 running-late cascade · E4 per-appointment notes thread · E5 collapsed-rail space adaptation. This is the genuine planner-completion track, still ahead, and now sits on the `seriesId` + reschedule-in-place foundation Run 9 just laid.~~ **The scope-mismatch observation was correct at banking time; the "unbuilt" status is not — see the correction above.**
+
+---
+
+## Staging branch re-baseline — RESOLVED 2026-07-26 (five-cycle debt cleared)
+
+The `staging` git branch was deleted by GitHub `deleteBranchOnMerge` on the Run 8 merge (PR #860) and never recreated, leaving five consecutive promotion cycles (Nexus v2/#849, Runs 3+4/#853, Runs 5-7/#858, Run 8/#860, Run 9/#862 — plus the Run A promotion/#874) that shipped without ever re-baselining staging. Tracked in `docs/CONTEXT.md` § Pending operational state.
+
+**Resolved 2026-07-26** at the start of the planner week-nav track, on dispatcher ruling. Notable: the orphaned LOCAL `staging` branch (`a31d52d7`, still checked out in the `at-fable-staging` worktree) turned out to be a **direct ancestor of `origin/main`** (`git merge-base --is-ancestor` confirmed), so the "recreation" was a **pure fast-forward**, not a divergent reset — no commits were discarded and no history was rewritten. Sequence: fast-forwarded the local branch to `origin/main` (`219cf324`) in the `at-fable-staging` worktree, then `git push -u origin staging`. `origin/staging == origin/main == 219cf324`. The 5 untracked persistency-v2 proposal artifacts in that worktree were untouched (a fast-forward does not disturb untracked files).
+
+**Note for the next dispatch:** the `at-fable-staging` worktree is now correctly pointed at a live, current `staging` — the "will need repointing before the next Fable dispatch" caveat in CONTEXT.md is discharged. **Falsification (Rule 23):** this is overturned if `git ls-remote --heads origin` stops listing `staging`, or if `origin/staging` diverges from `main` without a deliberate promotion in flight.
+
+---
+
+## Planner week-nav — external-review residue (banked 2026-07-26, PR #875 attended reviewer-only pass, LOW ×5)
+
+Five findings from the external review of PR #875 that were dispositioned BANK rather than fix-before-merge. F1–F4 and F9 were fixed in-PR; these are the remainder. None is a data-integrity or security issue.
+
+- **F5 — desktop "Book" and the `n` shortcut prefill TODAY while another week is displayed.** `AgentPlannerPanel.jsx`, header Book button + the `n` branch: both use `openBook(view === 'today' ? today : weekStart)`. On desktop `view` is vestigial and permanently `'today'` (the mobile pills are never rendered), so the date is always today even when the board shows, say, Aug 2–8. The per-column `+` buttons are correct — they pass their own date. **Fix:** use `columnStart` (or `weekStart`) when `isDesktop`. Note this shares a root cause with the now-fixed F2: `view` is mobile-only state being read on the desktop path.
+- **F6 — `today` is captured once at mount; week navigation gives that staleness new teeth.** `const today = useMemo(() => getTodayTT(), [])`. In a long-lived session crossing midnight — and especially a Saturday→Sunday week rollover — `currentWeekStart` goes stale, so `isCurrentWeek` can be TRUE for **last** week: the Today snap-back hides itself while a non-current week is displayed, and the today+2 load arm re-enables for the wrong week. The staleness pre-dates this track (`todayAppts`, `seed`, `lateCandidate` all read it); week navigation adds the new failure modes. **Fix:** recompute `today` on the existing 60-second `nowTime` tick, or re-derive on visibility-change.
+- **F7 — "No appointments" and "+N postponed hidden" render together.** `PlannerDesktopBoard.jsx`: when every appointment in a day is postponed and the filter is on, the column shows both the empty state and the hidden-count note. Honest but self-contradictory. **Fix:** suppress the empty state when `hiddenCount > 0`, or reword to "No live appointments".
+- **F8 — `weekRangeLabel` never emits a year, and returns `''` on malformed input.** `planner.helpers.js`. With unlimited navigation, "Jan 4 – 10" is ambiguous once you are months out; the empty-string fallback also leaves the nav's `aria-live` region announcing nothing. **Fix:** append the year when it differs from `today`'s, and fall back to the raw ISO range rather than `''`.
+- **F10 — RESOLVED in-PR.** The dense-card "no status pill" assertion compared ancestor `textContent` (which includes the sr-only status line) and passed only because sr-only emits lowercase `scheduled` while the pill label is `Scheduled`. Tightened to leaf-node, case-insensitive comparison in the same commit as the F1–F4/F9 fixes. Recorded here because the *class* of defect — an assertion that passes for an accidental reason — is worth recognising elsewhere.
+
+**Falsification (Rule 23):** F5/F6 are overturned if `view` stops being read on the desktop path and `today` becomes reactive, respectively — at which point re-verify with the desktop-stubbed panel tests added for F9 rather than assuming.
+
+---
+
+## Appointment created-in-error path — distinct from churn (banked 2026-07-26, planner week-nav track, LOW)
+
+A general delete affordance for appointments was proposed during the planner week-nav track and **DROPPED at Phase 0 on design-authority grounds.** Retained churn is the deliberate product model, not an omission:
+
+- `docs/design-system/proposals/planner-scheduler-v2/mockups/planner-mobile-b.jsx:108` — *"Cancelled & postponed stay on record — nothing is deleted."* (the caption of a dedicated artboard, "5b · Retained churn")
+- `mockups/planner-shared.jsx:63` — *"timeline (dimmed/struck), never deleted."*
+- `firestore.rules` (appointments block) — the owner-scoped `allow delete` arm carries the matching intent in code: *"exists solely as the undo-create inverse; UI exposes no delete affordance."*
+
+Churn patterns are manager coaching signal, so erasing them destroys the data the surface exists to produce. **The mechanics already exist** if this is ever revisited — `plannerService.deleteAppointment` and the owner-scoped rules arm are both live, consumed today ONLY by Ctrl+Z undo-create and the bulk-create inverse — so no rules change would be needed; the question is purely product, not technical.
+
+**Action:** none unless a genuine mis-keyed-entry need emerges from pilot use. If it does, scope it narrowly against that authority — e.g. creator-only, same-session, before any status change — rather than as a general delete. Do not treat the existing rules arm as licence to add one.
 
 ---
 
@@ -601,9 +651,59 @@ Carry all three to the next cycle's Phase 0 before further build work on these s
 
 ---
 
-## Vercel preview env scoping — confirm branch previews get no live backend (banked 2026-07-10, promotion session, LOW — security hygiene, confirm-only)
+## ⚠️ Feature-branch Vercel previews are bound to PRODUCTION Firebase (banked 2026-07-10 as LOW; **OVERTURNED + re-banked HIGH 2026-07-26**, planner week-nav track)
 
-Feature-branch Vercel previews are public. Firebase Auth's authorized-domains allowlist currently blocks them from authenticating (confirmed the hard way during the Run-4 polish PR #852 — a feature-branch preview's login failed with a CORS rejection from `identitytoolkit.googleapis.com`, isolating cleanly to Auth before any app code ran) — this is good, it means a public preview can't reach a live backend today. **Action:** confirm this is by design (env-var scoping) rather than accidental, so a future Vercel/Firebase config change doesn't silently open a public preview to live data. No code change — a configuration confirmation.
+> **THE PREVIOUS ENTRY WAS WRONG IN ITS MECHANISM, AND THE ERROR WAS SAFETY-RELEVANT.** It is preserved struck through at the bottom. Read the correction first.
+
+**Corrected finding.** A feature-branch Vercel preview is **not** sandboxed from live data. Vercel's staging Firebase env vars are bound to the **`staging` branch specifically**, not to the Preview *environment* — so a branch cut off `staging` builds against **PRODUCTION Firebase (`agencytrack-2a610`)**.
+
+**Evidence (same credentials, same minute, 2026-07-26).** Identical scripted login as the staging A11Y agent (`staging-agent-1@agencytrack-staging.test`), driven through `setupBypassSession`, against two deployments:
+
+| Target | Result |
+|---|---|
+| `agencytrack-git-staging-kyron-marchan-s-projects.vercel.app` | **LOGIN-OK** |
+| `agencytrack-git-feat-planner-week-nav-kyron-marchan-s-projects.vercel.app` | **AUTH-ERROR** ("Incorrect email or password") |
+
+**DECISIVE EVIDENCE — added by the external reviewer (2026-07-26, F12).** The login differential above proves only *"not staging"*; it does **not** by itself prove *"production"*, which is what this entry asserts. The reviewer settled it directly and read-only, by fetching each deployed bundle and reading its baked-in Firebase config:
+
+| Deployment | `authDomain` in the served bundle |
+|---|---|
+| `agencytrack-git-staging-…` | `agencytrack-staging` |
+| `agencytrack-git-feat-planner-week-nav-…` | **`agencytrack-2a610`** ← PRODUCTION |
+
+Cite **this** table, not the login differential, when the claim is questioned: it is a direct observation of the artifact rather than an inference from a failed credential, and it is reproducible without any account. Method: `setupBypassSession` → `GET /login` → fetch each `script[src]` / loaded `.js` chunk → match `/([a-z0-9-]*agencytrack[a-z0-9-]*)\.firebaseapp\.com/`. (A `projectId:"…"` match is unreliable — it did not appear in the emitted chunks; the `authDomain` host does.)
+
+**Why the old entry misread this.** The observed symptom in PR #852 (a feature-branch preview failing to authenticate) is real — but the cause is **not** an authorized-domains allowlist protecting the backend. The staging account simply **does not exist in the production project**, so the credential is rejected. The old entry read "login failed" as "the preview cannot reach a live backend," which inverts the actual risk.
+
+**The real risk this creates.** A preview driven with **production** credentials would authenticate normally and **read and write the live tenant**. Anyone smoke-testing a feature-branch preview with a real account — the exact thing CLAUDE.md § Workflow tells us to do before merging ("Always smoke-test the preview URL in incognito") — is operating against production. For a READ-only click-through that is merely surprising; for any **mutating** smoke it writes to live data. This is why the old "this is good, a public preview can't reach a live backend today" reassurance is actively misleading and has been struck.
+
+**Falsification (Rule 23):** overturned if a feature-branch preview is shown to carry `agencytrack-staging` in its bundle (`grep agencytrack-staging dist/assets/*.js` on a preview-equivalent build) **and** a staging account logs into it — i.e. if remedy (b) below lands, or if Vercel env scoping changes. Re-verify with the same two-target login comparison; do not assume.
+
+### Remedy (a) — CODE: generalize the pre-write project guard to every mutating smoke · **OWN SMALL PR, do not bundle**
+
+`smoke-planner-week-nav.mjs` now carries a **pre-write project guard**: before the first write it decodes observed request URLs (Firestore URL-**encodes** `projects%2F<id>`, so a naive `/projects/([a-z0-9-]+)/` regex finds nothing), asserts the resolved project is `agencytrack-staging`, asserts zero `agencytrack-2a610` traffic, and **aborts before mutating** on either failure. This matters because `assertLegHygiene` only checks prod-cleanliness at the **END** of a run — i.e. after the write has already landed.
+
+**SPEC CHANGED 2026-07-26 by the external review (F11) — this is NO LONGER a positional pre-write check.** The shipped version has two weaknesses that must not be generalized as-is:
+
+1. **Positional, not enforcing.** It runs once, before the *single* known write. Add a second write leg later and it is silently uncovered — the guard does not intercept anything, it just happens to sit earlier in the script.
+2. **It edits the evidence.** It mutates `ctx.capture.consoleMessages` to get past `assertLegHygiene`. Bounded and logged, but "adjust the capture until the gate passes" is a pattern that **will** be copied into smokes where it hides something real.
+
+**Build it as a NETWORK INTERCEPTOR instead.** In the shared context factory (`newLegContext`), attach a route handler that inspects every request and **aborts outright** any Firestore/Firebase call whose resolved project is not the expected one — decode the URL first (Firestore URL-**encodes** `projects%2F<id>`) and match `authDomain`/`projects/` alike. Properties this buys that the positional check cannot:
+
+- covers **every** write path, present and future, including ones added years later;
+- fails at the **request** layer, so a stray prod write is impossible rather than merely unlikely;
+- needs **no** capture mutation — nothing to sanitize after the fact, because the bad request never happens;
+- applies to reads too, so a misconfigured target cannot even *read* live data.
+
+Keep the fail-closed posture: abort the run when the expected project cannot be positively identified. Read-only smokes benefit as well, so wire it in the factory rather than per-smoke. Still **its own small PR**, not bundled into #875. When it lands, simplify `smoke-planner-week-nav.mjs` to drop both its positional guard and the `consoleMessages` mutation.
+
+### Remedy (b) — CONFIG: **OPERATOR ACTION ITEM**
+
+Bind the staging Firebase env vars to Vercel's **Preview environment**, not only to the `staging` branch, so every feature-branch preview builds against `agencytrack-staging`. Until then, treat every feature-branch preview as **production-bound** and never point a mutating smoke at one. Interim workaround, proven in the planner week-nav track: build with `npm run build -- --mode staging` (vite mode precedence makes `.env.staging` override `.env.local`), verify the bundle (`agencytrack-staging` present, **zero** `agencytrack-2a610`), and serve locally.
+
+_Original entry, preserved struck through:_
+
+~~**Vercel preview env scoping — confirm branch previews get no live backend (LOW).** Feature-branch Vercel previews are public. Firebase Auth's authorized-domains allowlist currently blocks them from authenticating (confirmed the hard way during the Run-4 polish PR #852 — a feature-branch preview's login failed with a CORS rejection from `identitytoolkit.googleapis.com`, isolating cleanly to Auth before any app code ran) — this is good, it means a public preview can't reach a live backend today.~~ **The symptom was real; the mechanism and the "this is good" conclusion were both wrong — see above.**
 
 ---
 

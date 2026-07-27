@@ -80,6 +80,38 @@ export function dayLabel(dateStr) {
 }
 
 /**
+ * 'YYYY-MM-DD' → { dow: 'WED', day: '22' } — the stacked week-column header the
+ * design board's day columns use (mockups/planner-desktop.jsx: DOW on one line,
+ * the date number under it). A single-line "Wed 22 · Today" measurably clips at
+ * a 131px week column (observed scrollWidth 102 vs clientWidth 58), which is
+ * what this replaces.
+ */
+export function dayHeaderParts(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  return {
+    dow: d.toLocaleDateString('en-TT', { weekday: 'short', timeZone: 'UTC' }).toUpperCase(),
+    day: String(d.getUTCDate()),
+  };
+}
+
+/**
+ * Week range → a compact human label for the week navigator, e.g.
+ * 'Jul 19 – 25' (same month) or 'Jun 28 – Jul 4' (spanning months).
+ */
+export function weekRangeLabel(startStr, endStr) {
+  const fmt = (s, withMonth) => {
+    const d = new Date(s + 'T12:00:00Z');
+    const mon = d.toLocaleDateString('en-TT', { month: 'short', timeZone: 'UTC' });
+    return withMonth ? `${mon} ${d.getUTCDate()}` : String(d.getUTCDate());
+  };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(startStr ?? '')) || !/^\d{4}-\d{2}-\d{2}$/.test(String(endStr ?? ''))) {
+    return '';
+  }
+  const sameMonth = startStr.slice(0, 7) === endStr.slice(0, 7);
+  return `${fmt(startStr, true)} – ${fmt(endStr, !sameMonth)}`;
+}
+
+/**
  * 'YYYY-MM-DD' + N days → 'YYYY-MM-DD' (UTC-noon math, same discipline as
  * buildWeekDates — immune to DST/local-timezone edges). Malformed input is
  * returned unchanged (defensive, mirrors formatTime12's fallback contract).
