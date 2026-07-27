@@ -66,6 +66,7 @@ import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
 import FinancingSelfView from '../financing/FinancingSelfView';
 import AgentReportView from '../profile/AgentReportView';
+import { PERS_GATE_PCT } from '../../lib/persistency/calculations';
 
 // Agent sidebar nav is centralized in shell/navConfig.js (Nav redesign PR-1) —
 // resolved per-render via getNavConfig('agent', { showDailyCapture }) so the
@@ -867,7 +868,7 @@ export default function AgentDashboard() {
             loading={hierarchyLoading}
             error={hierarchyError}
             ytdPersistency={ytdPersistency}
-            persistencyFloor={companyMinimums?.persistency ?? 90}
+            persistencyFloor={companyMinimums?.persistency ?? PERS_GATE_PCT}
           />
           <div className="mt-4 border-t border-border pt-4">
             <DerivedIncomePanel

@@ -10,6 +10,7 @@ import {
   FLAT_ANNUAL_API_FALLBACK,
   resolveAnnualAPIFloor,
 } from '../utils/tenureFloors';
+import { PERS_GATE_PCT } from '../lib/persistency/calculations';
 
 export async function getGoals(tenantId, agentId) {
   const ref = doc(db, `tenants/${tenantId}/goals/${agentId}`);
@@ -59,7 +60,14 @@ export async function getCompanyMinimums(tenantId) {
   return {
     annualAPI:   stored.annualAPI   ?? 200000,
     annualApps:  stored.annualApps  ?? 42,
-    persistency: stored.persistency ?? 90,
+    // DEFAULT ONLY — `stored.persistency` (the tenant's Company Config value)
+    // still wins whenever it is set, and the `...stored` spread below preserves
+    // that. Defaulting to the award gate is deliberate: absent an explicit
+    // tenant policy, the minimum an agent may commit to is the threshold that
+    // makes them award-eligible. This is a DIFFERENT concept from the at-risk
+    // PERS_FLOOR — do not swap one for the other. Percent scale (the validator
+    // below renders `${floor}%` and compares against a 0–100 input).
+    persistency: stored.persistency ?? PERS_GATE_PCT,
     ...stored,
     weeklyActivityFloors: {
       ...DEFAULT_WEEKLY_ACTIVITY_FLOORS,

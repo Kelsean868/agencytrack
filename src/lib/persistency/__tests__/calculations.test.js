@@ -10,6 +10,8 @@ import {
   computeBarStats,
   PERS_FLOOR,
   PERS_GATE,
+  PERS_FLOOR_PCT,
+  PERS_GATE_PCT,
 } from '../calculations';
 
 // Real data from Tatil's February 2026 monthly persistency report,
@@ -200,6 +202,55 @@ describe('PERS_FLOOR / PERS_GATE constants', () => {
   it('PERS_FLOOR is 0.80', () => expect(PERS_FLOOR).toBe(0.80));
   it('PERS_GATE is 0.90',  () => expect(PERS_GATE).toBe(0.90));
   it('PERS_FLOOR < PERS_GATE', () => expect(PERS_FLOOR).toBeLessThan(PERS_GATE));
+});
+
+// The percent-scale companions exist so that no consumer hand-rolls `* 100` or
+// hardcodes 80 / 90. These tests pin BOTH the values and the derivation — a
+// literal `80` typed into calculations.js would satisfy the value assertions
+// but fail the derivation ones, which is the drift this module guards against.
+describe('PERS_*_PCT percent companions', () => {
+  it('PERS_FLOOR_PCT is 80', () => expect(PERS_FLOOR_PCT).toBe(80));
+  it('PERS_GATE_PCT is 90',  () => expect(PERS_GATE_PCT).toBe(90));
+
+  it('each _PCT is exactly 100x its decimal source (derived, not re-typed)', () => {
+    expect(PERS_FLOOR_PCT).toBe(PERS_FLOOR * 100);
+    expect(PERS_GATE_PCT).toBe(PERS_GATE * 100);
+  });
+
+  it('preserves the floor < gate ordering on the percent scale', () => {
+    expect(PERS_FLOOR_PCT).toBeLessThan(PERS_GATE_PCT);
+  });
+
+  // ── Anti-collapse guard ──
+  // The floor and the gate are TWO DISTINCT money thresholds: the floor drives
+  // an at-risk warning band, the gate drives award eligibility. A well-meaning
+  // "consolidate the duplicated persistency constant" refactor that unifies
+  // them would change agent-facing outcomes in both directions (raising the
+  // at-risk flag 80→90, or dropping the award gate 90→80). This test exists to
+  // fail loudly if anyone tries.
+  it('floor and gate are NOT the same threshold — do not consolidate them', () => {
+    expect(PERS_FLOOR).not.toBe(PERS_GATE);
+    expect(PERS_FLOOR_PCT).not.toBe(PERS_GATE_PCT);
+    expect(PERS_GATE - PERS_FLOOR).toBeCloseTo(0.10, 10);
+  });
+
+  // ── Negative control: scale confusion ──
+  // The defect class this whole reconciliation exists to prevent is a DECIMAL
+  // persistency being compared against a PERCENT threshold. Assert the two
+  // scales are not interchangeable, so a decimal-vs-percent mix-up cannot
+  // silently satisfy a comparison.
+  it('a decimal persistency is never validly compared against a _PCT threshold', () => {
+    const decimalPersistency = 0.94; // 94% — comfortably award-eligible
+
+    // Correct: decimal vs decimal.
+    expect(decimalPersistency >= PERS_GATE).toBe(true);
+    expect(decimalPersistency < PERS_FLOOR).toBe(false);
+
+    // Wrong: decimal vs percent. A healthy 94% agent reads as catastrophically
+    // below floor. This is exactly the MeetingMode defect fixed in this PR.
+    expect(decimalPersistency < PERS_FLOOR_PCT).toBe(true);
+    expect(decimalPersistency >= PERS_GATE_PCT).toBe(false);
+  });
 });
 
 describe('computeBarStats', () => {

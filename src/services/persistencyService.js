@@ -16,7 +16,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { deriveAll } from '../lib/persistency/calculations';
+import { deriveAll, PERS_GATE } from '../lib/persistency/calculations';
 import { getTenantUsers } from './managerService';
 
 // The six business-input fields that mark a doc as E3-shaped. A doc lacking
@@ -34,7 +34,9 @@ const VALID_ROLES = [
   'agent', 'unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin',
 ];
 
-const AWARD_GATE = 0.90;
+// Single-sourced from calculations.js — `derived.persistency` is a decimal, so
+// this comparison stays on the decimal scale. Was a local `0.90` literal.
+const AWARD_GATE = PERS_GATE;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pure helpers (exported for tests + UI)

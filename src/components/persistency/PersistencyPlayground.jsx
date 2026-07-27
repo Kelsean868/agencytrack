@@ -9,11 +9,13 @@
 import React, { useMemo, useState } from 'react';
 import { X, Calculator, ExternalLink, AlertCircle } from 'lucide-react';
 import useFocusTrap from '../../hooks/useFocusTrap';
-import { projectPersistency, calculateShortfall } from '../../lib/persistency/calculations';
+import {
+  projectPersistency,
+  calculateShortfall,
+  PERS_FLOOR,
+  PERS_GATE,
+} from '../../lib/persistency/calculations';
 import { formatCurrency } from '../../utils/formatters';
-
-const PERS_FLOOR = 0.80;
-const PERS_GATE  = 0.90;
 
 const LEVERS = [
   {
