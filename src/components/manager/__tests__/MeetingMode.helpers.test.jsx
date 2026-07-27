@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   kpiStatus, floorTiles, classifyFlag, flagRank, latestPersistency,
-  avgLatestPersistency, deriveBranchWindows, deriveUnits, deriveAgentRuns,
+  aggregateLatestPersistency, deriveBranchWindows, deriveUnits, deriveAgentRuns,
   deriveRecognition, deriveAnniversaries, deriveActiveCampaigns,
   deriveAwardsWithinReach, deriveDeck,
   lastNWeekStartings, monthOf, quarterOf, sixWeekSpark,
@@ -70,10 +70,29 @@ describe('persistency helpers', () => {
     expect(latestPersistency([{ month: 3, persistency: 0.80 }, { month: 6, persistency: 0.72 }])).toBe(72);
     expect(latestPersistency([])).toBeNull();
   });
-  it('avgLatestPersistency averages across agents on the percent scale', () => {
-    const map = { a: [{ month: 6, persistency: 0.80 }], b: [{ month: 6, persistency: 0.90 }] };
-    expect(avgLatestPersistency(['a', 'b'], map)).toBe(85);
-    expect(avgLatestPersistency(['x'], map)).toBeNull();
+  // ── ANTI-AVERAGE GUARD ──
+  // calculations.js: "NEVER average individual persistency percentages — that
+  // produces a different (wrong) number when agents have different gross-settled
+  // values." This function previously averaged, and the test that stood here
+  // pinned the average (80/90 → 85) as correct — equal-denominator fixtures, so
+  // the two methods agreed and the violation was invisible. The fixtures below
+  // are deliberately UNEQUAL so the two methods disagree and the test can only
+  // pass on the aggregate.
+  it('aggregateLatestPersistency SUM-aggregates — it does NOT average percentages', () => {
+    // A $200k advisor at 94% and a $2k advisor at 86%.
+    //   average of percentages → (94 + 86) / 2               = 90  ← WRONG
+    //   aggregate              → 189,720 / 202,000 = 0.9392  = 94  ← the book
+    const map = {
+      a: [{ month: 6, persistency: 0.94, grossSettled: 200000, netSettled: 188000 }],
+      b: [{ month: 6, persistency: 0.86, grossSettled: 2000,   netSettled: 1720 }],
+    };
+    expect(aggregateLatestPersistency(['a', 'b'], map)).toBe(94);
+    expect(aggregateLatestPersistency(['a', 'b'], map)).not.toBe(90); // the average
+    expect(aggregateLatestPersistency(['x'], map)).toBeNull();
+  });
+  it('aggregateLatestPersistency is null when no agent has a usable denominator', () => {
+    const map = { a: [{ month: 6, persistency: 0.94, grossSettled: 0, netSettled: 0 }] };
+    expect(aggregateLatestPersistency(['a'], map)).toBeNull();
   });
   it('returns null rather than NaN when the stored value is unusable', () => {
     expect(latestPersistency([{ month: 6, persistency: 'n/a' }])).toBeNull();
@@ -88,8 +107,8 @@ describe('persistency helpers', () => {
 // of its consumers treat the value as a percentage. Consequences on live data:
 //   1. classifyFlag — `0.94 < 80` is always true, so EVERY agent holding a
 //      persistency record was flagged "Persistency ↓", reading "1% persistency".
-//   2. deriveBranchWindows — the branch scorecard rendered `${w.pers}%` from an
-//      average of decimals, showing "1%" for a healthy branch.
+//   2. deriveBranchWindows — the branch scorecard rendered `${w.pers}%` from a
+//      roll-up of decimals, showing "1%" for a healthy branch.
 //   3. CampaignScene — fed decimals into campaignEngine's persistencyByAgent
 //      (documented "(percentage 0–100)"), dropping every advisor into the DQ
 //      band with a ×0 payout multiplier.
@@ -132,15 +151,18 @@ describe('persistency scale regression — decimals must not read as percentages
     }).key).toBe('persistency');
   });
 
-  it('branch scorecard averages render as real percentages, not ~1%', () => {
+  it('branch scorecard persistency renders as a real percentage, not ~1%', () => {
+    // Equal books here on purpose: this test is the SCALE guard, so it isolates
+    // decimal-vs-percent. The METHOD guard (aggregate vs average) is the
+    // unequal-book test above.
     const map = {
-      a: [{ month: 6, persistency: 0.94 }],
-      b: [{ month: 6, persistency: 0.86 }],
+      a: [{ month: 6, persistency: 0.94, grossSettled: 100, netSettled: 94 }],
+      b: [{ month: 6, persistency: 0.86, grossSettled: 100, netSettled: 86 }],
     };
-    const avg = avgLatestPersistency(['a', 'b'], map);
+    const pct = aggregateLatestPersistency(['a', 'b'], map);
 
-    expect(avg).toBe(90);
-    expect(avg).toBeGreaterThan(1); // the defect produced 0 or 1
+    expect(pct).toBe(90); // (94 + 86) / (100 + 100)
+    expect(pct).toBeGreaterThan(1); // the defect produced 0 or 1
   });
 });
 

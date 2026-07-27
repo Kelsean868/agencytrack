@@ -10,7 +10,7 @@
 // scene bodies). The mockup's hardcoded RUN/MEETING_SHEET/CHAMPS are looks-only.
 
 import { extractFields, computeRatios } from '../../utils/extractFields';
-import { PERS_FLOOR_PCT } from '../../lib/persistency/calculations';
+import { PERS_FLOOR_PCT, aggregatePersistency } from '../../lib/persistency/calculations';
 import {
   DEFAULT_WEEKLY_ACTIVITY_FLOORS,
   deriveWeeklyFloorActuals,
@@ -134,36 +134,70 @@ export function flagRank(flagKey) {
 // ── Persistency helpers ──
 
 /**
- * Latest (highest-month) persistency for an agent, as a PERCENTAGE (0–100).
- *
- * SCALE BOUNDARY — read before changing. E3 persistency docs store
- * `persistency` as a DECIMAL in [0, 1+] (`netSettled / grossSettled`, see
- * lib/persistency/calculations.js). Every consumer in this file and in
- * MeetingMode.jsx expects a PERCENTAGE:
- *   • classifyFlag       compares against PERS_FLOOR_PCT
- *   • avgLatestPersistency feeds `${w.pers}%` in the branch scorecard
- *   • CampaignScene      feeds campaignEngine's `persistencyByAgent`, whose
- *                        documented contract is "(percentage 0–100)"
- * so the decimal → percent conversion happens HERE, once, at the boundary.
+ * Latest (highest-month) E3 RECORD for an agent, or null. Kept separate from
+ * `latestPersistency` because the branch roll-up needs the whole record — the
+ * aggregate divides summed numerators by summed denominators and so cannot work
+ * from a per-agent percentage (see `aggregateLatestPersistency`).
  */
-export function latestPersistency(records) {
+export function latestPersistencyRecord(records) {
   if (!Array.isArray(records) || records.length === 0) return null;
   let best = null;
   records.forEach((r) => {
     const m = Number(r.month) || 0;
-    if (!best || m > best.month) best = { month: m, dec: Number(r.persistency) };
+    if (!best || m > best.month) best = { month: m, rec: r };
   });
-  if (!best || !Number.isFinite(best.dec)) return null;
-  return best.dec * 100;
+  return best ? best.rec : null;
 }
 
-/** Average latest persistency across a set of agentIds (null when none). */
-export function avgLatestPersistency(agentIds, persMap) {
-  const vals = agentIds
-    .map((id) => latestPersistency(persMap?.[id]))
-    .filter((v) => typeof v === 'number' && !Number.isNaN(v));
-  if (!vals.length) return null;
-  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+/**
+ * Latest (highest-month) persistency for ONE agent, as a PERCENTAGE (0–100).
+ *
+ * SCALE BOUNDARY — read before changing. E3 persistency docs store
+ * `persistency` as a DECIMAL in [0, 1+] (`netSettled / grossSettled`, see
+ * lib/persistency/calculations.js). Its consumers expect a PERCENTAGE:
+ *   • classifyFlag   compares against PERS_FLOOR_PCT
+ *   • deriveAgentRuns passes it straight to classifyFlag
+ * so the decimal → percent conversion happens HERE, once, at the boundary.
+ *
+ * This is a SINGLE-AGENT read. Do not sum or average its output across agents —
+ * that is the anti-average rule below.
+ */
+export function latestPersistency(records) {
+  const best = latestPersistencyRecord(records);
+  if (!best) return null;
+  const dec = Number(best.persistency);
+  return Number.isFinite(dec) ? dec * 100 : null;
+}
+
+/**
+ * Branch-level persistency across a set of agentIds, as a PERCENTAGE (0–100).
+ * Null when no agent has a usable record.
+ *
+ * METHOD — read before changing. This SUM-aggregates the underlying numerator
+ * and denominator via `aggregatePersistency`; it does NOT average the agents'
+ * individual percentages. calculations.js states the rule directly: "NEVER
+ * average individual persistency percentages — that produces a different
+ * (wrong) number when agents have different gross-settled values." An average
+ * weights a $2k advisor equally with a $200k one, so the branch figure drifts
+ * from the branch's actual book.
+ *
+ * This is the same derivation `lib/strategicPlan/assembleModel.js`
+ * (`branchPersistencyPct`) uses for the branch figure on the Strategic Plan —
+ * deliberately so. Two branch persistency numbers computed two ways is two
+ * numbers that disagree in front of a manager.
+ *
+ * The function was `avgLatestPersistency` and did average percentages. Renamed
+ * with the fix so the name states the method: a caller reaching for an
+ * "average" here is reaching for the rule violation.
+ */
+export function aggregateLatestPersistency(agentIds, persMap) {
+  const latest = (agentIds || [])
+    .map((id) => latestPersistencyRecord(persMap?.[id]))
+    .filter(Boolean);
+  if (!latest.length) return null;
+  const agg = aggregatePersistency(latest);
+  if (!(agg.sumGrossSettled > 0)) return null;
+  return Math.round(agg.aggregatedPersistency * 100);
 }
 
 // ── Identity ──
@@ -223,7 +257,7 @@ export function deriveBranchWindows(submissions, ytdSubs, persMap, selectedWeek,
   const qtd = sumWindow(quarterSubs.length ? quarterSubs : subs);
   const ytdT = sumWindow(ytd.length ? ytd : subs);
 
-  const persYtd = avgLatestPersistency(agentIds || [], persMap);
+  const persYtd = aggregateLatestPersistency(agentIds || [], persMap);
 
   return [
     { k: 'WTD', name: 'This week', label: 'the week so far', api: wtd.api, apps: wtd.apps, pers: null },
