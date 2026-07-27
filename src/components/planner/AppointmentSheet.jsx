@@ -374,17 +374,22 @@ export default function AppointmentSheet({
             <span className="block text-xs font-semibold text-ink-muted mb-2 uppercase tracking-wide">
               Activity type
             </span>
+            {/* A plain single-choice BUTTON GROUP (`aria-pressed`), matching the
+                REPEAT_CHIPS control in this same file — deliberately NOT the ARIA
+                tabs pattern. Declaring role="tablist"/"tab" would promise
+                arrow-key roving focus and an `aria-controls`-linked tabpanel that
+                this control does not implement, which misleads screen-reader
+                users more than the plainer semantics do. */}
             <div
               className="grid grid-cols-3 gap-1 p-1 mb-2 rounded-lg bg-card-raised border border-border"
-              role="tablist"
+              role="group"
               aria-label="Activity type group"
             >
               {PICKER_GROUPS.map((g) => (
                 <button
                   key={g.key}
                   type="button"
-                  role="tab"
-                  aria-selected={pickerGroup === g.key}
+                  aria-pressed={pickerGroup === g.key}
                   onClick={() => pickGroup(g.key)}
                   data-testid={`appt-type-group-${g.key}`}
                   className={`min-h-[44px] rounded-md text-xs font-semibold transition-colors ${

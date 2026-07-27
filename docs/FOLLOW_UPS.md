@@ -23,6 +23,7 @@
 | Planner duration reporting — `durationMin` is captured on every appointment but NOTHING sums it anywhere; "time recorded" needs only a reporting surface (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
 | Planner type-taxonomy collisions deferred by hardcoding — `MTG` vs manager `UNIT`, and `PERS` vs `FREE`+Personal (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
 | `SALE` absent from the design authority's agent picker but shipping in the app — pre-existing divergence, NOT introduced by the activity-types work (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
+| Mutating planner smokes leave residue by design — no self-teardown; needs a shared Admin-SDK helper across all 7 (raised by CodeRabbit on #878, banked 2026-07-27) | LOW | Verification | — | see § Planner activity types |
 | Two divergent planner design-authority trees (`proposals/planner-scheduler-v2/` vs `screens-v2/agencytrack-planner-handoff/`) — never diffed file-by-file (banked 2026-07-27) | LOW | Design system | — | see § Planner activity types |
 | External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track) | HIGH | — | overdue (was 2026-07-17) | ~4130 |
 | Track K Phase 2 — narrative `branchPlans` (new collection, HUMAN-MERGE) + PPTX + manpower setter + per-branch `branchGoals` keying (banked 2026-07-21, #864 close) | HIGH | Track K | — | ~288 |
@@ -591,7 +592,18 @@ The design authority's agent booking sheet renders `['PC','SC','AI','FFI','CI']`
 
 **Pre-existing divergence — NOT introduced by the activity-types work**, which preserved `SALE` in the Prospect group exactly as it shipped. Recorded so it is not later misattributed to that PR. Needs a product call (is booking a "Sale" as a future appointment meaningful, or is a sale only ever an outcome?) before any code change.
 
-### 5. LOW — two divergent planner design-authority trees, never diffed
+### 5. LOW — mutating planner smokes leave residue by design; no self-teardown
+
+Raised by CodeRabbit on the activity-types PR (#878) against `smoke-planner-activity-types.mjs`: the ADMIN sentinel it books survives the run, because the sweeper is a **pre-run** prerequisite rather than a teardown.
+
+**Not fixed there, deliberately** — it is a property of **all seven** planner smokes, not that one. The established repo pattern is: reserve a slot band, document the residue, and rely on the unconditional pre-run `sweep-nonfixture-appointments.mjs --apply` (see `smoke-planner-week-nav.mjs`, which leaves a 7:45 PM sentinel on exactly this contract). Two constraints make an in-smoke teardown a genuine design change rather than a quick fix:
+
+1. **The planner UI exposes no delete affordance at all** — that is design-authority-mandated ("Cancelled & postponed stay on record — nothing is deleted"). A browser smoke therefore *cannot* clean up through the UI; cancelling only flips status, the doc remains.
+2. Deleting would require **Admin SDK access from inside a browser smoke**, which none of the seven currently has. That is a new pattern, and it should be introduced once as a shared teardown helper, not bolted onto whichever smoke a reviewer happened to read.
+
+**Scope when built:** add an Admin-SDK teardown helper (mirroring `sweep-nonfixture-appointments.mjs`'s query) callable from a smoke's `finally`, and adopt it across all seven planner smokes so the residue contract becomes "self-cleaning" uniformly rather than per-file. Low severity because the residue is non-selling and provably cannot move any counter this PR touches — but it does accumulate until the next sweep.
+
+### 6. LOW — two divergent planner design-authority trees, never diffed
 
 The repo carries **two** planner mockup trees that disagree:
 

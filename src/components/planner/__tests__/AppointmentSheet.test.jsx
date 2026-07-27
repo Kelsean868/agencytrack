@@ -20,7 +20,7 @@ describe('AppointmentSheet grouped type picker', () => {
 
   it('opens on Prospect and shows only that group’s types', () => {
     renderSheet();
-    expect(screen.getByTestId('appt-type-group-prospect')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('appt-type-group-prospect')).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('appt-type-PC')).toBeInTheDocument();
     expect(screen.getByTestId('appt-type-SALE')).toBeInTheDocument();
     // Other groups' types are not rendered until their tab is chosen.
@@ -42,7 +42,7 @@ describe('AppointmentSheet grouped type picker', () => {
 
   it('edit mode opens on the group that holds the existing type', () => {
     renderSheet({ mode: 'edit', initial: { date: '2026-06-22', startTime: '09:00', type: 'COLL' } });
-    expect(screen.getByTestId('appt-type-group-support')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('appt-type-group-support')).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('appt-type-COLL')).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('appt-type-name')).toHaveTextContent('Premium collection');
   });

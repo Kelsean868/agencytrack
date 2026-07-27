@@ -160,12 +160,16 @@ try {
       });
       return out;
     });
+    // STRICT — a missing key FAILS rather than being filtered out. Filtering
+    // absent types made this vacuously true whenever the board happened not to
+    // render one, which is precisely the case the assertion exists to catch.
+    // Every type named here is seeded on TODAY by seed-fixtures.mjs
+    // (PC t1 · SC d3b · SEM t8 · TRADE t9 · DEL t6 · ADMIN t7 · FREE t3), so
+    // "not rendered" means a real regression or a missing prereq sweep+seed.
     const solidOk = ['SEM', 'TRADE', 'PC', 'SC']
-      .filter((t) => tone[t] !== undefined)
-      .every((t) => tone[t] !== 'dashed');
+      .every((t) => tone[t] !== undefined && tone[t] !== 'dashed');
     const dashedOk = ['ADMIN', 'DEL', 'FREE']
-      .filter((t) => tone[t] !== undefined)
-      .every((t) => tone[t] === 'dashed');
+      .every((t) => tone[t] !== undefined && tone[t] === 'dashed');
     log(solidOk ? 'PASS' : 'FAIL', `[${theme}] selling-activity chips render SOLID (${JSON.stringify(tone)})`);
     log(dashedOk ? 'PASS' : 'FAIL', `[${theme}] non-counting chips render DASHED (${JSON.stringify(tone)})`);
   }
