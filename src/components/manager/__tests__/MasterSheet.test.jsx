@@ -9,17 +9,34 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 
 const hoisted = vi.hoisted(() => ({
-  getWeeklySubmissions: vi.fn(),
-  getTenantUsers:       vi.fn(),
+  getWeeklySubmissions:    vi.fn(),
+  getTenantUsers:          vi.fn(),
+  getAllYTDSubmissions:    vi.fn(),
+  getCompanyMinimums:      vi.fn(),
+  getPersistencyMapForYear: vi.fn(),
 }));
 
 vi.mock('../../../services/managerService', () => ({
   getWeeklySubmissions: hoisted.getWeeklySubmissions,
   getTenantUsers:       hoisted.getTenantUsers,
+  getAllYTDSubmissions: hoisted.getAllYTDSubmissions,
 }));
+vi.mock('../../../services/goalsService', () => ({
+  getCompanyMinimums: hoisted.getCompanyMinimums,
+}));
+vi.mock('../../../services/persistencyService', () => ({
+  getPersistencyMapForYear: hoisted.getPersistencyMapForYear,
+}));
+// Mutable so a test can change the caller's SCOPE (role / branch / unit) between
+// renders — the scoped STATUS read wave is keyed on exactly those fields.
+const DEFAULT_AUTH = {
+  tenantId: 't1', user: { uid: 'u1' }, userProfile: null, role: 'branch_manager', branchId: 'b1',
+};
+let authValue = { ...DEFAULT_AUTH };
 vi.mock('../../../context/AuthContext', () => ({
-  useAuth: () => ({ tenantId: 't1', user: { uid: 'u1' } }),
+  useAuth: () => authValue,
 }));
+beforeEach(() => { authValue = { ...DEFAULT_AUTH }; });
 vi.mock('../CoachingNotesModal', () => ({ default: () => null }));
 vi.mock('../../submissions/SubmissionViewer', () => ({ default: () => null }));
 
@@ -69,9 +86,15 @@ const SUB_B = {
   serviceCalls: 1, daysWorked: 3,
 };
 
-function setup(subs = [SUB_A, SUB_B]) {
+// The STATUS read wave defaults to "landed but empty" — the band derivation is
+// available, and with an empty roster no row carries a band. Tests that care
+// about bands override these three mocks explicitly.
+function setup(subs = [SUB_A, SUB_B], users = []) {
   hoisted.getWeeklySubmissions.mockResolvedValue(subs);
-  hoisted.getTenantUsers.mockResolvedValue([]);
+  hoisted.getTenantUsers.mockResolvedValue(users);
+  hoisted.getAllYTDSubmissions.mockResolvedValue([]);
+  hoisted.getCompanyMinimums.mockResolvedValue({ annualAPI: 200000 });
+  hoisted.getPersistencyMapForYear.mockResolvedValue({});
 }
 const flushLoad = () => waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
 
@@ -287,5 +310,250 @@ describe('MasterSheet funnel — Settings-driven "Default RANK BY" (Fable Run4 p
     fireEvent.click(screen.getByRole('button', { name: 'API', exact: true }));
     expect(screen.getByRole('button', { name: 'API', exact: true })).toHaveAttribute('aria-pressed', 'true');
     expect(setSettingMock).not.toHaveBeenCalled();
+  });
+});
+
+// ── STATUS filters (YTD + companyMinimums + persistency read wave) ───────────
+describe('MasterSheet funnel — STATUS filters', () => {
+  // Roster + YTD history that puts the two sheet agents in different bands.
+  // A 200,000 flat floor (fallback: no contractStartDate) pro-rated to the
+  // pinned date; agent-1 clears it comfortably, agent-2 is deep below.
+  const USERS = [
+    { id: 'agent-1', role: 'agent', name: 'Active Agent' },
+    { id: 'agent-2', role: 'agent', name: 'Draft Agent' },
+  ];
+  const YTD = [
+    { agentId: 'agent-1', weekStarting: '2026-06-28', status: 'submitted', totalProductionCredit: 400000 },
+    { agentId: 'agent-2', weekStarting: '2026-06-28', status: 'submitted', totalProductionCredit: 500 },
+  ];
+
+  const openFilters = () => fireEvent.click(screen.getByTestId('funnel-filters-toggle'));
+
+  beforeEach(() => { vi.clearAllMocks(); setup([SUB_A, SUB_B], USERS); });
+
+  it('renders the five row-reachable bands once the YTD read wave lands', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+    ['ontrack', 'pace', 'report', 'persistency', 'floor'].forEach((k) => {
+      expect(screen.getByTestId(`funnel-status-${k}`)).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('funnel-status-unavailable')).not.toBeInTheDocument();
+  });
+
+  // Review finding (CodeRabbit, #871): this is a filers-only table, so a
+  // row-holding agent can never be "Gone quiet" — the chip would always return
+  // an empty table. It is omitted for the same reason LEVEL and "Missing" are.
+  it('does NOT offer the "Gone quiet" chip — no row on this surface can hold it', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+    expect(screen.queryByTestId('funnel-status-quiet')).not.toBeInTheDocument();
+    expect(screen.queryByText('Gone quiet')).not.toBeInTheDocument();
+  });
+
+  // NEGATIVE CONTROL — a failed YTD read must hide the chips entirely rather
+  // than offer bands that would filter against nothing.
+  it('hides the chips when the YTD read fails', async () => {
+    hoisted.getAllYTDSubmissions.mockRejectedValue(new Error('denied'));
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-unavailable')).toBeInTheDocument());
+    expect(screen.queryByTestId('funnel-status-group')).not.toBeInTheDocument();
+  });
+
+  // NEGATIVE CONTROL — the floor config is equally load-bearing.
+  it('hides the chips when the companyMinimums read fails', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    hoisted.getCompanyMinimums.mockRejectedValue(new Error('denied'));
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-unavailable')).toBeInTheDocument());
+    expect(screen.queryByTestId('funnel-status-group')).not.toBeInTheDocument();
+  });
+
+  it('selecting a band filters the table to that band and chips the condition', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('funnel-status-floor'));
+    expect(screen.getByTestId('funnel-status-floor')).toHaveAttribute('aria-pressed', 'true');
+
+    // agent-2 is ~0.4% of its pro-rata floor pace; agent-1 clears it.
+    await waitFor(() => expect(screen.queryByText('Active Agent')).not.toBeInTheDocument());
+    expect(screen.getByText('Draft Agent')).toBeInTheDocument();
+    expect(screen.getByTestId('funnel-filters-badge')).toHaveTextContent('1');
+    expect(screen.getByTestId('funnel-chips')).toHaveTextContent('STATUS · BELOW FLOOR');
+  });
+
+  it('a persistency reading below the floor bands an otherwise on-pace agent', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    hoisted.getPersistencyMapForYear.mockResolvedValue({
+      'agent-1': [{ year: 2026, month: 5, persistency: 0.42 }],
+    });
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('funnel-status-persistency'));
+    await waitFor(() => expect(screen.queryByText('Draft Agent')).not.toBeInTheDocument());
+    expect(screen.getByText('Active Agent')).toBeInTheDocument();
+  });
+
+  it('scopes the persistency read to the caller branch (rules-scoped read)', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    await waitFor(() => expect(hoisted.getPersistencyMapForYear).toHaveBeenCalled());
+    expect(hoisted.getPersistencyMapForYear).toHaveBeenCalledWith(
+      't1', expect.any(Number), { branchId: 'b1' },
+    );
+  });
+
+  it('clearing the STATUS chip restores every row', async () => {
+    hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+    render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+    await flushLoad();
+    openFilters();
+    await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('funnel-status-floor'));
+    await waitFor(() => expect(screen.queryByText('Active Agent')).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('funnel-status-floor'));
+    await waitFor(() => expect(screen.getByText('Active Agent')).toBeInTheDocument());
+    expect(screen.queryByTestId('funnel-filters-badge')).not.toBeInTheDocument();
+  });
+
+  // ── Abstention presentation (dispatcher ruling 2026-07-27) ──
+  // Strict abstention is KEPT, but it must not look like a broken sheet: an
+  // agent with no persistency reading gets a named, visible, filterable state
+  // plus a note saying why and what to do — never a silent gap.
+  describe('unbanded agents render a distinct "no persistency data" state', () => {
+    it('offers a nodata chip with a count, and an explanatory note', async () => {
+      hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+      hoisted.getPersistencyMapForYear.mockResolvedValue({}); // read OK, no records
+      render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+      await flushLoad();
+      openFilters();
+      await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+      // The chip exists, is labelled as an availability state, and is counted.
+      const chip = screen.getByTestId('funnel-status-nodata');
+      expect(chip).toHaveTextContent(/No persistency data/i);
+      expect(chip).toHaveTextContent(/·\s*1/); // only agent-1 clears production
+
+      // And the sheet SAYS why, actionably.
+      const note = screen.getByTestId('funnel-status-nodata-note');
+      expect(note).toHaveTextContent(/no persistency/i);
+      expect(note).toHaveTextContent(/not rated on track or at risk/i);
+    });
+
+    it('the nodata chip filters to exactly those agents', async () => {
+      hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+      hoisted.getPersistencyMapForYear.mockResolvedValue({});
+      render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+      await flushLoad();
+      openFilters();
+      await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByTestId('funnel-status-nodata'));
+      // agent-1 is production-clean but unmeasured → nodata. agent-2 is below
+      // floor → an EVIDENCED band, so it is filtered out, not lumped in here.
+      await waitFor(() => expect(screen.queryByText('Draft Agent')).not.toBeInTheDocument());
+      expect(screen.getByText('Active Agent')).toBeInTheDocument();
+    });
+
+    // NEGATIVE CONTROL — with persistency present, the state does not appear.
+    it('no nodata note when every agent has a reading', async () => {
+      hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+      hoisted.getPersistencyMapForYear.mockResolvedValue({
+        'agent-1': [{ year: 2026, month: 5, persistency: 0.95 }],
+        'agent-2': [{ year: 2026, month: 5, persistency: 0.95 }],
+      });
+      render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+      await flushLoad();
+      openFilters();
+      await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+      expect(screen.queryByTestId('funnel-status-nodata-note')).not.toBeInTheDocument();
+      expect(screen.getByTestId('funnel-status-nodata')).not.toHaveTextContent(/·\s*[1-9]/);
+    });
+  });
+
+  // ── Scope change (CodeRabbit finding #3, dispatcher-ruled FIX) ──
+  // Bands derived from a prior scope's YTD / floors / persistency are WRONG
+  // DATA for the roster now on screen, not merely stale. On a scope change the
+  // STATUS inputs are dropped before the new request starts, and any active
+  // STATUS chip goes with them.
+  describe('scope change discards prior-scope STATUS state', () => {
+    it('drops the previous scope\'s bands instead of colouring the new roster with them', async () => {
+      hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+      const { rerender } = render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+      await flushLoad();
+      openFilters();
+      await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+      // Never resolves — holds the sheet in the mid-fetch window that the fix targets.
+      hoisted.getAllYTDSubmissions.mockReturnValue(new Promise(() => {}));
+      hoisted.getCompanyMinimums.mockReturnValue(new Promise(() => {}));
+      hoisted.getPersistencyMapForYear.mockReturnValue(new Promise(() => {}));
+
+      authValue = { ...DEFAULT_AUTH, branchId: 'b2' }; // caller moves branch
+      rerender(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+
+      // Chips must fall back to the honest unavailable note, NOT keep rendering
+      // bands computed from branch b1's numbers.
+      await waitFor(() => expect(screen.getByTestId('funnel-status-unavailable')).toBeInTheDocument());
+      expect(screen.queryByTestId('funnel-status-group')).not.toBeInTheDocument();
+    });
+
+    it('clears an active STATUS chip so it cannot filter against bands that no longer exist', async () => {
+      hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+      const { rerender } = render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+      await flushLoad();
+      openFilters();
+      await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByTestId('funnel-status-floor'));
+      await waitFor(() => expect(screen.queryByText('Active Agent')).not.toBeInTheDocument());
+      expect(screen.getByTestId('funnel-filters-badge')).toBeInTheDocument();
+
+      authValue = { ...DEFAULT_AUTH, branchId: 'b2' };
+      rerender(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+
+      // The filter is gone, so no row is hidden with no visible cause.
+      await waitFor(() => expect(screen.queryByTestId('funnel-filters-badge')).not.toBeInTheDocument());
+      expect(screen.getByText('Active Agent')).toBeInTheDocument();
+    });
+
+    // NEGATIVE CONTROL — a same-scope re-render must NOT clear anything, or the
+    // fix would make the STATUS chips unusable in ordinary operation.
+    it('a re-render with UNCHANGED scope preserves both the bands and the chip', async () => {
+      hoisted.getAllYTDSubmissions.mockResolvedValue(YTD);
+      const { rerender } = render(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />);
+      await flushLoad();
+      openFilters();
+      await waitFor(() => expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByTestId('funnel-status-floor'));
+      await waitFor(() => expect(screen.queryByText('Active Agent')).not.toBeInTheDocument());
+
+      rerender(<MasterSheet selectedWeek="2026-06-28" setSelectedWeek={() => {}} />); // same scope
+
+      expect(screen.getByTestId('funnel-status-group')).toBeInTheDocument();
+      expect(screen.getByTestId('funnel-filters-badge')).toBeInTheDocument();
+      expect(screen.queryByText('Active Agent')).not.toBeInTheDocument();
+    });
   });
 });

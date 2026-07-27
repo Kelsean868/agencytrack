@@ -1,0 +1,444 @@
+import { describe, it, expect } from 'vitest';
+import {
+  FUNNEL_STATUS_OPTS,
+  FUNNEL_STATUS_KEYS,
+  ROW_REACHABLE_STATUS_KEYS,
+  ROW_REACHABLE_STATUS_OPTS,
+  exceptionToStatusKey,
+  latestPersistency,
+  buildStatusMap,
+} from '../funnelStatus';
+import { PERS_FLOOR } from '../../lib/persistency/calculations';
+import { DEFAULT_TENURE_API_FLOORS } from '../tenureFloors';
+
+// ── Fixture builders ────────────────────────────────────────────────────────
+// `now` is pinned mid-year so the pro-rata pace fraction is a known constant:
+// 2026-07-02 → 182 days elapsed of 365 → yearFraction = 182/365 ≈ 0.49863.
+const NOW = new Date('2026-07-02T12:00:00Z');
+const YEAR_FRAC = 182 / 365;
+
+const COMPANY_MINS = { tenureApiFloors: DEFAULT_TENURE_API_FLOORS };
+
+// A > 60-month agent → band_gt60 → 500,000 annual floor.
+const VETERAN_START = '2018-01-15';
+const VETERAN_FLOOR = DEFAULT_TENURE_API_FLOORS.band_gt60; // 500000
+const VETERAN_PACE = VETERAN_FLOOR * YEAR_FRAC;            // ≈ 249,315
+
+function agent(id, extra = {}) {
+  return { id, role: 'agent', contractStartDate: VETERAN_START, ...extra };
+}
+
+// extractTotalProductionCredit is v2-first: it returns the stored
+// `totalProductionCredit` field verbatim when present (extractFields.js:174).
+function sub(agentId, weekStarting, api) {
+  return { agentId, weekStarting, status: 'submitted', totalProductionCredit: api };
+}
+
+// A healthy persistency reading for each id. Required by any test that expects
+// 'ontrack': under the abstention rule that band is a positive claim and is only
+// asserted when a persistency reading actually exists (buildStatusMap pass 3).
+// Tests about PRODUCTION banding use this so the persistency arm is satisfied
+// and does not mask what they are actually probing.
+function healthyPers(...ids) {
+  const out = {};
+  for (const id of ids) out[id] = [{ year: 2026, month: 5, persistency: 0.95 }];
+  return out;
+}
+
+// Sanity-check the fixture's assumed credit extraction before relying on it.
+describe('fixture sanity', () => {
+  it('a single submission credits its full API (non-vacuous fixtures)', () => {
+    const map = buildStatusMap({
+      users: [agent('a1')],
+      ytdSubs: [sub('a1', '2026-06-28', VETERAN_PACE * 2)],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('a1'),
+      now: NOW,
+    });
+    // Double the pace target must NOT be a pace exception — proves the fixture's
+    // API actually reaches the derivation.
+    expect(map.a1).toBe('ontrack');
+  });
+});
+
+describe('FUNNEL_STATUS_OPTS', () => {
+  it('carries the six mockup bands, in the mockup order', () => {
+    expect(FUNNEL_STATUS_OPTS.map(([k]) => k)).toEqual([
+      'ontrack', 'pace', 'quiet', 'report', 'persistency', 'floor',
+    ]);
+    expect(FUNNEL_STATUS_OPTS.map(([, l]) => l)).toEqual([
+      'On track', 'Off pace', 'Gone quiet', 'Report late', 'Pers. ↓', 'Below floor',
+    ]);
+  });
+});
+
+// Locks the review finding (CodeRabbit, PR #871): the Master Sheet is a
+// filers-only table, so a row-holding agent can essentially never be 'quiet'
+// ("No reports" = zero submissions this year). Offering the chip would ship a
+// filter that always returns an empty table.
+describe('row reachability — why this surface offers five of the six bands', () => {
+  it('excludes exactly "quiet", and appends the nodata availability state', () => {
+    expect(ROW_REACHABLE_STATUS_KEYS).toEqual([
+      'ontrack', 'pace', 'report', 'persistency', 'floor', 'nodata',
+    ]);
+    expect(ROW_REACHABLE_STATUS_KEYS).not.toContain('quiet');
+    // The five verdict labels are still sourced from the mockup vocabulary;
+    // 'nodata' is appended LAST with its own label — it is a data-availability
+    // state, not a sixth severity band, and must never be ordered among them.
+    expect(ROW_REACHABLE_STATUS_OPTS.map(([, l]) => l)).toEqual([
+      'On track', 'Off pace', 'Report late', 'Pers. ↓', 'Below floor', 'No persistency data',
+    ]);
+    expect(ROW_REACHABLE_STATUS_OPTS.at(-1)[0]).toBe('nodata');
+    // It is NOT part of the mockup's six-band vocabulary.
+    expect(FUNNEL_STATUS_OPTS.map(([k]) => k)).not.toContain('nodata');
+  });
+
+  // THE REASON, proven rather than asserted: scope the derivation to the agents
+  // that actually have a row (filed the selected week) and 'quiet' cannot occur.
+  it('no agent who filed the selected week is ever banded quiet', () => {
+    const week = '2026-06-28';
+    const users = [agent('a1'), agent('a2'), agent('a3')];
+    const ytdSubs = [
+      sub('a1', week, VETERAN_PACE * 2),    // ontrack
+      sub('a2', week, VETERAN_PACE * 0.6),  // pace
+      sub('a3', week, 100),                 // floor
+    ];
+    // scopeIds = the row set: everyone who filed this week.
+    const map = buildStatusMap({
+      users, ytdSubs, companyMins: COMPANY_MINS, scopeIds: new Set(['a1', 'a2', 'a3']), now: NOW,
+    });
+    expect(Object.values(map)).not.toContain('quiet');
+  });
+
+  // And the converse: 'quiet' IS still derivable by the engine — it is the
+  // SURFACE that cannot show it, not the mapping that is wrong. (An agent with
+  // no row is banded quiet only when they are in scope, which on this sheet
+  // they are not.)
+  it('buildStatusMap still bands a genuine non-filer quiet when scoped in', () => {
+    const map = buildStatusMap({
+      users: [agent('filer'), agent('silent')],
+      ytdSubs: [sub('filer', '2026-06-28', 400000)],
+      companyMins: COMPANY_MINS,
+      now: NOW,
+    });
+    expect(map.silent).toBe('quiet');
+  });
+});
+
+describe('exceptionToStatusKey', () => {
+  it('maps each shipped exception shape to its band', () => {
+    expect(exceptionToStatusKey({ type: 'floor', kind: 'Below floor' })).toBe('floor');
+    expect(exceptionToStatusKey({ type: 'pace', kind: 'Off pace' })).toBe('pace');
+    expect(exceptionToStatusKey({ type: 'report', kind: 'No reports' })).toBe('quiet');
+    expect(exceptionToStatusKey({ type: 'report', kind: 'Report late' })).toBe('report');
+  });
+
+  // NEGATIVE CONTROL — an unmapped shape must return null, never a default band.
+  it('returns null for unknown types and unknown report kinds', () => {
+    expect(exceptionToStatusKey(null)).toBeNull();
+    expect(exceptionToStatusKey({ type: 'persistency' })).toBeNull();
+    expect(exceptionToStatusKey({ type: 'report', kind: 'Some future kind' })).toBeNull();
+  });
+});
+
+describe('latestPersistency', () => {
+  it('returns the most recent month by (year, month), not array order', () => {
+    const recs = [
+      { year: 2026, month: 3, persistency: 0.95 },
+      { year: 2026, month: 11, persistency: 0.61 },
+      { year: 2025, month: 12, persistency: 0.99 },
+    ];
+    expect(latestPersistency(recs)).toBe(0.61);
+  });
+
+  it('crosses the year boundary correctly (Jan beats prior Dec)', () => {
+    expect(latestPersistency([
+      { year: 2025, month: 12, persistency: 0.50 },
+      { year: 2026, month: 1, persistency: 0.97 },
+    ])).toBe(0.97);
+  });
+
+  // NEGATIVE CONTROLS — absent/garbage never becomes a value.
+  it('returns null for empty, non-array, and unusable records', () => {
+    expect(latestPersistency([])).toBeNull();
+    expect(latestPersistency(undefined)).toBeNull();
+    expect(latestPersistency(null)).toBeNull();
+    expect(latestPersistency([{ year: 'x', month: 2, persistency: 0.4 }])).toBeNull();
+    expect(latestPersistency([{ year: 2026, month: 2 }])).toBeNull();
+  });
+});
+
+describe('buildStatusMap — band boundaries (value-level)', () => {
+  // deriveExceptions thresholds: ratio = ytdApi / (floor * yearFraction)
+  //   ratio < 0.50 → 'floor' · ratio < 0.85 → 'pace' · else clean
+  const week = '2026-06-28';
+
+  function bandFor(ytdApi) {
+    return buildStatusMap({
+      users: [agent('a1')],
+      ytdSubs: [sub('a1', week, ytdApi)],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('a1'),
+      now: NOW,
+    }).a1;
+  }
+
+  it('below 50% of pro-rata pace → floor', () => {
+    expect(bandFor(VETERAN_PACE * 0.40)).toBe('floor');
+  });
+
+  it('just under the 50% boundary is still floor; at 50% it is pace', () => {
+    expect(bandFor(VETERAN_PACE * 0.499)).toBe('floor');
+    expect(bandFor(VETERAN_PACE * 0.50)).toBe('pace');   // boundary is exclusive
+  });
+
+  it('between 50% and 85% → pace', () => {
+    expect(bandFor(VETERAN_PACE * 0.70)).toBe('pace');
+  });
+
+  it('just under the 85% boundary is pace; at 85% it is clean', () => {
+    expect(bandFor(VETERAN_PACE * 0.849)).toBe('pace');
+    expect(bandFor(VETERAN_PACE * 0.85)).toBe('ontrack');
+  });
+
+  it('at or above 85% of pace → ontrack', () => {
+    expect(bandFor(VETERAN_PACE * 1.20)).toBe('ontrack');
+  });
+
+  // NEGATIVE CONTROL — the tenure floor must actually drive the band. A rookie
+  // (<12 months → 150,000 floor) clears with API that sinks a veteran.
+  it('the SAME API bands differently by tenure band', () => {
+    const rookiePace = DEFAULT_TENURE_API_FLOORS.band0_lt12 * YEAR_FRAC;
+    const api = rookiePace * 0.95; // ≈ 71,020 — clean for a rookie
+    const map = buildStatusMap({
+      users: [
+        agent('rookie', { contractStartDate: '2026-02-01' }),
+        agent('vet'),
+      ],
+      ytdSubs: [sub('rookie', week, api), sub('vet', week, api)],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('rookie', 'vet'),
+      now: NOW,
+    });
+    expect(map.rookie).toBe('ontrack');
+    expect(map.vet).toBe('floor'); // same money, ~29% of a veteran's pace
+  });
+});
+
+describe('buildStatusMap — report bands', () => {
+  it('an agent who has filed nothing while the branch has → quiet', () => {
+    const map = buildStatusMap({
+      users: [agent('filer'), agent('silent')],
+      ytdSubs: [sub('filer', '2026-06-28', 400000)],
+      companyMins: COMPANY_MINS,
+      now: NOW,
+    });
+    expect(map.silent).toBe('quiet');
+  });
+
+  it('an on-pace agent who missed the latest branch week → report', () => {
+    const map = buildStatusMap({
+      users: [agent('current'), agent('late')],
+      ytdSubs: [
+        sub('current', '2026-06-28', 400000),
+        sub('late', '2026-06-21', 400000), // on pace, but not the latest week
+      ],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('current', 'late'),
+      now: NOW,
+    });
+    expect(map.current).toBe('ontrack');
+    expect(map.late).toBe('report');
+  });
+
+  // NEGATIVE CONTROL — with no branch activity at all there is no "latest week",
+  // so nobody is flagged late for a week that never happened.
+  it('no submissions anywhere → nobody is banded quiet or report', () => {
+    const map = buildStatusMap({
+      users: [agent('a1'), agent('a2')],
+      ytdSubs: [],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('a1', 'a2'),
+      now: NOW,
+    });
+    expect(map.a1).toBe('ontrack');
+    expect(map.a2).toBe('ontrack');
+  });
+});
+
+describe('buildStatusMap — persistency band', () => {
+  const week = '2026-06-28';
+  const clean = (id) => sub(id, week, 400000); // comfortably on pace
+
+  it('latest persistency below PERS_FLOOR → persistency', () => {
+    const map = buildStatusMap({
+      users: [agent('a1')],
+      ytdSubs: [clean('a1')],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: { a1: [{ year: 2026, month: 5, persistency: PERS_FLOOR - 0.01 }] },
+      now: NOW,
+    });
+    expect(map.a1).toBe('persistency');
+  });
+
+  // Boundary: PERS_FLOOR itself is NOT below floor.
+  it('persistency exactly at PERS_FLOOR is clean', () => {
+    const map = buildStatusMap({
+      users: [agent('a1')],
+      ytdSubs: [clean('a1')],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: { a1: [{ year: 2026, month: 5, persistency: PERS_FLOOR }] },
+      now: NOW,
+    });
+    expect(map.a1).toBe('ontrack');
+  });
+
+  // NEGATIVE CONTROL — an absent persistency reading is not a FAILING one.
+  // It is also not a passing one: the agent is left unbanded, never 'persistency'.
+  // (Ruling 2026-07-27 reversed the previous 'ontrack' expectation here — see
+  // the abstention block below for the full rationale.)
+  it('no persistency record does NOT band the agent persistency', () => {
+    const map = buildStatusMap({
+      users: [agent('a1')],
+      ytdSubs: [clean('a1')],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: { other: [{ year: 2026, month: 5, persistency: 0.10 }] },
+      now: NOW,
+    });
+    expect(map.a1).not.toBe('persistency');
+    expect(map.a1).toBe('nodata'); // abstained — a NAMED state, not an absence
+  });
+
+  it('a production band outranks a persistency band on the same agent', () => {
+    const map = buildStatusMap({
+      users: [agent('a1')],
+      ytdSubs: [sub('a1', week, 1000)], // deep below floor
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: { a1: [{ year: 2026, month: 5, persistency: 0.10 }] },
+      now: NOW,
+    });
+    expect(map.a1).toBe('floor');
+  });
+});
+
+// ── Abstention rule (dispatcher ruling 2026-07-27, CodeRabbit finding #2) ──
+//
+// 'ontrack' is the only band that makes a POSITIVE claim about an agent. It may
+// therefore only be asserted when BOTH gates actually ran. If the persistency
+// read failed — or simply returned nothing for this agent — the agent is left
+// UNBANDED rather than reported healthy. Chips are NOT hidden wholesale: every
+// evidenced band still lands.
+//
+// Direction matters: asserting unevidenced health is the harmful failure; a
+// surface that abstains is safe, a surface that says "On track" over a missing
+// reading is a lie a manager acts on.
+describe('buildStatusMap — abstention when health is unevidenced', () => {
+  const week = '2026-06-28';
+  const clean = (id) => sub(id, week, 400000);
+
+  it('persistency map entirely null → nobody is asserted ontrack', () => {
+    const map = buildStatusMap({
+      users: [agent('a1'), agent('a2')],
+      ytdSubs: [clean('a1'), clean('a2')],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: null, // the read failed
+      now: NOW,
+    });
+    expect(Object.values(map)).not.toContain('ontrack');
+    // Named, not dropped — the sheet must be able to render and filter these.
+    expect(map.a1).toBe('nodata');
+    expect(map.a2).toBe('nodata');
+  });
+
+  // The ruling's explicit constraint: abstain on the CLAIM, do not hide the surface.
+  it('evidenced bands still land when the persistency read failed', () => {
+    const map = buildStatusMap({
+      users: [agent('sinking'), agent('fine')],
+      ytdSubs: [sub('sinking', week, 1000), clean('fine')], // 'sinking' is deep below floor
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: null,
+      now: NOW,
+    });
+    expect(map.sinking).toBe('floor');  // evidenced from production — survives
+    expect(map.fine).toBe('nodata');    // unevidenced health — abstained, but VISIBLE
+  });
+
+  // NEGATIVE CONTROL for the whole rule. This is the exact scenario CodeRabbit
+  // flagged: a below-floor agent reading "On track" because the persistency arm
+  // never ran. Remove pass 3 from buildStatusMap and this test fails.
+  it('an agent who WOULD band persistency is never shown ontrack when the read failed', () => {
+    const withRead = buildStatusMap({
+      users: [agent('a1')],
+      ytdSubs: [clean('a1')],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: { a1: [{ year: 2026, month: 5, persistency: 0.55 }] },
+      now: NOW,
+    });
+    expect(withRead.a1).toBe('persistency'); // the truth, when measured
+
+    const readFailed = buildStatusMap({
+      users: [agent('a1')],
+      ytdSubs: [clean('a1')],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: null, // same agent, reading unavailable
+      now: NOW,
+    });
+    expect(readFailed.a1).not.toBe('ontrack'); // must NOT flip to healthy
+    expect(readFailed.a1).toBe('nodata');      // says "unknown", not "fine"
+  });
+
+  it('a per-agent gap abstains for that agent only, not the whole roster', () => {
+    const map = buildStatusMap({
+      users: [agent('measured'), agent('unmeasured')],
+      ytdSubs: [clean('measured'), clean('unmeasured')],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('measured'), // 'unmeasured' has no record
+      now: NOW,
+    });
+    expect(map.measured).toBe('ontrack');
+    expect(map.unmeasured).toBe('nodata');
+  });
+});
+
+describe('buildStatusMap — scope and shape', () => {
+  it('only agents are banded; managers are absent from the map', () => {
+    const map = buildStatusMap({
+      users: [agent('a1'), { id: 'um1', role: 'unit_manager' }],
+      ytdSubs: [sub('a1', '2026-06-28', 400000)],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('a1', 'um1'),
+      now: NOW,
+    });
+    expect(map.a1).toBe('ontrack');
+    expect('um1' in map).toBe(false);
+  });
+
+  it('scopeIds excludes out-of-scope agents entirely', () => {
+    const map = buildStatusMap({
+      users: [agent('in'), agent('out')],
+      ytdSubs: [sub('in', '2026-06-28', 400000)],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: healthyPers('in', 'out'),
+      scopeIds: new Set(['in']),
+      now: NOW,
+    });
+    expect(map.in).toBe('ontrack');
+    expect('out' in map).toBe(false);
+  });
+
+  it('every produced value is a declared band key', () => {
+    const map = buildStatusMap({
+      users: [agent('a'), agent('b'), agent('c')],
+      ytdSubs: [sub('a', '2026-06-28', 400000), sub('b', '2026-06-21', 1000)],
+      companyMins: COMPANY_MINS,
+      persistencyByAgent: { a: [{ year: 2026, month: 5, persistency: 0.5 }] },
+      now: NOW,
+    });
+    Object.values(map).forEach((v) => expect(FUNNEL_STATUS_KEYS).toContain(v));
+  });
+
+  it('empty input yields an empty map, not a throw', () => {
+    expect(buildStatusMap()).toEqual({});
+    expect(buildStatusMap({ users: [], ytdSubs: [] })).toEqual({});
+  });
+});

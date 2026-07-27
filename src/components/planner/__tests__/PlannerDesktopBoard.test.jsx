@@ -173,3 +173,116 @@ describe('PlannerDesktopBoard — E2 drag-drop', () => {
     );
   });
 });
+
+// ── Week navigation + tombstone presentation (planner week-nav track) ────────
+
+describe('PlannerDesktopBoard — columnStart anchoring', () => {
+  it('Day/3-day columns start at columnStart, not today, when supplied', () => {
+    // Viewing a week that is NOT the current one: columns anchor to that
+    // week's Sunday, because a today-anchored span means nothing there.
+    renderBoard({ span: '3day', columnStart: '2026-08-02' });
+    expect(screen.getByTestId('planner-day-col-2026-08-02')).toBeInTheDocument();
+    expect(screen.getByTestId('planner-day-col-2026-08-03')).toBeInTheDocument();
+    expect(screen.getByTestId('planner-day-col-2026-08-04')).toBeInTheDocument();
+    expect(screen.queryByTestId(`planner-day-col-${TODAY}`)).toBeNull();
+  });
+
+  it('falls back to today when columnStart is absent (unchanged prior behaviour)', () => {
+    renderBoard({ span: 'day' });
+    expect(screen.getByTestId(`planner-day-col-${TODAY}`)).toBeInTheDocument();
+  });
+
+  it('Week span always renders the supplied weekDates, ignoring columnStart', () => {
+    renderBoard({ span: 'week', columnStart: '2026-08-02' });
+    WEEK_DATES.forEach((d) => {
+      expect(screen.getByTestId(`planner-day-col-${d}`)).toBeInTheDocument();
+    });
+  });
+});
+
+describe('PlannerDesktopBoard — week nav slot', () => {
+  it('renders the week-nav slot on day/3-day/week spans', () => {
+    renderBoard({ span: 'week', weekNav: <div data-testid="nav-slot" /> });
+    expect(screen.getByTestId('nav-slot')).toBeInTheDocument();
+  });
+
+  it('hides the week-nav slot on Follow-ups (not a week-scoped view)', () => {
+    renderBoard({ span: 'followups', weekNav: <div data-testid="nav-slot" /> });
+    expect(screen.queryByTestId('nav-slot')).toBeNull();
+  });
+});
+
+describe('PlannerDesktopBoard — postponed tombstones (presentation only)', () => {
+  const withPostponed = new Map([
+    ['2026-07-22', [
+      { id: 'live1', startTime: '09:00', type: 'FFI', status: 'scheduled' },
+      { id: 'tomb1', startTime: '10:00', type: 'CI', status: 'postponed' },
+      { id: 'tomb2', startTime: '11:00', type: 'PC', status: 'postponed' },
+      { id: 'canc1', startTime: '12:00', type: 'PC', status: 'cancelled' },
+    ]],
+  ]);
+  const card = (a) => <div key={a.id} data-testid={`card-${a.id}`}>{a.id}</div>;
+
+  it('defaults to SHOWING postponed (retained-churn design authority)', () => {
+    renderBoard({ span: 'week', byDate: withPostponed, renderCard: card });
+    // aria-pressed tracks HIDING (F3), so the default (postponed shown) is 'false'.
+    expect(screen.getByTestId('planner-toggle-postponed')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('planner-toggle-postponed')).toHaveTextContent('Hide postponed');
+    expect(screen.getByTestId('card-tomb1')).toBeInTheDocument();
+    expect(screen.getByTestId('card-tomb2')).toBeInTheDocument();
+  });
+
+  it('hides ONLY postponed when toggled off — cancelled and live stay', () => {
+    renderBoard({ span: 'week', byDate: withPostponed, renderCard: card, showPostponed: false });
+    expect(screen.queryByTestId('card-tomb1')).toBeNull();
+    expect(screen.queryByTestId('card-tomb2')).toBeNull();
+    expect(screen.getByTestId('card-live1')).toBeInTheDocument();
+    expect(screen.getByTestId('card-canc1')).toBeInTheDocument();
+  });
+
+  it('never hides silently — reports how many tombstones were filtered', () => {
+    renderBoard({ span: 'week', byDate: withPostponed, renderCard: card, showPostponed: false });
+    expect(screen.getByTestId('planner-day-hidden-2026-07-22')).toHaveTextContent('+2 postponed hidden');
+  });
+
+  it('shows no hidden-count note while postponed are visible', () => {
+    renderBoard({ span: 'week', byDate: withPostponed, renderCard: card });
+    expect(screen.queryByTestId('planner-day-hidden-2026-07-22')).toBeNull();
+  });
+
+  it('the filter is WEEK-span only — 3-day keeps tombstones even when toggled off', () => {
+    renderBoard({
+      span: '3day', columnStart: '2026-07-22', byDate: withPostponed, renderCard: card, showPostponed: false,
+    });
+    expect(screen.getByTestId('card-tomb1')).toBeInTheDocument();
+    expect(screen.getByTestId('card-tomb2')).toBeInTheDocument();
+  });
+
+  it('the toggle is offered only on the week span', () => {
+    renderBoard({ span: '3day' });
+    expect(screen.queryByTestId('planner-toggle-postponed')).toBeNull();
+  });
+
+  it('toggling calls back with the inverted value (state is owned by the panel)', () => {
+    const onToggleShowPostponed = vi.fn();
+    renderBoard({ span: 'week', byDate: withPostponed, renderCard: card, onToggleShowPostponed });
+    fireEvent.click(screen.getByTestId('planner-toggle-postponed'));
+    expect(onToggleShowPostponed).toHaveBeenCalledWith(false);
+  });
+});
+
+describe('PlannerDesktopBoard — stacked day header (mockup parity)', () => {
+  it('renders DOW and day-number as separate lines rather than one clipping line', () => {
+    renderBoard({ span: 'week' });
+    const col = screen.getByTestId('planner-day-col-2026-07-22');
+    expect(within(col).getByText('WED')).toBeInTheDocument();
+    expect(within(col).getByText('22')).toBeInTheDocument();
+  });
+
+  it('marks today with a compact TODAY tag instead of the old " · Today" suffix', () => {
+    renderBoard({ span: 'week' });
+    const todayCol = screen.getByTestId(`planner-day-col-${TODAY}`);
+    expect(within(todayCol).getByText('TODAY')).toBeInTheDocument();
+    expect(within(todayCol).queryByText(/· Today/)).toBeNull();
+  });
+});

@@ -28,13 +28,13 @@ import PanelSkeleton from '../ui/PanelSkeleton';
 import { getTenantUsers, getAllYTDSubmissions } from '../../services/managerService';
 import { getPersistencyMapForYear } from '../../services/persistencyService';
 import { getCampaigns } from '../../services/campaignService';
-import { computeStandings, isTieredCampaign } from '../../utils/campaignEngine';
+import { computeStandings, isTieredCampaign, persistencyPctForPeriod, campaignYears } from '../../utils/campaignEngine';
 import { CampaignStandingsBlock } from '../campaigns/CampaignStandings';
 import FunnelMeetingScene from './FunnelMeetingScene';
 import {
   deriveWeekPulse, deriveBranchWindows, deriveUnits, deriveAgentRuns,
   deriveExceptions, deriveRecognition, deriveAnniversaries, deriveActiveCampaigns,
-  deriveAwardsWithinReach, deriveDeck, latestPersistency,
+  deriveAwardsWithinReach, deriveDeck,
 } from './MeetingMode.helpers';
 
 // ── Small formatters / primitives ──
@@ -604,20 +604,47 @@ function AwardsWithinReachScene({ pairs }) {
 function CampaignScene({ campaigns, ytdSubs, users, persMap }) {
   // Reuse item 2.9's standings display. Standings are derived read-light from the
   // already-loaded YTD submissions windowed to each campaign, with the users as
-  // participants + the latest per-agent persistency as the gate input. The
-  // reused block renders on an app `bg-card` surface (its intended token set),
-  // hosted on the presentation stage.
-  const persByAgent = useMemo(() => {
-    const out = {};
-    Object.keys(persMap || {}).forEach((id) => { out[id] = latestPersistency(persMap[id]); });
-    return out;
-  }, [persMap]);
+  // participants + the per-agent persistency gate input. The reused block renders
+  // on an app `bg-card` surface (its intended token set), hosted on the
+  // presentation stage.
   const participants = useMemo(
     () => (users || []).filter((u) => u.role === 'agent').map((u) => ({ id: u.id, name: u.name ?? u.displayName ?? 'Agent', unit: u.unitId ?? null })),
     [users]
   );
   const campaign = campaigns[0];
   const tiered = isTieredCampaign(campaign);
+
+  // GATE INPUT — must match the canonical campaign surface exactly.
+  //
+  // `campaignEngine.persistencyByAgent` is documented "(percentage 0–100)", and
+  // CampaignPanel (the primary campaign surface) builds it with
+  // `persistencyPctForPeriod`. This scene previously used MeetingMode's own
+  // `latestPersistency`, which was wrong three ways at once:
+  //   • SCALE — it returned the raw E3 decimal, so gateBandFor(0.95) fell
+  //     through to the {min: 0, payout: 0} DQ band and disqualified EVERY
+  //     advisor with a x0 multiplier on their projected prize;
+  //   • METHOD — a single latest month, where the gate is defined over the
+  //     campaign PERIOD and must aggregate numerator/denominator rather than
+  //     take one month (calculations.js' explicit anti-average rule);
+  //   • PRECISION — unrounded, rendering "95.23809523809523%" in the gate pill.
+  // Latest-month and period-aggregate can land in DIFFERENT payout bands, so
+  // this is a money difference, not a cosmetic one.
+  //
+  // Matching the Campaigns surface takes BOTH halves: the same helper AND the
+  // same record set. `persMap` is supplied by MeetingMode's `campaignPersMap`,
+  // which spans `campaignYears(start, end)` exactly as CampaignPanel does — see
+  // the note there for why the helper alone is not enough. It is null while a
+  // cross-year supplement is still loading, which renders "no data" pills at ×1
+  // rather than a partial-period aggregate.
+  const persByAgent = useMemo(() => {
+    if (!campaign) return {};
+    const out = {};
+    for (const id of Object.keys(persMap || {})) {
+      const pct = persistencyPctForPeriod(persMap[id], campaign.startDate, campaign.endDate);
+      if (pct != null) out[id] = pct;
+    }
+    return out;
+  }, [persMap, campaign]);
   const standings = useMemo(() => {
     if (!tiered) return [];
     const start = typeof campaign.startDate === 'string' ? campaign.startDate.slice(0, 10) : '';
@@ -761,6 +788,13 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
   const now = useMemo(() => new Date(), []);
 
   // ── One load gate on open — reuse the dashboard's own service calls ──
+  // Role scope for every persistency read on this surface. `getPersistencyMapForYear`
+  // needs it explicitly or its per-agent reads are silently dropped by rules.
+  const persistencyScope = useMemo(() => ({
+    branchId: role === 'branch_manager' ? userProfile?.branchId ?? branchId : undefined,
+    unitId: role === 'unit_manager' ? userProfile?.unitId : undefined,
+  }), [role, branchId, userProfile]);
+
   useEffect(() => {
     if (!tenantId) { setLoading(false); return; }
     let alive = true;
@@ -770,15 +804,14 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     Promise.all([
       getTenantUsers(tenantId).catch(() => { throw new Error('users'); }),
       getAllYTDSubmissions(tenantId).catch(() => []),
-      getPersistencyMapForYear(tenantId, year, {
-        branchId: role === 'branch_manager' ? userProfile?.branchId ?? branchId : undefined,
-        unitId: role === 'unit_manager' ? userProfile?.unitId : undefined,
-      }).catch(() => ({})),
+      getPersistencyMapForYear(tenantId, year, persistencyScope).catch(() => ({})),
       getCampaigns(tenantId).catch(() => []),
     ])
       .then(([users, ytdSubs, persMap, campaigns]) => {
         if (!alive) return;
-        setData({ users, ytdSubs, persMap, campaigns });
+        // `persYear` is recorded so the campaign-gate supplement below knows
+        // which year this map actually covers.
+        setData({ users, ytdSubs, persMap, campaigns, persYear: year });
         setLoading(false);
       })
       .catch(() => {
@@ -787,7 +820,65 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
         setLoading(false);
       });
     return () => { alive = false; };
-  }, [tenantId, role, branchId, userProfile, reloadToken]);
+  }, [tenantId, persistencyScope, reloadToken]);
+
+  // ── Campaign-gate persistency: the record set must span the campaign's YEARS ──
+  //
+  // The primary load above fetches ONE year (the branch scorecard and the agent
+  // flags are current-year reads by definition). The campaign gate is not: it is
+  // defined over the campaign PERIOD, and `CampaignPanel` — the canonical
+  // surface — loads `campaignYears(start, end)` and merges them.
+  //
+  // Sharing `persistencyPctForPeriod` is only half of matching that surface. Fed
+  // a narrower record set, the same helper returns a different aggregate over a
+  // partial period, which can resolve to a DIFFERENT PAYOUT BAND. That is the
+  // "two different multipliers" failure this scene was fixed for, reintroduced
+  // one layer up. So any year the campaign spans that the primary load missed is
+  // fetched here and merged before the gate is computed.
+  //
+  // Until that supplement lands, the scene is given NO persistency rather than
+  // the in-year subset: a subset aggregate is a wrong multiplier stated
+  // confidently, and `gateBandFor(null)` degrades to a "no data" pill at ×1.
+  const [extraYearPers, setExtraYearPers] = useState(null);
+  const gateCampaign = useMemo(
+    () => (data ? deriveActiveCampaigns(data.campaigns, undefined)[0] ?? null : null),
+    [data],
+  );
+  const extraGateYears = useMemo(() => {
+    if (!gateCampaign || !data) return [];
+    return campaignYears(gateCampaign.startDate, gateCampaign.endDate)
+      .filter((y) => y !== data.persYear);
+  }, [gateCampaign, data]);
+
+  useEffect(() => {
+    setExtraYearPers(null);
+    if (!tenantId || extraGateYears.length === 0) return undefined;
+    let alive = true;
+    Promise.all(
+      extraGateYears.map((y) => getPersistencyMapForYear(tenantId, y, persistencyScope).catch(() => ({}))),
+    ).then((maps) => {
+      if (!alive) return;
+      const merged = {};
+      for (const m of maps) {
+        for (const [aid, recs] of Object.entries(m || {})) (merged[aid] = merged[aid] ?? []).push(...recs);
+      }
+      setExtraYearPers(merged);
+    });
+    return () => { alive = false; };
+  }, [tenantId, extraGateYears, persistencyScope]);
+
+  // The gate's record set. Single-year campaign → the primary map, synchronously
+  // (no flash). Cross-year → null until the wider read lands, then the union.
+  const campaignPersMap = useMemo(() => {
+    if (!data) return null;
+    if (extraGateYears.length === 0) return data.persMap;
+    if (!extraYearPers) return null;
+    const merged = {};
+    for (const m of [data.persMap, extraYearPers]) {
+      for (const [aid, recs] of Object.entries(m || {})) (merged[aid] = merged[aid] ?? []).push(...recs);
+    }
+    return merged;
+  }, [data, extraGateYears, extraYearPers]);
 
   // ── Derive the whole model + deck once data lands ──
   const model = useMemo(() => {
@@ -876,7 +967,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     if (sid === 'recognition') return <RecognitionScene recognition={model.recognition} />;
     if (sid === 'celebrations') return <CelebrationsScene anniversaries={model.anniversaries} />;
     if (sid === 'awards') return <AwardsWithinReachScene pairs={model.awardsWithinReach} />;
-    if (sid === 'campaign') return <CampaignScene campaigns={model.activeCampaigns} ytdSubs={model.ytdSubs} users={model.users} persMap={model.persMap} />;
+    if (sid === 'campaign') return <CampaignScene campaigns={model.activeCampaigns} ytdSubs={model.ytdSubs} users={model.users} persMap={campaignPersMap} />;
     if (sid === 'close') return <CloseScene runs={model.runs} exceptions={model.exceptions} recognition={model.recognition} selectedWeek={selectedWeek} />;
     if (sid && sid.startsWith('agent:')) {
       const run = model.runs.find((x) => `agent:${x.id}` === sid);

@@ -18,6 +18,7 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| Promotion deletes `staging`, silently auto-retargeting every open PR onto `main` — fired twice; put #872 + #873 into main ungated. RECOMMENDS a CI guard; needs dispatcher decision (banked 2026-07-26, PR #871 session) | HIGH | — | — | 430 |
 | External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track) | HIGH | — | overdue (was 2026-07-17) | ~4130 |
 | Track K Phase 2 — narrative `branchPlans` (new collection, HUMAN-MERGE) + PPTX + manpower setter + per-branch `branchGoals` keying (banked 2026-07-21, #864 close) | HIGH | Track K | — | ~288 |
 | Track K Phase 3 — classification quotas + real monthly quota model (banked 2026-07-21, #864 close) | MEDIUM | Track K | — | ~288 |
@@ -35,6 +36,10 @@
 | Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases ... | HIGH | — | — | 282 |
 | Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion sess... | MEDIUM | — | — | 290 |
 | R-11 login-stamp + All Users LAST-activity — REQUIRES firestore.rules edit (hasOnly allowlist or manager-readable location); bundle with the E4 index FU as a "rules + indexes attended window" | HIGH | — | — | 4282 |
+| Master Sheet STATUS — a failed/denied persistency read is indistinguishable from "no data on file"; the abstention copy tells managers to enter data that may already exist (banked 2026-07-27, reviewer pass on PR #871) | MEDIUM | — | — | ~530 |
+| Persistency threshold sites left un-consolidated — 3 deliberate exclusions PLUS 6 still-hand-rolled 0.80/0.90/90 literals that the "one home" sweep missed (correct scale, no live defect) (banked 2026-07-26, extended 2026-07-27, PR #871) | LOW | — | — | 495 |
+| Money smoke — A3 is VACUOUS (passes on the broken build too; the fixture agents can never carry a persistency flag) and A2 is an unscoped `.some()`. Needs a fixture agent, not just an assertion fix (banked 2026-07-27, reviewer pass on PR #871, found by executing the negative control) | MEDIUM | — | — | ~560 |
+| Tier 3c mechanical conformance — carried from Run A (hero-card worklist · motion pop-in wiring · handoff-vs-screens-v2 · gold-contrast usages) | LOW | — | — | 4348 |
 | Master Sheet STATUS filter chips — scoped NOT built (3 new reads + 6-band taxonomy); LEVEL stays blocked (banked Run A Tier 3b) | MEDIUM | — | — | 4329 |
 | Tier 3c mechanical conformance — carried from Run A (hero-card worklist · motion pop-in wiring · ~~handoff-vs-screens-v2 RESOLVED 2026-07-25~~ · gold-contrast usages) | LOW | — | — | 4402 |
 | ⚠ **PRE-MERGE ON #871** — Persistency threshold: three surfaces, three literals; reconcile to one canonical constant before #871 merges (money-adjacent) | MEDIUM | — | — | 4460 |
@@ -54,6 +59,7 @@
 | Run 8 banked follow-ups — carried forward, not yet dispatched (banked 2026-07-16, from `docs/fabl... | — | — | — | 351 |
 | Persistency v2 (NEW calc methodology, R-07) — Tatil-gated PROPOSAL, ATTENDED-ONLY (banked 2026-07... | HIGH | — | — | 369 |
 | CI-vs-local test-timing gap — Tier-0 error-state tests can pass locally 5x, fail in CI (banked 20... | MEDIUM | — | — | 384 |
+| Flake family scope — **PR #872's fix set is provably INCOMPLETE**; ≥3 further members named (MeetingMode ArrowRight, BranchesPanel Retry, the A2 `e` SERIES sibling) + 1 unnamed. DO NOT widen #872 — audit continues after it lands (banked 2026-07-26, PR #875 session) | MEDIUM | — | — | 384 |
 | Node 20 → Node 24 — CI deprecation now firing directly (checkout@v4/setup-node@v4), not only in f... | HIGH | — | 2026-10-30 | 397 |
 | Reconcile `design_handoff_v2_app/mockups/` (Downloads, Track J bundle) against `docs/design-syste... | MEDIUM | Track J | — | 405 |
 | Functions runtime + firebase-functions SDK upgrade — Node 20 EOL + SDK 4.9.0 → ≥5.1.0 (banked 202... | HIGH | — | — | 1191 |
@@ -61,7 +67,6 @@
 | tatillife_smoke tenant — post-prod-run live verification (banked PR #674 `3730035`, HIGH until run) *(verification uncertain)* | HIGH | — | — | 1631 |
 | H3 FLIP-GATE — `usesPolicyLedger:true` requires end-to-end parity validation before any agent is ... | HIGH | — | — | 2787 |
 | MDRT naming collision — three different "MDRT" numbers, one label (banked 2026-07-10, promotion s... | MEDIUM | — | — | 423 |
-| Master Sheet STATUS filters — need a YTD + companyMinimums read path (banked 2026-07-10, Run 4 It... | MEDIUM | — | — | 439 |
 | Master Sheet LEVEL filter — blocked on a populated career-level field (banked 2026-07-10, Run 4 I... | MEDIUM | — | — | 447 |
 | Planner recurrence — `ENDS=Never` rolling-horizon materializer (banked 2026-07-10, Run 4 Item 5, ... | MEDIUM | — | — | 471 |
 | Run 4 pre-promotion manual checks not done this cycle — carry to next Phase 0 (banked 2026-07-10,... | MEDIUM | — | — | 487 |
@@ -108,7 +113,7 @@
 | Financing ruleset code comment overclaims configurability (banked 2026-07-10, promotion session, ... | LOW | — | — | 431 |
 | Master Sheet — unit friendly names absent (banked 2026-07-10, Run 4 Item 2, LOW — display polish) | LOW | — | — | 455 |
 | Company Config toggle — "count converted service calls as Tel Contacts" (banked 2026-07-10, Run 4... | LOW | — | — | 463 |
-| Vercel preview env scoping — confirm branch previews get no live backend (banked 2026-07-10, prom... | LOW | — | — | 508 |
+| ⚠️ **Feature-branch Vercel previews are bound to PRODUCTION Firebase** — overturns the old "previews can't reach a live backend" claim (re-banked 2026-07-26, planner week-nav; remedy (a) = generalize the pre-write project guard, own small PR; remedy (b) = OPERATOR binds staging env to Vercel's Preview environment) | **HIGH** | — | — | 508 |
 | Vitest on Windows — worker contention flakes under concurrent runs (banked 2026-07-10, Run 4, LOW... | LOW | — | — | 516 |
 | Recon docs must carry a validity-SHA header — new standing rule (banked 2026-07-10, Run 4, LOW — ... | LOW | — | — | 524 |
 | VH leg `t2-financing-k9-k7` flaky on first paint — no FAIL screenshot captured (banked 2026-07-09... | LOW | — | — | 540 |
@@ -459,6 +464,245 @@ The four named tests were characterized individually and fixed individually. **T
 
 ---
 
+## Promotion deletes `staging`, silently orphaning every open PR onto `main` (banked 2026-07-26, PR #871 session, HIGH — process/CI, recurring)
+
+**This is not hypothetical and it is not new. It has now fired twice, and on 2026-07-26 it put two PRs into `main` that had never passed the staging gate.**
+
+### Mechanism
+
+The repo has **"automatically delete head branches" enabled** (`deleteBranchOnMerge: true` — banked in CLAUDE.md § Post-merge local cleanup, where the documented `git branch -D` cleanup step *depends* on it). A staging→main promotion PR has `staging` as its **head** branch, so merging the promotion deletes `staging`.
+
+GitHub's documented behaviour when a base branch is deleted is to **auto-retarget every open PR based on it to the repository's default branch** — here, `main`. No notification, no review request, no CI signal. The PR simply now says "into main".
+
+### Confirmed blast radius (verified via the Timeline API, `automatic_base_change_succeeded` events)
+
+| PR | Event timestamp | Outcome |
+|---|---|---|
+| #871 | 2026-07-26T19:13:32Z | Caught before merge. Retargeted back to `staging` + rebased in this session. |
+| #872 | 2026-07-26T19:13:32Z | **MERGED INTO `main`** (`d3fe88e4`) — bypassed the staging gate. |
+| #873 | 2026-07-26T19:13:33Z | **MERGED INTO `main`** (`0eb89f31`) — bypassed the staging gate. |
+
+All three retargeted in the same second, on the #874 promotion merge. #872/#873 were docs+tests only, so the damage was procedural rather than functional — **that was luck, not a control.** The same event would have carried product code into production-tracking `main` just as silently.
+
+Prior occurrence: `staging` was also deleted on the #860 promotion (recorded in CONTEXT.md — "the `staging` git branch no longer exists (deleted on PR #860 merge)"). It was treated as a one-off re-baseline chore rather than as this failure mode.
+
+### The other 5 open PRs are NOT affected
+
+Audited the same way — #825, #854, #621, #546, #543, #540, #398 carry **no** base-change event of any kind. They were cut against `main` originally and are simply stale (May 31 – July 11). They need triage, but not for this reason.
+
+### Recommendation — CI guard (primary), and why not the alternatives
+
+**RECOMMENDED: add a required CI job that fails any PR targeting `main` whose head branch is not `staging`** (plus an explicit escape hatch, e.g. a `promotion` or `hotfix` label, for dispatcher-authorised direct-to-main work).
+
+Reasoning — it is the only option that satisfies all four constraints:
+1. **It is enforceable here.** Branch protection is not platform-enforced on this plan (CLAUDE.md § Workflow), so merge gates are procedural. A CI job is the one mechanism that actually blocks.
+2. **It guards the harm, not just one cause.** Auto-retarget is only one route to "wrong thing merges into main". The guard catches a hand-picked wrong base too.
+3. **It would have caught #872 and #873.** Disabling auto-delete would have prevented the retarget, but nothing would have stopped a manually mis-based PR.
+4. **It is version-controlled and reviewable** — it lives in `.github/workflows/`, is visible in diffs, and cannot be silently toggled off in a settings pane.
+
+**Considered and NOT recommended:**
+
+- **Disable "automatically delete head branches."** Directly prevents this trigger, but has wide blast radius for a narrow problem: the banked post-merge cleanup sequence explicitly relies on the auto-prune (`git branch -D` is documented as correct *because* the remote ref is already gone). Turning it off litters the remote with every merged feature branch and invalidates a documented rule. It also still permits a manually mis-based PR.
+- **Branch protection on `main`.** Unavailable — not platform-enforced on the current plan. This is already recorded doctrine.
+- **Change the repo default branch to `staging`.** Genuinely elegant: auto-retarget would then send orphans to `staging`, the correct destination, and new PRs would default correctly. Rejected as *primary* because it is a silent, wide-reaching setting change (clone defaults, new-PR defaults, and anything keying off the default branch) to fix a problem a guard addresses head-on. Worth revisiting as a **supplement** if the dispatcher wants belt-and-braces.
+- **Runbook step: recreate `staging` immediately post-promotion.** Cheap and worth doing regardless, but it is process, not enforcement — and this failure has already recurred once under process-only handling. Pair it with the guard; do not rely on it alone.
+
+**Do not change repo settings from this session** — flagged for the dispatcher. The CI guard is the only item here that lands as a normal reviewable PR.
+
+---
+
+## `latestPersistency*` scale sweep — RESOLVED (banked + closed 2026-07-27, PR #871)
+
+Dispatcher-ordered sweep of every same-named persistency accessor after the Meeting Mode decimal-vs-percent defect, on the principle that **their own tests are not evidence** (the Meeting Mode bug survived because its fixtures used percentages that production never produces).
+
+| Site | Returns | Consumer expects | Verdict |
+|---|---|---|---|
+| `MeetingMode.helpers.latestPersistency` | *was* decimal | percent | **DEFECT — fixed in this PR** |
+| `utils/funnelStatus.latestPersistency` | decimal | decimal (`PERS_FLOOR`) | ✅ correct, documented |
+| `lib/strategicPlan.latestPersistencyPct` | percent (`* 100`) | percent | ✅ correct, documented |
+| `utils/commissionAnchor.latestPersistency` | decimal in a field **named `pct`** | consumer does `* 100` at `CommissionAnchorStrip.jsx:234` | ✅ correct — **misleading field name only; RENAMED to `decimal` 2026-07-27 (reviewer pass)** |
+| `profile/agentReportModel` + `agentReportPdfModel` `latestPersistencyPercent` | *was* `v <= 1 ? v * 100 : v` | percent | **DEFECT — fixed in this PR** |
+
+**The residual defect.** Both `agentReport*` modules (documented mirrors of each other) coerce with the heuristic `v <= 1 ? v * 100 : v`. `calculations.js` **explicitly permits persistency > 1** ("can return > 1 when reinstatements outpace lapses (rare but valid)") and has a test pinning it. So a genuine `1.05` (=105%) fails the `<= 1` branch and renders as **"1%"** in the agent report and PDF — the same lie class this PR exists to remove, on a top performer.
+
+**Why the heuristic is unnecessary, not just wrong:** every persistency read path filters to E3 docs — `getPersistencyMapForYear`, `getPersistencyForAgentIds`, and `getAgentHistory` all `.filter(isE3Doc)` — and E3 stores decimals only. A legacy 0–100 doc cannot reach these functions, so the dual-scale guess has nothing to guard.
+
+**RESOLVED 2026-07-27 in PR #871** (dispatcher ruled FIX-NOW: trivial, provably unnecessary guard, same family, and it mis-renders money in a head-office PDF). Both mirrors now use an unconditional `v * 100`, each carrying the rationale inline so the heuristic is not "helpfully" restored. Value-level tests added at 0.88 / 0.7393 (the Tatil Ricardo Duke figure) / **1.05 → 105** / 1.2 → 120 / exactly 1.0 → 100, plus null-safety. Negative-controlled: restoring `v <= 1 ? v*100 : v` fails with `expected 1.05 to be close to 105`.
+
+---
+
+## Persistency threshold sites left un-consolidated, deliberately (banked 2026-07-26, PR #871 session, LOW — note, not a defect)
+
+Recorded so a future "consolidate the persistency constants" sweep does not treat these as misses. PR #871 single-sourced the floor/gate pair into `src/lib/persistency/calculations.js` (decimal canonical, with derived `PERS_FLOOR_PCT` / `PERS_GATE_PCT`). These were examined and intentionally left alone:
+
+- **`src/utils/campaignEngine.js` `PERSISTENCY_GATE_BANDS`** — a 4-band payout multiplier (`≥90` ×1.0, `≥85` ×0.5, `≥80` ×0.25, else DQ) on its own documented 0–100 scale, explicitly operator-tunable and self-described as "one source of truth" for its domain. Its 80/85/90 boundaries *coincide* with the floor/gate numbers but are a different concept (campaign payout scaling, not at-risk banding or award eligibility). Folding it into the floor/gate pair would couple campaign economics to award policy. **Leave separate.**
+- **`src/config/companyConfigRegistry.js:348`** — the label string `'Persistency <80%'` is documentation *describing* `PERSISTENCY_GATE_BANDS[3]` in the Company Config surface, and it names its own source file inline. It follows whatever that engine does; interpolating a constant into a descriptive registry label adds coupling for no correctness gain.
+- **`companyMinimums.persistency`** — its *default* now derives from `PERS_GATE_PCT`, but the value remains tenant-configurable and `stored.persistency` still wins. It is a floor on an agent's self-set annual **goal**, not a performance band. **Do not collapse it into `PERS_FLOOR`.**
+
+An anti-collapse test in `calculations.test.js` ("floor and gate are NOT the same threshold — do not consolidate them") will fail loudly if a future refactor unifies the pair.
+
+### Still hand-rolled — NOT deliberate, just out of scope (added 2026-07-27, reviewer pass on PR #871)
+
+Distinct from the three *deliberate* exclusions above: these are the same two thresholds, re-typed as literals. **All are on the correct scale — no live defect** — but the "one home, one unit" property the PR claims is not actually enforced while they exist, so a future edit to `PERS_GATE` / `PERS_FLOOR` will silently fail to reach them.
+
+| Site | Literal | Should be |
+|---|---|---|
+| `src/components/agent/PersistencyTab.jsx:71` | `>= 0.90` | `PERS_GATE` |
+| `src/components/agent/PersistencyTab.jsx:152` | `>= 0.90` | `PERS_GATE` |
+| `src/components/agent/PersistencyTab.jsx:216` | `<ReferenceLine y={90}>` | `PERS_GATE_PCT` |
+| `src/components/manager/PersistencyEntryForm.jsx:200` | `>= 0.90` | `PERS_GATE` |
+| `src/components/manager/PersistencyTab.jsx:177` | `< 0.80` | `PERS_FLOOR` |
+| `src/components/goals/GapAnalysisPanel.jsx:220` | `persistencyFloor = 90` (prop default) | `PERS_GATE_PCT` |
+
+Deliberately **not** fixed in PR #871: mechanical, zero-defect, and each one widens a money PR's blast radius for no correctness gain. Batch them into the next persistency-adjacent slice. `src/config/financingRuleset/2026.js` (`persistencyY1: 0.95`, `persistencyY2: 0.90`) is a **different concept** (financing agreement gates) and must stay separate.
+
+---
+
+## Master Sheet STATUS — a failed persistency read is indistinguishable from "no data on file" (banked 2026-07-27, reviewer pass on PR #871, MEDIUM — operator-legibility, money-adjacent surface)
+
+**The abstention itself is correct.** `buildStatusMap`'s pass 3 refuses to assert `'ontrack'` for an agent with no usable persistency reading, banding them `STATUS_NODATA_KEY` instead. That logic is sound and was verified: no path asserts health without evidence.
+
+**What is wrong is the reason the surface gives.** `MasterSheet.jsx` loads the map with `getPersistencyMapForYear(...).catch(() => null)`, and `getPersistencyMapForYear` *itself* swallows per-batch rules denials internally (`catch {}` → partial map). So three very different states collapse into one:
+
+1. the agent genuinely has no persistency record on file;
+2. the read was denied by rules for this caller's scope;
+3. the read failed (network, transient).
+
+All three land every otherwise-clean agent in `nodata`, and the inline note then reads: *"N agents have no persistency on file … enter their monthly persistency to band them."* In cases 2 and 3 that instruction is **false** — the manager is sent to enter data that may already exist, and the real fault (a scope/rules problem) stays invisible.
+
+**Why not fixed in PR #871:** the honest fix needs `getPersistencyMapForYear` to distinguish "empty" from "denied" at the *service* layer — it currently cannot, by design (the silent-skip contract is load-bearing for cross-scope callers). That is a service-contract change with its own blast radius, not a copy tweak. The narrower `statusReadFailed` flag added in the reviewer pass covers the `ytdSubs` / `companyMins` arms only, because those two are genuinely observable at the call site.
+
+**Falsification (Rule 23):** this is wrong if `getPersistencyMapForYear` can be shown to already surface denial distinctly to its caller, or if rules make case 2 unreachable for every role that can open the Master Sheet. Neither was established.
+
+**Suggested shape:** have `getPersistencyMapForYear` return `{ map, deniedBatches, ok }` rather than a bare map; `nodata` copy then branches on `ok`.
+
+---
+
+## Money smoke — A3 cannot fail; A2 is fixture-dependent (banked 2026-07-27, reviewer pass on PR #871, MEDIUM — verification hygiene, found by executing the negative control)
+
+### A3 is VACUOUS — the named guard for defect #2 does not guard it
+
+**Found by running the negative control, not by reading it.** With both original fixes reverted, `smoke-persistency-scale-money.mjs` reports `RESULT: FAIL (10)` — confirming the PR body's figure exactly. Of the three assertions that still PASS, one is hygiene (correct) and **two are `A3`, whose entire job is to catch defect #2: "every agent falsely flagged Persistency ↓".**
+
+Instrumented on the reverted build, the deck contains **no `classifyFlag` persistency reason at all**:
+
+```
+[diag] deck contains "below the 80% threshold": false
+[diag] reason context: ABSENT
+```
+
+Two independent reasons, both fixture properties:
+
+1. **`Staging Agent One` is pre-empted.** `classifyFlag` tests its arms in order — `report` → `floor` → `persistency`. The fixture agent has no submission for the week, so the `report` arm fires first (`"REPORT LATE · Week report not submitted."` on the Needs-attention and agent-run scenes) and the persistency arm is never reached, defect or no defect.
+2. **`Staging Agent Two` never appears on a flag-bearing scene.** They surface in exactly ONE scene — the campaign standings — where no flag is rendered.
+
+So A3 passes on the fixed build *and* on the broken build. It is not a weak assertion; it is a **non-assertion**, and the PR's "every fix is individually negative-controlled" claim does not hold for the `classifyFlag` half of defect #2 at the smoke layer.
+
+**Not an unguarded defect.** `MeetingMode.helpers.test.jsx` covers `classifyFlag` at the unit layer directly (healthy 0.94 not flagged · 0.72 flagged · exact 0.80/0.799 boundary), and those tests DO fail on the revert. The gap is smoke coverage, not total coverage.
+
+**Fix shape:** the fixture needs a third agent who (a) HAS filed the selected week, so the `report` arm cannot pre-empt, (b) clears ≥4 of the 8 activity floors, so the `floor` arm cannot pre-empt, and (c) carries a persistency record above 0.80. Then A3 becomes falsifiable. Requires a `seed-fixtures.mjs § A6` change, so it is a fixture PR, not a smoke-assertion PR.
+
+### A2 is fixture-dependent, not scoped
+
+`scripts/verification/smoke-persistency-scale-money.mjs` assertion **A2** scans *every* `\d{1,3}%` in the branch-scorecard scene and passes if **any** value lands in 85–95:
+
+`scripts/verification/smoke-persistency-scale-money.mjs` assertion **A2** scans *every* `\d{1,3}%` in the branch-scorecard scene and passes if **any** value lands in 85–95:
+
+```js
+const branchPcts = [...branchScene.matchAll(/(\d{1,3})%/g)].map((m) => Number(m[1]));
+const ok = branchPcts.some((n) => n >= 85 && n <= 95);
+```
+
+Every other money assertion in that file (B1–B4) is properly **row-scoped** — sliced from the advisor's name to the next advisor precisely so a neighbour's value cannot satisfy the check. A2 is the one that is not. It passes today because nothing else in that scene renders an 85–95% figure; that is a property of the current fixture and layout, not of the assertion. Add a goal-attainment or floor-progress percentage to the scorecard and A2 could go green over a `1%` persistency cell.
+
+**Fix shape:** scope A2 to the PERSISTENCY column the way B1–B4 scope to the advisor row — anchor on the column header or a `data-testid` on the cell, then read the single value.
+
+**Not fixed in PR #871 (either item):** touching the smoke's own assertions during the same pass that re-runs it as evidence is circular; the fix should land separately and be re-negative-controlled on its own. A3 additionally needs a fixture change, which is its own blast radius.
+
+**Method note worth keeping.** A3's vacuity was invisible to a careful read of the assertion — it looks correctly written, and it is. It only surfaced by *executing* the negative control and asking why the count was 10 and not 12. Reading a negative control is not running one.
+
+---
+
+## Flake family scope — PR #872's fix set is provably INCOMPLETE (banked 2026-07-26, PR #875 session, MEDIUM — test-infra audit, follow-on to #872)
+
+> **DO NOT WIDEN PR #872.** It is green and queued; re-opening it to chase these would stall a landed fix for an audit that is not finished. This entry is the *follow-on*: the audit continues **after** #872 lands, starting from the population below.
+
+**Claim, stated plainly: the four tests PR #872 fixes are not the whole family.** At least three further members were observed in a single session (2026-07-26, the planner week-nav track), two of them in files that session's diff never touched. #872's characterisation work (three mechanisms, not one) remains correct and valuable — it is the *population* that was under-counted, not the analysis.
+
+### Named population
+
+**THREE NEW MEMBERS OBSERVED 2026-07-26/27 (PR #871 session) — and the shared mechanism is now visible: it is LOAD, not any individual test.**
+
+All three are heavy component tests that time out at **exactly ~5000ms** (the default per-test timeout) under full-suite parallel execution, and all three pass comfortably in isolation. PR #871's diff touches **zero** files under `src/components/planner/` or `src/components/wizard/` — verified with `git diff --name-only origin/staging...HEAD`.
+
+| Member | Where it failed | In isolation |
+|---|---|---|
+| `AgentPlannerPanel.weeknav.test.jsx > "navigation is unlimited — three weeks forward keeps stepping"` | CI run `30229429795`; **passed on a clean re-run of the same commit**, no code change | 20/20, ×1 |
+| `WizardFormV2Characterization.test.jsx > G — draft-read failure guard` | local full suite (2 failures); passed later in the same file on a subsequent run | 20/20, ×3 |
+| `AgentPlannerPanel.test.jsx > bulk operations (Run 9 A5) > "pushes ONE undo entry per bulk op"` | local full suite, 5046ms | 73/73, ×1 |
+
+**The weeknav member arrived with PR #875 (`e963660e`), whose own `lint-and-build` passed** — flaky from birth, not broken by a later change.
+
+**Mechanism: resource contention, not N independent test bugs.** Vitest's default **5000ms** per-test timeout is not generous enough for the heaviest jsdom component mounts when workers compete for CPU. Seven runs of the SAME commit (`6eefa98b`), ordered by machine load — the relationship is monotonic:
+
+| Run | Machine conditions | Result |
+|---|---|---|
+| local 1 | `vite preview` server running | 2 failed — `WizardFormV2Characterization` G block |
+| local 2 | `vite preview` server running | `WizardFormV2Characterization` G timeout, later passed in-run |
+| local 3 | `vite preview` server running | 1 failed — `AgentPlannerPanel` A5 undo-entry |
+| **local 4** | **server stopped, machine quiet** | **372/372 files · 5810/5810 tests · ZERO failures** |
+| local 5 | concurrent with `npm run build` + another full suite | **5 failed across 4 files** |
+| CI 1 | GitHub runner | 1 failed — `AgentPlannerPanel.weeknav` → clean re-run **PASS** |
+| CI 2 | GitHub runner | 1 failed — `MeetingMode` agenda rail → clean re-run **PASS** |
+
+**Five different tests** have now been the failing one, every one at exactly ~5000ms, every one passing in isolation (12/12, 20/20, 20/20, 73/73). Zero failures on a quiet machine; five under maximum contention. No individual test is broken.
+
+Each candidate was checked for a real cause before being attributed to load: `MeetingMode.test.jsx`'s agenda rail runs in **583–925ms** in isolation across 3 runs — an order of magnitude under the limit — so it is not a mount-cost regression from the persistency work in the same file.
+
+**Falsification (Rule 23):** overturned if a member fails deterministically in isolation, if a member is traced to a genuine product race, or if raising `testTimeout` leaves the family intact. Any of those would mean this is not one mechanism and the fix must be per-test.
+
+**DISPATCHER RULING 2026-07-27 — the `testTimeout` experiment is APPROVED, as its own small PR AFTER #871 lands.** Deliberately NOT bundled into #871: that PR is money-correctness work and a global test-harness knob has a different blast radius and a different reviewer. Carry the falsification conditions above into that PR so the experiment either confirms the mechanism or kills the hypothesis.
+
+**Suggested first move for the audit:** rather than stabilising members one at a time (#872's approach, which #876 already showed incomplete and which this evidence suggests can never terminate — the population is "whichever heavy test loses the CPU race"), test the mechanism directly: **raise `testTimeout` in `vite.config.js`** (and/or cap worker concurrency) and see whether the whole family goes quiet at once. One run confirms or falsifies it.
+
+**Already fixed by #872 (four targets, each negative-controlled there):**
+
+1. `DailyCaptureV2 > daily streak celebration (integration) > "does NOT fire below the milestone (short streak)"` — self-narrowing `waitFor({timeout: 2000})`
+2. `AgentPlannerPanel > keyboard shortcuts (Run 9 A2) > "e opens Edit for the focused … card"` — commit→effect-resubscribe race
+3. `AgentPlannerPanel > bulk operations (Run 9 A5) > "R6 cap gate: selecting >200 …"` — per-test budget, 201-card render
+4. `AgentPlannerPanel > bulk operations (Run 9 A5) > "pushes ONE undo entry per bulk op — Ctrl+Z writes back each doc's PRIOR values"` — five chained `waitFor`s in one 5s budget
+
+**NOT covered by #872 — observed 2026-07-26:**
+
+5. `AgentPlannerPanel > keyboard shortcuts (Run 9 A2) > "e on a focused SERIES card raises the SeriesEditChoice scope sheet instead of editing directly"` — a **sibling of target 2, not the same test**. Both exercise the `e` shortcut; #872 fixes only the first. If target 2's mechanism is the resubscribe race, this one almost certainly shares it and wants the same `await userEvent.keyboard('e')` treatment. **Cheapest next step: check whether #872's fix generalises to it.**
+6. `MeetingMode > run-of-show > "ArrowRight advances from opening to the branch scorecard"` — failed at **5021ms** (timeout). `src/components/manager/`, an entirely different subsystem from the planner.
+7. `BranchesPanel > "the error alert has a wired Retry button that re-invokes the same load path"` (`src/components/admin/__tests__/BranchesPanel.test.jsx:121`, failing at `:133`) — failed **in CI**, with the DOM dump showing skeleton (`animate-pulse`) placeholders still mounted, i.e. the query ran before load resolved.
+8. **One unnamed member.** An earlier full-suite run in the same session showed exactly one failure that cleared before its name was captured. Recorded as unnamed rather than silently dropped — and as a process lesson: capture the failing test name *before* re-running, because a passing re-run destroys the evidence.
+
+### Shared signature
+
+- **~5020ms timeouts.** Members 4, 6 and the session's other timeout failures all landed at 5021–5023ms — Vitest's default 5s per-test budget, exhausted. (Member 2 is the documented exception: it fails at ~31ms on an assertion, which is why #872 concluded three mechanisms rather than one.)
+- **Non-deterministic, different test each run.** Three consecutive isolated runs of `AgentPlannerPanel.test.jsx` gave: 1 failure (member 4) → 73/73 → 73/73. Two consecutive full-suite runs gave: 2 failures (members 5 + 6) → 5746/5746.
+
+### Key evidence — why this is not the diff's fault
+
+**Members appear in files the triggering diff never touches.** This is the load-bearing observation:
+
+- member 7 failed CI on a commit whose diff was **four `.md` files** — nothing the unit suite loads, so the change cannot be causal (the same proof standard already banked for the #868 instance, where a re-run with zero code change went green — which is exactly what happened here too);
+- member 6 lives in `src/components/manager/`, which the planner week-nav diff does not touch at all.
+
+Causality was checked, not assumed, for the one member that *was* plausibly related: member 5 sits in the keydown effect whose dependency array that session modified. Ruled out — `useIsDesktop` returns a plain `useState` boolean and `matchMedia` is unstubbed in that describe, so the added dep is a constant `false` and cannot change re-subscription count.
+
+### Action
+
+After #872 lands: (a) re-run the full suite N×10 on both CI and a local machine, collecting every failing test name; (b) classify each against #872's three mechanisms; (c) check whether #872's fix for target 2 generalises to member 5; (d) name the unnamed member 8 or retire it. Do **not** raise the global `asyncUtilTimeout` — that was explicitly off the table in #872 and stays off.
+
+**Falsification (Rule 23):** overturned if, after #872 lands, a 10× full-suite run on both CI and local is clean — at which point members 5–8 were collateral of the four now-fixed tests rather than independent members, and this entry closes. Do not close it on a single green run; the family's defining property is that it passes most of the time.
+
+---
+
+---
+
 ## Node 20 → Node 24 — CI deprecation now firing directly, not only in functions deploy (banked 2026-07-16, HIGH, dated 2026-10-30)
 
 Previously tracked as a `functions/` Cloud Functions runtime deprecation only (Node 20 gen-1 decommission 2026-10-30 — see the existing dated entry above). **Escalation:** the Node 20 deprecation is now also firing in CI itself — GitHub Actions is forcing Node 24 on actions still targeting Node 20 (`actions/checkout@v4`, `actions/setup-node@v4` in `.github/workflows/ci.yml`, which explicitly pins `node-version: 20` for the actual `npm test`/`npm run build` steps). This is a second, earlier-arriving surface of the same underlying deadline — CI tooling deprecation typically precedes the hard runtime decommission. **Action:** raise priority on the runtime/SDK migration window (`functions/` Node 22 + `firebase-functions` SDK ≥5.1.0, already tracked as separate entries above) — the 2026-10-30 hard deadline is no longer purely a `functions/` deploy concern, it now has a visible CI-side symptom that will only get noisier as GitHub continues sunsetting Node-20-targeted action runtimes. Cross-reference: this file's existing "HARD DEADLINE — Node 20 gen-1 Cloud Functions runtime decommission" and "Functions runtime + SDK upgrade" entries — do not duplicate the migration plan here, this entry only banks the CI-side escalation signal.
@@ -503,7 +747,9 @@ A code comment in the financing ruleset config (`src/config/financingRuleset/202
 
 ## Register the six Run-9 standing smokes in SMOKES.md (banked 2026-07-17, promotion session, MEDIUM — verification hygiene)
 
-Run 9 (promoted to prod PR #862, `d0e74c12`, 2026-07-13) shipped six new standing smokes — `scripts/verification/smoke-run9-{a1-undo,a2-shortcuts,a3-conflicts,a4-templates,a5-bulk,f3e-series}.mjs` — covering undo/redo, keyboard shortcuts, conflict detection, appointment templates, bulk operations, and series-edit propagation respectively. None are yet registered in `scripts/verification/SMOKES.md` (the descriptive, non-CI-enforced catalogue). **Action:** add one row per script to SMOKES.md following the existing catalogue format before they're relied on as a regression baseline for future planner work.
+> **RESOLVED / STALE — corrected 2026-07-26 (planner week-nav track).** All six ARE registered in `scripts/verification/SMOKES.md`, each with a full row (run mode, prereqs, residue, source anchors), plus a shared run-mode note covering the `900×800` viewport choice and `assertSingleColumnPlanner`. Verified by reading the catalogue during this track's smoke registration. The action below is already done — **no work remains**; the entry is kept struck through because it was cited as open as recently as this track's Phase 0. Same rot pattern as the § BIG ONE correction: an entry asserting a gap is not forced to change when the gap is closed.
+
+~~Run 9 (promoted to prod PR #862, `d0e74c12`, 2026-07-13) shipped six new standing smokes — `scripts/verification/smoke-run9-{a1-undo,a2-shortcuts,a3-conflicts,a4-templates,a5-bulk,f3e-series}.mjs` — covering undo/redo, keyboard shortcuts, conflict detection, appointment templates, bulk operations, and series-edit propagation respectively. None are yet registered in `scripts/verification/SMOKES.md` (the descriptive, non-CI-enforced catalogue). **Action:** add one row per script to SMOKES.md following the existing catalogue format before they're relied on as a regression baseline for future planner work.~~
 
 ---
 
@@ -539,6 +785,67 @@ Run 9's A2 (keyboard shortcuts) introduced panel-level keydown handlers. Under r
 
 ---
 
+## ~~BIG ONE — the real planner-completion track (E1–E5) is UNBUILT~~ → **E1–E5 ALL SHIPPED** (banked 2026-07-17; corrected 2026-07-26, planner week-nav track)
+
+> **CORRECTION 2026-07-26 — the "entirely unbuilt" claim below was already stale when written into this entry's later revisions, and is now wholly wrong.** All five features exist in `src/components/planner/` on `main` (`219cf324`) and were verified file-by-file during the planner week-nav Phase 0 recon:
+>
+> | Item | Status | Evidence on `main` |
+> |---|---|---|
+> | **E1** desktop 3-day + week views | ✅ SHIPPED | `PlannerDesktopBoard.jsx` (Day/3-day/Week/Follow-ups toggle, `grid-cols-N` fluid columns) |
+> | **E2** drag-drop reschedule | ✅ SHIPPED | `PlannerDesktopBoard.jsx` drag handlers → `AgentPlannerPanel.handleReschedule` → the existing `postponeWithRebook` |
+> | **E3** running-late cascade | ✅ SHIPPED | `RunningLateSheet.jsx` + `planner.helpers.js` `findRunningLate`/`computeLateCascade` |
+> | **E4** per-appointment notes thread | ✅ SHIPPED | `NotesThread.jsx` + `addAppointmentNote` + `readNoteThread`/`prospectNoteHistory` |
+> | **E5** collapsed-rail space adaptation | ✅ SHIPPED | `AgentPlannerPanel.jsx` `max-w-none` on the `isDesktop` branch |
+>
+> Each also has standing acceptance smokes registered in `scripts/verification/SMOKES.md` (`smoke-e1-desktop-board.mjs`, `smoke-e2-drag-reschedule.mjs`, `smoke-e3-running-late.mjs`, `smoke-e4-notes-thread.mjs`). The work landed in the Run A Tier 2 window (2026-07-24) — two of this file's own Active-follow-up rows already say so ("Desktop planner board — shift-click range select…", "…Arrow ←/→ view-cycling inert on the board", both tagged *Run A Tier 2 E1*), so the file has been internally contradictory since then.
+>
+> **Why it went stale:** this entry was banked at the Run 9 promotion to flag a scope mismatch, and nothing re-audited it when the E-series actually shipped a week later. **Lesson (compounding the Rule 17 design-source lesson already banked below):** an entry that asserts *absence* is the kind most likely to rot silently — nothing about building the thing forces an edit here. A HIGH "X is unbuilt" follow-up should be re-verified against source at the start of any session that touches X, not trusted.
+>
+> **Remaining real gaps** (small, tracked separately in the Active follow-ups table — do NOT re-open this entry for them): desktop-board shift-click range selection keys off mobile view state; Arrow ←/→ view-cycling is inert on the board; E4's cross-time prospect-notes history still needs its `(agentId, prospectId)` composite index. Week navigation across the board and mobile views — never specified by the design authority — shipped in the planner week-nav track (2026-07-26).
+
+_Original entry, preserved for the record:_
+
+~~Run 9 built six features (A1–A5 undo/redo/shortcuts/conflicts/templates/bulk + F3 series propagation) that are real, live in prod (`d0e74c12`), and valuable — but they are **not** the "planner and scheduler v2" redesign named in `docs/design-system/proposals/planner-scheduler-v2/README.md`. That README's actual spec is **five different features**, all still unbuilt: E1 desktop 3-day + week views · E2 drag-drop reschedule · E3 running-late cascade · E4 per-appointment notes thread · E5 collapsed-rail space adaptation. This is the genuine planner-completion track, still ahead, and now sits on the `seriesId` + reschedule-in-place foundation Run 9 just laid.~~ **The scope-mismatch observation was correct at banking time; the "unbuilt" status is not — see the correction above.**
+
+---
+
+## Staging branch re-baseline — RESOLVED 2026-07-26 (five-cycle debt cleared)
+
+The `staging` git branch was deleted by GitHub `deleteBranchOnMerge` on the Run 8 merge (PR #860) and never recreated, leaving five consecutive promotion cycles (Nexus v2/#849, Runs 3+4/#853, Runs 5-7/#858, Run 8/#860, Run 9/#862 — plus the Run A promotion/#874) that shipped without ever re-baselining staging. Tracked in `docs/CONTEXT.md` § Pending operational state.
+
+**Resolved 2026-07-26** at the start of the planner week-nav track, on dispatcher ruling. Notable: the orphaned LOCAL `staging` branch (`a31d52d7`, still checked out in the `at-fable-staging` worktree) turned out to be a **direct ancestor of `origin/main`** (`git merge-base --is-ancestor` confirmed), so the "recreation" was a **pure fast-forward**, not a divergent reset — no commits were discarded and no history was rewritten. Sequence: fast-forwarded the local branch to `origin/main` (`219cf324`) in the `at-fable-staging` worktree, then `git push -u origin staging`. `origin/staging == origin/main == 219cf324`. The 5 untracked persistency-v2 proposal artifacts in that worktree were untouched (a fast-forward does not disturb untracked files).
+
+**Note for the next dispatch:** the `at-fable-staging` worktree is now correctly pointed at a live, current `staging` — the "will need repointing before the next Fable dispatch" caveat in CONTEXT.md is discharged. **Falsification (Rule 23):** this is overturned if `git ls-remote --heads origin` stops listing `staging`, or if `origin/staging` diverges from `main` without a deliberate promotion in flight.
+
+---
+
+## Planner week-nav — external-review residue (banked 2026-07-26, PR #875 attended reviewer passes, MEDIUM ×1 · LOW ×5)
+
+Findings from the external review of PR #875 that were dispositioned BANK rather than fix-before-merge, across two attended reviewer passes. F1–F4 and F9 were fixed in-PR; these are the remainder. None is a data-integrity or security issue.
+
+- **F5 — desktop "Book" and the `n` shortcut prefill TODAY while another week is displayed. UPGRADED LOW → MEDIUM (reviewer pass #2).** `AgentPlannerPanel.jsx`, header Book button + the `n` branch: both use `openBook(view === 'today' ? today : weekStart)`. On desktop `view` is vestigial and permanently `'today'` (the mobile pills are never rendered), so the date is always today even when the board shows, say, Aug 2–8. The per-column `+` buttons are correct — they pass their own date. **Why the upgrade:** F2's fix (gating Arrow ←/→ on `!isDesktop`, since the keys drove the mobile-only `view` state and had no business touching the board) removed a side effect that had been accidentally masking this exact mismatch — pre-fix, an operator pressing an arrow key on the board would snap `anchorDate` home as a side effect, incidentally hiding how far Book/`n` could drift from the displayed week. With that masking gone, the prefill mismatch is now the FIRST thing an operator hits on any multi-day-navigated session, not a corner case. **Fix:** use `columnStart` (or `weekStart`) when `isDesktop`. Shares a root cause with the (now-fixed) F2: `view` is mobile-only state being read on the desktop path.
+- **F6 — `today` is captured once at mount; week navigation gives that staleness new teeth.** `const today = useMemo(() => getTodayTT(), [])`. In a long-lived session crossing midnight — and especially a Saturday→Sunday week rollover — `currentWeekStart` goes stale, so `isCurrentWeek` can be TRUE for **last** week: the Today snap-back hides itself while a non-current week is displayed, and the today+2 load arm re-enables for the wrong week. The staleness pre-dates this track (`todayAppts`, `seed`, `lateCandidate` all read it); week navigation adds the new failure modes. **Fix:** recompute `today` on the existing 60-second `nowTime` tick, or re-derive on visibility-change.
+- **F7 — "No appointments" and "+N postponed hidden" render together.** `PlannerDesktopBoard.jsx`: when every appointment in a day is postponed and the filter is on, the column shows both the empty state and the hidden-count note. Honest but self-contradictory. **Fix:** suppress the empty state when `hiddenCount > 0`, or reword to "No live appointments".
+- **F8 — `weekRangeLabel` never emits a year, and returns `''` on malformed input.** `planner.helpers.js`. With unlimited navigation, "Jan 4 – 10" is ambiguous once you are months out; the empty-string fallback also leaves the nav's `aria-live` region announcing nothing. **Fix:** append the year when it differs from `today`'s, and fall back to the raw ISO range rather than `''`.
+- **F10 — RESOLVED in-PR.** The dense-card "no status pill" assertion compared ancestor `textContent` (which includes the sr-only status line) and passed only because sr-only emits lowercase `scheduled` while the pill label is `Scheduled`. Tightened to leaf-node, case-insensitive comparison in the same commit as the F1–F4/F9 fixes. Recorded here because the *class* of defect — an assertion that passes for an accidental reason — is worth recognising elsewhere.
+- **F1 residual (reviewer pass #2, LOW) — the follow-ups badge gate uses the anchor, not a loaded-vs-viewed sentinel, so a snap-home transient can flash the inflated count for one load round-trip.** `isCurrentWeek = weekStart === currentWeekStart` (`AgentPlannerPanel.jsx:443`) is derived synchronously from `anchorDate`/`today` via `useMemo`, so it flips to `true` the instant `goToday()` fires. But `appts` — and therefore `followups`, which the badge reads — only updates once the async `getAgentWeek` call inside `load()` resolves and commits via `setAppts` (`AgentPlannerPanel.jsx:557,565`). In the gap between those two moments, the gate (`isCurrentWeek && followups.length > 0`) evaluates true against the STILL-STALE (navigated-away week's) `appts`, so the wrong, inflated count can flash for one render before the real data lands — the exact F1 bug the in-PR fix targeted, reintroduced transiently rather than persistently. **Fix:** replace the `isCurrentWeek` gate on the badge specifically with a `loadedWeekStart === currentWeekStart` sentinel — i.e., compare against the week the LOADED `appts` actually correspond to (set inside `load()`'s `.then()`, alongside `setAppts`), not merely the navigation anchor. The other `isCurrentWeek` consumers (load-window sizing, running-late banner, `columnStart`) are not affected — they either drive the load itself or are fine to key off the anchor.
+- **F4 test tightening (reviewer pass #2, LOW) — the a11y-marker test asserts differing `title` text, not differing glyphs.** `AppointmentCard.dense.test.jsx`'s `F4: cancelled and postponed are distinguishable WITHOUT colour` test asserts `getByTitle('Cancelled')` vs `getByTitle('Postponed — moved')` — it proves the `title` ATTRIBUTE string differs, not that the rendered marker itself differs, so a regression that kept both title strings but rendered the SAME icon for both statuses would pass undetected. **Fix:** assert on the rendered `<svg>`'s class instead. Verified against `node_modules/lucide-react/dist/esm/createLucideIcon.mjs`: every lucide-react icon's `Component` stamps its root `<svg>` with `lucide-${toKebabCase(iconName)}` via `mergeClasses`, so `<X>` renders `lucide-x` and `<ArrowRight>` renders `lucide-arrow-right` — asserting these two classes differ (e.g. `container.querySelector('svg').getAttribute('class')`) tests the actual visual distinction under test, not a proxy for it.
+
+**Falsification (Rule 23):** F5/F6 are overturned if `view` stops being read on the desktop path and `today` becomes reactive, respectively — at which point re-verify with the desktop-stubbed panel tests added for F9 rather than assuming. F1-residual is overturned if the badge is re-verified live across a snap-home transition (real browser, not jsdom — the transient is timing-dependent) and no flash is observed even without the sentinel fix.
+
+---
+
+## Appointment created-in-error path — distinct from churn (banked 2026-07-26, planner week-nav track, LOW)
+
+A general delete affordance for appointments was proposed during the planner week-nav track and **DROPPED at Phase 0 on design-authority grounds.** Retained churn is the deliberate product model, not an omission:
+
+- `docs/design-system/proposals/planner-scheduler-v2/mockups/planner-mobile-b.jsx:108` — *"Cancelled & postponed stay on record — nothing is deleted."* (the caption of a dedicated artboard, "5b · Retained churn")
+- `mockups/planner-shared.jsx:63` — *"timeline (dimmed/struck), never deleted."*
+- `firestore.rules` (appointments block) — the owner-scoped `allow delete` arm carries the matching intent in code: *"exists solely as the undo-create inverse; UI exposes no delete affordance."*
+
+Churn patterns are manager coaching signal, so erasing them destroys the data the surface exists to produce. **The mechanics already exist** if this is ever revisited — `plannerService.deleteAppointment` and the owner-scoped rules arm are both live, consumed today ONLY by Ctrl+Z undo-create and the bulk-create inverse — so no rules change would be needed; the question is purely product, not technical.
+
+**Action:** none unless a genuine mis-keyed-entry need emerges from pilot use. If it does, scope it narrowly against that authority — e.g. creator-only, same-session, before any status change — rather than as a general delete. Do not treat the existing rules arm as licence to add one.
 ## ~~BIG ONE — the real planner-completion track (E1–E5) is UNBUILT~~ — RESOLVED (Run A Tier 2, PR #866 `f22c57f8`, promoted to prod via #874 `219cf324`, 2026-07-26)
 
 **RESOLVED.** All five features this entry called unbuilt shipped in Run A Tier 2 and are now live in production, verified directly against source at `219cf324` (not asserted from memory — Rule 17):
@@ -572,6 +879,8 @@ Run 9 was dispatched against an earlier/mismatched README pasted in-chat rather 
 ## Master Sheet STATUS filters — need a YTD + companyMinimums read path (banked 2026-07-10, Run 4 Item 2, MEDIUM — feature completeness)
 
 The funnel Master Sheet's filters panel (`src/utils/funnelFilters.js`, `src/components/manager/MasterSheet.jsx`, PR #852-adjacent Run 4 work) deliberately omitted the mockup's STATUS chips (On track/Off pace/Gone quiet/Report late/Persistency↓/Below floor) — honestly, not silently: they require YTD API + `companyMinimums` tenure floors (+ persistency) loaded on a surface that currently only reads the single selected week. `deriveExceptions()` is called here with `companyMins: null` and single-week submissions only. Building this means adding a YTD/floor read path to Master Sheet — a real scope increase, not a small filter tweak. "Report late" is currently served by the existing reality-bar Exceptions count / Only-exceptions toggle as a partial substitute.
+
+**RESOLVED 2026-07-25 (PR into `staging`, branch `post-run-a/master-sheet-status`).** Built per the Run A Tier 3b spec below. See that entry's RESOLVED note for the derivation contract, the one semantic judgement made, and the two residual items (LEVEL still blocked; unit friendly names are a data gap, not a code gap).
 
 ---
 
@@ -638,9 +947,59 @@ Carry all three to the next cycle's Phase 0 before further build work on these s
 
 ---
 
-## Vercel preview env scoping — confirm branch previews get no live backend (banked 2026-07-10, promotion session, LOW — security hygiene, confirm-only)
+## ⚠️ Feature-branch Vercel previews are bound to PRODUCTION Firebase (banked 2026-07-10 as LOW; **OVERTURNED + re-banked HIGH 2026-07-26**, planner week-nav track)
 
-Feature-branch Vercel previews are public. Firebase Auth's authorized-domains allowlist currently blocks them from authenticating (confirmed the hard way during the Run-4 polish PR #852 — a feature-branch preview's login failed with a CORS rejection from `identitytoolkit.googleapis.com`, isolating cleanly to Auth before any app code ran) — this is good, it means a public preview can't reach a live backend today. **Action:** confirm this is by design (env-var scoping) rather than accidental, so a future Vercel/Firebase config change doesn't silently open a public preview to live data. No code change — a configuration confirmation.
+> **THE PREVIOUS ENTRY WAS WRONG IN ITS MECHANISM, AND THE ERROR WAS SAFETY-RELEVANT.** It is preserved struck through at the bottom. Read the correction first.
+
+**Corrected finding.** A feature-branch Vercel preview is **not** sandboxed from live data. Vercel's staging Firebase env vars are bound to the **`staging` branch specifically**, not to the Preview *environment* — so a branch cut off `staging` builds against **PRODUCTION Firebase (`agencytrack-2a610`)**.
+
+**Evidence (same credentials, same minute, 2026-07-26).** Identical scripted login as the staging A11Y agent (`staging-agent-1@agencytrack-staging.test`), driven through `setupBypassSession`, against two deployments:
+
+| Target | Result |
+|---|---|
+| `agencytrack-git-staging-kyron-marchan-s-projects.vercel.app` | **LOGIN-OK** |
+| `agencytrack-git-feat-planner-week-nav-kyron-marchan-s-projects.vercel.app` | **AUTH-ERROR** ("Incorrect email or password") |
+
+**DECISIVE EVIDENCE — added by the external reviewer (2026-07-26, F12).** The login differential above proves only *"not staging"*; it does **not** by itself prove *"production"*, which is what this entry asserts. The reviewer settled it directly and read-only, by fetching each deployed bundle and reading its baked-in Firebase config:
+
+| Deployment | `authDomain` in the served bundle |
+|---|---|
+| `agencytrack-git-staging-…` | `agencytrack-staging` |
+| `agencytrack-git-feat-planner-week-nav-…` | **`agencytrack-2a610`** ← PRODUCTION |
+
+Cite **this** table, not the login differential, when the claim is questioned: it is a direct observation of the artifact rather than an inference from a failed credential, and it is reproducible without any account. Method: `setupBypassSession` → `GET /login` → fetch each `script[src]` / loaded `.js` chunk → match `/([a-z0-9-]*agencytrack[a-z0-9-]*)\.firebaseapp\.com/`. (A `projectId:"…"` match is unreliable — it did not appear in the emitted chunks; the `authDomain` host does.)
+
+**Why the old entry misread this.** The observed symptom in PR #852 (a feature-branch preview failing to authenticate) is real — but the cause is **not** an authorized-domains allowlist protecting the backend. The staging account simply **does not exist in the production project**, so the credential is rejected. The old entry read "login failed" as "the preview cannot reach a live backend," which inverts the actual risk.
+
+**The real risk this creates.** A preview driven with **production** credentials would authenticate normally and **read and write the live tenant**. Anyone smoke-testing a feature-branch preview with a real account — the exact thing CLAUDE.md § Workflow tells us to do before merging ("Always smoke-test the preview URL in incognito") — is operating against production. For a READ-only click-through that is merely surprising; for any **mutating** smoke it writes to live data. This is why the old "this is good, a public preview can't reach a live backend today" reassurance is actively misleading and has been struck.
+
+**Falsification (Rule 23):** overturned if a feature-branch preview is shown to carry `agencytrack-staging` in its bundle (`grep agencytrack-staging dist/assets/*.js` on a preview-equivalent build) **and** a staging account logs into it — i.e. if remedy (b) below lands, or if Vercel env scoping changes. Re-verify with the same two-target login comparison; do not assume.
+
+### Remedy (a) — CODE: generalize the pre-write project guard to every mutating smoke · **OWN SMALL PR, do not bundle**
+
+`smoke-planner-week-nav.mjs` now carries a **pre-write project guard**: before the first write it decodes observed request URLs (Firestore URL-**encodes** `projects%2F<id>`, so a naive `/projects/([a-z0-9-]+)/` regex finds nothing), asserts the resolved project is `agencytrack-staging`, asserts zero `agencytrack-2a610` traffic, and **aborts before mutating** on either failure. This matters because `assertLegHygiene` only checks prod-cleanliness at the **END** of a run — i.e. after the write has already landed.
+
+**SPEC CHANGED 2026-07-26 by the external review (F11) — this is NO LONGER a positional pre-write check.** The shipped version has two weaknesses that must not be generalized as-is:
+
+1. **Positional, not enforcing.** It runs once, before the *single* known write. Add a second write leg later and it is silently uncovered — the guard does not intercept anything, it just happens to sit earlier in the script.
+2. **It edits the evidence.** It mutates `ctx.capture.consoleMessages` to get past `assertLegHygiene`. Bounded and logged, but "adjust the capture until the gate passes" is a pattern that **will** be copied into smokes where it hides something real.
+
+**Build it as a NETWORK INTERCEPTOR instead.** In the shared context factory (`newLegContext`), attach a route handler that inspects every request and **aborts outright** any Firestore/Firebase call whose resolved project is not the expected one — decode the URL first (Firestore URL-**encodes** `projects%2F<id>`) and match `authDomain`/`projects/` alike. Properties this buys that the positional check cannot:
+
+- covers **every** write path, present and future, including ones added years later;
+- fails at the **request** layer, so a stray prod write is impossible rather than merely unlikely;
+- needs **no** capture mutation — nothing to sanitize after the fact, because the bad request never happens;
+- applies to reads too, so a misconfigured target cannot even *read* live data.
+
+Keep the fail-closed posture: abort the run when the expected project cannot be positively identified. Read-only smokes benefit as well, so wire it in the factory rather than per-smoke. Still **its own small PR**, not bundled into #875. When it lands, simplify `smoke-planner-week-nav.mjs` to drop both its positional guard and the `consoleMessages` mutation.
+
+### Remedy (b) — CONFIG: **OPERATOR ACTION ITEM**
+
+Bind the staging Firebase env vars to Vercel's **Preview environment**, not only to the `staging` branch, so every feature-branch preview builds against `agencytrack-staging`. Until then, treat every feature-branch preview as **production-bound** and never point a mutating smoke at one. Interim workaround, proven in the planner week-nav track: build with `npm run build -- --mode staging` (vite mode precedence makes `.env.staging` override `.env.local`), verify the bundle (`agencytrack-staging` present, **zero** `agencytrack-2a610`), and serve locally.
+
+_Original entry, preserved struck through:_
+
+~~**Vercel preview env scoping — confirm branch previews get no live backend (LOW).** Feature-branch Vercel previews are public. Firebase Auth's authorized-domains allowlist currently blocks them from authenticating (confirmed the hard way during the Run-4 polish PR #852 — a feature-branch preview's login failed with a CORS rejection from `identitytoolkit.googleapis.com`, isolating cleanly to Auth before any app code ran) — this is good, it means a public preview can't reach a live backend today.~~ **The symptom was real; the mechanism and the "this is good" conclusion were both wrong — see above.**
 
 ---
 
@@ -4451,6 +4810,41 @@ Plus: pro-rata tenure floor via the existing `resolveAnnualAPIFloor` (`src/utils
 **LEVEL stays BLOCKED** — no populated career-level field (`MasterSheet.jsx:158` maps `levelTitle ?? careerLevel ?? null`, unpopulated). Unchanged by this FU.
 
 **Priority:** MEDIUM. Money-adjacent (floors) — value-level tests required on the band boundaries.
+
+---
+
+**RESOLVED 2026-07-25 — built on branch `post-run-a/master-sheet-status`, PR into `staging` (HOLDS unmerged pending the staging→main promotion).**
+
+**What shipped.** New pure module `src/utils/funnelStatus.js` (`FUNNEL_STATUS_OPTS` · `exceptionToStatusKey` · `latestPersistency` · `buildStatusMap`), a `statuses` condition threaded through `funnelFilters.js` (default / count / predicate / dismissible chip), and a second, week-independent read wave in `MasterSheet.jsx` feeding it.
+
+**The three reads, all via existing service files — no new query written.**
+1. `getAllYTDSubmissions(tenantId)` (managerService) — already role-scoped server-side (UM → own unit, BM → own branch, TA/PA → tenant).
+2. `getCompanyMinimums(tenantId)` (goalsService) — supplies `tenureApiFloors`.
+3. `getPersistencyMapForYear(tenantId, year, opts)` (persistencyService) — scoped explicitly (`{unitId}` for UM, `{branchId}` for BM) because its per-agent reads are otherwise silently dropped by rules.
+
+The wave is keyed on `[tenantId, role, unitId, branchId]`, NOT `selectedWeek` — year-scoped data must not re-fetch on every week change. Each arm self-catches.
+
+**Derivation contract — zero invented constants.** The bands reuse shipped engines rather than opening a second math path:
+- `floor` / `pace` / `report` / `quiet` ← `deriveExceptions` (`utils/managerExceptions.js`), the existing single-source-of-truth for "needs attention". Its pace arms are already pro-rated against `resolveAnnualAPIFloor`, and it is already mutually exclusive per agent. Nothing was re-ranked or re-implemented.
+- `persistency` ← `PERS_FLOOR` (0.80), the canonical exported threshold in `lib/persistency/calculations.js`. Persistency is a DECIMAL there, not a percentage. Only the latest single month's stored value is read — never an average across months (that module's explicit anti-average rule).
+- `ontrack` ← the residue, assigned ONLY when the derivation actually ran.
+
+**Priority order:** `floor > pace > quiet > report > persistency > ontrack`. Production bands keep `deriveExceptions`' own severity ordering verbatim; persistency is applied first and overwritten by any production band, so it lands only on an otherwise-clean agent.
+
+**⚠ THE "GONE QUIET" BAND IS NOT OFFERED ON THIS SURFACE — five chips ship, not six. THIS NEEDS AN OPERATOR RULING.** Caught in review on the PR (CodeRabbit, functional-correctness): the Master Sheet is a **filers-only table** — a row exists only for an agent with a submission in the selected week — while `quiet` means *zero* submissions this year. A row-holding agent therefore essentially can never be `quiet`, so the chip would be a control that **always returns an empty table**. It is omitted for exactly the reason LEVEL and the report family's "Missing" are omitted: the row set cannot hold the value. `FUNNEL_STATUS_OPTS` keeps the full six-band mockup vocabulary and `exceptionToStatusKey`'s mapping is intact and correct — `ROW_REACHABLE_STATUS_OPTS` is what the surface offers. Two tests pin the reasoning (no agent who filed the selected week is ever banded quiet; the engine still bands a genuine non-filer quiet when scoped in). **To make it meaningful, someone must rule between:** (a) render non-filers as rows — a different table, not a filter change; or (b) redefine it as a recency signal ("filed, but not for N weeks"), which needs an N nobody has ruled on. Both are out of scope for read-path work.
+
+**The underlying mapping judgement (still worth a ruling even if (a)/(b) is declined).** "Gone quiet" has no in-repo derivation — the mockup (`mastersheet-funnel-scenes.jsx` `FUNNEL_STATUS_OPTS`) supplies the vocabulary only, and `MeetingMode.helpers.js:97-101` glosses it as "daily-recency" while explicitly declining to derive it. Rather than invent a recency threshold, `quiet` is mapped to `deriveExceptions`' existing **"No reports"** kind (filed nothing all year while the branch filed). It invents no constant and preserves the engine's own ranking ("No reports" 60 > "Report late" 55). **If the operator wants `quiet` to mean daily-log recency instead, that is a threshold decision and a separate slice** — the mapping is isolated in `exceptionToStatusKey`, one function, four lines.
+
+**Unavailable ≠ On track.** If the YTD or companyMinimums read fails, `statusMap` is `null`: the chips are replaced by an honest note, no row carries a band, and an active STATUS condition never matches an unbanded row. A fabricated "On track" was the failure mode being designed against.
+
+**Verification.** 24 new value-level tests in `funnelStatus.test.js` (band boundaries probed on both sides of 0.50 / 0.85 / `PERS_FLOOR`; a same-money-different-tenure negative control proving the floor actually drives the band; negative controls for unmapped exception shapes, absent persistency, and no-branch-activity), 13 new in `funnelFilters.test.js` (including: an unbanded row is excluded by *every* band), 7 new component tests in `MasterSheet.test.jsx` (chips render / both read-failure paths hide them / filtering / persistency banding / branch-scoped read assertion / chip clearing). Full local suite **365 files, 5687 tests, all pass**; lint 0; build green. A fixture-sanity guard in the new test file caught a wrong production-credit field name during authoring — kept as a permanent non-vacuousness check.
+
+**Residuals (NOT closed by this work):**
+- **LEVEL stays BLOCKED** — unchanged, no populated career-level field.
+- **Unit friendly names (the LOW FU below) is a DATA gap, not a code gap.** `unitLabel(id, name)` already prefers a real name, `deriveUnitOptions` already reads `row.unitName`, and `MasterSheet`'s `userMeta` already maps `u.unitName ?? u.unit`. The raw-id fallback appears because the user docs carry no unit name — nothing in the read path to fix. That FU's body should be re-scoped to "populate `unitName` on user docs" rather than "thread a lookup into `deriveUnitOptions`".
+- ~~**Threshold divergence worth a ruling:**~~ **RESOLVED in this PR (2026-07-26)** — and the original framing was wrong, which matters. Rule 17 verification found this was **not** one constant fractured three ways: `PERS_FLOOR` (0.80, at-risk band) and `PERS_GATE` (0.90, award eligibility) are **two distinct money thresholds**, and `companyMinimums.persistency` (90) is a **third, unrelated concept** — a tenant-configurable minimum on an agent's self-set annual *goal*. Consolidating them to one constant, as originally suggested, would have changed agent-facing outcomes in both directions. What was genuinely wrong was the **unit** divergence and the duplication, now fixed: canonical home is `lib/persistency/calculations.js` (decimal), with derived `PERS_FLOOR_PCT` / `PERS_GATE_PCT` companions, and six sites re-pointed at them. An anti-collapse test guards the distinction. See the two commits on this branch, and the sibling LOW note "Persistency threshold sites left un-consolidated, deliberately" for what was examined and left alone.
+- **Escalation from that verification — 3 live defects fixed in this PR (own commit):** `MeetingMode.helpers.js`'s `latestPersistency` returned the E3 **decimal** unchanged while all three of its consumers expect a **percentage**. Consequences on real data: (1) every agent holding a persistency record was falsely flagged "Persistency ↓" reading "1% persistency"; (2) the branch scorecard rendered ~0–1% for healthy branches; (3) Meeting Mode campaign standings dropped every advisor into the `DQ` band with a ×0 payout multiplier. The pre-existing tests fed **percentage** fixtures — values that never occur in production — which is why it survived. Fixtures corrected to decimals; 4-case regression block added, negative-controlled.
+- **Read cost:** `getPersistencyMapForYear` internally re-reads the tenant roster, so the sheet now issues a second `getTenantUsers`. Acceptable (the wave is off the paint path) but a candidate for the same consolidation.
 
 ---
 

@@ -71,6 +71,7 @@ import { useMyProduction } from '../../hooks/useMyProduction';
 import FinancingSelfView from '../financing/FinancingSelfView';
 import UnitFinancingRoster from '../financing/UnitFinancingRoster';
 import TeamPlansRoster from '../manager/TeamPlansRoster';
+import { PERS_GATE_PCT } from '../../lib/persistency/calculations';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -699,7 +700,7 @@ export default function ManagerDashboard() {
               loading={myProd.hierarchyLoading}
               error={myProd.hierarchyError}
               ytdPersistency={myProd.ytdPersistency}
-              persistencyFloor={myProd.companyMinimums?.persistency ?? 90}
+              persistencyFloor={myProd.companyMinimums?.persistency ?? PERS_GATE_PCT}
             />
             <div className="mt-4 border-t border-border pt-4">
               <DerivedIncomePanel

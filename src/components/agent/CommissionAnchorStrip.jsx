@@ -231,7 +231,7 @@ export default function CommissionAnchorStrip({
         {persResult && (
           <Chip
             label="Persistency · latest month"
-            value={<CountUpPercent value={Math.round(persResult.pct * 100)} />}
+            value={<CountUpPercent value={Math.round(persResult.decimal * 100)} />}
             dotClass="bg-[--hero-dot-success]"
           />
         )}

@@ -16,6 +16,7 @@ import {
 } from '../companyConfigRegistry';
 
 import { DEFAULT_TENURE_API_FLOORS } from '../../utils/tenureFloors';
+import { PERS_GATE_PCT } from '../../lib/persistency/calculations';
 import { FLOOR_PACE_DANGER, FLOOR_PACE_WARN } from '../../utils/managerExceptions';
 import { PACE_ON_TRACK_FRACTION } from '../../utils/planVariance';
 import { POINTS_WEIGHTS, LEVEL_THRESHOLDS } from '../../lib/gamificationConfig';
@@ -88,8 +89,11 @@ describe('targets — company minimums (src/services/goalsService.js:60-62)', ()
   it('targets.annualApps === 42 (goalsService.js:61)', () => {
     expect(ITEMS_BY_ID['targets.annualApps'].def).toBe(42);
   });
-  it('targets.persistencyFloor === 90 (goalsService.js:62)', () => {
-    expect(ITEMS_BY_ID['targets.persistencyFloor'].def).toBe(90);
+  // Line-number-free: goalsService's getCompanyMinimums now defaults this to
+  // PERS_GATE_PCT, so the parity is against the constant, not a literal 90 that
+  // could drift from it silently.
+  it('targets.persistencyFloor === PERS_GATE_PCT (goalsService getCompanyMinimums default)', () => {
+    expect(ITEMS_BY_ID['targets.persistencyFloor'].def).toBe(PERS_GATE_PCT);
   });
 });
 
