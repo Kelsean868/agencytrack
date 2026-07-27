@@ -36,7 +36,9 @@
 | Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases ... | HIGH | — | — | 282 |
 | Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion sess... | MEDIUM | — | — | 290 |
 | R-11 login-stamp + All Users LAST-activity — REQUIRES firestore.rules edit (hasOnly allowlist or manager-readable location); bundle with the E4 index FU as a "rules + indexes attended window" | HIGH | — | — | 4282 |
-| Persistency threshold sites left un-consolidated deliberately (campaignEngine gate bands · config-registry label · tenant-configurable companyMinimums) — note so a future sweep doesn't treat them as misses (banked 2026-07-26, PR #871) | LOW | — | — | 495 |
+| Master Sheet STATUS — a failed/denied persistency read is indistinguishable from "no data on file"; the abstention copy tells managers to enter data that may already exist (banked 2026-07-27, reviewer pass on PR #871) | MEDIUM | — | — | ~530 |
+| Persistency threshold sites left un-consolidated — 3 deliberate exclusions PLUS 6 still-hand-rolled 0.80/0.90/90 literals that the "one home" sweep missed (correct scale, no live defect) (banked 2026-07-26, extended 2026-07-27, PR #871) | LOW | — | — | 495 |
+| Money smoke assertion A2 (branch scorecard) is an unscoped `.some()` over every `%` in the scene — fixture-dependent, unlike row-scoped B1–B4 (banked 2026-07-27, reviewer pass on PR #871) | LOW | — | — | ~560 |
 | Tier 3c mechanical conformance — carried from Run A (hero-card worklist · motion pop-in wiring · handoff-vs-screens-v2 · gold-contrast usages) | LOW | — | — | 4348 |
 | Commission layout — unverified two-column claim; needs a REAL mockup into screens-v2 first (banked Run A Tier 3b) | LOW | — | — | 4312 |
 | E4 cross-time prospect notes history — `(agentId, prospectId)` composite index + deploy (rules-permitted per D3); this-week scope shipped Run A Tier 2 E4 | MEDIUM | — | — | 4246 |
@@ -485,7 +487,7 @@ Dispatcher-ordered sweep of every same-named persistency accessor after the Meet
 | `MeetingMode.helpers.latestPersistency` | *was* decimal | percent | **DEFECT — fixed in this PR** |
 | `utils/funnelStatus.latestPersistency` | decimal | decimal (`PERS_FLOOR`) | ✅ correct, documented |
 | `lib/strategicPlan.latestPersistencyPct` | percent (`* 100`) | percent | ✅ correct, documented |
-| `utils/commissionAnchor.latestPersistency` | decimal in a field **named `pct`** | consumer does `* 100` at `CommissionAnchorStrip.jsx:234` | ✅ correct — **misleading field name only** |
+| `utils/commissionAnchor.latestPersistency` | decimal in a field **named `pct`** | consumer does `* 100` at `CommissionAnchorStrip.jsx:234` | ✅ correct — **misleading field name only; RENAMED to `decimal` 2026-07-27 (reviewer pass)** |
 | `profile/agentReportModel` + `agentReportPdfModel` `latestPersistencyPercent` | *was* `v <= 1 ? v * 100 : v` | percent | **DEFECT — fixed in this PR** |
 
 **The residual defect.** Both `agentReport*` modules (documented mirrors of each other) coerce with the heuristic `v <= 1 ? v * 100 : v`. `calculations.js` **explicitly permits persistency > 1** ("can return > 1 when reinstatements outpace lapses (rare but valid)") and has a test pinning it. So a genuine `1.05` (=105%) fails the `<= 1` branch and renders as **"1%"** in the agent report and PDF — the same lie class this PR exists to remove, on a top performer.
@@ -505,6 +507,58 @@ Recorded so a future "consolidate the persistency constants" sweep does not trea
 - **`companyMinimums.persistency`** — its *default* now derives from `PERS_GATE_PCT`, but the value remains tenant-configurable and `stored.persistency` still wins. It is a floor on an agent's self-set annual **goal**, not a performance band. **Do not collapse it into `PERS_FLOOR`.**
 
 An anti-collapse test in `calculations.test.js` ("floor and gate are NOT the same threshold — do not consolidate them") will fail loudly if a future refactor unifies the pair.
+
+### Still hand-rolled — NOT deliberate, just out of scope (added 2026-07-27, reviewer pass on PR #871)
+
+Distinct from the three *deliberate* exclusions above: these are the same two thresholds, re-typed as literals. **All are on the correct scale — no live defect** — but the "one home, one unit" property the PR claims is not actually enforced while they exist, so a future edit to `PERS_GATE` / `PERS_FLOOR` will silently fail to reach them.
+
+| Site | Literal | Should be |
+|---|---|---|
+| `src/components/agent/PersistencyTab.jsx:71` | `>= 0.90` | `PERS_GATE` |
+| `src/components/agent/PersistencyTab.jsx:152` | `>= 0.90` | `PERS_GATE` |
+| `src/components/agent/PersistencyTab.jsx:216` | `<ReferenceLine y={90}>` | `PERS_GATE_PCT` |
+| `src/components/manager/PersistencyEntryForm.jsx:200` | `>= 0.90` | `PERS_GATE` |
+| `src/components/manager/PersistencyTab.jsx:177` | `< 0.80` | `PERS_FLOOR` |
+| `src/components/goals/GapAnalysisPanel.jsx:220` | `persistencyFloor = 90` (prop default) | `PERS_GATE_PCT` |
+
+Deliberately **not** fixed in PR #871: mechanical, zero-defect, and each one widens a money PR's blast radius for no correctness gain. Batch them into the next persistency-adjacent slice. `src/config/financingRuleset/2026.js` (`persistencyY1: 0.95`, `persistencyY2: 0.90`) is a **different concept** (financing agreement gates) and must stay separate.
+
+---
+
+## Master Sheet STATUS — a failed persistency read is indistinguishable from "no data on file" (banked 2026-07-27, reviewer pass on PR #871, MEDIUM — operator-legibility, money-adjacent surface)
+
+**The abstention itself is correct.** `buildStatusMap`'s pass 3 refuses to assert `'ontrack'` for an agent with no usable persistency reading, banding them `STATUS_NODATA_KEY` instead. That logic is sound and was verified: no path asserts health without evidence.
+
+**What is wrong is the reason the surface gives.** `MasterSheet.jsx` loads the map with `getPersistencyMapForYear(...).catch(() => null)`, and `getPersistencyMapForYear` *itself* swallows per-batch rules denials internally (`catch {}` → partial map). So three very different states collapse into one:
+
+1. the agent genuinely has no persistency record on file;
+2. the read was denied by rules for this caller's scope;
+3. the read failed (network, transient).
+
+All three land every otherwise-clean agent in `nodata`, and the inline note then reads: *"N agents have no persistency on file … enter their monthly persistency to band them."* In cases 2 and 3 that instruction is **false** — the manager is sent to enter data that may already exist, and the real fault (a scope/rules problem) stays invisible.
+
+**Why not fixed in PR #871:** the honest fix needs `getPersistencyMapForYear` to distinguish "empty" from "denied" at the *service* layer — it currently cannot, by design (the silent-skip contract is load-bearing for cross-scope callers). That is a service-contract change with its own blast radius, not a copy tweak. The narrower `statusReadFailed` flag added in the reviewer pass covers the `ytdSubs` / `companyMins` arms only, because those two are genuinely observable at the call site.
+
+**Falsification (Rule 23):** this is wrong if `getPersistencyMapForYear` can be shown to already surface denial distinctly to its caller, or if rules make case 2 unreachable for every role that can open the Master Sheet. Neither was established.
+
+**Suggested shape:** have `getPersistencyMapForYear` return `{ map, deniedBatches, ok }` rather than a bare map; `nodata` copy then branches on `ok`.
+
+---
+
+## Money smoke — the branch-scorecard assertion (A2) is fixture-dependent, not scoped (banked 2026-07-27, reviewer pass on PR #871, LOW — verification hygiene)
+
+`scripts/verification/smoke-persistency-scale-money.mjs` assertion **A2** scans *every* `\d{1,3}%` in the branch-scorecard scene and passes if **any** value lands in 85–95:
+
+```js
+const branchPcts = [...branchScene.matchAll(/(\d{1,3})%/g)].map((m) => Number(m[1]));
+const ok = branchPcts.some((n) => n >= 85 && n <= 95);
+```
+
+Every other money assertion in that file (B1–B4) is properly **row-scoped** — sliced from the advisor's name to the next advisor precisely so a neighbour's value cannot satisfy the check. A2 is the one that is not. It passes today because nothing else in that scene renders an 85–95% figure; that is a property of the current fixture and layout, not of the assertion. Add a goal-attainment or floor-progress percentage to the scorecard and A2 could go green over a `1%` persistency cell.
+
+**Fix shape:** scope A2 to the PERSISTENCY column the way B1–B4 scope to the advisor row — anchor on the column header or a `data-testid` on the cell, then read the single value.
+
+**Not fixed in PR #871:** touching the smoke's own assertions during the same pass that re-runs it as evidence is circular; the fix should land separately and be re-negative-controlled on its own.
 
 ---
 
