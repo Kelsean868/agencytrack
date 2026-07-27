@@ -4,6 +4,78 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import AppointmentSheet from '../AppointmentSheet';
 
 /**
+ * Grouped type picker — Prospect / Support / Block. Replaces the flat grid so a
+ * 16-type list stays navigable and `A.I` never sits next to `Admin`.
+ */
+describe('AppointmentSheet grouped type picker', () => {
+  const renderSheet = (props = {}) => render(
+    <AppointmentSheet
+      mode="create"
+      initial={{ date: '2026-06-22', startTime: '09:00' }}
+      onSave={vi.fn()}
+      onClose={vi.fn()}
+      {...props}
+    />,
+  );
+
+  it('opens on Prospect and shows only that group’s types', () => {
+    renderSheet();
+    expect(screen.getByTestId('appt-type-group-prospect')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('appt-type-PC')).toBeInTheDocument();
+    expect(screen.getByTestId('appt-type-SALE')).toBeInTheDocument();
+    // Other groups' types are not rendered until their tab is chosen.
+    expect(screen.queryByTestId('appt-type-ADMIN')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('appt-type-PAPER')).not.toBeInTheDocument();
+  });
+
+  it('switching to Block reveals block types and moves the selection off PC', () => {
+    renderSheet();
+    fireEvent.click(screen.getByTestId('appt-type-group-block'));
+    expect(screen.getByTestId('appt-type-SEM')).toBeInTheDocument();
+    expect(screen.getByTestId('appt-type-FREE')).toBeInTheDocument();
+    expect(screen.queryByTestId('appt-type-PC')).not.toBeInTheDocument();
+    // First type of the group becomes the selection, so the form is never left
+    // on a type the visible picker cannot show.
+    expect(screen.getByTestId('appt-type-SEM')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('appt-type-name')).toHaveTextContent('Company seminar');
+  });
+
+  it('edit mode opens on the group that holds the existing type', () => {
+    renderSheet({ mode: 'edit', initial: { date: '2026-06-22', startTime: '09:00', type: 'COLL' } });
+    expect(screen.getByTestId('appt-type-group-support')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('appt-type-COLL')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('appt-type-name')).toHaveTextContent('Premium collection');
+  });
+
+  it('offers prospect attach for Support types but not for Block types', () => {
+    renderSheet({ mode: 'edit', initial: { date: '2026-06-22', startTime: '09:00', type: 'DEL' } });
+    expect(screen.getByLabelText(/Prospect/)).toBeInTheDocument();
+
+    // Block: no prospect attach, and no free-block select unless the type is FREE.
+    fireEvent.click(screen.getByTestId('appt-type-group-block'));   // → SEM
+    expect(screen.queryByLabelText(/Prospect/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Free block')).not.toBeInTheDocument();
+
+    // FREE keeps its legacy label chip row.
+    fireEvent.click(screen.getByTestId('appt-type-FREE'));
+    expect(screen.getByLabelText('Free block')).toBeInTheDocument();
+  });
+
+  it('saves the chosen new type, with no prospect or free label attached', () => {
+    const onSave = vi.fn();
+    renderSheet({ onSave });
+    fireEvent.click(screen.getByTestId('appt-type-group-block'));
+    fireEvent.click(screen.getByTestId('appt-type-ADMIN'));
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/ }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const payload = onSave.mock.calls[0][0];
+    expect(payload.type).toBe('ADMIN');
+    expect(payload.prospectId).toBe('');
+    expect(payload.freeBlockLabel).toBe('');
+  });
+});
+
+/**
  * Run 9 A3 — sheet conflict warning. R7: warn-only, the Save button is never
  * disabled by a conflict. Scope is the loaded week's appointments, passed in
  * via the `appointments` prop (AgentPlannerPanel passes its `appts` state).

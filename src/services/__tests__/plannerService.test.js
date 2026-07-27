@@ -50,8 +50,13 @@ import {
   createAppointment, createRecurringAppointments, updateAppointment, setAppointmentStatus,
   postponeWithRebook, deleteAppointment, undoPostpone, bulkUpdateAppointments,
   getAgentDay, getAgentWeek, getSeriesInstances, getTeamWeek,
-  TYPE_KEYS, STATUS_KEYS, BULK_CHUNK_SIZE,
+  TYPE_KEYS, STATUS_KEYS, BULK_CHUNK_SIZE, APPOINTMENT_TYPES,
+  SELLING_TYPE_KEYS, isSellingType, PICKER_GROUPS, PROSPECT_ATTACH_TYPES, groupOfType,
 } from '../plannerService';
+// Tone lives in a leaf module (plannerTone.js) with no imports of its own, so
+// pulling it in here cannot create a cycle. Asserted against the type list so a
+// new type can never ship without a deliberate tone entry.
+import { TYPE_TONE } from '../../components/planner/plannerTone';
 
 function makeSnap(...docs) {
   return { docs: docs.map((d) => ({ id: d.id, data: () => d })) };
@@ -68,8 +73,83 @@ const META = { agentId: 'agent-1', agentUnitId: 'um-9', agentBranchId: 'branch-7
 
 describe('contract enums', () => {
   it('exposes the locked TYPE and STATUS sets', () => {
-    expect(TYPE_KEYS).toEqual(['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE', 'FREE']);
+    expect(TYPE_KEYS).toEqual([
+      'PC', 'SC', 'AI', 'FFI', 'CI', 'SALE', 'FREE',
+      'PROP', 'PAPER', 'COLL', 'DEL',
+      'SEM', 'TRADE', 'MTG', 'TRAIN', 'ADMIN',
+    ]);
     expect(STATUS_KEYS).toEqual(['scheduled', 'confirmed', 'kept', 'done', 'postponed', 'cancelled']);
+  });
+
+  // The two firestore.rules allowlists (validApptWrite + validTemplateWrite) are
+  // literal copies of this set. They cannot be imported here, so this guards the
+  // count: if TYPE_KEYS grows and the rules are not extended in the same change,
+  // every write of the new type is rejected in production. 16 is the number that
+  // must appear in BOTH rules blocks.
+  it('has exactly 16 types — keep both firestore.rules allowlists in step', () => {
+    expect(TYPE_KEYS).toHaveLength(16);
+    expect(new Set(TYPE_KEYS).size).toBe(16);      // no duplicate keys
+  });
+
+  it('keeps every chip label within the dense week-card budget (≤5 chars)', () => {
+    const tooLong = APPOINTMENT_TYPES.filter((t) => t.label.length > 5);
+    expect(tooLong.map((t) => `${t.key}:${t.label}`)).toEqual([]);
+  });
+
+  it('gives every type a tone entry, a group, and a non-empty name', () => {
+    for (const t of APPOINTMENT_TYPES) {
+      expect(TYPE_TONE[t.key], `TYPE_TONE missing ${t.key}`).toBeTruthy();
+      expect(t.name.length).toBeGreaterThan(0);
+      expect(PICKER_GROUPS.some((g) => g.types.includes(t.key)), `no group for ${t.key}`).toBe(true);
+    }
+  });
+});
+
+describe('selling set + picker taxonomy', () => {
+  it('counts the selling ladder plus seminar/tradeshow, and nothing else', () => {
+    expect([...SELLING_TYPE_KEYS]).toEqual(['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE', 'SEM', 'TRADE']);
+    // Support work, non-production blocks, and legacy FREE never count.
+    for (const k of ['PROP', 'PAPER', 'COLL', 'DEL', 'MTG', 'TRAIN', 'ADMIN', 'FREE']) {
+      expect(isSellingType(k), `${k} must not count as selling`).toBe(false);
+    }
+    for (const k of ['PC', 'SEM', 'TRADE']) {
+      expect(isSellingType(k), `${k} must count as selling`).toBe(true);
+    }
+    expect(isSellingType(undefined)).toBe(false);
+  });
+
+  it('files SEM/TRADE under Block while still counting them — tone ≠ grouping', () => {
+    expect(groupOfType('SEM')).toBe('block');
+    expect(groupOfType('TRADE')).toBe('block');
+    expect(isSellingType('SEM')).toBe(true);
+    expect(isSellingType('TRADE')).toBe(true);
+  });
+
+  it('groups every type exactly once, in the documented order', () => {
+    expect(PICKER_GROUPS.map((g) => g.key)).toEqual(['prospect', 'support', 'block']);
+    const flat = PICKER_GROUPS.flatMap((g) => g.types);
+    expect(flat).toHaveLength(TYPE_KEYS.length);
+    expect(new Set(flat).size).toBe(TYPE_KEYS.length);
+    expect([...flat].sort()).toEqual([...TYPE_KEYS].sort());
+    // FREE stays last in Block — its label chip row is the legacy path.
+    expect(PICKER_GROUPS[2].types.at(-1)).toBe('FREE');
+  });
+
+  it('allows prospect attach for selling + support, never for blocks', () => {
+    for (const k of ['PC', 'CI', 'SALE', 'PROP', 'PAPER', 'COLL', 'DEL']) {
+      expect(PROSPECT_ATTACH_TYPES.includes(k), `${k} should allow attach`).toBe(true);
+    }
+    for (const k of ['SEM', 'TRADE', 'MTG', 'TRAIN', 'ADMIN', 'FREE']) {
+      expect(PROSPECT_ATTACH_TYPES.includes(k), `${k} should not allow attach`).toBe(false);
+    }
+  });
+
+  it('accepts a new type through the create path', async () => {
+    hoisted.mockAddDoc.mockResolvedValue({ id: 'new-9' });
+    await createAppointment('t1', {
+      type: 'DEL', date: '2026-06-22', startTime: '14:00', durationMin: 30,
+    }, META);
+    expect(hoisted.mockAddDoc.mock.calls[0][1].type).toBe('DEL');
   });
 });
 

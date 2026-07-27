@@ -744,6 +744,25 @@ async function main() {
   await appt('vhfix-appt-d2b', { date: addDays(TODAY, 2), t: '15:00', dur: 45, type: 'AI' });
   await appt('vhfix-appt-d3a', { date: addDays(TODAY, 3), t: '09:00', type: 'PC' });
   await appt('vhfix-appt-d3b', { date: addDays(TODAY, 3), t: '13:00', type: 'SC' });
+  // Activity-type tier fixtures — one SUPPORT and one BLOCK type, so the picker,
+  // chip tone (dashed = does not count), and the selling-only counters are all
+  // exercisable against real data. Both are dated TODAY and marked kept so they
+  // also exercise the keptCount / carry-to-Daily-Capture path.
+  //   DEL   — support work, prospect-attachable, does NOT count as selling
+  //   ADMIN — non-production block, no attach, does NOT count as selling
+  // NOTE: these require the extended firestore.rules type allowlist to be
+  // DEPLOYED. Before that deploy this seeder's two writes go through the Admin
+  // SDK (which bypasses rules) and will succeed, but the app cannot write the
+  // same types — see scripts/verification/SMOKES.md on the deploy gate.
+  await appt('vhfix-appt-t6', { date: TODAY, t: '11:30', dur: 30, type: 'DEL', status: 'kept', prospectId: 'vhfix-pp-today' });
+  await appt('vhfix-appt-t7', { date: TODAY, t: '17:00', dur: 45, type: 'ADMIN', status: 'kept' });
+  // SEM + TRADE — the two BLOCK-group types that DO count as selling activity.
+  // They are the whole novelty of the tone rule (block group, counting tone), so
+  // the smoke asserts their SOLID border explicitly. Both must be seeded or that
+  // assertion is vacuous — it can only check chips that are actually rendered.
+  // Early band, 30m each, clear of the 06:15 smoke sentinel and the 09:00 fixture.
+  await appt('vhfix-appt-t8', { date: TODAY, t: '07:30', dur: 30, type: 'SEM' });
+  await appt('vhfix-appt-t9', { date: TODAY, t: '08:15', dur: 30, type: 'TRADE' });
   // Postponed-with-rebook pair (original postponed yesterday -> new at +2d).
   await appt('vhfix-appt-rebook-new', { date: addDays(TODAY, 2), t: '13:30', dur: 60, type: 'CI', note: 'Rebooked from postponed slot' });
   await appt('vhfix-appt-rebook-old', { date: addDays(TODAY, -1), t: '10:00', dur: 60, type: 'CI', status: 'postponed', rescheduledToId: 'vhfix-appt-rebook-new', note: 'Client requested move' });

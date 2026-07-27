@@ -3,6 +3,7 @@ import { X, Loader2, Search, Repeat, Minus, Plus, AlertTriangle, Bookmark, Trash
 import useFocusTrap from '../../hooks/useFocusTrap';
 import {
   APPOINTMENT_TYPES, FREE_BLOCK_LABELS,
+  PICKER_GROUPS, PROSPECT_ATTACH_TYPES, groupOfType,
 } from '../../services/plannerService';
 import {
   DOW_PICKER_ORDER, MAX_SERIES_INSTANCES, buildSeriesPreview,
@@ -91,9 +92,28 @@ export default function AppointmentSheet({
   const [endCount, setEndCount]     = useState(12);
   const [endOnDate, setEndOnDate]   = useState('');
 
+  // Which picker group is open. Seeded from the current type so edit mode opens
+  // on the group that actually holds it. (`mode` is already the create/edit
+  // prop — this is deliberately named for the picker, not reusing that word.)
+  const [pickerGroup, setPickerGroup] = useState(() => groupOfType(initial?.type ?? 'PC'));
+
   const isFree = type === 'FREE';
   const showApi = type === 'SALE' || type === 'CI';
+  // Support types are client-linked in practice (a delivery or a collection is
+  // FOR someone), so they get the same OPTIONAL prospect attach the selling
+  // types have. Block types attach nothing — FREE shows its label chip row
+  // instead, the rest show neither.
+  const canAttachProspect = PROSPECT_ATTACH_TYPES.includes(type);
   const repeating = showRepeat && repeatRule !== 'none';
+
+  // Switching group moves the selection to that group's first type, so the form
+  // is never left on a type the visible picker cannot show.
+  const pickGroup = (groupKey) => {
+    if (groupKey === pickerGroup) return;
+    setPickerGroup(groupKey);
+    const group = PICKER_GROUPS.find((g) => g.key === groupKey);
+    if (group) setType(group.types[0]);
+  };
 
   const filteredProspects = useMemo(() => {
     const q = prospectQuery.trim().toLowerCase();
@@ -141,7 +161,7 @@ export default function AppointmentSheet({
 
   const buildData = () => ({
     type, date, startTime, durationMin, note,
-    prospectId: isFree ? '' : prospectId,
+    prospectId: canAttachProspect ? prospectId : '',
     freeBlockLabel: isFree ? freeBlockLabel : '',
     apiAmount: showApi ? apiAmount : null,
     recurrence: repeating
@@ -174,6 +194,9 @@ export default function AppointmentSheet({
   // as the agent's chosen date (templates carry no date).
   const applyTemplate = (tpl) => {
     setType(tpl.type ?? 'PC');
+    // Keep the visible group in step with the applied type, or the picker would
+    // show a selection it cannot render.
+    setPickerGroup(groupOfType(tpl.type ?? 'PC'));
     setStartTime(tpl.startTime ?? '09:00');
     setDuration(String(tpl.durationMin ?? 30));
     setNote(tpl.note ?? '');
@@ -341,28 +364,71 @@ export default function AppointmentSheet({
             </div>
           )}
 
-          {/* Type picker */}
+          {/* Type picker — grouped (Prospect / Support / Block) rather than one
+              flat 16-button grid, which would sit `A.I` (Approach interview) two
+              buttons from `Admin` on a record that feeds coaching surfaces.
+              Ports the design authority's mode pattern: the agent sheet already
+              had a Prospect / Free-block toggle, and the manager sheet groups its
+              types behind a four-mode stream selector. */}
           <div>
             <span className="block text-xs font-semibold text-ink-muted mb-2 uppercase tracking-wide">
               Activity type
             </span>
-            <div className="grid grid-cols-4 gap-2" role="group" aria-label="Activity type">
-              {APPOINTMENT_TYPES.map((t) => (
+            {/* A plain single-choice BUTTON GROUP (`aria-pressed`), matching the
+                REPEAT_CHIPS control in this same file — deliberately NOT the ARIA
+                tabs pattern. Declaring role="tablist"/"tab" would promise
+                arrow-key roving focus and an `aria-controls`-linked tabpanel that
+                this control does not implement, which misleads screen-reader
+                users more than the plainer semantics do. */}
+            <div
+              className="grid grid-cols-3 gap-1 p-1 mb-2 rounded-lg bg-card-raised border border-border"
+              role="group"
+              aria-label="Activity type group"
+            >
+              {PICKER_GROUPS.map((g) => (
                 <button
-                  key={t.key}
+                  key={g.key}
                   type="button"
-                  onClick={() => setType(t.key)}
-                  aria-pressed={type === t.key}
-                  className={`min-h-[44px] rounded-lg text-xs font-semibold border transition-colors ${
-                    type === t.key
-                      ? 'bg-primary dark:bg-primary-dark text-white border-primary dark:border-primary-dark'
-                      : 'bg-card-raised border-border text-ink-muted hover:border-primary/40 hover:text-primary'
+                  aria-pressed={pickerGroup === g.key}
+                  onClick={() => pickGroup(g.key)}
+                  data-testid={`appt-type-group-${g.key}`}
+                  className={`min-h-[44px] rounded-md text-xs font-semibold transition-colors ${
+                    pickerGroup === g.key
+                      ? 'bg-card text-ink shadow-sm'
+                      : 'text-ink-muted hover:text-ink'
                   }`}
                 >
-                  {t.label}
+                  {g.label}
                 </button>
               ))}
             </div>
+            <div className="grid grid-cols-4 gap-2" role="group" aria-label="Activity type">
+              {APPOINTMENT_TYPES
+                .filter((t) => groupOfType(t.key) === pickerGroup)
+                .map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setType(t.key)}
+                    aria-pressed={type === t.key}
+                    title={t.name}
+                    data-testid={`appt-type-${t.key}`}
+                    className={`min-h-[44px] rounded-lg text-xs font-semibold border transition-colors ${
+                      type === t.key
+                        ? 'bg-primary dark:bg-primary-dark text-white border-primary dark:border-primary-dark'
+                        : 'bg-card-raised border-border text-ink-muted hover:border-primary/40 hover:text-primary'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+            </div>
+            {/* The full name of the current selection — the ≤5-char chip labels
+                are deliberately terse for the dense week card, so the sheet
+                spells out what was picked. */}
+            <p data-testid="appt-type-name" className="mt-2 text-xs text-ink-muted">
+              {APPOINTMENT_TYPES.find((t) => t.key === type)?.name ?? ''}
+            </p>
           </div>
 
           {/* Prospect search OR free-block label */}
@@ -378,7 +444,7 @@ export default function AppointmentSheet({
                 {FREE_BLOCK_LABELS.map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
-          ) : (
+          ) : canAttachProspect ? (
             <div className="flex flex-col gap-1">
               <label htmlFor="appt-prospect-search" className="text-sm font-medium text-ink">
                 Prospect <span className="text-ink-muted font-normal">(optional)</span>
@@ -425,11 +491,11 @@ export default function AppointmentSheet({
                 </>
               )}
             </div>
-          )}
+          ) : null}
 
           {/* E4 (this-week scope): the selected prospect's prior notes from the
               loaded week's other appointments — booking context, read-only. */}
-          {!isFree && selectedProspect && prospectHistory.length > 0 && (
+          {canAttachProspect && selectedProspect && prospectHistory.length > 0 && (
             <div data-testid="prospect-note-history" className="rounded-xl bg-primary/5 border border-primary/20 px-3 py-2.5">
               <NotesThread
                 label={`Prior notes · ${selectedProspect.clientName}`}

@@ -18,7 +18,15 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| Promotion deletes `staging`, silently auto-retargeting every open PR onto `main` — fired twice; put #872 + #873 into main ungated. RECOMMENDS a CI guard; needs dispatcher decision (banked 2026-07-26, PR #871 session) | HIGH | — | — | 430 |
+| Promotion deletes `staging`, silently auto-retargeting every open PR onto `main` — put #872 + #873 into main ungated. **CONFIRMED RECURRING** — deleted again on #877 (#860/#874/#877). **Primary fix upgraded to a runbook step (`git push origin main:staging` after every promotion merge)**; CI guard still recommended as enforcement. **Also corrects the record: `main` DOES have branch protection** (2 required checks, admin-bypassable) — the FU's original "unavailable" premise was wrong, and CLAUDE.md § Workflow carries the same false claim (dispatcher call). Needs dispatcher decision (banked 2026-07-26, PR #871 session; corrected 2026-07-27) | HIGH | — | — | 430 |
+| Restore the VIOLET calls hue — `plannerTone.js`'s stated reason for diverging ("repo ships no violet token") is FALSE; token ships at exact DS parity with zero consumers (banked 2026-07-27, planner activity-types PR) | MEDIUM | Track J conformance | — | see § Planner activity types |
+| Planner duration reporting — `durationMin` is captured on every appointment but NOTHING sums it anywhere; "time recorded" needs only a reporting surface (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
+| Planner type-taxonomy collisions deferred by hardcoding — `MTG` vs manager `UNIT`, and `PERS` vs `FREE`+Personal (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
+| `SALE` absent from the design authority's agent picker but shipping in the app — pre-existing divergence, NOT introduced by the activity-types work (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
+| SEM/TRADE count for the manager headline but NOT the agent's kept-count — same kept seminar reads differently to the two roles; settle when types become tenant-configurable (reviewer pass on #878, banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
+| `assertLegHygiene` never asserts on `networkFailures` — a failed network call is printed but cannot fail any smoke, suite-wide; "hygiene PASS" is not evidence calls succeeded (found diagnosing the first post-deploy planner run, banked 2026-07-27) | MEDIUM | Verification | — | see § Planner activity types |
+| Mutating planner smokes leave residue by design — no self-teardown; needs a shared Admin-SDK helper across all 7 (raised by CodeRabbit on #878, banked 2026-07-27) | LOW | Verification | — | see § Planner activity types |
+| Two divergent planner design-authority trees (`proposals/planner-scheduler-v2/` vs `screens-v2/agencytrack-planner-handoff/`) — never diffed file-by-file (banked 2026-07-27) | LOW | Design system | — | see § Planner activity types |
 | External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track) | HIGH | — | overdue (was 2026-07-17) | ~4130 |
 | Track K Phase 2 — narrative `branchPlans` (new collection, HUMAN-MERGE) + PPTX + manpower setter + per-branch `branchGoals` keying (banked 2026-07-21, #864 close) | HIGH | Track K | — | ~288 |
 | Track K Phase 3 — classification quotas + real monthly quota model (banked 2026-07-21, #864 close) | MEDIUM | Track K | — | ~288 |
@@ -454,6 +462,58 @@ The four named tests were characterized individually and fixed individually. **T
 
 **Pattern-1 re-audit (the FU's own Action item) — result: NO recurrence found.** Scanned every `.test.jsx` for the PR #861 shape (a bare DOM query immediately following a call-count-only `waitFor`). All ~30 hits are one of: an assertion on the **mock object** (`toHaveBeenCalledWith`, `.mock.calls[…]`) — structurally immune, no re-render dependency; or a **negative** DOM assertion (`.not.toBeInTheDocument()` / `.toBeNull()`) gated by a precondition that makes the wait meaningful (e.g. the streak tests' `onClose` only fires when `!celebrating`, so the wait itself proves the branch). **No positive "expect element present" DOM query racing a re-render was found outside the already-fixed #861 sites.** *Limits of this claim (falsification):* the scan was a 2-line-lookahead regex over `.test.jsx` only, so a bare DOM query 3+ lines after the `waitFor`, or one reached via a helper function, would not have been caught. Overturned by any future CI-only failure whose error is "unable to find element" immediately after a call-count `waitFor`.
 
+**FIFTH data point — 2026-07-27, PR #878 CI — and it OVERTURNS the pattern-1 re-audit above.**
+
+`DailyCaptureV2.test.jsx > 'stepper "+" increments the bound storage key and Save writes it'` failed **in CI only** (`lint-and-build`, run `30282874572`). Local: the same commit ran the full suite **5842/5842 green**. Error, verbatim:
+
+> `→ Unable to find an accessible element with the role "button" and name /FFIs conducted increase/i`
+
+The shape:
+
+```js
+render(<DailyCaptureV2 onClose={vi.fn()} />);
+await screen.findByTestId('dcv2-save');                                    // resolves on the FIRST commit carrying Save
+const inc = screen.getByRole('button', { name: /FFIs conducted increase/i }); // BARE query — the stepper rows commit later
+```
+
+**This is pattern 1** — a bare positive DOM query racing a re-render — and it is **outside the #861 fix set**, which the re-audit above concluded did not exist. That paragraph stated its own falsifier:
+
+> *"Overturned by any future CI-only failure whose error is 'unable to find element' immediately after a call-count `waitFor`."*
+
+Consider it overturned. **The reason the scan missed it is instructive and should shape the re-scan:** the audit's regex looked for a bare query following a **call-count `waitFor`**. Here the preceding await is a **`findByTestId`** — a *different* element's presence gate. That is the same defect (waiting on element A, then synchronously querying element B, which commits on a later paint) but it does not match the searched shape at all. `DailyCaptureV2` loads company minimums / weekly floors on a separate async path from the Save button, so Save can paint a frame before the stepper rows exist.
+
+**Corrected scan shape for whoever closes this FU:** any bare `getBy*` / `queryBy*` for element **B** following an `await findBy*`/`waitFor` on element **A**, where A ≠ B. The mock-object carve-out in the re-audit ("structurally immune") still holds — the assertion that failed here is a DOM query, not a mock assertion — but the carve-out was doing more work than it should have, because it was applied to a scan that never looked at `findBy*` gates.
+
+**Not fixed in #878** — out of that PR's scope (planner activity types; `DailyCaptureV2` shares no module with its diff, and its own second commit touched only the planner sheet, seeder, smoke and docs). Recorded here as the FU's own evidence. Fix when this FU is worked: gate on the element actually being queried (`await screen.findByRole('button', { name: /FFIs conducted increase/i })`), and re-scan under the corrected shape above.
+
+**SIXTH data point — 2026-07-27, the #879 smoke-fix branch — #872's fixed tests re-fire LOCALLY but held in CI.**
+
+⚠ **Read the CI result before acting on this entry.** An earlier draft of this note claimed "#872's own fixes are re-firing" full stop. That **overstated the evidence** and is corrected here: the identical tree then passed `lint-and-build` **green in CI** (run `30293147196`), i.e. the full suite ran clean on GitHub's runner. So the accurate claim is narrower — *these tests re-fire under contention heavier than CI's*, not *the fixes regressed*. The correction is left visible rather than rewritten away, because the overstatement is itself the lesson: a local-only failure streak is weak evidence until CI is checked, and it is easy to bank a confident-sounding conclusion from it.
+
+What remains genuinely useful is that the observing branch **changed only `scripts/`** (a smoke file + `SMOKES.md`) — **zero `src/` files**. A test failure on such a diff is *definitionally* not caused by the change, which removes the usual attribution ambiguity even though the failures turned out to be environmental.
+
+Across three consecutive local full-suite runs on one unchanged tree:
+
+| Run | Result | Failing test |
+|---|---|---|
+| 1 | 5842/5843 | `MeetingMode > agenda rail is shown on the agent scene` |
+| 2 | 5841/5843 | `MeetingMode > skip-logs the awards scene…` **+** `AgentPlannerPanel > A5 > undo after a bulk move writes back each doc's PRIOR date` |
+| 3 | 5842/5843 | `AgentPlannerPanel > A2 > 'e' on a focused SERIES card raises the SeriesEditChoice…` |
+
+Both failing files pass **85/85 in isolation** on the same tree.
+
+**Two of these are tests #872 explicitly fixed and declared closed:**
+- the **A2 `e` shortcut**, fixed at the mechanism (`await userEvent.keyboard('e')`, an act-wrapped async dispatch replacing a synchronous `fireEvent.keyDown` against a possibly-stale listener), and
+- the **A5 bulk pair**, widened to `it(…, 20000)`.
+
+Both fired again locally. Given CI held, the defensible reading is that the remedies **raised the threshold without removing the race** — sufficient for CI's contention level, not for a heavier one. Note the A5 undo test failing *despite* a 20 s per-test budget: that is not a budget problem at all, so the "widen the timeout" class of fix is the wrong tool for that one specifically, independent of how contended the machine is.
+
+**No failure repeated across runs** — the population rotates, which is the signature of a shared environmental contention effect rather than four independent per-test bugs. Worth considering whether the real remedy is at the runner level (`maxConcurrency` / pool sizing / `fileParallelism`) rather than per-test, since chasing individual tests has now produced two rounds of fixes that did not hold.
+
+*Environment note, offered as a confound rather than an excuse:* this machine was running three worktrees with installed `node_modules`, and an `npm install` had crashed with `STATUS_STACK_BUFFER_OVERRUN` (`0xC0000409`) shortly before. Contention was plausibly higher than CI's. That does not explain the A2/A5 recurrence away — CI is also contended — but it should be weighed before concluding the fixes regressed rather than were never sufficient.
+
+**Not fixed here** — scripts-only branch. Recorded as the FU's own evidence, per note 3's instruction to capture the identity of any observed full-suite failure.
+
 **Not done / weaknesses to carry forward:**
 
 1. **None of the four was reproduced locally on demand.** They are load-dependent by nature; the fixes rest on mechanism analysis plus negative controls, not on a red-to-green reproduction. Real confirmation is the absence of recurrence across subsequent CI runs.
@@ -486,6 +546,18 @@ All three retargeted in the same second, on the #874 promotion merge. #872/#873 
 
 Prior occurrence: `staging` was also deleted on the #860 promotion (recorded in CONTEXT.md — "the `staging` git branch no longer exists (deleted on PR #860 merge)"). It was treated as a one-off re-baseline chore rather than as this failure mode.
 
+**CORRECTION 1 (2026-07-27) — it fired AGAIN, so this is confirmed recurring, not a coincidence.** `staging` was deleted a further time by `deleteBranchOnMerge` on the **#877** promotion merge. That is the second occurrence *of the deletion* since it was banked as a hazard (#874, #877), and the third counting #860. The pattern is now established beyond doubt: **every** staging→main promotion deletes `staging`, because the promotion PR's head branch *is* `staging` and auto-delete is unconditional. There is no version of this that does not recur.
+
+`staging` has since been recreated and currently sits at `f51cf18b`, level with `origin/main` — verified this session. So the *branch* is healthy right now; what is missing is anything that makes it stay that way.
+
+**The recommendation below is therefore upgraded: the promotion-runbook step is now a PRIMARY fix, not a "worth doing anyway" also-ran.** Immediately after any promotion merge, run:
+
+```bash
+git push origin main:staging
+```
+
+This recreates `staging` at the just-merged commit — which is exactly where a re-baselined `staging` should be — and closes the retarget window in one command, with no repo-settings change and no CI wait. It is the only mitigation that is available *today*, costs nothing, and needs no approval. The CI guard remains recommended as the enforcement layer (process alone has now failed three times), but the runbook step is what stops the bleeding between now and whenever the guard lands.
+
 ### The other 5 open PRs are NOT affected
 
 Audited the same way — #825, #854, #621, #546, #543, #540, #398 carry **no** base-change event of any kind. They were cut against `main` originally and are simply stale (May 31 – July 11). They need triage, but not for this reason.
@@ -494,8 +566,27 @@ Audited the same way — #825, #854, #621, #546, #543, #540, #398 carry **no** b
 
 **RECOMMENDED: add a required CI job that fails any PR targeting `main` whose head branch is not `staging`** (plus an explicit escape hatch, e.g. a `promotion` or `hotfix` label, for dispatcher-authorised direct-to-main work).
 
-Reasoning — it is the only option that satisfies all four constraints:
-1. **It is enforceable here.** Branch protection is not platform-enforced on this plan (CLAUDE.md § Workflow), so merge gates are procedural. A CI job is the one mechanism that actually blocks.
+**CORRECTION 2 (2026-07-27) — `main` DOES have branch protection. The premise below was wrong.** Verified live this session via `gh api repos/Kelsean868/agencytrack/branches/main/protection`:
+
+| Setting | Actual value |
+|---|---|
+| `required_status_checks.contexts` | **`lint-and-build`, `functions-tests`** (2 checks, enforced) |
+| `required_status_checks.strict` | `false` (branches need not be up to date with base) |
+| `enforce_admins` | **`false` — admin-bypassable** |
+| `allow_force_pushes` / `allow_deletions` | `false` / `false` |
+| `required_signatures`, `required_linear_history`, `required_conversation_resolution` | all `false` |
+
+Two things follow, and they pull in opposite directions:
+
+- **The guard recommendation gets STRONGER, not weaker.** The original reasoning argued a CI job was the only enforceable mechanism *because* protection was unavailable. In fact a required-status-checks gate already exists and already works — so adding a third required context is a **proven mechanism on this repo**, not a hypothesis. That is a better argument than the one it replaces.
+- **But protection does not solve this on its own.** Required status checks express "these checks must pass"; they cannot express "this base may only be targeted from this head." Branch protection has no base/head constraint, so it could never have caught the retarget. The guard is still needed — protection is the *delivery mechanism* for it, not a substitute.
+
+`enforce_admins: false` also means the operator can bypass every check on `main`, so the guard is a seatbelt against mistakes, not a lock. That matches how CLAUDE.md already treats merge discipline (procedural, `--admin` forbidden by rule rather than by platform).
+
+**Doctrine correction owed:** CLAUDE.md § Workflow states "Branch protection is not platform-enforced on this plan. Merge gates are procedural." The first sentence is false as written — the accurate statement is *"`main` has 2 required status checks but `enforce_admins` is off, so an admin can bypass them; treat merge gates as procedural."* Banked here rather than edited inline, because a CLAUDE.md doctrine change is a dispatcher call, not a side effect of this PR.
+
+Reasoning — it satisfies all four constraints:
+1. **It is enforceable here.** ~~Branch protection is not platform-enforced on this plan~~ — see CORRECTION 2 above: required status checks ARE enforced on `main` (admin-bypassable). A CI job registered as a required context is therefore a mechanism already proven to work on this repo.
 2. **It guards the harm, not just one cause.** Auto-retarget is only one route to "wrong thing merges into main". The guard catches a hand-picked wrong base too.
 3. **It would have caught #872 and #873.** Disabling auto-delete would have prevented the retarget, but nothing would have stopped a manually mis-based PR.
 4. **It is version-controlled and reviewable** — it lives in `.github/workflows/`, is visible in diffs, and cannot be silently toggled off in a settings pane.
@@ -503,11 +594,116 @@ Reasoning — it is the only option that satisfies all four constraints:
 **Considered and NOT recommended:**
 
 - **Disable "automatically delete head branches."** Directly prevents this trigger, but has wide blast radius for a narrow problem: the banked post-merge cleanup sequence explicitly relies on the auto-prune (`git branch -D` is documented as correct *because* the remote ref is already gone). Turning it off litters the remote with every merged feature branch and invalidates a documented rule. It also still permits a manually mis-based PR.
-- **Branch protection on `main`.** Unavailable — not platform-enforced on the current plan. This is already recorded doctrine.
+- ~~**Branch protection on `main`.** Unavailable — not platform-enforced on the current plan. This is already recorded doctrine.~~ **WRONG — corrected 2026-07-27 (CORRECTION 2 above).** Protection exists (`lint-and-build` + `functions-tests` required, `enforce_admins: false`). It is not a *substitute* here — required status checks cannot constrain which head branch targets `main` — but it is the mechanism through which the recommended guard would be enforced.
 - **Change the repo default branch to `staging`.** Genuinely elegant: auto-retarget would then send orphans to `staging`, the correct destination, and new PRs would default correctly. Rejected as *primary* because it is a silent, wide-reaching setting change (clone defaults, new-PR defaults, and anything keying off the default branch) to fix a problem a guard addresses head-on. Worth revisiting as a **supplement** if the dispatcher wants belt-and-braces.
-- **Runbook step: recreate `staging` immediately post-promotion.** Cheap and worth doing regardless, but it is process, not enforcement — and this failure has already recurred once under process-only handling. Pair it with the guard; do not rely on it alone.
+- ~~**Runbook step: recreate `staging` immediately post-promotion.**~~ **PROMOTED TO PRIMARY — 2026-07-27 (CORRECTION 1 above).** No longer filed under "considered and not recommended". `git push origin main:staging` immediately after every promotion merge is now the first-line fix: available today, zero cost, no settings change, no approval needed. It is still process rather than enforcement — pair it with the guard, do not rely on it alone — but with the deletion now confirmed on #860, #874 and #877, leaving the window open until a guard ships is the worse trade.
 
 **Do not change repo settings from this session** — flagged for the dispatcher. The CI guard is the only item here that lands as a normal reviewable PR.
+
+---
+
+## Planner activity types — follow-ups banked 2026-07-27
+
+Banked from the PR that added the nine hardcoded activity types (`PROP`, `PAPER`, `COLL`, `DEL`, `SEM`, `TRADE`, `MTG`, `TRAIN`, `ADMIN`). All five were surfaced during that work, ruled OUT of its scope by the dispatcher, and recorded here so the next author starts at build rather than at discovery.
+
+### 1. MEDIUM — restore the VIOLET calls hue (Track J conformance)
+
+The nine new types were assigned tone by **border style, not hue**: neutral SOLID = counts toward selling activity (`PC`, `SC`, `SEM`, `TRADE`), neutral DASHED = does not (`PROP`, `PAPER`, `COLL`, `DEL`, `MTG`, `TRAIN`, `ADMIN`, `FREE`). That extends the convention already shipping, and is deliberate — see the in-source comment in `plannerTone.js`.
+
+It was *not* the first choice. The canonical mockups colour the calls family **violet**, and the app diverged with a reason recorded in `plannerTone.js`'s header comment:
+
+> "The repo ships no violet token, so the handoff's violet 'call' hue maps to the neutral family (documented divergence)."
+
+**That reason is now FALSE.** Everything needed to restore it is already in the repo:
+
+- **The token ships, at exact DS parity, both themes.** `src/index.css:155-157` (light) and `:386-388` (dark) define `--ink-channels: 90 63 160` → `#5A3FA0` / `--color-ink-tint: #f0ecff`, and dark `169 149 224` → `#A995E0` / `rgba(169,149,224,0.14)`. Compare `docs/design-system/tokens/app.css:55` and `:124` — `--inkAccent:#5A3FA0; --inkAccentTint:#F0ECFF` and `--inkAccent:#A995E0; --inkAccentTint:rgba(169,149,224,0.14)`. Identical.
+- **No Tailwind utility exposes it — a genuine name collision.** `tailwind.config.js:39-48` maps the `ink.*` scale to the TEXT tokens (`--text-channels` / `--text-muted-channels` / `--text-faint-channels` / `--ink-dim-channels`). `text-ink` is body text app-wide. The violet needs ONE new colour key; it cannot be reached today without inline styles, which the UI rules forbid.
+- **Zero current consumers.** Grepping `src/` for `--color-ink` / `--color-ink-tint` / `ink-channels` returns only the definition lines. It is a dead token.
+- **AA is NOT a blocker — already computed at chip size.** Violet on its own tint: **6.84:1** light; **4.88:1** dark (composited over `--color-surface` `#252019`). Both clear AA-normal.
+
+**Scope when built:** `PC`, `SC`, `SEM`, `TRADE` change **together** (they are one family — that is the durable decision this PR locked; hue is the variable). Correct the now-false `plannerTone.js` header comment in the same change — it was deliberately left uncorrected here so the fix and the comment land together. **FIRST verify whether any test or smoke asserts `PC`/`SC` chip classes**, because that would break silently: `smoke-planner-activity-types.mjs` reads `borderStyle` per `data-type` (style-agnostic, safe), but the unit tests were not audited for class-level assertions.
+
+Because the solid/dashed encoding is semantic and independent of hue, restoring violet **sharpens** the distinction rather than changing its meaning — SEM/TRADE inherit the calls hue automatically via `TYPE_TONE`.
+
+### 2. LOW — planner duration reporting (the data is already there)
+
+`durationMin` is a **required, rules-validated** contract field on every appointment (`plannerService.js` `clampDuration`, 1–720; `firestore.rules` `d.durationMin is int && d.durationMin > 0 && d.durationMin <= 720`, inside the `hasAll` floor, in BOTH `validApptWrite` and `validTemplateWrite`). Every one of the nine new types carries it like any other appointment.
+
+**Nothing anywhere sums it.** There is no per-type, per-day, or per-week duration total on any surface. So "how much time did I spend on paperwork / collections / admin this week" — the question the nine types exist to answer — is **capturable today but not reportable**. This is a pure reporting build; no schema change, no rules change, no migration. That is the whole reason it is LOW rather than blocking.
+
+### 3. LOW — type-taxonomy collisions deferred by hardcoding
+
+Two name collisions are **accepted, not accidental** — consequences of hardcoding the agent tier now and unifying with the manager tier later:
+
+- **`MTG` (agent, "Branch meeting") vs `UNIT` (manager, "Unit meeting").** Different concepts, similar names, and they will coexist in one enum when the manager codes land. Source for the manager side: `docs/design-system/screens-v2/agencytrack-planner-handoff/2-manager-planner/mockups/planner-manager-personal.jsx:27` (`RCODE.UNIT`).
+- **`PERS` (manager block code) vs `FREE` + `freeBlockLabel: 'Personal'`.** The same concept reachable two ways. This PR deliberately left `FREE` and `FREE_BLOCK_LABELS` untouched for backward compatibility, so the duplication is created only when `PERS` arrives. Source: `planner-manager-personal.jsx:483`.
+
+Resolve both when the manager recruiting/coaching codes (`RC`, `RI`, `RSEM`, `ONE`, `UNIT`, `JCI`) are built — not before, since the right answer depends on whether the two tiers share one enum.
+
+### 4. LOW — `SALE` absent from the authority's agent picker
+
+The design authority's agent booking sheet renders `['PC','SC','AI','FFI','CI']` under prospect mode — **`SALE` is not in it** (`docs/design-system/proposals/planner-scheduler-v2/mockups/planner-mobile-a.jsx:333`, `planner-desktop-screens.jsx:414`). The shipped app has always included `SALE` in its picker.
+
+**Pre-existing divergence — NOT introduced by the activity-types work**, which preserved `SALE` in the Prospect group exactly as it shipped. Recorded so it is not later misattributed to that PR. Needs a product call (is booking a "Sale" as a future appointment meaningful, or is a sale only ever an outcome?) before any code change.
+
+### 5. LOW — SEM/TRADE read differently to an agent and to their manager
+
+Surfaced by the reviewer pass on #878. Two sets answer two genuinely different questions, and each is correct in isolation:
+
+| Set | Question | Members |
+|---|---|---|
+| `SELLING_TYPE_KEYS` (`plannerService.js`) | "does it count as selling **activity**?" | `PC SC AI FFI CI SALE` **`SEM TRADE`** |
+| `SEEDS_DAILY_CAPTURE` (`planner.helpers.js`) | "does it seed a Daily Capture **field**?" | `PC SC AI FFI CI SALE` |
+
+The delta is `SEM`/`TRADE`. Consequence: **the same kept seminar counts toward the manager's "N selling booked this week" but not toward the agent's own "N kept appointments today."** Neither number is wrong for its own purpose — a seminar *is* prospecting activity, and it *does* carry nothing into Daily Capture — but the two roles get different signals about the same event, with no affordance explaining why.
+
+Not a bug and deliberately not reconciled: collapsing the sets would break one of the two purposes. **Settle when types become tenant-configurable**, since that work has to decide whether "counts as activity" and "seeds a field" are one axis or two — at which point this asymmetry is either formalised (and surfaced in the UI) or removed. Verified during review that neither set is used where the other belongs: `isSellingType` has exactly one consumer (`TeamPlannerPanel:154`), `SEEDS_DAILY_CAPTURE` exactly one (`planner.helpers:480`).
+
+### 6. MEDIUM — `assertLegHygiene` never asserts on `networkFailures` (every smoke, not just this one)
+
+Found while diagnosing the first post-deploy run of `smoke-planner-activity-types.mjs`. `assertLegHygiene` (`scripts/verification/vh/vh-helpers.mjs`) checks exactly two things:
+
+1. `prodRequests` — zero production traffic, and
+2. unallowlisted **console errors**.
+
+It does **not** look at `capture.networkFailures` at all. Those are collected by `captureConsoleAndNetwork` and *printed* by `formatCaptureReport`, but nothing ever fails on them. So **a failed network call is visible in the log and invisible to the gate** — across every smoke in the suite, not just this one.
+
+Concretely, that run reported `hygiene: console-clean + zero prod requests` **PASS** while the capture showed two `net::ERR_ABORTED` entries. Both turned out benign (see below), but the point stands: hygiene passing is not evidence that network calls succeeded, and it is easy to read it as though it were.
+
+**Calibration banked from the same run — `ERR_ABORTED` in this codebase is usually teardown, and that is now *proven*, not assumed.** The Firestore **Write** channel showed `ERR_ABORTED`, and an Admin-SDK read confirmed the document it was writing **persisted correctly**. So an aborted channel in these captures is demonstrably compatible with a fully successful operation. The second abort, on the `resolveSalesManagerUid` callable, is the same class: it is fired from a dashboard-mount effect and **every call site wraps it in `.catch(() => null)`** (`AgentDashboard.jsx:476`, `useMyProduction.js:67`, `GoalsPanel.jsx:469`/`1094`), so it degrades to `smUid = null` by design and the goal hierarchy still loads. `ERR_ABORTED` is a client-side cancellation status — a genuine Cloud Function failure returns an HTTP error with a body, not an abort.
+
+**Why this is MEDIUM rather than LOW:** the `.catch(() => null)` that makes the callable non-fatal also makes a *real* failure of it silent — no console error, so hygiene stays green and the smoke cannot tell "aborted at teardown" from "failed every time". Today that is masked by the fact that `smUid` is optional.
+
+**Scope when built:** decide deliberately what `networkFailures` should gate on — a blanket assert would fail every smoke on teardown aborts, so it needs an allowlist (navigation-time aborts on long-lived Firestore channels, `_vercel` insights off-platform) plus a hard failure for anything else, ideally with the request URL in the message. Do it once in `assertLegHygiene` so all smokes inherit it.
+
+### 7. LOW — mutating planner smokes leave residue by design; no self-teardown
+
+Raised by CodeRabbit on the activity-types PR (#878) against `smoke-planner-activity-types.mjs`: the ADMIN sentinel it books survives the run, because the sweeper is a **pre-run** prerequisite rather than a teardown.
+
+**Not fixed there, deliberately** — it is a property of **all seven** planner smokes, not that one. The established repo pattern is: reserve a slot band, document the residue, and rely on the unconditional pre-run `sweep-nonfixture-appointments.mjs --apply` (see `smoke-planner-week-nav.mjs`, which leaves a 7:45 PM sentinel on exactly this contract). Two constraints make an in-smoke teardown a genuine design change rather than a quick fix:
+
+1. **The planner UI exposes no delete affordance at all** — that is design-authority-mandated ("Cancelled & postponed stay on record — nothing is deleted"). A browser smoke therefore *cannot* clean up through the UI; cancelling only flips status, the doc remains.
+2. Deleting would require **Admin SDK access from inside a browser smoke**, which none of the seven currently has. That is a new pattern, and it should be introduced once as a shared teardown helper, not bolted onto whichever smoke a reviewer happened to read.
+
+**Scope when built:** add an Admin-SDK teardown helper (mirroring `sweep-nonfixture-appointments.mjs`'s query) callable from a smoke's `finally`, and adopt it across all seven planner smokes so the residue contract becomes "self-cleaning" uniformly rather than per-file. Low severity because the residue is non-selling and provably cannot move any counter this PR touches — but it does accumulate until the next sweep.
+
+### 8. LOW — two divergent planner design-authority trees, never diffed
+
+The repo carries **two** planner mockup trees that disagree:
+
+| Tree | Status |
+|---|---|
+| `docs/design-system/proposals/planner-scheduler-v2/` | **Uncatalogued** — `DESIGN-FOLDER-CATALOG.md` contains zero references to `proposals/`. Used as authority by PR #875. |
+| `docs/design-system/screens-v2/agencytrack-planner-handoff/{1-agent-planner,2-manager-planner}/` | Named as THE planner handoff — catalog `:92`, `:93`, `:44`. |
+
+Known divergences (found while verifying, not exhaustive):
+
+- **`ACT_CODE`.** `proposals/.../planner-shared.jsx:15-16` carries 13 codes (the 7 + `RC`, `RI`, `RS`, `O2O`, `TEAM`, `JOINT`). `screens-v2/.../1-agent-planner/.../planner-shared.jsx:15` carries **only the 7**. The manager tree puts the extras in a *different* map, `RCODE`, with *different* keys (`RC`, `RI`, `RSEM`, `ONE`, `UNIT`, `JCI`).
+- **Stream hues.** `proposals/.../planner-shared.jsx:35-42` comments "recruiting = gold family, management/team = accent + neutral". The manager tree's `streamStyle` (`planner-manager-personal.jsx:15-17`) assigns **coach = gold, recruit = accent** — the opposite pairing.
+
+**Dispatcher ruling 2026-07-27:** `screens-v2/agencytrack-planner-handoff/` wins for screen design, tone, taxonomy and picker structure; `proposals/planner-scheduler-v2/` is **not discredited** — it is the E1–E5 enhancement SPEC (feature behaviour), which is why #875 correctly used it. Different purpose, not different quality. **Record that distinction whenever either tree is cited; it will recur.**
+
+A file-by-file diff of the two trees was explicitly ruled unnecessary for that PR and is banked here for whoever unifies them.
 
 ---
 

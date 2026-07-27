@@ -275,3 +275,88 @@ allowlists · Daily Capture / WAR / Master Sheet / Meeting Mode field changes
 (recon confirmed those surfaces do not consume planner types at all).
 
 END OF BRIEF
+
+---
+
+# AMENDMENT — 2026-07-27 (Phase 0 rulings)
+
+Phase 0 verification found that **2 of the 6 design-authority claims above are wrong**, and one of the dispatcher's own rulings rested on an unverified premise. All were resolved by dispatcher ruling before any code was written. The brief body above is left unedited; this amendment supersedes it where they conflict.
+
+## RULING 1 — Design authority
+
+**`docs/design-system/screens-v2/agencytrack-planner-handoff/` WINS for this track.** Decisive: the project's canon statement ("the current `docs/design-system/screens-v2` mockups + redesign-addendum are CANONICAL design intent") plus `DESIGN-FOLDER-CATALOG.md:92-93`.
+
+`proposals/planner-scheduler-v2/` is **NOT discredited** — it is the **E1–E5 enhancement SPEC** (feature behaviour), which is why PR #875 correctly used it. Different purpose:
+
+| Tree | Governs |
+|---|---|
+| `screens-v2/agencytrack-planner-handoff/` | screen design, tone, taxonomy, picker structure |
+| `proposals/planner-scheduler-v2/` | E1–E5 feature behaviour |
+
+**This distinction will recur — cite it whenever either tree is used.**
+
+### Correction to Phase-0 finding 4 (do NOT act on it)
+
+The brief claimed `ACT_CODE` carries `RC`, `RI`, `RS`, `O2O`, `TEAM`, `JOINT`. That is true **only** of the `proposals/` copy (`planner-shared.jsx:15-16`). Under Ruling 1 the correct reading is:
+
+- `screens-v2/.../1-agent-planner/.../planner-shared.jsx:15` — `ACT_CODE` holds **only the shipped 7**.
+- The extended codes live in a **different map, `RCODE`** (`2-manager-planner/.../planner-manager-personal.jsx:22-29`), with keys `RC`, `RI`, **`RSEM`, `ONE`, `UNIT`, `JCI`** — wrong map name and 4 of 6 wrong keys in the brief.
+
+**Affects nothing this track builds** (manager codes are out of scope). Corrected for the record only.
+
+### Phase-0 findings 2, 3, 5, 6 — VERIFIED as written
+
+- **2** — agent sheet Prospect / Free-block toggle: `proposals/.../planner-mobile-a.jsx:272-273`, `planner-desktop-screens.jsx:387-388`; chip row `['Training','Company seminar','Tradeshow','Prospecting time','Personal']` at `:304` / `:401`, exact match to shipped `FREE_BLOCK_LABELS`.
+- **3** — manager four modes + `TRAIN`/`SEM`/`TRADE`/`PERS` + the "first-class options" rationale: `planner-manager-personal.jsx:457-487`, block types at `:483`, rationale at `:451-454`.
+- **5** — dotted mono or short words.
+- **6** — authority is **silent** on proposal writing, application paperwork, premium collection, policy delivery, admin work, and an agent-side branch meeting, across BOTH trees. The only raw-grep hits are incidental (a recruiting-candidate note "Contracting paperwork started"; "collection" = Firestore collections; "admin" = tenant-admin scope exclusions).
+
+## RULING 2 — §5 TONE IS WITHDRAWN AND RESTATED
+
+§5 of the brief is void. Its restatement was itself corrected mid-flight:
+
+**The dispatcher's first restatement asserted "coloured = selling, neutral = not" as a description of the shipped system. That was wrong and was retracted** — `PC`/`SC` are selling types and render **neutral** (`plannerTone.js:23-24`, byte-identical to `FREE` except `FREE` adds `border-dashed`). The premise was asserted without verification; the STOP that caught it was correct.
+
+Streams are a **manager** concept (`sell`/`coach`/`recruit`) and none of the nine is a stream, so the brief's transposed hue claim (it had coach/recruit swapped versus `streamStyle` at `planner-manager-personal.jsx:15-17`) is **moot** — not fixed, dissolved.
+
+### The rule actually built — OPTION A
+
+The real distinction was already in the shipped map: **`FREE` is neutral DASHED; `PC`/`SC` are neutral SOLID.**
+
+> **TONE ENCODES WHETHER IT COUNTS. LABEL ENCODES WHAT IT IS.**
+
+| Border | Meaning | Types |
+|---|---|---|
+| neutral **SOLID** | counts toward selling activity | `PC`, `SC`, `SEM`, `TRADE` |
+| neutral **DASHED** | does not count | `PROP`, `PAPER`, `COLL`, `DEL`, `MTG`, `TRAIN`, `ADMIN`, `FREE` |
+
+**No new hue is introduced.** This extends the shipped `FREE` convention rather than inventing a system. Recorded in an in-source comment on `plannerTone.js` so it is not later mistaken for an oversight, and stated in the PR body.
+
+**Tone does NOT follow picker groups.** `SEM`/`TRADE` sit in the **Block** picker group with **solid** (counting) tone — deliberate and informative. Grouping answers "where does the agent find it"; the border answers "does it count".
+
+**The durable decision is FAMILY MEMBERSHIP, not hue.** `SEM`/`TRADE` belong to the **calls family**. If violet is later restored to that family they inherit it automatically and the distinction sharpens; this map's semantics do not change.
+
+### Violet restoration — OUT OF SCOPE, banked MEDIUM
+
+Banked as a Track J conformance FU in `docs/FOLLOW_UPS.md` § Planner activity types, with the full finding set (token ships at exact DS parity both themes; no Tailwind utility exposes it — `ink.*` maps to text tokens, one new colour key needed; zero consumers; AA verified 6.84:1 light / 4.88:1 dark; scope = `PC`+`SC`+`SEM`+`TRADE` together; correct the stale `plannerTone.js` header comment; **first** check whether any test or smoke asserts `PC`/`SC` chip classes).
+
+## Collateral hazards — ACCEPTED, banked LOW, not resolved
+
+`MTG` vs manager `UNIT`; `PERS` vs `FREE`+`Personal`. Both are known consequences of hardcoding now and unifying later. Noted in the PR body, banked in FOLLOW_UPS.
+
+`SALE` absent from the authority's agent picker: pre-existing shipped-vs-authority divergence, **not** created here. Banked LOW; the shipped picker is unchanged.
+
+The `proposals/` vs `screens-v2/` file-by-file diff is **not** needed for this track (Ruling 1 settles it; different artefact classes). Banked LOW for whoever unifies the trees.
+
+## Implementation deviation from §2 (documented under Rule 9, no scope change)
+
+§2 specifies a single exported selling set in `plannerService.js` used by **both** counter fixes. Site A (`TeamPlannerPanel`) consumes exactly that (`SELLING_TYPE_KEYS` / `isSellingType`).
+
+Site B (`planner.helpers.js` `deriveSeedFromKept`) does **not**, for two reasons:
+
+1. **Import cycle.** `plannerService` imports `recurrence.helpers`, which imports `planner.helpers`. Importing `plannerService` into `planner.helpers` would close a three-module cycle that does not exist today.
+2. **Different question.** `SELLING_TYPE_KEYS` answers "does it count as selling activity" (it includes `SEM`/`TRADE`). Site B's figure labels the **carry-to-Daily-Capture** CTA, and §2 itself says it "must reflect what is actually being carried" — a kept seminar carries nothing. Site B therefore uses a locally-derived `SEEDS_DAILY_CAPTURE` (`Object.keys(PLAN_TO_DAILY_FIELD)` ∪ `SALE`), which satisfies §2's stated rationale more literally than the shared set would.
+
+`PLAN_TO_DAILY_FIELD` is unchanged, per §6.
+
+END OF AMENDMENT
