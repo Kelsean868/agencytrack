@@ -23,7 +23,7 @@
 | Track K Phase 2 — narrative `branchPlans` (new collection, HUMAN-MERGE) + PPTX + manpower setter + per-branch `branchGoals` keying (banked 2026-07-21, #864 close) | HIGH | Track K | — | ~288 |
 | Track K Phase 3 — classification quotas + real monthly quota model (banked 2026-07-21, #864 close) | MEDIUM | Track K | — | ~288 |
 | Track K — seeded Net-vs-Gross integration assertion (unit-only today; needs seeded foil branch) (banked 2026-07-21, #864 close) | MEDIUM | Track K | — | ~288 |
-| BIG ONE — the real planner-completion track (E1–E5) is UNBUILT (banked 2026-07-17, promotion sess... | HIGH | — | — | 477 |
+| ~~BIG ONE — the real planner-completion track (E1–E5) is UNBUILT~~ — RESOLVED, Run A Tier 2 #866, promoted #874 `219cf324`, 2026-07-26 (E1-E5 verified live in `src/components/planner/` against source) | — | — | — | 511 |
 | Register the six Run-9 standing smokes in SMOKES.md (banked 2026-07-17, promotion session, MEDIUM... | MEDIUM | — | — | 439 |
 | Appointment template count cap is client-side only — hardening candidate (banked 2026-07-17, prom... | LOW | — | — | 461 |
 | Panel keydown stale-closure exposure under rapid state churn (banked 2026-07-17, promotion sessio... | LOW | — | — | 469 |
@@ -40,6 +40,13 @@
 | Persistency threshold sites left un-consolidated — 3 deliberate exclusions PLUS 6 still-hand-rolled 0.80/0.90/90 literals that the "one home" sweep missed (correct scale, no live defect) (banked 2026-07-26, extended 2026-07-27, PR #871) | LOW | — | — | 495 |
 | Money smoke — A3 is VACUOUS (passes on the broken build too; the fixture agents can never carry a persistency flag) and A2 is an unscoped `.some()`. Needs a fixture agent, not just an assertion fix (banked 2026-07-27, reviewer pass on PR #871, found by executing the negative control) | MEDIUM | — | — | ~560 |
 | Tier 3c mechanical conformance — carried from Run A (hero-card worklist · motion pop-in wiring · handoff-vs-screens-v2 · gold-contrast usages) | LOW | — | — | 4348 |
+| Master Sheet STATUS filter chips — scoped NOT built (3 new reads + 6-band taxonomy); LEVEL stays blocked (banked Run A Tier 3b) | MEDIUM | — | — | 4329 |
+| Tier 3c mechanical conformance — carried from Run A (hero-card worklist · motion pop-in wiring · ~~handoff-vs-screens-v2 RESOLVED 2026-07-25~~ · gold-contrast usages) | LOW | — | — | 4402 |
+| ⚠ **PRE-MERGE ON #871** — Persistency threshold: three surfaces, three literals; reconcile to one canonical constant before #871 merges (money-adjacent) | MEDIUM | — | — | 4460 |
+| Manager report on-screen views — v2 port never happened (rows 24–27 PARTIAL); **Wave-3 M-item**, REDESIGN-class, diff-lock at Phase 0 | MEDIUM | Track J | — | 4415 |
+| Design-conformance 2026-07-25 — F1 MasterSheet error card has no Retry (**Wave 2 candidate**) · F2 Sidebar inline style · F3 bare transition-all ×3 · F4 RunningLateSheet target ratio | MEDIUM | Track J | — | 4493 |
+| Rule 21 DETERMINISTIC-SKIP class — path_filters stays untouched; docs-only reviewer skips satisfied by dispatcher full-diff review. **Check Greptile .md coverage at onboarding** | LOW | — | — | 4535 |
+| CONTEXT.md `Current main HEAD` drift (`d0e74c12` recorded vs `60dbf1c2` actual; #864 took no Rule 16 fill) — **post-promotion fill item** | LOW | — | — | 4568 |
 | Commission layout — unverified two-column claim; needs a REAL mockup into screens-v2 first (banked Run A Tier 3b) | LOW | — | — | 4312 |
 | E4 cross-time prospect notes history — `(agentId, prospectId)` composite index + deploy (rules-permitted per D3); this-week scope shipped Run A Tier 2 E4 | MEDIUM | — | — | 4246 |
 | `featureFlags` allowlist is a deliberate triple-copy — consolidate when flags become config-drive... | LOW | — | — | 298 |
@@ -83,7 +90,7 @@
 | GoalsPanel SelfTab unmount loses in-progress PolicyLedgerPanel entries (banked PR #653, 2026-06-1... | MEDIUM | — | — | 1426 |
 | Onboarding identity — CF-based agentNumber uniqueness check (banked PR #646, 2026-06-15, MEDIUM) | MEDIUM | — | — | 1473 |
 | Gamification — leaderboard reset-model decision (banked 2026-06-10, MEDIUM pre-scale) | MEDIUM | — | — | 1876 |
-| Daily Capture anchor strip — targets + dials chip (MEDIUM, banked 2026-06-02 from Daily Capture v... | MEDIUM | — | — | 2157 |
+| Daily Capture anchor strip — RE-SCOPED 2026-07-25 into Half A (dials chip, SMALL) + Half B (per-agent manager-set targets, MEDIUM) | MEDIUM | — | — | 2237 |
 | Daily Capture reporting-mode governance subsystem (MEDIUM, banked 2026-06-02 from Daily Capture v... | MEDIUM | — | — | 2178 |
 | Social-channel inclusion in canonical aggregations — should `namesFromSocial` count toward app-wi... | MEDIUM | — | — | 2250 |
 | Wizard v2 — Decision-A SUGGESTED-atom + goal-seeding (MEDIUM, banked 2026-06-01 from Wizard v2 PR... | MEDIUM | — | — | 2302 |
@@ -426,6 +433,32 @@ PR #861 fixed two CI-only failures in `AgentAwardsPanel.test.jsx` (from the Run-
 **Third instance — and the first PROVEN in CI (2026-07-25, PR #868).** `DailyCaptureV2.test.jsx > daily streak celebration (integration) > "does NOT fire below the milestone (short streak)"` failed in CI with `AssertionError: expected "spy" to be called at least once` (361 files passed, 1 failed) on a **verification-only PR** that touched three `scripts/verification/*.mjs` smokes + two docs — i.e. nothing the unit suite loads, so the change cannot be causal. It passed locally in isolation AND as the full 48-test file, the identical file had passed CI on #867 an hour earlier, and **re-running the failed CI job with zero code change went green** — the cleanest flake proof available. So the family is now three tests across two files (`AgentPlannerPanel` A5-bulk + A2-`e`, `DailyCaptureV2` streak-celebration), all pattern 2.
 
 **Why this now matters more than "just re-run it":** three flakes in one session means a red CI on this repo no longer reliably distinguishes a real regression from scheduling noise, which erodes the merge gate itself. When audited, prefer the per-test timeout (`it(name, fn, ms)`) on these specific multi-render-cycle integration tests over raising the global `asyncUtilTimeout` for all ~5600 tests, and consider recording each confirmed flake here so the pattern-2 population is enumerable rather than anecdotal. (Distinct from the Windows *concurrent-run* worker-contention flake below, which is about launching two `vitest run` processes at once; this is a single run's internal parallelism.)
+
+---
+
+### AUDIT PERFORMED 2026-07-25 — branch `chore/pattern2-flake-audit` (PR into `staging`)
+
+The four named tests were characterized individually and fixed individually. **The audit found the family is not one mechanism but three**, and it **corrects the remedy this FU previously prescribed for one of them**.
+
+**Fourth data point (and the correction).** `DailyCaptureV2 > "does NOT fire below the milestone (short streak)"` — the CI failure on #868 — is **not** governed by the shared global budget at all. Every `waitFor(() => expect(onClose).toHaveBeenCalled())` in that file passed **`{ timeout: 2000 }`**, which overrides the CI-tuned `asyncUtilTimeout: 5000` (`src/test-setup.js`) **DOWNWARD**. The close path is `DailyCaptureV2.jsx:822` — `if (!celebrating) setTimeout(() => onClose?.(), 600)` — so ~600ms of the 2000ms budget is a fixed timer before the assertion can ever pass; under parallel-load contention the render+save+timer chain overruns 2s while 3s of the intended budget goes unused. **This means the previously-prescribed remedy — a wider per-test `it(name, fn, ms)` timeout — would NOT have fixed this one**: the inner `waitFor` caps itself regardless of the test-level budget. Fix applied: drop the self-narrowing override at all 5 sites in that file so they inherit the global. That RAISES nothing; it stops those tests opting OUT of a budget already tuned for CI.
+
+**Confirmed population of the self-narrowing family: at least TWO of the five DailyCaptureV2 sites have now fired in CI** — `"does NOT fire below the milestone (short streak)"` (#868) and `"does NOT re-fire when the 5-day milestone marker is already set"` (#871, at 2042ms — see the confirmation note below). All five are fixed together here precisely because they are the same one-line defect repeated.
+
+**Suite-wide sweep for the same self-narrowing shape** (`waitFor` options below the 5000ms global): exactly **6 sites**, 5 of them the DailyCaptureV2 ones now fixed. The residue is **`CompliancePanel.nudge.test.jsx:59` — `const CHIP_WAIT = { timeout: 3000 }`**, same shape, same latent exposure, not yet a confirmed flake. Left unchanged (out of this branch's scope); flagged here so it is not re-discovered from scratch if it fires.
+
+**A2 `e` shortcut — genuinely a different mechanism, now fixed at the mechanism.** Failure signature was an **assertion at ~31ms, not a timeout**, so no timeout change could have helped. The document keydown listener (`AgentPlannerPanel.jsx:1086-1161`) has a large dep array including `resolveAppt` / `moveCardFocus`, so it tears down and re-subscribes as appointment data lands. The test did `await waitFor(card in document)` — which resolves on the FIRST commit containing the card — then a bare `.focus()` and a **synchronous** `fireEvent.keyDown(document, …)`. Against a not-yet-re-subscribed (stale-closure) listener, `resolveAppt(id)` returns null and the handler bails silently. Fix: `await userEvent.keyboard('e')` — async and act-wrapped, so pending passive effects flush before dispatch. This is what makes the neighbouring `Enter` test immune, and it is a **determinism** fix, not a longer wait.
+
+**A5 bulk pair — confirmed pattern 2, fixed per-test.** Both are single long multi-render chains inside **vitest's default 5000ms per-test timeout, which happens to equal the global `asyncUtilTimeout`** — so no individual `waitFor` needs to exceed its own budget for the TEST to time out. The cap-gate test renders 201 cards then shift-range-selects across them; the undo test chains **five** sequential `waitFor`s. Both widened to `it(…, 20000)`. Assertions byte-identical.
+
+**Every fix was negative-controlled** — production behaviour was broken and each test confirmed to FAIL, proving no fix was made vacuous: `e` handler early-return → `e` test fails · `canConfirm` cap gate removed (`BulkCancelConfirmSheet.jsx:25`) → cap-gate test fails · bulk undo inverse writing `updates` instead of `priors` → undo test fails · `onClose` close-path disabled → streak test fails. All four breaks reverted; `git diff` clean after each.
+
+**Pattern-1 re-audit (the FU's own Action item) — result: NO recurrence found.** Scanned every `.test.jsx` for the PR #861 shape (a bare DOM query immediately following a call-count-only `waitFor`). All ~30 hits are one of: an assertion on the **mock object** (`toHaveBeenCalledWith`, `.mock.calls[…]`) — structurally immune, no re-render dependency; or a **negative** DOM assertion (`.not.toBeInTheDocument()` / `.toBeNull()`) gated by a precondition that makes the wait meaningful (e.g. the streak tests' `onClose` only fires when `!celebrating`, so the wait itself proves the branch). **No positive "expect element present" DOM query racing a re-render was found outside the already-fixed #861 sites.** *Limits of this claim (falsification):* the scan was a 2-line-lookahead regex over `.test.jsx` only, so a bare DOM query 3+ lines after the `waitFor`, or one reached via a helper function, would not have been caught. Overturned by any future CI-only failure whose error is "unable to find element" immediately after a call-count `waitFor`.
+
+**Not done / weaknesses to carry forward:**
+
+1. **None of the four was reproduced locally on demand.** They are load-dependent by nature; the fixes rest on mechanism analysis plus negative controls, not on a red-to-green reproduction. Real confirmation is the absence of recurrence across subsequent CI runs.
+2. **✅ DIAGNOSIS CONFIRMED IN CI, INDEPENDENTLY, HOURS LATER — with a timing smoking gun.** While this branch was in review, a **sibling** PR (`post-run-a/master-sheet-status`, #871 — cut from the same `staging` tip and containing NONE of these fixes) went red in CI on `DailyCaptureV2.test.jsx > daily streak celebration (integration) > "does NOT re-fire when the 5-day milestone marker is already set"`, **failing at 2042ms**. That test is line ~721 — **one of the five `{ timeout: 2000 }` sites this branch fixes**, and 2042ms is the 2000ms cap plus one poll interval. Its PR changed only Master Sheet code the daily-capture suite never loads, so the change cannot be causal. This upgrades the self-narrowing-`waitFor` diagnosis from *reasoned* to *empirically confirmed*, identifies a **fifth** member of the family, and demonstrates the fix on this branch would have prevented it. It also strongly suggests the unidentified local failure in note 3 was this same test.
+3. **⚠ A local full-suite failure was observed on this branch and its identity was lost.** The first post-fix full-suite run reported `1 failed | 5644 passed (5645)` — one failing test whose name was **not captured** (the run's output was filtered before the failure block was read; a procedural mistake, not a tooling limit). Two subsequent full runs of the identical tree were **364/364 files, 5645/5645 green, exit 0**. So the observed rate on this branch is 1 failure in 3 full runs, source unknown. It is NOT one of the four fixed tests' known signatures being re-observed — that cannot be asserted either way without the name. **Whoever next runs a full suite should capture stdout to a file** (`npx vitest run > run.log 2>&1`) so the next occurrence is identifiable and can be added to the enumeration this FU is trying to build. The pattern-2 population should therefore be treated as **≥4, not exactly 4**.
 
 ---
 
@@ -813,6 +846,23 @@ A general delete affordance for appointments was proposed during the planner wee
 Churn patterns are manager coaching signal, so erasing them destroys the data the surface exists to produce. **The mechanics already exist** if this is ever revisited — `plannerService.deleteAppointment` and the owner-scoped rules arm are both live, consumed today ONLY by Ctrl+Z undo-create and the bulk-create inverse — so no rules change would be needed; the question is purely product, not technical.
 
 **Action:** none unless a genuine mis-keyed-entry need emerges from pilot use. If it does, scope it narrowly against that authority — e.g. creator-only, same-session, before any status change — rather than as a general delete. Do not treat the existing rules arm as licence to add one.
+## ~~BIG ONE — the real planner-completion track (E1–E5) is UNBUILT~~ — RESOLVED (Run A Tier 2, PR #866 `f22c57f8`, promoted to prod via #874 `219cf324`, 2026-07-26)
+
+**RESOLVED.** All five features this entry called unbuilt shipped in Run A Tier 2 and are now live in production, verified directly against source at `219cf324` (not asserted from memory — Rule 17):
+
+- **E1** — desktop 3-day + week views → `PlannerDesktopBoard.jsx` (Day/3-day/Week + Follow-ups toggle, `useIsDesktop` matchMedia-branched)
+- **E2** — drag-drop reschedule → `PlannerDesktopBoard.jsx` drag handlers, wired to the existing `postponeWithRebook` (no propagation reimplement, as this entry required)
+- **E3** — running-late cascade → `RunningLateSheet.jsx` + gap-smart `computeLateCascade`, batches through the existing `bulkUpdateAppointments`
+- **E4** — per-appointment notes thread → `NotesThread.jsx` + `addAppointmentNote` (`arrayUnion`); ships at this-week prospect-history scope, cross-time scope banked separately (see the E4 cross-time FU)
+- **E5** — collapsed-rail space adaptation → desktop drops the `max-w-3xl` cap (`max-w-none`) so the board reclaims sidebar space
+
+Six standing acceptance smokes are registered in `scripts/verification/SMOKES.md` (`smoke-e1-desktop-board.mjs`, `smoke-e2-drag-reschedule.mjs`, `smoke-e3-running-late.mjs`, `smoke-e4-notes-thread.mjs`, plus the six Run-9 smokes re-pinned to the mobile 900×800 layer with a single-column drift guard). Three small residuals from this build are separately banked (LOW/MEDIUM, listed just above this entry): desktop shift-click range-select keys off mobile view state, Arrow ←/→ view-cycling is inert on the board, and E4's cross-time (pre-this-week) prospect-notes history needs a composite index + deploy.
+
+**Why this sat stale:** the entry asserts *absence*, and nothing about building the feature forces an edit to a doc that merely claims it doesn't exist yet. Banked as a process point, not a new FU: entries of the shape "X is unbuilt" should be re-verified against source at the start of any session that touches X, not trusted from a prior banking date.
+
+_Original entry, preserved for the record:_
+
+~~Run 9 built six features (A1–A5 undo/redo/shortcuts/conflicts/templates/bulk + F3 series propagation) that are real, live in prod (`d0e74c12`), and valuable — but they are **not** the "planner and scheduler v2" redesign named in `docs/design-system/proposals/planner-scheduler-v2/README.md`. That README's actual spec is **five different features**, all still unbuilt: E1 desktop 3-day + week views · E2 drag-drop reschedule (wires to the existing `postponeWithRebook`) · E3 running-late cascade (gap-smart, prospect-notify) · E4 per-appointment notes thread (travels with `prospectId`) · E5 collapsed-rail space adaptation. This is the genuine planner-completion track, still ahead, and now sits on the `seriesId` + reschedule-in-place foundation Run 9 just laid. **Action:** needs its own recon-then-build session sourced from `docs/design-system/proposals/planner-scheduler-v2/README.md` directly — do not reuse Run 9's brief or progress docs as the starting point, they describe different, already-shipped work.~~
 
 ---
 
@@ -2598,6 +2648,55 @@ The `contrast.test.js` matrices are the corrected truth in the interim. **No pro
 
 ## Daily Capture anchor strip — targets + dials chip (MEDIUM, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #426)
 
+> **RE-SCOPED 2026-07-25** (Wave 1 item 2, dispatcher-approved). Verified against `origin/staging` @ `8a1a17e4`.
+> The original body's premise that **`dials` is a new schema field is STALE** — `dials` has since shipped
+> as a live daily field. What remains splits into **two narrow, independent halves**, sized very
+> differently. Original body preserved below the split for the drift trail (Rule 11).
+
+**Status:** both halves genuinely open, for narrower reasons than originally banked. The v2 anchor strip
+partially shipped in `858be570` (2.10) — a `DailyAnchorStrip` and a pace state now exist — but neither
+half of *this* FU was closed by it.
+
+### Half A — Dials chip on the WTD count strip (SMALL, self-contained)
+
+The strip is still the original four chips. `dials` data is already there; only the chip is missing.
+
+| Evidence | Finding |
+|---|---|
+| `src/components/daily/DailyCaptureV2.helpers.js:40-48` | `deriveCountStripChips` returns **exactly** `{appr, ffi, ci, apps}` — four keys, no dials. This is the strip's sole data source. |
+| `src/components/daily/DailyCaptureV2.jsx:969` | `<StepperRow label="Dials (total calls)" name="dials" …>` — **the field is live and captured.** |
+| `src/components/daily/DailyCaptureV2.helpers.js:55` | `daily.dials` already maps to the `coldCalls` bucket and feeds `computePoints` — **already in the aggregate/points path.** |
+| `src/components/daily/DailyCaptureV2.jsx:431` | A `Dials` row already renders — but only in `SundayConfirmView`, a **different surface** from the WTD strip. |
+
+**Scope:** add a `dials` key to `deriveCountStripChips` (summing `dials` across `weekDocs`, same idiom as the
+existing four), render the fifth chip, update `DailyCaptureV2.test.jsx` + the helpers test. **No schema
+change, no aggregator change, no rules change, no new read** — the data is already loaded. Steps 2, 3, 5
+and 6 of the original scope below are **obsolete**: the field, the aggregator roll-up and the write path
+all already exist and are rules-accepted in production.
+
+### Half B — Per-agent manager-set targets (MEDIUM, schema + write-path decision)
+
+A target *is* rendered — but it is the tenant-wide company floor, never a per-agent manager-set value.
+This is the actual head-of-sales ask and the substantive half.
+
+| Evidence | Finding |
+|---|---|
+| `src/components/daily/DailyCaptureV2.jsx:695-697` | `weeklyApiTarget = Number(weeklyFloors?.api ?? DEFAULT_WEEKLY_ACTIVITY_FLOORS.api) \|\| 0`, with the in-source comment *"company floor, same source HistoryTab uses. Code default (4800) applies until floors load."* |
+| `src/components/daily/DailyCaptureV2.jsx:299-330` | `DailyAnchorStrip` consumes it — renders `wtdApi / weeklyTarget`, `"{pct}% of weekly target"` / `"Weekly target cleared"`. |
+| `src/components/daily/DailyCaptureV2.jsx:705-715` | `weeklyPointsFloor` → `weekToDateTarget` → `computePaceState` — the pace mechanic reads the **same** company floor. |
+| — | **No per-agent target read exists anywhere in the component.** |
+
+**Scope:** decide the target source in the existing goals hierarchy (agent commitment → unit → branch →
+company floor) and thread it through as an override on `weeklyFloors`, so the company floor stays the
+documented fallback rather than the only value. Original scope item 1 stands; the rest is now a read-path
++ provenance question (which layer won, and does the strip say so), not a schema-capture question.
+
+**Why the split matters:** Half A is a few lines behind a pure helper with full test coverage; Half B is a
+goals-hierarchy decision with provenance-display implications. Bundling them under one MEDIUM FU has
+already caused the whole item to read as blocked on the head-of-sales decision when half of it is not.
+
+<details><summary>Original body (2026-06-02) — preserved for the drift trail</summary>
+
 **Status:** Slice 1 shipped the counts-only WTD strip (APPR/FFI/CI/APPS, no targets, no dials). Slice 2 evolves it into a manager-set-target experience and adds a new daily dials/calls field.
 
 **Background.** The v2 mockup originally drew a richer anchor strip with target chips and a DIALS chip. Slice 1 deliberately deferred both because (a) `target*` writes belong to manager-set goals (`unitGoals` / `branchGoals`) and the dispatcher decision is head-of-sales; (b) the existing daily entry has no `dials`/`calls` field, so capturing daily dials is a *new schema field* — not a port. Slice 1's reduced strip ships the counts mechanic; Slice 2 layers governance + the new field.
@@ -2611,7 +2710,9 @@ The `contrast.test.js` matrices are the corrected truth in the interim. **No pro
 5. New tests: target-derivation rules + dials field round-trip + aggregator regression with the new field.
 6. Verify Firestore rules accept the new field on writes (additive — likely no rules change required, but confirm during Phase 0).
 
-**Cross-reference:** `src/components/daily/DailyCaptureV2.jsx` `CountStrip` block; `src/lib/schema/dailyActivity.js`; `src/lib/schema/dailyActivity.aggregator.js`; `docs/design/daily-capture-slice-1-build.html` annotations (the build annotation explicitly notes targets/dials were carved out of Slice 1).
+</details>
+
+**Cross-reference:** `src/components/daily/DailyCaptureV2.jsx` `CountStrip` block; `src/components/daily/DailyCaptureV2.helpers.js`; `src/lib/schema/dailyActivity.js`; `src/lib/schema/dailyActivity.aggregator.js`; `docs/design/daily-capture-slice-1-build.html` annotations. Ledger row 6: `docs/track-j-port-ledger.md` § Row-6 verdict.
 
 ---
 
@@ -4749,11 +4850,181 @@ The wave is keyed on `[tenantId, role, unitId, branchId]`, NOT `selectedWeek` �
 
 ## Tier 3c mechanical conformance — carried from Run A (banked 2026-07-25, LOW–MEDIUM)
 
-Four mechanical items ruled in-scope for Run A Tier 3c but **not started** — the run ended at the Tier 3 PR with budget spent on 3a/3b. Carried verbatim so nothing is lost:
+Four mechanical items ruled in-scope for Run A Tier 3c but **not started** — the run ended at the Tier 3 PR with budget spent on 3a/3b. Carried verbatim so nothing is lost. **Item 3 is now RESOLVED (2026-07-25); items 1, 2 and 4 remain open.**
 
-1. **Run-3 hero-card conformance worklist** (MEDIUM) — the hero-card items from the Run-3 worklist.
-2. **Motion pop-in wiring to the first live panels** (LOW) — the motion kit already exists (`screen-enter` / `--dur-*` / `--ease-*` in `src/index.css`, plus `useCountUp`); this is **wiring only**, no new kit.
-3. **`design_handoff_v2_app/mockups/` vs `screens-v2/` reconciliation** (LOW, docs-level) — `screens-v2` + `redesign-addendum` remain canonical; this is a docs reconciliation, not a port.
-4. **Gold-contrast usage fixes** (LOW) — fix **usages only**, NEVER token values (`--color-gold` / `--color-gold-ink` are canonical in `app.css` v2; see the gold-split rule in CLAUDE.md).
+1. **Run-3 hero-card conformance worklist** (MEDIUM) — the hero-card items from the Run-3 worklist. **OPEN.**
+2. **Motion pop-in wiring to the first live panels** (LOW) — the motion kit already exists (`screen-enter` / `--dur-*` / `--ease-*` in `src/index.css`, plus `useCountUp`); this is **wiring only**, no new kit. **OPEN**, and now partly scoped: [`docs/audits/design-conformance-2026-07-25.md`](audits/design-conformance-2026-07-25.md) finding **F3** gives three concrete cited sites using bare `transition-all` with no duration token (`MasterSheet.jsx:565`, `MasterSheet.jsx:810`, `PlannerDesktopBoard.jsx:140`).
+3. ~~**`design_handoff_v2_app/mockups/` vs `screens-v2/` reconciliation** (LOW, docs-level)~~ — **✅ RESOLVED 2026-07-25** by the ledger rebuild ([`docs/track-j-port-ledger.md`](track-j-port-ledger.md)). The two folders were diffed by byte-set: **34 files are common** (the canonical spine, intact), **11 exist only at `screens-v2/` top level** (handoffs, DS-audit plans, the logo/motion lab, the marketing site, spec docs — none are app screens), and **7 exist only in `design_handoff_v2_app/mockups/`**. Of those 7: **3 absorb as new spine rows 35–37** (Planner & Scheduler v2 · Planner — Manager Surfaces · Money Needs Merged), **2 consolidate into row 37** as companions rather than screens (`Money Needs - 3 Options.html` = options-compare ideation; `Money Needs Merged - Build Notes.html` = build companion), and **2 are not screens at all** (`AgencyTrack On-Track Engine.html` = absorbed cross-cutting logic in `utils/planVariance.js` / `lib/monthlyVarianceChips.js` / `SuggestedWeekCard` / `StandardDetail`; `AgencyTrack Loop Prototype.html` = ideation, backed by `loop-proto.jsx`). Spine is now **37 rows**, not 34 — and not the 39 the Wave-1 brief projected, because consolidating the Money-Needs family as instructed necessarily yields 37. `screens-v2` + `redesign-addendum` remain canonical for design intent; the ledger is canonical for port status.
+4. **Gold-contrast usage fixes** (LOW) — fix **usages only**, NEVER token values (`--color-gold` / `--color-gold-ink` are canonical in `app.css` v2; see the gold-split rule in CLAUDE.md). **OPEN**, with scope narrowed: the 2026-07-25 conformance pass found **zero raw hex** across the entire Run A touch-set and confirmed the only gold usage there resolves through `--color-gold` (finding C1 + D2), so the remaining scope lies outside the planner / Commission / shell / ChampionsPanel / Master Sheet surfaces.
 
 **Note for whoever picks these up:** verify each item's design authority IS in-repo before building — Run A STOPPED two items (Commission two-column layout; R-11 login stamp) precisely because the claimed authority did not exist in any tracked document or the rules surface permitted no path.
+
+---
+
+## Manager report on-screen views — v2 port never happened (MEDIUM, banked 2026-07-25, Wave-1 item 1 → **Wave-3 M-item**)
+
+**Ruling:** ledger rows 24–27 confirmed **PARTIAL** (dispatcher, 2026-07-25). This FU is the remaining work.
+
+**What was mis-recorded.** The prior ledger rated rows 24–27 PORTED on commit `9c08c40b`'s *subject line*
+(*"2.5 refined Agent PDF + Branch/Unit PDFs + per-view Download + honest DataSourceBadge"*). Reading the
+diff shows 2.5 gave the three **on-screen** views only four things (`BranchManagerProductionView` +88,
+`UnitManagerProductionView` +77, `ProductionReportTab` +11):
+
+1. a `Download report` button + busy state,
+2. an inline `role="alert"` PDF-error card,
+3. `DataSourceBadge source="estimated"` → derived via `deriveProductionDataSource`,
+4. two pass-through props on `ProductionReportTab`.
+
+The commit's bulk (`AgentReportDocument.jsx` ±1709, new `ManagerReportDocument.jsx` +398,
+`managerReportModel.js` +72, `agentReportPdfModel.js` +282) is **react-pdf document work** — a HEX-only
+surface explicitly exempt from the v2 token system. **No layout, IA, composition or visual restyle.**
+
+**Corroborating history (Rule 17).** `git log origin/staging -- <view>` shows these two components have
+**never** had a dedicated Track-J port:
+
+| Commit | Nature |
+|---|---|
+| `783c07aa` (#72, 2026-05-09) | Original Track-E build — **pre-v2**; still the structural basis today |
+| `b10a3801` · `e0ac355f` · `3601341f` · `0773af3a` | Systemic sweeps (contrast, axe, glass, gold) — app-wide |
+| `2ab27cc0` · `d3178618` · `15f724ec` · `cd58da5e` | Systemic tier-0 sweeps (states, dense tables, motion) |
+| `9c08c40b` | The above — PDF + download + badge |
+| `c2d9516c` | UM Unit-Aggregate hero parity with BM (Run3 item D) |
+
+These rows received the **token layer**, not the redesign — exactly the pattern
+`docs/audits/trackj-recon-2026-07-07.md` predicted app-wide.
+
+**Scope.** On-screen composition/IA port for `src/components/productionReport/BranchManagerProductionView.jsx`
+and `UnitManagerProductionView.jsx` against `AgencyTrack Production Report v2.html` /
+`AgencyTrack Manager Reports.html` / `AgencyTrack Branch Report.html`. Row 27's **agent** variant
+(#397/#403, `AgentProductionView.jsx`) is genuinely ported and is **out of scope**.
+
+**Before dispatching:** run the mockup-vs-component diff-lock at Phase 0. Per the 07-07 recon's
+classification these are REDESIGN-class, not TRUE-RESTYLE — the brief must permit composition and
+computation changes. Do not dispatch this as a green-channel restyle.
+
+**Cross-reference:** `docs/track-j-port-ledger.md` § The 9c08c40b verdict.
+
+---
+
+## Persistency threshold — three surfaces, three literals (MEDIUM, banked 2026-07-25) — ⚠ **PRE-MERGE CONDITION ON PR #871**
+
+> **Dispatcher ruling 2026-07-25 (Wave 1 item 3): reconcile to ONE canonical constant BEFORE PR #871 merges.**
+> This is a **blocking pre-merge condition**, not a follow-on. #871's STATUS chips band agents on a
+> persistency floor; merging it while three different literals exist would ship a fourth consumer of an
+> already-ambiguous number on a **money-adjacent** surface.
+
+**The divergence** (surfaced by PR #871's own residuals section):
+
+| Surface | Literal | Units |
+|---|---|---|
+| `src/components/manager/MeetingMode.helpers.js` | `< 80` | percentage |
+| `getCompanyMinimums` default (`goalsService`) | `persistency: 90` | percentage |
+| `src/lib/persistency/calculations.js` | `PERS_FLOOR = 0.80` / `PERS_GATE = 0.90` | **decimal fraction** |
+
+`calculations.js` is the canonical export (used by `financingBonusEngine.js` gate comparisons and the K4
+adapter's no-normalization design) and **decimal is the stored shape** — see the related FU on the
+CLAUDE.md `persistency, // parseFloat, 0–100` annotation being wrong, which is the same defect at
+documentation level.
+
+**To close:** pick `PERS_FLOOR` / `PERS_GATE` from `calculations.js` as the single source, repoint the
+other two consumers, and add a drift-guard test (negative-control verified) that fails if a bare `80` /
+`90` persistency literal reappears. Money-adjacent ⇒ **value-level tests required on both sides of each
+boundary**, per the same standard #871 applied to its own band boundaries.
+
+**Note:** PR #871 also edits `docs/FOLLOW_UPS.md` on its own branch. Expect a merge conflict in this file
+between #871 and #873; resolve by keeping **both** — #871's derivation-contract notes and this pre-merge
+condition are complementary, not duplicative.
+
+**Cross-reference:** `docs/track-j-port-ledger.md` § Row-19 detail.
+
+---
+
+## Design-conformance findings — 2026-07-25 audit (F1 MEDIUM · F2–F4 LOW, banked 2026-07-25)
+
+Source: [`docs/audits/design-conformance-2026-07-25.md`](audits/design-conformance-2026-07-25.md) §5.
+Findings were RECORDED, not fixed, per the Wave-1 brief. Dispositions below are the dispatcher's
+(2026-07-25).
+
+### F1 — Master Sheet error card has no Retry (**MEDIUM · Wave 2 candidate**)
+
+`src/components/manager/MasterSheet.jsx:657-658` renders the load-failure state as a plain
+`bg-danger/10` card with the message and **no button, no `onRetry`**. Redesign-addendum §1 requires
+*"a persistent inline card **with Retry**"*; a manager whose YTD read fails must currently reload the
+page to recover. The other three states are correct: loading (`:754`), actionable empty (`:765-773`),
+live footer count (`:836`).
+
+**To close:** adopt the compliant idiom already shipped in `src/components/gamification/Leaderboard.jsx`
+(`retryKey` + stable callback) — same pattern as the Run-6 four-states holdout sweep. Low-risk, and the
+surface already has the state plumbing.
+
+### F2 — `Sidebar.jsx` static inline style (LOW)
+
+`src/components/shell/Sidebar.jsx:391` — a static inline `style` object
+(`display: 'block', borderRadius: 7, flexShrink: 0`) on the brand `<img>`. Genuine CLAUDE.md
+"NO inline styles" violation: this is **static styling**, so the dense-table-geometry carve-out
+(audit §3 D1) does not apply. Replace with Tailwind utilities.
+
+### F3 — Bare `transition-all`, no duration token (LOW)
+
+Three sites inherit Tailwind's default 150ms instead of the Nexus `--dur-1/2/3` scale (addendum §2):
+`MasterSheet.jsx:565` (filter toggle knob) · `MasterSheet.jsx:810` (row-action button) ·
+`PlannerDesktopBoard.jsx:140`. Invisible today; a drift vector the moment the tokens are retuned.
+**Folds naturally into Tier 3c item 2 (motion pop-in wiring)** — these are its first three cited sites.
+
+### F4 — `RunningLateSheet` target-size ratio (LOW, **investigate before fixing**)
+
+`src/components/planner/RunningLateSheet.jsx` (E3, net-new) has 7 buttons vs 4 target-class hits — the
+lowest ratio in the Run A touch-set. Likely shortfall: the +10/+20/+30 push presets and the what-moves
+radios. **The count is a proxy, not a proof** (audit §6 U3) — it cannot see targets sized via a shared
+constant or a parent class. Read the render path or run an axe target-size pass **before** assuming a
+defect exists.
+
+---
+
+## Rule 21 — DETERMINISTIC-SKIP disposition class (banked 2026-07-25, dispatcher ruling)
+
+**Ruling (Wave 1 item 5):** `.coderabbit.yaml` `path_filters` **stays UNTOUCHED** — the standing
+allowlist-flip lesson applies (widening a filter to buy coverage has bitten before; the cost lands on
+every future PR, not just the one that motivated it).
+
+**Rule 21 gains a third disposition class.** The rule as written contemplates a reviewer being *present*
+(dispositions: IMPLEMENT / ALREADY-RESOLVED / OBSOLETE / DISAGREE / OUT-OF-SCOPE) or *absent* (noted
+explicitly, never read as approval). A **config-deterministic skip** is neither:
+
+> **DETERMINISTIC-SKIP.** When a configured reviewer returns a *deterministic, config-driven* skip on a
+> docs-only diff (e.g. CodeRabbit's "Review skipped — path filters" with the excluded files enumerated),
+> the Rule 21 gate is **satisfied by dispatcher full-diff review**, recorded in the PR body. This is
+> distinct from "absent": absence is unexplained silence and must wait; a deterministic skip is a stated,
+> reproducible outcome with a Run ID, and waiting on it can never change the result.
+>
+> Conditions: (a) the diff is docs-only, (b) the reviewer's skip message enumerates the excluded files and
+> they match the diff exactly, (c) the PR body records the dispositions **and** that dispatcher review was
+> performed. Anything touching `src/`, `functions/`, or `firestore.rules` is **never** eligible.
+
+**Applied first on PR #873** (this ledger PR): CodeRabbit skipped all 4 files via its Markdown exclusion
+(Run ID `577e6ebc-d5e5-4fe0-b822-d1ba33c0ea65`); Gemini OBSOLETE (consumer version sunset). Dispatcher
+review satisfied on the report's evidence, 2026-07-25.
+
+**Open onboarding action:** **check Greptile's Markdown coverage** when it is onboarded as a reviewer — if
+Greptile reviews `.md`, docs-only PRs regain automated coverage and this class becomes a narrow fallback
+rather than the standing path for every docs PR. Re-evaluate the ruling at that point.
+
+**Candidate for codifying into `CLAUDE.md` § Methodology Rule 21** as a separate small docs PR (this file
+tracks it as a follow-up only, per the same convention used for the validity-SHA convention).
+
+---
+
+## CONTEXT.md `Current main HEAD` drift (LOW, banked 2026-07-25) — **post-promotion fill item**
+
+`docs/CONTEXT.md` records `Current main HEAD` as `d0e74c12` (PR #862, Run 9 promotion). Actual
+`origin/main` at 2026-07-25 is **`60dbf1c2`** — two commits ahead: #864 (Track K Phase 1 Branch Manager
+Strategic Plan dashboard, a *work* PR that should have taken a Rule 16 fill) and the Run A brief landing.
+
+**Ruling (Wave 1 item 7): fold into the post-promotion fill, do not fix standalone.** The staging→main
+promotion will move `Current main HEAD` again, so a fix now would be immediately stale. The fill commit
+after promotion must reconcile **both** the promotion squash **and** the missed #864 fill, per Rule 16(c)
+(a program is not complete until one consolidated fill covers every merged work PR).
+
+**Watch item:** #864 merging without a fill is the same failure mode as the 2026-06-06 Gemini-harvest
+9-PR drift that motivated Rule 16(c). Worth checking at promotion whether anything else landed on `main`
+unfilled in the same window.

@@ -507,12 +507,28 @@ describe('keyboard shortcuts (Run 9 A2)', () => {
     expect(screen.getByTestId('churn-dialog')).toBeInTheDocument();
   });
 
+  // FLAKE FIX (commit→effect-resubscribe race — see FOLLOW_UPS § CI-vs-local
+  // test-timing gap). This test used a bare `.focus()` + synchronous
+  // `pressKey('e')` immediately after a `waitFor` that resolves on the FIRST
+  // commit containing the card. The document keydown listener lives in an
+  // effect whose deps include `resolveAppt` / `moveCardFocus`, so it is torn
+  // down and re-subscribed as the appointment data lands. Firing `e` against a
+  // not-yet-re-subscribed (stale-closure) listener makes `resolveAppt(id)`
+  // return null and the handler bail — the observed failure was an ASSERTION at
+  // ~31ms, not a timeout, which is why a wider timeout would not have fixed it.
+  //
+  // The deterministic fix is to await the listener being live rather than to
+  // wait longer: `userEvent.keyboard` is async and act-wrapped, so pending
+  // passive effects flush before the key is dispatched. This mirrors the
+  // neighbouring Enter test, which has never flaked for exactly this reason.
+  // The key still reaches the document listener by bubbling from the focused
+  // card (a <button>, so `isFormFieldTarget` does not bail).
   it('e opens Edit for the focused (non-series) appointment card', async () => {
     getAgentWeek.mockResolvedValue(TWO_APPTS);
     render(<AgentPlannerPanel {...BASE_PROPS} />);
     await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
     screen.getByTestId('appt-card-a1').focus();
-    pressKey('e');
+    await userEvent.keyboard('e');
     expect(screen.getByTestId('appointment-sheet')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Edit appointment' })).toBeInTheDocument();
   });
@@ -737,6 +753,14 @@ describe('bulk operations (Run 9 A5)', () => {
     ]));
   });
 
+  // FLAKE FIX (pattern 2 — shared budget under parallel-load contention).
+  // This test renders 201 appointment cards and then chains a shift-range
+  // selection and a bulk write across them. Vitest's per-test timeout defaults
+  // to 5000ms — the SAME budget as the global `asyncUtilTimeout` — so a test
+  // whose whole body is one long multi-render chain can blow the TEST timeout
+  // under CI/local parallel load without any single `waitFor` exceeding its
+  // own budget. Widened per-test (the `it` third argument) rather than raising
+  // the global budget for all ~5700 tests. Assertions are untouched.
   it('R6 cap gate: selecting >200 requires the acknowledgement tick before the confirm button enables', async () => {
     const MANY = Array.from({ length: 201 }, (_, i) => ({
       id: `b${i}`,
@@ -768,8 +792,13 @@ describe('bulk operations (Run 9 A5)', () => {
     fireEvent.click(apply);
     await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledTimes(1));
     expect(bulkUpdateAppointments.mock.calls[0][1]).toHaveLength(201);
-  });
+  }, 20000);
 
+  // FLAKE FIX (pattern 2 — same mechanism as the cap-gate test above). This one
+  // chains FIVE sequential `waitFor`s (bulk applied → undo write → undo toast →
+  // redo write) inside a single 5000ms per-test budget. Each waitFor is well
+  // inside its own budget; their SUM is what overruns under load. Widened
+  // per-test; assertions are untouched.
   it("pushes ONE undo entry per bulk op — Ctrl+Z writes back each doc's PRIOR values", async () => {
     bulkUpdateAppointments.mockResolvedValue({ count: 2 });
     getAgentWeek.mockResolvedValue([
@@ -804,7 +833,7 @@ describe('bulk operations (Run 9 A5)', () => {
       { id: 'a1', patch: { status: 'cancelled' } },
       { id: 'a2', patch: { status: 'cancelled' } },
     ]));
-  });
+  }, 20000);
 
   it("undo after a bulk move writes back each doc's PRIOR date", async () => {
     bulkUpdateAppointments.mockResolvedValue({ count: 1 });
