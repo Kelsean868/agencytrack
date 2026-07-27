@@ -38,7 +38,7 @@
 | R-11 login-stamp + All Users LAST-activity — REQUIRES firestore.rules edit (hasOnly allowlist or manager-readable location); bundle with the E4 index FU as a "rules + indexes attended window" | HIGH | — | — | 4282 |
 | Master Sheet STATUS — a failed/denied persistency read is indistinguishable from "no data on file"; the abstention copy tells managers to enter data that may already exist (banked 2026-07-27, reviewer pass on PR #871) | MEDIUM | — | — | ~530 |
 | Persistency threshold sites left un-consolidated — 3 deliberate exclusions PLUS 6 still-hand-rolled 0.80/0.90/90 literals that the "one home" sweep missed (correct scale, no live defect) (banked 2026-07-26, extended 2026-07-27, PR #871) | LOW | — | — | 495 |
-| Money smoke assertion A2 (branch scorecard) is an unscoped `.some()` over every `%` in the scene — fixture-dependent, unlike row-scoped B1–B4 (banked 2026-07-27, reviewer pass on PR #871) | LOW | — | — | ~560 |
+| Money smoke — A3 is VACUOUS (passes on the broken build too; the fixture agents can never carry a persistency flag) and A2 is an unscoped `.some()`. Needs a fixture agent, not just an assertion fix (banked 2026-07-27, reviewer pass on PR #871, found by executing the negative control) | MEDIUM | — | — | ~560 |
 | Tier 3c mechanical conformance — carried from Run A (hero-card worklist · motion pop-in wiring · handoff-vs-screens-v2 · gold-contrast usages) | LOW | — | — | 4348 |
 | Commission layout — unverified two-column claim; needs a REAL mockup into screens-v2 first (banked Run A Tier 3b) | LOW | — | — | 4312 |
 | E4 cross-time prospect notes history — `(agentId, prospectId)` composite index + deploy (rules-permitted per D3); this-week scope shipped Run A Tier 2 E4 | MEDIUM | — | — | 4246 |
@@ -545,7 +545,33 @@ All three land every otherwise-clean agent in `nodata`, and the inline note then
 
 ---
 
-## Money smoke — the branch-scorecard assertion (A2) is fixture-dependent, not scoped (banked 2026-07-27, reviewer pass on PR #871, LOW — verification hygiene)
+## Money smoke — A3 cannot fail; A2 is fixture-dependent (banked 2026-07-27, reviewer pass on PR #871, MEDIUM — verification hygiene, found by executing the negative control)
+
+### A3 is VACUOUS — the named guard for defect #2 does not guard it
+
+**Found by running the negative control, not by reading it.** With both original fixes reverted, `smoke-persistency-scale-money.mjs` reports `RESULT: FAIL (10)` — confirming the PR body's figure exactly. Of the three assertions that still PASS, one is hygiene (correct) and **two are `A3`, whose entire job is to catch defect #2: "every agent falsely flagged Persistency ↓".**
+
+Instrumented on the reverted build, the deck contains **no `classifyFlag` persistency reason at all**:
+
+```
+[diag] deck contains "below the 80% threshold": false
+[diag] reason context: ABSENT
+```
+
+Two independent reasons, both fixture properties:
+
+1. **`Staging Agent One` is pre-empted.** `classifyFlag` tests its arms in order — `report` → `floor` → `persistency`. The fixture agent has no submission for the week, so the `report` arm fires first (`"REPORT LATE · Week report not submitted."` on the Needs-attention and agent-run scenes) and the persistency arm is never reached, defect or no defect.
+2. **`Staging Agent Two` never appears on a flag-bearing scene.** They surface in exactly ONE scene — the campaign standings — where no flag is rendered.
+
+So A3 passes on the fixed build *and* on the broken build. It is not a weak assertion; it is a **non-assertion**, and the PR's "every fix is individually negative-controlled" claim does not hold for the `classifyFlag` half of defect #2 at the smoke layer.
+
+**Not an unguarded defect.** `MeetingMode.helpers.test.jsx` covers `classifyFlag` at the unit layer directly (healthy 0.94 not flagged · 0.72 flagged · exact 0.80/0.799 boundary), and those tests DO fail on the revert. The gap is smoke coverage, not total coverage.
+
+**Fix shape:** the fixture needs a third agent who (a) HAS filed the selected week, so the `report` arm cannot pre-empt, (b) clears ≥4 of the 8 activity floors, so the `floor` arm cannot pre-empt, and (c) carries a persistency record above 0.80. Then A3 becomes falsifiable. Requires a `seed-fixtures.mjs § A6` change, so it is a fixture PR, not a smoke-assertion PR.
+
+### A2 is fixture-dependent, not scoped
+
+`scripts/verification/smoke-persistency-scale-money.mjs` assertion **A2** scans *every* `\d{1,3}%` in the branch-scorecard scene and passes if **any** value lands in 85–95:
 
 `scripts/verification/smoke-persistency-scale-money.mjs` assertion **A2** scans *every* `\d{1,3}%` in the branch-scorecard scene and passes if **any** value lands in 85–95:
 
@@ -558,7 +584,9 @@ Every other money assertion in that file (B1–B4) is properly **row-scoped** �
 
 **Fix shape:** scope A2 to the PERSISTENCY column the way B1–B4 scope to the advisor row — anchor on the column header or a `data-testid` on the cell, then read the single value.
 
-**Not fixed in PR #871:** touching the smoke's own assertions during the same pass that re-runs it as evidence is circular; the fix should land separately and be re-negative-controlled on its own.
+**Not fixed in PR #871 (either item):** touching the smoke's own assertions during the same pass that re-runs it as evidence is circular; the fix should land separately and be re-negative-controlled on its own. A3 additionally needs a fixture change, which is its own blast radius.
+
+**Method note worth keeping.** A3's vacuity was invisible to a careful read of the assertion — it looks correctly written, and it is. It only surfaced by *executing* the negative control and asking why the count was 10 and not 12. Reading a negative control is not running one.
 
 ---
 
