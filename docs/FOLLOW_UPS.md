@@ -49,6 +49,7 @@
 | Run 8 banked follow-ups — carried forward, not yet dispatched (banked 2026-07-16, from `docs/fabl... | — | — | — | 351 |
 | Persistency v2 (NEW calc methodology, R-07) — Tatil-gated PROPOSAL, ATTENDED-ONLY (banked 2026-07... | HIGH | — | — | 369 |
 | CI-vs-local test-timing gap — Tier-0 error-state tests can pass locally 5x, fail in CI (banked 20... | MEDIUM | — | — | 384 |
+| Flake family scope — **PR #872's fix set is provably INCOMPLETE**; ≥3 further members named (MeetingMode ArrowRight, BranchesPanel Retry, the A2 `e` SERIES sibling) + 1 unnamed. DO NOT widen #872 — audit continues after it lands (banked 2026-07-26, PR #875 session) | MEDIUM | — | — | 384 |
 | Node 20 → Node 24 — CI deprecation now firing directly (checkout@v4/setup-node@v4), not only in f... | HIGH | — | 2026-10-30 | 397 |
 | Reconcile `design_handoff_v2_app/mockups/` (Downloads, Track J bundle) against `docs/design-syste... | MEDIUM | Track J | — | 405 |
 | Functions runtime + firebase-functions SDK upgrade — Node 20 EOL + SDK 4.9.0 → ≥5.1.0 (banked 202... | HIGH | — | — | 1191 |
@@ -428,6 +429,52 @@ PR #861 fixed two CI-only failures in `AgentAwardsPanel.test.jsx` (from the Run-
 
 ---
 
+## Flake family scope — PR #872's fix set is provably INCOMPLETE (banked 2026-07-26, PR #875 session, MEDIUM — test-infra audit, follow-on to #872)
+
+> **DO NOT WIDEN PR #872.** It is green and queued; re-opening it to chase these would stall a landed fix for an audit that is not finished. This entry is the *follow-on*: the audit continues **after** #872 lands, starting from the population below.
+
+**Claim, stated plainly: the four tests PR #872 fixes are not the whole family.** At least three further members were observed in a single session (2026-07-26, the planner week-nav track), two of them in files that session's diff never touched. #872's characterisation work (three mechanisms, not one) remains correct and valuable — it is the *population* that was under-counted, not the analysis.
+
+### Named population
+
+**Already fixed by #872 (four targets, each negative-controlled there):**
+
+1. `DailyCaptureV2 > daily streak celebration (integration) > "does NOT fire below the milestone (short streak)"` — self-narrowing `waitFor({timeout: 2000})`
+2. `AgentPlannerPanel > keyboard shortcuts (Run 9 A2) > "e opens Edit for the focused … card"` — commit→effect-resubscribe race
+3. `AgentPlannerPanel > bulk operations (Run 9 A5) > "R6 cap gate: selecting >200 …"` — per-test budget, 201-card render
+4. `AgentPlannerPanel > bulk operations (Run 9 A5) > "pushes ONE undo entry per bulk op — Ctrl+Z writes back each doc's PRIOR values"` — five chained `waitFor`s in one 5s budget
+
+**NOT covered by #872 — observed 2026-07-26:**
+
+5. `AgentPlannerPanel > keyboard shortcuts (Run 9 A2) > "e on a focused SERIES card raises the SeriesEditChoice scope sheet instead of editing directly"` — a **sibling of target 2, not the same test**. Both exercise the `e` shortcut; #872 fixes only the first. If target 2's mechanism is the resubscribe race, this one almost certainly shares it and wants the same `await userEvent.keyboard('e')` treatment. **Cheapest next step: check whether #872's fix generalises to it.**
+6. `MeetingMode > run-of-show > "ArrowRight advances from opening to the branch scorecard"` — failed at **5021ms** (timeout). `src/components/manager/`, an entirely different subsystem from the planner.
+7. `BranchesPanel > "the error alert has a wired Retry button that re-invokes the same load path"` (`src/components/admin/__tests__/BranchesPanel.test.jsx:121`, failing at `:133`) — failed **in CI**, with the DOM dump showing skeleton (`animate-pulse`) placeholders still mounted, i.e. the query ran before load resolved.
+8. **One unnamed member.** An earlier full-suite run in the same session showed exactly one failure that cleared before its name was captured. Recorded as unnamed rather than silently dropped — and as a process lesson: capture the failing test name *before* re-running, because a passing re-run destroys the evidence.
+
+### Shared signature
+
+- **~5020ms timeouts.** Members 4, 6 and the session's other timeout failures all landed at 5021–5023ms — Vitest's default 5s per-test budget, exhausted. (Member 2 is the documented exception: it fails at ~31ms on an assertion, which is why #872 concluded three mechanisms rather than one.)
+- **Non-deterministic, different test each run.** Three consecutive isolated runs of `AgentPlannerPanel.test.jsx` gave: 1 failure (member 4) → 73/73 → 73/73. Two consecutive full-suite runs gave: 2 failures (members 5 + 6) → 5746/5746.
+
+### Key evidence — why this is not the diff's fault
+
+**Members appear in files the triggering diff never touches.** This is the load-bearing observation:
+
+- member 7 failed CI on a commit whose diff was **four `.md` files** — nothing the unit suite loads, so the change cannot be causal (the same proof standard already banked for the #868 instance, where a re-run with zero code change went green — which is exactly what happened here too);
+- member 6 lives in `src/components/manager/`, which the planner week-nav diff does not touch at all.
+
+Causality was checked, not assumed, for the one member that *was* plausibly related: member 5 sits in the keydown effect whose dependency array that session modified. Ruled out — `useIsDesktop` returns a plain `useState` boolean and `matchMedia` is unstubbed in that describe, so the added dep is a constant `false` and cannot change re-subscription count.
+
+### Action
+
+After #872 lands: (a) re-run the full suite N×10 on both CI and a local machine, collecting every failing test name; (b) classify each against #872's three mechanisms; (c) check whether #872's fix for target 2 generalises to member 5; (d) name the unnamed member 8 or retire it. Do **not** raise the global `asyncUtilTimeout` — that was explicitly off the table in #872 and stays off.
+
+**Falsification (Rule 23):** overturned if, after #872 lands, a 10× full-suite run on both CI and local is clean — at which point members 5–8 were collateral of the four now-fixed tests rather than independent members, and this entry closes. Do not close it on a single green run; the family's defining property is that it passes most of the time.
+
+---
+
+---
+
 ## Node 20 → Node 24 — CI deprecation now firing directly, not only in functions deploy (banked 2026-07-16, HIGH, dated 2026-10-30)
 
 Previously tracked as a `functions/` Cloud Functions runtime deprecation only (Node 20 gen-1 decommission 2026-10-30 — see the existing dated entry above). **Escalation:** the Node 20 deprecation is now also firing in CI itself — GitHub Actions is forcing Node 24 on actions still targeting Node 20 (`actions/checkout@v4`, `actions/setup-node@v4` in `.github/workflows/ci.yml`, which explicitly pins `node-version: 20` for the actual `npm test`/`npm run build` steps). This is a second, earlier-arriving surface of the same underlying deadline — CI tooling deprecation typically precedes the hard runtime decommission. **Action:** raise priority on the runtime/SDK migration window (`functions/` Node 22 + `firebase-functions` SDK ≥5.1.0, already tracked as separate entries above) — the 2026-10-30 hard deadline is no longer purely a `functions/` deploy concern, it now has a visible CI-side symptom that will only get noisier as GitHub continues sunsetting Node-20-targeted action runtimes. Cross-reference: this file's existing "HARD DEADLINE — Node 20 gen-1 Cloud Functions runtime decommission" and "Functions runtime + SDK upgrade" entries — do not duplicate the migration plan here, this entry only banks the CI-side escalation signal.
@@ -544,17 +591,19 @@ The `staging` git branch was deleted by GitHub `deleteBranchOnMerge` on the Run 
 
 ---
 
-## Planner week-nav — external-review residue (banked 2026-07-26, PR #875 attended reviewer-only pass, LOW ×5)
+## Planner week-nav — external-review residue (banked 2026-07-26, PR #875 attended reviewer passes, MEDIUM ×1 · LOW ×5)
 
-Five findings from the external review of PR #875 that were dispositioned BANK rather than fix-before-merge. F1–F4 and F9 were fixed in-PR; these are the remainder. None is a data-integrity or security issue.
+Findings from the external review of PR #875 that were dispositioned BANK rather than fix-before-merge, across two attended reviewer passes. F1–F4 and F9 were fixed in-PR; these are the remainder. None is a data-integrity or security issue.
 
-- **F5 — desktop "Book" and the `n` shortcut prefill TODAY while another week is displayed.** `AgentPlannerPanel.jsx`, header Book button + the `n` branch: both use `openBook(view === 'today' ? today : weekStart)`. On desktop `view` is vestigial and permanently `'today'` (the mobile pills are never rendered), so the date is always today even when the board shows, say, Aug 2–8. The per-column `+` buttons are correct — they pass their own date. **Fix:** use `columnStart` (or `weekStart`) when `isDesktop`. Note this shares a root cause with the now-fixed F2: `view` is mobile-only state being read on the desktop path.
+- **F5 — desktop "Book" and the `n` shortcut prefill TODAY while another week is displayed. UPGRADED LOW → MEDIUM (reviewer pass #2).** `AgentPlannerPanel.jsx`, header Book button + the `n` branch: both use `openBook(view === 'today' ? today : weekStart)`. On desktop `view` is vestigial and permanently `'today'` (the mobile pills are never rendered), so the date is always today even when the board shows, say, Aug 2–8. The per-column `+` buttons are correct — they pass their own date. **Why the upgrade:** F2's fix (gating Arrow ←/→ on `!isDesktop`, since the keys drove the mobile-only `view` state and had no business touching the board) removed a side effect that had been accidentally masking this exact mismatch — pre-fix, an operator pressing an arrow key on the board would snap `anchorDate` home as a side effect, incidentally hiding how far Book/`n` could drift from the displayed week. With that masking gone, the prefill mismatch is now the FIRST thing an operator hits on any multi-day-navigated session, not a corner case. **Fix:** use `columnStart` (or `weekStart`) when `isDesktop`. Shares a root cause with the (now-fixed) F2: `view` is mobile-only state being read on the desktop path.
 - **F6 — `today` is captured once at mount; week navigation gives that staleness new teeth.** `const today = useMemo(() => getTodayTT(), [])`. In a long-lived session crossing midnight — and especially a Saturday→Sunday week rollover — `currentWeekStart` goes stale, so `isCurrentWeek` can be TRUE for **last** week: the Today snap-back hides itself while a non-current week is displayed, and the today+2 load arm re-enables for the wrong week. The staleness pre-dates this track (`todayAppts`, `seed`, `lateCandidate` all read it); week navigation adds the new failure modes. **Fix:** recompute `today` on the existing 60-second `nowTime` tick, or re-derive on visibility-change.
 - **F7 — "No appointments" and "+N postponed hidden" render together.** `PlannerDesktopBoard.jsx`: when every appointment in a day is postponed and the filter is on, the column shows both the empty state and the hidden-count note. Honest but self-contradictory. **Fix:** suppress the empty state when `hiddenCount > 0`, or reword to "No live appointments".
 - **F8 — `weekRangeLabel` never emits a year, and returns `''` on malformed input.** `planner.helpers.js`. With unlimited navigation, "Jan 4 – 10" is ambiguous once you are months out; the empty-string fallback also leaves the nav's `aria-live` region announcing nothing. **Fix:** append the year when it differs from `today`'s, and fall back to the raw ISO range rather than `''`.
 - **F10 — RESOLVED in-PR.** The dense-card "no status pill" assertion compared ancestor `textContent` (which includes the sr-only status line) and passed only because sr-only emits lowercase `scheduled` while the pill label is `Scheduled`. Tightened to leaf-node, case-insensitive comparison in the same commit as the F1–F4/F9 fixes. Recorded here because the *class* of defect — an assertion that passes for an accidental reason — is worth recognising elsewhere.
+- **F1 residual (reviewer pass #2, LOW) — the follow-ups badge gate uses the anchor, not a loaded-vs-viewed sentinel, so a snap-home transient can flash the inflated count for one load round-trip.** `isCurrentWeek = weekStart === currentWeekStart` (`AgentPlannerPanel.jsx:443`) is derived synchronously from `anchorDate`/`today` via `useMemo`, so it flips to `true` the instant `goToday()` fires. But `appts` — and therefore `followups`, which the badge reads — only updates once the async `getAgentWeek` call inside `load()` resolves and commits via `setAppts` (`AgentPlannerPanel.jsx:557,565`). In the gap between those two moments, the gate (`isCurrentWeek && followups.length > 0`) evaluates true against the STILL-STALE (navigated-away week's) `appts`, so the wrong, inflated count can flash for one render before the real data lands — the exact F1 bug the in-PR fix targeted, reintroduced transiently rather than persistently. **Fix:** replace the `isCurrentWeek` gate on the badge specifically with a `loadedWeekStart === currentWeekStart` sentinel — i.e., compare against the week the LOADED `appts` actually correspond to (set inside `load()`'s `.then()`, alongside `setAppts`), not merely the navigation anchor. The other `isCurrentWeek` consumers (load-window sizing, running-late banner, `columnStart`) are not affected — they either drive the load itself or are fine to key off the anchor.
+- **F4 test tightening (reviewer pass #2, LOW) — the a11y-marker test asserts differing `title` text, not differing glyphs.** `AppointmentCard.dense.test.jsx`'s `F4: cancelled and postponed are distinguishable WITHOUT colour` test asserts `getByTitle('Cancelled')` vs `getByTitle('Postponed — moved')` — it proves the `title` ATTRIBUTE string differs, not that the rendered marker itself differs, so a regression that kept both title strings but rendered the SAME icon for both statuses would pass undetected. **Fix:** assert on the rendered `<svg>`'s class instead. Verified against `node_modules/lucide-react/dist/esm/createLucideIcon.mjs`: every lucide-react icon's `Component` stamps its root `<svg>` with `lucide-${toKebabCase(iconName)}` via `mergeClasses`, so `<X>` renders `lucide-x` and `<ArrowRight>` renders `lucide-arrow-right` — asserting these two classes differ (e.g. `container.querySelector('svg').getAttribute('class')`) tests the actual visual distinction under test, not a proxy for it.
 
-**Falsification (Rule 23):** F5/F6 are overturned if `view` stops being read on the desktop path and `today` becomes reactive, respectively — at which point re-verify with the desktop-stubbed panel tests added for F9 rather than assuming.
+**Falsification (Rule 23):** F5/F6 are overturned if `view` stops being read on the desktop path and `today` becomes reactive, respectively — at which point re-verify with the desktop-stubbed panel tests added for F9 rather than assuming. F1-residual is overturned if the badge is re-verified live across a snap-home transition (real browser, not jsdom — the transient is timing-dependent) and no flash is observed even without the sentinel fix.
 
 ---
 
