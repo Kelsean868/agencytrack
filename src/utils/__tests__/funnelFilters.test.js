@@ -110,3 +110,84 @@ describe('funnelFilters — chip descriptors', () => {
     expect(chips[0].text).toBe('UNIT · GONE');
   });
 });
+
+// ── STATUS condition ────────────────────────────────────────────────────────
+// Rows carry a pre-derived `statusBand` (utils/funnelStatus.buildStatusMap).
+// These rows deliberately include one with NO band — the unavailable case.
+const BAND_ROWS = [
+  { id: 'ok',    unitId: 'unit-x', status: 'submitted', logged: true,  statusBand: 'ontrack' },
+  { id: 'slow',  unitId: 'unit-x', status: 'submitted', logged: true,  statusBand: 'pace' },
+  { id: 'low',   unitId: 'unit-y', status: 'submitted', logged: true,  statusBand: 'floor' },
+  { id: 'quiet', unitId: 'unit-y', status: 'draft',     logged: false, statusBand: 'quiet' },
+  { id: 'none',  unitId: 'unit-y', status: 'submitted', logged: true,  statusBand: null },
+];
+
+describe('funnelFilters — STATUS condition', () => {
+  it('the default carries an empty statuses list (neutral)', () => {
+    expect(DEFAULT_FUNNEL_FILTERS.statuses).toEqual([]);
+  });
+
+  it('an empty statuses list matches every row (including unbanded)', () => {
+    expect(applyFunnelFilters(BAND_ROWS, DEFAULT_FUNNEL_FILTERS)).toHaveLength(5);
+  });
+
+  it('filters to exactly the selected band', () => {
+    const out = applyFunnelFilters(BAND_ROWS, { ...DEFAULT_FUNNEL_FILTERS, statuses: ['floor'] });
+    expect(out.map((r) => r.id)).toEqual(['low']);
+  });
+
+  it('multiple bands are additive (OR within the family)', () => {
+    const out = applyFunnelFilters(BAND_ROWS, { ...DEFAULT_FUNNEL_FILTERS, statuses: ['floor', 'pace'] });
+    expect(out.map((r) => r.id)).toEqual(['slow', 'low']);
+  });
+
+  // NEGATIVE CONTROL — an unbanded row must never satisfy an active STATUS
+  // condition, for ANY band, including 'ontrack'.
+  it('a row with no statusBand is excluded by every band selection', () => {
+    for (const band of ['ontrack', 'pace', 'quiet', 'report', 'persistency', 'floor']) {
+      const out = applyFunnelFilters(BAND_ROWS, { ...DEFAULT_FUNNEL_FILTERS, statuses: [band] });
+      expect(out.some((r) => r.id === 'none')).toBe(false);
+    }
+  });
+
+  // NEGATIVE CONTROL — selecting a band nothing holds empties the table rather
+  // than silently falling back to "show everything".
+  it('a band no row holds yields an empty result', () => {
+    expect(applyFunnelFilters(BAND_ROWS, { ...DEFAULT_FUNNEL_FILTERS, statuses: ['persistency'] })).toEqual([]);
+  });
+
+  it('STATUS composes as AND with the other families', () => {
+    const out = applyFunnelFilters(BAND_ROWS, {
+      ...DEFAULT_FUNNEL_FILTERS, statuses: ['quiet', 'floor'], unit: 'unit-y', reports: ['draft'],
+    });
+    expect(out.map((r) => r.id)).toEqual(['quiet']);
+  });
+
+  it('matchesFunnelFilters is the single-row form of the same rule', () => {
+    const f = { ...DEFAULT_FUNNEL_FILTERS, statuses: ['pace'] };
+    expect(matchesFunnelFilters(BAND_ROWS[1], f)).toBe(true);
+    expect(matchesFunnelFilters(BAND_ROWS[0], f)).toBe(false);
+    expect(matchesFunnelFilters(BAND_ROWS[4], f)).toBe(false);
+  });
+
+  it('each selected band adds one to the active-condition count', () => {
+    expect(funnelFiltersCount(DEFAULT_FUNNEL_FILTERS)).toBe(0);
+    expect(funnelFiltersCount({ ...DEFAULT_FUNNEL_FILTERS, statuses: ['floor'] })).toBe(1);
+    expect(funnelFiltersCount({ ...DEFAULT_FUNNEL_FILTERS, statuses: ['floor', 'pace'] })).toBe(2);
+    expect(funnelFiltersCount({
+      ...DEFAULT_FUNNEL_FILTERS, statuses: ['floor'], unit: 'unit-x', reports: ['draft'], noLog: true,
+    })).toBe(4);
+  });
+
+  it('emits one dismissible STATUS chip that clears only its own condition', () => {
+    const chips = buildFilterChips({ ...DEFAULT_FUNNEL_FILTERS, statuses: ['floor', 'quiet'] }, []);
+    expect(chips.map((c) => c.key)).toEqual(['status']);
+    expect(chips[0].text).toBe('STATUS · BELOW FLOOR / GONE QUIET');
+    expect(chips[0].patch).toEqual({ statuses: [] });
+  });
+
+  it('the STATUS chip falls back to the raw key when the band is unknown', () => {
+    const chips = buildFilterChips({ ...DEFAULT_FUNNEL_FILTERS, statuses: ['mystery'] }, []);
+    expect(chips[0].text).toBe('STATUS · MYSTERY');
+  });
+});

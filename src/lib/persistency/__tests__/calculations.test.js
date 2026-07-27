@@ -10,6 +10,8 @@ import {
   computeBarStats,
   PERS_FLOOR,
   PERS_GATE,
+  PERS_FLOOR_PCT,
+  PERS_GATE_PCT,
 } from '../calculations';
 
 // Real data from Tatil's February 2026 monthly persistency report,
@@ -200,6 +202,52 @@ describe('PERS_FLOOR / PERS_GATE constants', () => {
   it('PERS_FLOOR is 0.80', () => expect(PERS_FLOOR).toBe(0.80));
   it('PERS_GATE is 0.90',  () => expect(PERS_GATE).toBe(0.90));
   it('PERS_FLOOR < PERS_GATE', () => expect(PERS_FLOOR).toBeLessThan(PERS_GATE));
+});
+
+// The percent-scale companions exist so that no consumer hand-rolls `* 100` or
+// hardcodes 80 / 90. These tests pin BOTH the values and the derivation — a
+// literal `80` typed into calculations.js would satisfy the value assertions
+// but fail the derivation ones, which is the drift this module guards against.
+describe('PERS_*_PCT percent companions', () => {
+  it('PERS_FLOOR_PCT is 80', () => expect(PERS_FLOOR_PCT).toBe(80));
+  it('PERS_GATE_PCT is 90',  () => expect(PERS_GATE_PCT).toBe(90));
+
+  it('each _PCT is exactly 100x its decimal source (derived, not re-typed)', () => {
+    expect(PERS_FLOOR_PCT).toBe(PERS_FLOOR * 100);
+    expect(PERS_GATE_PCT).toBe(PERS_GATE * 100);
+  });
+
+  it('preserves the floor < gate ordering on the percent scale', () => {
+    expect(PERS_FLOOR_PCT).toBeLessThan(PERS_GATE_PCT);
+  });
+
+  // ── Anti-collapse guard ──
+  // The floor and the gate are TWO DISTINCT money thresholds: the floor drives
+  // an at-risk warning band, the gate drives award eligibility. A well-meaning
+  // "consolidate the duplicated persistency constant" refactor that unifies
+  // them would change agent-facing outcomes in both directions (raising the
+  // at-risk flag 80→90, or dropping the award gate 90→80). This test exists to
+  // fail loudly if anyone tries.
+  it('floor and gate are NOT the same threshold — do not consolidate them', () => {
+    expect(PERS_FLOOR).not.toBe(PERS_GATE);
+    expect(PERS_FLOOR_PCT).not.toBe(PERS_GATE_PCT);
+    expect(PERS_GATE - PERS_FLOOR).toBeCloseTo(0.10, 10);
+  });
+
+  // The decimal thresholds must classify a realistic stored value correctly —
+  // this is the assertion that fails if either constant is ever retyped on the
+  // wrong scale (e.g. PERS_GATE = 90).
+  //
+  // A previous version of this test also asserted `0.94 < PERS_FLOOR_PCT` and
+  // `0.94 < PERS_GATE_PCT` to "prove" the scales are not interchangeable. Those
+  // are arithmetic tautologies (0.94 < 80 is true for every possible value of
+  // the code under test) — they document the defect rather than guarding
+  // against it, and would keep passing after any regression. Removed.
+  it('the decimal thresholds classify a realistic stored decimal correctly', () => {
+    const decimalPersistency = 0.94; // 94% — comfortably award-eligible
+    expect(decimalPersistency >= PERS_GATE).toBe(true);
+    expect(decimalPersistency < PERS_FLOOR).toBe(false);
+  });
 });
 
 describe('computeBarStats', () => {

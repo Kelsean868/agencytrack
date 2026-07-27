@@ -6,6 +6,7 @@ import {
   resolveTier,
   isTieredCampaign,
   persistencyPctForPeriod,
+  campaignYears,
   computeStandings,
 } from '../campaignEngine';
 
@@ -87,6 +88,22 @@ describe('isTieredCampaign', () => {
   });
 });
 
+// campaignYears is the OTHER half of the gate contract: it decides which years
+// a caller must load before persistencyPctForPeriod can see the whole period.
+// A caller that loads fewer years computes the gate over a partial period.
+describe('campaignYears', () => {
+  it('single year → one entry', () => {
+    expect(campaignYears('2026-03-01', '2026-09-30')).toEqual([2026]);
+  });
+  it('spans a year boundary → every year inclusive', () => {
+    expect(campaignYears('2025-10-01', '2026-12-31')).toEqual([2025, 2026]);
+    expect(campaignYears('2024-11-01', '2026-02-28')).toEqual([2024, 2025, 2026]);
+  });
+  it('unparseable end falls back to the start year', () => {
+    expect(campaignYears('2026-01-01', null)).toEqual([2026]);
+  });
+});
+
 describe('persistencyPctForPeriod', () => {
   const recs = [
     { monthKey: '2025-08', grossSettled: 100, netSettled: 91 },
@@ -96,8 +113,26 @@ describe('persistencyPctForPeriod', () => {
     // (91+89)/(100+100) = 0.90 → 90
     expect(persistencyPctForPeriod(recs, '2025-08-01', '2025-11-30')).toBe(90);
   });
-  it('falls back to all records when none fall in range', () => {
-    expect(persistencyPctForPeriod(recs, '2026-01-01', '2026-03-31')).toBe(90);
+  // Was "falls back to all records when none fall in range" → 90. That fallback
+  // computed the gate over the WRONG months and returned it with full
+  // confidence, which on a payout multiplier is worse than abstaining. The
+  // out-of-period case now yields null → "no data" pill → ×1, not a DQ and not
+  // a fabricated band.
+  it('returns null when no record falls in the period — never a wrong-period aggregate', () => {
+    expect(persistencyPctForPeriod(recs, '2026-01-01', '2026-03-31')).toBeNull();
+  });
+  it('windows to the period — records outside it do not move the number', () => {
+    const spanning = [
+      { monthKey: '2025-08', grossSettled: 100, netSettled: 91 },
+      { monthKey: '2025-09', grossSettled: 100, netSettled: 89 },
+      { monthKey: '2026-02', grossSettled: 100, netSettled: 10 }, // outside, and awful
+    ];
+    expect(persistencyPctForPeriod(spanning, '2025-08-01', '2025-11-30')).toBe(90);
+  });
+  it('a record with no monthKey can never satisfy the period', () => {
+    expect(persistencyPctForPeriod(
+      [{ grossSettled: 100, netSettled: 91 }], '2025-08-01', '2025-11-30',
+    )).toBeNull();
   });
   it('empty records → null', () => {
     expect(persistencyPctForPeriod([], '2025-08-01', '2025-11-30')).toBeNull();

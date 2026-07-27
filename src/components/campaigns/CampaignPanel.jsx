@@ -11,7 +11,7 @@ import {
 } from '../../services/campaignService';
 import { getTenantUsers } from '../../services/managerService';
 import { getPersistencyMapForYear } from '../../services/persistencyService';
-import { computeCampaignProgress, computeStandings, isTieredCampaign, persistencyPctForPeriod } from '../../utils/campaignEngine';
+import { computeCampaignProgress, computeStandings, isTieredCampaign, persistencyPctForPeriod, campaignYears } from '../../utils/campaignEngine';
 import { CampaignStandingsBlock } from './CampaignStandings';
 import { formatCurrency, formatDateFriendly, getUnitDisplayName } from '../../utils/formatters';
 
@@ -31,17 +31,6 @@ function classifyDate(startDate, endDate) {
   if (t < startDate) return 'upcoming';
   if (t > endDate)   return 'ended';
   return 'active';
-}
-
-// Distinct calendar years spanned by [startDate, endDate] (YYYY-MM-DD strings).
-function campaignYears(startDate, endDate) {
-  const s = parseInt(String(startDate).slice(0, 4), 10);
-  const e = parseInt(String(endDate).slice(0, 4), 10);
-  if (!Number.isFinite(s)) return [new Date().getFullYear()];
-  const end = Number.isFinite(e) ? e : s;
-  const out = [];
-  for (let y = s; y <= end; y++) out.push(y);
-  return out;
 }
 
 

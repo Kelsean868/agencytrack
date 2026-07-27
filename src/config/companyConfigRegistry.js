@@ -159,11 +159,16 @@ export const CONFIG_SECTIONS = {
           },
           {
             id: 'targets.persistencyFloor',
-            label: 'Company persistency floor',
+            // NAMING: the id says "floor", but the 90 default is the AWARD GATE
+            // (PERS_GATE_PCT), not the at-risk floor (PERS_FLOOR_PCT = 80).
+            // This field is a minimum on an agent's self-set persistency GOAL —
+            // a third concept from either threshold. The id is load-bearing
+            // (persisted config key), so the label carries the correction.
+            label: 'Minimum persistency an agent may commit to',
             type: 'number',
             suffix: '%',
             def: 90,
-            source: 'src/services/goalsService.js:62',
+            source: 'src/services/goalsService.js (getCompanyMinimums → persistency, defaults to PERS_GATE_PCT)',
           },
         ],
       },

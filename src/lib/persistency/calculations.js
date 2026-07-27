@@ -10,8 +10,33 @@
 // All monetary amounts are TTD. Persistency is a decimal in [0, 1+] — never
 // a percentage. Multiply by 100 for display.
 
+// ── Canonical persistency thresholds — SINGLE SOURCE ──
+//
+// These are TWO DISTINCT business thresholds, not one value in two places.
+// Do not collapse them: the floor drives an at-risk warning band, the gate
+// drives award eligibility. Changing either changes agent-facing outcomes.
+//
+// Provenance (verified 2026-07-26, Rule 17 — stated precisely because these
+// numbers are money-adjacent and the two have DIFFERENT authority):
+//   • PERS_GATE (0.90) is a locked business decision — Tatil's 2026 incentive
+//     awards are gated at 90% (docs/briefs/e3-persistency-playground-kickoff.md
+//     § Decisions locked, "Award gate threshold: 90%").
+//   • PERS_FLOOR (0.80) is NOT Tatil-ratified. It originates as a display
+//     banding convention in the same brief ("green ≥90%, amber 80-89%,
+//     red <80%") and has since been used as an at-risk threshold. Treat it as
+//     an in-app convention, not a carrier-supplied standard.
+//
+// UNIT: decimal, per this module's contract above. Consumers that render or
+// compare on a 0–100 scale MUST use the _PCT companions below rather than
+// hand-rolling `* 100` or hardcoding 80 / 90 — a raw literal is how a decimal
+// silently ends up compared against a percentage.
 export const PERS_FLOOR = 0.80; // below-floor threshold (danger band)
 export const PERS_GATE  = 0.90; // award-eligible threshold (success band)
+
+// Percent-scale companions. Derived, never independently literal, so the two
+// scales cannot drift apart.
+export const PERS_FLOOR_PCT = PERS_FLOOR * 100; // 80
+export const PERS_GATE_PCT  = PERS_GATE  * 100; // 90
 
 const LUMPSUMS_FACTOR = 0.10;
 

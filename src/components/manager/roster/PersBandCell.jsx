@@ -1,10 +1,11 @@
 import React from 'react';
-import { PERS_FLOOR, PERS_GATE } from '../../../lib/persistency/calculations';
+import { PERS_FLOOR_PCT, PERS_GATE_PCT } from '../../../lib/persistency/calculations';
 
-// Input: persistency 0–100 scale (matches RosterRow interface).
-// PERS_FLOOR (0.80) and PERS_GATE (0.90) are decimal; scale to 0–100 for comparison.
-const FLOOR = PERS_FLOOR * 100; // 80
-const GATE  = PERS_GATE  * 100; // 90
+// Input: persistency 0–100 scale (matches RosterRow interface — `lib/teamRoster.js`
+// scales the E3 decimal by 100 before it reaches here). Use the canonical
+// percent-scale companions rather than re-deriving `* 100` locally.
+const FLOOR = PERS_FLOOR_PCT; // 80
+const GATE  = PERS_GATE_PCT;  // 90
 
 function bandTextClass(p) {
   if (p >= GATE)  return 'text-success-ink';

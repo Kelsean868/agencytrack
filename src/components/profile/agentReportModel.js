@@ -51,7 +51,18 @@ export function aggregateFields(subs) {
 }
 
 // Mirror of AgentReportDocument.latestPersistencyPercent — most-recent E3
-// persistency entry, coerced to a 0–100 display scale.
+// persistency entry, converted to a 0–100 display scale.
+//
+// SCALE: E3 stores `persistency` as a DECIMAL (netSettled / grossSettled, see
+// lib/persistency/calculations.js), so the conversion is an unconditional
+// `* 100`. It was previously `v <= 1 ? v * 100 : v` — a dual-scale guess that
+// (a) is unnecessary, since every read path (`getPersistencyMapForYear`,
+// `getPersistencyForAgentIds`, `getAgentHistory`) filters `isE3Doc` and a
+// legacy 0–100 doc therefore cannot reach here, and (b) was WRONG for a valid
+// input: calculations.js explicitly permits persistency > 1 when
+// reinstatements outpace lapses, so a genuine 1.05 (=105%) failed the `<= 1`
+// branch and rendered as "1%" — understating a top performer by 100x in a
+// head-office PDF. Keep this unconditional.
 export function latestPersistencyPercent(persistencyData) {
   const entries = Array.isArray(persistencyData)
     ? persistencyData
@@ -64,7 +75,7 @@ export function latestPersistencyPercent(persistencyData) {
   });
   const v = parseFloat(sorted[0]?.persistency);
   if (!Number.isFinite(v)) return null;
-  return v <= 1 ? v * 100 : v;
+  return v * 100;
 }
 
 /**

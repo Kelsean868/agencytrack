@@ -31,6 +31,10 @@ export function weekLabel(weekStarting) {
   return formatDateDisplay(weekStarting);
 }
 
+// SCALE: unconditional `* 100` — E3 stores a DECIMAL. See the full rationale on
+// the mirror in agentReportModel.js. The former `v <= 1 ? v * 100 : v` guess
+// rendered a valid persistency > 1 as "1%" in the generated PDF.
+// Keep the two mirrors identical.
 export function latestPersistencyPercent(persistencyData) {
   const entries = Array.isArray(persistencyData)
     ? persistencyData
@@ -43,7 +47,7 @@ export function latestPersistencyPercent(persistencyData) {
   });
   const v = parseFloat(sorted[0]?.persistency);
   if (!Number.isFinite(v)) return null;
-  return v <= 1 ? v * 100 : v;
+  return v * 100;
 }
 
 export function periodLabel(periodKey) {

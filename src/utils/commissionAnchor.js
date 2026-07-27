@@ -87,13 +87,20 @@ export function gapToGoal(committedAnnualAPI, runRateValue, ratios) {
   return { goalAsCommission, gap: runRateValue - goalAsCommission };
 }
 
-// Latest persistency % from the agent's E3 history.
+// Latest persistency from the agent's E3 history.
 // getAgentHistory returns oldest-first; last entry is the most recent.
-// Returns { pct, monthKey } or null.
+// Returns `{ decimal, monthKey }` or null.
+//
+// SCALE: `decimal` is the stored E3 value — a DECIMAL in [0, 1+]
+// (netSettled / grossSettled, see lib/persistency/calculations.js), NOT a
+// percentage. The caller multiplies by 100 to display. The field was named
+// `pct` while holding a decimal; the consumer converted correctly, but that
+// exact name/scale mismatch is what produced four live defects elsewhere in
+// this codebase, so it is named for what it holds.
 export function latestPersistency(history) {
   if (!history || history.length === 0) return null;
   const sorted = [...history].sort((a, b) => String(b.monthKey).localeCompare(String(a.monthKey)));
   const last = sorted[0];
   if (last.persistency == null) return null;
-  return { pct: last.persistency, monthKey: last.monthKey };
+  return { decimal: last.persistency, monthKey: last.monthKey };
 }

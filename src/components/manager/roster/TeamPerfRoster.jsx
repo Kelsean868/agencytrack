@@ -3,6 +3,7 @@ import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import TenureCell from './TenureCell';
 import PersBandCell from './PersBandCell';
 import GoalHeatCell from './GoalHeatCell';
+import { PERS_FLOOR_PCT, PERS_GATE_PCT } from '../../../lib/persistency/calculations';
 
 // ─── Column definitions ────────────────────────────────────────────────────────
 // key     = field on RosterRow used for cell rendering
@@ -144,7 +145,7 @@ function MobileCard({ row }) {
         <span className="font-display font-extrabold text-sm">
           {row.persistency === null
             ? <span className="text-ink-muted">Pers —</span>
-            : <span className={row.persistency >= 90 ? 'text-success-ink' : row.persistency >= 80 ? 'text-warning-ink' : 'text-danger-ink'}>
+            : <span className={row.persistency >= PERS_GATE_PCT ? 'text-success-ink' : row.persistency >= PERS_FLOOR_PCT ? 'text-warning-ink' : 'text-danger-ink'}>
                 Pers {row.persistency}%
               </span>
           }
