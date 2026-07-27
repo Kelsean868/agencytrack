@@ -89,6 +89,42 @@ describe('buildAgentReportModel — reuses deriveAgentReportModel', () => {
     expect(m.monthsInService).toBe(14);
   });
 
+  // ── Persistency scale (dispatcher ruling 2026-07-27) ──
+  // E3 stores a DECIMAL. The conversion is an unconditional `* 100`; it used to
+  // be `v <= 1 ? v * 100 : v`, which mis-rendered the one input that breaks the
+  // guess. calculations.js explicitly permits persistency > 1 (reinstatements
+  // outpacing lapses) and has a test pinning that, so this is a reachable state,
+  // not a hypothetical.
+  describe('persistency percent conversion', () => {
+    const at = (dec) => buildAgentReportModel({
+      submissions, settlements: [], goals, agentProfile, period: 'ytd', now,
+      confirmedSettlements: [], persistency: [{ year: 2026, month: 5, persistency: dec }],
+    }).persPct;
+
+    it('converts a normal decimal', () => {
+      expect(at(0.88)).toBe(88);
+      expect(at(0.7393)).toBeCloseTo(73.93, 6); // Ricardo Duke, Tatil Feb 2026
+    });
+
+    // THE REGRESSION. Under `v <= 1 ? v * 100 : v` this returned 1.05 → "1%",
+    // understating a top performer by 100x in a head-office PDF.
+    it('a persistency ABOVE 1 converts to >100%, not ~1%', () => {
+      expect(at(1.05)).toBeCloseTo(105, 6);
+      expect(at(1.2)).toBeCloseTo(120, 6);
+    });
+
+    // Boundary: 1.0 is exactly 100%, and was the only value the old guess got
+    // right by accident.
+    it('exactly 1.0 is 100%', () => {
+      expect(at(1)).toBe(100);
+    });
+
+    it('null-safe on unusable input', () => {
+      expect(at(undefined)).toBeNull();
+      expect(at('n/a')).toBeNull();
+    });
+  });
+
   it('career level derives from effective YTD (41k → L1 Salesperson)', () => {
     const m = build();
     expect(m.currentLevel.level).toBe(1);

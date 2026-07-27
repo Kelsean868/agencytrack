@@ -36,7 +36,6 @@
 | Prod-verification tooling must hard-pin `portal.agencytrack.app` — reject `*.vercel.app` aliases ... | HIGH | — | — | 282 |
 | Investigate stray `agencytrack.vercel.app` deployment (banked 2026-07-15, Runs 5-7 promotion sess... | MEDIUM | — | — | 290 |
 | R-11 login-stamp + All Users LAST-activity — REQUIRES firestore.rules edit (hasOnly allowlist or manager-readable location); bundle with the E4 index FU as a "rules + indexes attended window" | HIGH | — | — | 4282 |
-| `agentReportModel` + `agentReportPdfModel` `latestPersistencyPercent` use a `v <= 1 ? v*100 : v` heuristic — a valid persistency > 1 (reinstatements > lapses) renders as "1%". Sweep-found, NOT fixed, one line × two files (banked 2026-07-27, PR #871) | MEDIUM | — | — | 470 |
 | Persistency threshold sites left un-consolidated deliberately (campaignEngine gate bands · config-registry label · tenant-configurable companyMinimums) — note so a future sweep doesn't treat them as misses (banked 2026-07-26, PR #871) | LOW | — | — | 495 |
 | Tier 3c mechanical conformance — carried from Run A (hero-card worklist · motion pop-in wiring · handoff-vs-screens-v2 · gold-contrast usages) | LOW | — | — | 4348 |
 | Commission layout — unverified two-column claim; needs a REAL mockup into screens-v2 first (banked Run A Tier 3b) | LOW | — | — | 4312 |
@@ -477,7 +476,7 @@ Reasoning — it is the only option that satisfies all four constraints:
 
 ---
 
-## `latestPersistency*` scale sweep — one residual edge-case defect (banked 2026-07-27, PR #871 session, LOW–MEDIUM — NOT fixed, needs a ruling)
+## `latestPersistency*` scale sweep — RESOLVED (banked + closed 2026-07-27, PR #871)
 
 Dispatcher-ordered sweep of every same-named persistency accessor after the Meeting Mode decimal-vs-percent defect, on the principle that **their own tests are not evidence** (the Meeting Mode bug survived because its fixtures used percentages that production never produces).
 
@@ -487,13 +486,13 @@ Dispatcher-ordered sweep of every same-named persistency accessor after the Meet
 | `utils/funnelStatus.latestPersistency` | decimal | decimal (`PERS_FLOOR`) | ✅ correct, documented |
 | `lib/strategicPlan.latestPersistencyPct` | percent (`* 100`) | percent | ✅ correct, documented |
 | `utils/commissionAnchor.latestPersistency` | decimal in a field **named `pct`** | consumer does `* 100` at `CommissionAnchorStrip.jsx:234` | ✅ correct — **misleading field name only** |
-| `profile/agentReportModel` + `agentReportPdfModel` `latestPersistencyPercent` | `v <= 1 ? v * 100 : v` | percent | ⚠️ **edge-case defect — see below** |
+| `profile/agentReportModel` + `agentReportPdfModel` `latestPersistencyPercent` | *was* `v <= 1 ? v * 100 : v` | percent | **DEFECT — fixed in this PR** |
 
 **The residual defect.** Both `agentReport*` modules (documented mirrors of each other) coerce with the heuristic `v <= 1 ? v * 100 : v`. `calculations.js` **explicitly permits persistency > 1** ("can return > 1 when reinstatements outpace lapses (rare but valid)") and has a test pinning it. So a genuine `1.05` (=105%) fails the `<= 1` branch and renders as **"1%"** in the agent report and PDF — the same lie class this PR exists to remove, on a top performer.
 
 **Why the heuristic is unnecessary, not just wrong:** every persistency read path filters to E3 docs — `getPersistencyMapForYear`, `getPersistencyForAgentIds`, and `getAgentHistory` all `.filter(isE3Doc)` — and E3 stores decimals only. A legacy 0–100 doc cannot reach these functions, so the dual-scale guess has nothing to guard.
 
-**Recommended fix (NOT applied — out of the ruled scope, one line × two files):** replace the heuristic with an unconditional `v * 100`, plus a value-level test at `persistency = 1.05` → `105`. Deliberately left for a ruling rather than folded in silently.
+**RESOLVED 2026-07-27 in PR #871** (dispatcher ruled FIX-NOW: trivial, provably unnecessary guard, same family, and it mis-renders money in a head-office PDF). Both mirrors now use an unconditional `v * 100`, each carrying the rationale inline so the heuristic is not "helpfully" restored. Value-level tests added at 0.88 / 0.7393 (the Tatil Ricardo Duke figure) / **1.05 → 105** / 1.2 → 120 / exactly 1.0 → 100, plus null-safety. Negative-controlled: restoring `v <= 1 ? v*100 : v` fails with `expected 1.05 to be close to 105`.
 
 ---
 
@@ -546,6 +545,8 @@ All three are heavy component tests that time out at **exactly ~5000ms** (the de
 Each candidate was checked for a real cause before being attributed to load: `MeetingMode.test.jsx`'s agenda rail runs in **583–925ms** in isolation across 3 runs — an order of magnitude under the limit — so it is not a mount-cost regression from the persistency work in the same file.
 
 **Falsification (Rule 23):** overturned if a member fails deterministically in isolation, if a member is traced to a genuine product race, or if raising `testTimeout` leaves the family intact. Any of those would mean this is not one mechanism and the fix must be per-test.
+
+**DISPATCHER RULING 2026-07-27 — the `testTimeout` experiment is APPROVED, as its own small PR AFTER #871 lands.** Deliberately NOT bundled into #871: that PR is money-correctness work and a global test-harness knob has a different blast radius and a different reviewer. Carry the falsification conditions above into that PR so the experiment either confirms the mechanism or kills the hypothesis.
 
 **Suggested first move for the audit:** rather than stabilising members one at a time (#872's approach, which #876 already showed incomplete and which this evidence suggests can never terminate — the population is "whichever heavy test loses the CPU race"), test the mechanism directly: **raise `testTimeout` in `vite.config.js`** (and/or cap worker concurrency) and see whether the whole family goes quiet at once. One run confirms or falsifies it.
 
