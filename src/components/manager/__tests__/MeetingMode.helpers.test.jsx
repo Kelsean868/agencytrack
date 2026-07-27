@@ -60,15 +60,87 @@ describe('classifyFlag taxonomy', () => {
   });
 });
 
+// NOTE ON FIXTURES: E3 persistency docs store `persistency` as a DECIMAL
+// (netSettled / grossSettled). These fixtures use decimals because that is what
+// getPersistencyMapForYear actually returns. The previous versions of these
+// tests fed PERCENTAGES (72, 80, 90) — values that never occur in production —
+// which is precisely why the decimal-vs-percent defect survived undetected.
 describe('persistency helpers', () => {
-  it('latestPersistency takes the highest-month record', () => {
-    expect(latestPersistency([{ month: 3, persistency: 80 }, { month: 6, persistency: 72 }])).toBe(72);
+  it('latestPersistency takes the highest-month record and returns a PERCENTAGE', () => {
+    expect(latestPersistency([{ month: 3, persistency: 0.80 }, { month: 6, persistency: 0.72 }])).toBe(72);
     expect(latestPersistency([])).toBeNull();
   });
-  it('avgLatestPersistency averages across agents', () => {
-    const map = { a: [{ month: 6, persistency: 80 }], b: [{ month: 6, persistency: 90 }] };
+  it('avgLatestPersistency averages across agents on the percent scale', () => {
+    const map = { a: [{ month: 6, persistency: 0.80 }], b: [{ month: 6, persistency: 0.90 }] };
     expect(avgLatestPersistency(['a', 'b'], map)).toBe(85);
     expect(avgLatestPersistency(['x'], map)).toBeNull();
+  });
+  it('returns null rather than NaN when the stored value is unusable', () => {
+    expect(latestPersistency([{ month: 6, persistency: 'n/a' }])).toBeNull();
+    expect(latestPersistency([{ month: 6 }])).toBeNull();
+  });
+});
+
+// ── Regression: decimal-vs-percent scale confusion (fixed 2026-07-26) ──
+//
+// getPersistencyMapForYear returns E3 docs whose `persistency` is a DECIMAL.
+// latestPersistency previously returned that decimal unchanged, while all three
+// of its consumers treat the value as a percentage. Consequences on live data:
+//   1. classifyFlag — `0.94 < 80` is always true, so EVERY agent holding a
+//      persistency record was flagged "Persistency ↓", reading "1% persistency".
+//   2. deriveBranchWindows — the branch scorecard rendered `${w.pers}%` from an
+//      average of decimals, showing "1%" for a healthy branch.
+//   3. CampaignScene — fed decimals into campaignEngine's persistencyByAgent
+//      (documented "(percentage 0–100)"), dropping every advisor into the DQ
+//      band with a ×0 payout multiplier.
+describe('persistency scale regression — decimals must not read as percentages', () => {
+  // All eight activity floors met, so the `floor` arm never pre-empts the
+  // persistency arm — this isolates the scale behaviour under test.
+  const okTiles = floorTiles({
+    callsMade: 60, telContacts: 40, appointmentsScheduled: 20, interviewsKept: 20,
+    factFindsCompleted: 10, closingInterviewsKept: 10, clientsSold: 1, referralsNewLeads: 100,
+  });
+
+  // NEGATIVE CONTROL: a healthy agent, expressed the way production stores it.
+  // Revert latestPersistency's `* 100` and this test fails — it is the guard.
+  it('a healthy agent (decimal 0.94 on file) is NOT flagged for persistency', () => {
+    const records = [{ month: 6, persistency: 0.94 }];
+    const pct = latestPersistency(records);
+
+    expect(pct).toBe(94);
+    expect(classifyFlag({ submitted: true, tiles: okTiles, persistency: pct }).key).toBeNull();
+  });
+
+  it('a genuinely below-floor agent (decimal 0.72) IS still flagged', () => {
+    const pct = latestPersistency([{ month: 6, persistency: 0.72 }]);
+
+    expect(pct).toBe(72);
+    const flag = classifyFlag({ submitted: true, tiles: okTiles, persistency: pct });
+    expect(flag.key).toBe('persistency');
+    // The reason line must read as a real percentage, not "1%".
+    expect(flag.reason).toContain('72%');
+    expect(flag.reason).toContain('80%');
+  });
+
+  it('the floor boundary is exact — 0.80 passes, 0.799 fails', () => {
+    expect(classifyFlag({
+      submitted: true, tiles: okTiles, persistency: latestPersistency([{ month: 1, persistency: 0.80 }]),
+    }).key).toBeNull();
+
+    expect(classifyFlag({
+      submitted: true, tiles: okTiles, persistency: latestPersistency([{ month: 1, persistency: 0.799 }]),
+    }).key).toBe('persistency');
+  });
+
+  it('branch scorecard averages render as real percentages, not ~1%', () => {
+    const map = {
+      a: [{ month: 6, persistency: 0.94 }],
+      b: [{ month: 6, persistency: 0.86 }],
+    };
+    const avg = avgLatestPersistency(['a', 'b'], map);
+
+    expect(avg).toBe(90);
+    expect(avg).toBeGreaterThan(1); // the defect produced 0 or 1
   });
 });
 

@@ -10,6 +10,7 @@
 // scene bodies). The mockup's hardcoded RUN/MEETING_SHEET/CHAMPS are looks-only.
 
 import { extractFields, computeRatios } from '../../utils/extractFields';
+import { PERS_FLOOR_PCT } from '../../lib/persistency/calculations';
 import {
   DEFAULT_WEEKLY_ACTIVITY_FLOORS,
   deriveWeeklyFloorActuals,
@@ -97,7 +98,7 @@ export function floorTiles(actuals, floors = DEFAULT_WEEKLY_ACTIVITY_FLOORS) {
 // ── Flag taxonomy (honestly derivable from the manager surface) ──
 //   report      — not submitted this week
 //   floor       — submitted but ≥5 of the 8 activity floors below floor
-//   persistency — latest persistency < 80%
+//   persistency — latest persistency below PERS_FLOOR_PCT (80%)
 //   (else)      — on pace
 // "Off pace" (annual-commitment gap) and "gone quiet" (daily-recency) are NOT
 // derivable from the meeting's read-light load and are intentionally not faked.
@@ -114,10 +115,11 @@ export function classifyFlag({ submitted, tiles, persistency }) {
       reason: `${below} of ${tiles.length} activity standards below floor this week.`,
     };
   }
-  if (persistency != null && persistency < 80) {
+  // `persistency` is a PERCENTAGE (0–100) — see latestPersistency's scale note.
+  if (persistency != null && persistency < PERS_FLOOR_PCT) {
     return {
       key: 'persistency', label: 'Persistency', tone: 'warning',
-      reason: `${Math.round(persistency)}% persistency · below the 80% threshold.`,
+      reason: `${Math.round(persistency)}% persistency · below the ${PERS_FLOOR_PCT}% threshold.`,
     };
   }
   return { key: null, label: 'On pace', tone: 'success', reason: '' };
@@ -131,15 +133,28 @@ export function flagRank(flagKey) {
 
 // ── Persistency helpers ──
 
-/** Latest (highest-month) persistency % for an agent from the E3 record array. */
+/**
+ * Latest (highest-month) persistency for an agent, as a PERCENTAGE (0–100).
+ *
+ * SCALE BOUNDARY — read before changing. E3 persistency docs store
+ * `persistency` as a DECIMAL in [0, 1+] (`netSettled / grossSettled`, see
+ * lib/persistency/calculations.js). Every consumer in this file and in
+ * MeetingMode.jsx expects a PERCENTAGE:
+ *   • classifyFlag       compares against PERS_FLOOR_PCT
+ *   • avgLatestPersistency feeds `${w.pers}%` in the branch scorecard
+ *   • CampaignScene      feeds campaignEngine's `persistencyByAgent`, whose
+ *                        documented contract is "(percentage 0–100)"
+ * so the decimal → percent conversion happens HERE, once, at the boundary.
+ */
 export function latestPersistency(records) {
   if (!Array.isArray(records) || records.length === 0) return null;
   let best = null;
   records.forEach((r) => {
     const m = Number(r.month) || 0;
-    if (!best || m > best.month) best = { month: m, pct: Number(r.persistency) };
+    if (!best || m > best.month) best = { month: m, dec: Number(r.persistency) };
   });
-  return best ? best.pct : null;
+  if (!best || !Number.isFinite(best.dec)) return null;
+  return best.dec * 100;
 }
 
 /** Average latest persistency across a set of agentIds (null when none). */
