@@ -50,7 +50,7 @@ import { chromium } from 'playwright';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
 import { newLegContext, login } from './vh/vh-helpers.mjs';
-import { stamp } from './lib/walk-helpers.mjs';
+import { stamp, formatCaptureReport } from './lib/walk-helpers.mjs';
 
 const A1 = 'Staging Agent One';
 const A2 = 'Staging Agent Two';
@@ -67,20 +67,42 @@ const EXPECT = {
 // If this appears anywhere on either surface, the scale bug is back.
 const DECIMAL_LEAK = /\b[01]%\s*persistency/i;
 
-// Vercel injects these two at the edge; a locally-served `vite build --mode
-// staging` bundle has no edge, so they 404. Infrastructure absence, not an app
-// error — allowlisted ONLY for the localhost route. Any other console error
-// still fails the leg.
+// Vercel injects these two scripts at the edge; a locally-served
+// `vite build --mode staging` bundle has no edge, so they 404. Infrastructure
+// absence, not an app error.
 const LOCALHOST_ONLY_404 = /_vercel\/(insights|speed-insights)\/script\.js/;
-function assertHygiene({ capture, prodRequests, pageErrors }, label) {
+
+// The 404 console message text does NOT carry the URL ("Failed to load
+// resource: the server responded with a status of 404 (Not Found)"), so the
+// message alone cannot say WHICH resource failed. Excluding every such message
+// would silently swallow a genuine missing-asset 404 on staging — the exact
+// class of lie this PR exists to remove, in the verification layer.
+//
+// So: match on the RESPONSE URLs instead. A 404 console error is forgiven only
+// when EVERY 404 the page actually observed was one of the two edge scripts.
+// One real 404 alongside them and the whole allowlist stops applying.
+function track404s(page) {
+  const urls = [];
+  page.on('response', (r) => { if (r.status() === 404) urls.push(r.url()); });
+  return urls;
+}
+
+function assertHygiene({ capture, prodRequests, pageErrors }, urls404, label) {
+  const allow404 = urls404.length > 0 && urls404.every((u) => LOCALHOST_ONLY_404.test(u));
   const errs = (capture.consoleMessages ?? [])
     .filter((m) => m.type === 'error')
     .map((m) => m.text)
-    .filter((t) => !LOCALHOST_ONLY_404.test(t) && !/Failed to load resource.*404/.test(t));
-  if (prodRequests.length) { log('FAIL', `${label}: ${prodRequests.length} PRODUCTION request(s) — ${prodRequests[0]}`); return; }
-  if (pageErrors.length)   { log('FAIL', `${label}: page error — ${pageErrors[0]}`); return; }
-  if (errs.length)         { log('FAIL', `${label}: console not clean — ${errs[0]}`); return; }
-  log('PASS', `${label}: hygiene clean (console + ZERO production requests)`);
+    .filter((t) => {
+      if (LOCALHOST_ONLY_404.test(t)) return false;                    // URL present in text
+      if (allow404 && /Failed to load resource.*404/.test(t)) return false; // URL-verified
+      return true;
+    });
+  const unexpected404 = urls404.filter((u) => !LOCALHOST_ONLY_404.test(u));
+  if (prodRequests.length)  { log('FAIL', `${label}: ${prodRequests.length} PRODUCTION request(s) — ${prodRequests[0]}`); return; }
+  if (pageErrors.length)    { log('FAIL', `${label}: page error — ${pageErrors[0]}`); return; }
+  if (unexpected404.length) { log('FAIL', `${label}: unexpected 404 — ${unexpected404[0]}`); return; }
+  if (errs.length)          { log('FAIL', `${label}: console not clean — ${errs[0]}`); return; }
+  log('PASS', `${label}: hygiene clean (console + ZERO production requests${urls404.length ? `; ${urls404.length} allowlisted edge-script 404s` : ''})`);
 }
 
 // stamp() carries colons, which are illegal in Windows paths — sanitise.
@@ -100,6 +122,7 @@ const browser = await chromium.launch();
 {
   const ctx = await newLegContext(browser, { reducedMotion: true });
   const p = ctx.page;
+  const urls404 = track404s(p);
   try {
     console.log('\n── Meeting Mode deck (branch scorecard · agent flags · campaign gate) ──');
     await login(p, 'branch_manager');
@@ -209,11 +232,16 @@ const browser = await chromium.launch();
       }
     }
 
-    assertHygiene(ctx, 'deck');
+    assertHygiene(ctx, urls404, 'deck');
   } catch (err) {
     await shot(p, 'FAIL-deck');
     log('FAIL', `deck walk threw: ${err.message}`);
-  } finally { await ctx.context.close(); }
+  } finally {
+    // Canonical capture summary (CLAUDE.md § console/network capture in smokes).
+    // It prints internally and returns undefined — do NOT wrap in console.log.
+    formatCaptureReport(ctx.capture);
+    await ctx.context.close();
+  }
 }
 
 await browser.close();
