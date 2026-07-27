@@ -529,9 +529,25 @@ All three are heavy component tests that time out at **exactly ~5000ms** (the de
 
 **The weeknav member arrived with PR #875 (`e963660e`), whose own `lint-and-build` passed** — flaky from birth, not broken by a later change.
 
-**Mechanism hypothesis (falsifiable, per Rule 23):** these are not three independent bugs but one resource-contention failure — Vitest's default 5000ms per-test timeout is not generous enough for the heaviest jsdom component mounts when N workers compete for CPU. Predictions: (a) the specific test that fails should vary run-to-run on the same commit — **already observed**, three different tests across three consecutive full runs; (b) raising `testTimeout` or reducing worker concurrency should make them all disappear together; (c) the set should skew toward the largest component test files. **Overturned if** a member is found that fails deterministically in isolation, or if one is traced to a genuine product race — either would mean the family is not one mechanism and the fix must be per-test.
+**Mechanism: resource contention, not N independent test bugs.** Vitest's default **5000ms** per-test timeout is not generous enough for the heaviest jsdom component mounts when workers compete for CPU. Seven runs of the SAME commit (`6eefa98b`), ordered by machine load — the relationship is monotonic:
 
-**Suggested first move for the audit:** rather than stabilising members one at a time (#872's approach, which #876 already showed to be incomplete), test the mechanism directly — raise `testTimeout` in `vite.config.js` and see whether the whole family goes quiet. Cheap to try, and it either confirms or falsifies the hypothesis in one run.
+| Run | Machine conditions | Result |
+|---|---|---|
+| local 1 | `vite preview` server running | 2 failed — `WizardFormV2Characterization` G block |
+| local 2 | `vite preview` server running | `WizardFormV2Characterization` G timeout, later passed in-run |
+| local 3 | `vite preview` server running | 1 failed — `AgentPlannerPanel` A5 undo-entry |
+| **local 4** | **server stopped, machine quiet** | **372/372 files · 5810/5810 tests · ZERO failures** |
+| local 5 | concurrent with `npm run build` + another full suite | **5 failed across 4 files** |
+| CI 1 | GitHub runner | 1 failed — `AgentPlannerPanel.weeknav` → clean re-run **PASS** |
+| CI 2 | GitHub runner | 1 failed — `MeetingMode` agenda rail → clean re-run **PASS** |
+
+**Five different tests** have now been the failing one, every one at exactly ~5000ms, every one passing in isolation (12/12, 20/20, 20/20, 73/73). Zero failures on a quiet machine; five under maximum contention. No individual test is broken.
+
+Each candidate was checked for a real cause before being attributed to load: `MeetingMode.test.jsx`'s agenda rail runs in **583–925ms** in isolation across 3 runs — an order of magnitude under the limit — so it is not a mount-cost regression from the persistency work in the same file.
+
+**Falsification (Rule 23):** overturned if a member fails deterministically in isolation, if a member is traced to a genuine product race, or if raising `testTimeout` leaves the family intact. Any of those would mean this is not one mechanism and the fix must be per-test.
+
+**Suggested first move for the audit:** rather than stabilising members one at a time (#872's approach, which #876 already showed incomplete and which this evidence suggests can never terminate — the population is "whichever heavy test loses the CPU race"), test the mechanism directly: **raise `testTimeout` in `vite.config.js`** (and/or cap worker concurrency) and see whether the whole family goes quiet at once. One run confirms or falsifies it.
 
 **Already fixed by #872 (four targets, each negative-controlled there):**
 
