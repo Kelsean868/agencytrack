@@ -526,6 +526,14 @@ Classification: **pattern 2** (shared-budget exhaustion under parallel-load cont
 
 **Not fixed, and deliberately not touched** — out of scope for P0-A (which does not load `MeetingMode.jsx`; its only activity-code reference is a display header list at `:296`), and NOT folded into PR #872 per the standing instruction not to widen that PR's scope. Recorded here solely to grow the enumeration. Population is now **≥5 tests across ≥3 files**. It is also a fresh instance of the note-below concern: the failure sat in a slice whose diff cannot touch it, which is precisely why a red CI on this repo still does not cleanly separate regression from noise.
 
+**Seventh data point — ⚠ #872's remedy raised the threshold but did NOT remove the race, now proven in CI (2026-07-30, PR #882).** `DailyCaptureV2.test.jsx > daily streak celebration (integration) > "does NOT re-fire when the 5-day milestone marker is already set"` — the SAME test as note 2's smoking gun — failed CI again, this time at **5007ms**, i.e. against the **5000ms global** `asyncUtilTimeout`, not the old self-narrowed `{ timeout: 2000 }` cap it failed at on #871 (2042ms). The self-narrowing fix therefore landed and worked as designed, and the test still times out; it simply needs more than 5s of wall clock under CI contention.
+
+This **confirms the hypothesis already recorded above** ("the remedies raised the threshold without removing the race — sufficient for CI's contention level, not for a heavier one") and upgrades it from a local-only observation to a CI-proven one, on the single test the FU has the most history for.
+
+Causality is excluded cleanly: the failing run's diff versus the immediately preceding **green** CI run on the same branch was **+14 lines in `src/utils/__tests__/devAssertKnown.test.js`** — a file `DailyCaptureV2.test.jsx` does not import, directly or transitively. **Re-running the failed job with zero code change went green** (`lint-and-build pass 5m19s`), the same proof shape note 2 relies on.
+
+**Implication for the remedy.** Two rounds of per-test fixes have now each held only until contention rose. That is the third independent signal pointing at the runner-level suggestion already raised above (`maxConcurrency` / pool sizing / `fileParallelism`) rather than a third round of per-test budget widening — this test has now consumed two distinct per-test remedies and failed after both. Whoever picks this up should treat "widen it again to 20s" as the option to argue *against*.
+
 ---
 
 ---
