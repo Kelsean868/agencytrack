@@ -41,50 +41,45 @@ import {
 import { db } from '../firebase';
 import { getWarRoleRank } from './managerWarService';
 import { expandSeriesDates, MAX_SERIES_INSTANCES } from '../components/planner/recurrence.helpers';
+import { ACTIVITY_METADATA, LIVE_CODES, PICKER_GROUP_DEFS } from '../constants/activityMetadata';
+import { devAssertKnown } from '../utils/devAssertKnown';
 
 // ── Activity types (selling ladder + support work + blocks) ──────────────────
-// Order = the mockup's timeline/legend order for the original seven; the nine
-// added types follow. `label` is the display code with dots (P.C, S.C, …) or a
-// short word (Sale, Free, Paper …); the key is the storage/enum key (contract
-// TYPE set, mirrored in firestore.rules — see the allowlist note below).
+// ALL of the exports below are DERIVED from `ACTIVITY_METADATA`
+// (src/constants/activityMetadata.js), which is the single source of truth for
+// activity codes. Adding a code is an edit to that table and to both
+// firestore.rules allowlists — never to this file.
+//
+// They derive from the LIVE subset (`live: true` = present in both deployed
+// rules allowlists). `TYPE_KEYS` is a client-side write gate below
+// (`buildCreatePayload`), so a code that is in TYPE_KEYS but not in the deployed
+// rules would be written and then rejected by Firestore; `live` is what keeps
+// not-yet-shipped codes out of it. See the `live` note in activityMetadata.js.
 //
 // LABEL BUDGET IS LOAD-BEARING (≤5 chars). The dense week-column card gives the
 // [time · type chip] row roughly an 81px content box at the narrowest column
 // (131.4px at 1280px with the sidebar expanded); today's worst case `F.F.I`
 // already exceeds it by ~4px and relies on the card's `flex-wrap` safety valve.
-// Every label here is ≤5 chars so wrapping stays the exception, not the norm.
-// See the dense-card comment in AgentPlannerPanel.jsx before lengthening any.
+// Every label is ≤5 chars so wrapping stays the exception, not the norm. See the
+// dense-card comment in AgentPlannerPanel.jsx before lengthening any.
 //
-// FUTURE TENANT CONFIG — READ BEFORE MAKING THIS LIST CONFIGURABLE. This list is
+// FUTURE TENANT CONFIG — READ BEFORE MAKING THIS SET CONFIGURABLE. The set is
 // hardcoded deliberately. A per-tenant type set CANNOT be expressed as the
 // literal allowlist that `firestore.rules` uses today (`d.type in [...]` in both
 // validApptWrite and validTemplateWrite): a tenant-varying set would need either
 // a `get()` against the tenant config doc on every appointment write (a billed
 // read per write) or relaxing the rule from a value check to a shape check. When
 // that layer is built, mirror the `weeklyActivityFloors` precedent —
-// `Object.freeze(DEFAULT_…)` here, tenant override at `config/companyMinimums`,
-// consumers merging `{ ...DEFAULT, ...(config ?? {}) }` — and resolve the rules
-// question explicitly rather than by omission.
-export const APPOINTMENT_TYPES = [
-  { key: 'PC',    label: 'P.C',   name: 'Prospecting call' },
-  { key: 'SC',    label: 'S.C',   name: 'Seen call' },
-  { key: 'AI',    label: 'A.I',   name: 'Approach interview' },
-  { key: 'FFI',   label: 'F.F.I', name: 'Fact-finding interview' },
-  { key: 'CI',    label: 'C.I',   name: 'Closing interview' },
-  { key: 'SALE',  label: 'Sale',  name: 'Life / annuity written' },
-  { key: 'FREE',  label: 'Free',  name: 'Training · seminar · prospecting time · personal' },
-  // Support work — client-linked, but not itself a selling interview.
-  { key: 'PROP',  label: 'Prop',  name: 'Solution / proposal writing' },
-  { key: 'PAPER', label: 'Paper', name: 'Writing / submitting applications' },
-  { key: 'COLL',  label: 'Coll',  name: 'Premium collection' },
-  { key: 'DEL',   label: 'Del',   name: 'Policy delivery' },
-  // Blocks — booked time that is not a client appointment.
-  { key: 'SEM',   label: 'Sem',   name: 'Company seminar' },
-  { key: 'TRADE', label: 'Trade', name: 'Tradeshow' },
-  { key: 'MTG',   label: 'Mtg',   name: 'Branch meeting' },
-  { key: 'TRAIN', label: 'Train', name: 'Training / CPD' },
-  { key: 'ADMIN', label: 'Admin', name: 'Admin work' },
-];
+// `Object.freeze(DEFAULT_…)` in the table, tenant override at
+// `config/companyMinimums`, consumers merging `{ ...DEFAULT, ...(config ?? {}) }`
+// — and resolve the rules question explicitly rather than by omission.
+//
+// Display/legend order is the table's key order; it is not restated here.
+export const APPOINTMENT_TYPES = LIVE_CODES.map((key) => ({
+  key,
+  label: ACTIVITY_METADATA[key].label,
+  name: ACTIVITY_METADATA[key].name,
+}));
 export const TYPE_KEYS = APPOINTMENT_TYPES.map((t) => t.key);
 
 /**
@@ -94,10 +89,10 @@ export const TYPE_KEYS = APPOINTMENT_TYPES.map((t) => t.key);
  * slot and still records `durationMin`, it just never inflates an activity total
  * a manager or agent reads as production effort.
  *
- * `SEM` / `TRADE` are IN: a company seminar and a tradeshow are prospecting
- * activity (they are also the two block types the weekly-floor `callsMade`
- * 4-sum already counts on the WAR side, via `computeProspectingCallsActual`'s
- * `seminarTradeshow` term).
+ * Derived from the table's `counts` flag. `SEM` / `TRADE` are IN: a company
+ * seminar and a tradeshow are prospecting activity (they are also the two block
+ * types the weekly-floor `callsMade` 4-sum already counts on the WAR side, via
+ * `computeProspectingCallsActual`'s `seminarTradeshow` term).
  *
  * NOTE this is deliberately NOT the same axis as the picker groups in
  * PICKER_GROUPS — `SEM`/`TRADE` sit in the Block group but count as selling.
@@ -110,7 +105,7 @@ export const TYPE_KEYS = APPOINTMENT_TYPES.map((t) => t.key);
  * so every type outside those three is already inert for them by construction.
  */
 export const SELLING_TYPE_KEYS = Object.freeze(
-  ['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE', 'SEM', 'TRADE'],
+  LIVE_CODES.filter((key) => ACTIVITY_METADATA[key].counts),
 );
 
 /** True when a type counts toward selling-activity totals. */
@@ -125,28 +120,44 @@ export function isSellingType(type) {
  * selector does) rather than growing a flat 16-button grid, which would put
  * `A.I` (Approach interview) two buttons from `Admin`.
  *
- * `FREE` stays in the Block group, last, and keeps its FREE_BLOCK_LABELS chip
- * row — untouched for backward compatibility.
+ * Group order + labels come from PICKER_GROUP_DEFS; membership from each code's
+ * `pickerGroup`. Within a group, order is table order unless the code declares a
+ * `pickerOrder` — `FREE` uses that to stay LAST in the Block group (it keeps its
+ * FREE_BLOCK_LABELS chip row) despite sitting 7th in the table.
  */
-export const PICKER_GROUPS = Object.freeze([
-  { key: 'prospect', label: 'Prospect', types: ['PC', 'SC', 'AI', 'FFI', 'CI', 'SALE'] },
-  { key: 'support',  label: 'Support',  types: ['PROP', 'PAPER', 'COLL', 'DEL'] },
-  { key: 'block',    label: 'Block',    types: ['SEM', 'TRADE', 'MTG', 'TRAIN', 'ADMIN', 'FREE'] },
-]);
+export const PICKER_GROUPS = Object.freeze(
+  PICKER_GROUP_DEFS.map(({ key, label }) => ({
+    key,
+    label,
+    types: LIVE_CODES
+      .filter((code) => ACTIVITY_METADATA[code].pickerGroup === key)
+      .sort((a, b) => (
+        (ACTIVITY_METADATA[a].pickerOrder ?? LIVE_CODES.indexOf(a))
+        - (ACTIVITY_METADATA[b].pickerOrder ?? LIVE_CODES.indexOf(b))
+      )),
+  })),
+);
 
 /**
  * Types that may attach a prospect. Selling types always could; Support types
  * are client-linked in practice (a delivery or a collection is FOR someone), so
  * they get the same optional attach. Block types attach nothing — `FREE` shows
  * its label chip row instead, and the other blocks show neither.
+ *
+ * Composed by GROUP KEY, not by position: `PICKER_GROUPS[0]` / `[1]` would
+ * silently change meaning the moment a group is added or reordered. This is a
+ * client-side UI gate, not an authorisation boundary — firestore.rules does not
+ * gate prospect attachment on type.
  */
+const typesInGroup = (key) => PICKER_GROUPS.find((g) => g.key === key)?.types ?? [];
 export const PROSPECT_ATTACH_TYPES = Object.freeze([
-  ...PICKER_GROUPS[0].types,
-  ...PICKER_GROUPS[1].types,
+  ...typesInGroup('prospect'),
+  ...typesInGroup('support'),
 ]);
 
 /** The picker group a type belongs to ('prospect' | 'support' | 'block'). */
 export function groupOfType(type) {
+  devAssertKnown(ACTIVITY_METADATA, type, 'ACTIVITY_METADATA');
   return PICKER_GROUPS.find((g) => g.types.includes(type))?.key ?? 'prospect';
 }
 
