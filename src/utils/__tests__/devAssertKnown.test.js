@@ -13,6 +13,7 @@ const MAP = { PC: 1, SC: 2 };
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe('devAssertKnown', () => {
@@ -41,6 +42,19 @@ describe('devAssertKnown', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(() => devAssertKnown(null, 'PC', 'MAP')).not.toThrow();
     expect(devAssertKnown(null, 'PC', 'MAP')).toBe(false);
+  });
+
+  // The half the rest of this file cannot see: every other test runs with
+  // import.meta.env.DEV true, so they only ever prove the reporting branch. The
+  // helper's actual contract is that it is INERT in the production bundle — if
+  // that broke, a console.error would ship to users at a lookup site reached
+  // from their own data, and nothing here would have caught it.
+  it('is inert in production — no report, same return value', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubEnv('DEV', false);
+    expect(devAssertKnown(MAP, 'NOPE', 'MAP')).toBe(false);
+    expect(devAssertKnown(MAP, 'PC', 'MAP')).toBe(true);
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it('does not treat inherited Object properties as known keys', () => {
