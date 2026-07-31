@@ -31,7 +31,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { ACTIVITY_METADATA, ALL_CODES, LIVE_CODES } from '../activityMetadata';
+import {
+  ACTIVITY_METADATA, ALL_CODES, LIVE_CODES,
+  COUNTED_LIVE_CODES, CALL_ATTRIBUTED_CODES,
+} from '../activityMetadata';
 
 const sorted = (xs) => [...xs].sort();
 const codesWhere = (pred) => sorted(ALL_CODES.filter((c) => pred(ACTIVITY_METADATA[c])));
@@ -47,7 +50,7 @@ const REQUIRED_KEYS = [
  * on non-live codes by design (see the `live` note in the table); `pickerOrder`
  * overrides within-group sort order.
  */
-const OPTIONAL_KEYS = ['emphasis', 'pickerGroup', 'pickerOrder'];
+const OPTIONAL_KEYS = ['emphasis', 'pickerGroup', 'pickerOrder', 'callAttributed'];
 
 describe('ACTIVITY_METADATA — shape', () => {
   it('holds exactly the 21 expected codes, in table order', () => {
@@ -131,6 +134,34 @@ describe('ACTIVITY_METADATA — semantic axes (set equality both directions)', (
 
   it('prepCapable — the 4-item prep checklist (03-DATA-MODEL.md names these four)', () => {
     expect(codesWhere((m) => m.prepCapable)).toEqual(sorted(['AI', 'FFI', 'CI', 'JC']));
+  });
+
+  // ⚠ This axis decides how the ACTIVITY LEDGER counts. A code marked
+  // callAttributed has its blocks treated as scheduled CAPACITY — the ledger
+  // counts the CALLS inside the window, `max(block.dials, itemised)`, and pools
+  // all such codes into one `CALLS` row. Marking a non-call code here would make
+  // its blocks stop counting one-per-block and silently vanish into that pool;
+  // UNmarking PC or SC would sum a container with its contents, which is the
+  // defect that put a false "MOSTLY DECLARED" verdict on a named agent.
+  it('callAttributed — PC and SC only; drives the ledger pooled CALLS row', () => {
+    expect(codesWhere((m) => m.callAttributed === true)).toEqual(sorted(['PC', 'SC']));
+    // Omitted entirely on every other code — absent, not `false`.
+    for (const code of ALL_CODES.filter((c) => !['PC', 'SC'].includes(c))) {
+      expect('callAttributed' in ACTIVITY_METADATA[code], `${code} must omit callAttributed`)
+        .toBe(false);
+    }
+  });
+
+  // `pcBreakdown` picks its block set from CALL_ATTRIBUTED_CODES, so a code that
+  // was callAttributed but NOT counted would feed the pooled CALLS total while
+  // being absent from the ledger's row keys — non-counted activity inflating a
+  // counted, manager-facing figure. This is the containment that prevents it.
+  it('every callAttributed code is also a COUNTED live code', () => {
+    for (const code of CALL_ATTRIBUTED_CODES) {
+      expect(COUNTED_LIVE_CODES, `${code} is callAttributed but not counted+live`)
+        .toContain(code);
+    }
+    expect(CALL_ATTRIBUTED_CODES.length).toBeGreaterThan(0); // not vacuous
   });
 
   it("emphasis 'fill' — CI alone; the money type, same family as AI/FFI", () => {

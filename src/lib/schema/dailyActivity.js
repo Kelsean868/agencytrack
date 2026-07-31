@@ -171,3 +171,31 @@ export function getSundayOf(dateStr) {
   const dd = String(d.getUTCDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
 }
+
+/**
+ * The 7 'YYYY-MM-DD' dates Sun→Sat for the week containing `dateStr`.
+ *
+ * Lifted here from `src/components/planner/planner.helpers.js` (which now
+ * re-exports it, so existing consumers are unchanged) because `src/lib/`
+ * consumers — `src/lib/activityLedger.js` among them — must not import from
+ * `src/components/`. Co-located with `getSundayOf`, its only dependency.
+ *
+ * There is no excluded day: an agent who works a Saturday gets credit for it.
+ *
+ * Same UTC-noon anchor discipline as `getSundayOf` — immune to DST edges.
+ *
+ * @param {string} dateStr - 'YYYY-MM-DD' (any day of the target week)
+ * @returns {string[]} 7 dates, Sunday first
+ */
+export function buildWeekDates(dateStr) {
+  const sunday = getSundayOf(dateStr);
+  const base = new Date(sunday + 'T12:00:00Z');
+  return Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(base);
+    d.setUTCDate(d.getUTCDate() + i);
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
+}

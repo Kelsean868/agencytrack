@@ -45,6 +45,17 @@
  *   dev              development hours — coaching, excluded from own production
  *   prepCapable      gets the 4-item prep checklist (AI/FFI/CI/JC only)
  *   seedsDailyField  Daily Capture field this seeds, or null for "seeds nothing"
+ *   callAttributed   optional, omit for false. The code's blocks are scheduled
+ *                    CAPACITY, not activity: the ledger counts the CALLS inside
+ *                    the block window (`max(block.dials, itemised)`) rather than
+ *                    counting the block as one. Summing one-per-block into the
+ *                    same total that receives one-per-call would sum a container
+ *                    with its contents. All `callAttributed` codes are attributed
+ *                    JOINTLY — a call record carries no type of its own, so it
+ *                    inherits the type of whichever block claims it, which makes
+ *                    any per-type split non-monotonic under block-adds. Consumed
+ *                    by `src/lib/activityLedger.js`; never write a literal
+ *                    ['PC','SC'] anywhere.
  *   pickerGroup      booking-sheet group key. ABSENT (not null) on codes that are
  *                    not yet bookable — see `live`.
  *   pickerOrder      optional within-group sort override; defaults to table order
@@ -93,15 +104,24 @@ export const PICKER_GROUP_DEFS = Object.freeze([
  */
 export const ACTIVITY_METADATA = Object.freeze({
   // ── Selling ladder ─────────────────────────────────────────────────────────
+  // PC and SC are `callAttributed`: their blocks are scheduled CAPACITY, and the
+  // ledger counts the CALLS inside them rather than the blocks themselves. See
+  // the `callAttributed` note above and `src/lib/activityLedger.js`.
   PC: Object.freeze({
     label: 'P.C', name: 'Prospecting call', family: 'call', counts: true,
     icon: 'Phone', mgr: false, dev: false, prepCapable: false,
-    seedsDailyField: 'dials', pickerGroup: 'prospect', live: true,
+    seedsDailyField: 'dials', pickerGroup: 'prospect', callAttributed: true, live: true,
   }),
+  // `name` carries the parenthetical because "Seen call" reads to a new manager
+  // as "I saw them in person". It is a historical term — an agent had "seen" a
+  // prospect once they answered the door — and the modern meaning is simply
+  // CONTACT MADE, by any channel. It is NOT a service call (`serviceCalls` in the
+  // weekly submission is servicing existing clients, ratified as excluded from
+  // every funnel sum). `label` stays 'S.C': it is the agents' own vocabulary.
   SC: Object.freeze({
-    label: 'S.C', name: 'Seen call', family: 'call', counts: true,
+    label: 'S.C', name: 'Seen call (contact made)', family: 'call', counts: true,
     icon: 'PhoneCall', mgr: false, dev: false, prepCapable: false,
-    seedsDailyField: 'telContacts', pickerGroup: 'prospect', live: true,
+    seedsDailyField: 'telContacts', pickerGroup: 'prospect', callAttributed: true, live: true,
   }),
   AI: Object.freeze({
     label: 'A.I', name: 'Approach interview', family: 'ladder', counts: true,
@@ -238,6 +258,36 @@ export const ALL_CODES = Object.freeze(Object.keys(ACTIVITY_METADATA));
  */
 export const LIVE_CODES = Object.freeze(
   ALL_CODES.filter((code) => ACTIVITY_METADATA[code].live),
+);
+
+/**
+ * Live codes that count as SELLING ACTIVITY. The one set both `plannerService`'s
+ * `SELLING_TYPE_KEYS` and `src/lib/activityLedger.js` derive from — the ledger
+ * cannot import the service (that boundary is what P0-C establishes), and a
+ * second `filter(counts)` in the ledger would be a twin guarded only by a test.
+ *
+ * LIVE, not ALL: a non-live code cannot produce records (it is absent from
+ * `TYPE_KEYS`, and `createAppointment` coerces an unknown type to 'PC'), so
+ * counting over all 21 would put a permanent zero row for a code that cannot
+ * have data onto a manager-facing ledger.
+ */
+export const COUNTED_LIVE_CODES = Object.freeze(
+  LIVE_CODES.filter((code) => ACTIVITY_METADATA[code].counts),
+);
+
+/**
+ * Counted live codes whose blocks are attributed by CALL rather than by block.
+ * These are pooled into ONE ledger row (see `weekTotals`), never split per code.
+ *
+ * Filtered from COUNTED_LIVE_CODES, not LIVE_CODES, and the distinction is not
+ * cosmetic: `pcBreakdown` selects its block set from this list, so a code that
+ * was `callAttributed: true` but `counts: false` would feed the pooled CALLS
+ * total while being absent from `LEDGER_ROW_KEYS` — non-counted activity
+ * silently inflating a counted, manager-facing figure. Pinned by
+ * `activityMetadata.contract.test.js`.
+ */
+export const CALL_ATTRIBUTED_CODES = Object.freeze(
+  COUNTED_LIVE_CODES.filter((code) => ACTIVITY_METADATA[code].callAttributed === true),
 );
 
 /** True when `code` is a known activity code (live or not). */

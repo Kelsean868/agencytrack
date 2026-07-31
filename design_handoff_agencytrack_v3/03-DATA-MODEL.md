@@ -27,7 +27,7 @@ from this table**. Do not maintain a parallel list anywhere.
 | Code | Meaning | Family | Flags |
 |---|---|---|---|
 | `PC` | Phone calls | calls | `icon:'call'` |
-| `SC` | Service calls | calls | `icon:'call'` |
+| `SC` | Seen call — a contact made (reached the person) | calls | `icon:'call'` |
 | `AI` | Approach interview | selling | prep-capable |
 | `FFI` | Fact find interview | selling | prep-capable |
 | `CI` | Closing interview | selling | prep-capable |
@@ -41,6 +41,14 @@ from this table**. Do not maintain a parallel list anywhere.
 | `RI` | Recruiting interview | development | `mgr`, `dev` |
 | `UM` | Unit meeting | development | `mgr`, `dev` |
 | `SUGGESTION` | System-proposed slot | — | not real activity; excluded from all counts |
+
+> **`SC` — historical term.** An agent had "seen" a prospect once they answered the
+> door. Modern meaning is contact made, by any channel — you do not need to see
+> someone in person to ask for an appointment. **NOT a service call**; see
+> `serviceCalls` in the weekly submission, which is servicing existing clients and
+> is ratified as excluded from every funnel sum (`planVariance.js:19-20`,
+> `funnelModel.js:84`). Corrected from "Service calls" by dispatcher ruling
+> 2026-07-30; the repo's `ACTIVITY_METADATA` is authoritative for the code set.
 
 **Flags do the work:**
 
