@@ -880,3 +880,41 @@ Measure, don't look. Query computed style and bounding boxes in both themes befo
 after every fix. Several real defects here are invisible in a screenshot of the default
 state. State the root cause in one sentence before editing — if you can't, you don't
 have it yet, and tweaking the same numeric property twice means the diagnosis is wrong.
+
+---
+
+## Agent skills
+
+Configuration consumed by the `mattpocock-skills` plugin (`/wayfinder`, `/triage`,
+`/to-spec`, `/to-tickets`, `/grill-with-docs`, `/code-review`, and siblings).
+
+### Issue tracker
+
+GitHub Issues on `Kelsean868/agencytrack`, via the `gh` CLI. Native sub-issues and
+issue dependencies are both enabled. See [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md).
+
+### Triage labels
+
+The five canonical triage roles, each label string equal to its role name. Distinct
+from the green-channel / human-merge merge-authority vocabulary in § Workflow — these
+govern implementation authority, not merge authority. See
+[`docs/agents/triage-labels.md`](docs/agents/triage-labels.md).
+
+### Domain docs
+
+Single-context. `CONTEXT.md` lives at `docs/CONTEXT.md`, not the repo root. See
+[`docs/agents/domain.md`](docs/agents/domain.md).
+
+### Where `/wayfinder` fits
+
+`/wayfinder` charts multi-session planning work as a map issue with decision-ticket
+children. It sits **ahead of** the kickoff brief: the map's destination is a landed
+brief, and Rule 10's docs-PR gate then runs unchanged. Two deviations from the
+skill's upstream defaults are deliberate:
+
+- **Briefs are persistent.** The upstream skill treats its spec as disposable
+  (closed and deleted once the code lands). Rule 10 makes briefs a permanent audit
+  trail in `docs/briefs/`. Keep them.
+- **`task` tickets never merge or deploy.** Rule 19 is unchanged — a `task` ticket
+  whose work is a merge, a `firebase deploy`, or a production data mutation is
+  HITL only.
