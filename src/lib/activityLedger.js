@@ -50,12 +50,28 @@ import { isEvidenced } from '../constants/appointmentStatus';
 import { buildWeekDates } from './schema/dailyActivity';
 
 /**
- * The key of the pooled call row. Deliberately NOT 'PC': the repo calls SC
- * "Seen call", the prototype calls it "Sales call" and 03-DATA-MODEL.md calls it
- * "Service calls" — three sources, three meanings — and the company floor for
- * `callsMade` excludes service calls. Folding SC dials into a row labelled
- * prospecting calls would be a business claim none of those three supports. An
- * honest joint row makes no false claim; a mislabelled one does.
+ * The key of the pooled call row. Deliberately NOT 'PC'.
+ *
+ * PC and SC measure DIFFERENT things and feed DIFFERENT company minimums:
+ * PC → `dials` → `callsMade`, and SC → `telContacts` → `telContacts`. SC is a
+ * "seen call", i.e. a contact MADE (the person was reached) — a historical term
+ * from door-to-door selling, and emphatically not a service call. A row labelled
+ * prospecting calls that silently contained contacts would misstate both floors
+ * at once. An honest joint row makes no false claim; a mislabelled one does.
+ *
+ * ── PHASE 2.1 WILL ADD `contacts` TO THIS ROW (do not build it here) ─────────
+ * Because SC means "contacted", the dials-vs-contacts distinction is a property
+ * of the CALL RECORD's disposition, not of the block that claimed it. Contacts
+ * are the subset of calls whose disposition indicates the person was reached
+ * (Appointment Set / Callback Requested / Not Interested) as against Left
+ * Voicemail / No Answer / Bad Number. That subset is monotonic by construction
+ * and CANNOT migrate between rows when a block is added — which is exactly what
+ * makes it safe where the block-type split was not (see the header).
+ *
+ * So 2.1 adds a `contacts` field feeding `telContacts`, while `total` continues
+ * to feed `callsMade`. That is ADDITIVE: `{ inBlocks, adhoc, total, memberCodes }`
+ * is unchanged and nothing in this module needs revisiting. The disposition
+ * vocabulary itself lands with the dialer in Phase 1.5 — do not invent it early.
  */
 export const ROW_CALLS = 'CALLS';
 

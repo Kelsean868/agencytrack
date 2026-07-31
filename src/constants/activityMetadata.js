@@ -112,8 +112,14 @@ export const ACTIVITY_METADATA = Object.freeze({
     icon: 'Phone', mgr: false, dev: false, prepCapable: false,
     seedsDailyField: 'dials', pickerGroup: 'prospect', callAttributed: true, live: true,
   }),
+  // `name` carries the parenthetical because "Seen call" reads to a new manager
+  // as "I saw them in person". It is a historical term — an agent had "seen" a
+  // prospect once they answered the door — and the modern meaning is simply
+  // CONTACT MADE, by any channel. It is NOT a service call (`serviceCalls` in the
+  // weekly submission is servicing existing clients, ratified as excluded from
+  // every funnel sum). `label` stays 'S.C': it is the agents' own vocabulary.
   SC: Object.freeze({
-    label: 'S.C', name: 'Seen call', family: 'call', counts: true,
+    label: 'S.C', name: 'Seen call (contact made)', family: 'call', counts: true,
     icon: 'PhoneCall', mgr: false, dev: false, prepCapable: false,
     seedsDailyField: 'telContacts', pickerGroup: 'prospect', callAttributed: true, live: true,
   }),
