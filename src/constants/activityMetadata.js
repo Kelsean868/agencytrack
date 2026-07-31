@@ -278,9 +278,16 @@ export const COUNTED_LIVE_CODES = Object.freeze(
 /**
  * Counted live codes whose blocks are attributed by CALL rather than by block.
  * These are pooled into ONE ledger row (see `weekTotals`), never split per code.
+ *
+ * Filtered from COUNTED_LIVE_CODES, not LIVE_CODES, and the distinction is not
+ * cosmetic: `pcBreakdown` selects its block set from this list, so a code that
+ * was `callAttributed: true` but `counts: false` would feed the pooled CALLS
+ * total while being absent from `LEDGER_ROW_KEYS` — non-counted activity
+ * silently inflating a counted, manager-facing figure. Pinned by
+ * `activityMetadata.contract.test.js`.
  */
 export const CALL_ATTRIBUTED_CODES = Object.freeze(
-  LIVE_CODES.filter((code) => ACTIVITY_METADATA[code].callAttributed === true),
+  COUNTED_LIVE_CODES.filter((code) => ACTIVITY_METADATA[code].callAttributed === true),
 );
 
 /** True when `code` is a known activity code (live or not). */

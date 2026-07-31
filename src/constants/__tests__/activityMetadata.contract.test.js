@@ -31,7 +31,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { ACTIVITY_METADATA, ALL_CODES, LIVE_CODES } from '../activityMetadata';
+import {
+  ACTIVITY_METADATA, ALL_CODES, LIVE_CODES,
+  COUNTED_LIVE_CODES, CALL_ATTRIBUTED_CODES,
+} from '../activityMetadata';
 
 const sorted = (xs) => [...xs].sort();
 const codesWhere = (pred) => sorted(ALL_CODES.filter((c) => pred(ACTIVITY_METADATA[c])));
@@ -147,6 +150,18 @@ describe('ACTIVITY_METADATA — semantic axes (set equality both directions)', (
       expect('callAttributed' in ACTIVITY_METADATA[code], `${code} must omit callAttributed`)
         .toBe(false);
     }
+  });
+
+  // `pcBreakdown` picks its block set from CALL_ATTRIBUTED_CODES, so a code that
+  // was callAttributed but NOT counted would feed the pooled CALLS total while
+  // being absent from the ledger's row keys — non-counted activity inflating a
+  // counted, manager-facing figure. This is the containment that prevents it.
+  it('every callAttributed code is also a COUNTED live code', () => {
+    for (const code of CALL_ATTRIBUTED_CODES) {
+      expect(COUNTED_LIVE_CODES, `${code} is callAttributed but not counted+live`)
+        .toContain(code);
+    }
+    expect(CALL_ATTRIBUTED_CODES.length).toBeGreaterThan(0); // not vacuous
   });
 
   it("emphasis 'fill' — CI alone; the money type, same family as AI/FFI", () => {
