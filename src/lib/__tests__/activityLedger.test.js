@@ -248,6 +248,42 @@ describe('attributeCalls — every call is claimed exactly once', () => {
   });
 });
 
+// ── Aggregation: the magnitude nobody else was proving ───────────────────────
+//
+// Composition of what the other properties give us:
+//   · partition     proves ATTRIBUTION  (which block claims which call)
+//   · monotonicity  proves DIRECTION    (a new record never lowers a figure)
+//   · neither       proves MAGNITUDE    (that the per-block figure is right)
+//
+// Substituting `max(dials, insideIds.length)` with `dials + insideIds.length`
+// passes ALL FOUR monotonicity properties AND ALL FOUR partition properties. It
+// is 06-DEFECT-CLASSES.md §3's first listed defect — "PC counted blocks and
+// calls into one total", the container summed with its contents — and it is the
+// single line this whole slice exists to make impossible.
+//
+// This is a cross-check, not a tautology: the expected value is recomputed from
+// `attributeCalls`' OUTPUT, which the partition properties prove independently,
+// rather than from anything inside `pcBreakdown`.
+
+describe('aggregation — pcBreakdown is exactly the aggregate of the attribution', () => {
+  it('inBlocks is the per-block max(dials, itemised) — never the sum', () => {
+    fc.assert(fc.property(anyStateArb, dayArb, (state, day) => {
+      const attribution = attributeCalls(state, day);
+      const blockById = new Map(state.events.map((e) => [e.id, e]));
+
+      const expected = attribution.blocks.reduce(
+        (n, b) => n + Math.max(blockById.get(b.blockId)?.dials || 0, b.insideIds.length),
+        0,
+      );
+
+      const r = pcBreakdown(state, day);
+      expect(r.inBlocks).toBe(expected);
+      expect(r.adhoc).toBe(attribution.adhocIds.length);
+      expect(r.total).toBe(r.inBlocks + r.adhoc);
+    }), runCfg);
+  });
+});
+
 // ── The verified sequence from the source build ──────────────────────────────
 
 describe('the 8 → 9 → 10 fixture', () => {
