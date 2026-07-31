@@ -767,6 +767,12 @@ Banked: PR #217 (d84a752).
 
 Worked example: PR #884 (P0-B activity ledger). Three property families, each mutation-verified, and the contrast is the point — substituting `max(dials, itemised)` with `dials + itemised` (06-DEFECT-CLASSES.md §3's first listed defect, the container summed with its contents) passes **all five** monotonicity properties and **all four** partition properties, and is caught only by the aggregation property. Monotonicity proves direction, partition proves attribution, aggregation proves magnitude; none of the three substitutes for another.
 
+**Before any recursive delete of a worktree, verify no junction or symlink to shared state remains inside it — and treat a failed unlink as a HARD STOP, not a warning to proceed past.** Worktrees are routinely given a `node_modules` junction (`mklink /J`) pointing at the main worktree's real `node_modules`, because installing per-worktree is expensive. A recursive delete that follows that link destroys the SHARED tree, and the failure is silent and unrecoverable — nothing errors, the next build just cannot resolve anything.
+
+Sequence: `cmd //c rmdir "<worktree>\node_modules"` (unlinks a junction without touching the target) → **confirm the path is gone** → only then `git worktree remove`. On Windows `rmdir` can fail on a junction with *"The directory is not empty"*; that is the HARD STOP, not a nuisance — resolve it before any recursive delete runs.
+
+This is the same family as the `slice(indexOf(a), indexOf(b))` rule: a destructive operation whose failure mode produces no error. Banked from P0-B / PR #884 cleanup, where `rmdir` failed exactly this way and `git worktree remove` then ran with the junction still in place. The shared `node_modules` happened to survive — but that was established by checking afterwards, which is luck, not method.
+
 **Smoke standard, reinforced:** Walks MUST include a real write-read-verify cycle. Selector-only checks miss permission/rules/index bugs. The shakedown design follows this principle — every category does at least one real Firestore write through the rule layer.
 
 - **Smoke is CC's default, not Kyron's manual check.** CC runs production smoke autonomously for every PR via `setupBypassSession` from `scripts/verification/lib/walk-helpers.mjs`. The default is RUN. Waiver is only acceptable when changes are clearly outside any user-visible behavior path (pure docs commits, pure type changes, internal refactors with no UI surface). Even rendering/a11y/timing changes get a smoke walk — RTL covers component logic, but smoke covers real-DOM + real-timer behavior under real Firebase backoff that RTL can't simulate. Brief authors must justify a smoke waiver explicitly; absence of waiver = CC runs the walk. Banked from PR #151 (Wizard R2-R5 polish) where brief waived smoke for pure-rendering changes and Kyron retroactively flagged this as too permissive a default.
@@ -812,3 +818,113 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+
+## Linked Agent System v3 — binding implementation rules
+
+Source: `design_handoff_agencytrack_v3/CLAUDE.md`, merged 2026-07-29. Scope: all work
+on the v3 linked agent system (planner, dialer, lead intake, weekly activity ledger,
+policy book, commission reconciliation). Each rule was learned from a real defect
+during prototyping; three of them caused wrong business numbers to be shown to a
+manager. Where a rule conflicts with an existing repo pattern, do not silently pick —
+raise it with the dispatcher.
+
+### Non-negotiables
+
+1. **`ACTIVITY_METADATA` is the only source of truth for activity codes.** Colours,
+   classifiers, counters, filters and prep-capability all derive from it. Adding a new
+   code must require **zero** edits anywhere else. Every regression in prototyping came
+   from a hardcoded list that had a twin.
+
+2. **Derived, never stored.** Verdicts, totals, queue membership, hours splits and
+   ledger figures are computed at read time. Never cache a number you can derive.
+
+3. **Monotonicity is a test, not a hope.** For any derived count representing work
+   done: `f(state + record) >= f(state)`. This was violated twice, and both times a
+   manager-facing screen accused a named agent because of a scoping bug.
+
+4. **One factory per entity.** `newPolicy()` is the only way a policy is created. Same
+   pattern for any entity with derived fields.
+
+5. **Evidenced and declared are never blended.** Separate columns, provenance stated in
+   the UI, percentage evidenced always visible. Derived figures say what they were
+   derived from ("8 in blocks + 2 ad-hoc").
+
+6. **Ink on `--teal` or any semantic fill must be checked in both themes**, including
+   `:focus-visible` and `:disabled` states. `--teal` is *brighter* in dark mode. Fix
+   the ink (`.dark .thing{color:var(--bg)}`), never the fill. Five defects, one of them
+   in a keyboard-only state.
+
+7. **Rows that accumulate children wrap.** `flex-wrap:wrap` + row gap on toolbars from
+   day one. Flexible labels get `min-width:0` + ellipsis.
+
+8. **Name the shrink victim.** Times and figures `flex:0 0 auto`; status words shrink
+   and abbreviate with a `title`. Never let a time be crushed.
+
+9. **No `-webkit-line-clamp` on a flex child** — it blockifies and dies silently.
+   Clamp by height; always pair truncation with `title`.
+
+10. **A sticky header lives inside the grid it heads**, as the first row — never as a
+    sibling grid, which drifts against the scrollbar.
+
+11. **Silent fallbacks throw in development.** `LOOKUP[x] || DEFAULT` must log or throw.
+    A fallback that renders something plausible is worse than one that renders nothing.
+
+12. **Never `slice(indexOf(a), indexOf(b))` without asserting both are `> -1`.** A
+    missing needle returns `-1` and `slice(start, -1)` eats the rest of the file.
+
+### Product rules that look like implementation details but aren't
+
+- **Every consequence is a real object.** Chasing a premium creates a `COLL` block, not
+  a `chased: true` flag. There is no tick box that marks a premium saved.
+- **A call block is capacity; a call is activity.** Never sum a container with its
+  contents. The per-block `max(dials, itemised)` rule is in `03-DATA-MODEL.md`.
+- **Coaching is not own production.** `JC`/`ONE`/`RI`/`UM` are development hours.
+- **Prep is a property of an appointment**, never an activity with floor credit.
+- **Reconcile in both directions** — an unmatched carrier line matters as much as an
+  unpaid policy.
+- **Copy is design.** Ship the strings verbatim; several of them *are* the feature.
+
+### Review method
+
+Measure, don't look. Query computed style and bounding boxes in both themes before and
+after every fix. Several real defects here are invisible in a screenshot of the default
+state. State the root cause in one sentence before editing — if you can't, you don't
+have it yet, and tweaking the same numeric property twice means the diagnosis is wrong.
+
+---
+
+## Agent skills
+
+Configuration consumed by the `mattpocock-skills` plugin (`/wayfinder`, `/triage`,
+`/to-spec`, `/to-tickets`, `/grill-with-docs`, `/code-review`, and siblings).
+
+### Issue tracker
+
+GitHub Issues on `Kelsean868/agencytrack`, via the `gh` CLI. Native sub-issues and
+issue dependencies are both enabled. See [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md).
+
+### Triage labels
+
+The five canonical triage roles, each label string equal to its role name. Distinct
+from the green-channel / human-merge merge-authority vocabulary in § Workflow — these
+govern implementation authority, not merge authority. See
+[`docs/agents/triage-labels.md`](docs/agents/triage-labels.md).
+
+### Domain docs
+
+Single-context. `CONTEXT.md` lives at `docs/CONTEXT.md`, not the repo root. See
+[`docs/agents/domain.md`](docs/agents/domain.md).
+
+### Where `/wayfinder` fits
+
+`/wayfinder` charts multi-session planning work as a map issue with decision-ticket
+children. It sits **ahead of** the kickoff brief: the map's destination is a landed
+brief, and Rule 10's docs-PR gate then runs unchanged. Two deviations from the
+skill's upstream defaults are deliberate:
+
+- **Briefs are persistent.** The upstream skill treats its spec as disposable
+  (closed and deleted once the code lands). Rule 10 makes briefs a permanent audit
+  trail in `docs/briefs/`. Keep them.
+- **`task` tickets never merge or deploy.** Rule 19 is unchanged — a `task` ticket
+  whose work is a merge, a `firebase deploy`, or a production data mutation is
+  HITL only.
