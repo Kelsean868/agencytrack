@@ -47,7 +47,7 @@ const REQUIRED_KEYS = [
  * on non-live codes by design (see the `live` note in the table); `pickerOrder`
  * overrides within-group sort order.
  */
-const OPTIONAL_KEYS = ['emphasis', 'pickerGroup', 'pickerOrder'];
+const OPTIONAL_KEYS = ['emphasis', 'pickerGroup', 'pickerOrder', 'callAttributed'];
 
 describe('ACTIVITY_METADATA — shape', () => {
   it('holds exactly the 21 expected codes, in table order', () => {
@@ -131,6 +131,22 @@ describe('ACTIVITY_METADATA — semantic axes (set equality both directions)', (
 
   it('prepCapable — the 4-item prep checklist (03-DATA-MODEL.md names these four)', () => {
     expect(codesWhere((m) => m.prepCapable)).toEqual(sorted(['AI', 'FFI', 'CI', 'JC']));
+  });
+
+  // ⚠ This axis decides how the ACTIVITY LEDGER counts. A code marked
+  // callAttributed has its blocks treated as scheduled CAPACITY — the ledger
+  // counts the CALLS inside the window, `max(block.dials, itemised)`, and pools
+  // all such codes into one `CALLS` row. Marking a non-call code here would make
+  // its blocks stop counting one-per-block and silently vanish into that pool;
+  // UNmarking PC or SC would sum a container with its contents, which is the
+  // defect that put a false "MOSTLY DECLARED" verdict on a named agent.
+  it('callAttributed — PC and SC only; drives the ledger pooled CALLS row', () => {
+    expect(codesWhere((m) => m.callAttributed === true)).toEqual(sorted(['PC', 'SC']));
+    // Omitted entirely on every other code — absent, not `false`.
+    for (const code of ALL_CODES.filter((c) => !['PC', 'SC'].includes(c))) {
+      expect('callAttributed' in ACTIVITY_METADATA[code], `${code} must omit callAttributed`)
+        .toBe(false);
+    }
   });
 
   it("emphasis 'fill' — CI alone; the money type, same family as AI/FFI", () => {

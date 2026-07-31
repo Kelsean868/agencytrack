@@ -41,7 +41,10 @@ import {
 import { db } from '../firebase';
 import { getWarRoleRank } from './managerWarService';
 import { expandSeriesDates, MAX_SERIES_INSTANCES } from '../components/planner/recurrence.helpers';
-import { ACTIVITY_METADATA, LIVE_CODES, PICKER_GROUP_DEFS } from '../constants/activityMetadata';
+import { APPOINTMENT_STATUSES, STATUS_KEYS } from '../constants/appointmentStatus';
+import {
+  ACTIVITY_METADATA, LIVE_CODES, PICKER_GROUP_DEFS, COUNTED_LIVE_CODES,
+} from '../constants/activityMetadata';
 import { devAssertKnown } from '../utils/devAssertKnown';
 
 // ── Activity types (selling ladder + support work + blocks) ──────────────────
@@ -104,9 +107,10 @@ export const TYPE_KEYS = APPOINTMENT_TYPES.map((t) => t.key);
  * NOT consume this set — they filter by exact type equality against CI/FFI/PC,
  * so every type outside those three is already inert for them by construction.
  */
-export const SELLING_TYPE_KEYS = Object.freeze(
-  LIVE_CODES.filter((key) => ACTIVITY_METADATA[key].counts),
-);
+// Derived from the table's own COUNTED_LIVE_CODES so the activity ledger and
+// this service read one set — the ledger cannot import a service, and a second
+// filter(counts) there would be a twin. Membership is unchanged (pinned below).
+export const SELLING_TYPE_KEYS = COUNTED_LIVE_CODES;
 
 /** True when a type counts toward selling-activity totals. */
 export function isSellingType(type) {
@@ -162,15 +166,12 @@ export function groupOfType(type) {
 }
 
 // ── Status set (contract STATUS enum) ────────────────────────────────────────
-export const APPOINTMENT_STATUSES = [
-  { key: 'scheduled', label: 'Scheduled' },
-  { key: 'confirmed', label: 'Confirmed' },
-  { key: 'kept',      label: 'Kept' },
-  { key: 'done',      label: 'Done' },
-  { key: 'postponed', label: 'Postponed' },
-  { key: 'cancelled', label: 'Cancelled' },
-];
-export const STATUS_KEYS = APPOINTMENT_STATUSES.map((s) => s.key);
+// Re-exported from the `src/constants/appointmentStatus` leaf so the enum, the
+// planner's COMPLETED/RETIRED sets and the activity ledger's evidence predicate
+// all read one definition. Names and order are unchanged.
+// Imported (not bare-re-exported) because STATUS_KEYS is used locally below —
+// `export { x } from '…'` would not bind it in this module's scope.
+export { APPOINTMENT_STATUSES, STATUS_KEYS };
 
 // Free-block labels (fixed set — handoff §11.8).
 export const FREE_BLOCK_LABELS = [
