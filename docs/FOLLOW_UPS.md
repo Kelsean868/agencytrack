@@ -27,7 +27,9 @@
 | `assertLegHygiene` never asserts on `networkFailures` — a failed network call is printed but cannot fail any smoke, suite-wide; "hygiene PASS" is not evidence calls succeeded (found diagnosing the first post-deploy planner run, banked 2026-07-27) | MEDIUM | Verification | — | see § Planner activity types |
 | Mutating planner smokes leave residue by design — no self-teardown; needs a shared Admin-SDK helper across all 7 (raised by CodeRabbit on #878, banked 2026-07-27) | LOW | Verification | — | see § Planner activity types |
 | Two divergent planner design-authority trees (`proposals/planner-scheduler-v2/` vs `screens-v2/agencytrack-planner-handoff/`) — never diffed file-by-file (banked 2026-07-27) | LOW | Design system | — | see § Planner activity types |
-| External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track) | HIGH | — | overdue (was 2026-07-17) | ~4130 |
+| External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track). **PATTERN CONFIRMED 2026-07-31: rate-limited on #882, #883 AND #884 (3 of 5 HEADs, incl. the merged one)** | HIGH | — | overdue (was 2026-07-17) | see § External code reviewer |
+| `pcBreakdown` filters the day's evidenced events twice (4 passes/day via `weekTotals`) — CodeRabbit's remedy DECLINED as it would re-shape a dispatcher-ruled interface; shape-preserving fix recorded (banked 2026-07-31, PR #884) | LOW | v3 P0-B | — | see § `activityLedger` two LOW residuals |
+| `evidencedPct` uses `Math.round`, so a COLUMN of per-code percentages will not sum to 100 — harmless for today's single-figure design, scope check for Phase 2.1 (banked 2026-07-31, PR #884) | LOW | v3 Phase 2.1 | — | see § `activityLedger` two LOW residuals |
 | Track K Phase 2 — narrative `branchPlans` (new collection, HUMAN-MERGE) + PPTX + manpower setter + per-branch `branchGoals` keying (banked 2026-07-21, #864 close) | HIGH | Track K | — | ~288 |
 | Track K Phase 3 — classification quotas + real monthly quota model (banked 2026-07-21, #864 close) | MEDIUM | Track K | — | ~288 |
 | Track K — seeded Net-vs-Gross integration assertion (unit-only today; needs seeded foil branch) (banked 2026-07-21, #864 close) | MEDIUM | Track K | — | ~288 |
@@ -4769,6 +4771,24 @@ Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31. Expande
 
 ---
 
+## `activityLedger` — two LOW residuals from v3 P0-B (banked 2026-07-31, PR #884 squash `ab9b3132`, on `staging`)
+
+### 1. `pcBreakdown` filters the day's evidenced events twice — CodeRabbit's remedy was DECLINED, do not re-propose it
+
+`pcBreakdown` calls `evidencedEventsOn(state, day)` to build its `blockById` map, and `attributeCalls` — which it calls one line earlier — already computed the same filter internally.
+
+**CodeRabbit (PR #884, 14:09:20Z) proposed having `attributeCalls` return block *objects* instead of `blockId` strings. That remedy was DECLINED and should not be re-proposed in that form:** the `{ blocks: [{ blockId, insideIds }], adhocIds }` shape is explicitly dispatcher-ruled (ruling 6a), and per Rule 21 a recorded ruling outranks a bot suggestion. It was also declined on timing — re-shaping a module whose three property families had just been mutation-verified, minutes before merge, is the wrong trade.
+
+**The observation is valid and in fact understated.** `weekTotals` calls `pcBreakdown` **twice per day** — once directly and once via `loggedFor` — so it is **4 day-filter passes per day, 28 per week**, not the 2 CodeRabbit counted.
+
+**Shape-preserving fix if this is ever worth doing:** an internal (non-exported) helper that returns both the attribution and the matched block objects, with `attributeCalls` kept as a thin public projection to the ruled shape. Cost today is negligible (pure functions over in-memory arrays of tens of records); revisit only if Phase 2.1 renders the ledger on every keystroke.
+
+### 2. `evidencedPct` rounds, so a COLUMN of percentages will not sum to 100 — scope check for Phase 2.1
+
+`evidencedPct` uses `Math.round`, so per-row percentages are each individually correct but need not total 100 across rows. **Harmless for what the design authority actually shows** — a single "55% of this week is evidenced" figure. **Revisit only if Phase 2.1 renders a column of per-code percentages**, where the discrepancy becomes visible and reads as a bug. Options then: render one decimal, or largest-remainder apportionment. Do not change it pre-emptively — the current behaviour is correct for the current design.
+
+---
+
 ## External code reviewer — Gemini sunset PASSED 2026-07-17; secondary-reviewer decision is NOW OPEN (PROMOTED MEDIUM → HIGH 2026-07-21, post-#864; originally banked 2026-06-04)
 
 **PROMOTED to HIGH — next decision up, before the next backend-touching track (operator ruling 2026-07-21, PR #864 merge session).** The deadline passed: Gemini sunset 2026-07-17 and reviewer coverage is now genuinely thin. Evidence from Track K P1 (#864): CodeRabbit (free tier) **declined the final two commits with "Review rate limited"** — rate limits fire exactly when several commits land in one session, which is the normal working pattern. On #864 the unreviewed commits were harmless (label swap + banked a11y idiom); the same gap on a `firestore.rules` or Cloud Functions change is a different story. Settle this BEFORE the next rules/CF-touching track rather than after.
@@ -4783,6 +4803,8 @@ Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31. Expande
 **Action:** evaluate the three (setup cost, signal quality, cost), pick one, wire it to PRs against `main`, and update the §6 (amendment-v3) external-reviewer triage references from "Gemini" to the chosen reviewer. Note: external review was a NO-OP for most of the Track J overnight queue (Gemini posted on #465 but was silent on the other batch PRs) — whatever replaces it should be verified to actually post before relying on the §6 gate.
 
 **Update (banked 2026-07-10, promotion session): CodeRabbit was chosen and is already wired** (`coderabbitai` app-login, no workflow file needed; confirmed posting both a reviews-channel and a summary-comment on PRs — see CLAUDE.md § Methodology Rule 21). **One week out from the 2026-07-17 sunset**, the remaining action is narrower than the original item: confirm CodeRabbit's coverage is solid on its own (not just as a Gemini backup) before Gemini goes fully silent, and do a final cleanup pass on any remaining "Gemini" references in briefs/CLAUDE.md once the sunset date passes.
+
+**Update (2026-07-31, v3 P0-A/P0-B session): three consecutive PRs — this is a PATTERN, not incidents.** #882, #883 and #884 each hit "Review rate limited"; on **#884 it fired on 3 of 5 HEADs, including the final one**, so the merged SHA was never reviewed by either bot (Gemini is past sunset and posts a summary comment only). The rate limit fires precisely when several commits land in one session — i.e. the normal working pattern, and the pattern every dispatcher-ruling cycle produces. Interim mitigation, applied on all three PRs and to be applied on every PR until this is settled: **state the gap explicitly in the PR body — which HEADs were reviewed, which were not — and never let reviewer silence read as approval.** On #884 the unreviewed final delta was test + docs only (`activityLedger.js` byte-identical to the last reviewed HEAD), which is the mildest form; the same gap on a rules or Cloud Functions change is the scenario this entry was promoted to HIGH to prevent.
 
 Banked: Track J morning task (2026-06-04), from the PR #465 Gemini sunset notice.
 
