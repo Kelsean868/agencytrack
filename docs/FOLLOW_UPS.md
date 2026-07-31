@@ -566,6 +566,24 @@ Two further details worth keeping:
 - It is the **second distinct test in `MeetingMode.test.jsx`** to fail this way, after `"ArrowRight advances from opening to the branch scorecard"` in the sixth data point (v3 P0-A baseline). That file now has two named members. `"skip-logs the awards scene…"` also appears in the run-2 row of the multi-run table above, so it was already a suspected member — this is its first *named, CI, reproduced-and-cleared* observation.
 - **5015ms against the 5000ms global** is the same signature as the seventh data point (5007ms) and the A5 member in the eighth (5027ms). Three separate tests now cluster within ~30ms of the cap, which is the shape of a budget that is simply too tight under contention rather than three unrelated races. **Reinforces that #872 raised the ceiling without removing the race** — and strengthens the case for the runner-level remedy (`poolOptions` / `maxThreads`, currently absent from `vite.config.js` entirely, so the runner self-sizes to the machine) over a fourth round of per-test widening.
 
+**TENTH data point — ⚠ ESCALATION: a single re-run no longer reliably clears it (2026-07-31, PR #887 — the PR banking the ninth point above).** #887 is also **docs-only** — `CLAUDE.md` + `docs/FOLLOW_UPS.md`, zero files under `src/` — and it went red on CI **twice on the same commit**, failing **different tests each time**:
+
+| Run | Failing test | Time |
+|---|---|---|
+| 1 | `DailyCaptureV2 > "stepper \"+\" increments the bound storage key and Save writes it"` | 181ms — *element not found* (A2 shape) |
+| 1 | `aggregate-on-save (Phase 2.2) > "isolates aggregation failure — the daily log still succeeds"` | **5006ms** |
+| 2 (re-run, zero change) | `aggregate-on-save (Phase 2.2) > "recomputes the weekly draft after a successful daily save"` | **5006ms** |
+
+**A deterministic regression cannot fail different tests on successive runs of the same commit** — the non-determinism is proven by the runs themselves, not inferred. Confirmed locally: `DailyCaptureV2.test.jsx` passes **48/48 in 8.39s** of test time on this exact branch.
+
+Three things this adds:
+
+1. **`aggregate-on-save (Phase 2.2)` is a NEW describe block in the family** — two of its tests, not previously enumerated anywhere.
+2. **The cap cluster is now five observations across four distinct tests:** 5006 · 5006 · 5007 · 5015 · 5027, all against the 5000ms global. Four unrelated races that all happen to land within 27ms of the same threshold is not a credible reading; one budget that is too tight under contention is.
+3. **The mitigation is degrading.** Every prior episode cleared on one re-run. This one did not — which means "re-run and move on" is no longer a reliable workaround, and the cost is now landing on unrelated docs PRs.
+
+The `DailyCaptureV2 > stepper "+"` recurrence (167ms on #882, 181ms here) also confirms the **A2 assertion-shape mechanism** is independent of the timeout mechanism and is *also* contention-driven — two mechanisms, one cause.
+
 **Guard 1 scope note (banked 2026-07-30, PR #882, LOW — recorded, not chased).** The activity-code twin guard (`src/utils/__tests__/activity-code-twin-guard.test.js`) scans **production source only**; `__tests__` is excluded, matching `dark-ink-static-guard.test.js`. Deliberate: test files are full of mock appointment arrays (`[{type:'CI'},{type:'FFI'},{type:'PC'}]`) that are sample data, not classifiers, and are structurally indistinguishable from the real `WEEK_COUNTER_ROWS` twin — so allowlisting them would teach authors that the allowlist is where you go when the guard is annoying, which is how a guard gets tuned to uselessness. **Residual exposure:** a shared test helper or fixture module could host an unseen code twin, and if production ever imported such a helper the guard would not see it. Low risk (test-only blast radius today), recorded so it is not re-derived from scratch.
 
 **Implication for the remedy.** Two rounds of per-test fixes have now each held only until contention rose. That is the third independent signal pointing at the runner-level suggestion already raised above (`maxConcurrency` / pool sizing / `fileParallelism`) rather than a third round of per-test budget widening — this test has now consumed two distinct per-test remedies and failed after both. Whoever picks this up should treat "widen it again to 20s" as the option to argue *against*.
