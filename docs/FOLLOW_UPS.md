@@ -312,6 +312,24 @@
 
 ---
 
+## v3 prototypes (`design_handoff_agencytrack_v3/prototypes/*.jsx`, incl. `at-tally.jsx` / `at-dialer.jsx` / `at-store.jsx`) are design REFERENCE, not correct implementations — do not port their code (banked 2026-07-31, PR #884, MEDIUM — standing rule + defect register)
+
+**Standing rule.** The v3 prototypes landed in-repo via PR #883 and are now greppable, citable, and dangerously easy to copy. They are **design reference only**. Port *behaviour* from the numbered docs (`01`–`08`) and the kickoff briefs; never by copying prototype code. The bundle's own `README.md:31` says it outright: *"They are **not production code to copy**."* They run as browser-transpiled JSX with no build step, no persistence and no network, and several patterns exist purely to make a single file demonstrable.
+
+**Defect register — confirmed defects found while porting P0-B.** Each was found *because* the port went through the docs rather than the code:
+
+| Site | Defect | Consequence if copied |
+|---|---|---|
+| `at-tally.jsx:90` | `weekTotals` returns `total: r.logged + r.declared` | Blends evidenced with declared — the exact thing `03-DATA-MODEL.md`'s central contract forbids. Destroys the provenance the trust surface is built on. |
+| `at-tally.jsx:61` | Recomputes each block's `inside` set **without excluding already-claimed calls** | A call inside two overlapping blocks is counted twice. Silently inflates a manager-facing activity figure. Reproduced under mutation in PR #884 and shrunk to 2 evidenced `PC` blocks with identical windows + 1 call. |
+| `at-tally.jsx:29-35` | Hardcoded `COUNTED` array carrying floor values | A twin of `ACTIVITY_METADATA` — the exact class v3 rule 1 exists to remove — **and its floor numbers are fictional**, not the company minimums. |
+| `at-dialer.jsx:161` | Cancelling a ringing call never clears the pending `ring.current` timeout | The call connects ~1.6s later anyway: a Cancel control that does not cancel. (CodeRabbit, PR #883.) |
+| `at-store.jsx:395` | Side effects and mutable counters run inside `setX` updaters throughout `useSyncStore` | React 19 StrictMode may double-invoke updaters, so these double-fire or desync two `useState` slices. Note the README says component boundaries and state *shape* are worth keeping — the updater *implementation* is not. (CodeRabbit, PR #883.) |
+
+**Why this is banked rather than fixed:** editing the prototypes would defeat the point of a verbatim, citable design reference, and `03-DATA-MODEL.md` is corrected in place instead when the *design* is wrong (see the `SC` correction in PR #884). Add to this register whenever a port surfaces another one. **Phase 5.x reads `at-dialer.jsx` as design authority — read this entry first.**
+
+---
+
 ## Track K Strategic Plan — banked follow-ups from Phase 1 close (banked 2026-07-21, PR #864 squash `ebb168f1`, dispatcher-ruled sweep)
 
 Track K Phase 1 (Branch Manager Strategic Plan dashboard — client-only, single math path in `src/lib/strategicPlan/`, presentation mode, PDF export) shipped via [#864](https://github.com/Kelsean868/agencytrack/pull/864). Design authority: `docs/design-system/screens-v2/stratplan-handoff/`; execution record: the PR thread (§4 dispatcher ruling 2026-07-17 + %Obj/Pace label-split ruling are committed into `docs/briefs/track-K-strategic-plan-phase1-brief.md` §4 Amendment). Banked per the merge ruling:

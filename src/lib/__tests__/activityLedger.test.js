@@ -22,7 +22,7 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import {
-  pcBreakdown, loggedFor, declaredFor, weekTotals,
+  pcBreakdown, loggedFor, declaredFor, weekTotals, attributeCalls,
   LEDGER_ROW_KEYS, ROW_CALLS,
 } from '../activityLedger';
 import { CALL_ATTRIBUTED_CODES, COUNTED_LIVE_CODES } from '../../constants/activityMetadata';
@@ -72,6 +72,47 @@ const stateArb = fc.record({
   declared: {},
 }));
 
+/**
+ * A DENSE single-day generator. `stateArb` above is deliberately broad — events
+ * scattered over 7 days across all 8 counted types — and that breadth means the
+ * case this suite most needs almost never occurs: TWO call-attributed blocks
+ * overlapping on the SAME day with a call inside the overlap. Measured: with the
+ * claim-exclusion removed from `attributeCalls` (the exact prototype defect at
+ * at-tally.jsx:61), all four partition properties still passed on `stateArb`
+ * alone at numRuns 200. Too wide fails to reach the bug just as surely as too
+ * narrow does.
+ *
+ * So this generator pins everything to one day, weights types 3:1 toward
+ * call-attributed, and packs start hours into a 4-hour band with spans up to 4 —
+ * which makes overlap the norm rather than an accident — with calls in the same
+ * band so they land inside several windows at once.
+ */
+const denseTypeArb = fc.oneof(
+  { weight: 3, arbitrary: fc.constantFrom(...CALL_ATTRIBUTED_CODES) },
+  { weight: 1, arbitrary: typeArb },
+);
+
+const denseStateArb = fc.record({
+  events: fc.array(fc.record({
+    type: denseTypeArb,
+    startHour: fc.integer({ min: 9, max: 12 }),   // narrow band → overlaps
+    span: fc.integer({ min: 1, max: 4 }),
+    dials: fc.option(fc.integer({ min: 0, max: 6 }), { nil: undefined }),
+    status: statusArb,
+  }), { minLength: 2, maxLength: 6 }),
+  calls: fc.array(fc.integer({ min: 9, max: 15 }), { minLength: 1, maxLength: 6 }),
+}).map(({ events, calls }) => ({
+  events: events.map((e, i) => ({
+    id: `e${i}`, date: ANCHOR, type: e.type, status: e.status,
+    startHour: e.startHour, endHour: e.startHour + e.span, dials: e.dials,
+  })),
+  calls: calls.map((atHour, i) => ({ id: `c${i}`, date: ANCHOR, atHour })),
+  declared: {},
+}));
+
+/** Broad coverage AND the dense overlap case. */
+const anyStateArb = fc.oneof(stateArb, denseStateArb);
+
 const addCall = (state, raw) => ({
   ...state,
   calls: [...state.calls, { id: `c${state.calls.length}`, date: raw.date, atHour: raw.atHour }],
@@ -91,7 +132,7 @@ const runCfg = { numRuns: NUM_RUNS, seed: SEED };
 
 describe('monotonicity — f(S + r) >= f(S)', () => {
   it('pcBreakdown().total never decreases when a CALL is logged', () => {
-    fc.assert(fc.property(stateArb, rawCallArb, dayArb, (state, call, day) => {
+    fc.assert(fc.property(anyStateArb, rawCallArb, dayArb, (state, call, day) => {
       const before = pcBreakdown(state, day).total;
       const after = pcBreakdown(addCall(state, call), day).total;
       expect(after).toBeGreaterThanOrEqual(before);
@@ -101,7 +142,7 @@ describe('monotonicity — f(S + r) >= f(S)', () => {
   // The subtler direction: a new block can RE-CLAIM calls an existing block or
   // the ad-hoc bucket already held. Re-attribution must never lose a call.
   it('pcBreakdown().total never decreases when a BLOCK is added', () => {
-    fc.assert(fc.property(stateArb, rawBlockArb, dayArb, (state, block, day) => {
+    fc.assert(fc.property(anyStateArb, rawBlockArb, dayArb, (state, block, day) => {
       const before = pcBreakdown(state, day).total;
       const after = pcBreakdown(addBlock(state, block), day).total;
       expect(after).toBeGreaterThanOrEqual(before);
@@ -109,7 +150,7 @@ describe('monotonicity — f(S + r) >= f(S)', () => {
   });
 
   it('EVERY weekTotals row never decreases when a call is logged', () => {
-    fc.assert(fc.property(stateArb, rawCallArb, (state, call) => {
+    fc.assert(fc.property(anyStateArb, rawCallArb, (state, call) => {
       const before = weekTotals(state, ANCHOR).rows;
       const after = weekTotals(addCall(state, call), ANCHOR).rows;
       after.forEach((row, i) => {
@@ -120,7 +161,7 @@ describe('monotonicity — f(S + r) >= f(S)', () => {
   });
 
   it('EVERY weekTotals row never decreases when a block is added', () => {
-    fc.assert(fc.property(stateArb, rawBlockArb, (state, block) => {
+    fc.assert(fc.property(anyStateArb, rawBlockArb, (state, block) => {
       const before = weekTotals(state, ANCHOR).rows;
       const after = weekTotals(addBlock(state, block), ANCHOR).rows;
       after.forEach((row, i) => {
@@ -133,9 +174,76 @@ describe('monotonicity — f(S + r) >= f(S)', () => {
   // Total >= number of calls, always: every call is either claimed by a block
   // (which contributes at least its claimed count) or counted ad-hoc.
   it('no call is ever lost — total >= the day\'s call count', () => {
-    fc.assert(fc.property(stateArb, dayArb, (state, day) => {
+    fc.assert(fc.property(anyStateArb, dayArb, (state, day) => {
       const calls = state.calls.filter((c) => c.date === day).length;
       expect(pcBreakdown(state, day).total).toBeGreaterThanOrEqual(calls);
+    }), runCfg);
+  });
+});
+
+// ── Attribution is a strict partition ────────────────────────────────────────
+//
+// Monotonicity is necessary but NOT sufficient: a pcBreakdown that returned a
+// constant would satisfy all five properties above. The gap is concentrated in
+// call ATTRIBUTION — which block claims which call — and that is precisely the
+// step the source build got wrong (at-tally.jsx:61 recomputes `inside` without
+// excluding already-claimed calls, so a call inside two overlapping blocks
+// counts twice). Through pcBreakdown alone the defect is maskable, because
+// max(dials, inside) has already been applied by the time you see a number.
+
+describe('attributeCalls — every call is claimed exactly once', () => {
+  const idsOf = (attribution) => [
+    ...attribution.blocks.flatMap((b) => b.insideIds),
+    ...attribution.adhocIds,
+  ];
+
+  it('partitions the day\'s calls — none lost, none claimed twice', () => {
+    fc.assert(fc.property(anyStateArb, dayArb, (state, day) => {
+      const callIds = state.calls.filter((c) => c.date === day).map((c) => c.id);
+      const assigned = idsOf(attributeCalls(state, day));
+
+      // (1) exactly the same population, with no duplicates introduced
+      expect([...assigned].sort()).toEqual([...callIds].sort());
+      expect(new Set(assigned).size).toBe(assigned.length);
+    }), runCfg);
+  });
+
+  it('block insideIds sets are pairwise disjoint', () => {
+    fc.assert(fc.property(anyStateArb, dayArb, (state, day) => {
+      const { blocks } = attributeCalls(state, day);
+      const seen = new Set();
+      for (const { insideIds } of blocks) {
+        for (const id of insideIds) {
+          expect(seen.has(id), `${id} claimed by more than one block`).toBe(false);
+          seen.add(id);
+        }
+      }
+    }), runCfg);
+  });
+
+  // The clause a constant-returning implementation fails on the first
+  // non-empty case — the one the monotonicity properties cannot catch.
+  it('sum(|insideIds|) + |adhocIds| === the day\'s call count', () => {
+    fc.assert(fc.property(anyStateArb, dayArb, (state, day) => {
+      const expected = state.calls.filter((c) => c.date === day).length;
+      const { blocks, adhocIds } = attributeCalls(state, day);
+      const counted = blocks.reduce((n, b) => n + b.insideIds.length, 0) + adhocIds.length;
+      expect(counted).toBe(expected);
+    }), runCfg);
+  });
+
+  it('a call is never attributed to a block whose window excludes it', () => {
+    fc.assert(fc.property(anyStateArb, dayArb, (state, day) => {
+      const callById = new Map(state.calls.map((c) => [c.id, c]));
+      const blockById = new Map(state.events.map((e) => [e.id, e]));
+      for (const { blockId, insideIds } of attributeCalls(state, day).blocks) {
+        const block = blockById.get(blockId);
+        for (const id of insideIds) {
+          const call = callById.get(id);
+          expect(call.atHour).toBeGreaterThanOrEqual(block.startHour);
+          expect(call.atHour).toBeLessThan(block.endHour);
+        }
+      }
     }), runCfg);
   });
 });

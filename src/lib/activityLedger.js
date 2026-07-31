@@ -116,26 +116,16 @@ function callsOn(state, day) {
  *   and that habit is the only reason the two monotonicity bugs were findable.
  */
 export function pcBreakdown(state, day) {
-  const blocks = evidencedEventsOn(state, day)
-    .filter((e) => CALL_ATTRIBUTED_CODES.includes(e.type))
-    .sort(byStartThenId);
+  const { blocks, adhocIds } = attributeCalls(state, day);
+  const blockById = new Map(evidencedEventsOn(state, day).map((e) => [e.id, e]));
 
-  const calls = callsOn(state, day);
-  const claimed = new Set();
   let inBlocks = 0;
-
-  for (const block of blocks) {
-    const inside = calls.filter((c) => (
-      !claimed.has(c.id)
-      && c.atHour != null
-      && c.atHour >= block.startHour
-      && c.atHour < block.endHour
-    ));
-    for (const c of inside) claimed.add(c.id);
-    inBlocks += Math.max(block.dials || 0, inside.length);
+  for (const { blockId, insideIds } of blocks) {
+    const dials = blockById.get(blockId)?.dials || 0;
+    inBlocks += Math.max(dials, insideIds.length);
   }
 
-  const adhoc = calls.filter((c) => !claimed.has(c.id)).length;
+  const adhoc = adhocIds.length;
 
   return {
     inBlocks,
@@ -143,6 +133,59 @@ export function pcBreakdown(state, day) {
     total: inBlocks + adhoc,
     memberCodes: CALL_ATTRIBUTED_CODES,
   };
+}
+
+/**
+ * attributeCalls — WHICH block claims which call, for one day. The bug-prone
+ * half of the arithmetic, exposed so it can be proven on its own.
+ *
+ * Attribution is where the source build actually went wrong: `at-tally.jsx:61`
+ * recomputes each block's `inside` set WITHOUT excluding already-claimed calls,
+ * so a call sitting inside two overlapping blocks is counted twice. That defect
+ * is invisible through `pcBreakdown` alone, because by the time you see a number
+ * `max(dials, inside)` has already been applied to it and can mask the
+ * double-count entirely.
+ *
+ * ── THE PARTITION INVARIANT ─────────────────────────────────────────────────
+ * The returned sets are a strict PARTITION of the day's calls:
+ *   · every call id appears exactly once — in one block's `insideIds`, or in
+ *     `adhocIds`, never both and never neither
+ *   · `insideIds` sets are pairwise disjoint across blocks
+ *   · sum(|insideIds|) + |adhocIds| === |calls on that day|
+ * Property-tested. A constant-returning implementation fails the third clause on
+ * the first non-empty case, which is what the monotonicity properties alone
+ * could not catch.
+ *
+ * Blocks are returned in claim order (start, then id), so the result is stable
+ * under input reordering.
+ *
+ * @returns {{blocks: Array<{blockId: string, insideIds: string[]}>, adhocIds: string[]}}
+ */
+export function attributeCalls(state, day) {
+  const blocks = evidencedEventsOn(state, day)
+    .filter((e) => CALL_ATTRIBUTED_CODES.includes(e.type))
+    .sort(byStartThenId);
+
+  const calls = callsOn(state, day);
+  const claimed = new Set();
+  const attributed = [];
+
+  for (const block of blocks) {
+    const insideIds = calls
+      .filter((c) => (
+        !claimed.has(c.id)
+        && c.atHour != null
+        && c.atHour >= block.startHour
+        && c.atHour < block.endHour
+      ))
+      .map((c) => c.id);
+    for (const id of insideIds) claimed.add(id);
+    attributed.push({ blockId: block.id, insideIds });
+  }
+
+  const adhocIds = calls.filter((c) => !claimed.has(c.id)).map((c) => c.id);
+
+  return { blocks: attributed, adhocIds };
 }
 
 /**
