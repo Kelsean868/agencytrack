@@ -113,6 +113,20 @@ jobs:
         working-directory: functions
         run: npm ci
 
+      # REQUIRED — the Firestore emulator is a Java process, and firebase-tools
+      # refuses to start it on a JDK below 21. `ubuntu-latest` ships an older
+      # default JDK, so WITHOUT this step the emulator never starts and the sweep
+      # never runs. Found the hard way: the first CI run reported the job green
+      # while the sweep had actually died at
+      #   "firebase-tools no longer supports Java version before 21"
+      # It passed locally because this developer machine happens to have JDK 21.
+      - name: Set up JDK 21 (Firestore emulator runtime)
+        if: steps.filter.outputs.styling == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
       # PINNED and JOB-LOCAL, not a root devDependency. At the root this ~100MB
       # package would enter every `npm ci` — including lint-and-build and
       # functions-tests, which will never use it. Job-local with an exact version
@@ -137,9 +151,23 @@ jobs:
         if: steps.filter.outputs.styling == 'true'
         run: npx vite preview --port 4173 --host 127.0.0.1 &
 
+      # ⚠ DELIBERATELY NO `continue-on-error`. Reporting mode is implemented in
+      # the SCRIPT, not the workflow: the sweep exits 0 when it finds contrast
+      # failures (unless `--blocking`), so pre-existing failures do not fail the
+      # job — which is the whole point of 14b. It exits NON-zero only when
+      # something is genuinely broken: the emulator did not start, the app did
+      # not serve, or zero :focus-visible elements were measured.
+      #
+      # `continue-on-error: true` was here on the first attempt and it MASKED
+      # exactly that: the sweep died on the JDK version, the step reported
+      # success, and the job went green having never run the sweep. A gate that
+      # is quietly non-blocking is bad; one that quietly never RUNS is worse, and
+      # it looks identical from the checks list.
+      #
+      # If this job ever needs to tolerate an infrastructure failure, fix the
+      # infrastructure — do not re-add this flag.
       - name: Contrast sweep (both themes, incl. :focus-visible and :disabled)
         if: steps.filter.outputs.styling == 'true'
-        continue-on-error: true
         env:
           A11Y_BASE_URL: http://127.0.0.1:4173
         run: |
@@ -148,8 +176,10 @@ jobs:
             --project=demo-agencytrack \
             "npm run a11y:contrast"
 
+      # `always()` — the report is MOST useful when the sweep failed, and without
+      # this a failing step would skip the upload and take the diagnosis with it.
       - name: Upload sweep report
-        if: steps.filter.outputs.styling == 'true'
+        if: always() && steps.filter.outputs.styling == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: a11y-contrast-report
