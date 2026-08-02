@@ -1,12 +1,13 @@
 {
-  "startedAt": "2026-08-02T12:43:04.590Z",
+  "startedAt": "2026-08-02T14:45:20.486Z",
   "mode": "reporting",
   "baseUrl": "http://127.0.0.1:4173",
   "totals": {
-    "measured": 117,
+    "measured": 110,
     "failures": 1,
+    "indeterminate": 0,
     "byState": {
-      "default": 99,
+      "default": 92,
       "focus-visible": 18,
       "disabled": 0
     }
@@ -26,6 +27,7 @@
         239,
         233
       ],
+      "indeterminate": null,
       "fontSize": "13px",
       "fontWeight": "400",
       "state": "default",
@@ -37,5 +39,6 @@
       "large": false,
       "pass": false
     }
-  ]
+  ],
+  "indeterminate": []
 }

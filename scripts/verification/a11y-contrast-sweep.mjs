@@ -98,18 +98,28 @@ const COLLECTOR = `(stateLabel) => {
     return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
   };
 
+  // Returns { rgb } or { indeterminate: reason }. A gradient / image background
+  // sets background-IMAGE, so getComputedStyle().backgroundColor reports
+  // transparent — walking past it silently measures the ink against whatever
+  // opaque ancestor lies beyond, which is how white-on-teal reads as
+  // white-on-white at 1.08:1. Reporting "cannot determine" is the honest answer
+  // and matches what axe itself does (incomplete, not violation).
   const effectiveBg = (el) => {
     const layers = [];
     let node = el;
     while (node && node.nodeType === 1) {
-      const c = parseRgb(getComputedStyle(node).backgroundColor);
+      const cs2 = getComputedStyle(node);
+      if (cs2.backgroundImage && cs2.backgroundImage !== 'none') {
+        return { indeterminate: 'background-image/gradient at ' + node.tagName.toLowerCase() };
+      }
+      const c = parseRgb(cs2.backgroundColor);
       if (c && c.a > 0) {
         layers.push(c);
         if (c.a >= 1) break;
       }
       node = node.parentElement;
     }
-    if (!layers.length) return [255, 255, 255];
+    if (!layers.length) return { rgb: [255, 255, 255] };
     let base = layers[layers.length - 1];
     if (base.a < 1) base = { r: 255, g: 255, b: 255, a: 1 };
     let out = [base.r, base.g, base.b];
@@ -122,7 +132,7 @@ const COLLECTOR = `(stateLabel) => {
         Math.round(l.a * l.b + (1 - l.a) * out[2]),
       ];
     }
-    return out;
+    return { rgb: out };
   };
 
   const describe = (el) => {
@@ -152,12 +162,14 @@ const COLLECTOR = `(stateLabel) => {
     if (rect.width === 0 || rect.height === 0) continue;
     const fg = parseRgb(cs.color);
     if (!fg) continue;
+    const bgResult = effectiveBg(el);
     out.push({
       selector: describe(el),
       text: text.slice(0, 60),
       fg: [fg.r, fg.g, fg.b],
       fgAlpha: fg.a,
-      bg: effectiveBg(el),
+      bg: bgResult.rgb || null,
+      indeterminate: bgResult.indeterminate || null,
       fontSize: cs.fontSize,
       fontWeight: cs.fontWeight,
       state: stateLabel,
@@ -214,6 +226,10 @@ async function sweepDisabled(page, theme, route) {
 
 /** Node-side scoring — all maths from contrast.js. */
 function score(sample) {
+  // Not measurable — see the collector. Excluded from failures rather than
+  // scored against a background we know we could not resolve. Counted and
+  // reported separately so the gap is visible instead of silently dropped.
+  if (sample.indeterminate) return { ...sample, ratio: null, required: null, pass: null };
   const ratio = contrastRatio(sample.fg, sample.bg);
   const required = requiredRatio(sample.fontSize, sample.fontWeight);
   return {
@@ -295,7 +311,8 @@ async function applyTheme(page, theme) {
   }
 
   const scored = samples.map(score);
-  const failures = scored.filter((s) => !s.pass);
+  const failures = scored.filter((s) => s.pass === false);
+  const indeterminate = scored.filter((s) => s.pass === null);
   const byState = (st) => scored.filter((s) => s.state === st).length;
 
   const report = {
@@ -305,6 +322,7 @@ async function applyTheme(page, theme) {
     totals: {
       measured: scored.length,
       failures: failures.length,
+      indeterminate: indeterminate.length,
       byState: {
         default: byState('default'),
         'focus-visible': byState('focus-visible'),
@@ -312,6 +330,7 @@ async function applyTheme(page, theme) {
       },
     },
     failures: failures.sort((a, b) => a.ratio - b.ratio),
+    indeterminate: indeterminate.map((s) => ({ selector: s.selector, text: s.text, theme: s.theme, state: s.state, reason: s.indeterminate })),
   };
 
   const outDir = join(ROOT, 'verification', 'a11y');
@@ -323,6 +342,7 @@ async function applyTheme(page, theme) {
   console.log(`\n[contrast-sweep] measured ${scored.length} elements `
     + `(default ${byState('default')}, focus-visible ${byState('focus-visible')}, disabled ${byState('disabled')})`);
   console.log(`[contrast-sweep] failures: ${failures.length}`);
+  console.log(`[contrast-sweep] indeterminate (gradient/image bg — see hero-pane-foreign-ink-guard): ${indeterminate.length}`);
   for (const f of failures.slice(0, 40)) {
     console.log(`  ✗ [${f.theme}/${f.state}] ${f.ratio}:1 (needs ${f.required}) `
       + `${f.selector} — "${f.text}"`);
