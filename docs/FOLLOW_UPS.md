@@ -29,6 +29,7 @@
 | Two divergent planner design-authority trees (`proposals/planner-scheduler-v2/` vs `screens-v2/agencytrack-planner-handoff/`) — never diffed file-by-file (banked 2026-07-27) | LOW | Design system | — | see § Planner activity types |
 | External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track). **PATTERN CONFIRMED 2026-07-31: rate-limited on #882, #883 AND #884 (3 of 5 HEADs, incl. the merged one)** | HIGH | — | overdue (was 2026-07-17) | see § External code reviewer |
 | **⚑ THE FLAKE IS A RACE, NOT CONTENTION — corrected characterisation.** Measured: p50 130ms / max 703ms vs failures at the 5000ms timeout; run wall-clock normal while one test hangs. The `5006…5027` cluster means only that the timeout FIRED — do not reason from it. #888 was three n=1 samples, not a controlled experiment. Superseded: `asyncUtilTimeout`, per-test widening, sharding, `maxForks` capping (#889 closed unmerged), `isolate:false` (banked 2026-08-02, v3 P0-E) | HIGH | test-infra | — | see § THE FLAKE IS A RACE |
+| **⚑ Flake register — 3 provenance corrections + a measured baseline.** `MeetingMode.test.jsx` fails **5/30 (16.7%) IN ISOLATION**, overturning both "passes in isolation" and "rotation ⇒ shared contention" (it rotates across 4 named members with nothing else running). `delay: null` is ZERO not one. #543 is an unmerged duplicate of merged #563. `CHIP_WAIT` RULED left alone — it is the control. Harness ported to `scripts/flake/` (banked 2026-08-02) | HIGH | race brief | — | see § Flake register — three provenance corrections |
 | Flip `a11y-contrast` from REPORTING to BLOCKING once the one enumerated pre-existing failure is cleared (`topbar-search-placeholder` 4.13:1 light — the Topbar failure the P0-D brief lists as out of scope). Drop `continue-on-error`, pass `--blocking`, rename the job in the same commit (banked 2026-08-02, v3 P0-D) | MEDIUM | v3 P0-D | — | see § Flip a11y-contrast |
 | `a11y-contrast` sweep covers 2 routes (login + dashboard); `:disabled` measured 0 because the swept routes have only transient disabled states — the path is proven via the planted failure. Widen the route list (banked 2026-08-02, v3 P0-D) | LOW | v3 P0-D | — | see § a11y-contrast sweep covers two routes |
 | `a11y-contrast` runs with only the auth + firestore emulators, so CF-gated UI (`resolveSalesManagerUid` is CORS-blocked) never renders into the swept DOM — element counts are a floor. Surfaced by the console/network capture added in the #893 review (banked 2026-08-02, v3 P0-D review) | LOW | v3 P0-D | — | see § a11y-contrast sweep runs without the functions emulator |
@@ -5522,3 +5523,79 @@ after promotion must reconcile **both** the promotion squash **and** the missed 
 **Watch item:** #864 merging without a fill is the same failure mode as the 2026-06-06 Gemini-harvest
 9-PR drift that motivated Rule 16(c). Worth checking at promotion whether anything else landed on `main`
 unfilled in the same window.
+
+---
+
+## Flake register — three provenance corrections + a measured baseline (banked 2026-08-02, PR for `chore/flake-burn-harness`)
+
+Appended at end of file per CLAUDE.md Rule 7(b). Three corrections to claims recorded elsewhere in this file, and one new measurement that overturns a load-bearing inference.
+
+### (a) `CHIP_WAIT` in `CompliancePanel.nudge.test.jsx` — RULED: leave it, deliberately
+
+Two entries in this file both describe `CHIP_WAIT = { timeout: 3000 }` at `CompliancePanel.nudge.test.jsx:59`, and they look contradictory:
+
+- **#563 (`063fff1e`)** raised the global `asyncUtilTimeout` to 5000 **and** pinned this file's chip assertion to 3000, in the same commit, as the flake fix.
+- **The #872 pattern-2 audit** then named that exact line as the one surviving **self-narrowing** site — a `waitFor` capping itself *below* the CI-tuned global.
+
+**Both are true, and they reconcile on one fact from #543's own burn log:** `CHIP_WAIT` was already in place during the 57% chip-missing failures, and the assertion waited its **full 3000 ms** while the chip never appeared. The failure was not a budget shortfall. `CHIP_WAIT` is therefore **inert with respect to the proven mechanism** — it is not a competing fix to it, and #872 naming the shape is correct without implying it caused anything here.
+
+**Ruled: do not change it now.** This file is the only member of the family with a proven fix *and* a documented baseline (0/200 at #543/#563; independently re-confirmed **0/30** on `staging` `2ef1abc5` by `scripts/flake/burn-isolated.ps1`). It is the **control**, and changing its timeout before the experiment destroys the reference point everything else is measured against.
+
+Revisit **after** the race investigation reports, as its own change with its own burn. The `// do not strip` tripwire comments at lines 9, 55 and 75 stay.
+
+### (b) `delay: null` is ZERO on `staging`, not one
+
+Any entry stating that one file still uses `delay: null` is **wrong**. `git grep` on `origin/staging` returns **zero** real occurrences. The mechanism is gone repo-wide.
+
+**How the miscount happened, because it will recur:** the grep matched a *comment asserting the opposite* —
+
+```
+// do not strip (layer b): NO delay:null - lab burn confirmed 57% chip-missing solo rate under delay:null:
+```
+
+A pattern search for a banned construct will match the tripwire comment warning against it. This repo uses `// do not strip:` comments deliberately and they are dense around exactly the code most likely to be grepped for. **When grepping for a construct's absence, exclude comment lines or read every hit** — a raw count is not an occurrence count.
+
+### (c) PR #543 is an unmerged duplicate of merged #563
+
+`#543` (`fix/nudge-flake-stabilization`) is **unmerged and should not be worked**. Its code content is already on `staging` via **#563 (`063fff1e`, merged 2026-06-11)**, which carried the same `delay: null` removal plus the `asyncUtilTimeout` global.
+
+Verified rather than assumed: `CompliancePanel.nudge.test.jsx` is **byte-identical** between `origin/staging` and `pr/543` (`git hash-object` = `072679d3` on both sides). **There is no fix to salvage and no burn to re-run.**
+
+Related: `28968bbf` ("fix(gemini-batch-a): RTL anti-patterns in 13 test files") is likewise already on `staging` and sits in that file's own history — it does not need hunting.
+
+**The one thing #543 did carry uniquely was the burn harness** (`tmp/burn-*.ps1`), which existed nowhere else — `git ls-tree` found nothing matching "burn" on `staging` or `main`. Now ported to `scripts/flake/`.
+
+### (d) NEW MEASUREMENT — `MeetingMode.test.jsx` fails **in isolation** at 16.7%, and this overturns the contention inference
+
+30-iteration isolated burn on `staging` `2ef1abc5`, one machine, nothing else running:
+
+| file | result | shape |
+|---|---|---|
+| `CompliancePanel.nudge.test.jsx` (control) | **0/30** | — |
+| `MeetingMode.test.jsx` | **5/30 (16.7%)** | all `timeout` |
+
+**Two entries in this file are contradicted by this.**
+
+1. **"Both failing files pass 85/85 in isolation on the same tree"** and the general claim that family members pass solo. `MeetingMode` does **not**. The earlier clean checks — including a `12/12 x3` performed during the P0-D session — are fully consistent with a 16.7% rate: **P(0 failures in 3 runs) = 0.833³ = 0.58.** The isolation result was never evidence of stability; the sample was too small to detect the rate. Sample sizes must be chosen against the rate being detected.
+
+2. **"No failure repeated across runs — the population rotates, which is the signature of a shared environmental contention effect rather than N independent per-test bugs."** The population rotates **inside a burn of one file with nothing else running**:
+
+| failing test | times in 30 |
+|---|---|
+| `run-of-show > agenda rail is shown on the agent scene and jumps when clicked` | 2 |
+| `awards within reach scene > renders an in-reach award card once an agent crosses the 60% floor` | 1 |
+| `run-of-show > skip-logs the awards scene when nobody is within reach` | 1 |
+| `run-of-show > ArrowRight advances from opening to the branch scorecard` | 1 |
+
+Rotation therefore does **not** imply cross-file contention. Here it is **intra-file**, and no other test file participated.
+
+**All four are already-named register members** — `agenda rail` and `skip-logs` from the sixth data point (observed locally, `agenda rail` later CI-confirmed on #894), `awards within reach` from CI on #893, and `ArrowRight` from the #875 "#872's fix set is provably INCOMPLETE" entry. Four members named across three independent sources reproduce in a single seven-minute burn.
+
+**Consequences for the investigation:**
+
+- `MeetingMode` has received **zero** remediation rounds (#861 hit `AgentAwardsPanel`; #872 hit `AgentPlannerPanel` + `DailyCaptureV2`) yet is the most active member on record.
+- A cheap instrument reproduces it: ~7 minutes isolated, versus full-suite burns at minutes per iteration.
+- Runner-level remedies (`pool` / `maxForks` / `fileParallelism`) cannot address an intra-file race. `vite.config.js` still has no `poolOptions` block, and that may still be worth doing — but it is **not** the fix for this file.
+- Whether the rest of the family is also intra-file is **open**. Only `MeetingMode` and the control have been burned. This is one file, one machine, one 30-iteration sample; the 16.7% figure has a wide interval and is not a precise rate.
+
+**Do not act on this yet.** Recorded as the harness PR's evidence. Scoping belongs to the race brief, which owns the register reconciliation as its Phase 0 question 0.

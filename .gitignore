@@ -153,3 +153,9 @@ docs/design-system/screens-v2/design_handoff_company_config/_ds/
 
 # Ad-hoc smoke/debug output from autonomous runs — never committed (Run 5 hygiene fix)
 out/
+
+# Flake-burn output — logs and per-iteration failure captures from scripts/flake/.
+# A 200-iteration burn writes one log per failure; none of it belongs in the repo.
+# scripts/flake/README.md documents these paths as gitignored, so this entry is
+# what makes that claim true. Sibling of out/ above.
+tmp/
