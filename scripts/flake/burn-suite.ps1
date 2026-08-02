@@ -51,6 +51,14 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# A non-positive count skips the loop entirely, so -ExpectZero would report a
+# PASS having run nothing. That is precisely the failure this harness exists to
+# catch, so it is guarded rather than documented.
+if ($Iterations -lt 1) {
+    Write-Error "-Iterations must be >= 1 (got $Iterations). A non-positive count runs no tests and would let -ExpectZero pass vacuously."
+    exit 2
+}
+
 if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Force -Path $LogDir | Out-Null }
 
 $env:TZ = 'UTC'

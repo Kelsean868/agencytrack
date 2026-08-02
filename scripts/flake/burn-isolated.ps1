@@ -53,8 +53,23 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-if (-not (Test-Path $TestPath)) {
-    Write-Error "Test file not found: $TestPath"
+# A non-positive count skips the loop entirely, so -ExpectZero would report a
+# PASS having run nothing. That is precisely the failure this harness exists to
+# catch, so it is guarded rather than documented.
+if ($Iterations -lt 1) {
+    Write-Error "-Iterations must be >= 1 (got $Iterations). A non-positive count runs no tests and would let -ExpectZero pass vacuously."
+    exit 2
+}
+
+# -PathType Leaf plus a wildcard check: Test-Path alone accepts a DIRECTORY or a
+# glob, and `npx vitest run <dir>` would then run many files - which is not an
+# isolated burn at all, while still reporting a number that looks like one.
+if ($TestPath -match '[\*\?\[]') {
+    Write-Error "-TestPath must be one literal file, not a pattern (got '$TestPath'). Use burn-suite.ps1 to run more than one file."
+    exit 2
+}
+if (-not (Test-Path -LiteralPath $TestPath -PathType Leaf)) {
+    Write-Error "Test file not found, or is not a file: $TestPath"
     exit 2
 }
 if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Force -Path $LogDir | Out-Null }
