@@ -28,6 +28,8 @@
 | Mutating planner smokes leave residue by design — no self-teardown; needs a shared Admin-SDK helper across all 7 (raised by CodeRabbit on #878, banked 2026-07-27) | LOW | Verification | — | see § Planner activity types |
 | Two divergent planner design-authority trees (`proposals/planner-scheduler-v2/` vs `screens-v2/agencytrack-planner-handoff/`) — never diffed file-by-file (banked 2026-07-27) | LOW | Design system | — | see § Planner activity types |
 | External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track). **PATTERN CONFIRMED 2026-07-31: rate-limited on #882, #883 AND #884 (3 of 5 HEADs, incl. the merged one)** | HIGH | — | overdue (was 2026-07-17) | see § External code reviewer |
+| **⚑ THE FLAKE IS A RACE, NOT CONTENTION — corrected characterisation.** Measured: p50 130ms / max 703ms vs failures at the 5000ms timeout; run wall-clock normal while one test hangs. The `5006…5027` cluster means only that the timeout FIRED — do not reason from it. #888 was three n=1 samples, not a controlled experiment. Superseded: `asyncUtilTimeout`, per-test widening, sharding, `maxForks` capping (#889 closed unmerged), `isolate:false` (banked 2026-08-02, v3 P0-E) | HIGH | test-infra | — | see § THE FLAKE IS A RACE |
+| Race investigation — why does the awaited condition never arrive? Successor track to the above; **requires test-file access**, needs its own brief, NOT started (banked 2026-08-02, ruling 11c) | MEDIUM | test-infra | — | see § Race investigation |
 | `pcBreakdown` filters the day's evidenced events twice (4 passes/day via `weekTotals`) — CodeRabbit's remedy DECLINED as it would re-shape a dispatcher-ruled interface; shape-preserving fix recorded (banked 2026-07-31, PR #884) | LOW | v3 P0-B | — | see § `activityLedger` two LOW residuals |
 | `evidencedPct` uses `Math.round`, so a COLUMN of per-code percentages will not sum to 100 — harmless for today's single-figure design, scope check for Phase 2.1 (banked 2026-07-31, PR #884) | LOW | v3 Phase 2.1 | — | see § `activityLedger` two LOW residuals |
 | Track K Phase 2 — narrative `branchPlans` (new collection, HUMAN-MERGE) + PPTX + manpower setter + per-branch `branchGoals` keying (banked 2026-07-21, #864 close) | HIGH | Track K | — | ~288 |
@@ -444,6 +446,77 @@ Verification/scope gaps Run 8 itself flagged (Rule 22), now live in prod via PR 
 **Action:** none until Tatil ratifies the methodology. Do not build any part autonomously. Cross-reference: `docs/audits/design-conformance-2026-07-13.md` §5 item 2 / §8 (ABSOLUTE STOP — money/payout + `functions/` categories).
 
 ---
+
+---
+
+## ⚑ THE FLAKE IS A RACE, NOT CONTENTION — corrected characterisation, and the layer everyone has been fixing is the wrong one (banked 2026-08-02, v3 P0-E, MEASURED)
+
+**Read this before touching a timeout, a pool setting, or a runner config.** Four rounds of remediation have now targeted contention. The measurement says contention is not the mechanism.
+
+### The measurement that settles it
+
+Three verbose runs on one CI runner (PR #890 diagnostic, closed). Every test in the flake record, **when it passes**:
+
+| Test | r1 | r2 | r3 |
+|---|---|---|---|
+| `aggregate-on-save > isolates aggregation failure` | 661 | 663 | 648 |
+| `daily streak > does NOT re-fire` | 657 | 703 | 668 |
+| `DailyCaptureV2 > stepper "+"` | 266 | 240 | 258 |
+| `AgentPlannerPanel > navigation is unlimited` | 123 | 161 | 158 |
+| `MeetingMode > skip-logs the awards scene` | 90 | 94 | 126 |
+| `daily streak > fires the takeover` | 90 | 96 | 102 |
+| `aggregate-on-save > recomputes the weekly draft` | 46 | 48 | 49 |
+| `MeetingMode > ArrowRight advances` | 41 | 36 | 40 |
+
+**p50 ≈ 130ms · max 703ms.** No test in the entire 378-file suite exceeded **1000ms**.
+
+### Why that means RACE and not contention
+
+- **An awaited condition that never arrives, not one that arrives late.** Healthy runs finish in ~0.1s. Failures sit at the 5000ms timeout. There is no population in between — the gap is 7–50×, not a distribution tail.
+- **The whole run does not drag when one test hangs.** #889 run 1 took **322s**, squarely in the normal band, and the failing test's neighbours ran at normal speed. Starvation would slow everything; one test hung while everything around it was fine.
+- **The A2 cluster says the same in a different shape.** `Unable to find an element…` at **151 / 167 / 181ms** — expected state absent, detected *fast*. Not slow, absent.
+
+### ⚠ The `5006 · 5006 · 5007 · 5008 · 5015 · 5027` cluster means ONLY that the timeout fired
+
+**A timeout always reports ≈budget + detection overhead.** Those numbers say the 5000ms limit was hit. They say **nothing** about how close the chain was to completing, and reading them as "6 to 27 milliseconds past the cliff" — as this document previously did, and as the dispatcher's own analysis did — leads directly to the wrong layer. It is what motivated a margin argument the data cannot support. **Do not reason from that cluster again.**
+
+### ⚠ PR #888 was NOT a controlled experiment
+
+It was presented as one, by both dispatcher and CC. It is **three n=1 samples of an outcome that is ~50% stochastic**. Controlling the inputs does nothing about variance in the *result*. Its three data points (default FAILED 272s / `maxForks:2` passed 304s / `maxForks:1` passed 521s) establish far less than they were treated as establishing.
+
+**The falsification that proves it:** `maxForks: 2` was green in #888 at **00:15–00:34 UTC** and red in #889 run 1 at **01:15 UTC** — same setting, ~45 minutes apart. **We therefore have no reliable evidence that fork count affects the failure rate at all.**
+
+### Superseded — do NOT retry, each with its reason
+
+| Approach | Why it is dead |
+|---|---|
+| Raising `asyncUtilTimeout` | Pulled **twice** blind (1000 → 2000 → 5000). And now measured: chains run at ≤703ms against a 5000ms budget — **~7× headroom already**. There is no margin problem to fix. |
+| Per-test `it(…, ms)` widening | #872's remedy. Raised a ceiling that is not binding; its own fixed tests re-fired afterwards. |
+| Sharding across runners | Costed for a 2-vCPU runner. The runner is **4 vCPU / 16.8 GB** (public-repo class), so each shard would still need capping — an addition, not an alternative. |
+| `maxForks` capping | Tried at 2 on PR #889 and **falsified within an hour**. Cap engagement was *proven* (max concurrent vitest procs: 6 uncapped vs 4 capped, same machine — a clean 2-worker delta), so the config worked and the failure happened anyway. Costs +32s/run forever for unproven benefit. **PR #889 closed unmerged.** |
+| `isolate: false` | 378 files, shared mocks, a globally-configuring `test-setup.js`. Silent cross-file contamination is strictly worse than a flaky gate. |
+
+### The open question — this is the next investigation, and it is NOT started
+
+**Why does the awaited condition sometimes never arrive?** That is a race inside the component-under-test or its mocks, not a property of the runner.
+
+Density correlates with *exposure* but is not sufficient: `AgentPlannerPanel.test.jsx` has **163** `waitFor`/`findBy` sites and 3 members, `DailyCaptureV2.test.jsx` has **63** and 5 members — but `MeetingMode.test.jsx` has only **9** and still contributes 2. More async assertions means more chances to lose the race; it does not explain the race.
+
+Ruled out along the way, so nobody re-chases it: `DailyCaptureV2.test.jsx`'s partial fake timers (`vi.useFakeTimers({ toFake: ['Date'] })`, present in every one of its failing describes) are **safe**. `waitFor` uses real `setTimeout`/`setInterval`, and its fake-timer detection requires `typeof jest !== 'undefined'`, which is false under vitest without `globals` — so `waitFor` takes the real-timer branch. The file's own comment is correct.
+
+**See § Race investigation below — it needs test-file access and its own brief.**
+
+---
+
+## Race investigation — why does the awaited condition never arrive? (banked 2026-08-02, v3 P0-E ruling 11c, MEDIUM — own track, NOT started)
+
+**Do not start this without a brief.** It is the successor to the corrected characterisation above, and it is deliberately *not* part of any Phase 0 recon.
+
+**Why it needs its own track:** every brief in the v3 sequence has forbidden touching test files. This investigation **requires** it — the race is inside the component-under-test or its mocks, and it cannot be characterised from the outside. Smuggling that into a config slice is how the last four rounds landed at the wrong layer.
+
+**Starting evidence** is the entry above: p50 130ms / max 703ms; failures at the timeout with normal run wall-clock; the A2 element-not-found cluster at 151–181ms; density correlating with exposure but not sufficient.
+
+**First questions for whoever picks it up:** which awaited condition is absent in each failing case (the DOM node, the mock resolution, or a state update that never commits)? Do the failures share a mock shape — e.g. an unresolved promise from a Firestore stub — rather than a component? Is there an unawaited state update that usually lands before the assertion and occasionally does not?
 
 ---
 
