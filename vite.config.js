@@ -95,6 +95,45 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.js'],
+    // ── CI fork cap — the fix for the long-running suite flake ────────────────
+    //
+    // MEASURED, NOT REASONED. Three configurations run BACK-TO-BACK on ONE
+    // ubuntu-24.04 runner, same commit, only the pool size varying
+    // (2026-08-02, PR #888 diagnostic):
+    //
+    //   default (3-4 forks)  FAILED   272s   TestingLibraryElementError:
+    //                                        [data-testid="planner-week-next"]
+    //   maxForks: 2          378/378  304s   (+32s, +12%)
+    //   maxForks: 1          378/378  521s   (+249s, +92%)
+    //
+    // Runner: nproc 4 · availableParallelism() 4 · 16.8 GB · ubuntu-24.04.
+    // NOTE that is the PUBLIC-repo runner class; private repos get 2 vCPU.
+    //
+    // WHY 2 AND NOT 3: this buys MARGIN, not wall-clock. The flake's timeouts
+    // came in at 5006 · 5006 · 5007 · 5008 · 5015 · 5027 ms against the 5000ms
+    // asyncUtilTimeout — six to twenty-seven milliseconds past the cliff. 3 of 4
+    // cores leaves roughly the same starvation condition that produced those
+    // numbers; +32s on a ~315s job is a trivial price for headroom.
+    //
+    // ⚠ A PINNED LITERAL, DELIBERATELY NOT A FORMULA. Do NOT replace this with
+    // availableParallelism()/2 or similar — what was measured is "2 forks on a
+    // 4-vCPU ubuntu-24.04 runner", and a formula generalises past the evidence
+    // to runner classes nobody has tested. IF THE RUNNER CLASS EVER CHANGES,
+    // RE-MEASURE and update this number and this comment together.
+    //
+    // CI-ONLY BY DESIGN. All the evidence is from CI. Capping local runs on 8-
+    // and 16-core dev machines would make the local loop several times slower to
+    // fix a problem never seen in a normal local flow — and a suite people stop
+    // running locally is a worse outcome than a slow gate.
+    //
+    // Do NOT "fix" this by raising asyncUtilTimeout again (src/test-setup.js).
+    // That lever has been pulled twice already; the race survived both times and
+    // is now hitting the new ceiling from 6ms above.
+    poolOptions: {
+      forks: {
+        maxForks: process.env.CI ? 2 : undefined,
+      },
+    },
     env: {
       VITE_GAME_PLAN_LOOP_ENABLED: 'true',
     },

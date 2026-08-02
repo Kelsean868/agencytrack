@@ -447,6 +447,42 @@ Verification/scope gaps Run 8 itself flagged (Rule 22), now live in prod via PR 
 
 ---
 
+## ✅ RESOLVED — the CI flake was RUNNER CONTENTION; fixed at the pool, not the test (v3 P0-E, 2026-08-02, PR #889)
+
+**Read this before re-litigating any of it.** Eleven-plus recorded episodes, three rounds of per-test remediation, and the cause was never the tests.
+
+**What changed — one line.** `vite.config.js` → `test.poolOptions.forks.maxForks = process.env.CI ? 2 : undefined`. No test file was touched. No `asyncUtilTimeout` change. No `ci.yml` change.
+
+**The controlled measurement (PR #888 diagnostic).** Three configurations run **back-to-back on ONE runner, same commit**, only the pool size varying — so this is a comparison, not three anecdotes:
+
+| Config | Result | Wall-clock |
+|---|---|---|
+| **default** (3–4 forks) | ❌ **FAILED** — `TestingLibraryElementError: Unable to find an element by: [data-testid="planner-week-next"]` | 272s |
+| `maxForks: 2` | ✅ 378/378 | **304s (+32s, +12%)** |
+| `maxForks: 1` | ✅ 378/378 | 521s (+249s, +92%) |
+
+**Runner spec — measured, not assumed:** `nproc` **4** · `availableParallelism()` **4** · **16.8 GB** · `ubuntu-24.04`. Note this is the **public-repo** runner class; private repos get 2 vCPU, so this number is not portable across repo visibility changes.
+
+**Before-baseline:** roughly one red in two on diffs that could not possibly break anything — a merge commit and two docs commits among them. PR #887 (docs-only) went red **three consecutive times on six distinct tests with zero overlap between runs**, and a re-run of one commit **failed differently rather than passing**, which is what finally broke the "re-run and move on" workaround.
+
+**Job cost:** `lint-and-build` was setup 2s · checkout 4s · setup-node 8s · install 12s · lint 15s · **tests 268s** · build 5s. Tests are **85%** of the job, which is why `maxForks: 1` (+92% on tests) was rejected despite also being green.
+
+**Why 2 and not 3.** This buys **margin**, not wall-clock. The timeouts came in at **5006 · 5006 · 5007 · 5008 · 5015 · 5027 ms** against a 5000ms `asyncUtilTimeout` — 6 to 27 milliseconds past the cliff. 3 of 4 cores leaves roughly the same starvation condition. Being barely past the edge is not the goal; being far from it is.
+
+**Why a pinned literal and not a formula.** What was measured is "2 forks on a 4-vCPU ubuntu-24.04 runner". `availableParallelism()/2` would generalise past the evidence to runner classes nobody has tested. **If the runner class changes, re-measure and update the number and the comment in `vite.config.js` together.**
+
+**Why CI-only.** All the evidence is from CI. Capping local runs on 8- and 16-core machines would slow the local loop several-fold to fix a problem never seen in a normal local flow, and a suite people stop running locally is worse than a slow gate. Verified rather than assumed — same subset, same machine, back-to-back: **CI unset 37s** (unchanged) vs **CI=1 64s** (+73%, cap engaged) on a 12-core box.
+
+**Superseded approaches — do NOT retry these:**
+- **Raising `asyncUtilTimeout`.** Pulled twice (1000 → 2000 → 5000). The race survived both times and was hitting the new ceiling from 6ms above. `src/test-setup.js:10-12` still carries the comment from the last attempt, which correctly diagnosed contention and then treated the symptom.
+- **Per-test `it(…, ms)` widening.** #872's remedy. Raised the ceiling without removing the race; its own fixed tests re-fired afterwards.
+- **Sharding across runners.** Costed for a 2-vCPU runner. At 4 vCPU each shard still self-contends unless *also* capped, making it an addition to this fix rather than an alternative — dropped by dispatcher ruling once the runner spec was measured.
+- **`isolate: false`.** Ruled out: 378 files, shared mocks, a globally-configuring `test-setup.js`. Silent cross-file contamination is strictly worse than a slow gate.
+
+**If the flake returns**, compare against the numbers above rather than starting over. The most likely trigger is a runner-class change or the suite growing materially past 378 files.
+
+---
+
 ## CI-vs-local test-timing gap — Tier-0 error-state tests can pass locally 5x, fail in CI (banked 2026-07-16, MEDIUM — test-infra audit)
 
 PR #861 fixed two CI-only failures in `AgentAwardsPanel.test.jsx` (from the Run-6 Tier-0 four-states sweep) that passed locally 5/5 runs before any fix. Two distinct mechanisms, both worth auditing for across the rest of the Tier-0 error-state test population:
