@@ -474,6 +474,18 @@ Pattern: for any denormalization or value-dependent fix, Phase 1 must sample-rea
 
 When a row's status transitions to CLOSED (resolving PR merged), remove the row from Active follow-ups in the same Phase 4 docs commit as the resolving PR. Audit trail is preserved in git log + the Recently-shipped table + `docs/FOLLOW_UPS.md` closed sections. Closed rows lingering in Active follow-ups is documentation debt, not audit trail. Banked from PR #153 Phase 4 (Mobile FU#2 row left as CLOSED in Active follow-ups, cleaned up post-hoc at `ba2f4e5`).
 
+**7(b): new FOLLOW_UPS entries APPEND AT THE END of the file — never insert mid-file.**
+
+New detail bodies go at the end of `docs/FOLLOW_UPS.md`. Do not insert a new section next to a topically-related one, and do not group by theme. The index table at the top is still edited in place (it is a table; a row has to go in it), but the **body** always appends.
+
+Why: two slices in flight almost always both add a FOLLOW_UPS entry, and if each inserts next to the section it feels related to, they land in the same region and conflict. Appending makes concurrent additions land in disjoint regions, so git merges them without a human. `FOLLOW_UPS.md` is nothing but a list — the only thing making it merge-hostile is where entries are placed, which is entirely within our control.
+
+This costs topical grouping, and that trade is accepted: the file is navigated by search and by the index table, not by scrolling to a neighbourhood. A cross-reference link to a related section is the substitute for physical adjacency, and it survives later edits better than adjacency does.
+
+The same reasoning applies to any append-only doc a slice touches — `SMOKES.md`, the prototype-defect register, `CONTEXT-history.md`. Where a file is a list, append.
+
+Rule 7 governs **removing** rows when a follow-up closes; 7(b) governs **where new ones go**. Banked 2026-08-02 after repeated merge pain on a file that is structurally trivial to merge.
+
 ### 8. Phase 4 stale-row audit
 
 During Phase 4 docs maintenance, in addition to filling the current PR's placeholders, scan the Active follow-ups table's status column for "PR open", "awaiting merge", "in progress", or similar live-state claims. For each, verify against `gh pr list --state open` and recent `git log origin/main --oneline -20`. Reconcile any drift in the same commit. Banked from one session surfacing three stale SEC-9b "PR open" references (PR #139 had shipped weeks earlier); without this audit, CONTEXT.md state drifts silently from shipped reality.
@@ -789,6 +801,14 @@ Worked example: PR #884 (P0-B activity ledger). Three property families, each mu
 Sequence: `cmd //c rmdir "<worktree>\node_modules"` (unlinks a junction without touching the target) → **confirm the path is gone** → only then `git worktree remove`. On Windows `rmdir` can fail on a junction with *"The directory is not empty"*; that is the HARD STOP, not a nuisance — resolve it before any recursive delete runs.
 
 This is the same family as the `slice(indexOf(a), indexOf(b))` rule: a destructive operation whose failure mode produces no error. Banked from P0-B / PR #884 cleanup, where `rmdir` failed exactly this way and `git worktree remove` then ran with the junction still in place. The shared `node_modules` happened to survive — but that was established by checking afterwards, which is luck, not method.
+
+**A burn tree is FROZEN for the duration of the burn. Any checkout, rebase, stash-pop, or branch switch inside it invalidates EVERY iteration of that burn — not just the ones after the switch.** A "burn" is any repeated-measurement run: an N-iteration flake hunt, a timing series, a before/after benchmark, a bisect harness. The tree it runs in must not change under it.
+
+The invalidation is total, and that is the part worth internalising: you cannot keep the iterations that ran before the switch. At the moment you discover the tree moved, you no longer know **which** iterations saw which tree — a burn does not stamp each iteration with the SHA it measured, so there is no boundary to cut at. Salvaging "the first N" requires knowing N, and the whole problem is that you don't. Discard the run and start again from a frozen tree.
+
+If a burn must measure two refs, use **two separate worktrees** and run them as two burns. Never move one tree between them.
+
+Banked from PR #543's invalidated first attempt: a ~200-iteration burn had a different ref checked out mid-run, silently measured the unfixed file for part of it, and **all 200 results were discarded**. Nothing errored — the burn completed and reported a clean-looking number, which is exactly why this needs to be a rule rather than a habit. Same family as the junction rule above and the `slice(indexOf(...))` rule: the failure mode produces no error, only a plausible wrong answer.
 
 **Smoke standard, reinforced:** Walks MUST include a real write-read-verify cycle. Selector-only checks miss permission/rules/index bugs. The shakedown design follows this principle — every category does at least one real Firestore write through the rule layer.
 
