@@ -33,6 +33,7 @@
 | `a11y-contrast` sweep covers 2 routes (login + dashboard); `:disabled` measured 0 because the swept routes have only transient disabled states — the path is proven via the planted failure. Widen the route list (banked 2026-08-02, v3 P0-D) | LOW | v3 P0-D | — | see § a11y-contrast sweep covers two routes |
 | `a11y-contrast` runs with only the auth + firestore emulators, so CF-gated UI (`resolveSalesManagerUid` is CORS-blocked) never renders into the swept DOM — element counts are a floor. Surfaced by the console/network capture added in the #893 review (banked 2026-08-02, v3 P0-D review) | LOW | v3 P0-D | — | see § a11y-contrast sweep runs without the functions emulator |
 | `SyncIndicator` shows connectivity, not pending writes — `waitForPendingWrites` / `onSnapshotsInSync` are the candidate APIs; wire it with the first real `commit()` caller (P0-F), not before, because `onSnapshotsInSync` is listener-relative and there is no caller to attach to yet (banked 2026-08-02, v3 P0-C ruling 13b) | LOW | v3 P0-F | — | see § SyncIndicator shows connectivity |
+| v3 boundary rule matches import PATHS not bindings — a re-export of a restricted v3 service would evade `no-restricted-imports`. **No such re-export exists today**; recorded so a future one is caught by review rather than by nothing (banked 2026-08-02, v3 P0-C) | LOW | v3 P0-C | — | see § boundary rule matches import PATHS |
 | Race investigation — why does the awaited condition never arrive? Successor track to the above; **requires test-file access**, needs its own brief, NOT started (banked 2026-08-02, ruling 11c) | MEDIUM | test-infra | — | see § Race investigation |
 | `pcBreakdown` filters the day's evidenced events twice (4 passes/day via `weekTotals`) — CodeRabbit's remedy DECLINED as it would re-shape a dispatcher-ruled interface; shape-preserving fix recorded (banked 2026-07-31, PR #884) | LOW | v3 P0-B | — | see § `activityLedger` two LOW residuals |
 | `evidencedPct` uses `Math.round`, so a COLUMN of per-code percentages will not sum to 100 — harmless for today's single-figure design, scope check for Phase 2.1 (banked 2026-07-31, PR #884) | LOW | v3 Phase 2.1 | — | see § `activityLedger` two LOW residuals |
@@ -608,6 +609,18 @@ Two consequences worth separating:
 **Why this was NOT built in P0-C** (brief §1 offered it as in-scope-if-simple; it isn't). `onSnapshotsInSync` is **listener-relative**, not a parameterless "is anything pending?" query — it reports consistency across *active listeners*, so wiring it correctly means attaching it where writes are actually issued. Right now that is **nowhere**: `commit()` exists but nothing calls it until P0-F. Building the indicator first would mean choosing an attachment point before there is a caller to attach it to, and guessing wrong is how a status light ends up lying — which is worse than the honest connectivity badge that exists today.
 
 **Do this with the first real `commit()` caller (P0-F `scheduleTask`)**, when there is a concrete write path to observe. At that point decide whether the badge surfaces `isSyncing()` (in-process, immediate, misses SDK-queued writes from a previous session) or a real SDK signal (accurate, but needs a listener attachment point). A badge that reports "synced" while `persistentLocalCache` still holds an unacknowledged write is the failure mode to avoid.
+
+---
+
+## The v3 boundary rule matches import PATHS, not bindings — a re-export evades it (banked 2026-08-02, v3 P0-C, LOW)
+
+`eslint.config.js`'s `no-restricted-imports` rule bans components from importing the named v3 services **by import path**. A component that reached `activityLogService` through a **re-export from some other module** — `export { log } from '../services/activityLogService'` in a barrel or helper, then imported from there — would **not** be caught. ESLint matches the specifier the component writes, not the binding it ultimately resolves to.
+
+**No such re-export exists today** (verified at banking time), and nothing about the current code is wrong. This is recorded so that if one is ever introduced it gets caught **by review** rather than by nothing — the rule's silence would otherwise read as approval.
+
+**If it needs closing later**, the options are an import/no-restricted-paths rule operating on resolved paths, or a lint plugin that follows re-export chains. Neither is worth adding while the answer is "zero occurrences"; the point of this entry is that a future occurrence has somewhere to be checked against.
+
+Same family as the [enforcement-mirror](src/actions/README.md) note: the rule is the machine-checked half of a contract, and knowing precisely what it does *not* check is part of trusting what it does.
 
 ---
 
