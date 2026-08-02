@@ -47,3 +47,111 @@ jobs:
       - name: Run functions tests
         working-directory: functions
         run: npm test
+
+  # ── Contrast sweep — REPORTING MODE, deliberately non-blocking ──────────────
+  #
+  # The job NAME states the mode on purpose. A gate that is quietly non-blocking
+  # is worse than no gate; one that says so in its own name is honest. Flip to
+  # blocking (drop `continue-on-error` and pass `--blocking`) once the
+  # pre-existing failures this sweep enumerates are cleared — see the follow-up
+  # in docs/FOLLOW_UPS.md. Rename the job in the same commit.
+  #
+  # SEPARATE JOB, not folded into lint-and-build: Playwright + emulator is a new
+  # flake surface, and the pipeline already runs ~37% red (measured — see
+  # FOLLOW_UPS § Measured failure rate). Isolating it means its flakiness never
+  # blocks a merge that has nothing to do with styling, and a red here is
+  # diagnosable on its own.
+  #
+  # PATHS-FILTERED: the sweep guards styling, so it runs when styling changes.
+  # Principled rather than merely cheap, and it keeps the cost off every
+  # unrelated PR.
+  #
+  # AUTHENTICATION IS THE EMULATOR, NEVER PRODUCTION. A fully synthetic seeded
+  # user through the real firestore.rules; no real credential and no production
+  # tenant. Vercel previews are bound to PRODUCTION Firebase (CLAUDE.md
+  # § Workflow), so that path is closed to CI by design.
+  a11y-contrast-reporting:
+    name: a11y-contrast (reporting)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Skip unless styling-relevant paths changed
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            styling:
+              - 'src/**/*.jsx'
+              - 'src/index.css'
+              - 'tailwind.config.js'
+              - 'docs/design-system/tokens/**'
+              - 'scripts/verification/a11y-contrast-sweep.mjs'
+              - 'src/utils/contrast.js'
+
+      - uses: actions/setup-node@v6
+        if: steps.filter.outputs.styling == 'true'
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.filter.outputs.styling == 'true'
+        run: npm ci
+
+      # REQUIRED, not incidental. `lib/emulator-seed.cjs` seeds the synthetic
+      # user via the Admin SDK, and `firebase-admin` is installed ONLY in
+      # functions/node_modules — the documented repo convention (CLAUDE.md
+      # § Admin-script firebase-admin require path; adding it at the root is
+      # deliberately avoided because Cloud Functions packaging is the canonical
+      # install path). Without this step the sweep dies at MODULE_NOT_FOUND
+      # before it opens a browser. Caught by running the job locally first.
+      - name: Install functions dependencies (firebase-admin for the seeder)
+        if: steps.filter.outputs.styling == 'true'
+        working-directory: functions
+        run: npm ci
+
+      # PINNED and JOB-LOCAL, not a root devDependency. At the root this ~100MB
+      # package would enter every `npm ci` — including lint-and-build and
+      # functions-tests, which will never use it. Job-local with an exact version
+      # gets reproducibility without taxing unrelated jobs.
+      # ⚠ Do NOT "clean this up" into package.json. That is the tax this avoids.
+      - name: Install firebase-tools (pinned)
+        if: steps.filter.outputs.styling == 'true'
+        run: npm i -g firebase-tools@15.16.0
+
+      - name: Install Playwright chromium
+        if: steps.filter.outputs.styling == 'true'
+        run: npx playwright install --with-deps chromium
+
+      # Emulator mode is a build-time flag (src/firebase.js gates
+      # connectAuthEmulator/connectFirestoreEmulator on VITE_USE_FIREBASE_EMULATOR),
+      # so the app must be BUILT for the emulator, not merely pointed at it.
+      - name: Build app in emulator mode
+        if: steps.filter.outputs.styling == 'true'
+        run: npm run build -- --mode emulator
+
+      - name: Serve the built app
+        if: steps.filter.outputs.styling == 'true'
+        run: npx vite preview --port 4173 --host 127.0.0.1 &
+
+      - name: Contrast sweep (both themes, incl. :focus-visible and :disabled)
+        if: steps.filter.outputs.styling == 'true'
+        continue-on-error: true
+        env:
+          A11Y_BASE_URL: http://127.0.0.1:4173
+        run: |
+          firebase emulators:exec \
+            --only auth,firestore \
+            --project=demo-agencytrack \
+            "npm run a11y:contrast"
+
+      - name: Upload sweep report
+        if: steps.filter.outputs.styling == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-contrast-report
+          path: verification/a11y/contrast_*.json
+          if-no-files-found: warn

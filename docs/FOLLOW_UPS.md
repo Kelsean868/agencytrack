@@ -29,6 +29,8 @@
 | Two divergent planner design-authority trees (`proposals/planner-scheduler-v2/` vs `screens-v2/agencytrack-planner-handoff/`) — never diffed file-by-file (banked 2026-07-27) | LOW | Design system | — | see § Planner activity types |
 | External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track). **PATTERN CONFIRMED 2026-07-31: rate-limited on #882, #883 AND #884 (3 of 5 HEADs, incl. the merged one)** | HIGH | — | overdue (was 2026-07-17) | see § External code reviewer |
 | **⚑ THE FLAKE IS A RACE, NOT CONTENTION — corrected characterisation.** Measured: p50 130ms / max 703ms vs failures at the 5000ms timeout; run wall-clock normal while one test hangs. The `5006…5027` cluster means only that the timeout FIRED — do not reason from it. #888 was three n=1 samples, not a controlled experiment. Superseded: `asyncUtilTimeout`, per-test widening, sharding, `maxForks` capping (#889 closed unmerged), `isolate:false` (banked 2026-08-02, v3 P0-E) | HIGH | test-infra | — | see § THE FLAKE IS A RACE |
+| Flip `a11y-contrast` from REPORTING to BLOCKING once the one enumerated pre-existing failure is cleared (`topbar-search-placeholder` 4.13:1 light — the Topbar failure the P0-D brief lists as out of scope). Drop `continue-on-error`, pass `--blocking`, rename the job in the same commit (banked 2026-08-02, v3 P0-D) | MEDIUM | v3 P0-D | — | see § Flip a11y-contrast |
+| `a11y-contrast` sweep covers 2 routes (login + dashboard); `:disabled` measured 0 because the swept routes have only transient disabled states — the path is proven via the planted failure. Widen the route list (banked 2026-08-02, v3 P0-D) | LOW | v3 P0-D | — | see § a11y-contrast sweep covers two routes |
 | Race investigation — why does the awaited condition never arrive? Successor track to the above; **requires test-file access**, needs its own brief, NOT started (banked 2026-08-02, ruling 11c) | MEDIUM | test-infra | — | see § Race investigation |
 | `pcBreakdown` filters the day's evidenced events twice (4 passes/day via `weekTotals`) — CodeRabbit's remedy DECLINED as it would re-shape a dispatcher-ruled interface; shape-preserving fix recorded (banked 2026-07-31, PR #884) | LOW | v3 P0-B | — | see § `activityLedger` two LOW residuals |
 | `evidencedPct` uses `Math.round`, so a COLUMN of per-code percentages will not sum to 100 — harmless for today's single-figure design, scope check for Phase 2.1 (banked 2026-07-31, PR #884) | LOW | v3 Phase 2.1 | — | see § `activityLedger` two LOW residuals |
@@ -536,6 +538,36 @@ Density correlates with *exposure* but is not sufficient: `AgentPlannerPanel.tes
 Ruled out along the way, so nobody re-chases it: `DailyCaptureV2.test.jsx`'s partial fake timers (`vi.useFakeTimers({ toFake: ['Date'] })`, present in every one of its failing describes) are **safe**. `waitFor` uses real `setTimeout`/`setInterval`, and its fake-timer detection requires `typeof jest !== 'undefined'`, which is false under vitest without `globals` — so `waitFor` takes the real-timer branch. The file's own comment is correct.
 
 **See § Race investigation below — it needs test-file access and its own brief.**
+
+---
+
+## Flip `a11y-contrast` from REPORTING to BLOCKING once the enumerated failures are cleared (banked 2026-08-02, v3 P0-D, MEDIUM)
+
+The sweep landed **non-blocking on purpose** (brief §3): pre-existing failures predate it and are not its to fix, and a slice that lands a gate *and* a pile of unrelated fixes cannot be reviewed as either. **The job name says its mode** — `a11y-contrast (reporting)` — because a gate that is quietly non-blocking is worse than no gate.
+
+**To flip it:** drop `continue-on-error` from the job, pass `--blocking` to the sweep, and **rename the job in the same commit** so the name never lies about the mode.
+
+**Blocking on:** the one failure below. When it is cleared (or explicitly accepted), flip.
+
+### Pre-existing failure enumerated by the first run — NOT this slice's to fix
+
+| Element | Theme / state | Measured | Needs |
+|---|---|---|---|
+| `span.topbar-search-placeholder` — "Search…" | light / default | **4.13:1** | 4.5 |
+
+This is the **Topbar light-mode failure the P0-D brief lists as explicitly out of scope** — *"deliberately left; it needs a design-system change, not an app-level override."* The sweep rediscovering it independently, with a measured ratio the brief did not supply, is a useful check that the measurement is real rather than self-confirming.
+
+Two known failures from prior work were **not** reproduced by this run and should not be assumed fixed — they are on surfaces this sweep does not yet visit (`DataSourceBadge` "Estimated" in light, `AgentProductionView` hero avatar in dark). Widening the route list is the natural next increment.
+
+---
+
+## `a11y-contrast` sweep covers two routes — widen it (banked 2026-08-02, v3 P0-D, LOW)
+
+The sweep visits **login** (unauthenticated) and **dashboard** (authenticated), in both themes, measuring default / `:focus-visible` / `:disabled`. First run: **117 elements** — 99 default, **18 `:focus-visible`**, 0 `:disabled`.
+
+**Why `:disabled` measured zero, and why that is not a defect in the sweep.** The swept routes have no *persistently* disabled text control. `LoginScreen.jsx`'s disabled states are transient (`disabled={submitting}`, `disabled={resetLoading}`) and are true only mid-request. The disabled measurement path is **proven working** — the P0-D planted failure was a disabled control and was caught at `[dark/disabled] 2.5:1` — but on the current routes it has nothing real to measure.
+
+**Next increment:** add routes with persistently-disabled controls and with the semantic-tint surfaces where this defect class concentrates (the wizard, manager surfaces, the money card). The existing `a11y-axe-scan.cjs` covers 8 agent pages and `-manager.cjs` covers 9; their page lists are the obvious source. Each added route costs wall-clock on a paths-filtered job, so add deliberately rather than wholesale.
 
 ---
 

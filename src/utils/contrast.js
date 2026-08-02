@@ -52,6 +52,38 @@ export function passesAA(fg, bg) {
   return contrastRatio(fg, bg) >= 4.5;
 }
 
+// ── AA thresholds, size-aware ────────────────────────────────────────────────
+// `passesAA` above is the NORMAL-text threshold and is used by the existing
+// token tests. The runtime sweep (scripts/verification/a11y-contrast-sweep.mjs)
+// measures real elements, where font size decides which threshold applies — so
+// these live here rather than in the sweep, to keep ONE implementation of the
+// WCAG maths rather than a second copy that can drift.
+
+/** WCAG 2.1 AA minimum for normal-size text. */
+export const AA_NORMAL = 4.5;
+
+/** WCAG 2.1 AA minimum for large text. */
+export const AA_LARGE = 3.0;
+
+/**
+ * WCAG "large text": ≥24px at any weight, or ≥18.66px when bold (≥700).
+ * Same definition the gold-split rule in CLAUDE.md uses.
+ *
+ * @param {number|string} fontSizePx computed font-size in px
+ * @param {number|string} fontWeight computed font-weight
+ */
+export function isLargeText(fontSizePx, fontWeight) {
+  const px = Number.parseFloat(fontSizePx);
+  const weight = Number.parseInt(fontWeight, 10) || 400;
+  if (!Number.isFinite(px)) return false;
+  return px >= 24 || (px >= 18.66 && weight >= 700);
+}
+
+/** The AA ratio an element must clear, given its computed size and weight. */
+export function requiredRatio(fontSizePx, fontWeight) {
+  return isLargeText(fontSizePx, fontWeight) ? AA_LARGE : AA_NORMAL;
+}
+
 /**
  * Compute the effective glass background as an opaque [r,g,b] triple.
  *
