@@ -54,6 +54,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { contrastRatio, requiredRatio, isLargeText } from '../../src/utils/contrast.js';
+import { captureConsoleAndNetwork, formatCaptureReport } from './lib/walk-helpers.mjs';
 
 const require = createRequire(import.meta.url);
 const { seedSmokeAgent } = require('./lib/emulator-seed.cjs');
@@ -165,6 +166,11 @@ const COLLECTOR = `(stateLabel) => {
     const bgResult = effectiveBg(el);
     out.push({
       selector: describe(el),
+      // Set by sweepFocusVisible on the element it just tabbed to. The selector
+      // string is NOT unique (tag + first 3 classes collide readily), so
+      // matching on it can return a different element's sample and report the
+      // wrong background. An attribute on the actual node cannot collide.
+      focusMark: el.hasAttribute('data-contrast-focus'),
       text: text.slice(0, 60),
       fg: [fg.r, fg.g, fg.b],
       fgAlpha: fg.a,
@@ -201,17 +207,18 @@ async function sweepFocusVisible(page, theme, route, maxStops = 25) {
       const el = document.activeElement;
       if (!el || el === document.body) return null;
       if (!el.matches(':focus-visible')) return null;
-      const collect = ${COLLECTOR};
-      const all = collect('focus-visible');
-      const desc = (e) => {
-        const id = e.id ? '#' + e.id : '';
-        const cls = (e.className && typeof e.className === 'string')
-          ? '.' + e.className.trim().split(/\\s+/).slice(0, 3).join('.') : '';
-        const t = e.getAttribute('data-testid');
-        return e.tagName.toLowerCase() + id + cls + (t ? '[data-testid=' + t + ']' : '');
-      };
-      const key = desc(el);
-      return all.find((s) => s.selector === key) || null;
+      // Mark the node itself rather than rebuilding describe()'s key here. The
+      // old approach had two defects: the duplicated key logic had to stay
+      // byte-identical to describe() or every focus sample would silently drop,
+      // and the key is not unique — two elements sharing a tag and first three
+      // classes collide, so .find() could return the wrong element's sample.
+      el.setAttribute('data-contrast-focus', '1');
+      try {
+        const collect = ${COLLECTOR};
+        return collect('focus-visible').find((s) => s.focusMark) || null;
+      } finally {
+        el.removeAttribute('data-contrast-focus');
+      }
     })()`);
     if (one) found.push({ ...one, theme, route });
   }
@@ -224,16 +231,38 @@ async function sweepDisabled(page, theme, route) {
   return all.filter((s) => s.disabled).map((s) => ({ ...s, theme, route }));
 }
 
+/**
+ * Composite translucent ink onto its resolved background.
+ *
+ * Without this, `text-white/70` is scored on its raw white triple rather than
+ * the grey the user actually sees — a HIGHER ratio than reality, so the sample
+ * passes when it should fail. A contrast checker that reports false passes is
+ * the one failure mode this slice exists to prevent, so alpha is applied to the
+ * foreground with the same maths the collector already applies to backgrounds.
+ */
+function compositeFg(fg, bg, alpha) {
+  const a = Number.isFinite(alpha) ? alpha : 1;
+  if (a >= 1 || !bg) return fg;
+  return [
+    Math.round(a * fg[0] + (1 - a) * bg[0]),
+    Math.round(a * fg[1] + (1 - a) * bg[1]),
+    Math.round(a * fg[2] + (1 - a) * bg[2]),
+  ];
+}
+
 /** Node-side scoring — all maths from contrast.js. */
 function score(sample) {
   // Not measurable — see the collector. Excluded from failures rather than
   // scored against a background we know we could not resolve. Counted and
   // reported separately so the gap is visible instead of silently dropped.
   if (sample.indeterminate) return { ...sample, ratio: null, required: null, pass: null };
-  const ratio = contrastRatio(sample.fg, sample.bg);
+  const fg = compositeFg(sample.fg, sample.bg, sample.fgAlpha);
+  const ratio = contrastRatio(fg, sample.bg);
   const required = requiredRatio(sample.fontSize, sample.fontWeight);
   return {
     ...sample,
+    // Recorded so a report reader can tell a composited score from a raw one.
+    fgComposited: fg,
     ratio: Math.round(ratio * 100) / 100,
     required,
     large: isLargeText(sample.fontSize, sample.fontWeight),
@@ -272,6 +301,7 @@ async function applyTheme(page, theme) {
 
   const browser = await chromium.launch();
   const samples = [];
+  const captures = [];
 
   try {
     for (const theme of ['light', 'dark']) {
@@ -282,6 +312,12 @@ async function applyTheme(page, theme) {
       // Found by running it: the dark pass timed out waiting for the email field.
       const context = await browser.newContext();
       const page = await context.newPage();
+      // Immediately after newPage(), before any goto() — the repo convention
+      // (CLAUDE.md § Console/network capture in smokes). It matters more here
+      // than in a normal smoke: a React render error or a failed Firestore
+      // request changes what is ON the page, so an uncaptured failure means the
+      // sweep measures a partially rendered DOM and reports a CLEAN run.
+      captures.push([theme, captureConsoleAndNetwork(page)]);
       // ── UNAUTHENTICATED: the login route ──────────────────────────────────
       // Swept FIRST and deliberately. The worst historical defect in this class
       // was the skip link at 2.44:1, which lives here and renders only under
@@ -308,6 +344,12 @@ async function applyTheme(page, theme) {
     }
   } finally {
     await browser.close();
+    // In `finally` so the diagnosis survives a mid-sweep throw — that is exactly
+    // the run whose console output you need.
+    for (const [theme, capture] of captures) {
+      console.log(`[contrast-sweep] --- console/network (${theme}) ---`);
+      console.log(formatCaptureReport(capture));
+    }
   }
 
   const scored = samples.map(score);

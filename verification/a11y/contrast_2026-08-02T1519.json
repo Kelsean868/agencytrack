@@ -1,13 +1,13 @@
 {
-  "startedAt": "2026-08-02T14:45:20.486Z",
+  "startedAt": "2026-08-02T15:19:48.353Z",
   "mode": "reporting",
   "baseUrl": "http://127.0.0.1:4173",
   "totals": {
-    "measured": 110,
+    "measured": 117,
     "failures": 1,
     "indeterminate": 0,
     "byState": {
-      "default": 92,
+      "default": 99,
       "focus-visible": 18,
       "disabled": 0
     }
@@ -15,6 +15,7 @@
   "failures": [
     {
       "selector": "span.topbar-search-placeholder",
+      "focusMark": false,
       "text": "Search…",
       "fg": [
         122,
@@ -34,6 +35,11 @@
       "disabled": false,
       "theme": "light",
       "route": "dashboard",
+      "fgComposited": [
+        122,
+        114,
+        100
+      ],
       "ratio": 4.13,
       "required": 4.5,
       "large": false,
