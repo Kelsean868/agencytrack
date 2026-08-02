@@ -29,6 +29,7 @@
 | Two divergent planner design-authority trees (`proposals/planner-scheduler-v2/` vs `screens-v2/agencytrack-planner-handoff/`) — never diffed file-by-file (banked 2026-07-27) | LOW | Design system | — | see § Planner activity types |
 | External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track). **PATTERN CONFIRMED 2026-07-31: rate-limited on #882, #883 AND #884 (3 of 5 HEADs, incl. the merged one)** | HIGH | — | overdue (was 2026-07-17) | see § External code reviewer |
 | **⚑ THE FLAKE IS A RACE, NOT CONTENTION — corrected characterisation.** Measured: p50 130ms / max 703ms vs failures at the 5000ms timeout; run wall-clock normal while one test hangs. The `5006…5027` cluster means only that the timeout FIRED — do not reason from it. #888 was three n=1 samples, not a controlled experiment. Superseded: `asyncUtilTimeout`, per-test widening, sharding, `maxForks` capping (#889 closed unmerged), `isolate:false` (banked 2026-08-02, v3 P0-E) | HIGH | test-infra | — | see § THE FLAKE IS A RACE |
+| `SyncIndicator` shows connectivity, not pending writes — `waitForPendingWrites` / `onSnapshotsInSync` are the candidate APIs; wire it with the first real `commit()` caller (P0-F), not before, because `onSnapshotsInSync` is listener-relative and there is no caller to attach to yet (banked 2026-08-02, v3 P0-C ruling 13b) | LOW | v3 P0-F | — | see § SyncIndicator shows connectivity |
 | Race investigation — why does the awaited condition never arrive? Successor track to the above; **requires test-file access**, needs its own brief, NOT started (banked 2026-08-02, ruling 11c) | MEDIUM | test-infra | — | see § Race investigation |
 | `pcBreakdown` filters the day's evidenced events twice (4 passes/day via `weekTotals`) — CodeRabbit's remedy DECLINED as it would re-shape a dispatcher-ruled interface; shape-preserving fix recorded (banked 2026-07-31, PR #884) | LOW | v3 P0-B | — | see § `activityLedger` two LOW residuals |
 | `evidencedPct` uses `Math.round`, so a COLUMN of per-code percentages will not sum to 100 — harmless for today's single-figure design, scope check for Phase 2.1 (banked 2026-07-31, PR #884) | LOW | v3 Phase 2.1 | — | see § `activityLedger` two LOW residuals |
@@ -536,6 +537,21 @@ Density correlates with *exposure* but is not sufficient: `AgentPlannerPanel.tes
 Ruled out along the way, so nobody re-chases it: `DailyCaptureV2.test.jsx`'s partial fake timers (`vi.useFakeTimers({ toFake: ['Date'] })`, present in every one of its failing describes) are **safe**. `waitFor` uses real `setTimeout`/`setInterval`, and its fake-timer detection requires `typeof jest !== 'undefined'`, which is false under vitest without `globals` — so `waitFor` takes the real-timer branch. The file's own comment is correct.
 
 **See § Race investigation below — it needs test-file access and its own brief.**
+
+---
+
+## `SyncIndicator` shows connectivity, not pending writes — wire it with the first real `commit()` caller (banked 2026-08-02, v3 P0-C ruling 13b, LOW)
+
+[`src/components/ui/SyncIndicator.jsx`](src/components/ui/SyncIndicator.jsx) is a `navigator.onLine` badge and nothing more: it listens for `online`/`offline` window events and renders "Offline". **It cannot tell a user whether their write actually landed** — only whether the browser thinks it has a network.
+
+`src/lib/commit.js` now exposes `isSyncing()`, and the Firestore SDK (firebase `^12.12.1`) exports two candidate APIs, both confirmed present:
+
+- **`waitForPendingWrites(db)`** — resolves when all pending writes have been acknowledged by the backend. Promise-shaped, so it answers "are we settled *now*" rather than driving a live indicator.
+- **`onSnapshotsInSync(db, cb)`** — fires when all snapshot listeners are in a consistent state.
+
+**Why this was NOT built in P0-C** (brief §1 offered it as in-scope-if-simple; it isn't). `onSnapshotsInSync` is **listener-relative**, not a parameterless "is anything pending?" query — it reports consistency across *active listeners*, so wiring it correctly means attaching it where writes are actually issued. Right now that is **nowhere**: `commit()` exists but nothing calls it until P0-F. Building the indicator first would mean choosing an attachment point before there is a caller to attach it to, and guessing wrong is how a status light ends up lying — which is worse than the honest connectivity badge that exists today.
+
+**Do this with the first real `commit()` caller (P0-F `scheduleTask`)**, when there is a concrete write path to observe. At that point decide whether the badge surfaces `isSyncing()` (in-process, immediate, misses SDK-queued writes from a previous session) or a real SDK signal (accurate, but needs a listener attachment point). A badge that reports "synced" while `persistentLocalCache` still holds an unacknowledged write is the failure mode to avoid.
 
 ---
 

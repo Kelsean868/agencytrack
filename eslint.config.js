@@ -76,6 +76,53 @@ export default defineConfig([
       globals: { ...globals.node, ...globals.jest },
     },
   },
+  // ── v3 business-action boundary ────────────────────────────────────────────
+  // Components may not import v3 services directly — they go through
+  // `src/actions/`, which is where the cross-module rules live. Rules that live
+  // in components drift into components and rot, which is what happened to every
+  // rule in the source build that had a twin.
+  //
+  // ⚠ THIS RESTRICTS *WHICH* SERVICES, NOT *WHETHER*. That inversion is the
+  // whole design, and it has three consequences worth protecting:
+  //
+  //   · ZERO allowlist entries. 92 component files import PRE-v3 services today;
+  //     none is on this list, so all 92 are untouched rather than
+  //     pretended-fixed. A 92-entry allowlist would be theatre — a rule with an
+  //     escape hatch that large teaches authors the allowlist is where you go
+  //     when the rule is inconvenient.
+  //   · Fully enforced from the first commit. No escape hatch exists, so nobody
+  //     learns to reach for one.
+  //   · It grows DELIBERATELY: each new v3 service is a one-line addition made
+  //     by the slice that introduces it. A decision point, not a default.
+  //
+  // Scoping this to `src/actions/**` instead was considered and rejected —
+  // actions are exactly the layer that SHOULD import services, so that scoping
+  // would forbid the correct thing while forbidding nothing that matters.
+  //
+  // ── OWNERSHIP ───────────────────────────────────────────────────────────────
+  // This list is the ENFORCEMENT MIRROR of the contract in `src/actions/README.md`
+  // — the same relationship the `firestore.rules` `d.type` allowlist has to
+  // `ACTIVITY_METADATA`: a mirror with a stated owner, NOT a twin. The README is
+  // the contract; this is the machine-checked half. Change them together.
+  //
+  // If this list grows past a handful of entries WITHOUT a corresponding actions
+  // layer being built out, that is the signal to revisit the approach rather
+  // than to keep appending.
+  {
+    files: ['src/components/**/*.{js,jsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{
+          group: ['**/services/activityLogService', '**/services/activityLogService.js'],
+          message:
+            'Components must not import v3 services directly. Route through src/actions/ — ' +
+            'the cross-module rules live there (see src/actions/README.md). ' +
+            'This list is the enforcement mirror of that contract.',
+        }],
+      }],
+    },
+  },
+
   // jsx-a11y rules — flipped to 'error' in PR3 after PR1/PR2/PR3 fixes
   // brought all violations to zero. Future regressions now fail CI.
   // control-has-associated-label remains 'off' (intentional — it duplicates
