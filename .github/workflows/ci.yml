@@ -23,8 +23,66 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Run tests
-        run: npm test -- --run
+      # ── 10a: does the cap ACTUALLY engage? EFFECTIVE fork count, not config. ──
+      # Samples concurrently-live vitest processes during a run. Run A is
+      # explicitly uncapped (maxForks=4), run B uses the committed config. The
+      # DIFFERENCE is the proof — an absolute count could be mis-attributed, a
+      # delta between two runs on one machine cannot.
+      - name: 10a — effective fork count, UNCAPPED (maxForks=4)
+        continue-on-error: true
+        run: |
+          echo "nproc: $(nproc)"
+          node -e "console.log('availableParallelism:', require('os').availableParallelism())"
+          npm test -- --run --poolOptions.forks.maxForks=4 --poolOptions.forks.minForks=4 > /tmp/a.log 2>&1 &
+          PID=$!
+          MAX=0
+          while kill -0 $PID 2>/dev/null; do
+            N=$(pgrep -f vitest | wc -l)
+            if [ "$N" -gt "$MAX" ]; then MAX=$N; fi
+            sleep 1
+          done
+          echo "UNCAPPED_MAX_VITEST_PROCS=$MAX"
+          grep -aE "Test Files|Tests " /tmp/a.log | tail -2
+
+      - name: 10a — effective fork count, COMMITTED CONFIG (expect cap at 2)
+        continue-on-error: true
+        run: |
+          npm test -- --run > /tmp/b.log 2>&1 &
+          PID=$!
+          MAX=0
+          while kill -0 $PID 2>/dev/null; do
+            N=$(pgrep -f vitest | wc -l)
+            if [ "$N" -gt "$MAX" ]; then MAX=$N; fi
+            sleep 1
+          done
+          echo "CONFIG_MAX_VITEST_PROCS=$MAX"
+          grep -aE "Test Files|Tests " /tmp/b.log | tail -2
+
+      # ── 10b: duration distribution of the tests that have actually failed ──
+      # p50 and MAX for those chains WHEN THEY PASS. ~1.2s with rare excursions,
+      # or 4.5-4.9s routinely against 5000ms with no margin? Different problems.
+      - name: 10b — verbose run 1 of 3
+        continue-on-error: true
+        run: npm test -- --run --reporter=verbose > /tmp/d1.log 2>&1; grep -aE "Test Files|Tests " /tmp/d1.log | tail -2
+
+      - name: 10b — verbose run 2 of 3
+        continue-on-error: true
+        run: npm test -- --run --reporter=verbose > /tmp/d2.log 2>&1; grep -aE "Test Files|Tests " /tmp/d2.log | tail -2
+
+      - name: 10b — verbose run 3 of 3
+        continue-on-error: true
+        run: npm test -- --run --reporter=verbose > /tmp/d3.log 2>&1; grep -aE "Test Files|Tests " /tmp/d3.log | tail -2
+
+      - name: 10b — extract durations for every test in the flake record
+        if: always()
+        run: |
+          PAT='fires the takeover when a save crosses|does NOT re-fire when the 5-day|isolates aggregation failure|recomputes the weekly draft after|ArrowRight advances from opening|skip-logs the awards scene|navigation is unlimited|increments the bound storage key'
+          for f in /tmp/d1.log /tmp/d2.log /tmp/d3.log; do
+            echo "===== $f ====="
+            sed 's/\x1b\[[0-9;]*m//g' "$f" | grep -aE "$PAT" | sed 's/^[[:space:]]*//' || echo "(none)"
+          done
+          echo "===== slowest passing tests, run 1 (>=1000ms) ====="
+          sed 's/\x1b\[[0-9;]*m//g' /tmp/d1.log | grep -aE "^\s*[✓×].*[0-9]{4,}ms\s*$" | sed 's/^[[:space:]]*//' | head -30
 
       - name: Build
         run: npm run build
