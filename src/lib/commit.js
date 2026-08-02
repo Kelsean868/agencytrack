@@ -36,6 +36,15 @@
 
 import { log } from '../services/activityLogService';
 
+/** True in dev/test builds, false in the production bundle. Mirrors devAssertKnown. */
+function isDev() {
+  try {
+    return Boolean(import.meta.env?.DEV);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Thrown when the wrapped function rejects.
  *
@@ -86,7 +95,32 @@ export async function commit(label, fn) {
   inFlight += 1;
   try {
     const result = await fn();
-    log('commit', label);
+
+    // ⚠ LOGGING MUST NEVER TURN A SUCCESSFUL MUTATION INTO A REPORTED FAILURE.
+    // If this call sat in the outer `try`, a throw from `log()` would discard an
+    // already-committed `result` and report CommitFailedError for a write that
+    // actually landed — and a caller reacting by retrying would re-execute a
+    // non-idempotent write. Today `log()` is pure in-memory and will not throw,
+    // but activityLogService's header states a Firestore write attaches inside
+    // `appendEntry` later; at that point this path would manufacture false
+    // failures. Isolated now, before the dependency exists. (CodeRabbit, #892.)
+    //
+    // Swallowed, not rethrown — the mutation succeeded, and a lost activity
+    // entry is not a failed commit. Reported in dev only, matching the
+    // devAssertKnown idiom (v3 rule 11: silent fallbacks are loud in dev).
+    try {
+      log('commit', label);
+    } catch (logError) {
+      if (isDev()) {
+        console.error(
+          `[commit] "${label}" SUCCEEDED but its activity-log entry failed. ` +
+            `The mutation is committed — this is a logging fault, not a write ` +
+            `fault, and is deliberately not surfaced to the caller. ` +
+            `Cause: ${logError?.message ?? logError}`,
+        );
+      }
+    }
+
     return result;
   } catch (cause) {
     throw new CommitFailedError(label, cause);

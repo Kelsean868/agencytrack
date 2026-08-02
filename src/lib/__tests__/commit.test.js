@@ -7,13 +7,18 @@
  * returns to zero on the failure path as reliably as on the success path.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { commit, isSyncing, CommitFailedError, resetSyncingForTests } from '../commit';
 import { getEntries, clearEntries } from '../../services/activityLogService';
+import * as activityLog from '../../services/activityLogService';
 
 beforeEach(() => {
   clearEntries();
   resetSyncingForTests();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('success path', () => {
@@ -93,6 +98,53 @@ describe('failure path — typed error, never a bare throw', () => {
   it('does NOT append an activity entry when the mutation failed', async () => {
     await commit('save', async () => { throw new Error('x'); }).catch(() => {});
     expect(getEntries()).toEqual([]);
+  });
+});
+
+// A throw from the activity log must NOT be reported as a failed mutation.
+// Otherwise a caller reacting to CommitFailedError by retrying would re-execute
+// an already-committed, non-idempotent write. Pure in-memory today, but
+// activityLogService's header states a Firestore write attaches later — this
+// pins the behaviour before that dependency exists. (CodeRabbit, #892.)
+describe('a logging failure must not corrupt a successful mutation', () => {
+  it('still RESOLVES with the result when log() throws', async () => {
+    vi.spyOn(activityLog, 'log').mockImplementation(() => {
+      throw new Error('firestore write for the log failed');
+    });
+
+    await expect(commit('deliver the application', async () => 'policy-123'))
+      .resolves.toBe('policy-123');
+  });
+
+  it('does not throw CommitFailedError for a write that actually landed', async () => {
+    vi.spyOn(activityLog, 'log').mockImplementation(() => { throw new Error('log down'); });
+
+    let threw = false;
+    try {
+      await commit('deliver the application', async () => 'ok');
+    } catch {
+      threw = true;
+    }
+    expect(threw).toBe(false);
+  });
+
+  it('still clears the syncing flag when log() throws', async () => {
+    vi.spyOn(activityLog, 'log').mockImplementation(() => { throw new Error('log down'); });
+    await commit('save', async () => null);
+    expect(isSyncing()).toBe(false);
+  });
+
+  it('reports the logging fault to the console rather than swallowing it silently', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(activityLog, 'log').mockImplementation(() => { throw new Error('log down'); });
+
+    await commit('save the plan', async () => null);
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    const [msg] = spy.mock.calls[0];
+    expect(msg).toContain('SUCCEEDED');
+    expect(msg).toContain('save the plan');
+    expect(msg).toContain('logging fault');
   });
 });
 
