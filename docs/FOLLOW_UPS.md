@@ -584,6 +584,27 @@ Three things this adds:
 
 The `DailyCaptureV2 > stepper "+"` recurrence (167ms on #882, 181ms here) also confirms the **A2 assertion-shape mechanism** is independent of the timeout mechanism and is *also* contention-driven — two mechanisms, one cause.
 
+**Run 3 on #887 — six distinct tests, ZERO overlap across three runs, and the fact that breaks the workaround.** A third CI pass on the same docs-only PR (commit `8f29230a`) failed on **two more previously-unlisted tests**:
+
+- `daily streak celebration (integration) > "does NOT re-fire when the 5-day milestone marker is already set"` — **5008ms**. This is the **same test as the seventh data point** (#882, 5007ms), recurring across PRs one millisecond apart.
+- `AgentPlannerPanel — week navigation > "navigation is unlimited — three weeks forward keeps stepping"` — **151ms**, A2 element-not-found shape. New member.
+
+**Full tally for #887 — three runs, six distinct tests, no test failing twice:**
+
+| Run | Commit | Failures |
+|---|---|---|
+| 1 | `2fc8520d` | `DailyCaptureV2 > stepper "+"` (181ms, A2) · `aggregate-on-save > "isolates aggregation failure"` (5006ms) |
+| 2 | `2fc8520d` *(re-run, zero change)* | `aggregate-on-save > "recomputes the weekly draft"` (5006ms) |
+| 3 | `8f29230a` | `daily streak > "does NOT re-fire…"` (5008ms) · `AgentPlannerPanel week nav > "navigation is unlimited"` (151ms, A2) |
+
+**THE STRONGEST SINGLE FACT IN THIS ENTRY: run 2 was a re-run of run 1's exact commit, and it failed DIFFERENTLY rather than passing.** Not "failed again" — *failed on a different test*. That is what a contention ceiling looks like when the whole suite sits near it: which test loses is a coin flip, so re-running relocates the failure instead of clearing it. It is also precisely what broke the "re-run and move on" workaround that had absorbed every prior episode.
+
+Cap cluster is now **six observations across five tests** — 5006 · 5006 · 5007 · 5008 · 5015 · 5027 — all against the 5000ms `asyncUtilTimeout` global. The A2 assertion-shape mechanism has **three** — 151 · 167 · 181ms — across three different tests. Two mechanisms, one cause.
+
+Verified locally on `8f29230a`: `DailyCaptureV2.test.jsx` **48/48**, `AgentPlannerPanel.test.jsx` **73/73 on two consecutive runs**. (A single local failure appeared mid-investigation — the `A2 'e' SERIES sibling` already named in this entry — while a full suite was running concurrently, then vanished. Local contention reproduces the same shape, so this is not CI-specific.)
+
+**PR #887 is deliberately HELD as P0-E's acceptance test** (dispatcher ruling, 2026-08-01): docs-only, red three times in a row, sitting at the exact branch point where the problem was last observed. A **first-try green on #887 after the runner fix** is the acceptance evidence — worth more than any asserted number.
+
 **Guard 1 scope note (banked 2026-07-30, PR #882, LOW — recorded, not chased).** The activity-code twin guard (`src/utils/__tests__/activity-code-twin-guard.test.js`) scans **production source only**; `__tests__` is excluded, matching `dark-ink-static-guard.test.js`. Deliberate: test files are full of mock appointment arrays (`[{type:'CI'},{type:'FFI'},{type:'PC'}]`) that are sample data, not classifiers, and are structurally indistinguishable from the real `WEEK_COUNTER_ROWS` twin — so allowlisting them would teach authors that the allowlist is where you go when the guard is annoying, which is how a guard gets tuned to uselessness. **Residual exposure:** a shared test helper or fixture module could host an unseen code twin, and if production ever imported such a helper the guard would not see it. Low risk (test-only blast radius today), recorded so it is not re-derived from scratch.
 
 **Implication for the remedy.** Two rounds of per-test fixes have now each held only until contention rose. That is the third independent signal pointing at the runner-level suggestion already raised above (`maxConcurrency` / pool sizing / `fileParallelism`) rather than a third round of per-test budget widening — this test has now consumed two distinct per-test remedies and failed after both. Whoever picks this up should treat "widen it again to 20s" as the option to argue *against*.
