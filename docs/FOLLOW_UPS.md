@@ -482,9 +482,40 @@ Three verbose runs on one CI runner (PR #890 diagnostic, closed). Every test in 
 
 ### ⚠ PR #888 was NOT a controlled experiment
 
-It was presented as one, by both dispatcher and CC. It is **three n=1 samples of an outcome that is ~50% stochastic**. Controlling the inputs does nothing about variance in the *result*. Its three data points (default FAILED 272s / `maxForks:2` passed 304s / `maxForks:1` passed 521s) establish far less than they were treated as establishing.
+It was presented as one, by both dispatcher and CC. It is **three n=1 samples of a stochastic outcome** (measured failure rate **37%** in the v3 window — see § Measured failure rate below). Controlling the inputs does nothing about variance in the *result*. Its three data points (default FAILED 272s / `maxForks:2` passed 304s / `maxForks:1` passed 521s) establish far less than they were treated as establishing.
 
 **The falsification that proves it:** `maxForks: 2` was green in #888 at **00:15–00:34 UTC** and red in #889 run 1 at **01:15 UTC** — same setting, ~45 minutes apart. **We therefore have no reliable evidence that fork count affects the failure rate at all.**
+
+### Measured failure rate — the baseline was never ~50%, and every inference from that number was drawn from a wrong one
+
+**100 CI runs / 119 attempts, 2026-07-07 → 2026-08-02**, from the GitHub API rather than impression:
+
+| Window | Attempts | Red | Rate | Runs reran |
+|---|---|---|---|---|
+| **Since 2026-07-29 (v3 window)** | 27 | 10 | **37.0%** | 5 of 22 |
+| **Before 2026-07-29** | 92 | 18 | **19.6%** | 14 of 78 |
+
+**Method:** `gh api actions/workflows/ci.yml/runs`, `per_page=100`. Red attempts = `sum(run_attempt) − count(runs concluding success)`, which is exact **given full re-runs**.
+
+**⚠ Caveat, recorded:** any `gh run rerun --failed` in the history inflates `run_attempt` without being a full suite attempt, so the true rate may be **slightly below** these figures.
+
+**Three corrections — this supersedes every "~50%" in the record:**
+
+1. **The rate was never ~50%.** Every inference either party drew from that number came from a wrong baseline.
+2. **Five consecutive greens is ~10% by luck at 37%, not the ~3% claimed at 50%** (`0.63⁵ = 9.9%` vs `0.5⁵ = 3.1%`). The five-run standard was **weaker than stated** when it was set.
+3. **#887's four consecutive reds is 1.9% at 37%** (`0.37⁴`). Notable as one sequence, unremarkable across 119 attempts. An impression from a single PR was never going to establish a rate — including CC's own "suggests worse than 50%" read, which this measurement replaces.
+
+**Two other artefacts still carry the superseded figure and are deliberately NOT edited:**
+- `docs/briefs/v3-p0b-activity-ledger-kickoff.md:141` — *"flaking at roughly one episode in two runs"*. A landed brief is a **Rule 10 audit trail**; rewriting it would falsify the record of what was actually dispatched. Read it against this section.
+- `src/lib/__tests__/activityLedger.test.js:17-18` — the same phrasing in the property-budget comment. A one-line comment fix, pending authorisation, since correcting it would widen a docs-only PR into a source change.
+
+### ⚠ SUGGESTIVE, NOT ESTABLISHED — the rate roughly doubled in the v3 window
+
+19.6% → 37.0%. Two-proportion **z ≈ 1.9, p ≈ 0.06 at n=27**. **Do not treat this as fact.** It does not clear conventional significance and the v3 sample is small.
+
+**If it is real**, the likeliest mechanism is that the flake **scales with suite size** — P0-A and P0-B both added test files — which fits a per-assertion race exactly: more `waitFor`/`findBy` sites means more chances to lose it, so the per-*run* failure rate rises even though the per-*assertion* rate is unchanged. That prediction is testable and it is uncomfortable, because it implies **further worsening as Phase 1 lands**.
+
+**Action for whoever lands P0-C and P0-D: recompute this same statistic afterwards, by the same method.** If the rate climbs again, the race investigation below should be **promoted ahead of Phase 1** rather than queued behind it.
 
 ### Superseded — do NOT retry, each with its reason
 
