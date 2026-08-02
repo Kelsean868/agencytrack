@@ -28,6 +28,8 @@
 | Mutating planner smokes leave residue by design — no self-teardown; needs a shared Admin-SDK helper across all 7 (raised by CodeRabbit on #878, banked 2026-07-27) | LOW | Verification | — | see § Planner activity types |
 | Two divergent planner design-authority trees (`proposals/planner-scheduler-v2/` vs `screens-v2/agencytrack-planner-handoff/`) — never diffed file-by-file (banked 2026-07-27) | LOW | Design system | — | see § Planner activity types |
 | External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track). **PATTERN CONFIRMED 2026-07-31: rate-limited on #882, #883 AND #884 (3 of 5 HEADs, incl. the merged one)** | HIGH | — | overdue (was 2026-07-17) | see § External code reviewer |
+| **⚑ THE FLAKE IS A RACE, NOT CONTENTION — corrected characterisation.** Measured: p50 130ms / max 703ms vs failures at the 5000ms timeout; run wall-clock normal while one test hangs. The `5006…5027` cluster means only that the timeout FIRED — do not reason from it. #888 was three n=1 samples, not a controlled experiment. Superseded: `asyncUtilTimeout`, per-test widening, sharding, `maxForks` capping (#889 closed unmerged), `isolate:false` (banked 2026-08-02, v3 P0-E) | HIGH | test-infra | — | see § THE FLAKE IS A RACE |
+| Race investigation — why does the awaited condition never arrive? Successor track to the above; **requires test-file access**, needs its own brief, NOT started (banked 2026-08-02, ruling 11c) | MEDIUM | test-infra | — | see § Race investigation |
 | `pcBreakdown` filters the day's evidenced events twice (4 passes/day via `weekTotals`) — CodeRabbit's remedy DECLINED as it would re-shape a dispatcher-ruled interface; shape-preserving fix recorded (banked 2026-07-31, PR #884) | LOW | v3 P0-B | — | see § `activityLedger` two LOW residuals |
 | `evidencedPct` uses `Math.round`, so a COLUMN of per-code percentages will not sum to 100 — harmless for today's single-figure design, scope check for Phase 2.1 (banked 2026-07-31, PR #884) | LOW | v3 Phase 2.1 | — | see § `activityLedger` two LOW residuals |
 | Track K Phase 2 — narrative `branchPlans` (new collection, HUMAN-MERGE) + PPTX + manpower setter + per-branch `branchGoals` keying (banked 2026-07-21, #864 close) | HIGH | Track K | — | ~288 |
@@ -447,6 +449,108 @@ Verification/scope gaps Run 8 itself flagged (Rule 22), now live in prod via PR 
 
 ---
 
+## ⚑ THE FLAKE IS A RACE, NOT CONTENTION — corrected characterisation, and the layer everyone has been fixing is the wrong one (banked 2026-08-02, v3 P0-E, MEASURED)
+
+**Read this before touching a timeout, a pool setting, or a runner config.** Four rounds of remediation have now targeted contention. The measurement says contention is not the mechanism.
+
+### The measurement that settles it
+
+Three verbose runs on one CI runner (PR #890 diagnostic, closed). Every test in the flake record, **when it passes**:
+
+| Test | r1 | r2 | r3 |
+|---|---|---|---|
+| `aggregate-on-save > isolates aggregation failure` | 661 | 663 | 648 |
+| `daily streak > does NOT re-fire` | 657 | 703 | 668 |
+| `DailyCaptureV2 > stepper "+"` | 266 | 240 | 258 |
+| `AgentPlannerPanel > navigation is unlimited` | 123 | 161 | 158 |
+| `MeetingMode > skip-logs the awards scene` | 90 | 94 | 126 |
+| `daily streak > fires the takeover` | 90 | 96 | 102 |
+| `aggregate-on-save > recomputes the weekly draft` | 46 | 48 | 49 |
+| `MeetingMode > ArrowRight advances` | 41 | 36 | 40 |
+
+**p50 ≈ 130ms · max 703ms.** No test in the entire 378-file suite exceeded **1000ms**.
+
+### Why that means RACE and not contention
+
+- **An awaited condition that never arrives, not one that arrives late.** Healthy runs finish in ~0.1s. Failures sit at the 5000ms timeout. There is no population in between — the gap is 7–50×, not a distribution tail.
+- **The whole run does not drag when one test hangs.** #889 run 1 took **322s**, squarely in the normal band, and the failing test's neighbours ran at normal speed. Starvation would slow everything; one test hung while everything around it was fine.
+- **The A2 cluster says the same in a different shape.** `Unable to find an element…` at **151 / 167 / 181ms** — expected state absent, detected *fast*. Not slow, absent.
+
+### ⚠ The `5006 · 5006 · 5007 · 5008 · 5015 · 5027` cluster means ONLY that the timeout fired
+
+**A timeout always reports ≈budget + detection overhead.** Those numbers say the 5000ms limit was hit. They say **nothing** about how close the chain was to completing, and reading them as "6 to 27 milliseconds past the cliff" — as this document previously did, and as the dispatcher's own analysis did — leads directly to the wrong layer. It is what motivated a margin argument the data cannot support. **Do not reason from that cluster again.**
+
+### ⚠ PR #888 was NOT a controlled experiment
+
+It was presented as one, by both dispatcher and CC. It is **three n=1 samples of a stochastic outcome** (measured failure rate **37%** in the v3 window — see § Measured failure rate below). Controlling the inputs does nothing about variance in the *result*. Its three data points (default FAILED 272s / `maxForks:2` passed 304s / `maxForks:1` passed 521s) establish far less than they were treated as establishing.
+
+**The falsification that proves it:** `maxForks: 2` was green in #888 at **00:15–00:34 UTC** and red in #889 run 1 at **01:15 UTC** — same setting, ~45 minutes apart. **We therefore have no reliable evidence that fork count affects the failure rate at all.**
+
+### Measured failure rate — the baseline was never ~50%, and every inference from that number was drawn from a wrong one
+
+**100 CI runs / 119 attempts, 2026-07-07 → 2026-08-02**, from the GitHub API rather than impression:
+
+| Window | Attempts | Red | Rate | Runs reran |
+|---|---|---|---|---|
+| **Since 2026-07-29 (v3 window)** | 27 | 10 | **37.0%** | 5 of 22 |
+| **Before 2026-07-29** | 92 | 18 | **19.6%** | 14 of 78 |
+
+**Method:** `gh api actions/workflows/ci.yml/runs`, `per_page=100`. Red attempts = `sum(run_attempt) − count(runs concluding success)`, which is exact **given full re-runs**.
+
+**⚠ Caveat, recorded:** any `gh run rerun --failed` in the history inflates `run_attempt` without being a full suite attempt, so the true rate may be **slightly below** these figures.
+
+**Three corrections — this supersedes every "~50%" in the record:**
+
+1. **The rate was never ~50%.** Every inference either party drew from that number came from a wrong baseline.
+2. **Five consecutive greens is ~10% by luck at 37%, not the ~3% claimed at 50%** (`0.63⁵ = 9.9%` vs `0.5⁵ = 3.1%`). The five-run standard was **weaker than stated** when it was set.
+3. **#887's four consecutive reds is 1.9% at 37%** (`0.37⁴`). Notable as one sequence, unremarkable across 119 attempts. An impression from a single PR was never going to establish a rate — including CC's own "suggests worse than 50%" read, which this measurement replaces.
+
+**Two other artefacts still carry the superseded figure and are deliberately NOT edited:**
+- `docs/briefs/v3-p0b-activity-ledger-kickoff.md:141` — *"flaking at roughly one episode in two runs"*. A landed brief is a **Rule 10 audit trail**; rewriting it would falsify the record of what was actually dispatched. Read it against this section.
+- `src/lib/__tests__/activityLedger.test.js:17-18` — the same phrasing in the property-budget comment. A one-line comment fix, pending authorisation, since correcting it would widen a docs-only PR into a source change.
+
+### ⚠ SUGGESTIVE, NOT ESTABLISHED — the rate roughly doubled in the v3 window
+
+19.6% → 37.0%. Two-proportion **z ≈ 1.9, p ≈ 0.06 at n=27**. **Do not treat this as fact.** It does not clear conventional significance and the v3 sample is small.
+
+**If it is real**, the likeliest mechanism is that the flake **scales with suite size** — P0-A and P0-B both added test files — which fits a per-assertion race exactly: more `waitFor`/`findBy` sites means more chances to lose it, so the per-*run* failure rate rises even though the per-*assertion* rate is unchanged. That prediction is testable and it is uncomfortable, because it implies **further worsening as Phase 1 lands**.
+
+**Action for whoever lands P0-C and P0-D: recompute this same statistic afterwards, by the same method.** If the rate climbs again, the race investigation below should be **promoted ahead of Phase 1** rather than queued behind it.
+
+### Superseded — do NOT retry, each with its reason
+
+| Approach | Why it is dead |
+|---|---|
+| Raising `asyncUtilTimeout` | Pulled **twice** blind (1000 → 2000 → 5000). And now measured: chains run at ≤703ms against a 5000ms budget — **~7× headroom already**. There is no margin problem to fix. |
+| Per-test `it(…, ms)` widening | #872's remedy. Raised a ceiling that is not binding; its own fixed tests re-fired afterwards. |
+| Sharding across runners | Costed for a 2-vCPU runner. The runner is **4 vCPU / 16.8 GB** (public-repo class), so each shard would still need capping — an addition, not an alternative. |
+| `maxForks` capping | Tried at 2 on PR #889 and **falsified within an hour**. Cap engagement was *proven* (max concurrent vitest procs: 6 uncapped vs 4 capped, same machine — a clean 2-worker delta), so the config worked and the failure happened anyway. Costs +32s/run forever for unproven benefit. **PR #889 closed unmerged.** |
+| `isolate: false` | 378 files, shared mocks, a globally-configuring `test-setup.js`. Silent cross-file contamination is strictly worse than a flaky gate. |
+
+### The open question — this is the next investigation, and it is NOT started
+
+**Why does the awaited condition sometimes never arrive?** That is a race inside the component-under-test or its mocks, not a property of the runner.
+
+Density correlates with *exposure* but is not sufficient: `AgentPlannerPanel.test.jsx` has **163** `waitFor`/`findBy` sites and 3 members, `DailyCaptureV2.test.jsx` has **63** and 5 members — but `MeetingMode.test.jsx` has only **9** and still contributes 2. More async assertions means more chances to lose the race; it does not explain the race.
+
+Ruled out along the way, so nobody re-chases it: `DailyCaptureV2.test.jsx`'s partial fake timers (`vi.useFakeTimers({ toFake: ['Date'] })`, present in every one of its failing describes) are **safe**. `waitFor` uses real `setTimeout`/`setInterval`, and its fake-timer detection requires `typeof jest !== 'undefined'`, which is false under vitest without `globals` — so `waitFor` takes the real-timer branch. The file's own comment is correct.
+
+**See § Race investigation below — it needs test-file access and its own brief.**
+
+---
+
+## Race investigation — why does the awaited condition never arrive? (banked 2026-08-02, v3 P0-E ruling 11c, MEDIUM — own track, NOT started)
+
+**Do not start this without a brief.** It is the successor to the corrected characterisation above, and it is deliberately *not* part of any Phase 0 recon.
+
+**Why it needs its own track:** every brief in the v3 sequence has forbidden touching test files. This investigation **requires** it — the race is inside the component-under-test or its mocks, and it cannot be characterised from the outside. Smuggling that into a config slice is how the last four rounds landed at the wrong layer.
+
+**Starting evidence** is the entry above: p50 130ms / max 703ms; failures at the timeout with normal run wall-clock; the A2 element-not-found cluster at 151–181ms; density correlating with exposure but not sufficient.
+
+**First questions for whoever picks it up:** which awaited condition is absent in each failing case (the DOM node, the mock resolution, or a state update that never commits)? Do the failures share a mock shape — e.g. an unresolved promise from a Firestore stub — rather than a component? Is there an unawaited state update that usually lands before the assertion and occasionally does not?
+
+---
+
 ## CI-vs-local test-timing gap — Tier-0 error-state tests can pass locally 5x, fail in CI (banked 2026-07-16, MEDIUM — test-infra audit)
 
 PR #861 fixed two CI-only failures in `AgentAwardsPanel.test.jsx` (from the Run-6 Tier-0 four-states sweep) that passed locally 5/5 runs before any fix. Two distinct mechanisms, both worth auditing for across the rest of the Tier-0 error-state test population:
@@ -557,6 +661,53 @@ Causality is excluded cleanly: the failing run's diff versus the immediately pre
 That second one is **not** previously enumerated and is **not** pattern 2: an assertion at 167ms is the **A2 mechanism** (query runs before the render it depends on commits), now confirmed in a second file. The population is therefore **two mechanisms, not one**, in `DailyCaptureV2` alone.
 
 This is the **second independent confirmation of the tipping effect** already recorded above ("adding 2 tests to `AgentPlannerPanel.test.jsx` tipped ONE file-level run into failing both an A5 bulk test AND the A2 test") — and it is stronger, because here the added file is *not in the same file, module graph, or feature area* as either failure. Adding **any** test file raises whole-run contention and tips whichever tests are closest to their budget. That is a scheduling property of the run, not a property of the added test, and it is the clearest argument yet for the runner-level remedy over per-test widening. Both failures went green on a re-run with zero code change.
+
+**NINTH data point — a flake on a diff containing NO CODE AT ALL. This removes the last ambiguity about causation (2026-07-31, PR #886).** The `main → staging` sync PR is **docs-only** — `CLAUDE.md` + `docs/`, zero files under `src/`. Its first CI pass failed on `MeetingMode.test.jsx > MeetingMode — run-of-show > "skip-logs the awards scene when nobody is within reach — deck lands on close at index 7"`, **`Test timed out in 5000ms`, measured at 5015ms**. Green on re-run with **zero change**.
+
+Every prior data point still had *some* code or test delta to argue about, however tenuously. This one has none: there is no possible causal path from a Markdown edit to a React-render timeout. **The failure is contention, full stop** — a property of how loaded the runner is, not of what was committed.
+
+Two further details worth keeping:
+- It is the **second distinct test in `MeetingMode.test.jsx`** to fail this way, after `"ArrowRight advances from opening to the branch scorecard"` in the sixth data point (v3 P0-A baseline). That file now has two named members. `"skip-logs the awards scene…"` also appears in the run-2 row of the multi-run table above, so it was already a suspected member — this is its first *named, CI, reproduced-and-cleared* observation.
+- **5015ms against the 5000ms global** is the same signature as the seventh data point (5007ms) and the A5 member in the eighth (5027ms). Three separate tests now cluster within ~30ms of the cap, which is the shape of a budget that is simply too tight under contention rather than three unrelated races. **Reinforces that #872 raised the ceiling without removing the race** — and strengthens the case for the runner-level remedy (`poolOptions` / `maxThreads`, currently absent from `vite.config.js` entirely, so the runner self-sizes to the machine) over a fourth round of per-test widening.
+
+**TENTH data point — ⚠ ESCALATION: a single re-run no longer reliably clears it (2026-07-31, PR #887 — the PR banking the ninth point above).** #887 is also **docs-only** — `CLAUDE.md` + `docs/FOLLOW_UPS.md`, zero files under `src/` — and it went red on CI **twice on the same commit**, failing **different tests each time**:
+
+| Run | Failing test | Time |
+|---|---|---|
+| 1 | `DailyCaptureV2 > "stepper \"+\" increments the bound storage key and Save writes it"` | 181ms — *element not found* (A2 shape) |
+| 1 | `aggregate-on-save (Phase 2.2) > "isolates aggregation failure — the daily log still succeeds"` | **5006ms** |
+| 2 (re-run, zero change) | `aggregate-on-save (Phase 2.2) > "recomputes the weekly draft after a successful daily save"` | **5006ms** |
+
+**A deterministic regression cannot fail different tests on successive runs of the same commit** — the non-determinism is proven by the runs themselves, not inferred. Confirmed locally: `DailyCaptureV2.test.jsx` passes **48/48 in 8.39s** of test time on this exact branch.
+
+Three things this adds:
+
+1. **`aggregate-on-save (Phase 2.2)` is a NEW describe block in the family** — two of its tests, not previously enumerated anywhere.
+2. **The cap cluster is now five observations across four distinct tests:** 5006 · 5006 · 5007 · 5015 · 5027, all against the 5000ms global. Four unrelated races that all happen to land within 27ms of the same threshold is not a credible reading; one budget that is too tight under contention is.
+3. **The mitigation is degrading.** Every prior episode cleared on one re-run. This one did not — which means "re-run and move on" is no longer a reliable workaround, and the cost is now landing on unrelated docs PRs.
+
+The `DailyCaptureV2 > stepper "+"` recurrence (167ms on #882, 181ms here) also confirms the **A2 assertion-shape mechanism** is independent of the timeout mechanism and is *also* contention-driven — two mechanisms, one cause.
+
+**Run 3 on #887 — six distinct tests, ZERO overlap across three runs, and the fact that breaks the workaround.** A third CI pass on the same docs-only PR (commit `8f29230a`) failed on **two more previously-unlisted tests**:
+
+- `daily streak celebration (integration) > "does NOT re-fire when the 5-day milestone marker is already set"` — **5008ms**. This is the **same test as the seventh data point** (#882, 5007ms), recurring across PRs one millisecond apart.
+- `AgentPlannerPanel — week navigation > "navigation is unlimited — three weeks forward keeps stepping"` — **151ms**, A2 element-not-found shape. New member.
+
+**Full tally for #887 — three runs, six distinct tests, no test failing twice:**
+
+| Run | Commit | Failures |
+|---|---|---|
+| 1 | `2fc8520d` | `DailyCaptureV2 > stepper "+"` (181ms, A2) · `aggregate-on-save > "isolates aggregation failure"` (5006ms) |
+| 2 | `2fc8520d` *(re-run, zero change)* | `aggregate-on-save > "recomputes the weekly draft"` (5006ms) |
+| 3 | `8f29230a` | `daily streak > "does NOT re-fire…"` (5008ms) · `AgentPlannerPanel week nav > "navigation is unlimited"` (151ms, A2) |
+
+**THE STRONGEST SINGLE FACT IN THIS ENTRY: run 2 was a re-run of run 1's exact commit, and it failed DIFFERENTLY rather than passing.** Not "failed again" — *failed on a different test*. That is what a contention ceiling looks like when the whole suite sits near it: which test loses is a coin flip, so re-running relocates the failure instead of clearing it. It is also precisely what broke the "re-run and move on" workaround that had absorbed every prior episode.
+
+Cap cluster is now **six observations across five tests** — 5006 · 5006 · 5007 · 5008 · 5015 · 5027 — all against the 5000ms `asyncUtilTimeout` global. The A2 assertion-shape mechanism has **three** — 151 · 167 · 181ms — across three different tests. Two mechanisms, one cause.
+
+Verified locally on `8f29230a`: `DailyCaptureV2.test.jsx` **48/48**, `AgentPlannerPanel.test.jsx` **73/73 on two consecutive runs**. (A single local failure appeared mid-investigation — the `A2 'e' SERIES sibling` already named in this entry — while a full suite was running concurrently, then vanished. Local contention reproduces the same shape, so this is not CI-specific.)
+
+**PR #887 is deliberately HELD as P0-E's acceptance test** (dispatcher ruling, 2026-08-01): docs-only, red three times in a row, sitting at the exact branch point where the problem was last observed. A **first-try green on #887 after the runner fix** is the acceptance evidence — worth more than any asserted number.
 
 **Guard 1 scope note (banked 2026-07-30, PR #882, LOW — recorded, not chased).** The activity-code twin guard (`src/utils/__tests__/activity-code-twin-guard.test.js`) scans **production source only**; `__tests__` is excluded, matching `dark-ink-static-guard.test.js`. Deliberate: test files are full of mock appointment arrays (`[{type:'CI'},{type:'FFI'},{type:'PC'}]`) that are sample data, not classifiers, and are structurally indistinguishable from the real `WEEK_COUNTER_ROWS` twin — so allowlisting them would teach authors that the allowlist is where you go when the guard is annoying, which is how a guard gets tuned to uselessness. **Residual exposure:** a shared test helper or fixture module could host an unseen code twin, and if production ever imported such a helper the guard would not see it. Low risk (test-only blast radius today), recorded so it is not re-derived from scratch.
 

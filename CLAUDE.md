@@ -763,6 +763,17 @@ Banked: PR #217 (d84a752).
 
 **Brief-drafting verification rule (already banked, reinforced this session):** `project_knowledge_search` lags `main` by several PRs. Briefs based on project knowledge alone can embed stale premises. The Phase 1 discovery gate in every brief catches this — never skip it, even for "small" fixes. emailQueued (#136), SEC-9b (#139), and SHAKEDOWN-001 (#141) all had brief assumptions Phase 1 corrected.
 
+**Doc placement follows PROPAGATION DIRECTION, not content type.** `staging → main` runs automatically at promotion; `main → staging` only fires at promotion boundaries, which is always **after** the work a mid-cycle rule was meant to govern. So:
+
+- **STAGING — `CLAUDE.md`, `docs/FOLLOW_UPS.md`.** Read from the working tree **during** a build, which always runs on a branch cut from `staging`. Reaches `main` for free at promotion.
+- **MAIN — `docs/CONTEXT.md`, `docs/briefs/`.** Read at **dispatch** time, when the tree is still on `main`. `CONTEXT.md`'s *Current main HEAD* row is literally about main, and `/land-and-dispatch` hardwires briefs there.
+
+**Consequence: `CLAUDE.md` edits ride in PRs rather than direct-to-main commits.** That is an improvement, not a cost — a rule governing every future build should get CI and reviewer coverage. Banking a rule between builds costs one small docs PR against `staging`.
+
+Learned the expensive way: three rules — the v3 binding rules, the mutation rule below, and the junction rule below — each landed where the builds they governed **could not see them**, and two of them collided at the same anchor and would have conflicted at promotion. See PR #886.
+
+**`git diff A B` is a TWO-ENDPOINT diff** — it lists every file differing in **either** direction, so it sweeps in `B`'s own additions. To ask *"what does A add relative to B"*, diff against the merge-base: `git diff $(git merge-base A B) A`, or the triple-dot `git diff B...A`. Using the two-endpoint form as a **scope gate** produced a false STOP on PR #886 that was indistinguishable from a real scope violation. Same family as the `slice(indexOf(a), indexOf(b))` rule: **a check that appears to work while answering a different question is the most expensive kind.**
+
 **A property test that passes proves nothing until a mutation makes it fail.** A passing property can mean the invariant holds, OR that the generator never reaches the defect — and the second is indistinguishable from the first without mutating. **Diffuse generators are as dangerous as narrow ones:** in P0-B, four partition properties passed under the *exact* defect they were written for, because ≤8 events spread over 7 days and 8 types essentially never produced two call-attributed blocks overlapping on one day. The fix was a second, deliberately dense generator run alongside the broad one via `fc.oneof`. **Every property must be paired with a mutation that makes it fail, and that mutation's counterexample is the deliverable — not the green run.**
 
 Worked example: PR #884 (P0-B activity ledger). Three property families, each mutation-verified, and the contrast is the point — substituting `max(dials, itemised)` with `dials + itemised` (06-DEFECT-CLASSES.md §3's first listed defect, the container summed with its contents) passes **all five** monotonicity properties and **all four** partition properties, and is caught only by the aggregation property. Monotonicity proves direction, partition proves attribution, aggregation proves magnitude; none of the three substitutes for another.
