@@ -512,7 +512,7 @@ It was presented as one, by both dispatcher and CC. It is **three n=1 samples of
 
 **Two other artefacts still carry the superseded figure and are deliberately NOT edited:**
 - `docs/briefs/v3-p0b-activity-ledger-kickoff.md:141` — *"flaking at roughly one episode in two runs"*. A landed brief is a **Rule 10 audit trail**; rewriting it would falsify the record of what was actually dispatched. Read it against this section.
-- `src/lib/__tests__/activityLedger.test.js:17-18` — the same phrasing in the property-budget comment. A one-line comment fix, pending authorisation, since correcting it would widen a docs-only PR into a source change.
+- `src/lib/__tests__/activityLedger.test.js:17-18` — the same phrasing in the property-budget comment. **Ruled 2026-08-02: leave it, do not spend a PR on it.** The comment's **conclusion survives the correction** — capping `numRuns` because CI is flaky is still sound at 37% — and only the *cited rate* is stale. A one-line comment fix does not justify a CI cycle at a 37% red rate, and folding it into P0-C would widen an unrelated diff. **Tagged: fold into the next PR that touches `src/lib/__tests__/activityLedger.test.js`** — realistically Phase 2.1, which owns the `contacts` field on the `CALLS` row.
 
 ### ⚠ SUGGESTIVE, NOT ESTABLISHED — the rate roughly doubled in the v3 window
 
