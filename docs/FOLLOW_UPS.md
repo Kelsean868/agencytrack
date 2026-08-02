@@ -31,6 +31,7 @@
 | **⚑ THE FLAKE IS A RACE, NOT CONTENTION — corrected characterisation.** Measured: p50 130ms / max 703ms vs failures at the 5000ms timeout; run wall-clock normal while one test hangs. The `5006…5027` cluster means only that the timeout FIRED — do not reason from it. #888 was three n=1 samples, not a controlled experiment. Superseded: `asyncUtilTimeout`, per-test widening, sharding, `maxForks` capping (#889 closed unmerged), `isolate:false` (banked 2026-08-02, v3 P0-E) | HIGH | test-infra | — | see § THE FLAKE IS A RACE |
 | Flip `a11y-contrast` from REPORTING to BLOCKING once the one enumerated pre-existing failure is cleared (`topbar-search-placeholder` 4.13:1 light — the Topbar failure the P0-D brief lists as out of scope). Drop `continue-on-error`, pass `--blocking`, rename the job in the same commit (banked 2026-08-02, v3 P0-D) | MEDIUM | v3 P0-D | — | see § Flip a11y-contrast |
 | `a11y-contrast` sweep covers 2 routes (login + dashboard); `:disabled` measured 0 because the swept routes have only transient disabled states — the path is proven via the planted failure. Widen the route list (banked 2026-08-02, v3 P0-D) | LOW | v3 P0-D | — | see § a11y-contrast sweep covers two routes |
+| `a11y-contrast` runs with only the auth + firestore emulators, so CF-gated UI (`resolveSalesManagerUid` is CORS-blocked) never renders into the swept DOM — element counts are a floor. Surfaced by the console/network capture added in the #893 review (banked 2026-08-02, v3 P0-D review) | LOW | v3 P0-D | — | see § a11y-contrast sweep runs without the functions emulator |
 | `SyncIndicator` shows connectivity, not pending writes — `waitForPendingWrites` / `onSnapshotsInSync` are the candidate APIs; wire it with the first real `commit()` caller (P0-F), not before, because `onSnapshotsInSync` is listener-relative and there is no caller to attach to yet (banked 2026-08-02, v3 P0-C ruling 13b) | LOW | v3 P0-F | — | see § SyncIndicator shows connectivity |
 | Race investigation — why does the awaited condition never arrive? Successor track to the above; **requires test-file access**, needs its own brief, NOT started (banked 2026-08-02, ruling 11c) | MEDIUM | test-infra | — | see § Race investigation |
 | `pcBreakdown` filters the day's evidenced events twice (4 passes/day via `weekTotals`) — CodeRabbit's remedy DECLINED as it would re-shape a dispatcher-ruled interface; shape-preserving fix recorded (banked 2026-07-31, PR #884) | LOW | v3 P0-B | — | see § `activityLedger` two LOW residuals |
@@ -569,6 +570,32 @@ The sweep visits **login** (unauthenticated) and **dashboard** (authenticated), 
 **Why `:disabled` measured zero, and why that is not a defect in the sweep.** The swept routes have no *persistently* disabled text control. `LoginScreen.jsx`'s disabled states are transient (`disabled={submitting}`, `disabled={resetLoading}`) and are true only mid-request. The disabled measurement path is **proven working** — the P0-D planted failure was a disabled control and was caught at `[dark/disabled] 2.5:1` — but on the current routes it has nothing real to measure.
 
 **Next increment:** add routes with persistently-disabled controls and with the semantic-tint surfaces where this defect class concentrates (the wizard, manager surfaces, the money card). The existing `a11y-axe-scan.cjs` covers 8 agent pages and `-manager.cjs` covers 9; their page lists are the obvious source. Each added route costs wall-clock on a paths-filtered job, so add deliberately rather than wholesale.
+
+**A second cause of the zero, from the CodeRabbit review on #893 — a better diagnosis than the one above, recorded verbatim because it is the part the P0-D author missed.** The collector keeps only elements with **own text**, and reads `disabled` from `el.matches(':disabled')` on that *same* element. A disabled control whose label sits in a child element therefore fails **both** tests at once: the control itself has no own text, and the text-bearing child does not match `:disabled`. So `<button disabled><span>Save</span></button>` — the ordinary React shape — is invisible to the disabled sweep regardless of which routes are added. Widening routes alone will NOT fix this.
+
+Fix shape: propagate the disabled state from the nearest ancestor (`el.closest(':disabled') !== null`, plus the `aria-disabled` equivalent) rather than testing only the text-bearing node.
+
+**Do NOT pair this with a zero-disabled hard-fail guard until after it lands.** The sweep already hard-fails on zero `:focus-visible`; the symmetrical guard for `:disabled` is deliberately absent because it would **red the job today**, which contradicts the reporting-first mode ruling 14b asked for. Sequence: propagate first, confirm a non-zero disabled count in CI, *then* add the guard.
+
+## `a11y-contrast` sweep runs without the functions emulator — CF-dependent UI is unswept (banked 2026-08-02, v3 P0-D review, LOW)
+
+The console/network capture added in `038478f0` immediately surfaced something the sweep had been hiding: the job runs `firebase emulators:exec --only auth,firestore`, so **`resolveSalesManagerUid` is CORS-blocked** and any UI behind a Cloud Function call never renders into the swept DOM.
+
+```
+[error] Access to fetch at 'https://us-central1-demo-agencytrack.cloudfunctions.net/resolveSalesManagerUid'
+        from origin 'http://127.0.0.1:4173' has been blocked by CORS policy
+```
+
+Environmental, not an app defect — and note the blocked host is **`demo-agencytrack`, not `agencytrack-2a610`**, which is independent confirmation that the emulator-mode build has no production reach.
+
+Two consequences worth separating:
+
+1. **Coverage.** Whatever the CF gates is simply not measured. The sweep's element count is therefore a floor, not a ceiling.
+2. **Legibility.** This was invisible before the capture landed — the sweep reported a clean run over a partially rendered DOM, which is exactly the failure mode the capture convention exists to prevent.
+
+**Next increment:** add `functions` to the `--only` list and the functions build to the job, *or* explicitly stub the CF call in emulator mode. Adding the functions emulator costs a functions build in CI, so weigh it against the route-widening item above — they should probably land together.
+
+**Also seen in the same capture, and benign:** `_vercel/insights/script.js` and `_vercel/speed-insights/script.js` 404 under `vite preview` (Vercel injects them only on Vercel), and `icons.svg` 404s. None affect measurement; recorded so the next reader does not re-diagnose them.
 ## `SyncIndicator` shows connectivity, not pending writes — wire it with the first real `commit()` caller (banked 2026-08-02, v3 P0-C ruling 13b, LOW)
 
 [`src/components/ui/SyncIndicator.jsx`](src/components/ui/SyncIndicator.jsx) is a `navigator.onLine` badge and nothing more: it listens for `online`/`offline` window events and renders "Offline". **It cannot tell a user whether their write actually landed** — only whether the browser thinks it has a network.
