@@ -447,11 +447,31 @@ Verification/scope gaps Run 8 itself flagged (Rule 22), now live in prod via PR 
 
 ---
 
-## ✅ RESOLVED — the CI flake was RUNNER CONTENTION; fixed at the pool, not the test (v3 P0-E, 2026-08-02, PR #889)
+## 🚧 IN PROGRESS — CI flake diagnosed as runner contention; `maxForks: 2` TRIED AND FALSIFIED (v3 P0-E, 2026-08-02, PR #889 — held, not merged)
 
-**Read this before re-litigating any of it.** Eleven-plus recorded episodes, three rounds of per-test remediation, and the cause was never the tests.
+> ### ⚠ THE MOST VALUABLE DATA POINT IN THIS ENTRY IS A NEGATIVE ONE
+>
+> **`maxForks: 2` was green once and red once, at the same setting, ~45 minutes apart:**
+>
+> | When (UTC) | Where | Config | Result |
+> |---|---|---|---|
+> | 2026-08-02 **00:15–00:34** | PR #888 diagnostic | `maxForks: 2` (CLI) | ✅ 378/378, 304s |
+> | 2026-08-02 **01:15** | PR #889 run 1 (`30726697411`) | `maxForks: 2` (config) | ❌ **FAILED** — `DailyCaptureV2 > daily streak celebration > "fires the takeover when a save crosses the 5-day milestone"`, timed out in 5000ms. Test step 322s. |
+>
+> **This proves a clustered sample cannot settle this question** — which is exactly what the dispatcher predicted *before it happened*, when ruling that five runs inside ~30 minutes sample **one runner-load condition** rather than the population. GitHub's shared runners vary with time of day and platform demand, and contention is the very variable being controlled for.
+>
+> **Keep this prominent. Do not tidy it away.** Any future claim that a pool setting "works" must survive samples taken at different hours, not five greens in one half-hour window. A single green at a ~50% baseline is worth nothing; five clustered greens are worth much less than they look.
+>
+> **Corollary — do not read `maxForks: 1`'s single green as "the value with demonstrated headroom."** It has exactly **one** observation, from the same #888 run that also gave `maxForks: 2` its single green — and that green has since been falsified. Paying +249s per run forever on n=1 would repeat the error at a higher price.
 
-**What changed — one line.** `vite.config.js` → `test.poolOptions.forks.maxForks = process.env.CI ? 2 : undefined`. No test file was touched. No `asyncUtilTimeout` change. No `ci.yml` change.
+**Status: the fix is NOT established.** `vite.config.js` currently carries `test.poolOptions.forks.maxForks = process.env.CI ? 2 : undefined` on the held PR #889. It reduced contention measurably but did **not** eliminate the failure. No test file was touched, no `asyncUtilTimeout` change, no `ci.yml` change.
+
+**Open questions being measured before any further config change:**
+1. Did the cap *actually* engage on the runner (resolved fork count, not the config value)? The 322s test step sits in the capped band (vs 272s default / 304s capped reference), which is suggestive but not proof — a busier machine would make default slower *and* likelier to fail.
+2. What is the **duration distribution** of the failing chains when they pass? Are they ~1.2s with rare 5s excursions, or routinely 4.5–4.9s against a 5000ms budget with almost no margin? Those are different problems with different fixes, and nobody has ever looked.
+3. Why is `DailyCaptureV2.test.jsx` over-represented — five distinct tests across the record? Concentration in one file may mean runner tuning is the wrong layer.
+
+**What changed — one line (currently on the held PR, not merged).** `vite.config.js` → `test.poolOptions.forks.maxForks = process.env.CI ? 2 : undefined`.
 
 **The controlled measurement (PR #888 diagnostic).** Three configurations run **back-to-back on ONE runner, same commit**, only the pool size varying — so this is a comparison, not three anecdotes:
 
@@ -474,7 +494,9 @@ Verification/scope gaps Run 8 itself flagged (Rule 22), now live in prod via PR 
 **Why CI-only.** All the evidence is from CI. Capping local runs on 8- and 16-core machines would slow the local loop several-fold to fix a problem never seen in a normal local flow, and a suite people stop running locally is worse than a slow gate. Verified rather than assumed — same subset, same machine, back-to-back: **CI unset 37s** (unchanged) vs **CI=1 64s** (+73%, cap engaged) on a 12-core box.
 
 **Superseded approaches — do NOT retry these:**
-- **Raising `asyncUtilTimeout`.** Pulled twice (1000 → 2000 → 5000). The race survived both times and was hitting the new ceiling from 6ms above. `src/test-setup.js:10-12` still carries the comment from the last attempt, which correctly diagnosed contention and then treated the symptom.
+- **Raising `asyncUtilTimeout` BLINDLY.** Pulled twice (1000 → 2000 → 5000). The race survived both times and was hitting the new ceiling from 6ms above. `src/test-setup.js:10-12` still carries the comment from the last attempt, which correctly diagnosed contention and then treated the symptom.
+
+  **⚠ Ban CORRECTED 2026-08-02 (dispatcher ruling 10c), stated plainly rather than smuggled:** the prohibition was right *for a blind pull* — raise the number, hope the race stops — and **wrong as an absolute**. If the duration measurement (open question 2 above) shows these chains genuinely run at 4.5s+ under a capped config, then 5000ms is a budget with no margin, and raising it **against a measured distribution** is a categorically different act from guessing at it twice. **Not authorised yet** — the measurement decides and the dispatcher rules after seeing it. What remains banned is changing the number without the distribution in hand.
 - **Per-test `it(…, ms)` widening.** #872's remedy. Raised the ceiling without removing the race; its own fixed tests re-fired afterwards.
 - **Sharding across runners.** Costed for a 2-vCPU runner. At 4 vCPU each shard still self-contends unless *also* capped, making it an addition to this fix rather than an alternative — dropped by dispatcher ruling once the runner spec was measured.
 - **`isolate: false`.** Ruled out: 378 files, shared mocks, a globally-configuring `test-setup.js`. Silent cross-file contamination is strictly worse than a slow gate.
