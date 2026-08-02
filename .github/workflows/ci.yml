@@ -23,8 +23,30 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Run tests
-        run: npm test -- --run
+      - name: RECON — runner facts
+        run: |
+          echo "nproc                : $(nproc)"
+          node -e "const os=require('os');console.log('availableParallelism :',os.availableParallelism?.());console.log('os.cpus().length     :',os.cpus().length);console.log('totalmem GB          :',(os.totalmem()/1e9).toFixed(1));console.log('node                 :',process.version)"
+          echo "vitest               : $(npx vitest --version)"
+          free -h || true
+
+      - name: RECON — suite at DEFAULT pool settings
+        continue-on-error: true
+        run: |
+          S=$(date +%s); npm test -- --run 2>&1 | tail -6; E=$(date +%s)
+          echo "WALLCLOCK_DEFAULT=$((E-S))s"
+
+      - name: RECON — suite at maxForks=2
+        continue-on-error: true
+        run: |
+          S=$(date +%s); npm test -- --run --poolOptions.forks.maxForks=2 --poolOptions.forks.minForks=1 2>&1 | tail -6; E=$(date +%s)
+          echo "WALLCLOCK_MAXFORKS2=$((E-S))s"
+
+      - name: RECON — suite at maxForks=1
+        continue-on-error: true
+        run: |
+          S=$(date +%s); npm test -- --run --poolOptions.forks.maxForks=1 --poolOptions.forks.minForks=1 2>&1 | tail -6; E=$(date +%s)
+          echo "WALLCLOCK_MAXFORKS1=$((E-S))s"
 
       - name: Build
         run: npm run build
