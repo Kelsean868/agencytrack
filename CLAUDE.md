@@ -540,7 +540,10 @@ production smoke autonomously for every PR via `setupBypassSession` from
 when changes are clearly outside any user-visible behavior path, must be justified explicitly
 by the brief author, and **absence of a waiver = CC runs the walk.** Even
 rendering/a11y/timing changes get a smoke walk. Helper APIs, locator patterns, mobile-viewport
-handling and the static-CSS waiver carve-out: `docs/agents/smoke-playbook.md`.
+handling, the static-CSS waiver carve-out and the seed-path options below:
+`docs/agents/smoke-playbook.md`. **When a smoke step needs data the preview env has no seed
+for, that step MUST skip-not-fail with an explicit note in output** - a missing-data step must
+never read as a pass.
 
 Standing per-surface regression smokes are catalogued in `scripts/verification/SMOKES.md`
 (descriptive, not CI-enforced).
@@ -679,7 +682,7 @@ Open these on demand. Nothing below is loaded until you read it.
 | Credential handling — echo traps, safe boolean existence check, bypass-session pattern, worktree propagation | `docs/agents/secrets-and-credentials.md` |
 | Nexus v2 tokens, gold split, glass reconciliation, design-intent map | `docs/agents/design-system-notes.md` |
 | Methodology Rules 1–25 — full text, every incident, PR number and SHA | `docs/agents/methodology-rules.md` |
-| Smoke walk mechanics — helper APIs, locator specificity, mobile viewport, waiver carve-outs | `docs/agents/smoke-playbook.md` |
+| Smoke walk mechanics — helper APIs, locator specificity, mobile viewport, waiver carve-outs, **skip-not-fail on preview data gaps** | `docs/agents/smoke-playbook.md` |
 | Firestore rules, indexes and query traps — **read before writing rules, indexes or CF array writes** | `docs/agents/firestore-notes.md` |
 | Test harness and lint config internals — global Firebase stub, React Compiler rules | `docs/agents/test-and-lint-notes.md` |
 | Dispatcher scripts, slash commands, `/wayfinder` deviations | `docs/agents/dispatcher-tooling.md` |
