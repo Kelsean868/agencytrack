@@ -52,7 +52,7 @@ failure. Full text as it stood before the split:
 
 ## Roadmap and spec pointers (were inline in § UI rules)
 
-**Phase 7-8 design docs:** [`docs/phase7-8-PRD.md`](docs/phase7-8-PRD.md) (full spec across 5 tracks D–H) + [`docs/phase7-8-implementation.md`](docs/phase7-8-implementation.md) (build sequence, recommended order D → E → G → F → H, ~36–46 PRs total). Tracks D–H detailed in the table below. Pilot remains postponed indefinitely.
+**Phase 7-8 design docs:** [`docs/phase7-8-PRD.md`](docs/phase7-8-PRD.md) (full spec across 5 tracks D–H) + [`docs/phase7-8-implementation.md`](docs/phase7-8-implementation.md) (build sequence, recommended order D → E → G → F → H, ~36–46 PRs total). Pilot remains postponed indefinitely.
 
 **Workshop-driven roadmap revision (2026-05-20):** [`docs/AgencyTrack_Workshop_Roadmap_Revision.md`](docs/AgencyTrack_Workshop_Roadmap_Revision.md) — adds Track I; extends Track F (structured Joint-Call Observation Log + appointment-bound Prospect-Info form); locks Track H column decision (Source-of-Prospect/Cash-with-App/Date-Placed/Delivery-Date IN, demographics OUT, Need-Covered → joint-call form); adds social/content KPIs (Track E) + Personal Growth/CPD (Career Portal/Phase 8); re-sequences for insider-seat strategy; no-CRM guardrail (future integrated CRM separately scoped).
 

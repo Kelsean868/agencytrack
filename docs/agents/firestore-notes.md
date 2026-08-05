@@ -5,8 +5,8 @@ patterns, lines 784, 788, 790, 804, 806) on the router split.
 
 **Read this file before writing `firestore.rules`, adding a composite index, or writing a
 Cloud Function that puts a `FieldValue` sentinel inside an array.** CLAUDE.md carries a
-one-line sentinel pointing here; the failure modes below are the reason it exists — two of
-them produce a *falsely passing* test rather than an error.
+one-line sentinel pointing here; the failure modes below are the reason it exists — three of
+them produce a *falsely passing* test rather than an error: the `hasOnly` deny-test, the mocked `FieldValue` sentinel, and the self-service `list` gap.
 
 ## `isTestAccount` — the two leaderboard surfaces
 

@@ -300,7 +300,7 @@ a brief's "Decisions locked" section: scope expansion beyond the file inventory 
 architectural patterns (cache, helper, state mechanism, localStorage) · test-file rewrite
 from scratch · inline fix of unexpected behavior · any "how to solve" decision not
 pre-decided. **"Solve rather than surface" is itself a strike condition even when the
-resulting fix is correct.** Never skip a brief's Phase 1 discovery gate, even for "small" fixes.
+resulting fix is correct.** Never skip a brief's Phase 1 discovery gate, even for "small" fixes - standing practice, not part of Rule 1's canonical text (see the brief-drafting appendix in `docs/agents/methodology-rules.md`).
 
 **2. Phase 1 audits enumerate ALL data paths.** For permission-boundary fixes, Phase 1
 enumerates every function returning data joinable to the entity being scoped — not just
