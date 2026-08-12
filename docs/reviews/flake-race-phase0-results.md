@@ -287,12 +287,28 @@ mechanism is stated here as *related*, not identical.
    reads "no counter rendered -> component never left the load gate", but `AgentPlannerPanel`
    renders no `NN / MM` counter at all — that readout is `MeetingMode`-specific. It is a
    false signal from a MeetingMode-shaped instrument, not evidence.
-2. **The `ctrlZ` traces show ONE dispatch served by TWO generations**
-   (`servedBy=[gen7@document, gen8@document]`). That is either a genuine leaked listener —
-   an old subscription not removed before a new one registered — or a defect in this
-   instrument's `removeEventListener` unwrapping. **Not diagnosed, not relied on**, and it
-   bears on the two `undo` members rather than the `e` site. Flagged for whoever picks up
-   the undo members.
+2. **The `ctrlZ` double-serving was an INSTRUMENT BUG, now diagnosed and fixed.** The
+   `ctrlZ` traces showed one dispatch served by two generations
+   (`servedBy=[gen7@document, gen8@document]`). I flagged it as "either a real listener leak
+   or an instrument defect". **CodeRabbit independently identified the cause on PR #898:**
+   `wrappedFor` keyed one wrapper per function reference, so registering the *same* function
+   twice on a target left the older wrapper attached — it kept recording `invoke` rows under
+   its stale generation. Fixed to a FIFO queue per reference.
+
+   CodeRabbit's warning was that this "inflates the exact counts the Phase 0 conclusion
+   rests on — verify it before the traces are used as evidence." **Verified rather than
+   argued:**
+
+   | Trace set | dispatch rows | rows with >1 handler on the transport target |
+   |---|---|---|
+   | `MeetingMode` (all 33 traces) | **199** | **0** |
+   | `AgentPlannerPanel` `e` SERIES (6 traces) | 6 | 0 (`serving=[1] totalRegistered=1`) |
+
+   **Neither load-bearing conclusion is affected.** The leak manifested only in the `ctrlZ`
+   traces, where React reuses a stable handler reference across registrations. So the
+   observation is real but it is a property of the *instrument*, not a product listener
+   leak — and the two `undo` members remain uncharacterised, now for want of a clean
+   measurement rather than because of a suspected product defect.
 
 ### The second, independent discriminator (cross-file, `AgentPlannerPanel`)
 

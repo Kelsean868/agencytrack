@@ -132,15 +132,31 @@ if (ENABLED) {
           });
           return fn.call(this, e);
         };
-        wrappedFor.set(fn, wrapped);
+        // Keep a QUEUE per fn, not a single entry. If the same function reference
+        // is registered twice on one target, a single-entry map can only ever
+        // remove the newest wrapper — the earlier one stays attached and keeps
+        // recording `invoke` rows under its old generation, inflating both the
+        // stale-served count and the servedBy list. Those are the exact numbers
+        // the Phase 0 conclusion rests on, so this is corrected rather than
+        // argued about. (Raised by CodeRabbit on PR #898.)
+        const q = wrappedFor.get(fn) || [];
+        q.push(wrapped);
+        wrappedFor.set(fn, q);
         return origAdd(type, wrapped, opts);
       }
       return origAdd(type, fn, opts);
     };
 
     obj.removeEventListener = function instrumentedRemove(type, fn, opts) {
-      const wrapped = type === 'keydown' && typeof fn === 'function' ? wrappedFor.get(fn) : null;
-      return origRemove(type, wrapped || fn, opts);
+      if (type === 'keydown' && typeof fn === 'function') {
+        const q = wrappedFor.get(fn);
+        if (q && q.length) {
+          // FIFO: remove the oldest surviving wrapper, mirroring the order the
+          // real listeners were attached in.
+          return origRemove(type, q.shift(), opts);
+        }
+      }
+      return origRemove(type, fn, opts);
     };
   }
 
@@ -267,6 +283,9 @@ if (ENABLED) {
     );
     lines.push('============================');
     lines.push('');
-    console.error(lines.join('\n'));
+    // Never let the instrument itself fail or mask a test result: a throw inside
+    // afterEach would surface as a test failure that has nothing to do with the
+    // code under test, which is the opposite of what a measuring device may do.
+    try { console.error(lines.join('\n')); } catch { /* reporting must never affect the run */ }
   });
 }
