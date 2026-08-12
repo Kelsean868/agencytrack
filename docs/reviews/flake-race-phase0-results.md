@@ -608,3 +608,26 @@ race persists with its detector deleted.
   does not exist.** Strike it with the reason, so nobody hunts it again.
 - **The eleven sweep-only files** that enter the register solely via `28968bbf` and have
   never been observed failing. All burned 0/30 here.
+
+### ⚑ ELEVENTH DATA POINT — CI reproduced the member this investigation isolated, on THIS PR (2026-08-11, PR #898, run `31557131629`)
+
+`lint-and-build` went red on **`AgentPlannerPanel.test.jsx > keyboard shortcuts (Run 9 A2) >
+"e on a focused SERIES card raises the SeriesEditChoice scope sheet instead of editing
+directly"`** — `Unable to find an element by: [data-testid="series-edit-choice"]`, **46ms**.
+
+**Causation is excluded outright.** The diff is two Markdown files plus
+`scripts/flake/instrument-keydown-setup.js`, which is gated behind `FLAKE_INSTRUMENT` and
+is loaded only by a side vitest config CI never uses. Zero files under `src/`, zero test
+files. Same proof shape as the ninth and tenth data points.
+
+**Why it matters beyond another tally mark:**
+
+1. It is the **first CI-named observation** of this member — the register carried it from
+   local observation and the #875 audit only.
+2. It is **the same test** that burned **6/150** under instrumentation hours earlier, with
+   the same **fast element-not-found** signature (46ms here; 31ms recorded previously).
+3. It lands on the PR that diagnosed it, unprompted — an independent reproduction of the
+   prediction on a diff that cannot have caused it.
+
+**Not re-run.** The brief's standing rule is that a red inside a verification sequence is
+data, not something to clear. Recorded here as evidence.
