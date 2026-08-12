@@ -26,17 +26,22 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
 const globArgs = args.filter((a) => !a.startsWith('--'));
 
-const files = execSync(
-  `git ls-files ${globArgs.length ? globArgs.map((g) => `"${g}"`).join(' ') : '"src/**/*.test.jsx" "src/**/*.test.js"'}`,
-  { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
-)
+// execFileSync, not execSync: pathspecs arrive from argv, and interpolating them
+// into a shell string makes this a command-injection surface for no benefit.
+// Each pathspec is passed as its own argument, so no shell evaluation occurs.
+const pathspecs = globArgs.length ? globArgs : ['src/**/*.test.jsx', 'src/**/*.test.js'];
+
+const files = execFileSync('git', ['ls-files', '--', ...pathspecs], {
+  encoding: 'utf8',
+  maxBuffer: 64 * 1024 * 1024,
+})
   .split('\n')
   .map((s) => s.trim())
   .filter(Boolean);
@@ -85,29 +90,40 @@ for (const rel of files) {
   const lines = src.split(/\r?\n/);
 
   for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
+    // Classify from the COMPLETE enclosing statement, not the single line. A
+    // multiline `await screen.findByRole(\n  'button', { name: /x/i },\n)` has its
+    // query arguments on later lines; reading only line i yields an empty target,
+    // and the same-element follow-up then misreports as PROXY — which would
+    // inflate the suite-wide PROXY count this script exists to produce.
+    const stmt = lines.slice(i, Math.min(i + 12, lines.length)).join('\n');
+    const firstLineLen = lines[i].length;
+    // Only accept a match that BEGINS on line i; otherwise a gate two lines down
+    // would be counted once per line of the window.
+    const startsHere = (re) => {
+      const m = stmt.match(re);
+      return m && m.index <= firstLineLen ? m : null;
+    };
 
     // `expect(await screen.findByX(...))` — gate IS the assertion. Always DIRECT.
-    if (EXPECT_AWAIT_FINDBY.test(line)) {
-      rows.push({ file: rel, line: i + 1, gate: 'expect(await findBy)', klass: 'DIRECT', detail: line.trim().slice(0, 140) });
+    if (startsHere(EXPECT_AWAIT_FINDBY)) {
+      rows.push({ file: rel, line: i + 1, gate: 'expect(await findBy)', klass: 'DIRECT', detail: lines[i].trim().slice(0, 140) });
       continue;
     }
 
-    const isWaitFor = AWAIT_WAITFOR.test(line);
-    const findMatch = line.match(AWAIT_FINDBY);
+    const isWaitFor = !!startsHere(AWAIT_WAITFOR);
+    const findMatch = startsHere(AWAIT_FINDBY);
     if (!isWaitFor && !findMatch) continue;
 
-    // Gate body: for waitFor, the balanced call args (may span lines).
-    const rest = lines.slice(i, Math.min(i + 12, lines.length)).join('\n');
-    const openIdx = rest.indexOf('(', rest.search(isWaitFor ? /waitFor\s*\(/ : AWAIT_FINDBY));
-    const gateBody = openIdx >= 0 ? balanced(rest, openIdx) : '';
+    // Gate body: the balanced call args, which may span lines.
+    const openIdx = stmt.indexOf('(', stmt.search(isWaitFor ? /waitFor\s*\(/ : AWAIT_FINDBY));
+    const gateBody = openIdx >= 0 ? balanced(stmt, openIdx) : '';
     const gateIsMockOnly = isWaitFor && MOCK_ASSERT.test(gateBody) && !POSITIVE_QUERY.test(gateBody);
 
     // What does the gate await?
     let gateTarget = null;
     if (findMatch) {
-      const fOpen = line.indexOf('(', line.search(AWAIT_FINDBY));
-      gateTarget = targetKey(findMatch[2], fOpen >= 0 ? balanced(line, fOpen) : '');
+      const fOpen = stmt.indexOf('(', stmt.search(AWAIT_FINDBY));
+      gateTarget = targetKey(findMatch[2], fOpen >= 0 ? balanced(stmt, fOpen) : '');
     } else if (!gateIsMockOnly) {
       const q = gateBody.match(POSITIVE_QUERY);
       if (q) {

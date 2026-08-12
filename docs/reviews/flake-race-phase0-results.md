@@ -139,6 +139,39 @@ that it is what makes the neighbouring `Enter` test immune.
 
 ---
 
+## Instrument correction (CodeRabbit, post-burn — figures re-verified)
+
+CodeRabbit raised two valid defects in `scripts/flake/classify-await-shapes.mjs`, both
+fixed on this branch:
+
+1. **Shell interpolation** — pathspecs from `argv` were interpolated into an `execSync`
+   string. Replaced with `execFileSync('git', ['ls-files', '--', ...pathspecs])`.
+2. **Single-line classification of multiline gates** — a multiline
+   `await screen.findByRole(\n …\n)` had its arguments truncated, producing an empty
+   gate target so that a *same-element* follow-up could misreport as PROXY. The classifier
+   now builds the complete balanced statement first, and only accepts a gate whose match
+   begins on the line being classified.
+
+The second could have **inflated the PROXY count**, which is the figure §3 of the
+pre-registration rests on, so it was re-run rather than reasoned about:
+
+| | before fix | after fix |
+|---|---|---|
+| gate sites | 1179 | 1180 |
+| **PROXY** | **390** | **390 — unchanged** |
+| DIRECT | 178 | 179 |
+| NEITHER | 611 | 611 |
+| `CompliancePanel.nudge` (control) | 6 | **6 — unchanged** |
+| `MeetingMode` | 4 | **4 — unchanged** |
+
+One multiline `expect(await findBy…)` is now correctly counted DIRECT. **No conclusion in
+this document depends on the difference**, and the two counts that carry the argument are
+identical either way. The pre-registration is deliberately **not** edited — it records what
+was committed before the burn, and amending its quoted output would falsify that audit
+trail. These are the corrected figures.
+
+---
+
 ## Limits of these results (Rule 23 falsification, stated before banking)
 
 1. **A 0/30 isolated burn does not clear a file.** The harness's own header says so. Most
