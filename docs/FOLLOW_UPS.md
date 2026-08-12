@@ -29,7 +29,7 @@
 | Two divergent planner design-authority trees (`proposals/planner-scheduler-v2/` vs `screens-v2/agencytrack-planner-handoff/`) — never diffed file-by-file (banked 2026-07-27) | LOW | Design system | — | see § Planner activity types |
 | External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track). **PATTERN CONFIRMED 2026-07-31: rate-limited on #882, #883 AND #884 (3 of 5 HEADs, incl. the merged one)** | HIGH | — | overdue (was 2026-07-17) | see § External code reviewer |
 | **⚑ THE FLAKE IS A RACE, NOT CONTENTION — corrected characterisation.** Measured: p50 130ms / max 703ms vs failures at the 5000ms timeout; run wall-clock normal while one test hangs. The `5006…5027` cluster means only that the timeout FIRED — do not reason from it. #888 was three n=1 samples, not a controlled experiment. Superseded: `asyncUtilTimeout`, per-test widening, sharding, `maxForks` capping (#889 closed unmerged), `isolate:false` (banked 2026-08-02, v3 P0-E) | HIGH | test-infra | — | see § THE FLAKE IS A RACE |
-| **⚑ Flake register — 3 provenance corrections + a measured baseline.** `MeetingMode.test.jsx` fails **5/30 (16.7%) IN ISOLATION**, overturning both "passes in isolation" and "rotation ⇒ shared contention" (it rotates across 4 named members with nothing else running). `delay: null` is ZERO not one. #543 is an unmerged duplicate of merged #563. `CHIP_WAIT` RULED left alone — it is the control. Harness ported to `scripts/flake/` (banked 2026-08-02) | HIGH | race brief | — | see § Flake register — three provenance corrections |
+| **⚑ Flake register — 3 provenance corrections + a measured baseline.** `MeetingMode.test.jsx` fails **IN ISOLATION**, overturning both "passes in isolation" and "rotation ⇒ shared contention" (it rotates across 4 named members with nothing else running). **⚠ RATE CORRECTED 2026-08-11 — the 16.7% previously recorded here is superseded and must not be quoted.** Two windows: **5/30 (16.7%)** on `staging` `2ef1abc5`, **2/90 (2.2%)** on `fix/flake-awaiting-pattern`; pooled **7/120 = 5.8%, Wilson 95% ≈ 2.9–11.6%**. The two windows are **significantly inconsistent** (z ≈ 2.9, p ≈ 0.003), so the pooled figure summarises two disagreeing samples rather than estimating a stable rate — the discrepancy is **unexplained**. **The rate is NOT the acceptance test** — see § Flake race — MECHANISM PROVEN. `delay: null` is ZERO not one. #543 is an unmerged duplicate of merged #563. `CHIP_WAIT` RULED left alone — it is the control. Harness ported to `scripts/flake/` (banked 2026-08-02, rate corrected 2026-08-11) | HIGH | race brief | — | see § Flake register — three provenance corrections |
 | Flip `a11y-contrast` from REPORTING to BLOCKING once the one enumerated pre-existing failure is cleared (`topbar-search-placeholder` 4.13:1 light — the Topbar failure the P0-D brief lists as out of scope). Drop `continue-on-error`, pass `--blocking`, rename the job in the same commit (banked 2026-08-02, v3 P0-D) | MEDIUM | v3 P0-D | — | see § Flip a11y-contrast |
 | `a11y-contrast` sweep covers 2 routes (login + dashboard); `:disabled` measured 0 because the swept routes have only transient disabled states — the path is proven via the planted failure. Widen the route list (banked 2026-08-02, v3 P0-D) | LOW | v3 P0-D | — | see § a11y-contrast sweep covers two routes |
 | `a11y-contrast` runs with only the auth + firestore emulators, so CF-gated UI (`resolveSalesManagerUid` is CORS-blocked) never renders into the swept DOM — element counts are a floor. Surfaced by the console/network capture added in the #893 review (banked 2026-08-02, v3 P0-D review) | LOW | v3 P0-D | — | see § a11y-contrast sweep runs without the functions emulator |
@@ -5565,7 +5565,7 @@ Related: `28968bbf` ("fix(gemini-batch-a): RTL anti-patterns in 13 test files") 
 
 **The one thing #543 did carry uniquely was the burn harness** (`tmp/burn-*.ps1`), which existed nowhere else — `git ls-tree` found nothing matching "burn" on `staging` or `main`. Now ported to `scripts/flake/`.
 
-### (d) NEW MEASUREMENT — `MeetingMode.test.jsx` fails **in isolation** at 16.7%, and this overturns the contention inference
+### (d) NEW MEASUREMENT — `MeetingMode.test.jsx` fails **in isolation**, and this overturns the contention inference
 
 30-iteration isolated burn on `staging` `2ef1abc5`, one machine, nothing else running:
 
@@ -5573,6 +5573,19 @@ Related: `28968bbf` ("fix(gemini-batch-a): RTL anti-patterns in 13 test files") 
 |---|---|---|
 | `CompliancePanel.nudge.test.jsx` (control) | **0/30** | — |
 | `MeetingMode.test.jsx` | **5/30 (16.7%)** | all `timeout` |
+
+> **⚠ RATE SUPERSEDED 2026-08-11 — do not quote 16.7%.** A second isolated burn on
+> `fix/flake-awaiting-pattern` (`27303333` base, same harness, same machine class) measured
+> **2/90 (2.2%)**. Pooled: **7/120 = 5.8%, Wilson 95% ≈ 2.9–11.6%**. The two windows are
+> **significantly inconsistent** (two-proportion z ≈ 2.9, p ≈ 0.003), so the pooled figure
+> is a summary of two disagreeing samples, **not** an estimate of a stable rate, and the
+> discrepancy is **unexplained** — most likely machine-load sensitivity, which is what a
+> timing-window mechanism would predict but which has not been measured.
+>
+> **The isolation *finding* is unaffected** — the file does fail solo, which is all this
+> entry needed it to do. Only the number is corrected. And the rate is no longer the
+> instrument of record: the mechanism is now directly observable per-iteration, so
+> acceptance is by **trace**, not by rate. See § Flake race — MECHANISM PROVEN.
 
 **Two entries in this file are contradicted by this.**
 
@@ -5599,3 +5612,190 @@ Rotation therefore does **not** imply cross-file contention. Here it is **intra-
 - Whether the rest of the family is also intra-file is **open**. Only `MeetingMode` and the control have been burned. This is one file, one machine, one 30-iteration sample; the 16.7% figure has a wide interval and is not a precise rate.
 
 **Do not act on this yet.** Recorded as the harness PR's evidence. Scoping belongs to the race brief, which owns the register reconciliation as its Phase 0 question 0.
+
+---
+
+## ⚑ Flake race — MECHANISM PROVEN by direct observation (banked 2026-08-11, `fix/flake-awaiting-pattern`, HIGH — supersedes the hypothesis half of the race brief)
+
+**Six rounds of remediation had produced six stories. This is the first one with a trace.**
+
+### The mechanism
+
+A **synchronous `fireEvent.keyDown`** dispatched at a document/window listener whose
+subscription is torn down and re-created as async data lands can be served by the
+**previous commit's handler closure**. That closure holds stale *bounds* — not a stale
+index — so the dispatch is silently absorbed and the state transition the test awaits
+**never happens**. The subsequent `waitFor` then runs its full budget. **Never, not late.**
+
+`MeetingMode.jsx:929-949`: `go` is a `useCallback` over `[total]`, and the transport
+listener re-subscribes on `[go, total]`. Before data lands `model` is `null` → `scenes` is
+`[]` → **`total === 0`**, and `go` clamps to `Math.max(total - 1, 0)` = `0`.
+
+**`setIndex` takes a FUNCTIONAL updater, so the index is never stale — only `total` is.**
+A stale-served dispatch therefore contributes nothing rather than resetting anything, and
+with `k` stale-served dispatches the deck rests at **`target − k`**. That is a quantitative
+prediction, and it is what was measured.
+
+### The evidence — 20+ failing traces, test and component UNCHANGED
+
+Instrumented via `scripts/flake/instrument-keydown-setup.js` + `vitest.instrumented.config.js`
+(a side config CI never loads). Every failing trace, without exception:
+
+| Test | dispatches | target counter | final counter | stale-served `k` |
+|---|---|---|---|---|
+| `ArrowRight advances` | 1 | `02/08` | **`01/08`** | 1 (its only dispatch) |
+| `agenda rail` | 5 | `06/08` | **`05/08`** | 1 |
+| `skip-logs the awards scene` | 7 | `08/08` | **`07/08`** | 1 |
+| `awards in-reach card` | 7 | `08/09` | **`07/09`** | 1 |
+
+`final = target − k` in **every** trace. The healthy control trace (same test, passing) has
+the fresh generation registered *before* dispatch 0, zero stale-served, counter advancing
+monotonically to `08/08`.
+
+**Two competing accounts refuted by the same trace:**
+
+1. **CONTENT-NOT-LOADED** predicts final `08/08` with zero stale-served. Never observed.
+2. **"the data had not loaded yet"** is refuted by the sharpest detail in the trace: at the
+   stale-served dispatch the rendered counter **already reads `01/08`**. The render had
+   committed with `total = 8` while the live handler closure still held `total = 0`.
+   **Rendered state and handler closure disagreeing is the passive-effect flush gap made
+   visible**, and it is the whole defect.
+
+### ⚠ THE ACCEPTANCE TEST IS THE TRACE, NOT THE RATE
+
+At a pooled ~5.8% (Wilson 2.9–11.6%) a rate-based proof needs hundreds of iterations and
+still only yields "no red in N attempts" — an argument from absence, which is the currency
+all five prior rounds traded in. **That is over.** Post-fix the claim is deterministic:
+
+> every dispatch served by the fresh generation · **zero stale-served** · final counter
+> reaches target.
+
+**If even ONE iteration shows a stale-served dispatch the fix is incomplete — regardless of
+whether the assertion passed.** A green assertion with `stale-served: 1` is a masked
+failure, not a fixed one, and masking is precisely how #872's remedy came to be recorded as
+closed while the race survived under it.
+
+### The instrument AMPLIFIES the rate, and that is an asset
+
+≈14% instrumented vs 2.2% uninstrumented on the same branch. **Amplification, not
+contamination** — the traces carry the identical signature (same four tests, same timeout
+shape, same `k = 1`, same `target − k`). Likely cause is that the wrapped handlers and the
+`MutationObserver` widen the commit-to-flush window; **that is provisional and untested.**
+Consequence: verify the fix **under instrumentation**, where the race is easiest to hit,
+not under quiet conditions where it is hardest.
+
+### Falsification (Rule 23)
+
+Overturned by: any failing trace showing final `= target` with zero stale-served (a second
+mechanism); the fix landing with stale-served dispatches still observed; or the same
+instrument showing zero stale-served dispatches on `AgentPlannerPanel` while it still fails.
+
+---
+
+## Flake race — PRODUCTION DEFECT, and the test fix MASKS it (banked 2026-08-11, MEDIUM — own slice, NOT the test slice)
+
+**`MeetingMode.jsx:929-949` admits a window in which the committed render and the live
+keydown handler closure disagree about `total`.**
+
+This is a product defect independent of any test. A user pressing `ArrowRight` while the
+deck is still loading has the keypress **silently swallowed** — the handler clamps against
+`total = 0`. Nothing about that requires a test to be present.
+
+### THE FIX — specifiable now that the mechanism is exact
+
+**`go` must not close over `total`.** The defect is a captured value, so the remedy is to
+stop capturing it:
+
+```js
+// MeetingMode.jsx:929-931 — current: `total` is captured in the closure, and the
+// listener that holds it is only replaced on the next passive-effect flush.
+const go = useCallback((dir) => {
+  setIndex((i) => Math.min(Math.max(i + dir, 0), Math.max(total - 1, 0)));
+}, [total]);
+
+// Fix: hold the bound in a ref read INSIDE the updater, so the clamp uses the
+// value as of dispatch rather than as of subscription.
+const totalRef = useRef(total);
+useEffect(() => { totalRef.current = total; }, [total]);
+const go = useCallback((dir) => {
+  setIndex((i) => Math.min(Math.max(i + dir, 0), Math.max(totalRef.current - 1, 0)));
+}, []);           // no longer re-created per `total`, so the listener stops churning
+```
+
+Deriving the clamp from state inside the updater is equally acceptable. Either **closes**
+the window rather than out-waiting it, and both also stop the keydown effect
+re-subscribing on every `total` change — which removes the churn as well as the staleness.
+
+**The regression test then becomes trivial:** assert the handler's view of `total` matches
+the committed render — i.e. dispatch during the load gap and assert the index advances.
+With the ref there is no gap to hit, so the test is deterministic rather than statistical.
+
+### ⚠ The obligation, stated plainly so it is not lost
+
+The Phase 1 test fix (`await userEvent.keyboard`) **masks this window; it does not close
+it.** It works by flushing pending passive effects before dispatch, which means it removes
+**the only thing currently detecting the defect.**
+
+**The slice that owns the component fix MUST add a DELIBERATE regression test for the
+stale-`total` window** — one that dispatches during the load gap on purpose and asserts the
+handler sees the *current* `total`. That regression test is essentially the instrument
+already written (`scripts/flake/instrument-keydown-setup.js`): assert the serving
+generation is the fresh one.
+
+Without it we will have deleted the detector and kept the bug.
+
+**Do NOT bundle this with the test fix.** Changing both at once destroys attribution — if
+the rate goes to zero nobody can say which did it. That is exactly the error that produced
+#563's confounded `delay: null` + `CHIP_WAIT` bundle, which cost two later sessions to
+untangle.
+
+---
+
+## Flake register — corrections from the Phase 0 investigation (banked 2026-08-11)
+
+- **STRIKE `DailyEntryModal.test.jsx` — the file DOES NOT EXIST.** Deleted 2026-07-08 in
+  `214ea26c` ("tier-0.6 delete unwired onboarding steps + DailyEntryModal ruling"). It is
+  named as a live member by both `28968bbf` and the #543 50× burn. Nobody should hunt it
+  again.
+- **`aggregate-on-save (Phase 2.2)` is a describe block INSIDE `DailyCaptureV2.test.jsx`**
+  (`:594`, `:607`), not a separate file. The tenth data point reads as though it were a
+  fourth file.
+- **⚠ The two-family claim is DOWNGRADED, not strengthened.** Only family B (the keydown
+  race) is proven. `DailyCaptureV2`'s stepper — the bare-query PROXY member — burned
+  **0/30**: its 167/181ms failures are **CI history, not local reproduction**, so that
+  family has **no path to mutation verification by the method built here**. It remains a
+  real observed failure of a different shape; it is **not** a confirmed second mechanism.
+- **⚠ The nine 0/30 files are NOT clean.** Wilson 95% upper bound on 0/30 is **≈11.4%** —
+  each could be flaking at up to one run in nine and this burn would look identical. Record
+  them as **"no local reproduction at n=30"**, never as fixed, cleared or unaffected. No fix
+  is proposed for any of them, because there is nothing to verify one against.
+
+---
+
+## Burn-freeze applies to EVERYTHING the runner re-reads per iteration, not just checkouts (banked 2026-08-11, generalises the #895 / #543 rule)
+
+`scripts/flake/burn-isolated.ps1` carries a WORKTREE RULE from #543, whose first ~200
+iteration attempt was discarded because a mid-burn checkout silently ran iterations against
+a different tree. **The rule is stated in terms of checkouts. That is too narrow.**
+
+The invariant is: **every input the test runner re-reads on each iteration must be frozen
+for the duration of the burn.** `npx vitest run` re-reads the config, every setup file,
+every test file and every source file on *every* iteration. So a burn is invalidated
+identically by:
+
+- a checkout / rebase / stash-pop / branch switch (the #543 case), **or**
+- editing a **setup file** or **vitest config** the run loads — e.g.
+  `scripts/flake/instrument-keydown-setup.js` or
+  `scripts/flake/vitest.instrumented.config.js`, **or**
+- editing the test file or any source module in its import graph.
+
+**All of these fail the same way: silently.** Iterations before and after the edit are
+pooled into one number, no error is raised, and the result looks exactly like a clean burn.
+A config edit loses 200 iterations as thoroughly as a checkout does and is harder to notice
+afterwards, because `git status` shows a modified file rather than a moved HEAD.
+
+**Practical rule:** while a burn is running, edit **only** documentation. If an instrument
+change is needed, let the burn finish or kill it — never edit under it and never reason that
+"the change is small". Observed and honoured during the Phase 0 investigation: the
+`AgentPlannerPanel` probe was written but held unapplied until the `MeetingMode` burn
+completed, precisely to avoid pooling two instrument versions into one rate.
