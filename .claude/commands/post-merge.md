@@ -20,7 +20,19 @@ Execute the canonical sequence (CLAUDE.md Session Protocol step 9 + Post-merge l
 
    1. Resolve the PR's head branch and look it up in `git worktree list --porcelain`.
    2. **If it has no worktree** - nothing to reclaim; go to the branch sweep below.
-   3. **If the worktree is DIRTY** (`git -C <path> status --porcelain --untracked-files=no` non-empty) - **leave it, and report it**. Never remove a worktree with tracked changes.
+   3. **If the worktree is DIRTY** (`git -C <path> status --porcelain` non-empty - **the FULL status, including untracked**) - **leave it, and report it**, naming the paths. Never remove a worktree with tracked changes, and never `--force` past untracked ones: several worktrees hold untracked work.
+
+      ⚠ **Use the full `--porcelain`, NOT `--untracked-files=no`.** The first version of this
+      step checked tracked changes only, and failed on its own first case (#902): the
+      worktree reported clean, then `git worktree remove` refused with *"contains modified
+      or untracked files"*. `git worktree remove` gates on untracked files too, so the check
+      must match what git actually enforces or it reports CLEAN and then cannot proceed.
+
+      ⚠ **`tmp/` is gitignored on `staging` but NOT on `main`.** That divergence is why the
+      gap stayed hidden: every earlier reclaim was a `staging`-based worktree where scratch
+      under `tmp/` was invisible, and the first `main`-based worktree tripped on it. **Write
+      scratch — PR bodies, notes, logs — to the session scratchpad, never inside the
+      worktree**, and this cannot recur regardless of which branch it is cut from.
    4. **If the worktree is CLEAN** - remove it, then delete the local branch:
       - **JUNCTION SAFETY FIRST.** Worktrees are routinely given a `node_modules` **junction** pointing at the main worktree's real tree. A recursive delete that follows it destroys the SHARED tree, silently and unrecoverably. Confirm the reparse point, then unlink it without following:
         ```powershell
