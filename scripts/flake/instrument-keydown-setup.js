@@ -268,8 +268,54 @@ if (ENABLED) {
       }
     }
     lines.push(`Q3b first dispatch with rendered total > 0: ${firstNonZeroRendered ? firstNonZeroRendered.ordinal : 'NONE'}`);
-    const staleServes = winInvokes.filter((i) => i.gen === 1).length;
-    lines.push(`dispatches served by the STALE transport handler (win-gen1, total===0): ${staleServes} of ${dispatches.length}`);
+    // ── STALENESS PREDICATE ───────────────────────────────────────────────────
+    //   staleServed  <=>  servingGeneration.total  !=  counterBefore.total
+    //
+    // i.e. the handler that served this dispatch closed over a `total` that
+    // DISAGREES with the render committed at dispatch time. That disagreement is
+    // the defect itself — it is what made the first dispositive trace dispositive
+    // (counterBefore=01/08 while a generation holding total=0 served).
+    //
+    // The earlier counter — "served by win-gen1" — was a PROXY, and it forced an
+    // exclusion list: the Escape and Tab tests legitimately run before data loads,
+    // so gen1 is correctly their live handler and they read as false positives. A
+    // hand-picked exclusion list is where the next failure hides (rename a test,
+    // add a fifth transport case, coverage silently lapses while still reporting
+    // PASS). Under this predicate they fall out on their own: counterBefore=00/00
+    // against a generation registered at total=0 AGREES, so it is not stale. No
+    // special-casing, and the criterion applies uniformly to every test in the file.
+    //
+    // A generation's captured `total` is read from the counter as of ITS
+    // REGISTRATION, which is precisely the value the effect closed over.
+    const regTotalFor = (label, gen) => {
+      const r = state.registrations.find((x) => x.label === label && x.gen === gen);
+      return r && r.counter ? r.counter.total : null;
+    };
+
+    let staleServes = 0;
+    let unevaluable = 0;
+    const staleDetail = [];
+    for (const d of dispatches) {
+      const servers = winInvokes.filter((i) => i.dispatch === d.ordinal);
+      if (!servers.length) continue;
+      const seenTotal = d.counter ? d.counter.total : null;
+      for (const s of servers) {
+        const capturedTotal = regTotalFor('window', s.gen);
+        if (seenTotal === null || capturedTotal === null) {
+          // No counter rendered on this surface (e.g. AgentPlannerPanel renders no
+          // NN/MM readout). NOT counted as agreeing — silence is not a pass.
+          unevaluable += 1;
+          continue;
+        }
+        if (capturedTotal !== seenTotal) {
+          staleServes += 1;
+          staleDetail.push(`#${d.ordinal}: win-gen${s.gen} captured total=${capturedTotal} vs committed ${seenTotal}`);
+        }
+      }
+    }
+    lines.push(`STALE-SERVED dispatches (servingGen.total != counterBefore.total): ${staleServes} of ${dispatches.length}`);
+    staleDetail.forEach((s) => lines.push(`    ${s}`));
+    if (unevaluable) lines.push(`  unevaluable (no counter on this surface): ${unevaluable} — judged by the PROBE instead, not treated as a pass`);
     // Only meaningful on a failure. On a pass, index === total is simply the
     // expected end state, and printing a "verdict" there invites misreading.
     if (failed) lines.push(

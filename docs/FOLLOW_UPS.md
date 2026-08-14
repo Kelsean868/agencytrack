@@ -5694,6 +5694,14 @@ instrument showing zero stale-served dispatches on `AgentPlannerPanel` while it 
 
 ## Flake race — PRODUCTION DEFECT, and the test fix MASKS it (banked 2026-08-11, MEDIUM — own slice, NOT the test slice)
 
+> **⚠ ESCALATED 2026-08-12 (flake Phase 1) — the masking is no longer hypothetical, it has
+> HAPPENED.** Phase 0 recorded that the test fix *would* mask this window. Phase 1 landed
+> that fix (`MeetingMode.test.jsx` ×4 → `userEvent.keyboard`; `AgentPlannerPanel.test.jsx`
+> helpers → explicit flush). **The detector is now gone.** Nothing in the suite currently
+> fails when this window is open, so the only remaining record that it exists is this entry
+> and the traces attached to it. The regression-test obligation below is therefore no
+> longer a nice-to-have — without it the defect is undetectable by any automated means.
+
 **`MeetingMode.jsx:929-949` admits a window in which the committed render and the live
 keydown handler closure disagree about `total`.**
 
@@ -5799,3 +5807,57 @@ change is needed, let the burn finish or kill it — never edit under it and nev
 "the change is small". Observed and honoured during the Phase 0 investigation: the
 `AgentPlannerPanel` probe was written but held unapplied until the `MeetingMode` burn
 completed, precisely to avoid pooling two instrument versions into one rate.
+
+---
+
+## ⚑ Flake register — a member found by the PREDICATE, not by a failure (banked 2026-08-12, `fix/flake-dispatch-await`, Phase 1)
+
+**`MeetingMode.test.jsx` — "Tab from the last focusable element cycles back to the first
+(focus trap)" is a member of the stale-keydown-closure family. It has never failed, and it
+was never going to.**
+
+**Provenance is what makes this entry different from every other one in the register.**
+Every prior member arrived via an observed red — CI, a local run, or a burn. This one was
+found by a *predicate* applied uniformly to a passing suite:
+
+```
+staleServed  <=>  servingGeneration.total  !=  counterBefore.total
+```
+
+**6 of 150 instrumented iterations, with `testFailures = 0`.** Trace, verbatim:
+
+```
+test: Tab from the last focusable element cycles back to the first (focus trap)
+  #1 key=Tab counterBefore=01/08 servedBy=[gen1@document, gen1@window]
+  STALE-SERVED dispatches: 1 of 1
+    #1: win-gen1 captured total=0 vs committed 8
+```
+
+It `await renderLoaded()`s and then dispatches synchronously — the identical shape as the
+four fixed members. It has never *flaked* only because the transport handler ignores `Tab`
+(it branches on ArrowRight/ArrowLeft/Home/End/digits), so the stale dispatch is
+inconsequential **to what this test asserts**. A latent member, not a benign one.
+
+**Why this matters more than one extra fix:** a rate-based gate reported this tree
+150/150 clean. The defect was invisible to every instrument the register has used for six
+rounds, and visible immediately to one that measures the mechanism instead of the outcome.
+
+**It was also a self-inflicted near-miss worth recording.** The first Phase 1 draft
+*excluded* the Escape and Tab tests from the stale counter by name, on the correct
+reasoning that they legitimately run before data loads. The reasoning was right and the
+remedy was wrong: a hand-picked exclusion list is where the next member hides. Replacing
+the proxy ("served by gen1") with the predicate above made Escape fall out on its own —
+`counterBefore=00/00` agrees with a generation registered at `total=0` — while Tab, which
+does await the load, was correctly flagged. **`Escape` is deliberately NOT fixed**: it
+needs nothing, and if someone later makes it await the load the predicate will catch it,
+which is the property the exclusion list would have destroyed.
+
+**Remedy:** `await flushPendingEffects()` before the existing `fireEvent`, NOT
+`userEvent.keyboard('{Tab}')` — userEvent performs real tab navigation and would move
+focus itself, which would stop the test exercising the focus trap at all. See CLAUDE.md
+§ Choosing between `userEvent` and `fireEvent`.
+
+**Falsification:** overturned if the predicate flags a dispatch whose serving generation
+demonstrably held the committed `total` (a false positive in the registration-counter
+reading), or if a member is found whose serving generation agrees on `total` yet still
+bails.
