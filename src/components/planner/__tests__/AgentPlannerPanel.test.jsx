@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { flushPendingEffects } from '../../../test-utils/flushPendingEffects';
 import { getTodayTT } from '../../../utils/dateInputs';
 
 const hoisted = vi.hoisted(() => ({
@@ -54,10 +55,25 @@ const BASE_PROPS = {
   agentBranchId: 'branch-7', callerRole: 'agent',
 };
 
-function ctrlZ(shiftKey = false) {
+// FLAKE FIX — stale keydown-handler closure, PROVEN by trace (PR #898, Phase 0).
+// The document keydown listener (AgentPlannerPanel.jsx:1330) has a 17-entry dep
+// array, so it tears down and re-subscribes as appointment data lands. A
+// SYNCHRONOUS dispatch arriving before the pending passive effect flushes is served
+// by the previous closure, which bails (`resolveAppt` returns null) — the element is
+// then never rendered at all, not rendered late, which is why the observed failures
+// are fast assertions rather than timeouts. Mechanism in full: the helper's own docs.
+//
+// These helpers keep `fireEvent` and dispatch at `document` DELIBERATELY, because the
+// handler bails on form-field targets (:1256, :1270) and the test at :343-374 is built
+// on exactly that distinction — `userEvent.keyboard` would retarget at activeElement
+// and destroy what it is testing. See CLAUDE.md § Choosing between `userEvent` and
+// `fireEvent`.
+async function ctrlZ(shiftKey = false) {
+  await flushPendingEffects();
   fireEvent.keyDown(document, { key: 'z', ctrlKey: true, shiftKey });
 }
-function ctrlY() {
+async function ctrlY() {
+  await flushPendingEffects();
   fireEvent.keyDown(document, { key: 'y', ctrlKey: true });
 }
 
@@ -270,7 +286,7 @@ describe('undo/redo (Run 9 A1)', () => {
     await waitFor(() => expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument());
 
     getAgentWeek.mockClear();
-    ctrlZ();
+    await ctrlZ();
     await waitFor(() => expect(deleteAppointment).toHaveBeenCalledWith('t1', 'new-1'));
     await waitFor(() => expect(getAgentWeek).toHaveBeenCalledTimes(1)); // reload after undo
     await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
@@ -289,10 +305,10 @@ describe('undo/redo (Run 9 A1)', () => {
     await waitFor(() => expect(createAppointment).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument());
 
-    ctrlZ();
+    await ctrlZ();
     await waitFor(() => expect(deleteAppointment).toHaveBeenCalledWith('t1', 'new-1'));
 
-    ctrlY();
+    await ctrlY();
     await waitFor(() => expect(createAppointment).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Redid: Create appointment', variant: 'info' }),
@@ -301,7 +317,7 @@ describe('undo/redo (Run 9 A1)', () => {
     // A subsequent undo now targets the FRESH id (new-2) minted by redo, not
     // the original (new-1) — proves the history entry tracks current ids
     // via a mutable closure, per the A1 requirement.
-    ctrlZ();
+    await ctrlZ();
     await waitFor(() => expect(deleteAppointment).toHaveBeenCalledWith('t1', 'new-2'));
   });
 
@@ -319,13 +335,13 @@ describe('undo/redo (Run 9 A1)', () => {
 
     fireEvent.click(screen.getByTestId('appt-card-new-1'));
     expect(screen.getByTestId('churn-dialog')).toBeInTheDocument();
-    ctrlZ();
+    await ctrlZ();
     await new Promise((r) => setTimeout(r, 0)); // let any microtasks flush
     expect(deleteAppointment).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByText('Close'));
     await waitFor(() => expect(screen.queryByTestId('churn-dialog')).not.toBeInTheDocument());
-    ctrlZ();
+    await ctrlZ();
     await waitFor(() => expect(deleteAppointment).toHaveBeenCalledWith('t1', 'new-1'));
   });
 
@@ -348,7 +364,7 @@ describe('undo/redo (Run 9 A1)', () => {
     document.body.removeChild(input);
 
     // Sanity: the same shortcut on a non-form target still works.
-    ctrlZ();
+    await ctrlZ();
     await waitFor(() => expect(deleteAppointment).toHaveBeenCalledWith('t1', 'new-1'));
   });
 
@@ -368,7 +384,7 @@ describe('undo/redo (Run 9 A1)', () => {
     // closure stale and the shortcut ignored.
     await waitFor(() => expect(screen.queryByTestId('churn-dialog')).not.toBeInTheDocument());
 
-    ctrlZ();
+    await ctrlZ();
     await waitFor(() => expect(setAppointmentStatus).toHaveBeenCalledWith('t1', 'a1', 'scheduled', {}));
     await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Undid: Mark kept', variant: 'info' }),
@@ -391,7 +407,7 @@ describe('undo/redo (Run 9 A1)', () => {
     await waitFor(() => expect(postponeWithRebook).toHaveBeenCalledWith('t1', 'a1', expect.any(Object), expect.any(Object)));
     await waitFor(() => expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument());
 
-    ctrlZ();
+    await ctrlZ();
     await waitFor(() => expect(undoPostpone).toHaveBeenCalledWith('t1', 'a1', 'new-77'));
     await waitFor(() => expect(hoisted.useToastShow).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Undid: Postpone', variant: 'info' }),
@@ -405,7 +421,9 @@ describe('keyboard shortcuts (Run 9 A2)', () => {
     { id: 'a2', date: TODAY, startTime: '11:00', type: 'FFI', status: 'scheduled' },
   ];
 
-  function pressKey(key, opts = {}) {
+  // Same stale-closure mechanism and same reason the dispatch target stays document.
+  async function pressKey(key, opts = {}) {
+    await flushPendingEffects();
     fireEvent.keyDown(document, { key, ...opts });
   }
 
@@ -413,7 +431,7 @@ describe('keyboard shortcuts (Run 9 A2)', () => {
     getAgentWeek.mockResolvedValue([]);
     render(<AgentPlannerPanel {...BASE_PROPS} />);
     await waitFor(() => expect(screen.getByTestId('planner-today-empty')).toBeInTheDocument());
-    pressKey('n');
+    await pressKey('n');
     expect(screen.getByTestId('appointment-sheet')).toBeInTheDocument();
   });
 
@@ -432,7 +450,7 @@ describe('keyboard shortcuts (Run 9 A2)', () => {
     getAgentWeek.mockResolvedValue([]);
     render(<AgentPlannerPanel {...BASE_PROPS} />);
     await waitFor(() => expect(screen.getByTestId('planner-today-empty')).toBeInTheDocument());
-    pressKey('?', { shiftKey: true });
+    await pressKey('?', { shiftKey: true });
     const dialog = screen.getByTestId('planner-shortcuts-sheet');
     expect(dialog).toBeInTheDocument();
     expect(screen.getByText(/Undo the last action/)).toBeInTheDocument();
@@ -456,10 +474,10 @@ describe('keyboard shortcuts (Run 9 A2)', () => {
     fireEvent.click(screen.getByTestId('planner-book'));
     expect(screen.getByTestId('appointment-sheet')).toBeInTheDocument();
 
-    pressKey('?', { shiftKey: true });
+    await pressKey('?', { shiftKey: true });
     expect(screen.queryByTestId('planner-shortcuts-sheet')).not.toBeInTheDocument();
 
-    pressKey('ArrowRight');
+    await pressKey('ArrowRight');
     expect(screen.getByTestId('planner-view-today')).toHaveAttribute('aria-selected', 'true');
   });
 
@@ -468,18 +486,18 @@ describe('keyboard shortcuts (Run 9 A2)', () => {
     render(<AgentPlannerPanel {...BASE_PROPS} />);
     await waitFor(() => expect(screen.getByTestId('planner-view-today')).toHaveAttribute('aria-selected', 'true'));
 
-    pressKey('ArrowRight');
+    await pressKey('ArrowRight');
     expect(screen.getByTestId('planner-view-week')).toHaveAttribute('aria-selected', 'true');
-    pressKey('ArrowRight');
+    await pressKey('ArrowRight');
     expect(screen.getByTestId('planner-view-followups')).toHaveAttribute('aria-selected', 'true');
-    pressKey('ArrowRight'); // clamped — no further view past the last one
+    await pressKey('ArrowRight'); // clamped — no further view past the last one
     expect(screen.getByTestId('planner-view-followups')).toHaveAttribute('aria-selected', 'true');
 
-    pressKey('ArrowLeft');
+    await pressKey('ArrowLeft');
     expect(screen.getByTestId('planner-view-week')).toHaveAttribute('aria-selected', 'true');
-    pressKey('ArrowLeft');
+    await pressKey('ArrowLeft');
     expect(screen.getByTestId('planner-view-today')).toHaveAttribute('aria-selected', 'true');
-    pressKey('ArrowLeft'); // clamped — no further view before the first one
+    await pressKey('ArrowLeft'); // clamped — no further view before the first one
     expect(screen.getByTestId('planner-view-today')).toHaveAttribute('aria-selected', 'true');
   });
 
@@ -488,13 +506,13 @@ describe('keyboard shortcuts (Run 9 A2)', () => {
     render(<AgentPlannerPanel {...BASE_PROPS} />);
     await waitFor(() => expect(screen.getByTestId('appt-card-a2')).toBeInTheDocument());
 
-    pressKey('ArrowDown'); // nothing focused yet -> first card
+    await pressKey('ArrowDown'); // nothing focused yet -> first card
     expect(screen.getByTestId('appt-card-a1')).toHaveFocus();
-    pressKey('ArrowDown');
+    await pressKey('ArrowDown');
     expect(screen.getByTestId('appt-card-a2')).toHaveFocus();
-    pressKey('ArrowDown'); // wraps past the last card back to the first
+    await pressKey('ArrowDown'); // wraps past the last card back to the first
     expect(screen.getByTestId('appt-card-a1')).toHaveFocus();
-    pressKey('ArrowUp'); // wraps back to the last card
+    await pressKey('ArrowUp'); // wraps back to the last card
     expect(screen.getByTestId('appt-card-a2')).toHaveFocus();
   });
 
@@ -543,7 +561,7 @@ describe('keyboard shortcuts (Run 9 A2)', () => {
     render(<AgentPlannerPanel {...BASE_PROPS} />);
     await waitFor(() => expect(screen.getByTestId('appt-card-a3')).toBeInTheDocument());
     screen.getByTestId('appt-card-a3').focus();
-    pressKey('e');
+    await pressKey('e');
     expect(screen.getByTestId('series-edit-choice')).toBeInTheDocument();
     expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument();
   });
@@ -552,7 +570,7 @@ describe('keyboard shortcuts (Run 9 A2)', () => {
     getAgentWeek.mockResolvedValue(TWO_APPTS);
     render(<AgentPlannerPanel {...BASE_PROPS} />);
     await waitFor(() => expect(screen.getByTestId('appt-card-a1')).toBeInTheDocument());
-    pressKey('e');
+    await pressKey('e');
     expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument();
   });
 });
@@ -816,7 +834,7 @@ describe('bulk operations (Run 9 A5)', () => {
     await waitFor(() => expect(screen.queryByTestId('planner-bulk-bar')).not.toBeInTheDocument());
 
     bulkUpdateAppointments.mockClear();
-    ctrlZ();
+    await ctrlZ();
     // Undo writes back each doc's PRIOR status (scheduled / confirmed — not a blanket value).
     await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
       { id: 'a1', patch: { status: 'scheduled' } },
@@ -828,7 +846,7 @@ describe('bulk operations (Run 9 A5)', () => {
 
     // Redo replays the forward patches.
     bulkUpdateAppointments.mockClear();
-    ctrlY();
+    await ctrlY();
     await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
       { id: 'a1', patch: { status: 'cancelled' } },
       { id: 'a2', patch: { status: 'cancelled' } },
@@ -849,7 +867,7 @@ describe('bulk operations (Run 9 A5)', () => {
     await waitFor(() => expect(screen.queryByTestId('planner-bulk-bar')).not.toBeInTheDocument());
 
     bulkUpdateAppointments.mockClear();
-    ctrlZ();
+    await ctrlZ();
     await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
       { id: 'a1', patch: { date: TODAY } },
     ]));
@@ -1030,7 +1048,7 @@ describe('reschedule update-in-place (Run 9 F3b — R4)', () => {
     await waitFor(() => expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument());
 
     updateAppointment.mockClear();
-    ctrlZ();
+    await ctrlZ();
     // Undo writes back the PRIOR date/startTime (A1 diff mechanic — buildUpdatePatch
     // skips the undefined optional-field diffs, so only real priors land).
     await waitFor(() => expect(updateAppointment).toHaveBeenCalledWith(
@@ -1253,7 +1271,7 @@ describe('series edit propagation (Run 9 F3d — R1/R2)', () => {
     await waitFor(() => expect(screen.queryByTestId('appointment-sheet')).not.toBeInTheDocument());
 
     bulkUpdateAppointments.mockClear();
-    ctrlZ();
+    await ctrlZ();
     // Undo writes back EACH doc's own prior startTime, not a blanket value.
     await waitFor(() => expect(bulkUpdateAppointments).toHaveBeenCalledWith('t1', [
       { id: 'anchor', patch: { startTime: '09:00' } },

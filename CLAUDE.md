@@ -804,11 +804,27 @@ This is the same family as the `slice(indexOf(a), indexOf(b))` rule: a destructi
 
 **A burn tree is FROZEN for the duration of the burn. Any checkout, rebase, stash-pop, or branch switch inside it invalidates EVERY iteration of that burn — not just the ones after the switch.** A "burn" is any repeated-measurement run: an N-iteration flake hunt, a timing series, a before/after benchmark, a bisect harness. The tree it runs in must not change under it.
 
+**The freeze covers EVERY input the runner re-reads per iteration, not only checkouts.** `npx vitest run` re-reads the config, every setup file, every test file and every source module in the import graph on *each* iteration. So the burn is invalidated identically by editing a **setup file** or a **vitest config** (e.g. `scripts/flake/instrument-keydown-setup.js`, `scripts/flake/vitest.instrumented.config.js`) as by moving HEAD. A config edit loses 200 iterations exactly as a checkout does and is **harder** to notice afterwards, because `git status` shows a modified file rather than a moved HEAD. Practical rule: **while a burn is running, edit only documentation.** If an instrument change is needed, let the burn finish or kill it — never edit under it, and never reason that "the change is small". Banked 2026-08-11 (flake Phase 0, PR #898), where the `AgentPlannerPanel` probe was written but deliberately held unapplied until the `MeetingMode` burn completed, precisely to avoid pooling two instrument versions into one rate.
+
 The invalidation is total, and that is the part worth internalising: you cannot keep the iterations that ran before the switch. At the moment you discover the tree moved, you no longer know **which** iterations saw which tree — a burn does not stamp each iteration with the SHA it measured, so there is no boundary to cut at. Salvaging "the first N" requires knowing N, and the whole problem is that you don't. Discard the run and start again from a frozen tree.
 
 If a burn must measure two refs, use **two separate worktrees** and run them as two burns. Never move one tree between them.
 
 Banked from PR #543's invalidated first attempt: a ~200-iteration burn had a different ref checked out mid-run, silently measured the unfixed file for part of it, and **all 200 results were discarded**. Nothing errored — the burn completed and reported a clean-looking number, which is exactly why this needs to be a rule rather than a habit. Same family as the junction rule above and the `slice(indexOf(...))` rule: the failure mode produces no error, only a plausible wrong answer.
+
+### Choosing between `userEvent` and `fireEvent` — the remedy follows from what the test is testing
+
+Both idioms fix the stale-listener race (a synchronous dispatch served by a handler closure from the previous commit, because the pending passive effect had not flushed). **The flush is the fix.** `userEvent` is *one way to obtain a flush*, bundled with a change of dispatch target. Pick by what the test is actually asserting, never by which idiom is nearby:
+
+- **A test that models a USER pressing a key → `await userEvent.keyboard(...)`.** It is the faithful idiom, it is act-wrapped so the flush comes for free, and its `activeElement` targeting is a **feature** — that is how a real keypress reaches the handler.
+- **A test that deliberately dispatches at a SPECIFIC target to exercise target-sensitive logic → keep `fireEvent` and obtain the flush separately** (`await act(async () => {})`, extracted as a named `flushPendingEffects()` helper). `userEvent` retargets at `activeElement`; if the handler branches on `e.target`, retargeting **destroys what the test is testing**.
+
+Worked example, both halves shipped together in the flake Phase 1 slice: `MeetingMode.test.jsx`'s four `ArrowRight` dispatches model a user driving a deck, so the target change is inert → `userEvent.keyboard('{ArrowRight}')`. `AgentPlannerPanel.test.jsx`'s `pressKey` / `ctrlZ` / `ctrlY` helpers dispatch at `document` **on purpose**, against a handler that bails on form-field targets (`AgentPlannerPanel.jsx:1256`, `:1270`), with a test that appends an input, fires at it to prove the shortcut is ignored, then fires at `document` as an explicit sanity leg → keep `fireEvent`, add the flush. **Different answers, one rule.**
+
+Two corollaries worth stating, because both have cost time here:
+
+- **Do not bundle a behaviour change with a mechanism fix.** #563 shipped `delay: null` removal *and* `CHIP_WAIT` as one change, and two sessions later the record still could not say which half did the work. If the proven mechanism is "the effect had not flushed", ship the flush — not the flush plus a retarget that is untested against that mechanism.
+- **Mutation-verify the flush rather than assuming it.** Remove it, burn, show the failures return; restore, burn, show they are gone. An `await` that happens to be in the right place is indistinguishable from one that does the work, until you take it out.
 
 **Smoke standard, reinforced:** Walks MUST include a real write-read-verify cycle. Selector-only checks miss permission/rules/index bugs. The shakedown design follows this principle — every category does at least one real Firestore write through the rule layer.
 
