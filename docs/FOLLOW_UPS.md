@@ -5861,3 +5861,65 @@ focus itself, which would stop the test exercising the focus trap at all. See CL
 demonstrably held the committed `total` (a false positive in the registration-counter
 reading), or if a member is found whose serving generation agrees on `total` yet still
 bails.
+
+---
+
+## Flake instrument — one dispatch served by TWO generations: artifact or defect? ONE measurement decides (banked 2026-08-14, PR #899, MEDIUM — test-infra)
+
+**Do not restart this from "something odd in the traces". The discriminator is written down
+below and it is a single measurement.**
+
+`AgentPlannerPanel.test.jsx` traces show a single keydown dispatch served by **two**
+document generations — e.g. `servedBy=[gen7@document, gen8@document]`, `serving=[8, 9]`. It
+appears on the `ctrlZ` undo members and was still present after the FIFO wrapper fix in
+#898, so it is **not** the single-entry `wrappedFor` bug that PR corrected.
+
+**Two live handlers on one target means exactly one of:**
+
+1. **A real leaked listener in the component** — an effect cleanup that did not run, so an
+   old `document.addEventListener('keydown', …)` from a previous
+   `AgentPlannerPanel.jsx:1330` subscription is still attached. That is a production defect
+   with a memory and double-handling cost, independent of any test.
+2. **Residual instrument bookkeeping** — the FIFO queue in
+   `scripts/flake/instrument-keydown-setup.js` mis-pairing an add with a remove, so the
+   instrument reports two live wrappers where the component has one.
+
+**THE TEST — one measurement, no ambiguity:** count `document` keydown listeners on the
+**UNWRAPPED** component, with the instrument disabled entirely (`FLAKE_INSTRUMENT` unset).
+Use a plain counting shim around `document.addEventListener`/`removeEventListener`
+installed by the test itself, render `AgentPlannerPanel`, let the appointment data land,
+and assert the net count. **>1 ⇒ defect (1). Exactly 1 ⇒ artifact (2).** Nothing else needs
+deciding first.
+
+**Why it was not resolved in #899:** the two `undo` members are fixed by the same
+`flushPendingEffects()` remedy as everything else, and the acceptance gate reads clean
+(0 stale-served across 4350 trace rows), so nothing was blocked. But they were never
+*independently characterised*, and this is the loose end. PR #899's counter fix now reports
+stale **server-invocations** separately from stale **dispatches**, so the divergence between
+those two numbers is the standing signal for this.
+
+**Falsification:** overturned if the unwrapped count is 1 and the instrument still reports
+two serving generations (⇒ artifact, fix the instrument), or if it is >1 and the extra
+listener is traced to a mount that legitimately owns its own subscription.
+
+---
+
+## Rule 21 — a green tick that means "we did not look" (banked 2026-08-14, PR #899)
+
+**Recorded because a rate-limited reviewer and a clean reviewer render identically in the
+checks UI, and they are not the same thing.**
+
+On PR #899, CodeRabbit reviewed the first HEAD (1 actionable finding, IMPLEMENT — the
+per-server vs per-dispatch stale counter) but returned **rate limited** on the FINAL HEAD.
+The fix for its own finding — **+11/−1 in
+`scripts/flake/instrument-keydown-setup.js`** — therefore merged
+**unreviewed-because-rate-limited**, not reviewed-and-clean. Gemini was absent throughout
+(structural: sunset 2026-07-17).
+
+**The check row read `CodeRabbit  pass  Review rate limited`.** A reviewer that declined to
+look reports the same green as one that looked and found nothing.
+
+**Practice:** when disposition-tabling a PR, state the reviewer's status **per HEAD**, not
+per PR, and say explicitly when the final HEAD went unreviewed. This is the third
+consecutive cycle CodeRabbit has rate-limited (see § External code reviewer, HIGH) — it is
+the standing coverage gap, not an incident.
