@@ -292,13 +292,21 @@ if (ENABLED) {
       return r && r.counter ? r.counter.total : null;
     };
 
+    // Counted PER DISPATCH, not per serving handler. One dispatch can invoke more
+    // than one live window handler, so a per-server tally could exceed
+    // `dispatches.length` and — worse — be misread as k>=2 by the acceptance
+    // runner, spuriously falsifying the act-boundary model when what actually
+    // happened is ONE stale dispatch served twice. `k` is a count of dispatches.
+    // (Raised by CodeRabbit on PR #899.)
     let staleServes = 0;
+    let staleServerInvocations = 0;
     let unevaluable = 0;
     const staleDetail = [];
     for (const d of dispatches) {
       const servers = winInvokes.filter((i) => i.dispatch === d.ordinal);
       if (!servers.length) continue;
       const seenTotal = d.counter ? d.counter.total : null;
+      let dispatchIsStale = false;
       for (const s of servers) {
         const capturedTotal = regTotalFor('window', s.gen);
         if (seenTotal === null || capturedTotal === null) {
@@ -308,13 +316,16 @@ if (ENABLED) {
           continue;
         }
         if (capturedTotal !== seenTotal) {
-          staleServes += 1;
+          dispatchIsStale = true;
+          staleServerInvocations += 1;
           staleDetail.push(`#${d.ordinal}: win-gen${s.gen} captured total=${capturedTotal} vs committed ${seenTotal}`);
         }
       }
+      if (dispatchIsStale) staleServes += 1;
     }
     lines.push(`STALE-SERVED dispatches (servingGen.total != counterBefore.total): ${staleServes} of ${dispatches.length}`);
     staleDetail.forEach((s) => lines.push(`    ${s}`));
+    if (staleServerInvocations > staleServes) lines.push(`  (${staleServerInvocations} stale server-invocations across ${staleServes} dispatch(es) — one dispatch served by >1 live handler)`);
     if (unevaluable) lines.push(`  unevaluable (no counter on this surface): ${unevaluable} — judged by the PROBE instead, not treated as a pass`);
     // Only meaningful on a failure. On a pass, index === total is simply the
     // expected end state, and printing a "verdict" there invites misreading.
