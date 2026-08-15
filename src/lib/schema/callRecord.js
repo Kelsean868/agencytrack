@@ -281,11 +281,20 @@ function verificationEvidencesContact(verification) {
  *     contact. A UNION, NOT A SUM: a call claimed by both is counted once. It
  *     exists because v3 rule 5 requires the percentage evidenced to be visible,
  *     and a percentage needs an honest denominator.
- *   · `pctEvidenced` — `evidencedContacts / contactsClaimed`, or null when
- *     nothing is claimed so a consumer renders "—" rather than a confident 0%.
+ *   · `pctEvidenced` — `evidencedContacts / contactsClaimed` as a WHOLE-NUMBER
+ *     PERCENTAGE, 0–100, rounded. A consumer appends "%" and must never
+ *     multiply by 100 again. Null when nothing is claimed, so the surface
+ *     renders "—" rather than a confident 0%. Same units and same null
+ *     convention as `evidencedPct` in `activityLedger.js` — the two figures sit
+ *     next to each other on the same row and must not disagree about scale.
  *     It is a RATIO, not a count, and it is deliberately NOT monotone: logging a
  *     fresh unverified contact correctly LOWERS the share that is evidenced. The
  *     monotonicity properties assert over the counts and exclude it by name.
+ *     `Math.round` can return 100 short of completeness (it needs ~200 claimed
+ *     contacts in one day to happen at all). That is the ledger's shipped
+ *     convention and is matched deliberately: diverging to `Math.floor` here
+ *     would make two adjacent percentages round differently, which is a worse
+ *     defect than the one it fixes.
  *
  * There is no `total` field, and no function in this module returns one.
  */

@@ -287,6 +287,17 @@ describe('evidenced and declared are never blended', () => {
     expect(CALL_COUNT_KEYS).not.toContain('total');
   });
 
+  // CALL_COUNT_KEYS is a hand-maintained literal, and the monotonicity
+  // properties iterate over it. A count field added to `callCountsOn` but not
+  // here would be silently EXEMPT from both — the properties would still pass
+  // while no longer covering the new figure. This pins the two together.
+  // `pctEvidenced` is the one deliberate exclusion; it is a ratio, not a count.
+  it('CALL_COUNT_KEYS covers every count the shape returns', () => {
+    const returned = Object.keys(callCountsOn({ calls: [] }, ANCHOR));
+    expect([...CALL_COUNT_KEYS].sort())
+      .toEqual(returned.filter((k) => k !== 'pctEvidenced').sort());
+  });
+
   it('contactsClaimed is a UNION — never the sum, and strictly less on overlap', () => {
     fc.assert(fc.property(anyStateArb, (state) => {
       forEachDay((day) => {
@@ -366,9 +377,23 @@ describe('applyVerification', () => {
 // ── The vocabulary ───────────────────────────────────────────────────────────
 
 describe('CALL_DISPOSITIONS', () => {
+  // Deliberately a PARTITION test, not a second membership pin — the exact
+  // values are pinned by the test below, and two tests asserting the same list
+  // is one test plus a maintenance cost. What this proves is the structural
+  // claim: every key lands in exactly one lane, and neither lane is empty.
   it('separates reached from not-reached, which is the minimum the model needs', () => {
-    expect(REACHED_DISPOSITIONS.size).toBeGreaterThan(0);
-    expect(REACHED_DISPOSITIONS.size).toBeLessThan(DISPOSITION_KEYS.length);
+    const reached = DISPOSITION_KEYS.filter((k) => REACHED_DISPOSITIONS.has(k));
+    const notReached = DISPOSITION_KEYS.filter((k) => !REACHED_DISPOSITIONS.has(k));
+
+    expect(reached.length).toBeGreaterThan(0);
+    expect(notReached.length).toBeGreaterThan(0);
+    expect([...reached, ...notReached].sort()).toEqual([...DISPOSITION_KEYS].sort());
+    expect(reached.filter((k) => notReached.includes(k))).toEqual([]);
+
+    // And the classifier agrees with the Set, for every key in the table.
+    for (const { key, reached: flag } of CALL_DISPOSITIONS) {
+      expect(dispositionReached(key), `${key} classified inconsistently`).toBe(flag);
+    }
   });
 
   it('pins the vocabulary the ledger and the actions contract already named', () => {
