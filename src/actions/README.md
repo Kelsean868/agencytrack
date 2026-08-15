@@ -61,7 +61,7 @@ Signatures are the intended shape, not yet contracts — the first implementatio
 
 | Action | Signature | Cross-module rule (`01-ARCHITECTURE.md` §2, verbatim) |
 |---|---|---|
-| `logCallOutcome` | `(leadId, outcome, meta)` | writes a `call` record with `atHour`, and an activity entry — *evidence* |
+| `logCallOutcome` | `(leadId, outcome, meta)` | writes a `call` record with `atHour`, and an activity entry — *evidence*. The `outcome` vocabulary is `CALL_DISPOSITIONS` in `src/lib/schema/callRecord.js`; the record is built by its `newCall()` factory (P0-G) |
 | ↳ = **Callback Requested** | | creates `PC 30m · Call back <name>` task — *the follow-up exists before you hang up* |
 | ↳ = **Appointment Set** | | creates `FFI 1h · <name> — <need>` task — *ready to drag onto the grid* |
 | ↳ 3 consecutive non-contacts | | raises an **archive** notification — *stops infinite dialling* |
