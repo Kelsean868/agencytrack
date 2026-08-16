@@ -62,16 +62,23 @@ import { buildWeekDates } from './schema/dailyActivity';
  * ── PHASE 2.1 WILL ADD `contacts` TO THIS ROW (do not build it here) ─────────
  * Because SC means "contacted", the dials-vs-contacts distinction is a property
  * of the CALL RECORD's disposition, not of the block that claimed it. Contacts
- * are the subset of calls whose disposition indicates the person was reached
- * (Appointment Set / Callback Requested / Not Interested) as against Left
- * Voicemail / No Answer / Bad Number. That subset is monotonic by construction
- * and CANNOT migrate between rows when a block is added — which is exactly what
- * makes it safe where the block-type split was not (see the header).
+ * are the subset of calls whose disposition indicates the person was reached.
+ * That subset is monotonic by construction and CANNOT migrate between rows when
+ * a block is added — which is exactly what makes it safe where the block-type
+ * split was not (see the header).
  *
  * So 2.1 adds a `contacts` field feeding `telContacts`, while `total` continues
  * to feed `callsMade`. That is ADDITIVE: `{ inBlocks, adhoc, total, memberCodes }`
- * is unchanged and nothing in this module needs revisiting. The disposition
- * vocabulary itself lands with the dialer in Phase 1.5 — do not invent it early.
+ * is unchanged and nothing in this module needs revisiting.
+ *
+ * ── CORRECTED BY P0-G (ruling D3) ───────────────────────────────────────────
+ * This note previously listed the six disposition values in prose and closed
+ * with "the disposition vocabulary itself lands with the dialer in Phase 1.5 —
+ * do not invent it early". Both are superseded. D3 settled the dialer as
+ * `tel:`-only plus a captured outcome, which made the outcome vocabulary a Phase
+ * 0 concern, and P0-G defines it as a TABLE in `src/lib/schema/callRecord.js`.
+ * Restating the six values here would make this comment a prose twin of that
+ * table — the exact class v3 rule 1 exists to remove. Read them there.
  */
 export const ROW_CALLS = 'CALLS';
 
@@ -98,7 +105,22 @@ function evidencedEventsOn(state, day) {
   return (state?.events ?? []).filter((e) => e && e.date === day && isEvidenced(e.status));
 }
 
-/** Call records on `day`. Calls carry no status — a logged call happened. */
+/**
+ * Call records on `day`.
+ *
+ * ── CORRECTED BY P0-G (ruling D3) ───────────────────────────────────────────
+ * This docblock previously read "Calls carry no status — a logged call
+ * happened", and the second clause is still exactly right: a call has no STATUS,
+ * and the record's own existence is what makes the DIAL evidenced. But the first
+ * clause implied calls carry nothing else, and that is now false.
+ *
+ * A call may carry a DISPOSITION (the agent's account of whether a person was
+ * reached) and a VERIFICATION (a later source's), both defined in
+ * `src/lib/schema/callRecord.js`. Both are deliberately invisible to everything
+ * in this module: a dial counts identically whatever its disposition, which is
+ * the split that keeps `pcBreakdown` monotone and additive. Contacts are counted
+ * separately, by `callCountsOn` there.
+ */
 function callsOn(state, day) {
   return (state?.calls ?? []).filter((c) => c && c.date === day);
 }
