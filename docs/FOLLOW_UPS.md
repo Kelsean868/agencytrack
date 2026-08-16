@@ -804,12 +804,23 @@ Verified locally on `8f29230a`: `DailyCaptureV2.test.jsx` **48/48**, `AgentPlann
 
 ---
 
-## The #899 flake fix lives on `staging` ONLY — `main`'s unit-test gate is still unreliable, and it now has a measured cost (banked 2026-08-16, PR #906 session, HIGH — CI/process)
+## ~~The #899 flake fix lives on `staging` ONLY~~ — **RESOLVED 2026-08-16 by the promotion (`b4d9be7b`)** (banked 2026-08-16, PR #906 session, HIGH — CI/process)
 
-**The claim, verified rather than inferred:**
+> **RESOLVED — this FU's own falsification condition fired.** It said: *"Overturned if `git ls-tree origin/main -- src/test-utils/flushPendingEffects.js` returns a blob."* After the promotion it does:
+>
+> ```
+> git ls-tree origin/main -- src/test-utils/flushPendingEffects.js
+> 100644 blob b40922b9f9197359c6069b607a7b4a5a1ae7e952	src/test-utils/flushPendingEffects.js
+> ```
+>
+> **Closed on the narrow claim only: the two fixes ARRIVED on `main`.** It is explicitly **not** closed as "the gate is clean" — see § *The flake family is ~10 members and #899 fixed TWO*, which remains **open** and is now the live entry for this subject. Nine-ish register members are untouched, and `BranchesPanel` failed on #907's own branch — a docs-only diff cut from `staging`, which already carried the fix. Expect intermittent reds on inert diffs against `main` and re-run to separate flake from regression.
+>
+> Body preserved below as the record of the pre-promotion state; the `git ls-tree` output in it is historical and no longer current.
+
+**The claim, verified rather than inferred (AS OF 2026-08-16, PRE-PROMOTION — the first line is now stale):**
 
 ```
-git ls-tree origin/main    -- src/test-utils/flushPendingEffects.js   → (empty — ABSENT)
+git ls-tree origin/main    -- src/test-utils/flushPendingEffects.js   → (empty — ABSENT)   ← no longer true
 git ls-tree origin/staging -- src/test-utils/flushPendingEffects.js   → 100644 blob b40922b9…
 ```
 
@@ -850,6 +861,20 @@ Overturned if `git ls-tree origin/main -- src/test-utils/flushPendingEffects.js`
 ---
 
 ## Promotion deletes `staging`, silently orphaning every open PR onto `main` (banked 2026-07-26, PR #871 session, HIGH — process/CI, recurring)
+
+> **UPDATE 2026-08-16 — the runbook WORKED, and the FU stays OPEN. Both halves matter.**
+>
+> The `b4d9be7b` promotion is the **first in four that did not delete `staging`**. Verified after the merge: `git ls-remote --heads origin staging` returns `b4d9be7b`, and `origin/main` / `origin/staging` are the same commit, 0 ahead either way.
+>
+> **Why it worked — the method, not luck.** The promotion was executed **on the CLI, not as a GitHub PR**, and `git push origin main:staging` ran immediately after the merge commit. The mechanism below requires a **promotion PR whose head branch is `staging`**; a CLI merge creates no PR, so there is no head branch for GitHub to delete. The four prior promotions — #860, #862, #874, #877/#881 — were all PRs with `head=staging`, which is exactly why they fired.
+>
+> **NOT marked resolved, and the reason is specific: the mechanism is still armed.** Verified the same day: `gh api repos/Kelsean868/agencytrack --jq .delete_branch_on_merge` → **`true`**, `default_branch` → `main`. The CLI method **avoids** the trap; it does not disarm it. The next promotion opened as a GitHub PR deletes `staging` again with no warning, and nothing in the repo configuration prevents that — the protection is entirely procedural and lives in an operator's memory of the runbook.
+>
+> **Downgraded HIGH → MEDIUM**, on the grounds that a working, evidenced avoidance now exists and the recurrence requires someone to choose the PR path. It is not closed, because "someone must remember" is the same class of guard this project has repeatedly banked rules against.
+>
+> **Resolution conditions — either one closes this:** (a) set `delete_branch_on_merge: false` at the repo level (costs the automatic head-branch cleanup that CLAUDE.md § Post-merge local cleanup currently depends on — that step would need rewording in the same change); or (b) make CLI promotion the binding standard in the runbook rather than a remembered practice, with the PR path explicitly forbidden for promotions. **(b) is the cheaper of the two and does not disturb ordinary PR cleanup.** Dispatcher's call; not actioned here.
+>
+> **Falsification of THIS update:** overturned if a promotion executed by CLI with the immediate re-push is nonetheless followed by `staging` disappearing, which would mean the mechanism is not the PR-head deletion described below.
 
 **This is not hypothetical and it is not new. It has now fired twice, and on 2026-07-26 it put two PRs into `main` that had never passed the staging gate.**
 
@@ -5998,6 +6023,17 @@ The push succeeded. Both required checks were pending and neither gated it.
 So `main` is protected in the sense that force-push and deletion are blocked, and unprotected in the sense that the checks it requires can be skipped by the one account that pushes to it. This is the mechanism behind the Track J observation that merges landed while CI was still in progress — the platform was never gating admins.
 
 **Why it is worth a decision rather than a shrug.** The direct-push path is not rare here: brief landings (`/land-and-dispatch`), Rule 16 post-merge fills, and `.claude/commands/` changes all commit straight to `main` by design. Every one of those bypasses. Combined with § *The flake family is ~10 members and #899 fixed TWO*, `main`'s gate is currently both **bypassable** and **unreliable when it does run**.
+
+**STRONGEST DATA POINT SO FAR — the promotion itself (2026-08-16, `b4d9be7b`).** Every earlier observation was a small docs push, which makes the bypass easy to read as harmless. The `staging`→`main` promotion was not small: **98 files**, the entire v3 Phase 0 code range, the flake fix, and the governance convergence. It went in by direct push and printed the same line:
+
+```
+remote: Bypassed rule violations for refs/heads/main:
+remote: - 2 of 2 required status checks are expected.
+```
+
+**Zero CI checks ran on the largest change to `main` in three weeks.** Not "ran and passed" — *did not run*. The safety came entirely from #907's rehearsal and the operator's step-(d) checks, both of which are good practice and neither of which is a gate. This is what `enforce_admins: false` costs at full scale, and it is the case to weigh the ~5-minutes-per-dispatch price against.
+
+Counted across this session alone the bypass line appeared **six times**: two brief landings, three brief revisions, and the promotion. **Setting NOT changed** (Rule 19 — dispatcher/operator action).
 
 **The trade, stated plainly so it can be decided rather than drifted into:**
 
