@@ -838,7 +838,28 @@ Re-run of the same job: **PASS** (4m1s). Intermittent, not deterministic — the
 
 **Do NOT cherry-pick `90a7718b` (or `27303333` / `5db36a12` / `c06fff0d`) onto `main`.** A cherry-pick creates a *duplicate commit* with a different SHA carrying identical content. At the next staging→main promotion, git sees both and the range conflicts — on `src/test-utils/flushPendingEffects.js` and on all 30 call sites that gained `await`. That converts a clean promotion into a manual conflict resolution across test files, which is a strictly worse position than the one this FU describes.
 
-**The fix is a staging→main promotion**, which is already the standing mechanism and already carries this fix in its range. What this FU adds is a *reason to schedule one*, and a measurable one: the promotion is no longer only tidiness or feature delivery — it repairs `main`'s test gate, and every `main`-targeted PR before it runs against a gate known to produce false reds.
+**The fix is a staging→main promotion**, which is already the standing mechanism and already carries this fix in its range. What this FU adds is a *reason to schedule one*: the promotion is no longer only tidiness or feature delivery — it moves `main`'s gate from "missing two fixes" to "has two fixes".
+
+### CORRECTION (2026-08-16, PR #907) — "staging's gate is fixed" is FALSE, and this FU said it
+
+**The original framing above — `main` unreliable, `staging` repaired — overstates what #899 did.** The corrected statement, verified rather than asserted:
+
+- **The flake family register names ~10 distinct tests** across its three roster blocks (§ *Flake family scope*'s numbered roster of 7 named + 1 explicitly unnamed, plus 3 more in the table above it; the blocks overlap, so the exact dedup count is a judgement, not a fact). It is a large family.
+- **#899 (`90a7718b`) changed exactly TWO test files** — `src/components/manager/__tests__/MeetingMode.test.jsx` and `src/components/planner/__tests__/AgentPlannerPanel.test.jsx` — plus the new `src/test-utils/flushPendingEffects.js` helper. Verified by `git show --stat 90a7718b`.
+- **The remaining members were explicitly left unruled**, having no local reproduction. That was a deliberate, recorded decision, not an oversight.
+
+**So `staging` is better by two files. It is not fixed**, and this FU should never have implied otherwise.
+
+**Evidence, from the PR that banked this correction.** #907 is cut from `staging` — which *has* `flushPendingEffects.js` — and is a **docs-only diff, 13 files, zero `src/`**. Its first `lint-and-build` still went red:
+
+```
+TestingLibraryElementError: Unable to find an element with the text: South Branch
+  at src/components/admin/__tests__/BranchesPanel.test.jsx:133:19
+```
+
+The dumped DOM still showed `animate-pulse` skeletons — the assertion ran against the loading commit. Re-run: **PASS (5m16s)**. Intermittent, not deterministic. `BranchesPanel` is member 7 of the numbered roster and one of the members #899 did not touch.
+
+**Consequence for the promotion's acceptance check.** `git ls-tree origin/main -- src/test-utils/flushPendingEffects.js` returning a blob proves **the fix ARRIVED**. It does **not** prove `main`'s gate is clean. After promotion, `main` inherits a gate that is better by two files and still carries the rest of the family — expect intermittent reds on inert diffs, and keep re-running to distinguish flake from regression until the remaining members are ruled.
 
 ### Interaction with the other open promotion FU
 
@@ -846,7 +867,7 @@ This compounds with § *Promotion deletes `staging`* below — that FU makes pro
 
 ### Falsification (Rule 23)
 
-Overturned if `git ls-tree origin/main -- src/test-utils/flushPendingEffects.js` returns a blob (the fix reached `main`, by promotion or otherwise), **or** if a `main`-targeted PR with a provably inert diff runs the full suite green across a meaningful number of consecutive runs, which would mean the residual rate on `main` is low enough not to matter in practice. A single green run does **not** overturn it — the defect is intermittent, and that is the whole problem.
+Overturned if `git ls-tree origin/main -- src/test-utils/flushPendingEffects.js` returns a blob (the fix **arrived** on `main`, by promotion or otherwise) — note this closes *this* FU's "the two fixes are missing" claim only, and says nothing about the rest of the family. **Or** if a `main`-targeted PR with a provably inert diff runs the full suite green across a meaningful number of consecutive runs, which would mean the residual rate on `main` is low enough not to matter in practice. A single green run does **not** overturn it — the defect is intermittent, and that is the whole problem. Conversely, this FU is **not** re-opened by an intermittent red after promotion: that is the untouched remainder of the family, tracked in § *Flake family scope*, not a failure of the promotion.
 
 ---
 
