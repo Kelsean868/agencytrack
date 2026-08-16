@@ -229,6 +229,16 @@ line means the port was removed and the resolution is unsafe; **2** on the secon
 was applied twice. Same family as the junction rule and the `slice(indexOf(...))` rule —
 a destructive outcome whose failure mode produces no error.
 
+**Paste those two greps verbatim; the single quotes are load-bearing.** Both patterns
+contain backticks, so nesting them inside another quoted context (a `bash -c "…"`, an
+`echo "…"`, a tool parameter) lets the shell evaluate the backticks and the pattern
+silently stops matching — it returns **0 on a healthy tree**, i.e. a false alarm on the
+exact check meant to catch a real deletion. This happened while verifying these very
+lines: the checks were correct and the test harness around them was not. That is § *Any
+text passed to a shell inside double quotes is EVALUATED, not quoted* (`CLAUDE.md` §
+Banked patterns) applied to a grep pattern rather than a commit message. Verified both
+directions afterwards: **1 / 1** on the resolved tree, **0 / 0** with the port stripped.
+
 **e. Commit the merge. Then IMMEDIATELY `git push origin main:staging`** to recreate the
 branch. This is the banked fix for the recurring deletion; it has failed twice without it.
 
