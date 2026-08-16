@@ -79,32 +79,38 @@
  * order to keep the arithmetic balanced — answering the open question by
  * implementation, through a test, which is the quietest possible way to do it.
  *
- * ── WHICH LANE A CONTESTED CALL SITS IN ─────────────────────────────────────
+ * ── AN UNRESOLVED DISPUTE MOVES NO CREDIT ───────────────────────────────────
  * READ THIS BEFORE "TIDYING" THE COUNTING LOOP. It reads as an inconsistency and
- * it is not one; the tidy version deletes an agent's credit.
+ * it is not one.
  *
- * The rule is: A CONTRADICTION REMOVES THE CONFIRMATION, NEVER THE CLAIM. Each
- * lane keeps holding exactly what its OWN source asserted.
+ * THE RULE: while the two sources disagree, `total` does not move — IN EITHER
+ * DIRECTION — because moving credit would settle the dispute, and the dispute is
+ * not settled. A figure that shifts the moment a disagreement appears has
+ * already picked a side. Holding it still is what "surfaced, not resolved" means
+ * arithmetically.
+ *
+ * This is not a rule about who is believed. It falls out of each lane holding
+ * exactly what its OWN source asserted, with neither source permitted to write
+ * into the other's lane:
  *
  *   agent claims a contact, machine denies it
- *     → stays in `declaredOnly`. The agent's claim is not deleted by a machine
- *       disagreeing with it; it is simply never promoted to evidenced.
+ *     → stays in `declaredOnly`, never promoted to evidenced. The machine
+ *       withheld its confirmation; it did not withdraw the agent's claim.
  *
  *   machine claims a contact, the agent never did
- *     → lands in NO lane. The machine's claim is not credited over the agent's
- *       account of their own call.
+ *     → lands in NO lane, never credited. The agent opened no claim for it to
+ *       occupy, and the machine cannot open one on their behalf.
  *
- * Both directions are flagged in `contestedContacts`, and in both directions
- * `total` is UNCHANGED — no credit moves either way while the sources disagree.
- * That is what "surfaced, not resolved" means arithmetically, and it is
- * property-tested.
+ * Both directions are flagged in `contestedContacts`. Neither moves `total`.
+ * Property-tested, because a comment is not a guard.
  *
  * The tempting simplification is to gate BOTH lanes on non-contradiction so
- * "contested counts in neither lane" is uniformly true. Do not. It makes
- * `total` fall from 1 to 0 the moment a machine disagrees — a manager-facing
- * figure about a named agent dropping because an external system said so, which
- * is this module's entire reason for existing. It also resolves the dispute in
- * the machine's favour, which is the decision nobody has made.
+ * "contested counts in neither lane" is uniformly true. Do not. It makes `total`
+ * fall from 1 to 0 the moment a machine disagrees — a manager-facing figure about
+ * a named agent dropping because an external system said so, which is this
+ * module's entire reason for existing. Arithmetically that is the machine
+ * winning, and the machine winning is NOT a resolution of the open question: it
+ * is the system behaving as though the question were already settled.
  *
  * A verification NEVER invents a disposition the agent did not give, and never
  * silently overwrites one that disagrees. A verification that contradicts the

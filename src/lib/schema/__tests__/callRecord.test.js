@@ -293,15 +293,28 @@ describe('conservation — an agreeing verification transfers, never adds', () =
   });
 
   /**
-   * The neutrality half, and it is deliberately NOT the conservation property.
+   * AN UNRESOLVED DISPUTE MOVES NO CREDIT. Conservation says an AGREEING
+   * verification moves credit between lanes; this says a CONTRADICTING one moves
+   * none, in either direction — because moving credit would settle the dispute,
+   * and the dispute is not settled. A total that shifts when a disagreement
+   * appears has already picked a side.
    *
-   * Conservation says an agreeing verification MOVES credit. This says a
-   * CONTRADICTING one moves NONE — in either direction. That is not answering
-   * the open question of which source wins; it is asserting that the question
-   * stays open, arithmetically, while `contestedContacts` flags it for a human.
+   * ── THIS DOES NOT DECIDE THE OPEN QUESTION ────────────────────────────────
+   * Of the three available outcomes — agent wins, machine wins, dispute stays
+   * open — this property forbids exactly one: machine-wins. And machine-wins is
+   * not a RESOLUTION of the question; it is the system behaving as though the
+   * question were already settled. So what is being asserted is "nothing has won
+   * yet", which is holding the question open, not answering it.
    *
-   * It exists because an external reviewer proposed gating both lanes on
-   * non-contradiction, which reads tidier and makes `total` fall from 1 to 0 the
+   * ── HOW THIS PROPERTY IS RETIRED ──────────────────────────────────────────
+   * IT HOLDS ONLY WHILE VERIFICATION-VS-DISPOSITION IS UNDECIDED. A ruling
+   * either way retires it, and that ruling is the dispatcher's to make — not a
+   * reviewer's, not a future implementer's, and not this file's by longevity.
+   * Written down because a property encoding an open question hardens into
+   * doctrine the moment nobody remembers it was a placeholder.
+   *
+   * It exists at all because an external reviewer proposed gating both lanes on
+   * non-contradiction, which reads tidier and drops `total` from 1 to 0 the
    * moment a machine disagrees with an agent. A comment saying "don't" is not a
    * guard; this is.
    */
