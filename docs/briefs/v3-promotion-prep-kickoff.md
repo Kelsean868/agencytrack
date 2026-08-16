@@ -210,9 +210,24 @@ done
 grep -c '#891\|#894\|RULING 18\|Rule 16(b)' docs/CONTEXT.md      # the recovered fills: must be present
 grep -E '^\| \[#(862|860|858)\]' docs/CONTEXT.md                 # must return NOTHING
 grep -cE '^\| \[#[0-9]+\]' docs/CONTEXT.md                       # must be 5 (Rule 16 cap)
+
+grep -c '^## The #899 flake fix lives on' docs/FOLLOW_UPS.md      # main's #899 FU: must be 1, NOT 0
+grep -cF 'flushPendingEffects.js`) is on `staging` ONLY' docs/FOLLOW_UPS.md   # its index row: must be 1, NOT 2
 ```
 
 A resurrection of #862 / #860 / #858 means step (c) was applied to the wrong side.
+
+**Why the last two lines exist, and why they are checks rather than a comment.** Step (c)
+takes `staging`'s side wholesale, which is safe *only* because `staging` is a superset of
+`main` for every conflicted file. For `docs/FOLLOW_UPS.md` that property holds solely
+because the prep branch deliberately carries `main`'s 46-line #899 follow-up. **That
+property is invisible at merge time.** A future reader tidying the "redundant" port away
+would reintroduce a silent deletion with no signal at all — take-theirs would simply drop
+`main`'s entry and the merge would succeed. Measured during this slice: with the port
+reverted, the `staging` side lacked the section entirely. A count of **0** on the first
+line means the port was removed and the resolution is unsafe; **2** on the second means it
+was applied twice. Same family as the junction rule and the `slice(indexOf(...))` rule —
+a destructive outcome whose failure mode produces no error.
 
 **e. Commit the merge. Then IMMEDIATELY `git push origin main:staging`** to recreate the
 branch. This is the banked fix for the recurring deletion; it has failed twice without it.
