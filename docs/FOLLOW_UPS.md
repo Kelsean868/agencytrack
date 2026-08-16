@@ -18,8 +18,10 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| The #899 flake fix (`src/test-utils/flushPendingEffects.js`) is on `staging` ONLY — `git ls-tree origin/main` returns EMPTY, so `main`'s unit-test gate still produces false reds. Every command-file / dispatcher-tooling PR is structurally forced onto `main`, and **#906 proved the cost on a one-markdown-file diff** (red on `DailyCaptureV2` streak test, 5000ms timeout, 1 failed / 5842 passed; re-run green). **Fix is staging→main PROMOTION — do NOT cherry-pick** (duplicate commit, conflicts at promotion across the fix + 30 `await` call sites). Compounds with the promotion-deletes-staging FU below: that one makes promotion risky, this one makes deferring it costly (banked 2026-08-16, PR #906 session) | HIGH | CI / process | — | 529 |
-| Promotion deletes `staging`, silently auto-retargeting every open PR onto `main` — put #872 + #873 into main ungated. **CONFIRMED RECURRING** — deleted again on #877 (#860/#874/#877). **Primary fix upgraded to a runbook step (`git push origin main:staging` after every promotion merge)**; CI guard still recommended as enforcement. **Also corrects the record: `main` DOES have branch protection** (2 required checks, admin-bypassable) — the FU's original "unavailable" premise was wrong, and CLAUDE.md § Workflow carries the same false claim (dispatcher call). Needs dispatcher decision (banked 2026-07-26, PR #871 session; corrected 2026-07-27) | HIGH | — | — | 430 |
+| The #899 flake fix (`src/test-utils/flushPendingEffects.js`) is on `staging` ONLY — `git ls-tree origin/main` returns EMPTY, so `main`'s unit-test gate still produces false reds. Every command-file / dispatcher-tooling PR is structurally forced onto `main`, and **#906 proved the cost on a one-markdown-file diff** (red on `DailyCaptureV2` streak test, 5000ms timeout, 1 failed / 5842 passed; re-run green). **Fix is staging→main PROMOTION — do NOT cherry-pick** (duplicate commit, conflicts at promotion across the fix + 30 `await` call sites). Compounds with the promotion-deletes-staging FU below: that one makes promotion risky, this one makes deferring it costly (banked 2026-08-16, PR #906 session) | HIGH | CI / process | — | 6013 |
+| Promotion deletes `staging`, silently auto-retargeting every open PR onto `main` — put #872 + #873 into main ungated. **CONFIRMED RECURRING** — deleted again on #877 (#860/#874/#877). **Primary fix upgraded to a runbook step (`git push origin main:staging` after every promotion merge)**; CI guard still recommended as enforcement. **Also corrects the record: `main` DOES have branch protection** (2 required checks, admin-bypassable) — the FU's original "unavailable" premise was wrong, and CLAUDE.md § Workflow carried the same false claim. **That half is now CLOSED** — the CLAUDE.md claim was corrected in the promotion-prep governance PR (2026-08-16); the `staging`-deletion half remains open and still needs a dispatcher decision (banked 2026-07-26, PR #871 session; corrected 2026-07-27) | HIGH | — | — | 430 |
+| `enforce_admins: false` on `main` — every direct push bypasses both required status checks, so `main`'s CI gate is advisory for the only person who pushes there. Observed, not inferred: a brief-landing push returned `remote: Bypassed rule violations for refs/heads/main: 2 of 2 required status checks are expected.` **Dispatcher decision required — do NOT change the setting.** Turning it on costs ~5 min of CI per dispatch (brief landings, CONTEXT fills, command-file changes all become PR-gated); leaving it off means the checks are decorative on the direct-push path (banked 2026-08-16, promotion-prep governance PR) | HIGH | Repo governance / CI | — | 5975 |
+| The flake family is ~10 named members and #899 fixed **TWO** (`MeetingMode`, `AgentPlannerPanel`) — the rest were deliberately left unruled. `staging` is better by two files, **not fixed**; corrects the framing in `main`'s § *The #899 flake fix lives on `staging` ONLY*, which arrives at the next promotion. Evidence: #907 is cut from `staging`, docs-only, and still went red on `BranchesPanel` (roster member 7). The promotion acceptance check proves the fix ARRIVED, not that the gate is clean (banked 2026-08-16, PR #907) | HIGH | CI / process | — | 6013 |
 | Restore the VIOLET calls hue — `plannerTone.js`'s stated reason for diverging ("repo ships no violet token") is FALSE; token ships at exact DS parity with zero consumers (banked 2026-07-27, planner activity-types PR) | MEDIUM | Track J conformance | — | see § Planner activity types |
 | Planner duration reporting — `durationMin` is captured on every appointment but NOTHING sums it anywhere; "time recorded" needs only a reporting surface (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
 | Planner type-taxonomy collisions deferred by hardcoding — `MTG` vs manager `UNIT`, and `PERS` vs `FREE`+Personal (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
@@ -29,6 +31,14 @@
 | Mutating planner smokes leave residue by design — no self-teardown; needs a shared Admin-SDK helper across all 7 (raised by CodeRabbit on #878, banked 2026-07-27) | LOW | Verification | — | see § Planner activity types |
 | Two divergent planner design-authority trees (`proposals/planner-scheduler-v2/` vs `screens-v2/agencytrack-planner-handoff/`) — never diffed file-by-file (banked 2026-07-27) | LOW | Design system | — | see § Planner activity types |
 | External code reviewer — Gemini sunset PASSED; secondary-reviewer decision NOW OPEN (PROMOTED to HIGH 2026-07-21 — settle before the next backend-touching track). **PATTERN CONFIRMED 2026-07-31: rate-limited on #882, #883 AND #884 (3 of 5 HEADs, incl. the merged one)** | HIGH | — | overdue (was 2026-07-17) | see § External code reviewer |
+| **⚑ THE FLAKE IS A RACE, NOT CONTENTION — corrected characterisation.** Measured: p50 130ms / max 703ms vs failures at the 5000ms timeout; run wall-clock normal while one test hangs. The `5006…5027` cluster means only that the timeout FIRED — do not reason from it. #888 was three n=1 samples, not a controlled experiment. Superseded: `asyncUtilTimeout`, per-test widening, sharding, `maxForks` capping (#889 closed unmerged), `isolate:false` (banked 2026-08-02, v3 P0-E) | HIGH | test-infra | — | see § THE FLAKE IS A RACE |
+| **⚑ Flake register — 3 provenance corrections + a measured baseline.** `MeetingMode.test.jsx` fails **IN ISOLATION**, overturning both "passes in isolation" and "rotation ⇒ shared contention" (it rotates across 4 named members with nothing else running). **⚠ RATE CORRECTED 2026-08-11 — the 16.7% previously recorded here is superseded and must not be quoted.** Two windows: **5/30 (16.7%)** on `staging` `2ef1abc5`, **2/90 (2.2%)** on `fix/flake-awaiting-pattern`; pooled **7/120 = 5.8%, Wilson 95% ≈ 2.9–11.6%**. The two windows are **significantly inconsistent** (z ≈ 2.9, p ≈ 0.003), so the pooled figure summarises two disagreeing samples rather than estimating a stable rate — the discrepancy is **unexplained**. **The rate is NOT the acceptance test** — see § Flake race — MECHANISM PROVEN. `delay: null` is ZERO not one. #543 is an unmerged duplicate of merged #563. `CHIP_WAIT` RULED left alone — it is the control. Harness ported to `scripts/flake/` (banked 2026-08-02, rate corrected 2026-08-11) | HIGH | race brief | — | see § Flake register — three provenance corrections |
+| Flip `a11y-contrast` from REPORTING to BLOCKING once the one enumerated pre-existing failure is cleared (`topbar-search-placeholder` 4.13:1 light — the Topbar failure the P0-D brief lists as out of scope). Drop `continue-on-error`, pass `--blocking`, rename the job in the same commit (banked 2026-08-02, v3 P0-D) | MEDIUM | v3 P0-D | — | see § Flip a11y-contrast |
+| `a11y-contrast` sweep covers 2 routes (login + dashboard); `:disabled` measured 0 because the swept routes have only transient disabled states — the path is proven via the planted failure. Widen the route list (banked 2026-08-02, v3 P0-D) | LOW | v3 P0-D | — | see § a11y-contrast sweep covers two routes |
+| `a11y-contrast` runs with only the auth + firestore emulators, so CF-gated UI (`resolveSalesManagerUid` is CORS-blocked) never renders into the swept DOM — element counts are a floor. Surfaced by the console/network capture added in the #893 review (banked 2026-08-02, v3 P0-D review) | LOW | v3 P0-D | — | see § a11y-contrast sweep runs without the functions emulator |
+| `SyncIndicator` shows connectivity, not pending writes — `waitForPendingWrites` / `onSnapshotsInSync` are the candidate APIs; wire it with the first real `commit()` caller (P0-F), not before, because `onSnapshotsInSync` is listener-relative and there is no caller to attach to yet (banked 2026-08-02, v3 P0-C ruling 13b) | LOW | v3 P0-F | — | see § SyncIndicator shows connectivity |
+| v3 boundary rule matches import PATHS not bindings — a re-export of a restricted v3 service would evade `no-restricted-imports`. **No such re-export exists today**; recorded so a future one is caught by review rather than by nothing (banked 2026-08-02, v3 P0-C) | LOW | v3 P0-C | — | see § boundary rule matches import PATHS |
+| Race investigation — why does the awaited condition never arrive? Successor track to the above; **requires test-file access**, needs its own brief, NOT started (banked 2026-08-02, ruling 11c) | MEDIUM | test-infra | — | see § Race investigation |
 | `pcBreakdown` filters the day's evidenced events twice (4 passes/day via `weekTotals`) — CodeRabbit's remedy DECLINED as it would re-shape a dispatcher-ruled interface; shape-preserving fix recorded (banked 2026-07-31, PR #884) | LOW | v3 P0-B | — | see § `activityLedger` two LOW residuals |
 | `evidencedPct` uses `Math.round`, so a COLUMN of per-code percentages will not sum to 100 — harmless for today's single-figure design, scope check for Phase 2.1 (banked 2026-07-31, PR #884) | LOW | v3 Phase 2.1 | — | see § `activityLedger` two LOW residuals |
 | Track K Phase 2 — narrative `branchPlans` (new collection, HUMAN-MERGE) + PPTX + manpower setter + per-branch `branchGoals` keying (banked 2026-07-21, #864 close) | HIGH | Track K | — | ~288 |
@@ -315,6 +325,24 @@
 
 ---
 
+## v3 prototypes (`design_handoff_agencytrack_v3/prototypes/*.jsx`, incl. `at-tally.jsx` / `at-dialer.jsx` / `at-store.jsx`) are design REFERENCE, not correct implementations — do not port their code (banked 2026-07-31, PR #884, MEDIUM — standing rule + defect register)
+
+**Standing rule.** The v3 prototypes landed in-repo via PR #883 and are now greppable, citable, and dangerously easy to copy. They are **design reference only**. Port *behaviour* from the numbered docs (`01`–`08`) and the kickoff briefs; never by copying prototype code. The bundle's own `README.md:31` says it outright: *"They are **not production code to copy**."* They run as browser-transpiled JSX with no build step, no persistence and no network, and several patterns exist purely to make a single file demonstrable.
+
+**Defect register — confirmed defects found while porting P0-B.** Each was found *because* the port went through the docs rather than the code:
+
+| Site | Defect | Consequence if copied |
+|---|---|---|
+| `at-tally.jsx:90` | `weekTotals` returns `total: r.logged + r.declared` | Blends evidenced with declared — the exact thing `03-DATA-MODEL.md`'s central contract forbids. Destroys the provenance the trust surface is built on. |
+| `at-tally.jsx:61` | Recomputes each block's `inside` set **without excluding already-claimed calls** | A call inside two overlapping blocks is counted twice. Silently inflates a manager-facing activity figure. Reproduced under mutation in PR #884 and shrunk to 2 evidenced `PC` blocks with identical windows + 1 call. |
+| `at-tally.jsx:29-35` | Hardcoded `COUNTED` array carrying floor values | A twin of `ACTIVITY_METADATA` — the exact class v3 rule 1 exists to remove — **and its floor numbers are fictional**, not the company minimums. |
+| `at-dialer.jsx:161` | Cancelling a ringing call never clears the pending `ring.current` timeout | The call connects ~1.6s later anyway: a Cancel control that does not cancel. (CodeRabbit, PR #883.) |
+| `at-store.jsx:395` | Side effects and mutable counters run inside `setX` updaters throughout `useSyncStore` | React 19 StrictMode may double-invoke updaters, so these double-fire or desync two `useState` slices. Note the README says component boundaries and state *shape* are worth keeping — the updater *implementation* is not. (CodeRabbit, PR #883.) |
+
+**Why this is banked rather than fixed:** editing the prototypes would defeat the point of a verbatim, citable design reference, and `03-DATA-MODEL.md` is corrected in place instead when the *design* is wrong (see the `SC` correction in PR #884). Add to this register whenever a port surfaces another one. **Phase 5.x reads `at-dialer.jsx` as design authority — read this entry first.**
+
+---
+
 ## Track K Strategic Plan — banked follow-ups from Phase 1 close (banked 2026-07-21, PR #864 squash `ebb168f1`, dispatcher-ruled sweep)
 
 Track K Phase 1 (Branch Manager Strategic Plan dashboard — client-only, single math path in `src/lib/strategicPlan/`, presentation mode, PDF export) shipped via [#864](https://github.com/Kelsean868/agencytrack/pull/864). Design authority: `docs/design-system/screens-v2/stratplan-handoff/`; execution record: the PR thread (§4 dispatcher ruling 2026-07-17 + %Obj/Pace label-split ruling are committed into `docs/briefs/track-K-strategic-plan-phase1-brief.md` §4 Amendment). Banked per the merge ruling:
@@ -430,6 +458,188 @@ Verification/scope gaps Run 8 itself flagged (Rule 22), now live in prod via PR 
 
 ---
 
+## ⚑ THE FLAKE IS A RACE, NOT CONTENTION — corrected characterisation, and the layer everyone has been fixing is the wrong one (banked 2026-08-02, v3 P0-E, MEASURED)
+
+**Read this before touching a timeout, a pool setting, or a runner config.** Four rounds of remediation have now targeted contention. The measurement says contention is not the mechanism.
+
+### The measurement that settles it
+
+Three verbose runs on one CI runner (PR #890 diagnostic, closed). Every test in the flake record, **when it passes**:
+
+| Test | r1 | r2 | r3 |
+|---|---|---|---|
+| `aggregate-on-save > isolates aggregation failure` | 661 | 663 | 648 |
+| `daily streak > does NOT re-fire` | 657 | 703 | 668 |
+| `DailyCaptureV2 > stepper "+"` | 266 | 240 | 258 |
+| `AgentPlannerPanel > navigation is unlimited` | 123 | 161 | 158 |
+| `MeetingMode > skip-logs the awards scene` | 90 | 94 | 126 |
+| `daily streak > fires the takeover` | 90 | 96 | 102 |
+| `aggregate-on-save > recomputes the weekly draft` | 46 | 48 | 49 |
+| `MeetingMode > ArrowRight advances` | 41 | 36 | 40 |
+
+**p50 ≈ 130ms · max 703ms.** No test in the entire 378-file suite exceeded **1000ms**.
+
+### Why that means RACE and not contention
+
+- **An awaited condition that never arrives, not one that arrives late.** Healthy runs finish in ~0.1s. Failures sit at the 5000ms timeout. There is no population in between — the gap is 7–50×, not a distribution tail.
+- **The whole run does not drag when one test hangs.** #889 run 1 took **322s**, squarely in the normal band, and the failing test's neighbours ran at normal speed. Starvation would slow everything; one test hung while everything around it was fine.
+- **The A2 cluster says the same in a different shape.** `Unable to find an element…` at **151 / 167 / 181ms** — expected state absent, detected *fast*. Not slow, absent.
+
+### ⚠ The `5006 · 5006 · 5007 · 5008 · 5015 · 5027` cluster means ONLY that the timeout fired
+
+**A timeout always reports ≈budget + detection overhead.** Those numbers say the 5000ms limit was hit. They say **nothing** about how close the chain was to completing, and reading them as "6 to 27 milliseconds past the cliff" — as this document previously did, and as the dispatcher's own analysis did — leads directly to the wrong layer. It is what motivated a margin argument the data cannot support. **Do not reason from that cluster again.**
+
+### ⚠ PR #888 was NOT a controlled experiment
+
+It was presented as one, by both dispatcher and CC. It is **three n=1 samples of a stochastic outcome** (measured failure rate **37%** in the v3 window — see § Measured failure rate below). Controlling the inputs does nothing about variance in the *result*. Its three data points (default FAILED 272s / `maxForks:2` passed 304s / `maxForks:1` passed 521s) establish far less than they were treated as establishing.
+
+**The falsification that proves it:** `maxForks: 2` was green in #888 at **00:15–00:34 UTC** and red in #889 run 1 at **01:15 UTC** — same setting, ~45 minutes apart. **We therefore have no reliable evidence that fork count affects the failure rate at all.**
+
+### Measured failure rate — the baseline was never ~50%, and every inference from that number was drawn from a wrong one
+
+**100 CI runs / 119 attempts, 2026-07-07 → 2026-08-02**, from the GitHub API rather than impression:
+
+| Window | Attempts | Red | Rate | Runs reran |
+|---|---|---|---|---|
+| **Since 2026-07-29 (v3 window)** | 27 | 10 | **37.0%** | 5 of 22 |
+| **Before 2026-07-29** | 92 | 18 | **19.6%** | 14 of 78 |
+
+**Method:** `gh api actions/workflows/ci.yml/runs`, `per_page=100`. Red attempts = `sum(run_attempt) − count(runs concluding success)`, which is exact **given full re-runs**.
+
+**⚠ Caveat, recorded:** any `gh run rerun --failed` in the history inflates `run_attempt` without being a full suite attempt, so the true rate may be **slightly below** these figures.
+
+**Three corrections — this supersedes every "~50%" in the record:**
+
+1. **The rate was never ~50%.** Every inference either party drew from that number came from a wrong baseline.
+2. **Five consecutive greens is ~10% by luck at 37%, not the ~3% claimed at 50%** (`0.63⁵ = 9.9%` vs `0.5⁵ = 3.1%`). The five-run standard was **weaker than stated** when it was set.
+3. **#887's four consecutive reds is 1.9% at 37%** (`0.37⁴`). Notable as one sequence, unremarkable across 119 attempts. An impression from a single PR was never going to establish a rate — including CC's own "suggests worse than 50%" read, which this measurement replaces.
+
+**Two other artefacts still carry the superseded figure and are deliberately NOT edited:**
+- `docs/briefs/v3-p0b-activity-ledger-kickoff.md:141` — *"flaking at roughly one episode in two runs"*. A landed brief is a **Rule 10 audit trail**; rewriting it would falsify the record of what was actually dispatched. Read it against this section.
+- `src/lib/__tests__/activityLedger.test.js:17-18` — the same phrasing in the property-budget comment. **Ruled 2026-08-02: leave it, do not spend a PR on it.** The comment's **conclusion survives the correction** — capping `numRuns` because CI is flaky is still sound at 37% — and only the *cited rate* is stale. A one-line comment fix does not justify a CI cycle at a 37% red rate, and folding it into P0-C would widen an unrelated diff. **Tagged: fold into the next PR that touches `src/lib/__tests__/activityLedger.test.js`** — realistically Phase 2.1, which owns the `contacts` field on the `CALLS` row.
+
+### ⚠ SUGGESTIVE, NOT ESTABLISHED — the rate roughly doubled in the v3 window
+
+19.6% → 37.0%. Two-proportion **z ≈ 1.9, p ≈ 0.06 at n=27**. **Do not treat this as fact.** It does not clear conventional significance and the v3 sample is small.
+
+**If it is real**, the likeliest mechanism is that the flake **scales with suite size** — P0-A and P0-B both added test files — which fits a per-assertion race exactly: more `waitFor`/`findBy` sites means more chances to lose it, so the per-*run* failure rate rises even though the per-*assertion* rate is unchanged. That prediction is testable and it is uncomfortable, because it implies **further worsening as Phase 1 lands**.
+
+**Action for whoever lands P0-C and P0-D: recompute this same statistic afterwards, by the same method.** If the rate climbs again, the race investigation below should be **promoted ahead of Phase 1** rather than queued behind it.
+
+### Superseded — do NOT retry, each with its reason
+
+| Approach | Why it is dead |
+|---|---|
+| Raising `asyncUtilTimeout` | Pulled **twice** blind (1000 → 2000 → 5000). And now measured: chains run at ≤703ms against a 5000ms budget — **~7× headroom already**. There is no margin problem to fix. |
+| Per-test `it(…, ms)` widening | #872's remedy. Raised a ceiling that is not binding; its own fixed tests re-fired afterwards. |
+| Sharding across runners | Costed for a 2-vCPU runner. The runner is **4 vCPU / 16.8 GB** (public-repo class), so each shard would still need capping — an addition, not an alternative. |
+| `maxForks` capping | Tried at 2 on PR #889 and **falsified within an hour**. Cap engagement was *proven* (max concurrent vitest procs: 6 uncapped vs 4 capped, same machine — a clean 2-worker delta), so the config worked and the failure happened anyway. Costs +32s/run forever for unproven benefit. **PR #889 closed unmerged.** |
+| `isolate: false` | 378 files, shared mocks, a globally-configuring `test-setup.js`. Silent cross-file contamination is strictly worse than a flaky gate. |
+
+### The open question — this is the next investigation, and it is NOT started
+
+**Why does the awaited condition sometimes never arrive?** That is a race inside the component-under-test or its mocks, not a property of the runner.
+
+Density correlates with *exposure* but is not sufficient: `AgentPlannerPanel.test.jsx` has **163** `waitFor`/`findBy` sites and 3 members, `DailyCaptureV2.test.jsx` has **63** and 5 members — but `MeetingMode.test.jsx` has only **9** and still contributes 2. More async assertions means more chances to lose the race; it does not explain the race.
+
+Ruled out along the way, so nobody re-chases it: `DailyCaptureV2.test.jsx`'s partial fake timers (`vi.useFakeTimers({ toFake: ['Date'] })`, present in every one of its failing describes) are **safe**. `waitFor` uses real `setTimeout`/`setInterval`, and its fake-timer detection requires `typeof jest !== 'undefined'`, which is false under vitest without `globals` — so `waitFor` takes the real-timer branch. The file's own comment is correct.
+
+**See § Race investigation below — it needs test-file access and its own brief.**
+
+---
+
+## Flip `a11y-contrast` from REPORTING to BLOCKING once the enumerated failures are cleared (banked 2026-08-02, v3 P0-D, MEDIUM)
+
+The sweep landed **non-blocking on purpose** (brief §3): pre-existing failures predate it and are not its to fix, and a slice that lands a gate *and* a pile of unrelated fixes cannot be reviewed as either. **The job name says its mode** — `a11y-contrast (reporting)` — because a gate that is quietly non-blocking is worse than no gate.
+
+**To flip it:** drop `continue-on-error` from the job, pass `--blocking` to the sweep, and **rename the job in the same commit** so the name never lies about the mode.
+
+**Blocking on:** the one failure below. When it is cleared (or explicitly accepted), flip.
+
+### Pre-existing failure enumerated by the first run — NOT this slice's to fix
+
+| Element | Theme / state | Measured | Needs |
+|---|---|---|---|
+| `span.topbar-search-placeholder` — "Search…" | light / default | **4.13:1** | 4.5 |
+
+This is the **Topbar light-mode failure the P0-D brief lists as explicitly out of scope** — *"deliberately left; it needs a design-system change, not an app-level override."* The sweep rediscovering it independently, with a measured ratio the brief did not supply, is a useful check that the measurement is real rather than self-confirming.
+
+Two known failures from prior work were **not** reproduced by this run and should not be assumed fixed — they are on surfaces this sweep does not yet visit (`DataSourceBadge` "Estimated" in light, `AgentProductionView` hero avatar in dark). Widening the route list is the natural next increment.
+
+---
+
+## `a11y-contrast` sweep covers two routes — widen it (banked 2026-08-02, v3 P0-D, LOW)
+
+The sweep visits **login** (unauthenticated) and **dashboard** (authenticated), in both themes, measuring default / `:focus-visible` / `:disabled`. First run: **117 elements** — 99 default, **18 `:focus-visible`**, 0 `:disabled`.
+
+**Why `:disabled` measured zero, and why that is not a defect in the sweep.** The swept routes have no *persistently* disabled text control. `LoginScreen.jsx`'s disabled states are transient (`disabled={submitting}`, `disabled={resetLoading}`) and are true only mid-request. The disabled measurement path is **proven working** — the P0-D planted failure was a disabled control and was caught at `[dark/disabled] 2.5:1` — but on the current routes it has nothing real to measure.
+
+**Next increment:** add routes with persistently-disabled controls and with the semantic-tint surfaces where this defect class concentrates (the wizard, manager surfaces, the money card). The existing `a11y-axe-scan.cjs` covers 8 agent pages and `-manager.cjs` covers 9; their page lists are the obvious source. Each added route costs wall-clock on a paths-filtered job, so add deliberately rather than wholesale.
+
+**A second cause of the zero, from the CodeRabbit review on #893 — a better diagnosis than the one above, recorded verbatim because it is the part the P0-D author missed.** The collector keeps only elements with **own text**, and reads `disabled` from `el.matches(':disabled')` on that *same* element. A disabled control whose label sits in a child element therefore fails **both** tests at once: the control itself has no own text, and the text-bearing child does not match `:disabled`. So `<button disabled><span>Save</span></button>` — the ordinary React shape — is invisible to the disabled sweep regardless of which routes are added. Widening routes alone will NOT fix this.
+
+Fix shape: propagate the disabled state from the nearest ancestor (`el.closest(':disabled') !== null`, plus the `aria-disabled` equivalent) rather than testing only the text-bearing node.
+
+**Do NOT pair this with a zero-disabled hard-fail guard until after it lands.** The sweep already hard-fails on zero `:focus-visible`; the symmetrical guard for `:disabled` is deliberately absent because it would **red the job today**, which contradicts the reporting-first mode ruling 14b asked for. Sequence: propagate first, confirm a non-zero disabled count in CI, *then* add the guard.
+
+## `a11y-contrast` sweep runs without the functions emulator — CF-dependent UI is unswept (banked 2026-08-02, v3 P0-D review, LOW)
+
+The console/network capture added in `038478f0` immediately surfaced something the sweep had been hiding: the job runs `firebase emulators:exec --only auth,firestore`, so **`resolveSalesManagerUid` is CORS-blocked** and any UI behind a Cloud Function call never renders into the swept DOM.
+
+```
+[error] Access to fetch at 'https://us-central1-demo-agencytrack.cloudfunctions.net/resolveSalesManagerUid'
+        from origin 'http://127.0.0.1:4173' has been blocked by CORS policy
+```
+
+Environmental, not an app defect — and note the blocked host is **`demo-agencytrack`, not `agencytrack-2a610`**, which is independent confirmation that the emulator-mode build has no production reach.
+
+Two consequences worth separating:
+
+1. **Coverage.** Whatever the CF gates is simply not measured. The sweep's element count is therefore a floor, not a ceiling.
+2. **Legibility.** This was invisible before the capture landed — the sweep reported a clean run over a partially rendered DOM, which is exactly the failure mode the capture convention exists to prevent.
+
+**Next increment:** add `functions` to the `--only` list and the functions build to the job, *or* explicitly stub the CF call in emulator mode. Adding the functions emulator costs a functions build in CI, so weigh it against the route-widening item above — they should probably land together.
+
+**Also seen in the same capture, and benign:** `_vercel/insights/script.js` and `_vercel/speed-insights/script.js` 404 under `vite preview` (Vercel injects them only on Vercel), and `icons.svg` 404s. None affect measurement; recorded so the next reader does not re-diagnose them.
+## `SyncIndicator` shows connectivity, not pending writes — wire it with the first real `commit()` caller (banked 2026-08-02, v3 P0-C ruling 13b, LOW)
+
+[`src/components/ui/SyncIndicator.jsx`](src/components/ui/SyncIndicator.jsx) is a `navigator.onLine` badge and nothing more: it listens for `online`/`offline` window events and renders "Offline". **It cannot tell a user whether their write actually landed** — only whether the browser thinks it has a network.
+
+`src/lib/commit.js` now exposes `isSyncing()`, and the Firestore SDK (firebase `^12.12.1`) exports two candidate APIs, both confirmed present:
+
+- **`waitForPendingWrites(db)`** — resolves when all pending writes have been acknowledged by the backend. Promise-shaped, so it answers "are we settled *now*" rather than driving a live indicator.
+- **`onSnapshotsInSync(db, cb)`** — fires when all snapshot listeners are in a consistent state.
+
+**Why this was NOT built in P0-C** (brief §1 offered it as in-scope-if-simple; it isn't). `onSnapshotsInSync` is **listener-relative**, not a parameterless "is anything pending?" query — it reports consistency across *active listeners*, so wiring it correctly means attaching it where writes are actually issued. Right now that is **nowhere**: `commit()` exists but nothing calls it until P0-F. Building the indicator first would mean choosing an attachment point before there is a caller to attach it to, and guessing wrong is how a status light ends up lying — which is worse than the honest connectivity badge that exists today.
+
+**Do this with the first real `commit()` caller (P0-F `scheduleTask`)**, when there is a concrete write path to observe. At that point decide whether the badge surfaces `isSyncing()` (in-process, immediate, misses SDK-queued writes from a previous session) or a real SDK signal (accurate, but needs a listener attachment point). A badge that reports "synced" while `persistentLocalCache` still holds an unacknowledged write is the failure mode to avoid.
+
+---
+
+## The v3 boundary rule matches import PATHS, not bindings — a re-export evades it (banked 2026-08-02, v3 P0-C, LOW)
+
+`eslint.config.js`'s `no-restricted-imports` rule bans components from importing the named v3 services **by import path**. A component that reached `activityLogService` through a **re-export from some other module** — `export { log } from '../services/activityLogService'` in a barrel or helper, then imported from there — would **not** be caught. ESLint matches the specifier the component writes, not the binding it ultimately resolves to.
+
+**No such re-export exists today** (verified at banking time), and nothing about the current code is wrong. This is recorded so that if one is ever introduced it gets caught **by review** rather than by nothing — the rule's silence would otherwise read as approval.
+
+**If it needs closing later**, the options are an import/no-restricted-paths rule operating on resolved paths, or a lint plugin that follows re-export chains. Neither is worth adding while the answer is "zero occurrences"; the point of this entry is that a future occurrence has somewhere to be checked against.
+
+Same family as the [enforcement-mirror](src/actions/README.md) note: the rule is the machine-checked half of a contract, and knowing precisely what it does *not* check is part of trusting what it does.
+
+---
+
+## Race investigation — why does the awaited condition never arrive? (banked 2026-08-02, v3 P0-E ruling 11c, MEDIUM — own track, NOT started)
+
+**Do not start this without a brief.** It is the successor to the corrected characterisation above, and it is deliberately *not* part of any Phase 0 recon.
+
+**Why it needs its own track:** every brief in the v3 sequence has forbidden touching test files. This investigation **requires** it — the race is inside the component-under-test or its mocks, and it cannot be characterised from the outside. Smuggling that into a config slice is how the last four rounds landed at the wrong layer.
+
+**Starting evidence** is the entry above: p50 130ms / max 703ms; failures at the timeout with normal run wall-clock; the A2 element-not-found cluster at 151–181ms; density correlating with exposure but not sufficient.
+
+**First questions for whoever picks it up:** which awaited condition is absent in each failing case (the DOM node, the mock resolution, or a state update that never commits)? Do the failures share a mock shape — e.g. an unresolved promise from a Firestore stub — rather than a component? Is there an unawaited state update that usually lands before the assertion and occasionally does not?
+
+---
+
 ## CI-vs-local test-timing gap — Tier-0 error-state tests can pass locally 5x, fail in CI (banked 2026-07-16, MEDIUM — test-infra audit)
 
 PR #861 fixed two CI-only failures in `AgentAwardsPanel.test.jsx` (from the Run-6 Tier-0 four-states sweep) that passed locally 5/5 runs before any fix. Two distinct mechanisms, both worth auditing for across the rest of the Tier-0 error-state test population:
@@ -523,7 +733,74 @@ Both fired again locally. Given CI held, the defensible reading is that the reme
 2. **✅ DIAGNOSIS CONFIRMED IN CI, INDEPENDENTLY, HOURS LATER — with a timing smoking gun.** While this branch was in review, a **sibling** PR (`post-run-a/master-sheet-status`, #871 — cut from the same `staging` tip and containing NONE of these fixes) went red in CI on `DailyCaptureV2.test.jsx > daily streak celebration (integration) > "does NOT re-fire when the 5-day milestone marker is already set"`, **failing at 2042ms**. That test is line ~721 — **one of the five `{ timeout: 2000 }` sites this branch fixes**, and 2042ms is the 2000ms cap plus one poll interval. Its PR changed only Master Sheet code the daily-capture suite never loads, so the change cannot be causal. This upgrades the self-narrowing-`waitFor` diagnosis from *reasoned* to *empirically confirmed*, identifies a **fifth** member of the family, and demonstrates the fix on this branch would have prevented it. It also strongly suggests the unidentified local failure in note 3 was this same test.
 3. **⚠ A local full-suite failure was observed on this branch and its identity was lost.** The first post-fix full-suite run reported `1 failed | 5644 passed (5645)` — one failing test whose name was **not captured** (the run's output was filtered before the failure block was read; a procedural mistake, not a tooling limit). Two subsequent full runs of the identical tree were **364/364 files, 5645/5645 green, exit 0**. So the observed rate on this branch is 1 failure in 3 full runs, source unknown. It is NOT one of the four fixed tests' known signatures being re-observed — that cannot be asserted either way without the name. **Whoever next runs a full suite should capture stdout to a file** (`npx vitest run > run.log 2>&1`) so the next occurrence is identifiable and can be added to the enumeration this FU is trying to build. The pattern-2 population should therefore be treated as **≥4, not exactly 4**.
 
----
+**Sixth data point — captured by name, per note 3's instruction (2026-07-30, v3 P0-A baseline run).** The pre-edit baseline for `feat/v3-activity-metadata` (at `origin/staging` `7e2c112b`, before a single edit) ran **371/372 files · 5842/5843 tests**, with one failure: **`MeetingMode.test.jsx > MeetingMode — run-of-show > "ArrowRight advances from opening to the branch scorecard"`** — `Test timed out in 5000ms` at `MeetingMode.test.jsx:124`. Output was captured to a file, so unlike note 3's lost failure this one has a name.
+
+Classification: **pattern 2** (shared-budget exhaustion under parallel-load contention), and a **new file** for the population — `MeetingMode.test.jsx` was not previously enumerated. Evidence: the run's `environment` figure was **3112s** (vs ~2295s on a later, lighter run of the same machine), and the file **passes in isolation in 1.57s of test time**. It did **not** recur on the post-change full run of the same tree (376/376 files, 0 failed). It is a bare 5000ms per-test timeout — vitest's default — not a self-narrowing `waitFor`, so it is the A5-bulk shape rather than the DailyCaptureV2 shape.
+
+**Not fixed, and deliberately not touched** — out of scope for P0-A (which does not load `MeetingMode.jsx`; its only activity-code reference is a display header list at `:296`), and NOT folded into PR #872 per the standing instruction not to widen that PR's scope. Recorded here solely to grow the enumeration. Population is now **≥5 tests across ≥3 files**. It is also a fresh instance of the note-below concern: the failure sat in a slice whose diff cannot touch it, which is precisely why a red CI on this repo still does not cleanly separate regression from noise.
+
+**Seventh data point — ⚠ #872's remedy raised the threshold but did NOT remove the race, now proven in CI (2026-07-30, PR #882).** `DailyCaptureV2.test.jsx > daily streak celebration (integration) > "does NOT re-fire when the 5-day milestone marker is already set"` — the SAME test as note 2's smoking gun — failed CI again, this time at **5007ms**, i.e. against the **5000ms global** `asyncUtilTimeout`, not the old self-narrowed `{ timeout: 2000 }` cap it failed at on #871 (2042ms). The self-narrowing fix therefore landed and worked as designed, and the test still times out; it simply needs more than 5s of wall clock under CI contention.
+
+This **confirms the hypothesis already recorded above** ("the remedies raised the threshold without removing the race — sufficient for CI's contention level, not for a heavier one") and upgrades it from a local-only observation to a CI-proven one, on the single test the FU has the most history for.
+
+Causality is excluded cleanly: the failing run's diff versus the immediately preceding **green** CI run on the same branch was **+14 lines in `src/utils/__tests__/devAssertKnown.test.js`** — a file `DailyCaptureV2.test.jsx` does not import, directly or transitively. **Re-running the failed job with zero code change went green** (`lint-and-build pass 5m19s`), the same proof shape note 2 relies on.
+
+**Eighth data point — adding a test FILE tips the run, and a new member with an assertion-shape failure (2026-07-30, PR #882).** Committing `activityMetadata.contract.test.js` (a new file importing only `activityMetadata`, which nothing below imports) turned CI red on **two unrelated tests**: `AgentPlannerPanel.test.jsx > bulk operations (Run 9 A5) > "undo after a bulk move writes back each doc's PRIOR date"` (timeout, 5027ms — a known A5-pair member, still failing *after* #872 widened it to `it(…, 20000)`, since the 5000ms cap that bites is the inner `waitFor`'s) and `DailyCaptureV2.test.jsx > "stepper \"+\" increments the bound storage key and Save writes it"` — **failing at 167ms with `Unable to find an accessible element with the role "button" and name /FFIs conducted increase/i`**.
+
+That second one is **not** previously enumerated and is **not** pattern 2: an assertion at 167ms is the **A2 mechanism** (query runs before the render it depends on commits), now confirmed in a second file. The population is therefore **two mechanisms, not one**, in `DailyCaptureV2` alone.
+
+This is the **second independent confirmation of the tipping effect** already recorded above ("adding 2 tests to `AgentPlannerPanel.test.jsx` tipped ONE file-level run into failing both an A5 bulk test AND the A2 test") — and it is stronger, because here the added file is *not in the same file, module graph, or feature area* as either failure. Adding **any** test file raises whole-run contention and tips whichever tests are closest to their budget. That is a scheduling property of the run, not a property of the added test, and it is the clearest argument yet for the runner-level remedy over per-test widening. Both failures went green on a re-run with zero code change.
+
+**NINTH data point — a flake on a diff containing NO CODE AT ALL. This removes the last ambiguity about causation (2026-07-31, PR #886).** The `main → staging` sync PR is **docs-only** — `CLAUDE.md` + `docs/`, zero files under `src/`. Its first CI pass failed on `MeetingMode.test.jsx > MeetingMode — run-of-show > "skip-logs the awards scene when nobody is within reach — deck lands on close at index 7"`, **`Test timed out in 5000ms`, measured at 5015ms**. Green on re-run with **zero change**.
+
+Every prior data point still had *some* code or test delta to argue about, however tenuously. This one has none: there is no possible causal path from a Markdown edit to a React-render timeout. **The failure is contention, full stop** — a property of how loaded the runner is, not of what was committed.
+
+Two further details worth keeping:
+- It is the **second distinct test in `MeetingMode.test.jsx`** to fail this way, after `"ArrowRight advances from opening to the branch scorecard"` in the sixth data point (v3 P0-A baseline). That file now has two named members. `"skip-logs the awards scene…"` also appears in the run-2 row of the multi-run table above, so it was already a suspected member — this is its first *named, CI, reproduced-and-cleared* observation.
+- **5015ms against the 5000ms global** is the same signature as the seventh data point (5007ms) and the A5 member in the eighth (5027ms). Three separate tests now cluster within ~30ms of the cap, which is the shape of a budget that is simply too tight under contention rather than three unrelated races. **Reinforces that #872 raised the ceiling without removing the race** — and strengthens the case for the runner-level remedy (`poolOptions` / `maxThreads`, currently absent from `vite.config.js` entirely, so the runner self-sizes to the machine) over a fourth round of per-test widening.
+
+**TENTH data point — ⚠ ESCALATION: a single re-run no longer reliably clears it (2026-07-31, PR #887 — the PR banking the ninth point above).** #887 is also **docs-only** — `CLAUDE.md` + `docs/FOLLOW_UPS.md`, zero files under `src/` — and it went red on CI **twice on the same commit**, failing **different tests each time**:
+
+| Run | Failing test | Time |
+|---|---|---|
+| 1 | `DailyCaptureV2 > "stepper \"+\" increments the bound storage key and Save writes it"` | 181ms — *element not found* (A2 shape) |
+| 1 | `aggregate-on-save (Phase 2.2) > "isolates aggregation failure — the daily log still succeeds"` | **5006ms** |
+| 2 (re-run, zero change) | `aggregate-on-save (Phase 2.2) > "recomputes the weekly draft after a successful daily save"` | **5006ms** |
+
+**A deterministic regression cannot fail different tests on successive runs of the same commit** — the non-determinism is proven by the runs themselves, not inferred. Confirmed locally: `DailyCaptureV2.test.jsx` passes **48/48 in 8.39s** of test time on this exact branch.
+
+Three things this adds:
+
+1. **`aggregate-on-save (Phase 2.2)` is a NEW describe block in the family** — two of its tests, not previously enumerated anywhere.
+2. **The cap cluster is now five observations across four distinct tests:** 5006 · 5006 · 5007 · 5015 · 5027, all against the 5000ms global. Four unrelated races that all happen to land within 27ms of the same threshold is not a credible reading; one budget that is too tight under contention is.
+3. **The mitigation is degrading.** Every prior episode cleared on one re-run. This one did not — which means "re-run and move on" is no longer a reliable workaround, and the cost is now landing on unrelated docs PRs.
+
+The `DailyCaptureV2 > stepper "+"` recurrence (167ms on #882, 181ms here) also confirms the **A2 assertion-shape mechanism** is independent of the timeout mechanism and is *also* contention-driven — two mechanisms, one cause.
+
+**Run 3 on #887 — six distinct tests, ZERO overlap across three runs, and the fact that breaks the workaround.** A third CI pass on the same docs-only PR (commit `8f29230a`) failed on **two more previously-unlisted tests**:
+
+- `daily streak celebration (integration) > "does NOT re-fire when the 5-day milestone marker is already set"` — **5008ms**. This is the **same test as the seventh data point** (#882, 5007ms), recurring across PRs one millisecond apart.
+- `AgentPlannerPanel — week navigation > "navigation is unlimited — three weeks forward keeps stepping"` — **151ms**, A2 element-not-found shape. New member.
+
+**Full tally for #887 — three runs, six distinct tests, no test failing twice:**
+
+| Run | Commit | Failures |
+|---|---|---|
+| 1 | `2fc8520d` | `DailyCaptureV2 > stepper "+"` (181ms, A2) · `aggregate-on-save > "isolates aggregation failure"` (5006ms) |
+| 2 | `2fc8520d` *(re-run, zero change)* | `aggregate-on-save > "recomputes the weekly draft"` (5006ms) |
+| 3 | `8f29230a` | `daily streak > "does NOT re-fire…"` (5008ms) · `AgentPlannerPanel week nav > "navigation is unlimited"` (151ms, A2) |
+
+**THE STRONGEST SINGLE FACT IN THIS ENTRY: run 2 was a re-run of run 1's exact commit, and it failed DIFFERENTLY rather than passing.** Not "failed again" — *failed on a different test*. That is what a contention ceiling looks like when the whole suite sits near it: which test loses is a coin flip, so re-running relocates the failure instead of clearing it. It is also precisely what broke the "re-run and move on" workaround that had absorbed every prior episode.
+
+Cap cluster is now **six observations across five tests** — 5006 · 5006 · 5007 · 5008 · 5015 · 5027 — all against the 5000ms `asyncUtilTimeout` global. The A2 assertion-shape mechanism has **three** — 151 · 167 · 181ms — across three different tests. Two mechanisms, one cause.
+
+Verified locally on `8f29230a`: `DailyCaptureV2.test.jsx` **48/48**, `AgentPlannerPanel.test.jsx` **73/73 on two consecutive runs**. (A single local failure appeared mid-investigation — the `A2 'e' SERIES sibling` already named in this entry — while a full suite was running concurrently, then vanished. Local contention reproduces the same shape, so this is not CI-specific.)
+
+**PR #887 is deliberately HELD as P0-E's acceptance test** (dispatcher ruling, 2026-08-01): docs-only, red three times in a row, sitting at the exact branch point where the problem was last observed. A **first-try green on #887 after the runner fix** is the acceptance evidence — worth more than any asserted number.
+
+**Guard 1 scope note (banked 2026-07-30, PR #882, LOW — recorded, not chased).** The activity-code twin guard (`src/utils/__tests__/activity-code-twin-guard.test.js`) scans **production source only**; `__tests__` is excluded, matching `dark-ink-static-guard.test.js`. Deliberate: test files are full of mock appointment arrays (`[{type:'CI'},{type:'FFI'},{type:'PC'}]`) that are sample data, not classifiers, and are structurally indistinguishable from the real `WEEK_COUNTER_ROWS` twin — so allowlisting them would teach authors that the allowlist is where you go when the guard is annoying, which is how a guard gets tuned to uselessness. **Residual exposure:** a shared test helper or fixture module could host an unseen code twin, and if production ever imported such a helper the guard would not see it. Low risk (test-only blast radius today), recorded so it is not re-derived from scratch.
+
+**Implication for the remedy.** Two rounds of per-test fixes have now each held only until contention rose. That is the third independent signal pointing at the runner-level suggestion already raised above (`maxConcurrency` / pool sizing / `fileParallelism`) rather than a third round of per-test budget widening — this test has now consumed two distinct per-test remedies and failed after both. Whoever picks this up should treat "widen it again to 20s" as the option to argue *against*.
 
 ---
 
@@ -5292,3 +5569,468 @@ after promotion must reconcile **both** the promotion squash **and** the missed 
 **Watch item:** #864 merging without a fill is the same failure mode as the 2026-06-06 Gemini-harvest
 9-PR drift that motivated Rule 16(c). Worth checking at promotion whether anything else landed on `main`
 unfilled in the same window.
+
+---
+
+## Flake register — three provenance corrections + a measured baseline (banked 2026-08-02, PR for `chore/flake-burn-harness`)
+
+Appended at end of file per CLAUDE.md Rule 7(b). Three corrections to claims recorded elsewhere in this file, and one new measurement that overturns a load-bearing inference.
+
+### (a) `CHIP_WAIT` in `CompliancePanel.nudge.test.jsx` — RULED: leave it, deliberately
+
+Two entries in this file both describe `CHIP_WAIT = { timeout: 3000 }` at `CompliancePanel.nudge.test.jsx:59`, and they look contradictory:
+
+- **#563 (`063fff1e`)** raised the global `asyncUtilTimeout` to 5000 **and** pinned this file's chip assertion to 3000, in the same commit, as the flake fix.
+- **The #872 pattern-2 audit** then named that exact line as the one surviving **self-narrowing** site — a `waitFor` capping itself *below* the CI-tuned global.
+
+**Both are true, and they reconcile on one fact from #543's own burn log:** `CHIP_WAIT` was already in place during the 57% chip-missing failures, and the assertion waited its **full 3000 ms** while the chip never appeared. The failure was not a budget shortfall. `CHIP_WAIT` is therefore **inert with respect to the proven mechanism** — it is not a competing fix to it, and #872 naming the shape is correct without implying it caused anything here.
+
+**Ruled: do not change it now.** This file is the only member of the family with a proven fix *and* a documented baseline (0/200 at #543/#563; independently re-confirmed **0/30** on `staging` `2ef1abc5` by `scripts/flake/burn-isolated.ps1`). It is the **control**, and changing its timeout before the experiment destroys the reference point everything else is measured against.
+
+Revisit **after** the race investigation reports, as its own change with its own burn. The `// do not strip` tripwire comments at lines 9, 55 and 75 stay.
+
+### (b) `delay: null` is ZERO on `staging`, not one
+
+Any entry stating that one file still uses `delay: null` is **wrong**. `git grep` on `origin/staging` returns **zero** real occurrences. The mechanism is gone repo-wide.
+
+**How the miscount happened, because it will recur:** the grep matched a *comment asserting the opposite* —
+
+```
+// do not strip (layer b): NO delay:null - lab burn confirmed 57% chip-missing solo rate under delay:null:
+```
+
+A pattern search for a banned construct will match the tripwire comment warning against it. This repo uses `// do not strip:` comments deliberately and they are dense around exactly the code most likely to be grepped for. **When grepping for a construct's absence, exclude comment lines or read every hit** — a raw count is not an occurrence count.
+
+### (c) PR #543 is an unmerged duplicate of merged #563
+
+`#543` (`fix/nudge-flake-stabilization`) is **unmerged and should not be worked**. Its code content is already on `staging` via **#563 (`063fff1e`, merged 2026-06-11)**, which carried the same `delay: null` removal plus the `asyncUtilTimeout` global.
+
+Verified rather than assumed: `CompliancePanel.nudge.test.jsx` is **byte-identical** between `origin/staging` and `pr/543` (`git hash-object` = `072679d3` on both sides). **There is no fix to salvage and no burn to re-run.**
+
+Related: `28968bbf` ("fix(gemini-batch-a): RTL anti-patterns in 13 test files") is likewise already on `staging` and sits in that file's own history — it does not need hunting.
+
+**The one thing #543 did carry uniquely was the burn harness** (`tmp/burn-*.ps1`), which existed nowhere else — `git ls-tree` found nothing matching "burn" on `staging` or `main`. Now ported to `scripts/flake/`.
+
+### (d) NEW MEASUREMENT — `MeetingMode.test.jsx` fails **in isolation**, and this overturns the contention inference
+
+30-iteration isolated burn on `staging` `2ef1abc5`, one machine, nothing else running:
+
+| file | result | shape |
+|---|---|---|
+| `CompliancePanel.nudge.test.jsx` (control) | **0/30** | — |
+| `MeetingMode.test.jsx` | **5/30 (16.7%)** | all `timeout` |
+
+> **⚠ RATE SUPERSEDED 2026-08-11 — do not quote 16.7%.** A second isolated burn on
+> `fix/flake-awaiting-pattern` (`27303333` base, same harness, same machine class) measured
+> **2/90 (2.2%)**. Pooled: **7/120 = 5.8%, Wilson 95% ≈ 2.9–11.6%**. The two windows are
+> **significantly inconsistent** (two-proportion z ≈ 2.9, p ≈ 0.003), so the pooled figure
+> is a summary of two disagreeing samples, **not** an estimate of a stable rate, and the
+> discrepancy is **unexplained** — most likely machine-load sensitivity, which is what a
+> timing-window mechanism would predict but which has not been measured.
+>
+> **The isolation *finding* is unaffected** — the file does fail solo, which is all this
+> entry needed it to do. Only the number is corrected. And the rate is no longer the
+> instrument of record: the mechanism is now directly observable per-iteration, so
+> acceptance is by **trace**, not by rate. See § Flake race — MECHANISM PROVEN.
+
+**Two entries in this file are contradicted by this.**
+
+1. **"Both failing files pass 85/85 in isolation on the same tree"** and the general claim that family members pass solo. `MeetingMode` does **not**. The earlier clean checks — including a `12/12 x3` performed during the P0-D session — are fully consistent with a 16.7% rate: **P(0 failures in 3 runs) = 0.833³ = 0.58.** The isolation result was never evidence of stability; the sample was too small to detect the rate. Sample sizes must be chosen against the rate being detected.
+
+2. **"No failure repeated across runs — the population rotates, which is the signature of a shared environmental contention effect rather than N independent per-test bugs."** The population rotates **inside a burn of one file with nothing else running**:
+
+| failing test | times in 30 |
+|---|---|
+| `run-of-show > agenda rail is shown on the agent scene and jumps when clicked` | 2 |
+| `awards within reach scene > renders an in-reach award card once an agent crosses the 60% floor` | 1 |
+| `run-of-show > skip-logs the awards scene when nobody is within reach` | 1 |
+| `run-of-show > ArrowRight advances from opening to the branch scorecard` | 1 |
+
+Rotation therefore does **not** imply cross-file contention. Here it is **intra-file**, and no other test file participated.
+
+**All four are already-named register members** — `agenda rail` and `skip-logs` from the sixth data point (observed locally, `agenda rail` later CI-confirmed on #894), `awards within reach` from CI on #893, and `ArrowRight` from the #875 "#872's fix set is provably INCOMPLETE" entry. Four members named across three independent sources reproduce in a single seven-minute burn.
+
+**Consequences for the investigation:**
+
+- `MeetingMode` has received **zero** remediation rounds (#861 hit `AgentAwardsPanel`; #872 hit `AgentPlannerPanel` + `DailyCaptureV2`) yet is the most active member on record.
+- A cheap instrument reproduces it: ~7 minutes isolated, versus full-suite burns at minutes per iteration.
+- Runner-level remedies (`pool` / `maxForks` / `fileParallelism`) cannot address an intra-file race. `vite.config.js` still has no `poolOptions` block, and that may still be worth doing — but it is **not** the fix for this file.
+- Whether the rest of the family is also intra-file is **open**. Only `MeetingMode` and the control have been burned. This is one file, one machine, one 30-iteration sample; the 16.7% figure has a wide interval and is not a precise rate.
+
+**Do not act on this yet.** Recorded as the harness PR's evidence. Scoping belongs to the race brief, which owns the register reconciliation as its Phase 0 question 0.
+
+---
+
+## ⚑ Flake race — MECHANISM PROVEN by direct observation (banked 2026-08-11, `fix/flake-awaiting-pattern`, HIGH — supersedes the hypothesis half of the race brief)
+
+**Six rounds of remediation had produced six stories. This is the first one with a trace.**
+
+### The mechanism
+
+A **synchronous `fireEvent.keyDown`** dispatched at a document/window listener whose
+subscription is torn down and re-created as async data lands can be served by the
+**previous commit's handler closure**. That closure holds stale *bounds* — not a stale
+index — so the dispatch is silently absorbed and the state transition the test awaits
+**never happens**. The subsequent `waitFor` then runs its full budget. **Never, not late.**
+
+`MeetingMode.jsx:929-949`: `go` is a `useCallback` over `[total]`, and the transport
+listener re-subscribes on `[go, total]`. Before data lands `model` is `null` → `scenes` is
+`[]` → **`total === 0`**, and `go` clamps to `Math.max(total - 1, 0)` = `0`.
+
+**`setIndex` takes a FUNCTIONAL updater, so the index is never stale — only `total` is.**
+A stale-served dispatch therefore contributes nothing rather than resetting anything, and
+with `k` stale-served dispatches the deck rests at **`target − k`**. That is a quantitative
+prediction, and it is what was measured.
+
+### The evidence — 20+ failing traces, test and component UNCHANGED
+
+Instrumented via `scripts/flake/instrument-keydown-setup.js` + `vitest.instrumented.config.js`
+(a side config CI never loads). Every failing trace, without exception:
+
+| Test | dispatches | target counter | final counter | stale-served `k` |
+|---|---|---|---|---|
+| `ArrowRight advances` | 1 | `02/08` | **`01/08`** | 1 (its only dispatch) |
+| `agenda rail` | 5 | `06/08` | **`05/08`** | 1 |
+| `skip-logs the awards scene` | 7 | `08/08` | **`07/08`** | 1 |
+| `awards in-reach card` | 7 | `08/09` | **`07/09`** | 1 |
+
+`final = target − k` in **every** trace. The healthy control trace (same test, passing) has
+the fresh generation registered *before* dispatch 0, zero stale-served, counter advancing
+monotonically to `08/08`.
+
+**Two competing accounts refuted by the same trace:**
+
+1. **CONTENT-NOT-LOADED** predicts final `08/08` with zero stale-served. Never observed.
+2. **"the data had not loaded yet"** is refuted by the sharpest detail in the trace: at the
+   stale-served dispatch the rendered counter **already reads `01/08`**. The render had
+   committed with `total = 8` while the live handler closure still held `total = 0`.
+   **Rendered state and handler closure disagreeing is the passive-effect flush gap made
+   visible**, and it is the whole defect.
+
+### ⚠ THE ACCEPTANCE TEST IS THE TRACE, NOT THE RATE
+
+At a pooled ~5.8% (Wilson 2.9–11.6%) a rate-based proof needs hundreds of iterations and
+still only yields "no red in N attempts" — an argument from absence, which is the currency
+all five prior rounds traded in. **That is over.** Post-fix the claim is deterministic:
+
+> every dispatch served by the fresh generation · **zero stale-served** · final counter
+> reaches target.
+
+**If even ONE iteration shows a stale-served dispatch the fix is incomplete — regardless of
+whether the assertion passed.** A green assertion with `stale-served: 1` is a masked
+failure, not a fixed one, and masking is precisely how #872's remedy came to be recorded as
+closed while the race survived under it.
+
+### The instrument AMPLIFIES the rate, and that is an asset
+
+≈14% instrumented vs 2.2% uninstrumented on the same branch. **Amplification, not
+contamination** — the traces carry the identical signature (same four tests, same timeout
+shape, same `k = 1`, same `target − k`). Likely cause is that the wrapped handlers and the
+`MutationObserver` widen the commit-to-flush window; **that is provisional and untested.**
+Consequence: verify the fix **under instrumentation**, where the race is easiest to hit,
+not under quiet conditions where it is hardest.
+
+### Falsification (Rule 23)
+
+Overturned by: any failing trace showing final `= target` with zero stale-served (a second
+mechanism); the fix landing with stale-served dispatches still observed; or the same
+instrument showing zero stale-served dispatches on `AgentPlannerPanel` while it still fails.
+
+---
+
+## Flake race — PRODUCTION DEFECT, and the test fix MASKS it (banked 2026-08-11, MEDIUM — own slice, NOT the test slice)
+
+> **⚠ ESCALATED 2026-08-12 (flake Phase 1) — the masking is no longer hypothetical, it has
+> HAPPENED.** Phase 0 recorded that the test fix *would* mask this window. Phase 1 landed
+> that fix (`MeetingMode.test.jsx` ×4 → `userEvent.keyboard`; `AgentPlannerPanel.test.jsx`
+> helpers → explicit flush). **The detector is now gone.** Nothing in the suite currently
+> fails when this window is open, so the only remaining record that it exists is this entry
+> and the traces attached to it. The regression-test obligation below is therefore no
+> longer a nice-to-have — without it the defect is undetectable by any automated means.
+
+**`MeetingMode.jsx:929-949` admits a window in which the committed render and the live
+keydown handler closure disagree about `total`.**
+
+This is a product defect independent of any test. A user pressing `ArrowRight` while the
+deck is still loading has the keypress **silently swallowed** — the handler clamps against
+`total = 0`. Nothing about that requires a test to be present.
+
+### THE FIX — specifiable now that the mechanism is exact
+
+**`go` must not close over `total`.** The defect is a captured value, so the remedy is to
+stop capturing it:
+
+```js
+// MeetingMode.jsx:929-931 — current: `total` is captured in the closure, and the
+// listener that holds it is only replaced on the next passive-effect flush.
+const go = useCallback((dir) => {
+  setIndex((i) => Math.min(Math.max(i + dir, 0), Math.max(total - 1, 0)));
+}, [total]);
+
+// Fix: hold the bound in a ref read INSIDE the updater, so the clamp uses the
+// value as of dispatch rather than as of subscription.
+const totalRef = useRef(total);
+useEffect(() => { totalRef.current = total; }, [total]);
+const go = useCallback((dir) => {
+  setIndex((i) => Math.min(Math.max(i + dir, 0), Math.max(totalRef.current - 1, 0)));
+}, []);           // no longer re-created per `total`, so the listener stops churning
+```
+
+Deriving the clamp from state inside the updater is equally acceptable. Either **closes**
+the window rather than out-waiting it, and both also stop the keydown effect
+re-subscribing on every `total` change — which removes the churn as well as the staleness.
+
+**The regression test then becomes trivial:** assert the handler's view of `total` matches
+the committed render — i.e. dispatch during the load gap and assert the index advances.
+With the ref there is no gap to hit, so the test is deterministic rather than statistical.
+
+### ⚠ The obligation, stated plainly so it is not lost
+
+The Phase 1 test fix (`await userEvent.keyboard`) **masks this window; it does not close
+it.** It works by flushing pending passive effects before dispatch, which means it removes
+**the only thing currently detecting the defect.**
+
+**The slice that owns the component fix MUST add a DELIBERATE regression test for the
+stale-`total` window** — one that dispatches during the load gap on purpose and asserts the
+handler sees the *current* `total`. That regression test is essentially the instrument
+already written (`scripts/flake/instrument-keydown-setup.js`): assert the serving
+generation is the fresh one.
+
+Without it we will have deleted the detector and kept the bug.
+
+**Do NOT bundle this with the test fix.** Changing both at once destroys attribution — if
+the rate goes to zero nobody can say which did it. That is exactly the error that produced
+#563's confounded `delay: null` + `CHIP_WAIT` bundle, which cost two later sessions to
+untangle.
+
+---
+
+## Flake register — corrections from the Phase 0 investigation (banked 2026-08-11)
+
+- **STRIKE `DailyEntryModal.test.jsx` — the file DOES NOT EXIST.** Deleted 2026-07-08 in
+  `214ea26c` ("tier-0.6 delete unwired onboarding steps + DailyEntryModal ruling"). It is
+  named as a live member by both `28968bbf` and the #543 50× burn. Nobody should hunt it
+  again.
+- **`aggregate-on-save (Phase 2.2)` is a describe block INSIDE `DailyCaptureV2.test.jsx`**
+  (`:594`, `:607`), not a separate file. The tenth data point reads as though it were a
+  fourth file.
+- **⚠ The two-family claim is DOWNGRADED, not strengthened.** Only family B (the keydown
+  race) is proven. `DailyCaptureV2`'s stepper — the bare-query PROXY member — burned
+  **0/30**: its 167/181ms failures are **CI history, not local reproduction**, so that
+  family has **no path to mutation verification by the method built here**. It remains a
+  real observed failure of a different shape; it is **not** a confirmed second mechanism.
+- **⚠ The nine 0/30 files are NOT clean.** Wilson 95% upper bound on 0/30 is **≈11.4%** —
+  each could be flaking at up to one run in nine and this burn would look identical. Record
+  them as **"no local reproduction at n=30"**, never as fixed, cleared or unaffected. No fix
+  is proposed for any of them, because there is nothing to verify one against.
+
+---
+
+## Burn-freeze applies to EVERYTHING the runner re-reads per iteration, not just checkouts (banked 2026-08-11, generalises the #895 / #543 rule)
+
+`scripts/flake/burn-isolated.ps1` carries a WORKTREE RULE from #543, whose first ~200
+iteration attempt was discarded because a mid-burn checkout silently ran iterations against
+a different tree. **The rule is stated in terms of checkouts. That is too narrow.**
+
+The invariant is: **every input the test runner re-reads on each iteration must be frozen
+for the duration of the burn.** `npx vitest run` re-reads the config, every setup file,
+every test file and every source file on *every* iteration. So a burn is invalidated
+identically by:
+
+- a checkout / rebase / stash-pop / branch switch (the #543 case), **or**
+- editing a **setup file** or **vitest config** the run loads — e.g.
+  `scripts/flake/instrument-keydown-setup.js` or
+  `scripts/flake/vitest.instrumented.config.js`, **or**
+- editing the test file or any source module in its import graph.
+
+**All of these fail the same way: silently.** Iterations before and after the edit are
+pooled into one number, no error is raised, and the result looks exactly like a clean burn.
+A config edit loses 200 iterations as thoroughly as a checkout does and is harder to notice
+afterwards, because `git status` shows a modified file rather than a moved HEAD.
+
+**Practical rule:** while a burn is running, edit **only** documentation. If an instrument
+change is needed, let the burn finish or kill it — never edit under it and never reason that
+"the change is small". Observed and honoured during the Phase 0 investigation: the
+`AgentPlannerPanel` probe was written but held unapplied until the `MeetingMode` burn
+completed, precisely to avoid pooling two instrument versions into one rate.
+
+---
+
+## ⚑ Flake register — a member found by the PREDICATE, not by a failure (banked 2026-08-12, `fix/flake-dispatch-await`, Phase 1)
+
+**`MeetingMode.test.jsx` — "Tab from the last focusable element cycles back to the first
+(focus trap)" is a member of the stale-keydown-closure family. It has never failed, and it
+was never going to.**
+
+**Provenance is what makes this entry different from every other one in the register.**
+Every prior member arrived via an observed red — CI, a local run, or a burn. This one was
+found by a *predicate* applied uniformly to a passing suite:
+
+```
+staleServed  <=>  servingGeneration.total  !=  counterBefore.total
+```
+
+**6 of 150 instrumented iterations, with `testFailures = 0`.** Trace, verbatim:
+
+```
+test: Tab from the last focusable element cycles back to the first (focus trap)
+  #1 key=Tab counterBefore=01/08 servedBy=[gen1@document, gen1@window]
+  STALE-SERVED dispatches: 1 of 1
+    #1: win-gen1 captured total=0 vs committed 8
+```
+
+It `await renderLoaded()`s and then dispatches synchronously — the identical shape as the
+four fixed members. It has never *flaked* only because the transport handler ignores `Tab`
+(it branches on ArrowRight/ArrowLeft/Home/End/digits), so the stale dispatch is
+inconsequential **to what this test asserts**. A latent member, not a benign one.
+
+**Why this matters more than one extra fix:** a rate-based gate reported this tree
+150/150 clean. The defect was invisible to every instrument the register has used for six
+rounds, and visible immediately to one that measures the mechanism instead of the outcome.
+
+**It was also a self-inflicted near-miss worth recording.** The first Phase 1 draft
+*excluded* the Escape and Tab tests from the stale counter by name, on the correct
+reasoning that they legitimately run before data loads. The reasoning was right and the
+remedy was wrong: a hand-picked exclusion list is where the next member hides. Replacing
+the proxy ("served by gen1") with the predicate above made Escape fall out on its own —
+`counterBefore=00/00` agrees with a generation registered at `total=0` — while Tab, which
+does await the load, was correctly flagged. **`Escape` is deliberately NOT fixed**: it
+needs nothing, and if someone later makes it await the load the predicate will catch it,
+which is the property the exclusion list would have destroyed.
+
+**Remedy:** `await flushPendingEffects()` before the existing `fireEvent`, NOT
+`userEvent.keyboard('{Tab}')` — userEvent performs real tab navigation and would move
+focus itself, which would stop the test exercising the focus trap at all. See CLAUDE.md
+§ Choosing between `userEvent` and `fireEvent`.
+
+**Falsification:** overturned if the predicate flags a dispatch whose serving generation
+demonstrably held the committed `total` (a false positive in the registration-counter
+reading), or if a member is found whose serving generation agrees on `total` yet still
+bails.
+
+---
+
+## Flake instrument — one dispatch served by TWO generations: artifact or defect? ONE measurement decides (banked 2026-08-14, PR #899, MEDIUM — test-infra)
+
+**Do not restart this from "something odd in the traces". The discriminator is written down
+below and it is a single measurement.**
+
+`AgentPlannerPanel.test.jsx` traces show a single keydown dispatch served by **two**
+document generations — e.g. `servedBy=[gen7@document, gen8@document]`, `serving=[8, 9]`. It
+appears on the `ctrlZ` undo members and was still present after the FIFO wrapper fix in
+#898, so it is **not** the single-entry `wrappedFor` bug that PR corrected.
+
+**Two live handlers on one target means exactly one of:**
+
+1. **A real leaked listener in the component** — an effect cleanup that did not run, so an
+   old `document.addEventListener('keydown', …)` from a previous
+   `AgentPlannerPanel.jsx:1330` subscription is still attached. That is a production defect
+   with a memory and double-handling cost, independent of any test.
+2. **Residual instrument bookkeeping** — the FIFO queue in
+   `scripts/flake/instrument-keydown-setup.js` mis-pairing an add with a remove, so the
+   instrument reports two live wrappers where the component has one.
+
+**THE TEST — one measurement, no ambiguity:** count `document` keydown listeners on the
+**UNWRAPPED** component, with the instrument disabled entirely (`FLAKE_INSTRUMENT` unset).
+Use a plain counting shim around `document.addEventListener`/`removeEventListener`
+installed by the test itself, render `AgentPlannerPanel`, let the appointment data land,
+and assert the net count. **>1 ⇒ defect (1). Exactly 1 ⇒ artifact (2).** Nothing else needs
+deciding first.
+
+**Why it was not resolved in #899:** the two `undo` members are fixed by the same
+`flushPendingEffects()` remedy as everything else, and the acceptance gate reads clean
+(0 stale-served across 4350 trace rows), so nothing was blocked. But they were never
+*independently characterised*, and this is the loose end. PR #899's counter fix now reports
+stale **server-invocations** separately from stale **dispatches**, so the divergence between
+those two numbers is the standing signal for this.
+
+**Falsification:** overturned if the unwrapped count is 1 and the instrument still reports
+two serving generations (⇒ artifact, fix the instrument), or if it is >1 and the extra
+listener is traced to a mount that legitimately owns its own subscription.
+
+---
+
+## Rule 21 — a green tick that means "we did not look" (banked 2026-08-14, PR #899)
+
+**Recorded because a rate-limited reviewer and a clean reviewer render identically in the
+checks UI, and they are not the same thing.**
+
+On PR #899, CodeRabbit reviewed the first HEAD (1 actionable finding, IMPLEMENT — the
+per-server vs per-dispatch stale counter) but returned **rate limited** on the FINAL HEAD.
+The fix for its own finding — **+11/−1 in
+`scripts/flake/instrument-keydown-setup.js`** — therefore merged
+**unreviewed-because-rate-limited**, not reviewed-and-clean. Gemini was absent throughout
+(structural: sunset 2026-07-17).
+
+**The check row read `CodeRabbit  pass  Review rate limited`.** A reviewer that declined to
+look reports the same green as one that looked and found nothing.
+
+**Practice:** when disposition-tabling a PR, state the reviewer's status **per HEAD**, not
+per PR, and say explicitly when the final HEAD went unreviewed. This is the third
+consecutive cycle CodeRabbit has rate-limited (see § External code reviewer, HIGH) — it is
+the standing coverage gap, not an incident.
+
+---
+
+## `enforce_admins: false` on `main` — the required checks are advisory on the direct-push path (banked 2026-08-16, promotion-prep governance PR, HIGH — repo governance / CI)
+
+**Observed, not inferred.** Landing a brief directly to `main` on 2026-08-16 produced:
+
+``
+remote: Bypassed rule violations for refs/heads/main:
+remote: - 2 of 2 required status checks are expected.
+   f36430db..93728513  main -> main
+``
+
+The push succeeded. Both required checks were pending and neither gated it.
+
+**The actual protection state**, from `gh api repos/Kelsean868/agencytrack/branches/main/protection`:
+
+| Setting | Value |
+|---|---|
+| `required_status_checks.contexts` | `lint-and-build`, `functions-tests` |
+| `required_status_checks.strict` | `false` |
+| `enforce_admins` | **`false`** |
+| `required_pull_request_reviews` | absent (no review gate) |
+| `allow_force_pushes` / `allow_deletions` | `false` / `false` |
+| `staging` protection | **none** — the API returns 404 |
+
+So `main` is protected in the sense that force-push and deletion are blocked, and unprotected in the sense that the checks it requires can be skipped by the one account that pushes to it. This is the mechanism behind the Track J observation that merges landed while CI was still in progress — the platform was never gating admins.
+
+**Why it is worth a decision rather than a shrug.** The direct-push path is not rare here: brief landings (`/land-and-dispatch`), Rule 16 post-merge fills, and `.claude/commands/` changes all commit straight to `main` by design. Every one of those bypasses. Combined with § *The flake family is ~10 members and #899 fixed TWO*, `main`'s gate is currently both **bypassable** and **unreliable when it does run**.
+
+**The trade, stated plainly so it can be decided rather than drifted into:**
+
+- **Turn it on** (`enforce_admins: true`): the bypass disappears for everyone including Kyron. Cost is roughly 5 minutes of CI per dispatch, because brief landings and fills would have to become PRs — which is exactly what the propagation-direction rule already predicts for `CLAUDE.md` edits, and arguably an improvement for governance files.
+- **Leave it off**: the direct-push path stays fast, and the required checks remain honest only on the PR path. If this is the choice, it should be a recorded decision rather than an unexamined default, because CLAUDE.md now states the posture explicitly.
+
+**Do NOT change the setting.** This is a repo-administration change and a dispatcher/operator action (Rule 19). CC banked the finding; the ruling is Kyron's.
+
+**Falsification (Rule 23).** Overturned if `gh api .../branches/main/protection` returns `enforce_admins.enabled: true`, or if a direct push to `main` is rejected pending checks. Either would mean the bypass path is closed and this FU should be marked RESOLVED with the observed evidence replaced.
+
+---
+
+## The flake family is ~10 members and #899 fixed TWO — `staging`'s gate is better, not fixed (banked 2026-08-16, PR #907, HIGH — CI / process)
+
+**This corrects a framing the dispatcher and I were both using, and which `main`'s own FU states outright.** `main` carries § *The #899 flake fix lives on `staging` ONLY* (banked 2026-08-16, PR #906 session), which reads as though promoting it repairs `main`'s unit-test gate. That FU is **not** on `staging` — it arrives here at the next promotion — so this entry is written to stand beside it rather than edit it, and to be read together with it.
+
+**The corrected statement, verified rather than asserted:**
+
+- **The flake register names ~10 distinct tests** across its three roster blocks (§ *Flake family scope*'s numbered roster of 7 named + 1 explicitly unnamed, plus 3 more in the table above it; the blocks overlap, so the exact dedup count is a judgement, not a fact). It is a large family.
+- **#899 (`90a7718b`) changed exactly TWO test files** — `src/components/manager/__tests__/MeetingMode.test.jsx` and `src/components/planner/__tests__/AgentPlannerPanel.test.jsx` — plus the new `src/test-utils/flushPendingEffects.js` helper. Verified with `git show --stat 90a7718b`.
+- **The remaining members were explicitly left unruled**, having no local reproduction. That was a deliberate, recorded decision, not an oversight.
+
+**So `staging` is better by two files. It is not fixed.**
+
+**Evidence, from the PR that banked this.** #907 is cut from `staging` — which *has* `flushPendingEffects.js` — and is a **docs-only diff, 13 files, zero `src/`**. Its first `lint-and-build` still went red:
+
+``
+TestingLibraryElementError: Unable to find an element with the text: South Branch
+  at src/components/admin/__tests__/BranchesPanel.test.jsx:133:19
+``
+
+The dumped DOM still showed `animate-pulse` skeletons — the assertion ran against the loading commit. Re-run: **PASS (5m16s)**. Intermittent, not deterministic. `BranchesPanel` is member 7 of the numbered roster and one of the members #899 did not touch.
+
+**Consequence for the promotion's acceptance check.** `git ls-tree origin/main -- src/test-utils/flushPendingEffects.js` returning a blob proves **the fix ARRIVED**. It does **not** prove `main`'s gate is clean. After promotion `main` inherits a gate that is better by two files and still intermittent — expect occasional reds on inert diffs, and re-run to separate flake from regression until the remaining members are ruled.
+
+**Falsification (Rule 23).** Overturned if a member outside #899's two files is shown to have been fixed by it, or if the register's roster is shown to name substantially fewer than ten distinct tests after a proper dedup. **Not** overturned by an intermittent red after promotion — that is the untouched remainder, tracked in § *Flake family scope*, not a failure of the promotion.

@@ -5,6 +5,8 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { flushPendingEffects } from '../../../test-utils/flushPendingEffects';
 
 const hoisted = vi.hoisted(() => ({
   authValue: { tenantId: 't1', role: 'branch_manager', branchId: 'b1', userProfile: { branchId: 'b1' } },
@@ -92,6 +94,18 @@ describe('MeetingMode — dialog a11y (preserved 0.2 contract)', () => {
     const last = focusable[focusable.length - 1];
     last.focus();
     expect(document.activeElement).toBe(last);
+    // SEVENTH MEMBER — found by the staleness predicate, not by a failure. This test
+    // awaits the load and then dispatches synchronously, so it lands in the same
+    // stale window as the four below: 6/150 iterations showed `win-gen1 captured
+    // total=0 vs committed 8`. It has never FLAKED only because the transport handler
+    // ignores 'Tab' (it branches on ArrowRight/ArrowLeft/Home/End/digits), so the
+    // stale dispatch is inconsequential to what this test asserts.
+    //
+    // It takes the flush rather than `userEvent.keyboard('{Tab}')` because userEvent
+    // performs real tab navigation and would move focus itself — which would stop this
+    // test exercising the component's focus trap at all. Two idioms in this file is the
+    // CLAUDE.md rule applied correctly, not an inconsistency: please do not "tidy" it.
+    await flushPendingEffects();
     fireEvent.keyDown(document, { key: 'Tab' });
     expect(document.activeElement).toBe(first);
   });
@@ -121,9 +135,23 @@ describe('MeetingMode — run-of-show', () => {
     expect(screen.getAllByText(/Week of/).length).toBeGreaterThan(0);
   });
 
+  // FLAKE FIX — stale keydown-handler closure, PROVEN by trace (PR #898, Phase 0).
+  // `go` is a useCallback over [total] (MeetingMode.jsx:929-931) and the transport
+  // listener re-subscribes on [go, total] (:936-949). Before data lands `model` is
+  // null -> scenes [] -> total 0, so that handler clamps every advance to 0. A
+  // SYNCHRONOUS `fireEvent.keyDown` arriving before the passive effect flushes is
+  // served by it: 33/33 failing traces showed exactly one stale-served dispatch and
+  // the deck resting at `target - 1`. The element then never arrives, which is why
+  // no timeout change ever helped.
+  //
+  // `userEvent.keyboard` is async and act-wrapped, so the pending effect flushes
+  // before the key is dispatched. These four tests model a USER driving the deck,
+  // so its activeElement targeting is faithful rather than incidental — the key
+  // still reaches the window listener by bubbling. (Contrast AgentPlannerPanel's
+  // helpers, which dispatch at `document` on purpose; see the note there.)
   it('ArrowRight advances from opening to the branch scorecard', async () => {
     await renderLoaded();
-    fireEvent.keyDown(document, { key: 'ArrowRight' });
+    await userEvent.keyboard('{ArrowRight}');
     await waitFor(() => expect(screen.getByText(/Where the branch stands/)).toBeInTheDocument());
   });
 
@@ -140,7 +168,7 @@ describe('MeetingMode — run-of-show', () => {
     // shows on the agent scene. Deck: opening, branch, activity, production,
     // funnel, agent, recognition, close (units/exceptions/celebrations/awards/
     // campaign skip — no data).
-    for (let i = 0; i < 5; i += 1) fireEvent.keyDown(document, { key: 'ArrowRight' });
+    for (let i = 0; i < 5; i += 1) await userEvent.keyboard('{ArrowRight}');
     await waitFor(() => expect(screen.getByText(/This week's activity/i)).toBeInTheDocument());
     // The rail lists every scene; clicking "Branch scorecard" jumps back to it.
     fireEvent.click(screen.getByRole('button', { name: 'Branch scorecard' }));
@@ -152,7 +180,7 @@ describe('MeetingMode — run-of-show', () => {
     // Default fixture's YTD is the same tiny (apiSold=24000) week used for
     // `submissions` — nowhere near any award's in-contention floor, so
     // deriveDeck skips 'awards' and close is the 8th (index-7) scene.
-    for (let i = 0; i < 7; i += 1) fireEvent.keyDown(document, { key: 'ArrowRight' });
+    for (let i = 0; i < 7; i += 1) await userEvent.keyboard('{ArrowRight}');
     await waitFor(() => expect(screen.getByText(/That's the room/)).toBeInTheDocument());
   });
 });
@@ -174,7 +202,7 @@ describe('MeetingMode — awards within reach scene', () => {
     await waitFor(() => expect(screen.getByText(/Good morning, team/)).toBeInTheDocument());
     // opening(0) branch(1) activity(2) production(3) funnel(4) agent(5)
     // recognition(6) awards(7).
-    for (let i = 0; i < 7; i += 1) fireEvent.keyDown(document, { key: 'ArrowRight' });
+    for (let i = 0; i < 7; i += 1) await userEvent.keyboard('{ArrowRight}');
     await waitFor(() => expect(screen.getByTestId('awards-within-reach-scene')).toBeInTheDocument());
     expect(screen.getByText('MDRT')).toBeInTheDocument();
     expect(screen.getByText('Alice Agent')).toBeInTheDocument();

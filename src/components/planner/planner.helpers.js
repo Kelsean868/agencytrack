@@ -7,23 +7,19 @@
  * and the plan→daily-capture seed mapping (screen 9 payoff).
  */
 
-import { getSundayOf } from '../../lib/schema/dailyActivity';
+import { buildWeekDates } from '../../lib/schema/dailyActivity';
+import { ACTIVITY_METADATA, LIVE_CODES } from '../../constants/activityMetadata';
+import { RETIRED_STATUSES, COMPLETED_STATUSES } from '../../constants/appointmentStatus';
 
 // ── Week / day math ──────────────────────────────────────────────────────────
 
-/** The 7 'YYYY-MM-DD' dates Sun→Sat for the week containing `dateStr`. */
-export function buildWeekDates(dateStr) {
-  const sunday = getSundayOf(dateStr);
-  const base = new Date(sunday + 'T12:00:00Z');
-  return Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(base);
-    d.setUTCDate(d.getUTCDate() + i);
-    const yyyy = d.getUTCFullYear();
-    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const dd = String(d.getUTCDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  });
-}
+// `buildWeekDates` now lives in `src/lib/schema/dailyActivity`, co-located with
+// `getSundayOf` — its only dependency — so `src/lib/` consumers (the activity
+// ledger among them) can use it without importing from `src/components/`.
+// Re-exported here so every existing consumer, `weekRange` below, and the
+// planner tests are untouched. Two implementations of "the seven days of a week"
+// would be a twin, and week-boundary arithmetic drifts silently.
+export { buildWeekDates };
 
 /** { start, end } Sunday..Saturday for the week containing `dateStr`. */
 export function weekRange(dateStr) {
@@ -163,10 +159,12 @@ export function computeDayGaps(dayAppts = []) {
   return zones;
 }
 
-// Statuses that RETAIN a slot but read as "no longer active" (dimmed/struck).
-export const RETIRED_STATUSES = new Set(['cancelled', 'postponed']);
-// Statuses that count as the plan being carried out.
-export const COMPLETED_STATUSES = new Set(['kept', 'done']);
+// Status sets now derive from the `src/constants/appointmentStatus` leaf, so the
+// contract enum, these sets and the activity ledger's evidence predicate cannot
+// drift apart. Names and membership are unchanged.
+// Imported (not bare-re-exported) because both are used locally below —
+// `export { x } from '…'` would not bind them in this module's scope.
+export { RETIRED_STATUSES, COMPLETED_STATUSES };
 
 /** 'HH:mm' → minutes-of-day (0–1439), or null on malformed input. */
 function minutesOfDay(hhmm) {
@@ -427,14 +425,17 @@ export function appointmentIsActive(appt, today) {
  * is handled separately (apps + API). FREE contributes no activity/production
  * count. The agent confirms/edits in Daily Capture, so an approximate seed is a
  * head-start, never an authoritative write.
+ *
+ * Derived from each code's `seedsDailyField`; a code that seeds nothing carries
+ * `null` there and is absent here.
  */
-export const PLAN_TO_DAILY_FIELD = {
-  PC:  'dials',
-  SC:  'telContacts',
-  AI:  'qualifiedApproaches',
-  FFI: 'ffiConducted',
-  CI:  'ciConducted',
-};
+export const PLAN_TO_DAILY_FIELD = Object.freeze(
+  Object.fromEntries(
+    LIVE_CODES
+      .filter((code) => ACTIVITY_METADATA[code].seedsDailyField !== null)
+      .map((code) => [code, ACTIVITY_METADATA[code].seedsDailyField]),
+  ),
+);
 
 /**
  * The types a kept appointment can actually CARRY into Daily Capture: the
@@ -442,14 +443,15 @@ export const PLAN_TO_DAILY_FIELD = {
  * Derived from PLAN_TO_DAILY_FIELD rather than restated, so adding a mapping
  * can never leave this stale.
  *
- * Deliberately NOT imported from plannerService's `SELLING_TYPE_KEYS`, for two
- * reasons. (1) Import graph: `plannerService` imports `recurrence.helpers`,
- * which imports THIS module — importing plannerService here would close a
- * three-module cycle that does not exist today. (2) Semantics: the two sets
- * answer different questions. `SELLING_TYPE_KEYS` is "does it count as selling
- * activity" (it includes SEM/TRADE); this is "does it seed a Daily Capture
- * field" (it does not — a kept seminar carries nothing). The CTA this figure
- * labels is specifically about carrying, so the narrower set is the honest one.
+ * Still deliberately NOT `SELLING_TYPE_KEYS`. The import-cycle reason is gone —
+ * both now derive from the leaf table `activityMetadata`, which imports nothing
+ * from services or components, so the `plannerService` → `recurrence.helpers` →
+ * this module cycle is dissolved rather than closed. The SEMANTIC reason stands
+ * and is the real one: the two sets answer different questions.
+ * `SELLING_TYPE_KEYS` is "does it count as selling activity" (it includes
+ * SEM/TRADE); this is "does it seed a Daily Capture field" (it does not — a kept
+ * seminar carries nothing). The CTA this figure labels is specifically about
+ * carrying, so the narrower set is the honest one.
  */
 const SEEDS_DAILY_CAPTURE = new Set([...Object.keys(PLAN_TO_DAILY_FIELD), 'SALE']);
 

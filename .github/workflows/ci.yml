@@ -47,3 +47,141 @@ jobs:
       - name: Run functions tests
         working-directory: functions
         run: npm test
+
+  # ── Contrast sweep — REPORTING MODE, deliberately non-blocking ──────────────
+  #
+  # The job NAME states the mode on purpose. A gate that is quietly non-blocking
+  # is worse than no gate; one that says so in its own name is honest. Flip to
+  # blocking (drop `continue-on-error` and pass `--blocking`) once the
+  # pre-existing failures this sweep enumerates are cleared — see the follow-up
+  # in docs/FOLLOW_UPS.md. Rename the job in the same commit.
+  #
+  # SEPARATE JOB, not folded into lint-and-build: Playwright + emulator is a new
+  # flake surface, and the pipeline already runs ~37% red (measured — see
+  # FOLLOW_UPS § Measured failure rate). Isolating it means its flakiness never
+  # blocks a merge that has nothing to do with styling, and a red here is
+  # diagnosable on its own.
+  #
+  # PATHS-FILTERED: the sweep guards styling, so it runs when styling changes.
+  # Principled rather than merely cheap, and it keeps the cost off every
+  # unrelated PR.
+  #
+  # AUTHENTICATION IS THE EMULATOR, NEVER PRODUCTION. A fully synthetic seeded
+  # user through the real firestore.rules; no real credential and no production
+  # tenant. Vercel previews are bound to PRODUCTION Firebase (CLAUDE.md
+  # § Workflow), so that path is closed to CI by design.
+  a11y-contrast-reporting:
+    name: a11y-contrast (reporting)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Skip unless styling-relevant paths changed
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            styling:
+              - 'src/**/*.jsx'
+              - 'src/index.css'
+              - 'tailwind.config.js'
+              - 'docs/design-system/tokens/**'
+              - 'scripts/verification/a11y-contrast-sweep.mjs'
+              - 'src/utils/contrast.js'
+
+      - uses: actions/setup-node@v6
+        if: steps.filter.outputs.styling == 'true'
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.filter.outputs.styling == 'true'
+        run: npm ci
+
+      # REQUIRED, not incidental. `lib/emulator-seed.cjs` seeds the synthetic
+      # user via the Admin SDK, and `firebase-admin` is installed ONLY in
+      # functions/node_modules — the documented repo convention (CLAUDE.md
+      # § Admin-script firebase-admin require path; adding it at the root is
+      # deliberately avoided because Cloud Functions packaging is the canonical
+      # install path). Without this step the sweep dies at MODULE_NOT_FOUND
+      # before it opens a browser. Caught by running the job locally first.
+      - name: Install functions dependencies (firebase-admin for the seeder)
+        if: steps.filter.outputs.styling == 'true'
+        working-directory: functions
+        run: npm ci
+
+      # REQUIRED — the Firestore emulator is a Java process, and firebase-tools
+      # refuses to start it on a JDK below 21. `ubuntu-latest` ships an older
+      # default JDK, so WITHOUT this step the emulator never starts and the sweep
+      # never runs. Found the hard way: the first CI run reported the job green
+      # while the sweep had actually died at
+      #   "firebase-tools no longer supports Java version before 21"
+      # It passed locally because this developer machine happens to have JDK 21.
+      - name: Set up JDK 21 (Firestore emulator runtime)
+        if: steps.filter.outputs.styling == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # PINNED and JOB-LOCAL, not a root devDependency. At the root this ~100MB
+      # package would enter every `npm ci` — including lint-and-build and
+      # functions-tests, which will never use it. Job-local with an exact version
+      # gets reproducibility without taxing unrelated jobs.
+      # ⚠ Do NOT "clean this up" into package.json. That is the tax this avoids.
+      - name: Install firebase-tools (pinned)
+        if: steps.filter.outputs.styling == 'true'
+        run: npm i -g firebase-tools@15.16.0
+
+      - name: Install Playwright chromium
+        if: steps.filter.outputs.styling == 'true'
+        run: npx playwright install --with-deps chromium
+
+      # Emulator mode is a build-time flag (src/firebase.js gates
+      # connectAuthEmulator/connectFirestoreEmulator on VITE_USE_FIREBASE_EMULATOR),
+      # so the app must be BUILT for the emulator, not merely pointed at it.
+      - name: Build app in emulator mode
+        if: steps.filter.outputs.styling == 'true'
+        run: npm run build -- --mode emulator
+
+      - name: Serve the built app
+        if: steps.filter.outputs.styling == 'true'
+        run: npx vite preview --port 4173 --host 127.0.0.1 &
+
+      # ⚠ DELIBERATELY NO `continue-on-error`. Reporting mode is implemented in
+      # the SCRIPT, not the workflow: the sweep exits 0 when it finds contrast
+      # failures (unless `--blocking`), so pre-existing failures do not fail the
+      # job — which is the whole point of 14b. It exits NON-zero only when
+      # something is genuinely broken: the emulator did not start, the app did
+      # not serve, or zero :focus-visible elements were measured.
+      #
+      # `continue-on-error: true` was here on the first attempt and it MASKED
+      # exactly that: the sweep died on the JDK version, the step reported
+      # success, and the job went green having never run the sweep. A gate that
+      # is quietly non-blocking is bad; one that quietly never RUNS is worse, and
+      # it looks identical from the checks list.
+      #
+      # If this job ever needs to tolerate an infrastructure failure, fix the
+      # infrastructure — do not re-add this flag.
+      - name: Contrast sweep (both themes, incl. :focus-visible and :disabled)
+        if: steps.filter.outputs.styling == 'true'
+        env:
+          A11Y_BASE_URL: http://127.0.0.1:4173
+        run: |
+          firebase emulators:exec \
+            --only auth,firestore \
+            --project=demo-agencytrack \
+            "npm run a11y:contrast"
+
+      # `always()` — the report is MOST useful when the sweep failed, and without
+      # this a failing step would skip the upload and take the diagnosis with it.
+      - name: Upload sweep report
+        if: always() && steps.filter.outputs.styling == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-contrast-report
+          path: verification/a11y/contrast_*.json
+          if-no-files-found: warn

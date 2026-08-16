@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { contrastRatio, relativeLuminance, composite, toRgb, passesAA, glassPair, heroPair, heroPairDeep } from '../contrast';
+import { contrastRatio, relativeLuminance, composite, toRgb, passesAA, glassPair, heroPair, heroPairDeep, isLargeText, requiredRatio, AA_NORMAL, AA_LARGE } from '../contrast';
 
 // Channel values MUST match src/index.css. The status-ink tokens are proven here:
 // every (ink, background) pair ≥ 4.5:1 against the raw surfaces AND the /10 and
@@ -360,4 +360,55 @@ describe('heroPair — S3 AwardDonut strokeOverride graphical strokes ≥3:1 on 
       expect(contrastRatio(HERO_INKS['hero-accent'], bg)).toBeGreaterThanOrEqual(3.0);
     });
   }
+});
+
+// The WCAG large-text boundary decides which threshold every sample in
+// a11y-contrast-sweep.mjs is scored against, so an off-by-one here silently
+// scores normal text at 3.0 and passes real failures. Boundaries are asserted
+// on BOTH sides, and the inputs are strings because getComputedStyle returns
+// strings ("18.66px", "700") — the sweep passes them through unparsed.
+describe('isLargeText / requiredRatio — the WCAG large-text boundary', () => {
+  test('AA constants are the WCAG 2.1 AA minima', () => {
+    expect(AA_NORMAL).toBe(4.5);
+    expect(AA_LARGE).toBe(3.0);
+  });
+
+  test.each([
+    ['24px', '400', true, 'exactly 24px at normal weight is large'],
+    ['23.9px', '400', false, 'just under 24px at normal weight is NOT large'],
+    ['18.66px', '700', true, 'exactly 18.66px bold is large'],
+    ['18.66px', '400', false, '18.66px at normal weight is NOT large'],
+    ['18.65px', '700', false, 'just under 18.66px bold is NOT large'],
+    // WCAG defines bold as >=700. Semibold is the weight that makes the
+    // threshold wrong in the permissive direction, and without this case a
+    // 700 -> 600 loosening passes the whole suite (verified by mutation).
+    ['20px', '600', false, 'semibold 600 is NOT bold — 18.66px rule must not apply'],
+    ['20px', '700', true, 'the same size at 700 IS large — isolates weight'],
+    ['32px', '700', true, 'comfortably over both thresholds'],
+    ['16px', '900', false, 'weight alone never makes text large'],
+  ])('%s / %s -> %s (%s)', (size, weight, expected) => {
+    expect(isLargeText(size, weight)).toBe(expected);
+  });
+
+  test('numeric inputs behave identically to string inputs', () => {
+    expect(isLargeText(24, 400)).toBe(isLargeText('24px', '400'));
+    expect(isLargeText(18.66, 700)).toBe(isLargeText('18.66px', '700'));
+  });
+
+  test('an unparseable size is not large — never silently downgrade to 3:1', () => {
+    expect(isLargeText('', '400')).toBe(false);
+    expect(isLargeText(undefined, '400')).toBe(false);
+    expect(requiredRatio('', '400')).toBe(AA_NORMAL);
+  });
+
+  test('a missing weight defaults to normal, not bold', () => {
+    expect(isLargeText('18.66px', '')).toBe(false);
+  });
+
+  test('requiredRatio tracks isLargeText at the boundary', () => {
+    expect(requiredRatio('24px', '400')).toBe(AA_LARGE);
+    expect(requiredRatio('23.9px', '400')).toBe(AA_NORMAL);
+    expect(requiredRatio('18.66px', '700')).toBe(AA_LARGE);
+    expect(requiredRatio('18.66px', '400')).toBe(AA_NORMAL);
+  });
 });

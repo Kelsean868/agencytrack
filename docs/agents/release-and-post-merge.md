@@ -84,3 +84,18 @@ Rule 16 governs the fill scope for this sequence; Rule 15 governs the origin-ver
   open; PR2 merged first and both had touched `ManagerAwardsPanel.jsx`, producing a
   conflict that required a manual merge commit. Pulling latest main before branching
   eliminates this class of conflict entirely.
+
+## Doc placement follows propagation direction
+
+**Doc placement follows PROPAGATION DIRECTION, not content type.** `staging → main` runs automatically at promotion; `main → staging` only fires at promotion boundaries, which is always **after** the work a mid-cycle rule was meant to govern. So:
+
+- **STAGING — `CLAUDE.md`, `docs/FOLLOW_UPS.md`.** Read from the working tree **during** a build, which always runs on a branch cut from `staging`. Reaches `main` for free at promotion.
+- **MAIN — `docs/CONTEXT.md`, `docs/briefs/`.** Read at **dispatch** time, when the tree is still on `main`. `CONTEXT.md`'s *Current main HEAD* row is literally about main, and `/land-and-dispatch` hardwires briefs there.
+
+**Consequence: `CLAUDE.md` edits ride in PRs rather than direct-to-main commits.** That is an improvement, not a cost — a rule governing every future build should get CI and reviewer coverage. Banking a rule between builds costs one small docs PR against `staging`.
+
+Learned the expensive way: three rules — the v3 binding rules, the mutation rule (now `docs/agents/test-and-lint-notes.md` § Property tests must be mutation-verified), and the junction rule (now `CLAUDE.md` § Banked patterns) — each landed where the builds they governed **could not see them**, and two of them collided at the same anchor and would have conflicted at promotion. See PR #886.
+
+## `git diff A B` is a two-endpoint diff — use the merge-base as a scope gate
+
+**`git diff A B` is a TWO-ENDPOINT diff** — it lists every file differing in **either** direction, so it sweeps in `B`'s own additions. To ask *"what does A add relative to B"*, diff against the merge-base: `git diff $(git merge-base A B) A`, or the triple-dot `git diff B...A`. Using the two-endpoint form as a **scope gate** produced a false STOP on PR #886 that was indistinguishable from a real scope violation. Same family as the `slice(indexOf(a), indexOf(b))` rule: **a check that appears to work while answering a different question is the most expensive kind.**

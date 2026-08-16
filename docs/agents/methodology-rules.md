@@ -79,6 +79,18 @@ Pattern: for any denormalization or value-dependent fix, Phase 1 must sample-rea
 
 When a row's status transitions to CLOSED (resolving PR merged), remove the row from Active follow-ups in the same Phase 4 docs commit as the resolving PR. Audit trail is preserved in git log + the Recently-shipped table + `docs/FOLLOW_UPS.md` closed sections. Closed rows lingering in Active follow-ups is documentation debt, not audit trail. Banked from PR #153 Phase 4 (Mobile FU#2 row left as CLOSED in Active follow-ups, cleaned up post-hoc at `ba2f4e5`).
 
+**7(b): new FOLLOW_UPS entries APPEND AT THE END of the file — never insert mid-file.**
+
+New detail bodies go at the end of `docs/FOLLOW_UPS.md`. Do not insert a new section next to a topically-related one, and do not group by theme. The index table at the top is still edited in place (it is a table; a row has to go in it), but the **body** always appends.
+
+Why: two slices in flight almost always both add a FOLLOW_UPS entry, and if each inserts next to the section it feels related to, they land in the same region and conflict. Appending makes concurrent additions land in disjoint regions, so git merges them without a human. `FOLLOW_UPS.md` is nothing but a list — the only thing making it merge-hostile is where entries are placed, which is entirely within our control.
+
+This costs topical grouping, and that trade is accepted: the file is navigated by search and by the index table, not by scrolling to a neighbourhood. A cross-reference link to a related section is the substitute for physical adjacency, and it survives later edits better than adjacency does.
+
+The same reasoning applies to any append-only doc a slice touches — `SMOKES.md`, the prototype-defect register, `CONTEXT-history.md`. Where a file is a list, append.
+
+Rule 7 governs **removing** rows when a follow-up closes; 7(b) governs **where new ones go**. Banked 2026-08-02 after repeated merge pain on a file that is structurally trivial to merge.
+
 ### 8. Phase 4 stale-row audit
 
 During Phase 4 docs maintenance, in addition to filling the current PR's placeholders, scan the Active follow-ups table's status column for "PR open", "awaiting merge", "in progress", or similar live-state claims. For each, verify against `gh pr list --state open` and recent `git log origin/main --oneline -20`. Reconcile any drift in the same commit. Banked from one session surfacing three stale SEC-9b "PR open" references (PR #139 had shipped weeks earlier); without this audit, CONTEXT.md state drifts silently from shipped reality.
