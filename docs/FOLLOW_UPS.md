@@ -18,6 +18,7 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| The #899 flake fix (`src/test-utils/flushPendingEffects.js`) is on `staging` ONLY — `git ls-tree origin/main` returns EMPTY, so `main`'s unit-test gate still produces false reds. Every command-file / dispatcher-tooling PR is structurally forced onto `main`, and **#906 proved the cost on a one-markdown-file diff** (red on `DailyCaptureV2` streak test, 5000ms timeout, 1 failed / 5842 passed; re-run green). **Fix is staging→main PROMOTION — do NOT cherry-pick** (duplicate commit, conflicts at promotion across the fix + 30 `await` call sites). Compounds with the promotion-deletes-staging FU below: that one makes promotion risky, this one makes deferring it costly (banked 2026-08-16, PR #906 session) | HIGH | CI / process | — | 529 |
 | Promotion deletes `staging`, silently auto-retargeting every open PR onto `main` — put #872 + #873 into main ungated. **CONFIRMED RECURRING** — deleted again on #877 (#860/#874/#877). **Primary fix upgraded to a runbook step (`git push origin main:staging` after every promotion merge)**; CI guard still recommended as enforcement. **Also corrects the record: `main` DOES have branch protection** (2 required checks, admin-bypassable) — the FU's original "unavailable" premise was wrong, and CLAUDE.md § Workflow carries the same false claim (dispatcher call). Needs dispatcher decision (banked 2026-07-26, PR #871 session; corrected 2026-07-27) | HIGH | — | — | 430 |
 | Restore the VIOLET calls hue — `plannerTone.js`'s stated reason for diverging ("repo ships no violet token") is FALSE; token ships at exact DS parity with zero consumers (banked 2026-07-27, planner activity-types PR) | MEDIUM | Track J conformance | — | see § Planner activity types |
 | Planner duration reporting — `durationMin` is captured on every appointment but NOTHING sums it anywhere; "time recorded" needs only a reporting surface (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
@@ -523,6 +524,51 @@ Both fired again locally. Given CI held, the defensible reading is that the reme
 3. **⚠ A local full-suite failure was observed on this branch and its identity was lost.** The first post-fix full-suite run reported `1 failed | 5644 passed (5645)` — one failing test whose name was **not captured** (the run's output was filtered before the failure block was read; a procedural mistake, not a tooling limit). Two subsequent full runs of the identical tree were **364/364 files, 5645/5645 green, exit 0**. So the observed rate on this branch is 1 failure in 3 full runs, source unknown. It is NOT one of the four fixed tests' known signatures being re-observed — that cannot be asserted either way without the name. **Whoever next runs a full suite should capture stdout to a file** (`npx vitest run > run.log 2>&1`) so the next occurrence is identifiable and can be added to the enumeration this FU is trying to build. The pattern-2 population should therefore be treated as **≥4, not exactly 4**.
 
 ---
+
+---
+
+## The #899 flake fix lives on `staging` ONLY — `main`'s unit-test gate is still unreliable, and it now has a measured cost (banked 2026-08-16, PR #906 session, HIGH — CI/process)
+
+**The claim, verified rather than inferred:**
+
+```
+git ls-tree origin/main    -- src/test-utils/flushPendingEffects.js   → (empty — ABSENT)
+git ls-tree origin/staging -- src/test-utils/flushPendingEffects.js   → 100644 blob b40922b9…
+```
+
+PR #899 (`90a7718b`) closed the stale-keydown-closure defect — a defect class that had survived **six** remediation rounds — and it landed on `staging`. It has never been promoted. So **`main` still carries the bug**, and `CONTEXT.md` says so correctly ("FIXED on `staging` … NOT on `main`; this reaches production at the next promotion"). Nothing here contradicts the record; what is new is that the gap has stopped being theoretical.
+
+### Why this is HIGH and not housekeeping
+
+**Every dispatcher-tooling and command-file PR targets `main`, by definition.** `.claude/commands/`, `CLAUDE.md`, `docs/` process rules — none of that work can route through `staging`, because `staging` is where product work lives. So the class of PR that is *structurally forced onto `main`* is exactly the class that must clear `main`'s unit-test gate, and that gate is the unreliable one.
+
+**#906 proved it on its own diff.** The PR changed **one markdown file** — `.claude/commands/post-merge.md`, +33/−10, no source, no test, no config the runner reads. Its first `lint-and-build` run went **red**:
+
+```
+FAIL src/components/daily/__tests__/DailyCaptureV2.test.jsx
+  > daily streak celebration (integration)
+  > does NOT fire below the milestone (short streak)
+Error: Test timed out in 5000ms.
+Tests  1 failed | 5842 passed (5843)
+```
+
+Re-run of the same job: **PASS** (4m1s). Intermittent, not deterministic — the signature of the defect #899 fixed.
+
+**The cost, stated concretely.** A red on a `main`-targeted docs PR is now *uninformative*: it cannot be distinguished from a regression without a re-run plus a manual argument about why the diff could not possibly have caused it. That is precisely the condition #899 was celebrated for ending — "a red CI now means a regression rather than scheduling noise" — and it is still true on `staging` and still false on `main`. Every future command-file PR pays this tax, and each payment is an invitation to wave a red through on the assumption it is the known flake. **That habit is the actual risk, not the lost minutes.**
+
+### The fix is promotion. It is NOT a cherry-pick.
+
+**Do NOT cherry-pick `90a7718b` (or `27303333` / `5db36a12` / `c06fff0d`) onto `main`.** A cherry-pick creates a *duplicate commit* with a different SHA carrying identical content. At the next staging→main promotion, git sees both and the range conflicts — on `src/test-utils/flushPendingEffects.js` and on all 30 call sites that gained `await`. That converts a clean promotion into a manual conflict resolution across test files, which is a strictly worse position than the one this FU describes.
+
+**The fix is a staging→main promotion**, which is already the standing mechanism and already carries this fix in its range. What this FU adds is a *reason to schedule one*, and a measurable one: the promotion is no longer only tidiness or feature delivery — it repairs `main`'s test gate, and every `main`-targeted PR before it runs against a gate known to produce false reds.
+
+### Interaction with the other open promotion FU
+
+This compounds with § *Promotion deletes `staging`* below — that FU makes promotions **risky to perform**, and this one makes them **costly to defer**. They should be settled together, in that order: fix the branch-deletion behaviour first, then promote. Settling only one leaves either an unreliable gate or a promotion that orphans open PRs.
+
+### Falsification (Rule 23)
+
+Overturned if `git ls-tree origin/main -- src/test-utils/flushPendingEffects.js` returns a blob (the fix reached `main`, by promotion or otherwise), **or** if a `main`-targeted PR with a provably inert diff runs the full suite green across a meaningful number of consecutive runs, which would mean the residual rate on `main` is low enough not to matter in practice. A single green run does **not** overturn it — the defect is intermittent, and that is the whole problem.
 
 ---
 
