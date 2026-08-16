@@ -292,6 +292,46 @@ describe('conservation — an agreeing verification transfers, never adds', () =
     }), runCfg);
   });
 
+  /**
+   * The neutrality half, and it is deliberately NOT the conservation property.
+   *
+   * Conservation says an agreeing verification MOVES credit. This says a
+   * CONTRADICTING one moves NONE — in either direction. That is not answering
+   * the open question of which source wins; it is asserting that the question
+   * stays open, arithmetically, while `contestedContacts` flags it for a human.
+   *
+   * It exists because an external reviewer proposed gating both lanes on
+   * non-contradiction, which reads tidier and makes `total` fall from 1 to 0 the
+   * moment a machine disagrees with an agent. A comment saying "don't" is not a
+   * guard; this is.
+   */
+  it('a CONTRADICTING verification moves no credit — total unchanged both ways', () => {
+    fc.assert(fc.property(anyStateArb, fc.nat(), fc.boolean(), (state, pick, machineSays) => {
+      if (state.calls.length === 0) return;
+      const idx = pick % state.calls.length;
+      const target = state.calls[idx];
+      if (target.verification != null) return;
+
+      const declared = dispositionReached(target.disposition);
+      if (declared === null || declared === machineSays) return;  // need disagreement
+
+      const calls = [...state.calls];
+      calls[idx] = applyVerification(target, {
+        source: 'msgraph', reached: machineSays, connectedSeconds: 45, direction: 'outbound',
+      });
+      expect(calls[idx].verification.agreement).toBe(VERIFICATION_AGREEMENT.CONTRADICTS);
+      const next = { ...state, calls };
+
+      forEachDay((day) => {
+        const before = callCountsOn(state, day);
+        const after = callCountsOn(next, day);
+        expect(after.total, `total moved on ${day} under a contradiction`).toBe(before.total);
+        expect(after.evidencedContacts).toBe(before.evidencedContacts);
+        expect(after.declaredOnlyContacts).toBe(before.declaredOnlyContacts);
+      });
+    }), runCfg);
+  });
+
   it('the lanes partition — total is always exactly their sum', () => {
     fc.assert(fc.property(anyStateArb, (state) => {
       forEachDay((day) => {
@@ -386,6 +426,9 @@ describe('the two lanes are disjoint populations', () => {
           dispositionReached(c.disposition) === true && !evidencedIds.includes(c.id)
         )).map((c) => c.id);
 
+        // AT MOST one lane — never both. A call in NEITHER is legitimate (no
+        // source claims a contact for it), so this is not a partition of the
+        // day's calls, only a disjointness guarantee over the two lanes.
         expect(evidencedIds.filter((id) => declaredOnlyIds.includes(id)),
           'a call was counted in both lanes').toEqual([]);
 

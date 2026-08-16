@@ -34,7 +34,8 @@
  *
  * ── THE TWO LANES ARE DISJOINT, AND A VERIFICATION IS A TRANSFER ────────────
  * Same shape as `activityLedger.js`: evidenced and declared are two POPULATIONS,
- * not two claims about one population. A call sits in exactly one lane.
+ * not two claims about one population. A call is in AT MOST ONE lane — never
+ * both, and in NEITHER when no source claims a contact for it.
  *
  *   evidencedContacts     a machine confirmed it
  *   declaredOnlyContacts  the agent's word, and nothing has confirmed it YET
@@ -77,6 +78,33 @@
  * over contradictions would force this module to decide which source wins in
  * order to keep the arithmetic balanced — answering the open question by
  * implementation, through a test, which is the quietest possible way to do it.
+ *
+ * ── WHICH LANE A CONTESTED CALL SITS IN ─────────────────────────────────────
+ * READ THIS BEFORE "TIDYING" THE COUNTING LOOP. It reads as an inconsistency and
+ * it is not one; the tidy version deletes an agent's credit.
+ *
+ * The rule is: A CONTRADICTION REMOVES THE CONFIRMATION, NEVER THE CLAIM. Each
+ * lane keeps holding exactly what its OWN source asserted.
+ *
+ *   agent claims a contact, machine denies it
+ *     → stays in `declaredOnly`. The agent's claim is not deleted by a machine
+ *       disagreeing with it; it is simply never promoted to evidenced.
+ *
+ *   machine claims a contact, the agent never did
+ *     → lands in NO lane. The machine's claim is not credited over the agent's
+ *       account of their own call.
+ *
+ * Both directions are flagged in `contestedContacts`, and in both directions
+ * `total` is UNCHANGED — no credit moves either way while the sources disagree.
+ * That is what "surfaced, not resolved" means arithmetically, and it is
+ * property-tested.
+ *
+ * The tempting simplification is to gate BOTH lanes on non-contradiction so
+ * "contested counts in neither lane" is uniformly true. Do not. It makes
+ * `total` fall from 1 to 0 the moment a machine disagrees — a manager-facing
+ * figure about a named agent dropping because an external system said so, which
+ * is this module's entire reason for existing. It also resolves the dispute in
+ * the machine's favour, which is the decision nobody has made.
  *
  * A verification NEVER invents a disposition the agent did not give, and never
  * silently overwrites one that disagrees. A verification that contradicts the
@@ -305,9 +333,12 @@ function verificationEvidencesContact(verification) {
  *   · `declaredOnlyContacts` — the agent's account says a person was reached and
  *     NOTHING HAS CONFIRMED IT YET. Not "every contact the agent claimed" — once
  *     a machine confirms one, it is counted in the evidenced lane instead.
- *   · `contestedContacts` — a source contradicts the agent. Its own figure, in
- *     NEITHER counting lane, so a disagreement is visible rather than silently
- *     resolved in one side's favour.
+ *   · `contestedContacts` — a source contradicts the agent. Its own figure, so
+ *     the disagreement is visible rather than silently resolved. It OVERLAPS the
+ *     lanes rather than replacing them: the call keeps whatever lane its own
+ *     source's claim earned it, and `total` does not move in either direction.
+ *     See "WHICH LANE A CONTESTED CALL SITS IN" in the header — the uniform-
+ *     looking alternative deletes an agent's credit on a machine's say-so.
  *   · `total` — `evidencedContacts + declaredOnlyContacts`. Honest because the
  *     lanes are disjoint: no call is counted twice. This is the figure v3 rule 5
  *     needs as the denominator for the percentage evidenced.
