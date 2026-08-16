@@ -18,7 +18,10 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| Promotion deletes `staging`, silently auto-retargeting every open PR onto `main` — put #872 + #873 into main ungated. **CONFIRMED RECURRING** — deleted again on #877 (#860/#874/#877). **Primary fix upgraded to a runbook step (`git push origin main:staging` after every promotion merge)**; CI guard still recommended as enforcement. **Also corrects the record: `main` DOES have branch protection** (2 required checks, admin-bypassable) — the FU's original "unavailable" premise was wrong, and CLAUDE.md § Workflow carries the same false claim (dispatcher call). Needs dispatcher decision (banked 2026-07-26, PR #871 session; corrected 2026-07-27) | HIGH | — | — | 430 |
+| The #899 flake fix (`src/test-utils/flushPendingEffects.js`) is on `staging` ONLY — `git ls-tree origin/main` returns EMPTY, so `main`'s unit-test gate still produces false reds. Every command-file / dispatcher-tooling PR is structurally forced onto `main`, and **#906 proved the cost on a one-markdown-file diff** (red on `DailyCaptureV2` streak test, 5000ms timeout, 1 failed / 5842 passed; re-run green). **Fix is staging→main PROMOTION — do NOT cherry-pick** (duplicate commit, conflicts at promotion across the fix + 30 `await` call sites). Compounds with the promotion-deletes-staging FU below: that one makes promotion risky, this one makes deferring it costly (banked 2026-08-16, PR #906 session) | HIGH | CI / process | — | 6013 |
+| Promotion deletes `staging`, silently auto-retargeting every open PR onto `main` — put #872 + #873 into main ungated. **CONFIRMED RECURRING** — deleted again on #877 (#860/#874/#877). **Primary fix upgraded to a runbook step (`git push origin main:staging` after every promotion merge)**; CI guard still recommended as enforcement. **Also corrects the record: `main` DOES have branch protection** (2 required checks, admin-bypassable) — the FU's original "unavailable" premise was wrong, and CLAUDE.md § Workflow carried the same false claim. **That half is now CLOSED** — the CLAUDE.md claim was corrected in the promotion-prep governance PR (2026-08-16); the `staging`-deletion half remains open and still needs a dispatcher decision (banked 2026-07-26, PR #871 session; corrected 2026-07-27) | HIGH | — | — | 430 |
+| `enforce_admins: false` on `main` — every direct push bypasses both required status checks, so `main`'s CI gate is advisory for the only person who pushes there. Observed, not inferred: a brief-landing push returned `remote: Bypassed rule violations for refs/heads/main: 2 of 2 required status checks are expected.` **Dispatcher decision required — do NOT change the setting.** Turning it on costs ~5 min of CI per dispatch (brief landings, CONTEXT fills, command-file changes all become PR-gated); leaving it off means the checks are decorative on the direct-push path (banked 2026-08-16, promotion-prep governance PR) | HIGH | Repo governance / CI | — | 5975 |
+| The flake family is ~10 named members and #899 fixed **TWO** (`MeetingMode`, `AgentPlannerPanel`) — the rest were deliberately left unruled. `staging` is better by two files, **not fixed**; corrects the framing in `main`'s § *The #899 flake fix lives on `staging` ONLY*, which arrives at the next promotion. Evidence: #907 is cut from `staging`, docs-only, and still went red on `BranchesPanel` (roster member 7). The promotion acceptance check proves the fix ARRIVED, not that the gate is clean (banked 2026-08-16, PR #907) | HIGH | CI / process | — | 6013 |
 | Restore the VIOLET calls hue — `plannerTone.js`'s stated reason for diverging ("repo ships no violet token") is FALSE; token ships at exact DS parity with zero consumers (banked 2026-07-27, planner activity-types PR) | MEDIUM | Track J conformance | — | see § Planner activity types |
 | Planner duration reporting — `durationMin` is captured on every appointment but NOTHING sums it anywhere; "time recorded" needs only a reporting surface (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
 | Planner type-taxonomy collisions deferred by hardcoding — `MTG` vs manager `UNIT`, and `PERS` vs `FREE`+Personal (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
@@ -800,6 +803,49 @@ Verified locally on `8f29230a`: `DailyCaptureV2.test.jsx` **48/48**, `AgentPlann
 **Implication for the remedy.** Two rounds of per-test fixes have now each held only until contention rose. That is the third independent signal pointing at the runner-level suggestion already raised above (`maxConcurrency` / pool sizing / `fileParallelism`) rather than a third round of per-test budget widening — this test has now consumed two distinct per-test remedies and failed after both. Whoever picks this up should treat "widen it again to 20s" as the option to argue *against*.
 
 ---
+
+## The #899 flake fix lives on `staging` ONLY — `main`'s unit-test gate is still unreliable, and it now has a measured cost (banked 2026-08-16, PR #906 session, HIGH — CI/process)
+
+**The claim, verified rather than inferred:**
+
+```
+git ls-tree origin/main    -- src/test-utils/flushPendingEffects.js   → (empty — ABSENT)
+git ls-tree origin/staging -- src/test-utils/flushPendingEffects.js   → 100644 blob b40922b9…
+```
+
+PR #899 (`90a7718b`) closed the stale-keydown-closure defect — a defect class that had survived **six** remediation rounds — and it landed on `staging`. It has never been promoted. So **`main` still carries the bug**, and `CONTEXT.md` says so correctly ("FIXED on `staging` … NOT on `main`; this reaches production at the next promotion"). Nothing here contradicts the record; what is new is that the gap has stopped being theoretical.
+
+### Why this is HIGH and not housekeeping
+
+**Every dispatcher-tooling and command-file PR targets `main`, by definition.** `.claude/commands/`, `CLAUDE.md`, `docs/` process rules — none of that work can route through `staging`, because `staging` is where product work lives. So the class of PR that is *structurally forced onto `main`* is exactly the class that must clear `main`'s unit-test gate, and that gate is the unreliable one.
+
+**#906 proved it on its own diff.** The PR changed **one markdown file** — `.claude/commands/post-merge.md`, +33/−10, no source, no test, no config the runner reads. Its first `lint-and-build` run went **red**:
+
+```
+FAIL src/components/daily/__tests__/DailyCaptureV2.test.jsx
+  > daily streak celebration (integration)
+  > does NOT fire below the milestone (short streak)
+Error: Test timed out in 5000ms.
+Tests  1 failed | 5842 passed (5843)
+```
+
+Re-run of the same job: **PASS** (4m1s). Intermittent, not deterministic — the signature of the defect #899 fixed.
+
+**The cost, stated concretely.** A red on a `main`-targeted docs PR is now *uninformative*: it cannot be distinguished from a regression without a re-run plus a manual argument about why the diff could not possibly have caused it. That is precisely the condition #899 was celebrated for ending — "a red CI now means a regression rather than scheduling noise" — and it is still true on `staging` and still false on `main`. Every future command-file PR pays this tax, and each payment is an invitation to wave a red through on the assumption it is the known flake. **That habit is the actual risk, not the lost minutes.**
+
+### The fix is promotion. It is NOT a cherry-pick.
+
+**Do NOT cherry-pick `90a7718b` (or `27303333` / `5db36a12` / `c06fff0d`) onto `main`.** A cherry-pick creates a *duplicate commit* with a different SHA carrying identical content. At the next staging→main promotion, git sees both and the range conflicts — on `src/test-utils/flushPendingEffects.js` and on all 30 call sites that gained `await`. That converts a clean promotion into a manual conflict resolution across test files, which is a strictly worse position than the one this FU describes.
+
+**The fix is a staging→main promotion**, which is already the standing mechanism and already carries this fix in its range. What this FU adds is a *reason to schedule one*, and a measurable one: the promotion is no longer only tidiness or feature delivery — it repairs `main`'s test gate, and every `main`-targeted PR before it runs against a gate known to produce false reds.
+
+### Interaction with the other open promotion FU
+
+This compounds with § *Promotion deletes `staging`* below — that FU makes promotions **risky to perform**, and this one makes them **costly to defer**. They should be settled together, in that order: fix the branch-deletion behaviour first, then promote. Settling only one leaves either an unreliable gate or a promotion that orphans open PRs.
+
+### Falsification (Rule 23)
+
+Overturned if `git ls-tree origin/main -- src/test-utils/flushPendingEffects.js` returns a blob (the fix reached `main`, by promotion or otherwise), **or** if a `main`-targeted PR with a provably inert diff runs the full suite green across a meaningful number of consecutive runs, which would mean the residual rate on `main` is low enough not to matter in practice. A single green run does **not** overturn it — the defect is intermittent, and that is the whole problem.
 
 ---
 
@@ -5923,3 +5969,68 @@ look reports the same green as one that looked and found nothing.
 per PR, and say explicitly when the final HEAD went unreviewed. This is the third
 consecutive cycle CodeRabbit has rate-limited (see § External code reviewer, HIGH) — it is
 the standing coverage gap, not an incident.
+
+---
+
+## `enforce_admins: false` on `main` — the required checks are advisory on the direct-push path (banked 2026-08-16, promotion-prep governance PR, HIGH — repo governance / CI)
+
+**Observed, not inferred.** Landing a brief directly to `main` on 2026-08-16 produced:
+
+``
+remote: Bypassed rule violations for refs/heads/main:
+remote: - 2 of 2 required status checks are expected.
+   f36430db..93728513  main -> main
+``
+
+The push succeeded. Both required checks were pending and neither gated it.
+
+**The actual protection state**, from `gh api repos/Kelsean868/agencytrack/branches/main/protection`:
+
+| Setting | Value |
+|---|---|
+| `required_status_checks.contexts` | `lint-and-build`, `functions-tests` |
+| `required_status_checks.strict` | `false` |
+| `enforce_admins` | **`false`** |
+| `required_pull_request_reviews` | absent (no review gate) |
+| `allow_force_pushes` / `allow_deletions` | `false` / `false` |
+| `staging` protection | **none** — the API returns 404 |
+
+So `main` is protected in the sense that force-push and deletion are blocked, and unprotected in the sense that the checks it requires can be skipped by the one account that pushes to it. This is the mechanism behind the Track J observation that merges landed while CI was still in progress — the platform was never gating admins.
+
+**Why it is worth a decision rather than a shrug.** The direct-push path is not rare here: brief landings (`/land-and-dispatch`), Rule 16 post-merge fills, and `.claude/commands/` changes all commit straight to `main` by design. Every one of those bypasses. Combined with § *The flake family is ~10 members and #899 fixed TWO*, `main`'s gate is currently both **bypassable** and **unreliable when it does run**.
+
+**The trade, stated plainly so it can be decided rather than drifted into:**
+
+- **Turn it on** (`enforce_admins: true`): the bypass disappears for everyone including Kyron. Cost is roughly 5 minutes of CI per dispatch, because brief landings and fills would have to become PRs — which is exactly what the propagation-direction rule already predicts for `CLAUDE.md` edits, and arguably an improvement for governance files.
+- **Leave it off**: the direct-push path stays fast, and the required checks remain honest only on the PR path. If this is the choice, it should be a recorded decision rather than an unexamined default, because CLAUDE.md now states the posture explicitly.
+
+**Do NOT change the setting.** This is a repo-administration change and a dispatcher/operator action (Rule 19). CC banked the finding; the ruling is Kyron's.
+
+**Falsification (Rule 23).** Overturned if `gh api .../branches/main/protection` returns `enforce_admins.enabled: true`, or if a direct push to `main` is rejected pending checks. Either would mean the bypass path is closed and this FU should be marked RESOLVED with the observed evidence replaced.
+
+---
+
+## The flake family is ~10 members and #899 fixed TWO — `staging`'s gate is better, not fixed (banked 2026-08-16, PR #907, HIGH — CI / process)
+
+**This corrects a framing the dispatcher and I were both using, and which `main`'s own FU states outright.** `main` carries § *The #899 flake fix lives on `staging` ONLY* (banked 2026-08-16, PR #906 session), which reads as though promoting it repairs `main`'s unit-test gate. That FU is **not** on `staging` — it arrives here at the next promotion — so this entry is written to stand beside it rather than edit it, and to be read together with it.
+
+**The corrected statement, verified rather than asserted:**
+
+- **The flake register names ~10 distinct tests** across its three roster blocks (§ *Flake family scope*'s numbered roster of 7 named + 1 explicitly unnamed, plus 3 more in the table above it; the blocks overlap, so the exact dedup count is a judgement, not a fact). It is a large family.
+- **#899 (`90a7718b`) changed exactly TWO test files** — `src/components/manager/__tests__/MeetingMode.test.jsx` and `src/components/planner/__tests__/AgentPlannerPanel.test.jsx` — plus the new `src/test-utils/flushPendingEffects.js` helper. Verified with `git show --stat 90a7718b`.
+- **The remaining members were explicitly left unruled**, having no local reproduction. That was a deliberate, recorded decision, not an oversight.
+
+**So `staging` is better by two files. It is not fixed.**
+
+**Evidence, from the PR that banked this.** #907 is cut from `staging` — which *has* `flushPendingEffects.js` — and is a **docs-only diff, 13 files, zero `src/`**. Its first `lint-and-build` still went red:
+
+``
+TestingLibraryElementError: Unable to find an element with the text: South Branch
+  at src/components/admin/__tests__/BranchesPanel.test.jsx:133:19
+``
+
+The dumped DOM still showed `animate-pulse` skeletons — the assertion ran against the loading commit. Re-run: **PASS (5m16s)**. Intermittent, not deterministic. `BranchesPanel` is member 7 of the numbered roster and one of the members #899 did not touch.
+
+**Consequence for the promotion's acceptance check.** `git ls-tree origin/main -- src/test-utils/flushPendingEffects.js` returning a blob proves **the fix ARRIVED**. It does **not** prove `main`'s gate is clean. After promotion `main` inherits a gate that is better by two files and still intermittent — expect occasional reds on inert diffs, and re-run to separate flake from regression until the remaining members are ruled.
+
+**Falsification (Rule 23).** Overturned if a member outside #899's two files is shown to have been fixed by it, or if the register's roster is shown to name substantially fewer than ten distinct tests after a proper dedup. **Not** overturned by an intermittent red after promotion — that is the untouched remainder, tracked in § *Flake family scope*, not a failure of the promotion.
