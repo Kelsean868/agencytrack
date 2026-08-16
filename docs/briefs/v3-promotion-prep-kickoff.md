@@ -159,10 +159,20 @@ recomputed before the merge, not patched at the prompt.
 
 ```
 git fetch origin
-git log --oneline <prep-branch-merge-sha>..origin/main -- CLAUDE.md docs/CONTEXT.md docs/CONTEXT-history.md docs/FOLLOW_UPS.md docs/agents/
+git log --oneline 93728513..origin/main -- CLAUDE.md docs/CONTEXT.md docs/CONTEXT-history.md docs/FOLLOW_UPS.md docs/agents/
 ```
 
 Empty output means the resolution is current.
+
+**`93728513` is not arbitrary and must not be replaced with a merge-base.** It is `main`'s
+tip at the moment the resolution was computed, and the question is "has `main` touched
+these files *since then*". An earlier draft of this step used
+`git log $(git merge-base ...)..origin/main`, which returns `main`'s entire post-divergence
+history — including the restructure itself — and so reports **STALE unconditionally**. That
+is the Rule 3 trap (`docs/agents/release-and-post-merge.md`) in mirror image: not a
+two-endpoint diff where a merge-base was needed, but a merge-base where a fixed reference
+point was needed. Verified 2026-08-16: the correct form returns empty while `main` sits at
+`448cab3b`, which moved `main` but touched only `docs/briefs/`.
 
 **b. Merge.** `git merge staging` into `main`, as a **merge commit, not a squash**.
 **Expect 7 conflicts. This is normal, not a failure** — do not abort on seeing them.
