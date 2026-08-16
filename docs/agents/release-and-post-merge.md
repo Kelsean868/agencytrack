@@ -99,3 +99,77 @@ Learned the expensive way: three rules — the v3 binding rules, the mutation ru
 ## `git diff A B` is a two-endpoint diff — use the merge-base as a scope gate
 
 **`git diff A B` is a TWO-ENDPOINT diff** — it lists every file differing in **either** direction, so it sweeps in `B`'s own additions. To ask *"what does A add relative to B"*, diff against the merge-base: `git diff $(git merge-base A B) A`, or the triple-dot `git diff B...A`. Using the two-endpoint form as a **scope gate** produced a false STOP on PR #886 that was indistinguishable from a real scope violation. Same family as the `slice(indexOf(a), indexOf(b))` rule: **a check that appears to work while answering a different question is the most expensive kind.**
+
+## The reference point must match the question — the general rule, with three instances
+
+The rule above is one case of a larger one, and the general form is worth carrying because
+it has now bitten three times in three different shapes, twice in a single session:
+
+> **A check has two parts: the comparison, and the reference point it compares against. A
+> correct comparison against the wrong reference point runs, returns, and answers a
+> different question than the one asked.** It does not error. It produces a plausible
+> number that a reader will act on.
+
+The three instances, deliberately listed together because no two look alike:
+
+| # | The question asked | Reference point used | Correct reference point |
+|---|---|---|---|
+| 1 | *"What did this branch change?"* | two endpoints (`git diff A B`) | the **merge-base** (PR #886) |
+| 2 | *"Has `main` moved since I computed this resolution?"* | the **merge-base** | a **fixed ref** — `main`'s tip at computation time (PR #907 §5 pre-flight) |
+| 3 | *"Is production's ruleset stale?"* | **git** (`git diff <old main> <merge>`) | **Firebase** — the deploy target (post-promotion, 2026-08-16) |
+
+Instances 1 and 2 are mirror images of each other, which is the trap: having learned to
+reach for the merge-base, the natural next error is reaching for it when a fixed ref was
+needed. Instance 3 is the sharpest, because the reference point was not a git ref at all.
+
+**Instance 3, stated plainly since it is the newest.** After the `b4d9be7b` promotion,
+`git diff --stat 219cf324 b4d9be7b -- firestore.rules` showed `+18/−2` and was read as
+evidence of a production gap. **It is not, and git cannot be.** A git diff answers *"did
+this file change between two commits"*. **Nothing in git knows what ruleset Firebase is
+serving** — only Firebase does. The diff was correct; the question it was asked to answer
+was not one it can answer. Running the deploy reported *"latest version of firestore.rules
+already up to date, skipping upload"*: production had carried the rules since #878
+(`74a321bc`) landed, because that PR was itself DEPLOY-GATED and deployed on landing.
+**There was no gap.**
+
+**The remedy is the same in all three cases: name the question in words before choosing
+the reference point, then check that the reference point can even see the thing the
+question is about.** For deploy state specifically, the only authority is the deploy
+target, and the deploy command is idempotent — so *running* it is cheaper and strictly
+more truthful than any attempt to infer staleness from the repository.
+
+## Per-slice "zero backend delta" claims do NOT compose across a range
+
+A separate lesson from the same episode, and the reason the audit below is worth keeping
+even though its first run came back clean.
+
+Every v3 Phase 0 slice recorded **"zero backend delta; nothing to deploy"** in
+`CONTEXT.md`, and each claim was true of that slice. **A promotion range is not a slice.**
+The `219cf324..b4d9be7b` range contained 98 files and one `firestore.rules` change
+(`74a321bc`, #878) that no Phase 0 entry mentioned, because #878 was not a Phase 0 slice —
+it simply sat in the same range. **Reading a sequence of true per-slice claims as a
+property of their union is an induction that does not hold**, and the larger the range the
+less it holds.
+
+### Runbook step — between the merge and the acceptance check
+
+Run the **trigger**, on the promoted range:
+
+```
+git diff --stat <old main HEAD> <merge commit> -- firestore.rules firestore.indexes.json functions/
+```
+
+**Non-empty means a deploy MIGHT be needed. It is a trigger, not a verdict** — and the
+distinction is the whole point of instance 3 above. Do not report a production gap from
+this output; git cannot see the deploy target.
+
+**The verdict comes from running the deploy** (`firebase deploy --only firestore:rules` /
+`firestore:indexes` / `functions`, as the output indicates). It is idempotent and reports
+`already up to date, skipping upload` when nothing is stale, which is itself the evidence
+worth capturing. **Empty output means no deploy-gated surface moved in the range** and the
+step is genuinely done.
+
+**First run, 2026-08-16 (`b4d9be7b`): trigger fired** — `firestore.rules +18/−2`,
+`firestore.indexes.json` and `functions/` untouched. **Deploy run: NO-OP**, ruleset already
+live. The step earned its place by being cheap and by producing a recorded negative, not by
+catching anything.
