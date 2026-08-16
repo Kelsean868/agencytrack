@@ -124,7 +124,7 @@ against tip — it merges each side against the MERGE-BASE.** Both branches dive
 1675 lines apart or 32. The strategy could not have worked, and a shrinking diff was never
 evidence that it had.
 
-**Measured, not predicted** (scratch clone, `git merge --no-commit --no-ff`):
+**Measured, not predicted** (scratch clone). **Count `git merge-tree --write-tree` STAGE lines, not `Auto-merging` progress lines** — the progress lines name files git *attempted* to merge, including ones it merged successfully, and counting them inflates the total:
 
 | | conflicted files |
 |---|---|
@@ -138,10 +138,26 @@ The four added conflicts, each with its cause:
   "added" them. The other **six** `docs/agents` files the prep branch copied across do
   **not** conflict — git auto-resolves an identical add/add. Only the three the branch
   *edited* collide.
-- **1 new on `docs/FOLLOW_UPS.md`** — in the control this file auto-merges cleanly, both
-  sides being append-only in disjoint regions (Rule 7(b) working exactly as designed).
-  The prep branch ported `main`'s 46-line addition onto `staging` at `main`'s own anchor,
-  so both sides now carry it and it collides.
+- **1 new on `docs/FOLLOW_UPS.md`** — **the cause is the INDEX TABLE, and the first
+  diagnosis of it was wrong.** It was initially attributed to the prep branch porting
+  `main`'s 46-line addition to `main`'s own anchor. That port was reverted and the count
+  **stayed at 7**, so the port was not the cause. Inspecting the merged tree, the conflict
+  is a single hunk at lines 21–28 — the open-items index table. `main` inserts its #899
+  row there; the prep branch inserts two rows and edits the *Promotion deletes staging*
+  row. Both sides touch the same region.
+
+  **Rule 7(b) predicts exactly this.** It exempts the table from the append rule — *"the
+  index table at the top is still edited in place (it is a table; a row has to go in
+  it)"* — and this conflict is that exemption's cost. It is unavoidable while both
+  branches bank follow-ups. The **body** sections never conflicted: append-only, disjoint,
+  precisely as 7(b) intends.
+
+  **The port was restored**, for a stronger reason than the one first given. Without it,
+  `staging` is **not** a superset of `main` for this file, and step (c) below —
+  take-`staging`'s-side-wholesale — would **delete** `main`'s 46-line #899 follow-up.
+  Verified directly with the revert in place: the `staging` side lacked the section. The
+  port is load-bearing for the recipe's *safety*, even though it is neutral for the
+  conflict *count*.
 
 **So the prep branch RAISES the conflict count, and that is fine.** It is not a
 conflict-avoider. **It is the PRE-COMPUTED RESOLUTION** — the correct merged content for
