@@ -12,11 +12,25 @@
  * than the ledger's (no block-attribution pass), and the measured wall-clock
  * added is recorded in the PR body.
  *
- * MUTATION-VERIFIED: the verification-monotonicity property was broken
- * deliberately (making `applyVerification` replace an existing verification
- * rather than returning the call unchanged) and the shrunk counterexample is
- * pasted in the PR body. A property that has never failed may not be wired to
- * anything.
+ * MUTATION-VERIFIED. Both the conservation property and the credit-never-falls
+ * property were broken deliberately and the shrunk counterexamples are pasted in
+ * the PR body. A property that has never failed may not be wired to anything —
+ * and the first mutation attempt on this suite PASSED, which is how the
+ * generator weakness documented at `denseStateArb` was found.
+ *
+ * ── THE PROPERTY SET, AND WHY IT IS SHAPED THIS WAY ─────────────────────────
+ * "No derived count ever decreases" was the original ask and it was too strong:
+ * it would forbid the transfer that an agreeing verification IS. What agents are
+ * owed is that CREDIT never falls, so:
+ *
+ *   · monotonicity under LOGGING        — every count, no exceptions
+ *   · credit under VERIFICATION         — `evidenced` and `total` only
+ *   · CONSERVATION under an AGREEING verification — total unchanged, and the
+ *     evidenced gain exactly equals the declaredOnly loss
+ *
+ * The third replaces rather than supplements a direction check on `declaredOnly`
+ * and is strictly stronger: it catches double-counting and lane leakage, which a
+ * "nothing went down" check passes cleanly.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -27,6 +41,7 @@ import {
   REACHED_DISPOSITIONS,
   VERIFICATION_AGREEMENT,
   CALL_COUNT_KEYS,
+  VERIFICATION_MONOTONE_KEYS,
   isKnownDisposition,
   dispositionReached,
   newCall,
@@ -96,11 +111,18 @@ const stateArb = fc.array(
  * from 8 outcomes, only 3 of which are "reached". Sampling ONE day on top of
  * that dilutes the case these properties most need — a reached disposition and
  * an agreeing verification on the SAME call on the day being counted — to
- * roughly one run in ninety. Measured: with `declaredContacts` mutated to the
- * disjoint-lane form (`declared && !evidenced`, the design alternative this
- * module rejects), the verification-monotonicity property still PASSED on
- * `stateArb` alone at numRuns 200. Too wide fails to reach the bug just as
- * surely as too narrow does — the same lesson `activityLedger.test.js` banked.
+ * roughly one run in ninety.
+ *
+ * Measured, on the shared-lane design this module carried before the lanes were
+ * made disjoint: mutating the declared count to `declared && !evidenced` left
+ * the monotonicity property PASSING on `stateArb` alone at numRuns 200. (That
+ * mutation is now the shipped `declaredOnly` semantics — the finding was about
+ * the GENERATOR, and it survives the design change unchanged, which is why this
+ * note does.) Too wide fails to reach the bug just as surely as too narrow
+ * does — the same lesson `activityLedger.test.js` banked.
+ *
+ * The current properties are mutation-verified against this generator: see the
+ * two counterexamples in the PR body, both found in single figures of runs.
  *
  * So this generator pins every call to one day and weights dispositions 3:1
  * toward reached. The properties below also assert across ALL SEVEN days rather
@@ -176,20 +198,22 @@ describe('monotonicity under logging — f(S + call) >= f(S)', () => {
   });
 });
 
-// ── 2. Monotonicity under verification — THE NEW ONE ─────────────────────────
+// ── 2. Credit never falls under verification ─────────────────────────────────
 //
-// Section 3 of the brief: verification arrives late and counts may RISE. The
-// failure this guards is the mirror image — a count that FALLS when evidence
-// arrives, which would tell a manager an agent did less work than an hour ago.
+// The guarantee an agent is owed is NOT that every field is monotonic — it is
+// that credit never falls when a machine confirms their work. `declaredOnly` is
+// deliberately outside this set: an agreeing verification moves a call out of
+// that lane, and asserting it never falls would assert the transfer never
+// happens. Conservation below covers what this one gives up, and more.
 
-describe('monotonicity under verification — f(S + verification) >= f(S)', () => {
-  it('no derived count decreases when a verification is attached', () => {
+describe('credit never falls when a verification arrives', () => {
+  it('evidencedContacts and total never decrease', () => {
     fc.assert(fc.property(anyStateArb, verificationArb, fc.nat(), (state, ver, pick) => {
       const next = verifyOneCall(state, ver, pick);
       forEachDay((day) => {
         const before = callCountsOn(state, day);
         const after = callCountsOn(next, day);
-        for (const key of CALL_COUNT_KEYS) {
+        for (const key of VERIFICATION_MONOTONE_KEYS) {
           expect(after[key], `${key} fell on ${day} when a verification arrived`)
             .toBeGreaterThanOrEqual(before[key]);
         }
@@ -197,17 +221,84 @@ describe('monotonicity under verification — f(S + verification) >= f(S)', () =
     }), runCfg);
   });
 
-  it('evidenced contacts can RISE retroactively — the point of the whole slice', () => {
+  it('evidenced contacts RISE retroactively — the late-arrival case', () => {
     const call = newCall({ id: 'c1', date: ANCHOR, atHour: 10, disposition: 'appointment_set' });
     const before = callCountsOn({ calls: [call] }, ANCHOR);
-    expect(before.evidencedContacts).toBe(0);
-    expect(before.declaredContacts).toBe(1);
+    expect(before).toMatchObject({ evidencedContacts: 0, declaredOnlyContacts: 1, total: 1 });
 
     const verified = applyVerification(call, { source: 'msgraph', reached: true, connectedSeconds: 214, direction: 'outbound' });
     const after = callCountsOn({ calls: [verified] }, ANCHOR);
-    expect(after.evidencedContacts).toBe(1);
-    // The agent's account is not retracted by a machine agreeing with it.
-    expect(after.declaredContacts).toBe(1);
+
+    // A TRANSFER, not an addition: the lane changed, the credit did not.
+    expect(after).toMatchObject({ evidencedContacts: 1, declaredOnlyContacts: 0, total: 1 });
+  });
+});
+
+// ── 2b. CONSERVATION — an agreeing verification is a TRANSFER ────────────────
+//
+// This is the property that replaces "nothing went down", and it is strictly
+// stronger: a direction-only check passes an implementation that counts the same
+// call in both lanes (total would rise, and rising is allowed). Conservation
+// fails it immediately, and catches lane leakage in the same assertion.
+//
+// SCOPED TO AGREEMENT, and the scope is the point. Where a verification
+// CONTRADICTS the agent, conservation genuinely does not hold — the machine is
+// asserting a contact the agent never claimed. Ranging over that case would
+// force the module to pick a winner just to keep the books balanced, i.e. answer
+// the open question through a test. So the contradiction case is left to the
+// visibility contract below, and is asserted about only there.
+
+describe('conservation — an agreeing verification transfers, never adds', () => {
+  /**
+   * Build a verification that AGREES with the call's own disposition. Agreement
+   * is CONSTRUCTED rather than filtered for: filtering would leave most runs
+   * vacuous, which is how a property ends up never exercising its own subject.
+   * Returns null when no agreement is possible (no disposition to agree with).
+   */
+  function agreeingVerificationFor(call) {
+    const declared = dispositionReached(call?.disposition);
+    if (declared === null) return null;
+    return { source: 'msgraph', reached: declared, connectedSeconds: 120, direction: 'outbound' };
+  }
+
+  it('total is unchanged, and the evidenced gain equals the declaredOnly loss', () => {
+    fc.assert(fc.property(anyStateArb, fc.nat(), (state, pick) => {
+      if (state.calls.length === 0) return;
+      const idx = pick % state.calls.length;
+      const target = state.calls[idx];
+      if (target.verification != null) return;      // add-only; nothing moves
+
+      const ver = agreeingVerificationFor(target);
+      if (ver === null) return;                     // no claim to agree with
+
+      const calls = [...state.calls];
+      calls[idx] = applyVerification(target, ver);
+      const next = { ...state, calls };
+
+      // Sanity: the construction really did produce agreement, not a near-miss.
+      expect(calls[idx].verification.agreement).toBe(VERIFICATION_AGREEMENT.AGREES);
+
+      forEachDay((day) => {
+        const before = callCountsOn(state, day);
+        const after = callCountsOn(next, day);
+
+        expect(after.total, `total moved on ${day} under an agreeing verification`)
+          .toBe(before.total);
+
+        const gained = after.evidencedContacts - before.evidencedContacts;
+        const lost = before.declaredOnlyContacts - after.declaredOnlyContacts;
+        expect(gained, `evidenced gain != declaredOnly loss on ${day}`).toBe(lost);
+      });
+    }), runCfg);
+  });
+
+  it('the lanes partition — total is always exactly their sum', () => {
+    fc.assert(fc.property(anyStateArb, (state) => {
+      forEachDay((day) => {
+        const c = callCountsOn(state, day);
+        expect(c.total).toBe(c.evidencedContacts + c.declaredOnlyContacts);
+      });
+    }), runCfg);
   });
 });
 
@@ -261,61 +352,61 @@ describe('contacts never exceed calls', () => {
     fc.assert(fc.property(anyStateArb, (state) => {
       forEachDay((day) => {
         const c = callCountsOn(state, day);
-        expect(c.declaredContacts).toBeLessThanOrEqual(c.calls);
         expect(c.evidencedContacts).toBeLessThanOrEqual(c.calls);
+        expect(c.declaredOnlyContacts).toBeLessThanOrEqual(c.calls);
         expect(c.contestedContacts).toBeLessThanOrEqual(c.calls);
-        expect(c.contactsClaimed).toBeLessThanOrEqual(c.calls);
+        // The one that would catch double-counting: the SUM is bounded too.
+        expect(c.total).toBeLessThanOrEqual(c.calls);
       });
     }), runCfg);
   });
 });
 
-// ── 5. Never blended ─────────────────────────────────────────────────────────
+// ── 5. Never blended — the lanes hold disjoint populations ───────────────────
 //
-// Here the no-blend rule is a CORRECTNESS constraint, not only doctrine: the two
-// lanes are provenance claims about the same records, not disjoint populations,
-// so their sum double-counts every call that is in both. `contactsClaimed` is
-// the union, and this proves it is a union rather than a sum by checking it is
-// STRICTLY smaller whenever the lanes actually overlap.
+// `total` IS emitted, and that is safe only because no call is in both lanes.
+// The guard that matters is therefore no longer "there is no sum field" but
+// "the sum is over disjoint sets". Counted per call, from the records
+// themselves, so an implementation that quietly counted a call in both would
+// disagree with this recount even while `total` still equalled its own two
+// fields.
 
-describe('evidenced and declared are never blended', () => {
-  it('the return shape carries no total, sum or combined field', () => {
-    const keys = Object.keys(callCountsOn({ calls: [] }, ANCHOR));
-    for (const k of keys) {
-      expect(k, `${k} reads as a blended figure`).not.toMatch(/total|sum|combined|overall/i);
-    }
-    expect(CALL_COUNT_KEYS).not.toContain('total');
+describe('the two lanes are disjoint populations', () => {
+  it('no call is counted in both lanes — recounted from the records', () => {
+    fc.assert(fc.property(anyStateArb, (state) => {
+      forEachDay((day) => {
+        const onDay = (state.calls ?? []).filter((c) => c.date === day);
+
+        const evidencedIds = onDay.filter((c) => (
+          c.verification?.reached === true
+          && c.verification?.agreement !== VERIFICATION_AGREEMENT.CONTRADICTS
+        )).map((c) => c.id);
+
+        const declaredOnlyIds = onDay.filter((c) => (
+          dispositionReached(c.disposition) === true && !evidencedIds.includes(c.id)
+        )).map((c) => c.id);
+
+        expect(evidencedIds.filter((id) => declaredOnlyIds.includes(id)),
+          'a call was counted in both lanes').toEqual([]);
+
+        const c = callCountsOn(state, day);
+        expect(c.evidencedContacts).toBe(evidencedIds.length);
+        expect(c.declaredOnlyContacts).toBe(declaredOnlyIds.length);
+        expect(c.total).toBe(new Set([...evidencedIds, ...declaredOnlyIds]).size);
+      });
+    }), runCfg);
   });
 
-  // CALL_COUNT_KEYS is a hand-maintained literal, and the monotonicity
-  // properties iterate over it. A count field added to `callCountsOn` but not
-  // here would be silently EXEMPT from both — the properties would still pass
-  // while no longer covering the new figure. This pins the two together.
-  // `pctEvidenced` is the one deliberate exclusion; it is a ratio, not a count.
+  // CALL_COUNT_KEYS is a hand-maintained literal, and the properties iterate
+  // over it (and over VERIFICATION_MONOTONE_KEYS, which derives from it). A
+  // count field added to `callCountsOn` but not here would be silently EXEMPT
+  // from both — the properties would still pass while no longer covering the new
+  // figure. `pctEvidenced` is the one deliberate exclusion: a ratio, not a count.
   it('CALL_COUNT_KEYS covers every count the shape returns', () => {
     const returned = Object.keys(callCountsOn({ calls: [] }, ANCHOR));
     expect([...CALL_COUNT_KEYS].sort())
       .toEqual(returned.filter((k) => k !== 'pctEvidenced').sort());
-  });
-
-  it('contactsClaimed is a UNION — never the sum, and strictly less on overlap', () => {
-    fc.assert(fc.property(anyStateArb, (state) => {
-      forEachDay((day) => {
-        const c = callCountsOn(state, day);
-        expect(c.contactsClaimed).toBeLessThanOrEqual(c.declaredContacts + c.evidencedContacts);
-
-        const overlap = (state.calls ?? []).filter((call) => (
-          call.date === day
-          && dispositionReached(call.disposition) === true
-          && call.verification?.reached === true
-          && call.verification?.agreement !== VERIFICATION_AGREEMENT.CONTRADICTS
-        )).length;
-
-        if (overlap > 0) {
-          expect(c.contactsClaimed).toBeLessThan(c.declaredContacts + c.evidencedContacts);
-        }
-      });
-    }), runCfg);
+    expect(VERIFICATION_MONOTONE_KEYS).not.toContain('declaredOnlyContacts');
   });
 });
 
@@ -339,19 +430,43 @@ describe('applyVerification', () => {
     }), runCfg);
   });
 
-  it('records a contradiction rather than resolving it', () => {
+  // The contradiction case is covered by VISIBILITY alone — deliberately. It is
+  // outside the conservation property (see §2b) precisely so that no assertion
+  // here quietly decides which source wins.
+  it('records a contradiction rather than resolving it — agent claimed, machine denies', () => {
     const call = newCall({ id: 'c1', date: ANCHOR, atHour: 10, disposition: 'appointment_set' });
     const out = applyVerification(call, { source: 'msgraph', reached: false, connectedSeconds: 4, direction: 'outbound' });
 
     expect(out.verification.agreement).toBe(VERIFICATION_AGREEMENT.CONTRADICTS);
-    // Both claims stay readable; neither wins.
+    // Both claims stay readable; neither is deleted.
     expect(out.disposition).toBe('appointment_set');
     expect(out.verification.reached).toBe(false);
 
     const counts = callCountsOn({ calls: [out] }, ANCHOR);
+    expect(counts.contestedContacts).toBe(1);  // flagged for a human
+    expect(counts.evidencedContacts).toBe(0);  // the machine did not confirm it
+    expect(counts.declaredOnlyContacts).toBe(1); // the agent's claim is not deleted
+  });
+
+  // The other direction, which is the one the dispatcher named: the agent
+  // recorded no answer and the machine reports connected seconds. The machine is
+  // asserting a contact the agent never claimed, so nothing is transferred and
+  // nothing is credited — it is surfaced and left for a human.
+  it('records a contradiction rather than resolving it — machine claims, agent did not', () => {
+    const call = newCall({ id: 'c1', date: ANCHOR, atHour: 10, disposition: 'no_answer' });
+    const out = applyVerification(call, { source: 'msgraph', reached: true, connectedSeconds: 45, direction: 'outbound' });
+
+    expect(out.verification.agreement).toBe(VERIFICATION_AGREEMENT.CONTRADICTS);
+    expect(out.disposition).toBe('no_answer');
+    expect(out.verification.connectedSeconds).toBe(45);
+
+    const counts = callCountsOn({ calls: [out] }, ANCHOR);
     expect(counts.contestedContacts).toBe(1);
-    expect(counts.declaredContacts).toBe(1);   // the agent still said it
-    expect(counts.evidencedContacts).toBe(0);  // and it is still not evidence
+    expect(counts.evidencedContacts).toBe(0);
+    expect(counts.declaredOnlyContacts).toBe(0);
+    // Conservation does NOT apply here, and the total reflects that honestly:
+    // no contact is credited to either lane while the two sources disagree.
+    expect(counts.total).toBe(0);
   });
 
   it('is ADD-ONLY — a second source never replaces the first', () => {

@@ -32,23 +32,51 @@
  * here and nothing else. Needing to change `pcBreakdown` would mean the split is
  * wrong, not that the rule may be bent.
  *
- * ── EVIDENCED AND DECLARED ARE NEVER BLENDED, AND HERE IT IS LOAD-BEARING ───
- * In `activityLedger.js` evidenced and declared are DISJOINT populations (logged
- * blocks vs typed numbers), so their sum is at least arithmetically meaningful
- * even though the contract forbids emitting it.
+ * ── THE TWO LANES ARE DISJOINT, AND A VERIFICATION IS A TRANSFER ────────────
+ * Same shape as `activityLedger.js`: evidenced and declared are two POPULATIONS,
+ * not two claims about one population. A call sits in exactly one lane.
  *
- * Here they are NOT disjoint: the same call can be both declared-reached by the
- * agent and verified-reached by a source. They are two provenance claims about
- * ONE record, not two populations. So a sum would DOUBLE-COUNT — the no-blend
- * rule is a correctness constraint on this module, not only a doctrine. There is
- * deliberately no field anywhere below holding declared + evidenced, and
- * `contactsClaimed` is a UNION count, not a sum (see `callCountsOn`).
+ *   evidencedContacts     a machine confirmed it
+ *   declaredOnlyContacts  the agent's word, and nothing has confirmed it YET
+ *   total                 evidencedContacts + declaredOnlyContacts
  *
- * ── VERIFICATION ARRIVES LATE, AND COUNTS MAY RISE ──────────────────────────
+ * `declaredOnly` is named for what it is. `declaredContacts` would invite the
+ * reading "all the contacts the agent claimed", which is a different and larger
+ * quantity — and a figure that gets misread on a manager's screen is the exact
+ * failure mode this module exists to prevent.
+ *
+ * Disjointness is what makes `total` honest to emit: it is the number of calls
+ * claimed as a contact by either source, with no call counted twice. What
+ * protects that is not the absence of a sum but DISJOINTNESS plus CONSERVATION,
+ * and both are property-tested rather than asserted here.
+ *
+ * ── VERIFICATION ARRIVES LATE, AND CREDIT MUST NOT FALL ─────────────────────
  * Under a Microsoft-Graph-style source (the eventual upgrade IF Tatil moves to
- * Teams Phone — do not build it) a verification lands hours after the call. So a
- * past day's evidenced contact count must be able to go UP after the fact. That
- * is the monotonicity property this module's tests exist for.
+ * Teams Phone — do not build it) a verification lands hours after the call.
+ *
+ * The guarantee an agent needs is NOT that every field is monotonic — it is that
+ * CREDIT NEVER FALLS WHEN A MACHINE CONFIRMS THEIR WORK. So:
+ *
+ *   · `evidencedContacts` NEVER decreases.
+ *   · `total` NEVER decreases.
+ *   · `declaredOnlyContacts` MAY decrease — and only by exactly the amount
+ *     `evidencedContacts` rises.
+ *
+ * That third clause is the real invariant: AN AGREEING VERIFICATION IS A
+ * TRANSFER BETWEEN LANES, NOT AN ADDITION. Conservation is strictly stronger
+ * than "nothing went down" — it catches double-counting and lane leakage in one
+ * assertion, and a direction-only check sees neither.
+ *
+ * ── CONSERVATION IS SCOPED TO AGREEMENT, DELIBERATELY ───────────────────────
+ * When a verification CONTRADICTS the disposition — the agent recorded no
+ * answer, the machine reports 45 connected seconds — conservation does NOT hold,
+ * because the machine is asserting a contact the agent never claimed. That case
+ * is surfaced as `contestedContacts` and left unresolved.
+ *
+ * So the conservation property is CONDITIONED on agreement. Letting it range
+ * over contradictions would force this module to decide which source wins in
+ * order to keep the arithmetic balanced — answering the open question by
+ * implementation, through a test, which is the quietest possible way to do it.
  *
  * A verification NEVER invents a disposition the agent did not give, and never
  * silently overwrites one that disagrees. A verification that contradicts the
@@ -260,28 +288,30 @@ function verificationEvidencesContact(verification) {
  * Reads `state.calls` on `day`, exactly as `activityLedger.js` does, so the two
  * modules always describe the same population.
  *
- * ── WHY `declaredContacts` DOES NOT SHRINK WHEN A VERIFICATION LANDS ────────
- * The agent's account is a fact about what the agent said, and a machine
- * confirming it later does not retract it. So a call verified as reached stays
- * counted in `declaredContacts` and ALSO appears in `evidencedContacts`. That is
- * what keeps every count monotone under verification (the whole point of the
- * late-arrival case) — and it is precisely why the sum is forbidden: adding the
- * two lanes would double-count the calls that are in both.
+ * ── `declaredOnlyContacts` SHRINKS WHEN A VERIFICATION LANDS, BY DESIGN ─────
+ * An agreeing verification MOVES a call from the declared-only lane to the
+ * evidenced lane. It does not add one. `declaredOnly` therefore falls by exactly
+ * one as `evidenced` rises by one, `total` is unchanged, and the agent's credit
+ * is untouched — which is the guarantee that actually matters. Conservation is
+ * property-tested; see the header for why it is scoped to agreement.
  *
  * @returns {{
- *   calls:number, declaredContacts:number, evidencedContacts:number,
- *   contestedContacts:number, contactsClaimed:number, pctEvidenced:(number|null)
+ *   calls:number, evidencedContacts:number, declaredOnlyContacts:number,
+ *   contestedContacts:number, total:number, pctEvidenced:(number|null)
  * }}
  *   · `calls` — attempts. Evidenced by the records themselves.
- *   · `declaredContacts` — the agent's account says a person was reached.
- *   · `evidencedContacts` — a source asserts it and does not contradict them.
- *   · `contestedContacts` — a source contradicts the agent. Surfaced as its own
- *     figure so a disagreement is visible rather than absorbed into one lane.
- *   · `contactsClaimed` — the number of DISTINCT calls either lane claims as a
- *     contact. A UNION, NOT A SUM: a call claimed by both is counted once. It
- *     exists because v3 rule 5 requires the percentage evidenced to be visible,
- *     and a percentage needs an honest denominator.
- *   · `pctEvidenced` — `evidencedContacts / contactsClaimed` as a WHOLE-NUMBER
+ *   · `evidencedContacts` — a source asserts a contact and does not contradict
+ *     the agent.
+ *   · `declaredOnlyContacts` — the agent's account says a person was reached and
+ *     NOTHING HAS CONFIRMED IT YET. Not "every contact the agent claimed" — once
+ *     a machine confirms one, it is counted in the evidenced lane instead.
+ *   · `contestedContacts` — a source contradicts the agent. Its own figure, in
+ *     NEITHER counting lane, so a disagreement is visible rather than silently
+ *     resolved in one side's favour.
+ *   · `total` — `evidencedContacts + declaredOnlyContacts`. Honest because the
+ *     lanes are disjoint: no call is counted twice. This is the figure v3 rule 5
+ *     needs as the denominator for the percentage evidenced.
+ *   · `pctEvidenced` — `evidencedContacts / total` as a WHOLE-NUMBER
  *     PERCENTAGE, 0–100, rounded. A consumer appends "%" and must never
  *     multiply by 100 again. Null when nothing is claimed, so the surface
  *     renders "—" rather than a confident 0%. Same units and same null
@@ -295,50 +325,64 @@ function verificationEvidencesContact(verification) {
  *     convention and is matched deliberately: diverging to `Math.floor` here
  *     would make two adjacent percentages round differently, which is a worse
  *     defect than the one it fixes.
- *
- * There is no `total` field, and no function in this module returns one.
  */
 export function callCountsOn(state, day) {
   const calls = (state?.calls ?? []).filter((c) => c && c.date === day);
 
-  let declaredContacts = 0;
   let evidencedContacts = 0;
+  let declaredOnlyContacts = 0;
   let contestedContacts = 0;
-  let contactsClaimed = 0;
 
   for (const call of calls) {
     const declared = dispositionReached(call.disposition) === true;
     const evidenced = verificationEvidencesContact(call.verification);
 
-    if (declared) declaredContacts += 1;
+    // The lanes are exclusive at the point of counting, which is what makes
+    // `total` a sum rather than an over-count. `declaredOnly` is the residue.
     if (evidenced) evidencedContacts += 1;
+    else if (declared) declaredOnlyContacts += 1;
+
     if (call.verification?.agreement === VERIFICATION_AGREEMENT.CONTRADICTS) {
       contestedContacts += 1;
     }
-    if (declared || evidenced) contactsClaimed += 1;
   }
+
+  const total = evidencedContacts + declaredOnlyContacts;
 
   return {
     calls: calls.length,
-    declaredContacts,
     evidencedContacts,
+    declaredOnlyContacts,
     contestedContacts,
-    contactsClaimed,
-    pctEvidenced: contactsClaimed === 0
-      ? null
-      : Math.round((evidencedContacts / contactsClaimed) * 100),
+    total,
+    pctEvidenced: total === 0 ? null : Math.round((evidencedContacts / total) * 100),
   };
 }
 
 /**
- * The count fields of `callCountsOn`, named once so the monotonicity properties
- * iterate over a derived list rather than a literal that could drift from the
- * return shape. `pctEvidenced` is absent BY DESIGN — see `callCountsOn`.
+ * The count fields of `callCountsOn`. Named once so the properties iterate over
+ * a list pinned to the return shape rather than a literal that could drift from
+ * it. `pctEvidenced` is absent BY DESIGN — it is a ratio, not a count.
  */
 export const CALL_COUNT_KEYS = Object.freeze([
   'calls',
-  'declaredContacts',
   'evidencedContacts',
+  'declaredOnlyContacts',
   'contestedContacts',
-  'contactsClaimed',
+  'total',
 ]);
+
+/**
+ * The counts that may never fall when a VERIFICATION arrives.
+ *
+ * `declaredOnlyContacts` is the one exclusion, and it is not a weakening: an
+ * agreeing verification moves a call OUT of that lane by design, so asserting it
+ * never decreases would assert the transfer never happens. What replaces the
+ * missing direction-check is the conservation property, which is stronger —
+ * `declaredOnly` may fall, and ONLY by exactly the amount `evidenced` rises.
+ *
+ * Derived, so the drift guard on `CALL_COUNT_KEYS` covers this list too.
+ */
+export const VERIFICATION_MONOTONE_KEYS = Object.freeze(
+  CALL_COUNT_KEYS.filter((k) => k !== 'declaredOnlyContacts'),
+);
