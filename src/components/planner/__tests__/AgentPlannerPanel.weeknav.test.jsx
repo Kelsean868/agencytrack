@@ -104,14 +104,14 @@ describe('AgentPlannerPanel — week navigation', () => {
     await openWeekView();
     fireEvent.click(screen.getByTestId('planner-week-next'));
     await waitFor(() => expect(lastRange()).toEqual({ start: NEXT_WEEK.start, end: NEXT_WEEK.end }));
-    expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Jul 26 – Aug 1');
+    await waitFor(() => expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Jul 26 – Aug 1'));
   });
 
   it('previous week re-queries that week (past weeks are viewable)', async () => {
     await openWeekView();
     fireEvent.click(screen.getByTestId('planner-week-prev'));
     await waitFor(() => expect(lastRange()).toEqual({ start: PREV_WEEK.start, end: PREV_WEEK.end }));
-    expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Jul 12 – 18');
+    await waitFor(() => expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Jul 12 – 18'));
   });
 
   it('navigation is unlimited — three weeks forward keeps stepping', async () => {
@@ -124,7 +124,7 @@ describe('AgentPlannerPanel — week navigation', () => {
       await waitFor(() => expect(lastRange().start).toBe(expected));
     }
     expect(lastRange()).toEqual({ start: '2026-08-09', end: '2026-08-15' });
-    expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Aug 9 – 15');
+    await waitFor(() => expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Aug 9 – 15'));
   });
 
   it('Today snaps back to the current week and restores the today+2 window', async () => {
@@ -133,7 +133,7 @@ describe('AgentPlannerPanel — week navigation', () => {
     await waitFor(() => expect(lastRange().start).toBe(NEXT_WEEK.start));
     fireEvent.click(screen.getByTestId('planner-week-today'));
     await waitFor(() => expect(lastRange()).toEqual({ start: THIS_WEEK.start, end: SPAN_END }));
-    expect(screen.queryByTestId('planner-week-today')).toBeNull();
+    await waitFor(() => expect(screen.queryByTestId('planner-week-today')).toBeNull());
   });
 });
 
@@ -167,7 +167,7 @@ describe('AgentPlannerPanel — snap-home invariant', () => {
     fireEvent.click(screen.getByTestId('planner-view-today'));
     await waitFor(() => expect(lastRange().start).toBe(THIS_WEEK.start));
     fireEvent.click(screen.getByTestId('planner-view-week'));
-    expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Jul 19 – 25');
+    await waitFor(() => expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Jul 19 – 25'));
   });
 });
 
@@ -195,7 +195,7 @@ describe('AgentPlannerPanel — week-scoped derivations follow the anchor', () =
     await openWeekView();
     fireEvent.click(screen.getByTestId('planner-week-next'));
     await waitFor(() => expect(lastRange().start).toBe(NEXT_WEEK.start));
-    expect(screen.queryByTestId('running-late-banner')).toBeNull();
+    await waitFor(() => expect(screen.queryByTestId('running-late-banner')).toBeNull());
   });
 });
 
@@ -267,8 +267,8 @@ describe('AgentPlannerPanel — week navigation on the DESKTOP board', () => {
     fireEvent.click(screen.getByTestId('planner-week-next'));
     await waitFor(() => expect(lastRange().start).toBe(NEXT_WEEK.start));
     // Sun/Mon/Tue of the navigated week — NOT today+0/1/2.
-    expect(screen.getByTestId('planner-day-col-2026-07-26')).toBeInTheDocument();
-    expect(screen.getByTestId('planner-day-col-2026-07-27')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('planner-day-col-2026-07-26')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('planner-day-col-2026-07-27')).toBeInTheDocument());
     expect(screen.getByTestId('planner-day-col-2026-07-28')).toBeInTheDocument();
     expect(screen.queryByTestId(`planner-day-col-${FRIDAY}`)).toBeNull();
   });
@@ -287,7 +287,7 @@ describe('AgentPlannerPanel — week navigation on the DESKTOP board', () => {
     await waitFor(() => expect(lastRange().start).toBe(NEXT_WEEK.start));
     fireEvent.click(screen.getByTestId('planner-span-week'));
     // Still on the navigated week — day/3-day/week are all week-scoped.
-    expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Jul 26 – Aug 1');
+    await waitFor(() => expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Jul 26 – Aug 1'));
     fireEvent.click(screen.getByTestId('planner-span-day'));
     expect(screen.getByTestId('planner-week-label')).toHaveTextContent('Jul 26 – Aug 1');
   });
@@ -331,6 +331,6 @@ describe('AgentPlannerPanel — week navigation on the DESKTOP board', () => {
     fireEvent.click(screen.getByTestId('planner-week-next'));
     await waitFor(() => expect(lastRange().start).toBe(NEXT_WEEK.start));
     // Navigated: no count rendered rather than a wrong one.
-    expect(screen.getByTestId('planner-span-followups')).not.toHaveTextContent('(');
+    await waitFor(() => expect(screen.getByTestId('planner-span-followups')).not.toHaveTextContent('('));
   });
 });
