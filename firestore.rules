@@ -48,10 +48,16 @@ service cloud.firestore {
     // cannot even see agentNumber in EditUserDrawer). This mirrors the Cloud
     // Functions' MANAGER_ROLES set exactly. Do NOT widen this, and do NOT
     // replace it with canManage() — that substitution fails silently.
+    // Note the tenant scoping is TIGHTER than canManage()'s: only platform_admin
+    // (which lives outside any tenant by definition) is cross-tenant here.
+    // tenant_admin is scoped to its OWN tenant, unlike in canManage(), because
+    // these docs are credentials — a cross-tenant read is a credential leak, not
+    // just an over-broad view.
     function canManageCallSources(tenantId) {
       return isSignedIn()
-        && (getRole() in ['platform_admin', 'tenant_admin']
-            || (getRole() in ['branch_manager', 'sales_manager'] && getTenantId() == tenantId));
+        && (getRole() == 'platform_admin'
+            || (getRole() in ['tenant_admin', 'branch_manager', 'sales_manager']
+                && getTenantId() == tenantId));
     }
 
     function canAccessOwn(tenantId, agentId) {

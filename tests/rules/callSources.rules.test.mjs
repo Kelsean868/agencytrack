@@ -53,6 +53,7 @@ const UM    = 'um_user';      // the F4 trap subject
 const TA    = 'ta_user';
 const AGENT = 'agent_user';
 const BM_X  = 'bm_cross_tenant';
+const TA_X  = 'ta_cross_tenant';
 
 const SOURCE_ID = 'src_seeded';
 
@@ -116,6 +117,9 @@ async function main() {
     firestore: { host: EMU_HOST, port: EMU_PORT },
   });
 
+  // Everything after initialization runs inside try/finally so a seed or
+  // assertion failure still tears the emulator context down (Rule 3).
+  try {
   await testEnv.clearFirestore();
   await seedDocs(testEnv);
 
@@ -125,6 +129,9 @@ async function main() {
   const ta    = () => testEnv.authenticatedContext(TA,    token('tenant_admin')).firestore();
   const agent = () => testEnv.authenticatedContext(AGENT, token('agent')).firestore();
   const bmX   = () => testEnv.authenticatedContext(BM_X,  token('branch_manager', OTHER_TENANT)).firestore();
+  // A tenant_admin of ANOTHER tenant. canManage() would admit this caller;
+  // canManageCallSources deliberately does not — these docs are credentials.
+  const taX   = () => testEnv.authenticatedContext(TA_X,  token('tenant_admin', OTHER_TENANT)).firestore();
   const anon  = () => testEnv.unauthenticatedContext().firestore();
 
   console.log('READ:');
@@ -149,6 +156,12 @@ async function main() {
   });
   await t('7. cross-tenant branch_manager get → DENY', async () => {
     await assertFails(getDoc(srcRef(bmX())));
+  });
+  await t('7a. cross-tenant tenant_admin get → DENY', async () => {
+    await assertFails(getDoc(srcRef(taX())));
+  });
+  await t('7b. cross-tenant tenant_admin list → DENY', async () => {
+    await assertFails(getDocs(srcCol(taX())));
   });
   await t('8. branch_manager list → ALLOW', async () => {
     await assertSucceeds(getDocs(srcCol(bm())));
@@ -179,8 +192,11 @@ async function main() {
   });
 
   console.log(`\n${passed} passed, ${failed} failed.`);
-  await testEnv.cleanup();
-  process.exit(failed === 0 ? 0 : 1);
+  } finally {
+    await testEnv.cleanup();
+  }
+  // Set rather than exit() so the cleanup above is never skipped.
+  process.exitCode = failed === 0 ? 0 : 1;
 }
 
 main();

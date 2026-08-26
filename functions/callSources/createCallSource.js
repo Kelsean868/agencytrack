@@ -49,6 +49,16 @@ exports.createCallSource = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('not-found', 'Credit user not found in this tenant.');
   }
 
+  // A deactivated user's inbound links were revoked by deactivateUser; minting a
+  // fresh one here would walk straight back through that door. Decision 2 makes
+  // re-linking a deliberate act, and re-activating the user is the deliberate act.
+  if (creditSnap.data().active === false) {
+    throw new functions.https.HttpsError(
+      'failed-precondition',
+      'Cannot link a deactivated user. Reactivate them first.',
+    );
+  }
+
   const rawToken = crypto.randomBytes(32).toString('hex');
   const now = new Date();
   const expiresAt = new Date(now.getTime() + TOKEN_TTL_MS);

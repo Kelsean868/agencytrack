@@ -63,7 +63,7 @@ jest.mock('firebase-admin', () => ({
   }),
 }));
 
-const { revokeInboundLinks } = require('../revokeInboundLinks');
+const { revokeInboundLinks, CHUNK_SIZE } = require('../revokeInboundLinks');
 
 const TENANT = 'tatillife_south';
 const seed = (id, fields) => {
@@ -111,6 +111,26 @@ describe('revokeInboundLinks (F5 — deactivation hook)', () => {
 
     expect(count).toBe(0);
     expect(mockCommitted).toHaveLength(0);
+  });
+
+  // A serverTimestamp is a field TRANSFORM costing a second operation against
+  // Firestore's 500-per-batch cap, so CHUNK_SIZE + 1 links in ONE batch would
+  // reject the commit and leave an offboarded user's links live.
+  it(`commits in chunks so ${CHUNK_SIZE + 1} links cannot exceed the batch cap`, async () => {
+    const total = CHUNK_SIZE + 1;
+    for (let i = 0; i < total; i += 1) {
+      seed(`s${i}`, { creditUid: 'agentA', revokedAt: null, active: true });
+    }
+
+    const count = await revokeInboundLinks(TENANT, 'agentA');
+
+    expect(count).toBe(total);
+    expect(mockCommitted).toHaveLength(2);
+    expect(mockCommitted[0]).toHaveLength(CHUNK_SIZE);
+    expect(mockCommitted[1]).toHaveLength(1);
+    mockCommitted.forEach((batch) => {
+      expect(batch.length).toBeLessThanOrEqual(CHUNK_SIZE);
+    });
   });
 
   it('is one-way: a second call after reactivation does not clear revokedAt', async () => {

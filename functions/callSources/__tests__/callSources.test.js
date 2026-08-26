@@ -198,6 +198,23 @@ describe('createCallSource — stored shape', () => {
     );
     expect(writes).toHaveLength(0);
   });
+
+  // Without this, a manager could re-link an offboarded agent and walk straight
+  // back through the door deactivateUser just closed (decision 2).
+  it('rejects a creditUid whose account is deactivated', async () => {
+    seedUser('agentGone', { role: 'agent', active: false });
+    await expectCode(
+      createHandler(validData({ creditUid: 'agentGone' }), ctx('branch_manager')),
+      'failed-precondition'
+    );
+    expect(writes).toHaveLength(0);
+  });
+
+  it('allows a creditUid with no explicit active field (legacy docs)', async () => {
+    seedUser('agentLegacy', { role: 'agent' });
+    const res = await createHandler(validData({ creditUid: 'agentLegacy' }), ctx('branch_manager'));
+    expect(res.sourceId).toBeTruthy();
+  });
 });
 
 describe('revokeCallSource — lifecycle', () => {
