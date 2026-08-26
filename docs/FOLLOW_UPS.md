@@ -135,7 +135,7 @@
 | Financing ruleset code comment overclaims configurability (banked 2026-07-10, promotion session, ... | LOW | — | — | 431 |
 | Master Sheet — unit friendly names absent (banked 2026-07-10, Run 4 Item 2, LOW — display polish) | LOW | — | — | 455 |
 | Company Config toggle — "count converted service calls as Tel Contacts" (banked 2026-07-10, Run 4... | LOW | — | — | 463 |
-| Sunday aggregator now ZEROES agent-entered `serviceCalls` / `referralsObtained` on an unsubmitted hybrid draft (banked 2026-08-26, daily-call-fields PR) | MEDIUM | — | — | end |
+| Sunday aggregator zeroing agent-entered `serviceCalls` / `referralsObtained` — MITIGATED 2026-08-26 by resolution 2 (omit-when-zero); residual: a genuine correction-to-zero cannot propagate once a daily writer exists (banked 2026-08-26, daily-call-fields PR) | LOW | — | — | end |
 | ⚠️ **Feature-branch Vercel previews are bound to PRODUCTION Firebase** — overturns the old "previews can't reach a live backend" claim (re-banked 2026-07-26, planner week-nav; remedy (a) = generalize the pre-write project guard, own small PR; remedy (b) = OPERATOR binds staging env to Vercel's Preview environment) | **HIGH** | — | — | 508 |
 | Vitest on Windows — worker contention flakes under concurrent runs (banked 2026-07-10, Run 4, LOW... | LOW | — | — | 516 |
 | Recon docs must carry a validity-SHA header — new standing rule (banked 2026-07-10, Run 4, LOW — ... | LOW | — | — | 524 |
@@ -6096,6 +6096,26 @@ The dumped DOM still showed `animate-pulse` skeletons — the assertion ran agai
 3. **Give both fields a Daily Capture stepper** — removes the asymmetry at its root and is the only option that makes the overwrite *correct*. Largest scope.
 
 **Severity:** MEDIUM — silent, affects only unsubmitted hybrid drafts, and not live until the functions deploy. **Falsification:** overturned if the cron is shown to skip drafts an agent has edited (it does not — it skips only `status === 'submitted'`), or if a daily write path for these two fields lands first, which resolves it by making the sums real.
+
+### MITIGATED 2026-08-26 — resolution 2 applied (omit-when-zero), downgraded MEDIUM → LOW
+
+The operator ruled for **resolution 2** before the PR merged: both aggregator twins now omit
+`serviceCalls` and `referralsObtained` from the returned object when their daily sum is 0, so a
+`{ merge: true }` write leaves an agent-entered value untouched. The key returns the moment any
+entry carries a non-zero, and derived still wins over typed at that point — the same rule the four
+call fields follow. Covered by five tests per twin, including both merge directions.
+
+**The residual is exactly the downside this entry named, and it is not fixed.** A genuine
+correction to zero still cannot propagate: once the KQM Calls ingest endpoint writes daily rows, a
+week with no referrals sums to 0, the key is omitted, and a stale agent-typed value survives
+instead of being corrected. That is harmless today because **nothing writes either field daily** —
+the trade is "cannot correct a value that cannot yet exist" against "silently destroys a 3pt value
+that does exist".
+
+**Revisit trigger — not a date, an event:** the first PR that gives either field a daily writer
+(the ingest endpoint, or resolution 3's Daily Capture steppers). At that point the omit-when-zero
+guard becomes wrong in the other direction and resolution 3 is the honest fix. Whoever lands that
+endpoint owns this line.
 
 ---
 

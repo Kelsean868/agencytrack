@@ -337,6 +337,67 @@ describe('aggregateDailyToWeekly — M3 coldCalls fix', () => {
   });
 });
 
+// ── the omit-when-zero guard ──────────────────────────────────────────────────
+//
+// serviceCalls and referralsObtained are the ONLY two keys the aggregator
+// conditionally omits. They have no daily writer yet (the KQM Calls ingest
+// endpoint is unbuilt), so emitting a derived 0 into a { merge: true } write
+// would erase an agent-entered weekly value and put nothing in its place.
+// referralsObtained is worth 3pt, so the loss is visible on the score.
+
+describe('aggregateDailyToWeekly - omit-when-zero for serviceCalls / referralsObtained', () => {
+  it('omits both keys entirely when no entry carries them', () => {
+    const out = aggregateDailyToWeekly([{ dials: 5 }], 0);
+    expect(out).not.toHaveProperty('serviceCalls');
+    expect(out).not.toHaveProperty('referralsObtained');
+  });
+
+  it('omits both keys when every entry carries an explicit 0', () => {
+    const out = aggregateDailyToWeekly(
+      [{ dials: 5, serviceCalls: 0, referralsObtained: 0 }],
+      0,
+    );
+    expect(out).not.toHaveProperty('serviceCalls');
+    expect(out).not.toHaveProperty('referralsObtained');
+  });
+
+  it('emits the summed value once any entry carries a non-zero', () => {
+    const out = aggregateDailyToWeekly(
+      [
+        { dials: 5, serviceCalls: 2, referralsObtained: 1 },
+        { dials: 3, serviceCalls: 1, referralsObtained: 0 },
+      ],
+      0,
+    );
+    expect(out.serviceCalls).toBe(3);
+    expect(out.referralsObtained).toBe(1);
+  });
+
+  it('a merge of the zero-case leaves an agent-entered value intact', () => {
+    // { merge: true } semantics: an ABSENT key does not overwrite. This is the
+    // whole point of the guard — spreading the aggregate over a prior draft
+    // must not zero what the agent typed.
+    const priorDraft = { serviceCalls: 4, referralsObtained: 2, coldCalls: 99 };
+    const merged = { ...priorDraft, ...aggregateDailyToWeekly([{ dials: 8 }], 0) };
+    expect(merged.serviceCalls).toBe(4);
+    expect(merged.referralsObtained).toBe(2);
+    // The call fields still overwrite — they are deliberately always written.
+    expect(merged.coldCalls).toBe(8);
+  });
+
+  it('a merge of the non-zero case overwrites the agent-entered value', () => {
+    // Derived wins over typed the moment a daily source exists — the same rule
+    // the four call fields already follow.
+    const priorDraft = { serviceCalls: 4, referralsObtained: 2 };
+    const merged = {
+      ...priorDraft,
+      ...aggregateDailyToWeekly([{ serviceCalls: 1, referralsObtained: 7 }], 0),
+    };
+    expect(merged.serviceCalls).toBe(1);
+    expect(merged.referralsObtained).toBe(7);
+  });
+});
+
 // ── normalizeDailyEntry ───────────────────────────────────────────────────────
 
 describe('normalizeDailyEntry', () => {
@@ -551,7 +612,10 @@ describe('aggregateDailyToWeekly — call-type split', () => {
   it('does NOT source serviceCalls from serviceContacts', () => {
     const out = aggregateDailyToWeekly([{ serviceContacts: 9 }], 0);
     expect(out.serviceContacts).toBe(9);
-    expect(out.serviceCalls).toBe(0);
+    // Absent, not 0 — the omit-when-zero guard. `not.toHaveProperty` is the
+    // stronger assertion of the same intent: nothing about serviceContacts
+    // reaches serviceCalls, and no derived 0 is emitted to overwrite a typed value.
+    expect(out).not.toHaveProperty('serviceCalls');
   });
 });
 

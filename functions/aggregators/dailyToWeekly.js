@@ -113,6 +113,11 @@ function aggregateDailyToWeekly(dailyEntries, commissionRate = 0) {
   const totalProductionCredit = computeTotalProductionCredit(productionShape);
   const totalCommission = computeTotalCommission(productionShape, p(commissionRate) / 100);
 
+  // Hoisted because both keys are conditionally emitted below — see the
+  // OMITTED WHEN ZERO note beside `serviceCalls`.
+  const serviceCallsTotal = sumInt('serviceCalls');
+  const referralsObtainedTotal = sumInt('referralsObtained');
+
   // DCv2 Phase 5 — emergent effort signals derived in-place from the per-day
   // docs (each carries its own `date`). daysWorked mirrors the agent strip's
   // own predicate: a day "counts" iff a daily doc exists for it (distinct
@@ -163,11 +168,22 @@ function aggregateDailyToWeekly(dailyEntries, commissionRate = 0) {
     // disagreement where the daily pace badge scored service activity and the
     // aggregated weekly draft did not. Still excluded from every funnel and
     // plan sum (funnelModel.js, planVariance.js) — unchanged by this ruling.
-    serviceCalls:    sumInt('serviceCalls'),
+    //
+    // OMITTED WHEN ZERO — and this is the one place that differs from the four
+    // call fields below, so the difference is stated rather than left to be
+    // inferred. `coldCalls` and its siblings are always written because a daily
+    // `dials` total exists and an agent-entered weekly value would double-count
+    // against it. `serviceCalls` and `referralsObtained` have NO daily writer
+    // yet — the KQM Calls ingest endpoint is not built — so writing a derived 0
+    // over an agent-entered weekly value destroys real data and replaces it with
+    // nothing. `referralsObtained` is worth 3pt, so the loss is visible.
+    // The key returns the moment a daily source populates it, and derived still
+    // wins over typed at that point, exactly as it does for the call fields.
+    ...(serviceCallsTotal > 0 ? { serviceCalls: serviceCallsTotal } : {}),
 
     // v2 1a daily fields — prospecting & outreach
     prospectingLettersSent: sumInt('prospectingLettersSent'),
-    referralsObtained:      sumInt('referralsObtained'),
+    ...(referralsObtainedTotal > 0 ? { referralsObtained: referralsObtainedTotal } : {}),
     seminarsConducted:      sumInt('seminarsConducted'),
     dials:                  sumInt('dials'),
     // M3 + daily v2: aggregated fast-path drafts earn call points. All four
