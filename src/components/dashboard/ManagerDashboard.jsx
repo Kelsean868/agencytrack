@@ -42,6 +42,7 @@ import useNavOrder from '../../hooks/useNavOrder';
 import useMenuLayout from '../../hooks/useMenuLayout';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
 import KioskModeTab from '../kiosk/KioskModeTab';
+import CallSourcesTab from '../admin/CallSourcesTab';
 import StrategicPlanDashboard from '../strategicPlan/StrategicPlanDashboard';
 import AgentOfMonthTab from '../manager/AgentOfMonthTab';
 import ManagerWarTab from '../manager/ManagerWarTab';
@@ -655,6 +656,8 @@ export default function ManagerDashboard() {
         {activeTab === 'agent-of-month' && <AgentOfMonthTab />}
 
         {activeTab === 'kiosk' && <KioskModeTab />}
+
+        {activeTab === 'call-sources' && <CallSourcesTab />}
 
         {activeTab === 'strategic-plan' && <StrategicPlanDashboard />}
 

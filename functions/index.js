@@ -31,6 +31,11 @@ exports.validateKioskToken = require('./kiosk/validateToken').validateKioskToken
 exports.createKioskToken   = require('./kiosk/createToken').createKioskToken;
 exports.revokeKioskToken   = require('./kiosk/revokeToken').revokeKioskToken;
 
+// Linked call sources (slice A) — the link and its lifecycle. No ingest yet.
+exports.createCallSource = require('./callSources/createCallSource').createCallSource;
+exports.revokeCallSource = require('./callSources/revokeCallSource').revokeCallSource;
+const { revokeInboundLinks } = require('./callSources/revokeInboundLinks');
+
 // E6: Agent of the Month — manager-approved monthly recognition
 exports.setAgentOfMonth          = require('./agentOfMonth/setAgentOfMonth').setAgentOfMonth;
 exports.getAgentOfMonthCandidates = require('./agentOfMonth/getCandidates').getAgentOfMonthCandidates;
@@ -900,7 +905,10 @@ exports.deactivateUser = functions.https.onCall(async (data, context) => {
     // Revoke all refresh tokens — forces the deactivated user to sign out immediately.
     // Their next login attempt will fail because active:false blocks the app UI.
     await admin.auth().revokeRefreshTokens(targetUid);
-    console.log(`[deactivateUser] Deactivated + revoked tokens for ${targetUid} (${targetRole}) by ${callerRole} ${callerUid}`);
+    // Slice A decision 2: deactivation also revokes every call source crediting
+    // this user. One-way — reactivation below deliberately does NOT restore them.
+    const revokedLinks = await revokeInboundLinks(callerTenant, targetUid);
+    console.log(`[deactivateUser] Deactivated + revoked tokens for ${targetUid} (${targetRole}) by ${callerRole} ${callerUid}; call sources revoked: ${revokedLinks}`);
   } else {
     console.log(`[deactivateUser] Reactivated ${targetUid} (${targetRole}) by ${callerRole} ${callerUid}`);
   }

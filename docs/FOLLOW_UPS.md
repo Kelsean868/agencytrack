@@ -6145,3 +6145,45 @@ So the remainder is not merely "unruled" — for this member it is precisely loc
 
 **Falsification (Rule 23):** overturned if `weeknav` is shown to fail for a reason unrelated to the awaiting-pattern shape (its own `getAgentWeek` mock resolving differently, say), or if `flushPendingEffects` is shown to be inapplicable to its gate. **Not** overturned by the re-run passing — intermittency is the claim, not the counter-argument.
 
+
+---
+
+## Linked call sources — decision 5 is an INFERENCE, not an operator ruling (MEDIUM, banked 2026-08-26, slice A / PR #TBD)
+
+**The claim:** a role change does **not** revoke a call source. If an agent with a linked
+assistant is promoted to unit manager, the link keeps crediting them; the manager UI shows a
+warning when `creditUid`'s role is not `agent`, and a human decides.
+
+**Why it is flagged rather than settled.** The brief states this plainly as an *inferred
+extension* of the operator's ruling on deactivation, not something the operator said. The
+deactivation ruling was explicit and one-way ("deactivating revokes; reactivating does not
+restore"); nobody ruled on promotion. The inference is that auto-revoking on promotion would
+**silently stop capture** — the agent's assistant keeps dialling, the KPIs quietly stop
+moving, and nothing announces it. That failure is worse than a stale link, because a stale
+link is visible in the list and a stopped capture is not.
+
+**What is built:** the warning only (`cs-role-warning` in `CallSourcesTab`). No auto-revoke,
+no role-change hook, no scheduled sweep.
+
+**Falsification (Rule 23):** overturned if the operator rules that a promoted agent's inbound
+links must auto-revoke — in which case the hook belongs next to the `deactivateUser` one and
+the warning becomes redundant. Also overturned if Tatil's practice turns out to be that a
+promoted agent's assistant is *reassigned* rather than retained, which would make the stale
+link the common case rather than the rare one. **Not** overturned by the warning being
+ignored in practice; that argues for a stronger affordance, not for auto-revoke.
+
+## Linked call sources — no ingest, so nothing exercises `tokenHash` or `lastUsedAt` yet (LOW, banked 2026-08-26, slice A / PR #TBD)
+
+Slice A mints and stores a SHA-256 `tokenHash` and initialises `lastUsedAt: null`, but **no
+code reads either field** — the ingest endpoint is slice B. Two consequences worth recording
+now, while the reason is fresh:
+
+1. **The hash's correctness is asserted only in unit tests**, against `hashToken` from the
+   same module that wrote it. That is a consistency check, not an interop check. The first
+   real test of the scheme is slice B presenting a token and finding the right doc.
+2. **`lastUsedAt` is dead until slice B writes it.** It is in the shape because the
+   `kioskTokens` precedent has it and adding a field to a live collection later is more
+   expensive than carrying an unused null. If slice B does not end up writing it, remove it
+   rather than leaving it permanently null.
+
+**Falsification:** overturned the moment slice B lands and exercises both fields end to end.

@@ -42,6 +42,18 @@ service cloud.firestore {
       return isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin'] || (isManager() && getTenantId() == tenantId));
     }
 
+    // Linked call sources (slice A). DELIBERATELY NARROWER than canManage():
+    // canManage() routes through isManager(), which includes unit_manager, and a
+    // unit manager must not mint a token that writes another agent's KPIs (a UM
+    // cannot even see agentNumber in EditUserDrawer). This mirrors the Cloud
+    // Functions' MANAGER_ROLES set exactly. Do NOT widen this, and do NOT
+    // replace it with canManage() — that substitution fails silently.
+    function canManageCallSources(tenantId) {
+      return isSignedIn()
+        && (getRole() in ['platform_admin', 'tenant_admin']
+            || (getRole() in ['branch_manager', 'sales_manager'] && getTenantId() == tenantId));
+    }
+
     function canAccessOwn(tenantId, agentId) {
       return isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin'] || ((isAgent() || isProducingManager()) && getTenantId() == tenantId && request.auth.uid == agentId));
     }
@@ -933,6 +945,24 @@ service cloud.firestore {
       // validateKioskToken reads via Admin SDK (bypasses rules entirely).
       match /kioskTokens/{tokenId} {
         allow read, write, delete: if canManage(tenantId);
+      }
+
+      // Linked call sources (slice A). An external calling system presents a
+      // bearer token; the token resolves to one of these docs; the doc names the
+      // agent whose KPIs move. Identity never travels in a request body.
+      //
+      // Read is gated on canManageCallSources — NOT canManage — so agents and
+      // unit managers cannot read the collection at all. Two independent
+      // defences protect the token: this gate, and the fact that only the
+      // SHA-256 hash is ever stored (the raw token is returned once at creation
+      // and never persisted), so even a rules mistake leaks nothing usable.
+      //
+      // Writes are Cloud-Function-only (Admin SDK bypasses rules). The client
+      // never writes here: createCallSource mints and hashes, revokeCallSource
+      // sets revokedAt, and deactivateUser revokes inbound links.
+      match /callSources/{sourceId} {
+        allow read:  if canManageCallSources(tenantId);
+        allow write: if false;
       }
 
       // E6: Agent of the Month — manager UI + kiosk display read.
