@@ -6187,3 +6187,27 @@ now, while the reason is fresh:
    rather than leaving it permanently null.
 
 **Falsification:** overturned the moment slice B lands and exercises both fields end to end.
+
+## Linked call sources — createCallSource TOCTOU on a deactivating user (LOW, banked 2026-08-26, slice A / PR #915)
+
+`createCallSource` reads the credit user, checks `active !== false`, then writes the source as
+two separate operations. If `deactivateUser` lands **between** them, the new link is created
+*after* `revokeInboundLinks` has already swept — so it stays **active indefinitely**,
+crediting KPIs to an offboarded agent. Decision 2 exists precisely to prevent that state.
+
+**Why it was not fixed in slice A.** The window is roughly one Firestore round trip, and it
+needs a manager creating a link at the same moment an admin offboards the same agent. The
+`active` check that DID ship closes the ordinary case (linking someone offboarded earlier).
+Making it airtight means doing the read and the write in one `runTransaction`, which is a
+heavier change than the brief scopes. Raised by CodeRabbit on PR #915 and dispositioned
+IMPLEMENT-in-part with this residual banked rather than left unstated.
+
+**The residual does not self-heal.** Nothing re-sweeps; the link survives until someone
+notices it in the list, or until the *next* deactivation of that user. Whoever builds slice B
+(ingest) should consider whether the ingest path re-checks `creditUid`'s `active` at read
+time, which would neutralise this without a transaction — a token that resolves to a
+deactivated user simply fails closed.
+
+**Falsification (Rule 23):** overturned if slice B's ingest checks `active` on the credited
+user (making the stale link harmless), or if `runTransaction` is adopted here. **Not**
+overturned by the race being rare — rarity is the reason it is LOW, not the reason it is closed.
