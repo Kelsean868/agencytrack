@@ -53,10 +53,27 @@ const TOKEN = process.env.VERCEL_BYPASS_TOKEN;
 
 // Staging-only synthetic test tenant accounts (safe to hardcode — not
 // production credentials; freshly verified live per the dispatching brief).
+//
+// UPDATE 2026-08-26: the password is no longer hardcoded. It comes from
+// STAGING_SEED_PASSWORD in .env.staging — the same value that seeded these
+// accounts — and is referenced BY NAME ONLY.
+//
+// The literal that used to sit here ('ChangeMe-Staging-2026!', on all three)
+// had gone stale and returned INVALID_LOGIN_CREDENTIALS against the live
+// tenant, discovered while standing up the call-sources smoke.
+//
+// To this file's credit, `loginRealForm` below would have said AUTH-FAILED
+// rather than timing out — it races the auth-error text against the render.
+// The danger was in the copying: newer smokes lifted the credential pattern
+// without that race, where the same stale password presents as a 30-second
+// waitForFunction timeout that reads like a slow app rather than a rejected
+// login. A credential pinned in one file rots there silently; one read from
+// .env.staging cannot drift from the tenant it was seeded into.
+const SEED_PASSWORD = process.env.STAGING_SEED_PASSWORD;
 const ACCOUNTS = {
-  agent: { email: 'staging-agent-1@agencytrack-staging.test', password: 'ChangeMe-Staging-2026!' },
-  branch_manager: { email: 'staging-branch-manager@agencytrack-staging.test', password: 'ChangeMe-Staging-2026!' },
-  tenant_admin: { email: 'staging-tenant-admin@agencytrack-staging.test', password: 'ChangeMe-Staging-2026!' },
+  agent: { email: 'staging-agent-1@agencytrack-staging.test', password: SEED_PASSWORD },
+  branch_manager: { email: 'staging-branch-manager@agencytrack-staging.test', password: SEED_PASSWORD },
+  tenant_admin: { email: 'staging-tenant-admin@agencytrack-staging.test', password: SEED_PASSWORD },
 };
 
 const SS_DIR = resolve('out/tier0-smoke', stamp().replace(/:/g, '-'));
@@ -65,6 +82,33 @@ mkdirSync(SS_DIR, { recursive: true });
 if (!TOKEN) {
   console.error('MISSING ENV: VERCEL_BYPASS_TOKEN (expected in .env.staging — run with --env-file=.env.staging)');
   process.exit(2);
+}
+
+// Fail LOUDLY and immediately rather than letting every leg time out at the
+// login form thirty seconds apart. That is precisely how the stale hardcoded
+// password stayed invisible.
+if (!SEED_PASSWORD) {
+  console.error('MISSING ENV: STAGING_SEED_PASSWORD (expected in .env.staging — run with --env-file=.env.staging)');
+  process.exit(2);
+}
+
+/**
+ * Dismiss the post-login celebration modal if one is up.
+ *
+ * The seeded staging agent carries a multi-week filing streak, so a
+ * `div.fixed.inset-0.z-[60]` celebration covers the WHOLE app on sign-in —
+ * every nav item under it is un-clickable, not just one feature's. Any smoke
+ * signing in as these accounts has to clear it first or it is testing a
+ * blocked app. Safe to call unconditionally.
+ */
+export async function dismissCelebrationIfPresent(page) {
+  const overlay = page.locator('div.fixed.inset-0.z-\\[60\\]').first();
+  if (!await overlay.isVisible({ timeout: 2500 }).catch(() => false)) return false;
+  const btn = page.locator('[data-testid="celebration-dismiss"]').first();
+  if (await btn.isVisible({ timeout: 1500 }).catch(() => false)) await btn.click().catch(() => {});
+  else await page.keyboard.press('Escape');
+  await page.waitForTimeout(900);
+  return true;
 }
 
 const results = [];
@@ -139,6 +183,7 @@ async function loginRealForm(page, email, password) {
     throw new Error('LOGIN-TIMEOUT: neither dashboard content nor an auth error appeared within 20s');
   }
   await page.waitForTimeout(1200);
+  await dismissCelebrationIfPresent(page);
 }
 
 /**
