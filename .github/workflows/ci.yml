@@ -70,9 +70,31 @@ jobs:
   # user through the real firestore.rules; no real credential and no production
   # tenant. Vercel previews are bound to PRODUCTION Firebase (CLAUDE.md
   # § Workflow), so that path is closed to CI by design.
+  #
+  # EXPLICIT PERMISSIONS, and this job only. `dorny/paths-filter` calls
+  # `GET /repos/:owner/:repo/pulls/:n/files` with the default GITHUB_TOKEN. The
+  # repo default grants Contents/Metadata/Packages read and NOT pull-requests,
+  # and that was sufficient until 2026-08-26 ~19:00 UTC, when the same job on
+  # the same commit started returning "Resource not accessible by integration"
+  # (proved by re-running PR #916's a11y job, green at 18:49, red at 19:23, no
+  # change to this file in between). The endpoint now requires pull-requests
+  # read, so declare it.
+  #
+  # A job-level `permissions:` block REPLACES the default set rather than
+  # extending it, so `contents: read` is listed too — checkout needs it.
+  # `packages: read` is deliberately dropped: .npmrc sets no GitHub Packages
+  # registry, so nothing here reads from one.
+  #
+  # NOT a `token:` input on the step. The action already defaults that input to
+  # `github.token`, which is the same value as `secrets.GITHUB_TOKEN`; the run
+  # log shows `token: ***` resolved before the call failed. Passing it
+  # explicitly changes nothing — the token was never missing, its scope was.
   a11y-contrast-reporting:
     name: a11y-contrast (reporting)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v5
         with:
