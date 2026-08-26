@@ -81,6 +81,7 @@
 | Persistency v2 (NEW calc methodology, R-07) — Tatil-gated PROPOSAL, ATTENDED-ONLY (banked 2026-07... | HIGH | — | — | 369 |
 | CI-vs-local test-timing gap — Tier-0 error-state tests can pass locally 5x, fail in CI (banked 20... | MEDIUM | — | — | 384 |
 | Flake family scope — **PR #872's fix set is provably INCOMPLETE**; ≥3 further members named (MeetingMode ArrowRight, BranchesPanel Retry, the A2 `e` SERIES sibling) + 1 unnamed. DO NOT widen #872 — audit continues after it lands (banked 2026-07-26, PR #875 session) | MEDIUM | — | — | 384 |
+| Flake family — `AgentPlannerPanel.weeknav.test.jsx` carries `flushPendingEffects` 0x where its #899-remediated sibling carries it 4x; fix was applied per-FILE not per-COMPONENT (banked 2026-08-26, PR #909) | MEDIUM | — | — | end |
 | Node 20 → Node 24 — CI deprecation now firing directly (checkout@v4/setup-node@v4), not only in f... | HIGH | — | 2026-10-30 | 397 |
 | Reconcile `design_handoff_v2_app/mockups/` (Downloads, Track J bundle) against `docs/design-syste... | MEDIUM | Track J | — | 405 |
 | Functions runtime + firebase-functions SDK upgrade — Node 20 EOL + SDK 4.9.0 → ≥5.1.0 (banked 202... | HIGH | — | — | 1191 |
@@ -6095,4 +6096,32 @@ The dumped DOM still showed `animate-pulse` skeletons — the assertion ran agai
 3. **Give both fields a Daily Capture stepper** — removes the asymmetry at its root and is the only option that makes the overwrite *correct*. Largest scope.
 
 **Severity:** MEDIUM — silent, affects only unsubmitted hybrid drafts, and not live until the functions deploy. **Falsification:** overturned if the cron is shown to skip drafts an agent has edited (it does not — it skips only `status === 'submitted'`), or if a daily write path for these two fields lands first, which resolves it by making the sums real.
+
+---
+
+## Flake family — `AgentPlannerPanel.weeknav.test.jsx` was never remediated by #899 (banked 2026-08-26, daily-call-fields PR #909, MEDIUM — test-infra)
+
+**A named next target, with evidence rather than suspicion.**
+
+`lint-and-build` went red on PR #909 at commit `19201d99` — a **docs-only** commit, `docs/FOLLOW_UPS.md`, 21 insertions, zero `src/`. The failure:
+
+```
+FAIL src/components/planner/__tests__/AgentPlannerPanel.weeknav.test.jsx
+  > AgentPlannerPanel — week navigation > navigation is unlimited — three weeks forward keeps stepping
+TestingLibraryElementError: Unable to find an element by: [data-testid="planner-week-label"]
+Test Files  1 failed | 380 passed (381)
+```
+
+A docs-only diff cannot break the planner, and the same suite had already passed twice on earlier commits of the same branch (and 6053/6053 locally). Re-run: PASS. Flake, not regression.
+
+**The useful part is WHICH file.** #899 fixed `AgentPlannerPanel.test.jsx`. This is its sibling `AgentPlannerPanel.weeknav.test.jsx` — same component, same mocked-`services/*`-promise-into-multi-commit-render shape, and it carries **`flushPendingEffects` 0 times** where the remediated sibling carries it **4 times**:
+
+```
+src/components/planner/__tests__/AgentPlannerPanel.weeknav.test.jsx:0
+src/components/planner/__tests__/AgentPlannerPanel.test.jsx:4
+```
+
+So the remainder is not merely "unruled" — for this member it is precisely locatable: the fix was applied per-FILE, not per-COMPONENT, and the sibling was missed. That makes it the cheapest next remediation in the family, and it suggests an audit worth running once: **every test file whose sibling received `flushPendingEffects` but which did not itself.**
+
+**Falsification (Rule 23):** overturned if `weeknav` is shown to fail for a reason unrelated to the awaiting-pattern shape (its own `getAgentWeek` mock resolving differently, say), or if `flushPendingEffects` is shown to be inapplicable to its gate. **Not** overturned by the re-run passing — intermittency is the claim, not the counter-argument.
 
