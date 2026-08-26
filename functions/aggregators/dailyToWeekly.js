@@ -169,17 +169,22 @@ function aggregateDailyToWeekly(dailyEntries, commissionRate = 0) {
     // aggregated weekly draft did not. Still excluded from every funnel and
     // plan sum (funnelModel.js, planVariance.js) — unchanged by this ruling.
     //
-    // OMITTED WHEN ZERO — and this is the one place that differs from the four
-    // call fields below, so the difference is stated rather than left to be
-    // inferred. `coldCalls` and its siblings are always written because a daily
-    // `dials` total exists and an agent-entered weekly value would double-count
-    // against it. `serviceCalls` and `referralsObtained` have NO daily writer
-    // yet — the KQM Calls ingest endpoint is not built — so writing a derived 0
-    // over an agent-entered weekly value destroys real data and replaces it with
-    // nothing. `referralsObtained` is worth 3pt, so the loss is visible.
-    // The key returns the moment a daily source populates it, and derived still
-    // wins over typed at that point, exactly as it does for the call fields.
-    ...(serviceCallsTotal > 0 ? { serviceCalls: serviceCallsTotal } : {}),
+    // GUARD RETIRED FOR THIS FIELD (slice B, 26 Aug 2026) — ALWAYS WRITTEN NOW.
+    // The omit-when-zero guard was conditioned on `serviceCalls` having NO daily
+    // writer. functions/callActivity/ingestCallActivity.js IS that writer: a
+    // Portfolio call now writes daily `serviceCalls` directly. The guard's own
+    // exit condition has therefore been met, and keeping it would invert its
+    // purpose — a week with genuinely ZERO service calls would sum to 0, the key
+    // would be omitted, and a stale agent-typed weekly value would SURVIVE
+    // instead of being corrected to zero. Derived wins over typed, exactly as it
+    // does for the four call fields below.
+    //
+    // Note this retires HALF the guard, deliberately. `referralsObtained` below
+    // keeps its guard because slice B does NOT write it — a KQM referral outcome
+    // maps to `newNamesAdded` (the new prospect it produced), not to a referral
+    // credited on the weekly report. That half retires when something writes
+    // `referralsObtained` daily, and not before.
+    serviceCalls:           serviceCallsTotal,
 
     // v2 1a daily fields — prospecting & outreach
     prospectingLettersSent: sumInt('prospectingLettersSent'),

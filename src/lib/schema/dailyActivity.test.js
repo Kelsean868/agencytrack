@@ -337,27 +337,36 @@ describe('aggregateDailyToWeekly — M3 coldCalls fix', () => {
   });
 });
 
-// ── the omit-when-zero guard ──────────────────────────────────────────────────
+// ── the omit-when-zero guard, NOW HALF RETIRED ────────────────────────────────
 //
-// serviceCalls and referralsObtained are the ONLY two keys the aggregator
-// conditionally omits. They have no daily writer yet (the KQM Calls ingest
-// endpoint is unbuilt), so emitting a derived 0 into a { merge: true } write
-// would erase an agent-entered weekly value and put nothing in its place.
-// referralsObtained is worth 3pt, so the loss is visible on the score.
+// The guard was conditioned on a field having NO daily writer: emitting a
+// derived 0 into a { merge: true } write would erase an agent-entered weekly
+// value and put nothing in its place.
+//
+// Slice B (26 Aug 2026) made functions/callActivity/ingestCallActivity.js the
+// daily writer for `serviceCalls` — a Portfolio call writes it directly. The
+// guard's own exit condition is therefore met for that field and ONLY that
+// field, so it is now ALWAYS WRITTEN and derived wins over typed, exactly as it
+// does for the four call fields.
+//
+// `referralsObtained` KEEPS its guard. Slice B does not write it: a KQM referral
+// outcome maps to `newNamesAdded` (the new prospect produced), not to a referral
+// credited on the weekly report. It is worth 3pt, so erasing a typed value would
+// be visible on the score. That half retires when something writes it daily.
 
-describe('aggregateDailyToWeekly - omit-when-zero for serviceCalls / referralsObtained', () => {
-  it('omits both keys entirely when no entry carries them', () => {
+describe('aggregateDailyToWeekly - omit-when-zero (half retired)', () => {
+  it('writes serviceCalls as 0 and still omits referralsObtained', () => {
     const out = aggregateDailyToWeekly([{ dials: 5 }], 0);
-    expect(out).not.toHaveProperty('serviceCalls');
+    expect(out.serviceCalls).toBe(0);
     expect(out).not.toHaveProperty('referralsObtained');
   });
 
-  it('omits both keys when every entry carries an explicit 0', () => {
+  it('same when every entry carries an explicit 0', () => {
     const out = aggregateDailyToWeekly(
       [{ dials: 5, serviceCalls: 0, referralsObtained: 0 }],
       0,
     );
-    expect(out).not.toHaveProperty('serviceCalls');
+    expect(out.serviceCalls).toBe(0);
     expect(out).not.toHaveProperty('referralsObtained');
   });
 
@@ -373,13 +382,14 @@ describe('aggregateDailyToWeekly - omit-when-zero for serviceCalls / referralsOb
     expect(out.referralsObtained).toBe(1);
   });
 
-  it('a merge of the zero-case leaves an agent-entered value intact', () => {
-    // { merge: true } semantics: an ABSENT key does not overwrite. This is the
-    // whole point of the guard — spreading the aggregate over a prior draft
-    // must not zero what the agent typed.
+  it('a zero-case merge CORRECTS serviceCalls and spares referralsObtained', () => {
+    // { merge: true } semantics: an ABSENT key does not overwrite, a PRESENT
+    // one does. That asymmetry is the guard, and it now cuts different ways for
+    // the two fields on purpose. A stale typed serviceCalls of 4 in a week with
+    // genuinely zero service calls is the defect the retirement exists to fix.
     const priorDraft = { serviceCalls: 4, referralsObtained: 2, coldCalls: 99 };
     const merged = { ...priorDraft, ...aggregateDailyToWeekly([{ dials: 8 }], 0) };
-    expect(merged.serviceCalls).toBe(4);
+    expect(merged.serviceCalls).toBe(0);
     expect(merged.referralsObtained).toBe(2);
     // The call fields still overwrite — they are deliberately always written.
     expect(merged.coldCalls).toBe(8);
@@ -612,10 +622,11 @@ describe('aggregateDailyToWeekly — call-type split', () => {
   it('does NOT source serviceCalls from serviceContacts', () => {
     const out = aggregateDailyToWeekly([{ serviceContacts: 9 }], 0);
     expect(out.serviceContacts).toBe(9);
-    // Absent, not 0 — the omit-when-zero guard. `not.toHaveProperty` is the
-    // stronger assertion of the same intent: nothing about serviceContacts
-    // reaches serviceCalls, and no derived 0 is emitted to overwrite a typed value.
-    expect(out).not.toHaveProperty('serviceCalls');
+    // 0, not absent — slice B retired the guard for this field. The assertion
+    // that matters is unchanged in intent: nothing about serviceContacts reaches
+    // serviceCalls. It is now expressed as "the derived value is 0" rather than
+    // "the key is missing", because the key is always written.
+    expect(out.serviceCalls).toBe(0);
   });
 });
 
