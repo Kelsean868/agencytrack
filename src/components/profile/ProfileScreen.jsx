@@ -543,6 +543,16 @@ export default function ProfileScreen({ menuLayout = 'pinned', onMenuLayoutChang
           <span className="text-sm text-ink-muted">Member Since</span>
           <span className="text-sm font-medium text-ink">{joinDate}</span>
         </div>
+
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-ink-muted">Agent #</span>
+            <span className="text-sm font-medium text-ink">{userProfile?.agentNumber || '—'}</span>
+          </div>
+          {!userProfile?.agentNumber && (
+            <p className="text-xs text-ink-muted">Your manager sets your agent number.</p>
+          )}
+        </div>
       </div>
 
       {/* Account — sign out (mobile parity with desktop sidebar footer) */}
