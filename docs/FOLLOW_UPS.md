@@ -6148,7 +6148,7 @@ So the remainder is not merely "unruled" — for this member it is precisely loc
 
 ---
 
-## Linked call sources — decision 5 is an INFERENCE, not an operator ruling (MEDIUM, banked 2026-08-26, slice A / PR #TBD)
+## Linked call sources — decision 5 is an INFERENCE, not an operator ruling (MEDIUM, banked 2026-08-26, slice A / PR #915)
 
 **The claim:** a role change does **not** revoke a call source. If an agent with a linked
 assistant is promoted to unit manager, the link keeps crediting them; the manager UI shows a
@@ -6172,7 +6172,7 @@ promoted agent's assistant is *reassigned* rather than retained, which would mak
 link the common case rather than the rare one. **Not** overturned by the warning being
 ignored in practice; that argues for a stronger affordance, not for auto-revoke.
 
-## Linked call sources — no ingest, so nothing exercises `tokenHash` or `lastUsedAt` yet (LOW, banked 2026-08-26, slice A / PR #TBD)
+## Linked call sources — no ingest, so nothing exercises `tokenHash` or `lastUsedAt` yet (LOW, banked 2026-08-26, slice A / PR #915)
 
 Slice A mints and stores a SHA-256 `tokenHash` and initialises `lastUsedAt: null`, but **no
 code reads either field** — the ingest endpoint is slice B. Two consequences worth recording
