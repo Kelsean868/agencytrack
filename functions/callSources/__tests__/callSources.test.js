@@ -75,10 +75,11 @@ function seedUser(uid, fields = {}) {
 async function expectCode(promise, code) {
   await expect(promise).rejects.toMatchObject({ code });
 }
+// creditUid is deliberately ABSENT — it is now server-set, and passing it is
+// itself a rejection trigger (see the cross-credit block below).
 const validData = (over = {}) => ({
   sourceApp: 'kqm-calls',
   sourceUserId: 'kqm-user-77',
-  creditUid: 'agentA',
   label: 'Tracy-ann Nurse (assistant)',
   ...over,
 });
@@ -88,51 +89,110 @@ beforeEach(() => {
   writes = [];
   updates = [];
   autoId = 0;
+  seedUser('caller1', { role: 'agent' });
   seedUser('agentA', { role: 'agent' });
 });
 
-// ── The F4 trap ──────────────────────────────────────────────────────────────
+// ── Cross-credit rejection — the load-bearing test in this slice ─────────────
+//
+// This replaces slice A's unit_manager denial. Under self-service there is no
+// role to deny, so the thing that must never work is crediting SOMEONE ELSE.
+// If this test can be made to pass while creditUid comes off the payload, the
+// whole security argument for this slice is void.
 
-describe('createCallSource — role gate (F4 trap)', () => {
-  it('REJECTS a unit_manager', async () => {
-    await expectCode(createHandler(validData(), ctx('unit_manager')), 'permission-denied');
+describe('createCallSource — cross-credit is impossible', () => {
+  it('REJECTS a payload carrying creditUid for another user', async () => {
+    await expectCode(
+      createHandler(validData({ creditUid: 'agentA' }), ctx('agent', 'caller1')),
+      'invalid-argument'
+    );
     expect(writes).toHaveLength(0);
   });
 
-  it('REJECTS an agent', async () => {
-    await expectCode(createHandler(validData(), ctx('agent')), 'permission-denied');
+  it('REJECTS a payload carrying creditUid even when it names the caller', async () => {
+    // Rejected on presence, not on value. Accepting a "harmless" self-naming
+    // creditUid would keep the field alive in callers' mental models and in
+    // their code, which is exactly how the next author reintroduces the other case.
+    await expectCode(
+      createHandler(validData({ creditUid: 'caller1' }), ctx('agent', 'caller1')),
+      'invalid-argument'
+    );
     expect(writes).toHaveLength(0);
   });
+
+  it('REJECTS a null creditUid — presence is the trigger, not truthiness', async () => {
+    await expectCode(
+      createHandler(validData({ creditUid: null }), ctx('agent', 'caller1')),
+      'invalid-argument'
+    );
+    expect(writes).toHaveLength(0);
+  });
+
+  it('always stores creditUid === the caller uid, from the token', async () => {
+    await createHandler(validData(), ctx('agent', 'caller1'));
+    expect(writes[0].data.creditUid).toBe('caller1');
+    expect(writes[0].data.createdBy).toBe('caller1');
+  });
+});
+
+// ── No role gate: every signed-in tenant member may link their own KPIs ──────
+//
+// The unit_manager case INVERTS from slice A. It denied a UM because a UM was
+// writing someone else's KPIs; here a UM writing their OWN is ordinary use.
+
+describe('createCallSource — self-service, no role gate', () => {
+  it.each(['agent', 'unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'])(
+    'ALLOWS %s to create their own link',
+    async (role) => {
+      seedUser('self1', { role });
+      const res = await createHandler(validData(), ctx(role, 'self1'));
+      expect(res.sourceId).toBeTruthy();
+      expect(writes).toHaveLength(1);
+      expect(writes[0].data.creditUid).toBe('self1');
+    }
+  );
 
   it('REJECTS an unauthenticated caller', async () => {
     await expectCode(createHandler(validData(), {}), 'unauthenticated');
     expect(writes).toHaveLength(0);
   });
 
-  it.each(['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'])(
-    'ALLOWS %s',
-    async (role) => {
-      const res = await createHandler(validData(), ctx(role));
-      expect(res.sourceId).toBeTruthy();
-      expect(writes).toHaveLength(1);
-    }
-  );
+  it('REJECTS a signed-in caller with no user doc in this tenant', async () => {
+    await expectCode(createHandler(validData(), ctx('agent', 'ghost')), 'not-found');
+    expect(writes).toHaveLength(0);
+  });
 });
 
-describe('revokeCallSource — role gate (F4 trap)', () => {
+describe('revokeCallSource — owner-only', () => {
   beforeEach(() => {
-    docData[`tenants/${TENANT}/callSources/src1`] = { sourceId: 'src1', tenantId: TENANT };
+    docData[`tenants/${TENANT}/callSources/src1`] = {
+      sourceId: 'src1', tenantId: TENANT, creditUid: 'caller1',
+    };
   });
 
-  it('REJECTS a unit_manager', async () => {
-    await expectCode(revokeHandler({ sourceId: 'src1' }, ctx('unit_manager')), 'permission-denied');
+  it('ALLOWS the owner, whatever their role', async () => {
+    const res = await revokeHandler({ sourceId: 'src1' }, ctx('agent', 'caller1'));
+    expect(res).toEqual({ success: true });
+    expect(updates).toHaveLength(1);
+  });
+
+  it('REJECTS another agent', async () => {
+    await expectCode(revokeHandler({ sourceId: 'src1' }, ctx('agent', 'other')), 'not-found');
     expect(updates).toHaveLength(0);
   });
 
-  it('ALLOWS a branch_manager', async () => {
-    const res = await revokeHandler({ sourceId: 'src1' }, ctx('branch_manager'));
-    expect(res).toEqual({ success: true });
-    expect(updates).toHaveLength(1);
+  it('REJECTS a branch_manager who does not own it', async () => {
+    // Decision 4: a manager has no more claim on an agent's link than a stranger.
+    await expectCode(revokeHandler({ sourceId: 'src1' }, ctx('branch_manager', 'bm1')), 'not-found');
+    expect(updates).toHaveLength(0);
+  });
+
+  it('reports not-found rather than permission-denied, so the id is not confirmed', async () => {
+    // A "forbidden" here would be a probe oracle: it tells a caller the id is real.
+    const real = revokeHandler({ sourceId: 'src1' }, ctx('agent', 'other'));
+    const fake = revokeHandler({ sourceId: 'nope' }, ctx('agent', 'other'));
+    await expectCode(real, 'not-found');
+    await expectCode(fake, 'not-found');
   });
 });
 
@@ -162,17 +222,17 @@ describe('createCallSource — token hygiene', () => {
 
 describe('createCallSource — stored shape', () => {
   it('writes the locked field set with a 365-day expiry', async () => {
-    await createHandler(validData(), ctx('branch_manager', 'bm1'));
+    await createHandler(validData(), ctx('agent', 'caller1'));
     const d = writes[0].data;
 
     expect(d).toMatchObject({
       tenantId: TENANT,
       sourceApp: 'kqm-calls',
       sourceUserId: 'kqm-user-77',
-      creditUid: 'agentA',
+      creditUid: 'caller1',
       label: 'Tracy-ann Nurse (assistant)',
       active: true,
-      createdBy: 'bm1',
+      createdBy: 'caller1',
       revokedAt: null,
       lastUsedAt: null,
     });
@@ -184,53 +244,55 @@ describe('createCallSource — stored shape', () => {
   it.each([
     ['sourceApp', { sourceApp: '' }],
     ['sourceUserId', { sourceUserId: '' }],
-    ['creditUid', { creditUid: '' }],
     ['label', { label: '' }],
   ])('rejects a missing %s', async (_field, over) => {
-    await expectCode(createHandler(validData(over), ctx('branch_manager')), 'invalid-argument');
+    await expectCode(createHandler(validData(over), ctx('agent', 'caller1')), 'invalid-argument');
     expect(writes).toHaveLength(0);
   });
 
-  it('rejects a creditUid that is not a user in this tenant', async () => {
-    await expectCode(
-      createHandler(validData({ creditUid: 'ghost' }), ctx('branch_manager')),
-      'not-found'
-    );
+  // The caller can no longer name anyone, so the only way to reach this is to be
+  // a signed-in principal with no user doc in the tenant.
+  it('rejects a caller with no user doc in this tenant', async () => {
+    await expectCode(createHandler(validData(), ctx('agent', 'ghost')), 'not-found');
     expect(writes).toHaveLength(0);
   });
 
-  // Without this, a manager could re-link an offboarded agent and walk straight
-  // back through the door deactivateUser just closed (decision 2).
-  it('rejects a creditUid whose account is deactivated', async () => {
+  // Without this, a deactivated agent could re-link themselves and walk straight
+  // back through the door deactivateUser just closed.
+  it('rejects a caller whose own account is deactivated', async () => {
     seedUser('agentGone', { role: 'agent', active: false });
     await expectCode(
-      createHandler(validData({ creditUid: 'agentGone' }), ctx('branch_manager')),
+      createHandler(validData(), ctx('agent', 'agentGone')),
       'failed-precondition'
     );
     expect(writes).toHaveLength(0);
   });
 
-  it('allows a creditUid with no explicit active field (legacy docs)', async () => {
+  it('allows a caller with no explicit active field (legacy docs)', async () => {
     seedUser('agentLegacy', { role: 'agent' });
-    const res = await createHandler(validData({ creditUid: 'agentLegacy' }), ctx('branch_manager'));
+    const res = await createHandler(validData(), ctx('agent', 'agentLegacy'));
     expect(res.sourceId).toBeTruthy();
   });
 });
 
 describe('revokeCallSource — lifecycle', () => {
   it('sets active:false and revokedAt rather than deleting', async () => {
-    docData[`tenants/${TENANT}/callSources/src1`] = { sourceId: 'src1', tenantId: TENANT };
-    await revokeHandler({ sourceId: 'src1' }, ctx('branch_manager'));
+    docData[`tenants/${TENANT}/callSources/src1`] = {
+      sourceId: 'src1', tenantId: TENANT, creditUid: 'caller1',
+    };
+    await revokeHandler({ sourceId: 'src1' }, ctx('agent', 'caller1'));
     expect(updates[0].data).toEqual({ active: false, revokedAt: '<ts>' });
   });
 
   it('refuses a source belonging to another tenant', async () => {
-    docData[`tenants/${TENANT}/callSources/src1`] = { sourceId: 'src1', tenantId: 'other_tenant' };
-    await expectCode(revokeHandler({ sourceId: 'src1' }, ctx('branch_manager')), 'not-found');
+    docData[`tenants/${TENANT}/callSources/src1`] = {
+      sourceId: 'src1', tenantId: 'other_tenant', creditUid: 'caller1',
+    };
+    await expectCode(revokeHandler({ sourceId: 'src1' }, ctx('agent', 'caller1')), 'not-found');
     expect(updates).toHaveLength(0);
   });
 
   it('requires a sourceId', async () => {
-    await expectCode(revokeHandler({}, ctx('branch_manager')), 'invalid-argument');
+    await expectCode(revokeHandler({}, ctx('agent', 'caller1')), 'invalid-argument');
   });
 });

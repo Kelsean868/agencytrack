@@ -68,6 +68,11 @@ const AGENT_NAV = [
   // (financed = financingTerms doc exists + status past not_on_financing).
   { id: 'financing',         label: 'Financing',         tabId: 'financing',              Icon: Banknote,    testId: 'agent-tab-financing' },
   { id: 'prospect-info',     label: 'Prospect Prep',     tabId: 'prospect-info',          Icon: Search,      testId: 'agent-tab-prospect-info' },
+  // Self-service: an agent attaches their own calling software, crediting their
+  // own KPIs. No role gate anywhere in this feature — the callable sets creditUid
+  // from the token and the rules read arm is owner-only, so there is no
+  // cross-user effect to gate.
+  { id: 'call-sources',      label: 'Call Sources',      tabId: 'call-sources',           Icon: PhoneCall,   testId: 'agent-tab-call-sources' },
   { id: 'production-report', label: 'Production Report', tabId: 'production-report',      Icon: BarChart2,   testId: 'agent-tab-production-report' },
   // Tier 1 · 1.2 — live, in-app twin of the Agent Performance Report PDF.
   { id: 'agent-report',      label: 'Report',            tabId: 'agent-report',           Icon: FileText,    testId: 'agent-tab-report' },
@@ -131,10 +136,6 @@ const PRODUCING_MANAGER_NAV = [
   { id: 'policy-reconciliation', label: 'Reconciliation', tabId: 'policy-reconciliation', Icon: ClipboardCheck },
   { id: 'agent-of-month',        label: 'Agent of Month', tabId: 'agent-of-month',        Icon: Trophy,       roles: ['branch_manager'] },
   { id: 'kiosk',                 label: 'Kiosk Mode',     tabId: 'kiosk',                 Icon: Tv,           roles: ['branch_manager'] },
-  // Linked call sources (slice A). BM-and-up only — unit_manager is DELIBERATELY
-  // excluded, matching the callable's MANAGER_ROLES and canManageCallSources in
-  // firestore.rules. A UM must not mint a token that writes another agent's KPIs.
-  { id: 'call-sources',          label: 'Call Sources',   tabId: 'call-sources',          Icon: PhoneCall,    roles: ['branch_manager'] },
   // Track K — Strategic Plan. BM-only ("Agency Manager" owns it; UM excluded).
   // SM/TA/PA reach it via the non-producing NAV_ITEMS path in ManagerDashboard.
   { id: 'strategic-plan',        label: 'Strategic Plan', tabId: 'strategic-plan',        Icon: Presentation, roles: ['branch_manager'], testId: 'tab-strategic-plan' },
@@ -359,7 +360,7 @@ const WORKSPACE_TEAM_SECTIONS = [
   { label: 'My Team', ids: [
     'overview', 'team', 'mastersheet', 'team-wars', 'monthly-recruiting', 'goals',
     'team-game-plans', 'persistency', 'compliance', 'campaigns', 'production-report', 'awards',
-    'team-perf', 'settlements', 'financing', 'unit-financing', 'policy-reconciliation', 'agent-of-month', 'kiosk', 'call-sources', 'strategic-plan',
+    'team-perf', 'settlements', 'financing', 'unit-financing', 'policy-reconciliation', 'agent-of-month', 'kiosk', 'strategic-plan',
   ] },
 ];
 const WORKSPACE_RECOGNITION_IDS = ['leaderboard'];

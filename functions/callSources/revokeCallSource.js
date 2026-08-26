@@ -1,27 +1,18 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 
-// Same narrow set as createCallSource — see the note there on why this is not
-// firestore.rules' canManage()/isManager().
-const MANAGER_ROLES = new Set([
-  'branch_manager',
-  'sales_manager',
-  'tenant_admin',
-  'platform_admin',
-]);
+// Owner-only, matching createCallSource's self-service model and the rules'
+// owner-scoped read arm. No role gate: a manager has no more claim on an
+// agent's link than a stranger does. Offboarding is NOT affected — that runs
+// through revokeInboundLinks under the Admin SDK, which bypasses rules and
+// needs no manager read path.
 
 exports.revokeCallSource = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
 
-  const { role, tenantId } = context.auth.token;
-  if (!MANAGER_ROLES.has(role)) {
-    throw new functions.https.HttpsError(
-      'permission-denied',
-      'Requires branch_manager or above.',
-    );
-  }
+  const { tenantId } = context.auth.token;
 
   const { sourceId } = data ?? {};
   if (!sourceId) {
@@ -35,8 +26,12 @@ exports.revokeCallSource = functions.https.onCall(async (data, context) => {
 
   const snap = await sourceRef.get();
 
-  // Tenant isolation: stored tenantId must match the caller's tenant.
-  if (!snap.exists || snap.data().tenantId !== tenantId) {
+  // Tenant isolation AND ownership in one arm, both answered with not-found.
+  // A caller who does not own the link learns nothing about whether it exists —
+  // "forbidden" would confirm the id, which is a probe oracle for a credential.
+  if (!snap.exists
+      || snap.data().tenantId !== tenantId
+      || snap.data().creditUid !== context.auth.uid) {
     throw new functions.https.HttpsError('not-found', 'Call source not found.');
   }
 

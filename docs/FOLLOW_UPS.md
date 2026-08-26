@@ -6211,3 +6211,48 @@ deactivated user simply fails closed.
 **Falsification (Rule 23):** overturned if slice B's ingest checks `active` on the credited
 user (making the stale link harmless), or if `runTransaction` is adopted here. **Not**
 overturned by the race being rare — rarity is the reason it is LOW, not the reason it is closed.
+
+## Call sources — a PRODUCING MANAGER has no way to attach their own (MEDIUM, banked 2026-08-26, slice A-prime / PR #TBD)
+
+Self-service put the Call Sources tab on `AGENT_NAV` and removed it from `ManagerDashboard`
+entirely, per the brief's explicit instruction ("move the tab off ManagerDashboard to the
+agent's own surface" / "remove the manager nav entries added by #915"). That is right for the
+*manager-viewing-an-agent* case the operator ruled out.
+
+**But a unit manager and a branch manager are PRODUCING managers — they carry their own KPIs**
+(the whole "My Production" nav section exists for exactly that), and the callable now permits
+them: decision 3 removed the role gate, so any signed-in user with a tenant user doc may
+create their **own** link. A UM/BM calling `createCallSource` today would succeed. They just
+have no UI to do it from, because UM/BM route to `ManagerDashboard`, not `AgentDashboard`.
+
+**This is the same shape as the defect CodeRabbit caught on #915** — permitted by the callable,
+unreachable in the UI — only mirrored. It was not fixed here because fixing it means adding a
+nav entry the brief explicitly told this slice to remove, and the operator's ruling ("each
+agent attaches their own calling software") does not say whether a producing manager counts as
+"an agent" for this purpose. That is a product question, not an implementation one.
+
+**The fix, if the ruling goes that way,** is one entry in `PRODUCING_MANAGER_NAV`'s
+"My Production" section plus the matching `activeTab === 'call-sources'` case in
+`ManagerDashboard` — the component itself needs no change, since it already scopes everything
+to `user.uid`.
+
+**Falsification (Rule 23):** overturned if the operator rules that producing managers do not
+attach calling software (in which case this is correct as shipped and the entry should be
+closed, not built). **Not** overturned by nobody complaining — a UM who cannot find the screen
+does not file a bug, they just never use the feature.
+
+## Call sources — the owner-scoped list has no orderBy, deliberately (LOW, banked 2026-08-26, slice A-prime / PR #TBD)
+
+`CallSourcesTab` queries `where('creditUid','==',uid)` with **no `orderBy`**, and sorts newest-first
+in JavaScript. Firestore requires a **composite index** for an equality filter combined with an
+`orderBy` on a different field, and `firestore.indexes.json` was outside this brief's scope-lock
+and outside its named deploy (`--only functions,firestore:rules`). Adding one would have meant a
+third deploy target for a collection where a single agent realistically holds 1–5 documents.
+
+**When this stops being right:** if a single `creditUid` ever accumulates enough links that
+fetching them all is wasteful, or if the list needs server-side pagination. Both are far away —
+an agent attaches their calling software once and revokes it rarely.
+
+**Falsification:** overturned by a real volume case, or by `firestore.indexes.json` gaining a
+`(creditUid ASC, createdAt DESC)` index for another reason, at which point the `orderBy` should
+be restored and the client-side sort deleted rather than left as dead belt-and-braces.
