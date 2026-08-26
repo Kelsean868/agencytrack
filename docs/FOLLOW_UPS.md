@@ -6296,6 +6296,16 @@ move → `node scripts/verification/cleanup-staging-call-sources.mjs`. This inhe
 already recorded for slices A and A-prime, which have still never been exercised against any
 Firebase project.
 
+**What is NOT owed, and the distinction matters.** Only the ENDPOINT half of the PR is deploy-gated.
+The aggregator half is not: `src/lib/schema/dailyActivity.aggregator.js` is imported by
+`src/services/loggingModeService.js:80` and run by `DailyCaptureV2.jsx:788` on the Daily Capture SAVE
+hot path, so the `serviceCalls` omit-when-zero retirement takes effect the moment Vercel redeploys,
+with no `firebase deploy` involved. That half was smoked before merge —
+`scripts/verification/smoke-service-calls-guard-retirement.mjs`, 20 PASS / 0 FAIL / 0 SKIP in both
+themes, negative-controlled. Reading "deploy-gated" as "the whole PR is inert until deployed" would
+be wrong, and is exactly the kind of half-true summary that gets a merge treated as lower-risk than
+it is.
+
 **Falsification (Rule 23):** overturned if a deploy record shows `ingestCallActivity` ACTIVE with a
 post-squash `updateTime` AND a staging smoke log shows a daily doc moving. Not overturned by the PR
 being merged, and not by CI being green — neither touches Firebase.
