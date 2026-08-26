@@ -134,6 +134,7 @@
 | Financing ruleset code comment overclaims configurability (banked 2026-07-10, promotion session, ... | LOW | — | — | 431 |
 | Master Sheet — unit friendly names absent (banked 2026-07-10, Run 4 Item 2, LOW — display polish) | LOW | — | — | 455 |
 | Company Config toggle — "count converted service calls as Tel Contacts" (banked 2026-07-10, Run 4... | LOW | — | — | 463 |
+| Sunday aggregator now ZEROES agent-entered `serviceCalls` / `referralsObtained` on an unsubmitted hybrid draft (banked 2026-08-26, daily-call-fields PR) | MEDIUM | — | — | end |
 | ⚠️ **Feature-branch Vercel previews are bound to PRODUCTION Firebase** — overturns the old "previews can't reach a live backend" claim (re-banked 2026-07-26, planner week-nav; remedy (a) = generalize the pre-write project guard, own small PR; remedy (b) = OPERATOR binds staging env to Vercel's Preview environment) | **HIGH** | — | — | 508 |
 | Vitest on Windows — worker contention flakes under concurrent runs (banked 2026-07-10, Run 4, LOW... | LOW | — | — | 516 |
 | Recon docs must carry a validity-SHA header — new standing rule (banked 2026-07-10, Run 4, LOW — ... | LOW | — | — | 524 |
@@ -6075,3 +6076,23 @@ The dumped DOM still showed `animate-pulse` skeletons — the assertion ran agai
 **Consequence for the promotion's acceptance check.** `git ls-tree origin/main -- src/test-utils/flushPendingEffects.js` returning a blob proves **the fix ARRIVED**. It does **not** prove `main`'s gate is clean. After promotion `main` inherits a gate that is better by two files and still intermittent — expect occasional reds on inert diffs, and re-run to separate flake from regression until the remaining members are ruled.
 
 **Falsification (Rule 23).** Overturned if a member outside #899's two files is shown to have been fixed by it, or if the register's roster is shown to name substantially fewer than ten distinct tests after a proper dedup. **Not** overturned by an intermittent red after promotion — that is the untouched remainder, tracked in § *Flake family scope*, not a failure of the promotion.
+
+---
+
+## Sunday aggregator now ZEROES agent-entered `serviceCalls` / `referralsObtained` on an unsubmitted hybrid draft (banked 2026-08-26, daily-call-fields PR, MEDIUM)
+
+**This is a real data-loss path, and it is a direct consequence of a locked decision — not an implementation slip.** Recording it because the brief stated the analogous consequence for the daily pace badge (ruling D-SC) but not this one for the weekly draft.
+
+`aggregateDailyToWeekly` writes every field it sums unconditionally, so a `{ merge: true }` write overwrites whatever the agent typed. That is deliberate and long-standing for the call fields — the aggregator's own comment says the explicit zeros exist to stop double-counting. What changed on 2026-08-26 is that **two more fields joined the set**: decision 3 added `referralsObtained` and ruling D-SC added `serviceCalls`. Before that PR neither was written by the aggregator, so an agent-entered value survived the cron.
+
+**The failure, concretely.** A `hybrid`-mode agent fills the weekly wizard mid-week — Step 2 `serviceCalls` (`StepCallsF2F.jsx:74`), Step 5 `referralsObtained` (`StepNewNamesAdded.jsx:78`) — and does **not** submit. Sunday 23:00 TT the cron runs (`sundayDailyToWeekly.js`), skips only drafts with `status === 'submitted'`, and merges the daily rollup over the draft. Neither field has a Daily Capture UI, so the daily sum is **0**, and the agent's typed values are replaced by 0. `referralsObtained` is a **3pt** field.
+
+**Not yet live.** `aggregateDailyToWeekly` is in `functions/` and is deploy-gated — this reaches production only when `firebase deploy --only functions` runs, which is a separate dispatcher action.
+
+**Three candidate resolutions, none taken here** (picking one is a product call, not a mechanical fix):
+1. **Max, not replace** — write `max(dailySum, existingDraftValue)` for fields with no daily UI. Cheapest, but makes the aggregator non-idempotent against its own prior output.
+2. **Skip zeros** — omit a field from the merge when its daily sum is 0. Simple, but then a genuine correction to zero can never propagate.
+3. **Give both fields a Daily Capture stepper** — removes the asymmetry at its root and is the only option that makes the overwrite *correct*. Largest scope.
+
+**Severity:** MEDIUM — silent, affects only unsubmitted hybrid drafts, and not live until the functions deploy. **Falsification:** overturned if the cron is shown to skip drafts an agent has edited (it does not — it skips only `status === 'submitted'`), or if a daily write path for these two fields lands first, which resolves it by making the sums real.
+
