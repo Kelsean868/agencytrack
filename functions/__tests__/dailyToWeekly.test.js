@@ -171,3 +171,128 @@ describe('aggregateDailyToWeekly CJS twin — M3 coldCalls parity', () => {
     expect(out.coldCalls).toBe(8);
   });
 });
+
+// ── Daily v2 — call-type split, serviceCalls, referralsObtained (CJS twin) ────
+// Behaviour parity with src/lib/schema/dailyActivity.aggregator.js. The twins
+// are NOT byte-identical (idiom differs); these assertions pin the behaviour.
+
+describe('aggregateDailyToWeekly CJS twin — daily v2 call split', () => {
+  test('pre-v2 docs aggregate exactly as before (coldCalls = sum of dials)', () => {
+    const out = aggregateDailyToWeekly([{ dials: 10 }, { dials: 15 }], 0);
+    expect(out.dials).toBe(25);
+    expect(out.coldCalls).toBe(25);
+    expect(out.referralCalls).toBe(0);
+    expect(out.followUpCalls).toBe(0);
+    expect(out.seminarTradeshowCalls).toBe(0);
+  });
+
+  test('an all-zero dialsByType falls back to cold', () => {
+    const out = aggregateDailyToWeekly(
+      [{ dials: 9, dialsByType: { cold: 0, referral: 0, followUp: 0, seminarTradeshow: 0 } }],
+      0
+    );
+    expect(out.coldCalls).toBe(9);
+    expect(out.referralCalls).toBe(0);
+  });
+
+  test('maps a v2 breakdown onto the four weekly call fields', () => {
+    const out = aggregateDailyToWeekly(
+      [{ dials: 10, dialsByType: { cold: 4, referral: 3, followUp: 2, seminarTradeshow: 1 } }],
+      0
+    );
+    expect(out.dials).toBe(10);
+    expect(out.coldCalls).toBe(4);
+    expect(out.referralCalls).toBe(3);
+    expect(out.followUpCalls).toBe(2);
+    expect(out.seminarTradeshowCalls).toBe(1);
+  });
+
+  test('preserves the total in a mixed week (per-entry fallback)', () => {
+    const out = aggregateDailyToWeekly(
+      [
+        { dials: 6 },
+        { dials: 10, dialsByType: { cold: 4, referral: 3, followUp: 2, seminarTradeshow: 1 } },
+      ],
+      0
+    );
+    expect(out.dials).toBe(16);
+    expect(
+      out.coldCalls + out.referralCalls + out.followUpCalls + out.seminarTradeshowCalls
+    ).toBe(16);
+    expect(out.coldCalls).toBe(10);
+  });
+
+  test('sums serviceCalls and referralsObtained; serviceCalls is NOT serviceContacts', () => {
+    const out = aggregateDailyToWeekly(
+      [
+        { serviceCalls: 3, serviceContacts: 1, referralsObtained: 2 },
+        { serviceCalls: 4, serviceContacts: 2, referralsObtained: 1 },
+      ],
+      0
+    );
+    expect(out.serviceCalls).toBe(7);
+    expect(out.serviceContacts).toBe(3);
+    expect(out.referralsObtained).toBe(3);
+  });
+
+  test('serviceCalls is absent when only serviceContacts is present', () => {
+    const out = aggregateDailyToWeekly([{ serviceContacts: 9 }], 0);
+    expect(out.serviceContacts).toBe(9);
+    // Absent, not 0 — the omit-when-zero guard.
+    expect(out).not.toHaveProperty('serviceCalls');
+  });
+});
+
+// -- the omit-when-zero guard (CJS twin) --------------------------------------
+//
+// serviceCalls and referralsObtained are the ONLY two keys this aggregator
+// conditionally omits. Neither has a daily writer yet (the KQM Calls ingest
+// endpoint is unbuilt), so emitting a derived 0 into a { merge: true } write
+// would erase an agent-entered weekly value and put nothing in its place.
+// referralsObtained is worth 3pt, so the loss is visible on the score.
+
+describe('aggregateDailyToWeekly - omit-when-zero guard', () => {
+  test('omits both keys when no entry carries them', () => {
+    const out = aggregateDailyToWeekly([{ dials: 5 }], 0);
+    expect(out).not.toHaveProperty('serviceCalls');
+    expect(out).not.toHaveProperty('referralsObtained');
+  });
+
+  test('omits both keys when every entry carries an explicit 0', () => {
+    const out = aggregateDailyToWeekly([{ dials: 5, serviceCalls: 0, referralsObtained: 0 }], 0);
+    expect(out).not.toHaveProperty('serviceCalls');
+    expect(out).not.toHaveProperty('referralsObtained');
+  });
+
+  test('emits the summed value once any entry carries a non-zero', () => {
+    const out = aggregateDailyToWeekly(
+      [
+        { serviceCalls: 2, referralsObtained: 1 },
+        { serviceCalls: 1, referralsObtained: 0 },
+      ],
+      0
+    );
+    expect(out.serviceCalls).toBe(3);
+    expect(out.referralsObtained).toBe(1);
+  });
+
+  test('a merge of the zero-case leaves agent-entered values intact', () => {
+    const priorDraft = { serviceCalls: 4, referralsObtained: 2, coldCalls: 99 };
+    const merged = Object.assign({}, priorDraft, aggregateDailyToWeekly([{ dials: 8 }], 0));
+    expect(merged.serviceCalls).toBe(4);
+    expect(merged.referralsObtained).toBe(2);
+    // The four call fields still overwrite - deliberately always written.
+    expect(merged.coldCalls).toBe(8);
+  });
+
+  test('a merge of the non-zero case overwrites the agent-entered value', () => {
+    const priorDraft = { serviceCalls: 4, referralsObtained: 2 };
+    const merged = Object.assign(
+      {},
+      priorDraft,
+      aggregateDailyToWeekly([{ serviceCalls: 1, referralsObtained: 7 }], 0)
+    );
+    expect(merged.serviceCalls).toBe(1);
+    expect(merged.referralsObtained).toBe(7);
+  });
+});

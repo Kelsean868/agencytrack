@@ -11,8 +11,12 @@
  *   - newNamesAdded is a single rollup; wizard splits names across 7 sources.
  *     Aggregator maps it to namesFromOther so the agent can re-allocate.
  *   - oldNamesWorked maps to wizard's oldNamesPool.
- *   - dials is a single daily total; the 4-call-type weekly split mapping is
- *     handled by the aggregator (Phase 1b).
+ *   - dials is the authoritative daily call total. v2 adds an OPTIONAL
+ *     dialsByType breakdown; the aggregator maps it onto the weekly 4-call-type
+ *     fields, and falls back to coldCalls = dials when no breakdown is present.
+ *   - serviceCalls (attempt) is distinct from serviceContacts (reach). Only
+ *     serviceCalls scores; see src/lib/schema/callRecord.js for why the two
+ *     must never be the same number.
  *   - telContacts is a distinct count of phone contacts reached (Phase 1b
  *     switches extractFields from qualifiedApproaches fallback to this field).
  *   - officeHours / fieldHours aggregate into wizard Step 9. hoursWorked is a
@@ -24,7 +28,11 @@
 
 import { WEEKLY_REPORT_VERSION } from './weeklyReport.js';
 
-export const DAILY_ACTIVITY_VERSION = 1;
+// v2 (26 Aug 2026): adds `dialsByType` (additive call-type split — `dials`
+// stays the authoritative total), `serviceCalls` (the attempt; distinct from
+// `serviceContacts`, the reach) and `referralsObtained`. No migration: a v1
+// doc carries none of them and aggregates to byte-identical weekly numbers.
+export const DAILY_ACTIVITY_VERSION = 2;
 
 export function createEmptyDailyEntry(date, agentId, agentName) {
   return {
@@ -38,7 +46,14 @@ export function createEmptyDailyEntry(date, agentId, agentName) {
     // Prospecting & outreach (Step 1 / 3 / 4 weekly targets)
     prospectingLettersSent: 0,
     seminarsConducted: 0,
-    dials: 0,                 // single daily total; 4-call-type split = 1b aggregator
+    dials: 0,                 // authoritative daily call total
+    // v2 additive call-type split. Written by the KQM Calls ingest endpoint,
+    // never by the Daily Capture UI (an agent typing at day's end cannot know
+    // the split; the calling app can). INVARIANT, property-tested: whenever any
+    // bucket is non-zero, cold + referral + followUp + seminarTradeshow ===
+    // dials. All-zero → the aggregator falls back to coldCalls = dials.
+    dialsByType: { cold: 0, referral: 0, followUp: 0, seminarTradeshow: 0 },
+    referralsObtained: 0,     // referrals produced by the day's activity (3pt weekly)
     telContacts: 0,           // distinct phone contacts reached
     f2fAttempts: 0,
     qualifiedApproaches: 0,   // legacy proxy kept; telContacts is the v2 field
@@ -67,7 +82,8 @@ export function createEmptyDailyEntry(date, agentId, agentName) {
 
     // Delivery & service (Step 8)
     policiesDelivered: 0,
-    serviceContacts: 0,
+    serviceContacts: 0,       // servicing REACHED (a contact)
+    serviceCalls: 0,          // servicing ATTEMPTED (a call) — the 1pt scoring field
 
     // Names (Step 5)
     newNamesAdded: 0,
@@ -106,6 +122,13 @@ export function normalizeDailyEntry(raw = {}) {
     prospectingLettersSent:  pi(raw.prospectingLettersSent),
     seminarsConducted:       pi(raw.seminarsConducted),
     dials:                   pi(raw.dials),
+    dialsByType: {
+      cold:             pi(raw.dialsByType?.cold),
+      referral:         pi(raw.dialsByType?.referral),
+      followUp:         pi(raw.dialsByType?.followUp),
+      seminarTradeshow: pi(raw.dialsByType?.seminarTradeshow),
+    },
+    referralsObtained:       pi(raw.referralsObtained),
     telContacts:             pi(raw.telContacts),
     f2fAttempts:             pi(raw.f2fAttempts),
     qualifiedApproaches:     pi(raw.qualifiedApproaches),
@@ -144,6 +167,7 @@ export function normalizeDailyEntry(raw = {}) {
     // Delivery & service
     policiesDelivered:  pi(raw.policiesDelivered),
     serviceContacts:    pi(raw.serviceContacts),
+    serviceCalls:       pi(raw.serviceCalls),
     // Names
     newNamesAdded:      pi(raw.newNamesAdded),
     oldNamesWorked:     pi(raw.oldNamesWorked),

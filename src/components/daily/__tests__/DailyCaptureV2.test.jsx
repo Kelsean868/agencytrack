@@ -751,3 +751,35 @@ describe('daily streak celebration (integration)', () => {
     expect(screen.queryByTestId('daily-streak-celebration')).not.toBeInTheDocument();
   });
 });
+
+// ─── D-SC (26 Aug 2026): computeDayPoints reads the real serviceCalls ────────
+// Before this ruling computeDayPoints mapped serviceContacts → serviceCalls, so
+// the daily pace badge scored service activity that the aggregated weekly draft
+// did not. An attempt and a reach are not the same number.
+
+describe('computeDayPoints — D-SC service field', () => {
+  it('scores the real serviceCalls field', () => {
+    const withCalls = computeDayPoints({ serviceCalls: 5 });
+    const noCalls   = computeDayPoints({ serviceCalls: 0 });
+    expect(withCalls).toBeGreaterThan(noCalls);
+  });
+
+  it('does NOT score serviceContacts', () => {
+    expect(computeDayPoints({ serviceContacts: 9 })).toBe(0);
+  });
+
+  it('serviceContacts does not inflate a day that already has serviceCalls', () => {
+    const a = computeDayPoints({ serviceCalls: 4 });
+    const b = computeDayPoints({ serviceCalls: 4, serviceContacts: 40 });
+    expect(b).toBe(a);
+  });
+
+  it('a daily entry at schema version 2 still scores through the flat mapping', () => {
+    // Daily `version` is the DAILY schema version, not the weekly-submission
+    // version computePoints branches on. Bumping one must not re-route the other.
+    const v1 = computeDayPoints({ version: 1, newBusiness: { apps: 2, api: 3000 }, dials: 7 });
+    const v2 = computeDayPoints({ version: 2, newBusiness: { apps: 2, api: 3000 }, dials: 7 });
+    expect(v2).toBe(v1);
+    expect(v2).toBeGreaterThan(0);
+  });
+});

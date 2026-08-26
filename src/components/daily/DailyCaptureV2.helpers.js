@@ -55,7 +55,10 @@ export function deriveCountStripChips(weekDocs) {
  *   daily.dials (single total)     → coldCalls bucket (feeds the dials accumulator)
  *   daily.newBusiness.{apps,api}   → applicationsSold, apiSold (version=1 path)
  *   daily.newNamesAdded            → namesFromOther
- *   daily.serviceContacts          → serviceCalls
+ *   daily.serviceCalls             → serviceCalls (D-SC, 26 Aug 2026 — the real
+ *                                    field; previously mis-sourced from
+ *                                    serviceContacts, which conflated an
+ *                                    attempt with a reach)
  *
  * @param {object} entry - daily activity entry (from Firestore or UI state)
  * @returns {number} integer point total for this day
@@ -74,8 +77,18 @@ export function computeDayPoints(entry) {
     apiSold:          floatOrZero(entry.newBusiness?.api),
     // names
     namesFromOther: intOrZero(entry.newNamesAdded),
-    // service
-    serviceCalls: intOrZero(entry.serviceContacts),
+    // service — D-SC: the real serviceCalls field, NOT serviceContacts. This is
+    // what makes the daily pace badge and the aggregated weekly draft score the
+    // same week identically. Days saved before daily schema v2 have no
+    // serviceCalls, so their service points drop to 0 — a deliberate correction
+    // of a double-meaning field, not a regression.
+    serviceCalls: intOrZero(entry.serviceCalls),
+    // `version` on a daily entry is the DAILY schema version — a DIFFERENT
+    // namespace from the weekly-submission `version` computePoints branches on
+    // (`version === 2` selects the nested newBusiness arm). Pin it to 1 so the
+    // explicit flat mapping above stays authoritative and DAILY_ACTIVITY_VERSION
+    // can move again without silently re-routing how a day is scored.
+    version: 1,
   });
 }
 

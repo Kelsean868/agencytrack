@@ -81,6 +81,7 @@
 | Persistency v2 (NEW calc methodology, R-07) — Tatil-gated PROPOSAL, ATTENDED-ONLY (banked 2026-07... | HIGH | — | — | 369 |
 | CI-vs-local test-timing gap — Tier-0 error-state tests can pass locally 5x, fail in CI (banked 20... | MEDIUM | — | — | 384 |
 | Flake family scope — **PR #872's fix set is provably INCOMPLETE**; ≥3 further members named (MeetingMode ArrowRight, BranchesPanel Retry, the A2 `e` SERIES sibling) + 1 unnamed. DO NOT widen #872 — audit continues after it lands (banked 2026-07-26, PR #875 session) | MEDIUM | — | — | 384 |
+| Flake family — `AgentPlannerPanel.weeknav.test.jsx` carries `flushPendingEffects` 0x where its #899-remediated sibling carries it 4x; fix was applied per-FILE not per-COMPONENT (banked 2026-08-26, PR #909) | MEDIUM | — | — | end |
 | Node 20 → Node 24 — CI deprecation now firing directly (checkout@v4/setup-node@v4), not only in f... | HIGH | — | 2026-10-30 | 397 |
 | Reconcile `design_handoff_v2_app/mockups/` (Downloads, Track J bundle) against `docs/design-syste... | MEDIUM | Track J | — | 405 |
 | Functions runtime + firebase-functions SDK upgrade — Node 20 EOL + SDK 4.9.0 → ≥5.1.0 (banked 202... | HIGH | — | — | 1191 |
@@ -134,6 +135,7 @@
 | Financing ruleset code comment overclaims configurability (banked 2026-07-10, promotion session, ... | LOW | — | — | 431 |
 | Master Sheet — unit friendly names absent (banked 2026-07-10, Run 4 Item 2, LOW — display polish) | LOW | — | — | 455 |
 | Company Config toggle — "count converted service calls as Tel Contacts" (banked 2026-07-10, Run 4... | LOW | — | — | 463 |
+| Sunday aggregator zeroing agent-entered `serviceCalls` / `referralsObtained` — MITIGATED 2026-08-26 by resolution 2 (omit-when-zero); residual: a genuine correction-to-zero cannot propagate once a daily writer exists (banked 2026-08-26, daily-call-fields PR) | LOW | — | — | end |
 | ⚠️ **Feature-branch Vercel previews are bound to PRODUCTION Firebase** — overturns the old "previews can't reach a live backend" claim (re-banked 2026-07-26, planner week-nav; remedy (a) = generalize the pre-write project guard, own small PR; remedy (b) = OPERATOR binds staging env to Vercel's Preview environment) | **HIGH** | — | — | 508 |
 | Vitest on Windows — worker contention flakes under concurrent runs (banked 2026-07-10, Run 4, LOW... | LOW | — | — | 516 |
 | Recon docs must carry a validity-SHA header — new standing rule (banked 2026-07-10, Run 4, LOW — ... | LOW | — | — | 524 |
@@ -179,7 +181,6 @@
 | MoneyNeedsPanel amount inputs — `=== 0 ? '' :` idiom vs `\|\| ''` for null safety (banked PR #718 G... | LOW | — | — | 1173 |
 | Money Needs 1.7 — per-line renewal sub-chips need a data source (banked PR #706, 2026-06-21, LOW) | LOW | — | — | 1179 |
 | MonthlyPlanModal:41 — `todayTT.split` lacks a null guard (banked PR #708 Gemini OUT-OF-SCOPE, 202... | LOW | — | — | 1185 |
-| Wizard v3 — "Target Dials" semantics: cold-calls-only vs total calls (product Q, banked 2026-06-2... | LOW | — | — | 1216 |
 | A11Y smoke agent — no unstarted-but-fillable week, so the walk's own write-read-verify never runs... | LOW | — | — | 1226 |
 | Rules-test harness — `FIRESTORE_EMULATOR_HOST` parse is not IPv6-safe (banked PR #703 Gemini, 202... | LOW | — | — | 1240 |
 | CONTRACT: remove `weeklyActivityFloors.contactsMade` from companyMinimums (LOW — after #685 merge... | LOW | — | — | 1254 |
@@ -1452,6 +1453,8 @@ The funnel Master Sheet's UNIT filter falls back to raw ids (`Unit <last4>`) bec
 
 The funnel Master Sheet's Contacts Made / Contact Attempts mapping deliberately excludes `serviceCalls` from every funnel sum (servicing ≠ new-business activity; `src/utils/funnelModel.js` — `serviceCalls` stays visible in the drill/detail view so nothing leaves the record). A possible future refinement: a Company Config toggle letting a tenant opt IN to counting converted service calls as Tel Contacts, default OFF. **Do not build this until the operator rules on it** — it's a product decision, not a mechanical gap.
 
+**STILL OPEN after ruling D-SC (2026-08-26).** D-SC made the daily→weekly aggregator write `serviceCalls` from a real daily `serviceCalls` field (closing a points disagreement between the daily pace badge and the aggregated weekly draft). It **did NOT** answer this question. `serviceCalls` remains excluded from every funnel sum (`src/utils/funnelModel.js`) and from every plan/effort sum (`src/utils/planVariance.js` — `computeProspectingCallsActual` is the 4-sum). Do not infer an answer from D-SC: the ruling was about *where the number comes from*, not about *what the number counts toward*.
+
 ---
 
 ---
@@ -2251,11 +2254,15 @@ Two coupled platform deadlines on the Cloud Functions stack:
 
 ---
 
-## Wizard v3 — "Target Dials" semantics: cold-calls-only vs total calls (product Q, banked 2026-06-22, LOW)
+## Wizard v3 — "Target Dials" semantics: cold-calls-only vs total calls — RESOLVED (ruling D-TD, 2026-08-26)
 
-`useSeededTargets` seeds the step-11 "Target Dials" suggestion from the week's actual dials. On the full path that actual now reads `coldCalls` (the `data?.dials ?? data?.coldCalls` fallback shipped in Phase 2). **Open product question:** should "Target Dials" mean **cold-calls only** (current behaviour) or the **total of all call subtypes** (`coldCalls + referralCalls + followUpCalls + seminarTradeshowCalls`)? The weekly form captures all four; the seed currently considers only the cold bucket. If "Dials" is meant as the all-calls total, the read should sum the four subtypes instead of falling back to `coldCalls` alone.
+**RESOLVED.** The operator ruled (D-TD, `docs/briefs/daily-call-fields-kickoff.md`): **"Target Dials" means the 4-sum** — `coldCalls + referralCalls + followUpCalls + seminarTradeshowCalls`. Not cold-calls-only. `serviceCalls` is NOT in the sum.
 
-**Severity:** LOW — the suggestion is display-only and the agent can adjust it. **Decision owner:** head-of-sales / Kyron. **Falsification:** resolved once a product call fixes the intended meaning of "Dials" in the targets step.
+`useSeededTargets.js` now reads the fast path (`dials`, on the daily-aggregated draft) unchanged, and on the full path falls back to `extractFields(data).totalTelAttempts` — the existing 4-sum helper — rather than to `coldCalls` alone. Reading through the helper instead of re-summing inline is deliberate: it means a fifth call type can never create a third definition of the same total.
+
+**Correction to the original body (Rule 11).** The banked text described the shipped behaviour as the `data?.dials ?? data?.coldCalls` fallback, which was accurate. What it did not say is that the same 4-sum already had **two** call sites — `extractFields.totalTelAttempts` and `planVariance.computeProspectingCallsActual` — so the fix was never "sum four fields here", it was "route to the existing definition".
+
+**Severity at close:** LOW, as banked — the suggestion is display-only and the agent can adjust it. **Falsification:** overturned if the operator re-rules that "Dials" means the cold bucket, or if a fifth call type is introduced that should be excluded from the target seed.
 
 ---
 
@@ -6070,3 +6077,71 @@ The dumped DOM still showed `animate-pulse` skeletons — the assertion ran agai
 **Consequence for the promotion's acceptance check.** `git ls-tree origin/main -- src/test-utils/flushPendingEffects.js` returning a blob proves **the fix ARRIVED**. It does **not** prove `main`'s gate is clean. After promotion `main` inherits a gate that is better by two files and still intermittent — expect occasional reds on inert diffs, and re-run to separate flake from regression until the remaining members are ruled.
 
 **Falsification (Rule 23).** Overturned if a member outside #899's two files is shown to have been fixed by it, or if the register's roster is shown to name substantially fewer than ten distinct tests after a proper dedup. **Not** overturned by an intermittent red after promotion — that is the untouched remainder, tracked in § *Flake family scope*, not a failure of the promotion.
+
+---
+
+## Sunday aggregator now ZEROES agent-entered `serviceCalls` / `referralsObtained` on an unsubmitted hybrid draft (banked 2026-08-26, daily-call-fields PR, MEDIUM)
+
+**This is a real data-loss path, and it is a direct consequence of a locked decision — not an implementation slip.** Recording it because the brief stated the analogous consequence for the daily pace badge (ruling D-SC) but not this one for the weekly draft.
+
+`aggregateDailyToWeekly` writes every field it sums unconditionally, so a `{ merge: true }` write overwrites whatever the agent typed. That is deliberate and long-standing for the call fields — the aggregator's own comment says the explicit zeros exist to stop double-counting. What changed on 2026-08-26 is that **two more fields joined the set**: decision 3 added `referralsObtained` and ruling D-SC added `serviceCalls`. Before that PR neither was written by the aggregator, so an agent-entered value survived the cron.
+
+**The failure, concretely.** A `hybrid`-mode agent fills the weekly wizard mid-week — Step 2 `serviceCalls` (`StepCallsF2F.jsx:74`), Step 5 `referralsObtained` (`StepNewNamesAdded.jsx:78`) — and does **not** submit. Sunday 23:00 TT the cron runs (`sundayDailyToWeekly.js`), skips only drafts with `status === 'submitted'`, and merges the daily rollup over the draft. Neither field has a Daily Capture UI, so the daily sum is **0**, and the agent's typed values are replaced by 0. `referralsObtained` is a **3pt** field.
+
+**Not yet live.** `aggregateDailyToWeekly` is in `functions/` and is deploy-gated — this reaches production only when `firebase deploy --only functions` runs, which is a separate dispatcher action.
+
+**Three candidate resolutions, none taken here** (picking one is a product call, not a mechanical fix):
+1. **Max, not replace** — write `max(dailySum, existingDraftValue)` for fields with no daily UI. Cheapest, but makes the aggregator non-idempotent against its own prior output.
+2. **Skip zeros** — omit a field from the merge when its daily sum is 0. Simple, but then a genuine correction to zero can never propagate.
+3. **Give both fields a Daily Capture stepper** — removes the asymmetry at its root and is the only option that makes the overwrite *correct*. Largest scope.
+
+**Severity:** MEDIUM — silent, affects only unsubmitted hybrid drafts, and not live until the functions deploy. **Falsification:** overturned if the cron is shown to skip drafts an agent has edited (it does not — it skips only `status === 'submitted'`), or if a daily write path for these two fields lands first, which resolves it by making the sums real.
+
+### MITIGATED 2026-08-26 — resolution 2 applied (omit-when-zero), downgraded MEDIUM → LOW
+
+The operator ruled for **resolution 2** before the PR merged: both aggregator twins now omit
+`serviceCalls` and `referralsObtained` from the returned object when their daily sum is 0, so a
+`{ merge: true }` write leaves an agent-entered value untouched. The key returns the moment any
+entry carries a non-zero, and derived still wins over typed at that point — the same rule the four
+call fields follow. Covered by five tests per twin, including both merge directions.
+
+**The residual is exactly the downside this entry named, and it is not fixed.** A genuine
+correction to zero still cannot propagate: once the KQM Calls ingest endpoint writes daily rows, a
+week with no referrals sums to 0, the key is omitted, and a stale agent-typed value survives
+instead of being corrected. That is harmless today because **nothing writes either field daily** —
+the trade is "cannot correct a value that cannot yet exist" against "silently destroys a 3pt value
+that does exist".
+
+**Revisit trigger — not a date, an event:** the first PR that gives either field a daily writer
+(the ingest endpoint, or resolution 3's Daily Capture steppers). At that point the omit-when-zero
+guard becomes wrong in the other direction and resolution 3 is the honest fix. Whoever lands that
+endpoint owns this line.
+
+---
+
+## Flake family — `AgentPlannerPanel.weeknav.test.jsx` was never remediated by #899 (banked 2026-08-26, daily-call-fields PR #909, MEDIUM — test-infra)
+
+**A named next target, with evidence rather than suspicion.**
+
+`lint-and-build` went red on PR #909 at commit `19201d99` — a **docs-only** commit, `docs/FOLLOW_UPS.md`, 21 insertions, zero `src/`. The failure:
+
+```
+FAIL src/components/planner/__tests__/AgentPlannerPanel.weeknav.test.jsx
+  > AgentPlannerPanel — week navigation > navigation is unlimited — three weeks forward keeps stepping
+TestingLibraryElementError: Unable to find an element by: [data-testid="planner-week-label"]
+Test Files  1 failed | 380 passed (381)
+```
+
+A docs-only diff cannot break the planner, and the same suite had already passed twice on earlier commits of the same branch (and 6053/6053 locally). Re-run: PASS. Flake, not regression.
+
+**The useful part is WHICH file.** #899 fixed `AgentPlannerPanel.test.jsx`. This is its sibling `AgentPlannerPanel.weeknav.test.jsx` — same component, same mocked-`services/*`-promise-into-multi-commit-render shape, and it carries **`flushPendingEffects` 0 times** where the remediated sibling carries it **4 times**:
+
+```
+src/components/planner/__tests__/AgentPlannerPanel.weeknav.test.jsx:0
+src/components/planner/__tests__/AgentPlannerPanel.test.jsx:4
+```
+
+So the remainder is not merely "unruled" — for this member it is precisely locatable: the fix was applied per-FILE, not per-COMPONENT, and the sibling was missed. That makes it the cheapest next remediation in the family, and it suggests an audit worth running once: **every test file whose sibling received `flushPendingEffects` but which did not itself.**
+
+**Falsification (Rule 23):** overturned if `weeknav` is shown to fail for a reason unrelated to the awaiting-pattern shape (its own `getAgentWeek` mock resolving differently, say), or if `flushPendingEffects` is shown to be inapplicable to its gate. **Not** overturned by the re-run passing — intermittency is the claim, not the counter-argument.
+
