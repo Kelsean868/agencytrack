@@ -69,9 +69,10 @@ export default defineConfig([
       globals: { ...globals.node },
     },
   },
-  // Jest globals for Cloud Function unit tests (functions/__tests__/)
+  // Jest globals for Cloud Function unit tests. Covers both the flat
+  // functions/__tests__/ tree and per-feature suites (functions/<feature>/__tests__/).
   {
-    files: ['functions/__tests__/**/*.test.js'],
+    files: ['functions/**/__tests__/**/*.test.js'],
     languageOptions: {
       globals: { ...globals.node, ...globals.jest },
     },
