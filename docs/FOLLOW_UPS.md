@@ -6212,7 +6212,7 @@ deactivated user simply fails closed.
 user (making the stale link harmless), or if `runTransaction` is adopted here. **Not**
 overturned by the race being rare — rarity is the reason it is LOW, not the reason it is closed.
 
-## Call sources — a PRODUCING MANAGER has no way to attach their own (MEDIUM, banked 2026-08-26, slice A-prime / PR #TBD)
+## Call sources — a PRODUCING MANAGER has no way to attach their own (MEDIUM, banked 2026-08-26, slice A-prime / PR #919)
 
 Self-service put the Call Sources tab on `AGENT_NAV` and removed it from `ManagerDashboard`
 entirely, per the brief's explicit instruction ("move the tab off ManagerDashboard to the
@@ -6241,7 +6241,7 @@ attach calling software (in which case this is correct as shipped and the entry 
 closed, not built). **Not** overturned by nobody complaining — a UM who cannot find the screen
 does not file a bug, they just never use the feature.
 
-## Call sources — the owner-scoped list has no orderBy, deliberately (LOW, banked 2026-08-26, slice A-prime / PR #TBD)
+## Call sources — the owner-scoped list has no orderBy, deliberately (LOW, banked 2026-08-26, slice A-prime / PR #919)
 
 `CallSourcesTab` queries `where('creditUid','==',uid)` with **no `orderBy`**, and sorts newest-first
 in JavaScript. Firestore requires a **composite index** for an equality filter combined with an
