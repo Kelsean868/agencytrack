@@ -36,6 +36,34 @@ Execute the canonical sequence (CLAUDE.md Session Protocol step 9 + Post-merge l
    (`Recently shipped`, `Active track`, `Last updated`, `Where we left off`) fills on whichever
    branch was merged to, under its normal cap, with overflow to `docs/CONTEXT-history.md`
    verbatim.
+5a. **Deploy state is QUERIED, never inferred (MANDATORY).** Before writing any deploy-state
+   claim into `CONTEXT.md`, establish it from Firebase itself:
+
+   ```
+   gcloud functions describe <fn> --region=us-central1 --project=agencytrack-2a610 \
+     --format="value(updateTime,status)"
+   firebase functions:list --project agencytrack-2a610
+   ```
+
+   Compare each touched function's `updateTime` against the merge time. Newer than the merge
+   means this PR's code is live; older means it is not. For a rules change, the ground truth
+   is the deploy log's `released rules firestore.rules to cloud.firestore` line - `compiled
+   successfully` alone is NOT a deploy. If the PR touched no `functions/`, `firestore.rules`
+   or `firestore.indexes.json` surface, say "no deploy-gated surfaces touched" and skip.
+
+   **You MUST NOT reason from your own inaction.** "I did not run the deploy in this cycle"
+   is a fact about this session, not about production - the dispatcher may have deployed
+   between the merge and this fill, and repeatedly has. This is the same failure the worktree
+   step above was hardened against, in a different costume: *a habit that depends on someone
+   remembering is not a check.*
+
+   ⚠ **This exact error shipped THREE cycles running before this step existed** - #909 (fixed
+   by PR #910), #915 (fixed by PR #916), and #919, which was stamped `MERGED, NOT DEPLOYED`
+   while `createCallSource` had been live for minutes (`updateTime` 2026-08-26T20:56:58Z,
+   fill commit `88a5b68a` after it). Each time the fill was written by a session that had not
+   itself deployed, and each time it took a follow-up PR to correct. The reference point must
+   match the question: **nothing in git knows what Firebase is serving.**
+
 6. **Commit** with message: `docs: post-merge fill for PR #<n>`. Include staged `graphify-out/` changes from step 3 if any. **Direct-to-branch is the norm for `main`.** For any other `TARGET`, follow whatever push policy that branch carries - if it is protected or the dispatcher's convention is PR-only, open a small docs PR against `TARGET` and HOLD rather than pushing directly.
 7. **Push** to `TARGET`.
 8. **Rule 15 verification (mandatory)** - `git fetch origin && git log origin/<TARGET> --oneline -1`. Confirm the SHA matches `git rev-parse HEAD` on local `TARGET`. Report explicit "pushed and verified - SHA <sha>". *(If step 6 routed through a PR, Rule 15 applies to that PR's merge, not to this run - say so explicitly rather than reporting a verification that did not happen.)*
