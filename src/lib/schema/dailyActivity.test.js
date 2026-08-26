@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import fc from 'fast-check';
 import {
   createEmptyDailyEntry,
   normalizeDailyEntry,
@@ -431,5 +432,176 @@ describe('normalizeDailyEntry', () => {
     const n = normalizeDailyEntry({ dials: 5 });
     expect(n.socialPlatformBreakdown).toEqual({ facebook: 0, instagram: 0, whatsapp: 0, linkedin: 0 });
     expect(n.newBusiness).toEqual({ apps: 0, api: 0 });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Daily v2 — dialsByType split, serviceCalls, referralsObtained
+//
+// BUDGET: the property block below is pinned at numRuns 200 with a fixed seed,
+// the same discipline as callRecord.test.js. Determinism over breadth: a flaky
+// property test on a money-adjacent invariant is worse than none.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('daily v2 schema additions', () => {
+  it('bumps DAILY_ACTIVITY_VERSION to 2 (weeklyReportVersion untouched)', () => {
+    const entry = createEmptyDailyEntry('2026-05-12', 'a', 'A');
+    expect(DAILY_ACTIVITY_VERSION).toBe(2);
+    expect(entry.version).toBe(2);
+    expect(entry.weeklyReportVersion).toBe(2); // WEEKLY_REPORT_VERSION, unchanged
+  });
+
+  it('createEmptyDailyEntry carries dialsByType, serviceCalls, referralsObtained', () => {
+    const entry = createEmptyDailyEntry('2026-05-12', 'a', 'A');
+    expect(entry.dialsByType).toEqual({
+      cold: 0, referral: 0, followUp: 0, seminarTradeshow: 0,
+    });
+    expect(entry.serviceCalls).toBe(0);
+    expect(entry.referralsObtained).toBe(0);
+    // serviceContacts survives untouched — attempt and reach stay distinct.
+    expect(entry.serviceContacts).toBe(0);
+  });
+
+  it('normalizeDailyEntry coerces the new fields to integers', () => {
+    const n = normalizeDailyEntry({
+      dials: '12',
+      dialsByType: { cold: '5', referral: 3.9, followUp: null, seminarTradeshow: 'x' },
+      serviceCalls: '4',
+      referralsObtained: 2.7,
+    });
+    expect(n.dialsByType).toEqual({
+      cold: 5, referral: 3, followUp: 0, seminarTradeshow: 0,
+    });
+    expect(n.serviceCalls).toBe(4);
+    expect(n.referralsObtained).toBe(2);
+  });
+
+  it('normalizeDailyEntry fills dialsByType when the key is absent entirely', () => {
+    const n = normalizeDailyEntry({ dials: 5 });
+    expect(n.dialsByType).toEqual({
+      cold: 0, referral: 0, followUp: 0, seminarTradeshow: 0,
+    });
+    expect(n.serviceCalls).toBe(0);
+    expect(n.referralsObtained).toBe(0);
+  });
+});
+
+describe('aggregateDailyToWeekly — call-type split', () => {
+  it('pre-v2 docs (no dialsByType) aggregate exactly as before', () => {
+    const out = aggregateDailyToWeekly([{ dials: 10 }, { dials: 15 }], 0);
+    expect(out.dials).toBe(25);
+    expect(out.coldCalls).toBe(25);
+    expect(out.referralCalls).toBe(0);
+    expect(out.followUpCalls).toBe(0);
+    expect(out.seminarTradeshowCalls).toBe(0);
+  });
+
+  it('an all-zero dialsByType is treated as no breakdown (fallback)', () => {
+    const out = aggregateDailyToWeekly(
+      [{ dials: 9, dialsByType: { cold: 0, referral: 0, followUp: 0, seminarTradeshow: 0 } }],
+      0
+    );
+    expect(out.coldCalls).toBe(9);
+    expect(out.referralCalls).toBe(0);
+  });
+
+  it('maps a v2 breakdown onto the four weekly call fields', () => {
+    const out = aggregateDailyToWeekly(
+      [{ dials: 10, dialsByType: { cold: 4, referral: 3, followUp: 2, seminarTradeshow: 1 } }],
+      0
+    );
+    expect(out.dials).toBe(10);
+    expect(out.coldCalls).toBe(4);
+    expect(out.referralCalls).toBe(3);
+    expect(out.followUpCalls).toBe(2);
+    expect(out.seminarTradeshowCalls).toBe(1);
+  });
+
+  it('preserves the total in a MIXED week (some days split, some not)', () => {
+    // The per-entry fallback is what makes this hold. A per-WEEK fallback would
+    // drop the 6 unsplit dials on the floor the moment any other day split.
+    const out = aggregateDailyToWeekly(
+      [
+        { dials: 6 },                                                                  // no breakdown
+        { dials: 10, dialsByType: { cold: 4, referral: 3, followUp: 2, seminarTradeshow: 1 } },
+      ],
+      0
+    );
+    expect(out.dials).toBe(16);
+    const fourSum =
+      out.coldCalls + out.referralCalls + out.followUpCalls + out.seminarTradeshowCalls;
+    expect(fourSum).toBe(16);
+    expect(out.coldCalls).toBe(10); // 6 unsplit + 4 explicitly cold
+  });
+
+  it('sums serviceCalls and referralsObtained (D-SC / decision 3)', () => {
+    const out = aggregateDailyToWeekly(
+      [
+        { serviceCalls: 3, serviceContacts: 1, referralsObtained: 2 },
+        { serviceCalls: 4, serviceContacts: 2, referralsObtained: 1 },
+      ],
+      0
+    );
+    expect(out.serviceCalls).toBe(7);
+    expect(out.referralsObtained).toBe(3);
+    // attempt and reach are separate numbers, never the same one
+    expect(out.serviceContacts).toBe(3);
+  });
+
+  it('does NOT source serviceCalls from serviceContacts', () => {
+    const out = aggregateDailyToWeekly([{ serviceContacts: 9 }], 0);
+    expect(out.serviceContacts).toBe(9);
+    expect(out.serviceCalls).toBe(0);
+  });
+});
+
+describe('aggregateDailyToWeekly — split invariant (property, numRuns 200)', () => {
+  const runCfg = { numRuns: 200, seed: 20260826 };
+
+  // A day that carries a breakdown, generated so the invariant HOLDS by
+  // construction — dials is derived from the buckets, never chosen independently.
+  const splitDayArb = fc
+    .record({
+      cold:             fc.integer({ min: 0, max: 40 }),
+      referral:         fc.integer({ min: 0, max: 40 }),
+      followUp:         fc.integer({ min: 0, max: 40 }),
+      seminarTradeshow: fc.integer({ min: 0, max: 40 }),
+    })
+    .map((b) => ({
+      dials: b.cold + b.referral + b.followUp + b.seminarTradeshow,
+      dialsByType: b,
+    }));
+
+  const plainDayArb = fc.record({ dials: fc.integer({ min: 0, max: 160 }) });
+
+  const weekArb = fc.array(fc.oneof(splitDayArb, plainDayArb), { minLength: 0, maxLength: 7 });
+
+  it('dials === cold + referral + followUp + seminarTradeshow for every week', () => {
+    fc.assert(
+      fc.property(weekArb, (week) => {
+        const out = aggregateDailyToWeekly(week, 0);
+        const fourSum =
+          out.coldCalls + out.referralCalls + out.followUpCalls + out.seminarTradeshowCalls;
+        expect(fourSum).toBe(out.dials);
+      }),
+      runCfg
+    );
+  });
+
+  it('computePoints is identical whether the week is split or collapsed to totals', () => {
+    // F5: computePoints sums the four dial types then floors ONCE, so moving
+    // dials between buckets cannot move the score. This is the guarantee the
+    // whole additive design rests on — assert it, do not assume it.
+    fc.assert(
+      fc.property(weekArb, (week) => {
+        const split     = aggregateDailyToWeekly(week, 0);
+        const collapsed = aggregateDailyToWeekly(
+          week.map((d) => ({ dials: d.dials })), // same days, breakdown stripped
+          0
+        );
+        expect(computePoints(split)).toBe(computePoints(collapsed));
+      }),
+      runCfg
+    );
   });
 });

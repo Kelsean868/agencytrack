@@ -179,7 +179,6 @@
 | MoneyNeedsPanel amount inputs — `=== 0 ? '' :` idiom vs `\|\| ''` for null safety (banked PR #718 G... | LOW | — | — | 1173 |
 | Money Needs 1.7 — per-line renewal sub-chips need a data source (banked PR #706, 2026-06-21, LOW) | LOW | — | — | 1179 |
 | MonthlyPlanModal:41 — `todayTT.split` lacks a null guard (banked PR #708 Gemini OUT-OF-SCOPE, 202... | LOW | — | — | 1185 |
-| Wizard v3 — "Target Dials" semantics: cold-calls-only vs total calls (product Q, banked 2026-06-2... | LOW | — | — | 1216 |
 | A11Y smoke agent — no unstarted-but-fillable week, so the walk's own write-read-verify never runs... | LOW | — | — | 1226 |
 | Rules-test harness — `FIRESTORE_EMULATOR_HOST` parse is not IPv6-safe (banked PR #703 Gemini, 202... | LOW | — | — | 1240 |
 | CONTRACT: remove `weeklyActivityFloors.contactsMade` from companyMinimums (LOW — after #685 merge... | LOW | — | — | 1254 |
@@ -1452,6 +1451,8 @@ The funnel Master Sheet's UNIT filter falls back to raw ids (`Unit <last4>`) bec
 
 The funnel Master Sheet's Contacts Made / Contact Attempts mapping deliberately excludes `serviceCalls` from every funnel sum (servicing ≠ new-business activity; `src/utils/funnelModel.js` — `serviceCalls` stays visible in the drill/detail view so nothing leaves the record). A possible future refinement: a Company Config toggle letting a tenant opt IN to counting converted service calls as Tel Contacts, default OFF. **Do not build this until the operator rules on it** — it's a product decision, not a mechanical gap.
 
+**STILL OPEN after ruling D-SC (2026-08-26).** D-SC made the daily→weekly aggregator write `serviceCalls` from a real daily `serviceCalls` field (closing a points disagreement between the daily pace badge and the aggregated weekly draft). It **did NOT** answer this question. `serviceCalls` remains excluded from every funnel sum (`src/utils/funnelModel.js`) and from every plan/effort sum (`src/utils/planVariance.js` — `computeProspectingCallsActual` is the 4-sum). Do not infer an answer from D-SC: the ruling was about *where the number comes from*, not about *what the number counts toward*.
+
 ---
 
 ---
@@ -2251,11 +2252,15 @@ Two coupled platform deadlines on the Cloud Functions stack:
 
 ---
 
-## Wizard v3 — "Target Dials" semantics: cold-calls-only vs total calls (product Q, banked 2026-06-22, LOW)
+## Wizard v3 — "Target Dials" semantics: cold-calls-only vs total calls — RESOLVED (ruling D-TD, 2026-08-26)
 
-`useSeededTargets` seeds the step-11 "Target Dials" suggestion from the week's actual dials. On the full path that actual now reads `coldCalls` (the `data?.dials ?? data?.coldCalls` fallback shipped in Phase 2). **Open product question:** should "Target Dials" mean **cold-calls only** (current behaviour) or the **total of all call subtypes** (`coldCalls + referralCalls + followUpCalls + seminarTradeshowCalls`)? The weekly form captures all four; the seed currently considers only the cold bucket. If "Dials" is meant as the all-calls total, the read should sum the four subtypes instead of falling back to `coldCalls` alone.
+**RESOLVED.** The operator ruled (D-TD, `docs/briefs/daily-call-fields-kickoff.md`): **"Target Dials" means the 4-sum** — `coldCalls + referralCalls + followUpCalls + seminarTradeshowCalls`. Not cold-calls-only. `serviceCalls` is NOT in the sum.
 
-**Severity:** LOW — the suggestion is display-only and the agent can adjust it. **Decision owner:** head-of-sales / Kyron. **Falsification:** resolved once a product call fixes the intended meaning of "Dials" in the targets step.
+`useSeededTargets.js` now reads the fast path (`dials`, on the daily-aggregated draft) unchanged, and on the full path falls back to `extractFields(data).totalTelAttempts` — the existing 4-sum helper — rather than to `coldCalls` alone. Reading through the helper instead of re-summing inline is deliberate: it means a fifth call type can never create a third definition of the same total.
+
+**Correction to the original body (Rule 11).** The banked text described the shipped behaviour as the `data?.dials ?? data?.coldCalls` fallback, which was accurate. What it did not say is that the same 4-sum already had **two** call sites — `extractFields.totalTelAttempts` and `planVariance.computeProspectingCallsActual` — so the fix was never "sum four fields here", it was "route to the existing definition".
+
+**Severity at close:** LOW, as banked — the suggestion is display-only and the agent can adjust it. **Falsification:** overturned if the operator re-rules that "Dials" means the cold bucket, or if a fifth call type is introduced that should be excluded from the target seed.
 
 ---
 

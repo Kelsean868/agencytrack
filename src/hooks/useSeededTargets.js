@@ -7,6 +7,7 @@ import {
   roundTo10,
 } from '../utils/goalDecomposition';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../utils/weeklyActivityFloors';
+import { extractFields } from '../utils/extractFields';
 
 /**
  * useSeededTargets — derives next-week target suggestions for step 11.
@@ -26,11 +27,16 @@ export function useSeededTargets({ data, goal, floors }) {
     const annualAPI = parseFloat(goal?.personalAnnualAPI) || 0;
     const hasGoal   = annualAPI > 0;
 
-    // Fast path: the daily-aggregated draft carries `dials`. Full path: weekly
-    // INITIAL_DATA has no `dials` — it uses `coldCalls`. `??` reads dials when
-    // present (fast path unchanged) and falls back to coldCalls otherwise so the
-    // full-path actuals-seed isn't dead (canonical daily-dials ↔ weekly-coldCalls).
-    const thisWeekDials = parseFloat(data?.dials ?? data?.coldCalls) || 0;
+    // Fast path: the daily-aggregated draft carries `dials` — read it directly,
+    // unchanged. Full path: weekly INITIAL_DATA has no `dials`, so "Target
+    // Dials" means the 4-sum of the call types (D-TD, 26 Aug 2026), NOT the cold
+    // bucket alone. Read it through extractFields.totalTelAttempts rather than
+    // re-summing inline, so a fifth call type can never create a third
+    // definition of the same total. serviceCalls is NOT in this sum.
+    const thisWeekDials =
+      data?.dials != null
+        ? parseFloat(data.dials) || 0
+        : extractFields(data).totalTelAttempts || 0;
     const thisWeekFFI   = parseFloat(data?.ffiConducted) || 0;
     const thisWeekCI    = parseFloat(data?.ciConducted)  || 0;
 
@@ -54,12 +60,9 @@ export function useSeededTargets({ data, goal, floors }) {
     }
 
     return { targetDials, targetFFI, targetCI, targetAPI, hasGoal };
-  }, [
-    data?.dials,
-    data?.coldCalls,
-    data?.ffiConducted,
-    data?.ciConducted,
-    goal?.personalAnnualAPI,
-    floors,
-  ]);
+    // D-TD: the full-path fallback reads `data` as a whole (extractFields takes
+    // the object), so the dependency is `data` itself rather than the old
+    // field-by-field list — that list can no longer be exhaustive, and a stale
+    // seed is worse than an extra pass through two pure functions.
+  }, [data, goal?.personalAnnualAPI, floors]);
 }

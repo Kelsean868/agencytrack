@@ -125,3 +125,54 @@ describe('useSeededTargets', () => {
     });
   });
 });
+
+// ─── D-TD (26 Aug 2026): "Target Dials" means the 4-sum ──────────────────────
+// Before this ruling the full path read `coldCalls` alone, so an agent whose
+// week was mostly referral / follow-up calls got seeded from the cold bucket
+// only and their target silently under-counted their own actuals.
+
+describe('D-TD — full-path dials seed is the 4-sum', () => {
+  it('sums all four call types, not coldCalls alone', () => {
+    const data = {
+      coldCalls: 40, referralCalls: 30, followUpCalls: 20, seminarTradeshowCalls: 10,
+    };
+    const { result } = renderHook(() =>
+      useSeededTargets({ data, goal: null, floors: null })
+    );
+    expect(result.current.targetDials).toBe(100);
+  });
+
+  it('seeds from referral/follow-up calls even when coldCalls is 0', () => {
+    const data = { coldCalls: 0, referralCalls: 120, followUpCalls: 30 };
+    const { result } = renderHook(() =>
+      useSeededTargets({ data, goal: null, floors: null })
+    );
+    expect(result.current.targetDials).toBe(150);
+  });
+
+  it('EXCLUDES serviceCalls from the sum', () => {
+    const withService    = { coldCalls: 100, serviceCalls: 50 };
+    const withoutService = { coldCalls: 100 };
+    const a = renderHook(() => useSeededTargets({ data: withService,    goal: null, floors: null }));
+    const b = renderHook(() => useSeededTargets({ data: withoutService, goal: null, floors: null }));
+    expect(a.result.current.targetDials).toBe(b.result.current.targetDials);
+    expect(a.result.current.targetDials).toBe(100);
+  });
+
+  it('fast path is unchanged: an explicit `dials` wins over the 4-sum', () => {
+    // The daily-aggregated draft carries BOTH; `dials` is authoritative.
+    const data = { dials: 210, coldCalls: 100, referralCalls: 50 };
+    const { result } = renderHook(() =>
+      useSeededTargets({ data, goal: null, floors: null })
+    );
+    expect(result.current.targetDials).toBe(210);
+  });
+
+  it('dials = 0 is "present" and wins (falls back to the floor, not the 4-sum)', () => {
+    const data = { dials: 0, coldCalls: 999 };
+    const { result } = renderHook(() =>
+      useSeededTargets({ data, goal: null, floors: null })
+    );
+    expect(result.current.targetDials).toBe(DEFAULT_WEEKLY_ACTIVITY_FLOORS.callsMade);
+  });
+});

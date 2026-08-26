@@ -63,6 +63,37 @@ function aggregateDailyToWeekly(dailyEntries, commissionRate = 0) {
   const sumPathInt = (key, sub) =>
     entries.reduce((acc, e) => acc + i(e && e[key] && e[key][sub]), 0);
 
+  // Daily v2 — call-type split. `dials` stays the authoritative total; the
+  // per-entry `dialsByType` breakdown is additive (brief decision 1).
+  //
+  // The fallback is decided PER ENTRY, not per week: an entry with any non-zero
+  // bucket contributes its breakdown, an entry with none contributes its whole
+  // `dials` to cold — pre-v2 behaviour. Per-week would break the sum in a mixed
+  // week, and sum-preservation is what makes the split points-neutral.
+  //
+  // The invariant (sum of buckets === dials) is the WRITER's contract and is
+  // property-tested at the schema layer. Deliberately NOT reconciled here.
+  // Behaviour must match the ESM twin; the idiom differs (explicit && chains).
+  const callSplit = entries.reduce(
+    function (acc, e) {
+      const b = (e && e.dialsByType) || {};
+      const cold = i(b.cold);
+      const ref = i(b.referral);
+      const fu = i(b.followUp);
+      const st = i(b.seminarTradeshow);
+      if (cold || ref || fu || st) {
+        acc.cold += cold;
+        acc.referral += ref;
+        acc.followUp += fu;
+        acc.seminarTradeshow += st;
+      } else {
+        acc.cold += i(e && e.dials);
+      }
+      return acc;
+    },
+    { cold: 0, referral: 0, followUp: 0, seminarTradeshow: 0 }
+  );
+
   const nbApps = sumPathInt('newBusiness', 'apps');
   const nbApi = sumPath('newBusiness', 'api');
 
@@ -127,19 +158,27 @@ function aggregateDailyToWeekly(dailyEntries, commissionRate = 0) {
     namesFromOther: sumInt('newNamesAdded'),
     oldNamesPool: sumInt('oldNamesWorked'),
     serviceContacts: sumInt('serviceContacts'),
+    // D-SC (26 Aug 2026): serviceCalls is now written, sourced from the real
+    // daily `serviceCalls` field — NOT from `serviceContacts`. Closes the
+    // disagreement where the daily pace badge scored service activity and the
+    // aggregated weekly draft did not. Still excluded from every funnel and
+    // plan sum (funnelModel.js, planVariance.js) — unchanged by this ruling.
+    serviceCalls:    sumInt('serviceCalls'),
 
     // v2 1a daily fields — prospecting & outreach
     prospectingLettersSent: sumInt('prospectingLettersSent'),
+    referralsObtained:      sumInt('referralsObtained'),
     seminarsConducted:      sumInt('seminarsConducted'),
     dials:                  sumInt('dials'),
-    // M3: mirrors computeDayPoints mapping so aggregated fast-path drafts earn
-    // call points. coldCalls = Σdials; the three sibling call fields are
-    // explicitly 0 so a { merge: true } write overwrites any stale agent-entered
-    // values and prevents double-counting in computePoints / extractFields.
-    coldCalls:              sumInt('dials'),
-    referralCalls:          0,
-    followUpCalls:          0,
-    seminarTradeshowCalls:  0,
+    // M3 + daily v2: aggregated fast-path drafts earn call points. All four
+    // fields are ALWAYS written (never omitted) so a { merge: true } write
+    // overwrites stale agent-entered values and prevents double-counting in
+    // computePoints / extractFields. With no breakdown present this reduces to
+    // the pre-v2 behaviour exactly: coldCalls = sum of dials, siblings 0.
+    coldCalls:              callSplit.cold,
+    referralCalls:          callSplit.referral,
+    followUpCalls:          callSplit.followUp,
+    seminarTradeshowCalls:  callSplit.seminarTradeshow,
     telContacts:            sumInt('telContacts'),
     f2fAttempts:            sumInt('f2fAttempts'),
     // Social (live platform shape)

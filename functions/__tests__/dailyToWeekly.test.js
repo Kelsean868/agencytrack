@@ -171,3 +171,73 @@ describe('aggregateDailyToWeekly CJS twin — M3 coldCalls parity', () => {
     expect(out.coldCalls).toBe(8);
   });
 });
+
+// ── Daily v2 — call-type split, serviceCalls, referralsObtained (CJS twin) ────
+// Behaviour parity with src/lib/schema/dailyActivity.aggregator.js. The twins
+// are NOT byte-identical (idiom differs); these assertions pin the behaviour.
+
+describe('aggregateDailyToWeekly CJS twin — daily v2 call split', () => {
+  test('pre-v2 docs aggregate exactly as before (coldCalls = sum of dials)', () => {
+    const out = aggregateDailyToWeekly([{ dials: 10 }, { dials: 15 }], 0);
+    expect(out.dials).toBe(25);
+    expect(out.coldCalls).toBe(25);
+    expect(out.referralCalls).toBe(0);
+    expect(out.followUpCalls).toBe(0);
+    expect(out.seminarTradeshowCalls).toBe(0);
+  });
+
+  test('an all-zero dialsByType falls back to cold', () => {
+    const out = aggregateDailyToWeekly(
+      [{ dials: 9, dialsByType: { cold: 0, referral: 0, followUp: 0, seminarTradeshow: 0 } }],
+      0
+    );
+    expect(out.coldCalls).toBe(9);
+    expect(out.referralCalls).toBe(0);
+  });
+
+  test('maps a v2 breakdown onto the four weekly call fields', () => {
+    const out = aggregateDailyToWeekly(
+      [{ dials: 10, dialsByType: { cold: 4, referral: 3, followUp: 2, seminarTradeshow: 1 } }],
+      0
+    );
+    expect(out.dials).toBe(10);
+    expect(out.coldCalls).toBe(4);
+    expect(out.referralCalls).toBe(3);
+    expect(out.followUpCalls).toBe(2);
+    expect(out.seminarTradeshowCalls).toBe(1);
+  });
+
+  test('preserves the total in a mixed week (per-entry fallback)', () => {
+    const out = aggregateDailyToWeekly(
+      [
+        { dials: 6 },
+        { dials: 10, dialsByType: { cold: 4, referral: 3, followUp: 2, seminarTradeshow: 1 } },
+      ],
+      0
+    );
+    expect(out.dials).toBe(16);
+    expect(
+      out.coldCalls + out.referralCalls + out.followUpCalls + out.seminarTradeshowCalls
+    ).toBe(16);
+    expect(out.coldCalls).toBe(10);
+  });
+
+  test('sums serviceCalls and referralsObtained; serviceCalls is NOT serviceContacts', () => {
+    const out = aggregateDailyToWeekly(
+      [
+        { serviceCalls: 3, serviceContacts: 1, referralsObtained: 2 },
+        { serviceCalls: 4, serviceContacts: 2, referralsObtained: 1 },
+      ],
+      0
+    );
+    expect(out.serviceCalls).toBe(7);
+    expect(out.serviceContacts).toBe(3);
+    expect(out.referralsObtained).toBe(3);
+  });
+
+  test('serviceCalls stays 0 when only serviceContacts is present', () => {
+    const out = aggregateDailyToWeekly([{ serviceContacts: 9 }], 0);
+    expect(out.serviceContacts).toBe(9);
+    expect(out.serviceCalls).toBe(0);
+  });
+});
