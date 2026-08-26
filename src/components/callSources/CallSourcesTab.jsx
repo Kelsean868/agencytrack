@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { Copy, Trash2, Plus, RefreshCw, AlertTriangle, KeyRound } from 'lucide-react';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import useToast from '../../hooks/useToast';
-import { getTenantUsers } from '../../services/managerService';
 
 function formatDate(ts) {
   if (!ts) return '—';
@@ -13,18 +12,23 @@ function formatDate(ts) {
   return d.toLocaleDateString('en-TT', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function toMillis(ts) {
+  if (!ts) return 0;
+  if (ts.toMillis) return ts.toMillis();
+  return new Date(ts).getTime();
+}
+
 export default function CallSourcesTab() {
-  const { tenantId } = useAuth();
+  const { tenantId, user } = useAuth();
   const { show: showToast } = useToast();
+  const uid = user?.uid;
 
   const [sources, setSources] = useState([]);
-  const [users, setUsers]     = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
 
   const [sourceApp, setSourceApp]       = useState('kqm-calls');
   const [sourceUserId, setSourceUserId] = useState('');
-  const [creditUid, setCreditUid]       = useState('');
   const [label, setLabel]               = useState('');
 
   const [creating, setCreating]     = useState(false);
@@ -35,39 +39,37 @@ export default function CallSourcesTab() {
   const [mintedToken, setMintedToken] = useState(null);
 
   const load = useCallback(async () => {
-    if (!tenantId) return;
+    if (!tenantId || !uid) return;
     setLoading(true);
     setError(null);
     try {
+      // The where() is NOT optional and is NOT a nicety — the rules' read arm is
+      // `resource.data.creditUid == request.auth.uid`, and Firestore evaluates a
+      // list against the query, not the results. An unconstrained list here is
+      // denied outright rather than silently filtered. This query and that rule
+      // are a matched pair; change one, change both.
+      //
+      // Deliberately NO orderBy: equality + orderBy on another field needs a
+      // composite index, and an agent has a handful of links, not thousands.
+      // Sorting client-side keeps this off the index-deploy path entirely.
       const q = query(
         collection(db, `tenants/${tenantId}/callSources`),
-        orderBy('createdAt', 'desc')
+        where('creditUid', '==', uid)
       );
-      const [snap, tenantUsers] = await Promise.all([getDocs(q), getTenantUsers(tenantId)]);
-      setSources(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setUsers(tenantUsers);
+      const snap = await getDocs(q);
+      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      rows.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+      setSources(rows);
     } catch {
-      setError('Failed to load call sources.');
+      setError('Failed to load your call sources.');
     } finally {
       setLoading(false);
     }
-  }, [tenantId]);
+  }, [tenantId, uid]);
 
   useEffect(() => { load(); }, [load]);
 
-  const usersById = useMemo(
-    () => Object.fromEntries(users.map((u) => [u.id, u])),
-    [users]
-  );
-
-  const selectedUser = creditUid ? usersById[creditUid] : null;
-  // Decision 5: a role change does NOT revoke a link — auto-revoking on
-  // promotion would silently stop capture. Warn instead, and let a human decide.
-  const creditRoleWarning = selectedUser && selectedUser.role !== 'agent'
-    ? `${selectedUser.name ?? 'This user'} is a ${selectedUser.role.replace(/_/g, ' ')}, not an agent. Calls will still be credited to them.`
-    : null;
-
-  const canSubmit = sourceApp.trim() && sourceUserId.trim() && creditUid && label.trim() && !creating;
+  const canSubmit = sourceApp.trim() && sourceUserId.trim() && label.trim() && !creating;
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -76,20 +78,20 @@ export default function CallSourcesTab() {
     setError(null);
     try {
       const fn = httpsCallable(getFunctions(), 'createCallSource');
+      // No creditUid: the callable sets it from the verified token, and passing
+      // it is a hard rejection. The link always credits the signed-in user.
       const result = await fn({
         sourceApp: sourceApp.trim(),
         sourceUserId: sourceUserId.trim(),
-        creditUid,
         label: label.trim(),
       });
       setMintedToken(result.data.token);
       setSourceUserId('');
-      setCreditUid('');
       setLabel('');
       await load();
-      showToast({ message: 'Call source created', variant: 'success' });
+      showToast({ message: 'Call source attached', variant: 'success' });
     } catch (err) {
-      setError(err.message || 'Failed to create call source.');
+      setError(err.message || 'Failed to attach call source.');
     } finally {
       setCreating(false);
     }
@@ -123,10 +125,11 @@ export default function CallSourcesTab() {
     <div className="p-6 max-w-3xl">
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-ink">Linked Call Sources</h2>
+          <h2 className="text-xl font-semibold text-ink">My Call Sources</h2>
           <p className="text-ink-muted text-sm mt-1">
-            Link an external calling system to an agent. Calls made through a linked
-            source count toward that agent&apos;s KPIs. Tokens expire after one year.
+            Attach your calling software so the calls it makes count toward your
+            activity. If an assistant calls on your behalf, attach their profile
+            here — the calls still count as yours. Tokens expire after one year.
           </p>
         </div>
         <button
@@ -159,7 +162,7 @@ export default function CallSourcesTab() {
           </div>
           <p className="text-xs text-ink-muted mb-3">
             This will not be shown again. It is stored only as a hash — if it is lost,
-            revoke this source and create a new one.
+            revoke this source and attach a new one.
           </p>
           <div className="flex items-center gap-2">
             <code
@@ -188,9 +191,11 @@ export default function CallSourcesTab() {
         </div>
       )}
 
-      {/* Create */}
+      {/* Attach */}
       <form onSubmit={handleCreate} className="card flex flex-col gap-4 mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">New link</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          Attach a call source
+        </p>
 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-ink-muted" htmlFor="cs-label">Label</label>
@@ -202,28 +207,6 @@ export default function CallSourcesTab() {
             placeholder="e.g. Tracy-ann Nurse (assistant)"
             className="h-11 px-3 rounded-lg border border-border bg-surface text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-ink-muted" htmlFor="cs-credit">Credit calls to</label>
-          <select
-            id="cs-credit"
-            value={creditUid}
-            onChange={(e) => setCreditUid(e.target.value)}
-            className="h-11 px-3 rounded-lg border border-border bg-surface text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="">Select an agent…</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name ?? u.email ?? u.id}
-              </option>
-            ))}
-          </select>
-          {creditRoleWarning && (
-            <p className="text-xs text-warning-ink mt-1" data-testid="cs-role-warning">
-              {creditRoleWarning}
-            </p>
-          )}
         </div>
 
         <div className="flex flex-col gap-1">
@@ -252,6 +235,11 @@ export default function CallSourcesTab() {
           />
         </div>
 
+        <p className="text-xs text-ink-muted" data-testid="cs-self-credit-note">
+          Calls from this source are credited to you. You cannot attach a source
+          for someone else.
+        </p>
+
         <button
           type="submit"
           disabled={!canSubmit}
@@ -259,22 +247,22 @@ export default function CallSourcesTab() {
           className="h-11 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus size={16} />
-          {creating ? 'Creating…' : 'Create link'}
+          {creating ? 'Attaching…' : 'Attach'}
         </button>
       </form>
 
       {/* List */}
       <div className="card flex flex-col gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-          Existing links
+          Attached sources
         </p>
 
         {loading ? (
           <p className="text-sm text-ink-muted">Loading…</p>
         ) : sources.length === 0 ? (
           <p className="text-sm text-ink-muted" data-testid="cs-empty">
-            No call sources yet. Create one above to start crediting an assistant&apos;s
-            calls to an agent.
+            Nothing attached yet. Attach your calling software above so its calls
+            count toward your activity.
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -289,9 +277,7 @@ export default function CallSourcesTab() {
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-ink truncate">{s.label}</p>
                     <p className="text-xs text-ink-muted truncate">
-                      {s.sourceApp} · credits{' '}
-                      {usersById[s.creditUid]?.name ?? s.creditUid} · expires{' '}
-                      {formatDate(s.expiresAt)}
+                      {s.sourceApp} · expires {formatDate(s.expiresAt)}
                     </p>
                   </div>
                   {revoked ? (

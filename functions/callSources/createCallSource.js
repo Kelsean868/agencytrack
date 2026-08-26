@@ -2,15 +2,17 @@ const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const crypto = require('crypto');
 
-// Deliberately NOT firestore.rules' canManage()/isManager(), which include
-// unit_manager. A unit manager cannot even see agentNumber in EditUserDrawer;
-// minting a token that writes another agent's KPIs is strictly more power.
-const MANAGER_ROLES = new Set([
-  'branch_manager',
-  'sales_manager',
-  'tenant_admin',
-  'platform_admin',
-]);
+// There is deliberately NO role gate here. Creation is self-service and
+// self-credit: the caller can only ever link their own KPIs, so there is no
+// privilege to check because there is no cross-user effect. The slice-A model
+// took a creditUid naming SOMEONE ELSE, and that cross-user write is precisely
+// the shape that produced both of its security defects. Forcing self-credit
+// deletes the class — you cannot get "who may write to whose KPIs" wrong when
+// the only legal answer is "your own".
+//
+// Delegation is unaffected: an agent creates a link for their assistant's
+// calling-software profile, crediting themselves. The assistant needs no
+// AgencyTrack account.
 
 const TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year — matches kioskTokens
 
@@ -25,37 +27,44 @@ exports.createCallSource = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
 
-  const { role, tenantId } = context.auth.token;
-  if (!MANAGER_ROLES.has(role)) {
-    throw new functions.https.HttpsError(
-      'permission-denied',
-      'Requires branch_manager or above.',
-    );
-  }
+  const { tenantId } = context.auth.token;
 
-  const { sourceApp, sourceUserId, creditUid, label } = data ?? {};
-  if (!sourceApp || !sourceUserId || !creditUid || !label) {
+  // Reject rather than ignore. A caller that sent creditUid believed it would
+  // do something; silently overriding it would ship that wrong belief into
+  // their client. Fail loud so the mistake surfaces at the call site.
+  if (data && 'creditUid' in data) {
     throw new functions.https.HttpsError(
       'invalid-argument',
-      'sourceApp, sourceUserId, creditUid and label are required.',
+      'creditUid is not accepted — a call source always credits the signed-in user.',
     );
   }
 
-  // creditUid must be a real user in the caller's tenant. Without this, a typo
-  // mints a link that credits nobody and fails closed only at ingest time.
+  const { sourceApp, sourceUserId, label } = data ?? {};
+  if (!sourceApp || !sourceUserId || !label) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'sourceApp, sourceUserId and label are required.',
+    );
+  }
+
+  // Server-side, from the verified token — never from the payload.
+  const creditUid = context.auth.uid;
+
+  // The caller must have a user doc in this tenant. A signed-in principal with
+  // no doc here (or a doc belonging elsewhere) has no KPIs to credit.
   const creditRef = admin.firestore().doc(`tenants/${tenantId}/users/${creditUid}`);
   const creditSnap = await creditRef.get();
   if (!creditSnap.exists || creditSnap.data().tenantId !== tenantId) {
-    throw new functions.https.HttpsError('not-found', 'Credit user not found in this tenant.');
+    throw new functions.https.HttpsError('not-found', 'No user record in this tenant.');
   }
 
   // A deactivated user's inbound links were revoked by deactivateUser; minting a
-  // fresh one here would walk straight back through that door. Decision 2 makes
-  // re-linking a deliberate act, and re-activating the user is the deliberate act.
+  // fresh one here would walk straight back through that door. Re-linking stays
+  // a deliberate act, and reactivating the account is that deliberate act.
   if (creditSnap.data().active === false) {
     throw new functions.https.HttpsError(
       'failed-precondition',
-      'Cannot link a deactivated user. Reactivate them first.',
+      'Your account is deactivated.',
     );
   }
 

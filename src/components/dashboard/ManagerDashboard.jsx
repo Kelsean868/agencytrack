@@ -8,7 +8,7 @@ import {
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
   Activity, UserPlus, ClipboardCheck, BookOpen, LayoutList,
   NotebookPen, Target, Wallet, History, Zap, Banknote, Settings, CalendarClock,
-  AlertTriangle, PhoneCall,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useToast from '../../hooks/useToast';
@@ -42,7 +42,6 @@ import useNavOrder from '../../hooks/useNavOrder';
 import useMenuLayout from '../../hooks/useMenuLayout';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
 import KioskModeTab from '../kiosk/KioskModeTab';
-import CallSourcesTab from '../admin/CallSourcesTab';
 import StrategicPlanDashboard from '../strategicPlan/StrategicPlanDashboard';
 import AgentOfMonthTab from '../manager/AgentOfMonthTab';
 import ManagerWarTab from '../manager/ManagerWarTab';
@@ -133,11 +132,6 @@ const NAV_ITEMS = [
   { id: 'strategic-plan', label: 'Strategic Plan', tabId: 'strategic-plan', Icon: Presentation, roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'], testId: 'tab-strategic-plan' },
   // E5: kiosk tab — branch_manager+ only (unit_manager excluded)
   { id: 'kiosk',       label: 'Kiosk',        tabId: 'kiosk',       Icon: Tv,            roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'] },
-  // Linked call sources. Roles here MIRROR the callable's MANAGER_ROLES and
-  // canManageCallSources in firestore.rules — unit_manager is absent from all
-  // three deliberately. BM reaches the same tabId via navConfig's
-  // PRODUCING_MANAGER_NAV; this entry serves the non-producing roles.
-  { id: 'call-sources', label: 'Call Sources', tabId: 'call-sources', Icon: PhoneCall,    roles: ['sales_manager', 'tenant_admin', 'platform_admin'] },
   { id: 'profile',     label: 'Profile',      tabId: 'profile',     Icon: UserCircle },
 ].map(item => item.tabId && MANAGER_COMING_SOON_TABS.has(item.tabId) ? { ...item, disabled: true } : item);
 
@@ -661,8 +655,6 @@ export default function ManagerDashboard() {
         {activeTab === 'agent-of-month' && <AgentOfMonthTab />}
 
         {activeTab === 'kiosk' && <KioskModeTab />}
-
-        {activeTab === 'call-sources' && <CallSourcesTab />}
 
         {activeTab === 'strategic-plan' && <StrategicPlanDashboard />}
 

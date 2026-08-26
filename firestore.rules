@@ -42,24 +42,6 @@ service cloud.firestore {
       return isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin'] || (isManager() && getTenantId() == tenantId));
     }
 
-    // Linked call sources (slice A). DELIBERATELY NARROWER than canManage():
-    // canManage() routes through isManager(), which includes unit_manager, and a
-    // unit manager must not mint a token that writes another agent's KPIs (a UM
-    // cannot even see agentNumber in EditUserDrawer). This mirrors the Cloud
-    // Functions' MANAGER_ROLES set exactly. Do NOT widen this, and do NOT
-    // replace it with canManage() — that substitution fails silently.
-    // Note the tenant scoping is TIGHTER than canManage()'s: only platform_admin
-    // (which lives outside any tenant by definition) is cross-tenant here.
-    // tenant_admin is scoped to its OWN tenant, unlike in canManage(), because
-    // these docs are credentials — a cross-tenant read is a credential leak, not
-    // just an over-broad view.
-    function canManageCallSources(tenantId) {
-      return isSignedIn()
-        && (getRole() == 'platform_admin'
-            || (getRole() in ['tenant_admin', 'branch_manager', 'sales_manager']
-                && getTenantId() == tenantId));
-    }
-
     function canAccessOwn(tenantId, agentId) {
       return isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin'] || ((isAgent() || isProducingManager()) && getTenantId() == tenantId && request.auth.uid == agentId));
     }
@@ -953,21 +935,31 @@ service cloud.firestore {
         allow read, write, delete: if canManage(tenantId);
       }
 
-      // Linked call sources (slice A). An external calling system presents a
-      // bearer token; the token resolves to one of these docs; the doc names the
-      // agent whose KPIs move. Identity never travels in a request body.
+      // Linked call sources. An external calling system presents a bearer token;
+      // the token resolves to one of these docs; the doc names the agent whose
+      // KPIs move. Identity never travels in a request body.
       //
-      // Read is gated on canManageCallSources — NOT canManage — so agents and
-      // unit managers cannot read the collection at all. Two independent
-      // defences protect the token: this gate, and the fact that only the
-      // SHA-256 hash is ever stored (the raw token is returned once at creation
-      // and never persisted), so even a rules mistake leaks nothing usable.
+      // OWNER-ONLY read. Not manager-readable — an agent attaches their own
+      // calling software and nobody else needs to see the link. There is no
+      // role in this rule at all, which is the point: the earlier manager-scoped
+      // version had to get "which roles, scoped how" right and got it wrong
+      // twice. `creditUid == request.auth.uid` has no such degrees of freedom.
       //
-      // Writes are Cloud-Function-only (Admin SDK bypasses rules). The client
-      // never writes here: createCallSource mints and hashes, revokeCallSource
-      // sets revokedAt, and deactivateUser revokes inbound links.
+      // ⚠ A `list` only passes when the QUERY carries where('creditUid','==',uid).
+      // Rules filter documents, they do not narrow queries — an unconstrained
+      // list is evaluated against docs the caller cannot read and fails whole.
+      // The UI query and this rule are a matched pair; change one, change both.
+      //
+      // Offboarding is unaffected: revokeInboundLinks runs under the Admin SDK,
+      // which bypasses rules entirely, so removing manager read costs nothing.
+      //
+      // Writes stay Cloud-Function-only. The client never writes here:
+      // createCallSource mints and hashes, revokeCallSource sets revokedAt,
+      // and deactivateUser revokes inbound links.
       match /callSources/{sourceId} {
-        allow read:  if canManageCallSources(tenantId);
+        allow read:  if isSignedIn()
+                     && getTenantId() == tenantId
+                     && resource.data.creditUid == request.auth.uid;
         allow write: if false;
       }
 

@@ -25,6 +25,7 @@ import { getWeeklyPlan } from '../../services/weeklyPlanService';
 import { prefetchGamePlanYearDocs } from '../../services/gamePlanPrefetch';
 import CareerPortal from '../profile/CareerPortal';
 import ProfileScreen from '../profile/ProfileScreen';
+import CallSourcesTab from '../callSources/CallSourcesTab';
 import SettingsScreen from '../settings/SettingsScreen';
 import ReportRangeModal from '../ui/ReportRangeModal';
 import ProductionLeaderboardSurface from '../leaderboard/ProductionLeaderboardSurface';
@@ -816,6 +817,8 @@ export default function AgentDashboard() {
 
       {/* ── PROSPECT INFO (Joint-Call Prep) TAB — un-gated item 3.5 ── */}
       {activeTab === 'prospect-info' && <ProspectInfoPanel />}
+
+      {activeTab === 'call-sources' && <CallSourcesTab />}
 
       {/* ── PLANNER TAB (item 3.2 — agent Planner & Scheduler) ── */}
       {activeTab === 'planner' && (
