@@ -1,13 +1,31 @@
 'use strict';
 
 /**
- * ingestCallActivity — POST /ingestCallActivity. Slice B.
+ * ingestCallActivity — POST /ingestCallActivity. Slice B, re-contracted by C2.
  *
  * One HTTP request per call, from KQM Calls into AgencyTrack. The request
- * carries a bearer token and an outcome; this endpoint resolves the token to a
- * call source, maps the outcome through outcomeMap.js, and bumps that day's
- * dailyActivity doc. aggregateDailyToWeekly does the rest — fill the daily doc
- * and the weekly KPIs build themselves.
+ * carries a bearer token and the EFFECTS of one call; this endpoint resolves the
+ * token to a call source, maps the effects through outcomeMap.js, and bumps that
+ * day's dailyActivity doc. aggregateDailyToWeekly does the rest — fill the daily
+ * doc and the weekly KPIs build themselves.
+ *
+ * ── THE PAYLOAD CARRIES EFFECTS, NOT OUTCOME NAMES ──────────────────────────
+ * Slice B took KQM's own `outcome` and `campaignCode` and mapped them here. A
+ * live audit of the KQM database on 27 Aug found roughly a hundred outcome
+ * values across five campaigns, campaign codes all carrying a `_2026` suffix,
+ * and a trigger that seeds a fresh vocabulary every time somebody creates a
+ * campaign. Every campaign code would have 400'd on the suffix alone.
+ *
+ * The operator ruled: KQM NORMALISES, AGENCYTRACK VALIDATES. What arrives is a
+ * closed set — a lane, a dial bucket and four booleans — so a new KQM campaign
+ * never needs an AgencyTrack deploy. The contract shrank, so the REJECTIONS GOT
+ * STRICTER: see coherenceError in outcomeMap.js, which is asserted here at the
+ * boundary rather than assumed to hold.
+ *
+ * `rawOutcome` and `rawCampaign` ride along and are STORED ON THE INGEST RECORD
+ * AND NEVER SCORED. They exist so a disputed number can be traced back to what
+ * the agent actually clicked. Storing them is not the same as trusting them, and
+ * nothing branches on their values — mapEffects cannot even see them.
  *
  * THIS IS THE SLICE WHERE A WRONG DECISION BECOMES WRONG DATA. Slices A and
  * A-prime could be reversed in an afternoon because nothing depended on them.
@@ -46,7 +64,7 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 
-const { mapCall, isKnownOutcome, isKnownCampaign } = require('./outcomeMap');
+const { coherenceError, mapEffects, EFFECT_FLAGS } = require('./outcomeMap');
 const { resolveCallSource } = require('./resolveCallSource');
 
 /**
@@ -110,6 +128,21 @@ const FORBIDDEN_BODY_FIELDS = Object.freeze([
   'tenantId',
   'agentId',
 ]);
+
+/**
+ * The slice-B field names, retired by C2. Presence earns a NAMED 400 rather than
+ * the generic "lane must be one of…" a stale caller would otherwise get. This is
+ * a better error message on a path that was already a rejection — it changes no
+ * behaviour, only what the one caller in the world reads at 2am.
+ */
+const RETIRED_BODY_FIELDS = Object.freeze(['campaignCode', 'outcome']);
+
+/**
+ * Cap on rawOutcome / rawCampaign. They are stored verbatim and never scored, so
+ * the only risk they carry is size — and MAX_BODY_BYTES already bounds that. The
+ * cap is here so the bound is stated where the field is, not inferred.
+ */
+const RAW_FIELD_MAX_CHARS = 200;
 
 /**
  * The ONE response every authentication failure returns. Expired, revoked,
@@ -194,7 +227,7 @@ function setNested(target, dottedPath, value) {
  *
  * Runs AFTER authentication, deliberately. An unauthenticated prober must only
  * ever see the one 401: if payload errors were reported first, the difference
- * between "your outcome is unknown" and "unauthorized" would tell them their
+ * between "bucket must be null when lane is servicing" and "unauthorized" would tell them their
  * token resolved.
  *
  * @returns {{ok: true, value: object} | {ok: false, error: string}}
@@ -212,7 +245,21 @@ function validatePayload(body) {
     }
   }
 
-  const { sourceApp, sourceId, occurredAt, campaignCode, outcome, durationSec } = body;
+  // A caller still posting the slice-B shape would fail below on a missing
+  // `lane`, with a message that says nothing about WHY. Named explicitly,
+  // because the contract changed underneath a DEPLOYED endpoint and the one
+  // caller in the world is being written against the new one right now.
+  for (const retired of RETIRED_BODY_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(body, retired)) {
+      return {
+        ok: false,
+        error: '"' + retired + '" is the retired slice-B contract; send lane/bucket/'
+          + EFFECT_FLAGS.join('/') + ' plus rawOutcome and rawCampaign',
+      };
+    }
+  }
+
+  const { sourceApp, sourceId, occurredAt, rawOutcome, rawCampaign, durationSec } = body;
 
   if (!ALLOWED_SOURCE_APPS.includes(sourceApp)) {
     return { ok: false, error: 'unknown sourceApp' };
@@ -224,13 +271,46 @@ function validatePayload(body) {
   const date = toTrinidadDateString(occurredAt);
   if (!date) return { ok: false, error: 'occurredAt must be ISO-8601 with an offset' };
 
-  if (!isKnownCampaign(campaignCode)) return { ok: false, error: 'unknown campaignCode' };
-  if (!isKnownOutcome(outcome)) return { ok: false, error: 'unknown outcome' };
+  // ── the effects. THE boundary assertion of this slice. ───────────────────
+  // `bucket` is read WITHOUT normalising an absent key to null, deliberately.
+  // A present-and-null bucket is the caller SAYING "no bucket"; an absent one is
+  // the caller saying nothing, which means a branch of KQM's normaliser did not
+  // run. For an invariant this load-bearing, saying nothing is not the same as
+  // saying no — and the difference costs C1 one loud 400 during development
+  // rather than a silently broken partition in production.
+  const effects = {
+    lane: body.lane,
+    bucket: body.bucket,
+    reached: body.reached,
+    booking: body.booking,
+    newName: body.newName,
+    ffi: body.ffi,
+  };
+  const incoherent = coherenceError(effects);
+  if (incoherent) return { ok: false, error: incoherent };
+
+  // Stored for tracing, NEVER scored. Required rather than optional: a
+  // traceability field that may be absent is a traceability field that is absent
+  // exactly when a number is disputed. Length-capped because they are written to
+  // a document, even though MAX_BODY_BYTES already bounds them.
+  for (const [name, value] of [['rawOutcome', rawOutcome], ['rawCampaign', rawCampaign]]) {
+    if (typeof value !== 'string') return { ok: false, error: name + ' must be a string' };
+    if (value.trim().length === 0) return { ok: false, error: name + ' must not be empty' };
+    if (value.length > RAW_FIELD_MAX_CHARS) {
+      return { ok: false, error: name + ' must be at most ' + RAW_FIELD_MAX_CHARS + ' characters' };
+    }
+  }
 
   // Optional, and only ever recorded as evidence — it never feeds a KPI. A
   // duration threshold must NEVER be used to infer that a person was reached:
-  // a voicemail connects and accrues seconds. `reached` is the outcome's own
-  // assertion, exactly as callRecord.js rules for verifications.
+  // a voicemail connects and accrues seconds.
+  //
+  // ⚠ THE TEMPTATION IS BIGGER NOW, NOT SMALLER. Under slice B `reached` was
+  // derived from a table in this repo. It is now an INPUT from another system,
+  // which invites a "sanity check" that cross-references it against the
+  // duration. Do not add one. A voicemail still accrues seconds, so such a check
+  // would not validate `reached` — it would silently overrule the only party
+  // that knows, and it would overrule it towards a WRONG answer.
   let duration = null;
   if (durationSec !== undefined && durationSec !== null) {
     if (!Number.isFinite(durationSec) || durationSec < 0) {
@@ -241,7 +321,16 @@ function validatePayload(body) {
 
   return {
     ok: true,
-    value: { sourceApp, sourceId, date, weekStarting: getSundayOf(date), campaignCode, outcome, durationSec: duration },
+    value: {
+      sourceApp,
+      sourceId,
+      date,
+      weekStarting: getSundayOf(date),
+      effects,
+      rawOutcome,
+      rawCampaign,
+      durationSec: duration,
+    },
   };
 }
 
@@ -311,7 +400,7 @@ async function applyCall(db, { sourceRef, source, sourceId, payload, now }) {
     }
 
     // ---- writes ------------------------------------------------------------
-    const { increments, lane, bucket } = mapCall(payload.campaignCode, payload.outcome);
+    const { increments, lane, bucket } = mapEffects(payload.effects);
 
     // Decision 3. The daily doc records what actually happened — that is the
     // truth of the day, and dropping it is the exact failure ruling D3
@@ -331,11 +420,22 @@ async function applyCall(db, { sourceRef, source, sourceId, payload, now }) {
         creditUid,
         date: payload.date,
         weekStarting: payload.weekStarting,
-        campaignCode: payload.campaignCode,
-        outcome: payload.outcome,
-        durationSec: payload.durationSec,
+        // The EFFECTS, flat. Each value appears exactly once: `lane` and
+        // `dialBucket` are the shape slice B's records already carry and are
+        // taken from mapEffects's return, so they cannot disagree with the
+        // booleans beside them.
         lane,
         dialBucket: bucket,
+        reached: payload.effects.reached,
+        booking: payload.effects.booking,
+        newName: payload.effects.newName,
+        ffi: payload.effects.ffi,
+        // KQM's OWN words. Recorded so a disputed number can be traced to what
+        // the agent actually clicked, and scored by nothing — mapEffects above
+        // was not given them and cannot branch on them.
+        rawOutcome: payload.rawOutcome,
+        rawCampaign: payload.rawCampaign,
+        durationSec: payload.durationSec,
         increments,
         landedInSubmittedWeek: submittedWeek,
         ingestedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -463,4 +563,6 @@ module.exports = {
   RATE_WINDOW_MS,
   MAX_BODY_BYTES,
   FORBIDDEN_BODY_FIELDS,
+  RETIRED_BODY_FIELDS,
+  RAW_FIELD_MAX_CHARS,
 };

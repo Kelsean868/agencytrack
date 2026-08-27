@@ -1,32 +1,61 @@
 'use strict';
 
 /**
- * outcomeMap tests — the mapping table made mechanical.
+ * outcomeMap tests — the effect table made mechanical.
  *
- * The load-bearing test in this file is the PARTITION property. Decision 1 says
- * dialsByType is a partition, not a set of tags: for ANY sequence of calls the
- * four buckets sum to dials. A mapping that tagged a call as both cold and
- * followUp would pass every single-call assertion and only fail here.
+ * The load-bearing test in this file is still the PARTITION property, and it is
+ * MORE load-bearing than it was in slice B. Decision 1 says dialsByType is a
+ * partition, not a set of tags: for ANY sequence of calls the four buckets sum
+ * to dials.
+ *
+ * In slice B that was guaranteed by construction — the campaign was a total
+ * function to exactly one bucket, so the property test confirmed a shape the
+ * code could barely violate. The bucket is now an INPUT from another system, so
+ * the invariant rests entirely on coherenceError rejecting the two combinations
+ * that would break it. The property test is now the only thing standing between
+ * a partition and a set of tags, which is exactly what the brief says it is.
  */
 
 const fs = require('fs');
 const path = require('path');
 
 const {
-  CALL_OUTCOMES,
-  OUTCOME_KEYS,
-  CAMPAIGN_CODES,
-  CAMPAIGN_LANES,
+  LANES,
   DIAL_BUCKETS,
+  INGEST_BUCKETS,
+  EFFECT_FLAGS,
+  EFFECT_TABLE,
+  LEGAL_EFFECT_SETS,
   WRITABLE_FIELDS,
-  mapCall,
+  coherenceError,
+  mapEffects,
 } = require('../outcomeMap');
 
-/** Apply a sequence of calls to a zeroed tally. */
+/** A legal effect set, defaulting to the plainest new-business cold call. */
+const eff = (over = {}) => ({
+  lane: 'newBusiness',
+  bucket: 'cold',
+  reached: false,
+  booking: false,
+  newName: false,
+  ffi: false,
+  ...over,
+});
+
+/** Apply a sequence of effect sets to a zeroed tally. */
 function tally(calls) {
-  const t = { dials: 0, telContacts: 0, serviceCalls: 0, serviceContacts: 0, appointmentsSet: 0, ffisScheduled: 0, newNamesAdded: 0, dialsByType: { cold: 0, referral: 0, followUp: 0, seminarTradeshow: 0 } };
-  for (const [campaignCode, outcome] of calls) {
-    for (const [field, delta] of Object.entries(mapCall(campaignCode, outcome).increments)) {
+  const t = {
+    dials: 0,
+    telContacts: 0,
+    serviceCalls: 0,
+    serviceContacts: 0,
+    appointmentsSet: 0,
+    ffisScheduled: 0,
+    newNamesAdded: 0,
+    dialsByType: { cold: 0, referral: 0, followUp: 0, seminarTradeshow: 0 },
+  };
+  for (const call of calls) {
+    for (const [field, delta] of Object.entries(mapEffects(call).increments)) {
       if (field.startsWith('dialsByType.')) t.dialsByType[field.split('.')[1]] += delta;
       else t[field] += delta;
     }
@@ -34,42 +63,98 @@ function tally(calls) {
   return t;
 }
 
-const ALL_PAIRS = CAMPAIGN_CODES.flatMap((c) => OUTCOME_KEYS.map((o) => [c, o]));
-
 describe('table integrity', () => {
-  it('has no duplicate outcome keys', () => {
-    expect(new Set(OUTCOME_KEYS).size).toBe(OUTCOME_KEYS.length);
-  });
-
   it('is frozen all the way down — the table cannot be mutated at runtime', () => {
-    expect(Object.isFrozen(CALL_OUTCOMES)).toBe(true);
-    expect(CALL_OUTCOMES.every((o) => Object.isFrozen(o))).toBe(true);
-    expect(Object.isFrozen(CAMPAIGN_LANES)).toBe(true);
+    expect(Object.isFrozen(EFFECT_TABLE)).toBe(true);
+    expect(EFFECT_TABLE.every((r) => Object.isFrozen(r))).toBe(true);
+    expect(Object.isFrozen(LANES)).toBe(true);
+    expect(Object.isFrozen(DIAL_BUCKETS)).toBe(true);
+    expect(Object.isFrozen(INGEST_BUCKETS)).toBe(true);
   });
 
-  it('gives every campaign a lane, and a bucket iff it is new business', () => {
-    for (const code of CAMPAIGN_CODES) {
-      const { lane, bucket } = CAMPAIGN_LANES[code];
-      expect(['newBusiness', 'servicing']).toContain(lane);
-      if (lane === 'newBusiness') expect(DIAL_BUCKETS).toContain(bucket);
-      else expect(bucket).toBeNull();
+  it('the ingest buckets are the schema buckets minus the agent-typed one', () => {
+    expect(INGEST_BUCKETS.every((b) => DIAL_BUCKETS.includes(b))).toBe(true);
+    expect(DIAL_BUCKETS.filter((b) => !INGEST_BUCKETS.includes(b))).toEqual(['seminarTradeshow']);
+  });
+
+  it('the legal effect space is the cross-product less ffi-without-booking', () => {
+    // 3 new-business buckets + 1 servicing shape = 4, times 16 boolean
+    // combinations, less the quarter where ffi is set and booking is not.
+    expect(LEGAL_EFFECT_SETS).toHaveLength(4 * (16 - 4));
+    expect(LEGAL_EFFECT_SETS.every((s) => coherenceError(s) === null)).toBe(true);
+  });
+
+  it('KQM has NO KQM vocabulary left in this module', () => {
+    // The whole point of C2. If a campaign code or an outcome name reappears
+    // here, the coupling that made every campaign 400 has come back.
+    const src = fs.readFileSync(path.join(__dirname, '..', 'outcomeMap.js'), 'utf8');
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    for (const dead of ['schools', 'portfolio', 'referrals', 'group_benefits',
+      'religious_houses', 'due_callback', 'no_answer', 'meeting_booked',
+      'not_interested', 'CALL_OUTCOMES', 'CAMPAIGN_LANES', 'mapCall']) {
+      expect(code).not.toContain(dead);
+    }
+  });
+});
+
+describe('the effect model, row by row', () => {
+  it('a new-business call bumps dials and its bucket', () => {
+    expect(mapEffects(eff()).increments).toEqual({ dials: 1, 'dialsByType.cold': 1 });
+  });
+
+  it('a new-business call that reached somebody adds telContacts', () => {
+    expect(mapEffects(eff({ reached: true })).increments).toEqual({
+      dials: 1, 'dialsByType.cold': 1, telContacts: 1,
+    });
+  });
+
+  it('a servicing call bumps serviceCalls only', () => {
+    expect(mapEffects(eff({ lane: 'servicing', bucket: null })).increments)
+      .toEqual({ serviceCalls: 1 });
+  });
+
+  it('a servicing call that reached somebody adds serviceContacts', () => {
+    expect(mapEffects(eff({ lane: 'servicing', bucket: null, reached: true })).increments)
+      .toEqual({ serviceCalls: 1, serviceContacts: 1 });
+  });
+
+  it('booking adds appointmentsSet in EITHER lane', () => {
+    expect(mapEffects(eff({ reached: true, booking: true })).increments.appointmentsSet).toBe(1);
+    expect(
+      mapEffects(eff({ lane: 'servicing', bucket: null, reached: true, booking: true }))
+        .increments.appointmentsSet,
+    ).toBe(1);
+  });
+
+  it('newName adds newNamesAdded — NOT referralsObtained', () => {
+    const inc = mapEffects(eff({ reached: true, newName: true })).increments;
+    expect(inc.newNamesAdded).toBe(1);
+    expect(inc.referralsObtained).toBeUndefined();
+  });
+
+  it('ffi adds ffisScheduled, and drags appointmentsSet with it', () => {
+    const inc = mapEffects(eff({ reached: true, booking: true, ffi: true })).increments;
+    expect(inc.ffisScheduled).toBe(1);
+    expect(inc.appointmentsSet).toBe(1);
+  });
+
+  it('the bucket the caller sends is the bucket that moves', () => {
+    for (const bucket of INGEST_BUCKETS) {
+      expect(mapEffects(eff({ bucket })).increments['dialsByType.' + bucket]).toBe(1);
     }
   });
 
-  it('reached is TRUE for "Not interested" — they answered and said no', () => {
-    expect(CALL_OUTCOMES.find((o) => o.key === 'not_interested').reached).toBe(true);
-    expect(CALL_OUTCOMES.find((o) => o.key === 'already_has_plan').reached).toBe(true);
-    expect(CALL_OUTCOMES.find((o) => o.key === 'no_budget').reached).toBe(true);
-    // ...and FALSE only for the three where nobody picked up.
-    const notReached = CALL_OUTCOMES.filter((o) => !o.reached).map((o) => o.key);
-    expect(notReached.sort()).toEqual(['no_answer', 'number_out_of_service', 'wrong_number']);
+  it('every increment is exactly +1 — this endpoint counts calls, not weights', () => {
+    for (const set of LEGAL_EFFECT_SETS) {
+      for (const delta of Object.values(mapEffects(set).increments)) expect(delta).toBe(1);
+    }
   });
 });
 
 describe('decision 1 — dialsByType is a PARTITION', () => {
   it('every single new-business call bumps dials and exactly one bucket', () => {
-    for (const [c, o] of ALL_PAIRS) {
-      const { increments, lane } = mapCall(c, o);
+    for (const set of LEGAL_EFFECT_SETS) {
+      const { increments, lane } = mapEffects(set);
       const buckets = Object.keys(increments).filter((f) => f.startsWith('dialsByType.'));
       if (lane === 'newBusiness') {
         expect(increments.dials).toBe(1);
@@ -82,8 +167,12 @@ describe('decision 1 — dialsByType is a PARTITION', () => {
   });
 
   it('PROPERTY: for any sequence of calls, the four buckets sum to dials', () => {
-    // Deterministic pseudo-random sequences — no Math.random, so a failure is
-    // reproducible from the seed rather than a story about one bad night.
+    // Deterministic pseudo-random sequences at the SAME SEED slice B used, so a
+    // failure is reproducible from the seed rather than a story about one bad
+    // night. The generator draws from LEGAL_EFFECT_SETS — the post-validation
+    // input space — because an illegal set never reaches the mapper in
+    // production. That the illegal ones are actually rejected is the separate
+    // coherence property below, and the two together are the whole invariant.
     let seed = 20260826;
     const next = (n) => {
       seed = (seed * 1103515245 + 12345) & 0x7fffffff;
@@ -93,7 +182,7 @@ describe('decision 1 — dialsByType is a PARTITION', () => {
     for (let trial = 0; trial < 300; trial += 1) {
       const calls = [];
       const len = next(40);
-      for (let i = 0; i < len; i += 1) calls.push(ALL_PAIRS[next(ALL_PAIRS.length)]);
+      for (let i = 0; i < len; i += 1) calls.push(LEGAL_EFFECT_SETS[next(LEGAL_EFFECT_SETS.length)]);
 
       const t = tally(calls);
       const bucketSum = DIAL_BUCKETS.reduce((s, b) => s + t.dialsByType[b], 0);
@@ -105,87 +194,112 @@ describe('decision 1 — dialsByType is a PARTITION', () => {
     const t = tally([]);
     expect(DIAL_BUCKETS.reduce((s, b) => s + t.dialsByType[b], 0)).toBe(t.dials);
   });
+
+  it('seminarTradeshow is never written by this endpoint', () => {
+    for (const set of LEGAL_EFFECT_SETS) {
+      expect(Object.keys(mapEffects(set).increments)).not.toContain('dialsByType.seminarTradeshow');
+    }
+  });
 });
 
-describe('decision 4 — a Portfolio call never touches telContacts', () => {
-  it('writes the servicing lane and stops there', () => {
-    expect(mapCall('portfolio', 'portfolio_review_booked').increments).toEqual({
-      serviceCalls: 1,
-      serviceContacts: 1,
-      appointmentsSet: 1,
-      ffisScheduled: 1,
-    });
-  });
-
-  it('an unreached Portfolio call is an ATTEMPT and not a CONTACT', () => {
-    expect(mapCall('portfolio', 'no_answer').increments).toEqual({ serviceCalls: 1 });
-  });
-
-  it('NO portfolio outcome can produce telContacts, dials or a bucket', () => {
-    for (const o of OUTCOME_KEYS) {
-      const fields = Object.keys(mapCall('portfolio', o).increments);
+describe('decision 4 — a servicing call never touches telContacts', () => {
+  it('NO servicing effect set can produce telContacts, dials or a bucket', () => {
+    for (const set of LEGAL_EFFECT_SETS.filter((s) => s.lane === 'servicing')) {
+      const fields = Object.keys(mapEffects(set).increments);
       expect(fields).not.toContain('telContacts');
       expect(fields).not.toContain('dials');
       expect(fields.some((f) => f.startsWith('dialsByType.'))).toBe(false);
     }
   });
+
+  it('an unreached servicing call is an ATTEMPT and not a CONTACT', () => {
+    expect(mapEffects(eff({ lane: 'servicing', bucket: null })).increments)
+      .toEqual({ serviceCalls: 1 });
+  });
+
+  it('and NO new-business set can produce serviceCalls or serviceContacts', () => {
+    for (const set of LEGAL_EFFECT_SETS.filter((s) => s.lane === 'newBusiness')) {
+      const fields = Object.keys(mapEffects(set).increments);
+      expect(fields).not.toContain('serviceCalls');
+      expect(fields).not.toContain('serviceContacts');
+    }
+  });
 });
 
-describe('the operator mapping table, row by row', () => {
-  const cold = (o) => mapCall('schools', o).increments;
+describe('coherence — the invariant moved to the boundary', () => {
+  it('accepts every legal lane/bucket pairing', () => {
+    for (const bucket of INGEST_BUCKETS) {
+      expect(coherenceError(eff({ bucket }))).toBeNull();
+    }
+    expect(coherenceError(eff({ lane: 'servicing', bucket: null }))).toBeNull();
+  });
 
-  it('not reached: dials only', () => {
-    for (const o of ['no_answer', 'wrong_number', 'number_out_of_service']) {
-      expect(cold(o)).toEqual({ dials: 1, 'dialsByType.cold': 1 });
+  it('PROPERTY: bucket is non-null EXACTLY when the lane is newBusiness', () => {
+    // The full cross-product of lane × every bucket value a caller could send,
+    // including null and the agent-typed one. Exactly the two legal shapes pass.
+    const candidates = [...DIAL_BUCKETS, null, undefined, '', 'cold ', 'COLD', 0, false];
+    for (const lane of LANES) {
+      for (const bucket of candidates) {
+        const legal = lane === 'newBusiness'
+          ? INGEST_BUCKETS.includes(bucket)
+          : bucket === null;
+        expect(coherenceError(eff({ lane, bucket })) === null).toBe(legal);
+      }
     }
   });
 
-  it('reached, no consequence: dials + telContacts', () => {
-    for (const o of ['gatekeeper_blocked', 'not_interested', 'already_has_plan', 'no_budget',
-      'callback_scheduled', 'send_info_email', 'principal_interested',
-      'approved_in_principle', 'parent_list_promised', 'do_not_call']) {
-      expect(cold(o)).toEqual({ dials: 1, 'dialsByType.cold': 1, telContacts: 1 });
+  it('REJECTS servicing with a bucket — it would break the sum', () => {
+    for (const bucket of DIAL_BUCKETS) {
+      expect(coherenceError(eff({ lane: 'servicing', bucket })))
+        .toMatch(/bucket must be null when lane is servicing/);
     }
   });
 
-  it('a booking adds appointmentsSet', () => {
-    for (const o of ['meeting_booked', 'orientation_slot_offered']) {
-      expect(cold(o)).toEqual({ dials: 1, 'dialsByType.cold': 1, telContacts: 1, appointmentsSet: 1 });
+  it('REJECTS newBusiness without a bucket — dials and dialsByType would disagree', () => {
+    expect(coherenceError(eff({ bucket: null }))).toMatch(/bucket must be one of/);
+    expect(coherenceError(eff({ bucket: undefined }))).toMatch(/bucket must be one of/);
+  });
+
+  it('REJECTS seminarTradeshow — no calling campaign feeds it', () => {
+    expect(coherenceError(eff({ bucket: 'seminarTradeshow' }))).toMatch(/bucket must be one of/);
+  });
+
+  it('REJECTS an unknown lane', () => {
+    for (const lane of ['coaching', '', null, undefined, 'newbusiness', 0]) {
+      expect(coherenceError(eff({ lane }))).toMatch(/lane must be one of/);
     }
   });
 
-  it('a referral outcome adds newNamesAdded — NOT referralsObtained', () => {
-    for (const o of ['referred_to_board_pta', 'referred_to_person', 'not_decision_maker']) {
-      expect(cold(o)).toEqual({ dials: 1, 'dialsByType.cold': 1, telContacts: 1, newNamesAdded: 1 });
+  it('REJECTS ffi without booking — scheduling an FFI IS setting an appointment', () => {
+    expect(coherenceError(eff({ reached: true, ffi: true, booking: false })))
+      .toMatch(/ffi requires booking/);
+    // ...and the converse is legal: plenty of booked meetings are not FFIs.
+    expect(coherenceError(eff({ reached: true, booking: true, ffi: false }))).toBeNull();
+  });
+
+  it('REJECTS a non-boolean flag — "false" is a TRUTHY STRING', () => {
+    for (const flag of EFFECT_FLAGS) {
+      for (const bad of ['false', 'true', 0, 1, null, undefined, '', 'yes']) {
+        expect(coherenceError(eff({ [flag]: bad }))).toMatch(new RegExp('^' + flag + ' must be a boolean'));
+      }
     }
   });
 
-  it('campaign decides the bucket', () => {
-    expect(mapCall('schools', 'no_answer').increments['dialsByType.cold']).toBe(1);
-    expect(mapCall('group_benefits', 'no_answer').increments['dialsByType.cold']).toBe(1);
-    expect(mapCall('religious_houses', 'no_answer').increments['dialsByType.cold']).toBe(1);
-    expect(mapCall('referrals', 'no_answer').increments['dialsByType.referral']).toBe(1);
-    expect(mapCall('due_callback', 'no_answer').increments['dialsByType.followUp']).toBe(1);
-  });
-
-  it('seminarTradeshow is never written by this endpoint', () => {
-    for (const [c, o] of ALL_PAIRS) {
-      expect(Object.keys(mapCall(c, o).increments)).not.toContain('dialsByType.seminarTradeshow');
+  it('REJECTS a non-object', () => {
+    for (const bad of [null, undefined, 'newBusiness', 42, [1, 2]]) {
+      expect(coherenceError(bad)).toMatch(/effects must be an object/);
     }
   });
 });
 
 describe('unknown values fail LOUDLY, never as a silent zero', () => {
-  it('throws on an unknown outcome', () => {
-    expect(() => mapCall('schools', 'sold_them_a_boat')).toThrow(/unknown outcome/);
-  });
-
-  it('throws on an unknown campaign', () => {
-    expect(() => mapCall('carnival', 'no_answer')).toThrow(/unknown campaignCode/);
-  });
-
-  it('throws rather than returning {} for undefined input', () => {
-    expect(() => mapCall(undefined, undefined)).toThrow();
+  it('mapEffects THROWS on an incoherent set rather than returning a partial map', () => {
+    expect(() => mapEffects(eff({ lane: 'servicing', bucket: 'cold' })))
+      .toThrow(/incoherent effects: bucket must be null/);
+    expect(() => mapEffects(eff({ bucket: null }))).toThrow(/incoherent effects/);
+    expect(() => mapEffects(eff({ reached: 'false' }))).toThrow(/incoherent effects/);
+    expect(() => mapEffects(eff({ ffi: true }))).toThrow(/incoherent effects: ffi requires booking/);
+    expect(() => mapEffects(undefined)).toThrow();
   });
 });
 
@@ -206,8 +320,8 @@ describe('the write allow-list agrees with the dailyActivity schema', () => {
   });
 
   it('does not include referralsObtained — that guard stays', () => {
-    // The brief's STOP trigger: if this mapping ever writes referralsObtained,
-    // the scope of the aggregator guard retirement changes.
+    // If this mapping ever writes referralsObtained, the scope of the aggregator
+    // guard retirement changes.
     expect(WRITABLE_FIELDS).not.toContain('referralsObtained');
   });
 
@@ -217,5 +331,20 @@ describe('the write allow-list agrees with the dailyActivity schema', () => {
       'seminarsConducted', 'oldNamesWorked', 'socialMediaPosts']) {
       expect(WRITABLE_FIELDS).not.toContain(forbidden);
     }
+  });
+
+  it('is exactly the ten fields the effect table can emit', () => {
+    expect(WRITABLE_FIELDS).toEqual([
+      'appointmentsSet',
+      'dials',
+      'dialsByType.cold',
+      'dialsByType.followUp',
+      'dialsByType.referral',
+      'ffisScheduled',
+      'newNamesAdded',
+      'serviceCalls',
+      'serviceContacts',
+      'telContacts',
+    ]);
   });
 });

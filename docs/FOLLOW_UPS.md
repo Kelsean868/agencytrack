@@ -26,7 +26,7 @@
 | **PARTLY RESOLVED 2026-08-27 (PR #924) — and the original MEDIUM rating was WRONG, which is the part worth keeping.** `ingestCallActivity` no longer hardcodes the tenant: it reads `process.env.AGENCYTRACK_TENANT_ID` and falls back to `'tatillife_south'`, a default chosen to be byte-identical so production cannot drift (verified post-deploy: `functions/` holds no `.env.agencytrack-2a610`). `functions/.env.agencytrack-staging` supplies `staging_test` and is TRACKED via a `.gitignore` negation placed AFTER the `.env.*` rule — last match wins, and the same line placed earlier is inert, which is a mistake that was actually made and caught. **Why the rating was wrong:** this was filed as "a second tenant's tokens would 401 — failing closed, but silently", which reads as a multi-tenancy nicety. The real consequence was that a staging-minted token resolved against a tenant absent from the staging project, so **the endpoint could not be exercised anywhere except PRODUCTION** — making slice B's own named deliverable, a staging-only smoke, impossible by construction. A constant that makes a feature untestable outside production is not a deferred nicety, and "fails closed silently" hid that. **STILL OPEN:** `functions/index.js:62` and `aggregators/sundayDailyToWeekly.js:30` remain hardcoded — deliberately untouched, since they are scheduled functions that simply find no data under the production tenant in staging and do nothing (banked 2026-08-26, slice B / PR #923; part-closed 2026-08-27, PR #924) | MEDIUM | SEC-9c / multi-tenancy | — | see § `ingestCallActivity` resolves tokens against a HARDCODED tenant |
 | The `referralsObtained` half of the PR #909 omit-when-zero guard is still open — slice B retired ONLY the `serviceCalls` half, because B gives that field a daily writer and does not write `referralsObtained` (KQM referral outcomes map to `newNamesAdded`). **Corrects the sequencing recorded in CONTEXT.md**, which put the whole retirement after slice C: the trigger is a daily writer, not a slice letter. Retires in BOTH aggregator twins when one appears (banked 2026-08-26, slice B / PR #923) | MEDIUM | Daily Capture / aggregator | — | see § The `referralsObtained` half |
 | Restore the VIOLET calls hue — `plannerTone.js`'s stated reason for diverging ("repo ships no violet token") is FALSE; token ships at exact DS parity with zero consumers (banked 2026-07-27, planner activity-types PR) | MEDIUM | Track J conformance | — | see § Planner activity types |
-| `outcomeMap.mapCall` accepts any outcome × campaign pairing, so semantically odd pairs (a portfolio outcome in a cold campaign) map rather than reject. Deliberate: restricting them would leave a no-answer Portfolio call with nowhere to go, which is a data-loss shape. Close it once slice C's real vocabulary is known (banked 2026-08-26, slice B / PR #923) | LOW | Linked call sources | — | see § The KQM outcome × campaign cross-product |
+| `outcomeMap.WRITABLE_FIELDS` is a TEST-ONLY drift guard, not the runtime write allow-list its slice-B comment claimed — `ingestCallActivity.js` never imported it. The comment is corrected in C2; wiring it into the transaction as a real assertion (every emitted increment key must be in the list, else throw) was left out because it is a behaviour change outside C2's scope (banked 2026-08-27, slice C2 / PR #TBD) | LOW | Linked call sources | — | see § `WRITABLE_FIELDS` is a drift guard, not an allow-list |
 | Planner duration reporting — `durationMin` is captured on every appointment but NOTHING sums it anywhere; "time recorded" needs only a reporting surface (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
 | Planner type-taxonomy collisions deferred by hardcoding — `MTG` vs manager `UNIT`, and `PERS` vs `FREE`+Personal (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
 | `SALE` absent from the design authority's agent picker but shipping in the app — pre-existing divergence, NOT introduced by the activity-types work (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
@@ -6426,7 +6426,25 @@ different tenant path") which will need rewriting rather than deleting.
 **Falsification:** overturned by SEC-9c landing, or by any second tenant being provisioned — at
 which point this stops being a deferred generalisation and becomes a live defect.
 
-## The KQM outcome × campaign cross-product is unrestricted (LOW, banked 2026-08-26, slice B / PR #923)
+## ~~The KQM outcome × campaign cross-product is unrestricted~~ RESOLVED 2026-08-27 (slice C2 / PR #TBD)
+
+**RESOLVED BY DELETING THE CROSS-PRODUCT, not by restricting it.** This FU asked for a per-campaign
+allowed-outcome set "once slice C's real vocabulary is known". The vocabulary became known on
+27 August, and the answer it gave was that AgencyTrack must not hold KQM's vocabulary at all: about
+a hundred outcome values across five campaigns, every campaign code carrying a `_2026` suffix, and a
+database trigger that seeds a fresh vocabulary each time somebody creates a campaign. A per-campaign
+allowed-outcome set would have been a table that goes stale the first time an agent adds a campaign.
+
+C2 removed `CALL_OUTCOMES`, `CAMPAIGN_LANES` and `mapCall` entirely; KQM normalises to effects
+(lane, bucket, four booleans) and AgencyTrack validates them. There is no pairing left to be odd,
+because there are no outcomes and no campaigns in this repo to pair. `rawOutcome`/`rawCampaign` are
+stored on the ingest record for tracing and are scored by nothing.
+
+**The prediction this FU made was right and the remedy it proposed was wrong** — worth keeping,
+because the FU reasoned correctly from the vocabulary being narrower than the cross-product and did
+not consider it being much WIDER. Original body follows.
+
+### Original body (LOW, banked 2026-08-26, slice B / PR #923)
 
 `functions/callActivity/outcomeMap.js` keeps two orthogonal tables — the outcome says what happened,
 the campaign says which lane it lands in — and `mapCall` accepts **any** legal pairing of the two.
@@ -6453,3 +6471,28 @@ than guessed ahead of it.
 
 **Falsification:** overturned if a real KQM payload arrives with a pairing that maps to a number the
 operator considers wrong. Not overturned by the pairings merely looking odd in the table.
+
+## `WRITABLE_FIELDS` is a drift guard, not an allow-list (LOW, banked 2026-08-27, slice C2 / PR #TBD)
+
+`functions/callActivity/outcomeMap.js` derives `WRITABLE_FIELDS` from the effect table and its
+slice-B comment said the endpoint "uses it as a write allow-list". It does not, and it did not in
+slice B either: `ingestCallActivity.js` has never imported it. What the constant actually buys is a
+test in `outcomeMap.test.js` that fails if the mapping grows a field absent from
+`src/lib/schema/dailyActivity.js`, or one outside the call surface. That is real value, and the
+tests were kept.
+
+C2 corrected the comment rather than making the claim true, because wiring it into the transaction
+is a behaviour change and C2's scope-lock did not include one.
+
+**The fix, when it is wanted:** in `applyCall`, after `mapEffects`, assert that every key of
+`increments` appears in `WRITABLE_FIELDS` and throw otherwise. Three lines, and it converts a
+test-time guarantee into a runtime one. The cost is a new throw path on the hot path of a public
+endpoint, which is why it wants its own slice and its own smoke rather than a drive-by.
+
+**Why it is LOW rather than nothing.** The increments come from a frozen table in the same module,
+so today the assertion could not fire. It earns its keep only if a future edit makes the emitted
+field set data-driven from something less trustworthy than a literal.
+
+**Falsification:** overturned if `WRITABLE_FIELDS` acquires a runtime consumer, or if the effect
+table stops being the only source of the increment keys — at which point this becomes a live gap
+rather than a tidy-up.
