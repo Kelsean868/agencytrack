@@ -1,11 +1,22 @@
 /**
  * smoke-ingest-call-activity.mjs
- * STAGING smoke for PR #923 — ingestCallActivity, slice B.
+ * STAGING smoke for ingestCallActivity — slice B (PR #923), re-contracted by C2.
  *
  * This is the gap every other proof left open: the endpoint has never
  * completed a successful WRITE against a real Firestore. Its idempotency is
  * proven only against a transaction fake. A fake that models optimistic
  * concurrency is a good fake; it is still a model of Firestore, not Firestore.
+ *
+ * ─── UPDATED FOR THE C2 EFFECT CONTRACT ────────────────────────────────────
+ * It used to post `campaignCode` + `outcome`, which the endpoint no longer
+ * accepts. A smoke left posting a dead contract does not fail loudly — it goes
+ * red on its first leg and reads like an outage, or worse, gets waived. So the
+ * payloads below carry EFFECTS, and `rawOutcome`/`rawCampaign` carry the exact
+ * shapes the 27 Aug KQM database audit found (`schools_2026`, display labels)
+ * because those are the values slice B rejected.
+ *
+ * LEG 4 and the `retired-contract-rejected` leg are new and are the two that
+ * distinguish "the C2 code is deployed" from "the old build is still serving".
  *
  * ─── STAGING ONLY, AND IT MUTATES ──────────────────────────────────────────
  * This mints a real bearer token and really moves an agent's daily numbers.
@@ -222,8 +233,21 @@ try {
     sourceApp: 'kqm-calls',
     sourceId,
     occurredAt: new Date().toISOString(),
-    campaignCode: 'schools',
-    outcome: 'gatekeeper_blocked',   // reached=true -> dials +1, telContacts +1
+    // ── THE C2 CONTRACT: effects, not outcome names. ─────────────────────────
+    // reached=true in the new-business lane -> dials +1, dialsByType.cold +1,
+    // telContacts +1. Identical arithmetic to the slice-B `gatekeeper_blocked`
+    // this replaces, so the baseline deltas below did not have to change.
+    lane: 'newBusiness',
+    bucket: 'cold',
+    reached: true,
+    booking: false,
+    newName: false,
+    ffi: false,
+    // KQM's OWN words, in the shape the 27 Aug database audit actually found —
+    // a display label and a `_2026` suffix. Both of these 400'd under slice B.
+    // Stored on the ingest record, scored by nothing.
+    rawOutcome: 'Gatekeeper blocked',
+    rawCampaign: 'schools_2026',
     durationSec: 42,
   };
 
@@ -304,10 +328,78 @@ try {
   if (afterConc === beforeConc + 1) pass('concurrent-idempotent-live', `two simultaneous deliveries moved dials once (${beforeConc}->${afterConc}); statuses ${c1.status}/${c2.status}`);
   else fail('concurrent-idempotent-live', `expected +1, got ${beforeConc}->${afterConc}; statuses ${c1.status}/${c2.status}`);
 
-  // ── LEG 4: rejections, against the live endpoint ─────────────────────────
-  const badOutcome = await postCall(page, rawToken, { ...call, sourceId: `smoke-bad-${Date.now()}`, outcome: 'not_a_real_outcome' });
-  if (badOutcome.status === 400) pass('unknown-outcome-rejected', 'HTTP 400, not a silent zero');
-  else fail('unknown-outcome-rejected', `expected 400, got ${badOutcome.status}`);
+  // ── LEG 4: DECISION 4, LIVE — a servicing call must not move telContacts ─
+  // The mechanical claim of this endpoint's whole design, checked against a real
+  // Firestore rather than a fake: the lane decides which contact field moves.
+  const svcBefore = await readDaily(page, session, DATE);
+  const sb = {
+    telContacts: num(svcBefore.fields, 'telContacts'),
+    serviceCalls: num(svcBefore.fields, 'serviceCalls'),
+    serviceContacts: num(svcBefore.fields, 'serviceContacts'),
+  };
+  const svc = await postCall(page, rawToken, {
+    ...call,
+    sourceId: `smoke-svc-${Date.now()}`,
+    lane: 'servicing',
+    bucket: null,          // must be EXPLICITLY null in the servicing lane
+    reached: true,
+    rawOutcome: 'Portfolio - client contacted',
+    rawCampaign: 'portfolio_2026',
+  });
+  if (svc.status !== 200 && svc.status !== 201) {
+    fail('servicing-accepted', `HTTP ${svc.status} ${JSON.stringify(svc.body).slice(0, 200)}`);
+  } else {
+    pass('servicing-accepted', `HTTP ${svc.status}`);
+    await page.waitForTimeout(2500);
+    const svcAfter = await readDaily(page, session, DATE);
+    const sa = {
+      telContacts: num(svcAfter.fields, 'telContacts'),
+      serviceCalls: num(svcAfter.fields, 'serviceCalls'),
+      serviceContacts: num(svcAfter.fields, 'serviceContacts'),
+    };
+    const ok = sa.serviceCalls === sb.serviceCalls + 1
+      && sa.serviceContacts === sb.serviceContacts + 1
+      && sa.telContacts === sb.telContacts;
+    if (ok) pass('servicing-never-telcontacts', `serviceCalls ${sb.serviceCalls}->${sa.serviceCalls}, serviceContacts ${sb.serviceContacts}->${sa.serviceContacts}, telContacts UNMOVED at ${sa.telContacts}`);
+    else fail('servicing-never-telcontacts', `expected serviceCalls/serviceContacts +1 and telContacts unmoved; got telContacts ${sb.telContacts}->${sa.telContacts}, serviceCalls ${sb.serviceCalls}->${sa.serviceCalls}, serviceContacts ${sb.serviceContacts}->${sa.serviceContacts}`);
+  }
+
+  // ── LEG 5: rejections, against the live endpoint ─────────────────────────
+  // The lane/bucket partition invariant, both directions. Under slice B the
+  // bucket was derived here and could not be wrong; it now arrives over HTTP, so
+  // these two rejections are the whole of what keeps dialsByType a partition.
+  const svcWithBucket = await postCall(page, rawToken, {
+    ...call, sourceId: `smoke-inc1-${Date.now()}`, lane: 'servicing', bucket: 'cold',
+  });
+  if (svcWithBucket.status === 400) pass('servicing-with-bucket-rejected', 'HTTP 400 — a servicing bucket would break the sum');
+  else fail('servicing-with-bucket-rejected', `expected 400, got ${svcWithBucket.status}`);
+
+  const nbWithoutBucket = await postCall(page, rawToken, {
+    ...call, sourceId: `smoke-inc2-${Date.now()}`, lane: 'newBusiness', bucket: null,
+  });
+  if (nbWithoutBucket.status === 400) pass('newbusiness-without-bucket-rejected', 'HTTP 400 — dials and dialsByType would disagree');
+  else fail('newbusiness-without-bucket-rejected', `expected 400, got ${nbWithoutBucket.status}`);
+
+  const ffiNoBooking = await postCall(page, rawToken, {
+    ...call, sourceId: `smoke-ffi-${Date.now()}`, ffi: true, booking: false,
+  });
+  if (ffiNoBooking.status === 400) pass('ffi-without-booking-rejected', 'HTTP 400 — never a half-state');
+  else fail('ffi-without-booking-rejected', `expected 400, got ${ffiNoBooking.status}`);
+
+  // THE DEPLOY PROOF. A slice-B body is refused by name. If the OLD build were
+  // still serving, this would be a 200 and every leg above would be measuring a
+  // function that is not the one in this PR.
+  const oldShape = await postCall(page, rawToken, {
+    sourceApp: 'kqm-calls',
+    sourceId: `smoke-oldshape-${Date.now()}`,
+    occurredAt: new Date().toISOString(),
+    campaignCode: 'schools',
+    outcome: 'gatekeeper_blocked',
+    durationSec: 42,
+  });
+  const named = oldShape.status === 400 && /retired slice-B contract/.test(JSON.stringify(oldShape.body));
+  if (named) pass('retired-contract-rejected', 'HTTP 400 naming the retired contract — the C2 build IS live');
+  else fail('retired-contract-rejected', `expected a 400 naming the retired contract, got ${oldShape.status} ${JSON.stringify(oldShape.body).slice(0, 200)}`);
 
   const withIdentity = await postCall(page, rawToken, { ...call, sourceId: `smoke-id-${Date.now()}`, creditUid: 'someone-else' });
   if (withIdentity.status === 400) pass('identity-in-payload-rejected', 'HTTP 400 — creditUid refused, not ignored');

@@ -3,7 +3,7 @@
 /**
  * ingestCallActivity tests.
  *
- * Two tests in here are load-bearing and the rest support them:
+ * Three tests in here are load-bearing and the rest support them:
  *
  *  · THE CONCURRENT IDEMPOTENCY TEST. The sequential replay test passes against
  *    a check-then-write implementation, which is precisely the implementation
@@ -14,6 +14,12 @@
  *  · THE TT-BOUNDARY TEST. A call at 21:00 TT is already tomorrow in UTC, so a
  *    UTC-derived date silently files it on the wrong day — and at month end, in
  *    the wrong MONTH, moving a number out of the month a manager is reading.
+ *
+ *  · THE LANE/BUCKET COHERENCE TESTS (slice C2). The bucket used to be derived
+ *    from a table in this repo and could not be wrong. It now arrives over HTTP
+ *    from KQM, so the partition invariant rests on rejecting the two
+ *    combinations that would break it. Both directions are tested at the HTTP
+ *    boundary, not only in the pure mapper.
  */
 
 const { FakeFirestore, Timestamp } = require('./fakeFirestore');
@@ -49,6 +55,7 @@ jest.mock('firebase-functions', () => {
 });
 
 const { hashToken } = require('../../callSources/createCallSource');
+const { EFFECT_FLAGS, INGEST_BUCKETS, DIAL_BUCKETS } = require('../outcomeMap');
 const {
   ingestCallActivity,
   toTrinidadDateString,
@@ -58,6 +65,7 @@ const {
   applyCall,
   TENANT_ID,
   RATE_MAX_PER_WINDOW,
+  RAW_FIELD_MAX_CHARS,
 } = require('../ingestCallActivity');
 
 const handler = ingestCallActivity._onRequest;
@@ -66,6 +74,7 @@ const RAW_TOKEN = 'a'.repeat(64);
 const CREDIT_UID = 'agent_marlon';
 const SOURCE_DOC_ID = 'src777';
 const SOURCE_PATH = 'tenants/' + TENANT_ID + '/callSources/' + SOURCE_DOC_ID;
+const INGEST_PATH = 'tenants/' + TENANT_ID + '/callActivity/kqm-calls__act-0001';
 const dailyPath = (date, uid = CREDIT_UID) =>
   'tenants/' + TENANT_ID + '/users/' + uid + '/dailyActivity/' + date;
 const weeklyPath = (week, uid = CREDIT_UID) =>
@@ -89,12 +98,26 @@ function seedSource(over = {}) {
   });
 }
 
+/**
+ * The C2 contract. The default is a cold new-business call that reached somebody
+ * and booked a meeting — dials +1, dialsByType.cold +1, telContacts +1,
+ * appointmentsSet +1.
+ *
+ * rawOutcome and rawCampaign carry KQM's ACTUAL live values, suffix and display
+ * casing included, because those are exactly the shapes slice B rejected.
+ */
 const body = (over = {}) => ({
   sourceApp: 'kqm-calls',
   sourceId: 'act-0001',
   occurredAt: '2026-08-26T14:05:00-04:00',
-  campaignCode: 'schools',
-  outcome: 'meeting_booked',
+  lane: 'newBusiness',
+  bucket: 'cold',
+  reached: true,
+  booking: true,
+  newName: false,
+  ffi: false,
+  rawOutcome: 'Meeting booked',
+  rawCampaign: 'schools_2026',
   durationSec: 132,
   ...over,
 });
@@ -281,15 +304,17 @@ describe('idempotency', () => {
 
   it('records the call under sourceApp + sourceId', async () => {
     await apply();
-    const rec = mockDb.read('tenants/' + TENANT_ID + '/callActivity/kqm-calls__act-0001');
-    expect(rec).toMatchObject({
+    expect(mockDb.read(INGEST_PATH)).toMatchObject({
       creditUid: CREDIT_UID,
       callSourceId: SOURCE_DOC_ID,
       date: '2026-08-26',
       weekStarting: '2026-08-23',
-      outcome: 'meeting_booked',
       lane: 'newBusiness',
       dialBucket: 'cold',
+      reached: true,
+      booking: true,
+      newName: false,
+      ffi: false,
     });
   });
 });
@@ -298,7 +323,7 @@ describe('idempotency', () => {
 describe('the KPI write itself', () => {
   it('increments, and creates the daily doc on the first call of the day', async () => {
     expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
-    await apply({ sourceId: 'c1', outcome: 'no_answer' });
+    await apply({ sourceId: 'c1', reached: false, booking: false });
     const daily = mockDb.read(dailyPath('2026-08-26'));
     expect(daily).toMatchObject({ version: 2, date: '2026-08-26', agentId: CREDIT_UID, dials: 1 });
     expect(daily.telContacts).toBeUndefined();
@@ -323,7 +348,7 @@ describe('the KPI write itself', () => {
       f2fAttempts: 9,
       prospectingLettersSent: 3,
     });
-    await apply({ sourceId: 'c1', campaignCode: 'referrals', outcome: 'no_answer' });
+    await apply({ sourceId: 'c1', bucket: 'referral', reached: false, booking: false });
 
     const daily = mockDb.read(dailyPath('2026-08-26'));
     expect(daily.dials).toBe(5);
@@ -334,15 +359,16 @@ describe('the KPI write itself', () => {
     expect(daily.agentName).toBe('Marlon Baptiste');
   });
 
-  it('a Portfolio call writes the servicing lane and NOT telContacts', async () => {
-    await apply({ sourceId: 'p1', campaignCode: 'portfolio', outcome: 'portfolio_review_booked' });
+  it('each ingest bucket moves its own partition member and no other', async () => {
+    let n = 0;
+    for (const bucket of INGEST_BUCKETS) {
+      n += 1;
+      await apply({ sourceId: 'b' + n, bucket, reached: false, booking: false });
+    }
     const daily = mockDb.read(dailyPath('2026-08-26'));
-    expect(daily.serviceCalls).toBe(1);
-    expect(daily.serviceContacts).toBe(1);
-    expect(daily.appointmentsSet).toBe(1);
-    expect(daily.ffisScheduled).toBe(1);
-    expect(daily.telContacts).toBeUndefined();
-    expect(daily.dials).toBeUndefined();
+    expect(daily.dials).toBe(INGEST_BUCKETS.length);
+    expect(daily.dialsByType).toEqual({ cold: 1, referral: 1, followUp: 1 });
+    expect(daily.dialsByType.seminarTradeshow).toBeUndefined();
   });
 
   it('credits the token owner, never anyone named in the payload', async () => {
@@ -354,6 +380,110 @@ describe('the KPI write itself', () => {
   it('stamps lastUsedAt on the source doc', async () => {
     await apply();
     expect(mockDb.read(SOURCE_PATH).lastUsedAt).toBe('<ts>');
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('decision 4 — the servicing lane, mechanically', () => {
+  const servicing = (over = {}) => ({
+    lane: 'servicing',
+    bucket: null,
+    rawCampaign: 'portfolio_2026',
+    ...over,
+  });
+
+  it('a servicing call that REACHED the client does not move telContacts', async () => {
+    await apply(servicing({ sourceId: 'p1', reached: true, booking: false }));
+    const daily = mockDb.read(dailyPath('2026-08-26'));
+    expect(daily.serviceCalls).toBe(1);
+    expect(daily.serviceContacts).toBe(1);
+    // The whole of decision 4, in two lines.
+    expect(daily.telContacts).toBeUndefined();
+    expect(daily.dials).toBeUndefined();
+    expect(daily.dialsByType).toBeUndefined();
+  });
+
+  it('a portfolio review books an FFI, in the servicing lane', async () => {
+    await apply(servicing({
+      sourceId: 'p2', reached: true, booking: true, ffi: true, rawOutcome: 'Portfolio - review booked',
+    }));
+    const daily = mockDb.read(dailyPath('2026-08-26'));
+    expect(daily.serviceCalls).toBe(1);
+    expect(daily.serviceContacts).toBe(1);
+    expect(daily.appointmentsSet).toBe(1);
+    expect(daily.ffisScheduled).toBe(1);
+    expect(daily.telContacts).toBeUndefined();
+  });
+
+  it('an unreached servicing call is an ATTEMPT and not a CONTACT', async () => {
+    await apply(servicing({ sourceId: 'p3', reached: false, booking: false }));
+    const daily = mockDb.read(dailyPath('2026-08-26'));
+    expect(daily.serviceCalls).toBe(1);
+    expect(daily.serviceContacts).toBeUndefined();
+  });
+
+  it('mixing lanes on one day keeps the two contact fields separate', async () => {
+    await apply({ sourceId: 'n1', reached: true, booking: false });
+    await apply(servicing({ sourceId: 's1', reached: true, booking: false }));
+    const daily = mockDb.read(dailyPath('2026-08-26'));
+    expect(daily.dials).toBe(1);
+    expect(daily.telContacts).toBe(1);
+    expect(daily.serviceCalls).toBe(1);
+    expect(daily.serviceContacts).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('rawOutcome and rawCampaign are STORED and NEVER SCORED', () => {
+  it('stores them verbatim, suffix and display casing intact', async () => {
+    await apply({ rawOutcome: 'No budget - parents pay', rawCampaign: 'religious_houses_2026' });
+    expect(mockDb.read(INGEST_PATH)).toMatchObject({
+      rawOutcome: 'No budget - parents pay',
+      rawCampaign: 'religious_houses_2026',
+    });
+  });
+
+  it('THE POINT: varying them across otherwise identical calls changes NO KPI', async () => {
+    // Three calls, identical effects, three wildly different KQM vocabularies —
+    // including values slice B would have mapped to something else entirely, and
+    // one that names a different campaign than the lane implies. If any of them
+    // reached the arithmetic, these deltas would differ.
+    const raws = [
+      { rawOutcome: 'Meeting booked', rawCampaign: 'schools_2026' },
+      { rawOutcome: 'portfolio_review_booked', rawCampaign: 'portfolio_2026' },
+      { rawOutcome: '¯\\_(ツ)_/¯ whatever KQM calls it', rawCampaign: 'due_callback' },
+    ];
+
+    const deltas = [];
+    for (let i = 0; i < raws.length; i += 1) {
+      mockDb = new FakeFirestore();
+      seedSource();
+      await apply({ sourceId: 'raw-' + i, ...raws[i] });
+      const daily = mockDb.read(dailyPath('2026-08-26'));
+      deltas.push(JSON.stringify({
+        dials: daily.dials,
+        dialsByType: daily.dialsByType,
+        telContacts: daily.telContacts,
+        serviceCalls: daily.serviceCalls,
+        serviceContacts: daily.serviceContacts,
+        appointmentsSet: daily.appointmentsSet,
+        ffisScheduled: daily.ffisScheduled,
+        newNamesAdded: daily.newNamesAdded,
+      }));
+    }
+
+    expect(new Set(deltas).size).toBe(1);
+  });
+
+  it('the increments recorded on the ingest doc are identical too', async () => {
+    const seen = [];
+    for (const rawCampaign of ['schools_2026', 'portfolio_2026', 'anything at all']) {
+      mockDb = new FakeFirestore();
+      seedSource();
+      await apply({ rawCampaign });
+      seen.push(JSON.stringify(mockDb.read(INGEST_PATH).increments));
+    }
+    expect(new Set(seen).size).toBe(1);
   });
 });
 
@@ -384,15 +514,13 @@ describe('decision 3 — a late arrival never moves a submitted weekly', () => {
 
   it('RECORDS the discrepancy so it is visible rather than silent', async () => {
     await apply();
-    const rec = mockDb.read('tenants/' + TENANT_ID + '/callActivity/kqm-calls__act-0001');
-    expect(rec.landedInSubmittedWeek).toBe(true);
+    expect(mockDb.read(INGEST_PATH).landedInSubmittedWeek).toBe(true);
   });
 
   it('a draft week is not flagged', async () => {
     mockDb.seed(weeklyPath('2026-08-23'), { status: 'draft', agentId: CREDIT_UID });
     await apply();
-    const rec = mockDb.read('tenants/' + TENANT_ID + '/callActivity/kqm-calls__act-0001');
-    expect(rec.landedInSubmittedWeek).toBe(false);
+    expect(mockDb.read(INGEST_PATH).landedInSubmittedWeek).toBe(false);
   });
 });
 
@@ -461,17 +589,132 @@ describe('rejections — every one fails CLOSED', () => {
     });
   });
 
-  it('rejects an unknown outcome LOUDLY, never as a silent zero', async () => {
-    const res = await post({ body: body({ outcome: 'they_hung_up_vex' }) });
+  // ── THE C2 BOUNDARY. Both directions, at the HTTP layer. ─────────────────
+  describe('lane/bucket coherence is a 400, in BOTH directions', () => {
+    it('servicing + a non-null bucket is a 400 — it would break the sum', async () => {
+      for (const bucket of DIAL_BUCKETS) {
+        const res = await post({ body: body({ lane: 'servicing', bucket }) });
+        expect(res.statusCode).toBe(400);
+        expect(res.payload.error).toMatch(/bucket must be null when lane is servicing/);
+        expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
+      }
+    });
+
+    it('newBusiness + a null bucket is a 400 — dials and dialsByType would disagree', async () => {
+      const res = await post({ body: body({ lane: 'newBusiness', bucket: null }) });
+      expect(res.statusCode).toBe(400);
+      expect(res.payload.error).toMatch(/bucket must be one of/);
+      expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
+    });
+
+    it('newBusiness with the bucket key ABSENT is a 400 too', async () => {
+      // Saying nothing is not the same as saying no. See validatePayload.
+      const b = body();
+      delete b.bucket;
+      const res = await post({ body: b });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('servicing with the bucket key ABSENT is a 400 — send an explicit null', async () => {
+      const b = body({ lane: 'servicing' });
+      delete b.bucket;
+      const res = await post({ body: b });
+      expect(res.statusCode).toBe(400);
+      expect(res.payload.error).toMatch(/bucket must be null when lane is servicing/);
+    });
+
+    it('seminarTradeshow is refused — no calling campaign feeds it', async () => {
+      const res = await post({ body: body({ bucket: 'seminarTradeshow' }) });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('an unknown lane is a 400', async () => {
+      for (const lane of ['coaching', 'newbusiness', '', null, 7]) {
+        expect((await post({ body: body({ lane }) })).statusCode).toBe(400);
+      }
+    });
+  });
+
+  it('ffi without booking is a 400, never a half-state', async () => {
+    const res = await post({ body: body({ ffi: true, booking: false }) });
     expect(res.statusCode).toBe(400);
-    expect(res.payload.error).toMatch(/unknown outcome/);
+    expect(res.payload.error).toMatch(/ffi requires booking/);
     expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
   });
 
-  it('rejects an unknown campaignCode', async () => {
-    const res = await post({ body: body({ campaignCode: 'carnival' }) });
-    expect(res.statusCode).toBe(400);
-    expect(res.payload.error).toMatch(/unknown campaignCode/);
+  it('booking without ffi is FINE — not every meeting is a fact-find', async () => {
+    const res = await post({ body: body({ booking: true, ffi: false }) });
+    expect(res.statusCode).toBe(200);
+    expect(mockDb.read(dailyPath('2026-08-26')).ffisScheduled).toBeUndefined();
+  });
+
+  it('a non-boolean effect flag is a 400 — "false" is a TRUTHY STRING', async () => {
+    for (const flag of EFFECT_FLAGS) {
+      for (const bad of ['false', 'true', 1, 0, null]) {
+        const res = await post({ body: body({ [flag]: bad }) });
+        expect(res.statusCode).toBe(400);
+        expect(res.payload.error).toContain(flag);
+      }
+      const missing = body();
+      delete missing[flag];
+      expect((await post({ body: missing })).statusCode).toBe(400);
+    }
+    expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
+  });
+
+  describe('rawOutcome / rawCampaign', () => {
+    for (const name of ['rawOutcome', 'rawCampaign']) {
+      it('rejects a missing ' + name + ' — traceability is not optional', async () => {
+        const b = body();
+        delete b[name];
+        const res = await post({ body: b });
+        expect(res.statusCode).toBe(400);
+        expect(res.payload.error).toContain(name);
+      });
+
+      it('rejects a non-string or empty ' + name, async () => {
+        for (const bad of [42, null, true, {}, '', '   ']) {
+          expect((await post({ body: body({ [name]: bad }) })).statusCode).toBe(400);
+        }
+      });
+
+      it('rejects an over-long ' + name, async () => {
+        const res = await post({ body: body({ [name]: 'x'.repeat(RAW_FIELD_MAX_CHARS + 1) }) });
+        expect(res.statusCode).toBe(400);
+      });
+
+      it('accepts ' + name + ' at exactly the cap', async () => {
+        const res = await post({ body: body({ [name]: 'x'.repeat(RAW_FIELD_MAX_CHARS) }) });
+        expect(res.statusCode).toBe(200);
+      });
+    }
+  });
+
+  describe('the retired slice-B contract is named, not merely rejected', () => {
+    for (const retired of ['campaignCode', 'outcome']) {
+      it('names ' + retired + ' in the error', async () => {
+        const res = await post({ body: body({ [retired]: 'schools' }) });
+        expect(res.statusCode).toBe(400);
+        expect(res.payload.error).toContain(retired);
+        expect(res.payload.error).toMatch(/retired slice-B contract/);
+      });
+    }
+
+    it('a whole slice-B body is refused with the useful message', async () => {
+      const res = await post({
+        body: {
+          sourceApp: 'kqm-calls',
+          sourceId: 'act-0001',
+          occurredAt: '2026-08-26T14:05:00-04:00',
+          campaignCode: 'schools',
+          outcome: 'meeting_booked',
+          durationSec: 132,
+        },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.payload.error).toMatch(/retired slice-B contract/);
+      expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
+    });
   });
 
   it('rejects an unknown sourceApp', async () => {
@@ -492,6 +735,14 @@ describe('rejections — every one fails CLOSED', () => {
     it('rejects it even when the value equals the legitimate owner', async () => {
       const res = await post({ body: body({ creditUid: CREDIT_UID }) });
       expect(res.statusCode).toBe(400);
+    });
+
+    it('IDENTITY IS CHECKED BEFORE THE RETIRED-FIELD MESSAGE', async () => {
+      // A-prime's principle outranks a convenience message: a body carrying both
+      // must report the identity refusal, not the friendlier contract hint.
+      const res = await post({ body: body({ creditUid: 'x', campaignCode: 'schools' }) });
+      expect(res.statusCode).toBe(400);
+      expect(res.payload.error).toContain('creditUid');
     });
   });
 
@@ -521,6 +772,17 @@ describe('rejections — every one fails CLOSED', () => {
     expect(res.statusCode).toBe(200);
   });
 
+  it('durationSec NEVER overrules reached — a voicemail accrues seconds', async () => {
+    // F4, carried forward and made mechanical. `reached: false` with a long
+    // duration is a voicemail, and it must NOT produce telContacts. `reached:
+    // true` with zero seconds is still a contact.
+    await apply({ sourceId: 'vm', reached: false, booking: false, durationSec: 600 });
+    expect(mockDb.read(dailyPath('2026-08-26')).telContacts).toBeUndefined();
+
+    await apply({ sourceId: 'brief', reached: true, booking: false, durationSec: 0 });
+    expect(mockDb.read(dailyPath('2026-08-26')).telContacts).toBe(1);
+  });
+
   it('rejects a non-object body', async () => {
     for (const bad of [null, 'a string', [1, 2, 3], 7]) {
       const res = await post({ body: bad });
@@ -529,11 +791,11 @@ describe('rejections — every one fails CLOSED', () => {
   });
 
   it('AUTH IS CHECKED BEFORE THE PAYLOAD — a bad token never leaks a 400', async () => {
-    // Otherwise "unknown outcome" vs "unauthorized" tells a prober their token
-    // resolved, which is the enumeration oracle this endpoint must not be.
+    // Otherwise "bucket must be null" vs "unauthorized" tells a prober their
+    // token resolved, which is the enumeration oracle this endpoint must not be.
     const res = await post({
       headers: { authorization: 'Bearer ' + 'c'.repeat(64) },
-      body: body({ outcome: 'nonsense', creditUid: 'x' }),
+      body: body({ lane: 'nonsense', creditUid: 'x' }),
     });
     expect(res.statusCode).toBe(401);
     expect(res.payload).toEqual({ ok: false, error: 'unauthorized' });
@@ -543,7 +805,7 @@ describe('rejections — every one fails CLOSED', () => {
     const responses = [];
     responses.push((await post()).payload);
     responses.push((await post({ headers: { authorization: 'Bearer ' + 'd'.repeat(64) } })).payload);
-    responses.push((await post({ body: body({ outcome: 'bad' }) })).payload);
+    responses.push((await post({ body: body({ lane: 'bad' }) })).payload);
     for (const p of responses) {
       expect(JSON.stringify(p)).not.toContain(RAW_TOKEN);
       expect(JSON.stringify(p)).not.toContain('d'.repeat(64));
@@ -601,6 +863,7 @@ describe('rate limiting is per source doc', () => {
         if (args.length === 0) return new RealDate(NOW.getTime());
         return new RealDate(...args);
       }
+
       static now() {
         return NOW.getTime();
       }
@@ -635,35 +898,44 @@ describe('setNested', () => {
 /**
  * ── MUTATION VERIFICATION — the idempotency guard ───────────────────────────
  *
- * Run 26 Aug 2026 against ingestCallActivity.js. The guard is the early return
- * in applyCall():
+ * RE-RUN 27 Aug 2026 against the C2 contract, because the suite that certified
+ * this guard was rewritten and a rewritten suite is exactly where the safety
+ * quietly leaks out. Observed counts below, not asserted ones.
+ *
+ * The guard is the early return in applyCall():
  *
  *     const ingestSnap = await tx.get(ingestRef);
  *     if (ingestSnap.exists) return { applied: false, duplicate: true, ... };
  *
- * Baseline before either mutation: 83 passed, 83 total (both suites).
+ * Command, both mutations:
+ *   npx jest callActivity/__tests__/outcomeMap.test.js \
+ *            callActivity/__tests__/ingestCallActivity.test.js
+ * Baseline before either mutation: 122 passed, 122 total (both suites).
+ * (The full `npx jest callActivity` run is 136, adding resolveCallSource.test.js
+ * — untouched by this slice and unmoved by either mutation.)
  *
  * MUTATION 1 — DELETE the guard (the early return never fires).
- *   OBSERVED: Tests: 4 failed, 79 passed, 83 total. The four, all in this
+ *   OBSERVED: Tests: 4 failed, 118 passed, 122 total. The four, all in this
  *   file's idempotency block and nowhere else:
  *     · a sequential replay of the SAME sourceId moves the KPI exactly once
  *     · a third and fourth replay still move nothing
  *     · CONCURRENT: two simultaneous deliveries of one sourceId count ONCE
  *     · CONCURRENT: five simultaneous deliveries still count ONCE
- *   GREEN and untouched: every TT-date test, every rejection test, the late-
- *   arrival block, the rate-limit block, and outcomeMap.test.js in full.
- *   Exactly the idempotency tests went red and nothing else, which is what the
- *   brief asks this exercise to demonstrate.
+ *   GREEN and untouched: every TT-date test, every rejection test, the whole
+ *   lane/bucket coherence block, the raw-fields block, the servicing-lane block,
+ *   the late-arrival block, the rate-limit block, and outcomeMap.test.js in
+ *   full. Exactly the idempotency tests went red and nothing else.
  *
  * MUTATION 2 — move the check OUTSIDE the transaction: read the ingest doc with
  *   a plain ingestRef.get() before runTransaction and keep the write inside.
  *   This is the plausible-looking implementation the brief warns about, and the
  *   result is the whole argument for the concurrent variant.
- *   OBSERVED: Tests: 2 failed, 81 passed, 83 total.
+ *   OBSERVED: Tests: 2 failed, 120 passed, 122 total.
  *     · a sequential replay ...............................  STILL GREEN
  *     · a third and fourth replay .........................  STILL GREEN
  *     · CONCURRENT: two simultaneous deliveries ...........  RED
  *     · CONCURRENT: five simultaneous deliveries ..........  RED
  *   A suite carrying only the sequential test would have certified a
- *   double-counting endpoint as correct.
+ *   double-counting endpoint as correct — under the new contract exactly as
+ *   under the old one.
  */

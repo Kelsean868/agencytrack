@@ -1,247 +1,285 @@
 'use strict';
 
 /**
- * outcomeMap — THE KQM Calls to AgencyTrack mapping. One table, one place.
+ * outcomeMap — THE call-effect table. One table, one place.
  *
- * Slice B, operator rulings 26 Aug 2026. Every colour of this endpoint's
- * behaviour derives from the two frozen tables below. Adding a KQM outcome or a
- * campaign must require an edit HERE AND NOWHERE ELSE — the v3 rule-1 discipline
- * that ACTIVITY_METADATA established, applied to the fourth vocabulary in this
- * repo (after activity codes, appointment statuses and CALL_DISPOSITIONS).
+ * Slice C2, operator rulings 27 Aug 2026. This file NO LONGER KNOWS ANY KQM
+ * VOCABULARY. It knows effects.
  *
- * ── WHY THIS IS NOT src/lib/schema/callRecord.js ────────────────────────────
- * CALL_DISPOSITIONS is AgencyTrack's OWN six-value outcome vocabulary, typed by
- * an agent in Daily Capture. The table here is the EXTERNAL vocabulary KQM Calls
- * emits — nineteen values, a different and larger set. They are two vocabularies
- * about the same subject, not one vocabulary in two files, and collapsing them
- * would force one of the two products to speak the other's language.
+ * ── WHY THE VOCABULARY LEFT THIS FILE ───────────────────────────────────────
+ * Slice B put KQM's outcome names and campaign codes in here and mapped them to
+ * effects internally. A live audit of the KQM database on 27 Aug found that
+ * contract matched almost nothing real: every campaign carries a `_2026` suffix,
+ * outcomes arrive as display labels ("No budget - parents pay"), and there are
+ * about a hundred of them across five campaigns rather than nineteen. Worse than
+ * the mismatch was the SHAPE of the mismatch — KQM can create a campaign freely
+ * and a trigger seeds a fresh outcome vocabulary for each one, so any design
+ * that pins KQM's words into AgencyTrack's source is a design that silently
+ * stops counting calls the first time somebody adds a campaign.
  *
- * What IS shared is the `reached` RULING, and it is deliberately consistent:
- * `reached` is TRUE for Not interested. They answered and said no. That is a
- * contact, an unsuccessful one. Conflating "did not want it" with "did not
- * answer" undercounts contacts the agent genuinely made.
+ * The operator ruled: KQM NORMALISES, AGENCYTRACK VALIDATES. The payload now
+ * carries EFFECTS, not names. Each system owns its own vocabulary and neither
+ * has to be redeployed when the other's changes.
  *
- * Cloud Functions run CJS and cannot import from the ESM src/ tree, so even a
- * genuinely shared value would have to be restated here. Restating a DIFFERENT
- * vocabulary is honest; restating the SAME one is the twin class that produced
- * every regression in the v3 prototype.
+ * The file NAME is kept so this slice's diff stays inside its scope-lock
+ * inventory. What it maps is effects.
  *
- * ── CAMPAIGN DECIDES THE LANE, OUTCOME DECIDES THE EFFECT ───────────────────
- * The two tables are orthogonal on purpose, and that orthogonality is what makes
- * decision 4 mechanical rather than a special case someone has to remember:
+ * ── THE CONTRACT IS CLOSED, SO THE REJECTIONS GET STRICTER ──────────────────
+ * An unrecognised outcome still counts the call — but that is handled KQM-side,
+ * where the vocabulary lives. What arrives here is a small closed set of
+ * booleans, so anything outside it is a defect in the caller and earns a loud
+ * 400 rather than a generous interpretation. Ruling 2.
  *
- *   the OUTCOME says WHAT HAPPENED   — was a person reached, was something
- *                                      booked, was a new name produced
- *   the CAMPAIGN says WHICH LANE     — new-business (dials / telContacts) or
- *                                      servicing (serviceCalls / serviceContacts)
- *
- * A Portfolio call that reaches the client therefore writes serviceContacts and
- * NOT telContacts — not because a rule says "if portfolio then skip
- * telContacts", but because telContacts is not in the servicing lane at all.
- * telContacts keeps meaning "people reached about NEW BUSINESS". Decision 4.
+ * ── LANE DECIDES WHICH CONTACT FIELD MOVES ──────────────────────────────────
+ * Decision 4, and it survives MECHANICALLY rather than as a remembered special
+ * case. A servicing call that reaches the client writes serviceContacts and
+ * never telContacts — not because a rule says "if servicing then skip
+ * telContacts", but because telContacts's row is predicated on the new-business
+ * lane and there is no branch that could add it. telContacts keeps meaning
+ * "people reached about NEW BUSINESS".
  *
  * ── dialsByType IS A PARTITION, NOT A SET OF TAGS ───────────────────────────
  * Decision 1. Every new-business call bumps `dials` by one and EXACTLY ONE
- * bucket by one, so the four buckets always sum to `dials`. That is why the
- * bucket is a total function of campaignCode and never of the outcome: a value
- * that could be two things would break the sum. Property-tested.
+ * bucket by one, so the four buckets always sum to `dials`.
  *
- * `seminarTradeshow` is never written by this endpoint — no KQM campaign feeds
- * it, and it stays an agent-typed field. Zero is a correct partition member and
- * the sum holds regardless.
+ * In slice B that held because the campaign was a total function to one bucket.
+ * The bucket is now an INPUT, so the invariant has moved to the boundary: the
+ * bucket must be non-null exactly when the lane is new business, and null
+ * exactly when it is servicing. `coherenceError` is the whole of that rule and
+ * it is ASSERTED, never assumed — see the note there. Property-tested.
  *
- * ── followUp MEANS A DUE CALLBACK, AND NOTHING ELSE ─────────────────────────
- * Decision 2. `due_callback` is the campaign KQM Calls uses when the call
- * fulfils a scheduled callback in crm.activities. A REDIAL of a no-answer stays
- * in its own campaign bucket and must never arrive here as `due_callback`. A
- * follow-up is a promise kept, not a retry. Counting redials as follow-ups
- * inflates followUpCalls against coldCalls and quietly destroys coldCalls as a
- * measure of new-name attempts.
+ * `seminarTradeshow` is a real partition member of the schema and is
+ * deliberately NOT accepted from KQM: no calling campaign feeds it, it stays an
+ * agent-typed field, and zero is a correct partition member. Rejecting it at the
+ * boundary preserves slice B's "never written by this endpoint" property now
+ * that the bucket arrives from outside.
  *
- * This is the ONE rule on this page the CALLER must honour and this endpoint
- * cannot verify — AgencyTrack has no sight of crm.activities. It is stated here
- * because slice C is written against this file.
+ * ── followUp IS DECIDED KQM-SIDE ────────────────────────────────────────────
+ * Ruling 3. KQM resolves a call against a due `next_at` in crm.activities and
+ * sends `bucket: "followUp"`. AgencyTrack does not re-derive it and has no sight
+ * of crm.activities to do so. A REDIAL of a no-answer is not a follow-up — a
+ * follow-up is a promise kept, not a retry — and counting redials as follow-ups
+ * inflates followUpCalls against coldCalls and destroys coldCalls as a measure
+ * of new-name attempts. That is the ONE rule on this page the CALLER must honour
+ * and this endpoint cannot verify.
  */
+
+/** The two lanes. A call is new business or it is servicing; there is no third. */
+const LANES = Object.freeze(['newBusiness', 'servicing']);
 
 /**
- * CALL_OUTCOMES — the KQM Calls outcome vocabulary.
- *
- *   key      the stored enum value. snake_case, matching the key-naming note in
- *            src/lib/schema/callRecord.js, so the stored form never needs a
- *            display transform.
- *   label    display form, and the row of the operator's mapping table it came
- *            from, so brief and code can be diffed by eye.
- *   reached  a PERSON was reached. THE one classifier; a `contacted` boolean
- *            beside it would be a twin of this column.
- *   booking  an appointment was set                 -> appointmentsSet
- *   ffi      a fact-finding interview was scheduled -> ffisScheduled
- *   newName  a new prospect name was produced       -> newNamesAdded
- *
- * booking / ffi / newName default to false and are stated only where true, so
- * the exceptional rows are the ones that catch the eye.
+ * The four dialsByType partition members, in schema order. All four exist in
+ * src/lib/schema/dailyActivity.js; only the first three may arrive here.
  */
-const CALL_OUTCOMES = Object.freeze([
-  // Not reached — an attempt, and nothing more.
-  Object.freeze({ key: 'no_answer',             label: 'No answer',             reached: false }),
-  Object.freeze({ key: 'wrong_number',          label: 'Wrong number',          reached: false }),
-  Object.freeze({ key: 'number_out_of_service', label: 'Number out of service', reached: false }),
-
-  // Reached, no further consequence.
-  Object.freeze({ key: 'gatekeeper_blocked',    label: 'Gatekeeper blocked',    reached: true }),
-  Object.freeze({ key: 'not_interested',        label: 'Not interested',        reached: true }),
-  Object.freeze({ key: 'already_has_plan',      label: 'Already has a plan',    reached: true }),
-  Object.freeze({ key: 'no_budget',             label: 'No budget',             reached: true }),
-  Object.freeze({ key: 'callback_scheduled',    label: 'Callback scheduled',    reached: true }),
-  Object.freeze({ key: 'send_info_email',       label: 'Send info by email',    reached: true }),
-  Object.freeze({ key: 'principal_interested',  label: 'Principal interested',  reached: true }),
-  Object.freeze({ key: 'approved_in_principle', label: 'Approved in principle', reached: true }),
-  Object.freeze({ key: 'parent_list_promised',  label: 'Parent list promised',  reached: true }),
-  Object.freeze({ key: 'do_not_call',           label: 'Do not call requested', reached: true }),
-
-  // Reached, and an appointment came out of it.
-  Object.freeze({ key: 'meeting_booked',           label: 'Meeting booked',           reached: true, booking: true }),
-  Object.freeze({ key: 'orientation_slot_offered', label: 'Orientation slot offered', reached: true, booking: true }),
-
-  // Reached, and a NAME came out of it. A referral produces a new prospect to
-  // approach, so it is newNamesAdded. It is NOT `referralsObtained` — that field
-  // counts referrals credited on the weekly report and still has NO daily
-  // writer. See the half-retired guard in functions/aggregators/dailyToWeekly.js.
-  Object.freeze({ key: 'referred_to_board_pta', label: 'Referred to Board/PTA',      reached: true, newName: true }),
-  Object.freeze({ key: 'referred_to_person',    label: 'Referred to another person', reached: true, newName: true }),
-  Object.freeze({ key: 'not_decision_maker',    label: 'Not the decision maker',     reached: true, newName: true }),
-
-  // Servicing. Books a portfolio review, which IS a fact-finding interview.
-  Object.freeze({ key: 'portfolio_review_booked', label: 'Portfolio - review booked', reached: true, booking: true, ffi: true }),
-]);
-
-/** key -> row. Derived, so the lookup can never disagree with the table. */
-const OUTCOMES_BY_KEY = Object.freeze(
-  CALL_OUTCOMES.reduce((acc, o) => {
-    acc[o.key] = o;
-    return acc;
-  }, Object.create(null)),
-);
-
-/** Ordered enum keys, table order. */
-const OUTCOME_KEYS = Object.freeze(CALL_OUTCOMES.map((o) => o.key));
-
-/**
- * CAMPAIGN_LANES — campaignCode -> where its calls land.
- *
- *   lane    'newBusiness' | 'servicing'
- *   bucket  the dialsByType partition member. NEW-BUSINESS ONLY — a servicing
- *           call is not a dial and belongs to no bucket, which is why this is
- *           null there rather than a fourth-and-a-half bucket value.
- */
-const CAMPAIGN_LANES = Object.freeze({
-  schools:          Object.freeze({ lane: 'newBusiness', bucket: 'cold' }),
-  group_benefits:   Object.freeze({ lane: 'newBusiness', bucket: 'cold' }),
-  religious_houses: Object.freeze({ lane: 'newBusiness', bucket: 'cold' }),
-  referrals:        Object.freeze({ lane: 'newBusiness', bucket: 'referral' }),
-  due_callback:     Object.freeze({ lane: 'newBusiness', bucket: 'followUp' }),
-  portfolio:        Object.freeze({ lane: 'servicing',   bucket: null }),
-});
-
-const CAMPAIGN_CODES = Object.freeze(Object.keys(CAMPAIGN_LANES));
-
-/** The four dialsByType partition members, in schema order. */
 const DIAL_BUCKETS = Object.freeze(['cold', 'referral', 'followUp', 'seminarTradeshow']);
 
-function isKnownOutcome(key) {
-  return Object.prototype.hasOwnProperty.call(OUTCOMES_BY_KEY, key);
-}
+/** The buckets KQM may send. seminarTradeshow is agent-typed — see header. */
+const INGEST_BUCKETS = Object.freeze(['cold', 'referral', 'followUp']);
 
-function isKnownCampaign(key) {
-  return Object.prototype.hasOwnProperty.call(CAMPAIGN_LANES, key);
+/** The four effect booleans. Every one is REQUIRED — see coherenceError. */
+const EFFECT_FLAGS = Object.freeze(['reached', 'booking', 'newName', 'ffi']);
+
+/**
+ * ONE predicate per lane, referenced by every row that depends on it.
+ *
+ * `dials` and `dialsByType.<bucket>` share the SAME FUNCTION REFERENCE, so they
+ * cannot be made to disagree by an edit to one of them. That is a stronger
+ * guarantee than slice B's two adjacent lines, and it is the mechanical half of
+ * the partition invariant — the other half is coherenceError.
+ */
+const isNewBusiness = (e) => e.lane === 'newBusiness';
+const isServicing = (e) => e.lane === 'servicing';
+
+/**
+ * EFFECT_TABLE — the whole of the mapping, one row per line of the brief's
+ * table. Adding an effect is an edit HERE AND NOWHERE ELSE: WRITABLE_FIELDS is
+ * derived from it, and mapEffects does nothing but walk it.
+ *
+ *   field  the dailyActivity field to bump, or a function of the effects when
+ *          the field NAME itself depends on them (the bucket, and only that)
+ *   when   the predicate. The last three rows are lane-independent: an
+ *          appointment is an appointment whether it came from a cold call or a
+ *          portfolio review, and a name is a name.
+ */
+const EFFECT_TABLE = Object.freeze([
+  Object.freeze({ field: 'dials', when: isNewBusiness }),
+  Object.freeze({ field: (e) => 'dialsByType.' + e.bucket, when: isNewBusiness }),
+  Object.freeze({ field: 'telContacts', when: (e) => isNewBusiness(e) && e.reached }),
+  Object.freeze({ field: 'serviceCalls', when: isServicing }),
+  Object.freeze({ field: 'serviceContacts', when: (e) => isServicing(e) && e.reached }),
+  Object.freeze({ field: 'appointmentsSet', when: (e) => e.booking }),
+  Object.freeze({ field: 'newNamesAdded', when: (e) => e.newName }),
+  Object.freeze({ field: 'ffisScheduled', when: (e) => e.ffi }),
+]);
+
+/**
+ * coherenceError — the boundary assertion. Returns an error string, or null when
+ * the effect set is one this endpoint may act on.
+ *
+ * ── ASSERT IT, DO NOT ASSUME KQM GETS IT RIGHT ──────────────────────────────
+ * Every rule below used to be guaranteed by construction, because slice B
+ * derived these values from its own frozen tables. They now arrive from another
+ * system over HTTP, so each one is a thing that CAN be wrong and therefore a
+ * thing that MUST be checked. A malformed effect set that is written rather than
+ * rejected produces no error anywhere; it produces a number in a named agent's
+ * report that no later run corrects.
+ *
+ * THE LANE/BUCKET PARTITION. A servicing call carrying a bucket would add to
+ * dialsByType without adding to dials and break the sum. A new-business call
+ * without one would move `dials` while every bucket stayed put, and break it the
+ * other way. Both directions are rejected; neither is repaired, because a
+ * repaired value is a guess about what the caller meant.
+ *
+ * FFI IMPLIES BOOKING. Scheduling a fact-finding interview IS setting an
+ * appointment — an FFI is a KIND of appointment, not a parallel thing — so `ffi`
+ * without `booking` would write ffisScheduled while appointmentsSet stayed put,
+ * and a manager would read one FFI scheduled and no appointment set for it. That
+ * is a half-state, so it is a 400. The converse IS legal and common: plenty of
+ * booked meetings are not fact-finding interviews.
+ *
+ * THE BOOLEANS ARE STRICT. `reached: "false"` is a truthy STRING, and accepting
+ * it would count a contact that never happened, silently, on every call a
+ * serialiser mangled. All four are REQUIRED rather than defaulted to false for
+ * the same reason: an absent `reached` defaulting to false undercounts contacts
+ * an agent genuinely made, and an undercount looks exactly like a quiet week.
+ */
+function coherenceError(effects) {
+  if (effects === null || typeof effects !== 'object' || Array.isArray(effects)) {
+    return 'effects must be an object';
+  }
+
+  if (!LANES.includes(effects.lane)) {
+    return 'lane must be one of ' + LANES.join(', ');
+  }
+
+  for (const flag of EFFECT_FLAGS) {
+    if (typeof effects[flag] !== 'boolean') {
+      return flag + ' must be a boolean (true or false), and is required';
+    }
+  }
+
+  if (effects.lane === 'servicing') {
+    if (effects.bucket !== null) {
+      return 'bucket must be null when lane is servicing';
+    }
+  } else if (!INGEST_BUCKETS.includes(effects.bucket)) {
+    return 'bucket must be one of ' + INGEST_BUCKETS.join(', ') + ' when lane is newBusiness';
+  }
+
+  if (effects.ffi && !effects.booking) {
+    return 'ffi requires booking — scheduling an FFI is setting an appointment';
+  }
+
+  return null;
 }
 
 /**
- * mapCall — one call in, the exact set of dailyActivity increments out.
+ * mapEffects — one effect set in, the exact set of dailyActivity increments out.
  *
- * PURE. No Firestore, no clock, no I/O. Every branch of this endpoint's KPI
- * arithmetic is decided here and can be tested without a database.
+ * PURE. No Firestore, no clock, no I/O, and — deliberately — NO SIGHT OF
+ * rawOutcome OR rawCampaign. Those are stored on the ingest record so a disputed
+ * number can be traced back to what the agent actually clicked, and the way to
+ * guarantee nothing branches on them is to keep them out of the only function
+ * that decides anything. They are not a parameter here and cannot become one
+ * without an edit that is obvious in review.
  *
- * Returns a FLAT map of dotted field paths -> +1, ready to hand to
- * FieldValue.increment. Dotted paths ('dialsByType.cold') are what Firestore
- * wants for a nested field, and keeping the map flat means the caller never
- * rebuilds a nested object and never has to read the doc first.
+ * Returns a FLAT map of dotted field paths -> +1, ready for FieldValue.increment.
+ * Dotted paths ('dialsByType.cold') are the canonical name of the field, and
+ * keeping the map flat means the caller never rebuilds a nested object and never
+ * has to read the doc first. See setNested() in the endpoint for the
+ * set()-versus-update() trap that shape creates.
  *
- * THROWS on an unknown outcome or campaign rather than returning an empty map.
- * An unmapped outcome silently counted as nothing — or worse, as a plain dial —
- * is a data defect that looks like a rounding error for months. Fail loudly at
- * the door instead.
+ * THROWS on an incoherent effect set rather than returning a partial map. The
+ * endpoint validates first and so never reaches the throw; it exists so that a
+ * future caller which forgets to validate fails loudly at the door instead of
+ * writing a half-state that looks like a rounding error for months.
  *
- * @param {string} campaignCode a CAMPAIGN_LANES key
- * @param {string} outcome      a CALL_OUTCOMES key
+ * @param {{lane: string, bucket: (string|null), reached: boolean, booking: boolean,
+ *          newName: boolean, ffi: boolean}} effects
  * @returns {{increments: Object, lane: string, bucket: (string|null), reached: boolean}}
  */
-function mapCall(campaignCode, outcome) {
-  if (!isKnownCampaign(campaignCode)) {
-    throw new RangeError('unknown campaignCode: ' + String(campaignCode));
-  }
-  if (!isKnownOutcome(outcome)) {
-    throw new RangeError('unknown outcome: ' + String(outcome));
-  }
+function mapEffects(effects) {
+  const problem = coherenceError(effects);
+  if (problem) throw new RangeError('incoherent effects: ' + problem);
 
-  const { lane, bucket } = CAMPAIGN_LANES[campaignCode];
-  const row = OUTCOMES_BY_KEY[outcome];
   const increments = Object.create(null);
-
-  if (lane === 'servicing') {
-    // Decision 4. The attempt and the reach, and NOTHING in the new-business
-    // lane. dials, dialsByType and telContacts are absent BY CONSTRUCTION —
-    // there is no branch in here that could add them.
-    increments.serviceCalls = 1;
-    if (row.reached) increments.serviceContacts = 1;
-  } else {
-    // Decision 1: +1 to the total AND +1 to exactly one bucket, always
-    // together. The partition holds because these two lines are inseparable.
-    increments.dials = 1;
-    increments['dialsByType.' + bucket] = 1;
-    if (row.reached) increments.telContacts = 1;
+  for (const row of EFFECT_TABLE) {
+    if (!row.when(effects)) continue;
+    const field = typeof row.field === 'function' ? row.field(effects) : row.field;
+    increments[field] = 1;
   }
 
-  // Lane-independent consequences. An appointment is an appointment whether it
-  // came from a cold call or a portfolio review, and a name is a name.
-  if (row.booking) increments.appointmentsSet = 1;
-  if (row.ffi) increments.ffisScheduled = 1;
-  if (row.newName) increments.newNamesAdded = 1;
-
-  return { increments, lane, bucket, reached: Boolean(row.reached) };
+  return {
+    increments,
+    lane: effects.lane,
+    bucket: effects.bucket,
+    reached: effects.reached,
+  };
 }
+
+/**
+ * LEGAL_EFFECT_SETS — every effect set this endpoint will ever accept.
+ *
+ * The full cross-product of lane × bucket × the four booleans, filtered by
+ * coherenceError ITSELF, so the enumeration and the validator cannot disagree.
+ * Small enough to enumerate exhaustively (4 lane/bucket shapes × 16 boolean
+ * combinations, less the illegal ffi-without-booking quarter), which is why
+ * WRITABLE_FIELDS below can be a derivation rather than a sample.
+ */
+const LEGAL_EFFECT_SETS = Object.freeze(
+  (() => {
+    const out = [];
+    const shapes = [
+      ...INGEST_BUCKETS.map((bucket) => ({ lane: 'newBusiness', bucket })),
+      { lane: 'servicing', bucket: null },
+    ];
+    for (const shape of shapes) {
+      for (let mask = 0; mask < 1 << EFFECT_FLAGS.length; mask += 1) {
+        const set = { ...shape };
+        EFFECT_FLAGS.forEach((flag, i) => {
+          set[flag] = Boolean(mask & (1 << i));
+        });
+        if (coherenceError(set) === null) out.push(Object.freeze(set));
+      }
+    }
+    return out;
+  })(),
+);
 
 /**
  * WRITABLE_FIELDS — every dailyActivity field this endpoint may EVER touch.
  *
- * DERIVED by running every legal (campaign, outcome) pair through mapCall, so it
- * cannot drift from what mapCall actually emits. A hand-written literal here
- * would be a twin of the tables above.
+ * DERIVED by running every legal effect set through mapEffects, so it cannot
+ * drift from what mapEffects actually emits. A hand-written literal here would
+ * be a twin of the table above.
  *
- * The endpoint uses it as a write allow-list. Nothing else on the weekly report
- * comes from a phone call — API, apps, lives, hours, F2F, social and letters are
- * out of scope and must stay untouched. Asserted against
- * src/lib/schema/dailyActivity.js in the tests, so a schema rename breaks a test
- * rather than silently writing a field that no longer exists.
+ * ⚠ IT IS A DRIFT GUARD, NOT A RUNTIME ALLOW-LIST. Slice B's comment claimed the
+ * endpoint used it to gate writes; it never did — ingestCallActivity.js does not
+ * import it, and did not in slice B either. What it ACTUALLY does is fail a test
+ * in outcomeMap.test.js if this mapping ever grows a field that is absent from
+ * src/lib/schema/dailyActivity.js, or reaches outside the call surface. That is
+ * real value and worth keeping; the claim that it guarded the write path was not
+ * true, and it has been removed rather than made true, because wiring it into
+ * the transaction is a behaviour change this slice was not scoped to make.
+ * Banked as a follow-up instead.
  */
 const WRITABLE_FIELDS = Object.freeze(
   Array.from(
-    CAMPAIGN_CODES.reduce((set, c) => {
-      for (const o of OUTCOME_KEYS) {
-        for (const f of Object.keys(mapCall(c, o).increments)) set.add(f);
-      }
+    LEGAL_EFFECT_SETS.reduce((set, effects) => {
+      for (const f of Object.keys(mapEffects(effects).increments)) set.add(f);
       return set;
     }, new Set()),
   ).sort(),
 );
 
 module.exports = {
-  CALL_OUTCOMES,
-  OUTCOME_KEYS,
-  CAMPAIGN_LANES,
-  CAMPAIGN_CODES,
+  LANES,
   DIAL_BUCKETS,
+  INGEST_BUCKETS,
+  EFFECT_FLAGS,
+  EFFECT_TABLE,
+  LEGAL_EFFECT_SETS,
   WRITABLE_FIELDS,
-  isKnownOutcome,
-  isKnownCampaign,
-  mapCall,
+  coherenceError,
+  mapEffects,
 };
