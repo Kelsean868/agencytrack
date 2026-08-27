@@ -31,9 +31,14 @@ exports.validateKioskToken = require('./kiosk/validateToken').validateKioskToken
 exports.createKioskToken   = require('./kiosk/createToken').createKioskToken;
 exports.revokeKioskToken   = require('./kiosk/revokeToken').revokeKioskToken;
 
-// Linked call sources (slice A) — the link and its lifecycle. No ingest yet.
+// Linked call sources (slice A) — the link and its lifecycle.
 exports.createCallSource = require('./callSources/createCallSource').createCallSource;
 exports.revokeCallSource = require('./callSources/revokeCallSource').revokeCallSource;
+
+// Slice B — the endpoint that CONSUMES the token. One HTTP request per call from
+// KQM Calls; identity comes from the token, never the payload. This is the first
+// thing that writes an agent's KPIs from outside AgencyTrack.
+exports.ingestCallActivity = require('./callActivity/ingestCallActivity').ingestCallActivity;
 const { revokeInboundLinks } = require('./callSources/revokeInboundLinks');
 
 // E6: Agent of the Month — manager-approved monthly recognition

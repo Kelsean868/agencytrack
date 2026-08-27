@@ -235,32 +235,43 @@ describe('aggregateDailyToWeekly CJS twin — daily v2 call split', () => {
     expect(out.referralsObtained).toBe(3);
   });
 
-  test('serviceCalls is absent when only serviceContacts is present', () => {
+  test('serviceCalls is 0 — NOT absent — when only serviceContacts is present', () => {
     const out = aggregateDailyToWeekly([{ serviceContacts: 9 }], 0);
     expect(out.serviceContacts).toBe(9);
-    // Absent, not 0 — the omit-when-zero guard.
-    expect(out).not.toHaveProperty('serviceCalls');
+    // Slice B retired the guard for this field: serviceCalls now has a daily
+    // writer (functions/callActivity/ingestCallActivity.js), so a derived 0 is
+    // a real fact about the week and must overwrite a stale typed value.
+    expect(out.serviceCalls).toBe(0);
   });
 });
 
-// -- the omit-when-zero guard (CJS twin) --------------------------------------
+// -- the omit-when-zero guard, NOW HALF RETIRED (CJS twin) --------------------
 //
-// serviceCalls and referralsObtained are the ONLY two keys this aggregator
-// conditionally omits. Neither has a daily writer yet (the KQM Calls ingest
-// endpoint is unbuilt), so emitting a derived 0 into a { merge: true } write
-// would erase an agent-entered weekly value and put nothing in its place.
-// referralsObtained is worth 3pt, so the loss is visible on the score.
+// The guard was conditioned on a field having NO daily writer: emitting a
+// derived 0 into a { merge: true } write would erase an agent-entered weekly
+// value and put nothing in its place.
+//
+// Slice B (26 Aug 2026) made functions/callActivity/ingestCallActivity.js the
+// daily writer for `serviceCalls` — a Portfolio call writes it directly. The
+// guard's own exit condition is therefore met for that field and ONLY that
+// field, so it is now ALWAYS WRITTEN and derived wins over typed, exactly as it
+// does for the four call fields.
+//
+// `referralsObtained` KEEPS its guard. Slice B does not write it: a KQM referral
+// outcome maps to `newNamesAdded` (the new prospect produced), not to a referral
+// credited on the weekly report. It is worth 3pt, so erasing a typed value would
+// be visible on the score. That half retires when something writes it daily.
 
-describe('aggregateDailyToWeekly - omit-when-zero guard', () => {
-  test('omits both keys when no entry carries them', () => {
+describe('aggregateDailyToWeekly - omit-when-zero guard (half retired)', () => {
+  test('serviceCalls is written as 0; referralsObtained is still omitted', () => {
     const out = aggregateDailyToWeekly([{ dials: 5 }], 0);
-    expect(out).not.toHaveProperty('serviceCalls');
+    expect(out.serviceCalls).toBe(0);
     expect(out).not.toHaveProperty('referralsObtained');
   });
 
-  test('omits both keys when every entry carries an explicit 0', () => {
+  test('same when every entry carries an explicit 0', () => {
     const out = aggregateDailyToWeekly([{ dials: 5, serviceCalls: 0, referralsObtained: 0 }], 0);
-    expect(out).not.toHaveProperty('serviceCalls');
+    expect(out.serviceCalls).toBe(0);
     expect(out).not.toHaveProperty('referralsObtained');
   });
 
@@ -276,10 +287,12 @@ describe('aggregateDailyToWeekly - omit-when-zero guard', () => {
     expect(out.referralsObtained).toBe(1);
   });
 
-  test('a merge of the zero-case leaves agent-entered values intact', () => {
+  test('a zero-case merge CORRECTS a stale serviceCalls and spares referralsObtained', () => {
+    // This is the defect the retirement exists to fix. Before slice B a week
+    // with genuinely zero service calls left the agent-typed 4 standing.
     const priorDraft = { serviceCalls: 4, referralsObtained: 2, coldCalls: 99 };
     const merged = Object.assign({}, priorDraft, aggregateDailyToWeekly([{ dials: 8 }], 0));
-    expect(merged.serviceCalls).toBe(4);
+    expect(merged.serviceCalls).toBe(0);
     expect(merged.referralsObtained).toBe(2);
     // The four call fields still overwrite - deliberately always written.
     expect(merged.coldCalls).toBe(8);
