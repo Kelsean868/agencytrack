@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { X, Plus, Loader2, Check, Minus, Flame } from 'lucide-react';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import { useAuth } from '../../context/AuthContext';
@@ -8,6 +8,7 @@ import {
   getDailyEntriesForWeek,
 } from '../../services/dailyActivityService';
 import { createEmptyDailyEntry, getSundayOf } from '../../lib/schema/dailyActivity';
+import { buildDailyPatch, detectConflicts, describeConflict } from '../../lib/schema/dailyPatch';
 import { getDraft } from '../../services/submissionService';
 import { aggregateCurrentWeekDaily } from '../../services/loggingModeService';
 import { getTodayTT } from '../../utils/dateInputs';
@@ -541,6 +542,25 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit, seedCounts = n
   const [data, setData]         = useState(() =>
     createEmptyDailyEntry(today, user?.uid ?? '', agentName)
   );
+  // ── The two-writer guard (slice D) ───────────────────────────────────────
+  // The daily doc is written by this form in ABSOLUTE values and by
+  // functions/callActivity/ingestCallActivity.js in INCREMENTS, all day, with
+  // nobody watching. Saving the whole form wrote `dials: 0` over every call KQM
+  // had logged since the form loaded. So we now send ONLY what the agent
+  // actually touched, and merge:true leaves the rest exactly as the ingest left
+  // it. See src/lib/schema/dailyPatch.js for the full reasoning.
+  //
+  // Refs, not state: neither value should ever trigger a re-render, and both
+  // must be readable inside handleSave without being stale.
+  const dirtyRef    = useRef(new Set());
+  const baselineRef = useRef({});
+  const markDirty   = useCallback((key) => { dirtyRef.current.add(key); }, []);
+
+  // Set when a save would overwrite calls that landed while the form was open.
+  // Holds the conflict list from detectConflicts(); the banner offers the agent
+  // the choice rather than picking for them.
+  const [conflicts, setConflicts] = useState(null);
+
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
   const [savedAt, setSavedAt]   = useState(null);
@@ -574,6 +594,11 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit, seedCounts = n
     setError('');
     setErrorKind('');
     setSavedAt(null);
+    // A different day is a different document: nothing typed against the old
+    // one may leak into the write for this one.
+    dirtyRef.current = new Set();
+    baselineRef.current = {};
+    setConflicts(null);
     // Reset to empty for the new date, then overlay with any saved data.
     setData(createEmptyDailyEntry(selectedDate, user.uid, agentName));
     // Collapse optional sections until we know if they have data.
@@ -590,6 +615,18 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit, seedCounts = n
     getDailyEntry(tenantId, user.uid, selectedDate)
       .then((existing) => {
         if (!active) return;
+        // The values as they stood when this form opened. detectConflicts
+        // compares against these at save time to notice calls that landed
+        // while the agent was typing.
+        baselineRef.current = existing ?? {};
+        // A planner handoff seed is a value the agent accepted by opening the
+        // form, so it must survive the save the same way a typed value does.
+        // Marked dirty rather than special-cased: if a future seed ever covers
+        // an ingest-written field, detectConflicts catches it at save time
+        // instead of it being lost silently.
+        if (applySeed && seedCounts) {
+          for (const key of Object.keys(seedCounts)) markDirty(key);
+        }
         if (existing) {
           setData((prev) => blankFillSeed({ ...prev, ...existing }, applySeed ? seedCounts : null));
           if (
@@ -631,7 +668,10 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit, seedCounts = n
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [user?.uid, selectedDate, tenantId, agentName, loadRetryToken, seedCounts, today]);
+    // markDirty is a useCallback with no deps, so it is stable and adding it
+    // cannot re-run this effect — it is listed to keep the rule honest rather
+    // than silenced, which is what stops the NEXT addition being silenced too.
+  }, [user?.uid, selectedDate, tenantId, agentName, loadRetryToken, seedCounts, today, markDirty]);
 
   // ── Week-level read: chips + strip ───────────────────────────────────────
   const refreshWeekDocs = useCallback(async () => {
@@ -750,30 +790,71 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit, seedCounts = n
     (intOrZero(data.solutionPresentations) > 0 ? 1 : 0);
 
   // ── Field setters ─────────────────────────────────────────────────────────
-  const handleChange = (name, value) =>
+  // Every setter marks its TOP-LEVEL key dirty. That key is the unit the write
+  // travels in — a nested map is written whole — so marking the leaf would be
+  // both wrong and useless.
+  const handleChange = (name, value) => {
+    markDirty(name);
     setData((prev) => ({ ...prev, [name]: value }));
+  };
 
-  const nbChange  = (field, value) =>
+  const nbChange  = (field, value) => {
+    markDirty('newBusiness');
     setData((prev) => ({ ...prev, newBusiness: { ...prev.newBusiness, [field]: value } }));
-  const pppChange = (field, value) =>
+  };
+  const pppChange = (field, value) => {
+    markDirty('pppIncreases');
     setData((prev) => ({ ...prev, pppIncreases: { ...prev.pppIncreases, [field]: value } }));
-  const lmpsChange = (field, value) =>
+  };
+  const lmpsChange = (field, value) => {
+    markDirty('lumpsums');
     setData((prev) => ({ ...prev, lumpsums: { ...prev.lumpsums, [field]: value } }));
-  const spbChange  = (field, value) =>
+  };
+  const spbChange  = (field, value) => {
+    markDirty('socialPlatformBreakdown');
     setData((prev) => ({
       ...prev,
       socialPlatformBreakdown: { ...prev.socialPlatformBreakdown, [field]: value },
     }));
+  };
 
   // ── Save ──────────────────────────────────────────────────────────────────
-  const handleSave = async () => {
+  const handleSave = async ({ overwriteConflicts = false } = {}) => {
     if (!user?.uid) return;
     setSaving(true);
     setError('');
     setErrorKind('');
+    setConflicts(null);
     try {
+      // ── The two-writer check ───────────────────────────────────────────
+      // Re-read immediately before writing. Any ingest-written field the agent
+      // TOUCHED that has moved since the form loaded means KQM calls landed
+      // while they were typing, and this save would discard them.
+      //
+      // Fields the agent did NOT touch need no check at all — buildDailyPatch
+      // leaves them out of the write entirely, so merge:true preserves them.
+      // That is the case this whole mechanism exists for, and it is handled
+      // without ever asking the agent anything.
+      if (!overwriteConflicts) {
+        const stored = await getDailyEntry(tenantId, user.uid, selectedDate).catch(() => null);
+        const found = detectConflicts(baselineRef.current, stored, dirtyRef.current, data);
+        if (found.length > 0) {
+          // Stop and ask. Picking for them would be picking WRONG for one of
+          // the two writers, silently, on a number a manager will read.
+          setConflicts(found);
+          setSaving(false);
+          return;
+        }
+      }
+
+      // Only what the agent touched. See src/lib/schema/dailyPatch.js.
+      const patch = buildDailyPatch(data, dirtyRef.current);
+
       // Daily doc MUST persist first (Decision #4).
-      await saveDailyEntry(tenantId, user.uid, agentName, selectedDate, data);
+      await saveDailyEntry(tenantId, user.uid, agentName, selectedDate, patch);
+      // Written values are now the baseline, and nothing is outstanding.
+      baselineRef.current = { ...baselineRef.current, ...patch };
+      dirtyRef.current = new Set();
       setSavedAt(new Date());
       const postSaveDocs = await refreshWeekDocs();
       // Best-effort: recompute the current week's weekly DRAFT from the daily
@@ -1219,6 +1300,49 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit, seedCounts = n
               </div>
             </div>
 
+            {/* Calls landed while this form was open, on a field the agent
+                also typed into. Neither number is knowably right, so the agent
+                chooses — and the KQM figure is offered FIRST because it is the
+                counted one. */}
+            {conflicts && conflicts.length > 0 && (
+              <div
+                role="alert"
+                data-testid="dcv2-call-conflict"
+                className="rounded-lg border border-warning/50 bg-warning/10 p-3 space-y-2"
+              >
+                <p className="text-sm font-semibold text-ink">
+                  Calls came in while you had this open
+                </p>
+                <ul className="text-sm text-ink/80 space-y-1">
+                  {conflicts.map((c) => (
+                    <li key={c.field}>{describeConflict(c)}</li>
+                  ))}
+                </ul>
+                <div className="flex items-center gap-2 flex-wrap pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Take KQM's figures: drop those fields from the write so
+                      // merge:true leaves what the ingest put there untouched.
+                      for (const c of conflicts) dirtyRef.current.delete(c.field);
+                      setConflicts(null);
+                      handleSave({ overwriteConflicts: true });
+                    }}
+                    className="min-h-[44px] inline-flex items-center px-4 rounded-lg bg-primary text-white text-sm font-semibold"
+                  >
+                    Keep the KQM numbers
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSave({ overwriteConflicts: true })}
+                    className="min-h-[44px] inline-flex items-center px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
+                  >
+                    Use mine instead
+                  </button>
+                </div>
+              </div>
+            )}
+
             {error && (
               <div role="alert" className="flex items-center justify-between gap-3 flex-wrap">
                 <p className="text-sm text-danger-ink flex-1">{error}</p>
@@ -1265,7 +1389,7 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit, seedCounts = n
 
           <button
             type="button"
-            onClick={handleSave}
+            onClick={() => handleSave()}
             disabled={saving || loading || !!savedAt}
             data-testid="dcv2-save"
             className="w-full h-12 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-base hover:bg-primary/90 dark:hover:bg-primary transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
