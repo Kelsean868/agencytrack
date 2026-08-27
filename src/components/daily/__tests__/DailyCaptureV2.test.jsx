@@ -38,6 +38,7 @@ import {
   sumWeekApi,
 } from '../DailyCaptureV2.helpers';
 import { computeTotalProductionCredit, computeLumpsumCredit } from '../../../lib/schema/weeklyReport.computations';
+import { createEmptyDailyEntry } from '../../../lib/schema/dailyActivity';
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -152,21 +153,18 @@ describe('DailyCaptureV2', () => {
     });
   });
 
-  it('Save writes the entry shape with verified storage keys (no stale-cased keys)', async () => {
-    render(<DailyCaptureV2 onClose={vi.fn()} />);
-    const save = await screen.findByTestId('dcv2-save');
-    await waitFor(() => expect(save).not.toBeDisabled());
-    fireEvent.click(save);
-    await waitFor(() => expect(hoisted.saveDailyEntry).toHaveBeenCalled());
+  // ── THE KEY-NAME GUARD, MOVED OFF THE SAVE PATH ─────────────────────────
+  // This assertion used to ride on a Save, because Save wrote every field.
+  // Since slice D it writes only what the agent TOUCHED, so asserting every key
+  // on a save would be asserting the exact bug that slice fixed — an untouched
+  // `dials` in the write is what destroyed the day's KQM calls.
+  //
+  // The names are defined by createEmptyDailyEntry, so the guard now points
+  // there. That is strictly stronger: it catches a stale-cased key whether or
+  // not any UI happens to write it.
+  it('the daily entry shape carries the verified storage keys (no stale-cased keys)', () => {
+    const entry = createEmptyDailyEntry('2026-08-26', 'agent1', 'Test Agent');
 
-    const args = hoisted.saveDailyEntry.mock.calls[0];
-    expect(args[0]).toBe('tenant1');
-    expect(args[1]).toBe('agent1');
-    expect(args[2]).toBe('Test Agent');
-    expect(typeof args[3]).toBe('string');   // date
-    const entry = args[4];
-
-    // Verified source keys must be present in the entry shape:
     for (const k of [
       'qualifiedApproaches', 'appointmentsSet', 'ffisScheduled', 'ffiConducted',
       'solutionPresentations', 'newCIBooked', 'oldCIBooked', 'ciConducted',
@@ -184,6 +182,49 @@ describe('DailyCaptureV2', () => {
     expect(entry).not.toHaveProperty('cisConducted');
     expect(entry).not.toHaveProperty('newCisBooked');
     expect(entry).not.toHaveProperty('oldCisBooked');
+  });
+
+  // ── THE SLICE-D CONTRACT ────────────────────────────────────────────────
+  // The daily doc has two writers: this form (absolute values) and
+  // functions/callActivity/ingestCallActivity.js (FieldValue.increment, all
+  // day, unattended). setDoc merge:true leaves an ABSENT key alone and lets a
+  // PRESENT one overwrite — so the only safe write is one that omits every
+  // field the agent did not touch.
+  it('Save writes ONLY the touched fields, so KQM increments survive', async () => {
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    const save = await screen.findByTestId('dcv2-save');
+    await waitFor(() => expect(save).not.toBeDisabled());
+
+    fireEvent.click(screen.getByRole('button', { name: /FFIs conducted increase/i }));
+    fireEvent.click(save);
+    await waitFor(() => expect(hoisted.saveDailyEntry).toHaveBeenCalled());
+
+    const args = hoisted.saveDailyEntry.mock.calls[0];
+    expect(args[0]).toBe('tenant1');
+    expect(args[1]).toBe('agent1');
+    expect(args[2]).toBe('Test Agent');
+    expect(typeof args[3]).toBe('string');   // date
+
+    // Exactly the touched field, and nothing else.
+    expect(args[4]).toEqual({ ffiConducted: 1 });
+
+    // The fields the ingest owns are the ones that must never ride along
+    // untouched — this is the assertion that would have caught the bug.
+    for (const k of ['dials', 'dialsByType', 'telContacts', 'serviceCalls',
+                     'serviceContacts', 'appointmentsSet', 'newNamesAdded', 'ffisScheduled']) {
+      expect(args[4]).not.toHaveProperty(k);
+    }
+  });
+
+  it('Save with nothing touched writes an empty patch (the doc is left alone)', async () => {
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    const save = await screen.findByTestId('dcv2-save');
+    await waitFor(() => expect(save).not.toBeDisabled());
+    fireEvent.click(save);
+    await waitFor(() => expect(hoisted.saveDailyEntry).toHaveBeenCalled());
+    // saveDailyEntry still stamps date/agent/updatedAt itself, which is what
+    // creates the day's doc; none of the agent's numbers are re-asserted.
+    expect(hoisted.saveDailyEntry.mock.calls[0][4]).toEqual({});
   });
 
   it('stepper "+" increments the bound storage key and Save writes it', async () => {
@@ -216,13 +257,18 @@ describe('DailyCaptureV2', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/save failed/i));
     expect(hoisted.saveDailyEntry).toHaveBeenCalledTimes(1);
-    expect(hoisted.getDailyEntry).toHaveBeenCalledTimes(1); // unchanged — Retry must not re-trigger the load path
+    // 1 load + 1 pre-save re-read. Slice D made every save re-read the doc
+    // first, to notice KQM calls that landed while the form was open, so
+    // getDailyEntry no longer tells the two paths apart on its own. What still
+    // does: each save attempt adds EXACTLY ONE read. A Retry that wrongly
+    // re-ran the load path would add its own read on top of the save's.
+    expect(hoisted.getDailyEntry).toHaveBeenCalledTimes(2);
 
     fireEvent.click(screen.getByRole('button', { name: /retry/i }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(hoisted.saveDailyEntry).toHaveBeenCalledTimes(2);
-    expect(hoisted.getDailyEntry).toHaveBeenCalledTimes(1);
+    expect(hoisted.getDailyEntry).toHaveBeenCalledTimes(3); // +1 for the retry's own pre-save read
   });
 
   it('refreshes the count strip after a successful Save', async () => {
@@ -340,14 +386,11 @@ describe('DailyCaptureV2', () => {
     vi.useRealTimers();
   });
 
-  it('Save includes all Phase 1b fields (livesSold, policiesDelivered, officeHours, fieldHours, dials, telContacts, f2fAttempts)', async () => {
-    render(<DailyCaptureV2 onClose={vi.fn()} />);
-    const save = await screen.findByTestId('dcv2-save');
-    await waitFor(() => expect(save).not.toBeDisabled());
-    fireEvent.click(save);
-    await waitFor(() => expect(hoisted.saveDailyEntry).toHaveBeenCalled());
-    const entry = hoisted.saveDailyEntry.mock.calls[0][4];
-    // Phase 1b fields must be present in the saved shape
+  // Same move as the key-name guard above: the Phase 1b fields are part of the
+  // ENTRY SHAPE, and asserting them on a save now would assert the pre-slice-D
+  // write-everything behaviour. The shape is checked at its source.
+  it('the entry shape includes all Phase 1b fields', () => {
+    const entry = createEmptyDailyEntry('2026-08-26', 'agent1', 'Test Agent');
     for (const k of [
       'dials', 'telContacts', 'f2fAttempts',
       'prospectingLettersSent', 'seminarsConducted',
@@ -360,6 +403,89 @@ describe('DailyCaptureV2', () => {
     expect(entry.socialPlatformBreakdown).toEqual(
       expect.objectContaining({ facebook: 0, instagram: 0, whatsapp: 0, linkedin: 0 })
     );
+  });
+
+  // …and that each of those inputs still REACHES the write when the agent
+  // actually uses it. The shape test above and this one together cover what the
+  // single write-everything test used to: the names are right, and the binding
+  // from input to stored key is intact.
+  it('a typed Phase 1b field reaches the write', async () => {
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    const save = await screen.findByTestId('dcv2-save');
+    await waitFor(() => expect(save).not.toBeDisabled());
+
+    fireEvent.click(screen.getByRole('button', { name: /Dials \(total calls\) increase/i }));
+    fireEvent.click(save);
+    await waitFor(() => expect(hoisted.saveDailyEntry).toHaveBeenCalled());
+    expect(hoisted.saveDailyEntry.mock.calls[0][4]).toEqual({ dials: 1 });
+  });
+
+  // ── The conflict half of slice D ────────────────────────────────────────
+  // Omitting untouched fields closes the common case silently. It cannot close
+  // the case where the agent TYPES into a field KQM also writes — there the two
+  // writers genuinely disagree and only a person can settle it. So the save
+  // stops and asks rather than picking, which is the whole difference between
+  // this and losing the numbers quietly.
+  it('stops and asks when KQM calls landed on a field the agent typed', async () => {
+    let reads = 0;
+    hoisted.getDailyEntry.mockImplementation(async () =>
+      (++reads === 1 ? { dials: 0 } : { dials: 14 }));
+
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    const save = await screen.findByTestId('dcv2-save');
+    await waitFor(() => expect(save).not.toBeDisabled());
+
+    fireEvent.click(screen.getByRole('button', { name: /Dials \(total calls\) increase/i }));
+    fireEvent.click(save);
+
+    const banner = await screen.findByTestId('dcv2-call-conflict');
+    expect(banner).toHaveTextContent(/KQM Calls logged 14/i);
+    // Nothing was written — the agent has not chosen yet.
+    expect(hoisted.saveDailyEntry).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /keep the kqm numbers/i }));
+    await waitFor(() => expect(hoisted.saveDailyEntry).toHaveBeenCalled());
+    // Keeping KQM's number means dropping the field from the write entirely, so
+    // merge:true leaves the ingest's 14 in place.
+    expect(hoisted.saveDailyEntry.mock.calls[0][4]).not.toHaveProperty('dials');
+  });
+
+  it('"Use mine instead" writes the agent’s number over the ingest', async () => {
+    let reads = 0;
+    hoisted.getDailyEntry.mockImplementation(async () =>
+      (++reads === 1 ? { dials: 0 } : { dials: 14 }));
+
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    const save = await screen.findByTestId('dcv2-save');
+    await waitFor(() => expect(save).not.toBeDisabled());
+
+    fireEvent.click(screen.getByRole('button', { name: /Dials \(total calls\) increase/i }));
+    fireEvent.click(save);
+    await screen.findByTestId('dcv2-call-conflict');
+
+    fireEvent.click(screen.getByRole('button', { name: /use mine instead/i }));
+    await waitFor(() => expect(hoisted.saveDailyEntry).toHaveBeenCalled());
+    expect(hoisted.saveDailyEntry.mock.calls[0][4]).toEqual({ dials: 1 });
+  });
+
+  it('does NOT ask when the moved field is one the agent never touched', async () => {
+    // The common case, and the one that must never interrupt anybody: KQM
+    // logged calls all day, the agent typed something unrelated. No banner, and
+    // `dials` simply is not in the write.
+    let reads = 0;
+    hoisted.getDailyEntry.mockImplementation(async () =>
+      (++reads === 1 ? { dials: 0 } : { dials: 14 }));
+
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    const save = await screen.findByTestId('dcv2-save');
+    await waitFor(() => expect(save).not.toBeDisabled());
+
+    fireEvent.click(screen.getByRole('button', { name: /FFIs conducted increase/i }));
+    fireEvent.click(save);
+
+    await waitFor(() => expect(hoisted.saveDailyEntry).toHaveBeenCalled());
+    expect(screen.queryByTestId('dcv2-call-conflict')).toBeNull();
+    expect(hoisted.saveDailyEntry.mock.calls[0][4]).toEqual({ ffiConducted: 1 });
   });
 
   it('loading skeleton (PanelSkeleton) is shown while getDailyEntry is pending', () => {
