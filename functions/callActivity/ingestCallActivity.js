@@ -50,12 +50,30 @@ const { mapCall, isKnownOutcome, isKnownCampaign } = require('./outcomeMap');
 const { resolveCallSource } = require('./resolveCallSource');
 
 /**
- * SEC-9c: hardcoded, matching functions/index.js:57 and
- * aggregators/sundayDailyToWeekly.js. Scheduled/unauthenticated-function tenant
- * isolation is deferred to that ticket; see resolveCallSource.js for why this
- * slice follows the convention rather than reaching for a collection group.
+ * Resolved from the environment, defaulting to the production tenant.
+ *
+ * ⚠ THE DEFAULT IS LOAD-BEARING: with no env var set, this is byte-identical to
+ * the hardcoded constant it replaces, so production behaviour cannot drift.
+ * Firebase loads `functions/.env.<projectId>` at deploy time, so the staging
+ * project gets `staging_test` and production gets the default.
+ *
+ * WHY THIS STOPPED BEING A CONSTANT. It was hardcoded following the SEC-9c
+ * convention in index.js:62, and banked as MEDIUM: "a second tenant's tokens
+ * would 401 — failing closed, but silently". Running the staging smoke showed
+ * that rating was too generous. The consequence is not a hypothetical second
+ * tenant: a token minted in staging (tenant `staging_test`) resolves against
+ * `tenants/tatillife_south/callSources/…`, which does not exist in the staging
+ * project, so it 401s indistinguishably from a forged token. The endpoint was
+ * therefore **impossible to exercise anywhere but production** — and the one
+ * proof this slice still owes is a staging smoke. A constant that makes a
+ * feature untestable outside production is not a deferred nicety.
+ *
+ * index.js:62 and aggregators/sundayDailyToWeekly.js:30 still hardcode it.
+ * Deliberately not changed here: they are scheduled functions, and in staging
+ * they simply find no data under the production tenant and do nothing. Banked
+ * rather than swept in, so this diff stays inside its file inventory.
  */
-const TENANT_ID = 'tatillife_south';
+const TENANT_ID = process.env.AGENCYTRACK_TENANT_ID || 'tatillife_south';
 
 /** Trinidad is UTC-4 year round. No DST — that is why a constant is honest here. */
 const TT_OFFSET_MS = 4 * 60 * 60 * 1000;

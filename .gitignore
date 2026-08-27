@@ -145,6 +145,19 @@ graphify-out/????-??-??/
 # by the .env.* rule above.
 !.env.staging.example
 
+# EXCEPTION — functions/.env.agencytrack-staging holds a TENANT ID, not a
+# credential, and is tracked on purpose. Firebase loads .env.<projectId> at
+# deploy time; without this file a staging functions deploy silently falls back
+# to the PRODUCTION tenant, and every staging call-source token then 401s
+# indistinguishably from a forged one. That is not hypothetical — it is exactly
+# what blocked slice B's staging smoke on 2026-08-26.
+#
+# This negation must stay AFTER the `.env.*` rule above: in .gitignore the LAST
+# matching pattern wins, so the same line placed earlier does nothing.
+#
+# NEVER add secrets to that file. It is tracked.
+!functions/.env.agencytrack-staging
+
 # Motion verifier capture output (frames, meta, mp4/gif artifacts) — never committed
 scripts/verification/out/
 
