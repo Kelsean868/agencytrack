@@ -1,16 +1,16 @@
-# Graph Report - AgencyTrack  (2026-08-26)
+# Graph Report - agencytrack  (2026-08-27)
 
 ## Corpus Check
-- 2745 files · ~13,090,773 words
+- 2761 files · ~13,186,924 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 29753 nodes · 39443 edges · 2219 communities (1998 shown, 221 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 381 edges (avg confidence: 0.81)
+- 29952 nodes · 39981 edges · 2222 communities (2002 shown, 220 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 619 edges (avg confidence: 0.81)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `f11aa505`
+- Built from commit: `7e094f11`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1945,6 +1945,8 @@
 - [[_COMMUNITY_Community 2199|Community 2199]]
 - [[_COMMUNITY_Community 2200|Community 2200]]
 - [[_COMMUNITY_Community 2201|Community 2201]]
+- [[_COMMUNITY_Community 2202|Community 2202]]
+- [[_COMMUNITY_Community 2203|Community 2203]]
 - [[_COMMUNITY_Community 2206|Community 2206]]
 - [[_COMMUNITY_Community 2207|Community 2207]]
 - [[_COMMUNITY_Community 2209|Community 2209]]
@@ -1961,15 +1963,15 @@
 - [[_COMMUNITY_Community 2224|Community 2224]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `AgencyTrack — Follow-Up Items` - 580 edges
-2. `setupBypassSession()` - 378 edges
+1. `AgencyTrack — Follow-Up Items` - 587 edges
+2. `setupBypassSession()` - 382 edges
 3. `formatCurrency()` - 252 edges
 4. `Lucide React` - 200 edges
 5. `AgencyTrack — Follow-Up Items Archive` - 181 edges
 6. `useAuth()` - 176 edges
-7. `captureConsoleAndNetwork()` - 172 edges
+7. `captureConsoleAndNetwork()` - 174 edges
 8. `safeLog()` - 169 edges
-9. `formatCaptureReport()` - 164 edges
+9. `formatCaptureReport()` - 166 edges
 10. `waitForFirebaseReady()` - 120 edges
 
 ## Surprising Connections (you probably didn't know these)
@@ -2016,23 +2018,23 @@
 - **Nexus S3a Full Detail 4-Viewport Screenshot Set** —  [INFERRED 0.95]
 - **Nexus S3b Full Screenshot Set (partial — 3 of 4 in chunk)** —  [INFERRED 0.85]
 
-## Communities (2219 total, 221 thin omitted)
+## Communities (2222 total, 220 thin omitted)
 
 ### Community 0 - "Activity Standards Smoke Tests"
-Cohesion: 0.02
-Nodes (138): BranchesPanel(), GLYPHS, ROWS, CallSourcesTab(), CampaignPanel(), CommissionPlayground(), TABS, CompanyConfigSurface() (+130 more)
+Cohesion: 0.04
+Nodes (48): humaniseSlug(), resolveBranchName(), GLYPHS, ROWS, AgentDashboard(), BOTTOM_NAV, CRODashboard(), DRAWER_NAV (+40 more)
 
 ### Community 1 - "Shakedown Auth & Test Helpers"
 Cohesion: 0.12
 Nodes (22): assembleRoster(), assembleRosterRow(), computePctOfGoal(), containingMonth(), DEFAULT_PERIOD, filterSubmissionsByPeriod(), SORT_COLUMNS, sortRows() (+14 more)
 
 ### Community 2 - "Env Loading & Channel Split"
-Cohesion: 0.09
-Nodes (22): _cache, loadEnv(), admin, db, envVars, EXECUTE, require, env (+14 more)
+Cohesion: 0.01
+Nodes (158): _cache, loadEnv(), admin, db, envVars, EXECUTE, require, args (+150 more)
 
 ### Community 3 - "Core UI Components Hub"
-Cohesion: 0.04
-Nodes (56): FunnelMeetingScene(), ActivityScene(), AgentScene(), awardValueLabel(), CloseScene(), ExceptionsScene(), FloorTile(), aggregateLatestPersistency() (+48 more)
+Cohesion: 0.05
+Nodes (49): FunnelMeetingScene(), ActivityScene(), AgentScene(), awardValueLabel(), CloseScene(), ExceptionsScene(), FloorTile(), aggregateLatestPersistency() (+41 more)
 
 ### Community 4 - "Agent Dashboard & Goals Panel"
 Cohesion: 0.02
@@ -2040,7 +2042,7 @@ Nodes (156): createRunTracker(), decodeJwt(), __dir, firestoreGet(), firestoreQu
 
 ### Community 5 - "Manager Dashboard & Leaderboard"
 Cohesion: 0.02
-Nodes (153): setupBypassSession(), leg1_tenantAdminSetsStandards(), leg2_ownerOverlay(), leg3_browseOverlay(), leg4_editDeny(), leg5_lightDarkMobile(), main(), report() (+145 more)
+Nodes (146): setupBypassSession(), leg1_tenantAdminSetsStandards(), leg2_ownerOverlay(), leg3_browseOverlay(), leg4_editDeny(), leg5_lightDarkMobile(), main(), report() (+138 more)
 
 ### Community 6 - "Auth, Login & Admin Roles"
 Cohesion: 0.13
@@ -2048,7 +2050,7 @@ Nodes (21): admin, adminClearLicenseFields(), AGENT_EMAIL, contractStartForAtRis
 
 ### Community 7 - "Coaching Notes & Walk Helpers"
 Cohesion: 0.03
-Nodes (88): ROLE_LABELS, ROLE_ORDER, BulkImportGoalsModal(), CancelConfirmDialog(), BulkImportUsersModal(), CancelConfirmDialog(), ROLE_DISPLAY, AckModal() (+80 more)
+Nodes (86): ROLE_LABELS, ROLE_ORDER, BulkImportGoalsModal(), CancelConfirmDialog(), BulkImportUsersModal(), CancelConfirmDialog(), ROLE_DISPLAY, AckModal() (+78 more)
 
 ### Community 8 - "Smoke Runner Infrastructure"
 Cohesion: 0.02
@@ -2064,7 +2066,7 @@ Nodes (49): replaces, replaces, replaces, replaces, replaces, replaces, replaces
 
 ### Community 11 - "Commission Breakdown & MDRT"
 Cohesion: 0.02
-Nodes (86): EditConfigModal(), MONTH_NAMES, MonthTargetField(), MODE_LABELS, GoalCarousel(), TABS, usePrefersReducedMotion(), NewAgentEmptyState() (+78 more)
+Nodes (93): EditConfigModal(), MONTH_NAMES, MonthTargetField(), CATEGORY_TABS, RatioTrendCard(), groupByProgress(), AwardCard(), AwardDonut() (+85 more)
 
 ### Community 12 - "Coaching Notes & Joint Calls"
 Cohesion: 0.04
@@ -2079,12 +2081,12 @@ Cohesion: 0.03
 Nodes (75): agentId, agentName, annualReviews, apiSold, applicationsSold, appointmentsSet, ciConducted, coldCalls (+67 more)
 
 ### Community 15 - "A11y Walk Session 1"
-Cohesion: 0.09
-Nodes (26): isLegalAgentTransition(), ClawbackChip(), TONE_CLASS, FILTERS, confirmPolicy(), createPolicy(), getDeliverablePolicies(), getPolicyHistory() (+18 more)
+Cohesion: 0.04
+Nodes (71): BIZ_TYPES, EMPTY_FORM, FREQ_LABELS, FREQ_MULT, POLICY_CLASSES, PolicyLedgerPanel(), PRODUCT_LINES, isLegalAgentTransition() (+63 more)
 
 ### Community 16 - "A11y Walk Session 2"
-Cohesion: 0.01
-Nodes (220): finishSmoke(), installGlobalTimeout(), loginAs(), runBothThemes(), stamp(), waitForTheme(), agentPerTheme(), BASE (+212 more)
+Cohesion: 0.02
+Nodes (203): captureBearerToken(), finishSmoke(), installBearerTokenCapture(), installGlobalTimeout(), loginAs(), runBothThemes(), stamp(), waitForTheme() (+195 more)
 
 ### Community 17 - "A11y Walk Session 3"
 Cohesion: 0.06
@@ -2095,16 +2097,16 @@ Cohesion: 0.17
 Nodes (12): CommissionAnchorStrip(), CountUpCurrency(), CountUpPercent(), policy(), ts(), DEFAULT_MODE_MIX, gapToGoal(), latestPersistency() (+4 more)
 
 ### Community 19 - "Campaign V2 Mockups"
-Cohesion: 0.07
-Nodes (36): admin, buildLeaderboardDoc(), computeAndWriteLeaderboards(), computePriorRankByAgent(), computeWeeklyChampions(), dateMinusDays(), extractActivity(), extractApplicationsSold() (+28 more)
+Cohesion: 0.06
+Nodes (39): admin, buildLeaderboardDoc(), computeAndWriteLeaderboards(), computePriorRankByAgent(), computeWeeklyChampions(), dateMinusDays(), extractActivity(), extractApplicationsSold() (+31 more)
 
 ### Community 20 - "Manager Portal Components"
 Cohesion: 0.04
-Nodes (83): DailyAnchorStrip(), DailyCaptureV2(), DailyStreakTakeover(), floatOrZero(), formatDateShort(), computeStreak(), deriveWeekStripDays(), sumWeekApi() (+75 more)
+Nodes (75): DailyAnchorStrip(), DailyCaptureV2(), DailyStreakTakeover(), floatOrZero(), formatDateShort(), computeDayPoints(), computePaceState(), computeStreak() (+67 more)
 
 ### Community 21 - "E4"
-Cohesion: 0.04
-Nodes (40): NAV, QA, renderPalette(), hoisted, ON_TIME, ON_TIME_POST, renderPanel(), renderPanelPost() (+32 more)
+Cohesion: 0.05
+Nodes (28): renderTab(), hoisted, mountWithRole(), EMPTY_MY_PROD, hoisted, mountWithRole(), mkEntry(), renderCluster() (+20 more)
 
 ### Community 22 - "Verification Smoke Tests"
 Cohesion: 0.06
@@ -2115,8 +2117,8 @@ Cohesion: 0.04
 Nodes (47): Audit awardsEngine.js for V2 compatibility, Behavior, Centurion math nuance, CommissionPlayground: do NOT modify, Constraints, Discipline gates, Discovery first, Discovery scope (+39 more)
 
 ### Community 24 - "UI Mockups"
-Cohesion: 0.03
-Nodes (86): CommitConfirm(), CommitConsequence(), CommittedDone(), GoalsCascade(), LINE_META, MONTH_LABELS, PlanReview(), ReviewCommitModal() (+78 more)
+Cohesion: 0.02
+Nodes (97): ActivityItem(), formatRelativeTime(), BOTTOM_NAV, NAV_ITEMS, PROFILE_NAV_ITEM, SETTINGS_NAV_ITEM, ManagerOverviewTab(), SCOPE_LABEL (+89 more)
 
 ### Community 25 - "Agent"
 Cohesion: 0.04
@@ -2163,8 +2165,8 @@ Cohesion: 0.33
 Nodes (4): AGENTS, renderPanel(), SUBS, THIS_YEAR
 
 ### Community 36 - "Firebase Services"
-Cohesion: 0.06
-Nodes (39): AgentFinancingDrawer(), MONTH_NAMES, monthKeyLabel(), BASIS_STYLES, STATUS_STYLES, EMPTY_FORM, FinancingTermsSetup(), WRITE_ROLES (+31 more)
+Cohesion: 0.02
+Nodes (135): MarkDeliveredDialog(), AgentFinancingDrawer(), MONTH_NAMES, monthKeyLabel(), FinancingSelfView(), MONTH_NAMES, monthKeyLabel(), PaydownArcHero() (+127 more)
 
 ### Community 37 - "Manager Portal Components"
 Cohesion: 0.09
@@ -2183,8 +2185,8 @@ Cohesion: 0.05
 Nodes (39): Category 10: Email infrastructure verification, Category 1: Authentication & session integrity, Category 2: Per-role surface coverage, Category 3: Permission boundary matrix, Category 4: Form validation completeness, Category 5: Edge cases & boundary values, Category 6: Cross-role data flow, Category 7: A11y compliance (+31 more)
 
 ### Community 41 - "Verification Smoke Tests"
-Cohesion: 0.07
-Nodes (41): computeConsecutiveMisses(), computeMonthlyMiss(), CONFIRMED_BASES, findAdjustmentFlags(), isAdjustmentNotifyFlag(), p(), severityForCount(), ACTIVE_FINANCING_STATUSES (+33 more)
+Cohesion: 0.09
+Nodes (35): DEFAULT_FINANCING_RULESET_2026, computeApiChain(), computeFinancingBonus(), computeQuarterGate(), creditWeight(), p(), resolveRateTier(), computeConsecutiveMisses() (+27 more)
 
 ### Community 42 - "Screenshots"
 Cohesion: 0.10
@@ -2195,8 +2197,8 @@ Cohesion: 0.05
 Nodes (39): 01_agent_login, label, pass, 02_provisioning_clear, label, pass, 03_open_wizard, label (+31 more)
 
 ### Community 44 - "UI Mockups"
-Cohesion: 0.03
-Nodes (68): CATEGORY_TABS, groupByProgress(), AwardCard(), AwardDonut(), AwardDrillDrawer(), GroupHeader(), HeroAwardCard(), AwardProvenancePanel() (+60 more)
+Cohesion: 0.05
+Nodes (39): FILTER_OPTIONS, BASE_PROFILE, mockUseFeatureFlag, SETTLEMENTS, buildUnit(), DATE_JAN, NO_PROFILE, withApps() (+31 more)
 
 ### Community 45 - "Productionreport"
 Cohesion: 0.05
@@ -2207,12 +2209,12 @@ Cohesion: 0.05
 Nodes (38): 3a — R-08 ChampionsPanel: **CONFORMANT — closing as verification, no build**, 3b — Commission §4.7: 1 built · 1 pending-evidence · 1 **STOP (no design authority)**, 3b — Master Sheet STATUS filters: **SCOPED, NOT BUILT** (carried, per completion-honesty guidance), 3b — R-06 Commission saved-scenario chips: **BUILT** (mechanism variance approved), 3b — R-06 Commission saved-scenario chips: **mechanism conflict — needs a ruling**, 3b — R-11 login-stamp + All Users LAST-activity: **STOP (per standing ruling)**, 3c — mechanical conformance: **NOT STARTED** (carried), A3 closeout + process correction (dispatcher note) (+30 more)
 
 ### Community 47 - "Verification Smoke Tests"
-Cohesion: 0.08
-Nodes (24): CALC_TITLES, CalcFedLineRow(), CarExpensesCalc(), CommissionTargetsPanel(), CompositionBar(), CURRENT_YEAR, EXPENSE_GROUPS, FREQUENCY_OPTIONS (+16 more)
+Cohesion: 0.06
+Nodes (25): ACTIVITY_TILES, AgentReportDocument(), buildSparklinePath(), CAREER_LEVELS, COLORS, FUNNEL_BENCHMARKS, RATIO_DISPLAY, safeRate() (+17 more)
 
 ### Community 48 - "Gameplanv2"
 Cohesion: 0.14
-Nodes (36): AllocatedMeter(), AllocationLineRow(), AllocationSummaryCard(), ConfirmSheet(), DRILLABLE, LABEL, LICENSE_OPTIONS, lineCeiling() (+28 more)
+Nodes (37): AllocatedMeter(), AllocationLineRow(), AllocationSummaryCard(), ConfirmSheet(), DRILLABLE, LABEL, LICENSE_OPTIONS, lineCeiling() (+29 more)
 
 ### Community 49 - "Verification Smoke Tests"
 Cohesion: 0.05
@@ -2223,8 +2225,8 @@ Cohesion: 0.05
 Nodes (37): Brief — Wizard v3 · Overnight Night-Queue (merge-independent), Decisions locked, Decisions locked, Decisions locked, Decisions locked, Decisions locked, Goal, Goal (+29 more)
 
 ### Community 51 - "Firebase Services"
-Cohesion: 0.14
-Nodes (23): MONTH_NAMES, MONTH_NAMES, MonthlyPlanModal(), absorbShortfall(), autoDistributeRemainder(), balanceDelta(), bucketActualsByMonth(), daysInMonth() (+15 more)
+Cohesion: 0.04
+Nodes (63): MONTH_NAMES, MONTH_NAMES, MonthlyPlanModal(), GamePlanScreen(), usePrefersReducedMotion(), Leaderboard(), LEVEL_VARIANT, absorbShortfall() (+55 more)
 
 ### Community 52 - "UI Mockups"
 Cohesion: 0.05
@@ -2263,8 +2265,8 @@ Cohesion: 0.08
 Nodes (26): args, __dir, HEADERS, outPath, ROOT, rows, args, __dir (+18 more)
 
 ### Community 61 - "UI Mockups"
-Cohesion: 0.04
-Nodes (58): CampaignCard(), MetricBar(), CampaignForm(), CampaignRow(), classifyDate(), EMPTY_FORM, METRIC_LABEL, METRIC_OPTIONS (+50 more)
+Cohesion: 0.03
+Nodes (78): CampaignCard(), MetricBar(), CampaignForm(), CampaignRow(), classifyDate(), EMPTY_FORM, METRIC_LABEL, METRIC_OPTIONS (+70 more)
 
 ### Community 62 - "Package"
 Cohesion: 0.06
@@ -2272,7 +2274,7 @@ Nodes (34): Accepted Commits, Accepted Commits, Accepted Commits, Accepted Commi
 
 ### Community 63 - "Persistency Module"
 Cohesion: 0.00
-Nodes (544): 1-on-1 takeover — needs a real design pass (banked 2026-07-10, Run 4 Item 6 recon, MEDIUM — design/product, blocks any build), 28968bb latent-flake audit — 12 remaining files (banked 2026-06-11, MEDIUM), 28968bb latent-flake audit — 12 remaining files (banked 2026-06-11, MEDIUM) — **RESOLVED 2026-06-14**, #519 Gemini G-1 — CSS var scope claim (disposed DISAGREE, banked 2026-06-06), #547 deferred-verify: branch dropdown verified live via provisioning (banked 2026-06-10, LOW), `a11y-contrast` sweep covers two routes — widen it (banked 2026-08-02, v3 P0-D, LOW), `a11y-contrast` sweep runs without the functions emulator — CF-dependent UI is unswept (banked 2026-08-02, v3 P0-D review, LOW), A11Y dark-mode story — CLOSED in PR7 (+536 more)
+Nodes (550): 1-on-1 takeover — needs a real design pass (banked 2026-07-10, Run 4 Item 6 recon, MEDIUM — design/product, blocks any build), 28968bb latent-flake audit — 12 remaining files (banked 2026-06-11, MEDIUM), 28968bb latent-flake audit — 12 remaining files (banked 2026-06-11, MEDIUM) — **RESOLVED 2026-06-14**, #519 Gemini G-1 — CSS var scope claim (disposed DISAGREE, banked 2026-06-06), #547 deferred-verify: branch dropdown verified live via provisioning (banked 2026-06-10, LOW), `a11y-contrast` sweep covers two routes — widen it (banked 2026-08-02, v3 P0-D, LOW), `a11y-contrast` sweep runs without the functions emulator — CF-dependent UI is unswept (banked 2026-08-02, v3 P0-D review, LOW), A11Y dark-mode story — CLOSED in PR7 (+542 more)
 
 ### Community 64 - "Verification Smoke Tests"
 Cohesion: 0.06
@@ -2291,8 +2293,8 @@ Cohesion: 0.01
 Nodes (169): 28968bb latent-flake audit — 12 remaining files (banked 2026-06-11, MEDIUM) — **RESOLVED 2026-06-14**, #519 Gemini G-1 — CSS var scope claim (disposed DISAGREE, banked 2026-06-06), AgencyTrack — Follow-Up Items Archive, ~~Agent termination flag — soft-delete model cross-cutting~~ RESOLVED, REFRAMED (banked 2026-05-24), ~~APP_MANUAL historical references cleanup~~, ✅ `@apply bg-[color:var(--color-X)]` sweep in `src/index.css` (LOW, refactor — banked PR #219, 0b3f058) — CLOSED 2026-05-18 (PR #221, e074b50), Awards orphan cleanup — delete `AwardMedalCard.jsx` + `AwardMedal.jsx` + `awardIconMap.js` (LOW, banked 2026-06-01 from manager-side carve-out PR #412), Awards primitives dedup — consume `awardPrimitives.jsx` from `AgentAwardsPanel.jsx` (LOW, banked 2026-06-01 from manager-side carve-out PR #412) (+161 more)
 
 ### Community 68 - "UI Mockups"
-Cohesion: 0.04
-Nodes (74): selectReactOption(), CURRENT_MONTH_LABEL, CURRENT_MONTH_NUM, CURRENT_YEAR, __dir, E, fail(), loginAs() (+66 more)
+Cohesion: 0.03
+Nodes (94): selectReactOption(), createPolicy(), CURRENT_MONTH_LABEL, CURRENT_MONTH_NUM, CURRENT_YEAR, __dir, E, fail() (+86 more)
 
 ### Community 69 - "Verification Smoke Tests"
 Cohesion: 0.06
@@ -2331,8 +2333,8 @@ Cohesion: 0.06
 Nodes (31): 1. `synthetic-weekly-reports.mjs` Inventory, 2. Doc Shape Confirmations, 3. Tenant + Branch Confirmation, 4. `bulkImportUsers` Callable Input Schema, 5. `setGoals()` Passthrough Fields and `testDataBatchId` Strategy, 6. Persistency Calculations Dependency, 7. Service Account Key Path, 8. Batch-Mode Cleanup Constraint (Kyron refinement, 2026-05-13) (+23 more)
 
 ### Community 78 - "Verification Smoke Tests"
-Cohesion: 0.02
-Nodes (89): Wizard v2 — 12-Step / 4-Phase Structure, computeDayPoints(), computePaceState(), computeWeekToDatePoints(), deriveCountStripChips(), elapsedWorkingDays(), floatOrZero(), intOrZero() (+81 more)
+Cohesion: 0.04
+Nodes (48): Wizard v2 — 12-Step / 4-Phase Structure, INITIAL_DATA, WizardForm(), ChampionCard(), WeeklyChampionsBanner(), Nexus Hero S3 Screenshot — Dark Wizard (file missing), getDraft(), getLastSubmission() (+40 more)
 
 ### Community 79 - "Agentofmonth"
 Cohesion: 0.06
@@ -2355,12 +2357,12 @@ Cohesion: 0.06
 Nodes (30): Architectural decisions (locked at brief authoring), Commit message, End of brief., End-of-Phase-5 report (paste to dispatcher), Header, Kickoff brief — Delete dead `MotivationalCarousel` component, Phase 0 — Pre-flight gate, Phase 1 — Source-verify deletion safety (Rule 17 — re-verify FU body claims) (+22 more)
 
 ### Community 84 - "Kiosk"
-Cohesion: 0.16
-Nodes (20): LEGAL_AGENT_TRANSITIONS, POLICY_STATUS_LABELS, POLICY_STATUSES, TRANSITION_OPTIONAL_FIELDS, TRANSITION_REQUIRED_FIELDS, lifecycleNodes(), tsToDate(), isConfirmed() (+12 more)
+Cohesion: 0.10
+Nodes (26): computeAnchor(), deriveStatus(), dialsSum(), fmtTtdFull(), fmtTtdShort(), getSubmissionAPI(), HistoryAnchorStrip(), HistoryDrillDrawer() (+18 more)
 
 ### Community 85 - "Verification Smoke Tests"
-Cohesion: 0.13
-Nodes (25): clickIncrease(), deleteWeekDocs(), __dir, E, fail(), fillMoney(), initFb(), listWeekDocs() (+17 more)
+Cohesion: 0.11
+Nodes (29): waitForLoaded(), saveDaily(), clickIncrease(), deleteWeekDocs(), __dir, E, fail(), fillMoney() (+21 more)
 
 ### Community 86 - "Manager Portal Components"
 Cohesion: 0.06
@@ -2395,7 +2397,7 @@ Cohesion: 0.07
 Nodes (27): CC kickoff prompt (one-liner), Cleanup mechanics, Context, Currency, tenancy, branch, Data shape per agent, Decisions locked (do not re-litigate), File inventory, Hard stops (+19 more)
 
 ### Community 94 - "Verification Smoke Tests"
-Cohesion: 0.07
+Cohesion: 0.08
 Nodes (16): BOOLEAN_STANDARD_SET, ACTIVITY_STANDARD_BOOLEAN_KEYS, ACTIVITY_STANDARD_KEYS, ACTIVITY_STANDARD_LABELS, ACTIVITY_STANDARD_NUMERIC_KEYS, ALL_ITEMS, CONFIG_FLAGS, CONFIG_GROUPS (+8 more)
 
 ### Community 95 - "Verification Smoke Tests"
@@ -2404,11 +2406,11 @@ Nodes (16): Adversarial smoke (committed, `scripts/verification/`), Chunk measur
 
 ### Community 96 - "Verification Smoke Tests"
 Cohesion: 0.14
-Nodes (26): buildAndMerge(), clickIncrease(), computeDates(), CTX, deleteWeekDailyDocs(), __dir, draftRef(), E (+18 more)
+Nodes (25): buildAndMerge(), clickIncrease(), computeDates(), CTX, __dir, draftRef(), E, fail() (+17 more)
 
 ### Community 97 - "Firebase Services"
-Cohesion: 0.13
-Nodes (24): clickStepperIncrease(), dailyCaptureBody(), deleteWeekDocs(), __dir, E, fail(), fillMoneyRow(), initFb() (+16 more)
+Cohesion: 0.12
+Nodes (25): clickStepperIncrease(), dailyCaptureBody(), deleteWeekDocs(), __dir, E, fail(), fillMoneyRow(), initFb() (+17 more)
 
 ### Community 98 - "Cloud Functions"
 Cohesion: 0.08
@@ -2490,9 +2492,13 @@ Nodes (17): ACT_COLS, ACT_GROUPS, activityFor(), LEAD_W, MATRIX_GRID, MATRIX_MIN
 Cohesion: 0.07
 Nodes (27): devDependencies, autoprefixer, axe-core, @axe-core/playwright, eslint, @eslint/js, eslint-plugin-jsx-a11y, eslint-plugin-react (+19 more)
 
+### Community 118 - "Submission Components"
+Cohesion: 0.03
+Nodes (60): CommitConfirm(), CommitConsequence(), CommittedDone(), GoalsCascade(), LINE_META, MONTH_LABELS, PlanReview(), ReviewCommitModal() (+52 more)
+
 ### Community 119 - "Verification Smoke Tests"
-Cohesion: 0.05
-Nodes (69): setTheme(), AGENT_EMAIL, AGENT_PASS, BASE_URL, clearGlobalTimeout, envVars, main(), MGR_EMAIL (+61 more)
+Cohesion: 0.03
+Nodes (81): setTheme(), BASE_URL, findings, AGENT_EMAIL, AGENT_PASS, BASE_URL, clearGlobalTimeout, envVars (+73 more)
 
 ### Community 120 - "Verification Smoke Tests"
 Cohesion: 0.08
@@ -2519,8 +2525,8 @@ Cohesion: 0.12
 Nodes (23): AGENT_EMAIL, AGENT_PASS, { AxeBuilder }, BASE_URL, env, loginAsAgent(), parseTTD(), recomputeGapToGoal() (+15 more)
 
 ### Community 126 - "UI Mockups"
-Cohesion: 0.14
-Nodes (11): adjustmentLabel(), EMPTY_FORM, FinancingProrationPanel(), monthLabel(), pctLabel(), toMonthKey(), WRITE_ROLES, SUBVIEWS (+3 more)
+Cohesion: 0.29
+Nodes (3): FEB_POLICIES, hoisted, TERMS
 
 ### Community 127 - "Utility Functions"
 Cohesion: 0.10
@@ -2531,8 +2537,8 @@ Cohesion: 0.11
 Nodes (18): PolicyReconScene(), ReconDrawer(), ReconRow(), reconStateMeta(), ReconStatePill(), DeltaChip(), discBg(), DISCREPANCY (+10 more)
 
 ### Community 129 - "Verification Smoke Tests"
-Cohesion: 0.12
-Nodes (28): waitForLoaded(), saveDaily(), openDailyCapture(), closeDailyCapture(), deleteWeekDocs(), __dir, E, fail() (+20 more)
+Cohesion: 0.15
+Nodes (23): closeDailyCapture(), deleteWeekDocs(), __dir, E, fail(), initFb(), listWeekDocs(), loginAsAgent() (+15 more)
 
 ### Community 130 - "Verification Smoke Tests"
 Cohesion: 0.15
@@ -2571,8 +2577,8 @@ Cohesion: 0.08
 Nodes (23): 1. Key Design Decision — Resolved, 2. Data Model, 2a. New subcollection: `yearPlan/{year}`, 2b. New field on user doc: `licenseProfile`, 2c. No new Firestore rules/indexes at this scope, 3. Commission-to-API Starting Point, 4. Award Eligibility Strip, 5. UX Structure (+15 more)
 
 ### Community 139 - "Verification Smoke Tests"
-Cohesion: 0.06
-Nodes (37): ARRAY_GROUP_SCHEMAS, AwardsRulesetPanel(), buildPayload(), getAt(), initFormState(), SCALAR_GROUPS, setAt(), AwardPill() (+29 more)
+Cohesion: 0.08
+Nodes (29): ARRAY_GROUP_SCHEMAS, AwardsRulesetPanel(), buildPayload(), getAt(), initFormState(), SCALAR_GROUPS, setAt(), AwardPill() (+21 more)
 
 ### Community 140 - "Verification Smoke Tests"
 Cohesion: 0.13
@@ -2651,12 +2657,12 @@ Cohesion: 0.15
 Nodes (19): { AxeBuilder }, BASE_URL, env, firstInt(), loginAsManager(), main(), MGR_EMAIL, MGR_PASSWORD (+11 more)
 
 ### Community 159 - "War"
-Cohesion: 0.08
-Nodes (21): AGENT_NAV, applyComingSoon(), applyNavOrder(), CONFIGS, DAILY_LOG_ACTION, getNavConfig(), getPinnedSeed(), getWorkspaceGroups() (+13 more)
+Cohesion: 0.02
+Nodes (61): COMING_SOON_TABS, MANAGER_COMING_SOON_TABS, BRANCH_KPIS, isFocusable(), restoreFocusTo(), pinnedMirrorKey(), readMirror(), writeMirror() (+53 more)
 
 ### Community 160 - "Utility Functions"
-Cohesion: 0.03
-Nodes (84): ProjCell(), ttdK(), apiText(), COLS, FunnelCell(), computeAnchor(), deriveStatus(), dialsSum() (+76 more)
+Cohesion: 0.09
+Nodes (33): ProjCell(), ttdK(), apiText(), COLS, FunnelCell(), BAND_ROWS, ROWS, DRAFT (+25 more)
 
 ### Community 161 - "Verification Smoke Tests"
 Cohesion: 0.16
@@ -2679,8 +2685,8 @@ Cohesion: 0.11
 Nodes (20): admin, allowedTenants, args, assertEmailsAreSafe(), auth, batchId, db, __dir (+12 more)
 
 ### Community 166 - "Package"
-Cohesion: 0.13
-Nodes (15): AgentReportDocument.jsx (react-pdf, hex-only), jsPDF, dependencies, jspdf, jspdf-autotable, lucide-react, @microsoft/clarity, papaparse (+7 more)
+Cohesion: 0.12
+Nodes (16): AgentReportDocument.jsx (react-pdf, hex-only), jsPDF, dependencies, jspdf, jspdf-autotable, lucide-react, @microsoft/clarity, papaparse (+8 more)
 
 ### Community 167 - "Project Briefs"
 Cohesion: 0.19
@@ -2767,12 +2773,12 @@ Cohesion: 0.12
 Nodes (13): buildPolicyDoc(), __dir, E, fsBool(), fsDouble(), fsMap(), fsNull(), fsString() (+5 more)
 
 ### Community 188 - "Seed"
-Cohesion: 0.08
-Nodes (34): ExpenseGroupAccordion(), PAYERefreshBanner(), applyCalcToGroup(), BLANK_SCAFFOLD(), calcFedValue(), CANONICAL_LINES, COMMISSION_LINES, computeGroupTotal() (+26 more)
+Cohesion: 0.04
+Nodes (69): CALC_TITLES, CalcFedLineRow(), CarExpensesCalc(), CommissionTargetsPanel(), CompositionBar(), CURRENT_YEAR, EXPENSE_GROUPS, ExpenseGroupAccordion() (+61 more)
 
 ### Community 189 - "Verification Smoke Tests"
-Cohesion: 0.06
-Nodes (30): DISPLAY_MAP, EXIT_FIELDS, GROUPS, LEVEL_VARIANT, MyPointsCard(), Avatar(), formatSubmittedTime(), HERO_DOT_CLS (+22 more)
+Cohesion: 0.73
+Nodes (4): addMonths(), cbttComplianceFlag(), cbttEffectiveDeadline(), isProvisional()
 
 ### Community 190 - "Verification Smoke Tests"
 Cohesion: 0.10
@@ -2883,8 +2889,8 @@ Cohesion: 0.11
 Nodes (17): Annual-API-ranked awards (agent), awardsEngine.js discrepancy (banked, DO NOT modify), Computation basis — Life line only, Conclusion: NOT a STOP, Decisions locked, Decisions locked (Part A only — strip), File inventory, File inventory (Part A) (+9 more)
 
 ### Community 217 - "Aggregators"
-Cohesion: 0.09
-Nodes (17): formatReviewedAt(), ManagerWarDetail(), REVIEW_META, warRoleRank(), DEFAULT_FORM, formatReviewedAt(), ManagerWarTab(), REVIEW_META (+9 more)
+Cohesion: 0.04
+Nodes (58): ROLES, formatReviewedAt(), ManagerWarDetail(), REVIEW_META, warRoleRank(), DEFAULT_FORM, formatReviewedAt(), ManagerWarTab() (+50 more)
 
 ### Community 218 - "Unit Tests"
 Cohesion: 0.11
@@ -2904,7 +2910,7 @@ Nodes (5): PulseChip(), PULSES, STANDARD_ROWS, StandardRow(), toneColors()
 
 ### Community 222 - "Verification Smoke Tests"
 Cohesion: 0.02
-Nodes (75): GLYPHS, ROW_CONFIG, ROWS, GLYPHS, ROW_CONFIG, ROWS, AuthProvider(), NotificationContext (+67 more)
+Nodes (109): BranchesPanel(), CompanyConfigPanel(), formatPct(), PersistencyTab(), GLYPHS, ROW_CONFIG, ROWS, GLYPHS (+101 more)
 
 ### Community 223 - "Verification Smoke Tests"
 Cohesion: 0.11
@@ -2919,36 +2925,36 @@ Cohesion: 0.11
 Nodes (18): Banked finding, Banked findings, Commit: `8fc4ed8`, Commit: `ac8e0fd`, Deliverables, Deliverables, Deliverables, Findings (+10 more)
 
 ### Community 226 - "Verification Smoke Tests"
-Cohesion: 0.11
-Nodes (32): useStrategicPlan(), getPersistencyForAgentIds(), assembleAgentTrackerRows(), assembleOrgStructure(), assemblePeriodMetrics(), assembleProductionSummary(), assembleRecruitment(), assembleTrackerSummary() (+24 more)
+Cohesion: 0.10
+Nodes (34): assembleAgentTrackerRows(), assembleOrgStructure(), assemblePeriodMetrics(), assembleProductionSummary(), assembleRecruitment(), assembleTrackerSummary(), branchPersistencyPct(), latestRecords() (+26 more)
 
 ### Community 227 - "Verification Smoke Tests"
 Cohesion: 0.13
 Nodes (10): __dir, E, extractString(), fsBase(), fsGet(), fsPatch(), fsPost(), getAgentUnitId() (+2 more)
 
 ### Community 228 - "Verification Smoke Tests"
-Cohesion: 0.07
-Nodes (34): ACTIVITY_METADATA, ALL_CODES, borderStyleOf(), CALL_ATTRIBUTED_CODES, COUNTED_LIVE_CODES, emphasisOf(), LIVE_CODES, PICKER_GROUP_DEFS (+26 more)
+Cohesion: 0.10
+Nodes (24): ACTIVITY_METADATA, ALL_CODES, borderStyleOf(), CALL_ATTRIBUTED_CODES, COUNTED_LIVE_CODES, emphasisOf(), LIVE_CODES, PICKER_GROUP_DEFS (+16 more)
 
 ### Community 229 - "Verification Smoke Tests"
 Cohesion: 0.15
 Nodes (15): admin, args, fillNumeric(), fillSocialStep(), getMostRecentSunday(), IS_PROD, login(), newCtx() (+7 more)
 
 ### Community 230 - "Verification Smoke Tests"
-Cohesion: 0.18
-Nodes (17): args, DAILY, deleteWithRetry(), ensureCommitted(), errors, fillDaily(), gotoGamePlan(), has() (+9 more)
+Cohesion: 0.09
+Nodes (33): args, DAILY, deleteWithRetry(), ensureCommitted(), errors, fillDaily(), gotoGamePlan(), has() (+25 more)
 
 ### Community 231 - "Verification Smoke Tests"
 Cohesion: 0.15
 Nodes (15): admin, args, EXPECTED, fillLocator(), fillProductionStep(), getMostRecentSunday(), IS_PROD, login() (+7 more)
 
 ### Community 232 - "Verification Smoke Tests"
-Cohesion: 0.09
-Nodes (27): emptyInputs(), FIELDS, loadInitial(), PersistencyEntryForm(), aggregatePersistency(), calculateGrossSettled(), calculateNetSettled(), calculatePersistency() (+19 more)
+Cohesion: 0.04
+Nodes (73): BOTTOM_NAV, BOTTOM_NAV_PRODUCING, MP_TABS, NAV_ITEMS, PROFILE_NAV_ITEM, SETTINGS_NAV_ITEM, useTeamRoster(), emptyInputs() (+65 more)
 
 ### Community 233 - "Verification Smoke Tests"
 Cohesion: 0.09
-Nodes (23): RatioTrendCard(), admin, APPLY, applyTestAccountFlag(), args, db, __dirname, emailsArg (+15 more)
+Nodes (23): KPICard(), admin, APPLY, applyTestAccountFlag(), args, db, __dirname, emailsArg (+15 more)
 
 ### Community 234 - "Verification Smoke Tests"
 Cohesion: 0.11
@@ -3011,8 +3017,8 @@ Cohesion: 0.11
 Nodes (17): 1.1 Entry points, 1.2 Modal: `DailyEntryModal.jsx`, 1.3 FAB: `DailyFAB.jsx`, 1.4 Schema: `src/lib/schema/dailyActivity.js`, 1.5 Aggregation: `src/lib/schema/dailyActivity.aggregator.js`, 1.6 Logging mode, 1. Current surface — what's built (E6, shipped), 2. What's NOT built (deferred by E6) (+9 more)
 
 ### Community 249 - "Seed"
-Cohesion: 0.14
-Nodes (19): CATEGORY_CONFIG, CoachingNotesModal(), formatNoteDate(), NoteCard(), addCoachingNote(), COACHING_CATEGORIES, getCoachingNotes(), getRoleRank() (+11 more)
+Cohesion: 0.22
+Nodes (13): CATEGORY_CONFIG, CoachingNotesModal(), formatNoteDate(), NoteCard(), addCoachingNote(), COACHING_CATEGORIES, getCoachingNotes(), getRoleRank() (+5 more)
 
 ### Community 250 - "Unit Tests"
 Cohesion: 0.12
@@ -3039,12 +3045,12 @@ Cohesion: 0.12
 Nodes (16): Gemini finding, Gemini findings, Gemini findings, Merge queue recommendations, Monthly Plan — Step 3 (Design needed), Open decisions needed from dispatcher, Overnight Run Report — 2026-06-13, Queue Status (+8 more)
 
 ### Community 256 - "Verification Smoke Tests"
-Cohesion: 0.09
-Nodes (11): admin, AGENT_EMAIL, db, env, MGR_EMAIL, MGR_PASSWORD, require, SS_DIR (+3 more)
+Cohesion: 0.16
+Nodes (19): buildApiSparkline(), canonicalShape(), ciConv(), deriveLastWeek(), estCommission(), p(), refFupCold(), totalApps() (+11 more)
 
 ### Community 257 - "Verification Smoke Tests"
-Cohesion: 0.06
-Nodes (30): humaniseSlug(), resolveBranchName(), CompanyConfigPanel(), EMPTY_PLAN_FORM, EMPTY_PROMOTE_FORM, POLICY_CLASSES, PRODUCT_LINES, TABS (+22 more)
+Cohesion: 0.18
+Nodes (16): EMPTY_PLAN_FORM, EMPTY_PROMOTE_FORM, POLICY_CLASSES, PRODUCT_LINES, TABS, addPlan(), cfgRef(), deactivatePlan() (+8 more)
 
 ### Community 258 - "Verification Smoke Tests"
 Cohesion: 0.15
@@ -3071,8 +3077,8 @@ Cohesion: 0.12
 Nodes (16): 2a — Prior-work review, 2b — Live audit (Playwright + screenshots), 2c — Manual spot-checks (optional, if time permits), Context, Hard stops, Mobile FU#1 — Manager mobile experience — kickoff brief, Out of scope, Phase 1 — Sync + worktree (+8 more)
 
 ### Community 264 - "Accessibility (A11y) Walk"
-Cohesion: 0.08
-Nodes (14): ttdK(), RANK_CLASS, metricText(), PodiumCard(), prizeFor(), TailRow(), AnimatedApi(), CHIPS (+6 more)
+Cohesion: 0.10
+Nodes (11): ttdK(), RANK_CLASS, metricText(), PodiumCard(), prizeFor(), TailRow(), AnimatedApi(), CHIPS (+3 more)
 
 ### Community 265 - "Accessibility (A11y) Walk"
 Cohesion: 0.13
@@ -3095,8 +3101,8 @@ Cohesion: 0.12
 Nodes (12): functions, source, admin, { APP_URL: BASE_URL }, crypto, functions, MANAGER_ROLES, admin (+4 more)
 
 ### Community 270 - "Accessibility (A11y) Walk"
-Cohesion: 0.12
-Nodes (23): AgentPerformanceTracker(), BAND_CELL, heroItems(), Row(), signedNum(), varCls(), fmtNum(), fmtPct() (+15 more)
+Cohesion: 0.10
+Nodes (28): useStrategicPlan(), AgentPerformanceTracker(), BAND_CELL, heroItems(), Row(), signedNum(), varCls(), defaultPeriod() (+20 more)
 
 ### Community 271 - "Accessibility (A11y) Walk"
 Cohesion: 0.18
@@ -3127,8 +3133,8 @@ Cohesion: 0.14
 Nodes (15): admin, argv, buildFinancingTerms(), buildPolicy(), buildUserDoc(), DATE_SUBMITTED_MS, DATE_WRITTEN_MS, db (+7 more)
 
 ### Community 278 - "Accessibility (A11y) Walk"
-Cohesion: 0.08
-Nodes (31): captureBearerToken(), installBearerTokenCapture(), decodeJwtPayload(), fetchPersistencyDoc(), formatCurrencyCompact(), fsNumVal(), login(), persistencyDocId() (+23 more)
+Cohesion: 0.24
+Nodes (10): decodeJwtPayload(), fetchPersistencyDoc(), formatCurrencyCompact(), fsNumVal(), login(), persistencyDocId(), PREEXISTING_AXE_IDS, RESULTS (+2 more)
 
 ### Community 279 - "Firebase Config"
 Cohesion: 0.12
@@ -3247,8 +3253,8 @@ Cohesion: 0.07
 Nodes (27): 1a. Library check, 1b. Mechanisms actually in use, (a) Spec motion the app already does (needs token-wiring only), (b) Spec motion that is MISSING, (c) Existing ad-hoc motion NOT in the spec — keep / migrate / drop (flag for decision), CSS (`src/index.css`), DECISIONS-NEEDED, `docs/design-system/guidelines/motion.html` — Foundations "Motion & hover" card (+19 more)
 
 ### Community 308 - "UI Mockups"
-Cohesion: 0.18
-Nodes (18): getOwnJfwCount(), getWar(), getWarById(), getWarRoleRank(), getWarsForUpline(), getWarsForUplineWeeks(), reviewWar(), sanitizeWar() (+10 more)
+Cohesion: 0.09
+Nodes (26): admin, ALLOWED_SOURCE_APPS, applyCall(), AUTH_FAILURE_BODY, { coherenceError, mapEffects, EFFECT_FLAGS }, FORBIDDEN_BODY_FIELDS, functions, getSundayOf() (+18 more)
 
 ### Community 309 - "Rules"
 Cohesion: 0.13
@@ -3399,8 +3405,8 @@ Cohesion: 0.08
 Nodes (15): App(), BASE, derive(), FREQ_MULT, initial, LedgerScreen(), LogSaleScreen(), NEXT_TIER (+7 more)
 
 ### Community 346 - "Accessibility (A11y) Walk"
-Cohesion: 0.16
-Nodes (17): adb, admin, app, auth, cdb, env, escCol(), escRef() (+9 more)
+Cohesion: 0.07
+Nodes (19): TweakColor(), adb, admin, app, auth, cdb, env, escCol() (+11 more)
 
 ### Community 347 - "Accessibility (A11y) Walk"
 Cohesion: 0.13
@@ -3632,7 +3638,7 @@ Nodes (13): admin, args, db, __dir, isCommitted(), KEY_PATH, main(), processAgen
 
 ### Community 403 - "Community 403"
 Cohesion: 0.15
-Nodes (17): admin, apiAlias(), APPLY, appsAlias(), args, CONFIRM_FLAG, db, __dir (+9 more)
+Nodes (18): admin, apiAlias(), APPLY, appsAlias(), args, CONFIRM_FLAG, db, __dir (+10 more)
 
 ### Community 404 - "Accessibility (A11y) Walk"
 Cohesion: 0.14
@@ -3691,8 +3697,8 @@ Cohesion: 0.14
 Nodes (11): admin, ALL_MM, argv, db, __dirname, ENTERED_MM, isApply, isCleanup (+3 more)
 
 ### Community 418 - "Accessibility (A11y) Walk"
-Cohesion: 0.09
-Nodes (18): isValidMasterSheetPreset(), isValidPeriod(), MASTER_SHEET_PRESET_LABELS, MASTER_SHEET_PRESETS, PERIOD_OPTIONS, PERIOD_VALUES, applyTheme(), prefersDark() (+10 more)
+Cohesion: 0.14
+Nodes (10): isValidMasterSheetPreset(), isValidPeriod(), MASTER_SHEET_PRESET_LABELS, MASTER_SHEET_PRESETS, PERIOD_OPTIONS, PERIOD_VALUES, MyPreferences(), baseProps (+2 more)
 
 ### Community 419 - "Accessibility (A11y) Walk"
 Cohesion: 0.14
@@ -3707,8 +3713,8 @@ Cohesion: 0.06
 Nodes (32): 0. Headline, 10. Verdict — split, don't run E1–E5 as one, 11. DECISIONS-NEEDED — **11 rulings**, 12. Self-critique (Rule 22) — what this recon did NOT verify, 13. OPERATOR RULINGS (2026-07-13), 1. Rule 17 verification — every function the README names, 2. E1 — Desktop 3-day + week views, 3. E2 — Drag & drop rescheduling (+24 more)
 
 ### Community 422 - "Accessibility (A11y) Walk"
-Cohesion: 0.04
-Nodes (69): attachConsole(), axeAndConsole(), { AxeBuilder }, BASE_URL, cleanup(), env, loginAsManager(), main() (+61 more)
+Cohesion: 0.16
+Nodes (24): attachConsole(), axeAndConsole(), { AxeBuilder }, BASE_URL, cleanup(), env, loginAsManager(), main() (+16 more)
 
 ### Community 423 - "Accessibility (A11y) Walk"
 Cohesion: 0.15
@@ -3871,8 +3877,8 @@ Cohesion: 0.15
 Nodes (12): 10. Open items to confirm at build, 11. Risks / divergences, 1. Purpose, 2. Decisions locked (do not re-litigate), 3. The contract's API definitions (the calc spine), 4. Bonus mechanics, 5. Financing lifecycle (status state machine), 6. Data model (new) (+4 more)
 
 ### Community 464 - "Accessibility (A11y) Walk"
-Cohesion: 0.15
-Nodes (13): results, s2-c-step4-created-3, s2-d-no-failure-list, s4-deactivate-pr-d-smoke-1, s4-deactivate-pr-d-smoke-2, label, pass, label (+5 more)
+Cohesion: 0.14
+Nodes (14): results, s2-a-preview-all-valid, s2-d-no-failure-list, s3-c-subject-valid, s4-verify-deactivated, label, pass, label (+6 more)
 
 ### Community 465 - "Community 465"
 Cohesion: 0.12
@@ -3899,8 +3905,8 @@ Cohesion: 0.15
 Nodes (5): mockAuditAdds, mockAuthUsers, mockDocs, mockMailAdds, { resendInviteEmail }
 
 ### Community 471 - "Accessibility (A11y) Walk"
-Cohesion: 0.11
-Nodes (23): APPOINTMENT_STATUSES, COMPLETED_STATUSES, isEvidenced(), STATUS_KEYS, attributeCalls(), callsOn(), declaredFor(), evidencedEventsOn() (+15 more)
+Cohesion: 0.13
+Nodes (20): isEvidenced(), attributeCalls(), callsOn(), declaredFor(), evidencedEventsOn(), LEDGER_ROW_KEYS, loggedFor(), pcBreakdown() (+12 more)
 
 ### Community 472 - "Accessibility (A11y) Walk"
 Cohesion: 0.17
@@ -3911,8 +3917,8 @@ Cohesion: 0.07
 Nodes (26): **1\. The Overview Tab: Business Cards, Blueprints, and Kiosks**, **2\. The Details Tab and Smart View Technology**, **3\. The Related Tab**, **Advanced Enterprise Design Resources: Canvas Design Studio**, **Bridging Design and Development: Figma Integration and UI Kits**, **Collaborative Design via Figma for Zoho Projects**, **Component Syntax and Construction**, **Consolidation of Navigation and Search** (+18 more)
 
 ### Community 474 - "Accessibility (A11y) Walk"
-Cohesion: 0.09
-Nodes (20): BIZ_TYPES, EMPTY_FORM, FREQ_LABELS, FREQ_MULT, POLICY_CLASSES, PolicyLedgerPanel(), PRODUCT_LINES, applyLedgerFilter() (+12 more)
+Cohesion: 0.33
+Nodes (3): CATALOG_PLAN, hoisted, openDrawerFor()
 
 ### Community 475 - "Accessibility (A11y) Walk"
 Cohesion: 0.12
@@ -3920,7 +3926,7 @@ Nodes (17): admin, db, __dir, E, EXPECTED_CURRENT_PERIOD_KEY, EXPECTED_PRIOR_PER
 
 ### Community 476 - "Accessibility (A11y) Walk"
 Cohesion: 0.15
-Nodes (19): admin, BASE_URL, callRecompute(), clearTestFlags(), clearTimeout, db, fail(), firestoreGet() (+11 more)
+Nodes (15): aggregateFields(), deriveAgentReportModel(), latestPersistencyPercent(), RATIO_SOURCE_KEYS, baseProps, NOW, SUBMISSIONS, buildManagerActivityEvents() (+7 more)
 
 ### Community 477 - "Accessibility (A11y) Walk"
 Cohesion: 0.08
@@ -4075,8 +4081,8 @@ Cohesion: 0.08
 Nodes (24): 7.1 ⭐ Leaderboard — production-ranked surface (fully specced), 7.2 Other ports, 10. Recommended workflow with Claude Code, 11. Bundle contents, 12. Out of scope / deferred (do NOT build unless asked), 1. Overview, 2. Fidelity: **High-fidelity**, 3. The target codebase (confirmed by repo analysis) (+16 more)
 
 ### Community 515 - "Accessibility (A11y) Walk"
-Cohesion: 0.12
-Nodes (17): FLOOR_METRICS, formatCommittedDate(), PROVENANCE_CHIP, SuggestedWeekCard(), VARIANCE_TONE, DecompositionLadder(), GoalDecompositionTab(), PERIODS (+9 more)
+Cohesion: 0.24
+Nodes (10): useSeededTargets(), DecompositionLadder(), PERIODS, decomposeFromAPI(), decomposeFromIncome(), DEFAULT_DECOMPOSITION_INPUTS, deriveRatiosFromHistory(), roundTo10() (+2 more)
 
 ### Community 516 - "Accessibility (A11y) Walk"
 Cohesion: 0.15
@@ -4088,7 +4094,7 @@ Nodes (11): Batch A — Post-Hoc Incident Note (banked 2026-06-11, fix/ci-suite-
 
 ### Community 518 - "Accessibility (A11y) Walk"
 Cohesion: 0.21
-Nodes (7): draftDoc(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), submittedDoc(), t()
+Nodes (9): draftDoc(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), submittedDoc(), subRef(), t() (+1 more)
 
 ### Community 519 - "Accessibility (A11y) Walk"
 Cohesion: 0.17
@@ -4107,8 +4113,8 @@ Cohesion: 0.13
 Nodes (10): mockGetAgentSubmissions, mockGetOwnJfwCount, mockGetOwnWarStreak, mockGetResolvedStandards, mockGetWar, mockSaveWarDraft, mockSubmitWar, mockUser (+2 more)
 
 ### Community 523 - "Accessibility (A11y) Walk"
-Cohesion: 0.10
-Nodes (20): PLAN_METRIC_KEY_SET, StandardDetail(), VARIANCE_FILL, VARIANCE_TEXT, formatValue(), StandardRow(), STATUS_CLASSES, STATUS_LABELS (+12 more)
+Cohesion: 0.11
+Nodes (19): PLAN_METRIC_KEY_SET, VARIANCE_FILL, VARIANCE_TEXT, formatValue(), StandardRow(), STATUS_CLASSES, STATUS_LABELS, renderHome() (+11 more)
 
 ### Community 524 - "Accessibility (A11y) Walk"
 Cohesion: 0.17
@@ -4275,8 +4281,8 @@ Cohesion: 0.17
 Nodes (11): Action checklist, AgencyTrack Exploration — track-c-c3_production, Console errors, Console warnings, Headline, Network failures, Recommendation, Screenshots saved (+3 more)
 
 ### Community 565 - "Accessibility (A11y) Walk"
-Cohesion: 0.12
-Nodes (5): __dir, E, results, ROOT, WEEK_START
+Cohesion: 0.23
+Nodes (20): assertNoPermDeniedConsole(), assertSubject(), axeScreen(), BASE_URL, BYPASS_TOKEN, fail(), gotoAgentFinancing(), login() (+12 more)
 
 ### Community 566 - "Accessibility (A11y) Walk"
 Cohesion: 0.23
@@ -4287,8 +4293,8 @@ Cohesion: 0.20
 Nodes (6): assertFirestoreState(), consoleErrors, ensureMonthlyPlan(), openGamePlan(), report(), RESULTS
 
 ### Community 568 - "Accessibility (A11y) Walk"
-Cohesion: 0.21
-Nodes (7): BYPASS, fail(), pass(), results, ROLE, skip(), stamp()
+Cohesion: 0.13
+Nodes (19): classifyCallSource(), { hashToken }, REJECT_REASONS, resolveCallSource(), admin, crypto, functions, hashToken() (+11 more)
 
 ### Community 569 - "Community 569"
 Cohesion: 0.10
@@ -4459,8 +4465,8 @@ Cohesion: 0.18
 Nodes (10): Conflict register (resolution status), Current state — from CC's recon (the part my original spec lacked), Leaderboard-visibility model, Locked decisions (source chat ff7aa21b), OPEN DECISIONS for Kyron, Phased plan (all build-and-hold; risky-PR Phase-1 hard-stop on each), Reconciliation resolutions, Spec (RECONCILED, canonical) — Producing-Manager Personal Production via the agent WAR (+2 more)
 
 ### Community 611 - "Unit Tests"
-Cohesion: 0.17
-Nodes (15): DrillJointWork(), addProspectInfo(), APPOINTMENT_TYPE_VALUES, getProspectInfo(), OBJECTION_VALUES, POLICY_TYPE_VALUES, PROSPECTING_SOURCE_VALUES, PROSPECTING_SOURCES (+7 more)
+Cohesion: 0.10
+Nodes (27): APPT_TYPE_LABEL, BLANK_FORM, OBJECTION_LABEL, POLICY_TYPE_LABEL, ProspectInfoPanel(), DrillJointWork(), addProspectInfo(), APPOINTMENT_TYPE_VALUES (+19 more)
 
 ### Community 612 - "Community 612"
 Cohesion: 0.18
@@ -4468,7 +4474,7 @@ Nodes (10): consoleErrorList, consoleErrors, failed, hardStop, passed, prNumber,
 
 ### Community 613 - "Unit Tests"
 Cohesion: 0.22
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (6): [EMU_HOST, EMU_PORT_STR], EMU_PORT, finRef(), main(), seedDocs(), t()
 
 ### Community 614 - "Community 614"
 Cohesion: 0.22
@@ -4543,8 +4549,8 @@ Cohesion: 0.20
 Nodes (8): allPassed, ARTIFACTS_DIR, check(), env, redact(), results, RESULTS_FILE, SS_DIR
 
 ### Community 633 - "Cloud Functions"
-Cohesion: 0.07
-Nodes (36): GamePlanScreen(), usePrefersReducedMotion(), AgentPlanDrawer(), formatTimestampDDMMYYYY(), LINE_LABELS, MONTH_LABELS, PLAN_LINE_LABELS, PlanHealth() (+28 more)
+Cohesion: 0.08
+Nodes (22): ROLE_LABELS, AgentPlanDrawer(), formatTimestampDDMMYYYY(), LINE_LABELS, MONTH_LABELS, PLAN_LINE_LABELS, PlanHealth(), createPlanSuggestion() (+14 more)
 
 ### Community 634 - "UI Mockups"
 Cohesion: 0.11
@@ -4735,8 +4741,8 @@ Cohesion: 0.20
 Nodes (9): Data refresh cadence, Dedicated TV display (recommended for branch office), Generating a kiosk token, Occasional-use display (laptop / tablet), Pilot Launch Operations, Recommended dedicated kiosk hardware, Revoking a token, Troubleshooting (+1 more)
 
 ### Community 716 - "Community 716"
-Cohesion: 0.17
-Nodes (17): DEFAULT_FINANCING_RULESET_2026, computeApiChain(), computeFinancingBonus(), computeQuarterGate(), creditWeight(), p(), resolveRateTier(), addMonths() (+9 more)
+Cohesion: 0.16
+Nodes (10): clone(), FakeFirestore, FakeQuery, FieldValue, INCREMENT, isPlainObject(), isSentinel(), mergeInto() (+2 more)
 
 ### Community 718 - "Community 718"
 Cohesion: 0.20
@@ -4748,19 +4754,19 @@ Nodes (9): ignore, useDefaultPatterns, useGitignore, include, output, compress, 
 
 ### Community 720 - "Community 720"
 Cohesion: 0.24
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (6): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), reconRef(), seedDocs(), t()
 
 ### Community 721 - "Community 721"
 Cohesion: 0.24
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (7): [EMU_HOST, EMU_PORT_STR], EMU_PORT, lbRef(), main(), seedDocs(), t(), userRef()
 
 ### Community 722 - "Community 722"
 Cohesion: 0.24
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (7): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), persistRef(), seedDocs(), t(), userRef()
 
 ### Community 723 - "Community 723"
 Cohesion: 0.24
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (7): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t(), userRef(), wcRef()
 
 ### Community 724 - "Community 724"
 Cohesion: 0.22
@@ -4803,8 +4809,8 @@ Cohesion: 0.13
 Nodes (19): admin, adminDb, API_KEY, BASE_URL, BM_EMAIL, BM_PASS, cleanupSmokePolicies(), clearGlobalTimeout (+11 more)
 
 ### Community 734 - "Community 734"
-Cohesion: 0.08
-Nodes (14): admin, crypto, functions, hashToken(), MANAGER_ROLES, admin, functions, MANAGER_ROLES (+6 more)
+Cohesion: 0.11
+Nodes (9): admin, functions, MANAGER_ROLES, { createCallSource, hashToken }, docData, HttpsError, { revokeCallSource }, updates (+1 more)
 
 ### Community 735 - "Community 735"
 Cohesion: 0.22
@@ -4979,36 +4985,36 @@ Cohesion: 0.28
 Nodes (5): RoleChip(), UM_ROLES, UM_USERS, umBg(), umTone()
 
 ### Community 779 - "Community 779"
-Cohesion: 0.08
-Nodes (42): addAppointmentNote(), apptCollection(), apptRef(), buildCreatePayload(), buildUpdatePatch(), bulkUpdateAppointments(), clampDuration(), coerceApi() (+34 more)
+Cohesion: 0.09
+Nodes (39): APPOINTMENT_STATUSES, COMPLETED_STATUSES, STATUS_KEYS, addAppointmentNote(), apptCollection(), apptRef(), buildCreatePayload(), buildUpdatePatch() (+31 more)
 
 ### Community 780 - "Community 780"
 Cohesion: 0.28
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (6): [EMU_HOST, EMU_PORT_STR], EMU_PORT, finRef(), main(), seedDocs(), t()
 
 ### Community 781 - "Community 781"
 Cohesion: 0.28
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (6): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), rollupRef(), seedDocs(), t()
 
 ### Community 782 - "Community 782"
 Cohesion: 0.28
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (6): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t(), warRef()
 
 ### Community 783 - "Community 783"
 Cohesion: 0.28
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (6): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), nudgeRef(), seedDocs(), t()
 
 ### Community 784 - "Community 784"
 Cohesion: 0.28
-Nodes (6): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), newDocFields(), seedDocs(), seedFields()
+Nodes (7): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), newDocFields(), prospectRef(), seedDocs(), seedFields()
 
 ### Community 785 - "Community 785"
 Cohesion: 0.28
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (6): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), settRef(), t()
 
 ### Community 786 - "Community 786"
 Cohesion: 0.27
-Nodes (7): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), stalePayload(), t(), validPayload()
+Nodes (8): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), planRef(), seedDocs(), stalePayload(), t(), validPayload()
 
 ### Community 787 - "Community 787"
 Cohesion: 0.28
@@ -5050,8 +5056,8 @@ Cohesion: 0.22
 Nodes (5): app, auth, db, firebaseConfig, REQUIRED
 
 ### Community 797 - "Community 797"
-Cohesion: 0.10
-Nodes (30): __dirname, initAdmin(), legCascadeNote(), legDataModel(), legGamePlanCommitted(), legPreviewRenders(), main(), report() (+22 more)
+Cohesion: 0.15
+Nodes (16): admin, args, assertNoDuplicateIdsOnStep7(), clickRatingForLabel(), EXPECTED, fillLocator(), fillProductionStep(), getMostRecentSunday() (+8 more)
 
 ### Community 798 - "Community 798"
 Cohesion: 0.22
@@ -5197,21 +5203,29 @@ Nodes (3): AGENCY_BRANCHES, AGENCY_LEVELS, AGENCY_TOPS
 Cohesion: 0.25
 Nodes (7): confirmDialogWarning, selectedUnitId, status, target, email, role, uid
 
+### Community 838 - "Community 838"
+Cohesion: 0.25
+Nodes (3): [EMU_HOST, EMU_PORT_STR], EMU_PORT, goalRef()
+
 ### Community 839 - "Community 839"
 Cohesion: 0.29
-Nodes (4): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs()
+Nodes (5): callRef(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs()
+
+### Community 840 - "Community 840"
+Cohesion: 0.09
+Nodes (16): [EMU_HOST, EMU_PORT_STR], EMU_PORT, smRef(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t() (+8 more)
 
 ### Community 841 - "Community 841"
 Cohesion: 0.32
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (6): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t(), userDocRef()
 
 ### Community 842 - "Community 842"
-Cohesion: 0.32
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Cohesion: 0.13
+Nodes (17): admin, adminDb, AGENT_EMAIL, AGENT_PASS, API_KEY, BASE_URL, clear, envVars (+9 more)
 
 ### Community 843 - "Community 843"
 Cohesion: 0.32
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (6): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t(), userRef()
 
 ### Community 844 - "Community 844"
 Cohesion: 0.25
@@ -5307,7 +5321,7 @@ Nodes (7): agentCommissionRateUsed, migratedAt, migratedBy, original_apiSold, or
 
 ### Community 867 - "Community 867"
 Cohesion: 0.29
-Nodes (6): 01_bm_login, label, pass, 15_thirteen_panel_cycle, label, pass
+Nodes (6): 07_approve_click, label, pass, 15_thirteen_panel_cycle, label, pass
 
 ### Community 871 - "Community 871"
 Cohesion: 0.29
@@ -5323,7 +5337,7 @@ Nodes (7): s1-c-mail-delivery, docId, label, pass, state, subject, to
 
 ### Community 874 - "Community 874"
 Cohesion: 0.33
-Nodes (4): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs()
+Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), noteRef(), seedDocs()
 
 ### Community 875 - "Community 875"
 Cohesion: 0.38
@@ -5374,8 +5388,8 @@ Cohesion: 0.29
 Nodes (6): Audit limitations (not runtime-verified; verdict rests on source), Corrected fidelity tally — 16 v2-LIVE · 5 PARTIAL · 13 STILL-OLD · 0 NOT-WIRED (of 34), Ledger corrections, Per-screen verdicts, Split by fix type (all 18 non-v2-LIVE), Track J v2 — FIDELITY audit (supersedes prior "33/35")
 
 ### Community 887 - "Community 887"
-Cohesion: 0.26
-Nodes (8): useCompanyConfigState(), ConfigContext, ConfigProvider(), HYDRATED_DOC_IDS, useConfigContext(), resolvePath(), useConfig(), hoisted
+Cohesion: 0.15
+Nodes (12): formatAuditDate(), STANDARDS_META_KEYS, STANDARDS_ROLE_KEYS, useCompanyConfigState(), ConfigContext, ConfigProvider(), HYDRATED_DOC_IDS, useConfigContext() (+4 more)
 
 ### Community 888 - "Community 888"
 Cohesion: 0.15
@@ -5394,8 +5408,8 @@ Cohesion: 0.29
 Nodes (5): admin, cred, __dirname, keyPath, require
 
 ### Community 892 - "Community 892"
-Cohesion: 0.20
-Nodes (17): assertWaterfall(), axeScreen(), BASE_URL, BYPASS_TOKEN, EXPECTED, extractWaterfallValues(), fail(), getResultBandPct() (+9 more)
+Cohesion: 0.14
+Nodes (16): { AxeBuilder }, env, firstInt(), loginAsManager(), main(), MGR_EMAIL, MGR_PASSWORD, navigateToCompliance() (+8 more)
 
 ### Community 893 - "Community 893"
 Cohesion: 0.33
@@ -5491,7 +5505,7 @@ Nodes (4): BADGE_DEFINITIONS, LEVEL_THRESHOLDS, POINTS_WEIGHTS, UNSCORED_FIELDS
 
 ### Community 919 - "Community 919"
 Cohesion: 0.02
-Nodes (66): buildBypassUrl(), PROD_URL, allResults, labelArg, violations, BASE_URL, findings, env (+58 more)
+Nodes (65): buildBypassUrl(), PROD_URL, allResults, labelArg, violations, env, login(), results (+57 more)
 
 ### Community 920 - "Community 920"
 Cohesion: 0.33
@@ -5566,8 +5580,8 @@ Cohesion: 0.12
 Nodes (16): admin, AGENT_EMAIL, AGENT_PASSWORD, captureCase(), db, env, formatExpectedCurrency(), getThemeState() (+8 more)
 
 ### Community 938 - "Community 938"
-Cohesion: 0.06
-Nodes (24): readPersisted(), storageKey(), useLeaderboardScope(), writePersisted(), initialsOf(), ME_RING_STYLE, PERIODS, PODIUM_LABELS (+16 more)
+Cohesion: 0.07
+Nodes (25): AroundMeClusterDesktop(), AroundMeClusterMobile(), DesktopClusterRow(), firstNameOf(), initialsOf(), ME_RING_STYLE, MobileExpandedRow(), formatComputedAt() (+17 more)
 
 ### Community 939 - "Community 939"
 Cohesion: 0.17
@@ -5662,8 +5676,8 @@ Cohesion: 0.33
 Nodes (4): admin, argv, require, SMOKE_SUBMISSION
 
 ### Community 963 - "Community 963"
-Cohesion: 0.11
-Nodes (24): CAN_FILE, CAN_VIEW_TEAM, DEFAULT_FORM, MonthlyRecruitingRollup(), RollupRow(), MonthlyRecruitingTab(), getRollup(), getRollupsForUpline() (+16 more)
+Cohesion: 0.18
+Nodes (8): MonthlyRecruitingTab(), hoisted, NOW, renderTab(), currentMonthKey(), formatMonthKey(), parseMonthKey(), recentMonthKeys()
 
 ### Community 964 - "Community 964"
 Cohesion: 0.40
@@ -5766,8 +5780,8 @@ Cohesion: 0.22
 Nodes (8): Build, FU EFF-002-safety — Chunk-load error boundary for the code-split dashboards, Phase 4 — Docs, Phase 5 — Commit / push — THEN STOP (HOLD), Rule 17 gate, Scope guard, Verify, Why
 
 ### Community 989 - "Community 989"
-Cohesion: 0.12
-Nodes (7): ActivityItem(), formatRelativeTime(), BADGE_KEY_ORDER, BADGES, computeEarnedBadges(), EVENTS, BADGE_COUNTS
+Cohesion: 0.16
+Nodes (16): AGENT_SETTLED, decodeJwtClaims(), __dir, E, getIdToken(), loginAs(), main(), navigateToPolicyLedger() (+8 more)
 
 ### Community 990 - "Community 990"
 Cohesion: 0.40
@@ -5778,8 +5792,8 @@ Cohesion: 0.40
 Nodes (5): smokeEmails, s1, s2, s3, s4
 
 ### Community 993 - "Community 993"
-Cohesion: 0.60
-Nodes (4): agentToken(), log(), main(), managerToken
+Cohesion: 0.19
+Nodes (12): coherenceError(), DIAL_BUCKETS, EFFECT_FLAGS, EFFECT_TABLE, INGEST_BUCKETS, LANES, LEGAL_EFFECT_SETS, mapEffects() (+4 more)
 
 ### Community 994 - "Community 994"
 Cohesion: 0.40
@@ -6114,8 +6128,8 @@ Cohesion: 0.29
 Nodes (6): FU - CI Flake Stabilization (PolicyLedgerPanel F3.1 + CompliancePanel #543), Intent, Phase 0, Phase 2, Phase 5, Standing
 
 ### Community 1085 - "Community 1085"
-Cohesion: 0.50
-Nodes (4): label, pass, results, campaign-no-legacy-inline-toast
+Cohesion: 0.67
+Nodes (3): label, pass, campaign-no-legacy-inline-toast
 
 ### Community 1086 - "Community 1086"
 Cohesion: 0.50
@@ -6123,15 +6137,15 @@ Nodes (4): s1-a-toast-copy, label, pass, toastText
 
 ### Community 1087 - "Community 1087"
 Cohesion: 0.02
-Nodes (172): safeLog(), AGENT_EMAIL, AGENT_PASS, { AxeBuilder }, BASE_URL, env, loginAsAgent(), recompute (+164 more)
+Nodes (156): safeLog(), AGENT_EMAIL, AGENT_PASS, { AxeBuilder }, BASE_URL, env, loginAsAgent(), recompute (+148 more)
 
 ### Community 1088 - "Community 1088"
 Cohesion: 0.50
 Nodes (3): Expanding the ESLint configuration, React Compiler, React + Vite
 
 ### Community 1089 - "Community 1089"
-Cohesion: 0.83
-Nodes (3): log(), main(), tokenFor()
+Cohesion: 0.15
+Nodes (7): BranchReportDocument(), COLORS, ManagerReport(), styles, UnitReportDocument(), buildManagerReportModel(), BRANCH_INPUT
 
 ### Community 1091 - "Community 1091"
 Cohesion: 0.83
@@ -6151,7 +6165,7 @@ Nodes (6): Intent - two fast-follows, one deploy event, Phase 0 (STOP on any mis
 
 ### Community 1096 - "Community 1096"
 Cohesion: 0.04
-Nodes (59): installMotionInstrument(), resetMotionMarks(), resolveSmokeBaseUrl(), { AxeBuilder }, axeContrast(), BASE_URL, EMAIL, env (+51 more)
+Nodes (70): installMotionInstrument(), resetMotionMarks(), resolveSmokeBaseUrl(), AGENT_EMAIL, AGENT_PASS, { AxeBuilder }, BASE_URL, contrastNodes() (+62 more)
 
 ### Community 1097 - "Community 1097"
 Cohesion: 0.50
@@ -6262,8 +6276,8 @@ Cohesion: 0.10
 Nodes (7): CountUp(), PATHS, SideNavSections(), useCountUp(), usePrefersReducedMotion(), useTouchReorder(), WEEKDAYS
 
 ### Community 1127 - "Community 1127"
-Cohesion: 0.17
-Nodes (7): ROLE_LABELS, createPlanSuggestion(), listPlanSuggestions(), markSuggestionSeen(), suggestionsRef(), hoisted, hoisted
+Cohesion: 0.15
+Nodes (14): { AxeBuilder }, axeContrast(), BASE_URL, EMAIL, env, login(), nav(), PASS (+6 more)
 
 ### Community 1128 - "Community 1128"
 Cohesion: 0.29
@@ -6502,8 +6516,8 @@ Cohesion: 0.67
 Nodes (3): label, pass, compliance-panel-renders
 
 ### Community 1195 - "Community 1195"
-Cohesion: 0.67
-Nodes (3): label, pass, persistency-panel-renders
+Cohesion: 0.50
+Nodes (4): label, pass, results, persistency-panel-renders
 
 ### Community 1196 - "Community 1196"
 Cohesion: 0.67
@@ -6522,8 +6536,8 @@ Cohesion: 0.10
 Nodes (12): ACT_CODE, ACT_NAME, ActChip(), actStyle(), ApptRow(), CounterBar(), DAY_STRIP, FOLLOWUPS (+4 more)
 
 ### Community 1200 - "Community 1200"
-Cohesion: 0.13
-Nodes (15): AGENT_EMAIL, AGENT_PASS, { AxeBuilder }, BASE_URL, contrastNodes(), env, loginAsAgent(), record() (+7 more)
+Cohesion: 0.22
+Nodes (15): cleanupSmoke(), __dir, docUrl(), E, fail(), firestoreDeleteDoc(), firestoreGetDoc(), firestorePatch() (+7 more)
 
 ### Community 1201 - "Community 1201"
 Cohesion: 0.11
@@ -6546,28 +6560,32 @@ Cohesion: 0.10
 Nodes (12): ACT_CODE, ACT_NAME, ActChip(), actStyle(), ApptRow(), CounterBar(), DAY_STRIP, FOLLOWUPS (+4 more)
 
 ### Community 1213 - "Community 1213"
-Cohesion: 0.20
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Cohesion: 0.18
+Nodes (14): activeTestId(), AGENT_EMAIL, AGENT_PASS, BYPASS_TOKEN, fail(), loginAndWait(), pass(), results (+6 more)
 
 ### Community 1240 - "Community 1240"
 Cohesion: 0.11
 Nodes (12): CAMPAIGNS, gateFor(), KindBadge(), kindMeta(), METRIC_LABEL, PERS_GATE, resolveStanding(), StateBadge() (+4 more)
 
+### Community 1241 - "Community 1241"
+Cohesion: 0.21
+Nodes (15): docUrl(), E, fail(), intOf(), openViaQuickAdd(), pass(), readDraft(), readSession() (+7 more)
+
 ### Community 1242 - "Community 1242"
-Cohesion: 0.09
-Nodes (18): frequentKey(), readCounts(), useFrequentNav(), writeCounts(), usePullToRefresh(), MobileNavDrawer(), buildSectionMap(), groupBySectionLabel() (+10 more)
+Cohesion: 0.19
+Nodes (10): frequentKey(), readCounts(), useFrequentNav(), writeCounts(), usePullToRefresh(), Shell(), NAV, Harness() (+2 more)
 
 ### Community 1243 - "Community 1243"
-Cohesion: 0.14
-Nodes (23): formatAuditDate(), STANDARDS_META_KEYS, STANDARDS_ROLE_KEYS, addAuditEntryToBatch(), buildAuditEntry(), getConfigAudit(), ALLOWED_FLAG_KEYS, assertAllowedFlag() (+15 more)
+Cohesion: 0.19
+Nodes (19): addAuditEntryToBatch(), buildAuditEntry(), getConfigAudit(), ALLOWED_FLAG_KEYS, assertAllowedFlag(), assignNested(), configDocRef(), getConfigDoc() (+11 more)
 
 ### Community 1244 - "Community 1244"
 Cohesion: 0.10
 Nodes (12): ACT_CODE, ACT_NAME, ActChip(), actStyle(), ApptRow(), CounterBar(), DAY_STRIP, FOLLOWUPS (+4 more)
 
 ### Community 1245 - "Community 1245"
-Cohesion: 0.10
-Nodes (23): shot, LEGS, run(), ALL, args, clearTimer, legFilter, listOnly (+15 more)
+Cohesion: 0.08
+Nodes (29): shot, LEGS, run(), ALL, args, clearTimer, legFilter, listOnly (+21 more)
 
 ### Community 1246 - "Community 1246"
 Cohesion: 0.15
@@ -6602,8 +6620,8 @@ Cohesion: 0.20
 Nodes (7): ARTIFACTS_DIR, check(), env, redact(), results, RESULTS_FILE, SS_DIR
 
 ### Community 1254 - "Community 1254"
-Cohesion: 0.03
-Nodes (65): CascadeAnchorStrip(), ChampionRow(), ManagerOverviewTab(), SCOPE_LABEL, scopeLabelFor(), weeksLeftInYear(), CountUpCurrency(), CountUpPercent() (+57 more)
+Cohesion: 0.02
+Nodes (73): CascadeAnchorStrip(), ChampionRow(), MyWeekPanel(), STATUS_META, CountUpCurrency(), DerivedIncomePanel(), AnnualTakeover(), StreakTakeover() (+65 more)
 
 ### Community 1255 - "Community 1255"
 Cohesion: 0.10
@@ -6622,8 +6640,8 @@ Cohesion: 0.17
 Nodes (11): 1. Executive summary, 2. Findings, 3. Top 10 by impact-per-effort, 4. Quick wins (S effort, high confidence), 5. Phased remediation plan, 6. Self-critique (known gaps), A. Bundle & first load, AgencyTrack — Whole-Webapp Runtime-Efficiency Audit (+3 more)
 
 ### Community 1259 - "Community 1259"
-Cohesion: 0.17
-Nodes (17): admin, axeScreen(), BASE_URL, BYPASS_TOKEN, db, __dirname, fail(), keyPath (+9 more)
+Cohesion: 0.22
+Nodes (8): applyTheme(), prefersDark(), readThemeMode(), resolveDark(), setThemeMode(), THEME_MODES, useTheme(), TopBar()
 
 ### Community 1260 - "Community 1260"
 Cohesion: 0.13
@@ -6718,8 +6736,8 @@ Cohesion: 0.18
 Nodes (10): Context, FU — land live-b3-post-deploy.mjs as standing verification tooling (XS), Phase 0 — falsification gate, Phase 1 — hygiene pass (edit-in-place, no behavior change), Phase 2 — registration, Phase 3 — verification, Phase 4 — docs-with-placeholders, Phase 5 — commit/push/PR (+2 more)
 
 ### Community 1287 - "Community 1287"
-Cohesion: 0.11
-Nodes (30): APPT_TYPE_LABEL, BLANK_FORM, OBJECTION_LABEL, POLICY_TYPE_LABEL, PrepCard(), ProspectInfoPanel(), APPT_TYPE_LABEL, OBJECTION_LABEL (+22 more)
+Cohesion: 0.14
+Nodes (23): PrepCard(), APPT_TYPE_LABEL, OBJECTION_LABEL, POLICY_TYPE_LABEL, PrepReadOnlyCard(), ProspectInfoTab(), ApptBadge(), APPT_TYPE_LABEL (+15 more)
 
 ### Community 1288 - "Community 1288"
 Cohesion: 0.10
@@ -6743,7 +6761,7 @@ Nodes (9): ASK, BRANCH_EVENTS, CAPACITY, ESCALATIONS, JOINT_CALLS, MGR, MGR_DAY_
 
 ### Community 1293 - "Community 1293"
 Cohesion: 0.24
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seed(), t()
+Nodes (6): [EMU_HOST, EMU_PORT_STR], EMU_PORT, escRef(), main(), seed(), t()
 
 ### Community 1294 - "Community 1294"
 Cohesion: 0.10
@@ -6762,8 +6780,8 @@ Cohesion: 0.19
 Nodes (19): analyze_case(), analyze_run(), classify_beacon(), compute_metrics(), content_delta_series(), crop(), detect_animation_window(), detect_settle_idx() (+11 more)
 
 ### Community 1299 - "Community 1299"
-Cohesion: 0.29
-Nodes (11): FLOORS, PLAN, aggregateDailyActuals(), buildPaceRows(), computeProspectingCallsActual(), computeWeeklyActuals(), elapsedWorkingDays(), num() (+3 more)
+Cohesion: 0.17
+Nodes (19): FLOORS, PLAN, FLOORS, aggregateDailyActuals(), buildPaceRows(), computeProspectingCallsActual(), computeWeeklyActuals(), elapsedWorkingDays() (+11 more)
 
 ### Community 1300 - "Community 1300"
 Cohesion: 0.19
@@ -6786,12 +6804,12 @@ Cohesion: 0.12
 Nodes (8): BADGES, CAREER_DATA, CAREER_LEVELS, LadderNode(), LEVEL_TAGLINES, levelAccent(), levelNodeGrad(), UNLOCKS
 
 ### Community 1305 - "Community 1305"
-Cohesion: 0.05
-Nodes (44): formatPct(), PersistencyTab(), AgentAwardsPanel(), BRANCH_KPIS, KPICard(), flagsCache, loadFlags(), __resetFeatureFlagCache() (+36 more)
+Cohesion: 0.26
+Nodes (14): __dirname, initAdmin(), legCascadeNote(), legDataModel(), legGamePlanCommitted(), legPreviewRenders(), main(), report() (+6 more)
 
 ### Community 1306 - "Community 1306"
-Cohesion: 0.13
-Nodes (8): AGENT_EMAIL, BM_EMAIL, BM_PASSWORD, env, SS_DIR, TOKEN, UM_EMAIL, VIEWPORT
+Cohesion: 0.27
+Nodes (14): __dirname, initAdmin(), legBelowLockedFloor(), legDarkMode(), legDrawerSave(), legManagerUI(), main(), report() (+6 more)
 
 ### Community 1307 - "Community 1307"
 Cohesion: 0.18
@@ -6822,8 +6840,8 @@ Cohesion: 0.14
 Nodes (12): MobPipeline(), ApplySheet(), appsIn(), EXPECTED, expectedApi(), inStage(), PARKED, parkedOf() (+4 more)
 
 ### Community 1313 - "Community 1313"
-Cohesion: 0.15
-Nodes (9): ARTIFACTS_DIR, check(), closeBtn, env, redact(), results, RESULTS_FILE, SS_DIR (+1 more)
+Cohesion: 0.13
+Nodes (7): BASE, BYPASS, dailyUrl(), failed, PW, readDaily(), results
 
 ### Community 1314 - "Community 1314"
 Cohesion: 0.07
@@ -6850,8 +6868,8 @@ Cohesion: 0.12
 Nodes (8): BADGES, CAREER_DATA, CAREER_LEVELS, LadderNode(), LEVEL_TAGLINES, levelAccent(), levelNodeGrad(), UNLOCKS
 
 ### Community 1320 - "Community 1320"
-Cohesion: 0.27
-Nodes (10): addDays(), assertVal(), currentSunday(), __dir, E, fail(), main(), pass() (+2 more)
+Cohesion: 0.20
+Nodes (13): aggregateDailyToWeekly(), isWeekendDate(), p(), addDays(), assertVal(), currentSunday(), __dir, E (+5 more)
 
 ### Community 1321 - "Community 1321"
 Cohesion: 0.11
@@ -6874,8 +6892,8 @@ Cohesion: 0.11
 Nodes (18): A1. Create the staging Firebase project, A2. Choose the Firestore region — ⚠️ FIXED AT CREATION, A3. Enable Authentication (email/password) — match prod, A4. Enable Storage (optional, for profile-photo parity), A5. Register a Web app and copy the config, A6. Create the Vercel staging environment **[CONSOLE — operator only]**, C1. Static checks (no key, no network) — always available, C2. Full check with a staging service-account key (+10 more)
 
 ### Community 1326 - "Community 1326"
-Cohesion: 0.15
-Nodes (9): ARTIFACTS_DIR, check(), consoleErrors, env, redact(), results, RESULTS_FILE, signIn() (+1 more)
+Cohesion: 0.13
+Nodes (9): admin, BASE_URL, fillLocator(), fillProductionStep(), log(), newCtx(), PROD_FILL, results (+1 more)
 
 ### Community 1327 - "Community 1327"
 Cohesion: 0.20
@@ -6890,8 +6908,8 @@ Cohesion: 0.08
 Nodes (25): Agent panel — `src/components/planner/AgentPlannerPanel.jsx`, Agent planner — per-screen, Ambiguities / DECISIONS-NEEDED (operator, one line each), Composite indexes — `firestore.indexes.json:347-388`, Confidence + gaps, Data-model deltas (README `:113-146` vs shipped), Delta (design intent vs shipped), Edit-in-place (own appointment) (+17 more)
 
 ### Community 1330 - "Community 1330"
-Cohesion: 0.13
-Nodes (14): computeGarnishProjection(), computeReconciliation(), computeWindDownClocks(), latestRunningBalance(), p(), RECONCILIATION_OUTCOMES, RECONCILIATION_TRIGGERS, reconMonthIndex() (+6 more)
+Cohesion: 0.14
+Nodes (7): buildSubmissionNameMap(), buildActivityAgents(), CONVERSIONS_BREAKDOWN, PROSPECTING_BREAKDOWN, AGENTS, SUBS, THIS_WEEK
 
 ### Community 1331 - "Community 1331"
 Cohesion: 0.12
@@ -6922,20 +6940,20 @@ Cohesion: 0.21
 Nodes (6): useNotifications(), hoisted, hoisted, NotificationBell(), NotificationDrawer(), TYPE_META
 
 ### Community 1338 - "Community 1338"
-Cohesion: 0.28
-Nodes (24): ACCOUNTS, checkCountUp(), checkDarkContrast(), checkDialog(), checkErrorRetryPristine(), checkMotionClass(), clearTimer, fail() (+16 more)
+Cohesion: 0.26
+Nodes (25): ACCOUNTS, checkCountUp(), checkDarkContrast(), checkDialog(), checkErrorRetryPristine(), checkMotionClass(), clearTimer, dismissCelebrationIfPresent() (+17 more)
 
 ### Community 1339 - "Community 1339"
-Cohesion: 0.28
-Nodes (10): buildInsights(), InsightCard(), MODE_LABELS, cashFlowForecast(), commissionThisMonth(), FIRST_PAYMENT_RATIO, modeBreakdown(), MODES (+2 more)
+Cohesion: 0.10
+Nodes (23): CashFlowChart(), CustomTooltip(), MODE_COLORS, MODE_DISPLAY, MODE_OPACITY, buildInsights(), InsightCard(), MODE_LABELS (+15 more)
 
 ### Community 1340 - "Community 1340"
 Cohesion: 0.13
 Nodes (11): discBg(), DISCREPANCY, DiscrepancyBadge(), discTone(), recDelta(), RECON_CLEAN, RECON_CONFIRMED, RECON_EXCEPTIONS (+3 more)
 
 ### Community 1341 - "Community 1341"
-Cohesion: 0.17
-Nodes (9): getSharedMoneyNeeds(), projectSharedWorksheet(), AGENT_A, AGENT_B, AGENT_C, hoisted, PRIVATE_MARKERS, RAW_WORKSHEET (+1 more)
+Cohesion: 0.36
+Nodes (12): computeLumpsumCommission(), computeLumpsumCredit(), computeTotalCommission(), computeTotalProductionCredit(), p(), readV1Api(), readV1Apps(), validatePppIncrease() (+4 more)
 
 ### Community 1342 - "Community 1342"
 Cohesion: 0.17
@@ -7102,8 +7120,8 @@ Cohesion: 0.13
 Nodes (14): 1. What this is, 2. ⛔ Non-negotiable trust constraints (locked product decisions — design and build around them), 3. Reuse — do NOT rebuild (shared with the agent tier), 4. The screens (mockup board sections), 5. Assumptions made in the mockups (validate before/while building), 6. Suggested data model (Firestore — confirm against existing collections), 7. Screen → component map (build in-pattern; all ★ new, under `src/components/planner/manager/`), 8. Bundle contents & how to view (+6 more)
 
 ### Community 1386 - "Community 1386"
-Cohesion: 0.22
-Nodes (10): AGENT_EMAIL, AGENT_PASS, BYPASS_TOKEN, fail(), loginAndWait(), pass(), results, runTheme() (+2 more)
+Cohesion: 0.13
+Nodes (14): afterBadge, afterDraft, beforeBadge, beforeDraft, CALL_KEYS, contactsOnly, dayWithService, mixedOut (+6 more)
 
 ### Community 1387 - "Community 1387"
 Cohesion: 0.17
@@ -7274,8 +7292,8 @@ Cohesion: 0.17
 Nodes (6): MY_WAR, WAR_HISTORY, WAR_KPIS, WAR_TEAM, warStatusMeta(), WarStatusPill()
 
 ### Community 1442 - "Community 1442"
-Cohesion: 0.18
-Nodes (11): args, __dirname, ENV_PATH, failed, isLive, KEY_PATH, record(), REPO_ROOT (+3 more)
+Cohesion: 0.27
+Nodes (12): agent(), bandFor(), COMPANY_MINS, healthyPers(), NOW, sub(), buildStatusMap(), exceptionToStatusKey() (+4 more)
 
 ### Community 1443 - "Community 1443"
 Cohesion: 0.15
@@ -7286,8 +7304,8 @@ Cohesion: 0.15
 Nodes (12): 10. Open items to confirm at build, 11. Risks / divergences, 1. Purpose, 2. Decisions locked (do not re-litigate), 3. The contract's API definitions (the calc spine), 4. Bonus mechanics, 5. Financing lifecycle (status state machine), 6. Data model (new) (+4 more)
 
 ### Community 1445 - "Community 1445"
-Cohesion: 0.15
-Nodes (7): ARTIFACTS_DIR, env, login(), RESULTS_FILE, ROLES, SS_DIR, summary
+Cohesion: 0.22
+Nodes (12): args, errors, gotoGamePlan(), has(), IS_PROD, login(), mostRecentSunday(), RESULTS (+4 more)
 
 ### Community 1446 - "Community 1446"
 Cohesion: 0.17
@@ -7431,7 +7449,7 @@ Nodes (3): effortLabel(), PathCard(), PathsToTarget()
 
 ### Community 1489 - "Community 1489"
 Cohesion: 0.15
-Nodes (8): getInitials(), Sidebar(), baseProps, NAV, PINNED, baseProps, NAV, PINNED
+Nodes (11): hoisted, ON_TIME, ON_TIME_POST, renderPanel(), renderPanelPost(), SUB_A, SUB_A_POST, SUB_C (+3 more)
 
 ### Community 1490 - "Community 1490"
 Cohesion: 0.20
@@ -7590,8 +7608,8 @@ Cohesion: 0.09
 Nodes (22): 0 · Why this document exists, 1 · Recount of the summary buckets (honest, against current HEAD), 2 · Navigation (old §3), 3.1 Agent surfaces (old §5.1), 3.2 Agent planning / money / tools (old §5.2 + persistency/policy of §5.3), 3.3 Agent report / recognition / profile (old §5.3 remainder), 3.4 Manager surfaces (old §5.4), 3.5 Presentation / reports / financing (old §5.5) (+14 more)
 
 ### Community 1552 - "Community 1552"
-Cohesion: 0.24
-Nodes (10): AroundMeClusterDesktop(), AroundMeClusterMobile(), DesktopClusterRow(), firstNameOf(), initialsOf(), ME_RING_STYLE, MobileExpandedRow(), NEXT (+2 more)
+Cohesion: 0.17
+Nodes (11): Decisions locked (operator rulings, 26 Aug), File inventory (scope-lock), Kickoff brief - `ingestCallActivity`, slice B: the endpoint that consumes the token, Named deliverables, Note for the record, Phase 0 - audit of what actually shipped, The endpoint contract, The mapping - ONE table, and it lives in ONE place (+3 more)
 
 ### Community 1553 - "Community 1553"
 Cohesion: 0.25
@@ -7674,12 +7692,12 @@ Cohesion: 0.52
 Nodes (5): AgentCampaignDetail(), AgentCampMiniCard(), myStanding(), nextTier(), ordinal()
 
 ### Community 1622 - "Community 1622"
-Cohesion: 0.15
-Nodes (13): MONTH_NAMES, monthKeyLabel(), PaydownArcHero(), ptsStr(), reconCandidateYears(), RECONCILED_STATUSES, TakeHomeBreakdown(), addMonthsToKey() (+5 more)
+Cohesion: 0.27
+Nodes (10): WRITABLE_FIELDS, buildDailyPatch(), describeConflict(), detectConflicts(), FIELD_LABELS, INGEST_SET, INGEST_WRITTEN_FIELDS, isIngestWritten() (+2 more)
 
 ### Community 1623 - "Community 1623"
-Cohesion: 0.15
-Nodes (6): AGENT_EMAIL, AGENT_PASSWORD, env, SCREENSHOT_DIR, TOKEN, VIEWPORT
+Cohesion: 0.21
+Nodes (8): display(), Field(), formatTs(), formatWeekLabel(), SubmissionViewer(), BASE_FIELDS, BASE_SUB, hoisted
 
 ### Community 1624 - "Community 1624"
 Cohesion: 0.29
@@ -7770,8 +7788,8 @@ Cohesion: 0.40
 Nodes (4): Files, Shared brand (never varies), Where the surfaces differ, AgencyTrack — Nexus Design System
 
 ### Community 1705 - "Community 1705"
-Cohesion: 0.15
-Nodes (7): AGENT_EMAIL, AGENT_PASSWORD, env, EXPECTED_VALUES, SCREENSHOT_DIR, TOKEN, VIEWPORT
+Cohesion: 0.21
+Nodes (10): __dir, E, fail(), main(), pass(), results, ROOT, RUN_TS (+2 more)
 
 ### Community 1709 - "Community 1709"
 Cohesion: 0.18
@@ -7834,8 +7852,8 @@ Cohesion: 0.17
 Nodes (12): CRO / Back-Office Role (not yet routed in App.jsx — §7 design decision), Master Sheet: 23-column sticky table with API/closing-ratio color bands, Screen → Component Map (34 mockups mapped to React components), Mockup: Career Portal v2, Mockup: CRO / Back-office, Mockup: Manager Dashboard v2, Mockup: Master Sheet v2, ManagerDashboard.jsx — Manager Dashboard Component (+4 more)
 
 ### Community 1755 - "Community 1755"
-Cohesion: 0.30
-Nodes (11): CATEGORIES, MONTH_NAMES, getAgentOfMonth(), getAgentOfMonthForKiosk(), getCandidates(), getCurrentMonthKey(), getPrevMonthKey(), getTriniNow() (+3 more)
+Cohesion: 0.28
+Nodes (12): CATEGORIES, MONTH_NAMES, getAgentOfMonth(), getAgentOfMonthForKiosk(), getCandidates(), getCurrentMonthKey(), getPrevMonthKey(), getTriniNow() (+4 more)
 
 ### Community 1756 - "Community 1756"
 Cohesion: 0.50
@@ -7930,16 +7948,16 @@ Cohesion: 0.50
 Nodes (4): 6.1 Purpose, 6.2 Wizard structure, 6.3 Wizard home, 6. Looking Ahead Planning System
 
 ### Community 1820 - "Community 1820"
-Cohesion: 0.67
-Nodes (3): 07_approve_click, label, pass
+Cohesion: 0.18
+Nodes (10): Decisions locked (operator rulings, 27 Aug), File inventory (scope-lock), Kickoff brief - slice C2: `ingestCallActivity` accepts EFFECTS, not outcome names, Named deliverables, Note for the record, Phase 0 - audit of what actually shipped, The effect model - the whole of the new mapping, The new contract (+2 more)
 
 ### Community 1825 - "Community 1825"
 Cohesion: 0.17
 Nodes (6): BASE_PROPS, commitPlanMock, DRAFT_MONTHLY_PLAN, DRAFT_YEAR_PLAN, setGoalsMock, setup()
 
 ### Community 1826 - "Community 1826"
-Cohesion: 0.09
-Nodes (22): isPlainMap(), navOrderMirrorKey(), readMirror(), writeMirror(), pinnedMirrorKey(), readMirror(), writeMirror(), getUserPrefs() (+14 more)
+Cohesion: 0.13
+Nodes (15): isPlainMap(), readSettingsMirror(), settingsMirrorKey(), writeMirror(), getUserPrefs(), prefsDocRef(), setAppSetting(), setCommissionScenarios() (+7 more)
 
 ### Community 1841 - "Community 1841"
 Cohesion: 0.67
@@ -7990,8 +8008,8 @@ Cohesion: 0.10
 Nodes (12): ACT_CODE, ACT_NAME, ActChip(), actStyle(), ApptRow(), CounterBar(), DAY_STRIP, FOLLOWUPS (+4 more)
 
 ### Community 1919 - "Community 1919"
-Cohesion: 0.21
-Nodes (8): CashFlowChart(), CustomTooltip(), MODE_COLORS, MODE_DISPLAY, MODE_OPACITY, PARITY_CASES, buildStackedData(), MONTH_LABELS
+Cohesion: 0.18
+Nodes (10): ActivityChip(), ApptStatusPill(), CHIP_SIZE, STATUS_LABEL, STATUS_VARIANT, TYPE_LABEL, TYPE_NAME, TYPE_TONE (+2 more)
 
 ### Community 1920 - "Community 1920"
 Cohesion: 0.10
@@ -8002,24 +8020,24 @@ Cohesion: 0.23
 Nodes (10): __dir, E, fail(), main(), navigateTo(), pass(), results, ROOT (+2 more)
 
 ### Community 1922 - "Community 1922"
-Cohesion: 0.18
-Nodes (9): ARTIFACTS_DIR, check(), consoleErrors, env, login(), redact(), results, RESULTS_FILE (+1 more)
+Cohesion: 0.42
+Nodes (9): assertMoneyNeedsLive(), leg1(), leg2(), leg3(), leg4(), loginAs(), navigateToMoneyNeeds(), report() (+1 more)
 
 ### Community 1923 - "Community 1923"
 Cohesion: 0.27
 Nodes (14): absorbRounding(), applyGating(), applyPctToLines(), blankLines(), derivedApps(), derivedCommission(), enrichLines(), LICENSE_LINE_GATING (+6 more)
 
 ### Community 1924 - "Community 1924"
-Cohesion: 0.29
-Nodes (11): computeAdjustmentPct(), computeProration(), computeSuggestedFinancing(), isSubmittedBasis(), monthIndex(), monthIsBefore(), monthlyGross(), p() (+3 more)
+Cohesion: 0.22
+Nodes (8): allPass, args, IS_PROD, login(), PREEXISTING_AXE, RESULTS, ROLES, smoke()
 
 ### Community 1925 - "Community 1925"
 Cohesion: 0.20
 Nodes (14): BAND_DOT, BAND_TEXT, fmtPct(), FORMULAS, PersistencyV2Shell(), bandKey(), bandLabel(), deriveRollingModel() (+6 more)
 
 ### Community 1926 - "Community 1926"
-Cohesion: 0.11
-Nodes (11): gotoGamePlan(), readCommittedTelContacts(), run(), tsel(), openBoard(), tsel(), openPlayground(), tsel() (+3 more)
+Cohesion: 0.10
+Nodes (12): gotoGamePlan(), readCommittedTelContacts(), run(), tsel(), openBoard(), tsel(), openPlayground(), tsel() (+4 more)
 
 ### Community 1927 - "Community 1927"
 Cohesion: 0.22
@@ -8038,12 +8056,12 @@ Cohesion: 0.11
 Nodes (9): DRILL_ACTIVITY, DRILL_AGENT, DRILL_CALLS, DRILL_NOTES, DRILL_PREPS, DRILL_STANDARD, MgrStandardRow(), mgrTone() (+1 more)
 
 ### Community 1931 - "Community 1931"
-Cohesion: 0.21
-Nodes (15): ageLabel(), EscalationCard(), FinancingEscalationInbox(), FinancingEscalationModal(), acknowledgeFinancingEscalation(), createFinancingEscalation(), ESCALATION_REASON_VALUES, ESCALATION_REASONS (+7 more)
+Cohesion: 0.24
+Nodes (6): BYPASS, EMAIL, fail(), PASS, results, stamp()
 
 ### Community 1932 - "Community 1932"
-Cohesion: 0.21
-Nodes (7): BYPASS, EMAIL, fail(), PASS, results, skip(), stamp()
+Cohesion: 0.28
+Nodes (5): checkMoneyNeedsAccess(), consoleErrors, report(), RESULTS, runAxe()
 
 ### Community 1933 - "Community 1933"
 Cohesion: 0.11
@@ -8053,13 +8071,9 @@ Nodes (18): 3. Security Findings (OWASP Top 10 / ASVS), SEC-001 — `setUserClai
 Cohesion: 0.13
 Nodes (10): CardSheet(), CELL, ELIMINATE_REASONS, EXPORTS, ROLES, SNOOZE_OPTIONS, STALL_DEFAULT, StallCard() (+2 more)
 
-### Community 1935 - "Community 1935"
-Cohesion: 0.10
-Nodes (6): isFocusable(), restoreFocusTo(), BulkCapWarning(), SHORTCUT_ROWS, ACTIVE_BRANCH, INACTIVE_BRANCH
-
 ### Community 1936 - "Community 1936"
-Cohesion: 0.20
-Nodes (9): ARTIFACTS_DIR, check(), consoleErrors, env, login(), redact(), results, RESULTS_FILE (+1 more)
+Cohesion: 0.28
+Nodes (7): allPass, args, gotoTab(), IS_PROD, login(), RESULTS, smokeTheme()
 
 ### Community 1938 - "Community 1938"
 Cohesion: 0.20
@@ -8082,20 +8096,20 @@ Cohesion: 0.12
 Nodes (5): FLAGS, POINTS_SCALE, TENURE_BANDS, TIER1, TIER2
 
 ### Community 1943 - "Community 1943"
-Cohesion: 0.20
-Nodes (9): ARTIFACTS_DIR, check(), consoleErrors, env, login(), redact(), results, RESULTS_FILE (+1 more)
+Cohesion: 0.29
+Nodes (6): defaultProps, mockAddCoachingNote, mockGetCoachingNotes, mockUpdateCoachingNote, mockUser, mockUserProfile
 
 ### Community 1944 - "Community 1944"
-Cohesion: 0.01
-Nodes (160): hardReloadAndAwaitReady(), waitForFirebaseReady(), writeReadVerifyCycle(), env, login(), __dir, E, findAgentRow() (+152 more)
+Cohesion: 0.02
+Nodes (156): hardReloadAndAwaitReady(), waitForFirebaseReady(), writeReadVerifyCycle(), env, login(), __dir, E, findAgentRow() (+148 more)
 
 ### Community 1945 - "Community 1945"
-Cohesion: 0.20
-Nodes (9): ARTIFACTS_DIR, check(), env, failed, redact(), results, RESULTS_FILE, signIn() (+1 more)
+Cohesion: 0.29
+Nodes (3): { mockSaveDraft, mockGetDraft, mockGetLastSubmission }, renderWizard(), SaveStatusIndicator()
 
 ### Community 1946 - "Community 1946"
-Cohesion: 0.20
-Nodes (8): allPass, BM_EMAIL, BM_PASS, BYPASS_TOKEN, loginAndWait(), OLD_CLASSES, RESULTS, runTheme()
+Cohesion: 0.48
+Nodes (4): badgeVisible(), createAt(), inDom(), tsel()
 
 ### Community 1947 - "Community 1947"
 Cohesion: 0.12
@@ -8103,7 +8117,7 @@ Nodes (16): 5. Correctness / Bug Findings, BUG-001 — Financing status machine 
 
 ### Community 1948 - "Community 1948"
 Cohesion: 0.24
-Nodes (7): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), ownedQuery(), seedDocs(), srcCol(), t()
+Nodes (8): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), ownedQuery(), seedDocs(), srcCol(), srcRef(), t()
 
 ### Community 1949 - "Community 1949"
 Cohesion: 0.22
@@ -8146,8 +8160,8 @@ Cohesion: 0.29
 Nodes (5): DEFAULT_PROPS, mockClearOverride, mockGetOverride, mockSetOverride, renderModal()
 
 ### Community 1961 - "Community 1961"
-Cohesion: 0.14
-Nodes (13): 10. Quick Wins (High-impact / Low-effort), 11. Phased Remediation Roadmap, 12. Audit Coverage & Limitations, 1. Executive Summary, 2. Prioritized Master Table, 8. Architecture & Maintainability Findings, 9. Compliance Gap Register, AgencyTrack — Full Code, Security & Compliance Audit (+5 more)
+Cohesion: 0.15
+Nodes (12): 10. Quick Wins (High-impact / Low-effort), 11. Phased Remediation Roadmap, 12. Audit Coverage & Limitations, 2. Prioritized Master Table, 7. Cost Findings, 8. Architecture & Maintainability Findings, 9. Compliance Gap Register, AgencyTrack — Full Code, Security & Compliance Audit (+4 more)
 
 ### Community 1962 - "Community 1962"
 Cohesion: 0.15
@@ -8162,8 +8176,8 @@ Cohesion: 0.15
 Nodes (12): ALSO IN SCOPE (operator-ruled), AUTHORITY & HARD BOUNDARIES, CHECKLIST, FABLE ORCHESTRATION RUN 2 — Verification & Hardening (staging autonomous run), MISSION, PHASE A — SEED DEEPENING (first; everything else depends on it), PHASE B — FULL-SURFACE LIVE SMOKE SUITE, PHASE C — FIX CONFIRMED REGRESSIONS (+4 more)
 
 ### Community 1965 - "Community 1965"
-Cohesion: 0.38
-Nodes (8): displayTitle(), experienceYears(), groupByUnit(), nonBlank(), PRODUCING_ROLES, producingRoster(), ROLE_LABELS, roleLabel()
+Cohesion: 0.33
+Nodes (6): Active track — entry (#909 block, dropped when #919 became the new current), Archived 2026-08-26 (post-merge fill for PR #919 — Rule 16 caps), Current main HEAD — entry (#909 block, dropped when #919 became the new current), Last updated — entry (#909 block, dropped when #919 became the new current), Recently-shipped row (dropped when #919 became the 6th row), Where we left off — entry (#909 block, rotated at the 3-block cap)
 
 ### Community 1966 - "Community 1966"
 Cohesion: 0.18
@@ -8202,8 +8216,8 @@ Cohesion: 0.22
 Nodes (8): BASE_WAR, BM_STANDARDS, DEFAULT_MOCK_AUTH, mockAuth, mockReviewWar, mockToastShow, renderDetail(), UPLINE_SM
 
 ### Community 1976 - "Community 1976"
-Cohesion: 0.07
-Nodes (21): BranchReportDocument(), COLORS, ManagerReport(), styles, UnitReportDocument(), buildManagerReportModel(), generateBranchPlanPDF(), BranchPlanDocument() (+13 more)
+Cohesion: 0.13
+Nodes (14): generateBranchPlanPDF(), BranchPlanDocument(), C, fmtNum(), fmtPct(), fmtTTD(), s, clickNav() (+6 more)
 
 ### Community 1977 - "Community 1977"
 Cohesion: 0.14
@@ -8254,8 +8268,8 @@ Cohesion: 0.18
 Nodes (10): A1/A2/A5 findings (code-vs-operator-model; populated as verified), Banked follow-ups (Run 7), Checklist, DECISIONS-NEEDED, Dispatch / telemetry (per-part model routing), Fable Run 7 — Progress Log, Morning handoff, Ranked next-list (for the following session) (+2 more)
 
 ### Community 1990 - "Community 1990"
-Cohesion: 0.25
-Nodes (5): assertGoalsV2(), __dirname, report(), RESULTS, SCREENSHOTS_DIR
+Cohesion: 0.53
+Nodes (4): aggregateDotClass(), formatCurrencyCompact(), formatPercent(), PersRealityBar()
 
 ### Community 1991 - "Community 1991"
 Cohesion: 0.18
@@ -8287,19 +8301,19 @@ Nodes (7): admin, BM_RECIPIENT, COMPLIANT_UM_AFTER, CONTEXT, MISSED_UM_AFTER, { 
 
 ### Community 2004 - "Community 2004"
 Cohesion: 0.27
-Nodes (6): authToken(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (7): auditRef(), authToken(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
 
 ### Community 2005 - "Community 2005"
 Cohesion: 0.29
-Nodes (7): authToken(), delSettings(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), setSettings(), t()
+Nodes (8): authToken(), cfgRef(), delSettings(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), setSettings(), t()
 
 ### Community 2006 - "Community 2006"
 Cohesion: 0.24
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (6): cfgRef(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
 
 ### Community 2008 - "Community 2008"
-Cohesion: 0.38
-Nodes (8): FLOORS, assembleSuggestion(), clampValue(), floorOf(), PLAN_METRIC_KEYS, PROVENANCE_VALUES, stepTarget(), toCount()
+Cohesion: 0.33
+Nodes (5): AGENT, BRANCH_MANAGER_PROFILE, hoisted, UNIT_MANAGER, UNITS
 
 ### Community 2009 - "Community 2009"
 Cohesion: 0.22
@@ -8315,15 +8329,15 @@ Nodes (6): FunnelCell(), FunnelHead(), FunnelRow(), FunnelTotals(), funnelViewGr
 
 ### Community 2013 - "Community 2013"
 Cohesion: 0.31
-Nodes (6): authToken(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (7): apptRef(), authToken(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
 
 ### Community 2014 - "Community 2014"
 Cohesion: 0.31
-Nodes (6): authToken(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (7): authToken(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t(), tplRef()
 
 ### Community 2015 - "Community 2015"
 Cohesion: 0.28
-Nodes (5): [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
+Nodes (6): candRef(), [EMU_HOST, EMU_PORT_STR], EMU_PORT, main(), seedDocs(), t()
 
 ### Community 2016 - "Community 2016"
 Cohesion: 0.22
@@ -8342,8 +8356,8 @@ Cohesion: 0.29
 Nodes (5): ACTIVE_PLAN, hoisted, PENDING_ENTRY, renderModal(), RETIRED_PLAN
 
 ### Community 2020 - "Community 2020"
-Cohesion: 0.22
-Nodes (7): AGENT_EMAIL, AGENT_PASS, allPass, BYPASS_TOKEN, loginAndWait(), RESULTS, runTheme()
+Cohesion: 0.33
+Nodes (4): DEFAULT_PROPS, EXISTING_RECORD, hoisted, RICARDO
 
 ### Community 2021 - "Community 2021"
 Cohesion: 0.25
@@ -8363,7 +8377,7 @@ Nodes (7): DECISIONS-NEEDED (operator), Fable Run 9 — FINAL (Planner/Scheduler
 
 ### Community 2030 - "Community 2030"
 Cohesion: 0.02
-Nodes (175): captureConsoleAndNetwork(), domTextCount(), formatCaptureReport(), AGENT_EMAIL, AGENT_PASS, BYPASS_TOKEN, fail(), loginAndWait() (+167 more)
+Nodes (155): captureConsoleAndNetwork(), domTextCount(), formatCaptureReport(), AGENT_EMAIL, AGENT_PASS, BYPASS_TOKEN, fail(), loginAndWait() (+147 more)
 
 ### Community 2031 - "Community 2031"
 Cohesion: 0.18
@@ -8390,8 +8404,8 @@ Cohesion: 0.29
 Nodes (7): Find A — NotificationBell badge dark mode (HIGH, cosmetic) — ✅ RESOLVED PR #636 (`8984508`), Find B — NeedsActionBanner CTA button dark mode (MEDIUM) — ✅ RESOLVED PR #628 (`042c45f`), Find C — Award card tier chips (MEDIUM, both themes) — ✅ RESOLVED PR #636 (`8984508`), Find D — BM at-risk agent cards text (MEDIUM, both themes) — ✅ RESOLVED PR #636 (`8984508`), Find E — `text-ink-muted/60` in BranchManagerProductionView (LOW) — ✅ RESOLVED PR #623 (`e0ac355`), Find F — GroupHeader `var(--color-text-faint)` eyebrow labels — ✅ RESOLVED PR #637 (`4c2148c`), Pre-existing axe debt — surfaced by S3 axe sweep (banked 2026-06-07, PR #534)
 
 ### Community 2037 - "Community 2037"
-Cohesion: 0.19
-Nodes (8): openPlanner(), openSentinelEdit(), tsel(), badgeVisible(), createAt(), inDom(), tsel(), TABLET_VIEWPORT
+Cohesion: 0.38
+Nodes (3): openPlanner(), openSentinelEdit(), tsel()
 
 ### Community 2038 - "Community 2038"
 Cohesion: 0.15
@@ -8438,8 +8452,8 @@ Cohesion: 0.18
 Nodes (5): DC, DCCtx, dcFlatten(), DCSection(), DesignCanvas()
 
 ### Community 2054 - "Community 2054"
-Cohesion: 0.20
-Nodes (7): env, EXPECTED_FLOOR_LABELS, SCREENSHOT_DIR, TA_EMAIL, TA_PASSWORD, TOKEN, VIEWPORT
+Cohesion: 0.60
+Nodes (4): readPersisted(), storageKey(), useLeaderboardScope(), writePersisted()
 
 ### Community 2055 - "Community 2055"
 Cohesion: 0.15
@@ -8474,12 +8488,12 @@ Cohesion: 0.67
 Nodes (3): PILOT-BLOCKING — Shakedown findings (surfaced 2026-05-13, must fix before Tatil demo), SHAKEDOWN-001 — Manager/UM see Agent Dashboard on first login — RESOLVED in PR #141, SHAKEDOWN-002 — Unit Manager sees cross-unit agents — FULLY RESOLVED in PR #142 + PR #144
 
 ### Community 2068 - "Community 2068"
-Cohesion: 0.67
-Nodes (3): s2-a-preview-all-valid, label, pass
+Cohesion: 0.40
+Nodes (4): EMPTY, hoisted, NON_EMPTY_RANKING, POPULATED
 
 ### Community 2069 - "Community 2069"
-Cohesion: 0.17
-Nodes (9): ARTIFACTS_DIR, check(), consoleErrors, env, redact(), results, RESULTS_FILE, signIn() (+1 more)
+Cohesion: 0.40
+Nodes (3): CAMPAIGN, SUBS, USERS
 
 ### Community 2071 - "Community 2071"
 Cohesion: 0.67
@@ -8502,12 +8516,12 @@ Cohesion: 0.17
 Nodes (11): 1. If confirmed — the fix, and its constraints, 2. Proving it worked, 3. Bank the outcome either way, 4. Deliverables, `CHIP_WAIT` — a known contradiction. Do NOT resolve it here., KICKOFF — the flake race: verify the awaiting-pattern hypothesis, then fix it mechanically, NOT in scope, PHASE 0 — VERIFY THE HYPOTHESIS. Report and STOP. (+3 more)
 
 ### Community 2085 - "Community 2085"
-Cohesion: 0.31
-Nodes (5): MODE_LABELS, ModalTargetingTab(), DEFAULT_MODE_MIX, MODES, rebalance()
+Cohesion: 0.40
+Nodes (3): NAV, QA, renderPalette()
 
 ### Community 2086 - "Community 2086"
-Cohesion: 0.09
-Nodes (28): MarkDeliveredDialog(), UnitFinancingRoster(), EMPTY_FORM, monthLabel(), MonthlyStatementEntry(), toMonthKey(), WRITE_ROLES, detectSkippedMonths() (+20 more)
+Cohesion: 0.40
+Nodes (4): baseHierarchy, baseYtd, belowFloorHierarchy, floorMetYtd
 
 ### Community 2087 - "Community 2087"
 Cohesion: 0.20
@@ -8530,12 +8544,12 @@ Cohesion: 0.50
 Nodes (3): hoisted, seedSources(), snapOf()
 
 ### Community 2092 - "Community 2092"
-Cohesion: 0.36
-Nodes (7): isPlainMap(), readSettingsMirror(), settingsMirrorKey(), writeMirror(), getUserPrefs, MK, setAppSetting
+Cohesion: 0.40
+Nodes (4): hoisted, renderLoaded(), SUBMISSIONS, USERS
 
 ### Community 2093 - "Community 2093"
-Cohesion: 0.31
-Nodes (6): clickTid(), LEGS, mustText(), REPO_ROOT, scopeText(), tsel()
+Cohesion: 0.40
+Nodes (3): SUBS, USERS, YEAR
 
 ### Community 2094 - "Community 2094"
 Cohesion: 0.31
@@ -8589,17 +8603,13 @@ Nodes (5): EMPTY_MY_PROD, hoisted, mountWithRole(), prefetchMock, teardownMock
 Cohesion: 0.33
 Nodes (6): committedPlan, derivedSubmissions, FLOORS, renderDaily(), renderFinal(), v2Submission()
 
-### Community 2107 - "Community 2107"
-Cohesion: 0.33
-Nodes (5): mockAddProspectInfo, mockGetProspectInfo, mockProfile, mockUpdateProspectInfo, mockUser
-
 ### Community 2108 - "Community 2108"
 Cohesion: 0.22
 Nodes (4): admin, functions, admin, { aggregatePendingPlan }
 
 ### Community 2109 - "Community 2109"
-Cohesion: 0.25
-Nodes (6): hoisted, MONTHLY_PLAN, renderDrawer(), ROW, YEAR_PLAN, enumerateFocusables()
+Cohesion: 0.29
+Nodes (5): hoisted, MONTHLY_PLAN, renderDrawer(), ROW, YEAR_PLAN
 
 ### Community 2110 - "Community 2110"
 Cohesion: 0.20
@@ -8616,6 +8626,10 @@ Nodes (9): 1. `src/lib/commit.js`, 2. `src/services/activityLogService.js` — i
 ### Community 2113 - "Community 2113"
 Cohesion: 0.40
 Nodes (3): EMPTY_MY_PROD, hoisted, mountWithRole()
+
+### Community 2114 - "Community 2114"
+Cohesion: 0.50
+Nodes (4): 1. Executive Summary, Counts by category, Counts by severity, Top 5 risks
 
 ### Community 2115 - "Community 2115"
 Cohesion: 0.20
@@ -8634,16 +8648,16 @@ Cohesion: 0.20
 Nodes (9): 1 · What it is, 2 · Where it plugs in, 3 · Data sources (all existing), 4 · Export & controls, 5 · Design contract (from the mockups), 6 · Build order (slices), 7 · Open questions (resolve before/while building), AgencyTrack — Branch-Manager "Strategic Plan" · complete build handoff (+1 more)
 
 ### Community 2120 - "Community 2120"
-Cohesion: 0.31
-Nodes (6): assertRailCollapse(), gotoTab(), ok(), PREVIEW, reachMerged(), results
+Cohesion: 0.50
+Nodes (3): EMPTY_MY_PROD, hoisted, mountWithRole()
 
 ### Community 2122 - "Community 2122"
 Cohesion: 0.50
-Nodes (4): s3-c-subject-valid, label, pass, subject
+Nodes (3): EXPECTED_PAYLOAD_SHAPE_KEYS, hoisted, openWizard()
 
 ### Community 2123 - "Community 2123"
-Cohesion: 0.67
-Nodes (3): Active track — entry 3 (P0-A/B/C prior block), Archived 2026-08-26 (post-merge fill for PR #909 — Rule 16 caps), Last updated — entry 3 (three-housekeeping-PRs / P0-C block)
+Cohesion: 0.50
+Nodes (4): Active track — entry 3 (P0-A/B/C prior block), Active track — entry 3 (P0-A/B/C prior block), Archived 2026-08-26 (post-merge fill for PR #909 — Rule 16 caps), Last updated — entry 3 (three-housekeeping-PRs / P0-C block)
 
 ### Community 2124 - "Community 2124"
 Cohesion: 0.22
@@ -8670,8 +8684,8 @@ Cohesion: 0.22
 Nodes (8): About the design files, Assets, Fidelity, Handoff: AgencyTrack — Linked Agent System (Planner · Calls · Book · Commission), Overview, Read these in order, Running the prototype, The one idea to carry into production
 
 ### Community 2130 - "Community 2130"
-Cohesion: 0.22
-Nodes (9): Archived 2026-07-26 (post-#874 fill — Rule 16 caps), Archived from CONTEXT.md § Active track — 2026-08-14 reconcile fill, Archived from CONTEXT.md § Last updated — 2026-08-14 reconcile fill, Archived from CONTEXT.md § Recently shipped — 2026-08-14 reconcile fill, Current-main-HEAD entry (dropped per 3-entry cap), Last-updated archive — Run 9 promotion #862 (archived 2026-07-26, Rule 16 3-entry cap), Recently-shipped row (dropped when #874 became the 6th row), Where-we-left-off archive — Run 8 promotion #860 (archived 2026-07-26, Rule 16 3-entry cap) (+1 more)
+Cohesion: 0.20
+Nodes (10): Archived 2026-07-26 (post-#874 fill — Rule 16 caps), Archived from CONTEXT.md § Active track — 2026-08-14 reconcile fill, Archived from CONTEXT.md § Last updated — 2026-08-14 reconcile fill, Archived from CONTEXT.md § Recently shipped — 2026-08-14 reconcile fill, Current-main-HEAD entry (dropped per 3-entry cap), Current-main-HEAD entry (dropped per 3-entry cap), Last-updated archive — Run 9 promotion #862 (archived 2026-07-26, Rule 16 3-entry cap), Recently-shipped row (dropped when #874 became the 6th row) (+2 more)
 
 ### Community 2131 - "Community 2131"
 Cohesion: 0.22
@@ -8697,13 +8711,17 @@ Nodes (8): CHAIN, GamePlanScreen(), HISTORY, prescribe(), ratios(), settledOf(),
 Cohesion: 0.31
 Nodes (7): AgentRow(), FLOOR, FloorTile(), ManagerScreen(), METRIC_ZERO, pct(), UNIT_SEED
 
+### Community 2137 - "Community 2137"
+Cohesion: 0.67
+Nodes (3): Archived by the PR #924 post-merge fill (2026-08-27, Rule 16 caps), Recently-shipped rows archived by the PR #924 fill (5-row cap), 'Where we left off' block archived by the PR #924 fill (Rule 16 cap 3)
+
 ### Community 2138 - "Community 2138"
 Cohesion: 0.28
 Nodes (4): openBoard(), seenProjects, tsel(), weekLabel()
 
 ### Community 2139 - "Community 2139"
 Cohesion: 0.67
-Nodes (3): s4-verify-deactivated, label, pass
+Nodes (3): 01_bm_login, label, pass
 
 ### Community 2140 - "Community 2140"
 Cohesion: 0.25
@@ -8762,12 +8780,12 @@ Cohesion: 0.33
 Nodes (4): CommissionScreen(), RATES, reconcile(), VERDICT
 
 ### Community 2157 - "Community 2157"
-Cohesion: 0.29
-Nodes (3): hoisted, NOW, renderTab()
+Cohesion: 0.67
+Nodes (3): s2-c-step4-created-3, label, pass
 
 ### Community 2158 - "Community 2158"
-Cohesion: 0.12
-Nodes (13): AllocationBar(), formatSeal(), MiniMonthStrip(), PlanCascade(), PlanCommitCard(), RAIL_TOKEN_ROLE, StepCard(), allocationSegments() (+5 more)
+Cohesion: 0.67
+Nodes (3): s4-deactivate-pr-d-smoke-1, label, pass
 
 ### Community 2159 - "Community 2159"
 Cohesion: 0.38
@@ -8802,8 +8820,8 @@ Cohesion: 0.33
 Nodes (5): Before exploring, read these, Domain Docs, File structure, Flag ADR conflicts, Use the glossary's vocabulary
 
 ### Community 2168 - "Community 2168"
-Cohesion: 0.29
-Nodes (7): Falsification (Rule 23), Falsification (Rule 23), ⚑ Flake race — MECHANISM PROVEN by direct observation (banked 2026-08-11, `fix/flake-awaiting-pattern`, HIGH — supersedes the hypothesis half of the race brief), ⚠ THE ACCEPTANCE TEST IS THE TRACE, NOT THE RATE, The evidence — 20+ failing traces, test and component UNCHANGED, The instrument AMPLIFIES the rate, and that is an asset, The mechanism
+Cohesion: 0.25
+Nodes (8): Falsification (Rule 23), Falsification (Rule 23), Falsification (Rule 23), ⚑ Flake race — MECHANISM PROVEN by direct observation (banked 2026-08-11, `fix/flake-awaiting-pattern`, HIGH — supersedes the hypothesis half of the race brief), ⚠ THE ACCEPTANCE TEST IS THE TRACE, NOT THE RATE, The evidence — 20+ failing traces, test and component UNCHANGED, The instrument AMPLIFIES the rate, and that is an asset, The mechanism
 
 ### Community 2169 - "Community 2169"
 Cohesion: 0.29
@@ -8818,8 +8836,8 @@ Cohesion: 0.33
 Nodes (5): mockGetAgentOfMonth, mockGetCandidates, mockSetAgentOfMonth, mockShowToast, THREE_CATEGORIES
 
 ### Community 2172 - "Community 2172"
-Cohesion: 0.33
-Nodes (3): hoisted, openWizard(), WAIT
+Cohesion: 0.67
+Nodes (3): s4-deactivate-pr-d-smoke-2, label, pass
 
 ### Community 2174 - "Community 2174"
 Cohesion: 0.40
@@ -8858,8 +8876,8 @@ Cohesion: 0.53
 Nodes (6): Falsification (Rule 23), Interaction with the other open promotion FU, The #899 flake fix lives on `staging` ONLY — `main`'s unit-test gate is still unreliable, and it now has a measured cost (banked 2026-08-16, PR #906 session, HIGH — CI/process), ~~The #899 flake fix lives on `staging` ONLY~~ — **RESOLVED 2026-08-16 by the promotion (`b4d9be7b`)** (banked 2026-08-16, PR #906 session, HIGH — CI/process), The fix is promotion. It is NOT a cherry-pick., Why this is HIGH and not housekeeping
 
 ### Community 2189 - "Community 2189"
-Cohesion: 0.40
-Nodes (4): committedPlan, derivedSubmissions, FLOORS, sparseSubmissions
+Cohesion: 0.12
+Nodes (12): FLOOR_METRICS, formatCommittedDate(), PROVENANCE_CHIP, SuggestedWeekCard(), VARIANCE_TONE, committedPlan, derivedSubmissions, FLOORS (+4 more)
 
 ### Community 2191 - "Community 2191"
 Cohesion: 0.40
@@ -8869,13 +8887,9 @@ Nodes (4): appts, late, prospectName(), renderSheet()
 Cohesion: 0.50
 Nodes (3): defaultProps, mockGetProspectInfo, mockUser
 
-### Community 2193 - "Community 2193"
-Cohesion: 0.67
-Nodes (3): 7. Cost Findings, COST-001 — Hourly leaderboard CF rescans the full tenant submissions + users every run, unconditionally, COST-002 — App Check absence + tenant-wide `persistency` list as an unauthenticated-abuse / read-amplification cost vector
-
 ### Community 2194 - "Community 2194"
-Cohesion: 0.06
-Nodes (23): Avatar(), SIZE_PX, avatarColor(), buildSubmissionNameMap(), deriveInitials(), hashUid(), PALETTE, validateTokenData() (+15 more)
+Cohesion: 0.18
+Nodes (10): Avatar(), SIZE_PX, avatarColor(), deriveInitials(), hashUid(), PALETTE, validateTokenData(), FUTURE (+2 more)
 
 ### Community 2195 - "Community 2195"
 Cohesion: 0.50
@@ -8922,24 +8936,24 @@ Cohesion: 0.67
 Nodes (3): 06_approve_button, label, pass
 
 ## Knowledge Gaps
-- **14732 isolated node(s):** `version`, `configurations`, `PreToolUse`, `allow`, `C:\Users\noryk\AppData\Local\Programs\codebase-memory-mcp\codebase-memory-mcp.exe` (+14727 more)
+- **14817 isolated node(s):** `version`, `configurations`, `PreToolUse`, `allow`, `C:\Users\noryk\AppData\Local\Programs\codebase-memory-mcp\codebase-memory-mcp.exe` (+14812 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **221 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **220 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `setupBypassSession()` connect `Manager Dashboard & Leaderboard` to `Env Loading & Channel Split`, `Agent Dashboard & Goals Panel`, `Auth, Login & Admin Roles`, `Community 2054`, `A11y Walk Session 2`, `Community 2069`, `Agent`, `Accessibility (A11y) Walk`, `Awards & Badges`, `Accessibility (A11y) Walk`, `Community 1087`, `UI Mockups`, `Community 1096`, `Community 2120`, `Community 1623`, `Verification Smoke Tests`, `Verification Smoke Tests`, `Migrations`, `Community 1166`, `UI Mockups`, `War`, `Community 1705`, `Verification Smoke Tests`, `Community 1200`, `UI Mockups`, `UI Mockups`, `Seed`, `Community 731`, `Community 732`, `Community 733`, `Community 1245`, `Community 1252`, `Verification Smoke Tests`, `Verification Smoke Tests`, `Verification Smoke Tests`, `Community 1256`, `Community 1259`, `Community 1272`, `Community 1277`, `Verification Smoke Tests`, `Verification Smoke Tests`, `Accessibility (A11y) Walk`, `Accessibility (A11y) Walk`, `Community 1306`, `Community 797`, `Community 1311`, `Community 1313`, `Community 1326`, `Community 1332`, `Community 1338`, `Community 1386`, `Community 878`, `Community 879`, `Community 892`, `Community 1921`, `Community 1922`, `Community 1926`, `Community 1927`, `Community 1932`, `Community 1936`, `Community 1941`, `Community 919`, `Community 1944`, `Community 1943`, `Community 1946`, `Community 1945`, `Accessibility (A11y) Walk`, `Community 1956`, `Community 1445`, `Accessibility (A11y) Walk`, `Community 1959`, `Community 937`, `Community 940`, `Community 1979`, `Community 1986`, `Community 1990`, `Community 1993`, `Accessibility (A11y) Walk`, `Accessibility (A11y) Walk`, `Community 2020`, `Community 2030`?**
-  _High betweenness centrality (0.025) - this node is a cross-community bridge._
-- **Why does `AgencyTrack — Follow-Up Items` connect `Persistency Module` to `Community 2178`, `Community 2179`, `Community 2180`, `Community 2181`, `Community 2182`, `Community 1056`, `Community 1057`, `Community 1058`, `Community 2212`, `Community 2213`, `Community 2214`, `Community 2215`, `Verification Smoke Tests`, `Documentation`, `Community 2216`, `Community 2084`, `Community 2222`, `Community 2223`, `Community 2224`, `Community 1215`, `Community 1216`, `Community 1217`, `Community 1218`, `Community 2131`, `Community 2132`, `Community 984`, `Community 985`, `Community 986`, `Community 859`, `Community 1129`, `Community 749`, `Community 2168`?**
-  _High betweenness centrality (0.022) - this node is a cross-community bridge._
+- **Why does `AgencyTrack — Follow-Up Items` connect `Persistency Module` to `Community 2178`, `Community 2179`, `Community 2180`, `Community 2181`, `Community 2182`, `Community 2203`, `Community 1056`, `Community 1057`, `Community 1058`, `Community 2212`, `Community 2213`, `Community 2214`, `Community 2215`, `Verification Smoke Tests`, `Documentation`, `Community 2216`, `Community 2084`, `Community 2222`, `Community 2223`, `Community 2224`, `Community 1215`, `Community 1216`, `Community 1217`, `Community 1218`, `Community 2131`, `Community 2132`, `Community 984`, `Community 985`, `Community 986`, `Community 859`, `Community 1129`, `Community 749`, `Community 2168`?**
+  _High betweenness centrality (0.030) - this node is a cross-community bridge._
+- **Why does `setupBypassSession()` connect `Manager Dashboard & Leaderboard` to `Community 1921`, `Env Loading & Channel Split`, `Community 1922`, `Community 1924`, `Agent Dashboard & Goals Panel`, `Auth, Login & Admin Roles`, `Community 1927`, `Verification Smoke Tests`, `Accessibility (A11y) Walk`, `Community 1926`, `Community 1931`, `Community 1932`, `Community 1166`, `A11y Walk Session 2`, `Community 1936`, `Community 1941`, `Accessibility (A11y) Walk`, `Community 919`, `Community 1944`, `Community 1305`, `Community 1306`, `Community 1277`, `UI Mockups`, `War`, `Community 1311`, `Accessibility (A11y) Walk`, `Community 1313`, `Agent`, `Community 797`, `Community 1956`, `Community 1445`, `Accessibility (A11y) Walk`, `Community 1959`, `Community 937`, `Community 1705`, `Community 940`, `Verification Smoke Tests`, `Community 1326`, `Community 1200`, `Community 1332`, `Accessibility (A11y) Walk`, `Awards & Badges`, `Community 1338`, `Community 1979`, `Community 1213`, `Community 1087`, `Community 1986`, `UI Mockups`, `Community 1096`, `Community 1993`, `Community 842`, `UI Mockups`, `UI Mockups`, `Seed`, `Accessibility (A11y) Walk`, `Community 732`, `Community 989`, `Community 733`, `Community 731`, `Verification Smoke Tests`, `Community 1245`, `Community 1252`, `Verification Smoke Tests`, `Verification Smoke Tests`, `Community 1127`, `Community 1256`, `Verification Smoke Tests`, `Community 2030`, `Community 879`, `Community 878`, `Verification Smoke Tests`, `Community 1272`, `Community 892`, `Migrations`?**
+  _High betweenness centrality (0.029) - this node is a cross-community bridge._
 - **Why does `Nexus Hero S3 Screenshot — Light Wizard (file missing)` connect `Design Concepts` to `Verification Smoke Tests`?**
-  _High betweenness centrality (0.018) - this node is a cross-community bridge._
+  _High betweenness centrality (0.025) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `formatCurrency()` (e.g. with `ProductionSummaryPanel()` and `ReviewSummary()`) actually correct?**
   _`formatCurrency()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `version`, `configurations`, `PreToolUse` to the rest of the system?**
-  _14757 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _14842 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Activity Standards Smoke Tests` be split into smaller, more focused modules?**
-  _Cohesion score 0.016760396625721475 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.037894736842105266 - nodes in this community are weakly interconnected._
 - **Should `Shakedown Auth & Test Helpers` be split into smaller, more focused modules?**
   _Cohesion score 0.11666666666666667 - nodes in this community are weakly interconnected._
