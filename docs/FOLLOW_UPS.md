@@ -18,15 +18,15 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| `ingestCallActivity` ships as CODE only — merging does not deploy a Cloud Function. It exists in NO Firebase project until `firebase deploy --only functions` runs as a Rule 19 dispatcher action, so slice C has nothing to POST to. **CC deliberately did not self-deploy:** the PR is not purely additive (it also changes `dailyToWeekly.js`, whose existing cron caller exercises the new behaviour), which is exactly what the pre-merge additive carve-out excludes; `firebase use` reports the active project as PRODUCTION `agencytrack-2a610`. **The staging smoke is separately owed and is staging-only** — it mints a real token and moves a real agent's daily numbers (banked 2026-08-26, slice B / PR #TBD) | HIGH | Linked call sources | — | see § `ingestCallActivity` is MERGED-BUT-NOT-DEPLOYED |
+| **DEPLOY DONE 2026-08-27 02:01 UTC — what remains is the SMOKE.** `ingestCallActivity` is live and ACTIVE (`updateTime` 02:01:05Z, post-squash), verified via `gcloud functions describe`, and a live probe returns an indistinguishable HTTP 401 for no-token / bad-token / malformed-header. **It has still never completed a successful WRITE against a real Firestore** — the idempotency proof rests on a transaction fake until the staging smoke runs. Slice C now has something to POST to. Original deploy-withholding rationale retained in the section body because it is the standing rule for the next slice of this shape: **CC deliberately did not self-deploy:** the PR is not purely additive (it also changes `dailyToWeekly.js`, whose existing cron caller exercises the new behaviour), which is exactly what the pre-merge additive carve-out excludes; `firebase use` reports the active project as PRODUCTION `agencytrack-2a610`. **The staging smoke is separately owed and is staging-only** — it mints a real token and moves a real agent's daily numbers (banked 2026-08-26, slice B / PR #923) | HIGH | Linked call sources | — | see § `ingestCallActivity` is DEPLOYED; the staging smoke is still owed |
 | The #899 flake fix (`src/test-utils/flushPendingEffects.js`) is on `staging` ONLY — `git ls-tree origin/main` returns EMPTY, so `main`'s unit-test gate still produces false reds. Every command-file / dispatcher-tooling PR is structurally forced onto `main`, and **#906 proved the cost on a one-markdown-file diff** (red on `DailyCaptureV2` streak test, 5000ms timeout, 1 failed / 5842 passed; re-run green). **Fix is staging→main PROMOTION — do NOT cherry-pick** (duplicate commit, conflicts at promotion across the fix + 30 `await` call sites). Compounds with the promotion-deletes-staging FU below: that one makes promotion risky, this one makes deferring it costly (banked 2026-08-16, PR #906 session) | HIGH | CI / process | — | 6013 |
 | Promotion deletes `staging`, silently auto-retargeting every open PR onto `main` — put #872 + #873 into main ungated. **CONFIRMED RECURRING** — deleted again on #877 (#860/#874/#877). **Primary fix upgraded to a runbook step (`git push origin main:staging` after every promotion merge)**; CI guard still recommended as enforcement. **Also corrects the record: `main` DOES have branch protection** (2 required checks, admin-bypassable) — the FU's original "unavailable" premise was wrong, and CLAUDE.md § Workflow carried the same false claim. **That half is now CLOSED** — the CLAUDE.md claim was corrected in the promotion-prep governance PR (2026-08-16); the `staging`-deletion half remains open and still needs a dispatcher decision (banked 2026-07-26, PR #871 session; corrected 2026-07-27) | HIGH | — | — | 430 |
 | `enforce_admins: false` on `main` — every direct push bypasses both required status checks, so `main`'s CI gate is advisory for the only person who pushes there. Observed, not inferred: a brief-landing push returned `remote: Bypassed rule violations for refs/heads/main: 2 of 2 required status checks are expected.` **Dispatcher decision required — do NOT change the setting.** Turning it on costs ~5 min of CI per dispatch (brief landings, CONTEXT fills, command-file changes all become PR-gated); leaving it off means the checks are decorative on the direct-push path (banked 2026-08-16, promotion-prep governance PR) | HIGH | Repo governance / CI | — | 5975 |
 | The flake family is ~10 named members and #899 fixed **TWO** (`MeetingMode`, `AgentPlannerPanel`) — the rest were deliberately left unruled. `staging` is better by two files, **not fixed**; corrects the framing in `main`'s § *The #899 flake fix lives on `staging` ONLY*, which arrives at the next promotion. Evidence: #907 is cut from `staging`, docs-only, and still went red on `BranchesPanel` (roster member 7). The promotion acceptance check proves the fix ARRIVED, not that the gate is clean (banked 2026-08-16, PR #907) | HIGH | CI / process | — | 6013 |
-| `ingestCallActivity` resolves tokens against a HARDCODED `TENANT_ID` rather than a collection-group query, because a collection-group index needs a `fieldOverrides` entry that was outside slice B's scope-lock and named deploy. Matches the existing SEC-9c convention in `functions/index.js:57`. A second tenant's tokens would 401 — failing closed, but silently (banked 2026-08-26, slice B / PR #TBD) | MEDIUM | SEC-9c / multi-tenancy | — | see § `ingestCallActivity` resolves tokens against a HARDCODED tenant |
-| The `referralsObtained` half of the PR #909 omit-when-zero guard is still open — slice B retired ONLY the `serviceCalls` half, because B gives that field a daily writer and does not write `referralsObtained` (KQM referral outcomes map to `newNamesAdded`). **Corrects the sequencing recorded in CONTEXT.md**, which put the whole retirement after slice C: the trigger is a daily writer, not a slice letter. Retires in BOTH aggregator twins when one appears (banked 2026-08-26, slice B / PR #TBD) | MEDIUM | Daily Capture / aggregator | — | see § The `referralsObtained` half |
+| `ingestCallActivity` resolves tokens against a HARDCODED `TENANT_ID` rather than a collection-group query, because a collection-group index needs a `fieldOverrides` entry that was outside slice B's scope-lock and named deploy. Matches the existing SEC-9c convention in `functions/index.js:57`. A second tenant's tokens would 401 — failing closed, but silently (banked 2026-08-26, slice B / PR #923) | MEDIUM | SEC-9c / multi-tenancy | — | see § `ingestCallActivity` resolves tokens against a HARDCODED tenant |
+| The `referralsObtained` half of the PR #909 omit-when-zero guard is still open — slice B retired ONLY the `serviceCalls` half, because B gives that field a daily writer and does not write `referralsObtained` (KQM referral outcomes map to `newNamesAdded`). **Corrects the sequencing recorded in CONTEXT.md**, which put the whole retirement after slice C: the trigger is a daily writer, not a slice letter. Retires in BOTH aggregator twins when one appears (banked 2026-08-26, slice B / PR #923) | MEDIUM | Daily Capture / aggregator | — | see § The `referralsObtained` half |
 | Restore the VIOLET calls hue — `plannerTone.js`'s stated reason for diverging ("repo ships no violet token") is FALSE; token ships at exact DS parity with zero consumers (banked 2026-07-27, planner activity-types PR) | MEDIUM | Track J conformance | — | see § Planner activity types |
-| `outcomeMap.mapCall` accepts any outcome × campaign pairing, so semantically odd pairs (a portfolio outcome in a cold campaign) map rather than reject. Deliberate: restricting them would leave a no-answer Portfolio call with nowhere to go, which is a data-loss shape. Close it once slice C's real vocabulary is known (banked 2026-08-26, slice B / PR #TBD) | LOW | Linked call sources | — | see § The KQM outcome × campaign cross-product |
+| `outcomeMap.mapCall` accepts any outcome × campaign pairing, so semantically odd pairs (a portfolio outcome in a cold campaign) map rather than reject. Deliberate: restricting them would leave a no-answer Portfolio call with nowhere to go, which is a data-loss shape. Close it once slice C's real vocabulary is known (banked 2026-08-26, slice B / PR #923) | LOW | Linked call sources | — | see § The KQM outcome × campaign cross-product |
 | Planner duration reporting — `durationMin` is captured on every appointment but NOTHING sums it anywhere; "time recorded" needs only a reporting surface (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
 | Planner type-taxonomy collisions deferred by hardcoding — `MTG` vs manager `UNIT`, and `PERS` vs `FREE`+Personal (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
 | `SALE` absent from the design authority's agent picker but shipping in the app — pre-existing divergence, NOT introduced by the activity-types work (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
@@ -6261,7 +6261,35 @@ an agent attaches their calling software once and revokes it rarely.
 `(creditUid ASC, createdAt DESC)` index for another reason, at which point the `orderBy` should
 be restored and the client-side sort deleted rather than left as dead belt-and-braces.
 
-## `ingestCallActivity` is MERGED-BUT-NOT-DEPLOYED, and the staging smoke is owed (HIGH, banked 2026-08-26, slice B / PR #TBD)
+## `ingestCallActivity` is DEPLOYED; the staging smoke is still owed (HIGH, banked 2026-08-26, slice B / PR #923)
+
+**RESOLVED 2026-08-27 02:01 UTC — the deploy ran.** `firebase deploy --only functions` completed
+exit 0 with `functions[ingestCallActivity(us-central1)] Successful create operation`, and the state
+was confirmed against Google rather than the CLI summary (per step 3 below):
+
+```
+ingestCallActivity      updateTime 2026-08-27T02:01:05.698Z   ACTIVE
+aggregateDailyToWeekly  updateTime 2026-08-27T02:01:06.374Z   ACTIVE
+```
+
+Both are post-squash (`0a6d8e9c`), so the guard retirement is live in the cron as well as the
+endpoint. A live probe confirms the auth boundary in production: no token, a garbage bearer token
+and a malformed `Basic` header all return **HTTP 401 with an identical empty body** — failing closed
+and indistinguishably, so nothing leaks whether a token exists. Nothing was written; all three were
+rejected before Firestore was touched.
+
+**What is still owed is the SMOKE, not the deploy** — see the staging-smoke section below. The
+endpoint has still never completed a successful WRITE against a real Firestore; the idempotency
+proof rests on a transaction fake until it does.
+
+The original entry follows, kept because its reasoning about WHY the deploy was withheld remains the
+correct standing rule for the next slice of this shape.
+
+---
+
+**⚠ EVERYTHING BELOW THIS LINE IS THE PRE-DEPLOY TEXT, PRESERVED AS WRITTEN ON 2026-08-26.** Its
+present-tense claims ("exists in no Firebase project", "until it does") were true when written and
+are FALSE now — see the resolution above. Read it for the reasoning, not for the state.
 
 `functions/callActivity/ingestCallActivity.js` ships as code with this PR. **Merging does not
 deploy it** — Cloud Functions change production behaviour only when `firebase deploy --only
@@ -6310,7 +6338,7 @@ it is.
 post-squash `updateTime` AND a staging smoke log shows a daily doc moving. Not overturned by the PR
 being merged, and not by CI being green — neither touches Firebase.
 
-## The `referralsObtained` half of the omit-when-zero guard is still open (MEDIUM, banked 2026-08-26, slice B / PR #TBD)
+## The `referralsObtained` half of the omit-when-zero guard is still open (MEDIUM, banked 2026-08-26, slice B / PR #923)
 
 Slice B retired **half** of the PR #909 omit-when-zero guard. `serviceCalls` is now always written
 by both aggregator twins, because `ingestCallActivity` gives it a daily writer and the guard's own
@@ -6339,7 +6367,7 @@ it retires when a writer appears, whichever slice that turns out to be, not on a
 rules that a KQM referral outcome SHOULD credit `referralsObtained` — in which case the mapping
 changes and the guard retires with it, and this entry closes as superseded rather than done.
 
-## `ingestCallActivity` resolves tokens against a HARDCODED tenant (MEDIUM, banked 2026-08-26, slice B / PR #TBD)
+## `ingestCallActivity` resolves tokens against a HARDCODED tenant (MEDIUM, banked 2026-08-26, slice B / PR #923)
 
 The request carries a bearer token and **no tenant**, so the natural resolution shape is
 `collectionGroup('callSources').where('tokenHash','==',h)`. `functions/callActivity/resolveCallSource.js`
@@ -6365,7 +6393,7 @@ different tenant path") which will need rewriting rather than deleting.
 **Falsification:** overturned by SEC-9c landing, or by any second tenant being provisioned — at
 which point this stops being a deferred generalisation and becomes a live defect.
 
-## The KQM outcome × campaign cross-product is unrestricted (LOW, banked 2026-08-26, slice B / PR #TBD)
+## The KQM outcome × campaign cross-product is unrestricted (LOW, banked 2026-08-26, slice B / PR #923)
 
 `functions/callActivity/outcomeMap.js` keeps two orthogonal tables — the outcome says what happened,
 the campaign says which lane it lands in — and `mapCall` accepts **any** legal pairing of the two.

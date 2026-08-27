@@ -694,3 +694,26 @@ Widens the daily schema so KQM Calls' two facts survive into the weekly report: 
 **This is orthogonal to v3 Phase 0**, which is unchanged since the promotion — still short P0-E (stood down) and P0-F (not started), still no v3 screens. Next for v3: P0-F. Next for this slice: the functions deploy.
 
 ---
+
+---
+
+## Archived by the PR #923 post-merge fill (2026-08-26, Rule 16 caps)
+
+- **PR #912 merged to `main` (squash `0ffd6e85`, 2026-08-26) — show `agentNumber` on the agent's own profile.** Read-only `Agent #` row added to `ProfileScreen`'s Account Info block, reusing the PDF's existing label (`AgentReportDocument.jsx:386`); em dash + hint when unset. No write path added — `agentNumber` stays write-once via onboarding (`userService.js`) + manager-correction (`EditUserDrawer`), unchanged. Client-only: zero rules/functions/index delta, nothing to deploy. 3 new unit tests (number set across agent/unit_manager/branch_manager, em-dash+hint when unset, no editable control in either state) + a live two-theme smoke against the real preview, which incidentally surfaced the actual entry point — Profile has no desktop sidebar nav row (mobile-drawer-only); it opens via the sidebar-footer avatar button (`aria-label="Open profile"`, `Sidebar.jsx:450`), pre-existing and unchanged by this PR. Brief: `docs/briefs/agent-number-on-profile-kickoff.md`.
+
+- `0ffd6e85` (PR #912 squash — show `agentNumber` on the agent's own profile, 2026-08-26). Client-only, no deploy-gated surfaces touched (no `firestore.rules`/`firestore.indexes.json`/`functions/` delta).
+
+- **`agentNumber`-on-profile shipped (PR #912, `0ffd6e85`) — a small display-only slice, NOT part of v3 Phase 0 and NOT part of the Daily Capture call-fields track.** Adds a read-only row to `ProfileScreen`; no write path, no backend surface touched. **v3 Phase 0 and the Daily Capture slice are both unchanged by this PR** — see the Prior entries below for their current state. **Next for v3: P0-F** (task↔event unification), unaffected by this slice.
+
+
+### 'Where we left off' block archived by the PR #923 post-merge fill (Rule 16 cap 3)
+
+---
+
+**PRIOR — 2026-08-26. PR #912 merged to `main` (squash `0ffd6e85`) — `agentNumber` shown on the agent's own profile.**
+
+A small, fully client-side slice: a read-only `Agent #` row in `ProfileScreen`'s Account Info block, reusing the label the PDF report already uses. No write path added — the field stays write-once via onboarding and manager-corrected via the existing `EditUserDrawer` arm. Nothing to deploy; this is orthogonal to both v3 Phase 0 and the Daily Capture call-fields slice below, neither of which moved.
+
+One CI wrinkle worth remembering for the next session: `lint-and-build` failed on the first push, but the failure was inside `AgentPlannerPanel.weeknav.test.jsx` — a member of the flake family already tracked in this file, nothing to do with the profile change. A re-run came back green with no code change. If that file (or others near it) turns red again on an unrelated PR, check the flake register before assuming a regression.
+
+Next: nothing pending from this slice. **Next for v3: P0-F** (task↔event unification), unaffected.
