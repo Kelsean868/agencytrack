@@ -18,12 +18,12 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| **DEPLOY DONE 2026-08-27 02:01 UTC — what remains is the SMOKE.** `ingestCallActivity` is live and ACTIVE (`updateTime` 02:01:05Z, post-squash), verified via `gcloud functions describe`, and a live probe returns an indistinguishable HTTP 401 for no-token / bad-token / malformed-header. **It has still never completed a successful WRITE against a real Firestore** — the idempotency proof rests on a transaction fake until the staging smoke runs. Slice C now has something to POST to. Original deploy-withholding rationale retained in the section body because it is the standing rule for the next slice of this shape: **CC deliberately did not self-deploy:** the PR is not purely additive (it also changes `dailyToWeekly.js`, whose existing cron caller exercises the new behaviour), which is exactly what the pre-merge additive carve-out excludes; `firebase use` reports the active project as PRODUCTION `agencytrack-2a610`. **The staging smoke is separately owed and is staging-only** — it mints a real token and moves a real agent's daily numbers (banked 2026-08-26, slice B / PR #923) | HIGH | Linked call sources | — | see § `ingestCallActivity` is DEPLOYED; the staging smoke is still owed |
+| ~~**RESOLVED 2026-08-27 (PR #924).**~~ Deploy done AND smoke run: **12 PASS / 0 FAIL** against staging, including `concurrent-idempotent-live` — two simultaneous deliveries of one `sourceId` moved `dials` once. Firestore, not a transaction fake, has now adjudicated the idempotency guard. Deployed to BOTH projects (prod `updateTime` 12:29:06.928Z, staging 02:25:27.031Z), both ACTIVE, prod re-probed 401-on-bad-token after the change. **The smoke was blocked until `TENANT_ID` stopped being hardcoded** — the sibling MEDIUM below rated that "a second tenant would 401", but the real consequence was that the endpoint could only be exercised in PRODUCTION, making a staging-only smoke impossible by construction. Kept (struck, not deleted) because that mis-rating is the lesson. Slice C now has something to POST to. Original deploy-withholding rationale retained in the section body because it is the standing rule for the next slice of this shape: **CC deliberately did not self-deploy:** the PR is not purely additive (it also changes `dailyToWeekly.js`, whose existing cron caller exercises the new behaviour), which is exactly what the pre-merge additive carve-out excludes; `firebase use` reports the active project as PRODUCTION `agencytrack-2a610`. **The staging smoke is separately owed and is staging-only** — it mints a real token and moves a real agent's daily numbers (banked 2026-08-26, slice B / PR #923) | HIGH | Linked call sources | — | see § ~~`ingestCallActivity` deploy + staging smoke~~ RESOLVED |
 | The #899 flake fix (`src/test-utils/flushPendingEffects.js`) is on `staging` ONLY — `git ls-tree origin/main` returns EMPTY, so `main`'s unit-test gate still produces false reds. Every command-file / dispatcher-tooling PR is structurally forced onto `main`, and **#906 proved the cost on a one-markdown-file diff** (red on `DailyCaptureV2` streak test, 5000ms timeout, 1 failed / 5842 passed; re-run green). **Fix is staging→main PROMOTION — do NOT cherry-pick** (duplicate commit, conflicts at promotion across the fix + 30 `await` call sites). Compounds with the promotion-deletes-staging FU below: that one makes promotion risky, this one makes deferring it costly (banked 2026-08-16, PR #906 session) | HIGH | CI / process | — | 6013 |
 | Promotion deletes `staging`, silently auto-retargeting every open PR onto `main` — put #872 + #873 into main ungated. **CONFIRMED RECURRING** — deleted again on #877 (#860/#874/#877). **Primary fix upgraded to a runbook step (`git push origin main:staging` after every promotion merge)**; CI guard still recommended as enforcement. **Also corrects the record: `main` DOES have branch protection** (2 required checks, admin-bypassable) — the FU's original "unavailable" premise was wrong, and CLAUDE.md § Workflow carried the same false claim. **That half is now CLOSED** — the CLAUDE.md claim was corrected in the promotion-prep governance PR (2026-08-16); the `staging`-deletion half remains open and still needs a dispatcher decision (banked 2026-07-26, PR #871 session; corrected 2026-07-27) | HIGH | — | — | 430 |
 | `enforce_admins: false` on `main` — every direct push bypasses both required status checks, so `main`'s CI gate is advisory for the only person who pushes there. Observed, not inferred: a brief-landing push returned `remote: Bypassed rule violations for refs/heads/main: 2 of 2 required status checks are expected.` **Dispatcher decision required — do NOT change the setting.** Turning it on costs ~5 min of CI per dispatch (brief landings, CONTEXT fills, command-file changes all become PR-gated); leaving it off means the checks are decorative on the direct-push path (banked 2026-08-16, promotion-prep governance PR) | HIGH | Repo governance / CI | — | 5975 |
 | The flake family is ~10 named members and #899 fixed **TWO** (`MeetingMode`, `AgentPlannerPanel`) — the rest were deliberately left unruled. `staging` is better by two files, **not fixed**; corrects the framing in `main`'s § *The #899 flake fix lives on `staging` ONLY*, which arrives at the next promotion. Evidence: #907 is cut from `staging`, docs-only, and still went red on `BranchesPanel` (roster member 7). The promotion acceptance check proves the fix ARRIVED, not that the gate is clean (banked 2026-08-16, PR #907) | HIGH | CI / process | — | 6013 |
-| `ingestCallActivity` resolves tokens against a HARDCODED `TENANT_ID` rather than a collection-group query, because a collection-group index needs a `fieldOverrides` entry that was outside slice B's scope-lock and named deploy. Matches the existing SEC-9c convention in `functions/index.js:57`. A second tenant's tokens would 401 — failing closed, but silently (banked 2026-08-26, slice B / PR #923) | MEDIUM | SEC-9c / multi-tenancy | — | see § `ingestCallActivity` resolves tokens against a HARDCODED tenant |
+| **PARTLY RESOLVED 2026-08-27 (PR #924) — and the original MEDIUM rating was WRONG, which is the part worth keeping.** `ingestCallActivity` no longer hardcodes the tenant: it reads `process.env.AGENCYTRACK_TENANT_ID` and falls back to `'tatillife_south'`, a default chosen to be byte-identical so production cannot drift (verified post-deploy: `functions/` holds no `.env.agencytrack-2a610`). `functions/.env.agencytrack-staging` supplies `staging_test` and is TRACKED via a `.gitignore` negation placed AFTER the `.env.*` rule — last match wins, and the same line placed earlier is inert, which is a mistake that was actually made and caught. **Why the rating was wrong:** this was filed as "a second tenant's tokens would 401 — failing closed, but silently", which reads as a multi-tenancy nicety. The real consequence was that a staging-minted token resolved against a tenant absent from the staging project, so **the endpoint could not be exercised anywhere except PRODUCTION** — making slice B's own named deliverable, a staging-only smoke, impossible by construction. A constant that makes a feature untestable outside production is not a deferred nicety, and "fails closed silently" hid that. **STILL OPEN:** `functions/index.js:62` and `aggregators/sundayDailyToWeekly.js:30` remain hardcoded — deliberately untouched, since they are scheduled functions that simply find no data under the production tenant in staging and do nothing (banked 2026-08-26, slice B / PR #923; part-closed 2026-08-27, PR #924) | MEDIUM | SEC-9c / multi-tenancy | — | see § `ingestCallActivity` resolves tokens against a HARDCODED tenant |
 | The `referralsObtained` half of the PR #909 omit-when-zero guard is still open — slice B retired ONLY the `serviceCalls` half, because B gives that field a daily writer and does not write `referralsObtained` (KQM referral outcomes map to `newNamesAdded`). **Corrects the sequencing recorded in CONTEXT.md**, which put the whole retirement after slice C: the trigger is a daily writer, not a slice letter. Retires in BOTH aggregator twins when one appears (banked 2026-08-26, slice B / PR #923) | MEDIUM | Daily Capture / aggregator | — | see § The `referralsObtained` half |
 | Restore the VIOLET calls hue — `plannerTone.js`'s stated reason for diverging ("repo ships no violet token") is FALSE; token ships at exact DS parity with zero consumers (banked 2026-07-27, planner activity-types PR) | MEDIUM | Track J conformance | — | see § Planner activity types |
 | `outcomeMap.mapCall` accepts any outcome × campaign pairing, so semantically odd pairs (a portfolio outcome in a cold campaign) map rather than reject. Deliberate: restricting them would leave a no-answer Portfolio call with nowhere to go, which is a data-loss shape. Close it once slice C's real vocabulary is known (banked 2026-08-26, slice B / PR #923) | LOW | Linked call sources | — | see § The KQM outcome × campaign cross-product |
@@ -6261,7 +6261,7 @@ an agent attaches their calling software once and revokes it rarely.
 `(creditUid ASC, createdAt DESC)` index for another reason, at which point the `orderBy` should
 be restored and the client-side sort deleted rather than left as dead belt-and-braces.
 
-## `ingestCallActivity` is DEPLOYED; the staging smoke is still owed (HIGH, banked 2026-08-26, slice B / PR #923)
+## ~~`ingestCallActivity` deploy + staging smoke~~ RESOLVED 2026-08-27 (was HIGH, banked 2026-08-26, slice B / PR #923; closed by PR #924)
 
 **RESOLVED 2026-08-27 02:01 UTC — the deploy ran.** `firebase deploy --only functions` completed
 exit 0 with `functions[ingestCallActivity(us-central1)] Successful create operation`, and the state
@@ -6278,9 +6278,42 @@ and a malformed `Basic` header all return **HTTP 401 with an identical empty bod
 and indistinguishably, so nothing leaks whether a token exists. Nothing was written; all three were
 rejected before Firestore was touched.
 
-**What is still owed is the SMOKE, not the deploy** — see the staging-smoke section below. The
-endpoint has still never completed a successful WRITE against a real Firestore; the idempotency
-proof rests on a transaction fake until it does.
+**FULLY RESOLVED 2026-08-27 — the smoke has now run too (PR #924, squash `365252dc`).**
+`scripts/verification/smoke-ingest-call-activity.mjs`: **12 PASS / 0 FAIL** against the staging
+project. The two legs that close this entry:
+
+```
+idempotent-live             replay did not double-count (dials still 9)
+concurrent-idempotent-live  two simultaneous deliveries moved dials once (9->10); 200/200
+```
+
+Firestore itself has now adjudicated the idempotency guard. Until that run it rested entirely on a
+transaction fake — a fake that models optimistic concurrency well, but a model of Firestore rather
+than Firestore. The concurrent leg is the one that reds a check-then-write implementation, and it
+passed against the real thing. Also proven live: one call moves `dials`, the mapped bucket and
+`telContacts` by exactly one; an unknown outcome is a loud 400 rather than a silent zero; and
+`creditUid` in the payload is refused rather than ignored.
+
+**The smoke could not run until a code change landed, and that is the finding worth keeping.**
+`TENANT_ID` was hardcoded to `tatillife_south`, so a token minted in staging (tenant `staging_test`)
+resolved against `tenants/tatillife_south/callSources/…` — absent in the staging project — and 401'd
+indistinguishably from a forged token. This entry's sibling rated that MEDIUM as "a second tenant's
+tokens would 401 — failing closed, but silently". **That rating was too generous:** the real
+consequence was that the endpoint could not be exercised anywhere except PRODUCTION, which made a
+staging-only smoke impossible by construction. A constant that makes a feature untestable outside
+production is not a deferred nicety. Now `process.env.AGENCYTRACK_TENANT_ID || 'tatillife_south'`,
+with the default deliberately byte-identical so production cannot drift; verified after the
+production deploy that `functions/` holds no `.env.agencytrack-2a610`, so the default really is what
+production runs.
+
+**Deployed to BOTH projects** — production `updateTime` 2026-08-27T12:29:06.928Z ACTIVE, staging
+02:25:27.031Z ACTIVE. Production re-probed after the change: still HTTP 401 on no-token and on a
+garbage token.
+
+⚠ **Residual, and it is NOT this entry:** ingest is idempotent but **not reversible** — there is no
+undo for an increment. The synthetic staging agent's `dials` went 6 → 10 across smoke runs. Expected
+on a synthetic tenant; it would not be acceptable against real agents, which is why this smoke is
+guarded to refuse any host or project but staging.
 
 The original entry follows, kept because its reasoning about WHY the deploy was withheld remains the
 correct standing rule for the next slice of this shape.
