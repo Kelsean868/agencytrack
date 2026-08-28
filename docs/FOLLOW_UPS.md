@@ -18,6 +18,7 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| **Rule 21 reviewer — DECIDED, PURCHASE DEFERRED.** Dispatcher chose **CodeRabbit Pro** (US$24/dev/mo annual) on **both** repos and deferred the spend ~2 weeks. Rule 21 has had no reviewer since Gemini shut down 2026-07-17; CodeRabbit Free on a PRIVATE repo returns summary only and **zero line-level findings** (PR #927 is the evidence), so the backstop has caught nothing across the entire slice-C/C1/D build — including code now LIVE in production writing into a named agent's real daily report. A free Claude Code Action reviewer was available and **deliberately rejected**: Claude reviewing Claude's code shares the author's blind spots, and Rule 21 exists for an *independent* opinion. `kqm-crm` needs a `.coderabbit.yaml` before its first review or the deliberate `sql/23`–`sql/27` design decisions will be flagged as defects. Do not let the deferral extend past the target without a fresh decision (banked 2026-08-28, dispatcher decision) | HIGH | Repo governance / Rule 21 | **2026-09-11** | see § Rule 21 reviewer — CodeRabbit Pro on BOTH repos |
 | ~~**RESOLVED 2026-08-27 (PR #924).**~~ Deploy done AND smoke run: **12 PASS / 0 FAIL** against staging, including `concurrent-idempotent-live` — two simultaneous deliveries of one `sourceId` moved `dials` once. Firestore, not a transaction fake, has now adjudicated the idempotency guard. Deployed to BOTH projects (prod `updateTime` 12:29:06.928Z, staging 02:25:27.031Z), both ACTIVE, prod re-probed 401-on-bad-token after the change. **The smoke was blocked until `TENANT_ID` stopped being hardcoded** — the sibling MEDIUM below rated that "a second tenant would 401", but the real consequence was that the endpoint could only be exercised in PRODUCTION, making a staging-only smoke impossible by construction. Kept (struck, not deleted) because that mis-rating is the lesson. Slice C now has something to POST to. Original deploy-withholding rationale retained in the section body because it is the standing rule for the next slice of this shape: **CC deliberately did not self-deploy:** the PR is not purely additive (it also changes `dailyToWeekly.js`, whose existing cron caller exercises the new behaviour), which is exactly what the pre-merge additive carve-out excludes; `firebase use` reports the active project as PRODUCTION `agencytrack-2a610`. **The staging smoke is separately owed and is staging-only** — it mints a real token and moves a real agent's daily numbers (banked 2026-08-26, slice B / PR #923) | HIGH | Linked call sources | — | see § ~~`ingestCallActivity` deploy + staging smoke~~ RESOLVED |
 | The #899 flake fix (`src/test-utils/flushPendingEffects.js`) is on `staging` ONLY — `git ls-tree origin/main` returns EMPTY, so `main`'s unit-test gate still produces false reds. Every command-file / dispatcher-tooling PR is structurally forced onto `main`, and **#906 proved the cost on a one-markdown-file diff** (red on `DailyCaptureV2` streak test, 5000ms timeout, 1 failed / 5842 passed; re-run green). **Fix is staging→main PROMOTION — do NOT cherry-pick** (duplicate commit, conflicts at promotion across the fix + 30 `await` call sites). Compounds with the promotion-deletes-staging FU below: that one makes promotion risky, this one makes deferring it costly (banked 2026-08-16, PR #906 session) | HIGH | CI / process | — | 6013 |
 | Promotion deletes `staging`, silently auto-retargeting every open PR onto `main` — put #872 + #873 into main ungated. **CONFIRMED RECURRING** — deleted again on #877 (#860/#874/#877). **Primary fix upgraded to a runbook step (`git push origin main:staging` after every promotion merge)**; CI guard still recommended as enforcement. **Also corrects the record: `main` DOES have branch protection** (2 required checks, admin-bypassable) — the FU's original "unavailable" premise was wrong, and CLAUDE.md § Workflow carried the same false claim. **That half is now CLOSED** — the CLAUDE.md claim was corrected in the promotion-prep governance PR (2026-08-16); the `staging`-deletion half remains open and still needs a dispatcher decision (banked 2026-07-26, PR #871 session; corrected 2026-07-27) | HIGH | — | — | 430 |
@@ -6496,3 +6497,51 @@ field set data-driven from something less trustworthy than a literal.
 **Falsification:** overturned if `WRITABLE_FIELDS` acquires a runtime consumer, or if the effect
 table stops being the only source of the increment keys — at which point this becomes a live gap
 rather than a tidy-up.
+
+
+---
+
+---
+
+## Rule 21 reviewer — CodeRabbit Pro on BOTH repos (banked 2026-08-28, dispatcher decision, HIGH — target 2026-09-11)
+
+**Status: DECIDED, PURCHASE DEFERRED.** The dispatcher chose **CodeRabbit Pro** and deferred the
+spend by roughly two weeks. This entry exists so the deferral is a dated decision rather than the
+drift that let the Gemini shutdown reach within days of its deadline.
+
+**The gap, stated plainly.** Rule 21's pre-merge poll has had no reviewer since Gemini Code Assist
+shut down 2026-07-17. CodeRabbit is installed but on the **Free** tier, which on a **private** repo
+returns a high-level summary and **zero line-by-line findings** — PR #927 is the evidence. So the
+backstop currently catches nothing, and it has been catching nothing across the whole slice-C/C1/D
+build, including the code that now writes into a named agent's real production report.
+
+**What was rejected and why it is worth recording.** A Claude Code Action reviewer
+(`anthropics/claude-code-action@v1` running the `code-review` plugin, authenticated by a
+subscription OAuth token) was available at zero marginal cost and was NOT chosen. The reason is the
+right one: it is Claude reviewing Claude's code, so it shares the blind spots of the author. Rule 21
+exists to get an **independent** second opinion, and a reviewer that fails the same way the author
+fails is not one. Cost was not the deciding factor; independence was.
+
+**Purchase + install, when the spend clears:**
+
+1. CodeRabbit Pro — US$24/developer/month billed annually (~TTD 165/mo, ~TTD 1,950/yr as of
+   2026-08-28). Free tier does not do line-by-line on private repos; that is the whole purchase.
+2. Install the CodeRabbit GitHub App on **both** `Kelsean868/agencytrack` and `Kelsean868/kqm-crm`.
+   Both are PRIVATE — confirmed 2026-08-28.
+3. `agencytrack/.coderabbit.yaml` already exists and is well tuned (money-math invariants, the
+   coarse-`firestore.rules` design decision, the `serverTimestamp()`-in-arrays trap). No edit needed.
+4. `kqm-crm` has **no** `.coderabbit.yaml`. It needs one before the first review, or CodeRabbit will
+   flag the deliberate design decisions in `sql/23`–`sql/27` as defects. See the sibling entry in
+   that repo's follow-ups.
+5. Keep it **advisory, never a required check** — Rule 21 disposition, not a merge gate. That is
+   already how `agencytrack/.coderabbit.yaml` is written (`request_changes_workflow: false`).
+
+**Standing risk while deferred.** Every PR merged between now and the purchase lands with no
+line-by-line reviewer, on a system that is now LIVE in production and writes to a real agent's
+daily report. That is an accepted risk, not an oversight — but it should be re-read as an accepted
+risk each time a non-trivial PR is merged in the interim, and the deferral should not silently
+extend past the 2026-09-11 target without a fresh decision.
+
+**Falsification:** closed when CodeRabbit Pro is active on both repos and one PR in each has
+produced at least one line-level finding — a summary-only review means the tier did not actually
+change.
