@@ -107,10 +107,45 @@ describe('detectConflicts', () => {
   });
 });
 
+describe('the ladder fields — where the two writers genuinely collide', () => {
+  // These five are the ONLY entries in the list that agents also type by hand,
+  // because until the ladder slice nothing else could write them. If one drops
+  // off the list, Daily Capture silently starts flattening the meetings KQM
+  // logged — the same bug slice D fixed for dials, on the fields agents care
+  // most about, and with no error anywhere.
+  const LADDER = [
+    'qualifiedApproaches',
+    'solutionPresentations',
+    'ffiConducted',
+    'ciConducted',
+    'policiesDelivered',
+  ];
+
+  it.each(LADDER)('%s is ingest-written', (field) => {
+    expect(isIngestWritten(field)).toBe(true);
+  });
+
+  it.each(LADDER)('%s is omitted from the patch when untouched', (field) => {
+    // The whole mechanism, per field: a form carrying a stale 0 must not write
+    // it over the meetings that landed while the form was open.
+    expect(buildDailyPatch({ [field]: 0, officeHours: 4 }, ['officeHours']))
+      .toEqual({ officeHours: 4 });
+  });
+
+  it.each(LADDER)('%s still wins when the agent DOES type it, and is flagged', (field) => {
+    expect(buildDailyPatch({ [field]: 3 }, [field])).toEqual({ [field]: 3 });
+    const conflicts = detectConflicts({ [field]: 0 }, { [field]: 1 }, [field], { [field]: 3 });
+    expect(conflicts).toEqual([{ field, wasAtLoad: 0, isNow: 1, yours: 3 }]);
+    // ...and the banner names it in the agent's own words, not the schema key.
+    expect(describeConflict(conflicts[0])).not.toContain(field);
+  });
+});
+
 describe('isIngestWritten / describeConflict', () => {
   it('knows which side of the line a field is on', () => {
     expect(isIngestWritten('dials')).toBe(true);
     expect(isIngestWritten('serviceCalls')).toBe(true);
+    expect(isIngestWritten('ffiConducted')).toBe(true);
     expect(isIngestWritten('officeHours')).toBe(false);
     expect(isIngestWritten('prospectingLettersSent')).toBe(false);
   });

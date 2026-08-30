@@ -55,7 +55,7 @@ jest.mock('firebase-functions', () => {
 });
 
 const { hashToken } = require('../../callSources/createCallSource');
-const { EFFECT_FLAGS, INGEST_BUCKETS, DIAL_BUCKETS } = require('../outcomeMap');
+const { EFFECT_FLAGS, LADDER_FLAGS, INGEST_BUCKETS, DIAL_BUCKETS } = require('../outcomeMap');
 const {
   ingestCallActivity,
   toTrinidadDateString,
@@ -119,6 +119,28 @@ const body = (over = {}) => ({
   rawOutcome: 'Meeting booked',
   rawCampaign: 'schools_2026',
   durationSec: 132,
+  ...over,
+});
+
+/**
+ * A LADDER event — something that happened after the phone was put down.
+ *
+ * Spread into body() as an override, so every test below proves the SAME
+ * endpoint accepts both shapes. Note what is explicit here and why: `bucket`
+ * must be sent as a literal null (a meeting has no partition member, and absent
+ * is not the same as null at this boundary), and all four call booleans must be
+ * false (a meeting is not a dial and did not reach anybody by telephone).
+ */
+const ladder = (over = {}) => ({
+  kind: 'ladder',
+  bucket: null,
+  reached: false,
+  booking: false,
+  newName: false,
+  ffi: false,
+  ffiHeld: true,
+  rawOutcome: 'F.F.I held',
+  rawCampaign: 'schools_2026',
   ...over,
 });
 
@@ -430,6 +452,210 @@ describe('decision 4 — the servicing lane, mechanically', () => {
     expect(daily.telContacts).toBe(1);
     expect(daily.serviceCalls).toBe(1);
     expect(daily.serviceContacts).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+/**
+ * THE LADDER. AgencyTrack's selling ladder existed before this slice and was
+ * simply never fed — nothing in the product wrote ffiConducted or ciConducted,
+ * so P.C → S.C → A.I → F.F.I → C.I → SALE was a report of zeros.
+ *
+ * The load-bearing test in this block is the LAST one: a ladder event must move
+ * NO dial-shaped field. A fact find counted as a dial inflates the dial count
+ * invisibly, because dialsByType would still sum to dials and every existing
+ * consistency check would stay green.
+ */
+describe('the ladder — events that are NOT calls', () => {
+  it('a fact find held moves ffiConducted and NOTHING dial-shaped', async () => {
+    await apply(ladder({ sourceId: 'L1' }));
+    const daily = mockDb.read(dailyPath('2026-08-26'));
+    expect(daily.ffiConducted).toBe(1);
+    // THE assertion of this block.
+    expect(daily.dials).toBeUndefined();
+    expect(daily.dialsByType).toBeUndefined();
+    expect(daily.telContacts).toBeUndefined();
+    expect(daily.serviceCalls).toBeUndefined();
+    expect(daily.appointmentsSet).toBeUndefined();
+    expect(daily.ffisScheduled).toBeUndefined();
+  });
+
+  it('SCHEDULED and CONDUCTED are different fields — the call sets one, the meeting the other', async () => {
+    // The call that booked it.
+    await apply({ sourceId: 'L2a', booking: true, ffi: true });
+    // The meeting that then happened.
+    await apply(ladder({ sourceId: 'L2b' }));
+    const daily = mockDb.read(dailyPath('2026-08-26'));
+    expect(daily.ffisScheduled).toBe(1);
+    expect(daily.ffiConducted).toBe(1);
+    // ...and the call still counted as a call, exactly once.
+    expect(daily.dials).toBe(1);
+  });
+
+  it('a closing interview moves ciConducted', async () => {
+    await apply(ladder({ sourceId: 'L3', ffiHeld: false, closingHeld: true }));
+    expect(mockDb.read(dailyPath('2026-08-26')).ciConducted).toBe(1);
+  });
+
+  it('a policy delivered moves policiesDelivered', async () => {
+    await apply(ladder({ sourceId: 'L4', ffiHeld: false, policyDelivered: true }));
+    expect(mockDb.read(dailyPath('2026-08-26')).policiesDelivered).toBe(1);
+  });
+
+  it('the approach and the presentation are the unscored rungs, and still recorded', async () => {
+    await apply(ladder({ sourceId: 'L5', ffiHeld: false, approachHeld: true, presented: true }));
+    const daily = mockDb.read(dailyPath('2026-08-26'));
+    expect(daily.qualifiedApproaches).toBe(1);
+    expect(daily.solutionPresentations).toBe(1);
+  });
+
+  it('one meeting may assert several rungs at once', async () => {
+    await apply(ladder({ sourceId: 'L6', ffiHeld: true, closingHeld: true }));
+    const daily = mockDb.read(dailyPath('2026-08-26'));
+    expect(daily.ffiConducted).toBe(1);
+    expect(daily.ciConducted).toBe(1);
+  });
+
+  it('a ladder event in the SERVICING lane counts the same — a fact find is a fact find', async () => {
+    await apply(ladder({ sourceId: 'L7', lane: 'servicing', rawCampaign: 'portfolio_2026' }));
+    const daily = mockDb.read(dailyPath('2026-08-26'));
+    expect(daily.ffiConducted).toBe(1);
+    expect(daily.serviceCalls).toBeUndefined();
+    expect(daily.serviceContacts).toBeUndefined();
+  });
+
+  it('a mixed day keeps calls and meetings in their own fields', async () => {
+    await apply({ sourceId: 'M1' });
+    await apply(ladder({ sourceId: 'M2' }));
+    const daily = mockDb.read(dailyPath('2026-08-26'));
+    expect(daily.dials).toBe(1);
+    expect(daily.dialsByType.cold).toBe(1);
+    expect(daily.telContacts).toBe(1);
+    expect(daily.appointmentsSet).toBe(1);
+    expect(daily.ffiConducted).toBe(1);
+  });
+
+  describe('the ingest record', () => {
+    it('a ladder event records kind ladder and its flags', async () => {
+      await apply(ladder({ closingHeld: true }));
+      expect(mockDb.read(INGEST_PATH)).toMatchObject({
+        kind: 'ladder',
+        lane: 'newBusiness',
+        dialBucket: null,
+        ffiHeld: true,
+        closingHeld: true,
+        approachHeld: false,
+        presented: false,
+        policyDelivered: false,
+      });
+    });
+
+    it('a CALL records kind call and all five ladder flags false', async () => {
+      // Materialised rather than absent, so "count the calls" never needs a
+      // special case for records written before the ladder existed.
+      await apply();
+      const rec = mockDb.read(INGEST_PATH);
+      expect(rec.kind).toBe('call');
+      for (const flag of LADDER_FLAGS) expect(rec[flag]).toBe(false);
+    });
+  });
+
+  describe('BACKWARDS COMPATIBILITY — the deployed KQM caller sends none of this', () => {
+    it('the exact six-key body in production today is still accepted', async () => {
+      // If this ever goes red, deploying this function breaks the live feed:
+      // KQM would 400, the outbox row would be marked rejected permanently, and
+      // dispatch would stop. It is the reason kind and the ladder flags are
+      // optional rather than required.
+      const b = body();
+      for (const key of ['kind', ...LADDER_FLAGS]) expect(b[key]).toBeUndefined();
+
+      const res = makeRes();
+      await handler(makeReq({ body: b }), res);
+      expect(res.statusCode).toBe(200);
+      expect(mockDb.read(dailyPath('2026-08-26')).dials).toBe(1);
+      expect(mockDb.read(INGEST_PATH).kind).toBe('call');
+    });
+
+    it('an explicit kind "call" behaves identically to an absent one', async () => {
+      await apply({ sourceId: 'K1' });
+      const withoutKind = JSON.stringify(mockDb.read(dailyPath('2026-08-26')));
+      mockDb = new FakeFirestore();
+      seedSource();
+      await apply({ sourceId: 'K1', kind: 'call' });
+      expect(JSON.stringify(mockDb.read(dailyPath('2026-08-26')))).toBe(withoutKind);
+    });
+  });
+
+  describe('the two vocabularies may never be mixed — every confusion is a 400', () => {
+    async function post(over = {}) {
+      const res = makeRes();
+      await handler(makeReq(over), res);
+      return res;
+    }
+
+    it('a ladder event carrying a dial bucket is a 400', async () => {
+      for (const bucket of DIAL_BUCKETS) {
+        const res = await post({ body: body(ladder({ bucket })) });
+        expect(res.statusCode).toBe(400);
+        expect(res.payload.error).toMatch(/bucket must be null when kind is ladder/);
+      }
+      expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
+    });
+
+    it('a ladder event with the bucket key ABSENT is a 400 — send an explicit null', async () => {
+      const b = body(ladder());
+      delete b.bucket;
+      const res = await post({ body: b });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('a ladder event asserting NO rung is a 400, not a quiet no-op', async () => {
+      const res = await post({ body: body(ladder({ ffiHeld: false })) });
+      expect(res.statusCode).toBe(400);
+      expect(res.payload.error).toMatch(/requires at least one of/);
+      expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
+    });
+
+    it('a ladder event asserting a CALL flag is a 400', async () => {
+      for (const flag of EFFECT_FLAGS) {
+        const over = { [flag]: true };
+        // ffi alone is illegal without booking for a different reason; assert
+        // both so the failure under test is the ladder rule, not that one.
+        if (flag === 'ffi') over.booking = true;
+        const res = await post({ body: body(ladder(over)) });
+        expect(res.statusCode).toBe(400);
+        expect(res.payload.error).toMatch(/must be false when kind is ladder/);
+      }
+      expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
+    });
+
+    it('a CALL asserting a ladder flag is a 400', async () => {
+      for (const flag of LADDER_FLAGS) {
+        const res = await post({ body: body({ [flag]: true }) });
+        expect(res.statusCode).toBe(400);
+        expect(res.payload.error).toMatch(new RegExp(flag + ' requires kind ladder'));
+      }
+      expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
+    });
+
+    it('an unknown kind is a 400 — including null, which a broken normaliser sends', async () => {
+      for (const kind of ['ladder ', 'Ladder', 'meeting', '', null, 7, true]) {
+        const res = await post({ body: body({ kind }) });
+        expect(res.statusCode).toBe(400);
+        expect(res.payload.error).toMatch(/kind must be one of/);
+      }
+    });
+
+    it('a non-boolean ladder flag is a 400 — "false" is a TRUTHY STRING', async () => {
+      for (const flag of LADDER_FLAGS) {
+        for (const bad of ['false', 'true', 1, 0, null]) {
+          const res = await post({ body: body(ladder({ ffiHeld: true, [flag]: bad })) });
+          expect(res.statusCode).toBe(400);
+          expect(res.payload.error).toContain(flag);
+        }
+      }
+      expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
+    });
   });
 });
 
@@ -938,4 +1164,33 @@ describe('setNested', () => {
  *   A suite carrying only the sequential test would have certified a
  *   double-counting endpoint as correct — under the new contract exactly as
  *   under the old one.
+ *
+ * ── MUTATION VERIFICATION — the ladder wiring (30 Aug 2026) ─────────────────
+ *
+ * The wiring under test is six lines in validatePayload():
+ *
+ *     for (const key of ['kind', ...LADDER_FLAGS]) {
+ *       if (Object.prototype.hasOwnProperty.call(body, key)) effects[key] = body[key];
+ *     }
+ *
+ * It is the ONLY route by which a ladder request's own words reach
+ * coherenceError. Its absence is what this slice was written to fix, and its
+ * absence FAILS QUIETLY IN THE WORST WAY — outcomeMap.test.js stays 100% green,
+ * because the mapper is perfect and simply never sees the fields.
+ *
+ * MUTATION — empty the key list (`for (const key of [])`), leaving everything
+ *   else, including outcomeMap.js, untouched.
+ *   Command: npx jest callActivity
+ *   Baseline: 162 passed, 162 total (3 suites).
+ *   OBSERVED: Tests: 15 failed, 147 passed, 162 total. Suites: 1 failed,
+ *   2 passed — outcomeMap.test.js and resolveCallSource.test.js BOTH STILL
+ *   GREEN, which is the whole point: the mapper's 110 legal effect sets prove
+ *   nothing about whether the endpoint hands it the effects.
+ *   Every failure was in the ladder block; every call test, TT-date test,
+ *   idempotency test and rejection test outside it stayed green, so the
+ *   backwards-compatibility claim is not resting on the same wiring it certifies.
+ *   The four ladder rejection tests that stayed green did so for the WRONG
+ *   reason — a dropped `kind` makes a ladder body look like a newBusiness call
+ *   with a null bucket, which 400s on the bucket rule instead. Rejection tests
+ *   are weak evidence here by construction; the counting tests are the evidence.
  */
