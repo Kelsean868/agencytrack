@@ -95,12 +95,27 @@ const EFFECT_FLAGS = Object.freeze(['reached', 'booking', 'newName', 'ffi']);
  * stop dead. Absent means false. That asymmetry is not untidiness; it is the
  * only shape that lets this deploy before its caller changes.
  *
- * No `newBusiness.apps` / `newBusiness.api` row here, deliberately. Those feed
- * totalProductionCredit, which the awards engine and the new-agent financing
- * ruleset compute from — an API figure typed into a CRM panel reaching that
- * number unreviewed is a different proposition from a count reaching a points
- * total, and it is the operator's call, not this file's. Application taken still
- * flows to ApplyOn, which has a human gate in front of it.
+ * ── appSubmitted CARRIES MONEY, AND THE OPERATOR RULED ON IT ───────────────
+ * The first version of this list stopped short of `newBusiness.apps` /
+ * `newBusiness.api` and said so, because those feed totalProductionCredit and
+ * that is what awards and the new-agent financing ruleset are computed from.
+ * The operator has now ruled, and two facts settle it:
+ *
+ *   1. The weekly report IS the submitted number. Tatil's CRO reports what was
+ *      SUBMITTED that week; the weekly report does not show settled business at
+ *      all. `newBusiness.apps` / `.api` is that number — which is why agents
+ *      have always typed it here by hand.
+ *   2. Awards rank on SETTLED business, and awardsEngine.js already knows.
+ *      computeAgentAwards prefers `confirmedData` (settledAPI / settledApps,
+ *      `source: 'confirmed'`) and falls back to submissions only as an
+ *      explicitly labelled `'estimated'`. So a submitted figure arriving here
+ *      moves the estimate, never the award — the settlement docs overrule it the
+ *      moment they exist.
+ *
+ * So this is the same distinction as issued-versus-delivered, one rung up:
+ * TAKEN (client signs) → SUBMITTED (it reaches the company) → SETTLED (accepted
+ * and credited). Only the middle one belongs here. `appSubmitted` is named for
+ * the act it records, not for the tile it lands in.
  */
 const LADDER_FLAGS = Object.freeze([
   'approachHeld',    // A.I  — the first interview happened  -> qualifiedApproaches
@@ -108,7 +123,24 @@ const LADDER_FLAGS = Object.freeze([
   'ffiHeld',         // F.F.I conducted                      -> ffiConducted
   'closingHeld',     // C.I conducted                        -> ciConducted
   'policyDelivered', // the policy was delivered             -> policiesDelivered
+  'appSubmitted',    // the application reached the company  -> newBusiness.apps/.api
 ]);
+
+/**
+ * The ceiling on one application's API, in TTD.
+ *
+ * NOT tidiness. `apiAmount` is the only free-form NUMBER this endpoint accepts,
+ * and it lands in the figure awards, commission and financing are estimated
+ * from. A fat-fingered 150000 where 1500 was meant would sail through every
+ * other check in this file, look plausible in a weekly report, and be found
+ * — if ever — by a manager who wondered why somebody's month looked strange.
+ *
+ * The weekly API target for one agent is TT$4,800, so a single application at a
+ * million is not a big case; it is a typo or a units error (cents for dollars).
+ * Refusing it costs one loud 400 and a hand-typed correction in Daily Capture.
+ * Accepting it costs a wrong number in a named agent's award standing.
+ */
+const API_AMOUNT_MAX = 1000000;
 
 /**
  * KINDS — is this request a CALL, or something that happened afterwards?
@@ -175,6 +207,20 @@ const EFFECT_TABLE = Object.freeze([
   Object.freeze({ field: 'ffiConducted', when: (e) => isLadder(e) && e.ffiHeld }),
   Object.freeze({ field: 'ciConducted', when: (e) => isLadder(e) && e.closingHeld }),
   Object.freeze({ field: 'policiesDelivered', when: (e) => isLadder(e) && e.policyDelivered }),
+
+  // ── the production rows. The ONLY rows that write a figure the agent did not
+  // type, into the map awards and financing are estimated from. `amount` exists
+  // for exactly these two: every other row on this page counts an event, and
+  // counting is always +1.
+  Object.freeze({
+    field: 'newBusiness.apps',
+    when: (e) => isLadder(e) && e.appSubmitted,
+  }),
+  Object.freeze({
+    field: 'newBusiness.api',
+    when: (e) => isLadder(e) && e.appSubmitted,
+    amount: (e) => e.apiAmount,
+  }),
 ]);
 
 /**
@@ -237,6 +283,35 @@ function coherenceError(effects) {
     if (effects[flag] !== undefined && typeof effects[flag] !== 'boolean') {
       return flag + ' must be a boolean when present';
     }
+  }
+
+  // ── apiAmount: the one free-form NUMBER, and the only money on this page ──
+  // Paired with appSubmitted in BOTH directions, deliberately.
+  //
+  // An apiAmount without appSubmitted is a caller that thinks it is reporting
+  // production and is reporting nothing — the figure would be dropped in
+  // silence. An appSubmitted without apiAmount is worse: the apps count moves,
+  // the API does not, and the week reads as an application worth nothing. That
+  // is not a smaller error than a wrong figure, it is a harder one to notice, so
+  // it is refused rather than defaulted to zero. KQM records the refusal with
+  // its reason, which is how a missing figure becomes visible instead of silent.
+  if (effects.apiAmount !== undefined) {
+    if (effects.appSubmitted !== true) {
+      return 'apiAmount requires appSubmitted';
+    }
+    if (typeof effects.apiAmount !== 'number' || !Number.isFinite(effects.apiAmount)) {
+      return 'apiAmount must be a finite number';
+    }
+    if (effects.apiAmount < 0) {
+      return 'apiAmount must not be negative';
+    }
+    if (effects.apiAmount > API_AMOUNT_MAX) {
+      return 'apiAmount above ' + API_AMOUNT_MAX + ' is refused as a probable typo'
+        + ' — log a case this size by hand';
+    }
+  } else if (effects.appSubmitted === true) {
+    return 'appSubmitted requires apiAmount — an application with no API figure'
+      + ' would understate the week and look like a real zero';
   }
 
   if (isLadder(effects)) {
@@ -318,7 +393,11 @@ function mapEffects(effects) {
   for (const row of EFFECT_TABLE) {
     if (!row.when(effects)) continue;
     const field = typeof row.field === 'function' ? row.field(effects) : row.field;
-    increments[field] = 1;
+    // +1 unless the row says otherwise. Only the two production rows say
+    // otherwise, and coherenceError has already proved their amount is a finite
+    // non-negative number under the cap — so nothing here can emit a NaN into a
+    // FieldValue.increment, which would poison the field permanently.
+    increments[field] = typeof row.amount === 'function' ? row.amount(effects) : 1;
   }
 
   return {
@@ -359,6 +438,12 @@ const LEGAL_EFFECT_SETS = Object.freeze(
         ALL.forEach((flag, i) => {
           set[flag] = Boolean(mask & (1 << i));
         });
+        // appSubmitted and apiAmount are required in both directions, so the
+        // enumeration supplies the figure whenever the flag is on. The value is
+        // arbitrary and deliberately not zero: WRITABLE_FIELDS is derived by
+        // running these through mapEffects, and a zero would still emit the
+        // field, but a non-zero one also proves the amount survives the mapper.
+        if (set.appSubmitted) set.apiAmount = 1500;
         if (coherenceError(set) === null) out.push(Object.freeze(set));
       }
     }
@@ -399,6 +484,7 @@ module.exports = {
   EFFECT_FLAGS,
   LADDER_FLAGS,
   KINDS,
+  API_AMOUNT_MAX,
   EFFECT_TABLE,
   LEGAL_EFFECT_SETS,
   WRITABLE_FIELDS,

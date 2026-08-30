@@ -55,7 +55,9 @@ jest.mock('firebase-functions', () => {
 });
 
 const { hashToken } = require('../../callSources/createCallSource');
-const { EFFECT_FLAGS, LADDER_FLAGS, INGEST_BUCKETS, DIAL_BUCKETS } = require('../outcomeMap');
+const {
+  EFFECT_FLAGS, LADDER_FLAGS, INGEST_BUCKETS, DIAL_BUCKETS, API_AMOUNT_MAX,
+} = require('../outcomeMap');
 const {
   ingestCallActivity,
   toTrinidadDateString,
@@ -535,6 +537,114 @@ describe('the ladder — events that are NOT calls', () => {
     expect(daily.ffiConducted).toBe(1);
   });
 
+  describe('a submitted application — the only rows that carry money', () => {
+    const app = (over = {}) => ladder({
+      ffiHeld: false, appSubmitted: true, apiAmount: 4800,
+      rawOutcome: 'Application submitted', ...over,
+    });
+
+    it('moves newBusiness.apps by ONE and newBusiness.api by the FIGURE', async () => {
+      await apply(app({ sourceId: 'A1' }));
+      const daily = mockDb.read(dailyPath('2026-08-26'));
+      expect(daily.newBusiness).toEqual({ apps: 1, api: 4800 });
+      // Still not a call, and still not a meeting-shaped rung.
+      expect(daily.dials).toBeUndefined();
+      expect(daily.ffiConducted).toBeUndefined();
+    });
+
+    it('two applications in a day add up', async () => {
+      await apply(app({ sourceId: 'A2', apiAmount: 4800 }));
+      await apply(app({ sourceId: 'A3', apiAmount: 1200.5 }));
+      expect(mockDb.read(dailyPath('2026-08-26')).newBusiness)
+        .toEqual({ apps: 2, api: 6000.5 });
+    });
+
+    it('an API of zero is accepted — a free-look or a nil-premium case', async () => {
+      await apply(app({ sourceId: 'A4', apiAmount: 0 }));
+      expect(mockDb.read(dailyPath('2026-08-26')).newBusiness).toEqual({ apps: 1, api: 0 });
+    });
+
+    it('may ride with another rung on the same event', async () => {
+      await apply(app({ sourceId: 'A5', closingHeld: true }));
+      const daily = mockDb.read(dailyPath('2026-08-26'));
+      expect(daily.ciConducted).toBe(1);
+      expect(daily.newBusiness.apps).toBe(1);
+    });
+
+    it('the ingest record keeps the figure beside the increment', async () => {
+      await apply(app());
+      const rec = mockDb.read(INGEST_PATH);
+      expect(rec.apiAmount).toBe(4800);
+      expect(rec.appSubmitted).toBe(true);
+      expect(rec.increments['newBusiness.api']).toBe(4800);
+    });
+
+    it('every other event records apiAmount as null, not absent', async () => {
+      await apply();
+      expect(mockDb.read(INGEST_PATH).apiAmount).toBeNull();
+    });
+
+    describe('the pairing is enforced in BOTH directions', () => {
+      async function post(over = {}) {
+        const res = makeRes();
+        await handler(makeReq(over), res);
+        return res;
+      }
+
+      it('appSubmitted without apiAmount is a 400, never a zero', async () => {
+        // A zero would look like a real application worth nothing, which is
+        // harder to notice than a wrong figure and just as wrong.
+        const b = body(ladder({ ffiHeld: false, appSubmitted: true }));
+        const res = await post({ body: b });
+        expect(res.statusCode).toBe(400);
+        expect(res.payload.error).toMatch(/appSubmitted requires apiAmount/);
+        expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
+      });
+
+      it('apiAmount without appSubmitted is a 400, never a silent drop', async () => {
+        const res = await post({ body: body(ladder({ ffiHeld: true, apiAmount: 4800 })) });
+        expect(res.statusCode).toBe(400);
+        expect(res.payload.error).toMatch(/apiAmount requires appSubmitted/);
+      });
+
+      it('a CALL may not carry either', async () => {
+        expect((await post({ body: body({ appSubmitted: true, apiAmount: 1 }) })).statusCode)
+          .toBe(400);
+        expect((await post({ body: body({ apiAmount: 1 }) })).statusCode).toBe(400);
+      });
+
+      it('a non-numeric or non-finite apiAmount is a 400', async () => {
+        for (const bad of ['4800', '', null, true, {}, [], NaN, Infinity, -Infinity]) {
+          const res = await post({ body: body(app({ apiAmount: bad })) });
+          expect(res.statusCode).toBe(400);
+          expect(res.payload.error).toContain('apiAmount');
+        }
+        expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
+      });
+
+      it('a negative apiAmount is a 400 — a reversal is not an ingest', async () => {
+        const res = await post({ body: body(app({ apiAmount: -100 })) });
+        expect(res.statusCode).toBe(400);
+        expect(res.payload.error).toMatch(/must not be negative/);
+      });
+
+      it('an apiAmount above the cap is refused as a typo', async () => {
+        // The weekly API target for one agent is TT$4,800. A single application
+        // above a million is a units error, and it would land in the figure
+        // awards are estimated from.
+        const res = await post({ body: body(app({ apiAmount: API_AMOUNT_MAX + 1 })) });
+        expect(res.statusCode).toBe(400);
+        expect(res.payload.error).toMatch(/probable typo/);
+        expect(mockDb.exists(dailyPath('2026-08-26'))).toBe(false);
+      });
+
+      it('...and exactly the cap is accepted', async () => {
+        const res = await post({ body: body(app({ apiAmount: API_AMOUNT_MAX })) });
+        expect(res.statusCode).toBe(200);
+      });
+    });
+  });
+
   describe('the ingest record', () => {
     it('a ladder event records kind ladder and its flags', async () => {
       await apply(ladder({ closingHeld: true }));
@@ -631,7 +741,11 @@ describe('the ladder — events that are NOT calls', () => {
 
     it('a CALL asserting a ladder flag is a 400', async () => {
       for (const flag of LADDER_FLAGS) {
-        const res = await post({ body: body({ [flag]: true }) });
+        const over = { [flag]: true };
+        // appSubmitted is illegal without apiAmount for a different reason;
+        // supply it so the failure under test is the kind rule, not that one.
+        if (flag === 'appSubmitted') over.apiAmount = 4800;
+        const res = await post({ body: body(over) });
         expect(res.statusCode).toBe(400);
         expect(res.payload.error).toMatch(new RegExp(flag + ' requires kind ladder'));
       }

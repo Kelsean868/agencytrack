@@ -60,6 +60,7 @@ export const INGEST_WRITTEN_FIELDS = Object.freeze([
   'dialsByType',
   'ffiConducted',
   'ffisScheduled',
+  'newBusiness',
   'newNamesAdded',
   'policiesDelivered',
   'qualifiedApproaches',
@@ -68,6 +69,36 @@ export const INGEST_WRITTEN_FIELDS = Object.freeze([
   'solutionPresentations',
   'telContacts',
 ]);
+
+/**
+ * INGEST_WRITTEN_LEAVES — the nested maps the ingest writes INTO, and which
+ * leaves of them it owns.
+ *
+ * ⚠ THIS IS THE ONE THAT COULD LOSE MONEY, so read the mechanism rather than
+ * trusting the list. `newBusiness` is a MAP — { apps, api } — and it is the
+ * first field that both writers touch at different depths:
+ *
+ *   · KQM writes newBusiness.api when an application is submitted
+ *   · the agent types "New business — apps" and "New business — API" by hand
+ *
+ * Everything above this line is a scalar, where "omit it if untouched" is the
+ * whole defence. A map needs two more things, and without EITHER of them the
+ * defence is decorative:
+ *
+ *   1. buildDailyPatch must write only the TOUCHED LEAVES. The old rule wrote a
+ *      dirty map WHOLE, so an agent typing apps would have written
+ *      { apps: 1, api: 0 } from a form loaded before the API landed — wiping a
+ *      real money figure with a form default. setDoc merge:true merges nested
+ *      maps leaf-wise, so a partial map is a safe write; that is what makes the
+ *      narrower patch possible at all.
+ *   2. detectConflicts must compare LEAF-WISE. Its numeric coercion turns an
+ *      object into 0, so a whole-map comparison reads 0 === 0 and reports no
+ *      conflict on any map, forever. The banner would simply never fire on the
+ *      one field where being wrong costs the most.
+ */
+export const INGEST_WRITTEN_LEAVES = Object.freeze({
+  newBusiness: Object.freeze(['apps', 'api']),
+});
 
 /**
  * ⚠ THE LADDER FIELDS ARE DIFFERENT FROM THE REST OF THIS LIST, AND IT MATTERS.
@@ -94,10 +125,24 @@ export const INGEST_WRITTEN_FIELDS = Object.freeze([
 
 const INGEST_SET = new Set(INGEST_WRITTEN_FIELDS);
 
-/** True when this daily-doc key is one the call ingest also writes. */
+/**
+ * True when this daily-doc key is one the call ingest also writes.
+ * Accepts a leaf path ('newBusiness.api') as well as a top-level key.
+ */
 export function isIngestWritten(key) {
-  return INGEST_SET.has(key);
+  if (INGEST_SET.has(key)) return true;
+  const [parent, leaf] = String(key ?? '').split('.');
+  return Boolean(leaf) && (INGEST_WRITTEN_LEAVES[parent] ?? []).includes(leaf);
 }
+
+/** ['newBusiness.apps', ...] for a bare map key; [key] for anything else. */
+function leafPathsOf(key) {
+  const leaves = INGEST_WRITTEN_LEAVES[key];
+  return leaves ? leaves.map((l) => key + '.' + l) : [key];
+}
+
+const readPath = (obj, path) =>
+  String(path).split('.').reduce((node, part) => (node == null ? undefined : node[part]), obj);
 
 /**
  * buildDailyPatch — the subset of form state to actually write.
@@ -117,11 +162,34 @@ export function buildDailyPatch(data, dirtyKeys) {
   const patch = {};
   if (!data || typeof data !== 'object') return patch;
   for (const key of dirtyKeys ?? []) {
-    if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
     // Never writable by this form. Belt and braces: the UI has no input for it,
     // but a future input added without reading this file would otherwise
     // silently overwrite the ingest's bucket split with the form's zeroes.
     if (key === 'dialsByType') continue;
+
+    // A LEAF of an ingest-written map ('newBusiness.api'). Only that leaf is
+    // written; setDoc merge:true merges it into the map, so the sibling the
+    // agent did not touch keeps whatever the ingest put there.
+    const dot = key.indexOf('.');
+    if (dot > 0) {
+      const parent = key.slice(0, dot);
+      const leaf = key.slice(dot + 1);
+      if (!INGEST_WRITTEN_LEAVES[parent]?.includes(leaf)) continue;
+      const map = data[parent];
+      if (!map || typeof map !== 'object') continue;
+      if (!Object.prototype.hasOwnProperty.call(map, leaf)) continue;
+      patch[parent] = { ...(patch[parent] ?? {}), [leaf]: map[leaf] };
+      continue;
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
+
+    // A BARE ingest-written map. Nothing in this app marks one — the inputs mark
+    // their leaf — so this is the path a future caller takes, and it writes the
+    // map whole exactly as it always did. That is not silently lossy: every leaf
+    // it would overwrite is checked by detectConflicts, so the agent is asked
+    // before anything the ingest wrote is discarded.
+    if (INGEST_WRITTEN_LEAVES[key] && patch[key] !== undefined) continue;
     patch[key] = data[key];
   }
   return patch;
@@ -151,13 +219,20 @@ const num = (v) => {
  */
 export function detectConflicts(baseline, stored, dirtyKeys, data) {
   const out = [];
+  const seen = new Set();
   if (!stored || typeof stored !== 'object') return out;
   for (const key of dirtyKeys ?? []) {
     if (!isIngestWritten(key) || key === 'dialsByType') continue;
-    const wasAtLoad = num(baseline?.[key]);
-    const isNow = num(stored?.[key]);
-    if (wasAtLoad === isNow) continue;
-    out.push({ field: key, wasAtLoad, isNow, yours: num(data?.[key]) });
+    // A bare map expands to its leaves; everything else is itself. Comparing a
+    // map as a whole would coerce both sides to 0 and report nothing, forever.
+    for (const path of leafPathsOf(key)) {
+      if (seen.has(path)) continue;
+      seen.add(path);
+      const wasAtLoad = num(readPath(baseline, path));
+      const isNow = num(readPath(stored, path));
+      if (wasAtLoad === isNow) continue;
+      out.push({ field: path, wasAtLoad, isNow, yours: num(readPath(data, path)) });
+    }
   }
   return out;
 }
@@ -172,6 +247,8 @@ export const FIELD_LABELS = Object.freeze({
   dials: 'Dials',
   ffiConducted: 'FFIs conducted',
   ffisScheduled: 'FFIs scheduled',
+  'newBusiness.apps': 'New business — apps',
+  'newBusiness.api': 'New business — API',
   newNamesAdded: 'New names added',
   policiesDelivered: 'Policies delivered',
   qualifiedApproaches: 'Qualified approaches',
