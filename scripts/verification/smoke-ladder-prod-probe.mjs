@@ -104,6 +104,32 @@ async function main() {
       badKind.status === 400 && /kind must be one of/.test(badKind.payload?.error || ''),
       `${badKind.status} ${badKind.payload?.error}`);
 
+    // The production contract, proved by its refusals. An application with no
+    // API figure must never become a zero, and a figure with no application
+    // must never be dropped in silence — neither writes anything either way.
+    const noFigure = await post({
+      sourceApp: 'kqm-calls', sourceId: `${SOURCE_ID}_c`, occurredAt: OCCURRED,
+      kind: 'ladder', lane: 'newBusiness', bucket: null,
+      reached: false, booking: false, newName: false, ffi: false,
+      appSubmitted: true,
+      rawOutcome: 'probe', rawCampaign: 'probe',
+    });
+    check('an application with NO API figure is refused, never zeroed',
+      noFigure.status === 400 && /appSubmitted requires apiAmount/.test(
+        noFigure.payload?.error || ''),
+      `${noFigure.status} ${noFigure.payload?.error}`);
+
+    const overCap = await post({
+      sourceApp: 'kqm-calls', sourceId: `${SOURCE_ID}_d`, occurredAt: OCCURRED,
+      kind: 'ladder', lane: 'newBusiness', bucket: null,
+      reached: false, booking: false, newName: false, ffi: false,
+      appSubmitted: true, apiAmount: 1000001,
+      rawOutcome: 'probe', rawCampaign: 'probe',
+    });
+    check('an API figure above the cap is refused as a typo',
+      overCap.status === 400 && /probable typo/.test(overCap.payload?.error || ''),
+      `${overCap.status} ${overCap.payload?.error}`);
+
     const daily = await db.doc(
       `tenants/${TENANT}/users/${CREDIT_UID}/dailyActivity/${DATE}`).get();
     check('NOTHING was written: no daily doc for the probe uid', !daily.exists);
