@@ -83,8 +83,10 @@ describe('table integrity', () => {
     // and booking is not. The five ladder flags must all be false on a call.
     const calls = 4 * (16 - 4);
     // LADDER. 2 lanes, bucket null in both, the four call flags all false, and
-    // at least one ladder flag true: 2^5 - 1.
-    const ladder = 2 * (2 ** 5 - 1);
+    // at least one ladder flag true: 2^6 - 1. Six, not five — appSubmitted is a
+    // rung like the others, and the enumeration pairs it with an apiAmount, so
+    // every one of the 63 combinations is legal in both lanes.
+    const ladder = 2 * (2 ** 6 - 1);
     expect(LEGAL_EFFECT_SETS).toHaveLength(calls + ladder);
     expect(LEGAL_EFFECT_SETS.every((s) => coherenceError(s) === null)).toBe(true);
   });
@@ -149,9 +151,19 @@ describe('the effect model, row by row', () => {
     }
   });
 
-  it('every increment is exactly +1 — this endpoint counts calls, not weights', () => {
+  it('every increment is +1 except the API figure — this endpoint counts events', () => {
+    // The rule that used to be "always 1" now has exactly ONE exception, and
+    // naming it here is the point: an amount arriving on any other field would
+    // mean a weight had crept into a count, which is how a points total or a
+    // ratio quietly stops meaning what its name says.
     for (const set of LEGAL_EFFECT_SETS) {
-      for (const delta of Object.values(mapEffects(set).increments)) expect(delta).toBe(1);
+      for (const [field, delta] of Object.entries(mapEffects(set).increments)) {
+        if (field === 'newBusiness.api') {
+          expect(delta).toBe(set.apiAmount);
+        } else {
+          expect(delta).toBe(1);
+        }
+      }
     }
   });
 });
@@ -404,11 +416,12 @@ describe('the write allow-list agrees with the dailyActivity schema', () => {
     }
   });
 
-  it('is exactly the fifteen fields the effect table can emit', () => {
-    // Ten were the call surface. Five arrived with the ladder rows — every one
-    // of them already exists in src/lib/schema/dailyActivity.js, is summed by
-    // both aggregator twins and appears on the weekly report. No field was
-    // invented for this; the ladder was already there and simply unfed.
+  it('is exactly the seventeen fields the effect table can emit', () => {
+    // Ten were the call surface. Five arrived with the ladder rows and two with
+    // the submitted application — every one of them already exists in
+    // src/lib/schema/dailyActivity.js, is summed by both aggregator twins and
+    // appears on the weekly report. No field was invented for this; the ladder
+    // was already there and simply unfed.
     expect(WRITABLE_FIELDS).toEqual([
       'appointmentsSet',
       'ciConducted',
@@ -418,6 +431,8 @@ describe('the write allow-list agrees with the dailyActivity schema', () => {
       'dialsByType.referral',
       'ffiConducted',
       'ffisScheduled',
+      'newBusiness.api',
+      'newBusiness.apps',
       'newNamesAdded',
       'policiesDelivered',
       'qualifiedApproaches',
@@ -428,12 +443,38 @@ describe('the write allow-list agrees with the dailyActivity schema', () => {
     ]);
   });
 
-  it('still writes nothing that reaches production credit', () => {
-    // newBusiness.apps / newBusiness.api feed totalProductionCredit, which the
-    // awards engine and the new-agent financing ruleset compute from. Holding
-    // them back is an operator decision, not an oversight, and this is the test
-    // that makes adding them deliberate rather than incidental.
-    for (const held of ['newBusiness.apps', 'newBusiness.api', 'apiSold', 'applicationsSold']) {
+  it('the two production fields are reachable ONLY through appSubmitted', () => {
+    // They were held back until the operator ruled, and the ruling was specific:
+    // the weekly report IS the submitted number, and awards rank on SETTLED
+    // business, which awardsEngine.js takes from settlement docs and never from
+    // here. So a figure arriving through this endpoint moves the estimate and
+    // cannot move an award.
+    //
+    // This test is what keeps that narrow. Every OTHER rung must stay incapable
+    // of touching production credit, so a future flag cannot acquire the power
+    // by accident.
+    const production = ['newBusiness.apps', 'newBusiness.api'];
+    for (const set of LEGAL_EFFECT_SETS) {
+      const fields = Object.keys(mapEffects(set).increments);
+      const touchesProduction = production.some((f) => fields.includes(f));
+      expect(touchesProduction).toBe(set.appSubmitted === true);
+    }
+  });
+
+  it('the API increment is the FIGURE, and every other increment is one', () => {
+    const { increments } = mapEffects({
+      kind: 'ladder', lane: 'newBusiness', bucket: null,
+      reached: false, booking: false, newName: false, ffi: false,
+      appSubmitted: true, apiAmount: 4800,
+    });
+    expect(increments['newBusiness.apps']).toBe(1);
+    expect(increments['newBusiness.api']).toBe(4800);
+  });
+
+  it('still writes nothing that reaches SETTLED business', () => {
+    // Awards rank on settled, and settlement docs are written by a different
+    // path entirely. This endpoint must never learn to write one.
+    for (const held of ['settledAPI', 'settledApps', 'persistency', 'apiSold', 'applicationsSold']) {
       expect(WRITABLE_FIELDS).not.toContain(held);
     }
   });

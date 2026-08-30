@@ -216,6 +216,26 @@ describe('DailyCaptureV2', () => {
     }
   });
 
+  // ── THE MONEY CASE ────────────────────────────────────────────────────────
+  // newBusiness is a MAP and both writers now touch it: KQM writes .api when an
+  // application is submitted, the agent types .apps and .api by hand. Marking
+  // the map dirty would write it WHOLE — putting the form's stale 0 over an API
+  // figure that landed while the form was open. The setter marks the LEAF.
+  it('typing apps does NOT write the API leaf beside it', async () => {
+    hoisted.getDailyEntry.mockResolvedValue({ newBusiness: { apps: 0, api: 0 } });
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    const save = await screen.findByTestId('dcv2-save');
+    await waitFor(() => expect(save).not.toBeDisabled());
+
+    fireEvent.click(screen.getByRole('button', { name: /New business . apps increase/i }));
+    fireEvent.click(save);
+    await waitFor(() => expect(hoisted.saveDailyEntry).toHaveBeenCalled());
+
+    const entry = hoisted.saveDailyEntry.mock.calls[0][4];
+    expect(entry).toEqual({ newBusiness: { apps: 1 } });
+    expect(entry.newBusiness).not.toHaveProperty('api');
+  });
+
   it('Save with nothing touched writes an empty patch (the doc is left alone)', async () => {
     render(<DailyCaptureV2 onClose={vi.fn()} />);
     const save = await screen.findByTestId('dcv2-save');

@@ -791,15 +791,21 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit, seedCounts = n
 
   // ── Field setters ─────────────────────────────────────────────────────────
   // Every setter marks its TOP-LEVEL key dirty. That key is the unit the write
-  // travels in — a nested map is written whole — so marking the leaf would be
-  // both wrong and useless.
+  // travels in — an agent-owned nested map is written whole — so marking the
+  // leaf would be both wrong and useless.
+  //
+  // `newBusiness` IS THE EXCEPTION, and it is the exception because KQM now
+  // writes into it. See INGEST_WRITTEN_LEAVES in src/lib/schema/dailyPatch.js.
   const handleChange = (name, value) => {
     markDirty(name);
     setData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Marks the LEAF, not the map. An agent typing apps must not also write api:
+  // the API figure may have arrived from a submitted application after this form
+  // loaded, and a whole-map write would put the form's stale 0 over real money.
   const nbChange  = (field, value) => {
-    markDirty('newBusiness');
+    markDirty('newBusiness.' + field);
     setData((prev) => ({ ...prev, newBusiness: { ...prev.newBusiness, [field]: value } }));
   };
   const pppChange = (field, value) => {

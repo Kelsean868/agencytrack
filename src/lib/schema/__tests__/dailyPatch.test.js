@@ -141,6 +141,87 @@ describe('the ladder fields — where the two writers genuinely collide', () => 
   });
 });
 
+describe('newBusiness — the map both writers touch, at different depths', () => {
+  // THE MONEY CASE. KQM writes newBusiness.api when an application is
+  // submitted; the agent types apps and API by hand. The old rule wrote a dirty
+  // map WHOLE, so an agent typing apps against a form loaded before the API
+  // landed would have written { apps: 1, api: 0 } straight over a real figure.
+  const form = { newBusiness: { apps: 1, api: 0 }, officeHours: 4 };
+
+  it('writes ONLY the touched leaf, so the sibling survives merge:true', () => {
+    expect(buildDailyPatch(form, ['newBusiness.apps'])).toEqual({
+      newBusiness: { apps: 1 },
+    });
+  });
+
+  it('writes both leaves when the agent typed both', () => {
+    expect(buildDailyPatch({ newBusiness: { apps: 2, api: 9000 } },
+      ['newBusiness.apps', 'newBusiness.api'])).toEqual({
+      newBusiness: { apps: 2, api: 9000 },
+    });
+  });
+
+  it('omits the map entirely when neither leaf was touched', () => {
+    expect(buildDailyPatch(form, ['officeHours'])).toEqual({ officeHours: 4 });
+  });
+
+  it('a leaf nobody owns is not writable through the dotted path', () => {
+    // Only the leaves named in INGEST_WRITTEN_LEAVES may be addressed this way;
+    // a typo must not become a new field in the daily doc.
+    expect(buildDailyPatch({ newBusiness: { nonsense: 1 } }, ['newBusiness.nonsense']))
+      .toEqual({});
+  });
+
+  it('a BARE map key still writes whole — the documented fallback', () => {
+    expect(buildDailyPatch(form, ['newBusiness'])).toEqual({
+      newBusiness: { apps: 1, api: 0 },
+    });
+  });
+
+  it('detects a conflict LEAF-WISE — the whole-map comparison saw nothing', () => {
+    // Both sides coerce to 0 as objects, which is why this needed its own path:
+    // without it the banner could never fire on the field that costs the most.
+    expect(detectConflicts(
+      { newBusiness: { apps: 0, api: 0 } },        // at load
+      { newBusiness: { apps: 1, api: 4800 } },     // KQM logged a submission
+      ['newBusiness.api'],
+      { newBusiness: { apps: 0, api: 0 } },        // what the agent typed
+    )).toEqual([{ field: 'newBusiness.api', wasAtLoad: 0, isNow: 4800, yours: 0 }]);
+  });
+
+  it('a bare map key checks EVERY leaf, and reports each that moved', () => {
+    const conflicts = detectConflicts(
+      { newBusiness: { apps: 0, api: 0 } },
+      { newBusiness: { apps: 1, api: 4800 } },
+      ['newBusiness'],
+      { newBusiness: { apps: 3, api: 0 } },
+    );
+    expect(conflicts.map((c) => c.field)).toEqual(['newBusiness.apps', 'newBusiness.api']);
+  });
+
+  it('says nothing when the leaf did not move', () => {
+    expect(detectConflicts(
+      { newBusiness: { api: 4800 } },
+      { newBusiness: { api: 4800 } },
+      ['newBusiness.api'],
+      { newBusiness: { api: 1 } },
+    )).toEqual([]);
+  });
+
+  it('names the leaf in the agent’s own words', () => {
+    expect(describeConflict({ field: 'newBusiness.api', wasAtLoad: 0, isNow: 4800, yours: 0 }))
+      .toBe('New business — API: KQM Calls logged 4800 since you opened this; your entry says 0.');
+  });
+
+  it('both leaves are ingest-written', () => {
+    expect(isIngestWritten('newBusiness')).toBe(true);
+    expect(isIngestWritten('newBusiness.apps')).toBe(true);
+    expect(isIngestWritten('newBusiness.api')).toBe(true);
+    expect(isIngestWritten('newBusiness.nonsense')).toBe(false);
+    expect(isIngestWritten('pppIncreases.apps')).toBe(false);
+  });
+});
+
 describe('isIngestWritten / describeConflict', () => {
   it('knows which side of the line a field is on', () => {
     expect(isIngestWritten('dials')).toBe(true);

@@ -316,7 +316,7 @@ function validatePayload(body) {
   // vocabulary it likes and the endpoint will still silently drop it if it is
   // not listed here. That silent drop is what made a ladder request validate as
   // a call and get rejected for asserting nothing.
-  for (const key of ['kind', ...LADDER_FLAGS]) {
+  for (const key of ['kind', 'apiAmount', ...LADDER_FLAGS]) {
     if (Object.prototype.hasOwnProperty.call(body, key)) effects[key] = body[key];
   }
 
@@ -476,6 +476,10 @@ async function applyCall(db, { sourceRef, source, sourceId, payload, now }) {
         // avoid. Every record carries all five, so a ladder query never has to
         // ask whether a field is absent or false.
         ...Object.fromEntries(LADDER_FLAGS.map((f) => [f, payload.effects[f] === true])),
+        // The API figure as the caller sent it, beside the increment it caused.
+        // null on every row that did not carry one, so "which events moved
+        // production" is a query rather than an inference.
+        apiAmount: payload.effects.apiAmount ?? null,
         // KQM's OWN words. Recorded so a disputed number can be traced to what
         // the agent actually clicked, and scored by nothing — mapEffects above
         // was not given them and cannot branch on them.
