@@ -80,6 +80,53 @@ const INGEST_BUCKETS = Object.freeze(['cold', 'referral', 'followUp']);
 const EFFECT_FLAGS = Object.freeze(['reached', 'booking', 'newName', 'ffi']);
 
 /**
+ * THE LADDER FLAGS — what HAPPENED, as opposed to what was attempted.
+ *
+ * The four flags above describe a phone call. These five describe the selling
+ * ladder in src/constants/activityMetadata.js — A.I, F.F.I, the solution
+ * presentation, C.I, and the delivered policy. They arrive from KQM's meeting
+ * and milestone events (sql/34), which record that a booked appointment was
+ * actually held.
+ *
+ * ⚠ OPTIONAL, AND THE FOUR ABOVE STAY REQUIRED. Adding these to EFFECT_FLAGS
+ * would have made every one of them mandatory, and the live KQM caller sends
+ * exactly four booleans — so the next call logged after deploy would 400, the
+ * outbox would mark it `rejected` (permanent, by design), and the dispatch would
+ * stop dead. Absent means false. That asymmetry is not untidiness; it is the
+ * only shape that lets this deploy before its caller changes.
+ *
+ * No `newBusiness.apps` / `newBusiness.api` row here, deliberately. Those feed
+ * totalProductionCredit, which the awards engine and the new-agent financing
+ * ruleset compute from — an API figure typed into a CRM panel reaching that
+ * number unreviewed is a different proposition from a count reaching a points
+ * total, and it is the operator's call, not this file's. Application taken still
+ * flows to ApplyOn, which has a human gate in front of it.
+ */
+const LADDER_FLAGS = Object.freeze([
+  'approachHeld',    // A.I  — the first interview happened  -> qualifiedApproaches
+  'presented',       // the solution was presented           -> solutionPresentations
+  'ffiHeld',         // F.F.I conducted                      -> ffiConducted
+  'closingHeld',     // C.I conducted                        -> ciConducted
+  'policyDelivered', // the policy was delivered             -> policiesDelivered
+]);
+
+/**
+ * KINDS — is this request a CALL, or something that happened afterwards?
+ *
+ * ⚠ THE ROW THIS EXISTS FOR IS `dials`. Every call row below fires on the lane
+ * alone, because until now every request WAS a call. A fact find arriving with
+ * lane 'newBusiness' would therefore have bumped `dials` and a dialsByType
+ * bucket as well as ffiConducted — inflating the dial count with meetings, and
+ * inflating it invisibly, since the partition would still balance.
+ *
+ * `kind` is what stops that, and it defaults to 'call' so the existing caller's
+ * payload means exactly what it meant before.
+ */
+const KINDS = Object.freeze(['call', 'ladder']);
+const isCall = (e) => (e.kind || 'call') === 'call';
+const isLadder = (e) => e.kind === 'ladder';
+
+/**
  * ONE predicate per lane, referenced by every row that depends on it.
  *
  * `dials` and `dialsByType.<bucket>` share the SAME FUNCTION REFERENCE, so they
@@ -102,14 +149,32 @@ const isServicing = (e) => e.lane === 'servicing';
  *          portfolio review, and a name is a name.
  */
 const EFFECT_TABLE = Object.freeze([
-  Object.freeze({ field: 'dials', when: isNewBusiness }),
-  Object.freeze({ field: (e) => 'dialsByType.' + e.bucket, when: isNewBusiness }),
-  Object.freeze({ field: 'telContacts', when: (e) => isNewBusiness(e) && e.reached }),
-  Object.freeze({ field: 'serviceCalls', when: isServicing }),
-  Object.freeze({ field: 'serviceContacts', when: (e) => isServicing(e) && e.reached }),
-  Object.freeze({ field: 'appointmentsSet', when: (e) => e.booking }),
-  Object.freeze({ field: 'newNamesAdded', when: (e) => e.newName }),
-  Object.freeze({ field: 'ffisScheduled', when: (e) => e.ffi }),
+  // ── the call rows. Every one now also requires kind 'call' — see KINDS. ──
+  Object.freeze({ field: 'dials', when: (e) => isCall(e) && isNewBusiness(e) }),
+  Object.freeze({
+    field: (e) => 'dialsByType.' + e.bucket,
+    when: (e) => isCall(e) && isNewBusiness(e),
+  }),
+  Object.freeze({ field: 'telContacts', when: (e) => isCall(e) && isNewBusiness(e) && e.reached }),
+  Object.freeze({ field: 'serviceCalls', when: (e) => isCall(e) && isServicing(e) }),
+  Object.freeze({
+    field: 'serviceContacts',
+    when: (e) => isCall(e) && isServicing(e) && e.reached,
+  }),
+  // Lane-independent, and call-only: an appointment is set ON a call, a name is
+  // given ON a call, an FFI is scheduled ON a call.
+  Object.freeze({ field: 'appointmentsSet', when: (e) => isCall(e) && e.booking }),
+  Object.freeze({ field: 'newNamesAdded', when: (e) => isCall(e) && e.newName }),
+  Object.freeze({ field: 'ffisScheduled', when: (e) => isCall(e) && e.ffi }),
+
+  // ── the ladder rows. What happened after the phone was put down. ─────────
+  // Lane-independent for the same reason the three above are: a fact find is a
+  // fact find whether the name came from a cold list or a portfolio review.
+  Object.freeze({ field: 'qualifiedApproaches', when: (e) => isLadder(e) && e.approachHeld }),
+  Object.freeze({ field: 'solutionPresentations', when: (e) => isLadder(e) && e.presented }),
+  Object.freeze({ field: 'ffiConducted', when: (e) => isLadder(e) && e.ffiHeld }),
+  Object.freeze({ field: 'ciConducted', when: (e) => isLadder(e) && e.closingHeld }),
+  Object.freeze({ field: 'policiesDelivered', when: (e) => isLadder(e) && e.policyDelivered }),
 ]);
 
 /**
@@ -158,6 +223,45 @@ function coherenceError(effects) {
     }
   }
 
+  // kind is OPTIONAL and defaults to 'call', so a payload written before this
+  // existed still means exactly what it meant. Present-but-wrong is still a 400.
+  if (effects.kind !== undefined && !KINDS.includes(effects.kind)) {
+    return 'kind must be one of ' + KINDS.join(', ');
+  }
+
+  // The ladder flags are optional; absent means false. Present-but-not-a-boolean
+  // is rejected for the same reason the required four are: `"false"` is a truthy
+  // string, and a serialiser that mangles one would silently credit a meeting
+  // that never happened.
+  for (const flag of LADDER_FLAGS) {
+    if (effects[flag] !== undefined && typeof effects[flag] !== 'boolean') {
+      return flag + ' must be a boolean when present';
+    }
+  }
+
+  if (isLadder(effects)) {
+    // A ladder event is not a dial, so it has no bucket to belong to. Allowing
+    // one would let a fact find carry a partition member that nothing increments
+    // — the buckets would stop summing to dials, invisibly.
+    if (effects.bucket !== null) {
+      return 'bucket must be null when kind is ladder';
+    }
+    // A request that claims to be a ladder event and asserts nothing about the
+    // ladder writes NOTHING. That is a caller defect, not a quiet no-op.
+    if (!LADDER_FLAGS.some((f) => effects[f] === true)) {
+      return 'kind ladder requires at least one of ' + LADDER_FLAGS.join(', ');
+    }
+    // The call flags describe a phone call and cannot be true of a meeting.
+    // Accepting them would write appointmentsSet or telContacts off an event
+    // that was not a call — the exact inflation `kind` exists to prevent.
+    for (const flag of EFFECT_FLAGS) {
+      if (effects[flag] === true) {
+        return flag + ' must be false when kind is ladder';
+      }
+    }
+    return null;
+  }
+
   if (effects.lane === 'servicing') {
     if (effects.bucket !== null) {
       return 'bucket must be null when lane is servicing';
@@ -168,6 +272,14 @@ function coherenceError(effects) {
 
   if (effects.ffi && !effects.booking) {
     return 'ffi requires booking — scheduling an FFI is setting an appointment';
+  }
+
+  // A call cannot assert the ladder. The two vocabularies describe different
+  // events and mixing them in one request means the caller has confused them.
+  for (const flag of LADDER_FLAGS) {
+    if (effects[flag] === true) {
+      return flag + ' requires kind ladder';
+    }
   }
 
   return null;
@@ -230,13 +342,21 @@ const LEGAL_EFFECT_SETS = Object.freeze(
   (() => {
     const out = [];
     const shapes = [
+      // kind 'call' — the four original shapes, unchanged. `kind` is left
+      // ABSENT rather than set to 'call' so the enumeration also proves the
+      // default still works for a caller that has never heard of it.
       ...INGEST_BUCKETS.map((bucket) => ({ lane: 'newBusiness', bucket })),
       { lane: 'servicing', bucket: null },
+      // kind 'ladder' — no bucket in either lane, because a meeting is not a
+      // dial and has no partition member.
+      { lane: 'newBusiness', bucket: null, kind: 'ladder' },
+      { lane: 'servicing', bucket: null, kind: 'ladder' },
     ];
+    const ALL = [...EFFECT_FLAGS, ...LADDER_FLAGS];
     for (const shape of shapes) {
-      for (let mask = 0; mask < 1 << EFFECT_FLAGS.length; mask += 1) {
+      for (let mask = 0; mask < 1 << ALL.length; mask += 1) {
         const set = { ...shape };
-        EFFECT_FLAGS.forEach((flag, i) => {
+        ALL.forEach((flag, i) => {
           set[flag] = Boolean(mask & (1 << i));
         });
         if (coherenceError(set) === null) out.push(Object.freeze(set));
@@ -277,6 +397,8 @@ module.exports = {
   DIAL_BUCKETS,
   INGEST_BUCKETS,
   EFFECT_FLAGS,
+  LADDER_FLAGS,
+  KINDS,
   EFFECT_TABLE,
   LEGAL_EFFECT_SETS,
   WRITABLE_FIELDS,

@@ -22,6 +22,20 @@
  * STRICTER: see coherenceError in outcomeMap.js, which is asserted here at the
  * boundary rather than assumed to hold.
  *
+ * ── NOT EVERY EVENT IS A CALL: THE `kind` DISCRIMINATOR ──────────────────────
+ * AgencyTrack's selling ladder (P.C → S.C → A.I → F.F.I → C.I → SALE) already
+ * existed and was simply never fed. Feeding it needs events that are NOT phone
+ * calls — a fact find held, a closing interview, a policy delivered — and those
+ * must not touch `dials` or a dial bucket.
+ *
+ * So the body may carry `kind` ('call' | 'ladder') and five ladder booleans, ALL
+ * OPTIONAL. Absent kind means 'call', which is what every byte of the deployed
+ * KQM caller sends today and why this deploy is backwards-compatible. A ladder
+ * request must send `bucket: null` and all four call booleans false; a call
+ * request must not assert a ladder flag. Both confusions are a 400, because a
+ * meeting counted as a dial inflates the dial count invisibly — the buckets
+ * would still sum, so nothing downstream would ever notice.
+ *
  * `rawOutcome` and `rawCampaign` ride along and are STORED ON THE INGEST RECORD
  * AND NEVER SCORED. They exist so a disputed number can be traced back to what
  * the agent actually clicked. Storing them is not the same as trusting them, and
@@ -64,7 +78,7 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 
-const { coherenceError, mapEffects, EFFECT_FLAGS } = require('./outcomeMap');
+const { coherenceError, mapEffects, EFFECT_FLAGS, LADDER_FLAGS } = require('./outcomeMap');
 const { resolveCallSource } = require('./resolveCallSource');
 
 /**
@@ -286,6 +300,26 @@ function validatePayload(body) {
     newName: body.newName,
     ffi: body.ffi,
   };
+
+  // ── kind AND THE LADDER FLAGS ARE COPIED ONLY IF THE CALLER SENT THEM ──────
+  // Same present-versus-absent discipline as `bucket` above, for the opposite
+  // reason. These six keys are OPTIONAL by contract: every caller that existed
+  // before the ladder slice sends exactly the six keys above, and a payload
+  // written before `kind` existed still has to mean what it meant — a call.
+  // coherenceError distinguishes absent (defaults) from present-and-wrong (400),
+  // so the copy must preserve that distinction rather than materialise the keys
+  // as undefined. hasOwnProperty, not `body.kind ?? ...`: a normaliser that
+  // starts sending `kind: null` is BROKEN and must 400, not be read as a call.
+  //
+  // ⚠ THIS IS THE WHOLE OF THE LADDER WIRING ON THIS SIDE. The whitelist below
+  // is the only place a new effect key can enter; outcomeMap can grow all the
+  // vocabulary it likes and the endpoint will still silently drop it if it is
+  // not listed here. That silent drop is what made a ladder request validate as
+  // a call and get rejected for asserting nothing.
+  for (const key of ['kind', ...LADDER_FLAGS]) {
+    if (Object.prototype.hasOwnProperty.call(body, key)) effects[key] = body[key];
+  }
+
   const incoherent = coherenceError(effects);
   if (incoherent) return { ok: false, error: incoherent };
 
@@ -430,6 +464,18 @@ async function applyCall(db, { sourceRef, source, sourceId, payload, now }) {
         booking: payload.effects.booking,
         newName: payload.effects.newName,
         ffi: payload.effects.ffi,
+        // `kind` is MATERIALISED here even though it is optional on the wire.
+        // Absent means call, so the record says 'call' — a record whose kind is
+        // missing would make every pre-ladder ingest indistinguishable from a
+        // future bug that dropped the field, and "count the calls" would become
+        // a query with a special case in it.
+        kind: payload.effects.kind || 'call',
+        // Coerced to real booleans and DERIVED from LADDER_FLAGS rather than
+        // listed. Firestore rejects an undefined field value, and a hand-written
+        // twin of that list is exactly the drift WRITABLE_FIELDS exists to
+        // avoid. Every record carries all five, so a ladder query never has to
+        // ask whether a field is absent or false.
+        ...Object.fromEntries(LADDER_FLAGS.map((f) => [f, payload.effects[f] === true])),
         // KQM's OWN words. Recorded so a disputed number can be traced to what
         // the agent actually clicked, and scored by nothing — mapEffects above
         // was not given them and cannot branch on them.

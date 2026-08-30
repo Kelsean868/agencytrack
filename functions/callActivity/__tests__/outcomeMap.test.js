@@ -78,9 +78,14 @@ describe('table integrity', () => {
   });
 
   it('the legal effect space is the cross-product less ffi-without-booking', () => {
-    // 3 new-business buckets + 1 servicing shape = 4, times 16 boolean
-    // combinations, less the quarter where ffi is set and booking is not.
-    expect(LEGAL_EFFECT_SETS).toHaveLength(4 * (16 - 4));
+    // CALLS. 3 new-business buckets + 1 servicing shape = 4, times 16 boolean
+    // combinations of the four call flags, less the quarter where ffi is set
+    // and booking is not. The five ladder flags must all be false on a call.
+    const calls = 4 * (16 - 4);
+    // LADDER. 2 lanes, bucket null in both, the four call flags all false, and
+    // at least one ladder flag true: 2^5 - 1.
+    const ladder = 2 * (2 ** 5 - 1);
+    expect(LEGAL_EFFECT_SETS).toHaveLength(calls + ladder);
     expect(LEGAL_EFFECT_SETS.every((s) => coherenceError(s) === null)).toBe(true);
   });
 
@@ -151,9 +156,60 @@ describe('the effect model, row by row', () => {
   });
 });
 
+describe('the ladder contract — what happened, not what was attempted', () => {
+  const call = { lane: 'newBusiness', bucket: 'cold', reached: true, booking: false, newName: false, ffi: false };
+
+  it('a payload that has never heard of kind or the ladder is unchanged', () => {
+    // THE COMPATIBILITY GUARANTEE. The live KQM caller sends exactly these six
+    // keys. If this ever fails, the next call logged after deploy 400s, the
+    // outbox marks it rejected — permanent — and the dispatch stops dead.
+    expect(coherenceError(call)).toBeNull();
+    expect(mapEffects(call).increments).toEqual({
+      dials: 1, 'dialsByType.cold': 1, telContacts: 1,
+    });
+  });
+
+  it('a ladder event writes its own field and nothing else', () => {
+    const ffi = { lane: 'newBusiness', bucket: null, kind: 'ladder',
+      reached: false, booking: false, newName: false, ffi: false, ffiHeld: true };
+    expect(coherenceError(ffi)).toBeNull();
+    expect(mapEffects(ffi).increments).toEqual({ ffiConducted: 1 });
+  });
+
+  it('a ladder event on the servicing lane still counts — a fact find is a fact find', () => {
+    const ci = { lane: 'servicing', bucket: null, kind: 'ladder',
+      reached: false, booking: false, newName: false, ffi: false, closingHeld: true };
+    expect(mapEffects(ci).increments).toEqual({ ciConducted: 1 });
+  });
+
+  it('rejects the four ways a caller could confuse the two vocabularies', () => {
+    const base = { lane: 'newBusiness', bucket: null, kind: 'ladder',
+      reached: false, booking: false, newName: false, ffi: false, ffiHeld: true };
+
+    // a meeting carrying a dial bucket would break the partition invisibly
+    expect(coherenceError({ ...base, bucket: 'cold' })).toMatch(/bucket must be null/);
+    // a meeting claiming to be a contact would write telContacts off no call
+    expect(coherenceError({ ...base, reached: true })).toMatch(/must be false when kind is ladder/);
+    // a ladder event asserting nothing writes nothing — a caller defect
+    expect(coherenceError({ ...base, ffiHeld: false })).toMatch(/requires at least one/);
+    // and the reverse: a call cannot assert the ladder
+    expect(coherenceError({ ...call, ffiHeld: true })).toMatch(/requires kind ladder/);
+  });
+
+  it('a mangled boolean is rejected rather than believed', () => {
+    const bad = { lane: 'newBusiness', bucket: null, kind: 'ladder',
+      reached: false, booking: false, newName: false, ffi: false, ffiHeld: 'true' };
+    expect(coherenceError(bad)).toMatch(/must be a boolean when present/);
+  });
+});
+
 describe('decision 1 — dialsByType is a PARTITION', () => {
   it('every single new-business call bumps dials and exactly one bucket', () => {
     for (const set of LEGAL_EFFECT_SETS) {
+      // Ladder events are not dials and are asserted separately below. Without
+      // this the partition would look broken the moment a fact find arrived on
+      // the new-business lane — which is exactly the inflation `kind` prevents.
+      if (set.kind === 'ladder') continue;
       const { increments, lane } = mapEffects(set);
       const buckets = Object.keys(increments).filter((f) => f.startsWith('dialsByType.'));
       if (lane === 'newBusiness') {
@@ -163,6 +219,21 @@ describe('decision 1 — dialsByType is a PARTITION', () => {
         expect(increments.dials).toBeUndefined();
         expect(buckets).toHaveLength(0);
       }
+    }
+  });
+
+  it('a ladder event never touches dials, a bucket, or a contact field', () => {
+    // The property that makes `kind` worth having. A meeting inflating the dial
+    // count would still balance the partition, so it would be invisible.
+    for (const set of LEGAL_EFFECT_SETS.filter((s) => s.kind === 'ladder')) {
+      const { increments } = mapEffects(set);
+      expect(increments.dials).toBeUndefined();
+      expect(increments.telContacts).toBeUndefined();
+      expect(increments.serviceCalls).toBeUndefined();
+      expect(increments.serviceContacts).toBeUndefined();
+      expect(increments.appointmentsSet).toBeUndefined();
+      expect(Object.keys(increments).filter((f) => f.startsWith('dialsByType.'))).toHaveLength(0);
+      expect(Object.keys(increments).length).toBeGreaterThan(0);
     }
   });
 
@@ -333,18 +404,37 @@ describe('the write allow-list agrees with the dailyActivity schema', () => {
     }
   });
 
-  it('is exactly the ten fields the effect table can emit', () => {
+  it('is exactly the fifteen fields the effect table can emit', () => {
+    // Ten were the call surface. Five arrived with the ladder rows — every one
+    // of them already exists in src/lib/schema/dailyActivity.js, is summed by
+    // both aggregator twins and appears on the weekly report. No field was
+    // invented for this; the ladder was already there and simply unfed.
     expect(WRITABLE_FIELDS).toEqual([
       'appointmentsSet',
+      'ciConducted',
       'dials',
       'dialsByType.cold',
       'dialsByType.followUp',
       'dialsByType.referral',
+      'ffiConducted',
       'ffisScheduled',
       'newNamesAdded',
+      'policiesDelivered',
+      'qualifiedApproaches',
       'serviceCalls',
       'serviceContacts',
+      'solutionPresentations',
       'telContacts',
     ]);
+  });
+
+  it('still writes nothing that reaches production credit', () => {
+    // newBusiness.apps / newBusiness.api feed totalProductionCredit, which the
+    // awards engine and the new-agent financing ruleset compute from. Holding
+    // them back is an operator decision, not an oversight, and this is the test
+    // that makes adding them deliberate rather than incidental.
+    for (const held of ['newBusiness.apps', 'newBusiness.api', 'apiSold', 'applicationsSold']) {
+      expect(WRITABLE_FIELDS).not.toContain(held);
+    }
   });
 });
