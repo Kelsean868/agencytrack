@@ -29,14 +29,95 @@
  * from the client. Anything beyond it is reported separately, with what it
  * would cost them — never folded into the free number.
  *
- * ── AGE ─────────────────────────────────────────────────────────────────────
- * `age` is the UNDERWRITING age as Tatil reckons it. This module does not
- * compute it from a date of birth, deliberately: Tatil uses "age next birthday"
- * on at least some products, the revised-limits document does not say which it
- * means, and quietly picking one would shift every band boundary by a year for
- * clients born in the wrong month.
+ * ── AGE: NEXT BIRTHDAY ──────────────────────────────────────────────────────
+ * **Tatil reckons age as AGE NEXT BIRTHDAY, for premiums and for these medical
+ * requirements alike** (operator, 30 Aug 2026). Age next birthday is the age
+ * the client will turn on their next birthday, so it is ALWAYS attained age
+ * plus one — it is a constant offset, not a mid-year switch.
+ *
+ * That single year is not a rounding detail. It moves every band boundary, and
+ * the one that costs money is 50/51: a client whose attained age is 50 is
+ * underwritten at 51, where **there is no non-medical band at all**. Tell them
+ * "non-medical up to 500,000" off their attained age and they arrive at a
+ * paramedical they were not warned about.
+ *
+ * So `age` here is ALWAYS age next birthday. Callers that hold a date of birth
+ * should pass `dateOfBirth` + `asOf` instead and let `ageNextBirthday()` derive
+ * it — passing a hand-computed `age` is supported, but it is the caller's
+ * promise that the number is ANB.
+ *
+ * `asOf` is required rather than defaulted, because this module is pure and has
+ * no clock. Pass `getTodayTT()` from utils/dateInputs when you mean today —
+ * Trinidad is UTC-4 with no DST, so a UTC "today" is the previous calendar day
+ * for four hours every evening, which at a birthday boundary is a wrong band.
  */
 import { MEDICAL_LIMITS_2026_04 } from '../config/medicalLimits/2026-04';
+
+const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** Parse YYYY-MM-DD into [y, m, d], or null if it is not a real calendar date. */
+function parts(s) {
+  const m = typeof s === 'string' && DATE_RE.exec(s);
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  // Round-trip through UTC to reject 2026-02-30 and friends, which Date would
+  // otherwise roll forward into March without complaining.
+  const probe = new Date(Date.UTC(y, mo - 1, d));
+  if (probe.getUTCFullYear() !== y || probe.getUTCMonth() !== mo - 1 || probe.getUTCDate() !== d) {
+    return null;
+  }
+  return [y, mo, d];
+}
+
+/**
+ * ageNextBirthday — the age Tatil underwrites and rates at.
+ *
+ * @param {string} dateOfBirth  YYYY-MM-DD
+ * @param {string} asOf         YYYY-MM-DD — the date the case is reckoned at
+ * @returns {number|null} age next birthday, or null on an unusable input
+ *
+ * Always attained age + 1. On the client's birthday itself they have just
+ * turned N, so their next birthday is N+1 — the answer steps up on the
+ * birthday, exactly as attained age does.
+ *
+ * 29 February: a client born on a leap day has no birthday in a common year,
+ * and this treats 1 March as the day it steps. That is a choice, not a fact
+ * from the document; it affects one day a year for one cohort.
+ */
+export function ageNextBirthday(dateOfBirth, asOf) {
+  const dob = parts(dateOfBirth);
+  const at = parts(asOf);
+  if (!dob || !at) return null;
+  const [by, bm, bd] = dob;
+  const [ay, am, ad] = at;
+  if (ay < by || (ay === by && (am < bm || (am === bm && ad < bd)))) return null; // not yet born
+  let attained = ay - by;
+  if (am < bm || (am === bm && ad < bd)) attained -= 1;
+  return attained + 1;
+}
+
+/**
+ * resolveAge — accept EITHER a pre-computed ANB or a date of birth, never both.
+ *
+ * Refusing the both-given case is deliberate: two sources of truth for the age
+ * is how a caller ends up silently trusting the wrong one.
+ */
+function resolveAge({ age, dateOfBirth, asOf }) {
+  if (dateOfBirth != null && age != null) {
+    return { ok: false, reason: 'pass age (already age next birthday) OR dateOfBirth, not both' };
+  }
+  if (dateOfBirth != null) {
+    if (asOf == null) {
+      return { ok: false, reason: 'asOf (YYYY-MM-DD) is required with dateOfBirth — this module has no clock' };
+    }
+    const anb = ageNextBirthday(dateOfBirth, asOf);
+    if (anb === null) {
+      return { ok: false, reason: 'dateOfBirth / asOf must be real YYYY-MM-DD dates with asOf on or after dateOfBirth' };
+    }
+    return { ok: true, age: anb };
+  }
+  return { ok: true, age };
+}
 
 /** The table in force for a given date. One entry today; a revision adds another. */
 const TABLES = [MEDICAL_LIMITS_2026_04];
@@ -89,23 +170,33 @@ function nextUniversalAbove(table, age, sumAssured) {
  * requirementsFor — what underwriting will routinely ask for.
  *
  * @param {object} args
- * @param {number} args.age                 underwriting age (see module header)
+ * @param {number} [args.age]               age NEXT BIRTHDAY (see module header)
+ * @param {string} [args.dateOfBirth]       YYYY-MM-DD — derives the age instead
+ * @param {string} [args.asOf]              YYYY-MM-DD — required with dateOfBirth
  * @param {number} args.sumAssured          the cover applied for, TTD
  * @param {boolean} [args.hasDisabilityIncomeRider=false]
  * @param {object} [args.table]             defaults to the current table
  * @returns {{
  *   ok: boolean, reason?: string, exam?: string, requirements?: string[],
- *   determinedAtUnderwriting?: boolean, tierCeiling?: number|null
+ *   determinedAtUnderwriting?: boolean, tierCeiling?: number|null, age?: number
  * }}
  *
  * `ok: false` is returned rather than a guess whenever the table cannot answer.
+ * The resolved `age` is echoed back on success, so a caller that passed a date
+ * of birth can show the client which age the answer was reckoned at.
  */
 export function requirementsFor({
-  age,
+  age: ageIn,
+  dateOfBirth,
+  asOf,
   sumAssured,
   hasDisabilityIncomeRider = false,
   table = MEDICAL_LIMITS_2026_04,
 }) {
+  const resolved = resolveAge({ age: ageIn, dateOfBirth, asOf });
+  if (!resolved.ok) return { ok: false, reason: resolved.reason };
+  const age = resolved.age;
+
   if (!Number.isFinite(sumAssured) || sumAssured <= 0) {
     return { ok: false, reason: 'sumAssured must be a positive number' };
   }
@@ -117,6 +208,7 @@ export function requirementsFor({
   if (sumAssured >= table.determinedAtUnderwritingFrom) {
     return {
       ok: true,
+      age,
       determinedAtUnderwriting: true,
       exam: 'Medical',
       requirements: ['Requirements to be determined at the time of underwriting'],
@@ -143,6 +235,7 @@ export function requirementsFor({
 
   return {
     ok: true,
+    age,
     determinedAtUnderwriting: false,
     exam,
     requirements,
@@ -166,11 +259,19 @@ export function requirementsFor({
  * it is true only when the client would have to do nothing at all.
  */
 export function headroomFor({
-  age,
+  age: ageIn,
+  dateOfBirth,
+  asOf,
   issuedCoverage,
   hasDisabilityIncomeRider = false,
   table = MEDICAL_LIMITS_2026_04,
 }) {
+  const resolved = resolveAge({ age: ageIn, dateOfBirth, asOf });
+  if (!resolved.ok) {
+    return { ok: false, reason: resolved.reason, ceiling: null, headroom: 0, free: false, clampedBy: null, nextStep: null };
+  }
+  const age = resolved.age;
+
   const base = requirementsFor({
     age, sumAssured: issuedCoverage, hasDisabilityIncomeRider, table,
   });
@@ -221,6 +322,7 @@ export function headroomFor({
 
   return {
     ok: true,
+    age,
     ceiling: Number.isFinite(ceiling) ? ceiling : null,
     headroom,
     free: headroom > 0,

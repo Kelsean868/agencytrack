@@ -71,8 +71,14 @@ export const MEDICAL_LIMITS_2026_04 = Object.freeze({
   retrieved: '2026-08-30',
   status: 'VERIFIED_SINGLE_SOURCE',
   bandMappingConfirmed: '2026-08-30',
-  ageBasis: 'as stated on the document — confirm whether Tatil reckons this age '
-    + 'next birthday before computing an age from a date of birth',
+  // CONFIRMED by the operator, 30 Aug 2026: Tatil reckons AGE NEXT BIRTHDAY,
+  // for premiums and for these medical requirements alike. Age next birthday is
+  // always attained age + 1. The boundary that costs money is 50/51 — a client
+  // aged 50 is underwritten at 51, where no non-medical band exists at all.
+  // Derive it with ageNextBirthday() in src/utils/medicalRequirements.js; never
+  // hand a raw attained age to requirementsFor().
+  ageBasis: 'age next birthday (attained age + 1)',
+  ageBasisConfirmed: '2026-08-30',
   appliesTo: Object.freeze(['life', 'criticalIllness']),
   source: 'TATIL LIFE REVISED MEDICAL LIMITS (Effective April 1st, 2026); memo '
     + '"Revision of Rates - LifeSpan Gold", A. Shaw (GM), 25-MAR-2026',

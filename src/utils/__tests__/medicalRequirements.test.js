@@ -4,6 +4,7 @@ import {
   headroomFor,
   bandFor,
   limitsInForceOn,
+  ageNextBirthday,
 } from '../medicalRequirements';
 import {
   MEDICAL_LIMITS_2026_04,
@@ -328,5 +329,116 @@ describe('effective dating', () => {
     expect(limitsInForceOn('2026-03-31')).toBeNull();
     expect(limitsInForceOn('2025-12-01')).toBeNull();
     expect(limitsInForceOn(undefined)).toBeNull();
+  });
+});
+
+describe('age next birthday - the basis Tatil actually underwrites on', () => {
+  // Confirmed by the operator, 30 Aug 2026: Tatil reckons age next birthday for
+  // premiums AND for these medical requirements. ANB is always attained age + 1
+  // - a constant offset, not a mid-year switch.
+
+  it('is attained age plus one, before and after the birthday', () => {
+    // Born 1 July 1976. On 30 Jun 2026 they are 49 attained; on 1 Jul, 50.
+    expect(ageNextBirthday('1976-07-01', '2026-06-30')).toBe(50);
+    expect(ageNextBirthday('1976-07-01', '2026-07-01')).toBe(51);
+    expect(ageNextBirthday('1976-07-01', '2026-07-02')).toBe(51);
+  });
+
+  it('steps ON the birthday, not the day after', () => {
+    expect(ageNextBirthday('1990-03-15', '2026-03-14')).toBe(36);
+    expect(ageNextBirthday('1990-03-15', '2026-03-15')).toBe(37);
+  });
+
+  it('gives a newborn 1, not 0', () => {
+    expect(ageNextBirthday('2026-08-30', '2026-08-30')).toBe(1);
+  });
+
+  it('treats 1 March as the step for a leap-day birth in a common year', () => {
+    // A documented choice, not a fact from the table: 2027 has no 29 February.
+    expect(ageNextBirthday('2000-02-29', '2027-02-28')).toBe(27);
+    expect(ageNextBirthday('2000-02-29', '2027-03-01')).toBe(28);
+    // In a leap year the birthday exists and behaves normally.
+    expect(ageNextBirthday('2000-02-29', '2028-02-29')).toBe(29);
+  });
+
+  it('refuses garbage rather than guessing', () => {
+    expect(ageNextBirthday('30-08-2026', '2026-08-30')).toBeNull();
+    expect(ageNextBirthday('2026-02-30', '2026-08-30')).toBeNull(); // not a real date
+    expect(ageNextBirthday('2026-08-30', '2020-01-01')).toBeNull(); // asOf before birth
+    expect(ageNextBirthday(null, '2026-08-30')).toBeNull();
+  });
+});
+
+describe('the 50/51 boundary - the year that costs money', () => {
+  // This is the whole reason the basis had to be settled. A client whose
+  // ATTAINED age is 50 is underwritten at 51, and at 51 there is no
+  // non-medical band at all. Quoting them off attained age promises a
+  // non-medical case and delivers a paramedical.
+
+  const DOB = '1976-01-10'; // turns 50 on 10 Jan 2026, so ANB is 51 from then
+
+  it('sends a client who has just turned 50 to a paramedical at 500,000', () => {
+    const r = requirementsFor({ dateOfBirth: DOB, asOf: '2026-01-10', sumAssured: 500000 });
+    expect(r.ok).toBe(true);
+    expect(r.age).toBe(51);
+    expect(r.exam).toBe('Paramedical');
+  });
+
+  it('...whereas the day BEFORE that birthday the same cover is non-medical', () => {
+    const r = requirementsFor({ dateOfBirth: DOB, asOf: '2026-01-09', sumAssured: 500000 });
+    expect(r.age).toBe(50);
+    expect(r.exam).toBe('Non-Medical');
+  });
+
+  it('would have been answered WRONG by attained age - the defect this prevents', () => {
+    // 50 attained. Passing it raw lands in the 41-50 band and promises a
+    // non-medical case; the ANB answer is a paramedical. One day of the
+    // client's life apart, two different conversations.
+    const byAttained = requirementsFor({ age: 50, sumAssured: 500000 });
+    const byAnb = requirementsFor({ dateOfBirth: DOB, asOf: '2026-01-10', sumAssured: 500000 });
+    expect(byAttained.exam).toBe('Non-Medical');
+    expect(byAnb.exam).toBe('Paramedical');
+  });
+
+  it('carries the same shift into headroom', () => {
+    const h = headroomFor({ dateOfBirth: DOB, asOf: '2026-01-10', issuedCoverage: 400000 });
+    expect(h.ok).toBe(true);
+    expect(h.age).toBe(51);
+    expect(h.band).toEqual({ minAge: 51, maxAge: 60 });
+  });
+});
+
+describe('resolving the age - one source of truth, or none', () => {
+  it('refuses both an age and a date of birth', () => {
+    const r = requirementsFor({ age: 40, dateOfBirth: '1990-01-01', asOf: '2026-08-30', sumAssured: 100000 });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/not both/);
+  });
+
+  it('refuses a date of birth without an asOf, because this module has no clock', () => {
+    const r = requirementsFor({ dateOfBirth: '1990-01-01', sumAssured: 100000 });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/asOf/);
+  });
+
+  it('reports an unusable date of birth rather than defaulting to an age', () => {
+    const r = requirementsFor({ dateOfBirth: 'yesterday', asOf: '2026-08-30', sumAssured: 100000 });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/YYYY-MM-DD/);
+    const h = headroomFor({ dateOfBirth: 'yesterday', asOf: '2026-08-30', issuedCoverage: 100000 });
+    expect(h.ok).toBe(false);
+  });
+
+  it('still accepts a hand-computed ANB, and echoes back the age it used', () => {
+    const r = requirementsFor({ age: 35, sumAssured: 600000 });
+    expect(r.ok).toBe(true);
+    expect(r.age).toBe(35);
+  });
+});
+
+describe('the table records the basis it is read on', () => {
+  it('says age next birthday, and when that was confirmed', () => {
+    expect(MEDICAL_LIMITS_2026_04.ageBasis).toMatch(/next birthday/i);
+    expect(MEDICAL_LIMITS_2026_04.ageBasisConfirmed).toBe('2026-08-30');
   });
 });
