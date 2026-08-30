@@ -139,6 +139,39 @@ async function main() {
       && /requires kind ladder/.test(callWithRung.payload?.error || ''),
     `${callWithRung.status} ${callWithRung.payload?.error}`);
 
+    // 6b. THE MONEY. A submitted application moves apps by one and API by the
+    //     figure — the only increment in the whole contract that is not a count.
+    const appOk = await post(ladder({
+      sourceId: `${SOURCE_ID}_app`, ffiHeld: false,
+      appSubmitted: true, apiAmount: 4800, rawOutcome: 'Application submitted',
+    }));
+    check('a submitted application is accepted', appOk.status === 200
+      && appOk.payload?.applied === true, `${appOk.status} ${JSON.stringify(appOk.payload)}`);
+
+    const noFigure = await post(ladder({
+      sourceId: `${SOURCE_ID}_app_nofig`, ffiHeld: false, appSubmitted: true,
+    }));
+    check('an application with NO API figure is refused, never zeroed',
+      noFigure.status === 400 && /appSubmitted requires apiAmount/.test(
+        noFigure.payload?.error || ''),
+      `${noFigure.status} ${noFigure.payload?.error}`);
+
+    const overCap = await post(ladder({
+      sourceId: `${SOURCE_ID}_app_big`, ffiHeld: false,
+      appSubmitted: true, apiAmount: 1000001,
+    }));
+    check('an API figure above the cap is refused as a typo', overCap.status === 400
+      && /probable typo/.test(overCap.payload?.error || ''),
+    `${overCap.status} ${overCap.payload?.error}`);
+
+    const orphanFigure = await post(ladder({
+      sourceId: `${SOURCE_ID}_app_orphan`, ffiHeld: true, apiAmount: 4800,
+    }));
+    check('an API figure with no application is refused, never dropped',
+      orphanFigure.status === 400 && /apiAmount requires appSubmitted/.test(
+        orphanFigure.payload?.error || ''),
+      `${orphanFigure.status} ${orphanFigure.payload?.error}`);
+
     // 7. THE ARITHMETIC. A meeting must move no dial-shaped field.
     const daily = (await db.doc(
       `tenants/${TENANT}/users/${CREDIT_UID}/dailyActivity/${DATE}`,
@@ -155,6 +188,10 @@ async function main() {
       `${daily.dials} vs ${JSON.stringify(daily.dialsByType)}`);
     check('no serviceCalls from the servicing-lane MEETING',
       daily.serviceCalls === undefined, String(daily.serviceCalls));
+    check('newBusiness.apps is 1 — the ONE accepted application',
+      daily.newBusiness?.apps === 1, JSON.stringify(daily.newBusiness));
+    check('newBusiness.api is the FIGURE, not a count',
+      daily.newBusiness?.api === 4800, JSON.stringify(daily.newBusiness));
 
     // 8. The ingest record carries the discriminator.
     const rec = (await db.doc(
