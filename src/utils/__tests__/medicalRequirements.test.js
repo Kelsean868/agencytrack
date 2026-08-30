@@ -5,7 +5,11 @@ import {
   bandFor,
   limitsInForceOn,
 } from '../medicalRequirements';
-import { MEDICAL_LIMITS_2026_04 } from '../../config/medicalLimits/2026-04';
+import {
+  MEDICAL_LIMITS_2026_04,
+  EXAM_LEVELS,
+  EXAM_LEVEL_LABELS,
+} from '../../config/medicalLimits/2026-04';
 
 describe('the table itself', () => {
   it('covers every age from 0 upward with exactly one band', () => {
@@ -31,6 +35,50 @@ describe('the table itself', () => {
     expect(MEDICAL_LIMITS_2026_04.source).toMatch(/April 1st, 2026/);
     // The memo extended the life requirements to critical illness.
     expect(MEDICAL_LIMITS_2026_04.appliesTo).toContain('criticalIllness');
+  });
+
+  it('records that the age-band mapping was checked against the printed table', () => {
+    // It was reconstructed from PDF layout on 30 Aug 2026 and confirmed the
+    // same day. If a future revision is transcribed and NOT confirmed, this
+    // field is what says so.
+    expect(MEDICAL_LIMITS_2026_04.bandMappingConfirmed).toBe('2026-08-30');
+  });
+
+  it('keeps the 750,000 breakpoint to the two bands that actually use it', () => {
+    const with750 = MEDICAL_LIMITS_2026_04.bands
+      .filter((b) => b.tiers.some((t) => t.upTo === 750000))
+      .map((b) => b.minAge);
+    expect(with750).toEqual([0, 51]);
+  });
+
+  it('bounds the urine screen to ages 16-60, not to everyone', () => {
+    const urine = MEDICAL_LIMITS_2026_04.universal.find((u) => /urine/i.test(u.requirement));
+    expect(urine).toBeDefined();
+    expect(urine.from).toBe(3000000);
+    expect(urine.minAge).toBe(16);
+    expect(urine.maxAge).toBe(60);
+  });
+});
+
+describe('what "Non-Medical" actually means', () => {
+  // Confirmed by the operator, 30 Aug 2026: Non-Medical is a FORM the agent
+  // fills out with the client - internally, life application part 2. It is not
+  // the absence of a requirement, and a UI that shows the bare token invites
+  // exactly that misreading in front of a client.
+  it('explains every exam level the table uses', () => {
+    const used = new Set(
+      MEDICAL_LIMITS_2026_04.bands.flatMap((b) => b.tiers.map((t) => t.exam)),
+    );
+    for (const level of used) {
+      expect(EXAM_LEVELS, level).toContain(level);
+      expect(EXAM_LEVEL_LABELS[level], level).toBeDefined();
+      expect(typeof EXAM_LEVEL_LABELS[level].label).toBe('string');
+    }
+  });
+
+  it('names Non-Medical as the form it is, wherever it is displayed', () => {
+    expect(EXAM_LEVEL_LABELS['Non-Medical'].label).toMatch(/application part 2/i);
+    expect(EXAM_LEVEL_LABELS['Non-Medical'].label).not.toBe('Non-Medical');
   });
 });
 

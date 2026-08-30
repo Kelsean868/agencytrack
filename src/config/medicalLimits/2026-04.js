@@ -10,13 +10,14 @@
  *     updated at the same time and that **the same requirements that apply to
  *     Life products now apply to Critical Illness**.
  *
- * ⚠ THE AGE-BAND MAPPING IS RECONSTRUCTED FROM THE PDF LAYOUT. That document's
- * text layer emits its five age headings AFTER their five requirement blocks,
- * so the pairing below was inferred: children carry APS and no nicotine screen,
- * 51–60 is the first band with PSA, and Over 60 needs a Medical from the first
- * dollar. It is internally consistent and monotonic in stringency, but it has
- * NOT been checked against the printed table by a human. Do that before this
- * drives anything a client is told.
+ * AGE-BAND MAPPING: CONFIRMED against the printed table by the operator on
+ * 30 August 2026. The bands (0–15, 16–40, 41–50, 51–60, Over 60) and their
+ * pairing to the requirement blocks are correct as written — including the
+ * 16–40 / 41–50 pair, which differ only by the chest X-ray at the top tier,
+ * the 750,000 breakpoint that only 51–60 uses, and the urine screen being
+ * ages 16–60 only. The mapping was originally reconstructed because the PDF's
+ * text layer emits its five age headings AFTER their five requirement blocks;
+ * that reconstruction has now been checked and stands.
  *
  * ── WHY THIS IS DATA AND NOT A FUNCTION ────────────────────────────────────
  * These change. They changed on 1 April 2026, alongside the LifeSpan Gold
@@ -31,13 +32,45 @@
  * Requirement tokens the derivation reasons about. Everything else in a tier's
  * list is carried verbatim from the document and is never parsed — it is what
  * gets shown to a human.
+ *
+ * ⚠ "Non-Medical" IS A FORM, NOT THE ABSENCE OF A REQUIREMENT. It is the
+ * questionnaire the agent completes with the client — internally, life
+ * application part 2. So the lowest tier is not "nothing to do"; it is "you
+ * fill out part 2 yourself, no third party needed". Any UI that renders this
+ * level must say so — "Non-Medical form (application part 2)" — because
+ * "Non-Medical" on its own reads to an agent, and worse to a client, as
+ * "no medical requirement", which is a different promise.
+ * (Confirmed by the operator, 30 August 2026.)
  */
 export const EXAM_LEVELS = Object.freeze(['Non-Medical', 'Paramedical', 'Medical']);
+
+/**
+ * What each exam level actually asks of the client, for display. Keyed by the
+ * tokens in EXAM_LEVELS.
+ */
+export const EXAM_LEVEL_LABELS = Object.freeze({
+  'Non-Medical': Object.freeze({
+    label: 'Non-Medical form (life application part 2)',
+    short: 'Non-Medical form',
+    note: 'Completed by the agent with the client. No third-party examiner.',
+  }),
+  Paramedical: Object.freeze({
+    label: 'Paramedical',
+    short: 'Paramedical',
+    note: 'Examiner visit — not a physician.',
+  }),
+  Medical: Object.freeze({
+    label: 'Medical',
+    short: 'Medical',
+    note: 'Full medical examination.',
+  }),
+});
 
 export const MEDICAL_LIMITS_2026_04 = Object.freeze({
   effective: '2026-04-01',
   retrieved: '2026-08-30',
   status: 'VERIFIED_SINGLE_SOURCE',
+  bandMappingConfirmed: '2026-08-30',
   ageBasis: 'as stated on the document — confirm whether Tatil reckons this age '
     + 'next birthday before computing an age from a date of birth',
   appliesTo: Object.freeze(['life', 'criticalIllness']),
