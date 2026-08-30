@@ -55,14 +55,42 @@
  */
 export const INGEST_WRITTEN_FIELDS = Object.freeze([
   'appointmentsSet',
+  'ciConducted',
   'dials',
   'dialsByType',
+  'ffiConducted',
   'ffisScheduled',
   'newNamesAdded',
+  'policiesDelivered',
+  'qualifiedApproaches',
   'serviceCalls',
   'serviceContacts',
+  'solutionPresentations',
   'telContacts',
 ]);
+
+/**
+ * ⚠ THE LADDER FIELDS ARE DIFFERENT FROM THE REST OF THIS LIST, AND IT MATTERS.
+ *
+ * `dials` and `telContacts` have no Daily Capture input the agent uses in
+ * anger — the ingest owns them outright, and their presence here is close to
+ * belt-and-braces. The five ladder fields (qualifiedApproaches,
+ * solutionPresentations, ffiConducted, ciConducted, policiesDelivered) are the
+ * opposite: agents have typed those by hand every day since the form existed,
+ * because until the ladder slice nothing else could write them.
+ *
+ * So this is the field set where the two writers genuinely COLLIDE, and the
+ * asymmetry above is doing real work rather than guarding a theoretical case:
+ *
+ *   · agent does not touch "FFIs conducted" → it is omitted, KQM's count stands
+ *   · agent types into it                   → their number wins, and
+ *                                             detectConflicts raises the banner
+ *
+ * Which is right. An agent who types a ladder number is asserting something
+ * about their own day that this module has no standing to overrule — but they
+ * should be TOLD that KQM already logged a different one, which is exactly what
+ * the banner does.
+ */
 
 const INGEST_SET = new Set(INGEST_WRITTEN_FIELDS);
 
@@ -140,11 +168,16 @@ export function detectConflicts(baseline, stored, dirtyKeys, data) {
  */
 export const FIELD_LABELS = Object.freeze({
   appointmentsSet: 'Appointments set',
+  ciConducted: 'CIs conducted',
   dials: 'Dials',
+  ffiConducted: 'FFIs conducted',
   ffisScheduled: 'FFIs scheduled',
   newNamesAdded: 'New names added',
+  policiesDelivered: 'Policies delivered',
+  qualifiedApproaches: 'Qualified approaches',
   serviceCalls: 'Service calls',
   serviceContacts: 'Service contacts',
+  solutionPresentations: 'Solution presentations',
   telContacts: 'Telephone contacts',
 });
 
