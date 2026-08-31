@@ -11,6 +11,13 @@ import {
 const P = (o) => ({ status: 'submitted', proposedAPI: 0, confirmedAt: null, ...o });
 
 describe('policyLedgerDerivation', () => {
+  describe('pipelineStage', () => {
+    it('written gets its own bucket — it is NOT folded into Submitted', () => {
+      expect(pipelineStage(P({ status: 'written' }))).toBe('written');
+      expect(pipelineStage(P({ status: 'submitted' }))).toBe('submitted');
+    });
+  });
+
   describe('policyValue', () => {
     it('prefers managerSettledAPI, then settledAPI, then proposedAPI', () => {
       expect(policyValue({ managerSettledAPI: 9, settledAPI: 5, proposedAPI: 1 })).toBe(9);
@@ -42,6 +49,7 @@ describe('policyLedgerDerivation', () => {
 
   describe('derivePipeline', () => {
     const policies = [
+      P({ id: 'w', status: 'written', proposedAPI: 12000 }),
       P({ id: 'a', status: 'submitted', proposedAPI: 24000 }),
       P({ id: 'b', status: 'rated', proposedAPI: 30000 }),
       P({ id: 'c', status: 'rated', proposedAPI: 21000 }),
@@ -51,8 +59,16 @@ describe('policyLedgerDerivation', () => {
     ];
     const out = derivePipeline(policies);
 
+    it('has SIX tiles, Written at the head (revises the 5-tile banked decision)', () => {
+      expect(out.stages.map((s) => s.key)).toEqual([
+        'written', 'submitted', 'rated', 'settled', 'confirmed', 'closed',
+      ]);
+    });
+
     it('counts + sums each stage', () => {
       const byKey = Object.fromEntries(out.stages.map((s) => [s.key, s]));
+      expect(byKey.written.count).toBe(1);
+      expect(byKey.written.sum).toBe(12000);
       expect(byKey.submitted.count).toBe(1);
       expect(byKey.rated.count).toBe(2);
       expect(byKey.rated.sum).toBe(51000);
@@ -60,15 +76,15 @@ describe('policyLedgerDerivation', () => {
       expect(byKey.confirmed.count).toBe(1);
       expect(byKey.closed.count).toBe(1);
     });
-    it('totals + in-flight', () => {
-      expect(out.totalSum).toBe(24000 + 51000 + 21600 + 48000 + 16800);
-      expect(out.inFlightSum).toBe(24000 + 51000);
+    it('totals + in-flight (written counts as in-flight)', () => {
+      expect(out.totalSum).toBe(12000 + 24000 + 51000 + 21600 + 48000 + 16800);
+      expect(out.inFlightSum).toBe(12000 + 24000 + 51000);
     });
     it('flow bar excludes closed; percentages of the active book', () => {
       const conf = out.flow.find((f) => f.key === 'confirmed');
       expect(conf.sum).toBe(48000);
-      // active book = 48000 + 21600 + 75000 = 144600 → confirmed ≈ 33%
-      expect(conf.pct).toBe(33);
+      // active book = 48000 + 21600 + 87000 = 156600 → confirmed ≈ 31%
+      expect(conf.pct).toBe(31);
       expect(out.flow.every((f) => f.solid.startsWith('bg-'))).toBe(true);
     });
     it('empty input → zeroed stages, no NaN', () => {
@@ -81,6 +97,7 @@ describe('policyLedgerDerivation', () => {
   describe('applyLedgerFilter + filterCounts', () => {
     // Includes ntu + denied alongside lapsed to prove closed != lapsed.
     const policies = [
+      P({ id: 'w', status: 'written', ownerName: 'Unsigned Application' }),
       P({ id: 'a', status: 'submitted', ownerName: 'Anjali Persaud' }),
       P({ id: 'b', status: 'rated', ownerName: 'Kareem Mohammed', planName: 'Platinum Edge' }),
       P({ id: 'c', status: 'settled', ownerName: 'Sara' }),
@@ -90,9 +107,9 @@ describe('policyLedgerDerivation', () => {
       P({ id: 'g', status: 'denied', ownerName: 'Denied Case' }),
     ];
 
-    it('inflight excludes confirmed + closed', () => {
+    it('inflight includes written, excludes confirmed + closed', () => {
       const ids = applyLedgerFilter(policies, { filter: 'inflight' }).map((p) => p.id);
-      expect(ids).toEqual(['a', 'b', 'c']);
+      expect(ids).toEqual(['w', 'a', 'b', 'c']);
     });
     it('action needed = settled & unconfirmed', () => {
       expect(applyLedgerFilter(policies, { filter: 'action' }).map((p) => p.id)).toEqual(['c']);
@@ -112,8 +129,8 @@ describe('policyLedgerDerivation', () => {
     });
     it('filterCounts tallies each chip including lapsed', () => {
       const c = filterCounts(policies);
-      expect(c.all).toBe(7);
-      expect(c.inflight).toBe(3);
+      expect(c.all).toBe(8);
+      expect(c.inflight).toBe(4);
       expect(c.action).toBe(1);
       expect(c.confirmed).toBe(1);
       expect(c.closed).toBe(3);
@@ -122,14 +139,23 @@ describe('policyLedgerDerivation', () => {
   });
 
   describe('lifecycleNodes', () => {
-    it('rated → submitted done, rated current, rest future; confirmed node is derived', () => {
+    it('is a FIVE-node bar, Written first', () => {
+      expect(lifecycleNodes(P({ status: 'submitted' })).map((n) => n.key))
+        .toEqual(['written', 'submitted', 'rated', 'settled', 'confirmed']);
+    });
+    it('written → written current, everything after it future', () => {
+      const nodes = lifecycleNodes(P({ status: 'written', dateWritten: '2026-01-01' }));
+      expect(nodes.map((n) => n.state)).toEqual(['cur', 'future', 'future', 'future', 'future']);
+      expect(nodes[0].date).toBeInstanceOf(Date);
+    });
+    it('rated → written+submitted done, rated current, rest future; confirmed node is derived', () => {
       const nodes = lifecycleNodes(P({ status: 'rated', dateSubmitted: '2026-01-01' }));
-      expect(nodes.map((n) => n.state)).toEqual(['done', 'cur', 'future', 'future']);
-      expect(nodes[3].derived).toBe(true);
+      expect(nodes.map((n) => n.state)).toEqual(['done', 'done', 'cur', 'future', 'future']);
+      expect(nodes[4].derived).toBe(true);
     });
     it('confirmed → confirmed node current', () => {
       const nodes = lifecycleNodes(P({ status: 'settled', confirmedAt: { toDate: () => new Date() } }));
-      expect(nodes[3].state).toBe('cur');
+      expect(nodes[4].state).toBe('cur');
     });
   });
 });

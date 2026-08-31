@@ -5,11 +5,16 @@
  * drawer lifecycle are ALL derived from the existing getOwnPolicies() list. No
  * new Firestore reads, no schema change. Pure functions only (no JSX, no SDK).
  *
- * Edge-status bucketing (Rule 9 banked decision): the brief locks 5 pipeline
- * tiles, but the status enum has 7 values. `ntu`/`denied`/`lapsed` fold into the
- * Closed tile (all terminal exits); `postponed` folds into Submitted (earliest
- * active). The per-card pill still shows each policy's TRUE status/role, so no
- * information is lost — only the coarse tile grouping folds the edge statuses.
+ * Edge-status bucketing: `ntu`/`denied`/`lapsed` fold into the Closed tile (all
+ * terminal exits); `postponed` folds into Submitted (earliest active). The
+ * per-card pill still shows each policy's TRUE status/role, so no information is
+ * lost — only the coarse tile grouping folds the edge statuses.
+ *
+ * SIX tiles, not five. The Rule 9 banked decision locked 5, and life-pipeline
+ * slice 1A DELIBERATELY REVISES IT: `written` (D1) gets its own tile. Folding it
+ * into Submitted would hide exactly the list the status exists to create — the
+ * applications sitting unsigned, which is the agent's "waiting on signature"
+ * queue. A tile the agent cannot see is a status that will not be kept current.
  */
 
 import { isConfirmed } from './policyStatusTokens';
@@ -26,12 +31,14 @@ export function policyValue(policy) {
 }
 
 /**
- * pipelineStage — bucket a policy into exactly one of the 5 pipeline stages.
+ * pipelineStage — bucket a policy into exactly one of the 6 pipeline stages.
  * Partitions ALL statuses (no policy is dropped). See edge-status note above.
  */
 export function pipelineStage(policy) {
   if (isConfirmed(policy)) return 'confirmed';
   switch (policy?.status) {
+    case 'written':
+      return 'written';
     case 'lapsed':
     case 'ntu':
     case 'denied':
@@ -49,6 +56,7 @@ export function pipelineStage(policy) {
 
 // Stage definitions — order + label + semantic role (for statusToken()).
 export const PIPELINE_STAGES = [
+  { key: 'written',   label: 'Written',         role: 'in-flight' },
   { key: 'submitted', label: 'Submitted',       role: 'in-flight' },
   { key: 'rated',     label: 'Rated',           role: 'in-flight' },
   { key: 'settled',   label: 'Awaiting confirm', role: 'settled'  },
@@ -81,7 +89,10 @@ export function derivePipeline(policies) {
     totalSum += val;
   }
 
-  const inFlightSum = byKey.submitted.sum + byKey.rated.sum;
+  // `written` counts as in-flight (its tile role says so). Leaving it out would
+  // drop written policies from the Active-Book flow bar entirely — they are
+  // neither confirmed nor settled — and the bar would silently under-report.
+  const inFlightSum = byKey.written.sum + byKey.submitted.sum + byKey.rated.sum;
 
   // Active-Book flow bar: confirmed value · awaiting confirm · in flight.
   // Excludes Closed (it has exited the active book). Percentages are of the
@@ -124,8 +135,8 @@ function matchesFilter(policy, filter) {
     case 'all':
       return true;
     case 'inflight':
-      // Active, not yet exited: submitted, rated, postponed, settled-awaiting.
-      return !confirmed && ['submitted', 'rated', 'postponed', 'settled'].includes(s);
+      // Active, not yet exited: written, submitted, rated, postponed, settled-awaiting.
+      return !confirmed && ['written', 'submitted', 'rated', 'postponed', 'settled'].includes(s);
     case 'action':
       // Settled but not yet manager-confirmed — the agent's follow-up bucket.
       return !confirmed && s === 'settled';
@@ -164,8 +175,8 @@ export function filterCounts(policies) {
 
 // ── Drawer lifecycle (Tier 3) ────────────────────────────────────────────────
 
-const LIFECYCLE_ORDER = ['submitted', 'rated', 'settled', 'confirmed'];
-const LIFECYCLE_LABELS = { submitted: 'Submitted', rated: 'Rated', settled: 'Settled', confirmed: 'Confirmed' };
+const LIFECYCLE_ORDER = ['written', 'submitted', 'rated', 'settled', 'confirmed'];
+const LIFECYCLE_LABELS = { written: 'Written', submitted: 'Submitted', rated: 'Rated', settled: 'Settled', confirmed: 'Confirmed' };
 
 function tsToDate(ts) {
   if (!ts) return null;
@@ -175,7 +186,7 @@ function tsToDate(ts) {
 }
 
 /**
- * lifecycleNodes — the 4-node happy-path bar for the drill drawer.
+ * lifecycleNodes — the 5-node happy-path bar for the drill drawer.
  * Each node: { key, label, state: 'done'|'cur'|'future', date: Date|null, derived?: boolean }.
  * `confirmed` carries `derived: true`. Off-path statuses (postponed/ntu/denied)
  * resolve their reached index from the underlying status; the true status is
@@ -184,20 +195,22 @@ function tsToDate(ts) {
 export function lifecycleNodes(policy) {
   const confirmed = isConfirmed(policy);
   let reached;
-  if (confirmed) reached = 3;
+  if (confirmed) reached = 4;
   else
     switch (policy?.status) {
-      case 'settled': reached = 2; break;
-      case 'rated': reached = 1; break;
+      case 'settled': reached = 3; break;
+      case 'rated': reached = 2; break;
       case 'ntu':
-      case 'denied': reached = 1; break;   // exited after at least submission/rating
-      case 'lapsed': reached = 3; break;    // was settled+confirmed before lapse
+      case 'denied': reached = 2; break;   // exited after at least submission/rating
+      case 'lapsed': reached = 4; break;    // was settled+confirmed before lapse
       case 'submitted':
-      case 'postponed':
+      case 'postponed': reached = 1; break;
+      case 'written':
       default: reached = 0; break;
     }
 
   const dateFor = {
+    written:   tsToDate(policy?.dateWritten),
     submitted: tsToDate(policy?.dateSubmitted) ?? tsToDate(policy?.dateWritten),
     rated:     null, // no dedicated rated-date field on the policy doc
     settled:   tsToDate(policy?.dateIssued),

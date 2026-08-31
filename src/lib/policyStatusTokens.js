@@ -10,7 +10,7 @@
  *
  * Roles → Nexus families (all utilities verified to exist in tailwind.config.js +
  * defined in both :root and .dark in src/index.css):
- *   in-flight (submitted · rated) → primary (teal)
+ *   in-flight (written · submitted · rated) → primary (teal)
  *   settled / clean               → success
  *   confirmed (DERIVED)           → gold
  *   soft-exception (postponed)    → warning
@@ -35,6 +35,7 @@ export function isConfirmed(policy) {
 export function policyRole(policy) {
   if (isConfirmed(policy)) return 'confirmed';
   switch (policy?.status) {
+    case 'written':
     case 'submitted':
     case 'rated':
       return 'in-flight';

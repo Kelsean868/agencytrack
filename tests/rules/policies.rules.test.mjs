@@ -30,8 +30,9 @@ async function run(label, expectAllow, fn) {
   }
 }
 
-const yesterday = Timestamp.fromDate(new Date(Date.now() - 86400000));
-const tomorrow  = Timestamp.fromDate(new Date(Date.now() + 86400000));
+const yesterday  = Timestamp.fromDate(new Date(Date.now() - 86400000));
+const twoDaysAgo = Timestamp.fromDate(new Date(Date.now() - 2 * 86400000));
+const tomorrow   = Timestamp.fromDate(new Date(Date.now() + 86400000));
 
 const VALID_PAYLOAD = {
   tenantId: TENANT_ID,
@@ -56,6 +57,16 @@ const VALID_PAYLOAD = {
   policyDeliveryDate: null,
   createdAt: yesterday,
   createdBy: 'agent-a',
+};
+
+// Slice 1A (D1): the CREATE arm now pins status to 'written' and no longer
+// requires dateSubmitted. VALID_PAYLOAD stays at 'submitted' because it seeds the
+// mid-lifecycle fixtures the Arm A/B/C/D tests walk; CREATE_PAYLOAD is what a
+// client may actually write.
+const CREATE_PAYLOAD = {
+  ...VALID_PAYLOAD,
+  status: 'written',
+  dateSubmitted: null,
 };
 
 // Full §7.4 settled field set for transition tests
@@ -88,6 +99,25 @@ async function main() {
       ...VALID_PAYLOAD,
       agentId: 'agent-b',
       unitId: 'um-b',
+    });
+    // ── Slice 1A: `written` fixtures ──
+    // One per ALLOW test (they mutate); one shared doc for every DENY test (they
+    // do not). policy-b1-written is agent-b's, for the cross-agent refusals.
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-a1-written-edit`).set({
+      ...VALID_PAYLOAD, status: 'written', dateSubmitted: null,
+    });
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-a1-written-submit`).set({
+      ...VALID_PAYLOAD, status: 'written', dateSubmitted: null,
+    });
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-a1-written-ntu`).set({
+      ...VALID_PAYLOAD, status: 'written', dateSubmitted: null,
+    });
+    // dateWritten is YESTERDAY here so a twoDaysAgo dateSubmitted is provably earlier.
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-a1-written-deny`).set({
+      ...VALID_PAYLOAD, status: 'written', dateWritten: yesterday, dateSubmitted: null,
+    });
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-b1-written`).set({
+      ...VALID_PAYLOAD, agentId: 'agent-b', unitId: 'um-b', status: 'written', dateSubmitted: null,
     });
     // policy in rated status — for rated→settled, ntu→rated (illegal) tests
     await db.doc(`tenants/${TENANT_ID}/policies/policy-a1-rated`).set({
@@ -192,24 +222,28 @@ async function main() {
   const crossDb  = testEnv.authenticatedContext('other-user', { role: 'branch_manager', tenantId: 'other-tenant' }).firestore();
 
   // ── CREATE ──
-  await run('agent create own policy → ALLOW', true, () =>
-    addDoc(collection(agentADb, 'tenants', TENANT_ID, 'policies'), VALID_PAYLOAD)
+  await run('agent create own policy at written (1A) → ALLOW', true, () =>
+    addDoc(collection(agentADb, 'tenants', TENANT_ID, 'policies'), CREATE_PAYLOAD)
+  );
+
+  await run('create at status submitted → DENY (1A: create arm pins written)', false, () =>
+    addDoc(collection(agentADb, 'tenants', TENANT_ID, 'policies'), { ...CREATE_PAYLOAD, status: 'submitted', dateSubmitted: yesterday })
   );
 
   await run('agent create with mismatched agentId → DENY', false, () =>
-    addDoc(collection(agentADb, 'tenants', TENANT_ID, 'policies'), { ...VALID_PAYLOAD, agentId: 'agent-b' })
+    addDoc(collection(agentADb, 'tenants', TENANT_ID, 'policies'), { ...CREATE_PAYLOAD, agentId: 'agent-b' })
   );
 
   await run('create with invalid sourceOfProspect → DENY', false, () =>
-    addDoc(collection(agentADb, 'tenants', TENANT_ID, 'policies'), { ...VALID_PAYLOAD, sourceOfProspect: 'bogus-value' })
+    addDoc(collection(agentADb, 'tenants', TENANT_ID, 'policies'), { ...CREATE_PAYLOAD, sourceOfProspect: 'bogus-value' })
   );
 
   await run('create with future dateWritten → DENY', false, () =>
-    addDoc(collection(agentADb, 'tenants', TENANT_ID, 'policies'), { ...VALID_PAYLOAD, dateWritten: tomorrow })
+    addDoc(collection(agentADb, 'tenants', TENANT_ID, 'policies'), { ...CREATE_PAYLOAD, dateWritten: tomorrow })
   );
 
   await run('create with proposedAPI <= 0 → DENY', false, () =>
-    addDoc(collection(agentADb, 'tenants', TENANT_ID, 'policies'), { ...VALID_PAYLOAD, proposedAPI: 0 })
+    addDoc(collection(agentADb, 'tenants', TENANT_ID, 'policies'), { ...CREATE_PAYLOAD, proposedAPI: 0 })
   );
 
   // ── AGENT LIST ──
@@ -360,6 +394,95 @@ async function main() {
     updateDoc(
       doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1'),
       { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200, ownerName: 'Sneaky' }
+    )
+  );
+
+  // ── SLICE 1A — `written` AS THE STARTING STATUS (D1) ────────────────────
+  // Arm A widened to accept a written policy; Arm B gains the written → submitted
+  // edge with a per-edge dateSubmitted requirement.
+
+  await run('1A: agent body-edits own WRITTEN policy → ALLOW (Arm A widened)', true, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-edit'),
+      { ownerName: 'Typo Fixed', proposedAPI: 6000, dateWritten: yesterday, sourceOfProspect: 'referral' }
+    )
+  );
+
+  await run('1A: body-edit of a WRITTEN policy changing status → DENY', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-edit'),
+      { status: 'rated', ownerName: 'Sneaky' }
+    )
+  );
+
+  await run('1A: written → submitted WITHOUT dateSubmitted → DENY', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-deny'),
+      { status: 'submitted', statusUpdatedAt: Timestamp.now() }
+    )
+  );
+
+  await run('1A: written → submitted with dateSubmitted < dateWritten → DENY', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-deny'),
+      { status: 'submitted', statusUpdatedAt: Timestamp.now(), dateSubmitted: twoDaysAgo }
+    )
+  );
+
+  await run('1A: written → submitted with FUTURE dateSubmitted → DENY', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-deny'),
+      { status: 'submitted', statusUpdatedAt: Timestamp.now(), dateSubmitted: tomorrow }
+    )
+  );
+
+  await run('1A: written → settled → DENY (no such edge)', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-deny'),
+      { ...SETTLED_FIELDS }
+    )
+  );
+
+  await run('1A: written → rated → DENY (no such edge)', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-deny'),
+      { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200 }
+    )
+  );
+
+  await run('1A: written → denied → DENY (abandoned unsigned is an NTU, not a denial)', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-deny'),
+      { status: 'denied', statusUpdatedAt: Timestamp.now(), reason: 'x' }
+    )
+  );
+
+  await run('1A: second agent body-edits a WRITTEN policy → DENY', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-b1-written'),
+      { ownerName: 'Hijack Attempt' }
+    )
+  );
+
+  await run('1A: second agent transitions a WRITTEN policy → DENY', false, () =>
+    updateDoc(
+      doc(agentBDb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-deny'),
+      { status: 'submitted', statusUpdatedAt: Timestamp.now(), dateSubmitted: yesterday }
+    )
+  );
+
+  await run('1A: written → ntu (+reason) → ALLOW', true, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-ntu'),
+      { status: 'ntu', statusUpdatedAt: Timestamp.now(), reason: 'client did not sign' }
+    )
+  );
+
+  // ALLOW last on this fixture — it moves the doc off `written`.
+  await run('1A: written → submitted (+dateSubmitted) → ALLOW', true, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-submit'),
+      { status: 'submitted', statusUpdatedAt: Timestamp.now(), dateSubmitted: yesterday }
     )
   );
 
@@ -711,33 +834,33 @@ async function main() {
   // CREATE — ALLOW: BM and UM can create their own policies (agentId == auth.uid).
   await run('producing-mgr CREATE ALLOW: BM creates own policy', true, () =>
     addDoc(collection(bmADb, 'tenants', TENANT_ID, 'policies'), {
-      ...VALID_PAYLOAD, agentId: 'bm-a', createdBy: 'bm-a',
+      ...CREATE_PAYLOAD, agentId: 'bm-a', createdBy: 'bm-a',
     })
   );
 
   await run('producing-mgr CREATE ALLOW: UM creates own policy', true, () =>
     addDoc(collection(umADb, 'tenants', TENANT_ID, 'policies'), {
-      ...VALID_PAYLOAD, agentId: 'um-a', createdBy: 'um-a',
+      ...CREATE_PAYLOAD, agentId: 'um-a', createdBy: 'um-a',
     })
   );
 
   // SELF-ONLY INVARIANT — DENY: producing manager cannot write another user's policy.
   await run('producing-mgr CREATE DENY: BM with another agentId (self-only invariant)', false, () =>
     addDoc(collection(bmADb, 'tenants', TENANT_ID, 'policies'), {
-      ...VALID_PAYLOAD, agentId: 'agent-a', createdBy: 'bm-a',
+      ...CREATE_PAYLOAD, agentId: 'agent-a', createdBy: 'bm-a',
     })
   );
 
   await run('producing-mgr CREATE DENY: UM with another agentId (self-only invariant)', false, () =>
     addDoc(collection(umADb, 'tenants', TENANT_ID, 'policies'), {
-      ...VALID_PAYLOAD, agentId: 'agent-a', createdBy: 'um-a',
+      ...CREATE_PAYLOAD, agentId: 'agent-a', createdBy: 'um-a',
     })
   );
 
   // Non-producing role — DENY: tenant_admin cannot create a policy entry.
   await run('producing-mgr CREATE DENY: tenant_admin (non-producing role)', false, () =>
     addDoc(collection(taDb, 'tenants', TENANT_ID, 'policies'), {
-      ...VALID_PAYLOAD, agentId: 'ta-1', createdBy: 'ta-1',
+      ...CREATE_PAYLOAD, agentId: 'ta-1', createdBy: 'ta-1',
     })
   );
 
