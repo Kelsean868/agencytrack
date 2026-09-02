@@ -11,11 +11,22 @@ import { lifecycleNodes } from '../../../lib/policyLedgerDerivation';
 import { policyToken, policyPillLabel, isConfirmed } from '../../../lib/policyStatusTokens';
 
 const EMPTY_TX_FIELDS = {
+  dateSubmitted: '',
   ratedPremium: '', rateReason: '',
   pendingReason: '',
   reason: '',
   dateIssued: '', settledAPI: '', issuedCoverage: '', initialPremium: '', earnedCommission: '',
 };
+
+/** A Firestore Timestamp / Date / ISO value as a "YYYY-MM-DD" date-input value. */
+function dateInputValue(d) {
+  if (!d) return '';
+  const date = d?.toDate ? d.toDate() : new Date(d);
+  if (Number.isNaN(date?.getTime?.())) return '';
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Port_of_Spain', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(date);
+}
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -74,9 +85,24 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
     setTxFields((prev) => ({ ...prev, [name]: value }));
   }
 
+  // The written → submitted edge is the only one that needs a field off the
+  // policy itself: dateWritten, so the service can refuse a dateSubmitted that
+  // precedes it. It is passed through, never written back.
+  const writtenMin = dateInputValue(policy.dateWritten);
+
   function submitTransition(e) {
     e.preventDefault();
-    onTransition(txTo, txTo === 'settled' ? { ...txFields, dateIssued: txFields.dateIssued || today } : txFields);
+    if (txTo === 'settled') {
+      onTransition(txTo, { ...txFields, dateIssued: txFields.dateIssued || today });
+    } else if (policy.status === 'written' && txTo === 'submitted') {
+      onTransition(txTo, {
+        ...txFields,
+        dateSubmitted: txFields.dateSubmitted || today,
+        dateWritten: policy.dateWritten,
+      });
+    } else {
+      onTransition(txTo, txFields);
+    }
   }
 
   return (
@@ -253,6 +279,12 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
               )}
 
               {/* Per-target fields */}
+              {policy.status === 'written' && txTo === 'submitted' && (
+                <Field label="Date Submitted" required>
+                  <input name="dateSubmitted" type="date" min={writtenMin || undefined} max={today}
+                    value={txFields.dateSubmitted || today} onChange={onField} className={inputCls} required />
+                </Field>
+              )}
               {txTo === 'rated' && (
                 <>
                   <Field label="Rated Premium (TTD)" required>

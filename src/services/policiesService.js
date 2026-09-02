@@ -15,6 +15,36 @@ const VALID_POLICY_CLASSES   = new Set(['whole_life', 'term', 'universal_life', 
 const VALID_FREQUENCIES      = new Set(['A', 'S', 'Q', 'M']);
 const VALID_SOCIAL_PLATFORMS = new Set(SOCIAL_PLATFORMS_ATTRIBUTION.map((p) => p.value));
 
+/**
+ * toTimestamp — the value to STORE. Converts a "YYYY-MM-DD" string (as typed into
+ * a date input — parsed at TT-local midnight, never UTC) or a Date to a Firestore
+ * Timestamp. Anything else is already a Timestamp (read straight off a policy doc)
+ * and is passed through untouched.
+ */
+function toTimestamp(v) {
+  if (v == null) return null;
+  if (typeof v === 'string') return Timestamp.fromDate(parseDateOnlyTT(v));
+  if (v instanceof Date) return Timestamp.fromDate(v);
+  return v;
+}
+
+/**
+ * millisOf — the millisecond value to COMPARE, read from the RAW input rather than
+ * from a converted Timestamp. Deliberately duck-typed across `toMillis()`,
+ * `toDate()` and `.seconds`: comparisons must not depend on which Timestamp
+ * implementation produced the value. Returns NaN for anything unreadable, so the
+ * caller refuses rather than silently comparing against a garbage number.
+ */
+function millisOf(v) {
+  if (v == null) return NaN;
+  if (typeof v?.toMillis === 'function') return v.toMillis();
+  if (typeof v?.toDate === 'function') return v.toDate().getTime();
+  if (typeof v?.seconds === 'number') return v.seconds * 1000;
+  if (v instanceof Date) return v.getTime();
+  if (typeof v === 'string') return parseDateOnlyTT(v).getTime();
+  return NaN;
+}
+
 function validate(data) {
   if (!data.ownerName?.trim()) throw new Error('ownerName is required');
   if (!data.insuredName?.trim()) throw new Error('insuredName is required');
@@ -27,8 +57,10 @@ function validate(data) {
   if (data.socialPlatform != null && !VALID_SOCIAL_PLATFORMS.has(data.socialPlatform)) throw new Error('invalid socialPlatform');
   if (!data.dateWritten) throw new Error('dateWritten is required');
   if (new Date(data.dateWritten) > new Date()) throw new Error('dateWritten cannot be in the future');
-  if (!data.dateSubmitted) throw new Error('dateSubmitted is required');
-  if (new Date(data.dateSubmitted) < new Date(data.dateWritten)) throw new Error('dateSubmitted must be on or after dateWritten');
+  // dateSubmitted is NOT required at create (slice 1A / D1): a policy opens at
+  // `written`, and the day it reached head office is not known until it does.
+  // The `dateSubmitted >= dateWritten` check MOVED to the written → submitted
+  // transition below, and is mirrored in firestore.rules Arm B.
   const proposedAPI = parseFloat(data.proposedAPI);
   if (!(proposedAPI > 0)) throw new Error('proposedAPI must be positive');
 }
@@ -48,7 +80,8 @@ export async function createPolicy(tenantId, agentProfile, data) {
     agentNumber: agentProfile.agentNumber ?? null,
     unitId: agentProfile.unitId ?? null,
     branchId: agentProfile.branchId ?? null,
-    status: 'submitted',
+    // D1 — a policy record opens at `written`, not `submitted`.
+    status: 'written',
     statusDate: serverTimestamp(),
     ownerName: data.ownerName.trim(),
     insuredName: data.insuredName.trim(),
@@ -63,7 +96,9 @@ export async function createPolicy(tenantId, agentProfile, data) {
     proposedAPI,
     proposedCoverage: data.proposedCoverage ? parseFloat(data.proposedCoverage) : null,
     dateWritten: Timestamp.fromDate(parseDateOnlyTT(data.dateWritten)),
-    dateSubmitted: Timestamp.fromDate(parseDateOnlyTT(data.dateSubmitted)),
+    // Stamped null at create; written by the `written → submitted` transition.
+    // A policy at `written` has not been submitted, so it carries no submitted date.
+    dateSubmitted: null,
     notes: data.notes?.trim() || null,
     isSelfOrFamily: Boolean(data.isSelfOrFamily),
     replacedPolicyAPI: data.newBusinessType === 'replacement' ? (parseFloat(data.replacedPolicyAPI) || null) : null,
@@ -107,7 +142,23 @@ export async function transitionPolicyStatus(tenantId, agentProfile, policyId, c
   const policyUpdate = { status: newStatus, statusUpdatedAt: serverTimestamp() };
   const changedFields = { status: newStatus };
 
-  if (newStatus === 'rated') {
+  if (currentStatus === 'written' && newStatus === 'submitted') {
+    // Per-edge requirement — EDGE_REQUIRED_FIELDS['written->submitted'].
+    // The postponed → submitted re-entry stays field-free and falls through.
+    // `dateWritten` is passed in from the policy doc purely to run the ordering
+    // check here; it is never written back.
+    if (!fields?.dateSubmitted) throw new Error('dateSubmitted is required to submit an application');
+    if (!fields?.dateWritten)   throw new Error('dateWritten is required to check dateSubmitted');
+    const submittedMs = millisOf(fields.dateSubmitted);
+    const writtenMs   = millisOf(fields.dateWritten);
+    if (!Number.isFinite(submittedMs)) throw new Error('dateSubmitted is not a readable date');
+    if (!Number.isFinite(writtenMs))   throw new Error('dateWritten is not a readable date');
+    if (submittedMs > Date.now())  throw new Error('dateSubmitted cannot be in the future');
+    if (submittedMs < writtenMs)   throw new Error('dateSubmitted must be on or after dateWritten');
+    const dateSubmitted = toTimestamp(fields.dateSubmitted);
+    policyUpdate.dateSubmitted  = dateSubmitted;
+    changedFields.dateSubmitted = dateSubmitted;
+  } else if (newStatus === 'rated') {
     const ratedPremium = parseFloat(fields.ratedPremium);
     if (!(ratedPremium > 0)) throw new Error('ratedPremium must be a positive number');
     policyUpdate.ratedPremium = ratedPremium;
@@ -145,7 +196,8 @@ export async function transitionPolicyStatus(tenantId, agentProfile, policyId, c
     changedFields.initialPremium   = initialPremium;
     changedFields.earnedCommission = earnedCommission;
   }
-  // submitted (from postponed): no new fields required
+  // submitted (from postponed): no new fields required — handled by falling
+  // through every branch above, which is the field-free re-entry.
 
   const policyRef  = doc(db, 'tenants', tenantId, 'policies', policyId);
   const historyRef = doc(collection(db, 'tenants', tenantId, 'policies', policyId, 'history'));

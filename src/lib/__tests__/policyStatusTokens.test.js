@@ -22,6 +22,7 @@ describe('policyStatusTokens', () => {
       expect(policyRole({ status: 'settled', confirmedAt: {} })).toBe('confirmed');
     });
     it('maps each status to its semantic role', () => {
+      expect(policyRole({ status: 'written' })).toBe('in-flight');
       expect(policyRole({ status: 'submitted' })).toBe('in-flight');
       expect(policyRole({ status: 'rated' })).toBe('in-flight');
       expect(policyRole({ status: 'settled' })).toBe('settled');

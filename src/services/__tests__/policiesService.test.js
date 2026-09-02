@@ -49,6 +49,14 @@ const mockProfile = {
 };
 
 const today = new Date().toISOString().split('T')[0];
+const isoDaysFromNow = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+};
+const yesterdayISO = isoDaysFromNow(-1);
+const twoDaysAgoISO = isoDaysFromNow(-2);
+const tomorrowISO = isoDaysFromNow(1);
 
 const VALID_DATA = {
   ownerName: '  Jane Smith  ',
@@ -64,7 +72,8 @@ const VALID_DATA = {
   proposedAPI: '5000.04',
   proposedCoverage: '',
   dateWritten: today,
-  dateSubmitted: today,
+  // No dateSubmitted — slice 1A / D1: a policy is created at `written` and the
+  // submitted date is collected on the written -> submitted transition.
   notes: '',
   isSelfOrFamily: false,
   replacedPolicyAPI: '',
@@ -80,11 +89,11 @@ beforeEach(() => {
 });
 
 describe('createPolicy', () => {
-  it('writes status submitted and denormalized agentId / unitId / branchId', async () => {
+  it('writes status WRITTEN (1A/D1) and denormalized agentId / unitId / branchId', async () => {
     await createPolicy('t1', mockProfile, VALID_DATA);
     expect(hoisted.mockAddDoc).toHaveBeenCalledOnce();
     const [, payload] = hoisted.mockAddDoc.mock.calls[0];
-    expect(payload.status).toBe('submitted');
+    expect(payload.status).toBe('written');
     expect(payload.tenantId).toBe('t1');
     expect(payload.agentId).toBe('uid-1');
     expect(payload.unitId).toBe('unit-1');
@@ -141,6 +150,20 @@ describe('createPolicy', () => {
     const [, payload] = hoisted.mockAddDoc.mock.calls[0];
     expect(payload.dateIssued).toBeNull();
     expect(payload.policyDeliveryDate).toBeNull();
+  });
+
+  // 1A/D1: a policy at `written` has not been submitted, so it carries no
+  // submitted date — not even one a caller supplies.
+  it('does not require dateSubmitted, and stamps it null', async () => {
+    await createPolicy('t1', mockProfile, VALID_DATA);
+    const [, payload] = hoisted.mockAddDoc.mock.calls[0];
+    expect(payload.dateSubmitted).toBeNull();
+  });
+
+  it('ignores a dateSubmitted a caller passes at create', async () => {
+    await createPolicy('t1', mockProfile, { ...VALID_DATA, dateSubmitted: today });
+    const [, payload] = hoisted.mockAddDoc.mock.calls[0];
+    expect(payload.dateSubmitted).toBeNull();
   });
 
   it('rejects invalid sourceOfProspect', async () => {
@@ -316,11 +339,76 @@ describe('transitionPolicyStatus', () => {
     expect(policyPayload.pendingReason).toBe('Medical pending');
   });
 
+  // ── Slice 1A: the written → submitted edge ──────────────────────────────
+  // dateSubmitted is required on THIS EDGE only. dateWritten is passed in from
+  // the policy doc purely to run the ordering check; it is never written back.
+
+  it('written → submitted — throws when dateSubmitted is missing', async () => {
+    await expect(
+      transitionPolicyStatus('t1', mockProfile, 'p1', 'written', 'submitted', { dateWritten: yesterdayISO })
+    ).rejects.toThrow('dateSubmitted is required');
+  });
+
+  it('written → submitted — throws when dateWritten is missing', async () => {
+    await expect(
+      transitionPolicyStatus('t1', mockProfile, 'p1', 'written', 'submitted', { dateSubmitted: today })
+    ).rejects.toThrow('dateWritten is required');
+  });
+
+  it('written → submitted — throws when dateSubmitted precedes dateWritten', async () => {
+    await expect(
+      transitionPolicyStatus('t1', mockProfile, 'p1', 'written', 'submitted', {
+        dateSubmitted: twoDaysAgoISO, dateWritten: yesterdayISO,
+      })
+    ).rejects.toThrow('dateSubmitted must be on or after dateWritten');
+  });
+
+  it('written → submitted — throws on a future dateSubmitted', async () => {
+    await expect(
+      transitionPolicyStatus('t1', mockProfile, 'p1', 'written', 'submitted', {
+        dateSubmitted: tomorrowISO, dateWritten: yesterdayISO,
+      })
+    ).rejects.toThrow('dateSubmitted cannot be in the future');
+  });
+
+  // Backdating IS allowed — the CRO submits in weekly batches, so the agent
+  // learns the date after the fact.
+  it('written → submitted — accepts a backdated dateSubmitted and writes it to policy + history', async () => {
+    await transitionPolicyStatus('t1', mockProfile, 'p1', 'written', 'submitted', {
+      dateSubmitted: yesterdayISO, dateWritten: twoDaysAgoISO,
+    });
+    expect(hoisted.mockBatchCommit).toHaveBeenCalledOnce();
+    const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
+    expect(policyPayload.status).toBe('submitted');
+    expect(policyPayload.dateSubmitted).toEqual({ _type: 'timestamp', ms: expect.any(Number) });
+    const histPayload = hoisted.mockBatchSet.mock.calls[0][1];
+    expect(histPayload.fromStatus).toBe('written');
+    expect(histPayload.toStatus).toBe('submitted');
+    expect(histPayload.changedFields.dateSubmitted).toBe(policyPayload.dateSubmitted);
+    // dateWritten is a comparison input only — it must never be written back.
+    expect(policyPayload).not.toHaveProperty('dateWritten');
+    expect(histPayload.changedFields).not.toHaveProperty('dateWritten');
+  });
+
+  it('written → ntu is legal; written → rated and written → denied are not', async () => {
+    await transitionPolicyStatus('t1', mockProfile, 'p1', 'written', 'ntu', { reason: 'client did not sign' });
+    expect(hoisted.mockBatchUpdate.mock.calls[0][1].status).toBe('ntu');
+    await expect(
+      transitionPolicyStatus('t1', mockProfile, 'p1', 'written', 'rated', { ratedPremium: '1200' })
+    ).rejects.toThrow('Illegal status transition');
+    await expect(
+      transitionPolicyStatus('t1', mockProfile, 'p1', 'written', 'denied', { reason: 'x' })
+    ).rejects.toThrow('Illegal status transition');
+  });
+
   it('postponed → submitted re-entry — no new transition fields', async () => {
     await transitionPolicyStatus('t1', mockProfile, 'p1', 'postponed', 'submitted', {});
     expect(hoisted.mockBatchCommit).toHaveBeenCalledOnce();
     const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
     expect(policyPayload.status).toBe('submitted');
+    // The per-EDGE requirement must not leak onto this edge — it targets
+    // `submitted` too, and a per-TARGET encoding would have broken it.
+    expect(policyPayload).not.toHaveProperty('dateSubmitted');
   });
 
   it('rated → settled — valid; records fromStatus=rated in history', async () => {

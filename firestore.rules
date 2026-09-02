@@ -78,7 +78,10 @@ service cloud.firestore {
     function isLegalAgentTransition(fromStatus, toStatus) {
       return toStatus != 'lapsed'
         && (
-          (fromStatus == 'submitted' && toStatus in ['rated', 'postponed', 'ntu', 'denied', 'settled'])
+          // written (life-pipeline phase 1, D1): submitted, or NTU when an
+          // application is abandoned unsigned. NEVER denied — nobody underwrote it.
+          (fromStatus == 'written'   && toStatus in ['submitted', 'ntu'])
+          || (fromStatus == 'submitted' && toStatus in ['rated', 'postponed', 'ntu', 'denied', 'settled'])
           || (fromStatus == 'rated'     && toStatus in ['settled', 'ntu'])
           || (fromStatus == 'postponed' && toStatus in ['submitted', 'settled', 'denied'])
         );
@@ -348,22 +351,26 @@ service cloud.firestore {
           && getTenantId() == tenantId
           && request.resource.data.agentId == request.auth.uid
           && request.resource.data.tenantId == tenantId
-          && request.resource.data.status == 'submitted'
+          && request.resource.data.status == 'written'
           && request.resource.data.sourceOfProspect in [
                'seminar', 'booth-event', 'referral', 'cold-call', 'social-media',
                'orphan', 'existing-client', 'family-friend', 'bank-referral', 'self', 'other'
              ]
           && request.resource.data.dateWritten <= request.time
           && request.resource.data.proposedAPI > 0;
-        // Arm A — body-edit (own submitted-status policy, hardened per FU Entry 2).
-        // Status must remain 'submitted'; only body fields may change.
+        // Arm A — body-edit (own WRITTEN-or-SUBMITTED policy, hardened per FU Entry 2).
+        // Status must not change; only body fields may change.
+        // WIDENED in life-pipeline slice 1A: an agent must be able to fix a typo on
+        // an application that is written but not yet signed off to head office. This
+        // is a BEHAVIOUR CHANGE to an existing arm, not an additive one — so this
+        // file's release is gated on a post-merge `firestore:rules` deploy.
         // Value-guards: sourceOfProspect in enum, dateWritten not future, proposedAPI > 0.
         allow update: if isSignedIn()
           && (isAgent() || isProducingManager())
           && getTenantId() == tenantId
           && resource.data.agentId == request.auth.uid
-          && resource.data.status == 'submitted'
-          && request.resource.data.status == 'submitted'
+          && resource.data.status in ['written', 'submitted']
+          && request.resource.data.status == resource.data.status
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                'ownerName', 'insuredName', 'policyNumber', 'productLine',
                'newBusinessType', 'policyClass', 'planId', 'planName',
@@ -389,10 +396,24 @@ service cloud.firestore {
           && resource.data.agentId == request.auth.uid
           && isLegalAgentTransition(resource.data.status, request.resource.data.status)
           && (
-            // submitted (re-entry from postponed): no extra fields
+            // written → submitted (slice 1A): dateSubmitted is required on THIS
+            // EDGE ONLY. Branching on resource.data.status — not on the target —
+            // is what keeps the field-free postponed → submitted re-entry working.
+            // Backdating is allowed (the CRO submits in weekly batches, so the
+            // agent learns the date after the fact); a future date never is, and
+            // a date before the application was written is a typo.
             (request.resource.data.status == 'submitted'
+             && resource.data.status == 'written'
              && request.resource.data.diff(resource.data).affectedKeys()
-                  .hasOnly(['status', 'statusUpdatedAt']))
+                  .hasOnly(['status', 'statusUpdatedAt', 'dateSubmitted'])
+             && request.resource.data.dateSubmitted is timestamp
+             && request.resource.data.dateSubmitted <= request.time
+             && request.resource.data.dateSubmitted >= resource.data.dateWritten)
+            // postponed → submitted re-entry: no extra fields. UNCHANGED.
+            || (request.resource.data.status == 'submitted'
+                && resource.data.status == 'postponed'
+                && request.resource.data.diff(resource.data).affectedKeys()
+                     .hasOnly(['status', 'statusUpdatedAt']))
             || (request.resource.data.status == 'rated'
                 && request.resource.data.diff(resource.data).affectedKeys()
                      .hasOnly(['status', 'statusUpdatedAt', 'ratedPremium', 'rateReason'])

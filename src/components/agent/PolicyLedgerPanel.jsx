@@ -56,7 +56,8 @@ const EMPTY_FORM = {
   proposedAPI: '',
   proposedCoverage: '',
   dateWritten: '',
-  dateSubmitted: '',
+  // No dateSubmitted: a policy is created at `written` (D1) and the submitted
+  // date is collected on the written → submitted transition, in the drawer.
   notes: '',
   isSelfOrFamily: false,
   replacedPolicyAPI: '',
@@ -90,8 +91,8 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
   const [loadError, setLoadError] = useState(null);
   const [form, setForm] = useState(
     initialForm
-      ? { ...EMPTY_FORM, dateWritten: getTodayTT(), dateSubmitted: getTodayTT(), ...initialForm }
-      : { ...EMPTY_FORM, dateWritten: getTodayTT(), dateSubmitted: getTodayTT() },
+      ? { ...EMPTY_FORM, dateWritten: getTodayTT(), ...initialForm }
+      : { ...EMPTY_FORM, dateWritten: getTodayTT() },
   );
   const [sameAsOwner, setSameAsOwner] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -190,7 +191,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
       await createPolicy(tenantId, agentRef, form);
       const fresh = await getOwnPolicies(tenantId, user.uid);
       setPolicies(fresh);
-      setForm({ ...EMPTY_FORM, dateWritten: today, dateSubmitted: today });
+      setForm({ ...EMPTY_FORM, dateWritten: today });
       setSameAsOwner(false);
       setView('list');
     } catch (err) {
@@ -228,7 +229,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
   }
 
   function openCreate() {
-    const merged = { ...EMPTY_FORM, dateWritten: today, dateSubmitted: today, ...(initialForm ?? {}) };
+    const merged = { ...EMPTY_FORM, dateWritten: today, ...(initialForm ?? {}) };
     setForm(merged);
     setSameAsOwner(false);
     setSaveError(null);
@@ -521,12 +522,11 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
                 value={form.dateWritten} onChange={handleChange}
                 className={inputCls} required />
             </FieldGroup>
-            <FieldGroup label="Date Submitted" required id="dateSubmitted">
-              <input id="dateSubmitted" name="dateSubmitted" type="date" min={form.dateWritten} max={today}
-                value={form.dateSubmitted} onChange={handleChange}
-                className={inputCls} required />
-            </FieldGroup>
           </div>
+          <p className="text-xs text-ink-muted">
+            The application opens as <strong>Written</strong>. Record the date it was
+            submitted to head office when you move it to Submitted.
+          </p>
         </div>
 
         {/* ── Additional ── */}
