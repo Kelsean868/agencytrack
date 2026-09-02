@@ -16,16 +16,33 @@ const VALID_FREQUENCIES      = new Set(['A', 'S', 'Q', 'M']);
 const VALID_SOCIAL_PLATFORMS = new Set(SOCIAL_PLATFORMS_ATTRIBUTION.map((p) => p.value));
 
 /**
- * toTimestamp — accept a Firestore Timestamp (as read straight off a policy doc),
- * a "YYYY-MM-DD" string (as typed into a date input — parsed at TT-local
- * midnight, never UTC), or a Date. Returns a Firestore Timestamp.
+ * toTimestamp — the value to STORE. Converts a "YYYY-MM-DD" string (as typed into
+ * a date input — parsed at TT-local midnight, never UTC) or a Date to a Firestore
+ * Timestamp. Anything else is already a Timestamp (read straight off a policy doc)
+ * and is passed through untouched.
  */
 function toTimestamp(v) {
   if (v == null) return null;
-  if (typeof v?.toMillis === 'function') return v;
-  if (v instanceof Date) return Timestamp.fromDate(v);
   if (typeof v === 'string') return Timestamp.fromDate(parseDateOnlyTT(v));
-  throw new Error('unsupported date value');
+  if (v instanceof Date) return Timestamp.fromDate(v);
+  return v;
+}
+
+/**
+ * millisOf — the millisecond value to COMPARE, read from the RAW input rather than
+ * from a converted Timestamp. Deliberately duck-typed across `toMillis()`,
+ * `toDate()` and `.seconds`: comparisons must not depend on which Timestamp
+ * implementation produced the value. Returns NaN for anything unreadable, so the
+ * caller refuses rather than silently comparing against a garbage number.
+ */
+function millisOf(v) {
+  if (v == null) return NaN;
+  if (typeof v?.toMillis === 'function') return v.toMillis();
+  if (typeof v?.toDate === 'function') return v.toDate().getTime();
+  if (typeof v?.seconds === 'number') return v.seconds * 1000;
+  if (v instanceof Date) return v.getTime();
+  if (typeof v === 'string') return parseDateOnlyTT(v).getTime();
+  return NaN;
 }
 
 function validate(data) {
@@ -132,10 +149,13 @@ export async function transitionPolicyStatus(tenantId, agentProfile, policyId, c
     // check here; it is never written back.
     if (!fields?.dateSubmitted) throw new Error('dateSubmitted is required to submit an application');
     if (!fields?.dateWritten)   throw new Error('dateWritten is required to check dateSubmitted');
+    const submittedMs = millisOf(fields.dateSubmitted);
+    const writtenMs   = millisOf(fields.dateWritten);
+    if (!Number.isFinite(submittedMs)) throw new Error('dateSubmitted is not a readable date');
+    if (!Number.isFinite(writtenMs))   throw new Error('dateWritten is not a readable date');
+    if (submittedMs > Date.now())  throw new Error('dateSubmitted cannot be in the future');
+    if (submittedMs < writtenMs)   throw new Error('dateSubmitted must be on or after dateWritten');
     const dateSubmitted = toTimestamp(fields.dateSubmitted);
-    const dateWritten   = toTimestamp(fields.dateWritten);
-    if (dateSubmitted.toMillis() > Date.now()) throw new Error('dateSubmitted cannot be in the future');
-    if (dateSubmitted.toMillis() < dateWritten.toMillis()) throw new Error('dateSubmitted must be on or after dateWritten');
     policyUpdate.dateSubmitted  = dateSubmitted;
     changedFields.dateSubmitted = dateSubmitted;
   } else if (newStatus === 'rated') {
