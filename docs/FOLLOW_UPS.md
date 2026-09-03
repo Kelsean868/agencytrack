@@ -18,6 +18,7 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| **PR #936 preview smoke WAIVED (Rule 13)** — `*.vercel.app` is TLS-intercepted by a FortiGate on the operator's machine, so `VERCEL_BYPASS_TOKEN` cannot reach a preview host without disabling certificate verification; refused as a workaround, not attempted. Low-risk for #936 specifically — `dist/assets` grep confirms the whole module is tree-shaken out of the bundle, zero bytes reach a browser — but the interception is a standing blocker for every future preview smoke, and if longstanding, the token has already crossed it repeatedly and may want rotating. Re-run instructions + falsification in the body (banked 2026-09-03, post-merge fill) | HIGH | Verification / env | — | see § PR #936 preview smoke — waived |
 | ~~**RESOLVED 2026-08-27 (PR #924).**~~ Deploy done AND smoke run: **12 PASS / 0 FAIL** against staging, including `concurrent-idempotent-live` — two simultaneous deliveries of one `sourceId` moved `dials` once. Firestore, not a transaction fake, has now adjudicated the idempotency guard. Deployed to BOTH projects (prod `updateTime` 12:29:06.928Z, staging 02:25:27.031Z), both ACTIVE, prod re-probed 401-on-bad-token after the change. **The smoke was blocked until `TENANT_ID` stopped being hardcoded** — the sibling MEDIUM below rated that "a second tenant would 401", but the real consequence was that the endpoint could only be exercised in PRODUCTION, making a staging-only smoke impossible by construction. Kept (struck, not deleted) because that mis-rating is the lesson. Slice C now has something to POST to. Original deploy-withholding rationale retained in the section body because it is the standing rule for the next slice of this shape: **CC deliberately did not self-deploy:** the PR is not purely additive (it also changes `dailyToWeekly.js`, whose existing cron caller exercises the new behaviour), which is exactly what the pre-merge additive carve-out excludes; `firebase use` reports the active project as PRODUCTION `agencytrack-2a610`. **The staging smoke is separately owed and is staging-only** — it mints a real token and moves a real agent's daily numbers (banked 2026-08-26, slice B / PR #923) | HIGH | Linked call sources | — | see § ~~`ingestCallActivity` deploy + staging smoke~~ RESOLVED |
 | The #899 flake fix (`src/test-utils/flushPendingEffects.js`) is on `staging` ONLY — `git ls-tree origin/main` returns EMPTY, so `main`'s unit-test gate still produces false reds. Every command-file / dispatcher-tooling PR is structurally forced onto `main`, and **#906 proved the cost on a one-markdown-file diff** (red on `DailyCaptureV2` streak test, 5000ms timeout, 1 failed / 5842 passed; re-run green). **Fix is staging→main PROMOTION — do NOT cherry-pick** (duplicate commit, conflicts at promotion across the fix + 30 `await` call sites). Compounds with the promotion-deletes-staging FU below: that one makes promotion risky, this one makes deferring it costly (banked 2026-08-16, PR #906 session) | HIGH | CI / process | — | 6013 |
 | Promotion deletes `staging`, silently auto-retargeting every open PR onto `main` — put #872 + #873 into main ungated. **CONFIRMED RECURRING** — deleted again on #877 (#860/#874/#877). **Primary fix upgraded to a runbook step (`git push origin main:staging` after every promotion merge)**; CI guard still recommended as enforcement. **Also corrects the record: `main` DOES have branch protection** (2 required checks, admin-bypassable) — the FU's original "unavailable" premise was wrong, and CLAUDE.md § Workflow carried the same false claim. **That half is now CLOSED** — the CLAUDE.md claim was corrected in the promotion-prep governance PR (2026-08-16); the `staging`-deletion half remains open and still needs a dispatcher decision (banked 2026-07-26, PR #871 session; corrected 2026-07-27) | HIGH | — | — | 430 |
@@ -6496,3 +6497,55 @@ field set data-driven from something less trustworthy than a literal.
 **Falsification:** overturned if `WRITABLE_FIELDS` acquires a runtime consumer, or if the effect
 table stops being the only source of the increment keys — at which point this becomes a live gap
 rather than a tidy-up.
+
+
+## PR #936 preview smoke — waived, deferred verification owed; and the FortiGate finding behind it is its own item (banked 2026-09-03, post-merge fill)
+
+**Rule 13 waiver.** PR #936 (medical limits move to the September 2026 schedule) merged with its
+preview smoke **NOT RUN**, not merely skipped. The PR body and this entry together are the waiver
+artifact:
+
+> Verification waived because `*.vercel.app` is TLS-intercepted by a FortiGate appliance on the
+> operator's machine, so `VERCEL_BYPASS_TOKEN` cannot be sent to a preview host without disabling
+> certificate verification — which was refused as a workaround of a security control rather than
+> attempted, per CLAUDE.md § Banked patterns ("if a tool mechanism forces a token into a string
+> param: STOP and surface, never work around").
+
+**Unverified criteria, copied verbatim from the PR body's smoke section:** boot · sign-in · both
+themes render · no console errors · no failed network requests, against the live preview at
+`https://agencytrack-p0x3pdi81-kyron-marchan-s-projects.vercel.app` (or the current preview alias
+for the branch, since the per-deployment URL above may no longer resolve after further pushes).
+
+**Why the waiver is low-risk for THIS PR specifically, not in general.** `dist/assets/*.js` was
+grepped on the merged branch and returned zero hits for `determinedAtUnderwritingFrom`,
+`assumesNoOtherCover`, `ageNextBirthday`, `Lipid Blood Profile` and `Non-Medical` — nothing in
+`src/` imports `requirementsFor` / `headroomFor` / `bandFor` yet, so the whole module and both
+medical-limits tables are tree-shaken out of the production bundle. A smoke against this exact
+diff could only have re-proven that the app still boots, which the green `lint-and-build` CI check
+(full build + full 6,224-test suite) already establishes independently of any browser.
+
+**Re-run instructions, for whoever next needs a real preview smoke verified (this PR or the next
+one that touches this module and DOES get a consumer):**
+
+1. Confirm the TLS path first, before assuming the blocker is gone: open a `TcpClient` to the
+   preview host on 443, wrap in `SslStream` with an always-true validation callback, authenticate,
+   and print `RemoteCertificate.Issuer`. If it reads `O=Fortinet`, the blocker is still live — do
+   not attempt `ignoreHTTPSErrors: true` as a way past it. (The full finding is banked in the
+   dispatcher's cross-session memory as `env_fortinet_tls_vercel_previews` — not a file in this
+   repo — so ask the dispatcher for current network state rather than searching `docs/` for it.)
+2. If clear, run `node scripts/verification/smoke-medical-limits-september.mjs <preview-url>` —
+   the script exists and is read-only by construction (asserts boot/login/theme/console/network
+   only; a feature-branch preview runs against PRODUCTION Firebase per CLAUDE.md § Workflow, so it
+   deliberately makes no writes). It was written for PR #936 but never committed, to keep that PR's
+   `src/`-only scope lock — recreate it from the PR's description if it is not sitting in a
+   scratchpad, or pull it from PR #936's conversation history.
+3. If the FortiGate interception is confirmed STILL present on a future cycle, escalate rather than
+   re-waiving indefinitely: **check whether `VERCEL_BYPASS_TOKEN` should be rotated**, since every
+   past preview smoke from this machine has crossed the same intercepted connection, repeatedly,
+   in plaintext, into the appliance's logs. That is a standing exposure this waiver does not close.
+
+**Falsification:** overturned the moment a smoke runs clean from an uninspected network path, or
+the token is confirmed rotated and a fresh smoke passes — either closes this entry. It is NOT
+overturned by this module later gaining an importer without a smoke also running; that would be a
+NEW, higher-stakes gap (an unverified change that DOES reach the bundle), not a resolution of this
+one.
