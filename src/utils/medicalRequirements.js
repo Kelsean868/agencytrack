@@ -3,31 +3,62 @@
  * age and sum assured, and how much more cover the evidence already gathered
  * would support.
  *
- * PURE. No clock, no I/O, no Firestore. The table it reads is effective-dated
- * data in src/config/medicalLimits/2026-04.js.
+ * PURE. No clock, no I/O, no Firestore. The tables it reads are effective-dated
+ * data in src/config/medicalLimits/ — one file per effective date, never an
+ * edit to a past one. `CURRENT_MEDICAL_LIMITS` is the newest; a stored case is
+ * read against `limitsInForceOn(itsSubmissionDate)`.
+ *
+ * ⚠ EVERY FIGURE QUOTED BELOW CARRIES ITS EFFECTIVE DATE, or is written
+ * table-relative. The numbers moved on 1 September 2026 and will move again;
+ * a comment that states one schedule's number as a fact is a lie with a
+ * delayed fuse.
  *
  * ── THE FEATURE THIS EXISTS FOR ────────────────────────────────────────────
  * A client who has already been through a medical has often paid for more
- * evidence than the cover they bought needs. A 55-year-old issued 750,000 did a
- * Medical, ECG, full blood profile and PSA — and that same evidence supports
- * 2,000,000. Offering the difference costs the client nothing further, and
- * today nobody sees it because the tier table lives on a PDF.
+ * evidence than the cover they bought needs. The evidence a tier asks for
+ * supports every sum assured up to that tier's ceiling, so cover already paid
+ * for in blood and time can be offered again for nothing further — and today
+ * nobody sees it, because the tier table lives on a PDF.
  *
  * ── THE TRAP THIS FUNCTION EXISTS TO AVOID ─────────────────────────────────
  * "Top of the tier minus what was issued" is WRONG, and wrong in the direction
- * that embarrasses an agent in front of a client. Three separate things clamp
- * it, and the naive version ignores all three:
+ * that embarrasses an agent in front of a client. Four separate things clamp
+ * it, and the naive version ignores all four:
  *
- *   1. The universal thresholds. Crossing 1,500,000 pulls in a financial
- *      statement and an inspection report whatever tier you are in; 3,000,000
- *      adds a urine screen for 16–60.
- *   2. The 5,000,000 ceiling, past which the document itself refuses to say
- *      ("requirements to be determined at the time of underwriting").
+ *   1. The universal thresholds — the rules that ride on top of the band
+ *      whatever tier you are in. Under the September 2026 schedule all three
+ *      (urine screen, confidential financial statement, inspection report)
+ *      start at 3,000,000; under April 2026 the statement and the report
+ *      started at 1,500,000. Read them off `table.universal`, never from here.
+ *   2. The `determinedAtUnderwritingFrom` ceiling, past which the document
+ *      itself refuses to say. 5,000,000 on both schedules so far.
  *   3. A Disability Income Rider, which forces a Medical at every sum assured.
+ *   4. THE TOTAL RISK AMOUNT, not the new application alone — see below.
  *
  * So the headroom returned here is the amount that genuinely needs NOTHING new
  * from the client. Anything beyond it is reported separately, with what it
  * would cost them — never folded into the free number.
+ *
+ * ── AGGREGATION: THE TIER IS PICKED ON THE TOTAL RISK AMOUNT ───────────────
+ * The September 2026 schedule states it outright, and the memo repeats it:
+ * requirements are ordered on the new application PLUS everything Tatil issued
+ * or reinstated on the same life in the trailing 12 months, plus any term
+ * rider on a whole-life base.
+ *
+ * So both functions take an optional `otherCoverLast12Months` (default 0) and
+ * read the table at `sumAssured + otherCoverLast12Months`. Every answer echoes
+ * `assessedAmount` — the number the table was actually read at — and
+ * `assumesNoOtherCover`, which is TRUE whenever the caller omitted the input.
+ *
+ * `assumesNoOtherCover` is the honest flag, and it will be true almost
+ * everywhere: AgencyTrack does not today know a client's other Tatil policies.
+ * A UI showing one of these answers must be able to say "assuming no other
+ * Tatil cover in the last 12 months" beside it. Passing 0 EXPLICITLY means the
+ * caller checked and there is none; omitting means nobody looked.
+ *
+ * Term riders are the caller's job to fold into `sumAssured` before calling.
+ * There is deliberately no `termRiderAmount` input — a second field is how two
+ * callers fold the same rider in twice.
  *
  * ── AGE: NEXT BIRTHDAY ──────────────────────────────────────────────────────
  * **Tatil reckons age as AGE NEXT BIRTHDAY, for premiums and for these medical
@@ -36,10 +67,12 @@
  * plus one — it is a constant offset, not a mid-year switch.
  *
  * That single year is not a rounding detail. It moves every band boundary, and
- * the one that costs money is 50/51: a client whose attained age is 50 is
- * underwritten at 51, where **there is no non-medical band at all**. Tell them
- * "non-medical up to 500,000" off their attained age and they arrive at a
- * paramedical they were not warned about.
+ * the one that costs money is 50/51. Attained 49 is underwritten at 50
+ * (non-medical to 1,500,000 from September 2026); attained 50 is underwritten
+ * at 51 (non-medical to 500,000). One birthday moves the non-medical ceiling
+ * by a million dollars. Under the April 2026 schedule the same birthday moved
+ * it from 500,000 to nothing at all — there was no non-medical band from 51.
+ * Either way, quoting a client off their attained age promises the wrong case.
  *
  * So `age` here is ALWAYS age next birthday. Callers that hold a date of birth
  * should pass `dateOfBirth` + `asOf` instead and let `ageNextBirthday()` derive
@@ -52,6 +85,14 @@
  * for four hours every evening, which at a birthday boundary is a wrong band.
  */
 import { MEDICAL_LIMITS_2026_04 } from '../config/medicalLimits/2026-04';
+import { MEDICAL_LIMITS_2026_09 } from '../config/medicalLimits/2026-09';
+
+/**
+ * The newest schedule. Every function here defaults to it; a stored case that
+ * was submitted under an older one must pass `limitsInForceOn(submittedOn)`
+ * explicitly rather than relying on the default.
+ */
+export const CURRENT_MEDICAL_LIMITS = MEDICAL_LIMITS_2026_09;
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -119,16 +160,43 @@ function resolveAge({ age, dateOfBirth, asOf }) {
   return { ok: true, age };
 }
 
-/** The table in force for a given date. One entry today; a revision adds another. */
-const TABLES = [MEDICAL_LIMITS_2026_04];
+/**
+ * resolveAssessed — the amount the table is actually read at.
+ *
+ * OMITTED is not the same as ZERO. Omitting the input means nobody looked up
+ * the client's other cover, and `assumesNoOtherCover` says so; passing 0 means
+ * somebody looked and there is none.
+ */
+function resolveAssessed(baseAmount, otherCoverLast12Months) {
+  if (otherCoverLast12Months == null) {
+    return { ok: true, assessedAmount: baseAmount, assumesNoOtherCover: true };
+  }
+  if (!Number.isFinite(otherCoverLast12Months) || otherCoverLast12Months < 0) {
+    return {
+      ok: false,
+      reason: 'otherCoverLast12Months must be a number of 0 or more (omit it if unknown)',
+    };
+  }
+  return {
+    ok: true,
+    assessedAmount: baseAmount + otherCoverLast12Months,
+    assumesNoOtherCover: false,
+  };
+}
+
+/** Every table, oldest first. A revision adds a file and an entry here. */
+const TABLES = [MEDICAL_LIMITS_2026_04, MEDICAL_LIMITS_2026_09];
 
 /**
  * limitsInForceOn — the table that governed a case on `dateStr` (YYYY-MM-DD).
  *
- * Cases follow the rules in force when they were written and submitted, per the
- * 25-Mar-2026 memo, so a stored case must be read against ITS table, not
- * today's. Returns null before the earliest table rather than falling back to
- * the newest — an answer from the wrong table is worse than no answer.
+ * The date to hand it is the SUBMISSION date. The 27-Aug-2026 memo is explicit
+ * that the previous schedule "remains in place for all applications and
+ * reinstatements submitted prior to" 1 September 2026; April's memo said
+ * "received AND submitted". Submission is the test on both readings.
+ *
+ * Returns null before the earliest table rather than falling back to the
+ * newest — an answer from the wrong table is worse than no answer.
  */
 export function limitsInForceOn(dateStr) {
   const candidates = TABLES
@@ -141,7 +209,7 @@ const inBand = (band, age) =>
   age >= band.minAge && (band.maxAge === null || age <= band.maxAge);
 
 /** The age band covering `age`, or null when the age is not a usable number. */
-export function bandFor(age, table = MEDICAL_LIMITS_2026_04) {
+export function bandFor(age, table = CURRENT_MEDICAL_LIMITS) {
   if (!Number.isFinite(age) || age < 0) return null;
   return table.bands.find((b) => inBand(b, age)) ?? null;
 }
@@ -174,24 +242,30 @@ function nextUniversalAbove(table, age, sumAssured) {
  * @param {string} [args.dateOfBirth]       YYYY-MM-DD — derives the age instead
  * @param {string} [args.asOf]              YYYY-MM-DD — required with dateOfBirth
  * @param {number} args.sumAssured          the cover applied for, TTD
+ * @param {number} [args.otherCoverLast12Months]  Life/CI issued or reinstated on
+ *   the same life in the trailing 12 months. OMIT when unknown — the answer
+ *   then carries `assumesNoOtherCover: true`.
  * @param {boolean} [args.hasDisabilityIncomeRider=false]
- * @param {object} [args.table]             defaults to the current table
+ * @param {object} [args.table]             defaults to CURRENT_MEDICAL_LIMITS
  * @returns {{
  *   ok: boolean, reason?: string, exam?: string, requirements?: string[],
- *   determinedAtUnderwriting?: boolean, tierCeiling?: number|null, age?: number
+ *   determinedAtUnderwriting?: boolean, tierCeiling?: number|null, age?: number,
+ *   assessedAmount?: number, assumesNoOtherCover?: boolean
  * }}
  *
  * `ok: false` is returned rather than a guess whenever the table cannot answer.
  * The resolved `age` is echoed back on success, so a caller that passed a date
- * of birth can show the client which age the answer was reckoned at.
+ * of birth can show the client which age the answer was reckoned at; so is
+ * `assessedAmount`, so a caller can show which number the table was read at.
  */
 export function requirementsFor({
   age: ageIn,
   dateOfBirth,
   asOf,
   sumAssured,
+  otherCoverLast12Months,
   hasDisabilityIncomeRider = false,
-  table = MEDICAL_LIMITS_2026_04,
+  table = CURRENT_MEDICAL_LIMITS,
 }) {
   const resolved = resolveAge({ age: ageIn, dateOfBirth, asOf });
   if (!resolved.ok) return { ok: false, reason: resolved.reason };
@@ -200,15 +274,22 @@ export function requirementsFor({
   if (!Number.isFinite(sumAssured) || sumAssured <= 0) {
     return { ok: false, reason: 'sumAssured must be a positive number' };
   }
+
+  const assessed = resolveAssessed(sumAssured, otherCoverLast12Months);
+  if (!assessed.ok) return { ok: false, reason: assessed.reason };
+  const { assessedAmount, assumesNoOtherCover } = assessed;
+
   const band = bandFor(age, table);
   if (!band) return { ok: false, reason: 'no age band covers age ' + age };
 
   // The document stops specifying here. Say so; do not extrapolate the top tier
   // upward, because the top tier is not what underwriting will actually apply.
-  if (sumAssured >= table.determinedAtUnderwritingFrom) {
+  if (assessedAmount >= table.determinedAtUnderwritingFrom) {
     return {
       ok: true,
       age,
+      assessedAmount,
+      assumesNoOtherCover,
       determinedAtUnderwriting: true,
       exam: 'Medical',
       requirements: ['Requirements to be determined at the time of underwriting'],
@@ -216,10 +297,10 @@ export function requirementsFor({
     };
   }
 
-  const tier = tierFor(band, sumAssured);
-  if (!tier) return { ok: false, reason: 'no tier covers ' + sumAssured };
+  const tier = tierFor(band, assessedAmount);
+  if (!tier) return { ok: false, reason: 'no tier covers ' + assessedAmount };
 
-  const requirements = [...tier.requirements, ...universalAt(table, age, sumAssured)];
+  const requirements = [...tier.requirements, ...universalAt(table, age, assessedAmount)];
   let { exam } = tier;
 
   // The DIR override. Applied LAST and unconditionally: it outranks the band,
@@ -236,6 +317,8 @@ export function requirementsFor({
   return {
     ok: true,
     age,
+    assessedAmount,
+    assumesNoOtherCover,
     determinedAtUnderwriting: false,
     exam,
     requirements,
@@ -246,13 +329,19 @@ export function requirementsFor({
 /**
  * headroomFor — how much MORE cover the evidence already gathered supports.
  *
+ * @param {number} [args.otherCoverLast12Months]  as on requirementsFor. The
+ *   ceiling and the headroom are both reckoned on the ASSESSED amount:
+ *   headroom is `ceiling - assessedAmount`, never `ceiling - issuedCoverage`.
+ *   A client with 1,000,000 issued in March and 700,000 in hand is at
+ *   1,700,000 and may have no free headroom at all.
  * @returns {{
  *   ok: boolean, reason?: string,
  *   ceiling: number|null,      // most cover obtainable with nothing new
- *   headroom: number,          // ceiling - issuedCoverage, never negative
+ *   headroom: number,          // ceiling - assessedAmount, never negative
  *   free: boolean,             // true when headroom > 0 and needs nothing new
  *   clampedBy: 'tier'|'universal'|'underwriting-ceiling'|null,
- *   nextStep: { at: number, adds: string[] } | null
+ *   nextStep: { at: number, adds: string[] } | null,
+ *   assessedAmount?: number, assumesNoOtherCover?: boolean
  * }}
  *
  * `free` is the whole point of the function and is deliberately conservative:
@@ -263,24 +352,29 @@ export function headroomFor({
   dateOfBirth,
   asOf,
   issuedCoverage,
+  otherCoverLast12Months,
   hasDisabilityIncomeRider = false,
-  table = MEDICAL_LIMITS_2026_04,
+  table = CURRENT_MEDICAL_LIMITS,
 }) {
+  const refuse = (reason) => ({
+    ok: false, reason, ceiling: null, headroom: 0, free: false, clampedBy: null, nextStep: null,
+  });
+
   const resolved = resolveAge({ age: ageIn, dateOfBirth, asOf });
-  if (!resolved.ok) {
-    return { ok: false, reason: resolved.reason, ceiling: null, headroom: 0, free: false, clampedBy: null, nextStep: null };
-  }
+  if (!resolved.ok) return refuse(resolved.reason);
   const age = resolved.age;
 
   const base = requirementsFor({
-    age, sumAssured: issuedCoverage, hasDisabilityIncomeRider, table,
+    age, sumAssured: issuedCoverage, otherCoverLast12Months, hasDisabilityIncomeRider, table,
   });
-  if (!base.ok) {
-    return { ok: false, reason: base.reason, ceiling: null, headroom: 0, free: false, clampedBy: null, nextStep: null };
-  }
+  if (!base.ok) return refuse(base.reason);
+
+  const { assessedAmount, assumesNoOtherCover } = base;
+
   if (base.determinedAtUnderwriting) {
     return {
-      ok: true, ceiling: null, headroom: 0, free: false,
+      ok: true, age, assessedAmount, assumesNoOtherCover,
+      ceiling: null, headroom: 0, free: false,
       clampedBy: 'underwriting-ceiling',
       reason: 'at or above ' + table.determinedAtUnderwritingFrom
         + ', requirements are set case by case — no headroom can be asserted',
@@ -290,7 +384,7 @@ export function headroomFor({
 
   const band = bandFor(age, table);
   const tierCeiling = base.tierCeiling ?? Infinity;
-  const nextUniversal = nextUniversalAbove(table, age, issuedCoverage);
+  const nextUniversal = nextUniversalAbove(table, age, assessedAmount);
   const hardCeiling = table.determinedAtUnderwritingFrom;
 
   // The lowest of the three clamps wins. `- 1` on the universal and hard
@@ -303,15 +397,20 @@ export function headroomFor({
 
   const ceiling = candidates[0].at;
   const clampedBy = Number.isFinite(ceiling) ? candidates[0].by : null;
-  const headroom = Math.max(0, ceiling - issuedCoverage);
+  const headroom = Math.max(0, ceiling - assessedAmount);
 
   // What the client would have to do to go past the ceiling — so the offer can
   // say "and beyond that you'd need X" rather than pretending the wall is a
-  // cliff. Computed one dollar above the ceiling.
+  // cliff. Probed one dollar above the ceiling, which is an ASSESSED amount,
+  // so the aggregate is passed as an explicit 0 rather than added twice.
   let nextStep = null;
   if (Number.isFinite(ceiling)) {
     const beyond = requirementsFor({
-      age, sumAssured: ceiling + 1, hasDisabilityIncomeRider, table,
+      age,
+      sumAssured: ceiling + 1,
+      otherCoverLast12Months: 0,
+      hasDisabilityIncomeRider,
+      table,
     });
     if (beyond.ok) {
       const already = new Set(base.requirements);
@@ -323,6 +422,8 @@ export function headroomFor({
   return {
     ok: true,
     age,
+    assessedAmount,
+    assumesNoOtherCover,
     ceiling: Number.isFinite(ceiling) ? ceiling : null,
     headroom,
     free: headroom > 0,
