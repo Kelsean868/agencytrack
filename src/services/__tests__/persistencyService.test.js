@@ -32,6 +32,7 @@ vi.mock('../managerService', () => ({
 
 import {
   isE3Doc,
+  isModelCompleteDoc,
   monthKeyFromYearMonth,
   parseMonthKey,
   persistencyDocId,
@@ -131,14 +132,47 @@ describe('monthKey helpers', () => {
       .toEqual({ reportPeriodStart: '2025-03-01', reportPeriodEnd: '2026-02-28' });
   });
 
+  // The window length is the model's, not a constant. August 2026 is the last
+  // legacy month; September 2026 is the first on the Tatil 24-month model.
+  it('reportPeriodFromMonthKey uses 12 months for the last legacy month', () => {
+    expect(reportPeriodFromMonthKey('2026-08'))
+      .toEqual({ reportPeriodStart: '2025-09-01', reportPeriodEnd: '2026-08-31' });
+  });
+
+  it('reportPeriodFromMonthKey widens to 24 months at the memo boundary', () => {
+    expect(reportPeriodFromMonthKey('2026-09'))
+      .toEqual({ reportPeriodStart: '2024-10-01', reportPeriodEnd: '2026-09-30' });
+  });
+
+  it('reportPeriodFromMonthKey keeps the same end date either side of the boundary', () => {
+    // Only the START moves when the model changes; the period still ENDS in the
+    // month asked for. A regression that shifted the end would misdate a report.
+    expect(reportPeriodFromMonthKey('2026-08').reportPeriodEnd).toBe('2026-08-31');
+    expect(reportPeriodFromMonthKey('2026-09').reportPeriodEnd).toBe('2026-09-30');
+  });
+
+  it('reportPeriodFromMonthKey throws on a malformed monthKey', () => {
+    expect(() => reportPeriodFromMonthKey('2026/09')).toThrow(/monthKey must be "YYYY-MM"/);
+  });
+
   it('reportPeriodFromMonthKey handles leap year (Feb 29)', () => {
     expect(reportPeriodFromMonthKey('2024-02'))
       .toEqual({ reportPeriodStart: '2023-03-01', reportPeriodEnd: '2024-02-29' });
   });
 
-  it('reportPeriodFromMonthKey handles December (rolls into same year start)', () => {
+  it('reportPeriodFromMonthKey handles a legacy December (rolls into same year start)', () => {
+    // 2025-12 is still on the 12-month model, so December remains the case
+    // where the window starts in January of the SAME year.
+    expect(reportPeriodFromMonthKey('2025-12'))
+      .toEqual({ reportPeriodStart: '2025-01-01', reportPeriodEnd: '2025-12-31' });
+  });
+
+  it('reportPeriodFromMonthKey handles a 24-month December (starts Jan of the PRIOR year)', () => {
+    // FIXTURE UPDATED, NOT A REGRESSION. This previously asserted the 12-month
+    // answer '2026-01-01'. December 2026 is on the Tatil 24-month model, so the
+    // window now opens two Januaries back — the brief pins this exact value.
     expect(reportPeriodFromMonthKey('2026-12'))
-      .toEqual({ reportPeriodStart: '2026-01-01', reportPeriodEnd: '2026-12-31' });
+      .toEqual({ reportPeriodStart: '2025-01-01', reportPeriodEnd: '2026-12-31' });
   });
 });
 
@@ -435,3 +469,167 @@ describe('getPersistencyMapForYear', () => {
   });
 });
 
+// -----------------------------------------------------------------------------
+// Tatil 24-month model (memo of 29 Aug 2026)
+// -----------------------------------------------------------------------------
+
+const M24_INPUTS = { ...E3_INPUTS, decreases: 12000 };
+
+describe('isModelCompleteDoc', () => {
+  it('accepts a legacy-month doc with the six E3 fields and no decreases', () => {
+    expect(isModelCompleteDoc({ ...E3_FULL_DOC, monthKey: '2026-08' })).toBe(true);
+  });
+
+  it('rejects a 24-month-model doc that is missing decreases', () => {
+    // The whole point: a September doc without the term would derive its
+    // denominator as if decreases were zero, which is an unentered figure
+    // masquerading as a real one.
+    expect(isModelCompleteDoc({ ...E3_FULL_DOC, monthKey: '2026-09' })).toBe(false);
+  });
+
+  it('accepts a 24-month-model doc carrying decreases', () => {
+    expect(isModelCompleteDoc({ ...E3_FULL_DOC, monthKey: '2026-09', decreases: 0 })).toBe(true);
+    expect(isModelCompleteDoc({ ...E3_FULL_DOC, monthKey: '2026-09', decreases: 500 })).toBe(true);
+  });
+
+  it('rejects a negative or non-numeric decreases on a 24-month-model doc', () => {
+    const base = { ...E3_FULL_DOC, monthKey: '2026-09' };
+    expect(isModelCompleteDoc({ ...base, decreases: -1 })).toBe(false);
+    expect(isModelCompleteDoc({ ...base, decreases: '500' })).toBe(false);
+    expect(isModelCompleteDoc({ ...base, decreases: null })).toBe(false);
+    expect(isModelCompleteDoc({ ...base, decreases: NaN })).toBe(false);
+  });
+
+  it('still rejects anything that is not E3-shaped at all', () => {
+    expect(isModelCompleteDoc(null)).toBe(false);
+    expect(isModelCompleteDoc({ persistency: 92.5 })).toBe(false);
+    expect(isModelCompleteDoc({ ...E3_INPUTS, lapses: null, monthKey: '2026-08' })).toBe(false);
+  });
+
+  it('never throws on a doc with a missing or malformed monthKey, and keeps it visible', () => {
+    // These filter untrusted Firestore documents. Throwing would take out a
+    // whole list render; hiding them would drop records that are visible today.
+    // Such a doc cannot be a 24-month doc, because savePersistency always
+    // stores a validated key, so legacy treatment is the correct answer.
+    const noKey = { ...E3_INPUTS };
+    expect(() => isModelCompleteDoc(noKey)).not.toThrow();
+    expect(isModelCompleteDoc(noKey)).toBe(true);
+    expect(isModelCompleteDoc({ ...E3_INPUTS, monthKey: '2026/09' })).toBe(true);
+    expect(isModelCompleteDoc({ ...E3_INPUTS, monthKey: 42 })).toBe(true);
+  });
+});
+
+describe('savePersistency on the 24-month model', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuth.currentUser = { uid: 'writer-uid' };
+  });
+
+  it('refuses a September save with no decreases rather than writing 0', async () => {
+    await expect(
+      savePersistency('tenant1', '2026-09', 'agent-1', E3_INPUTS, 'agent'),
+    ).rejects.toThrow(/decreases is required on the tatil24 model \(month 2026-09\)/);
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('refuses an empty-string decreases the same way', async () => {
+    await expect(
+      savePersistency('tenant1', '2026-09', 'agent-1', { ...E3_INPUTS, decreases: '' }, 'agent'),
+    ).rejects.toThrow(/decreases is required/);
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('refuses a negative decreases', async () => {
+    await expect(
+      savePersistency('tenant1', '2026-09', 'agent-1', { ...E3_INPUTS, decreases: -1 }, 'agent'),
+    ).rejects.toThrow(/decreases must be a non-negative number/);
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('writes decreases and subtracts it from the derived denominator', async () => {
+    mockGetDoc.mockResolvedValueOnce({ exists: () => false });
+    mockSetDoc.mockResolvedValueOnce(undefined);
+
+    const result = await savePersistency('tenant1', '2026-09', 'agent-1', M24_INPUTS, 'agent');
+
+    const written = mockSetDoc.mock.calls[0][1];
+    expect(written.decreases).toBe(12000);
+    // Same six inputs as the Ricardo fixture, minus the new 12000 term.
+    expect(result.grossSettled).toBeCloseTo(406335.53 - 12000, 2);
+    expect(result.netSettled).toBeCloseTo(300397.73 - 12000, 2);
+  });
+
+  it('stamps modelId provenance on a 24-month write', async () => {
+    mockGetDoc.mockResolvedValueOnce({ exists: () => false });
+    mockSetDoc.mockResolvedValueOnce(undefined);
+
+    await savePersistency('tenant1', '2026-09', 'agent-1', M24_INPUTS, 'agent');
+
+    expect(mockSetDoc.mock.calls[0][1].modelId).toBe('tatil24');
+  });
+
+  it('stores the 24-month report period on a 24-month write', async () => {
+    mockGetDoc.mockResolvedValueOnce({ exists: () => false });
+    mockSetDoc.mockResolvedValueOnce(undefined);
+
+    const result = await savePersistency('tenant1', '2026-09', 'agent-1', M24_INPUTS, 'agent');
+
+    expect(result.reportPeriodStart).toBe('2024-10-01');
+    expect(result.reportPeriodEnd).toBe('2026-09-30');
+  });
+
+  it('leaves a legacy-month write untouched: no decreases key, no modelId', async () => {
+    // P-D2: decreases is never back-filled, so an August document must be
+    // byte-for-byte what it would have been before this change existed.
+    mockGetDoc.mockResolvedValueOnce({ exists: () => false });
+    mockSetDoc.mockResolvedValueOnce(undefined);
+
+    await savePersistency('tenant1', '2026-08', 'agent-1', E3_INPUTS, 'agent');
+
+    const written = mockSetDoc.mock.calls[0][1];
+    expect('decreases' in written).toBe(false);
+    expect('modelId' in written).toBe(false);
+    expect(written.grossSettled).toBeCloseTo(406335.53, 2);
+  });
+
+  it('ignores a stray decreases passed on a legacy month', async () => {
+    // The model decides the input set, not the caller. A legacy month must not
+    // start subtracting a term the report it was transcribed from never had.
+    mockGetDoc.mockResolvedValueOnce({ exists: () => false });
+    mockSetDoc.mockResolvedValueOnce(undefined);
+
+    const result = await savePersistency('tenant1', '2026-08', 'agent-1', M24_INPUTS, 'agent');
+
+    expect('decreases' in mockSetDoc.mock.calls[0][1]).toBe(false);
+    expect(result.grossSettled).toBeCloseTo(406335.53, 2);
+  });
+});
+
+describe('getAvailableMonths — model-incomplete months stay reachable', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('still lists a September month whose doc predates the decreases term', async () => {
+    // The stranding trap: a 2026-09 doc written on the six-field code has no
+    // `decreases`, so isModelCompleteDoc hides the RECORD. If the month selector
+    // used the same filter, the month would vanish — and with no "add a month"
+    // affordance in the UI, it could never be selected again to be corrected.
+    mockGetDocs.mockResolvedValueOnce({
+      forEach: (fn) => {
+        [
+          { ...E3_INPUTS, monthKey: '2026-08' },
+          { ...E3_INPUTS, monthKey: '2026-09' }, // no decreases
+        ].forEach((data) => fn({ data: () => data }));
+      },
+    });
+
+    const months = await getAvailableMonths('tenant1', 'agent', 'agent-1');
+
+    expect(months).toContain('2026-09');
+    expect(months).toEqual(['2026-09', '2026-08']); // newest first
+  });
+
+  it('still hides that month’s record from the reads that show figures', async () => {
+    // The other half of the pair: reachable in the selector, absent as a record.
+    expect(isModelCompleteDoc({ ...E3_FULL_DOC, monthKey: '2026-09' })).toBe(false);
+  });
+});

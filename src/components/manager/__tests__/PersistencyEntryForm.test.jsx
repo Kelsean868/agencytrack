@@ -159,3 +159,117 @@ describe('PersistencyEntryForm', () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+// -----------------------------------------------------------------------------
+// Month-aware model (Tatil memo of 29 Aug 2026)
+//
+// The form asks for what the MONTH's model requires, not a fixed six. August
+// 2026 is the last legacy month; September 2026 is the first 24-month month.
+// -----------------------------------------------------------------------------
+
+const AUG_PROPS = { ...DEFAULT_PROPS, monthKey: '2026-08' };
+const SEP_PROPS = { ...DEFAULT_PROPS, monthKey: '2026-09' };
+
+describe('PersistencyEntryForm — legacy month (2026-08)', () => {
+  beforeEach(() => { hoisted.savePersistency.mockReset(); });
+
+  it('renders exactly the six legacy inputs and no decreases field', () => {
+    render(<PersistencyEntryForm {...AUG_PROPS} />);
+    for (const f of ['businessPlaced', 'notTakens', 'incPPPs', 'lumpsums100', 'lapses', 'reinstatements']) {
+      expect(screen.getByTestId('persistency-input-' + f), f).toBeInTheDocument();
+    }
+    expect(screen.queryByTestId('persistency-input-decreases')).not.toBeInTheDocument();
+    expect(screen.getByTestId('persistency-inputs-legacy12')).toBeInTheDocument();
+  });
+
+  it('keeps the pre-memo labels on a legacy month', () => {
+    render(<PersistencyEntryForm {...AUG_PROPS} />);
+    expect(screen.getByText(/Business Placed/)).toBeInTheDocument();
+    expect(screen.getByText(/Inc PPPs/)).toBeInTheDocument();
+  });
+
+  it('labels the derived denominator "Gross Settled" on a legacy month', () => {
+    render(<PersistencyEntryForm {...AUG_PROPS} />);
+    const preview = screen.getByTestId('persistency-derived-preview');
+    expect(preview).toHaveTextContent('Gross Settled');
+    expect(preview).not.toHaveTextContent('Net Gross Settled');
+  });
+});
+
+describe('PersistencyEntryForm — 24-month model month (2026-09)', () => {
+  beforeEach(() => { hoisted.savePersistency.mockReset(); });
+
+  it('renders a seventh input for decreases', () => {
+    render(<PersistencyEntryForm {...SEP_PROPS} />);
+    expect(screen.getByTestId('persistency-input-decreases')).toBeInTheDocument();
+    expect(screen.getByTestId('persistency-inputs-tatil24')).toBeInTheDocument();
+  });
+
+  it('adopts the memo vocabulary for the inputs', () => {
+    render(<PersistencyEntryForm {...SEP_PROPS} />);
+    expect(screen.getByText(/Decreases/)).toBeInTheDocument();
+    expect(screen.getByText(/Increases/)).toBeInTheDocument();
+    // "Inc PPPs" is retired vocabulary from September onwards.
+    expect(screen.queryByText(/Inc PPPs/)).not.toBeInTheDocument();
+  });
+
+  it('renames the derived denominator to "Net Gross Settled"', () => {
+    render(<PersistencyEntryForm {...SEP_PROPS} />);
+    expect(screen.getByTestId('persistency-derived-preview'))
+      .toHaveTextContent('Net Gross Settled');
+  });
+
+  it('drops every "12-month" claim from the help copy', () => {
+    const { container } = render(<PersistencyEntryForm {...SEP_PROPS} />);
+    expect(container.textContent).not.toMatch(/12[- ]?month/i);
+    expect(container.textContent).toMatch(/24-month period/);
+  });
+
+  it('will not save until decreases is filled', () => {
+    render(<PersistencyEntryForm {...SEP_PROPS} />);
+    fillRicardo(); // the six legacy figures only
+    fireEvent.submit(screen.getByTestId('persistency-entry-form').querySelector('form'));
+    expect(hoisted.savePersistency).not.toHaveBeenCalled();
+    expect(screen.getByText(/Decreases is required/i)).toBeInTheDocument();
+  });
+
+  it('passes decreases through to savePersistency once filled', async () => {
+    hoisted.savePersistency.mockResolvedValueOnce(undefined);
+    render(<PersistencyEntryForm {...SEP_PROPS} />);
+    fillRicardo();
+    fireEvent.change(screen.getByTestId('persistency-input-decreases'), {
+      target: { value: '12000' },
+    });
+    fireEvent.submit(screen.getByTestId('persistency-entry-form').querySelector('form'));
+
+    await waitFor(() => expect(hoisted.savePersistency).toHaveBeenCalledTimes(1));
+    const [, monthKey, , inputs] = hoisted.savePersistency.mock.calls[0];
+    expect(monthKey).toBe('2026-09');
+    expect(inputs.decreases).toBe(12000);
+  });
+
+  it('subtracts decreases from the live derived preview', () => {
+    render(<PersistencyEntryForm {...SEP_PROPS} />);
+    fillRicardo();
+    const before = screen.getByTestId('derived-gross').textContent;
+    fireEvent.change(screen.getByTestId('persistency-input-decreases'), {
+      target: { value: '100000' },
+    });
+    expect(screen.getByTestId('derived-gross').textContent).not.toBe(before);
+  });
+});
+
+describe('PersistencyEntryForm — render guard', () => {
+  // No month, no form. The alternative would be guessing a model and showing
+  // the wrong month's fields, which on a money surface is worse than nothing.
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+    ['malformed', '2026/09'],
+  ])('renders nothing for a %s monthKey instead of throwing', (_label, monthKey) => {
+    const { container } = render(
+      <PersistencyEntryForm {...DEFAULT_PROPS} monthKey={monthKey} />,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+});

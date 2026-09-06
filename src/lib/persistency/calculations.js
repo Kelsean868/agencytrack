@@ -1,11 +1,40 @@
 // E3 — Pure persistency calculations.
 //
-// Formula (validated against Tatil's Feb 2026 monthly persistency report,
-// Ricardo Duke row in the Mikel Granderson branch):
+// Formula, in the vocabulary of the Tatil Life memo "Introduction of the
+// Updated 24-Month Persistency Model" (A. Rauseo, 29 Aug 2026), effective from
+// September 2026 persistency onwards:
 //
-//   Gross Settled = (Business Placed − Not Takens) + Inc PPPs + (Lumpsums × 0.10)
-//   Net Settled   = Gross Settled − Lapses + Reinstatements
-//   Persistency   = Net Settled / Gross Settled
+//   Net Gross Settled = Gross Settled − Not Takens − Decreases
+//                       + Increases + (10% × Lumpsums)
+//   Net Settled       = Net Gross Settled − Lapses + Reinstatements
+//   Persistency       = Net Settled / Net Gross Settled
+//
+// STORED IDS ARE LEGACY NAMES, KEPT DELIBERATELY (P-D1) — renaming fields on
+// money documents is a migration for a cosmetic gain. Read this mapping before
+// trusting any name here, because two of them collide with the memo's terms:
+//
+//   stored id        the memo calls it     note
+//   ─────────        ─────────────────     ────
+//   businessPlaced   "Gross Settled"       an INPUT
+//   notTakens        "Not Takens"
+//   decreases        "Decreases"           the one term the memo ADDS
+//   incPPPs          "Increases"
+//   lumpsums100      "Lumpsums"            the 10% factor is applied here
+//   lapses           "Lapses"
+//   reinstatements   "Reinstatements"
+//   grossSettled     "Net Gross Settled"   DERIVED — not the memo's "Gross Settled"
+//   netSettled       "Net Settled"         DERIVED
+//
+// So "Gross Settled" names the INPUT businessPlaced in the memo and the DERIVED
+// denominator in this file. The label maps in ./model.js are the layer that
+// renders the memo's words; never render a stored id directly.
+//
+// EFFECTIVE DATING: `decreases` is required only on report months >= '2026-09'
+// (P-D2) and is never back-filled. It defaults to 0 through num(), so every
+// legacy call site and every pre-September document derives exactly the number
+// it derived before this term existed — pinned by the Ricardo Duke regression
+// test in __tests__/calculations.test.js. Which model a month is on is decided
+// solely by persistencyModelFor(monthKey) in ./model.js.
 //
 // All monetary amounts are TTD. Persistency is a decimal in [0, 1+] — never
 // a percentage. Multiply by 100 for display.
@@ -46,8 +75,16 @@ const num = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-export function calculateGrossSettled({ businessPlaced, notTakens, incPPPs, lumpsums100 }) {
-  return (num(businessPlaced) - num(notTakens))
+// Returns the memo's "Net Gross Settled" — the persistency DENOMINATOR.
+//
+// `decreases` is the term the 29 Aug 2026 memo adds. It defaults to 0 through
+// num(), so omitting it reproduces the pre-memo result bit for bit. Callers on
+// 24-month-model months MUST pass it; savePersistency refuses such a save when
+// it is missing rather than letting a silent 0 stand in for an unentered figure.
+export function calculateGrossSettled({
+  businessPlaced, notTakens, decreases, incPPPs, lumpsums100,
+}) {
+  return (num(businessPlaced) - num(notTakens) - num(decreases))
     + num(incPPPs)
     + (num(lumpsums100) * LUMPSUMS_FACTOR);
 }
@@ -62,7 +99,8 @@ export function calculatePersistency({ netSettled, grossSettled }) {
   return num(netSettled) / gross;
 }
 
-// Convenience: takes the six raw inputs and returns the full derived shape.
+// Convenience: takes the raw inputs (six on the legacy model, seven with
+// `decreases` on the 24-month model) and returns the full derived shape.
 export function deriveAll(inputs) {
   const grossSettled = calculateGrossSettled(inputs);
   const netSettled = calculateNetSettled({
@@ -126,7 +164,9 @@ export function computeBarStats(records) {
 //     (they are mathematically identical for the persistency calculation).
 //   - newReinstatementsPlanned adds to net settled only (not gross).
 //   - newLapsesAnticipated reduces net settled (not gross).
-//   - goodBusinessFallingOff REDUCES gross settled (rolling 12-month window).
+//   - goodBusinessFallingOff REDUCES gross settled (rolling window — 24
+//     months from Sept 2026, 12 before; see ./model.js). Arithmetic is the
+//     same either way; only the span the caller reckons over changes.
 export function projectPersistency({
   currentGrossSettled,
   currentLapses,

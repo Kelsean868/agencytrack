@@ -493,3 +493,76 @@ describe('calculateShortfall', () => {
     expect(out.noNeeded).toBe(0);
   });
 });
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tatil 24-month model — the `decreases` term (memo of 29 Aug 2026)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('decreases (24-month model term)', () => {
+  // THE REGRESSION PIN. `decreases` is effective-dated: it is required only on
+  // report months >= '2026-09' and is never back-filled. Every pre-September
+  // document and every legacy call site therefore passes the six inputs with no
+  // `decreases` key at all, and MUST derive exactly the number it derived before
+  // the term existed. If this test ever moves, a historical figure has changed.
+  it('is absent from the six-input fixture and leaves every derived figure identical', () => {
+    expect('decreases' in RICARDO).toBe(false);
+
+    expect(calculateGrossSettled(RICARDO)).toBeCloseTo(RICARDO_EXPECTED.grossSettled, 2);
+
+    const derived = deriveAll(RICARDO);
+    expect(derived.grossSettled).toBeCloseTo(RICARDO_EXPECTED.grossSettled, 2);
+    expect(derived.netSettled).toBeCloseTo(RICARDO_EXPECTED.netSettled, 2);
+    expect(derived.persistency).toBeCloseTo(RICARDO_EXPECTED.persistency, 4);
+  });
+
+  it('treats an explicit 0 exactly like an absent decreases', () => {
+    expect(calculateGrossSettled({ ...RICARDO, decreases: 0 }))
+      .toBe(calculateGrossSettled(RICARDO));
+  });
+
+  it('SUBTRACTS from the denominator (it is not another additive term)', () => {
+    const withDecreases = calculateGrossSettled({ ...RICARDO, decreases: 10000 });
+    expect(withDecreases).toBeCloseTo(RICARDO_EXPECTED.grossSettled - 10000, 2);
+  });
+
+  it('subtracts alongside notTakens rather than replacing it', () => {
+    // Memo: Net Gross Settled = Gross Settled − Not Takens − Decreases
+    //                           + Increases + 10% Lumpsums
+    const result = calculateGrossSettled({
+      businessPlaced: 100000,
+      notTakens:       10000,
+      decreases:        5000,
+      incPPPs:          2000,
+      lumpsums100:     50000,
+    });
+    // 100000 − 10000 − 5000 + 2000 + 5000
+    expect(result).toBe(92000);
+  });
+
+  it('lowers persistency when decreases rise, all else equal', () => {
+    // Decreases shrink the denominator while lapses/reinstatements are fixed,
+    // so the ratio must fall — a sign error here would raise it.
+    const before = deriveAll(RICARDO).persistency;
+    const after  = deriveAll({ ...RICARDO, decreases: 50000 }).persistency;
+    expect(after).toBeLessThan(before);
+  });
+
+  it('flows through deriveAll into netSettled, not only grossSettled', () => {
+    const d = deriveAll({ ...RICARDO, decreases: 10000 });
+    expect(d.grossSettled).toBeCloseTo(RICARDO_EXPECTED.grossSettled - 10000, 2);
+    expect(d.netSettled).toBeCloseTo(RICARDO_EXPECTED.netSettled - 10000, 2);
+  });
+
+  it('coerces a numeric string, like every other input', () => {
+    expect(calculateGrossSettled({ ...RICARDO, decreases: '10000' }))
+      .toBeCloseTo(RICARDO_EXPECTED.grossSettled - 10000, 2);
+  });
+
+  it('treats null / empty string / garbage as 0 via num()', () => {
+    const base = calculateGrossSettled(RICARDO);
+    for (const v of [null, undefined, '', 'abc', NaN]) {
+      expect(calculateGrossSettled({ ...RICARDO, decreases: v })).toBeCloseTo(base, 2);
+    }
+  });
+});

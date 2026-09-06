@@ -15,6 +15,7 @@ import {
   getAvailableMonths,
 } from '../../services/persistencyService';
 import PersistencyEntryForm from '../manager/PersistencyEntryForm';
+import { persistencyModelFor } from '../../lib/persistency/model';
 import PersistencyPlayground from '../persistency/PersistencyPlayground';
 import PersistencyV2Shell from '../persistency/PersistencyV2Shell';
 import PanelSkeleton from '../ui/PanelSkeleton';
@@ -67,6 +68,16 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
   }, [history]);
 
   const currentRecord = activeMonthKey ? recordByMonth[activeMonthKey] : null;
+
+  // How many figures the self-entry form will ask for depends on the month's
+  // model — six on the legacy model, seven from September 2026. Kept in step
+  // with the form rather than hardcoded, so the copy cannot promise a count the
+  // form does not show. Null before a month is selected: the sentence then omits
+  // the count instead of guessing one.
+  const inputCountWord = useMemo(() => {
+    if (!/^\d{4}-\d{2}$/.test(String(activeMonthKey))) return null;
+    return { 6: 'six', 7: 'seven' }[persistencyModelFor(activeMonthKey).inputs.length] ?? null;
+  }, [activeMonthKey]);
   const currentDecimal = currentRecord?.persistency ?? null;
   const meetsGate = (currentDecimal ?? 0) >= 0.90;
 
@@ -238,7 +249,7 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
             <p className="text-sm text-ink mt-1">
               {lockedByManager
                 ? 'Your manager has entered figures for this month. View only.'
-                : 'Enter the six business figures from the Tatil monthly report. Persistency is derived automatically.'}
+                : `Enter the ${inputCountWord ? `${inputCountWord} ` : ''}business figures from the Tatil monthly report. Persistency is derived automatically.`}
             </p>
           </div>
           <button
