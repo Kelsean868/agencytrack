@@ -7,7 +7,7 @@
  *
  * Requires: Java JDK 17+ for the Firestore emulator.
  *
- * Test matrix (16 cases):
+ * Test matrix (22 cases):
  *   allow list
  *     1. In-tenant signed-in user lists → ALLOW (intentionally permissive)
  *     2. Cross-tenant auth lists → DENY
@@ -31,6 +31,10 @@
  *    14. Agent creates doc for another agent → DENY
  *    15. BM creates doc with negative businessPlaced → DENY (invalid inputs)
  *    16. UM create → DENY (UM not in create/update allow-list)
+ *    19. BM creates doc with negative decreases → DENY (new 24-month input)
+ *    20. BM creates doc with decreases: 0 → ALLOW
+ *    21. BM creates doc with NO decreases at all → ALLOW (legacy month)
+ *    22. BM creates doc with a positive decreases → ALLOW
  *
  *   allow delete
  *    17. BM delete → DENY (allow delete: if false)
@@ -251,6 +255,44 @@ async function main() {
       persistRef(db, `${AGENT1_ID}_2026_06`),
       { ...validDoc(AGENT1_ID, 'unit_manager', UM1_ID) },
     ));
+  });
+
+  // decreases — the seventh money input (Tatil memo, 29 Aug 2026).
+  //
+  // The rule clause is "absent OR >= 0". These cases pin every branch of it,
+  // and case 21 is the one that matters most: it proves the additive guard did
+  // NOT break writes for pre-September documents, which never carry the field.
+  console.log('\ndecreases (24-month model input):');
+
+  await t('19. BM creates doc with negative decreases → DENY (invalid input)', async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    const invalidDoc = { ...validDoc(AGENT1_ID, 'branch_manager', BM1_ID), decreases: -1 };
+    await assertFails(setDoc(persistRef(db, `${AGENT1_ID}_2026_09`), invalidDoc));
+  });
+
+  await t('20. BM creates doc with decreases: 0 → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    const validWithZero = { ...validDoc(AGENT1_ID, 'branch_manager', BM1_ID), decreases: 0 };
+    await assertSucceeds(setDoc(persistRef(db, `${AGENT1_ID}_2026_10`), validWithZero));
+  });
+
+  await t('21. BM creates doc with NO decreases → ALLOW (legacy month, field absent)', async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    const legacyDoc = validDoc(AGENT1_ID, 'branch_manager', BM1_ID);
+    if ('decreases' in legacyDoc) {
+      throw new Error('fixture regression: validDoc must omit decreases');
+    }
+    await assertSucceeds(setDoc(persistRef(db, `${AGENT1_ID}_2026_11`), legacyDoc));
+  });
+
+  await t('22. BM creates doc with a positive decreases + modelId → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    const withDecreases = {
+      ...validDoc(AGENT1_ID, 'branch_manager', BM1_ID),
+      decreases: 5000,
+      modelId: 'tatil24',
+    };
+    await assertSucceeds(setDoc(persistRef(db, `${AGENT1_ID}_2026_12`), withDecreases));
   });
 
   // ── allow delete ────────────────────────────────────────────────────────────

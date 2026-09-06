@@ -7,25 +7,53 @@ import { X, Lock, AlertCircle } from 'lucide-react';
 import SaveButton from '../ui/SaveButton';
 import { savePersistency } from '../../services/persistencyService';
 import { deriveAll } from '../../lib/persistency/calculations';
+import { persistencyModelFor } from '../../lib/persistency/model';
 import { formatCurrency } from '../../utils/formatters';
 
-const FIELDS = [
-  { id: 'businessPlaced',  label: 'Business Placed',          help: 'Total new business placed during the 12-month period.' },
-  { id: 'notTakens',       label: 'Not Takens',               help: 'Business reversed by the client before in-force.' },
-  { id: 'incPPPs',         label: '12-Month Inc PPPs',        help: 'Premium Payment Plan increases over the period.' },
-  { id: 'lumpsums100',     label: 'Lumpsums (100%)',          help: 'Total face-value lumpsums; the calculation applies 10%.' },
-  { id: 'lapses',          label: 'Lapses',                   help: 'Business that lapsed during the period.' },
-  { id: 'reinstatements',  label: 'Reinstatements',           help: 'Lapsed business reinstated during the period.' },
-];
+// Which inputs this form shows is decided by the report month, not by a prop:
+// six on the legacy model, seven (adding `decreases`) from September 2026.
+// Labels come from the model too — see lib/persistency/model.js, which is also
+// where the memo-vs-stored-id name collisions are documented.
+//
+// `{N}` interpolates the model's window length so the help copy cannot drift
+// out of step with the window the period is actually reckoned over.
+const HELP_BY_ID = {
+  businessPlaced: 'Total new business placed during the {N}-month period.',
+  notTakens:      'Business reversed by the client before in-force.',
+  decreases:      'Premium decreases on policies within the 24-month window.',
+  incPPPs:        'Premium Payment Plan increases over the period.',
+  lumpsums100:    'Total face-value lumpsums; the calculation applies 10%.',
+  lapses:         'Business that lapsed during the period.',
+  reinstatements: 'Lapsed business reinstated during the period.',
+};
 
-function emptyInputs() {
-  return FIELDS.reduce((acc, f) => ({ ...acc, [f.id]: '' }), {});
+const MONTH_KEY_RE = /^\d{4}-\d{2}$/;
+
+// persistencyModelFor throws on a malformed monthKey (deliberately — a silent
+// fallback on a money surface would render a plausible wrong form). This form is
+// always mounted with a real month, so the null here is a render guard, not a
+// fallback model: no month, no form, rather than the wrong month's fields.
+function modelOrNull(monthKey) {
+  return MONTH_KEY_RE.test(String(monthKey)) ? persistencyModelFor(monthKey) : null;
 }
 
-function loadInitial(record) {
-  if (!record) return emptyInputs();
-  const out = emptyInputs();
-  for (const f of FIELDS) {
+function fieldsForModel(model) {
+  if (!model) return [];
+  return model.inputs.map((id) => ({
+    id,
+    label: model.labels[id],
+    help:  HELP_BY_ID[id].replace('{N}', String(model.windowMonths)),
+  }));
+}
+
+function emptyInputs(fields) {
+  return fields.reduce((acc, f) => ({ ...acc, [f.id]: '' }), {});
+}
+
+function loadInitial(record, fields) {
+  if (!record) return emptyInputs(fields);
+  const out = emptyInputs(fields);
+  for (const f of fields) {
     const v = record[f.id];
     out[f.id] = v == null ? '' : String(v);
   }
@@ -48,7 +76,10 @@ export default function PersistencyEntryForm({
   onClose,
   onSaved,
 }) {
-  const [inputs, setInputs] = useState(() => loadInitial(existingRecord));
+  const model  = useMemo(() => modelOrNull(monthKey), [monthKey]);
+  const fields = useMemo(() => fieldsForModel(model), [model]);
+
+  const [inputs, setInputs] = useState(() => loadInitial(existingRecord, fieldsForModel(modelOrNull(monthKey))));
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
 
@@ -62,26 +93,26 @@ export default function PersistencyEntryForm({
 
   const numericInputs = useMemo(() => {
     const parsed = {};
-    for (const f of FIELDS) {
+    for (const f of fields) {
       const n = parseFloat(inputs[f.id]);
       parsed[f.id] = Number.isFinite(n) ? n : 0;
     }
     return parsed;
-  }, [inputs]);
+  }, [inputs, fields]);
 
   const derived = useMemo(() => deriveAll(numericInputs), [numericInputs]);
 
   const validation = useMemo(() => {
-    for (const f of FIELDS) {
+    for (const f of fields) {
       const raw = inputs[f.id];
-      if (raw === '') return { ok: false, field: f.id, msg: 'Required' };
+      if (raw === '') return { ok: false, field: f.id, msg: `${f.label} is required` };
       const n = parseFloat(raw);
       if (!Number.isFinite(n) || n < 0) {
-        return { ok: false, field: f.id, msg: 'Must be a non-negative number' };
+        return { ok: false, field: f.id, msg: `${f.label} must be a non-negative number` };
       }
     }
     return { ok: true };
-  }, [inputs]);
+  }, [inputs, fields]);
 
   const handleSubmit = async (e) => {
     if (e?.preventDefault) e.preventDefault();
@@ -100,6 +131,10 @@ export default function PersistencyEntryForm({
       setSaving(false);
     }
   };
+
+  // AFTER every hook, so the hook order never varies. No month → no form; the
+  // alternative would be guessing a model and rendering the wrong month's fields.
+  if (!model) return null;
 
   return (
     <div
@@ -152,9 +187,10 @@ export default function PersistencyEntryForm({
             </p>
           </div>
 
-          {/* Six inputs — 2-column grid */}
-          <div className="grid grid-cols-2 gap-3">
-            {FIELDS.map((f) => (
+          {/* Model inputs — 2-column grid. Six on the legacy model, seven from
+              September 2026 (the memo's `decreases`). */}
+          <div className="grid grid-cols-2 gap-3" data-testid={`persistency-inputs-${model.id}`}>
+            {fields.map((f) => (
               <div key={f.id} className="flex flex-col gap-1">
                 <label htmlFor={`pers-${f.id}`} className="text-xs font-semibold text-ink">
                   {f.label} <span className="text-ink-muted font-normal">(TTD)</span>
@@ -183,11 +219,11 @@ export default function PersistencyEntryForm({
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Derived</p>
             <div className="grid grid-cols-3 gap-2 text-xs">
               <div>
-                <p className="text-ink-muted">Gross Settled</p>
+                <p className="text-ink-muted">{model.labels.grossSettled}</p>
                 <p className="font-semibold text-ink" data-testid="derived-gross">{formatCurrency(derived.grossSettled)}</p>
               </div>
               <div>
-                <p className="text-ink-muted">Net Settled</p>
+                <p className="text-ink-muted">{model.labels.netSettled}</p>
                 <p className="font-semibold text-ink" data-testid="derived-net">{formatCurrency(derived.netSettled)}</p>
               </div>
               <div>

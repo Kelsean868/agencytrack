@@ -572,6 +572,14 @@ service cloud.firestore {
         function callerBranchId() {
           return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.branchId;
         }
+        // `decreases` is the seventh money input, added by the Tatil memo of
+        // 29 Aug 2026 and required by the app only on report months >= '2026-09'
+        // (see src/lib/persistency/model.js). The clause is written as
+        // "absent OR non-negative" ON PURPOSE: pre-September documents never
+        // carry the field and must keep validating exactly as they did, so
+        // requiring it here would reject every legacy write. Which months
+        // require it is enforced in savePersistency, not in rules — rules only
+        // guarantee that if the field IS written, it is not negative.
         function validE3InputsNonNegative() {
           return request.resource.data.businessPlaced  >= 0
               && request.resource.data.notTakens       >= 0
@@ -579,6 +587,8 @@ service cloud.firestore {
               && request.resource.data.lumpsums100     >= 0
               && request.resource.data.lapses          >= 0
               && request.resource.data.reinstatements  >= 0
+              && (!('decreases' in request.resource.data)
+                  || request.resource.data.decreases   >= 0)
               && request.resource.data.tenantId == tenantId
               && request.resource.data.lastEditedByRole == getRole()
               && request.resource.data.lastEditedBy == request.auth.uid;

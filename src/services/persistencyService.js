@@ -9,6 +9,11 @@
 // Legacy filter: pre-E3 docs (lacking the six business-input fields) are silently
 // hidden via isE3Doc(). They never reach the UI, no warning, no "needs re-entry"
 // state — just hidden until overwritten by an E3 write.
+//
+// Model filter: reads additionally require the doc to be complete for the model
+// its own report month is on — see isModelCompleteDoc(). From September 2026 the
+// Tatil 24-month model adds `decreases`, so a September doc without it is hidden
+// on the same silent terms rather than deriving a denominator from a phantom 0.
 
 import {
   doc, getDoc, getDocs, setDoc,
@@ -17,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { deriveAll, PERS_GATE } from '../lib/persistency/calculations';
+import { persistencyModelFor } from '../lib/persistency/model';
 import { getTenantUsers } from './managerService';
 
 // The six business-input fields that mark a doc as E3-shaped. A doc lacking
@@ -47,6 +53,35 @@ export function isE3Doc(d) {
   return E3_FIELDS.every((f) => d[f] !== undefined && d[f] !== null);
 }
 
+const MONTH_KEY_RE = /^\d{4}-\d{2}$/;
+
+// Is this doc complete for the model its own report month is on?
+//
+// Legacy months: the six E3 fields are the whole requirement, unchanged.
+// 24-month-model months (>= '2026-09'): the doc must ALSO carry `decreases` as
+// a finite number >= 0 — the one term the 29 Aug 2026 Tatil memo adds. A
+// September doc without it would derive a denominator that silently treats an
+// unentered figure as zero, so it is hidden rather than rendered.
+//
+// This is the predicate READS filter on. `isE3Doc` stays exported unchanged for
+// the existing tests and for SCOPE-2.
+//
+// NEVER THROWS: it filters untrusted Firestore documents, so an unclassifiable
+// monthKey must not take out a whole list render. A doc with no usable monthKey
+// is treated as legacy — and that fallback cannot mislabel a 24-month doc,
+// because every 24-month doc is written by savePersistency, which validates the
+// key and always stores it. So the fallback only ever keeps an already-visible
+// legacy record visible.
+export function isModelCompleteDoc(d) {
+  if (!isE3Doc(d)) return false;
+  const monthKey = d.monthKey;
+  if (typeof monthKey !== 'string' || !MONTH_KEY_RE.test(monthKey)) return true;
+  if (persistencyModelFor(monthKey).id !== 'tatil24') return true;
+  return typeof d.decreases === 'number'
+    && Number.isFinite(d.decreases)
+    && d.decreases >= 0;
+}
+
 export function monthKeyFromYearMonth(year, month) {
   return `${year}-${String(month).padStart(2, '0')}`;
 }
@@ -62,13 +97,24 @@ export function persistencyDocId(agentUid, monthKey) {
   return `${agentUid}_${String(monthKey).replace('-', '_')}`;
 }
 
-// 12-month rolling period ENDING in monthKey.
-//   '2026-02' → start '2025-03-01', end '2026-02-28'
-//   '2026-12' → start '2026-01-01', end '2026-12-31'
+// Rolling report period ENDING in monthKey. The span comes from the model the
+// month is on — 12 months before Sept 2026, 24 from Sept 2026 (see
+// lib/persistency/model.js). The end date is unaffected by the model.
+//   '2026-02' → 12-month: start '2025-03-01', end '2026-02-28'
+//   '2026-08' → 12-month: start '2025-09-01', end '2026-08-31'
+//   '2026-09' → 24-month: start '2024-10-01', end '2026-09-30'
+//   '2026-12' → 24-month: start '2025-01-01', end '2026-12-31'
 export function reportPeriodFromMonthKey(monthKey) {
   const { year, month } = parseMonthKey(monthKey);
-  const startYear  = month === 12 ? year     : year - 1;
-  const startMonth = month === 12 ? 1        : month + 1;
+  const { windowMonths } = persistencyModelFor(monthKey);
+
+  // Absolute month index makes the year rollover fall out of the arithmetic,
+  // instead of needing a special case per window length.
+  const endIndex   = (year * 12) + (month - 1);
+  const startIndex = endIndex - (windowMonths - 1);
+  const startYear  = Math.floor(startIndex / 12);
+  const startMonth = (startIndex % 12) + 1;
+
   const start = `${startYear}-${String(startMonth).padStart(2, '0')}-01`;
   const lastDay = new Date(year, month, 0).getDate();
   const end = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
@@ -91,7 +137,7 @@ export async function getPersistencyForAgent(tenantId, monthKey, agentUid) {
   const snap = await getDoc(persistencyDocRef(tenantId, agentUid, monthKey));
   if (!snap.exists()) return null;
   const data = { id: snap.id, ...snap.data() };
-  return isE3Doc(data) ? data : null;
+  return isModelCompleteDoc(data) ? data : null;
 }
 
 async function getPersistencyForUserList(tenantId, monthKey, userList) {
@@ -105,7 +151,7 @@ async function getPersistencyForUserList(tenantId, monthKey, userList) {
         const snap = await getDoc(ref);
         if (!snap.exists()) return null;
         const data = { id: snap.id, ...snap.data() };
-        return isE3Doc(data) ? { ...data, _user: u } : null;
+        return isModelCompleteDoc(data) ? { ...data, _user: u } : null;
       } catch {
         // Reads denied by rules return null — caller treats as "no record."
         return null;
@@ -138,6 +184,17 @@ export async function getPersistencyForTenant(tenantId, monthKey) {
 // by agentId. For other scopes, queries the tenant collection (rules apply).
 // If no E3 docs exist, returns the current month so the UI selector still has
 // at least one option.
+//
+// DELIBERATELY isE3Doc, NOT isModelCompleteDoc — this builds the month SELECTOR,
+// which is navigation, not a record read. Filtering it on model-completeness
+// would strand data: a September 2026 document written on the six-field code
+// (before the 24-month model shipped) carries no `decreases`, so a
+// model-complete filter would drop its month from the selector entirely — and
+// with no "add a month" affordance anywhere in the UI, that month could never be
+// selected again to be corrected. Keeping the month listed while
+// isModelCompleteDoc hides the RECORD gives the manager exactly the state they
+// need: the month is reachable and reads as having no entry, so re-entering it
+// through the seven-field form fixes it.
 export async function getAvailableMonths(tenantId, scopeType, scopeId) {
   let q;
   if (scopeType === 'agent') {
@@ -198,7 +255,7 @@ export async function getPersistencyMapForYear(tenantId, year, opts = {}) {
       const snap = await getDocs(q);
       snap.docs.forEach((d) => {
         const rec = d.data();
-        if (!isE3Doc(rec)) return;
+        if (!isModelCompleteDoc(rec)) return;
         (map[rec.agentId] = map[rec.agentId] ?? []).push(rec);
       });
     } catch {
@@ -233,7 +290,7 @@ export async function getPersistencyForAgentIds(tenantId, year, agentIds) {
       const snap = await getDocs(q);
       snap.docs.forEach((d) => {
         const rec = d.data();
-        if (!isE3Doc(rec)) return;
+        if (!isModelCompleteDoc(rec)) return;
         (map[rec.agentId] = map[rec.agentId] ?? []).push(rec);
       });
     } catch {
@@ -250,7 +307,7 @@ export async function getAgentHistory(tenantId, agentUid, lastNMonths = 12) {
   const snap = await getDocs(q);
   const records = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .filter(isE3Doc)
+    .filter(isModelCompleteDoc)
     .sort((a, b) => String(a.monthKey).localeCompare(String(b.monthKey)));
   return records.slice(-lastNMonths);
 }
@@ -274,10 +331,23 @@ export async function savePersistency(tenantId, monthKey, agentUid, inputs, role
   }
   if (!agentUid) throw new Error('savePersistency: agentUid required');
 
-  // Coerce + validate the six numeric inputs. parseFloat enforced (project rule).
+  // Which inputs this month requires is the model's call, not the caller's:
+  // six on the legacy model, seven (plus `decreases`) from September 2026.
+  const model = persistencyModelFor(monthKey);
+
+  // Coerce + validate the numeric inputs. parseFloat enforced (project rule).
+  // A MISSING required input is rejected explicitly rather than being coerced to
+  // 0 — on a 24-month-model month an absent `decreases` is an unentered figure,
+  // and writing 0 for it would inflate the denominator and the persistency the
+  // award gates read.
   const sanitized = {};
-  for (const f of E3_FIELDS) {
+  for (const f of model.inputs) {
     const raw = inputs?.[f];
+    if (raw === undefined || raw === null || raw === '') {
+      throw new Error(
+        `savePersistency: ${f} is required on the ${model.id} model (month ${monthKey})`,
+      );
+    }
     const n = parseFloat(raw);
     if (!Number.isFinite(n) || n < 0) {
       throw new Error(`savePersistency: ${f} must be a non-negative number (got "${raw}")`);
@@ -303,6 +373,10 @@ export async function savePersistency(tenantId, monthKey, agentUid, inputs, role
     reportPeriodStart: period.reportPeriodStart,
     reportPeriodEnd:   period.reportPeriodEnd,
     ...sanitized,
+    // Display-only provenance. Additive: absent on legacy docs. NOTHING branches
+    // on it — persistencyModelFor(monthKey) is the authority, so a doc whose
+    // modelId disagreed with its monthKey would still be read on the month's model.
+    ...(model.id === 'tatil24' ? { modelId: model.id } : {}),
     grossSettled: derived.grossSettled,
     netSettled:   derived.netSettled,
     persistency:  derived.persistency,
@@ -312,6 +386,9 @@ export async function savePersistency(tenantId, monthKey, agentUid, inputs, role
     lastEditedByRole: role,
   };
 
+  // Deliberately isE3Doc, NOT isModelCompleteDoc: this asks "was there a real
+  // prior entry whose audit fields must be preserved?" A doc that is E3-shaped
+  // but model-incomplete still has an enteredAt/By worth carrying forward.
   if (existing.exists() && isE3Doc(existing.data())) {
     const prior = existing.data();
     await setDoc(docRef, {
