@@ -114,6 +114,19 @@ describe('PersistencyEntryForm', () => {
     expect(screen.getByRole('button', { name: /save.*lock.*February/i })).toBeInTheDocument();
   });
 
+  it('shows the award-gate copy templated on PERS_GATE_PCT, not a hardcoded literal', () => {
+    render(<PersistencyEntryForm {...DEFAULT_PROPS} />);
+    for (const [field, value] of Object.entries({
+      businessPlaced: 1000000, notTakens: 0, incPPPs: 0, lumpsums100: 0,
+      lapses: 50000, reinstatements: 10000, // -> persistency 0.96, >= PERS_GATE
+    })) {
+      fireEvent.change(screen.getByTestId(`persistency-input-${field}`), {
+        target: { value: String(value) },
+      });
+    }
+    expect(screen.getByText('Meets 90% award gate')).toBeInTheDocument();
+  });
+
   it('calls savePersistency with monthKey + agentUid + numeric inputs + role', async () => {
     const onSaved = vi.fn();
     hoisted.savePersistency.mockResolvedValueOnce(undefined);
@@ -256,6 +269,47 @@ describe('PersistencyEntryForm — 24-month model month (2026-09)', () => {
       target: { value: '100000' },
     });
     expect(screen.getByTestId('derived-gross').textContent).not.toBe(before);
+  });
+
+  // P1b P-D10 — the negative-denominator guard shown inline, without a round-trip.
+  it('shows the negative-denominator message inline once decreases outruns gross settled', () => {
+    render(<PersistencyEntryForm {...SEP_PROPS} />);
+    fillRicardo(); // businessPlaced 357468.84 and friends
+    fireEvent.change(screen.getByTestId('persistency-input-decreases'), {
+      target: { value: '5000000' }, // far larger than businessPlaced -> negative gross
+    });
+    expect(screen.getByTestId('negative-denominator-warning')).toHaveTextContent(
+      'Net Gross Settled is negative — check Decreases against Gross Settled.',
+    );
+  });
+
+  it('disables save while the derived denominator is negative, and never calls savePersistency', () => {
+    render(<PersistencyEntryForm {...SEP_PROPS} />);
+    fillRicardo();
+    fireEvent.change(screen.getByTestId('persistency-input-decreases'), {
+      target: { value: '5000000' },
+    });
+    fireEvent.submit(screen.getByTestId('persistency-entry-form').querySelector('form'));
+    expect(hoisted.savePersistency).not.toHaveBeenCalled();
+    // Both the proactive inline message and the post-submit error box render the
+    // same text, so two matches is the expected (not ambiguous) outcome here.
+    expect(screen.getAllByText(/Net Gross Settled is negative/i).length).toBeGreaterThan(0);
+  });
+
+  it('accepts a zero derived denominator (decreases exactly offsetting gross) with no warning', () => {
+    render(<PersistencyEntryForm {...SEP_PROPS} />);
+    // All-integer inputs so grossSettled lands on exactly 0, not a float-epsilon
+    // sliver either side of it: 100000 - 0 - 100000 + 0 + 0*0.1 = 0.
+    for (const [field, value] of Object.entries({
+      businessPlaced: 100000, notTakens: 0, incPPPs: 0, lumpsums100: 0,
+      lapses: 0, reinstatements: 0, decreases: 100000,
+    })) {
+      fireEvent.change(screen.getByTestId(`persistency-input-${field}`), {
+        target: { value: String(value) },
+      });
+    }
+    expect(screen.queryByTestId('negative-denominator-warning')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save.*lock/i })).not.toBeDisabled();
   });
 });
 

@@ -7,12 +7,19 @@ const hoisted = vi.hoisted(() => ({
   mockGetDoc:  vi.fn(),
   mockGetDocs: vi.fn(),
   mockSetDoc:  vi.fn(),
+  // Far from every fixture monthKey in this file (all 2024-2026) so tests that
+  // never touch getAvailableMonths are unaffected by this default.
+  mockGetTodayTT: vi.fn(() => '2000-01-15'),
 }));
-const { mockAuth, mockGetDoc, mockGetDocs, mockSetDoc } = hoisted;
+const { mockAuth, mockGetDoc, mockGetDocs, mockSetDoc, mockGetTodayTT } = hoisted;
 
 vi.mock('../../firebase', () => ({
   db: {},
   auth: hoisted.mockAuth,
+}));
+
+vi.mock('../../utils/dateInputs', () => ({
+  getTodayTT: (...args) => hoisted.mockGetTodayTT(...args),
 }));
 
 vi.mock('firebase/firestore', () => ({
@@ -247,27 +254,61 @@ describe('getPersistencyForBranch', () => {
 });
 
 describe('getAvailableMonths', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetTodayTT.mockReturnValue('2000-01-15'); // restore the unrelated-fixture default
+  });
 
-  it('returns distinct E3 monthKeys sorted newest-first', async () => {
+  // P1b brief §3 item 1 — the three getAvailableMonths cases, verbatim.
+
+  it('unions doc-derived months with the current TT month + two prior (TT today 2026-10-03)', async () => {
+    mockGetTodayTT.mockReturnValue('2026-10-03');
     mockGetDocs.mockResolvedValueOnce({
       forEach(cb) {
         [
-          { data: () => ({ ...E3_INPUTS, monthKey: '2026-01' }) },
-          { data: () => ({ ...E3_INPUTS, monthKey: '2026-02' }) },
-          { data: () => ({ ...E3_INPUTS, monthKey: '2026-01' }) },     // duplicate
+          { data: () => ({ ...E3_INPUTS, monthKey: '2026-05' }) },
+          { data: () => ({ ...E3_INPUTS, monthKey: '2026-06' }) },
+          { data: () => ({ ...E3_INPUTS, monthKey: '2026-05' }) },     // duplicate
           { data: () => ({                  monthKey: '2025-12' }) },  // pre-E3 — filtered
         ].forEach(cb);
       },
     });
-    expect(await getAvailableMonths('tenant1', 'tenant', 'tenant1')).toEqual(['2026-02', '2026-01']);
+    const result = await getAvailableMonths('tenant1', 'tenant', 'tenant1');
+    expect(result).toEqual(['2026-10', '2026-09', '2026-08', '2026-06', '2026-05']);
   });
 
-  it('returns current month as fallback when no E3 docs exist', async () => {
+  it('returns just the three-month TT window when no E3 docs exist (no docs sentinel/fallback needed)', async () => {
+    mockGetTodayTT.mockReturnValue('2026-10-03');
     mockGetDocs.mockResolvedValueOnce({ forEach: () => {} });
     const result = await getAvailableMonths('tenant1', 'tenant', 'tenant1');
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatch(/^\d{4}-\d{2}$/);
+    expect(result).toEqual(['2026-10', '2026-09', '2026-08']);
+  });
+
+  it('de-dupes a month present in both the doc set and the current TT window', async () => {
+    mockGetTodayTT.mockReturnValue('2026-10-03');
+    mockGetDocs.mockResolvedValueOnce({
+      forEach(cb) {
+        [
+          { data: () => ({ ...E3_INPUTS, monthKey: '2026-09' }) }, // also in the window
+          { data: () => ({ ...E3_INPUTS, monthKey: '2026-01' }) },
+        ].forEach(cb);
+      },
+    });
+    const result = await getAvailableMonths('tenant1', 'tenant', 'tenant1');
+    expect(result).toEqual(['2026-10', '2026-09', '2026-08', '2026-01']);
+    expect(result.filter((m) => m === '2026-09')).toHaveLength(1);
+  });
+
+  it('derives the window from getTodayTT (TT calendar day), not new Date()', async () => {
+    // Regression guard for the UTC trap the brief calls out: `new Date()` is
+    // the previous day (UTC) for four hours every TT evening. getAvailableMonths
+    // must consult getTodayTT(), never construct its own Date.
+    mockGetTodayTT.mockReturnValue('2026-01-01');
+    mockGetDocs.mockResolvedValueOnce({ forEach: () => {} });
+    const result = await getAvailableMonths('tenant1', 'tenant', 'tenant1');
+    // Window wraps year boundary: Jan, Dec (prior year), Nov (prior year).
+    expect(result).toEqual(['2026-01', '2025-12', '2025-11']);
+    expect(mockGetTodayTT).toHaveBeenCalled();
   });
 });
 
@@ -605,14 +646,61 @@ describe('savePersistency on the 24-month model', () => {
   });
 });
 
+// P1b brief §3 item 2 (P-D10) — the two savePersistency negative-denominator cases, verbatim.
+describe('savePersistency — negative-denominator guard (P-D10)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuth.currentUser = { uid: 'writer-uid' };
+  });
+
+  it('refuses a save when the derived Net Gross Settled is negative', async () => {
+    const inputs = {
+      businessPlaced: 1000, notTakens: 0, decreases: 1500,
+      incPPPs: 0, lumpsums100: 0, lapses: 0, reinstatements: 0,
+    };
+    // grossSettled = 1000 - 0 - 1500 + 0 + 0 = -500
+    await expect(
+      savePersistency('tenant1', '2026-09', 'agent-1', inputs, 'agent'),
+    ).rejects.toThrow('Net Gross Settled is negative — check Decreases against Gross Settled.');
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('accepts a zero derived Net Gross Settled and stores persistency: 0', async () => {
+    mockGetDoc.mockResolvedValueOnce({ exists: () => false });
+    mockSetDoc.mockResolvedValueOnce(undefined);
+
+    const inputs = {
+      businessPlaced: 1000, notTakens: 0, decreases: 1000,
+      incPPPs: 0, lumpsums100: 0, lapses: 0, reinstatements: 0,
+    };
+    // grossSettled = 1000 - 0 - 1000 + 0 + 0 = 0 — today's calculatePersistency
+    // behaviour (0 stays 0) is unchanged; only a NEGATIVE gross is refused.
+    const result = await savePersistency('tenant1', '2026-09', 'agent-1', inputs, 'agent');
+
+    expect(result.grossSettled).toBe(0);
+    expect(result.persistency).toBe(0);
+    expect(mockSetDoc.mock.calls[0][1].persistency).toBe(0);
+  });
+});
+
 describe('getAvailableMonths — model-incomplete months stay reachable', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // vi.clearAllMocks() clears call history but NOT a prior mockReturnValue —
+    // restore the safe unrelated-fixture default explicitly so the preceding
+    // describe block's TT-window overrides can never leak into this one.
+    mockGetTodayTT.mockReturnValue('2000-01-15');
+  });
 
   it('still lists a September month whose doc predates the decreases term', async () => {
     // The stranding trap: a 2026-09 doc written on the six-field code has no
     // `decreases`, so isModelCompleteDoc hides the RECORD. If the month selector
     // used the same filter, the month would vanish — and with no "add a month"
     // affordance in the UI, it could never be selected again to be corrected.
+    // TT "today" is pinned inside September so the P1b 3-month window (Sep/Aug/Jul)
+    // is exactly what's asserted below — the window is unconditional now, so this
+    // list is the doc months UNION the window, not the doc months alone.
+    mockGetTodayTT.mockReturnValue('2026-09-06');
     mockGetDocs.mockResolvedValueOnce({
       forEach: (fn) => {
         [
@@ -625,7 +713,7 @@ describe('getAvailableMonths — model-incomplete months stay reachable', () => 
     const months = await getAvailableMonths('tenant1', 'agent', 'agent-1');
 
     expect(months).toContain('2026-09');
-    expect(months).toEqual(['2026-09', '2026-08']); // newest first
+    expect(months).toEqual(['2026-09', '2026-08', '2026-07']); // newest first
   });
 
   it('still hides that month’s record from the reads that show figures', async () => {
