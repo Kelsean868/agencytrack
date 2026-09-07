@@ -264,6 +264,9 @@ try {
       const options = await monthSelect.locator('option').evaluateAll(
         (els) => els.map((e) => e.value).filter((v) => /^\d{4}-\d{2}$/.test(v)),
       ).catch(() => []);
+      // P1b evidence line (brief §4): printed unconditionally so a paste-back
+      // always has it, regardless of which branch below executes.
+      console.log(`${stamp()} INFO  [manager] month select options: ${options.join(', ') || 'none'}`);
       const legacyMonth = options.filter((m) => m < MODEL_EFFECTIVE_FROM).sort().reverse()[0];
       record('[manager] tenant has a pre-September month to open',
         Boolean(legacyMonth), legacyMonth ? legacyMonth : `months seen: ${options.join(', ') || 'none'}`);
