@@ -24,6 +24,7 @@ import { db, auth } from '../firebase';
 import { deriveAll, PERS_GATE } from '../lib/persistency/calculations';
 import { persistencyModelFor } from '../lib/persistency/model';
 import { getTenantUsers } from './managerService';
+import { getTodayTT } from '../utils/dateInputs';
 
 // The six business-input fields that mark a doc as E3-shaped. A doc lacking
 // any of these is pre-E3 and is filtered out before reaching any UI consumer.
@@ -208,11 +209,26 @@ export async function getAvailableMonths(tenantId, scopeType, scopeId) {
     const data = d.data();
     if (isE3Doc(data) && data.monthKey) monthKeys.add(data.monthKey);
   });
-  const sorted = Array.from(monthKeys).sort().reverse();
-  if (sorted.length === 0) {
-    const now = new Date();
-    sorted.push(monthKeyFromYearMonth(now.getFullYear(), now.getMonth() + 1));
+
+  // P1b: always offer an entry window — the current TT month plus the two
+  // before it — union'd with whatever months already have data. Tatil's
+  // monthly report lags by weeks, so without this a manager can never reach
+  // the current month once the last-entered month falls behind it: there is
+  // no "add month" control anywhere in the UI. getTodayTT() (TT calendar day),
+  // NOT `new Date()` — UTC reads as the previous day for four hours every
+  // evening in Trinidad, which would silently offer the wrong window.
+  const [todayYear, todayMonth] = getTodayTT().split('-').map(Number);
+  for (let i = 0; i < 3; i += 1) {
+    let month = todayMonth - i;
+    let year = todayYear;
+    while (month <= 0) {
+      month += 12;
+      year -= 1;
+    }
+    monthKeys.add(monthKeyFromYearMonth(year, month));
   }
+
+  const sorted = Array.from(monthKeys).sort().reverse();
   return sorted;
 }
 
@@ -356,6 +372,15 @@ export async function savePersistency(tenantId, monthKey, agentUid, inputs, role
   }
 
   const derived = deriveAll(sanitized);
+
+  // P-D10: a negative denominator is a transcription error (decreases larger
+  // than the business placed) and would store a negative percentage. Zero is
+  // a real state — an agent with no business in the window — and stays
+  // saveable; calculatePersistency already returns 0 for a zero denominator.
+  if (derived.grossSettled < 0) {
+    throw new Error('Net Gross Settled is negative — check Decreases against Gross Settled.');
+  }
+
   const meetsAwardGate = derived.persistency >= AWARD_GATE;
   const { year, month } = parseMonthKey(monthKey);
   const period = reportPeriodFromMonthKey(monthKey);

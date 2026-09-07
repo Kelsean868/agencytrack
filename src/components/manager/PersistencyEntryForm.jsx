@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { X, Lock, AlertCircle } from 'lucide-react';
 import SaveButton from '../ui/SaveButton';
 import { savePersistency } from '../../services/persistencyService';
-import { deriveAll } from '../../lib/persistency/calculations';
+import { deriveAll, PERS_GATE, PERS_GATE_PCT } from '../../lib/persistency/calculations';
 import { persistencyModelFor } from '../../lib/persistency/model';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -111,8 +111,17 @@ export default function PersistencyEntryForm({
         return { ok: false, field: f.id, msg: `${f.label} must be a non-negative number` };
       }
     }
+    // P-D10: same guard, same message as savePersistency — a manager should
+    // never round-trip to the server to learn Decreases outran Gross Settled.
+    if (derived.grossSettled < 0) {
+      return {
+        ok: false,
+        field: null,
+        msg: 'Net Gross Settled is negative — check Decreases against Gross Settled.',
+      };
+    }
     return { ok: true };
-  }, [inputs, fields]);
+  }, [inputs, fields, derived]);
 
   const handleSubmit = async (e) => {
     if (e?.preventDefault) e.preventDefault();
@@ -233,8 +242,13 @@ export default function PersistencyEntryForm({
                 </p>
               </div>
             </div>
-            {derived.persistency >= 0.90 && (
-              <p className="text-xs text-success-ink font-semibold">Meets 90% award gate</p>
+            {derived.persistency >= PERS_GATE && (
+              <p className="text-xs text-success-ink font-semibold">{`Meets ${PERS_GATE_PCT}% award gate`}</p>
+            )}
+            {derived.grossSettled < 0 && (
+              <p className="text-xs text-danger-ink font-semibold" data-testid="negative-denominator-warning">
+                Net Gross Settled is negative — check Decreases against Gross Settled.
+              </p>
             )}
           </div>
 
