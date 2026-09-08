@@ -432,6 +432,36 @@ describe('calculateShortfall', () => {
     expect(projection.projectedPersistency).toBeCloseTo(args.targetPersistency, 4);
   });
 
+  // P4 — extends the zero-case test directly above with a non-zero
+  // decreasesAnticipated, and targets PERS_GATE specifically (the Playground's
+  // real target) rather than an arbitrary 0.92. Same cross-check shape: solve
+  // for nbNeeded via calculateShortfall, then feed it back into
+  // projectPersistency and confirm it lands on the gate.
+  it('NB needed still satisfies projection back to PERS_GATE with a non-zero decreasesAnticipated', () => {
+    const args = {
+      targetPersistency: PERS_GATE,
+      currentGrossSettled: 1000,
+      currentLapses: 200,
+      currentReinstatements: 0,
+      goodBusinessFallingOff: 0,
+      decreasesAnticipated: 50,
+    };
+    const { nbNeeded } = calculateShortfall(args);
+
+    const projection = projectPersistency({
+      currentGrossSettled: args.currentGrossSettled,
+      currentLapses: args.currentLapses,
+      currentReinstatements: args.currentReinstatements,
+      goodBusinessFallingOff: args.goodBusinessFallingOff,
+      decreasesAnticipated: args.decreasesAnticipated,
+      newBusinessPlanned: nbNeeded,
+      newReinstatementsPlanned: 0,
+      newOrphansAdopted: 0,
+      newLapsesAnticipated: 0,
+    });
+    expect(projection.projectedPersistency).toBeCloseTo(PERS_GATE, 4);
+  });
+
   it('NR needed satisfies projection back to target', () => {
     const args = {
       targetPersistency: 0.92,
@@ -564,5 +594,81 @@ describe('decreases (24-month model term)', () => {
     for (const v of [null, undefined, '', 'abc', NaN]) {
       expect(calculateGrossSettled({ ...RICARDO, decreases: v })).toBeCloseTo(base, 2);
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P4 — `decreasesAnticipated` on projectPersistency / calculateShortfall
+// (the Playground's forward-looking lever, distinct from the stored
+// `decreases` input above). Same effective-dating contract: defaults to 0,
+// so every existing call site that omits it must derive exactly what it
+// derived before this parameter existed.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('decreasesAnticipated (Playground what-if lever, P4)', () => {
+  const NB_ARGS = {
+    currentGrossSettled: 1000,
+    currentLapses: 200,
+    currentReinstatements: 0,
+    goodBusinessFallingOff: 0,
+    newBusinessPlanned: 500,
+    newReinstatementsPlanned: 0,
+    newOrphansAdopted: 0,
+    newLapsesAnticipated: 0,
+  };
+
+  // THE REGRESSION PIN for projectPersistency — omitting decreasesAnticipated
+  // must reproduce the pre-P4 output bit for bit.
+  it('projectPersistency: absent decreasesAnticipated reproduces the pre-P4 output exactly', () => {
+    const before = projectPersistency(NB_ARGS);
+    const after = projectPersistency({ ...NB_ARGS, decreasesAnticipated: 0 });
+    expect(after).toEqual(before);
+  });
+
+  it('projectPersistency: decreasesAnticipated reduces projected gross settled, same shape as goodBusinessFallingOff', () => {
+    const viaGBF = projectPersistency({ ...NB_ARGS, newBusinessPlanned: 0, goodBusinessFallingOff: 200 });
+    const viaDA = projectPersistency({ ...NB_ARGS, newBusinessPlanned: 0, decreasesAnticipated: 200 });
+    expect(viaDA.projectedGrossSettled).toBe(800);
+    expect(viaDA.projectedGrossSettled).toBe(viaGBF.projectedGrossSettled);
+    expect(viaDA.projectedPersistency).toBeCloseTo(viaGBF.projectedPersistency, 6);
+  });
+
+  it('projectPersistency: a bigger decreasesAnticipated lowers projected persistency, all else equal', () => {
+    const small = projectPersistency({ ...NB_ARGS, decreasesAnticipated: 50 });
+    const big = projectPersistency({ ...NB_ARGS, decreasesAnticipated: 300 });
+    expect(big.projectedPersistency).toBeLessThan(small.projectedPersistency);
+  });
+
+  // THE REGRESSION PIN for calculateShortfall — same contract as above.
+  it('calculateShortfall: absent decreasesAnticipated reproduces the pre-P4 output exactly', () => {
+    const args = {
+      targetPersistency: 0.92,
+      currentGrossSettled: 1000,
+      currentLapses: 200,
+      currentReinstatements: 0,
+      goodBusinessFallingOff: 0,
+    };
+    const before = calculateShortfall(args);
+    const after = calculateShortfall({ ...args, decreasesAnticipated: 0 });
+    expect(after).toEqual(before);
+  });
+
+  it('calculateShortfall: decreasesAnticipated shrinks the baseline, same shape as goodBusinessFallingOff', () => {
+    const withGBF = calculateShortfall({
+      targetPersistency: 0.85,
+      currentGrossSettled: 5000,
+      currentLapses: 1500,
+      currentReinstatements: 200,
+      goodBusinessFallingOff: 300,
+    });
+    const withDA = calculateShortfall({
+      targetPersistency: 0.85,
+      currentGrossSettled: 5000,
+      currentLapses: 1500,
+      currentReinstatements: 200,
+      goodBusinessFallingOff: 0,
+      decreasesAnticipated: 300,
+    });
+    expect(withDA).toEqual(withGBF);
   });
 });

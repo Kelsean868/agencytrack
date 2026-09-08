@@ -36,15 +36,19 @@ describe('PersistencyPlayground', () => {
     expect(screen.getByTestId('playground-current-pct')).toBeInTheDocument();
   });
 
-  // ── D2: only two levers present ──────────────────────────────────────────────
-  it('renders exactly the two D2 lever sliders', () => {
+  // ── D2 + P4: the D2 pair plus goodBusinessFallingOff (unconditional, P4) ─────
+  it('renders the D2 pair plus goodBusinessFallingOff; orphans/lapses levers still absent', () => {
     render(
       <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={RICARDO_CURRENT} onClose={() => {}} />
     );
     expect(screen.getByTestId('playground-slider-newBusinessPlanned')).toBeInTheDocument();
     expect(screen.getByTestId('playground-slider-newReinstatementsPlanned')).toBeInTheDocument();
-    // Removed levers must not be present
-    expect(screen.queryByTestId('playground-slider-goodBusinessFallingOff')).not.toBeInTheDocument();
+    // P4: goodBusinessFallingOff shows on both models — RICARDO_CURRENT has no
+    // monthKey, so this also proves it does not depend on a model being resolved.
+    expect(screen.getByTestId('playground-slider-goodBusinessFallingOff')).toBeInTheDocument();
+    // decreasesAnticipated is model-gated — no monthKey means no model, so hidden.
+    expect(screen.queryByTestId('playground-slider-decreasesAnticipated')).not.toBeInTheDocument();
+    // Still out of scope — never became real levers
     expect(screen.queryByTestId('playground-slider-newOrphansAdopted')).not.toBeInTheDocument();
     expect(screen.queryByTestId('playground-slider-newLapsesAnticipated')).not.toBeInTheDocument();
   });
@@ -216,6 +220,110 @@ describe('PersistencyPlayground', () => {
     );
     fireEvent.click(screen.getByLabelText(/^Close$/));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+// ── P4: 24-month model levers + header model line ────────────────────────────
+
+describe('PersistencyPlayground — P4 24-month model levers', () => {
+  const SEPT_RECORD = { ...RICARDO_CURRENT, monthKey: '2026-09' }; // 24-month model
+  const AUG_RECORD  = { ...RICARDO_CURRENT, monthKey: '2026-08' }; // legacy model
+
+  it('shows the decreases lever and the "24-month model" header line on a September 2026 record', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={SEPT_RECORD} onClose={() => {}} />
+    );
+    expect(screen.getByTestId('playground-slider-decreasesAnticipated')).toBeInTheDocument();
+    expect(screen.getByTestId('playground-slider-goodBusinessFallingOff')).toBeInTheDocument();
+    expect(screen.getByTestId('playground-model-line')).toHaveTextContent('24-month model');
+    expect(screen.getByTestId('playground-model-line')).toHaveTextContent('September 2026 onwards');
+  });
+
+  it('hides the decreases lever and shows the "12-month model" header line on an August 2026 record', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={AUG_RECORD} onClose={() => {}} />
+    );
+    expect(screen.queryByTestId('playground-slider-decreasesAnticipated')).not.toBeInTheDocument();
+    // goodBusinessFallingOff is unconditional — present on the legacy model too.
+    expect(screen.getByTestId('playground-slider-goodBusinessFallingOff')).toBeInTheDocument();
+    expect(screen.getByTestId('playground-model-line')).toHaveTextContent('12-month model');
+    expect(screen.getByTestId('playground-model-line')).toHaveTextContent('through August 2026');
+  });
+
+  it('never crashes on a malformed monthKey — hides the decreases lever and shows no model line', () => {
+    const badRecord = { ...RICARDO_CURRENT, monthKey: 'not-a-month' };
+    expect(() => render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={badRecord} onClose={() => {}} />
+    )).not.toThrow();
+    expect(screen.queryByTestId('playground-slider-decreasesAnticipated')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('playground-model-line')).not.toBeInTheDocument();
+    // The rest of the modal still renders normally.
+    expect(screen.getByTestId('persistency-playground')).toBeInTheDocument();
+  });
+
+  it('shows no model line when there is no currentRecord at all (D1 zero-baseline arm)', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={null} onClose={() => {}} />
+    );
+    expect(screen.queryByTestId('playground-model-line')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('playground-slider-decreasesAnticipated')).not.toBeInTheDocument();
+  });
+
+  it('decreasesAnticipated lever: displayed projection equals projectPersistency on the same inputs', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={SEPT_RECORD} onClose={() => {}} />
+    );
+    const DA = 60_000;
+    setSlider('playground-slider-decreasesAnticipated', DA);
+
+    const expected = projectPersistency({
+      currentGrossSettled:      RICARDO_CURRENT.grossSettled,
+      currentLapses:            RICARDO_CURRENT.lapses,
+      currentReinstatements:    RICARDO_CURRENT.reinstatements,
+      goodBusinessFallingOff:   0,
+      newBusinessPlanned:       0,
+      newReinstatementsPlanned: 0,
+      newOrphansAdopted:        0,
+      newLapsesAnticipated:     0,
+      decreasesAnticipated:     DA,
+    });
+    const expectedPct = `${(expected.projectedPersistency * 100).toFixed(1)}%`;
+    expect(getProjectedPct()).toBe(expectedPct);
+  });
+
+  it('goodBusinessFallingOff lever: displayed projection equals projectPersistency on the same inputs', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={SEPT_RECORD} onClose={() => {}} />
+    );
+    const GBF = 40_000;
+    setSlider('playground-slider-goodBusinessFallingOff', GBF);
+
+    const expected = projectPersistency({
+      currentGrossSettled:      RICARDO_CURRENT.grossSettled,
+      currentLapses:            RICARDO_CURRENT.lapses,
+      currentReinstatements:    RICARDO_CURRENT.reinstatements,
+      goodBusinessFallingOff:   GBF,
+      newBusinessPlanned:       0,
+      newReinstatementsPlanned: 0,
+      newOrphansAdopted:        0,
+      newLapsesAnticipated:     0,
+      decreasesAnticipated:     0,
+    });
+    const expectedPct = `${(expected.projectedPersistency * 100).toFixed(1)}%`;
+    expect(getProjectedPct()).toBe(expectedPct);
+  });
+
+  it('reset returns decreasesAnticipated and goodBusinessFallingOff to zero along with the D2 pair', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={SEPT_RECORD} onClose={() => {}} />
+    );
+    const baseline = getProjectedPct();
+    setSlider('playground-slider-decreasesAnticipated', 75_000);
+    setSlider('playground-slider-goodBusinessFallingOff', 30_000);
+    expect(getProjectedPct()).not.toBe(baseline);
+
+    fireEvent.click(screen.getByTestId('playground-reset-btn'));
+    expect(getProjectedPct()).toBe(baseline);
   });
 });
 

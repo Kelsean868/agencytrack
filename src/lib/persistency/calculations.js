@@ -167,6 +167,13 @@ export function computeBarStats(records) {
 //   - goodBusinessFallingOff REDUCES gross settled (rolling window — 24
 //     months from Sept 2026, 12 before; see ./model.js). Arithmetic is the
 //     same either way; only the span the caller reckons over changes.
+//   - decreasesAnticipated REDUCES gross settled the same way. It is the
+//     memo's `Decreases` term (P4, see calculateGrossSettled above) modelled
+//     forward rather than read from a stored document — a decrease lowers
+//     the denominator, and the numerator falls with it, so persistency
+//     drops. Defaults to 0 through num(), so every existing call site that
+//     omits it derives exactly what it derived before this parameter
+//     existed.
 export function projectPersistency({
   currentGrossSettled,
   currentLapses,
@@ -176,11 +183,13 @@ export function projectPersistency({
   newReinstatementsPlanned,
   newOrphansAdopted,
   newLapsesAnticipated,
+  decreasesAnticipated,
 }) {
   const projectedGross = num(currentGrossSettled)
     + num(newBusinessPlanned)
     + num(newOrphansAdopted)
-    - num(goodBusinessFallingOff);
+    - num(goodBusinessFallingOff)
+    - num(decreasesAnticipated);
 
   const projectedLapses         = num(currentLapses)         + num(newLapsesAnticipated);
   const projectedReinstatements = num(currentReinstatements) + num(newReinstatementsPlanned);
@@ -217,14 +226,22 @@ export function projectPersistency({
 //     can equal 1 only when net == gross, which forces NR specifically).
 //   - baseline ≤ 0 → 0 for all (no business to support a percentage on).
 //   - X or Y ≤ 0 → 0 (already at or above target via that lever).
+//
+// `decreasesAnticipated` (P4) shrinks the baseline the same way
+// goodBusinessFallingOff does — it is the memo's `Decreases` term modelled
+// forward, not the stored input. Defaults to 0, so omitting it reproduces
+// the pre-P4 result.
 export function calculateShortfall({
   targetPersistency,
   currentGrossSettled,
   currentLapses,
   currentReinstatements,
   goodBusinessFallingOff,
+  decreasesAnticipated,
 }) {
-  const baseline = num(currentGrossSettled) - num(goodBusinessFallingOff);
+  const baseline = num(currentGrossSettled)
+    - num(goodBusinessFallingOff)
+    - num(decreasesAnticipated);
   const lapses = num(currentLapses);
   const reins  = num(currentReinstatements);
   const t      = num(targetPersistency);
