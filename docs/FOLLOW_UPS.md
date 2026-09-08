@@ -383,6 +383,10 @@ The wrong-URL verification above only produced a false crash/rollback scare beca
 
 Company Config slice 1's Feature Flags panel enforces its allowlist in **three** places by design: `firestore.rules` (the diff-scoped guard on `config/settings`, evaluating only changed flag keys so an empty diff passes), `configService`'s `ALLOWED_FLAG_KEYS`, and `flag-toggle.cjs`'s `ALLOWED_FLAGS`. A cross-check test guards the three from drifting apart today. **Note for Company Config v2 Tier 2** (see § Company Config v2 below): once flags become fully config-driven (a Firestore-read allowlist rather than three hardcoded copies), this triple-copy consolidates into one source — don't rebuild the cross-check test pattern for Tier 2 flags, replace it with the config-driven read.
 
+**2026-09-07 — one key is now stranded in the triple-copy (Persistency Slice P2, PR #939).** P2 retired the `persistencyV2` preview shell under P-D6 and removed the flag from `featureFlagsService.FEATURE_FLAG_KEYS` and from `companyConfigRegistry.CONFIG_FLAGS`, so no UI offers it any more. It deliberately stayed in `configService.ALLOWED_FLAG_KEYS`, because dropping it from one copy alone would break `flagAllowlist.cross-check.test.js` — the other two copies live in `firestore.rules` (`ccfgFlagKeysAllowed()`) and `scripts/verification/vh/flag-toggle.cjs`, and P2 was scoped to touch no rules file. The result is an allowed-but-unreachable write path: harmless, since nothing in the app can call it, but it is drift.
+
+Retiring it means editing all three copies in one change, which makes it a **human-merge PR with a manual `firebase deploy --only firestore:rules`, staging first, released ruleset read back and compared** (the #935 ritual). Not worth a PR of its own. Fold it into whichever slice next touches `firestore.rules` for another reason — or drop it entirely if Company Config v2 Tier 2 lands first, since the config-driven allowlist above removes the triple-copy and this item with it.
+
 ---
 
 ---
