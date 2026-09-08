@@ -163,6 +163,15 @@ export default function PersistencyPlayground({
     setLevers(ZERO_LEVERS);
   }
 
+  // P4c — tell "no data yet" apart from "this plan is impossible". With no
+  // settled business on record, projectedGross starts at (and stays at) 0
+  // regardless of any lever — current.grossSettled never moves when a slider
+  // does — so the P4b danger message would fire at rest, before the agent
+  // touches anything, and blame them for two sliders they never moved. The
+  // discriminator is current.grossSettled, not the projection. See §2 of the
+  // P4c brief for the three-state table this implements.
+  const isNothingToPlanFrom = current.grossSettled <= 0;
+
   // P4b — guard the impossible plan. P4's subtractive levers (goodBusinessFallingOff,
   // decreasesAnticipated) can drive projectedGross to zero or below; a negative
   // divided by a negative then renders as a plausible-looking positive ratio
@@ -170,8 +179,12 @@ export default function PersistencyPlayground({
   // <= 0, NEVER `persistency > 1` — persistency legitimately exceeds 100% when
   // an orphan reinstatement lands in net without ever being in gross (P-D10 /
   // §2 of the P4b brief), and that case must render normally, un-clamped.
-  const isImpossiblePlan = projection.projectedGrossSettled <= 0;
-  const proj = isImpossiblePlan ? NaN : projection.projectedPersistency;
+  // Narrowed to `current.grossSettled > 0` per P4c: this message means "the
+  // PLAN broke it", so it must not fire when there was nothing to break.
+  const isImpossiblePlan = !isNothingToPlanFrom && projection.projectedGrossSettled <= 0;
+
+  const noProjectedFigure = isNothingToPlanFrom || isImpossiblePlan;
+  const proj = noProjectedFigure ? NaN : projection.projectedPersistency;
   const curr = current.persistency;
 
   return (
@@ -279,6 +292,11 @@ export default function PersistencyPlayground({
                 <p className="font-semibold text-ink tabular-nums">{formatCurrency(projection.projectedNetSettled)}</p>
               </div>
             </div>
+            {isNothingToPlanFrom && (
+              <p className="mt-2 text-xs text-ink-muted font-semibold" data-testid="playground-nothing-to-plan-warning">
+                No settled business recorded for this month yet — there is nothing to project from.
+              </p>
+            )}
             {isImpossiblePlan && (
               <p className="mt-2 text-xs text-danger-ink font-semibold" data-testid="playground-negative-denominator-warning">
                 This plan drives Net Gross Settled to zero or below — lower Decreases Expected or Business Rolling Off.
@@ -319,22 +337,35 @@ export default function PersistencyPlayground({
             ))}
           </div>
 
-          {/* ── Shortfall cards (D5 — to reach 90% gate) ── */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
-              Needed to reach {formatPct(PERS_GATE)} (independent per lever)
-            </p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div className="card flex flex-col gap-1" data-testid="playground-shortfall-card-nb">
-                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Via New Business</p>
-                <p className="font-bold text-ink text-sm">{shortfallText(shortfall.nbNeeded)}</p>
-              </div>
-              <div className="card flex flex-col gap-1" data-testid="playground-shortfall-card-nr">
-                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Via Reinstatements</p>
-                <p className="font-bold text-ink text-sm">{shortfallText(shortfall.nrNeeded)}</p>
+          {/* ── Shortfall cards (D5 — to reach 90% gate) ──
+              P4c: suppressed entirely with nothing to plan from (§3.1). During
+              an impossible plan, calculateShortfall's baseline <= 0 sentinel
+              already returns zeros, and shortfallText(0) reads "Already at or
+              above target" — a false statement while the danger message above
+              is telling the agent the opposite. Read honestly as "—" instead;
+              the danger message already carries the explanation, so this is
+              not a second warning sentence (§3.3). */}
+          {!isNothingToPlanFrom && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+                Needed to reach {formatPct(PERS_GATE)} (independent per lever)
+              </p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="card flex flex-col gap-1" data-testid="playground-shortfall-card-nb">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Via New Business</p>
+                  <p className="font-bold text-ink text-sm">
+                    {isImpossiblePlan ? '—' : shortfallText(shortfall.nbNeeded)}
+                  </p>
+                </div>
+                <div className="card flex flex-col gap-1" data-testid="playground-shortfall-card-nr">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Via Reinstatements</p>
+                  <p className="font-bold text-ink text-sm">
+                    {isImpossiblePlan ? '—' : shortfallText(shortfall.nrNeeded)}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* ── D4: lapsed policies link (self mode only) ── */}
           {mode === 'self' && onViewLapsedPolicies && (

@@ -401,6 +401,74 @@ describe('PersistencyPlayground — P4b negative-denominator guard', () => {
   });
 });
 
+// ── P4c: "no data yet" vs "this plan is impossible" ──────────────────────────
+
+describe('PersistencyPlayground — P4c empty record vs impossible plan', () => {
+  // A record with settled business, distinct from the EMPTY fixture below, so
+  // the "impossible plan" and "normal" states are reachable from the same
+  // starting point the "nothing to plan from" state is not.
+  const REAL_RECORD = { grossSettled: 500000, lapses: 20000, reinstatements: 5000, persistency: 0.97 };
+  const EMPTY_RECORD = { grossSettled: 0, lapses: 0, reinstatements: 0, persistency: 0 };
+
+  // Deliverable 1, row 1: grossSettled = 0, no levers touched.
+  it('grossSettled = 0, no levers touched: neutral line, no danger warning, no percentage, no shortfall cards', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={EMPTY_RECORD} onClose={() => {}} />
+    );
+    expect(getProjectedPct()).toBe('—');
+    expect(screen.getByTestId('playground-nothing-to-plan-warning')).toBeInTheDocument();
+    expect(screen.queryByTestId('playground-negative-denominator-warning')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('playground-shortfall-card-nb')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('playground-shortfall-card-nr')).not.toBeInTheDocument();
+  });
+
+  // Deliverable 1, row 2: grossSettled = 500,000, levers drive it below zero.
+  it('grossSettled = 500,000 with levers driving it below zero: the P4b danger message, never the neutral line', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={REAL_RECORD} onClose={() => {}} />
+    );
+    setSlider('playground-slider-goodBusinessFallingOff', 500_000);
+    expect(getProjectedPct()).toBe('—');
+    expect(screen.getByTestId('playground-negative-denominator-warning')).toBeInTheDocument();
+    expect(screen.queryByTestId('playground-nothing-to-plan-warning')).not.toBeInTheDocument();
+  });
+
+  // Deliverable 1, row 3: grossSettled = 500,000, untouched.
+  it('grossSettled = 500,000 untouched: normal projection, neither warning, shortfall cards present', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={REAL_RECORD} onClose={() => {}} />
+    );
+    expect(getProjectedPct()).not.toBe('—');
+    expect(screen.queryByTestId('playground-nothing-to-plan-warning')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('playground-negative-denominator-warning')).not.toBeInTheDocument();
+    expect(screen.getByTestId('playground-shortfall-card-nb')).toBeInTheDocument();
+    expect(screen.getByTestId('playground-shortfall-card-nr')).toBeInTheDocument();
+  });
+
+  // Deliverable 3: the shortfall-card text in the impossible-plan state.
+  it('impossible-plan shortfall cards read "—", never "Already at or above target"', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={REAL_RECORD} onClose={() => {}} />
+    );
+    setSlider('playground-slider-goodBusinessFallingOff', 500_000);
+    const nb = screen.getByTestId('playground-shortfall-card-nb');
+    const nr = screen.getByTestId('playground-shortfall-card-nr');
+    expect(nb).toHaveTextContent('—');
+    expect(nr).toHaveTextContent('—');
+    expect(nb).not.toHaveTextContent('Already at or above target');
+    expect(nr).not.toHaveTextContent('Already at or above target');
+  });
+
+  it('a record with no currentRecord at all (D1 zero-baseline arm) is the same "nothing to plan from" state', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={null} onClose={() => {}} />
+    );
+    expect(getProjectedPct()).toBe('—');
+    expect(screen.getByTestId('playground-nothing-to-plan-warning')).toBeInTheDocument();
+    expect(screen.queryByTestId('playground-shortfall-card-nb')).not.toBeInTheDocument();
+  });
+});
+
 // ── Dialog a11y contract (§4 dialog sweep) ───────────────────────────────────
 
 describe('PersistencyPlayground — dialog a11y', () => {
