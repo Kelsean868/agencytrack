@@ -485,8 +485,8 @@ plus a re-run of any verification the new commit could invalidate. **Dispatcher 
 before merging, compare the PR's current HEAD on GitHub against the SHA in the latest report;
 if they disagree the PR is NOT ready.
 
-**21. Bot reviewer disposition gate.** After opening any PR, poll for **both** configured bot
-reviewers (up to 10 min each; if a reviewer is absent, note the absence explicitly — absence
+**21. Bot reviewer disposition gate.** After opening any PR, poll for every configured bot
+reviewer (today that is CodeRabbit ONLY; up to 10 min; if a reviewer is absent, note the absence explicitly — absence
 is NOT "no comments"). Every comment gets a disposition in the Phase 5 report:
 IMPLEMENT · ALREADY-RESOLVED · OBSOLETE · DISAGREE (one-line technical rationale; recorded
 doctrine and dispatcher rulings outrank any bot) · OUT-OF-SCOPE (banked as an FU, never
@@ -494,7 +494,7 @@ silently implemented). The disposition table is a mandatory report section; a PR
 pre-review-ready without it.
 
 - **Bot-author logins carry NO `[bot]` suffix in the API.** Gemini = `"gemini-code-assist"`, CodeRabbit = `"coderabbitai"`. Filtering on the UI display name silently matches nothing.
-- Gemini: `gh pr view <pr> --json reviews` → `.author.login == "gemini-code-assist"`. *Sunsets 2026-07-17.* **On money/rules PRs, trigger the on-demand `/gemini review` PR comment** — the auto-batch review is materially weaker.
+- **Gemini is RETIRED** (sunset 2026-07-17; absent on every PR since). Do not poll for `gemini-code-assist`, do not post `/gemini review`, and do not report its absence as a finding or a Rule 22 gap - it is expected. Until a second reviewer is configured, the Rule 21 backstop is CodeRabbit alone (Free plan: summary comment only, no line-level review, rate-limited across commits).
 - CodeRabbit: posts **both** a review and a summary comment; poll `--json reviews` and `--json comments`. The reviews channel carries the substance. Activates automatically on PR open.
 - **Pre-merge final poll.** Before any squash-merge, check for reviewer activity posted AFTER the last disposition table and disposition it BEFORE clicking merge. A stale disposition table does not satisfy the gate.
 - **Post-merge backstop.** A pre-merge "absent" is provisional per reviewer. `/post-merge` re-polls for BOTH; late comments are dispositioned under the same taxonomy (IMPLEMENT → banked as a follow-up PR or FU, since no in-PR fix is possible).
