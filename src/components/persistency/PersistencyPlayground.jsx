@@ -1,10 +1,13 @@
-// E3 — Persistency Playground (S3a: two-lever redesign).
+// E3 — Persistency Playground (S3a: two-lever redesign; P4: 24-month levers).
 //
-// Two primary levers only per D2:
+// Two primary levers per D2:
 //   newBusinessPlanned      → clean API/quarter (adds to gross settled, TTD)
 //   newReinstatementsPlanned → policies-saved/month (adds to net only, TTD)
-// goodBusinessFallingOff / newOrphansAdopted / newLapsesAnticipated held at zero;
-// named in the provenance line per D3.
+// Two more from P4, wiring what D2/D3 held at zero:
+//   goodBusinessFallingOff  → business rolling out of the window (both models)
+//   decreasesAnticipated    → premium decreases on in-force policies
+//                              (24-month-model months only — see modelOrNull below)
+// newOrphansAdopted / newLapsesAnticipated remain out of scope, still held at zero.
 
 import React, { useMemo, useState } from 'react';
 import { X, Calculator, ExternalLink, AlertCircle } from 'lucide-react';
@@ -15,9 +18,10 @@ import {
   PERS_FLOOR,
   PERS_GATE,
 } from '../../lib/persistency/calculations';
+import { persistencyModelFor, PERSISTENCY_MODEL_24M_EFFECTIVE_FROM } from '../../lib/persistency/model';
 import { formatCurrency } from '../../utils/formatters';
 
-const LEVERS = [
+const BASE_LEVERS = [
   {
     id: 'newBusinessPlanned',
     label: 'New Business to Place',
@@ -34,9 +38,61 @@ const LEVERS = [
     max: 200_000,
     step: 1000,
   },
+  {
+    id: 'goodBusinessFallingOff',
+    label: 'Business Rolling Off',
+    sublabel: 'good business leaving the window (TTD)',
+    min: 0,
+    max: 500_000,
+    step: 5000,
+  },
 ];
 
-const ZERO_LEVERS = { newBusinessPlanned: 0, newReinstatementsPlanned: 0 };
+// Shown only on a 24-month-model month — see modelOrNull / isTwentyFourMonth below.
+const DECREASES_LEVER = {
+  id: 'decreasesAnticipated',
+  label: 'Decreases Expected',
+  sublabel: 'premium reductions on in-force policies (TTD)',
+  min: 0,
+  max: 500_000,
+  step: 5000,
+};
+
+const ZERO_LEVERS = {
+  newBusinessPlanned: 0,
+  newReinstatementsPlanned: 0,
+  goodBusinessFallingOff: 0,
+  decreasesAnticipated: 0,
+};
+
+// persistencyModelFor throws on a malformed monthKey (deliberately — see
+// lib/persistency/model.js). The Playground is a read-only planning surface,
+// not a save path, so an unusable monthKey must degrade to "no model" rather
+// than take the modal down: hide the decreases lever, show no model line.
+const MONTH_KEY_RE = /^\d{4}-\d{2}$/;
+function modelOrNull(monthKey) {
+  return MONTH_KEY_RE.test(String(monthKey)) ? persistencyModelFor(monthKey) : null;
+}
+
+function formatMonthYear(monthKey) {
+  const [year, month] = monthKey.split('-').map(Number);
+  return `${new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' })} ${year}`;
+}
+
+// Derived from the model object (windowMonths) plus the single dated boundary
+// in lib/persistency/model.js, rather than two hand-typed sentence literals —
+// so this line cannot drift out of step with persistencyModelFor.
+function modelHeaderLine(model) {
+  if (!model) return null;
+  if (model.id === 'tatil24') {
+    return `${model.windowMonths}-month model · ${formatMonthYear(PERSISTENCY_MODEL_24M_EFFECTIVE_FROM)} onwards`;
+  }
+  const [effYear, effMonth] = PERSISTENCY_MODEL_24M_EFFECTIVE_FROM.split('-').map(Number);
+  const priorMonthKey = effMonth === 1
+    ? `${effYear - 1}-12`
+    : `${effYear}-${String(effMonth - 1).padStart(2, '0')}`;
+  return `${model.windowMonths}-month model · through ${formatMonthYear(priorMonthKey)}`;
+}
 
 function formatPct(decimal) {
   if (!Number.isFinite(decimal)) return '—';
@@ -72,32 +128,63 @@ export default function PersistencyPlayground({
     persistency:    currentRecord?.persistency    ?? 0,
   }), [currentRecord]);
 
+  const model = useMemo(() => modelOrNull(currentRecord?.monthKey), [currentRecord]);
+  const isTwentyFourMonth = model?.id === 'tatil24';
+
+  const activeLevers = useMemo(
+    () => (isTwentyFourMonth ? [...BASE_LEVERS, DECREASES_LEVER] : BASE_LEVERS),
+    [isTwentyFourMonth],
+  );
+
   const [levers, setLevers] = useState(ZERO_LEVERS);
 
   const projection = useMemo(() => projectPersistency({
     currentGrossSettled:      current.grossSettled,
     currentLapses:            current.lapses,
     currentReinstatements:    current.reinstatements,
-    goodBusinessFallingOff:   0,
+    goodBusinessFallingOff:   levers.goodBusinessFallingOff,
     newBusinessPlanned:       levers.newBusinessPlanned,
     newReinstatementsPlanned: levers.newReinstatementsPlanned,
     newOrphansAdopted:        0,
     newLapsesAnticipated:     0,
+    decreasesAnticipated:     levers.decreasesAnticipated,
   }), [current, levers]);
 
   const shortfall = useMemo(() => calculateShortfall({
-    targetPersistency:     PERS_GATE,
-    currentGrossSettled:   current.grossSettled,
-    currentLapses:         current.lapses,
-    currentReinstatements: current.reinstatements,
-    goodBusinessFallingOff: 0,
-  }), [current]);
+    targetPersistency:      PERS_GATE,
+    currentGrossSettled:    current.grossSettled,
+    currentLapses:          current.lapses,
+    currentReinstatements:  current.reinstatements,
+    goodBusinessFallingOff: levers.goodBusinessFallingOff,
+    decreasesAnticipated:   levers.decreasesAnticipated,
+  }), [current, levers]);
 
   function handleReset() {
     setLevers(ZERO_LEVERS);
   }
 
-  const proj = projection.projectedPersistency;
+  // P4c — tell "no data yet" apart from "this plan is impossible". With no
+  // settled business on record, projectedGross starts at (and stays at) 0
+  // regardless of any lever — current.grossSettled never moves when a slider
+  // does — so the P4b danger message would fire at rest, before the agent
+  // touches anything, and blame them for two sliders they never moved. The
+  // discriminator is current.grossSettled, not the projection. See §2 of the
+  // P4c brief for the three-state table this implements.
+  const isNothingToPlanFrom = current.grossSettled <= 0;
+
+  // P4b — guard the impossible plan. P4's subtractive levers (goodBusinessFallingOff,
+  // decreasesAnticipated) can drive projectedGross to zero or below; a negative
+  // divided by a negative then renders as a plausible-looking positive ratio
+  // (see calculations.js projectPersistency). The condition is projectedGross
+  // <= 0, NEVER `persistency > 1` — persistency legitimately exceeds 100% when
+  // an orphan reinstatement lands in net without ever being in gross (P-D10 /
+  // §2 of the P4b brief), and that case must render normally, un-clamped.
+  // Narrowed to `current.grossSettled > 0` per P4c: this message means "the
+  // PLAN broke it", so it must not fire when there was nothing to break.
+  const isImpossiblePlan = !isNothingToPlanFrom && projection.projectedGrossSettled <= 0;
+
+  const noProjectedFigure = isNothingToPlanFrom || isImpossiblePlan;
+  const proj = noProjectedFigure ? NaN : projection.projectedPersistency;
   const curr = current.persistency;
 
   return (
@@ -119,6 +206,11 @@ export default function PersistencyPlayground({
               <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 What-If Playground · {mode === 'coaching' ? 'Coaching' : 'My data'}
               </p>
+              {model && (
+                <p className="text-[11px] text-ink-muted" data-testid="playground-model-line">
+                  {modelHeaderLine(model)}
+                </p>
+              )}
               <p className="text-base font-semibold text-ink">{agentName ?? 'Agent'}</p>
             </div>
           </div>
@@ -200,14 +292,25 @@ export default function PersistencyPlayground({
                 <p className="font-semibold text-ink tabular-nums">{formatCurrency(projection.projectedNetSettled)}</p>
               </div>
             </div>
+            {isNothingToPlanFrom && (
+              <p className="mt-2 text-xs text-ink-muted font-semibold" data-testid="playground-nothing-to-plan-warning">
+                No settled business recorded for this month yet — there is nothing to project from.
+              </p>
+            )}
+            {isImpossiblePlan && (
+              <p className="mt-2 text-xs text-danger-ink font-semibold" data-testid="playground-negative-denominator-warning">
+                This plan drives Net Gross Settled to zero or below — lower Decreases Expected or Business Rolling Off.
+              </p>
+            )}
             <p className="mt-2 text-xs text-ink-muted">
-              Projected via: New Business Planned (TTD) + Reinstatements Planned (TTD) — goodBusinessFallingOff / orphansAdopted / newLapses held at zero.
+              Projected via: New Business Planned + Reinstatements Planned − Business Rolling Off
+              {isTwentyFourMonth ? ' − Decreases Expected' : ''} (TTD) — orphans adopted / new lapses anticipated held at zero.
             </p>
           </div>
 
           {/* ── Lever sliders ── */}
           <div className="flex flex-col gap-3">
-            {LEVERS.map((lv) => (
+            {activeLevers.map((lv) => (
               <div key={lv.id} className="card flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <div>
@@ -234,22 +337,35 @@ export default function PersistencyPlayground({
             ))}
           </div>
 
-          {/* ── Shortfall cards (D5 — to reach 90% gate) ── */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
-              Needed to reach {formatPct(PERS_GATE)} (independent per lever)
-            </p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div className="card flex flex-col gap-1" data-testid="playground-shortfall-card-nb">
-                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Via New Business</p>
-                <p className="font-bold text-ink text-sm">{shortfallText(shortfall.nbNeeded)}</p>
-              </div>
-              <div className="card flex flex-col gap-1" data-testid="playground-shortfall-card-nr">
-                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Via Reinstatements</p>
-                <p className="font-bold text-ink text-sm">{shortfallText(shortfall.nrNeeded)}</p>
+          {/* ── Shortfall cards (D5 — to reach 90% gate) ──
+              P4c: suppressed entirely with nothing to plan from (§3.1). During
+              an impossible plan, calculateShortfall's baseline <= 0 sentinel
+              already returns zeros, and shortfallText(0) reads "Already at or
+              above target" — a false statement while the danger message above
+              is telling the agent the opposite. Read honestly as "—" instead;
+              the danger message already carries the explanation, so this is
+              not a second warning sentence (§3.3). */}
+          {!isNothingToPlanFrom && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+                Needed to reach {formatPct(PERS_GATE)} (independent per lever)
+              </p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="card flex flex-col gap-1" data-testid="playground-shortfall-card-nb">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Via New Business</p>
+                  <p className="font-bold text-ink text-sm">
+                    {isImpossiblePlan ? '—' : shortfallText(shortfall.nbNeeded)}
+                  </p>
+                </div>
+                <div className="card flex flex-col gap-1" data-testid="playground-shortfall-card-nr">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Via Reinstatements</p>
+                  <p className="font-bold text-ink text-sm">
+                    {isImpossiblePlan ? '—' : shortfallText(shortfall.nrNeeded)}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* ── D4: lapsed policies link (self mode only) ── */}
           {mode === 'self' && onViewLapsedPolicies && (

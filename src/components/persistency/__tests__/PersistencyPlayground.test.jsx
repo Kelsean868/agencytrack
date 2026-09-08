@@ -36,15 +36,19 @@ describe('PersistencyPlayground', () => {
     expect(screen.getByTestId('playground-current-pct')).toBeInTheDocument();
   });
 
-  // ── D2: only two levers present ──────────────────────────────────────────────
-  it('renders exactly the two D2 lever sliders', () => {
+  // ── D2 + P4: the D2 pair plus goodBusinessFallingOff (unconditional, P4) ─────
+  it('renders the D2 pair plus goodBusinessFallingOff; orphans/lapses levers still absent', () => {
     render(
       <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={RICARDO_CURRENT} onClose={() => {}} />
     );
     expect(screen.getByTestId('playground-slider-newBusinessPlanned')).toBeInTheDocument();
     expect(screen.getByTestId('playground-slider-newReinstatementsPlanned')).toBeInTheDocument();
-    // Removed levers must not be present
-    expect(screen.queryByTestId('playground-slider-goodBusinessFallingOff')).not.toBeInTheDocument();
+    // P4: goodBusinessFallingOff shows on both models — RICARDO_CURRENT has no
+    // monthKey, so this also proves it does not depend on a model being resolved.
+    expect(screen.getByTestId('playground-slider-goodBusinessFallingOff')).toBeInTheDocument();
+    // decreasesAnticipated is model-gated — no monthKey means no model, so hidden.
+    expect(screen.queryByTestId('playground-slider-decreasesAnticipated')).not.toBeInTheDocument();
+    // Still out of scope — never became real levers
     expect(screen.queryByTestId('playground-slider-newOrphansAdopted')).not.toBeInTheDocument();
     expect(screen.queryByTestId('playground-slider-newLapsesAnticipated')).not.toBeInTheDocument();
   });
@@ -216,6 +220,252 @@ describe('PersistencyPlayground', () => {
     );
     fireEvent.click(screen.getByLabelText(/^Close$/));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+// ── P4: 24-month model levers + header model line ────────────────────────────
+
+describe('PersistencyPlayground — P4 24-month model levers', () => {
+  const SEPT_RECORD = { ...RICARDO_CURRENT, monthKey: '2026-09' }; // 24-month model
+  const AUG_RECORD  = { ...RICARDO_CURRENT, monthKey: '2026-08' }; // legacy model
+
+  it('shows the decreases lever and the "24-month model" header line on a September 2026 record', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={SEPT_RECORD} onClose={() => {}} />
+    );
+    expect(screen.getByTestId('playground-slider-decreasesAnticipated')).toBeInTheDocument();
+    expect(screen.getByTestId('playground-slider-goodBusinessFallingOff')).toBeInTheDocument();
+    expect(screen.getByTestId('playground-model-line')).toHaveTextContent('24-month model');
+    expect(screen.getByTestId('playground-model-line')).toHaveTextContent('September 2026 onwards');
+  });
+
+  it('hides the decreases lever and shows the "12-month model" header line on an August 2026 record', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={AUG_RECORD} onClose={() => {}} />
+    );
+    expect(screen.queryByTestId('playground-slider-decreasesAnticipated')).not.toBeInTheDocument();
+    // goodBusinessFallingOff is unconditional — present on the legacy model too.
+    expect(screen.getByTestId('playground-slider-goodBusinessFallingOff')).toBeInTheDocument();
+    expect(screen.getByTestId('playground-model-line')).toHaveTextContent('12-month model');
+    expect(screen.getByTestId('playground-model-line')).toHaveTextContent('through August 2026');
+  });
+
+  it('never crashes on a malformed monthKey — hides the decreases lever and shows no model line', () => {
+    const badRecord = { ...RICARDO_CURRENT, monthKey: 'not-a-month' };
+    expect(() => render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={badRecord} onClose={() => {}} />
+    )).not.toThrow();
+    expect(screen.queryByTestId('playground-slider-decreasesAnticipated')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('playground-model-line')).not.toBeInTheDocument();
+    // The rest of the modal still renders normally.
+    expect(screen.getByTestId('persistency-playground')).toBeInTheDocument();
+  });
+
+  it('shows no model line when there is no currentRecord at all (D1 zero-baseline arm)', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={null} onClose={() => {}} />
+    );
+    expect(screen.queryByTestId('playground-model-line')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('playground-slider-decreasesAnticipated')).not.toBeInTheDocument();
+  });
+
+  it('decreasesAnticipated lever: displayed projection equals projectPersistency on the same inputs', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={SEPT_RECORD} onClose={() => {}} />
+    );
+    const DA = 60_000;
+    setSlider('playground-slider-decreasesAnticipated', DA);
+
+    const expected = projectPersistency({
+      currentGrossSettled:      RICARDO_CURRENT.grossSettled,
+      currentLapses:            RICARDO_CURRENT.lapses,
+      currentReinstatements:    RICARDO_CURRENT.reinstatements,
+      goodBusinessFallingOff:   0,
+      newBusinessPlanned:       0,
+      newReinstatementsPlanned: 0,
+      newOrphansAdopted:        0,
+      newLapsesAnticipated:     0,
+      decreasesAnticipated:     DA,
+    });
+    const expectedPct = `${(expected.projectedPersistency * 100).toFixed(1)}%`;
+    expect(getProjectedPct()).toBe(expectedPct);
+  });
+
+  it('goodBusinessFallingOff lever: displayed projection equals projectPersistency on the same inputs', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={SEPT_RECORD} onClose={() => {}} />
+    );
+    const GBF = 40_000;
+    setSlider('playground-slider-goodBusinessFallingOff', GBF);
+
+    const expected = projectPersistency({
+      currentGrossSettled:      RICARDO_CURRENT.grossSettled,
+      currentLapses:            RICARDO_CURRENT.lapses,
+      currentReinstatements:    RICARDO_CURRENT.reinstatements,
+      goodBusinessFallingOff:   GBF,
+      newBusinessPlanned:       0,
+      newReinstatementsPlanned: 0,
+      newOrphansAdopted:        0,
+      newLapsesAnticipated:     0,
+      decreasesAnticipated:     0,
+    });
+    const expectedPct = `${(expected.projectedPersistency * 100).toFixed(1)}%`;
+    expect(getProjectedPct()).toBe(expectedPct);
+  });
+
+  it('reset returns decreasesAnticipated and goodBusinessFallingOff to zero along with the D2 pair', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={SEPT_RECORD} onClose={() => {}} />
+    );
+    const baseline = getProjectedPct();
+    setSlider('playground-slider-decreasesAnticipated', 75_000);
+    setSlider('playground-slider-goodBusinessFallingOff', 30_000);
+    expect(getProjectedPct()).not.toBe(baseline);
+
+    fireEvent.click(screen.getByTestId('playground-reset-btn'));
+    expect(getProjectedPct()).toBe(baseline);
+  });
+});
+
+// ── P4b: guard the negative projected denominator, never clamp at 100% ──────
+
+describe('PersistencyPlayground — P4b negative-denominator guard', () => {
+  // A round fixture so the unconditional goodBusinessFallingOff lever can be
+  // dragged to exact +1 / 0 / -1 projectedGrossSettled boundaries without
+  // fighting RICARDO_CURRENT's fractional cents.
+  const ROUND_RECORD = {
+    grossSettled: 100000,
+    lapses: 20000,
+    reinstatements: 5000,
+    persistency: 0.85,
+  };
+
+  it('projectedGross = +1: shows a real number, no danger message', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={ROUND_RECORD} onClose={() => {}} />
+    );
+    setSlider('playground-slider-goodBusinessFallingOff', 99_999);
+    expect(getProjectedPct()).not.toBe('—');
+    expect(screen.queryByTestId('playground-negative-denominator-warning')).not.toBeInTheDocument();
+  });
+
+  it('projectedGross = 0: suppresses the number, shows the danger message', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={ROUND_RECORD} onClose={() => {}} />
+    );
+    setSlider('playground-slider-goodBusinessFallingOff', 100_000);
+    expect(getProjectedPct()).toBe('—');
+    expect(screen.getByTestId('playground-negative-denominator-warning')).toBeInTheDocument();
+  });
+
+  it('projectedGross = -1: suppresses the number even though the raw ratio looks like a plausible positive percentage', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={ROUND_RECORD} onClose={() => {}} />
+    );
+    setSlider('playground-slider-goodBusinessFallingOff', 100_001);
+    // Un-guarded: projectedNet(-15,001) / projectedGross(-1) = 15,001 — a
+    // negative-over-negative ratio that renders as a healthy-looking number.
+    // The guard (projectedGross <= 0) must suppress it regardless of sign.
+    expect(getProjectedPct()).toBe('—');
+    expect(screen.getByTestId('playground-negative-denominator-warning')).toBeInTheDocument();
+  });
+
+  it('never clamps at 100% — a real orphan-reinstatement scenario renders above 100%, un-suppressed (Candice, §2 of the P4b brief)', () => {
+    // Candice writes 100,000 of her own business, no lapses. She adopts a
+    // lapsed orphan policy and reinstates it: 10,000 lands in net only (it was
+    // never in gross, because she did not write it). 110,000 / 100,000 = 110%
+    // — legitimately above 100%, and the guard (projectedGross <= 0) must not
+    // touch it, because projectedGross here is a healthy 100,000.
+    const CANDICE = { grossSettled: 100000, lapses: 0, reinstatements: 0, persistency: 1 };
+    render(
+      <PersistencyPlayground mode="self" agentName="Candice" currentRecord={CANDICE} onClose={() => {}} />
+    );
+    setSlider('playground-slider-newReinstatementsPlanned', 10_000);
+
+    const expected = projectPersistency({
+      currentGrossSettled: CANDICE.grossSettled,
+      currentLapses: CANDICE.lapses,
+      currentReinstatements: CANDICE.reinstatements,
+      goodBusinessFallingOff: 0,
+      newBusinessPlanned: 0,
+      newReinstatementsPlanned: 10_000,
+      newOrphansAdopted: 0,
+      newLapsesAnticipated: 0,
+      decreasesAnticipated: 0,
+    });
+    expect(expected.projectedGrossSettled).toBe(100000);
+    expect(expected.projectedPersistency).toBe(1.1); // 110,000 / 100,000
+
+    expect(getProjectedPct()).toBe('110.0%');
+    expect(screen.queryByTestId('playground-negative-denominator-warning')).not.toBeInTheDocument();
+  });
+});
+
+// ── P4c: "no data yet" vs "this plan is impossible" ──────────────────────────
+
+describe('PersistencyPlayground — P4c empty record vs impossible plan', () => {
+  // A record with settled business, distinct from the EMPTY fixture below, so
+  // the "impossible plan" and "normal" states are reachable from the same
+  // starting point the "nothing to plan from" state is not.
+  const REAL_RECORD = { grossSettled: 500000, lapses: 20000, reinstatements: 5000, persistency: 0.97 };
+  const EMPTY_RECORD = { grossSettled: 0, lapses: 0, reinstatements: 0, persistency: 0 };
+
+  // Deliverable 1, row 1: grossSettled = 0, no levers touched.
+  it('grossSettled = 0, no levers touched: neutral line, no danger warning, no percentage, no shortfall cards', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={EMPTY_RECORD} onClose={() => {}} />
+    );
+    expect(getProjectedPct()).toBe('—');
+    expect(screen.getByTestId('playground-nothing-to-plan-warning')).toBeInTheDocument();
+    expect(screen.queryByTestId('playground-negative-denominator-warning')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('playground-shortfall-card-nb')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('playground-shortfall-card-nr')).not.toBeInTheDocument();
+  });
+
+  // Deliverable 1, row 2: grossSettled = 500,000, levers drive it below zero.
+  it('grossSettled = 500,000 with levers driving it below zero: the P4b danger message, never the neutral line', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={REAL_RECORD} onClose={() => {}} />
+    );
+    setSlider('playground-slider-goodBusinessFallingOff', 500_000);
+    expect(getProjectedPct()).toBe('—');
+    expect(screen.getByTestId('playground-negative-denominator-warning')).toBeInTheDocument();
+    expect(screen.queryByTestId('playground-nothing-to-plan-warning')).not.toBeInTheDocument();
+  });
+
+  // Deliverable 1, row 3: grossSettled = 500,000, untouched.
+  it('grossSettled = 500,000 untouched: normal projection, neither warning, shortfall cards present', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={REAL_RECORD} onClose={() => {}} />
+    );
+    expect(getProjectedPct()).not.toBe('—');
+    expect(screen.queryByTestId('playground-nothing-to-plan-warning')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('playground-negative-denominator-warning')).not.toBeInTheDocument();
+    expect(screen.getByTestId('playground-shortfall-card-nb')).toBeInTheDocument();
+    expect(screen.getByTestId('playground-shortfall-card-nr')).toBeInTheDocument();
+  });
+
+  // Deliverable 3: the shortfall-card text in the impossible-plan state.
+  it('impossible-plan shortfall cards read "—", never "Already at or above target"', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={REAL_RECORD} onClose={() => {}} />
+    );
+    setSlider('playground-slider-goodBusinessFallingOff', 500_000);
+    const nb = screen.getByTestId('playground-shortfall-card-nb');
+    const nr = screen.getByTestId('playground-shortfall-card-nr');
+    expect(nb).toHaveTextContent('—');
+    expect(nr).toHaveTextContent('—');
+    expect(nb).not.toHaveTextContent('Already at or above target');
+    expect(nr).not.toHaveTextContent('Already at or above target');
+  });
+
+  it('a record with no currentRecord at all (D1 zero-baseline arm) is the same "nothing to plan from" state', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={null} onClose={() => {}} />
+    );
+    expect(getProjectedPct()).toBe('—');
+    expect(screen.getByTestId('playground-nothing-to-plan-warning')).toBeInTheDocument();
+    expect(screen.queryByTestId('playground-shortfall-card-nb')).not.toBeInTheDocument();
   });
 });
 
