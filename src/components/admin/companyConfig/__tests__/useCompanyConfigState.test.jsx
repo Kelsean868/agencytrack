@@ -149,12 +149,12 @@ describe('saveAll partition (plain mode)', () => {
 
 describe('commitFlag (immediate — no draft)', () => {
   it('enabling calls setFeatureFlagOn, refreshes, and never touches the draft map', async () => {
-    const flag = CONFIG_FLAGS[0]; // persistencyV2
+    const flag = CONFIG_FLAGS[0]; // policyLedgerCampaignLens (persistencyV2 retired — P-D6)
     const { result } = mount();
 
     await act(async () => { await result.current.commitFlag(flag, true); });
 
-    expect(configService.setFeatureFlagOn).toHaveBeenCalledWith('t1', 'persistencyV2', ACTOR);
+    expect(configService.setFeatureFlagOn).toHaveBeenCalledWith('t1', 'policyLedgerCampaignLens', ACTOR);
     expect(configService.setFeatureFlagOff).not.toHaveBeenCalled();
     expect(result.current.draftCount).toBe(0);
     expect(ctx.refresh).toHaveBeenCalled();
@@ -164,14 +164,14 @@ describe('commitFlag (immediate — no draft)', () => {
     const flag = CONFIG_FLAGS[0];
     const { result } = mount();
     await act(async () => { await result.current.commitFlag(flag, false); });
-    expect(configService.setFeatureFlagOff).toHaveBeenCalledWith('t1', 'persistencyV2', ACTOR);
+    expect(configService.setFeatureFlagOff).toHaveBeenCalledWith('t1', 'policyLedgerCampaignLens', ACTOR);
   });
 
   it('flagOn reflects the stored featureFlags map (=== true)', async () => {
-    setDocs({ settings: { featureFlags: { persistencyV2: true } } });
+    setDocs({ settings: { featureFlags: { policyLedgerCampaignLens: true } } });
     const { result } = mount();
     await waitFor(() => expect(result.current.userCount).toBe(214));
-    expect(result.current.flagOn('persistencyV2')).toBe(true);
+    expect(result.current.flagOn('policyLedgerCampaignLens')).toBe(true);
     expect(result.current.flagOn('awardsProvenance')).toBe(false);
   });
 });

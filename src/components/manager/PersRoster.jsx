@@ -125,7 +125,7 @@ export default function PersRoster({ rows, onEdit, onOpenPlayground }) {
         <span className="text-center">#</span>
         <span>Agent · Unit</span>
         <span>Persistency</span>
-        <span className="text-right">Gross settled</span>
+        <span className="text-right">Net Gross Settled</span>
         <span className="text-right">Lapses</span>
         <span>Source</span>
         <span className="text-right">Actions</span>
@@ -175,7 +175,7 @@ export default function PersRoster({ rows, onEdit, onOpenPlayground }) {
                 )}
               </div>
 
-              {/* Gross settled */}
+              {/* Net Gross Settled */}
               <div className="hidden sm:block text-right font-mono text-xs text-ink">
                 {hasRecord ? formatCurrency(record.grossSettled) : '—'}
               </div>

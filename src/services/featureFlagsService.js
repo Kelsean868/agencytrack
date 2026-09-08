@@ -24,10 +24,12 @@
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
-// The three flag keys introduced by item 3.4. Kept as a frozen map so callers
+// The flag keys introduced by item 3.4. Kept as a frozen map so callers
 // reference the canonical spelling rather than bare string literals.
+// `persistencyV2` (the v2 rolling-model preview) was retired per the
+// Persistency 24-Month Model brief P-D6 — the memo did not adopt that
+// arithmetic, so the flag-gated preview shell is gone (Slice P2).
 export const FEATURE_FLAG_KEYS = Object.freeze({
-  persistencyV2: 'persistencyV2',
   policyLedgerCampaignLens: 'policyLedgerCampaignLens',
   awardsProvenance: 'awardsProvenance',
 });

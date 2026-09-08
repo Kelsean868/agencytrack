@@ -26,8 +26,8 @@ describe('featureFlagsService.getFeatureFlags', () => {
   });
 
   it('returns the featureFlags map when present', async () => {
-    hoisted.mockGetDoc.mockResolvedValue(snap(true, { featureFlags: { persistencyV2: true } }));
-    expect(await getFeatureFlags('t1')).toEqual({ persistencyV2: true });
+    hoisted.mockGetDoc.mockResolvedValue(snap(true, { featureFlags: { awardsProvenance: true } }));
+    expect(await getFeatureFlags('t1')).toEqual({ awardsProvenance: true });
   });
 
   it('reads tenants/{tid}/config/settings', async () => {
@@ -56,9 +56,8 @@ describe('featureFlagsService.isFlagOn', () => {
     expect(isFlagOn(null, 'a')).toBe(false);
   });
 
-  it('exposes the three 3.4 flag keys', () => {
+  it('exposes the remaining 3.4 flag keys (persistencyV2 retired — P-D6)', () => {
     expect(FEATURE_FLAG_KEYS).toEqual({
-      persistencyV2: 'persistencyV2',
       policyLedgerCampaignLens: 'policyLedgerCampaignLens',
       awardsProvenance: 'awardsProvenance',
     });

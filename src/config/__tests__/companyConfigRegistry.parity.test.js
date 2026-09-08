@@ -149,7 +149,7 @@ describe('awards — ruleset item (src/config/awardsRuleset/2026.js)', () => {
   });
 });
 
-describe('flags — the 3 real allowlisted feature flags', () => {
+describe('flags — the 2 real allowlisted feature flags', () => {
   it('CONFIG_FLAGS keys match FEATURE_FLAG_KEYS exactly (same set)', () => {
     const configKeys = CONFIG_FLAGS.map((f) => f.key).sort();
     const realKeys = Object.values(FEATURE_FLAG_KEYS).sort();

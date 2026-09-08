@@ -15,6 +15,7 @@ import {
   aggregatePersistency,
   computeBarStats,
 } from '../../lib/persistency/calculations';
+import { persistencyModelFor, LABELS } from '../../lib/persistency/model';
 import { getTenantUsers } from '../../services/managerService';
 import PersRealityBar from './PersRealityBar';
 import PersAtRiskBook from './PersAtRiskBook';
@@ -189,8 +190,15 @@ export default function PersistencyTab() {
   }, []);
 
   const handleDownloadCSV = () => {
+    // Header uses the memo's vocabulary for the derived denominator ("Net Gross
+    // Settled") — month-aware when a month is selected (matches the labels the
+    // entry form and awards surfaces use for that month), falling back to the
+    // current-model words when no month is selected yet.
+    const grossHeaderLabel = monthKey
+      ? persistencyModelFor(monthKey).labels.grossSettled
+      : LABELS.grossSettled;
     const header = [
-      'Agent', 'Persistency %', 'Gross Settled (TTD)', 'Net Settled (TTD)',
+      'Agent', 'Persistency %', `${grossHeaderLabel} (TTD)`, 'Net Settled (TTD)',
       'Lapses (TTD)', 'Reinstatements (TTD)', 'Source', 'Last Edited',
     ];
     const body = sortedRows.map(({ user: u, record: r }) => [

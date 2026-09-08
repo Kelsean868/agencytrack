@@ -192,7 +192,7 @@ export default function PersistencyPlayground({
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs" data-testid="persistency-projected-output">
               <div>
-                <p className="text-ink-muted">Projected Gross</p>
+                <p className="text-ink-muted">Projected Net Gross</p>
                 <p className="font-semibold text-ink tabular-nums">{formatCurrency(projection.projectedGrossSettled)}</p>
               </div>
               <div>

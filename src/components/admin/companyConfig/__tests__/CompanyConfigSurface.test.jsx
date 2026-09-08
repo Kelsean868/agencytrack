@@ -65,10 +65,9 @@ describe('CompanyConfigSurface — smoke', () => {
     expect(input).toBeDisabled();
   });
 
-  it('lists the 3 real feature flags in the Flags section', () => {
+  it('lists the 2 real feature flags in the Flags section (persistencyV2 retired — P-D6)', () => {
     render(<CompanyConfigSurface />);
     fireEvent.click(screen.getByTestId('ccfg-rail-flags'));
-    expect(screen.getByTestId('ccfg-flag-persistencyV2')).toBeInTheDocument();
     expect(screen.getByTestId('ccfg-flag-policyLedgerCampaignLens')).toBeInTheDocument();
     expect(screen.getByTestId('ccfg-flag-awardsProvenance')).toBeInTheDocument();
   });

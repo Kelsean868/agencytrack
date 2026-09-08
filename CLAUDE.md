@@ -202,7 +202,7 @@ Use `extractFields()` in `src/utils/extractFields.js` — single source of truth
 {
   agentId, agentName, tenantId,
   year, month,           // month = 1–12
-  persistency,           // parseFloat, 0–100
+  persistency,           // parseFloat, 0–1 decimal fraction (PERS_GATE = 0.90, PERS_FLOOR = 0.80)
   enteredBy,             // uid of manager
   enteredAt              // Firestore Timestamp
 }
