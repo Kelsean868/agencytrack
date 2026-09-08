@@ -83,7 +83,8 @@
 | Run-7 DECISIONS-NEEDED — none banked this run (informational, 2026-07-15) | — | — | — | 329 |
 | Design-conformance 2026-07-13 revalidation — 11 NEEDS-RULING items ruled by operator; backlog upd... | HIGH | — | — | 337 |
 | Run 8 banked follow-ups — carried forward, not yet dispatched (banked 2026-07-16, from `docs/fabl... | — | — | — | 351 |
-| Persistency v2 (NEW calc methodology, R-07) — Tatil-gated PROPOSAL, ATTENDED-ONLY (banked 2026-07... | HIGH | — | — | 369 |
+| ~~**SUPERSEDED (Persistency 24-Month Model brief, Slices P1/P2).**~~ Persistency v2 (NEW calc methodology, R-07) — Tatil ratified a DIFFERENT formula (the memo's aggregate 24-month model, not this entry's rolling time-weighted debit proposal). Phase 1 (aggregate formula) DONE by P1 (#937/#938); phase 2 (manager surface, the `persistency-v2-*.jsx` mockups) superseded — not to be ported, they draw the rejected arithmetic; phase 3 (calc-model switch) closed, will not build (P-D3 — the model is chosen by month, not a tenant switch) | HIGH | — | — | see § Persistency v2 |
+| The per-policy 24-month lapse-inclusion-window engine (Persistency 24-Month Model brief, Slice P3) is DESIGN-ONLY — gated on Tatil's promised process document. The policy ledger has no `paidToDate` or premium count today; an open question for Tatil is recorded verbatim in the body | MEDIUM | Persistency | — | see § Persistency — the per-policy 24-month lapse window |
 | CI-vs-local test-timing gap — Tier-0 error-state tests can pass locally 5x, fail in CI (banked 20... | MEDIUM | — | — | 384 |
 | Flake family scope — **PR #872's fix set is provably INCOMPLETE**; ≥3 further members named (MeetingMode ArrowRight, BranchesPanel Retry, the A2 `e` SERIES sibling) + 1 unnamed. DO NOT widen #872 — audit continues after it lands (banked 2026-07-26, PR #875 session) | MEDIUM | — | — | 384 |
 | Flake family — `AgentPlannerPanel.weeknav.test.jsx` carries `flushPendingEffects` 0x where its #899-remediated sibling carries it 4x; fix was applied per-FILE not per-COMPONENT (banked 2026-08-26, PR #909) | MEDIUM | — | — | end |
@@ -165,7 +166,7 @@
 | `verify-financing-notify-k7-live.mjs` hardening — config-mutation window + env read (banked K7-cl... | LOW | K7 | — | 934 |
 | Escape unescaped table-cell pipes in CONTEXT docs (banked K6 fast-follow, 2026-06-26, LOW cosmetic) | LOW | K6 | — | 951 |
 | Client-side `serviceMonths` integer validation in `reconcileFinancing()` (banked K6 fast-follow, ... | LOW | K6 | — | 959 |
-| CLAUDE.md persistency annotation — `0-100` annotation is stale (banked K4, 2026-06-25, LOW doc-fix) | LOW | K4 | — | 967 |
+| ~~**RESOLVED (Persistency 24-Month Model brief, Slice P2).**~~ CLAUDE.md persistency annotation — `0-100` annotation is stale (banked K4, 2026-06-25, LOW doc-fix). Corrected to `0–1 decimal fraction` with the `PERS_GATE`/`PERS_FLOOR` citation, in the same commit as the P2 vocabulary sweep | LOW | K4 | — | see § CLAUDE.md persistency annotation |
 | Track K · K3 adapter — doc note correction: `isStaff` and `lapsedSurrenderedUnder2yrAPI` sourcing... | LOW | Track K | — | 975 |
 | Track K · K3 — ruleset figures are 2026 placeholders pending confirmation (banked K3, 2026-06-25,... | LOW | Track K | — | 1016 |
 | Track K · K4 — Q2+ adapter uses `dateSubmitted` bucketing; cross-quarter policies may be missed (... | LOW | Track K | — | 1022 |
@@ -423,7 +424,7 @@ Run 7's own DECISIONS-NEEDED section (`docs/fable-run7-progress.md`) is empty �
 
 - **Newly buildable (STILL-VALID, unblocked):** R-08 ChampionsPanel ranked podium (ranked by API — was mis-bucketed as a cosmetic gap, corrected); R-06 Commission Playground saved-scenario chips, agent-private slice (profile-doc storage, own-write only — the manager suggest-a-goal-back cross-user write stays DEFERRED); R-11 All Users LAST-activity column (gated on a login-stamp write path — see the login-stamp prerequisite noted in R-11's ruling; write the stamp first, then the column is buildable).
 - **Struck from the backlog:** R-01 DataSourceBadge SETTLED wiring ("Estimated" blessed as the permanent honest state, the `computations.js:267-273` read-light rule is deliberate); R-04 AgentModePicker (absorbed into the Company Config "Reporting Cadence" section, no longer tracked standalone).
-- **Attended-only / ABSOLUTE STOP (not autonomous-eligible):** R-02 Persistency KPI card CF aggregate, R-03 kiosk roster-parity CF aggregate (both bundle with the `functions/` Node-20 migration window — see § Node 20 → Node 24 below), R-05 SM cross-branch views (bundle into the multi-tenancy track), R-07 **Persistency v2 calc methodology** (HIGH, money-correctness-critical, Tatil-gated PROPOSAL — see its own entry below), R-09 Est-Commission wizard card (needs a commission-rate source), R-10 EditUserDrawer commission-rate + reset-password (split, both attended).
+- **Attended-only / ABSOLUTE STOP (not autonomous-eligible):** R-02 Persistency KPI card CF aggregate, R-03 kiosk roster-parity CF aggregate (both bundle with the `functions/` Node-20 migration window — see § Node 20 → Node 24 below), R-05 SM cross-branch views (bundle into the multi-tenancy track), R-09 Est-Commission wizard card (needs a commission-rate source), R-10 EditUserDrawer commission-rate + reset-password (split, both attended). **R-07 Persistency v2 calc methodology is SUPERSEDED** — Tatil ratified a different formula (the 24-Month Model memo), built in P1/P2; see its own entry above. Its successor, the per-policy 24-month lapse-window engine (Persistency 24-Month Model brief, Slice P3), remains attended-only/design-gated on Tatil's process document — see § Persistency — the per-policy 24-month lapse window.
 
 **Action:** none required from this ruling pass itself — the buildable items (R-08/R-06/R-11) are candidates for the next Fable/autonomous dispatch; the attended items are gated as noted. Full ABSOLUTE STOP table at `docs/audits/design-conformance-2026-07-13.md` §8.
 
@@ -451,6 +452,19 @@ Verification/scope gaps Run 8 itself flagged (Rule 22), now live in prod via PR 
 
 ## Persistency v2 (NEW calc methodology, R-07) — Tatil-gated PROPOSAL, ATTENDED-ONLY (banked 2026-07-13, HIGH — money-correctness-critical)
 
+**SUPERSEDED — Persistency 24-Month Model brief (Slices P1/P2, PRs #937/#938/P2).** Tatil ratified a Tatil Life inter-departmental memo dated 29 Aug 2026 ("Introduction of the Updated 24-Month Persistency Model") that is a **different formula** from the one this entry describes below: the memo's model is the existing aggregate formula plus one new term (`decreases`) and a per-policy 24-month inclusion window, not the rolling time-weighted debit/credit ledger this entry's proposal-stage design described. The memo's aggregate formula is what got built.
+
+**Phase-by-phase disposition:**
+1. **Calc engine — DONE, but not this entry's design.** P1 (#937) built the memo's aggregate formula in `src/lib/persistency/model.js` / `calculations.js` (`calculateGrossSettled` gained `decreases`), not the rolling debit/credit ledger described below. P1b (#938) landed the September-month follow-up.
+2. **Manager surface — SUPERSEDED, not ported.** The four `persistency-v2-*.jsx` mockups under `docs/design-system/proposals/persistency-v2-PROPOSAL/` draw the rejected rolling-debit arithmetic and must NOT be ported forward — porting them now would ship a formula Tatil did not adopt. The flag-gated preview shell that showed this arithmetic (`rollingModelV2.js` + `PersistencyV2Shell.jsx`, `persistencyV2` feature flag) was retired in Slice P2 (P-D6) for exactly this reason.
+3. **Calc-model switch — CLOSED, will not build (P-D3).** The memo dates the model change (effective September 2026); the model is selected by report month (`persistencyModelFor(monthKey)`), never by a tenant-configurable `persistency.calcModel` switch. A switch would let a tenant admin report August on the new model or October on the old one — both wrong.
+
+**Successor tracked separately:** the memo's per-policy 24-month lapse-inclusion-window mechanics are NOT the same problem as this entry's rolling debit ledger, and are themselves not ratified in enough detail to build (one ambiguous paragraph in the memo, process document promised but not yet delivered). See § Persistency — the per-policy 24-month lapse window (Slice P3, appended below) for that gated item.
+
+---
+
+<details><summary>Original entry (pre-memo, retained for record — do not act on this design)</summary>
+
 **Do not confuse with "Persistency Mgr v2" below** (the already-shipped manager Persistency panel redesign, PR #505 — a UI surface over the *existing* persistency calc). This entry is a **new calculation methodology**: a rolling 24-month per-policy time-weighted debit/credit ledger (early lapses weighted heavier, reinstatements credit remaining months, self-expiring at 24mo) that Tatil is seeking approval on — **not ratified**, proposal-stage only. Design authority: `docs/design-system/proposals/persistency-v2-PROPOSAL/README.md` (states plainly it is proposal-stage, distinct from the canonical `docs/design-system/screens-v2/`), containing the four `persistency-v2-*.jsx` manager-surface mockups + `persistency-v2-calc-methodology-PROPOSAL.pdf` (the draft methodology). The existing `persistencyV2` feature flag gates the UI shell only, not the calc model.
 
 **Phased, all gated on Tatil ratification:**
@@ -459,6 +473,8 @@ Verification/scope gaps Run 8 itself flagged (Rule 22), now live in prod via PR 
 3. **Calc-model switch** — Company Config setting `persistency.calcModel: current|v2`, default `current`, added when the engine lands.
 
 **Action:** none until Tatil ratifies the methodology. Do not build any part autonomously. Cross-reference: `docs/audits/design-conformance-2026-07-13.md` §5 item 2 / §8 (ABSOLUTE STOP — money/payout + `functions/` categories).
+
+</details>
 
 ---
 
@@ -2012,9 +2028,7 @@ PR #760 tightened the **rules-layer** gate (`validReconciliation()` now requires
 
 ## CLAUDE.md persistency annotation — `0-100` annotation is stale (banked K4, 2026-06-25, LOW doc-fix)
 
-CLAUDE.md § Persistency Document Shape states `persistency, // parseFloat, 0–100`. The stored value is a **0–1 fraction** — confirmed by `financingBonusEngine.js` gate comparisons (`PERS_GATE = 0.90`, `PERS_FLOOR = 0.80`) and the K4 adapter's no-normalization design. The `0-100` annotation misleads future adapters.
-
-**To resolve:** change the CLAUDE.md persistency doc comment to `persistency, // parseFloat, 0–1 fraction (e.g. 0.92 = 92%)`. One-line docs-only edit. **Falsification:** overturned if a write path is found that stores 0–100 scale values — grep `persistency` writes in `persistencyService.js` to verify before applying.
+**RESOLVED — Persistency 24-Month Model brief, Slice P2.** CLAUDE.md § Persistency Document Shape stated `persistency, // parseFloat, 0–100`. The stored value is a **0–1 fraction** — confirmed by `financingBonusEngine.js` gate comparisons (`PERS_GATE = 0.90`, `PERS_FLOOR = 0.80`), `src/lib/persistency/calculations.js` (`calculatePersistency = net ÷ gross`, no ×100 scaling anywhere in the write path), and the K4 adapter's no-normalization design. The `0-100` annotation misled future adapters. Corrected to `persistency, // parseFloat, 0–1 decimal fraction (PERS_GATE = 0.90, PERS_FLOOR = 0.80)` in the same commit as the P2 vocabulary sweep.
 
 ---
 
@@ -6549,3 +6563,27 @@ the token is confirmed rotated and a fresh smoke passes — either closes this e
 overturned by this module later gaining an importer without a smoke also running; that would be a
 NEW, higher-stakes gap (an unverified change that DOES reach the bundle), not a resolution of this
 one.
+
+---
+
+## Persistency — the per-policy 24-month lapse window (Slice P3, DESIGN ONLY, banked 2026-09-08, MEDIUM — gated on Tatil's process document)
+
+Recorded by the Persistency 24-Month Model brief's Slice P2 (which is a docs-only append, not a build — P3 itself is explicitly not built). Source: Tatil Life inter-departmental memo "Introduction of the Updated 24-Month Persistency Model" (A. Rauseo, 29 Aug 2026). The memo's aggregate formula (Net Gross Settled / Net Settled / Persistency) shipped in Slice P1 (#937/#938). This entry is the one piece the memo describes but does not specify precisely enough to build: the per-policy 24-month lapse-inclusion window.
+
+**What the memo says, verbatim in substance:** a policy that lapses before 24 months hurts persistency; how long it hurts depends on the number of premiums paid before lapse; it stops affecting persistency once it reaches the equivalent of 24 months of premiums paid **or** exceeds 24 months from the month of its Issue Date, whichever comes first; the 24-month check is reckoned from the month of the Paid-To-Date, not the Lapse Date.
+
+**Why this is not built:** the paragraph is internally ambiguous and the memo itself promises a follow-up process document that does not exist yet. Building money-affecting arithmetic from an ambiguous paragraph is the exact mistake the original R-07 FOLLOW_UP (Persistency v2 calc methodology, see above) forbade, and this is a different instance of the same risk.
+
+**What the app's data model has today, and what it's missing:**
+- The policy ledger already carries `dateIssued` (stamped at settlement), `status: lapsed`, and `lapsePolicy`.
+- It does **not** carry `paidToDate` or a premium count. Both are needed for the memo's lapse rule and neither is entered anywhere today.
+
+**The rule to encode, once the process document arrives:** a lapsed policy stays in the Lapses term until `min(month it would have reached 24 premiums paid, issueMonth + 24)`, with the 24-month check reckoned from the Paid-To-Date month.
+
+**Open question for Tatil, to be asked verbatim:** *"Is the 24-month cut-off `paidToDateMonth − issueMonth >= 24`, or `paidToDateMonth + (24 − premiumsPaid)`?"* — the two readings of the memo's last sentence give different answers for the same policy.
+
+**Until then:** the app's persistency numbers are what managers and agents transcribe from Tatil's monthly report, exactly as today. The app does not compute persistency from the policy ledger, and no brief has changed that.
+
+**Action:** none until Tatil delivers the process document. When it lands, requirements-gather against this entry's data-model gap (add `paidToDate` + premium count to the policy write path) before writing any lapse-window arithmetic. Attended-only, money-correctness-critical — same category as R-07 above.
+
+**Falsification:** overturned if a consumer is found computing persistency from the policy ledger today (none was found — `grep`-verified during Slice P2's Phase 1) — that would mean this entry's "nothing branches on the ledger yet" premise is already wrong and the design needs revisiting before, not after, the process document arrives.

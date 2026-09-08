@@ -18,18 +18,18 @@ beforeEach(() => {
   vi.clearAllMocks();
   // Default hydration: settings has a nested feature flag; other docs empty.
   hoisted.getConfigDoc.mockImplementation(async (_tid, id) =>
-    id === 'settings' ? { featureFlags: { persistencyV2: true } } : {},
+    id === 'settings' ? { featureFlags: { awardsProvenance: true } } : {},
   );
 });
 
 describe('useConfig', () => {
   it('outside a provider → codeDefault (fail-closed, no throw)', () => {
-    const { result } = renderHook(() => useConfig('settings.featureFlags.persistencyV2', 'DEF'));
+    const { result } = renderHook(() => useConfig('settings.featureFlags.awardsProvenance', 'DEF'));
     expect(result.current).toBe('DEF');
   });
 
   it('returns codeDefault before hydration, then the hydrated value once loaded', async () => {
-    const { result } = renderHook(() => useConfig('settings.featureFlags.persistencyV2', false), { wrapper });
+    const { result } = renderHook(() => useConfig('settings.featureFlags.awardsProvenance', false), { wrapper });
     // Before hydration resolves, docs are {} → codeDefault.
     expect(result.current).toBe(false);
     await waitFor(() => expect(result.current).toBe(true));

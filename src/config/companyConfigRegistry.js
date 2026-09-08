@@ -646,27 +646,27 @@ export const CONFIG_SECTIONS = {
   },
 };
 
-// ── Feature flags — the 3 REAL allowlisted keys ─────────────────────────────
-// Source: src/services/featureFlagsService.js:29-33 (FEATURE_FLAG_KEYS), mirrored
+// ── Feature flags — the 2 REAL allowlisted keys ─────────────────────────────
+// Source: src/services/featureFlagsService.js:32-35 (FEATURE_FLAG_KEYS), mirrored
 // in scripts/verification/vh/flag-toggle.cjs:26 (ALLOWED_FLAGS).
+// `persistencyV2` was retired here (Persistency 24-Month Model brief, Slice P2,
+// P-D6) — the memo did not adopt the v2 rolling-model preview's arithmetic, so
+// the flag-gated shell it mounted is gone. `configService.js`'s
+// `ALLOWED_FLAG_KEYS` (a separate write-gate allowlist, not this list)
+// deliberately still contains `persistencyV2`: dropping it there would also
+// require editing `firestore.rules`' `ccfgFlagKeysAllowed()` and
+// `scripts/verification/vh/flag-toggle.cjs` to keep the triple-copy drift
+// guard (`flagAllowlist.cross-check.test.js`) green, and this slice does not
+// touch `firestore.rules`. The stale allowed-but-unreachable write path is
+// harmless — no UI offers it now that this entry is gone.
 export const CONFIG_FLAGS = [
-  {
-    id: 'flag.persistencyV2',
-    key: 'persistencyV2',
-    name: 'Persistency v2 model',
-    desc: 'Mounts the rolling v2 persistency preview inside the agent Persistency tab. Flag OFF ⇒ surface fully absent, byte-identical to pre-flag behavior.',
-    storage: { docId: 'settings', keyPath: 'featureFlags.persistencyV2', mode: 'flag' },
-    // Corrected citation: the real consumer is the AGENT PersistencyTab, not
-    // the manager one (a stale mapping would have cited src/components/manager/PersistencyTab.jsx).
-    source: 'src/services/featureFlagsService.js:29-33 + src/components/agent/PersistencyTab.jsx:32',
-  },
   {
     id: 'flag.policyLedgerCampaignLens',
     key: 'policyLedgerCampaignLens',
     name: 'Policy Ledger campaign lens',
     desc: 'Mounts the campaign-eligibility lens inside the agent Policy Ledger’s list view. Flag OFF ⇒ renders nothing, fires no fetch.',
     storage: { docId: 'settings', keyPath: 'featureFlags.policyLedgerCampaignLens', mode: 'flag' },
-    source: 'src/services/featureFlagsService.js:29-33 + src/components/agent/policyLedger/CampaignLensPanel.jsx:115',
+    source: 'src/services/featureFlagsService.js:32-35 + src/components/agent/policyLedger/CampaignLensPanel.jsx:115',
   },
   {
     id: 'flag.awardsProvenance',
@@ -674,7 +674,7 @@ export const CONFIG_FLAGS = [
     name: 'Awards provenance',
     desc: 'Shows the honest ledger-source chip and provenance drawer on Agent Awards (Policy Ledger vs. Confirmed Settlements). Flag OFF ⇒ chip and drawer panel absent.',
     storage: { docId: 'settings', keyPath: 'featureFlags.awardsProvenance', mode: 'flag' },
-    source: 'src/services/featureFlagsService.js:29-33 + src/components/awards/AgentAwardsPanel.jsx:67',
+    source: 'src/services/featureFlagsService.js:32-35 + src/components/awards/AgentAwardsPanel.jsx:67',
   },
 ];
 

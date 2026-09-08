@@ -20,22 +20,22 @@ beforeEach(() => {
 
 describe('useFeatureFlag', () => {
   it('defaults to false, then resolves ON when the flag is set', async () => {
-    hoisted.getFeatureFlags.mockResolvedValue({ persistencyV2: true });
-    const { result } = renderHook(() => useFeatureFlag('persistencyV2'));
+    hoisted.getFeatureFlags.mockResolvedValue({ policyLedgerCampaignLens: true });
+    const { result } = renderHook(() => useFeatureFlag('policyLedgerCampaignLens'));
     expect(result.current).toBe(false); // pre-resolution
     await waitFor(() => expect(result.current).toBe(true));
   });
 
   it('stays OFF for an absent key', async () => {
-    hoisted.getFeatureFlags.mockResolvedValue({ persistencyV2: true });
+    hoisted.getFeatureFlags.mockResolvedValue({ policyLedgerCampaignLens: true });
     const { result } = renderHook(() => useFeatureFlag('awardsProvenance'));
     await waitFor(() => expect(hoisted.getFeatureFlags).toHaveBeenCalled());
     expect(result.current).toBe(false);
   });
 
   it('loads once per tenant (shared cache across hook instances)', async () => {
-    hoisted.getFeatureFlags.mockResolvedValue({ persistencyV2: true, awardsProvenance: true });
-    const a = renderHook(() => useFeatureFlag('persistencyV2'));
+    hoisted.getFeatureFlags.mockResolvedValue({ policyLedgerCampaignLens: true, awardsProvenance: true });
+    const a = renderHook(() => useFeatureFlag('policyLedgerCampaignLens'));
     const b = renderHook(() => useFeatureFlag('awardsProvenance'));
     await waitFor(() => expect(a.result.current).toBe(true));
     await waitFor(() => expect(b.result.current).toBe(true));
@@ -44,14 +44,14 @@ describe('useFeatureFlag', () => {
 
   it('is OFF (and does not read) when there is no tenant', async () => {
     hoisted.useAuth.mockReturnValue({ tenantId: null });
-    const { result } = renderHook(() => useFeatureFlag('persistencyV2'));
+    const { result } = renderHook(() => useFeatureFlag('policyLedgerCampaignLens'));
     expect(result.current).toBe(false);
     expect(hoisted.getFeatureFlags).not.toHaveBeenCalled();
   });
 
   it('stays OFF when the flag read rejects', async () => {
     hoisted.getFeatureFlags.mockRejectedValue(new Error('boom'));
-    const { result } = renderHook(() => useFeatureFlag('persistencyV2'));
+    const { result } = renderHook(() => useFeatureFlag('policyLedgerCampaignLens'));
     await waitFor(() => expect(hoisted.getFeatureFlags).toHaveBeenCalled());
     expect(result.current).toBe(false);
   });

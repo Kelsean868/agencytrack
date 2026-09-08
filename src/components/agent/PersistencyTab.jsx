@@ -1,6 +1,6 @@
 // E3 — Agent-side persistency tab.
 //
-// Shows the agent's current month + 12-month trend + self-entry form (locked
+// Shows the agent's current month + monthly trend + self-entry form (locked
 // when a manager has already entered for the same month) + a "Open Playground"
 // CTA. Award-gate banner appears when persistency is below 90%.
 
@@ -17,9 +17,7 @@ import {
 import PersistencyEntryForm from '../manager/PersistencyEntryForm';
 import { persistencyModelFor } from '../../lib/persistency/model';
 import PersistencyPlayground from '../persistency/PersistencyPlayground';
-import PersistencyV2Shell from '../persistency/PersistencyV2Shell';
 import PanelSkeleton from '../ui/PanelSkeleton';
-import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 
 function formatPct(decimal) {
   if (!Number.isFinite(decimal)) return '—';
@@ -29,8 +27,6 @@ function formatPct(decimal) {
 
 export default function PersistencyTab({ onViewLapsedPolicies }) {
   const { user, role, tenantId } = useAuth();
-  // Item 3.4 — v2 rolling-model preview (flag OFF ⇒ surface absent, byte-identical).
-  const persistencyV2On = useFeatureFlag('persistencyV2');
 
   const [history, setHistory] = useState([]);
   const [monthKeys, setMonthKeys] = useState([]);
@@ -203,7 +199,7 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
       {/* Trend chart */}
       <div className="card flex flex-col gap-2" data-testid="persistency-trend-chart">
         <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">
-          12-month trend
+          Monthly trend
         </p>
         {chartData.length === 0 ? (
           <p className="text-xs text-ink-muted py-6 text-center">
@@ -283,9 +279,6 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
           <Calculator size={14} /> Open Playground
         </button>
       </div>
-
-      {/* Item 3.4 — v2 rolling-model preview (flag-gated; absent when OFF) */}
-      {persistencyV2On && <PersistencyV2Shell />}
     </div>
 
       {/* Self-entry form + Playground — outside `.stagger` (fixed-position

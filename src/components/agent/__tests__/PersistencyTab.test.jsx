@@ -7,11 +7,6 @@ const hoisted = vi.hoisted(() => ({
   getAgentHistory: vi.fn(),
   getAvailableMonths: vi.fn(),
   useAuth: vi.fn(),
-  useFeatureFlag: vi.fn(() => false),
-}));
-
-vi.mock('../../../hooks/useFeatureFlag', () => ({
-  useFeatureFlag: hoisted.useFeatureFlag,
 }));
 
 vi.mock('../../../services/persistencyService', () => ({
@@ -60,28 +55,11 @@ const E3_RECORD = (overrides = {}) => ({
 describe('agent PersistencyTab', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    hoisted.useFeatureFlag.mockReturnValue(false);
     hoisted.useAuth.mockReturnValue({
       user: { uid: 'a1' },
       role: 'agent',
       tenantId: 'tenant1',
     });
-  });
-
-  it('3.4 flag OFF — the v2 rolling-model shell is absent (byte-identical tab)', async () => {
-    hoisted.getAgentHistory.mockResolvedValueOnce([E3_RECORD({ persistency: 0.95 })]);
-    hoisted.getAvailableMonths.mockResolvedValueOnce(['2026-02']);
-    render(<PersistencyTab />);
-    await waitFor(() => expect(screen.getByTestId('agent-persistency-summary')).toBeInTheDocument());
-    expect(screen.queryByTestId('persistency-v2-shell')).not.toBeInTheDocument();
-  });
-
-  it('3.4 flag ON — the v2 rolling-model shell renders inside the tab', async () => {
-    hoisted.useFeatureFlag.mockImplementation((k) => k === 'persistencyV2');
-    hoisted.getAgentHistory.mockResolvedValueOnce([E3_RECORD({ persistency: 0.95 })]);
-    hoisted.getAvailableMonths.mockResolvedValueOnce(['2026-02']);
-    render(<PersistencyTab />);
-    await waitFor(() => expect(screen.getByTestId('persistency-v2-shell')).toBeInTheDocument());
   });
 
   it('renders no award-gate banner when persistency >= 0.90', async () => {
