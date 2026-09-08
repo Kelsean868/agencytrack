@@ -17,8 +17,12 @@
  *     present on a 24-month month, absent on a legacy month. This is the real
  *     assertion — it holds whichever month production happens to carry, so it
  *     does not depend on prod having a September 2026 record.
- *   - moving a new lever actually moves the projected percentage (the lever is
- *     wired to projectPersistency, not decorative)
+ *   - the additive and subtractive levers actually move the projected gross
+ *     (they are wired to projectPersistency, not decorative)
+ *   - the P4b guard agrees with the projected denominator at every lever
+ *     position: projectedGross <= 0 ⟺ the percentage is suppressed to "—"
+ *     ⟺ the danger message is present. Asserted as an agreement so it holds
+ *     whether or not the account has a persistency record.
  *
  * SKIP-NOT-FAIL: if the persistency tab, the Playground, or a model line is
  * unreachable for the signed-in account (no record on the selected month, or a
@@ -151,32 +155,74 @@ try {
               `${lineText} → decreases lever ${decCount ? 'PRESENT' : 'absent'}`);
           }
 
-          // ── The new lever is actually wired to projectPersistency ────────
-          // Drag Business Rolling Off (present on both models) and confirm the
-          // projected percentage moves. Nothing is written by this.
+          // ── The new levers are wired, and the P4b guard agrees with the
+          // projected denominator at every lever position ──────────────────
+          //
+          // Asserted as an AGREEMENT rather than a fixed expectation, so it
+          // holds whether or not the signed-in account has a record:
+          //   projectedGross <= 0  ⟺  percentage suppressed to "—"
+          //                        ⟺  danger message present
+          // Nothing is written by any of this — the Playground has no save path.
           const projected = page.locator('[data-testid="playground-projected-pct"]');
-          const before = (await projected.innerText().catch(() => '')).trim();
           const slider = page.locator('[data-testid="playground-slider-goodBusinessFallingOff"]');
-          if (gbfCount === 1 && before) {
-            await slider.evaluate((el) => {
+
+          // Reads the rendered "Projected Net Gross" figure back off the DOM.
+          const readGross = async () => {
+            const text = await page.locator('[data-testid="persistency-projected-output"]').innerText();
+            const m = text.match(/TTD\s*(-?[\d,]+(?:\.\d+)?)/);
+            return m ? parseFloat(m[1].replace(/,/g, '')) : NaN;
+          };
+          const setLever = async (locator, value) => {
+            await locator.evaluate((el, v) => {
               const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-              setter.call(el, String(Math.round(Number(el.max) / 2)));
+              setter.call(el, String(v));
               el.dispatchEvent(new Event('input', { bubbles: true }));
               el.dispatchEvent(new Event('change', { bubbles: true }));
-            });
+            }, value);
             await page.waitForTimeout(400);
-            const after = (await projected.innerText()).trim();
-            record(`[agent/${theme}] "Business Rolling Off" lever moves the projected %`,
-              after !== before, `${before} → ${after}`);
+          };
+          const guardState = async (label) => {
+            const gross = await readGross();
+            const shown = (await projected.innerText()).trim();
+            const warned = await page.locator('[data-testid="playground-negative-denominator-warning"]').count();
+            const agrees = (gross <= 0)
+              ? (shown === '—' && warned === 1)
+              : (shown !== '—' && warned === 0);
+            record(`[agent/${theme}] P4b guard agrees with projected gross — ${label}`,
+              Number.isFinite(gross) && agrees,
+              `gross ${gross} → shown "${shown}", warning ${warned ? 'present' : 'absent'}`);
+            return { gross, shown };
+          };
 
-            // Reset returns it — proves ZERO_LEVERS covers the new levers.
+          if (gbfCount === 1) {
+            // 1. At rest.
+            const rest = await guardState('at rest');
+
+            // 2. New Business up — an ADDITIVE lever, so gross must rise. On a
+            //    zero-baseline account this is what lifts it out of the guarded
+            //    state, which is the P4b transition worth proving.
+            await setLever(page.locator('[data-testid="playground-slider-newBusinessPlanned"]'), 500_000);
+            const lifted = await guardState('new business up');
+            record(`[agent/${theme}] additive lever raises projected gross`,
+              lifted.gross > rest.gross, `${rest.gross} → ${lifted.gross}`);
+
+            // 3. Business Rolling Off to max — a SUBTRACTIVE lever, so gross
+            //    must fall. This is the lever P4 made reachable and P4b guards.
+            await setLever(slider, 500_000);
+            const dropped = await guardState('rolling off at max');
+            record(`[agent/${theme}] subtractive lever lowers projected gross`,
+              dropped.gross < lifted.gross, `${lifted.gross} → ${dropped.gross}`);
+
+            // 4. Reset returns everything — proves ZERO_LEVERS covers the new levers.
             await page.locator('[data-testid="playground-reset-btn"]').click();
             await page.waitForTimeout(400);
-            const reset = (await projected.innerText()).trim();
-            record(`[agent/${theme}] Reset returns the projected % to its at-zero value`,
-              reset === before, `${after} → ${reset}`);
+            const resetGross = await readGross();
+            const resetShown = (await projected.innerText()).trim();
+            record(`[agent/${theme}] Reset returns projected gross and the percentage to their at-rest values`,
+              resetGross === rest.gross && resetShown === rest.shown,
+              `gross ${dropped.gross} → ${resetGross}; shown "${resetShown}"`);
           } else {
-            skip(`[agent/${theme}] lever-wiring leg`, 'no rolling-off slider or no projected % to compare');
+            skip(`[agent/${theme}] lever-wiring + P4b guard legs`, 'no rolling-off slider present');
           }
         }
       }
