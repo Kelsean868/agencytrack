@@ -332,7 +332,40 @@ describe('projectPersistency', () => {
     expect(out.projectedPersistency).toBe(1);
   });
 
-  it('orphans add to gross settled identically to new business', () => {
+  // P5 — replaces "orphans add to gross settled identically to new business",
+  // which encoded the pre-P5 defect. The denominator belongs to the WRITING
+  // agent: an adopted orphan never entered her gross, so by default it lifts
+  // the numerator only and behaves like a reinstatement, not like new business.
+  it('orphans lift the numerator only on the default (they match reinstatements, not new business)', () => {
+    const args = {
+      currentGrossSettled: 1000,
+      currentLapses: 100,
+      currentReinstatements: 0,
+      goodBusinessFallingOff: 0,
+      newLapsesAnticipated: 0,
+    };
+    const viaNB = projectPersistency({
+      ...args, newBusinessPlanned: 500, newReinstatementsPlanned: 0, newOrphansAdopted: 0,
+    });
+    const viaNO = projectPersistency({
+      ...args, newBusinessPlanned: 0, newReinstatementsPlanned: 0, newOrphansAdopted: 500,
+    });
+    const viaNR = projectPersistency({
+      ...args, newBusinessPlanned: 0, newReinstatementsPlanned: 500, newOrphansAdopted: 0,
+    });
+
+    // Orphans do not touch gross — the agent did not write that business.
+    expect(viaNO.projectedGrossSettled).toBe(1000);
+    // Equal value as an orphan or as a reinstatement lands identically.
+    expect(viaNO.projectedGrossSettled).toBe(viaNR.projectedGrossSettled);
+    expect(viaNO.projectedNetSettled).toBe(viaNR.projectedNetSettled);
+    expect(viaNO.projectedPersistency).toBeCloseTo(viaNR.projectedPersistency, 6);
+    // …and no longer identically to new business, which is the defect fixed.
+    expect(viaNO.projectedGrossSettled).not.toBe(viaNB.projectedGrossSettled);
+    expect(viaNO.projectedPersistency).not.toBeCloseTo(viaNB.projectedPersistency, 6);
+  });
+
+  it('orphans add to gross settled identically to new business when the setting is true', () => {
     const args = {
       currentGrossSettled: 1000,
       currentLapses: 100,
@@ -340,11 +373,31 @@ describe('projectPersistency', () => {
       goodBusinessFallingOff: 0,
       newReinstatementsPlanned: 0,
       newLapsesAnticipated: 0,
+      orphansEnterDenominator: true,
     };
     const viaNB = projectPersistency({ ...args, newBusinessPlanned: 500, newOrphansAdopted: 0 });
     const viaNO = projectPersistency({ ...args, newBusinessPlanned: 0, newOrphansAdopted: 500 });
     expect(viaNB.projectedPersistency).toBeCloseTo(viaNO.projectedPersistency, 6);
     expect(viaNB.projectedGrossSettled).toBe(viaNO.projectedGrossSettled);
+  });
+
+  // P5 — the rule's headline consequence: net exceeds gross, so persistency is
+  // legitimately above 100% and must not be clamped. Candice writes 100,000,
+  // loses nothing, then adopts and reinstates 10,000 of someone else's book.
+  it('an adopted-and-reinstated orphan can carry persistency above 100% (the Candice case)', () => {
+    const out = projectPersistency({
+      currentGrossSettled: 100000,
+      currentLapses: 0,
+      currentReinstatements: 0,
+      goodBusinessFallingOff: 0,
+      newBusinessPlanned: 0,
+      newReinstatementsPlanned: 0,
+      newOrphansAdopted: 10000,
+      newLapsesAnticipated: 0,
+    });
+    expect(out.projectedGrossSettled).toBe(100000);
+    expect(out.projectedNetSettled).toBe(110000);
+    expect(out.projectedPersistency).toBeCloseTo(1.10, 6);
   });
 
   it('reinstatements add to net only, not gross', () => {
@@ -485,29 +538,67 @@ describe('calculateShortfall', () => {
     expect(projection.projectedPersistency).toBeCloseTo(args.targetPersistency, 4);
   });
 
-  it('noNeeded equals nbNeeded (orphans behave identically)', () => {
-    const out = calculateShortfall({
+  // P5 — was "noNeeded equals nbNeeded (orphans behave identically)". On the
+  // default an orphan lifts the numerator, so noNeeded follows the
+  // REINSTATEMENTS solution; the old equality is what the setting restores.
+  it('noNeeded follows nrNeeded on the default, nbNeeded when the setting is true', () => {
+    const args = {
       targetPersistency: 0.85,
       currentGrossSettled: 5000,
       currentLapses: 1500,
       currentReinstatements: 200,
       goodBusinessFallingOff: 100,
-    });
-    expect(out.noNeeded).toBe(out.nbNeeded);
+    };
+    const byDefault = calculateShortfall(args);
+    expect(byDefault.noNeeded).toBe(byDefault.nrNeeded);
+    expect(byDefault.noNeeded).not.toBe(byDefault.nbNeeded);
+
+    const whenTrue = calculateShortfall({ ...args, orphansEnterDenominator: true });
+    expect(whenTrue.noNeeded).toBe(whenTrue.nbNeeded);
   });
 
+  // P5 §2 — the cost of the old wiring, in the agent's own numbers. Baseline
+  // 100,000, lapses 15,000, no reinstatements, 90% target: the truthful orphan
+  // figure is 5,000, where the pre-P5 code told her 50,000 — ten times over.
+  it('noNeeded is 5,000 on the default and 50,000 when the setting is true (§2 worked example)', () => {
+    const args = {
+      targetPersistency: 0.90,
+      currentGrossSettled: 100000,
+      currentLapses: 15000,
+      currentReinstatements: 0,
+      goodBusinessFallingOff: 0,
+    };
+    const byDefault = calculateShortfall(args);
+    expect(byDefault.nbNeeded).toBeCloseTo(50000, 6);
+    expect(byDefault.nrNeeded).toBeCloseTo(5000, 6);
+    expect(byDefault.noNeeded).toBeCloseTo(5000, 6);
+
+    const whenTrue = calculateShortfall({ ...args, orphansEnterDenominator: true });
+    expect(whenTrue.noNeeded).toBeCloseTo(50000, 6);
+  });
+
+  // P5 — the Infinity sentinel now depends on which side of the fraction the
+  // orphan lands on. Gross-side levers can never force net == gross; a
+  // numerator-only orphan can, exactly as a reinstatement does.
   it('returns Infinity for nbNeeded when target is 1.0 (impossible via NB alone)', () => {
-    const out = calculateShortfall({
+    const args = {
       targetPersistency: 1.0,
       currentGrossSettled: 1000,
       currentLapses: 100,
       currentReinstatements: 0,
       goodBusinessFallingOff: 0,
-    });
+    };
+    const out = calculateShortfall(args);
     expect(out.nbNeeded).toBe(Infinity);
-    expect(out.noNeeded).toBe(Infinity);
     // NR is the only path to exactly 100% — confirm a finite answer
     expect(Number.isFinite(out.nrNeeded)).toBe(true);
+    // On the default the orphan is a numerator lever, so it is finite too.
+    expect(out.noNeeded).toBe(out.nrNeeded);
+    expect(Number.isFinite(out.noNeeded)).toBe(true);
+
+    // With the setting on, the orphan is a gross lever again — Infinity.
+    const whenTrue = calculateShortfall({ ...args, orphansEnterDenominator: true });
+    expect(whenTrue.noNeeded).toBe(Infinity);
   });
 
   it('all zero when baseline is non-positive', () => {
