@@ -160,8 +160,21 @@ export function computeBarStats(records) {
 // looking levers. Used by the Playground to show what-if scenarios live.
 //
 // Mechanics:
-//   - newBusinessPlanned and newOrphansAdopted both ADD to gross settled
-//     (they are mathematically identical for the persistency calculation).
+//   - newBusinessPlanned ADDS to gross settled: the agent wrote that business,
+//     so it belongs in her denominator.
+//   - newOrphansAdopted does NOT, by default. The denominator belongs to the
+//     WRITING agent — she did not write an orphan she adopted, so an
+//     under-24-month orphan policy never enters her gross. If she gets it
+//     reinstated, that value lands in NET only, exactly like any other
+//     reinstatement. Net can then exceed gross, which is what allows a
+//     projection legitimately above 100% (see also the P4b guard in
+//     PersistencyPlayground.jsx, which must never clamp that case).
+//   - That behaviour is settable per tenant, because persistency counting
+//     rules vary by carrier: companyMinimums.orphanAdoptionEntersDenominator.
+//     Default (absent/false) = numerator-only, the rule above. Set true and an
+//     adopted orphan counts like business the agent wrote (adds to gross),
+//     which is the pre-P5 behaviour. calculations.js never reads config — the
+//     resolved boolean arrives as the `orphansEnterDenominator` parameter.
 //   - newReinstatementsPlanned adds to net settled only (not gross).
 //   - newLapsesAnticipated reduces net settled (not gross).
 //   - goodBusinessFallingOff REDUCES gross settled (rolling window — 24
@@ -184,15 +197,22 @@ export function projectPersistency({
   newOrphansAdopted,
   newLapsesAnticipated,
   decreasesAnticipated,
+  orphansEnterDenominator = false,
 }) {
+  // The adopted orphan goes to exactly one side of the fraction, never both.
+  const orphansToGross = orphansEnterDenominator ? num(newOrphansAdopted) : 0;
+  const orphansToNet   = orphansEnterDenominator ? 0 : num(newOrphansAdopted);
+
   const projectedGross = num(currentGrossSettled)
     + num(newBusinessPlanned)
-    + num(newOrphansAdopted)
+    + orphansToGross
     - num(goodBusinessFallingOff)
     - num(decreasesAnticipated);
 
   const projectedLapses         = num(currentLapses)         + num(newLapsesAnticipated);
-  const projectedReinstatements = num(currentReinstatements) + num(newReinstatementsPlanned);
+  const projectedReinstatements = num(currentReinstatements)
+    + num(newReinstatementsPlanned)
+    + orphansToNet;
 
   const projectedNet = projectedGross - projectedLapses + projectedReinstatements;
   const projectedPersistency = projectedGross === 0 ? 0 : projectedNet / projectedGross;
@@ -210,7 +230,16 @@ export function projectPersistency({
 // reinstatements, or orphan adoption (each on its own) is required to hit
 // the target persistency? Used by the Playground's three "shortfall" cards.
 //
-// Algebra (for new business / orphans, both add to gross only):
+// Which algebra `noNeeded` follows is decided by `orphansEnterDenominator`
+// (companyMinimums.orphanAdoptionEntersDenominator, resolved by the caller —
+// see projectPersistency above). By DEFAULT an adopted orphan lifts the
+// numerator only, so `noNeeded` tracks the REINSTATEMENTS solution, not the
+// new-business one. That difference is the whole point of this parameter: on
+// the §2 worked example (baseline 100,000, lapses 15,000, target 90%) the
+// truthful orphan figure is 5,000, where the new-business figure is 50,000 —
+// ten times larger. Set true and `noNeeded` returns to tracking nbNeeded.
+//
+// Algebra (for new business, and for orphans only when they enter gross):
 //   Let baseline = currentGrossSettled - goodBusinessFallingOff.
 //   target = (baseline + X − currentLapses + currentReinstatements) / (baseline + X)
 //   target * (baseline + X) = (baseline + X) − currentLapses + currentReinstatements
@@ -222,8 +251,11 @@ export function projectPersistency({
 //   Y = baseline * target − baseline + currentLapses − currentReinstatements
 //
 // Sentinels:
-//   - target ≥ 1 → Infinity (impossible via NB/orphans alone, since persistency
-//     can equal 1 only when net == gross, which forces NR specifically).
+//   - target ≥ 1 → Infinity for nbNeeded, since persistency can equal 1 only
+//     when net == gross, which no amount of gross-side business can force.
+//     noNeeded is Infinity too ONLY when orphansEnterDenominator is true; on
+//     the default it follows the finite nrNeeded, because a numerator-only
+//     orphan reaches 100% exactly as a reinstatement does.
 //   - baseline ≤ 0 → 0 for all (no business to support a percentage on).
 //   - X or Y ≤ 0 → 0 (already at or above target via that lever).
 //
@@ -238,6 +270,7 @@ export function calculateShortfall({
   currentReinstatements,
   goodBusinessFallingOff,
   decreasesAnticipated,
+  orphansEnterDenominator = false,
 }) {
   const baseline = num(currentGrossSettled)
     - num(goodBusinessFallingOff)
@@ -250,7 +283,7 @@ export function calculateShortfall({
     return { nbNeeded: 0, nrNeeded: 0, noNeeded: 0 };
   }
 
-  // NB / Orphans path
+  // Gross-side path: new business always, orphans only when they enter gross.
   let nbNeeded;
   if (t >= 1) {
     nbNeeded = Infinity;
@@ -265,6 +298,6 @@ export function calculateShortfall({
   return {
     nbNeeded,
     nrNeeded,
-    noNeeded: nbNeeded, // mathematically identical to NB
+    noNeeded: orphansEnterDenominator ? nbNeeded : nrNeeded,
   };
 }

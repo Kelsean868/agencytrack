@@ -12,6 +12,7 @@
 import React, { useMemo, useState } from 'react';
 import { X, Calculator, ExternalLink, AlertCircle } from 'lucide-react';
 import useFocusTrap from '../../hooks/useFocusTrap';
+import { useConfigContext } from '../../context/ConfigProvider';
 import {
   projectPersistency,
   calculateShortfall,
@@ -121,6 +122,16 @@ export default function PersistencyPlayground({
 }) {
   const modalRef = useFocusTrap({ onEscape: onClose });
 
+  // P5 — how an adopted orphan is counted is a tenant setting, because
+  // persistency counting rules vary by carrier. Read from the already-hydrated
+  // companyMinimums doc (ConfigProvider), NOT from calculations.js, which stays
+  // pure. useConfigContext returns null outside a provider, so the `?.` chain
+  // and the `=== true` test both fail closed onto the default: an adopted
+  // orphan lifts the numerator only.
+  const configCtx = useConfigContext();
+  const orphansEnterDenominator =
+    configCtx?.docs?.companyMinimums?.orphanAdoptionEntersDenominator === true;
+
   const current = useMemo(() => ({
     grossSettled:   currentRecord?.grossSettled   ?? 0,
     lapses:         currentRecord?.lapses         ?? 0,
@@ -148,7 +159,8 @@ export default function PersistencyPlayground({
     newOrphansAdopted:        0,
     newLapsesAnticipated:     0,
     decreasesAnticipated:     levers.decreasesAnticipated,
-  }), [current, levers]);
+    orphansEnterDenominator,
+  }), [current, levers, orphansEnterDenominator]);
 
   const shortfall = useMemo(() => calculateShortfall({
     targetPersistency:      PERS_GATE,
@@ -157,7 +169,8 @@ export default function PersistencyPlayground({
     currentReinstatements:  current.reinstatements,
     goodBusinessFallingOff: levers.goodBusinessFallingOff,
     decreasesAnticipated:   levers.decreasesAnticipated,
-  }), [current, levers]);
+    orphansEnterDenominator,
+  }), [current, levers, orphansEnterDenominator]);
 
   function handleReset() {
     setLevers(ZERO_LEVERS);
