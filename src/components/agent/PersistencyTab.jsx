@@ -267,8 +267,8 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
           What-if calculator
         </p>
         <p className="text-sm text-ink-muted">
-          Model new business, reinstatements, and orphan adoptions to see how your
-          persistency would change.
+          Model new business, reinstatements, business rolling off, and decreases
+          expected to see how your persistency would change.
         </p>
         <button
           type="button"

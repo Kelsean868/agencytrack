@@ -163,7 +163,15 @@ export default function PersistencyPlayground({
     setLevers(ZERO_LEVERS);
   }
 
-  const proj = projection.projectedPersistency;
+  // P4b — guard the impossible plan. P4's subtractive levers (goodBusinessFallingOff,
+  // decreasesAnticipated) can drive projectedGross to zero or below; a negative
+  // divided by a negative then renders as a plausible-looking positive ratio
+  // (see calculations.js projectPersistency). The condition is projectedGross
+  // <= 0, NEVER `persistency > 1` — persistency legitimately exceeds 100% when
+  // an orphan reinstatement lands in net without ever being in gross (P-D10 /
+  // §2 of the P4b brief), and that case must render normally, un-clamped.
+  const isImpossiblePlan = projection.projectedGrossSettled <= 0;
+  const proj = isImpossiblePlan ? NaN : projection.projectedPersistency;
   const curr = current.persistency;
 
   return (
@@ -271,6 +279,11 @@ export default function PersistencyPlayground({
                 <p className="font-semibold text-ink tabular-nums">{formatCurrency(projection.projectedNetSettled)}</p>
               </div>
             </div>
+            {isImpossiblePlan && (
+              <p className="mt-2 text-xs text-danger-ink font-semibold" data-testid="playground-negative-denominator-warning">
+                This plan drives Net Gross Settled to zero or below — lower Decreases Expected or Business Rolling Off.
+              </p>
+            )}
             <p className="mt-2 text-xs text-ink-muted">
               Projected via: New Business Planned + Reinstatements Planned − Business Rolling Off
               {isTwentyFourMonth ? ' − Decreases Expected' : ''} (TTD) — orphans adopted / new lapses anticipated held at zero.

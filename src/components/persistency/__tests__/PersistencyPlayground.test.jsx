@@ -327,6 +327,80 @@ describe('PersistencyPlayground — P4 24-month model levers', () => {
   });
 });
 
+// ── P4b: guard the negative projected denominator, never clamp at 100% ──────
+
+describe('PersistencyPlayground — P4b negative-denominator guard', () => {
+  // A round fixture so the unconditional goodBusinessFallingOff lever can be
+  // dragged to exact +1 / 0 / -1 projectedGrossSettled boundaries without
+  // fighting RICARDO_CURRENT's fractional cents.
+  const ROUND_RECORD = {
+    grossSettled: 100000,
+    lapses: 20000,
+    reinstatements: 5000,
+    persistency: 0.85,
+  };
+
+  it('projectedGross = +1: shows a real number, no danger message', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={ROUND_RECORD} onClose={() => {}} />
+    );
+    setSlider('playground-slider-goodBusinessFallingOff', 99_999);
+    expect(getProjectedPct()).not.toBe('—');
+    expect(screen.queryByTestId('playground-negative-denominator-warning')).not.toBeInTheDocument();
+  });
+
+  it('projectedGross = 0: suppresses the number, shows the danger message', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={ROUND_RECORD} onClose={() => {}} />
+    );
+    setSlider('playground-slider-goodBusinessFallingOff', 100_000);
+    expect(getProjectedPct()).toBe('—');
+    expect(screen.getByTestId('playground-negative-denominator-warning')).toBeInTheDocument();
+  });
+
+  it('projectedGross = -1: suppresses the number even though the raw ratio looks like a plausible positive percentage', () => {
+    render(
+      <PersistencyPlayground mode="self" agentName="Ricardo" currentRecord={ROUND_RECORD} onClose={() => {}} />
+    );
+    setSlider('playground-slider-goodBusinessFallingOff', 100_001);
+    // Un-guarded: projectedNet(-15,001) / projectedGross(-1) = 15,001 — a
+    // negative-over-negative ratio that renders as a healthy-looking number.
+    // The guard (projectedGross <= 0) must suppress it regardless of sign.
+    expect(getProjectedPct()).toBe('—');
+    expect(screen.getByTestId('playground-negative-denominator-warning')).toBeInTheDocument();
+  });
+
+  it('never clamps at 100% — a real orphan-reinstatement scenario renders above 100%, un-suppressed (Candice, §2 of the P4b brief)', () => {
+    // Candice writes 100,000 of her own business, no lapses. She adopts a
+    // lapsed orphan policy and reinstates it: 10,000 lands in net only (it was
+    // never in gross, because she did not write it). 110,000 / 100,000 = 110%
+    // — legitimately above 100%, and the guard (projectedGross <= 0) must not
+    // touch it, because projectedGross here is a healthy 100,000.
+    const CANDICE = { grossSettled: 100000, lapses: 0, reinstatements: 0, persistency: 1 };
+    render(
+      <PersistencyPlayground mode="self" agentName="Candice" currentRecord={CANDICE} onClose={() => {}} />
+    );
+    setSlider('playground-slider-newReinstatementsPlanned', 10_000);
+
+    const expected = projectPersistency({
+      currentGrossSettled: CANDICE.grossSettled,
+      currentLapses: CANDICE.lapses,
+      currentReinstatements: CANDICE.reinstatements,
+      goodBusinessFallingOff: 0,
+      newBusinessPlanned: 0,
+      newReinstatementsPlanned: 10_000,
+      newOrphansAdopted: 0,
+      newLapsesAnticipated: 0,
+      decreasesAnticipated: 0,
+    });
+    expect(expected.projectedGrossSettled).toBe(100000);
+    expect(expected.projectedPersistency).toBe(1.1); // 110,000 / 100,000
+
+    expect(getProjectedPct()).toBe('110.0%');
+    expect(screen.queryByTestId('playground-negative-denominator-warning')).not.toBeInTheDocument();
+  });
+});
+
 // ── Dialog a11y contract (§4 dialog sweep) ───────────────────────────────────
 
 describe('PersistencyPlayground — dialog a11y', () => {
