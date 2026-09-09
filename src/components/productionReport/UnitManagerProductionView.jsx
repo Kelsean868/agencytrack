@@ -41,6 +41,11 @@ export default function UnitManagerProductionView() {
   const unitId = userProfile?.unitId;
   const currentWeek = useMemo(() => getMostRecentSunday(), []);
 
+  const initials = useMemo(() => {
+    const name = userProfile?.name ?? '';
+    return name.split(' ').filter(Boolean).map(s => s[0]).join('').toUpperCase().slice(0, 2) || '?';
+  }, [userProfile?.name]);
+
   const loadProduction = useCallback(() => {
     if (!tenantId) return;
     setLoading(true);
@@ -252,23 +257,62 @@ export default function UnitManagerProductionView() {
       {/* @@hero-pane-start */}
       {/* Unit aggregate — hero parity with the BM sibling (BranchManagerProductionView) */}
       <div className="glass hero teal p-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[--hero-ink-muted-teal] mb-4">Unit Aggregate</p>
+        <div className="flex items-center gap-3">
+          <div
+            className="w-11 h-11 rounded-full bg-[--hero-chip-island] border border-[--hero-chip-border] text-[--hero-ink] flex items-center justify-center font-bold text-base font-display shrink-0"
+            aria-hidden="true"
+          >
+            {initials}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-lg font-bold font-display text-[--hero-ink] leading-tight truncate">
+              {userProfile?.name ?? 'Unit Manager'}
+            </p>
+            <p className="text-xs text-[--hero-ink-muted-teal] mt-0.5">
+              {getUnitDisplayName(userProfile) ?? 'Unit'} · {PERIOD_LABEL[period]}
+            </p>
+          </div>
+
+          {/* Unit rank in branch — moved in from the bottom-of-screen card (§2.3).
+              Same unitRank/unitCount computation, same conditional gate; only the
+              render location changed. */}
+          {unitRank && (
+            <div
+              data-testid="unit-production-rank-pill"
+              data-rank={unitRank}
+              data-total={unitCount}
+              className="shrink-0 text-right"
+            >
+              <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal]">
+                Unit rank
+              </p>
+              <p className="text-2xl font-bold font-display text-[--hero-ink] tabular-nums leading-none mt-0.5">
+                {unitRank}
+                <span className="text-sm text-[--hero-ink-muted-teal] font-normal">
+                  {' / '}{unitCount || '—'}
+                </span>
+              </p>
+            </div>
+          )}
+        </div>
+
+        <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal] mb-4 mt-5">Unit Aggregate</p>
         <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-[130px]">
-            <p className="text-xs text-[--hero-ink-muted-teal]">Total API</p>
-            <p className="text-2xl font-bold text-[--hero-ink] tabular-nums">{formatCurrency(aggregate.totalApi)}</p>
+            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal]">Total API</p>
+            <p className="text-2xl font-bold font-display text-[--hero-ink] tabular-nums">{formatCurrency(aggregate.totalApi)}</p>
           </div>
           <div className="flex-1 min-w-[80px]">
-            <p className="text-xs text-[--hero-ink-muted-teal]">Apps</p>
-            <p className="text-2xl font-bold text-[--hero-ink] tabular-nums">{aggregate.totalApps}</p>
+            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal]">Apps</p>
+            <p className="text-2xl font-bold font-display text-[--hero-ink] tabular-nums">{aggregate.totalApps}</p>
           </div>
           <div className="flex-1 min-w-[130px]">
-            <p className="text-xs text-[--hero-ink-muted-teal]">Avg API / Agent</p>
-            <p className="text-2xl font-bold text-[--hero-ink] tabular-nums">{formatCurrency(aggregate.avgApiPerAgent)}</p>
+            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal]">Avg API / Agent</p>
+            <p className="text-2xl font-bold font-display text-[--hero-ink] tabular-nums">{formatCurrency(aggregate.avgApiPerAgent)}</p>
           </div>
           <div className="flex-1 min-w-[100px]">
-            <p className="text-xs text-[--hero-ink-muted-teal]">Agents</p>
-            <p className="text-2xl font-bold text-[--hero-ink] tabular-nums">{aggregate.agentCount}</p>
+            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal]">Agents</p>
+            <p className="text-2xl font-bold font-display text-[--hero-ink] tabular-nums">{aggregate.agentCount}</p>
           </div>
         </div>
       </div>
@@ -276,7 +320,7 @@ export default function UnitManagerProductionView() {
 
       {/* Compliance */}
       <div className="card">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">Compliance (this week)</p>
+        <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted mb-2">Compliance (this week)</p>
         <div className="flex items-baseline gap-2">
           <span className="text-2xl font-bold text-ink tabular-nums">
             {compliance.submitted} of {compliance.total}
@@ -296,19 +340,9 @@ export default function UnitManagerProductionView() {
 
       {/* Unit leaderboard */}
       <div className="card">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Unit Leaderboard</p>
+        <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted mb-3">Unit Leaderboard</p>
         <ProductionTable rows={tableRows} showRankColumn period={period} />
       </div>
-
-      {/* Unit rank in branch */}
-      {unitRank && (
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-ink-muted">Unit rank in branch</span>
-            <span className="text-sm font-semibold text-ink">#{unitRank} of {unitCount}</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
