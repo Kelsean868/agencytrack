@@ -30,6 +30,10 @@ export default function BranchManagerProductionView() {
   const [pdfError, setPdfError] = useState(false);
   const currentWeek = useMemo(() => getMostRecentSunday(), []);
   const [period, setPeriod] = useState('week');
+  const initials = useMemo(() => {
+    const name = userProfile?.name ?? '';
+    return name.split(' ').filter(Boolean).map(s => s[0]).join('').toUpperCase().slice(0, 2) || '?';
+  }, [userProfile?.name]);
   const [allSubmissions, setAllSubmissions] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -273,23 +277,40 @@ export default function BranchManagerProductionView() {
       {/* @@hero-pane-start */}
       {/* Branch aggregate */}
       <div className="glass hero teal p-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[--hero-ink-muted-teal] mb-4">Branch Aggregate</p>
+        <div className="flex items-center gap-3">
+          <div
+            className="w-11 h-11 rounded-full bg-[--hero-chip-island] border border-[--hero-chip-border] text-[--hero-ink] flex items-center justify-center font-bold text-base font-display shrink-0"
+            aria-hidden="true"
+          >
+            {initials}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-lg font-bold font-display text-[--hero-ink] leading-tight truncate">
+              {userProfile?.name ?? 'Branch Manager'}
+            </p>
+            <p className="text-xs text-[--hero-ink-muted-teal] mt-0.5">
+              {userProfile?.branchName ?? 'Branch'} · {PERIOD_LABEL[period]}
+            </p>
+          </div>
+        </div>
+
+        <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal] mb-4 mt-5">Branch Aggregate</p>
         <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-[130px]">
-            <p className="text-xs text-[--hero-ink-muted-teal]">Total API</p>
-            <p className="text-2xl font-bold text-[--hero-ink] tabular-nums">{formatCurrency(branchAggregate.totalApi)}</p>
+            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal]">Total API</p>
+            <p className="text-2xl font-bold font-display text-[--hero-ink] tabular-nums">{formatCurrency(branchAggregate.totalApi)}</p>
           </div>
           <div className="flex-1 min-w-[80px]">
-            <p className="text-xs text-[--hero-ink-muted-teal]">Apps</p>
-            <p className="text-2xl font-bold text-[--hero-ink] tabular-nums">{branchAggregate.totalApps}</p>
+            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal]">Apps</p>
+            <p className="text-2xl font-bold font-display text-[--hero-ink] tabular-nums">{branchAggregate.totalApps}</p>
           </div>
           <div className="flex-1 min-w-[130px]">
-            <p className="text-xs text-[--hero-ink-muted-teal]">Avg API / Agent</p>
-            <p className="text-2xl font-bold text-[--hero-ink] tabular-nums">{formatCurrency(branchAggregate.avgApiPerAgent)}</p>
+            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal]">Avg API / Agent</p>
+            <p className="text-2xl font-bold font-display text-[--hero-ink] tabular-nums">{formatCurrency(branchAggregate.avgApiPerAgent)}</p>
           </div>
           <div className="flex-1 min-w-[100px]">
-            <p className="text-xs text-[--hero-ink-muted-teal]">Agents</p>
-            <p className="text-2xl font-bold text-[--hero-ink] tabular-nums">{branchAggregate.agentCount}</p>
+            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal]">Agents</p>
+            <p className="text-2xl font-bold font-display text-[--hero-ink] tabular-nums">{branchAggregate.agentCount}</p>
           </div>
         </div>
       </div>
@@ -298,7 +319,7 @@ export default function BranchManagerProductionView() {
       {/* Unit leaderboard (by avg API per agent) */}
       {unitLeaderboardEntries.length > 0 && (
         <div className="card">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
+          <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted mb-3">
             Unit Leaderboard <span className="normal-case font-normal">(by avg API per agent)</span>
           </p>
           <RankedLeaderboard
@@ -313,7 +334,7 @@ export default function BranchManagerProductionView() {
       {/* Top N agents across branch */}
       <div className="card">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">
             {showAllAgents ? 'All Agents' : `Top ${Math.min(TOP_N_DEFAULT, rankedAgents.length)} Agents`}
           </p>
           {rankedAgents.length > TOP_N_DEFAULT && (
@@ -337,7 +358,7 @@ export default function BranchManagerProductionView() {
 
       {/* Branch grand total (whiteboard format) */}
       <div className="card">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Branch Total</p>
+        <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted mb-3">Branch Total</p>
         <ProductionTable rows={branchTotalRow} period={period} />
       </div>
     </div>
