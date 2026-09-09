@@ -7,23 +7,29 @@
 > classification and per-screen mockup↔live diffs remain valid and are not superseded.**
 
 **Base:** `origin/staging` @ **`8a1a17e4`** (PR #870 squash — Run A Tier 3 conformance closeout).
+**Refreshed 2026-09-09 against `main` @ `fb0416c8`** (PR #941 squash) - a DELTA pass, not a re-derivation of all 37 rows. Only rows whose ground truth changed since the base are restated; every other row carries its 2026-07-25 status forward, un-re-verified. Delta method: `git diff --name-only 8a1a17e4 main` filtered to this ledger's component paths, then a source read of every row that filter touched.
 **Method:** Rule-17 source verification — every status below is derived from `git log`/`git grep`/diff evidence against `origin/staging`, not from any prior ledger's text. Prior statuses were verified, never trusted.
 
-> ## ⚠ STAGING-vs-PROD CAVEAT — carry until promotion
+> ## STAGING-vs-PROD CAVEAT - RESOLVED 2026-08-16
 >
-> **`origin/main` is at `60dbf1c2`. `origin/staging` is at `8a1a17e4`.** Every status in this
-> ledger is **staging-true, not production-true.** Run A (PRs #865/#866/#870 + fixes
-> #867/#868/#869) has *not* been promoted. Staging is **FROZEN** pending the dispatcher's
-> staging→main promotion; PRs #871/#872 are open and holding.
->
-> **Delete this box only when the promotion has landed and `Current main HEAD` in
-> `docs/CONTEXT.md` reflects it.**
+> The promotion landed: `b4d9be7b` (merge - "promote staging to main - Phase 0 (P0-A..P0-D,
+> P0-G), flake fix, governance convergence", 98 files). `main` has since advanced to
+> `fb0416c8`. Every status below is now **main-true, not staging-true.** Run A
+> (#865/#866/#870 + #867/#868/#869) is promoted, and the two PRs this box called "open and
+> holding" are both merged - #872 on 2026-07-26 (`d3fe88e4`), #871 on 2026-07-27
+> (`d52eacf6`). The original box is in git history; do not re-add it.
 
 ---
 
 ## Headline
 
-> **28 of 37 screens ported · 8 partial · 0 pending · 1 gated.**
+> **25 of 37 screens ported - 11 partial - 0 pending - 1 retired.** *(2026-09-09 refresh.)*
+
+> **Count correction, flagged rather than silently reconciled.** The 2026-07-25 headline read
+> `28 ported / 8 partial / 0 pending / 1 gated`, but that same pass's own table counts
+> **24 PORTED / 12 PARTIAL / 1 GATED**. The table is the ground truth and the headline was
+> wrong on arithmetic, not on any row's status. The figures above are counted from the rows:
+> row 19 moves PARTIAL -> PORTED (24 -> 25) and row 10 moves GATED -> RETIRED.
 
 **There are no un-started screens left.** Track J is no longer a port backlog — it is a
 finish-the-last-slice backlog. The 2026-07-07 recon's thesis is confirmed and now complete:
@@ -58,11 +64,11 @@ silently reconciled.
 | 3 | Mobile Nav | **PORTED** | #388 · `2b16e760` | `shell/MobileNavDrawer` | |
 | 4 | Agent Dashboard v2 | **PORTED** | #392 `fd9fdd6` + #393 `9a145e6` · `72daabf8` | `dashboard/HomeV2/*` | Run 6 §2 stagger residuals |
 | 5 | Weekly Wizard v2 | **PORTED** | #416–#422 · `0dd3701f` · `b84d5e60` · `e41baffc` | `wizard/*` (legacy `steps/` deleted) | 100% v2 |
-| 6 | Daily Capture v2 | **PARTIAL** | #426 `8e82cca` · `858be570` | `daily/DailyCaptureV2.jsx` | **Corrected 2026-07-25 (was PORTED).** Slice-2 FU is genuinely open on both halves — see § Row-6 verdict |
+| 6 | Daily Capture v2 | **PARTIAL** | #426 `8e82cca` * `858be570` * #909 * #927 | `daily/DailyCaptureV2.jsx` | **Corrected 2026-07-25 (was PORTED); re-confirmed 2026-09-09.** Half A is still open at `fb0416c8` - `deriveCountStripChips` (`DailyCaptureV2.helpers.js:40-48`) still returns exactly `{appr, ffi, ci, apps}`, no dials chip. #909 (call-type split, schema v1->v2) and #927 (the two-writer guard) touched this surface for data reasons, not for the slice-2 redesign. See � Row-6 verdict |
 | 7 | Game Plan v2 | **PARTIAL** | `51e814b3` (2.11) · #438 · #445 · #785 · #790 | `dashboard/GamePlanV2/*` | Hub + cascade viz + inline commit + Money Needs merged + Fork-A reader. **Fork-B suggest-back design-gated** |
 | 8 | Goals v2 | **PORTED** | #638 · `0fc62efa` · #645 · `858be570` | `goals/{DerivedIncomePanel,MdrtTracker,AwardsReachPanel,GapAnalysisPanel,GoalsCelebration}` | v3.1 + v3.3 + manager portfolio catch-up |
 | 9 | Policy Ledger v2 | **PARTIAL** | #432 `5a24aa3` · `38f1360a` · `41885ff5` · `10507856` | `agent/policyLedger/*` | Agent surface + insured-name + campaign-proof CSV shipped. **Campaign Lens behind `policyLedgerCampaignLens`, default OFF** |
-| 10 | Persistency v2 | **GATED** | #395 · #505 · `10507856` | `persistency/PersistencyV2Shell.jsx`, `manager/Pers*` | Shell built, **`persistencyV2` flag OFF**. R-07 ABSOLUTE STOP: money-correctness-critical, needs a **Tatil-ratified formula spec** before any part ships, including the calc engine |
+| 10 | Persistency v2 | **RETIRED** | #395 * #505 * `10507856` * **removed `6eefdea2` (#939)** | ~~`persistency/PersistencyV2Shell.jsx`~~ | **Corrected 2026-09-09 (was GATED).** This is not a pending port - the surface is deleted. Tatil's 29 Aug 2026 memo adopted a different model (an aggregate formula plus a 24-month inclusion window), so the `rollingModelV2` debit curve was the rejected proposal; P2 (#939) deleted the shell, the model, their tests, the flag-gated mount, and the flag's entries in `featureFlagsService.js` and `companyConfigRegistry.js`. **Residue:** `configService.js` `ALLOWED_FLAG_KEYS` still names `persistencyV2` - unreachable, but real debt, waiting on a `firestore.rules` edit. The shipped 24-month work (PRs #937-#941) lives in `lib/persistency/*`, outside this spine. |
 | 11 | Prospect Prep v2 | **PORTED** | `fe541fe3` (3.5) · `bd474304` | `prospect/{NextCallHero,ObjectionRehearsal,ApptBadge}` | Joint-Call Observation Log is Track F, a separate spine |
 | 12 | Commission v2 | **PARTIAL** | #496 `0b79a92f` · #870 · `d4d2aaf0` | `goals/CommissionPlayground/*`, `agent/CommissionAnchorStrip` | AnchorStrip + R-06 chips + §4.7 daily chip (258 = 43×6). **Two-column rail+ladder STOP→DROPPED** (no in-repo authority). Hero persistency stat pending render evidence |
 | 13 | Agent Awards v2 | **PORTED** | #391 `84abe6e` + #412 `4dc0859` · `9beb2aa7` | `awards/*` | Provenance layer behind `awardsProvenance` flag (OFF) — additive; base screen conformant |
@@ -71,7 +77,7 @@ silently reconciled.
 | 16 | Agent Report View v2 | **PORTED** | #397 `e17cb55` + #403 `b12dda1` | `productionReport/AgentProductionView.jsx` | `AgentReportDocument.jsx` HEX-only by design (exempt) |
 | 17 | Settings v2 | **PORTED** | `b8f7bf8c` (2.4) · `ee4794f9` | `settings/SettingsScreen.jsx` | |
 | 18 | Manager Dashboard v2 | **PORTED** | `8f39d02c` (1.5) · `fa0fe12e` · `9c7759a8` | `dashboard/{ManagerOverviewTab,ChampionsPanel,MyWeekPanel,ExceptionLeadPanel,CascadeAnchorStrip,BranchKPIStrip}` | R-08 verified conformant in #870 |
-| 19 | Master Sheet v2 | **PARTIAL** | `b626f03d` + `7148b0b1` + `a003f85d` | `manager/MasterSheet.jsx` | 8-stage funnel + filters shipped. **STATUS chips = open PR #871, now carrying a blocking pre-merge condition** — see § Row-19 detail |
+| 19 | Master Sheet v2 | **PORTED** | `b626f03d` + `7148b0b1` + `a003f85d` + **#871 `d52eacf6`** | `manager/MasterSheet.jsx`, `utils/funnelStatus.js` | **Corrected 2026-09-09 (was PARTIAL).** #871 merged 2026-07-27; STATUS chips are live at `fb0416c8` (`buildStatusMap`, `STATUS_NODATA_KEY`, `StatusPill`, `ROW_REACHABLE_STATUS_OPTS` all present), and the blocking pre-merge threshold condition was satisfied inside that same PR - the decimal-vs-percent scale reconciliation is #871's own title. **Two items carried, neither a port gap:** five chips ship, not six ("Gone quiet" omitted in `6a2e3709`, still awaiting an operator ruling against the banked six-band taxonomy), and LEVEL stays explicitly blocked. See � Row-19 detail |
 | 20 | Compliance v2 | **PORTED** | `3d42125f` (S4) · `233650b4` | `manager/CompliancePanel.jsx` | |
 | 21 | Weekly WARs | **PORTED** | `4f2c9052` (2.1) · `138fda81` · `75717d6d` | `manager/{ManagerWarTab,ManagerWarDetail,TeamWarsTab,WarCompletionRing,WarStreakDots}` | |
 | 22 | Monthly Recruiting | **PORTED** | `82ce5631` (2.2) | `manager/{MonthlyRecruitingTab,RecDrillDrawer,recruitingVisuals}` | |
@@ -86,7 +92,7 @@ silently reconciled.
 | 31 | Kiosk Mode | **PORTED** | #413 `e685610` · `2066d366` · `57567786` · `58ff208b` | `kiosk/*` | |
 | 32 | Meeting Mode v2 | **PORTED** | `389d2cc7` (3.3) · `09cb1168` · `e04f6978` | `manager/{MeetingMode,FunnelMeetingScene}` | |
 | 33 | System Screens | **PORTED** | #414 `91f9054` · `27db30cf` · `843af4e4` | `auth/LoginScreen`, `App.jsx` states, `onboarding/*` | |
-| 34 | Emails | **PARTIAL** | #415 `aae5c35` | `functions/email-templates/*` | 3 templates restyled; **2 net-new templates absent** — `git ls-tree origin/staging functions/email-templates/` shows no `submission-received.*`, no `manager-escalation.*`. Also **merged ≠ deployed** |
+| 34 | Emails | **PARTIAL** | #415 `aae5c35` | `functions/email-templates/*` | 3 templates restyled; **2 net-new templates still absent - re-confirmed 2026-09-09** by a directory read at `fb0416c8`: the folder holds only `compliance-nudge`, `compliance-plan-nudge`, `financing-adjustment-notify`, `monday-nudge`, `password-reset`, `sunday-nudge` (.html + .txt each). No `submission-received.*`, no `manager-escalation.*`. Also **merged != deployed** |
 | **35** | **Planner & Scheduler v2** *(absorbed)* | **PORTED** | #866 · #867 · Run 9 (`d0e74c12`) · `550b7a97` (3.2) | `planner/*` (20 files) | E1/E5/E2/E4/E3 + A1–A5 + F3. Mockup scenes 6 + 8 **scoped out by design** — see § Absorbed rows |
 | **36** | **Planner — Manager Surfaces** *(absorbed)* | **PORTED** | `550b7a97` (3.2) · `22c12b20` (D3) | `planner/manager/TeamPlannerPanel.jsx` | Read-only team view; SM + TA nav arms |
 | **37** | **Money Needs Merged** *(absorbed)* | **PORTED** | PR-U1 · PR-U2 · #438 | `agent/{MoneyNeedsPanel,MoneyNeedsAllocator}`, `lib/moneyNeedsAllocation.js` | Consolidates 3 handoff files. `yearPlan` 3-line canonical; `.allocation` cut |
@@ -258,3 +264,5 @@ Carried forward from the 2026-07-24 audit, with items 1–3 now **CLOSED** by th
 | 6 | **Scene-inventory diffing was done for the Planner mockup only** (row 35). Rows 1–34 and 36–37 were not re-checked scene-by-scene against their mockups. | **OPEN** — the single largest remaining verification debt in this document |
 | 7 | **Row 29 (CRO) "data/backend half outstanding" is inferred** from the commit's own "(UI half)" label, not from a diff of what the CRO mockup's data layer requires. | **OPEN** |
 | 8 | **No live verification anywhere in this ledger.** Every status is a source-and-history inference. | **OPEN by design** — this was a read-only pass |
+| 9 | **The 2026-09-09 pass is a delta, not a re-derivation.** 31 of 37 rows carry their 2026-07-25 status forward without being re-read against `fb0416c8`. | **OPEN by design** - a row whose files did not change cannot have gained a port, but it can have gained drift (see gap 4) |
+| 10 | **Rows 24-27 stand by absence of change, not by re-reading them.** No file under `src/components/productionReport/` appears in `git diff --name-only 8a1a17e4 main`. | **CLOSED for status, OPEN for conformance** |
