@@ -4,10 +4,12 @@
 
 **Two slices, two PRs, sequenced. R1 must merge before R2 branches.**
 
-> **THIS DISPATCH BUILDS R1 ONLY (section 2).** Do not open R2's branch, do not touch section 3's files, and do not fold the two into one PR. R2 is a separate dispatch, after R1 merges **and** after the blocking question in section 3.1 has an operator ruling. If R1 finishes early, stop and report - do not continue into R2.
+> **R1 SHIPPED - PR #942, squash `4d68300c`, merged 2026-09-09.** Section 2 is history; do not rebuild it.
+>
+> **THIS DISPATCH BUILDS R2 ONLY (section 3).** Branch from `main` at or after `ff607c50`. Section 2 is retained below as the record of what R1 did and as the reference for the treatment R2 must stay consistent with.
 
 - **R1 - Model: Sonnet 5, medium effort.** Presentational conformance only. Class swaps and one block move; no new derivation, no service call, no schema.
-- **R2 - Model: Fable 5.1, high effort.** Composition change against the mockup: the four-window period grid for two roles, and the unit top-performers rail. New derived data, and one open question that must be answered before the branch is cut.
+- **R2 - Model: Fable 5.1, high effort.** Composition change against the mockup: the four-window period grid for two roles, the unit top-performers rail, and the branch on-pace counts. New derived data. **The operator ruling section 3.1 was waiting on arrived 2026-09-09 and is written into this brief - R2 is unblocked.**
 
 **Target repo:** this one only (`C:\Projects\AgencyTrack`). PowerShell, no `&&` chaining.
 
@@ -64,11 +66,26 @@ BM has no rank pill and gets none in R1 - a branch has no rank inside itself, an
 
 Branch: `feat/track-j-report-scopes-r2`, cut from `main` after R1 merges.
 
-### 3.1 BLOCKING - answer this before cutting the branch
+### 3.1 The on-pace counts - RULED 2026-09-09 by the operator
 
-The `branch` scene of the mockup shows an **on-pace count** as a branch stat. **No such derivation exists in the repo** - it is not in `lib/productionReport/computations`, and the mockup supplies the vocabulary only.
+The mockup's single "on-pace count" becomes **two counts, rendered side by side**, because the operator's two yardsticks disagree by design and the gap between them is the management signal:
 
-This is the same shape as the Master Sheet "Gone quiet" chip in #871, where inventing a recency threshold was correctly declined and the question went to the operator. Do the same here: **stop and ask the dispatcher what "on pace" means** - against the tenure floor, against the company floor, against the agent's own game plan target, and measured over which window. Do not pick one. If the answer does not arrive, build R2 without the stat and record it as a scoped-out row, not as a defect.
+| Count | Yardstick | Source |
+|---|---|---|
+| **A - above the company floor** | The tenure-based annual API floor | `tenureFloors.resolveAnnualAPIFloor` - the same function `AgentProductionView` already uses |
+| **B - on their own plan** | The agent's own Game Plan target API | `yearPlan`, the 3-line canonical from PR-U1 (sum of `targetAPI`) |
+
+Most agents' plans sit **above** the floor, so B is normally the smaller number. That is expected, not a bug - do not reconcile them.
+
+**Window: always year-to-date. The counts ignore the period toggle.** Pace is a year-shape question; a one-week window makes the figure swing hard on lumpy production and would have a manager watching agents flip in and out of "on pace" week to week. Label the counts so the reader knows they are YTD while the roster below them is not.
+
+**Pro-rating.** Both yardsticks are annual; the comparison is year-to-date, so pro-rate the target: `targetToDate = annualTarget * (completeWeeksElapsed / 52)`. Weeks start Sunday (repo rule). **Elapsed weeks run from the LATER of 1 January and the agent's `contractStartDate`** - an agent who joined in July is not behind on a full year she was not there for. `contractStartDate` is write-once and already on the user doc (locked decision, PR #649).
+
+**Denominator honesty for count B.** An agent with no `yearPlan` has nothing to be measured against. Do not count her as failing: exclude her from B's numerator **and** its denominator, and state the excluded number on the surface - "11 of 24 on their own plan · 4 no plan set". This is the same distinction P4c drew between an impossible plan and nothing-to-plan-from, and it exists for the same reason: blaming someone for a target they never set is a false statement about a real person.
+
+**One yardstick, or two clearly different ones - read before you build.** `AgentProductionView.jsx:306-323` already renders a YTD-vs-tenure-floor progress bar. Read what it actually compares first. If it measures YTD against the **full** annual floor rather than a pro-rated one, then count A and that bar are two different measurements wearing similar words, and the labels must say so ("of annual floor" on the agent bar, "on pace" on the branch count). **Do not change the Agent bar to match** - it shipped, it is out of R2's scope, and a silent change to a live agent-facing figure is exactly the class of defect this repo keeps catching. Name the divergence in the PR body instead.
+
+**Explicitly NOT in R2 - the agent-selectable third benchmark.** The operator also wants an agent to pin a benchmark of her own choosing (MDRT, an award, a campaign) beside the two above. **Ruled out of this slice 2026-09-09** for three reasons: it is per-agent stored state (a user-doc field plus a `firestore.rules` guard, which turns a Vercel-rebuild slice into a manual-deploy one), it needs a picker UI and a single source of truth spanning three separate config areas, and a branch-level count cannot aggregate targets each agent chose for herself - nine agents "on pace" against nine different yardsticks is not a number a branch manager can act on. It gets its own brief and its own recon; banked in `docs/FOLLOW_UPS.md`. Do not build any part of it here.
 
 ### 3.2 The four-window period grid, for both roles
 
