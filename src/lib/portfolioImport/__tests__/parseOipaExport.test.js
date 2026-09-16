@@ -34,6 +34,7 @@ function row(overrides = {}) {
     Plan: 'RAE996',
     'Status Date': null,
     'Issue Date': new Date(2026, 7, 7), // 7 Aug 2026, local midnight
+    'Inforce Date': new Date(2026, 7, 7),
     'Paid To Date': new Date(2026, 9, 6),
     'Total Premium Paid Issue To Date': 200,
     'Modal Premium': 100,
@@ -344,6 +345,7 @@ describe('parseOipaExport — doc fields (brief rule 7)', () => {
       proposedFrequency:    'M',
       proposedCoverage:     31957.77,
       dateIssued:           '2026-08-07',
+      inforceDate:          '2026-08-07',
       paidToDate:           '2026-10-06',
       totalPremiumPaid:     200,
       writingAgentNumber:   '011B94',
@@ -357,6 +359,31 @@ describe('parseOipaExport — doc fields (brief rule 7)', () => {
       newBusinessType:      'nb_ordinary',
       sourceOfProspect:     'portfolio_import',
     });
+  });
+
+  it('carries inforceDate independently of dateIssued, without either moving', () => {
+    // Inforce Date differs from Issue Date on 14 of the 229 rows in the 15 Sep
+    // export. `dateIssued` is what every count keys off (the memo reckons the
+    // 24-month window from the ISSUE month); `inforceDate` is display only.
+    const { docs } = parseOipaExport([
+      row({
+        'Policy Number': 'INF0000001',
+        'Issue Date': new Date(2026, 0, 15),   // 15 Jan 2026
+        'Inforce Date': new Date(2026, 2, 1),  //  1 Mar 2026
+      }),
+    ], OPTS);
+
+    expect(docs[0].dateIssued).toBe('2026-01-15');
+    expect(docs[0].inforceDate).toBe('2026-03-01');
+  });
+
+  it('leaves inforceDate null when the column is empty, without touching dateIssued', () => {
+    const { docs } = parseOipaExport([
+      row({ 'Policy Number': 'INF0000002', 'Inforce Date': null }),
+    ], OPTS);
+
+    expect(docs[0].inforceDate).toBeNull();
+    expect(docs[0].dateIssued).toBe('2026-08-07');
   });
 
   it('carries importedAt from the caller and never invents one', () => {
