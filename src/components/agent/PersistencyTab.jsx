@@ -16,6 +16,8 @@ import {
 } from '../../services/persistencyService';
 import PersistencyEntryForm from '../manager/PersistencyEntryForm';
 import { getOwnPolicies } from '../../services/policiesService';
+import { buildLedgerPrefill } from '../../lib/persistency/ledgerPrefill';
+import { DEFAULT_ANNUITY_MISSED_PREMIUM_RULE } from '../../lib/persistency/deriveFromLedger';
 import { persistencyModelFor } from '../../lib/persistency/model';
 import PersistencyPlayground from '../persistency/PersistencyPlayground';
 import PanelSkeleton from '../ui/PanelSkeleton';
@@ -78,6 +80,28 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
     const dates = [...new Set(ledgerDocs.map((d) => d.exportDate).filter(Boolean))].sort();
     return dates.length ? dates[dates.length - 1] : null;
   }, [ledgerDocs]);
+
+  // What the ledger WOULD produce for the active month, for the read-only line
+  // under "No record entered". Uses the default annuity rule, matching what the
+  // form opens with, so the number here and the number in the form agree.
+  //
+  // It is explicitly labelled "not saved yet": an unsaved derivation is not a
+  // persistency record, it does not gate an award, and a figure shown without
+  // that qualifier would be read as one.
+  const ledgerPreview = useMemo(() => {
+    if (!ledgerDocs || !activeMonthKey) return null;
+    try {
+      const p = buildLedgerPrefill(ledgerDocs, {
+        monthKey: activeMonthKey,
+        exportDate: ledgerExportDate,
+        annuityMissedPremiumRule: DEFAULT_ANNUITY_MISSED_PREMIUM_RULE,
+      });
+      return p.hasLedger ? p : null;
+    } catch {
+      // A malformed month must not take the tab down; the form is still there.
+      return null;
+    }
+  }, [ledgerDocs, activeMonthKey, ledgerExportDate]);
 
   const recordByMonth = useMemo(() => {
     const m = {};
@@ -196,6 +220,16 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
         </div>
         {!currentRecord && !loading && (
           <p className="text-xs text-[--hero-ink-muted-teal]">No record entered for this month yet.</p>
+        )}
+        {!currentRecord && !loading && ledgerPreview && (
+          <p
+            className="text-xs text-[--hero-ink-muted-teal] mt-1"
+            data-testid="ledger-preview-line"
+          >
+            {`${ledgerPreview.provenance}: `}
+            <strong>{`${(ledgerPreview.ledger.derived.persistency * 100).toFixed(1)}%`}</strong>
+            {' (not saved yet)'}
+          </p>
         )}
       </div>
       {/* @@hero-pane-end */}

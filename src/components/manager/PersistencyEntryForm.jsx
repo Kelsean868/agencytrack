@@ -137,6 +137,13 @@ export default function PersistencyEntryForm({
 
   const monthLabel = useMemo(() => formatMonthLabel(monthKey), [monthKey]);
 
+  // Self-entry: the person entering IS the agent the figures belong to.
+  // `writerUid` is supplied by both the agent tab and the manager tab. If it is
+  // ever absent we fall back to the MANAGER wording, because that copy is
+  // merely verbose when shown to the wrong person, whereas the self copy would
+  // be a false statement ("you can't edit it") about somebody else's month.
+  const isSelfEntry = Boolean(writerUid) && writerUid === agentUid;
+
   const handleKey = useCallback((e) => { if (e.key === 'Escape') onClose(); }, [onClose]);
   useEffect(() => {
     window.addEventListener('keydown', handleKey);
@@ -260,13 +267,28 @@ export default function PersistencyEntryForm({
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-auto p-4 flex flex-col gap-4">
-          {/* Gold precedence banner */}
+{/* Lock banner.
+
+              TWO WORDINGS, chosen by WHO is entering. The manager copy ("your
+              figures override their self-entry") is addressed to a third party
+              and is simply false when the agent is entering their own month --
+              there is no "their" and nothing is being overridden. Keyed on
+              `writerUid === agentUid` rather than on the role, because a
+              PRODUCING MANAGER entering their OWN persistency is also
+              self-entry, and role alone would hand them the manager wording. */}
           <div className="flex gap-2.5 p-3 rounded-xl bg-gold-tint" data-testid="pers-precedence-banner">
             <Lock size={14} className="text-gold-ink shrink-0 mt-0.5" />
-            <p className="text-sm text-gold-ink leading-snug">
-              <strong>Saving locks {monthLabel} for {agentName}.</strong>{' '}
-              Your figures override their self-entry; they&apos;ll see this month <strong>read-only</strong>.
-            </p>
+            {isSelfEntry ? (
+              <p className="text-sm text-gold-ink leading-snug" data-testid="pers-lock-copy-self">
+                <strong>Saving locks {monthLabel}.</strong>{' '}
+                You can&apos;t edit it after saving.
+              </p>
+            ) : (
+              <p className="text-sm text-gold-ink leading-snug" data-testid="pers-lock-copy-manager">
+                <strong>Saving locks {monthLabel} for {agentName}.</strong>{' '}
+                Your figures override their self-entry; they&apos;ll see this month <strong>read-only</strong>.
+              </p>
+            )}
           </div>
 
           {/* ── P3: ledger provenance + the annuity rule ──────────────── */}

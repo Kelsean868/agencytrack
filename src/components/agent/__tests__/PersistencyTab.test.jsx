@@ -7,6 +7,7 @@ const hoisted = vi.hoisted(() => ({
   getAgentHistory: vi.fn(),
   getAvailableMonths: vi.fn(),
   useAuth: vi.fn(),
+  getOwnPolicies: vi.fn(),
 }));
 
 vi.mock('../../../services/persistencyService', () => ({
@@ -16,6 +17,12 @@ vi.mock('../../../services/persistencyService', () => ({
 
 vi.mock('../../../context/AuthContext', () => ({
   useAuth: hoisted.useAuth,
+}));
+
+// The ledger fetch. DELIBERATELY UNFILTERED in the component -- persistency is
+// the one reader that must see imported docs -- so the mock returns them raw.
+vi.mock('../../../services/policiesService', () => ({
+  getOwnPolicies: hoisted.getOwnPolicies,
 }));
 
 // Recharts requires a wrapper — stub it to avoid the ResizeObserver / SVG dependency.
@@ -60,6 +67,10 @@ describe('agent PersistencyTab', () => {
       role: 'agent',
       tenantId: 'tenant1',
     });
+    // Default: no ledger. Without this the mock returns undefined and the
+    // component's `.catch()` on the fetch throws a TypeError, taking the whole
+    // load down -- which is a mock artefact, not a behaviour worth asserting.
+    hoisted.getOwnPolicies.mockResolvedValue([]);
   });
 
   it('renders no award-gate banner when persistency >= 0.90', async () => {
@@ -147,5 +158,80 @@ describe('agent PersistencyTab', () => {
       expect(hoisted.getAgentHistory).toHaveBeenCalledTimes(2);
       expect(screen.getByTestId('agent-persistency-summary')).toBeInTheDocument();
     });
+  });
+});
+
+// ── P3 fix 2: the main card shows what the ledger WOULD give, unsaved ────────
+describe('PersistencyTab — ledger preview line on the main card', () => {
+  /** One placed, in-window, writing-agent imported policy. */
+  const ledgerDoc = (overrides = {}) => ({
+    policyNumber: 'LP0000001',
+    status: 'settled',
+    oipaSubStatus: 'Premium Paying',
+    policyClass: 'whole_life',
+    proposedAPI: 100000,
+    totalPremiumPaid: null,
+    dateIssued: '2026-01-15',
+    paidToDate: '2026-10-01',
+    isWritingAgent: true,
+    importSource: 'oipa_import',
+    exportDate: '2026-09-15',
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    hoisted.useAuth.mockReturnValue({ user: { uid: 'a1' }, role: 'agent', tenantId: 't1' });
+    hoisted.getAvailableMonths.mockResolvedValue(['2026-09']);
+    hoisted.getAgentHistory.mockResolvedValue([]);   // nothing saved
+  });
+
+  it('shows the provenance, the percentage and "not saved yet"', async () => {
+    // BOTH are placed, so both enter the denominator: gross 110000,
+    // lapses 10000, net 100000 -> 100000/110000 = 90.9%.
+    hoisted.getOwnPolicies.mockResolvedValue([
+      ledgerDoc({ policyNumber: 'A1', proposedAPI: 100000 }),
+      ledgerDoc({ policyNumber: 'A2', status: 'lapsed', proposedAPI: 10000 }),
+    ]);
+
+    render(<PersistencyTab />);
+
+    const line = await screen.findByTestId('ledger-preview-line');
+    expect(line.textContent).toMatch(/From portfolio import, 15 Sep 2026/);
+    expect(line.textContent).toMatch(/90\.9%/);
+    // The qualifier is the point: an unsaved derivation is not a record and
+    // does not gate an award.
+    expect(line.textContent).toMatch(/not saved yet/);
+  });
+
+  it('still shows the existing "no record" copy alongside it', async () => {
+    hoisted.getOwnPolicies.mockResolvedValue([ledgerDoc()]);
+    render(<PersistencyTab />);
+    await screen.findByTestId('ledger-preview-line');
+    expect(screen.getByText(/No record entered for this month yet/)).toBeTruthy();
+  });
+
+  it('shows NO preview line when the ledger has nothing in the window', async () => {
+    hoisted.getOwnPolicies.mockResolvedValue([ledgerDoc({ dateIssued: '2019-01-01' })]);
+    render(<PersistencyTab />);
+    await screen.findByText(/No record entered for this month yet/);
+    expect(screen.queryByTestId('ledger-preview-line')).toBeNull();
+  });
+
+  it('shows NO preview line when the ledger fetch fails', async () => {
+    // A ledger failure must not take the tab down or invent a figure.
+    hoisted.getOwnPolicies.mockRejectedValue(new Error('boom'));
+    render(<PersistencyTab />);
+    await screen.findByText(/No record entered for this month yet/);
+    expect(screen.queryByTestId('ledger-preview-line')).toBeNull();
+  });
+
+  it('shows NO preview line once a record IS saved', async () => {
+    // The saved record is the truth; a derivation must not sit beside it
+    // competing for the reader's attention.
+    hoisted.getAgentHistory.mockResolvedValue([E3_RECORD({ monthKey: '2026-09' })]);
+    hoisted.getOwnPolicies.mockResolvedValue([ledgerDoc()]);
+    render(<PersistencyTab />);
+    await waitFor(() => expect(screen.queryByText(/No record entered/)).toBeNull());
+    expect(screen.queryByTestId('ledger-preview-line')).toBeNull();
   });
 });
