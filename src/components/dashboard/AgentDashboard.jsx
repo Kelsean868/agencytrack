@@ -40,6 +40,7 @@ import AgentPersistencyTab from '../agent/PersistencyTab';
 import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
 import CommissionAnchorStrip from '../agent/CommissionAnchorStrip';
 import { getOwnPolicies } from '../../services/policiesService';
+import { excludeImported } from '../../lib/portfolioImport/excludeImported';
 import GamePlanScreen from './GamePlanV2';
 import CommissionPlayground from '../goals/CommissionPlayground';
 import DailyFAB from '../daily/DailyFAB';
@@ -326,7 +327,11 @@ export default function AgentDashboard() {
     setPoliciesLoading(true);
     setPoliciesError(false);
     try {
-      setPolicies(await getOwnPolicies(tenantId, user.uid));
+      // This state feeds CommissionAnchorStrip (commission totals) and the v2
+      // home DeliveryStripCard (settled/undelivered) — both are aggregate or
+      // delivery surfaces, so neither wants imported docs (ruling 5e). The
+      // ledger list is PolicyLedgerPanel's own fetch and is NOT filtered.
+      setPolicies(excludeImported(await getOwnPolicies(tenantId, user.uid)));
     } catch {
       setPoliciesError(true);
     } finally {

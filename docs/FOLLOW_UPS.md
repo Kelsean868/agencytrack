@@ -332,6 +332,7 @@
 | DataSourceBadge "Estimated" — `bg-warning/15 text-warning` light-mode contrast (added PR #403) *(verification uncertain)* | — | — | — | 4001 |
 | AgentProductionView hero avatar — `bg-primary text-white` dark-mode contrast (added PR #403) *(verification uncertain)* | — | — | — | 4011 |
 | **Flake register — two NEW members enumerated (2026-09-16).** `WizardFormV2RetirementR2.test.jsx` and `AwardsRulesetPanel.test.jsx` both failed CI on diffs that cannot be causal, and both went green on re-run with zero code change. Neither was in the named roster, so the family is larger than the ~10 recorded. See the detail section at the end of this file | MEDIUM | test-infra | — | see the 2026-09-16 flake-member section at end of file |
+| **P4 must not parse agent-picked files in the browser with `xlsx@0.18.5`** — pick a maintained parser or parse server-side. The package is a root devDependency for the P2 admin script only (operator-downloaded OIPA export, never in the web bundle); it carries known prototype-pollution and ReDoS CVEs that are triggered by parsing MALICIOUS files, which is exactly what P4 would do with a file an agent chooses. Chosen for P2 for continuity: every number in the P0/P1/P2 paste-backs was validated through this reader (banked 2026-09-16, P2b, dispatcher ruling 5) | HIGH | OIPA import / security | before P4 | see the P2b entry at end of file |
 
 
 ---
@@ -6735,3 +6736,28 @@ No fix, no `flushPendingEffects`, no per-test timeout widening. The register's s
 position is that per-test timeout widening is superseded and the mechanism is a race; adding
 a fix here would have been a scope expansion into test-infra from inside a parser/derivation
 track. Enumeration only.
+## P4 must not parse agent-picked files in the browser with `xlsx@0.18.5` (banked 2026-09-16, P2b, HIGH — OIPA import / security)
+
+`xlsx@0.18.5` is a **root devDependency, added for the P2 admin script only**
+(`scripts/ops/import-oipa-portfolio.mjs`). It never reaches the web bundle, and its
+input there is an OIPA export the operator downloaded themselves.
+
+It carries known **prototype-pollution and ReDoS** CVEs. Both are triggered by parsing
+a **malicious** file — which is precisely what P4 would be doing, since P4's whole
+premise is an agent choosing a file in a browser and the parse running client-side.
+
+**Before P4 ships:** either pick a maintained parser (`exceljs` is the candidate) or
+move the parse server-side into a callable. Do not carry `xlsx@0.18.5` into a browser
+path.
+
+**Why it was chosen for P2 anyway, deliberately:** continuity of verification. Every
+number in the P0, P1 and P2 paste-backs — 283 rows, 229 docs, the 11-of-11 status
+match, the five-row persistency table — was produced through this exact reader.
+Swapping readers at P2 would have meant the validated numbers no longer covered the
+actual read path. The tradeoff was made knowingly for an admin-only, trusted-input,
+non-bundled script, and it does **not** transfer to P4.
+
+**Falsification.** Overturned if `xlsx` ships a patched release covering both CVEs, or
+if P4's design changes so the parse never runs on an agent-supplied file in a browser
+(e.g. upload-then-parse-server-side), in which case the constraint is satisfied rather
+than waived.

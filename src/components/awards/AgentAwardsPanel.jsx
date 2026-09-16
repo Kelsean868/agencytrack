@@ -4,6 +4,7 @@ import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, computeAwa
 import { formatCurrency } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
 import { getOwnPolicies, settlementShapeFromPolicies } from '../../services/policiesService';
+import { excludeImported } from '../../lib/portfolioImport/excludeImported';
 import { HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer } from './awardPrimitives';
 import { LedgerSourceChip } from './awardProvenance';
 import { deriveAwardProvenance } from '../../lib/awardProvenance';
@@ -75,7 +76,9 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
     if (!usesPolicyLedger || !tenantId || !agentProfile?.uid) return;
     setLedgerError(false);
     getOwnPolicies(tenantId, agentProfile.uid)
-      .then(setLedgerPolicies)
+      // Awards and campaign credit are earned in AgencyTrack. An imported
+      // historical book must not award anything retroactively (ruling 5e).
+      .then((pols) => setLedgerPolicies(excludeImported(pols)))
       .catch((e) => {
         console.error('[AgentAwardsPanel] policy ledger load failed:', e);
         setLedgerError(true);

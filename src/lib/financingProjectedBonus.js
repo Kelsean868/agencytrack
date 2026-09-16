@@ -14,6 +14,7 @@
 
 import { getFinancingTerms } from '../services/financingService';
 import { getOwnPolicies } from '../services/policiesService';
+import { excludeImported } from './portfolioImport/excludeImported';
 import { getPersistencyForAgent } from '../services/persistencyService';
 import { monthKeyFromDate, monthsBetweenKeys, getTodayTT } from '../utils/dateInputs';
 import { computeFinancingBonus } from './financingBonusEngine';
@@ -78,7 +79,9 @@ export async function getProjectedBonus(tenantId, agentId, ruleset = DEFAULT_FIN
   // Q2+: settled-basis (settledAPI, status === 'settled' only).
   const isQ1 = quarter === 1;
 
-  const allPolicies = await getOwnPolicies(tenantId, agentId);
+  // Financing projects from business written in AgencyTrack, not from an
+  // imported historical book (ruling 5e).
+  const allPolicies = excludeImported(await getOwnPolicies(tenantId, agentId));
 
   const quarterPolicies = allPolicies.filter((pol) => {
     if (!pol.dateSubmitted?.toDate) return false;

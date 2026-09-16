@@ -38,7 +38,7 @@ vi.mock('firebase/firestore', () => ({
   updateDoc:       (...args) => hoisted.mockUpdateDoc(...args),
 }));
 
-import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory, confirmPolicy, lapsePolicy, settlementShapeFromPolicies, getDeliverablePolicies, recordPolicyDelivery } from '../policiesService';
+import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory, confirmPolicy, lapsePolicy, settlementShapeFromPolicies, getDeliverablePolicies, recordPolicyDelivery, getPoliciesForManager } from '../policiesService';
 import { getTodayTT } from '../../utils/dateInputs';
 
 const mockProfile = {
@@ -839,5 +839,56 @@ describe('recordPolicyDelivery', () => {
     await expect(recordPolicyDelivery('t1', 'p1', { deliveredBy: 'cro-uid', deliveryDate: '10/05/2026' }))
       .rejects.toThrow(/YYYY-MM-DD/);
     expect(hoisted.mockUpdateDoc).not.toHaveBeenCalled();
+  });
+});
+
+// ── P2b: imported OIPA policies are excluded from the aggregating readers ────
+// Dispatcher ruling 5e. The filter is client-side because a Firestore
+// `where('importSource','!=','oipa_import')` would drop every doc that LACKS the
+// field -- i.e. every organic policy -- returning the exact inverse with no error.
+describe('P2b — excludeImported on the aggregating readers', () => {
+  const IMPORTED = { id: 'imp1', data: () => ({ status: 'settled', policyNumber: 'IMP1', importSource: 'oipa_import' }) };
+  const ORGANIC  = { id: 'org1', data: () => ({ status: 'settled', policyNumber: 'ORG1' }) };
+  const LEGACY   = { id: 'old1', data: () => ({ status: 'settled', policyNumber: 'OLD1' }) };
+
+  it('getDeliverablePolicies keeps organic and legacy docs but drops imported ones', async () => {
+    // Without this, the CRO Delivery Register opens to 117 settled OIPA docs
+    // that look like they are awaiting delivery.
+    hoisted.mockGetDocs.mockResolvedValueOnce({ docs: [IMPORTED, ORGANIC, LEGACY] });
+    const res = await getDeliverablePolicies('t1');
+
+    expect(res.map((d) => d.policyNumber)).toEqual(['ORG1', 'OLD1']);
+    expect(res.some((d) => d.importSource === 'oipa_import')).toBe(false);
+  });
+
+  it('getDeliverablePolicies returns [] when every settled doc is imported', async () => {
+    hoisted.mockGetDocs.mockResolvedValueOnce({ docs: [IMPORTED] });
+    expect(await getDeliverablePolicies('t1')).toEqual([]);
+  });
+
+  it('getPoliciesForManager drops imported docs for a unit manager', async () => {
+    hoisted.mockGetDocs.mockResolvedValueOnce({ docs: [IMPORTED, ORGANIC] });
+    const res = await getPoliciesForManager('t1', { role: 'unit_manager', uid: 'um-1' });
+    expect(res.map((d) => d.policyNumber)).toEqual(['ORG1']);
+  });
+
+  it('getPoliciesForManager drops imported docs for a branch manager', async () => {
+    hoisted.mockGetDocs.mockResolvedValueOnce({ docs: [IMPORTED, ORGANIC] });
+    const res = await getPoliciesForManager('t1', { role: 'branch_manager', branchId: 'b-1' });
+    expect(res.map((d) => d.policyNumber)).toEqual(['ORG1']);
+  });
+
+  it('getPoliciesForManager drops imported docs on the tenant-wide arm too', async () => {
+    hoisted.mockGetDocs.mockResolvedValueOnce({ docs: [IMPORTED, ORGANIC, LEGACY] });
+    const res = await getPoliciesForManager('t1', { role: 'tenant_admin' });
+    expect(res.map((d) => d.policyNumber)).toEqual(['ORG1', 'OLD1']);
+  });
+
+  it('getOwnPolicies is deliberately NOT filtered -- the ledger needs imported docs', async () => {
+    // The exclusion lives at the CALLERS of this reader, not in it, because
+    // PolicyLedgerPanel legitimately shows the imported book (ruling 5e).
+    hoisted.mockGetDocs.mockResolvedValueOnce({ docs: [IMPORTED, ORGANIC] });
+    const res = await getOwnPolicies('t1', 'uid-1');
+    expect(res.map((d) => d.policyNumber)).toEqual(['IMP1', 'ORG1']);
   });
 });

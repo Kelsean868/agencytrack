@@ -27,6 +27,7 @@ import useToast from '../../hooks/useToast';
 import { getTenantUsers } from '../../services/managerService';
 import { getFinancingTerms, listFinancingMonths, setFinancingProration } from '../../services/financingService';
 import { getOwnPolicies } from '../../services/policiesService';
+import { excludeImported } from '../../lib/portfolioImport/excludeImported';
 import { computeProration } from '../../lib/financingProration';
 import { getTodayTT, monthKeyFromDate, monthsBetweenKeys } from '../../utils/dateInputs';
 import { formatCurrency } from '../../utils/formatters';
@@ -111,7 +112,8 @@ export default function FinancingProrationPanel() {
       .then(([termsDoc, pols, ledger]) => {
         if (latestAgentReqRef.current !== agentId) return;
         setTerms(termsDoc);
-        setPolicies(pols || []);
+        // Proration is computed on business written in AgencyTrack (ruling 5e).
+        setPolicies(excludeImported(pols));
         setMonths(ledger || []);
         setForm({ ...EMPTY_FORM, month: getTodayTT().slice(0, 7) });
       })

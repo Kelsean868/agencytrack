@@ -7,6 +7,7 @@ import { DEFAULT_RULESET_2026 } from '../config/awardsRuleset/2026';
 import { getAgentHistory } from '../services/persistencyService';
 import { getSettlements } from '../services/settlementService';
 import { getOwnPolicies } from '../services/policiesService';
+import { excludeImported } from '../lib/portfolioImport/excludeImported';
 import { extractFields, extractTotalProductionCredit } from '../utils/extractFields';
 
 // Data hook for the "My Production" section in ManagerDashboard.
@@ -85,7 +86,8 @@ export function useMyProduction(tenantId, uid, userProfile) {
     setPoliciesLoading(true);
     setPoliciesError(false);
     try {
-      setPolicies(await getOwnPolicies(tenantId, uid));
+      // Imported historical policies are not this period's production (ruling 5e).
+      setPolicies(excludeImported(await getOwnPolicies(tenantId, uid)));
     } catch {
       setPoliciesError(true);
     } finally {

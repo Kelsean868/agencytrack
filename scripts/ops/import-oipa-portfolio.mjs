@@ -39,6 +39,7 @@ import XLSX from 'xlsx';
 
 import { parseOipaExport, rowsFromSheetMatrix, parseExportDateFromTitle } from '../../src/lib/portfolioImport/parseOipaExport.js';
 import { buildImportPlan, IMPORT_ADDED_FIELDS_NOTE } from '../../src/lib/portfolioImport/buildImportPlan.js';
+import { OIPA_IMPORT_SOURCE } from '../../src/lib/portfolioImport/oipaImportConfig.js';
 
 const require = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -66,6 +67,7 @@ function parseArgs(argv) {
     else if (a === '--live') out.live = true;
     else if (a === '--yes') out.yes = true;      // for a non-interactive live run
     else if (a === '--json') out.json = true;
+    else if (a === '--rollback') out.rollback = true;
     else if (a === '--help' || a === '-h') out.help = true;
     else throw new Error(`unknown argument: ${a}`);
   }
@@ -82,6 +84,10 @@ import-oipa-portfolio.mjs — import an OIPA agent-portfolio export into the led
                          useful where local ADC has no quota project set for
                          identitytoolkit. Requires --tenant.
   --tenant <tenantId>    required with --uid; otherwise read from Auth claims
+  --rollback             DELETE this agent's imported docs instead of importing.
+                         Removes only docs where importSource == 'oipa_import'
+                         AND agentId == the resolved uid, plus their history
+                         subdocs. Dry run by default; needs --live to act.
   --live                 actually write. Without this, dry run only.
   --yes                  skip the interactive confirm (only with --live)
   --json                 print the plan report as JSON as well
@@ -246,6 +252,67 @@ function printPlan(parseReport, plan, agent, exportDate, opts) {
 }
 
 /**
+ * Finds this agent's imported docs. BOTH conditions are required and neither is
+ * optional:
+ *
+ *   importSource == 'oipa_import'   — never touch an organically logged policy
+ *   agentId      == the agent's uid — never touch another agent's book
+ *
+ * The `agentId` equality is the one that matters most: `importSource` alone would
+ * match every agent's import across the tenant, and a rollback run with the wrong
+ * uid resolved would delete somebody else's ledger. Both are applied as Firestore
+ * `where` clauses AND re-checked in memory before anything is deleted, because a
+ * composite index gap can change what a compound query returns but cannot change
+ * what the documents actually say.
+ */
+async function findImportedDocs(db, tenantId, agentId) {
+  const snap = await db.collection(`tenants/${tenantId}/policies`)
+    .where('agentId', '==', agentId)
+    .where('importSource', '==', OIPA_IMPORT_SOURCE)
+    .get();
+  const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  // Belt and braces: refuse anything that does not satisfy both conditions.
+  const safe = docs.filter((d) => d.importSource === OIPA_IMPORT_SOURCE && d.agentId === agentId);
+  return { docs: safe, rejected: docs.length - safe.length };
+}
+
+/**
+ * Deletes the imported docs and their history subcollections.
+ *
+ * History subdocs are deleted FIRST in the same batch as their parent. A parent
+ * deleted without its subcollection leaves orphaned history that no query will
+ * ever reach again — Firestore does not cascade, and the subcollection survives
+ * its parent silently.
+ */
+async function rollbackImported(db, tenantId, docs) {
+  const MAX_WRITES = 450;
+  let batch = db.batch();
+  let writes = 0;
+  let deleted = 0;
+  let historyDeleted = 0;
+
+  const flush = async () => {
+    if (writes === 0) return;
+    await batch.commit();
+    batch = db.batch();
+    writes = 0;
+  };
+
+  for (const d of docs) {
+    const ref = db.doc(`tenants/${tenantId}/policies/${d.id}`);
+    const hist = await ref.collection('history').get();
+    // +1 for the parent; the history docs are counted individually.
+    if (writes + hist.size + 1 > MAX_WRITES) await flush();
+    for (const h of hist.docs) { batch.delete(h.ref); writes++; historyDeleted++; }
+    batch.delete(ref);
+    writes++;
+    deleted++;
+  }
+  await flush();
+  return { deleted, historyDeleted };
+}
+
+/**
  * Applies the plan. Batched, and a history doc per policy carries the provenance
  * the brief requires: `{ source: 'oipa_import', exportDate }`.
  *
@@ -315,13 +382,69 @@ async function confirmLive(plan, agent) {
   return answer.trim().toLowerCase() === expected;
 }
 
+/**
+ * Rollback entry point. Deliberately shares NOTHING with the import path except
+ * agent resolution: it reads no workbook, builds no plan, and cannot be reached
+ * from a run that was trying to import. Dry run by default, like the import.
+ */
+async function runRollback(opts) {
+  const admin = loadAdmin();
+  admin.initializeApp();
+  const db = admin.firestore();
+
+  const agent = await resolveAgent(admin, db, opts.agentEmail, opts.tenant, opts.uid);
+  const { docs, rejected } = await findImportedDocs(db, agent.tenantId, agent.uid);
+
+  console.log('\n================ OIPA IMPORT ROLLBACK ================');
+  console.log(`mode         ${opts.live ? 'LIVE (will DELETE)' : 'DRY RUN (deletes nothing)'}`);
+  console.log(`agent        ${agent.name ?? '(no name)'}  uid ${agent.uid}  [resolved via ${agent.resolvedVia}]`);
+  console.log(`tenant       ${agent.tenantId}`);
+  console.log(`match        importSource == '${OIPA_IMPORT_SOURCE}' AND agentId == ${agent.uid}`);
+  console.log(`\nimported docs found  ${docs.length}`);
+  if (rejected > 0) {
+    console.error(`REFUSING: ${rejected} doc(s) came back from the query without satisfying both conditions.`);
+    return 1;
+  }
+  if (docs.length === 0) {
+    console.log('nothing to roll back.');
+    return 0;
+  }
+
+  const byStatus = docs.reduce((m, d) => { m[d.status] = (m[d.status] ?? 0) + 1; return m; }, {});
+  console.log(`by status            ${JSON.stringify(byStatus)}`);
+  console.log(`export dates present ${JSON.stringify([...new Set(docs.map((d) => d.exportDate))])}`);
+  console.log(`sample policy numbers ${JSON.stringify(docs.slice(0, 8).map((d) => d.policyNumber))}`);
+
+  if (!opts.live) {
+    console.log(`\nDRY RUN — would delete ${docs.length} policy doc(s) and their history subdocs. Nothing was deleted.`);
+    return 0;
+  }
+
+  if (!opts.yes) {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    console.log(`\n!! LIVE DELETE of ${docs.length} doc(s) in tenant ${agent.tenantId}. This cannot be undone.`);
+    const answer = await rl.question('Type "delete" to proceed: ');
+    rl.close();
+    if (answer.trim().toLowerCase() !== 'delete') {
+      console.log('aborted — nothing deleted.');
+      return 1;
+    }
+  }
+
+  const { deleted, historyDeleted } = await rollbackImported(db, agent.tenantId, docs);
+  console.log(`\nLIVE: deleted ${deleted} policy doc(s) and ${historyDeleted} history subdoc(s).`);
+  return 0;
+}
+
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) { console.log(USAGE); return 0; }
-  if (!opts.file) { console.error('--file is required\n' + USAGE); return 2; }
+  if (!opts.file && !opts.rollback) { console.error('--file is required\n' + USAGE); return 2; }
   if (!opts.agentEmail && !opts.uid) { console.error('one of --agent-email or --uid is required\n' + USAGE); return 2; }
   if (opts.uid && !opts.tenant) { console.error('--uid requires --tenant\n' + USAGE); return 2; }
   if (opts.yes && !opts.live) { console.error('--yes only makes sense with --live'); return 2; }
+
+  if (opts.rollback) return await runRollback(opts);
 
   const { sheetName, matrix } = readWorkbook(opts.file);
   const titleCell = matrix[0]?.[0];
