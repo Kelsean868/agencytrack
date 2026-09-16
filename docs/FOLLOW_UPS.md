@@ -331,6 +331,7 @@
 | `CompliancePanel.nudge.test.jsx` timing flap — stabilize with proper async waits (**RE-OPENED — s... | — | — | — | 3942 |
 | DataSourceBadge "Estimated" — `bg-warning/15 text-warning` light-mode contrast (added PR #403) *(verification uncertain)* | — | — | — | 4001 |
 | AgentProductionView hero avatar — `bg-primary text-white` dark-mode contrast (added PR #403) *(verification uncertain)* | — | — | — | 4011 |
+| **Flake register — two NEW members enumerated (2026-09-16).** `WizardFormV2RetirementR2.test.jsx` and `AwardsRulesetPanel.test.jsx` both failed CI on diffs that cannot be causal, and both went green on re-run with zero code change. Neither was in the named roster, so the family is larger than the ~10 recorded. See the detail section at the end of this file | MEDIUM | test-infra | — | see the 2026-09-16 flake-member section at end of file |
 
 
 ---
@@ -6666,3 +6667,71 @@ Recorded by the Persistency 24-Month Model brief's Slice P2 (which is a docs-onl
 **Precedent to follow.** `orphanAdoptionEntersDenominator` (Persistency P5) is the cautionary one: the setting is runtime-real but has no UI because Company Config has no generic plain-value surface - see that entry above. A per-agent pick is a different storage shape (user doc, not tenant config), so it does not hit that gap, but the lesson holds - do not ship a stored value with no way for its owner to change it.
 
 **Falsification.** Overturned if a per-agent target-selection field already exists on the user doc and only needs surfacing. Not checked yet; that check is the brief's Phase 1, not an assumption to carry.
+
+---
+
+## Flake register — two NEW members enumerated (banked 2026-09-16, MEDIUM — test-infra)
+
+Both were observed during the OIPA portfolio import track (PRs #943 / #945). Neither
+appears in the named roster, so the "~10 named members" figure understates the family.
+Recorded here because the register asks for confirmed flakes to be enumerable rather
+than anecdotal.
+
+### Member: `src/components/wizard/__tests__/WizardFormV2RetirementR2.test.jsx`
+
+Test: `R2 retirement — value-level payload identity (real v2 steps 9/10/11) > fills
+Reflection+Goals fields through the real v2 components -> submitReport gets exact values`
+
+- **Signature:** `Test timed out in 5000ms`.
+- **Nondeterministic across identical runs.** Two consecutive local full-suite runs on the
+  same tree gave **2 failures, then 1**. The count moving with no change is the proof.
+- **Passes in isolation in 1287ms** against the 5000ms budget — a ~4x margin.
+- **Observed on PR #943**, whose diff was three NEW files under `src/lib/portfolioImport/`
+  that nothing imported and that were absent from the production bundle. The diff could
+  not reach the wizard suite.
+- **Green in CI** on the same commit, so the local red and the CI green disagreed.
+
+### Member: `src/components/admin/__tests__/AwardsRulesetPanel.test.jsx`
+
+Test: `AwardsRulesetPanel — array row editors > editing a row field produces the correct
+payload on save`
+
+- **Signature:** `TestingLibraryElementError: Unable to find an accessible element with the
+  role "button" and name /Activity Awards/i`.
+- **The panel section rendered EMPTY** — the failure dump shows
+  `<section aria-labelledby="awards-ruleset-heading" class="card mt-4" />` with no children,
+  i.e. the query ran before the collapsible content mounted. This is pattern 2 (a
+  multi-render-cycle integration test losing a race), not a missing-element regression.
+- **Observed in CI on PR #945** (`lint-and-build`, 1 failed / 6414 passed). That diff was
+  two NEW files under `src/lib/persistency/` that nothing imported; `grep` for
+  `deriveFromLedger` in the component and its test returns nothing.
+- **Green on `gh run rerun --failed` with zero code change** — the cleanest available proof.
+- **Passes locally in 332ms.**
+
+### Why this matters beyond bookkeeping
+
+The existing register already notes that a red CI on this repo "no longer reliably
+distinguishes a real regression from scheduling noise". These two add evidence that the
+population is **under-enumerated**, which is worse than it being large: an unlisted member
+gets re-diagnosed from scratch every time it fires, and the first instinct on a red is to
+suspect the diff. In both cases here the diff was provably inert, and establishing that cost
+real time.
+
+**Both are pattern 2** by the register's own taxonomy, so neither needs a new mechanism —
+they extend the known race, they do not contradict it.
+
+### Falsification (Rule 23)
+
+This entry would be overturned if either test can be made to fail **deterministically** on a
+frozen tree, or if a diff is found that plausibly reaches it. For `AwardsRulesetPanel` the
+stronger disconfirming evidence would be a failure that shows the section rendered WITH
+children but under a different accessible name — that would be a real selector regression,
+not a race. Neither was attempted here: no burn was run, and the rate for these two members
+is **unmeasured**. They are recorded as observed instances, not as a rate.
+
+### What was deliberately NOT done
+
+No fix, no `flushPendingEffects`, no per-test timeout widening. The register's standing
+position is that per-test timeout widening is superseded and the mechanism is a race; adding
+a fix here would have been a scope expansion into test-infra from inside a parser/derivation
+track. Enumeration only.
