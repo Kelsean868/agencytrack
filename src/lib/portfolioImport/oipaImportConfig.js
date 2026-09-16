@@ -34,6 +34,7 @@ export const OIPA_COLUMNS = Object.freeze({
   plan:                 'Plan',
   statusDate:           'Status Date',
   issueDate:            'Issue Date',
+  inforceDate:          'Inforce Date',
   paidToDate:           'Paid To Date',
   totalPremiumPaid:     'Total Premium Paid Issue To Date',
   modalPremium:         'Modal Premium',
@@ -52,7 +53,7 @@ export const OIPA_COLUMNS_EXCLUDED = Object.freeze([
   'Owner OIPAClient Number', 'Owner Ingenium Client Number',
   'Insured OIPA Client Number', 'Insured Ingenium Client Number',
   'Payment Method', 'Issue Age', 'Gender', 'Date Of Birth',
-  'Inforce Date', 'Premium Due Date', 'Premium Payment End Date', 'Total Amount Due',
+  'Premium Due Date', 'Premium Payment End Date', 'Total Amount Due',
   'Address Line1', 'Address Line2', 'Address Line3', 'City', 'Country Code',
   'Email', 'Home Phone', 'Mobile Phone', 'Suspense',
   'Writing Agent Company', 'Writing Agency', 'Servicing Agent Name',
@@ -81,10 +82,14 @@ export const OIPA_TEST_POLICY_NUMBERS = Object.freeze([
  *
  * THE TRAP: `NL` appears in the brief twice — once implicitly via `Declined`
  * (Policy Status) and once explicitly in the settled-plus-terminal sub-status list.
- * In the 15 Sep export every `NL` row has Policy Status `Declined`, and the brief
- * expects denied = 3 AND settled-plus-terminal = 18 (17 rows plus the FNE2500031
- * claim). Both numbers can only be true if the STATUS check runs FIRST. Map the sub
- * status first and denied becomes 0 while settled-plus-terminal becomes 21.
+ *
+ * MEASURED ON THE 15 SEP 2026 EXPORT (229 docs), which is what settles the order:
+ * all 3 `NL` rows carry Policy Status `Declined`, and the terminal sub statuses
+ * supply 17 more (Surrendered 8, Deceased 4, Commutation 4, Claim Paid 1).
+ *   status-first  -> denied 3,  settled-plus-terminal 18 (17 + the FNE2500031 claim)
+ *   subStatus-first -> denied 0,  settled-plus-terminal 21
+ * The brief expects denied 3 AND settled-plus-terminal 18, so only status-first
+ * reproduces both. Confirmed by dispatcher ruling, 16 Sep 2026.
  *
  * Everywhere else the sub status is the more specific signal and wins: a
  * `Terminated` row is a lapse, an NTU or a surrender depending only on its sub

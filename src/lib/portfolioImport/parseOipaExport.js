@@ -342,7 +342,13 @@ export function parseOipaExport(rows, options = {}) {
       proposedFrequency,
       proposedCoverage:  money(cell(row, 'sumInsured')),
 
+      // `dateIssued` is the OIPA "Issue Date" and is the ONLY date any count keys
+      // off: the Tatil memo reckons the 24-month persistency window from the ISSUE
+      // month. `inforceDate` differs on 14 of the 229 rows in the 15 Sep export and
+      // is carried for DISPLAY ONLY — no counter, window or aggregate may read it.
+      // (Dispatcher ruling, 16 Sep 2026.)
       dateIssued:       dateOnly(cell(row, 'issueDate')),
+      inforceDate:      dateOnly(cell(row, 'inforceDate')),
       paidToDate:       dateOnly(cell(row, 'paidToDate')),
       totalPremiumPaid: money(cell(row, 'totalPremiumPaid')),
 
