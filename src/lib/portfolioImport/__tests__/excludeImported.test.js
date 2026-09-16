@@ -160,6 +160,7 @@ describe('call-site guard — every getOwnPolicies caller references excludeImpo
 
   it('finds exactly the known call sites (red when one is added or removed)', () => {
     expect(callers.map((c) => c.rel).sort()).toEqual([
+      'src/components/agent/PersistencyTab.jsx',
       'src/components/agent/PolicyLedgerPanel.jsx',
       'src/components/awards/AgentAwardsPanel.jsx',
       'src/components/dashboard/AgentDashboard.jsx',
@@ -173,8 +174,37 @@ describe('call-site guard — every getOwnPolicies caller references excludeImpo
     ]);
   });
 
-  it.each(callers.map((c) => [c.rel, c.code]))('%s references excludeImported', (rel, code) => {
-    expect(/excludeImported\s*\(/.test(code)).toBe(true);
+  /**
+   * Files allowed to fetch UNFILTERED, each with the reason it must.
+   *
+   * Dispatcher ruling 5e names exactly two exceptions, and both are here. This
+   * list is deliberately awkward to add to: an entry is a claim that a surface
+   * NEEDS the imported historical book, and there are only two such surfaces.
+   *
+   * Note `PolicyLedgerPanel` is NOT on it. It fetches unfiltered for the ledger
+   * LIST but filters for `CampaignLensPanel`, so it does reference the helper --
+   * which is why the guard passes it and why the guard alone cannot prove that
+   * file is correct. See the caveat above.
+   */
+  const ALLOW_UNFILTERED = new Map([
+    ['src/components/agent/PersistencyTab.jsx',
+      'persistency is the one reader that MUST see imported docs — they are its entire input'],
+  ]);
+
+  it.each(callers.map((c) => [c.rel, c.code]))('%s references excludeImported, or is allow-listed', (rel, code) => {
+    const allowed = [...ALLOW_UNFILTERED.keys()].some((k) => rel.endsWith(k));
+    if (allowed) {
+      // Asserted, not skipped: if an allow-listed file STARTS filtering, the
+      // surface that needs the imported book silently stops seeing it. For
+      // persistency that means the figure quietly drops to zero.
+      expect(/excludeImported\s*\(/.test(code)).toBe(false);
+    } else {
+      expect(/excludeImported\s*\(/.test(code)).toBe(true);
+    }
+  });
+
+  it('allow-lists exactly the exceptions ruling 5e names', () => {
+    expect([...ALLOW_UNFILTERED.keys()]).toEqual(['src/components/agent/PersistencyTab.jsx']);
   });
 
   it('does not count a mere mention of getOwnPolicies in a comment', () => {

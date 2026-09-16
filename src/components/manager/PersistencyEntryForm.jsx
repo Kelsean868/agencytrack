@@ -9,6 +9,14 @@ import { savePersistency } from '../../services/persistencyService';
 import { deriveAll, PERS_GATE, PERS_GATE_PCT } from '../../lib/persistency/calculations';
 import { persistencyModelFor } from '../../lib/persistency/model';
 import { formatCurrency } from '../../utils/formatters';
+import {
+  buildLedgerPrefill, manualGate, manualConfirmationFields,
+} from '../../lib/persistency/ledgerPrefill';
+import {
+  LEDGER_DERIVED_INPUTS, DEFAULT_ANNUITY_MISSED_PREMIUM_RULE,
+} from '../../lib/persistency/deriveFromLedger';
+import AnnuityRuleSwitch from '../persistency/AnnuityRuleSwitch';
+import CountedPoliciesDrawer from '../persistency/CountedPoliciesDrawer';
 
 // Which inputs this form shows is decided by the report month, not by a prop:
 // six on the legacy model, seven (adding `decreases`) from September 2026.
@@ -75,13 +83,57 @@ export default function PersistencyEntryForm({
   writerRole,
   onClose,
   onSaved,
+  // P3 — ledger prefill. All optional: with no ledger this is the pre-P3 form,
+  // unchanged, which is why every existing caller keeps working untouched.
+  ledgerDocs = null,
+  ledgerExportDate = null,
+  writerUid = null,
 }) {
   const model  = useMemo(() => modelOrNull(monthKey), [monthKey]);
   const fields = useMemo(() => fieldsForModel(model), [model]);
 
+  // The annuity rule is form state because flipping it re-derives the figures.
+  // It is stored on the saved doc so a percentage can be reproduced later --
+  // the same ledger gives 86.6% under `ignore` and 72.2% under `lapse`.
+  const [annuityRule, setAnnuityRule] = useState(
+    existingRecord?.annuityMissedPremiumRule ?? DEFAULT_ANNUITY_MISSED_PREMIUM_RULE,
+  );
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const prefill = useMemo(() => {
+    if (!ledgerDocs || !MONTH_KEY_RE.test(String(monthKey))) return null;
+    return buildLedgerPrefill(ledgerDocs, {
+      monthKey,
+      exportDate: ledgerExportDate,
+      annuityMissedPremiumRule: annuityRule,
+      existingRecord,
+    });
+  }, [ledgerDocs, monthKey, ledgerExportDate, annuityRule, existingRecord]);
+
   const [inputs, setInputs] = useState(() => loadInitial(existingRecord, fieldsForModel(modelOrNull(monthKey))));
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
+
+  // Re-seed when a prefill arrives or the annuity rule changes. Keyed on the
+  // DERIVED values only: re-seeding on every render would fight the user's
+  // typing, and re-seeding the manual four would wipe what they just entered.
+  const derivedKey = prefill?.hasLedger
+    ? LEDGER_DERIVED_INPUTS.map((id) => prefill.values[id]).join('|')
+    : null;
+  useEffect(() => {
+    if (!prefill?.hasLedger) return;
+    setInputs((prev) => {
+      const next = { ...prev };
+      for (const id of LEDGER_DERIVED_INPUTS) next[id] = prefill.values[id];
+      // The manual four are seeded ONCE, from an existing record if there is
+      // one, and never overwritten by a re-derivation.
+      for (const id of prefill.manualFields) {
+        if (prev[id] === undefined) next[id] = prefill.values[id];
+      }
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [derivedKey]);
 
   const monthLabel = useMemo(() => formatMonthLabel(monthKey), [monthKey]);
 
@@ -120,8 +172,16 @@ export default function PersistencyEntryForm({
         msg: 'Net Gross Settled is negative — check Decreases against Gross Settled.',
       };
     }
+    // P3 save block (dispatcher ruling 1): with a ledger prefill, the four
+    // inputs the export cannot supply must each be ANSWERED before saving. A
+    // typed 0 answers the field; a blank does not. Without a ledger this is
+    // inert -- the per-field `required` check above already covers that case.
+    if (prefill?.hasLedger) {
+      const gate = manualGate(inputs);
+      if (!gate.canSave) return { ok: false, field: gate.unanswered[0], msg: gate.blockMessage };
+    }
     return { ok: true };
-  }, [inputs, fields, derived]);
+  }, [inputs, fields, derived, prefill]);
 
   const handleSubmit = async (e) => {
     if (e?.preventDefault) e.preventDefault();
@@ -132,7 +192,20 @@ export default function PersistencyEntryForm({
     setSaving(true);
     setError('');
     try {
-      await savePersistency(tenantId, monthKey, agentUid, numericInputs, writerRole);
+      // Provenance is attached ONLY when a ledger actually drove the figures,
+      // so a hand-entered month is never stamped as import-derived.
+      const provenance = prefill?.hasLedger
+        ? {
+          ...manualConfirmationFields({
+            uid: writerUid ?? agentUid,
+            now: new Date().toISOString(),
+          }),
+          ledgerDerived: true,
+          ledgerExportDate: ledgerExportDate ?? null,
+          annuityMissedPremiumRule: annuityRule,
+        }
+        : null;
+      await savePersistency(tenantId, monthKey, agentUid, numericInputs, writerRole, provenance);
       onSaved();
     } catch (err) {
       setError(err?.message ?? 'Save failed.');
@@ -196,6 +269,42 @@ export default function PersistencyEntryForm({
             </p>
           </div>
 
+          {/* ── P3: ledger provenance + the annuity rule ──────────────── */}
+          {prefill?.hasLedger && (
+            <div className="flex flex-col gap-3" data-testid="ledger-prefill-block">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p
+                  className="text-xs font-semibold text-primary"
+                  data-testid="ledger-provenance"
+                >
+                  {prefill.provenance}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(true)}
+                  data-testid="open-counted-drawer"
+                  className="min-h-[44px] px-3 rounded-lg border border-border text-xs font-semibold text-ink hover:bg-card-raised transition-colors"
+                >
+                  {`View ${prefill.ledger.counted} counted ${prefill.ledger.counted === 1 ? 'policy' : 'policies'}`}
+                </button>
+              </div>
+
+              <AnnuityRuleSwitch value={annuityRule} onChange={setAnnuityRule} disabled={saving} />
+
+              {prefill.unanswered.length > 0 && (
+                <div
+                  className="flex gap-2.5 p-3 rounded-xl bg-danger/10 border border-danger/30"
+                  data-testid="manual-inputs-block"
+                >
+                  <AlertCircle size={14} className="text-danger-ink shrink-0 mt-0.5" />
+                  <p className="text-sm text-danger-ink leading-snug">
+                    {prefill.blockMessage}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Model inputs — 2-column grid. Six on the legacy model, seven from
               September 2026 (the memo's `decreases`). */}
           <div className="grid grid-cols-2 gap-3" data-testid={`persistency-inputs-${model.id}`}>
@@ -216,6 +325,23 @@ export default function PersistencyEntryForm({
                   required
                 />
                 <span className="text-xs text-ink-muted leading-tight">{f.help}</span>
+                {prefill?.hasLedger && (
+                  LEDGER_DERIVED_INPUTS.includes(f.id) ? (
+                    <span
+                      className="text-xs font-semibold text-primary leading-tight"
+                      data-testid={`field-source-derived-${f.id}`}
+                    >
+                      From portfolio import
+                    </span>
+                  ) : (
+                    <span
+                      className="text-xs text-ink-muted leading-tight"
+                      data-testid={`field-source-manual-${f.id}`}
+                    >
+                      Not in export — enter manually
+                    </span>
+                  )
+                )}
               </div>
             ))}
           </div>
@@ -278,6 +404,10 @@ export default function PersistencyEntryForm({
           />
         </div>
       </form>
+
+      {drawerOpen && prefill?.hasLedger && (
+        <CountedPoliciesDrawer ledger={prefill.ledger} onClose={() => setDrawerOpen(false)} />
+      )}
     </div>
   );
 }
