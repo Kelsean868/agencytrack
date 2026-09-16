@@ -212,15 +212,22 @@ export const OIPA_PAYMENT_MODE_TO_FREQUENCY = Object.freeze({
 /**
  * CONFIG — fixed field values every imported doc carries.
  *
- * `sourceOfProspect: 'portfolio_import'` is a NEW value. It is not yet in
- * `PROSPECTING_SOURCES`, so `policiesService.createPolicy` would reject it today —
- * see the P2 prerequisites in the PR description. Note also that every existing
- * source value is kebab-case (`bank-referral`, `cold-call`); this one is snake_case
- * because the brief names it that way. Worth a ruling before P2 writes it.
+ * `sourceOfProspect` is NULL, deliberately (dispatcher ruling 5b, 16 Sep 2026).
+ * `PROSPECTING_SOURCES` is the pick list an AGENT chooses from when logging a sale;
+ * an imported historical policy was never prospected through any of those channels,
+ * and adding a `portfolio_import` option would put a non-choice in a human's
+ * dropdown forever. Provenance is carried by `importSource` on the written doc
+ * instead — see `buildImportPlan.js`.
+ *
+ * This also means no imported doc could ever be written through
+ * `policiesService.createPolicy`: its validator requires `sourceOfProspect` to be
+ * in the enum, and `firestore.rules` requires `status == 'written'` on create. The
+ * importer therefore writes with the Admin SDK and its own validator — not a
+ * convenience, a structural necessity.
  */
 export const OIPA_FIXED_DOC_FIELDS = Object.freeze({
   newBusinessType:  'nb_ordinary',
-  sourceOfProspect: 'portfolio_import',
+  sourceOfProspect: null,
 });
 
 /** Provenance stamp for the history doc the importer writes per policy (P2). */

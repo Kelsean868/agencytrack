@@ -11,7 +11,13 @@ import { parseDateOnlyTT, getTodayTT } from '../utils/dateInputs';
 const VALID_SOURCES          = new Set(PROSPECTING_SOURCES.map((s) => s.value));
 const VALID_PRODUCT_LINES    = new Set(['life', 'ah', 'property', 'motor']);
 const VALID_NEW_BIZ_TYPES    = new Set(['nb_ordinary', 'inc_ppp', 'replacement', 'spia', 'lumpsum', 'platinum_edge']);
-const VALID_POLICY_CLASSES   = new Set(['whole_life', 'term', 'universal_life', 'endowment', 'annuity']);
+// `critical_illness` added for the OIPA portfolio import (CIB = LifeSpan Gold,
+// 13 policies in the 15 Sep 2026 export). NOTE: `firestore.rules` does NOT
+// validate policyClass values at all — `policyClass` appears there only inside an
+// `affectedKeys().hasOnly([...])` allow-list, so there is no rules enum to mirror
+// and no rules deploy is needed for this. Do not confuse it with the rules'
+// `critical_illness_or_health`, which is a different field (product-need taxonomy).
+const VALID_POLICY_CLASSES   = new Set(['whole_life', 'term', 'universal_life', 'endowment', 'annuity', 'critical_illness']);
 const VALID_FREQUENCIES      = new Set(['A', 'S', 'Q', 'M']);
 const VALID_SOCIAL_PLATFORMS = new Set(SOCIAL_PLATFORMS_ATTRIBUTION.map((p) => p.value));
 
