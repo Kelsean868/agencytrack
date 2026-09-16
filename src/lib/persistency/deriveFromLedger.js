@@ -366,7 +366,13 @@ export function deriveFromLedger(docs, options = {}) {
     inputs,
     derived,
 
-    /** How many policies sit behind the denominator. */
+    /**
+     * `counted` is the NUMBER OF POLICIES IN THE DENOMINATOR — the count of docs
+     * whose API was added to `businessPlaced`, not a count of lapses, not a count
+     * of in-window docs, and not the size of the ledger. Confirmed against the
+     * brief's table by dispatcher ruling 4 (16 Sep 2026): it matches
+     * `evidence.businessPlaced.length` on all five expected rows (31 / 36 / 28).
+     */
     counted: evidence.businessPlaced.length,
     evidence,
 

@@ -357,7 +357,7 @@ describe('parseOipaExport — doc fields (brief rule 7)', () => {
       exportDate:           '2026-09-15',
       agentId:              'uid-kyron',
       newBusinessType:      'nb_ordinary',
-      sourceOfProspect:     'portfolio_import',
+      sourceOfProspect:     null,
     });
   });
 

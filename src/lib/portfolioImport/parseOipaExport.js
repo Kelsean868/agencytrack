@@ -39,7 +39,7 @@ import {
   OIPA_PAYMENT_MODE_TO_FREQUENCY,
   OIPA_FIXED_DOC_FIELDS,
   OIPA_HEADER_ROW_INDEX,
-} from './oipaImportConfig';
+} from './oipaImportConfig.js';
 
 const TEST_NUMBERS = new Set(OIPA_TEST_POLICY_NUMBERS);
 
