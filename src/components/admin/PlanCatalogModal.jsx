@@ -12,11 +12,16 @@ import {
 } from '../../services/planCatalogService';
 
 const POLICY_CLASSES = [
-  { value: 'whole_life',     label: 'Whole Life' },
-  { value: 'term',           label: 'Term' },
-  { value: 'universal_life', label: 'Universal Life' },
-  { value: 'endowment',      label: 'Endowment' },
-  { value: 'annuity',        label: 'Annuity' },
+  { value: 'whole_life',        label: 'Whole Life' },
+  { value: 'term',              label: 'Term' },
+  { value: 'universal_life',    label: 'Universal Life' },
+  { value: 'endowment',         label: 'Endowment' },
+  { value: 'annuity',           label: 'Annuity' },
+  // Added with the OIPA portfolio import (CIB = LifeSpan Gold). NOTE: this array
+  // is duplicated verbatim in the other of PolicyLedgerPanel.jsx /
+  // PlanCatalogModal.jsx, and `VALID_POLICY_CLASSES` in policiesService.js is a
+  // third copy of the same enum. Adding a class means editing all three.
+  { value: 'critical_illness',  label: 'Critical Illness' },
 ];
 
 const PRODUCT_LINES = [

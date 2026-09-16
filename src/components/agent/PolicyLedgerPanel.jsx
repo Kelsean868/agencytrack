@@ -7,6 +7,7 @@ import { createPolicy, getOwnPolicies, transitionPolicyStatus } from '../../serv
 import { getPolicyPlans } from '../../services/planCatalogService';
 import { getTodayTT } from '../../utils/dateInputs';
 import { applyLedgerFilter, filterCounts, LEDGER_FILTERS } from '../../lib/policyLedgerDerivation';
+import { excludeImported } from '../../lib/portfolioImport/excludeImported';
 import PipelineStrip from './policyLedger/PipelineStrip';
 import PolicyCard from './policyLedger/PolicyCard';
 import PolicyDrillDrawer from './policyLedger/PolicyDrillDrawer';
@@ -32,11 +33,16 @@ const BIZ_TYPES = [
 ];
 
 const POLICY_CLASSES = [
-  { value: 'whole_life',     label: 'Whole Life' },
-  { value: 'term',           label: 'Term' },
-  { value: 'universal_life', label: 'Universal Life' },
-  { value: 'endowment',      label: 'Endowment' },
-  { value: 'annuity',        label: 'Annuity' },
+  { value: 'whole_life',        label: 'Whole Life' },
+  { value: 'term',              label: 'Term' },
+  { value: 'universal_life',    label: 'Universal Life' },
+  { value: 'endowment',         label: 'Endowment' },
+  { value: 'annuity',           label: 'Annuity' },
+  // Added with the OIPA portfolio import (CIB = LifeSpan Gold). NOTE: this array
+  // is duplicated verbatim in the other of PolicyLedgerPanel.jsx /
+  // PlanCatalogModal.jsx, and `VALID_POLICY_CLASSES` in policiesService.js is a
+  // third copy of the same enum. Adding a class means editing all three.
+  { value: 'critical_illness',  label: 'Critical Illness' },
 ];
 
 // EMPTY_FORM carries no date defaults — dates are filled dynamically at
@@ -312,8 +318,15 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
             {/* Tier 1 */}
             <PipelineStrip policies={policies} />
 
-            {/* Item 3.4 — campaign lens (flag-gated; renders null + no fetch when OFF) */}
-            <CampaignLensPanel policies={policies} />
+            {/* Item 3.4 — campaign lens (flag-gated; renders null + no fetch when OFF).
+
+                CAMPAIGN CREDIT EXCLUDES IMPORTED POLICIES (dispatcher ruling 5e).
+                This panel is the one consumer inside the ledger that AGGREGATES
+                rather than lists, so it gets the filtered array while the ledger
+                list itself keeps every doc. Passing the raw `policies` here would
+                let an imported historical book earn campaign credit retroactively
+                — and nothing would error, the numbers would just be wrong. */}
+            <CampaignLensPanel policies={excludeImported(policies)} />
 
             {/* Tier 2 — filter chips + search */}
             <div className="flex items-center gap-3 flex-wrap">

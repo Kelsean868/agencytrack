@@ -7,6 +7,7 @@ import { PROSPECTING_SOURCES } from './prospectInfoService';
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../utils/prospectingConstants';
 import { isLegalAgentTransition } from '../constants/policyLifecycle';
 import { parseDateOnlyTT, getTodayTT } from '../utils/dateInputs';
+import { excludeImported } from '../lib/portfolioImport/excludeImported';
 
 const VALID_SOURCES          = new Set(PROSPECTING_SOURCES.map((s) => s.value));
 const VALID_PRODUCT_LINES    = new Set(['life', 'ah', 'property', 'motor']);
@@ -399,7 +400,12 @@ export { settlementShapeFromPolicies } from '../lib/policiesDerivation';
 export async function getDeliverablePolicies(tenantId) {
   const ref = collection(db, 'tenants', tenantId, 'policies');
   const snap = await getDocs(query(ref, where('status', '==', 'settled')));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  // Imported historical policies are NOT deliverable — they were delivered years
+  // ago, outside this system. Without this filter the CRO's Delivery Register
+  // opens to 117 settled OIPA docs apparently awaiting delivery. Filtered here
+  // rather than at the caller because this reader has exactly one consumer and
+  // no legitimate use for imported docs. (Dispatcher ruling 5e / P2b.)
+  return excludeImported(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
 }
 
 /**
@@ -445,5 +451,8 @@ export async function getPoliciesForManager(tenantId, scope) {
     q = query(ref, orderBy('createdAt', 'desc'));
   }
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  // Both consumers of this reader aggregate (PolicyReconciliationPanel totals a
+  // manager's book, useStrategicPlan projects from it), so the exclusion belongs
+  // here rather than duplicated at each. (Dispatcher ruling 5e / P2b.)
+  return excludeImported(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
 }
