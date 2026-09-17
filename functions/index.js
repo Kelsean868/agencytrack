@@ -59,6 +59,14 @@ exports.notifyFinancingAdjustment = require('./financing/notifyFinancingAdjustme
 // Track K · K10c: on a financing-escalation create, ping same-branch BMs (bell only)
 exports.onFinancingEscalationCreate = require('./financing/onFinancingEscalationCreate').onFinancingEscalationCreate;
 
+// OIPA portfolio import (P4a) — the agent uploads their own OIPA export and the
+// SERVER parses it. Two calls: preview returns the plan and writes nothing, apply
+// writes that exact plan. Identity comes from the auth token only; an agent can
+// import only the policies whose Servicing Agent Number is their own.
+// Deploy: firebase deploy --only functions:previewPortfolioImport,functions:applyPortfolioImport
+exports.previewPortfolioImport = require('./portfolioImport/previewImport').previewPortfolioImport;
+exports.applyPortfolioImport   = require('./portfolioImport/applyImport').applyPortfolioImport;
+
 const TENANT_ID = 'tatillife_south'; // SEC-9c: hardcoded; scheduled-function isolation deferred
 
 // CSV bulk-import allow-list. tenant_admin and platform_admin are explicitly

@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "repomix": "npx repomix && echo Done - upload repomix-output.xml to Claude project",
     "test": "vitest run",
-    "a11y:contrast": "node scripts/verification/a11y-contrast-sweep.mjs"
+    "a11y:contrast": "node scripts/verification/a11y-contrast-sweep.mjs",
+    "sync:portfolio-import": "node scripts/build/sync-portfolio-import.mjs"
   },
   "dependencies": {
     "@microsoft/clarity": "^1.0.2",

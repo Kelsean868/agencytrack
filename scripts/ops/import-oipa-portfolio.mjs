@@ -39,7 +39,11 @@ import XLSX from 'xlsx';
 
 import { parseOipaExport, rowsFromSheetMatrix, parseExportDateFromTitle } from '../../src/lib/portfolioImport/parseOipaExport.js';
 import { buildImportPlan, IMPORT_ADDED_FIELDS_NOTE } from '../../src/lib/portfolioImport/buildImportPlan.js';
-import { OIPA_IMPORT_SOURCE } from '../../src/lib/portfolioImport/oipaImportConfig.js';
+import {
+  OIPA_IMPORT_SOURCE,
+  OIPA_IMPORT_CONFIG_PREF_ID,
+  normaliseImportConfig,
+} from '../../src/lib/portfolioImport/oipaImportConfig.js';
 
 const require = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -161,6 +165,23 @@ async function resolveAgent(admin, db, agentEmail, tenantOverride, uid) {
     email: user.email ?? null,
     resolvedVia: 'email',
   };
+}
+
+/**
+ * This agent's own import config (ruling 4, 17 Sep 2026): overrides, self/family
+ * flags and the test-record skip list.
+ *
+ * Read PER AGENT, never from the module. Falling back to the module's seed values
+ * here would mean a second agent's import silently inherits Kyron's overrides —
+ * marking that agent's live policy `ntu` with nothing on screen to explain it.
+ * An absent doc reads as empty, which is the correct answer for every agent but
+ * Kyron.
+ */
+async function fetchImportConfig(db, tenantId, uid) {
+  const snap = await db.doc(
+    `tenants/${tenantId}/users/${uid}/prefs/${OIPA_IMPORT_CONFIG_PREF_ID}`,
+  ).get();
+  return normaliseImportConfig(snap.exists ? snap.data() : null);
 }
 
 /** Existing ledger docs for this agent, read once. Read-only in both modes. */
@@ -472,12 +493,25 @@ async function main() {
     return 2;
   }
 
+  const importConfig = await fetchImportConfig(db, agent.tenantId, agent.uid);
+  const cfgCounts = [
+    `${Object.keys(importConfig.overrides).length} override(s)`,
+    `${Object.keys(importConfig.selfOrFamily).length} self/family flag(s)`,
+    `${importConfig.testPolicyNumbers.length} test record(s)`,
+  ].join(', ');
+  console.log(
+    `import config  prefs/${OIPA_IMPORT_CONFIG_PREF_ID} — ${cfgCounts}`
+    + (Object.keys(importConfig.overrides).length === 0
+      ? '  (none — seed it with functions/scripts/seed-oipa-import-config.cjs)' : ''),
+  );
+
   const rows = rowsFromSheetMatrix(matrix);
   const { docs, report: parseReport } = parseOipaExport(rows, {
     exportDate,
     agentId: agent.uid,
     agentNumber: agent.agentNumber,
     importedAt: new Date().toISOString().slice(0, 10),
+    importConfig,
   });
 
   const existingDocs = await fetchExisting(db, agent.tenantId, agent.uid);
