@@ -333,6 +333,7 @@
 | AgentProductionView hero avatar — `bg-primary text-white` dark-mode contrast (added PR #403) *(verification uncertain)* | — | — | — | 4011 |
 | **Flake register — two NEW members enumerated (2026-09-16).** `WizardFormV2RetirementR2.test.jsx` and `AwardsRulesetPanel.test.jsx` both failed CI on diffs that cannot be causal, and both went green on re-run with zero code change. Neither was in the named roster, so the family is larger than the ~10 recorded. See the detail section at the end of this file | MEDIUM | test-infra | — | see the 2026-09-16 flake-member section at end of file |
 | **P4 must not parse agent-picked files in the browser with `xlsx@0.18.5`** — pick a maintained parser or parse server-side. The package is a root devDependency for the P2 admin script only (operator-downloaded OIPA export, never in the web bundle); it carries known prototype-pollution and ReDoS CVEs that are triggered by parsing MALICIOUS files, which is exactly what P4 would do with a file an agent chooses. Chosen for P2 for continuity: every number in the P0/P1/P2 paste-backs was validated through this reader (banked 2026-09-16, P2b, dispatcher ruling 5) | HIGH | OIPA import / security | before P4 | see the P2b entry at end of file |
+| **ACCEPTED GAP — "organic + imported policies in one tenant" is never tested together.** `excludeImported()` is proven to drop imported docs (production, 117 settled -> 0) and to keep an organically created one (`tatillife_smoke`, 1 -> 1), but never both in the same tenant, because no test agent exists inside `tatillife_south`. Operator ruling 16 Sep 2026: do NOT create one — a test agent would appear in manager rosters and leaderboards. **Revisit if P4 changes the filter** (banked 2026-09-16, P3) | MEDIUM | OIPA import | revisit at P4 | see the accepted-gap entry at end of file |
 
 
 ---
@@ -6761,3 +6762,67 @@ non-bundled script, and it does **not** transfer to P4.
 if P4's design changes so the parse never runs on an agent-supplied file in a browser
 (e.g. upload-then-parse-server-side), in which case the constraint is satisfied rather
 than waived.
+
+---
+
+## ACCEPTED GAP — organic + imported policies are never tested together in one tenant (banked 2026-09-16, P3, MEDIUM — OIPA import)
+
+**This is an accepted gap, not an open task.** It is recorded so nobody re-discovers it
+from scratch, and so the decision behind it is visible if P4 changes the filter.
+
+### What IS proven
+
+Both halves of `excludeImported()` are verified live, separately:
+
+- **Imported docs are dropped.** Production, `tatillife_south`: the CRO Delivery Register
+  query (`where('status','==','settled')`, tenant-wide) returns **117** settled docs, all
+  imported; after the filter, **0**. Zero imported docs survive.
+- **An organic doc is kept.** `tatillife_smoke`: a policy created through the real app
+  form as `A11Y_AGENT` — real auth, real rules, real `policiesService.validate()` —
+  survives the filter, **1 raw settled -> 1 after the filter**.
+
+### What is NOT proven
+
+The two together **in the same tenant**: a CRO register query returning both organic and
+imported docs, where the filter must remove one set and keep the other in a single pass.
+
+### Why, and why it stays that way
+
+The only tenant holding imported policies is `tatillife_south` (Kyron's). The only agent
+account CC has credentials for, `A11Y_AGENT`, belongs to `tatillife_smoke` —
+`A11Y_TENANT_ID` — and has **no user doc in `tatillife_south`** (21 users there, none
+matching). So it cannot write a policy into the tenant that has the imported book.
+
+Closing the gap would mean creating a test agent inside `tatillife_south`.
+**Operator ruling, 16 Sep 2026: do not.** Such an agent would appear in manager rosters
+and on leaderboards — a permanent cost on real operator-facing surfaces, paid to cover a
+case whose two halves are each already proven and whose logic is a one-line predicate.
+
+`isTestAccount: true` excludes an account from both leaderboard surfaces but NOT from
+manager rosters, so the flag does not neutralise the objection.
+
+### What would make this matter again
+
+**Revisit if P4 changes the filter.** P4 puts an upload in front of agents and runs the
+parse client-side, so it is the slice most likely to touch `importSource` tagging or the
+exclusion path. Specifically, re-open this if any of the following happens:
+
+- `excludeImported` stops being a simple equality on `importSource`
+- a second importer introduces another `importSource` value, making "imported" a set
+  rather than one tag
+- the exclusion moves from client-side into a Firestore query (the inversion trap in
+  `excludeImported.js` becomes live again)
+- a tenant ends up holding imported policies for more than one agent
+
+### Falsification
+
+Overturned the moment a legitimate non-test account exists in `tatillife_south` that can
+create a policy — a second real agent onboarded to the tenant closes this for free, with
+no test data at all. That is the cheap path, and it arrives on its own at pilot.
+
+### Coverage that stands in for it
+
+`src/services/__tests__/policiesService.test.js` asserts the mixed case directly at the
+service boundary: imported, organic and legacy (no `importSource` field) docs in one
+array, through `getDeliverablePolicies` and all three `getPoliciesForManager` arms. The
+gap is "never seen together in a live tenant", not "untested".
