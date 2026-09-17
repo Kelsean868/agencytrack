@@ -335,7 +335,7 @@ export async function getAgentHistory(tenantId, agentUid, lastNMonths = 12) {
 // Computes derived fields, validates inputs non-negative, and writes the doc.
 // On overwrite, preserves the original enteredAt/By/ByRole and updates only
 // lastEdited*. The 'role' parameter is the writer's claim role.
-export async function savePersistency(tenantId, monthKey, agentUid, inputs, role) {
+export async function savePersistency(tenantId, monthKey, agentUid, inputs, role, provenance = null) {
   const writerUid = auth?.currentUser?.uid;
 
   if (!writerUid)             throw new Error('savePersistency: no signed-in user');
@@ -409,6 +409,29 @@ export async function savePersistency(tenantId, monthKey, agentUid, inputs, role
     lastEditedAt:     auditNow,
     lastEditedBy:     writerUid,
     lastEditedByRole: role,
+    // OPTIONAL provenance, additive and absent on every existing doc.
+    //
+    // `manualConfirmedBy` / `manualConfirmedAt` record that a human answered the
+    // four inputs the OIPA export cannot supply (dispatcher ruling 1, 16 Sep
+    // 2026). They are what lets a later reader tell a 0 somebody CHECKED from a
+    // 0 nobody ever looked at -- the whole reason the form blocks the save until
+    // all four are entered.
+    //
+    // `ledgerDerived` / `ledgerExportDate` / `annuityMissedPremiumRule` record
+    // WHICH derivation produced the three prefilled figures. The rule in
+    // particular must be stored per document: the same ledger yields 86.6% under
+    // `ignore` and 72.2% under `lapse`, so a saved percentage without the rule
+    // beside it cannot be reproduced.
+    //
+    // NOTHING BRANCHES ON ANY OF THIS. It is provenance for a human, exactly as
+    // `modelId` above is -- `persistencyModelFor(monthKey)` remains the only
+    // authority on which model a month is reckoned on.
+    ...(provenance?.manualConfirmedBy ? { manualConfirmedBy: provenance.manualConfirmedBy } : {}),
+    ...(provenance?.manualConfirmedAt ? { manualConfirmedAt: provenance.manualConfirmedAt } : {}),
+    ...(provenance?.ledgerDerived ? { ledgerDerived: true } : {}),
+    ...(provenance?.ledgerExportDate ? { ledgerExportDate: provenance.ledgerExportDate } : {}),
+    ...(provenance?.annuityMissedPremiumRule
+      ? { annuityMissedPremiumRule: provenance.annuityMissedPremiumRule } : {}),
   };
 
   // Deliberately isE3Doc, NOT isModelCompleteDoc: this asks "was there a real

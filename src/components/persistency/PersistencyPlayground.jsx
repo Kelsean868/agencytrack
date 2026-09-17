@@ -12,6 +12,9 @@
 import React, { useMemo, useState } from 'react';
 import { X, Calculator, ExternalLink, AlertCircle } from 'lucide-react';
 import useFocusTrap from '../../hooks/useFocusTrap';
+import AnnuityRuleSwitch from './AnnuityRuleSwitch';
+import { buildLedgerPrefill } from '../../lib/persistency/ledgerPrefill';
+import { DEFAULT_ANNUITY_MISSED_PREMIUM_RULE } from '../../lib/persistency/deriveFromLedger';
 import { useConfigContext } from '../../context/ConfigProvider';
 import {
   projectPersistency,
@@ -119,8 +122,25 @@ export default function PersistencyPlayground({
   currentRecord,
   onClose,
   onViewLapsedPolicies,
+  // P3 — optional ledger. Absent means the pre-P3 Playground, unchanged.
+  ledgerDocs = null,
+  ledgerExportDate = null,
 }) {
   const modalRef = useFocusTrap({ onEscape: onClose });
+
+  // The annuity rule is LOCAL to the Playground: this is a what-if surface, so
+  // flipping it here must never write anything or change what the tab shows.
+  const [annuityRule, setAnnuityRule] = useState(DEFAULT_ANNUITY_MISSED_PREMIUM_RULE);
+
+  const ledgerPrefill = useMemo(() => {
+    const mk = currentRecord?.monthKey;
+    if (!ledgerDocs || !mk || !/^\d{4}-\d{2}$/.test(String(mk))) return null;
+    return buildLedgerPrefill(ledgerDocs, {
+      monthKey: mk,
+      exportDate: ledgerExportDate,
+      annuityMissedPremiumRule: annuityRule,
+    });
+  }, [ledgerDocs, currentRecord, ledgerExportDate, annuityRule]);
 
   // P5 — how an adopted orphan is counted is a tenant setting, because
   // persistency counting rules vary by carrier. Read from the already-hydrated
@@ -397,6 +417,54 @@ export default function PersistencyPlayground({
             </div>
           )}
         </div>
+
+        {/* ── P3: the annuity rule and what it would cost ──────────────── */}
+        {ledgerPrefill?.hasLedger && (
+          <div className="px-4 pb-4 flex flex-col gap-3" data-testid="playground-annuity-block">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-1.5">
+                Annuity missed premiums
+              </p>
+              <AnnuityRuleSwitch value={annuityRule} onChange={setAnnuityRule} />
+            </div>
+
+            <div className="p-3 rounded-xl bg-card-raised border border-border" data-testid="playground-at-risk">
+              <p className="text-xs font-semibold text-ink mb-1">
+                {`At-risk annuities — ${ledgerPrefill.ledger.atRisk.annuities.length}`}
+              </p>
+              {ledgerPrefill.ledger.atRisk.annuities.length === 0 ? (
+                <p className="text-xs text-ink-muted">None behind on premium.</p>
+              ) : (
+                <>
+                  <p className="text-xs text-ink-muted mb-2">
+                    {`${formatCurrency(ledgerPrefill.ledger.atRisk.annuityApiTotal)} of API. `}
+                    {`Ignored: ${(ledgerPrefill.ledger.atRisk.persistencyUnderIgnore * 100).toFixed(1)}% · `}
+                    {`counted as lapse: ${(ledgerPrefill.ledger.atRisk.persistencyUnderLapse * 100).toFixed(1)}%`}
+                  </p>
+                  <ul className="flex flex-col gap-1">
+                    {ledgerPrefill.ledger.atRisk.annuities.map((a) => (
+                      <li key={a.policyNumber} className="flex items-center gap-2 text-xs" data-testid="playground-at-risk-row">
+                        <span className="font-mono text-ink flex-1 min-w-0 truncate">{a.policyNumber}</span>
+                        <span className="text-ink-muted">paid to {a.paidToDate ?? '—'}</span>
+                        <span className="text-ink-muted tabular-nums">{formatCurrency(a.api)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+
+            {ledgerPrefill.ledger.atRisk.pendingDeathClaims.length > 0 && (
+              <div className="flex gap-2.5 p-3 rounded-xl bg-gold-tint" data-testid="playground-death-claim">
+                <AlertCircle size={14} className="text-gold-ink shrink-0 mt-0.5" />
+                <p className="text-sm text-gold-ink leading-snug">
+                  {`Pending death claim: ${ledgerPrefill.ledger.atRisk.pendingDeathClaims.map((c) => c.policyNumber).join(', ')}. `}
+                  <strong>Not a lapse.</strong>
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Footer ── */}
         <div className="p-4 border-t border-border flex justify-between items-center gap-3">

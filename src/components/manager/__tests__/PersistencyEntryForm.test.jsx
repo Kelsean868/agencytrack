@@ -327,3 +327,56 @@ describe('PersistencyEntryForm — render guard', () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+// ── P3 fix 1: the lock banner is addressed to whoever is entering ───────────
+// The manager copy says "your figures override THEIR self-entry", which is
+// simply false when the agent is entering their own month. Keyed on
+// writerUid === agentUid, not on role, so a PRODUCING MANAGER entering their
+// own persistency also gets the self wording.
+describe('PersistencyEntryForm — lock banner copy (self vs manager)', () => {
+  it('SELF entry: says the month locks, with no third party', () => {
+    render(<PersistencyEntryForm {...DEFAULT_PROPS} agentUid="agent-1" writerUid="agent-1" agentName="You" />);
+
+    const self = screen.getByTestId('pers-lock-copy-self');
+    expect(self).toBeTruthy();
+    expect(self.textContent).toMatch(/Saving locks February\./);
+    expect(self.textContent).toMatch(/You can't edit it after saving\./);
+    // The manager sentence must be absent entirely.
+    expect(screen.queryByTestId('pers-lock-copy-manager')).toBeNull();
+    expect(self.textContent).not.toMatch(/override/i);
+    expect(self.textContent).not.toMatch(/their self-entry/i);
+  });
+
+  it('MANAGER entry: keeps the override wording and names the agent', () => {
+    render(<PersistencyEntryForm {...DEFAULT_PROPS} agentUid="agent-1" writerUid="manager-9" />);
+
+    const mgr = screen.getByTestId('pers-lock-copy-manager');
+    expect(mgr).toBeTruthy();
+    expect(mgr.textContent).toMatch(/Saving locks February for Ricardo Duke\./);
+    expect(mgr.textContent).toMatch(/override their self-entry/i);
+    expect(screen.queryByTestId('pers-lock-copy-self')).toBeNull();
+  });
+
+  it('a PRODUCING MANAGER entering their OWN month gets the self wording', () => {
+    // Role would say "manager"; the uid says "this is her own month".
+    render(
+      <PersistencyEntryForm
+        {...DEFAULT_PROPS}
+        agentUid="um-7"
+        writerUid="um-7"
+        writerRole="unit_manager"
+      />,
+    );
+    expect(screen.getByTestId('pers-lock-copy-self')).toBeTruthy();
+    expect(screen.queryByTestId('pers-lock-copy-manager')).toBeNull();
+  });
+
+  it('falls back to the MANAGER wording when writerUid is absent', () => {
+    // Failing this way round is deliberate: the manager copy is merely verbose
+    // if shown to the wrong person, whereas the self copy would be a false
+    // statement about somebody else's month.
+    render(<PersistencyEntryForm {...DEFAULT_PROPS} agentUid="agent-1" writerUid={null} />);
+    expect(screen.getByTestId('pers-lock-copy-manager')).toBeTruthy();
+    expect(screen.queryByTestId('pers-lock-copy-self')).toBeNull();
+  });
+});
