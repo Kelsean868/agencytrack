@@ -63,9 +63,13 @@ exports.onFinancingEscalationCreate = require('./financing/onFinancingEscalation
 // SERVER parses it. Two calls: preview returns the plan and writes nothing, apply
 // writes that exact plan. Identity comes from the auth token only; an agent can
 // import only the policies whose Servicing Agent Number is their own.
-// Deploy: firebase deploy --only functions:previewPortfolioImport,functions:applyPortfolioImport
+// P4b adds undo: removes the policies the most recent export's import CREATED, for
+// this agent only. It refuses when that import also updated pre-existing policies,
+// because their previous values were never stored and cannot be put back.
+// Deploy: firebase deploy --only functions:previewPortfolioImport,functions:applyPortfolioImport,functions:undoLastPortfolioImport
 exports.previewPortfolioImport = require('./portfolioImport/previewImport').previewPortfolioImport;
 exports.applyPortfolioImport   = require('./portfolioImport/applyImport').applyPortfolioImport;
+exports.undoLastPortfolioImport = require('./portfolioImport/undoImport').undoLastPortfolioImport;
 
 const TENANT_ID = 'tatillife_south'; // SEC-9c: hardcoded; scheduled-function isolation deferred
 
