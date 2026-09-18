@@ -1,2 +1,22 @@
 # Graphify knowledge graph outputs — collapse diffs in GitHub PR view
 graphify-out/** linguist-generated=true
+
+# The portfolio-import mirror and its sync script must stay LF on every platform.
+#
+# Two things break when git rewrites these to CRLF on a Windows checkout, and both
+# are silent on CI, which runs on Linux and therefore never sees CRLF:
+#
+#   1. Vite cannot parse a CRLF .mjs. `functionsMirror.test.js` imports the sync
+#      script for its file list, and the whole suite fails to collect with
+#      "SyntaxError: Invalid or unexpected token" pointing at the import line.
+#      `node --check` and esbuild both parse the same file happily, so the error
+#      does not reproduce outside vitest and reads as a mystery.
+#   2. The mirror is asserted BYTE-FOR-BYTE against src/. Line endings are bytes.
+#      A generated file written with LF and checked out as CRLF is a permanent
+#      false positive in `git status` and a false failure in the drift gate.
+#
+# Observed 2026-09-18, on the first Windows checkout after #951 merged.
+scripts/build/*.mjs text eol=lf
+functions/portfolioImport/esm/** text eol=lf
+# The mirror is byte-compared against these, so both sides must agree on endings.
+src/lib/portfolioImport/*.js text eol=lf

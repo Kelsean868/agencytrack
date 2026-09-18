@@ -115,13 +115,20 @@ function createFakeFunctions() {
   class HttpsError extends Error {
     constructor(code, message) { super(message); this.code = code; }
   }
+  // `onCall(fn)` — kept callable so a test can drive it, with `_onCall` exposed for
+  // the leaderboardAggregate precedent in this folder.
+  const https = {
+    HttpsError,
+    onCall: (fn) => { const w = (d, c) => fn(d, c); w._onCall = fn; return w; },
+  };
   return {
     HttpsError,
-    https: {
-      HttpsError,
-      // `runWith(...).https.onCall(fn)` — the shape index.js requires at load time.
-      onCall: (fn) => { const w = (d, c) => fn(d, c); w._onCall = fn; return w; },
-    },
+    https,
+    // The portfolioImport callables declare memory and timeout, so they reach
+    // firebase-functions as `runWith(opts).https.onCall(fn)`. Without this the
+    // module throws at REQUIRE time and the whole suite fails to load — which is
+    // how it failed the first time this test file ran.
+    runWith: () => ({ https }),
     logger: { error() {}, warn() {}, info() {} },
   };
 }

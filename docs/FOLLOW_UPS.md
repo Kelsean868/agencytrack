@@ -334,6 +334,8 @@
 | **Flake register — two NEW members enumerated (2026-09-16).** `WizardFormV2RetirementR2.test.jsx` and `AwardsRulesetPanel.test.jsx` both failed CI on diffs that cannot be causal, and both went green on re-run with zero code change. Neither was in the named roster, so the family is larger than the ~10 recorded. See the detail section at the end of this file | MEDIUM | test-infra | — | see the 2026-09-16 flake-member section at end of file |
 | **P4 must not parse agent-picked files in the browser with `xlsx@0.18.5`** — pick a maintained parser or parse server-side. The package is a root devDependency for the P2 admin script only (operator-downloaded OIPA export, never in the web bundle); it carries known prototype-pollution and ReDoS CVEs that are triggered by parsing MALICIOUS files, which is exactly what P4 would do with a file an agent chooses. Chosen for P2 for continuity: every number in the P0/P1/P2 paste-backs was validated through this reader (banked 2026-09-16, P2b, dispatcher ruling 5) | HIGH | OIPA import / security | before P4 | see the P2b entry at end of file |
 | **ACCEPTED GAP — "organic + imported policies in one tenant" is never tested together.** `excludeImported()` is proven to drop imported docs (production, 117 settled -> 0) and to keep an organically created one (`tatillife_smoke`, 1 -> 1), but never both in the same tenant, because no test agent exists inside `tatillife_south`. Operator ruling 16 Sep 2026: do NOT create one — a test agent would appear in manager rosters and leaderboards. **Revisit if P4 changes the filter** (banked 2026-09-16, P3) | MEDIUM | OIPA import | revisit at P4 | see the accepted-gap entry at end of file |
+| **`buildImportPlan`'s `substantive` filter contradicts its own comment** — the comment says "`importedAt` and `exportDate` alone are not a real change", but the filter excludes only `importedAt` and `importSource`. So a re-import of a NEWER export reports every existing policy as an UPDATE (`changedKeys: ["exportDate","importedAt"]`) even when no fact about the policy moved. Measured 2026-09-18, not inferred. Two consequences: the P4c review screen will say "229 updated" for a file that changed nothing, and P4b's undo refuses on every import after the first, because an import that updates cannot be undone. Excluding `exportDate` from `substantive` makes both behave; the cost is that a skipped policy keeps a stale `exportDate`, which `findLastImportBatch` relies on as its candidate filter — so the two must be changed together (banked 2026-09-18, P4b session) | MEDIUM | OIPA import / P2 | — | see § `substantive` filter contradicts its comment |
+| No written policy records WHICH import run wrote it — the root cause behind P4b's undo needing a history read per policy. A preview plan gets a `planId`, but nothing stamps it onto the documents that plan writes, so "the last import" has no stored identity and must be reconstructed from `exportDate` plus each policy's history subcollection. Durable fix: stamp `importRunId` (the planId) on every doc the import creates AND updates, making undo one equality query instead of 229 history reads. Operator ruled: not in P4b. Note it only helps FUTURE imports — the 229 live docs have no `importRunId`, so the history path stays as the fallback (banked 2026-09-18, P4b ruling) | LOW | OIPA import / schema | — | see § No written policy records which import run wrote it |
 | **`functions` runtime `nodejs20` is DECOMMISSIONED on 2026-10-30** — upgrade the runtime and the `firebase-functions` SDK (pinned at `^4.9.0`, a major version behind) before then. This is a dated deadline, not a nicety: after decommission a deploy is refused and the existing functions stop being patched. The SDK bump is the harder half — v5/v6 change the callable signature from `(data, context)` to a single `request` object, and every `functions.https.onCall` in `functions/` reads `context.auth` (banked 2026-09-18, P4b session) | **DEADLINE** | Functions / runtime | **2026-10-30** | see § `nodejs20` decommission + firebase-functions SDK |
 | Lock `prefs/portfolioImport` to the Cloud Function — the per-agent import config (overrides, self/family, test-record skips) is currently AGENT-WRITABLE, so an agent can add an override that flips one of their own policies from `lapsed` to `settled` and move their own manager-facing persistency figure. Needs a `firestore.rules` change AND a rules deploy, which is why it was not done in P4a. Operator ruled: leave it editable, revisit when a second agent uses the importer (banked 2026-09-18, P4a ruling) | MEDIUM | OIPA import / rules | — | see § Lock `prefs/portfolioImport` to the Cloud Function |
 | Partial import (a file where SOME rows are serviced by another agent) is UNIT-TESTED ONLY — Kyron's export is 100% his own servicing number, so the P4a emulator run could only produce the all-or-nothing refusal, never a partial `counts.skippedNotYours`. Prove it on the first export that actually contains another agent's rows (banked 2026-09-18, P4a Rule 22 gap) | MEDIUM | OIPA import / verification | — | see § Partial import is unit-tested only |
@@ -7006,3 +7008,109 @@ Overturned by one real run: any `previewPortfolioImport` call whose response car
 this. It can also be forced early with a synthetic workbook, which was offered and not
 taken — worth doing before P4c if the review screen's "not yours" list needs a real
 render.
+
+
+---
+
+## `substantive` filter contradicts its comment
+
+**Banked 2026-09-18 (P4b session). Measured, not inferred.**
+
+`src/lib/portfolioImport/buildImportPlan.js` decides whether an existing policy counts
+as changed:
+
+```js
+// `importedAt` and `exportDate` alone are not a real change: a re-run of the
+// SAME export on a later day would otherwise report 229 updates that carry
+// no new business fact.
+const substantive = Object.keys(changed).filter(
+  (k) => k !== 'importedAt' && k !== 'importSource',
+);
+```
+
+The comment names `importedAt` and **`exportDate`**. The filter excludes `importedAt` and
+**`importSource`**. `exportDate` is never excluded, and it is in `IMPORT_OWNED_FIELDS`, so
+it changes on every policy whenever a newer export is imported.
+
+### The measurement
+
+Run against the real `buildImportPlan` on 2026-09-18, three existing policies, a newer
+export in which **no** policy fact changed:
+
+```
+creates 0 | updates 3 | skips 0
+changedKeys: [["exportDate","importedAt"],["exportDate","importedAt"],["exportDate","importedAt"]]
+```
+
+The same-file case the comment describes does work — the P4a emulator run reported
+`0 creates / 0 updates / 229 unchanged` on a re-import of the identical file, because
+`exportDate` was byte-identical. The defect only shows on a genuinely newer export, which
+is the normal case and the one nobody has run yet.
+
+### Why it matters twice
+
+1. **P4c's review screen will lie by omission.** A 30 Sep export that changed nothing will
+   read "229 policies updated", so the one number that tells the agent whether anything
+   actually moved always reads as "everything did".
+2. **P4b's undo refuses on every import after the first.** Undo removes what an import
+   CREATED and refuses when it also updated, because an update overwrote values nothing
+   stored. If every second import updates all 229, undo is available exactly once, ever.
+
+### The fix, and the coupling that makes it not a one-liner
+
+Adding `exportDate` to the `substantive` exclusion makes both behave. But then an
+unchanged policy is SKIPPED, so no write happens, so its stored `exportDate` stays at the
+older export — and `findLastImportBatch` in `functions/portfolioImport/rollback.js` uses
+`exportDate` as its candidate filter precisely because "a policy the last import did not
+touch keeps the export date it already had". That assumption is currently false and the
+fix makes it true, so the two are consistent *after* the change and inconsistent *before*
+— which is why they must move together and why this was not fixed inside P4b.
+
+### Falsification
+
+Overturned if the stale-`exportDate`-on-skip behaviour turns out to matter to a reader
+nobody has enumerated yet — the field is written for provenance, and something may report
+"as at" from it. `git grep exportDate` across `src/` before changing this.
+
+---
+
+## No written policy records which import run wrote it
+
+**Banked 2026-09-18 (P4b ruling). Operator decision: NOT in P4b.**
+
+A preview plan gets a `planId` and is parked at
+`tenants/{t}/users/{uid}/importPlans/{planId}`. Nothing stamps that id onto the policy
+documents the plan then writes. So "which policies did the last import write" has no
+stored answer and has to be reconstructed:
+
+- `exportDate` narrows the candidates, and
+- each candidate's `history` subcollection is read to see whether this export produced a
+  `create` or an `update` for it.
+
+That is exact, and it is what `findLastImportBatch` does. It costs one subcollection read
+per candidate — 229 reads for Kyron's book, twice if the dry run and the confirmed delete
+are separate calls.
+
+### The durable fix
+
+Stamp `importRunId` (the planId) on every document the import writes, creates **and**
+updates, and record it on the history doc too. Undo then becomes one equality query
+(`where importRunId == X`) instead of a per-policy history scan, and "the last import"
+becomes a stored fact rather than a reconstruction.
+
+### The catch that keeps the history path alive
+
+It only helps FUTURE imports. The 229 documents already live in
+`tenants/tatillife_south/policies` were written before `importRunId` existed, so undo
+still needs the history path for them. Adding the stamp therefore means maintaining both
+routes, not replacing one with the other — unless a backfill writes `importRunId` onto
+the existing docs from their history, which is itself an import-shaped operation with its
+own undo question.
+
+### Falsification
+
+Overturned if the per-policy history read turns out to be too slow in production — undo
+runs with a 300 s budget and 229 sequential reads is well inside it, but a book an order
+of magnitude larger would not be, and that would promote this from LOW to the blocking
+fix. Measure before assuming: the emulator run completed the dry run and the delete
+comfortably, but the emulator is not the network.
