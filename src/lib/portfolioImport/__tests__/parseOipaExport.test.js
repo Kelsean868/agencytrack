@@ -7,7 +7,12 @@ import {
   parseExportDateFromTitle,
   rowsFromSheetMatrix,
 } from '../parseOipaExport';
-import { OIPA_COLUMNS_EXCLUDED } from '../oipaImportConfig';
+import {
+  OIPA_COLUMNS_EXCLUDED,
+  OIPA_SEED_IMPORT_CONFIG,
+  OIPA_EMPTY_IMPORT_CONFIG,
+  normaliseImportConfig,
+} from '../oipaImportConfig';
 
 /**
  * Every row below is SYNTHETIC. Names are placeholders and the policy numbers are
@@ -19,7 +24,19 @@ import { OIPA_COLUMNS_EXCLUDED } from '../oipaImportConfig';
  * scratchpad script run against the local workbook.
  */
 
-const OPTS = { exportDate: '2026-09-15', agentId: 'uid-kyron', agentNumber: '011B94' };
+/**
+ * These cases exercise KYRON's book, so they pass Kyron's seed config explicitly.
+ * The parser's own default is EMPTY (dispatcher ruling 4, P4) — the
+ * "per-agent import config" block at the bottom of this file is what pins that
+ * down, and it is the test that would fail if the default ever drifted back to
+ * one agent's overrides.
+ */
+const OPTS = {
+  exportDate: '2026-09-15',
+  agentId: 'uid-kyron',
+  agentNumber: '011B94',
+  importConfig: OIPA_SEED_IMPORT_CONFIG,
+};
 
 /** Builds one OIPA row. Only the fields a test cares about need to be passed. */
 function row(overrides = {}) {
@@ -637,5 +654,98 @@ describe('rowsFromSheetMatrix', () => {
   it('returns an empty array for a sheet with no data rows', () => {
     expect(rowsFromSheetMatrix([])).toEqual([]);
     expect(rowsFromSheetMatrix([['t'], [null], ['Policy Number']])).toEqual([]);
+  });
+});
+
+
+describe('per-agent import config (ruling 4)', () => {
+  const BARE = { exportDate: '2026-09-15', agentId: 'uid-other', agentNumber: '099Z00' };
+
+  it('defaults to EMPTY — a second agent never inherits Kyron overrides', () => {
+    // DAN2602390 is Kyron's replaced policy. On ANOTHER agent's book the same
+    // number must import from the export alone. Silently applying the override
+    // here would mark a live policy `ntu` and drop it out of Gross Settled.
+    const { docs, report } = parseOipaExport([
+      row({
+        'Policy Number': 'DAN2602390',
+        'Policy Status': 'Active',
+        'Policy Sub Status': 'Premium Paying',
+        Plan: 'DNUXXA',
+        'Writing Agent Number': '099Z00',
+      }),
+    ], BARE);
+
+    expect(docs).toHaveLength(1);
+    expect(docs[0].status).toBe('settled');
+    expect(docs[0].replacedBy).toBeUndefined();
+    expect(report.overridesApplied).toEqual([]);
+  });
+
+  it('defaults to EMPTY — a second agent never inherits the self/family flags', () => {
+    const { docs } = parseOipaExport([
+      row({ 'Policy Number': 'FNE2600720', 'Writing Agent Number': '099Z00' }),
+    ], BARE);
+    expect(docs[0].isSelfOrFamily).toBe(false);
+  });
+
+  it('defaults to EMPTY — a second agent never inherits the test-record skip list', () => {
+    const { docs, report } = parseOipaExport([
+      row({ 'Policy Number': 'SPI2500081', Plan: 'IMASL1', 'Writing Agent Number': '099Z00' }),
+    ], BARE);
+    expect(report.testRecords).toBe(0);
+    expect(docs).toHaveLength(1);
+  });
+
+  it('applies the config it is GIVEN, not the one in the module', () => {
+    const { docs, report } = parseOipaExport([
+      row({ 'Policy Number': 'ZZZ0000001', Plan: 'RAE996' }),
+      row({ 'Policy Number': 'ZZZ0000002', Plan: 'RAE996' }),
+    ], {
+      ...BARE,
+      importConfig: {
+        overrides: { ZZZ0000001: { status: 'ntu', replacedBy: 'ZZZ0000009' } },
+        selfOrFamily: { ZZZ0000002: true },
+        testPolicyNumbers: [],
+      },
+    });
+
+    expect(docs.find((d) => d.policyNumber === 'ZZZ0000001').status).toBe('ntu');
+    expect(docs.find((d) => d.policyNumber === 'ZZZ0000002').isSelfOrFamily).toBe(true);
+    expect(report.overridesApplied.map((o) => o.policyNumber)).toEqual(['ZZZ0000001']);
+  });
+
+  it('reports which config was in force, so a plan is auditable after the doc changes', () => {
+    const { report } = parseOipaExport([row()], OPTS);
+    expect(report.importConfigApplied).toEqual({
+      overrides: ['DAN2602390', 'FNE2500031', 'TRM2501670'],
+      selfOrFamily: ['FNE2600720', 'TRM2501755', 'TRM2602866'],
+      testPolicyNumbers: ['FNE2500067', 'SPI2500081', 'SPI2500082', 'SPI2500083', 'SPI2500084'],
+    });
+  });
+
+  it('survives a malformed config doc instead of failing the whole import', () => {
+    // The doc is owner-writable, so this is agent-supplied input. Garbage must
+    // degrade to empty, never throw — a bad config cannot be allowed to block a
+    // 229-policy import.
+    const { docs } = parseOipaExport([row()], {
+      ...BARE,
+      importConfig: { overrides: 'nope', selfOrFamily: [1, 2], testPolicyNumbers: 'TST0000001' },
+    });
+    expect(docs).toHaveLength(1);
+    expect(docs[0].isSelfOrFamily).toBe(false);
+  });
+
+  it('normaliseImportConfig drops unknown keys and wrong-typed values', () => {
+    expect(normaliseImportConfig(null)).toEqual(OIPA_EMPTY_IMPORT_CONFIG);
+    expect(normaliseImportConfig({
+      overrides: { A1: { status: 'ntu' }, A2: 'string-not-a-map' },
+      selfOrFamily: { B1: true, B2: 'yes' },
+      testPolicyNumbers: ['C1', '', null, 7],
+      somethingElse: 'ignored',
+    })).toEqual({
+      overrides: { A1: { status: 'ntu' } },
+      selfOrFamily: { B1: true },
+      testPolicyNumbers: ['C1'],
+    });
   });
 });
