@@ -22,6 +22,7 @@ const { readWorkbook, cellValue, MAX_FILE_BYTES } = require('../portfolioImport/
 
 const CALLER = { uid: 'uid-kyron', tenantId: 'tatillife_south', agentNumber: '011B94' };
 const SOURCE = 'oipa_import';
+const RUN = 'run-abc123';
 
 const create = (n) => ({
   policyNumber: n,
@@ -36,7 +37,7 @@ const update = (n, changed = { status: 'lapsed' }) => ({
 describe('applyPlan', () => {
   it('creates a doc and a history subdoc per policy', async () => {
     const db = createFakeDb();
-    const r = await applyPlan(db, { creates: [create('A1')], updates: [], report: {} }, CALLER, SOURCE);
+    const r = await applyPlan(db, { creates: [create('A1')], updates: [], report: {} }, CALLER, SOURCE, RUN);
     expect(r).toMatchObject({ created: 1, updated: 0, refused: [] });
 
     const paths = [...db._docs.keys()];
@@ -53,7 +54,7 @@ describe('applyPlan', () => {
     db._seed(`tenants/${CALLER.tenantId}/policies/doc-B1`, {
       policyNumber: 'B1', status: 'settled', agentNotes: 'do not lose me',
     });
-    await applyPlan(db, { creates: [], updates: [update('B1')], report: {} }, CALLER, SOURCE);
+    await applyPlan(db, { creates: [], updates: [update('B1')], report: {} }, CALLER, SOURCE, RUN);
     const after = db._docs.get(`tenants/${CALLER.tenantId}/policies/doc-B1`);
     expect(after.status).toBe('lapsed');
     expect(after.updatedAt).toBe('<ts>');
@@ -64,7 +65,7 @@ describe('applyPlan', () => {
   it('stays under the 500-write batch limit for 229 policies', async () => {
     const db = createFakeDb();
     const creates = Array.from({ length: 229 }, (_, i) => create(`P${i}`));
-    const r = await applyPlan(db, { creates, updates: [], report: {} }, CALLER, SOURCE);
+    const r = await applyPlan(db, { creates, updates: [], report: {} }, CALLER, SOURCE, RUN);
     expect(r.created).toBe(229);
     expect(db._commits.length).toBeGreaterThan(1);       // it actually chunked
     expect(Math.max(...db._commits)).toBeLessThanOrEqual(MAX_WRITES);
@@ -75,7 +76,7 @@ describe('applyPlan', () => {
     const db = createFakeDb();
     const bad = create('X1');
     bad.doc.agentId = 'someone-else';
-    const r = await applyPlan(db, { creates: [create('A1'), bad], updates: [], report: {} }, CALLER, SOURCE);
+    const r = await applyPlan(db, { creates: [create('A1'), bad], updates: [], report: {} }, CALLER, SOURCE, RUN);
     expect(r.created).toBe(1);
     expect(r.refused).toEqual(['X1']);
     expect(JSON.stringify([...db._docs.values()])).not.toContain('someone-else');
@@ -85,7 +86,7 @@ describe('applyPlan', () => {
     const db = createFakeDb();
     const bad = create('X2');
     bad.doc.servicingAgentNumber = '099Z00';
-    const r = await applyPlan(db, { creates: [bad], updates: [], report: {} }, CALLER, SOURCE);
+    const r = await applyPlan(db, { creates: [bad], updates: [], report: {} }, CALLER, SOURCE, RUN);
     expect(r.refused).toEqual(['X2']);
   });
 

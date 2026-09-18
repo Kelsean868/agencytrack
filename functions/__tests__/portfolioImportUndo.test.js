@@ -314,3 +314,120 @@ describe('undoLastPortfolioImport — the callable', () => {
     expect(r.policyNumbersTruncated).toBe(true);
   });
 });
+
+describe('undo via the RUN RECORD (P4d ruling 4)', () => {
+  const RUNS = `tenants/${TENANT}/users/${UID}/importRuns`;
+
+  function seedRun(db, { runId, startedAtMs = 1000, exportDate = '2026-09-15', status = 'complete' }) {
+    db._seed(`${RUNS}/${runId}`, { runId, agentId: UID, exportDate, status, startedAtMs });
+  }
+  function seedStamped(db, { id, policyNumber, first, last, exportDate = '2026-09-15' }) {
+    db._seed(`${P}/${id}`, {
+      policyNumber, exportDate, agentId: UID, importSource: SOURCE,
+      servicingAgentNumber: AGENT_NO, firstImportRunId: first, lastImportRunId: last,
+    });
+    db._seed(`${P}/${id}/history/h0`, { source: SOURCE, exportDate, action: 'create', runId: first });
+  }
+
+  it('prefers the run record and says so', async () => {
+    const db = dbWithUser();
+    seedRun(db, { runId: 'run-1' });
+    seedStamped(db, { id: 'p1', policyNumber: 'P1', first: 'run-1', last: 'run-1' });
+
+    const r = await call(db, {});
+    expect(r.via).toBe('runRecord');
+    expect(r.runId).toBe('run-1');
+    expect(r.found).toBe(1);
+  });
+
+  it('falls back to history when the agent has no run records', async () => {
+    // Every policy imported before P4d carries no run id. Dropping the fallback
+    // would silently make the 229 already in production un-undoable.
+    const db = dbWithUser();
+    seedPolicy(db, { id: 'old', policyNumber: 'OLD', exportDate: '2026-09-15' });
+    const r = await call(db, {});
+    expect(r.via).toBe('history');
+    expect(r.runId).toBeNull();
+    expect(r.found).toBe(1);
+  });
+
+  it('names the path in the refusal, so an exact answer reads differently from a reconstructed one', async () => {
+    const db = dbWithUser();
+    seedRun(db, { runId: 'run-2', exportDate: '2026-09-30' });
+    seedStamped(db, { id: 'n1', policyNumber: 'N1', first: 'run-2', last: 'run-2', exportDate: '2026-09-30' });
+    seedStamped(db, { id: 'o1', policyNumber: 'O1', first: 'run-1', last: 'run-2', exportDate: '2026-09-30' });
+
+    const msg = await message(() => call(db, { confirm: true, runId: 'run-2' }));
+    expect(msg).toMatch(/import run run-2/);
+    expect(msg).toMatch(/added 1 policies and updated 1/);
+    expect(db._docs.has(`${P}/n1`)).toBe(true);
+
+    const dbHist = dbWithUser();
+    seedPolicy(dbHist, { id: 'n1', policyNumber: 'N1', exportDate: '2026-09-30', actions: ['create'] });
+    seedPolicy(dbHist, { id: 'o1', policyNumber: 'O1', exportDate: '2026-09-30', actions: ['update'] });
+    const histMsg = await message(() => call(dbHist, { confirm: true, exportDate: '2026-09-30' }));
+    expect(histMsg).toMatch(/read from policy history/);
+    expect(histMsg).toMatch(/before import runs were recorded/);
+  });
+
+  it('the run-record path confirms on runId, not exportDate', async () => {
+    // Two runs of the SAME file share an export date, so the date cannot tell
+    // them apart. Only the run id can.
+    const db = dbWithUser();
+    seedRun(db, { runId: 'run-2', startedAtMs: 2000 });
+    seedStamped(db, { id: 'p1', policyNumber: 'P1', first: 'run-2', last: 'run-2' });
+
+    expect(await code(() => call(db, { confirm: true, exportDate: '2026-09-15' })))
+      .toBe('failed-precondition');
+    expect(db._docs.has(`${P}/p1`)).toBe(true);
+
+    const r = await call(db, { confirm: true, runId: 'run-2' });
+    expect(r.deleted).toBe(1);
+  });
+
+  it('marks the run undone rather than deleting it', async () => {
+    const db = dbWithUser();
+    seedRun(db, { runId: 'run-1' });
+    seedStamped(db, { id: 'p1', policyNumber: 'P1', first: 'run-1', last: 'run-1' });
+
+    await call(db, { confirm: true, runId: 'run-1' });
+    const run = db._docs.get(`${RUNS}/run-1`);
+    expect(run).toBeDefined();               // the record that it happened survives
+    expect(run.status).toBe('undone');
+    expect(run.undoneCount).toBe(1);
+  });
+
+  it('after an undo, offers the run BEFORE it rather than the empty one', async () => {
+    const db = dbWithUser();
+    seedRun(db, { runId: 'run-1', startedAtMs: 1000 });
+    seedRun(db, { runId: 'run-2', startedAtMs: 2000, exportDate: '2026-09-30' });
+    seedStamped(db, { id: 'a', policyNumber: 'A', first: 'run-1', last: 'run-1' });
+    seedStamped(db, { id: 'b', policyNumber: 'B', first: 'run-2', last: 'run-2', exportDate: '2026-09-30' });
+
+    await call(db, { confirm: true, runId: 'run-2' });
+    const next = await call(db, {});
+    expect(next.runId).toBe('run-1');
+    expect(next.found).toBe(1);
+    expect(next.policyNumbers).toEqual(['A']);
+  });
+
+  it('undoes a run that never finished — its policies exist and nothing else can clear them', async () => {
+    const db = dbWithUser();
+    seedRun(db, { runId: 'run-x', status: 'running' });
+    seedStamped(db, { id: 'p1', policyNumber: 'P1', first: 'run-x', last: 'run-x' });
+    const r = await call(db, {});
+    expect(r.runStatus).toBe('running');
+    expect(r.found).toBe(1);
+  });
+
+  it('never deletes a policy another run created, even when this run updated it', async () => {
+    const db = dbWithUser();
+    seedRun(db, { runId: 'run-2', startedAtMs: 2000 });
+    seedStamped(db, { id: 'mine', policyNumber: 'MINE', first: 'run-2', last: 'run-2' });
+    seedStamped(db, { id: 'older', policyNumber: 'OLDER', first: 'run-1', last: 'run-2' });
+    // Refused because run-2 also updated OLDER — and OLDER survives.
+    await code(() => call(db, { confirm: true, runId: 'run-2' }));
+    expect(db._docs.has(`${P}/older`)).toBe(true);
+    expect(db._docs.has(`${P}/mine`)).toBe(true);
+  });
+});
