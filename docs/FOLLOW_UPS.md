@@ -7176,3 +7176,7 @@ runs with a 300 s budget and 229 sequential reads is well inside it, but a book 
 of magnitude larger would not be, and that would promote this from LOW to the blocking
 fix. Measure before assuming: the emulator run completed the dry run and the delete
 comfortably, but the emulator is not the network.
+
+### Cloud Functions runtime — nodejs22 (1st gen)
+
+- Cloud Functions moved to nodejs22 (1st gen). nodejs20 was decommissioned 2026-10-30. Next runtime review before nodejs22 EOL. gen-2 migration (needed for nodejs24) is still open.
