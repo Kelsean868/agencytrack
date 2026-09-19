@@ -7176,3 +7176,49 @@ runs with a 300 s budget and 229 sequential reads is well inside it, but a book 
 of magnitude larger would not be, and that would promote this from LOW to the blocking
 fix. Measure before assuming: the emulator run completed the dry run and the delete
 comfortably, but the emulator is not the network.
+
+
+## Manager Lapse tab still offers imported policies (banked 2026-09-19, LOW - OIPA import)
+
+**Banked while reviewing PR #957. Deliberately kept out of that PR to hold its scope.**
+
+PR #957 taught the read side that a status from the OIPA head-office export needs no
+manager confirmation. It changed two readers: the agent card hint in `PolicyCard.jsx`
+and `toReconcile` in `PolicyReconciliationPanel.jsx`.
+
+It did **not** change the third reader in the same panel:
+
+```js
+const lapseTabPolicies = allPoliciesRaw.filter((p) =>
+  (p.status === 'settled' || p.status === 'lapsed') && inPeriod(p.dateIssued, selectedYear, selectedMonth),
+);
+```
+
+So the Lapse tab still lists imported policies, and a manager can be offered a lapse
+action on a policy head office has already lapsed.
+
+### Why it was not fixed with the rest
+
+Two reasons, and the second is the real one:
+
+1. `inPeriod(p.dateIssued, ...)` bounds the blast radius. Kyron's imported book spans
+   years, so only the handful issued in the selected month appear — not the 117 that
+   flooded `toReconcile`.
+2. The right answer is not obvious. `toReconcile` is a worklist: an imported policy in
+   it is plainly wrong, because nobody is waiting on the manager. The Lapse tab is
+   closer to a register, and there is a real case for a manager lapsing an imported
+   policy that head office has not caught up with yet. Filtering it on
+   `needsManagerConfirmation` would remove that ability silently.
+
+### What would settle it
+
+The operator's answer to one question: should a manager be able to lapse a policy whose
+status came from the OIPA export? If yes, leave this alone and the entry closes as
+WONTFIX. If no, the same `needsManagerConfirmation` helper applies and it is a one-line
+filter.
+
+### Falsification
+
+Overturned if a second import source is added whose statuses are NOT authoritative for
+lapses — then `needsManagerConfirmation` is too blunt for this reader regardless of the
+answer above, and the Lapse tab needs its own predicate.
