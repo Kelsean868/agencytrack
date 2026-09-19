@@ -73,13 +73,14 @@ async function startRun(db, { tenantId, uid, agentId, exportDate, fileName, plan
  * on the document itself as `countsSource` so a reader is never guessing which
  * kind of number they are looking at.
  */
-async function finishRun(ref, { written, planCounts }) {
+async function finishRun(ref, { written, planCounts, statusOverwrites = [] }) {
   const { FieldValue } = admin.firestore;
   const counts = {
     created: written.created,
     updated: written.updated,
     refused: written.refused.length,
     unchanged: planCounts.unchanged,
+    statusOverwrites: planCounts.statusOverwrites ?? 0,
     skippedNotYours: planCounts.skippedNotYours,
     testRecords: planCounts.testRecords,
     planClassPending: planCounts.planClassPending,
@@ -91,9 +92,14 @@ async function finishRun(ref, { written, planCounts }) {
     counts,
     countsSource: {
       writer: ['created', 'updated', 'refused'],
-      plan: ['unchanged', 'skippedNotYours', 'testRecords', 'planClassPending'],
+      plan: ['unchanged', 'statusOverwrites', 'skippedNotYours', 'testRecords', 'planClassPending'],
     },
     ...(written.refused.length > 0 ? { refusedPolicyNumbers: written.refused } : {}),
+    // P4e ruling 2 — which of the agent's own status decisions this import
+    // overrode. Recorded on the run so it survives after the fact, not only on
+    // the review screen the agent saw for a moment before pressing Import.
+    statusOverwrites,
+    statusOverwriteCount: statusOverwrites.length,
   });
   return counts;
 }

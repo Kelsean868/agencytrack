@@ -38,6 +38,9 @@ import {
   OIPA_HEADER_ROW_INDEX,
   OIPA_EMPTY_IMPORT_CONFIG,
   normaliseImportConfig,
+  STATUS_SOURCE_IMPORT,
+  STATUS_SET_BY_IMPORT,
+  formatStatusSourceDetail,
 } from './oipaImportConfig.js';
 
 /* ─────────────────────────── value normalisers ─────────────────────────── */
@@ -376,6 +379,21 @@ export function parseOipaExport(rows, options = {}) {
       isSelfOrFamily: selfOrFamily[policyNumber] === true,
 
       status: mapped.status,
+
+      // STATUS PROVENANCE (P4e ruling 1). A status with no record of where it
+      // came from is indistinguishable from one a person typed, and on this
+      // agent's book 229 of them came from head office with no manager step.
+      //
+      // `statusAsOf` is the export date of the import that SET this status —
+      // not "the last export that mentioned the policy". An unchanged policy is
+      // never written (see PROVENANCE_ONLY_FIELDS in buildImportPlan.js), so a
+      // later export agreeing with this status leaves the date where it is.
+      // That is the honest reading: the status has not moved since then.
+      statusSource: STATUS_SOURCE_IMPORT,
+      statusSourceDetail: formatStatusSourceDetail(oipaStatus, oipaSubStatus),
+      statusAsOf: exportDate,
+      statusSetBy: STATUS_SET_BY_IMPORT,
+
       ...(mapped.terminalReason ? { terminalReason: mapped.terminalReason } : {}),
       ...(plan.planClassPending ? { planClassPending: true } : {}),
       ...OIPA_FIXED_DOC_FIELDS,

@@ -311,14 +311,36 @@ describe('buildImportPlan — immutability', () => {
 
 describe('PROVENANCE_ONLY_FIELDS — the unchanged rule (P4d ruling 3)', () => {
   it('is the one place the rule is written, and lists every provenance field', () => {
-    expect([...PROVENANCE_ONLY_FIELDS].sort()).toEqual(
-      ['exportDate', 'importSource', 'importedAt', 'lastImportRunId'],
-    );
+    expect([...PROVENANCE_ONLY_FIELDS].sort()).toEqual([
+      'exportDate', 'importSource', 'importedAt', 'lastImportRunId',
+      // P4e: statusAsOf IS the export date, so it moves on every policy whenever
+      // a newer export lands — the same shape that made exportDate a
+      // false-positive change before P4d.
+      'statusAsOf', 'statusSetBy', 'statusSource',
+    ].sort());
   });
 
   it('never lists firstImportRunId — it is written once and no update may move it', () => {
     expect(PROVENANCE_ONLY_FIELDS).not.toContain('firstImportRunId');
     expect(IMPORT_OWNED_FIELDS).not.toContain('firstImportRunId');
+  });
+
+  it('statusSourceDetail is OWNED but NOT provenance-only (P4e)', () => {
+    // It is the raw OIPA pair, so `Active / Premium Paying` becoming
+    // `Active / Grace` is real news about the policy even though both map to
+    // `settled`. Classifying it as provenance-only would hide that.
+    expect(IMPORT_OWNED_FIELDS).toContain('statusSourceDetail');
+    expect(PROVENANCE_ONLY_FIELDS).not.toContain('statusSourceDetail');
+  });
+
+  it('a newer export does not count statusAsOf alone as a change', () => {
+    const p = parsed({ policyNumber: 'PROVA01', exportDate: '2026-09-15', statusAsOf: '2026-09-15' });
+    const plan = buildImportPlan(
+      [parsed({ policyNumber: 'PROVA01', exportDate: '2026-09-30', statusAsOf: '2026-09-30' })],
+      { ...OPTS, exportDate: '2026-09-30', importedAt: '2026-09-30', existingDocs: [{ id: 'd', ...p }] },
+    );
+    expect(plan.report.updates).toBe(0);
+    expect(plan.report.skips).toBe(1);
   });
 
   it('a NEWER export that changed no policy fact produces zero updates', () => {

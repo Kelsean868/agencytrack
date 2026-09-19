@@ -182,6 +182,10 @@ async function handler(data, context) {
     unknownPlanPrefixes: parseReport.unknownPlanPrefixes,
     unmappedStatus: parseReport.unmappedStatus,
     orphanedInLedger: plan.report.orphanedInLedger,
+    // P4e ruling 2 — named BEFORE anything is written, so the agent sees which
+    // of their own status decisions head office is about to override and can
+    // cancel instead.
+    statusOverwrites: plan.report.statusOverwrites ?? [],
     statusCounts: parseReport.statusCounts,
     createPolicyNumbers: plan.creates.map((c) => c.policyNumber),
     updatePolicyNumbers: plan.updates.map((u) => u.policyNumber),

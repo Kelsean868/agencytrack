@@ -2,13 +2,36 @@ import React, { useState, useEffect } from 'react';
 import { X, Check, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
 import useFocusTrap from '../../../hooks/useFocusTrap';
 import { useAuth } from '../../../context/AuthContext';
-import { formatCurrency } from '../../../utils/formatters';
+import { formatCurrency, formatDateFriendly } from '../../../utils/formatters';
 import { PROSPECTING_SOURCE_LABELS } from '../../../services/prospectInfoService';
 import { getPolicyHistory } from '../../../services/policiesService';
 import { getTodayTT } from '../../../utils/dateInputs';
 import { LEGAL_AGENT_TRANSITIONS, POLICY_STATUS_LABELS } from '../../../constants/policyLifecycle';
 import { lifecycleNodes } from '../../../lib/policyLedgerDerivation';
 import { policyToken, policyPillLabel, isConfirmed } from '../../../lib/policyStatusTokens';
+import { STATUS_SOURCE_IMPORT } from '../../../lib/portfolioImport/oipaImportConfig';
+
+/**
+ * P4e ruling 3 — one plain-words line saying where an imported status came from.
+ *
+ * Before this, 117 settled / 87 lapsed / 22 ntu / 3 denied on this agent's book
+ * arrived straight from head office with no manager step, and looked on screen
+ * exactly like a status somebody had typed. This line is the difference, and it
+ * reads the fields rather than inferring anything: a policy shows it only when
+ * the import actually set the status, not merely because the policy was
+ * imported. A policy imported and LATER changed by hand has `statusSource`
+ * 'agent' or 'manager', so the line correctly disappears.
+ */
+function importedStatusNote(policy) {
+  if (policy?.statusSource !== STATUS_SOURCE_IMPORT) return null;
+  const when = policy.statusAsOf ? formatDateFriendly(policy.statusAsOf) : null;
+  const detail = policy.statusSourceDetail;
+  return [
+    'Status from OIPA export',
+    when ? `, ${when}` : '',
+    detail ? ` (${detail})` : '',
+  ].join('');
+}
 
 const EMPTY_TX_FIELDS = {
   dateSubmitted: '',
@@ -152,6 +175,11 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
             <span className="font-display font-extrabold text-xl text-primary tracking-tight">{formatCurrency(policy.proposedAPI)}</span>
             <span className="font-mono text-[10px] text-ink-muted">API</span>
           </div>
+          {importedStatusNote(policy) && (
+            <p className="mt-2 text-[11.5px] text-ink-muted" data-testid="imported-status-note">
+              {importedStatusNote(policy)}
+            </p>
+          )}
         </div>
 
         {/* Body */}

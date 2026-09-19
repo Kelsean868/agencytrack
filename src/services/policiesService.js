@@ -8,6 +8,19 @@ import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../utils/prospectingConstants';
 import { isLegalAgentTransition } from '../constants/policyLifecycle';
 import { parseDateOnlyTT, getTodayTT } from '../utils/dateInputs';
 import { excludeImported } from '../lib/portfolioImport/excludeImported';
+import {
+  STATUS_SOURCE_AGENT,
+  STATUS_SOURCE_MANAGER,
+} from '../lib/portfolioImport/oipaImportConfig';
+
+/**
+ * Roles whose hand-set status reads as `manager` rather than `agent` (P4e).
+ * A label for whoever reads the policy later — `firestore.rules` decides what
+ * each role may actually do, and pins `statusSetBy` to the caller regardless.
+ */
+const MANAGER_STATUS_ROLES = new Set([
+  'unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin',
+]);
 
 const VALID_SOURCES          = new Set(PROSPECTING_SOURCES.map((s) => s.value));
 const VALID_PRODUCT_LINES    = new Set(['life', 'ah', 'property', 'motor']);
@@ -148,6 +161,27 @@ export async function transitionPolicyStatus(tenantId, agentProfile, policyId, c
   // Exclude serverTimestamp sentinels from changedFields (at provides the timestamp).
   const policyUpdate = { status: newStatus, statusUpdatedAt: serverTimestamp() };
   const changedFields = { status: newStatus };
+
+  /* P4e — STATUS PROVENANCE. A person is setting this status, so the document
+   * must say so.
+   *
+   * These three are NOT optional, on any edge. `firestore.rules` now guards
+   * every status arm with `statusSource in ['agent','manager']` and
+   * `statusSetBy == request.auth.uid`, and rules see the document AFTER the
+   * write — so a transition that omits them leaves whatever was there before
+   * (`oipa_import` on an imported policy, or nothing at all on an organic one)
+   * and Firestore rejects the whole write. Omitting them does not lose the
+   * stamp; it breaks the transition.
+   *
+   * `manager` vs `agent` is read from the caller's own profile role. It is a
+   * label for the reader, not a permission — the rules decide what each role may
+   * actually do, and the uid is pinned to the caller either way. */
+  const isManagerRole = MANAGER_STATUS_ROLES.has(agentProfile?.role);
+  policyUpdate.statusSource = isManagerRole ? STATUS_SOURCE_MANAGER : STATUS_SOURCE_AGENT;
+  policyUpdate.statusSetBy = agentProfile.uid;
+  policyUpdate.statusAsOf = getTodayTT();
+  changedFields.statusSource = policyUpdate.statusSource;
+  changedFields.statusSetBy = policyUpdate.statusSetBy;
 
   if (currentStatus === 'written' && newStatus === 'submitted') {
     // Per-edge requirement — EDGE_REQUIRED_FIELDS['written->submitted'].
