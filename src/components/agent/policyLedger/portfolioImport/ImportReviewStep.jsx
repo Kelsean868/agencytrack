@@ -22,6 +22,7 @@ export default function ImportReviewStep({ previewData, fileName, error, onCance
     counts = {},
     planClassPending = [],
     overridesApplied = [],
+    statusOverwrites = [],
     importConfigApplied,
     exportDate,
     sheetName,
@@ -79,6 +80,20 @@ export default function ImportReviewStep({ previewData, fileName, error, onCance
               <p className="text-ink-muted mt-0.5">{o.note}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {statusOverwrites.length > 0 && (
+        <div className="p-3 rounded-xl bg-danger-tint border border-danger/30 text-xs" data-testid="import-status-overwrites">
+          <p className="font-semibold text-ink">{COPY.statusOverwriteTitle(statusOverwrites.length)}</p>
+          <p className="text-ink-muted mt-1">{COPY.statusOverwriteExplain}</p>
+          <ul className="mt-1.5 flex flex-col gap-0.5">
+            {statusOverwrites.map((o) => (
+              <li key={o.policyNumber} className="font-mono text-[11px] text-ink-muted">
+                {COPY.statusOverwriteRow(o)}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

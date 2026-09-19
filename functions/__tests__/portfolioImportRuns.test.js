@@ -67,11 +67,12 @@ describe('startRun / finishRun', () => {
     const counts = await finishRun(ref, {
       // The writer committed 2, though the plan asked for 3 — one was refused.
       written: { created: 2, updated: 1, refused: ['X9'] },
-      planCounts: { unchanged: 226, skippedNotYours: 4, testRecords: 5, planClassPending: 2 },
+      planCounts: { unchanged: 226, statusOverwrites: 3, skippedNotYours: 4, testRecords: 5, planClassPending: 2 },
     });
     expect(counts).toEqual({
       created: 2, updated: 1, refused: 1,
-      unchanged: 226, skippedNotYours: 4, testRecords: 5, planClassPending: 2,
+      // P4e — how many of the agent's own status decisions this import overrode.
+      unchanged: 226, statusOverwrites: 3, skippedNotYours: 4, testRecords: 5, planClassPending: 2,
     });
     const stored = db._docs.get(ref.path);
     expect(stored.status).toBe(RUN_STATUS_COMPLETE);
@@ -79,6 +80,7 @@ describe('startRun / finishRun', () => {
     // A reader must never have to guess which numbers were measured.
     expect(stored.countsSource.writer).toEqual(['created', 'updated', 'refused']);
     expect(stored.countsSource.plan).toContain('unchanged');
+    expect(stored.countsSource.plan).toContain('statusOverwrites');
   });
 
   it('omits refusedPolicyNumbers when nothing was refused', async () => {
@@ -89,6 +91,33 @@ describe('startRun / finishRun', () => {
       planCounts: { unchanged: 0, skippedNotYours: 0, testRecords: 5, planClassPending: 2 },
     });
     expect(db._docs.get(ref.path).refusedPolicyNumbers).toBeUndefined();
+  });
+
+  it('records the status overwrites by policy number, not just a count (P4e)', () => {
+    // A count alone cannot answer "which of my decisions did head office
+    // override", which is the question the agent will actually ask afterwards.
+    const db = createFakeDb();
+    return startRun(db, startOpts()).then(({ ref }) => finishRun(ref, {
+      written: { created: 0, updated: 1, refused: [] },
+      statusOverwrites: [{ policyNumber: 'R00175245', from: 'ntu', to: 'lapsed', source: 'agent', setBy: 'uid-kyron' }],
+      planCounts: { unchanged: 228, statusOverwrites: 1, skippedNotYours: 0, testRecords: 5, planClassPending: 2 },
+    }).then(() => {
+      const stored = db._docs.get(ref.path);
+      expect(stored.statusOverwriteCount).toBe(1);
+      expect(stored.statusOverwrites[0]).toMatchObject({ policyNumber: 'R00175245', from: 'ntu', to: 'lapsed' });
+      expect(stored.counts.statusOverwrites).toBe(1);
+    }));
+  });
+
+  it('defaults statusOverwrites to empty when an import overrode nothing', () => {
+    const db = createFakeDb();
+    return startRun(db, startOpts()).then(({ ref }) => finishRun(ref, {
+      written: { created: 229, updated: 0, refused: [] },
+      planCounts: { unchanged: 0, skippedNotYours: 0, testRecords: 5, planClassPending: 2 },
+    }).then(() => {
+      expect(db._docs.get(ref.path).statusOverwrites).toEqual([]);
+      expect(db._docs.get(ref.path).counts.statusOverwrites).toBe(0);
+    }));
   });
 });
 

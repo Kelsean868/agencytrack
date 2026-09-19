@@ -19,7 +19,7 @@
  * would silently erase them, and nothing would error.
  */
 
-import { OIPA_IMPORT_SOURCE } from './oipaImportConfig.js';
+import { OIPA_IMPORT_SOURCE, HUMAN_STATUS_SOURCES } from './oipaImportConfig.js';
 
 /**
  * Fields the import owns and may overwrite on a re-import. Everything absent
@@ -40,6 +40,9 @@ export const IMPORT_OWNED_FIELDS = Object.freeze([
   'status', 'terminalReason', 'replacedBy', 'claimStatus', 'planClassPending',
   'isWritingAgent', 'isSelfOrFamily',
   'exportDate', 'importedAt', 'importSource',
+  // P4e ruling 1 — where this status came from. Owned, so a re-import that
+  // genuinely moves a status moves its provenance with it.
+  'statusSource', 'statusSourceDetail', 'statusAsOf', 'statusSetBy',
 ]);
 
 /**
@@ -71,6 +74,16 @@ export const IMPORT_OWNED_FIELDS = Object.freeze([
  */
 export const PROVENANCE_ONLY_FIELDS = Object.freeze([
   'exportDate', 'importedAt', 'importSource', 'lastImportRunId',
+  // P4e. `statusAsOf` is the export date, so it moves on EVERY policy whenever
+  // a newer export lands — exactly the shape that made `exportDate` a
+  // false-positive change before P4d. `statusSource` and `statusSetBy` change
+  // only when a person had set the status and head office now disagrees, and
+  // that case is already substantive because `status` itself moved.
+  //
+  // `statusSourceDetail` is deliberately NOT here: it is the raw OIPA pair, so
+  // `Active / Premium Paying` becoming `Active / Grace` is real news about the
+  // policy even though the mapped status is `settled` either way.
+  'statusAsOf', 'statusSource', 'statusSetBy',
 ]);
 
 const PROVENANCE_ONLY = new Set(PROVENANCE_ONLY_FIELDS);
@@ -173,6 +186,8 @@ export function buildImportPlan(parsedDocs, options = {}) {
   const creates = [];
   const updates = [];
   const skips = [];
+  /** P4e ruling 2 — policies where this import overrides a status a person set. */
+  const statusOverwrites = [];
 
   for (const parsed of docs) {
     const { policyNumber } = parsed;
@@ -220,6 +235,39 @@ export function buildImportPlan(parsedDocs, options = {}) {
     // `PROVENANCE_ONLY_FIELDS`, which is the single place this rule is written.
     const substantive = Object.keys(changed).filter((k) => !PROVENANCE_ONLY.has(k));
 
+    /* P4e ruling 2 — an import may override a status a PERSON set, but never
+     * silently.
+     *
+     * Head office is the source of truth, so the import still applies. What it
+     * must not do is erase the fact that somebody had decided otherwise: once
+     * `status` is overwritten, the only record that a human ever set it would be
+     * the history subcollection, which no screen reads at a glance.
+     *
+     * So the previous status and WHO set it are written onto the document
+     * itself, and the policy is named in the plan — so it reaches the review
+     * screen BEFORE the agent presses Import, and the run record afterwards.
+     *
+     * Only a genuine disagreement counts. An export that agrees with what the
+     * agent already set is not an override, and marking it as one would bury
+     * the real cases in noise. */
+    const humanSet = HUMAN_STATUS_SOURCES.includes(existing.statusSource);
+    const statusMoved = Object.hasOwn(changed, 'status');
+    const overridesHuman = humanSet && statusMoved;
+
+    if (overridesHuman) {
+      changed.previousStatus = existing.status ?? null;
+      changed.previousStatusSource = existing.statusSource ?? null;
+      changed.previousStatusSetBy = existing.statusSetBy ?? null;
+      statusOverwrites.push({
+        policyNumber,
+        id: existing.id,
+        from: existing.status ?? null,
+        to: parsed.status ?? null,
+        setBy: existing.statusSetBy ?? null,
+        source: existing.statusSource ?? null,
+      });
+    }
+
     if (substantive.length === 0) {
       // Unchanged means NOT WRITTEN — not "written with only provenance". The
       // policy keeps the export date it already had, which is what lets the
@@ -265,6 +313,9 @@ export function buildImportPlan(parsedDocs, options = {}) {
       skips: skips.length,
       duplicateExisting,
       orphanedInLedger,
+      // Named, not just counted: the review screen lists these by policy number
+      // so the agent sees WHICH of their decisions head office is overriding.
+      statusOverwrites,
       accountedFor: creates.length + updates.length + skips.length === docs.length,
       importOwnedFields: [...IMPORT_OWNED_FIELDS],
       addedFields: Object.keys(IMPORT_ADDED_FIELDS_NOTE),

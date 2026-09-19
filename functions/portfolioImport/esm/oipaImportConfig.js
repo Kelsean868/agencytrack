@@ -260,6 +260,52 @@ export const OIPA_FIXED_DOC_FIELDS = Object.freeze({
 /** Provenance stamp for the history doc the importer writes per policy (P2). */
 export const OIPA_IMPORT_SOURCE = 'oipa_import';
 
+/* ─────────────────────── status provenance (P4e) ─────────────────────── */
+
+/**
+ * Who set a policy's status, as stored on the policy document.
+ *
+ * Before P4e a status said nothing about where it came from. 117 settled, 87
+ * lapsed, 22 ntu and 3 denied all arrived from the OIPA export with no manager
+ * step — and looked identical to a status somebody typed. These constants are
+ * the difference.
+ *
+ * `oipa_import` reuses `OIPA_IMPORT_SOURCE` deliberately: one string for
+ * "this came from the OIPA import", so a reader filtering on `importSource`
+ * and a reader filtering on `statusSource` can never drift apart.
+ */
+export const STATUS_SOURCE_IMPORT = OIPA_IMPORT_SOURCE;
+export const STATUS_SOURCE_AGENT = 'agent';
+export const STATUS_SOURCE_MANAGER = 'manager';
+
+/** Statuses set by a PERSON. The import records the previous one when it overrides these. */
+export const HUMAN_STATUS_SOURCES = Object.freeze([STATUS_SOURCE_AGENT, STATUS_SOURCE_MANAGER]);
+
+/**
+ * `statusSetBy` for an import.
+ *
+ * The literal string `'import'`, never a uid — dispatcher ruling 1, P4e. The
+ * import runs as an admin action on the agent's behalf; writing the agent's uid
+ * here would say a person set the status, which is the exact claim this field
+ * exists to distinguish. `firstImportRunId` / `lastImportRunId` already say
+ * WHICH import, so nothing is lost.
+ */
+export const STATUS_SET_BY_IMPORT = 'import';
+
+/**
+ * The raw OIPA pair, as one human-readable string: `Active / Premium Paying`.
+ *
+ * Stored rather than re-derived at read time so the ledger line still reads
+ * correctly after a later export changes `oipaStatus`: it is what the status
+ * was set FROM, not what OIPA says now.
+ */
+export function formatStatusSourceDetail(oipaStatus, oipaSubStatus) {
+  const a = oipaStatus == null ? '' : String(oipaStatus).trim();
+  const b = oipaSubStatus == null ? '' : String(oipaSubStatus).trim();
+  if (a && b) return `${a} / ${b}`;
+  return a || b || null;
+}
+
 /* ───────────────────── per-agent import config (ruling 4) ───────────────────── */
 
 /** Doc id of the per-agent config under `tenants/{t}/users/{uid}/prefs/`. */

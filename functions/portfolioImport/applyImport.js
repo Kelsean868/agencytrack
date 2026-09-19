@@ -52,10 +52,13 @@ async function handler(data, context) {
   // `created` and `updated` are the WRITER's tallies. `plan.report.creates` is
   // what the importer meant to do, and a refused operation is exactly the case
   // where the two disagree — so the run record never quotes the plan for these.
+  const statusOverwrites = plan.report.statusOverwrites ?? [];
   const counts = await finishRun(runRef, {
     written,
+    statusOverwrites,
     planCounts: {
       unchanged: plan.report.skips,
+      statusOverwrites: statusOverwrites.length,
       skippedNotYours: parseReport.skippedNotYours ?? null,
       testRecords: parseReport.testRecords ?? null,
       planClassPending: Array.isArray(parseReport.planClassPending)
@@ -85,6 +88,7 @@ async function handler(data, context) {
     refused: refused.length,
     refusedPolicyNumbers: refused,
     counts,
+    statusOverwrites,
     planClassPending: parseReport.planClassPending,
     overridesApplied: parseReport.overridesApplied,
   };

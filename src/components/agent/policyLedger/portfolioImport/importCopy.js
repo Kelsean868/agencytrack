@@ -25,6 +25,10 @@ export const COPY = {
   planClassPendingTitle: (n) => `${n} ${n === 1 ? 'policy needs' : 'policies need'} a product confirmed`,
   planClassPendingExplain: 'The product for these policies could not be identified from the export. They import anyway — set the correct product afterward.',
   overridesTitle: 'Overrides that will apply',
+  // P4e ruling 2 — head office wins, but never quietly.
+  statusOverwriteTitle: (n) => `${n} ${n === 1 ? 'status you set will be changed' : 'statuses you set will be changed'} by this import`,
+  statusOverwriteExplain: 'Head office is the source of truth, so these will be updated. The status you set is kept on the policy as its previous status.',
+  statusOverwriteRow: (o) => `#${o.policyNumber} — ${o.from} becomes ${o.to}`,
   noConfigNotice: 'No personal import settings were found for you, so no overrides will be applied to this import.',
   nothingWrittenYet: 'Nothing is written to your ledger until you press Import.',
   cancel: 'Cancel',

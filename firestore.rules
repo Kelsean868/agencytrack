@@ -328,6 +328,24 @@ service cloud.firestore {
       // unitId + branchId denormalized for UM/BM query filtering (mirrors submissions).
       // Manager two-arm confirmation update is DEFERRED to H1.2.
       match /policies/{policyId} {
+        // P4e — STATUS PROVENANCE on the human paths.
+        //
+        // Every status-setting arm below pins the exact fields a write may touch
+        // with hasOnly(). Adding statusSource/statusSetBy to the payload without
+        // adding them here rejects the WHOLE transition, so they are added to each
+        // list — and guarded, so the stamp cannot be forged.
+        //
+        // This makes these arms STRICTER, not looser: a caller may now only claim
+        // a status was set by THEMSELVES, and only as 'agent' or 'manager'. An
+        // import writes 'oipa_import'/'import' through the Admin SDK, which
+        // bypasses rules, so no client can ever impersonate one.
+        function setsOwnStatusProvenance() {
+          return request.resource.data.statusSource in ['agent', 'manager']
+            && request.resource.data.statusSetBy == request.auth.uid;
+        }
+        // The three keys every status write may now additionally touch.
+        // `statusAsOf` is the day the person set it — a date, not the export date.
+
         // Tier-3 3.1: cro (back-office) reads policies tenant-wide — the
         // Delivery Register is a query surface over this collection.
         function isCroInTenant() {
@@ -405,7 +423,9 @@ service cloud.firestore {
             (request.resource.data.status == 'submitted'
              && resource.data.status == 'written'
              && request.resource.data.diff(resource.data).affectedKeys()
-                  .hasOnly(['status', 'statusUpdatedAt', 'dateSubmitted'])
+                  .hasOnly(['status', 'statusUpdatedAt', 'dateSubmitted',
+                             'statusSource', 'statusSetBy', 'statusAsOf'])
+             && setsOwnStatusProvenance()
              && request.resource.data.dateSubmitted is timestamp
              && request.resource.data.dateSubmitted <= request.time
              && request.resource.data.dateSubmitted >= resource.data.dateWritten)
@@ -413,23 +433,33 @@ service cloud.firestore {
             || (request.resource.data.status == 'submitted'
                 && resource.data.status == 'postponed'
                 && request.resource.data.diff(resource.data).affectedKeys()
-                     .hasOnly(['status', 'statusUpdatedAt']))
+                     .hasOnly(['status', 'statusUpdatedAt',
+                                'statusSource', 'statusSetBy', 'statusAsOf'])
+                && setsOwnStatusProvenance())
             || (request.resource.data.status == 'rated'
                 && request.resource.data.diff(resource.data).affectedKeys()
-                     .hasOnly(['status', 'statusUpdatedAt', 'ratedPremium', 'rateReason'])
+                     .hasOnly(['status', 'statusUpdatedAt', 'ratedPremium', 'rateReason',
+                                'statusSource', 'statusSetBy', 'statusAsOf'])
+                && setsOwnStatusProvenance()
                 && request.resource.data.ratedPremium is number
                 && request.resource.data.ratedPremium > 0)
             || (request.resource.data.status == 'postponed'
                 && request.resource.data.diff(resource.data).affectedKeys()
-                     .hasOnly(['status', 'statusUpdatedAt', 'pendingReason']))
+                     .hasOnly(['status', 'statusUpdatedAt', 'pendingReason',
+                                'statusSource', 'statusSetBy', 'statusAsOf'])
+                && setsOwnStatusProvenance())
             || (request.resource.data.status in ['ntu', 'denied']
                 && request.resource.data.diff(resource.data).affectedKeys()
-                     .hasOnly(['status', 'statusUpdatedAt', 'reason']))
+                     .hasOnly(['status', 'statusUpdatedAt', 'reason',
+                                'statusSource', 'statusSetBy', 'statusAsOf'])
+                && setsOwnStatusProvenance())
             || (request.resource.data.status == 'settled'
                 && request.resource.data.diff(resource.data).affectedKeys()
                      .hasOnly(['status', 'statusUpdatedAt',
                                'dateIssued', 'settledAPI', 'issuedCoverage',
-                               'initialPremium', 'earnedCommission'])
+                               'initialPremium', 'earnedCommission',
+                               'statusSource', 'statusSetBy', 'statusAsOf'])
+                && setsOwnStatusProvenance()
                 && request.resource.data.dateIssued is timestamp
                 && request.resource.data.dateIssued >= resource.data.dateWritten
                 && request.resource.data.dateIssued <= request.time
@@ -489,7 +519,9 @@ service cloud.firestore {
           && resource.data.status == 'settled'
           && request.resource.data.status == 'lapsed'
           && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['status', 'statusUpdatedAt', 'dateLapsed', 'lapseReason'])
+               .hasOnly(['status', 'statusUpdatedAt', 'dateLapsed', 'lapseReason',
+                     'statusSource', 'statusSetBy', 'statusAsOf'])
+          && setsOwnStatusProvenance()
           && request.resource.data.dateLapsed is timestamp;
 
         allow delete: if false;

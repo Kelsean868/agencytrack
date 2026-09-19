@@ -17,6 +17,19 @@ function authToken(role) {
   return { role, tenantId: TENANT_ID };
 }
 
+/**
+ * P4e — the status-provenance fields every hand-set status write must now carry.
+ *
+ * `firestore.rules` guards all seven status arms with
+ * `statusSource in ['agent','manager'] && statusSetBy == request.auth.uid`, and
+ * rules see the document AFTER the write — so omitting these leaves whatever
+ * was there before and the transition is rejected outright. That is deliberate:
+ * a status that moves without saying who moved it is the gap P4e closes.
+ */
+const prov = (uid, source = 'agent') => ({
+  statusSource: source, statusSetBy: uid, statusAsOf: '2026-09-19',
+});
+
 async function run(label, expectAllow, fn) {
   try {
     if (expectAllow) {
@@ -191,6 +204,12 @@ async function main() {
     });
     // H2c: dedicated rated policy untouched by Arm B tests — Arm D DENY (non-settled) test target.
     // policy-a1-rated is mutated by the "rated → settled" ALLOW test, so we need a separate doc.
+    // P4e provenance-guard fixture — a submitted policy of agent-a's own.
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-a1-prov`).set({
+      ...VALID_PAYLOAD,
+      status: 'submitted',
+      dateSubmitted: yesterday,
+    });
     await db.doc(`tenants/${TENANT_ID}/policies/policy-arm-d-rated`).set({
       ...VALID_PAYLOAD,
       status: 'rated',
@@ -314,28 +333,28 @@ async function main() {
   await run('submitted → rated (+ratedPremium) → ALLOW', true, () =>
     updateDoc(
       doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1'),
-      { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200 }
+      { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200, ...prov('agent-a') }
     )
   );
 
   await run('submitted → settled (+full §7.4 field set) → ALLOW', true, () =>
     updateDoc(
       doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1'),
-      { ...SETTLED_FIELDS }
+      { ...SETTLED_FIELDS, ...prov('agent-a') }
     )
   );
 
   await run('rated → settled (+full §7.4 field set) → ALLOW', true, () =>
     updateDoc(
       doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-rated'),
-      { ...SETTLED_FIELDS }
+      { ...SETTLED_FIELDS, ...prov('agent-a') }
     )
   );
 
   await run('postponed → submitted (no new fields) → ALLOW', true, () =>
     updateDoc(
       doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-postponed'),
-      { status: 'submitted', statusUpdatedAt: Timestamp.now() }
+      { status: 'submitted', statusUpdatedAt: Timestamp.now(), ...prov('agent-a') }
     )
   );
 
@@ -467,14 +486,14 @@ async function main() {
   await run('1A: second agent transitions a WRITTEN policy → DENY', false, () =>
     updateDoc(
       doc(agentBDb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-deny'),
-      { status: 'submitted', statusUpdatedAt: Timestamp.now(), dateSubmitted: yesterday }
+      { status: 'submitted', statusUpdatedAt: Timestamp.now(), dateSubmitted: yesterday, ...prov('agent-a') }
     )
   );
 
   await run('1A: written → ntu (+reason) → ALLOW', true, () =>
     updateDoc(
       doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-ntu'),
-      { status: 'ntu', statusUpdatedAt: Timestamp.now(), reason: 'client did not sign' }
+      { status: 'ntu', statusUpdatedAt: Timestamp.now(), reason: 'client did not sign', ...prov('agent-a') }
     )
   );
 
@@ -482,9 +501,45 @@ async function main() {
   await run('1A: written → submitted (+dateSubmitted) → ALLOW', true, () =>
     updateDoc(
       doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-written-submit'),
-      { status: 'submitted', statusUpdatedAt: Timestamp.now(), dateSubmitted: yesterday }
+      { status: 'submitted', statusUpdatedAt: Timestamp.now(), dateSubmitted: yesterday, ...prov('agent-a') }
     )
   );
+
+  // ── P4e — STATUS PROVENANCE GUARD ──
+  // These four are the reason the seven hasOnly lists were touched at all. The
+  // guard makes the arms STRICTER: a caller may claim only that THEY set the
+  // status, and only as a person.
+  await run('P4e: transition WITHOUT provenance → DENY', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-prov'),
+      { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200 }
+    )
+  );
+
+  await run('P4e: statusSetBy forged to another uid → DENY', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-prov'),
+      { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200,
+        ...prov('agent-b') }
+    )
+  );
+
+  await run('P4e: client claims the import set it → DENY', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-prov'),
+      { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200,
+        statusSource: 'oipa_import', statusSetBy: 'import', statusAsOf: '2026-09-15' }
+    )
+  );
+
+  await run('P4e: correct provenance → ALLOW', true, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-prov'),
+      { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200,
+        ...prov('agent-a') }
+    )
+  );
+
 
   // ── HISTORY SUBCOLLECTION ──
   const VALID_HISTORY = {
@@ -741,7 +796,7 @@ async function main() {
   await run('Arm D ALLOW: BM lapses settled policy', true, () =>
     updateDoc(
       doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-arm-d-bm'),
-      LAPSE_FIELDS
+      { ...LAPSE_FIELDS, ...prov('bm-a', 'manager') }
     )
   );
 
@@ -749,7 +804,7 @@ async function main() {
   await run('Arm D ALLOW: tenant_admin lapses settled policy', true, () =>
     updateDoc(
       doc(taDb, 'tenants', TENANT_ID, 'policies', 'policy-arm-d-ta'),
-      LAPSE_FIELDS
+      { ...LAPSE_FIELDS, ...prov('ta-1', 'manager') }
     )
   );
 
@@ -902,7 +957,7 @@ async function main() {
   await run('producing-mgr Arm B ALLOW: BM transitions own policy submitted→rated', true, () =>
     updateDoc(
       doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-pm-bm'),
-      { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200 }
+      { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200, ...prov('bm-a', 'manager') }
     )
   );
 
