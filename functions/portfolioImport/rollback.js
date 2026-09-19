@@ -161,9 +161,51 @@ async function countOrphanedHistory(db, tenantId, deletedDocs) {
   return { orphaned, orphanedUnder };
 }
 
+/**
+ * The same question as `findLastImportBatch`, answered from the RUN RECORD
+ * instead of from each policy's history (P4d ruling 4).
+ *
+ * This is the path every run written from P4d onwards takes. It is exact rather
+ * than reconstructed: `firstImportRunId` says which run CREATED a policy and
+ * `lastImportRunId` says which run last wrote it, so "created by this run" and
+ * "updated by this run" are both a field comparison instead of a subcollection
+ * read per candidate.
+ *
+ * WHY THE RUN ID IS FILTERED IN MEMORY AND NOT IN THE QUERY:
+ * the `agentId` + `importSource` pair is the query this codebase has already
+ * proven against production without a declared composite index. Adding a third
+ * equality changes the index requirement, and an index gap fails as an ERROR on
+ * a destructive endpoint. The candidate set is one agent's imported book, so the
+ * read volume is identical either way.
+ *
+ * @returns {Promise<{runId, run, created, updated, totalImported, rejected}>}
+ */
+async function findRunBatch(db, tenantId, agentId, importSource, run) {
+  const { docs, rejected } = await findImportedDocs(db, tenantId, agentId, importSource);
+  const created = [];
+  const updated = [];
+  for (const doc of docs) {
+    if (doc.firstImportRunId === run.runId) {
+      created.push({ id: doc.id, policyNumber: doc.policyNumber });
+    } else if (doc.lastImportRunId === run.runId) {
+      updated.push({ id: doc.id, policyNumber: doc.policyNumber });
+    }
+  }
+  return {
+    runId: run.runId,
+    run,
+    exportDate: run.exportDate ?? null,
+    created,
+    updated,
+    totalImported: docs.length,
+    rejected,
+  };
+}
+
 module.exports = {
   findImportedDocs,
   findLastImportBatch,
+  findRunBatch,
   deletePolicies,
   countOrphanedHistory,
   MAX_WRITES,

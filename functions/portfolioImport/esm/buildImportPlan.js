@@ -43,6 +43,39 @@ export const IMPORT_OWNED_FIELDS = Object.freeze([
 ]);
 
 /**
+ * Fields that say WHEN a policy was imported, not WHAT the policy is.
+ *
+ * A field here changing on its own is NOT a change. It only moved because a
+ * newer export was imported, and nothing the export says about the policy is
+ * different. Such a policy is `unchanged`, and an unchanged policy is not
+ * written at all.
+ *
+ * THIS LIST IS THE RULE. Before P4d the rule lived in a filter whose comment
+ * named `importedAt` and `exportDate` while the code excluded `importedAt` and
+ * `importSource` — so `exportDate`, which changes on EVERY policy whenever a
+ * newer export is imported, was treated as a real change. Measured 2026-09-18:
+ * a newer export in which no policy fact moved reported `updates 3 | skips 0`
+ * with `changedKeys: ["exportDate","importedAt"]` on every row. Two things
+ * broke from that one gap — the review screen would report "229 updated" for a
+ * file that changed nothing, and undo refused on every import after the first,
+ * because an import that updates cannot be undone.
+ *
+ * `lastImportRunId` is listed even though `buildImportPlan` never computes it
+ * (the run id does not exist until apply time, so it can never appear in
+ * `changed`). It is here so that the day somebody does add it to
+ * `IMPORT_OWNED_FIELDS`, it is already classified — the failure above came from
+ * a field being owned but unclassified, and listing it costs nothing.
+ *
+ * `firstImportRunId` is deliberately ABSENT from both lists: it is written once,
+ * at create, and no update may ever touch it.
+ */
+export const PROVENANCE_ONLY_FIELDS = Object.freeze([
+  'exportDate', 'importedAt', 'importSource', 'lastImportRunId',
+]);
+
+const PROVENANCE_ONLY = new Set(PROVENANCE_ONLY_FIELDS);
+
+/**
  * Fields the import adds so the doc is a valid, READABLE policy — none of which
  * come from the export. Each one is here for a named reason, because a field
  * added "to be safe" is how a schema rots.
@@ -67,6 +100,11 @@ export const IMPORT_ADDED_FIELDS_NOTE = Object.freeze({
   dateWritten: 'ruling 5d — null, never back-filled from dateIssued',
   dateWrittenUnknown: 'ruling 5d — explicit flag',
   importSource: 'ruling 5e — the tag aggregating readers exclude on',
+  firstImportRunId: 'P4d ruling 2 — the run that CREATED this policy; set once, '
+    + 'never overwritten. Undo deletes on this field, so an update must not move it.',
+  lastImportRunId: 'P4d ruling 2 — the most recent run that wrote this policy. '
+    + 'Moves on every real update; does NOT move when a policy is unchanged, '
+    + 'because an unchanged policy is not written at all.',
   unitId: 'read rules gate unit_manager on resource.data.unitId',
   branchId: 'getPoliciesForManager branch_manager arm filters on it',
   createdBy: 'audit — who ran the import',
@@ -177,15 +215,16 @@ export function buildImportPlan(parsedDocs, options = {}) {
       if (fieldDiffers(next, existing[key])) changed[key] = next;
     }
 
-    // `importedAt` and `exportDate` alone are not a real change: a re-run of the
-    // SAME export on a later day would otherwise report 229 updates that carry
-    // no new business fact. A doc counts as changed only when something the
-    // export actually says about the policy moved.
-    const substantive = Object.keys(changed).filter(
-      (k) => k !== 'importedAt' && k !== 'importSource',
-    );
+    // A doc counts as changed only when something the export actually SAYS about
+    // the policy moved. Provenance moving on its own is not that — see
+    // `PROVENANCE_ONLY_FIELDS`, which is the single place this rule is written.
+    const substantive = Object.keys(changed).filter((k) => !PROVENANCE_ONLY.has(k));
 
     if (substantive.length === 0) {
+      // Unchanged means NOT WRITTEN — not "written with only provenance". The
+      // policy keeps the export date it already had, which is what lets the
+      // history fallback in `rollback.js` narrow candidates by `exportDate`:
+      // a policy the last import did not touch still carries the older one.
       skips.push({ policyNumber, id: existing.id, reason: 'unchanged' });
       continue;
     }

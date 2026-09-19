@@ -37,9 +37,15 @@ function opBelongsTo(op, { uid, agentNumber }) {
  * @param {Object} plan     the plan from `buildImportPlan`
  * @param {Object} caller   `{ uid, tenantId, agentNumber }`
  * @param {string} importSource  the provenance tag for the history docs
+ * @param {string} runId    the import run these writes belong to (P4d ruling 2).
+ *        A CREATE gets `firstImportRunId` AND `lastImportRunId`; an UPDATE gets
+ *        `lastImportRunId` only. `firstImportRunId` is the field undo deletes on,
+ *        so an update moving it would make undo remove a policy a later import
+ *        merely touched — which is the whole failure P4d exists to close.
  * @returns {Promise<{created: number, updated: number, refused: Array<string>}>}
  */
-async function applyPlan(db, plan, caller, importSource) {
+async function applyPlan(db, plan, caller, importSource, runId) {
+  if (!runId) throw new Error('applyPlan: runId is required');
   const { FieldValue } = admin.firestore;
   const col = db.collection(`tenants/${caller.tenantId}/policies`);
 
@@ -69,20 +75,33 @@ async function applyPlan(db, plan, caller, importSource) {
       const ref = col.doc();
       // `createdAt` arrives from the plan as the string '<serverTimestamp>' so the
       // dry run can show the true field set; the real value is stamped here.
-      batch.set(ref, { ...op.doc, createdAt: FieldValue.serverTimestamp() });
+      batch.set(ref, {
+        ...op.doc,
+        createdAt: FieldValue.serverTimestamp(),
+        firstImportRunId: runId,
+        lastImportRunId: runId,
+      });
       batch.set(ref.collection('history').doc(), {
         ...op.history,
         source: importSource,
+        runId,
         by: caller.uid,
         at: FieldValue.serverTimestamp(),
       });
       created += 1;
     } else {
       const ref = col.doc(op.id);
-      batch.update(ref, { ...op.changed, updatedAt: FieldValue.serverTimestamp() });
+      // NOTE the absence of `firstImportRunId`. It is written once, at create,
+      // and this is the only other place that could ever overwrite it.
+      batch.update(ref, {
+        ...op.changed,
+        updatedAt: FieldValue.serverTimestamp(),
+        lastImportRunId: runId,
+      });
       batch.set(ref.collection('history').doc(), {
         ...op.history,
         source: importSource,
+        runId,
         by: caller.uid,
         at: FieldValue.serverTimestamp(),
       });

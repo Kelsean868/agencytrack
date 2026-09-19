@@ -334,8 +334,8 @@
 | **Flake register — two NEW members enumerated (2026-09-16).** `WizardFormV2RetirementR2.test.jsx` and `AwardsRulesetPanel.test.jsx` both failed CI on diffs that cannot be causal, and both went green on re-run with zero code change. Neither was in the named roster, so the family is larger than the ~10 recorded. See the detail section at the end of this file | MEDIUM | test-infra | — | see the 2026-09-16 flake-member section at end of file |
 | **P4 must not parse agent-picked files in the browser with `xlsx@0.18.5`** — pick a maintained parser or parse server-side. The package is a root devDependency for the P2 admin script only (operator-downloaded OIPA export, never in the web bundle); it carries known prototype-pollution and ReDoS CVEs that are triggered by parsing MALICIOUS files, which is exactly what P4 would do with a file an agent chooses. Chosen for P2 for continuity: every number in the P0/P1/P2 paste-backs was validated through this reader (banked 2026-09-16, P2b, dispatcher ruling 5) | HIGH | OIPA import / security | before P4 | see the P2b entry at end of file |
 | **ACCEPTED GAP — "organic + imported policies in one tenant" is never tested together.** `excludeImported()` is proven to drop imported docs (production, 117 settled -> 0) and to keep an organically created one (`tatillife_smoke`, 1 -> 1), but never both in the same tenant, because no test agent exists inside `tatillife_south`. Operator ruling 16 Sep 2026: do NOT create one — a test agent would appear in manager rosters and leaderboards. **Revisit if P4 changes the filter** (banked 2026-09-16, P3) | MEDIUM | OIPA import | revisit at P4 | see the accepted-gap entry at end of file |
-| **`buildImportPlan`'s `substantive` filter contradicts its own comment** — the comment says "`importedAt` and `exportDate` alone are not a real change", but the filter excludes only `importedAt` and `importSource`. So a re-import of a NEWER export reports every existing policy as an UPDATE (`changedKeys: ["exportDate","importedAt"]`) even when no fact about the policy moved. Measured 2026-09-18, not inferred. Two consequences: the P4c review screen will say "229 updated" for a file that changed nothing, and P4b's undo refuses on every import after the first, because an import that updates cannot be undone. Excluding `exportDate` from `substantive` makes both behave; the cost is that a skipped policy keeps a stale `exportDate`, which `findLastImportBatch` relies on as its candidate filter — so the two must be changed together (banked 2026-09-18, P4b session) | MEDIUM | OIPA import / P2 | — | see § `substantive` filter contradicts its comment |
-| No written policy records WHICH import run wrote it — the root cause behind P4b's undo needing a history read per policy. A preview plan gets a `planId`, but nothing stamps it onto the documents that plan writes, so "the last import" has no stored identity and must be reconstructed from `exportDate` plus each policy's history subcollection. Durable fix: stamp `importRunId` (the planId) on every doc the import creates AND updates, making undo one equality query instead of 229 history reads. Operator ruled: not in P4b. Note it only helps FUTURE imports — the 229 live docs have no `importRunId`, so the history path stays as the fallback (banked 2026-09-18, P4b ruling) | LOW | OIPA import / schema | — | see § No written policy records which import run wrote it |
+| ~~**`buildImportPlan`'s `substantive` filter contradicts its own comment**~~ **RESOLVED 2026-09-19 (P4d).** The rule is now ONE named list, `PROVENANCE_ONLY_FIELDS` = `exportDate`, `importedAt`, `importSource`, `lastImportRunId`, and the comment is the list rather than a second statement of it that could drift. Verified on the real 15 Sep export through the emulator: a re-import reports **0 created / 0 updated / 229 unchanged**, and **zero policy documents had their Firestore `updateTime` move** — unchanged now means NOT WRITTEN, not written-with-only-provenance. The coupling this entry warned about held: `findLastImportBatch` narrows candidates by `exportDate`, and a skipped policy keeping its older date is exactly what makes that correct. Kept, struck rather than deleted, because the failure shape is the lesson — a field was OWNED but UNCLASSIFIED, and the comment describing the rule was not the rule (banked 2026-09-18, P4b; resolved 2026-09-19, P4d) | ~~MEDIUM~~ | OIPA import / P2 | — | see § `substantive` filter contradicts its comment |
+| **PARTLY RESOLVED 2026-09-19 (P4d).** Every policy an import writes now carries `lastImportRunId`, and one it CREATES also carries `firstImportRunId`, set once and never moved by a later update — undo deletes on that field, so an update moving it would remove a policy a later import merely touched. Undo reads the run record first and falls back to the history path only for imports that predate it, naming which one it used in every response and every refusal. **STILL OPEN: the backfill has not been run.** The 229 policies live in production still carry no run id, so they still take the history path. `functions/scripts/stamp-import-run.cjs` stamps them with a synthetic run, dry run by default — the operator runs it, or not (banked 2026-09-18, P4b ruling; part-closed 2026-09-19, P4d) | LOW | OIPA import / schema | — | see § No written policy records which import run wrote it |
 | **`functions` runtime `nodejs20` is DECOMMISSIONED on 2026-10-30** — upgrade the runtime and the `firebase-functions` SDK (pinned at `^4.9.0`, a major version behind) before then. This is a dated deadline, not a nicety: after decommission a deploy is refused and the existing functions stop being patched. The SDK bump is the harder half — v5/v6 change the callable signature from `(data, context)` to a single `request` object, and every `functions.https.onCall` in `functions/` reads `context.auth` (banked 2026-09-18, P4b session) | **DEADLINE** | Functions / runtime | **2026-10-30** | see § `nodejs20` decommission + firebase-functions SDK |
 | Lock `prefs/portfolioImport` to the Cloud Function — the per-agent import config (overrides, self/family, test-record skips) is currently AGENT-WRITABLE, so an agent can add an override that flips one of their own policies from `lapsed` to `settled` and move their own manager-facing persistency figure. Needs a `firestore.rules` change AND a rules deploy, which is why it was not done in P4a. Operator ruled: leave it editable, revisit when a second agent uses the importer (banked 2026-09-18, P4a ruling) | MEDIUM | OIPA import / rules | — | see § Lock `prefs/portfolioImport` to the Cloud Function |
 | Partial import (a file where SOME rows are serviced by another agent) is UNIT-TESTED ONLY — Kyron's export is 100% his own servicing number, so the P4a emulator run could only produce the all-or-nothing refusal, never a partial `counts.skippedNotYours`. Prove it on the first export that actually contains another agent's rows (banked 2026-09-18, P4a Rule 22 gap) | MEDIUM | OIPA import / verification | — | see § Partial import is unit-tested only |
@@ -7014,6 +7014,40 @@ render.
 
 ## `substantive` filter contradicts its comment
 
+**RESOLVED 2026-09-19 (P4d).** The filter is gone. The rule is now a single named
+export, `PROVENANCE_ONLY_FIELDS`, in `buildImportPlan.js`:
+
+```js
+export const PROVENANCE_ONLY_FIELDS = Object.freeze([
+  'exportDate', 'importedAt', 'importSource', 'lastImportRunId',
+]);
+```
+
+and the code reads that list rather than restating it — which is what removes the
+class of bug, not just this instance of it. `lastImportRunId` is listed although
+`buildImportPlan` can never compute it (the run id does not exist until apply
+time), precisely because the original failure was a field being owned but
+unclassified. `firstImportRunId` is deliberately in NEITHER list: it is written
+once, at create, and no update may touch it.
+
+Measured on the real 15 Sep export, through the emulator, not inferred:
+
+```
+same file re-imported ->  created 0 | updated 0 | UNCHANGED 229
+policy docs whose Firestore updateTime MOVED: 0
+one API edited        ->  created 0 | updated 1 | unchanged 228
+policy docs written this run: 1
+```
+
+The `updateTime` line is the part that matters. "Unchanged" now means the document
+was NOT WRITTEN, not "written with only provenance" — and `updateTime` is set by
+Firestore, so it is not a number this code could have talked itself into.
+
+The coupling this entry warned about held rather than bit: `findLastImportBatch`
+narrows candidates by `exportDate`, and a skipped policy keeping its OLDER export
+date is exactly what makes that filter correct. The two moved together.
+
+
 **Banked 2026-09-18 (P4b session). Measured, not inferred.**
 
 `src/lib/portfolioImport/buildImportPlan.js` decides whether an existing policy counts
@@ -7075,6 +7109,34 @@ nobody has enumerated yet — the field is written for provenance, and something
 ---
 
 ## No written policy records which import run wrote it
+
+**PARTLY RESOLVED 2026-09-19 (P4d).** The stamps and the run record exist:
+
+- `tenants/{t}/users/{uid}/importRuns/{runId}` — one document per run, opened
+  BEFORE any policy is touched so a crashed run is still discoverable and still
+  undoable, closed afterwards with the counts its WRITER committed. The run
+  document records `countsSource` so a reader never has to guess which numbers
+  were measured and which came from the plan.
+- `firstImportRunId` on every created policy, set once. `lastImportRunId` on
+  every policy a run writes. An update moves the second and never the first.
+- `undoLastPortfolioImport` reads the run record first and reconstructs from
+  history only when the agent has no runs, naming the path in every response and
+  every refusal.
+
+**STILL OPEN — the backfill has not been run.** The 229 policies already live in
+`tenants/tatillife_south/policies` were written before any of this existed, so
+they carry no run id and still take the history path.
+`functions/scripts/stamp-import-run.cjs` writes one synthetic run for a given
+export date and stamps them; it is dry-run by default, refuses a date that
+matches nothing, leaves already-stamped policies alone, and re-reads afterwards
+to verify rather than trusting its own counter. Whether to run it is the
+operator's call.
+
+The synthetic run is marked `synthetic: true` with `counts: null`, because a run
+reconstructed from the ledger after the fact is not the same claim as one
+measured by its writer — some of those policies may have been edited by a human
+since. Keeping the two kinds distinguishable is the point.
+
 
 **Banked 2026-09-18 (P4b ruling). Operator decision: NOT in P4b.**
 

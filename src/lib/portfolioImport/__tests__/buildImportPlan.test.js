@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 
-import { buildImportPlan, IMPORT_OWNED_FIELDS, IMPORT_ADDED_FIELDS_NOTE } from '../buildImportPlan';
+import {
+  buildImportPlan,
+  IMPORT_OWNED_FIELDS,
+  IMPORT_ADDED_FIELDS_NOTE,
+  PROVENANCE_ONLY_FIELDS,
+} from '../buildImportPlan';
 
 /** SYNTHETIC docs. No real client data in this repo. */
 
@@ -301,5 +306,95 @@ describe('buildImportPlan — immutability', () => {
     const snapshot = JSON.stringify(before);
     buildImportPlan([parsed({ policyNumber: 'IMM0001', proposedAPI: 2 })], { ...OPTS, existingDocs: [before] });
     expect(JSON.stringify(before)).toBe(snapshot);
+  });
+});
+
+describe('PROVENANCE_ONLY_FIELDS — the unchanged rule (P4d ruling 3)', () => {
+  it('is the one place the rule is written, and lists every provenance field', () => {
+    expect([...PROVENANCE_ONLY_FIELDS].sort()).toEqual(
+      ['exportDate', 'importSource', 'importedAt', 'lastImportRunId'],
+    );
+  });
+
+  it('never lists firstImportRunId — it is written once and no update may move it', () => {
+    expect(PROVENANCE_ONLY_FIELDS).not.toContain('firstImportRunId');
+    expect(IMPORT_OWNED_FIELDS).not.toContain('firstImportRunId');
+  });
+
+  it('a NEWER export that changed no policy fact produces zero updates', () => {
+    // THE REGRESSION THIS FILE EXISTS FOR. Before P4d the filter excluded
+    // `importedAt` and `importSource` while its comment named `importedAt` and
+    // `exportDate` — so `exportDate`, which moves on EVERY policy whenever a
+    // newer export is imported, counted as a real change. Measured then:
+    // `updates 3 | skips 0` with changedKeys ["exportDate","importedAt"].
+    const numbers = ['PROV0001', 'PROV0002', 'PROV0003'];
+    const existing = numbers.map((n) => ({
+      id: `doc-${n}`, ...parsed({ policyNumber: n, exportDate: '2026-09-15' }),
+    }));
+    const next = numbers.map((n) => parsed({ policyNumber: n, exportDate: '2026-09-30' }));
+
+    const plan = buildImportPlan(next, {
+      ...OPTS, exportDate: '2026-09-30', importedAt: '2026-09-30', existingDocs: existing,
+    });
+
+    expect(plan.report.creates).toBe(0);
+    expect(plan.report.updates).toBe(0);
+    expect(plan.report.skips).toBe(3);
+  });
+
+  it('an unchanged policy is NOT WRITTEN — it produces no update op at all', () => {
+    // "Unchanged" must mean no write, not "written with only provenance".
+    // A write would move `updatedAt` and `lastImportRunId` on a policy nothing
+    // happened to, and the run record would then claim it was touched.
+    const p = parsed({ policyNumber: 'PROV0004', exportDate: '2026-09-15' });
+    const plan = buildImportPlan(
+      [parsed({ policyNumber: 'PROV0004', exportDate: '2026-09-30' })],
+      { ...OPTS, exportDate: '2026-09-30', importedAt: '2026-09-30', existingDocs: [{ id: 'd', ...p }] },
+    );
+    expect(plan.updates).toEqual([]);
+    expect(plan.skips).toEqual([{ policyNumber: 'PROV0004', id: 'd', reason: 'unchanged' }]);
+  });
+
+  it('a REAL change still carries the provenance along with it', () => {
+    // Provenance alone is not a reason to write. Once there IS a reason, the
+    // provenance must move too, or the policy would claim an older export.
+    const before = parsed({ policyNumber: 'PROV0005', proposedAPI: 1200, exportDate: '2026-09-15' });
+    const after = parsed({ policyNumber: 'PROV0005', proposedAPI: 1500, exportDate: '2026-09-30' });
+
+    const plan = buildImportPlan([after], {
+      ...OPTS, exportDate: '2026-09-30', importedAt: '2026-09-30',
+      // `importSource` is stamped by the importer, so a ledger doc that predates
+      // it gains the field here. That is a real addition, not provenance drift.
+      existingDocs: [{ id: 'd', ...before, importSource: 'oipa_import' }],
+    });
+
+    expect(plan.report.updates).toBe(1);
+    expect(plan.updates[0].changedKeys).toEqual(['exportDate', 'importedAt', 'proposedAPI']);
+    expect(plan.updates[0].changed.exportDate).toBe('2026-09-30');
+  });
+
+  it('one changed policy among many leaves the rest unchanged', () => {
+    const numbers = ['PROV0010', 'PROV0011', 'PROV0012'];
+    const existing = numbers.map((n) => ({
+      id: `doc-${n}`, ...parsed({ policyNumber: n, proposedAPI: 1200, exportDate: '2026-09-15' }),
+    }));
+    const next = numbers.map((n, i) => parsed({
+      policyNumber: n, proposedAPI: i === 0 ? 1500 : 1200, exportDate: '2026-09-30',
+    }));
+
+    const plan = buildImportPlan(next, {
+      ...OPTS, exportDate: '2026-09-30', importedAt: '2026-09-30', existingDocs: existing,
+    });
+
+    expect(plan.report.creates).toBe(0);
+    expect(plan.report.updates).toBe(1);
+    expect(plan.report.skips).toBe(2);
+    expect(plan.updates[0].policyNumber).toBe('PROV0010');
+  });
+
+  it('documents the two run-id fields it adds', () => {
+    expect(Object.keys(IMPORT_ADDED_FIELDS_NOTE)).toEqual(
+      expect.arrayContaining(['firstImportRunId', 'lastImportRunId']),
+    );
   });
 });

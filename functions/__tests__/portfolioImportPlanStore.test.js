@@ -74,14 +74,27 @@ describe('planStore', () => {
       .toBe('deadline-exceeded');
   });
 
-  it('accepts a plan at exactly 15 minutes', async () => {
+  it('accepts a plan at exactly 15 minutes, and refuses it one millisecond later', async () => {
     // The boundary is stated as "after 15 minutes", so 15:00 is still valid. An
     // off-by-one here shows up as an agent who reviewed carefully being told to
     // start again.
+    //
+    // `now` is derived from the STORED `createdAtMs`, never from a fresh
+    // `Date.now()`. Re-reading the clock made this test flaky: `savePlan` stamps
+    // the document, the test then read the clock again, and a single millisecond
+    // of drift between the two turned "exactly the TTL" into "the TTL plus one"
+    // and the plan came back expired. Caught at roughly 1 run in 8.
     const db = createFakeDb();
     const planId = await save(db);
-    const loaded = await load(db, { planId, now: Date.now() + PLAN_TTL_MS });
+    const { createdAtMs } = db._docs.get(`tenants/${TENANT}/users/${UID}/importPlans/${planId}`);
+
+    const loaded = await load(db, { planId, now: createdAtMs + PLAN_TTL_MS });
     expect(loaded.plan).toBeDefined();
+
+    // The other side of the same boundary, so a change that widens the window
+    // cannot pass by making both assertions true.
+    expect(await code(() => load(db, { planId, now: createdAtMs + PLAN_TTL_MS + 1 })))
+      .toBe('deadline-exceeded');
   });
 
   it('refuses a plan that was already applied', async () => {

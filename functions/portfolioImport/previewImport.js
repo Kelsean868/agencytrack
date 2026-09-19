@@ -150,7 +150,11 @@ async function handler(data, context) {
     exportDate,
     fileName: typeof data.fileName === 'string' ? data.fileName.slice(0, 200) : null,
     plan,
-    parseReport,
+    // `skippedNotYours` is decided HERE, not by the parser — the parser has no
+    // notion of who is calling. It is folded into the stored report so the run
+    // record `applyImport` writes can state it without re-deriving it from a
+    // file the browser would have to send twice. (P4d ruling 1.)
+    parseReport: { ...parseReport, skippedNotYours, skippedNotYoursNumbers },
   });
 
   return {
