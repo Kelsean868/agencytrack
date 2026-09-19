@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   isConfirmed,
+  needsManagerConfirmation,
   policyRole,
   statusToken,
   policyToken,
@@ -66,6 +67,48 @@ describe('policyStatusTokens', () => {
     it('unconfirmed pill uses the canonical status label', () => {
       expect(policyPillLabel({ status: 'submitted' })).toBe('Submitted');
       expect(policyPillLabel({ status: 'rated' })).toBe('Rated');
+    });
+  });
+
+  describe('needsManagerConfirmation', () => {
+    it('is FALSE when the status came from the OIPA export', () => {
+      // Head office is the authority for that status; no manager step exists
+      // on that path, so nothing is awaiting one.
+      expect(needsManagerConfirmation({ status: 'settled', statusSource: 'oipa_import' })).toBe(false);
+    });
+
+    it('is TRUE when a person set the status', () => {
+      expect(needsManagerConfirmation({ status: 'settled', statusSource: 'agent' })).toBe(true);
+      expect(needsManagerConfirmation({ status: 'settled', statusSource: 'manager' })).toBe(true);
+    });
+
+    it('is TRUE when there is no statusSource at all', () => {
+      // Every policy written before status provenance existed. Defaulting these
+      // to "no manager needed" would silence the hint for the whole ledger.
+      expect(needsManagerConfirmation({ status: 'settled' })).toBe(true);
+      expect(needsManagerConfirmation({ status: 'settled', statusSource: null })).toBe(true);
+      expect(needsManagerConfirmation(null)).toBe(true);
+      expect(needsManagerConfirmation(undefined)).toBe(true);
+    });
+
+    it('reads statusSource, NOT importSource', () => {
+      // A policy that arrived by import but whose status a person later changed
+      // still needs the manager. `importSource` records how the document
+      // arrived; only `statusSource` records who set the status.
+      expect(needsManagerConfirmation({
+        status: 'settled', importSource: 'oipa_import', statusSource: 'agent',
+      })).toBe(true);
+      expect(needsManagerConfirmation({
+        status: 'settled', importSource: 'oipa_import',
+      })).toBe(true);
+    });
+
+    it('does not make an imported policy read as CONFIRMED', () => {
+      // The gold `confirmed` role would claim a manager signed it off. Nobody did.
+      const imported = { status: 'settled', statusSource: 'oipa_import', confirmedAt: null };
+      expect(needsManagerConfirmation(imported)).toBe(false);
+      expect(isConfirmed(imported)).toBe(false);
+      expect(policyRole(imported)).toBe('settled');
     });
   });
 });

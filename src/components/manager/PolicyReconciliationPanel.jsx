@@ -6,7 +6,7 @@ import { getPoliciesForManager, confirmPolicy, lapsePolicy } from '../../service
 import { getTenantUsers } from '../../services/managerService';
 import { parseDateOnlyTT } from '../../utils/dateInputs';
 import { formatCurrency, formatCompactTTD } from '../../utils/formatters';
-import { statusToken } from '../../lib/policyStatusTokens';
+import { statusToken, needsManagerConfirmation } from '../../lib/policyStatusTokens';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -172,7 +172,13 @@ export default function PolicyReconciliationPanel() {
 
   // ── Derivations (client-side, existing data only) ──
   const periodSettled = allPoliciesRaw.filter((p) => p.status === 'settled' && inPeriod(p.dateIssued, selectedYear, selectedMonth));
-  const toReconcile = periodSettled.filter((p) => !p.confirmedAt);
+  // `!confirmedAt` alone put all 117 imported settled policies in this worklist:
+  // the import never sets a confirmation, because head office IS the authority
+  // for those statuses and no manager step exists on that path. `flaggedSet` and
+  // `confirmedClean` both already require `confirmedAt`, so neither can contain
+  // an imported policy and neither needs this filter. `pendingValue` follows
+  // `toReconcile` and is corrected by it.
+  const toReconcile = periodSettled.filter((p) => !p.confirmedAt && needsManagerConfirmation(p));
   const flaggedSet  = periodSettled.filter((p) => p.confirmedAt && p.hasDiscrepancy);
   const confirmedClean = periodSettled.filter((p) => p.confirmedAt && !p.hasDiscrepancy);
   // Pending reconciliation = Σ ledger settledAPI over the UNCONFIRMED queue (the
