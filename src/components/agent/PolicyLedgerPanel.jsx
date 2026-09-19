@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Loader2, AlertCircle, ArrowLeft, Info, Search } from 'lucide-react';
+import { Plus, Upload, Loader2, AlertCircle, ArrowLeft, Info, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PROSPECTING_SOURCES } from '../../services/prospectInfoService';
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../../utils/prospectingConstants';
@@ -12,6 +12,10 @@ import PipelineStrip from './policyLedger/PipelineStrip';
 import PolicyCard from './policyLedger/PolicyCard';
 import PolicyDrillDrawer from './policyLedger/PolicyDrillDrawer';
 import CampaignLensPanel from './policyLedger/CampaignLensPanel';
+import ImportPortfolioModal from './policyLedger/portfolioImport/ImportPortfolioModal';
+
+// Roles allowed to import an OIPA portfolio export into their own ledger.
+const IMPORT_PORTFOLIO_ROLES = new Set(['agent', 'unit_manager', 'branch_manager']);
 
 const FREQ_MULT = { A: 1, S: 2, Q: 4, M: 12 };
 const FREQ_LABELS = { A: 'Annual', S: 'Semi-Annual', Q: 'Quarterly', M: 'Monthly' };
@@ -87,7 +91,7 @@ const inputCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm t
 const selectCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm text-ink w-full focus:outline-none focus:ring-2 focus:ring-primary/40';
 
 export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, initialFilter }) {
-  const { user, userProfile, tenantId } = useAuth();
+  const { user, userProfile, tenantId, role } = useAuth();
   // Computed fresh per render so overnight-open sessions always show the real today.
   const today = getTodayTT();
 
@@ -118,6 +122,9 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
   const [drawerPolicy, setDrawerPolicy] = useState(null);
   const [transitioning, setTransitioning] = useState(false);
   const [transitionError, setTransitionError] = useState(null);
+
+  // ── Portfolio import (P4c) ──
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const loadLedger = useCallback(() => {
     if (!tenantId || !user?.uid) return;
@@ -263,14 +270,25 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
     return (
       <>
       <div className="flex flex-col gap-4 stagger" data-testid="policy-ledger-surface">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-ink">Policy Ledger</h2>
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 h-11 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors min-w-[44px]"
-          >
-            <Plus size={16} /> New Policy
-          </button>
+          <div className="flex items-center gap-2">
+            {IMPORT_PORTFOLIO_ROLES.has(role) && (
+              <button
+                onClick={() => setImportModalOpen(true)}
+                className="flex items-center gap-2 h-11 px-4 rounded-lg border border-border text-sm font-semibold text-ink hover:bg-surface-muted transition-colors min-w-[44px]"
+                data-testid="import-portfolio-button"
+              >
+                <Upload size={16} /> Import portfolio
+              </button>
+            )}
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-2 h-11 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors min-w-[44px]"
+            >
+              <Plus size={16} /> New Policy
+            </button>
+          </div>
         </div>
 
         {loading && (
@@ -394,6 +412,14 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
             onTransition={handleTransition}
             transitioning={transitioning}
             transitionError={transitionError}
+          />
+        )}
+
+        {/* Portfolio import modal — same reason as the drill drawer above */}
+        {importModalOpen && (
+          <ImportPortfolioModal
+            onClose={() => setImportModalOpen(false)}
+            onImported={loadLedger}
           />
         )}
       </>
