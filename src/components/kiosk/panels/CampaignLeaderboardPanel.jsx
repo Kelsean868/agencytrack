@@ -2,8 +2,9 @@ import React, { useMemo } from 'react';
 import {
   computeStandings,
   getDaysRemaining,
-  PERSISTENCY_GATE_BANDS,
-  GATE_BAND_RANGE_LABELS,
+  gateBands,
+  gateBandRangeLabels,
+  normalizeGate,
 } from '../../../utils/campaignEngine';
 import { ttdK } from '../../../lib/kiosk/kioskFormat';
 import Avatar from '../Avatar';
@@ -111,12 +112,18 @@ function TailRow({ campaign, standing, maxMetric }) {
   );
 }
 
-function GateLegend() {
+// Four rows for a banded campaign, two for a binary one — resolved from the
+// campaign's own gate, never from the module constant, so the kiosk cannot
+// advertise a ladder the standings do not grade on.
+function GateLegend({ campaign }) {
+  const gate = normalizeGate(campaign);
+  const rows = gateBands(gate);
+  const labels = gateBandRangeLabels(gate);
   return (
     <div className="flex gap-2">
-      {PERSISTENCY_GATE_BANDS.map((b, i) => (
+      {rows.map((b, i) => (
         <div key={b.min} className="flex-1 rounded-lg px-2.5 py-2 bg-presentation-gold/10 border border-presentation-border">
-          <div className="text-[0.6rem] font-mono font-bold text-presentation-muted">{GATE_BAND_RANGE_LABELS[i]}</div>
+          <div className="text-[0.6rem] font-mono font-bold text-presentation-muted">{labels[i]}</div>
           <div className="text-sm font-display font-bold text-presentation-text">{b.label}</div>
         </div>
       ))}
@@ -257,9 +264,11 @@ export default function CampaignLeaderboardPanel({ campaign, allSubmissions = []
               <div className="kiosk-glass rounded-2xl px-5 py-5">
                 <p className="text-xs font-mono font-bold uppercase tracking-[0.2em] text-presentation-gold">★ Persistency gate</p>
                 <p className="mt-2 mb-3 text-xs text-presentation-muted leading-relaxed">
-                  Every payout scales by quality. Projections shown are before the gate.
+                  {normalizeGate(campaign).mode === 'binary'
+                    ? `Quality decides it outright: ${normalizeGate(campaign).threshold}% or better pays in full, below it pays nothing. Projections shown are before the gate.`
+                    : 'Every payout scales by quality. Projections shown are before the gate.'}
                 </p>
-                <GateLegend />
+                <GateLegend campaign={campaign} />
               </div>
             )}
           </div>
