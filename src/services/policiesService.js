@@ -83,6 +83,18 @@ function validate(data) {
   // transition below, and is mirrored in firestore.rules Arm B.
   const proposedAPI = parseFloat(data.proposedAPI);
   if (!(proposedAPI > 0)) throw new Error('proposedAPI must be positive');
+  // R4 — a replacement's credit is the DIFFERENCE between the new API and the
+  // API of the policy it replaced (Rule 4 of the Christmas Campaign document),
+  // so a replacement without that figure cannot be credited at all: the campaign
+  // lens has to abstain and show 'Replaced API not recorded'. Required at create
+  // rather than patched later, because the number is known at the point of sale
+  // and nowhere else. Zero IS a valid answer (nothing was in force); blank is not.
+  if (data.newBusinessType === 'replacement') {
+    const replaced = parseFloat(data.replacedPolicyAPI);
+    if (!Number.isFinite(replaced) || replaced < 0) {
+      throw new Error('replacedPolicyAPI is required for a replacement');
+    }
+  }
 }
 
 export async function createPolicy(tenantId, agentProfile, data) {
@@ -121,7 +133,12 @@ export async function createPolicy(tenantId, agentProfile, data) {
     dateSubmitted: null,
     notes: data.notes?.trim() || null,
     isSelfOrFamily: Boolean(data.isSelfOrFamily),
-    replacedPolicyAPI: data.newBusinessType === 'replacement' ? (parseFloat(data.replacedPolicyAPI) || null) : null,
+    // `parseFloat(x) || null` used to live here and turned a legitimate ZERO
+    // into null — indistinguishable from "not recorded", which makes the
+    // campaign lens abstain on a policy that should credit its full new API.
+    // validate() now guarantees a finite non-negative number for a replacement,
+    // so the coercion is exact.
+    replacedPolicyAPI: data.newBusinessType === 'replacement' ? parseFloat(data.replacedPolicyAPI) : null,
     sourceOfProspect: data.sourceOfProspect,
     socialPlatform:   data.sourceOfProspect === 'social-media' ? (data.socialPlatform ?? null) : null,
     cashWithApp,

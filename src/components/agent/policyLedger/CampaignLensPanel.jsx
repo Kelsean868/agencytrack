@@ -35,8 +35,13 @@ const BADGE = {
 export function ContributionBadge({ contribution }) {
   if (!contribution) return null;
   const cfg = BADGE[contribution.state] ?? BADGE.excluded;
+  // A counting policy shows BOTH halves of its credit, because under Rule 7
+  // they come apart: Platinum Edge is 1 app and no API, a replacement is API
+  // difference and no app. A badge showing only money would report a Platinum
+  // Edge policy as worth nothing.
+  const apps = contribution.apps ?? 0;
   const label = contribution.state === 'counts'
-    ? `COUNTS · ${formatCurrency(contribution.value)}`
+    ? `COUNTS · ${apps === 1 ? '1 app' : `${apps} apps`} · ${formatCurrency(contribution.value)}`
     : contribution.state.toUpperCase();
   return (
     <span
@@ -47,6 +52,37 @@ export function ContributionBadge({ contribution }) {
       <span aria-hidden="true">{cfg.icon}</span>
       {label}
     </span>
+  );
+}
+
+/**
+ * One progress row. Apps and API each get one, side by side and equally
+ * weighted, because on this campaign APPLICATIONS are the binding constraint:
+ * the operator's three counted policies average TTD 24,649 of API each where
+ * Champion needs an average of 7,857 across 35 applications. A card that led
+ * with an API bar alone would point the advisor at the wrong number.
+ */
+function ProgressRow({ label, current, target, format, testId }) {
+  const pct = target ? Math.min(100, Math.round((current / target) * 100)) : null;
+  const remaining = target != null ? Math.max(0, target - current) : null;
+  return (
+    <div className="flex-1 min-w-[150px]" data-testid={testId}>
+      <div className="flex items-baseline justify-between gap-2 flex-wrap">
+        <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">{label}</p>
+        <p className="text-sm font-bold text-ink tabular-nums">
+          {format(current)}
+          {target != null && <span className="text-ink-muted font-normal"> of {format(target)}</span>}
+        </p>
+      </div>
+      <div className="h-2 rounded-full bg-surface-muted overflow-hidden mt-1.5">
+        <div className="h-full bg-gold rounded-full" style={{ width: `${pct ?? 0}%` }} />
+      </div>
+      <p className="text-[10px] font-mono text-ink-muted mt-1 tabular-nums">
+        {target == null
+          ? 'target pending'
+          : remaining === 0 ? 'target reached' : `${format(remaining)} to go`}
+      </p>
+    </div>
   );
 }
 
@@ -69,28 +105,63 @@ function LensStrip({ lens, onExportProof, canExport }) {
         </p>
       </div>
 
-      <div className="flex items-baseline gap-4 flex-wrap">
-        <div className="shrink-0">
-          <p className="text-4xl font-bold text-gold-ink tabular-nums leading-none">{lens.progressPct}%</p>
-          <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted mt-1">
-            {lens.targetDerived ? 'of goal' : 'settled / tracked'}
-          </p>
-        </div>
-        <div className="flex-1 min-w-[160px]">
-          <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
-            <div
-              className="h-full bg-gold rounded-full"
-              style={{ width: `${lens.progressPct}%` }}
+      {lens.creditTableApplied ? (
+        <>
+          <div className="flex items-start gap-4 flex-wrap">
+            <ProgressRow
+              label="Applications"
+              current={lens.apps.current}
+              target={lens.apps.target}
+              format={(n) => String(n)}
+              testId="campaign-lens-apps"
+            />
+            <ProgressRow
+              label="API"
+              current={lens.api.current}
+              target={lens.api.target}
+              format={formatCurrency}
+              testId="campaign-lens-api"
             />
           </div>
-          <div className="flex justify-between gap-2 flex-wrap mt-2 text-[10px] font-mono text-ink-muted">
-            <span className="tabular-nums">
-              {lens.counts.covered}/{lens.counts.tracked} settled · {targetLabel}
-            </span>
+          <div className="flex justify-between gap-2 flex-wrap text-[10px] font-mono text-ink-muted">
+            <span className="tabular-nums">{lens.counts.covered}/{lens.counts.tracked} settled</span>
             {lens.endsIn && <span className="text-gold-ink font-bold">{lens.endsIn}</span>}
           </div>
+        </>
+      ) : (
+        <div className="flex items-baseline gap-4 flex-wrap">
+          <div className="shrink-0">
+            <p className="text-4xl font-bold text-gold-ink tabular-nums leading-none">{lens.progressPct}%</p>
+            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted mt-1">
+              {lens.targetDerived ? 'of goal' : 'settled / tracked'}
+            </p>
+          </div>
+          <div className="flex-1 min-w-[160px]">
+            <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
+              <div
+                className="h-full bg-gold rounded-full"
+                style={{ width: `${lens.progressPct}%` }}
+              />
+            </div>
+            <div className="flex justify-between gap-2 flex-wrap mt-2 text-[10px] font-mono text-ink-muted">
+              <span className="tabular-nums">
+                {lens.counts.covered}/{lens.counts.tracked} settled · {targetLabel}
+              </span>
+              {lens.endsIn && <span className="text-gold-ink font-bold">{lens.endsIn}</span>}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* C-D11 — the as-at stamp. With no organic policies in the ledger, this
+          readout is only ever as current as the last portfolio export. Saying so
+          is the difference between a number and a number you can act on. */}
+      {lens.exportDate && (
+        <p className="text-[11px] text-ink-muted" data-testid="campaign-lens-as-at">
+          As at {lens.exportDate}, from the portfolio import. Business issued after
+          that date is not included yet.
+        </p>
+      )}
 
       <div className="flex items-center gap-2 flex-wrap">
         <button
@@ -291,6 +362,12 @@ export default function CampaignLensPanel({ policies }) {
                     {p.planName || p.policyClass || '—'}
                     {p.policyNumber ? ` · #${p.policyNumber}` : ''}
                   </p>
+                  {/* The reason is shown, not just tooltipped. "Excluded" with
+                      no stated cause is the shape that makes an advisor
+                      distrust the whole surface. */}
+                  {lens.contributions[id]?.reason && (
+                    <p className="text-[11px] text-ink-muted mt-0.5">{lens.contributions[id].reason}</p>
+                  )}
                 </div>
                 <ContributionBadge contribution={lens.contributions[id]} />
               </div>

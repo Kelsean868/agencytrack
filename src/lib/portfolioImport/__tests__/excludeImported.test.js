@@ -120,11 +120,14 @@ describe('countImported', () => {
  * its header — a false positive that cost a real diagnosis on the first run.
  *
  * WHAT THIS GUARD DOES *NOT* CATCH: a file that fetches unfiltered and hands the
- * array to an aggregating child. `PolicyLedgerPanel` is exactly that shape — it
- * keeps the full list for the ledger and filters only for `CampaignLensPanel`.
- * The guard sees the reference and passes; it cannot tell which consumer got
- * which array. That gap is why the ruling-5e table is reviewed by hand and not
- * merely asserted here.
+ * array to an aggregating child. It sees the reference and passes; it cannot
+ * tell which consumer got which array. That gap is why the ruling-5e table is
+ * reviewed by hand and not merely asserted here.
+ *
+ * `PolicyLedgerPanel` USED to be exactly that shape — full list for the ledger,
+ * filtered array for `CampaignLensPanel`. C-D10 moved the campaign lens off the
+ * origin test and onto the settlement-date test, so that file now fetches
+ * unfiltered throughout and has joined ALLOW_UNFILTERED below with its reason.
  */
 describe('call-site guard — every getOwnPolicies caller references excludeImported', () => {
   const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -181,14 +184,18 @@ describe('call-site guard — every getOwnPolicies caller references excludeImpo
    * list is deliberately awkward to add to: an entry is a claim that a surface
    * NEEDS the imported historical book, and there are only two such surfaces.
    *
-   * Note `PolicyLedgerPanel` is NOT on it. It fetches unfiltered for the ledger
-   * LIST but filters for `CampaignLensPanel`, so it does reference the helper --
-   * which is why the guard passes it and why the guard alone cannot prove that
-   * file is correct. See the caveat above.
+   * `PolicyLedgerPanel` joined this list under C-D10. Its ledger LIST always
+   * showed every doc; what changed is that its campaign lens now decides
+   * eligibility by `dateIssued` rather than by `importSource`. The live ledger
+   * forced it: 229 policy docs, all imported, none organic — so the origin
+   * filter hid 100% of the operator's campaign production and the lens rendered
+   * TTD 0 against a real 3 apps / TTD 73,946.28.
    */
   const ALLOW_UNFILTERED = new Map([
     ['src/components/agent/PersistencyTab.jsx',
       'persistency is the one reader that MUST see imported docs — they are its entire input'],
+    ['src/components/agent/PolicyLedgerPanel.jsx',
+      'the campaign lens tests dateIssued, not importSource (C-D10); the ledger list always showed every doc'],
   ]);
 
   it.each(callers.map((c) => [c.rel, c.code]))('%s references excludeImported, or is allow-listed', (rel, code) => {
@@ -203,8 +210,15 @@ describe('call-site guard — every getOwnPolicies caller references excludeImpo
     }
   });
 
-  it('allow-lists exactly the exceptions ruling 5e names', () => {
-    expect([...ALLOW_UNFILTERED.keys()]).toEqual(['src/components/agent/PersistencyTab.jsx']);
+  // Deliberately a hard pin: adding a file here is a claim that a surface NEEDS
+  // the imported historical book, and each entry should cost a conversation.
+  // PersistencyTab is ruling 5e's own exception; PolicyLedgerPanel joined under
+  // C-D10, when the campaign lens moved from the origin test to the date test.
+  it('allow-lists exactly the two surfaces that must fetch unfiltered', () => {
+    expect([...ALLOW_UNFILTERED.keys()]).toEqual([
+      'src/components/agent/PersistencyTab.jsx',
+      'src/components/agent/PolicyLedgerPanel.jsx',
+    ]);
   });
 
   it('does not count a mere mention of getOwnPolicies in a comment', () => {
