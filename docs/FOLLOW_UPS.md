@@ -7263,3 +7263,27 @@ live under `docs/` and nothing in `src/` references them.
 ### Cloud Functions runtime — nodejs22 (1st gen)
 
 - Cloud Functions moved to nodejs22 (1st gen). nodejs20 was decommissioned 2026-10-30. Next runtime review before nodejs22 EOL. gen-2 migration (needed for nodejs24) is still open.
+
+## `replacedPolicyAPI` is required client-side only - the lens abstain branch is the backstop
+
+**Banked 2026-09-20, campaign C3 / PR #960. Severity: LOW to hold, but the note is load-bearing.**
+
+R4 made `replacedPolicyAPI` required at create when `newBusinessType === 'replacement'`, in `policiesService.validate` and the create form. **`firestore.rules` does not guard the field.** It appears there exactly once - in the policies update arm's `affectedKeys().hasOnly([...])` allow-list at line 397 - with no value guard anywhere, and the create arm at line 367 validates only `sourceOfProspect`, `dateWritten` and `proposedAPI`.
+
+So the requirement is a client-side courtesy, not an invariant. A direct console write, the Admin SDK, a future import path, or any client path that bypasses `validate()` can still produce a settled replacement with no `replacedPolicyAPI`.
+
+**The consequence, which is the reason this is written down:** `creditFor()`'s `replacement` branch returns `api: 0` with the reason `'Replaced API not recorded'` when the field is null. That branch is a **permanent backstop, not legacy-data handling**, and it must not be deleted on the reasoning that "the form requires it now". Deleting it would make an unguarded null credit the full new API as though nothing were replaced - which is Rule 4 inverted, and silently.
+
+**What would change this:** adding a rules value-guard on `replacedPolicyAPI` for replacement creates. That is a rules change, so it is a human-merge plus an operator `firebase deploy --only firestore:rules`, and it should be weighed against the fact that historical replacement records legitimately carry `null` and must stay readable.
+
+**Falsification (Rule 23):** overturned if a rules arm is added that makes a `replacement` create impossible without a positive `replacedPolicyAPI` AND existing null-carrying records are migrated or grandfathered. Until both are true, keep the abstain branch.
+
+## Campaign lens reads the ladder ceiling, not the level in reach
+
+**Banked 2026-09-20, campaign C3 / PR #960. Severity: LOW. Owner: slice C2, not a standalone fix.**
+
+`derivePolicyLens` takes BOTH `apiTarget` and `appsTarget` from the campaign's **top** tier (Christmas 2026: Pioneer, 825,000 API / 35 apps). Pairing them is right - C3 fixed a real inconsistency where apps came from the entry tier while API came from the top - but the ceiling is the wrong denominator for an agent-facing progress figure.
+
+Concretely, on live data today: the card reads **TTD 73,946 of 825,000**, about 9%, when the operator is **27% of the way to Champion** (275,000) - the lowest level, and the one that decides whether he travels at all. Every tier requires 35 apps, so the apps figure is unaffected; the API ceiling is the whole issue.
+
+**Do not fix this in isolation.** Slice C2 adds the retreat readout and the distance-to-next-room line, which is exactly the surface that has to answer "which level am I on for, and what is the next one". The fix belongs there: show the level reached and the next level up, never the ladder's ceiling. Fixing it separately would mean touching the same component twice.
