@@ -8,18 +8,73 @@
  * surfaces are server-rendered from the REAL components with the REAL built
  * stylesheet, given Table 1 and the operator's live figures as props.
  *
- * Nothing is fetched and nothing is written. No Firebase client is constructed.
+ * THE AGENT CARD IS PHOTOGRAPHED ON REAL PRODUCTION DATA. It is fed the
+ * operator's actual policy docs, read-only via the Admin SDK, and derives its
+ * own figures through the same derivePolicyLens call the app makes. Nothing is
+ * hand-totalled into it. Run without --tenant/--agent and that shot is SKIPPED
+ * rather than faked — a photograph of invented input is not evidence.
  *
- *   npm run build            # produces dist/assets/index-*.css
- *   node scripts/verification/c2-screenshots.mjs
+ * The builder, the ladder and the two hypothetical card states are explicitly
+ * CONSTRUCTED: they show shapes the live account does not currently have (a
+ * populated ladder, a cleared level, a failed gate). They are labelled as such
+ * in the PR body and prove rendering, not figures.
  *
- * Output: verification/c2/*.png (gitignored, like every other capture).
+ * Nothing is written. Read-only `.get()` only; credentials ambient.
+ *
+ *   npm run build
+ *   node scripts/verification/c2-screenshots.mjs  *     --tenant tatillife_south --agent <uid>
+ *
+ * Output: verification/c2/*.png
  */
 import { mkdirSync, writeFileSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
 import { chromium } from 'playwright';
 import * as esbuild from 'esbuild';
+
+const require = createRequire(import.meta.url);
+
+function arg(name) {
+  const i = process.argv.indexOf(name);
+  return i >= 0 ? process.argv[i + 1] : null;
+}
+const TENANT = arg('--tenant');
+const AGENT = arg('--agent');
+
+/** Firestore Timestamp -> the plain 'YYYY-MM-DD' string the lens reads. */
+function plain(v) {
+  if (v == null) return null;
+  if (typeof v === 'string') return v.slice(0, 10);
+  const d = typeof v.toDate === 'function' ? v.toDate() : new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// The operator's REAL policy docs, unfiltered, exactly as HomeV2 hands them to
+// CampaignCard. Read-only: one .get(), no write of any kind.
+let livePolicies = null;
+if (TENANT && AGENT) {
+  const admin = require(path.resolve('functions/node_modules/firebase-admin'));
+  admin.initializeApp();
+  const snap = await admin.firestore()
+    .collection(`tenants/${TENANT}/policies`).where('agentId', '==', AGENT).get();
+  livePolicies = snap.docs.map((d) => {
+    const p = { id: d.id, ...d.data() };
+    return {
+      ...p,
+      dateIssued: plain(p.dateIssued),
+      dateWritten: plain(p.dateWritten),
+      dateSubmitted: plain(p.dateSubmitted),
+      statusDate: plain(p.statusDate),
+      createdAt: null,
+    };
+  });
+  console.error(`live policies for ${AGENT}: ${livePolicies.length}`);
+} else {
+  console.error('WARNING: no --tenant/--agent given. The live agent-card shot is SKIPPED.');
+}
 
 const OUT = 'verification/c2';
 const TMP = path.join(OUT, '.tmp');
@@ -69,9 +124,9 @@ const ENTRY = [
   '  credit: { incPppAppThreshold: 2400 },',
   '};',
   '',
-  "// The operator's live figures, from campaign-lens-reproduces-count.mjs:",
-  '// 3 net apps, TTD 73,946.28 net API.',
-  "const LIVE = [{ agentId: 'op', apiSold: 73946.28, applicationsSold: 3 }];",
+  "// The operator's REAL policy docs, injected below. The card derives its own",
+  '// figures from them through derivePolicyLens — nothing is totalled by hand.',
+  'const LIVE_POLICIES = __LIVE_POLICIES__;',
   '',
   '// A populated ladder needs someone on it, so the reached state is visible.',
   'const LADDER_SUBS = [',
@@ -95,19 +150,30 @@ const ENTRY = [
   "  ladder: e('div', { style: { width: 760 } }, e(CampaignStandingsBlock, {",
   '    campaign: CAMPAIGN, standings, hasPersistency: true,',
   '  })),',
-  "  'agent-card': e('div', { style: { width: 420 } }, e(CampaignCard, {",
-  "    campaign: CAMPAIGN, submissions: LIVE, agentId: 'op', persistency: [],",
-  '  })),',
-  "  'agent-card-dq': e('div', { style: { width: 420 } }, e(CampaignCard, {",
-  "    campaign: CAMPAIGN, submissions: LIVE, agentId: 'op',",
-  "    persistency: [{ monthKey: '2026-12', persistency: 0.86 }],",
-  '  })),',
-  "  'agent-card-champion': e('div', { style: { width: 420 } }, e(CampaignCard, {",
-  "    campaign: CAMPAIGN, agentId: 'op',",
-  "    submissions: [{ agentId: 'op', apiSold: 300000, applicationsSold: 36 }],",
-  "    persistency: [{ monthKey: '2026-12', persistency: 0.93 }],",
-  '  })),',
   '};',
+  '',
+  "// REAL: the operator's own ledger, his own account, no invented input.",
+  'if (LIVE_POLICIES) {',
+  "  shots['agent-card'] = e('div', { style: { width: 420 } }, e(CampaignCard, {",
+  "    campaign: CAMPAIGN, submissions: [], agentId: 'op',",
+  '    persistency: [], policies: LIVE_POLICIES,',
+  '  }));',
+  '}',
+  '',
+  '// CONSTRUCTED: states the live account does not currently have. They prove',
+  '// the rendering of the gate branches, never a figure about anyone real.',
+  "shots['agent-card-dq'] = e('div', { style: { width: 420 } }, e(CampaignCard, {",
+  "  campaign: CAMPAIGN, submissions: [], agentId: 'op',",
+  "  policies: LIVE_POLICIES ?? [], persistency: [{ monthKey: '2026-12', persistency: 0.86 }],",
+  '}));',
+  "shots['agent-card-champion'] = e('div', { style: { width: 420 } }, e(CampaignCard, {",
+  "  campaign: CAMPAIGN, submissions: [], agentId: 'op',",
+  "  persistency: [{ monthKey: '2026-12', persistency: 0.93 }],",
+  '  policies: Array.from({ length: 36 }, (_, i) => ({',
+  "    id: `c${i}`, productLine: 'life', status: 'settled', newBusinessType: 'nb_ordinary',",
+  "    isSelfOrFamily: false, dateIssued: '2026-08-04', proposedAPI: i === 0 ? 300000 : 0,",
+  '  })),',
+  '}));',
   '',
   'export const html = Object.fromEntries(',
   '  Object.entries(shots).map(([k, el]) => [k, renderToStaticMarkup(el)]),',
@@ -115,7 +181,7 @@ const ENTRY = [
 ].join('\n');
 
 const entryFile = path.join(TMP, 'entry.jsx');
-writeFileSync(entryFile, ENTRY);
+writeFileSync(entryFile, ENTRY.replace('__LIVE_POLICIES__', JSON.stringify(livePolicies)));
 
 // src/firebase.js is stubbed exactly as vite.config.js stubs it for tests. The
 // component tree reaches it through campaignService, and importing the real one

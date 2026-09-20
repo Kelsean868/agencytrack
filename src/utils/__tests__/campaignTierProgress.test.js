@@ -166,18 +166,37 @@ describe('C2 — submissionTotals (the shared adder)', () => {
 });
 
 describe('C2 item 7 — the two surfaces cannot drift', () => {
-  // The surfaces read different collections, so their inputs differ. What must
-  // NOT differ is the derivation: given the same pair of figures, both resolve
-  // the same tier, because both call resolveTierProgress.
-  it('the same figures resolve identically however they were obtained', () => {
-    const fromSubmissions = submissionTotals([{ apiSold: 73_946.28, applicationsSold: 3 }]);
-    const fromLedger = { apiTotal: 73_946.28, appsTotal: 3 };
-
-    const a = resolveTierProgress(fromSubmissions.apiTotal, fromSubmissions.appsTotal, TABLE_1);
-    const b = resolveTierProgress(fromLedger.apiTotal, fromLedger.appsTotal, TABLE_1);
-
+  // THE ORIGINAL VERSION OF THIS TEST WAS TOO WEAK, and the weakness hid a real
+  // defect. It fed the SAME pair of figures into the shared helper twice and
+  // asserted they came out equal, which is close to a tautology. What it never
+  // asked was whether the two surfaces are handed the same figures in the first
+  // place.
+  //
+  // They were not. CampaignCard totalled weekly submissions while
+  // CampaignLensPanel totalled the policy ledger, and on the operator's live
+  // account those are 0 / 0 and TTD 73,946.28 / 3. Both rendered a
+  // distance-to-Champion line, from different numbers. Sharing a helper is not
+  // the same as agreeing, and this test asserted the former while the product
+  // failed the latter.
+  //
+  // The fix put CampaignCard on derivePolicyLens — the same CALL, not merely
+  // the same helper — so the equivalent assertion now lives in
+  // policyCampaignLensCredit.test.js against real policy shapes, where it can
+  // actually fail. What remains here is the narrow claim this file can honestly
+  // make about the helper itself.
+  it('is a pure function of its arguments — same figures, same tier objects', () => {
+    const a = resolveTierProgress(73_946.28, 3, TABLE_1);
+    const b = resolveTierProgress(73_946.28, 3, TABLE_1);
     expect(a.tierReached).toBe(b.tierReached);
     expect(a.tierNext).toBe(b.tierNext);
     expect(a.progressTarget).toBe(b.progressTarget);
+  });
+
+  it('DIFFERENT figures resolve to different rungs — the helper is not a constant', () => {
+    // Guards the tautology above: if the helper ignored its arguments, the
+    // pure-function test would still pass and prove nothing.
+    expect(resolveTierProgress(0, 0, TABLE_1).tierReached).toBeNull();
+    expect(resolveTierProgress(300_000, 36, TABLE_1).tierReached.name).toBe('Champion');
+    expect(resolveTierProgress(900_000, 40, TABLE_1).tierReached.name).toBe('Pioneer');
   });
 });

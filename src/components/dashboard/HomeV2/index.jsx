@@ -45,6 +45,10 @@ export default function AgentDashboardHomeV2({
   activeCampaigns,
   campaignsLoading,
   campaignSubs,
+  // Unfiltered — the campaign card tests dateIssued, not importSource (C-D10).
+  // `policies` below stays FILTERED for DeliveryStripCard; these two arrays are
+  // deliberately different views of one fetch, not a duplicate.
+  campaignPolicies,
   agentUid,
   // Tier-3 3.1 — agent's own policies (settled + undelivered → delivery strip)
   policies,
@@ -260,6 +264,7 @@ export default function AgentDashboardHomeV2({
                        down rather than re-fetched, so the retreat readout can
                        state the gate without a new read. */
                     persistency={persistency}
+                    policies={campaignPolicies ?? []}
                   />
                 ))}
               </div>

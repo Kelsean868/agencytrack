@@ -4,13 +4,12 @@ import {
   computeCampaignProgress,
   getDaysRemaining,
   isTieredCampaign,
-  submissionTotals,
-  resolveTierProgress,
   accommodationLabel,
   normalizeGate,
   persistencyPctForGate,
   gateBandFor,
 } from '../../utils/campaignEngine';
+import { derivePolicyLens } from '../../lib/policyCampaignLens';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 
 function DaysPill({ days }) {
@@ -57,12 +56,10 @@ function MetricBar({ label, metric, current, threshold, pct, achieved }) {
 // The gate is stated in the same breath, because Rule 5 removes the ROOM as
 // well as the cash. Below the threshold the card reads "Disqualified — cash and
 // retreat", never a reduced figure: half a room does not exist.
-function RetreatReadout({ campaign, apiTotal, appsTotal, persistencyRecords }) {
-  const tiers = campaign?.tiers;
-  const { tierReached, tierNext, atTop } = useMemo(
-    () => resolveTierProgress(apiTotal, appsTotal, tiers),
-    [apiTotal, appsTotal, tiers],
-  );
+function RetreatReadout({ campaign, lens, persistencyRecords }) {
+  const { tierReached, tierNext, atTop } = lens;
+  const apiTotal = lens.api.current;
+  const appsTotal = lens.apps.current;
 
   const gate = normalizeGate(campaign);
   const gateEnabled = campaign?.persistencyGateEnabled !== false;
@@ -157,17 +154,30 @@ function RankLine({ rank, totalParticipants }) {
   return <p className="text-xs text-ink-muted">{rank}{suffix} of {totalParticipants} participant{totalParticipants !== 1 ? 's' : ''}</p>;
 }
 
-export default function CampaignCard({ campaign, submissions, agentId, persistency = [] }) {
+export default function CampaignCard({ campaign, submissions, agentId, persistency = [], policies = [] }) {
   const { metrics, allAchieved, rank, totalParticipants } = useMemo(
     () => computeCampaignProgress(campaign, submissions, agentId),
     [campaign, submissions, agentId]
   );
 
-  // This agent's own totals, read through the shared adder so this surface and
-  // the standings table cannot drift apart on the same submissions.
-  const { apiTotal, appsTotal } = useMemo(
-    () => submissionTotals((submissions ?? []).filter((s) => (s.agentId ?? s.userId) === agentId)),
-    [submissions, agentId],
+  // THE RETREAT READOUT IS DERIVED FROM THE POLICY LEDGER, NOT FROM WEEKLY
+  // SUBMISSIONS — and it is the SAME call CampaignLensPanel makes, not merely
+  // the same helper.
+  //
+  // This surface first totalled `submissions`. On live data that reads 0 API /
+  // 0 apps for an advisor whose ledger holds TTD 73,946.28 across 3 counted
+  // policies, because his campaign production was imported from OIPA and never
+  // passed through a weekly report. Both surfaces then rendered a
+  // distance-to-Champion statement from different numbers, which is precisely
+  // the failure brief item 7 exists to prevent: an advisor told two things.
+  //
+  // `derivePolicyLens` also applies Rule 7's production-credit table and the
+  // C-D10 settlement window, so a Platinum Edge policy counts as an application
+  // with no API here exactly as it does in the ledger panel. A submissions total
+  // could not express that at all.
+  const lens = useMemo(
+    () => derivePolicyLens(policies, campaign, {}),
+    [policies, campaign],
   );
 
   const days = getDaysRemaining(campaign.endDate);
@@ -196,11 +206,10 @@ export default function CampaignCard({ campaign, submissions, agentId, persisten
       </div>
 
       {/* Retreat readout — cash, room, and the distance to the next room */}
-      {tiered && (
+      {tiered && lens && (
         <RetreatReadout
           campaign={campaign}
-          apiTotal={apiTotal}
-          appsTotal={appsTotal}
+          lens={lens}
           persistencyRecords={persistency}
         />
       )}
