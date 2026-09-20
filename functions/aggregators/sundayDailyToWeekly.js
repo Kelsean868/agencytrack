@@ -20,7 +20,7 @@
  */
 
 const admin = require('firebase-admin');
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
 const { aggregateDailyToWeekly } = require('./dailyToWeekly');
 
 // Tenant id is shared across functions/index.js; aggregator is colocated in

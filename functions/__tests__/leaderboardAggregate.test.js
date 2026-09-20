@@ -56,7 +56,7 @@ jest.mock('firebase-admin', () => ({
 }));
 
 // firebase-functions mock — we only need the .pubsub.schedule.onRun + https.onCall builders
-jest.mock('firebase-functions', () => ({
+jest.mock('firebase-functions/v1', () => ({
   pubsub: {
     schedule: () => ({ timeZone: () => ({ onRun: (fn) => ({ _onRun: fn }) }) }),
   },

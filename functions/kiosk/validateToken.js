@@ -1,5 +1,5 @@
 const admin = require('firebase-admin');
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
 
 // Mirrors validateTokenData in src/lib/kiosk/utils.js — kept inline because
 // Cloud Functions run CJS and cannot import from the frontend src/ tree.

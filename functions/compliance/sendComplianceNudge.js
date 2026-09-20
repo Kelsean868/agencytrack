@@ -36,7 +36,7 @@ const { APP_URL, CONTACT_EMAIL } = require('../lib/config');
 // ─────────────────────────────────────────────────────────────────────────────
 
 const admin = require('firebase-admin');
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
 const { buildMailDoc } = require('../utils/email');
 
 const NUDGE_ACTOR_ROLES = new Set([

@@ -1,5 +1,5 @@
 const admin = require('firebase-admin');
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
 
 // Owner-only, matching createCallSource's self-service model and the rules'
 // owner-scoped read arm. No role gate: a manager has no more claim on an

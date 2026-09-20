@@ -8,7 +8,7 @@ jest.mock('firebase-admin', () => ({
 
 // Comprehensive firebase-functions stub — covers all export styles in index.js.
 // The onWrite path wraps the handler so onSubmissionWrite.run === the async handler.
-jest.mock('firebase-functions', () => {
+jest.mock('firebase-functions/v1', () => {
   const wrap = jest.fn((h) => ({ run: h }));
   const stub = jest.fn(() => ({ run: jest.fn() }));
   class HttpsError extends Error {

@@ -13,7 +13,7 @@
  * makes a probe for that hole visible in the logs instead of silent.
  */
 
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
 
 /**
  * Body fields that would, if honoured, let a caller act as another agent or in

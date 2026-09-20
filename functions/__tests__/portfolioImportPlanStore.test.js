@@ -9,7 +9,7 @@
  * because they need different actions from the person reading them.
  */
 
-jest.mock('firebase-functions', () => require('../testHelpers/fakeFirestore').createFakeFunctions());
+jest.mock('firebase-functions/v1', () => require('../testHelpers/fakeFirestore').createFakeFunctions());
 
 const { createFakeDb } = require('../testHelpers/fakeFirestore');
 const {

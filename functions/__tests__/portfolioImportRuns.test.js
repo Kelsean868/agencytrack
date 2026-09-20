@@ -9,7 +9,7 @@
  * — rather than from what it did.
  */
 
-jest.mock('firebase-functions', () => require('../testHelpers/fakeFirestore').createFakeFunctions());
+jest.mock('firebase-functions/v1', () => require('../testHelpers/fakeFirestore').createFakeFunctions());
 jest.mock('firebase-admin', () => ({
   firestore: Object.assign(() => globalThis.__fakeDb, {
     FieldValue: { serverTimestamp: () => '<ts>' },

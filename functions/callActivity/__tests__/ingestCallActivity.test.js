@@ -38,7 +38,7 @@ jest.mock('firebase-admin', () => ({
   ),
 }));
 
-jest.mock('firebase-functions', () => {
+jest.mock('firebase-functions/v1', () => {
   class HttpsError extends Error {
     constructor(code, message) {
       super(message);

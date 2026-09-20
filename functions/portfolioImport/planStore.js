@@ -18,7 +18,7 @@
  * 2026). The Admin SDK bypasses rules, so the functions still reach it.
  */
 
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
 
 /** Ruling 3. A plan older than this is refused and must be re-previewed. */
 const PLAN_TTL_MS = 15 * 60 * 1000;

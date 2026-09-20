@@ -1,7 +1,7 @@
 'use strict';
 
 const admin     = require('firebase-admin');
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Track K · K10c — onFinancingEscalationCreate (BM bell ping)
