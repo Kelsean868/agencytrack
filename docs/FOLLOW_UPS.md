@@ -7202,7 +7202,7 @@ action on a policy head office has already lapsed.
 Two reasons, and the second is the real one:
 
 1. `inPeriod(p.dateIssued, ...)` bounds the blast radius. Kyron's imported book spans
-   years, so only the handful issued in the selected month appear � not the 117 that
+   years, so only the handful issued in the selected month appear — not the 117 that
    flooded `toReconcile`.
 2. The right answer is not obvious. `toReconcile` is a worklist: an imported policy in
    it is plainly wrong, because nobody is waiting on the manager. The Lapse tab is
@@ -7220,7 +7220,7 @@ filter.
 ### Falsification
 
 Overturned if a second import source is added whose statuses are NOT authoritative for
-lapses � then `needsManagerConfirmation` is too blunt for this reader regardless of the
+lapses — then `needsManagerConfirmation` is too blunt for this reader regardless of the
 answer above, and the Lapse tab needs its own predicate.
 
 
@@ -7245,7 +7245,7 @@ gameplan-loop-handoff/mockups/app-policy-v2.jsx
 
 ### Why this is LOW and not zero
 
-Nothing renders from these files � they are a handoff record, not source. But they are what
+Nothing renders from these files — they are a handoff record, not source. But they are what
 a future build reads to learn what the ledger is supposed to look like, and a mockup that
 disagrees with the app is how a correct label gets "fixed" back to the wrong one.
 
