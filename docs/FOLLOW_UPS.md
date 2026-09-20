@@ -7222,3 +7222,40 @@ filter.
 Overturned if a second import source is added whose statuses are NOT authoritative for
 lapses — then `needsManagerConfirmation` is too blunt for this reader regardless of the
 answer above, and the Lapse tab needs its own predicate.
+
+
+## Design mockups still say "Awaiting confirm" (banked 2026-09-20, LOW - policy ledger)
+
+**Banked after #958 shipped. Raised by Claude Code during that build; kept out of it to hold scope.**
+
+PR #958 renamed the `settled` pipeline stage from "Awaiting confirm" to "Settled", because a
+status set by the OIPA head-office export has no manager step to wait on. The app now says
+Settled. Eight files under `docs/design-system/screens-v2/` still say "Awaiting confirm":
+
+```
+app-policy-v2.jsx
+recruiting-v2-shared.jsx
+AgencyTrack-Specs/Policy-Ledger-Slice-1-Build.html
+design_handoff_v2_app/Policy Ledger - Slice 1 Build.html
+design_handoff_v2_app/Policy-Ledger-Slice-1-Build.html
+design_handoff_v2_app/mockups/app-policy-v2.jsx
+design_handoff_v2_app/mockups/recruiting-v2-shared.jsx
+gameplan-loop-handoff/mockups/app-policy-v2.jsx
+```
+
+### Why this is LOW and not zero
+
+Nothing renders from these files — they are a handoff record, not source. But they are what
+a future build reads to learn what the ledger is supposed to look like, and a mockup that
+disagrees with the app is how a correct label gets "fixed" back to the wrong one.
+
+### What would settle it
+
+A find-and-replace across those eight, in a docs-only PR, OR a decision that the v2 handoff
+set is frozen as a historical record of that design round and is not maintained. Either
+answer closes this; leaving it undecided is the only bad option.
+
+### Falsification
+
+Overturned if any of those files is actually imported or built. Checked on 2026-09-20: they
+live under `docs/` and nothing in `src/` references them.
