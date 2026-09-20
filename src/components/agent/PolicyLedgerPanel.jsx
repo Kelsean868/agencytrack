@@ -7,7 +7,6 @@ import { createPolicy, getOwnPolicies, transitionPolicyStatus } from '../../serv
 import { getPolicyPlans } from '../../services/planCatalogService';
 import { getTodayTT } from '../../utils/dateInputs';
 import { applyLedgerFilter, filterCounts, LEDGER_FILTERS } from '../../lib/policyLedgerDerivation';
-import { excludeImported } from '../../lib/portfolioImport/excludeImported';
 import PipelineStrip from './policyLedger/PipelineStrip';
 import PolicyCard from './policyLedger/PolicyCard';
 import PolicyDrillDrawer from './policyLedger/PolicyDrillDrawer';
@@ -338,13 +337,29 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
 
             {/* Item 3.4 — campaign lens (flag-gated; renders null + no fetch when OFF).
 
-                CAMPAIGN CREDIT EXCLUDES IMPORTED POLICIES (dispatcher ruling 5e).
-                This panel is the one consumer inside the ledger that AGGREGATES
-                rather than lists, so it gets the filtered array while the ledger
-                list itself keeps every doc. Passing the raw `policies` here would
-                let an imported historical book earn campaign credit retroactively
-                — and nothing would error, the numbers would just be wrong. */}
-            <CampaignLensPanel policies={excludeImported(policies)} />
+                CAMPAIGN ELIGIBILITY IS DECIDED BY DATE, NOT BY ORIGIN (C-D10).
+                This call site previously passed `excludeImported(policies)`
+                under dispatcher ruling 5e, to stop an imported historical book
+                earning campaign credit retroactively. The intent was right. The
+                mechanism was wrong, and the live ledger proved it: on
+                20 Sep 2026 the tenant held 229 policy docs, ALL imported and
+                none organic, so the origin filter hid 100% of the operator's
+                campaign production. The lens rendered TTD 0 against a real
+                3 apps / TTD 73,946.28 — a confident wrong number about money,
+                the same class of defect as the ×0 multiplier fixed in #871.
+
+                The raw array is passed instead, and policyCampaignLens applies
+                the test the signed document actually states: settled/confirmed
+                AND `dateIssued` inside the campaign window. An imported policy
+                issued 15 Aug 2026 and in force counts; one issued in 2019 does
+                not — because of its DATE. Origin was only ever a proxy for age.
+
+                `excludeImported` is NOT weakened and NOT removed: it remains in
+                force, unchanged, for every other aggregating reader (the CRO
+                Delivery Register, getPoliciesForManager, useMyProduction,
+                AgentAwardsPanel, financing). Whether those should also move to
+                a date test is §6 Q1 — an operator judgement, not this slice's. */}
+            <CampaignLensPanel policies={policies} />
 
             {/* Tier 2 — filter chips + search */}
             <div className="flex items-center gap-3 flex-wrap">
@@ -547,7 +562,16 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
             <FieldGroup label="Replaced Policy API (TTD)" required id="replacedPolicyAPI">
               <input id="replacedPolicyAPI" name="replacedPolicyAPI" type="number" step="0.01" min="0"
                 value={form.replacedPolicyAPI} onChange={handleChange}
+                aria-describedby="replacedPolicyAPI-help"
                 placeholder="0.00" className={inputCls} required />
+              {/* A replacement earns the DIFFERENCE in API and no application
+                  count at all (Rule 4). Without this figure the campaign lens
+                  has to abstain, so it is collected at the point of sale where
+                  it is actually known. Enter 0 if nothing was in force. */}
+              <p id="replacedPolicyAPI-help" className="text-[11px] text-ink-muted">
+                Campaign credit for a replacement is the difference between this
+                and the new API. Enter 0 if no policy was in force.
+              </p>
             </FieldGroup>
           )}
         </div>
