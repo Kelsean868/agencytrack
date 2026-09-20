@@ -33,15 +33,84 @@ export const PERSISTENCY_GATE_BANDS = [
 // Human-readable range labels aligned 1:1 with PERSISTENCY_GATE_BANDS order.
 export const GATE_BAND_RANGE_LABELS = ['≥90%', '85–89%', '80–84%', '<80%'];
 
+// ── The per-campaign gate contract (C-D1) ──────────────────────────────
+//
+// Last year's campaign graded persistency on four bands. The Christmas Campaign
+// and Retreat 2026 does not: Rule 5 of the signed document has exactly two rows
+// — ≥90% pays 100% of the prize, <90% is Disqualified. There is no 85–89 half
+// band and no sliding scale.
+//
+// Rewriting PERSISTENCY_GATE_BANDS to match would silently re-grade every
+// campaign still open on last year's rules, so the gate becomes PER-CAMPAIGN
+// CONFIG instead, and a campaign that declares nothing keeps today's behaviour
+// byte-for-byte.
+//
+//   campaign.persistencyGate = { mode, threshold, basis }
+//     mode      'bands'  — today's four-band multiplier ladder (default)
+//               'binary' — one cliff at `threshold`: 100% or DQ, nothing between
+//     threshold inclusive percentage floor for binary mode (default 90)
+//     basis     'periodAggregate' — SUM-aggregate across the campaign months
+//                                   (default; what every campaign did before)
+//               'finalMonth'      — the single record at the campaign's end month
+//
+// Absent → { mode: 'bands', threshold: 90, basis: 'periodAggregate' }.
+export const DEFAULT_PERSISTENCY_GATE = Object.freeze({
+  mode: 'bands',
+  threshold: 90,
+  basis: 'periodAggregate',
+});
+
+// The ONE place a campaign doc is turned into a resolved gate. Every consumer
+// resolves through this — never by reading `campaign.persistencyGate` directly,
+// because a consumer that reads the raw field misses the defaults and lands a
+// legacy campaign on a different multiplier than the surface next door.
+export function normalizeGate(campaign) {
+  const raw = campaign?.persistencyGate;
+  const mode = raw?.mode === 'binary' ? 'binary' : 'bands';
+  const basis = raw?.basis === 'finalMonth' ? 'finalMonth' : 'periodAggregate';
+  const parsed = Number(raw?.threshold);
+  const threshold = Number.isFinite(parsed) ? parsed : DEFAULT_PERSISTENCY_GATE.threshold;
+  return { mode, threshold, basis };
+}
+
+// The two rows of a binary gate, shaped exactly like a PERSISTENCY_GATE_BANDS
+// entry so every band-rendering surface takes them without a second code path.
+export function binaryGateBands(gate) {
+  const threshold = normalizeGate({ persistencyGate: gate }).threshold;
+  return [
+    { min: threshold, payout: 1, label: '100%', tone: 'success' },
+    { min: 0,         payout: 0, label: 'DQ',   tone: 'danger'  },
+  ];
+}
+
+// The band ladder for a resolved gate — four rows for `bands`, two for `binary`.
+export function gateBands(gate) {
+  const g = gate ?? DEFAULT_PERSISTENCY_GATE;
+  return g.mode === 'binary' ? binaryGateBands(g) : PERSISTENCY_GATE_BANDS;
+}
+
+// Range labels for a resolved gate, aligned 1:1 with gateBands(gate).
+//
+// GATE_BAND_RANGE_LABELS stays exported as the four-row constant: the company
+// config parity test indexes it (`GATE_BAND_RANGE_LABELS[i]`) to pin the four
+// rec.gate.* rows, so it must remain an array.
+export function gateBandRangeLabels(gate) {
+  const g = gate ?? DEFAULT_PERSISTENCY_GATE;
+  return g.mode === 'binary'
+    ? [`≥${g.threshold}%`, `<${g.threshold}%`]
+    : GATE_BAND_RANGE_LABELS;
+}
+
 // Resolve a persistency percentage (0–100) to its gate band. Returns null when
 // persistency is unknown (no persistency record on file) so the UI can render a
 // "no data" pill rather than silently disqualifying an advisor.
-export function gateBandFor(persPct) {
+//
+// `gate` is optional: omitted → the four-band default, i.e. every pre-existing
+// call site keeps its exact previous result.
+export function gateBandFor(persPct, gate) {
   if (persPct == null || !Number.isFinite(persPct)) return null;
-  return (
-    PERSISTENCY_GATE_BANDS.find((b) => persPct >= b.min) ??
-    PERSISTENCY_GATE_BANDS[PERSISTENCY_GATE_BANDS.length - 1]
-  );
+  const bands = gateBands(gate);
+  return bands.find((b) => persPct >= b.min) ?? bands[bands.length - 1];
 }
 
 // Highest qualifying prize tier for a value. A tier is cleared only when BOTH
@@ -109,6 +178,45 @@ export function persistencyPctForPeriod(records, startDate, endDate) {
   return Math.round(aggregatedPersistency * 100);
 }
 
+// Persistency at the campaign's FINAL MONTH — the basis Rule 5 of the signed
+// Christmas 2026 document actually names ("24-Month Persistency at the Final
+// Month (December 2026)").
+//
+// Reads exactly ONE monthly record, the one whose monthKey equals the campaign's
+// end month, and returns null when it is absent. It NEVER falls back to the
+// period aggregate: the two numbers are different numbers, and on a binary gate
+// they can land an advisor on opposite sides of the cliff. null renders the
+// existing "no data" pill at ×1 — neither paid on a fabricated figure nor
+// disqualified by one.
+export function persistencyPctAtFinalMonth(records, endDate) {
+  if (!Array.isArray(records) || records.length === 0) return null;
+  const key = String(endDate ?? '').slice(0, 7); // YYYY-MM
+  if (!/^\d{4}-\d{2}$/.test(key)) return null;
+  const rec = records.find((r) => r && String(r.monthKey) === key);
+  if (!rec) return null;
+  // `== null` is deliberate and load-bearing. Number(null) is 0 and
+  // Number.isFinite(0) is true, so a record that exists but carries no
+  // persistency figure would otherwise read as 0% — and on a binary gate 0%
+  // DISQUALIFIES. A missing figure must abstain, never disqualify.
+  if (rec.persistency == null || rec.persistency === '') return null;
+  const value = Number(rec.persistency);
+  if (!Number.isFinite(value)) return null;
+  return Math.round(value * 100);
+}
+
+// The ONLY persistency function a gate consumer calls. Dispatches on the
+// campaign's declared basis so that the campaign card, the standings table, the
+// kiosk leaderboard and MeetingMode cannot drift onto different bases.
+//
+// `persistencyPctForPeriod` stays exported for its own tests and for callers
+// that genuinely want the period figure irrespective of any gate.
+export function persistencyPctForGate(records, campaign) {
+  const gate = normalizeGate(campaign);
+  return gate.basis === 'finalMonth'
+    ? persistencyPctAtFinalMonth(records, campaign?.endDate)
+    : persistencyPctForPeriod(records, campaign?.startDate, campaign?.endDate);
+}
+
 // Ranked, resolved campaign standings — the shared derivation behind the
 // StandingsTable, TierLadder and PlacementPodium. Pure function.
 //
@@ -124,6 +232,9 @@ export function computeStandings(campaign, submissions = [], participants = [], 
   const structure  = campaign?.structure === 'placement' ? 'placement' : 'qualify';
   const rankMetric = campaign?.standingsMetric === 'applicationsSold' ? 'applicationsSold' : 'apiSold';
   const gateEnabled = campaign?.persistencyGateEnabled !== false; // default ON
+  // Resolved ONCE per standings computation and threaded into every band
+  // lookup, so a single campaign can never be graded on two different gates.
+  const gate = normalizeGate(campaign);
 
   // Per-participant API + apps totals over the campaign period.
   const totals = {};
@@ -139,7 +250,7 @@ export function computeStandings(campaign, submissions = [], participants = [], 
   const entries = participants.map((p) => {
     const { apiTotal, appsTotal } = totals[p.id] ?? { apiTotal: 0, appsTotal: 0 };
     const persPct = persistencyByAgent[p.id] ?? null;
-    const band = gateEnabled ? gateBandFor(persPct) : null;
+    const band = gateEnabled ? gateBandFor(persPct, gate) : null;
     const multiplier = band ? band.payout : 1;
     return {
       agentId: p.id,
@@ -152,6 +263,7 @@ export function computeStandings(campaign, submissions = [], participants = [], 
       band,
       multiplier,
       gateEnabled,
+      gate,
     };
   });
 

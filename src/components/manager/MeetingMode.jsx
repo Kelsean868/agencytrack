@@ -28,7 +28,7 @@ import PanelSkeleton from '../ui/PanelSkeleton';
 import { getTenantUsers, getAllYTDSubmissions } from '../../services/managerService';
 import { getPersistencyMapForYear } from '../../services/persistencyService';
 import { getCampaigns } from '../../services/campaignService';
-import { computeStandings, isTieredCampaign, persistencyPctForPeriod, campaignYears } from '../../utils/campaignEngine';
+import { computeStandings, isTieredCampaign, persistencyPctForGate, campaignYears } from '../../utils/campaignEngine';
 import { CampaignStandingsBlock } from '../campaigns/CampaignStandings';
 import FunnelMeetingScene from './FunnelMeetingScene';
 import {
@@ -618,7 +618,8 @@ function CampaignScene({ campaigns, ytdSubs, users, persMap }) {
   //
   // `campaignEngine.persistencyByAgent` is documented "(percentage 0–100)", and
   // CampaignPanel (the primary campaign surface) builds it with
-  // `persistencyPctForPeriod`. This scene previously used MeetingMode's own
+  // `persistencyPctForGate`, which dispatches on the campaign's declared basis
+  // (period aggregate, or the single final-month record — C-D1/C-D2). This scene previously used MeetingMode's own
   // `latestPersistency`, which was wrong three ways at once:
   //   • SCALE — it returned the raw E3 decimal, so gateBandFor(0.95) fell
   //     through to the {min: 0, payout: 0} DQ band and disqualified EVERY
@@ -640,7 +641,7 @@ function CampaignScene({ campaigns, ytdSubs, users, persMap }) {
     if (!campaign) return {};
     const out = {};
     for (const id of Object.keys(persMap || {})) {
-      const pct = persistencyPctForPeriod(persMap[id], campaign.startDate, campaign.endDate);
+      const pct = persistencyPctForGate(persMap[id], campaign);
       if (pct != null) out[id] = pct;
     }
     return out;
@@ -829,7 +830,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
   // defined over the campaign PERIOD, and `CampaignPanel` — the canonical
   // surface — loads `campaignYears(start, end)` and merges them.
   //
-  // Sharing `persistencyPctForPeriod` is only half of matching that surface. Fed
+  // Sharing `persistencyPctForGate` is only half of matching that surface. Fed
   // a narrower record set, the same helper returns a different aggregate over a
   // partial period, which can resolve to a DIFFERENT PAYOUT BAND. That is the
   // "two different multipliers" failure this scene was fixed for, reintroduced

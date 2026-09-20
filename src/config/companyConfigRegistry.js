@@ -316,12 +316,12 @@ export const CONFIG_SECTIONS = {
       },
       {
         title: 'CAMPAIGN PERSISTENCY GATE',
-        sub: 'Multiplier bands scaling every PROJECTED campaign payout by the advisor’s average persistency for the campaign period — display-only math in campaign standings and the campaign card; no owed/released/paid amount is ever written. The value shown is the share of the projected prize paid at that band. Tier ladders (Bronze/Silver/Gold API + apps minimums) are authored per campaign in the campaign form, so they have no company-wide default to show here.',
+        sub: 'Multiplier bands scaling every PROJECTED campaign payout by the advisor’s persistency — display-only math in campaign standings and the campaign card; no owed/released/paid amount is ever written. The value shown is the share of the projected prize paid at that band. THESE FOUR BANDS APPLY ONLY TO A CAMPAIGN RUNNING THE DEFAULT gate mode (‘bands’). A campaign may instead declare a SINGLE THRESHOLD (campaign.persistencyGate = { mode: ‘binary’, threshold, basis }), which pays 100% at or above the threshold and disqualifies below it with nothing in between — the Christmas Campaign and Retreat 2026 is one. A campaign also chooses whether persistency is read as the average over the campaign period (the default) or as the single record for its final month. Both are set per campaign in the campaign form, so neither has a company-wide default to show here; so are tier ladders (API + apps minimums).',
         items: [
           {
             id: 'rec.gate.90',
             label: 'Persistency ≥90%',
-            desc: 'Inclusive floor 90%. Full projected prize — the ×1.0 band applied by gateBandFor in standings.',
+            desc: 'Inclusive floor 90%. Full projected prize — the ×1.0 band applied by gateBandFor in standings. Applies to campaigns on gate mode ‘bands’ only.',
             type: 'text',
             def: '100%',
             mono: true,
@@ -331,7 +331,7 @@ export const CONFIG_SECTIONS = {
           {
             id: 'rec.gate.85',
             label: 'Persistency 85–89%',
-            desc: 'Inclusive floor 85%. Half the projected prize (×0.5).',
+            desc: 'Inclusive floor 85%. Half the projected prize (×0.5). Applies to campaigns on gate mode ‘bands’ only — a single-threshold campaign has no half band.',
             type: 'text',
             def: '50%',
             mono: true,
@@ -341,7 +341,7 @@ export const CONFIG_SECTIONS = {
           {
             id: 'rec.gate.80',
             label: 'Persistency 80–84%',
-            desc: 'Inclusive floor 80%. A quarter of the projected prize (×0.25).',
+            desc: 'Inclusive floor 80%. A quarter of the projected prize (×0.25). Applies to campaigns on gate mode ‘bands’ only — a single-threshold campaign has no quarter band.',
             type: 'text',
             def: '25%',
             mono: true,
@@ -351,7 +351,7 @@ export const CONFIG_SECTIONS = {
           {
             id: 'rec.gate.dq',
             label: 'Persistency <80%',
-            desc: 'Below the lowest band floor — projected payout ×0 (disqualified from the prize, still ranked in standings).',
+            desc: 'Below the lowest band floor — projected payout ×0 (disqualified from the prize, still ranked in standings). Applies to campaigns on gate mode ‘bands’ only; a single-threshold campaign disqualifies at its own threshold instead.',
             type: 'text',
             def: 'DQ',
             mono: true,

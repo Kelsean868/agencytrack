@@ -57,6 +57,19 @@ function sanitizeTiers(tiers) {
   }));
 }
 
+// The per-campaign persistency gate (C-D1). Absent/null means "the four-band
+// default" — campaignEngine.normalizeGate supplies it — so a campaign that
+// never declares a gate round-trips with no key at all. `threshold` is coerced
+// here because it arrives from a text input and the domain rule is that a
+// number is never stored as a string.
+function sanitizeGate(gate) {
+  if (gate == null) return null;
+  const mode = gate.mode === 'binary' ? 'binary' : 'bands';
+  const basis = gate.basis === 'finalMonth' ? 'finalMonth' : 'periodAggregate';
+  const parsed = parseFloat(gate.threshold);
+  return { mode, basis, threshold: Number.isFinite(parsed) ? parsed : 90 };
+}
+
 function sanitizePlacements(placements) {
   if (!Array.isArray(placements)) return placements;
   return placements.map((p) => ({ ...p, rank: num(p.rank), prize: num(p.prize) }));
@@ -73,6 +86,7 @@ export async function createCampaign(tenantId, createdBy, createdByName, created
     ...campaignData,
     ...(campaignData.tiers !== undefined ? { tiers: sanitizeTiers(campaignData.tiers) } : {}),
     ...(campaignData.placements !== undefined ? { placements: sanitizePlacements(campaignData.placements) } : {}),
+    ...(campaignData.persistencyGate !== undefined ? { persistencyGate: sanitizeGate(campaignData.persistencyGate) } : {}),
     targets,
     tenantId,
     createdBy,
@@ -98,6 +112,7 @@ export async function updateCampaign(tenantId, campaignId, updates, previousStat
   if (targets) payload.targets = targets;
   if (updates.tiers !== undefined) payload.tiers = sanitizeTiers(updates.tiers);
   if (updates.placements !== undefined) payload.placements = sanitizePlacements(updates.placements);
+  if (updates.persistencyGate !== undefined) payload.persistencyGate = sanitizeGate(updates.persistencyGate);
 
   await updateDoc(doc(db, `tenants/${tenantId}/campaigns/${campaignId}`), payload);
 

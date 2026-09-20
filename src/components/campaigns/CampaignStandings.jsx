@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 import { Trophy } from 'lucide-react';
 import {
-  PERSISTENCY_GATE_BANDS,
-  GATE_BAND_RANGE_LABELS,
   gateBandFor,
+  gateBands,
+  gateBandRangeLabels,
+  normalizeGate,
 } from '../../utils/campaignEngine';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -45,13 +46,20 @@ function Initials({ name, gold = false, size = 30 }) {
 }
 
 // ── Persistency gate strip — the signature multiplier visual ──────────────────
-export function PersistencyGateStrip({ bands = PERSISTENCY_GATE_BANDS, currentPct = null }) {
-  const activeBand = gateBandFor(currentPct);
+// `campaign` selects the ladder: a bands campaign renders four rows, a binary
+// campaign renders two. `bands` stays overridable for callers that already hold
+// a resolved ladder. The active row is matched on `min`, not object identity —
+// binaryGateBands builds fresh objects per call, so identity would never match.
+export function PersistencyGateStrip({ campaign = null, bands = null, currentPct = null }) {
+  const gate = normalizeGate(campaign);
+  const rows = bands ?? gateBands(gate);
+  const labels = gateBandRangeLabels(gate);
+  const activeBand = gateBandFor(currentPct, gate);
   return (
     <div className="flex items-stretch gap-1.5" role="group" aria-label="Persistency gate bands">
-      {bands.map((b, i) => {
+      {rows.map((b, i) => {
         const tone = GATE_TONE[b.tone] ?? GATE_TONE.warning;
-        const isActive = activeBand === b;
+        const isActive = activeBand != null && activeBand.min === b.min;
         return (
           <div
             key={b.min}
@@ -60,7 +68,7 @@ export function PersistencyGateStrip({ bands = PERSISTENCY_GATE_BANDS, currentPc
             }`}
           >
             <div className={`text-[9px] font-mono font-bold tracking-wide ${isActive ? 'text-white' : ''}`}>
-              {GATE_BAND_RANGE_LABELS[i] ?? `≥${b.min}%`}
+              {labels[i] ?? `≥${b.min}%`}
             </div>
             <div className={`font-display font-bold text-sm leading-tight mt-0.5 ${isActive ? 'text-white' : ''}`}>
               {b.label}
@@ -298,6 +306,7 @@ export function StandingsTable({ campaign, standings }) {
 // ── Composed standings block — ladder/podium + gate + table ───────────────────
 // The one entry point CampaignPanel uses for a tiered campaign's expanded row.
 export function CampaignStandingsBlock({ campaign, standings, hasPersistency }) {
+  const gate = normalizeGate(campaign);
   const isPlacement = campaign.structure === 'placement';
   const gateEnabled = campaign.persistencyGateEnabled !== false;
 
@@ -318,10 +327,12 @@ export function CampaignStandingsBlock({ campaign, standings, hasPersistency }) 
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-gold-ink mb-1">Persistency gate</p>
           <p className="text-[11px] text-ink-muted mb-2 leading-relaxed">
-            Every projected payout is scaled by the advisor&apos;s average persistency for the period. Below 80% disqualifies.
+            {gate.mode === 'binary'
+              ? `Persistency ${gate.basis === 'finalMonth' ? 'at the final month of the campaign' : 'averaged over the campaign period'} either clears ${gate.threshold}% or it does not. At or above ${gate.threshold}% the full prize is projected; below it the advisor is disqualified. There is no partial band.`
+              : 'Every projected payout is scaled by the advisor’s average persistency for the period. Below 80% disqualifies.'}
             {!hasPersistency && ' No persistency records on file yet — payouts show ungated until entered.'}
           </p>
-          <PersistencyGateStrip />
+          <PersistencyGateStrip campaign={campaign} />
         </div>
       )}
 

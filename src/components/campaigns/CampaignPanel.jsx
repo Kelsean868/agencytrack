@@ -11,7 +11,7 @@ import {
 } from '../../services/campaignService';
 import { getTenantUsers } from '../../services/managerService';
 import { getPersistencyMapForYear } from '../../services/persistencyService';
-import { computeCampaignProgress, computeStandings, isTieredCampaign, persistencyPctForPeriod, campaignYears } from '../../utils/campaignEngine';
+import { computeCampaignProgress, computeStandings, isTieredCampaign, persistencyPctForGate, campaignYears } from '../../utils/campaignEngine';
 import { CampaignStandingsBlock } from './CampaignStandings';
 import { formatCurrency, formatDateFriendly, getUnitDisplayName } from '../../utils/formatters';
 
@@ -165,7 +165,10 @@ function CampaignRow({ campaign, canEdit, onEdit, onDelete, allUsers, tenantId, 
             }
             const pctByAgent = {};
             for (const p of participants) {
-              const pct = persistencyPctForPeriod(merged[p.id] ?? [], campaign.startDate, campaign.endDate);
+              // Dispatches on the campaign's declared basis (period aggregate vs
+              // final month) so this surface cannot grade on a different number
+              // than the standings table or the kiosk beside it.
+              const pct = persistencyPctForGate(merged[p.id] ?? [], campaign);
               if (pct != null) pctByAgent[p.id] = pct;
             }
             setPersByAgent(pctByAgent);
@@ -251,6 +254,12 @@ const EMPTY_FORM = {
   prizeStructure: 'none',       // 'none' | 'qualify' | 'placement' (UI selector)
   standingsMetric: 'apiSold',   // ranking metric for tiered standings
   persistencyGateEnabled: true,
+  // Gate shape (C-D1). These two defaults are the LEGACY behaviour, and a form
+  // left on them writes NO persistencyGate key at all — so opening a legacy
+  // campaign and saving it untouched round-trips the doc byte-identical.
+  gateMode: 'bands',            // 'bands' | 'binary'
+  gateBasis: 'periodAggregate', // 'periodAggregate' | 'finalMonth'
+  gateThreshold: 90,            // only meaningful for 'binary'
   tiers: [],                    // qualify: [{ level, name, api, apps, cash, voucher }]
   placements: [
     { rank: 1, prize: '' },
@@ -288,7 +297,23 @@ function ToggleRow({ checked, onChange, label, sub }) {
 // Map the form's UI shape → the persisted campaign doc. UI-only fields
 // (prizeStructure) are translated to the stored `structure`; number coercion
 // happens in campaignService (domain rule: never store numbers as strings).
-function buildCampaignPayload(f) {
+// `hadGate` is whether the campaign being edited already carried a
+// persistencyGate key. It decides the one case omission cannot express: an
+// operator moving a binary campaign back to the defaults must CLEAR the stored
+// gate, not silently keep it. normalizeGate reads null exactly as absent.
+function gatePayloadFor(f, hadGate) {
+  const isDefault = f.gateMode !== 'binary' && f.gateBasis !== 'finalMonth';
+  if (isDefault) return hadGate ? { persistencyGate: null } : {};
+  return {
+    persistencyGate: {
+      mode: f.gateMode === 'binary' ? 'binary' : 'bands',
+      basis: f.gateBasis === 'finalMonth' ? 'finalMonth' : 'periodAggregate',
+      threshold: f.gateThreshold,
+    },
+  };
+}
+
+function buildCampaignPayload(f, hadGate = false) {
   const base = {
     name: f.name, description: f.description, prize: f.prize,
     startDate: f.startDate, endDate: f.endDate,
@@ -300,12 +325,14 @@ function buildCampaignPayload(f) {
     base.structure = 'qualify';
     base.standingsMetric = f.standingsMetric === 'applicationsSold' ? 'applicationsSold' : 'apiSold';
     base.persistencyGateEnabled = f.persistencyGateEnabled !== false;
+    Object.assign(base, gatePayloadFor(f, hadGate));
     base.tiers = f.tiers;
     base.placements = [];
   } else if (f.prizeStructure === 'placement') {
     base.structure = 'placement';
     base.standingsMetric = f.standingsMetric === 'applicationsSold' ? 'applicationsSold' : 'apiSold';
     base.persistencyGateEnabled = f.persistencyGateEnabled !== false;
+    Object.assign(base, gatePayloadFor(f, hadGate));
     base.placements = f.placements.filter((p) => String(p.prize).trim() !== '');
     base.tiers = [];
   } else {
@@ -328,6 +355,9 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
       placements: initial.placements?.length ? initial.placements : EMPTY_FORM.placements,
       standingsMetric: initial.standingsMetric ?? 'apiSold',
       persistencyGateEnabled: initial.persistencyGateEnabled !== false,
+      gateMode: initial.persistencyGate?.mode === 'binary' ? 'binary' : 'bands',
+      gateBasis: initial.persistencyGate?.basis === 'finalMonth' ? 'finalMonth' : 'periodAggregate',
+      gateThreshold: initial.persistencyGate?.threshold ?? 90,
       kiosk: !!initial.kiosk,
       meeting: !!initial.meeting,
       countsTowardAwards: initial.countsTowardAwards !== false,
@@ -435,7 +465,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
     setSaving(true);
     setError('');
     try {
-      await onSave(buildCampaignPayload(form));
+      await onSave(buildCampaignPayload(form, initial?.persistencyGate != null));
     } catch (e) {
       setError('Failed to save. Please try again.');
       console.error(e);
@@ -676,8 +706,64 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
                 checked={form.persistencyGateEnabled}
                 onChange={(v) => set('persistencyGateEnabled', v)}
                 label="Persistency gate"
-                sub="Scale each projected payout by quality — ≥90% full · 85–89% half · 80–84% quarter · <80% disqualified"
+                sub={form.gateMode === 'binary'
+                  ? `Single threshold — at or above ${form.gateThreshold || 90}% pays in full, below it disqualifies`
+                  : 'Scale each projected payout by quality — ≥90% full · 85–89% half · 80–84% quarter · <80% disqualified'}
               />
+
+              {/* Gate shape (C-D1). Leaving both on their defaults writes NO
+                  persistencyGate key, so legacy campaigns are untouched. */}
+              {form.persistencyGateEnabled && (
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label htmlFor="gate-mode" className="block text-xs font-semibold text-ink-muted mb-1">Gate style</label>
+                    <select
+                      id="gate-mode"
+                      value={form.gateMode}
+                      onChange={(e) => set('gateMode', e.target.value)}
+                      className="w-full h-11 px-3 border border-border rounded-xl bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    >
+                      <option value="bands">Tiered bands</option>
+                      <option value="binary">Single threshold</option>
+                    </select>
+                    <p className="text-[11px] text-ink-muted mt-1">
+                      Tiered bands scale the prize down in steps. A single threshold either pays in full or disqualifies — there is nothing in between.
+                    </p>
+                  </div>
+
+                  {form.gateMode === 'binary' && (
+                    <div>
+                      <label htmlFor="gate-threshold" className="block text-xs font-semibold text-ink-muted mb-1">Threshold (%)</label>
+                      <input
+                        id="gate-threshold"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={form.gateThreshold}
+                        onChange={(e) => set('gateThreshold', e.target.value)}
+                        className="w-full h-11 px-3 border border-border rounded-xl bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label htmlFor="gate-basis" className="block text-xs font-semibold text-ink-muted mb-1">Read persistency</label>
+                    <select
+                      id="gate-basis"
+                      value={form.gateBasis}
+                      onChange={(e) => set('gateBasis', e.target.value)}
+                      className="w-full h-11 px-3 border border-border rounded-xl bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    >
+                      <option value="periodAggregate">Average over the period</option>
+                      <option value="finalMonth">Final month only</option>
+                    </select>
+                    <p className="text-[11px] text-ink-muted mt-1">
+                      Final month reads the single record for the campaign&apos;s end month. If that month has no record the gate abstains rather than guessing.
+                    </p>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
