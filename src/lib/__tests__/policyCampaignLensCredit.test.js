@@ -253,11 +253,34 @@ describe('C3 — derivePolicyLens sums apps and API separately', () => {
     expect(lens.api.current).toBe(26_400); // 24,000 + 0 + 2,400; SPIA contributes nothing
   });
 
-  it('takes the apps target from the tier ladder, not from a derived figure', () => {
+  // AMENDED BY C2 ITEM 6. C3 took both targets from the ladder's TOP tier
+  // (Pioneer, 825,000). Pairing them was right — an apps figure from one level
+  // beside an API figure from another is not a single goal — but the ceiling is
+  // the wrong denominator for an agent-facing bar: it renders the operator's
+  // TTD 73,946 as 9% of a level he has never been shown, when he is 27% of the
+  // way to Champion, the level that decides whether he travels at all.
+  //
+  // Both targets now come from `tierNext` — still the same tier as each other,
+  // but the one in reach. With nothing cleared, that is Champion.
+  it('takes both targets from the tier IN REACH, not the ladder ceiling', () => {
     const lens = derivePolicyLens(policies, CHRISTMAS, {});
+    expect(lens.tierReached).toBeNull();
+    expect(lens.tierNext.name).toBe('Champion');
+    expect(lens.api.target).toBe(275_000);
     expect(lens.apps.target).toBe(35);
-    expect(lens.api.target).toBe(825_000);
     expect(lens.creditTableApplied).toBe(true);
+  });
+
+  it('moves the target up a rung once a level is cleared', () => {
+    const cleared = [
+      policy({ id: 'x', newBusinessType: 'nb_ordinary', proposedAPI: 300_000 }),
+      ...Array.from({ length: 34 }, (_, i) => policy({ id: `y${i}`, newBusinessType: 'platinum_edge', proposedAPI: 0 })),
+    ];
+    const lens = derivePolicyLens(cleared, CHRISTMAS, {});
+    expect(lens.apps.current).toBe(35);
+    expect(lens.tierReached.name).toBe('Champion');
+    expect(lens.tierNext.name).toBe('Pioneer'); // the only other tier in this fixture
+    expect(lens.api.target).toBe(825_000);
   });
 
   it('a legacy campaign reports no apps target and flags no credit table', () => {

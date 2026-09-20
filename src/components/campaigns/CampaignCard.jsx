@@ -1,6 +1,16 @@
 import { useMemo } from 'react';
 import { Gift, CheckCircle2 } from 'lucide-react';
-import { computeCampaignProgress, getDaysRemaining } from '../../utils/campaignEngine';
+import {
+  computeCampaignProgress,
+  getDaysRemaining,
+  isTieredCampaign,
+  submissionTotals,
+  resolveTierProgress,
+  accommodationLabel,
+  normalizeGate,
+  persistencyPctForGate,
+  gateBandFor,
+} from '../../utils/campaignEngine';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 
 function DaysPill({ days }) {
@@ -38,6 +48,99 @@ function MetricBar({ label, metric, current, threshold, pct, achieved }) {
   );
 }
 
+// ── The retreat readout (C2) ───────────────────────────────────
+//
+// The retreat is a first-class readout, not a pill. It says three things at
+// once: the cash the advisor is on for, the room they are on for, and what it
+// takes to reach the next room.
+//
+// The gate is stated in the same breath, because Rule 5 removes the ROOM as
+// well as the cash. Below the threshold the card reads "Disqualified — cash and
+// retreat", never a reduced figure: half a room does not exist.
+function RetreatReadout({ campaign, apiTotal, appsTotal, persistencyRecords }) {
+  const tiers = campaign?.tiers;
+  const { tierReached, tierNext, atTop } = useMemo(
+    () => resolveTierProgress(apiTotal, appsTotal, tiers),
+    [apiTotal, appsTotal, tiers],
+  );
+
+  const gate = normalizeGate(campaign);
+  const gateEnabled = campaign?.persistencyGateEnabled !== false;
+  // Reads the records the dashboard has ALREADY loaded — no new fetch. Returns
+  // null when the basis has no record yet (on a finalMonth campaign that is
+  // every month before the final one), and null renders "not yet known" rather
+  // than a disqualification.
+  const persPct = useMemo(
+    () => (gateEnabled ? persistencyPctForGate(persistencyRecords, campaign) : null),
+    [gateEnabled, persistencyRecords, campaign],
+  );
+  const band = gateEnabled ? gateBandFor(persPct, gate) : null;
+  const disqualified = !!band && band.payout === 0;
+
+  const reachedRoom = accommodationLabel(tierReached?.accommodation);
+  const nextRoom = accommodationLabel(tierNext?.accommodation);
+  const apiToGo = tierNext ? Math.max(0, (Number(tierNext.api) || 0) - apiTotal) : 0;
+  const appsToGo = tierNext ? Math.max(0, (Number(tierNext.apps) || 0) - appsTotal) : 0;
+
+  // Name whichever of the two is actually short. On this campaign every level
+  // needs 35 applications, and applications — not API — are the binding
+  // constraint on live data, so a line that only ever mentions money would
+  // point the advisor at the wrong number.
+  const gaps = [];
+  if (apiToGo > 0) gaps.push(`${formatCurrency(Math.round(apiToGo))} more API`);
+  if (appsToGo > 0) gaps.push(`${appsToGo} more app${appsToGo === 1 ? '' : 's'}`);
+
+  return (
+    <div className="rounded-lg border border-gold/30 bg-gold/5 px-3 py-2.5 flex flex-col gap-1.5" data-testid="campaign-retreat-readout">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-gold-ink">Retreat</p>
+
+      {disqualified ? (
+        <p className="text-sm font-semibold text-danger-ink" data-testid="retreat-disqualified">
+          Disqualified — cash and retreat.
+          <span className="block text-xs font-normal text-ink-muted mt-0.5">
+            Persistency {persPct}% is below the {gate.threshold}% the campaign requires. The room is
+            not reduced, it is removed.
+          </span>
+        </p>
+      ) : (
+        <>
+          <p className="text-sm text-ink" data-testid="retreat-standing">
+            {tierReached ? (
+              <>
+                You are on for <strong className="font-semibold">{formatCurrency(Number(tierReached.cash) || 0)}</strong>
+                {reachedRoom ? <> and a <strong className="font-semibold">{reachedRoom}</strong> room.</> : <>, no room at this level.</>}
+              </>
+            ) : (
+              <>Not yet on for cash or a room.</>
+            )}
+          </p>
+
+          {tierNext ? (
+            <p className="text-xs text-ink-muted" data-testid="retreat-next">
+              {gaps.length > 0 ? `${gaps.join(' and ')} moves you to ` : 'You have reached '}
+              <strong className="font-semibold text-ink">{tierNext.name}</strong>
+              {nextRoom ? <> — a <strong className="font-semibold text-ink">{nextRoom}</strong> room</> : null}
+              {Number(tierNext.cash) > 0 ? <> and {formatCurrency(Number(tierNext.cash))}</> : null}.
+            </p>
+          ) : atTop ? (
+            <p className="text-xs text-ink-muted" data-testid="retreat-next">
+              This is the top level — there is nothing above it.
+            </p>
+          ) : null}
+        </>
+      )}
+
+      {gateEnabled && !disqualified && (
+        <p className="text-[11px] text-ink-muted" data-testid="retreat-gate">
+          {persPct == null
+            ? `Both the cash and the room still depend on persistency reaching ${gate.threshold}%${gate.basis === 'finalMonth' ? ' at the campaign’s final month' : ' across the campaign'}. Not yet known.`
+            : `Persistency ${persPct}% clears the ${gate.threshold}% the campaign requires.`}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function RankBadge({ rank }) {
   if (rank === 1) return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold">1</span>;
   if (rank === 2) return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-400 text-white text-[10px] font-bold">2</span>;
@@ -54,13 +157,21 @@ function RankLine({ rank, totalParticipants }) {
   return <p className="text-xs text-ink-muted">{rank}{suffix} of {totalParticipants} participant{totalParticipants !== 1 ? 's' : ''}</p>;
 }
 
-export default function CampaignCard({ campaign, submissions, agentId }) {
+export default function CampaignCard({ campaign, submissions, agentId, persistency = [] }) {
   const { metrics, allAchieved, rank, totalParticipants } = useMemo(
     () => computeCampaignProgress(campaign, submissions, agentId),
     [campaign, submissions, agentId]
   );
 
+  // This agent's own totals, read through the shared adder so this surface and
+  // the standings table cannot drift apart on the same submissions.
+  const { apiTotal, appsTotal } = useMemo(
+    () => submissionTotals((submissions ?? []).filter((s) => (s.agentId ?? s.userId) === agentId)),
+    [submissions, agentId],
+  );
+
   const days = getDaysRemaining(campaign.endDate);
+  const tiered = isTieredCampaign(campaign) && campaign.structure === 'qualify';
 
   return (
     <div className="rounded-xl bg-card border-l-4 border-primary border border-primary/20 p-4 flex flex-col gap-3">
@@ -83,6 +194,16 @@ export default function CampaignCard({ campaign, submissions, agentId }) {
           {formatDateFriendly(campaign.startDate)} → {formatDateFriendly(campaign.endDate)}
         </p>
       </div>
+
+      {/* Retreat readout — cash, room, and the distance to the next room */}
+      {tiered && (
+        <RetreatReadout
+          campaign={campaign}
+          apiTotal={apiTotal}
+          appsTotal={appsTotal}
+          persistencyRecords={persistency}
+        />
+      )}
 
       {/* Progress bars */}
       {metrics.length > 0 && (

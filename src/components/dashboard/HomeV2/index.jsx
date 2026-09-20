@@ -256,6 +256,10 @@ export default function AgentDashboardHomeV2({
                     campaign={c}
                     submissions={campaignSubs?.[c.id] ?? []}
                     agentId={agentUid}
+                    /* Already loaded for the persistency pulse above — passed
+                       down rather than re-fetched, so the retreat readout can
+                       state the gate without a new read. */
+                    persistency={persistency}
                   />
                 ))}
               </div>

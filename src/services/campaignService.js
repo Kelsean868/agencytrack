@@ -45,6 +45,16 @@ export async function getActiveCampaignsForAgent(tenantId, agentId, unitId) {
 // prize-structure fields — optional and absent on legacy campaigns.
 const num = (v) => parseFloat(v) || 0;
 
+// Table 1 of the signed campaign document gives every level a cash prize AND a
+// retreat room. The room is not money: it is never scaled by the gate
+// multiplier and never coerced with `num`. Anything outside the three known
+// values becomes null rather than being stored as a string the UI cannot read.
+const ACCOMMODATION_VALUES = new Set(['shared', 'single', 'double']);
+
+function sanitizeAccommodation(value) {
+  return ACCOMMODATION_VALUES.has(value) ? value : null;
+}
+
 function sanitizeTiers(tiers) {
   if (!Array.isArray(tiers)) return tiers;
   return tiers.map((t) => ({
@@ -54,6 +64,7 @@ function sanitizeTiers(tiers) {
     apps:    num(t.apps),
     cash:    num(t.cash),
     voucher: num(t.voucher),
+    accommodation: sanitizeAccommodation(t.accommodation),
   }));
 }
 
