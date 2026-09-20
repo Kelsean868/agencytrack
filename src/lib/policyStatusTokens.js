@@ -22,10 +22,31 @@
  */
 
 import { POLICY_STATUS_LABELS } from '../constants/policyLifecycle';
+import { STATUS_SOURCE_IMPORT } from './portfolioImport/oipaImportConfig';
 
 /** A policy is "confirmed" (derived) once the manager confirmation fields are set. */
 export function isConfirmed(policy) {
   return Boolean(policy?.confirmedAt);
+}
+
+/**
+ * Does this policy still need a manager to confirm its status?
+ *
+ * No, when the status came from the OIPA head-office export: head office is the
+ * authority there, and no manager step was ever part of that path. Yes for
+ * everything else, including every policy an agent or manager keyed by hand.
+ *
+ * Reads `statusSource` — the field that records who set the status — not
+ * `importSource`, which only records how the document arrived. A policy that was
+ * imported and then had its status changed by a person has statusSource 'agent'
+ * or 'manager', and correctly still needs the manager.
+ *
+ * DELIBERATELY SEPARATE FROM `isConfirmed`, and `policyRole` is left alone: an
+ * imported settled policy keeps the green `settled` role and must NOT become the
+ * gold `confirmed` one. No manager confirmed it, and the colour would say one had.
+ */
+export function needsManagerConfirmation(policy) {
+  return policy?.statusSource !== STATUS_SOURCE_IMPORT;
 }
 
 /**

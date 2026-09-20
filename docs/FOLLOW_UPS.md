@@ -7177,6 +7177,89 @@ of magnitude larger would not be, and that would promote this from LOW to the bl
 fix. Measure before assuming: the emulator run completed the dry run and the delete
 comfortably, but the emulator is not the network.
 
-### Cloud Functions runtime â€” nodejs22 (1st gen)
+
+## Manager Lapse tab still offers imported policies (banked 2026-09-19, LOW - OIPA import)
+
+**Banked while reviewing PR #957. Deliberately kept out of that PR to hold its scope.**
+
+PR #957 taught the read side that a status from the OIPA head-office export needs no
+manager confirmation. It changed two readers: the agent card hint in `PolicyCard.jsx`
+and `toReconcile` in `PolicyReconciliationPanel.jsx`.
+
+It did **not** change the third reader in the same panel:
+
+```js
+const lapseTabPolicies = allPoliciesRaw.filter((p) =>
+  (p.status === 'settled' || p.status === 'lapsed') && inPeriod(p.dateIssued, selectedYear, selectedMonth),
+);
+```
+
+So the Lapse tab still lists imported policies, and a manager can be offered a lapse
+action on a policy head office has already lapsed.
+
+### Why it was not fixed with the rest
+
+Two reasons, and the second is the real one:
+
+1. `inPeriod(p.dateIssued, ...)` bounds the blast radius. Kyron's imported book spans
+   years, so only the handful issued in the selected month appear — not the 117 that
+   flooded `toReconcile`.
+2. The right answer is not obvious. `toReconcile` is a worklist: an imported policy in
+   it is plainly wrong, because nobody is waiting on the manager. The Lapse tab is
+   closer to a register, and there is a real case for a manager lapsing an imported
+   policy that head office has not caught up with yet. Filtering it on
+   `needsManagerConfirmation` would remove that ability silently.
+
+### What would settle it
+
+The operator's answer to one question: should a manager be able to lapse a policy whose
+status came from the OIPA export? If yes, leave this alone and the entry closes as
+WONTFIX. If no, the same `needsManagerConfirmation` helper applies and it is a one-line
+filter.
+
+### Falsification
+
+Overturned if a second import source is added whose statuses are NOT authoritative for
+lapses — then `needsManagerConfirmation` is too blunt for this reader regardless of the
+answer above, and the Lapse tab needs its own predicate.
+
+
+## Design mockups still say "Awaiting confirm" (banked 2026-09-20, LOW - policy ledger)
+
+**Banked after #958 shipped. Raised by Claude Code during that build; kept out of it to hold scope.**
+
+PR #958 renamed the `settled` pipeline stage from "Awaiting confirm" to "Settled", because a
+status set by the OIPA head-office export has no manager step to wait on. The app now says
+Settled. Eight files under `docs/design-system/screens-v2/` still say "Awaiting confirm":
+
+```
+app-policy-v2.jsx
+recruiting-v2-shared.jsx
+AgencyTrack-Specs/Policy-Ledger-Slice-1-Build.html
+design_handoff_v2_app/Policy Ledger - Slice 1 Build.html
+design_handoff_v2_app/Policy-Ledger-Slice-1-Build.html
+design_handoff_v2_app/mockups/app-policy-v2.jsx
+design_handoff_v2_app/mockups/recruiting-v2-shared.jsx
+gameplan-loop-handoff/mockups/app-policy-v2.jsx
+```
+
+### Why this is LOW and not zero
+
+Nothing renders from these files — they are a handoff record, not source. But they are what
+a future build reads to learn what the ledger is supposed to look like, and a mockup that
+disagrees with the app is how a correct label gets "fixed" back to the wrong one.
+
+### What would settle it
+
+A find-and-replace across those eight, in a docs-only PR, OR a decision that the v2 handoff
+set is frozen as a historical record of that design round and is not maintained. Either
+answer closes this; leaving it undecided is the only bad option.
+
+### Falsification
+
+Overturned if any of those files is actually imported or built. Checked on 2026-09-20: they
+live under `docs/` and nothing in `src/` references them.
+
+### Cloud Functions runtime — nodejs22 (1st gen)
 
 - Cloud Functions moved to nodejs22 (1st gen). nodejs20 was decommissioned 2026-10-30. Next runtime review before nodejs22 EOL. gen-2 migration (needed for nodejs24) is still open.

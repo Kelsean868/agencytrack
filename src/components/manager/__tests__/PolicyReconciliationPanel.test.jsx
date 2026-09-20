@@ -150,6 +150,35 @@ describe('PolicyReconciliationPanel', () => {
     expect(screen.getByTestId('pending-value')).toHaveTextContent(/TTD\s*13\.0K/);
   });
 
+  it('an IMPORTED settled policy is absent from "To reconcile"', async () => {
+    // 117 imported settled policies sat in this worklist asking a manager to
+    // confirm a status head office had already decided. `confirmedAt` is null on
+    // all of them and always will be — the import never writes a confirmation,
+    // because no manager step exists on that path.
+    setupBM();
+    hoisted.getPoliciesForManager.mockResolvedValue([
+      makePolicy({ statusSource: 'oipa_import' }),
+      makePolicyB(), // hand-keyed, still needs the manager
+    ]);
+    render(<PolicyReconciliationPanel />);
+    await waitFor(() => expect(screen.getByTestId('pending-hero')).toBeInTheDocument());
+
+    // Only the hand-keyed one remains, and the pending value follows it.
+    expect(screen.getByTestId('recon-tile-count-toReconcile')).toHaveTextContent('1');
+    expect(screen.getByTestId('pending-value')).toHaveTextContent(/TTD\s*8\.0K/);
+  });
+
+  it('an imported policy CHANGED BY HAND is still in "To reconcile"', async () => {
+    setupBM();
+    hoisted.getPoliciesForManager.mockResolvedValue([
+      makePolicy({ importSource: 'oipa_import', statusSource: 'manager' }),
+      makePolicyB(),
+    ]);
+    render(<PolicyReconciliationPanel />);
+    await waitFor(() => expect(screen.getByTestId('pending-hero')).toBeInTheDocument());
+    expect(screen.getByTestId('recon-tile-count-toReconcile')).toHaveTextContent('2');
+  });
+
   it('NO bulk "Confirm all clean" control — per-policy confirm only (unsafe-bulk dropped)', async () => {
     setupBM();
     hoisted.getPoliciesForManager.mockResolvedValue([makePolicy()]);

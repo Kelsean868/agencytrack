@@ -2,7 +2,7 @@ import React from 'react';
 import { formatCurrency } from '../../../utils/formatters';
 import { PROSPECTING_SOURCE_LABELS } from '../../../services/prospectInfoService';
 import { LEGAL_AGENT_TRANSITIONS, POLICY_STATUS_LABELS } from '../../../constants/policyLifecycle';
-import { policyToken, policyPillLabel, isConfirmed } from '../../../lib/policyStatusTokens';
+import { policyToken, policyPillLabel, isConfirmed, needsManagerConfirmation } from '../../../lib/policyStatusTokens';
 import { lifecycleNodes } from '../../../lib/policyLedgerDerivation';
 
 function fmtDate(ts) {
@@ -40,7 +40,13 @@ function MiniLifecycle({ policy }) {
 /** Contextual (display-only) action hint — the real mutation lives in the drawer. */
 function actionHint(policy) {
   if (isConfirmed(policy)) return null;
-  if (policy.status === 'settled') return 'Awaiting manager';
+  // A status that came from the head-office export has no manager step waiting
+  // on it, so there is no action for the agent to take and no hint to give. The
+  // provenance line lives in the drill drawer (`importedStatusNote`); a second
+  // copy here would just be noise on every card.
+  if (policy.status === 'settled') {
+    return needsManagerConfirmation(policy) ? 'Awaiting manager' : null;
+  }
   const next = (LEGAL_AGENT_TRANSITIONS[policy.status] ?? [])[0];
   if (!next) return null;
   return `Move to ${POLICY_STATUS_LABELS[next] ?? next} →`;

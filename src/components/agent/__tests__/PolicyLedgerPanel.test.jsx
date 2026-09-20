@@ -192,6 +192,31 @@ describe('PolicyLedgerPanel — drawer confirmation (v2)', () => {
     expect(within(drawer).queryByText(/^Note:/)).not.toBeInTheDocument();
   });
 
+  it('settled + FROM THE OIPA EXPORT → no "Awaiting manager" hint', async () => {
+    // 229 imported policies showed this hint because the card asked
+    // `confirmedAt` — which the import never sets — instead of asking where the
+    // status came from. Head office is the authority there; no manager step was
+    // ever part of that path, so there is nothing for the agent to wait on.
+    hoisted.getOwnPolicies.mockResolvedValueOnce([makePolicy({
+      status: 'settled', confirmedAt: null, statusSource: 'oipa_import',
+    })]);
+    render(<PolicyLedgerPanel />);
+    await waitFor(() => screen.getByTestId('policy-card-p1'));
+    expect(screen.queryByText('Awaiting manager')).not.toBeInTheDocument();
+  });
+
+  it('settled, imported, then CHANGED BY HAND → the hint comes back', async () => {
+    // `importSource` says how the document arrived; `statusSource` says who set
+    // the status. A person set this one, so it still needs the manager.
+    hoisted.getOwnPolicies.mockResolvedValueOnce([makePolicy({
+      status: 'settled', confirmedAt: null,
+      importSource: 'oipa_import', statusSource: 'agent',
+    })]);
+    render(<PolicyLedgerPanel />);
+    await waitFor(() => screen.getByTestId('policy-card-p1'));
+    expect(screen.getByText('Awaiting manager')).toBeInTheDocument();
+  });
+
   it('settled + not confirmed → card hint "Awaiting manager"; drawer has no confirmation + no transition footer', async () => {
     hoisted.getOwnPolicies.mockResolvedValueOnce([makePolicy({ status: 'settled', confirmedAt: null })]);
     render(<PolicyLedgerPanel />);

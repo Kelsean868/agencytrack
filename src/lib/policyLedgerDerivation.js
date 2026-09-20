@@ -17,7 +17,7 @@
  * queue. A tile the agent cannot see is a status that will not be kept current.
  */
 
-import { isConfirmed } from './policyStatusTokens';
+import { isConfirmed, needsManagerConfirmation } from './policyStatusTokens';
 
 /** Numeric value used for Σ aggregations — the most-confirmed figure available. */
 export function policyValue(policy) {
@@ -59,7 +59,7 @@ export const PIPELINE_STAGES = [
   { key: 'written',   label: 'Written',         role: 'in-flight' },
   { key: 'submitted', label: 'Submitted',       role: 'in-flight' },
   { key: 'rated',     label: 'Rated',           role: 'in-flight' },
-  { key: 'settled',   label: 'Awaiting confirm', role: 'settled'  },
+  { key: 'settled',   label: 'Settled',         role: 'settled'  },
   { key: 'confirmed', label: 'Confirmed',       role: 'confirmed' },
   { key: 'closed',    label: 'Closed · Lapsed', role: 'closed'    },
 ];
@@ -94,16 +94,16 @@ export function derivePipeline(policies) {
   // neither confirmed nor settled — and the bar would silently under-report.
   const inFlightSum = byKey.written.sum + byKey.submitted.sum + byKey.rated.sum;
 
-  // Active-Book flow bar: confirmed value · awaiting confirm · in flight.
+  // Active-Book flow bar: confirmed value · settled · in flight.
   // Excludes Closed (it has exited the active book). Percentages are of the
   // active-book total (the three segments), not the YTD total.
   const flowTotal = byKey.confirmed.sum + byKey.settled.sum + inFlightSum;
   const pct = (v) => (flowTotal > 0 ? Math.round((v / flowTotal) * 100) : 0);
   // Flow-segment fills use canonical solid tokens (gold = confirmed value,
-  // primary = awaiting confirm, ink-faint = in-flight "push these to settle").
+  // primary = settled, ink-faint = in-flight "push these to settle").
   const flow = [
     { key: 'confirmed', label: 'Confirmed value',  solid: 'bg-gold',      sum: byKey.confirmed.sum, pct: pct(byKey.confirmed.sum) },
-    { key: 'settled',   label: 'Awaiting confirm', solid: 'bg-primary',   sum: byKey.settled.sum,   pct: pct(byKey.settled.sum) },
+    { key: 'settled',   label: 'Settled',          solid: 'bg-primary',   sum: byKey.settled.sum,   pct: pct(byKey.settled.sum) },
     { key: 'inflight',  label: 'In flight',        solid: 'bg-ink-faint', sum: inFlightSum,         pct: pct(inFlightSum) },
   ];
 
@@ -135,11 +135,17 @@ function matchesFilter(policy, filter) {
     case 'all':
       return true;
     case 'inflight':
-      // Active, not yet exited: written, submitted, rated, postponed, settled-awaiting.
-      return !confirmed && ['written', 'submitted', 'rated', 'postponed', 'settled'].includes(s);
+      // Active, not yet exited. A settled policy belongs here only while a manager
+      // confirmation is still outstanding; a head-office settled policy has already
+      // landed and is not in flight.
+      return !confirmed && (
+        ['written', 'submitted', 'rated', 'postponed'].includes(s)
+        || (s === 'settled' && needsManagerConfirmation(policy))
+      );
     case 'action':
-      // Settled but not yet manager-confirmed — the agent's follow-up bucket.
-      return !confirmed && s === 'settled';
+      // Settled AND actually waiting on a manager. A head-office status has no
+      // manager step, so there is no action for the agent to chase.
+      return !confirmed && s === 'settled' && needsManagerConfirmation(policy);
     case 'confirmed':
       return confirmed;
     case 'closed':
@@ -217,7 +223,13 @@ export function lifecycleNodes(policy) {
     confirmed: tsToDate(policy?.confirmedAt),
   };
 
-  return LIFECYCLE_ORDER.map((key, i) => ({
+  // A head-office status has no confirmation step, so the bar ends at Settled
+  // rather than drawing a fifth node the policy will never reach.
+  const order = (!confirmed && !needsManagerConfirmation(policy))
+    ? LIFECYCLE_ORDER.slice(0, 4)
+    : LIFECYCLE_ORDER;
+
+  return order.map((key, i) => ({
     key,
     label: LIFECYCLE_LABELS[key],
     state: i < reached ? 'done' : i === reached ? 'cur' : 'future',
