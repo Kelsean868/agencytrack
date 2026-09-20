@@ -6,6 +6,7 @@ import {
   applyLedgerFilter,
   filterCounts,
   lifecycleNodes,
+  PIPELINE_STAGES,
 } from '../policyLedgerDerivation';
 
 const P = (o) => ({ status: 'submitted', proposedAPI: 0, confirmedAt: null, ...o });
@@ -155,6 +156,64 @@ describe('policyLedgerDerivation', () => {
     });
     it('confirmed → confirmed node current', () => {
       const nodes = lifecycleNodes(P({ status: 'settled', confirmedAt: { toDate: () => new Date() } }));
+      expect(nodes[4].state).toBe('cur');
+    });
+  });
+  // ── Settled is terminal when head office set the status ────────────────────
+  // An OIPA-imported status carries `statusSource: 'oipa_import'`, which means
+  // no manager confirmation is pending. A hand-keyed settled policy has no
+  // `statusSource` and still waits on the branch manager.
+  describe('settled is terminal for an imported status', () => {
+    const IMPORTED = (o) => P({ statusSource: 'oipa_import', ...o });
+
+    it('the settled stage is labelled Settled; confirmed is still Confirmed', () => {
+      const byKey = Object.fromEntries(PIPELINE_STAGES.map((s) => [s.key, s]));
+      expect(byKey.settled.label).toBe('Settled');
+      expect(byKey.confirmed.label).toBe('Confirmed');
+    });
+
+    const book = [
+      ...Array.from({ length: 117 }, (_, i) => IMPORTED({ id: `s${i}`, status: 'settled' })),
+      ...Array.from({ length: 112 }, (_, i) => IMPORTED({ id: `c${i}`, status: 'ntu' })),
+      ...Array.from({ length: 87 }, (_, i) => IMPORTED({ id: `l${i}`, status: 'lapsed' })),
+    ];
+
+    it('derivePipeline buckets the imported settled book under settled, not confirmed', () => {
+      const byKey = Object.fromEntries(derivePipeline(book).stages.map((s) => [s.key, s]));
+      expect(byKey.settled.count).toBe(117);
+      expect(byKey.confirmed.count).toBe(0);
+    });
+
+    it('the action and inflight chips are empty for an imported book; closed and lapsed unchanged', () => {
+      const c = filterCounts(book);
+      expect(c.action).toBe(0);
+      expect(c.inflight).toBe(0);
+      expect(c.closed).toBe(112 + 87);
+      expect(c.lapsed).toBe(87);
+    });
+
+    it('GUARD — a hand-keyed settled policy still counts in action and inflight', () => {
+      const c = filterCounts([P({ id: 'hand', status: 'settled' })]);
+      expect(c.action).toBe(1);
+      expect(c.inflight).toBe(1);
+    });
+
+    it('lifecycleNodes ends at Settled for an imported settled policy', () => {
+      const nodes = lifecycleNodes(IMPORTED({ status: 'settled' }));
+      expect(nodes).toHaveLength(4);
+      expect(nodes[3].key).toBe('settled');
+      expect(nodes[3].state).not.toBe('future');
+    });
+
+    it('lifecycleNodes still draws five nodes for a hand-keyed settled policy', () => {
+      const nodes = lifecycleNodes(P({ status: 'settled' }));
+      expect(nodes).toHaveLength(5);
+      expect(nodes.map((n) => n.key)).toContain('confirmed');
+    });
+
+    it('an imported policy that DOES carry confirmedAt gets its fifth node back', () => {
+      const nodes = lifecycleNodes(IMPORTED({ status: 'settled', confirmedAt: { toDate: () => new Date() } }));
+      expect(nodes).toHaveLength(5);
       expect(nodes[4].state).toBe('cur');
     });
   });
