@@ -183,6 +183,13 @@ export async function getPersistencyForTenant(tenantId, monthKey) {
 
 // Returns distinct monthKeys, sorted newest first. For 'agent' scope, queries
 // by agentId. For other scopes, queries the tenant collection (rules apply).
+/**
+ * The floor on how far back the entry window reaches, in months, counting the
+ * current month. Only binds early in a calendar year — see the comment inside
+ * getAvailableMonths for why a year-to-date window alone is not enough.
+ */
+export const MIN_ENTRY_WINDOW_MONTHS = 3;
+
 // If no E3 docs exist, returns the current month so the UI selector still has
 // at least one option.
 //
@@ -210,15 +217,30 @@ export async function getAvailableMonths(tenantId, scopeType, scopeId) {
     if (isE3Doc(data) && data.monthKey) monthKeys.add(data.monthKey);
   });
 
-  // P1b: always offer an entry window — the current TT month plus the two
-  // before it — union'd with whatever months already have data. Tatil's
-  // monthly report lags by weeks, so without this a manager can never reach
-  // the current month once the last-entered month falls behind it: there is
-  // no "add month" control anywhere in the UI. getTodayTT() (TT calendar day),
-  // NOT `new Date()` — UTC reads as the previous day for four hours every
-  // evening in Trinidad, which would silently offer the wrong window.
+  // P1b: always offer an entry window — every month of the CURRENT CALENDAR
+  // YEAR up to and including the current TT month, and never fewer than
+  // MIN_ENTRY_WINDOW_MONTHS — union'd with whatever months already have data.
+  // Without this a manager can never reach a month at all: there is no
+  // "add month" control anywhere in the UI.
+  //
+  // WHY YEAR-TO-DATE RATHER THAN A FIXED THREE: Tatil's monthly report does not
+  // lag by weeks, it lags by MONTHS. The June 2026 and July 2026 persistency
+  // reports both arrived in September 2026. A three-month window (Sep/Aug/Jul)
+  // could not reach June, so the figures head office had published were
+  // unenterable — which is the whole point of the tab.
+  //
+  // WHY THE FLOOR STILL EXISTS: in January a bare year-to-date window offers
+  // January alone and strands November and December of the year just ended —
+  // exactly the months that settle a December award gate. The floor keeps the
+  // original three-month guarantee across the year boundary, where the
+  // year-to-date rule is at its weakest.
+  //
+  // getTodayTT() (TT calendar day), NOT `new Date()` — UTC reads as the
+  // previous day for four hours every evening in Trinidad, which would
+  // silently offer the wrong window.
   const [todayYear, todayMonth] = getTodayTT().split('-').map(Number);
-  for (let i = 0; i < 3; i += 1) {
+  const windowMonths = Math.max(todayMonth, MIN_ENTRY_WINDOW_MONTHS);
+  for (let i = 0; i < windowMonths; i += 1) {
     let month = todayMonth - i;
     let year = todayYear;
     while (month <= 0) {

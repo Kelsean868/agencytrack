@@ -259,9 +259,16 @@ describe('getAvailableMonths', () => {
     mockGetTodayTT.mockReturnValue('2000-01-15'); // restore the unrelated-fixture default
   });
 
-  // P1b brief §3 item 1 — the three getAvailableMonths cases, verbatim.
+  // P1b brief §3 item 1 — the getAvailableMonths cases. The window was widened
+  // from a fixed three months to year-to-date (floored at three) once it turned
+  // out Tatil's reports lag by months, not weeks: June 2026 and July 2026 both
+  // landed in September 2026, and a three-month window could not reach June.
+  const YTD_THROUGH_OCT_2026 = [
+    '2026-10', '2026-09', '2026-08', '2026-07', '2026-06',
+    '2026-05', '2026-04', '2026-03', '2026-02', '2026-01',
+  ];
 
-  it('unions doc-derived months with the current TT month + two prior (TT today 2026-10-03)', async () => {
+  it('unions doc-derived months with the year-to-date TT window (TT today 2026-10-03)', async () => {
     mockGetTodayTT.mockReturnValue('2026-10-03');
     mockGetDocs.mockResolvedValueOnce({
       forEach(cb) {
@@ -274,14 +281,15 @@ describe('getAvailableMonths', () => {
       },
     });
     const result = await getAvailableMonths('tenant1', 'tenant', 'tenant1');
-    expect(result).toEqual(['2026-10', '2026-09', '2026-08', '2026-06', '2026-05']);
+    expect(result).toEqual(YTD_THROUGH_OCT_2026);
+    expect(result).not.toContain('2025-12'); // pre-E3 doc stays filtered
   });
 
-  it('returns just the three-month TT window when no E3 docs exist (no docs sentinel/fallback needed)', async () => {
+  it('returns just the year-to-date TT window when no E3 docs exist (no docs sentinel/fallback needed)', async () => {
     mockGetTodayTT.mockReturnValue('2026-10-03');
     mockGetDocs.mockResolvedValueOnce({ forEach: () => {} });
     const result = await getAvailableMonths('tenant1', 'tenant', 'tenant1');
-    expect(result).toEqual(['2026-10', '2026-09', '2026-08']);
+    expect(result).toEqual(YTD_THROUGH_OCT_2026);
   });
 
   it('de-dupes a month present in both the doc set and the current TT window', async () => {
@@ -290,13 +298,37 @@ describe('getAvailableMonths', () => {
       forEach(cb) {
         [
           { data: () => ({ ...E3_INPUTS, monthKey: '2026-09' }) }, // also in the window
-          { data: () => ({ ...E3_INPUTS, monthKey: '2026-01' }) },
+          { data: () => ({ ...E3_INPUTS, monthKey: '2026-01' }) }, // also in the window now
         ].forEach(cb);
       },
     });
     const result = await getAvailableMonths('tenant1', 'tenant', 'tenant1');
-    expect(result).toEqual(['2026-10', '2026-09', '2026-08', '2026-01']);
+    expect(result).toEqual(YTD_THROUGH_OCT_2026);
     expect(result.filter((m) => m === '2026-09')).toHaveLength(1);
+    expect(result.filter((m) => m === '2026-01')).toHaveLength(1);
+  });
+
+  it('reaches back to January of the current year (the real case: June’s report arrived in September)', async () => {
+    // The change this window exists for. Head office published June 2026 and
+    // July 2026 persistency in September 2026; both must be enterable.
+    mockGetTodayTT.mockReturnValue('2026-09-20');
+    mockGetDocs.mockResolvedValueOnce({ forEach: () => {} });
+    const result = await getAvailableMonths('tenant1', 'agent', 'agent-1');
+    expect(result).toEqual([
+      '2026-09', '2026-08', '2026-07', '2026-06',
+      '2026-05', '2026-04', '2026-03', '2026-02', '2026-01',
+    ]);
+    expect(result).toContain('2026-06');
+    expect(result).toContain('2026-07');
+  });
+
+  it('never reaches into the prior year beyond the floor (December stays out in September)', async () => {
+    // Year-to-date means THIS year. A September window must not offer last
+    // December, or a manager can enter a month on the wrong persistency model.
+    mockGetTodayTT.mockReturnValue('2026-09-20');
+    mockGetDocs.mockResolvedValueOnce({ forEach: () => {} });
+    const result = await getAvailableMonths('tenant1', 'agent', 'agent-1');
+    expect(result.every((m) => m.startsWith('2026-'))).toBe(true);
   });
 
   it('derives the window from getTodayTT (TT calendar day), not new Date()', async () => {
@@ -306,9 +338,24 @@ describe('getAvailableMonths', () => {
     mockGetTodayTT.mockReturnValue('2026-01-01');
     mockGetDocs.mockResolvedValueOnce({ forEach: () => {} });
     const result = await getAvailableMonths('tenant1', 'tenant', 'tenant1');
-    // Window wraps year boundary: Jan, Dec (prior year), Nov (prior year).
+    // The floor binds here: a bare year-to-date window would offer January
+    // alone and strand the November and December that settle a December gate.
     expect(result).toEqual(['2026-01', '2025-12', '2025-11']);
     expect(mockGetTodayTT).toHaveBeenCalled();
+  });
+
+  it('the floor still binds in February, where year-to-date is only two months', async () => {
+    mockGetTodayTT.mockReturnValue('2026-02-14');
+    mockGetDocs.mockResolvedValueOnce({ forEach: () => {} });
+    const result = await getAvailableMonths('tenant1', 'tenant', 'tenant1');
+    expect(result).toEqual(['2026-02', '2026-01', '2025-12']);
+  });
+
+  it('the floor stops binding from March onward', async () => {
+    mockGetTodayTT.mockReturnValue('2026-03-31');
+    mockGetDocs.mockResolvedValueOnce({ forEach: () => {} });
+    const result = await getAvailableMonths('tenant1', 'tenant', 'tenant1');
+    expect(result).toEqual(['2026-03', '2026-02', '2026-01']);
   });
 });
 
@@ -697,9 +744,11 @@ describe('getAvailableMonths — model-incomplete months stay reachable', () => 
     // `decreases`, so isModelCompleteDoc hides the RECORD. If the month selector
     // used the same filter, the month would vanish — and with no "add a month"
     // affordance in the UI, it could never be selected again to be corrected.
-    // TT "today" is pinned inside September so the P1b 3-month window (Sep/Aug/Jul)
-    // is exactly what's asserted below — the window is unconditional now, so this
-    // list is the doc months UNION the window, not the doc months alone.
+    // TT "today" is pinned inside September so the P1b window (year-to-date,
+    // Sep back to Jan) is exactly what's asserted below — the window is
+    // unconditional, so this list is the doc months UNION the window, not the
+    // doc months alone. What this test actually guards is that 2026-09 survives
+    // despite its doc lacking `decreases`; the surrounding months are the window.
     mockGetTodayTT.mockReturnValue('2026-09-06');
     mockGetDocs.mockResolvedValueOnce({
       forEach: (fn) => {
@@ -713,7 +762,10 @@ describe('getAvailableMonths — model-incomplete months stay reachable', () => 
     const months = await getAvailableMonths('tenant1', 'agent', 'agent-1');
 
     expect(months).toContain('2026-09');
-    expect(months).toEqual(['2026-09', '2026-08', '2026-07']); // newest first
+    expect(months).toEqual([
+      '2026-09', '2026-08', '2026-07', '2026-06',
+      '2026-05', '2026-04', '2026-03', '2026-02', '2026-01',
+    ]); // newest first
   });
 
   it('still hides that month’s record from the reads that show figures', async () => {
