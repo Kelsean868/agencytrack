@@ -27,8 +27,8 @@
 | **PARTLY RESOLVED 2026-08-27 (PR #924) — and the original MEDIUM rating was WRONG, which is the part worth keeping.** `ingestCallActivity` no longer hardcodes the tenant: it reads `process.env.AGENCYTRACK_TENANT_ID` and falls back to `'tatillife_south'`, a default chosen to be byte-identical so production cannot drift (verified post-deploy: `functions/` holds no `.env.agencytrack-2a610`). `functions/.env.agencytrack-staging` supplies `staging_test` and is TRACKED via a `.gitignore` negation placed AFTER the `.env.*` rule — last match wins, and the same line placed earlier is inert, which is a mistake that was actually made and caught. **Why the rating was wrong:** this was filed as "a second tenant's tokens would 401 — failing closed, but silently", which reads as a multi-tenancy nicety. The real consequence was that a staging-minted token resolved against a tenant absent from the staging project, so **the endpoint could not be exercised anywhere except PRODUCTION** — making slice B's own named deliverable, a staging-only smoke, impossible by construction. A constant that makes a feature untestable outside production is not a deferred nicety, and "fails closed silently" hid that. **STILL OPEN:** `functions/index.js:62` and `aggregators/sundayDailyToWeekly.js:30` remain hardcoded — deliberately untouched, since they are scheduled functions that simply find no data under the production tenant in staging and do nothing (banked 2026-08-26, slice B / PR #923; part-closed 2026-08-27, PR #924) | MEDIUM | SEC-9c / multi-tenancy | — | see § `ingestCallActivity` resolves tokens against a HARDCODED tenant |
 | The `referralsObtained` half of the PR #909 omit-when-zero guard is still open — slice B retired ONLY the `serviceCalls` half, because B gives that field a daily writer and does not write `referralsObtained` (KQM referral outcomes map to `newNamesAdded`). **Corrects the sequencing recorded in CONTEXT.md**, which put the whole retirement after slice C: the trigger is a daily writer, not a slice letter. Retires in BOTH aggregator twins when one appears (banked 2026-08-26, slice B / PR #923) | MEDIUM | Daily Capture / aggregator | — | see § The `referralsObtained` half |
 | Company Config has no generic plain-value surface — `mode: 'plain'` is hardcoded to manager activity standards at every layer (`baseValue` ignores `storage.docId`; `saveAll` passes a literal docId; only `type: 'standards'` renders editable; `HYDRATED_DOC_IDS` is a fixed array). A boolean or scalar setting cannot be rendered or edited, and resolves to `{}` rather than its default. Persistency P5 hit this and was redirected by dispatcher amendment to store on the already-hydrated `companyMinimums` doc with NO registry entry and NO UI row — so its setting is runtime-real but changeable only by direct Firestore write (banked 2026-09-08, Persistency P5) | MEDIUM | Company Config / admin surface | — | see § Company Config has no generic plain-value surface |
-| ~~**"On pace" has no derivation"**~~ **RULED 2026-09-09 by the operator** - the branch scene gets TWO counts, not one: (A) above the tenure Company Floor and (B) on the agent's own Game Plan target, both always year-to-date and both pro-rated from the later of 1 January and `contractStartDate`. Agents with no `yearPlan` leave B's numerator AND denominator, with the excluded count stated on the surface. Full rule in `docs/briefs/track-j-report-scopes-kickoff.md` section 3.1; R2 is unblocked. Kept, struck rather than deleted, because the reasoning for declining to invent the threshold is the standing pattern (banked 2026-09-09, ruled same day) | - | Track J / report scopes | - | see � "On pace" has no derivation |
-| **Agent-selectable pace benchmark** - the operator also wants an agent to pin a third yardstick of her own (MDRT/COT/TOT, an award, a campaign) beside the Company Floor and her Game Plan target. **Cut from R2 on 2026-09-09 and needs its own brief:** it is per-agent stored state (user-doc field + `firestore.rules` guard, so manual-deploy, not Vercel-rebuild), it needs one enumerated source of truth across three separate config areas, and a branch-level count cannot aggregate targets each agent chose for herself - it belongs on the AGENT surface. Four open questions in the body (banked 2026-09-09, Track J R2 ruling) | MEDIUM | Track J / agent surface | - | see � Agent-selectable pace benchmark |
+| ~~**"On pace" has no derivation"**~~ **RULED 2026-09-09 by the operator** - the branch scene gets TWO counts, not one: (A) above the tenure Company Floor and (B) on the agent's own Game Plan target, both always year-to-date and both pro-rated from the later of 1 January and `contractStartDate`. Agents with no `yearPlan` leave B's numerator AND denominator, with the excluded count stated on the surface. Full rule in `docs/briefs/track-j-report-scopes-kickoff.md` section 3.1; R2 is unblocked. Kept, struck rather than deleted, because the reasoning for declining to invent the threshold is the standing pattern (banked 2026-09-09, ruled same day) | - | Track J / report scopes | - | see � "On pace" has no derivation |
+| **Agent-selectable pace benchmark** - the operator also wants an agent to pin a third yardstick of her own (MDRT/COT/TOT, an award, a campaign) beside the Company Floor and her Game Plan target. **Cut from R2 on 2026-09-09 and needs its own brief:** it is per-agent stored state (user-doc field + `firestore.rules` guard, so manual-deploy, not Vercel-rebuild), it needs one enumerated source of truth across three separate config areas, and a branch-level count cannot aggregate targets each agent chose for herself - it belongs on the AGENT surface. Four open questions in the body (banked 2026-09-09, Track J R2 ruling) | MEDIUM | Track J / agent surface | - | see � Agent-selectable pace benchmark |
 | Restore the VIOLET calls hue — `plannerTone.js`'s stated reason for diverging ("repo ships no violet token") is FALSE; token ships at exact DS parity with zero consumers (banked 2026-07-27, planner activity-types PR) | MEDIUM | Track J conformance | — | see § Planner activity types |
 | `outcomeMap.WRITABLE_FIELDS` is a TEST-ONLY drift guard, not the runtime write allow-list its slice-B comment claimed — `ingestCallActivity.js` never imported it. The comment is corrected in C2; wiring it into the transaction as a real assertion (every emitted increment key must be in the list, else throw) was left out because it is a behaviour change outside C2's scope (banked 2026-08-27, slice C2 / PR #926) | LOW | Linked call sources | — | see § `WRITABLE_FIELDS` is a drift guard, not an allow-list |
 | Planner duration reporting — `durationMin` is captured on every appointment but NOTHING sums it anywhere; "time recorded" needs only a reporting surface (banked 2026-07-27) | LOW | Planner | — | see § Planner activity types |
@@ -7202,7 +7202,7 @@ action on a policy head office has already lapsed.
 Two reasons, and the second is the real one:
 
 1. `inPeriod(p.dateIssued, ...)` bounds the blast radius. Kyron's imported book spans
-   years, so only the handful issued in the selected month appear � not the 117 that
+   years, so only the handful issued in the selected month appear � not the 117 that
    flooded `toReconcile`.
 2. The right answer is not obvious. `toReconcile` is a worklist: an imported policy in
    it is plainly wrong, because nobody is waiting on the manager. The Lapse tab is
@@ -7220,7 +7220,7 @@ filter.
 ### Falsification
 
 Overturned if a second import source is added whose statuses are NOT authoritative for
-lapses � then `needsManagerConfirmation` is too blunt for this reader regardless of the
+lapses � then `needsManagerConfirmation` is too blunt for this reader regardless of the
 answer above, and the Lapse tab needs its own predicate.
 
 
@@ -7245,7 +7245,7 @@ gameplan-loop-handoff/mockups/app-policy-v2.jsx
 
 ### Why this is LOW and not zero
 
-Nothing renders from these files � they are a handoff record, not source. But they are what
+Nothing renders from these files � they are a handoff record, not source. But they are what
 a future build reads to learn what the ledger is supposed to look like, and a mockup that
 disagrees with the app is how a correct label gets "fixed" back to the wrong one.
 
@@ -7259,3 +7259,7 @@ answer closes this; leaving it undecided is the only bad option.
 
 Overturned if any of those files is actually imported or built. Checked on 2026-09-20: they
 live under `docs/` and nothing in `src/` references them.
+
+### Cloud Functions runtime — nodejs22 (1st gen)
+
+- Cloud Functions moved to nodejs22 (1st gen). nodejs20 was decommissioned 2026-10-30. Next runtime review before nodejs22 EOL. gen-2 migration (needed for nodejs24) is still open.
