@@ -13,7 +13,7 @@ const { createFakeDb } = require('../testHelpers/fakeFirestore');
 // The factory may not close over anything but a `mock`-prefixed binding, so the
 // fake is built inside it and the HttpsError class is read back after the mock
 // is installed.
-jest.mock('firebase-functions', () => require('../testHelpers/fakeFirestore').createFakeFunctions());
+jest.mock('firebase-functions/v1', () => require('../testHelpers/fakeFirestore').createFakeFunctions());
 
 const {
   resolveCaller,

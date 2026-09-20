@@ -6,7 +6,7 @@ jest.mock('firebase-admin', () => {
   return { initializeApp: jest.fn(), firestore: firestoreFn };
 });
 
-jest.mock('firebase-functions', () => ({
+jest.mock('firebase-functions/v1', () => ({
   firestore: {
     document: jest.fn(() => ({
       onCreate: jest.fn((handler) => ({ run: handler })),

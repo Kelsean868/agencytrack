@@ -9,7 +9,7 @@
  * fails at around 250 policies — which is 229 today and will be more next year.
  */
 
-jest.mock('firebase-functions', () => require('../testHelpers/fakeFirestore').createFakeFunctions());
+jest.mock('firebase-functions/v1', () => require('../testHelpers/fakeFirestore').createFakeFunctions());
 jest.mock('firebase-admin', () => ({
   firestore: Object.assign(() => { throw new Error('unused'); }, {
     FieldValue: { serverTimestamp: () => '<ts>' },

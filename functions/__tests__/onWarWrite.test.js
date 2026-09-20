@@ -11,7 +11,7 @@ jest.mock('firebase-admin', () => ({
 // Mock the trigger registration chain so onWarWrite.run === handleWarWrite.
 // firebase-functions gen-1 CloudFunctions normally expose .run, but mocking
 // avoids any initialization side-effects in the test environment.
-jest.mock('firebase-functions', () => ({
+jest.mock('firebase-functions/v1', () => ({
   firestore: {
     document: jest.fn(() => ({
       onWrite: jest.fn((handler) => ({ run: handler })),
