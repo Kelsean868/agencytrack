@@ -7342,3 +7342,21 @@ Option 1 is the real fix; option 2 buys a speed bump. Do not do neither: the gua
 **Why before or with C4:** C4 touches `policyCampaignLens.js` and `awardsEngine.js` - the awards path is exactly where an unfiltered array would do the most damage, and it is the next slice to go near it.
 
 **Falsification (Rule 23):** overturned if the guard is found to already trace prop flow between components rather than matching text per file - in which case `AgentDashboard`'s unfiltered path would have to be explicitly allow-listed for the suite to be green, and it is not. Checked on `origin/feat/campaign-c2-retreat-readout` at `f7134cb7`: the guard file is untouched by C2 (`git diff --stat origin/main...<branch> -- <guard>` is empty) and `ALLOW_UNFILTERED` still holds exactly two entries.
+
+## Carry a real exit date through the OIPA export and importer
+
+**Banked 2026-09-20 (ruling R7.4), found when C4 hard-stopped on live data. Severity: MEDIUM. Not part of C4.**
+
+**The ledger has no exit date for any imported policy.** Queried live, `tatillife_south`: **109 exited docs (87 `lapsed`, 22 `ntu`). `dateLapsed` present on 0 of 87. `statusUpdatedAt` present on 0 of 109.** The only date every one of them carries is `statusAsOf`, and that is the **export date** - identical (`2026-09-15`) across all 109, and `buildImportPlan.js:77` states it moves on EVERY policy at EVERY import.
+
+**Cause:** the importer writes status through the Admin SDK and never calls `lapsePolicy()`, which is the only code path that requires `dateLapsed`. Organic lapses recorded through the app going forward do carry it.
+
+**Why it is only MEDIUM, and what keeps it safe meanwhile.** Rule 9 claws back a recalculation of campaign category, so only policies that EARNED campaign credit can be clawed back. Of the 109 exits, exactly **1** was issued inside 1 Jul - 31 Dec 2026, **3** policies counted, and **0** counted policies have exited. The counted-gate (R7.1) therefore keeps all 87 lapses out of the claw-back scan no matter what their dates say, and C4 additionally refuses `statusAsOf` outright (R7.2) and routes a counted-but-undated exit into `clawbackUnassessable[]` rather than guessing (R7.3).
+
+**The residual risk this follow-up closes:** a policy that COUNTS during the campaign and later exits via a future OIPA import rather than through the app. It would reach the claw-back scan through the counted-gate and then have no exit date, so it can only ever be reported as "cannot assess". That is honest but not useful, and it is the case that matters most - a counted policy exiting inside the claw-back window is exactly what Rule 9 is about.
+
+**What the work is:** carry a lapse/NTU date from the OIPA export through `parseOipaExport.js` and `buildImportPlan.js` into the policy doc, as a field distinct from `statusAsOf`. Parser + import-plan + field-inventory change.
+
+**Blocked on a question only Tatil can answer:** does the OIPA/INGENIUM export carry an exit date column at all? If it does not, this follow-up cannot be built as scoped and the honest outcome is that imported exits stay permanently unassessable - which the C4 UI already states.
+
+**Falsification (Rule 23):** overturned if a later export is found to carry an exit date that the importer is already storing under another name - re-run the live field presence check before building. The check that produced these counts is `verification/clawback-scope.mjs` (gitignored, re-runnable).
