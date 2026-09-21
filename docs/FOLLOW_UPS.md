@@ -7360,3 +7360,17 @@ Option 1 is the real fix; option 2 buys a speed bump. Do not do neither: the gua
 **Blocked on a question only Tatil can answer:** does the OIPA/INGENIUM export carry an exit date column at all? If it does not, this follow-up cannot be built as scoped and the honest outcome is that imported exits stay permanently unassessable - which the C4 UI already states.
 
 **Falsification (Rule 23):** overturned if a later export is found to carry an exit date that the importer is already storing under another name - re-run the live field presence check before building. The check that produced these counts is `verification/clawback-scope.mjs` (gitignored, re-runnable).
+
+### Addendum, 2026-09-20 (C4 review): the same gap has a SECOND face, and it goes live on 1 January 2027
+
+The entry above is about a missing exit DATE. Reviewing C4 surfaced the same root cause from another angle: the ledger stores a policy's **current** status, not its **status as at a date**, and the importer writes status with no transition history.
+
+**Why that becomes a live defect in January.** Rule 9 claws back policies "lapsed, terminated **or not taken** within the 1st three months of the end of Campaign period". NTU after the close is the ordinary shape of a late-December application: issued in December, in force at the 31 Dec cut-off, counted - then NTU'd in February when the first premium never arrives. C4 ships the rule "an `ntu` policy never settled, so it never counted", which is **correct today and wrong from 1 January 2027**, because from then on a policy that is `ntu` when you look at it may have been settled and in force at the cut-off.
+
+**What the correct test needs:** status AS AT `endDate`, not current status. The claw-back becomes assessable exactly when the on-track report lands (12 Jan 2027) and stays live to 31 Mar 2027.
+
+**Why this is not just "read the history subcollection".** Every app-recorded transition does write a history doc with `changedFields.status`, atomically with the policy update, so an ORGANIC settled -> ntu flip is reconstructable. **An imported one is not**: the importer writes status through the Admin SDK, creating no history entry and carrying no event date. The operator's entire book arrives that way, so in practice a December-counted policy going NTU in February would reach the ledger as a bare status change with nothing to date it - the same wall as the missing exit date, which is why both live in this one entry.
+
+**Disposition:** NOT a blocker for C4, which is display-only and cannot encounter the case before January. **Revisit trigger is dated, not conditional: before the 12 January 2027 on-track report.** If the OIPA export turns out to carry an exit date (the open question above), it answers both faces at once. If it does not, the honest outcome is that imported exits stay unassessable and the UI says so - which is what C4 already renders.
+
+**Falsification (Rule 23):** overturned if a settled policy can be shown never to reach `ntu` in Tatil's operational practice, in which case Rule 9's "not taken" refers only to pre-issue applications and the C4 rule is right permanently. That is a question for Sales Administration, not for the ledger - and Rule 11 makes Executive Business Development the arbiter.
