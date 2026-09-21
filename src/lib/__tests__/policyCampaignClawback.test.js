@@ -87,20 +87,20 @@ describe('C4 — the five exit fixtures (the C4 deliverable)', () => {
     expect(deriveClawback([onEnd], CHRISTMAS).risk).toEqual([]);
   });
 
-  // ── 4. Counted NTU. There is no NTU event date, ever. ────────────────────
-  it('4 · counted NTU in the window — unassessable, never guessed', () => {
+  // ── 4. NTU. Never taken up, so it never went in force. ──────────────────
+  it('4 · NTU issued in the window — never settled, so it never counted', () => {
     const p = policy({
       id: 'ntu', status: 'ntu',
-      statusAsOf: '2027-02-01',        // the export date. MUST be ignored.
-      statusUpdatedAt: '2027-02-01',   // the recording stamp. MUST be ignored.
+      statusAsOf: '2027-02-01',        // the export date. Plays no part.
+      statusUpdatedAt: '2027-02-01',   // the recording stamp. Plays no part.
     });
     const { risk, unassessable } = deriveClawback([p], CHRISTMAS);
+    // Rule 7 credits policies "in force as at 31 Dec 2026". An NTU was never
+    // taken up, so it was never in force and earned nothing to claw back.
+    // No date reasoning is involved — the two date-ish fields above are
+    // present precisely to show they change nothing.
     expect(risk).toEqual([]);
-    expect(unassessable).toHaveLength(1);
-    expect(unassessable[0].dateBasis).toBe('none');
-    expect(unassessable[0].reason).toBe(
-      'Not-taken-up date is never recorded — cannot assess, check with Sales Administration',
-    );
+    expect(unassessable).toEqual([]);
   });
 
   // ── 5. Counted lapse with NO exit date — the live imported-lapse shape. ──
@@ -206,51 +206,76 @@ describe('C4 — the lens exposes both lists', () => {
   });
 });
 
-describe('C4 — survived-to-close: an exit already recorded BEFORE the campaign closed', () => {
-  // The live in-window case. One NTU, issued 2026-07-25, already `ntu` in the
-  // 2026-09-15 export — three months before the campaign closes. It was never
-  // in force at 31 Dec, so it never earned credit and there is nothing to claw
-  // back. This is what makes the live scan report 0 / 0.
-  const liveNtu = policy({
-    id: 'Dn2F5Xxp9n4YxYPI3crL',
-    importSource: 'oipa_import',
-    status: 'ntu',
-    dateIssued: '2026-07-25',
-    proposedAPI: 36_000,
-    statusAsOf: '2026-09-15',
-  });
+describe('C4 — an exit on or before endDate is a RULE 7 exclusion, not a Rule 9 claw-back', () => {
+  // The boundary this whole gate turns on. Rule 7 credits policies in force at
+  // the close; Rule 9 claws back policies that exit AFTER it. A policy that
+  // left on or before 31 Dec was simply never in force at the close — it earned
+  // nothing, so there is nothing to recalculate.
 
-  it('is in neither list — it never counted at the close', () => {
-    const { risk, unassessable } = deriveClawback([liveNtu], CHRISTMAS);
+  it('a lapse DURING the campaign is excluded, not flagged', () => {
+    const during = policy({ id: 'during', status: 'lapsed', dateLapsed: '2026-11-02' });
+    const { risk, unassessable } = deriveClawback([during], CHRISTMAS);
     expect(risk).toEqual([]);
     expect(unassessable).toEqual([]);
   });
 
-  it('FAILS SAFE when a later export moves statusAsOf past endDate', () => {
-    // After an export lands in 2027 the field moves and the test stops firing.
-    // The policy then falls to "cannot assess" — never to "you are being
-    // clawed back", because no exit date was ever invented for it.
-    const afterExport = { ...liveNtu, statusAsOf: '2027-02-01' };
-    const { risk, unassessable } = deriveClawback([afterExport], CHRISTMAS);
+  it('a lapse ON endDate itself is still a Rule 7 exclusion', () => {
+    const onEnd = policy({ id: 'onEnd', status: 'lapsed', dateLapsed: '2026-12-31' });
+    expect(deriveClawback([onEnd], CHRISTMAS)).toEqual({ risk: [], unassessable: [] });
+  });
+
+  it('one day later is a claw-back candidate — it was in force at the close', () => {
+    const dayAfter = policy({ id: 'after', status: 'lapsed', dateLapsed: '2027-01-01' });
+    const { risk } = deriveClawback([dayAfter], CHRISTMAS);
+    expect(risk).toHaveLength(1);
+    expect(risk[0].dateBasis).toBe('event');
+  });
+
+  it('the live in-window NTU is out by status alone, at ANY statusAsOf', () => {
+    // Dn2F5Xxp9n4YxYPI3crL, the tenant's single in-window exit. The verdict
+    // must not move when a future export rewrites statusAsOf, so all three
+    // values are asserted to give the same answer.
+    const base = {
+      id: 'Dn2F5Xxp9n4YxYPI3crL', productLine: 'life', isSelfOrFamily: false,
+      newBusinessType: 'nb_ordinary', proposedAPI: 36_000,
+      status: 'ntu', dateIssued: '2026-07-25', importSource: 'oipa_import',
+    };
+    for (const statusAsOf of ['2026-09-15', '2027-01-20', null]) {
+      const { risk, unassessable } = deriveClawback([{ ...base, statusAsOf }], CHRISTMAS);
+      expect(risk, `statusAsOf=${statusAsOf}`).toEqual([]);
+      expect(unassessable, `statusAsOf=${statusAsOf}`).toEqual([]);
+    }
+  });
+
+  it('a lapse with no date still reaches unassessable — the list is not dead code', () => {
+    // It WAS in force once, which an NTU never was. We simply cannot tell when
+    // it left, so the screen says so rather than guessing either way.
+    const noDate = policy({ id: 'nodate', status: 'lapsed', statusAsOf: '2026-09-15' });
+    const { risk, unassessable } = deriveClawback([noDate], CHRISTMAS);
     expect(risk).toEqual([]);
     expect(unassessable).toHaveLength(1);
     expect(unassessable[0].dateBasis).toBe('none');
   });
 
-  it('does not suppress an exit recorded AFTER the campaign closed', () => {
-    const exitedAfter = { ...liveNtu, statusAsOf: '2027-01-05' };
-    expect(deriveClawback([exitedAfter], CHRISTMAS).unassessable).toHaveLength(1);
-  });
-
-  it('still uses dateLapsed when there is one — statusAsOf never becomes the exit date', () => {
-    const lapsed = policy({
-      id: 'both', status: 'lapsed',
-      statusAsOf: '2027-01-05',   // export date, later than the real event
-      dateLapsed: '2027-01-15',   // the real event date
+  it('no verdict anywhere depends on statusAsOf', () => {
+    // Sweeps the whole fixture set across three export dates. If any statusAsOf
+    // value changed any outcome, this fails.
+    const fixtures = [
+      policy({ id: 'a', status: 'lapsed', dateLapsed: '2027-01-15' }),   // risk
+      policy({ id: 'b', status: 'lapsed', dateLapsed: '2026-11-02' }),   // Rule 7 exclusion
+      policy({ id: 'c', status: 'lapsed' }),                              // unassessable
+      policy({ id: 'd', status: 'ntu' }),                                 // never counted
+      policy({ id: 'e', status: 'lapsed', dateIssued: '2019-03-02', dateLapsed: '2027-02-10' }),
+    ];
+    const shape = (out) => ({
+      risk: out.risk.map((r) => r.id).sort(),
+      unassessable: out.unassessable.map((u) => u.id).sort(),
     });
-    const { risk } = deriveClawback([lapsed], CHRISTMAS);
-    expect(risk).toHaveLength(1);
-    expect(risk[0].exitDate).toBe('2027-01-15'); // not 2027-01-05
-    expect(risk[0].dateBasis).toBe('event');
+    const baseline = shape(deriveClawback(fixtures, CHRISTMAS));
+    for (const statusAsOf of ['2026-09-15', '2027-01-20', '2027-03-30']) {
+      const moved = fixtures.map((f) => ({ ...f, statusAsOf }));
+      expect(shape(deriveClawback(moved, CHRISTMAS)), `statusAsOf=${statusAsOf}`).toEqual(baseline);
+    }
+    expect(baseline).toEqual({ risk: ['a'], unassessable: ['c'] });
   });
 });

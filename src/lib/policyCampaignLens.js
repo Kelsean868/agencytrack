@@ -335,29 +335,31 @@ function creditIfItCounted(policy, campaign) {
   if (!credit) return null;
   if (credit.apps === 0 && credit.api === 0) return null;
 
-  // ── Did it survive to the END of the campaign? ──────────────────────────
+  // ── Was it SETTLED and in force as at endDate? ───────────────────────────
   //
-  // Rule 9 claws back policies that exit "within the first three months AFTER
-  // the period". A policy that was already out BEFORE 31 Dec never counted at
-  // the close and so has nothing to claw back — it simply never earned credit.
+  // Rule 7 credits policies "in force as at 31 Dec 2026". That is the whole
+  // test, and it needs no reasoning about export dates or about what a future
+  // import might say.
   //
-  // The live tenant has exactly one exited policy issued inside the window: an
-  // NTU whose export already recorded it as `ntu` on 2026-09-15. That is three
-  // months before the campaign closes, so it was never in force at the close.
+  // AN EXIT ON OR BEFORE `endDate` IS A RULE 7 EXCLUSION, NOT A RULE 9
+  // CLAW-BACK. The policy was simply not in force at the close, so it never
+  // earned credit and there is nothing to recalculate. Only exits AFTER
+  // `endDate` reach the claw-back window at all.
   //
-  // THIS IS NOT R7.2's FORBIDDEN USE. R7.2 forbids `statusAsOf` as the EXIT
-  // DATE — answering "when did it leave?", which this field cannot answer.
-  // Here it answers a different and weaker question that it CAN: "was the
-  // policy already in this exit status as at the export?" An export dated
-  // on-or-before `endDate` that already shows an exit is proof the policy did
-  // not survive the campaign. The exit date stays unknown and is never invented.
-  //
-  // It also fails SAFE. After an export lands past 31 Dec 2026, `statusAsOf`
-  // moves past `endDate`, this test stops firing, and the policy falls through
-  // to `clawbackUnassessable[]` — "cannot assess" — never into `clawbackRisk[]`.
-  // The drift can only ever move a policy toward stating uncertainty.
-  const alreadyOutBeforeClose = toDateStr(policy?.statusAsOf);
-  if (alreadyOutBeforeClose && end && alreadyOutBeforeClose <= end) return null;
+  //   ntu                    — never taken up, so it never went in force and
+  //                            never counted. No date reasoning required or
+  //                            possible; an NTU has no event date ever.
+  //   lapsed, on/before end  — was in force once, but not at the close.
+  //                            Rule 7 exclusion.
+  //   lapsed, after end      — in force at the close, so it counted. The
+  //                            claw-back window test then applies.
+  //   lapsed, no date        — it was in force once and we cannot tell when it
+  //                            left. It counted; the caller routes it to
+  //                            `clawbackUnassessable[]` rather than guessing.
+  if (policy?.status === 'ntu') return null;
+
+  const exit = genuineExitDate(policy);
+  if (exit && end && exit.date <= end) return null;
 
   return credit;
 }
