@@ -824,6 +824,7 @@ export default function AgentDashboard() {
               )}
             </button>
             <AgentAwardsPanel
+              activeCampaigns={activeCampaigns}
               submissions={allSubmissions}
               confirmedSettlements={settlements}
               agentProfile={userProfile}

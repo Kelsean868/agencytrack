@@ -410,6 +410,108 @@ export function computeStandings(campaign, submissions = [], participants = [], 
   });
 }
 
+// ─── Table 2 · manager accommodation (C4) ────────────────────────────────────
+//
+// Page 7 of the signed document. Managers are Agency Managers, Unit Managers and
+// the Direct Sales Team Leader; Trainee UMs are excluded. Two things about it
+// are easy to get wrong and both are money:
+//
+//   1. A manager is paid CASH only as an ADVISOR (Table 1). Table 2 grants a
+//      ROOM, never cash. `cash` below is the advisor tier's and nothing else.
+//   2. A manager takes the HIGHER accommodation of Table 1 and Table 2, not the
+//      sum and not the manager row alone.
+//
+// `team_leader` rows are carried in config and skipped on screen with a stated
+// reason: no such role exists in this system (C-D5), and inventing one for a
+// single campaign was ruled out.
+const ACCOMMODATION_RANK = { shared: 1, single: 2, double: 3 };
+
+/** The better of two accommodations; null when neither grants a room. */
+export function higherAccommodation(a, b) {
+  const ra = ACCOMMODATION_RANK[a] ?? 0;
+  const rb = ACCOMMODATION_RANK[b] ?? 0;
+  if (ra === 0 && rb === 0) return null;
+  return ra >= rb ? a ?? null : b ?? null;
+}
+
+/**
+ * deriveManagerQualification(campaign, standings, managers, usersByUnit)
+ *
+ *   managers     — [{ id, name, role, branchId?, unitId? }]
+ *   usersByUnit  — { [unitId]: [agentId, ...] } for unit scoping
+ *
+ * A QUALIFYING AGENT is a standings row with `qualified === true` — the tier was
+ * reached AND the persistency gate passed — scoped to the manager's branch or
+ * unit, EXCLUDING the manager themselves (general rule 2: a manager does not
+ * count as one of their own qualifying agents).
+ *
+ * Display-only, like everything else in this engine. Nothing is written.
+ */
+export function deriveManagerQualification(campaign, standings = [], managers = [], usersByUnit = {}) {
+  const rows = Array.isArray(campaign?.managerQualification) ? campaign.managerQualification : [];
+  const byAgent = new Map((standings ?? []).map((s) => [s.agentId, s]));
+
+  // Highest accommodation first, so the first row a manager clears is the best
+  // one they are entitled to.
+  const ordered = [...rows].sort(
+    (a, b) => (ACCOMMODATION_RANK[b.accommodation] ?? 0) - (ACCOMMODATION_RANK[a.accommodation] ?? 0),
+  );
+
+  return (managers ?? []).map((mgr) => {
+    const own = byAgent.get(mgr.id) ?? null;
+
+    // Personal production is the manager's OWN standings row when they produce,
+    // else 0/0 — a non-producing manager is not disqualified, they simply clear
+    // only the rows that ask for no personal production.
+    const personalApi = own?.apiTotal ?? 0;
+    const personalApps = own?.appsTotal ?? 0;
+
+    const scoped = (standings ?? []).filter((s) => {
+      if (s.agentId === mgr.id) return false;         // R2: never count yourself
+      if (!s.qualified) return false;                 // tier reached AND gate passed
+      if (mgr.role === 'unit_manager') {
+        const members = usersByUnit?.[mgr.unitId] ?? [];
+        return members.includes(s.agentId);
+      }
+      if (mgr.role === 'branch_manager') return true; // branch-scoped standings
+      return false;
+    });
+    const agentsQualifying = scoped.length;
+
+    const notModelled = mgr.role === 'team_leader';
+    const asManager = notModelled ? null : (ordered.find((r) => (
+      r.role === mgr.role
+      && agentsQualifying >= (Number(r.agentsQualifying) || 0)
+      && personalApi >= (Number(r.personalApi) || 0)
+      && personalApps >= (Number(r.personalApps) || 0)
+    )) ?? null);
+
+    const asAdvisor = own?.tier ?? null;
+    // Rule 5 removes the ROOM as well as the cash, so a disqualified manager
+    // keeps neither — on either table.
+    const disqualified = Boolean(own?.disqualified);
+
+    return {
+      managerId: mgr.id,
+      name: mgr.name ?? 'Manager',
+      role: mgr.role,
+      agentsQualifying,
+      personalApi,
+      personalApps,
+      asAdvisor,
+      asManager,
+      accommodation: disqualified
+        ? null
+        : higherAccommodation(asAdvisor?.accommodation, asManager?.accommodation),
+      // CASH IS ONLY EVER THE ADVISOR CASH. Table 2 grants a room, not money.
+      cash: disqualified ? 0 : (Number(asAdvisor?.cash) || 0),
+      disqualified,
+      notModelled,
+      notModelledReason: notModelled ? 'Direct Sales Team Leader is not modelled' : null,
+    };
+  });
+}
+
 function getMetricValue(fields, metric) {
   return parseFloat(fields[metric]) || 0;
 }

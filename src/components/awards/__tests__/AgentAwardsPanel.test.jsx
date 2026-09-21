@@ -107,12 +107,16 @@ describe('AgentAwardsPanel — usesPolicyLedger flag', () => {
         />
       );
       // computeAgentAwards receives activeConfirmedData = confirmedSettlements
+      // The 6th argument is C4's Rule 10 `activeCampaigns`. It defaults to []
+      // so every caller that does not pass campaigns is unaffected, and this
+      // assertion pins that default rather than dropping the arity check.
       expect(computeAgentAwards).toHaveBeenCalledWith(
         SETTLEMENTS,
         [],
         expect.objectContaining({ uid: BASE_PROFILE.uid }),
         expect.any(Date),
-        undefined
+        undefined,
+        []
       );
     });
 
@@ -129,7 +133,8 @@ describe('AgentAwardsPanel — usesPolicyLedger flag', () => {
         [],
         expect.any(Object),
         expect.any(Date),
-        undefined
+        undefined,
+        []
       );
     });
   });

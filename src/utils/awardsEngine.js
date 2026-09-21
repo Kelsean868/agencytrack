@@ -47,11 +47,56 @@ function criterion(label, target, current, unit) {
 // currentDate: Date or date string
 // ruleset: award rules data (defaults to DEFAULT_RULESET_2026)
 // ──────────────────────────────────────────────────────
-export function computeAgentAwards(confirmedData, submittedData, agentProfile, currentDate, ruleset = DEFAULT_RULESET_2026) {
+// ─── Rule 10 · a campaign may suppress award CASH (C4) ───────────────────────
+//
+// "This campaign overrides all other campaigns and incentives in progress - no
+// cash for Agent of the Month or Agent/Manager of the Quarter. Recognition
+// only." (page 4 of the signed document.)
+//
+// The awards are still WON. Only the cash is withheld, so `eligible`,
+// `inContention` and every criterion are untouched — removing eligibility would
+// erase the recognition the document explicitly keeps. This changes one string.
+const RECOGNITION_ONLY = (campaignName) => `Recognition only — cash suspended by ${campaignName}`;
+
+/** Days a campaign covers, as YYYY-MM-DD strings, for the month/quarter test. */
+function campaignCoversMonth(campaign, year, monthNum) {
+  const start = String(campaign?.startDate ?? '').slice(0, 7);
+  const end = String(campaign?.endDate ?? '').slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(start) || !/^\d{4}-\d{2}$/.test(end)) return false;
+  const key = `${year}-${String(monthNum).padStart(2, '0')}`;
+  return key >= start && key <= end;
+}
+
+/**
+ * The first flagged campaign covering ANY month in `months`, or null.
+ *
+ * A quarter is suppressed when the campaign covers any month of it: the
+ * campaign overrides "incentives in progress", and a quarter that overlaps the
+ * campaign at all is in progress during it.
+ */
+function suppressingCampaign(activeCampaigns, year, months) {
+  for (const c of Array.isArray(activeCampaigns) ? activeCampaigns : []) {
+    if (!c?.suppressesAwardCash) continue;
+    if (months.some((m) => campaignCoversMonth(c, year, m))) return c;
+  }
+  return null;
+}
+
+export function computeAgentAwards(confirmedData, submittedData, agentProfile, currentDate, ruleset = DEFAULT_RULESET_2026, activeCampaigns = []) {
   const now = currentDate instanceof Date ? currentDate : new Date(currentDate ?? Date.now());
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
   const quarter = getQuarter(now);
+
+  // Rule 10 — resolved once, applied to the four advisor-month / quarterly
+  // prize strings below. Everything else about those awards is untouched.
+  const monthSuppressor = suppressingCampaign(activeCampaigns, year, [month]);
+  const quarterSuppressor = suppressingCampaign(activeCampaigns, year, getQuarterMonths(quarter, year).map((k) => Number(String(k).slice(5, 7))));
+  const monthPrize = (p) => (monthSuppressor ? RECOGNITION_ONLY(monthSuppressor.name ?? 'the active campaign') : p);
+  const quarterPrize = (p) => (quarterSuppressor ? RECOGNITION_ONLY(quarterSuppressor.name ?? 'the active campaign') : p);
+  const suppressNote = (existing, s2) => (s2
+    ? `Cash suspended by ${s2.name ?? 'the active campaign'} — the award is still won${existing ? `. ${existing}` : ''}`
+    : existing);
 
   const curMonthKey = monthKey(year, month);
   const quarterMonths = getQuarterMonths(quarter, year);
@@ -160,8 +205,8 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
         criterion('Monthly API', ruleset.advisorMonth.api.threshold, monthlyAPI, 'TTD'),
         criterion('Persistency', ruleset.advisorMonth.persistGate, monthlyPersist, '%'),
       ],
-      prize: ruleset.advisorMonth.api.prize,
-      dataSource: monthlySource, progressPercent: (monthlyAPI / ruleset.advisorMonth.api.threshold) * 100, note: monthlyNote,
+      prize: monthPrize(ruleset.advisorMonth.api.prize),
+      dataSource: monthlySource, progressPercent: (monthlyAPI / ruleset.advisorMonth.api.threshold) * 100, note: suppressNote(monthlyNote, monthSuppressor),
     });
 
     awards.advisor_month_apps = makeAward({
@@ -172,8 +217,8 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
         criterion('Monthly Apps', ruleset.advisorMonth.apps.threshold, monthlyApps, 'apps'),
         criterion('Persistency', ruleset.advisorMonth.persistGate, monthlyPersist, '%'),
       ],
-      prize: ruleset.advisorMonth.apps.prize,
-      dataSource: monthlySource, progressPercent: (monthlyApps / ruleset.advisorMonth.apps.threshold) * 100, note: monthlyNote,
+      prize: monthPrize(ruleset.advisorMonth.apps.prize),
+      dataSource: monthlySource, progressPercent: (monthlyApps / ruleset.advisorMonth.apps.threshold) * 100, note: suppressNote(monthlyNote, monthSuppressor),
     });
   }
 
@@ -188,8 +233,8 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
       criterion('Quarterly Net API', ruleset.quarterlyAward.api.threshold, quarterlyAPI, 'TTD'),
       criterion('Persistency', ruleset.quarterlyAward.persistGate, quarterlyPersist, '%'),
     ],
-    prize: ruleset.quarterlyAward.api.prize,
-    dataSource: quarterlySource, progressPercent: (quarterlyAPI / ruleset.quarterlyAward.api.threshold) * 100, note: quarterlyNote,
+    prize: quarterPrize(ruleset.quarterlyAward.api.prize),
+    dataSource: quarterlySource, progressPercent: (quarterlyAPI / ruleset.quarterlyAward.api.threshold) * 100, note: suppressNote(quarterlyNote, quarterSuppressor),
   });
 
   awards.quarterly_apps = makeAward({
@@ -200,8 +245,8 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
       criterion('Quarterly Apps', ruleset.quarterlyAward.apps.threshold, quarterlyApps, 'apps'),
       criterion('Persistency', ruleset.quarterlyAward.persistGate, quarterlyPersist, '%'),
     ],
-    prize: ruleset.quarterlyAward.apps.prize,
-    dataSource: quarterlySource, progressPercent: (quarterlyApps / ruleset.quarterlyAward.apps.threshold) * 100, note: quarterlyNote,
+    prize: quarterPrize(ruleset.quarterlyAward.apps.prize),
+    dataSource: quarterlySource, progressPercent: (quarterlyApps / ruleset.quarterlyAward.apps.threshold) * 100, note: suppressNote(quarterlyNote, quarterSuppressor),
   });
 
   // ── ANNUAL ──
