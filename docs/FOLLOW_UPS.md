@@ -7374,3 +7374,27 @@ The entry above is about a missing exit DATE. Reviewing C4 surfaced the same roo
 **Disposition:** NOT a blocker for C4, which is display-only and cannot encounter the case before January. **Revisit trigger is dated, not conditional: before the 12 January 2027 on-track report.** If the OIPA export turns out to carry an exit date (the open question above), it answers both faces at once. If it does not, the honest outcome is that imported exits stay unassessable and the UI says so - which is what C4 already renders.
 
 **Falsification (Rule 23):** overturned if a settled policy can be shown never to reach `ntu` in Tatil's operational practice, in which case Rule 9's "not taken" refers only to pre-issue applications and the C4 rule is right permanently. That is a question for Sales Administration, not for the ledger - and Rule 11 makes Executive Business Development the arbiter.
+
+## A rate-limited CodeRabbit pass CANNOT be recovered on the Free plan - the re-poll ritual does not work
+
+**Banked 2026-09-21, found dispositioning PR #966. Severity: MEDIUM - it is a hole in the review process, not in any one diff.**
+
+**The finding.** CodeRabbit's automatic pass is rate-limited from time to time. The documented remedy - comment `@coderabbitai full review` - is a **Chat** feature, and Chat is not included in the Free plan. The bot refuses outright:
+
+> "The author of this PR is on the CodeRabbit Free Plan. In order to use the Chat feature, please upgrade..."
+
+**So a rate-limited commit gets no bot review at all, ever.** Not "later", not "on request". The dispatcher prescribed the re-poll on #962, #965 and #966 before checking it was available on this plan; it never worked. Observed on #966: pass 1 auto (summary only, 0 findings) on the opening range, pass 2 auto **rate-limited** on the range carrying the actual gate change, pass 3 chat **refused**.
+
+**Why it matters more than it sounds.** The rate-limited pass is not random with respect to risk - it lands on the LAST push, which is where a fix made after review lives. On #966 that was `71c80071`, the commit that changed the claw-back gate itself. The reviewed commit was the superseded one.
+
+**What currently compensates, and what does not.** Gemini is retired per documented policy, so there is no second automated reviewer. What stands in its place is the property-test discipline: a claim is only accepted when the guarding test has been SHOWN failing against a deliberately wired regression and then reverted. That is real coverage but it is self-review - it checks what the builder thought to check.
+
+**Options, none of them free:**
+
+1. **Accept and be explicit.** Stop prescribing the re-poll. When a pass is rate-limited, record "no bot review on this commit" in the Rule 21 disposition rather than implying one is pending. Cheapest, and honest.
+2. **CodeRabbit Pro.** Already considered - see open PR [#928](https://github.com/Kelsean868/agencytrack/pull/928), which banks the Pro decision and the deferred purchase. This finding is new evidence for that decision rather than a new decision.
+3. **Re-push to re-trigger the automatic pass.** An empty commit or a rebase gets a fresh automatic review, which is not rate-limited by the same counter. Untested. If it works it is the cheapest real fix, and it is worth one experiment before spending money.
+
+**Recommendation:** do option 1 now, because it costs nothing and stops the workflow claiming a review that is not coming. Test option 3 on the next rate-limited PR. Treat option 2 as a decision for #928, informed by how often this actually bites.
+
+**Falsification (Rule 23):** overturned if a rate-limited pass is later observed completing on its own, or if an empty-commit re-push produces a full review - which would make option 3 the answer and this entry a footnote.
