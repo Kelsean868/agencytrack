@@ -7287,3 +7287,33 @@ So the requirement is a client-side courtesy, not an invariant. A direct console
 Concretely, on live data today: the card reads **TTD 73,946 of 825,000**, about 9%, when the operator is **27% of the way to Champion** (275,000) - the lowest level, and the one that decides whether he travels at all. Every tier requires 35 apps, so the apps figure is unaffected; the API ceiling is the whole issue.
 
 **Do not fix this in isolation.** Slice C2 adds the retreat readout and the distance-to-next-room line, which is exactly the surface that has to answer "which level am I on for, and what is the next one". The fix belongs there: show the level reached and the next level up, never the ladder's ceiling. Fixing it separately would mean touching the same component twice.
+
+## The unfiltered-policies guard checks the FILE, not the array it hands downstream
+
+**Banked 2026-09-20, found reviewing campaign C2 / PR #962. Severity: MEDIUM. Do this before or with slice C4.**
+
+**Nothing is wrong today.** This is about what the guard would fail to catch next.
+
+`src/lib/portfolioImport/__tests__/excludeImported.test.js` carries the source-tree guard added by #948 - the one that caught `CampaignLensPanel` receiving an unfiltered ledger array and silently earning an imported historical book campaign credit. It enumerates the policy-handling files and asserts each one either references `excludeImported(` or sits in `ALLOW_UNFILTERED` (today: `PersistencyTab.jsx`, because imported docs are its entire input, and `PolicyLedgerPanel.jsx`, because C-D10 moved the campaign lens onto `dateIssued`).
+
+**The gap.** C2 gave `AgentDashboard.jsx` one fetch and two derived arrays:
+
+```
+setPoliciesAll(own);                  // unfiltered -> campaignPolicies -> HomeV2 -> CampaignCard
+setPolicies(excludeImported(own));    // filtered   -> everything else
+```
+
+That file **does** reference `excludeImported(`, so the guard passes it - while it is simultaneously handing an unfiltered array to a child component. **The assertion is per-file presence of the helper, not per-array provenance.** A file that filters one array and passes another raw satisfies it completely.
+
+**What slips through, and it is the original defect one component over.** If a later change wires `policiesAll` (or a new `campaignPolicies`-style prop) into `AgentAwardsPanel`, `useMyProduction`, the financing surfaces, or any other aggregator, an imported book earns credit retroactively and **no test goes red**. The 229 imported docs in `tatillife_south` are the whole production book, so the wrong number would be large and plausible rather than obviously broken.
+
+**Two ways to close it, in preference order:**
+
+1. **Police the prop, not just the file.** Extend the guard to enumerate the props that carry policy arrays into child components (`policies`, `campaignPolicies`, `policiesAll`) and require each destination to be either filtered at the call site or allow-listed with a reason. This is the fix that matches the guard's original intent.
+2. **Minimum viable.** Add `AgentDashboard.jsx`'s unfiltered path to `ALLOW_UNFILTERED` as an explicit entry naming `campaignPolicies` and its single legitimate consumer, so the next person wiring something to `policiesAll` at least has to edit the allow-list and state a reason.
+
+Option 1 is the real fix; option 2 buys a speed bump. Do not do neither: the guard currently reads as though it covers this, and a guard believed to cover something it does not is worse than an absent one.
+
+**Why before or with C4:** C4 touches `policyCampaignLens.js` and `awardsEngine.js` - the awards path is exactly where an unfiltered array would do the most damage, and it is the next slice to go near it.
+
+**Falsification (Rule 23):** overturned if the guard is found to already trace prop flow between components rather than matching text per file - in which case `AgentDashboard`'s unfiltered path would have to be explicitly allow-listed for the suite to be green, and it is not. Checked on `origin/feat/campaign-c2-retreat-readout` at `f7134cb7`: the guard file is untouched by C2 (`git diff --stat origin/main...<branch> -- <guard>` is empty) and `ALLOW_UNFILTERED` still holds exactly two entries.
