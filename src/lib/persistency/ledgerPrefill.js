@@ -28,9 +28,44 @@
  */
 
 import { deriveFromLedger, LEDGER_DERIVED_INPUTS, LEDGER_MANUAL_INPUTS } from './deriveFromLedger';
+import { persistencyModelFor } from './model';
 
-/** The blocking message the form shows while any manual input is unanswered. */
+/**
+ * The blocking message for the 24-month model, where all four manual inputs
+ * apply. Kept as a named export because that is the common case; use
+ * `manualBlockMessage()` for a month whose model has fewer.
+ */
 export const MANUAL_BLOCK_MESSAGE = 'Enter the 4 figures the export does not have.';
+
+/** The blocking message for `n` unanswered manual inputs. */
+export function manualBlockMessage(n) {
+  return n === 1
+    ? 'Enter the 1 figure the export does not have.'
+    : `Enter the ${n} figures the export does not have.`;
+}
+
+/**
+ * The manual inputs that actually APPLY to a month.
+ *
+ * `LEDGER_MANUAL_INPUTS` is the 24-month set and includes `decreases`, a term
+ * the memo added. A legacy-12 month has no `decreases` field, so gating on the
+ * raw set left `inputs.decreases` permanently undefined and the save button
+ * permanently disabled — every month before September 2026 was unsavable
+ * whenever a ledger was present. Intersecting with the month's own model is
+ * what makes the gate ask only for figures the form actually shows.
+ *
+ * A malformed monthKey falls back to the full set: refusing to save is the
+ * safe direction when we cannot tell which model a month is on.
+ */
+export function applicableManualInputs(monthKey) {
+  let modelInputs;
+  try {
+    modelInputs = persistencyModelFor(monthKey).inputs;
+  } catch {
+    return [...LEDGER_MANUAL_INPUTS];
+  }
+  return LEDGER_MANUAL_INPUTS.filter((id) => modelInputs.includes(id));
+}
 
 /**
  * Month abbreviations, fixed rather than produced by `toLocaleString`.
@@ -98,21 +133,24 @@ export function buildLedgerPrefill(ledgerDocs, options = {}) {
       : String(saved);
   }
 
-  // Manual four: an existing entry, or EMPTY. Never 0.
-  for (const id of LEDGER_MANUAL_INPUTS) {
+  // The manual inputs THIS MONTH'S MODEL has: an existing entry, or EMPTY.
+  // Never 0. A legacy-12 month has no `decreases`, so it is not seeded and not
+  // gated on — see applicableManualInputs.
+  const manualFields = applicableManualInputs(monthKey);
+  for (const id of manualFields) {
     const saved = existingRecord?.[id];
     values[id] = (saved === undefined || saved === null || saved === '') ? '' : String(saved);
   }
 
-  const unanswered = LEDGER_MANUAL_INPUTS.filter((id) => values[id] === '');
+  const unanswered = manualFields.filter((id) => values[id] === '');
 
   return {
     values,
     derivedFields: [...LEDGER_DERIVED_INPUTS],
-    manualFields: [...LEDGER_MANUAL_INPUTS],
+    manualFields,
     unanswered,
     canSave: unanswered.length === 0,
-    blockMessage: unanswered.length > 0 ? MANUAL_BLOCK_MESSAGE : null,
+    blockMessage: unanswered.length > 0 ? manualBlockMessage(manualFields.length) : null,
     provenance: hasLedger ? importProvenanceLabel(exportDate) : null,
     ledger,
     hasLedger,
@@ -127,16 +165,23 @@ export function buildLedgerPrefill(ledgerDocs, options = {}) {
  * wasteful and a way for the displayed figure to drift from the saved one.
  *
  * A typed `0` answers the field. A blank, or whitespace, does not.
+ *
+ * `monthKey` scopes the gate to the manual inputs that month's model actually
+ * has. Omit it and the gate asks for all four, which on a legacy-12 month can
+ * never be satisfied — the form renders no `decreases` field to satisfy it with.
  */
-export function manualGate(values) {
-  const unanswered = LEDGER_MANUAL_INPUTS.filter((id) => {
+export function manualGate(values, monthKey = null) {
+  const applicable = monthKey === null
+    ? [...LEDGER_MANUAL_INPUTS]
+    : applicableManualInputs(monthKey);
+  const unanswered = applicable.filter((id) => {
     const v = values?.[id];
     return v === undefined || v === null || String(v).trim() === '';
   });
   return {
     unanswered,
     canSave: unanswered.length === 0,
-    blockMessage: unanswered.length > 0 ? MANUAL_BLOCK_MESSAGE : null,
+    blockMessage: unanswered.length > 0 ? manualBlockMessage(applicable.length) : null,
   };
 }
 

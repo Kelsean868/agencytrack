@@ -5,6 +5,8 @@ import {
   manualGate,
   manualConfirmationFields,
   importProvenanceLabel,
+  applicableManualInputs,
+  manualBlockMessage,
   MANUAL_BLOCK_MESSAGE,
 } from '../ledgerPrefill';
 import { LEDGER_MANUAL_INPUTS, LEDGER_DERIVED_INPUTS } from '../deriveFromLedger';
@@ -126,6 +128,63 @@ describe('buildLedgerPrefill — the manual four are EMPTY, never 0', () => {
     });
     expect(p.unanswered.sort()).toEqual(['lumpsums100', 'reinstatements']);
     expect(p.canSave).toBe(false);
+  });
+});
+
+describe('the manual gate is scoped to the month’s model', () => {
+  // THE BUG THIS PINS: `decreases` is a 24-month term. A legacy-12 month
+  // renders no field for it, so gating on the raw four left `inputs.decreases`
+  // undefined forever and Save disabled forever — every month before September
+  // 2026 was unsavable whenever a ledger was present. Found entering the
+  // June 2026 head-office figures on 20 Sep 2026.
+  const LEGACY = { monthKey: '2026-06', exportDate: EXPORT_DATE };
+
+  it('drops decreases on a legacy-12 month and keeps it on a 24-month one', () => {
+    expect(applicableManualInputs('2026-06')).toEqual(['incPPPs', 'lumpsums100', 'reinstatements']);
+    expect(applicableManualInputs('2026-08')).not.toContain('decreases');
+    expect(applicableManualInputs('2026-09')).toEqual([...LEDGER_MANUAL_INPUTS]);
+  });
+
+  it('falls back to all four when the monthKey is unusable', () => {
+    // Refusing to save is the safe direction when the model is unknown.
+    expect(applicableManualInputs('nope')).toEqual([...LEDGER_MANUAL_INPUTS]);
+  });
+
+  it('a legacy-12 month never seeds or gates on decreases', () => {
+    const p = buildLedgerPrefill([doc()], LEGACY);
+    expect(p.manualFields).toEqual(['incPPPs', 'lumpsums100', 'reinstatements']);
+    expect(p.values).not.toHaveProperty('decreases');
+    expect(p.unanswered).not.toContain('decreases');
+    expect(p.blockMessage).toBe('Enter the 3 figures the export does not have.');
+  });
+
+  it('a legacy-12 month CAN be saved once its three manual figures are answered', () => {
+    // The regression proper: before the fix this stayed false whatever was typed.
+    const answered = {
+      businessPlaced: '89140.56',
+      notTakens: '0',
+      incPPPs: '0',
+      lumpsums100: '4600',
+      lapses: '41963.88',
+      reinstatements: '3617.64',
+    };
+    expect(manualGate(answered, '2026-06').canSave).toBe(true);
+    expect(manualGate(answered, '2026-06').unanswered).toEqual([]);
+
+    // Same values on a 24-month month still block — decreases is missing there.
+    expect(manualGate(answered, '2026-09').canSave).toBe(false);
+    expect(manualGate(answered, '2026-09').unanswered).toEqual(['decreases']);
+  });
+
+  it('manualGate with no monthKey keeps the old all-four behaviour', () => {
+    expect(manualGate({ incPPPs: '0', lumpsums100: '0', reinstatements: '0' }).unanswered)
+      .toEqual(['decreases']);
+  });
+
+  it('manualBlockMessage counts, and stays singular at one', () => {
+    expect(manualBlockMessage(4)).toBe(MANUAL_BLOCK_MESSAGE);
+    expect(manualBlockMessage(3)).toBe('Enter the 3 figures the export does not have.');
+    expect(manualBlockMessage(1)).toBe('Enter the 1 figure the export does not have.');
   });
 });
 
