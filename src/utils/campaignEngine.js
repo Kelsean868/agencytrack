@@ -127,6 +127,84 @@ export function resolveTier(apiValue, appsValue, tiers) {
   return null;
 }
 
+// ── Accommodation ─ the retreat room a tier carries (C2) ──────────────────
+//
+// Table 1 of the signed document gives every level a cash prize AND a room:
+// Double (bring a guest), Single (the qualifier only), Shared (paired with
+// another Shared qualifier). The room is NOT money and must never be scaled by
+// the gate multiplier — Rule 5 either grants it whole or removes it entirely.
+export const ACCOMMODATION_LABELS = Object.freeze({
+  shared: 'Shared',
+  single: 'Single',
+  double: 'Double',
+});
+
+/** Display label for a tier's accommodation, or null when it carries none. */
+export function accommodationLabel(value) {
+  return ACCOMMODATION_LABELS[value] ?? null;
+}
+
+// ── The ONE tier derivation both agent surfaces resolve through (C2 item 7) ──
+//
+// There are two agent-facing campaign surfaces and they read different
+// collections: HomeV2's CampaignCard totals WEEKLY SUBMISSIONS, while the policy
+// ledger's CampaignLensPanel totals the SETTLED POLICY LEDGER. They answer
+// different questions, which is tolerable — but an advisor who sees a retreat
+// room on one screen and a different level implied on the other has been told
+// two things. So the inputs may differ; the DERIVATION may not. Both call this.
+//
+// It returns TWO tiers, not one:
+//
+//   tierReached — the highest tier both current figures clear, or null when
+//                 none is cleared yet. This is what the advisor has earned.
+//   tierNext    — the next rung up, or null once tierReached is the top tier.
+//                 This is what the advisor is working toward.
+//
+// `progressTarget` is tierNext when one exists, and the top tier itself at
+// Pioneer where there is nothing above. It is deliberately NOT the ladder's
+// ceiling: on live data today the operator sits at TTD 73,946 of Champion's
+// 275,000 — 27% of the level that decides whether he travels at all — which a
+// ceiling-based bar renders as 9% of Pioneer's 825,000, a level he has never
+// been shown. Never render a percentage against a tier the advisor cannot see.
+export function resolveTierProgress(apiValue, appsValue, tiers) {
+  const list = Array.isArray(tiers) ? tiers.filter(Boolean) : [];
+  if (list.length === 0) {
+    return { tierReached: null, tierNext: null, progressTarget: null, apiToGo: null, appsToGo: null, atTop: false };
+  }
+
+  // Ascending by API then apps — the ladder as an advisor climbs it.
+  const ordered = [...list].sort(
+    (a, b) => (Number(a.api) || 0) - (Number(b.api) || 0) || (Number(a.apps) || 0) - (Number(b.apps) || 0),
+  );
+  const clears = (t) => apiValue >= (Number(t.api) || 0) && appsValue >= (Number(t.apps) || 0);
+
+  // resolveTier already answers "highest cleared"; reuse it rather than writing
+  // a second version of the same comparison that can drift from it.
+  const tierReached = resolveTier(apiValue, appsValue, list);
+
+  let tierNext;
+  if (tierReached == null) {
+    tierNext = ordered[0];
+  } else {
+    const idx = ordered.findIndex((t) => t === tierReached);
+    tierNext = idx >= 0 && idx < ordered.length - 1 ? ordered[idx + 1] : null;
+  }
+
+  const atTop = tierReached != null && tierNext == null;
+  const progressTarget = tierNext ?? tierReached ?? null;
+
+  return {
+    tierReached,
+    tierNext,
+    progressTarget,
+    atTop,
+    apiToGo: progressTarget ? Math.max(0, (Number(progressTarget.api) || 0) - apiValue) : null,
+    appsToGo: progressTarget ? Math.max(0, (Number(progressTarget.apps) || 0) - appsValue) : null,
+    // Exposed so a caller never has to re-derive "did I clear this one".
+    clearsProgressTarget: progressTarget ? clears(progressTarget) : false,
+  };
+}
+
 // A campaign is "tiered" (activates the v2 standings/ladder/podium/gate UI) iff
 // it declares a qualify structure with tiers OR a placement structure with
 // placements. Legacy flat-threshold campaigns return false and render exactly
@@ -217,6 +295,25 @@ export function persistencyPctForGate(records, campaign) {
     : persistencyPctForPeriod(records, campaign?.startDate, campaign?.endDate);
 }
 
+// API + apps totals for a set of submissions, read through extractFields — the
+// single source of truth for submission KPI fields.
+//
+// Exported because CampaignCard needs one agent's totals to resolve a tier, and
+// a second hand-rolled `parseFloat(s.apiSold)` on that surface is exactly how
+// two campaign screens start disagreeing. `computeStandings` routes through it
+// too, so there is one adder, not two.
+export function submissionTotals(submissions) {
+  let apiTotal = 0;
+  let appsTotal = 0;
+  for (const s of Array.isArray(submissions) ? submissions : []) {
+    if (!s) continue;
+    const f = extractFields(s);
+    apiTotal  += parseFloat(f.apiSold) || 0;
+    appsTotal += parseFloat(f.applicationsSold) || 0;
+  }
+  return { apiTotal, appsTotal };
+}
+
 // Ranked, resolved campaign standings — the shared derivation behind the
 // StandingsTable, TierLadder and PlacementPodium. Pure function.
 //
@@ -242,9 +339,9 @@ export function computeStandings(campaign, submissions = [], participants = [], 
   for (const s of submissions) {
     const aid = s.agentId ?? s.userId ?? '';
     if (!aid || !(aid in totals)) continue;
-    const f = extractFields(s);
-    totals[aid].apiTotal  += parseFloat(f.apiSold) || 0;
-    totals[aid].appsTotal += parseFloat(f.applicationsSold) || 0;
+    const t = submissionTotals([s]);
+    totals[aid].apiTotal  += t.apiTotal;
+    totals[aid].appsTotal += t.appsTotal;
   }
 
   const entries = participants.map((p) => {

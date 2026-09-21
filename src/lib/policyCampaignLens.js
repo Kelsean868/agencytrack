@@ -19,7 +19,7 @@
  * functions only (no JSX, no SDK).
  */
 import { policyValue } from './policyLedgerDerivation';
-import { isTieredCampaign, getDaysRemaining } from '../utils/campaignEngine';
+import { isTieredCampaign, getDaysRemaining, resolveTierProgress } from '../utils/campaignEngine';
 
 const COUNTING_STATUSES = new Set(['settled', 'confirmed']);
 const CLOSED_STATUSES = new Set(['lapsed', 'ntu', 'denied']);
@@ -298,21 +298,28 @@ export function derivePolicyLens(policies, campaign, { now = new Date() } = {}) 
   // surface leading with an API bar alone points the advisor at the wrong
   // number. The apps target is the tier's, not a derived figure.
   //
-  // BOTH TARGETS COME FROM THE SAME TIER. Pairing an apps figure from one level
-  // with an API figure from another reads as a single goal and is not one — the
-  // advisor sees "3 of 35 apps" beside "73,946 of 825,000" and has no way to
-  // know those belong to different prizes. The top tier is the ladder's ceiling
-  // and is what `apiTarget` has always been, so apps is taken from it too.
-  let apiTarget = null;
-  let appsTarget = null;
-  if (isTieredCampaign(campaign) && Array.isArray(campaign.tiers) && campaign.tiers.length) {
-    const topTier = campaign.tiers.reduce(
-      (best, t) => ((Number(t.api) || 0) > (Number(best?.api) || 0) ? t : best),
-      campaign.tiers[0],
-    );
-    apiTarget = (Number(topTier?.api) || 0) || null;
-    appsTarget = (Number(topTier?.apps) || 0) || null;
-  }
+  // BOTH TARGETS COME FROM THE SAME TIER — AND IT IS THE LEVEL IN REACH, NOT THE
+  // LADDER'S CEILING (C2 item 6, amending C3).
+  //
+  // Pairing the two was right: an apps figure from one level beside an API
+  // figure from another reads as a single goal and is not one. But taking both
+  // from the TOP tier made the denominator a level the advisor has never been
+  // shown. On live data today the operator sits at TTD 73,946 — 27% of the way
+  // to Champion's 275,000, the lowest level and the one that decides whether he
+  // travels at all — which a ceiling-based bar renders as 9% of Pioneer's
+  // 825,000. Same number, and it reads as failing rather than as a quarter of
+  // the way to the thing that matters.
+  //
+  // So progress is measured against `tierNext`: the next rung up, which is the
+  // entry level until one is cleared. At the top there is nothing above, so
+  // progress is against the top tier itself and `atTop` lets the panel say so.
+  // Never render a percentage against a tier the advisor cannot see.
+  const tierProgress = isTieredCampaign(campaign) && Array.isArray(campaign.tiers) && campaign.tiers.length
+    ? resolveTierProgress(apiCurrent, appsCurrent, campaign.tiers)
+    : null;
+  const progressTier = tierProgress?.progressTarget ?? null;
+  const apiTarget = (Number(progressTier?.api) || 0) || null;
+  const appsTarget = (Number(progressTier?.apps) || 0) || null;
 
   const progressPct = apiTarget
     ? Math.min(100, Math.round((apiCurrent / apiTarget) * 100))
@@ -336,6 +343,11 @@ export function derivePolicyLens(policies, campaign, { now = new Date() } = {}) 
     apps: { current: appsCurrent, target: appsTarget },
     creditTableApplied: Boolean(campaign.credit),
     exportDate: ledgerExportDate(list),
+    // The tier pair, resolved through campaignEngine's shared helper so this
+    // panel and HomeV2's CampaignCard cannot imply two different levels.
+    tierReached: tierProgress?.tierReached ?? null,
+    tierNext: tierProgress?.tierNext ?? null,
+    atTop: tierProgress?.atTop ?? false,
     targetDerived: apiTarget != null,
     progressPct,
     endsIn,

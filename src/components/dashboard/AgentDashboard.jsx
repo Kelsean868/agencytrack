@@ -146,6 +146,12 @@ export default function AgentDashboard() {
 
   // Commission AnchorStrip — loaded lazily on first Commission tab visit.
   const [policies, setPolicies]               = useState(null);
+  // The SAME fetch, unfiltered. The campaign card decides eligibility by
+  // dateIssued, not by importSource (C-D10), so it must see imported docs —
+  // and the operator's book is 100% imported, so the filtered array is empty
+  // for exactly the agent whose campaign figure matters. Stored beside the
+  // filtered one rather than re-fetched.
+  const [policiesAll, setPoliciesAll]         = useState(null);
   const [policiesLoading, setPoliciesLoading] = useState(false);
   const [policiesError, setPoliciesError]     = useState(false);
   const playgroundRef = useRef(null);
@@ -327,11 +333,18 @@ export default function AgentDashboard() {
     setPoliciesLoading(true);
     setPoliciesError(false);
     try {
-      // This state feeds CommissionAnchorStrip (commission totals) and the v2
+      // `policies` feeds CommissionAnchorStrip (commission totals) and the v2
       // home DeliveryStripCard (settled/undelivered) — both are aggregate or
       // delivery surfaces, so neither wants imported docs (ruling 5e). The
       // ledger list is PolicyLedgerPanel's own fetch and is NOT filtered.
-      setPolicies(excludeImported(await getOwnPolicies(tenantId, user.uid)));
+      //
+      // `policiesAll` is the same response, unfiltered, for the campaign card
+      // only. One fetch, two views: filtering at the consumer rather than at
+      // the reader is what lets the campaign path apply C-D10's date test while
+      // every other consumer keeps ruling 5e unchanged.
+      const own = await getOwnPolicies(tenantId, user.uid);
+      setPoliciesAll(own);
+      setPolicies(excludeImported(own));
     } catch {
       setPoliciesError(true);
     } finally {
@@ -750,6 +763,7 @@ export default function AgentDashboard() {
             activityEvents={activityEvents}
             activeCampaigns={activeCampaigns}
             campaignsLoading={campaignsLoading}
+            campaignPolicies={policiesAll}
             campaignSubs={campaignSubs}
             agentUid={user?.uid}
             policies={policies}

@@ -344,7 +344,12 @@ function buildCampaignPayload(f, hadGate = false) {
   return base;
 }
 
-function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onClose }) {
+// Exported as a named export purely as a rendering seam: the C2 screenshot
+// harness mounts this form directly with a fixture campaign so the builder can
+// be captured without authoring a campaign document in production. It takes
+// every input as a prop and reads no context, so standalone mounting is safe.
+// CampaignPanel remains the default export and the only runtime consumer.
+export function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onClose }) {
   const [form, setForm] = useState(() => {
     if (!initial) return EMPTY_FORM;
     return {
@@ -427,7 +432,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
   // ── Prize-tier + placement editing ──────────────────────────────────────────
   const addTier = () => setForm((f) => {
     const nextLevel = f.tiers.reduce((m, t) => Math.max(m, Number(t.level) || 0), 0) + 1;
-    return { ...f, tiers: [...f.tiers, { level: nextLevel, name: '', api: '', apps: '', cash: '', voucher: '' }] };
+    return { ...f, tiers: [...f.tiers, { level: nextLevel, name: '', api: '', apps: '', cash: '', voucher: '', accommodation: null }] };
   });
   const updateTier = (i, key, val) => setForm((f) => {
     const tiers = [...f.tiers];
@@ -820,6 +825,23 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
                           />
                         </div>
                       ))}
+                    </div>
+                    {/* The retreat room this level carries (Table 1). Separate
+                        from cash on purpose — Rule 5 either grants the room
+                        whole or removes it; it is never a reduced figure. */}
+                    <div>
+                      <label htmlFor={`tier-${i}-accommodation`} className="block text-[10px] font-mono text-ink-muted mb-0.5">Accommodation</label>
+                      <select
+                        id={`tier-${i}-accommodation`}
+                        value={tr.accommodation ?? ''}
+                        onChange={(e) => updateTier(i, 'accommodation', e.target.value || null)}
+                        className="w-full h-10 px-2 border border-border rounded-lg bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      >
+                        <option value="">None</option>
+                        <option value="shared">Shared</option>
+                        <option value="single">Single</option>
+                        <option value="double">Double</option>
+                      </select>
                     </div>
                   </div>
                 ))}

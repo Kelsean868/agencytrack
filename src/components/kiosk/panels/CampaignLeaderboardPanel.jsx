@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import {
   computeStandings,
   getDaysRemaining,
+  accommodationLabel,
   gateBands,
   gateBandRangeLabels,
   normalizeGate,
@@ -40,6 +41,9 @@ function prizeFor(campaign, standing) {
     return {
       label: PLACE_LABEL[standing.rank] ?? `#${standing.rank}`,
       cash: standing.projectedCash,
+      // A placement prize carries no retreat room — Table 1 attaches the room
+      // to a LEVEL, not to a finishing position.
+      accommodation: null,
     };
   }
   if (!standing.tier) return null;
@@ -47,6 +51,7 @@ function prizeFor(campaign, standing) {
   return {
     label: t.name || (t.level ? `Level ${t.level}` : 'Tier'),
     cash: standing.projectedCash,
+    accommodation: t.accommodation ?? null,
   };
 }
 
@@ -107,6 +112,13 @@ function TailRow({ campaign, standing, maxMetric }) {
       <span className="w-24 text-right font-display font-bold text-presentation-text">{metricText(campaign, standing)}</span>
       <span className={`w-20 text-right text-xs font-mono font-bold ${prize ? 'text-presentation-gold' : 'text-presentation-muted'}`}>
         {prize ? ttdK(prize.cash) : '—'}
+        {/* Table 1 pairs cash with a room at every level; the kiosk shows both
+            so the board matches what the advisor reads on their own card. */}
+        {prize && accommodationLabel(prize.accommodation) && (
+          <span className="block text-[0.6rem] font-normal text-presentation-muted">
+            {accommodationLabel(prize.accommodation)}
+          </span>
+        )}
       </span>
     </div>
   );

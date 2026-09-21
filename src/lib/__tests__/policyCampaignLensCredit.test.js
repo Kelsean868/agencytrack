@@ -253,11 +253,34 @@ describe('C3 — derivePolicyLens sums apps and API separately', () => {
     expect(lens.api.current).toBe(26_400); // 24,000 + 0 + 2,400; SPIA contributes nothing
   });
 
-  it('takes the apps target from the tier ladder, not from a derived figure', () => {
+  // AMENDED BY C2 ITEM 6. C3 took both targets from the ladder's TOP tier
+  // (Pioneer, 825,000). Pairing them was right — an apps figure from one level
+  // beside an API figure from another is not a single goal — but the ceiling is
+  // the wrong denominator for an agent-facing bar: it renders the operator's
+  // TTD 73,946 as 9% of a level he has never been shown, when he is 27% of the
+  // way to Champion, the level that decides whether he travels at all.
+  //
+  // Both targets now come from `tierNext` — still the same tier as each other,
+  // but the one in reach. With nothing cleared, that is Champion.
+  it('takes both targets from the tier IN REACH, not the ladder ceiling', () => {
     const lens = derivePolicyLens(policies, CHRISTMAS, {});
+    expect(lens.tierReached).toBeNull();
+    expect(lens.tierNext.name).toBe('Champion');
+    expect(lens.api.target).toBe(275_000);
     expect(lens.apps.target).toBe(35);
-    expect(lens.api.target).toBe(825_000);
     expect(lens.creditTableApplied).toBe(true);
+  });
+
+  it('moves the target up a rung once a level is cleared', () => {
+    const cleared = [
+      policy({ id: 'x', newBusinessType: 'nb_ordinary', proposedAPI: 300_000 }),
+      ...Array.from({ length: 34 }, (_, i) => policy({ id: `y${i}`, newBusinessType: 'platinum_edge', proposedAPI: 0 })),
+    ];
+    const lens = derivePolicyLens(cleared, CHRISTMAS, {});
+    expect(lens.apps.current).toBe(35);
+    expect(lens.tierReached.name).toBe('Champion');
+    expect(lens.tierNext.name).toBe('Pioneer'); // the only other tier in this fixture
+    expect(lens.api.target).toBe(825_000);
   });
 
   it('a legacy campaign reports no apps target and flags no credit table', () => {
@@ -285,5 +308,66 @@ describe('C3 — the as-at export stamp (C-D11)', () => {
   it('surfaces the stamp on the lens', () => {
     const lens = derivePolicyLens([policy({ exportDate: '2026-09-15' })], CHRISTMAS, {});
     expect(lens.exportDate).toBe('2026-09-15');
+  });
+});
+
+describe('C2 item 7 — CampaignCard and CampaignLensPanel derive from ONE call', () => {
+  // The real assertion, against real policy shapes, in the place where it can
+  // fail. CampaignCard used to total WEEKLY SUBMISSIONS; the panel totalled the
+  // ledger. On the operator's live account those read 0 / 0 and
+  // TTD 73,946.28 / 3 respectively, and both surfaces rendered a
+  // distance-to-Champion line from their own number.
+  //
+  // Both now call derivePolicyLens on the same unfiltered array, so the figures
+  // and the tier pair are the same object graph, not two computations that
+  // happen to agree.
+
+  // The shape the live ledger actually carries: imported, settled, in window.
+  const imported = (id, api) => policy({
+    id, importSource: 'oipa_import', newBusinessType: 'nb_ordinary',
+    proposedAPI: api, status: 'settled', dateIssued: '2026-08-04',
+  });
+
+  const LEDGER = [
+    imported('a', 1_946.28),
+    imported('b', 36_000),
+    imported('c', 36_000),
+    // The two the live account carries that must NOT count.
+    policy({ id: 'self', importSource: 'oipa_import', isSelfOrFamily: true, proposedAPI: 40_000 }),
+    policy({ id: 'ntu', importSource: 'oipa_import', status: 'ntu', proposedAPI: 12_000 }),
+    // And the historical book, which is excluded by DATE, not by origin.
+    policy({ id: 'old', importSource: 'oipa_import', dateIssued: '2019-03-02', proposedAPI: 88_000 }),
+  ];
+
+  it('reproduces the live figures from the ledger: 3 apps, TTD 73,946.28', () => {
+    const lens = derivePolicyLens(LEDGER, CHRISTMAS, {});
+    expect(lens.apps.current).toBe(3);
+    expect(lens.api.current).toBeCloseTo(73_946.28, 2);
+  });
+
+  it('names the same tier pair both surfaces render', () => {
+    const lens = derivePolicyLens(LEDGER, CHRISTMAS, {});
+    expect(lens.tierReached).toBeNull();
+    expect(lens.tierNext.name).toBe('Champion');
+  });
+
+  it('an EMPTY array — what excludeImported would have produced — reads 0/0', () => {
+    // Why the card is handed the UNFILTERED array. Every policy above is
+    // imported, so the filtered view is empty and the card would have told the
+    // advisor he has nothing. This is the defect in one assertion.
+    const lens = derivePolicyLens([], CHRISTMAS, {});
+    expect(lens.apps.current).toBe(0);
+    expect(lens.api.current).toBe(0);
+    expect(lens.tierNext.name).toBe('Champion');
+  });
+
+  it('credits Platinum Edge as an application with no API — a submissions total could not', () => {
+    const withPE = [...LEDGER, policy({
+      id: 'pe', importSource: 'oipa_import', newBusinessType: 'platinum_edge',
+      proposedAPI: 40_000, status: 'settled', dateIssued: '2026-09-01',
+    })];
+    const lens = derivePolicyLens(withPE, CHRISTMAS, {});
+    expect(lens.apps.current).toBe(4);
+    expect(lens.api.current).toBeCloseTo(73_946.28, 2); // API unchanged
   });
 });

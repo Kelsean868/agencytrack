@@ -20,6 +20,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import { getActiveCampaignsForAgent } from '../../../services/campaignService';
 import { formatCurrency } from '../../../utils/formatters';
+import { accommodationLabel } from '../../../utils/campaignEngine';
 import {
   derivePolicyLens, lensFilterCounts, LENS_FILTERS, buildCampaignProofExport,
 } from '../../../lib/policyCampaignLens';
@@ -123,6 +124,24 @@ function LensStrip({ lens, onExportProof, canExport }) {
               testId="campaign-lens-api"
             />
           </div>
+          {/* The level in reach, named. Both bars above are measured against
+              THIS tier, not the ladder ceiling, so the advisor is told which
+              level the percentages belong to rather than left to guess. */}
+          <p className="text-[11px] text-ink-muted" data-testid="campaign-lens-tier">
+            {lens.tierNext ? (
+              <>
+                {lens.tierReached
+                  ? <>On for <strong className="font-semibold text-ink">{lens.tierReached.name}</strong>. Next up: </>
+                  : <>No level reached yet. Working toward </>}
+                <strong className="font-semibold text-ink">{lens.tierNext.name}</strong>
+                {accommodationLabel(lens.tierNext.accommodation)
+                  ? <> — a {accommodationLabel(lens.tierNext.accommodation)} room</>
+                  : null}.
+              </>
+            ) : lens.atTop ? (
+              <>On for <strong className="font-semibold text-ink">{lens.tierReached.name}</strong> — the top level.</>
+            ) : null}
+          </p>
           <div className="flex justify-between gap-2 flex-wrap text-[10px] font-mono text-ink-muted">
             <span className="tabular-nums">{lens.counts.covered}/{lens.counts.tracked} settled</span>
             {lens.endsIn && <span className="text-gold-ink font-bold">{lens.endsIn}</span>}

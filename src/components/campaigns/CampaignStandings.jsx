@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Trophy } from 'lucide-react';
 import {
+  accommodationLabel,
   gateBandFor,
   gateBands,
   gateBandRangeLabels,
@@ -150,8 +151,12 @@ export function TierLadder({ campaign, standings }) {
             </div>
             <div className="text-right shrink-0">
               <div className="font-display font-bold text-sm text-gold-ink">{formatCurrency(tr.cash)}</div>
+              {/* The room sits beside the cash because Table 1 gives every level
+                  both, and Rule 5 takes both away together. */}
               <div className="text-[10px] font-mono text-ink-muted">
-                {Number(tr.voucher) > 0 ? `+ ${formatCurrency(tr.voucher)} voucher` : tr.perk || 'cash prize'}
+                {accommodationLabel(tr.accommodation)
+                  ? `${accommodationLabel(tr.accommodation)} room`
+                  : Number(tr.voucher) > 0 ? `+ ${formatCurrency(tr.voucher)} voucher` : tr.perk || 'cash prize'}
               </div>
             </div>
           </div>
@@ -268,9 +273,20 @@ export function StandingsTable({ campaign, standings }) {
                   {isQualify && (
                     <td className="px-2 py-2.5 text-center">
                       {s.tier ? (
-                        <span className={`text-[11px] font-mono font-bold ${s.qualified ? 'text-gold-ink' : 'text-ink-muted'}`}>
-                          {s.tier.name}
-                        </span>
+                        <>
+                          <span className={`block text-[11px] font-mono font-bold ${s.qualified ? 'text-gold-ink' : 'text-ink-muted'}`}>
+                            {s.tier.name}
+                          </span>
+                          {/* Named here too: a manager reading the standings is
+                              deciding who travels, not only who is paid. A
+                              disqualified row loses the room with the cash, so
+                              the label is muted rather than shown as earned. */}
+                          {accommodationLabel(s.tier.accommodation) && (
+                            <span className={`block text-[9.5px] font-mono ${dq ? 'text-danger-ink line-through' : 'text-ink-muted'}`}>
+                              {accommodationLabel(s.tier.accommodation)} room
+                            </span>
+                          )}
+                        </>
                       ) : (
                         <span className="text-[11px] text-ink-muted italic">below L1</span>
                       )}
