@@ -129,30 +129,30 @@ describe('countImported', () => {
  * origin test and onto the settlement-date test, so that file now fetches
  * unfiltered throughout and has joined ALLOW_UNFILTERED below with its reason.
  */
+/** Removes block and line comments so a mention in prose is not read as a call. */
+function stripComments(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
+
+function walk(dir, out = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === '__tests__' || entry.name === 'node_modules') continue;
+      walk(full, out);
+    } else if (/\.(js|jsx)$/.test(entry.name)) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
 describe('call-site guard — every getOwnPolicies caller references excludeImported', () => {
   const HERE = path.dirname(fileURLToPath(import.meta.url));
   const SRC = path.resolve(HERE, '../../..');
   const REPO = path.resolve(SRC, '..');
-
-  /** Removes block and line comments so a mention in prose is not read as a call. */
-  function stripComments(src) {
-    return src
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/(^|[^:])\/\/.*$/gm, '$1');
-  }
-
-  function walk(dir, out = []) {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === '__tests__' || entry.name === 'node_modules') continue;
-        walk(full, out);
-      } else if (/\.(js|jsx)$/.test(entry.name)) {
-        out.push(full);
-      }
-    }
-    return out;
-  }
 
   const callers = walk(SRC)
     .map((full) => ({
@@ -224,5 +224,195 @@ describe('call-site guard — every getOwnPolicies caller references excludeImpo
   it('does not count a mere mention of getOwnPolicies in a comment', () => {
     // policyLedgerDerivation.js names getOwnPolicies() in its header prose only.
     expect(callers.map((c) => c.rel)).not.toContain('src/lib/policyLedgerDerivation.js');
+  });
+});
+
+/**
+ * ─── PROP-PROVENANCE GUARD ───────────────────────────────────────────────────
+ *
+ * The guard above checks the FILE. This one checks the ARRAY.
+ *
+ * Why both exist. The file-level guard asserts that every `getOwnPolicies`
+ * caller references `excludeImported(` somewhere in it. That was enough while a
+ * file had ONE policy array. Campaign C2 gave `AgentDashboard.jsx` one fetch and
+ * two derived arrays:
+ *
+ *     setPoliciesAll(own);                 // unfiltered -> the campaign card
+ *     setPolicies(excludeImported(own));   // filtered   -> everything else
+ *
+ * That file references the helper, so the file-level guard passes it — while it
+ * is simultaneously handing an unfiltered array to a child. The assertion is
+ * per-file presence of the helper, not per-array provenance, and a file that
+ * filters one array and passes another raw satisfies it completely.
+ *
+ * What slips through is the ORIGINAL defect one component over: wire
+ * `policiesAll` into `AgentAwardsPanel`, `useMyProduction` or a financing
+ * surface and an imported historical book earns credit retroactively with no
+ * test going red. On `tatillife_south` the 229 imported docs ARE the whole
+ * production book, so the wrong number would be large and plausible rather than
+ * obviously broken.
+ *
+ * So this guard enumerates every JSX site that hands a policy ARRAY to a child
+ * component and pins the inventory. A new site — any new site — turns it red
+ * and has to be classified by a human.
+ *
+ * WHAT IT CANNOT DO. It reads text, not dataflow: it cannot prove that the
+ * `policies` identifier in one file holds a value that was filtered in another.
+ * That is what `provenance` in the manifest asserts, by hand. `RAW_CARRIERS`
+ * makes the part that CAN be mechanical mechanical: two identifiers are
+ * unfiltered by construction, and a site naming either must say so.
+ */
+describe('prop-provenance guard — every policy array handed to a child is classified', () => {
+  const HERE = path.dirname(fileURLToPath(import.meta.url));
+  const SRC = path.resolve(HERE, '../../..');
+  const REPO = path.resolve(SRC, '..');
+
+  // Identifiers that are unfiltered BY CONSTRUCTION. `policiesAll` is
+  // AgentDashboard's raw array; `campaignPolicies` is the prop it travels under.
+  // Naming either in a prop expression is a claim that the destination wants the
+  // imported book, and the manifest has to say so out loud.
+  const RAW_CARRIERS = ['policiesAll', 'campaignPolicies'];
+
+  /** A prop carrying a policy ARRAY. `onViewLapsedPolicies` is a handler, not an array. */
+  function isPolicyArrayProp(name) {
+    return /policies/i.test(name) && !/^on[A-Z]/.test(name);
+  }
+
+  /** Contents of the {...} beginning at `openIdx`, brace-balanced. */
+  function readBraced(src, openIdx) {
+    let depth = 0;
+    for (let i = openIdx; i < src.length; i += 1) {
+      if (src[i] === '{') depth += 1;
+      else if (src[i] === '}') {
+        depth -= 1;
+        if (depth === 0) return src.slice(openIdx + 1, i);
+      }
+    }
+    return null;
+  }
+
+  /** The JSX element an attribute at `idx` belongs to — nearest `<Component` before it. */
+  function enclosingComponent(src, idx) {
+    const before = src.slice(0, idx);
+    const matches = [...before.matchAll(/<([A-Z][\w.]*)/g)];
+    return matches.length ? matches[matches.length - 1][1] : '(unknown)';
+  }
+
+  const sites = [];
+  for (const full of walk(SRC)) {
+    if (!full.endsWith('.jsx')) continue;
+    const rel = path.relative(REPO, full).split(path.sep).join('/');
+    const code = stripComments(fs.readFileSync(full, 'utf8'));
+    for (const m of code.matchAll(/\b([A-Za-z_$][\w$]*)\s*=\s*\{/g)) {
+      const name = m[1];
+      if (!isPolicyArrayProp(name)) continue;
+      const open = m.index + m[0].length - 1;
+      const expr = (readBraced(code, open) ?? '').trim();
+      sites.push({
+        id: `${rel} :: <${enclosingComponent(code, m.index)} ${name}>`,
+        expr,
+        filteredAtSite: /excludeImported\s*\(/.test(expr),
+        namesRawCarrier: RAW_CARRIERS.some((c) => new RegExp(`\\b${c}\\b`).test(expr)),
+      });
+    }
+  }
+  sites.sort((a, b) => a.id.localeCompare(b.id));
+
+  /**
+   * THE MANIFEST. Every policy array handed to a child, and why it is the shape
+   * it is. `unfiltered` is a claim that the destination NEEDS the imported
+   * historical book; each one should cost a conversation.
+   */
+  const MANIFEST = [
+    {
+      id: 'src/components/agent/PolicyLedgerPanel.jsx :: <PipelineStrip policies>',
+      provenance: 'unfiltered',
+      why: 'The ledger LIST shows every doc an agent owns, imported included. It counts by stage; it does not aggregate money.',
+    },
+    {
+      id: 'src/components/agent/PolicyLedgerPanel.jsx :: <CampaignLensPanel policies>',
+      provenance: 'unfiltered',
+      why: 'C-D10: campaign eligibility is decided by dateIssued, never by importSource. An imported policy issued in the window counts; one issued in 2019 does not.',
+    },
+    {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <AgentDashboardHomeV2 campaignPolicies>',
+      provenance: 'unfiltered',
+      why: 'The raw half of C2’s single fetch, travelling to CampaignCard under C-D10. Its ONLY legitimate consumer is the campaign readout.',
+    },
+    {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <AgentDashboardHomeV2 policies>',
+      provenance: 'filtered-upstream',
+      why: 'The excludeImported half of the same fetch, for DeliveryStripCard and the commission strip.',
+    },
+    {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <CommissionAnchorStrip policies>',
+      provenance: 'filtered-upstream',
+      why: 'Commission totals aggregate money, and imported docs were earned outside this system (ruling 5e).',
+    },
+    {
+      id: 'src/components/dashboard/HomeV2/index.jsx :: <DeliveryStripCard policies>',
+      provenance: 'filtered-upstream',
+      why: 'Delivery register surface. An imported policy was delivered years ago, outside this system.',
+    },
+    {
+      id: 'src/components/dashboard/HomeV2/index.jsx :: <CampaignCard policies>',
+      provenance: 'unfiltered',
+      why: 'The campaign readout, C-D10. The operator’s book is 100% imported, so the FILTERED array is empty here and the card would render TTD 0 against a real TTD 73,946.28.',
+    },
+    {
+      id: 'src/components/dashboard/ManagerDashboard.jsx :: <CommissionAnchorStrip policies>',
+      provenance: 'filtered-upstream',
+      why: 'useMyProduction filters at its own reader; same commission surface as the agent side.',
+    },
+  ];
+
+  const manifestById = new Map(MANIFEST.map((e) => [e.id, e]));
+
+  it('finds exactly the known policy-array prop sites (RED when one is added)', () => {
+    // The teeth. Wiring `policiesAll` into AgentAwardsPanel, useMyProduction or
+    // a financing surface creates a site that is not in the manifest, and this
+    // fails naming the file and the component.
+    expect(sites.map((s) => s.id))
+      .toEqual(MANIFEST.map((e) => e.id).sort((a, b) => a.localeCompare(b)));
+  });
+
+  it('classifies every site, and every unfiltered one carries a reason', () => {
+    for (const site of sites) {
+      const entry = manifestById.get(site.id);
+      expect(entry, `unclassified policy-array prop site: ${site.id}`).toBeTruthy();
+      expect(['filtered-at-site', 'filtered-upstream', 'unfiltered']).toContain(entry.provenance);
+      if (entry.provenance === 'unfiltered') {
+        expect(entry.why.length, `${site.id} is unfiltered with no stated reason`).toBeGreaterThan(40);
+      }
+    }
+  });
+
+  it('a site naming a raw carrier MUST be declared unfiltered', () => {
+    // policiesAll / campaignPolicies are unfiltered by construction, so this is
+    // mechanical rather than a hand claim: the text alone settles it.
+    for (const site of sites.filter((s) => s.namesRawCarrier)) {
+      expect(
+        manifestById.get(site.id)?.provenance,
+        `${site.id} passes a raw carrier (${site.expr}) but is not declared unfiltered`,
+      ).toBe('unfiltered');
+    }
+  });
+
+  it('a site that filters inline is never declared unfiltered', () => {
+    for (const site of sites.filter((s) => s.filteredAtSite)) {
+      expect(manifestById.get(site.id)?.provenance).not.toBe('unfiltered');
+    }
+  });
+
+  it('pins the raw carriers — a third one has to be declared here', () => {
+    expect(RAW_CARRIERS).toEqual(['policiesAll', 'campaignPolicies']);
+  });
+
+  it('the scanner actually scans: it finds sites and ignores handler props', () => {
+    // Guards the guard. If the regex silently matched nothing, every assertion
+    // above would pass vacuously.
+    expect(sites.length).toBeGreaterThanOrEqual(8);
+    expect(sites.map((s) => s.id).join(' ')).not.toContain('onViewLapsedPolicies');
+    expect(sites.filter((s) => s.namesRawCarrier).length).toBe(2);
   });
 });

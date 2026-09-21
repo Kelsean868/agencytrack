@@ -7290,6 +7290,31 @@ Concretely, on live data today: the card reads **TTD 73,946 of 825,000**, about 
 
 ## The unfiltered-policies guard checks the FILE, not the array it hands downstream
 
+**RESOLVED 2026-09-20 — option 1 built, not the option-2 speed bump.** The guard now
+enumerates every JSX site that hands a policy ARRAY to a child component and pins the
+inventory (8 sites today), classifying each `filtered-at-site` / `filtered-upstream` /
+`unfiltered`, with every `unfiltered` entry carrying a stated reason. Two identifiers are
+declared unfiltered BY CONSTRUCTION — `policiesAll` and `campaignPolicies` — and a prop
+expression naming either must be declared `unfiltered`, which makes that half mechanical
+rather than a hand claim.
+
+**Demonstrated failing, not merely asserted.** The predicted regression —
+`<AgentAwardsPanel policies={policiesAll}>` in `AgentDashboard.jsx` — was deliberately wired
+and turns THREE assertions red independently: the inventory pin (naming the file and the
+component), the classification check (`unclassified policy-array prop site`), and the
+raw-carrier rule (`passes a raw carrier (policiesAll) but is not declared unfiltered`). The
+FILE-level guard stayed fully green throughout the same run, which is exactly the gap this
+entry described. Reverted; suite green at 30 tests.
+
+**Option 2 was NOT also applied, and could not have been as written.** `ALLOW_UNFILTERED`
+asserts its members do NOT reference `excludeImported(`; `AgentDashboard.jsx` does reference
+it, so adding that file there would have failed the existing assertion. Option 1 supersedes it.
+
+**Known limit, stated rather than papered over:** the guard reads text, not dataflow. It
+cannot prove that a `policies` identifier in one file holds a value filtered in another —
+`filtered-upstream` remains a human claim in the manifest. What it does guarantee is that no
+policy array reaches a child component without a person having classified that site.
+
 **Banked 2026-09-20, found reviewing campaign C2 / PR #962. Severity: MEDIUM. Do this before or with slice C4.**
 
 **Nothing is wrong today.** This is about what the guard would fail to catch next.
