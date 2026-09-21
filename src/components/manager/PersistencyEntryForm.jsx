@@ -184,11 +184,14 @@ export default function PersistencyEntryForm({
     // typed 0 answers the field; a blank does not. Without a ledger this is
     // inert -- the per-field `required` check above already covers that case.
     if (prefill?.hasLedger) {
-      const gate = manualGate(inputs);
+      // Scoped to the month's model: a legacy-12 month has no `decreases`
+      // field, so gating on the raw 24-month manual set would disable Save
+      // forever with nothing on screen to satisfy it.
+      const gate = manualGate(inputs, monthKey);
       if (!gate.canSave) return { ok: false, field: gate.unanswered[0], msg: gate.blockMessage };
     }
     return { ok: true };
-  }, [inputs, fields, derived, prefill]);
+  }, [inputs, fields, derived, prefill, monthKey]);
 
   const handleSubmit = async (e) => {
     if (e?.preventDefault) e.preventDefault();
