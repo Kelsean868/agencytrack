@@ -265,6 +265,177 @@ export function ledgerExportDate(policies) {
   return dates.length ? dates[dates.length - 1] : null;
 }
 
+// ─── Rule 9 · the claw-back flag (C4, ruling R7) ─────────────────────────────
+//
+// Rule 9: policies lapsed, terminated or not taken within three months after the
+// campaign (by March 2027) trigger a recalculation of the category and a
+// claw-back of the prize. The app NEVER re-ranks and never zeroes a prize — the
+// recalculation is Sales Administration’s, on Tatil’s books. This flags, so
+// that nobody is surprised in March.
+//
+// `denied` is deliberately NOT an exit here. A denied application never went in
+// force, so there is no credit to claw back.
+const CLAWBACK_EXIT_STATUSES = new Set(['lapsed', 'ntu']);
+
+/**
+ * The GENUINE exit date of a policy, or null when the ledger does not carry one.
+ *
+ * `dateLapsed` is operator-supplied and `lapsePolicy()` REQUIRES it, so it is
+ * the real-world event date — when the policy actually exited, not when somebody
+ * keyed it.
+ *
+ * ── R7.2 — `statusAsOf` IS FORBIDDEN AS A CLAW-BACK INPUT ──────────────────
+ * It is tempting: it is present on all 109 exit docs in the live tenant while
+ * `dateLapsed` is present on none of them. It is also the OIPA EXPORT DATE.
+ * `buildImportPlan.js` says so in its own words — "`statusAsOf` is the export
+ * date, so it moves on EVERY policy" at EVERY import. Every one of those 109
+ * docs reads `2026-09-15`, which is the day the export ran.
+ *
+ * Using it would be harmless today only by accident, because 2026-09-15 falls
+ * BEFORE `endDate`. The first export to land after 31 Dec 2026 would stamp every
+ * re-imported exit inside `(endDate, clawbackUntil]` at once, and an advisor
+ * would be told that 87 policies lapsed in his claw-back window. Large,
+ * plausible, and entirely wrong.
+ *
+ * Behind a correct counted-gate it would still flag nothing — but the field is
+ * named and refused HERE so that a later reader looking for "the date on the
+ * exit docs" cannot mistake it for one. `statusUpdatedAt` is refused for the
+ * same reason: it is a serverTimestamp written at transition time, i.e. the
+ * recording moment, not the event.
+ */
+export function genuineExitDate(policy) {
+  const lapsed = toDateStr(policy?.dateLapsed);
+  if (lapsed) return { date: lapsed, basis: 'event', field: 'dateLapsed' };
+  // No fallback. See R7.2 above: statusAsOf and statusUpdatedAt are NOT exit
+  // dates and must never be substituted to fill this gap.
+  return null;
+}
+
+/**
+ * The credit a policy WOULD have earned, ignoring the fact that it has since
+ * exited.
+ *
+ * A policy that counted and then lapsed now carries `status: 'lapsed'`, so
+ * `policyContribution` correctly excludes it from today’s totals. The claw-back
+ * question is the opposite one: did this policy ever EARN credit? Rule 7 tests
+ * issuance ("in force as at 31 Dec 2026", "issued by 31 Dec 2026"), so issuance
+ * inside the window plus a non-zero credit is what "it counted" means here.
+ */
+function creditIfItCounted(policy, campaign) {
+  if (!campaign?.credit) return null;
+  if (!policyIsEligible(policy)) return null;
+
+  const issued = toDateStr(policy?.dateIssued);
+  const start = toDateStr(campaign?.startDate);
+  const end = toDateStr(campaign?.endDate);
+  if (!issued || !start || !end) return null;
+  if (issued < start || issued > end) return null;
+
+  const credit = creditFor(policy, campaign);
+  if (!credit) return null;
+  if (credit.apps === 0 && credit.api === 0) return null;
+
+  // ── Did it survive to the END of the campaign? ──────────────────────────
+  //
+  // Rule 9 claws back policies that exit "within the first three months AFTER
+  // the period". A policy that was already out BEFORE 31 Dec never counted at
+  // the close and so has nothing to claw back — it simply never earned credit.
+  //
+  // The live tenant has exactly one exited policy issued inside the window: an
+  // NTU whose export already recorded it as `ntu` on 2026-09-15. That is three
+  // months before the campaign closes, so it was never in force at the close.
+  //
+  // THIS IS NOT R7.2's FORBIDDEN USE. R7.2 forbids `statusAsOf` as the EXIT
+  // DATE — answering "when did it leave?", which this field cannot answer.
+  // Here it answers a different and weaker question that it CAN: "was the
+  // policy already in this exit status as at the export?" An export dated
+  // on-or-before `endDate` that already shows an exit is proof the policy did
+  // not survive the campaign. The exit date stays unknown and is never invented.
+  //
+  // It also fails SAFE. After an export lands past 31 Dec 2026, `statusAsOf`
+  // moves past `endDate`, this test stops firing, and the policy falls through
+  // to `clawbackUnassessable[]` — "cannot assess" — never into `clawbackRisk[]`.
+  // The drift can only ever move a policy toward stating uncertainty.
+  const alreadyOutBeforeClose = toDateStr(policy?.statusAsOf);
+  if (alreadyOutBeforeClose && end && alreadyOutBeforeClose <= end) return null;
+
+  return credit;
+}
+
+/**
+ * deriveClawback(policies, campaign) -> { risk[], unassessable[] }
+ *
+ * ── R7.1 — THE COUNTED-GATE RUNS FIRST, BEFORE ANY DATE LOGIC ──────────────
+ * This ordering is the primary defence and it is not a style choice.
+ *
+ * Rule 9 claws back "a recalculation of the campaign category", so only a policy
+ * that EARNED credit can be clawed back. The live tenant holds 109 exited
+ * policies (87 lapsed, 22 ntu); exactly ONE was issued inside the campaign
+ * window; three policies counted; and ZERO counted policies have exited. The 87
+ * lapses sit outside 1 Jul – 31 Dec 2026 and can never be clawed back at any
+ * date, because they never counted in the first place.
+ *
+ * A scan that reaches them has applied the DATE filter before the COUNTED
+ * filter. That is the defect — not the dates. Reversing these two blocks would
+ * turn an empty, correct list into 87 accusations.
+ */
+export function deriveClawback(policies, campaign) {
+  const empty = { risk: [], unassessable: [] };
+  const end = toDateStr(campaign?.endDate);
+  const until = toDateStr(campaign?.clawbackUntil);
+  if (!campaign?.credit || !end || !until) return empty;
+
+  const risk = [];
+  const unassessable = [];
+
+  for (const policy of Array.isArray(policies) ? policies : []) {
+    if (!policy) continue;
+
+    // ── 1. Did it exit at all? ───────────────────────────────────────────────
+    if (!CLAWBACK_EXIT_STATUSES.has(policy.status)) continue;
+
+    // ── 2. THE COUNTED GATE (R7.1). Nothing below this line runs for a policy
+    //       that never earned credit. Do not move a date test above it. ───────
+    const credit = creditIfItCounted(policy, campaign);
+    if (!credit) continue;
+
+    // ── 3. Only now do dates matter. ────────────────────────────────────────
+    const exit = genuineExitDate(policy);
+    if (!exit) {
+      // R7.3: absence is STATED, never assumed and never silently dropped.
+      unassessable.push({
+        id: policy.id ?? null,
+        ownerName: policy.ownerName ?? null,
+        status: policy.status,
+        apps: credit.apps,
+        api: credit.api,
+        dateBasis: 'none',
+        reason: policy.status === 'ntu'
+          ? 'Not-taken-up date is never recorded — cannot assess, check with Sales Administration'
+          : 'Exit date not recorded — cannot assess, check with Sales Administration',
+      });
+      continue;
+    }
+
+    if (exit.date > end && exit.date <= until) {
+      risk.push({
+        id: policy.id ?? null,
+        ownerName: policy.ownerName ?? null,
+        status: policy.status,
+        apps: credit.apps,
+        api: credit.api,
+        exitDate: exit.date,
+        dateBasis: exit.basis,
+        reason: `Lapsed ${exit.date}, inside the claw-back window — Sales Admin will recalculate your level`,
+      });
+    }
+    // Outside the window: it counted, it exited, but not in the claw-back
+    // period. Nothing to say.
+  }
+
+  return { risk, unassessable };
+}
+
 /**
  * derivePolicyLens(policies, campaign, { now }) — everything the lens strip +
  * per-policy list render. Returns null when there is no campaign.
@@ -343,6 +514,13 @@ export function derivePolicyLens(policies, campaign, { now = new Date() } = {}) 
     apps: { current: appsCurrent, target: appsTarget },
     creditTableApplied: Boolean(campaign.credit),
     exportDate: ledgerExportDate(list),
+    // Rule 9 (R7). Both lists are empty on today's live data and the panel says
+    // so plainly rather than rendering nothing — an absent section reads as
+    // "not implemented", which is a different claim from "nothing to report".
+    ...(() => {
+      const { risk, unassessable } = deriveClawback(list, campaign);
+      return { clawbackRisk: risk, clawbackUnassessable: unassessable };
+    })(),
     // The tier pair, resolved through campaignEngine's shared helper so this
     // panel and HomeV2's CampaignCard cannot imply two different levels.
     tierReached: tierProgress?.tierReached ?? null,

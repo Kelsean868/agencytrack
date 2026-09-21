@@ -134,7 +134,67 @@ function RetreatReadout({ campaign, lens, persistencyRecords }) {
             : `Persistency ${persPct}% clears the ${gate.threshold}% the campaign requires.`}
         </p>
       )}
+
+      <ClawbackLines lens={lens} clawbackUntil={campaign?.clawbackUntil ?? null} />
     </div>
+  );
+}
+
+// ─── Rule 9 on screen · claw-back (C4, R7.3) ─────────────────────────────────
+//
+// Both lists are empty on today's live data, and the card SAYS SO rather than
+// rendering nothing. An absent section reads as "not implemented", which is a
+// different claim from "nothing to report" — and this is the one section an
+// advisor will look for in March.
+function ClawbackLines({ lens, clawbackUntil }) {
+  const risk = lens?.clawbackRisk ?? [];
+  const unassessable = lens?.clawbackUnassessable ?? [];
+  if (!clawbackUntil) return null;
+
+  return (
+    <div className="flex flex-col gap-1" data-testid="campaign-clawback">
+      {risk.length > 0 && (
+        <p className="text-xs font-semibold text-warning-ink" data-testid="clawback-risk">
+          {risk.length} {risk.length === 1 ? 'policy has' : 'policies have'} lapsed in the claw-back
+          window — Sales Admin will recalculate your level.
+        </p>
+      )}
+      {unassessable.length > 0 && (
+        <p className="text-xs text-ink-muted" data-testid="clawback-unassessable">
+          {unassessable.length} counted {unassessable.length === 1 ? 'policy has' : 'policies have'} exited
+          with no exit date recorded — cannot assess, check with Sales Administration.
+        </p>
+      )}
+      {risk.length === 0 && unassessable.length === 0 && (
+        <p className="text-[11px] text-ink-muted" data-testid="clawback-none">
+          No counted policy has lapsed in the claw-back window (to {clawbackUntil}).
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── The general rules that change what an advisor can expect (C4 item 4) ────
+//
+// Items 1, 3 and 6 from page 8, plus Rule 11's footer. Everything this app
+// shows is an INDICATION, never an adjudication — the same honesty contract the
+// TTAIFA work established. The footer is not decoration: it is the sentence
+// that makes every number above it a projection rather than a promise.
+function CampaignRules() {
+  return (
+    <details className="rounded-lg border border-border bg-surface-muted px-3 py-2" data-testid="campaign-rules">
+      <summary className="text-[11px] font-semibold text-ink cursor-pointer">
+        Campaign rules that affect you
+      </summary>
+      <ul className="mt-1.5 flex flex-col gap-1 text-[11px] text-ink-muted list-disc pl-4">
+        <li>You must still be contracted to Tatil Life when the retreat is held. No retreat payment forms part of a separation package.</li>
+        <li>If you qualify but cannot attend, you receive the cash only — the trip cannot be transferred or substituted.</li>
+        <li>Production credit cannot be transferred between agents.</li>
+      </ul>
+      <p className="mt-2 text-[11px] font-semibold text-ink-muted">
+        Where there is any ambiguity, the decision of the Executive Business Development is final.
+      </p>
+    </details>
   );
 }
 
@@ -213,6 +273,8 @@ export default function CampaignCard({ campaign, submissions, agentId, persisten
           persistencyRecords={persistency}
         />
       )}
+
+      {tiered && <CampaignRules />}
 
       {/* Progress bars */}
       {metrics.length > 0 && (

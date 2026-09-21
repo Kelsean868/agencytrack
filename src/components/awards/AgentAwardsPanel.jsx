@@ -58,7 +58,7 @@ function RatioTrendCard({ label, value4w, value12w, trend, format, sparkValues, 
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function AgentAwardsPanel({ submissions, confirmedSettlements, agentProfile, currentDate, ruleset }) {
+export default function AgentAwardsPanel({ submissions, confirmedSettlements, agentProfile, currentDate, ruleset, activeCampaigns = [] }) {
   const [activeCategory, setActiveCategory]  = useState('All');
   const [drawerAwardId, setDrawerAwardId]    = useState(null);
   const { tenantId } = useAuth();
@@ -103,7 +103,12 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
 
   const computation = useMemo(() => {
     try {
-      const rawAwards = computeAgentAwards(activeConfirmedData, submissions, agentProfile, now, ruleset);
+      // Rule 10 — the campaigns are ALREADY loaded by the dashboard via
+      // getActiveCampaignsForAgent, so this is a prop, not a new read. A
+      // flagged campaign covering this month/quarter turns the four advisor
+      // prize strings into "Recognition only"; nothing else about the award
+      // changes, because the award is still won.
+      const rawAwards = computeAgentAwards(activeConfirmedData, submissions, agentProfile, now, ruleset, activeCampaigns);
       const awards = {};
       for (const [id, award] of Object.entries(rawAwards)) {
         const periodCtx = getPeriodCtx(award.category, now);
@@ -125,7 +130,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       console.error(e);
       return { awards: {}, ratioTrends: null, error: 'Failed to compute awards.' };
     }
-  }, [activeConfirmedData, submissions, agentProfile, now, ruleset]);
+  }, [activeConfirmedData, submissions, agentProfile, now, ruleset, activeCampaigns]);
 
   const { awards, ratioTrends, error } = computation;
 
