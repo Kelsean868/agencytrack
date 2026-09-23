@@ -416,3 +416,134 @@ describe('prop-provenance guard — every policy array handed to a child is clas
     expect(sites.filter((s) => s.namesRawCarrier).length).toBe(2);
   });
 });
+
+/**
+ * ─── RAW-CARRIER GUARD (hero-ledger H1) ─────────────────────────────────────
+ *
+ * H1 widened who reads the unfiltered list: the production heroes now derive
+ * their figures from `policiesAll` (R5 — current-year production is decided by
+ * date, not origin). The manifest above keys on props whose NAME says
+ * "policies", which leaves three ways the raw list could reach a new reader
+ * without a test going red. Each is closed here, by prop:
+ *
+ *   1. The raw list handed to a child under ANY prop name (`data={policiesAll}`).
+ *      Every JSX attribute whose value names a raw carrier is enumerated and
+ *      pinned, whatever the attribute is called.
+ *   2. The derived figures. Heroes receive `deriveYearProduction()` output, never
+ *      the list. Every call site is pinned with its first argument, and every
+ *      prop carrying the result is pinned by component and prop name.
+ *   3. `policiesAll` itself. It may appear only in the two files that fetch it,
+ *      and every line naming it must be one of the known shapes — so a hook that
+ *      starts RETURNING it, or a new consumer inside the same file, fails and
+ *      names the line.
+ */
+describe('raw-carrier guard — who may receive the unfiltered list, by prop', () => {
+  const HERE = path.dirname(fileURLToPath(import.meta.url));
+  const SRC = path.resolve(HERE, '../../..');
+  const REPO = path.resolve(SRC, '..');
+  const RAW_CARRIERS = ['policiesAll', 'campaignPolicies'];
+
+  const files = walk(SRC).map((full) => ({
+    rel: path.relative(REPO, full).split(path.sep).join('/'),
+    jsx: full.endsWith('.jsx'),
+    code: stripComments(fs.readFileSync(full, 'utf8')),
+  }));
+
+  function readBraced(src, openIdx) {
+    let depth = 0;
+    for (let i = openIdx; i < src.length; i += 1) {
+      if (src[i] === '{') depth += 1;
+      else if (src[i] === '}') {
+        depth -= 1;
+        if (depth === 0) return src.slice(openIdx + 1, i);
+      }
+    }
+    return null;
+  }
+
+  function enclosingComponent(src, idx) {
+    const matches = [...src.slice(0, idx).matchAll(/<([A-Z][\w.]*)/g)];
+    return matches.length ? matches[matches.length - 1][1] : '(unknown)';
+  }
+
+  /** Every `name={...}` whose expression names one of `identifiers`. */
+  function propSitesNaming(identifiers) {
+    const out = [];
+    for (const f of files.filter((x) => x.jsx)) {
+      for (const m of f.code.matchAll(/\b([A-Za-z_$][\w$]*)\s*=\s*\{/g)) {
+        const expr = readBraced(f.code, m.index + m[0].length - 1) ?? '';
+        if (identifiers.some((id) => new RegExp(`\\b${id}\\b`).test(expr))) {
+          out.push(`${f.rel} :: <${enclosingComponent(f.code, m.index)} ${m[1]}>`);
+        }
+      }
+    }
+    return out.sort((a, b) => a.localeCompare(b));
+  }
+
+  it('1 · the unfiltered list reaches exactly two props, under any name', () => {
+    expect(propSitesNaming(RAW_CARRIERS)).toEqual([
+      // C-D10: the campaign readout. Nothing else.
+      'src/components/dashboard/AgentDashboard.jsx :: <AgentDashboardHomeV2 campaignPolicies>',
+      'src/components/dashboard/HomeV2/index.jsx :: <CampaignCard policies>',
+    ]);
+  });
+
+  it('2a · deriveYearProduction is called only where the list is unfiltered', () => {
+    const calls = [];
+    for (const f of files) {
+      if (f.rel === 'src/lib/ledgerProduction.js') continue; // the definition
+      for (const m of f.code.matchAll(/deriveYearProduction\(\s*([A-Za-z_$][\w$.]*)/g)) {
+        calls.push(`${f.rel} :: ${m[1]}`);
+      }
+    }
+    expect(calls.sort((a, b) => a.localeCompare(b))).toEqual([
+      // PipelineStrip's `policies` is PolicyLedgerPanel's own unfiltered fetch
+      // (manifest above: <PipelineStrip policies> is declared unfiltered).
+      'src/components/agent/policyLedger/PipelineStrip.jsx :: policies',
+      'src/components/dashboard/AgentDashboard.jsx :: policiesAll',
+      'src/hooks/useMyProduction.js :: policiesAll',
+    ]);
+  });
+
+  it('2b · the derived figures travel only to the production hero', () => {
+    expect(propSitesNaming(['ledgerProduction'])).toEqual([
+      'src/components/dashboard/AgentDashboard.jsx :: <AgentDashboardHomeV2 ledgerProduction>',
+      'src/components/dashboard/HomeV2/index.jsx :: <HeroCard production>',
+    ]);
+  });
+
+  it('3 · policiesAll lives in the two fetching files, in known shapes only', () => {
+    const ALLOWED_LINES = [
+      /const \[policiesAll, setPoliciesAll\]\s*= useState\(null\);/,
+      /=> \(policiesAll$/,
+      /\? deriveYearProduction\(policiesAll, \{/,
+      /\[policiesAll, thisYear, currentWeek, allSubmissions\]/,
+      /policiesAll === null && !policiesError/,
+      /campaignPolicies=\{policiesAll\}/,
+    ];
+    const hits = [];
+    for (const f of files) {
+      f.code.split('\n').forEach((line, i) => {
+        if (/\bpoliciesAll\b/.test(line)) hits.push({ rel: f.rel, n: i + 1, line: line.trim() });
+      });
+    }
+    expect([...new Set(hits.map((h) => h.rel))].sort()).toEqual([
+      'src/components/dashboard/AgentDashboard.jsx',
+      'src/hooks/useMyProduction.js',
+    ]);
+    for (const h of hits) {
+      expect(
+        ALLOWED_LINES.some((re) => re.test(h.line)),
+        `${h.rel}:${h.n} uses policiesAll in an unreviewed shape: ${h.line}`,
+      ).toBe(true);
+    }
+    // campaignPolicies={policiesAll} is the agent dashboard's alone.
+    expect(hits.filter((h) => /campaignPolicies=/.test(h.line)).map((h) => h.rel))
+      .toEqual(['src/components/dashboard/AgentDashboard.jsx']);
+  });
+
+  it('the scanner actually scans (guards the guard)', () => {
+    expect(files.length).toBeGreaterThan(100);
+    expect(propSitesNaming(['policies']).length).toBeGreaterThanOrEqual(8);
+  });
+});

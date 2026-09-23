@@ -32,6 +32,12 @@ import MyPointsCard from '../../gamification/MyPointsCard';
  */
 export default function AgentDashboardHomeV2({
   ytdTotals,
+  // H1 — deriveYearProduction() output (derived figures, not a policy list).
+  ledgerProduction,
+  ledgerPending,
+  ledgerError,
+  onRetryLedger,
+  onOpenLedgerCreate,
   personalAnnualAPI,
   kpiData,
   allSubmissions,
@@ -239,6 +245,11 @@ export default function AgentDashboardHomeV2({
           ytdApi={ytdTotals?.api ?? 0}
           personalAnnualAPI={personalAnnualAPI}
           onSubmit={onSubmit}
+          production={ledgerProduction ?? null}
+          pending={Boolean(ledgerPending)}
+          error={Boolean(ledgerError)}
+          onRetry={onRetryLedger}
+          onOpenLedgerCreate={onOpenLedgerCreate}
         />
 
         {/* Pulse strip */}

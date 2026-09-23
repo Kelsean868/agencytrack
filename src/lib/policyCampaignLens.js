@@ -112,6 +112,11 @@ export function creditFor(policy, campaign) {
     };
   }
 
+  // `api` is 'full', 'none', or a FRACTION of the policy's API. The fraction
+  // exists for the general production table (ledgerProduction.js), where a lump
+  // sum earns 10% API; Rule 7 itself uses no fraction, so no campaign changes.
+  const fraction = typeof row.api === 'number' && Number.isFinite(row.api) ? row.api : null;
+
   let apps = 0;
   let reason;
   if (row.apps === 'full') {
@@ -125,15 +130,20 @@ export function creditFor(policy, campaign) {
     reason = clears
       ? `${row.label} at or above the application threshold — full credit`
       : `${row.label} below the application threshold — API credit only`;
+  } else if (fraction !== null) {
+    reason = `${row.label} — ${Math.round(fraction * 100)}% API credit, no application`;
   } else {
     reason = `${row.label} — no application or API credit`;
   }
 
-  return { apps, api: row.api === 'full' ? value : 0, reason };
+  let api = 0;
+  if (row.api === 'full') api = value;
+  else if (fraction !== null) api = value * fraction;
+  return { apps, api, reason };
 }
 
 /** Normalize a policy/campaign date (string or Firestore Timestamp) to YYYY-MM-DD. */
-function toDateStr(v) {
+export function toDateStr(v) {
   if (!v) return null;
   if (typeof v === 'string') return v.slice(0, 10);
   if (typeof v.toDate === 'function') {

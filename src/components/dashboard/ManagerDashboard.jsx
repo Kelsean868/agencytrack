@@ -67,6 +67,7 @@ import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import DerivedIncomePanel from '../goals/DerivedIncomePanel';
 import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
+import LedgerLoadError from '../goals/LedgerLoadError';
 import { useMyProduction } from '../../hooks/useMyProduction';
 import FinancingSelfView from '../financing/FinancingSelfView';
 import UnitFinancingRoster from '../financing/UnitFinancingRoster';
@@ -291,11 +292,12 @@ export default function ManagerDashboard() {
     setShowMpWizard(true);
   };
 
-  // Lazy-load own policies when Commission tab is first visited.
+  // Lazy-load own policies when Commission or Goals is first visited — the
+  // Goals panels read production from the ledger (H1).
   // Destructured to avoid re-running when other myProd fields update (Gemini G1).
   const { policies: myProdPolicies, loadPolicies: myProdLoadPolicies } = myProd;
   useEffect(() => {
-    if (activeTab === 'mp-commission' && myProdPolicies === null) myProdLoadPolicies();
+    if ((activeTab === 'mp-commission' || activeTab === 'mp-goals') && myProdPolicies === null) myProdLoadPolicies();
   }, [activeTab, myProdPolicies, myProdLoadPolicies]);
   const onPullRefresh = useCallback(() => {
     setPtrRevision((r) => r + 1);
@@ -694,10 +696,13 @@ export default function ManagerDashboard() {
 
         {activeTab === 'mp-goals' && (
           <>
+            {myProd.policiesError && (
+              <LedgerLoadError onRetry={myProd.loadPolicies} />
+            )}
             <GapAnalysisPanel
               hierarchy={myProd.hierarchy}
               ytdTotals={myProd.ytdTotals}
-              loading={myProd.hierarchyLoading}
+              loading={myProd.hierarchyLoading || myProd.ledgerPending}
               error={myProd.hierarchyError}
               ytdPersistency={myProd.ytdPersistency}
               persistencyFloor={myProd.companyMinimums?.persistency ?? PERS_GATE_PCT}
@@ -707,7 +712,7 @@ export default function ManagerDashboard() {
                 hierarchy={myProd.hierarchy}
                 ytdTotals={myProd.ytdTotals}
                 commissionRate={parseFloat(userProfile?.commissionRate) || null}
-                loading={myProd.hierarchyLoading}
+                loading={myProd.hierarchyLoading || myProd.ledgerPending}
               />
             </div>
             <div className="mt-4 border-t border-border pt-4">
@@ -720,7 +725,7 @@ export default function ManagerDashboard() {
             <div className="mt-4 border-t border-border pt-4">
               <MdrtTracker
                 ytdTotals={myProd.ytdTotals}
-                loading={myProd.loading}
+                loading={myProd.loading || myProd.ledgerPending}
               />
             </div>
           </>
