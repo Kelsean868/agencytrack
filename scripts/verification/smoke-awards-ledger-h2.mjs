@@ -12,13 +12,15 @@
  *
  * Expected figures: Kyron's live book (OIPA export 15 Sep 2026), 2026 settled
  * life business, all `nb_ordinary`, all imported:
- *   2026-06-30 12,000 · 2026-07-31 1,946.28 · 2026-08-04 36,000 ×2 · 2026-08-07 1,200
- *   → August 73,200 / 3 apps · Q3 75,146.28 / 4 apps · 2026 87,146.28 / 5 apps.
+ *   2026-06-30 12,000 · 2026-07-31 1,946.28 · 2026-08-04 36,000 ×2
+ *   · 2026-08-07 1,200 (self/family)
+ * Self/family does NOT count toward awards, except MDRT (Kyron, 23 Sep 2026):
+ *   → Q3 73,946.28 / 3 apps · MDRT 87,146.28 · home hero 87,146.28 (unchanged).
  *
  * The monthly award reads the CURRENT month (awardsEngine computeAgentAwards
  * uses `now`), so on a September run it shows September, not August. The
- * August check is therefore reported as BLOCKED, never as a pass; August itself
- * is proven in src/lib/__tests__/awardRowsFromLedger.test.js.
+ * dispatcher accepted the unit-test proof in its place (Option 1, 23 Sep 2026):
+ * src/lib/__tests__/awardRowsFromLedger.test.js. It is reported as WAIVED.
  *
  *   node scripts/verification/smoke-awards-ledger-h2.mjs
  */
@@ -32,8 +34,8 @@ const SIGN_IN_TIMEOUT_MS = 10 * 60 * 1000;
 const STEP_TIMEOUT_MS = 30_000;
 
 const EXPECT = {
-  quarterlyApi: '75,146',
-  quarterlyApps: '4',
+  quarterlyApi: '73,946',
+  quarterlyApps: '3',
   annualApi: '87,146',
 };
 
@@ -66,6 +68,14 @@ async function walk(page, theme) {
   await page.getByTestId('hero-settled-api').waitFor({ timeout: STEP_TIMEOUT_MS });
   const isDark = await page.evaluate(() => document.documentElement.classList.contains('dark'));
   check(`${theme} · theme applied`, isDark === (theme === 'dark'));
+  // The hero numeral counts up (~1s); poll until it settles, as the H1 smoke does.
+  let hero = '';
+  for (const deadline = Date.now() + STEP_TIMEOUT_MS; Date.now() < deadline;) {
+    hero = await page.getByTestId('hero-settled-api').first().innerText();
+    if (hero.includes(EXPECT.annualApi)) break;
+    await page.waitForTimeout(250);
+  }
+  check(`${theme} · home hero still counts self/family (TTD 87,146.28)`, hero.includes(EXPECT.annualApi), hero.replace(/\s+/g, ' '));
 
   await goTab(page, 'awards');
   await page.getByText(/awards tracked/i).first().waitFor({ timeout: STEP_TIMEOUT_MS });
@@ -79,17 +89,17 @@ async function walk(page, theme) {
   }
 
   const qApi = await cardText(page, 'quarterly_api');
-  check(`${theme} · Q3 API award reads the ledger (Jul 31 + 3 Aug policies)`, qApi?.includes(EXPECT.quarterlyApi), qApi);
+  check(`${theme} · Q3 API award reads the ledger (Jul 31 + 2 Aug policies; self/family excluded)`, qApi?.includes(EXPECT.quarterlyApi), qApi);
   const qApps = await cardText(page, 'quarterly_apps');
   check(`${theme} · Q3 apps award = ${EXPECT.quarterlyApps}`, qApps != null && new RegExp(`\\b${EXPECT.quarterlyApps}\\b`).test(qApps), qApps);
 
   const mdrt = await cardText(page, 'mdrt');
-  check(`${theme} · MDRT reads the 2026 ledger total`, mdrt?.includes(EXPECT.annualApi), mdrt);
+  check(`${theme} · MDRT counts self/family (2026 ledger total)`, mdrt?.includes(EXPECT.annualApi), mdrt);
 
   const monthApi = await cardText(page, 'advisor_month_api');
   console.log(`INFO  ${theme} · Advisor of the Month — API (current month) shows: ${monthApi}`);
   blocked(`${theme} · Advisor of the Month (August) shows Aug 2026 policies`,
-    'the monthly award reads the current month only; there is no August view on this date');
+    'WAIVED (dispatcher Option 1): the monthly award reads the current month only; August is unit-tested');
 
   await page.screenshot({ path: path.join(OUT, `${theme}-awards.png`), fullPage: true });
   await goTab(page, 'dashboard');
