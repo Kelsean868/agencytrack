@@ -131,6 +131,49 @@ function weeklyReported(submissions, year, weekStarting) {
 }
 
 /**
+ * awardRowsFromLedger(policies) — the Policy Ledger in the shape the awards
+ * engine reads: `[{ periodKey: 'YYYY-MM', settledAPI, settledApps, persistency: 0 }]`.
+ *
+ * R5 · the date test for awards. A policy belongs to the month its
+ * `dateIssued` falls in, and to nothing else. The awards engine then picks the
+ * rows for the award's own period (this month, this quarter, this year), so an
+ * imported policy issued 15 Aug 2026 lands in the August row and counts toward
+ * August, Q3 and 2026; one issued in 2019 lands in a 2019 row that no current
+ * award ever reads. `importSource` is never consulted.
+ *
+ * Same settled test and same R3 credit (`productionCredit`) as the Settled
+ * figure in `deriveYearProduction`, so an award and the hero differ only by
+ * self/family business (below). API is NOT read from `settledAPI`: every imported doc
+ * carries `settledAPI: null`, and the credit helper already falls back to
+ * `proposedAPI` through `policyValue`.
+ *
+ * Self/family policies (`isSelfOrFamily`) do NOT count toward awards (Kyron,
+ * 23 Sep 2026): their API goes to `selfFamilyAPI`, never to `settledAPI` or
+ * `settledApps`. MDRT is the one award that adds it back (awardsEngine). The
+ * home hero (`deriveYearProduction`) still counts them.
+ *
+ * Persistency is not a ledger figure; the caller merges it per periodKey.
+ */
+export function awardRowsFromLedger(policies) {
+  const byMonth = new Map();
+  for (const p of Array.isArray(policies) ? policies : []) {
+    if (!p || !isLife(p) || !isSettled(p)) continue;
+    const issued = toDateStr(p.dateIssued);
+    if (!issued || !/^\d{4}-\d{2}-/.test(issued)) continue;
+    const periodKey = issued.slice(0, 7);
+    const credit = productionCredit(p);
+    const row = byMonth.get(periodKey)
+      ?? { periodKey, settledAPI: 0, settledApps: 0, selfFamilyAPI: 0, persistency: 0 };
+    byMonth.set(periodKey, p.isSelfOrFamily === true
+      ? { ...row, selfFamilyAPI: row.selfFamilyAPI + credit.api }
+      : { ...row, settledAPI: row.settledAPI + credit.api, settledApps: row.settledApps + credit.apps });
+  }
+  return [...byMonth.values()]
+    .map((row) => ({ ...row, settledAPI: cents(row.settledAPI), selfFamilyAPI: cents(row.selfFamilyAPI) }))
+    .sort((a, b) => a.periodKey.localeCompare(b.periodKey));
+}
+
+/**
  * deriveYearProduction(policies, { year, weekStarting, submissions })
  *
  * `policies` MUST be the unfiltered list (`getOwnPolicies`, no excludeImported):

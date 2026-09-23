@@ -3,8 +3,8 @@ import { TrendingUp, TrendingDown, Minus, Trophy } from 'lucide-react';
 import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, computeAwardPace, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../../utils/awardsEngine';
 import { formatCurrency } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
-import { getOwnPolicies, settlementShapeFromPolicies } from '../../services/policiesService';
-import { excludeImported } from '../../lib/portfolioImport/excludeImported';
+import { getOwnPolicies } from '../../services/policiesService';
+import { awardRowsFromLedger } from '../../lib/ledgerProduction';
 import { HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer } from './awardPrimitives';
 import { LedgerSourceChip } from './awardProvenance';
 import { deriveAwardProvenance } from '../../lib/awardProvenance';
@@ -65,6 +65,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   const [ledgerPolicies, setLedgerPolicies] = useState(null);
   const [ledgerError, setLedgerError] = useState(false);
   const usesPolicyLedger = Boolean(agentProfile?.usesPolicyLedger);
+  const canReadLedger = Boolean(tenantId && agentProfile?.uid);
   // Item 3.4 — awards provenance (flag OFF ⇒ chip + drawer panel absent).
   const awardsProvenanceOn = useFeatureFlag('awardsProvenance');
 
@@ -72,32 +73,59 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   // confirmedSettlements arrive as props from the parent). §1 states
   // contract — a failed ledger read no longer silently degrades to an
   // empty array with no trace; the error card's Retry re-invokes this.
+  //
+  // Fetched for EVERY agent, not only flagged ones: whether the ledger is the
+  // source depends on whether the agent HAS ledger policies (H2 item 2).
   const loadLedgerPolicies = useCallback(() => {
-    if (!usesPolicyLedger || !tenantId || !agentProfile?.uid) return;
+    if (!canReadLedger) return;
     setLedgerError(false);
     getOwnPolicies(tenantId, agentProfile.uid)
-      // Awards and campaign credit are earned in AgencyTrack. An imported
-      // historical book must not award anything retroactively (ruling 5e).
-      .then((pols) => setLedgerPolicies(excludeImported(pols)))
+      /* AWARDS ARE EARNED BY DATE, NOT BY ORIGIN (amends ruling 5e; C-D10).
+
+         This call site previously passed `excludeImported(pols)` under
+         dispatcher ruling 5e, so an imported historical book could not award
+         anything retroactively. The intent was right; the mechanism was wrong,
+         exactly as C-D10 found for the campaign lens. On 23 Sep 2026 the
+         operator's ledger held 229 policy docs, ALL imported, 5 of them settled
+         and issued in 2026 — and the origin filter hid every one, so Advisor of
+         the Month, the quarterly awards and the Club all read zero against real
+         2026 business (three policies issued 4–7 Aug 2026 among them).
+
+         The raw array is kept, and `awardRowsFromLedger` applies the test the
+         rule actually states (Kyron, 23 Sep 2026, R5): a policy belongs to the
+         month its `dateIssued` falls in. An imported policy issued 15 Aug 2026
+         counts toward August, Q3 and 2026; one issued in 2019 lands in a 2019
+         row that no current award reads — because of its DATE. Origin was only
+         ever a proxy for age.
+
+         `excludeImported` is NOT weakened and NOT removed: it stays in force,
+         unchanged, for every other reader the excludeImported call-site guard
+         lists (financing among them). */
+      .then((pols) => setLedgerPolicies(Array.isArray(pols) ? pols : []))
       .catch((e) => {
         console.error('[AgentAwardsPanel] policy ledger load failed:', e);
         setLedgerError(true);
         setLedgerPolicies([]);
       });
-  }, [usesPolicyLedger, tenantId, agentProfile?.uid]);
+  }, [canReadLedger, tenantId, agentProfile?.uid]);
 
   useEffect(() => { loadLedgerPolicies(); }, [loadLedgerPolicies]);
 
+  // H2 item 2 — the ledger is the source when the agent is flagged OR holds at
+  // least one ledger policy. An agent with neither keeps confirmed settlements.
+  // The flag is kept: it still forces the ledger for a flagged agent whose
+  // ledger is empty.
+  const readsLedger = usesPolicyLedger || (ledgerPolicies?.length ?? 0) > 0;
+
   const activeConfirmedData = useMemo(() => {
-    if (!usesPolicyLedger) return confirmedSettlements ?? [];
-    if (ledgerPolicies === null) return [];
-    const ledgerShape = settlementShapeFromPolicies(ledgerPolicies);
+    if (!readsLedger) return confirmedSettlements ?? [];
     const persistByPeriod = {};
     for (const s of (confirmedSettlements ?? [])) {
       if (s.periodKey && s.persistency) persistByPeriod[s.periodKey] = s.persistency;
     }
-    return ledgerShape.map((row) => ({ ...row, persistency: persistByPeriod[row.periodKey] ?? 0 }));
-  }, [usesPolicyLedger, ledgerPolicies, confirmedSettlements]);
+    return awardRowsFromLedger(ledgerPolicies ?? [])
+      .map((row) => ({ ...row, persistency: persistByPeriod[row.periodKey] ?? 0 }));
+  }, [readsLedger, ledgerPolicies, confirmedSettlements]);
 
   const now = useMemo(() => currentDate ?? new Date(), [currentDate]);
 
@@ -140,9 +168,9 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   // Item 3.4 — provenance model for the open drawer (null unless flag is ON).
   const drawerProvenance = useMemo(
     () => (awardsProvenanceOn && drawerAward
-      ? deriveAwardProvenance(drawerAward, { usesPolicyLedger })
+      ? deriveAwardProvenance(drawerAward, { usesPolicyLedger: readsLedger })
       : null),
-    [awardsProvenanceOn, drawerAward, usesPolicyLedger],
+    [awardsProvenanceOn, drawerAward, readsLedger],
   );
 
   // Filter by active category tab
@@ -193,7 +221,9 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   // groups below render from an artificially empty activeConfirmedData while
   // ledgerPolicies is still null — every award reads as 0% progress instead
   // of a loading state.
-  const ledgerLoading = usesPolicyLedger && ledgerPolicies === null && !ledgerError;
+  // Every agent now waits for the ledger read: until it resolves, the panel
+  // cannot know which source to name (H2 item 3).
+  const ledgerLoading = canReadLedger && ledgerPolicies === null && !ledgerError;
   if (ledgerLoading) {
     return (
       <div className="flex flex-col gap-6" data-testid="agent-awards-loading">
@@ -239,7 +269,8 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       {/* Item 3.4 — honest ledger-source chip (flag-gated) */}
       {awardsProvenanceOn && (
         <div className="flex" data-testid="agent-awards-source-chip">
-          <LedgerSourceChip sourceLive={usesPolicyLedger} source={usesPolicyLedger ? 'POLICY LEDGER' : 'CONFIRMED SETTLEMENTS'} />
+          {/* Names the source actually read (H2 item 3), not the flag. */}
+          <LedgerSourceChip sourceLive={readsLedger} source={readsLedger ? 'POLICY LEDGER' : 'CONFIRMED SETTLEMENTS'} />
         </div>
       )}
 

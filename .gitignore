@@ -94,6 +94,9 @@ verification/*
 # hero-ledger brief: smoke screenshots are a deliverable (H1)
 !verification/hero-ledger/
 !verification/hero-ledger/*.png
+# hero-ledger brief: smoke screenshots are a deliverable (H2)
+!verification/awards-ledger/
+!verification/awards-ledger/*.png
 !verification/e4/screenshots/
 !verification/e4/screenshots/*.png
 # Track J — screenshot atlas baselines (committed; future dated atlases replace, not accumulate)

@@ -187,6 +187,11 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
     ? confPersistVals.reduce((s, v) => s + v, 0) / confPersistVals.length
     : 0;
 
+  // Self/family business is excluded from every award's API and apps, but
+  // MDRT still counts it (Kyron, 23 Sep 2026). Only Policy Ledger rows carry
+  // `selfFamilyAPI` (awardRowsFromLedger); settlement rows read 0.
+  const mdrtAPI = annualAPI + annualConf.reduce((s, d) => s + p(d.selfFamilyAPI), 0);
+
   const annualNote = annualSource === 'estimated' ? 'Estimated — pending Tatil Life confirmation' : null;
   const monthlyNote = monthlySource === 'estimated' ? 'Estimated — pending Tatil Life confirmation' : null;
   const quarterlyNote = quarterlySource === 'estimated' ? 'Estimated — pending Tatil Life confirmation' : null;
@@ -359,11 +364,11 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
 
   awards.mdrt = makeAward({
     id: 'mdrt', name: 'MDRT', category: 'annual',
-    eligible: annualAPI >= ruleset.mdrtAward.apiThreshold,
-    inContention: annualAPI >= ruleset.mdrtAward.apiInContention && annualAPI < ruleset.mdrtAward.apiThreshold,
-    criteria: [criterion('Annual API', ruleset.mdrtAward.apiThreshold, annualAPI, 'TTD')],
+    eligible: mdrtAPI >= ruleset.mdrtAward.apiThreshold,
+    inContention: mdrtAPI >= ruleset.mdrtAward.apiInContention && mdrtAPI < ruleset.mdrtAward.apiThreshold,
+    criteria: [criterion('Annual API', ruleset.mdrtAward.apiThreshold, mdrtAPI, 'TTD')],
     prize: ruleset.mdrtAward.prize,
-    dataSource: annualSource, progressPercent: (annualAPI / ruleset.mdrtAward.apiThreshold) * 100, note: annualNote,
+    dataSource: annualSource, progressPercent: (mdrtAPI / ruleset.mdrtAward.apiThreshold) * 100, note: annualNote,
   });
 
   return awards;

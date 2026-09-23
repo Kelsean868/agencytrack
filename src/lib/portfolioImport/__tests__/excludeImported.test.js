@@ -196,6 +196,11 @@ describe('call-site guard — every getOwnPolicies caller references excludeImpo
       'persistency is the one reader that MUST see imported docs — they are its entire input'],
     ['src/components/agent/PolicyLedgerPanel.jsx',
       'the campaign lens tests dateIssued, not importSource (C-D10); the ledger list always showed every doc'],
+    // Joined under R5 (hero-ledger-truth H2, 23 Sep 2026): awards bucket each
+    // policy by the month of its dateIssued, so a 2019 import reaches no
+    // current award by DATE. Same shape as the C-D10 amendment above.
+    ['src/components/awards/AgentAwardsPanel.jsx',
+      'awards count a policy in the month of its dateIssued, not by importSource (R5, amends 5e)'],
   ]);
 
   it.each(callers.map((c) => [c.rel, c.code]))('%s references excludeImported, or is allow-listed', (rel, code) => {
@@ -214,10 +219,12 @@ describe('call-site guard — every getOwnPolicies caller references excludeImpo
   // the imported historical book, and each entry should cost a conversation.
   // PersistencyTab is ruling 5e's own exception; PolicyLedgerPanel joined under
   // C-D10, when the campaign lens moved from the origin test to the date test.
-  it('allow-lists exactly the two surfaces that must fetch unfiltered', () => {
+  // AgentAwardsPanel joined under R5 (H2).
+  it('allow-lists exactly the three surfaces that must fetch unfiltered', () => {
     expect([...ALLOW_UNFILTERED.keys()]).toEqual([
       'src/components/agent/PersistencyTab.jsx',
       'src/components/agent/PolicyLedgerPanel.jsx',
+      'src/components/awards/AgentAwardsPanel.jsx',
     ]);
   });
 
