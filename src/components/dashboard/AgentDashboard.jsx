@@ -879,6 +879,7 @@ export default function AgentDashboard() {
               agentProfile={userProfile}
               currentDate={now}
               ruleset={awardsRuleset}
+              persistency={persistency}
             />
           </div>
         )

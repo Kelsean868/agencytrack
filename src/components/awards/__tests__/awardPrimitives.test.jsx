@@ -123,8 +123,20 @@ describe('AwardCard', () => {
     expect(card.textContent).toContain('88%');
   });
 
-  it('renders NOT STARTED label + state=locked data attr for a not-yet-eligible award', () => {
+  it('renders IN PROGRESS label + state=locked data attr for a not-yet-eligible award with real progress', () => {
     const award = { ...baseAward, inContention: false, progressPercent: 5 };
+    render(<AwardCard award={award} onClick={() => {}} />);
+    const card = screen.getByTestId('award-card-p1');
+    expect(card.getAttribute('data-state')).toBe('locked');
+    expect(card.textContent).toContain('IN PROGRESS');
+    expect(card.textContent).not.toContain('NOT STARTED');
+  });
+
+  // Banked FOLLOW_UP "Award card NOT STARTED above 0%" — the fix keeps NOT
+  // STARTED for exactly 0 progress and only reclassifies 0 < progress <
+  // contention as IN PROGRESS.
+  it('renders NOT STARTED label for an award at exactly 0% progress', () => {
+    const award = { ...baseAward, inContention: false, progressPercent: 0 };
     render(<AwardCard award={award} onClick={() => {}} />);
     const card = screen.getByTestId('award-card-p1');
     expect(card.getAttribute('data-state')).toBe('locked');

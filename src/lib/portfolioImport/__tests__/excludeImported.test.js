@@ -362,9 +362,14 @@ describe('prop-provenance guard — every policy array handed to a child is clas
       why: 'Delivery register surface. An imported policy was delivered years ago, outside this system.',
     },
     {
-      id: 'src/components/dashboard/HomeV2/index.jsx :: <CampaignCard policies>',
+      id: 'src/components/dashboard/HomeV2/index.jsx :: <CampaignHeroCard policies>',
       provenance: 'unfiltered',
-      why: 'The campaign readout, C-D10. The operator’s book is 100% imported, so the FILTERED array is empty here and the card would render TTD 0 against a real TTD 73,946.28.',
+      why: 'The campaign readout, C-D10, now via H3’s CampaignHeroCard (replaced CampaignCard on Home). The operator’s book is 100% imported, so the FILTERED array is empty here and the card would render TTD 0 against a real TTD 73,946.28.',
+    },
+    {
+      id: 'src/components/awards/AgentAwardsPanel.jsx :: <CampaignHeroCard policies>',
+      provenance: 'unfiltered',
+      why: 'H3’s campaign hero on the Awards tab is fed from `ledgerPolicies`, the same raw ledger fetch this file already uses for `awardRowsFromLedger` under R5/H2 — never `excludeImported`, so the campaign readout cannot disagree with the ledger-based awards beside it.',
     },
     {
       id: 'src/components/dashboard/ManagerDashboard.jsx :: <CommissionAnchorStrip policies>',
@@ -489,9 +494,13 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
 
   it('1 · the unfiltered list reaches exactly two props, under any name', () => {
     expect(propSitesNaming(RAW_CARRIERS)).toEqual([
-      // C-D10: the campaign readout. Nothing else.
+      // C-D10: the campaign readout. Nothing else. (H3 renamed the HomeV2
+      // component CampaignCard -> CampaignHeroCard; AgentAwardsPanel's own
+      // CampaignHeroCard site feeds from `ledgerPolicies`, not a raw carrier
+      // identifier, so it does not appear here — see the prop-provenance
+      // manifest above for that site's own classification.)
       'src/components/dashboard/AgentDashboard.jsx :: <AgentDashboardHomeV2 campaignPolicies>',
-      'src/components/dashboard/HomeV2/index.jsx :: <CampaignCard policies>',
+      'src/components/dashboard/HomeV2/index.jsx :: <CampaignHeroCard policies>',
     ]);
   });
 

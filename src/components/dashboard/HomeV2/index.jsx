@@ -17,7 +17,7 @@ import RecentCompact from './RecentCompact';
 import DeliveryStripCard from './DeliveryStripCard';
 import StandardDetail from './StandardDetail';
 import FilingStreakCelebration from './FilingStreakCelebration';
-import CampaignCard from '../../campaigns/CampaignCard';
+import CampaignHeroCard from '../../campaigns/CampaignHeroCard';
 import MyPointsCard from '../../gamification/MyPointsCard';
 
 /**
@@ -50,7 +50,6 @@ export default function AgentDashboardHomeV2({
   activityEvents,
   activeCampaigns,
   campaignsLoading,
-  campaignSubs,
   // Unfiltered — the campaign card tests dateIssued, not importSource (C-D10).
   // `policies` below stays FILTERED for DeliveryStripCard; these two arrays are
   // deliberately different views of one fetch, not a duplicate.
@@ -252,6 +251,21 @@ export default function AgentDashboardHomeV2({
           onOpenLedgerCreate={onOpenLedgerCreate}
         />
 
+        {/* Campaign hero — H3: reads the policy ledger via derivePolicyLens,
+            the SAME call CampaignLensPanel makes, never weekly submissions. */}
+        {!campaignsLoading && activeCampaigns?.length > 0 && (
+          <div className="flex flex-col gap-3">
+            {activeCampaigns.map((c) => (
+              <CampaignHeroCard
+                key={c.id}
+                campaign={c}
+                policies={campaignPolicies ?? []}
+                persistencyRecords={persistency}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Pulse strip */}
         <PulseStrip pulses={pulses} activeKey={drawer === 'standard' ? 'standard' : null} onChipClick={handleChipClick} />
 
@@ -263,23 +277,6 @@ export default function AgentDashboardHomeV2({
           <RecentCompact events={activityEvents} onViewAll={() => onOpenTab?.('history')} />
           <div className="flex flex-col gap-4">
             <DeliveryStripCard policies={policies} />
-            {!campaignsLoading && activeCampaigns?.length > 0 && (
-              <div className="flex flex-col gap-3">
-                {activeCampaigns.map((c) => (
-                  <CampaignCard
-                    key={c.id}
-                    campaign={c}
-                    submissions={campaignSubs?.[c.id] ?? []}
-                    agentId={agentUid}
-                    /* Already loaded for the persistency pulse above — passed
-                       down rather than re-fetched, so the retreat readout can
-                       state the gate without a new read. */
-                    persistency={persistency}
-                    policies={campaignPolicies ?? []}
-                  />
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>
