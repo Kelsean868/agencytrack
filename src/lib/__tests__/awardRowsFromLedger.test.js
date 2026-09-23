@@ -25,7 +25,7 @@ describe('awardRowsFromLedger — R5 date test', () => {
     const rows = awardRowsFromLedger([
       imported({ status: 'settled', dateIssued: '2026-08-15', proposedAPI: 36000 }),
     ]);
-    expect(rows).toEqual([{ periodKey: '2026-08', settledAPI: 36000, settledApps: 1, persistency: 0 }]);
+    expect(rows).toEqual([{ periodKey: '2026-08', settledAPI: 36000, settledApps: 1, selfFamilyAPI: 0, persistency: 0 }]);
 
     const api = award(rows, 'advisor_month_api', '2026-08-20T12:00:00');
     expect(api.criteria[0].current).toBe(36000);
@@ -69,7 +69,7 @@ describe('awardRowsFromLedger — R5 date test', () => {
       imported({ status: 'submitted', dateIssued: '2026-08-04', proposedAPI: 5000 }),
       imported({ status: 'confirmed', dateIssued: '2026-08-04', proposedAPI: 2500 }),
     ]);
-    expect(rows).toEqual([{ periodKey: '2026-08', settledAPI: 2500, settledApps: 1, persistency: 0 }]);
+    expect(rows).toEqual([{ periodKey: '2026-08', settledAPI: 2500, settledApps: 1, selfFamilyAPI: 0, persistency: 0 }]);
   });
 
   it('uses the R3 credit helper: an increase under TTD 2,400 earns API but no app', () => {
@@ -79,7 +79,7 @@ describe('awardRowsFromLedger — R5 date test', () => {
     expect(rows[0]).toMatchObject({ settledAPI: 2399, settledApps: 0 });
   });
 
-  it("Kyron's shape: August rows agree with the hero's Settled figure for the same policies", () => {
+  describe("self/family rule (Kyron, 23 Sep 2026) on Kyron's live shape", () => {
     const policies = [
       imported({ status: 'settled', dateIssued: '2026-06-30', proposedAPI: 12000 }),
       imported({ status: 'settled', dateIssued: '2026-07-31', proposedAPI: 1946.28 }),
@@ -89,13 +89,42 @@ describe('awardRowsFromLedger — R5 date test', () => {
       imported({ status: 'ntu', dateIssued: '2026-07-25', proposedAPI: 36000 }),
       imported({ status: 'settled', dateIssued: '2019-05-01', proposedAPI: 5000 }),
     ];
-    const rows = awardRowsFromLedger(policies);
-    const aug = rows.find((r) => r.periodKey === '2026-08');
-    expect(aug).toMatchObject({ settledAPI: 73200, settledApps: 3 });
+    const NOW = '2026-09-23T12:00:00';
 
-    const in2026 = rows.filter((r) => r.periodKey.startsWith('2026-'));
-    const sum = in2026.reduce((s, r) => s + r.settledAPI, 0);
-    expect(Math.round(sum * 100) / 100).toBe(deriveYearProduction(policies, { year: 2026 }).settled.api);
+    it('the self/family policy is kept out of API and apps, and held in selfFamilyAPI', () => {
+      const aug = awardRowsFromLedger(policies).find((r) => r.periodKey === '2026-08');
+      expect(aug).toEqual({ periodKey: '2026-08', settledAPI: 72000, settledApps: 2, selfFamilyAPI: 1200, persistency: 0 });
+    });
+
+    it('Q3 awards read TTD 73,946.28 and 3 apps', () => {
+      const rows = awardRowsFromLedger(policies);
+      expect(award(rows, 'quarterly_api', NOW).criteria[0].current).toBeCloseTo(73946.28, 2);
+      expect(award(rows, 'quarterly_apps', NOW).criteria[0].current).toBe(3);
+    });
+
+    it('every other annual award excludes it; MDRT counts it and matches the home hero', () => {
+      const rows = awardRowsFromLedger(policies);
+      const heroSettled = deriveYearProduction(policies, { year: 2026 }).settled.api;
+      expect(heroSettled).toBe(87146.28);
+      expect(award(rows, 'mdrt', NOW).criteria[0].current).toBeCloseTo(heroSettled, 2);
+      expect(award(rows, 'agent_of_year', NOW).criteria[0].current).toBeCloseTo(85946.28, 2);
+      expect(award(rows, 'agent_of_year', NOW).criteria[1].current).toBe(4);
+      expect(award(rows, 'centurion', NOW).criteria[0].current).toBe(4);
+    });
+
+    it('a month holding ONLY a self/family policy reads 0 for the monthly award', () => {
+      const rows = awardRowsFromLedger([
+        imported({ status: 'settled', dateIssued: '2026-09-02', proposedAPI: 5000, isSelfOrFamily: true }),
+      ]);
+      expect(award(rows, 'advisor_month_api', NOW).criteria[0].current).toBe(0);
+      expect(award(rows, 'advisor_month_apps', NOW).criteria[0].current).toBe(0);
+      expect(award(rows, 'mdrt', NOW).criteria[0].current).toBe(5000);
+    });
+  });
+
+  it('settlement rows (no selfFamilyAPI field) leave MDRT equal to annual API', () => {
+    const rows = [{ periodKey: '2026-05', settledAPI: 10000, settledApps: 2, persistency: 90 }];
+    expect(award(rows, 'mdrt', '2026-09-23T12:00:00').criteria[0].current).toBe(10000);
   });
 
   it('skips docs with no usable dateIssued and tolerates a non-array input', () => {

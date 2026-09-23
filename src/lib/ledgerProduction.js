@@ -142,10 +142,15 @@ function weeklyReported(submissions, year, weekStarting) {
  * award ever reads. `importSource` is never consulted.
  *
  * Same settled test and same R3 credit (`productionCredit`) as the Settled
- * figure in `deriveYearProduction`, so an award and the hero cannot disagree
- * about the same month. API is NOT read from `settledAPI`: every imported doc
+ * figure in `deriveYearProduction`, so an award and the hero differ only by
+ * self/family business (below). API is NOT read from `settledAPI`: every imported doc
  * carries `settledAPI: null`, and the credit helper already falls back to
  * `proposedAPI` through `policyValue`.
+ *
+ * Self/family policies (`isSelfOrFamily`) do NOT count toward awards (Kyron,
+ * 23 Sep 2026): their API goes to `selfFamilyAPI`, never to `settledAPI` or
+ * `settledApps`. MDRT is the one award that adds it back (awardsEngine). The
+ * home hero (`deriveYearProduction`) still counts them.
  *
  * Persistency is not a ledger figure; the caller merges it per periodKey.
  */
@@ -157,15 +162,14 @@ export function awardRowsFromLedger(policies) {
     if (!issued || !/^\d{4}-\d{2}-/.test(issued)) continue;
     const periodKey = issued.slice(0, 7);
     const credit = productionCredit(p);
-    const row = byMonth.get(periodKey) ?? { periodKey, settledAPI: 0, settledApps: 0, persistency: 0 };
-    byMonth.set(periodKey, {
-      ...row,
-      settledAPI: row.settledAPI + credit.api,
-      settledApps: row.settledApps + credit.apps,
-    });
+    const row = byMonth.get(periodKey)
+      ?? { periodKey, settledAPI: 0, settledApps: 0, selfFamilyAPI: 0, persistency: 0 };
+    byMonth.set(periodKey, p.isSelfOrFamily === true
+      ? { ...row, selfFamilyAPI: row.selfFamilyAPI + credit.api }
+      : { ...row, settledAPI: row.settledAPI + credit.api, settledApps: row.settledApps + credit.apps });
   }
   return [...byMonth.values()]
-    .map((row) => ({ ...row, settledAPI: cents(row.settledAPI) }))
+    .map((row) => ({ ...row, settledAPI: cents(row.settledAPI), selfFamilyAPI: cents(row.selfFamilyAPI) }))
     .sort((a, b) => a.periodKey.localeCompare(b.periodKey));
 }
 
