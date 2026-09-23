@@ -362,7 +362,8 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
                 `excludeImported` is NOT weakened and NOT removed: it remains in
                 force, unchanged, for every other aggregating reader (the CRO
                 Delivery Register, getPoliciesForManager, useMyProduction,
-                AgentAwardsPanel, financing). Whether those should also move to
+                financing; AgentAwardsPanel moved to the date test under R5).
+                Whether the rest should also move to
                 a date test is §6 Q1 — an operator judgement, not this slice's. */}
             <CampaignLensPanel policies={policies} />
 

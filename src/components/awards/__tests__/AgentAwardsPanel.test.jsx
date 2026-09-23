@@ -9,18 +9,10 @@ vi.mock('../../../context/AuthContext', () => ({
 }));
 
 // ── Mock policies service ────────────────────────────────────────────────────
+// The ledger → award-rows derivation (awardRowsFromLedger) is NOT mocked: it is
+// pure, and H2's point is what it hands the awards engine.
 vi.mock('../../../services/policiesService', () => ({
   getOwnPolicies: vi.fn(() => Promise.resolve([])),
-  settlementShapeFromPolicies: vi.fn((policies) => {
-    // Minimal stub: return one row per unique periodKey in settled policies
-    const map = {};
-    for (const p of policies) {
-      if (p.status !== 'settled') continue;
-      const key = p.periodKey ?? '2026-05';
-      map[key] = { periodKey: key, settledAPI: p.settledAPI ?? 0, settledApps: 1, persistency: 0 };
-    }
-    return Object.values(map);
-  }),
 }));
 
 // ── Mock awardsEngine ────────────────────────────────────────────────────────
@@ -51,7 +43,7 @@ vi.mock('../../../hooks/useFeatureFlag', () => ({
 }));
 
 import AgentAwardsPanel from '../AgentAwardsPanel';
-import { getOwnPolicies, settlementShapeFromPolicies } from '../../../services/policiesService';
+import { getOwnPolicies } from '../../../services/policiesService';
 import { computeAgentAwards } from '../../../utils/awardsEngine';
 
 // ── Default props ────────────────────────────────────────────────────────────
@@ -77,17 +69,29 @@ describe('AgentAwardsPanel — 3.4 awards provenance flag', () => {
     expect(screen.queryByTestId('agent-awards-source-chip')).not.toBeInTheDocument();
   });
 
-  it('flag ON — renders the honest ledger-source chip (settlements source)', () => {
+  it('flag ON — renders the honest ledger-source chip (settlements source)', async () => {
     mockUseFeatureFlag.mockImplementation((k) => k === 'awardsProvenance');
     render(<AgentAwardsPanel submissions={SUBS} confirmedSettlements={SETTLEMENTS} agentProfile={BASE_PROFILE} />);
-    const chip = screen.getByTestId('agent-awards-source-chip');
+    const chip = await screen.findByTestId('agent-awards-source-chip');
     expect(chip.textContent).toMatch(/FROM CONFIRMED SETTLEMENTS/);
+  });
+
+  // H2 item 3 — the chip names the source actually read, not the flag.
+  it('flag ON — an UNFLAGGED agent with ledger policies is named POLICY LEDGER', async () => {
+    mockUseFeatureFlag.mockImplementation((k) => k === 'awardsProvenance');
+    getOwnPolicies.mockResolvedValue([
+      { status: 'settled', dateIssued: '2026-08-04', proposedAPI: 36000, newBusinessType: 'nb_ordinary', importSource: 'oipa_import' },
+    ]);
+    render(<AgentAwardsPanel submissions={SUBS} confirmedSettlements={SETTLEMENTS} agentProfile={BASE_PROFILE} />);
+    const chip = await screen.findByTestId('agent-awards-source-chip');
+    expect(chip.textContent).toMatch(/POLICY LEDGER/);
+    expect(chip.textContent).not.toMatch(/CONFIRMED SETTLEMENTS/);
   });
 });
 
-describe('AgentAwardsPanel — usesPolicyLedger flag', () => {
-  describe('usesPolicyLedger = false (settlements path)', () => {
-    it('does NOT call getOwnPolicies when flag is false', () => {
+describe('AgentAwardsPanel — source selection (H2 item 2)', () => {
+  describe('no flag, no ledger policies (settlements path)', () => {
+    it('reads the ledger to decide, and keeps confirmedSettlements when it is empty', async () => {
       render(
         <AgentAwardsPanel
           submissions={[]}
@@ -95,9 +99,53 @@ describe('AgentAwardsPanel — usesPolicyLedger flag', () => {
           agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: false }}
         />
       );
-      expect(getOwnPolicies).not.toHaveBeenCalled();
+      await waitFor(() => expect(getOwnPolicies).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(computeAgentAwards).toHaveBeenLastCalledWith(
+        SETTLEMENTS, [], expect.any(Object), expect.any(Date), undefined, [],
+      ));
     });
 
+    it('an agent with no policies and no flag still reads confirmed settlements', async () => {
+      getOwnPolicies.mockResolvedValue([]);
+      const subs = [{ weekStarting: '2026-05-04', agentId: BASE_PROFILE.uid }];
+      render(
+        <AgentAwardsPanel
+          submissions={subs}
+          confirmedSettlements={SETTLEMENTS}
+          agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: false }}
+        />
+      );
+      await screen.findByText(/awards tracked/i);
+      expect(computeAgentAwards).toHaveBeenLastCalledWith(
+        SETTLEMENTS, subs, expect.any(Object), expect.any(Date), undefined, [],
+      );
+    });
+  });
+
+  describe('no flag, but the agent HAS ledger policies', () => {
+    it('reads the ledger, bucketing an imported policy by its dateIssued month', async () => {
+      getOwnPolicies.mockResolvedValue([
+        { status: 'settled', dateIssued: '2026-08-15', proposedAPI: 36000, settledAPI: null, newBusinessType: 'nb_ordinary', importSource: 'oipa_import' },
+        { status: 'settled', dateIssued: '2019-03-01', proposedAPI: 9000, settledAPI: null, newBusinessType: 'nb_ordinary', importSource: 'oipa_import' },
+      ]);
+      render(
+        <AgentAwardsPanel
+          submissions={[]}
+          confirmedSettlements={SETTLEMENTS}
+          agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: false }}
+        />
+      );
+      await waitFor(() => {
+        const [data] = computeAgentAwards.mock.calls.at(-1);
+        expect(data).toEqual([
+          { periodKey: '2019-03', settledAPI: 9000, settledApps: 1, persistency: 0 },
+          { periodKey: '2026-08', settledAPI: 36000, settledApps: 1, persistency: 0 },
+        ]);
+      });
+    });
+  });
+
+  describe('confirmedSettlements path — argument pins', () => {
     it('passes confirmedSettlements directly to computeAgentAwards', () => {
       render(
         <AgentAwardsPanel
@@ -152,25 +200,22 @@ describe('AgentAwardsPanel — usesPolicyLedger flag', () => {
       expect(getOwnPolicies).toHaveBeenCalledWith('tatillife_south', BASE_PROFILE.uid);
     });
 
-    it('calls settlementShapeFromPolicies with the fetched policies', async () => {
-      const policies = [
-        { status: 'settled', periodKey: '2026-05', settledAPI: 8000 },
-      ];
-      getOwnPolicies.mockResolvedValue(policies);
-
+    it('a flagged agent with an EMPTY ledger still reads the ledger (the flag is kept)', async () => {
+      getOwnPolicies.mockResolvedValue([]);
       render(
         <AgentAwardsPanel
           submissions={[]}
-          confirmedSettlements={[]}
+          confirmedSettlements={SETTLEMENTS}
           agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: true }}
         />
       );
-      await waitFor(() => expect(settlementShapeFromPolicies).toHaveBeenCalledWith(policies));
+      await waitFor(() => expect(getOwnPolicies).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(computeAgentAwards.mock.calls.at(-1)[0]).toEqual([]));
     });
 
     it('merges persistency from confirmedSettlements into the ledger shape', async () => {
       const policies = [
-        { status: 'settled', periodKey: '2026-05', settledAPI: 8000 },
+        { status: 'settled', dateIssued: '2026-05-12', settledAPI: 8000, newBusinessType: 'nb_ordinary' },
       ];
       const settlementsWithPersistency = [
         { periodKey: '2026-05', settledAPI: 9000, settledApps: 3, persistency: 90 },
@@ -195,21 +240,11 @@ describe('AgentAwardsPanel — usesPolicyLedger flag', () => {
       });
     });
 
-    it('does not call settlementShapeFromPolicies on the false (settlements) path', () => {
-      render(
-        <AgentAwardsPanel
-          submissions={[]}
-          confirmedSettlements={SETTLEMENTS}
-          agentProfile={{ ...BASE_PROFILE, usesPolicyLedger: false }}
-        />
-      );
-      expect(settlementShapeFromPolicies).not.toHaveBeenCalled();
-    });
   });
 });
 
 describe('AgentAwardsPanel — §1 states contract (error / retry)', () => {
-  it('renders a persistent inline error card with Retry when the awards computation throws', () => {
+  it('renders a persistent inline error card with Retry when the awards computation throws', async () => {
     computeAgentAwards.mockImplementation(() => { throw new Error('boom-compute'); });
 
     render(
@@ -220,7 +255,8 @@ describe('AgentAwardsPanel — §1 states contract (error / retry)', () => {
       />
     );
 
-    const card = document.querySelector('[data-testid="agent-awards-error"]');
+    // Past the ledger-read loading gate every agent now waits on (H2).
+    const card = await screen.findByTestId('agent-awards-error');
     expect(card).toBeInTheDocument();
     expect(card).toHaveAttribute('role', 'alert');
     expect(card.querySelector('button')).toHaveTextContent(/retry/i);
