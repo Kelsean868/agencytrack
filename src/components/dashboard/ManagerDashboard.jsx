@@ -173,6 +173,9 @@ const SETTINGS_NAV_ITEM = { id: 'settings', label: 'Settings', tabId: 'settings'
 
 const MP_TABS = new Set(['mp-report', 'mp-goals', 'mp-game-plan', 'mp-money-needs', 'mp-history', 'mp-commission', 'mp-policies', 'mp-financing']);
 
+// Tabs whose panels read the producing manager's own policies.
+const PRODUCTION_POLICY_TABS = new Set(['mp-commission', 'mp-goals', 'goals']);
+
 export default function ManagerDashboard() {
   const { user, userProfile, role, tenantId, branchId } = useAuth();
   const toast = useToast();
@@ -292,12 +295,13 @@ export default function ManagerDashboard() {
     setShowMpWizard(true);
   };
 
-  // Lazy-load own policies when Commission or Goals is first visited — the
-  // Goals panels read production from the ledger (H1).
+  // Lazy-load own policies when Commission, My Production Goals or the Goals
+  // tab (GoalsPanel's Self view) is first visited — goals read production
+  // from the ledger (H1). loadPolicies is a no-op for non-producing roles.
   // Destructured to avoid re-running when other myProd fields update (Gemini G1).
   const { policies: myProdPolicies, loadPolicies: myProdLoadPolicies } = myProd;
   useEffect(() => {
-    if ((activeTab === 'mp-commission' || activeTab === 'mp-goals') && myProdPolicies === null) myProdLoadPolicies();
+    if (PRODUCTION_POLICY_TABS.has(activeTab) && myProdPolicies === null) myProdLoadPolicies();
   }, [activeTab, myProdPolicies, myProdLoadPolicies]);
   const onPullRefresh = useCallback(() => {
     setPtrRevision((r) => r + 1);
@@ -618,7 +622,7 @@ export default function ManagerDashboard() {
 
         {activeTab === 'team-perf' && <TeamPerfRosterPage />}
 
-        {activeTab === 'goals' && <GoalsPanel />}
+        {activeTab === 'goals' && <GoalsPanel ownProduction={isProducingManager ? myProd : null} />}
 
         {activeTab === 'settlements' && <SettlementPanel />}
 

@@ -10,8 +10,7 @@ import DerivedIncomePanel from '../goals/DerivedIncomePanel';
 import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
 import { getTenantUsers } from '../../services/managerService';
-import { getAgentSubmissions } from '../../services/submissionService';
-import { getSettlements } from '../../services/settlementService';
+import LedgerLoadError from '../goals/LedgerLoadError';
 import {
   getGoals, setGoals, getCompanyMinimums,
   getUnitGoals, setUnitGoals,
@@ -21,7 +20,6 @@ import {
 } from '../../services/goalsService';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatDateDisplay, getUnitDisplayName } from '../../utils/formatters';
-import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
 import {
   resolveAnnualAPIFloor,
   FLAT_ANNUAL_API_FALLBACK,
@@ -1057,16 +1055,23 @@ function AgentGoalsTab() {
 }
 
 // ── Main GoalsPanel — single-row sub-tab wrapper + persistent goal cascade ──
-export default function GoalsPanel() {
+const EMPTY = Object.freeze([]);
+const ZERO_TOTALS = Object.freeze({ api: 0, apps: 0, activityApps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 });
+
+/**
+ * `ownProduction` is ManagerDashboard's `useMyProduction()` result for a
+ * producing manager (null otherwise). Its `ytdTotals.api` / `.apps` are the
+ * LEDGER's settled figures (hero-ledger H1), so this panel shows the same
+ * production as the manager's My Production tab — and reuses that fetch
+ * instead of re-reading submissions and settlements on its own.
+ */
+export default function GoalsPanel({ ownProduction = null }) {
   const { user, userProfile, role, tenantId } = useAuth();
   const [subTab, setSubTab] = useState('self');
   const [allUsers, setAllUsers] = useState([]);
   const [hierarchy, setHierarchy] = useState(null);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [hierarchyError, setHierarchyError] = useState(null);
-  const [allSubmissions, setAllSubmissions] = useState([]);
-  const [settlements, setSettlements] = useState([]);
-  const [ownDataLoading, setOwnDataLoading] = useState(false);
 
   // sales_manager joins the manager-role list per the org-hierarchy memory.
   // Bundled fix for a pre-existing gap surfaced during M4 discovery.
@@ -1081,7 +1086,11 @@ export default function GoalsPanel() {
     role === 'tenant_admin' ||
     role === 'platform_admin';
   const isProducing = role === 'unit_manager' || role === 'branch_manager';
-  const thisYear = new Date().getFullYear();
+  const own = isProducing ? ownProduction : null;
+  const allSubmissions = own?.allSubmissions ?? EMPTY;
+  const settlements = own?.settlements ?? EMPTY;
+  const ytdTotals = own?.ytdTotals ?? ZERO_TOTALS;
+  const ownDataLoading = Boolean(own && (own.loading || own.ledgerPending));
 
   useEffect(() => {
     getTenantUsers(tenantId).then(setAllUsers).catch(console.error);
@@ -1104,38 +1113,6 @@ export default function GoalsPanel() {
       .finally(() => setHierarchyLoading(false));
   }, [user?.uid, tenantId, userProfile?.unitId]);
 
-  useEffect(() => {
-    if (!isProducing || !user?.uid || !tenantId) return;
-    let cancelled = false;
-    setOwnDataLoading(true);
-    Promise.all([
-      getAgentSubmissions(tenantId, user.uid).catch(() => []),
-      getSettlements(tenantId, user.uid, thisYear).catch(() => []),
-    ]).then(([subs, setts]) => {
-      if (cancelled) return;
-      setAllSubmissions(subs);
-      setSettlements(setts);
-    }).catch(console.error).finally(() => {
-      if (!cancelled) setOwnDataLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [isProducing, user?.uid, tenantId, thisYear]);
-
-  const ytdTotals = useMemo(() => {
-    const yearSubs = allSubmissions.filter(
-      (s) => s.status === 'submitted' && s.weekStarting?.startsWith(String(thisYear))
-    );
-    return yearSubs.reduce((acc, s) => {
-      const f = extractFields(s);
-      acc.api          += extractTotalProductionCredit(s);
-      acc.apps         += parseFloat(f.applicationsSold) || 0;
-      acc.ffiConducted += parseFloat(f.ffiConducted)     || 0;
-      acc.ciConducted  += parseFloat(f.ciConducted)      || 0;
-      acc.dials        += parseFloat(f.totalTelAttempts)  || 0;
-      return acc;
-    }, { api: 0, apps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 });
-  }, [allSubmissions, thisYear]);
-
   const tabs = useMemo(() => [
     { id: 'self',   label: 'Self'   },
     { id: 'agents', label: 'Agent'  },
@@ -1146,10 +1123,11 @@ export default function GoalsPanel() {
 
   return (
     <div className="flex flex-col gap-4">
+      {own?.policiesError && <LedgerLoadError onRetry={own.loadPolicies} />}
       <GapAnalysisPanel
         hierarchy={hierarchy}
         ytdTotals={ytdTotals}
-        loading={hierarchyLoading}
+        loading={hierarchyLoading || Boolean(own?.ledgerPending)}
         error={hierarchyError}
         title="Goal Cascade"
       />

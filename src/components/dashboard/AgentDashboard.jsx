@@ -570,6 +570,12 @@ export default function AgentDashboard() {
   };
   const retryPolicies = () => { setPolicies(null); setPoliciesError(false); };
 
+  // The Policy Ledger wrote a policy. Mark our copy stale: `policies === null`
+  // makes the lazy-load effect refetch the next time a POLICY_TABS tab opens,
+  // so returning to Home re-derives the hero with no page reload. `policiesAll`
+  // is kept until the refetch lands, so the hero never flashes to empty.
+  const markPoliciesStale = useCallback(() => { setPolicies(null); }, []);
+
   // Unlock banner
   const showUnlockBanner =
     !unlockDismissed &&
@@ -903,6 +909,7 @@ export default function AgentDashboard() {
           initialForm={prefillPolicy}
           onPrefillConsumed={() => setPrefillPolicy(null)}
           initialFilter={policyLedgerFilter}
+          onPoliciesChanged={markPoliciesStale}
         />
       )}
 
