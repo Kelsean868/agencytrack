@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getOwnPolicies } from '../../services/policiesService';
 import { awardRowsFromLedger } from '../../lib/ledgerProduction';
 import { HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer } from './awardPrimitives';
+import CampaignHeroCard from '../campaigns/CampaignHeroCard';
 import { LedgerSourceChip } from './awardProvenance';
 import { deriveAwardProvenance } from '../../lib/awardProvenance';
 import { useFeatureFlag } from '../../hooks/useFeatureFlag';
@@ -58,7 +59,7 @@ function RatioTrendCard({ label, value4w, value12w, trend, format, sparkValues, 
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function AgentAwardsPanel({ submissions, confirmedSettlements, agentProfile, currentDate, ruleset, activeCampaigns = [] }) {
+export default function AgentAwardsPanel({ submissions, confirmedSettlements, agentProfile, currentDate, ruleset, activeCampaigns = [], persistency = [] }) {
   const [activeCategory, setActiveCategory]  = useState('All');
   const [drawerAwardId, setDrawerAwardId]    = useState(null);
   const { tenantId } = useAuth();
@@ -290,6 +291,24 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
           >
             Retry
           </button>
+        </div>
+      )}
+
+      {/* Campaign hero — H3: top hero on the Awards tab when a campaign is
+          active, fed from the same ledger the panel already loaded for
+          `awardRowsFromLedger` above (no new fetch). */}
+      {activeCampaigns.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {activeCampaigns.map((c) => (
+            <CampaignHeroCard
+              key={c.id}
+              campaign={c}
+              policies={ledgerPolicies ?? []}
+              persistencyRecords={persistency}
+              loading={ledgerPolicies === null}
+              error={ledgerError}
+            />
+          ))}
         </div>
       )}
 

@@ -209,9 +209,17 @@ export function AwardCard({ award, onClick }) {
     isQualified  ? 'var(--color-gold-tint)' :
     isContention ? 'var(--color-primary-tint)' :
                    'var(--color-surface-muted)';
+  // Hero-ledger H3 — banked FOLLOW_UP "Award card NOT STARTED above 0%".
+  // `inContention` is a threshold the awards engine sets well above zero, so
+  // any award with real progress below that threshold used to fall straight
+  // to NOT STARTED — Kyron's live MDRT read "NOT STARTED · 17%" beside its
+  // own percentage. A third state covers 0 < progress < contention; exactly
+  // 0 still reads NOT STARTED.
+  const hasStarted = !isQualified && !isContention && award.progressPercent > 0;
   const stateText =
     isQualified  ? 'QUALIFIED' :
     isContention ? `${formatAwardPct(award.progressPercent)}%` :
+    hasStarted   ? 'IN PROGRESS' :
                    'NOT STARTED';
 
   const prim = award.criteria?.[0];

@@ -202,7 +202,9 @@ describe('ManagerAwardsPanel — v2 group classification', () => {
     expect(screen.getByTestId('award-group-starting')).toBeInTheDocument();
     const card = screen.getByTestId('award-card-persistency_gold');
     expect(card).toHaveAttribute('data-state', 'locked');
-    expect(card.textContent).toContain('NOT STARTED');
+    // Hero-ledger H3 — banked FOLLOW_UP "Award card NOT STARTED above 0%":
+    // 12% real progress now reads IN PROGRESS, not NOT STARTED.
+    expect(card.textContent).toContain('IN PROGRESS');
   });
 
   it('selects the highest-progress in-contention award as the hero (via dedicated HeroAwardCard usage)', async () => {
