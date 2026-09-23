@@ -97,6 +97,64 @@ describe('HeroCard — progress + MDRT marker logic', () => {
   });
 });
 
+describe('HeroCard — ledger figures and the R4 reconciliation note (hero-ledger H1)', () => {
+  const production = (over = {}) => ({
+    year: 2026,
+    settled: { api: 87146.28, apps: 5, count: 5 },
+    submitted: { api: 123146.28, apps: 6, count: 6, datedByIssue: true, weekApi: 0 },
+    weekly: { ytdApi: 30000, weekApi: 4800 },
+    mismatch: { ytd: 30000 - 123146.28, week: 4800 },
+    ...over,
+  });
+
+  it('shows settled apps, submitted API with the dated-by-issue marker, and submitted apps', () => {
+    render(<HeroCard ytdApi={87146.28} personalAnnualAPI={MDRT_THRESHOLD} onSubmit={() => {}} production={production()} />);
+    expect(screen.getByTestId('hero-settled-api')).toHaveTextContent(formatCurrency(87146.28));
+    expect(screen.getByTestId('hero-settled-apps')).toHaveTextContent('5');
+    expect(screen.getByTestId('hero-submitted-api')).toHaveTextContent(formatCurrency(123146.28));
+    expect(screen.getByTestId('dated-by-issue')).toHaveTextContent(/dated by issue/i);
+    expect(screen.getByTestId('hero-submitted-apps')).toHaveTextContent('6');
+  });
+
+  it('omits the marker when every submitted policy carries a real submit date', () => {
+    const p = production();
+    render(<HeroCard ytdApi={1} personalAnnualAPI={MDRT_THRESHOLD} onSubmit={() => {}} production={{ ...p, submitted: { ...p.submitted, datedByIssue: false } }} />);
+    expect(screen.queryByTestId('dated-by-issue')).not.toBeInTheDocument();
+  });
+
+  it('states both sides of the reconciliation and flags a gap over TTD 1, with a link to the ledger form', () => {
+    const onOpenLedgerCreate = vi.fn();
+    render(<HeroCard ytdApi={1} personalAnnualAPI={MDRT_THRESHOLD} onSubmit={() => {}} production={production()} onOpenLedgerCreate={onOpenLedgerCreate} />);
+    const note = screen.getByTestId('ledger-reconciliation');
+    expect(note).toHaveTextContent(
+      `Weekly reports say you submitted ${formatCurrency(30000)} this year (${formatCurrency(4800)} this week). Your ledger shows ${formatCurrency(123146.28)}.`,
+    );
+    expect(screen.getByTestId('ledger-mismatch')).toHaveTextContent(formatCurrency(93146.28));
+    fireEvent.click(screen.getByRole('button', { name: /add a policy to your ledger/i }));
+    expect(onOpenLedgerCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('never hides the note when the two agree — it says they match', () => {
+    render(<HeroCard ytdApi={1} personalAnnualAPI={MDRT_THRESHOLD} onSubmit={() => {}} production={production({ mismatch: { ytd: 0.5, week: 0 } })} />);
+    expect(screen.getByTestId('ledger-match')).toHaveTextContent('Matches your weekly reports.');
+    expect(screen.queryByTestId('ledger-mismatch')).not.toBeInTheDocument();
+  });
+
+  it('shows a loading state, not a confident TTD 0, while the ledger loads', () => {
+    render(<HeroCard ytdApi={0} personalAnnualAPI={MDRT_THRESHOLD} onSubmit={() => {}} pending />);
+    expect(screen.getByTestId('hero-ledger-pending')).toBeInTheDocument();
+    expect(screen.queryByTestId('hero-settled-api')).not.toBeInTheDocument();
+  });
+
+  it('shows an error with a retry when the ledger fails to load', () => {
+    const onRetry = vi.fn();
+    render(<HeroCard ytdApi={0} personalAnnualAPI={MDRT_THRESHOLD} onSubmit={() => {}} error onRetry={onRetry} />);
+    expect(screen.getByTestId('hero-ledger-error')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('HeroCard — §2 count-up numeral (reduced-motion + final-value correctness)', () => {
   it('renders the EXACT ytdApi value immediately under prefers-reduced-motion, including cents (no rounding drift)', () => {
     // Non-round figure with cents — proves useCountUp's decimals:2 option

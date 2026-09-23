@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mock state ───────────────────────────────────────────────────────────────
@@ -575,41 +575,68 @@ describe('GoalsPanel', () => {
       expect(screen.queryByTestId('mdrt-tracker')).not.toBeInTheDocument();
     });
 
-    it('feeds own submission ytdTotals to DerivedIncomePanel and MdrtTracker', async () => {
+    // hero-ledger H1 — the panel shows the manager's LEDGER production, from the
+    // dashboard's useMyProduction() result. The weekly report (48000 in
+    // OWN_SUBMISSION) is activity; the ledger's settled API (36000) is production.
+    const OWN_PRODUCTION = {
+      allSubmissions: [OWN_SUBMISSION],
+      settlements: [],
+      ytdTotals: { api: 36000, apps: 1, activityApps: 8, ffiConducted: 3, ciConducted: 2, dials: 30 },
+      loading: false,
+      ledgerPending: false,
+      policiesError: false,
+      loadPolicies: vi.fn(),
+    };
+
+    it('feeds the ledger settled API, not the weekly report, to DerivedIncomePanel and MdrtTracker', async () => {
       setRole('branch_manager');
-      render(<GoalsPanel />);
-      // OWN_SUBMISSION has totalProductionCredit=48000 — ytdTotals.api must be 48000.
+      render(<GoalsPanel ownProduction={OWN_PRODUCTION} />);
       await waitFor(() => {
-        const derived = screen.getByTestId('derived-income-panel');
-        expect(derived.getAttribute('data-ytd-api')).toBe('48000');
-        const mdrt = screen.getByTestId('mdrt-tracker');
-        expect(mdrt.getAttribute('data-ytd-api')).toBe('48000');
+        expect(screen.getByTestId('derived-income-panel').getAttribute('data-ytd-api')).toBe('36000');
+        expect(screen.getByTestId('mdrt-tracker').getAttribute('data-ytd-api')).toBe('36000');
       });
     });
 
     it('feeds own submissions array to AwardsReachPanel', async () => {
       setRole('branch_manager');
-      render(<GoalsPanel />);
+      render(<GoalsPanel ownProduction={OWN_PRODUCTION} />);
       await waitFor(() => {
         const panel = screen.getByTestId('awards-reach-panel');
         expect(panel.getAttribute('data-sub-count')).toBe('1');
       });
     });
 
-    it('feeds real ytdTotals to GapAnalysisPanel (not zeros)', async () => {
+    it('feeds the ledger ytdTotals to GapAnalysisPanel (not zeros, not weekly)', async () => {
       setRole('branch_manager');
-      render(<GoalsPanel />);
+      render(<GoalsPanel ownProduction={OWN_PRODUCTION} />);
       await waitFor(() => {
-        const gap = screen.getByTestId('gap-analysis-panel');
-        expect(gap.getAttribute('data-ytd-api')).toBe('48000');
+        expect(screen.getByTestId('gap-analysis-panel').getAttribute('data-ytd-api')).toBe('36000');
       });
     });
 
-    it('does NOT call getAgentSubmissions for sales_manager', async () => {
+    it('shows loading while the ledger is pending', async () => {
+      setRole('branch_manager');
+      render(<GoalsPanel ownProduction={{ ...OWN_PRODUCTION, ledgerPending: true }} />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mdrt-tracker').getAttribute('data-loading')).toBe('true');
+      });
+    });
+
+    it('shows the ledger error card with a working retry', async () => {
+      setRole('branch_manager');
+      const loadPolicies = vi.fn();
+      render(<GoalsPanel ownProduction={{ ...OWN_PRODUCTION, policiesError: true, loadPolicies }} />);
+      const card = await screen.findByTestId('ledger-load-error');
+      fireEvent.click(within(card).getByRole('button', { name: /retry/i }));
+      expect(loadPolicies).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores ownProduction for a non-producing role and reads no submissions itself', async () => {
       setRole('sales_manager');
       hoisted.getAgentSubmissions.mockClear();
-      render(<GoalsPanel />);
-      await screen.findByTestId('gap-analysis-panel');
+      render(<GoalsPanel ownProduction={OWN_PRODUCTION} />);
+      const gap = await screen.findByTestId('gap-analysis-panel');
+      expect(gap.getAttribute('data-ytd-api')).toBe('0');
       expect(hoisted.getAgentSubmissions).not.toHaveBeenCalled();
     });
   });

@@ -3,18 +3,45 @@ import { ArrowRight } from 'lucide-react';
 import { formatCurrency } from '../../../utils/formatters';
 import { MDRT_THRESHOLDS_2026 } from '../../../config/mdrtThresholds/2026';
 import { useCountUp } from '../../../hooks/useCountUp';
+import LedgerReconciliationNote from './LedgerReconciliationNote';
+
+/** One of the three secondary ledger figures under the big number. */
+function LedgerFigure({ label, value, marker, testId }) {
+  return (
+    <div className="flex-none" data-testid={testId}>
+      <p className="text-[10px] font-bold tracking-widest uppercase text-[--hero-ink-muted-teal] font-mono truncate">
+        {label}
+      </p>
+      <p className="text-base font-bold text-[--hero-ink] mt-0.5 tabular-nums">{value}</p>
+      {marker && (
+        <p className="text-[10px] font-mono uppercase tracking-wider text-[--hero-ink-muted-teal] mt-0.5" data-testid="dated-by-issue">
+          {marker}
+        </p>
+      )}
+    </div>
+  );
+}
 
 /**
  * HeroCard (v2 Agent Dashboard home).
  *
- * Big YTD API number + progress bar to personal annual API goal, with an
- * MDRT marker at the shared constant. CTA "Submit weekly report" fires the
+ * Big YTD Settled API number (from the Policy Ledger — H1 · R1) + progress bar
+ * to personal annual API goal, with an MDRT marker at the shared constant.
+ * Beneath it: Settled apps, Submitted API and Submitted apps (R2), then the
+ * weekly-report reconciliation note (R4). CTA "Submit weekly report" fires the
  * onSubmit callback (parent wires to setShowWizard(true)).
+ *
+ * `production` is `deriveYearProduction()`'s output; null while the ledger
+ * loads (`pending`) or after it fails (`error`) — the number is never shown as
+ * a confident zero in either state.
  *
  * No YoY chip — last-year aggregation isn't available; banked as a LOW FU
  * in docs/FOLLOW_UPS.md.
  */
-export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
+export default function HeroCard({
+  ytdApi, personalAnnualAPI, onSubmit,
+  production = null, pending = false, error = false, onRetry, onOpenLedgerCreate,
+}) {
   // §2 count-up — hero KPI numeral counts from 0 on load, gated by
   // prefers-reduced-motion inside the hook (snaps straight to the exact
   // ytdApi value, no rounding drift on TTD currency).
@@ -43,15 +70,45 @@ export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
         <p className="text-xs font-bold tracking-widest uppercase text-[--hero-ink-muted-teal] font-mono">
           YTD · Settled API
         </p>
-        <p
-          className="text-[--hero-ink] mt-2"
-          style={{
-            fontSize: 48, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1,
-            fontFamily: '"Cabinet Grotesk", system-ui, sans-serif',
-          }}
-        >
-          {formatCurrency(displayYtdApi)}
-        </p>
+        {pending ? (
+          <div className="mt-2 h-12 w-56 rounded-lg bg-white/20 animate-pulse" aria-busy="true" aria-label="Loading your ledger" data-testid="hero-ledger-pending" />
+        ) : error ? (
+          <div className="mt-2" role="alert" data-testid="hero-ledger-error">
+            <p className="text-sm font-semibold text-[--hero-ink]">Couldn&apos;t load your policy ledger.</p>
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-1 min-h-[44px] inline-flex items-center text-sm font-semibold text-[--hero-ink] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        ) : (
+          <p
+            className="text-[--hero-ink] mt-2"
+            data-testid="hero-settled-api"
+            style={{
+              fontSize: 48, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1,
+              fontFamily: '"Cabinet Grotesk", system-ui, sans-serif',
+            }}
+          >
+            {formatCurrency(displayYtdApi)}
+          </p>
+        )}
+        {production && (
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 max-w-[520px]" data-testid="hero-ledger-figures">
+            <LedgerFigure label="Settled apps" value={production.settled.apps} testId="hero-settled-apps" />
+            <LedgerFigure
+              label="Submitted API"
+              value={formatCurrency(production.submitted.api)}
+              marker={production.submitted.datedByIssue ? 'Dated by issue' : null}
+              testId="hero-submitted-api"
+            />
+            <LedgerFigure label="Submitted apps" value={production.submitted.apps} testId="hero-submitted-apps" />
+          </div>
+        )}
         <p className="text-sm text-[--hero-ink-muted-teal] mt-2">
           {pct}% of {formatCurrency(goal)} goal · {weeksLeft} {weeksLeft === 1 ? 'week' : 'weeks'} to year-end
         </p>
@@ -91,6 +148,8 @@ export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
             <span>Goal</span>
           </div>
         </div>
+
+        <LedgerReconciliationNote production={production} onOpenLedgerCreate={onOpenLedgerCreate} />
       </div>
 
       {/* Right — CTA */}

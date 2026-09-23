@@ -89,7 +89,10 @@ function FieldGroup({ label, children, required, id }) {
 const inputCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm text-ink w-full focus:outline-none focus:ring-2 focus:ring-primary/40';
 const selectCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm text-ink w-full focus:outline-none focus:ring-2 focus:ring-primary/40';
 
-export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, initialFilter }) {
+// `onPoliciesChanged` fires after every write this panel makes (create, status
+// transition, portfolio import) so a parent holding its own copy of the list —
+// the dashboard's production hero — can refetch instead of showing stale figures.
+export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, initialFilter, onPoliciesChanged }) {
   const { user, userProfile, tenantId, role } = useAuth();
   // Computed fresh per render so overnight-open sessions always show the real today.
   const today = getTodayTT();
@@ -201,6 +204,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
     try {
       const agentRef = { uid: user.uid, ...userProfile };
       await createPolicy(tenantId, agentRef, form);
+      onPoliciesChanged?.();
       const fresh = await getOwnPolicies(tenantId, user.uid);
       setPolicies(fresh);
       setForm({ ...EMPTY_FORM, dateWritten: today });
@@ -230,6 +234,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
     try {
       const agentRef = { uid: user.uid, ...userProfile };
       await transitionPolicyStatus(tenantId, agentRef, drawerPolicy.id, drawerPolicy.status, toStatus, fields);
+      onPoliciesChanged?.();
       const fresh = await getOwnPolicies(tenantId, user.uid);
       setPolicies(fresh);
       closeDrawer();
@@ -434,7 +439,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
         {importModalOpen && (
           <ImportPortfolioModal
             onClose={() => setImportModalOpen(false)}
-            onImported={loadLedger}
+            onImported={() => { onPoliciesChanged?.(); loadLedger(); }}
           />
         )}
       </>

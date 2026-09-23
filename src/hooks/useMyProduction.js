@@ -8,7 +8,8 @@ import { getAgentHistory } from '../services/persistencyService';
 import { getSettlements } from '../services/settlementService';
 import { getOwnPolicies } from '../services/policiesService';
 import { excludeImported } from '../lib/portfolioImport/excludeImported';
-import { extractFields, extractTotalProductionCredit } from '../utils/extractFields';
+import { deriveYearProduction } from '../lib/ledgerProduction';
+import { extractFields } from '../utils/extractFields';
 
 // Data hook for the "My Production" section in ManagerDashboard.
 // Mirrors AgentDashboard's loadCoreData/hierarchy/policies pattern scoped to
@@ -29,6 +30,8 @@ export function useMyProduction(tenantId, uid, userProfile) {
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [hierarchyError, setHierarchyError] = useState(null);
   const [policies, setPolicies] = useState(null);
+  // Same fetch, unfiltered — production is decided by date, not origin (H1 · R5).
+  const [policiesAll, setPoliciesAll] = useState(null);
   const [policiesLoading, setPoliciesLoading] = useState(false);
   const [policiesError, setPoliciesError] = useState(false);
   // §1 silent-swallow fix: surfaces a failure of the primary submissions read
@@ -86,8 +89,12 @@ export function useMyProduction(tenantId, uid, userProfile) {
     setPoliciesLoading(true);
     setPoliciesError(false);
     try {
-      // Imported historical policies are not this period's production (ruling 5e).
-      setPolicies(excludeImported(await getOwnPolicies(tenantId, uid)));
+      // `policies` feeds the commission strip, where imported docs were earned
+      // outside this system (ruling 5e). `policiesAll` feeds only
+      // deriveYearProduction below, which applies the date test (H1 · R5).
+      const own = await getOwnPolicies(tenantId, uid);
+      setPoliciesAll(own);
+      setPolicies(excludeImported(own));
     } catch {
       setPoliciesError(true);
     } finally {
@@ -95,20 +102,34 @@ export function useMyProduction(tenantId, uid, userProfile) {
     }
   }, [uid, tenantId, policies, policiesLoading]);
 
+  // Production from the LEDGER, same derivation as the agent view (H1).
+  const ledgerProduction = useMemo(
+    () => (policiesAll
+      ? deriveYearProduction(policiesAll, { year: thisYear, weekStarting: currentWeek, submissions: allSubmissions })
+      : null),
+    [policiesAll, thisYear, currentWeek, allSubmissions],
+  );
+  const ledgerPending = Boolean(uid && tenantId) && policiesAll === null && !policiesError;
+
+  // Weekly reports are activity; `api` / `apps` are the ledger's settled figures.
   const ytdTotals = useMemo(() => {
     const yearSubs = allSubmissions.filter(
       (s) => s.status === 'submitted' && s.weekStarting?.startsWith(String(thisYear))
     );
-    return yearSubs.reduce((acc, s) => {
+    const activity = yearSubs.reduce((acc, s) => {
       const f = extractFields(s);
-      acc.api          += extractTotalProductionCredit(s);
-      acc.apps         += parseFloat(f.applicationsSold) || 0;
+      acc.activityApps += parseFloat(f.applicationsSold) || 0;
       acc.ffiConducted += parseFloat(f.ffiConducted)     || 0;
       acc.ciConducted  += parseFloat(f.ciConducted)      || 0;
       acc.dials        += parseFloat(f.totalTelAttempts)  || 0;
       return acc;
-    }, { api: 0, apps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 });
-  }, [allSubmissions, thisYear]);
+    }, { activityApps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 });
+    return {
+      ...activity,
+      api:  ledgerProduction?.settled.api ?? 0,
+      apps: ledgerProduction?.settled.apps ?? 0,
+    };
+  }, [allSubmissions, thisYear, ledgerProduction]);
 
   const ytdPersistency = useMemo(
     () => persistency[persistency.length - 1]?.persistency ?? null,
@@ -119,6 +140,7 @@ export function useMyProduction(tenantId, uid, userProfile) {
     allSubmissions, goals, companyMinimums, persistency, settlements, awardsRuleset,
     loading, loadError, hierarchy, hierarchyLoading, hierarchyError,
     policies, policiesLoading, policiesError, loadPolicies,
+    ledgerProduction, ledgerPending,
     ytdTotals, ytdPersistency,
     reload: load,
     currentWeek,

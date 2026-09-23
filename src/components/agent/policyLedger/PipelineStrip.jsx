@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatCompactTTD } from '../../../utils/formatters';
 import { derivePipeline } from '../../../lib/policyLedgerDerivation';
+import { deriveYearProduction } from '../../../lib/ledgerProduction';
 
 // Hero-safe dot/fill class for each policy stage role.
 // On glass.hero.teal, the primary (teal) solid would be invisible.
@@ -15,12 +16,19 @@ const HERO_STAGE_CLS = {
 };
 
 /**
- * PipelineStrip — Tier 1 of Policy Ledger v2. Stage tiles + YTD hero + the
- * Active-Book flow bar. Everything is client-derived from the policy list
- * (no new reads). Pure presentational.
+ * PipelineStrip — Tier 1 of Policy Ledger v2. Stage tiles + the year's hero
+ * figures + the Active-Book flow bar. Everything is client-derived from the
+ * policy list (no new reads). Pure presentational.
+ *
+ * Two scopes, and each says which it is (H1): the head shows THIS YEAR's
+ * Settled and Submitted API from `deriveYearProduction` — the same figures as
+ * the dashboard hero — while the stage tiles and flow bar count the WHOLE BOOK,
+ * every year. The old "TOTAL · YTD" summed the whole book, lapsed and NTU
+ * included, under a YTD label.
  */
-export default function PipelineStrip({ policies }) {
-  const { stages, totalSum, inFlightSum, flow } = derivePipeline(policies);
+export default function PipelineStrip({ policies, year = new Date().getFullYear() }) {
+  const { stages, inFlightSum, flow } = derivePipeline(policies);
+  const { settled, submitted } = deriveYearProduction(policies, { year });
   const count = Array.isArray(policies) ? policies.length : 0;
 
   return (
@@ -35,17 +43,32 @@ export default function PipelineStrip({ policies }) {
             {count} {count === 1 ? 'policy' : 'policies'} in motion
           </h2>
         </div>
-        <div className="text-right shrink-0">
-          <p className="font-mono text-[10px] font-bold tracking-[0.14em] text-[--hero-ink-muted-teal]">TOTAL · YTD</p>
-          <p className="font-display font-extrabold text-2xl text-[--hero-ink] tracking-tight mt-0.5" data-testid="pipeline-total">
-            {formatCompactTTD(totalSum)}
-          </p>
-          <p className="text-[10.5px] text-[--hero-ink-muted-teal] mt-0.5">{formatCompactTTD(inFlightSum)} in flight</p>
+        <div className="flex flex-wrap gap-x-6 gap-y-2 justify-end">
+          <div className="text-right flex-none">
+            <p className="font-mono text-[10px] font-bold tracking-[0.14em] text-[--hero-ink-muted-teal]">SETTLED API · {year}</p>
+            <p className="font-display font-extrabold text-2xl text-[--hero-ink] tracking-tight mt-0.5" data-testid="pipeline-settled-ytd">
+              {formatCompactTTD(settled.api)}
+            </p>
+          </div>
+          <div className="text-right flex-none">
+            <p className="font-mono text-[10px] font-bold tracking-[0.14em] text-[--hero-ink-muted-teal]">SUBMITTED API · {year}</p>
+            <p className="font-display font-extrabold text-2xl text-[--hero-ink] tracking-tight mt-0.5" data-testid="pipeline-submitted-ytd">
+              {formatCompactTTD(submitted.api)}
+            </p>
+            {submitted.datedByIssue && (
+              <p className="font-mono text-[10px] uppercase tracking-wider text-[--hero-ink-muted-teal] mt-0.5" data-testid="pipeline-dated-by-issue">
+                Dated by issue
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Stage tiles — chip-island grammar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mt-4">
+      {/* Stage tiles — chip-island grammar. Lifetime counts, labelled as such. */}
+      <p className="font-mono text-[10px] font-bold tracking-[0.14em] text-[--hero-ink-muted-teal] mt-4" data-testid="pipeline-whole-book">
+        WHOLE BOOK
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mt-2">
         {stages.map((s) => {
           const dotCls = HERO_STAGE_CLS[s.role] ?? 'bg-[--hero-ink]';
           return (

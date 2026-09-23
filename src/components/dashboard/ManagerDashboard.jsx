@@ -67,6 +67,7 @@ import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import DerivedIncomePanel from '../goals/DerivedIncomePanel';
 import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
+import LedgerLoadError from '../goals/LedgerLoadError';
 import { useMyProduction } from '../../hooks/useMyProduction';
 import FinancingSelfView from '../financing/FinancingSelfView';
 import UnitFinancingRoster from '../financing/UnitFinancingRoster';
@@ -171,6 +172,9 @@ const PROFILE_NAV_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Ic
 const SETTINGS_NAV_ITEM = { id: 'settings', label: 'Settings', tabId: 'settings', Icon: Settings };
 
 const MP_TABS = new Set(['mp-report', 'mp-goals', 'mp-game-plan', 'mp-money-needs', 'mp-history', 'mp-commission', 'mp-policies', 'mp-financing']);
+
+// Tabs whose panels read the producing manager's own policies.
+const PRODUCTION_POLICY_TABS = new Set(['mp-commission', 'mp-goals', 'goals']);
 
 export default function ManagerDashboard() {
   const { user, userProfile, role, tenantId, branchId } = useAuth();
@@ -291,11 +295,13 @@ export default function ManagerDashboard() {
     setShowMpWizard(true);
   };
 
-  // Lazy-load own policies when Commission tab is first visited.
+  // Lazy-load own policies when Commission, My Production Goals or the Goals
+  // tab (GoalsPanel's Self view) is first visited — goals read production
+  // from the ledger (H1). loadPolicies is a no-op for non-producing roles.
   // Destructured to avoid re-running when other myProd fields update (Gemini G1).
   const { policies: myProdPolicies, loadPolicies: myProdLoadPolicies } = myProd;
   useEffect(() => {
-    if (activeTab === 'mp-commission' && myProdPolicies === null) myProdLoadPolicies();
+    if (PRODUCTION_POLICY_TABS.has(activeTab) && myProdPolicies === null) myProdLoadPolicies();
   }, [activeTab, myProdPolicies, myProdLoadPolicies]);
   const onPullRefresh = useCallback(() => {
     setPtrRevision((r) => r + 1);
@@ -616,7 +622,7 @@ export default function ManagerDashboard() {
 
         {activeTab === 'team-perf' && <TeamPerfRosterPage />}
 
-        {activeTab === 'goals' && <GoalsPanel />}
+        {activeTab === 'goals' && <GoalsPanel ownProduction={isProducingManager ? myProd : null} />}
 
         {activeTab === 'settlements' && <SettlementPanel />}
 
@@ -694,10 +700,13 @@ export default function ManagerDashboard() {
 
         {activeTab === 'mp-goals' && (
           <>
+            {myProd.policiesError && (
+              <LedgerLoadError onRetry={myProd.loadPolicies} />
+            )}
             <GapAnalysisPanel
               hierarchy={myProd.hierarchy}
               ytdTotals={myProd.ytdTotals}
-              loading={myProd.hierarchyLoading}
+              loading={myProd.hierarchyLoading || myProd.ledgerPending}
               error={myProd.hierarchyError}
               ytdPersistency={myProd.ytdPersistency}
               persistencyFloor={myProd.companyMinimums?.persistency ?? PERS_GATE_PCT}
@@ -707,7 +716,7 @@ export default function ManagerDashboard() {
                 hierarchy={myProd.hierarchy}
                 ytdTotals={myProd.ytdTotals}
                 commissionRate={parseFloat(userProfile?.commissionRate) || null}
-                loading={myProd.hierarchyLoading}
+                loading={myProd.hierarchyLoading || myProd.ledgerPending}
               />
             </div>
             <div className="mt-4 border-t border-border pt-4">
@@ -720,7 +729,7 @@ export default function ManagerDashboard() {
             <div className="mt-4 border-t border-border pt-4">
               <MdrtTracker
                 ytdTotals={myProd.ytdTotals}
-                loading={myProd.loading}
+                loading={myProd.loading || myProd.ledgerPending}
               />
             </div>
           </>

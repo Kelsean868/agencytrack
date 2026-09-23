@@ -41,6 +41,8 @@ import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
 import CommissionAnchorStrip from '../agent/CommissionAnchorStrip';
 import { getOwnPolicies } from '../../services/policiesService';
 import { excludeImported } from '../../lib/portfolioImport/excludeImported';
+import { deriveYearProduction } from '../../lib/ledgerProduction';
+import LedgerLoadError from '../goals/LedgerLoadError';
 import GamePlanScreen from './GamePlanV2';
 import CommissionPlayground from '../goals/CommissionPlayground';
 import DailyFAB from '../daily/DailyFAB';
@@ -99,6 +101,10 @@ const PROFILE_NAV_ITEM = { id: 'profile', label: 'Profile', tabId: 'profile', Ic
 // Settings v2 (Tier 2 · 2.4) — mobile More-drawer entry (desktop reaches Settings
 // via the sidebar-foot gear). No sectionLabel so it joins Profile's Account group.
 const SETTINGS_NAV_ITEM = { id: 'settings', label: 'Settings', tabId: 'settings', Icon: Settings };
+
+// Tabs that need the agent's own policies: commission totals, the home
+// delivery strip + production hero, and the Goals panels (production, H1).
+const POLICY_TABS = new Set(['commission', 'dashboard', 'goals']);
 
 export default function AgentDashboard() {
   const { user, userProfile, role, tenantId, branchId } = useAuth();
@@ -339,9 +345,12 @@ export default function AgentDashboard() {
       // ledger list is PolicyLedgerPanel's own fetch and is NOT filtered.
       //
       // `policiesAll` is the same response, unfiltered, for the campaign card
-      // only. One fetch, two views: filtering at the consumer rather than at
-      // the reader is what lets the campaign path apply C-D10's date test while
-      // every other consumer keeps ruling 5e unchanged.
+      // and for `deriveYearProduction` (the production heroes, H1 · R5: current-
+      // year production is decided by date, not origin). One fetch, two views:
+      // filtering at the consumer rather than at the reader is what lets those
+      // paths apply the date test while every other consumer keeps ruling 5e.
+      // The raw list itself never reaches a new child — the heroes receive the
+      // derived figures, and the prop-provenance guard pins both.
       const own = await getOwnPolicies(tenantId, user.uid);
       setPoliciesAll(own);
       setPolicies(excludeImported(own));
@@ -352,11 +361,12 @@ export default function AgentDashboard() {
     }
   }, [tenantId, user?.uid]);
 
-  // Load own policies lazily on the Commission tab AND the v2 home ('dashboard')
-  // — the home DeliveryStripCard needs the agent's settled/undelivered policies.
+  // Load own policies lazily on the Commission tab, the v2 home ('dashboard')
+  // and Goals — the home DeliveryStripCard needs settled/undelivered policies,
+  // and the home hero plus every Goals panel read production from the ledger.
   // Fires at most once (the `policies === null` guard); reuses the same fetch.
   useEffect(() => {
-    if ((activeTab === 'commission' || activeTab === 'dashboard') && policies === null) loadPolicies();
+    if (POLICY_TABS.has(activeTab) && policies === null) loadPolicies();
   }, [activeTab, loadPolicies, policies]);
 
   // Resolved personal annual API: agent's own commitment if set, else the
@@ -405,20 +415,37 @@ export default function AgentDashboard() {
     [allSubmissions, earnedBadges, now]
   );
 
+  // Production for the year, from the LEDGER (H1 · R1). null until the policy
+  // fetch lands, so no hero ever shows a confident TTD 0 while it is loading.
+  const ledgerProduction = useMemo(
+    () => (policiesAll
+      ? deriveYearProduction(policiesAll, { year: thisYear, weekStarting: currentWeek, submissions: allSubmissions })
+      : null),
+    [policiesAll, thisYear, currentWeek, allSubmissions],
+  );
+  const ledgerPending = policiesAll === null && !policiesError;
+
+  // Weekly reports are ACTIVITY (R1). `activityApps` is the self-reported apps
+  // count, kept under its own name; `api` and `apps` are the ledger's settled
+  // figures, so every panel that reads `ytdTotals.api` reads the ledger.
   const ytdTotals = useMemo(() => {
     const yearSubs = allSubmissions.filter(
       (s) => s.status === 'submitted' && s.weekStarting?.startsWith(String(thisYear))
     );
-    return yearSubs.reduce((acc, s) => {
+    const activity = yearSubs.reduce((acc, s) => {
       const f = extractFields(s);
-      acc.api          += extractTotalProductionCredit(s);
-      acc.apps         += parseFloat(f.applicationsSold) || 0;
+      acc.activityApps += parseFloat(f.applicationsSold) || 0;
       acc.ffiConducted += parseFloat(f.ffiConducted)     || 0;
       acc.ciConducted  += parseFloat(f.ciConducted)      || 0;
       acc.dials        += parseFloat(f.totalTelAttempts)  || 0;
       return acc;
-    }, { api: 0, apps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 });
-  }, [allSubmissions, thisYear]);
+    }, { activityApps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 });
+    return {
+      ...activity,
+      api:  ledgerProduction?.settled.api ?? 0,
+      apps: ledgerProduction?.settled.apps ?? 0,
+    };
+  }, [allSubmissions, thisYear, ledgerProduction]);
 
   const ytdPersistency = useMemo(
     () => persistency[persistency.length - 1]?.persistency ?? null,
@@ -512,6 +539,9 @@ export default function AgentDashboard() {
   // logged (no per-quarter target in the hierarchy — see GoalsCelebration).
   useEffect(() => {
     if (activeTab !== 'goals' || hierarchyLoading || !hierarchy || !user?.uid) return;
+    // ytdTotals.api is the ledger's settled API (H1); wait for it rather than
+    // judging the annual goal against a figure that has not loaded yet.
+    if (!ledgerProduction) return;
     if (goalsCelebration) return; // already showing one
     const weeklyTarget = resolvedMinimums?.weeklyActivityFloors?.api ?? 4800;
     const celebrated = getGoalsCelebrated(user.uid, thisYear);
@@ -529,8 +559,22 @@ export default function AgentDashboard() {
     setGoalsCelebration(result);
   }, [
     activeTab, hierarchyLoading, hierarchy, ytdTotals, allSubmissions,
-    user?.uid, thisYear, resolvedMinimums, goalsCelebration,
+    user?.uid, thisYear, resolvedMinimums, goalsCelebration, ledgerProduction,
   ]);
+
+  // R4 — the reconciliation note links to the ledger's create form. An empty
+  // prefill object opens PolicyLedgerPanel on its form view.
+  const openLedgerCreate = () => {
+    setPrefillPolicy({});
+    setActiveTab('policy-ledger');
+  };
+  const retryPolicies = () => { setPolicies(null); setPoliciesError(false); };
+
+  // The Policy Ledger wrote a policy. Mark our copy stale: `policies === null`
+  // makes the lazy-load effect refetch the next time a POLICY_TABS tab opens,
+  // so returning to Home re-derives the hero with no page reload. `policiesAll`
+  // is kept until the refetch lands, so the hero never flashes to empty.
+  const markPoliciesStale = useCallback(() => { setPolicies(null); }, []);
 
   // Unlock banner
   const showUnlockBanner =
@@ -751,6 +795,11 @@ export default function AgentDashboard() {
         ) : (
           <AgentDashboardHomeV2
             ytdTotals={ytdTotals}
+            ledgerProduction={ledgerProduction}
+            ledgerPending={ledgerPending}
+            ledgerError={policiesError}
+            onRetryLedger={retryPolicies}
+            onOpenLedgerCreate={openLedgerCreate}
             personalAnnualAPI={personalAnnualAPI}
             kpiData={kpiData}
             allSubmissions={allSubmissions}
@@ -860,6 +909,7 @@ export default function AgentDashboard() {
           initialForm={prefillPolicy}
           onPrefillConsumed={() => setPrefillPolicy(null)}
           initialFilter={policyLedgerFilter}
+          onPoliciesChanged={markPoliciesStale}
         />
       )}
 
@@ -885,10 +935,13 @@ export default function AgentDashboard() {
       {/* ── GOALS TAB ── */}
       {activeTab === 'goals' && (
         <>
+          {policiesError && (
+            <LedgerLoadError onRetry={retryPolicies} />
+          )}
           <GapAnalysisPanel
             hierarchy={hierarchy}
             ytdTotals={ytdTotals}
-            loading={hierarchyLoading}
+            loading={hierarchyLoading || ledgerPending}
             error={hierarchyError}
             ytdPersistency={ytdPersistency}
             persistencyFloor={companyMinimums?.persistency ?? PERS_GATE_PCT}
@@ -898,7 +951,7 @@ export default function AgentDashboard() {
               hierarchy={hierarchy}
               ytdTotals={ytdTotals}
               commissionRate={parseFloat(userProfile?.commissionRate) || null}
-              loading={hierarchyLoading}
+              loading={hierarchyLoading || ledgerPending}
             />
           </div>
           <div className="mt-4 border-t border-border pt-4">
@@ -912,7 +965,7 @@ export default function AgentDashboard() {
           <div className="mt-4 border-t border-border pt-4">
             <MdrtTracker
               ytdTotals={ytdTotals}
-              loading={loading}
+              loading={loading || ledgerPending}
             />
           </div>
         </>
