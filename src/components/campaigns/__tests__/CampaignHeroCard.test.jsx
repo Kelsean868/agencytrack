@@ -26,6 +26,16 @@ const CAMPAIGN = {
 
 const NON_TIERED_CAMPAIGN = { id: 'x', name: 'Placement thing', structure: 'placement' };
 
+// The real Christmas Campaign's gate is judged at a single final month
+// (December 2026 — CONTEXT.md's C5 authoring note), not a period aggregate.
+// Used for the preview-vs-known-figure precedence tests, since a
+// periodAggregate basis (CAMPAIGN above) folds a single month straight into
+// the known figure and never exercises the preview path at all.
+const FINAL_MONTH_CAMPAIGN = {
+  ...CAMPAIGN,
+  persistencyGate: { mode: 'binary', basis: 'finalMonth', threshold: 90 },
+};
+
 const policy = (over = {}) => ({
   id: 'p1',
   productLine: 'life',
@@ -84,12 +94,52 @@ describe('CampaignHeroCard', () => {
     expect(screen.getByText(/Toward Champion/)).toBeInTheDocument();
   });
 
-  it('shows "not yet known" when no persistency record covers the campaign period', () => {
+  it('shows "—" (never a fabricated 0%) when no persistency record covers the campaign period', () => {
     render(<CampaignHeroCard campaign={CAMPAIGN} policies={POLICIES} persistencyRecords={[]} />);
     const persistencyRow = screen.getByTestId('campaign-hero-row-persistency');
-    expect(persistencyRow.textContent).toContain('0%');
+    expect(persistencyRow.textContent).toContain('—');
+    expect(persistencyRow.textContent).not.toMatch(/\b0%/);
     expect(persistencyRow.textContent).toContain('90%');
+    expect(screen.queryByTestId('campaign-hero-persistency-bar-fill')).not.toBeInTheDocument();
     expect(screen.getByTestId('campaign-hero-persistency-unknown')).toBeInTheDocument();
+  });
+
+  it('previews the latest 24-month-model reading below 90% as a warning, never as the gate figure itself', () => {
+    // Not December (the campaign's finalMonth), so the actual gate figure is
+    // still unknown — this record is on the 24-month model (>= 2026-09) and
+    // becomes the preview.
+    const records = [{ monthKey: '2026-09', grossSettled: 100_000, netSettled: 80_000 }];
+    render(<CampaignHeroCard campaign={FINAL_MONTH_CAMPAIGN} policies={POLICIES} persistencyRecords={records} />);
+    const persistencyRow = screen.getByTestId('campaign-hero-row-persistency');
+    expect(persistencyRow.textContent).toContain('80%');
+    expect(persistencyRow.textContent).toContain('as at September 2026');
+    expect(persistencyRow.textContent).toContain('90%');
+
+    const note = screen.getByTestId('campaign-hero-persistency-preview-note');
+    expect(note.textContent).toBe('Gate judged on December 2026 · 90% needed');
+    expect(note.className).toContain('text-warning-ink');
+
+    const fill = screen.getByTestId('campaign-hero-persistency-bar-fill');
+    expect(fill.className).toContain('bg-warning');
+  });
+
+  it('a December (finalMonth) reading wins over an earlier 24-month preview', () => {
+    const records = [
+      { monthKey: '2026-09', grossSettled: 100_000, netSettled: 60_000 }, // preview-eligible, would read 60%
+      // persistencyPctAtFinalMonth reads the record's own `persistency`
+      // fraction directly (campaignEngine.js), not grossSettled/netSettled —
+      // a real saved record carries both (calculations.js `deriveAll`).
+      { monthKey: '2026-12', grossSettled: 100_000, netSettled: 92_000, persistency: 0.92 },
+    ];
+    render(<CampaignHeroCard campaign={FINAL_MONTH_CAMPAIGN} policies={POLICIES} persistencyRecords={records} />);
+    const persistencyRow = screen.getByTestId('campaign-hero-row-persistency');
+    expect(persistencyRow.textContent).toContain('92%');
+    expect(persistencyRow.textContent).not.toContain('60%');
+    expect(persistencyRow.textContent).not.toContain('as at September 2026');
+    expect(screen.queryByTestId('campaign-hero-persistency-preview-note')).not.toBeInTheDocument();
+
+    const fill = screen.getByTestId('campaign-hero-persistency-bar-fill');
+    expect(fill.className).toContain('bg-success');
   });
 
   it('reads a real persistency record against the 90% gate and clears it', () => {

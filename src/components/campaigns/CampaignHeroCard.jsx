@@ -2,8 +2,33 @@ import React, { useMemo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { derivePolicyLens } from '../../lib/policyCampaignLens';
 import { isTieredCampaign, normalizeGate, persistencyPctForGate, gateBandFor } from '../../utils/campaignEngine';
+import { aggregatePersistency } from '../../lib/persistency/calculations';
+import { isTwentyFourMonthModel } from '../../lib/persistency/model';
 import { formatCurrency } from '../../utils/formatters';
 import PanelSkeleton from '../ui/PanelSkeleton';
+
+const MONTH_KEY_RE = /^\d{4}-\d{2}$/;
+
+function monthYearLabel(monthKey) {
+  return new Date(`${monthKey}-01T12:00:00Z`).toLocaleDateString('en-TT', { month: 'long', year: 'numeric' });
+}
+
+// The latest 24-month-model record, reduced to its own persistency % — never
+// the pulse-strip's `aggregatePersistency(persistency.filter(year))`. That
+// figure blends legacy-12-month records (pre Sep 2026) with 24-month ones
+// into a single year-to-date number (see src/lib/persistency/model.js), which
+// is not "the 24-month persistency" the brief asks for. This reduces exactly
+// one record — the newest one that actually IS on the 24-month model — through
+// the same `aggregatePersistency` math everyone else uses, just scoped to one.
+function latestTwentyFourMonthReading(records) {
+  const eligible = (Array.isArray(records) ? records : [])
+    .filter((r) => r && MONTH_KEY_RE.test(r?.monthKey) && isTwentyFourMonthModel(r.monthKey));
+  if (!eligible.length) return null;
+  const latest = eligible.reduce((a, b) => (b.monthKey > a.monthKey ? b : a));
+  const { aggregatedPersistency, sumGrossSettled } = aggregatePersistency([latest]);
+  if (!(sumGrossSettled > 0)) return null;
+  return { pct: Math.round(aggregatedPersistency * 100), monthKey: latest.monthKey };
+}
 
 // ── Hero-ledger H3 ──────────────────────────────────────────────────────────
 //
@@ -61,6 +86,32 @@ export default function CampaignHeroCard({
   );
   const band = tiered && gateEnabled ? gateBandFor(persPct, gate) : null;
   const gateAchieved = Boolean(band && band.payout > 0);
+
+  // The actual gate reading wins whenever it exists. Only when it is still
+  // unknown (the finalMonth hasn't arrived, or the period has no data yet) do
+  // we fall back to a preview of the latest 24-month-model month on file —
+  // labelled as a preview, never presented as the reading itself.
+  const previewReading = useMemo(
+    () => (tiered && gateEnabled ? latestTwentyFourMonthReading(persistencyRecords) : null),
+    [tiered, gateEnabled, persistencyRecords],
+  );
+  const persistencyKnown = gateEnabled && persPct != null;
+  const persistencyPreview = !persistencyKnown && previewReading ? previewReading : null;
+  const persistencyDisplayPct = persistencyKnown ? persPct : persistencyPreview ? persistencyPreview.pct : null;
+  const persistencyAchieved = persistencyKnown
+    ? gateAchieved
+    : persistencyPreview
+      ? persistencyPreview.pct >= (gate?.threshold ?? 0)
+      : false;
+  const persistencyWarning = Boolean(persistencyPreview) && !persistencyAchieved;
+
+  const gateJudgedLabel = useMemo(() => {
+    if (!gate) return '';
+    if (gate.basis === 'finalMonth' && MONTH_KEY_RE.test(String(campaign?.endDate).slice(0, 7))) {
+      return `Gate judged on ${monthYearLabel(String(campaign.endDate).slice(0, 7))} · ${gate.threshold}% needed`;
+    }
+    return `Gate judged across the campaign period · ${gate.threshold}% needed`;
+  }, [gate, campaign]);
 
   if (loading) {
     return (
@@ -121,20 +172,42 @@ export default function CampaignHeroCard({
       <div className="flex flex-col gap-3 relative">
         <HeroRow label="API" current={lens.api.current} target={apiTarget} unit="TTD" achieved={apiAchieved} testId="campaign-hero-row-api" />
         <HeroRow label="Applications" current={lens.apps.current} target={appsTarget} unit="apps" achieved={appsAchieved} testId="campaign-hero-row-apps" />
-        <HeroRow
-          label="24-Month Persistency"
-          current={persPct ?? 0}
-          target={gate?.threshold ?? 0}
-          unit="%"
-          achieved={gateAchieved}
-          testId="campaign-hero-row-persistency"
-        />
-        {gateEnabled && persPct == null && (
+
+        <div className="flex flex-col gap-1" data-testid="campaign-hero-row-persistency">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-ink-muted">24-Month Persistency</span>
+            <span className="text-xs text-ink tabular-nums">
+              {persistencyDisplayPct == null ? '—' : `${persistencyDisplayPct}%`}
+              {persistencyPreview && ` as at ${monthYearLabel(persistencyPreview.monthKey)}`}
+              {' / '}{gate?.threshold ?? 0}%
+            </span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-border/60 overflow-hidden">
+            {persistencyDisplayPct != null && (
+              <div
+                data-testid="campaign-hero-persistency-bar-fill"
+                className={`h-2 rounded-full transition-all duration-500 ${
+                  persistencyWarning ? 'bg-warning' : persistencyAchieved ? 'bg-success' : 'bg-primary'
+                }`}
+                style={{
+                  width: `${gate?.threshold > 0 ? Math.min(100, Math.round((persistencyDisplayPct / gate.threshold) * 100)) : 0}%`,
+                }}
+              />
+            )}
+          </div>
+        </div>
+        {persistencyKnown ? null : persistencyPreview ? (
+          <p
+            className={`text-[11px] ${persistencyWarning ? 'text-warning-ink font-semibold' : 'text-ink-muted'}`}
+            data-testid="campaign-hero-persistency-preview-note"
+          >
+            {gateJudgedLabel}
+          </p>
+        ) : gateEnabled ? (
           <p className="text-[11px] text-ink-muted" data-testid="campaign-hero-persistency-unknown">
             Persistency not yet known for this campaign period.
           </p>
-        )}
-        {!gateEnabled && (
+        ) : (
           <p className="text-[11px] text-ink-muted" data-testid="campaign-hero-persistency-ungated">
             This campaign does not gate on persistency.
           </p>
