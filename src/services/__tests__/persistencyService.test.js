@@ -440,6 +440,26 @@ describe('savePersistency', () => {
     expect(writtenPayload.enteredByRole).toBe('agent');
   });
 
+  it('writes the Confirm-flow provenance (source, confirmedBy/At, ledgerWindowMonths) and nothing else extra', async () => {
+    mockGetDoc.mockResolvedValueOnce({ exists: () => false });
+    mockSetDoc.mockResolvedValueOnce(undefined);
+
+    await savePersistency('tenant1', '2026-02', 'agent-1', E3_INPUTS, 'agent', {
+      source: 'ho_confirmed',
+      confirmedBy: 'agent-1',
+      confirmedAt: '2026-09-23T12:00:00.000Z',
+      ledgerWindowMonths: 24,
+      somethingElse: 'dropped',
+    });
+
+    const writtenPayload = mockSetDoc.mock.calls[0][1];
+    expect(writtenPayload.source).toBe('ho_confirmed');
+    expect(writtenPayload.confirmedBy).toBe('agent-1');
+    expect(writtenPayload.confirmedAt).toBe('2026-09-23T12:00:00.000Z');
+    expect(writtenPayload.ledgerWindowMonths).toBe(24);
+    expect(writtenPayload).not.toHaveProperty('somethingElse');
+  });
+
   it('marks meetsAwardGate=true when persistency >= 0.90', async () => {
     mockGetDoc.mockResolvedValueOnce({ exists: () => false });
     mockSetDoc.mockResolvedValueOnce(undefined);

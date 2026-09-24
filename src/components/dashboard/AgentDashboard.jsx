@@ -1009,7 +1009,7 @@ export default function AgentDashboard() {
       )}
 
       {/* ── PERSISTENCY TAB ── */}
-      {activeTab === 'persistency' && <AgentPersistencyTab onViewLapsedPolicies={handleOpenLapsedPolicies} />}
+      {activeTab === 'persistency' && <AgentPersistencyTab onViewLapsedPolicies={handleOpenLapsedPolicies} activeCampaigns={activeCampaigns} />}
 
       {/* ── PRODUCTION REPORT TAB ── */}
       {activeTab === 'production-report' && (

@@ -1,7 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { computeAgentAwards } from '../../../utils/awardsEngine';
-import { aggregatePersistency } from '../../../lib/persistency/calculations';
+import {
+  buildPersistencyOutlook, formatOutlookPct, persistencyTone,
+} from '../../../lib/persistency/persistencyOutlook';
+import { getTodayTT } from '../../../utils/dateInputs';
 import { computeSubmissionStreak } from '../../../utils/submissionStreak';
 import {
   WEEKLY_ACTIVITY_FLOOR_ROWS,
@@ -125,29 +128,27 @@ export default function AgentDashboardHomeV2({
       // awards engine error — keep defaults
     }
 
-    // Persistency: % + trailing trend
-    const persArr = Array.isArray(persistency) ? persistency : [];
-    const yearPers = persArr.filter((p) => p.year === thisYear);
-    let persPct = null;
-    let persSeries = [];
-    if (yearPers.length > 0) {
-      // Series: per-record persistency (oldest → newest), as 0–100 ints
-      persSeries = yearPers
-        .slice(-6)
-        .map((p) => {
-          // E3 record may use any of these field names; try common ones
-          const v =
-            p.persistency ??
-            p.persistencyRate ??
-            p.aggregatedPersistency ??
-            0;
-          return typeof v === 'number' && v <= 1 ? v * 100 : Number(v) || 0;
-        });
-      const agg = aggregatePersistency(yearPers);
-      persPct = Math.round(agg.aggregatedPersistency * 100);
+    // Persistency: the outlook's headline — the newest of a confirmed record
+    // and the month derived from the HO export, on the 24-month model. The
+    // same builder the campaign card and the Persistency tab read, so the three
+    // cannot disagree. (Replaces a year-to-date aggregate that blended the
+    // legacy 12-month formula with the 24-month one.)
+    let headline = null;
+    try {
+      headline = buildPersistencyOutlook({
+        policies: campaignPolicies ?? [],
+        records: Array.isArray(persistency) ? persistency : [],
+        today: getTodayTT(),
+      }).headline;
+    } catch {
+      // outlook error — the chip falls back to "No data yet"
     }
-    const persTone = persPct === null ? 'teal' : persPct >= 90 ? 'success' : persPct >= 75 ? 'warning' : 'danger';
-    const persStatusText = persPct === null ? 'No data yet' : `${persPct}%`;
+    const persDecimal = headline?.persistency ?? null;
+    // Warning below the gate, never danger: this is not a confirmed gate month.
+    const persTone = persDecimal === null ? 'teal' : persistencyTone(persDecimal);
+    const persStatusText = persDecimal === null
+      ? 'No data yet'
+      : `${formatOutlookPct(persDecimal)} ${headline.kind}`;
 
     // Streak: current submission streak
     const { currentStreak, longestStreak } = computeSubmissionStreak(allSubmissions ?? [], thisYear);
@@ -178,8 +179,8 @@ export default function AgentDashboardHomeV2({
         ariaLabel: `Awards: ${awardsStatus}. Open Awards tab.`,
         viz: { type: 'donut', percent: awardsPercent } },
       { key: 'persist',  kind: 'persist',  label: 'Persistency', status: persStatusText, tone: persTone,
-        ariaLabel: `Persistency: ${persStatusText}. Open Persistency tab.`,
-        viz: persSeries.length > 0 ? { type: 'spark', values: persSeries } : { type: 'donut', percent: persPct ?? 0 } },
+        ariaLabel: `24-month persistency: ${persStatusText}. Open Persistency tab.`,
+        viz: { type: 'donut', percent: persDecimal === null ? 0 : Math.min(100, Math.round(persDecimal * 100)) } },
       { key: 'streak',   kind: 'streak',   label: 'Streak',      status: streakStatus, tone: streakTone,
         ariaLabel: `Submission streak: ${streakStatus}. Open History tab.`,
         viz: streakBars.length > 0 ? { type: 'bars', values: streakBars } : { type: 'badge', count: currentStreak } },
@@ -187,7 +188,7 @@ export default function AgentDashboardHomeV2({
         ariaLabel: actionCount > 0 ? `${actionCount} pending action${actionCount === 1 ? '' : 's'} today.` : 'No pending actions today.',
         viz: { type: 'badge', count: actionCount } },
     ];
-  }, [kpiData, resolvedMinimums, currentWeekSub, settlements, allSubmissions, agentProfile, awardsRuleset, persistency, thisYear, showDailyCTA, todayDailyChecked, todayDailyEntry]);
+  }, [kpiData, resolvedMinimums, currentWeekSub, settlements, allSubmissions, agentProfile, awardsRuleset, persistency, campaignPolicies, thisYear, showDailyCTA, todayDailyChecked, todayDailyEntry]);
 
   // ── Chip click routing ─────────────────────────────────────────────────
   const handleChipClick = (key) => {
