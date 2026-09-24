@@ -20,7 +20,15 @@ import { buildLedgerPrefill } from '../../lib/persistency/ledgerPrefill';
 import { DEFAULT_ANNUITY_MISSED_PREMIUM_RULE } from '../../lib/persistency/deriveFromLedger';
 import { persistencyModelFor } from '../../lib/persistency/model';
 import PersistencyPlayground from '../persistency/PersistencyPlayground';
+import PersistencyOutlookHero from '../persistency/PersistencyOutlookHero';
+import ConfirmPersistencySheet from '../persistency/ConfirmPersistencySheet';
 import PanelSkeleton from '../ui/PanelSkeleton';
+import {
+  buildPersistencyOutlook, outlookGateFor, resolveAnnuityRule,
+} from '../../lib/persistency/persistencyOutlook';
+import { derivePolicyLens } from '../../lib/policyCampaignLens';
+import { isTieredCampaign } from '../../utils/campaignEngine';
+import { getTodayTT } from '../../utils/dateInputs';
 
 function formatPct(decimal) {
   if (!Number.isFinite(decimal)) return '—';
@@ -28,7 +36,16 @@ function formatPct(decimal) {
 }
 
 
-export default function PersistencyTab({ onViewLapsedPolicies }) {
+// The campaign whose gate the outlook projects to: the first active tiered
+// campaign that gates on persistency. Its top tier is the production target the
+// gap sentence compares against.
+function gatingCampaign(campaigns) {
+  return (Array.isArray(campaigns) ? campaigns : []).find((c) => (
+    isTieredCampaign(c) && c.structure === 'qualify' && outlookGateFor(c)
+  )) ?? null;
+}
+
+export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns = [] }) {
   const { user, role, tenantId } = useAuth();
 
   const [history, setHistory] = useState([]);
@@ -43,6 +60,10 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
   // they are its entire input. Every other consumer of getOwnPolicies wraps it
   // in excludeImported(); this one must not.
   const [ledgerDocs, setLedgerDocs] = useState(null);
+  const [confirming, setConfirming] = useState(false);
+  // null = follow the newest saved record's rule; a choice here overrides it
+  // for this view only.
+  const [annuityRuleChoice, setAnnuityRuleChoice] = useState(null);
 
   const load = useCallback(async () => {
     if (!user?.uid) return;
@@ -102,6 +123,38 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
       return null;
     }
   }, [ledgerDocs, activeMonthKey, ledgerExportDate]);
+
+  // ONE outlook for the hero; the campaign card and the Home chip call the same
+  // builder on the same inputs.
+  const campaign = useMemo(() => gatingCampaign(activeCampaigns), [activeCampaigns]);
+  const annuityRule = annuityRuleChoice ?? resolveAnnuityRule(history);
+  const outlook = useMemo(() => {
+    if (!Array.isArray(ledgerDocs)) return null;
+    let productionTarget = null;
+    if (campaign) {
+      const top = [...(campaign.tiers ?? [])].sort((a, b) => (Number(b.api) || 0) - (Number(a.api) || 0))[0];
+      const lens = derivePolicyLens(ledgerDocs, campaign, {});
+      if (top) productionTarget = { name: top.name, api: Number(top.api) || 0, current: lens?.api?.current ?? 0 };
+    }
+    try {
+      return buildPersistencyOutlook({
+        policies: ledgerDocs,
+        records: history,
+        today: getTodayTT(),
+        annuityMissedPremiumRule: annuityRule,
+        gate: campaign ? outlookGateFor(campaign) : null,
+        productionTarget,
+      });
+    } catch (e) {
+      console.error('[PersistencyTab] outlook failed:', e);
+      return null;
+    }
+  }, [ledgerDocs, history, campaign, annuityRule]);
+
+  // Confirm is offered only for a derived month nobody has saved yet — a saved
+  // record (by the agent or a manager) is already the confirmed figure.
+  const canConfirm = Boolean(outlook?.derived)
+    && !history.some((r) => r.monthKey === outlook.derived.monthKey);
 
   const recordByMonth = useMemo(() => {
     const m = {};
@@ -169,6 +222,17 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
           </button>
         </div>
       )}
+
+      <PersistencyOutlookHero
+        outlook={outlook}
+        loading={loading && !outlook}
+        error={!loading && ledgerDocs === null && !error ? 'Your policy ledger did not load, so no estimate can be shown.' : ''}
+        onRetry={load}
+        canConfirm={canConfirm}
+        onConfirm={() => setConfirming(true)}
+        annuityRule={annuityRule}
+        onAnnuityRuleChange={setAnnuityRuleChoice}
+      />
 
       {/* Month selector */}
       <div className="flex items-center gap-2">
@@ -352,6 +416,18 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
           ledgerExportDate={ledgerExportDate}
           onClose={() => setEditing(false)}
           onSaved={() => { setEditing(false); load(); }}
+        />
+      )}
+
+      {confirming && outlook?.derived && (
+        <ConfirmPersistencySheet
+          tenantId={tenantId}
+          agentUid={user.uid}
+          writerUid={user.uid}
+          writerRole={role}
+          derived={outlook.derived}
+          onClose={() => setConfirming(false)}
+          onSaved={() => { setConfirming(false); load(); }}
         />
       )}
 

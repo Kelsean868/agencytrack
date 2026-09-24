@@ -454,6 +454,16 @@ export async function savePersistency(tenantId, monthKey, agentUid, inputs, role
     ...(provenance?.ledgerExportDate ? { ledgerExportDate: provenance.ledgerExportDate } : {}),
     ...(provenance?.annuityMissedPremiumRule
       ? { annuityMissedPremiumRule: provenance.annuityMissedPremiumRule } : {}),
+    // Confirm flow (persistency outlook): the agent checked a ledger-derived
+    // month against the head-office report. `source` says so; `confirmedBy` /
+    // `confirmedAt` say who and when; `ledgerWindowMonths` records the window
+    // the three derived figures were reckoned on, because a pre-September month
+    // confirmed from the ledger carries 24-month figures on a legacy-model doc.
+    ...(provenance?.source ? { source: provenance.source } : {}),
+    ...(provenance?.confirmedBy ? { confirmedBy: provenance.confirmedBy } : {}),
+    ...(provenance?.confirmedAt ? { confirmedAt: provenance.confirmedAt } : {}),
+    ...(Number.isInteger(provenance?.ledgerWindowMonths)
+      ? { ledgerWindowMonths: provenance.ledgerWindowMonths } : {}),
   };
 
   // Deliberately isE3Doc, NOT isModelCompleteDoc: this asks "was there a real
