@@ -148,9 +148,10 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
     }
   }, [ledgerDocs, history, campaign, annuityRule]);
 
-  // Confirm is offered only for a derived month nobody has saved yet — a saved
-  // record (by the agent or a manager) is already the confirmed figure.
-  const canConfirm = Boolean(outlook?.derived)
+  // Confirm is offered only for a derived month on the 24-month model that
+  // nobody has saved yet — a saved record (by the agent or a manager) is
+  // already the confirmed figure.
+  const canConfirm = Boolean(outlook?.derived?.confirmable)
     && !history.some((r) => r.monthKey === outlook.derived.monthKey);
 
   const recordByMonth = useMemo(() => {

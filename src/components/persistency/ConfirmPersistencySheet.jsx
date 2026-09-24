@@ -53,7 +53,8 @@ export default function ConfirmPersistencySheet({
 
   const willSave = gate.canSave && numericInputs ? deriveAll(numericInputs).persistency : null;
 
-  if (!derived) return null;
+  // Only a 24-month-model month can be checked against the HO report.
+  if (!derived?.confirmable) return null;
 
   const handleSave = async () => {
     if (!gate.canSave) {

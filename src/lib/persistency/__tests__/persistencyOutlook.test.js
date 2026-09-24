@@ -68,6 +68,16 @@ describe('persistencyOutlook — Kyron shape reproduces the probe table', () => 
     expect(o.gateMonth.gap.reinstateNeeded).toBe(8154.95);
   });
 
+  it('August is not confirmable (12-month model at HO); September is', () => {
+    expect(o.derived.confirmable).toBe(false);
+    const oct = outlookFor(
+      KYRON_SHAPE.map((d) => ({ ...d, exportDate: '2026-10-15' })),
+      { today: '2026-10-20' },
+    );
+    expect(oct.derived.monthKey).toBe('2026-09');
+    expect(oct.derived.confirmable).toBe(true);
+  });
+
   it('the headline is the derived month when nothing is confirmed', () => {
     expect(o.confirmed).toBeNull();
     expect(o.headline).toMatchObject({ kind: 'derived', monthKey: '2026-08' });

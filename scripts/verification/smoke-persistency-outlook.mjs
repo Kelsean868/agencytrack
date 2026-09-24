@@ -8,12 +8,13 @@
  * dark, asserts Kyron's live figures, and saves card-cropped screenshots to
  * verification/persistency-outlook/.
  *
- * It NEVER clicks Confirm (that writes a persistency record). It only checks the
- * control is there. The info toggle it opens is local UI state. The local dev
+ * It NEVER clicks Confirm (that writes a persistency record). August is on the
+ * 12-month model at head office, so Confirm must be ABSENT there (dispatcher
+ * ruling, 23 Sep 2026) and the reason shown instead. The info toggle it opens is local UI state. The local dev
  * server reads PRODUCTION Firebase, which is why it must stay read-only.
  *
  * Expected (OIPA export 15 Sep 2026, rule `ignore`, 4 manual inputs assumed 0):
- *   Derived Aug 2026 89.6% · Estimated today Sep 2026 86.6% · Dec 2026 85.7%
+ *   Derived Aug 2026 89.6%, no Confirm, reason shown · Estimated today Sep 2026 86.6% · Dec 2026 85.7%
  *   gap TTD 81,549.48 / TTD 8,154.95 · campaign row "89.6% derived, Aug 2026"
  *   in warning · Home pulse chip "89.6% derived".
  *
@@ -41,6 +42,7 @@ const EXPECT = {
   exportDate: '15 Sep 2026',
   campaignRow: '89.6% derived, Aug 2026',
   chip: '89.6% derived',
+  noConfirmReason: 'Confirm opens from Sep 2026',
   gapTarget: 'Reaching Champion (TTD 275,000 settled) closes this gap by itself.',
 };
 
@@ -85,8 +87,9 @@ async function walk(page, theme) {
   await page.getByTestId('pulse-chip-persist').first().click({ timeout: STEP_TIMEOUT_MS });
   const derived = await text(page, 'persistency-outlook-derived');
   check(`${theme} · tab · Derived Aug ${EXPECT.derived}`, derived?.includes(EXPECT.derivedLabel) && derived?.includes(EXPECT.derived), derived);
-  const confirmVisible = await page.getByTestId('persistency-outlook-confirm').first().isVisible().catch(() => false);
-  check(`${theme} · tab · Confirm control present (not clicked)`, confirmVisible);
+  const confirmCount = await page.getByTestId('persistency-outlook-confirm').count();
+  check(`${theme} · tab · no Confirm on August, reason shown`,
+    confirmCount === 0 && derived?.includes(EXPECT.noConfirmReason), `confirm buttons: ${confirmCount}`);
   const estimate = await text(page, 'persistency-outlook-estimate');
   check(`${theme} · tab · Estimated today ${EXPECT.estimate}`, estimate?.includes(EXPECT.estimateLabel) && estimate?.includes(EXPECT.estimate), estimate);
   const gatePct = await text(page, 'persistency-outlook-gate-pct');

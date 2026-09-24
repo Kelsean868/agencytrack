@@ -28,6 +28,9 @@ const BOOK = [
   imported('P-C1', '2025-06-10', 'settled', 161581.20),
   imported('P-C2', '2025-06-12', 'lapsed', 27014.52),
 ];
+// The same book on an October export: the derived month is September, the
+// first month on the 24-month model, so it can be confirmed.
+const BOOK_OCT = BOOK.map((d) => ({ ...d, exportDate: '2026-10-15' }));
 const GATE = { monthKey: '2026-12', threshold: 90 };
 const outlookOf = (records = []) => buildPersistencyOutlook({
   policies: BOOK, records, today: '2026-09-23', gate: GATE,
@@ -50,12 +53,15 @@ const CAMPAIGN = {
 beforeEach(() => { savePersistency.mockClear(); });
 
 describe('PersistencyOutlookHero', () => {
-  it('shows Derived Aug 89.6% with Confirm, Estimated today 86.6%, Dec 85.7% and the gap sentence', () => {
-    render(<PersistencyOutlookHero outlook={outlookOf()} canConfirm onConfirm={() => {}} />);
+  it('shows Derived Aug 89.6% (no Confirm, with the reason), Estimated today 86.6%, Dec 85.7% and the gap sentence', () => {
+    const o = outlookOf();
+    render(<PersistencyOutlookHero outlook={o} canConfirm={o.derived.confirmable} onConfirm={() => {}} />);
     expect(screen.getByTestId('persistency-outlook-derived').textContent).toContain('Derived · Aug 2026');
     expect(screen.getByTestId('persistency-outlook-derived-pct').textContent).toBe('89.6%');
     expect(screen.getByTestId('persistency-outlook-derived-pct').className).toContain('text-warning-ink');
-    expect(screen.getByTestId('persistency-outlook-confirm')).toBeInTheDocument();
+    expect(screen.queryByTestId('persistency-outlook-confirm')).not.toBeInTheDocument();
+    expect(screen.getByTestId('persistency-outlook-derived').textContent)
+      .toContain('Confirm opens from Sep 2026: head office reports earlier months on the 12-month model.');
     expect(screen.getByTestId('persistency-outlook-estimate-pct').textContent).toBe('86.6%');
     expect(screen.getByTestId('persistency-outlook-gate-pct').textContent).toBe('85.7%');
     const gap = screen.getByTestId('persistency-outlook-gap').textContent;
@@ -89,8 +95,25 @@ describe('PersistencyOutlookHero', () => {
 });
 
 describe('ConfirmPersistencySheet — choice 1 writes ho_confirmed, then the gate prefers it', () => {
+  it('renders nothing for August — a 12-month-model month cannot be confirmed', () => {
+    const { container } = render(
+      <ConfirmPersistencySheet
+        tenantId="t1" agentUid="u1" writerUid="u1" writerRole="agent"
+        derived={outlookOf().derived} onClose={() => {}} onSaved={() => {}}
+      />,
+    );
+    expect(container.firstChild).toBeNull();
+  });
+
   it('blocks the save until every manual input is answered; zero is an answer', async () => {
-    const derived = outlookOf().derived;
+    const octOutlook = (records = []) => buildPersistencyOutlook({
+      policies: BOOK_OCT, records, today: '2026-10-20', gate: GATE,
+    });
+    const derived = octOutlook().derived;
+    expect(derived.monthKey).toBe('2026-09');
+    const hero = render(<PersistencyOutlookHero outlook={octOutlook()} canConfirm={derived.confirmable} onConfirm={() => {}} />);
+    expect(screen.getByTestId('persistency-outlook-confirm')).toBeInTheDocument();
+    hero.unmount();
     render(
       <ConfirmPersistencySheet
         tenantId="t1" agentUid="u1" writerUid="u1" writerRole="agent"
@@ -99,26 +122,27 @@ describe('ConfirmPersistencySheet — choice 1 writes ho_confirmed, then the gat
     );
     const button = screen.getByTestId('confirm-matches-button');
     expect(button).toBeDisabled();
-    // August is on the legacy model: three manual inputs, no Decreases.
-    expect(screen.queryByTestId('confirm-input-decreases')).not.toBeInTheDocument();
-    for (const id of ['incPPPs', 'lumpsums100', 'reinstatements']) {
+    // September is on the 24-month model: all four manual inputs, Decreases included.
+    for (const id of ['decreases', 'incPPPs', 'lumpsums100']) {
       fireEvent.change(screen.getByTestId(`confirm-input-${id}`), { target: { value: '0' } });
     }
-    expect(screen.getByTestId('confirm-will-save').textContent).toContain('89.6%');
+    expect(button).toBeDisabled(); // Reinstatements still blank
+    fireEvent.change(screen.getByTestId('confirm-input-reinstatements'), { target: { value: '0' } });
+    expect(screen.getByTestId('confirm-will-save').textContent).toContain('86.6%');
     expect(button).not.toBeDisabled();
     fireEvent.click(button);
     await waitFor(() => expect(savePersistency).toHaveBeenCalledTimes(1));
 
     const [tenantId, monthKey, agentUid, inputs, role, provenance] = savePersistency.mock.calls[0];
-    expect([tenantId, monthKey, agentUid, role]).toEqual(['t1', '2026-08', 'u1', 'agent']);
+    expect([tenantId, monthKey, agentUid, role]).toEqual(['t1', '2026-09', 'u1', 'agent']);
     expect(inputs).toEqual({
-      businessPlaced: 296457.24, notTakens: 0, lapses: 30878.88,
-      incPPPs: 0, lumpsums100: 0, reinstatements: 0,
+      businessPlaced: 210975.24, notTakens: 0, lapses: 28196.88,
+      decreases: 0, incPPPs: 0, lumpsums100: 0, reinstatements: 0,
     });
     expect(provenance).toMatchObject({
       source: 'ho_confirmed',
       confirmedBy: 'u1',
-      ledgerExportDate: '2026-09-15',
+      ledgerExportDate: '2026-10-15',
       ledgerWindowMonths: 24,
       annuityMissedPremiumRule: 'ignore',
       manualConfirmedBy: 'u1',
@@ -130,13 +154,12 @@ describe('ConfirmPersistencySheet — choice 1 writes ho_confirmed, then the gat
     const saved = {
       monthKey, ...inputs, ...deriveAll(inputs), ...provenance,
     };
-    const after = outlookOf([saved]);
-    expect(after.headline).toMatchObject({ kind: 'confirmed', monthKey: '2026-08', source: 'ho_confirmed' });
+    const after = octOutlook([saved]);
+    expect(after.headline).toMatchObject({ kind: 'confirmed', monthKey: '2026-09', source: 'ho_confirmed' });
 
-    render(<CampaignHeroCard campaign={CAMPAIGN} policies={BOOK} persistencyRecords={[saved]} />);
+    render(<CampaignHeroCard campaign={CAMPAIGN} policies={BOOK_OCT} persistencyRecords={[saved]} />);
     const row = screen.getByTestId('campaign-hero-row-persistency');
-    expect(row.textContent).toContain('89.6%');
-    expect(row.textContent).toContain('confirmed');
+    expect(row.textContent).toContain('86.6% confirmed, Sep 2026');
   });
 });
 

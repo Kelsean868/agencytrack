@@ -130,7 +130,10 @@ export default function PersistencyOutlookHero({
             label={`Derived · ${outlookMonthLabel(derived.monthKey)}`}
             pct={formatOutlookPct(derived.persistency)}
             tone={persistencyTone(derived.persistency, { threshold })}
-            caption={`From the HO export of ${outlookDateLabel(derived.exportDate)} · ${derived.annuityRuleLabel}`}
+            caption={[
+              `From the HO export of ${outlookDateLabel(derived.exportDate)} · ${derived.annuityRuleLabel}`,
+              derived.confirmable ? null : 'Confirm opens from Sep 2026: head office reports earlier months on the 12-month model.',
+            ].filter(Boolean).join('. ')}
             testId="persistency-outlook-derived"
           >
             {canConfirm && (

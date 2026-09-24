@@ -242,7 +242,11 @@ export function buildPersistencyOutlook({
       records,
       source: HO_EXPORT_SOURCE,
     });
-    derived = fig.counted > 0 ? fig : null;
+    // Confirmable only on a 24-month-model month (dispatcher ruling, 23 Sep
+    // 2026). The derived figure is always a 24-month-window figure; a
+    // pre-September HO report is on the 12-month model, so the two cannot be
+    // checked against each other.
+    derived = fig.counted > 0 ? { ...fig, confirmable: isTwentyFourMonthModel(fig.monthKey) } : null;
   }
 
   let estimateToday = null;
