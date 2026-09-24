@@ -31,7 +31,10 @@ const BOOK = [
 const GATE = { monthKey: '2026-12', threshold: 90 };
 const outlookOf = (records = []) => buildPersistencyOutlook({
   policies: BOOK, records, today: '2026-09-23', gate: GATE,
-  productionTarget: { name: 'Champion', api: 275000, current: 73946.28 },
+  productionTarget: {
+    tiers: [{ name: 'Pioneer', api: 825000 }, { name: 'Champion', api: 275000 }],
+    current: 73946.28,
+  },
 });
 
 const CAMPAIGN = {

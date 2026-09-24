@@ -37,8 +37,8 @@ function formatPct(decimal) {
 
 
 // The campaign whose gate the outlook projects to: the first active tiered
-// campaign that gates on persistency. Its top tier is the production target the
-// gap sentence compares against.
+// campaign that gates on persistency. Its tier ladder is what the gap sentence
+// compares against.
 function gatingCampaign(campaigns) {
   return (Array.isArray(campaigns) ? campaigns : []).find((c) => (
     isTieredCampaign(c) && c.structure === 'qualify' && outlookGateFor(c)
@@ -130,12 +130,9 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
   const annuityRule = annuityRuleChoice ?? resolveAnnuityRule(history);
   const outlook = useMemo(() => {
     if (!Array.isArray(ledgerDocs)) return null;
-    let productionTarget = null;
-    if (campaign) {
-      const top = [...(campaign.tiers ?? [])].sort((a, b) => (Number(b.api) || 0) - (Number(a.api) || 0))[0];
-      const lens = derivePolicyLens(ledgerDocs, campaign, {});
-      if (top) productionTarget = { name: top.name, api: Number(top.api) || 0, current: lens?.api?.current ?? 0 };
-    }
+    const productionTarget = campaign
+      ? { tiers: campaign.tiers ?? [], current: derivePolicyLens(ledgerDocs, campaign, {})?.api?.current ?? 0 }
+      : null;
     try {
       return buildPersistencyOutlook({
         policies: ledgerDocs,

@@ -77,15 +77,21 @@ describe('persistencyOutlook — Kyron shape reproduces the probe table', () => 
     expect(o.ifPendingSettle).toBeNull();
   });
 
-  it('a campaign target larger than the gap says it closes the gap by itself', () => {
-    const withTarget = outlookFor(KYRON_SHAPE, {
-      productionTarget: { name: 'Champion', api: 275000, current: 73946.28 },
-    });
+  it('names the SMALLEST tier whose remaining API closes the gap', () => {
+    const tiers = [
+      { name: 'Pioneer', api: 825000 },
+      { name: 'Starter', api: 100000 },
+      { name: 'Champion', api: 275000 },
+    ];
+    const withTarget = outlookFor(KYRON_SHAPE, { productionTarget: { tiers, current: 73946.28 } });
+    // Starter leaves 26,053.72 to go — short of 81,549.48 — so Champion is named.
     expect(withTarget.gateMonth.gap.closedByTarget).toEqual({
       name: 'Champion', api: 275000, remaining: 201053.72,
     });
-    const small = outlookFor(KYRON_SHAPE, { productionTarget: { name: 'Bronze', api: 80000, current: 10000 } });
-    expect(small.gateMonth.gap.closedByTarget).toBeNull();
+    const none = outlookFor(KYRON_SHAPE, {
+      productionTarget: { tiers: [{ name: 'Bronze', api: 80000 }], current: 10000 },
+    });
+    expect(none.gateMonth.gap.closedByTarget).toBeNull();
   });
 });
 

@@ -210,7 +210,9 @@ function daysBetween(fromDate, toDate) {
  * @param {string} params.today            TT calendar date, `YYYY-MM-DD`
  * @param {string} [params.annuityMissedPremiumRule]  override; defaults to resolveAnnuityRule(records)
  * @param {{monthKey: string, threshold: number}} [params.gate]  threshold on the 0–100 scale
- * @param {{name: string, api: number, current: number}} [params.productionTarget]
+ * @param {{tiers: Array<{name: string, api: number}>, current: number}} [params.productionTarget]
+ *        the campaign's tier ladder and the API already credited to it; the gap
+ *        sentence names the SMALLEST tier whose remaining API closes the gap
  */
 export function buildPersistencyOutlook({
   policies,
@@ -278,9 +280,14 @@ export function buildPersistencyOutlook({
       });
       const settledApiNeeded = money2(shortfall.nbNeeded);
       const reinstateNeeded = money2(shortfall.nrNeeded);
-      const targetApi = Number(productionTarget?.api);
-      const targetRemaining = Number.isFinite(targetApi)
-        ? money2(Math.max(0, targetApi - (Number(productionTarget?.current) || 0)))
+      const current = Number(productionTarget?.current) || 0;
+      const closer = settledApiNeeded > 0
+        ? (Array.isArray(productionTarget?.tiers) ? productionTarget.tiers : [])
+          .map((t) => ({ name: t?.name ?? null, api: Number(t?.api) }))
+          .filter((t) => Number.isFinite(t.api) && t.api > 0)
+          .map((t) => ({ ...t, remaining: money2(Math.max(0, t.api - current)) }))
+          .filter((t) => t.remaining >= settledApiNeeded)
+          .sort((a, b) => a.api - b.api)[0] ?? null
         : null;
       gateMonth = {
         ...fig,
@@ -289,9 +296,7 @@ export function buildPersistencyOutlook({
         gap: {
           settledApiNeeded,
           reinstateNeeded,
-          closedByTarget: settledApiNeeded > 0 && targetRemaining != null && targetRemaining >= settledApiNeeded
-            ? { name: productionTarget.name ?? null, api: targetApi, remaining: targetRemaining }
-            : null,
+          closedByTarget: closer,
         },
       };
     }
