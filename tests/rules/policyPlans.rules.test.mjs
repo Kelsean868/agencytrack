@@ -5,6 +5,14 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'agencytrack-2a610';
 const TENANT_ID  = 'policy-plans-rules-test-tenant';
 
+// Rotted config (fixed): hardcoded port 8080 (Firebase's own default) never
+// matched this repo's firebase.json, which pins the Firestore emulator to
+// 9090 — every case in this file failed with ECONNREFUSED regardless of the
+// rules themselves. Read FIRESTORE_EMULATOR_HOST like every sibling file in
+// this directory (e.g. persistency.rules.test.mjs, user-license.rules.test.mjs).
+const [EMU_HOST, EMU_PORT_STR] = (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080').split(':');
+const EMU_PORT = parseInt(EMU_PORT_STR ?? '8080', 10);
+
 let testEnv;
 const results = [];
 
@@ -41,8 +49,8 @@ async function main() {
     projectId: PROJECT_ID,
     firestore: {
       rules: readFileSync('firestore.rules', 'utf8'),
-      host: 'localhost',
-      port: 8080,
+      host: EMU_HOST,
+      port: EMU_PORT,
     },
   });
 

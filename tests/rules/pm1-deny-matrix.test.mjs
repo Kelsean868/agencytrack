@@ -189,13 +189,19 @@ function goalDoc(agentId) {
 }
 
 const PLAN_WEEK = '2026-01-04';  // a Sunday
+// Rotted field name (fixed): firestore.rules' validPlanWrite() requires the
+// targets/provenance key `telContacts` — this helper used the stale name
+// `contactsMade`, so every weeklyPlans CREATE case that used it failed the
+// rule's hasAll/hasOnly shape check (a real DENY-by-shape, not a security
+// hole) instead of exercising the intended ALLOW path. Renamed to match
+// firestore.rules ~L1863 (`d.targets.keys().hasAll([...,'telContacts',...])`).
 function validPlan(agentId) {
   return {
     agentId,
     tenantId: TENANT_ID,
     weekStart: new Date(`${PLAN_WEEK}T04:00:00Z`),
-    targets: { callsMade: 50, contactsMade: 20, factFindsCompleted: 5, closingInterviewsKept: 3, applicationsSubmitted: 2 },
-    provenance: { callsMade: 'agent', contactsMade: 'agent', factFindsCompleted: 'agent', closingInterviewsKept: 'agent', applicationsSubmitted: 'agent' },
+    targets: { callsMade: 50, telContacts: 20, factFindsCompleted: 5, closingInterviewsKept: 3, applicationsSubmitted: 2 },
+    provenance: { callsMade: 'agent', telContacts: 'agent', factFindsCompleted: 'agent', closingInterviewsKept: 'agent', applicationsSubmitted: 'agent' },
     anchorAPIAtCommit: null,
     committedAt: new Date(),
     updatedAt: new Date(),

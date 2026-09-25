@@ -96,10 +96,17 @@ async function main() {
   });
 
   // ── Case 2: Agent writes licenseStatus on own doc → DENY ──────────────────
+  // Value MUST differ from whatever the doc already holds (case 1 above sets
+  // it to 'official') — Firestore's request.resource.data.diff(resource.data)
+  // is empty for a same-value write, so hasOnly([...]) on an empty affected-keys
+  // set is vacuously true and the write is allowed with NO actual field change.
+  // Verified locally: same-value write against this rule resolves (false pass);
+  // a genuinely different value is correctly denied. Rotted test data, not a
+  // rules hole — the rule's allowlist semantics are correct.
   await t('2. Agent writes licenseStatus on own doc → DENY (not in self-edit arm)', async () => {
     const db = testEnv.authenticatedContext(AGENT_ID, authToken('agent')).firestore();
     await assertFails(updateDoc(userDocRef(db, AGENT_ID), {
-      licenseStatus: 'official',
+      licenseStatus: 'provisional',
     }));
   });
 

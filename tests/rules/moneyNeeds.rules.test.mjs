@@ -141,8 +141,15 @@ async function main() {
     setDoc(doc(agentBDb, mnDocPath('agent-a', '2025')), { ...VALID_PAYLOAD, uid: 'agent-b', visibility: 'private' })
   );
 
-  await run('unit_manager CREATE at agent path → DENY', false, () =>
-    setDoc(doc(umDb, mnDocPath('um-1', '2026')), { ...VALID_PAYLOAD, uid: 'um-1', visibility: 'private' })
+  // Rotted test data (fixed): 'um-1' is umDb's OWN uid, so this previously
+  // exercised a unit_manager filing their OWN worksheet — allowed by design
+  // (`allow create: if (isAgent() || isProducingManager()) && ... &&
+  // request.auth.uid == uid`; producing managers file personal worksheets
+  // alongside their management role, same pattern as weeklyPlans/policies).
+  // Retargeted at a real agent's path so the assertion exercises the intended
+  // "manager cannot create AT an agent's path" boundary (uid mismatch).
+  await run("unit_manager CREATE at an agent's path (not own) → DENY", false, () =>
+    setDoc(doc(umDb, mnDocPath('agent-a', '2029')), { ...VALID_PAYLOAD, year: 2029, uid: 'agent-a', visibility: 'private' })
   );
 
   await run('unauthenticated CREATE → DENY', false, () =>
