@@ -7481,3 +7481,19 @@ literal "NOT STARTED" string, so no fall-through existed there to fix.
 
 **Falsification (Rule 23):** overturned if a read of every `unit_manager` / `branch_manager` user doc shows the field always set AND `createUser` / `updateUser` refuse to write those roles without it.
 
+
+## Security audit 2026-09-24 — S1 closures
+
+**CLOSED 2026-09-25 by PR #973 (merge `683c32af`), deployed the same day.** Audit: `docs/audits/agencytrack-audit-2026-09-24.md`. Brief: `docs/briefs/security-phase-0-1.md` (S1).
+
+| ID | Closed by | Live since (UTC, queried) |
+|---|---|---|
+| SEC-01 `setUserClaims` trusts client claims | Callable deleted from `functions/index.js`; function deleted from production with `firebase functions:delete setUserClaims --region us-central1` (the non-interactive deploy listed it as the ONLY deletion) | 2026-09-25T12:53:08Z; `functions:list` no longer shows it |
+| SEC-03 managers write `kioskTokens` directly | `allow write: if false`; `createKioskToken` branch-checks a branch_manager and always writes a 90-day `expiresAt`; both validators reject a missing `expiresAt` | rules 12:49:57Z; kiosk CFs `updateTime` 12:55Z, ACTIVE |
+| SEC-07 `persistency` list tenant-wide | `allow list` mirrors `allow get`; manager `agentId in` batches capped at 9 (10-`get()` rules budget) | rules 12:49:57Z; manager check exercised the 9 + 5 batch path with 0 permission errors |
+| SEC-12 `storage.rules` not in repo | Live Console rules copied verbatim into `storage.rules`, `firebase.json` storage block, Storage emulator test in CI | storage released 12:50:26Z (same rules as before — no behaviour change) |
+| SEC-14 email templates unescaped | `escapeHtml` on every value in `.html` templates | functions deploy complete 12:56:08Z |
+
+Post-deploy verification: agent smoke `smoke-persistency-outlook.mjs` against production, 24 PASS / 0 FAIL; `tatillife_smoke` branch-manager Persistency check clean (June 2026: 4 of 6 figures, branch 80.8%, 0 console errors). Follow-ups these closures left open are banked above: § Storage rules deny avatar uploads, § Kiosk token revoke and read scope, § Persistency null-scope match.
+
+**Falsification (Rule 23):** any of these reopens if `firebase functions:list` shows `setUserClaims` again, or if the rules deployed to `agencytrack-2a610` stop matching `firestore.rules` / `storage.rules` on `main` (a Console edit or a deploy from an older checkout).
