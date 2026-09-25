@@ -185,9 +185,19 @@ async function main() {
     await assertFails(setDoc(planRef(agentA(), AGENT_B, '2026-06-21'), { ...validPayload(AGENT_A) }));
   });
 
-  await t('4. UM attempts create on an agent plan → DENY (no manager write)', async () => {
+  // Rotted test data (fixed): the case previously used UM_SAME as BOTH the
+  // target docId/agentId and the caller uid, which is a producing manager
+  // filing their OWN plan — allowed by design (firestore.rules ~L1900:
+  // "allow create: if (isAgent() || isProducingManager()) ..." — UM/BM file
+  // personal policies alongside their management role, same pattern as
+  // moneyNeeds). That is not "manager writes an AGENT's plan"; it vacuously
+  // passed the wrong scenario. Retargeted at a real agent's doc so the
+  // assertion actually exercises `d.agentId == request.auth.uid` denying a
+  // manager who is not that agent — matches case 27 (delete) below, which
+  // already targets AGENT_A correctly.
+  await t("4. UM attempts create on an agent's plan (not own) → DENY (no manager write)", async () => {
     const db = testEnv.authenticatedContext(UM_SAME, authToken('unit_manager')).firestore();
-    await assertFails(setDoc(planRef(db, UM_SAME, '2026-06-21'), { ...validPayload(UM_SAME) }));
+    await assertFails(setDoc(planRef(db, AGENT_A, '2026-06-21'), { ...validPayload(AGENT_A) }));
   });
 
   await t('5. Agent sends non-int target → DENY', async () => {

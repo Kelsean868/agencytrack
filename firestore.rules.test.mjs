@@ -39,6 +39,21 @@ import {
 } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'fs';
 import { doc, setDoc, getDoc, getDocs, deleteDoc, query, collection, where } from 'firebase/firestore';
+// Rotted harness (fixed): this file calls describe/it/before/after/afterEach
+// as bare globals, but neither plain `node` nor `node --test` injects them —
+// Node's test runner globals always require this explicit import (verified:
+// a probe file using describe()/it() with zero imports throws
+// "describe is not defined" under `node --test` too). Every sibling file in
+// tests/rules/ instead uses a self-contained custom runner (no describe/it),
+// which is why only this file was broken. Run with `node --test
+// firestore.rules.test.mjs` (or via firebase emulators:exec, see header).
+import { describe, it, before, after, afterEach } from 'node:test';
+
+// Rotted config (fixed): hardcoded port 8080 (Firebase's own default) never
+// matched this repo's firebase.json, which pins the Firestore emulator to
+// 9090. Read FIRESTORE_EMULATOR_HOST like every sibling file in tests/rules/.
+const [EMU_HOST, EMU_PORT_STR] = (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080').split(':');
+const EMU_PORT = parseInt(EMU_PORT_STR ?? '8080', 10);
 
 const PROJECT_ID = 'demo-agencytrack-test';
 const TENANT_ID  = 'test-tenant';
@@ -105,8 +120,8 @@ before(async () => {
     projectId: PROJECT_ID,
     firestore: {
       rules: readFileSync('firestore.rules', 'utf8'),
-      host:  'localhost',
-      port:  8080,
+      host:  EMU_HOST,
+      port:  EMU_PORT,
     },
   });
 });

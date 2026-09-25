@@ -29,6 +29,54 @@ jobs:
       - name: Build
         run: npm run build
 
+  # ── Firestore rules tests (SEC-21) — runs on every PR ────────────────────────
+  #
+  # Excluded from the default `npm test` (vitest run) by vite.config.js's
+  # test.exclude ('tests/rules/**' and 'firestore.rules.test.mjs') because the
+  # suite needs a live Firestore emulator and vitest's default run does not
+  # start one — see vite.config.js:101-108. That exclusion is UNCHANGED here;
+  # this job runs the suite separately via its own npm script (`test:rules`,
+  # scripts/test/run-rules-tests.mjs) inside `firebase emulators:exec`.
+  #
+  # JDK 21 + pinned firebase-tools: same reasoning as the a11y-contrast job
+  # above (the Firestore emulator is a Java process; firebase-tools refuses a
+  # JDK below 21, and ubuntu-latest's default JDK is older).
+  #
+  # `contents: read` only — this job never touches PR metadata or comments.
+  firestore-rules-tests:
+    name: firestore-rules-tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up JDK 21 (Firestore emulator runtime)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # PINNED and JOB-LOCAL, matching the a11y job's convention — keeps this
+      # ~100MB package out of lint-and-build's and functions-tests' npm ci.
+      - name: Install firebase-tools (pinned)
+        run: npm i -g firebase-tools@15.16.0
+
+      - name: Run Firestore rules tests against the emulator
+        run: |
+          firebase emulators:exec --only firestore --project=demo-agencytrack \
+            "npm run test:rules"
+
   functions-tests:
     runs-on: ubuntu-latest
     steps:
