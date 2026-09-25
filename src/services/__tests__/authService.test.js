@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
   mockCredential: { type: 'email' },
@@ -12,6 +12,8 @@ const hoisted = vi.hoisted(() => ({
   mockFirestoreSignOut: vi.fn(),
   mockTerminate: vi.fn(),
   mockClearIndexedDbPersistence: vi.fn(),
+  mockWaitForPendingWrites: vi.fn(),
+  mockRequestSignOutConfirmation: vi.fn(),
   mockDb: { __brand: 'firestore-db-instance' },
 }));
 
@@ -32,11 +34,16 @@ vi.mock('firebase/firestore', () => ({
   serverTimestamp: hoisted.mockServerTimestamp,
   terminate: (...args) => hoisted.mockTerminate(...args),
   clearIndexedDbPersistence: (...args) => hoisted.mockClearIndexedDbPersistence(...args),
+  waitForPendingWrites: (...args) => hoisted.mockWaitForPendingWrites(...args),
 }));
 
 vi.mock('../../firebase', () => ({
   auth: hoisted.mockAuth,
   db: hoisted.mockDb,
+}));
+
+vi.mock('../../lib/signOutConfirmBridge', () => ({
+  requestSignOutConfirmation: (...args) => hoisted.mockRequestSignOutConfirmation(...args),
 }));
 
 import { requestEmailUpdate, signOut } from '../authService';
@@ -135,6 +142,13 @@ describe('authService.signOut', () => {
     hoisted.mockFirestoreSignOut.mockResolvedValue();
     hoisted.mockTerminate.mockResolvedValue();
     hoisted.mockClearIndexedDbPersistence.mockResolvedValue();
+    // No pending writes by default — every pre-existing test below exercises
+    // the clear/terminate sequence unconditionally, so waitForPendingWrites
+    // resolves immediately (well inside the 5s window) and
+    // requestSignOutConfirmation is never reached. The dedicated "pending
+    // writes confirm gate" describe block below overrides this per test.
+    hoisted.mockWaitForPendingWrites.mockResolvedValue();
+    hoisted.mockRequestSignOutConfirmation.mockResolvedValue(true);
     reload = vi.fn();
     vi.stubGlobal('location', { reload });
   });
@@ -185,6 +199,83 @@ describe('authService.signOut', () => {
     expect(hoisted.mockTerminate).toHaveBeenCalledOnce();
     expect(reload).toHaveBeenCalledOnce();
     expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
+});
+
+// In-PR extension (CodeRabbit finding on PR #974) — signOut() now waits up
+// to 5s for Firestore's queued writes to sync before clearing anything, and
+// asks the user to confirm if they're still outstanding when that window
+// closes.
+describe('authService.signOut — pending writes confirm gate', () => {
+  let reload;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hoisted.mockFirestoreSignOut.mockResolvedValue();
+    hoisted.mockTerminate.mockResolvedValue();
+    hoisted.mockClearIndexedDbPersistence.mockResolvedValue();
+    reload = vi.fn();
+    vi.stubGlobal('location', { reload });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('(a) no pending writes — signs out straight away, no confirm dialog', async () => {
+    hoisted.mockWaitForPendingWrites.mockResolvedValue();
+
+    await signOut();
+
+    expect(hoisted.mockRequestSignOutConfirmation).not.toHaveBeenCalled();
+    expect(hoisted.mockFirestoreSignOut).toHaveBeenCalledOnce();
+    expect(hoisted.mockTerminate).toHaveBeenCalledOnce();
+    expect(hoisted.mockClearIndexedDbPersistence).toHaveBeenCalledOnce();
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('(b) writes still pending after the 5s window — shows the confirm dialog, proceeds on confirm', async () => {
+    vi.useFakeTimers();
+    hoisted.mockWaitForPendingWrites.mockReturnValue(new Promise(() => {})); // never settles
+    hoisted.mockRequestSignOutConfirmation.mockResolvedValue(true);
+
+    const signOutPromise = signOut();
+    await vi.advanceTimersByTimeAsync(5000);
+    await signOutPromise;
+
+    expect(hoisted.mockRequestSignOutConfirmation).toHaveBeenCalledOnce();
+    expect(hoisted.mockFirestoreSignOut).toHaveBeenCalledOnce();
+    expect(hoisted.mockTerminate).toHaveBeenCalledOnce();
+    expect(hoisted.mockClearIndexedDbPersistence).toHaveBeenCalledOnce();
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('(c) cancelling the confirm dialog — clear/terminate/firebaseSignOut/reload are never called', async () => {
+    vi.useFakeTimers();
+    hoisted.mockWaitForPendingWrites.mockReturnValue(new Promise(() => {}));
+    hoisted.mockRequestSignOutConfirmation.mockResolvedValue(false);
+
+    const signOutPromise = signOut();
+    await vi.advanceTimersByTimeAsync(5000);
+    await signOutPromise;
+
+    expect(hoisted.mockRequestSignOutConfirmation).toHaveBeenCalledOnce();
+    expect(hoisted.mockFirestoreSignOut).not.toHaveBeenCalled();
+    expect(hoisted.mockTerminate).not.toHaveBeenCalled();
+    expect(hoisted.mockClearIndexedDbPersistence).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('treats a rejected waitForPendingWrites as still-outstanding (asks rather than silently proceeding)', async () => {
+    hoisted.mockWaitForPendingWrites.mockRejectedValue(new Error('offline'));
+    hoisted.mockRequestSignOutConfirmation.mockResolvedValue(true);
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await signOut();
+
+    expect(hoisted.mockRequestSignOutConfirmation).toHaveBeenCalledOnce();
+    expect(hoisted.mockFirestoreSignOut).toHaveBeenCalledOnce();
     errSpy.mockRestore();
   });
 });

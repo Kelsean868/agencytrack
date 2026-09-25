@@ -29,6 +29,37 @@ describe('neutralizeCsvFormula', () => {
   it('does not mistake a mid-string trigger character for a leading one', () => {
     expect(neutralizeCsvFormula('a=b')).toBe('a=b');
   });
+
+  // In-PR extension (dispatcher, PR #974) — real numbers and numeric-looking
+  // strings must NOT be prefixed, even though they start with a trigger
+  // character (a leading '-' or '+' is legitimate sign notation).
+  describe('numeric preservation (in-PR extension)', () => {
+    it('leaves a genuine negative number unchanged', () => {
+      expect(neutralizeCsvFormula(-5000)).toBe(-5000);
+    });
+
+    it('leaves a numeric string with a decimal portion unchanged', () => {
+      expect(neutralizeCsvFormula('-5000.00')).toBe('-5000.00');
+    });
+
+    it('leaves a numeric string with thousands separators unchanged', () => {
+      expect(neutralizeCsvFormula('-5,000.00')).toBe('-5,000.00');
+      expect(neutralizeCsvFormula('1,234.56')).toBe('1,234.56');
+    });
+
+    it('leaves a plain unsigned or plus-signed numeric string unchanged', () => {
+      expect(neutralizeCsvFormula('5000')).toBe('5000');
+      expect(neutralizeCsvFormula('+250')).toBe('+250');
+    });
+
+    it('still prefixes a genuine formula despite looking number-adjacent', () => {
+      expect(neutralizeCsvFormula('=SUM(A1)')).toBe("'=SUM(A1)");
+    });
+
+    it('still prefixes text that starts with a trigger character but is not purely numeric', () => {
+      expect(neutralizeCsvFormula('-cmd')).toBe("'-cmd");
+    });
+  });
 });
 
 describe('escapeCsvField', () => {
