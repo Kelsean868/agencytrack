@@ -189,7 +189,7 @@ async function main() {
     await assertSucceeds(getDocs(query(col(db), where('agentId', '==', AGENT1_ID))));
   });
 
-  await t('1b. Agent lists another agent's docs → DENY', async () => {
+  await t("1b. Agent lists another agent's docs → DENY", async () => {
     const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
     await assertFails(getDocs(query(col(db), where('agentId', '==', AGENT2_ID))));
   });
@@ -205,7 +205,7 @@ async function main() {
       where('agentId', 'in', [AGENT1_ID]), where('year', '==', 2026))));
   });
 
-  await t('2b. BM lists a batch including another branch's agent → DENY', async () => {
+  await t("2b. BM lists a batch including another branch's agent → DENY", async () => {
     const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
     await assertFails(getDocs(query(col(db),
       where('agentId', 'in', [AGENT1_ID, AGENT2_ID]), where('year', '==', 2026))));
@@ -227,7 +227,7 @@ async function main() {
     await assertSucceeds(getDocs(query(col(db), where('agentId', '==', AGENT1_ID))));
   });
 
-  await t('2f. UM lists another unit's agent → DENY', async () => {
+  await t("2f. UM lists another unit's agent → DENY", async () => {
     const db = testEnv.authenticatedContext(UM1_ID, authToken('unit_manager')).firestore();
     await assertFails(getDocs(query(col(db), where('agentId', '==', AGENT2_ID))));
   });
