@@ -157,15 +157,21 @@ export async function navigateAgentTab(page, tabId) {
  * navigateManagerTab — clicks a manager nav tab by its data-testid, with mobile
  * More-drawer fallback.
  *
- * Note: 'persistency' uses data-testid="tab-persistency"; all other tabs use
- * data-testid="nav-{tabId}".
+ * Note: 'persistency' renders under two different testids depending on manager
+ * type (src/components/dashboard/ManagerDashboard.jsx): producing managers
+ * (unit_manager/branch_manager) render the centralized navConfig.js
+ * producingManager config, which has no testId override and falls back to the
+ * default data-testid="nav-persistency"; non-producing managers (sales_manager/
+ * tenant_admin/platform_admin) render ManagerDashboard's local NAV_ITEMS, which
+ * explicitly overrides to data-testid="tab-persistency". All other tabs use
+ * data-testid="nav-{tabId}" for every manager type.
  *
  * @param {import('playwright').Page} page
  * @param {string} tabId - e.g. 'overview', 'policy-reconciliation', 'persistency'
  */
 export async function navigateManagerTab(page, tabId) {
   const sel = tabId === 'persistency'
-    ? '[data-testid="tab-persistency"]'
+    ? '[data-testid="nav-persistency"], [data-testid="tab-persistency"]'
     : `[data-testid="nav-${tabId}"]`;
   await page.waitForTimeout(600);
 
