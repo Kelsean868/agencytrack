@@ -7,10 +7,21 @@
  *
  * Requires: Java JDK 17+ for the Firestore emulator.
  *
- * Test matrix (22 cases):
- *   allow list
- *     1. In-tenant signed-in user lists → ALLOW (intentionally permissive)
+ * Test matrix (33 cases):
+ *   allow list (SEC-07 — scoped by role, mirrors allow get)
+ *     1. Agent lists the whole collection, no filter → DENY (the SEC-07 hole)
+ *    1a. Agent lists own docs (where agentId == self) → ALLOW
+ *    1b. Agent lists another agent's docs → DENY
  *     2. Cross-tenant auth lists → DENY
+ *    2a. BM lists own-branch agent (agentId in [..] + year) → ALLOW
+ *    2b. BM lists a batch that includes another branch's agent → DENY
+ *    2c. BM lists the whole collection, no filter → DENY
+ *    2d. BM lists a 9-id own-branch batch (the client batch size) → ALLOW
+ *    2e. UM lists own-unit agent → ALLOW
+ *    2f. UM lists another unit's agent → DENY
+ *    2g. tenant_admin lists the whole collection → ALLOW
+ *    2h. sales_manager lists the whole collection → ALLOW
+ *    2i. Kiosk session lists the whole collection → DENY
  *
  *   allow get (existing doc)
  *     3. Agent reads own persistency doc → ALLOW
@@ -63,6 +74,9 @@ const UM1_ID    = 'um1';       // unit-a UM (branch-a)
 const AGENT1_ID = 'agent1';    // branch-a, unit-a
 const AGENT2_ID = 'agent2';    // branch-b, unit-b
 const AGENT_X   = 'agent-x';   // cross-tenant (different tenantId claim)
+const SM_ID     = 'sm1';       // sales_manager (claim only — tenant arm needs no user doc)
+const KIOSK_ID  = 'kiosk_abc'; // kiosk session (role claim 'kiosk', branch-a)
+const BATCH_IDS = Array.from({ length: 9 }, (_, i) => `batch-agent-${i}`);
 
 // Persistency doc IDs
 const P1_ID = `${AGENT1_ID}_2026_01`;  // agent1's January 2026
@@ -113,6 +127,13 @@ async function seedDocs(testEnv) {
     await setDoc(userRef(db, UM1_ID),    user(UM1_ID,    'unit_manager',   'branch-a', UM1_ID));
     await setDoc(userRef(db, AGENT1_ID), user(AGENT1_ID, 'agent',          'branch-a', UM1_ID));
     await setDoc(userRef(db, AGENT2_ID), user(AGENT2_ID, 'agent',          'branch-b', 'um2'));
+    // Nine branch-a agents for the batch-size case (2d). Each list-rule
+    // evaluation does one get() per agent id plus one for the caller, and
+    // production caps a query at 10 get() calls — so 9 is the largest safe
+    // batch (PERSISTENCY_QUERY_BATCH in persistencyService.js).
+    for (const id of BATCH_IDS) {
+      await setDoc(userRef(db, id), user(id, 'agent', 'branch-a', UM1_ID));
+    }
 
     // Persistency docs
     await setDoc(persistRef(db, P1_ID), validDoc(AGENT1_ID, 'branch_manager', BM1_ID));
@@ -152,14 +173,79 @@ async function main() {
   // ── allow list ──────────────────────────────────────────────────────────────
   console.log('\nallow list:');
 
-  await t('1. In-tenant agent lists persistency → ALLOW (intentionally permissive)', async () => {
+  // SEC-07 (audit 2026-09-24): `allow list` used to be tenant-wide for every
+  // signed-in role, so any agent (or kiosk) could read every agent's figures
+  // with one unfiltered getDocs. Case 1 is the audit's falsification check:
+  // it passed on main before the fix and must fail after it.
+  const col = (db) => collection(db, `tenants/${TENANT_ID}/persistency`);
+
+  await t('1. Agent lists the whole collection, no filter → DENY (SEC-07)', async () => {
     const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
-    await assertSucceeds(getDocs(collection(db, `tenants/${TENANT_ID}/persistency`)));
+    await assertFails(getDocs(col(db)));
+  });
+
+  await t('1a. Agent lists own docs (agentId == self) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    await assertSucceeds(getDocs(query(col(db), where('agentId', '==', AGENT1_ID))));
+  });
+
+  await t("1b. Agent lists another agent's docs → DENY", async () => {
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    await assertFails(getDocs(query(col(db), where('agentId', '==', AGENT2_ID))));
   });
 
   await t('2. Cross-tenant auth lists persistency → DENY', async () => {
     const db = testEnv.authenticatedContext(AGENT_X, authToken('agent', OTHER_TENANT)).firestore();
-    await assertFails(getDocs(collection(db, `tenants/${TENANT_ID}/persistency`)));
+    await assertFails(getDocs(col(db)));
+  });
+
+  await t('2a. BM lists own-branch agent (agentId in + year) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    await assertSucceeds(getDocs(query(col(db),
+      where('agentId', 'in', [AGENT1_ID]), where('year', '==', 2026))));
+  });
+
+  await t("2b. BM lists a batch including another branch's agent → DENY", async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    await assertFails(getDocs(query(col(db),
+      where('agentId', 'in', [AGENT1_ID, AGENT2_ID]), where('year', '==', 2026))));
+  });
+
+  await t('2c. BM lists the whole collection, no filter → DENY', async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    await assertFails(getDocs(col(db)));
+  });
+
+  await t('2d. BM lists a 9-id own-branch batch (client batch size) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM1_ID, authToken('branch_manager')).firestore();
+    await assertSucceeds(getDocs(query(col(db),
+      where('agentId', 'in', BATCH_IDS), where('year', '==', 2026))));
+  });
+
+  await t('2e. UM lists own-unit agent → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(UM1_ID, authToken('unit_manager')).firestore();
+    await assertSucceeds(getDocs(query(col(db), where('agentId', '==', AGENT1_ID))));
+  });
+
+  await t("2f. UM lists another unit's agent → DENY", async () => {
+    const db = testEnv.authenticatedContext(UM1_ID, authToken('unit_manager')).firestore();
+    await assertFails(getDocs(query(col(db), where('agentId', '==', AGENT2_ID))));
+  });
+
+  await t('2g. tenant_admin lists the whole collection → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(TA_ID, authToken('tenant_admin')).firestore();
+    await assertSucceeds(getDocs(col(db)));
+  });
+
+  await t('2h. sales_manager lists the whole collection → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(SM_ID, authToken('sales_manager')).firestore();
+    await assertSucceeds(getDocs(col(db)));
+  });
+
+  await t('2i. Kiosk session lists the whole collection → DENY', async () => {
+    const db = testEnv.authenticatedContext(KIOSK_ID,
+      { role: 'kiosk', tenantId: TENANT_ID, branchId: 'branch-a' }).firestore();
+    await assertFails(getDocs(col(db)));
   });
 
   // ── allow get (existing doc) ────────────────────────────────────────────────

@@ -154,8 +154,13 @@ function CampaignRow({ campaign, canEdit, onEdit, onDelete, allUsers, tenantId, 
         // fetched for tiered campaigns; failures degrade to "no data" pills.
         if (tiered) {
           try {
-            const opts = campaign.scope?.type === 'unit' && campaign.scope.unitIds?.length === 1
-              ? { unitId: campaign.scope.unitIds[0] } : {};
+            // SEC-07: a branch or unit manager may only list their own scope's
+            // persistency, and one out-of-scope id denies its whole batch — so
+            // the viewer's role scope (subsScope) wins over the campaign's.
+            const opts = subsScope?.branchId ? { branchId: subsScope.branchId }
+              : subsScope?.unitId ? { unitId: subsScope.unitId }
+                : campaign.scope?.type === 'unit' && campaign.scope.unitIds?.length === 1
+                  ? { unitId: campaign.scope.unitIds[0] } : {};
             const maps = await Promise.all(
               campaignYears(campaign.startDate, campaign.endDate).map((y) => getPersistencyMapForYear(tenantId, y, opts)),
             );

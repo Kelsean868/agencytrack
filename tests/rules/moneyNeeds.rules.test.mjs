@@ -152,6 +152,17 @@ async function main() {
     setDoc(doc(umDb, mnDocPath('agent-a', '2029')), { ...VALID_PAYLOAD, year: 2029, uid: 'agent-a', visibility: 'private' })
   );
 
+  // The own-doc ALLOW the retarget above left untested (FU banked from the
+  // PR #972 review): a producing unit_manager files their OWN worksheet via the
+  // isProducingManager() arm of `allow create`. Dropping that arm must fail CI.
+  await run('unit_manager CREATE own worksheet (visibility:private) → ALLOW', true, () =>
+    setDoc(doc(umDb, mnDocPath('um-1', '2029')), { ...VALID_PAYLOAD, year: 2029, uid: 'um-1', visibility: 'private' })
+  );
+
+  await run('branch_manager CREATE own worksheet (visibility:private) → ALLOW', true, () =>
+    setDoc(doc(bmDb, mnDocPath('bm-1', '2029')), { ...VALID_PAYLOAD, year: 2029, uid: 'bm-1', visibility: 'private' })
+  );
+
   await run('unauthenticated CREATE → DENY', false, () =>
     setDoc(doc(anonDb, mnDocPath('agent-a', '2023')), { ...VALID_PAYLOAD, visibility: 'private' })
   );

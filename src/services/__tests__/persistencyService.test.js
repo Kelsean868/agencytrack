@@ -47,7 +47,9 @@ import {
   getPersistencyForAgent,
   getPersistencyForBranch,
   getPersistencyMapForYear,
+  getPersistencyForAgentIds,
   getAvailableMonths,
+  PERSISTENCY_QUERY_BATCH,
   getAgentHistory,
   savePersistency,
 } from '../persistencyService';
@@ -539,7 +541,7 @@ describe('getPersistencyMapForYear', () => {
 
     const map = await getPersistencyMapForYear('tenant1', 2026, { branchId: 'b1' });
 
-    // a1 + a3 fetched in one ≤30 batch; only a1 had records.
+    // a1 + a3 fetched in one batch; only a1 had records.
     expect(mockGetDocs).toHaveBeenCalledTimes(1);
     expect(Object.keys(map)).toEqual(['a1']);
     expect(map.a1).toHaveLength(2);
@@ -549,11 +551,12 @@ describe('getPersistencyMapForYear', () => {
   });
 
   it('silently skips a batch whose query is rejected by rules', async () => {
-    // EFF-005: 31 branch-b1 agents span two ≤30 chunks. The first batch's query
-    // is rejected (rules); the second resolves. Each batch is caught
-    // independently, so the rejected batch is skipped silently while the other
-    // still returns — the batch-granularity analog of the prior per-agent skip.
-    const batch1Agents = Array.from({ length: 30 }, (_, i) => ({
+    // EFF-005: 10 branch-b1 agents span two batches (9 + 1, SEC-07 batch size).
+    // The first batch's query is rejected (rules); the second resolves. Each
+    // batch is caught independently, so the rejected batch is skipped silently
+    // while the other still returns — the batch-granularity analog of the prior
+    // per-agent skip.
+    const batch1Agents = Array.from({ length: 9 }, (_, i) => ({
       id: `x${i}`, role: 'agent', branchId: 'b1',
     }));
     getTenantUsers.mockResolvedValueOnce([
@@ -561,7 +564,7 @@ describe('getPersistencyMapForYear', () => {
       { id: 'a2', role: 'agent', branchId: 'b1' },
     ]);
     mockGetDocs
-      .mockRejectedValueOnce(new Error('PERMISSION_DENIED')) // batch 1 (x0..x29)
+      .mockRejectedValueOnce(new Error('PERMISSION_DENIED')) // batch 1 (x0..x8)
       .mockResolvedValueOnce({                                // batch 2 (a2)
         docs: [
           { data: () => ({ ...E3_INPUTS, agentId: 'a2', year: 2026, monthKey: '2026-01' }) },
@@ -574,6 +577,75 @@ describe('getPersistencyMapForYear', () => {
     expect(map.a2).toHaveLength(1);
     // Verify the surviving batch's actual record, not just key presence.
     expect(map.a2[0].monthKey).toBe('2026-01');
+  });
+});
+
+// -----------------------------------------------------------------------------
+// SEC-07 (audit 2026-09-24) — every list query carries a filter the scoped
+// `allow list` rule can prove, and no batch exceeds the rules engine's get()
+// budget. The rule does one get() per agent id plus one for the caller, and
+// production caps a query at 10 get() calls, so a batch holds at most 9 ids.
+// -----------------------------------------------------------------------------
+
+function inBatches() {
+  return mockGetDocs.mock.calls.map(([q]) =>
+    q.__query.find((c) => c.__where?.[1] === 'in').__where[2]);
+}
+
+describe('SEC-07 — persistency list queries are scoped and batched', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetTodayTT.mockReturnValue('2026-09-25');
+  });
+
+  it('the batch size fits the 10-get() rules budget', () => {
+    expect(PERSISTENCY_QUERY_BATCH).toBe(9);
+  });
+
+  it('getPersistencyMapForYear splits 19 agents into batches of at most 9', async () => {
+    getTenantUsers.mockResolvedValueOnce(
+      Array.from({ length: 19 }, (_, i) => ({ id: `a${i}`, role: 'agent', branchId: 'b1' })),
+    );
+    mockGetDocs.mockResolvedValue({ docs: [] });
+    await getPersistencyMapForYear('tenant1', 2026, { branchId: 'b1' });
+    expect(inBatches().map((b) => b.length)).toEqual([9, 9, 1]);
+  });
+
+  it('getPersistencyForAgentIds splits 10 ids into 9 + 1', async () => {
+    mockGetDocs.mockResolvedValue({ docs: [] });
+    await getPersistencyForAgentIds('tenant1', 2026, Array.from({ length: 10 }, (_, i) => `a${i}`));
+    expect(inBatches().map((b) => b.length)).toEqual([9, 1]);
+  });
+
+  it("getAvailableMonths 'branch' scope queries only that branch's users, never the whole collection", async () => {
+    getTenantUsers.mockResolvedValueOnce([
+      { id: 'a1', role: 'agent',        branchId: 'b1', unitId: 'u1' },
+      { id: 'm1', role: 'unit_manager', branchId: 'b1', unitId: 'u1' }, // producing UM — own months count
+      { id: 'a2', role: 'agent',        branchId: 'b2', unitId: 'u2' }, // other branch
+    ]);
+    mockGetDocs.mockResolvedValue({
+      forEach(cb) { [{ data: () => ({ ...E3_INPUTS, monthKey: '2025-11' }) }].forEach(cb); },
+    });
+    const months = await getAvailableMonths('tenant1', 'branch', 'b1');
+    expect(inBatches()).toEqual([['a1', 'm1']]);
+    expect(months).toContain('2025-11');
+  });
+
+  it("getAvailableMonths 'unit' scope queries only that unit's users", async () => {
+    getTenantUsers.mockResolvedValueOnce([
+      { id: 'a1', role: 'agent', branchId: 'b1', unitId: 'u1' },
+      { id: 'a3', role: 'agent', branchId: 'b1', unitId: 'u9' },
+    ]);
+    mockGetDocs.mockResolvedValue({ forEach: () => {} });
+    await getAvailableMonths('tenant1', 'unit', 'u1');
+    expect(inBatches()).toEqual([['a1']]);
+  });
+
+  it("getAvailableMonths 'branch' scope with no users runs no query and still offers the entry window", async () => {
+    getTenantUsers.mockResolvedValueOnce([]);
+    const months = await getAvailableMonths('tenant1', 'branch', 'empty-branch');
+    expect(mockGetDocs).not.toHaveBeenCalled();
+    expect(months[0]).toBe('2026-09');
   });
 });
 

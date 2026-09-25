@@ -59,6 +59,20 @@ describe('validateTokenData', () => {
     expect(result.reason).toBe('expired');
   });
 
+  // SEC-03 (audit 2026-09-24): a token with no expiresAt used to be valid
+  // forever. It is now invalid and must be re-minted.
+  it('returns expired when expiresAt is missing', () => {
+    const { expiresAt: _expiresAt, ...noExpiry } = makeToken();
+    const result = validateTokenData(noExpiry, 'tenant_a');
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('expired');
+  });
+
+  it('returns expired when expiresAt is unparseable', () => {
+    const result = validateTokenData(makeToken({ expiresAt: 'not a date' }), 'tenant_a');
+    expect(result.valid).toBe(false);
+  });
+
   it('accepts injectable `now` for deterministic expiry testing', () => {
     const expiresAt = new Date('2026-06-01T00:00:00Z');
     const token = makeToken({ expiresAt: { toDate: () => expiresAt } });

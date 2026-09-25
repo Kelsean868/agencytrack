@@ -72,9 +72,11 @@ jobs:
       - name: Install firebase-tools (pinned)
         run: npm i -g firebase-tools@15.16.0
 
-      - name: Run Firestore rules tests against the emulator
+      # `storage` too since SEC-12: tests/rules/storage.rules.test.mjs pins the
+      # live Storage rules (storage.rules) against the Storage emulator.
+      - name: Run Firestore and Storage rules tests against the emulators
         run: |
-          firebase emulators:exec --only firestore --project=demo-agencytrack \
+          firebase emulators:exec --only firestore,storage --project=demo-agencytrack \
             "npm run test:rules"
 
   functions-tests:

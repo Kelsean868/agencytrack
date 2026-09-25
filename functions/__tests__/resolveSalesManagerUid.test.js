@@ -186,3 +186,16 @@ describe('resolveSalesManagerUid — resolution', () => {
     expect(result).toEqual({ smUid: 'sm-t1' });
   });
 });
+
+// ── SEC-01 (audit 2026-09-24) ──────────────────────────────────────────────────
+// setUserClaims wrote custom claims (role, tenantId, branch) taken verbatim from
+// the request — one call made a tenant_admin a cross-tenant platform_admin. It
+// had no caller (updateUser replaced it), so it was deleted. This file already
+// loads the whole functions entrypoint with firebase-admin mocked, so it is the
+// cheapest place to pin that the export stays gone.
+describe('SEC-01 — setUserClaims is not exported', () => {
+  it('the functions entrypoint has no setUserClaims export', () => {
+    const fns = require('../index');
+    expect(fns).not.toHaveProperty('setUserClaims');
+  });
+});

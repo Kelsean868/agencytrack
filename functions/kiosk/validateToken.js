@@ -8,12 +8,15 @@ function validateTokenData(data, tenantId, now) {
   // Cross-tenant safety: stored tenantId must match the URL parameter.
   if (data.tenantId !== tenantId) return { valid: false, reason: 'invalid' };
   if (data.revokedAt) return { valid: false, reason: 'revoked' };
-  if (data.expiresAt) {
-    const expiry =
-      typeof data.expiresAt.toDate === 'function'
-        ? data.expiresAt.toDate()
-        : new Date(data.expiresAt);
-    if (expiry < now) return { valid: false, reason: 'expired' };
+  // SEC-03: a token with no (or an unreadable) expiresAt is invalid — it used
+  // to be valid forever. createKioskToken always writes one.
+  if (!data.expiresAt) return { valid: false, reason: 'expired' };
+  const expiry =
+    typeof data.expiresAt.toDate === 'function'
+      ? data.expiresAt.toDate()
+      : new Date(data.expiresAt);
+  if (Number.isNaN(expiry.getTime()) || expiry < now) {
+    return { valid: false, reason: 'expired' };
   }
   return { valid: true, tenantId: data.tenantId, branchId: data.branchId };
 }
@@ -73,3 +76,5 @@ exports.validateKioskToken = functions.https.onRequest(async (req, res) => {
     res.status(500).json({ valid: false, reason: 'invalid' });
   }
 });
+
+exports.validateTokenData = validateTokenData;
