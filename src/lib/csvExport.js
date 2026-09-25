@@ -9,10 +9,36 @@
  * content without touching the DOM.
  */
 
+// SEC-15 — CSV formula injection. A cell opened in Excel/Sheets/LibreOffice
+// that starts with one of these characters is interpreted as a formula (or,
+// for tab/CR, can smuggle a second logical cell) rather than literal text —
+// the classic CSV-injection vector for exports containing user-controlled
+// values (names, notes, imported free text). Prefixing with a leading `'`
+// forces the cell to render as text in every major spreadsheet app while
+// leaving the underlying value intact.
+const FORMULA_TRIGGER_CHARS = new Set(['=', '+', '-', '@', '\t', '\r']);
+
+/**
+ * Neutralize a single cell value against CSV formula injection (SEC-15).
+ * Purely additive — values that don't start with a trigger character are
+ * returned unchanged (same type, not stringified). This is the ONE helper
+ * every CSV export site in the app runs cell values through, either
+ * directly or via `escapeCsvField` below.
+ */
+export function neutralizeCsvFormula(val) {
+  if (val === null || val === undefined) return val;
+  const str = String(val);
+  if (str.length > 0 && FORMULA_TRIGGER_CHARS.has(str[0])) {
+    return `'${str}`;
+  }
+  return val;
+}
+
 /** Escape a single CSV field per RFC4180 (quote-wrap on comma/quote/newline). */
 export function escapeCsvField(val) {
-  if (val === null || val === undefined) return '';
-  const str = String(val);
+  const safe = neutralizeCsvFormula(val);
+  if (safe === null || safe === undefined) return '';
+  const str = String(safe);
   if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`;
   }

@@ -6,7 +6,7 @@ import {
   reauthenticateWithCredential,
   verifyBeforeUpdateEmail,
 } from 'firebase/auth';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, serverTimestamp, terminate, clearIndexedDbPersistence } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { APP_URL } from '../constants/brand';
 
@@ -14,8 +14,31 @@ export async function signIn(email, password) {
   return signInWithEmailAndPassword(auth, email, password);
 }
 
+/**
+ * signOut — SEC-10. Beyond revoking the Firebase Auth session, this clears
+ * the Firestore IndexedDB cache so the next sign-in (same user, or a
+ * different one on a shared device) never reads stale or cross-account
+ * cached documents, and then reloads so the app boots clean.
+ *
+ * Order matters: terminate(db) MUST run before clearIndexedDbPersistence —
+ * Firestore throws ("Persistence cannot be cleared while the Firestore
+ * instance is still running") if the connection is still open. Auth is
+ * signed out FIRST so any in-flight listeners tear down against a null
+ * user before the Firestore connection itself is torn down underneath
+ * them.
+ *
+ * The cache-clear step is best-effort: a failure there must not block
+ * sign-out, which is the security-relevant half of this function.
+ */
 export async function signOut() {
-  return firebaseSignOut(auth);
+  await firebaseSignOut(auth);
+  try {
+    await terminate(db);
+    await clearIndexedDbPersistence(db);
+  } catch (err) {
+    console.error('[authService] Firestore cache clear on logout failed', err);
+  }
+  window.location.reload();
 }
 
 export async function sendPasswordReset(email) {

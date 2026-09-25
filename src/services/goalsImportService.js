@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { isValidEmail } from '../utils/validators';
 import { setGoals, getCompanyMinimums } from './goalsService';
 import { getAllUsers } from './agentManagementService';
+import { neutralizeCsvFormula } from '../lib/csvExport';
 
 /**
  * goalsImportService — Track C C3.
@@ -331,7 +332,17 @@ export function buildErrorCSV(validatedRows, results = []) {
 
   if (errorRows.length === 0) return null;
 
-  return Papa.unparse(errorRows, {
+  // SEC-15: this CSV re-echoes admin-uploaded input (agentEmail etc.) back
+  // into a downloadable file — neutralize every field against CSV formula
+  // injection before Papa.unparse quotes it.
+  const safeRows = errorRows.map((row) => ({
+    agentEmail: neutralizeCsvFormula(row.agentEmail),
+    annualApiTarget: neutralizeCsvFormula(row.annualApiTarget),
+    annualAppsTarget: neutralizeCsvFormula(row.annualAppsTarget),
+    error: neutralizeCsvFormula(row.error),
+  }));
+
+  return Papa.unparse(safeRows, {
     columns: ['agentEmail', 'annualApiTarget', 'annualAppsTarget', 'error'],
   });
 }

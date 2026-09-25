@@ -1,9 +1,43 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
-  escapeCsvField, buildCsvContent, slugifyForFilename, downloadCsv,
+  escapeCsvField, buildCsvContent, slugifyForFilename, downloadCsv, neutralizeCsvFormula,
 } from '../csvExport';
 
+// SEC-15 — CSV formula injection neutralization.
+describe('neutralizeCsvFormula', () => {
+  it.each([
+    ['=', '=SUM(A1:A9)', "'=SUM(A1:A9)"],
+    ['+', '+1+1', "'+1+1"],
+    ['-', '-2+3', "'-2+3"],
+    ['@', '@SUM(1+1)', "'@SUM(1+1)"],
+    ['tab', '\tmalicious', "'\tmalicious"],
+    ['CR', '\rmalicious', "'\rmalicious"],
+  ])('prefixes a cell starting with %s with a leading apostrophe', (_label, input, expected) => {
+    expect(neutralizeCsvFormula(input)).toBe(expected);
+  });
+
+  it('leaves a plain value unchanged (same value, not stringified)', () => {
+    expect(neutralizeCsvFormula('Cheryl Gonzales')).toBe('Cheryl Gonzales');
+    expect(neutralizeCsvFormula(7200)).toBe(7200);
+  });
+
+  it('leaves null/undefined unchanged', () => {
+    expect(neutralizeCsvFormula(null)).toBe(null);
+    expect(neutralizeCsvFormula(undefined)).toBe(undefined);
+  });
+
+  it('does not mistake a mid-string trigger character for a leading one', () => {
+    expect(neutralizeCsvFormula('a=b')).toBe('a=b');
+  });
+});
+
 describe('escapeCsvField', () => {
+  it('neutralizes a formula-injection cell before quote-escaping (SEC-15)', () => {
+    expect(escapeCsvField('=SUM(A1:A9)')).toBe("'=SUM(A1:A9)");
+    // Neutralized value has no comma/quote/newline, so it is NOT quote-wrapped.
+    expect(escapeCsvField('+1+1,2')).toBe('"\'+1+1,2"');
+  });
+
   it('leaves plain values unchanged', () => {
     expect(escapeCsvField('Cheryl Gonzales')).toBe('Cheryl Gonzales');
     expect(escapeCsvField(7200)).toBe('7200');

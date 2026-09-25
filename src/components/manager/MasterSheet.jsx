@@ -26,6 +26,7 @@ import {
   deriveUnitOptions, funnelFiltersCount, applyFunnelFilters, buildFilterChips,
 } from '../../utils/funnelFilters';
 import { buildStatusMap, STATUS_NODATA_KEY } from '../../utils/funnelStatus';
+import { neutralizeCsvFormula } from '../../lib/csvExport';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 import CoachingNotesModal from './CoachingNotesModal';
 
@@ -411,10 +412,13 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
     });
     const csvRows = [
       [...leadHeaders, ...colHeaders].join(','),
+      // SEC-15: neutralizeCsvFormula (src/lib/csvExport.js) guards the two
+      // user-controlled free-text cells against CSV formula injection before
+      // they're wrapped in the existing quote literal.
       ...searchedRows.map((r) => [
         r.rank,
-        `"${r.name}"`,
-        `"${r.unitName ?? ''}"`,
+        `"${neutralizeCsvFormula(r.name)}"`,
+        `"${neutralizeCsvFormula(r.unitName ?? '')}"`,
         r.status,
         ...FUNNEL_COLS.map((c) => r.v[c.key] ?? 0),
       ].join(',')),

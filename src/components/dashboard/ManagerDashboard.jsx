@@ -2,7 +2,7 @@
 // (Vite supports automatic JSX transform but vitest does not always apply it).
 // Touched here in Track J P5 because the new ManagerDashboardLeaderboardTab
 // test mounts <ManagerDashboard /> directly.
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import {
   Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
@@ -69,10 +69,15 @@ import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
 import LedgerLoadError from '../goals/LedgerLoadError';
 import { useMyProduction } from '../../hooks/useMyProduction';
-import FinancingSelfView from '../financing/FinancingSelfView';
+import FinancingSelfViewSkeleton from '../financing/FinancingSelfViewSkeleton';
 import UnitFinancingRoster from '../financing/UnitFinancingRoster';
 import TeamPlansRoster from '../manager/TeamPlansRoster';
 import { PERS_GATE_PCT } from '../../lib/persistency/calculations';
+
+// PERF-01 — lazy-loaded: see the matching comment in AgentDashboard.jsx.
+// FinancingSelfView is also mounted here (My Production tab, manager's own
+// financing), so both mount sites share the same lazy chunk and skeleton.
+const FinancingSelfView = lazy(() => import('../financing/FinancingSelfView'));
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -777,7 +782,11 @@ export default function ManagerDashboard() {
 
         {/* Track K · K9 — financed-UM own financing self-view (agent-style, own uid).
             The unit-management half is K10 and is NOT mounted here. */}
-        {activeTab === 'mp-financing' && <FinancingSelfView tenantId={tenantId} subjectUid={user?.uid} />}
+        {activeTab === 'mp-financing' && (
+          <Suspense fallback={<FinancingSelfViewSkeleton />}>
+            <FinancingSelfView tenantId={tenantId} subjectUid={user?.uid} />
+          </Suspense>
+        )}
 
         {activeTab === 'profile' && (
           <ProfileScreen menuLayout={menuLayout} onMenuLayoutChange={setMenuLayout} />
