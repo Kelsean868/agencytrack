@@ -17,6 +17,7 @@ import {
 } from '../../lib/persistency/calculations';
 import { persistencyModelFor, LABELS } from '../../lib/persistency/model';
 import { getTenantUsers } from '../../services/managerService';
+import { escapeCsvField } from '../../lib/csvExport';
 import PersRealityBar from './PersRealityBar';
 import PersAtRiskBook from './PersAtRiskBook';
 import PersRoster from './PersRoster';
@@ -33,14 +34,10 @@ const ROLE_DEFAULT_SCOPE = {
   platform_admin: 'branch',
 };
 
+// SEC-15: escapeCsvField (src/lib/csvExport.js) neutralizes formula-
+// injection trigger characters before RFC4180 quote-escaping.
 function buildCSV(rows) {
-  const escape = (val) => {
-    if (val === null || val === undefined || val === '') return '';
-    const str = String(val);
-    if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
-    return str;
-  };
-  return rows.map((r) => r.map(escape).join(',')).join('\n');
+  return rows.map((r) => r.map(escapeCsvField).join(',')).join('\n');
 }
 
 export default function PersistencyTab() {

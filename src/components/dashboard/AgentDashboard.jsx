@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import {
   X, Download, Loader2,
   ClipboardList, FileText, Star, History, UserCircle, Settings,
@@ -68,9 +68,16 @@ import {
 import DerivedIncomePanel from '../goals/DerivedIncomePanel';
 import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
-import FinancingSelfView from '../financing/FinancingSelfView';
+import FinancingSelfViewSkeleton from '../financing/FinancingSelfViewSkeleton';
 import AgentReportView from '../profile/AgentReportView';
 import { PERS_GATE_PCT } from '../../lib/persistency/calculations';
+
+// PERF-01 — lazy-loaded: the financing tab is not the default view for most
+// agent sessions, so its component + service reads stay out of the entry
+// chunk until the tab is actually opened. FinancingSelfViewSkeleton (above)
+// is a separate, tiny, eagerly-imported file so the Suspense fallback below
+// renders instantly rather than waiting on the very chunk it stands in for.
+const FinancingSelfView = lazy(() => import('../financing/FinancingSelfView'));
 
 // Agent sidebar nav is centralized in shell/navConfig.js (Nav redesign PR-1) —
 // resolved per-render via getNavConfig('agent', { showDailyCapture }) so the
@@ -1038,7 +1045,11 @@ export default function AgentDashboard() {
       )}
 
       {/* ── FINANCING SELF-VIEW TAB (Track K · K9 — read-only, own uid) ── */}
-      {activeTab === 'financing' && <FinancingSelfView tenantId={tenantId} subjectUid={user?.uid} />}
+      {activeTab === 'financing' && (
+        <Suspense fallback={<FinancingSelfViewSkeleton />}>
+          <FinancingSelfView tenantId={tenantId} subjectUid={user?.uid} />
+        </Suspense>
+      )}
 
       {/* ── LEADERBOARD TAB (Track J P6 — production-based, nav-driven) ── */}
       {activeTab === 'production-leaderboard' && <ProductionLeaderboardSurface key={ptrRevision} />}

@@ -3,6 +3,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { isValidEmail } from '../utils/validators';
 import { listBranches } from './branchService';
 import { getAllUsers } from './agentManagementService';
+import { neutralizeCsvFormula } from '../lib/csvExport';
 
 /**
  * userImportService — Track C C2.
@@ -334,7 +335,14 @@ export function buildErrorCSV(validatedRows, callableResults = []) {
 
   if (errorRows.length === 0) return null;
 
-  return Papa.unparse(errorRows, {
+  // SEC-15: this CSV re-echoes admin-uploaded input (name, bio, etc.) back
+  // into a downloadable file — neutralize every field against CSV formula
+  // injection before Papa.unparse quotes it.
+  const safeRows = errorRows.map((row) => Object.fromEntries(
+    Object.entries(row).map(([key, val]) => [key, neutralizeCsvFormula(val)])
+  ));
+
+  return Papa.unparse(safeRows, {
     columns: [
       'email', 'name', 'role', 'branchName', 'agentNumber',
       'unitId', 'contractStartDate', 'phone', 'bio', 'careerLevel',

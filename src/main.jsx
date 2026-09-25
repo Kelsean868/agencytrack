@@ -5,6 +5,8 @@ import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';
 import KioskRoute from './components/kiosk/KioskRoute.jsx';
+import FirestoreCorruptionBoundary from './components/ui/FirestoreCorruptionBoundary.jsx';
+import SignOutConfirmHost from './components/ui/SignOutConfirmHost.jsx';
 import { initClarity } from './lib/clarityInit.js';
 
 // Privacy-gated Microsoft Clarity — no-op unless PROD build + VITE_CLARITY_PROJECT_ID.
@@ -36,14 +38,22 @@ if (isKioskPath) {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    {isKioskPath ? (
-      <KioskRoute />
-    ) : (
-      <AuthProvider>
-        <NotificationProvider>
-          <App />
-        </NotificationProvider>
-      </AuthProvider>
-    )}
+    <FirestoreCorruptionBoundary>
+      {isKioskPath ? (
+        <KioskRoute />
+      ) : (
+        <AuthProvider>
+          <NotificationProvider>
+            <App />
+          </NotificationProvider>
+          {/* SEC-10 in-PR extension — the "unsynced changes" sign-out confirm
+              dialog. Mounted once here (not per-dashboard) so authService.signOut()
+              can trigger it via signOutConfirmBridge.js without every call site
+              needing its own dialog state. Kiosk route never signs out, so this
+              is absent from that branch. */}
+          <SignOutConfirmHost />
+        </AuthProvider>
+      )}
+    </FirestoreCorruptionBoundary>
   </StrictMode>,
 );

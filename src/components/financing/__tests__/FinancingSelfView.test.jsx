@@ -298,8 +298,14 @@ describe('FinancingSelfView — single derived reconciliation year', () => {
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
       render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
-      const card = await screen.findByTestId('financing-self-view');
-      expect(card).toHaveAttribute('role', 'alert');
+      // Query by role="alert" (unique to the error variant), not by
+      // data-testid="financing-self-view" (shared by the loading, empty AND
+      // error variants — findByTestId can resolve to the loading skeleton
+      // before the mocked rejection settles, since a query that already
+      // matches on the very first render never keeps waiting for a later
+      // state). findByRole retries until an element WITH that role exists.
+      const card = await screen.findByRole('alert');
+      expect(card).toHaveAttribute('data-testid', 'financing-self-view');
       expect(financingService.getFinancingTerms).toHaveBeenCalledTimes(1);
 
       financingService.getFinancingTerms.mockResolvedValueOnce({ ...TERMS, financingStatus: 'not_on_financing' });

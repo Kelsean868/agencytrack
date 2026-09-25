@@ -37,6 +37,7 @@ import { computePaydownArcModel, ARC_VIEW } from '../../lib/financingPaydownArc'
 import { computeMonthsFromDate, getTodayTT } from '../../utils/dateInputs';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 import FinancingStatusBadge from '../manager/FinancingStatusBadge';
+import FinancingSelfViewSkeleton from './FinancingSelfViewSkeleton';
 
 // Statuses that indicate a reconciliation record may exist (so we only spend the
 // extra read when it could return something). on_financing has no recon yet.
@@ -382,11 +383,7 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
   }, [tenantId, subjectUid, reloadToken]);
 
   if (state.status === 'loading') {
-    return (
-      <div className="flex items-center justify-center h-28 rounded-xl border border-border bg-card-raised text-ink-muted text-sm" data-testid="financing-self-view">
-        Loading your financing…
-      </div>
-    );
+    return <FinancingSelfViewSkeleton />;
   }
 
   if (state.status === 'error') {

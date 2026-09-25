@@ -1,6 +1,7 @@
 import { createElement } from 'react';
 import { extractFields, extractTotalProductionCredit } from '../utils/extractFields';
 import { aggregatePersistency } from '../lib/persistency/calculations';
+import { escapeCsvField } from '../lib/csvExport';
 // NOTE: @react-pdf/renderer and AgentReportDocument are dynamically imported
 // inside generateAgentPDF (EFF-011) so the ~heavy PDF engine stays out of the
 // entry chunk and loads only on first report export.
@@ -208,18 +209,11 @@ export function exportBranchCSV(users, submissions, persistencyMap) {
     ];
   });
 
-  const escape = (val) => {
-    if (val === null || val === undefined || val === '') return '';
-    const str = String(val);
-    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-      return `"${str.replace(/"/g, '""')}"`;
-    }
-    return str;
-  };
-
+  // SEC-15: escapeCsvField (src/lib/csvExport.js) neutralizes formula-
+  // injection trigger characters before RFC4180 quote-escaping.
   const csvLines = [
-    headers.map(escape).join(','),
-    ...rows.map((row) => row.map(escape).join(',')),
+    headers.map(escapeCsvField).join(','),
+    ...rows.map((row) => row.map(escapeCsvField).join(',')),
   ];
   const csvContent = csvLines.join('\r\n');
 

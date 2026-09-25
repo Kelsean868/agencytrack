@@ -1,9 +1,8 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useAuth } from './context/AuthContext';
-import { auth } from './firebase';
-import { signOut } from 'firebase/auth';
+import { signOut } from './services/authService';
 import LoginScreen from './components/auth/LoginScreen';
 import ResetPasswordHandler from './components/auth/ResetPasswordHandler';
 import EmailVerificationHandler from './components/auth/EmailVerificationHandler';
@@ -11,6 +10,14 @@ import ToastProvider from './components/ui/ToastProvider';
 import ReloadPrompt from './components/ui/ReloadPrompt';
 import ChunkLoadErrorBoundary from './components/ui/ChunkLoadErrorBoundary';
 import { ConfigProvider } from './context/ConfigProvider';
+import { repairFirestoreCache } from './lib/firestoreRecovery';
+
+// SEC-10 — if the loading screen is still up after this long, the local
+// Firestore cache may be corrupted (the same failure family the
+// FirestoreCorruptionBoundary and authService.signOut() guard against).
+// Offer the same repair escape hatch rather than leaving the user stuck on
+// a spinner forever.
+const LOADING_REPAIR_TIMEOUT_MS = 20000;
 
 // EFF-002 code-splitting — the three role dashboards are the heaviest single-mount
 // surfaces in the app and were all eager-imported into the entry chunk, so every
@@ -34,17 +41,43 @@ const MANAGER_ROLES = new Set(['unit_manager', 'branch_manager', 'sales_manager'
 
 // Track J System Screens v2 — state screens lifted onto the v2 card grammar.
 // Visual only; AppRoot routing (below) is untouched.
-const LoadingScreen = () => (
-  <div
-    className="min-h-screen flex items-center justify-center bg-surface px-6"
-    data-testid="state-loading"
-  >
-    <div className="card text-center max-w-sm w-full flex flex-col items-center gap-4 py-10">
-      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      <p className="text-sm font-medium text-ink-muted">Loading AgencyTrack…</p>
+// SEC-10: after LOADING_REPAIR_TIMEOUT_MS, offer the Repair app data escape
+// hatch (see module comment above) in addition to the spinner.
+const LoadingScreen = () => {
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setTimedOut(true), LOADING_REPAIR_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center bg-surface px-6"
+      data-testid="state-loading"
+    >
+      <div className="card text-center max-w-sm w-full flex flex-col items-center gap-4 py-10">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-medium text-ink-muted">Loading AgencyTrack…</p>
+        {timedOut && (
+          <>
+            <p className="text-xs text-ink-muted leading-relaxed">
+              Still loading? The app&apos;s saved data may be damaged.
+            </p>
+            <button
+              type="button"
+              onClick={() => repairFirestoreCache()}
+              className="btn-secondary w-full h-11"
+              data-testid="loading-repair-button"
+            >
+              Repair app data
+            </button>
+          </>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const PlatformAdminStubScreen = () => (
   <div
@@ -64,7 +97,7 @@ const PlatformAdminStubScreen = () => (
         </p>
       </div>
       <button
-        onClick={() => signOut(auth)}
+        onClick={() => signOut()}
         className="btn-primary w-full h-11"
       >
         Sign Out
@@ -92,7 +125,7 @@ const ProvisioningScreen = () => (
         </p>
       </div>
       <button
-        onClick={() => signOut(auth)}
+        onClick={() => signOut()}
         className="btn-primary w-full h-11"
       >
         Sign Out &amp; Try Again
