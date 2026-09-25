@@ -7467,6 +7467,7 @@ literal "NOT STARTED" string, so no fall-through existed there to fix.
 
 1. **Revoke is tenant-scoped (MEDIUM).** `functions/kiosk/revokeToken.js` checks only that the stored `tenantId` matches the caller's. Any `branch_manager` can revoke any branch's kiosk. Fix: the same `branchManagerOwns` check `createToken.js` now uses, against the token doc's `branchId`.
 2. **Read is open to every manager (LOW).** `kioskTokens` keeps `allow read: if canManage(tenantId)` because `KioskModeTab` lists tokens client-side. The doc ID *is* the token, so a `unit_manager` (who cannot mint) can read another branch's live kiosk URL. Fix: scope reads to BM+ of the token's branch, or list tokens through a callable.
+3. **Expiry is checked only at sign-in (LOW, raised by CodeRabbit on PR #973).** `KioskRoute.jsx` calls `validateKioskToken` once per page load, then signs in to an in-memory auth instance. A wall display that never reloads keeps reading after its token expires or is revoked, until the next reload. Fix: re-validate on a timer in `KioskShell` (it already polls data every `POLL_INTERVAL_MS`) and drop to "Display unavailable" on `valid:false`.
 
 **Falsification (Rule 23):** closed without work if `KioskModeTab` stops reading `kioskTokens` from the client and revoke gains a branch check.
 
