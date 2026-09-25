@@ -1,10 +1,18 @@
 rules_version = '2';
-
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    // Profile photos — the only Storage path the app uses.
+    match /avatars/{tenantId}/{fileName} {
+      allow read: if request.auth != null
+        && request.auth.token.get('tenantId', '') == tenantId;
+      allow create, update: if request.auth != null
+        && request.auth.token.get('tenantId', '') == tenantId
+        && fileName == request.auth.uid + '.jpg'
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType == 'image/jpeg';
+      // No delete: the app never deletes avatars.
+    }
+    // Everything else stays closed.
     match /{allPaths=**} {
       allow read, write: if false;
     }
