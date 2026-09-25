@@ -358,27 +358,9 @@ async function cleanup(email) {
     await cleanup(taEmail);
   }
 
-  console.log('\n── setUserClaims: bypass removed ──────────────────────');
-
-  // The old SUPER_ADMIN_UID bypass allowed a user with no role claim to call
-  // setUserClaims if their UID matched. After PR-2, only role === 'tenant_admin' works.
-  await expect(
-    'setUserClaims with no role claim (simulates removed bypass path)',
-    () => fnModule.setUserClaims.run(
-      { uid: 'some-uid', role: 'agent', tenantId: TENANT },
-      { auth: { uid: tenantAdminUid, token: { tenantId: TENANT } }, rawRequest: {} } // no role in token
-    ),
-    'permission-denied'
-  );
-
-  await expect(
-    'setUserClaims with role=tenant_admin (normal operator path, still works)',
-    () => fnModule.setUserClaims.run(
-      { uid: tenantAdminUid, role: 'tenant_admin', tenantId: TENANT, branchId: 'tatil_south', ownedBranchIds: ['*'] },
-      makeCtx('tenant_admin', tenantAdminUid, 'tatil_south', ['*'])
-    ),
-    null
-  );
+  // setUserClaims cases removed with the callable itself (SEC-01, audit
+  // 2026-09-24). functions/__tests__/resolveSalesManagerUid.test.js pins that
+  // the export stays gone.
 
   // ════════════════════════════════════════════════════════════════════════
   // deactivateUser tests

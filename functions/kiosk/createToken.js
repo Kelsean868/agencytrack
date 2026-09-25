@@ -2,30 +2,52 @@ const admin = require('firebase-admin');
 const functions = require('firebase-functions/v1');
 const crypto = require('crypto');
 
-const MANAGER_ROLES = new Set([
-  'branch_manager',
+// Roles that may mint a kiosk token for ANY branch in their tenant.
+const CROSS_BRANCH_ROLES = new Set([
   'sales_manager',
   'tenant_admin',
   'platform_admin',
 ]);
 
-const TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
+// SEC-03 (audit 2026-09-24): every token expires. The one constant for kiosk
+// token lifetime — the validators reject a token with no expiresAt.
+const KIOSK_TOKEN_TTL_DAYS = 90;
+const TOKEN_TTL_MS = KIOSK_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000;
 const { APP_URL: BASE_URL } = require('../lib/config');
+
+// A branch_manager owns their claim branchId and any branch in ownedBranchIds
+// (createUser sets ownedBranchIds = [branchId] for BMs).
+function branchManagerOwns(token, branchId) {
+  if (!branchId) return false;
+  if (token.branchId === branchId) return true;
+  return Array.isArray(token.ownedBranchIds) && token.ownedBranchIds.includes(branchId);
+}
 
 exports.createKioskToken = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
 
-  const { role, tenantId } = context.auth.token;
-  if (!MANAGER_ROLES.has(role)) {
+  const { token } = context.auth;
+  const { role, tenantId } = token;
+  const isCrossBranch = CROSS_BRANCH_ROLES.has(role);
+  if (!isCrossBranch && role !== 'branch_manager') {
     throw new functions.https.HttpsError(
       'permission-denied',
       'Requires branch_manager or above.',
     );
   }
 
-  const branchId = data.branchId ?? context.auth.token.branchId ?? 'default';
+  // SEC-03: the branchId arrives from the caller, so a branch_manager may only
+  // mint for a branch they own. Unit managers never reach here (rejected above).
+  const requested = data?.branchId ?? token.branchId;
+  if (!isCrossBranch && !branchManagerOwns(token, requested)) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'A branch manager can only create a kiosk link for their own branch.',
+    );
+  }
+  const branchId = requested ?? 'default';
   const tokenId = crypto.randomBytes(32).toString('hex');
   const now = new Date();
   const expiresAt = new Date(now.getTime() + TOKEN_TTL_MS);
@@ -47,3 +69,5 @@ exports.createKioskToken = functions.https.onCall(async (data, context) => {
 
   return { tokenId, kioskUrl: `${BASE_URL}/kiosk/${tenantId}/${tokenId}` };
 });
+
+exports.KIOSK_TOKEN_TTL_DAYS = KIOSK_TOKEN_TTL_DAYS;

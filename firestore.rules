@@ -626,14 +626,24 @@ service cloud.firestore {
               && request.resource.data.lastEditedBy == request.auth.uid;
         }
 
-        // allow list is intentionally permissive within tenant scope.
-        // Firestore cannot evaluate resource.data for list operations, so
-        // per-doc rules (allow get below) handle strict access. Clients
-        // must apply where() filters; isE3Doc() in persistencyService.js
-        // strips legacy docs before UI render.
-        // Trade-off + follow-ups: see SCOPE-2 and PERF-1 in docs/FOLLOW_UPS.md
-        // (to be added in a separate post-pilot housekeeping PR).
-        allow list: if isSignedIn() && getTenantId() == tenantId;
+        // SEC-07 (audit 2026-09-24): list mirrors the get arms below. It used
+        // to be tenant-wide for every signed-in role, so any agent or kiosk
+        // could read every agent's figures with one unfiltered getDocs.
+        // A list rule CAN reference resource.data: Firestore then only accepts
+        // a query whose filters prove the rule. The client queries by
+        // `agentId ==` or `agentId in [...]`, and Firestore checks each id.
+        //
+        // get() BUDGET: the BM and UM arms do one get() per agent id plus one
+        // for the caller, and production caps a query at 10 get() calls. So a
+        // manager's `agentId in` batch holds at most 9 ids —
+        // PERSISTENCY_QUERY_BATCH in src/services/persistencyService.js.
+        // The kiosk has no arm: it never reads persistency.
+        allow list: if isSignedIn() && getTenantId() == tenantId && (
+          getRole() in ['platform_admin', 'tenant_admin', 'sales_manager']
+          || (isAgent() && resource.data.agentId == request.auth.uid)
+          || (getRole() == 'branch_manager' && existingAgentBranchId() == callerBranchId())
+          || (getRole() == 'unit_manager'   && existingAgentUnitId()   == callerUnitId(tenantId))
+        );
 
         allow get: if isSignedIn() && getTenantId() == tenantId && (
           getRole() in ['platform_admin', 'tenant_admin', 'sales_manager']
@@ -992,10 +1002,18 @@ service cloud.firestore {
           && (getRole() == 'platform_admin' || getTenantId() == tenantId);
       }
 
-      // E5: kiosk tokens. Manager-tier roles manage tokens; Cloud Function
-      // validateKioskToken reads via Admin SDK (bypasses rules entirely).
+      // E5: kiosk tokens. Cloud Function validateKioskToken reads via Admin SDK
+      // (bypasses rules entirely).
+      // SEC-03 (audit 2026-09-24): a token doc is a bearer credential —
+      // validateKioskToken mints a kiosk session for whatever branch it names.
+      // Written ONLY by createKioskToken / revokeKioskToken (Admin SDK), which
+      // check the caller's role and branch and always set expiresAt. Client
+      // writes were open to every manager, so a unit_manager could self-mint a
+      // never-expiring kiosk for any branch. Managers still read, because
+      // KioskModeTab lists the tenant's tokens to show and revoke them.
       match /kioskTokens/{tokenId} {
-        allow read, write, delete: if canManage(tenantId);
+        allow read: if canManage(tenantId);
+        allow write: if false;
       }
 
       // Linked call sources. An external calling system presents a bearer token;

@@ -159,6 +159,10 @@ async function main() {
     setDoc(doc(umDb, mnDocPath('um-1', '2029')), { ...VALID_PAYLOAD, year: 2029, uid: 'um-1', visibility: 'private' })
   );
 
+  await run('branch_manager CREATE own worksheet (visibility:private) → ALLOW', true, () =>
+    setDoc(doc(bmDb, mnDocPath('bm-1', '2029')), { ...VALID_PAYLOAD, year: 2029, uid: 'bm-1', visibility: 'private' })
+  );
+
   await run('unauthenticated CREATE → DENY', false, () =>
     setDoc(doc(anonDb, mnDocPath('agent-a', '2023')), { ...VALID_PAYLOAD, visibility: 'private' })
   );

@@ -129,7 +129,7 @@ describe('validateTokenData (Cloud Function copy)', () => {
   });
 
   it('rejects a token with NO expiresAt (used to never expire)', () => {
-    const { expiresAt, ...noExpiry } = good;
+    const { expiresAt: _expiresAt, ...noExpiry } = good;
     expect(validateTokenData(noExpiry, 't1', NOW)).toEqual({ valid: false, reason: 'expired' });
   });
 

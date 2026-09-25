@@ -126,6 +126,21 @@ function persistencyCollection(tenantId) {
   return collection(db, `tenants/${tenantId}/persistency`);
 }
 
+/**
+ * SEC-07: the most agent ids one `agentId in [...]` persistency query may carry.
+ * The scoped `allow list` rule does one get() per id for a branch or unit
+ * manager, plus one for the caller, and production Firestore caps a query at
+ * 10 get() calls — a bigger batch is denied outright. Used for every role so
+ * the query shape never depends on who is asking.
+ */
+export const PERSISTENCY_QUERY_BATCH = 9;
+
+function chunk(ids, size) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size));
+  return out;
+}
+
 function persistencyDocRef(tenantId, agentUid, monthKey) {
   return doc(db, `tenants/${tenantId}/persistency/${persistencyDocId(agentUid, monthKey)}`);
 }
@@ -182,7 +197,7 @@ export async function getPersistencyForTenant(tenantId, monthKey) {
 }
 
 // Returns distinct monthKeys, sorted newest first. For 'agent' scope, queries
-// by agentId. For other scopes, queries the tenant collection (rules apply).
+// by agentId; unit/branch scopes query that scope's users (SEC-07).
 /**
  * The floor on how far back the entry window reaches, in months, counting the
  * current month. Only binds early in a calendar year — see the comment inside
@@ -204,18 +219,29 @@ export const MIN_ENTRY_WINDOW_MONTHS = 3;
 // need: the month is reachable and reads as having no entry, so re-entering it
 // through the seven-field form fixes it.
 export async function getAvailableMonths(tenantId, scopeType, scopeId) {
-  let q;
+  // SEC-07: every query carries a filter the scoped `allow list` rule can
+  // prove. 'unit' / 'branch' ask for that scope's users (every role, so a
+  // producing manager's own months still appear) in batches; only 'tenant',
+  // which only tenant-wide roles reach, reads the collection unfiltered.
+  let queries;
   if (scopeType === 'agent') {
-    q = query(persistencyCollection(tenantId), where('agentId', '==', scopeId));
+    queries = [query(persistencyCollection(tenantId), where('agentId', '==', scopeId))];
+  } else if (scopeType === 'unit' || scopeType === 'branch') {
+    const field = scopeType === 'unit' ? 'unitId' : 'branchId';
+    const ids = (await getTenantUsers(tenantId))
+      .filter((u) => u[field] === scopeId)
+      .map((u) => u.id);
+    queries = chunk(ids, PERSISTENCY_QUERY_BATCH).map((batch) =>
+      query(persistencyCollection(tenantId), where('agentId', 'in', batch)));
   } else {
-    q = query(persistencyCollection(tenantId));
+    queries = [query(persistencyCollection(tenantId))];
   }
-  const snap = await getDocs(q);
+  const snaps = await Promise.all(queries.map((q) => getDocs(q)));
   const monthKeys = new Set();
-  snap.forEach((d) => {
+  snaps.forEach((snap) => snap.forEach((d) => {
     const data = d.data();
     if (isE3Doc(data) && data.monthKey) monthKeys.add(data.monthKey);
-  });
+  }));
 
   // P1b: always offer an entry window — every month of the CURRENT CALENDAR
   // YEAR up to and including the current TT month, and never fewer than
@@ -272,17 +298,15 @@ export async function getPersistencyMapForYear(tenantId, year, opts = {}) {
   const agentIds = agents.map((u) => u.id);
   if (agentIds.length === 0) return {};
 
-  // EFF-005: batch the per-agent N+1 into ≤30-id `in` chunks, mirroring
+  // EFF-005: batch the per-agent N+1 into `in` chunks, mirroring
   // settlementService.getSettlementsForUnit. `agentId in [...] + year == y` is
   // equality-class on both fields, so no composite index is required (same as
   // the prior `agentId == x + year == y` query). Each batch is wrapped so a
   // rules-denied read is skipped silently, preserving the prior per-agent
-  // "read denied → skip" contract at batch granularity.
+  // "read denied → skip" contract at batch granularity. SEC-07: chunks of
+  // PERSISTENCY_QUERY_BATCH (9), not 30 — see that constant.
   const map = {};
-  const batches = [];
-  for (let i = 0; i < agentIds.length; i += 30) {
-    batches.push(agentIds.slice(i, i + 30));
-  }
+  const batches = chunk(agentIds, PERSISTENCY_QUERY_BATCH);
   await Promise.all(batches.map(async (batch) => {
     try {
       const q = query(
@@ -308,16 +332,13 @@ export async function getPersistencyMapForYear(tenantId, year, opts = {}) {
 // from role === 'agent' users), this accepts the caller's roster verbatim so a
 // producing Unit/Trainee Manager's own persistency is included (dispatcher
 // RULING 3). Same `agentId in [...] + year ==` equality-class query as
-// getPersistencyMapForYear — no composite index; each ≤30-id batch is wrapped so
+// getPersistencyMapForYear — no composite index; each batch is wrapped so
 // a rules-denied read is skipped silently. Client-only read (no rules change).
 export async function getPersistencyForAgentIds(tenantId, year, agentIds) {
   const ids = (agentIds || []).filter(Boolean);
   if (ids.length === 0) return {};
   const map = {};
-  const batches = [];
-  for (let i = 0; i < ids.length; i += 30) {
-    batches.push(ids.slice(i, i + 30));
-  }
+  const batches = chunk(ids, PERSISTENCY_QUERY_BATCH); // SEC-07 get() budget
   await Promise.all(batches.map(async (batch) => {
     try {
       const q = query(

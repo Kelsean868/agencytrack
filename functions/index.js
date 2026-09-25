@@ -454,11 +454,6 @@ async function doCreateUser(data, context) {
   return result;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EXISTING: Set custom claims — tenant_admin / platform_admin only, operator
-// escape hatch. SUPER_ADMIN_UID bypass removed in PR-2. Claims are now seeded
-// via seed-first-tenant-admin.cjs for new tenants and maintained by createUser.
-// ─────────────────────────────────────────────────────────────────────────────
 // Resolves the sales_manager uid for a tenant via Admin SDK (bypasses client-side
 // rules — agents cannot list users). Returns { smUid: string|null }.
 exports.resolveSalesManagerUid = functions.https.onCall(async (data, context) => {
@@ -481,23 +476,12 @@ exports.resolveSalesManagerUid = functions.https.onCall(async (data, context) =>
   return { smUid: snap.docs[0].id };
 });
 
-exports.setUserClaims = functions.https.onCall(async (data, context) => {
-  if (!context.auth || !['platform_admin', 'tenant_admin'].includes(context.auth.token.role)) {
-    throw new functions.https.HttpsError('permission-denied', 'Only tenant_admin or platform_admin can set user claims.');
-  }
-
-  const { uid, role, tenantId, branchId, ownedBranchIds } = data;
-  if (!uid || !role || !tenantId) {
-    throw new functions.https.HttpsError('invalid-argument', 'uid, role, and tenantId are required.');
-  }
-
-  const claims = { role, tenantId };
-  if (branchId) claims.branchId = branchId;
-  if (Array.isArray(ownedBranchIds)) claims.ownedBranchIds = ownedBranchIds;
-
-  await admin.auth().setCustomUserClaims(uid, claims);
-  return { success: true };
-});
+// SEC-01 (audit 2026-09-24): the setUserClaims callable was deleted here. It
+// wrote role/tenantId/branch claims taken verbatim from the request, so one call
+// could make a tenant_admin a cross-tenant platform_admin. It had no caller —
+// createUser seeds claims and updateUser changes them, both through the
+// CREATION_MATRIX checks. New tenants are bootstrapped with
+// functions/scripts/seed-first-tenant-admin.cjs.
 
 // EXISTING: Log new users — skip if profile already created by createUser
 exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
@@ -1164,9 +1148,11 @@ exports.updateUser = functions.https.onCall(async (data, context) => {
       console.log('[updateUser] Claim rollback succeeded for', targetUid);
     } catch (rollbackErr) {
       // Claim succeeded for new state but rollback failed — divergence the CF
-      // cannot self-heal. Operator must run setUserClaims to restore.
+      // cannot self-heal. An operator must restore oldClaims (logged below) with
+      // the Admin SDK's setCustomUserClaims — the setUserClaims callable that
+      // used to do this was removed (SEC-01).
       console.error(
-        '[updateUser] CRITICAL: claim rollback failed; user has new claim with old doc state. Manual setUserClaims required.',
+        '[updateUser] CRITICAL: claim rollback failed; user has new claim with old doc state. Restore oldClaims via Admin SDK setCustomUserClaims.',
         { targetUid, callerUid, oldClaims, newClaims, rollbackErr }
       );
     }

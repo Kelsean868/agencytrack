@@ -7,7 +7,7 @@
  *
  * Requires: Java JDK 17+ for the Firestore emulator.
  *
- * Test matrix (35 cases):
+ * Test matrix (33 cases):
  *   allow list (SEC-07 — scoped by role, mirrors allow get)
  *     1. Agent lists the whole collection, no filter → DENY (the SEC-07 hole)
  *    1a. Agent lists own docs (where agentId == self) → ALLOW
