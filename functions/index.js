@@ -1437,18 +1437,8 @@ exports.onSubmissionWrite = functions.firestore
 
       // ── Compute points ────────────────────────────────────────────────────
       const points = computePoints(after);
-
-      // ── Read current leaderboard doc ──────────────────────────────────────
+      const subId  = context.params.subId;
       const lbRef  = admin.firestore().doc(`tenants/${tenantId}/leaderboard/${agentId}`);
-      const lbSnap = await lbRef.get();
-      const lb     = lbSnap.exists ? lbSnap.data() : {};
-
-      const prevPoints = parseFloat(lb.points) || 0;
-      const newPoints  = prevPoints + points;
-
-      // ── Gamification level ────────────────────────────────────────────────
-      const levelEntry = resolveLevel(newPoints);
-      const prevLevelEntry = resolveLevel(prevPoints);
 
       // ── Weekly streak ─────────────────────────────────────────────────────
       const weekStarting = after.weekStarting;
@@ -1482,25 +1472,17 @@ exports.onSubmissionWrite = functions.firestore
         (parseFloat(after.coldCalls)             || 0) +
         (parseFloat(after.seminarTradeshowCalls) || 0);
 
-      const existingBadges = new Set(lb.badges ?? []);
-      const newBadges = [];
-
-      const addIfNew = (key) => {
-        if (!existingBadges.has(key)) { existingBadges.add(key); newBadges.push(key); }
-      };
-
-      // first_submission
-      if (!lb.badges || lb.badges.length === 0) addIfNew('first_submission');
-
-      // Streak badges
-      if (streak >= 4)  addIfNew('streak_4');
-      if (streak >= 8)  addIfNew('streak_8');
-      if (streak >= 13) addIfNew('streak_13');
-
-      // Per-submission badges
-      if (apps >= 5)   addIfNew('top_apps_week');
-      if (api >= 20000) addIfNew('big_week');
-      if (dials >= 100) addIfNew('century_dials');
+      // Candidate badge keys satisfied by THIS submission, independent of the
+      // agent's current leaderboard doc. Applied against the fresh badge set
+      // (read inside the transaction below) so a resubmit or concurrent write
+      // never re-derives eligibility from stale data.
+      const candidateBadges = [];
+      if (streak >= 4)  candidateBadges.push('streak_4');
+      if (streak >= 8)  candidateBadges.push('streak_8');
+      if (streak >= 13) candidateBadges.push('streak_13');
+      if (apps >= 5)    candidateBadges.push('top_apps_week');
+      if (api >= 20000) candidateBadges.push('big_week');
+      if (dials >= 100) candidateBadges.push('century_dials');
 
       // YTD API badges
       const ytdSnap = await admin.firestore()
@@ -1532,7 +1514,7 @@ exports.onSubmissionWrite = functions.firestore
         : 0;
 
       if (ytdAPI >= MDRT_QUALIFIED_API) {
-        addIfNew('mdrt_qualified');
+        candidateBadges.push('mdrt_qualified');
       } else {
         // Pace is measured within the same attribution year, so a prior-year week
         // entered late (year already over) yields a week-of-year past 26 → no pace.
@@ -1542,7 +1524,7 @@ exports.onSubmissionWrite = functions.firestore
         const weekOfYear = Math.ceil(
           (Date.now() - Date.UTC(Number(attributionYear), 0, 1)) / (7 * 24 * 60 * 60 * 1000)
         );
-        if (weekOfYear <= 26 && ytdAPI >= MDRT_PACE_API) addIfNew('mdrt_pace');
+        if (weekOfYear <= 26 && ytdAPI >= MDRT_PACE_API) candidateBadges.push('mdrt_pace');
       }
 
       // 5-year tenure floor marker (independent of MDRT). Tenured agents — ≥ 5
@@ -1554,24 +1536,59 @@ exports.onSubmissionWrite = functions.firestore
       // guard block above — no extra Firestore read.
       const yearsOfService = wholeYearsSince(contractStartDate, Date.now());
       if (ytdAPI >= TENURE_FLOOR_API && yearsOfService >= TENURE_FLOOR_YEARS) {
-        addIfNew('tenure_floor_met');
+        candidateBadges.push('tenure_floor_met');
       }
 
-      // ── Write leaderboard doc ─────────────────────────────────────────────
-      await lbRef.set(
-        {
-          userId:       agentId,
-          tenantId,
-          agentName:    after.agentName ?? lb.agentName ?? agentId,
-          points:       newPoints,
-          level:        levelEntry.level,
-          levelTitle:   levelEntry.title,
-          badges:       [...existingBadges],
-          weeklyStreak: streak,
-          updatedAt:    admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+      // ── Read-modify-write the leaderboard doc in one transaction ──────────
+      // BUG-08 fix: the previous code did lbRef.get() → prevPoints + points →
+      // lbRef.set() OUTSIDE a transaction, which lost updates under concurrent
+      // writes and double-counted points on a revert-to-draft + resubmit cycle
+      // (each resubmit re-added the full `points`, not the delta). Now the
+      // read and write are atomic, and `awardedBySubmission[subId]` records
+      // the points last awarded FOR THIS SUBMISSION so a resubmit only applies
+      // the difference from its own prior award (0 if unchanged).
+      const newBadges = [];
+      const { levelEntry, prevLevelEntry } =
+        await admin.firestore().runTransaction(async (tx) => {
+          const lbSnap = await tx.get(lbRef);
+          const lb = lbSnap.exists ? lbSnap.data() : {};
+
+          const prevPoints = parseFloat(lb.points) || 0;
+          const awardedBySubmission = { ...(lb.awardedBySubmission ?? {}) };
+          const prevAwarded = parseFloat(awardedBySubmission[subId]) || 0;
+          const delta = points - prevAwarded;
+          const newPoints = prevPoints + delta;
+          awardedBySubmission[subId] = points;
+
+          const levelEntry = resolveLevel(newPoints);
+          const prevLevelEntry = resolveLevel(prevPoints);
+
+          const existingBadges = new Set(lb.badges ?? []);
+          const addIfNew = (key) => {
+            if (!existingBadges.has(key)) { existingBadges.add(key); newBadges.push(key); }
+          };
+          if (!lb.badges || lb.badges.length === 0) addIfNew('first_submission');
+          for (const key of candidateBadges) addIfNew(key);
+
+          tx.set(
+            lbRef,
+            {
+              userId:       agentId,
+              tenantId,
+              agentName:    after.agentName ?? lb.agentName ?? agentId,
+              points:       newPoints,
+              level:        levelEntry.level,
+              levelTitle:   levelEntry.title,
+              badges:       [...existingBadges],
+              weeklyStreak: streak,
+              awardedBySubmission,
+              updatedAt:    admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+
+          return { newPoints, prevPoints, levelEntry, prevLevelEntry };
+        });
 
       // ── Notifications ─────────────────────────────────────────────────────
       await Promise.all([

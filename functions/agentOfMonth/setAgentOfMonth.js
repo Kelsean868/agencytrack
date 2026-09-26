@@ -62,6 +62,20 @@ exports.setAgentOfMonth = functions.https.onCall(async (data, context) => {
 
   const db = admin.firestore();
 
+  // SEC-06: a branch_manager may only act on their OWN branch — never a
+  // caller-supplied branchId. Free choice of branch is kept for sales_manager,
+  // tenant_admin and platform_admin. The caller's own user doc is the
+  // authoritative source; token.branchId is used only when it agrees with it.
+  if (role === 'branch_manager') {
+    const callerSnap = await db.doc(`tenants/${tenantId}/users/${context.auth.uid}`).get();
+    const callerBranchId = callerSnap.exists ? callerSnap.data().branchId : undefined;
+    const { branchId: tokenBranchId } = context.auth.token;
+    const ownBranchId = (tokenBranchId && tokenBranchId === callerBranchId) ? tokenBranchId : callerBranchId;
+    if (branchId !== ownBranchId) {
+      throw new functions.https.HttpsError('permission-denied', 'Branch managers may only act on their own branch.');
+    }
+  }
+
   const agentSnap = await db.doc(`tenants/${tenantId}/users/${agentUid}`).get();
   if (!agentSnap.exists) {
     throw new functions.https.HttpsError('not-found', 'Agent not found.');

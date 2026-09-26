@@ -77,10 +77,20 @@ function makeAdminMock({ isTestAccount = false, userDoc = null, exists = true } 
     return { where: q1 };
   });
 
-  admin.firestore.mockReturnValue({ doc: docFn, collection: collectionFn });
-  admin.firestore.FieldValue = { serverTimestamp: jest.fn(() => null) };
+  // BUG-08: onSubmissionWrite now wraps the leaderboard read-modify-write in
+  // admin.firestore().runTransaction(). The mock tx delegates straight to the
+  // same doc-ref get/set the assertions already inspect, so existing
+  // `setFn`/`deleteFn` expectations keep working unchanged.
+  const runTransaction = jest.fn((cb) => cb({
+    get: (ref) => ref.get(),
+    set: (ref, data, opts) => ref.set(data, opts),
+  }));
 
-  return { setFn, deleteFn, docFn };
+  admin.firestore.mockReturnValue({ doc: docFn, collection: collectionFn, runTransaction });
+  admin.firestore.FieldValue = { serverTimestamp: jest.fn(() => null) };
+  admin.firestore.Timestamp = { now: jest.fn(() => null) };
+
+  return { setFn, deleteFn, docFn, runTransaction };
 }
 
 function makeChange(afterData) {
@@ -214,8 +224,13 @@ describe('onSubmissionWrite — YTD MDRT badge reads BOTH v2 and legacy API shap
       return { where: q1 };
     });
 
-    admin.firestore.mockReturnValue({ doc: docFn, collection: collectionFn });
+    const runTransaction = jest.fn((cb) => cb({
+      get: (ref) => ref.get(),
+      set: (ref, data, opts) => ref.set(data, opts),
+    }));
+    admin.firestore.mockReturnValue({ doc: docFn, collection: collectionFn, runTransaction });
     admin.firestore.FieldValue = { serverTimestamp: jest.fn(() => null) };
+    admin.firestore.Timestamp = { now: jest.fn(() => null) };
 
     return { setFn };
   }
@@ -330,8 +345,13 @@ describe('onSubmissionWrite — MDRT threshold corrected to 688,800 (L1-1)', () 
       if (path.includes('notifications')) return { add: jest.fn().mockResolvedValue({}) };
       return { where: q1 };
     });
-    admin.firestore.mockReturnValue({ doc: docFn, collection: collectionFn });
+    const runTransaction = jest.fn((cb) => cb({
+      get: (ref) => ref.get(),
+      set: (ref, data, opts) => ref.set(data, opts),
+    }));
+    admin.firestore.mockReturnValue({ doc: docFn, collection: collectionFn, runTransaction });
     admin.firestore.FieldValue = { serverTimestamp: jest.fn(() => null) };
+    admin.firestore.Timestamp = { now: jest.fn(() => null) };
     return { setFn };
   }
 
@@ -399,8 +419,13 @@ describe('onSubmissionWrite — 5-year tenure floor marker (L1-1 Commit 2)', () 
       if (path.includes('notifications')) return { add: jest.fn().mockResolvedValue({}) };
       return { where: q1 };
     });
-    admin.firestore.mockReturnValue({ doc: docFn, collection: collectionFn });
+    const runTransaction = jest.fn((cb) => cb({
+      get: (ref) => ref.get(),
+      set: (ref, data, opts) => ref.set(data, opts),
+    }));
+    admin.firestore.mockReturnValue({ doc: docFn, collection: collectionFn, runTransaction });
     admin.firestore.FieldValue = { serverTimestamp: jest.fn(() => null) };
+    admin.firestore.Timestamp = { now: jest.fn(() => null) };
     return { setFn };
   }
 
@@ -503,8 +528,13 @@ describe('onSubmissionWrite — mdrt_pace 344,400 threshold + YTD weekStarting-y
       if (path.includes('notifications')) return { add: jest.fn().mockResolvedValue({}) };
       return { where: q1 };
     });
-    admin.firestore.mockReturnValue({ doc: docFn, collection: collectionFn });
+    const runTransaction = jest.fn((cb) => cb({
+      get: (ref) => ref.get(),
+      set: (ref, data, opts) => ref.set(data, opts),
+    }));
+    admin.firestore.mockReturnValue({ doc: docFn, collection: collectionFn, runTransaction });
     admin.firestore.FieldValue = { serverTimestamp: jest.fn(() => null) };
+    admin.firestore.Timestamp = { now: jest.fn(() => null) };
     return { setFn };
   }
 
