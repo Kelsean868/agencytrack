@@ -191,10 +191,11 @@ describe('MeetingMode — awards within reach scene', () => {
   it('renders an in-reach award card once an agent crosses the 60% floor', async () => {
     const users = [{ id: 'agent-1', name: 'Alice Agent', role: 'agent', unitId: 'u1', photoURL: null }];
     const weekSub = SUBMISSIONS[0];
-    // A large annual-only submission (MDRT: 250k inContention, 500k threshold,
-    // no apps/persistency gate) pushes agent-1 to 64% — comfortably over the
-    // 60% within-reach floor and short of the 500k eligible threshold.
-    const ytdSub = { agentId: 'agent-1', status: 'submitted', weekStarting: `${YEAR}-03-01`, apiSold: 320000, applicationsSold: 0 };
+    // A large annual-only submission (MDRT: 344.4k inContention, 688.8k
+    // threshold via mdrtAwardThresholds() — PR #MX — no apps/persistency
+    // gate) pushes agent-1 to ~72.6% — comfortably over the 60% within-reach
+    // floor and short of the 688.8k eligible threshold.
+    const ytdSub = { agentId: 'agent-1', status: 'submitted', weekStarting: `${YEAR}-03-01`, apiSold: 500000, applicationsSold: 0 };
     hoisted.getTenantUsers.mockResolvedValue(users);
     hoisted.getAllYTDSubmissions.mockResolvedValue([ytdSub]);
 

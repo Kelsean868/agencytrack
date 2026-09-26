@@ -290,27 +290,29 @@ describe('deriveAwardsWithinReach — reuses computeAgentAwards, no new award ma
   });
   const CURRENT = new Date('2026-06-15'); // same year as fixture weeks; unrelated to real wall-clock
 
-  it('surfaces a single in-contention, not-yet-eligible award (MDRT: 250k inContention, 500k threshold)', () => {
+  // MDRT reads the real MDRT line (688,800; in-contention 344,400) via
+  // mdrtAwardThresholds() — PR #MX, not the ruleset's stale 500k/250k pair.
+  it('surfaces a single in-contention, not-yet-eligible award (MDRT: 344.4k inContention, 688.8k threshold)', () => {
     const users = [{ id: 'a1', role: 'agent', name: 'Ann', unitId: 'u1' }];
-    const ytd = [agentSub('a1', 320000)]; // 64% of MDRT's 500k threshold
+    const ytd = [agentSub('a1', 500000)]; // 72.6% of MDRT's 688.8k threshold
     const pairs = deriveAwardsWithinReach(users, ytd, CURRENT);
     expect(pairs).toHaveLength(1);
     expect(pairs[0]).toMatchObject({
       agentId: 'a1', agentName: 'Ann', awardId: 'mdrt', awardName: 'MDRT',
-      valueUnit: 'TTD', current: 320000, target: 500000, gap: 180000,
+      valueUnit: 'TTD', current: 500000, target: 688800, gap: 188800,
     });
-    expect(pairs[0].progressPercent).toBe(64);
+    expect(pairs[0].progressPercent).toBeCloseTo(72.6, 1);
   });
 
   it('excludes an agent whose best award is in-contention but under the 60% floor', () => {
     const users = [{ id: 'a2', role: 'agent', name: 'Bea' }];
-    const ytd = [agentSub('a2', 260000)]; // inContention (>=250k) but only 52% of 500k
+    const ytd = [agentSub('a2', 380000)]; // inContention (>=344.4k) but only ~55% of 688.8k
     expect(deriveAwardsWithinReach(users, ytd, CURRENT)).toEqual([]);
   });
 
   it('excludes an award the agent has already qualified for (eligible)', () => {
     const users = [{ id: 'a3', role: 'agent', name: 'Cy' }];
-    const ytd = [agentSub('a3', 600000)]; // eligible for MDRT (>= 500k threshold)
+    const ytd = [agentSub('a3', 720000)]; // eligible for MDRT (>= 688.8k threshold)
     expect(deriveAwardsWithinReach(users, ytd, CURRENT)).toEqual([]);
   });
 
@@ -319,7 +321,7 @@ describe('deriveAwardsWithinReach — reuses computeAgentAwards, no new award ma
       { id: 'lo', role: 'agent', name: 'Lo' },
       { id: 'hi', role: 'agent', name: 'Hi' },
     ];
-    const ytd = [agentSub('lo', 300000), agentSub('hi', 450000)]; // 60% vs 90%
+    const ytd = [agentSub('lo', 450000), agentSub('hi', 650000)]; // ~65% vs ~94%
     const pairs = deriveAwardsWithinReach(users, ytd, CURRENT);
     expect(pairs.map((p) => p.agentId)).toEqual(['hi', 'lo']);
   });

@@ -1130,6 +1130,7 @@ export default function GoalsPanel({ ownProduction = null }) {
         loading={hierarchyLoading || Boolean(own?.ledgerPending)}
         error={hierarchyError}
         title="Goal Cascade"
+        contractStartDate={userProfile?.contractStartDate}
       />
 
       <TabPills tabs={tabs} activeId={subTab} onChange={setSubTab} />

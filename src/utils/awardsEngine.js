@@ -1,7 +1,7 @@
 // Pure computation engine — zero Firebase imports, zero side effects
 import { extractFields, extractTotalProductionCredit } from './extractFields';
 import { DEFAULT_RULESET_2026 } from '../config/awardsRuleset/2026';
-import { MDRT_THRESHOLDS_2026 } from '../config/mdrtThresholds/2026';
+import { MDRT_THRESHOLDS_2026, mdrtAwardThresholds } from '../config/mdrtThresholds/2026';
 
 const p = (v) => parseFloat(v) || 0;
 
@@ -363,13 +363,18 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
     });
   }
 
+  // MDRT award reads the real MDRT line (MDRT_THRESHOLDS_2026), never the
+  // stored ruleset's mdrtAward.apiThreshold — that value is the Tatil company
+  // minimum for 5+ years of tenure, not MDRT (Rule 11 audit, PR #MX, closes
+  // FOLLOW_UPS "Awards-tab MDRT award line differs from the MDRT threshold").
+  const mdrtThresholds = mdrtAwardThresholds(ruleset);
   awards.mdrt = makeAward({
     id: 'mdrt', name: 'MDRT', category: 'annual',
-    eligible: mdrtAPI >= ruleset.mdrtAward.apiThreshold,
-    inContention: mdrtAPI >= ruleset.mdrtAward.apiInContention && mdrtAPI < ruleset.mdrtAward.apiThreshold,
-    criteria: [criterion('Annual API', ruleset.mdrtAward.apiThreshold, mdrtAPI, 'TTD')],
-    prize: ruleset.mdrtAward.prize,
-    dataSource: annualSource, progressPercent: (mdrtAPI / ruleset.mdrtAward.apiThreshold) * 100, note: annualNote,
+    eligible: mdrtAPI >= mdrtThresholds.apiThreshold,
+    inContention: mdrtAPI >= mdrtThresholds.apiInContention && mdrtAPI < mdrtThresholds.apiThreshold,
+    criteria: [criterion('Annual API', mdrtThresholds.apiThreshold, mdrtAPI, 'TTD')],
+    prize: mdrtThresholds.prize ?? ruleset.mdrtAward.prize,
+    dataSource: annualSource, progressPercent: (mdrtAPI / mdrtThresholds.apiThreshold) * 100, note: annualNote,
   });
 
   return awards;
@@ -774,8 +779,10 @@ function isoDate(year, month, day) {
 // constant the Home hero (homeDerivations / HeroCard) and MdrtTracker read, so
 // an agent never sees two MDRT targets (orchestrator ruling, PR #981). Year-
 // keyed: a year with no published line gets NO target (the card hides the
-// ring) rather than a guess. NOTE: `ruleset.mdrtAward.apiThreshold` (500,000)
-// still drives the Awards tab's MDRT award — FOLLOW_UPS § MDRT award line.
+// ring) rather than a guess. The Awards tab's MDRT award now reads the same
+// line via `mdrtAwardThresholds()` (PR #MX) — `ruleset.mdrtAward.apiThreshold`
+// is no longer read for MDRT anywhere; it is retained in stored rulesets only
+// as dead data (the admin editor no longer exposes it either).
 const MDRT_LINE_BY_YEAR = Object.freeze({ 2026: MDRT_THRESHOLDS_2026.mdrt });
 
 /** The MDRT API line for `year`, or null when none is published for it. */

@@ -411,8 +411,23 @@ describe('golden parity — computeAgentAwards', () => {
     expect(a.gold_club.inContention).toBe(true); // 600K >= 325K && < 650K
   });
 
-  it('mdrt eligible (600K >= 500K)', () => {
+  it('mdrt in-contention, not eligible (600K annual API < 688,800 real MDRT line)', () => {
+    // MDRT award now reads MDRT_THRESHOLDS_2026 (688,800), not the ruleset's
+    // stale mdrtAward.apiThreshold (500,000) — PR #MX.
     const a = computeAgentAwards(agentConfirmed, [], {}, GOLDEN_DATE);
+    expect(a.mdrt.eligible).toBe(false);
+    expect(a.mdrt.inContention).toBe(true);
+    expect(a.mdrt.criteria[0].target).toBe(688800);
+  });
+
+  it('mdrt eligible at 720K annual API (>= 688,800 real MDRT line)', () => {
+    const higherConfirmed = Array.from({ length: 12 }, (_, i) => ({
+      periodKey: `2026-${String(i + 1).padStart(2, '0')}`,
+      settledAPI: 60000,
+      settledApps: 5,
+      persistency: 93,
+    }));
+    const a = computeAgentAwards(higherConfirmed, [], {}, GOLDEN_DATE);
     expect(a.mdrt.eligible).toBe(true);
   });
 
