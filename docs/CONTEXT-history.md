@@ -1529,3 +1529,35 @@ The goal in one line: Kyron had no 24-month persistency record saved, so the cam
 **CodeRabbit posted a summary and walkthrough only, on all three commits** (`27511881`, `8d213922`, `9c748132`) - Free plan, rate-limited to 1 included review per hour, no line-level comments to disposition under Rule 21 on any of them.
 
 **What is left.** Confirm cannot be exercised for real until the next OIPA export produces a September-or-later derived month; that is the only way to prove the write path against production rather than a mocked service. **NEXT authorized-but-unstarted item is still C4** (unchanged by this cycle - see § Active track).
+
+## Archived from CONTEXT.md § Last updated — 2026-09-26 fill (PR #980)
+
+**R1 Home redesign SHIPPED (2026-09-26), PR #977 merge `3228802f` (feature-branch HEAD `785b0b3d`, work commit `80dfd00b` + screenshots `785b0b3d`).** Merged by the overnight orchestrator under Kyron's one-time merge authorisation for R1/R2 (`docs/briefs/overnight-2026-09-26.md`). 56px mobile header; donut hero reads settled API vs own goal else MDRT (MDRT tick, provenance line "n from head office · n self-confirmed"); compact campaign card (API/apps/persistency donuts + pace line); Do next (real-data items or "You're on track"); This week 4 tiles; PulseStrip removed from Home; desktop 12-col grid. **Visible change:** agents with no personal goal now see "of 688,800 MDRT" instead of the 200,000 company floor. **Gates:** lint 0/0; tests 411 files / 6,922 passing; build OK; CI (`lint-and-build`, `functions-tests`, `firestore-rules-tests`, `a11y-contrast`) all pass on `785b0b3d`; CodeRabbit summary only, 0 findings. Design check on preview (390/1440 × light/dark) passed, screenshots in `docs/reports/screenshots/overnight-2026-09-26/r1-home/`. **Production smoke** (390 + 1440 light, read-only, A11Y agent): PASS, no console errors, no horizontal scroll, matches preview. **No deploy-gated surface touched** — the PR touched only `src/**` and `docs/**`; `git diff --stat 9ac7ec10..3228802f -- firestore.rules firestore.indexes.json storage.rules functions/` is EMPTY; ships via Vercel, production deploy of `3228802f` reported success. **Not exercised live, unit-tested only:** the campaign card and provenance line — the test agent has no active campaign and 0 settled policies.
+
+## Archived from CONTEXT.md § Current main HEAD — 2026-09-26 fill (PR #980)
+
+`3228802f` (PR #977 merge - R1 Home redesign: donut hero, compact campaign, Do next, This week, 2026-09-26). **MERGED; NO DEPLOY-GATED SURFACE - QUERIED:** `git diff --stat 9ac7ec10..3228802f -- firestore.rules firestore.indexes.json storage.rules functions/` returns EMPTY. Ships via Vercel rebuild at merge; production deploy of `3228802f` reported success. **In-track work commits:** `80dfd00b` (feat), `785b0b3d` (screenshots).
+
+## Archived from CONTEXT.md § Active track — 2026-09-26 fill (PR #980)
+
+**Security Phase 0/1 SHIPPED (2026-09-25) — all 3 PRs merged: S0 #972 (rules tests in CI), S1 #973 (`683c32af`, SEC-01/03/07/12/14), S2 #974 (`fe532693`, SEC-10/13/15/PERF-01); see Last updated for detail on each.** `docs/briefs/security-phase-0-1.md` is closed. **Open operator ruling carried forward from S1, still unresolved:** the live Storage rules deny all reads and writes, so profile-photo upload is likely broken in production; fixing it is a Storage rules behaviour change (human-merge + `firebase deploy --only storage`).
+
+## Archived from CONTEXT.md § Recently shipped — 2026-09-26 fill (PR #980)
+
+| [#973](https://github.com/Kelsean868/agencytrack/pull/973) | `683c32af` | **fix(security): close the pre-pilot rules and functions holes (security S1).** SEC-01 deletes `setUserClaims`; SEC-03 makes `kioskTokens` Cloud-Function-write-only, branch-checks `createKioskToken` and gives every token a 90-day `expiresAt` (missing = invalid); SEC-07 scopes the `persistency` list by role, with manager `agentId in` batches capped at 9 for the 10-`get()` rules budget; SEC-12 brings the live Storage rules into `storage.rules` verbatim; SEC-14 HTML-escapes email template values. Plus UM/BM own-`moneyNeeds` ALLOW tests. **Deployed 2026-09-25** (rules 12:49:57Z, storage 12:50:26Z, `setUserClaims` deleted 12:53:08Z, functions 12:56:08Z). Prod agent smoke 24/0; `tatillife_smoke` BM check clean with the 9+5 batch path exercised. |
+
+## Archived from CONTEXT.md § Where we left off — 2026-09-26 fill (PR #980)
+
+**PRIOR - 2026-09-26. R1 Home redesign merged as `3228802f` (#977).**
+
+The goal in one line: replace Home's PulseStrip-era layout with the R1 redesign — 56px mobile header, a donut hero (settled API vs own goal else MDRT with a tick mark and a provenance line naming how much of the total is head-office-confirmed vs self-confirmed), a compact campaign card (API/apps/persistency donuts plus a pace line), a Do-next panel driven by real data (or "You're on track" when there's nothing outstanding), and a This-week strip of 4 tiles. PulseStrip is removed from Home; desktop gets a 12-col grid. **Visible change:** an agent with no personal goal set now sees "of 688,800 MDRT" instead of the old 200,000 company floor.
+
+**Merged by the overnight orchestrator, not a normal dispatcher session** — Kyron's one-time merge authorisation covers R1 and R2 (`docs/briefs/overnight-2026-09-26.md`). Feature-branch final HEAD `785b0b3d` (work commit `80dfd00b`, screenshots commit `785b0b3d`), squash `3228802f`.
+
+**Gates all green before merge:** lint 0/0; 411 test files / 6,922 tests passing; build clean; CI (`lint-and-build`, `functions-tests`, `firestore-rules-tests`, `a11y-contrast`) all pass on `785b0b3d`; CodeRabbit posted a summary only, 0 findings. Design check on the preview at 390 and 1440 px, light and dark, passed against the mockups; screenshots banked in `docs/reports/screenshots/overnight-2026-09-26/r1-home/`.
+
+**Production smoke (read-only, A11Y agent, 390 + 1440 light): PASS.** No console errors, no horizontal scroll, matches the preview. **Not exercised live — unit-tested only:** the campaign card and the provenance line, because the test agent carries no active campaign and 0 settled policies.
+
+**Deploy state: no deploy-gated surface touched.** The PR is `src/**` and `docs/**` only — `git diff --stat 9ac7ec10..3228802f -- firestore.rules firestore.indexes.json storage.rules functions/` is EMPTY (confirmed in this fill). Ships entirely via the Vercel rebuild at merge; production deploy of `3228802f` reported success.
+
+**What is left.** R2 (Campaign screen) is NEXT. P2a (server integrity, functions) is in progress as a HELD PR in a separate worktree — not touched by this fill.

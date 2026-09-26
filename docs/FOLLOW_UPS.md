@@ -27,6 +27,7 @@
 | `revokeKioskToken` checks tenant only — any branch_manager can revoke another branch's kiosk (old A4:SEC-003). S1 fixed create + client writes (SEC-03), not revoke (banked 2026-09-25, security S1) | MEDIUM | Security / Kiosk | — | see § Kiosk token revoke and read scope |
 | `repairFirestoreCache()` (the "Repair app data" emergency escape hatch) has no pending-writes safeguard — only `authService.signOut()` got one in the S2 in-PR extension. Repair's own context (client may already be broken) makes the right treatment a dispatcher UX call, not a mechanical copy of signOut's gate (CodeRabbit finding, banked 2026-09-25, security S2 in-PR extension / PR #974) | MEDIUM | Security / Firestore offline cache | — | see § Repair app data (emergency Firestore cache clear) has no pending-writes safeguard |
 | A11Y test agent is in no campaign, so no preview or production smoke can render the Campaign screen or the Home campaign card — blocked the R2 merge gate (banked 2026-09-26, overnight run) | MEDIUM | Verification / campaigns | — | see § A11Y test agent has no campaign |
+| Home hero two-layer ring legend shows plain labels, not the C1 mockup's value form ("Submitted 123,146") (banked 2026-09-26, PR #980 L0) | LOW | Home / ledger rings | — | see § L0 hero legend value form |
 | Tenant Admin has no Persistency view — design question, not a bug (found in #975 smoke) | LOW | Persistency / roles | — | see § Tenant Admin has no Persistency view |
 | `scripts/verification/smoke-campaign-hero-h3.mjs` targets `campaign-hero-card` / `campaign-hero-row-*` testids from the `full` variant, which the Awards tab campaign hero no longer renders after R2 switched it to `variant="screen"` (PR #979) — the script needs updating to the new `campaign-screen*` testids or it will report false failures the next time it runs | LOW | Verification / smokes | — | see § smoke-campaign-hero-h3.mjs targets retired testids |
 | ~~**RESOLVED 2026-09-23 (PR #970, hero-ledger H3).**~~ `AwardCard`'s state pill now reads IN PROGRESS for 0 < progress < contention, keeping NOT STARTED for exactly 0 — fixes the "NOT STARTED · 17%" (MDRT) / "NOT STARTED · 7%" (Q3 apps) contradiction. `HeroAwardCard` and `AwardDrillDrawer` were checked for the same fall-through and carry no literal "NOT STARTED" text (banked 2026-09-23, hero-ledger H2 / PR #969) | LOW | Awards UI copy | — | see § Award card NOT STARTED above 0% |
@@ -7543,3 +7544,11 @@ The only credentialed test account (`A11Y_AGENT_*`) is in no active campaign. Pr
 **What to do.** Give the test agent a campaign it qualifies for without touching real agents: for example a test campaign scoped to the smoke branch only, with a tier ladder and a persistency gate. Creating it is a production data write, so it is an operator action.
 
 **Falsification (Rule 23):** closed when a read-only smoke signed in as the A11Y agent finds `[data-testid="campaign-screen"]` on the Awards tab.
+
+## L0 hero legend value form
+
+**Banked 2026-09-26 from PR #980 (L0 two-layer rings), orchestrator design check.** The C1 Home mockup (`docs/design-system/proposals/ledger-2026-09/C1-Home.dc.html`) shows the hero legend with the figure in it ("Submitted 123,146"). The build uses the plain legend "Settled — counts" / "Submitted — waiting to settle" everywhere, with the "+x submitted" sub-line carrying the number. Same information, different copy.
+
+**Fix:** pass the settled and pending values into `RingLegend` on `HeroCard` only. Small copy change, no logic.
+
+**Falsification (Rule 23):** closed when the hero legend matches C1, or Kyron rules the plain legend is fine.
