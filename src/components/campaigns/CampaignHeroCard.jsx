@@ -1,12 +1,16 @@
 import React, { useMemo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { derivePolicyLens } from '../../lib/policyCampaignLens';
-import { isTieredCampaign, normalizeGate, persistencyPctForGate, gateBandFor } from '../../utils/campaignEngine';
+import {
+  isTieredCampaign, normalizeGate, persistencyPctForGate, gateBandFor, getDaysRemaining,
+} from '../../utils/campaignEngine';
+import { toDateStr } from '../../lib/policyCampaignLens';
 import { buildPersistencyOutlook, formatOutlookPct } from '../../lib/persistency/persistencyOutlook';
 import { getTodayTT } from '../../utils/dateInputs';
 import { outlookMonthLabel } from '../persistency/outlookLabels';
 import { formatCurrency } from '../../utils/formatters';
 import PanelSkeleton from '../ui/PanelSkeleton';
+import CampaignHeroCompact from './CampaignHeroCompact';
 
 const MONTH_KEY_RE = /^\d{4}-\d{2}$/;
 
@@ -60,8 +64,14 @@ function HeroRow({ label, current, target, unit, achieved, testId }) {
   );
 }
 
+/**
+ * `variant="compact"` (Home redesign R1) renders the three-donut card with a
+ * pace line and a Details link (`onOpenDetails`). The derivation below is
+ * shared by both variants, so Home and the Awards tab read one set of figures.
+ */
 export default function CampaignHeroCard({
   campaign, policies = [], persistencyRecords = [], loading = false, error = false,
+  variant = 'full', onOpenDetails,
 }) {
   const tiered = Boolean(campaign) && isTieredCampaign(campaign) && campaign.structure === 'qualify';
 
@@ -112,7 +122,16 @@ export default function CampaignHeroCard({
     return `Gate judged across the campaign period · ${gate.threshold}% needed`;
   }, [gate, campaign]);
 
+  const compact = variant === 'compact';
+
   if (loading) {
+    if (compact) {
+      return (
+        <div className="rounded-2xl border border-border bg-card p-[18px]" data-testid="campaign-compact-loading">
+          <PanelSkeleton variant="metric-row" count={3} label="Loading campaign progress…" />
+        </div>
+      );
+    }
     return (
       <div className="card p-6">
         <PanelSkeleton variant="metric-row" count={3} label="Loading campaign progress…" />
@@ -121,6 +140,18 @@ export default function CampaignHeroCard({
   }
 
   if (error) {
+    if (compact) {
+      return (
+        <div
+          role="alert"
+          className="flex items-center gap-3 rounded-2xl border border-border bg-card p-[18px] text-sm text-warning-ink"
+          data-testid="campaign-hero-card-error"
+        >
+          <AlertTriangle size={16} className="shrink-0" aria-hidden="true" />
+          Couldn&apos;t load your campaign progress — try again shortly.
+        </div>
+      );
+    }
     return (
       <div
         role="alert"
@@ -140,6 +171,29 @@ export default function CampaignHeroCard({
   const apiAchieved = lens.api.target == null ? true : lens.api.current >= lens.api.target;
   const appsAchieved = lens.apps.target == null ? true : lens.apps.current >= lens.apps.target;
   const tierLabel = lens.tierNext?.name ?? lens.tierReached?.name ?? lens.name;
+
+  if (compact) {
+    const endKey = toDateStr(campaign.endDate);
+    const threshold = gate?.threshold ?? 0;
+    const persistency = persistencyDisplayPct != null
+      ? {
+        value: persistencyDisplayPct,
+        label: persistencyKnown ? `${persPct}%` : formatOutlookPct(persistencyPreview.persistency),
+        below: persistencyDisplayPct < threshold,
+        gateMonthKey: gate?.basis === 'finalMonth' && endKey ? endKey.slice(0, 7) : null,
+      }
+      : { value: null, label: '—', below: false, gateMonthKey: null };
+    return (
+      <CampaignHeroCompact
+        lens={lens}
+        daysLeft={endKey ? getDaysRemaining(endKey) : null}
+        gate={gate}
+        gateEnabled={gateEnabled}
+        persistency={persistency}
+        onOpenDetails={onOpenDetails}
+      />
+    );
+  }
 
   return (
     <div

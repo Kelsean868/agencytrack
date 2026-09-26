@@ -28,7 +28,16 @@ import { useTheme } from '../../lib/theme';
  * handler Shell already wires up; no second palette, no new state
  * (Fable Tier 1 · 1.1b).
  */
-export default function TopBar({ title, crumb, actions, onOpenSearch }) {
+/*
+ * `variant="home"` (Home redesign R1, C1-Home mockup): below 768px the bar is a
+ * single 56px row — avatar, title, a one-line mono date (`mobileCrumb`) and
+ * notifications. The mobile search trigger and the theme toggle are hidden on
+ * that one screen only; both stay in every other screen's header, and theme
+ * also stays in Settings.
+ * Desktop is unchanged apart from whatever `actions` the page passes.
+ */
+export default function TopBar({ title, crumb, actions, onOpenSearch, variant, avatar, mobileCrumb }) {
+  const home = variant === 'home';
   // Binary dark toggle, driven through the shared theme module so it stays a
   // single source of truth with the Settings v2 Light/Dark/System control (Tier 2
   // · 2.4). Toggling from here always resolves to an explicit light/dark mode;
@@ -38,13 +47,15 @@ export default function TopBar({ title, crumb, actions, onOpenSearch }) {
   const toggleDark = () => setMode(isDark ? 'light' : 'dark');
 
   return (
-    <header className="topbar">
+    <header className={home ? 'topbar topbar--home' : 'topbar'}>
+      {home && avatar && <div className="topbar-avatar">{avatar}</div>}
       <div className="topbar-titles">
         {/* One semantic <h1> per screen (A11Y-001). `.topbar-title` sets explicit
             font/size/color, so the heading renders identically to the prior div
             under Tailwind preflight (which resets h1 margin/size). */}
         <h1 className="topbar-title">{title}</h1>
         {crumb && <div className="topbar-crumb">{crumb}</div>}
+        {home && mobileCrumb && <div className="topbar-mobile-crumb">{mobileCrumb}</div>}
       </div>
 
       <button
@@ -73,7 +84,7 @@ export default function TopBar({ title, crumb, actions, onOpenSearch }) {
         <NotificationBell />
         <button
           type="button"
-          className="topbar-icon-btn"
+          className="topbar-icon-btn topbar-theme-toggle"
           onClick={toggleDark}
           aria-label="Toggle dark mode"
         >

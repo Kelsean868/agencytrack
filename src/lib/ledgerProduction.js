@@ -33,6 +33,7 @@ import {
   DEFAULT_INC_PPP_APP_THRESHOLD,
 } from './policyCampaignLens';
 import { isConfirmed } from './policyStatusTokens';
+import { STATUS_SOURCE_IMPORT } from './portfolioImport/oipaImportConfig';
 import { extractTotalProductionCredit } from '../utils/extractFields';
 
 // ─── R3 · the general production-credit table ────────────────────────────────
@@ -182,18 +183,24 @@ export function awardRowsFromLedger(policies) {
  *
  * @returns {{
  *   year: number,
- *   settled:   { api: number, apps: number, count: number },
+ *   settled:   { api: number, apps: number, count: number, fromHeadOffice: number, selfConfirmed: number },
  *   submitted: { api: number, apps: number, count: number, datedByIssue: boolean, weekApi: number },
  *   weekly:    { ytdApi: number, weekApi: number },
  *   mismatch:  { ytd: number, week: number },
  * }}
  * `mismatch` is weekly minus ledger-submitted: positive means the weekly
  * reports claim more than the ledger holds.
+ *
+ * Provenance (Kyron, 26 Sep 2026 — BUG-01 option B): agent-declared settled
+ * policies keep counting; the hero states where each settled policy's status
+ * came from instead. `fromHeadOffice` counts settled policies whose status the
+ * OIPA export set (`statusSource === 'oipa_import'`); `selfConfirmed` is every
+ * other settled policy. The two always sum to `settled.count`.
  */
 export function deriveYearProduction(policies, { year, weekStarting = null, submissions = [] } = {}) {
   const y = Number(year);
   const end = weekEnd(weekStarting);
-  const settled = { api: 0, apps: 0, count: 0 };
+  const settled = { api: 0, apps: 0, count: 0, fromHeadOffice: 0, selfConfirmed: 0 };
   const submitted = { api: 0, apps: 0, count: 0, datedByIssue: false, weekApi: 0 };
 
   for (const p of Array.isArray(policies) ? policies : []) {
@@ -204,6 +211,8 @@ export function deriveYearProduction(policies, { year, weekStarting = null, subm
       settled.api += credit.api;
       settled.apps += credit.apps;
       settled.count += 1;
+      if (p.statusSource === STATUS_SOURCE_IMPORT) settled.fromHeadOffice += 1;
+      else settled.selfConfirmed += 1;
     }
 
     if (hasGoneIn(p)) {

@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import {
-  X, Download, Loader2,
+  X, Download, Loader2, ArrowRight,
   ClipboardList, FileText, Star, History, UserCircle, Settings,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -49,6 +49,9 @@ import DailyFAB from '../daily/DailyFAB';
 import QuickAddMenu from '../shell/QuickAddMenu';
 import { getQuickAddActions } from '../shell/quickAddConfig';
 import AgentDashboardHomeV2 from './HomeV2';
+import { formatHomeHeaderDate } from './HomeV2/homeDerivations';
+import Avatar from '../ui/Avatar';
+import { getTodayTT } from '../../utils/dateInputs';
 import NewAgentEmptyState from './NewAgentEmptyState';
 import AgentPlannerPanel from '../planner/AgentPlannerPanel';
 import ProspectInfoPanel from '../agent/ProspectInfoPanel';
@@ -250,6 +253,12 @@ export default function AgentDashboard() {
 
   function handleOpenLapsedPolicies() {
     setPolicyLedgerFilter('lapsed');
+    setActiveTab('policy-ledger');
+  }
+
+  // Home "Do next" → the Policy Ledger opened on one of its own filter chips.
+  function handleOpenLedgerFilter(filter) {
+    setPolicyLedgerFilter(filter);
     setActiveTab('policy-ledger');
   }
 
@@ -695,7 +704,26 @@ export default function AgentDashboard() {
       onAction={handleAction}
       userProfile={userProfile}
       roleLabel={roleLabel}
-      topbarTitle={tabTitleFromItems(navItems, activeTab, activeTab === 'settings' ? 'Settings' : activeTab === 'profile' ? 'Profile' : 'Dashboard')}
+      topbarTitle={activeTab === 'dashboard'
+        ? 'Home'
+        : tabTitleFromItems(navItems, activeTab, activeTab === 'settings' ? 'Settings' : activeTab === 'profile' ? 'Profile' : 'Dashboard')}
+      // Home redesign R1: a 56px mobile header (avatar · Home · mono date ·
+      // notifications) and, at >= 1024px, the Submit button in the page header.
+      topbarVariant={activeTab === 'dashboard' ? 'home' : undefined}
+      topbarAvatar={activeTab === 'dashboard'
+        ? <Avatar src={userProfile?.photoURL} name={userProfile?.name ?? ''} size="md" />
+        : undefined}
+      topbarMobileCrumb={activeTab === 'dashboard' ? formatHomeHeaderDate(getTodayTT()) : undefined}
+      topbarActions={activeTab === 'dashboard' && !loading && allSubmissions.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setShowWizard(true)}
+          className="hidden lg:inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary px-[18px] text-sm font-bold text-white transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:bg-primary-dark"
+        >
+          Submit weekly report
+          <ArrowRight size={16} aria-hidden="true" />
+        </button>
+      ) : undefined}
       topbarCrumb={(() => {
         const d = new Date();
         const weekday = d.toLocaleDateString('en-TT', { weekday: 'long' });
@@ -808,6 +836,7 @@ export default function AgentDashboard() {
             onRetryLedger={retryPolicies}
             onOpenLedgerCreate={openLedgerCreate}
             personalAnnualAPI={personalAnnualAPI}
+            personalGoalAPI={goals?.personalAnnualAPI ?? null}
             kpiData={kpiData}
             allSubmissions={allSubmissions}
             resolvedMinimums={resolvedMinimums}
@@ -833,6 +862,7 @@ export default function AgentDashboard() {
             onSubmit={() => setShowWizard(true)}
             onLogToday={() => setShowDailyModal(true)}
             onOpenTab={setActiveTab}
+            onOpenLedgerFilter={handleOpenLedgerFilter}
           />
         )
       )}

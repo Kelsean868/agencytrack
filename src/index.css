@@ -1700,6 +1700,18 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 }
 
 .topbar-titles { min-width: 0; }
+/* Home redesign R1 — mobile-only header pieces; shown by the <768px block. */
+.topbar-avatar { display: none; flex-shrink: 0; }
+.topbar-mobile-crumb {
+  display: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .topbar-title {
   font-size: 16px;
   font-weight: 700;
@@ -2067,6 +2079,17 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   .topbar-search,
   .topbar-crumb { display: none; }
   .topbar-mobile-search { display: grid; }
+  /* Home redesign R1 (C1-Home): one 56px row — avatar, title, mono date, bell. */
+  .topbar--home {
+    min-height: 56px;
+    padding: 6px 12px 6px 16px;
+    gap: 12px;
+  }
+  .topbar--home .topbar-avatar { display: block; }
+  .topbar--home .topbar-title { font-size: 17px; line-height: 1.1; }
+  .topbar--home .topbar-mobile-crumb { display: block; }
+  .topbar--home .topbar-mobile-search,
+  .topbar--home .topbar-theme-toggle { display: none; }
   .shell-content {
     padding: 16px 16px 108px; /* room for fixed bottom-nav + FAB lift */
   }
