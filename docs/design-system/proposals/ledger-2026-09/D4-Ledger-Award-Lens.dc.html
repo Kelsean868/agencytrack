@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Policy ledger — award lens</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0;background:#F7F6F2;font-family:'Figtree',sans-serif;color:#28251D}
+a{color:#01696F}a:hover{color:#014E53}
+</style>
+</helmet>
+<div style="width: 390px; height: 1760px; box-sizing: border-box; background: #F7F6F2; position: relative; overflow: hidden; display: flex; flex-direction: column; font-family: 'Figtree', sans-serif; color: #28251D;">
+
+  <header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 16px;">
+    <div style="flex-grow: 1; display: flex; flex-direction: column;">
+      <span style="font-size: 17px; font-weight: 700; line-height: 1.1;">Policy ledger</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7A7264;">HEAD OFFICE LIST AS OF 15 SEP</span>
+    </div>
+  </header>
+
+  <div style="padding: 0 16px; display: flex; flex-direction: column; gap: 6px;">
+    <span id="ct-label" style="font-size: 13px; font-weight: 700;">Counts toward</span>
+    <div role="radiogroup" aria-labelledby="ct-label" style="display: flex; flex-wrap: wrap; gap: 6px;">
+      <sc-for list="{{awards}}" as="a" hint-placeholder-count="7">
+        <sc-if value="{{a.on}}" hint-placeholder-val="{{false}}">
+          <button role="radio" aria-checked="true" onClick="{{a.pick}}" style="height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid #01696F; background: #01696F; color: #FFFFFF; font-family: 'Figtree', sans-serif; font-size: 13px; font-weight: 700;">{{a.label}}</button>
+        </sc-if>
+        <sc-if value="{{a.off}}" hint-placeholder-val="{{true}}">
+          <button role="radio" aria-checked="false" onClick="{{a.pick}}" style="height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid #E5E2DB; background: #FFFFFF; color: #28251D; font-family: 'Figtree', sans-serif; font-size: 13px; font-weight: 600;">{{a.label}}</button>
+        </sc-if>
+      </sc-for>
+    </div>
+  </div>
+
+  <section aria-label="Award summary" style="margin: 14px 16px 0; border-radius: 20px; background: #FFFFFF; border: 1px solid #E5E2DB; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: #8A6212;">{{c.eyebrow}}</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: #8A6212; background: #F7EEDB; padding: 3px 8px; border-radius: 999px; white-space: nowrap;">{{c.chip}}</span>
+    </div>
+    <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; line-height: 1.15;">{{c.title}}</span>
+
+    <sc-if value="{{c.hasRing}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <svg width="112" height="112" viewBox="0 0 100 100" role="img" aria-label="{{c.ringAria}}">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#E3F0EF" stroke-width="10"></circle>
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#9CCBCD" stroke-width="10" stroke-linecap="round" stroke-dasharray="{{c.pendDash}}" transform="rotate(-90 50 50)"></circle>
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#01696F" stroke-width="10" stroke-linecap="round" stroke-dasharray="{{c.setDash}}" transform="rotate(-90 50 50)"></circle>
+          <text x="50" y="57" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="22" font-weight="700" fill="#28251D">{{c.pct}}</text>
+        </svg>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 20px; font-weight: 700;">TTD {{c.settled}}</span>
+          <span style="font-size: 13px; color: #5C554A;">of {{c.target}} · {{c.apps}}</span>
+          <span style="font-size: 13px; font-weight: 600;">+ TTD {{c.pending}} submitted</span>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{c.noRing}}" hint-placeholder-val="{{false}}">
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+        <div style="border-radius: 14px; background: #E3F0EF; padding: 12px; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 12px; font-weight: 600; color: #01696F;">Settled — counts</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700;">{{c.settled}}</span>
+          <span style="font-size: 12px; color: #28251D;">{{c.apps}}</span>
+        </div>
+        <div style="border-radius: 14px; background: #F7F6F2; border: 1px dashed #9CCBCD; padding: 12px; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 12px; font-weight: 600; color: #5C554A;">Submitted — waiting</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700;">{{c.pending}}</span>
+          <span style="font-size: 12px; color: #5C554A;">{{c.pendApps}}</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="border-radius: 12px; background: #F7F6F2; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px;">
+      <span style="font-size: 13px; font-weight: 700;">{{c.line1}}</span>
+      <span style="font-size: 12px; color: #5C554A; line-height: 1.4;">{{c.line2}}</span>
+    </div>
+  </section>
+
+  <div style="margin: 16px 16px 0; display: flex; flex-direction: column; gap: 18px;">
+    <sc-if value="{{hasCount}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-size: 15px; font-weight: 700;">Counting <span style="color: #7A7264;">· {{countN}}</span></span>
+        <sc-for list="{{counting}}" as="p" hint-placeholder-count="3">
+          <a href="#" style="border-radius: 16px; background: #FFFFFF; border: 1px solid #E5E2DB; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; color: #28251D; text-decoration: none;">
+            <div style="display: flex; gap: 8px;"><span style="flex-grow: 1; font-size: 15px; font-weight: 700;">{{p.name}}</span><span style="font-size: 15px; font-weight: 700;">{{p.api}}</span></div>
+            <span style="font-size: 12px; color: #5C554A;">{{p.meta}}</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
+              <span style="font-size: 11px; color: #5C554A;">Counts toward</span>
+              <sc-for list="{{p.chips}}" as="ch" hint-placeholder-count="3">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; color: #8A6212; background: #F7EEDB; padding: 3px 7px; border-radius: 999px;">{{ch}}</span>
+              </sc-for>
+            </div>
+          </a>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{hasPend}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-size: 15px; font-weight: 700;">Submitted, not settled <span style="color: #7A7264;">· {{pendN}}</span></span>
+        <sc-for list="{{pending}}" as="p" hint-placeholder-count="1">
+          <a href="#" style="border-radius: 16px; background: #FFFFFF; border: 1px dashed #9CCBCD; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; color: #28251D; text-decoration: none;">
+            <div style="display: flex; gap: 8px;"><span style="flex-grow: 1; font-size: 15px; font-weight: 700;">{{p.name}}</span><span style="font-size: 15px; font-weight: 700;">{{p.api}}</span></div>
+            <span style="font-size: 12px; color: #5C554A;">{{p.meta}}</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
+              <span style="font-size: 11px; color: #5C554A;">Will count toward</span>
+              <sc-for list="{{p.chips}}" as="ch" hint-placeholder-count="3">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; color: #5C554A; background: #EFEDE7; padding: 3px 7px; border-radius: 999px;">{{ch}}</span>
+              </sc-for>
+            </div>
+          </a>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{hasNot}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-size: 15px; font-weight: 700;">Not counting here <span style="color: #7A7264;">· {{notN}}</span></span>
+        <sc-for list="{{notc}}" as="p" hint-placeholder-count="2">
+          <a href="#" style="border-radius: 16px; background: #FFFFFF; border: 1px solid #E5E2DB; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; color: #28251D; text-decoration: none;">
+            <div style="display: flex; gap: 8px;"><span style="flex-grow: 1; font-size: 15px; font-weight: 700;">{{p.name}}</span><span style="font-size: 15px; font-weight: 700; color: #7A7264;">{{p.api}}</span></div>
+            <span style="font-size: 12px; color: #B45309; font-weight: 600;">{{p.why}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+  <span style="margin: 14px 16px 0; font-size: 11px; color: #7A7264;">Sample policies for layout. Counts come from the same awards engine as the Awards tab. Press Play and tap an award.</span>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1760}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { a: 0 }; }
+  renderVals() {
+    var self = this;
+    var P = {
+      A: { name: 'Policyholder A', api: '24,600', meta: '···2381 · Life · settled 12-08-2026 · head office' },
+      B: { name: 'Policyholder B', api: '31,200', meta: '···2396 · Life · settled 03-09-2026 · head office' },
+      C: { name: 'Policyholder C', api: '18,146', meta: '···2410 · Critical illness · settled 18-09-2026 · self-confirmed' },
+      D: { name: 'Policyholder D', api: '36,000', meta: '···2415 · Life · submitted 15-09-2026' },
+      F: { name: 'Policyholder F', api: '0' },
+      G: { name: 'Policyholder G', api: '13,200' }
+    };
+    var chips = { A: ['CHRISTMAS', 'Q3', '2026', 'MDRT', 'AUG'], B: ['CHRISTMAS', 'SEP', 'Q3', '2026', 'MDRT'], C: ['CHRISTMAS', 'SEP', 'Q3', '2026', 'MDRT'], D: ['CHRISTMAS', 'SEP', 'Q3', '2026', 'MDRT'] };
+    var why = { F: 'NTU — replaced by ···2403', G: 'Family policy — counts for MDRT only' };
+    var C = 263.9;
+    var A = [
+      { label: '★ Christmas', eyebrow: 'CAMPAIGN · 1 JUL – 31 DEC', chip: '96 DAYS LEFT', title: 'Christmas Campaign & Retreat', ring: true, s: 73946, p: 36000, t: 275000, tl: '275,000 (Champion)', apps: '3 of 35 apps', l1: 'TTD 14.7K a week to reach Champion.', l2: 'Family policies do not count. Persistency gate: 90% in December.', cnt: ['A', 'B', 'C'], pend: ['D'], not: ['F', 'G'] },
+      { label: 'Sep 2026', eyebrow: 'ADVISOR OF THE MONTH · SEPTEMBER', chip: '4 DAYS LEFT', title: 'Your September credit', ring: false, s: 49346, p: 36000, apps: '2 apps', papps: '1 app', l1: 'Ranked award — your branch manager chooses the winner.', l2: 'Jul–Dec: recognition only, no cash, while the Christmas campaign runs.', cnt: ['B', 'C'], pend: ['D'], not: [] },
+      { label: 'Q3 2026', eyebrow: 'QUARTERLY AWARD · JUL – SEP', chip: '4 DAYS LEFT', title: 'Your Q3 credit', ring: false, s: 73946, p: 36000, apps: '3 apps', papps: '1 app', l1: 'Settle ···2415 by 30 Sep and it counts for Q3.', l2: 'Ranked award. Family policies do not count.', cnt: ['A', 'B', 'C'], pend: ['D'], not: ['F', 'G'] },
+      { label: '2026 awards', eyebrow: 'ANNUAL AWARDS · 2026', chip: '96 DAYS LEFT', title: 'Your 2026 award credit', ring: false, s: 73946, p: 36000, apps: '3 apps', papps: '1 app', l1: 'Counted by issue date, 1 Jan – 31 Dec 2026.', l2: 'Family policies do not count for awards.', cnt: ['A', 'B', 'C'], pend: ['D'], not: ['F', 'G'] },
+      { label: 'MDRT 2026', eyebrow: 'MDRT · 2026', chip: '96 DAYS LEFT', title: 'Million Dollar Round Table', ring: true, s: 87146, p: 36000, t: 688800, tl: '688,800', apps: '4 apps', l1: 'TTD 44K a week to qualify by 31 Dec.', l2: 'Family and self policies count here.', cnt: ['A', 'B', 'C', 'G'], pend: ['D'], not: ['F'] },
+      { label: 'Aug 2026', eyebrow: 'ADVISOR OF THE MONTH · AUGUST', chip: 'CLOSED', title: 'Your August credit (final)', ring: false, s: 24600, p: 0, apps: '1 app', papps: '—', l1: 'Closed period. Nothing more can count.', l2: 'Use this to check against the head-office list for August.', cnt: ['A'], pend: [], not: ['G'] },
+      { label: 'Q2 2026', eyebrow: 'QUARTERLY AWARD · APR – JUN', chip: 'CLOSED', title: 'Your Q2 credit (final)', ring: false, s: 0, p: 0, apps: '0 apps', papps: '—', l1: 'No settled policies were dated in Q2.', l2: 'Closed period.', cnt: [], pend: [], not: [] }
+    ];
+    var sel = A[this.state.a];
+    var fmt = function (n) { return Math.round(n).toLocaleString('en-US'); };
+    var mk = function (k, list) { var o = Object.assign({ key: k }, P[k]); o.chips = chips[k] || []; o.why = why[k] || ''; return o; };
+    var pct = sel.ring ? sel.s / sel.t : 0;
+    var pp = sel.ring ? Math.min(1, (sel.s + sel.p) / sel.t) : 0;
+    return {
+      awards: A.map(function (x, i) { var on = i === self.state.a; return { label: x.label, on: on, off: !on, pick: function () { self.setState({ a: i }); } }; }),
+      c: {
+        eyebrow: sel.eyebrow, chip: sel.chip, title: sel.title, hasRing: sel.ring, noRing: !sel.ring,
+        settled: fmt(sel.s), pending: sel.p ? fmt(sel.p) : '0', target: sel.tl || '', apps: sel.apps, pendApps: sel.papps || '',
+        pct: Math.round(pct * 100) + '%', setDash: (C * pct).toFixed(1) + ' ' + C, pendDash: (C * pp).toFixed(1) + ' ' + C,
+        ringAria: 'Settled ' + Math.round(pct * 100) + ' percent, with submitted ' + Math.round(pp * 100) + ' percent',
+        line1: sel.l1, line2: sel.l2
+      },
+      counting: sel.cnt.map(function (k) { return mk(k); }), countN: sel.cnt.length, hasCount: sel.cnt.length > 0,
+      pending: sel.pend.map(function (k) { return mk(k); }), pendN: sel.pend.length, hasPend: sel.pend.length > 0,
+      notc: sel.not.map(function (k) { return mk(k); }), notN: sel.not.length, hasNot: sel.not.length > 0
+    };
+  }
+}
+</script>
+</body>
+</html>

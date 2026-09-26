@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Policy ledger — campaign view</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0;background:#F7F6F2;font-family:'Figtree',sans-serif;color:#28251D}
+a{color:#01696F}a:hover{color:#014E53}
+</style>
+</helmet>
+<div style="width: 390px; height: 1960px; box-sizing: border-box; background: #F7F6F2; position: relative; overflow: hidden; display: flex; flex-direction: column; font-family: 'Figtree', sans-serif; color: #28251D;">
+  <header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 16px;">
+    <div style="flex-grow: 1; display: flex; flex-direction: column;">
+      <span style="font-size: 17px; font-weight: 700; line-height: 1.1;">Policy ledger</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7A7264;">HEAD OFFICE LIST AS OF 15 SEP</span>
+    </div>
+    <button aria-label="Export" style="width: 44px; height: 44px; border: 0; background: transparent; border-radius: 22px; display: flex; align-items: center; justify-content: center; color: #28251D;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg></button>
+  </header>
+
+  <nav aria-label="Saved views" style="display: flex; gap: 8px; padding: 0 16px 4px; overflow: hidden;"><a href="#" style="height: 36px; padding: 0 12px; border-radius: 999px; display: flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none; font-size: 13px; font-weight: 600; color: #28251D; background: #FFFFFF; border: 1px solid #E5E2DB;">All policies</a><a href="#" style="height: 36px; padding: 0 12px; border-radius: 999px; display: flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none; font-size: 13px; font-weight: 700; color: #FFFFFF; background: #01696F; border: 1px solid #01696F;">Christmas campaign</a><a href="#" style="height: 36px; padding: 0 12px; border-radius: 999px; display: flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none; font-size: 13px; font-weight: 600; color: #28251D; background: #FFFFFF; border: 1px solid #E5E2DB;">Needs confirming · 3</a><a href="#" style="height: 36px; padding: 0 12px; border-radius: 999px; display: flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none; font-size: 13px; font-weight: 600; color: #28251D; background: #FFFFFF; border: 1px solid #E5E2DB;">Lapse risk · 2</a><a href="#" style="height: 36px; padding: 0 12px; border-radius: 999px; display: flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none; font-size: 13px; font-weight: 600; color: #28251D; background: #FFFFFF; border: 1px solid #E5E2DB;">Submitted</a></nav>
+
+  <section aria-label="Christmas campaign in your ledger" style="margin: 12px 16px 0; border-radius: 20px; background: #FFFFFF; border: 1px solid #E5E2DB; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: #8A6212;">CHRISTMAS CAMPAIGN · 1 JUL – 31 DEC</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: #8A6212; background: #F7EEDB; padding: 3px 8px; border-radius: 999px;">96 DAYS</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span id="tierlabel" style="font-size: 13px; font-weight: 600; color: #5C554A;">My target tier</span>
+      <div role="radiogroup" aria-labelledby="tierlabel" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; background: #F7EEDB; border-radius: 12px; padding: 4px;">
+        <sc-for list="{{tiers}}" as="t" hint-placeholder-count="5">
+          <sc-if value="{{t.on}}" hint-placeholder-val="{{false}}">
+            <button role="radio" aria-checked="true" onClick="{{t.pick}}" style="height: 40px; border: 0; border-radius: 9px; font-family: 'Figtree', sans-serif; font-size: 12px; font-weight: 700; color: #FFFFFF; background: #B07D1A; padding: 0;">{{t.name}}</button>
+          </sc-if>
+          <sc-if value="{{t.off}}" hint-placeholder-val="{{true}}">
+            <button role="radio" aria-checked="false" onClick="{{t.pick}}" style="height: 40px; border: 0; border-radius: 9px; font-family: 'Figtree', sans-serif; font-size: 12px; font-weight: 600; color: #8A6212; background: transparent; padding: 0;">{{t.name}}</button>
+          </sc-if>
+        </sc-for>
+      </div>
+      <span style="font-size: 13px; color: #5C554A;">{{tierLine}}</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+        <svg width="84" height="84" viewBox="0 0 100 100" role="img" aria-label="{{apiAria}}">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#E3F0EF" stroke-width="10"></circle>
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#9CCBCD" stroke-width="10" stroke-linecap="round" stroke-dasharray="{{apiPendDash}}" transform="rotate(-90 50 50)"></circle>
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#01696F" stroke-width="10" stroke-linecap="round" stroke-dasharray="{{apiDash}}" transform="rotate(-90 50 50)"></circle>
+          <text x="50" y="57" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="21" font-weight="700" fill="#28251D">{{apiPct}}</text>
+        </svg>
+        <span style="font-size: 13px; font-weight: 700;">API</span>
+        <span style="font-size: 12px; color: #5C554A; text-align: center;">{{apiSub}}<br>+36K submitted</span>
+      </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+          <svg width="84" height="84" viewBox="0 0 100 100" role="img" aria-label="3 of 35 applications">
+            <circle cx="50" cy="50" r="42" fill="none" stroke="#E3F0EF" stroke-width="10"></circle>
+            <circle cx="50" cy="50" r="42" fill="none" stroke="#9CCBCD" stroke-width="10" stroke-linecap="round" stroke-dasharray="30.2 263.9" transform="rotate(-90 50 50)"></circle><circle cx="50" cy="50" r="42" fill="none" stroke="#01696F" stroke-width="10" stroke-linecap="round" stroke-dasharray="22.6 263.9" transform="rotate(-90 50 50)"></circle>
+            <text x="50" y="57" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="21" font-weight="700" fill="#28251D">3/35</text>
+          </svg>
+          <span style="font-size: 13px; font-weight: 700;">Applications</span>
+          <span style="font-size: 12px; color: #5C554A; text-align: center;">32 to go · +1 sub.</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+          <svg width="84" height="84" viewBox="0 0 100 100" role="img" aria-label="Persistency 86.6 percent, gate 90">
+            <circle cx="50" cy="50" r="42" fill="none" stroke="#FEF3E2" stroke-width="10"></circle>
+            <circle cx="50" cy="50" r="42" fill="none" stroke="#B45309" stroke-width="10" stroke-linecap="round" stroke-dasharray="228.5 263.9" transform="rotate(-90 50 50)"></circle><g transform="rotate(324 50 50)"><line x1="50" y1="1" x2="50" y2="17" stroke="#28251D" stroke-width="2.5" stroke-linecap="round"></line></g>
+            <text x="50" y="57" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="21" font-weight="700" fill="#28251D">86.6%</text>
+          </svg>
+          <span style="font-size: 13px; font-weight: 700;">Persistency</span>
+          <span style="font-size: 12px; color: #5C554A; text-align: center;">Gate 90% · Dec</span>
+        </div>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: 12px; color: #5C554A;"><span style="display: flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 5px; background: #01696F;"></span>Settled — counts</span><span style="display: flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 5px; background: #9CCBCD;"></span>Submitted — waiting to settle</span></div>
+    <div style="border-radius: 12px; background: #F7F6F2; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;">
+      <span style="font-size: 13px; font-weight: 700;">{{paceLine}}</span>
+      <span style="font-size: 12px; color: #5C554A;">Plus TTD 36,000 (1 app) submitted — the faint ring. It counts when head office settles it.</span>
+    </div>
+  </section>
+
+  <div style="margin: 14px 16px 0; display: flex; gap: 8px; align-items: center;">
+    <label for="q" style="position: absolute; left: -9999px;">Search policies</label>
+    <input id="q" type="search" placeholder="Search name or policy no." style="flex-grow: 1; min-width: 0; height: 44px; box-sizing: border-box; border: 1px solid #E5E2DB; border-radius: 12px; padding: 0 12px; font-family: 'Figtree', sans-serif; font-size: 14px; background: #FFFFFF; color: #28251D;">
+    <a href="D2-Filter-Sheet.dc.html" style="height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid #01696F; background: #E3F0EF; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; text-decoration: none;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>Filter · 2</a>
+    <a href="D2-Filter-Sheet.dc.html" aria-label="Sort: newest issue date" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #E5E2DB; background: #FFFFFF; display: flex; align-items: center; justify-content: center; color: #28251D;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M4 17l3 3 3-3M17 20V4M14 7l3-3 3 3"></path></svg></a>
+  </div>
+  <div style="margin: 8px 16px 0; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+    <span style="font-size: 12px; color: #5C554A;">Active:</span>
+    <span style="height: 28px; padding: 0 10px; border-radius: 999px; background: #FFFFFF; border: 1px solid #E5E2DB; display: flex; align-items: center; font-size: 12px; font-weight: 600;">Christmas campaign window</span>
+    <span style="height: 28px; padding: 0 10px; border-radius: 999px; background: #FFFFFF; border: 1px solid #E5E2DB; display: flex; align-items: center; font-size: 12px; font-weight: 600;">Sort: newest issued</span>
+    <a href="#" style="font-size: 12px; font-weight: 700;">Clear</a>
+  </div>
+
+  <div style="margin: 16px 16px 0; display: flex; flex-direction: column; gap: 18px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between;">
+        <span style="font-size: 15px; font-weight: 700;">Counting <span style="color: #7A7264; font-weight: 600;">· 3</span></span>
+        <span style="font-size: 12px; color: #5C554A;">TTD 73,946</span>
+      </div>
+      <a href="#" style="border-radius: 16px; background: #FFFFFF; border: 1px solid #E5E2DB; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; color: #28251D; text-decoration: none;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="flex-grow: 1; font-size: 15px; font-weight: 700;">Policyholder A</span>
+          <span style="font-size: 15px; font-weight: 700;">24,600</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #5C554A;">···2381</span><span style="font-size: 12px; color: #5C554A;">· Life</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: #2D7A4F; background: #E8F5EE; padding: 3px 7px; border-radius: 999px; white-space: nowrap;">SETTLED</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: #01696F; background: #E3F0EF; padding: 3px 7px; border-radius: 999px; white-space: nowrap;">HEAD OFFICE</span><span style="font-size: 12px; color: #5C554A;">Issued 12 Aug</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #EFEDE7; padding-top: 6px;">
+          <span style="font-size: 12px; color: #5C554A;">Campaign credit</span><span style="font-size: 13px; font-weight: 700; color: #01696F;">24,600</span>
+        </div>
+      </a>
+      <a href="#" style="border-radius: 16px; background: #FFFFFF; border: 1px solid #E5E2DB; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; color: #28251D; text-decoration: none;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="flex-grow: 1; font-size: 15px; font-weight: 700;">Policyholder B</span>
+          <span style="font-size: 15px; font-weight: 700;">31,200</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #5C554A;">···2396</span><span style="font-size: 12px; color: #5C554A;">· Life</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: #2D7A4F; background: #E8F5EE; padding: 3px 7px; border-radius: 999px; white-space: nowrap;">SETTLED</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: #01696F; background: #E3F0EF; padding: 3px 7px; border-radius: 999px; white-space: nowrap;">HEAD OFFICE</span><span style="font-size: 12px; color: #5C554A;">Issued 3 Sep</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #EFEDE7; padding-top: 6px;">
+          <span style="font-size: 12px; color: #5C554A;">Campaign credit</span><span style="font-size: 13px; font-weight: 700; color: #01696F;">31,200</span>
+        </div>
+      </a>
+      <a href="#" style="border-radius: 16px; background: #FFFFFF; border: 1px solid #E5E2DB; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; color: #28251D; text-decoration: none;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="flex-grow: 1; font-size: 15px; font-weight: 700;">Policyholder C</span>
+          <span style="font-size: 15px; font-weight: 700;">18,146</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #5C554A;">···2410</span><span style="font-size: 12px; color: #5C554A;">· Critical illness</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: #2D7A4F; background: #E8F5EE; padding: 3px 7px; border-radius: 999px; white-space: nowrap;">SETTLED</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: #5C554A; background: #EFEDE7; padding: 3px 7px; border-radius: 999px; white-space: nowrap;">SELF-CONFIRMED</span><span style="font-size: 12px; color: #5C554A;">Issued 18 Sep</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #EFEDE7; padding-top: 6px;">
+          <span style="font-size: 12px; color: #5C554A;">Campaign credit</span><span style="font-size: 13px; font-weight: 700; color: #01696F;">18,146</span>
+        </div><span style="font-size: 12px; color: #B45309; font-weight: 600;">Not on the head-office list yet — check with HO</span>
+      </a>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between;">
+        <span style="font-size: 15px; font-weight: 700;">Submitted, not issued <span style="color: #7A7264; font-weight: 600;">· 1</span></span>
+        <span style="font-size: 12px; color: #5C554A;">TTD 36,000 waiting</span>
+      </div>
+      <a href="#" style="border-radius: 16px; background: #FFFFFF; border: 1px solid #E5E2DB; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; color: #28251D; text-decoration: none;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="flex-grow: 1; font-size: 15px; font-weight: 700;">Policyholder D</span>
+          <span style="font-size: 15px; font-weight: 700;">36,000</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #5C554A;">···2415</span><span style="font-size: 12px; color: #5C554A;">· Life</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: #B45309; background: #FEF3E2; padding: 3px 7px; border-radius: 999px; white-space: nowrap;">SUBMITTED</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: #5C554A; background: #EFEDE7; padding: 3px 7px; border-radius: 999px; white-space: nowrap;">SELF-CONFIRMED</span><span style="font-size: 12px; color: #5C554A;">Submitted 15 Sep</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #EFEDE7; padding-top: 6px;">
+          <span style="font-size: 12px; color: #5C554A;">Campaign credit</span><span style="font-size: 13px; font-weight: 700; color: #B45309;">Counts when issued</span>
+        </div>
+      </a>
+          </div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between;">
+        <span style="font-size: 15px; font-weight: 700;">Not counting <span style="color: #7A7264; font-weight: 600;">· 2</span></span>
+        <span style="font-size: 12px; color: #5C554A;">why is shown on each</span>
+      </div>
+      <a href="#" style="border-radius: 16px; background: #FFFFFF; border: 1px solid #E5E2DB; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; color: #28251D; text-decoration: none;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="flex-grow: 1; font-size: 15px; font-weight: 700;">Policyholder F</span>
+          <span style="font-size: 15px; font-weight: 700;">0</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #5C554A;">···2390</span><span style="font-size: 12px; color: #5C554A;">· Life</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: #C0392B; background: #FDE8E7; padding: 3px 7px; border-radius: 999px; white-space: nowrap;">NTU</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: #01696F; background: #E3F0EF; padding: 3px 7px; border-radius: 999px; white-space: nowrap;">HEAD OFFICE</span><span style="font-size: 12px; color: #5C554A;">Replaced by ···2403</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #EFEDE7; padding-top: 6px;">
+          <span style="font-size: 12px; color: #5C554A;">Campaign credit</span><span style="font-size: 13px; font-weight: 700; color: #C0392B;">0</span>
+        </div>
+      </a>
+      <a href="#" style="border-radius: 16px; background: #FFFFFF; border: 1px solid #E5E2DB; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; color: #28251D; text-decoration: none;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="flex-grow: 1; font-size: 15px; font-weight: 700;">Policyholder G</span>
+          <span style="font-size: 15px; font-weight: 700;">13,200</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #5C554A;">···2398</span><span style="font-size: 12px; color: #5C554A;">· Life</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: #2D7A4F; background: #E8F5EE; padding: 3px 7px; border-radius: 999px; white-space: nowrap;">SETTLED</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: #01696F; background: #E3F0EF; padding: 3px 7px; border-radius: 999px; white-space: nowrap;">HEAD OFFICE</span><span style="font-size: 12px; color: #5C554A;">Issued 30 Aug</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #EFEDE7; padding-top: 6px;">
+          <span style="font-size: 12px; color: #5C554A;">Campaign credit</span><span style="font-size: 13px; font-weight: 700; color: #5C554A;">Excluded — family</span>
+        </div>
+      </a>
+    </div>
+  </div>
+  <span style="margin: 14px 16px 0; font-size: 11px; color: #7A7264;">Sample policies for layout. Totals match your live campaign figure.</span>
+
+  <nav aria-label="Main" style="position: absolute; left: 0; right: 0; bottom: 0; height: 72px; background: #FFFFFF; border-top: 1px solid #E5E2DB; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center;">
+    <a href="C1-Home.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; color: #5C554A; text-decoration: none; min-height: 44px; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Home</a>
+    <a href="#" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: #01696F; text-decoration: none; min-height: 44px; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M8 8h8M8 12h8M8 16h5"></path></svg>Ledger</a>
+    <a href="#" aria-label="Create" style="justify-self: center; width: 52px; height: 52px; border-radius: 26px; background: #01696F; color: #FFFFFF; display: flex; align-items: center; justify-content: center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></a>
+    <a href="C2-Campaign.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; color: #5C554A; text-decoration: none; min-height: 44px; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"></circle><path d="m8.5 14.5-1.5 7 5-3 5 3-1.5-7"></path></svg>Awards</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; color: #5C554A; text-decoration: none; min-height: 44px; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="5" r="1.2"></circle><circle cx="12" cy="12" r="1.2"></circle><circle cx="12" cy="19" r="1.2"></circle></svg>More</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1960}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { tier: 0 }; }
+  renderVals() {
+    var T = [['Champion',275000,7000],['VIP',375000,20000],['Premier',475000,30000],['Elite',675000,52000],['Pioneer',825000,70000]];
+    var have = 73946, weeks = 13.7;
+    var sel = T[this.state.tier];
+    var pct = Math.min(1, have / sel[1]);
+    var toGo = sel[1] - have;
+    var fmt = function (n) { return Math.round(n).toLocaleString('en-US'); };
+    var k = function (n) { return (n / 1000).toFixed(n >= 100000 ? 0 : 1) + 'K'; };
+    var self = this;
+    return {
+      tiers: T.map(function (t, i) {
+        var on = i === self.state.tier;
+        return { name: t[0], on: on, off: !on,
+          pick: function () { self.setState({ tier: i }); } };
+      }),
+      tierLine: sel[0] + ': TTD ' + fmt(sel[1]) + ' API + 35 apps · TTD ' + fmt(sel[2]) + ' cash',
+      apiDash: (263.9 * pct).toFixed(1) + ' 263.9',
+      apiPendDash: (263.9 * Math.min(1, (have + 36000) / sel[1])).toFixed(1) + ' 263.9',
+      apiPct: Math.round(pct * 100) + '%',
+      apiSub: k(have) + ' / ' + k(sel[1]),
+      apiAria: 'API ' + Math.round(pct * 100) + ' percent of ' + sel[0],
+      paceLine: 'To reach ' + sel[0] + ': TTD ' + k(toGo / weeks) + ' a week for 14 weeks'
+    };
+  }
+}
+</script>
+</body>
+</html>
