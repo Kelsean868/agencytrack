@@ -29,6 +29,7 @@
 | A11Y test agent is in no campaign, so no preview or production smoke can render the Campaign screen or the Home campaign card — blocked the R2 merge gate (banked 2026-09-26, overnight run) | MEDIUM | Verification / campaigns | — | see § A11Y test agent has no campaign |
 | Awards-tab MDRT award uses 500,000 (`awardsRuleset/2026.js` `mdrtAward.apiThreshold`) while Home, MdrtTracker and the ledger use 688,800 (`MDRT_THRESHOLDS_2026`) — Kyron to rule which is Tatil's MDRT award line (banked 2026-09-26, PR #981 orchestrator review) | MEDIUM | Awards / MDRT | — | see § Awards-tab MDRT award line differs from the MDRT threshold |
 | Policy Ledger head-office flag ("Not on the head-office list yet — check with HO") can only be shown when a self-confirmed settled policy was issued AFTER the latest export date. A policy issued BEFORE it that the export left out is undetectable: an import does not rewrite an unchanged policy, so `exportDate` stays at the older export and nothing records "seen in the latest export". Needs a per-import manifest of policy numbers (banked 2026-09-26, L1 award lens) | MEDIUM | Policy Ledger / portfolio import | — | see § Head-office flag needs a per-import manifest |
+| Policy Ledger L2 filter/sort hides "Needs attention" (awaiting my confirmation / differs from HO / lapse risk), the Date-type "Paid-to date" option, and the "Next premium due" sort — none has a backing field on a policy doc today (banked 2026-09-26, L2 filter/sort/export) | MEDIUM | Policy Ledger / filter-sort | — | see § L2 filter/sort options with no backing signal |
 | Home hero two-layer ring legend shows plain labels, not the C1 mockup's value form ("Submitted 123,146") (banked 2026-09-26, PR #980 L0) | LOW | Home / ledger rings | — | see § L0 hero legend value form |
 | Tenant Admin has no Persistency view — design question, not a bug (found in #975 smoke) | LOW | Persistency / roles | — | see § Tenant Admin has no Persistency view |
 | `scripts/verification/smoke-campaign-hero-h3.mjs` targets `campaign-hero-card` / `campaign-hero-row-*` testids from the `full` variant, which the Awards tab campaign hero no longer renders after R2 switched it to `variant="screen"` (PR #979) — the script needs updating to the new `campaign-screen*` testids or it will report false failures the next time it runs | LOW | Verification / smokes | — | see § smoke-campaign-hero-h3.mjs targets retired testids |
@@ -7579,3 +7580,18 @@ Where each reads it: `computeAgentAwards` (`src/utils/awardsEngine.js`, `awards.
 **What to do.** Kyron rules which figure is Tatil's MDRT award line. If 688,800: point `awards.mdrt` at `mdrtLineFor(year)` (or set the ruleset value to match) and fix the Awards-tab tests. If 500,000 is a separate Tatil award distinct from MDRT membership: rename it on the Awards tab so the two are not both called "MDRT".
 
 **Falsification (Rule 23):** closed when every surface that says "MDRT" reads one figure, or when the dispatcher rules that the two figures are different awards and they are labelled differently.
+
+## L2 filter/sort options with no backing signal
+
+**Banked 2026-09-26 (Policy Ledger L2 — filter/sort/export, PR authoring). Severity: MEDIUM.**
+
+The L2 section of `docs/briefs/ledger-lens-build.md` lists six filter/sort controls the mockups (D2/D3) show. Before writing `src/lib/ledgerFilters.js`, each was checked against the actual policy doc shape (`git grep`, Rule 17) and three have no backing field anywhere in the codebase:
+
+- **"Needs attention"** (awaiting my confirmation / differs from head office / lapse risk) — `needsManagerConfirmation` (policyStatusTokens.js) answers "does the MANAGER still need to confirm", not "is the AGENT waiting on anything"; no dual-source value comparison exists to detect "differs from HO"; no risk score or signal exists on a policy doc at all. All three brief-listed options, and the two built-in saved views that depend on them ("Needs confirming · n", "Lapse risk · n"), are omitted rather than shown with a guessed or permanently-zero count.
+- **"Paid-to date"** (Date-type filter option) and **"Next premium due"** (sort option) — no `paidToDate` / `nextPremiumDue` field exists on a policy doc; only `proposedFrequency` (A/S/Q/M) is tracked, not an actual premium schedule.
+
+This follows the brief's own standing decision #2 ("Hide a built-in view whose data the app cannot derive... rather than guess") applied to the filter/sort options themselves, not just the saved views.
+
+**What to do.** Each becomes buildable once its backing field lands: a "self-confirm write path" (P2d, explicitly out of scope here) would give "awaiting my confirmation" a real signal; a dual-source value (agent-entered vs HO-imported) would give "differs from HO" one; a premium-schedule field (`nextPremiumDue`/`paidToDate`) would unlock the date-type option and the sort. None of these is a small addition — each is its own brief.
+
+**Falsification (Rule 23):** closed when any of the named fields (an agent-confirmation flag, a dual-source value pair, or a premium-schedule date) exists on a policy doc and `ledgerFilters.js`'s `buildFilterSections`/`SORTS`/`builtInViews` is updated to read it.

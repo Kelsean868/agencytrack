@@ -29,6 +29,18 @@ import { buildCsvContent, downloadCsv, slugifyForFilename } from '../../../lib/c
 import { getTodayTT } from '../../../utils/dateInputs';
 import { DEFAULT_RULESET_2026 } from '../../../config/awardsRuleset/2026';
 import { AwardSelector, AwardSummaryCard, AwardLensGroups } from './AwardLensView';
+import LedgerFilterSort from './LedgerFilterSort';
+import LedgerTable from './LedgerTable';
+import LedgerExportMenu from './LedgerExportMenu';
+import {
+  buildFilterSections,
+  emptyFilterState,
+  filterRows,
+  sortRows,
+  DEFAULT_SORT_KEY,
+  footerCounts,
+} from '../../../lib/ledgerFilters';
+import { formatCurrency } from '../../../utils/formatters';
 
 export default function AwardLensPanel({ policies, visibleIds = null, onOpen, ruleset = DEFAULT_RULESET_2026, toolbar = null }) {
   const campaignsOn = useFeatureFlag('policyLedgerCampaignLens');
@@ -86,6 +98,30 @@ export default function AwardLensPanel({ policies, visibleIds = null, onOpen, ru
     }
     : null;
 
+  // ── L2 — filter / sort / export (docs/briefs/ledger-lens-build.md § L2) ────
+  //
+  // Operates on `lens.rows`, narrowed first to whatever the existing
+  // search/pipeline toolbar already shows (`visibleIds`), so L2's filter
+  // options and counts never include a policy the agent has already searched
+  // or pipeline-filtered away. `sortRows` runs before the grouped-card view
+  // (AwardLensGroups) sees the ids, so mobile/tablet inherit the same order
+  // the desktop table shows, with no second sort implementation.
+  const [l2Filters, setL2Filters] = useState(emptyFilterState);
+  const [sortKey, setSortKey] = useState(DEFAULT_SORT_KEY);
+
+  const searchNarrowedRows = useMemo(
+    () => lens.rows.filter((r) => !visibleIds || visibleIds.has(r.policy.id)),
+    [lens.rows, visibleIds],
+  );
+  const l2Sections = useMemo(() => buildFilterSections(searchNarrowedRows), [searchNarrowedRows]);
+  const l2FilteredRows = useMemo(
+    () => filterRows(searchNarrowedRows, l2Filters, l2Sections),
+    [searchNarrowedRows, l2Filters, l2Sections],
+  );
+  const l2Rows = useMemo(() => sortRows(l2FilteredRows, sortKey), [l2FilteredRows, sortKey]);
+  const l2VisibleIds = useMemo(() => new Set(l2Rows.map((r) => r.policy.id)), [l2Rows]);
+  const l2Footer = useMemo(() => footerCounts(l2Rows), [l2Rows]);
+
   return (
     <div className="flex flex-col gap-3.5" data-testid="award-lens-panel">
       <AwardSelector
@@ -99,7 +135,28 @@ export default function AwardLensPanel({ policies, visibleIds = null, onOpen, ru
       />
       <AwardSummaryCard lens={lens} summary={summary} tierPicker={tierPicker} onExportProof={handleExportProof} />
       {toolbar}
-      <AwardLensGroups lens={lens} visibleIds={visibleIds} onOpen={onOpen} />
+
+      <div className="flex items-start justify-between gap-3">
+        <LedgerFilterSort
+          rows={searchNarrowedRows}
+          filters={l2Filters}
+          onFiltersChange={setL2Filters}
+          sortKey={sortKey}
+          onSortChange={setSortKey}
+          hasCampaign={Boolean(campaign)}
+          campaignLabel={campaign?.name}
+        />
+        <LedgerExportMenu rows={l2Rows} label={selected?.label ?? 'ledger'} />
+      </div>
+
+      <div className="lg:hidden">
+        <AwardLensGroups lens={lens} visibleIds={l2VisibleIds} onOpen={onOpen} />
+      </div>
+      <LedgerTable rows={l2Rows} sortKey={sortKey} onSort={setSortKey} onOpen={onOpen} />
+      <div className="hidden items-center justify-between rounded-xl bg-surface px-4 py-3 text-[13px] text-ink-muted lg:flex" data-testid="ledger-footer-counts">
+        <span>{l2Footer.total} polic{l2Footer.total === 1 ? 'y' : 'ies'} · {l2Footer.counting} counting · {l2Footer.pending} waiting · {l2Footer.notCounting} not counting</span>
+        <span className="font-bold text-ink">Counting {formatCurrency(l2Footer.countingApi)}</span>
+      </div>
     </div>
   );
 }
