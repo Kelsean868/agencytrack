@@ -189,6 +189,35 @@ function gateBarPct(value) {
   return Math.min(100, Math.max(0, ((v - GATE_BAR_MIN) / (GATE_BAR_MAX - GATE_BAR_MIN)) * 100));
 }
 
+/**
+ * Every `left-[N%]` in 1% steps, written out as LITERAL strings — not built by
+ * template-literal interpolation — because Tailwind's class extractor is a
+ * static-text scanner over the source file, not a JS evaluator: a class name
+ * assembled at runtime (`` `left-[${pct}%]` ``) is invisible to it, and no CSS
+ * is ever generated for it. Writing every value out here is what lets a
+ * runtime-computed label position resolve to a real Tailwind class instead of
+ * an inline `style` (this file's own rule — see the fill-rect comment below).
+ */
+const LEFT_PCT_CLASSES = Object.freeze([
+  'left-[0%]', 'left-[1%]', 'left-[2%]', 'left-[3%]', 'left-[4%]', 'left-[5%]', 'left-[6%]', 'left-[7%]', 'left-[8%]', 'left-[9%]',
+  'left-[10%]', 'left-[11%]', 'left-[12%]', 'left-[13%]', 'left-[14%]', 'left-[15%]', 'left-[16%]', 'left-[17%]', 'left-[18%]', 'left-[19%]',
+  'left-[20%]', 'left-[21%]', 'left-[22%]', 'left-[23%]', 'left-[24%]', 'left-[25%]', 'left-[26%]', 'left-[27%]', 'left-[28%]', 'left-[29%]',
+  'left-[30%]', 'left-[31%]', 'left-[32%]', 'left-[33%]', 'left-[34%]', 'left-[35%]', 'left-[36%]', 'left-[37%]', 'left-[38%]', 'left-[39%]',
+  'left-[40%]', 'left-[41%]', 'left-[42%]', 'left-[43%]', 'left-[44%]', 'left-[45%]', 'left-[46%]', 'left-[47%]', 'left-[48%]', 'left-[49%]',
+  'left-[50%]', 'left-[51%]', 'left-[52%]', 'left-[53%]', 'left-[54%]', 'left-[55%]', 'left-[56%]', 'left-[57%]', 'left-[58%]', 'left-[59%]',
+  'left-[60%]', 'left-[61%]', 'left-[62%]', 'left-[63%]', 'left-[64%]', 'left-[65%]', 'left-[66%]', 'left-[67%]', 'left-[68%]', 'left-[69%]',
+  'left-[70%]', 'left-[71%]', 'left-[72%]', 'left-[73%]', 'left-[74%]', 'left-[75%]', 'left-[76%]', 'left-[77%]', 'left-[78%]', 'left-[79%]',
+  'left-[80%]', 'left-[81%]', 'left-[82%]', 'left-[83%]', 'left-[84%]', 'left-[85%]', 'left-[86%]', 'left-[87%]', 'left-[88%]', 'left-[89%]',
+  'left-[90%]', 'left-[91%]', 'left-[92%]', 'left-[93%]', 'left-[94%]', 'left-[95%]', 'left-[96%]', 'left-[97%]', 'left-[98%]', 'left-[99%]',
+  'left-[100%]',
+]);
+
+/** Nearest whole-percent `left-[N%]` class for a 0–100 value. */
+function leftClassFor(pct) {
+  const clamped = Math.min(100, Math.max(0, Number(pct) || 0));
+  return LEFT_PCT_CLASSES[Math.round(clamped)];
+}
+
 function MonthColumn({ label, value, tone, note, testId }) {
   return (
     <div className="flex flex-col gap-0.5" data-testid={testId}>
@@ -263,7 +292,11 @@ export function PersistencyGateBarBlock({ projectedPct, threshold, judgedLabel, 
         {judgedLabel && <span className="text-xs font-bold text-warning-ink">{judgedLabel}</span>}
       </div>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
-        <div className="lg:min-w-0 lg:flex-1">
+        <div className="lg:min-w-0 lg:flex-1" data-testid="campaign-screen-gate-bar">
+          <span className="sr-only">
+            {`Persistency gate, ${GATE_BAR_MIN} to ${GATE_BAR_MAX} percent, gate at ${threshold} percent`}
+            {projectedPct != null ? `, projected ${projectedPct.toFixed(1)} percent` : ''}
+          </span>
           {/* A div-based bar has no Tailwind way to place a fill/tick at a
               RUNTIME percentage without an inline `style` (Tailwind's
               arbitrary values are resolved at build time, not from a JS
@@ -272,44 +305,54 @@ export function PersistencyGateBarBlock({ projectedPct, threshold, judgedLabel, 
               for its ring. `preserveAspectRatio="none"` lets the bar fill its
               column at any width — the default "meet" scaling was
               letterboxing it (300×54's own aspect ratio) into a narrow bar
-              centred in a wide desktop card. */}
+              centred in a wide desktop card.
+
+              LABELS ARE NOT IN THIS SVG. `preserveAspectRatio="none"` scales
+              the whole coordinate system non-uniformly, and unlike a plain
+              rect or line, `<text>` glyphs scale with it too — at 1440px the
+              horizontal stretch visibly distorted every label. Rects and
+              lines have no "correct" aspect ratio to distort, so they stay
+              here; the labels move to plain HTML below, positioned via the
+              `left-[N%]` class lookup above (still no runtime percentage in
+              an inline `style`, just resolved to a different Tailwind class
+              than the SVG's own attribute-based approach). */}
           <svg
-            viewBox="0 0 300 54" preserveAspectRatio="none" className="h-[46px] w-full" role="img"
-            aria-label={`Persistency gate, ${GATE_BAR_MIN} to ${GATE_BAR_MAX} percent, gate at ${threshold} percent${projectedPct != null ? `, projected ${projectedPct.toFixed(1)} percent` : ''}`}
-            data-testid="campaign-screen-gate-bar"
+            viewBox="0 0 300 26" preserveAspectRatio="none" className="h-[26px] w-full" aria-hidden="true"
+            data-testid="campaign-screen-gate-bar-svg"
           >
-            <rect x="0" y="16" width="300" height="10" rx="5" className="fill-surface-muted" />
+            <rect x="0" y="8" width="300" height="10" rx="5" className="fill-surface-muted" />
             {fillPct != null && (
               <rect
-                x="0" y="16" width={(fillPct / 100) * 300} height="10" rx="5"
+                x="0" y="8" width={(fillPct / 100) * 300} height="10" rx="5"
                 className={belowGate ? 'fill-warning' : 'fill-success'}
                 data-testid="campaign-screen-gate-bar-fill"
               />
             )}
             {tickPct != null && (
               <line
-                x1={(tickPct / 100) * 300} x2={(tickPct / 100) * 300} y1="6" y2="36"
+                x1={(tickPct / 100) * 300} x2={(tickPct / 100) * 300} y1="0" y2="26"
                 strokeWidth="3" strokeLinecap="round" className="stroke-ink"
                 data-testid="campaign-screen-gate-bar-tick"
               />
             )}
-            <text x="0" y="50" fontSize="10" fontFamily="inherit" textAnchor="start" className="fill-ink-muted font-mono">{GATE_BAR_MIN}%</text>
-            <text x="300" y="50" fontSize="10" fontFamily="inherit" textAnchor="end" className="fill-ink-muted font-mono">{GATE_BAR_MAX}%</text>
+          </svg>
+          <div className="relative mt-1 h-[14px] font-mono text-[10px] text-ink-muted" aria-hidden="true">
+            <span className="absolute left-0">{GATE_BAR_MIN}%</span>
+            <span className="absolute right-0">{GATE_BAR_MAX}%</span>
             {fillPct != null && (
-              <text
-                x={(fillPct / 100) * 300} y="50" fontSize="10" fontWeight="700" textAnchor="middle"
-                className={`font-mono ${belowGate ? 'fill-warning-ink' : 'fill-success-ink'}`}
+              <span
+                className={`absolute -translate-x-1/2 font-semibold ${belowGate ? 'text-warning-ink' : 'text-success-ink'} ${leftClassFor(fillPct)}`}
                 data-testid="campaign-screen-gate-bar-value"
               >
                 {projectedPct.toFixed(1)}
-              </text>
+              </span>
             )}
             {tickPct != null && (
-              <text x={(tickPct / 100) * 300} y="50" fontSize="10" fontWeight="700" textAnchor="middle" className="fill-ink font-mono">
+              <span className={`absolute -translate-x-1/2 font-semibold text-ink ${leftClassFor(tickPct)}`}>
                 GATE {threshold}
-              </text>
+              </span>
             )}
-          </svg>
+          </div>
         </div>
         <div className="lg:w-[260px] lg:shrink-0 lg:border-l lg:border-border lg:pl-5">
           <MonthHistoryRow outlook={outlook} threshold={threshold} />

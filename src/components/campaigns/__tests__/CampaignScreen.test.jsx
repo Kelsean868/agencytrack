@@ -97,6 +97,23 @@ describe('CampaignHeroCard variant="screen"', () => {
     expect(screen.getByText(/Judged on December/)).toBeInTheDocument();
   });
 
+  it('block 3 — labels render as HTML outside the stretched SVG, never as SVG <text> (undistorted at any width)', () => {
+    render(<CampaignHeroCard variant="screen" campaign={CAMPAIGN} policies={BELOW_GATE_POLICIES} persistencyRecords={[]} />);
+    const svg = screen.getByTestId('campaign-screen-gate-bar-svg');
+    // The stretched SVG carries ONLY geometry — no <text> node at all, at any width.
+    expect(svg.querySelectorAll('text')).toHaveLength(0);
+    const valueLabel = screen.getByTestId('campaign-screen-gate-bar-value');
+    expect(valueLabel.closest('svg')).toBeNull(); // real HTML, not inside the non-uniformly-scaled SVG
+    expect(valueLabel.tagName).toBe('SPAN');
+    // 86.0% on an 80–95 scale → (86.04-80)/15 ≈ 40.3%, rounded to the nearest
+    // whole-percent Tailwind class (never an inline `style` with the raw float).
+    expect(valueLabel.className).toMatch(/\bleft-\[40%\]/);
+    const gateLabel = screen.getByText(/GATE 90/);
+    expect(gateLabel.closest('svg')).toBeNull();
+    // Gate 90 → 66.7%, rounded to the nearest whole percent.
+    expect(gateLabel.className).toMatch(/\bleft-\[67%\]/);
+  });
+
   it('block 3 — no fill/value drawn once persistency is unknown (no ledger data)', () => {
     render(<CampaignHeroCard variant="screen" campaign={CAMPAIGN} policies={[]} persistencyRecords={[]} />);
     expect(screen.queryByTestId('campaign-screen-gate-bar-value')).toBeNull();
@@ -104,7 +121,11 @@ describe('CampaignHeroCard variant="screen"', () => {
 
   it('block 3 — the bar fills its column at any width (no aspect-ratio letterboxing)', () => {
     render(<CampaignHeroCard variant="screen" campaign={CAMPAIGN} policies={BELOW_GATE_POLICIES} persistencyRecords={[]} />);
-    expect(screen.getByTestId('campaign-screen-gate-bar')).toHaveAttribute('preserveAspectRatio', 'none');
+    expect(screen.getByTestId('campaign-screen-gate-bar-svg')).toHaveAttribute('preserveAspectRatio', 'none');
+    // The distortion this guards against: labels live outside the stretched
+    // SVG entirely, as plain HTML text (font-size in a real CSS unit, never
+    // scaled by the SVG's own non-uniform viewBox transform).
+    expect(screen.getByTestId('campaign-screen-gate-bar-value').tagName).toBe('SPAN');
   });
 
   it('block 3 — month-history row: derived (From HO · Confirm), estimate, projected — from #971\'s own outlook, not recomputed', () => {
