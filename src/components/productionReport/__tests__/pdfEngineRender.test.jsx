@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { BranchReportDocument, UnitReportDocument } from '../ManagerReportDocument';
 import { AgentReportDocument } from '../../profile/AgentReportDocument';
+import { LedgerHoCheckDocument } from '../../agent/policyLedger/LedgerHoCheckDocument';
 
 const BRANCH_INPUT = {
   scope: 'branch',
@@ -65,6 +66,28 @@ describe('PDF documents render through the real @react-pdf engine', () => {
         ruleset={undefined}
       />,
     );
+    expect(buf.length).toBeGreaterThan(1000);
+    expect(buf.subarray(0, 5).toString()).toBe('%PDF-');
+  }, 30000);
+
+  it('LedgerHoCheckDocument renders to a non-trivial PDF buffer', async () => {
+    const rows = [
+      {
+        policy: { ownerName: 'Policyholder A', policyNumber: 'FX0002381', status: 'settled', statusSource: 'oipa_import', dateIssued: '2026-08-12', settledAPI: 24600 },
+        group: 'counting', credit: { api: 24600, apps: 1 }, hoFlag: false,
+      },
+      {
+        policy: { ownerName: 'Policyholder C', policyNumber: 'FX0002410', status: 'settled', statusSource: 'agent', dateIssued: '2026-09-18', settledAPI: 18146 },
+        group: 'counting', credit: { api: 18146, apps: 1 }, hoFlag: true,
+      },
+    ];
+    const buf = await renderToBuffer(<LedgerHoCheckDocument rows={rows} label="Christmas Campaign" generatedOn="2026-09-26" />);
+    expect(buf.length).toBeGreaterThan(1000);
+    expect(buf.subarray(0, 5).toString()).toBe('%PDF-');
+  }, 30000);
+
+  it('LedgerHoCheckDocument renders its "no rows" empty state without throwing', async () => {
+    const buf = await renderToBuffer(<LedgerHoCheckDocument rows={[]} label="All policies" generatedOn="2026-09-26" />);
     expect(buf.length).toBeGreaterThan(1000);
     expect(buf.subarray(0, 5).toString()).toBe('%PDF-');
   }, 30000);

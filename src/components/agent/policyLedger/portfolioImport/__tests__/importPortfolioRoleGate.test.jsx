@@ -48,6 +48,7 @@ vi.mock('../../../../../services/planCatalogService', () => ({
 }));
 
 vi.mock('../../../../../constants/policyLifecycle', () => ({
+  POLICY_STATUSES: ['written', 'submitted', 'rated', 'postponed', 'ntu', 'denied', 'settled', 'lapsed'],
   LEGAL_AGENT_TRANSITIONS: {},
   POLICY_STATUS_LABELS: {},
 }));

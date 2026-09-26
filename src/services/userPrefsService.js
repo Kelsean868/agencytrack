@@ -225,3 +225,78 @@ export async function setLedgerTargetTier(tenantId, uid, campaignId, tierName) {
     { merge: true },
   );
 }
+
+/** Max user-saved Policy Ledger views (L2 — docs/briefs/ledger-lens-build.md
+ *  § L2 item 3). Mirrors COMMISSION_SCENARIO_CAP's idiom: keeps the single
+ *  prefs doc small and the view-chips row scannable. */
+export const LEDGER_SAVED_VIEW_CAP = 8;
+
+/**
+ * Normalize one saved ledger view before it is written. Filter-state Sets are
+ * not Firestore-serializable, so each tag-section is stored as a sorted
+ * ARRAY of strings (never a Set) — restored back to a Set by the reader
+ * (`ledgerFilters` consumers), never stored as one. `apiMin`/`apiMax` are
+ * coerced to numbers (CLAUDE.md: "Never store numeric values as strings in
+ * Firestore"); dates are stored `YYYY-MM-DD` (already the wire format
+ * `ledgerFilters.toStoredDate` produces — this only guards against a caller
+ * passing a raw Set or a DD-MM-YYYY string through by mistake).
+ */
+function normalizeSavedView(v) {
+  const f = v?.filters ?? {};
+  const toArr = (val) => (val instanceof Set ? [...val] : Array.isArray(val) ? val : [])
+    .filter((x) => typeof x === 'string')
+    .sort();
+  const toNum = (val) => {
+    const n = Number(val);
+    return Number.isFinite(n) ? n : null;
+  };
+  const toIsoDate = (val) => (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val) ? val : null);
+  return {
+    id: v.id,
+    label: v.label,
+    savedAt: typeof v.savedAt === 'string' ? v.savedAt : new Date().toISOString(),
+    sortKey: typeof v.sortKey === 'string' ? v.sortKey : null,
+    filters: {
+      countsGroup: toArr(f.countsGroup),
+      status: toArr(f.status),
+      source: toArr(f.source),
+      who: toArr(f.who),
+      product: toArr(f.product),
+      frequency: toArr(f.frequency),
+      dateType: f.dateType === 'submit' ? 'submit' : 'issue',
+      dateFrom: toIsoDate(f.dateFrom),
+      dateTo: toIsoDate(f.dateTo),
+      apiMin: f.apiMin != null ? toNum(f.apiMin) : null,
+      apiMax: f.apiMax != null ? toNum(f.apiMax) : null,
+    },
+  };
+}
+
+/**
+ * Persist the agent's saved Policy Ledger views (L2 — docs/briefs/ledger-lens-build.md
+ * § L2 item 3, "Rules needed"). SAME single `prefs/app` doc, merge-written as a
+ * `ledgerSavedViews` array — never clobbers any sibling pref, no second read.
+ *
+ * No firestore.rules change: the owner-only `prefs/{prefId}` block (same one
+ * `setCommissionScenarios` / `setLedgerTargetTier` already rely on) permits any
+ * field on this doc for its own uid. Verified against `tests/rules/userPrefs.rules.test.mjs`
+ * before this was written (Rule 11) — the rule is field-agnostic, so no new
+ * rule and no new index is needed for this write.
+ *
+ * @param {string} tenantId
+ * @param {string} uid
+ * @param {Array<{id:string,label:string,savedAt:string,sortKey:string|null,filters:object}>} views
+ * @returns {Promise<void>}
+ */
+export async function setLedgerSavedViews(tenantId, uid, views) {
+  if (!tenantId || !uid) throw new Error('setLedgerSavedViews requires tenantId and uid');
+  const safe = (Array.isArray(views) ? views : [])
+    .filter((v) => v && typeof v.id === 'string' && typeof v.label === 'string')
+    .slice(0, LEDGER_SAVED_VIEW_CAP)
+    .map(normalizeSavedView);
+  await setDoc(
+    prefsDocRef(tenantId, uid),
+    { ledgerSavedViews: safe, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}
