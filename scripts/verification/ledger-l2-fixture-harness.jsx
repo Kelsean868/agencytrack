@@ -63,26 +63,25 @@ function LedgerWithL2({ awardKey, policies = POLICIES, initialFilters = null, in
     <div className="flex flex-col gap-3.5">
       <AwardSelector current={periods.current} past={periods.past} selectedKey={key} onSelect={setKey} />
       <AwardSummaryCard lens={lens} summary={summary} tierPicker={tierPicker} onExportProof={campaign ? () => {} : null} />
-      <div className="flex items-start justify-between gap-3">
-        <LedgerFilterSort
-          rows={lens.rows}
-          filters={filters}
-          onFiltersChange={setFilters}
-          sortKey={sortKey}
-          onSortChange={setSortKey}
-          hasCampaign={Boolean(campaign)}
-          campaignLabel={campaign?.name}
-        />
-        <LedgerExportMenu rows={sorted} label={award.label} />
-      </div>
-      <div className="lg:hidden">
-        <AwardLensGroups lens={lens} visibleIds={visibleIds} onOpen={() => {}} />
-      </div>
-      <LedgerTable rows={sorted} sortKey={sortKey} onSort={setSortKey} onOpen={() => {}} />
-      <div className="hidden items-center justify-between rounded-xl bg-surface px-4 py-3 text-[13px] text-ink-muted lg:flex">
-        <span>{footer.total} polic{footer.total === 1 ? 'y' : 'ies'} · {footer.counting} counting · {footer.pending} waiting · {footer.notCounting} not counting</span>
-        <span className="font-bold text-ink">Counting {formatCurrency(footer.countingApi)}</span>
-      </div>
+      <LedgerFilterSort
+        rows={lens.rows}
+        filters={filters}
+        onFiltersChange={setFilters}
+        sortKey={sortKey}
+        onSortChange={setSortKey}
+        hasCampaign={Boolean(campaign)}
+        campaignLabel={campaign?.name}
+        actions={<LedgerExportMenu rows={sorted} label={award.label} />}
+      >
+        <div className="lg:hidden">
+          <AwardLensGroups lens={lens} visibleIds={visibleIds} onOpen={() => {}} />
+        </div>
+        <LedgerTable rows={sorted} sortKey={sortKey} onSort={setSortKey} onOpen={() => {}} />
+        <div className="hidden items-center justify-between rounded-xl bg-surface px-4 py-3 text-[13px] text-ink-muted lg:flex">
+          <span>{footer.total} polic{footer.total === 1 ? 'y' : 'ies'} · {footer.counting} counting · {footer.pending} waiting · {footer.notCounting} not counting</span>
+          <span className="font-bold text-ink">Counting {formatCurrency(footer.countingApi)}</span>
+        </div>
+      </LedgerFilterSort>
     </div>
   );
 }

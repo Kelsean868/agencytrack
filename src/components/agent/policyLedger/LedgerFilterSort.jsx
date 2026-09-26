@@ -147,24 +147,59 @@ function FilterFields({ sections, rows, state, onToggle, onDateType, onDateFrom,
   );
 }
 
+/**
+ * A CUSTOM-drawn radio dot, not the native `<input type="radio">` appearance.
+ *
+ * v3 non-negotiable #6: "fix the ink, not the fill" — but a native radio's
+ * unchecked ring/fill is drawn by the browser's OWN light-scheme form-control
+ * theme when the page never sets `color-scheme`, which this app's global CSS
+ * does not. Measured, not assumed (orchestrator design review, PR 982): in
+ * `.dark`, `accent-primary` alone left every one of the five radios — checked
+ * AND unchecked alike — rendering as a solid white disc, indistinguishable
+ * from each other. There is no "ink" on a native control to retarget without
+ * either a global `color-scheme` change (out of this PR's narrow scope) or
+ * per-input inline styles (forbidden — CLAUDE.md UI rules). A custom visual
+ * sibling, built from the SAME token classes every other chip on this surface
+ * already uses (`border-border` / `bg-primary`), sidesteps the native
+ * light-only default in both themes at once. The real `<input>` stays for
+ * semantics/keyboard/focus (`sr-only`, `peer`) — nothing about the radio
+ * GROUP's behaviour changes, only how the unselected/selected state is drawn.
+ */
+function RadioDot({ checked }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+        checked ? 'border-primary bg-primary' : 'border-border bg-card'
+      } peer-focus-visible:ring-2 peer-focus-visible:ring-primary/50 peer-focus-visible:ring-offset-1`}
+    >
+      {checked && <span className="h-[7px] w-[7px] rounded-full bg-white" />}
+    </span>
+  );
+}
+
 function SortFields({ sortKey, onSort }) {
   const labelId = useId();
   return (
     <fieldset className="flex flex-col gap-1 border-0 p-0">
       <legend id={labelId} className="mb-1 w-full px-0 text-[13px] font-bold text-ink">Sort by</legend>
       <div role="radiogroup" aria-labelledby={labelId} className="flex flex-col">
-        {SORTS.map((s) => (
-          <label key={s.key} className="flex min-h-10 cursor-pointer items-center gap-2.5 text-sm text-ink">
-            <input
-              type="radio"
-              name="ledger-sort"
-              checked={sortKey === s.key}
-              onChange={() => onSort(s.key)}
-              className="h-[18px] w-[18px] accent-primary"
-            />
-            <span className={sortKey === s.key ? 'font-bold' : ''}>{s.label}</span>
-          </label>
-        ))}
+        {SORTS.map((s) => {
+          const checked = sortKey === s.key;
+          return (
+            <label key={s.key} className="flex min-h-10 cursor-pointer items-center gap-2.5 text-sm text-ink">
+              <input
+                type="radio"
+                name="ledger-sort"
+                checked={checked}
+                onChange={() => onSort(s.key)}
+                className="peer sr-only"
+              />
+              <RadioDot checked={checked} />
+              <span className={checked ? 'font-bold' : ''}>{s.label}</span>
+            </label>
+          );
+        })}
       </div>
     </fieldset>
   );
@@ -178,6 +213,8 @@ export default function LedgerFilterSort({
   onSortChange,
   hasCampaign,
   campaignLabel,
+  actions,
+  children,
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const sections = useMemo(() => buildFilterSections(rows), [rows]);
@@ -268,24 +305,28 @@ export default function LedgerFilterSort({
 
   return (
     <div className="flex flex-col gap-2.5" data-testid="ledger-filter-sort">
-      {/* View chips row */}
-      <nav aria-label="Saved views" className="flex flex-wrap items-center gap-1.5" data-testid="ledger-view-chips">
-        {[...builtins, ...views].map((v) => (
-          <button
-            key={v.id}
-            type="button"
-            aria-current={activeViewId === v.id ? 'page' : undefined}
-            onClick={() => (v.builtin ? applyBuiltIn(v) : applySavedView(v))}
-            className={chipBtnClass(activeViewId === v.id)}
-            data-testid={`ledger-view-${v.id}`}
-          >
-            {v.label}
+      {/* View chips row (+ Export, aligned the same row as D3's page-header
+          placement approximates at this component's scope) */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <nav aria-label="Saved views" className="flex flex-wrap items-center gap-1.5" data-testid="ledger-view-chips">
+          {[...builtins, ...views].map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              aria-current={activeViewId === v.id ? 'page' : undefined}
+              onClick={() => (v.builtin ? applyBuiltIn(v) : applySavedView(v))}
+              className={chipBtnClass(activeViewId === v.id)}
+              data-testid={`ledger-view-${v.id}`}
+            >
+              {v.label}
+            </button>
+          ))}
+          <button type="button" onClick={handleSaveView} className="min-h-9 shrink-0 rounded-full border border-dashed border-border px-3 text-[13px] font-semibold text-ink-muted hover:text-ink" data-testid="ledger-save-view">
+            + Save view
           </button>
-        ))}
-        <button type="button" onClick={handleSaveView} className="min-h-9 shrink-0 rounded-full border border-dashed border-border px-3 text-[13px] font-semibold text-ink-muted hover:text-ink" data-testid="ledger-save-view">
-          + Save view
-        </button>
-      </nav>
+        </nav>
+        {actions}
+      </div>
 
       {/* Active filter chips row */}
       {activeChips.length > 0 && (
@@ -351,28 +392,6 @@ export default function LedgerFilterSort({
         )}
       </div>
 
-      {/* Desktop rail */}
-      <aside aria-label="Filters" className="hidden w-[230px] shrink-0 rounded-[18px] border border-border bg-card px-4 py-3 lg:block" data-testid="ledger-filter-rail">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-bold text-ink">Filters</span>
-          {hasActiveFilters(filters) && <button type="button" onClick={clearAll} className="text-xs font-bold text-primary">Clear</button>}
-        </div>
-        <div className="mb-3">
-          <SortFields sortKey={sortKey} onSort={onSortChange} />
-        </div>
-        <FilterFields
-          sections={sections}
-          rows={rows}
-          state={filters}
-          onToggle={toggleTag}
-          onDateType={(v) => onFiltersChange((p) => ({ ...p, dateType: v }))}
-          onDateFrom={(v) => onFiltersChange((p) => ({ ...p, dateFrom: v }))}
-          onDateTo={(v) => onFiltersChange((p) => ({ ...p, dateTo: v }))}
-          onApiMin={(v) => onFiltersChange((p) => ({ ...p, apiMin: v }))}
-          onApiMax={(v) => onFiltersChange((p) => ({ ...p, apiMax: v }))}
-        />
-      </aside>
-
       {/* Reachable escape hatch for deleting a saved view (no mockup control for
           this — kept minimal: a small list under the chips, desktop + mobile). */}
       {views.length > 0 && (
@@ -388,6 +407,36 @@ export default function LedgerFilterSort({
           </ul>
         </details>
       )}
+
+      {/* D3: the filter rail sits in a LEFT COLUMN beside the table, not
+          stacked above it — `children` (the table/groups/footer) renders in
+          the same flex row as the rail so both share one layout, with the
+          rail `hidden` (not present in the flow) below `lg`. */}
+      <div className="flex items-start gap-5">
+        <aside aria-label="Filters" className="hidden w-[230px] shrink-0 rounded-[18px] border border-border bg-card px-4 py-3 lg:block" data-testid="ledger-filter-rail">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm font-bold text-ink">Filters</span>
+            {hasActiveFilters(filters) && <button type="button" onClick={clearAll} className="text-xs font-bold text-primary">Clear</button>}
+          </div>
+          <div className="mb-3">
+            <SortFields sortKey={sortKey} onSort={onSortChange} />
+          </div>
+          <FilterFields
+            sections={sections}
+            rows={rows}
+            state={filters}
+            onToggle={toggleTag}
+            onDateType={(v) => onFiltersChange((p) => ({ ...p, dateType: v }))}
+            onDateFrom={(v) => onFiltersChange((p) => ({ ...p, dateFrom: v }))}
+            onDateTo={(v) => onFiltersChange((p) => ({ ...p, dateTo: v }))}
+            onApiMin={(v) => onFiltersChange((p) => ({ ...p, apiMin: v }))}
+            onApiMax={(v) => onFiltersChange((p) => ({ ...p, apiMax: v }))}
+          />
+        </aside>
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          {children}
+        </div>
+      </div>
     </div>
   );
 }

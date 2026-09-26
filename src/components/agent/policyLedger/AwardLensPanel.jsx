@@ -136,27 +136,28 @@ export default function AwardLensPanel({ policies, visibleIds = null, onOpen, ru
       <AwardSummaryCard lens={lens} summary={summary} tierPicker={tierPicker} onExportProof={handleExportProof} />
       {toolbar}
 
-      <div className="flex items-start justify-between gap-3">
-        <LedgerFilterSort
-          rows={searchNarrowedRows}
-          filters={l2Filters}
-          onFiltersChange={setL2Filters}
-          sortKey={sortKey}
-          onSortChange={setSortKey}
-          hasCampaign={Boolean(campaign)}
-          campaignLabel={campaign?.name}
-        />
-        <LedgerExportMenu rows={l2Rows} label={selected?.label ?? 'ledger'} />
-      </div>
-
-      <div className="lg:hidden">
-        <AwardLensGroups lens={lens} visibleIds={l2VisibleIds} onOpen={onOpen} />
-      </div>
-      <LedgerTable rows={l2Rows} sortKey={sortKey} onSort={setSortKey} onOpen={onOpen} />
-      <div className="hidden items-center justify-between rounded-xl bg-surface px-4 py-3 text-[13px] text-ink-muted lg:flex" data-testid="ledger-footer-counts">
-        <span>{l2Footer.total} polic{l2Footer.total === 1 ? 'y' : 'ies'} · {l2Footer.counting} counting · {l2Footer.pending} waiting · {l2Footer.notCounting} not counting</span>
-        <span className="font-bold text-ink">Counting {formatCurrency(l2Footer.countingApi)}</span>
-      </div>
+      {/* D3: the filter rail sits BESIDE the table (one row), not stacked
+          above it — LedgerFilterSort owns that row and renders the table /
+          groups / footer as `children` so both share the same flex layout. */}
+      <LedgerFilterSort
+        rows={searchNarrowedRows}
+        filters={l2Filters}
+        onFiltersChange={setL2Filters}
+        sortKey={sortKey}
+        onSortChange={setSortKey}
+        hasCampaign={Boolean(campaign)}
+        campaignLabel={campaign?.name}
+        actions={<LedgerExportMenu rows={l2Rows} label={selected?.label ?? 'ledger'} />}
+      >
+        <div className="lg:hidden">
+          <AwardLensGroups lens={lens} visibleIds={l2VisibleIds} onOpen={onOpen} />
+        </div>
+        <LedgerTable rows={l2Rows} sortKey={sortKey} onSort={setSortKey} onOpen={onOpen} />
+        <div className="hidden items-center justify-between rounded-xl bg-surface px-4 py-3 text-[13px] text-ink-muted lg:flex" data-testid="ledger-footer-counts">
+          <span>{l2Footer.total} polic{l2Footer.total === 1 ? 'y' : 'ies'} · {l2Footer.counting} counting · {l2Footer.pending} waiting · {l2Footer.notCounting} not counting</span>
+          <span className="font-bold text-ink">Counting {formatCurrency(l2Footer.countingApi)}</span>
+        </div>
+      </LedgerFilterSort>
     </div>
   );
 }

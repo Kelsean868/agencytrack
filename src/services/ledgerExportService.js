@@ -1,8 +1,9 @@
 /**
  * ledgerExportService.js — L2 export side effects (docs/briefs/ledger-lens-build.md
- * § L2 item 4). CSV/PDF libraries are LAZY-LOADED here, on demand, so neither
+ * § L2 item 4). The PDF engine is LAZY-LOADED here, on demand, so it never
  * ships in the app's main bundle (verified in the build gate: `npm run build`
- * output chunk map).
+ * output chunk map, and by loading the built app and confirming no PDF-engine
+ * request fires before the export menu's PDF action).
  *
  * NO EXCEL (.xlsx) EXPORT — the brief asks for one via the existing xlsx
  * dependency, but `src/lib/portfolioImport/__tests__/clientBundleGuard.test.js`
@@ -19,11 +20,19 @@
  * entry for the dispatcher. CSV (any spreadsheet can open it) and PDF stand in
  * for Excel in the meantime; neither pulls in a banned package.
  *
+ * PDF ENGINE: @react-pdf/renderer, not jspdf (orchestrator decision — keeps
+ * `vite.config.js` untouched, since @react-pdf already has its own lazy
+ * `vendor-pdf` chunk from EFF-011 (PR 802) and the autorun-merge rule only allows
+ * `src/**` / `docs/**` / tests / test scripts to change). Same
+ * `import('@react-pdf/renderer')` + `pdf(doc).toBlob()` pattern
+ * `generateAgentPDF` (exportService.js) already uses.
+ *
  * Row shaping lives in `src/lib/ledgerExportRows.js` (pure, unit-tested); this
  * file only wires that data into each library's write API and triggers the
  * browser download. Not unit-tested directly — the row builders it calls are.
  */
-import { buildLedgerExportTable, buildHoCheckExportTable } from '../lib/ledgerExportRows';
+import { createElement } from 'react';
+import { buildLedgerExportTable } from '../lib/ledgerExportRows';
 import { buildCsvContent, downloadCsv, slugifyForFilename } from '../lib/csvExport';
 
 /** CSV — reuses the S2 formula-injection-safe helper, full column set. */
@@ -33,21 +42,21 @@ export function exportLedgerCsv(rows, label) {
 }
 
 /** PDF "head-office check sheet" — reduced column set, one page to compare
- * against HO records. */
+ * against HO records. Lazy-loads @react-pdf/renderer + the document. */
 export async function exportLedgerPdf(rows, label) {
-  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
-    import('jspdf'),
-    import('jspdf-autotable'),
+  const [{ pdf }, { LedgerHoCheckDocument }] = await Promise.all([
+    import('@react-pdf/renderer'),
+    import('../components/agent/policyLedger/LedgerHoCheckDocument'),
   ]);
-  const { headers, rows: body } = buildHoCheckExportTable(rows);
-  const doc = new jsPDF({ orientation: 'landscape' });
-  doc.setFontSize(12);
-  doc.text('Policy ledger — head-office check sheet', 14, 14);
-  autoTable(doc, {
-    startY: 20,
-    head: [headers],
-    body,
-    styles: { fontSize: 8 },
-  });
-  doc.save(`policy-ledger-ho-check-${slugifyForFilename(label)}.pdf`);
+  const generatedOn = new Date().toISOString().slice(0, 10);
+  const doc = createElement(LedgerHoCheckDocument, { rows, label, generatedOn });
+  const blob = await pdf(doc).toBlob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `policy-ledger-ho-check-${slugifyForFilename(label)}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

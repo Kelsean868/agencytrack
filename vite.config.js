@@ -77,37 +77,11 @@ export default defineConfig({
   // match nested d3/@firebase submodules. @react-pdf keeps its OWN chunk here so
   // EFF-011's dynamic-import split (#802) stays lazy — it must NOT fall through
   // into the eager `vendor` catch-all.
-  //
-  // `jspdf` / `jspdf-autotable` (Policy Ledger L2 export, lazy `import()`
-  // only) are EXPLICITLY EXCLUDED from every manual bucket below, including
-  // the eager `vendor` catch-all they would otherwise fall into. Two
-  // named-chunk shapes were tried and rejected here after actually building
-  // and checking the emitted chunk graph each time (Rule 17 — this is not a
-  // theoretical concern, both alternatives measurably shipped the library to
-  // every page load, confirmed by loading the built app and watching network
-  // requests fire on the plain login screen, before AgentDashboard's own lazy
-  // chunk is even requested):
-  //   1. No rule at all -> falls into the catch-all `vendor` chunk, which
-  //      `dist/assets/index-*.js` (the entry script `index.html` loads)
-  //      references directly, same failure mode Ruling 1 exists to prevent.
-  //   2. A dedicated named bucket (`vendor-pdf` OR its own `vendor-jspdf`) ->
-  //      STILL produced a static `import` edge from the entry chunk. A
-  //      `manualChunks` function only decides which FILE a module's code
-  //      lands in, not when the file loads; forcing jspdf's two interdependent
-  //      packages (`jspdf-autotable` statically imports `jspdf` itself) into
-  //      one named chunk, reached from two separate `import()` call sites in
-  //      the same lazy-loaded consumer module, gave Rollup's chunk-splitting
-  //      algorithm a reason to hoist a shared binding up to the entry.
-  // Returning `undefined` here (falling through to Rollup's own automatic,
-  // un-forced code-splitting for these two packages) is what actually stayed
-  // lazy — checked the same way, zero jspdf requests before the export menu
-  // is opened.
   build: {
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
-          if (id.includes('jspdf')) return; // let Rollup auto-split — see note above
           if (id.includes('lucide-react')) return 'vendor-icons';
           if (id.includes('recharts') || id.includes('d3-') || id.includes('victory-vendor')) return 'vendor-charts';
           if (id.includes('@react-pdf') || id.includes('yoga-layout') || id.includes('fontkit')) return 'vendor-pdf';

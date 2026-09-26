@@ -1,10 +1,10 @@
 /**
  * ledgerExportRows.js — L2 export row-shaping (docs/briefs/ledger-lens-build.md
- * § L2 item 4). Pure data-shaping only: no DOM, no Blob, no `xlsx`/`jspdf`
- * import — those libraries are lazy-loaded by the caller (LedgerExportMenu)
+ * § L2 item 4). Pure data-shaping only: no DOM, no Blob, no `@react-pdf/renderer`
+ * import — that library is lazy-loaded by the caller (ledgerExportService)
  * only when an export actually fires, and the shape returned here is what
- * every format (Excel, CSV, PDF) is built from, so the three exports can
- * never disagree about which filtered rows or which values they show.
+ * every format (CSV, PDF) is built from, so the two exports can never
+ * disagree about which filtered rows or which values they show.
  *
  * `rows` here is the FILTERED `deriveAwardLens` row set — `{ policy, group,
  * credit, reason, hoFlag }` — never the unfiltered ledger (brief § L2 item 4:
