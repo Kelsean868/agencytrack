@@ -4,6 +4,7 @@ import { PROSPECTING_SOURCE_LABELS } from '../../../services/prospectInfoService
 import { LEGAL_AGENT_TRANSITIONS, POLICY_STATUS_LABELS } from '../../../constants/policyLifecycle';
 import { policyToken, policyPillLabel, isConfirmed, needsManagerConfirmation } from '../../../lib/policyStatusTokens';
 import { lifecycleNodes } from '../../../lib/policyLedgerDerivation';
+import { formatWhole } from '../../../lib/awardLensView';
 
 function fmtDate(ts) {
   if (!ts) return '—';
@@ -52,20 +53,60 @@ function actionHint(policy) {
   return `Move to ${POLICY_STATUS_LABELS[next] ?? next} →`;
 }
 
+const LENS_CREDIT_LABEL = { campaign: 'Campaign credit', mdrt: 'MDRT credit' };
+
+/**
+ * LensFooter — the award lens line under a card (L1): the credit this policy
+ * earns toward the selected award, "Counts when settled", or the engine's
+ * reason it does not count. Every string here comes from `deriveAwardLens`;
+ * nothing is decided in the card.
+ */
+function LensFooter({ lensRow, awardKind }) {
+  const { group, credit, reason, hoFlag } = lensRow;
+  const label = LENS_CREDIT_LABEL[awardKind] ?? 'Your credit';
+  let value;
+  if (group === 'counting') {
+    const apps = credit.apps === 1 ? '1 app' : `${credit.apps} apps`;
+    value = <span className="text-[13px] font-bold text-primary tabular-nums">{formatWhole(credit.api)} · {apps}</span>;
+  } else if (group === 'pending') {
+    value = <span className="text-[13px] font-bold text-warning-ink">Counts when settled</span>;
+  } else {
+    value = <span className="min-w-0 text-right text-[13px] font-semibold text-warning-ink">{reason}</span>;
+  }
+  return (
+    <div className="mt-2.5 flex flex-col gap-1 border-t border-border pt-2" data-testid={`policy-card-lens-${group}`}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="shrink-0 text-xs text-ink-muted">{label}</span>
+        {value}
+      </div>
+      {hoFlag && (
+        <span className="text-xs font-semibold text-warning-ink" data-testid="policy-card-ho-flag">
+          Not on the head-office list yet — check with HO
+        </span>
+      )}
+    </div>
+  );
+}
+
 /**
  * PolicyCard — Tier 2 restyled card. The whole card is the drawer trigger.
  * No nested interactive elements (the action hint is display-only).
+ *
+ * `lensRow` (optional, L1) — this policy's row from `deriveAwardLens` for the
+ * award selected in the ledger's "Counts toward" lens; `awardKind` names that
+ * award. Absent ⇒ the card renders exactly as before.
  */
-export default function PolicyCard({ policy, onOpen }) {
+export default function PolicyCard({ policy, onOpen, lensRow = null, awardKind = null }) {
   const t = policyToken(policy);
   const hint = actionHint(policy);
   const noNumber = !policy.policyNumber;
+  const pendingFrame = lensRow?.group === 'pending' ? ' border-dashed border-primary/40' : '';
 
   return (
     <button
       type="button"
       onClick={() => onOpen(policy)}
-      className="card bg-card text-left w-full p-[15px_17px_13px] hover:border-primary/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      className={`card bg-card text-left w-full p-[15px_17px_13px] hover:border-primary/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40${pendingFrame}`}
       data-testid={`policy-card-${policy.id}`}
     >
       <div className="flex items-start justify-between gap-3 mb-2.5">
@@ -113,6 +154,7 @@ export default function PolicyCard({ policy, onOpen }) {
         )}
         <span className="font-mono text-[10.5px] text-ink-muted">{fmtDate(policy.dateWritten)}</span>
       </div>
+      {lensRow && <LensFooter lensRow={lensRow} awardKind={awardKind} />}
     </button>
   );
 }

@@ -477,7 +477,7 @@ export function deriveClawback(policies, campaign) {
  * derivePolicyLens(policies, campaign, { now }) — everything the lens strip +
  * per-policy list render. Returns null when there is no campaign.
  */
-export function derivePolicyLens(policies, campaign, { now = new Date() } = {}) {
+export function derivePolicyLens(policies, campaign, { now = new Date(), targetTierName = null } = {}) {
   if (!campaign) return null;
   const list = Array.isArray(policies) ? policies : [];
   const contributions = {};
@@ -533,7 +533,14 @@ export function derivePolicyLens(policies, campaign, { now = new Date() } = {}) 
   const tierProgress = isTieredCampaign(campaign) && Array.isArray(campaign.tiers) && campaign.tiers.length
     ? resolveTierProgress(apiCurrent, appsCurrent, campaign.tiers)
     : null;
-  const progressTier = tierProgress?.progressTarget ?? null;
+  // L1 — "My target tier" (docs/briefs/ledger-lens-build.md § L1 item 2). When
+  // the agent has chosen a tier, targets are measured against THAT tier; an
+  // unknown name (a tier renamed since the choice was saved) falls back to the
+  // level in reach above — never to a guess. No choice ⇒ unchanged behaviour.
+  const chosenTier = tierProgress && targetTierName
+    ? (campaign.tiers.find((t) => t?.name === targetTierName) ?? null)
+    : null;
+  const progressTier = chosenTier ?? tierProgress?.progressTarget ?? null;
   const apiTarget = (Number(progressTier?.api) || 0) || null;
   const appsTarget = (Number(progressTier?.apps) || 0) || null;
 
@@ -574,6 +581,11 @@ export function derivePolicyLens(policies, campaign, { now = new Date() } = {}) 
     tierReached: tierProgress?.tierReached ?? null,
     tierNext: tierProgress?.tierNext ?? null,
     atTop: tierProgress?.atTop ?? false,
+    // The tier the targets above are measured against: the agent's choice when
+    // one is set and still exists, otherwise the level in reach (tierNext, or
+    // the top tier once reached).
+    targetTier: progressTier,
+    targetTierChosen: chosenTier != null,
     targetDerived: apiTarget != null,
     progressPct,
     endsIn,

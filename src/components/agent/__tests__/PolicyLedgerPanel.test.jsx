@@ -112,23 +112,28 @@ beforeEach(() => {
   hoisted.getActiveCampaignsForAgent.mockResolvedValue([]);
 });
 
-describe('PolicyLedgerPanel — 3.4 campaign lens flag', () => {
-  it('flag OFF — the campaign lens is absent (byte-identical ledger)', async () => {
+describe('PolicyLedgerPanel — L1 award lens (campaign option behind the 3.4 flag)', () => {
+  it('flag OFF — the award lens mounts, but no campaign fetch and no campaign option', async () => {
     hoisted.useFeatureFlag.mockReturnValue(false);
     hoisted.getOwnPolicies.mockResolvedValue([makePolicy({ id: 'p1' })]);
     render(<PolicyLedgerPanel />);
-    await waitFor(() => expect(screen.getByTestId('policy-ledger-surface')).toBeInTheDocument());
-    expect(screen.queryByTestId('campaign-lens-panel')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('campaign-lens-empty')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('award-lens-panel')).toBeInTheDocument());
     expect(hoisted.getActiveCampaignsForAgent).not.toHaveBeenCalled();
+    expect(screen.queryByTestId(/^award-lens-option-campaign:/)).not.toBeInTheDocument();
+    // The card is still reachable through the grouped list.
+    expect(screen.getByTestId('policy-card-p1')).toBeInTheDocument();
   });
 
-  it('flag ON — the campaign lens mounts inside the list view', async () => {
+  it('flag ON — campaigns are fetched and an active one is pinned first', async () => {
     hoisted.useFeatureFlag.mockImplementation((k) => k === 'policyLedgerCampaignLens');
     hoisted.getOwnPolicies.mockResolvedValue([makePolicy({ id: 'p1' })]);
-    hoisted.getActiveCampaignsForAgent.mockResolvedValue([]); // no active → empty lens state
+    hoisted.getActiveCampaignsForAgent.mockResolvedValue([{
+      id: 'c1', name: 'Test Campaign', startDate: '2026-01-01', endDate: '2026-12-31',
+      structure: 'qualify', tiers: [{ name: 'Bronze', api: 100000, apps: 10 }],
+    }]);
     render(<PolicyLedgerPanel />);
-    await waitFor(() => expect(screen.getByTestId('campaign-lens-empty')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('award-lens-option-campaign:c1')).toBeInTheDocument());
+    expect(hoisted.getActiveCampaignsForAgent).toHaveBeenCalledTimes(1);
   });
 });
 

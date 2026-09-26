@@ -1,6 +1,7 @@
 // Pure computation engine — zero Firebase imports, zero side effects
 import { extractFields, extractTotalProductionCredit } from './extractFields';
 import { DEFAULT_RULESET_2026 } from '../config/awardsRuleset/2026';
+import { MDRT_THRESHOLDS_2026 } from '../config/mdrtThresholds/2026';
 
 const p = (v) => parseFloat(v) || 0;
 
@@ -738,4 +739,196 @@ export function isPersistencyOnlyBlock(award) {
   const unmet = (award.criteria ?? []).filter((c) => !c.met);
   if (unmet.length === 0) return false;
   return unmet.every((c) => /persistency/i.test(c.label));
+}
+
+// ──────────────────────────────────────────────────────
+// Policy Ledger award lens (L1 — docs/briefs/ledger-lens-build.md § L1)
+//
+// The periods the ledger's "Counts toward" selector offers, built from the SAME
+// period arithmetic computeAgentAwards uses (monthKey / getQuarter /
+// getQuarterMonths), the MDRT line (mdrtThresholds — the Home hero's source)
+// and the ruleset (the BDO/DSO monthly
+// exclusion) — never a hard-coded list. Each descriptor is plain data that
+// `deriveAwardLens` (src/lib/ledgerProduction.js) reads to classify policies.
+//
+// Descriptor: {
+//   key, kind: 'campaign'|'month'|'quarter'|'annual'|'mdrt',
+//   label (selector text), periodName (sentence text), start, end (YYYY-MM-DD),
+//   year, closed, ranked, includeFamily, category (getPeriodCtx category),
+//   target (MDRT line, else null), campaign (campaign only),
+//   suppressor (Rule 10 campaign withholding the cash, or null),
+// }
+// ──────────────────────────────────────────────────────
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+function lastDayOfMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function isoDate(year, month, day) {
+  return `${monthKey(year, month)}-${String(day).padStart(2, '0')}`;
+}
+
+// The MDRT line the ledger's "MDRT <year>" card measures against — the SAME
+// constant the Home hero (homeDerivations / HeroCard) and MdrtTracker read, so
+// an agent never sees two MDRT targets (orchestrator ruling, PR #981). Year-
+// keyed: a year with no published line gets NO target (the card hides the
+// ring) rather than a guess. NOTE: `ruleset.mdrtAward.apiThreshold` (500,000)
+// still drives the Awards tab's MDRT award — FOLLOW_UPS § MDRT award line.
+const MDRT_LINE_BY_YEAR = Object.freeze({ 2026: MDRT_THRESHOLDS_2026.mdrt });
+
+/** The MDRT API line for `year`, or null when none is published for it. */
+export function mdrtLineFor(year) {
+  const line = MDRT_LINE_BY_YEAR[year];
+  if (line == null && import.meta.env?.DEV) {
+    console.warn(`[awardsEngine] no MDRT line configured for ${year} — MDRT card shows no target`);
+  }
+  return line ?? null;
+}
+
+/** The Rule 10 recognition-only prize string, exported so the ledger names it identically. */
+export function recognitionOnlyLabel(campaignName) {
+  return RECOGNITION_ONLY(campaignName ?? 'the active campaign');
+}
+
+/**
+ * The flagged campaign withholding award CASH for any of `months` of `year`
+ * (Rule 10), or null. The same test computeAgentAwards applies to the
+ * Advisor-of-the-Month and quarterly prize strings.
+ */
+export function awardCashSuppressor(activeCampaigns, year, months) {
+  return suppressingCampaign(activeCampaigns, year, months);
+}
+
+function monthDescriptor(year, month, today, campaigns) {
+  const start = isoDate(year, month, 1);
+  const end = isoDate(year, month, lastDayOfMonth(year, month));
+  return {
+    key: `month:${monthKey(year, month)}`,
+    kind: 'month',
+    label: `${MONTH_SHORT[month - 1]} ${year}`,
+    periodName: `${MONTH_LONG[month - 1]} ${year}`,
+    start, end, year,
+    closed: end < today,
+    ranked: true,
+    includeFamily: false,
+    category: 'monthly',
+    target: null,
+    suppressor: suppressingCampaign(campaigns, year, [month]),
+  };
+}
+
+function quarterDescriptor(year, quarter, today, campaigns) {
+  const months = getQuarterMonths(quarter, year).map((k) => Number(k.slice(5, 7)));
+  const first = months[0];
+  const last = months[months.length - 1];
+  const end = isoDate(year, last, lastDayOfMonth(year, last));
+  return {
+    key: `quarter:${year}-Q${quarter}`,
+    kind: 'quarter',
+    label: `Q${quarter} ${year}`,
+    periodName: `Q${quarter} ${year}`,
+    start: isoDate(year, first, 1),
+    end, year,
+    closed: end < today,
+    ranked: true,
+    includeFamily: false,
+    category: 'quarterly',
+    target: null,
+    suppressor: suppressingCampaign(campaigns, year, months),
+    months,
+  };
+}
+
+function campaignDescriptor(campaign, today) {
+  const start = String(campaign?.startDate ?? '').slice(0, 10);
+  const end = String(campaign?.endDate ?? '').slice(0, 10);
+  return {
+    key: `campaign:${campaign.id}`,
+    kind: 'campaign',
+    label: `★ ${campaign.shortName ?? campaign.name ?? 'Campaign'}`,
+    periodName: campaign.name ?? 'the campaign',
+    start, end,
+    year: Number(end.slice(0, 4)) || null,
+    closed: Boolean(end) && end < today,
+    ranked: false,
+    includeFamily: false,
+    category: 'campaign',
+    target: null,
+    suppressor: null,
+    campaign,
+  };
+}
+
+/**
+ * awardLensPeriods({ today, ruleset, campaigns, agentProfile })
+ *
+ * @param {object} args
+ * @param {string} args.today  YYYY-MM-DD (Trinidad date — the caller owns the clock)
+ * @returns {{ current: object[], past: object[] }}
+ *   current — active campaign(s) first, then this month, this quarter, this
+ *             year's annual awards, MDRT <year>.
+ *   past    — closed months and quarters of this year and last year, newest first.
+ */
+export function awardLensPeriods({ today, ruleset = DEFAULT_RULESET_2026, campaigns = [], agentProfile = {} } = {}) {
+  if (typeof today !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(today)) {
+    throw new Error('awardLensPeriods: today must be YYYY-MM-DD');
+  }
+  const year = Number(today.slice(0, 4));
+  const month = Number(today.slice(5, 7));
+  const quarter = Math.floor((month - 1) / 3) + 1;
+  const camps = Array.isArray(campaigns) ? campaigns.filter((c) => c?.id) : [];
+
+  // Advisor of the Month does not apply to BDO/DSO advisors when the ruleset
+  // says so — the same gate computeAgentAwards applies.
+  const monthlyApplies = !(agentProfile?.isBdoDso && ruleset?.advisorMonth?.excludesBdoDso);
+
+  const mdrtTarget = mdrtLineFor(year);
+  const yearStart = isoDate(year, 1, 1);
+  const yearEnd = isoDate(year, 12, 31);
+
+  const current = [
+    ...camps.map((c) => campaignDescriptor(c, today)),
+    ...(monthlyApplies ? [monthDescriptor(year, month, today, camps)] : []),
+    quarterDescriptor(year, quarter, today, camps),
+    {
+      key: `annual:${year}`, kind: 'annual', label: `${year} awards`, periodName: String(year),
+      start: yearStart, end: yearEnd, year, closed: false,
+      ranked: true, includeFamily: false, category: 'annual', target: null, suppressor: null,
+    },
+    {
+      key: `mdrt:${year}`, kind: 'mdrt', label: `MDRT ${year}`, periodName: `MDRT ${year}`,
+      start: yearStart, end: yearEnd, year, closed: false,
+      ranked: false, includeFamily: true, category: 'annual',
+      target: mdrtTarget,
+      suppressor: null,
+    },
+  ];
+
+  const past = [];
+  for (const y of [year, year - 1]) {
+    const lastMonth = y === year ? month - 1 : 12;
+    const lastQuarter = y === year ? quarter - 1 : 4;
+    const rows = [];
+    if (monthlyApplies) {
+      for (let m = lastMonth; m >= 1; m -= 1) rows.push(monthDescriptor(y, m, today, camps));
+    }
+    for (let q = lastQuarter; q >= 1; q -= 1) rows.push(quarterDescriptor(y, q, today, camps));
+    // Newest first by period end, months before the quarter that ends with them.
+    rows.sort((a, b) => b.end.localeCompare(a.end) || (a.kind === 'month' ? -1 : 1));
+    past.push(...rows);
+  }
+
+  return { current, past };
+}
+
+/**
+ * Weeks left in an award period, from getPeriodCtx — the same period context
+ * computeAtRiskStatus reads. Null when the period has no weeks left.
+ */
+export function awardWeeksLeft(category, currentDate) {
+  const { weeksElapsed, periodWeeks } = getPeriodCtx(category, currentDate);
+  const left = periodWeeks - weeksElapsed;
+  return left > 0 ? left : null;
 }

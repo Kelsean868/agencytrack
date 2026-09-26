@@ -337,9 +337,9 @@ describe('prop-provenance guard — every policy array handed to a child is clas
       why: 'The ledger LIST shows every doc an agent owns, imported included. It counts by stage; it does not aggregate money.',
     },
     {
-      id: 'src/components/agent/PolicyLedgerPanel.jsx :: <CampaignLensPanel policies>',
+      id: 'src/components/agent/PolicyLedgerPanel.jsx :: <AwardLensPanel policies>',
       provenance: 'unfiltered',
-      why: 'C-D10: campaign eligibility is decided by dateIssued, never by importSource. An imported policy issued in the window counts; one issued in 2019 does not.',
+      why: 'L1 award lens (replaced CampaignLensPanel). C-D10 / R5: campaign and award eligibility is decided by date (dateIssued, or the L0 submit date for pending), never by importSource. An imported policy issued in the window counts; one issued in 2019 does not.',
     },
     {
       id: 'src/components/dashboard/AgentDashboard.jsx :: <AgentDashboardHomeV2 campaignPolicies>',
@@ -367,7 +367,7 @@ describe('prop-provenance guard — every policy array handed to a child is clas
       why: 'The campaign readout, C-D10, now via H3’s CampaignHeroCard (replaced CampaignCard on Home). The operator’s book is 100% imported, so the FILTERED array is empty here and the card would render TTD 0 against a real TTD 73,946.28.',
     },
     {
-      id: 'src/components/awards/AgentAwardsPanel.jsx :: <CampaignHeroCard policies>',
+      id: 'src/components/awards/AgentAwardsPanel.jsx :: <CampaignScreenWithTier policies>',
       provenance: 'unfiltered',
       why: 'H3’s campaign hero on the Awards tab is fed from `ledgerPolicies`, the same raw ledger fetch this file already uses for `awardRowsFromLedger` under R5/H2 — never `excludeImported`, so the campaign readout cannot disagree with the ledger-based awards beside it.',
     },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Plus, Upload, Loader2, AlertCircle, ArrowLeft, Info, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PROSPECTING_SOURCES } from '../../services/prospectInfoService';
@@ -8,9 +8,11 @@ import { getPolicyPlans } from '../../services/planCatalogService';
 import { getTodayTT } from '../../utils/dateInputs';
 import { applyLedgerFilter, filterCounts, LEDGER_FILTERS } from '../../lib/policyLedgerDerivation';
 import PipelineStrip from './policyLedger/PipelineStrip';
-import PolicyCard from './policyLedger/PolicyCard';
 import PolicyDrillDrawer from './policyLedger/PolicyDrillDrawer';
-import CampaignLensPanel from './policyLedger/CampaignLensPanel';
+import AwardLensPanel from './policyLedger/AwardLensPanel';
+import { ledgerExportDate } from '../../lib/policyCampaignLens';
+import { dayMonth } from '../../lib/awardLensView';
+import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
 import ImportPortfolioModal from './policyLedger/portfolioImport/ImportPortfolioModal';
 
 // Roles allowed to import an OIPA portfolio export into their own ledger.
@@ -92,7 +94,7 @@ const selectCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm 
 // `onPoliciesChanged` fires after every write this panel makes (create, status
 // transition, portfolio import) so a parent holding its own copy of the list —
 // the dashboard's production hero — can refetch instead of showing stale figures.
-export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, initialFilter, onPoliciesChanged }) {
+export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, initialFilter, onPoliciesChanged, ruleset = DEFAULT_RULESET_2026 }) {
   const { user, userProfile, tenantId, role } = useAuth();
   // Computed fresh per render so overnight-open sessions always show the real today.
   const today = getTodayTT();
@@ -127,6 +129,11 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
 
   // ── Portfolio import (P4c) ──
   const [importModalOpen, setImportModalOpen] = useState(false);
+
+  // The head-office list the ledger is standing on (C-D11) — read off the
+  // policy docs, never configured, so the header can't claim a date the data
+  // doesn't carry.
+  const exportDate = useMemo(() => ledgerExportDate(policies), [policies]);
 
   const loadLedger = useCallback(() => {
     if (!tenantId || !user?.uid) return;
@@ -266,6 +273,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
   if (view === 'list') {
     const counts = filterCounts(policies);
     const visible = applyLedgerFilter(policies, { filter, search });
+    const visibleIds = new Set(visible.map((p) => p.id));
 
     // §2 staggered-assemble — the drill drawer is a fixed-position overlay
     // rendered outside the `.stagger` container (same pattern as GamePlanV2's
@@ -275,7 +283,14 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
       <>
       <div className="flex flex-col gap-4 stagger" data-testid="policy-ledger-surface">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-bold text-ink">Policy Ledger</h2>
+          <div className="flex min-w-0 flex-col">
+            <h2 className="text-lg font-bold text-ink">Policy Ledger</h2>
+            {exportDate && (
+              <span className="font-mono text-[11px] uppercase text-ink-muted" data-testid="ledger-ho-as-of">
+                Head office list as of {dayMonth(exportDate)}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {IMPORT_PORTFOLIO_ROLES.has(role) && (
               <button
@@ -340,80 +355,61 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
             {/* Tier 1 */}
             <PipelineStrip policies={policies} />
 
-            {/* Item 3.4 — campaign lens (flag-gated; renders null + no fetch when OFF).
+            {/* L1 — the "Counts toward" award lens (docs/briefs/ledger-lens-build.md
+                § L1). Replaces the campaign-only lens AND the flat feed: the
+                list below the award card is now grouped Counting / Submitted,
+                not settled / Not counting here for the selected award.
 
-                CAMPAIGN ELIGIBILITY IS DECIDED BY DATE, NOT BY ORIGIN (C-D10).
-                This call site previously passed `excludeImported(policies)`
-                under dispatcher ruling 5e, to stop an imported historical book
-                earning campaign credit retroactively. The intent was right. The
-                mechanism was wrong, and the live ledger proved it: on
-                20 Sep 2026 the tenant held 229 policy docs, ALL imported and
-                none organic, so the origin filter hid 100% of the operator's
-                campaign production. The lens rendered TTD 0 against a real
-                3 apps / TTD 73,946.28 — a confident wrong number about money,
-                the same class of defect as the ×0 multiplier fixed in #871.
-
-                The raw array is passed instead, and policyCampaignLens applies
-                the test the signed document actually states: settled/confirmed
-                AND `dateIssued` inside the campaign window. An imported policy
-                issued 15 Aug 2026 and in force counts; one issued in 2019 does
-                not — because of its DATE. Origin was only ever a proxy for age.
-
-                `excludeImported` is NOT weakened and NOT removed: it remains in
-                force, unchanged, for every other aggregating reader (the CRO
-                Delivery Register, getPoliciesForManager, useMyProduction,
-                financing; AgentAwardsPanel moved to the date test under R5).
-                Whether the rest should also move to
-                a date test is §6 Q1 — an operator judgement, not this slice's. */}
-            <CampaignLensPanel policies={policies} />
-
-            {/* Tier 2 — filter chips + search */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex gap-1 p-1 bg-surface-muted border border-border rounded-[10px]" role="tablist" aria-label="Filter policies">
-                {LEDGER_FILTERS.map((f) => {
-                  const on = filter === f.key;
-                  return (
-                    <button
-                      key={f.key}
-                      role="tab"
-                      aria-selected={on}
-                      onClick={() => setFilter(f.key)}
-                      className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
-                        on ? 'bg-card text-ink border border-border shadow-sm' : 'text-ink-muted hover:text-ink'
-                      }`}
-                      data-testid={`ledger-filter-${f.key}`}
-                    >
-                      {f.label}
-                      <span className={`font-mono text-[10px] px-1.5 rounded-full ${on ? 'bg-primary-tint text-primary' : 'text-ink-muted'}`}>{counts[f.key]}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex-1" />
-              <div className="flex items-center gap-2 px-3 h-11 bg-card border border-border rounded-lg w-full sm:w-56">
-                <Search size={15} className="text-ink-muted shrink-0" />
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search owner, plan…"
-                  className="bg-transparent text-[12.5px] text-ink w-full focus:outline-none"
-                  aria-label="Search policies"
-                  data-testid="ledger-search"
-                />
-              </div>
-            </div>
-
-            {/* Tier 3 — feed */}
-            <div className="flex flex-col gap-2.5" data-testid="ledger-feed">
-              {visible.length === 0 ? (
-                <div className="card text-center py-8">
-                  <p className="text-sm text-ink-muted">No policies match this filter.</p>
+                ELIGIBILITY IS DECIDED BY DATE, NOT BY ORIGIN (C-D10, R5). The
+                RAW policy array is passed — never `excludeImported(policies)`:
+                on 20 Sep 2026 the tenant held 229 policy docs, ALL imported, so
+                an origin filter hid 100% of the operator's production (TTD 0
+                against a real 3 apps / TTD 73,946.28). The engines apply the
+                date test instead. The existing filter chips + search still
+                narrow the LIST (visibleIds); the award totals never narrow. */}
+            <AwardLensPanel
+              policies={policies}
+              visibleIds={visibleIds}
+              onOpen={openDrawer}
+              ruleset={ruleset}
+              toolbar={(
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex gap-1 p-1 bg-surface-muted border border-border rounded-[10px]" role="tablist" aria-label="Filter policies">
+                    {LEDGER_FILTERS.map((f) => {
+                      const on = filter === f.key;
+                      return (
+                        <button
+                          key={f.key}
+                          role="tab"
+                          aria-selected={on}
+                          onClick={() => setFilter(f.key)}
+                          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
+                            on ? 'bg-card text-ink border border-border shadow-sm' : 'text-ink-muted hover:text-ink'
+                          }`}
+                          data-testid={`ledger-filter-${f.key}`}
+                        >
+                          {f.label}
+                          <span className={`font-mono text-[10px] px-1.5 rounded-full ${on ? 'bg-primary-tint text-primary' : 'text-ink-muted'}`}>{counts[f.key]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex-1" />
+                  <div className="flex items-center gap-2 px-3 h-11 bg-card border border-border rounded-lg w-full sm:w-56">
+                    <Search size={15} className="text-ink-muted shrink-0" />
+                    <input
+                      type="search"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search owner, plan…"
+                      className="bg-transparent text-[12.5px] text-ink w-full focus:outline-none"
+                      aria-label="Search policies"
+                      data-testid="ledger-search"
+                    />
+                  </div>
                 </div>
-              ) : (
-                visible.map((p) => <PolicyCard key={p.id} policy={p} onOpen={openDrawer} />)
               )}
-            </div>
+            />
 
             {policies.some((p) => p.productLine && p.productLine !== 'life') && (
               <p className="flex items-center gap-1 text-xs text-ink-muted">

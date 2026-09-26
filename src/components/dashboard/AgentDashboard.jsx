@@ -948,6 +948,7 @@ export default function AgentDashboard() {
           onPrefillConsumed={() => setPrefillPolicy(null)}
           initialFilter={policyLedgerFilter}
           onPoliciesChanged={markPoliciesStale}
+          ruleset={awardsRuleset}
         />
       )}
 

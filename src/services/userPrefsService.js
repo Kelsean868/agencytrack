@@ -195,3 +195,33 @@ export async function setCommissionScenarios(tenantId, uid, scenarios) {
     { merge: true },
   );
 }
+
+/**
+ * Persist the agent's chosen "My target tier" for one campaign (Policy Ledger
+ * L1 — docs/briefs/ledger-lens-build.md § L1 item 2). Stored under
+ * `ledgerTargetTiers.{campaignId}` on the SAME `prefs/app` doc, deep-merged so a
+ * write for one campaign preserves every other campaign's choice and every
+ * sibling pref (pinnedNav / menuLayout / navOrder / settings / scenarios).
+ *
+ * The value is the tier's NAME (e.g. 'Champion') — the key the tier ladder and
+ * `derivePolicyLens` already match tiers by. No rules change: the owner-only
+ * `prefs/{prefId}` block permits any field on this doc.
+ *
+ * @param {string} tenantId
+ * @param {string} uid
+ * @param {string} campaignId
+ * @param {string} tierName
+ * @returns {Promise<void>}
+ */
+export async function setLedgerTargetTier(tenantId, uid, campaignId, tierName) {
+  if (!tenantId || !uid) throw new Error('setLedgerTargetTier requires tenantId and uid');
+  if (!campaignId) throw new Error('setLedgerTargetTier requires a campaignId');
+  if (typeof tierName !== 'string' || tierName === '') {
+    throw new Error('setLedgerTargetTier requires a tier name');
+  }
+  await setDoc(
+    prefsDocRef(tenantId, uid),
+    { ledgerTargetTiers: { [campaignId]: tierName }, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}
