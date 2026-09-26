@@ -59,20 +59,25 @@ const CASES = ['campaign', 'campaign-vip', 'month', 'quarter', 'annual', 'mdrt',
 const results = [];
 const consoleErrors = [];
 
-async function openTab(page, testId) {
-  const sel = `[data-testid="${testId}"]`;
-  const loc = page.locator(sel).first();
+async function openTab(page, testId, label) {
+  // The desktop sidebar and the mobile bottom nav / More sheet both carry the
+  // same testid; only the visible one is clickable at a given viewport.
+  const loc = page.locator(`[data-testid="${testId}"]:visible`).first();
   if (await loc.isVisible({ timeout: 4000 }).catch(() => false)) {
     await loc.click();
     return true;
   }
-  const more = page.getByRole('button', { name: /more/i }).first();
+  const more = page.locator('[data-testid="bottomnav-more"]:visible').first();
   if (await more.isVisible({ timeout: 2000 }).catch(() => false)) {
     await more.click();
-    if (await loc.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await loc.click();
+    // The More sheet's rows carry no testid — match the visible label.
+    const inSheet = page.getByText(label, { exact: true }).locator('visible=true').first();
+    if (await inSheet.count()) {
+      await inSheet.scrollIntoViewIfNeeded().catch(() => {});
+      await inSheet.click();
       return true;
     }
+    await page.keyboard.press('Escape').catch(() => {});
   }
   return false;
 }
@@ -101,7 +106,7 @@ async function previewPass(browser) {
         await waitForTheme(page, theme, 8000).catch((e) => console.log(`  [warn] ${e.message}`));
         await page.waitForTimeout(1500);
 
-        if (await openTab(page, 'agent-tab-policy-ledger')) {
+        if (await openTab(page, 'agent-tab-policy-ledger', 'Policy Ledger')) {
           await page.locator('[data-testid="policy-ledger-surface"]').waitFor({ timeout: 15000 }).catch(() => {});
           await page.waitForTimeout(1500);
           const lens = await page.locator('[data-testid="award-lens-panel"]').count();
@@ -114,7 +119,7 @@ async function previewPass(browser) {
           results.push({ pass: 'preview', view: 'ledger', vp: vp.name, theme, status: 'SKIP', note: 'Policy Ledger tab not reachable' });
         }
 
-        if (await openTab(page, 'agent-tab-awards')) {
+        if (await openTab(page, 'agent-tab-awards', 'Awards')) {
           await page.waitForTimeout(2500);
           const screen = await page.locator('[data-testid="campaign-screen"]').count();
           const shot = resolve(OUT_DIR, `preview-awards-${vp.name}-${theme}.png`);
