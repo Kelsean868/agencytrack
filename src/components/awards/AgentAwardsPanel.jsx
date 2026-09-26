@@ -302,6 +302,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
           {activeCampaigns.map((c) => (
             <CampaignHeroCard
               key={c.id}
+              variant="screen"
               campaign={c}
               policies={ledgerPolicies ?? []}
               persistencyRecords={persistency}
