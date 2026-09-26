@@ -155,7 +155,7 @@ function targetLine(lens, pace) {
     return `TTD ${formatCompact(pace.apiPerWeek)} a week to reach ${tierName}.`;
   }
   // MDRT
-  if (target.api == null) return 'No MDRT target is set in the awards ruleset.';
+  if (target.api == null) return `No MDRT line is configured for ${award.year}.`;
   if (!pace) return `MDRT ${award.year}: the year has ended.`;
   if (pace.apiRemaining <= 0) return 'MDRT target reached.';
   return `TTD ${formatCompact(pace.apiPerWeek)} a week to qualify by ${dayMonth(award.end)}.`;

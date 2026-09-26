@@ -4,7 +4,8 @@ import {
   awardRowsFromLedger, FAMILY_LENS_REASON,
 } from '../ledgerProduction';
 import { derivePolicyLens } from '../policyCampaignLens';
-import { awardLensPeriods } from '../../utils/awardsEngine';
+import { awardLensPeriods, mdrtLineFor } from '../../utils/awardsEngine';
+import { MDRT_THRESHOLDS_2026 } from '../../config/mdrtThresholds/2026';
 import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
 import { TODAY, EXPORT_DATE, CHRISTMAS, POLICIES } from './fixtures/awardLensFixtures';
 
@@ -38,10 +39,18 @@ describe('awardLensPeriods — the selector, from the ruleset and the period mat
     expect(periods.past.some((a) => a.key.startsWith('month:2024'))).toBe(false);
   });
 
-  it('MDRT target comes from the ruleset, not a constant', () => {
-    expect(byKey('mdrt:2026').target).toBe(DEFAULT_RULESET_2026.mdrtAward.apiThreshold);
-    const custom = awardLensPeriods({ today: TODAY, ruleset: { ...DEFAULT_RULESET_2026, mdrtAward: { apiThreshold: 688_800 } } });
+  it('MDRT target is the SAME line the Home hero and MdrtTracker read (not the awards ruleset)', () => {
+    expect(byKey('mdrt:2026').target).toBe(MDRT_THRESHOLDS_2026.mdrt);
+    expect(byKey('mdrt:2026').target).toBe(688_800);
+    // The awards ruleset's own MDRT figure does not move the ledger's MDRT card.
+    const custom = awardLensPeriods({ today: TODAY, ruleset: { ...DEFAULT_RULESET_2026, mdrtAward: { apiThreshold: 1 } } });
     expect(custom.current.find((a) => a.kind === 'mdrt').target).toBe(688_800);
+  });
+
+  it('a year with no published MDRT line gets no target, never a guess', () => {
+    expect(mdrtLineFor(2031)).toBeNull();
+    const later = awardLensPeriods({ today: '2031-03-01' });
+    expect(later.current.find((a) => a.kind === 'mdrt').target).toBeNull();
   });
 
   it('flags the Rule 10 suppressor on months/quarters the campaign covers, not on others', () => {
@@ -147,8 +156,8 @@ describe('deriveAwardLens — annual awards and MDRT with a family policy', () =
     expect(mdrt.settled.api).toBeCloseTo(settledAPI + selfFamilyAPI, 2);
   });
 
-  it('MDRT carries the ruleset target; annual has none (ranked)', () => {
-    expect(mdrt.target.api).toBe(DEFAULT_RULESET_2026.mdrtAward.apiThreshold);
+  it('MDRT carries the MDRT line (688,800); annual has none (ranked)', () => {
+    expect(mdrt.target.api).toBe(MDRT_THRESHOLDS_2026.mdrt);
     expect(annual.target.api).toBeNull();
   });
 });

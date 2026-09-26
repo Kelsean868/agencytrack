@@ -1,6 +1,7 @@
 // Pure computation engine — zero Firebase imports, zero side effects
 import { extractFields, extractTotalProductionCredit } from './extractFields';
 import { DEFAULT_RULESET_2026 } from '../config/awardsRuleset/2026';
+import { MDRT_THRESHOLDS_2026 } from '../config/mdrtThresholds/2026';
 
 const p = (v) => parseFloat(v) || 0;
 
@@ -745,7 +746,8 @@ export function isPersistencyOnlyBlock(award) {
 //
 // The periods the ledger's "Counts toward" selector offers, built from the SAME
 // period arithmetic computeAgentAwards uses (monthKey / getQuarter /
-// getQuarterMonths) and the ruleset (MDRT target, the BDO/DSO monthly
+// getQuarterMonths), the MDRT line (mdrtThresholds — the Home hero's source)
+// and the ruleset (the BDO/DSO monthly
 // exclusion) — never a hard-coded list. Each descriptor is plain data that
 // `deriveAwardLens` (src/lib/ledgerProduction.js) reads to classify policies.
 //
@@ -753,7 +755,7 @@ export function isPersistencyOnlyBlock(award) {
 //   key, kind: 'campaign'|'month'|'quarter'|'annual'|'mdrt',
 //   label (selector text), periodName (sentence text), start, end (YYYY-MM-DD),
 //   year, closed, ranked, includeFamily, category (getPeriodCtx category),
-//   target (MDRT API threshold, else null), campaign (campaign only),
+//   target (MDRT line, else null), campaign (campaign only),
 //   suppressor (Rule 10 campaign withholding the cash, or null),
 // }
 // ──────────────────────────────────────────────────────
@@ -766,6 +768,23 @@ function lastDayOfMonth(year, month) {
 
 function isoDate(year, month, day) {
   return `${monthKey(year, month)}-${String(day).padStart(2, '0')}`;
+}
+
+// The MDRT line the ledger's "MDRT <year>" card measures against — the SAME
+// constant the Home hero (homeDerivations / HeroCard) and MdrtTracker read, so
+// an agent never sees two MDRT targets (orchestrator ruling, PR #981). Year-
+// keyed: a year with no published line gets NO target (the card hides the
+// ring) rather than a guess. NOTE: `ruleset.mdrtAward.apiThreshold` (500,000)
+// still drives the Awards tab's MDRT award — FOLLOW_UPS § MDRT award line.
+const MDRT_LINE_BY_YEAR = Object.freeze({ 2026: MDRT_THRESHOLDS_2026.mdrt });
+
+/** The MDRT API line for `year`, or null when none is published for it. */
+export function mdrtLineFor(year) {
+  const line = MDRT_LINE_BY_YEAR[year];
+  if (line == null && import.meta.env?.DEV) {
+    console.warn(`[awardsEngine] no MDRT line configured for ${year} — MDRT card shows no target`);
+  }
+  return line ?? null;
 }
 
 /** The Rule 10 recognition-only prize string, exported so the ledger names it identically. */
@@ -865,7 +884,7 @@ export function awardLensPeriods({ today, ruleset = DEFAULT_RULESET_2026, campai
   // says so — the same gate computeAgentAwards applies.
   const monthlyApplies = !(agentProfile?.isBdoDso && ruleset?.advisorMonth?.excludesBdoDso);
 
-  const mdrtTarget = Number(ruleset?.mdrtAward?.apiThreshold);
+  const mdrtTarget = mdrtLineFor(year);
   const yearStart = isoDate(year, 1, 1);
   const yearEnd = isoDate(year, 12, 31);
 
@@ -882,7 +901,7 @@ export function awardLensPeriods({ today, ruleset = DEFAULT_RULESET_2026, campai
       key: `mdrt:${year}`, kind: 'mdrt', label: `MDRT ${year}`, periodName: `MDRT ${year}`,
       start: yearStart, end: yearEnd, year, closed: false,
       ranked: false, includeFamily: true, category: 'annual',
-      target: Number.isFinite(mdrtTarget) && mdrtTarget > 0 ? mdrtTarget : null,
+      target: mdrtTarget,
       suppressor: null,
     },
   ];

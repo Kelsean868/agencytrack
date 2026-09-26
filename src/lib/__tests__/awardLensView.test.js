@@ -89,7 +89,8 @@ describe('awardLensSummary — MDRT', () => {
     const s = summaryFor('mdrt:2026');
     expect(s.hasRing).toBe(true);
     expect(s.title).toBe('Million Dollar Round Table');
-    expect(s.targetLabel).toBe('500,000');
+    expect(s.targetLabel).toBe('688,800');
+    expect(s.pct).toBe(14); // 96,146 / 688,800
     expect(s.settledLabel).toBe('96,146');
     expect(s.line1).toMatch(/^TTD [\d.]+K a week to qualify by 31 Dec\.$/);
     expect(s.line2).toBe('Family and self policies count here.');

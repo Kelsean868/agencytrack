@@ -123,12 +123,12 @@ describe('AwardLensPanel — card variant per award type', () => {
     expect(within(card()).getByText('Submitted — waiting')).toBeInTheDocument();
   });
 
-  it('MDRT: ring against the ruleset target, family counts', async () => {
+  it('MDRT: ring against the MDRT line (688,800, same as Home), family counts', async () => {
     renderPanel();
     await waitForCampaign();
     fireEvent.click(screen.getByTestId('award-lens-option-mdrt:2026'));
     expect(within(card()).getByTestId('award-lens-ring')).toBeInTheDocument();
-    expect(within(card()).getByText(/^of 500,000 ·/)).toBeInTheDocument();
+    expect(within(card()).getByText(/^of 688,800 ·/)).toBeInTheDocument();
     expect(screen.getByTestId('award-lens-line2')).toHaveTextContent('Family and self policies count here.');
     expect(groupCount('counting')).toBe(5);
   });
