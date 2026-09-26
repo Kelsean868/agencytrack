@@ -29,6 +29,13 @@ jobs:
       - name: Build
         run: npm run build
 
+      # SEC-16: dependency vulnerability gate for the root package. Root is
+      # currently clean (`npm audit --omit=dev` → 0 vulnerabilities); this
+      # step keeps it that way. No continue-on-error — a new high/critical
+      # here should fail the build.
+      - name: Audit dependencies (root, high/critical)
+        run: npm audit --omit=dev --audit-level=high
+
   # ── Firestore rules tests (SEC-21) — runs on every PR ────────────────────────
   #
   # Excluded from the default `npm test` (vitest run) by vite.config.js's
@@ -97,6 +104,21 @@ jobs:
       - name: Run functions tests
         working-directory: functions
         run: npm test
+
+      # SEC-16: dependency vulnerability gate for functions/. `npm audit fix`
+      # (non-force) cleared the critical (websocket-driver) and all high items
+      # (@grpc/grpc-js, brace-expansion, fast-xml-builder, form-data,
+      # protobufjs) — see the PR body for before/after summary lines. What's
+      # left is a moderate-only uuid/exceljs/firebase-admin transitive chain
+      # whose only non-force fix is a forced exceljs@3.4.0 downgrade, which
+      # this brief explicitly forbids (breaking change to a used export
+      # path). `--audit-level=high` therefore already exits 0 today with no
+      # continue-on-error needed; if a future dependency bump reintroduces a
+      # high/critical that still can't be cleared without --force, add
+      # `continue-on-error: true` HERE (functions only) and say so in that PR.
+      - name: Audit dependencies (functions/, high/critical)
+        working-directory: functions
+        run: npm audit --omit=dev --audit-level=high
 
   # ── Contrast sweep — REPORTING MODE, deliberately non-blocking ──────────────
   #

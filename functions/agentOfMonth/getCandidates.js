@@ -29,6 +29,19 @@ exports.getAgentOfMonthCandidates = functions.https.onCall(async (data, context)
 
   const db = admin.firestore();
 
+  // SEC-06: a branch_manager may only read candidates for their OWN branch —
+  // never a caller-supplied branchId. Free choice is kept for sales_manager,
+  // tenant_admin and platform_admin. Mirrors the same guard in setAgentOfMonth.js.
+  if (role === 'branch_manager') {
+    const callerSnap = await db.doc(`tenants/${tenantId}/users/${context.auth.uid}`).get();
+    const callerBranchId = callerSnap.exists ? callerSnap.data().branchId : undefined;
+    const { branchId: tokenBranchId } = context.auth.token;
+    const ownBranchId = (tokenBranchId && tokenBranchId === callerBranchId) ? tokenBranchId : callerBranchId;
+    if (branchId !== ownBranchId) {
+      throw new functions.https.HttpsError('permission-denied', 'Branch managers may only act on their own branch.');
+    }
+  }
+
   // Fetch all active agents in the branch (single query, cheap for pilot scale)
   const agentsSnap = await db
     .collection(`tenants/${tenantId}/users`)

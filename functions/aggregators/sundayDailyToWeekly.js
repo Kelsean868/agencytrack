@@ -107,31 +107,45 @@ async function runAggregation({ tenantId, weekStarting, db, logger = console }) 
         continue;
       }
 
+      // BUG-09 fix: draftRef.get() → skip-if-submitted → later draftRef.set()
+      // was a TOCTOU race — an agent submitting between the read and the
+      // write had their submitted report silently overwritten by the cron's
+      // stale draft. Moving the status check and the write into one
+      // runTransaction makes the check-then-act atomic: if the doc is
+      // `submitted` at the moment the transaction actually reads it, the
+      // write inside that same transaction is skipped.
       const draftRef = db.doc(draftDocPath(tenantId, agent.id, weekStarting));
-      const existing = await draftRef.get();
-      if (existing.exists && existing.data().status === 'submitted') {
-        skippedSubmitted += 1;
-        continue;
-      }
-
       const dailyEntries = dailySnap.docs.map((d) => d.data());
       const rollup = aggregateDailyToWeekly(dailyEntries, agent.commissionRate);
 
-      await draftRef.set(
-        {
-          ...rollup,
-          userId: agent.id,
-          agentId: agent.id,
-          agentName: agent.name || agent.email || agent.id,
-          unitId: agent.unitId ?? null,
-          branchId: agent.branchId ?? null,
-          weekStarting,
-          status: 'draft',
-          aggregatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+      const wasSkipped = await db.runTransaction(async (tx) => {
+        const existing = await tx.get(draftRef);
+        if (existing.exists && existing.data().status === 'submitted') {
+          return true;
+        }
+        tx.set(
+          draftRef,
+          {
+            ...rollup,
+            userId: agent.id,
+            agentId: agent.id,
+            agentName: agent.name || agent.email || agent.id,
+            unitId: agent.unitId ?? null,
+            branchId: agent.branchId ?? null,
+            weekStarting,
+            status: 'draft',
+            aggregatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+        return false;
+      });
+
+      if (wasSkipped) {
+        skippedSubmitted += 1;
+        continue;
+      }
       aggregated += 1;
     } catch (err) {
       logger.error(`[sundayAggregator] agent=${agent.id} failed:`, err);
