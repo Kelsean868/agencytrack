@@ -6,7 +6,7 @@
 import React from 'react';
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
-import ProgressDonut from '../ProgressDonut';
+import ProgressDonut, { RingLegend } from '../ProgressDonut';
 import { donutGeometry, DONUT_CIRCUMFERENCE } from '../progressDonutGeometry';
 
 function setReducedMotion(reduced) {
@@ -100,5 +100,67 @@ describe('ProgressDonut', () => {
     const img = screen.getByRole('img');
     expect(img).toHaveTextContent('13%');
     expect(img).toHaveTextContent('OF MDRT');
+  });
+});
+
+// L0 — the two-layer ring: an optional `pending` value draws a faint arc
+// (settled + pending) behind the existing solid arc (settled only).
+describe('ProgressDonut — pending (two-layer ring, L0)', () => {
+  it('no pending (or 0): renders exactly as before, no faint arc', () => {
+    render(<ProgressDonut value={50} max={100} ariaLabel="x" />);
+    expect(screen.queryByTestId('donut-arc-pending')).not.toBeInTheDocument();
+    render(<ProgressDonut value={50} max={100} pending={0} ariaLabel="y" />);
+    expect(screen.getAllByRole('img')).toHaveLength(2);
+    expect(screen.queryAllByTestId('donut-arc-pending')).toHaveLength(0);
+  });
+
+  it('faint arc length is (value + pending) ÷ max of the circumference', () => {
+    render(<ProgressDonut value={73946} max={275000} pending={36000} ariaLabel="x" />);
+    expect(dashOf(screen.getByTestId('donut-arc-pending'))).toBeCloseTo(((73946 + 36000) / 275000) * DONUT_CIRCUMFERENCE, 6);
+    // The solid arc is unaffected by pending.
+    expect(dashOf(screen.getByTestId('donut-arc'))).toBeCloseTo((73946 / 275000) * DONUT_CIRCUMFERENCE, 6);
+  });
+
+  it('clamps the faint arc at a full ring when settled + pending exceeds max', () => {
+    render(<ProgressDonut value={90} max={100} pending={40} ariaLabel="x" />);
+    expect(dashOf(screen.getByTestId('donut-arc-pending'))).toBeCloseTo(DONUT_CIRCUMFERENCE, 6);
+  });
+
+  it('a negative or non-finite pending is treated as no pending', () => {
+    render(<ProgressDonut value={50} max={100} pending={-5} ariaLabel="x" />);
+    expect(screen.queryByTestId('donut-arc-pending')).not.toBeInTheDocument();
+    render(<ProgressDonut value={50} max={100} pending={NaN} ariaLabel="y" />);
+    expect(screen.queryAllByTestId('donut-arc-pending')).toHaveLength(0);
+  });
+
+  it('the faint arc renders BEHIND the solid arc in DOM order (solid paints on top)', () => {
+    render(<ProgressDonut value={50} max={100} pending={20} ariaLabel="x" />);
+    const svg = screen.getByRole('img');
+    const pendingIdx = [...svg.children].findIndex((el) => el.getAttribute('data-testid') === 'donut-arc-pending');
+    const solidIdx = [...svg.children].findIndex((el) => el.getAttribute('data-testid') === 'donut-arc');
+    expect(pendingIdx).toBeGreaterThanOrEqual(0);
+    expect(pendingIdx).toBeLessThan(solidIdx);
+  });
+});
+
+describe('RingLegend', () => {
+  it('renders both dots and the exact copy when shown', () => {
+    render(<RingLegend show />);
+    const legend = screen.getByTestId('ring-legend');
+    expect(legend).toHaveTextContent('Settled — counts');
+    expect(legend).toHaveTextContent('Submitted — waiting to settle');
+  });
+
+  it('renders nothing when show is false (hidden when pending is 0)', () => {
+    render(<RingLegend show={false} />);
+    expect(screen.queryByTestId('ring-legend')).not.toBeInTheDocument();
+  });
+
+  it('uses hero-ink tokens for tone="onHero" and primary tokens for tone="teal"', () => {
+    const { unmount } = render(<RingLegend show tone="onHero" />);
+    expect(screen.getByTestId('ring-legend').className).toContain('hero-ink-muted-teal');
+    unmount();
+    render(<RingLegend show tone="teal" />);
+    expect(screen.getByTestId('ring-legend').className).toContain('text-ink-muted');
   });
 });

@@ -32,7 +32,7 @@ import {
   RULE_7_CREDIT_TABLE,
   DEFAULT_INC_PPP_APP_THRESHOLD,
 } from './policyCampaignLens';
-import { isConfirmed } from './policyStatusTokens';
+import { isConfirmed, policyRole } from './policyStatusTokens';
 import { STATUS_SOURCE_IMPORT } from './portfolioImport/oipaImportConfig';
 import { extractTotalProductionCredit } from '../utils/extractFields';
 
@@ -85,6 +85,16 @@ function isSettled(policy) {
 // ntu, denied — has.
 function hasGoneIn(policy) {
   return policy?.status !== 'written';
+}
+
+// L0 — "in the pipeline": gone in, not settled/confirmed, and not a terminal
+// EXIT (ntu, denied, lapsed). Reuses policyStatusTokens.js's own role
+// classification (`hard` = ntu/denied, `closed` = lapsed) rather than a second
+// hardcoded status list — the orchestrator's ruling for the two-layer ring's
+// "pending" arc.
+function isTerminalOut(policy) {
+  const role = policyRole(policy);
+  return role === 'hard' || role === 'closed';
 }
 
 // Tatil Life production is Life business. An absent productLine is Life,
@@ -185,9 +195,20 @@ export function awardRowsFromLedger(policies) {
  *   year: number,
  *   settled:   { api: number, apps: number, count: number, fromHeadOffice: number, selfConfirmed: number },
  *   submitted: { api: number, apps: number, count: number, datedByIssue: boolean, weekApi: number },
+ *   pending:   { api: number, apps: number, count: number },
  *   weekly:    { ytdApi: number, weekApi: number },
  *   mismatch:  { ytd: number, week: number },
  * }}
+ *
+ * `pending` (L0, two-layer ring) is NOT `submitted.api - settled.api` — that
+ * subtraction mixes two different date bases (submitted is dated by submit
+ * date, settled by issue date) and is not "waiting to settle". `pending` is
+ * its own pass: Life policies that have gone in (not `written`), are not yet
+ * settled/confirmed, and have not exited terminally (ntu / denied / lapsed —
+ * see `isTerminalOut`), dated the same way as `submitted` (submit date, else
+ * written date, else issue date) and falling in the year. Self/family
+ * policies are included here, same as the rest of this function (the hero
+ * counts them; the campaign lens excludes them separately).
  * `mismatch` is weekly minus ledger-submitted: positive means the weekly
  * reports claim more than the ledger holds.
  *
@@ -202,6 +223,7 @@ export function deriveYearProduction(policies, { year, weekStarting = null, subm
   const end = weekEnd(weekStarting);
   const settled = { api: 0, apps: 0, count: 0, fromHeadOffice: 0, selfConfirmed: 0 };
   const submitted = { api: 0, apps: 0, count: 0, datedByIssue: false, weekApi: 0 };
+  const pending = { api: 0, apps: 0, count: 0 };
 
   for (const p of Array.isArray(policies) ? policies : []) {
     if (!p || !isLife(p)) continue;
@@ -224,18 +246,26 @@ export function deriveYearProduction(policies, { year, weekStarting = null, subm
         if (byIssue) submitted.datedByIssue = true;
         if (end && date >= weekStarting && date <= end) submitted.weekApi += credit.api;
       }
+
+      if (!isSettled(p) && !isTerminalOut(p) && inYear(date, y)) {
+        pending.api += credit.api;
+        pending.apps += credit.apps;
+        pending.count += 1;
+      }
     }
   }
 
   settled.api = cents(settled.api);
   submitted.api = cents(submitted.api);
   submitted.weekApi = cents(submitted.weekApi);
+  pending.api = cents(pending.api);
 
   const weekly = weeklyReported(submissions, y, weekStarting);
   return {
     year: y,
     settled,
     submitted,
+    pending,
     weekly,
     mismatch: {
       ytd: cents(weekly.ytdApi - submitted.api),

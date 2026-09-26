@@ -203,6 +203,9 @@ describe('C3 — the settlement window (C-D10)', () => {
     const c = policyContribution(policy({ status: 'submitted', dateIssued: null }), CHRISTMAS);
     expect(c.state).toBe('pending');
     expect(c.reason).toBe('Awaiting settlement');
+    // value/apps (what actually counted) are untouched by L0 — still 0.
+    expect(c.value).toBe(0);
+    expect(c.apps).toBe(0);
   });
 
   it('moves a zero-credit category (SPIA) to EXCLUDED with its own reason', () => {
@@ -369,5 +372,58 @@ describe('C2 item 7 — CampaignCard and CampaignLensPanel derive from ONE call'
     const lens = derivePolicyLens(withPE, CHRISTMAS, {});
     expect(lens.apps.current).toBe(4);
     expect(lens.api.current).toBeCloseTo(73_946.28, 2); // API unchanged
+  });
+});
+
+// L0 — the two-layer ring's "pending" would-be credit, settlement-window
+// (credit-table) path. NEW fields only — value/apps/state of every
+// contribution (pending included) are unchanged from the assertions above.
+describe('L0 — pendingValue / pendingApps (settlement-window path)', () => {
+  it('a submitted ordinary policy in the window earns its would-be full credit as pendingValue/pendingApps', () => {
+    const c = policyContribution(policy({ status: 'submitted', newBusinessType: 'nb_ordinary', proposedAPI: 24_000 }), CHRISTMAS);
+    expect(c.state).toBe('pending');
+    expect(c.pendingValue).toBe(24_000);
+    expect(c.pendingApps).toBe(1);
+    expect(c.value).toBe(0); // unchanged
+    expect(c.apps).toBe(0); // unchanged
+  });
+
+  it('a submitted Platinum Edge earns pendingApps 1 / pendingValue 0, same as if it had settled', () => {
+    const c = policyContribution(policy({ status: 'submitted', newBusinessType: 'platinum_edge', proposedAPI: 40_000 }), CHRISTMAS);
+    expect(c.pendingApps).toBe(1);
+    expect(c.pendingValue).toBe(0);
+  });
+
+  it('a submitted SPIA earns nothing pending either (0/0 under the same table)', () => {
+    const c = policyContribution(policy({ status: 'submitted', newBusinessType: 'spia', proposedAPI: 90_000 }), CHRISTMAS);
+    expect(c.pendingValue).toBe(0);
+    expect(c.pendingApps).toBe(0);
+  });
+
+  it('a pending policy with no issue date still gets a would-be credit (creditFor does not need dateIssued)', () => {
+    const c = policyContribution(policy({ status: 'submitted', dateIssued: null, newBusinessType: 'nb_ordinary', proposedAPI: 10_000 }), CHRISTMAS);
+    expect(c.state).toBe('pending');
+    expect(c.pendingValue).toBe(10_000);
+    expect(c.pendingApps).toBe(1);
+  });
+
+  it('derivePolicyLens rolls pending contributions up into lens.pending, without touching lens.api/apps.current', () => {
+    const policies = [
+      policy({ id: 'settled', newBusinessType: 'nb_ordinary', proposedAPI: 24_000, status: 'settled' }),
+      policy({ id: 'pend1', newBusinessType: 'nb_ordinary', proposedAPI: 36_000, status: 'submitted' }),
+      policy({ id: 'pend2', newBusinessType: 'platinum_edge', proposedAPI: 5_000, status: 'rated' }),
+    ];
+    const lens = derivePolicyLens(policies, CHRISTMAS, {});
+    expect(lens.api.current).toBe(24_000); // unaffected by pending
+    expect(lens.apps.current).toBe(1);
+    expect(lens.pending).toEqual({ api: 36_000, apps: 2, count: 2 }); // 36,000 + 0; 1 app + 1 app
+  });
+
+  it('a family/self policy contributes nothing to lens.pending (excluded before the pending branch runs)', () => {
+    const policies = [
+      policy({ id: 'fam', isSelfOrFamily: true, status: 'submitted', newBusinessType: 'nb_ordinary', proposedAPI: 50_000 }),
+    ];
+    const lens = derivePolicyLens(policies, CHRISTMAS, {});
+    expect(lens.pending).toEqual({ api: 0, apps: 0, count: 0 });
   });
 });

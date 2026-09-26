@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import ProgressDonut from '../dashboard/ProgressDonut';
+import ProgressDonut, { RingLegend } from '../dashboard/ProgressDonut';
 import { formatCompact, formatAppsRange } from '../../lib/campaignPace';
 import { whatIfProjection, clampToWhatIfStep, WHAT_IF_MIN, WHAT_IF_MAX, WHAT_IF_STEP } from '../../lib/campaignWhatIf';
 import { outlookDateLabel, outlookMonthShortLabel } from '../persistency/outlookLabels';
@@ -33,7 +33,7 @@ function pluralApps(n) {
 
 // ── Block 1 — Progress ───────────────────────────────────────────────────────
 
-function ProgressRow({ label, value, target, unit, valueLine, toGoLabel, tone = 'teal', tick = null, centerLabel, ariaLabel, testId, note }) {
+function ProgressRow({ label, value, target, unit, valueLine, toGoLabel, tone = 'teal', tick = null, pending = null, centerLabel, ariaLabel, testId, note }) {
   return (
     <div
       className="flex items-center gap-3.5 py-3 border-b border-border last:border-b-0 lg:flex-col lg:items-center lg:gap-2.5 lg:border-b-0 lg:rounded-2xl lg:border lg:border-border lg:bg-card lg:p-[18px] lg:text-center"
@@ -42,6 +42,7 @@ function ProgressRow({ label, value, target, unit, valueLine, toGoLabel, tone = 
       <ProgressDonut
         value={value ?? 0}
         max={target ?? value ?? 1}
+        pending={pending}
         tone={tone}
         tick={tick}
         centerLabel={centerLabel}
@@ -76,6 +77,9 @@ export function ProgressBlock({ lens, threshold, persistencyDisplayPct, persiste
   const apiToGo = lens.api.target != null ? Math.max(0, lens.api.target - lens.api.current) : null;
   const appsToGo = lens.apps.target != null ? Math.max(0, lens.apps.target - lens.apps.current) : null;
   const apiPct = lens.api.target > 0 ? Math.min(999, Math.round((lens.api.current / lens.api.target) * 100)) : 100;
+  const pendingApi = lens.pending?.api ?? 0;
+  const pendingApps = lens.pending?.apps ?? 0;
+  const hasPending = pendingApi > 0 || pendingApps > 0;
 
   return (
     <section
@@ -88,9 +92,12 @@ export function ProgressBlock({ lens, threshold, persistencyDisplayPct, persiste
         value={lens.api.current}
         target={lens.api.target}
         unit="TTD"
+        pending={pendingApi}
         centerLabel={`${apiPct}%`}
-        toGoLabel={apiToGo != null ? `${formatCompact(apiToGo)} to go` : 'Target met'}
-        ariaLabel={`API ${apiPct} percent of target`}
+        toGoLabel={apiToGo != null
+          ? `${formatCompact(apiToGo)} to go${pendingApi > 0 ? ` · +${formatCompact(pendingApi)} submitted, waiting to settle` : ''}`
+          : 'Target met'}
+        ariaLabel={`API ${apiPct} percent of target${pendingApi > 0 ? `; ${formatCurrency(pendingApi)} submitted, waiting to settle` : ''}`}
         testId="campaign-screen-progress-api"
       />
       <ProgressRow
@@ -98,9 +105,14 @@ export function ProgressBlock({ lens, threshold, persistencyDisplayPct, persiste
         value={lens.apps.current}
         target={lens.apps.target}
         unit="count"
+        pending={pendingApps}
         centerLabel={String(lens.apps.current)}
-        toGoLabel={appsToGo != null ? (appsToGo > 0 ? `${appsToGo} to go` : 'Target met') : 'Target met'}
-        ariaLabel={`${lens.apps.current} applications of ${lens.apps.target ?? lens.apps.current} target`}
+        toGoLabel={appsToGo != null
+          ? (appsToGo > 0
+            ? `${appsToGo} to go${pendingApps > 0 ? ` · +${pendingApps} submitted` : ''}`
+            : 'Target met')
+          : 'Target met'}
+        ariaLabel={`${lens.apps.current} applications of ${lens.apps.target ?? lens.apps.current} target${pendingApps > 0 ? `; ${pendingApps} submitted, waiting to settle` : ''}`}
         testId="campaign-screen-progress-apps"
       />
       <ProgressRow
@@ -121,6 +133,9 @@ export function ProgressBlock({ lens, threshold, persistencyDisplayPct, persiste
           : 'Persistency not yet known'}
         testId="campaign-screen-progress-persistency"
       />
+      <div className="col-span-full pb-3 pt-1 lg:pb-0">
+        <RingLegend show={hasPending} tone="teal" />
+      </div>
     </section>
   );
 }

@@ -158,6 +158,33 @@ describe('HeroCard — R4 reconciliation note (unchanged behaviour)', () => {
   });
 });
 
+describe('HeroCard — pending (L0, two-layer ring)', () => {
+  it('with pending: faint arc, "+x submitted" subline, and the legend', () => {
+    const p = production({ pending: { api: 36000, apps: 2, count: 2 } });
+    render(<HeroCard personalAnnualAPI={null} onSubmit={() => {}} production={p} />);
+    expect(screen.getByTestId('donut-arc-pending')).toBeInTheDocument();
+    expect(screen.getByTestId('hero-pending-subline')).toHaveTextContent('+36K submitted');
+    expect(screen.getByTestId('ring-legend')).toHaveTextContent('Settled — counts');
+    expect(screen.getByTestId('ring-legend')).toHaveTextContent('Submitted — waiting to settle');
+    expect(screen.getByTestId('hero-donut')).toHaveAttribute('aria-label', expect.stringContaining('waiting to settle'));
+  });
+
+  it('with no pending: no faint arc, no subline, no legend', () => {
+    const p = production({ pending: { api: 0, apps: 0, count: 0 } });
+    render(<HeroCard personalAnnualAPI={null} onSubmit={() => {}} production={p} />);
+    expect(screen.queryByTestId('donut-arc-pending')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('hero-pending-subline')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('ring-legend')).not.toBeInTheDocument();
+  });
+
+  it('a production fixture with no pending key at all (older shape) does not crash and shows no pending UI', () => {
+    const p = production();
+    delete p.pending;
+    render(<HeroCard personalAnnualAPI={null} onSubmit={() => {}} production={p} />);
+    expect(screen.queryByTestId('donut-arc-pending')).not.toBeInTheDocument();
+  });
+});
+
 describe('HeroCard — loading / error / empty', () => {
   it('loading: a skeleton, no confident TTD 0, no donut value', () => {
     render(<HeroCard personalAnnualAPI={null} onSubmit={() => {}} pending />);

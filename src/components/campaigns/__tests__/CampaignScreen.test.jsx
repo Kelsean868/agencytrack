@@ -119,6 +119,30 @@ describe('CampaignHeroCard variant="screen"', () => {
     expect(screen.queryByTestId('campaign-screen-gate-bar-value')).toBeNull();
   });
 
+  it('block 1 — pending (L0): faint arcs and "+x submitted" copy on API/Applications, persistency ring unchanged', () => {
+    const withPending = [
+      ...BELOW_GATE_POLICIES,
+      { id: 'p3', productLine: 'life', status: 'submitted', isSelfOrFamily: false, newBusinessType: 'nb_ordinary', proposedAPI: 36_000, dateSubmitted: '2026-09-01' },
+    ];
+    render(<CampaignHeroCard variant="screen" campaign={CAMPAIGN} policies={withPending} persistencyRecords={[]} />);
+    const apiRow = screen.getByTestId('campaign-screen-progress-api');
+    expect(apiRow.querySelector('[data-testid="donut-arc-pending"]')).toBeInTheDocument();
+    expect(apiRow).toHaveTextContent('+36K submitted, waiting to settle');
+    const appsRow = screen.getByTestId('campaign-screen-progress-apps');
+    expect(appsRow.querySelector('[data-testid="donut-arc-pending"]')).toBeInTheDocument();
+    expect(appsRow).toHaveTextContent('+1 submitted');
+    // Persistency ring is untouched by L0 — no faint arc on it, ever.
+    const persistencyRow = screen.getByTestId('campaign-screen-progress-persistency');
+    expect(persistencyRow.querySelector('[data-testid="donut-arc-pending"]')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ring-legend')).toHaveTextContent('Settled — counts');
+  });
+
+  it('block 1 — no pending: no faint arcs anywhere in the progress block, legend hidden', () => {
+    render(<CampaignHeroCard variant="screen" campaign={CAMPAIGN} policies={AT_GATE_POLICIES} persistencyRecords={[]} />);
+    expect(screen.getByTestId('campaign-screen-progress').querySelector('[data-testid="donut-arc-pending"]')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('ring-legend')).not.toBeInTheDocument();
+  });
+
   it('block 3 — the bar fills its column at any width (no aspect-ratio letterboxing)', () => {
     render(<CampaignHeroCard variant="screen" campaign={CAMPAIGN} policies={BELOW_GATE_POLICIES} persistencyRecords={[]} />);
     expect(screen.getByTestId('campaign-screen-gate-bar-svg')).toHaveAttribute('preserveAspectRatio', 'none');

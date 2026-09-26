@@ -21,6 +21,8 @@
 import { policyValue } from './policyLedgerDerivation';
 import { isTieredCampaign, getDaysRemaining, resolveTierProgress } from '../utils/campaignEngine';
 
+const cents = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
 const COUNTING_STATUSES = new Set(['settled', 'confirmed']);
 const CLOSED_STATUSES = new Set(['lapsed', 'ntu', 'denied']);
 const IN_FLIGHT_STATUSES = new Set(['submitted', 'rated', 'postponed']);
@@ -195,6 +197,18 @@ function policyDate(policy) {
  * the thing itself. `excludeImported` remains in force, unchanged, for every
  * other aggregating reader.
  */
+// L0 — the two-layer ring's "pending" arc. The would-be credit a pending
+// policy WOULD earn if it settled today: the campaign's own credit table when
+// one is declared (the settlement-window path already computes this as
+// `credit`, regardless of whether the policy has actually settled), or the
+// legacy 1-app/full-API rule otherwise. These are NEW fields added onto a
+// 'pending' contribution — `value`/`apps`/`state` of every contribution
+// (pending included) are unchanged, so no existing lens test moves.
+function pendingCreditFor(policy, campaign, precomputedCredit) {
+  if (precomputedCredit) return { value: precomputedCredit.api, apps: precomputedCredit.apps };
+  return { value: policyValue(policy), apps: 1 };
+}
+
 export function policyContribution(policy, campaign) {
   const start = toDateStr(campaign?.startDate);
   const end = toDateStr(campaign?.endDate);
@@ -217,11 +231,15 @@ export function policyContribution(policy, campaign) {
   if (credit) {
     const issued = toDateStr(policy?.dateIssued);
     const settled = COUNTING_STATUSES.has(policy?.status);
+    const pendingCredit = pendingCreditFor(policy, campaign, credit);
 
     if (!issued) {
       return settled
         ? { state: 'excluded', reason: 'No issue date recorded', value: 0, apps: 0 }
-        : { state: 'pending', reason: 'Awaiting settlement', value: 0, apps: 0 };
+        : {
+          state: 'pending', reason: 'Awaiting settlement', value: 0, apps: 0,
+          pendingValue: pendingCredit.value, pendingApps: pendingCredit.apps,
+        };
     }
     if (start && issued < start) {
       return { state: 'excluded', reason: 'Issued before the campaign', value: 0, apps: 0 };
@@ -232,7 +250,10 @@ export function policyContribution(policy, campaign) {
     if (!settled) {
       // The pending bucket keeps its present meaning: in the window, but the
       // money is not banked yet.
-      return { state: 'pending', reason: 'Awaiting settlement', value: 0, apps: 0 };
+      return {
+        state: 'pending', reason: 'Awaiting settlement', value: 0, apps: 0,
+        pendingValue: pendingCredit.value, pendingApps: pendingCredit.apps,
+      };
     }
     if (credit.apps === 0 && credit.api === 0) {
       return { state: 'excluded', reason: credit.reason, value: 0, apps: 0 };
@@ -250,7 +271,11 @@ export function policyContribution(policy, campaign) {
     return { state: 'counts', reason: 'Settled — counts toward goal', value: policyValue(policy), apps: 1 };
   }
   if (IN_FLIGHT_STATUSES.has(policy?.status)) {
-    return { state: 'pending', reason: 'Awaiting settlement', value: 0, apps: 0 };
+    const pendingCredit = pendingCreditFor(policy, campaign, null);
+    return {
+      state: 'pending', reason: 'Awaiting settlement', value: 0, apps: 0,
+      pendingValue: pendingCredit.value, pendingApps: pendingCredit.apps,
+    };
   }
   return { state: 'excluded', reason: 'Not counting', value: 0, apps: 0 };
 }
@@ -460,6 +485,9 @@ export function derivePolicyLens(policies, campaign, { now = new Date() } = {}) 
   let trackedCount = 0; // counts + pending (the eligible-in-window set)
   let apiCurrent = 0;
   let appsCurrent = 0;
+  let pendingApi = 0;
+  let pendingApps = 0;
+  let pendingCount = 0;
 
   for (const p of list) {
     const c = policyContribution(p, campaign);
@@ -469,7 +497,12 @@ export function derivePolicyLens(policies, campaign, { now = new Date() } = {}) 
       trackedCount += 1;
       apiCurrent += c.value;
       appsCurrent += c.apps ?? 1;
-    } else if (c.state === 'pending') { trackedCount += 1; }
+    } else if (c.state === 'pending') {
+      trackedCount += 1;
+      pendingApi += c.pendingValue ?? 0;
+      pendingApps += c.pendingApps ?? 0;
+      pendingCount += 1;
+    }
   }
 
   // API target from the campaign's top tier when tiered; otherwise pending.
@@ -524,6 +557,9 @@ export function derivePolicyLens(policies, campaign, { now = new Date() } = {}) 
     counts: { covered: coveredCount, tracked: trackedCount },
     api: { current: apiCurrent, target: apiTarget },
     apps: { current: appsCurrent, target: appsTarget },
+    // L0 — the two-layer ring's faint arc: policies in the window, would-be
+    // credit if they settled today. Never touches api/apps.current above.
+    pending: { api: cents(pendingApi), apps: pendingApps, count: pendingCount },
     creditTableApplied: Boolean(campaign.credit),
     exportDate: ledgerExportDate(list),
     // Rule 9 (R7). Both lists are empty on today's live data and the panel says

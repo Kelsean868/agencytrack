@@ -3,7 +3,8 @@ import { ArrowRight, Check } from 'lucide-react';
 import { formatCurrency } from '../../../utils/formatters';
 import { MDRT_THRESHOLDS_2026 } from '../../../config/mdrtThresholds/2026';
 import { useCountUp } from '../../../hooks/useCountUp';
-import ProgressDonut from '../ProgressDonut';
+import ProgressDonut, { RingLegend } from '../ProgressDonut';
+import { formatCompact } from '../../../lib/campaignPace';
 import LedgerReconciliationNote from './LedgerReconciliationNote';
 import { heroGoal, provenanceLine } from './homeDerivations';
 
@@ -68,6 +69,7 @@ export default function HeroCard({
   production = null, pending = false, error = false, onRetry, onOpenLedgerCreate,
 }) {
   const settledApi = production?.settled?.api ?? 0;
+  const pendingApi = production?.pending?.api ?? 0;
   // §2 count-up — gated by prefers-reduced-motion inside the hook.
   const displayApi = useCountUp(Math.round(settledApi), { duration: 1000, decimals: 0 });
   const { goal, isMdrt } = heroGoal(personalAnnualAPI);
@@ -98,11 +100,12 @@ export default function HeroCard({
           <ProgressDonut
             value={settledApi}
             max={goal}
+            pending={pendingApi}
             tone="onHero"
             tick={tick}
             centerLabel={`${pct}%`}
             subLabel={isMdrt ? 'OF MDRT' : 'OF GOAL'}
-            ariaLabel={`${pct} percent of your ${isMdrt ? 'MDRT threshold' : 'annual goal'}${tick != null ? `; MDRT is marked at ${Math.round(tick * 100)} percent` : ''}`}
+            ariaLabel={`${pct} percent of your ${isMdrt ? 'MDRT threshold' : 'annual goal'}${tick != null ? `; MDRT is marked at ${Math.round(tick * 100)} percent` : ''}${pendingApi > 0 ? `; ${formatCurrency(pendingApi)} submitted, waiting to settle` : ''}`}
             className="h-[104px] w-[104px] lg:h-[150px] lg:w-[150px]"
             testId="hero-donut"
           />
@@ -142,6 +145,11 @@ export default function HeroCard({
           <span aria-hidden="true"> · </span>
           <span className="whitespace-nowrap">{weeksLeft} {weeksLeft === 1 ? 'week' : 'weeks'} to year-end</span>
         </p>
+        {pendingApi > 0 && (
+          <p className="text-[13px] font-semibold text-[--hero-ink] lg:text-sm" data-testid="hero-pending-subline">
+            +{formatCompact(pendingApi)} submitted
+          </p>
+        )}
       </div>
 
       {production && (
@@ -161,6 +169,8 @@ export default function HeroCard({
           <LedgerFigure label="Submitted apps" shortLabel="Sub. apps" value={production.submitted.apps} testId="hero-submitted-apps" />
         </div>
       )}
+
+      <RingLegend show={pendingApi > 0} tone="onHero" className={rowSpan} />
 
       {provenance && (
         <p className={`${rowSpan} flex items-center gap-2 text-xs text-[--hero-ink-muted-teal]`} data-testid="hero-provenance">
