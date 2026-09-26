@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getOwnPolicies } from '../../services/policiesService';
 import { awardRowsFromLedger } from '../../lib/ledgerProduction';
 import { HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer } from './awardPrimitives';
-import CampaignHeroCard from '../campaigns/CampaignHeroCard';
+import CampaignScreenWithTier from '../campaigns/CampaignScreenWithTier';
 import { LedgerSourceChip } from './awardProvenance';
 import { deriveAwardProvenance } from '../../lib/awardProvenance';
 import { useFeatureFlag } from '../../hooks/useFeatureFlag';
@@ -300,9 +300,8 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       {activeCampaigns.length > 0 && (
         <div className="flex flex-col gap-3">
           {activeCampaigns.map((c) => (
-            <CampaignHeroCard
+            <CampaignScreenWithTier
               key={c.id}
-              variant="screen"
               campaign={c}
               policies={ledgerPolicies ?? []}
               persistencyRecords={persistency}

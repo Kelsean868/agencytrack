@@ -27,6 +27,7 @@
 | `revokeKioskToken` checks tenant only — any branch_manager can revoke another branch's kiosk (old A4:SEC-003). S1 fixed create + client writes (SEC-03), not revoke (banked 2026-09-25, security S1) | MEDIUM | Security / Kiosk | — | see § Kiosk token revoke and read scope |
 | `repairFirestoreCache()` (the "Repair app data" emergency escape hatch) has no pending-writes safeguard — only `authService.signOut()` got one in the S2 in-PR extension. Repair's own context (client may already be broken) makes the right treatment a dispatcher UX call, not a mechanical copy of signOut's gate (CodeRabbit finding, banked 2026-09-25, security S2 in-PR extension / PR #974) | MEDIUM | Security / Firestore offline cache | — | see § Repair app data (emergency Firestore cache clear) has no pending-writes safeguard |
 | A11Y test agent is in no campaign, so no preview or production smoke can render the Campaign screen or the Home campaign card — blocked the R2 merge gate (banked 2026-09-26, overnight run) | MEDIUM | Verification / campaigns | — | see § A11Y test agent has no campaign |
+| Policy Ledger head-office flag ("Not on the head-office list yet — check with HO") can only be shown when a self-confirmed settled policy was issued AFTER the latest export date. A policy issued BEFORE it that the export left out is undetectable: an import does not rewrite an unchanged policy, so `exportDate` stays at the older export and nothing records "seen in the latest export". Needs a per-import manifest of policy numbers (banked 2026-09-26, L1 award lens) | MEDIUM | Policy Ledger / portfolio import | — | see § Head-office flag needs a per-import manifest |
 | Home hero two-layer ring legend shows plain labels, not the C1 mockup's value form ("Submitted 123,146") (banked 2026-09-26, PR #980 L0) | LOW | Home / ledger rings | — | see § L0 hero legend value form |
 | Tenant Admin has no Persistency view — design question, not a bug (found in #975 smoke) | LOW | Persistency / roles | — | see § Tenant Admin has no Persistency view |
 | `scripts/verification/smoke-campaign-hero-h3.mjs` targets `campaign-hero-card` / `campaign-hero-row-*` testids from the `full` variant, which the Awards tab campaign hero no longer renders after R2 switched it to `variant="screen"` (PR #979) — the script needs updating to the new `campaign-screen*` testids or it will report false failures the next time it runs | LOW | Verification / smokes | — | see § smoke-campaign-hero-h3.mjs targets retired testids |
@@ -7552,3 +7553,16 @@ The only credentialed test account (`A11Y_AGENT_*`) is in no active campaign. Pr
 **Fix:** pass the settled and pending values into `RingLegend` on `HeroCard` only. Small copy change, no logic.
 
 **Falsification (Rule 23):** closed when the hero legend matches C1, or Kyron rules the plain legend is fine.
+
+## Head-office flag needs a per-import manifest
+
+**Banked 2026-09-26 (Policy Ledger L1 — award lens, orchestrator decision 5). Severity: MEDIUM.**
+
+The L1 brief asks for a flag on a settled, self-confirmed policy (`statusSource !== 'oipa_import'`) that is **not on the latest head-office import**: "Not on the head-office list yet — check with HO". What the data can decide today:
+
+- **Decidable (built):** a self-confirmed settled policy whose `dateIssued` is AFTER the latest export's as-at date (`ledgerExportDate`, the newest `exportDate` on the agent's policy docs). An export cannot list a policy issued after it ran. `notOnHeadOfficeList` in `src/lib/ledgerProduction.js` flags exactly this case.
+- **Not decidable (hidden):** a self-confirmed settled policy issued ON OR BEFORE that date. It may or may not be on the export. `buildImportPlan` does not write an unchanged policy (`PROVENANCE_ONLY_FIELDS`), so its `exportDate` keeps the OLDER export's date, and no per-policy field records "present in the latest export". Guessing would tell an advisor a policy is missing from head office when it is not.
+
+**What to do.** Record, per import run, the set of policy numbers the export contained (for example `lastSeenExportDate` written on every matched policy, including unchanged ones, or a run document listing the numbers). Then the flag becomes "self-confirmed, settled, and not in the latest run's set". Note the write-cost trade-off: stamping every matched policy on every import undoes P4d's "unchanged means not written" rule, so a run manifest is probably the better shape. This touches the import write path (P4 family), not the ledger UI.
+
+**Falsification (Rule 23):** closed when a field or run record exists that says, for any policy number, whether the latest import contained it, and `notOnHeadOfficeList` reads it. Overturned (not needed) if the dispatcher rules the narrower "issued after the export" flag is enough.

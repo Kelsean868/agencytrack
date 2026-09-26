@@ -29,6 +29,9 @@
 import {
   creditFor,
   toDateStr,
+  policyContribution,
+  derivePolicyLens,
+  ledgerExportDate,
   RULE_7_CREDIT_TABLE,
   DEFAULT_INC_PPP_APP_THRESHOLD,
 } from './policyCampaignLens';
@@ -272,4 +275,202 @@ export function deriveYearProduction(policies, { year, weekStarting = null, subm
       week: cents(weekly.weekApi - submitted.weekApi),
     },
   };
+}
+
+// ─── L1 · the award lens (docs/briefs/ledger-lens-build.md § L1) ─────────────
+//
+// ONE rules engine. Every "counts / waiting / doesn't count" decision the
+// Policy Ledger's award lens shows comes from here, and here re-uses the rules
+// the Awards tab and the hero already run:
+//
+//   · settled test      — `isSettled` (settled, or manager-confirmed)
+//   · credit            — `productionCredit` (R3), or the campaign's own
+//                         `policyContribution` for a campaign
+//   · date (R5)         — a settled policy belongs to the period its
+//                         `dateIssued` falls in, and nowhere else
+//   · family / self     — excluded everywhere except MDRT (Kyron, 23 Sep 2026)
+//   · pending (L0)      — gone in, not settled, not a terminal exit
+//                         (ntu / denied / lapsed), placed by the L0 date: submit
+//                         date, else written, else issue date, in the award's
+//                         year — and only while the period is still open
+//
+// `award` is a descriptor from `awardLensPeriods` (src/utils/awardsEngine.js).
+// Nothing is stored: the lens is recomputed from the policy list on every read.
+
+export const AWARD_LENS_GROUPS = Object.freeze(['counting', 'pending', 'not']);
+
+export const FAMILY_LENS_REASON = 'Family policy — counts for MDRT only';
+
+const ZERO_CREDIT = Object.freeze({ api: 0, apps: 0 });
+
+function lensRow(group, credit, reason) {
+  return { group, credit: { api: cents(credit?.api ?? 0), apps: credit?.apps ?? 0 }, reason };
+}
+
+/** Why a terminally-exited policy counts nowhere. */
+function exitReason(policy) {
+  switch (policy?.status) {
+    case 'ntu': {
+      const replaced = policy?.replacedBy ? String(policy.replacedBy).slice(-4) : null;
+      return replaced ? `NTU — replaced by ···${replaced}` : 'NTU — not taken up';
+    }
+    case 'denied':
+      return 'Denied — never went in force';
+    case 'lapsed':
+      return 'Lapsed — no longer in force';
+    default:
+      return 'Closed — no longer in force';
+  }
+}
+
+const EXIT_STATUSES = new Set(['ntu', 'denied', 'lapsed']);
+
+function campaignLensRow(policy, award) {
+  const c = policyContribution(policy, award.campaign);
+  if (c.state === 'counts') return lensRow('counting', { api: c.value, apps: c.apps }, c.reason);
+  if (c.state === 'pending') {
+    if (award.closed) return lensRow('not', ZERO_CREDIT, 'Not settled before the campaign closed');
+    return lensRow('pending', { api: c.pendingValue ?? 0, apps: c.pendingApps ?? 0 }, 'Counts when settled');
+  }
+  // The campaign engine's own reason, except a terminal exit is named for what
+  // it is ("NTU", "Lapsed") rather than the generic "lapsed / closed".
+  return lensRow('not', ZERO_CREDIT, EXIT_STATUSES.has(policy?.status) ? exitReason(policy) : c.reason);
+}
+
+/**
+ * awardLensForPolicy(policy, award) — one policy through one award.
+ *
+ * @returns {{ group: 'counting'|'pending'|'not', credit: { api: number, apps: number }, reason: string }}
+ *   `credit` is what the policy earns (counting) or WOULD earn if it settled
+ *   today (pending); 0/0 when not counting.
+ */
+export function awardLensForPolicy(policy, award) {
+  if (!award) throw new Error('awardLensForPolicy: award descriptor is required');
+  if (!policy) return lensRow('not', ZERO_CREDIT, 'No policy');
+  if (!isLife(policy)) {
+    return lensRow('not', ZERO_CREDIT, 'Non-Life — does not count toward Tatil Life awards');
+  }
+  if (policy.isSelfOrFamily === true && !award.includeFamily) {
+    return lensRow('not', ZERO_CREDIT, FAMILY_LENS_REASON);
+  }
+  if (award.kind === 'campaign') return campaignLensRow(policy, award);
+
+  if (isSettled(policy)) {
+    const issued = toDateStr(policy.dateIssued);
+    if (!issued) return lensRow('not', ZERO_CREDIT, 'No issue date recorded');
+    if (issued < award.start) return lensRow('not', ZERO_CREDIT, `Issued before ${award.periodName}`);
+    if (issued > award.end) return lensRow('not', ZERO_CREDIT, `Issued after ${award.periodName}`);
+    const credit = productionCredit(policy);
+    if (credit.apps === 0 && credit.api === 0) return lensRow('not', ZERO_CREDIT, credit.reason);
+    return lensRow('counting', credit, credit.reason);
+  }
+
+  if (isTerminalOut(policy)) return lensRow('not', ZERO_CREDIT, exitReason(policy));
+  if (!hasGoneIn(policy)) return lensRow('not', ZERO_CREDIT, 'Written — not submitted yet');
+
+  const { date } = submitDate(policy);
+  if (!date) return lensRow('not', ZERO_CREDIT, 'No submit date recorded');
+  if (award.closed) {
+    return lensRow('not', ZERO_CREDIT, 'Not settled in time — it counts in the period it is issued');
+  }
+  if (!inYear(date, award.year) || date > award.end) {
+    return lensRow('not', ZERO_CREDIT, `Submitted outside ${award.periodName}`);
+  }
+  const credit = productionCredit(policy);
+  if (credit.apps === 0 && credit.api === 0) return lensRow('not', ZERO_CREDIT, credit.reason);
+  return lensRow('pending', credit, 'Counts when settled');
+}
+
+/**
+ * The head-office flag ("Not on the head-office list yet — check with HO").
+ *
+ * True only when the ledger can PROVE the policy is absent from the latest
+ * head-office import: it is settled, its status was NOT set by that import
+ * (`statusSource !== 'oipa_import'`), and it was issued AFTER the latest
+ * export's as-at date — an export cannot list a policy issued after it ran.
+ *
+ * A self-confirmed policy issued ON OR BEFORE the export date may or may not
+ * be on it, and the data cannot tell: an import leaves an unchanged policy
+ * unwritten, so its `exportDate` stays at the older export, and no per-policy
+ * field records "seen in the latest export". Those are NOT flagged — hide
+ * rather than guess (docs/FOLLOW_UPS.md § Head-office flag needs a per-import
+ * manifest).
+ */
+export function notOnHeadOfficeList(policy, latestExportDate) {
+  if (!policy || !latestExportDate) return false;
+  if (!isSettled(policy)) return false;
+  if (policy.statusSource === STATUS_SOURCE_IMPORT) return false;
+  const issued = toDateStr(policy.dateIssued);
+  return Boolean(issued) && issued > latestExportDate;
+}
+
+/**
+ * deriveAwardLens(policies, award, { targetTierName }) — the whole lens for one
+ * award: every policy's row, the three groups, and the totals.
+ *
+ * `policies` MUST be the unfiltered list (R5 decides by date, not origin).
+ * For a campaign the targets come from `derivePolicyLens` — the same call the
+ * Campaign screen and Home make — measured against the agent's chosen tier.
+ *
+ * @returns {{
+ *   award: object,
+ *   rows: Array<{ policy: object, group: string, credit: {api:number,apps:number}, reason: string, hoFlag: boolean }>,
+ *   groups: { counting: object[], pending: object[], not: object[] },
+ *   settled: { api: number, apps: number, count: number },
+ *   pending: { api: number, apps: number, count: number },
+ *   target: { api: number|null, apps: number|null, tier: object|null },
+ *   campaignLens: object|null,
+ *   exportDate: string|null,
+ * }}
+ */
+export function deriveAwardLens(policies, award, { targetTierName = null } = {}) {
+  if (!award) throw new Error('deriveAwardLens: award descriptor is required');
+  const list = (Array.isArray(policies) ? policies : []).filter(Boolean);
+  const exportDate = ledgerExportDate(list);
+
+  const rows = list.map((policy) => ({
+    policy,
+    ...awardLensForPolicy(policy, award),
+    hoFlag: notOnHeadOfficeList(policy, exportDate),
+  }));
+
+  const groups = { counting: [], pending: [], not: [] };
+  const settled = { api: 0, apps: 0, count: 0 };
+  const pending = { api: 0, apps: 0, count: 0 };
+  for (const row of rows) {
+    groups[row.group].push(row);
+    const bucket = row.group === 'counting' ? settled : row.group === 'pending' ? pending : null;
+    if (bucket) {
+      bucket.api += row.credit.api;
+      bucket.apps += row.credit.apps;
+      bucket.count += 1;
+    }
+  }
+  settled.api = cents(settled.api);
+  pending.api = cents(pending.api);
+
+  let target = { api: award.target ?? null, apps: null, tier: null };
+  let campaignLens = null;
+  if (award.kind === 'campaign') {
+    campaignLens = derivePolicyLens(list, award.campaign, { targetTierName });
+    target = {
+      api: campaignLens?.api?.target ?? null,
+      apps: campaignLens?.apps?.target ?? null,
+      tier: campaignLens?.targetTier ?? null,
+    };
+  }
+
+  return { award, rows, groups, settled, pending, target, campaignLens, exportDate };
+}
+
+/**
+ * awardWindowsForPolicy(policy, awards) — every award window a policy counts
+ * toward, or will once settled. Built for L3's "Counts toward" chips so the
+ * chips and the lens can never disagree: same engine, same rows.
+ */
+export function awardWindowsForPolicy(policy, awards) {
+  return (Array.isArray(awards) ? awards : [])
+    .map((award) => ({ award, row: awardLensForPolicy(policy, award) }))
+    .filter(({ row }) => row.group !== 'not')
+    .map(({ award, row }) => ({ key: award.key, label: award.label, kind: award.kind, group: row.group }));
 }

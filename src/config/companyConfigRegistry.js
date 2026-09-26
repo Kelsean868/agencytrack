@@ -664,9 +664,9 @@ export const CONFIG_FLAGS = [
     id: 'flag.policyLedgerCampaignLens',
     key: 'policyLedgerCampaignLens',
     name: 'Policy Ledger campaign lens',
-    desc: 'Mounts the campaign-eligibility lens inside the agent Policy Ledger’s list view. Flag OFF ⇒ renders nothing, fires no fetch.',
+    desc: 'Adds the active campaign(s) to the agent Policy Ledger’s “Counts toward” award lens. Flag OFF ⇒ no campaign fetch and no campaign option; the month / quarter / annual / MDRT lens still shows.',
     storage: { docId: 'settings', keyPath: 'featureFlags.policyLedgerCampaignLens', mode: 'flag' },
-    source: 'src/services/featureFlagsService.js:32-35 + src/components/agent/policyLedger/CampaignLensPanel.jsx:115',
+    source: 'src/services/featureFlagsService.js:32-35 + src/components/agent/policyLedger/AwardLensPanel.jsx:34',
   },
   {
     id: 'flag.awardsProvenance',

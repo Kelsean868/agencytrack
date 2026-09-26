@@ -12,6 +12,7 @@ import { formatCurrency } from '../../utils/formatters';
 import { campaignPace } from '../../lib/campaignPace';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import CampaignHeroCompact from './CampaignHeroCompact';
+import TargetTierPicker from './TargetTierPicker';
 import {
   ProgressBlock, WhatItTakesBlock, PersistencyGateBarBlock, TierLadderBlock, WhatIfBlock, ScreenFooter,
 } from './CampaignScreenBlocks';
@@ -75,13 +76,16 @@ function HeroRow({ label, current, target, unit, achieved, testId }) {
  */
 export default function CampaignHeroCard({
   campaign, policies = [], persistencyRecords = [], loading = false, error = false,
-  variant = 'full', onOpenDetails,
+  variant = 'full', onOpenDetails, targetTierName = null, onTargetTierChange = null,
 }) {
   const tiered = Boolean(campaign) && isTieredCampaign(campaign) && campaign.structure === 'qualify';
 
+  // L1 — the agent's "My target tier" (shared with the Policy Ledger's campaign
+  // card via useLedgerTargetTier). Only the Campaign screen passes it; Home and
+  // the full card measure against the level in reach, exactly as before.
   const lens = useMemo(
-    () => (tiered ? derivePolicyLens(policies, campaign, {}) : null),
-    [tiered, policies, campaign],
+    () => (tiered ? derivePolicyLens(policies, campaign, { targetTierName }) : null),
+    [tiered, policies, campaign, targetTierName],
   );
 
   const gate = useMemo(() => (campaign ? normalizeGate(campaign) : null), [campaign]);
@@ -253,8 +257,20 @@ export default function CampaignHeroCard({
           </div>
           <h1 className="font-display text-2xl font-bold leading-snug text-ink">{lens.name}</h1>
           <p className="text-sm text-ink-muted">
-            {lens.tierNext ? <>Aiming for <strong className="font-semibold text-ink">{lens.tierNext.name}</strong> ({formatCurrency(lens.tierNext.cash ?? 0)})</> : `Top tier reached: ${lens.tierReached?.name ?? tierLabel}`}
+            {lens.targetTierChosen && lens.targetTier
+              ? <>Aiming for <strong className="font-semibold text-ink">{lens.targetTier.name}</strong> ({formatCurrency(lens.targetTier.cash ?? 0)})</>
+              : lens.tierNext ? <>Aiming for <strong className="font-semibold text-ink">{lens.tierNext.name}</strong> ({formatCurrency(lens.tierNext.cash ?? 0)})</> : `Top tier reached: ${lens.tierReached?.name ?? tierLabel}`}
           </p>
+          {onTargetTierChange && (
+            <div className="mt-2 max-w-[520px]">
+              <TargetTierPicker
+                tiers={campaign.tiers}
+                value={lens.targetTier?.name ?? null}
+                onChange={onTargetTierChange}
+                testId="campaign-screen-target-tier"
+              />
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
