@@ -136,3 +136,36 @@ describe('buildCampaignProofExport', () => {
     expect(proof.rows).toEqual([]);
   });
 });
+
+// L0 — the two-layer ring's "pending" would-be credit, LEGACY (no credit
+// table) window path: policyValue(policy) + 1 app, same rule the legacy
+// COUNTS branch already uses just below it.
+describe('L0 — pendingValue / pendingApps (legacy window path)', () => {
+  it('an in-flight policy earns pendingValue = its policy value, pendingApps = 1', () => {
+    const c = policyContribution(P({ status: 'submitted', settledAPI: 21600 }), CAMPAIGN);
+    expect(c.state).toBe('pending');
+    expect(c.pendingValue).toBe(21600);
+    expect(c.pendingApps).toBe(1);
+    expect(c.value).toBe(0); // unchanged
+    expect(c.apps).toBe(0); // unchanged
+  });
+
+  it('an excluded policy carries no pendingValue/pendingApps fields', () => {
+    const c = policyContribution(P({ status: 'lapsed' }), CAMPAIGN);
+    expect(c.state).toBe('excluded');
+    expect(c.pendingValue).toBeUndefined();
+    expect(c.pendingApps).toBeUndefined();
+  });
+
+  it('rolls up into lens.pending without moving lens.api/apps.current', () => {
+    const policies = [
+      P({ id: 'a', status: 'settled', settledAPI: 21600 }),
+      P({ id: 'b', status: 'submitted', settledAPI: 48000 }),
+      P({ id: 'c', status: 'rated', settledAPI: 9000 }),
+    ];
+    const lens = derivePolicyLens(policies, CAMPAIGN, {});
+    expect(lens.api.current).toBe(21600);
+    expect(lens.apps.current).toBe(1);
+    expect(lens.pending).toEqual({ api: 57000, apps: 2, count: 2 });
+  });
+});

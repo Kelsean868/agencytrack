@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
-import ProgressDonut from '../dashboard/ProgressDonut';
+import ProgressDonut, { RingLegend } from '../dashboard/ProgressDonut';
 import { campaignPace, formatCompact, paceLine } from '../../lib/campaignPace';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -27,12 +27,15 @@ function monthShort(monthKey) {
   return new Date(`${monthKey}-01T12:00:00Z`).toLocaleDateString('en-TT', { month: 'short', timeZone: 'UTC' });
 }
 
-function DonutCell({ children, caption, sub, subClass = 'text-ink-muted', testId }) {
+function DonutCell({ children, caption, sub, subClass = 'text-ink-muted', subPending = null, testId }) {
   return (
     <div className="flex min-w-0 flex-col items-center gap-1.5 text-center" data-testid={testId}>
       {children}
       <span className="text-[13px] font-bold text-ink">{caption}</span>
       <span className={`text-xs ${subClass}`}>{sub}</span>
+      {subPending && (
+        <span className="text-xs font-semibold text-ink" data-testid={`${testId}-pending`}>{subPending}</span>
+      )}
     </div>
   );
 }
@@ -50,6 +53,9 @@ export default function CampaignHeroCompact({
   const appsCurrent = lens.apps.current;
   const appsTarget = lens.apps.target;
   const tierNext = lens.tierNext;
+  const pendingApi = lens.pending?.api ?? 0;
+  const pendingApps = lens.pending?.apps ?? 0;
+  const hasPending = pendingApi > 0 || pendingApps > 0;
 
   const pace = tierNext
     ? campaignPace({ apiCurrent, apiTarget, appsCurrent, appsTarget, daysLeft })
@@ -93,21 +99,33 @@ export default function CampaignHeroCompact({
       </div>
 
       <div className={`grid gap-2 ${gateEnabled ? 'grid-cols-3' : 'grid-cols-2'}`}>
-        <DonutCell caption="API" sub={apiTarget != null ? `${formatCompact(apiCurrent)} / ${formatCompact(apiTarget)}` : formatCompact(apiCurrent)} testId="campaign-compact-api">
+        <DonutCell
+          caption="API"
+          sub={apiTarget != null ? `${formatCompact(apiCurrent)} / ${formatCompact(apiTarget)}` : formatCompact(apiCurrent)}
+          subPending={pendingApi > 0 ? `+${formatCompact(pendingApi)} submitted` : null}
+          testId="campaign-compact-api"
+        >
           <ProgressDonut
             value={apiCurrent}
             max={apiTarget ?? apiCurrent}
+            pending={pendingApi}
             centerLabel={`${Math.min(999, apiPct)}%`}
-            ariaLabel={`API ${formatCurrency(apiCurrent)} of ${apiTarget != null ? formatCurrency(apiTarget) : 'no'} target, ${apiPct} percent`}
+            ariaLabel={`API ${formatCurrency(apiCurrent)} of ${apiTarget != null ? formatCurrency(apiTarget) : 'no'} target, ${apiPct} percent${pendingApi > 0 ? `; ${formatCurrency(pendingApi)} submitted, waiting to settle` : ''}`}
             className="h-[86px] w-[86px] lg:h-[92px] lg:w-[92px]"
           />
         </DonutCell>
-        <DonutCell caption="Applications" sub={appsToGo > 0 ? `${appsToGo} to go` : 'Target met'} testId="campaign-compact-apps">
+        <DonutCell
+          caption="Applications"
+          sub={appsToGo > 0 ? `${appsToGo} to go` : 'Target met'}
+          subPending={pendingApps > 0 ? `+${pendingApps} submitted` : null}
+          testId="campaign-compact-apps"
+        >
           <ProgressDonut
             value={appsCurrent}
             max={appsTarget ?? appsCurrent}
+            pending={pendingApps}
             centerLabel={appsTarget != null ? `${appsCurrent}/${appsTarget}` : String(appsCurrent)}
-            ariaLabel={`${appsCurrent} of ${appsTarget ?? appsCurrent} applications`}
+            ariaLabel={`${appsCurrent} of ${appsTarget ?? appsCurrent} applications${pendingApps > 0 ? `; ${pendingApps} submitted, waiting to settle` : ''}`}
             className="h-[86px] w-[86px] lg:h-[92px] lg:w-[92px]"
           />
         </DonutCell>
@@ -133,6 +151,8 @@ export default function CampaignHeroCompact({
           </DonutCell>
         )}
       </div>
+
+      <RingLegend show={hasPending} tone="teal" />
 
       {(pacing || onOpenDetails) && (
         <div className="flex flex-wrap items-center justify-between gap-x-3 border-t border-border pt-2.5">

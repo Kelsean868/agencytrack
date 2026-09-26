@@ -18,12 +18,25 @@ import { DONUT_RADIUS, DONUT_CIRCUMFERENCE, donutGeometry } from './progressDonu
  * The fill animates from 0 on mount only when the viewer has NOT asked for
  * reduced motion (and matchMedia exists); otherwise the final arc renders
  * immediately, so reduced-motion, print and tests all see the real value.
+ *
+ * L0 — the two-layer ring (docs/design-system/proposals/ledger-2026-09/,
+ * C1–C4). An optional `pending` value draws a FAINT arc first (settled +
+ * pending, clamped at the ring's max) and the existing SOLID arc on top of it
+ * (settled only) — same start angle, same direction, so the faint arc reads
+ * as "the rest of the way to what's in the pipeline". No `pending` (or 0)
+ * renders exactly as before: no faint arc, no visual change for existing
+ * callers. Faint colour is an EXISTING token at reduced opacity (no new
+ * token): `primary/40` on card surfaces, `white/40` on the teal hero — both
+ * lift correctly in dark mode because `--color-primary` itself lifts there.
  */
 
 const TONES = {
   teal: {
     track: 'stroke-primary-tint',
     arc: 'stroke-primary',
+    faint: 'stroke-primary/40',
+    dot: 'bg-primary',
+    dotFaint: 'bg-primary/40',
     tick: 'stroke-ink',
     center: 'fill-ink',
     sub: 'fill-ink-muted',
@@ -31,6 +44,9 @@ const TONES = {
   warning: {
     track: 'stroke-warning-tint',
     arc: 'stroke-warning',
+    faint: 'stroke-warning/40',
+    dot: 'bg-warning',
+    dotFaint: 'bg-warning/40',
     tick: 'stroke-ink',
     center: 'fill-ink',
     sub: 'fill-ink-muted',
@@ -38,6 +54,9 @@ const TONES = {
   onHero: {
     track: 'stroke-[--hero-chip-island]',
     arc: 'stroke-[--hero-ink]',
+    faint: 'stroke-white/40',
+    dot: 'bg-[--hero-ink]',
+    dotFaint: 'bg-white/40',
     tick: 'stroke-[--hero-dot-warning]',
     center: 'fill-[--hero-ink]',
     sub: 'fill-[--hero-ink-muted-teal]',
@@ -52,6 +71,7 @@ function prefersMotion() {
 export default function ProgressDonut({
   value,
   max,
+  pending = null,
   tone = 'teal',
   tick = null,
   centerLabel = null,
@@ -62,6 +82,12 @@ export default function ProgressDonut({
 }) {
   const palette = TONES[tone] ?? TONES.teal;
   const { dash, tickAngle } = donutGeometry({ value, max, tick });
+
+  const pendingNum = Number(pending);
+  const hasPending = Number.isFinite(pendingNum) && pendingNum > 0;
+  const combined = hasPending
+    ? donutGeometry({ value: (Number(value) || 0) + pendingNum, max })
+    : null;
 
   // Mount animation: start empty, then draw to the real arc on the next frame.
   const [drawn, setDrawn] = useState(() => !prefersMotion());
@@ -77,6 +103,7 @@ export default function ProgressDonut({
   }, [drawn]);
 
   const shown = drawn ? dash : 0;
+  const shownPending = drawn ? (combined?.dash ?? 0) : 0;
   const centerY = subLabel ? 48 : 57;
 
   return (
@@ -92,6 +119,16 @@ export default function ProgressDonut({
         fill="none" strokeWidth="10"
         className={palette.track}
       />
+      {shownPending > 0 && (
+        <circle
+          cx="50" cy="50" r={DONUT_RADIUS}
+          fill="none" strokeWidth="10" strokeLinecap="round"
+          strokeDasharray={`${shownPending} ${DONUT_CIRCUMFERENCE}`}
+          transform="rotate(-90 50 50)"
+          className={`${palette.faint} motion-safe:transition-[stroke-dasharray] motion-safe:duration-700 motion-safe:ease-out`}
+          data-testid="donut-arc-pending"
+        />
+      )}
       {shown > 0 && (
         <circle
           cx="50" cy="50" r={DONUT_RADIUS}
@@ -130,5 +167,33 @@ export default function ProgressDonut({
         </text>
       )}
     </svg>
+  );
+}
+
+/**
+ * RingLegend — the two-layer ring's shared legend (C1–C4): a solid dot for
+ * "Settled — counts" and a faint dot for "Submitted — waiting to settle",
+ * shown once per ring group. Callers hide it entirely when nothing in the
+ * group has a pending value (`show={false}`) rather than rendering an empty
+ * explanation for zero.
+ */
+export function RingLegend({ show, tone = 'teal', className = '' }) {
+  if (!show) return null;
+  const palette = TONES[tone] ?? TONES.teal;
+  const textClass = tone === 'onHero' ? 'text-[--hero-ink-muted-teal]' : 'text-ink-muted';
+  return (
+    <div
+      className={`flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 text-xs ${textClass} ${className}`}
+      data-testid="ring-legend"
+    >
+      <span className="inline-flex items-center gap-1.5">
+        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${palette.dot}`} aria-hidden="true" />
+        Settled — counts
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${palette.dotFaint}`} aria-hidden="true" />
+        Submitted — waiting to settle
+      </span>
+    </div>
   );
 }

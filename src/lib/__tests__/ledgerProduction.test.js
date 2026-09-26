@@ -116,6 +116,7 @@ describe('deriveYearProduction — R2 figures', () => {
       const out = deriveYearProduction(input, { year: 2026 });
       expect(out.settled).toEqual({ api: 0, apps: 0, count: 0, fromHeadOffice: 0, selfConfirmed: 0 });
       expect(out.submitted.count).toBe(0);
+      expect(out.pending).toEqual({ api: 0, apps: 0, count: 0 });
       expect(out.mismatch).toEqual({ ytd: 0, week: 0 });
     }
   });
@@ -190,5 +191,68 @@ describe('reconciliation — R4', () => {
     expect(isMismatch(1)).toBe(false);
     expect(isMismatch(-1)).toBe(false);
     expect(isMismatch(1.01)).toBe(true);
+  });
+});
+
+// L0 — the two-layer ring's "pending" figure (orchestrator ruling, not
+// submitted.api - settled.api). Gone in, not settled, not a terminal exit,
+// dated the same way as `submitted`.
+describe('deriveYearProduction — pending (L0, two-layer ring)', () => {
+  const base = { productLine: 'life', newBusinessType: 'nb_ordinary', dateSubmitted: '2026-05-01', proposedAPI: 1000 };
+
+  it('an NTU policy is excluded from pending', () => {
+    const out = deriveYearProduction([{ ...base, status: 'ntu' }], { year: 2026 });
+    expect(out.pending).toEqual({ api: 0, apps: 0, count: 0 });
+  });
+
+  it('a lapsed policy is excluded from pending', () => {
+    const out = deriveYearProduction([{ ...base, status: 'lapsed' }], { year: 2026 });
+    expect(out.pending).toEqual({ api: 0, apps: 0, count: 0 });
+  });
+
+  it('a settled policy is excluded from pending (it is in `settled`, not `pending`)', () => {
+    const out = deriveYearProduction([{ ...base, status: 'settled', dateIssued: '2026-05-01' }], { year: 2026 });
+    expect(out.settled.count).toBe(1);
+    expect(out.pending).toEqual({ api: 0, apps: 0, count: 0 });
+  });
+
+  it('a written policy has not gone in, so it is excluded from pending', () => {
+    const out = deriveYearProduction([{ ...base, status: 'written' }], { year: 2026 });
+    expect(out.pending).toEqual({ api: 0, apps: 0, count: 0 });
+  });
+
+  it('submitted, rated and postponed policies ARE pending', () => {
+    const out = deriveYearProduction(
+      ['submitted', 'rated', 'postponed'].map((status) => ({ ...base, status })),
+      { year: 2026 },
+    );
+    expect(out.pending.count).toBe(3);
+    expect(out.pending.api).toBe(3000);
+    expect(out.pending.apps).toBe(3);
+  });
+
+  it('a family/self policy IS included in pending (the hero counts them; only the campaign lens excludes them)', () => {
+    const out = deriveYearProduction([{ ...base, status: 'submitted', isSelfOrFamily: true }], { year: 2026 });
+    expect(out.pending).toEqual({ api: 1000, apps: 1, count: 1 });
+  });
+
+  it('is NOT submitted.api - settled.api: a family policy settled outside the window still counts in submitted but never in pending', () => {
+    const settled = { ...base, status: 'settled', dateIssued: '2026-05-01', dateSubmitted: '2025-12-20' };
+    const out = deriveYearProduction([settled], { year: 2026 });
+    // Settled by issue date (2026), so it IS in `settled`; its submit date is
+    // 2025, so it is NOT in `submitted` at all, and certainly not `pending`.
+    expect(out.settled.count).toBe(1);
+    expect(out.submitted.count).toBe(0);
+    expect(out.pending).toEqual({ api: 0, apps: 0, count: 0 });
+  });
+
+  it('dated the same way as submitted: falls back to dateWritten, then dateIssued', () => {
+    const out = deriveYearProduction([{ newBusinessType: 'nb_ordinary', status: 'rated', dateWritten: '2026-04-01', proposedAPI: 500 }], { year: 2026 });
+    expect(out.pending).toEqual({ api: 500, apps: 1, count: 1 });
+  });
+
+  it('outside the year is excluded from pending', () => {
+    const out = deriveYearProduction([{ ...base, status: 'submitted', dateSubmitted: '2025-05-01' }], { year: 2026 });
+    expect(out.pending).toEqual({ api: 0, apps: 0, count: 0 });
   });
 });

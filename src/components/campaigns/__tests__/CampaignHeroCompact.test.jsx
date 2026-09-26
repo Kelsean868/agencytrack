@@ -124,6 +124,35 @@ describe('CampaignHeroCard variant="compact"', () => {
     expect(onOpenDetails).toHaveBeenCalledTimes(1);
   });
 
+  it('pending (L0): faint arcs on API + Applications, "+x submitted" sub-lines, and the legend', () => {
+    // policyCampaignLensCredit-style: a settled + a submitted policy so the
+    // lens itself derives a non-zero `pending`.
+    const policies = [
+      ...POLICIES,
+      {
+        id: 'p2', productLine: 'life', status: 'submitted', isSelfOrFamily: false,
+        newBusinessType: 'nb_ordinary', proposedAPI: 36_000, dateSubmitted: '2026-09-01',
+      },
+    ];
+    render(<CampaignHeroCard variant="compact" campaign={CAMPAIGN} policies={policies} persistencyRecords={[]} />);
+    const apiCell = screen.getByTestId('campaign-compact-api');
+    expect(apiCell.querySelector('[data-testid="donut-arc-pending"]')).toBeInTheDocument();
+    expect(screen.getByTestId('campaign-compact-api-pending')).toHaveTextContent('+36K submitted');
+    const appsCell = screen.getByTestId('campaign-compact-apps');
+    expect(appsCell.querySelector('[data-testid="donut-arc-pending"]')).toBeInTheDocument();
+    expect(screen.getByTestId('campaign-compact-apps-pending')).toHaveTextContent('+1 submitted');
+    expect(screen.getByTestId('ring-legend')).toHaveTextContent('Settled — counts');
+    expect(screen.getByTestId('ring-legend')).toHaveTextContent('Submitted — waiting to settle');
+  });
+
+  it('no pending: no faint arcs, no sub-lines, no legend', () => {
+    render(<CampaignHeroCard variant="compact" campaign={CAMPAIGN} policies={POLICIES} persistencyRecords={[]} />);
+    expect(screen.queryByTestId('donut-arc-pending')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('campaign-compact-api-pending')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('campaign-compact-apps-pending')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('ring-legend')).not.toBeInTheDocument();
+  });
+
   it('loading → skeleton; error → inline alert; no campaign → nothing', () => {
     const { unmount } = render(<CampaignHeroCard variant="compact" campaign={null} loading />);
     expect(screen.getByTestId('campaign-compact-loading')).toBeInTheDocument();
