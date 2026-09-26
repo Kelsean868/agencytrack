@@ -650,5 +650,121 @@
     },
     "activeViewChip": null,
     "exportColours": null
+  },
+  {
+    "label": "preview-390-light",
+    "dark": false,
+    "blocks": {
+      "1 header": 85,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 44,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 44,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "preview-1440-light",
+    "dark": false,
+    "blocks": {
+      "1 header": 84,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 132,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 164,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "preview-390-dark",
+    "dark": true,
+    "blocks": {
+      "1 header": 85,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 44,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 44,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "preview-1440-dark",
+    "dark": true,
+    "blocks": {
+      "1 header": 84,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 132,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 164,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
   }
 ]
