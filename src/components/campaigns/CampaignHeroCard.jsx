@@ -5,17 +5,26 @@ import {
   isTieredCampaign, normalizeGate, persistencyPctForGate, gateBandFor, getDaysRemaining,
 } from '../../utils/campaignEngine';
 import { toDateStr } from '../../lib/policyCampaignLens';
-import { buildPersistencyOutlook, formatOutlookPct } from '../../lib/persistency/persistencyOutlook';
+import { buildPersistencyOutlook, formatOutlookPct, outlookGateFor } from '../../lib/persistency/persistencyOutlook';
 import { getTodayTT } from '../../utils/dateInputs';
 import { outlookMonthLabel } from '../persistency/outlookLabels';
 import { formatCurrency } from '../../utils/formatters';
+import { campaignPace } from '../../lib/campaignPace';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import CampaignHeroCompact from './CampaignHeroCompact';
+import PersistencyOutlookHero from '../persistency/PersistencyOutlookHero';
+import {
+  ProgressBlock, WhatItTakesBlock, PersistencyGateBarBlock, TierLadderBlock, WhatIfBlock, ScreenFooter,
+} from './CampaignScreenBlocks';
 
 const MONTH_KEY_RE = /^\d{4}-\d{2}$/;
 
 function monthYearLabel(monthKey) {
   return new Date(`${monthKey}-01T12:00:00Z`).toLocaleDateString('en-TT', { month: 'long', year: 'numeric' });
+}
+
+function monthShortLabel(monthKey) {
+  return new Date(`${monthKey}-01T12:00:00Z`).toLocaleDateString('en-TT', { month: 'short' });
 }
 
 // The preview comes from the persistency outlook (R5): the newest of a
@@ -122,7 +131,35 @@ export default function CampaignHeroCard({
     return `Gate judged across the campaign period · ${gate.threshold}% needed`;
   }, [gate, campaign]);
 
+  // Screen variant (R2) only — the full persistency outlook (confirmed /
+  // derived / estimateToday / gateMonth), gated on the campaign's own gate so
+  // block 3 can show the projected month against the threshold, and the pace
+  // maths block 2 needs (R1's campaignPace, reused, never recomputed).
+  const fullOutlook = useMemo(() => {
+    if (!tiered) return null;
+    return buildPersistencyOutlook({
+      policies,
+      records: persistencyRecords,
+      today: getTodayTT(),
+      gate: outlookGateFor(campaign),
+      productionTarget: Array.isArray(campaign?.tiers)
+        ? { tiers: campaign.tiers.map((t) => ({ name: t.name, api: t.api })), current: lens?.api?.current ?? 0 }
+        : null,
+    });
+  }, [tiered, campaign, policies, persistencyRecords, lens]);
+
+  const screenDaysLeft = tiered ? getDaysRemaining(toDateStr(campaign?.endDate)) : null;
+  const screenPace = useMemo(() => {
+    if (!tiered || !lens) return null;
+    return campaignPace({
+      apiCurrent: lens.api.current, apiTarget: lens.api.target,
+      appsCurrent: lens.apps.current, appsTarget: lens.apps.target,
+      daysLeft: screenDaysLeft,
+    });
+  }, [tiered, lens, screenDaysLeft]);
+
   const compact = variant === 'compact';
+  const screen = variant === 'screen';
 
   if (loading) {
     if (compact) {
@@ -192,6 +229,87 @@ export default function CampaignHeroCard({
         persistency={persistency}
         onOpenDetails={onOpenDetails}
       />
+    );
+  }
+
+  if (screen) {
+    const endKey = toDateStr(campaign.endDate);
+    const threshold = gate?.threshold ?? 0;
+    const gateMonth = fullOutlook?.gateMonth ?? null;
+    const projectedPct = gateMonth ? gateMonth.persistency * 100 : (persistencyPreview?.persistency != null ? persistencyPreview.persistency * 100 : null);
+    const persistencyDisplayPctScreen = persistencyKnown ? persPct : projectedPct;
+    const persistencyLabelScreen = persistencyKnown
+      ? `${persPct}%`
+      : projectedPct != null ? formatOutlookPct(projectedPct / 100) : '—';
+    const gateMonthKey = gate?.basis === 'finalMonth' && endKey ? endKey.slice(0, 7) : (gateMonth?.monthKey ?? null);
+    const gateMonthShort = gateMonthKey && MONTH_KEY_RE.test(gateMonthKey) ? monthShortLabel(gateMonthKey) : null;
+    const atOrAboveGate = persistencyDisplayPctScreen != null && persistencyDisplayPctScreen >= threshold;
+
+    return (
+      <div className="flex flex-col gap-5" data-testid="campaign-screen">
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-mono text-[11px] font-semibold uppercase tracking-widest text-gold-ink">Campaign</span>
+            {screenDaysLeft != null && (
+              <span className="rounded-full bg-gold-tint px-2 py-0.5 font-mono text-[11px] font-semibold uppercase text-gold-ink">
+                {screenDaysLeft < 0 ? 'Ended' : screenDaysLeft === 0 ? 'Ends today' : `${screenDaysLeft} day${screenDaysLeft === 1 ? '' : 's'} left`}
+              </span>
+            )}
+          </div>
+          <h1 className="font-display text-2xl font-bold leading-snug text-ink">{lens.name}</h1>
+          <p className="text-sm text-ink-muted">
+            {lens.tierNext ? <>Aiming for <strong className="font-semibold text-ink">{lens.tierNext.name}</strong> ({formatCurrency(lens.tierNext.cash ?? 0)})</> : `Top tier reached: ${lens.tierReached?.name ?? tierLabel}`}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+          <div className="flex flex-col gap-5 lg:col-span-8">
+            <ProgressBlock
+              lens={lens}
+              threshold={gateEnabled ? threshold : null}
+              persistencyDisplayPct={gateEnabled ? persistencyDisplayPctScreen : null}
+              persistencyLabel={persistencyLabelScreen}
+              persistencyBelow={gateEnabled && !atOrAboveGate && persistencyDisplayPctScreen != null}
+              gateMonthShort={gateMonthShort}
+            />
+            <WhatItTakesBlock
+              pace={screenPace}
+              weeksLeft={screenPace?.weeksLeft}
+              reinstateNeeded={gateMonth?.gap?.reinstateNeeded ?? 0}
+              gateThreshold={threshold}
+              atOrAboveGate={!gateEnabled || atOrAboveGate}
+            />
+            {gateEnabled && (
+              <PersistencyGateBarBlock
+                projectedPct={projectedPct}
+                threshold={threshold}
+                judgedLabel={gate?.basis === 'finalMonth' && gateMonthShort ? `Judged on ${monthYearLabel(gateMonthKey).split(' ')[0]}` : null}
+              />
+            )}
+            {fullOutlook && (
+              <PersistencyOutlookHero outlook={fullOutlook} canConfirm={false} />
+            )}
+          </div>
+          <div className="flex flex-col gap-5 lg:col-span-4">
+            <TierLadderBlock
+              tiers={campaign.tiers}
+              tierNextName={lens.tierNext?.name ?? null}
+              apiCurrent={lens.api.current}
+              appsCurrent={lens.apps.current}
+              appsPerTier={campaign.tiers?.[0]?.apps ?? null}
+            />
+            <WhatIfBlock
+              apiCurrent={lens.api.current}
+              tiers={campaign.tiers}
+              today={getTodayTT()}
+              endDate={toDateStr(campaign.endDate)}
+              initialRate={screenPace?.apiPerWeek ?? 20000}
+            />
+          </div>
+        </div>
+
+        <ScreenFooter />
+      </div>
     );
   }
 
