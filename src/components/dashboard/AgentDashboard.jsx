@@ -949,6 +949,7 @@ export default function AgentDashboard() {
           initialFilter={policyLedgerFilter}
           onPoliciesChanged={markPoliciesStale}
           ruleset={awardsRuleset}
+          persistency={persistency}
         />
       )}
 

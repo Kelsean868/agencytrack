@@ -1,6 +1,7 @@
 /**
  * LedgerExportMenu — L2 item 4 (docs/briefs/ledger-lens-build.md § L2).
- * Excel / CSV / PDF export of the FILTERED row set. Libraries are lazy-loaded
+ * CSV / PDF export of the FILTERED row set. LX: lives in the page header —
+ * an icon button in the D1 mobile header, the "Export n" button in D3's. Libraries are lazy-loaded
  * inside `ledgerExportService` on click, never in the main bundle.
  */
 import React, { useEffect, useRef, useState } from 'react';
@@ -48,11 +49,13 @@ export default function LedgerExportMenu({ rows, label }) {
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
+        aria-label={`Export ${n} polic${n === 1 ? 'y' : 'ies'}`}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-11 items-center gap-2 rounded-xl bg-primary dark:bg-primary-dark px-4 text-sm font-bold text-white hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors"
+        className="flex h-11 w-11 items-center justify-center gap-2 rounded-full text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:w-auto lg:rounded-xl lg:bg-primary lg:px-4 lg:text-sm lg:font-bold lg:text-white lg:hover:bg-primary/90 lg:dark:bg-primary-dark lg:dark:hover:bg-primary-dark/90"
         data-testid="ledger-export-trigger"
       >
-        <Download size={16} aria-hidden="true" /> Export {n}
+        <Download size={18} aria-hidden="true" />
+        <span className="hidden lg:inline" aria-hidden="true">Export {n}</span>
       </button>
       {open && (
         <div

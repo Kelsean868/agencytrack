@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, Upload, Loader2, AlertCircle, ArrowLeft, Info, Search } from 'lucide-react';
+import { Plus, Upload, Loader2, AlertCircle, ArrowLeft, Info } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PROSPECTING_SOURCES } from '../../services/prospectInfoService';
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../../utils/prospectingConstants';
 import { createPolicy, getOwnPolicies, transitionPolicyStatus } from '../../services/policiesService';
 import { getPolicyPlans } from '../../services/planCatalogService';
 import { getTodayTT } from '../../utils/dateInputs';
-import { applyLedgerFilter, filterCounts, LEDGER_FILTERS } from '../../lib/policyLedgerDerivation';
-import PipelineStrip from './policyLedger/PipelineStrip';
+import { applyLedgerFilter, LEDGER_FILTERS } from '../../lib/policyLedgerDerivation';
 import PolicyDrillDrawer from './policyLedger/PolicyDrillDrawer';
 import AwardLensPanel from './policyLedger/AwardLensPanel';
+import LedgerPageHeader from './policyLedger/LedgerPageHeader';
 import { ledgerExportDate } from '../../lib/policyCampaignLens';
-import { dayMonth } from '../../lib/awardLensView';
 import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
 import ImportPortfolioModal from './policyLedger/portfolioImport/ImportPortfolioModal';
 
@@ -94,7 +93,11 @@ const selectCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm 
 // `onPoliciesChanged` fires after every write this panel makes (create, status
 // transition, portfolio import) so a parent holding its own copy of the list —
 // the dashboard's production hero — can refetch instead of showing stale figures.
-export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, initialFilter, onPoliciesChanged, ruleset = DEFAULT_RULESET_2026 }) {
+//
+// `persistency` (optional) is the agent's persistency records, as the dashboard
+// already holds them for the Awards tab and Home; with them the campaign card
+// shows its persistency ring. Omitted (e.g. a manager's own ledger) → no ring.
+export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, initialFilter, onPoliciesChanged, ruleset = DEFAULT_RULESET_2026, persistency = null }) {
   const { user, userProfile, tenantId, role } = useAuth();
   // Computed fresh per render so overnight-open sessions always show the real today.
   const today = getTodayTT();
@@ -118,8 +121,13 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
     initialForm?.planId ? 'catalog' : (initialForm?.planName ? 'other' : 'catalog')
   );
 
-  // ── Tier 2 filter / search ──
-  const [filter, setFilter] = useState(initialFilter ?? 'all');
+  // ── Search + hand-off filter ──
+  // `initialFilter` is a hand-off from another screen (Home "Do next" →
+  // 'action', the Persistency tab → 'lapsed'). The old tab strip that showed
+  // it is gone (LX); it now shows as a removable chip in the active-filter row.
+  const [handoffFilter, setHandoffFilter] = useState(
+    initialFilter && initialFilter !== 'all' ? initialFilter : null,
+  );
   const [search, setSearch] = useState('');
 
   // ── Tier 3 drawer ──
@@ -269,11 +277,52 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
     setView('list');
   }
 
-  // ── LIST VIEW (v2 — three tiers + drill drawer) ──
+  // ── LIST VIEW (LX — page layout matches mockups D1 / D3) ──
   if (view === 'list') {
-    const counts = filterCounts(policies);
-    const visible = applyLedgerFilter(policies, { filter, search });
+    // One narrowing for the list: the search (header on desktop, search row
+    // on mobile — both bound to `search`) plus any hand-off filter another
+    // screen opened the ledger with. The award totals never narrow.
+    const visible = applyLedgerFilter(policies, { filter: handoffFilter ?? 'all', search });
     const visibleIds = new Set(visible.map((p) => p.id));
+    const hasList = !loading && !loadError && policies.length > 0;
+    const handoffLabel = handoffFilter ? LEDGER_FILTERS.find((f) => f.key === handoffFilter)?.label : null;
+    const handoffChip = handoffLabel ? { label: handoffLabel, onRemove: () => setHandoffFilter(null) } : null;
+
+    const pageActions = (
+      <>
+        {IMPORT_PORTFOLIO_ROLES.has(role) && (
+          <button
+            onClick={() => setImportModalOpen(true)}
+            aria-label="Import portfolio"
+            className="flex h-11 min-w-[44px] shrink-0 items-center justify-center gap-2 rounded-full text-ink transition-colors hover:bg-surface-muted lg:rounded-xl lg:border lg:border-border lg:px-4 lg:text-sm lg:font-semibold"
+            data-testid="import-portfolio-button"
+          >
+            <Upload size={18} aria-hidden="true" />
+            <span className="hidden lg:inline" aria-hidden="true">Import portfolio</span>
+          </button>
+        )}
+        <button
+          onClick={openCreate}
+          aria-label="New Policy"
+          className="flex h-11 min-w-[44px] shrink-0 items-center justify-center gap-2 rounded-full text-ink transition-colors hover:bg-surface-muted lg:rounded-xl lg:border lg:border-border lg:px-4 lg:text-sm lg:font-semibold"
+          data-testid="ledger-new-policy"
+        >
+          <Plus size={18} aria-hidden="true" />
+          <span className="hidden lg:inline" aria-hidden="true">New Policy</span>
+        </button>
+      </>
+    );
+
+    const renderHeader = (exportMenu) => (
+      <LedgerPageHeader
+        exportDate={exportDate}
+        search={search}
+        onSearchChange={setSearch}
+        showSearch={hasList}
+        exportMenu={exportMenu}
+        actions={pageActions}
+      />
+    );
 
     // §2 staggered-assemble — the drill drawer is a fixed-position overlay
     // rendered outside the `.stagger` container (same pattern as GamePlanV2's
@@ -282,33 +331,9 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
     return (
       <>
       <div className="flex flex-col gap-4 stagger" data-testid="policy-ledger-surface">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-col">
-            <h2 className="text-lg font-bold text-ink">Policy Ledger</h2>
-            {exportDate && (
-              <span className="font-mono text-[11px] uppercase text-ink-muted" data-testid="ledger-ho-as-of">
-                Head office list as of {dayMonth(exportDate)}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {IMPORT_PORTFOLIO_ROLES.has(role) && (
-              <button
-                onClick={() => setImportModalOpen(true)}
-                className="flex items-center gap-2 h-11 px-4 rounded-lg border border-border text-sm font-semibold text-ink hover:bg-surface-muted transition-colors min-w-[44px]"
-                data-testid="import-portfolio-button"
-              >
-                <Upload size={16} /> Import portfolio
-              </button>
-            )}
-            <button
-              onClick={openCreate}
-              className="flex items-center gap-2 h-11 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors min-w-[44px]"
-            >
-              <Plus size={16} /> New Policy
-            </button>
-          </div>
-        </div>
+        {/* 1 — the header shows in every state; with a list it is rendered by
+            AwardLensPanel so its Export gets the filtered rows (one source). */}
+        {!hasList && renderHeader(null)}
 
         {loading && (
           <div className="space-y-3" data-testid="ledger-loading">
@@ -329,7 +354,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
             <button
               type="button"
               onClick={loadLedger}
-              className="mt-1 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-border text-sm font-semibold text-ink hover:bg-surface-muted transition-colors"
+              className="mt-1 inline-flex items-center gap-1.5 h-11 px-4 rounded-lg border border-border text-sm font-semibold text-ink hover:bg-surface-muted transition-colors"
             >
               Retry
             </button>
@@ -350,65 +375,30 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
           </div>
         )}
 
-        {!loading && !loadError && policies.length > 0 && (
+        {hasList && (
           <>
-            {/* Tier 1 */}
-            <PipelineStrip policies={policies} />
-
-            {/* L1 — the "Counts toward" award lens (docs/briefs/ledger-lens-build.md
-                § L1). Replaces the campaign-only lens AND the flat feed: the
-                list below the award card is now grouped Counting / Submitted,
-                not settled / Not counting here for the selected award.
+            {/* 2–7 — view chips, "Counts toward", award card, mobile search
+                row, active chips, list (docs/briefs/ledger-layout-and-l3.md
+                § LX). The old PipelineStrip hero and the LEDGER_FILTERS tab
+                strip are no longer rendered here: the award card carries the
+                figures, the L2 Status filter carries the status narrowing.
 
                 ELIGIBILITY IS DECIDED BY DATE, NOT BY ORIGIN (C-D10, R5). The
                 RAW policy array is passed — never `excludeImported(policies)`:
                 on 20 Sep 2026 the tenant held 229 policy docs, ALL imported, so
                 an origin filter hid 100% of the operator's production (TTD 0
                 against a real 3 apps / TTD 73,946.28). The engines apply the
-                date test instead. The existing filter chips + search still
-                narrow the LIST (visibleIds); the award totals never narrow. */}
+                date test instead. */}
             <AwardLensPanel
               policies={policies}
               visibleIds={visibleIds}
               onOpen={openDrawer}
               ruleset={ruleset}
-              toolbar={(
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="flex gap-1 p-1 bg-surface-muted border border-border rounded-[10px]" role="tablist" aria-label="Filter policies">
-                    {LEDGER_FILTERS.map((f) => {
-                      const on = filter === f.key;
-                      return (
-                        <button
-                          key={f.key}
-                          role="tab"
-                          aria-selected={on}
-                          onClick={() => setFilter(f.key)}
-                          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
-                            on ? 'bg-card text-ink border border-border shadow-sm' : 'text-ink-muted hover:text-ink'
-                          }`}
-                          data-testid={`ledger-filter-${f.key}`}
-                        >
-                          {f.label}
-                          <span className={`font-mono text-[10px] px-1.5 rounded-full ${on ? 'bg-primary-tint text-primary' : 'text-ink-muted'}`}>{counts[f.key]}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="flex-1" />
-                  <div className="flex items-center gap-2 px-3 h-11 bg-card border border-border rounded-lg w-full sm:w-56">
-                    <Search size={15} className="text-ink-muted shrink-0" />
-                    <input
-                      type="search"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search owner, plan…"
-                      className="bg-transparent text-[12.5px] text-ink w-full focus:outline-none"
-                      aria-label="Search policies"
-                      data-testid="ledger-search"
-                    />
-                  </div>
-                </div>
-              )}
+              renderHeader={renderHeader}
+              search={search}
+              onSearchChange={setSearch}
+              handoffChip={handoffChip}
+              persistencyRecords={persistency}
             />
 
             {policies.some((p) => p.productLine && p.productLine !== 'life') && (

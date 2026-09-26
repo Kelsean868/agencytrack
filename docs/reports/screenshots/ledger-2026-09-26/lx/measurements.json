@@ -1,0 +1,654 @@
+[
+  {
+    "label": "default-390-light",
+    "dark": false,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": 72,
+      "3 counts toward": 162,
+      "4 award card": 346,
+      "5 mobile search row": 912,
+      "6 active chips": null,
+      "7 list (groups/table)": 968,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": {
+      "w": 44,
+      "h": 44
+    },
+    "newPolicy": {
+      "w": 44,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 44,
+      "h": 44
+    },
+    "activeViewChip": {
+      "color": "rgb(255, 255, 255)",
+      "background": "rgb(1, 105, 111)"
+    },
+    "exportColours": {
+      "color": "rgb(40, 37, 29)",
+      "background": "rgba(0, 0, 0, 0)"
+    }
+  },
+  {
+    "label": "campaign-view-390-light",
+    "dark": false,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": 72,
+      "3 counts toward": 162,
+      "4 award card": 346,
+      "5 mobile search row": 912,
+      "6 active chips": 968,
+      "7 list (groups/table)": 1050,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": {
+      "w": 44,
+      "h": 44
+    },
+    "newPolicy": {
+      "w": 44,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 44,
+      "h": 44
+    },
+    "activeViewChip": {
+      "color": "rgb(255, 255, 255)",
+      "background": "rgb(1, 105, 111)"
+    },
+    "exportColours": {
+      "color": "rgb(40, 37, 29)",
+      "background": "rgba(0, 0, 0, 0)"
+    }
+  },
+  {
+    "label": "empty-390-light",
+    "dark": false,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 44,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 44,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "error-390-light",
+    "dark": false,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 44,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 44,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "loading-390-light",
+    "dark": false,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 44,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 44,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "default-1440-light",
+    "dark": false,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": 82,
+      "3 counts toward": 134,
+      "4 award card": 218,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": 405,
+      "filter rail": 405
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": {
+      "w": 114,
+      "h": 44
+    },
+    "newPolicy": {
+      "w": 132,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 164,
+      "h": 44
+    },
+    "activeViewChip": {
+      "color": "rgb(1, 105, 111)",
+      "background": "rgba(0, 0, 0, 0)"
+    },
+    "exportColours": {
+      "color": "rgb(255, 255, 255)",
+      "background": "rgb(1, 105, 111)"
+    }
+  },
+  {
+    "label": "campaign-view-1440-light",
+    "dark": false,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": 82,
+      "3 counts toward": 134,
+      "4 award card": 218,
+      "5 mobile search row": null,
+      "6 active chips": 405,
+      "7 list (groups/table)": 449,
+      "filter rail": 449
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": {
+      "w": 114,
+      "h": 44
+    },
+    "newPolicy": {
+      "w": 132,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 164,
+      "h": 44
+    },
+    "activeViewChip": {
+      "color": "rgb(1, 105, 111)",
+      "background": "rgba(0, 0, 0, 0)"
+    },
+    "exportColours": {
+      "color": "rgb(255, 255, 255)",
+      "background": "rgb(1, 105, 111)"
+    }
+  },
+  {
+    "label": "empty-1440-light",
+    "dark": false,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 132,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 164,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "error-1440-light",
+    "dark": false,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 132,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 164,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "loading-1440-light",
+    "dark": false,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 132,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 164,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "default-390-dark",
+    "dark": true,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": 72,
+      "3 counts toward": 162,
+      "4 award card": 346,
+      "5 mobile search row": 912,
+      "6 active chips": null,
+      "7 list (groups/table)": 968,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": {
+      "w": 44,
+      "h": 44
+    },
+    "newPolicy": {
+      "w": 44,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 44,
+      "h": 44
+    },
+    "activeViewChip": {
+      "color": "rgb(255, 255, 255)",
+      "background": "rgb(1, 105, 111)"
+    },
+    "exportColours": {
+      "color": "rgb(240, 235, 224)",
+      "background": "rgba(0, 0, 0, 0)"
+    }
+  },
+  {
+    "label": "campaign-view-390-dark",
+    "dark": true,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": 72,
+      "3 counts toward": 162,
+      "4 award card": 346,
+      "5 mobile search row": 912,
+      "6 active chips": 968,
+      "7 list (groups/table)": 1050,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": {
+      "w": 44,
+      "h": 44
+    },
+    "newPolicy": {
+      "w": 44,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 44,
+      "h": 44
+    },
+    "activeViewChip": {
+      "color": "rgb(255, 255, 255)",
+      "background": "rgb(1, 105, 111)"
+    },
+    "exportColours": {
+      "color": "rgb(240, 235, 224)",
+      "background": "rgba(0, 0, 0, 0)"
+    }
+  },
+  {
+    "label": "empty-390-dark",
+    "dark": true,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 44,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 44,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "error-390-dark",
+    "dark": true,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 44,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 44,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "loading-390-dark",
+    "dark": true,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 44,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 44,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "default-1440-dark",
+    "dark": true,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": 82,
+      "3 counts toward": 134,
+      "4 award card": 218,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": 405,
+      "filter rail": 405
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": {
+      "w": 114,
+      "h": 44
+    },
+    "newPolicy": {
+      "w": 132,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 164,
+      "h": 44
+    },
+    "activeViewChip": {
+      "color": "rgb(74, 181, 184)",
+      "background": "rgba(0, 0, 0, 0)"
+    },
+    "exportColours": {
+      "color": "rgb(255, 255, 255)",
+      "background": "rgb(1, 105, 111)"
+    }
+  },
+  {
+    "label": "campaign-view-1440-dark",
+    "dark": true,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": 82,
+      "3 counts toward": 134,
+      "4 award card": 218,
+      "5 mobile search row": null,
+      "6 active chips": 405,
+      "7 list (groups/table)": 449,
+      "filter rail": 449
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": {
+      "w": 114,
+      "h": 44
+    },
+    "newPolicy": {
+      "w": 132,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 164,
+      "h": 44
+    },
+    "activeViewChip": {
+      "color": "rgb(74, 181, 184)",
+      "background": "rgba(0, 0, 0, 0)"
+    },
+    "exportColours": {
+      "color": "rgb(255, 255, 255)",
+      "background": "rgb(1, 105, 111)"
+    }
+  },
+  {
+    "label": "empty-1440-dark",
+    "dark": true,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 132,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 164,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "error-1440-dark",
+    "dark": true,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 132,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 164,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  },
+  {
+    "label": "loading-1440-dark",
+    "dark": true,
+    "blocks": {
+      "1 header": 12,
+      "2 view chips": null,
+      "3 counts toward": null,
+      "4 award card": null,
+      "5 mobile search row": null,
+      "6 active chips": null,
+      "7 list (groups/table)": null,
+      "filter rail": null
+    },
+    "ordered": true,
+    "overflowX": false,
+    "pipelineStrip": 0,
+    "oldTabStrip": 0,
+    "exportTrigger": null,
+    "newPolicy": {
+      "w": 132,
+      "h": 44
+    },
+    "importPortfolio": {
+      "w": 164,
+      "h": 44
+    },
+    "activeViewChip": null,
+    "exportColours": null
+  }
+]

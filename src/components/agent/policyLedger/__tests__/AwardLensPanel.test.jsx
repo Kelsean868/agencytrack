@@ -95,12 +95,20 @@ describe('AwardLensPanel — selector and default', () => {
 });
 
 describe('AwardLensPanel — card variant per award type', () => {
-  it('campaign: ring + target tier picker + pace + export proof', async () => {
+  it('campaign (D1/D3): API + Applications rings + target tier picker + pace + export proof', async () => {
     renderPanel();
     await waitForCampaign();
-    expect(within(card()).getByTestId('award-lens-ring')).toBeInTheDocument();
-    expect(within(card()).getByText('of 275,000 (Champion) · 3 of 35 apps')).toBeInTheDocument();
-    expect(within(card()).getByText('+ TTD 36,000 submitted')).toBeInTheDocument();
+    expect(within(card()).getByTestId('award-lens-rings')).toBeInTheDocument();
+    const api = within(card()).getByTestId('award-lens-ring-api');
+    expect(within(api).getByText('73.9K / 275K')).toBeInTheDocument();
+    expect(within(api).getByText('+36K submitted')).toBeInTheDocument();
+    expect(within(api).getByText('73,946 + 36,000 submitted')).toBeInTheDocument(); // D3 strip wording
+    const apps = within(card()).getByTestId('award-lens-ring-apps');
+    expect(within(apps).getByText('32 to go · +1 sub.')).toBeInTheDocument();
+    expect(within(apps).getByText('3 + 1 submitted / 35')).toBeInTheDocument();
+    expect(screen.getByTestId('award-lens-pending-note')).toHaveTextContent(
+      'Plus TTD 36,000 (1 app) submitted — the faint ring. It counts when head office settles it.',
+    );
     expect(screen.getByTestId('ledger-target-tier-Champion')).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByTestId('award-lens-line1')).toHaveTextContent('TTD 14.7K a week to reach Champion.');
     expect(screen.getByTestId('award-lens-export-proof')).toBeInTheDocument();
@@ -140,7 +148,7 @@ describe('AwardLensPanel — target tier', () => {
     await waitForCampaign();
     fireEvent.click(screen.getByTestId('ledger-target-tier-VIP'));
     expect(screen.getByTestId('ledger-target-tier-VIP')).toHaveAttribute('aria-checked', 'true');
-    expect(within(card()).getByText('of 375,000 (VIP) · 3 of 35 apps')).toBeInTheDocument();
+    expect(within(screen.getByTestId('award-lens-ring-api')).getByText('73.9K / 375K')).toBeInTheDocument();
     expect(screen.getByTestId('award-lens-line1')).toHaveTextContent('TTD 22K a week to reach VIP.');
     expect(hoisted.setLedgerTargetTier).toHaveBeenCalledWith('t1', 'a1', 'xmas26', 'VIP');
   });
@@ -198,6 +206,6 @@ describe('AwardLensPanel — grouped list', () => {
     await waitForCampaign();
     expect(groupCount('counting')).toBe(1);
     expect(screen.getByTestId('award-lens-empty-pending')).toHaveTextContent('No policies here match this filter.');
-    expect(within(card()).getByText('TTD 73,946')).toBeInTheDocument();
+    expect(within(card()).getByText('73,946 + 36,000 submitted')).toBeInTheDocument();
   });
 });
