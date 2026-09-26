@@ -64,6 +64,13 @@ describe('CampaignHeroCard variant="screen"', () => {
     expect(screen.getByTestId('campaign-screen-progress-apps')).toHaveTextContent('34 to go');
     expect(screen.getByTestId('campaign-screen-progress-persistency')).toHaveTextContent('Below the gate');
     expect(screen.getByTestId('campaign-screen-progress-persistency')).toHaveTextContent(/need 90% in Dec/);
+    // Regression: a raw unrounded float ("86.0377446303493 of 100") must never
+    // render — every number shown here is at most one decimal place.
+    const persistencyText = screen.getByTestId('campaign-screen-progress-persistency').textContent;
+    for (const m of persistencyText.matchAll(/\d+\.(\d+)/g)) {
+      expect(m[1].length).toBeLessThanOrEqual(1);
+    }
+    expect(persistencyText).not.toMatch(/of 100\b/);
   });
 
   it('block 2 — what it takes: pace lines, reinstate line hidden at/above the gate', () => {
@@ -95,14 +102,72 @@ describe('CampaignHeroCard variant="screen"', () => {
     expect(screen.queryByTestId('campaign-screen-gate-bar-value')).toBeNull();
   });
 
-  it('block 4 — tier ladder: every tier, next tier highlighted, "You" row with progress', () => {
+  it('block 3 — the bar fills its column at any width (no aspect-ratio letterboxing)', () => {
+    render(<CampaignHeroCard variant="screen" campaign={CAMPAIGN} policies={BELOW_GATE_POLICIES} persistencyRecords={[]} />);
+    expect(screen.getByTestId('campaign-screen-gate-bar')).toHaveAttribute('preserveAspectRatio', 'none');
+  });
+
+  it('block 3 — month-history row: derived (From HO · Confirm), estimate, projected — from #971\'s own outlook, not recomputed', () => {
+    render(<CampaignHeroCard variant="screen" campaign={CAMPAIGN} policies={BELOW_GATE_POLICIES} persistencyRecords={[]} />);
+    const row = screen.getByTestId('campaign-screen-gate-month-history');
+    expect(row).toBeInTheDocument();
+    const derivedCol = screen.getByTestId('campaign-screen-gate-month-derived');
+    expect(derivedCol).toHaveTextContent('Aug');
+    expect(derivedCol).toHaveTextContent('86.0%'); // both fixture policies are Aug-issued, so the lapse counts here too
+    // Aug 2026 predates the 24-month model's September cutover, so #971's own
+    // `derived.confirmable` is false here — reusing that flag (never recomputing
+    // it) means this column correctly shows no Confirm affordance for this month.
+    expect(derivedCol).toHaveTextContent('From HO');
+    expect(derivedCol).not.toHaveTextContent('Confirm');
+    expect(screen.getByTestId('campaign-screen-gate-month-estimate')).toHaveTextContent('Sep');
+    expect(screen.getByTestId('campaign-screen-gate-month-estimate')).toHaveTextContent('Estimate');
+    const projectedCol = screen.getByTestId('campaign-screen-gate-month-projected');
+    expect(projectedCol).toHaveTextContent('Dec');
+    expect(projectedCol).toHaveTextContent('86.0%');
+    expect(projectedCol).toHaveTextContent('Projected');
+    // "Confirm" is inert text, never a control (self-confirm write path is P2d, out of scope).
+    expect(screen.queryByRole('button', { name: /confirm/i })).toBeNull();
+    expect(screen.queryByRole('link', { name: /confirm/i })).toBeNull();
+  });
+
+  it('block 3 — month-history row shows "· Confirm" once the derived month is on the 24-month model', () => {
+    vi.setSystemTime(new Date('2026-11-20T15:00:00Z')); // derived month → Sep 2026, confirmable
+    const laterExport = BELOW_GATE_POLICIES.map((p) => ({ ...p, exportDate: '2026-10-15' }));
+    render(<CampaignHeroCard variant="screen" campaign={CAMPAIGN} policies={laterExport} persistencyRecords={[]} />);
+    const derivedCol = screen.getByTestId('campaign-screen-gate-month-derived');
+    expect(derivedCol).toHaveTextContent('Sep');
+    expect(derivedCol).toHaveTextContent('From HO · Confirm');
+  });
+
+  it('block 4 — tier ladder: every tier, next tier highlighted, "You" row with progress, cash shown without "TTD" prefix', () => {
     render(<CampaignHeroCard variant="screen" campaign={CAMPAIGN} policies={AT_GATE_POLICIES} persistencyRecords={[]} />);
     expect(screen.getByTestId('campaign-screen-tier-row-Champion')).toBeInTheDocument();
     expect(screen.getByTestId('campaign-screen-tier-row-VIP')).toBeInTheDocument();
     expect(screen.getByTestId('campaign-screen-tier-row-Pioneer')).toBeInTheDocument();
     expect(screen.getByTestId('campaign-screen-tier-next-badge').closest('[data-testid^="campaign-screen-tier-row-"]'))
       .toHaveAttribute('data-testid', 'campaign-screen-tier-row-Champion');
+    // The mockup's own cash column has no "TTD" — the header already says "cash in TTD".
+    const pioneer = screen.getByTestId('campaign-screen-tier-row-Pioneer');
+    expect(pioneer).toHaveTextContent('70,000');
+    expect(pioneer).not.toHaveTextContent('TTD 70,000');
+    expect(pioneer.querySelector('[title]')).toHaveAttribute('title', 'TTD 70,000');
     expect(screen.getByTestId('campaign-screen-you-row')).toHaveTextContent('27% of the way to Champion');
+    // Singular "1 app", not "1 apps" — this fixture's lens has exactly one counted application.
+    expect(screen.getByTestId('campaign-screen-you-row')).toHaveTextContent('1 app');
+    expect(screen.getByTestId('campaign-screen-you-row')).not.toHaveTextContent('1 apps');
+  });
+
+  it('block 4 — desktop reflow: progress cards and what-it-takes cells switch to a 3-column grid at lg', () => {
+    render(<CampaignHeroCard variant="screen" campaign={CAMPAIGN} policies={BELOW_GATE_POLICIES} persistencyRecords={[]} />);
+    expect(screen.getByTestId('campaign-screen-progress').className).toMatch(/lg:grid-cols-3/);
+    expect(screen.getByTestId('campaign-screen-takes-api').parentElement.className).toMatch(/lg:grid-cols-3/);
+  });
+
+  it('block 5 — what-if card pairs its teal fill with dark:bg-primary-dark (CLAUDE.md D6)', () => {
+    render(<CampaignHeroCard variant="screen" campaign={CAMPAIGN} policies={AT_GATE_POLICIES} persistencyRecords={[]} />);
+    const cls = screen.getByTestId('campaign-screen-whatif').className;
+    expect(cls).toMatch(/\bbg-primary\b/);
+    expect(cls).toMatch(/dark:bg-primary-dark\b/);
   });
 
   it('block 5 — what if: slider has a label, and the default pace projects Champion', () => {

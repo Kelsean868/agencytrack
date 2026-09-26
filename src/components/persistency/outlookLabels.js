@@ -14,6 +14,14 @@ export function outlookMonthLabel(monthKey) {
   return `${MONTH_ABBR[Number(monthKey.slice(5, 7)) - 1]} ${monthKey.slice(0, 4)}`;
 }
 
+/** `'2026-08'` → `'Aug'` (no year — the Campaign screen's month-history row,
+ * R2 block 3, names months without a year since they're all inside one
+ * campaign period). */
+export function outlookMonthShortLabel(monthKey) {
+  if (!MONTH_KEY_RE.test(String(monthKey))) return '—';
+  return MONTH_ABBR[Number(monthKey.slice(5, 7)) - 1];
+}
+
 /** `'2026-12'` → `'31 Dec'`, the last day of the month. */
 export function outlookMonthEndLabel(monthKey) {
   if (!MONTH_KEY_RE.test(String(monthKey))) return '—';

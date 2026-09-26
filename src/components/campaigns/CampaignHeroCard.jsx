@@ -7,12 +7,11 @@ import {
 import { toDateStr } from '../../lib/policyCampaignLens';
 import { buildPersistencyOutlook, formatOutlookPct, outlookGateFor } from '../../lib/persistency/persistencyOutlook';
 import { getTodayTT } from '../../utils/dateInputs';
-import { outlookMonthLabel } from '../persistency/outlookLabels';
+import { outlookMonthLabel, outlookMonthShortLabel } from '../persistency/outlookLabels';
 import { formatCurrency } from '../../utils/formatters';
 import { campaignPace } from '../../lib/campaignPace';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import CampaignHeroCompact from './CampaignHeroCompact';
-import PersistencyOutlookHero from '../persistency/PersistencyOutlookHero';
 import {
   ProgressBlock, WhatItTakesBlock, PersistencyGateBarBlock, TierLadderBlock, WhatIfBlock, ScreenFooter,
 } from './CampaignScreenBlocks';
@@ -21,10 +20,6 @@ const MONTH_KEY_RE = /^\d{4}-\d{2}$/;
 
 function monthYearLabel(monthKey) {
   return new Date(`${monthKey}-01T12:00:00Z`).toLocaleDateString('en-TT', { month: 'long', year: 'numeric' });
-}
-
-function monthShortLabel(monthKey) {
-  return new Date(`${monthKey}-01T12:00:00Z`).toLocaleDateString('en-TT', { month: 'short' });
 }
 
 // The preview comes from the persistency outlook (R5): the newest of a
@@ -242,7 +237,7 @@ export default function CampaignHeroCard({
       ? `${persPct}%`
       : projectedPct != null ? formatOutlookPct(projectedPct / 100) : '—';
     const gateMonthKey = gate?.basis === 'finalMonth' && endKey ? endKey.slice(0, 7) : (gateMonth?.monthKey ?? null);
-    const gateMonthShort = gateMonthKey && MONTH_KEY_RE.test(gateMonthKey) ? monthShortLabel(gateMonthKey) : null;
+    const gateMonthShort = gateMonthKey && MONTH_KEY_RE.test(gateMonthKey) ? outlookMonthShortLabel(gateMonthKey) : null;
     const atOrAboveGate = persistencyDisplayPctScreen != null && persistencyDisplayPctScreen >= threshold;
 
     return (
@@ -284,10 +279,8 @@ export default function CampaignHeroCard({
                 projectedPct={projectedPct}
                 threshold={threshold}
                 judgedLabel={gate?.basis === 'finalMonth' && gateMonthShort ? `Judged on ${monthYearLabel(gateMonthKey).split(' ')[0]}` : null}
+                outlook={fullOutlook}
               />
-            )}
-            {fullOutlook && (
-              <PersistencyOutlookHero outlook={fullOutlook} canConfirm={false} />
             )}
           </div>
           <div className="flex flex-col gap-5 lg:col-span-4">

@@ -2,8 +2,22 @@ import React, { useMemo, useState } from 'react';
 import ProgressDonut from '../dashboard/ProgressDonut';
 import { formatCompact, formatAppsRange } from '../../lib/campaignPace';
 import { whatIfProjection, clampToWhatIfStep, WHAT_IF_MIN, WHAT_IF_MAX, WHAT_IF_STEP } from '../../lib/campaignWhatIf';
-import { outlookDateLabel } from '../persistency/outlookLabels';
+import { outlookDateLabel, outlookMonthShortLabel } from '../persistency/outlookLabels';
+import { formatOutlookPct } from '../../lib/persistency/persistencyOutlook';
 import { formatCurrency } from '../../utils/formatters';
+
+/** "70,000" — `formatCurrency` minus its "TTD " prefix, for a column that
+ * already states its currency in a header (tier ladder, R2 block 4 — the
+ * mockup's cash column has no per-row "TTD" and wraps to two lines at 390px
+ * when one is added). The full value stays in a `title`/aria-label. */
+function formatCashOnly(n) {
+  return formatCurrency(n).replace(/^TTD\s*/, '');
+}
+
+/** "1 app" / "3 apps" — plain English pluralization, no library needed for one word. */
+function pluralApps(n) {
+  return `${n} app${n === 1 ? '' : 's'}`;
+}
 
 /**
  * CampaignScreenBlocks — the six blocks of the Campaign screen (R2,
@@ -19,9 +33,12 @@ import { formatCurrency } from '../../utils/formatters';
 
 // ── Block 1 — Progress ───────────────────────────────────────────────────────
 
-function ProgressRow({ label, value, target, unit, toGoLabel, tone = 'teal', tick = null, centerLabel, ariaLabel, testId, note }) {
+function ProgressRow({ label, value, target, unit, valueLine, toGoLabel, tone = 'teal', tick = null, centerLabel, ariaLabel, testId, note }) {
   return (
-    <div className="flex items-center gap-3.5 py-3 border-b border-border last:border-b-0" data-testid={testId}>
+    <div
+      className="flex items-center gap-3.5 py-3 border-b border-border last:border-b-0 lg:flex-col lg:items-center lg:gap-2.5 lg:border-b-0 lg:rounded-2xl lg:border lg:border-border lg:bg-card lg:p-[18px] lg:text-center"
+      data-testid={testId}
+    >
       <ProgressDonut
         value={value ?? 0}
         max={target ?? value ?? 1}
@@ -29,14 +46,23 @@ function ProgressRow({ label, value, target, unit, toGoLabel, tone = 'teal', tic
         tick={tick}
         centerLabel={centerLabel}
         ariaLabel={ariaLabel}
-        className="h-[68px] w-[68px] shrink-0"
+        className="h-[68px] w-[68px] shrink-0 lg:h-[104px] lg:w-[104px]"
       />
-      <div className="flex min-w-0 flex-col gap-0.5">
+      <div className="flex min-w-0 flex-col gap-0.5 lg:items-center">
         <span className="text-sm font-bold text-ink">{label}</span>
+        {/* `valueLine` is a caller-formatted string (e.g. "86.0%") for a row
+            whose value isn't a plain TTD/count pair — the persistency row
+            below. Without it, a raw unrounded float (86.0377446303493) was
+            rendered here directly; every row that HAS a real unit still goes
+            through the value/target branch, unaffected. */}
         <span className="text-[15px] font-semibold text-ink">
-          {unit === 'TTD' ? formatCompact(value) : value}
-          {target != null && (
-            <span className="font-medium text-ink-muted"> of {unit === 'TTD' ? formatCompact(target) : target}</span>
+          {valueLine != null ? valueLine : (
+            <>
+              {unit === 'TTD' ? formatCompact(value) : value}
+              {target != null && (
+                <span className="font-medium text-ink-muted"> of {unit === 'TTD' ? formatCompact(target) : target}</span>
+              )}
+            </>
           )}
         </span>
         <span className="text-xs text-ink-muted">{toGoLabel}</span>
@@ -52,7 +78,11 @@ export function ProgressBlock({ lens, threshold, persistencyDisplayPct, persiste
   const apiPct = lens.api.target > 0 ? Math.min(999, Math.round((lens.api.current / lens.api.target) * 100)) : 100;
 
   return (
-    <section aria-label="Your progress" className="rounded-2xl border border-border bg-card px-4" data-testid="campaign-screen-progress">
+    <section
+      aria-label="Your progress"
+      className="rounded-2xl border border-border bg-card px-4 lg:grid lg:grid-cols-3 lg:gap-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0"
+      data-testid="campaign-screen-progress"
+    >
       <ProgressRow
         label="API"
         value={lens.api.current}
@@ -81,8 +111,9 @@ export function ProgressBlock({ lens, threshold, persistencyDisplayPct, persiste
         tone={persistencyBelow ? 'warning' : 'teal'}
         tick={threshold != null ? threshold / 100 : null}
         centerLabel={persistencyDisplayPct != null ? persistencyLabel : '—'}
+        valueLine={persistencyDisplayPct != null ? persistencyLabel : '—'}
         toGoLabel={persistencyDisplayPct != null
-          ? `${persistencyLabel}${threshold != null ? ` · need ${threshold}%${gateMonthShort ? ` in ${gateMonthShort}` : ''}` : ''}`
+          ? (threshold != null ? `need ${threshold}%${gateMonthShort ? ` in ${gateMonthShort}` : ''}` : '')
           : 'Not yet known'}
         note={persistencyBelow ? 'Below the gate' : null}
         ariaLabel={persistencyDisplayPct != null
@@ -98,9 +129,12 @@ export function ProgressBlock({ lens, threshold, persistencyDisplayPct, persiste
 
 function TakesRow({ figure, tone, text, testId }) {
   return (
-    <div className="flex items-center gap-3 py-3.5 border-b border-border last:border-b-0" data-testid={testId}>
+    <div
+      className="flex items-center gap-3 py-3.5 border-b border-border last:border-b-0 lg:flex-col lg:items-start lg:gap-1 lg:border-b-0 lg:border-r lg:border-border lg:p-[18px] lg:last:border-r-0"
+      data-testid={testId}
+    >
       <span
-        className={`w-[76px] shrink-0 font-display text-xl font-bold ${tone === 'warning' ? 'text-warning-ink' : 'text-ink'}`}
+        className={`w-[76px] shrink-0 font-display text-xl font-bold lg:w-auto lg:text-[28px] ${tone === 'warning' ? 'text-warning-ink' : 'text-ink'}`}
       >
         {figure}
       </span>
@@ -111,10 +145,11 @@ function TakesRow({ figure, tone, text, testId }) {
 
 export function WhatItTakesBlock({ pace, weeksLeft, reinstateNeeded, gateThreshold, atOrAboveGate }) {
   const weeksLabel = Number.isFinite(weeksLeft) ? Math.max(1, Math.round(weeksLeft)) : null;
+  const showReinstate = !atOrAboveGate && reinstateNeeded > 0;
   return (
     <section aria-label="What it takes" className="flex flex-col gap-2.5">
       <h2 className="font-display text-lg font-bold text-ink">What it takes</h2>
-      <div className="rounded-[18px] border border-border bg-card px-3.5">
+      <div className={`rounded-[18px] border border-border bg-card px-3.5 lg:px-0 lg:grid ${showReinstate ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
         <TakesRow
           figure={pace ? formatCompact(pace.apiPerWeek) : '—'}
           text={weeksLabel ? `API a week for the next ${weeksLabel} week${weeksLabel === 1 ? '' : 's'}.` : 'API a week.'}
@@ -125,7 +160,7 @@ export function WhatItTakesBlock({ pace, weeksLeft, reinstateNeeded, gateThresho
           text="applications a week."
           testId="campaign-screen-takes-apps"
         />
-        {!atOrAboveGate && reinstateNeeded > 0 && (
+        {showReinstate && (
           <TakesRow
             figure={formatCompact(reinstateNeeded)}
             tone="warning"
@@ -154,7 +189,65 @@ function gateBarPct(value) {
   return Math.min(100, Math.max(0, ((v - GATE_BAR_MIN) / (GATE_BAR_MAX - GATE_BAR_MIN)) * 100));
 }
 
-export function PersistencyGateBarBlock({ projectedPct, threshold, judgedLabel }) {
+function MonthColumn({ label, value, tone, note, testId }) {
+  return (
+    <div className="flex flex-col gap-0.5" data-testid={testId}>
+      <span className="text-xs text-ink-muted">{label}</span>
+      <span className={`text-base font-bold ${tone === 'warning' ? 'text-warning-ink' : 'text-ink'}`}>{value}</span>
+      <span className="text-[11px] text-ink-muted">{note}</span>
+    </div>
+  );
+}
+
+/**
+ * The month-history row (R2 block 3 / mockup C2 / C4): last derived month
+ * ("From HO", "· Confirm" appended only when #971's own `confirmable` flag
+ * says so — never re-derived here), current month ("Estimate"), gate month
+ * ("Projected"). Every figure and every flag comes straight off `outlook`
+ * (`buildPersistencyOutlook`'s return, computed once in CampaignHeroCard) —
+ * this component formats, it does not compute.
+ *
+ * "Confirm" renders as inert text, not a control: the self-confirm write
+ * path is P2d, explicitly out of scope for R2 (docs/briefs/home-campaign-
+ * redesign.md § Out of scope). Wiring a real confirm action here would be
+ * exactly the kind of "how to solve" decision Rule 1 reserves for a brief.
+ */
+function MonthHistoryRow({ outlook, threshold }) {
+  const { derived, estimateToday, gateMonth } = outlook ?? {};
+  if (!derived && !estimateToday && !gateMonth) return null;
+
+  return (
+    <div className="grid grid-cols-3 gap-2" data-testid="campaign-screen-gate-month-history">
+      {derived && (
+        <MonthColumn
+          label={outlookMonthShortLabel(derived.monthKey)}
+          value={formatOutlookPct(derived.persistency)}
+          note={derived.confirmable ? 'From HO · Confirm' : 'From HO'}
+          testId="campaign-screen-gate-month-derived"
+        />
+      )}
+      {estimateToday && (
+        <MonthColumn
+          label={outlookMonthShortLabel(estimateToday.monthKey)}
+          value={formatOutlookPct(estimateToday.persistency)}
+          note="Estimate"
+          testId="campaign-screen-gate-month-estimate"
+        />
+      )}
+      {gateMonth && (
+        <MonthColumn
+          label={outlookMonthShortLabel(gateMonth.monthKey)}
+          value={formatOutlookPct(gateMonth.persistency)}
+          tone={Number.isFinite(threshold) && gateMonth.persistency * 100 < threshold ? 'warning' : undefined}
+          note="Projected"
+          testId="campaign-screen-gate-month-projected"
+        />
+      )}
+    </div>
+  );
+}
+
+export function PersistencyGateBarBlock({ projectedPct, threshold, judgedLabel, outlook }) {
   const fillPct = gateBarPct(projectedPct);
   const tickPct = gateBarPct(threshold);
   const belowGate = Number.isFinite(projectedPct) && Number.isFinite(threshold) && projectedPct < threshold;
@@ -162,51 +255,66 @@ export function PersistencyGateBarBlock({ projectedPct, threshold, judgedLabel }
   return (
     <section
       aria-label="Persistency gate"
-      className="flex flex-col gap-2.5 rounded-[18px] border border-border bg-card p-4"
+      className="flex flex-col gap-3 rounded-[18px] border border-border bg-card p-4"
       data-testid="campaign-screen-gate-bar-section"
     >
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[15px] font-bold text-ink">Persistency gate</span>
         {judgedLabel && <span className="text-xs font-bold text-warning-ink">{judgedLabel}</span>}
       </div>
-      {/* A div-based bar has no Tailwind way to place a fill/tick at a
-          RUNTIME percentage without an inline `style` (Tailwind's arbitrary
-          values are resolved at build time, not from a JS variable). SVG
-          geometry attributes draw the same runtime position without one —
-          the same reason ProgressDonut uses them for its ring. */}
-      <svg viewBox="0 0 300 54" className="h-[46px] w-full" role="img" aria-label={`Persistency gate, ${GATE_BAR_MIN} to ${GATE_BAR_MAX} percent, gate at ${threshold} percent${projectedPct != null ? `, projected ${projectedPct.toFixed(1)} percent` : ''}`} data-testid="campaign-screen-gate-bar">
-        <rect x="0" y="16" width="300" height="10" rx="5" className="fill-surface-muted" />
-        {fillPct != null && (
-          <rect
-            x="0" y="16" width={(fillPct / 100) * 300} height="10" rx="5"
-            className={belowGate ? 'fill-warning' : 'fill-success'}
-            data-testid="campaign-screen-gate-bar-fill"
-          />
-        )}
-        {tickPct != null && (
-          <line
-            x1={(tickPct / 100) * 300} x2={(tickPct / 100) * 300} y1="6" y2="36"
-            strokeWidth="3" strokeLinecap="round" className="stroke-ink"
-            data-testid="campaign-screen-gate-bar-tick"
-          />
-        )}
-        <text x="0" y="50" fontSize="10" fontFamily="inherit" textAnchor="start" className="fill-ink-muted font-mono">{GATE_BAR_MIN}%</text>
-        <text x="300" y="50" fontSize="10" fontFamily="inherit" textAnchor="end" className="fill-ink-muted font-mono">{GATE_BAR_MAX}%</text>
-        {fillPct != null && (
-          <text
-            x={(fillPct / 100) * 300} y="50" fontSize="10" fontWeight="700" textAnchor="middle"
-            className={`font-mono ${belowGate ? 'fill-warning-ink' : 'fill-success-ink'}`}
-            data-testid="campaign-screen-gate-bar-value"
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
+        <div className="lg:min-w-0 lg:flex-1">
+          {/* A div-based bar has no Tailwind way to place a fill/tick at a
+              RUNTIME percentage without an inline `style` (Tailwind's
+              arbitrary values are resolved at build time, not from a JS
+              variable). SVG geometry attributes draw the same runtime
+              position without one — the same reason ProgressDonut uses them
+              for its ring. `preserveAspectRatio="none"` lets the bar fill its
+              column at any width — the default "meet" scaling was
+              letterboxing it (300×54's own aspect ratio) into a narrow bar
+              centred in a wide desktop card. */}
+          <svg
+            viewBox="0 0 300 54" preserveAspectRatio="none" className="h-[46px] w-full" role="img"
+            aria-label={`Persistency gate, ${GATE_BAR_MIN} to ${GATE_BAR_MAX} percent, gate at ${threshold} percent${projectedPct != null ? `, projected ${projectedPct.toFixed(1)} percent` : ''}`}
+            data-testid="campaign-screen-gate-bar"
           >
-            {projectedPct.toFixed(1)}
-          </text>
-        )}
-        {tickPct != null && (
-          <text x={(tickPct / 100) * 300} y="50" fontSize="10" fontWeight="700" textAnchor="middle" className="fill-ink font-mono">
-            GATE {threshold}
-          </text>
-        )}
-      </svg>
+            <rect x="0" y="16" width="300" height="10" rx="5" className="fill-surface-muted" />
+            {fillPct != null && (
+              <rect
+                x="0" y="16" width={(fillPct / 100) * 300} height="10" rx="5"
+                className={belowGate ? 'fill-warning' : 'fill-success'}
+                data-testid="campaign-screen-gate-bar-fill"
+              />
+            )}
+            {tickPct != null && (
+              <line
+                x1={(tickPct / 100) * 300} x2={(tickPct / 100) * 300} y1="6" y2="36"
+                strokeWidth="3" strokeLinecap="round" className="stroke-ink"
+                data-testid="campaign-screen-gate-bar-tick"
+              />
+            )}
+            <text x="0" y="50" fontSize="10" fontFamily="inherit" textAnchor="start" className="fill-ink-muted font-mono">{GATE_BAR_MIN}%</text>
+            <text x="300" y="50" fontSize="10" fontFamily="inherit" textAnchor="end" className="fill-ink-muted font-mono">{GATE_BAR_MAX}%</text>
+            {fillPct != null && (
+              <text
+                x={(fillPct / 100) * 300} y="50" fontSize="10" fontWeight="700" textAnchor="middle"
+                className={`font-mono ${belowGate ? 'fill-warning-ink' : 'fill-success-ink'}`}
+                data-testid="campaign-screen-gate-bar-value"
+              >
+                {projectedPct.toFixed(1)}
+              </text>
+            )}
+            {tickPct != null && (
+              <text x={(tickPct / 100) * 300} y="50" fontSize="10" fontWeight="700" textAnchor="middle" className="fill-ink font-mono">
+                GATE {threshold}
+              </text>
+            )}
+          </svg>
+        </div>
+        <div className="lg:w-[260px] lg:shrink-0 lg:border-l lg:border-border lg:pl-5">
+          <MonthHistoryRow outlook={outlook} threshold={threshold} />
+        </div>
+      </div>
     </section>
   );
 }
@@ -234,9 +342,12 @@ function TierRow({ tier, isNext, isYou, appsUnit }) {
         <span className={`text-[15px] ${isNext ? 'font-bold text-ink' : 'font-semibold text-ink-muted'}`}>{tier.name}</span>
         {isNext && <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-gold-ink" data-testid="campaign-screen-tier-next-badge">Next tier</span>}
       </div>
-      <span className="text-xs text-ink-muted">{formatCompact(tier.api)}{appsUnit ? ` · ${tier.apps} apps` : ''}</span>
-      <span className={`w-[74px] text-right text-sm ${isNext ? 'font-bold text-ink' : 'font-semibold text-ink-muted'}`}>
-        {formatCurrency(tier.cash ?? 0)}
+      <span className="text-xs text-ink-muted">{formatCompact(tier.api)}{appsUnit ? ` · ${pluralApps(tier.apps)}` : ''}</span>
+      <span
+        className={`w-[74px] text-right text-sm ${isNext ? 'font-bold text-ink' : 'font-semibold text-ink-muted'}`}
+        title={formatCurrency(tier.cash ?? 0)}
+      >
+        {formatCashOnly(tier.cash ?? 0)}
       </span>
     </div>
   );
@@ -268,7 +379,7 @@ export function TierLadderBlock({ tiers, tierNextName, apiCurrent, appsCurrent, 
         {nextTier && (
           <TierRow
             tier={{
-              youLabel: `${formatCurrency(apiCurrent)} · ${appsCurrent} apps`,
+              youLabel: `${formatCurrency(apiCurrent)} · ${pluralApps(appsCurrent)}`,
               progressLabel: progressPct != null ? `${progressPct}% of the way to ${nextTier.name}` : `Toward ${nextTier.name}`,
             }}
             isYou
@@ -302,7 +413,15 @@ export function WhatIfBlock({ apiCurrent, tiers, today, endDate, initialRate }) 
   return (
     <section
       aria-label="What if"
-      className="flex flex-col gap-2.5 rounded-[18px] bg-primary p-4 text-white"
+      // CLAUDE.md D6 — white text on `bg-primary` needs `dark:bg-primary-dark`:
+      // dark mode's `--color-primary` LIFTS to a bright, lower-contrast teal
+      // for use as text on a surface, not as a fill; `--color-primary-dark`
+      // in dark mode resolves to the SAME token value the light theme already
+      // uses for `bg-primary` (see src/index.css's own documented contrast
+      // ratio beside this exact pairing). Same reason the slider track/thumb
+      // (`accent-white`) now sits on a fill that is teal, never bright, in
+      // both themes.
+      className="flex flex-col gap-2.5 rounded-[18px] bg-primary dark:bg-primary-dark p-4 text-white"
       data-testid="campaign-screen-whatif"
     >
       <label htmlFor="campaign-whatif-pace" className="text-[15px] font-bold">
