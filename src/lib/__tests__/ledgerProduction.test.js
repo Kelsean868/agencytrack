@@ -114,10 +114,26 @@ describe('deriveYearProduction — R2 figures', () => {
   it('empty or missing input derives zeros, not a crash', () => {
     for (const input of [null, undefined, []]) {
       const out = deriveYearProduction(input, { year: 2026 });
-      expect(out.settled).toEqual({ api: 0, apps: 0, count: 0 });
+      expect(out.settled).toEqual({ api: 0, apps: 0, count: 0, fromHeadOffice: 0, selfConfirmed: 0 });
       expect(out.submitted.count).toBe(0);
       expect(out.mismatch).toEqual({ ytd: 0, week: 0 });
     }
+  });
+
+  it('provenance: head office = statusSource oipa_import; every other settled is self-confirmed; the two sum to count', () => {
+    const base = { productLine: 'life', status: 'settled', newBusinessType: 'nb_ordinary', proposedAPI: 1000, dateIssued: '2026-03-01' };
+    const out = deriveYearProduction([
+      { ...base, statusSource: 'oipa_import' },
+      { ...base, statusSource: 'oipa_import' },
+      { ...base, statusSource: 'agent' },
+      { ...base }, // hand-keyed, no statusSource
+      { ...base, statusSource: 'oipa_import', dateIssued: '2019-01-01' }, // not this year → not counted
+      { ...base, statusSource: 'oipa_import', status: 'lapsed' }, // not settled → not counted
+    ], { year: 2026 });
+    expect(out.settled.count).toBe(4);
+    expect(out.settled.fromHeadOffice).toBe(2);
+    expect(out.settled.selfConfirmed).toBe(2);
+    expect(out.settled.fromHeadOffice + out.settled.selfConfirmed).toBe(out.settled.count);
   });
 });
 

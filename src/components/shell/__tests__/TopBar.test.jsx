@@ -51,3 +51,28 @@ describe('TopBar — mobile command-palette trigger (Fable Tier 1 · 1.1b)', () 
     expect(screen.getByRole('button', { name: /search — open command palette/i })).toBeInTheDocument();
   });
 });
+
+describe('TopBar — Home variant (Home redesign R1)', () => {
+  it('adds the home modifier, the avatar slot and the one-line mono date', () => {
+    const { container } = render(
+      <TopBar
+        title="Home"
+        onOpenSearch={vi.fn()}
+        variant="home"
+        avatar={<span data-testid="avatar">KM</span>}
+        mobileCrumb="SAT 26 SEP · WEEK 39"
+      />,
+    );
+    expect(container.querySelector('header')).toHaveClass('topbar', 'topbar--home');
+    expect(screen.getByTestId('avatar')).toBeInTheDocument();
+    expect(screen.getByText('SAT 26 SEP · WEEK 39')).toHaveClass('topbar-mobile-crumb');
+    expect(screen.getByRole('button', { name: /toggle dark mode/i })).toHaveClass('topbar-theme-toggle');
+  });
+
+  it('other screens keep the plain topbar with no avatar or mobile date', () => {
+    const { container } = render(<TopBar title="Ledger" onOpenSearch={vi.fn()} mobileCrumb="X" avatar={<span data-testid="avatar" />} />);
+    expect(container.querySelector('header')).not.toHaveClass('topbar--home');
+    expect(screen.queryByTestId('avatar')).not.toBeInTheDocument();
+    expect(screen.queryByText('X')).not.toBeInTheDocument();
+  });
+});

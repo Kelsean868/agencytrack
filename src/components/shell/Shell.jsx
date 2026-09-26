@@ -41,6 +41,9 @@ export default function Shell({
   topbarTitle,
   topbarCrumb,
   topbarActions,
+  topbarVariant,
+  topbarAvatar,
+  topbarMobileCrumb,
   onSignOut,
   onPullRefresh,
   pinnedItems,
@@ -162,6 +165,9 @@ export default function Shell({
           title={topbarTitle}
           crumb={topbarCrumb}
           actions={topbarActions}
+          variant={topbarVariant}
+          avatar={topbarAvatar}
+          mobileCrumb={topbarMobileCrumb}
           onOpenSearch={() => setPaletteOpen(true)}
         />
         <main ref={mainRef} id="main-content" tabIndex={-1} className="shell-content">
