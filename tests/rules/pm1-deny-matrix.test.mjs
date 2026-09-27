@@ -37,8 +37,8 @@
  *    15.  UM reads own policy history → ALLOW
  *    16.  BM reads own policy history → ALLOW
  *    17.  [LOAD-BEARING] UM reads non-managed history → DENY  (canManage unit-gates UM)
- *    18.  [PRE-EXISTING canManage breadth, PM-1 unchanged] BM reads non-managed history → ALLOW
- *          Same rule as policies/get — BM unrestricted via canManage; PM-1 did not change this arm.
+ *    18.  BM reads another branch's policy history → DENY (P2c closed the canManage breadth;
+ *          history reads are scoped by the parent policy's branchId, as policies/get is since P2b).
  *
  *   settlements — canAccessOwn extended (cases 19–24)
  *    19.  UM reads own settlement → ALLOW  (NEW via canAccessOwn)
@@ -393,9 +393,11 @@ try {
     await assertFails(getDoc(histRef(umDb(), 'pol-other', 'h1')));
   });
 
-  await t('18. [PRE-EXISTING canManage breadth, PM-1 unchanged] BM reads non-managed history → ALLOW', async () => {
-    // Same policies/get rule — BM unrestricted via canManage. PM-1 did not change this arm.
-    await assertSucceeds(getDoc(histRef(bmDb(), 'pol-other', 'h1')));
+  await t('18. BM reads another branch\'s policy history → DENY (P2c; was ALLOW — canManage breadth)', async () => {
+    // Was ALLOW: the history arm was `getRole() != 'unit_manager'` → tenant-wide.
+    // P2c scopes it by the PARENT policy (managerDocInScope); pol-other is BRANCH_B,
+    // the BM is BRANCH_A.
+    await assertFails(getDoc(histRef(bmDb(), 'pol-other', 'h1')));
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -590,8 +592,8 @@ try {
     process.exit(1);
   } else {
     console.log('All 51 assertions green — own-only invariant holds across all 9 target collections.');
-    console.log('NOTE: Cases 12,18 (policies/history BM) and 21,22 (settlements UM/BM) assert ALLOW');
-    console.log('      because pre-existing canManage arms grant managers broader read; PM-1 unchanged.');
+    console.log('NOTE: Cases 21,22 (settlements UM/BM) assert ALLOW because the pre-existing');
+    console.log('      canManage arm grants managers broader read. Cases 12 (P2b) and 18 (P2c) now DENY.');
     console.log('      Own-only proof: submissions cases 3&4 (strongest — branch/unit gated) +');
     console.log('      agent regression cases 14&24 + structural uid==agentId in canAccessOwn.');
   }
