@@ -7,7 +7,10 @@
  *   financingTerms          a key outside the allowlist · a financingStatus that is
  *                           missing or not one of the five states
  *   financing               a key outside the allowlist · adjustmentPct not a number
- *                           in [-1, 1] · runningBalance present but not a number
+ *                           <= 1 · runningBalance present but not a number
+ *                           (informational, not a failure: a stored managerFinancing
+ *                           above the agent's agreed amount — refused only if a later
+ *                           write changes the manager figure again)
  *   financingReconciliation a key outside the allowlist
  *   users (policy creators) an agent / unit_manager / branch_manager with no branchId
  *                           — the new policies create arm needs the creator's branchId
@@ -78,8 +81,10 @@ export function financingDocProblems(collection, data) {
     problems.push(`financingStatus ${d.financingStatus === undefined ? 'missing' : `"${d.financingStatus}"`} is not a valid state`);
   }
   if (collection === 'financing') {
-    if ('adjustmentPct' in d && !(isNum(d.adjustmentPct) && d.adjustmentPct >= -1 && d.adjustmentPct <= 1)) {
-      problems.push(`adjustmentPct ${JSON.stringify(d.adjustmentPct)} outside [-1, 1]`);
+    // No floor since the 27 Sep 2026 ruling — the bound is manager <= agreed (see
+    // managerAboveAgreed), which the rules only check when the manager figure changes.
+    if ('adjustmentPct' in d && !(isNum(d.adjustmentPct) && d.adjustmentPct <= 1)) {
+      problems.push(`adjustmentPct ${JSON.stringify(d.adjustmentPct)} is not a number <= 1`);
     }
     if ('runningBalance' in d && typeof d.runningBalance !== 'number') {
       problems.push(`runningBalance ${JSON.stringify(d.runningBalance)} is not a number`);
@@ -99,12 +104,33 @@ export function userCreateProblem(data) {
 }
 
 /**
+ * Informational: a stored manager figure above the agent's agreed monthly financing.
+ * The rules re-judge it only when a write changes managerFinancing / adjustmentPct.
+ * @param {object} data  financing month doc
+ * @param {Map<string, number>} agreedByAgent  agentId → agreedMonthlyFinancing
+ */
+export function managerAboveAgreed(data, agreedByAgent) {
+  const d = data ?? {};
+  if (!isNum(d.managerFinancing)) return null;
+  const agreed = agreedByAgent?.get(d.agentId);
+  if (agreed === undefined) return `managerFinancing ${d.managerFinancing} but agent ${d.agentId ?? '(none)'} has no terms doc`;
+  return d.managerFinancing > agreed ? `managerFinancing ${d.managerFinancing} > agreed ${agreed}` : null;
+}
+
+/**
  * @param {Object<string, Array<{id, data}>>} docsByCollection
  * @param {Array<{id, data}>} users
  */
 export function planDryRun(docsByCollection, users) {
   const perCollection = {};
   const affected = [];
+  const agreedByAgent = new Map((docsByCollection?.financingTerms ?? [])
+    .map(({ id, data }) => [data?.agentId ?? id, data?.agreedMonthlyFinancing]));
+  const managerNotes = [];
+  for (const { id, data } of docsByCollection?.financing ?? []) {
+    const note = managerAboveAgreed(data, agreedByAgent);
+    if (note) managerNotes.push({ id, note });
+  }
   for (const c of FINANCING_COLLECTIONS) {
     const docs = docsByCollection?.[c] ?? [];
     let bad = 0;
@@ -123,7 +149,7 @@ export function planDryRun(docsByCollection, users) {
     if (p) userProblems.push({ id, problem: p });
   }
   const totalWouldFail = Object.values(perCollection).reduce((n, c) => n + c.wouldFail, 0);
-  return { perCollection, affected, userProblems, totalWouldFail };
+  return { perCollection, affected, userProblems, totalWouldFail, managerNotes };
 }
 
 export function formatDryRun(plan, { tenantId }) {
@@ -141,6 +167,10 @@ export function formatDryRun(plan, { tenantId }) {
   if (plan.userProblems.length) {
     lines.push('', `Users (${plan.userProblems.length}):`);
     plan.userProblems.forEach((u) => lines.push(`  users/${u.id}  ${u.problem}`));
+  }
+  if (plan.managerNotes?.length) {
+    lines.push('', `Informational — manager figure vs agreed (${plan.managerNotes.length}); refused only if edited again:`);
+    plan.managerNotes.forEach((m) => lines.push(`  financing/${m.id}  ${m.note}`));
   }
   lines.push('', plan.totalWouldFail === 0 && plan.userProblems.length === 0
     ? 'CLEAN — no existing doc would fail the P2c rules. Nothing was written.'

@@ -208,6 +208,22 @@ async function main() {
       }
     }
     await setDoc(doc(db, `tenants/${T}/financingTerms/b1`), termsAt('b1', 'on_financing'));
+    // adjustmentPct ruling fixtures: a1 at agreed 8,000; a1-cut after a clause-5 cut
+    // (agreed 3,000 / current 1,000). a1-noterms has a ledger month but no terms doc.
+    await setDoc(doc(db, `tenants/${T}/financingTerms/a1`), termsAt('a1', 'on_financing'));
+    await setDoc(doc(db, `tenants/${T}/financingTerms/a1-cut`), {
+      ...termsAt('a1', 'on_financing'), agentId: 'a1-cut', agreedMonthlyFinancing: 3000, currentMonthlyFinancing: 1000,
+    });
+    // A month confirmed at 3,000 while agreed was 3,000; stored as-is, then re-edited below.
+    await setDoc(doc(db, `tenants/${T}/financing/a1-cut_2026_05`), {
+      ...prorationCreate('a1', { agentId: 'a1-cut', month: '2026_05', managerFinancing: 3000, adjustmentPct: -2 }),
+      prorationUpdatedAt: past, prorationEnteredAt: past,
+    });
+    // Legacy month whose stored manager figure (9,000) now exceeds agreed (3,000).
+    await setDoc(doc(db, `tenants/${T}/financing/a1-cut_2026_06`), {
+      ...monthCreate('a1', { agentId: 'a1-cut', month: '2026_06' }), updatedAt: past, enteredAt: past,
+      managerFinancing: 9000, adjustmentPct: -8,
+    });
     await setDoc(doc(db, `tenants/${T}/financingTerms/a1-edit`), { ...termsAt('a1', 'on_financing'), agentId: 'a1-edit' });
     await setDoc(doc(db, `tenants/${T}/financingTerms/a1-legacy`), { ...termsAt('a1', 'on_financing'), agentId: 'a1-legacy', strayField: 'x' });
     await setDoc(doc(db, `tenants/${T}/financingTerms/a1-recon-ok`), { ...termsAt('a1', 'reconciling'), agentId: 'a1-recon-ok' });
@@ -284,7 +300,7 @@ async function main() {
   });
 
   // ── financing (monthly ledger) ─────────────────────────────────────────────
-  console.log('financing — key allowlist + adjustmentPct bound');
+  console.log('financing — key allowlist + adjustmentPct <= 1 + manager figure <= agreed');
   await t('FM1. BM creates own-branch statement (setFinancingMonth shape) → ALLOW', () =>
     assertSucceeds(setDoc(monthRef(as('bmA'), 'a1_2026_02'), monthCreate('a1'))));
   await t('FM2. BM creates proration-only month (setFinancingProration shape, adjustmentPct 0.1) → ALLOW', () =>
@@ -295,12 +311,24 @@ async function main() {
     assertFails(updateDoc(monthRef(as('bmA'), 'a1_2026_01'), { writeOff: 22400 })));
   await t('FM5. adjustmentPct 1.5 → DENY', () =>
     assertFails(setDoc(monthRef(as('bmA'), 'a1_2026_05'), prorationCreate('a1', { month: '2026_05', adjustmentPct: 1.5 }))));
-  await t('FM6. adjustmentPct -1.5 → DENY', () =>
-    assertFails(setDoc(monthRef(as('bmA'), 'a1_2026_06'), prorationCreate('a1', { month: '2026_06', adjustmentPct: -1.5 }))));
-  await t('FM7. adjustmentPct at the bounds (1 and -1) → ALLOW', async () => {
-    await assertSucceeds(setDoc(monthRef(as('bmA'), 'a1_2026_07'), prorationCreate('a1', { month: '2026_07', adjustmentPct: 1, managerFinancing: 0 })));
-    await assertSucceeds(setDoc(monthRef(as('bmA'), 'a1_2026_08'), prorationCreate('a1', { month: '2026_08', adjustmentPct: -1 })));
+  // Ruling (Kyron, 27 Sep 2026): no -1 floor; the manager figure must not exceed agreed.
+  await t('FM6. RULING: agreed 3,000 / current 1,000 / manager 3,000 (adjustmentPct -2) → ALLOW', () =>
+    assertSucceeds(setDoc(monthRef(as('bmA'), 'a1-cut_2026_03'),
+      prorationCreate('a1', { agentId: 'a1-cut', month: '2026_03', managerFinancing: 3000, adjustmentPct: -2 }))));
+  await t('FM7. RULING: agreed 3,000 / current 1,000 / manager 3,500 (adjustmentPct -2.5) → DENY', () =>
+    assertFails(setDoc(monthRef(as('bmA'), 'a1-cut_2026_04'),
+      prorationCreate('a1', { agentId: 'a1-cut', month: '2026_04', managerFinancing: 3500, adjustmentPct: -2.5 }))));
+  await t('FM7b. adjustmentPct 1 (manager 0) → ALLOW', () =>
+    assertSucceeds(setDoc(monthRef(as('bmA'), 'a1_2026_07'), prorationCreate('a1', { month: '2026_07', adjustmentPct: 1, managerFinancing: 0 }))));
+  await t('FM7c. update raising the manager figure above agreed → DENY; within agreed → ALLOW', async () => {
+    await assertFails(updateDoc(monthRef(as('bmA'), 'a1-cut_2026_05'), { managerFinancing: 3001, adjustmentPct: -2.001 }));
+    await assertSucceeds(updateDoc(monthRef(as('bmA'), 'a1-cut_2026_05'), { managerFinancing: 2500, adjustmentPct: -1.5 }));
   });
+  await t('FM7d. statement-only edit of a legacy month (stored manager 9,000 > agreed 3,000) → ALLOW (not re-judged)', () =>
+    assertSucceeds(updateDoc(monthRef(as('bmA'), 'a1-cut_2026_06'), { runningBalance: 1200, updatedAt: serverTimestamp() })));
+  await t('FM7e. manager figure for an agent with NO terms doc → DENY', () =>
+    assertFails(setDoc(monthRef(as('bmA'), 'a1-noterms_2026_03'),
+      prorationCreate('a1', { agentId: 'a1-noterms', month: '2026_03' }))));
   await t('FM8. negative runningBalance (surplus) → ALLOW; non-number runningBalance → DENY', async () => {
     await assertSucceeds(setDoc(monthRef(as('bmA'), 'a1_2026_09'), monthCreate('a1', { month: '2026_09', runningBalance: -500 })));
     await assertFails(setDoc(monthRef(as('bmA'), 'a1_2026_10'), monthCreate('a1', { month: '2026_10', runningBalance: '22400' })));

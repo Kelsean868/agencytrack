@@ -943,9 +943,18 @@ service cloud.firestore {
       // when present (numbers; basisSource in the 3-enum). basisSource IS written
       // by K5. delete denied.
       // P2c (SEC-09): key allowlist (hasOnly) = exactly the fields setFinancingMonth
-      // + setFinancingProration write; adjustmentPct bounded to [-1, 1]. runningBalance
-      // stays `is number` with NO bound — the service accepts any finite figure and a
-      // negative balance is a legitimate surplus (setFinancingMonth).
+      // + setFinancingProration write. runningBalance stays `is number` with NO bound —
+      // the service accepts any finite figure and a negative balance is a legitimate
+      // surplus (setFinancingMonth).
+      // adjustmentPct = (current − manager) / current (financingProration.js): capped
+      // at <= 1 (manager >= 0). NO fixed floor — ruling (Kyron, 27 Sep 2026): the
+      // bound is instead that the manager's confirmed figure never exceeds the agent's
+      // AGREED monthly financing on financingTerms/{agentId}, the same cap the
+      // proration UI applies. A clause-5 cut can put current below half of agreed, so
+      // a legitimate restore to agreed yields adjustmentPct < -1; a -1 floor would
+      // refuse it. The terms get() runs only on a write that sets or changes
+      // managerFinancing / adjustmentPct, so a statement-only edit of an older month
+      // is never re-judged against today's terms.
       match /financing/{docId} {
         function monthKeysAllowed() {
           return request.resource.data.keys().hasOnly([
@@ -972,8 +981,24 @@ service cloud.firestore {
               && (!('actualAPI'          in request.resource.data) || (request.resource.data.actualAPI          is number && request.resource.data.actualAPI          >= 0))
               && (!('suggestedFinancing' in request.resource.data) || (request.resource.data.suggestedFinancing is number && request.resource.data.suggestedFinancing >= 0))
               && (!('managerFinancing'   in request.resource.data) || (request.resource.data.managerFinancing   is number && request.resource.data.managerFinancing   >= 0))
-              && (!('adjustmentPct'      in request.resource.data) || (request.resource.data.adjustmentPct      is number && request.resource.data.adjustmentPct >= -1 && request.resource.data.adjustmentPct <= 1))
+              && (!('adjustmentPct'      in request.resource.data) || (request.resource.data.adjustmentPct      is number && request.resource.data.adjustmentPct <= 1))
               && (!('basisSource'        in request.resource.data) || request.resource.data.basisSource in ['submitted-final', 'submitted-provisional', 'settled-confirmed']);
+        }
+        // True when this write sets or changes the manager's confirmed figure.
+        function managerFigureTouched() {
+          return resource == null
+            ? 'managerFinancing' in request.resource.data
+            : request.resource.data.diff(resource.data).affectedKeys().hasAny(['managerFinancing', 'adjustmentPct']);
+        }
+        // Manager's confirmed figure <= agreedMonthlyFinancing on the agent's terms
+        // doc. A missing terms doc fails the get() and denies the write — proration
+        // is never set for an agent with no terms (the UI reads agreed from them).
+        function managerWithinAgreed() {
+          return !('managerFinancing' in request.resource.data)
+            || !managerFigureTouched()
+            || request.resource.data.managerFinancing <= get(
+                 /databases/$(database)/documents/tenants/$(tenantId)/financingTerms/$(request.resource.data.agentId)
+               ).data.agreedMonthlyFinancing;
         }
         function validFinancingMonth() {
           return monthKeysAllowed()
@@ -982,7 +1007,8 @@ service cloud.firestore {
               && request.resource.data.month    is string
               && request.resource.data.month.matches('^[0-9]{4}_[0-9]{2}$')
               && (!hasAnyStatementField() || validStatementCore())
-              && validProrationFields();
+              && validProrationFields()
+              && managerWithinAgreed();
         }
 
         // P2b (SEC-08): managers in scope — BM own branch, UM own unit (was:

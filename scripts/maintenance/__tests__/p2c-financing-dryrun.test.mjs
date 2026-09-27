@@ -7,6 +7,7 @@ import {
   financingDocProblems,
   userCreateProblem,
   planDryRun,
+  managerAboveAgreed,
   formatDryRun,
   parseArgs,
 } from '../p2c-financing-dryrun.mjs';
@@ -24,10 +25,33 @@ describe('financingDocProblems', () => {
       .toEqual(['unknown keys: zz']);
     expect(financingDocProblems('financingTerms', { agentId: 'a' }))
       .toEqual(['financingStatus missing is not a valid state']);
-    expect(financingDocProblems('financing', { adjustmentPct: -2 })).toEqual(['adjustmentPct -2 outside [-1, 1]']);
+    // No floor since the 27 Sep 2026 ruling: -2 is legal (restore to agreed after a cut).
+    expect(financingDocProblems('financing', { adjustmentPct: -2 })).toEqual([]);
     expect(financingDocProblems('financing', { adjustmentPct: 1 })).toEqual([]);
+    expect(financingDocProblems('financing', { adjustmentPct: 1.5 })).toEqual(['adjustmentPct 1.5 is not a number <= 1']);
     expect(financingDocProblems('financing', { runningBalance: '100' })).toEqual(['runningBalance "100" is not a number']);
     expect(financingDocProblems('financing', { runningBalance: -500 })).toEqual([]);
+  });
+});
+
+describe('managerAboveAgreed (informational)', () => {
+  const agreed = new Map([['a', 3000]]);
+  it('flags a manager figure above agreed, or with no terms doc; passes one within agreed', () => {
+    expect(managerAboveAgreed({ agentId: 'a', managerFinancing: 3000 }, agreed)).toBeNull();
+    expect(managerAboveAgreed({ agentId: 'a', managerFinancing: 3500 }, agreed)).toMatch(/3500 > agreed 3000/);
+    expect(managerAboveAgreed({ agentId: 'z', managerFinancing: 10 }, agreed)).toMatch(/no terms doc/);
+    expect(managerAboveAgreed({ agentId: 'a' }, agreed)).toBeNull();
+  });
+  it('planDryRun lists them separately and they do not make the run NOT CLEAN', () => {
+    const plan = planDryRun({
+      financingTerms: [{ id: 'a', data: { agentId: 'a', financingStatus: 'on_financing', agreedMonthlyFinancing: 3000 } }],
+      financing: [{ id: 'a_2026_01', data: { agentId: 'a', managerFinancing: 3500, adjustmentPct: -2.5 } }],
+    }, []);
+    expect(plan.managerNotes).toHaveLength(1);
+    expect(plan.totalWouldFail).toBe(0);
+    const out = formatDryRun(plan, { tenantId: 't' });
+    expect(out).toMatch(/Informational/);
+    expect(out).toMatch(/^CLEAN —/m);
   });
 });
 

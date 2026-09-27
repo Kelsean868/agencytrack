@@ -131,6 +131,12 @@ async function seedDocs(testEnv) {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await setDoc(finRef(db, AGENT_A), statementPayload(AGENT_A));
+    // P2c ruling (27 Sep 2026): a write that sets managerFinancing is checked against
+    // agreedMonthlyFinancing on the agent's terms doc, so the proration cases need one.
+    await setDoc(doc(db, `tenants/${TENANT_ID}/financingTerms/${AGENT_A}`), {
+      agentId: AGENT_A, tenantId: TENANT_ID, agreedMonthlyFinancing: 8000, currentMonthlyFinancing: 8000,
+      validatingAPI: 30000, effectiveDate: '2026-01-01', financingStatus: 'on_financing', statusHistory: [],
+    });
     // P2b: caller user docs — the rules read the BM's branch from here.
     await setDoc(doc(db, `tenants/${TENANT_ID}/users/bm1`), { role: 'branch_manager', branchId: BRANCH });
     await setDoc(doc(db, `tenants/${TENANT_ID}/users/um1`), { role: 'unit_manager', branchId: BRANCH, unitId: UNIT });
