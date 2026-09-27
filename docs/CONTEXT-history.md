@@ -1683,3 +1683,27 @@ The goal in one line: four fixes in `functions/` from the 2026-09-24 audit § 4 
 **DEPLOYED — QUERIED, not inferred.** Merge was `2026-09-26T14:06:00Z`. `gcloud functions describe` on all 4 touched functions (`setAgentOfMonth`, `getAgentOfMonthCandidates`, `onSubmissionWrite`, `aggregateDailyToWeekly`) shows `status: ACTIVE` with `updateTime` ~`14:12Z`, six minutes after merge — `setAgentOfMonth` at `versionId: 37`. No function was added, removed, or renamed.
 
 **What is left.** The PR body's post-deploy smoke walk (Agent of the Month candidates load for Kyron's own branch; Firebase Console Functions logs clean for the first hour; Monday's leaderboard shows correct points with no doubling) has NOT been independently run by this fill — it needs Kyron to confirm, or the next session to check the logs. **Banked FU (MEDIUM), unrelated to P2a but still open:** give the A11Y test agent a test campaign so future preview/production smokes can exercise the Campaign screen and R1's campaign card live.
+
+## Archived from CONTEXT.md § Last updated — 2026-09-27 fill (PR #987)
+
+**MX MDRT award line SHIPPED (2026-09-27), PR #984 merge `1662ac4f` (feature-branch HEAD `fee3a4ca`).** Second item of the ledger-layout autorun. The Awards-tab MDRT award now reads the real MDRT line via new `mdrtAwardThresholds()` in `src/config/mdrtThresholds/2026.js` (688,800; in-contention = 50% = 344,400), used by `awardsEngine.js` and `yearPlanProjection.js`; a stored tenant ruleset's `mdrtAward.apiThreshold` (500,000 = 6+ yr company minimum) is no longer read. Admin ruleset editor: MDRT threshold fields removed, note shown, prize still editable. Company floor row (`GapAnalysisPanel`) labelled "Company minimum (<band>)" via new `tenureBandLabel()` from the existing tenure bands. Parity test `src/config/__tests__/mdrtAwardThresholds.parity.test.js` (Awards = Home = ledger lens = 688,800, even with a 500,000 ruleset). **Banked:** brief's 3-band company minimum table vs code's 6 bands — Kyron to rule. **Gates:** lint 0/0; 422 files / 7,119 tests; build OK; CI all pass on `fee3a4ca`; CodeRabbit summary, Low risk, 0 findings. Production smoke PASS; live MDRT card reads "of TTD 688,800" (`prod-mx/`). **No deploy-gated surface touched.** **Prior:**
+
+## Archived from CONTEXT.md § Current main HEAD — 2026-09-27 fill (PR #987)
+
+`1662ac4f` (PR #984 merge - MX MDRT award uses the real MDRT line, 2026-09-27). **MERGED; NO DEPLOY-GATED SURFACE - QUERIED:** `git diff --stat 869ca694..1662ac4f -- firestore.rules firestore.indexes.json storage.rules functions/` returns EMPTY. Ships via Vercel; production deploy reported success. **In-track work commits:** `977cd8c8` (fix), `3fdb8dd2` (placeholders + FU), `fee3a4ca` (merge main). **Prior:**
+
+## Archived from CONTEXT.md § Active track — 2026-09-27 fill (PR #987)
+
+**Ledger layout autorun 2026-09-26 (LX → MX → L3 → FX) — IN PROGRESS.** LX (#983 `869ca694`) and MX (#984 `1662ac4f`) SHIPPED. L3 (counts-toward chips) and FX (date boxes, hero legend) being built. Brief: `docs/briefs/ledger-layout-and-l3.md`. **Prior:**
+
+## Archived from CONTEXT.md § Recently shipped — 2026-09-27 fill (PR #987)
+
+| [#982](https://github.com/Kelsean868/agencytrack/pull/982) | `6cee9c56` | **feat(ledger): L2 - filter & sort, saved views, export.** Mobile filter sheet / desktop rail with counts, sorts, active-filter chips, saved views (`prefs/app.ledgerSavedViews`), desktop table (sticky header + first column, footer counts), CSV + PDF head-office check sheet export of the filtered rows. No Excel (Ruling 1). Autorun item L2, merged by orchestrator. |
+
+## Archived from CONTEXT.md § Where we left off — 2026-09-27 fill (PR #987)
+
+**PRIOR - 2026-09-27 (early morning). MX merged as `1662ac4f` (#984) - Awards-tab MDRT now 688,800 everywhere.**
+
+The Awards tab, Home and the ledger now agree on the MDRT line (688,800), checked live in production. The 500,000 figure was the 6+ year company minimum, not MDRT. One open question for Kyron: the brief lists 3 company-minimum bands, the app uses 6 (FOLLOW_UPS "Company minimum bands: brief vs tenureFloors").
+
+**Next:** L3 counts-toward chips, then FX (date boxes, Home hero legend values). Report at the end: `docs/reports/autorun-2026-09-26-ledger-layout.md`.
