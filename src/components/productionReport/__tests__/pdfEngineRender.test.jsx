@@ -70,6 +70,24 @@ describe('PDF documents render through the real @react-pdf engine', () => {
     expect(buf.subarray(0, 5).toString()).toBe('%PDF-');
   }, 30000);
 
+  it('AgentReportDocument renders the tenure company-minimum line (band label + apps)', async () => {
+    const buf = await renderToBuffer(
+      <AgentReportDocument
+        agentInfo={{ displayName: 'Test Agent', email: 'a@b.tt', role: 'agent', careerLevel: 'Agent' }}
+        submissions={[]}
+        goals={[]}
+        weekRange={null}
+        confirmedSettlements={[]}
+        agentProfile={{ contractStartDate: '2023-06-01' }}
+        persistency={[]}
+        ruleset={undefined}
+        companyMinimums={{ annualApps: 40 }}
+      />,
+    );
+    expect(buf.length).toBeGreaterThan(1000);
+    expect(buf.subarray(0, 5).toString()).toBe('%PDF-');
+  }, 30000);
+
   it('LedgerHoCheckDocument renders to a non-trivial PDF buffer', async () => {
     const rows = [
       {

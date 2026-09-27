@@ -657,6 +657,7 @@ export default function AgentDashboard() {
         agentProfile: userProfile,
         persistency,
         ruleset: awardsRuleset,
+        companyMinimums,
       });
     } catch (err) {
       console.error('PDF generation failed:', err);

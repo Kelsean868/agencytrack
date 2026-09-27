@@ -12,6 +12,7 @@ import { computeAgentAwards } from '../../utils/awardsEngine';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 import { MDRT_THRESHOLDS_2026 } from '../../config/mdrtThresholds/2026';
 import { deriveAgentReportModel } from './agentReportModel';
+import { resolveAnnualAPIFloor, tenureBandLabel, FLAT_ANNUAL_API_FALLBACK } from '../../utils/tenureFloors';
 
 // Career ladder (kept in sync with the app career levels).
 export const CAREER_LEVELS = [
@@ -23,8 +24,6 @@ export const CAREER_LEVELS = [
   { level: 6, name: 'Senior Manager',     minAPI: 700000,  minApps: 80  },
   { level: 7, name: 'Executive',          minAPI: 1000000, minApps: 100 },
 ];
-
-export const COMPANY_FLOOR = 250000;
 
 export function weekLabel(weekStarting) {
   if (!weekStarting) return '';
@@ -85,6 +84,7 @@ export function buildAgentReportModel({
   agentProfile,
   persistency,
   ruleset,
+  companyMinimums,
   now = new Date(),
 } = {}) {
   const year = now.getFullYear();
@@ -155,6 +155,23 @@ export function buildAgentReportModel({
   const effectiveYTD_Apps = settledYTD_Apps + pendingYTD_Apps;
   const hasSettlementsForYear = annualConf.length > 0;
 
+  // Company minimum — the agent's tenure-resolved floor, from the same resolver
+  // and inputs Goals uses (getGoalHierarchy): contractStartDate + the tenant's
+  // config/companyMinimums tenureApiFloors, flat fallback when the date is
+  // missing. Apps is the company apps minimum (annualApps, same in every band).
+  const companyFloor = resolveAnnualAPIFloor({
+    contractStartDate: agentProfile?.contractStartDate ?? null,
+    tenureApiFloors: companyMinimums?.tenureApiFloors,
+    fallback: FLAT_ANNUAL_API_FALLBACK,
+    now,
+  });
+  const companyFloorApps = companyMinimums?.annualApps ?? 40;
+  // Same wording as the Goals floor row (GapAnalysisPanel FloorRow).
+  const companyFloorBand = tenureBandLabel(agentProfile?.contractStartDate ?? null, now);
+  const companyFloorLabel =
+    `${companyFloorBand ? `Company minimum (${companyFloorBand})` : 'Company Floor'}: `
+    + `${formatCurrency(companyFloor)} · ${companyFloorApps} apps`;
+
   // YTD-vs-targets bar geometry.
   const ytdAPIGoal = model.ytdAPIGoal;
   const barMax = Math.max(
@@ -165,7 +182,7 @@ export function buildAgentReportModel({
   );
   const settledFrac = Math.max(0, Math.min(1, settledYTD_API / barMax));
   const pendingFrac = Math.max(0, Math.min(1 - settledFrac, pendingYTD_API / barMax));
-  const floorFrac   = COMPANY_FLOOR / barMax;
+  const floorFrac   = companyFloor / barMax;
   const mdrtFrac    = MDRT_THRESHOLDS_2026.mdrt / barMax;
   const goalFrac    = ytdAPIGoal > 0 ? ytdAPIGoal / barMax : null;
   const achievedPct = Math.round(Math.min(100, (effectiveYTD_API / barMax) * 100));
@@ -276,7 +293,7 @@ export function buildAgentReportModel({
     settledFrac, pendingFrac, floorFrac, mdrtFrac, goalFrac, achievedPct,
     hasSettlementsForYear,
     mdrtTarget: MDRT_THRESHOLDS_2026.mdrt,
-    companyFloor: COMPANY_FLOOR,
+    companyFloor, companyFloorApps, companyFloorBand, companyFloorLabel,
     chartData,
     currentLevel, nextLevel, isMaxLevel, levelProgressPct, appsNeeded,
     achievedAwards, inProgressAwards, notStartedAwards, awardList, awardReqStr,

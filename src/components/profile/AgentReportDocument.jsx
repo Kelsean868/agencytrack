@@ -800,8 +800,8 @@ function YtdTargetsBar({ m }) {
       </View>
 
       {/* Marker legend */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
-        <Text style={{ fontSize: 7, color: COLORS.text, marginRight: 12 }}>Floor: {formatCurrency(m.companyFloor)}</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
+        <Text style={{ fontSize: 7, color: COLORS.text, marginRight: 12 }}>{m.companyFloorLabel}</Text>
         {m.goalFrac !== null && <Text style={{ fontSize: 7, color: COLORS.successInk, marginRight: 12 }}>Goal: {formatCurrency(m.ytdAPIGoal)}</Text>}
         <Text style={{ fontSize: 7, color: COLORS.warningInk }}>MDRT: {formatCurrency(m.mdrtTarget)}</Text>
       </View>
