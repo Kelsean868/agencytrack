@@ -1756,3 +1756,27 @@ Every policy card and the drill drawer now list the award windows the policy cou
 LX, MX, L3 and FX are all live and passed production smoke. Report: `docs/reports/autorun-2026-09-26-ledger-layout.md`. Nothing has been seen with real policies yet — the test agent has none.
 
 **Waiting on Kyron:** company-minimum bands (brief 3 bands vs app 6 bands); LX partial blocks (slim card, checkbox rail, 1440 table fit); Excel export vs Ruling 1.
+
+## Archived from CONTEXT.md § Last updated — 2026-09-27 fill (PR #994)
+
+**P2b branch scoping SHIPPED AND DEPLOYED (2026-09-27), PR #987 merge `0e78089b` (feature-branch HEAD `15635890`).** SEC-05 + SEC-08 from the 2026-09-24 audit: a `branch_manager` sees and changes only their own branch, a `unit_manager` only their own unit, on `policies`, `financingTerms`, `financing`, `financingReconciliation`, manager writes to `submissions`, manager edits to `users`, and the `updateUser` / `deactivateUser` callables (new `assertTargetInCallerScope` in `functions/index.js`; a missing `branchId`/`unitId` on either side denies). SM / TA / PA and kiosk unchanged. `financingService` stamps `branchId`/`unitId` from the agent's user doc on every financing write; `scripts/ops/import-oipa-portfolio.mjs` refuses an agent with no `branchId`. Backfill: `scripts/maintenance/backfill-branchid-p2b.mjs` (dry run by default, `--apply` writes, never overwrites a differing value). Two new `policies` composite indexes (`agentId`+`branchId`+`createdAt`, `agentId`+`unitId`+`createdAt`). Brief: `docs/briefs/p2b-branch-scoping.md`. **Deploy state QUERIED (see Current main HEAD).**
+
+## Archived from CONTEXT.md § Current main HEAD — 2026-09-27 fill (PR #994)
+
+`0e78089b` (PR #987 merge - P2b branch scoping SEC-05/SEC-08 + branchId backfill, 2026-09-27). **MERGED AND DEPLOYED - QUERIED, not inferred.** Merge `2026-09-27T08:57:22Z`. `gcloud functions describe`: `updateUser` updateTime `2026-09-27T09:00:43Z`, `deactivateUser` `2026-09-27T09:00:46Z`, both ACTIVE (after the merge). `gcloud firestore indexes composite list`: both new `policies` indexes READY. Firestore rules: Rules API readback of the released ruleset (released `2026-09-27T14:00:43Z`) is byte-identical to `firestore.rules` on main at `4eddb96a`, which contains #987's rules.
+
+## Archived from CONTEXT.md § Active track — 2026-09-27 fill (PR #994)
+
+**Security audit P2 (2026-09-24 audit) — IN PROGRESS.** P2a (#978 `5faf4a6a`) and P2b (#987 `0e78089b`) SHIPPED AND DEPLOYED. Next: P2c financing integrity (#988, brief `docs/briefs/p2c-financing-integrity.md`).
+
+## Archived from CONTEXT.md § Recently shipped — 2026-09-27 fill (PR #994)
+
+| [#986](https://github.com/Kelsean868/agencytrack/pull/986) | `2e18be8e` | **fix(ledger): FX - full-year date boxes, Home hero legend values.** Filter date boxes fit `DD-MM-YYYY` at 390 and 1440 (rail stacks From/To); Home hero legend shows "Settled x · Submitted y" values per C1. |
+
+## Archived from CONTEXT.md § Where we left off — 2026-09-27 fill (PR #994)
+
+**PRIOR - 2026-09-27 (morning). P2b branch scoping merged as `0e78089b` (#987).**
+
+A branch manager now sees and changes only their own branch; a unit manager only their own unit. Rules, the two user-admin functions and the two new `policies` indexes are live (queried from Firebase, not inferred). Whether `backfill-branchid-p2b.mjs --apply` has run against `tatillife_south` was not checked in this fill.
+
+**Next:** P2c financing integrity (#988).
