@@ -112,10 +112,12 @@ const SCALAR_GROUPS = [
     key: 'mdrtAward',
     label: 'MDRT',
     category: 'Agent Awards',
+    // apiThreshold/apiInContention are fixed by the MDRT conversion table
+    // (mdrtAwardThresholds() / MDRT_THRESHOLDS_2026), not by this ruleset —
+    // no longer exposed here to avoid an editable-but-ignored field (PR #984).
+    note: 'API Threshold and In-Contention are set by the MDRT conversion table (TTD 688,800 for 2026) and are not editable here.',
     fields: [
-      { path: 'apiThreshold',    label: 'API Threshold (TTD)',     type: 'currency' },
-      { path: 'apiInContention', label: 'API In-Contention (TTD)', type: 'currency' },
-      { path: 'prize',           label: 'Prize',                   type: 'text'     },
+      { path: 'prize', label: 'Prize', type: 'text' },
     ],
   },
   {
@@ -682,6 +684,9 @@ export default function AwardsRulesetPanel({ embedded = false }) {
 
                   {isOpen && (
                     <div className="px-4 pb-4 pt-3 border-t border-border">
+                      {group.note && (
+                        <p className="text-xs text-ink-muted mb-3">{group.note}</p>
+                      )}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                         {group.fields.map((field, fIdx) => {
                           const fullPath = `${group.key}.${field.path}`;

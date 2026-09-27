@@ -77,6 +77,11 @@ export const DEFAULT_RULESET_2026 = {
   },
 
   // ── Agent: MDRT ──
+  // apiThreshold/apiInContention below are IGNORED (PR #984, 2026-09-26) — the
+  // MDRT award reads mdrtAwardThresholds() / MDRT_THRESHOLDS_2026 (688,800)
+  // instead, since 500,000 here was actually the Tatil company minimum for
+  // 5+ years of tenure, not MDRT. Kept only so a stored tenant ruleset that
+  // still carries these keys doesn't need a migration; not read anywhere.
   mdrtAward: {
     apiThreshold: 500000,
     apiInContention: 250000,

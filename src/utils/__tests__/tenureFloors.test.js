@@ -6,6 +6,7 @@ import {
   monthsOfService,
   resolveAnnualAPIFloor,
   resolveWeeklyAPIFloor,
+  tenureBandLabel,
 } from '../tenureFloors';
 
 // Anchor "now" so the tests are deterministic regardless of when run.
@@ -151,5 +152,23 @@ describe('DEFAULT_TENURE_API_FLOORS shape', () => {
 
   it('is frozen', () => {
     expect(Object.isFrozen(DEFAULT_TENURE_API_FLOORS)).toBe(true);
+  });
+});
+
+describe('tenureBandLabel', () => {
+  it('returns null when contractStartDate is missing/invalid', () => {
+    expect(tenureBandLabel(undefined, NOW)).toBeNull();
+    expect(tenureBandLabel('not-a-date', NOW)).toBeNull();
+  });
+
+  it('labels every band boundary (mirrors resolveAnnualAPIFloor bands)', () => {
+    // NOW = 2026-05-20
+    expect(tenureBandLabel('2026-01-01', NOW)).toBe('< 1 yr');     // 4 months
+    expect(tenureBandLabel('2025-05-01', NOW)).toBe('1–2 yrs');    // 12 months
+    expect(tenureBandLabel('2024-05-01', NOW)).toBe('1–2 yrs');    // 24 months
+    expect(tenureBandLabel('2023-05-01', NOW)).toBe('2–3 yrs');    // 36 months
+    expect(tenureBandLabel('2022-05-01', NOW)).toBe('3–4 yrs');    // 48 months
+    expect(tenureBandLabel('2021-05-01', NOW)).toBe('4–5 yrs');    // 60 months
+    expect(tenureBandLabel('2020-05-01', NOW)).toBe('5+ yrs');     // 72 months
   });
 });

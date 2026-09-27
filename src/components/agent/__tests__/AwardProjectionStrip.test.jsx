@@ -61,13 +61,15 @@ describe('AwardProjectionStrip — renders', () => {
 // ── MDRT visibility ───────────────────────────────────────────────────────────
 
 describe('AwardProjectionStrip — MDRT pill', () => {
-  it('absent when life API < 250k', () => {
+  // MDRT in-contention floor is now 344,400 (mdrtAwardThresholds(), PR #984),
+  // not the ruleset's stale 250,000.
+  it('absent when life API < 344.4k', () => {
     render(<AwardProjectionStrip lines={mkLines(200000)} agentProfile={{}} ruleset={R} />);
     expect(screen.queryByTestId('award-pill-mdrt')).not.toBeInTheDocument();
   });
 
-  it('present when life API ≥ 250k', () => {
-    render(<AwardProjectionStrip lines={mkLines(250000)} agentProfile={{}} ruleset={R} />);
+  it('present when life API ≥ 344.4k', () => {
+    render(<AwardProjectionStrip lines={mkLines(400000)} agentProfile={{}} ruleset={R} />);
     expect(screen.getByTestId('award-pill-mdrt')).toBeInTheDocument();
   });
 });
@@ -135,15 +137,17 @@ describe('AwardProjectionStrip — Agent of the Year pill', () => {
 // ── State aria-label ──────────────────────────────────────────────────────────
 
 describe('AwardProjectionStrip — state aria-labels', () => {
-  it('MDRT pill shows in-contention aria-label at 250k', () => {
-    render(<AwardProjectionStrip lines={mkLines(250000)} agentProfile={{}} ruleset={R} />);
+  // MDRT reads the real MDRT line (688,800; in-contention 344,400) via
+  // mdrtAwardThresholds() — PR #984, not the ruleset's stale 500k/250k pair.
+  it('MDRT pill shows in-contention aria-label at 400k', () => {
+    render(<AwardProjectionStrip lines={mkLines(400000)} agentProfile={{}} ruleset={R} />);
     const pill = screen.getByTestId('award-pill-mdrt');
     // aria-label now carries the gap-to-next (2.5-copy): +TTD to reach on-track.
-    expect(pill).toHaveAttribute('aria-label', 'MDRT: in-contention — TTD 250.0K to MDRT');
+    expect(pill).toHaveAttribute('aria-label', 'MDRT: in-contention — TTD 288.8K to MDRT');
   });
 
-  it('MDRT pill shows on-track aria-label at 500k', () => {
-    render(<AwardProjectionStrip lines={mkLines(500000)} agentProfile={{}} ruleset={R} />);
+  it('MDRT pill shows on-track aria-label at 688.8k', () => {
+    render(<AwardProjectionStrip lines={mkLines(688800)} agentProfile={{}} ruleset={R} />);
     const pill = screen.getByTestId('award-pill-mdrt');
     expect(pill).toHaveAttribute('aria-label', 'MDRT: on-track');
   });

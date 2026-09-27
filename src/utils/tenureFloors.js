@@ -80,3 +80,20 @@ export function resolveWeeklyAPIFloor({
   const annual = resolveAnnualAPIFloor({ contractStartDate, tenureApiFloors, now });
   return annual / 10 / 4;
 }
+
+// Short, human tenure-band label for the annual Company Floor's real basis —
+// so an agent-facing "Company minimum" figure never reads as a flat,
+// unexplained number (PR #984). Mirrors the bands resolveAnnualAPIFloor uses;
+// returns null when contractStartDate is missing/invalid (the caller then
+// falls back to an unqualified "Company Floor" label — the flat fallback
+// value doesn't correspond to any single band).
+export function tenureBandLabel(contractStartDate, now = new Date()) {
+  const months = monthsOfService(contractStartDate, now);
+  if (months === null) return null;
+  if (months < 12)  return '< 1 yr';
+  if (months <= 24) return '1–2 yrs';
+  if (months <= 36) return '2–3 yrs';
+  if (months <= 48) return '3–4 yrs';
+  if (months <= 60) return '4–5 yrs';
+  return '5+ yrs';
+}

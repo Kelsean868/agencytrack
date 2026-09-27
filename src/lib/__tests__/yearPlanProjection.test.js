@@ -134,18 +134,21 @@ describe('projectAwards — Club tier (single pill)', () => {
 // ── MDRT ─────────────────────────────────────────────────────────────────────
 
 describe('projectAwards — MDRT', () => {
-  it('absent when api < 250k (below inContention)', () => {
-    expect(byId(proj(200000), 'mdrt')).toBeUndefined();
+  // Real MDRT line (MDRT_THRESHOLDS_2026.mdrt = 688,800); inContention =
+  // 344,400 (50%) via mdrtAwardThresholds() — PR #984, not the ruleset's
+  // stale mdrtAward.apiThreshold/apiInContention (500k/250k).
+  it('absent when api < 344.4k (below inContention)', () => {
+    expect(byId(proj(300000), 'mdrt')).toBeUndefined();
   });
 
-  it('present and in-contention at 250k (inContention)', () => {
-    const mdrt = byId(proj(250000), 'mdrt');
+  it('present and in-contention at 344.4k (inContention)', () => {
+    const mdrt = byId(proj(344400), 'mdrt');
     expect(mdrt).toBeDefined();
     expect(mdrt.state).toBe('in-contention');
   });
 
-  it('on-track at 500k (threshold)', () => {
-    expect(byId(proj(500000), 'mdrt').state).toBe('on-track');
+  it('on-track at 688.8k (threshold)', () => {
+    expect(byId(proj(688800), 'mdrt').state).toBe('on-track');
   });
 });
 
@@ -252,15 +255,15 @@ describe('projectAwards — avgPolicyAPI pass-through', () => {
 
 describe('projectAwards — gap-to-next + top-tier', () => {
   it('single-threshold award exposes API gap-to-on-track for a mid-field total', () => {
-    // MDRT shown once api >= 250k; on-track threshold is 500k.
-    const mdrt = byId(proj(300000), 'mdrt');
+    // MDRT shown once api >= 344.4k; on-track threshold is 688.8k.
+    const mdrt = byId(proj(500000), 'mdrt');
     expect(mdrt.state).toBe('in-contention');
-    expect(mdrt.apiThreshold).toBe(500000);
-    expect(mdrt.gapToNext).toBe(200000); // 500k − 300k
+    expect(mdrt.apiThreshold).toBe(688800);
+    expect(mdrt.gapToNext).toBe(188800); // 688.8k − 500k
   });
 
   it('on-track award reports a zero gap', () => {
-    const mdrt = byId(proj(500000), 'mdrt');
+    const mdrt = byId(proj(688800), 'mdrt');
     expect(mdrt.state).toBe('on-track');
     expect(mdrt.gapToNext).toBe(0);
   });
