@@ -49,13 +49,16 @@ source files (`D3-*`, `D3M-*`, `M3-*` `.dc.html`) and their specs (`specs/*.md`)
   `var(--font-body)` / `var(--font-display)` with Satoshi / Cabinet Grotesk as the `:root`
   values, so nothing changes unless the scope is on. Making FR the default (moving values into
   `:root`) is a **later flip PR, not in this program**.
-- **FR-D3 The switch.** `useLook()` returns `'fr'` only when the signed-in role is `agent` AND
-  (tenant flag `featureFlags.agentRedesign === true` in `config/settings` **or** the per-user
-  opt-in `localStorage['agencytrack-look'] === 'fr'`). The attribute is restored in `src/main.jsx`
-  before React mounts (same pattern as `agencytrack-dark`, no flash), and removed for non-agent
-  roles after auth resolves. Opt-in control: an agent-only "Try the new design" switch in
-  Settings. **Flag off + no opt-in ⇒ the app renders exactly as today** (a test pins this).
-  No rules change: `config/settings` reads are already tenant-scoped.
+- **FR-D3 The switch.** `useLook()` returns `'fr'` only when the signed-in role is `agent` AND the
+  per-user opt-in `localStorage['agencytrack-look'] === 'fr'` is set. The attribute is restored in
+  `src/main.jsx` before React mounts (same pattern as `agencytrack-dark`, no flash) and removed for
+  non-agent roles after auth resolves. Opt-in control: an agent-only "Try the new design" switch in
+  Settings. **No opt-in ⇒ the app renders exactly as today** (a test pins this). No rules change.
+  **Amended 27-09-2026 (FR-0 build):** the tenant-wide `featureFlags.agentRedesign` switch is
+  **dropped from this program.** A flag must also be togglable in Company Config (parity test
+  `companyConfigRegistry.parity.test.js`), and that write path is allowlisted in `firestore.rules`
+  (`ccfgFlagKeysAllowed`) — a rules change, which §6 keeps out of scope. The tenant switch lands
+  with the later flip PR (human merge + rules deploy). `resolveLook` keeps a `flagOn` input for it.
 - **FR-D4 Code layout.** New code under `src/components/fr/` (screens, shell, charts, motion,
   trophies, pager) and `src/lib/fr/` (pure derivations). Each screen = a **container** (reads
   through existing services/hooks — no new service files, no new Firestore write paths) + a
