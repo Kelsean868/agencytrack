@@ -715,6 +715,7 @@ export default function ManagerDashboard() {
               error={myProd.hierarchyError}
               ytdPersistency={myProd.ytdPersistency}
               persistencyFloor={myProd.companyMinimums?.persistency ?? PERS_GATE_PCT}
+              contractStartDate={userProfile?.contractStartDate}
             />
             <div className="mt-4 border-t border-border pt-4">
               <DerivedIncomePanel

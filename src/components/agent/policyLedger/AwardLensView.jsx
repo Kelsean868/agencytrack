@@ -15,6 +15,10 @@
  *                       (campaign); the rule lines. A strip across the top at lg.
  *   AwardLensGroups   — Counting · Submitted, not settled · Not counting here,
  *                       each card keeping its tap-through to the drill drawer.
+ *                       `windowsById` (L3) hands each card its own
+ *                       `awardWindowsForPolicy` rows for the "Counts toward"
+ *                       chip row — computed once by the container, never
+ *                       per-card.
  */
 import React, { useId } from 'react';
 import { AlertCircle, Download } from 'lucide-react';
@@ -298,7 +302,7 @@ function groupAside(group, rows) {
   return rows.length ? 'why is shown on each' : null;
 }
 
-export function AwardLensGroups({ lens, visibleIds, onOpen }) {
+export function AwardLensGroups({ lens, visibleIds, onOpen, windowsById = null }) {
   return (
     <div className="flex flex-col gap-[18px]" data-testid="award-lens-groups">
       {['counting', 'pending', 'not'].map((group) => {
@@ -322,7 +326,14 @@ export function AwardLensGroups({ lens, visibleIds, onOpen }) {
             ) : (
               <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
                 {rows.map((r) => (
-                  <PolicyCard key={r.policy.id} policy={r.policy} onOpen={onOpen} lensRow={r} awardKind={lens.award.kind} />
+                  <PolicyCard
+                    key={r.policy.id}
+                    policy={r.policy}
+                    onOpen={onOpen}
+                    lensRow={r}
+                    awardKind={lens.award.kind}
+                    awardWindows={windowsById?.get(r.policy.id) ?? null}
+                  />
                 ))}
               </div>
             )}

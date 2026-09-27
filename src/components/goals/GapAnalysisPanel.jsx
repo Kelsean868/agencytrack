@@ -2,6 +2,7 @@ import React from 'react';
 import { Target, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { statusToken } from '../../lib/policyStatusTokens';
+import { tenureBandLabel } from '../../utils/tenureFloors';
 
 // Group-key dots — one colour per org layer
 const LAYER_DOT = {
@@ -141,16 +142,20 @@ function OrgContextStrip({ hierarchy }) {
 
 // ── FloorRow ──────────────────────────────────────────────────────────────────
 // Company Floor full-detail row with YTD progress bar.
-function FloorRow({ floorApi, ytdApi }) {
+function FloorRow({ floorApi, ytdApi, contractStartDate }) {
   if (!floorApi) return null;
   const pct = Math.max(0, Math.min(100, Math.round((ytdApi / floorApi) * 100)));
   const gap = floorApi - ytdApi;
+  // Tenure band, when known — never hard-codes a figure; falls back to the
+  // unqualified "Company Floor" label when contractStartDate is missing (PR #984).
+  const bandLabel = tenureBandLabel(contractStartDate);
+  const floorLabel = bandLabel ? `Company minimum (${bandLabel})` : 'Company Floor';
 
   return (
     <div className="rounded-lg border border-border/40 p-3 flex flex-col gap-2" data-testid="floor-row">
       <div className="flex items-center gap-1.5">
         <span className={`w-2 h-2 rounded-full inline-block shrink-0 ${LAYER_DOT.companyFloor}`} />
-        <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide">Company Floor</p>
+        <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide">{floorLabel}</p>
         <p className="ml-auto text-[11px] font-semibold text-ink tabular-nums">
           {formatCurrency(Math.round(floorApi))}
         </p>
@@ -218,6 +223,7 @@ export default function GapAnalysisPanel({
   title = 'Goal Hierarchy',
   ytdPersistency = null,
   persistencyFloor = 90,
+  contractStartDate = null,
 }) {
   const ytdApi      = ytdTotals?.api ?? 0;
   const hasPersonal = Boolean(hierarchy?.personal?.api);
@@ -277,7 +283,7 @@ export default function GapAnalysisPanel({
         </div>
         {/* Cascade still shows the floor so the agent can see what they&apos;re aiming for */}
         {hierarchy.companyFloor?.api && (
-          <FloorRow floorApi={hierarchy.companyFloor.api} ytdApi={ytdApi} />
+          <FloorRow floorApi={hierarchy.companyFloor.api} ytdApi={ytdApi} contractStartDate={contractStartDate} />
         )}
       </div>
     );
@@ -298,7 +304,7 @@ export default function GapAnalysisPanel({
 
       <OrgContextStrip hierarchy={hierarchy} />
 
-      <FloorRow floorApi={hierarchy.companyFloor?.api} ytdApi={ytdApi} />
+      <FloorRow floorApi={hierarchy.companyFloor?.api} ytdApi={ytdApi} contractStartDate={contractStartDate} />
 
       <GapNote personal={hierarchy.personal} companyFloor={hierarchy.companyFloor} />
     </div>

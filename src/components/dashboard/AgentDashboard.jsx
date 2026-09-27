@@ -985,6 +985,7 @@ export default function AgentDashboard() {
             error={hierarchyError}
             ytdPersistency={ytdPersistency}
             persistencyFloor={companyMinimums?.persistency ?? PERS_GATE_PCT}
+            contractStartDate={userProfile?.contractStartDate}
           />
           <div className="mt-4 border-t border-border pt-4">
             <DerivedIncomePanel

@@ -126,6 +126,20 @@ describe('GapAnalysisPanel', () => {
     expect(screen.getByText('Company Floor')).toBeInTheDocument();
   });
 
+  it('labels the floor row with the tenure band when contractStartDate is known', () => {
+    render(
+      <GapAnalysisPanel
+        hierarchy={baseHierarchy}
+        ytdTotals={baseYtd}
+        loading={false}
+        contractStartDate="2020-01-01"
+      />
+    );
+    expect(screen.getByTestId('floor-row')).toBeInTheDocument();
+    expect(screen.getByText(/Company minimum \(5\+ yrs\)/)).toBeInTheDocument();
+    expect(screen.queryByText('Company Floor')).not.toBeInTheDocument();
+  });
+
   // ── GapNote ─────────────────────────────────────────────────────────────────
   it('renders GapNote "above" when commitment exceeds company floor', () => {
     render(
