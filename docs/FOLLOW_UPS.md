@@ -7552,7 +7552,7 @@ The only credentialed test account (`A11Y_AGENT_*`) is in no active campaign. Pr
 
 ## L0 hero legend value form
 
-**RESOLVED 2026-09-26 (PR TBD, FX item 2).** `RingLegend` now takes an optional `values={{ settled, submitted }}` prop; `HeroCard` passes `{ settled: settledApi, submitted: production.submitted.api }` — the same figures already shown in the big number and the "Submitted API" ledger figure, never a new derivation. The legend now reads "Settled 87,146 · Submitted 123,146" on the Home hero, matching C1. Every other `RingLegend` caller (Awards, Campaign card, Campaign screen) omits `values` and keeps the descriptive "— counts" / "— waiting to settle" copy unchanged. Verified with a local-fixture screenshot at 390/1440, light/dark: `docs/reports/screenshots/ledger-2026-09-26/fx/hero-legend-*.png`.
+**RESOLVED 2026-09-26 (PR #986, FX item 2).** `RingLegend` now takes an optional `values={{ settled, submitted }}` prop; `HeroCard` passes `{ settled: settledApi, submitted: production.submitted.api }` — the same figures already shown in the big number and the "Submitted API" ledger figure, never a new derivation. The legend now reads "Settled 87,146 · Submitted 123,146" on the Home hero, matching C1. Every other `RingLegend` caller (Awards, Campaign card, Campaign screen) omits `values` and keeps the descriptive "— counts" / "— waiting to settle" copy unchanged. Verified with a local-fixture screenshot at 390/1440, light/dark: `docs/reports/screenshots/ledger-2026-09-26/fx/hero-legend-*.png`.
 
 **Banked 2026-09-26 from PR #980 (L0 two-layer rings), orchestrator design check.** The C1 Home mockup (`docs/design-system/proposals/ledger-2026-09/C1-Home.dc.html`) shows the hero legend with the figure in it ("Submitted 123,146"). The build uses the plain legend "Settled — counts" / "Submitted — waiting to settle" everywhere, with the "+x submitted" sub-line carrying the number. Same information, different copy.
 
@@ -7622,7 +7622,7 @@ The app never sets CSS `color-scheme` globally. A native `<input type="radio">` 
 
 ## L2 date boxes clip the year
 
-**RESOLVED 2026-09-26 (PR TBD, FX item 1).** The desktop rail's copy of `FilterFields` now stacks From / To (`stackDates` prop on `LedgerFilterSort.jsx`, one column instead of two 95px-wide flex-1 boxes) and both copies (rail + mobile sheet) get `min-w-[118px]` and `tabular-nums`. Measured via `scrollWidth <= clientWidth` on every date input at 390 and 1440, light + dark — all 4 pass (`docs/reports/screenshots/ledger-2026-09-26/fx/measurements.json`). Screenshots: `docs/reports/screenshots/ledger-2026-09-26/fx/{rail,sheet}-dates-*.png`.
+**RESOLVED 2026-09-26 (PR #986, FX item 1).** The desktop rail's copy of `FilterFields` now stacks From / To (`stackDates` prop on `LedgerFilterSort.jsx`, one column instead of two 95px-wide flex-1 boxes) and both copies (rail + mobile sheet) get `min-w-[118px]` and `tabular-nums`. Measured via `scrollWidth <= clientWidth` on every date input at 390 and 1440, light + dark — all 4 pass (`docs/reports/screenshots/ledger-2026-09-26/fx/measurements.json`). Screenshots: `docs/reports/screenshots/ledger-2026-09-26/fx/{rail,sheet}-dates-*.png`.
 
 **Banked 2026-09-26 from PR #982 (L2), orchestrator design check.** In `docs/reports/screenshots/ledger-2026-09-26/l2/local-fixture-rail-filtered-1440-light.png` the filter rail's From / To date boxes show "01-07-202…" — the last digit is cut. Widen the inputs or stack From / To in the rail. Check both themes.
 
