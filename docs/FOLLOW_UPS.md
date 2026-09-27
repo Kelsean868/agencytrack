@@ -18,6 +18,9 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| Report-Only CSP `connect-src` in `vercel.json` lacks `https://www.google.com` — reCAPTCHA Enterprise (App Check, live since P2e) calls it; enforcing the CSP as-is would block App Check token fetches. Add it before the CSP leaves Report-Only (banked 2026-09-27, P2e post-merge) | MEDIUM | Security / CSP | before CSP enforce | see § CSP connect-src needs www.google.com before enforce |
+| App Check is in monitor mode — switch each service to enforce only after 7 consecutive clean days per `docs/runbooks/app-check.md` §3 (key live 2026-09-27, so no earlier than 2026-10-04); Storage → Firestore → Functions, one at a time (banked 2026-09-27, P2e post-merge) | MEDIUM | Security / App Check | not before 2026-10-04 | see § App Check: enforce after 7 clean days |
+| Role-walk permission-error regex should ignore `requestStorageAccess` — the reCAPTCHA iframe logs it in headless Chromium and it is not a Firestore permission error (banked 2026-09-27, P2e post-merge) | LOW | Verification / role walk | — | see § Role-walk regex: ignore requestStorageAccess |
 | Company minimum: 40 applications per year, every tenure band — not enforced or shown in the app yet. Add an apps floor beside the API floor (`tenureFloors` / `config/companyMinimums`) and show it wherever the API floor shows (banked 2026-09-27, company-minimum ruling) | MEDIUM | Goals / company floor | — | see § Company minimum: 40 applications per year |
 | **PR #936 preview smoke WAIVED (Rule 13)** — `*.vercel.app` is TLS-intercepted by a FortiGate on the operator's machine, so `VERCEL_BYPASS_TOKEN` cannot reach a preview host without disabling certificate verification; refused as a workaround, not attempted. Low-risk for #936 specifically — `dist/assets` grep confirms the whole module is tree-shaken out of the bundle, zero bytes reach a browser — but the interception is a standing blocker for every future preview smoke, and if longstanding, the token has already crossed it repeatedly and may want rotating. Re-run instructions + falsification in the body (banked 2026-09-03, post-merge fill) | HIGH | Verification / env | — | see § PR #936 preview smoke — waived |
 | ~~**RESOLVED 2026-08-27 (PR #924).**~~ Deploy done AND smoke run: **12 PASS / 0 FAIL** against staging, including `concurrent-idempotent-live` — two simultaneous deliveries of one `sourceId` moved `dials` once. Firestore, not a transaction fake, has now adjudicated the idempotency guard. Deployed to BOTH projects (prod `updateTime` 12:29:06.928Z, staging 02:25:27.031Z), both ACTIVE, prod re-probed 401-on-bad-token after the change. **The smoke was blocked until `TENANT_ID` stopped being hardcoded** — the sibling MEDIUM below rated that "a second tenant would 401", but the real consequence was that the endpoint could only be exercised in PRODUCTION, making a staging-only smoke impossible by construction. Kept (struck, not deleted) because that mis-rating is the lesson. Slice C now has something to POST to. Original deploy-withholding rationale retained in the section body because it is the standing rule for the next slice of this shape: **CC deliberately did not self-deploy:** the PR is not purely additive (it also changes `dailyToWeekly.js`, whose existing cron caller exercises the new behaviour), which is exactly what the pre-merge additive carve-out excludes; `firebase use` reports the active project as PRODUCTION `agencytrack-2a610`. **The staging smoke is separately owed and is staging-only** — it mints a real token and moves a real agent's daily numbers (banked 2026-08-26, slice B / PR #923) | HIGH | Linked call sources | — | see § ~~`ingestCallActivity` deploy + staging smoke~~ RESOLVED |
@@ -7480,6 +7483,7 @@ literal "NOT STARTED" string, so no fall-through existed there to fix.
 1. **Revoke is tenant-scoped (MEDIUM).** `functions/kiosk/revokeToken.js` checks only that the stored `tenantId` matches the caller's. Any `branch_manager` can revoke any branch's kiosk. Fix: the same `branchManagerOwns` check `createToken.js` now uses, against the token doc's `branchId`.
 2. **Read is open to every manager (LOW).** `kioskTokens` keeps `allow read: if canManage(tenantId)` because `KioskModeTab` lists tokens client-side. The doc ID *is* the token, so a `unit_manager` (who cannot mint) can read another branch's live kiosk URL. Fix: scope reads to BM+ of the token's branch, or list tokens through a callable.
 3. **Expiry is checked only at sign-in (LOW, raised by CodeRabbit on PR #973).** `KioskRoute.jsx` calls `validateKioskToken` once per page load, then signs in to an in-memory auth instance. A wall display that never reloads keeps reading after its token expires or is revoked, until the next reload. Fix: re-validate on a timer in `KioskShell` (it already polls data every `POLL_INTERVAL_MS`) and drop to "Display unavailable" on `valid:false`.
+   **Status 2026-09-27 (P2e, #991 `52f51d9f`):** partly mitigated — revoke now also calls `revokeRefreshTokens`, so an open TV loses access at its next auth refresh (≤ 1 h), not only at reload. Expiry is still checked only at load. Item 1 (revoke is tenant-scoped) is unchanged by P2e.
 
 **Falsification (Rule 23):** closed without work if `KioskModeTab` stops reading `kioskTokens` from the client and revoke gains a branch check.
 
@@ -7594,6 +7598,8 @@ This follows the brief's own standing decision #2 ("Hide a built-in view whose d
 
 **What to do.** Each becomes buildable once its backing field lands: a "self-confirm write path" (P2d, explicitly out of scope here) would give "awaiting my confirmation" a real signal; a dual-source value (agent-entered vs HO-imported) would give "differs from HO" one; a premium-schedule field (`nextPremiumDue`/`paidToDate`) would unlock the date-type option and the sort. None of these is a small addition — each is its own brief.
 
+**Status 2026-09-27 (P2d, #990 `7ecccd88`):** the self-confirm write path now exists (`selfConfirmedBy` / `selfConfirmedAt` on a policy doc), so "awaiting my confirmation" has a possible backing signal. Not wired into `ledgerFilters.js` — that is its own change.
+
 **Falsification (Rule 23):** closed when any of the named fields (an agent-confirmation flag, a dual-source value pair, or a premium-schedule date) exists on a policy doc and `ledgerFilters.js`'s `buildFilterSections`/`SORTS`/`builtInViews` is updated to read it.
 
 ## Native radio dark-mode contrast
@@ -7657,5 +7663,38 @@ Audit: `docs/audits/agencytrack-audit-2026-09-24.md`. Briefs: `docs/briefs/p2b-b
 - **P2b shipped 27 Sep 2026 (#987, `0e78089b`).** Backfill dry run: 229 policies already OK, 0 to update. Prod role walk: 0 permission errors except agent Production Report (`getTenantUsers`) — moved to P2c Part 4.
 - **Ruling (Kyron, 27 Sep 2026):** `sales_manager` must see Policy Reconciliation — P2c Part 5.
 - **P2c shipped 27 Sep 2026 (#988, `4eddb96a`).** Rulings: `adjustmentPct` floor replaced by manager <= agreed; SMs with `canConfirmSettlements` may confirm. Dry run clean; prod role walk 80 screens, 0 permission errors.
+- **P2e shipped 27 Sep 2026 (#991, `52f51d9f`); P2d shipped 27 Sep 2026 (#990, `7ecccd88`).** Brief `docs/briefs/p2d-p2e-numbers-kiosk-appcheck.md`. Ruling (Kyron): head-office policies locked for money and credit-deciding fields. Deploys (operator-reported): rules after `7ecccd88`; functions 31 updated / 0 created / 0 deleted; App Check key live, nothing enforced; role walks 80 screens, 0 permission errors. Open: § CSP connect-src needs www.google.com before enforce · § App Check: enforce after 7 clean days · § Role-walk regex: ignore requestStorageAccess.
 
 **Falsification (Rule 23):** the P2b line reopens if a production role walk shows a new permission error outside the agent Production Report, or a backfill dry run reports policies to update.
+
+## CSP connect-src needs www.google.com before enforce
+
+**Banked 2026-09-27 from the P2e post-merge fill (#991, `52f51d9f`). Severity: MEDIUM.**
+
+P2e turned on App Check with the reCAPTCHA Enterprise provider. `vercel.json` sends a `Content-Security-Policy-Report-Only` header; P2e added `https://www.google.com` and `https://www.gstatic.com` to `script-src` and `frame-src`, but **not** to `connect-src`, which today reads `'self' https://*.googleapis.com https://*.firebaseio.com https://firebasestorage.googleapis.com https://www.clarity.ms https://*.cloudfunctions.net https://*.run.app`. reCAPTCHA Enterprise makes requests to `https://www.google.com`. While the header is Report-Only nothing is blocked; the day the CSP is enforced, App Check token fetches would fail, and once App Check is enforced that breaks the app.
+
+**Fix shape:** add `https://www.google.com` to `connect-src` in `vercel.json`. Check the Report-Only violation reports (or the browser console on production) for any other reCAPTCHA host before switching the CSP to enforce.
+
+**Falsification (Rule 23):** closed when `connect-src` in `vercel.json` includes `https://www.google.com` and a production load with the CSP enforced shows App Check token exchange 200 with no CSP violation. Overturned if production Report-Only reports show no `connect-src` violation for `www.google.com` over a normal day of use (then reCAPTCHA is not calling it from this page and the entry is moot).
+
+## Role-walk regex: ignore requestStorageAccess
+
+**Banked 2026-09-27 from the P2e post-merge fill (#991). Severity: LOW.**
+
+After App Check went live, Kyron's role walks (80 screens, run from his PC) saw the reCAPTCHA iframe log a `requestStorageAccess` message in headless Chromium. It is a browser storage-access notice from Google's iframe, not a Firestore permission error, but the walk's permission-error pattern can count it. Every walk after the App Check key went live will show it.
+
+**Fix shape:** in the role-walk script's permission-error filter, skip console messages that contain `requestStorageAccess` (or that come from a `www.google.com` / `www.gstatic.com` frame). Keep matching `permission-denied` and `Missing or insufficient permissions`. The role-walk script was not found in this repo (`git grep` for the walk in `scripts/` finds per-surface smokes only), so it may live only on Kyron's PC — commit it to `scripts/verification/` when this is fixed.
+
+**Falsification (Rule 23):** closed when a role walk against production reports 0 permission errors without a manual note about `requestStorageAccess`. Overturned if the message turns out to come from our own code (then it is a real finding, not noise).
+
+## App Check: enforce after 7 clean days
+
+**Banked 2026-09-27 from the P2e post-merge fill (#991). Severity: MEDIUM. Not before 2026-10-04.**
+
+State on 27 Sep 2026 (operator-reported, Kyron's PC session): reCAPTCHA Enterprise key registered (token TTL 6 h), `VITE_APPCHECK_SITE_KEY` set in Vercel Production, production redeployed, token exchange returned 200, **no service enforced**. The 18 callables log `appcheck-monitor` and never reject.
+
+**What to do:** follow `docs/runbooks/app-check.md` §3. Enforce one service at a time, only after all its conditions hold for at least 7 consecutive days: ≥ 99% verified requests; every kiosk TV reloaded since the key went live; every real-user `appcheck-monitor` line says `valid` (Functions). Order: Storage → Firestore → Functions. Firestore / Storage are a Console switch (reversible with Unenforce); Functions need `enforceAppCheck: true` in code, one function at a time — that is a functions deploy, human-merge.
+
+**Before enforcing:** land § CSP connect-src needs www.google.com before enforce if the CSP is to be enforced too.
+
+**Falsification (Rule 23):** closed when all three services are enforced and a production role walk plus a kiosk load show no App Check rejections. Reopen the 7-day clock if metrics show unverified traffic from a real client (an old PWA bundle, a kiosk TV that has not reloaded).

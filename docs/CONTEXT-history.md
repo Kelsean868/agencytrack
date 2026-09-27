@@ -1731,3 +1731,28 @@ The Awards tab, Home and the ledger now agree on the MDRT line (688,800), checke
 Every policy card and the drill drawer now list the award windows the policy counts toward (gold), or will count toward once settled (grey). The chips come from the same engine helper as the award lens, so they cannot disagree with it.
 
 **Next:** FX (#986) merge, then the run report `docs/reports/autorun-2026-09-26-ledger-layout.md`.
+
+## Archived from CONTEXT.md § Last updated — 2026-09-27 fill (PR #990 + #991)
+
+**FX small fixes SHIPPED (2026-09-27), PR #986 merge `2e18be8e` (feature-branch HEAD `8b7d5257`). Ledger-layout autorun CLOSED: LX, MX, L3, FX all merged.** Ledger filter date boxes show the full `DD-MM-YYYY` (desktop rail stacks From/To via `stackDates`; `min-w-[118px]`, tabular numerals; measured scrollWidth = clientWidth at 390 and 1440). Home hero `RingLegend` takes optional `values` and reads "Settled 87,146 · Submitted 123,146" with the hero's own figures (C1); other rings unchanged. Closed FUs "L2 date boxes clip the year" and "L0 hero legend value form". **Gates:** CI 423 files / 7,135 tests, all checks pass on `8b7d5257`; CodeRabbit rate-limited. Production smoke PASS (`prod-fx/`). Report: `docs/reports/autorun-2026-09-26-ledger-layout.md`. **No deploy-gated surface touched.**
+
+## Archived from CONTEXT.md § Current main HEAD — 2026-09-27 fill (PR #990 + #991)
+
+`2e18be8e` (PR #986 merge - FX full-year date boxes, Home hero legend values, 2026-09-27). **MERGED; NO DEPLOY-GATED SURFACE - QUERIED:** `git diff --stat a9053196..2e18be8e -- firestore.rules firestore.indexes.json storage.rules functions/` returns EMPTY. Ships via Vercel; production deploy reported success.
+
+## Archived from CONTEXT.md § Active track — 2026-09-27 fill (PR #990 + #991)
+
+**Ledger layout autorun 2026-09-26 (LX → MX → L3 → FX) — CLOSED.** LX (#983 `869ca694`), MX (#984 `1662ac4f`), L3 (#985 `a9053196`), FX (#986 `2e18be8e`) SHIPPED. Waiting on Kyron: company-minimum bands ruling; LX partial blocks (card, rail, table fit); Excel export vs Ruling 1. Report: `docs/reports/autorun-2026-09-26-ledger-layout.md`.
+
+## Archived from CONTEXT.md § Recently shipped — 2026-09-27 fill (PR #990 + #991)
+
+| [#985](https://github.com/Kelsean868/agencytrack/pull/985) | `a9053196` | **feat(ledger): L3 - "Counts toward" chips on policy cards and drawer.** Gold chips per open award window from `awardWindowsForPolicy`; grey "Will count toward" for pending; family → MDRT only; computed once in `AwardLensPanel`, passed to cards and the drawer. |
+| [#984](https://github.com/Kelsean868/agencytrack/pull/984) | `1662ac4f` | **fix(awards): MDRT award uses the real MDRT line (688,800), not the 6+ yr company minimum.** New `mdrtAwardThresholds()`; awardsEngine + yearPlanProjection stop reading `ruleset.mdrtAward.apiThreshold`; admin editor hides the dead fields; company floor row labelled by tenure band; parity test Awards = Home = ledger. |
+
+## Archived from CONTEXT.md § Where we left off — 2026-09-27 fill (PR #990 + #991)
+
+**PRIOR - 2026-09-27 (early morning). FX merged as `2e18be8e` (#986) - ledger-layout autorun closed, all 4 items merged.**
+
+LX, MX, L3 and FX are all live and passed production smoke. Report: `docs/reports/autorun-2026-09-26-ledger-layout.md`. Nothing has been seen with real policies yet — the test agent has none.
+
+**Waiting on Kyron:** company-minimum bands (brief 3 bands vs app 6 bands); LX partial blocks (slim card, checkbox rail, 1440 table fit); Excel export vs Ruling 1.
