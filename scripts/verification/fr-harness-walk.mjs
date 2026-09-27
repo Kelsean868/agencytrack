@@ -6,7 +6,7 @@
  * FR Views with SAMPLE data, so this is safe to run anywhere `npm run dev` runs.
  *
  * For every scene of the chosen slice, in light AND dark:
- *   1. screenshot            desktop 1440×900 and/or phone 390×844 (full page)
+ *   1. screenshot            desktop 1440×900 / tablet 900×800 / phone 390×844 (full page)
  *   2. axe                   WCAG 2.2 A/AA — serious + critical must be 0
  *   3. tap targets           every visible interactive element ≥ 44px tall
  *   4. console               no console errors / page errors (phone: no sideways scroll)
@@ -47,6 +47,7 @@ mkdirSync(OUT, { recursive: true });
 
 const VIEWPORTS = {
   desktop: { viewport: { width: 1440, height: 900 } },
+  tablet: { viewport: { width: 900, height: 800 } },
   phone: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
 };
 
@@ -277,7 +278,8 @@ try {
     scene.hasVariants = (await probe.$('[data-testid="fr-harness-change"]')) !== null;
     scene.pager = (await probe.$('[data-testid="swipe-pager-viewport"]')) !== null;
     await probe.close();
-    const vps = scene.viewport === 'both' ? ['desktop', 'phone'] : [scene.viewport];
+    // viewport: 'desktop' | 'phone' | 'both' | a comma list ('desktop,tablet,phone').
+    const vps = scene.viewport === 'both' ? ['desktop', 'phone'] : scene.viewport.split(',');
     for (const vp of vps) {
       for (const theme of ['light', 'dark']) {
         await walkScene(browser, scene, theme, vp);

@@ -42,7 +42,10 @@ export default function MobileBottomNav({
       <nav aria-label="Quick navigation" className="bottom-nav">
         {items.map((item) => {
           const Icon = item.Icon;
-          const isActive = item.tabId != null && activeTab === item.tabId;
+          // `matchTabs` (FR-1): a hub tab (e.g. Money) stays lit on any of its
+          // section routes. Absent on every Nexus item, so behaviour is unchanged.
+          const isActive = (item.tabId != null && activeTab === item.tabId)
+            || (Array.isArray(item.matchTabs) && item.matchTabs.includes(activeTab));
           const isFab = item.fab === true;
 
           if (isFab) {
