@@ -536,6 +536,10 @@ Usage, branch/commit naming conventions and troubleshooting: `docs/agents/dispat
 
 - **CC model tier per brief.** Every brief carries a suggested tier — operator overrides at will: **Tier-A** mechanical / test / docs → Haiku or Sonnet; **Tier-B** feature-from-brief (standard build) → Sonnet; **Tier-C** net-new / cross-cutting / ambiguous surface → Opus (via `opusplan` profile).
 
+- **Subagent delegation inside a run (Kyron, 27 Sep 2026).** Applies to every session, local or cloud. The main model (the one the brief pins, usually Opus 5.5) keeps all design, rules, money logic, security judgment and final review. It hands mechanical work to subagents on cheaper models to stretch usage limits and cloud credit:
+  - **Haiku 4.5:** file and code searches, listing call sites, reading logs, running test suites and reporting counts.
+  - **Sonnet 5:** straightforward edits the main model has already specified exactly, and test-fixture updates.
+  - The main model checks every subagent result before it commits. Never delegate firestore.rules, functions auth checks or money math.
 - **Persona-review section in net-new/complex briefs.** Briefs for new collections, auth surfaces, or cross-cutting changes include a persona-review checklist before the Decisions-locked section. Standard lenses: tenant-isolation/data-integrity · role/permissions · money-correctness · operator-legibility · a11y/contrast · pilot-ops/reversibility · maintainability.
 
 ---
