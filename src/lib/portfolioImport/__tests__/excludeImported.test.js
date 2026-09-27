@@ -332,11 +332,6 @@ describe('prop-provenance guard — every policy array handed to a child is clas
    */
   const MANIFEST = [
     {
-      id: 'src/components/agent/PolicyLedgerPanel.jsx :: <PipelineStrip policies>',
-      provenance: 'unfiltered',
-      why: 'The ledger LIST shows every doc an agent owns, imported included. It counts by stage; it does not aggregate money.',
-    },
-    {
       id: 'src/components/agent/PolicyLedgerPanel.jsx :: <AwardLensPanel policies>',
       provenance: 'unfiltered',
       why: 'L1 award lens (replaced CampaignLensPanel). C-D10 / R5: campaign and award eligibility is decided by date (dateIssued, or the L0 submit date for pending), never by importSource. An imported policy issued in the window counts; one issued in 2019 does not.',
@@ -513,8 +508,8 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
       }
     }
     expect(calls.sort((a, b) => a.localeCompare(b))).toEqual([
-      // PipelineStrip's `policies` is PolicyLedgerPanel's own unfiltered fetch
-      // (manifest above: <PipelineStrip policies> is declared unfiltered).
+      // PipelineStrip.jsx still exists, but since LX (ledger-layout-and-l3)
+      // no screen renders it; if one ever does, it must pass an unfiltered list.
       'src/components/agent/policyLedger/PipelineStrip.jsx :: policies',
       'src/components/dashboard/AgentDashboard.jsx :: policiesAll',
       'src/hooks/useMyProduction.js :: policiesAll',

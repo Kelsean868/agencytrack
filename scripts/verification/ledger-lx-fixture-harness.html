@@ -1,0 +1,19 @@
+<!doctype html>
+<!--
+  ledger-lx-fixture-harness.html — dev-server-only scratch page for the LX
+  design check (docs/briefs/ledger-layout-and-l3.md § LX). NOT part of the
+  shipped app; not referenced by any src/ route or vite.config.js input.
+  Served ad hoc by ledger-lx-design-check.mjs's own Vite server, which aliases
+  every service the ledger touches to an offline double (fixtures/lx/).
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LX fixture harness</title>
+  </head>
+  <body class="bg-surface">
+    <div id="root"></div>
+    <script type="module" src="./ledger-lx-fixture-harness.jsx"></script>
+  </body>
+</html>

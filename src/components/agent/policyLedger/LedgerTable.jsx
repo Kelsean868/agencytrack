@@ -64,7 +64,7 @@ function Th({ header, sortKey, onSort }) {
 
 export default function LedgerTable({ rows, sortKey, onSort, onOpen }) {
   return (
-    <div className="hidden overflow-hidden rounded-[18px] border border-border bg-card lg:block" data-testid="ledger-table">
+    <div className="hidden overflow-x-auto rounded-[18px] border border-border bg-card lg:block" data-testid="ledger-table">
       <div className="max-h-[560px] overflow-auto">
         <table className="w-full border-collapse">
           <thead>

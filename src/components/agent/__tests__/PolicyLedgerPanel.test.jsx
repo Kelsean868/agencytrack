@@ -613,4 +613,81 @@ describe('PolicyLedgerPanel — initialFilter prop', () => {
     await screen.findByTestId('policy-ledger-surface');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+
+  it('LX: a hand-off filter shows as a removable active chip and narrows the list', async () => {
+    hoisted.getOwnPolicies.mockResolvedValue([
+      makePolicy({ id: 'L1', ownerName: 'Lapsed One', status: 'lapsed' }),
+      makePolicy({ id: 'S1', ownerName: 'Submitted One', status: 'submitted' }),
+    ]);
+    render(<PolicyLedgerPanel initialFilter="lapsed" />);
+    await screen.findByTestId('ledger-active-chips');
+    const chips = screen.getByTestId('ledger-active-chips');
+    expect(within(chips).getByText('Lapsed')).toBeInTheDocument();
+    expect(screen.getByTestId('policy-card-L1')).toBeInTheDocument();
+    expect(screen.queryByTestId('policy-card-S1')).not.toBeInTheDocument();
+
+    fireEvent.click(within(chips).getByRole('button', { name: 'Remove Lapsed filter' }));
+    expect(screen.getByTestId('policy-card-S1')).toBeInTheDocument();
+  });
+});
+
+// ── LX — page layout matches mockups D1 / D3 ────────────────────────────────
+describe('PolicyLedgerPanel — LX page layout', () => {
+  it('renders the blocks in mockup order: header, view chips, Counts toward, award card, search row, list', async () => {
+    hoisted.getOwnPolicies.mockResolvedValue([makePolicy({ id: 'p1' })]);
+    render(<PolicyLedgerPanel />);
+    await screen.findByTestId('award-lens-card');
+    const ids = ['ledger-page-header', 'ledger-view-chips', 'award-lens-selector', 'award-lens-card', 'ledger-mobile-toolbar', 'award-lens-groups'];
+    const nodes = ids.map((id) => screen.getByTestId(id));
+    for (let i = 1; i < nodes.length; i += 1) {
+      // DOCUMENT_POSITION_FOLLOWING = 4
+      expect(nodes[i - 1].compareDocumentPosition(nodes[i]) & 4).toBe(4);
+    }
+  });
+
+  it('no PipelineStrip and no old status tab strip on this screen', async () => {
+    hoisted.getOwnPolicies.mockResolvedValue([makePolicy({ id: 'p1' })]);
+    render(<PolicyLedgerPanel />);
+    await screen.findByTestId('award-lens-card');
+    expect(screen.queryByTestId('policy-pipeline-strip')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: 'Filter policies' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('ledger-filter-all')).not.toBeInTheDocument();
+  });
+
+  it('Export lives in the page header and exports the filtered rows', async () => {
+    hoisted.getOwnPolicies.mockResolvedValue([makePolicy({ id: 'p1' }), makePolicy({ id: 'p2', ownerName: 'Other Person' })]);
+    render(<PolicyLedgerPanel />);
+    await screen.findByTestId('award-lens-card');
+    const header = screen.getByTestId('ledger-page-header');
+    expect(within(header).getByTestId('ledger-export-trigger')).toHaveAttribute('aria-label', 'Export 2 policies');
+    fireEvent.change(screen.getByTestId('ledger-search'), { target: { value: 'other' } });
+    expect(within(header).getByTestId('ledger-export-trigger')).toHaveAttribute('aria-label', 'Export 1 policy');
+    // Header search and mobile search row are one state.
+    expect(screen.getByTestId('ledger-search-desktop')).toHaveValue('other');
+  });
+
+  it('the header shows in the empty and error states too, without Export', async () => {
+    render(<PolicyLedgerPanel />);
+    await screen.findByTestId('ledger-empty');
+    expect(screen.getByTestId('ledger-page-header')).toBeInTheDocument();
+    expect(screen.queryByTestId('ledger-export-trigger')).not.toBeInTheDocument();
+  });
+
+  it('persistency ring: hidden without records, shown when the dashboard passes them', async () => {
+    hoisted.useFeatureFlag.mockImplementation((k) => k === 'policyLedgerCampaignLens');
+    hoisted.getOwnPolicies.mockResolvedValue([makePolicy({ id: 'p1' })]);
+    const campaign = {
+      id: 'c1', name: 'Test Campaign', startDate: '2026-01-01', endDate: '2026-12-31',
+      structure: 'qualify', tiers: [{ name: 'Bronze', api: 100000, apps: 10 }],
+    };
+    hoisted.getActiveCampaignsForAgent.mockResolvedValue([campaign]);
+    const { unmount } = render(<PolicyLedgerPanel />);
+    await screen.findByTestId('award-lens-rings');
+    expect(screen.queryByTestId('award-lens-ring-persistency')).not.toBeInTheDocument();
+    unmount();
+
+    render(<PolicyLedgerPanel persistency={[]} />);
+    await screen.findByTestId('award-lens-rings');
+    expect(screen.getByTestId('award-lens-ring-persistency')).toBeInTheDocument();
+  });
 });

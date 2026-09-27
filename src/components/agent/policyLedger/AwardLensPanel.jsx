@@ -10,10 +10,14 @@
  * screen via `useLedgerTargetTier`). Everything it shows is derived by
  * `awardLensPeriods` → `deriveAwardLens` → `awardLensSummary`.
  *
- * `toolbar` renders between the award card and the grouped list (mockup D1:
- * search + filter sit there). `visibleIds` narrows the grouped list to what the
- * ledger's existing filter/search shows; the totals never narrow — they are the
- * award's, not the filter's.
+ * LX (docs/briefs/ledger-layout-and-l3.md § LX) — this container now lays out
+ * the whole list page in the D1 / D3 order: `renderHeader(exportMenu)` (the
+ * page header, handed the L2 export menu so Export always exports exactly the
+ * filtered rows below it), then LedgerFilterSort with the selector + award
+ * card as its `summary` slot. `search` / `onSearchChange` are the container's
+ * one search (header on desktop, search row on mobile). `visibleIds` narrows
+ * the list to that search and any hand-off filter; the totals never narrow —
+ * they are the award's, not the filter's.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
@@ -27,6 +31,7 @@ import { awardLensSummary } from '../../../lib/awardLensView';
 import { buildCampaignProofExport } from '../../../lib/policyCampaignLens';
 import { buildCsvContent, downloadCsv, slugifyForFilename } from '../../../lib/csvExport';
 import { getTodayTT } from '../../../utils/dateInputs';
+import { campaignPersistencyReading } from '../../../lib/campaignPersistencyReading';
 import { DEFAULT_RULESET_2026 } from '../../../config/awardsRuleset/2026';
 import { AwardSelector, AwardSummaryCard, AwardLensGroups } from './AwardLensView';
 import LedgerFilterSort from './LedgerFilterSort';
@@ -42,7 +47,17 @@ import {
 } from '../../../lib/ledgerFilters';
 import { formatCurrency } from '../../../utils/formatters';
 
-export default function AwardLensPanel({ policies, visibleIds = null, onOpen, ruleset = DEFAULT_RULESET_2026, toolbar = null }) {
+export default function AwardLensPanel({
+  policies,
+  visibleIds = null,
+  onOpen,
+  ruleset = DEFAULT_RULESET_2026,
+  renderHeader = null,
+  search = '',
+  onSearchChange = () => {},
+  handoffChip = null,
+  persistencyRecords = null,
+}) {
   const campaignsOn = useFeatureFlag('policyLedgerCampaignLens');
   const { user, userProfile, tenantId } = useAuth();
   const today = getTodayTT();
@@ -122,23 +137,25 @@ export default function AwardLensPanel({ policies, visibleIds = null, onOpen, ru
   const l2VisibleIds = useMemo(() => new Set(l2Rows.map((r) => r.policy.id)), [l2Rows]);
   const l2Footer = useMemo(() => footerCounts(l2Rows), [l2Rows]);
 
-  return (
-    <div className="flex flex-col gap-3.5" data-testid="award-lens-panel">
-      <AwardSelector
-        current={periods.current}
-        past={periods.past}
-        selectedKey={selected.key}
-        onSelect={setSelectedKey}
-        campaignsLoading={campaignsOn && campaignsLoading}
-        campaignsError={campaignsOn && campaignsError}
-        onRetryCampaigns={loadCampaigns}
-      />
-      <AwardSummaryCard lens={lens} summary={summary} tierPicker={tierPicker} onExportProof={handleExportProof} />
-      {toolbar}
+  // The persistency ring on the campaign card reads the SAME derivation as
+  // Home's compact campaign card. No records handed in (e.g. a manager's own
+  // ledger) → null → the ring is hidden, never shown as a guessed figure.
+  const persistency = useMemo(
+    () => (campaign && Array.isArray(persistencyRecords)
+      ? campaignPersistencyReading({ campaign, policies, records: persistencyRecords, today })
+      : null),
+    [campaign, persistencyRecords, policies, today],
+  );
 
-      {/* D3: the filter rail sits BESIDE the table (one row), not stacked
-          above it — LedgerFilterSort owns that row and renders the table /
-          groups / footer as `children` so both share the same flex layout. */}
+  const exportMenu = <LedgerExportMenu rows={l2Rows} label={selected?.label ?? 'ledger'} />;
+
+  return (
+    <div className="flex flex-col gap-4" data-testid="award-lens-panel">
+      {/* 1 — page header (title, HO date, desktop search, Export) */}
+      {renderHeader ? renderHeader(exportMenu) : null}
+
+      {/* 2–7 — view chips, [selector + award card], mobile search row, active
+          chips, then the rail + list (LX order, mockups D1 / D3). */}
       <LedgerFilterSort
         rows={searchNarrowedRows}
         filters={l2Filters}
@@ -146,8 +163,30 @@ export default function AwardLensPanel({ policies, visibleIds = null, onOpen, ru
         sortKey={sortKey}
         onSortChange={setSortKey}
         hasCampaign={Boolean(campaign)}
-        campaignLabel={campaign?.name}
-        actions={<LedgerExportMenu rows={l2Rows} label={selected?.label ?? 'ledger'} />}
+        campaignLabel={campaign?.shortName ? `${campaign.shortName} campaign` : campaign?.name}
+        search={search}
+        onSearchChange={onSearchChange}
+        handoffChip={handoffChip}
+        summary={(
+          <div className="flex flex-col gap-3.5">
+            <AwardSelector
+              current={periods.current}
+              past={periods.past}
+              selectedKey={selected.key}
+              onSelect={setSelectedKey}
+              campaignsLoading={campaignsOn && campaignsLoading}
+              campaignsError={campaignsOn && campaignsError}
+              onRetryCampaigns={loadCampaigns}
+            />
+            <AwardSummaryCard
+              lens={lens}
+              summary={summary}
+              tierPicker={tierPicker}
+              onExportProof={handleExportProof}
+              persistency={persistency}
+            />
+          </div>
+        )}
       >
         <div className="lg:hidden">
           <AwardLensGroups lens={lens} visibleIds={l2VisibleIds} onOpen={onOpen} />

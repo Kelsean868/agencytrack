@@ -10,6 +10,7 @@ import { getTodayTT } from '../../utils/dateInputs';
 import { outlookMonthLabel, outlookMonthShortLabel } from '../persistency/outlookLabels';
 import { formatCurrency } from '../../utils/formatters';
 import { campaignPace } from '../../lib/campaignPace';
+import { campaignPersistencyReading } from '../../lib/campaignPersistencyReading';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import CampaignHeroCompact from './CampaignHeroCompact';
 import TargetTierPicker from './TargetTierPicker';
@@ -210,15 +211,10 @@ export default function CampaignHeroCard({
 
   if (compact) {
     const endKey = toDateStr(campaign.endDate);
-    const threshold = gate?.threshold ?? 0;
-    const persistency = persistencyDisplayPct != null
-      ? {
-        value: persistencyDisplayPct,
-        label: persistencyKnown ? `${persPct}%` : formatOutlookPct(persistencyPreview.persistency),
-        below: persistencyDisplayPct < threshold,
-        gateMonthKey: gate?.basis === 'finalMonth' && endKey ? endKey.slice(0, 7) : null,
-      }
-      : { value: null, label: '—', below: false, gateMonthKey: null };
+    // One derivation shared with the Policy Ledger's campaign card (LX).
+    const persistency = campaignPersistencyReading({
+      campaign, policies, records: persistencyRecords, today: getTodayTT(),
+    }) ?? { value: null, label: '—', below: false, gateMonthKey: null };
     return (
       <CampaignHeroCompact
         lens={lens}

@@ -86,7 +86,7 @@ describe('Campaign screen ⇄ Policy Ledger — one pref, both pickers in sync',
 
     expect(screen.getByTestId('campaign-screen-target-tier-Premier')).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByTestId('ledger-target-tier-Premier')).toHaveAttribute('aria-checked', 'true');
-    expect(within(screen.getByTestId('award-lens-card')).getByText('of 475,000 (Premier) · 3 of 35 apps')).toBeInTheDocument();
+    expect(within(screen.getByTestId('award-lens-ring-api')).getByText('73.9K / 475K')).toBeInTheDocument();
     expect(hoisted.setLedgerTargetTier).toHaveBeenCalledTimes(1);
     expect(hoisted.setLedgerTargetTier).toHaveBeenCalledWith('t1', 'a1', 'xmas26', 'Premier');
   });
