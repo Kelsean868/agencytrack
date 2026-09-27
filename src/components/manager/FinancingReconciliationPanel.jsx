@@ -23,6 +23,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { AlertTriangle, Clock, ArrowRight } from 'lucide-react';
 import SaveButton from '../ui/SaveButton';
 import { useAuth } from '../../context/AuthContext';
+import { useCallerScope } from '../../hooks/useCallerScope';
 import useToast from '../../hooks/useToast';
 import { getTenantUsers } from '../../services/managerService';
 import {
@@ -66,6 +67,7 @@ function monthLabel(key) {
 
 export default function FinancingReconciliationPanel() {
   const { userProfile, role, tenantId } = useAuth();
+  const readScope = useCallerScope(); // P2b: BM/UM reads carry the scoped where()
   const toast = useToast();
 
   const [agents, setAgents]               = useState([]);
@@ -134,7 +136,7 @@ export default function FinancingReconciliationPanel() {
     setLoading(true);
     Promise.all([
       getFinancingTerms(tenantId, agentId),
-      listFinancingMonths(tenantId, agentId),
+      listFinancingMonths(tenantId, agentId, undefined, readScope),
     ])
       .then(async ([termsDoc, ledger]) => {
         if (latestAgentReqRef.current !== agentId) return;
@@ -157,7 +159,7 @@ export default function FinancingReconciliationPanel() {
         toast.show({ variant: 'error', message: "Couldn't load the agent's financing data." });
       })
       .finally(() => { if (latestAgentReqRef.current === agentId) setLoading(false); });
-  }, [tenantId, toast]);
+  }, [tenantId, toast, readScope]);
 
   function handleSelectAgent(e) {
     const id = e.target.value;

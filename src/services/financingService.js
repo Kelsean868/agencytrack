@@ -64,6 +64,30 @@ function financingDocRef(tenantId, agentId) {
   return doc(db, `tenants/${tenantId}/financingTerms/${agentId}`);
 }
 
+// P2b (SEC-08): every financing write stamps the agent's branchId + unitId, read
+// from the AGENT'S user doc, so the rules can scope a BM to their branch and a UM
+// to their unit. A field the agent doc does not carry is left off the write (never
+// written as null) — so a missing value never overwrites a good one, and the
+// backfill (scripts/maintenance/backfill-branchid-p2b.mjs) reports it instead.
+async function agentScopeFields(tenantId, agentId) {
+  const snap = await getDoc(doc(db, `tenants/${tenantId}/users/${agentId}`));
+  const data = snap?.exists?.() ? snap.data() : {};
+  const out = {};
+  if (data.branchId) out.branchId = data.branchId;
+  if (data.unitId)   out.unitId   = data.unitId;
+  return out;
+}
+
+// P2b (SEC-08): the where() clauses a MANAGER-side read of another agent's docs
+// must carry so the query can satisfy the scoped `list` rule. Same `scope` shape as
+// policiesService.getPoliciesForManager: { role, uid, branchId }. SM / TA / PA and
+// agent self-reads (no scope) get no extra clause.
+function scopeClauses(scope) {
+  if (scope?.role === 'branch_manager') return [where('branchId', '==', scope.branchId ?? null)];
+  if (scope?.role === 'unit_manager')   return [where('unitId', '==', scope.uid ?? null)];
+  return [];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Reads
 // ─────────────────────────────────────────────────────────────────────────────
@@ -111,10 +135,12 @@ export async function setFinancingTerms(tenantId, agentId, terms, actor) {
   const ref = financingDocRef(tenantId, agentId);
   const existing = await getDoc(ref);
   const now = serverTimestamp();
+  const scopeFields = await agentScopeFields(tenantId, agentId);
 
   const core = {
     agentId,
     tenantId,
+    ...scopeFields,
     agreedMonthlyFinancing:  agreed,
     currentMonthlyFinancing: current,
     validatingAPI:           validApi,
@@ -181,8 +207,10 @@ export async function transitionFinancingStatus(tenantId, agentId, toStatus, act
 
   const prior = Array.isArray(data.statusHistory) ? data.statusHistory : [];
   const statusHistory = [...prior, entry];
+  const scopeFields = await agentScopeFields(tenantId, agentId);
 
   await setDoc(ref, {
+    ...scopeFields,
     financingStatus: toStatus,
     statusHistory,
     updatedAt: serverTimestamp(),
@@ -289,11 +317,15 @@ export async function getFinancingMonth(tenantId, agentId, month) {
 // orderBy) so NO composite index is required — the ledger is <= 12 docs/agent-year;
 // sort client-side by month ascending. Optional range = { from, to } ("YYYY_MM")
 // filters client-side.
-export async function listFinancingMonths(tenantId, agentId, range) {
+//
+// P2b: pass `scope` ({ role, uid, branchId } — the CALLER's) when a manager reads
+// another agent's ledger. A BM query adds where('branchId'), a UM query
+// where('unitId'); both stay equality-only, so still no composite index.
+export async function listFinancingMonths(tenantId, agentId, range, scope) {
   if (!tenantId) throw new Error('listFinancingMonths: tenantId required');
   if (!agentId)  throw new Error('listFinancingMonths: agentId required');
   const col = collection(db, `tenants/${tenantId}/financing`);
-  const snap = await getDocs(query(col, where('agentId', '==', agentId)));
+  const snap = await getDocs(query(col, where('agentId', '==', agentId), ...scopeClauses(scope)));
   // Drop any malformed-month docs before month math (Gemini #2) — guards the
   // range filter's monthsBetweenKeys against a bad stored value.
   let rows = snap.docs
@@ -341,10 +373,12 @@ export async function setFinancingMonth(tenantId, agentId, month, statement, act
   const existing = await getDoc(ref);
   const now = serverTimestamp();
   const enteredByName = actor.name ?? '';
+  const scopeFields = await agentScopeFields(tenantId, agentId);
 
   const core = {
     agentId,
     tenantId,
+    ...scopeFields,
     month,
     runningBalance,
     financingPaid,
@@ -436,10 +470,12 @@ export async function setFinancingProration(tenantId, agentId, month, proration,
   const ref = financingMonthDocRef(tenantId, agentId, month);
   const existing = await getDoc(ref);
   const now = serverTimestamp();
+  const scopeFields = await agentScopeFields(tenantId, agentId);
 
   const core = {
     agentId,
     tenantId,
+    ...scopeFields,
     month,
     validatingAPI,
     actualAPI,
@@ -562,9 +598,11 @@ export async function reconcileFinancing(tenantId, agentId, year, reconciliation
   const ref = financingReconciliationDocRef(tenantId, agentId, year);
   const existing = await getDoc(ref);
   const now = serverTimestamp();
+  const scopeFields = await agentScopeFields(tenantId, agentId);
   const core = {
     agentId,
     tenantId,
+    ...scopeFields,
     year: Number(year),
     totalFinancingDrawn,
     totalOffsets,

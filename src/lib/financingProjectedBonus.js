@@ -42,6 +42,8 @@ function monthKeyFromTimestamp(ts) {
  * @param {string} tenantId
  * @param {string} agentId
  * @param {object} [ruleset]  — defaults to DEFAULT_FINANCING_RULESET_2026
+ * @param {object} [scope]    — P2b: the CALLER's { role, uid, branchId } when a
+ *                              manager projects another agent (see getOwnPolicies)
  * @returns {Promise<null | {
  *   result: object,           // computeFinancingBonus output
  *   takeHome: object,         // computeTakeHome output
@@ -51,7 +53,7 @@ function monthKeyFromTimestamp(ts) {
  *   effectiveDate: string,
  * }>}
  */
-export async function getProjectedBonus(tenantId, agentId, ruleset = DEFAULT_FINANCING_RULESET_2026) {
+export async function getProjectedBonus(tenantId, agentId, ruleset = DEFAULT_FINANCING_RULESET_2026, scope) {
   const rs = ruleset ?? DEFAULT_FINANCING_RULESET_2026;
 
   const terms = await getFinancingTerms(tenantId, agentId);
@@ -81,7 +83,7 @@ export async function getProjectedBonus(tenantId, agentId, ruleset = DEFAULT_FIN
 
   // Financing projects from business written in AgencyTrack, not from an
   // imported historical book (ruling 5e).
-  const allPolicies = excludeImported(await getOwnPolicies(tenantId, agentId));
+  const allPolicies = excludeImported(await getOwnPolicies(tenantId, agentId, scope));
 
   const quarterPolicies = allPolicies.filter((pol) => {
     if (!pol.dateSubmitted?.toDate) return false;

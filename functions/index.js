@@ -206,6 +206,33 @@ const CREATION_MATRIX = {
   unit_manager:   ['agent'],
 };
 
+// SEC-05 (audit 2026-09-24, P2b): user administration is branch/unit-scoped.
+// A branch_manager may act only on users in their own branch; a unit_manager
+// only on users in their own unit. Cross-branch roles (SM / TA / PA) are
+// unchanged. The caller's branchId/unitId come from their USER DOC — the same
+// source firestore.rules uses (callerBranchId / callerUnitId). A missing value
+// on either side denies: two absent branchIds must never read as "same branch".
+async function assertTargetInCallerScope(callerRole, callerUid, callerTenant, targetData) {
+  if (callerRole !== 'branch_manager' && callerRole !== 'unit_manager') return;
+  const callerSnap = await admin.firestore()
+    .doc(`tenants/${callerTenant}/users/${callerUid}`)
+    .get();
+  const callerData = callerSnap.exists ? callerSnap.data() : {};
+  if (callerRole === 'branch_manager') {
+    if (!callerData.branchId || targetData.branchId !== callerData.branchId) {
+      throw new functions.https.HttpsError(
+        'permission-denied', 'Branch managers can only manage users in their own branch.'
+      );
+    }
+    return;
+  }
+  if (!callerData.unitId || targetData.unitId !== callerData.unitId) {
+    throw new functions.https.HttpsError(
+      'permission-denied', 'Unit managers can only manage users in their own unit.'
+    );
+  }
+}
+
 function deriveOwnedBranchIds(targetRole, callerBranchId) {
   // cro is tenant-level (like SM/TA): back-office scope spans all branches.
   if (['platform_admin', 'tenant_admin', 'sales_manager', 'cro'].includes(targetRole)) return ['*'];
@@ -891,6 +918,9 @@ exports.deactivateUser = functions.https.onCall(async (data, context) => {
     );
   }
 
+  // SEC-05: BM own branch, UM own unit.
+  await assertTargetInCallerScope(callerRole, callerUid, callerTenant, targetData);
+
   const updatePayload = {
     active,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -997,6 +1027,10 @@ exports.updateUser = functions.https.onCall(async (data, context) => {
       'permission-denied', 'Cannot edit a user in a different tenant.'
     );
   }
+
+  // SEC-05: BM own branch, UM own unit — before any role or branch change, so
+  // a BM can no longer promote/demote a user in another branch.
+  await assertTargetInCallerScope(callerRole, callerUid, callerTenant, targetData);
 
   const oldRole           = targetData.role;
   const oldBranchId       = targetData.branchId ?? null;

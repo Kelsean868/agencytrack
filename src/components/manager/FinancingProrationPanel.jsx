@@ -23,6 +23,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { AlertTriangle } from 'lucide-react';
 import SaveButton from '../ui/SaveButton';
 import { useAuth } from '../../context/AuthContext';
+import { useCallerScope } from '../../hooks/useCallerScope';
 import useToast from '../../hooks/useToast';
 import { getTenantUsers } from '../../services/managerService';
 import { getFinancingTerms, listFinancingMonths, setFinancingProration } from '../../services/financingService';
@@ -58,6 +59,7 @@ const EMPTY_FORM = { month: '', validatingAPI: '', managerFinancing: '' };
 
 export default function FinancingProrationPanel() {
   const { userProfile, role, tenantId } = useAuth();
+  const readScope = useCallerScope(); // P2b: BM/UM reads carry the scoped where()
   const toast = useToast();
 
   const [agents, setAgents]               = useState([]);
@@ -96,9 +98,10 @@ export default function FinancingProrationPanel() {
   useEffect(() => { loadAgents(); }, [loadAgents]);
 
   // ── Load the selected agent's terms + policy ledger ─────────────────────────
-  // getOwnPolicies is a by-agentId fetch (where agentId == id); a BM-and-up caller
-  // satisfies the policies `list` manager arm and the agentId+createdAt composite
-  // index already exists. (LOW FU: rename to a shared getPoliciesByAgent.)
+  // getOwnPolicies is a by-agentId fetch (where agentId == id). P2b (SEC-08): the
+  // policies `list` rule now scopes a BM to their branch, so the caller's
+  // readScope adds where('branchId') — index (agentId, branchId, createdAt desc).
+  // SM/PA add nothing. (LOW FU: rename to a shared getPoliciesByAgent.)
   const loadAgent = useCallback((agentId) => {
     latestAgentReqRef.current = agentId;
     if (!tenantId || !agentId) { setTerms(null); setPolicies([]); setMonths([]); setForm(EMPTY_FORM); return; }
@@ -106,8 +109,8 @@ export default function FinancingProrationPanel() {
     setValidationError('');
     Promise.all([
       getFinancingTerms(tenantId, agentId),
-      getOwnPolicies(tenantId, agentId),
-      listFinancingMonths(tenantId, agentId),
+      getOwnPolicies(tenantId, agentId, readScope),
+      listFinancingMonths(tenantId, agentId, undefined, readScope),
     ])
       .then(([termsDoc, pols, ledger]) => {
         if (latestAgentReqRef.current !== agentId) return;
@@ -123,7 +126,7 @@ export default function FinancingProrationPanel() {
         toast.show({ variant: 'error', message: "Couldn't load the agent's financing data." });
       })
       .finally(() => { if (latestAgentReqRef.current === agentId) setLoading(false); });
-  }, [tenantId, toast]);
+  }, [tenantId, toast, readScope]);
 
   // ── Sync the form to the selected month from the PRE-LOADED ledger ──────────
   // Synchronous (no per-month fetch) — mirrors MonthlyStatementEntry. This avoids
@@ -225,7 +228,7 @@ export default function FinancingProrationPanel() {
       );
       // Refresh the ledger so the saved proration persists in the synced form
       // (and survives a re-selection of this month).
-      const ledger = await listFinancingMonths(tenantId, selectedAgent);
+      const ledger = await listFinancingMonths(tenantId, selectedAgent, undefined, readScope);
       if (latestAgentReqRef.current === selectedAgent) setMonths(ledger);
       toast.show({ variant: 'success', message: `${monthLabel(statementMonth)} financing confirmed for ${agentName(selectedAgent)}.` });
     } catch (err) {

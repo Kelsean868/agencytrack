@@ -76,26 +76,28 @@ function userRef(db, uid) {
   return doc(db, `tenants/${TENANT_ID}/users/${uid}`);
 }
 
+// P2b (SEC-05): the BM manager-edit arm is branch-scoped, so every agent
+// fixture sits in the BM's branch (BRANCH_A).
 async function seedDocs(testEnv) {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
 
     // agent-a: CF-stamped blank slate (contractStartDate: '' mimics doCreateUser output)
     await setDoc(userRef(db, AGENT_A), {
-      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
+      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID, branchId: BRANCH_A,
       name: 'Agent A', active: true, contractStartDate: '',
     });
 
     // agent-b: agentNumber + dateOfBirth already set (for immutability tests)
     await setDoc(userRef(db, AGENT_B), {
-      uid: AGENT_B, role: 'agent', tenantId: TENANT_ID,
+      uid: AGENT_B, role: 'agent', tenantId: TENANT_ID, branchId: BRANCH_A,
       name: 'Agent B', active: true,
       agentNumber: '123X45', dateOfBirth: '1990-01-01', onboardingComplete: false,
     });
 
     // agent-c: tenure fields already set (for immutability deny tests 17/19/21)
     await setDoc(userRef(db, AGENT_C), {
-      uid: AGENT_C, role: 'agent', tenantId: TENANT_ID,
+      uid: AGENT_C, role: 'agent', tenantId: TENANT_ID, branchId: BRANCH_A,
       name: 'Agent C', active: true,
       contractStartDate: '2024-03-01', monthsAtTatil: 14, monthsInIndustry: 14,
     });
@@ -145,7 +147,7 @@ async function main() {
   // Re-seed agent-a so agentNumber is now set for the next test
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(userRef(ctx.firestore(), AGENT_A), {
-      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
+      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID, branchId: BRANCH_A,
       name: 'Agent A', active: true, agentNumber: '456Y78',
     });
   });
@@ -159,7 +161,7 @@ async function main() {
   // Reset agent-a to blank slate for remaining owner tests
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(userRef(ctx.firestore(), AGENT_A), {
-      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
+      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID, branchId: BRANCH_A,
       name: 'Agent A', active: true,
     });
   });
@@ -178,7 +180,7 @@ async function main() {
   // Reset agent-a fully blank again
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(userRef(ctx.firestore(), AGENT_A), {
-      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
+      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID, branchId: BRANCH_A,
       name: 'Agent A', active: true,
     });
   });
@@ -193,7 +195,7 @@ async function main() {
   // Reset agent-a blank for onboardingComplete-only test
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(userRef(ctx.firestore(), AGENT_A), {
-      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
+      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID, branchId: BRANCH_A,
       name: 'Agent A', active: true,
     });
   });
@@ -245,7 +247,7 @@ async function main() {
   // Reset agent-a to blank for empty-string tests
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(userRef(ctx.firestore(), AGENT_A), {
-      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
+      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID, branchId: BRANCH_A,
       name: 'Agent A', active: true,
     });
   });
@@ -271,7 +273,7 @@ async function main() {
   // Reset agent-a: contractStartDate: '' mimics CF-stamped state (field exists but empty)
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(userRef(ctx.firestore(), AGENT_A), {
-      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
+      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID, branchId: BRANCH_A,
       name: 'Agent A', active: true, contractStartDate: '',
     });
   });
@@ -290,7 +292,7 @@ async function main() {
   // Reset agent-a blank for monthsAtTatil test
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(userRef(ctx.firestore(), AGENT_A), {
-      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
+      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID, branchId: BRANCH_A,
       name: 'Agent A', active: true,
     });
   });
@@ -309,7 +311,7 @@ async function main() {
   // Reset agent-a blank for monthsInIndustry test
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(userRef(ctx.firestore(), AGENT_A), {
-      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
+      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID, branchId: BRANCH_A,
       name: 'Agent A', active: true,
     });
   });
@@ -328,7 +330,7 @@ async function main() {
   // Reset agent-a blank for atomic tenure write test
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(userRef(ctx.firestore(), AGENT_A), {
-      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
+      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID, branchId: BRANCH_A,
       name: 'Agent A', active: true,
     });
   });
@@ -370,7 +372,7 @@ async function main() {
   // Reset agent-a blank for type-guard tests
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(userRef(ctx.firestore(), AGENT_A), {
-      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
+      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID, branchId: BRANCH_A,
       name: 'Agent A', active: true,
     });
   });

@@ -151,9 +151,21 @@ export async function createPolicy(tenantId, agentProfile, data) {
   return addDoc(collection(db, 'tenants', tenantId, 'policies'), payload);
 }
 
-export async function getOwnPolicies(tenantId, agentId) {
+/**
+ * getOwnPolicies — one agent's policies, newest first.
+ *
+ * P2b (SEC-08): when a MANAGER reads another agent's book, pass the caller's
+ * `scope` ({ role, uid, branchId } — same shape as getPoliciesForManager) so the
+ * query carries the clause the scoped list rule needs: BM → where('branchId'),
+ * UM → where('unitId' == uid). SM / TA / PA and self-reads pass nothing.
+ * Indexes: (agentId, branchId, createdAt desc) and (agentId, unitId, createdAt desc).
+ */
+export async function getOwnPolicies(tenantId, agentId, scope) {
   const ref = collection(db, 'tenants', tenantId, 'policies');
-  const snap = await getDocs(query(ref, where('agentId', '==', agentId), orderBy('createdAt', 'desc')));
+  const scopeClauses = scope?.role === 'branch_manager' ? [where('branchId', '==', scope.branchId ?? null)]
+    : scope?.role === 'unit_manager' ? [where('unitId', '==', scope.uid ?? null)]
+      : [];
+  const snap = await getDocs(query(ref, where('agentId', '==', agentId), ...scopeClauses, orderBy('createdAt', 'desc')));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 

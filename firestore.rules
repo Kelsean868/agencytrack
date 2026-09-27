@@ -72,6 +72,35 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.branchId;
     }
 
+    // P2b (audit 2026-09-24 SEC-08): manager scope over a doc that carries a
+    // denormalized branchId + unitId (policies, financingTerms, financing,
+    // financingReconciliation). SM / TA / PA: tenant-wide (via canManage).
+    // BM: own branch — the caller's USER-DOC branchId, never null.
+    // UM: own unit — a UM's unitId IS their uid (functions/index.js buildDocFields).
+    // Each arm tests the role FIRST so a doc missing the other field never errors
+    // the arm that decides. List queries must carry the matching where():
+    // BM where('branchId','==',…), UM where('unitId','==',uid).
+    function managerDocInScope(tenantId, data) {
+      return canManage(tenantId) && (
+        (getRole() != 'unit_manager' && getRole() != 'branch_manager')
+        || (getRole() == 'branch_manager'
+            && callerBranchId(tenantId) != null
+            && data.branchId == callerBranchId(tenantId))
+        || (getRole() == 'unit_manager' && data.unitId == request.auth.uid)
+      );
+    }
+
+    // P2b (SEC-08): a branch_manager financing write must stay inside their
+    // branch — both the doc as written (branchId is stamped by financingService
+    // from the agent's user doc) and, on update, the doc as it was. Other writer
+    // roles (SM / TA / PA) are unchanged; UM never writes financing (contract 5.3).
+    function bmFinancingWriteInScope(tenantId) {
+      return getRole() != 'branch_manager'
+        || (callerBranchId(tenantId) != null
+            && request.resource.data.branchId == callerBranchId(tenantId)
+            && (resource == null || resource.data.branchId == callerBranchId(tenantId)));
+    }
+
     // H1.2: legal agent transition guard — mirrors src/constants/policyLifecycle.js.
     // Lapsed is explicitly denied (H2). Terminal states (ntu/denied/settled) have no
     // outbound entries, so the OR chain naturally returns false for them.
@@ -186,6 +215,9 @@ service cloud.firestore {
         //                                     → audit immutability
         allow update: if (canManage(tenantId)
             && (getRole() != 'unit_manager' || callerUnitId(tenantId) == resource.data.unitId)
+            // P2b (SEC-05): a branch_manager edits users in their own branch only.
+            && (getRole() != 'branch_manager'
+                || (callerBranchId(tenantId) != null && resource.data.branchId == callerBranchId(tenantId)))
             && request.resource.data.diff(resource.data).affectedKeys()
                 .hasOnly([
                   'name', 'phone', 'bio',
@@ -313,10 +345,25 @@ service cloud.firestore {
                || (getRole() == 'unit_manager' && resource.data.unitId == request.auth.uid)
                || (getRole() == 'branch_manager' && resource.data.branchId == request.auth.token.branchId)
              ));
-        allow create: if canManage(tenantId)
+        // P2b (SEC-08): the manager write arm matches the list arm above — UM own
+        // unit, BM own branch (token claim), SM/TA/PA tenant-wide. Update checks the
+        // doc before AND after, so a write cannot move a submission into scope.
+        allow create: if (canManage(tenantId) && (
+               (getRole() != 'unit_manager' && getRole() != 'branch_manager')
+               || (getRole() == 'unit_manager' && request.resource.data.unitId == request.auth.uid)
+               || (getRole() == 'branch_manager' && request.resource.data.branchId == request.auth.token.branchId)
+             ))
           || (canAccessOwn(tenantId, request.resource.data.agentId)
               && request.resource.data.branchId == request.auth.token.branchId);
-        allow update: if canManage(tenantId)
+        allow update: if (canManage(tenantId) && (
+               (getRole() != 'unit_manager' && getRole() != 'branch_manager')
+               || (getRole() == 'unit_manager'
+                   && resource.data.unitId == request.auth.uid
+                   && request.resource.data.unitId == request.auth.uid)
+               || (getRole() == 'branch_manager'
+                   && resource.data.branchId == request.auth.token.branchId
+                   && request.resource.data.branchId == request.auth.token.branchId)
+             ))
           || (canAccessOwn(tenantId, resource.data.agentId)
               && resource.data.status == 'draft'
               && request.resource.data.branchId == request.auth.token.branchId);
@@ -352,17 +399,14 @@ service cloud.firestore {
           return getRole() == 'cro' && getTenantId() == tenantId;
         }
 
+        // P2b (SEC-08): managerDocInScope — BM own branch (was: any branch),
+        // UM own unit (unchanged), SM/TA/PA tenant-wide (unchanged). A BM list
+        // query must carry where('branchId','==',<own branch>).
         allow get: if canAccessOwn(tenantId, resource.data.agentId)
-          || (canManage(tenantId) && (
-               getRole() != 'unit_manager'
-               || resource.data.unitId == request.auth.uid
-             ))
+          || managerDocInScope(tenantId, resource.data)
           || isCroInTenant();
         allow list: if canAccessOwn(tenantId, resource.data.agentId)
-          || (canManage(tenantId) && (
-               getRole() != 'unit_manager'
-               || resource.data.unitId == request.auth.uid
-             ))
+          || managerDocInScope(tenantId, resource.data)
           || isCroInTenant();
         allow create: if isSignedIn()
           && (isAgent() || isProducingManager())
@@ -481,7 +525,8 @@ service cloud.firestore {
           && (getRole() in ['platform_admin', 'tenant_admin']
               || getRole() == 'branch_manager'
               || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true)
-          && (getRole() != 'unit_manager' || resource.data.unitId == request.auth.uid)
+          // P2b (SEC-08): BM own branch (was: any branch); UM own unit (unchanged).
+          && managerDocInScope(tenantId, resource.data)
           && resource.data.status == 'settled'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                'confirmedByManager', 'confirmedByUid', 'confirmedAt',
@@ -516,6 +561,8 @@ service cloud.firestore {
         allow update: if isSignedIn()
           && canManage(tenantId)
           && getRole() in ['platform_admin', 'tenant_admin', 'branch_manager']
+          // P2b (SEC-08): a BM lapses policies in their own branch only.
+          && managerDocInScope(tenantId, resource.data)
           && resource.data.status == 'settled'
           && request.resource.data.status == 'lapsed'
           && request.resource.data.diff(resource.data).affectedKeys()
@@ -813,12 +860,16 @@ service cloud.firestore {
               && request.resource.data.tenantId == tenantId;
         }
 
-        allow get: if canAccessOwn(tenantId, agentId) || canManage(tenantId);
+        // P2b (SEC-08): managers read in scope — BM own branch, UM own unit
+        // (was: whole tenant), SM/TA/PA tenant. `resource == null` keeps a
+        // manager's probe for "no terms yet" working; it reveals nothing.
+        allow get: if canAccessOwn(tenantId, agentId)
+          || (canManage(tenantId) && (resource == null || managerDocInScope(tenantId, resource.data)));
 
         allow create, update: if validFinancingData() && (
           (getRole() in ['branch_manager', 'sales_manager', 'tenant_admin'] && getTenantId() == tenantId)
           || getRole() == 'platform_admin'
-        );
+        ) && bmFinancingWriteInScope(tenantId);
 
         allow delete: if false;
       }
@@ -868,13 +919,18 @@ service cloud.firestore {
               && validProrationFields();
         }
 
-        allow get:  if canAccessOwn(tenantId, resource.data.agentId) || canManage(tenantId);
-        allow list: if canAccessOwn(tenantId, resource.data.agentId) || canManage(tenantId);
+        // P2b (SEC-08): managers in scope — BM own branch, UM own unit (was:
+        // whole tenant), SM/TA/PA tenant. A manager list query carries
+        // where('branchId') (BM) or where('unitId') (UM); see listFinancingMonths.
+        allow get:  if canAccessOwn(tenantId, resource.data.agentId)
+          || (canManage(tenantId) && (resource == null || managerDocInScope(tenantId, resource.data)));
+        allow list: if canAccessOwn(tenantId, resource.data.agentId)
+          || managerDocInScope(tenantId, resource.data);
 
         allow create, update: if validFinancingMonth() && (
           (getRole() in ['branch_manager', 'sales_manager', 'tenant_admin'] && getTenantId() == tenantId)
           || getRole() == 'platform_admin'
-        );
+        ) && bmFinancingWriteInScope(tenantId);
 
         allow delete: if false;
       }
@@ -911,13 +967,16 @@ service cloud.firestore {
               && request.resource.data.garnishStarted is bool;
         }
 
-        allow get:  if canAccessOwn(tenantId, resource.data.agentId) || canManage(tenantId);
-        allow list: if canAccessOwn(tenantId, resource.data.agentId) || canManage(tenantId);
+        // P2b (SEC-08): same scope as the K2 ledger above.
+        allow get:  if canAccessOwn(tenantId, resource.data.agentId)
+          || (canManage(tenantId) && (resource == null || managerDocInScope(tenantId, resource.data)));
+        allow list: if canAccessOwn(tenantId, resource.data.agentId)
+          || managerDocInScope(tenantId, resource.data);
 
         allow create, update: if validReconciliation() && (
           (getRole() in ['branch_manager', 'sales_manager', 'tenant_admin'] && getTenantId() == tenantId)
           || getRole() == 'platform_admin'
-        );
+        ) && bmFinancingWriteInScope(tenantId);
 
         allow delete: if false;
       }

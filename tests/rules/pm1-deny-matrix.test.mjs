@@ -27,7 +27,7 @@
  *     9.  UM reads own policy → ALLOW
  *    10.  BM reads own policy → ALLOW
  *    11.  [LOAD-BEARING] UM reads non-managed policy → DENY  (canManage unit-gates UM)
- *    12.  [PRE-EXISTING canManage breadth, PM-1 unchanged] BM reads non-managed policy → ALLOW
+ *    12.  BM reads another branch's policy → DENY (P2b SEC-08; was ALLOW — pre-existing canManage breadth)
  *          BM's canManage arm: `getRole() != 'unit_manager'` → true → tenant-wide read.
  *          Own-only proof for policies lives in case 11 (UM unit-gate) + case 14 (agent regression).
  *    13.  Agent reads own policy → ALLOW  (no regression)
@@ -361,10 +361,11 @@ try {
     await assertFails(getDoc(polRef(umDb(), 'pol-other')));
   });
 
-  await t('12. [PRE-EXISTING canManage breadth, PM-1 unchanged] BM reads non-managed policy → ALLOW', async () => {
-    // BM's canManage arm: `getRole() != 'unit_manager'` → true → tenant-wide read.
-    // PM-1 did not touch this arm. Own-only proof lives in case 11 (UM unit-gate) + case 14 (agent regression).
-    await assertSucceeds(getDoc(polRef(bmDb(), 'pol-other')));
+  await t('12. BM reads another branch\'s policy → DENY (P2b SEC-08 closed the canManage breadth)', async () => {
+    // Was ALLOW: the BM arm was `getRole() != 'unit_manager'` → tenant-wide. P2b
+    // scopes it to resource.data.branchId == callerBranchId; pol-other is BRANCH_B,
+    // the BM is BRANCH_A.
+    await assertFails(getDoc(polRef(bmDb(), 'pol-other')));
   });
 
   await t('13. Agent reads own policy → ALLOW (no regression)', async () => {
