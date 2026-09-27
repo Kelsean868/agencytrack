@@ -9,8 +9,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Satoshi', 'system-ui', 'sans-serif'],
-        display: ['Cabinet Grotesk', 'system-ui', 'sans-serif'],
+        // Token-driven (FR-D2): :root holds Satoshi / Cabinet Grotesk; the FR
+        // look re-points these under html[data-look="fr"].
+        sans: ['var(--font-body)'],
+        display: ['var(--font-display)'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       // Colors use functional notation `rgb(var(--X-channels) / <alpha-value>)`
@@ -69,6 +71,30 @@ export default {
           DEFAULT: 'rgb(var(--danger-channels) / <alpha-value>)',
           tint:    'var(--color-danger-tint)',
           ink:     'rgb(var(--danger-ink-channels) / <alpha-value>)',
+        },
+        // FR look (docs/briefs/fr-agent-redesign-program.md). These tokens exist
+        // only under html[data-look="fr"] (src/styles/fr-look.css); FR components
+        // render only there. Chart series are fixed-order, never cycled.
+        fr: {
+          accent:        'rgb(var(--fr-accent-channels) / <alpha-value>)',
+          'on-accent':   'rgb(var(--fr-on-accent-channels) / <alpha-value>)',
+          'accent-tint': 'rgb(var(--fr-accent-tint-channels) / <alpha-value>)',
+          ghost:         'rgb(var(--fr-ghost-channels) / <alpha-value>)',
+          sunk:          'rgb(var(--fr-sunk-channels) / <alpha-value>)',
+          side:          'rgb(var(--fr-side-channels) / <alpha-value>)',
+          pane:          'rgb(var(--fr-pane-channels) / <alpha-value>)',
+          warm:          'rgb(var(--fr-warm-channels) / <alpha-value>)',
+          'warm-tint':   'rgb(var(--fr-warm-tint-channels) / <alpha-value>)',
+          gold:          'rgb(var(--fr-gold-channels) / <alpha-value>)',
+          'gold-tint':   'rgb(var(--fr-gold-tint-channels) / <alpha-value>)',
+          'gold-on-ink': 'rgb(var(--fr-gold-on-ink-channels) / <alpha-value>)',
+        },
+        chart: {
+          1: 'rgb(var(--chart-1-channels) / <alpha-value>)',
+          2: 'rgb(var(--chart-2-channels) / <alpha-value>)',
+          3: 'rgb(var(--chart-3-channels) / <alpha-value>)',
+          4: 'rgb(var(--chart-4-channels) / <alpha-value>)',
+          5: 'rgb(var(--chart-5-channels) / <alpha-value>)',
         },
         // Presentation surface — theme-independent (defined only in :root,
         // not overridden in .dark). For full-screen overlays that should

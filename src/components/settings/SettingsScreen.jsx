@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Sun, Moon, Monitor, UserCog, ChevronRight } from 'lucide-react';
 import { useTheme } from '../../lib/theme';
 import useAppSettings from '../../hooks/useAppSettings';
+import { useLookOptIn } from '../../lib/fr/look';
 import {
   MASTER_SHEET_PRESETS, MASTER_SHEET_PRESET_LABELS, DEFAULT_MASTER_SHEET_PRESET, isValidMasterSheetPreset,
   PERIOD_OPTIONS, DEFAULT_PERIOD, isValidPeriod,
@@ -91,6 +92,9 @@ export default function SettingsScreen({
 function MyPreferences({ role, tenantId, uid, onOpenProfile }) {
   const { mode, setMode } = useTheme();
   const { settings, setSetting } = useAppSettings({ tenantId, uid });
+  // FR-D3 — per-browser opt-in to the agent "Free Redesign". Agents only: the
+  // gate (src/lib/fr/look.js) ignores it for every other role.
+  const [lookOptIn, setLookOptIn] = useLookOptIn();
 
   const isAgent = role === 'agent';
   const isAdmin = role === 'tenant_admin' || role === 'platform_admin';
@@ -121,6 +125,23 @@ function MyPreferences({ role, tenantId, uid, onOpenProfile }) {
             ]}
           />
         </Row>
+        {isAgent && (
+          <Row
+            title="Try the new design"
+            desc="Preview the redesigned agent screens on this device. Switch off any time to go back."
+          >
+            <Segmented
+              name="settings-look"
+              ariaLabel="Try the new design"
+              value={lookOptIn ? 'on' : 'off'}
+              onChange={(v) => setLookOptIn(v === 'on')}
+              options={[
+                { value: 'off', label: 'Off' },
+                { value: 'on', label: 'On' },
+              ]}
+            />
+          </Row>
+        )}
         {/* Density row intentionally SKIPPED — no density substrate in the app
             (see component docstring). Adding one is a design-system decision. */}
       </Group>

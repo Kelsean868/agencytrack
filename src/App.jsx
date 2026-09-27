@@ -11,6 +11,7 @@ import ReloadPrompt from './components/ui/ReloadPrompt';
 import ChunkLoadErrorBoundary from './components/ui/ChunkLoadErrorBoundary';
 import { ConfigProvider } from './context/ConfigProvider';
 import { repairFirestoreCache } from './lib/firestoreRecovery';
+import useLook from './hooks/useLook';
 
 // SEC-10 — if the loading screen is still up after this long, the local
 // Firestore cache may be corrupted (the same failure family the
@@ -136,6 +137,9 @@ const ProvisioningScreen = () => (
 
 function AppRoot() {
   const { role, loading, isAuthenticated, userProfile, tenantId } = useAuth();
+  // FR-D3: owns <html data-look> once the role is known (agent + flag/opt-in
+  // ⇒ 'fr'; everyone else ⇒ attribute removed). Must run before any early return.
+  useLook();
 
   // Firebase auth action links (password reset) land here with ?mode=resetPassword&oobCode=…
   // Intercept before auth/role logic so the handler renders for unauthenticated users.
