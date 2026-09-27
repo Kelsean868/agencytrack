@@ -165,7 +165,7 @@ async function captureGoal(admin) {
   ]);
   const personalAnnualAPI  = goalDoc.exists ? goalDoc.data().personalAnnualAPI  : null;
   const personalAnnualApps = goalDoc.exists ? goalDoc.data().personalAnnualApps : null;
-  const annualApps = minimsDoc.exists ? (minimsDoc.data().annualApps ?? 42) : 42;
+  const annualApps = minimsDoc.exists ? (minimsDoc.data().annualApps ?? 40) : 40;
   return { uid, tenantId, personalAnnualAPI, personalAnnualApps, annualApps };
 }
 
@@ -358,7 +358,7 @@ async function runSmoke() {
       originalAPI !== null,
       originalAPI !== null
         ? `personalAnnualAPI = ${originalAPI} (personalAnnualApps = ${capturedOriginalApps}, annualAppsMin = ${capturedMinimums.annualApps})`
-        : `no committed goal on doc (annualAppsMin = ${capturedMinimums?.annualApps ?? 42})`);
+        : `no committed goal on doc (annualAppsMin = ${capturedMinimums?.annualApps ?? 40})`);
   } catch (err) {
     record('sdk-capture', false, `Admin SDK init/capture failed: ${err.message}`);
     safeLog('[WARN] SDK capture failed — verify/restore legs will be skipped; UI legs continue');
@@ -373,7 +373,7 @@ async function runSmoke() {
 
   // Sentinel must exceed both the API floor (200k fallback) and the apps minimum.
   // apps = apiToWrite / DEFAULT_AVG_POLICY_API → need apiToWrite ≥ minAnnualApps * 12000
-  const minAnnualApps = capturedMinimums?.annualApps ?? 42;
+  const minAnnualApps = capturedMinimums?.annualApps ?? 40;
   const SENTINEL_API_TARGET = Math.max(200000, minAnnualApps * DEFAULT_AVG_POLICY_API) * 1.25;
   const SENTINEL_INCOME = Math.ceil(SENTINEL_API_TARGET * DECOMP_FACTOR / 5000) * 5000;
   const SENTINEL_API_APPROX = SENTINEL_INCOME / DECOMP_FACTOR;

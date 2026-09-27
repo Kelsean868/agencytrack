@@ -114,7 +114,7 @@ export async function commitPlan(tenantId, uid, year, { annualAPI, annualApps })
     throw new AvgPolicyMissingError();
   }
 
-  const appsFloor  = mins.annualApps ?? 42;
+  const appsFloor  = mins.annualApps ?? 40;
   const appsCount  = deriveAnnualApps(api, avgPolicyAPI);
   if (appsCount < appsFloor) {
     throw new BelowAppsFloorError(appsFloor, appsCount, avgPolicyAPI);

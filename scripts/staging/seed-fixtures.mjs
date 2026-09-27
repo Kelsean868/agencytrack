@@ -500,7 +500,7 @@ async function main() {
   console.log('\n── A3: goals hierarchy + plans ──');
   // Explicit companyMinimums => deterministic floors for smoke math.
   await put(T.collection('config').doc('companyMinimums'), {
-    annualAPI: 200000, annualApps: 42, persistency: 90,
+    annualAPI: 200000, annualApps: 40, persistency: 90,
     weeklyActivityFloors: {
       callsMade: 60, telContacts: 40, appointmentsScheduled: 20, interviewsKept: 15,
       factFindsCompleted: 10, closingInterviewsKept: 10, applicationsSubmitted: 1,

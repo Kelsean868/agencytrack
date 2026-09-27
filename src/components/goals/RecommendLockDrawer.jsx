@@ -55,7 +55,7 @@ export default function RecommendLockDrawer({
   agentName,
   initial = {},
   annualAPIFloor = 200000,
-  minimums = { annualApps: 42, persistency: 90 },
+  minimums = { annualApps: 40, persistency: 90 },
   onSave,
   saving = false,
 }) {

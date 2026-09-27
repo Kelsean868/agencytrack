@@ -365,7 +365,7 @@ export default function BulkImportGoalsModal({ tenantId, onClose, onImported }) 
                     <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-ink flex items-start gap-2">
                       <Info size={14} className="shrink-0 mt-0.5 text-warning-ink" aria-hidden="true" />
                       <span>
-                        Using default company minimums ({formatCurrency(200000)} API / 42 apps).
+                        Using default company minimums ({formatCurrency(200000)} API / 40 apps).
                         Set explicit minimums in Company Config if your org&apos;s floors are
                         different. Floors apply regardless.
                       </span>

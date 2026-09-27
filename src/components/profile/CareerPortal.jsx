@@ -626,7 +626,7 @@ function GoalsSection() {
     if (!authUser?.uid || !tenantId) return;
     Promise.all([
       getGoals(tenantId, authUser.uid).catch(() => null),
-      getCompanyMinimums(tenantId).catch(() => ({ annualAPI: 200000, annualApps: 42, persistency: 90 })),
+      getCompanyMinimums(tenantId).catch(() => ({ annualAPI: 200000, annualApps: 40, persistency: 90 })),
       getMoneyNeeds(tenantId, authUser.uid, CAREER_PORTAL_YEAR).catch(() => null),
     ]).then(([g, mins, mn]) => {
       setGoalsState(g);
@@ -668,7 +668,7 @@ function GoalsSection() {
     await doSave(draft);
   };
 
-  const mins  = minimums ?? { annualAPI: 200000, annualApps: 42, persistency: 90 };
+  const mins  = minimums ?? { annualAPI: 200000, annualApps: 40, persistency: 90 };
   const resolvedAnnualAPIFloor = resolveAnnualAPIFloor({
     contractStartDate: userProfile?.contractStartDate ?? null,
     tenureApiFloors: mins.tenureApiFloors,

@@ -49,7 +49,7 @@ describe('getCompanyMinimums — weeklyActivityFloors defaults', () => {
     const result = await getCompanyMinimums('tenant1');
     expect(result.weeklyActivityFloors).toEqual(DEFAULT_WEEKLY_ACTIVITY_FLOORS);
     expect(result.annualAPI).toBe(200000);
-    expect(result.annualApps).toBe(42);
+    expect(result.annualApps).toBe(40);
     expect(result.persistency).toBe(90);
   });
 

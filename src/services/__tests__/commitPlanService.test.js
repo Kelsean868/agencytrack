@@ -256,6 +256,44 @@ describe('commitPlan — apps floor', () => {
       commitPlan('tid', 'uid', 2026, { annualAPI: 504000, annualApps: 42 }),
     ).resolves.toBeUndefined();
   });
+
+  // Company minimum ruling (27 Sep 2026): 40 apps a year in every tenure band.
+  const TENURE = {
+    band0_lt12: 150000, band12_to_24: 200000, band25_to_36: 250000,
+    band37_to_48: 300000, band49_to_60: 400000, band_gt60: 500000,
+  };
+
+  it('rejects 39 apps against the 40-app company minimum', async () => {
+    mockGetCompanyMinimums.mockResolvedValue({ annualApps: 40, tenureApiFloors: TENURE });
+    // 468000 / 12000 = 39 apps < 40
+    const err = await commitPlan('tid', 'uid', 2026, { annualAPI: 468000, annualApps: 39 }).catch((e) => e);
+    expect(err).toBeInstanceOf(BelowAppsFloorError);
+    expect(err.floor).toBe(40);
+    expect(mockRunTransaction).not.toHaveBeenCalled();
+  });
+
+  it('accepts exactly 40 apps against the 40-app company minimum', async () => {
+    mockGetCompanyMinimums.mockResolvedValue({ annualApps: 40, tenureApiFloors: TENURE });
+    // 480000 / 12000 = 40 apps (boundary, passes)
+    await expect(
+      commitPlan('tid', 'uid', 2026, { annualAPI: 480000, annualApps: 40 }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('reads the apps floor from config, not a literal', async () => {
+    mockGetCompanyMinimums.mockResolvedValue({ annualApps: 45, tenureApiFloors: TENURE });
+    // 504000 / 12000 = 42 apps: clears 40, but not the configured 45
+    const err = await commitPlan('tid', 'uid', 2026, { annualAPI: 504000, annualApps: 42 }).catch((e) => e);
+    expect(err).toBeInstanceOf(BelowAppsFloorError);
+    expect(err.floor).toBe(45);
+  });
+
+  it('falls back to 40 when config carries no annualApps', async () => {
+    mockGetCompanyMinimums.mockResolvedValue({ tenureApiFloors: TENURE });
+    const err = await commitPlan('tid', 'uid', 2026, { annualAPI: 468000, annualApps: 39 }).catch((e) => e);
+    expect(err).toBeInstanceOf(BelowAppsFloorError);
+    expect(err.floor).toBe(40);
+  });
 });
 
 describe('commitPlan — transaction / guard errors', () => {

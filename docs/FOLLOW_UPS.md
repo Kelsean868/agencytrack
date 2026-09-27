@@ -18,7 +18,7 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| Report-Only CSP `connect-src` in `vercel.json` lacks `https://www.google.com` — reCAPTCHA Enterprise (App Check, live since P2e) calls it; enforcing the CSP as-is would block App Check token fetches. Add it before the CSP leaves Report-Only (banked 2026-09-27, P2e post-merge) | MEDIUM | Security / CSP | before CSP enforce | see § CSP connect-src needs www.google.com before enforce |
+| Report-Only CSP `connect-src` in `vercel.json` lacks `https://www.google.com` — reCAPTCHA Enterprise (App Check, live since P2e) calls it; enforcing the CSP as-is would block App Check token fetches. Add it before the CSP leaves Report-Only (banked 2026-09-27, P2e post-merge). **Fix in PR #994; stays open until the enforce-time check below** | MEDIUM | Security / CSP | before CSP enforce | see § CSP connect-src needs www.google.com before enforce |
 | App Check is in monitor mode — switch each service to enforce only after 7 consecutive clean days per `docs/runbooks/app-check.md` §3 (key live 2026-09-27, so no earlier than 2026-10-04); Storage → Firestore → Functions, one at a time (banked 2026-09-27, P2e post-merge) | MEDIUM | Security / App Check | not before 2026-10-04 | see § App Check: enforce after 7 clean days |
 | Role-walk permission-error regex should ignore `requestStorageAccess` — the reCAPTCHA iframe logs it in headless Chromium and it is not a Firestore permission error (banked 2026-09-27, P2e post-merge) | LOW | Verification / role walk | — | see § Role-walk regex: ignore requestStorageAccess |
 | Company minimum: 40 applications per year, every tenure band — not enforced or shown in the app yet. Add an apps floor beside the API floor (`tenureFloors` / `config/companyMinimums`) and show it wherever the API floor shows (banked 2026-09-27, company-minimum ruling) | MEDIUM | Goals / company floor | — | see § Company minimum: 40 applications per year |
@@ -7670,6 +7670,8 @@ Audit: `docs/audits/agencytrack-audit-2026-09-24.md`. Briefs: `docs/briefs/p2b-b
 ## CSP connect-src needs www.google.com before enforce
 
 **Banked 2026-09-27 from the P2e post-merge fill (#991, `52f51d9f`). Severity: MEDIUM.**
+
+**Status 2026-09-27 (PR #994, brief `docs/briefs/company-min-apps-csp.md`):** `connect-src` now includes `https://www.google.com`, and `frame-src` gains `https://www.gstatic.com`. The policy is still Report-Only. This stays open until the enforce-time check in the falsification line below has been run.
 
 P2e turned on App Check with the reCAPTCHA Enterprise provider. `vercel.json` sends a `Content-Security-Policy-Report-Only` header; P2e added `https://www.google.com` and `https://www.gstatic.com` to `script-src` and `frame-src`, but **not** to `connect-src`, which today reads `'self' https://*.googleapis.com https://*.firebaseio.com https://firebasestorage.googleapis.com https://www.clarity.ms https://*.cloudfunctions.net https://*.run.app`. reCAPTCHA Enterprise makes requests to `https://www.google.com`. While the header is Report-Only nothing is blocked; the day the CSP is enforced, App Check token fetches would fail, and once App Check is enforced that breaks the app.
 

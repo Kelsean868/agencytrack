@@ -152,10 +152,10 @@ export const CONFIG_SECTIONS = {
           {
             id: 'targets.annualApps',
             label: 'Company apps floor',
-            desc: 'The fallback annual applications minimum. Read-only today for a real reason: setCompanyMinimums (goalsService.js:88-130) never writes annualApps — there is no writer for this field yet, so it cannot drift from this default in production.',
+            desc: 'Applications a year every agent must commit to, in every tenure band (40, confirmed 27 Sep 2026). Read-only here: setCompanyMinimums (goalsService.js) never writes annualApps. The only writer is scripts/maintenance/set-company-minimum-apps.mjs.',
             type: 'number',
-            def: 42,
-            source: 'src/services/goalsService.js:61 (writer gap: goalsService.js:88-130)',
+            def: 40,
+            source: 'src/services/goalsService.js:62 (writer: scripts/maintenance/set-company-minimum-apps.mjs)',
           },
           {
             id: 'targets.persistencyFloor',

@@ -59,7 +59,7 @@ export async function getCompanyMinimums(tenantId) {
   const stored = snap.exists() ? snap.data() : {};
   return {
     annualAPI:   stored.annualAPI   ?? 200000,
-    annualApps:  stored.annualApps  ?? 42,
+    annualApps:  stored.annualApps  ?? 40,
     // DEFAULT ONLY — `stored.persistency` (the tenant's Company Config value)
     // still wins whenever it is set, and the `...stored` spread below preserves
     // that. Defaulting to the award gate is deliberate: absent an explicit

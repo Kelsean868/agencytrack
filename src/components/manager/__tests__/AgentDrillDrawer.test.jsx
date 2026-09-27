@@ -9,7 +9,7 @@ vi.mock('../../../services/settlementService', () => ({
 vi.mock('../../../services/goalsService', () => ({
   getGoals: vi.fn().mockResolvedValue({ personalAnnualAPI: 250000 }),
   getGoalHierarchy: vi.fn().mockResolvedValue({
-    companyFloor: { api: 200000 },
+    companyFloor: { api: 200000, apps: 40 },
     branchTarget: { api: 280000 },
     unitTarget: { api: 320000 },
     personal: { api: 250000 },
@@ -113,6 +113,7 @@ describe('AgentDrillDrawer', () => {
     expect(cascade).toBeInTheDocument();
     expect(screen.getByTestId('drill-goal-2')).toHaveTextContent(/280[.,]?000/); // branch target
     expect(screen.getByTestId('drill-goal-3')).toHaveTextContent(/200[.,]?000/); // company floor
+    expect(screen.getByTestId('drill-goal-3')).toHaveTextContent('· 40 apps'); // company apps minimum
   });
 
   it('Goals tab degrades to a neutral state when the cascade read is denied', async () => {
