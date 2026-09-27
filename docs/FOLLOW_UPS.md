@@ -7656,5 +7656,6 @@ Audit: `docs/audits/agencytrack-audit-2026-09-24.md`. Briefs: `docs/briefs/p2b-b
 
 - **P2b shipped 27 Sep 2026 (#987, `0e78089b`).** Backfill dry run: 229 policies already OK, 0 to update. Prod role walk: 0 permission errors except agent Production Report (`getTenantUsers`) — moved to P2c Part 4.
 - **Ruling (Kyron, 27 Sep 2026):** `sales_manager` must see Policy Reconciliation — P2c Part 5.
+- **P2c shipped 27 Sep 2026 (#988, `4eddb96a`).** Rulings: `adjustmentPct` floor replaced by manager <= agreed; SMs with `canConfirmSettlements` may confirm. Dry run clean; prod role walk 80 screens, 0 permission errors.
 
 **Falsification (Rule 23):** the P2b line reopens if a production role walk shows a new permission error outside the agent Production Report, or a backfill dry run reports policies to update.
