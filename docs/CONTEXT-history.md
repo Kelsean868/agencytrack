@@ -1707,3 +1707,27 @@ The goal in one line: four fixes in `functions/` from the 2026-09-24 audit § 4 
 The Awards tab, Home and the ledger now agree on the MDRT line (688,800), checked live in production. The 500,000 figure was the 6+ year company minimum, not MDRT. One open question for Kyron: the brief lists 3 company-minimum bands, the app uses 6 (FOLLOW_UPS "Company minimum bands: brief vs tenureFloors").
 
 **Next:** L3 counts-toward chips, then FX (date boxes, Home hero legend values). Report at the end: `docs/reports/autorun-2026-09-26-ledger-layout.md`.
+
+## Archived from CONTEXT.md § Last updated — 2026-09-27 fill (PR #988)
+
+**L3 counts-toward chips SHIPPED (2026-09-27), PR #985 merge `a9053196` (feature-branch HEAD `cde43bcf`).** Third item of the ledger-layout autorun. Gold "Counts toward" chips on every policy card and in the drill drawer (shared `AwardWindowChips` in `PolicyCard.jsx`); pending policies show grey "Will count toward" chips; family → MDRT only; NTU / outside window → none. Source: existing `awardWindowsForPolicy` (`ledgerProduction.js`) over the selector's `periods.current`, computed once per render in `AwardLensPanel` (`windowsById`); drawer gets the list via `openDrawer(policy, awardWindows)`. Desktop table unchanged. **Gates:** lint 0/0; 421 files / 7,120 tests (executor, env unset); build OK; CI all pass on `cde43bcf`; CodeRabbit rate-limited (absent). Executor stopped on a usage limit after opening the PR; orchestrator finished the gates. Production smoke PASS (`prod-l3/`). **No deploy-gated surface touched.** **Prior:**
+
+## Archived from CONTEXT.md § Current main HEAD — 2026-09-27 fill (PR #988)
+
+`a9053196` (PR #985 merge - L3 counts-toward chips on policy cards and drawer, 2026-09-27). **MERGED; NO DEPLOY-GATED SURFACE - QUERIED:** `git diff --stat 1662ac4f..a9053196 -- firestore.rules firestore.indexes.json storage.rules functions/` returns EMPTY. Ships via Vercel; production deploy reported success. **Prior:**
+
+## Archived from CONTEXT.md § Active track — 2026-09-27 fill (PR #988)
+
+**Ledger layout autorun 2026-09-26 (LX → MX → L3 → FX) — IN PROGRESS.** LX (#983 `869ca694`), MX (#984 `1662ac4f`), L3 (#985 `a9053196`) SHIPPED. FX (#986, date boxes + hero legend values) in CI. Brief: `docs/briefs/ledger-layout-and-l3.md`. **Prior:**
+
+## Archived from CONTEXT.md § Recently shipped — 2026-09-27 fill (PR #988)
+
+| [#983](https://github.com/Kelsean868/agencytrack/pull/983) | `869ca694` | **feat(ledger): LX - page layout matches D1/D3.** New `LedgerPageHeader` (search + Export in header), view chips replace the old filter tab strip, `PipelineStrip` removed from the ledger, desktop award strip with three rings (shared `campaignPersistencyReading.js`). Mockup-vs-build pairs in `docs/reports/screenshots/ledger-2026-09-26/lx/`. Partial: card style, rail style, 1440 table side scroll (FU). |
+
+## Archived from CONTEXT.md § Where we left off — 2026-09-27 fill (PR #988)
+
+**PRIOR - 2026-09-27 (early morning). L3 chips merged as `a9053196` (#985).**
+
+Every policy card and the drill drawer now list the award windows the policy counts toward (gold), or will count toward once settled (grey). The chips come from the same engine helper as the award lens, so they cannot disagree with it.
+
+**Next:** FX (#986) merge, then the run report `docs/reports/autorun-2026-09-26-ledger-layout.md`.
