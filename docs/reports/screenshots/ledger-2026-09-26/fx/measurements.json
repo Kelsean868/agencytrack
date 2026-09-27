@@ -1,0 +1,78 @@
+[
+  {
+    "label": "sheet-390-light",
+    "inputs": [
+      {
+        "testid": "ledger-filter-date-from",
+        "scrollWidth": 169,
+        "clientWidth": 169,
+        "fits": true,
+        "value": "01-07-2026"
+      },
+      {
+        "testid": "ledger-filter-date-to",
+        "scrollWidth": 169,
+        "clientWidth": 169,
+        "fits": true,
+        "value": "31-12-2026"
+      }
+    ]
+  },
+  {
+    "label": "rail-1440-light",
+    "inputs": [
+      {
+        "testid": "ledger-filter-date-from",
+        "scrollWidth": 194,
+        "clientWidth": 194,
+        "fits": true,
+        "value": "01-07-2026"
+      },
+      {
+        "testid": "ledger-filter-date-to",
+        "scrollWidth": 194,
+        "clientWidth": 194,
+        "fits": true,
+        "value": "31-12-2026"
+      }
+    ]
+  },
+  {
+    "label": "sheet-390-dark",
+    "inputs": [
+      {
+        "testid": "ledger-filter-date-from",
+        "scrollWidth": 169,
+        "clientWidth": 169,
+        "fits": true,
+        "value": "01-07-2026"
+      },
+      {
+        "testid": "ledger-filter-date-to",
+        "scrollWidth": 169,
+        "clientWidth": 169,
+        "fits": true,
+        "value": "31-12-2026"
+      }
+    ]
+  },
+  {
+    "label": "rail-1440-dark",
+    "inputs": [
+      {
+        "testid": "ledger-filter-date-from",
+        "scrollWidth": 194,
+        "clientWidth": 194,
+        "fits": true,
+        "value": "01-07-2026"
+      },
+      {
+        "testid": "ledger-filter-date-to",
+        "scrollWidth": 194,
+        "clientWidth": 194,
+        "fits": true,
+        "value": "31-12-2026"
+      }
+    ]
+  }
+]

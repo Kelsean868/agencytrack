@@ -163,4 +163,27 @@ describe('RingLegend', () => {
     render(<RingLegend show tone="teal" />);
     expect(screen.getByTestId('ring-legend').className).toContain('text-ink-muted');
   });
+
+  // FX (docs/briefs/ledger-layout-and-l3.md § FX item 2) — the Home hero's
+  // value form ("Settled 87,146 · Submitted 123,146", matching C1), opt-in
+  // via `values` so every other caller keeps the descriptive copy.
+  it('renders whole-number values instead of the descriptive copy when `values` is passed', () => {
+    render(<RingLegend show values={{ settled: 87146.28, submitted: 123146.28 }} />);
+    const legend = screen.getByTestId('ring-legend');
+    expect(legend).toHaveTextContent('Settled 87,146');
+    expect(legend).toHaveTextContent('Submitted 123,146');
+    expect(legend).not.toHaveTextContent('Settled — counts');
+    expect(legend).not.toHaveTextContent('Submitted — waiting to settle');
+  });
+
+  it('still renders the descriptive copy when `values` is omitted (other callers unchanged)', () => {
+    render(<RingLegend show tone="teal" />);
+    expect(screen.getByTestId('ring-legend')).toHaveTextContent('Settled — counts');
+    expect(screen.getByTestId('ring-legend')).toHaveTextContent('Submitted — waiting to settle');
+  });
+
+  it('renders nothing for `values` when show is false (hidden when pending is 0)', () => {
+    render(<RingLegend show={false} values={{ settled: 1, submitted: 2 }} />);
+    expect(screen.queryByTestId('ring-legend')).not.toBeInTheDocument();
+  });
 });

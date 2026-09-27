@@ -170,7 +170,12 @@ export default function HeroCard({
         </div>
       )}
 
-      <RingLegend show={pendingApi > 0} tone="onHero" className={rowSpan} />
+      <RingLegend
+        show={pendingApi > 0}
+        tone="onHero"
+        className={rowSpan}
+        values={production ? { settled: settledApi, submitted: production.submitted.api } : null}
+      />
 
       {provenance && (
         <p className={`${rowSpan} flex items-center gap-2 text-xs text-[--hero-ink-muted-teal]`} data-testid="hero-provenance">
