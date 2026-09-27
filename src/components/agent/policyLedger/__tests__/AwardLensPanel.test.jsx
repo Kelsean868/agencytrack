@@ -186,11 +186,14 @@ describe('AwardLensPanel — grouped list', () => {
     expect(within(screen.getByTestId('policy-card-D')).getByText('Counts when settled')).toBeInTheDocument();
   });
 
-  it('each card keeps its tap-through', async () => {
+  it('each card keeps its tap-through, carrying its L3 award-window rows', async () => {
     renderPanel();
     await waitForCampaign();
     fireEvent.click(screen.getByTestId('policy-card-A'));
-    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'A' }));
+    // The second arg is `awardWindowsForPolicy(A, periods.current)` — L3
+    // (docs/briefs/ledger-layout-and-l3.md § L3): the drill drawer gets the
+    // same chip rows the card renders, not a second derivation.
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'A' }), expect.any(Array));
   });
 
   it('empty state per group with no policies', () => {

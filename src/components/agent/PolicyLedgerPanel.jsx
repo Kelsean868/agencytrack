@@ -132,6 +132,10 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
 
   // ── Tier 3 drawer ──
   const [drawerPolicy, setDrawerPolicy] = useState(null);
+  // L3 — this policy's `awardWindowsForPolicy` rows, handed in by whichever
+  // view opened the drawer (AwardLensPanel's `openWithWindows`), so the
+  // drawer's "Counts toward" chips match the card/table it was opened from.
+  const [drawerAwardWindows, setDrawerAwardWindows] = useState([]);
   const [transitioning, setTransitioning] = useState(false);
   const [transitionError, setTransitionError] = useState(null);
 
@@ -232,13 +236,15 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
     }
   }
 
-  function openDrawer(policy) {
+  function openDrawer(policy, awardWindows = []) {
     setTransitionError(null);
     setDrawerPolicy(policy);
+    setDrawerAwardWindows(awardWindows);
   }
 
   function closeDrawer() {
     setDrawerPolicy(null);
+    setDrawerAwardWindows([]);
     setTransitionError(null);
   }
 
@@ -415,6 +421,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
         {drawerPolicy && (
           <PolicyDrillDrawer
             policy={drawerPolicy}
+            awardWindows={drawerAwardWindows}
             onClose={closeDrawer}
             onTransition={handleTransition}
             transitioning={transitioning}
