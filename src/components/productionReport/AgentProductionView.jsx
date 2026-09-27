@@ -3,7 +3,6 @@ import { AlertTriangle, Download, Loader2 } from 'lucide-react';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { getAgentSubmissions } from '../../services/submissionService';
-import { getTenantUsers } from '../../services/managerService';
 import { getAgentHistory } from '../../services/persistencyService';
 import { formatCurrency, getUnitDisplayName } from '../../utils/formatters';
 import { resolveAnnualAPIFloor } from '../../utils/tenureFloors';
@@ -58,15 +57,11 @@ export default function AgentProductionView({ onDownloadPDF, generating = false 
   } = useLeaderboard();
   const [period, setPeriod] = useState('week');
   const [allSubmissions, setAllSubmissions] = useState([]);
-  const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  // §1 states contract: a failed load renders the error card with Retry, never
+  // a silent empty render. P2c: submissions are the ONLY load now (the
+  // tenant-wide user list is gone — see unitLabel), so a failure is total.
   const [error, setError] = useState(null);
-  // Per-source failure tracking — a sub-fetch failing no longer silently
-  // degrades to an empty array with no trace (§1 states contract). Both
-  // failed → full error card; one failed → partial-failure banner naming
-  // the count, with the other source's real data still shown.
-  const [submissionsError, setSubmissionsError] = useState(false);
-  const [usersError, setUsersError] = useState(false);
   // Authorized addition: most-recent E3 persistency record (dispatcher-approved, Phase 1 G3).
   // Independent effect; renders "—" until resolved or on error.
   const [persHistory, setPersHistory] = useState([]);
@@ -75,23 +70,13 @@ export default function AgentProductionView({ onDownloadPDF, generating = false 
     if (!user?.uid || !tenantId) return;
     setLoading(true);
     setError(null);
-    setSubmissionsError(false);
-    setUsersError(false);
-    Promise.all([
-      getAgentSubmissions(tenantId, user.uid).catch((e) => {
+    getAgentSubmissions(tenantId, user.uid)
+      .then(setAllSubmissions)
+      .catch((e) => {
         console.error('[AgentProductionView] submissions failed:', e);
-        setSubmissionsError(true);
-        return [];
-      }),
-      getTenantUsers(tenantId).catch((e) => {
-        console.error('[AgentProductionView] users failed:', e);
-        setUsersError(true);
-        return [];
-      }),
-    ]).then(([subs, users]) => {
-      setAllSubmissions(subs);
-      setAllUsers(users);
-    }).catch(setError).finally(() => setLoading(false));
+        setError(e);
+      })
+      .finally(() => setLoading(false));
   }, [user?.uid, tenantId]);
 
   useEffect(() => { loadProduction(); }, [loadProduction]);
@@ -130,11 +115,20 @@ export default function AgentProductionView({ onDownloadPDF, generating = false 
     return name.split(' ').filter(Boolean).map(s => s[0]).join('').toUpperCase().slice(0, 2) || '?';
   }, [userProfile?.name]);
 
+  // P2c: the unit name comes from the leaderboard aggregate this view already
+  // reads (its entries carry a server-resolved `unitName`). It used to come from
+  // getTenantUsers(tenantId) — a tenant-wide user list the users `list` rule
+  // denies an agent, so an agent always saw "Unknown Unit" plus a failure banner.
+  // No entry for the unit → the same "Unknown Unit" fallback as before.
   const unitLabel = useMemo(() => {
-    if (!userProfile?.unitId) return null;
-    const mgr = allUsers.find(u => u.id === userProfile.unitId);
-    return getUnitDisplayName(mgr ?? null);
-  }, [allUsers, userProfile?.unitId]);
+    const unitId = userProfile?.unitId;
+    if (!unitId) return null;
+    for (const entries of Object.values(leaderboardByPeriod ?? {})) {
+      const hit = (entries ?? []).find((e) => e?.unitId === unitId && e?.unitName);
+      if (hit) return hit.unitName;
+    }
+    return getUnitDisplayName(null);
+  }, [leaderboardByPeriod, userProfile?.unitId]);
 
   // Period-scoped ranking from the aggregate (memoized so its identity is
   // stable across re-renders that don't change byPeriod / period).
@@ -164,7 +158,7 @@ export default function AgentProductionView({ onDownloadPDF, generating = false 
       </div>
     );
   }
-  if (error || (submissionsError && usersError)) {
+  if (error) {
     return (
       <div
         role="alert"
@@ -190,25 +184,6 @@ export default function AgentProductionView({ onDownloadPDF, generating = false 
 
   return (
     <div className="flex flex-col gap-4 stagger">
-      {/* Partial-failure notice — one of the two sub-fetches failed while the
-          other resolved; the panel still renders with the available data. */}
-      {(submissionsError || usersError) && (
-        <div
-          role="alert"
-          className="p-3 rounded-xl border border-warning/30 bg-warning/10 text-warning-ink text-sm flex items-center justify-between gap-3 flex-wrap"
-          data-testid="agent-production-partial"
-        >
-          <span>1 of 2 data sources failed to load — showing what&apos;s available.</span>
-          <button
-            type="button"
-            onClick={loadProduction}
-            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg border border-border bg-card text-ink text-sm font-semibold hover:bg-surface transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
       {/* Controls row. DataSourceBadge is honest-derived: this view loads
           submissions only (no settlement fetch — read-light rule), so
           deriveProductionDataSource resolves to 'estimated'. See its docstring
