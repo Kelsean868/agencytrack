@@ -291,7 +291,7 @@ describe('deriveAwardsWithinReach — reuses computeAgentAwards, no new award ma
   const CURRENT = new Date('2026-06-15'); // same year as fixture weeks; unrelated to real wall-clock
 
   // MDRT reads the real MDRT line (688,800; in-contention 344,400) via
-  // mdrtAwardThresholds() — PR #MX, not the ruleset's stale 500k/250k pair.
+  // mdrtAwardThresholds() — PR #984, not the ruleset's stale 500k/250k pair.
   it('surfaces a single in-contention, not-yet-eligible award (MDRT: 344.4k inContention, 688.8k threshold)', () => {
     const users = [{ id: 'a1', role: 'agent', name: 'Ann', unitId: 'u1' }];
     const ytd = [agentSub('a1', 500000)]; // 72.6% of MDRT's 688.8k threshold

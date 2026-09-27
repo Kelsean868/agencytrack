@@ -365,7 +365,7 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
 
   // MDRT award reads the real MDRT line (MDRT_THRESHOLDS_2026), never the
   // stored ruleset's mdrtAward.apiThreshold — that value is the Tatil company
-  // minimum for 5+ years of tenure, not MDRT (Rule 11 audit, PR #MX, closes
+  // minimum for 5+ years of tenure, not MDRT (Rule 11 audit, PR #984, closes
   // FOLLOW_UPS "Awards-tab MDRT award line differs from the MDRT threshold").
   const mdrtThresholds = mdrtAwardThresholds(ruleset);
   awards.mdrt = makeAward({
@@ -780,7 +780,7 @@ function isoDate(year, month, day) {
 // an agent never sees two MDRT targets (orchestrator ruling, PR #981). Year-
 // keyed: a year with no published line gets NO target (the card hides the
 // ring) rather than a guess. The Awards tab's MDRT award now reads the same
-// line via `mdrtAwardThresholds()` (PR #MX) — `ruleset.mdrtAward.apiThreshold`
+// line via `mdrtAwardThresholds()` (PR #984) — `ruleset.mdrtAward.apiThreshold`
 // is no longer read for MDRT anywhere; it is retained in stored rulesets only
 // as dead data (the admin editor no longer exposes it either).
 const MDRT_LINE_BY_YEAR = Object.freeze({ 2026: MDRT_THRESHOLDS_2026.mdrt });

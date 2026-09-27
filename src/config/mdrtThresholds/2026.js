@@ -12,7 +12,7 @@ export const MDRT_THRESHOLDS_2026 = {
 // figure (250,000 = 50%). NOT the same number as the T&T "commission method"
 // MDRT figure above (also 344,400) — that coincidence is unrelated; this is a
 // contention-pace marker, not an alternate MDRT base. Orchestrator decision,
-// PR #MX (2026-09-26), closing FOLLOW_UPS "Awards-tab MDRT award line".
+// PR #984 (2026-09-26), closing FOLLOW_UPS "Awards-tab MDRT award line".
 export const MDRT_AWARD_API_IN_CONTENTION_2026 = Math.round(MDRT_THRESHOLDS_2026.mdrt * 0.5);
 
 /**

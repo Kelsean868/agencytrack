@@ -135,7 +135,7 @@ describe('projectAwards — Club tier (single pill)', () => {
 
 describe('projectAwards — MDRT', () => {
   // Real MDRT line (MDRT_THRESHOLDS_2026.mdrt = 688,800); inContention =
-  // 344,400 (50%) via mdrtAwardThresholds() — PR #MX, not the ruleset's
+  // 344,400 (50%) via mdrtAwardThresholds() — PR #984, not the ruleset's
   // stale mdrtAward.apiThreshold/apiInContention (500k/250k).
   it('absent when api < 344.4k (below inContention)', () => {
     expect(byId(proj(300000), 'mdrt')).toBeUndefined();

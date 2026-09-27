@@ -61,7 +61,7 @@ describe('AwardProjectionStrip — renders', () => {
 // ── MDRT visibility ───────────────────────────────────────────────────────────
 
 describe('AwardProjectionStrip — MDRT pill', () => {
-  // MDRT in-contention floor is now 344,400 (mdrtAwardThresholds(), PR #MX),
+  // MDRT in-contention floor is now 344,400 (mdrtAwardThresholds(), PR #984),
   // not the ruleset's stale 250,000.
   it('absent when life API < 344.4k', () => {
     render(<AwardProjectionStrip lines={mkLines(200000)} agentProfile={{}} ruleset={R} />);
@@ -138,7 +138,7 @@ describe('AwardProjectionStrip — Agent of the Year pill', () => {
 
 describe('AwardProjectionStrip — state aria-labels', () => {
   // MDRT reads the real MDRT line (688,800; in-contention 344,400) via
-  // mdrtAwardThresholds() — PR #MX, not the ruleset's stale 500k/250k pair.
+  // mdrtAwardThresholds() — PR #984, not the ruleset's stale 500k/250k pair.
   it('MDRT pill shows in-contention aria-label at 400k', () => {
     render(<AwardProjectionStrip lines={mkLines(400000)} agentProfile={{}} ruleset={R} />);
     const pill = screen.getByTestId('award-pill-mdrt');

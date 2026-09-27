@@ -83,7 +83,7 @@ export function resolveWeeklyAPIFloor({
 
 // Short, human tenure-band label for the annual Company Floor's real basis —
 // so an agent-facing "Company minimum" figure never reads as a flat,
-// unexplained number (PR #MX). Mirrors the bands resolveAnnualAPIFloor uses;
+// unexplained number (PR #984). Mirrors the bands resolveAnnualAPIFloor uses;
 // returns null when contractStartDate is missing/invalid (the caller then
 // falls back to an unqualified "Company Floor" label — the flat fallback
 // value doesn't correspond to any single band).

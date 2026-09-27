@@ -114,7 +114,7 @@ const SCALAR_GROUPS = [
     category: 'Agent Awards',
     // apiThreshold/apiInContention are fixed by the MDRT conversion table
     // (mdrtAwardThresholds() / MDRT_THRESHOLDS_2026), not by this ruleset —
-    // no longer exposed here to avoid an editable-but-ignored field (PR #MX).
+    // no longer exposed here to avoid an editable-but-ignored field (PR #984).
     note: 'API Threshold and In-Contention are set by the MDRT conversion table (TTD 688,800 for 2026) and are not editable here.',
     fields: [
       { path: 'prize', label: 'Prize', type: 'text' },

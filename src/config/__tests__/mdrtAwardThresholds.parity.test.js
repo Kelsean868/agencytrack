@@ -2,7 +2,7 @@
 // the Policy Ledger's award lens all measure MDRT against the SAME line
 // (MDRT_THRESHOLDS_2026.mdrt = 688,800), including when a stored ruleset
 // still carries the old mdrtAward.apiThreshold: 500,000 / apiInContention:
-// 250,000 (PR #MX — closes FOLLOW_UPS "Awards-tab MDRT award line differs
+// 250,000 (PR #984 — closes FOLLOW_UPS "Awards-tab MDRT award line differs
 // from the MDRT threshold").
 
 import { describe, it, expect } from 'vitest';

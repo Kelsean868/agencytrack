@@ -54,7 +54,7 @@ export function projectAwards(lifeTargetAPI, agentProfile, ruleset, avgPolicyAPI
     clubAward,
   } = ruleset;
   // MDRT reads the real MDRT line (MDRT_THRESHOLDS_2026), never
-  // ruleset.mdrtAward.apiThreshold — see mdrtAwardThresholds() (PR #MX).
+  // ruleset.mdrtAward.apiThreshold — see mdrtAwardThresholds() (PR #984).
   const mdrtAward = mdrtAwardThresholds(ruleset);
 
   const results = [];

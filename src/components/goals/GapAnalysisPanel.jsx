@@ -147,7 +147,7 @@ function FloorRow({ floorApi, ytdApi, contractStartDate }) {
   const pct = Math.max(0, Math.min(100, Math.round((ytdApi / floorApi) * 100)));
   const gap = floorApi - ytdApi;
   // Tenure band, when known — never hard-codes a figure; falls back to the
-  // unqualified "Company Floor" label when contractStartDate is missing (PR #MX).
+  // unqualified "Company Floor" label when contractStartDate is missing (PR #984).
   const bandLabel = tenureBandLabel(contractStartDate);
   const floorLabel = bandLabel ? `Company minimum (${bandLabel})` : 'Company Floor';
 

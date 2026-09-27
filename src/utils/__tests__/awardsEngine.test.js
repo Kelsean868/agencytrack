@@ -413,7 +413,7 @@ describe('golden parity — computeAgentAwards', () => {
 
   it('mdrt in-contention, not eligible (600K annual API < 688,800 real MDRT line)', () => {
     // MDRT award now reads MDRT_THRESHOLDS_2026 (688,800), not the ruleset's
-    // stale mdrtAward.apiThreshold (500,000) — PR #MX.
+    // stale mdrtAward.apiThreshold (500,000) — PR #984.
     const a = computeAgentAwards(agentConfirmed, [], {}, GOLDEN_DATE);
     expect(a.mdrt.eligible).toBe(false);
     expect(a.mdrt.inContention).toBe(true);
