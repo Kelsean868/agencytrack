@@ -10,6 +10,7 @@ import { LEGAL_AGENT_TRANSITIONS, POLICY_STATUS_LABELS } from '../../../constant
 import { lifecycleNodes } from '../../../lib/policyLedgerDerivation';
 import { policyToken, policyPillLabel, isConfirmed } from '../../../lib/policyStatusTokens';
 import { STATUS_SOURCE_IMPORT } from '../../../lib/portfolioImport/oipaImportConfig';
+import { isFromHeadOffice } from '../../../lib/settledProvenance';
 import { AwardWindowChips } from './PolicyCard';
 
 /**
@@ -108,7 +109,11 @@ export default function PolicyDrillDrawer({
   const confirmed = isConfirmed(policy);
   // P2d (BUG-01 option B): the agent confirms their own settled policy's
   // details. Offered until a manager confirms (a manager's figure is final).
-  const canSelfConfirm = Boolean(onSelfConfirm) && policy.status === 'settled' && !policy.confirmedByUid;
+  // Kyron's ruling, 27 Sep 2026 (option A): never on a head-office policy —
+  // its figures are locked and shown read-only instead (rules enforce it too).
+  const headOfficeSettled = policy.status === 'settled' && isFromHeadOffice(policy);
+  const canSelfConfirm = Boolean(onSelfConfirm) && policy.status === 'settled'
+    && !policy.confirmedByUid && !headOfficeSettled;
 
   function onConfirmField(e) {
     const { name, value } = e.target;
@@ -402,7 +407,21 @@ export default function PolicyDrillDrawer({
           </div>
         )}
 
-        {/* Self-confirm footer (P2d) — own settled policy, no manager confirmation yet. */}
+        {/* Head-office figures (P2d ruling, option A) — read-only, never editable by the agent. */}
+        {headOfficeSettled && !policy.confirmedByUid && (
+          <div className="p-5 border-t border-border bg-surface-muted" data-testid="drawer-ho-figures">
+            <p className="text-[13px] font-bold text-ink">Settled details</p>
+            <p className="text-[11.5px] text-ink-muted mt-1 mb-3">Set by head office — these figures cannot be changed here.</p>
+            <div className="grid grid-cols-2 gap-2.5">
+              <Detail k="SETTLED API" v={moneyOrDash(policy.settledAPI ?? policy.proposedAPI)} />
+              <Detail k="ISSUED COVERAGE" v={moneyOrDash(policy.issuedCoverage)} />
+              <Detail k="INITIAL PREMIUM" v={moneyOrDash(policy.initialPremium)} />
+              <Detail k="EARNED COMMISSION" v={moneyOrDash(policy.earnedCommission)} />
+            </div>
+          </div>
+        )}
+
+        {/* Self-confirm footer (P2d) — own self-declared settled policy, no manager confirmation yet. */}
         {canSelfConfirm && (
           <div className="p-5 border-t border-border bg-surface-muted" data-testid="drawer-self-confirm">
             <p className="text-[13px] font-bold text-ink">
@@ -445,6 +464,11 @@ export default function PolicyDrillDrawer({
       </div>
     </div>
   );
+}
+
+/** A stored money figure, or an em dash when head office sent none. */
+function moneyOrDash(v) {
+  return v == null || v === '' ? '—' : formatCurrency(v);
 }
 
 /** The self-confirm form starts from what the policy already holds. */

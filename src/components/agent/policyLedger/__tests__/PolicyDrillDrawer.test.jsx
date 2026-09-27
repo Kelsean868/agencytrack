@@ -258,11 +258,12 @@ describe('PolicyDrillDrawer — "Counts toward" chips (L3)', () => {
 
 // ── P2d (BUG-01 option B) — the agent self-confirms their own settled policy ──
 describe('PolicyDrillDrawer — self-confirm (P2d)', () => {
+  // A self-declared settlement: the agent set the status (statusSource 'agent').
   const settled = (over = {}) => makePolicy({
-    status: 'settled', statusSource: 'oipa_import', settledAPI: null, proposedAPI: 5000, ...over,
+    status: 'settled', statusSource: 'agent', settledAPI: null, proposedAPI: 5000, ...over,
   });
 
-  it('own settled, not manager-confirmed: offers "Confirm details", prefilled, and submits the four fields', async () => {
+  it('own self-declared settled, not manager-confirmed: offers "Confirm details", prefilled, and submits the four fields', async () => {
     const onSelfConfirm = vi.fn();
     render(<PolicyDrillDrawer policy={settled({ initialPremium: 400 })} onClose={() => {}} onTransition={() => {}} onSelfConfirm={onSelfConfirm} />);
     await waitFor(() => expect(hoisted.getPolicyHistory).toHaveBeenCalled());
@@ -273,6 +274,23 @@ describe('PolicyDrillDrawer — self-confirm (P2d)', () => {
     expect(onSelfConfirm).toHaveBeenCalledWith({
       settledAPI: '5000', issuedCoverage: '250000', initialPremium: '400', earnedCommission: '1250',
     });
+  });
+
+  // Kyron's ruling, 27 Sep 2026 (option A): head-office figures are locked.
+  it('RULING: a head-office settled policy shows its figures read-only, "Set by head office", and no Confirm', async () => {
+    const onSelfConfirm = vi.fn();
+    render(<PolicyDrillDrawer
+      policy={settled({ statusSource: 'oipa_import', settledAPI: null, proposedAPI: 36000, issuedCoverage: 500000 })}
+      onClose={() => {}} onTransition={() => {}} onSelfConfirm={onSelfConfirm} />);
+    await waitFor(() => expect(hoisted.getPolicyHistory).toHaveBeenCalled());
+    expect(screen.queryByTestId('drawer-self-confirm')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('drawer-self-confirm-submit')).not.toBeInTheDocument();
+    const box = screen.getByTestId('drawer-ho-figures');
+    expect(box).toHaveTextContent(/Set by head office/);
+    expect(box.querySelectorAll('input')).toHaveLength(0);
+    expect(box).toHaveTextContent(/36,000/);   // settled API falls back to what production counts
+    expect(box).toHaveTextContent(/500,000/);
+    expect(onSelfConfirm).not.toHaveBeenCalled();
   });
 
   it('a manager-confirmed policy offers no self-confirm (the manager figure is final)', async () => {

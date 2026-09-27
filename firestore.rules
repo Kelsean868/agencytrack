@@ -401,6 +401,16 @@ service cloud.firestore {
           return request.resource.data.statusSource in ['agent', 'manager']
             && request.resource.data.statusSetBy == request.auth.uid;
         }
+        // P2d — Kyron's ruling, 27 Sep 2026 (money lever, option A): HEAD-OFFICE
+        // FIGURES ARE LOCKED. A policy whose current status the OIPA import set
+        // (statusSource 'oipa_import' — the "from head office" provenance bucket)
+        // carries head office's figures; no agent arm may change a money field on
+        // it. A policy whose status the agent set is self-declared and stays
+        // editable. Only the Admin SDK import writes 'oipa_import'
+        // (setsOwnStatusProvenance above), so a client cannot fake its way in or out.
+        function isHeadOfficeStatus(data) {
+          return data.get('statusSource', null) == 'oipa_import';
+        }
         // The three keys every status write may now additionally touch.
         // `statusAsOf` is the day the person set it — a date, not the export date.
 
@@ -464,6 +474,12 @@ service cloud.firestore {
                'isSelfOrFamily', 'replacedPolicyAPI',
                'sourceOfProspect', 'socialPlatform', 'cashWithApp'
              ])
+          // P2d ruling (option A): no money field changes on a head-office policy.
+          && (!isHeadOfficeStatus(resource.data)
+              || !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                   'proposedPremium', 'proposedAPI', 'proposedCoverage',
+                   'replacedPolicyAPI', 'cashWithApp'
+                 ]))
           && request.resource.data.sourceOfProspect in [
                'seminar', 'booth-event', 'referral', 'cold-call', 'social-media',
                'orphan', 'existing-client', 'family-friend', 'bank-referral', 'self', 'other'
@@ -582,6 +598,9 @@ service cloud.firestore {
           && resource.data.status == 'settled'
           && request.resource.data.status == 'settled'
           && resource.data.get('confirmedByUid', null) == null
+          // P2d ruling (option A): head-office figures are locked — self-confirm
+          // is for the agent's own self-declared settlements only.
+          && !isHeadOfficeStatus(resource.data)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                'settledAPI', 'issuedCoverage', 'initialPremium', 'earnedCommission',
                'selfConfirmedBy', 'selfConfirmedAt', 'enteredBy', 'enteredAt'
@@ -675,7 +694,9 @@ service cloud.firestore {
               // an own policy that is settled, like the manager confirm event.
               || (request.resource.data.fromStatus == 'settled'
                   && request.resource.data.toStatus == 'settled'
-                  && get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.status == 'settled')
+                  && get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.status == 'settled'
+                  // P2d ruling (option A): not on a head-office policy (Arm F is closed there).
+                  && get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.get('statusSource', null) != 'oipa_import')
             );
 
           // Manager arm: manager writes a confirmation event (H2a).

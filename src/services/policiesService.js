@@ -8,6 +8,7 @@ import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../utils/prospectingConstants';
 import { isLegalAgentTransition } from '../constants/policyLifecycle';
 import { parseDateOnlyTT, getTodayTT } from '../utils/dateInputs';
 import { excludeImported } from '../lib/portfolioImport/excludeImported';
+import { isFromHeadOffice } from '../lib/settledProvenance';
 import {
   STATUS_SOURCE_AGENT,
   STATUS_SOURCE_MANAGER,
@@ -303,8 +304,9 @@ export const SELF_CONFIRM_FIELDS = Object.freeze([
  * detail fields + provenance stamps on the policy, and a settled → settled
  * history event.
  *
- * Never touches status, dateIssued or statusSource, so a head-office policy stays
- * "from head office" and the award period cannot move. Stamps are
+ * Never touches status, dateIssued or statusSource, so the award period and the
+ * provenance bucket cannot move. Refuses a head-office policy outright — its
+ * figures are locked (Kyron, 27 Sep 2026, option A). Stamps are
  * `selfConfirmedBy/At` + `enteredBy/At` — NOT `confirmedAt`, which is the
  * manager's (Arm C) and which `isConfirmed()` reads.
  *
@@ -318,6 +320,10 @@ export async function selfConfirmPolicy(tenantId, agentProfile, policyId, policy
   if (policy?.agentId !== agentProfile?.uid) throw new Error('You can only confirm your own policies');
   if (policy?.status !== 'settled') throw new Error('Only a settled policy can be confirmed');
   if (policy?.confirmedByUid) throw new Error('A manager has already confirmed this policy');
+  // Kyron's ruling, 27 Sep 2026 (option A): head-office figures are locked
+  // (firestore.rules isHeadOfficeStatus). Self-confirm is for the agent's own
+  // self-declared settlements only.
+  if (isFromHeadOffice(policy)) throw new Error('These figures were set by head office and cannot be changed');
 
   const settledAPI       = parseFloat(fields?.settledAPI);
   const issuedCoverage   = parseFloat(fields?.issuedCoverage);

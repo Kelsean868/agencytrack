@@ -918,7 +918,8 @@ describe('P2b — excludeImported on the aggregating readers', () => {
 // ── P2d (BUG-01 option B) — selfConfirmPolicy ─────────────────────────────────
 describe('selfConfirmPolicy', () => {
   const agent = { uid: 'agent-1', role: 'agent', unitId: 'um-1' };
-  const policy = { agentId: 'agent-1', status: 'settled', statusSource: 'oipa_import' };
+  // Self-declared: the agent set the status. Head-office policies are refused (ruling, below).
+  const policy = { agentId: 'agent-1', status: 'settled', statusSource: 'agent' };
   const fields = { settledAPI: '5200', issuedCoverage: '250000', initialPremium: '433.33', earnedCommission: '1300' };
 
   beforeEach(() => { vi.clearAllMocks(); hoisted.mockBatchCommit.mockResolvedValue(undefined); });
@@ -940,6 +941,12 @@ describe('selfConfirmPolicy', () => {
     await expect(selfConfirmPolicy('t1', agent, 'p1', { ...policy, agentId: 'agent-2' }, fields)).rejects.toThrow(/own policies/);
     await expect(selfConfirmPolicy('t1', agent, 'p1', { ...policy, status: 'submitted' }, fields)).rejects.toThrow(/settled/);
     await expect(selfConfirmPolicy('t1', agent, 'p1', { ...policy, confirmedByUid: 'bm-1' }, fields)).rejects.toThrow(/manager/);
+    expect(hoisted.mockBatchCommit).not.toHaveBeenCalled();
+  });
+
+  it('RULING (27 Sep 2026, option A): refuses a head-office policy — its figures are locked', async () => {
+    await expect(selfConfirmPolicy('t1', agent, 'p1', { ...policy, statusSource: 'oipa_import' }, fields))
+      .rejects.toThrow(/head office/);
     expect(hoisted.mockBatchCommit).not.toHaveBeenCalled();
   });
 
