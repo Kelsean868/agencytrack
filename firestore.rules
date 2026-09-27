@@ -475,10 +475,16 @@ service cloud.firestore {
                'sourceOfProspect', 'socialPlatform', 'cashWithApp'
              ])
           // P2d ruling (option A): no money field changes on a head-office policy.
+          // Extended 27 Sep 2026 (Kyron): nor any field that decides how much
+          // production credit the policy earns (product / class / family flag /
+          // plan / dates) - same lever, e.g. lump sum -> ordinary NB = 10x credit.
           && (!isHeadOfficeStatus(resource.data)
               || !request.resource.data.diff(resource.data).affectedKeys().hasAny([
                    'proposedPremium', 'proposedAPI', 'proposedCoverage',
-                   'replacedPolicyAPI', 'cashWithApp'
+                   'replacedPolicyAPI', 'cashWithApp',
+                   'productLine', 'newBusinessType', 'policyClass',
+                   'planId', 'planName', 'isSelfOrFamily',
+                   'dateWritten', 'dateSubmitted'
                  ]))
           && request.resource.data.sourceOfProspect in [
                'seminar', 'booth-event', 'referral', 'cold-call', 'social-media',

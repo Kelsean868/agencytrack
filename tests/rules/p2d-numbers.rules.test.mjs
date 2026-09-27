@@ -265,6 +265,14 @@ async function main() {
   await t('A4. RULING: agent raises proposedAPI on own SELF-DECLARED application → ALLOW (unchanged)', () =>
     assertSucceeds(updateDoc(pol(as('a1'), 'a1-self-sub'), { proposedAPI: 7000 })));
 
+  await t('A5. RULING+: agent changes productLine on an imported application → DENY', () =>
+    assertFails(updateDoc(pol(as('a1'), 'a1-ho-sub'), { productLine: 'lump-sum-changed' })));
+  await t('A6. RULING+: agent changes dateSubmitted on an imported application → DENY', () =>
+    assertFails(updateDoc(pol(as('a1'), 'a1-ho-sub'), { dateSubmitted: '2026-01-02' })));
+  await t('A7. RULING+: agent flips isSelfOrFamily on an imported application → DENY', () =>
+    assertFails(updateDoc(pol(as('a1'), 'a1-ho-sub'), { isSelfOrFamily: true })));
+  await t('A8. agent changes productLine on own SELF-DECLARED application → ALLOW (unchanged)', () =>
+    assertSucceeds(updateDoc(pol(as('a1'), 'a1-self-sub'), { productLine: 'life' })));
   // ── persistency — enteredBy on agent writes ────────────────────────────────
   console.log('persistency — agent writes carry enteredBy == caller');
   await t('P1. agent creates own doc WITHOUT enteredBy → DENY', () =>
