@@ -7649,3 +7649,12 @@ The app never sets CSS `color-scheme` globally. A native `<input type="radio">` 
 **Fix shape:** add an apps floor (40/year, same for all bands) beside the API floor in `tenureFloors` / `config/companyMinimums`, and show it wherever the API floor shows. A change to the stored `config/companyMinimums` doc is a data write — human-merge.
 
 **Falsification (Rule 23):** closed when every surface that shows the API company floor also shows the 40-apps floor, read from the same source.
+
+## Security audit 2026-09-24 — P2 (branch scoping, financing)
+
+Audit: `docs/audits/agencytrack-audit-2026-09-24.md`. Briefs: `docs/briefs/p2b-branch-scoping.md`, `docs/briefs/p2c-financing-integrity.md`.
+
+- **P2b shipped 27 Sep 2026 (#987, `0e78089b`).** Backfill dry run: 229 policies already OK, 0 to update. Prod role walk: 0 permission errors except agent Production Report (`getTenantUsers`) — moved to P2c Part 4.
+- **Ruling (Kyron, 27 Sep 2026):** `sales_manager` must see Policy Reconciliation — P2c Part 5.
+
+**Falsification (Rule 23):** the P2b line reopens if a production role walk shows a new permission error outside the agent Production Report, or a backfill dry run reports policies to update.
