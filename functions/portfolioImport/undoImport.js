@@ -29,6 +29,7 @@ const {
   findLastImportBatch, findRunBatch, deletePolicies, countOrphanedHistory,
 } = require('./rollback');
 const { findLatestRun } = require('./importRuns');
+const { withAppCheckMonitor } = require('../lib/appCheckMonitor');
 
 /** Reading every candidate's history is many small reads; give it room. */
 const RUNTIME = { memory: '1GB', timeoutSeconds: 300 };
@@ -169,6 +170,6 @@ async function handler(data, context) {
   };
 }
 
-exports.undoLastPortfolioImport = functions.runWith(RUNTIME).https.onCall(handler);
+exports.undoLastPortfolioImport = functions.runWith(RUNTIME).https.onCall(withAppCheckMonitor('undoLastPortfolioImport', handler));
 exports.__handler = handler;
 exports.SAMPLE_SIZE = SAMPLE_SIZE;

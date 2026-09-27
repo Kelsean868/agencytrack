@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions/v1');
 const crypto = require('crypto');
+const { withAppCheckMonitor } = require('../lib/appCheckMonitor');
 
 // There is deliberately NO role gate here. Creation is self-service and
 // self-credit: the caller can only ever link their own KPIs, so there is no
@@ -22,7 +23,7 @@ function hashToken(rawToken) {
 
 exports.hashToken = hashToken;
 
-exports.createCallSource = functions.https.onCall(async (data, context) => {
+exports.createCallSource = functions.https.onCall(withAppCheckMonitor('createCallSource', async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
@@ -93,4 +94,4 @@ exports.createCallSource = functions.https.onCall(async (data, context) => {
   // The only time the raw token exists outside the caller's hands. It is never
   // stored and cannot be recovered — a lost token is re-minted, not looked up.
   return { sourceId: sourceRef.id, token: rawToken, expiresAt: expiresAt.toISOString() };
-});
+}));

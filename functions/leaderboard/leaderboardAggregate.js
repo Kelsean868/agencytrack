@@ -30,6 +30,7 @@ const {
   filterSubmissionsByPeriod,
   getPeriodBoundaries,
 } = require('./rankingLogic');
+const { withAppCheckMonitor } = require('../lib/appCheckMonitor');
 
 const TENANT_ID = 'tatillife_south'; // SEC-9c, mirrors index.js scheduled CFs
 const PERIODS = ['week', 'mtd', 'quarter', 'ytd'];
@@ -449,7 +450,7 @@ exports.recomputeLeaderboardScheduled = functions.pubsub
 
 // Admin-only callable — initial backfill + deterministic smoke triggering.
 // Only platform_admin / tenant_admin may invoke; agents/managers get permission-denied.
-exports.recomputeLeaderboardOnDemand = functions.https.onCall(async (data, context) => {
+exports.recomputeLeaderboardOnDemand = functions.https.onCall(withAppCheckMonitor('recomputeLeaderboardOnDemand', async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Sign-in required.');
   }
@@ -489,7 +490,7 @@ exports.recomputeLeaderboardOnDemand = functions.https.onCall(async (data, conte
     console.error('[recomputeLeaderboardOnDemand]', err);
     throw new functions.https.HttpsError('internal', err.message);
   }
-});
+}));
 
 // Pure logic exports for unit tests (no firebase-admin in test path)
 exports._internals = {

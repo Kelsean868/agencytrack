@@ -18,6 +18,7 @@ const { resolveCaller } = require('./identity');
 const { loadPlan, markApplied } = require('./planStore');
 const { applyPlan } = require('./applyPlan');
 const { startRun, finishRun } = require('./importRuns');
+const { withAppCheckMonitor } = require('../lib/appCheckMonitor');
 
 const RUNTIME = { memory: '1GB', timeoutSeconds: 300 };
 
@@ -94,5 +95,5 @@ async function handler(data, context) {
   };
 }
 
-exports.applyPortfolioImport = functions.runWith(RUNTIME).https.onCall(handler);
+exports.applyPortfolioImport = functions.runWith(RUNTIME).https.onCall(withAppCheckMonitor('applyPortfolioImport', handler));
 exports.__handler = handler;

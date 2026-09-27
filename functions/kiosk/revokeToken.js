@@ -1,5 +1,7 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions/v1');
+const { kioskUidFor } = require('./validateToken');
+const { withAppCheckMonitor } = require('../lib/appCheckMonitor');
 
 const MANAGER_ROLES = new Set([
   'branch_manager',
@@ -8,7 +10,7 @@ const MANAGER_ROLES = new Set([
   'platform_admin',
 ]);
 
-exports.revokeKioskToken = functions.https.onCall(async (data, context) => {
+exports.revokeKioskToken = functions.https.onCall(withAppCheckMonitor('revokeKioskToken', async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
@@ -42,5 +44,17 @@ exports.revokeKioskToken = functions.https.onCall(async (data, context) => {
     revokedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
+  // P2e (SEC-04): a kiosk that is already open stays signed in on its Firebase
+  // session after the link is revoked. Revoking the session's refresh tokens
+  // ends it at the next ID-token refresh (within the hour). A link that was
+  // never opened has no auth user — nothing to end, not an error.
+  try {
+    await admin.auth().revokeRefreshTokens(kioskUidFor(tokenId));
+  } catch (err) {
+    if (err?.code !== 'auth/user-not-found') {
+      console.error('revokeKioskToken: could not end the kiosk session', err);
+    }
+  }
+
   return { success: true };
-});
+}));

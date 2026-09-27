@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions/v1');
 const { extractTotalProductionCredit, extractTotalApps, extractActivityFields } = require('../utils/fieldHelpers');
+const { withAppCheckMonitor } = require('../lib/appCheckMonitor');
 
 const MANAGER_ROLES = new Set([
   'branch_manager',
@@ -36,7 +37,7 @@ function isWithinEditWindow() {
   return getTriniNow().getUTCDate() <= 7;
 }
 
-exports.setAgentOfMonth = functions.https.onCall(async (data, context) => {
+exports.setAgentOfMonth = functions.https.onCall(withAppCheckMonitor('setAgentOfMonth', async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
@@ -117,4 +118,4 @@ exports.setAgentOfMonth = functions.https.onCall(async (data, context) => {
   );
 
   return { success: true, monthKey, category, agentUid };
-});
+}));

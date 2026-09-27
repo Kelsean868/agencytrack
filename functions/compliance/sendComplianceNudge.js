@@ -38,6 +38,7 @@ const { APP_URL, CONTACT_EMAIL } = require('../lib/config');
 const admin = require('firebase-admin');
 const functions = require('firebase-functions/v1');
 const { buildMailDoc } = require('../utils/email');
+const { withAppCheckMonitor } = require('../lib/appCheckMonitor');
 
 const NUDGE_ACTOR_ROLES = new Set([
   'unit_manager',
@@ -97,7 +98,7 @@ function targetInScope(actorRole, caller, target) {
   return false;
 }
 
-exports.sendComplianceNudge = functions.https.onCall(async (data, context) => {
+exports.sendComplianceNudge = functions.https.onCall(withAppCheckMonitor('sendComplianceNudge', async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
@@ -244,7 +245,7 @@ exports.sendComplianceNudge = functions.https.onCall(async (data, context) => {
   );
 
   return { success: true, type, weekStart, count: targets.length, results };
-});
+}));
 
 // Exported for unit tests (handler is also reachable via the onCall ._onCall shim).
 exports._internals = { isValidSundayString, targetInScope, NUDGE_ACTOR_ROLES, NUDGE_TYPES, MAX_AUDIENCE };
