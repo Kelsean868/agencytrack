@@ -183,3 +183,64 @@ describe('buildAgentReportModel — empty input never throws', () => {
     expect(m.currentLevel.level).toBe(1);
   });
 });
+
+// Company minimum on the PDF (Kyron ruling 27 Sep 2026): the tenure-resolved
+// floor from resolveAnnualAPIFloor, not a hard-coded 250,000.
+describe('buildAgentReportModel — company minimum', () => {
+  const TENURE_CASES = [
+    // [months, contractStartDate (vs now = 2026-06-15), floor, band]
+    [6,  '2025-12-15', 150000, '< 1 yr'],
+    [18, '2024-12-15', 200000, '1–2 yrs'],
+    [30, '2023-12-15', 250000, '2–3 yrs'],
+    [42, '2022-12-15', 300000, '3–4 yrs'],
+    [54, '2021-12-15', 400000, '4–5 yrs'],
+    [70, '2020-08-15', 500000, '5+ yrs'],
+  ];
+
+  it.each(TENURE_CASES)('%i months (start %s) → TTD %i floor, band %s', (_months, start, floor, band) => {
+    const m = build({ agentProfile: { contractStartDate: start }, companyMinimums: { annualApps: 40 } });
+    expect(m.companyFloor).toBe(floor);
+    expect(m.companyFloorBand).toBe(band);
+    expect(m.companyFloorLabel).toBe(
+      `Company minimum (${band}): TTD ${floor.toLocaleString('en-TT')} · 40 apps`,
+    );
+  });
+
+  it('matches the Goals wording exactly for a 2–3 yr agent', () => {
+    const m = build({ agentProfile: { contractStartDate: '2023-12-15' }, companyMinimums: { annualApps: 40 } });
+    expect(m.companyFloorLabel).toBe('Company minimum (2–3 yrs): TTD 250,000 · 40 apps');
+  });
+
+  it('missing contractStartDate uses the flat fallback and the unqualified label', () => {
+    const m = build({ agentProfile: {}, companyMinimums: { annualApps: 40 } });
+    expect(m.companyFloor).toBe(200000);
+    expect(m.companyFloorBand).toBeNull();
+    expect(m.companyFloorLabel).toBe('Company Floor: TTD 200,000 · 40 apps');
+  });
+
+  it('the apps figure comes from config annualApps', () => {
+    const m = build({ agentProfile: { contractStartDate: '2020-08-15' }, companyMinimums: { annualApps: 45 } });
+    expect(m.companyFloorApps).toBe(45);
+    expect(m.companyFloorLabel).toMatch(/· 45 apps$/);
+  });
+
+  it('defaults to 40 apps when config is not loaded', () => {
+    const m = build({ agentProfile: { contractStartDate: '2020-08-15' } });
+    expect(m.companyFloorApps).toBe(40);
+    expect(m.companyFloor).toBe(500000);
+  });
+
+  it('reads the tenure bands from config, not a second table', () => {
+    const m = build({
+      agentProfile: { contractStartDate: '2023-12-15' },
+      companyMinimums: { annualApps: 40, tenureApiFloors: { band25_to_36: 260000 } },
+    });
+    expect(m.companyFloor).toBe(260000);
+  });
+
+  it('places the floor marker at the resolved floor', () => {
+    const young = build({ agentProfile: { contractStartDate: '2025-12-15' } });
+    const senior = build({ agentProfile: { contractStartDate: '2020-08-15' } });
+    expect(senior.floorFrac / young.floorFrac).toBeCloseTo(500000 / 150000, 10);
+  });
+});

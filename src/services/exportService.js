@@ -16,6 +16,9 @@ import { getTodayTT } from '../utils/dateInputs';
 //   confirmedSettlements: array of settlement docs for the agent (current year)
 //   agentProfile:         user profile doc (agentNumber, monthsInIndustry, etc.)
 //   persistency:          map keyed by `${agentId}_${year}_${mm}` → persistency doc
+//   companyMinimums:      getCompanyMinimums(tenantId) result — tenure floors +
+//                         annualApps for the company-minimum line (optional;
+//                         absent → default tenure floors, 40 apps)
 export async function generateAgentPDF({
   agentInfo,
   submissions,
@@ -25,6 +28,7 @@ export async function generateAgentPDF({
   agentProfile,
   persistency,
   ruleset,
+  companyMinimums,
 }) {
   // Load the PDF engine + document on demand (EFF-011). The handler is already
   // async, so the only user-visible effect is a one-time chunk fetch on the
@@ -43,6 +47,7 @@ export async function generateAgentPDF({
     agentProfile,
     persistency,
     ruleset,
+    companyMinimums,
   });
 
   const blob = await pdf(doc).toBlob();
