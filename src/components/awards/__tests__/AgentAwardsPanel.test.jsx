@@ -138,8 +138,8 @@ describe('AgentAwardsPanel — source selection (H2 item 2)', () => {
       await waitFor(() => {
         const [data] = computeAgentAwards.mock.calls.at(-1);
         expect(data).toEqual([
-          { periodKey: '2019-03', settledAPI: 9000, settledApps: 1, selfFamilyAPI: 0, persistency: 0 },
-          { periodKey: '2026-08', settledAPI: 36000, settledApps: 1, selfFamilyAPI: 0, persistency: 0 },
+          { periodKey: '2019-03', settledAPI: 9000, settledApps: 1, selfFamilyAPI: 0, selfFamilyApps: 0, persistency: 0 },
+          { periodKey: '2026-08', settledAPI: 36000, settledApps: 1, selfFamilyAPI: 0, selfFamilyApps: 0, persistency: 0 },
         ]);
       });
     });

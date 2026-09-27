@@ -9,7 +9,7 @@
  * `YYYY-MM-DD`), the same contract `persistencyOutlook.js` uses.
  */
 
-import { parseDateOnlyTT } from '../utils/dateInputs';
+import { parseDateOnlyTT, ymdUTC } from '../utils/dateInputs';
 
 const MS_PER_DAY = 86400000;
 
@@ -24,7 +24,7 @@ function daysBetween(fromDate, toDate) {
 function addDaysCeil(dateStr, days) {
   const d = parseDateOnlyTT(dateStr);
   d.setUTCDate(d.getUTCDate() + Math.ceil(days));
-  return d.toISOString().slice(0, 10);
+  return ymdUTC(d);
 }
 
 /**

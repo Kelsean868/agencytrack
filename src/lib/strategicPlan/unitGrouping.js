@@ -1,3 +1,5 @@
+import { ttDateParts } from '../../utils/dateInputs';
+
 // Track K — Strategic Plan · unit grouping + producing roster (pure).
 //
 // Dispatcher RULING 3 (2026-07-17): replaces deriveUnits (which carried
@@ -41,9 +43,12 @@ export function experienceYears(contractStartDate, now = new Date()) {
   const start = new Date(`${contractStartDate.slice(0, 10)}T00:00:00Z`);
   if (Number.isNaN(start.getTime())) return null;
   if (now.getTime() < start.getTime()) return 0;
-  let years = now.getUTCFullYear() - start.getUTCFullYear();
-  const monthDelta = now.getUTCMonth() - start.getUTCMonth();
-  if (monthDelta < 0 || (monthDelta === 0 && now.getUTCDate() < start.getUTCDate())) years -= 1;
+  // TT calendar day of `now` — an anniversary turns over at TT midnight, not UTC.
+  const tt = ttDateParts(now);
+  if (!tt) return null;
+  let years = tt.year - start.getUTCFullYear();
+  const monthDelta = (tt.month - 1) - start.getUTCMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && tt.day < start.getUTCDate())) years -= 1;
   return Math.max(0, years);
 }
 

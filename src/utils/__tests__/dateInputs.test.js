@@ -2,6 +2,10 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   parseDateOnlyTT,
   getTodayTT,
+  ymdTT,
+  ymdUTC,
+  isAfterTodayTT,
+  ttDateParts,
   monthKeyFromDate,
   monthsBetweenKeys,
   enumerateMonthKeys,
@@ -79,6 +83,64 @@ describe('getTodayTT', () => {
   it('mid-month control — UTC 2025-06-15T12:00:00Z is June 15 TT', () => {
     vi.useFakeTimers({ now: new Date('2025-06-15T12:00:00Z') });
     expect(getTodayTT()).toBe('2025-06-15');
+  });
+});
+
+// ── P2d · BUG-02 — one "today" for Trinidad ────────────────────────────────
+describe('P2d — todayTT (getTodayTT) at the 20:00–24:00 TT boundary', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('at 21:00 TT (01:00 UTC next day) returns the TT date, not the UTC one', () => {
+    // 2026-12-31T01:00:00Z = 30 Dec 2026 21:00 TT
+    vi.useFakeTimers({ now: new Date('2026-12-31T01:00:00Z') });
+    expect(getTodayTT()).toBe('2026-12-30');
+    // …which is exactly the bug: the old UTC slice says tomorrow.
+    expect(new Date().toISOString().slice(0, 10)).toBe('2026-12-31');
+  });
+
+  it('at 20:00 TT (00:00 UTC) — the first minute the UTC slice goes wrong', () => {
+    vi.useFakeTimers({ now: new Date('2026-09-28T00:00:00Z') });
+    expect(getTodayTT()).toBe('2026-09-27');
+  });
+
+  it('at 19:59:59 TT both agree', () => {
+    vi.useFakeTimers({ now: new Date('2026-09-27T23:59:59Z') });
+    expect(getTodayTT()).toBe('2026-09-27');
+  });
+
+  it('contract-start "not in the future" check refuses TOMORROW at 21:00 TT', () => {
+    vi.useFakeTimers({ now: new Date('2026-12-31T01:00:00Z') }); // 30 Dec, 21:00 TT
+    expect(isAfterTodayTT('2026-12-31')).toBe(true);  // tomorrow → refused
+    expect(isAfterTodayTT('2026-12-30')).toBe(false); // today → allowed
+    expect(isAfterTodayTT('2026-01-15')).toBe(false); // past → allowed
+  });
+
+  it('isAfterTodayTT is false for a missing value (the required-field check owns that)', () => {
+    expect(isAfterTodayTT(undefined, '2026-09-27')).toBe(false);
+    expect(isAfterTodayTT('', '2026-09-27')).toBe(false);
+  });
+});
+
+describe('P2d — ymdTT / ymdUTC / ttDateParts', () => {
+  it('ymdTT dates an instant in Trinidad', () => {
+    expect(ymdTT(new Date('2026-12-31T01:00:00Z'))).toBe('2026-12-30');
+    expect(ymdTT(Date.parse('2026-12-31T04:00:00Z'))).toBe('2026-12-31');
+  });
+
+  it('ymdTT returns null for an unreadable value (never a plausible wrong date)', () => {
+    expect(ymdTT(new Date('nope'))).toBeNull();
+  });
+
+  it('ymdUTC is the raw UTC slice (for date arithmetic on anchored Dates only)', () => {
+    expect(ymdUTC(new Date('2026-12-31T01:00:00Z'))).toBe('2026-12-31');
+    expect(ymdUTC(new Date('2026-02-01T00:00:00Z'))).toBe('2026-02-01');
+  });
+
+  it('ttDateParts gives the TT calendar parts', () => {
+    expect(ttDateParts(new Date('2026-01-01T02:00:00Z'))).toEqual({ year: 2025, month: 12, day: 31 });
+    expect(ttDateParts(new Date('bad'))).toBeNull();
   });
 });
 

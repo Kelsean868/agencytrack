@@ -25,7 +25,7 @@ describe('awardRowsFromLedger — R5 date test', () => {
     const rows = awardRowsFromLedger([
       imported({ status: 'settled', dateIssued: '2026-08-15', proposedAPI: 36000 }),
     ]);
-    expect(rows).toEqual([{ periodKey: '2026-08', settledAPI: 36000, settledApps: 1, selfFamilyAPI: 0, persistency: 0 }]);
+    expect(rows).toEqual([{ periodKey: '2026-08', settledAPI: 36000, settledApps: 1, selfFamilyAPI: 0, selfFamilyApps: 0, persistency: 0 }]);
 
     const api = award(rows, 'advisor_month_api', '2026-08-20T12:00:00');
     expect(api.criteria[0].current).toBe(36000);
@@ -69,7 +69,7 @@ describe('awardRowsFromLedger — R5 date test', () => {
       imported({ status: 'submitted', dateIssued: '2026-08-04', proposedAPI: 5000 }),
       imported({ status: 'confirmed', dateIssued: '2026-08-04', proposedAPI: 2500 }),
     ]);
-    expect(rows).toEqual([{ periodKey: '2026-08', settledAPI: 2500, settledApps: 1, selfFamilyAPI: 0, persistency: 0 }]);
+    expect(rows).toEqual([{ periodKey: '2026-08', settledAPI: 2500, settledApps: 1, selfFamilyAPI: 0, selfFamilyApps: 0, persistency: 0 }]);
   });
 
   it('uses the R3 credit helper: an increase under TTD 2,400 earns API but no app', () => {
@@ -93,7 +93,7 @@ describe('awardRowsFromLedger — R5 date test', () => {
 
     it('the self/family policy is kept out of API and apps, and held in selfFamilyAPI', () => {
       const aug = awardRowsFromLedger(policies).find((r) => r.periodKey === '2026-08');
-      expect(aug).toEqual({ periodKey: '2026-08', settledAPI: 72000, settledApps: 2, selfFamilyAPI: 1200, persistency: 0 });
+      expect(aug).toEqual({ periodKey: '2026-08', settledAPI: 72000, settledApps: 2, selfFamilyAPI: 1200, selfFamilyApps: 1, persistency: 0 });
     });
 
     it('Q3 awards read TTD 73,946.28 and 3 apps', () => {

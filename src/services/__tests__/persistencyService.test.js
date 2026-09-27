@@ -500,6 +500,46 @@ describe('savePersistency', () => {
     expect(written.lastEditedByRole).toBe('branch_manager');
   });
 
+  // P2d (BUG-05): firestore.rules requires an AGENT write to carry
+  // enteredBy == the agent. An agent replacing figures a manager entered is
+  // now who entered them, so the agent's save re-stamps.
+  it('P2d: an AGENT overwriting a doc someone else entered re-stamps enteredBy/At/ByRole to the agent', async () => {
+    mockGetDoc.mockResolvedValueOnce({
+      exists: () => true,
+      id: 'writer-uid_2026_02',
+      data: () => ({
+        ...E3_FULL_DOC,
+        enteredAt: { seconds: 1700000000, nanoseconds: 0 },
+        enteredBy: 'bm-uid',
+        enteredByRole: 'branch_manager',
+      }),
+    });
+    mockSetDoc.mockResolvedValueOnce(undefined);
+
+    await savePersistency('tenant1', '2026-02', 'writer-uid', E3_INPUTS, 'agent');
+
+    const written = mockSetDoc.mock.calls[0][1];
+    expect(written.enteredBy).toBe('writer-uid');
+    expect(written.enteredByRole).toBe('agent');
+    expect(written.enteredAt).not.toEqual({ seconds: 1700000000, nanoseconds: 0 });
+  });
+
+  it('P2d: an AGENT overwriting their OWN entry keeps the original enteredAt', async () => {
+    const priorTimestamp = { seconds: 1700000000, nanoseconds: 0 };
+    mockGetDoc.mockResolvedValueOnce({
+      exists: () => true,
+      id: 'writer-uid_2026_02',
+      data: () => ({ ...E3_FULL_DOC, enteredAt: priorTimestamp, enteredBy: 'writer-uid', enteredByRole: 'agent' }),
+    });
+    mockSetDoc.mockResolvedValueOnce(undefined);
+
+    await savePersistency('tenant1', '2026-02', 'writer-uid', E3_INPUTS, 'agent');
+
+    const written = mockSetDoc.mock.calls[0][1];
+    expect(written.enteredBy).toBe('writer-uid');
+    expect(written.enteredAt).toEqual(priorTimestamp);
+  });
+
   it('treats overwriting a pre-E3 doc as a fresh first-write (no audit pollution)', async () => {
     mockGetDoc.mockResolvedValueOnce({
       exists: () => true,

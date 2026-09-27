@@ -14,6 +14,7 @@ import { getPersistencyMapForYear } from '../../services/persistencyService';
 import { computeCampaignProgress, computeStandings, isTieredCampaign, persistencyPctForGate, campaignYears } from '../../utils/campaignEngine';
 import { CampaignStandingsBlock } from './CampaignStandings';
 import { formatCurrency, formatDateFriendly, getUnitDisplayName } from '../../utils/formatters';
+import { getTodayTT } from '../../utils/dateInputs';
 
 const METRIC_OPTIONS = [
   { value: 'apiSold',          label: 'API'  },
@@ -24,7 +25,7 @@ const METRIC_OPTIONS = [
 
 const METRIC_LABEL = Object.fromEntries(METRIC_OPTIONS.map((m) => [m.value, m.label]));
 
-function today() { return new Date().toISOString().slice(0, 10); }
+function today() { return getTodayTT(); }
 
 function classifyDate(startDate, endDate) {
   const t = today();

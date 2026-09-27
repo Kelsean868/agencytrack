@@ -1,3 +1,5 @@
+import { ymdUTC } from '../../../utils/dateInputs';
+
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function currentSundayStr(now = new Date()) {
@@ -59,7 +61,7 @@ export function stepPrev(period) {
   const d = new Date(period.value + 'T12:00:00Z');
   d.setUTCDate(d.getUTCDate() - 7);
   if (d.getUTCFullYear() < 2026) return period;
-  return { grain: 'week', value: d.toISOString().slice(0, 10) };
+  return { grain: 'week', value: ymdUTC(d) };
 }
 
 export function stepNext(period, now = new Date()) {
@@ -73,6 +75,6 @@ export function stepNext(period, now = new Date()) {
   const d = new Date(period.value + 'T12:00:00Z');
   d.setUTCDate(d.getUTCDate() + 7);
   const curSun = currentSundayStr(now);
-  if (d.toISOString().slice(0, 10) > curSun) return period;
-  return { grain: 'week', value: d.toISOString().slice(0, 10) };
+  if (ymdUTC(d) > curSun) return period;
+  return { grain: 'week', value: ymdUTC(d) };
 }

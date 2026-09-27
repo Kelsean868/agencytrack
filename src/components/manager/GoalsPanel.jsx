@@ -20,6 +20,7 @@ import {
 } from '../../services/goalsService';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatDateDisplay, getUnitDisplayName } from '../../utils/formatters';
+import { ymdUTC } from '../../utils/dateInputs';
 import {
   resolveAnnualAPIFloor,
   FLAT_ANNUAL_API_FALLBACK,
@@ -315,7 +316,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
           {existing?.setByName && (
             <p className="text-xs text-ink-muted">
               Last set by {existing.setByName}
-              {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate?.().toISOString?.().slice(0, 10) ?? '')}`}
+              {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate ? ymdUTC(existing.setAt.toDate()) : '')}`}
             </p>
           )}
           <LockToggle locked={locked} onChange={setLocked} />
@@ -414,7 +415,7 @@ function BranchGoalsTab({ userProfile }) {
           {existing?.setByName && (
             <p className="text-xs text-ink-muted">
               Last set by {existing.setByName}
-              {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate?.().toISOString?.().slice(0, 10) ?? '')}`}
+              {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate ? ymdUTC(existing.setAt.toDate()) : '')}`}
             </p>
           )}
           <LockToggle locked={locked} onChange={setLocked} />
@@ -525,7 +526,7 @@ function SalesManagerGoalsTab({ userProfile }) {
           {existing?.setByName && (
             <p className="text-xs text-ink-muted">
               Last set by {existing.setByName}
-              {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate?.().toISOString?.().slice(0, 10) ?? '')}`}
+              {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate ? ymdUTC(existing.setAt.toDate()) : '')}`}
             </p>
           )}
           <LockToggle locked={locked} onChange={setLocked} />

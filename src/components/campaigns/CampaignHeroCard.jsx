@@ -7,6 +7,7 @@ import {
 import { toDateStr } from '../../lib/policyCampaignLens';
 import { buildPersistencyOutlook, formatOutlookPct, outlookGateFor } from '../../lib/persistency/persistencyOutlook';
 import { getTodayTT } from '../../utils/dateInputs';
+import { provenanceLine } from '../../lib/settledProvenance';
 import { outlookMonthLabel, outlookMonthShortLabel } from '../persistency/outlookLabels';
 import { formatCurrency } from '../../utils/formatters';
 import { campaignPace } from '../../lib/campaignPace';
@@ -257,6 +258,11 @@ export default function CampaignHeroCard({
               ? <>Aiming for <strong className="font-semibold text-ink">{lens.targetTier.name}</strong> ({formatCurrency(lens.targetTier.cash ?? 0)})</>
               : lens.tierNext ? <>Aiming for <strong className="font-semibold text-ink">{lens.tierNext.name}</strong> ({formatCurrency(lens.tierNext.cash ?? 0)})</> : `Top tier reached: ${lens.tierReached?.name ?? tierLabel}`}
           </p>
+          {provenanceLine(lens.provenance) && (
+            <p className="text-xs text-ink-muted" data-testid="campaign-screen-provenance">
+              Counted so far: {provenanceLine(lens.provenance)}
+            </p>
+          )}
           {onTargetTierChange && (
             <div className="mt-2 max-w-[520px]">
               <TargetTierPicker
@@ -348,6 +354,11 @@ export default function CampaignHeroCard({
       <div className="flex flex-col gap-3 relative">
         <HeroRow label="API" current={lens.api.current} target={apiTarget} unit="TTD" achieved={apiAchieved} testId="campaign-hero-row-api" />
         <HeroRow label="Applications" current={lens.apps.current} target={appsTarget} unit="apps" achieved={appsAchieved} testId="campaign-hero-row-apps" />
+        {provenanceLine(lens.provenance) && (
+          <p className="text-xs text-ink-muted" data-testid="campaign-hero-provenance">
+            {provenanceLine(lens.provenance)}
+          </p>
+        )}
 
         <div className="flex flex-col gap-1" data-testid="campaign-hero-row-persistency">
           <div className="flex items-center justify-between">

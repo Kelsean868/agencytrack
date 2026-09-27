@@ -9,6 +9,7 @@ import {
   setAppearOnLeaderboard,
 } from '../../services/userService';
 import { getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
+import { getTodayTT, isAfterTodayTT } from '../../utils/dateInputs';
 import Avatar from '../ui/Avatar';
 import ConfirmDialog from '../ui/ConfirmDialog';
 
@@ -96,7 +97,7 @@ function normaliseSaveValue(key, raw) {
   return raw ?? '';
 }
 
-const TODAY = () => new Date().toISOString().slice(0, 10);
+const TODAY = () => getTodayTT();
 const TENANT_ADMIN_PHRASE = 'PROMOTE TO TENANT ADMIN';
 
 export default function EditUserDrawer({
@@ -288,7 +289,7 @@ export default function EditUserDrawer({
     if (form.unitName.length > 50) return 'Unit name must be 50 characters or fewer.';
 
     if (editable.has('contractStartDate') && form.contractStartDate) {
-      if (form.contractStartDate > TODAY()) {
+      if (isAfterTodayTT(form.contractStartDate, TODAY())) {
         return 'Contract start date cannot be in the future.';
       }
     }

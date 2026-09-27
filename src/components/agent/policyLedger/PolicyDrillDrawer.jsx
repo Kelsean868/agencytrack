@@ -10,6 +10,7 @@ import { LEGAL_AGENT_TRANSITIONS, POLICY_STATUS_LABELS } from '../../../constant
 import { lifecycleNodes } from '../../../lib/policyLedgerDerivation';
 import { policyToken, policyPillLabel, isConfirmed } from '../../../lib/policyStatusTokens';
 import { STATUS_SOURCE_IMPORT } from '../../../lib/portfolioImport/oipaImportConfig';
+import { isFromHeadOffice } from '../../../lib/settledProvenance';
 import { AwardWindowChips } from './PolicyCard';
 
 /**
@@ -75,7 +76,10 @@ const inputCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm t
  * drawer; renders the same "Counts toward" chip row as the policy card, so
  * the drawer never disagrees with the card it was opened from.
  */
-export default function PolicyDrillDrawer({ policy, awardWindows = null, onClose, onTransition, transitioning, transitionError }) {
+export default function PolicyDrillDrawer({
+  policy, awardWindows = null, onClose, onTransition, transitioning, transitionError,
+  onSelfConfirm = null, selfConfirming = false, selfConfirmError = null,
+}) {
   const { tenantId, user } = useAuth();
   const today = getTodayTT();
 
@@ -88,6 +92,7 @@ export default function PolicyDrillDrawer({ policy, awardWindows = null, onClose
   const [txTo, setTxTo] = useState(legalNext[0] ?? '');
   const [txFields, setTxFields] = useState(EMPTY_TX_FIELDS);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmFields, setConfirmFields] = useState(() => selfConfirmPrefill(policy));
 
   useEffect(() => {
     let alive = true;
@@ -102,6 +107,23 @@ export default function PolicyDrillDrawer({ policy, awardWindows = null, onClose
   const t = policyToken(policy);
   const nodes = lifecycleNodes(policy);
   const confirmed = isConfirmed(policy);
+  // P2d (BUG-01 option B): the agent confirms their own settled policy's
+  // details. Offered until a manager confirms (a manager's figure is final).
+  // Kyron's ruling, 27 Sep 2026 (option A): never on a head-office policy —
+  // its figures are locked and shown read-only instead (rules enforce it too).
+  const headOfficeSettled = policy.status === 'settled' && isFromHeadOffice(policy);
+  const canSelfConfirm = Boolean(onSelfConfirm) && policy.status === 'settled'
+    && !policy.confirmedByUid && !headOfficeSettled;
+
+  function onConfirmField(e) {
+    const { name, value } = e.target;
+    setConfirmFields((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function submitSelfConfirm(e) {
+    e.preventDefault();
+    onSelfConfirm(confirmFields);
+  }
 
   function pickTarget(to) {
     setTxTo(to);
@@ -237,6 +259,13 @@ export default function PolicyDrillDrawer({ policy, awardWindows = null, onClose
               </p>
               {policy.managerNote && <p className="text-[12px] text-ink-muted mt-1">Note: {policy.managerNote}</p>}
             </div>
+          )}
+
+          {/* Self-confirmation note (P2d) — never styled as the gold manager card. */}
+          {!confirmed && policy.selfConfirmedAt && (
+            <p className="mt-5 text-[12px] text-ink-muted" data-testid="drawer-self-confirmed">
+              Self-confirmed · {fmtDate(policy.selfConfirmedAt)}
+            </p>
           )}
 
           {/* Details */}
@@ -377,9 +406,80 @@ export default function PolicyDrillDrawer({ policy, awardWindows = null, onClose
             </form>
           </div>
         )}
+
+        {/* Head-office figures (P2d ruling, option A) — read-only, never editable by the agent. */}
+        {headOfficeSettled && !policy.confirmedByUid && (
+          <div className="p-5 border-t border-border bg-surface-muted" data-testid="drawer-ho-figures">
+            <p className="text-[13px] font-bold text-ink">Settled details</p>
+            <p className="text-[11.5px] text-ink-muted mt-1 mb-3">Set by head office — these figures cannot be changed here.</p>
+            <div className="grid grid-cols-2 gap-2.5">
+              <Detail k="SETTLED API" v={moneyOrDash(policy.settledAPI ?? policy.proposedAPI)} />
+              <Detail k="ISSUED COVERAGE" v={moneyOrDash(policy.issuedCoverage)} />
+              <Detail k="INITIAL PREMIUM" v={moneyOrDash(policy.initialPremium)} />
+              <Detail k="EARNED COMMISSION" v={moneyOrDash(policy.earnedCommission)} />
+            </div>
+          </div>
+        )}
+
+        {/* Self-confirm footer (P2d) — own self-declared settled policy, no manager confirmation yet. */}
+        {canSelfConfirm && (
+          <div className="p-5 border-t border-border bg-surface-muted" data-testid="drawer-self-confirm">
+            <p className="text-[13px] font-bold text-ink">
+              {policy.selfConfirmedAt ? 'Update your confirmed details' : 'Confirm settled details'}
+            </p>
+            <p className="text-[11.5px] text-ink-muted mt-1 mb-3">
+              Check these against your settlement advice. Your production shows them as self-confirmed.
+            </p>
+            <form onSubmit={submitSelfConfirm} className="flex flex-col gap-3">
+              <Field label="Settled API (TTD)" required>
+                <input name="settledAPI" type="number" step="0.01" min="0.01" value={confirmFields.settledAPI} onChange={onConfirmField} placeholder="0.00" className={inputCls} required />
+              </Field>
+              <Field label="Issued Coverage (TTD)" required>
+                <input name="issuedCoverage" type="number" step="0.01" min="0.01" value={confirmFields.issuedCoverage} onChange={onConfirmField} placeholder="0.00" className={inputCls} required />
+              </Field>
+              <Field label="Initial Premium (TTD)" required>
+                <input name="initialPremium" type="number" step="0.01" min="0.01" value={confirmFields.initialPremium} onChange={onConfirmField} placeholder="0.00" className={inputCls} required />
+              </Field>
+              <Field label="Earned Commission (TTD)" required>
+                <input name="earnedCommission" type="number" step="0.01" min="0" value={confirmFields.earnedCommission} onChange={onConfirmField} placeholder="0.00" className={inputCls} required />
+              </Field>
+
+              {selfConfirmError && (
+                <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-danger-tint text-danger-ink text-sm">
+                  <AlertCircle size={16} /> {selfConfirmError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={selfConfirming}
+                className="h-11 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                data-testid="drawer-self-confirm-submit"
+              >
+                {selfConfirming ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <><Check size={16} /> Confirm details</>}
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+/** A stored money figure, or an em dash when head office sent none. */
+function moneyOrDash(v) {
+  return v == null || v === '' ? '—' : formatCurrency(v);
+}
+
+/** The self-confirm form starts from what the policy already holds. */
+function selfConfirmPrefill(policy) {
+  const v = (x) => (x == null ? '' : String(x));
+  return {
+    settledAPI:       v(policy?.settledAPI ?? policy?.proposedAPI),
+    issuedCoverage:   v(policy?.issuedCoverage ?? policy?.proposedCoverage),
+    initialPremium:   v(policy?.initialPremium),
+    earnedCommission: v(policy?.earnedCommission),
+  };
 }
 
 function Detail({ k, v }) {

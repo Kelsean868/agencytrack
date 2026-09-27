@@ -12,6 +12,7 @@
 // lapsed policy PRESERVES settledAPI + dateIssued — the fields both arms read.
 
 import { settlementShapeFromPolicies } from '../policiesDerivation';
+import { ymdUTC } from '../../utils/dateInputs';
 
 // dateIssued (Firestore Timestamp | Date | string) → "YYYY-MM-DD", or null.
 // Mirrors settlementShapeFromPolicies' own date coercion so the period pre-filter
@@ -21,7 +22,7 @@ function issuedYMD(policy) {
   if (!di) return null;
   const d = di.toDate ? di.toDate() : new Date(di);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString().slice(0, 10);
+  return ymdUTC(d);
 }
 
 function inPeriod(policy, startYMD, endYMD) {

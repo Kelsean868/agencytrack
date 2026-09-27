@@ -257,6 +257,25 @@ describe('PolicyReconciliationPanel', () => {
       expect(screen.queryByTestId('tab-lapse')).not.toBeInTheDocument();
     });
 
+    // P2d Part 4.2 — the "Confirm" TAB button used to sit beside "View only".
+    it('SM without canConfirmSettlements sees NO Confirm button of any kind', async () => {
+      setupSM();
+      hoisted.getPoliciesForManager.mockResolvedValue([makePolicy()]);
+      render(<PolicyReconciliationPanel />);
+      await waitFor(() => expect(screen.getByTestId('recon-row-pol-1')).toBeInTheDocument());
+      expect(screen.getByTestId('recon-view-only')).toBeInTheDocument();
+      expect(screen.queryByTestId('tab-confirm')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^confirm$/i })).not.toBeInTheDocument();
+    });
+
+    it('SM WITH canConfirmSettlements keeps the Confirm tab', async () => {
+      setupSM({ canConfirmSettlements: true });
+      hoisted.getPoliciesForManager.mockResolvedValue([makePolicy()]);
+      render(<PolicyReconciliationPanel />);
+      await waitFor(() => expect(screen.getByTestId('confirm-btn-pol-1')).toBeInTheDocument());
+      expect(screen.getByTestId('tab-confirm')).toBeInTheDocument(); // the negative check above is not vacuous
+    });
+
     it('SM WITH canConfirmSettlements may confirm (rules Arm C already allows it) but still not lapse', async () => {
       setupSM({ canConfirmSettlements: true });
       hoisted.getPoliciesForManager.mockResolvedValue([makePolicy()]);

@@ -5,6 +5,7 @@ import { kioskDb } from './kioskFirebase';
 import {
   getCurrentMonthKey, getPrevMonthKey, isWithinEditWindow,
 } from '../../services/agentOfMonthService';
+import { getTodayTT } from '../../utils/dateInputs';
 
 // FU SEC-012: branchId filter is required — the branch-scoped kiosk submissions
 // list rule denies any query that isn't constrained to the kiosk's own branch.
@@ -69,7 +70,7 @@ export async function getKioskAgentOfMonth(tenantId) {
 // (`kiosk === true`, item 2.9's flag) and currently active are returned.
 export async function getKioskCampaigns(tenantId) {
   if (!tenantId) return [];
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getTodayTT();
   const q = query(
     collection(kioskDb, `tenants/${tenantId}/campaigns`),
     where('startDate', '<=', today),

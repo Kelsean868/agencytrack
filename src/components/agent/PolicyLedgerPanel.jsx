@@ -3,7 +3,7 @@ import { Plus, Upload, Loader2, AlertCircle, ArrowLeft, Info } from 'lucide-reac
 import { useAuth } from '../../context/AuthContext';
 import { PROSPECTING_SOURCES } from '../../services/prospectInfoService';
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../../utils/prospectingConstants';
-import { createPolicy, getOwnPolicies, transitionPolicyStatus } from '../../services/policiesService';
+import { createPolicy, getOwnPolicies, transitionPolicyStatus, selfConfirmPolicy } from '../../services/policiesService';
 import { getPolicyPlans } from '../../services/planCatalogService';
 import { getTodayTT } from '../../utils/dateInputs';
 import { applyLedgerFilter, LEDGER_FILTERS } from '../../lib/policyLedgerDerivation';
@@ -266,6 +266,25 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
     }
   }
 
+  // P2d — the agent confirms their own settled policy's details (Arm F).
+  async function handleSelfConfirm(fields) {
+    if (!drawerPolicy) return;
+    setTransitioning(true);
+    setTransitionError(null);
+    try {
+      const agentRef = { uid: user.uid, ...userProfile };
+      await selfConfirmPolicy(tenantId, agentRef, drawerPolicy.id, drawerPolicy, fields);
+      onPoliciesChanged?.();
+      const fresh = await getOwnPolicies(tenantId, user.uid);
+      setPolicies(fresh);
+      closeDrawer();
+    } catch (err) {
+      setTransitionError(err.message);
+    } finally {
+      setTransitioning(false);
+    }
+  }
+
   function openCreate() {
     const merged = { ...EMPTY_FORM, dateWritten: today, ...(initialForm ?? {}) };
     setForm(merged);
@@ -426,6 +445,9 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
             onTransition={handleTransition}
             transitioning={transitioning}
             transitionError={transitionError}
+            onSelfConfirm={handleSelfConfirm}
+            selfConfirming={transitioning}
+            selfConfirmError={transitionError}
           />
         )}
 

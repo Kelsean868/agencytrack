@@ -34,7 +34,7 @@ import {
 import { getProjectedBonus } from '../../lib/financingProjectedBonus';
 import { computeWindDownClocks } from '../../lib/financingReconciliation';
 import { computePaydownArcModel, ARC_VIEW } from '../../lib/financingPaydownArc';
-import { computeMonthsFromDate, getTodayTT } from '../../utils/dateInputs';
+import { computeMonthsFromDate, getTodayTT, ymdUTC } from '../../utils/dateInputs';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 import FinancingStatusBadge from '../manager/FinancingStatusBadge';
 import FinancingSelfViewSkeleton from './FinancingSelfViewSkeleton';
@@ -50,7 +50,7 @@ function tsToDateStr(ts) {
     if (!ts || typeof ts.toDate !== 'function') return '';
     const d = ts.toDate();
     if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '';
-    return d.toISOString().slice(0, 10);
+    return ymdUTC(d);
   } catch {
     return '';
   }

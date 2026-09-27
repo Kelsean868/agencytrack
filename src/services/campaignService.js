@@ -11,6 +11,7 @@ import {
 import { db } from '../firebase';
 import { createNotification } from './notificationService';
 import { formatDateFriendly } from '../utils/formatters';
+import { getTodayTT } from '../utils/dateInputs';
 
 export async function getCampaigns(tenantId) {
   const q = query(
@@ -22,7 +23,7 @@ export async function getCampaigns(tenantId) {
 }
 
 export async function getActiveCampaignsForAgent(tenantId, agentId, unitId) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getTodayTT();
   const q = query(
     collection(db, `tenants/${tenantId}/campaigns`),
     where('startDate', '<=', today),

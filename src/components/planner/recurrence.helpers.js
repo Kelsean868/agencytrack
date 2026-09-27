@@ -14,6 +14,7 @@
  */
 
 import { formatTime12 } from './planner.helpers';
+import { ymdUTC } from '../../utils/dateInputs';
 
 // Repeat cadences (mockup: None / Daily / Weekly / Custom days). 'none' is the
 // non-repeating default — a one-off appointment carries NO repeatRule field.
@@ -32,7 +33,7 @@ export const MAX_SERIES_INSTANCES = 52;
 function addDaysUTC(dateStr, n) {
   const d = new Date(`${dateStr}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
+  return ymdUTC(d);
 }
 function dowKey(dateStr) {
   return DOW_KEYS[new Date(`${dateStr}T12:00:00Z`).getUTCDay()];

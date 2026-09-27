@@ -4,6 +4,7 @@ import { extractFields } from '../../utils/extractFields';
 import { computeSubmissionStreak } from '../../utils/submissionStreak';
 import { getSubmissionAPI, isAwardWeek, longestStreakWeeks } from '../../utils/historyDerivations';
 import useFocusTrap from '../../hooks/useFocusTrap';
+import { getTodayTT, ymdUTC } from '../../utils/dateInputs';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -64,17 +65,16 @@ function generateYearSundays(year) {
     const d = new Date(firstSunday);
     d.setUTCDate(firstSunday.getUTCDate() + i * 7);
     if (d.getUTCFullYear() > year) break;
-    sundays.push(d.toISOString().split('T')[0]);
+    sundays.push(ymdUTC(d));
   }
   return sundays;
 }
 
 // Most-recent Sunday on or before today (ISO yyyy-mm-dd) — the "current week".
 function currentWeekStarting() {
-  const now = new Date();
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const d = new Date(`${getTodayTT()}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() - d.getUTCDay());
-  return d.toISOString().split('T')[0];
+  return ymdUTC(d);
 }
 
 function computeAnchor(submissions, year, weeklyTarget) {

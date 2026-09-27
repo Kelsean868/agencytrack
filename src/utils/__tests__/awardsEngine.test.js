@@ -847,8 +847,17 @@ describe('computeAwardPace', () => {
   it('projects a qualify date weeksToQualify*7 days out from currentDate', () => {
     const award = awardWith({ label: 'Settled API', current: 10000, target: 20000, met: false, unit: 'TTD' });
     // avgPerWeek = 10000/1 = 10000/wk; gap = 10000 → weeksToQualify = 1
-    const result = computeAwardPace(award, 1, new Date('2026-07-01T00:00:00Z'));
+    // Midday in Trinidad (16:00Z = 12:00 TT). P2d: the projected date is the TT
+    // calendar day of the projected instant (ymdTT), not its UTC day.
+    const result = computeAwardPace(award, 1, new Date('2026-07-01T16:00:00Z'));
     expect(result.weeksToQualify).toBe(1);
+    expect(result.projectedDateISO).toBe('2026-07-08');
+  });
+
+  it('P2d: at 21:00 TT the projected date is dated in Trinidad, not UTC', () => {
+    const award = awardWith({ label: 'Settled API', current: 10000, target: 20000, met: false, unit: 'TTD' });
+    // 2026-07-02T01:00Z = 1 Jul 21:00 TT → one week on is 8 Jul in TT (the UTC slice said 9 Jul).
+    const result = computeAwardPace(award, 1, new Date('2026-07-02T01:00:00Z'));
     expect(result.projectedDateISO).toBe('2026-07-08');
   });
 

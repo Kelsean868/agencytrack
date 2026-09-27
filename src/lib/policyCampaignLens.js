@@ -20,6 +20,8 @@
  */
 import { policyValue } from './policyLedgerDerivation';
 import { isTieredCampaign, getDaysRemaining, resolveTierProgress } from '../utils/campaignEngine';
+import { ymdUTC } from '../utils/dateInputs';
+import { settledProvenance } from './settledProvenance';
 
 const cents = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
@@ -149,10 +151,10 @@ export function toDateStr(v) {
   if (!v) return null;
   if (typeof v === 'string') return v.slice(0, 10);
   if (typeof v.toDate === 'function') {
-    try { return v.toDate().toISOString().slice(0, 10); } catch { return null; }
+    try { return ymdUTC(v.toDate()); } catch { return null; }
   }
   const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+  return Number.isNaN(d.getTime()) ? null : ymdUTC(d);
 }
 
 function policyIsEligible(policy) {
@@ -488,11 +490,13 @@ export function derivePolicyLens(policies, campaign, { now = new Date(), targetT
   let pendingApi = 0;
   let pendingApps = 0;
   let pendingCount = 0;
+  const counting = [];
 
   for (const p of list) {
     const c = policyContribution(p, campaign);
     contributions[p.id] = c;
     if (c.state === 'counts') {
+      counting.push(p);
       coveredCount += 1;
       trackedCount += 1;
       apiCurrent += c.value;
@@ -568,6 +572,9 @@ export function derivePolicyLens(policies, campaign, { now = new Date(), targetT
     // credit if they settled today. Never touches api/apps.current above.
     pending: { api: cents(pendingApi), apps: pendingApps, count: pendingCount },
     creditTableApplied: Boolean(campaign.credit),
+    // P2d (BUG-01 option B): where the counted policies' statuses came from —
+    // the same helper as the hero, over the policies that make up api.current.
+    provenance: settledProvenance(counting),
     exportDate: ledgerExportDate(list),
     // Rule 9 (R7). Both lists are empty on today's live data and the panel says
     // so plainly rather than rendering nothing — an absent section reads as

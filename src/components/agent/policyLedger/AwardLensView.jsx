@@ -26,6 +26,7 @@ import ProgressDonut, { RingLegend } from '../../dashboard/ProgressDonut';
 import TargetTierPicker from '../../campaigns/TargetTierPicker';
 import PolicyCard from './PolicyCard';
 import { formatWhole, persistencyRingLabels } from '../../../lib/awardLensView';
+import { provenanceLine } from '../../../lib/ledgerProduction';
 
 // ── Selector ────────────────────────────────────────────────────────────────
 
@@ -266,6 +267,11 @@ export function AwardSummaryCard({ lens, summary, tierPicker, onExportProof, per
             </>
           )}
           <span className="text-xs leading-snug text-ink-muted" data-testid="award-lens-line2">{summary.line2}</span>
+          {provenanceLine(lens.provenance) && (
+            <span className="text-xs leading-snug text-ink-muted" data-testid="award-lens-provenance">
+              {provenanceLine(lens.provenance)}
+            </span>
+          )}
         </div>
         {onExportProof && (
           <button

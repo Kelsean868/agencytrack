@@ -124,6 +124,25 @@ export default defineConfig([
     },
   },
 
+  // ── One "today" for Trinidad (P2d, audit 2026-09-24 BUG-02) ────────────────
+  // `new Date().toISOString().slice(0, 10)` is TOMORROW between 20:00 and 24:00
+  // TT. Client code dates things through src/utils/dateInputs.js: getTodayTT()
+  // for today, ymdTT(instant) for a moment, ymdUTC(d) for date arithmetic on an
+  // already-anchored Date. The raw pattern is banned everywhere else in src/.
+  // Tests are exempt — they build fixtures and assert on the raw value.
+  {
+    files: ['src/**/*.{js,jsx}'],
+    ignores: ['src/utils/dateInputs.js', 'src/**/__tests__/**', 'src/**/*.test.{js,jsx}'],
+    rules: {
+      'no-restricted-syntax': ['error', {
+        selector: "CallExpression[callee.property.name=/^(slice|split|substring|substr)$/][callee.object.type='CallExpression'][callee.object.callee.property.name='toISOString']",
+        message:
+          'Do not date from toISOString(): it is UTC, so after 20:00 TT it is tomorrow. ' +
+          'Use getTodayTT() / ymdTT() / ymdUTC() from src/utils/dateInputs.js.',
+      }],
+    },
+  },
+
   // jsx-a11y rules — flipped to 'error' in PR3 after PR1/PR2/PR3 fixes
   // brought all violations to zero. Future regressions now fail CI.
   // control-has-associated-label remains 'off' (intentional — it duplicates

@@ -1,3 +1,5 @@
+import { ttDateParts } from './dateInputs';
+
 // Tenure-based Company Floor — Tatil head-of-sales slide (2026-05-19),
 // confirmed by head-of-sales 2026-05-21. Numbers seeded into
 // config/companyMinimums via scripts/seed/seed-tenure-api-floors.mjs
@@ -38,9 +40,10 @@ export function monthsOfService(contractStartDate, now = new Date()) {
   const start = new Date(Date.UTC(sy, sm - 1, sd));
   if (Number.isNaN(start.getTime())) return null;
 
-  const ny = now.getUTCFullYear();
-  const nm = now.getUTCMonth() + 1;
-  const nd = now.getUTCDate();
+  // TT calendar day of `now` — a service month turns over at TT midnight, not UTC.
+  const tt = ttDateParts(now);
+  if (!tt) return null;
+  const { year: ny, month: nm, day: nd } = tt;
 
   let months = (ny - sy) * 12 + (nm - sm);
   if (nd < sd) months -= 1;

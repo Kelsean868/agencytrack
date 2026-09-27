@@ -36,8 +36,13 @@ import {
   DEFAULT_INC_PPP_APP_THRESHOLD,
 } from './policyCampaignLens';
 import { isConfirmed, policyRole } from './policyStatusTokens';
-import { STATUS_SOURCE_IMPORT } from './portfolioImport/oipaImportConfig';
 import { extractTotalProductionCredit } from '../utils/extractFields';
+import { ymdUTC } from '../utils/dateInputs';
+import { settledProvenance, isFromHeadOffice } from './settledProvenance';
+
+// P2d — the one provenance helper, re-exported so production surfaces import
+// every production figure and its provenance from one module.
+export { settledProvenance, provenanceLine, isFromHeadOffice } from './settledProvenance';
 
 // ─── R3 · the general production-credit table ────────────────────────────────
 //
@@ -124,7 +129,7 @@ function weekEnd(weekStarting) {
   const d = new Date(`${weekStarting}T00:00:00Z`);
   if (Number.isNaN(d.getTime())) return null;
   d.setUTCDate(d.getUTCDate() + 6);
-  return d.toISOString().slice(0, 10);
+  return ymdUTC(d);
 }
 
 const cents = (n) => Math.round(n * 100) / 100;
@@ -142,6 +147,31 @@ function weeklyReported(submissions, year, weekStarting) {
     if (weekStarting && ws === weekStarting) weekApi += api;
   }
   return { ytdApi: cents(ytdApi), weekApi: cents(weekApi) };
+}
+
+/**
+ * settledCreditList(policies) — THE per-policy settled-credit list (P2d,
+ * audit 2026-09-24 BUG-04). One entry per Life policy that is settled (or
+ * manager-confirmed) and has a readable `dateIssued`:
+ *
+ *   { policy, issued: 'YYYY-MM-DD', periodKey: 'YYYY-MM', credit: {api, apps, …} }
+ *
+ * The home hero (`deriveYearProduction`) and the awards rows
+ * (`awardRowsFromLedger`) both read this list and nothing else for settled
+ * production, so they cannot drift apart. Before P2d each looped the policies
+ * with its own settled test. Self/family is NOT filtered here: that is a
+ * per-surface presentation choice (hero counts it; awards put it in its own
+ * column), so it stays with each reader.
+ */
+export function settledCreditList(policies) {
+  const out = [];
+  for (const p of Array.isArray(policies) ? policies : []) {
+    if (!p || !isLife(p) || !isSettled(p)) continue;
+    const issued = toDateStr(p.dateIssued);
+    if (!issued || !/^\d{4}-\d{2}-/.test(issued)) continue;
+    out.push({ policy: p, issued, periodKey: issued.slice(0, 7), credit: productionCredit(p) });
+  }
+  return out;
 }
 
 /**
@@ -170,16 +200,14 @@ function weeklyReported(submissions, year, weekStarting) {
  */
 export function awardRowsFromLedger(policies) {
   const byMonth = new Map();
-  for (const p of Array.isArray(policies) ? policies : []) {
-    if (!p || !isLife(p) || !isSettled(p)) continue;
-    const issued = toDateStr(p.dateIssued);
-    if (!issued || !/^\d{4}-\d{2}-/.test(issued)) continue;
-    const periodKey = issued.slice(0, 7);
-    const credit = productionCredit(p);
+  // P2d (BUG-04): the same credit list the hero reads. `selfFamilyApps` is
+  // carried beside `selfFamilyAPI` so hero == awards + self/family holds for apps
+  // too; the awards engine never reads it (only MDRT adds self/family API back).
+  for (const { policy: p, periodKey, credit } of settledCreditList(policies)) {
     const row = byMonth.get(periodKey)
-      ?? { periodKey, settledAPI: 0, settledApps: 0, selfFamilyAPI: 0, persistency: 0 };
+      ?? { periodKey, settledAPI: 0, settledApps: 0, selfFamilyAPI: 0, selfFamilyApps: 0, persistency: 0 };
     byMonth.set(periodKey, p.isSelfOrFamily === true
-      ? { ...row, selfFamilyAPI: row.selfFamilyAPI + credit.api }
+      ? { ...row, selfFamilyAPI: row.selfFamilyAPI + credit.api, selfFamilyApps: row.selfFamilyApps + credit.apps }
       : { ...row, settledAPI: row.settledAPI + credit.api, settledApps: row.settledApps + credit.apps });
   }
   return [...byMonth.values()]
@@ -224,21 +252,20 @@ export function awardRowsFromLedger(policies) {
 export function deriveYearProduction(policies, { year, weekStarting = null, submissions = [] } = {}) {
   const y = Number(year);
   const end = weekEnd(weekStarting);
-  const settled = { api: 0, apps: 0, count: 0, fromHeadOffice: 0, selfConfirmed: 0 };
   const submitted = { api: 0, apps: 0, count: 0, datedByIssue: false, weekApi: 0 };
   const pending = { api: 0, apps: 0, count: 0 };
+
+  // Settled — P2d (BUG-04): read from the one credit list the awards read.
+  const yearSettled = settledCreditList(policies).filter((e) => inYear(e.issued, y));
+  const settled = {
+    api: yearSettled.reduce((sum, e) => sum + e.credit.api, 0),
+    apps: yearSettled.reduce((sum, e) => sum + e.credit.apps, 0),
+    ...settledProvenance(yearSettled.map((e) => e.policy)),
+  };
 
   for (const p of Array.isArray(policies) ? policies : []) {
     if (!p || !isLife(p)) continue;
     const credit = productionCredit(p);
-
-    if (isSettled(p) && inYear(toDateStr(p.dateIssued), y)) {
-      settled.api += credit.api;
-      settled.apps += credit.apps;
-      settled.count += 1;
-      if (p.statusSource === STATUS_SOURCE_IMPORT) settled.fromHeadOffice += 1;
-      else settled.selfConfirmed += 1;
-    }
 
     if (hasGoneIn(p)) {
       const { date, byIssue } = submitDate(p);
@@ -399,7 +426,7 @@ export function awardLensForPolicy(policy, award) {
 export function notOnHeadOfficeList(policy, latestExportDate) {
   if (!policy || !latestExportDate) return false;
   if (!isSettled(policy)) return false;
-  if (policy.statusSource === STATUS_SOURCE_IMPORT) return false;
+  if (isFromHeadOffice(policy)) return false;
   const issued = toDateStr(policy.dateIssued);
   return Boolean(issued) && issued > latestExportDate;
 }
@@ -448,6 +475,8 @@ export function deriveAwardLens(policies, award, { targetTierName = null } = {})
   }
   settled.api = cents(settled.api);
   pending.api = cents(pending.api);
+  // P2d (BUG-01 option B): where the counting policies' statuses came from.
+  const provenance = settledProvenance(groups.counting.map((row) => row.policy));
 
   let target = { api: award.target ?? null, apps: null, tier: null };
   let campaignLens = null;
@@ -460,7 +489,7 @@ export function deriveAwardLens(policies, award, { targetTierName = null } = {})
     };
   }
 
-  return { award, rows, groups, settled, pending, target, campaignLens, exportDate };
+  return { award, rows, groups, settled, pending, target, campaignLens, exportDate, provenance };
 }
 
 /**

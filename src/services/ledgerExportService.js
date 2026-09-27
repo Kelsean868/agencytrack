@@ -34,6 +34,7 @@
 import { createElement } from 'react';
 import { buildLedgerExportTable } from '../lib/ledgerExportRows';
 import { buildCsvContent, downloadCsv, slugifyForFilename } from '../lib/csvExport';
+import { getTodayTT } from '../utils/dateInputs';
 
 /** CSV — reuses the S2 formula-injection-safe helper, full column set. */
 export function exportLedgerCsv(rows, label) {
@@ -48,7 +49,7 @@ export async function exportLedgerPdf(rows, label) {
     import('@react-pdf/renderer'),
     import('../components/agent/policyLedger/LedgerHoCheckDocument'),
   ]);
-  const generatedOn = new Date().toISOString().slice(0, 10);
+  const generatedOn = getTodayTT();
   const doc = createElement(LedgerHoCheckDocument, { rows, label, generatedOn });
   const blob = await pdf(doc).toBlob();
   const url = URL.createObjectURL(blob);
