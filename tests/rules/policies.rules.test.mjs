@@ -187,6 +187,12 @@ async function main() {
       unitId: 'um-a',
       canConfirmSettlements: true,
     });
+    // P2b (SEC-08): BM user doc — the rules read the BM's branch from here
+    // (callerBranchId). Fixture policies carry branchId 'bm-a'.
+    await db.doc(`tenants/${TENANT_ID}/users/bm-a`).set({
+      role: 'branch_manager',
+      branchId: 'bm-a',
+    });
     // user doc for um-b — no canConfirmSettlements flag (or false) — for DENY tests
     await db.doc(`tenants/${TENANT_ID}/users/um-b`).set({
       role: 'unit_manager',
@@ -292,7 +298,12 @@ async function main() {
   );
 
   // ── BM + CROSS-TENANT ──
-  await run('BM list in-tenant → ALLOW', true, () =>
+  // P2b (SEC-08): the BM list must carry the own-branch filter.
+  await run('BM list own branch (where branchId) → ALLOW', true, () =>
+    getDocs(query(collection(bmADb, 'tenants', TENANT_ID, 'policies'), where('branchId', '==', 'bm-a')))
+  );
+
+  await run('BM list unfiltered (tenant-wide) → DENY (P2b SEC-08)', false, () =>
     getDocs(collection(bmADb, 'tenants', TENANT_ID, 'policies'))
   );
 

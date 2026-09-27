@@ -6,6 +6,9 @@ const hoisted = vi.hoisted(() => ({
   mockGetDoc: vi.fn(),
   mockSetDoc: vi.fn(),
   mockGetDocs: vi.fn(),
+  // P2b: the agent user-doc read (branchId/unitId stamp) is routed here so the
+  // sequenced mockGetDoc queues below keep meaning what they meant.
+  mockGetUserDoc: vi.fn(),
   tsCounter: { n: 0 },
 }));
 const { mockGetDoc, mockSetDoc, mockGetDocs } = hoisted;
@@ -17,7 +20,9 @@ vi.mock('../../firebase', () => ({
 
 vi.mock('firebase/firestore', () => ({
   doc: (db, path) => ({ __ref: path, id: path.split('/').pop() }),
-  getDoc: (...args) => hoisted.mockGetDoc(...args),
+  getDoc: (ref, ...rest) => (ref?.__ref?.includes('/users/')
+    ? hoisted.mockGetUserDoc(ref, ...rest)
+    : hoisted.mockGetDoc(ref, ...rest)),
   setDoc: (...args) => hoisted.mockSetDoc(...args),
   collection: (db, path) => ({ __col: path }),
   query: (col, ...clauses) => ({ __col: col, __clauses: clauses }),
@@ -73,6 +78,8 @@ beforeEach(() => {
   mockSetDoc.mockReset();
   mockGetDocs.mockReset();
   mockSetDoc.mockResolvedValue(undefined);
+  hoisted.mockGetUserDoc.mockReset();
+  hoisted.mockGetUserDoc.mockResolvedValue({ exists: () => false });
   hoisted.mockAuth.currentUser = { uid: 'mgr-uid' };
   hoisted.tsCounter.n = 0;
 });
@@ -773,5 +780,62 @@ describe('reconcileFinancing', () => {
     await expect(reconcileFinancing(TENANT, AGENT, YEAR, RECON_OWING, ACTOR)).rejects.toThrow(/signed-in/);
     hoisted.mockAuth.currentUser = { uid: 'mgr-uid' };
     await expect(reconcileFinancing(TENANT, AGENT, YEAR, RECON_OWING, {})).rejects.toThrow(/actor\.role/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P2b (SEC-08) — branchId/unitId stamped from the AGENT's user doc; manager-side
+// ledger reads carry the scope clause the list rule requires.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('P2b — branch/unit stamping + scoped ledger reads', () => {
+  const userDoc = (data) => ({ exists: () => true, data: () => data });
+
+  it('setFinancingTerms stamps branchId + unitId from the agent user doc', async () => {
+    hoisted.mockGetUserDoc.mockResolvedValue(userDoc({ branchId: 'branchA', unitId: 'umA1' }));
+    mockGetDoc.mockResolvedValueOnce(snap(null));
+    await setFinancingTerms(TENANT, AGENT, VALID_TERMS, ACTOR);
+    const [ref, payload] = mockSetDoc.mock.calls[0];
+    expect(ref.__ref).toBe(`tenants/${TENANT}/financingTerms/${AGENT}`);
+    expect(payload).toMatchObject({ branchId: 'branchA', unitId: 'umA1' });
+    expect(hoisted.mockGetUserDoc.mock.calls[0][0].__ref).toBe(`tenants/${TENANT}/users/${AGENT}`);
+  });
+
+  it('an agent doc without unitId (a BM owner) stamps branchId only — never null', async () => {
+    hoisted.mockGetUserDoc.mockResolvedValue(userDoc({ branchId: 'branchA' }));
+    mockGetDoc.mockResolvedValueOnce(ledgerSnap(null));
+    await setFinancingMonth(TENANT, AGENT, '2026_01', VALID_STATEMENT, ACTOR);
+    const payload = mockSetDoc.mock.calls[0][1];
+    expect(payload.branchId).toBe('branchA');
+    expect('unitId' in payload).toBe(false);
+  });
+
+  it('a missing agent doc stamps neither field', async () => {
+    mockGetDoc.mockResolvedValueOnce(ledgerSnap(null));
+    await setFinancingProration(TENANT, AGENT, '2026_01', {
+      validatingAPI: 30000, actualAPI: 15000, suggestedFinancing: 4000, basisSource: 'submitted-final',
+    }, ACTOR);
+    const payload = mockSetDoc.mock.calls[0][1];
+    expect('branchId' in payload).toBe(false);
+    expect('unitId' in payload).toBe(false);
+  });
+
+  it('transitionFinancingStatus re-stamps the scope fields on the terms doc', async () => {
+    hoisted.mockGetUserDoc.mockResolvedValue(userDoc({ branchId: 'branchA', unitId: 'umA1' }));
+    mockGetDoc.mockResolvedValueOnce(snap({ financingStatus: 'not_on_financing', statusHistory: [] }));
+    await transitionFinancingStatus(TENANT, AGENT, 'on_financing', ACTOR);
+    expect(mockSetDoc.mock.calls[0][1]).toMatchObject({ branchId: 'branchA', unitId: 'umA1', financingStatus: 'on_financing' });
+  });
+
+  it('listFinancingMonths: BM scope adds where(branchId), UM scope where(unitId), none otherwise', async () => {
+    mockGetDocs.mockResolvedValue({ docs: [] });
+    await listFinancingMonths(TENANT, AGENT, undefined, { role: 'branch_manager', uid: 'bmA', branchId: 'branchA' });
+    await listFinancingMonths(TENANT, AGENT, undefined, { role: 'unit_manager', uid: 'umA1' });
+    await listFinancingMonths(TENANT, AGENT, undefined, { role: 'sales_manager', uid: 'sm' });
+    await listFinancingMonths(TENANT, AGENT);
+    const clauses = mockGetDocs.mock.calls.map(([q]) => q.__clauses.map((c) => c.__where));
+    expect(clauses[0]).toEqual([['agentId', '==', AGENT], ['branchId', '==', 'branchA']]);
+    expect(clauses[1]).toEqual([['agentId', '==', AGENT], ['unitId', '==', 'umA1']]);
+    expect(clauses[2]).toEqual([['agentId', '==', AGENT]]);
+    expect(clauses[3]).toEqual([['agentId', '==', AGENT]]);
   });
 });

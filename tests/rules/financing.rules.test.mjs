@@ -12,7 +12,10 @@
  * {agentId}_{YYYY_MM}, so the {agentId} path-var trick K1 uses does not apply.
  * This is the settlements read shape):
  *   get/list:      agent reads OWN (canAccessOwn keyed on resource.data.agentId);
- *                  managers read tenant-wide (canManage — includes UM).
+ *                  managers in scope (P2b SEC-08): BM own branch, UM own unit,
+ *                  SM/TA/PA tenant. Fixtures carry branchId/unitId + caller user
+ *                  docs; cross-branch/unit denials live in
+ *                  tests/rules/p2b-branch-scoping.rules.test.mjs.
  *   create/update: BM / SM / TA same-tenant + PA cross-tenant. unit_manager
  *                  EXCLUDED (contract 5.3). Coarse validation: agentId string,
  *                  tenantId == path tenant, month matches YYYY_MM, runningBalance
@@ -26,8 +29,8 @@
  *    2. Agent reads PEER month                             → DENY
  *    3. Agent reads own from cross-tenant path             → DENY
  *    4. Unauthenticated get                                → DENY
- *    5. UM reads agent month (mirrored read scope)         → ALLOW
- *    6. Manager lists agent months (canManage)             → ALLOW
+ *    5. UM reads own-unit agent month                      → ALLOW
+ *    6. BM lists own-branch agent months (where branchId)  → ALLOW
  *    7. Agent lists OWN months (agentId == uid filter)     → ALLOW
  *   WRITE
  *    8. Agent writes own month                             → DENY
@@ -72,6 +75,9 @@ const EMU_PORT = parseInt(EMU_PORT_STR ?? '8080', 10);
 const AGENT_A = 'agentA';
 const AGENT_B = 'agentB';
 const SEED_MONTH = '2026_01';
+// P2b: every fixture doc sits in bm1's branch and um1's unit.
+const BRANCH = 'branchA';
+const UNIT = 'um1';
 
 function authToken(role, tenantId = TENANT_ID) {
   return { role, tenantId };
@@ -96,6 +102,8 @@ function prorationPayload(agentId, tenantId = TENANT_ID, overrides = {}) {
     suggestedFinancing: 4000,
     basisSource:        'submitted-final',
     source:             'manager_entry',
+    branchId:           BRANCH,
+    unitId:             UNIT,
     ...overrides,
   };
 }
@@ -113,6 +121,8 @@ function statementPayload(agentId, tenantId = TENANT_ID, overrides = {}) {
     source:         'manager_entry',
     enteredBy:      'seedMgr',
     enteredByName:  'Seed',
+    branchId:       BRANCH,
+    unitId:         UNIT,
     ...overrides,
   };
 }
@@ -121,6 +131,9 @@ async function seedDocs(testEnv) {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await setDoc(finRef(db, AGENT_A), statementPayload(AGENT_A));
+    // P2b: caller user docs — the rules read the BM's branch from here.
+    await setDoc(doc(db, `tenants/${TENANT_ID}/users/bm1`), { role: 'branch_manager', branchId: BRANCH });
+    await setDoc(doc(db, `tenants/${TENANT_ID}/users/um1`), { role: 'unit_manager', branchId: BRANCH, unitId: UNIT });
   });
 }
 
@@ -173,14 +186,14 @@ async function main() {
     await assertFails(getDoc(finRef(unauth(), AGENT_A)));
   });
 
-  await t('5. UM reads agent month (mirrored read scope) → ALLOW', async () => {
+  await t('5. UM reads own-unit agent month → ALLOW', async () => {
     const db = testEnv.authenticatedContext('um1', authToken('unit_manager')).firestore();
     await assertSucceeds(getDoc(finRef(db, AGENT_A)));
   });
 
-  await t('6. Manager lists agent months (canManage) → ALLOW', async () => {
+  await t('6. BM lists own-branch agent months (where branchId) → ALLOW', async () => {
     const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
-    await assertSucceeds(getDocs(query(ledgerCol(db), where('agentId', '==', AGENT_A))));
+    await assertSucceeds(getDocs(query(ledgerCol(db), where('agentId', '==', AGENT_A), where('branchId', '==', BRANCH))));
   });
 
   await t('7. Agent lists OWN months (agentId == uid filter) → ALLOW', async () => {

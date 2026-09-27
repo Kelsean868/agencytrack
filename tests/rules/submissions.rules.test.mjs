@@ -38,13 +38,14 @@
  *   allow create
  *    13. Agent creates own submission with matching branchId → ALLOW
  *    14. Agent creates submission for another agent → DENY
- *    15. BM creates submission (canManage path, no branchId constraint) → ALLOW
+ *    15. BM creates own-branch submission (P2b: manager arm branch-scoped) → ALLOW
  *    22. Agent creates own submission with forged branchId → DENY
  *
  *   allow update
  *    16. Agent updates own draft submission with matching branchId → ALLOW
  *    17. Agent updates own non-draft (submitted) → DENY
- *    18. BM updates any submission → ALLOW
+ *    18. BM updates own-branch submission (P2b: manager arm branch-scoped) → ALLOW
+ *   (Cross-branch / cross-unit manager write denials: p2b-branch-scoping.rules.test.mjs)
  *    19. Agent updates another agent's draft → DENY
  *    23. Agent updates own draft with forged branchId → DENY
  *
@@ -362,8 +363,8 @@ async function main() {
     );
   });
 
-  await t('15. BM creates submission (canManage path, no branchId constraint) → ALLOW', async () => {
-    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
+  await t('15. BM creates own-branch submission (P2b: manager arm branch-scoped) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager', TENANT_ID, { branchId: 'branch-a' })).firestore();
     await assertSucceeds(
       setDoc(subRef(db, 'bm-created-sub'), draftDoc(AGENT1_ID, UM_ID)),
     );
@@ -397,8 +398,8 @@ async function main() {
     await assertFails(updateDoc(subRef(db, SUB_SUBMITTED_ID), { apiSold: 5000 }));
   });
 
-  await t('18. BM updates any submission → ALLOW', async () => {
-    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
+  await t('18. BM updates own-branch submission (P2b: manager arm branch-scoped) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager', TENANT_ID, { branchId: 'branch-a' })).firestore();
     await assertSucceeds(updateDoc(subRef(db, SUB_SUBMITTED_ID), { apiSold: 9000 }));
   });
 

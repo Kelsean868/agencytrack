@@ -232,6 +232,28 @@ describe('getOwnPolicies', () => {
     expect(hoisted.mockWhere).toHaveBeenCalledWith('agentId', '==', 'uid-1');
     expect(hoisted.mockOrderBy).toHaveBeenCalledWith('createdAt', 'desc');
   });
+
+  // P2b (SEC-08): a manager reading ANOTHER agent's book passes their scope so
+  // the query satisfies the branch/unit-scoped policies list rule.
+  it('BM scope adds where(branchId == caller branch); UM scope where(unitId == caller uid)', async () => {
+    hoisted.mockGetDocs.mockResolvedValue({ docs: [] });
+    hoisted.mockWhere.mockClear();
+    await getOwnPolicies('t1', 'agent-9', { role: 'branch_manager', uid: 'bm-1', branchId: 'b-1' });
+    expect(hoisted.mockWhere.mock.calls).toHaveLength(2);
+    expect(hoisted.mockWhere.mock.calls).toEqual(expect.arrayContaining([['agentId', '==', 'agent-9'], ['branchId', '==', 'b-1']]));
+    hoisted.mockWhere.mockClear();
+    await getOwnPolicies('t1', 'agent-9', { role: 'unit_manager', uid: 'um-1' });
+    expect(hoisted.mockWhere.mock.calls).toHaveLength(2);
+    expect(hoisted.mockWhere.mock.calls).toEqual(expect.arrayContaining([['agentId', '==', 'agent-9'], ['unitId', '==', 'um-1']]));
+  });
+
+  it('SM / TA scope and no scope add no extra clause', async () => {
+    hoisted.mockGetDocs.mockResolvedValue({ docs: [] });
+    hoisted.mockWhere.mockClear();
+    await getOwnPolicies('t1', 'agent-9', { role: 'sales_manager', uid: 'sm-1' });
+    await getOwnPolicies('t1', 'agent-9');
+    expect(hoisted.mockWhere.mock.calls).toEqual([['agentId', '==', 'agent-9'], ['agentId', '==', 'agent-9']]);
+  });
 });
 
 describe('transitionPolicyStatus', () => {

@@ -30,9 +30,10 @@
 // non-fatal by design).
 //
 // Read route (read-light, index reasoning): financing docs are keyed
-// financing/{agentId}_{YYYY_MM} and carry NO branchId field, and there is no
-// composite index for a branch-wide financing query — so a single collection query
-// by branchId is NOT schema-supported. The route is the Compliance-v2 per-agent
+// financing/{agentId}_{YYYY_MM}. Since P2b they carry a stamped branchId, but the
+// panel keeps the per-agent read shape (no branch-wide collection query, no new
+// index). Each per-agent list adds the caller's where('branchId') so it satisfies
+// the branch-scoped list rule. The route is the Compliance-v2 per-agent
 // fan-out: getTenantUsers self-scopes a BM to where('branchId','==',claims.branchId),
 // then ONE getFinancingTerms + ONE listFinancingMonths per branch agent (each
 // listFinancingMonths is an equality-only where('agentId','==',id) — no composite
@@ -45,6 +46,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AlertTriangle, ShieldAlert, Lock, Mail, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useCallerScope } from '../../hooks/useCallerScope';
 import { getTenantUsers } from '../../services/managerService';
 import {
   getFinancingTerms,
@@ -280,6 +282,7 @@ function NotifyDuty({ tenantId, row, recipientUid, canNotify }) {
 
 export default function FinancingRiskPanel() {
   const { role, tenantId } = useAuth();
+  const readScope = useCallerScope(); // P2b: BM reads carry where('branchId')
   const [state, setState] = useState({ status: 'loading' });
   // Guards a stale fan-out completing after a newer load (e.g. Retry) from
   // overwriting fresh state — the deterministic replacement for the old
@@ -309,7 +312,7 @@ export default function FinancingRiskPanel() {
         agents.map(async (agent) => {
           const [terms, ledger] = await Promise.all([
             getFinancingTerms(tenantId, agent.id),
-            listFinancingMonths(tenantId, agent.id),
+            listFinancingMonths(tenantId, agent.id, undefined, readScope),
           ]);
           return { agent, terms, ledger };
         }),
@@ -349,7 +352,7 @@ export default function FinancingRiskPanel() {
       console.error('[FinancingRiskPanel] load failed', e);
       setState({ status: 'error' });
     }
-  }, [tenantId]);
+  }, [tenantId, readScope]);
 
   useEffect(() => { load(); }, [load]);
 

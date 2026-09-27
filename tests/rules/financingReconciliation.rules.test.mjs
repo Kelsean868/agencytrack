@@ -27,8 +27,10 @@
  *    2. Agent reads PEER record                            → DENY
  *    3. Agent reads own from cross-tenant path             → DENY
  *    4. Unauthenticated get                                → DENY
- *    5. UM reads agent record (mirrored read scope)        → ALLOW
- *    6. Manager lists agent records (canManage)            → ALLOW
+ *    5. UM reads own-unit agent record                     → ALLOW
+ *    6. BM lists own-branch records (where branchId)       → ALLOW
+ *   (P2b SEC-08: managers are branch/unit-scoped; fixtures carry branchId/unitId
+ *    and caller user docs. Cross-scope denials: p2b-branch-scoping.rules.test.mjs.)
  *    7. Agent lists OWN records (agentId == uid filter)    → ALLOW
  *   WRITE
  *    8. Agent writes own record                            → DENY
@@ -70,6 +72,9 @@ const EMU_PORT = parseInt(EMU_PORT_STR ?? '8080', 10);
 const AGENT_A = 'agentA';
 const AGENT_B = 'agentB';
 const SEED_YEAR = '2026';
+// P2b: every fixture doc sits in bm1's branch and um1's unit.
+const BRANCH = 'branchA';
+const UNIT = 'um1';
 
 function authToken(role, tenantId = TENANT_ID) {
   return { role, tenantId };
@@ -101,6 +106,8 @@ function reconPayload(agentId, tenantId = TENANT_ID, overrides = {}) {
     triggeredBy:         'auto_month12',
     reconciledBy:        'seedMgr',
     reconciledByName:    'Seed',
+    branchId:            BRANCH,
+    unitId:              UNIT,
     ...overrides,
   };
 }
@@ -109,6 +116,9 @@ async function seedDocs(testEnv) {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await setDoc(reconRef(db, AGENT_A), reconPayload(AGENT_A));
+    // P2b: caller user docs — the rules read the BM's branch from here.
+    await setDoc(doc(db, `tenants/${TENANT_ID}/users/bm1`), { role: 'branch_manager', branchId: BRANCH });
+    await setDoc(doc(db, `tenants/${TENANT_ID}/users/um1`), { role: 'unit_manager', branchId: BRANCH, unitId: UNIT });
   });
 }
 
@@ -161,14 +171,14 @@ async function main() {
     await assertFails(getDoc(reconRef(unauth(), AGENT_A)));
   });
 
-  await t('5. UM reads agent record (mirrored read scope) → ALLOW', async () => {
+  await t('5. UM reads own-unit agent record → ALLOW', async () => {
     const db = testEnv.authenticatedContext('um1', authToken('unit_manager')).firestore();
     await assertSucceeds(getDoc(reconRef(db, AGENT_A)));
   });
 
-  await t('6. Manager lists agent records (canManage) → ALLOW', async () => {
+  await t('6. BM lists own-branch records (where branchId) → ALLOW', async () => {
     const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
-    await assertSucceeds(getDocs(query(reconCol(db), where('agentId', '==', AGENT_A))));
+    await assertSucceeds(getDocs(query(reconCol(db), where('agentId', '==', AGENT_A), where('branchId', '==', BRANCH))));
   });
 
   await t('7. Agent lists OWN records (agentId == uid filter) → ALLOW', async () => {

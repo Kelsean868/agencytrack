@@ -19,7 +19,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
-  authValue: { role: 'branch_manager', tenantId: 't1' },
+  authValue: { role: 'branch_manager', tenantId: 't1', user: { uid: 'bm1' }, userProfile: { uid: 'bm1', branchId: 'branchA' } },
   getTenantUsers: vi.fn(),
   getFinancingTerms: vi.fn(),
   listFinancingMonths: vi.fn(),
@@ -96,7 +96,7 @@ function wireHappyPath() {
 describe('FinancingRiskPanel — BM branch roster (display scope + notify duty)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    hoisted.authValue = { role: 'branch_manager', tenantId: 't1' };
+    hoisted.authValue = { role: 'branch_manager', tenantId: 't1', user: { uid: 'bm1' }, userProfile: { uid: 'bm1', branchId: 'branchA' } };
     wireHappyPath();
   });
 
@@ -128,7 +128,10 @@ describe('FinancingRiskPanel — BM branch roster (display scope + notify duty)'
     expect(hoisted.listFinancingMonths).toHaveBeenCalledTimes(agentIds.length);
     agentIds.forEach((id) => {
       expect(hoisted.getFinancingTerms).toHaveBeenCalledWith('t1', id);
-      expect(hoisted.listFinancingMonths).toHaveBeenCalledWith('t1', id);
+      // P2b (SEC-08): the BM's per-agent ledger read carries its branch scope.
+      expect(hoisted.listFinancingMonths).toHaveBeenCalledWith(
+        't1', id, undefined, { role: 'branch_manager', uid: 'bm1', branchId: 'branchA' },
+      );
     });
     // config is ONE read per surface, not per agent
     expect(hoisted.getFinancingConfig).toHaveBeenCalledTimes(1);

@@ -492,6 +492,18 @@ async function main() {
     );
     return 2;
   }
+  // P2b (SEC-08): the policies read rules scope a branch manager to
+  // `resource.data.branchId`, stamped here from the agent's user doc. A doc
+  // written with a null branchId would be invisible to the agent's BM — refuse
+  // instead, and fix the user doc first.
+  if (!agent.branchId) {
+    console.error(
+      `agent ${opts.agentEmail ?? agent.uid} has no branchId on the user doc. `
+      + 'Imported policies would be invisible to their branch manager — refusing. '
+      + 'Assign the branch (User Management) and re-run.',
+    );
+    return 2;
+  }
 
   const importConfig = await fetchImportConfig(db, agent.tenantId, agent.uid);
   const cfgCounts = [

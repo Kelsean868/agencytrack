@@ -8,6 +8,7 @@
 // Colour rule: bg-primary always paired with dark:bg-primary-dark (D6).
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useCallerScope } from '../../hooks/useCallerScope';
 import { getTenantUsers } from '../../services/managerService';
 import { getProjectedBonus } from '../../lib/financingProjectedBonus';
 import { formatCurrency } from '../../utils/formatters';
@@ -194,6 +195,7 @@ const MODE_ACTUAL    = 'actual';
 
 export default function TakeHomeWaterfallView() {
   const { userProfile, role, tenantId } = useAuth();
+  const readScope = useCallerScope(); // P2b: BM/UM reads carry the scoped where()
 
   const [agents, setAgents]         = useState([]);
   const [loadingAgents, setLoadingAgents] = useState(true);
@@ -225,12 +227,12 @@ export default function TakeHomeWaterfallView() {
     let active = true;
     setLoadingProj(true);
     setProjError('');
-    getProjectedBonus(tenantId, selectedAgent)
+    getProjectedBonus(tenantId, selectedAgent, undefined, readScope)
       .then((out) => { if (active) setProjection(out); })
       .catch((e) => { if (active) { console.error(e); setProjError('Failed to load projection.'); } })
       .finally(() => { if (active) setLoadingProj(false); });
     return () => { active = false; };
-  }, [tenantId, selectedAgent]);
+  }, [tenantId, selectedAgent, readScope]);
 
   // ── Access guard (mirrors FinancingTermsSetup) ───────────────────────────
   if (userProfile && !['branch_manager', 'tenant_admin', 'sales_manager'].includes(role)) {

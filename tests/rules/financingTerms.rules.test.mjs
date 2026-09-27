@@ -25,7 +25,9 @@
  *    2. Agent reads PEER financingTerms                      → DENY
  *    3. Agent reads own from cross-tenant path               → DENY
  *    4. Unauthenticated get                                  → DENY
- *    5. UM reads agent financingTerms (mirrored read scope)  → ALLOW
+ *    5. UM reads own-unit agent financingTerms               → ALLOW
+ *   (P2b SEC-08: managers are branch/unit-scoped; fixtures carry branchId/unitId
+ *    and caller user docs. Cross-scope denials: p2b-branch-scoping.rules.test.mjs.)
  *   WRITE
  *    6. Agent writes own financingTerms                      → DENY
  *    7. BM same-tenant write                                 → ALLOW
@@ -56,6 +58,9 @@ const EMU_PORT = parseInt(EMU_PORT_STR ?? '8080', 10);
 
 const AGENT_A = 'agentA';
 const AGENT_B = 'agentB';
+// P2b: every fixture doc sits in bm1's branch and um1's unit.
+const BRANCH = 'branchA';
+const UNIT = 'um1';
 
 function authToken(role, tenantId = TENANT_ID) {
   return { role, tenantId };
@@ -77,6 +82,8 @@ function termsPayload(agentId, tenantId = TENANT_ID, overrides = {}) {
     statusHistory:           [],
     createdBy:               'seedMgr',
     updatedBy:               'seedMgr',
+    branchId:                BRANCH,
+    unitId:                  UNIT,
     ...overrides,
   };
 }
@@ -86,6 +93,9 @@ async function seedDocs(testEnv) {
     const db = ctx.firestore();
     // Pre-seed agentA's financing terms for the read tests.
     await setDoc(finRef(db, AGENT_A), termsPayload(AGENT_A));
+    // P2b: caller user docs — the rules read the BM's branch from here.
+    await setDoc(doc(db, `tenants/${TENANT_ID}/users/bm1`), { role: 'branch_manager', branchId: BRANCH });
+    await setDoc(doc(db, `tenants/${TENANT_ID}/users/um1`), { role: 'unit_manager', branchId: BRANCH, unitId: UNIT });
   });
 }
 
@@ -138,7 +148,7 @@ async function main() {
     await assertFails(getDoc(finRef(unauth(), AGENT_A)));
   });
 
-  await t('5. UM reads agent financingTerms (mirrored read scope) → ALLOW', async () => {
+  await t('5. UM reads own-unit agent financingTerms → ALLOW', async () => {
     const db = testEnv.authenticatedContext('um1', authToken('unit_manager')).firestore();
     await assertSucceeds(getDoc(finRef(db, AGENT_A)));
   });

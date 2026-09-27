@@ -26,6 +26,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Lock, AlertTriangle, ShieldAlert, MessageSquare, RefreshCw, Flag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useCallerScope } from '../../hooks/useCallerScope';
 import { getTenantUsers } from '../../services/managerService';
 import {
   getFinancingTerms,
@@ -101,6 +102,7 @@ function Stat({ label, value, tone = 'ink', testId }) {
 
 export default function UnitFinancingRoster({ tenantId }) {
   const { role } = useAuth();
+  const readScope = useCallerScope(); // P2b: UM reads carry where('unitId' == uid)
   const [state, setState] = useState({ status: 'loading' });
   const [drawerRow, setDrawerRow] = useState(null);
   const [coachTarget, setCoachTarget] = useState(null);
@@ -124,7 +126,7 @@ export default function UnitFinancingRoster({ tenantId }) {
         agents.map(async (agent) => {
           const [terms, ledger] = await Promise.all([
             getFinancingTerms(tenantId, agent.id),
-            listFinancingMonths(tenantId, agent.id),
+            listFinancingMonths(tenantId, agent.id, undefined, readScope),
           ]);
           return { agent, terms, ledger };
         }),
@@ -160,7 +162,7 @@ export default function UnitFinancingRoster({ tenantId }) {
       console.error('[UnitFinancingRoster] load failed', e);
       setState({ status: 'error' });
     }
-  }, [tenantId]);
+  }, [tenantId, readScope]);
 
   useEffect(() => { load(); }, [load]);
 

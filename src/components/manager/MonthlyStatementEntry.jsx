@@ -12,6 +12,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import SaveButton from '../ui/SaveButton';
 import { useAuth } from '../../context/AuthContext';
+import { useCallerScope } from '../../hooks/useCallerScope';
 import useToast from '../../hooks/useToast';
 import { getTenantUsers } from '../../services/managerService';
 import {
@@ -42,6 +43,7 @@ const EMPTY_FORM = { month: '', financingPaid: '', netCommission: '', bonusOffse
 
 export default function MonthlyStatementEntry() {
   const { userProfile, role, tenantId } = useAuth();
+  const readScope = useCallerScope(); // P2b: BM/UM reads carry the scoped where()
   const toast = useToast();
 
   const [agents, setAgents]               = useState([]);
@@ -83,7 +85,7 @@ export default function MonthlyStatementEntry() {
     if (!tenantId || !agentId) { setTerms(null); setMonths([]); setForm(EMPTY_FORM); return; }
     setLoading(true);
     setValidationError('');
-    Promise.all([getFinancingTerms(tenantId, agentId), listFinancingMonths(tenantId, agentId)])
+    Promise.all([getFinancingTerms(tenantId, agentId), listFinancingMonths(tenantId, agentId, undefined, readScope)])
       .then(([termsDoc, ledger]) => {
         if (latestAgentReqRef.current !== agentId) return; // stale — newer agent selected
         setTerms(termsDoc);
@@ -99,7 +101,7 @@ export default function MonthlyStatementEntry() {
         if (latestAgentReqRef.current !== agentId) return;
         setLoading(false);
       });
-  }, [tenantId, toast]);
+  }, [tenantId, toast, readScope]);
 
   // Sync the form to the selected statement month (Gemini #1 — HIGH): switching
   // to a NEW month clears the figures (no carry-over of the prior month's values
@@ -173,7 +175,7 @@ export default function MonthlyStatementEntry() {
         { financingPaid, netCommission, bonusOffset, runningBalance, notes: form.notes },
         actor,
       );
-      const ledger = await listFinancingMonths(tenantId, selectedAgent);
+      const ledger = await listFinancingMonths(tenantId, selectedAgent, undefined, readScope);
       if (latestAgentReqRef.current === selectedAgent) setMonths(ledger);
       toast.show({ variant: 'success', message: `${monthLabel(monthKey)} statement saved for ${agentName(selectedAgent)}.` });
     } catch (err) {
