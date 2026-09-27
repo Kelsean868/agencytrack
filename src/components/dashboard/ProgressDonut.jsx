@@ -176,11 +176,19 @@ export default function ProgressDonut({
  * shown once per ring group. Callers hide it entirely when nothing in the
  * group has a pending value (`show={false}`) rather than rendering an empty
  * explanation for zero.
+ *
+ * FX (docs/briefs/ledger-layout-and-l3.md § FX item 2): the Home hero's C1
+ * mockup shows the legend as VALUES — "Settled 87,146 · Submitted 123,146" —
+ * not the descriptive copy above. Passing `values={{ settled, submitted }}`
+ * (whole-number TTD figures the caller already derived — never computed
+ * here) switches to that pattern; omitting it keeps every other caller
+ * (Awards, Campaign card, Campaign screen) unchanged.
  */
-export function RingLegend({ show, tone = 'teal', className = '' }) {
+export function RingLegend({ show, tone = 'teal', className = '', values = null }) {
   if (!show) return null;
   const palette = TONES[tone] ?? TONES.teal;
   const textClass = tone === 'onHero' ? 'text-[--hero-ink-muted-teal]' : 'text-ink-muted';
+  const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-TT');
   return (
     <div
       className={`flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 text-xs ${textClass} ${className}`}
@@ -188,11 +196,11 @@ export function RingLegend({ show, tone = 'teal', className = '' }) {
     >
       <span className="inline-flex items-center gap-1.5">
         <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${palette.dot}`} aria-hidden="true" />
-        Settled — counts
+        {values ? `Settled ${fmt(values.settled)}` : 'Settled — counts'}
       </span>
       <span className="inline-flex items-center gap-1.5">
         <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${palette.dotFaint}`} aria-hidden="true" />
-        Submitted — waiting to settle
+        {values ? `Submitted ${fmt(values.submitted)}` : 'Submitted — waiting to settle'}
       </span>
     </div>
   );

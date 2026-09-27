@@ -159,13 +159,16 @@ describe('HeroCard — R4 reconciliation note (unchanged behaviour)', () => {
 });
 
 describe('HeroCard — pending (L0, two-layer ring)', () => {
-  it('with pending: faint arc, "+x submitted" subline, and the legend', () => {
+  it('with pending: faint arc, "+x submitted" subline, and the legend with real values (FX item 2, matches C1)', () => {
     const p = production({ pending: { api: 36000, apps: 2, count: 2 } });
     render(<HeroCard personalAnnualAPI={null} onSubmit={() => {}} production={p} />);
     expect(screen.getByTestId('donut-arc-pending')).toBeInTheDocument();
     expect(screen.getByTestId('hero-pending-subline')).toHaveTextContent('+36K submitted');
-    expect(screen.getByTestId('ring-legend')).toHaveTextContent('Settled — counts');
-    expect(screen.getByTestId('ring-legend')).toHaveTextContent('Submitted — waiting to settle');
+    // Values, not the generic "counts / waiting to settle" copy — the SAME
+    // figures already shown in the settled-API big number and the "Submitted
+    // API" ledger figure above, never a new derivation.
+    expect(screen.getByTestId('ring-legend')).toHaveTextContent('Settled 87,146');
+    expect(screen.getByTestId('ring-legend')).toHaveTextContent('Submitted 123,146');
     expect(screen.getByTestId('hero-donut')).toHaveAttribute('aria-label', expect.stringContaining('waiting to settle'));
   });
 

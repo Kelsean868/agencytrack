@@ -48,7 +48,7 @@ function TagOption({ section, option, active, onToggle, count }) {
 }
 
 /** The shared fieldset body — used inside both the mobile sheet and the desktop rail. */
-function FilterFields({ sections, rows, state, onToggle, onDateType, onDateFrom, onDateTo, onApiMin, onApiMax }) {
+function FilterFields({ sections, rows, state, onToggle, onDateType, onDateFrom, onDateTo, onApiMin, onApiMax, stackDates = false }) {
   return (
     <div className="flex flex-col gap-3">
       {sections.map((section) => (
@@ -89,8 +89,8 @@ function FilterFields({ sections, rows, state, onToggle, onDateType, onDateFrom,
             </button>
           ))}
         </div>
-        <div className="flex gap-2">
-          <label className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className={stackDates ? 'flex flex-col gap-2' : 'flex gap-2'}>
+          <label className={stackDates ? 'flex flex-col gap-1' : 'flex min-w-0 flex-1 flex-col gap-1'}>
             <span className="text-xs text-ink-muted">From</span>
             <input
               type="text"
@@ -98,11 +98,11 @@ function FilterFields({ sections, rows, state, onToggle, onDateType, onDateFrom,
               placeholder="01-07-2026"
               defaultValue={toDisplayDate(state.dateFrom)}
               onBlur={(e) => onDateFrom(toStoredDate(e.target.value))}
-              className="h-11 w-full rounded-lg border border-border bg-surface px-2.5 text-sm text-ink"
+              className="h-11 w-full min-w-[118px] rounded-lg border border-border bg-surface px-2.5 text-sm tabular-nums text-ink"
               data-testid="ledger-filter-date-from"
             />
           </label>
-          <label className="flex min-w-0 flex-1 flex-col gap-1">
+          <label className={stackDates ? 'flex flex-col gap-1' : 'flex min-w-0 flex-1 flex-col gap-1'}>
             <span className="text-xs text-ink-muted">To</span>
             <input
               type="text"
@@ -110,7 +110,7 @@ function FilterFields({ sections, rows, state, onToggle, onDateType, onDateFrom,
               placeholder="31-12-2026"
               defaultValue={toDisplayDate(state.dateTo)}
               onBlur={(e) => onDateTo(toStoredDate(e.target.value))}
-              className="h-11 w-full rounded-lg border border-border bg-surface px-2.5 text-sm text-ink"
+              className="h-11 w-full min-w-[118px] rounded-lg border border-border bg-surface px-2.5 text-sm tabular-nums text-ink"
               data-testid="ledger-filter-date-to"
             />
           </label>
@@ -468,7 +468,7 @@ export default function LedgerFilterSort({
           <div className="mb-3">
             <SortFields sortKey={sortKey} onSort={onSortChange} />
           </div>
-          <FilterFields {...filterFieldProps} />
+          <FilterFields {...filterFieldProps} stackDates />
         </aside>
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           {children}
