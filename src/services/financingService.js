@@ -8,10 +8,12 @@
 // §2/§5 and docs/design/track-k-locked-decisions.md (B.9 forward-only state
 // machine, B.12 current <= agreed hard-validation).
 //
-// Business logic lives HERE (and the UI), not in firestore.rules, per the U2
-// single-boundary precedent: rules do coarse type/role/enum checks only.
+// Business logic lives HERE (and the UI). Since P2c (audit 2026-09-24 SEC-09)
+// firestore.rules ALSO backstops the status machine (isLegalFinancingTransition,
+// mirrored from LEGAL_TRANSITIONS below — this file is the source of truth) and
+// pins each financing collection to a key allowlist.
 
-import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp, Timestamp, runTransaction } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { monthKeyFromDate, monthsBetweenKeys, enumerateMonthKeys } from '../utils/dateInputs';
 
@@ -37,7 +39,9 @@ export const FINANCING_STATUS_LABELS = {
   cleared:                  'Cleared',
 };
 
-// Legal forward-only transitions (Addendum B.9). No backward moves; an
+// Legal forward-only transitions (Addendum B.9). SINGLE SOURCE OF TRUTH:
+// firestore.rules isLegalFinancingTransition mirrors this table — change both
+// together (P2c SEC-09). No backward moves; an
 // admin-level corrective transition is a deferred follow-up. Terminal state
 // `cleared` has no outbound edges. `not_on_financing` (declined / straight
 // commission) only ever advances to `on_financing`.
@@ -69,13 +73,20 @@ function financingDocRef(tenantId, agentId) {
 // to their unit. A field the agent doc does not carry is left off the write (never
 // written as null) — so a missing value never overwrites a good one, and the
 // backfill (scripts/maintenance/backfill-branchid-p2b.mjs) reports it instead.
-async function agentScopeFields(tenantId, agentId) {
-  const snap = await getDoc(doc(db, `tenants/${tenantId}/users/${agentId}`));
+function agentUserDocRef(tenantId, agentId) {
+  return doc(db, `tenants/${tenantId}/users/${agentId}`);
+}
+
+function scopeFieldsFromSnap(snap) {
   const data = snap?.exists?.() ? snap.data() : {};
   const out = {};
   if (data.branchId) out.branchId = data.branchId;
   if (data.unitId)   out.unitId   = data.unitId;
   return out;
+}
+
+async function agentScopeFields(tenantId, agentId) {
+  return scopeFieldsFromSnap(await getDoc(agentUserDocRef(tenantId, agentId)));
 }
 
 // P2b (SEC-08): the where() clauses a MANAGER-side read of another agent's docs
@@ -166,12 +177,53 @@ export async function setFinancingTerms(tenantId, agentId, terms, actor) {
   return { id: ref.id, ...created };
 }
 
+// Build the statusHistory entry for one move. The in-array `at` uses Timestamp.now()
+// — a REAL value, NOT serverTimestamp(): Firestore rejects FieldValue sentinels
+// nested in array elements (banked PR #373 / df161fe).
+function statusHistoryEntry(fromStatus, toStatus, writerUid, actor, note) {
+  const entry = {
+    from:   fromStatus,
+    to:     toStatus,
+    at:     Timestamp.now(),
+    by:     writerUid,
+    byName: actor.name ?? '',
+    role:   actor.role,
+  };
+  if (note) entry.note = note;
+  return entry;
+}
+
+// The terms-doc payload for a legal status move, computed from the terms data READ
+// INSIDE the caller's transaction. Throws on a no-op or illegal move so the
+// transaction aborts with nothing written.
+function statusMovePayload(fnName, data, toStatus, writerUid, actor, note, scopeFields) {
+  const fromStatus = data.financingStatus ?? DEFAULT_FINANCING_STATUS;
+  if (fromStatus === toStatus) {
+    throw new Error(`${fnName}: already in "${toStatus}"`);
+  }
+  if (!isLegalFinancingTransition(fromStatus, toStatus)) {
+    throw new Error(`${fnName}: illegal transition ${fromStatus} → ${toStatus}`);
+  }
+  const prior = Array.isArray(data.statusHistory) ? data.statusHistory : [];
+  return {
+    ...scopeFields,
+    financingStatus: toStatus,
+    statusHistory: [...prior, statusHistoryEntry(fromStatus, toStatus, writerUid, actor, note)],
+    updatedAt: serverTimestamp(),
+    updatedBy: writerUid,
+  };
+}
+
 // Advance the forward-only status machine. Rejects illegal/no-op transitions and
-// appends a statusHistory entry. The in-array `at` uses Timestamp.now() — a REAL
-// value, NOT serverTimestamp(): Firestore rejects FieldValue sentinels nested in
-// array elements (banked PR #373 / df161fe). The top-level updatedAt keeps the
+// appends a statusHistory entry. The top-level updatedAt keeps the
 // serverTimestamp() sentinel. No cap logic — the forward-only 5-state machine is
 // naturally bounded (<= 4 transitions).
+//
+// P2c (BUG-07): read → legality check → write is ONE transaction. Two managers
+// moving the same agent at once: the loser's transaction retries, re-reads the
+// winner's status, and fails with a clear "already in" / "illegal transition"
+// error instead of overwriting the winner's history. The agent user doc (branchId /
+// unitId stamp, P2b) is read inside the same transaction.
 export async function transitionFinancingStatus(tenantId, agentId, toStatus, actor, note) {
   const writerUid = auth?.currentUser?.uid;
   if (!writerUid)            throw new Error('transitionFinancingStatus: no signed-in user');
@@ -183,41 +235,20 @@ export async function transitionFinancingStatus(tenantId, agentId, toStatus, act
   }
 
   const ref = financingDocRef(tenantId, agentId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error('transitionFinancingStatus: no financing terms for this agent');
+  const userRef = agentUserDocRef(tenantId, agentId);
 
-  const data = snap.data();
-  const fromStatus = data.financingStatus ?? DEFAULT_FINANCING_STATUS;
-  if (fromStatus === toStatus) {
-    throw new Error(`transitionFinancingStatus: already in "${toStatus}"`);
-  }
-  if (!isLegalFinancingTransition(fromStatus, toStatus)) {
-    throw new Error(`transitionFinancingStatus: illegal transition ${fromStatus} → ${toStatus}`);
-  }
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const userSnap = await tx.get(userRef);
+    if (!snap.exists()) throw new Error('transitionFinancingStatus: no financing terms for this agent');
 
-  const entry = {
-    from:   fromStatus,
-    to:     toStatus,
-    at:     Timestamp.now(),
-    by:     writerUid,
-    byName: actor.name ?? '',
-    role:   actor.role,
-  };
-  if (note) entry.note = note;
-
-  const prior = Array.isArray(data.statusHistory) ? data.statusHistory : [];
-  const statusHistory = [...prior, entry];
-  const scopeFields = await agentScopeFields(tenantId, agentId);
-
-  await setDoc(ref, {
-    ...scopeFields,
-    financingStatus: toStatus,
-    statusHistory,
-    updatedAt: serverTimestamp(),
-    updatedBy: writerUid,
-  }, { merge: true });
-
-  return { id: ref.id, ...data, financingStatus: toStatus, statusHistory };
+    const data = snap.data();
+    const payload = statusMovePayload(
+      'transitionFinancingStatus', data, toStatus, writerUid, actor, note, scopeFieldsFromSnap(userSnap),
+    );
+    tx.set(ref, payload, { merge: true });
+    return { id: ref.id, ...data, financingStatus: toStatus, statusHistory: payload.statusHistory };
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -544,9 +575,13 @@ export async function getFinancingReconciliation(tenantId, agentId, year) {
 //
 // Precondition: the agent is ALREADY in `reconciling` (the begin-reconciliation step —
 // on_financing → reconciling — is a separate transitionFinancingStatus call, mirroring
-// the mockup's event-bar before the worksheet). Ordering matters (mockup "Error · write
-// failed" state): the record is written FIRST and the status is advanced ONLY after the
-// write resolves, so a failed write never strands the agent in a half-settled state.
+// the mockup's event-bar before the worksheet).
+//
+// P2c (BUG-07): the record write and the reconciling → terminal status move are ONE
+// transaction. Either both land or neither does — a failure mid-way can no longer leave
+// a record without the status move (or the reverse), which the old write-then-transition
+// sequence could. The status precondition, the legality check and the P2b
+// branchId/unitId stamp are all read inside the same transaction.
 //
 // `reconciliation` is the computeReconciliation output (numerics + outcome + triggeredBy).
 // nextStatus is RE-DERIVED from outcome here (never trusted from the caller). Numerics are
@@ -581,65 +616,74 @@ export async function reconcileFinancing(tenantId, agentId, year, reconciliation
   if (!Number.isFinite(surplusPaid) || surplusPaid < 0)     throw new Error('reconcileFinancing: surplusPaid must be a non-negative number');
   if (!Number.isFinite(serviceMonths) || serviceMonths < 0) throw new Error('reconcileFinancing: serviceMonths must be a non-negative number');
 
-  // Status precondition — must be mid-reconciliation. Begin-reconciliation
-  // (on_financing → reconciling) is a separate explicit transition.
-  const termsRef  = financingDocRef(tenantId, agentId);
-  const termsSnap = await getDoc(termsRef);
-  if (!termsSnap.exists()) throw new Error('reconcileFinancing: no financing terms for this agent');
-  const currentStatus = termsSnap.data().financingStatus ?? DEFAULT_FINANCING_STATUS;
-  if (currentStatus !== 'reconciling') {
-    throw new Error(`reconcileFinancing: agent must be in 'reconciling' (is '${currentStatus}') — begin reconciliation first`);
-  }
-
   const nextStatus = outcome === 'surplus' ? 'cleared' : 'post_financing_repayment';
+  const termsRef = financingDocRef(tenantId, agentId);
+  const ref      = financingReconciliationDocRef(tenantId, agentId, year);
+  const userRef  = agentUserDocRef(tenantId, agentId);
 
-  // 1) Write the record FIRST (mockup error-state rule: never advance status on an
-  //    unpersisted record).
-  const ref = financingReconciliationDocRef(tenantId, agentId, year);
-  const existing = await getDoc(ref);
-  const now = serverTimestamp();
-  const scopeFields = await agentScopeFields(tenantId, agentId);
-  const core = {
-    agentId,
-    tenantId,
-    ...scopeFields,
-    year: Number(year),
-    totalFinancingDrawn,
-    totalOffsets,
-    closingBalance,
-    waiverApplied,
-    serviceMet:       !!rec.serviceMet,
-    serviceMonths,
-    reconciledPosition,
-    outcome,
-    surplusPaid,
-    garnishStarted:   outcome === 'owing',
-    triggeredBy,
-    updatedAt: now,
-    updatedBy: writerUid,
-  };
+  return runTransaction(db, async (tx) => {
+    // All reads before any write (Firestore transaction contract).
+    const termsSnap = await tx.get(termsRef);
+    const existing  = await tx.get(ref);
+    const userSnap  = await tx.get(userRef);
 
-  let record;
-  if (existing.exists()) {
-    await setDoc(ref, core, { merge: true });
-    record = { id: ref.id, ...existing.data(), ...core };
-  } else {
-    const created = {
-      ...core,
-      reconciledBy:     writerUid,
-      reconciledByName: actor.name ?? '',
-      reconciledAt:     now,
-      createdAt:        now,
+    // Status precondition — must be mid-reconciliation. Begin-reconciliation
+    // (on_financing → reconciling) is a separate explicit transition.
+    if (!termsSnap.exists()) throw new Error('reconcileFinancing: no financing terms for this agent');
+    const termsData = termsSnap.data();
+    const currentStatus = termsData.financingStatus ?? DEFAULT_FINANCING_STATUS;
+    if (currentStatus !== 'reconciling') {
+      throw new Error(`reconcileFinancing: agent must be in 'reconciling' (is '${currentStatus}') — begin reconciliation first`);
+    }
+
+    const scopeFields = scopeFieldsFromSnap(userSnap);
+    // Built (and legality-checked) BEFORE either write is queued, so a throw here
+    // leaves the transaction with no writes at all.
+    const statusPayload = statusMovePayload(
+      'reconcileFinancing', termsData, nextStatus, writerUid, actor,
+      `K6 reconciliation — ${outcome} (${triggeredBy})`, scopeFields,
+    );
+
+    const now = serverTimestamp();
+    const core = {
+      agentId,
+      tenantId,
+      ...scopeFields,
+      year: Number(year),
+      totalFinancingDrawn,
+      totalOffsets,
+      closingBalance,
+      waiverApplied,
+      serviceMet:       !!rec.serviceMet,
+      serviceMonths,
+      reconciledPosition,
+      outcome,
+      surplusPaid,
+      garnishStarted:   outcome === 'owing',
+      triggeredBy,
+      updatedAt: now,
+      updatedBy: writerUid,
     };
-    await setDoc(ref, created);
-    record = { id: ref.id, ...created };
-  }
 
-  // 2) Advance the machine reconciling → terminal ONLY after the record persists.
-  await transitionFinancingStatus(
-    tenantId, agentId, nextStatus, actor,
-    `K6 reconciliation — ${outcome} (${triggeredBy})`,
-  );
+    let record;
+    if (existing.exists()) {
+      tx.set(ref, core, { merge: true });
+      record = { id: ref.id, ...existing.data(), ...core };
+    } else {
+      const created = {
+        ...core,
+        reconciledBy:     writerUid,
+        reconciledByName: actor.name ?? '',
+        reconciledAt:     now,
+        createdAt:        now,
+      };
+      tx.set(ref, created);
+      record = { id: ref.id, ...created };
+    }
 
-  return record;
+    // Same commit: reconciling → terminal.
+    tx.set(termsRef, statusPayload, { merge: true });
+
+    return record;
+  });
 }

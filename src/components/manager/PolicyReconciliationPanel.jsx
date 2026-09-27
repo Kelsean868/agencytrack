@@ -43,12 +43,19 @@ function inPeriod(dateIssued, year, month) {
 export default function PolicyReconciliationPanel() {
   const { userProfile, role, tenantId } = useAuth();
 
-  // canAccess mirrors SettlementPanel: BM / tenant_admin / platform_admin / canConfirmSettlements
-  const canAccess =
+  // canConfirm mirrors SettlementPanel and rules Arm C (policies confirm):
+  // BM / tenant_admin / platform_admin / canConfirmSettlements.
+  const canConfirm =
     role === 'branch_manager' ||
     role === 'tenant_admin'   ||
     role === 'platform_admin' ||
     Boolean(userProfile?.canConfirmSettlements);
+
+  // P2c (ruling 27 Sep 2026): sales_manager SEES Policy Reconciliation,
+  // tenant-wide (getPoliciesForManager adds no clause for SM). SM confirms only
+  // with the canConfirmSettlements flag, and never lapses — the current rules
+  // (Arms C / D) grant SM neither write, and this change does not widen them.
+  const canAccess = canConfirm || role === 'sales_manager';
 
   // Lapse is BM+ only
   const canLapse =
@@ -210,6 +217,11 @@ export default function PolicyReconciliationPanel() {
           <p className="text-sm text-ink-muted">
             Read Tatil&rsquo;s circular and key the confirmed figure per policy. Blank = agree with the ledger.
           </p>
+          {!canConfirm && (
+            <p className="text-xs text-ink-muted mt-1" data-testid="recon-view-only">
+              View only — a branch manager confirms these figures.
+            </p>
+          )}
         </div>
         <div className="flex-1" />
         <div className="flex gap-1 p-1 bg-surface-muted border border-border rounded-lg" role="tablist">
@@ -373,6 +385,8 @@ export default function PolicyReconciliationPanel() {
                             <p className="font-mono text-[8.5px] font-bold tracking-[0.1em] text-ink-muted">CONFIRMED · FROM CIRCULAR</p>
                             {isConfirmedView ? (
                               <p className={`font-mono text-[13px] font-bold mt-0.5 ${flagged ? 'text-danger-ink' : 'text-ink'}`}>{formatCurrency(keyed)}</p>
+                            ) : !canConfirm ? (
+                              <p className="font-mono text-[13px] font-bold mt-0.5 text-ink-muted">—</p>
                             ) : (
                               <input
                                 type="number" step="0.01" min="0.01"
@@ -399,7 +413,7 @@ export default function PolicyReconciliationPanel() {
                         </div>
 
                         {/* Action */}
-                        {!isConfirmedView && (
+                        {!isConfirmedView && canConfirm && (
                           <button type="button" onClick={() => handleConfirm(policy)} disabled={fs.submitting}
                             className="h-9 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-[12.5px] font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors disabled:opacity-50 shrink-0"
                             data-testid={`confirm-btn-${policy.id}`}>
@@ -409,7 +423,7 @@ export default function PolicyReconciliationPanel() {
                       </div>
 
                       {/* Manager note (key-in rows only) */}
-                      {!isConfirmedView && (
+                      {!isConfirmedView && canConfirm && (
                         <input
                           type="text"
                           value={fs.managerNote}

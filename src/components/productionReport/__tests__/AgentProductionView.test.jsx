@@ -361,7 +361,6 @@ describe('AgentProductionView — where-you-rank panel', () => {
 describe('AgentProductionView — 0.1b loading skeleton', () => {
   it('renders a PanelSkeleton (aria-busy) while both sub-fetches are pending, never bare text', async () => {
     hoisted.getAgentSubmissions.mockReturnValue(new Promise(() => {}));
-    hoisted.getTenantUsers.mockReturnValue(new Promise(() => {}));
 
     render(<AgentProductionView />);
 
@@ -371,10 +370,9 @@ describe('AgentProductionView — 0.1b loading skeleton', () => {
   });
 });
 
-describe('AgentProductionView — §1 states contract (error / partial / retry)', () => {
-  it('both sub-fetches failing renders a blocking error card with Retry', async () => {
+describe('AgentProductionView — §1 states contract (error / retry)', () => {
+  it('a failed submissions load renders a blocking error card with Retry', async () => {
     hoisted.getAgentSubmissions.mockRejectedValue(new Error('boom-subs'));
-    hoisted.getTenantUsers.mockRejectedValue(new Error('boom-users'));
 
     render(<AgentProductionView />);
 
@@ -383,9 +381,8 @@ describe('AgentProductionView — §1 states contract (error / partial / retry)'
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
   });
 
-  it('Retry on full failure re-invokes both failed loaders and recovers', async () => {
+  it('Retry re-invokes the loader and recovers', async () => {
     hoisted.getAgentSubmissions.mockRejectedValueOnce(new Error('boom-subs')).mockResolvedValueOnce([]);
-    hoisted.getTenantUsers.mockRejectedValueOnce(new Error('boom-users')).mockResolvedValueOnce([]);
 
     render(<AgentProductionView />);
     await waitFor(() => expect(screen.getByTestId('agent-production-error')).toBeInTheDocument());
@@ -394,18 +391,66 @@ describe('AgentProductionView — §1 states contract (error / partial / retry)'
 
     await waitFor(() => expect(screen.queryByTestId('agent-production-error')).toBeNull());
     expect(hoisted.getAgentSubmissions).toHaveBeenCalledTimes(2);
-    expect(hoisted.getTenantUsers).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P2c Part 4 — an agent session makes NO tenant-wide user read. The users `list`
+// rule is manager-only, so getTenantUsers from an agent logged "Missing or
+// insufficient permissions" on every load. The unit label now comes from the
+// leaderboard aggregate the view already reads; the figures are unchanged.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('AgentProductionView — P2c: no tenant-wide user read', () => {
+  const SUBS = [{
+    // Current-week flat submission (read through extractFields).
+    id: 's1', agentId: 'me-viewer-uid', status: 'submitted',
+    weekStarting: new Date().toISOString().slice(0, 10),
+    version: 2, newBusiness: { api: 12500, apps: 2 },
+  }];
+
+  beforeEach(() => {
+    hoisted.useAuth.mockReturnValue({
+      user:        { uid: 'me-viewer-uid' },
+      userProfile: { name: 'Priya Gopaul', unitId: 'um-1', branchId: 'tatil_south' },
+      tenantId:    'tatillife_south',
+    });
   });
 
-  it('one of two sub-fetches failing renders a partial-failure banner while still showing available data', async () => {
-    hoisted.getAgentSubmissions.mockRejectedValue(new Error('boom-subs'));
-    hoisted.getTenantUsers.mockResolvedValue([]);
-
+  it('never calls getTenantUsers and shows no permission / partial-failure state', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     render(<AgentProductionView />);
+    await waitFor(() => expect(screen.getByTestId('agent-production-rank-pill')).toBeInTheDocument());
+    expect(hoisted.getTenantUsers).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('agent-production-error')).toBeNull();
+    expect(screen.queryByTestId('agent-production-partial')).toBeNull();
+    expect(errSpy).not.toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
 
-    await waitFor(() => expect(screen.getByTestId('agent-production-partial')).toBeInTheDocument());
-    expect(screen.getByTestId('agent-production-partial')).toHaveTextContent('1 of 2 data sources failed to load');
-    // The rest of the surface still renders (not blocked by the partial failure).
-    expect(screen.getByTestId('agent-production-rank-pill')).toBeInTheDocument();
+  it('unit label comes from the leaderboard aggregate entry for the agent\'s unit', async () => {
+    const entry = { ...mkEntry(3, 'me-viewer-uid', 90_000), unitId: 'um-1', unitName: 'Southern Stars' };
+    hoisted.useLeaderboard.mockReturnValue({
+      loading: false, error: null, doc: {},
+      byPeriod: { week: [entry], mtd: [entry], qtd: [entry], ytd: [entry] },
+      branchId: 'tatil_south',
+    });
+    render(<AgentProductionView />);
+    await waitFor(() => expect(screen.getByText(/Southern Stars · this week/)).toBeInTheDocument());
+  });
+
+  it('no aggregate entry for the unit → the pre-existing "Unknown Unit" fallback', async () => {
+    render(<AgentProductionView />);
+    await waitFor(() => expect(screen.getByText(/Unknown Unit · this week/)).toBeInTheDocument());
+  });
+
+  it('figures are computed from the agent\'s own submissions only (unchanged)', async () => {
+    const { computeAgentTotals, filterSubmissionsByPeriod } = await import('../../../lib/productionReport/computations');
+    const expected = computeAgentTotals(filterSubmissionsByPeriod(SUBS, 'ytd'));
+    expect(expected.totalApps).toBeGreaterThan(0); // the fixture is really counted
+    hoisted.getAgentSubmissions.mockResolvedValue(SUBS);
+    render(<AgentProductionView />);
+    await waitFor(() => expect(screen.getByTestId('agent-production-rank-pill')).toBeInTheDocument());
+    expect(hoisted.getAgentSubmissions).toHaveBeenCalledWith('tatillife_south', 'me-viewer-uid');
+    expect(screen.getAllByText(`${expected.totalApps} apps`).length).toBeGreaterThan(0);
   });
 });

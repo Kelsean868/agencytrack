@@ -185,7 +185,15 @@ async function main() {
     await db.doc(`tenants/${TENANT_ID}/users/um-a`).set({
       role: 'unit_manager',
       unitId: 'um-a',
+      branchId: 'bm-a', // P2c: policy create pins the creator's user-doc branchId
       canConfirmSettlements: true,
+    });
+    // P2c: the policy create arm reads the CREATOR's user doc for branchId (and
+    // unitId when set) — agent-a is in unit um-a, branch bm-a (VALID_PAYLOAD's scope).
+    await db.doc(`tenants/${TENANT_ID}/users/agent-a`).set({
+      role: 'agent',
+      unitId: 'um-a',
+      branchId: 'bm-a',
     });
     // P2b (SEC-08): BM user doc — the rules read the BM's branch from here
     // (callerBranchId). Fixture policies carry branchId 'bm-a'.
