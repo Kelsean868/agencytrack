@@ -126,6 +126,31 @@ describe('GapAnalysisPanel', () => {
     expect(screen.getByText('Company Floor')).toBeInTheDocument();
   });
 
+  it('shows the company apps minimum beside the API minimum ("40 apps")', () => {
+    const withApps = { ...baseHierarchy, companyFloor: { api: 500000, apps: 40 } };
+    render(
+      <GapAnalysisPanel
+        hierarchy={withApps}
+        ytdTotals={baseYtd}
+        loading={false}
+        contractStartDate="2020-01-01"
+      />
+    );
+    expect(screen.getByText(/Company minimum \(5\+ yrs\)/)).toBeInTheDocument();
+    expect(screen.getByTestId('floor-row-value')).toHaveTextContent(/^TTD 500,000 · 40 apps$/);
+  });
+
+  it('shows the apps minimum in the no-commitment state too', () => {
+    const noPersonal = { ...baseHierarchy, personal: null, companyFloor: { api: 150000, apps: 40 } };
+    render(<GapAnalysisPanel hierarchy={noPersonal} ytdTotals={baseYtd} loading={false} />);
+    expect(screen.getByTestId('floor-row-value')).toHaveTextContent('40 apps');
+  });
+
+  it('omits the apps suffix when the hierarchy carries no apps minimum', () => {
+    render(<GapAnalysisPanel hierarchy={baseHierarchy} ytdTotals={baseYtd} loading={false} />);
+    expect(screen.getByTestId('floor-row-value')).not.toHaveTextContent(/apps/);
+  });
+
   it('labels the floor row with the tenure band when contractStartDate is known', () => {
     render(
       <GapAnalysisPanel

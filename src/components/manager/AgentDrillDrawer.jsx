@@ -145,7 +145,7 @@ function DrillGoals({ hierarchy, loading, firstName }) {
     { label: 'Personal commitment', value: hierarchy.personal?.api, note: `${firstName}'s own target`, empty: !(hierarchy.personal?.api > 0) },
     { label: 'Unit recommendation', value: hierarchy.unitTarget?.api, note: 'Set by the unit manager' },
     { label: 'Branch target', value: hierarchy.branchTarget?.api, note: 'Branch baseline' },
-    { label: 'Company floor', value: hierarchy.companyFloor?.api, note: 'Tenure minimum' },
+    { label: 'Company floor', value: hierarchy.companyFloor?.api, apps: hierarchy.companyFloor?.apps, note: 'Tenure minimum' },
   ];
   return (
     <div className="flex flex-col gap-2" data-testid="drill-goals-cascade">
@@ -160,6 +160,9 @@ function DrillGoals({ hierarchy, loading, firstName }) {
           </div>
           <p className="font-display text-base font-extrabold text-ink tabular-nums" data-testid={`drill-goal-${i}`}>
             {r.value > 0 ? formatCurrency(r.value) : 'Not set'}
+            {r.value > 0 && r.apps > 0 && (
+              <span className="text-sm font-semibold text-ink-muted"> · {Math.round(r.apps)} apps</span>
+            )}
           </p>
         </div>
       ))}

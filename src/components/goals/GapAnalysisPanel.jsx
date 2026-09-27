@@ -141,8 +141,10 @@ function OrgContextStrip({ hierarchy }) {
 }
 
 // ── FloorRow ──────────────────────────────────────────────────────────────────
-// Company Floor full-detail row with YTD progress bar.
-function FloorRow({ floorApi, ytdApi, contractStartDate }) {
+// Company Floor full-detail row with YTD progress bar. `floorApps` is the
+// company apps minimum (config/companyMinimums.annualApps, the same in every
+// tenure band), shown beside the API figure when known.
+function FloorRow({ floorApi, floorApps, ytdApi, contractStartDate }) {
   if (!floorApi) return null;
   const pct = Math.max(0, Math.min(100, Math.round((ytdApi / floorApi) * 100)));
   const gap = floorApi - ytdApi;
@@ -150,14 +152,15 @@ function FloorRow({ floorApi, ytdApi, contractStartDate }) {
   // unqualified "Company Floor" label when contractStartDate is missing (PR #984).
   const bandLabel = tenureBandLabel(contractStartDate);
   const floorLabel = bandLabel ? `Company minimum (${bandLabel})` : 'Company Floor';
+  const appsSuffix = floorApps > 0 ? ` · ${Math.round(floorApps)} apps` : '';
 
   return (
     <div className="rounded-lg border border-border/40 p-3 flex flex-col gap-2" data-testid="floor-row">
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
         <span className={`w-2 h-2 rounded-full inline-block shrink-0 ${LAYER_DOT.companyFloor}`} />
         <p className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide">{floorLabel}</p>
-        <p className="ml-auto text-[11px] font-semibold text-ink tabular-nums">
-          {formatCurrency(Math.round(floorApi))}
+        <p className="ml-auto shrink-0 text-[11px] font-semibold text-ink tabular-nums" data-testid="floor-row-value">
+          {formatCurrency(Math.round(floorApi))}{appsSuffix}
         </p>
       </div>
       <div className="h-1.5 rounded-full bg-border/50 overflow-hidden">
@@ -283,7 +286,7 @@ export default function GapAnalysisPanel({
         </div>
         {/* Cascade still shows the floor so the agent can see what they&apos;re aiming for */}
         {hierarchy.companyFloor?.api && (
-          <FloorRow floorApi={hierarchy.companyFloor.api} ytdApi={ytdApi} contractStartDate={contractStartDate} />
+          <FloorRow floorApi={hierarchy.companyFloor.api} floorApps={hierarchy.companyFloor.apps} ytdApi={ytdApi} contractStartDate={contractStartDate} />
         )}
       </div>
     );
@@ -304,7 +307,7 @@ export default function GapAnalysisPanel({
 
       <OrgContextStrip hierarchy={hierarchy} />
 
-      <FloorRow floorApi={hierarchy.companyFloor?.api} ytdApi={ytdApi} contractStartDate={contractStartDate} />
+      <FloorRow floorApi={hierarchy.companyFloor?.api} floorApps={hierarchy.companyFloor?.apps} ytdApi={ytdApi} contractStartDate={contractStartDate} />
 
       <GapNote personal={hierarchy.personal} companyFloor={hierarchy.companyFloor} />
     </div>
