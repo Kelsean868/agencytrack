@@ -62,8 +62,13 @@ function daysChip(award, today) {
 
 function eyebrow(award) {
   switch (award.kind) {
-    case 'campaign':
-      return `Campaign · ${dayMonth(award.start)} – ${dayMonth(award.end)}`;
+    case 'campaign': {
+      // D1: the campaign's short name leads the eyebrow ("Christmas campaign ·
+      // 1 Jul – 31 Dec"); the card's title is visually hidden for a campaign.
+      const short = String(award.campaign?.shortName ?? '').trim();
+      const name = short ? `${short} campaign` : (award.campaign?.name ?? 'Campaign');
+      return `${name} · ${dayMonth(award.start)} – ${dayMonth(award.end)}`;
+    }
     case 'month':
       return `Advisor of the month · ${MONTH_LONG[monthIndex(award.start)]}`;
     case 'quarter':
@@ -252,6 +257,72 @@ export function awardLensSummary(lens, { today }) {
     line1,
     line2,
     pace,
+    // D1 / D3 copy for the faint ring, shown only while something is pending.
+    pendingNote: hasRing && pending.api > 0 && !award.closed
+      ? `Plus TTD ${formatWhole(pending.api)} (${pluralApps(pending.apps)}) submitted — the faint ring. It counts when head office settles it.`
+      : null,
+    pendingNoteShort: hasRing && pending.api > 0 && !award.closed
+      ? `Faint ring = TTD ${formatWhole(pending.api)} submitted, counts when settled.`
+      : null,
+    rings: award.kind === 'campaign' && hasRing ? campaignRings(lens, pct) : null,
+  };
+}
+
+/**
+ * The API and Applications rings on the ledger's campaign card (D1 mobile /
+ * D3 desktop). `sub` is the mobile caption line, `subWide` the desktop
+ * strip's. Figures only — every number is the
+ * engine's (`deriveAwardLens` settled / pending / target).
+ */
+function campaignRings(lens, pct) {
+  const { settled, pending, target } = lens;
+  const appsTarget = target.apps;
+  const appsToGo = appsTarget != null ? Math.max(0, appsTarget - settled.apps) : null;
+  let appsSub = pluralApps(settled.apps);
+  if (appsTarget != null) appsSub = appsToGo > 0 ? `${appsToGo} to go` : 'Target met';
+  if (pending.apps > 0) appsSub += ` · +${pending.apps} sub.`;
+  return {
+    api: {
+      value: settled.api,
+      max: target.api,
+      pending: pending.api,
+      center: `${pct}%`,
+      sub: `${formatCompact(settled.api)} / ${formatCompact(target.api)}`,
+      subPending: pending.api > 0 ? `+${formatCompact(pending.api)} submitted` : null,
+      subWide: pending.api > 0
+        ? `${formatWhole(settled.api)} + ${formatWhole(pending.api)} submitted`
+        : `${formatWhole(settled.api)} of ${formatWhole(target.api)}`,
+      aria: `API TTD ${formatWhole(settled.api)} settled of ${formatWhole(target.api)}, ${pct} percent${pending.api > 0 ? `; TTD ${formatWhole(pending.api)} submitted, waiting to settle` : ''}`,
+    },
+    apps: {
+      value: settled.apps,
+      max: appsTarget ?? settled.apps,
+      pending: pending.apps,
+      center: appsTarget != null ? `${settled.apps}/${appsTarget}` : String(settled.apps),
+      sub: appsSub,
+      subPending: null,
+      subWide: `${settled.apps}${pending.apps > 0 ? ` + ${pending.apps} submitted` : ''}${appsTarget != null ? ` / ${appsTarget}` : ''}`,
+      aria: `${settled.apps} of ${appsTarget ?? settled.apps} applications${pending.apps > 0 ? `; ${pending.apps} submitted, waiting to settle` : ''}`,
+    },
+  };
+}
+
+/**
+ * persistencyRingLabels(reading) — the ledger campaign card's persistency ring
+ * strings, from a `campaignPersistencyReading` result (the same reading Home's
+ * compact campaign card shows).
+ */
+export function persistencyRingLabels(reading) {
+  if (!reading) return null;
+  const monthShort = reading.gateMonthKey ? MONTH_SHORT[monthIndex(`${reading.gateMonthKey}-01`)] : null;
+  const gateText = reading.threshold != null ? `Gate ${reading.threshold}%${monthShort ? ` · ${monthShort}` : ''}` : null;
+  const known = reading.value != null;
+  return {
+    center: known ? reading.label : '—',
+    sub: known ? (gateText ?? reading.label) : 'Not yet known',
+    aria: known
+      ? `Persistency ${reading.label}${reading.threshold != null ? `, gate ${reading.threshold} percent` : ''}${reading.below ? ', below the gate' : ''}`
+      : 'Persistency not yet known for this campaign period',
   };
 }
 

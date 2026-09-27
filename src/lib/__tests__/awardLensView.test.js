@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { awardLensSummary, tierDetailLine, daysBetween, dayMonth } from '../awardLensView';
+import { awardLensSummary, tierDetailLine, daysBetween, dayMonth, persistencyRingLabels } from '../awardLensView';
 import { deriveAwardLens } from '../ledgerProduction';
 import { awardLensPeriods } from '../../utils/awardsEngine';
 import { TODAY, CHRISTMAS, POLICIES } from './fixtures/awardLensFixtures';
@@ -16,7 +16,7 @@ describe('awardLensSummary — campaign card', () => {
   const s = summaryFor('campaign:xmas26');
 
   it('eyebrow, chip, title from the campaign', () => {
-    expect(s.eyebrow).toBe('Campaign · 1 Jul – 31 Dec');
+    expect(s.eyebrow).toBe('Christmas campaign · 1 Jul – 31 Dec');
     expect(s.chip).toBe('96 days left');
     expect(s.title).toBe('Christmas Campaign & Retreat');
   });
@@ -122,5 +122,49 @@ describe('helpers', () => {
   it('dates', () => {
     expect(daysBetween('2026-09-26', '2026-12-31')).toBe(96);
     expect(dayMonth('2026-07-01')).toBe('1 Jul');
+  });
+});
+
+describe('awardLensSummary — LX campaign card strings (D1 / D3)', () => {
+  const s = summaryFor('campaign:xmas26');
+
+  it('API + Applications ring labels from the engine figures', () => {
+    expect(s.rings.api.center).toBe('27%');
+    expect(s.rings.api.sub).toBe('73.9K / 275K');
+    expect(s.rings.api.subPending).toBe('+36K submitted');
+    expect(s.rings.api.subWide).toBe('73,946 + 36,000 submitted');
+    expect(s.rings.apps.center).toBe('3/35');
+    expect(s.rings.apps.sub).toBe('32 to go · +1 sub.');
+    expect(s.rings.apps.subWide).toBe('3 + 1 submitted / 35');
+  });
+
+  it('faint-ring notes (D1 mobile, D3 desktop)', () => {
+    expect(s.pendingNote).toBe('Plus TTD 36,000 (1 app) submitted — the faint ring. It counts when head office settles it.');
+    expect(s.pendingNoteShort).toBe('Faint ring = TTD 36,000 submitted, counts when settled.');
+  });
+
+  it('eyebrow falls back to the campaign name without a shortName', () => {
+    const periodsNoShort = awardLensPeriods({ today: TODAY, campaigns: [{ ...CHRISTMAS, shortName: undefined }] });
+    const a = periodsNoShort.current.find((x) => x.kind === 'campaign');
+    const sum = awardLensSummary(deriveAwardLens(POLICIES, a), { today: TODAY });
+    expect(sum.eyebrow).toBe('Christmas Campaign & Retreat · 1 Jul – 31 Dec');
+  });
+
+  it('ranked and MDRT awards carry no campaign rings', () => {
+    expect(summaryFor('month:2026-09').rings).toBeNull();
+    expect(summaryFor('mdrt:2026').rings).toBeNull();
+  });
+});
+
+describe('persistencyRingLabels', () => {
+  it('known reading → label + gate month', () => {
+    expect(persistencyRingLabels({ value: 86.6, label: '86.6%', below: true, gateMonthKey: '2026-12', threshold: 90 }))
+      .toEqual(expect.objectContaining({ center: '86.6%', sub: 'Gate 90% · Dec' }));
+  });
+  it('unknown → "—" and "Not yet known"; no reading → null', () => {
+    const l = persistencyRingLabels({ value: null, label: '—', below: false, gateMonthKey: null, threshold: 90 });
+    expect(l.center).toBe('—');
+    expect(l.sub).toBe('Not yet known');
+    expect(persistencyRingLabels(null)).toBeNull();
   });
 });

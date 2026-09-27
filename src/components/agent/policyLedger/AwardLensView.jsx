@@ -21,7 +21,7 @@ import { AlertCircle, Download } from 'lucide-react';
 import ProgressDonut, { RingLegend } from '../../dashboard/ProgressDonut';
 import TargetTierPicker from '../../campaigns/TargetTierPicker';
 import PolicyCard from './PolicyCard';
-import { formatWhole } from '../../../lib/awardLensView';
+import { formatWhole, persistencyRingLabels } from '../../../lib/awardLensView';
 
 // ── Selector ────────────────────────────────────────────────────────────────
 
@@ -137,16 +137,84 @@ function RankedBoxes({ summary }) {
   );
 }
 
-export function AwardSummaryCard({ lens, summary, tierPicker, onExportProof }) {
-  const campaignTiers = lens.award.kind === 'campaign' ? lens.award.campaign?.tiers : null;
+/**
+ * One ring cell of the campaign card. Mobile (D1): ring over caption + sub,
+ * three to a row. Desktop strip (D3): a small ring with its caption and sub to
+ * the right. The shrink victim is the sub text (v3 #8) — the ring never shrinks.
+ */
+function RingCell({ caption, ring, tone = 'teal', tick = null, subClass = 'text-ink-muted', testId }) {
+  return (
+    <div className="flex min-w-0 flex-col items-center gap-1 text-center lg:flex-1 lg:flex-row lg:gap-2.5 lg:text-left" data-testid={testId}>
+      <ProgressDonut
+        value={ring.value ?? 0}
+        max={ring.max ?? 100}
+        pending={ring.pending ?? null}
+        tone={tone}
+        tick={tick}
+        centerLabel={ring.center}
+        ariaLabel={ring.aria}
+        className="h-[84px] w-[84px] lg:h-14 lg:w-14"
+      />
+      <span className="flex min-w-0 flex-col items-center lg:items-start">
+        <span className="text-[13px] font-bold text-ink">{caption}</span>
+        <span className={`text-xs lg:hidden ${subClass}`}>{ring.sub}</span>
+        {ring.subPending && (
+          <span className="text-xs font-semibold text-ink lg:hidden" data-testid={`${testId}-pending`}>{ring.subPending}</span>
+        )}
+        <span className={`hidden min-w-0 text-xs font-semibold leading-snug lg:block ${subClass}`}>
+          {ring.subWide ?? ring.sub}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function CampaignRings({ rings, persistency }) {
+  const pers = persistencyRingLabels(persistency);
+  return (
+    <div
+      className={`grid gap-1.5 lg:flex lg:flex-nowrap lg:gap-4 ${pers ? 'grid-cols-3' : 'grid-cols-2'}`}
+      data-testid="award-lens-rings"
+    >
+      <RingCell caption="API" ring={rings.api} testId="award-lens-ring-api" />
+      <RingCell caption="Applications" ring={rings.apps} testId="award-lens-ring-apps" />
+      {pers && (
+        <RingCell
+          caption="Persistency"
+          ring={{ value: persistency.value ?? 0, max: 100, center: pers.center, sub: pers.sub, aria: pers.aria }}
+          tone={persistency.below ? 'warning' : 'teal'}
+          tick={persistency.threshold != null ? persistency.threshold / 100 : null}
+          subClass={persistency.below ? 'font-semibold text-warning-ink' : 'text-ink-muted'}
+          testId="award-lens-ring-persistency"
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * The award card. For a CAMPAIGN it follows D1 (mobile card: eyebrow + days
+ * chip, "My target tier", three rings, legend, pace box) and D3 (desktop
+ * strip: tier picker left, three rings middle, pace text right). Every other
+ * award keeps the D4 card (eyebrow, title, one ring or the two ranked boxes,
+ * rule lines), laid out in the same three columns at `lg`.
+ *
+ * `persistency` is a `campaignPersistencyReading` result, or null when this
+ * screen was given no persistency records — the ring is then hidden, never
+ * shown as a guessed or zero figure.
+ */
+export function AwardSummaryCard({ lens, summary, tierPicker, onExportProof, persistency = null }) {
+  const isCampaign = lens.award.kind === 'campaign';
+  const campaignTiers = isCampaign ? lens.award.campaign?.tiers : null;
+  const rings = isCampaign ? summary.rings : null;
   return (
     <section
       aria-label="Award summary"
-      className="flex flex-col gap-3 rounded-[20px] border border-border bg-card p-4 lg:flex-row lg:items-start lg:gap-6"
+      className="flex flex-col gap-3 rounded-[20px] border border-border bg-card p-4 lg:flex-row lg:items-center lg:gap-6 lg:rounded-[18px] lg:px-[18px] lg:py-3.5"
       data-testid="award-lens-card"
     >
       <div className="flex min-w-0 flex-col gap-3 lg:w-[360px] lg:shrink-0">
-        <div className="flex items-center justify-between gap-2">
+        <div className={`flex items-center justify-between gap-2 ${rings ? 'lg:hidden' : ''}`}>
           <span className="min-w-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-gold-ink">
             {summary.eyebrow}
           </span>
@@ -156,7 +224,12 @@ export function AwardSummaryCard({ lens, summary, tierPicker, onExportProof }) {
             </span>
           )}
         </div>
-        <h3 className="font-display text-[22px] font-bold leading-tight text-ink" data-testid="award-lens-title">{summary.title}</h3>
+        <h3
+          className={isCampaign ? 'sr-only' : 'font-display text-[22px] font-bold leading-tight text-ink'}
+          data-testid="award-lens-title"
+        >
+          {summary.title}
+        </h3>
         {tierPicker && Array.isArray(campaignTiers) && campaignTiers.length > 0 && (
           <TargetTierPicker
             tiers={campaignTiers}
@@ -168,15 +241,26 @@ export function AwardSummaryCard({ lens, summary, tierPicker, onExportProof }) {
       </div>
 
       <div className="flex min-w-0 flex-col gap-2 lg:flex-1">
-        {summary.hasRing
-          ? <RingFigures summary={summary} lens={lens} />
-          : <RankedBoxes summary={summary} />}
-        {summary.hasRing && <RingLegend show={lens.pending.api > 0} className="justify-start" />}
+        {rings && <CampaignRings rings={rings} persistency={persistency} />}
+        {!rings && summary.hasRing && <RingFigures summary={summary} lens={lens} />}
+        {!rings && !summary.hasRing && <RankedBoxes summary={summary} />}
+        {summary.hasRing && (
+          <RingLegend show={lens.pending.api > 0} className={rings ? 'lg:hidden' : 'justify-start'} />
+        )}
       </div>
 
       <div className="flex min-w-0 flex-col gap-2 lg:w-[260px] lg:shrink-0">
-        <div className="flex flex-col gap-1 rounded-xl bg-surface px-3 py-2.5" data-testid="award-lens-rule">
+        <div
+          className={`flex flex-col gap-1 rounded-xl bg-surface px-3 py-2.5 ${rings ? 'lg:bg-transparent lg:p-0' : ''}`}
+          data-testid="award-lens-rule"
+        >
           <span className="text-[13px] font-bold text-ink" data-testid="award-lens-line1">{summary.line1}</span>
+          {summary.pendingNote && (
+            <>
+              <span className="text-xs leading-snug text-ink-muted lg:hidden" data-testid="award-lens-pending-note">{summary.pendingNote}</span>
+              <span className="hidden text-xs leading-snug text-ink-muted lg:block">{summary.pendingNoteShort}</span>
+            </>
+          )}
           <span className="text-xs leading-snug text-ink-muted" data-testid="award-lens-line2">{summary.line2}</span>
         </div>
         {onExportProof && (

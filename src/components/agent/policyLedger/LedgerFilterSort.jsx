@@ -11,9 +11,11 @@
  * a count badge is crushed — counts are `flex: 0 0 auto` via `shrink-0`.
  */
 import React, { useId, useMemo, useState } from 'react';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { ArrowDownUp, SlidersHorizontal, X } from 'lucide-react';
 import {
   buildFilterSections,
+  builtInViews,
+  DEFAULT_SORT_KEY,
   emptyFilterState,
   hasActiveFilters,
   optionCounts,
@@ -22,6 +24,7 @@ import {
   toStoredDate,
 } from '../../../lib/ledgerFilters';
 import { useLedgerSavedViews } from '../../../hooks/useLedgerSavedViews';
+import { LedgerSearchInput } from './LedgerPageHeader';
 
 function chipBtnClass(on) {
   return `min-h-9 shrink-0 rounded-full border px-3 text-[13px] font-semibold transition-colors ${
@@ -205,6 +208,31 @@ function SortFields({ sortKey, onSort }) {
   );
 }
 
+function viewChipClass(on) {
+  // D1: pill chips, the selected one filled teal. D3 (lg): underline tabs.
+  return `min-h-9 shrink-0 whitespace-nowrap rounded-full border px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:-mb-px lg:h-10 lg:rounded-none lg:border-0 lg:border-b-2 lg:bg-transparent lg:px-3.5 lg:text-sm lg:dark:bg-transparent ${
+    on
+      ? 'border-primary bg-primary font-bold text-white dark:border-primary-dark dark:bg-primary-dark lg:border-primary lg:text-primary lg:dark:border-primary'
+      : 'border-border bg-card font-semibold text-ink hover:border-primary/40 lg:border-transparent lg:text-ink-muted lg:hover:text-ink'
+  }`;
+}
+
+/**
+ * LedgerFilterSort — the Policy Ledger's list layout below the page header
+ * (LX, mockups D1 / D3), in the mockups' order:
+ *
+ *   2. saved-view chips (D1) / view tabs (D3) — All policies · ★ campaign ·
+ *      user views · "+ Save view". Replaces the old status tab strip.
+ *   3–4. `summary` — the "Counts toward" selector and the award card, passed
+ *      in by the container so this component never derives an award figure.
+ *   5. mobile only: search · "Filter · n" · sort (D1). Desktop search lives in
+ *      the page header.
+ *   6. active filter chips + Clear.
+ *   7. the list: `children` beside the D3 filter rail at `lg`.
+ *
+ * `handoffChip` is an extra active filter handed in by another screen (Home's
+ * "Do next", the Persistency tab's lapsed link) — `{ label, onRemove }` or null.
+ */
 export default function LedgerFilterSort({
   rows,
   filters,
@@ -213,13 +241,16 @@ export default function LedgerFilterSort({
   onSortChange,
   hasCampaign,
   campaignLabel,
-  actions,
+  search = '',
+  onSearchChange = () => {},
+  summary = null,
+  handoffChip = null,
   children,
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const sections = useMemo(() => buildFilterSections(rows), [rows]);
   const { views, saveView, deleteView } = useLedgerSavedViews();
-  const [activeViewId, setActiveViewId] = useState('__all__');
+  const [activeViewId, setActiveViewId] = useState(handoffChip ? null : '__all__');
 
   function toggleTag(sectionKey, value) {
     onFiltersChange((prev) => {
@@ -232,6 +263,8 @@ export default function LedgerFilterSort({
 
   function clearAll() {
     onFiltersChange(() => emptyFilterState());
+    onSortChange(DEFAULT_SORT_KEY);
+    handoffChip?.onRemove();
     setActiveViewId('__all__');
   }
 
@@ -240,6 +273,7 @@ export default function LedgerFilterSort({
       ...emptyFilterState(),
       countsGroup: new Set(view.filters.countsGroup ?? []),
     }));
+    handoffChip?.onRemove();
     setActiveViewId(view.id);
   }
 
@@ -259,6 +293,7 @@ export default function LedgerFilterSort({
       apiMax: f.apiMax ?? null,
     }));
     if (view.sortKey) onSortChange(view.sortKey);
+    handoffChip?.onRemove();
     setActiveViewId(view.id);
   }
 
@@ -270,18 +305,11 @@ export default function LedgerFilterSort({
     setActiveViewId(id);
   }
 
-  const builtins = [{ id: '__all__', label: 'All policies', filters: emptyFilterState(), builtin: true }];
-  if (hasCampaign) {
-    builtins.push({
-      id: '__campaign__',
-      label: campaignLabel ? `★ ${campaignLabel}` : '★ Campaign',
-      filters: { ...emptyFilterState(), countsGroup: new Set(['counting', 'pending']) },
-      builtin: true,
-    });
-  }
+  const builtins = builtInViews({ hasCampaign, campaignLabel });
 
   // Chips describing every currently-active filter (for the "active" row).
   const activeChips = [];
+  if (handoffChip) activeChips.push({ key: 'handoff', label: handoffChip.label, onRemove: handoffChip.onRemove });
   for (const section of sections) {
     for (const v of filters[section.key] ?? []) {
       const opt = section.options.find((o) => o.value === v);
@@ -302,113 +330,132 @@ export default function LedgerFilterSort({
       onRemove: () => onFiltersChange((p) => ({ ...p, apiMin: null, apiMax: null })),
     });
   }
+  const filterCount = activeChips.length;
+  const sortLabel = (SORTS.find((x) => x.key === sortKey) ?? SORTS[0]).label;
+  const sortChanged = sortKey !== DEFAULT_SORT_KEY;
+  const showActiveRow = filterCount > 0 || sortChanged;
+
+  const filterFieldProps = {
+    sections,
+    rows,
+    state: filters,
+    onToggle: toggleTag,
+    onDateType: (v) => onFiltersChange((p) => ({ ...p, dateType: v })),
+    onDateFrom: (v) => onFiltersChange((p) => ({ ...p, dateFrom: v })),
+    onDateTo: (v) => onFiltersChange((p) => ({ ...p, dateTo: v })),
+    onApiMin: (v) => onFiltersChange((p) => ({ ...p, apiMin: v })),
+    onApiMax: (v) => onFiltersChange((p) => ({ ...p, apiMax: v })),
+  };
 
   return (
-    <div className="flex flex-col gap-2.5" data-testid="ledger-filter-sort">
-      {/* View chips row (+ Export, aligned the same row as D3's page-header
-          placement approximates at this component's scope) */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <nav aria-label="Saved views" className="flex flex-wrap items-center gap-1.5" data-testid="ledger-view-chips">
-          {[...builtins, ...views].map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              aria-current={activeViewId === v.id ? 'page' : undefined}
-              onClick={() => (v.builtin ? applyBuiltIn(v) : applySavedView(v))}
-              className={chipBtnClass(activeViewId === v.id)}
-              data-testid={`ledger-view-${v.id}`}
-            >
-              {v.label}
-            </button>
-          ))}
-          <button type="button" onClick={handleSaveView} className="min-h-9 shrink-0 rounded-full border border-dashed border-border px-3 text-[13px] font-semibold text-ink-muted hover:text-ink" data-testid="ledger-save-view">
-            + Save view
+    <div className="flex flex-col gap-3" data-testid="ledger-filter-sort">
+      {/* 2 — saved-view chips (D1) / view tabs (D3) */}
+      <nav
+        aria-label="Saved views"
+        className="flex flex-wrap items-center gap-1.5 lg:gap-x-1 lg:gap-y-0 lg:border-b lg:border-border"
+        data-testid="ledger-view-chips"
+      >
+        {[...builtins, ...views].map((v) => (
+          <button
+            key={v.id}
+            type="button"
+            aria-current={activeViewId === v.id ? 'page' : undefined}
+            onClick={() => (v.builtin ? applyBuiltIn(v) : applySavedView(v))}
+            className={viewChipClass(activeViewId === v.id)}
+            data-testid={`ledger-view-${v.id}`}
+          >
+            {v.label}
           </button>
-        </nav>
-        {actions}
+        ))}
+        <button
+          type="button"
+          onClick={handleSaveView}
+          className="min-h-9 shrink-0 whitespace-nowrap rounded-full border border-dashed border-border px-3 text-[13px] font-semibold text-ink-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:-mb-px lg:h-10 lg:rounded-none lg:border-0 lg:border-b-2 lg:border-transparent lg:px-3.5 lg:text-sm"
+          data-testid="ledger-save-view"
+        >
+          + Save view
+        </button>
+      </nav>
+
+      {/* 3–4 — "Counts toward" + the award card */}
+      {summary}
+
+      {/* 5 — mobile search · Filter · n · sort (D1) */}
+      <div className="flex items-center gap-2 lg:hidden" data-testid="ledger-mobile-toolbar">
+        <LedgerSearchInput value={search} onChange={onSearchChange} className="flex-1" />
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          className={`flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-bold text-ink transition-colors ${
+            filterCount > 0 ? 'border-primary bg-primary-tint' : 'border-border bg-card'
+          }`}
+          data-testid="ledger-filter-sheet-trigger"
+        >
+          <SlidersHorizontal size={16} aria-hidden="true" />
+          {filterCount > 0 ? `Filter · ${filterCount}` : 'Filter'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          aria-label={`Sort: ${sortLabel}`}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-ink"
+          data-testid="ledger-sort-trigger"
+        >
+          <ArrowDownUp size={18} aria-hidden="true" />
+        </button>
       </div>
 
-      {/* Active filter chips row */}
-      {activeChips.length > 0 && (
+      {/* 6 — active filter chips + Clear */}
+      {showActiveRow && (
         <div className="flex flex-wrap items-center gap-1.5" data-testid="ledger-active-chips">
+          <span className="text-xs text-ink-muted">Active:</span>
           {activeChips.map((c) => (
-            <span key={c.key} className="flex min-h-8 shrink-0 items-center gap-1 rounded-full border border-border bg-surface px-2.5 text-xs font-semibold text-ink">
+            <span key={c.key} className="flex min-h-8 shrink-0 items-center gap-0.5 rounded-full border border-border bg-card pl-2.5 pr-1 text-xs font-semibold text-ink">
               {c.label}
-              <button type="button" onClick={c.onRemove} aria-label={`Remove ${c.label} filter`} className="text-ink-muted hover:text-ink">
+              <button type="button" onClick={c.onRemove} aria-label={`Remove ${c.label} filter`} className="flex h-7 w-7 items-center justify-center rounded-full text-ink-muted hover:text-ink">
                 <X size={12} aria-hidden="true" />
               </button>
             </span>
           ))}
-          <button type="button" onClick={clearAll} className="text-xs font-bold text-primary" data-testid="ledger-clear-all">Clear</button>
+          {sortChanged && (
+            <span className="flex min-h-8 shrink-0 items-center rounded-full border border-border bg-card px-2.5 text-xs font-semibold text-ink" data-testid="ledger-active-sort">
+              Sort: {sortLabel.toLowerCase()}
+            </span>
+          )}
+          <button type="button" onClick={clearAll} className="min-h-8 px-1 text-xs font-bold text-primary" data-testid="ledger-clear-all">Clear</button>
         </div>
       )}
 
-      {/* Mobile trigger -> sheet */}
-      <div className="lg:hidden">
-        <button
-          type="button"
-          onClick={() => setSheetOpen(true)}
-          className="flex h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-ink"
-          data-testid="ledger-filter-sheet-trigger"
-        >
-          <SlidersHorizontal size={16} aria-hidden="true" /> Filter &amp; sort
-        </button>
-        {sheetOpen && (
-          <div className="fixed inset-0 z-30 flex items-end bg-ink/45" role="presentation">
-            <div role="dialog" aria-modal="true" aria-label="Filter and sort" className="flex max-h-[92vh] w-full flex-col rounded-t-3xl bg-card">
-              <div className="flex items-center gap-2 px-2 pb-2 pt-3">
-                <h2 className="flex-1 pl-3 text-xl font-bold text-ink">Filter &amp; sort</h2>
-                <button type="button" onClick={() => setSheetOpen(false)} aria-label="Close" className="flex h-11 w-11 items-center justify-center text-ink">
-                  <X size={20} aria-hidden="true" />
+      {/* Mobile filter & sort sheet (D2) — both toolbar buttons open it */}
+      {sheetOpen && (
+        <div className="fixed inset-0 z-30 flex items-end bg-ink/45 lg:hidden" role="presentation">
+          <div role="dialog" aria-modal="true" aria-label="Filter and sort" className="flex max-h-[92vh] w-full flex-col rounded-t-3xl bg-card">
+            <div className="flex items-center gap-2 px-2 pb-2 pt-3">
+              <h2 className="flex-1 pl-3 text-xl font-bold text-ink">Filter &amp; sort</h2>
+              <button type="button" onClick={() => setSheetOpen(false)} aria-label="Close" className="flex h-11 w-11 items-center justify-center text-ink">
+                <X size={20} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 pb-3">
+              <SortFields sortKey={sortKey} onSort={onSortChange} />
+              <div className="mt-1">
+                <FilterFields {...filterFieldProps} />
+              </div>
+            </div>
+            <div className="flex flex-col gap-2.5 border-t border-border px-5 py-4">
+              <button type="button" onClick={handleSaveView} className="min-h-8 text-left text-sm font-bold text-primary">Save as a view…</button>
+              <div className="flex gap-2.5">
+                <button type="button" onClick={clearAll} className="h-12 flex-none rounded-xl border border-border px-4 text-sm font-bold text-ink">Clear all</button>
+                <button type="button" onClick={() => setSheetOpen(false)} className="h-12 flex-1 rounded-xl bg-primary dark:bg-primary-dark text-sm font-bold text-white">
+                  Show {rows.length} polic{rows.length === 1 ? 'y' : 'ies'}
                 </button>
-              </div>
-              <div className="flex-1 overflow-y-auto px-5 pb-3">
-                <SortFields sortKey={sortKey} onSort={onSortChange} />
-                <div className="mt-1">
-                  <FilterFields
-                    sections={sections}
-                    rows={rows}
-                    state={filters}
-                    onToggle={toggleTag}
-                    onDateType={(v) => onFiltersChange((p) => ({ ...p, dateType: v }))}
-                    onDateFrom={(v) => onFiltersChange((p) => ({ ...p, dateFrom: v }))}
-                    onDateTo={(v) => onFiltersChange((p) => ({ ...p, dateTo: v }))}
-                    onApiMin={(v) => onFiltersChange((p) => ({ ...p, apiMin: v }))}
-                    onApiMax={(v) => onFiltersChange((p) => ({ ...p, apiMax: v }))}
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col gap-2.5 border-t border-border px-5 py-4">
-                <button type="button" onClick={handleSaveView} className="min-h-8 text-left text-sm font-bold text-primary">Save as a view…</button>
-                <div className="flex gap-2.5">
-                  <button type="button" onClick={clearAll} className="h-12 flex-none rounded-xl border border-border px-4 text-sm font-bold text-ink">Clear all</button>
-                  <button type="button" onClick={() => setSheetOpen(false)} className="h-12 flex-1 rounded-xl bg-primary dark:bg-primary-dark text-sm font-bold text-white">
-                    Show {rows.length} polic{rows.length === 1 ? 'y' : 'ies'}
-                  </button>
-                </div>
               </div>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Reachable escape hatch for deleting a saved view (no mockup control for
-          this — kept minimal: a small list under the chips, desktop + mobile). */}
-      {views.length > 0 && (
-        <details className="text-xs text-ink-muted">
-          <summary className="cursor-pointer select-none">Manage saved views</summary>
-          <ul className="mt-1 flex flex-col gap-1">
-            {views.map((v) => (
-              <li key={v.id} className="flex items-center justify-between gap-2">
-                <span>{v.label}</span>
-                <button type="button" onClick={() => deleteView(v.id)} className="font-semibold text-danger-ink" data-testid={`ledger-delete-view-${v.id}`}>Delete</button>
-              </li>
-            ))}
-          </ul>
-        </details>
+        </div>
       )}
 
-      {/* D3: the filter rail sits in a LEFT COLUMN beside the table, not
+      {/* 7 — D3: the filter rail sits in a LEFT COLUMN beside the table, not
           stacked above it — `children` (the table/groups/footer) renders in
           the same flex row as the rail so both share one layout, with the
           rail `hidden` (not present in the flow) below `lg`. */}
@@ -421,22 +468,29 @@ export default function LedgerFilterSort({
           <div className="mb-3">
             <SortFields sortKey={sortKey} onSort={onSortChange} />
           </div>
-          <FilterFields
-            sections={sections}
-            rows={rows}
-            state={filters}
-            onToggle={toggleTag}
-            onDateType={(v) => onFiltersChange((p) => ({ ...p, dateType: v }))}
-            onDateFrom={(v) => onFiltersChange((p) => ({ ...p, dateFrom: v }))}
-            onDateTo={(v) => onFiltersChange((p) => ({ ...p, dateTo: v }))}
-            onApiMin={(v) => onFiltersChange((p) => ({ ...p, apiMin: v }))}
-            onApiMax={(v) => onFiltersChange((p) => ({ ...p, apiMax: v }))}
-          />
+          <FilterFields {...filterFieldProps} />
         </aside>
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           {children}
         </div>
       </div>
+
+      {/* Reachable escape hatch for deleting a saved view (no mockup control
+          for this — kept minimal, below the list so it never sits between the
+          mockups' blocks). */}
+      {views.length > 0 && (
+        <details className="text-xs text-ink-muted">
+          <summary className="min-h-8 cursor-pointer select-none">Manage saved views</summary>
+          <ul className="mt-1 flex flex-col gap-1">
+            {views.map((v) => (
+              <li key={v.id} className="flex items-center justify-between gap-2">
+                <span>{v.label}</span>
+                <button type="button" onClick={() => deleteView(v.id)} className="font-semibold text-danger-ink" data-testid={`ledger-delete-view-${v.id}`}>Delete</button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }
