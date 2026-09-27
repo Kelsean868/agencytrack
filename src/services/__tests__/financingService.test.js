@@ -18,12 +18,29 @@ vi.mock('../../firebase', () => ({
   auth: hoisted.mockAuth,
 }));
 
+// Reads route by path: the agent user doc → mockGetUserDoc, everything else →
+// mockGetDoc. Shared by getDoc and a transaction's tx.get.
+const routeGet = (ref, ...rest) => (ref?.__ref?.includes('/users/')
+  ? hoisted.mockGetUserDoc(ref, ...rest)
+  : hoisted.mockGetDoc(ref, ...rest));
+
 vi.mock('firebase/firestore', () => ({
   doc: (db, path) => ({ __ref: path, id: path.split('/').pop() }),
-  getDoc: (ref, ...rest) => (ref?.__ref?.includes('/users/')
-    ? hoisted.mockGetUserDoc(ref, ...rest)
-    : hoisted.mockGetDoc(ref, ...rest)),
+  getDoc: (...args) => routeGet(...args),
   setDoc: (...args) => hoisted.mockSetDoc(...args),
+  // P2c (BUG-07): transactional paths. tx.get uses the same read routing; tx.set
+  // BUFFERS writes and forwards them to mockSetDoc only after the update function
+  // resolves — so a throw inside the transaction records no write, like Firestore.
+  runTransaction: async (db, fn) => {
+    const pending = [];
+    const tx = {
+      get: (ref) => routeGet(ref),
+      set: (ref, data, opts) => { pending.push(opts === undefined ? [ref, data] : [ref, data, opts]); return tx; },
+    };
+    const out = await fn(tx);
+    for (const call of pending) hoisted.mockSetDoc(...call);
+    return out;
+  },
   collection: (db, path) => ({ __col: path }),
   query: (col, ...clauses) => ({ __col: col, __clauses: clauses }),
   where: (field, op, value) => ({ __where: [field, op, value] }),
@@ -682,11 +699,10 @@ describe('getFinancingReconciliation', () => {
 });
 
 describe('reconcileFinancing', () => {
-  it('owing → writes record FIRST, then advances reconciling → post_financing_repayment', async () => {
+  it('owing → writes the record and advances reconciling → post_financing_repayment in one transaction', async () => {
     mockGetDoc
-      .mockResolvedValueOnce(termsSnap('reconciling')) // status precondition
-      .mockResolvedValueOnce(snap(null))               // recon doc (create)
-      .mockResolvedValueOnce(termsSnap('reconciling')); // transition fromStatus
+      .mockResolvedValueOnce(termsSnap('reconciling')) // status precondition (tx.get)
+      .mockResolvedValueOnce(snap(null));              // recon doc (create)
     const out = await reconcileFinancing(TENANT, AGENT, YEAR, RECON_OWING, ACTOR);
 
     expect(mockSetDoc).toHaveBeenCalledTimes(2);
@@ -711,8 +727,7 @@ describe('reconcileFinancing', () => {
   it('surplus → advances reconciling → cleared, pays surplus', async () => {
     mockGetDoc
       .mockResolvedValueOnce(termsSnap('reconciling'))
-      .mockResolvedValueOnce(snap(null))
-      .mockResolvedValueOnce(termsSnap('reconciling'));
+      .mockResolvedValueOnce(snap(null));
     await reconcileFinancing(TENANT, AGENT, YEAR, RECON_SURPLUS, ACTOR);
     const [, recPayload] = mockSetDoc.mock.calls[0];
     expect(recPayload).toMatchObject({ outcome: 'surplus', surplusPaid: 15100, garnishStarted: false });
@@ -723,8 +738,7 @@ describe('reconcileFinancing', () => {
   it('RE-DERIVES nextStatus from outcome — ignores a tampered nextStatus', async () => {
     mockGetDoc
       .mockResolvedValueOnce(termsSnap('reconciling'))
-      .mockResolvedValueOnce(snap(null))
-      .mockResolvedValueOnce(termsSnap('reconciling'));
+      .mockResolvedValueOnce(snap(null));
     // outcome owing but caller passes nextStatus 'cleared' → service still goes to repayment.
     await reconcileFinancing(TENANT, AGENT, YEAR, { ...RECON_OWING, nextStatus: 'cleared' }, ACTOR);
     const [, transPayload] = mockSetDoc.mock.calls[1];
@@ -734,8 +748,7 @@ describe('reconcileFinancing', () => {
   it('overwrite preserves first-create audit (merge), never re-stamps reconciledBy', async () => {
     mockGetDoc
       .mockResolvedValueOnce(termsSnap('reconciling'))
-      .mockResolvedValueOnce(snap({ ...RECON_OWING, agentId: AGENT, reconciledBy: 'orig', reconciledAt: '__ORIG__' }))
-      .mockResolvedValueOnce(termsSnap('reconciling'));
+      .mockResolvedValueOnce(snap({ ...RECON_OWING, agentId: AGENT, reconciledBy: 'orig', reconciledAt: '__ORIG__' }));
     await reconcileFinancing(TENANT, AGENT, YEAR, RECON_OWING, ACTOR);
     const [, recPayload, recOpts] = mockSetDoc.mock.calls[0];
     expect(recOpts).toEqual({ merge: true });
