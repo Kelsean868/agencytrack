@@ -225,4 +225,54 @@ describe('PolicyReconciliationPanel', () => {
     await waitFor(() => expect(screen.getByText(/Policy Reconciliation/)).toBeInTheDocument());
     expect(screen.queryByText(/you do not have access/i)).not.toBeInTheDocument();
   });
+
+  // ── P2c Part 5 — sales_manager sees Policy Reconciliation (ruling 27 Sep 2026) ──
+  describe('sales_manager', () => {
+    const SM_PROFILE = { uid: 'sm1', name: 'Sales Mgr', branchId: 'branch-a' };
+    const setupSM = (extra = {}) => hoisted.useAuth.mockReturnValue({
+      userProfile: { ...SM_PROFILE, ...extra }, role: 'sales_manager', tenantId: TENANT_ID,
+    });
+
+    it('SM sees the panel (no access-denied message) and loads tenant-wide', async () => {
+      setupSM();
+      hoisted.getPoliciesForManager.mockResolvedValue([makePolicy(), makePolicyB({ agentId: 'agent-b' })]);
+      render(<PolicyReconciliationPanel />);
+      await waitFor(() => expect(screen.getByTestId('recon-row-pol-1')).toBeInTheDocument());
+      expect(screen.queryByText(/you do not have access/i)).not.toBeInTheDocument();
+      expect(screen.getByTestId('recon-row-pol-2')).toBeInTheDocument();
+      // Scope passed through as SM — getPoliciesForManager adds no branch clause for it.
+      expect(hoisted.getPoliciesForManager).toHaveBeenCalledWith(TENANT_ID, { role: 'sales_manager', uid: 'sm1', branchId: 'branch-a' });
+    });
+
+    it('SM without canConfirmSettlements is VIEW-ONLY: no key-in, no Confirm, no Lapse tab', async () => {
+      setupSM();
+      hoisted.getPoliciesForManager.mockResolvedValue([makePolicy()]);
+      render(<PolicyReconciliationPanel />);
+      await waitFor(() => expect(screen.getByTestId('recon-row-pol-1')).toBeInTheDocument());
+      expect(screen.getByTestId('recon-view-only')).toBeInTheDocument();
+      expect(screen.getByTestId('ledger-api-pol-1')).toHaveTextContent(/TTD\s*5,000/);
+      expect(screen.queryByTestId('manager-api-input-pol-1')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('manager-note-input-pol-1')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('confirm-btn-pol-1')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tab-lapse')).not.toBeInTheDocument();
+    });
+
+    it('SM WITH canConfirmSettlements may confirm (rules Arm C already allows it) but still not lapse', async () => {
+      setupSM({ canConfirmSettlements: true });
+      hoisted.getPoliciesForManager.mockResolvedValue([makePolicy()]);
+      render(<PolicyReconciliationPanel />);
+      await waitFor(() => expect(screen.getByTestId('confirm-btn-pol-1')).toBeInTheDocument());
+      expect(screen.queryByTestId('recon-view-only')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tab-lapse')).not.toBeInTheDocument();
+    });
+
+    it('BM keeps the full confirm controls (no view-only notice)', async () => {
+      setupBM();
+      hoisted.getPoliciesForManager.mockResolvedValue([makePolicy()]);
+      render(<PolicyReconciliationPanel />);
+      await waitFor(() => expect(screen.getByTestId('confirm-btn-pol-1')).toBeInTheDocument());
+      expect(screen.queryByTestId('recon-view-only')).not.toBeInTheDocument();
+      expect(screen.getByTestId('tab-lapse')).toBeInTheDocument(); // the negative SM checks are not vacuous
+    });
+  });
 });

@@ -196,6 +196,15 @@ describe('ManagerDashboard mobile nav v2 — sales_manager (non-producing)', () 
     mountWithRole('sales_manager');
     expect(hoisted.captured.bottomNavItems.find((i) => i.id === 'planner')).toBeUndefined();
   });
+
+  // ── P2c Part 5: Policy Reconciliation nav item shows for sales_manager ───────
+  it('P2c: sees the Policy Reconciliation sidebar item, not disabled', () => {
+    mountWithRole('sales_manager');
+    const recon = hoisted.captured.navItems.find((i) => i.id === 'policy-reconciliation');
+    expect(recon).toBeDefined();
+    expect(recon.tabId).toBe('policy-reconciliation');
+    expect(recon.disabled).not.toBe(true);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
