@@ -271,8 +271,10 @@ async function main() {
     assertFails(updateDoc(pol(as('a1'), 'a1-ho-sub'), { dateSubmitted: '2026-01-02' })));
   await t('A7. RULING+: agent flips isSelfOrFamily on an imported application → DENY', () =>
     assertFails(updateDoc(pol(as('a1'), 'a1-ho-sub'), { isSelfOrFamily: true })));
+  // The fixture is already productLine 'life', so the write must CHANGE it — a
+  // same-value write has no affected keys and passes whatever the lock does.
   await t('A8. agent changes productLine on own SELF-DECLARED application → ALLOW (unchanged)', () =>
-    assertSucceeds(updateDoc(pol(as('a1'), 'a1-self-sub'), { productLine: 'life' })));
+    assertSucceeds(updateDoc(pol(as('a1'), 'a1-self-sub'), { productLine: 'ah' })));
   // ── persistency — enteredBy on agent writes ────────────────────────────────
   console.log('persistency — agent writes carry enteredBy == caller');
   await t('P1. agent creates own doc WITHOUT enteredBy → DENY', () =>
