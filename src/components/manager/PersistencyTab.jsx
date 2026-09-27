@@ -18,6 +18,7 @@ import {
 import { persistencyModelFor, LABELS } from '../../lib/persistency/model';
 import { getTenantUsers } from '../../services/managerService';
 import { escapeCsvField } from '../../lib/csvExport';
+import { ymdUTC } from '../../utils/dateInputs';
 import PersRealityBar from './PersRealityBar';
 import PersAtRiskBook from './PersAtRiskBook';
 import PersRoster from './PersRoster';
@@ -206,7 +207,7 @@ export default function PersistencyTab() {
       r ? Math.round(r.lapses) : '',
       r ? Math.round(r.reinstatements) : '',
       r?.enteredByRole ?? '',
-      r?.lastEditedAt?.toDate ? r.lastEditedAt.toDate().toISOString().slice(0, 10) : '',
+      r?.lastEditedAt?.toDate ? ymdUTC(r.lastEditedAt.toDate()) : '',
     ]);
     const csv = buildCSV([header, ...body]);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

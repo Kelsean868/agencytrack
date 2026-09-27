@@ -18,6 +18,7 @@ import {
 } from './periodModel';
 import { periodSettlement } from './settledTwinRun';
 import { groupByUnit, displayTitle, experienceYears } from './unitGrouping';
+import { ymdTT } from '../../utils/dateInputs';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const subId = (s) => s.agentId ?? s.userId ?? null;
@@ -175,7 +176,7 @@ export function assembleProductionSummary({
 // Manpower Goal reads the OPTIONAL branchGoals.manpower field if present (dispatcher
 // ruling); "—" when absent. The setter is Phase 2 — this is a read-only fold.
 function windowState(w, now) {
-  const nowYMD = now.toISOString().slice(0, 10);
+  const nowYMD = ymdTT(now);
   if (w.endYMD < nowYMD) return 'done';
   if (w.startYMD > nowYMD) return 'future';
   return 'progress';

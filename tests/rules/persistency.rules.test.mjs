@@ -57,7 +57,7 @@ import {
   assertFails,
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
-import { getDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, query, where, doc } from 'firebase/firestore';
+import { getDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, query, where, doc, serverTimestamp } from 'firebase/firestore';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'agencytrack-2a610';
 const TENANT_ID  = 'persistency-rules-test-tenant';
@@ -313,11 +313,14 @@ async function main() {
     ));
   });
 
-  await t('13. Agent creates own persistency doc (valid inputs) → ALLOW', async () => {
+  // P2d (BUG-05): an agent write carries enteredBy == the agent + enteredAt, as
+  // savePersistency writes it. The missing / wrong enteredBy denies are in
+  // tests/rules/p2d-numbers.rules.test.mjs (P1, P2, P4).
+  await t('13. Agent creates own persistency doc (valid inputs, enteredBy = self) → ALLOW', async () => {
     const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
     await assertSucceeds(setDoc(
       persistRef(db, `${AGENT1_ID}_2026_04`),
-      validDoc(AGENT1_ID, 'agent', AGENT1_ID),
+      { ...validDoc(AGENT1_ID, 'agent', AGENT1_ID), enteredBy: AGENT1_ID, enteredByRole: 'agent', enteredAt: serverTimestamp() },
     ));
   });
 

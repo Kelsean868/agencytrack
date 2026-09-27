@@ -31,15 +31,79 @@ export function parseDateOnlyTT(s) {
 }
 
 /**
+ * ymdTT — the TT calendar date ("YYYY-MM-DD") of an instant.
+ *
+ * Use this to date a real moment (now, a serverTimestamp) in Trinidad. Returns
+ * null for an unreadable value rather than a plausible wrong date.
+ * Uses en-CA locale which formats as YYYY-MM-DD natively.
+ *
+ * @param {Date|number} instant
+ * @returns {string|null}
+ */
+export function ymdTT(instant) {
+  const d = instant instanceof Date ? instant : new Date(instant);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Port_of_Spain' }).format(d);
+}
+
+/**
  * getTodayTT — today's date as "YYYY-MM-DD" in the TT timezone.
  *
+ * THE ONE client "today" (audit 2026-09-24 BUG-02; the brief calls it
+ * `todayTT()`). Trinidad is UTC−4 all year, no DST. Never build "today" from
+ * `new Date().toISOString().slice(0, 10)` or `getUTC*()` on the current time:
+ * between 20:00 and 24:00 TT those return TOMORROW. ESLint bans the raw
+ * `toISOString()` slice outside this file (eslint.config.js).
+ *
  * Safe to call at module load; always reflects the current TT calendar day.
- * Uses en-CA locale which formats as YYYY-MM-DD natively.
  *
  * @returns {string} — e.g. "2025-01-15"
  */
 export function getTodayTT() {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Port_of_Spain' }).format(new Date());
+  return ymdTT(new Date());
+}
+
+/**
+ * ymdUTC — "YYYY-MM-DD" of a Date in UTC.
+ *
+ * ONLY for date arithmetic on a Date that is already anchored to a calendar
+ * day (built from a "YYYY-MM-DD" string or `Date.UTC(...)`), or for a stored
+ * value whose UTC day is the contract (`toDateStr` in policyCampaignLens.js).
+ * It lives here, not inline, so the lint rule can ban the raw pattern
+ * everywhere else. Never pass it the current time — that is `getTodayTT()`.
+ *
+ * @param {Date} d
+ * @returns {string}
+ */
+export function ymdUTC(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * isAfterTodayTT — true when a "YYYY-MM-DD" date is later than today in TT.
+ * The "cannot be in the future" check for date inputs (contract start).
+ *
+ * @param {string} dateStr
+ * @param {string} [today] — defaults to getTodayTT()
+ * @returns {boolean}
+ */
+export function isAfterTodayTT(dateStr, today = getTodayTT()) {
+  return typeof dateStr === 'string' && dateStr.slice(0, 10) > today;
+}
+
+/**
+ * ttDateParts — { year, month (1–12), day } of an instant's TT calendar date,
+ * for "whole months / years since" arithmetic that must roll over at TT
+ * midnight, not UTC midnight. Null for an unreadable value.
+ *
+ * @param {Date|number} instant
+ * @returns {{year:number, month:number, day:number}|null}
+ */
+export function ttDateParts(instant) {
+  const ymd = ymdTT(instant);
+  if (!ymd) return null;
+  const [year, month, day] = ymd.split('-').map(Number);
+  return { year, month, day };
 }
 
 /**

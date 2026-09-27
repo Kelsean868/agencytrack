@@ -4,7 +4,8 @@ import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, computeAwa
 import { formatCurrency } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
 import { getOwnPolicies } from '../../services/policiesService';
-import { awardRowsFromLedger } from '../../lib/ledgerProduction';
+import { awardRowsFromLedger, deriveYearProduction, provenanceLine } from '../../lib/ledgerProduction';
+import { ttDateParts } from '../../utils/dateInputs';
 import { HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer } from './awardPrimitives';
 import CampaignScreenWithTier from '../campaigns/CampaignScreenWithTier';
 import { LedgerSourceChip } from './awardProvenance';
@@ -129,6 +130,15 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   }, [readsLedger, ledgerPolicies, confirmedSettlements]);
 
   const now = useMemo(() => currentDate ?? new Date(), [currentDate]);
+
+  // P2d (BUG-01 option B / BUG-04): the year's settled figure, from the SAME
+  // derivation as the Home hero, with where each status came from. Shown only
+  // when the awards read the ledger — the settlements path has no provenance.
+  const yearSettled = useMemo(() => {
+    if (!readsLedger || !Array.isArray(ledgerPolicies)) return null;
+    const year = ttDateParts(now)?.year ?? now.getFullYear();
+    return { year, ...deriveYearProduction(ledgerPolicies, { year }).settled };
+  }, [readsLedger, ledgerPolicies, now]);
 
   const computation = useMemo(() => {
     try {
@@ -273,6 +283,13 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
           {/* Names the source actually read (H2 item 3), not the flag. */}
           <LedgerSourceChip sourceLive={readsLedger} source={readsLedger ? 'POLICY LEDGER' : 'CONFIRMED SETTLEMENTS'} />
         </div>
+      )}
+
+      {yearSettled && yearSettled.count > 0 && (
+        <p className="text-sm text-ink-muted" data-testid="agent-awards-year-settled">
+          <span className="font-semibold text-ink">Settled {yearSettled.year}: {formatCurrency(Math.round(yearSettled.api))}</span>
+          {' · '}{provenanceLine(yearSettled)}
+        </p>
       )}
 
       {/* Partial-failure notice — policy ledger read failed but the panel

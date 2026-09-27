@@ -2,6 +2,7 @@ import { createElement } from 'react';
 import { extractFields, extractTotalProductionCredit } from '../utils/extractFields';
 import { aggregatePersistency } from '../lib/persistency/calculations';
 import { escapeCsvField } from '../lib/csvExport';
+import { getTodayTT } from '../utils/dateInputs';
 // NOTE: @react-pdf/renderer and AgentReportDocument are dynamically imported
 // inside generateAgentPDF (EFF-011) so the ~heavy PDF engine stays out of the
 // entry chunk and loads only on first report export.
@@ -107,7 +108,7 @@ async function generateManagerPDF(scope, input) {
   const blob = await pdf(doc).toBlob();
   const url  = URL.createObjectURL(blob);
 
-  const today   = new Date().toISOString().slice(0, 10);
+  const today   = getTodayTT();
   const safeOrg = String(input?.orgLabel ?? scope).replace(/[^\w-]+/g, '_').replace(/_+/g, '_');
   const kind    = scope === 'unit' ? 'Unit' : 'Branch';
 
@@ -136,7 +137,7 @@ export function generateUnitPDF(input) {
 // persistencyMap: object keyed by agentId → array of persistency docs for the year
 export function exportBranchCSV(users, submissions, persistencyMap) {
   const year = new Date().getFullYear();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getTodayTT();
 
   const headers = [
     'Agent Name',

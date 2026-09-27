@@ -10,6 +10,9 @@
  * No firebase/firestore imports. No side effects. Pure functions only.
  */
 
+// `.js` extension on purpose: Node imports this file directly (h3-parity-test.mjs).
+import { ymdUTC } from '../utils/dateInputs.js';
+
 /**
  * settlementShapeFromPolicies — derives a confirmedData-compatible array from
  * settled policy docs for the awards engine.
@@ -36,7 +39,7 @@ export function settlementShapeFromPolicies(policies) {
     const d = dateIssued.toDate ? dateIssued.toDate() : new Date(dateIssued);
     // Guard invalid dates — NaN.toISOString() throws RangeError.
     if (isNaN(d.getTime())) continue;
-    const periodKey = d.toISOString().substring(0, 7);
+    const periodKey = ymdUTC(d).slice(0, 7);
     if (!map[periodKey]) map[periodKey] = { periodKey, settledAPI: 0, settledApps: 0, persistency: 0 };
     map[periodKey].settledAPI += parseFloat(policy.settledAPI) || 0;
     map[periodKey].settledApps += 1;

@@ -490,7 +490,15 @@ export async function savePersistency(tenantId, monthKey, agentUid, inputs, role
   // Deliberately isE3Doc, NOT isModelCompleteDoc: this asks "was there a real
   // prior entry whose audit fields must be preserved?" A doc that is E3-shaped
   // but model-incomplete still has an enteredAt/By worth carrying forward.
-  if (existing.exists() && isE3Doc(existing.data())) {
+  //
+  // P2d (BUG-05): an AGENT write must carry enteredBy == the agent
+  // (firestore.rules persistency agent arm). When the stored figures were
+  // entered by someone else, the agent's save replaces them, so the agent is now
+  // who entered the figures the doc holds — re-stamp instead of preserving.
+  const agentReplacesOther = role === 'agent'
+    && existing.exists() && isE3Doc(existing.data())
+    && existing.data().enteredBy !== writerUid;
+  if (existing.exists() && isE3Doc(existing.data()) && !agentReplacesOther) {
     const prior = existing.data();
     await setDoc(docRef, {
       ...sharedFields,
@@ -499,7 +507,8 @@ export async function savePersistency(tenantId, monthKey, agentUid, inputs, role
       enteredByRole: prior.enteredByRole,
     });
   } else {
-    // First E3 write (covers both "no doc" and "legacy non-E3 doc here.")
+    // First E3 write (covers both "no doc" and "legacy non-E3 doc here."), or
+    // an agent replacing figures someone else entered (above).
     await setDoc(docRef, {
       ...sharedFields,
       enteredAt:     auditNow,

@@ -126,14 +126,10 @@ export function heroGoal(personalAnnualAPI) {
 /**
  * The provenance line (Kyron, 26 Sep 2026 — BUG-01 option B): agent-declared
  * settled policies keep counting; the hero says where each status came from.
- * Null when nothing is settled — there is nothing to attribute.
+ * P2d: one shared helper for every surface (src/lib/settledProvenance.js);
+ * re-exported here so the hero's import is unchanged.
  */
-export function provenanceLine(settled) {
-  if (!settled || !(settled.count > 0)) return null;
-  const ho = Number(settled.fromHeadOffice) || 0;
-  const self = Number(settled.selfConfirmed) || 0;
-  return `${ho} from head office · ${self} self-confirmed`;
-}
+export { provenanceLine } from '../../../lib/settledProvenance';
 
 /** Whole TTD, rounded UP so the stated amount is always enough: 8154.95 → "TTD 8,155". */
 function wholeTTDUp(n) {

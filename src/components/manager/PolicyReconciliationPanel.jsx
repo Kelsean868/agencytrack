@@ -224,6 +224,10 @@ export default function PolicyReconciliationPanel() {
           )}
         </div>
         <div className="flex-1" />
+        {/* P2d: a view-only viewer (SM without canConfirmSettlements) gets no
+            Confirm control at all — it used to sit beside "View only". Lapse is
+            BM+ only, so a viewer who cannot confirm has no tab to pick. */}
+        {canConfirm && (
         <div className="flex gap-1 p-1 bg-surface-muted border border-border rounded-lg" role="tablist">
           <button
             type="button" role="tab" aria-selected={activeTab === 'confirm'}
@@ -245,6 +249,7 @@ export default function PolicyReconciliationPanel() {
             </button>
           )}
         </div>
+        )}
       </div>
 
       {/* Month selector */}

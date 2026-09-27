@@ -560,6 +560,45 @@ service cloud.firestore {
           && request.resource.data.managerSettledAPI > 0
           && request.resource.data.hasDiscrepancy is bool;
 
+        // Arm F — agent SELF-CONFIRM of an own settled policy (P2d; Kyron,
+        // 26 Sep 2026 — BUG-01 option B: agents own confirming settled status
+        // and policy details; the branch manager has no assistant).
+        // OR'd with the other arms by Firestore. Owner only (agent or producing
+        // manager), on a policy that is settled before AND after, and not yet
+        // confirmed by a manager (Arm C's confirmedByUid absent — a manager's
+        // figure is never overwritten by a self-confirm).
+        //
+        // Touches ONLY the four settled-detail money fields plus its own stamps.
+        // It can never change status, dateIssued (which decides the award
+        // period) or statusSource (which decides "from head office" vs
+        // "self-confirmed"), so the provenance bucket cannot be moved.
+        // The stamps are selfConfirmed* — NOT Arm C's confirmedAt, which
+        // isConfirmed() reads as MANAGER confirmation.
+        // Value guards are Arm B's settle edge.
+        allow update: if isSignedIn()
+          && (isAgent() || isProducingManager())
+          && getTenantId() == tenantId
+          && resource.data.agentId == request.auth.uid
+          && resource.data.status == 'settled'
+          && request.resource.data.status == 'settled'
+          && resource.data.get('confirmedByUid', null) == null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+               'settledAPI', 'issuedCoverage', 'initialPremium', 'earnedCommission',
+               'selfConfirmedBy', 'selfConfirmedAt', 'enteredBy', 'enteredAt'
+             ])
+          && request.resource.data.selfConfirmedBy == request.auth.uid
+          && request.resource.data.selfConfirmedAt == request.time
+          && request.resource.data.enteredBy == request.auth.uid
+          && request.resource.data.enteredAt == request.time
+          && request.resource.data.settledAPI is number
+          && request.resource.data.settledAPI > 0
+          && request.resource.data.issuedCoverage is number
+          && request.resource.data.issuedCoverage > 0
+          && request.resource.data.initialPremium is number
+          && request.resource.data.initialPremium > 0
+          && request.resource.data.earnedCommission is number
+          && request.resource.data.earnedCommission >= 0;
+
         // Arm E — CRO delivery confirmation (Tier-3 3.1, back-office role).
         // The cro role marks a SETTLED policy delivered — touching ONLY the
         // three delivery fields. `policyDeliveryDate` is the H1-deferred
@@ -627,22 +666,29 @@ service cloud.firestore {
                  'fromStatus', 'toStatus', 'changedFields', 'actorUid',
                  'actorRole', 'at', 'agentId'
                ])
-            && isLegalAgentTransition(
-                 request.resource.data.fromStatus,
-                 request.resource.data.toStatus
-               );
+            && (
+              isLegalAgentTransition(
+                request.resource.data.fromStatus,
+                request.resource.data.toStatus
+              )
+              // P2d: the self-confirm event (policies Arm F) — a field change on
+              // an own policy that is settled, like the manager confirm event.
+              || (request.resource.data.fromStatus == 'settled'
+                  && request.resource.data.toStatus == 'settled'
+                  && get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.status == 'settled')
+            );
 
           // Manager arm: manager writes a confirmation event (H2a).
           // fromStatus == toStatus == 'settled' is explicitly allowed (confirm
           // is a field-change event, not a lifecycle transition).
-          // In-scope check mirrors Arm C: UM restricted to own unit via parent policy;
-          // BM/admin tenant-scoped via canManage.
+          // P2d (P2c leftover): scoped by the PARENT policy, exactly like reads —
+          // BM own branch, UM own unit, SM/TA/PA tenant (managerDocInScope).
+          // Was: BM / TA / PA / flagged SM any policy in the tenant; UM own unit.
           allow create: if canManage(tenantId)
             && (getRole() in ['platform_admin', 'tenant_admin']
                 || getRole() == 'branch_manager'
                 || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true)
-            && (getRole() != 'unit_manager'
-                || get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.unitId == request.auth.uid)
+            && parentPolicyInScope()
             && request.resource.data.actorUid == request.auth.uid
             // H2b: agentId in history doc must match the parent policy's agentId
             // (prevents managers from writing history docs with a forged agentId).
@@ -728,11 +774,16 @@ service cloud.firestore {
           || (getRole() == 'unit_manager'   && existingAgentUnitId()   == callerUnitId(tenantId))
         );
 
+        // P2d (BUG-05 — intended: agents enter their own persistency inputs,
+        // Kyron 26 Sep 2026). An agent write must say the agent entered the
+        // figures it holds: enteredBy == caller, enteredAt a timestamp.
         allow create, update: if isSignedIn() && getTenantId() == tenantId
           && validE3InputsNonNegative()
           && (
             getRole() in ['platform_admin', 'tenant_admin']
-            || (isAgent() && request.resource.data.agentId == request.auth.uid)
+            || (isAgent() && request.resource.data.agentId == request.auth.uid
+                && request.resource.data.get('enteredBy', null) == request.auth.uid
+                && request.resource.data.get('enteredAt', null) is timestamp)
             || (getRole() == 'branch_manager' && newDocAgentBranchId() == callerBranchId())
           );
 

@@ -1,5 +1,6 @@
 import { extractFields } from './extractFields';
 import { aggregatePersistency } from '../lib/persistency/calculations';
+import { getTodayTT } from './dateInputs';
 
 const METRIC_LABELS = {
   apiSold:          'API',
@@ -590,7 +591,6 @@ export function computeCampaignProgress(campaign, submissions, agentId) {
 export function getDaysRemaining(endDate) {
   if (!endDate) return null;
   const end = new Date(endDate + 'T12:00:00Z');
-  const today = new Date();
-  today.setUTCHours(12, 0, 0, 0);
+  const today = new Date(`${getTodayTT()}T12:00:00Z`);
   return Math.round((end.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
 }

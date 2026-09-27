@@ -511,6 +511,9 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
       // PipelineStrip.jsx still exists, but since LX (ledger-layout-and-l3)
       // no screen renders it; if one ever does, it must pass an unfiltered list.
       'src/components/agent/policyLedger/PipelineStrip.jsx :: policies',
+      // P2d (BUG-01/BUG-04): the Awards tab's "Settled {year}" line. `ledgerPolicies`
+      // is the raw getOwnPolicies list (no excludeImported — see the call site).
+      'src/components/awards/AgentAwardsPanel.jsx :: ledgerPolicies',
       'src/components/dashboard/AgentDashboard.jsx :: policiesAll',
       'src/hooks/useMyProduction.js :: policiesAll',
     ]);

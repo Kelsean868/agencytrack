@@ -290,6 +290,70 @@ export async function transitionPolicyStatus(tenantId, agentProfile, policyId, c
 }
 
 /**
+ * The four settled-detail fields an agent confirms (P2d). Same fields, same
+ * guards as the `→ settled` transition above; firestore.rules Arm F.
+ */
+export const SELF_CONFIRM_FIELDS = Object.freeze([
+  'settledAPI', 'issuedCoverage', 'initialPremium', 'earnedCommission',
+]);
+
+/**
+ * selfConfirmPolicy — the agent confirms their OWN settled policy's details
+ * (P2d; Kyron, 26 Sep 2026 — BUG-01 option B). Atomic writeBatch: the four
+ * detail fields + provenance stamps on the policy, and a settled → settled
+ * history event.
+ *
+ * Never touches status, dateIssued or statusSource, so a head-office policy stays
+ * "from head office" and the award period cannot move. Stamps are
+ * `selfConfirmedBy/At` + `enteredBy/At` — NOT `confirmedAt`, which is the
+ * manager's (Arm C) and which `isConfirmed()` reads.
+ *
+ * @param {string} tenantId
+ * @param {object} agentProfile — { uid, role, unitId }
+ * @param {string} policyId
+ * @param {object} policy       — current policy doc ({ agentId, status, confirmedByUid, ... })
+ * @param {object} fields       — raw form values for SELF_CONFIRM_FIELDS
+ */
+export async function selfConfirmPolicy(tenantId, agentProfile, policyId, policy, fields) {
+  if (policy?.agentId !== agentProfile?.uid) throw new Error('You can only confirm your own policies');
+  if (policy?.status !== 'settled') throw new Error('Only a settled policy can be confirmed');
+  if (policy?.confirmedByUid) throw new Error('A manager has already confirmed this policy');
+
+  const settledAPI       = parseFloat(fields?.settledAPI);
+  const issuedCoverage   = parseFloat(fields?.issuedCoverage);
+  const initialPremium   = parseFloat(fields?.initialPremium);
+  const earnedCommission = parseFloat(fields?.earnedCommission);
+  if (!(settledAPI       > 0))  throw new Error('settledAPI must be positive');
+  if (!(issuedCoverage   > 0))  throw new Error('issuedCoverage must be positive');
+  if (!(initialPremium   > 0))  throw new Error('initialPremium must be positive');
+  if (!(earnedCommission >= 0)) throw new Error('earnedCommission must be non-negative');
+
+  const details = { settledAPI, issuedCoverage, initialPremium, earnedCommission };
+  const policyRef  = doc(db, 'tenants', tenantId, 'policies', policyId);
+  const historyRef = doc(collection(db, 'tenants', tenantId, 'policies', policyId, 'history'));
+
+  const batch = writeBatch(db);
+  batch.update(policyRef, {
+    ...details,
+    selfConfirmedBy: agentProfile.uid,
+    selfConfirmedAt: serverTimestamp(),
+    enteredBy:       agentProfile.uid,
+    enteredAt:       serverTimestamp(),
+  });
+  batch.set(historyRef, {
+    fromStatus:    'settled',
+    toStatus:      'settled',
+    changedFields: { ...details, selfConfirmedBy: agentProfile.uid },
+    actorUid:      agentProfile.uid,
+    actorRole:     agentProfile.role ?? 'agent',
+    agentId:       agentProfile.uid,
+    unitId:        agentProfile.unitId ?? null,
+    at:            serverTimestamp(),
+  });
+  await batch.commit();
+}
+
+/**
  * confirmPolicy — manager confirmation of a settled policy (H2a).
  * Atomic writeBatch: updates policy confirmation fields + creates a manager
  * history doc + (only on discrepancy) creates an agent notification.

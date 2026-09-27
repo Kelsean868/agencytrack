@@ -770,9 +770,12 @@ async function main() {
     )
   );
 
-  // Agent tries to write a manager-arm history shape (fromStatus==toStatus) → DENY
-  // The agent arm requires isLegalAgentTransition which rejects fromStatus==toStatus.
-  await run('History manager arm DENY: agent cannot write fromStatus==toStatus history', false, () =>
+  // P2d (BUG-01 option B): an agent writing settled → settled on their OWN
+  // settled policy is now the self-confirm event (policies Arm F) → ALLOW.
+  // Was DENY while the agent arm required isLegalAgentTransition only. The
+  // deny cases (another agent's policy; a policy that is not settled) are in
+  // tests/rules/p2d-numbers.rules.test.mjs (H2, H3).
+  await run('History agent arm ALLOW (P2d): agent writes settled→settled self-confirm event on own settled policy', true, () =>
     addDoc(
       collection(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-settled', 'history'),
       { ...MANAGER_HISTORY, actorUid: 'agent-a', actorRole: 'agent', agentId: 'agent-a' }

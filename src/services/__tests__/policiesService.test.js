@@ -38,7 +38,7 @@ vi.mock('firebase/firestore', () => ({
   updateDoc:       (...args) => hoisted.mockUpdateDoc(...args),
 }));
 
-import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory, confirmPolicy, lapsePolicy, settlementShapeFromPolicies, getDeliverablePolicies, recordPolicyDelivery, getPoliciesForManager } from '../policiesService';
+import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory, confirmPolicy, lapsePolicy, settlementShapeFromPolicies, getDeliverablePolicies, recordPolicyDelivery, getPoliciesForManager, selfConfirmPolicy } from '../policiesService';
 import { getTodayTT } from '../../utils/dateInputs';
 
 const mockProfile = {
@@ -912,5 +912,39 @@ describe('P2b — excludeImported on the aggregating readers', () => {
     hoisted.mockGetDocs.mockResolvedValueOnce({ docs: [IMPORTED, ORGANIC] });
     const res = await getOwnPolicies('t1', 'uid-1');
     expect(res.map((d) => d.policyNumber)).toEqual(['IMP1', 'ORG1']);
+  });
+});
+
+// ── P2d (BUG-01 option B) — selfConfirmPolicy ─────────────────────────────────
+describe('selfConfirmPolicy', () => {
+  const agent = { uid: 'agent-1', role: 'agent', unitId: 'um-1' };
+  const policy = { agentId: 'agent-1', status: 'settled', statusSource: 'oipa_import' };
+  const fields = { settledAPI: '5200', issuedCoverage: '250000', initialPremium: '433.33', earnedCommission: '1300' };
+
+  beforeEach(() => { vi.clearAllMocks(); hoisted.mockBatchCommit.mockResolvedValue(undefined); });
+
+  it('writes ONLY the four details + self-confirm stamps, never status / dateIssued / statusSource / confirmedAt', async () => {
+    await selfConfirmPolicy('t1', agent, 'p1', policy, fields);
+    const update = hoisted.mockBatchUpdate.mock.calls[0][1];
+    expect(Object.keys(update).sort()).toEqual([
+      'earnedCommission', 'enteredAt', 'enteredBy', 'initialPremium', 'issuedCoverage',
+      'selfConfirmedAt', 'selfConfirmedBy', 'settledAPI',
+    ]);
+    expect(update).toMatchObject({ settledAPI: 5200, issuedCoverage: 250000, initialPremium: 433.33, earnedCommission: 1300, selfConfirmedBy: 'agent-1', enteredBy: 'agent-1' });
+    const history = hoisted.mockBatchSet.mock.calls[0][1];
+    expect(history).toMatchObject({ fromStatus: 'settled', toStatus: 'settled', actorUid: 'agent-1', agentId: 'agent-1' });
+    expect(hoisted.mockBatchCommit).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses another agent\'s policy, a non-settled policy, and a manager-confirmed one', async () => {
+    await expect(selfConfirmPolicy('t1', agent, 'p1', { ...policy, agentId: 'agent-2' }, fields)).rejects.toThrow(/own policies/);
+    await expect(selfConfirmPolicy('t1', agent, 'p1', { ...policy, status: 'submitted' }, fields)).rejects.toThrow(/settled/);
+    await expect(selfConfirmPolicy('t1', agent, 'p1', { ...policy, confirmedByUid: 'bm-1' }, fields)).rejects.toThrow(/manager/);
+    expect(hoisted.mockBatchCommit).not.toHaveBeenCalled();
+  });
+
+  it('refuses non-positive figures (same guards as the settle transition)', async () => {
+    await expect(selfConfirmPolicy('t1', agent, 'p1', policy, { ...fields, settledAPI: '0' })).rejects.toThrow(/settledAPI/);
+    await expect(selfConfirmPolicy('t1', agent, 'p1', policy, { ...fields, earnedCommission: '-1' })).rejects.toThrow(/earnedCommission/);
   });
 });

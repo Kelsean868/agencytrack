@@ -255,3 +255,42 @@ describe('PolicyDrillDrawer — "Counts toward" chips (L3)', () => {
     await waitFor(() => expect(hoisted.getPolicyHistory).toHaveBeenCalled());
   });
 });
+
+// ── P2d (BUG-01 option B) — the agent self-confirms their own settled policy ──
+describe('PolicyDrillDrawer — self-confirm (P2d)', () => {
+  const settled = (over = {}) => makePolicy({
+    status: 'settled', statusSource: 'oipa_import', settledAPI: null, proposedAPI: 5000, ...over,
+  });
+
+  it('own settled, not manager-confirmed: offers "Confirm details", prefilled, and submits the four fields', async () => {
+    const onSelfConfirm = vi.fn();
+    render(<PolicyDrillDrawer policy={settled({ initialPremium: 400 })} onClose={() => {}} onTransition={() => {}} onSelfConfirm={onSelfConfirm} />);
+    await waitFor(() => expect(hoisted.getPolicyHistory).toHaveBeenCalled());
+    const box = screen.getByTestId('drawer-self-confirm');
+    fireEvent.change(box.querySelector('input[name="issuedCoverage"]'), { target: { value: '250000' } });
+    fireEvent.change(box.querySelector('input[name="earnedCommission"]'), { target: { value: '1250' } });
+    fireEvent.click(screen.getByTestId('drawer-self-confirm-submit'));
+    expect(onSelfConfirm).toHaveBeenCalledWith({
+      settledAPI: '5000', issuedCoverage: '250000', initialPremium: '400', earnedCommission: '1250',
+    });
+  });
+
+  it('a manager-confirmed policy offers no self-confirm (the manager figure is final)', async () => {
+    render(<PolicyDrillDrawer policy={settled({ confirmedByUid: 'bm-1', confirmedAt: new Date(), confirmedByManager: 'BM' })} onClose={() => {}} onTransition={() => {}} onSelfConfirm={vi.fn()} />);
+    await waitFor(() => expect(hoisted.getPolicyHistory).toHaveBeenCalled());
+    expect(screen.queryByTestId('drawer-self-confirm')).not.toBeInTheDocument();
+  });
+
+  it('a policy that is not settled offers no self-confirm', async () => {
+    render(<PolicyDrillDrawer policy={makePolicy()} onClose={() => {}} onTransition={() => {}} onSelfConfirm={vi.fn()} />);
+    await waitFor(() => expect(hoisted.getPolicyHistory).toHaveBeenCalled());
+    expect(screen.queryByTestId('drawer-self-confirm')).not.toBeInTheDocument();
+  });
+
+  it('a self-confirmed policy says so, and never as the gold manager card', async () => {
+    render(<PolicyDrillDrawer policy={settled({ selfConfirmedAt: new Date('2026-09-20T12:00:00Z') })} onClose={() => {}} onTransition={() => {}} onSelfConfirm={vi.fn()} />);
+    await waitFor(() => expect(hoisted.getPolicyHistory).toHaveBeenCalled());
+    expect(screen.getByTestId('drawer-self-confirmed')).toHaveTextContent(/Self-confirmed/);
+    expect(screen.queryByTestId('drawer-confirmation')).not.toBeInTheDocument();
+  });
+});

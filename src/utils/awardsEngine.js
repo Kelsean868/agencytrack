@@ -2,6 +2,7 @@
 import { extractFields, extractTotalProductionCredit } from './extractFields';
 import { DEFAULT_RULESET_2026 } from '../config/awardsRuleset/2026';
 import { MDRT_THRESHOLDS_2026, mdrtAwardThresholds } from '../config/mdrtThresholds/2026';
+import { ymdTT } from './dateInputs';
 
 const p = (v) => parseFloat(v) || 0;
 
@@ -630,7 +631,7 @@ export function computeAwardPace(award, weeksElapsed, currentDate) {
     weeksToQualify = Math.max(1, Math.ceil(gap / avgPerWeek));
     const now = currentDate instanceof Date ? currentDate : new Date(currentDate ?? Date.now());
     const projected = new Date(now.getTime() + weeksToQualify * 7 * 86400000);
-    projectedDateISO = projected.toISOString().slice(0, 10);
+    projectedDateISO = ymdTT(projected);
   }
 
   return { avgPerWeek, unit: prim.unit, gap, weeksToQualify, hasPace, projectedDateISO };

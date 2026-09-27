@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
-import { parseDateOnlyTT } from '../../utils/dateInputs';
+import { parseDateOnlyTT, ymdUTC } from '../../utils/dateInputs';
 import { cbttComplianceFlag } from '../../utils/cbttCompliance';
 import { classifyWeek, onTimeStreak, UM_MANDATORY_FILING_CUTOFF } from '../../utils/complianceDerive';
 import { sendComplianceNudge, getNudgeRecords, NUDGE_TYPE, PLAN_NUDGE_TYPE } from '../../services/nudgeService';
@@ -39,7 +39,7 @@ function weekWindow(weekStart, n) {
   const base = parseDateOnlyTT(weekStart);
   const out = [];
   for (let i = 0; i < n; i++) {
-    out.push(new Date(base.getTime() - i * 7 * DAY_MS).toISOString().slice(0, 10));
+    out.push(ymdUTC(new Date(base.getTime() - i * 7 * DAY_MS)));
   }
   return out;
 }

@@ -11,6 +11,7 @@ import { listBranches } from '../../services/branchService';
 import { resendInvite, getInviteLink } from '../../services/userService';
 import { formatDateDisplay, formatDateFriendly, getUnitDisplayName } from '../../utils/formatters';
 import { EMAIL_RE } from '../../utils/validators';
+import { getTodayTT, isAfterTodayTT, ymdUTC } from '../../utils/dateInputs';
 import useToast from '../../hooks/useToast';
 import useFocusTrap from '../../hooks/useFocusTrap';
 import Avatar from '../ui/Avatar';
@@ -138,7 +139,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
     if (effectiveRole === 'agent') {
       if (!form.unitId) return 'Unit assignment is required.';
       if (!form.contractStartDate) return 'Contract start date is required.';
-      if (form.contractStartDate > new Date().toISOString().slice(0, 10)) {
+      if (isAfterTodayTT(form.contractStartDate)) {
         return 'Contract start date cannot be in the future.';
       }
     }
@@ -296,7 +297,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                   type="date"
                   value={form.contractStartDate}
                   onChange={set('contractStartDate')}
-                  max={new Date().toISOString().slice(0, 10)}
+                  max={getTodayTT()}
                   className="h-10 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
                 {form.contractStartDate && (
@@ -908,7 +909,7 @@ export default function UserManagementPanel({ openCreateSignal = 0 }) {
               </thead>
               <tbody>
                 {filteredUsers.map((u, i) => {
-                  const joinedDate = u.createdAt?.toDate?.().toISOString().slice(0, 10) ?? '';
+                  const joinedDate = u.createdAt?.toDate ? ymdUTC(u.createdAt.toDate()) : '';
                   const isInactive = u.active === false;
                   const canAct = CREATABLE_ROLES[role]?.includes(u.role) && u.uid !== currentUser?.uid;
                   const zebra = i % 2 === 1 ? 'bg-card-raised/40' : '';
