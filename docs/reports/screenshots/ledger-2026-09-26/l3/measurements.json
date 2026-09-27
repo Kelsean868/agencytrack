@@ -1,0 +1,318 @@
+[
+  {
+    "label": "list-390-light",
+    "dark": false,
+    "cardChipRows": 6,
+    "countingLabelPresent": true,
+    "pendingLabelPresent": true,
+    "firstRowChipColours": [
+      {
+        "text": "★ Christmas",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      },
+      {
+        "text": "Q3 2026",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      },
+      {
+        "text": "2026 awards",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      },
+      {
+        "text": "MDRT 2026",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      }
+    ]
+  },
+  {
+    "label": "drawer-counting-390-light",
+    "dark": false,
+    "cardChipRows": 7,
+    "countingLabelPresent": true,
+    "pendingLabelPresent": true,
+    "firstRowChipColours": [
+      {
+        "text": "★ Christmas",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      },
+      {
+        "text": "Q3 2026",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      },
+      {
+        "text": "2026 awards",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      },
+      {
+        "text": "MDRT 2026",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      }
+    ]
+  },
+  {
+    "label": "drawer-pending-390-light",
+    "dark": false,
+    "cardChipRows": 7,
+    "countingLabelPresent": true,
+    "pendingLabelPresent": true,
+    "firstRowChipColours": [
+      {
+        "text": "★ Christmas",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      },
+      {
+        "text": "Q3 2026",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      },
+      {
+        "text": "2026 awards",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      },
+      {
+        "text": "MDRT 2026",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      }
+    ]
+  },
+  {
+    "label": "list-1440-light",
+    "dark": false,
+    "cardChipRows": 0,
+    "countingLabelPresent": false,
+    "pendingLabelPresent": false,
+    "firstRowChipColours": []
+  },
+  {
+    "label": "drawer-counting-1440-light",
+    "dark": false,
+    "cardChipRows": 1,
+    "countingLabelPresent": true,
+    "pendingLabelPresent": false,
+    "firstRowChipColours": [
+      {
+        "text": "★ Christmas",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      },
+      {
+        "text": "Q3 2026",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      },
+      {
+        "text": "2026 awards",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      },
+      {
+        "text": "MDRT 2026",
+        "color": "rgb(138, 96, 17)",
+        "background": "rgb(253, 243, 220)"
+      }
+    ]
+  },
+  {
+    "label": "drawer-pending-1440-light",
+    "dark": false,
+    "cardChipRows": 1,
+    "countingLabelPresent": false,
+    "pendingLabelPresent": true,
+    "firstRowChipColours": [
+      {
+        "text": "★ Christmas",
+        "color": "rgb(107, 101, 96)",
+        "background": "rgb(240, 239, 233)"
+      },
+      {
+        "text": "Sep 2026",
+        "color": "rgb(107, 101, 96)",
+        "background": "rgb(240, 239, 233)"
+      },
+      {
+        "text": "Q3 2026",
+        "color": "rgb(107, 101, 96)",
+        "background": "rgb(240, 239, 233)"
+      },
+      {
+        "text": "2026 awards",
+        "color": "rgb(107, 101, 96)",
+        "background": "rgb(240, 239, 233)"
+      },
+      {
+        "text": "MDRT 2026",
+        "color": "rgb(107, 101, 96)",
+        "background": "rgb(240, 239, 233)"
+      }
+    ]
+  },
+  {
+    "label": "list-390-dark",
+    "dark": true,
+    "cardChipRows": 6,
+    "countingLabelPresent": true,
+    "pendingLabelPresent": true,
+    "firstRowChipColours": [
+      {
+        "text": "★ Christmas",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      },
+      {
+        "text": "Q3 2026",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      },
+      {
+        "text": "2026 awards",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      },
+      {
+        "text": "MDRT 2026",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      }
+    ]
+  },
+  {
+    "label": "drawer-counting-390-dark",
+    "dark": true,
+    "cardChipRows": 7,
+    "countingLabelPresent": true,
+    "pendingLabelPresent": true,
+    "firstRowChipColours": [
+      {
+        "text": "★ Christmas",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      },
+      {
+        "text": "Q3 2026",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      },
+      {
+        "text": "2026 awards",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      },
+      {
+        "text": "MDRT 2026",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      }
+    ]
+  },
+  {
+    "label": "drawer-pending-390-dark",
+    "dark": true,
+    "cardChipRows": 7,
+    "countingLabelPresent": true,
+    "pendingLabelPresent": true,
+    "firstRowChipColours": [
+      {
+        "text": "★ Christmas",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      },
+      {
+        "text": "Q3 2026",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      },
+      {
+        "text": "2026 awards",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      },
+      {
+        "text": "MDRT 2026",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      }
+    ]
+  },
+  {
+    "label": "list-1440-dark",
+    "dark": true,
+    "cardChipRows": 0,
+    "countingLabelPresent": false,
+    "pendingLabelPresent": false,
+    "firstRowChipColours": []
+  },
+  {
+    "label": "drawer-counting-1440-dark",
+    "dark": true,
+    "cardChipRows": 1,
+    "countingLabelPresent": true,
+    "pendingLabelPresent": false,
+    "firstRowChipColours": [
+      {
+        "text": "★ Christmas",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      },
+      {
+        "text": "Q3 2026",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      },
+      {
+        "text": "2026 awards",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      },
+      {
+        "text": "MDRT 2026",
+        "color": "rgb(224, 170, 62)",
+        "background": "rgba(224, 170, 62, 0.14)"
+      }
+    ]
+  },
+  {
+    "label": "drawer-pending-1440-dark",
+    "dark": true,
+    "cardChipRows": 1,
+    "countingLabelPresent": false,
+    "pendingLabelPresent": true,
+    "firstRowChipColours": [
+      {
+        "text": "★ Christmas",
+        "color": "rgb(184, 174, 160)",
+        "background": "rgb(31, 27, 22)"
+      },
+      {
+        "text": "Sep 2026",
+        "color": "rgb(184, 174, 160)",
+        "background": "rgb(31, 27, 22)"
+      },
+      {
+        "text": "Q3 2026",
+        "color": "rgb(184, 174, 160)",
+        "background": "rgb(31, 27, 22)"
+      },
+      {
+        "text": "2026 awards",
+        "color": "rgb(184, 174, 160)",
+        "background": "rgb(31, 27, 22)"
+      },
+      {
+        "text": "MDRT 2026",
+        "color": "rgb(184, 174, 160)",
+        "background": "rgb(31, 27, 22)"
+      }
+    ]
+  }
+]

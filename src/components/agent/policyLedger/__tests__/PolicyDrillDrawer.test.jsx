@@ -3,7 +3,7 @@
 // initial focus, no focus-return.
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 
 const hoisted = vi.hoisted(() => ({
   authValue: { tenantId: 't1', user: { uid: 'agent-1' } },
@@ -37,6 +37,9 @@ vi.mock('../../../../constants/policyLifecycle', () => ({
 }));
 
 import PolicyDrillDrawer from '../PolicyDrillDrawer';
+import { awardWindowsForPolicy } from '../../../../lib/ledgerProduction';
+import { awardLensPeriods } from '../../../../utils/awardsEngine';
+import { TODAY, CHRISTMAS, POLICIES } from '../../../../lib/__tests__/fixtures/awardLensFixtures';
 
 function makePolicy(overrides = {}) {
   return {
@@ -191,5 +194,64 @@ describe('PolicyDrillDrawer — dialog a11y', () => {
     unmount();
     expect(document.activeElement).toBe(trigger);
     document.body.removeChild(trigger);
+  });
+});
+
+// ── L3 — "Counts toward" chips (docs/briefs/ledger-lens-build.md § L3) ──────
+//
+// Same `awardWindowsForPolicy` rows and fixtures as the PolicyCard chip tests
+// (src/components/agent/policyLedger/__tests__/PolicyCard.test.jsx) — the
+// requirement is that the drawer shows the SAME list as the card it was
+// opened from, not a second derivation.
+const l3Periods = awardLensPeriods({ today: TODAY, campaigns: [CHRISTMAS] });
+const l3ById = (id) => POLICIES.find((p) => p.id === id);
+const l3WindowsFor = (id) => awardWindowsForPolicy(l3ById(id), l3Periods.current);
+
+describe('PolicyDrillDrawer — "Counts toward" chips (L3)', () => {
+  it('shows the same gold chip list a settled policy\'s card would show', async () => {
+    render(
+      <PolicyDrillDrawer
+        policy={l3ById('B')}
+        awardWindows={l3WindowsFor('B')}
+        onClose={() => {}}
+        onTransition={() => {}}
+        transitioning={false}
+        transitionError={null}
+      />
+    );
+    const chips = screen.getByTestId('award-window-chips');
+    expect(within(chips).getByText('Counts toward')).toBeInTheDocument();
+    expect(within(chips).getByTestId('award-window-chip-mdrt:2026')).toHaveTextContent('MDRT 2026');
+    await waitFor(() => expect(hoisted.getPolicyHistory).toHaveBeenCalled());
+  });
+
+  it('shows grey "Will count toward" chips for a submitted (not settled) policy', async () => {
+    render(
+      <PolicyDrillDrawer
+        policy={l3ById('D')}
+        awardWindows={l3WindowsFor('D')}
+        onClose={() => {}}
+        onTransition={() => {}}
+        transitioning={false}
+        transitionError={null}
+      />
+    );
+    const chips = screen.getByTestId('award-window-chips');
+    expect(within(chips).getByText('Will count toward')).toBeInTheDocument();
+    await waitFor(() => expect(hoisted.getPolicyHistory).toHaveBeenCalled());
+  });
+
+  it('renders no chip row when awardWindows is omitted (back-compat)', async () => {
+    render(
+      <PolicyDrillDrawer
+        policy={makePolicy()}
+        onClose={() => {}}
+        onTransition={() => {}}
+        transitioning={false}
+        transitionError={null}
+      />
+    );
+    expect(screen.queryByTestId('award-window-chips')).not.toBeInTheDocument();
+    await waitFor(() => expect(hoisted.getPolicyHistory).toHaveBeenCalled());
   });
 });

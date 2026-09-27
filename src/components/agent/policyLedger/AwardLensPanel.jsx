@@ -26,7 +26,7 @@ import { useLedgerTargetTier } from '../../../hooks/useLedgerTargetTier';
 import { getActiveCampaignsForAgent } from '../../../services/campaignService';
 import { awardLensPeriods } from '../../../utils/awardsEngine';
 import { isTieredCampaign } from '../../../utils/campaignEngine';
-import { deriveAwardLens } from '../../../lib/ledgerProduction';
+import { deriveAwardLens, awardWindowsForPolicy } from '../../../lib/ledgerProduction';
 import { awardLensSummary } from '../../../lib/awardLensView';
 import { buildCampaignProofExport } from '../../../lib/policyCampaignLens';
 import { buildCsvContent, downloadCsv, slugifyForFilename } from '../../../lib/csvExport';
@@ -82,6 +82,25 @@ export default function AwardLensPanel({
   const periods = useMemo(
     () => awardLensPeriods({ today, ruleset, campaigns: campaignsOn ? campaigns : [], agentProfile: userProfile ?? {} }),
     [today, ruleset, campaignsOn, campaigns, userProfile],
+  );
+
+  // L3 — "Counts toward" chips (docs/briefs/ledger-lens-build.md § L3). Every
+  // policy's open award windows, from the SAME engine helper the lens itself
+  // reads (`awardWindowsForPolicy`) against the same `periods.current` this
+  // panel already derived for the selector above — computed once here, never
+  // re-derived per card. Handed to both the mobile cards (AwardLensGroups)
+  // and the drill drawer (via `openWithWindows`) so they can never disagree.
+  const windowsById = useMemo(() => {
+    const map = new Map();
+    for (const policy of policies) {
+      map.set(policy.id, awardWindowsForPolicy(policy, periods.current));
+    }
+    return map;
+  }, [policies, periods]);
+
+  const openWithWindows = useCallback(
+    (policy) => onOpen(policy, windowsById.get(policy.id) ?? []),
+    [onOpen, windowsById],
   );
   // No explicit choice ⇒ the first current option: the ★ campaign once loaded,
   // otherwise this month.
@@ -189,9 +208,9 @@ export default function AwardLensPanel({
         )}
       >
         <div className="lg:hidden">
-          <AwardLensGroups lens={lens} visibleIds={l2VisibleIds} onOpen={onOpen} />
+          <AwardLensGroups lens={lens} visibleIds={l2VisibleIds} onOpen={openWithWindows} windowsById={windowsById} />
         </div>
-        <LedgerTable rows={l2Rows} sortKey={sortKey} onSort={setSortKey} onOpen={onOpen} />
+        <LedgerTable rows={l2Rows} sortKey={sortKey} onSort={setSortKey} onOpen={openWithWindows} />
         <div className="hidden items-center justify-between rounded-xl bg-surface px-4 py-3 text-[13px] text-ink-muted lg:flex" data-testid="ledger-footer-counts">
           <span>{l2Footer.total} polic{l2Footer.total === 1 ? 'y' : 'ies'} · {l2Footer.counting} counting · {l2Footer.pending} waiting · {l2Footer.notCounting} not counting</span>
           <span className="font-bold text-ink">Counting {formatCurrency(l2Footer.countingApi)}</span>

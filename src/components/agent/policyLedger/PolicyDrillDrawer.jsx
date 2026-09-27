@@ -10,6 +10,7 @@ import { LEGAL_AGENT_TRANSITIONS, POLICY_STATUS_LABELS } from '../../../constant
 import { lifecycleNodes } from '../../../lib/policyLedgerDerivation';
 import { policyToken, policyPillLabel, isConfirmed } from '../../../lib/policyStatusTokens';
 import { STATUS_SOURCE_IMPORT } from '../../../lib/portfolioImport/oipaImportConfig';
+import { AwardWindowChips } from './PolicyCard';
 
 /**
  * P4e ruling 3 — one plain-words line saying where an imported status came from.
@@ -68,8 +69,13 @@ const inputCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm t
  * (onTransition); only the chrome moved here.
  *
  * Lapsed never renders — LEGAL_AGENT_TRANSITIONS excludes it for agents.
+ *
+ * `awardWindows` (optional, L3, docs/briefs/ledger-lens-build.md § L3) — this
+ * policy's `awardWindowsForPolicy` rows, handed in by whoever opened the
+ * drawer; renders the same "Counts toward" chip row as the policy card, so
+ * the drawer never disagrees with the card it was opened from.
  */
-export default function PolicyDrillDrawer({ policy, onClose, onTransition, transitioning, transitionError }) {
+export default function PolicyDrillDrawer({ policy, awardWindows = null, onClose, onTransition, transitioning, transitionError }) {
   const { tenantId, user } = useAuth();
   const today = getTodayTT();
 
@@ -180,6 +186,7 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
               {importedStatusNote(policy)}
             </p>
           )}
+          {awardWindows && <AwardWindowChips windows={awardWindows} />}
         </div>
 
         {/* Body */}

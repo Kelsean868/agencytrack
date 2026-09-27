@@ -56,6 +56,54 @@ function actionHint(policy) {
 const LENS_CREDIT_LABEL = { campaign: 'Campaign credit', mdrt: 'MDRT credit' };
 
 /**
+ * AwardWindowChips — L3 (docs/briefs/ledger-lens-build.md § L3): gold chips
+ * naming every award window this policy counts toward, grey "Will count
+ * toward" chips for one still submitted-not-settled. `windows` is an
+ * `awardWindowsForPolicy` result (src/lib/ledgerProduction.js) — the exact
+ * rows the "Counts toward" lens itself reads, so the chips and the lens can
+ * never disagree. A policy with no open window (NTU, outside every window,
+ * family excluded from everything but MDRT with MDRT also out of reach)
+ * renders nothing.
+ */
+export function AwardWindowChips({ windows }) {
+  const counting = (windows ?? []).filter((w) => w.group === 'counting');
+  const pending = (windows ?? []).filter((w) => w.group === 'pending');
+  if (counting.length === 0 && pending.length === 0) return null;
+  return (
+    <div className="mt-2 flex flex-col gap-1.5" data-testid="award-window-chips">
+      {counting.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-ink-muted">Counts toward</span>
+          {counting.map((w) => (
+            <span
+              key={w.key}
+              className="rounded-full bg-gold-tint px-[7px] py-[3px] font-mono text-[10px] font-semibold text-gold-ink"
+              data-testid={`award-window-chip-${w.key}`}
+            >
+              {w.label}
+            </span>
+          ))}
+        </div>
+      )}
+      {pending.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-ink-muted">Will count toward</span>
+          {pending.map((w) => (
+            <span
+              key={w.key}
+              className="rounded-full bg-surface-muted px-[7px] py-[3px] font-mono text-[10px] font-semibold text-ink-muted"
+              data-testid={`award-window-chip-${w.key}`}
+            >
+              {w.label}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * LensFooter — the award lens line under a card (L1): the credit this policy
  * earns toward the selected award, "Counts when settled", or the engine's
  * reason it does not count. Every string here comes from `deriveAwardLens`;
@@ -95,8 +143,11 @@ function LensFooter({ lensRow, awardKind }) {
  * `lensRow` (optional, L1) — this policy's row from `deriveAwardLens` for the
  * award selected in the ledger's "Counts toward" lens; `awardKind` names that
  * award. Absent ⇒ the card renders exactly as before.
+ *
+ * `awardWindows` (optional, L3) — this policy's `awardWindowsForPolicy` rows;
+ * renders the gold/grey "Counts toward" chip row. Absent ⇒ no chip row.
  */
-export default function PolicyCard({ policy, onOpen, lensRow = null, awardKind = null }) {
+export default function PolicyCard({ policy, onOpen, lensRow = null, awardKind = null, awardWindows = null }) {
   const t = policyToken(policy);
   const hint = actionHint(policy);
   const noNumber = !policy.policyNumber;
@@ -154,6 +205,7 @@ export default function PolicyCard({ policy, onOpen, lensRow = null, awardKind =
         )}
         <span className="font-mono text-[10.5px] text-ink-muted">{fmtDate(policy.dateWritten)}</span>
       </div>
+      {awardWindows && <AwardWindowChips windows={awardWindows} />}
       {lensRow && <LensFooter lensRow={lensRow} awardKind={awardKind} />}
     </button>
   );
