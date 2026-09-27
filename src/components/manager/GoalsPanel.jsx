@@ -29,7 +29,7 @@ import {
 
 const FALLBACK_MINIMUMS = {
   annualAPI: 200000,
-  annualApps: 42,
+  annualApps: 40,
   persistency: 90,
   tenureApiFloors: DEFAULT_TENURE_API_FLOORS,
 };

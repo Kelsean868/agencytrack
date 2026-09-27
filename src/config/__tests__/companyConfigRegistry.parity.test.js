@@ -81,13 +81,13 @@ describe('targets — tenure bands (src/utils/tenureFloors.js)', () => {
 
 describe('targets — company minimums (src/services/goalsService.js:60-62)', () => {
   // goalsService.getCompanyMinimums inlines these defaults (stored.annualAPI ?? 200000,
-  // stored.annualApps ?? 42, stored.persistency ?? 90) rather than exporting named
+  // stored.annualApps ?? 40, stored.persistency ?? 90) rather than exporting named
   // constants, so this asserts against a literal citing the exact lines.
   it('targets.floor === 200000 (goalsService.js:60)', () => {
     expect(ITEMS_BY_ID['targets.floor'].def).toBe(200000);
   });
-  it('targets.annualApps === 42 (goalsService.js:61)', () => {
-    expect(ITEMS_BY_ID['targets.annualApps'].def).toBe(42);
+  it('targets.annualApps === 40 (goalsService.js:62)', () => {
+    expect(ITEMS_BY_ID['targets.annualApps'].def).toBe(40);
   });
   // Line-number-free: goalsService's getCompanyMinimums now defaults this to
   // PERS_GATE_PCT, so the parity is against the constant, not a literal 90 that
