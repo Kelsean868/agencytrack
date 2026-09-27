@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Today — desktop v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>body{margin:0}a{color:inherit}
+.tn{font-variant-numeric:tabular-nums}
+@keyframes d3tCardA{from{opacity:0;transform:translateY(8px) scale(0.99)}to{opacity:1;transform:none}}
+@keyframes d3tCardB{from{opacity:0;transform:translateY(8px) scale(0.99)}to{opacity:1;transform:none}}
+@keyframes d3tBumpA{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes d3tBumpB{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes d3tFloatA{0%{opacity:0;transform:translateY(4px)}20%{opacity:1}100%{opacity:0;transform:translateY(-24px)}}
+@keyframes d3tFloatB{0%{opacity:0;transform:translateY(4px)}20%{opacity:1}100%{opacity:0;transform:translateY(-24px)}}
+@keyframes d3tGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes d3tGrowY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes d3tDraw{from{stroke-dashoffset:1000}to{stroke-dashoffset:0}}
+@keyframes d3tFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.d3t-row{transition:background 120ms ease}.d3t-row:hover{background:rgba(127,120,105,0.08)}
+.d3t-row .acts{opacity:0;transition:opacity 120ms ease}.d3t-row:hover .acts{opacity:1}
+.d3t-tile{transition:transform 220ms cubic-bezier(0.32,0.72,0,1),box-shadow 220ms ease}.d3t-tile:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(40,37,29,0.08)}
+.d3t-col{position:relative}.d3t-col .tip{opacity:0;transform:translateY(4px);transition:opacity 140ms ease,transform 140ms ease;pointer-events:none}.d3t-col:hover .tip{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: {{rootW}}px; height: 900px; box-sizing: border-box; display: flex; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; overflow: hidden;">
+  <sc-if value="{{showChrome}}" hint-placeholder-val="{{true}}">
+    <div style="width: 220px; flex-shrink: 0; align-self: stretch; background: {{c.sideBg}};">
+      <dc-import name="D3-Sidebar" active="Today" dark="{{dark}}" h="{{900}}" report-done="{{reportDone}}" hint-size="220px,900px"></dc-import>
+    </div>
+  </sc-if>
+  <main style="width: 1220px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;">
+    <header style="height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 20px 0 28px; display: flex; align-items: center; gap: 12px; background: {{c.glass}}; border-bottom: 1px solid {{c.rule}};">
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">Morning, Kyron</h1>
+      <span style="font-size: 13px; color: {{c.mute}};">Sunday 27-09-2026 · week 40 starts today</span>
+      <span style="flex-grow: 1;"></span>
+      <a href="D3-Today.dc.html" onClick="{{go.Search}}" style="width: 240px; height: 36px; margin: 4px 0; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.surface}}; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; color: {{c.faint}}; font-size: 13px; text-decoration: none;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><span style="flex-grow: 1;">Search</span><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; background: {{c.sunk}}; border-radius: 5px; padding: 2px 6px; color: {{c.mute}};">Ctrl K</kbd></a>
+      <a href="D3-Today.dc.html" onClick="{{go.Notifications}}" aria-label="Notifications, 2 unread" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; color: {{c.ink}};">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+        <span style="position: absolute; top: 11px; right: 11px; width: 7px; height: 7px; border-radius: 4px; background: {{c.warm}};"></span></a>
+      <a href="Log-Sheet.dc.html" onClick="{{go.Log}}" style="height: 36px; margin: 4px 0; padding: 0 14px; border-radius: 10px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; text-decoration: none;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Log activity<kbd style="font-family: 'JetBrains Mono', monospace; font-size: 10px; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; opacity: 0.8;">L</kbd></a>
+    </header>
+
+    <div style="flex-grow: 1; min-height: 0; display: flex;">
+      <div style="flex-grow: 1; min-width: 0; overflow-y: auto; padding: 22px 28px 32px; display: flex; flex-direction: column; gap: 20px;">
+
+        <section aria-label="Am I on track" style="flex-shrink: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;">
+          <sc-for list="{{tiles}}" as="t" hint-placeholder-count="4">
+            <a class="d3t-tile" href="{{t.href}}" onClick="{{t.go}}" style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; min-height: 132px; box-sizing: border-box;">
+              <span style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 13px; font-weight: 600; color: {{c.mute}};">{{t.label}}</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: {{c.faint}};">{{t.tag}}</span></span>
+              <span style="font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05;">{{t.value}}</span>
+              <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: {{t.noteColor}};">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.noteIcon}}"></path></svg>{{t.note}}</span>
+              <svg width="100%" height="30" viewBox="0 0 220 30" preserveAspectRatio="none" aria-hidden="true" style="display: block; margin-top: auto;">
+                <path d="{{t.area}}" fill="{{t.lineColor}}" opacity="0.1"></path>
+                <path d="{{t.line}}" fill="none" stroke="{{t.lineColor}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" stroke-dasharray="1000" style="animation: d3tDraw 900ms cubic-bezier(0.32, 0.72, 0, 1) both;"></path>
+                <path d="{{t.target}}" fill="none" stroke="{{c.faint}}" stroke-width="1" vector-effect="non-scaling-stroke"></path>
+              </svg>
+            </a>
+          </sc-for>
+        </section>
+
+        <div style="flex-shrink: 0; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px;">
+          <sc-if value="{{hasCurrent}}" hint-placeholder-val="{{true}}">
+            <section aria-label="Next up" style="border-radius: 20px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; animation: {{cardAnim}};">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.accent}};">NEXT UP</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: {{c.mute}}; background: {{c.sunk}}; padding: 3px 9px; border-radius: 999px;">{{countLabel}}</span>
+              </div>
+              <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 27px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1;">{{cur.title}}</h2>
+              <p style="margin: 0; font-size: 14px; line-height: 1.45; color: {{c.mute}};">{{cur.body}}</p>
+              <div style="display: flex; gap: 10px; margin-top: 2px;">
+                <a href="{{cur.href}}" onClick="{{cur.go}}" style="height: 44px; padding: 0 18px; border-radius: 12px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; text-decoration: none;">{{cur.cta}}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></a>
+                <sc-if value="{{canSkip}}" hint-placeholder-val="{{true}}">
+                  <button onClick="{{skip}}" style="height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer;">Not now</button>
+                </sc-if>
+              </div>
+            </section>
+          </sc-if>
+          <sc-if value="{{allClear}}" hint-placeholder-val="{{false}}">
+            <section aria-label="All clear" style="border-radius: 20px; background: {{c.accentTint}}; padding: 22px; display: flex; flex-direction: column; gap: 8px; animation: {{cardAnim}};">
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.accent}};">ALL CLEAR</span>
+              <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.02em;">Nothing else is due today.</h2>
+              <p style="margin: 0; font-size: 14px; color: {{c.mute}};">A focus session is the best use of spare time.</p>
+            </section>
+          </sc-if>
+
+          <section aria-label="Start a focus session" style="border-radius: 20px; background: {{c.ink}}; color: {{c.bg}}; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;">
+            <span style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.goldOnInk}};">START A FOCUS SESSION</span>
+              <span style="font-size: 11px; font-weight: 600; opacity: 0.75;">One thing at a time · timer · points</span>
+            </span>
+            <sc-for list="{{focusModes}}" as="fm" hint-placeholder-count="3">
+              <a href="D3-Focus.dc.html" onClick="{{fm.go}}" class="d3t-focus" style="min-height: 52px; border-radius: 12px; background: {{fm.bg}}; color: {{fm.fg}}; display: flex; align-items: center; gap: 12px; padding: 6px 14px; text-decoration: none; box-sizing: border-box;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{fm.icon}}"></path></svg>
+                <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px;"><span style="font-size: 15px; font-weight: 800;">{{fm.title}}</span><span style="font-size: 12px; opacity: 0.8;">{{fm.sub}}</span></span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+              </a>
+            </sc-for>
+          </section>
+        </div>
+
+        <section aria-label="Week 40 so far" style="flex-shrink: 0; border-radius: 20px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: -0.02em;">Week 40 so far</h2>
+            <span style="font-size: 13px; color: {{c.mute}};">Bar = done · line = your plan · faint dot = last week</span>
+            <span style="flex-grow: 1;"></span>
+            <span style="position: relative; font-size: 14px; font-weight: 700; color: {{c.gold}};">+{{ptsToday}} pts today
+              <sc-if value="{{showFloat}}" hint-placeholder-val="{{false}}"><span style="position: absolute; right: 0; top: -6px; font-size: 13px; font-weight: 800; color: {{c.gold}}; animation: {{floatAnim}};">+{{lastPts}}</span></sc-if>
+            </span>
+          </div>
+          <sc-for list="{{meters}}" as="m" hint-placeholder-count="5">
+            <div style="display: grid; grid-template-columns: 120px minmax(0, 1fr) 96px 108px; align-items: center; gap: 14px; min-height: 46px;">
+              <span style="display: flex; flex-direction: column; gap: 1px;"><span style="font-size: 14px; font-weight: 700;">{{m.label}}</span><span style="font-size: 11px; color: {{c.faint}};">{{m.pts}}</span></span>
+              <span role="img" aria-label="{{m.aria2}}" style="position: relative; height: 22px;">
+                <span style="position: absolute; left: 0; right: 0; top: 7px; height: 8px; border-radius: 4px; background: {{c.sunk}};"></span>
+                <span style="position: absolute; left: 0; top: 7px; height: 8px; width: {{m.pct}}%; border-radius: 4px; background: {{m.fill}}; transform-origin: left; animation: d3tGrowX 520ms cubic-bezier(0.32, 0.72, 0, 1) both; transition: width 420ms cubic-bezier(0.32, 0.72, 0, 1);"></span>
+                <span style="position: absolute; left: {{m.lastPct}}%; top: 7px; width: 8px; height: 8px; margin-left: -4px; border-radius: 4px; background: {{c.faint}}; opacity: 0.45;"></span>
+                <span style="position: absolute; left: {{m.planPct}}%; top: 1px; width: 2px; height: 20px; margin-left: -1px; background: {{c.ink}};"></span>
+              </span>
+              <span class="tn" style="text-align: right; font-size: 13px; color: {{c.mute}};"><span style="display: inline-block; font-size: 20px; font-weight: 700; color: {{c.ink}};">{{m.val}}</span> / {{m.target}}</span>
+              <button onClick="{{m.inc}}" aria-label="{{m.aria}}" style="height: 44px; border-radius: 10px; border: 0; background: {{c.accentTint}}; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>{{m.short}}</button>
+            </div>
+          </sc-for>
+          <span style="font-size: 12px; color: {{c.faint}};">Plan comes from your game plan (TTD 42,975 a week for MDRT). Company minimums: 60 calls · 20 appointments · 10 fact finds · 10 closings · 1 application a week.</span>
+        </section>
+
+        <div style="flex-shrink: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px;">
+          <section aria-label="MDRT pace" style="border-radius: 20px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+              <span style="display: flex; flex-direction: column; gap: 2px;">
+                <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: -0.02em;">Settled API by month</h2>
+                <span style="font-size: 12px; color: {{c.mute}};">September is your best month. Pace needed now: TTD 42,975 a week.</span>
+              </span>
+              <button onClick="{{toggleTable}}" aria-pressed="{{tableOn}}" style="min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer;">{{tableLabel}}</button>
+            </div>
+            <sc-if value="{{chartOn}}" hint-placeholder-val="{{true}}">
+              <div style="display: flex; align-items: flex-end; gap: 2px; height: 196px; padding-top: 18px; border-bottom: 1px solid {{c.rule}}; position: relative;">
+                <sc-for list="{{months}}" as="mo" hint-placeholder-count="9">
+                  <div class="d3t-col" style="flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;">
+                    <span class="tip" style="position: absolute; bottom: {{mo.tipB}}px; z-index: 2; white-space: nowrap; padding: 4px 8px; border-radius: 6px; background: {{c.ink}}; color: {{c.bg}}; font-size: 11px; font-weight: 700;">{{mo.tip}}</span>
+                    <span style="font-size: 11px; font-weight: 700; color: {{c.ink}}; margin-bottom: 3px;">{{mo.label}}</span>
+                    <span style="width: 22px; height: {{mo.h}}px; border-radius: 4px 4px 0 0; background: {{mo.fill}}; transform-origin: bottom; animation: d3tGrowY 520ms cubic-bezier(0.32, 0.72, 0, 1) both; animation-delay: {{mo.delay}};"></span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display: flex; gap: 2px;">
+                <sc-for list="{{months}}" as="mo" hint-placeholder-count="9"><span style="flex: 1; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: {{c.faint}};">{{mo.m}}</span></sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{tableOn}}" hint-placeholder-val="{{false}}">
+              <table style="border-collapse: collapse; font-size: 13px;">
+                <tr><th scope="col" style="text-align: left; padding: 6px 0; color: {{c.mute}}; font-weight: 600; border-bottom: 1px solid {{c.rule}};">Month (2026)</th><th scope="col" style="text-align: right; padding: 6px 0; color: {{c.mute}}; font-weight: 600; border-bottom: 1px solid {{c.rule}};">Settled API (TTD)</th></tr>
+                <sc-for list="{{months}}" as="mo" hint-placeholder-count="9"><tr><td style="padding: 5px 0; border-bottom: 1px solid {{c.rule}};">{{mo.m}}</td><td class="tn" style="padding: 5px 0; text-align: right; border-bottom: 1px solid {{c.rule}};">{{mo.full}}</td></tr></sc-for>
+              </table>
+            </sc-if>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: {{c.faint}};">MONTHLY SPLIT IS SAMPLE · TOTAL 87,146 AND JUL–SEP 73,946 ARE REAL</span>
+          </section>
+
+          <section aria-label="Coach" style="border-radius: 20px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: -0.02em;">Coach</h2>
+              <span style="height: 22px; padding: 0 8px; border-radius: 11px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.9L19 9.7l-4.2 3.1 1.5 5.2L12 15l-4.3 3 1.5-5.2L5 9.7l5.2-1.8z"></path></svg>AI · from your numbers only</span>
+              <span style="flex-grow: 1;"></span>
+              <a href="D3-Numbers.dc.html" onClick="{{go.Numbers}}" style="min-height: 44px; display: flex; align-items: center; font-size: 12px; font-weight: 700; color: {{c.accent}}; text-decoration: none;">All insights</a>
+            </div>
+            <sc-for list="{{insights}}" as="n" hint-placeholder-count="2">
+              <div style="border-radius: 14px; background: {{c.pane}}; border: 1px solid {{c.rule}}; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+                <span style="font-size: 14px; font-weight: 600; line-height: 1.4;">{{n.text}}</span>
+                <sc-if value="{{n.open}}" hint-placeholder-val="{{false}}">
+                  <span style="font-size: 12px; line-height: 1.5; color: {{c.mute}}; animation: d3tFade 260ms cubic-bezier(0.32, 0.72, 0, 1) both;">{{n.why}}</span>
+                </sc-if>
+                <span style="display: flex; gap: 8px; align-items: center;">
+                  <a href="{{n.href}}" onClick="{{n.go}}" style="height: 36px; min-height: 44px; padding: 0 12px; border-radius: 10px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; font-size: 13px; font-weight: 700; text-decoration: none; box-sizing: border-box;">{{n.cta}}</a>
+                  <button onClick="{{n.toggle}}" aria-expanded="{{n.open}}" style="min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer;">{{n.whyLabel}}</button>
+                </span>
+              </div>
+            </sc-for>
+            <span style="font-size: 11px; color: {{c.faint}};">Coach sees totals and ratios only — never client names. Refreshed 07:00 daily.</span>
+          </section>
+        </div>
+
+        <section aria-label="Waiting on you" style="flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: -0.02em;">Waiting on you</h2>
+          <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; overflow: hidden;">
+            <sc-for list="{{waiting}}" as="w" hint-placeholder-count="4">
+              <div class="d3t-row" style="min-height: 60px; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid {{w.rule}};">
+                <span style="width: 34px; height: 34px; border-radius: 10px; background: {{w.iconBg}}; color: {{w.iconFg}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{w.icon}}"></path></svg></span>
+                <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 15px; font-weight: 600;">{{w.title}}</span><span style="font-size: 13px; color: {{w.subColor}};">{{w.sub}}</span></span>
+                <span class="acts" style="font-size: 12px; color: {{c.faint}};">{{w.hint}}</span>
+                <a href="{{w.href}}" onClick="{{w.go}}" style="height: 36px; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid {{c.rule}}; display: flex; align-items: center; font-size: 13px; font-weight: 700; text-decoration: none; box-sizing: border-box;">{{w.cta}}</a>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </div>
+
+      <aside aria-label="Your day and standing" style="width: 356px; flex-shrink: 0; overflow-y: auto; border-left: 1px solid {{c.rule}}; background: {{c.pane}}; padding: 20px 20px 28px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px;">
+        <section aria-label="Tomorrow" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: -0.02em;">Tomorrow · Mon 28-09</h2>
+            <a href="D2-Week.dc.html" onClick="{{go.Week}}" style="min-height: 44px; display: flex; align-items: center; font-size: 13px; font-weight: 700; color: {{c.accent}}; text-decoration: none;">Open week</a>
+          </div>
+          <sc-for list="{{agenda}}" as="a" hint-placeholder-count="4">
+            <a href="{{a.href}}" onClick="{{a.go}}" style="display: flex; gap: 12px; text-decoration: none; min-height: 50px;">
+              <span style="width: 44px; flex-shrink: 0; padding-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: {{c.faint}};">{{a.time}}</span>
+              <span style="flex-grow: 1; border-radius: 12px; padding: 8px 12px; background: {{a.bg}}; border: 1px {{a.border}} {{c.rule}}; display: flex; flex-direction: column; gap: 2px; box-shadow: inset 3px 0 0 {{a.tag}};">
+                <span style="font-size: 14px; font-weight: 700;">{{a.title}}</span><span style="font-size: 12px; color: {{c.mute}};">{{a.sub}}</span></span>
+            </a>
+          </sc-for>
+        </section>
+
+        <a href="D2-Arena.dc.html" onClick="{{go.Arena}}" aria-label="Leaderboard" style="border-radius: 18px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; text-decoration: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.gold}};">LEADERBOARD · YTD API</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: {{c.faint}};">SAMPLE</span></div>
+          <div style="display: flex; align-items: flex-end; gap: 6px; height: 116px;">
+            <sc-for list="{{race}}" as="r" hint-placeholder-count="5">
+              <span style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                <span class="tn" style="font-size: 10px; font-weight: 700; color: {{r.labelColor}};">{{r.short}}</span>
+                <span style="width: 100%; max-width: 40px; height: {{r.h}}px; border-radius: 6px 6px 0 0; background: {{r.fill}}; transform-origin: bottom; animation: d3tGrowY 600ms cubic-bezier(0.32, 0.72, 0, 1) both; animation-delay: {{r.delay}}; box-shadow: {{r.glow}};"></span>
+                <span style="display: flex; flex-direction: column; align-items: center; line-height: 1.2;"><span style="font-size: 12px; font-weight: 800; color: {{r.nameColor}};">{{r.rank}}</span><span style="font-size: 10px; font-weight: {{r.weight}}; color: {{r.nameColor}}; white-space: nowrap;">{{r.name}}</span></span>
+              </span>
+            </sc-for>
+          </div>
+          <span style="font-size: 14px; line-height: 1.4;"><strong>7th of 18.</strong> TTD 9,104 to pass A. Ramdial — about one application.</span>
+        </a>
+
+        <a href="D3-Trophies.dc.html" onClick="{{go.Trophies}}" aria-label="Trophy room" style="border-radius: 18px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px 16px; display: flex; align-items: center; gap: 14px; text-decoration: none;">
+          <span style="width: 72px; height: 72px; flex-shrink: 0;"><dc-import name="D3-Trophy" kind="big-week" size="72" locked="{{true}}" progress="{{70}}" dark="{{dark}}" hint-size="72px,72px"></dc-import></span>
+          <span style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.gold}};">NEXT TROPHY</span>
+            <span style="font-size: 15px; font-weight: 700;">Big Week · 70% there</span>
+            <span style="font-size: 12px; color: {{c.mute}};">One more closing interview this week unlocks it (SAMPLE).</span>
+          </span>
+        </a>
+
+        <a href="D3-Trophies.dc.html" onClick="{{go.Trophies}}" aria-label="Streak" style="border-radius: 18px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px 16px; display: flex; align-items: center; gap: 14px; text-decoration: none;">
+          <span style="width: 56px; height: 56px; flex-shrink: 0;"><dc-import name="D3-Trophy" kind="streak" size="56" dark="{{dark}}" hint-size="56px,56px"></dc-import></span>
+          <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-size: 15px; font-weight: 700;">13-week report streak</span>
+            <span role="img" aria-label="Streak milestones 5, 10, 25, 52 — 13 weeks done" style="position: relative; height: 6px; border-radius: 3px; background: {{c.sunk}};">
+              <span style="position: absolute; left: 0; top: 0; height: 6px; width: 23%; border-radius: 3px; background: {{c.gold}};"></span>
+              <sc-for list="{{milestones}}" as="ms" hint-placeholder-count="4"><span style="position: absolute; left: {{ms.left}}%; top: -3px; width: 12px; height: 12px; margin-left: -6px; border-radius: 6px; background: {{ms.bg}}; border: 2px solid {{c.surface}}; box-sizing: border-box;"></span></sc-for>
+            </span>
+            <span style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: {{c.faint}};"><span>5</span><span>10</span><span>25 · next</span><span>52</span></span>
+          </span>
+        </a>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"onNav":{"editor":null},"reportDone":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { skip: 0, calls: 0, appts: 0, ffi: 0, ci: 0, apps: 0, bumpKey: '', bumpN: 0, lastPts: 0, table: false, open: {}, dispPts: null };
+    this.ptsTimer = null;
+  }
+  componentWillUnmount() {
+    if (this.ptsTimer) clearInterval(this.ptsTimer);
+  }
+  countPts(from, to) {
+    if (this.ptsTimer) clearInterval(this.ptsTimer);
+    const start = Date.now(), dur = 420;
+    this.ptsTimer = setInterval(() => {
+      const t = Math.min(1, (Date.now() - start) / dur);
+      const eased = 1 - Math.pow(1 - t, 3);
+      this.setState({ dispPts: Math.round(from + (to - from) * eased) });
+      if (t >= 1) { clearInterval(this.ptsTimer); this.ptsTimer = null; }
+    }, 30);
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', goldOnInk: '#F2C14E', sideBg: '#EFEBE2', glass: 'rgba(246,243,236,0.86)', pane: '#FBFAF6', sel: '#DCEAE7', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', goldOnInk: '#855400', sideBg: '#181816', glass: 'rgba(19,19,17,0.86)', pane: '#171714', sel: '#16312F', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = this.props.dark ? dark : light;
+    const FILES = { Report: 'D2-Report', Ledger: 'D3-Ledger', Money: 'D3-Money', Week: 'D2-Week', Funnel: 'D3-Pipeline', Calls: 'D3-Focus', Arena: 'D2-Arena', Campaign: 'D3-Campaign', Numbers: 'D3-Numbers', Trophies: 'D3-Trophies', Outcome: 'Outcome', Log: 'Log-Sheet', Search: 'D3-Today', Notifications: 'D3-Today' };
+    const nav = (t) => (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav(t); } };
+    const go = {};
+    Object.keys(FILES).forEach((t) => { go[t] = nav(t); });
+    const s = this.state;
+    const reportDone = !!this.props.reportDone;
+    const fmt = (n) => Math.round(n).toLocaleString('en-US');
+
+    // --- sparkline builder (220 x 30 box) ---
+    const spark = (vals, lo, hi, targetVal) => {
+      const n = vals.length, W = 220, H = 30, pad = 3;
+      const X = (i) => (i / (n - 1)) * W;
+      const Y = (v) => H - pad - ((v - lo) / (hi - lo)) * (H - pad * 2);
+      let line = '';
+      vals.forEach((v, i) => { line += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); });
+      const area = line + 'L' + W + ' ' + H + 'L0 ' + H + 'z';
+      const target = targetVal == null ? '' : 'M0 ' + Y(targetVal).toFixed(1) + 'H' + W;
+      return { line: line, area: area, target: target };
+    };
+    // Settled API cumulative by month, Jan..Sep (SAMPLE split of the real 87,146)
+    const monthly = [0, 6000, 0, 7200, 0, 0, 21600, 22346, 30000];
+    let cum = 0; const cumu = monthly.map((v) => (cum += v));
+    const sApi = spark(cumu, 0, 100000);
+    const sXmas = spark([0, 6, 14, 21, 29, 36, 44, 52, 60, 67, 74], 0, 80, null);
+    const sPers = spark([91.2, 90.8, 90.1, 89.7, 89.9, 88.8, 88.1, 87.9, 87.2, 86.9, 86.6], 84, 92, 90);
+    const sRank = spark([11, 11, 10, 10, 9, 9, 9, 8, 9, 8, 7].map((r) => 19 - r), 6, 13, null);
+    const T = [
+      { label: 'Settled API 2026', tag: 'REAL', value: 'TTD 87,146', note: '13% of MDRT · 601,654 to go', noteIcon: 'M12 19V5M5 12l7-7 7 7', noteColor: c.mute, sp: sApi, col: c.cat[0], t: 'Money' },
+      { label: 'Christmas campaign', tag: 'REAL', value: '27%', note: 'TTD 73,946 of 275,000 · 96 days', noteIcon: 'M4 22V4M4 4h13l-2 4 2 4H4', noteColor: c.mute, sp: sXmas, col: c.cat[1], t: 'Campaign' },
+      { label: 'Persistency', tag: 'REAL', value: '86.6%', note: 'Below the 90% gate · prize at 50%', noteIcon: 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z', noteColor: c.warm, sp: sPers, col: c.warm, t: 'Money?tab=Persistency' },
+      { label: 'Branch rank · YTD', tag: 'SAMPLE', value: '7th of 18', note: 'Up 2 places in 4 weeks', noteIcon: 'M7 17 17 7M8 7h9v9', noteColor: c.accent, sp: sRank, col: c.cat[0], t: 'Arena' }
+    ];
+    const tiles = T.map((t) => ({ label: t.label, tag: t.tag, value: t.value, note: t.note, noteIcon: t.noteIcon, noteColor: t.noteColor, line: t.sp.line, area: t.sp.area, target: t.sp.target, lineColor: t.col, href: (FILES[t.t.split('?')[0]] || 'D3-Today') + '.dc.html', go: nav(t.t) }));
+
+    const tasks = [
+      { key: 'report', title: 'Submit your week 39 report', body: 'Due today. Your daily logs and KQM calls already fill it in. The fast check takes about a minute.', cta: 'Start report', t: 'Report' },
+      { key: 'confirm', title: 'Confirm settled policies', body: 'Head office shows [n] of your policies as settled. Confirm them so they count toward Christmas and MDRT.', cta: 'Open the ledger', t: 'Ledger' },
+      { key: 'winback', title: 'Win back a lapsed policy', body: 'Reinstating TTD 7,100 lifts persistency over 90% — that moves your Christmas prize from the 50% band to 100%.', cta: 'See the numbers', t: 'Money?tab=Persistency' },
+      { key: 'plan', title: 'Plan week 40', body: 'Book 5 fact-finds. Drag people from "To schedule" straight onto the calendar.', cta: 'Open week', t: 'Week' }
+    ].filter((x) => !(reportDone && x.key === 'report'));
+    const k = tasks.length ? s.skip % tasks.length : 0;
+    const queue = tasks.slice(k).concat(tasks.slice(0, k)).map((x) => Object.assign({}, x, { href: FILES[x.t.split('?')[0]] + '.dc.html', go: nav(x.t) }));
+
+    const PTS = { calls: 1, appts: 3, ffi: 5, ci: 10, apps: 25 };
+    const defs = [
+      { key: 'calls', label: 'Dials', short: 'Dial', target: 60, last: 52 },
+      { key: 'appts', label: 'Appointments', short: 'Appt', target: 7, last: 6 },
+      { key: 'ffi', label: 'Fact finds', short: 'FFI', target: 5, last: 3 },
+      { key: 'ci', label: 'Closings', short: 'CI', target: 3, last: 2 },
+      { key: 'apps', label: 'Applications', short: 'App', target: 2.5, last: 1 }
+    ];
+    const meters = defs.map((d, i) => {
+      const scale = d.target * 1.4;
+      const v = s[d.key];
+      return {
+        label: d.label, short: d.short, target: d.target, val: v, pts: PTS[d.key] + ' pt' + (PTS[d.key] > 1 ? 's' : '') + ' each',
+        pct: Math.min(100, (v / scale) * 100).toFixed(1), planPct: ((d.target / scale) * 100).toFixed(1), lastPct: Math.min(100, (d.last / scale) * 100).toFixed(1),
+        fill: v >= d.target ? c.gold : c.cat[0],
+        aria: 'Log one ' + d.label.toLowerCase(),
+        aria2: d.label + ': ' + v + ' done of ' + d.target + ' planned. Last week ' + d.last + '.',
+        inc: () => {
+          const before = defs.reduce((a, dd) => a + s[dd.key] * PTS[dd.key], 0);
+          const after = before + PTS[d.key];
+          this.setState({ [d.key]: s[d.key] + 1, bumpKey: '', lastPts: PTS[d.key] });
+          setTimeout(() => this.setState({ bumpKey: d.key, bumpN: this.state.bumpN + 1 }), 0);
+          this.countPts(s.dispPts == null ? before : s.dispPts, after);
+        }
+      };
+    });
+    const ptsTarget = defs.reduce((a, d) => a + s[d.key] * PTS[d.key], 0);
+    const ptsToday = s.dispPts == null ? ptsTarget : s.dispPts;
+
+    const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
+    const maxM = 30000;
+    const months = monthly.map((v, i) => ({
+      m: MN[i], full: fmt(v), h: v ? Math.max(4, Math.round((v / maxM) * 150)) : 0,
+      label: i === 8 ? '30.0K' : '', fill: i === 8 ? c.cat[0] : c.ghost,
+      tip: MN[i] + ': TTD ' + fmt(v), tipB: (v ? Math.round((v / maxM) * 150) : 0) + 34, delay: (i * 30) + 'ms'
+    }));
+
+    const INS = [
+      { id: 'a', text: 'Reinstating TTD 7,100 is worth more than a new sale this month: it lifts your Christmas prize from 50% to 100%.', why: 'Persistency 86.6% vs the 90% gate. Prize TTD 7,000 × 50% = TTD 3,500 today; × 100% = TTD 7,000. One typical new sale adds about TTD 17,000 API but no prize money until the tier.', cta: 'See at-risk policies', t: 'Money?tab=Persistency' },
+      { id: 'b', text: 'Your contacts turn into appointments best on Tuesday mornings (SAMPLE).', why: 'Last 13 weeks: Tuesday 09:00–11:00 booked 31% of contacts; your average is 19% (SAMPLE).', cta: 'Block Tuesday 9–11', t: 'Week' }
+    ];
+    const insights = INS.map((n) => {
+      const open = !!s.open[n.id];
+      return { text: n.text, why: n.why, cta: n.cta, href: FILES[n.t.split('?')[0]] + '.dc.html', go: nav(n.t), open: open, whyLabel: open ? 'Hide the numbers' : 'Why?', toggle: () => this.setState({ open: Object.assign({}, s.open, { [n.id]: !open }) }) };
+    });
+
+    const W = [
+      { title: 'Confirm settled policies', sub: '[n] waiting · you confirm your own now', cta: 'Confirm', t: 'Ledger', hint: 'Bulk-confirm in the ledger', icon: 'M20 6 9 17l-5-5', tone: 'accent' },
+      { title: 'Win back [Client E]', sub: 'Lapsed · TTD 7,100 · clears the 90% gate', cta: 'Plan it', t: 'Money?tab=Persistency', hint: 'Shows the prize change', icon: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5', tone: 'warm' },
+      { title: '3 KQM calls need a meeting place', sub: 'They count here already · ApplyOn waits for the place', cta: 'Fix in Connections', t: 'Connections', hint: 'Takes a minute', icon: 'M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z', tone: 'warm' },
+      { title: 'Log Friday’s meeting outcome', sub: '[Client name] · fact-find · 25-09-2026', cta: 'Log outcome', t: 'Outcome', hint: 'It fills your report', icon: 'M4 3h16v18H4zM8 8h8M8 12h8', tone: 'accent' }
+    ];
+    FILES.Connections = 'D3-Connections';
+    const waiting = W.map((w, i) => ({
+      title: w.title, sub: w.sub, cta: w.cta, hint: w.hint, icon: w.icon, href: FILES[w.t.split('?')[0]] + '.dc.html', go: nav(w.t),
+      iconBg: w.tone === 'warm' ? c.warmTint : c.accentTint, iconFg: w.tone === 'warm' ? c.warm : c.accent,
+      subColor: w.tone === 'warm' ? c.warm : c.mute, rule: i === W.length - 1 ? 'transparent' : c.rule
+    }));
+    const A = [
+      { time: '09:00', title: 'Focus · Calls', sub: '12 people from KQM · about 45 min', t: 'Calls', tag: c.gold, bg: c.goldTint, border: 'solid' },
+      { time: '11:00', title: '[Client name] · fact-find', sub: 'Referral · open for prep', t: 'Week', tag: c.accent, bg: c.surface, border: 'solid' },
+      { time: '13:00', title: 'Free · 2 hours', sub: 'Drag someone here from To schedule', t: 'Week', tag: 'transparent', bg: 'transparent', border: 'dashed' },
+      { time: '15:30', title: '[Client name] · closing', sub: 'Family plan · bring the illustration', t: 'Week', tag: c.gold, bg: c.surface, border: 'solid' }
+    ];
+    const agenda = A.map((a) => Object.assign({}, a, { href: FILES[a.t] + '.dc.html', go: nav(a.t) }));
+    const FM = [
+      ['Calls', 'Calls · 12 ready', 'From KQM Calls · about 45 min', 'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z'],
+      ['Winback', 'Win-back · 2 policies', 'TTD 7,221 clears the 90% gate', 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5'],
+      ['Paperwork', 'Paperwork · 6 tasks', 'Confirm, log, report · about 25 min', 'M4 3h16v18H4zM8 8h8M8 12h8M8 16h5']
+    ];
+    const focusModes = FM.map((m, i) => ({ title: m[1], sub: m[2], icon: m[3], go: nav('Calls?mode=' + m[0]), bg: i === 0 ? c.goldOnInk : 'rgba(127,120,105,0.16)', fg: i === 0 ? (this.props.dark ? '#FFFFFF' : '#1F1D1A') : c.bg }));
+    const queueFaces = [['CA', '#F2C14E'], ['CB', '#8FD3CD'], ['CC', '#E0A084'], ['CD', '#B9BBEC'], ['+8', '#ECE7DC']].map((f) => ({ t: f[0], bg: f[1] }));
+
+    const R = [['Mohammed', 212400, 1], ['Singh', 110300, 5], ['Ramdial', 96250, 6], ['You', 87146, 7], ['Holder', 84900, 8]];
+    const race = R.map((r, i) => {
+      const you = r[0] === 'You';
+      const lead = i === 0;
+      return {
+        name: r[0], rank: lead ? '1st' : r[2] + 'th', short: (r[1] / 1000).toFixed(1) + 'K',
+        h: Math.round((r[1] / 212400) * 76), fill: you ? c.cat[0] : (lead ? c.gold : c.ghost),
+        glow: lead ? '0 0 18px rgba(232,180,78,0.55)' : 'none', delay: (i * 60) + 'ms',
+        weight: you ? 800 : 600, nameColor: you ? c.ink : c.mute, labelColor: you ? c.ink : c.faint
+      };
+    });
+    const milestones = [[5, 7], [10, 17], [25, 45], [52, 100]].map((m) => ({ left: m[1], bg: 13 >= m[0] ? c.gold : c.faint }));
+
+    return {
+      c: c, go: go, dark: !!this.props.dark, reportDone: reportDone,
+      showChrome: !this.props.embedded, rootW: this.props.embedded ? 1220 : 1440,
+      tiles: tiles,
+      cur: queue[0] || {}, hasCurrent: queue.length > 0, allClear: queue.length === 0, canSkip: queue.length > 1,
+      countLabel: '1 OF ' + queue.length + ' TODAY',
+      cardAnim: (s.skip % 2 ? 'd3tCardB' : 'd3tCardA') + ' 380ms cubic-bezier(0.32, 0.72, 0, 1) both',
+      skip: () => this.setState({ skip: s.skip + 1 }),
+      meters: meters, ptsToday: ptsToday, lastPts: s.lastPts,
+      showFloat: !!s.bumpKey, floatAnim: (s.bumpN % 2 ? 'd3tFloatA' : 'd3tFloatB') + ' 900ms ease-out both',
+      months: months, chartOn: !s.table, tableOn: s.table, tableLabel: s.table ? 'Chart' : 'Table',
+      toggleTable: () => this.setState({ table: !s.table }),
+      insights: insights, waiting: waiting, agenda: agenda, queueFaces: queueFaces, focusModes: focusModes, race: race, milestones: milestones
+    };
+  }
+}
+</script>
+</body>
+</html>

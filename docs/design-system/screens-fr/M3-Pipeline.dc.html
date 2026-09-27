@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pipeline — mobile v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+@keyframes mpFadeA{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes mpFadeB{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes mpDrawA{from{stroke-dashoffset:260}to{stroke-dashoffset:0}}
+@keyframes mpDrawB{from{stroke-dashoffset:260}to{stroke-dashoffset:0}}
+@keyframes mpDotA{from{opacity:0}to{opacity:1}}
+@keyframes mpDotB{from{opacity:0}to{opacity:1}}
+.mp-chip{transition:background 120ms ease,color 120ms ease}
+.mp-scroll{scrollbar-width:none}
+.mp-scroll::-webkit-scrollbar{display:none}
+.mp-snap{scroll-snap-type:x mandatory}
+.mp-col{scroll-snap-align:start}
+.mp-row:active{background:rgba(11,93,94,0.08)}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: 1560px; box-sizing: border-box; position: relative; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; padding: 12px 16px 104px; display: flex; flex-direction: column; gap: 14px;">
+
+  <header style="display: flex; align-items: center; gap: 8px; min-height: 44px;">
+    <h1 style="flex-grow: 1; margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700;">Pipeline</h1>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}}; background: {{c.sunk}}; padding: 3px 7px; border-radius: 6px;">SAMPLE</span>
+  </header>
+
+  <div role="tablist" aria-label="View" style="height: 48px; box-sizing: border-box; padding: 3px; border-radius: 14px; background: {{c.sunk}}; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; flex-shrink: 0;">
+    <sc-for list="{{views}}" as="v" hint-placeholder-count="2">
+      <button role="tab" aria-selected="{{v.on}}" onClick="{{v.pick}}" style="height: 42px; border: 0; border-radius: 11px; background: {{v.bg}}; color: {{v.color}}; box-shadow: {{v.shadow}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">{{v.label}}</button>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{isFunnel}}" hint-placeholder-val="{{true}}">
+  <div style="display: flex; flex-direction: column; gap: 14px; animation: {{vfAnim}} 220ms cubic-bezier(0.32,0.72,0,1) both;">
+
+    <div class="mp-scroll" role="tablist" aria-label="Period" style="height: 44px; box-sizing: border-box; display: flex; gap: 8px; overflow-x: auto; flex-shrink: 0;">
+      <sc-for list="{{periods}}" as="p" hint-placeholder-count="3">
+        <button role="tab" aria-selected="{{p.on}}" onClick="{{p.pick}}" class="mp-chip" style="height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid {{p.border}}; background: {{p.bg}}; color: {{p.color}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700; white-space: nowrap; flex-shrink: 0;">{{p.label}}</button>
+      </sc-for>
+    </div>
+
+    <span style="font-size: 13px; color: {{c.mute}}; line-height: 1.4;">{{heroTitle}}</span>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+        <button class="mp-row" onClick="{{r.pick}}" aria-label="{{r.aria}}" style="text-align: left; border: 0; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; font-family: 'Onest', sans-serif;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px;">
+            <span style="font-size: 14px; font-weight: 700; color: {{c.ink}};">{{r.label}}</span>
+            <span style="font-size: 13px; color: {{c.mute}}; flex-shrink: 0;">{{r.count}} <span style="color: {{c.faint}};">/ {{r.min}} min</span></span>
+          </div>
+          <div style="position: relative; height: 20px; border-radius: 10px; background: {{c.sunk}}; overflow: hidden;">
+            <div style="position: absolute; left: 0; top: 0; bottom: 0; border-radius: 10px; background: {{r.color}}; width: {{r.pct}}%; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></div>
+            <div style="position: absolute; left: {{r.tickPct}}%; top: 0; bottom: 0; width: 2px; background: {{c.faint}}; transition: left 480ms cubic-bezier(0.32, 0.72, 0, 1);"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <sc-if value="{{r.hasConv}}" hint-placeholder-val="{{true}}"><span style="font-size: 11.5px; color: {{c.mute}};">{{r.conv}}</span></sc-if>
+            <sc-if value="{{r.short}}" hint-placeholder-val="{{false}}">
+              <span style="display: flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; color: {{c.warm}};"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M12 3l9 16H3z"></path></svg>{{r.shortLabel}}</span>
+            </sc-if>
+            <span style="flex-grow: 1;"></span>
+            <span style="font-size: 11.5px; color: {{c.faint}};">{{r.peopleLabel}}</span>
+          </div>
+        </button>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{isBoard}}" hint-placeholder-val="{{false}}">
+  <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0; animation: {{vfAnim}} 220ms cubic-bezier(0.32,0.72,0,1) both;">
+
+    <span style="font-size: 12px; color: {{c.mute}}; line-height: 1.4;">People live in KQM Calls. Moving a card here updates KQM.</span>
+
+    <label style="display: flex; flex-direction: column; gap: 4px;">
+      <span style="font-size: 11px; font-weight: 700; color: {{c.mute}};">Find a person</span>
+      <input value="{{query}}" onInput="{{onQuery}}" placeholder="Search by name" style="height: 44px; box-sizing: border-box; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; padding: 0 12px;">
+    </label>
+
+    <div class="mp-scroll" role="tablist" aria-label="Campaign filter" style="height: 40px; box-sizing: border-box; display: flex; gap: 8px; overflow-x: auto; flex-shrink: 0;">
+      <sc-for list="{{campaignChips}}" as="ch" hint-placeholder-count="5">
+        <button role="tab" aria-selected="{{ch.on}}" onClick="{{ch.pick}}" class="mp-chip" style="height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid {{ch.border}}; background: {{ch.bg}}; color: {{ch.color}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700; white-space: nowrap; flex-shrink: 0;">{{ch.label}}</button>
+      </sc-for>
+    </div>
+
+    <button onClick="{{addProspect}}" style="height: 48px; border-radius: 14px; border: 1px dashed {{c.rule}}; background: transparent; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; flex-shrink: 0;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add prospect</button>
+
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SWIPE COLUMNS →</span>
+    <div class="mp-scroll" style="height: 40px; box-sizing: border-box; display: flex; gap: 8px; overflow-x: auto; flex-shrink: 0;">
+      <sc-for list="{{pager}}" as="pg" hint-placeholder-count="8">
+        <button onClick="{{pg.jump}}" class="mp-chip" style="height: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid {{pg.border}}; background: {{pg.bg}}; color: {{pg.color}}; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; flex-shrink: 0;">
+        <span style="font-size: 10.5px; font-weight: 700; white-space: nowrap;">{{pg.label}}</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: {{pg.subColor}};">{{pg.countDisp}}/{{pg.minDisp}}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div class="mp-scroll mp-snap" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px;">
+      <sc-for list="{{columns}}" as="col" hint-placeholder-count="8">
+        <div data-col="{{col.id}}" class="mp-col" style="width: 350px; flex-shrink: 0; display: flex; flex-direction: column; background: {{c.pane}}; border: 1px solid {{c.rule}}; border-radius: 18px; overflow: hidden;">
+          <div style="padding: 14px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid {{c.rule}};">
+            <div style="display: flex; align-items: baseline; justify-content: space-between;">
+              <span style="font-size: 15px; font-weight: 700;">{{col.label}}</span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;">{{col.countDisp}} <span style="font-size: 10px; font-weight: 600; color: {{c.faint}};">/ {{col.minDisp}} min</span></span>
+            </div>
+            <span style="height: 5px; border-radius: 3px; background: {{c.rule}}; display: block; overflow: hidden;">
+              <span style="display: block; height: 5px; border-radius: 3px; background: {{c.accent}}; width: {{col.meterPct}}%; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></span>
+            </span>
+            <sc-if value="{{col.hasSettledStat}}" hint-placeholder-val="{{false}}"><span style="font-size: 11px; color: {{c.mute}};">{{col.settledStat}}</span></sc-if>
+          </div>
+          <div style="max-height: 620px; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px;">
+            <sc-for list="{{col.cards}}" as="cd" hint-placeholder-count="2">
+              <div style="position: relative; border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 12px; display: flex; flex-direction: column; gap: 6px;">
+                <button onClick="{{cd.openMenu}}" aria-label="Actions for {{cd.name}}" style="position: absolute; right: 6px; top: 6px; width: 32px; height: 32px; border: 0; border-radius: 8px; background: {{c.sunk}}; color: {{c.mute}}; display: flex; align-items: center; justify-content: center;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg>
+                </button>
+                <div style="display: flex; align-items: center; gap: 8px; padding-right: 30px;">
+                  <span aria-hidden="true" style="width: 26px; height: 26px; border-radius: 13px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;">{{cd.initials}}</span>
+                  <span style="font-size: 14px; font-weight: 700;">{{cd.name}}</span>
+                </div>
+                <span style="align-self: flex-start; height: 20px; padding: 0 8px; border-radius: 10px; background: {{c.sunk}}; color: {{c.faint}}; display: flex; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;">{{cd.campaign}}</span>
+                <span style="font-size: 12.5px; color: {{c.mute}}; line-height: 1.35;">{{cd.context}}</span>
+                <sc-if value="{{cd.hasApi}}" hint-placeholder-val="{{false}}"><span style="font-size: 12.5px; font-weight: 700;">{{cd.api}}</span></sc-if>
+                <span style="font-size: 11px; color: {{c.faint}};">Next: {{cd.next}} · {{cd.date}}</span>
+              </div>
+            </sc-for>
+            <sc-if value="{{col.empty}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; color: {{c.faint}}; padding: 6px 2px;">No one here.</span></sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}"><div style="position: absolute; left: 0; bottom: 0;"><dc-import name="M3-Nav" active="pipeline" dark="{{dark}}" hint-size="390px,84px"></dc-import></div></sc-if>
+
+  <sc-if value="{{sheetOpen}}" hint-placeholder-val="{{false}}">
+    <div style="position: absolute; inset: 0; background: rgba(31,29,26,0.32); z-index: 10;" onClick="{{closeSheet}}"></div>
+    <div role="dialog" aria-label="Stage detail: {{sel.label}}" style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 82%; overflow-y: auto; background: {{c.surface}}; border-radius: 22px 22px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,0.22); padding: 8px 18px 22px; display: flex; flex-direction: column; gap: 14px; z-index: 11; animation: mpFadeA 260ms cubic-bezier(0.32,0.72,0,1) both;">
+      <span aria-hidden="true" style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: {{c.rule}};"></span>
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">{{sel.label}}</h2>
+        <button onClick="{{closeSheet}}" aria-label="Close" style="width: 36px; height: 36px; border: 0; border-radius: 18px; background: {{c.sunk}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 12.5px; font-weight: 700;">13-week trend</span>
+        <svg width="100%" height="56" viewBox="0 0 300 56" role="img" aria-label="13-week trend for {{sel.label}}">
+          <polyline points="{{sel.linePts}}" fill="none" stroke="{{cat0}}" stroke-width="2" stroke-dasharray="260" style="animation: {{sel.drawAnim}} 600ms cubic-bezier(0.32,0.72,0,1) both;"></polyline>
+          <circle cx="{{sel.lastX}}" cy="{{sel.lastY}}" r="4" fill="{{c.surface}}" stroke="{{cat0}}" stroke-width="2" style="animation: {{sel.dotAnim}} 260ms ease both; animation-delay: 450ms;"></circle>
+        </svg>
+      </div>
+      <div style="border-radius: 14px; background: {{c.sunk}}; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-size: 12px; color: {{c.mute}};">Your rate vs your 13-wk average</span>
+        <span style="font-size: 17px; font-weight: 700;">{{sel.rateNow}} <span style="font-size: 12.5px; font-weight: 500; color: {{c.mute}};">vs {{sel.rateAvg}} avg</span></span>
+      </div>
+      <div style="border-radius: 14px; background: {{c.warmTint}}; color: {{c.warm}}; padding: 12px 14px; font-size: 13.5px; font-weight: 600; line-height: 1.4;">{{sel.coaching}}</div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-size: 13px; font-weight: 700;">Work these in KQM</span>
+        <sc-if value="{{sel.hasPeople}}" hint-placeholder-val="{{true}}">
+          <sc-for list="{{sel.people}}" as="pp" hint-placeholder-count="2">
+            <div style="border-radius: 14px; background: {{c.pane}}; border: 1px solid {{c.rule}}; padding: 10px; display: flex; flex-direction: column; gap: 8px;">
+              <span style="font-size: 13.5px; font-weight: 700;">{{pp.name}}</span>
+              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+                <a href="#" onClick="{{pp.openKqm}}" style="height: 44px; border-radius: 11px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 13px; font-weight: 700;">Open in KQM</a>
+                <a href="M3-Focus.dc.html" onClick="{{pp.callNow}}" style="height: 44px; border-radius: 11px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 13px; font-weight: 700;">Call now</a>
+              </div>
+            </div>
+          </sc-for>
+        </sc-if>
+        <sc-if value="{{sel.empty}}" hint-placeholder-val="{{false}}"><span style="font-size: 12.5px; color: {{c.faint}};">No one on the board at this stage right now.</span></sc-if>
+      </div>
+      <a href="M3-Pipeline.dc.html" onClick="{{sel.seeOnBoard}}" style="height: 52px; border-radius: 14px; background: {{c.ink}}; color: {{c.bg}}; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 15px; font-weight: 700;">See on board</a>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{menuOpen}}" hint-placeholder-val="{{false}}">
+    <div style="position: absolute; inset: 0; background: rgba(31,29,26,0.32); z-index: 12;" onClick="{{menu.close}}"></div>
+    <div role="dialog" aria-label="Actions for {{menu.name}}" style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 78%; overflow-y: auto; background: {{c.surface}}; border-radius: 22px 22px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,0.22); padding: 8px 18px 22px; display: flex; flex-direction: column; gap: 12px; z-index: 13; animation: mpFadeA 220ms cubic-bezier(0.32,0.72,0,1) both;">
+      <span aria-hidden="true" style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: {{c.rule}};"></span>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">{{menu.name}}</span>
+        <span style="font-size: 12.5px; color: {{c.mute}};">{{menu.stageLabel}} · {{menu.campaign}}</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+        <sc-for list="{{menu.needs}}" as="n" hint-placeholder-count="2"><span style="height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid {{c.rule}}; color: {{c.mute}}; display: flex; align-items: center; font-size: 12px; font-weight: 600;">{{n}}</span></sc-for>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: {{c.sunk}};">
+        <span style="font-size: 12px; color: {{c.mute}};">Next step</span>
+        <span style="font-size: 14px; font-weight: 700;">{{menu.next}} · {{menu.date}}</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+        <a href="#" onClick="{{menu.openKqm}}" style="height: 48px; border-radius: 12px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 12.5px; font-weight: 700;">KQM</a>
+        <a href="Add-Appointment.dc.html" onClick="{{menu.book}}" style="height: 48px; border-radius: 12px; background: {{c.ink}}; color: {{c.bg}}; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 12.5px; font-weight: 700;">Book</a>
+        <a href="Outcome.dc.html" onClick="{{menu.logOutcome}}" style="height: 48px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 12.5px; font-weight: 700;">Log</a>
+      </div>
+      <span style="font-size: 13px; font-weight: 700; margin-top: 4px;">Move to…</span>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <sc-for list="{{menu.moveTargets}}" as="mt" hint-placeholder-count="7">
+          <button onClick="{{mt.pick}}" style="height: 48px; border: 0; border-top: 1px solid {{c.rule}}; background: transparent; text-align: left; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 600; color: {{c.ink}};">{{mt.label}}</button>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":390,"height":1560}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const p = (props && props.params) || '';
+    const vm = /view=([A-Za-z]+)/.exec(p);
+    this.animFrom = {};
+    this.iv = null;
+    this.state = {
+      view: (vm && vm[1] === 'Board') ? 'Board' : 'Funnel', viewFlip: 0,
+      period: 0, trendFlip: 0,
+      selected: 0, sheetOpen: false,
+      campaign: 'All', query: '',
+      menuOpen: false, menuId: null,
+      animT: 1,
+      cards: [
+        { id: 1, name: '[Client A]', stage: 'toCall', campaign: 'Portfolio 2026', context: 'Referral from [Aaron], not yet called', next: 'Call to introduce', date: '30-09-2026', needs: ['Life cover'] },
+        { id: 2, name: '[Client M]', stage: 'toCall', campaign: 'Orphans 2026', context: 'Old client file, not reached in 2 years', next: 'First call', date: '01-10-2026', needs: ['Whole life review'] },
+        { id: 3, name: '[Client B]', stage: 'contacted', campaign: 'Referrals', context: 'Asked for a quote 22-09-2026', next: 'Send quote follow-up', date: '29-09-2026', needs: ['Term life'] },
+        { id: 4, name: '[Client N]', stage: 'contacted', campaign: 'Reviews', context: 'Annual review call done, comparing options', next: 'Send review summary', date: '01-10-2026', needs: ['Retirement'] },
+        { id: 5, name: '[Client C]', stage: 'apptSet', campaign: 'Portfolio 2026', context: 'Fact-find booked for Monday', next: 'Confirm the time', date: '28-09-2026', needs: ['Life cover', 'Retirement'] },
+        { id: 6, name: '[Client D]', stage: 'kept', campaign: 'Orphans 2026', context: "Kept Monday's appointment, fact-find not yet done", next: 'Book the fact-find follow-up', date: '29-09-2026', needs: ['Education plan'] },
+        { id: 7, name: '[Client E]', stage: 'ffDone', campaign: 'Portfolio 2026', context: 'Fact-find done, drafting illustration', next: 'Send illustration', date: '01-10-2026', needs: ['Education'] },
+        { id: 8, name: '[Client F]', stage: 'ciBooked', campaign: 'Referrals', context: 'Closing interview booked for Wed', next: 'Bring the illustration', date: '30-09-2026', needs: ['Life cover'] },
+        { id: 9, name: '[Client G]', stage: 'appIn', campaign: 'Referrals', context: 'Application submitted', next: 'Await underwriting', date: '05-10-2026', api: 'TTD 36,000', needs: ['Term life'] },
+        { id: 10, name: '[Client H]', stage: 'settled', campaign: 'Portfolio 2026', context: 'Settled', next: 'Policy delivered', date: '14-09-2026', api: 'TTD 36,000', needs: ['Life cover'] },
+        { id: 11, name: '[Client I]', stage: 'settled', campaign: 'Reviews', context: 'Settled', next: 'Annual review', date: '03-09-2026', api: 'TTD 24,946', needs: ['Education'] },
+        { id: 12, name: '[Client J]', stage: 'settled', campaign: 'Orphans 2026', context: 'Settled', next: 'Annual review', date: '18-07-2026', api: 'TTD 13,000', needs: ['Retirement'] },
+        { id: 13, name: '[Client K]', stage: 'settled', campaign: 'Portfolio 2026', context: 'Settled', next: 'Annual review', date: '02-08-2026', api: 'TTD 9,000', needs: ['Term life'] },
+        { id: 14, name: '[Client L]', stage: 'settled', campaign: 'Referrals', context: 'Settled', next: 'Annual review', date: '20-06-2026', api: 'TTD 4,200', needs: ['Life cover'] }
+      ]
+    };
+  }
+  componentWillUnmount() { if (this.iv) clearInterval(this.iv); }
+  bumpAnim() {
+    if (this.iv) clearInterval(this.iv);
+    this.setState({ animT: 0 });
+    const start = Date.now();
+    this.iv = setInterval(() => {
+      const t = Math.min(1, (Date.now() - start) / 420);
+      this.setState({ animT: t });
+      if (t >= 1) { clearInterval(this.iv); this.iv = null; }
+    }, 30);
+  }
+  stagesBase() {
+    return [
+      { key: 'toCall', label: 'Dials', value: 48, min: 60 },
+      { key: 'contacted', label: 'Contacts', value: 31, min: 40 },
+      { key: 'apptSet', label: 'Appointments set', value: 14, min: 20 },
+      { key: 'kept', label: 'Kept', value: 11, min: 15 },
+      { key: 'ffDone', label: 'Fact finds', value: 7, min: 10 },
+      { key: 'ciBooked', label: 'Closing interviews', value: 4, min: 10 },
+      { key: 'appIn', label: 'Applications', value: 1, min: 1 }
+    ];
+  }
+  boardCols() {
+    return [
+      { id: 'toCall', label: 'To call', min: 60 },
+      { id: 'contacted', label: 'Contacted', min: 40 },
+      { id: 'apptSet', label: 'Appointment set', min: 20 },
+      { id: 'kept', label: 'Kept', min: 15 },
+      { id: 'ffDone', label: 'Fact find done', min: 10 },
+      { id: 'ciBooked', label: 'Closing booked', min: 10 },
+      { id: 'appIn', label: 'Application in', min: 1 },
+      { id: 'settled', label: 'Settled', min: 1 }
+    ];
+  }
+  shade(c, i, n) {
+    const hexToRgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+    const a = hexToRgb(c.accent), g = hexToRgb(c.ghost);
+    const t = n > 1 ? i / (n - 1) : 0;
+    const mix = (x, y) => Math.round(x + (y - x) * t);
+    return 'rgb(' + mix(a[0], g[0]) + ',' + mix(a[1], g[1]) + ',' + mix(a[2], g[2]) + ')';
+  }
+  boardCounts(cards, campaign) {
+    const out = {};
+    const pass = (cd) => !campaign || campaign === 'All' || cd.campaign === campaign;
+    this.boardCols().forEach((col) => { out[col.id] = cards.filter((cd) => cd.stage === col.id && pass(cd)).length; });
+    return out;
+  }
+  trendFor(base) {
+    const pts = Array.from({ length: 13 }, (_, i) => Math.max(1, Math.round(base * (0.75 + 0.25 * Math.sin(i * 0.7) + i * 0.012))));
+    const maxV = Math.max.apply(null, pts);
+    const step = 260 / 12;
+    const coords = pts.map((v, i) => (i * step).toFixed(1) + ',' + (52 - (v / maxV) * 44).toFixed(1));
+    const last = pts[pts.length - 1];
+    return { points: coords.join(' '), lastX: ((pts.length - 1) * step).toFixed(1), lastY: (52 - (last / maxV) * 44).toFixed(1) };
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', pane: '#FBFAF6', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', pane: '#171714', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = this.props.dark ? dark : light;
+    const s = this.state;
+    const ease = 1 - Math.pow(1 - s.animT, 3);
+    const disp = (key, target) => {
+      const from = (this.animFrom && this.animFrom[key] !== undefined) ? this.animFrom[key] : target;
+      return Math.round(from + (target - from) * ease);
+    };
+    const toast = (m) => { if (this.props.onNav) this.props.onNav('event:toast:' + m); };
+    const goTo = (t) => (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav(t); } };
+
+    const BOARD_COLS = this.boardCols();
+    const campaignPass = (cd) => s.campaign === 'All' || cd.campaign === s.campaign;
+    const CAMPAIGNS = ['All', 'Portfolio 2026', 'Orphans 2026', 'Referrals', 'Reviews'];
+    const campaignChips = CAMPAIGNS.map((camp) => {
+      const on = s.campaign === camp;
+      return {
+        label: camp === 'All' ? 'All' : camp.replace(' 2026', ''),
+        on: on ? 'true' : 'false', bg: on ? c.ink : c.surface, color: on ? c.bg : c.ink, border: on ? c.ink : c.rule,
+        pick: () => {
+          if (this.state.campaign === camp) return;
+          const from = {};
+          const oldCounts = this.boardCounts(this.state.cards, this.state.campaign);
+          Object.keys(oldCounts).forEach((k) => { from['b_' + k] = oldCounts[k]; });
+          this.animFrom = Object.assign({}, this.animFrom, from);
+          this.setState({ campaign: camp });
+          this.bumpAnim();
+        }
+      };
+    });
+
+    const periodMult = [1, 4, 13];
+    const mult = periodMult[s.period];
+    const stagesBase = this.stagesBase();
+    const stages = stagesBase.map((st) => ({ key: st.key, label: st.label, value: Math.round(st.value * mult), min: Math.round(st.min * mult) }));
+    const maxUnit = Math.max.apply(null, stages.map((st) => Math.max(st.value, st.min)));
+    const boardNow = this.boardCounts(s.cards, s.campaign);
+
+    const isFunnel = s.view === 'Funnel';
+    const isBoard = s.view === 'Board';
+    const vfAnim = (s.viewFlip % 2 === 0 ? 'mpFadeA' : 'mpFadeB');
+    const views = ['Funnel', 'Board'].map((v) => {
+      const on = v === s.view;
+      return { label: v, on: on ? 'true' : 'false', bg: on ? c.surface : 'transparent', color: on ? c.ink : c.mute, shadow: on ? '0 1px 2px rgba(0,0,0,0.08)' : 'none', pick: () => { if (this.state.view === v) return; this.setState({ view: v, viewFlip: 1 - this.state.viewFlip }); } };
+    });
+
+    const periods = ['This week', '4 weeks', '13 weeks'].map((n, i) => ({
+      label: n, on: i === s.period ? 'true' : 'false', bg: i === s.period ? c.ink : c.surface, color: i === s.period ? c.bg : c.ink, border: i === s.period ? c.ink : c.rule,
+      pick: () => {
+        if (this.state.period === i) return;
+        const from = {};
+        stages.forEach((st) => { from['f_' + st.key] = st.value; });
+        this.animFrom = Object.assign({}, this.animFrom, from);
+        this.setState({ period: i, trendFlip: 1 - this.state.trendFlip });
+        this.bumpAnim();
+      }
+    }));
+
+    const goBoardFromStage = (i) => {
+      const col = BOARD_COLS[i];
+      this.setState({ view: 'Board', viewFlip: 1 - this.state.viewFlip, sheetOpen: false });
+      setTimeout(() => {
+        try {
+          const el = document.querySelector('[data-col="' + col.id + '"]');
+          if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+        } catch (err) {}
+      }, 60);
+    };
+
+    const rows = stages.map((st, i) => {
+      const prev = i > 0 ? stages[i - 1].value : null;
+      const conv = prev ? Math.round((st.value / prev) * 100) : null;
+      const dispVal = disp('f_' + st.key, st.value);
+      const pct = Math.max(2, Math.round((st.value / maxUnit) * 100));
+      const tickPct = Math.min(100, Math.round((st.min / maxUnit) * 100));
+      const isShort = st.value < st.min;
+      const peopleNow = disp('b_' + st.key, boardNow[st.key] || 0);
+      return {
+        label: st.label, count: dispVal.toLocaleString('en-US'), min: st.min.toLocaleString('en-US'),
+        pct: pct, tickPct: tickPct, color: this.shade(c, i, stages.length),
+        hasConv: conv !== null, conv: conv !== null ? conv + '% of ' + stages[i - 1].label.toLowerCase() : '',
+        short: isShort, shortLabel: (st.min - st.value) + ' short',
+        aria: st.label + ': ' + st.value + ' of a ' + st.min + ' minimum',
+        peopleLabel: peopleNow + (peopleNow === 1 ? ' person' : ' people') + ' at this stage now',
+        pick: () => { this.setState({ selected: i, sheetOpen: true, trendFlip: 1 - this.state.trendFlip }); }
+      };
+    });
+
+    const sIdx = s.selected;
+    const st = stages[sIdx];
+    const trend = this.trendFor(st.value || 1);
+    const rateNow = sIdx > 0 ? Math.round((st.value / stages[sIdx - 1].value) * 100) + '%' : st.value + '/wk';
+    const rateAvgNum = sIdx > 0 ? Math.min(95, Math.round((st.value / stages[sIdx - 1].value) * 100) + (sIdx === 2 || sIdx === 5 ? 8 : 2)) : null;
+    const peopleAtStage = s.cards.filter((cd) => cd.stage === BOARD_COLS[sIdx].id && campaignPass(cd));
+    const coaching = {
+      toCall: 'You are 12 dials short of the weekly minimum. A second Power hour block would close most of the gap.',
+      contacted: 'Contacts → Dials sits at 65%. That is close to your average — keep the same opener.',
+      apptSet: 'Contacts → Appointments dropped from 52% to 45%. Try the referral opener in Power hour.',
+      kept: 'Kept rate is steady at 79%. Reminders the day before are working — keep sending them.',
+      ffDone: 'Kept → Fact find is 64%, in line with your average. No change needed here.',
+      ciBooked: 'Fact find → Closing interview fell to 57% from a 65% average. Revisit the close at the end of the fact-find.',
+      appIn: 'Closing → Application is 25%, below your 38% average. Ask for the application before you leave the room.'
+    };
+    const drawAnim = s.trendFlip % 2 === 0 ? 'mpDrawA' : 'mpDrawB';
+    const dotAnim = s.trendFlip % 2 === 0 ? 'mpDotA' : 'mpDotB';
+    const sel = {
+      label: st.label, linePts: trend.points, lastX: trend.lastX, lastY: trend.lastY,
+      drawAnim: drawAnim, dotAnim: dotAnim,
+      rateNow: rateNow, rateAvg: rateAvgNum !== null ? rateAvgNum + '%' : '—',
+      coaching: coaching[st.key],
+      hasPeople: peopleAtStage.length > 0, empty: peopleAtStage.length === 0,
+      people: peopleAtStage.slice(0, 2).map((cd) => ({ name: cd.name, openKqm: (e) => { e.preventDefault(); toast('Opens ' + cd.name + ' in KQM Calls'); }, callNow: (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('Focus?mode=Calls'); } } })),
+      seeOnBoard: (e) => { e.preventDefault(); goBoardFromStage(sIdx); }
+    };
+
+    const moveCard = (id, newColId) => {
+      const idx = this.state.cards.findIndex((cd) => cd.id === id);
+      if (idx < 0 || this.state.cards[idx].stage === newColId) { this.setState({ menuOpen: false }); return; }
+      const from = {};
+      BOARD_COLS.forEach((col) => { from['b_' + col.id] = this.state.cards.filter((cd) => cd.stage === col.id && campaignPass(cd)).length; });
+      this.animFrom = Object.assign({}, this.animFrom, from);
+      const client = this.state.cards[idx].name;
+      const cards2 = this.state.cards.slice();
+      cards2[idx] = Object.assign({}, cards2[idx], { stage: newColId });
+      this.setState({ cards: cards2, menuOpen: false });
+      this.bumpAnim();
+      if (this.props.onNav) {
+        if (newColId === 'apptSet') this.props.onNav('AddAppt?type=0&client=' + client);
+        else if (newColId === 'ciBooked') this.props.onNav('AddAppt?type=1&client=' + client);
+        else if (newColId === 'ffDone') this.props.onNav('Outcome');
+        else this.props.onNav('event:toast:Saved · moved in KQM, counted here');
+      }
+    };
+
+    const counts = BOARD_COLS.map((col) => s.cards.filter((cd) => cd.stage === col.id && campaignPass(cd)).length);
+    const appInIdx = BOARD_COLS.findIndex((col) => col.id === 'appIn');
+    const q = (s.query || '').trim().toLowerCase();
+    const columns = BOARD_COLS.map((col, i) => {
+      const listAll = s.cards.filter((cd) => cd.stage === col.id && campaignPass(cd));
+      const listVisible = q ? listAll.filter((cd) => cd.name.toLowerCase().indexOf(q) !== -1) : listAll;
+      const isSettled = col.id === 'settled';
+      const min = Math.round(col.min * mult);
+      const countTarget = counts[i];
+      const countShown = disp('b_' + col.id, countTarget);
+      const meterPct = Math.max(0, Math.min(100, Math.round((countTarget / Math.max(1, min)) * 100)));
+      const settledOf = countTarget + (counts[appInIdx] || 0);
+      return {
+        id: col.id, label: col.label,
+        countDisp: countShown.toLocaleString('en-US'), minDisp: min.toLocaleString('en-US'), meterPct: meterPct,
+        hasSettledStat: isSettled, settledStat: countTarget + ' of ' + settledOf + ' settled',
+        empty: listVisible.length === 0,
+        cards: listVisible.map((cd) => {
+          const m = cd.name.match(/Client ([A-Za-z])/);
+          const letter = m ? m[1] : '?';
+          return {
+            id: cd.id, name: cd.name, campaign: cd.campaign, context: cd.context,
+            hasApi: !!cd.api, api: cd.api || '', next: cd.next, date: cd.date,
+            initials: 'C' + letter,
+            openMenu: () => this.setState({ menuOpen: true, menuId: cd.id })
+          };
+        })
+      };
+    });
+
+    const pager = BOARD_COLS.map((col, i) => {
+      const min = Math.round(col.min * mult);
+      const cur = counts[i];
+      return {
+        label: col.label, countDisp: cur, minDisp: min,
+        bg: c.surface, color: c.ink, subColor: cur < min ? c.warm : c.mute, border: c.rule,
+        jump: () => {
+          try {
+            const el = document.querySelector('[data-col="' + col.id + '"]');
+            if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+          } catch (err) {}
+        }
+      };
+    });
+
+    const menuRaw = s.cards.find((cd) => cd.id === s.menuId) || null;
+    const stageLabelById = {}; BOARD_COLS.forEach((col) => { stageLabelById[col.id] = col.label; });
+    const closeMenu = () => this.setState({ menuOpen: false });
+    const menu = menuRaw ? {
+      name: menuRaw.name, stageLabel: stageLabelById[menuRaw.stage], campaign: menuRaw.campaign,
+      needs: menuRaw.needs, next: menuRaw.next, date: menuRaw.date,
+      openKqm: (e) => { e.preventDefault(); toast('Opens ' + menuRaw.name + ' in KQM Calls'); },
+      book: (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('AddAppt?type=0&client=' + menuRaw.name); } },
+      logOutcome: goTo('Outcome'), close: closeMenu,
+      moveTargets: BOARD_COLS.filter((col) => col.id !== menuRaw.stage).map((col) => ({ label: col.label, pick: () => moveCard(menuRaw.id, col.id) }))
+    } : { name: '', stageLabel: '', campaign: '', needs: [], next: '', date: '', openKqm: closeMenu, book: closeMenu, logOutcome: closeMenu, close: closeMenu, moveTargets: [] };
+
+    return {
+      c: c, dark: !!this.props.dark, cat0: c.cat[0], showNav: !this.props.embedded,
+      isFunnel: isFunnel, isBoard: isBoard, vfAnim: vfAnim, views: views, periods: periods,
+      heroTitle: 'This week: ' + stages[0].value + ' dials → ' + stages[stages.length - 1].value + ' application' + (stages[stages.length - 1].value === 1 ? '' : 's'),
+      rows: rows, sheetOpen: s.sheetOpen, sel: sel, closeSheet: () => this.setState({ sheetOpen: false }),
+      campaignChips: campaignChips, query: s.query, onQuery: (e) => this.setState({ query: e.target.value }),
+      addProspect: (e) => { e.preventDefault(); toast('Opens the new-prospect form in KQM Calls'); },
+      pager: pager, columns: columns,
+      menuOpen: s.menuOpen, menu: menu
+    };
+  }
+}
+</script>
+</body>
+</html>

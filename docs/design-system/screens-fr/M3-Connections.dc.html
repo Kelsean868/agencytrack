@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connections — mobile v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+@keyframes mcBar{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes mcDot{0%{transform:translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateX(60px);opacity:0}}
+.mc-bar{transform-origin:bottom;animation:mcBar 380ms cubic-bezier(0.32,0.72,0,1) both}
+.mc-scroll{scrollbar-width:none}
+.mc-scroll::-webkit-scrollbar{display:none}
+.mc-chip{transition:background 120ms ease,color 120ms ease}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: {{rootH}}px; box-sizing: border-box; position: relative; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; padding: 12px 0 104px; display: flex; flex-direction: column; gap: 12px;">
+
+  <header style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px;">
+    <a onClick="{{go.back}}" href="M3-Home.dc.html" aria-label="Back" style="width: 44px; height: 44px; border-radius: 22px; background: {{c.sunk}}; display: flex; align-items: center; justify-content: center; color: {{c.ink}}; flex-shrink: 0;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
+    <h1 style="flex-grow: 1; margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700;">Connections</h1>
+  </header>
+  <span style="padding: 0 16px; font-size: 13px; color: {{c.mute}}; line-height: 1.4;">What is linked, and whether the numbers arriving are healthy</span>
+
+  <div style="display: flex; flex-direction: column; gap: 6px; padding: 0 16px;">
+    <div class="mc-scroll" role="tablist" aria-label="Connections page" tabIndex="0" onKeyDown="{{pagerKey}}" style="height: 44px; box-sizing: border-box; display: flex; gap: 8px; overflow-x: auto; flex-shrink: 0;">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+        <button role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}" class="mc-chip" style="height: 44px; padding: 0 16px; border-radius: 22px; border: 0; background: {{t.bg}}; color: {{t.color}}; font-family: 'Onest', sans-serif; font-size: 13.5px; font-weight: 700; white-space: nowrap; flex-shrink: 0;">{{t.label}}</button>
+      </sc-for>
+    </div>
+    <div style="display: flex; justify-content: center; align-items: center; gap: 6px; height: 8px;" aria-hidden="true">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+        <span style="width: {{t.dotW}}px; height: 6px; border-radius: 3px; background: {{t.dot}}; transition: width 200ms ease;"></span>
+      </sc-for>
+    </div>
+    <sc-if value="{{showHint}}" hint-placeholder-val="{{false}}">
+      <span style="font-size: 12px; color: {{c.faint}}; text-align: center;">Swipe for more →</span>
+    </sc-if>
+  </div>
+
+  <div onPointerDown="{{down}}" onPointerMove="{{move}}" onPointerUp="{{up}}" onPointerCancel="{{up}}" style="width: 390px; overflow: hidden; touch-action: pan-y;">
+    <div style="width: 1560px; display: flex; align-items: flex-start; transform: translateX({{tx}}px); transition: {{trans}}; will-change: transform;">
+
+      <section aria-label="KQM link" aria-hidden="{{hidden0}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{clip}}px; overflow: hidden; display: flex; flex-direction: column; gap: 16px;">
+
+        <section aria-label="KQM Calls is linked" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">KQM Calls is linked</h2>
+
+          <div style="display: flex; flex-direction: column; gap: 4px; border-radius: 14px; background: {{c.pane}}; border: 1px solid {{c.rule}}; padding: 12px;">
+            <span style="height: 28px; width: 28px; border-radius: 8px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg></span>
+            <span style="font-size: 14px; font-weight: 700;">KQM Calls</span>
+            <span style="font-size: 11.5px; color: {{c.mute}}; word-break: break-all;">kyronmarchan@gmail.com</span>
+          </div>
+          <div style="position: relative; height: 30px; overflow: hidden;">
+            <svg width="100%" height="30" viewBox="0 0 300 30" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="15" x2="300" y2="15" stroke="{{c.rule}}" stroke-width="2"></line></svg>
+            <sc-for list="{{dots}}" as="d" hint-placeholder-count="3"><span aria-hidden="true" style="position: absolute; left: 0; top: 11px; width: 8px; height: 8px; border-radius: 4px; background: {{c.accent}}; animation: mcDot 1800ms {{d.delay}} linear infinite;"></span></sc-for>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; border-radius: 14px; background: {{c.pane}}; border: 1px solid {{c.rule}}; padding: 12px;">
+            <span style="height: 28px; width: 28px; border-radius: 8px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span>
+            <span style="font-size: 14px; font-weight: 700;">AgencyTrack</span>
+            <span style="font-size: 11.5px; color: {{c.mute}}; word-break: break-all;">kyron.marchan@tatil.co.tt</span>
+          </div>
+
+          <span style="font-size: 12.5px; color: {{c.mute}};">Agent number [Agent no.] · Linked by you on 03-09-2026</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}}; background: {{c.sunk}}; padding: 3px 7px; border-radius: 6px; align-self: flex-start;">SAMPLE</span>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+            <button onClick="{{pauseSync}}" style="height: 46px; padding: 0 12px; border-radius: 12px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{pauseLabel}}</button>
+            <button onClick="{{unlink}}" style="height: 46px; padding: 0 12px; border-radius: 12px; border: 1px solid {{c.warm}}; background: transparent; color: {{c.warm}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Unlink</button>
+          </div>
+          <span style="font-size: 11.5px; color: {{c.faint}}; line-height: 1.4;">Each agent links their own calling app. Your manager can't link it for you.</span>
+        </section>
+
+        <section aria-label="Who logs for you" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Who logs for you</h2>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="width: 38px; height: 38px; border-radius: 19px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0;">TA</span>
+            <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+              <span style="font-size: 13.5px; font-weight: 700;">Tracy-ann · assistant</span>
+              <span style="font-size: 11.5px; color: {{c.mute}};">Her calls count as yours</span>
+              <span style="font-size: 10.5px; color: {{c.faint}};">Last logged for you: today, 6 calls (SAMPLE)</span>
+            </div>
+            <button onClick="{{toggleTracy}}" aria-pressed="{{tracyOn}}" aria-label="Let Tracy-ann log calls for you" style="width: 48px; height: 28px; border-radius: 14px; border: 0; background: {{tracyBg}}; position: relative; flex-shrink: 0;">
+              <span style="position: absolute; top: 3px; left: {{tracyLeft}}px; width: 22px; height: 22px; border-radius: 11px; background: #FFFFFF; transition: left 160ms ease;"></span>
+            </button>
+          </div>
+        </section>
+
+      </section>
+
+      <section aria-label="Today" aria-hidden="{{hidden1}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{clip}}px; overflow: hidden; display: flex; flex-direction: column; gap: 16px;">
+
+        <section aria-label="Where calls flow" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; align-items: baseline; gap: 8px;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Today's calls, step by step</h2>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}}; background: {{c.sunk}}; padding: 2px 6px; border-radius: 5px;">SAMPLE</span>
+          </div>
+          <sc-for list="{{flow}}" as="fl" hint-placeholder-count="3">
+            <div style="border-radius: 14px; background: {{fl.bg}}; border: 1px solid {{fl.border}}; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 12.5px; font-weight: 700; color: {{fl.titleColor}};">{{fl.title}}</span>
+              <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 21px; font-weight: 700; color: {{fl.color}};">{{fl.count}}</span>
+              <sc-if value="{{fl.warn}}" hint-placeholder-val="{{false}}">
+                <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: {{c.warm}};"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>{{fl.sub}}</span>
+              </sc-if>
+            </div>
+          </sc-for>
+          <span style="font-size: 11.5px; color: {{c.faint}}; text-align: center;">KQM → AgencyTrack → ApplyOn, in order</span>
+        </section>
+
+        <section aria-label="Calls logged vs counted" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Logged vs counted — 14 days</h2>
+            <button onClick="{{toggleTable}}" style="height: 30px; padding: 0 8px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700; flex-shrink: 0;">{{tableLabel}}</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: {{c.mute}};"><span style="width: 10px; height: 10px; border-radius: 3px; background: {{c.ghost}};"></span>Logged</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: {{c.mute}};"><span style="width: 10px; height: 10px; border-radius: 3px; background: {{cat0}};"></span>Counted</span>
+          </div>
+          <sc-if value="{{showChart}}" hint-placeholder-val="{{true}}">
+            <svg width="100%" height="150" viewBox="0 0 358 150" role="img" aria-label="Calls logged vs counted, last 14 days">
+              <sc-for list="{{bars}}" as="b" hint-placeholder-count="28">
+                <rect class="mc-bar" x="{{b.x}}" y="{{b.y}}" width="{{b.w}}" height="{{b.h}}" rx="2.5" fill="{{b.color}}" style="animation-delay: {{b.delay}};"></rect>
+              </sc-for>
+              <line x1="0" y1="120" x2="358" y2="120" stroke="{{c.rule}}" stroke-width="1"></line>
+            </svg>
+            <div style="display: flex; justify-content: space-between; padding: 0 2px;">
+              <sc-for list="{{dayLabels}}" as="dl" hint-placeholder-count="14"><span style="font-size: 8.5px; color: {{c.faint}}; flex: 1; text-align: center;">{{dl.t}}</span></sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{showTable}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto;">
+              <sc-for list="{{tableRows}}" as="tr" hint-placeholder-count="14">
+                <div style="display: flex; justify-content: space-between; padding: 6px 4px; font-size: 12.5px; border-bottom: 1px solid {{c.rule}};"><span>{{tr.date}}</span><span>Logged {{tr.logged}}</span><span style="font-weight: 700; color: {{tr.color}};">Counted {{tr.counted}}</span></div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <div style="display: flex; align-items: flex-start; gap: 10px; border-radius: 12px; background: {{c.warmTint}}; color: {{c.warm}}; padding: 12px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px;"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+            <span style="font-size: 12.5px; font-weight: 600; line-height: 1.4;">3 calls on 22-09-2026 didn't count: campaign 'Schools 2026' has no lane yet. Ask your admin to map it. <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; opacity: 0.8;">SAMPLE</span></span>
+          </div>
+        </section>
+
+      </section>
+
+      <section aria-label="Campaigns" aria-hidden="{{hidden2}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{clip}}px; overflow: hidden; display: flex; flex-direction: column; gap: 16px;">
+
+        <section aria-label="Campaigns and where they count" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Campaigns and where they count</h2>
+          <sc-for list="{{campaigns}}" as="cp" hint-placeholder-count="4">
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid {{c.rule}};">
+              <span style="font-size: 13.5px; font-weight: 700;">{{cp.name}}</span>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <span style="display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 13px; background: {{cp.countsBg}}; color: {{cp.countsColor}}; font-size: 11.5px; font-weight: 700;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{cp.countsIcon}}"></path></svg>AgencyTrack: {{cp.countsLabel}}</span>
+                <span style="display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 13px; background: {{cp.applyBg}}; color: {{cp.applyColor}}; font-size: 11.5px; font-weight: 700;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{cp.applyIcon}}"></path></svg>ApplyOn: {{cp.applyLabel}}</span>
+              </div>
+            </div>
+          </sc-for>
+        </section>
+
+      </section>
+
+      <section aria-label="Other" aria-hidden="{{hidden3}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{clip}}px; overflow: hidden; display: flex; flex-direction: column; gap: 16px;">
+
+        <section aria-label="Other connections" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Other connections</h2>
+          <sc-for list="{{others}}" as="o" hint-placeholder-count="3">
+            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid {{c.rule}};">
+              <span style="width: 34px; height: 34px; border-radius: 9px; background: {{c.sunk}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{o.icon}}"></path></svg></span>
+              <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+                <span style="font-size: 13px; font-weight: 700;">{{o.name}}</span>
+                <span style="font-size: 11.5px; color: {{o.statusColor}}; line-height: 1.3;">{{o.status}}</span>
+              </div>
+              <sc-if value="{{o.hasBtn}}" hint-placeholder-val="{{false}}"><button onClick="{{o.pick}}" style="height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700; flex-shrink: 0;">Link</button></sc-if>
+            </div>
+          </sc-for>
+        </section>
+
+        <section aria-label="Privacy" style="background: {{c.sunk}}; border-radius: 20px; padding: 16px; display: flex; align-items: flex-start; gap: 12px;">
+          <span style="width: 32px; height: 32px; border-radius: 9px; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"></path></svg></span>
+          <span style="font-size: 12.5px; color: {{c.mute}}; line-height: 1.5;"><strong style="color: {{c.ink}};">What AgencyTrack gets from KQM:</strong> date, time, outcome, campaign. Not your notes, not recordings.</span>
+        </section>
+
+      </section>
+
+    </div>
+  </div>
+
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}"><div style="position: absolute; left: 0; bottom: 0;"><dc-import name="M3-Nav" active="none" dark="{{dark}}" hint-size="390px,84px"></dc-import></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":390,"height":1400}}'>
+const MC_PAGES = ['KqmLink', 'Today', 'Campaigns', 'Other'];
+const MC_PAGE_LABELS = ['KQM link', 'Today', 'Campaigns', 'Other'];
+const MC_PAGE_H = [740, 780, 420, 400];
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const p = (props && props.params) || '';
+    const pm = /page=([A-Za-z]+)/.exec(p);
+    const start = MC_PAGES.indexOf((pm && pm[1]) || 'KqmLink');
+    this.state = { page: start < 0 ? 0 : start, dragX: 0, dragging: false, hintSeen: false, paused: false, tracyOn: true, table: false };
+    this.drag = null;
+  }
+  go(p) {
+    this.setState({ page: Math.max(0, Math.min(MC_PAGES.length - 1, p)), hintSeen: true });
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', pane: '#FBFAF6', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', pane: '#171714', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = this.props.dark ? dark : light;
+    const s = this.state;
+    const page = s.page;
+    const goTo = (t) => (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav(t); } };
+    const toast = (m) => { if (this.props.onNav) this.props.onNav('event:toast:' + m); };
+    const go = { back: (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('back'); } } };
+
+    const tabs = MC_PAGES.map((id, i) => {
+      const on = i === page;
+      return { label: MC_PAGE_LABELS[i], on: on ? 'true' : 'false', bg: on ? c.ink : c.sunk, color: on ? c.bg : c.mute, dot: on ? c.accent : c.rule, dotW: on ? 18 : 6, pick: () => this.go(i) };
+    });
+
+    const dots = [0, 600, 1200].map((d) => ({ delay: d + 'ms' }));
+    const flow = [
+      { title: 'KQM Calls', count: '14 calls logged', color: c.ink, titleColor: c.mute, warn: false, bg: c.pane, border: c.rule },
+      { title: 'AgencyTrack KPIs', count: '14 counted', color: c.accent, titleColor: c.mute, warn: false, bg: c.pane, border: c.rule },
+      { title: 'ApplyOn', count: '9 sent', color: c.ink, titleColor: c.mute, warn: true, sub: '3 waiting on a meeting place', bg: c.warmTint, border: c.warm }
+    ];
+    const days = ['14-09', '15-09', '16-09', '17-09', '18-09', '19-09', '20-09', '21-09', '22-09', '23-09', '24-09', '25-09', '26-09', '27-09'];
+    const logged = [10, 12, 9, 14, 11, 8, 13, 12, 15, 10, 14, 12, 11, 14];
+    const counted = [10, 12, 9, 14, 11, 8, 13, 12, 12, 10, 14, 12, 11, 14];
+    const maxV = Math.max.apply(null, logged);
+    const groupW = 358 / 14, barW = 6, gap2 = 2;
+    const bars = [];
+    days.forEach((d, i) => {
+      const gx = i * groupW + (groupW - (barW * 2 + gap2)) / 2;
+      const hL = Math.round((logged[i] / maxV) * 100);
+      const hC = Math.round((counted[i] / maxV) * 100);
+      bars.push({ x: gx.toFixed(1), y: (120 - hL).toFixed(1), w: barW, h: hL, color: c.ghost, delay: (i * 20) + 'ms' });
+      bars.push({ x: (gx + barW + gap2).toFixed(1), y: (120 - hC).toFixed(1), w: barW, h: hC, color: c.cat[0], delay: (i * 20 + 10) + 'ms' });
+    });
+    const dayLabels = days.map((d) => ({ t: d }));
+    const tableRows = days.map((d, i) => ({ date: d + '-2026', logged: logged[i], counted: counted[i], color: counted[i] < logged[i] ? c.warm : c.ink }));
+    const CHECK = 'M20 6 9 17l-5-5';
+    const DASH = 'M8 12h8';
+    const WARN = 'M12 9v3.5M12 16h.01M12 3l9 16H3z';
+    const campaigns = [
+      { name: 'Portfolio 2026', countsLabel: 'Yes', countsBg: c.accentTint, countsColor: c.accent, countsIcon: CHECK, applyLabel: 'Yes', applyBg: c.accentTint, applyColor: c.accent, applyIcon: CHECK },
+      { name: 'Orphans 2026', countsLabel: 'Yes', countsBg: c.accentTint, countsColor: c.accent, countsIcon: CHECK, applyLabel: 'Yes', applyBg: c.accentTint, applyColor: c.accent, applyIcon: CHECK },
+      { name: 'Referrals', countsLabel: 'Yes', countsBg: c.accentTint, countsColor: c.accent, countsIcon: CHECK, applyLabel: 'Needs a named person', applyBg: c.goldTint, applyColor: c.gold, applyIcon: WARN },
+      { name: 'Schools 2026', countsLabel: 'No', countsBg: c.sunk, countsColor: c.mute, countsIcon: DASH, applyLabel: 'Not mapped', applyBg: c.warmTint, applyColor: c.warm, applyIcon: WARN }
+    ];
+    const others = [
+      { name: 'Google Calendar', status: 'For your Game Plan — Not linked', statusColor: c.mute, icon: 'M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM3 9h18M8 2v4M16 2v4', hasBtn: true, pick: () => toast('Google Calendar link coming soon') },
+      { name: 'ApplyOn', status: 'Daily push at 18:00 — you review before it sends', statusColor: c.accent, icon: 'M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 8h8M8 12h8M8 16h5', hasBtn: false, pick: null },
+      { name: 'Outlook calendar', status: 'Not linked', statusColor: c.mute, icon: 'M4 4h16v16H4zM4 8h16M8 4v4', hasBtn: true, pick: () => toast('Outlook Calendar link coming soon') }
+    ];
+
+    // ================= SWIPE ENGINE / LAYOUT =================
+    const clip = MC_PAGE_H[page];
+    const showHint = page === 0 && !s.hintSeen;
+    const headerH = 44, subH = 20, pagerH = 44 + 8 + (showHint ? 18 : 0) + 12;
+    const rootH = 12 + headerH + subH + 12 + pagerH + 12 + clip + 104;
+    const pagerKey = (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); this.go(page + 1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); this.go(page - 1); }
+    };
+
+    return {
+      c: c, dark: !!this.props.dark, showNav: !this.props.embedded, go: go,
+      tabs: tabs, showHint: showHint, pagerKey: pagerKey, rootH: rootH, clip: clip,
+      hidden0: page === 0 ? 'false' : 'true', hidden1: page === 1 ? 'false' : 'true',
+      hidden2: page === 2 ? 'false' : 'true', hidden3: page === 3 ? 'false' : 'true',
+      cat0: c.cat[0], dots: dots, flow: flow,
+      pauseLabel: s.paused ? 'Resume sync' : 'Pause sync',
+      pauseSync: () => { this.setState({ paused: !s.paused }); toast(s.paused ? 'Sync resumed' : 'Sync paused'); },
+      unlink: () => toast('This would unlink KQM Calls'),
+      showChart: !s.table, showTable: s.table, tableLabel: s.table ? 'Chart' : 'Table', toggleTable: () => this.setState({ table: !s.table }),
+      bars: bars, dayLabels: dayLabels, tableRows: tableRows,
+      tracyOn: s.tracyOn ? 'true' : 'false', tracyBg: s.tracyOn ? c.accent : c.rule, tracyLeft: s.tracyOn ? 23 : 3,
+      toggleTracy: () => this.setState({ tracyOn: !s.tracyOn }),
+      others: others, campaigns: campaigns,
+      tx: -page * 390 + (s.dragX || 0),
+      trans: s.dragging ? 'none' : 'transform 520ms cubic-bezier(0.32, 0.72, 0, 1)',
+      down: (e) => { this.drag = { x: e.clientX, y: e.clientY, hist: [], active: false, id: e.pointerId, el: e.currentTarget }; },
+      move: (e) => {
+        const d = this.drag;
+        if (!d) return;
+        const dx = e.clientX - d.x;
+        const dy = e.clientY - d.y;
+        if (!d.active) {
+          if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+            d.active = true;
+            this.setState({ hintSeen: true });
+            try { d.el.setPointerCapture(d.id); } catch (err) {}
+          } else if (Math.abs(dy) > 10) { this.drag = null; return; } else { return; }
+        }
+        d.hist.push({ x: e.clientX, t: performance.now() });
+        if (d.hist.length > 5) d.hist.shift();
+        const edge = (page === 0 && dx > 0) || (page === MC_PAGES.length - 1 && dx < 0);
+        const off = edge ? (dx * 390 * 0.55) / (390 + 0.55 * Math.abs(dx)) : dx;
+        this.setState({ dragX: off, dragging: true });
+      },
+      up: () => {
+        const d = this.drag;
+        this.drag = null;
+        if (!d || !d.active) return;
+        let v = 0;
+        const h = d.hist;
+        if (h.length > 1) { v = ((h[h.length - 1].x - h[0].x) / Math.max(1, h[h.length - 1].t - h[0].t)) * 1000; }
+        const projected = s.dragX + (v / 1000) * 0.99 / (1 - 0.99);
+        let target = page;
+        if (projected < -195) target = page + 1;
+        else if (projected > 195) target = page - 1;
+        this.setState({ dragX: 0, dragging: false, page: Math.max(0, Math.min(MC_PAGES.length - 1, target)) });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

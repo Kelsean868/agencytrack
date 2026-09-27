@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Persistency — Money (mobile v3)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+.m3p-scroll{-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.m3p-scroll::-webkit-scrollbar{display:none}
+@keyframes m3pFadeA{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes m3pFadeB{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes m3pSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.m3p-chip{transition:background 120ms ease,color 120ms ease}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: {{rootH}}px; box-sizing: border-box; position: relative; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; display: flex; flex-direction: column; gap: 14px; padding: 12px 0 104px;">
+
+  <header style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px;">
+    <a onClick="{{go.back}}" href="M3-Money.dc.html" aria-label="Back to Money" style="width: 44px; height: 44px; border-radius: 22px; background: {{c.sunk}}; display: flex; align-items: center; justify-content: center; color: {{c.ink}};">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
+    <h1 style="flex-grow: 1; margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700;">Persistency</h1>
+  </header>
+
+  <!-- ============ PAGER ============ -->
+  <div style="display: flex; flex-direction: column; gap: 8px; padding: 0 16px;">
+    <div role="tablist" aria-label="Persistency pages" tabIndex="0" onKeyDown="{{pagerKeyDown}}" class="m3p-scroll" style="display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px; height: 44px;">
+      <sc-for list="{{pages}}" as="pg2" hint-placeholder-count="4">
+        <button role="tab" aria-selected="{{pg2.selected}}" onClick="{{pg2.pick}}" style="flex-shrink: 0; height: 44px; padding: 0 16px; border-radius: 14px; border: 0; background: {{pg2.bg}}; color: {{pg2.color}}; font-family: 'Onest', sans-serif; font-size: 13.5px; font-weight: 700; white-space: nowrap;">{{pg2.label}}</button>
+      </sc-for>
+    </div>
+    <div style="display: flex; justify-content: center; align-items: center; gap: 6px; height: 8px;" aria-hidden="true">
+      <sc-for list="{{pages}}" as="pd" hint-placeholder-count="4">
+        <span style="width: {{pd.dotW}}px; height: 6px; border-radius: 3px; background: {{pd.dot}}; transition: width 200ms ease;"></span>
+      </sc-for>
+    </div>
+    <sc-if value="{{showHint}}" hint-placeholder-val="{{false}}">
+      <span style="font-size: 11px; color: {{c.faint}};">Swipe for more →</span>
+    </sc-if>
+  </div>
+
+  <!-- ============ TRACK ============ -->
+  <div onPointerDown="{{down}}" onPointerMove="{{move}}" onPointerUp="{{up}}" onPointerCancel="{{up}}" style="width: 390px; overflow: hidden; touch-action: pan-y;">
+    <div style="width: {{trackWidth}}px; display: flex; align-items: flex-start; transform: translateX({{tx}}px); transition: {{trans}}; will-change: transform;">
+
+      <!-- PAGE 0 — OUTLOOK -->
+      <section aria-label="Outlook" aria-hidden="{{hidden0}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{maxH0}}px; overflow: hidden; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px;">
+            <span style="font-size: 12.5px; color: {{c.mute}};">{{hero.modelLine}}</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}}; background: {{c.sunk}}; padding: 3px 7px; border-radius: 6px; flex-shrink: 0; white-space: nowrap;">{{hero.exportLabel}}</span>
+          </div>
+          <div class="m3p-scroll" style="display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 4px; scroll-snap-type: x mandatory;">
+            <sc-for list="{{hero.tiles}}" as="ht" hint-placeholder-count="5">
+              <div style="scroll-snap-align: start; flex: 0 0 148px; box-sizing: border-box; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-height: 96px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 600; letter-spacing: 0.05em; color: {{c.faint}};">{{ht.label}}</span>
+                <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 21px; font-weight: 700; color: {{ht.color}};">{{ht.value}}</span>
+                <span style="font-size: 10.5px; color: {{c.mute}}; line-height: 1.3;">{{ht.sub}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{c.faint}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16h.01"></path></svg>
+            <span style="font-size: 11px; color: {{c.mute}}; line-height: 1.4;">{{hero.staleLine}}</span>
+          </div>
+          <span style="font-size: 11.5px; color: {{c.mute}}; line-height: 1.4;">September reads as an estimate until you confirm it below — only the confirmed figure counts for awards and the campaign.</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 11.5px; font-weight: 700; color: {{c.faint}};">Gates this touches</span>
+          <div class="m3p-scroll" style="display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px;">
+            <sc-for list="{{gateChips}}" as="gc" hint-placeholder-count="3">
+              <span style="flex-shrink: 0; height: 32px; padding: 0 13px; border-radius: 16px; background: {{gc.bg}}; color: {{gc.fg}}; display: flex; align-items: center; font-size: 12px; font-weight: 700; white-space: nowrap;">{{gc.label}}</span>
+            </sc-for>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 1 — MONTH BY MONTH -->
+      <section aria-label="Month by month" aria-hidden="{{hidden1}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{maxH1}}px; overflow: hidden; display: flex; flex-direction: column; gap: 16px;">
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700; line-height: 1.3; flex-grow: 1; min-width: 0;">{{chart.title}}</h2>
+            <button onClick="{{toggleChartTable}}" style="height: 30px; padding: 0 10px; border-radius: 9px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 11.5px; font-weight: 700; flex-shrink: 0;">{{chart.tableLabel}}</button>
+          </div>
+          <span style="font-size: 12px; color: {{c.mute}};">{{chart.subtitle}}</span>
+
+          <div class="m3p-scroll" style="display: flex; align-items: center; gap: 12px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px;">
+            <span style="flex-shrink: 0; display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: {{c.mute}}; white-space: nowrap;"><span style="width: 9px; height: 9px; border-radius: 3px; background: {{c.accent}}; display: inline-block;"></span>Above gate</span>
+            <span style="flex-shrink: 0; display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: {{c.mute}}; white-space: nowrap;"><span style="width: 9px; height: 9px; border-radius: 3px; background: {{c.warm}}; display: inline-block;"></span>Below gate</span>
+            <span style="flex-shrink: 0; display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: {{c.mute}}; white-space: nowrap;"><span style="width: 9px; height: 9px; border-radius: 3px; border: 1.5px dashed {{c.faint}}; box-sizing: border-box; display: inline-block;"></span>Oct projected</span>
+            <span style="flex-shrink: 0; font-size: 10.5px; color: {{c.mute}}; white-space: nowrap;">Lighter = 12-month model</span>
+          </div>
+
+          <sc-if value="{{chart.showBars}}" hint-placeholder-val="{{true}}">
+            <div style="animation: {{chart.fadeAnim}} 220ms cubic-bezier(0.32,0.72,0,1) both;">
+              <div style="position: relative; height: 200px;">
+                <div style="position: absolute; left: 0; right: 0; top: {{chart.gateTopPx}}px; border-top: 1px solid {{c.faint}}; z-index: 1;"></div>
+                <span style="position: absolute; right: 0; top: {{chart.gateLabelTopPx}}px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; color: {{c.faint}}; background: {{c.surface}}; padding: 0 3px; z-index: 1;">Gate 90</span>
+                <div style="position: absolute; left: 0; right: 0; top: {{chart.floorTopPx}}px; border-top: 1px solid {{c.faint}}; opacity: 0.55;"></div>
+                <span style="position: absolute; right: 0; top: {{chart.floorLabelTopPx}}px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; color: {{c.faint}}; background: {{c.surface}}; padding: 0 3px;">Floor 80</span>
+                <div style="position: absolute; left: {{chart.dividerPct}}%; top: 4px; bottom: 4px; border-left: 1px dashed {{c.faint}};"></div>
+                <span style="position: absolute; left: {{chart.dividerPct}}%; top: -2px; transform: translateX(-50%); font-family: 'JetBrains Mono', monospace; font-size: 8px; font-weight: 600; color: {{c.faint}}; white-space: nowrap;">Model changed</span>
+
+                <div style="position: absolute; inset: 0; display: flex; gap: 3px;">
+                  <sc-for list="{{chart.bars}}" as="mb" hint-placeholder-count="13">
+                    <div role="img" aria-label="{{mb.aria}}" style="flex-grow: 1; min-width: 0; position: relative; height: 100%;">
+                      <span style="position: absolute; top: {{mb.labelTopPx}}px; left: 50%; transform: translateX(-50%); font-size: 8.5px; font-weight: 700; color: {{c.ink}}; white-space: nowrap; transition: top 480ms cubic-bezier(0.32, 0.72, 0, 1);">{{mb.valLabel}}</span>
+                      <sc-if value="{{mb.belowGate}}" hint-placeholder-val="{{false}}">
+                        <svg width="9" height="7" viewBox="0 0 11 9" style="position: absolute; top: {{mb.markerTopPx}}px; left: 50%; transform: translateX(-50%); transition: top 480ms cubic-bezier(0.32, 0.72, 0, 1);" aria-hidden="true"><path d="M0 0H11L5.5 9Z" fill="{{c.warm}}"></path></svg>
+                      </sc-if>
+                      <div style="position: absolute; left: 50%; transform: translateX(-50%); width: 20px; top: {{mb.topPx}}px; height: {{mb.h}}px; border-radius: {{mb.radius}}; background: {{mb.color}}; border: {{mb.border}}; box-sizing: border-box; transition: top 480ms cubic-bezier(0.32, 0.72, 0, 1), height 480ms cubic-bezier(0.32, 0.72, 0, 1);"></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display: flex; gap: 3px;">
+                <sc-for list="{{chart.bars}}" as="mb2" hint-placeholder-count="13">
+                  <span style="flex-grow: 1; min-width: 0; text-align: center; font-size: 8.5px; font-weight: 600; color: {{c.faint}}; white-space: nowrap;">{{mb2.label}}</span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{chart.showTable}}" hint-placeholder-val="{{false}}">
+            <div style="animation: {{chart.fadeAnim}} 220ms cubic-bezier(0.32,0.72,0,1) both; display: flex; flex-direction: column;">
+              <sc-for list="{{chart.tableRows}}" as="tr2" hint-placeholder-count="13">
+                <div style="display: flex; align-items: center; gap: 8px; min-height: 34px; border-bottom: 1px solid {{c.rule}};">
+                  <span style="width: 88px; flex-shrink: 0; font-size: 12.5px; font-weight: 600;">{{tr2.month}}</span>
+                  <span style="flex-grow: 1; font-size: 11px; color: {{c.mute}};">{{tr2.model}}</span>
+                  <span style="font-size: 12.5px; font-weight: 700; color: {{tr2.color}};">{{tr2.val}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button role="switch" aria-checked="false" disabled aria-label="Compare with same month last year, unavailable" style="height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.sunk}}; color: {{c.faint}}; font-family: 'Onest', sans-serif; font-size: 11.5px; font-weight: 700; flex-shrink: 0;">Compare vs last year</button>
+            <span style="font-size: 10.5px; color: {{c.faint}}; line-height: 1.35;">Needs a full year of 24-month data.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 2 — WIN-BACK -->
+      <section aria-label="Win-back" aria-hidden="{{hidden2}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{maxH2}}px; overflow: hidden; display: flex; flex-direction: column; gap: 16px;">
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div>
+            <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Reinstatement planner</h2>
+            <span style="font-size: 12px; color: {{c.mute}}; line-height: 1.4;">Only policies still inside the 24-month window can move this number. Tick who you'll win back.</span>
+          </div>
+
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button onClick="{{pickSmallest}}" aria-pressed="{{planner.smallestSel}}" style="height: 38px; padding: 0 14px; border-radius: 11px; border: 1px solid {{planner.smallestBorder}}; background: {{planner.smallestBg}}; color: {{planner.smallestColor}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">Smallest set that clears 90%</button>
+            <button onClick="{{pickOne}}" aria-pressed="{{planner.oneSel}}" style="height: 38px; padding: 0 14px; border-radius: 11px; border: 1px solid {{planner.oneBorder}}; background: {{planner.oneBg}}; color: {{planner.oneColor}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">One policy instead</button>
+          </div>
+
+          <div style="border: 1px solid {{c.rule}}; border-radius: 16px; padding: 0 14px;">
+            <sc-for list="{{planner.rows}}" as="pr" hint-placeholder-count="7">
+              <div style="display: flex; align-items: center; gap: 10px; min-height: 68px; border-bottom: 1px solid {{c.rule}}; padding: 8px 0;">
+                <button onClick="{{pr.toggle}}" role="checkbox" aria-checked="{{pr.checkedAria}}" aria-label="Include policy issued {{pr.issued}}" style="width: 24px; height: 24px; flex-shrink: 0; border-radius: 7px; border: 2px solid {{pr.checkBorder}}; background: {{pr.checkFill}}; display: flex; align-items: center; justify-content: center; padding: 0;">
+                  <sc-if value="{{pr.checked}}" hint-placeholder-val="{{false}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="{{c.onAccent}}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
+                </button>
+                <span style="display: flex; flex-direction: column; gap: 3px; min-width: 0;">
+                  <span style="font-size: 13.5px; font-weight: 700;">[Client name]</span>
+                  <span style="font-size: 11px; color: {{c.mute}};">Issued {{pr.issued}}</span>
+                </span>
+                <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px; min-width: 44px;">
+                  <span style="font-size: 10.5px; color: {{c.mute}}; text-align: right;">{{pr.monthsLeft}}</span>
+                  <span style="height: 5px; border-radius: 3px; background: {{c.sunk}};"><span style="display: block; height: 5px; border-radius: 3px; background: {{pr.barColor}}; width: {{pr.barPct}}%; transition: width 480ms cubic-bezier(0.32,0.72,0,1);"></span></span>
+                </span>
+                <span style="flex-shrink: 0; font-size: 13.5px; font-weight: 700; text-align: right;">{{pr.api}}</span>
+              </div>
+              <sc-if value="{{pr.warn}}" hint-placeholder-val="{{false}}">
+                <div style="padding: 0 0 8px 34px;">
+                  <span style="height: 22px; padding: 0 9px; border-radius: 11px; background: {{c.warmTint}}; color: {{c.warm}}; display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 700;">Ages out after October</span>
+                </div>
+              </sc-if>
+            </sc-for>
+          </div>
+
+          <div style="background: {{planner.resultBg}}; border-radius: 14px; padding: 14px;">
+            <span style="font-size: 13px; font-weight: 700; color: {{planner.resultColor}}; line-height: 1.4;">{{planner.resultLine}}</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button onClick="{{startWinback}}" style="height: 50px; border-radius: 14px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Start win-back session</button>
+            <button onClick="{{openInLedger}}" style="height: 50px; border-radius: 14px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Open in ledger</button>
+          </div>
+
+          <button onClick="{{toggleAged}}" style="align-self: flex-start; background: transparent; border: 0; padding: 0; color: {{c.faint}}; font-size: 11.5px; text-decoration: underline; font-family: 'Onest', sans-serif;">{{planner.agedLabel}}</button>
+          <sc-if value="{{planner.agedOpen}}" hint-placeholder-val="{{false}}">
+            <span style="font-size: 11.5px; color: {{c.faint}}; line-height: 1.45;">80 older lapses fell outside the 24-month window on the ledger export (15-09-2026). They no longer count toward or against this figure, so reinstating any of them can't move it.</span>
+          </sc-if>
+        </div>
+
+        <div style="background: {{c.warmTint}}; border-radius: 18px; padding: 16px;">
+          <span style="font-size: 14px; font-weight: 700; color: {{c.warm}}; line-height: 1.4;">Below 90% blocks the Christmas campaign gate and your persistency bonus.</span>
+        </div>
+      </section>
+
+      <!-- PAGE 3 — THE MATHS -->
+      <section aria-label="The maths" aria-hidden="{{hidden3}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{maxH3}}px; overflow: hidden; display: flex; flex-direction: column; gap: 16px;">
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+          <button onClick="{{toggleFormula}}" aria-expanded="{{formula.openAria}}" style="width: 100%; background: transparent; border: 0; padding: 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; text-align: left;">
+            <span style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700; color: {{c.ink}};">September 2026 — how {{formula.pctLabel}} is worked out</span>
+              <span style="font-size: 11.5px; color: {{c.mute}};">7 memo inputs · 3 prefill, 4 you confirm</span>
+            </span>
+            <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 10px; background: {{c.sunk}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transform: {{formula.chevronRotate}};">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{c.ink}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+            </span>
+          </button>
+
+          <sc-if value="{{formula.open}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; flex-direction: column; gap: 12px; animation: m3pFadeB 220ms cubic-bezier(0.32,0.72,0,1) both;">
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">FROM YOUR LEDGER · PREFILLED</span>
+                <sc-for list="{{formula.ledgerFields}}" as="lf" hint-placeholder-count="3">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 42px; border-radius: 10px; padding: 0 12px; background: {{c.accentTint}};">
+                    <span style="font-size: 13px; font-weight: 600;">{{lf.label}}</span>
+                    <span style="font-size: 13.5px; font-weight: 700;">{{lf.value}}</span>
+                  </div>
+                </sc-for>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}}; margin-top: 4px;">TYPED IN MANUALLY</span>
+                <sc-for list="{{formula.manualFields}}" as="mf" hint-placeholder-count="4">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 42px; border-radius: 10px; padding: 0 12px; background: {{c.sunk}};">
+                    <span style="font-size: 13px; font-weight: 600;">{{mf.label}}</span>
+                    <span style="font-size: 13.5px; font-weight: 700;">{{mf.value}}</span>
+                  </div>
+                </sc-for>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE — the split is illustrative; only the totals below are real</span>
+              </div>
+
+              <button onClick="{{toggleWhy}}" style="align-self: flex-start; height: 32px; padding: 0 12px; border-radius: 9px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">{{formula.whyLabel}}</button>
+              <sc-if value="{{formula.whyOpen}}" hint-placeholder-val="{{false}}">
+                <div style="background: {{c.sunk}}; border-radius: 12px; padding: 12px 14px; font-size: 12px; color: {{c.mute}}; line-height: 1.6;">
+                  Net Gross Settled = Gross Settled − Not Takens − Decreases + Increases + 10% × Lumpsums.<br>
+                  Net Settled = Net Gross Settled − Lapses + Reinstatements.<br>
+                  Persistency = Net Settled ÷ Net Gross Settled.
+                </div>
+              </sc-if>
+
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: {{c.sunk}};">
+                  <span style="font-size: 11px; color: {{c.mute}};">Net Gross Settled</span>
+                  <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">TTD {{formula.ngs}}</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: {{c.sunk}};">
+                  <span style="font-size: 11px; color: {{c.mute}};">Net Settled</span>
+                  <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">TTD {{formula.net}}</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: {{c.accentTint}};">
+                  <span style="font-size: 11px; color: {{c.accent}};">Persistency</span>
+                  <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700; color: {{c.accent}};">{{formula.pctLabel}}</span>
+                </div>
+                <span style="font-size: 11px; color: {{c.faint}}; line-height: 1.4;">{{formula.provenance}}</span>
+                <button onClick="{{openConfirm}}" style="height: 48px; margin-top: 4px; border-radius: 14px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Confirm this month</button>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700;">Annuity missed-premium rule</h2>
+          <div role="tablist" aria-label="Annuity rule" style="height: 46px; padding: 3px; border-radius: 13px; background: {{c.sunk}}; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px;">
+            <button role="tab" aria-selected="{{annuity.ignoreSel}}" onClick="{{setAnnuityIgnore}}" class="m3p-chip" style="height: 40px; border: 0; border-radius: 10px; background: {{annuity.ignoreBg}}; color: {{annuity.ignoreColor}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Ignore (default)</button>
+            <button role="tab" aria-selected="{{annuity.lapseSel}}" onClick="{{setAnnuityLapse}}" class="m3p-chip" style="height: 40px; border: 0; border-radius: 10px; background: {{annuity.lapseBg}}; color: {{annuity.lapseColor}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Lapse, 60-day grace</button>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 10px;">
+            <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 700; color: {{annuity.color}};">{{annuity.pctLabel}}</span>
+            <span style="font-size: 12px; color: {{c.mute}}; line-height: 1.4;">{{annuity.note}}</span>
+          </div>
+          <button onClick="{{openCounted}}" style="align-self: flex-start; height: 40px; padding: 0 14px; border-radius: 11px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; display: flex; align-items: center; gap: 8px; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 9h18"></path></svg>
+            Counted policies
+          </button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ============ STICKY WHAT IF BUTTON ============ -->
+  <button onClick="{{openPlayground}}" style="position: fixed; left: 16px; right: 16px; bottom: {{sheetBtnBottom}}px; height: 52px; border-radius: 16px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 700; box-shadow: 0 10px 26px rgba(0,0,0,0.22); z-index: 5;">What if...</button>
+
+  <!-- ============ SHEET: WHAT-IF PLAYGROUND ============ -->
+  <sc-if value="{{sheetPlaygroundOpen}}" hint-placeholder-val="{{false}}">
+    <div style="position: fixed; inset: 0; z-index: 30;">
+      <div onClick="{{closeSheet}}" aria-hidden="true" style="position: absolute; inset: 0; background: rgba(15,13,10,0.5);"></div>
+      <div role="dialog" aria-modal="true" aria-label="What if — persistency" style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 84vh; overflow-y: auto; box-sizing: border-box; background: {{c.surface}}; border-radius: 22px 22px 0 0; padding: 4px 20px 24px; display: flex; flex-direction: column; gap: 14px; animation: m3pSheetUp 260ms cubic-bezier(0.32,0.72,0,1) both;">
+        <div style="display: flex; justify-content: center; padding: 10px 0;"><div style="width: 40px; height: 5px; border-radius: 3px; background: {{c.rule}};"></div></div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">What if — persistency</span>
+          <span style="font-size: 12px; color: {{c.mute}};">{{pg.header}}</span>
+        </div>
+
+        <sc-for list="{{pg.sliders}}" as="sl" hint-placeholder-count="6">
+          <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px;">
+              <label for="{{sl.id}}" style="font-size: 12.5px; font-weight: 600;">{{sl.label}}</label>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: {{c.accent}}; white-space: nowrap;">{{sl.valueLabel}}</span>
+            </div>
+            <input id="{{sl.id}}" type="range" min="{{sl.min}}" max="{{sl.max}}" step="{{sl.step}}" value="{{sl.value}}" onInput="{{sl.onChange}}" style="width: 100%; height: 44px; accent-color: {{c.accent}};">
+          </div>
+        </sc-for>
+
+        <button role="switch" aria-checked="{{pg.includeChecked}}" onClick="{{toggleIncludePlan}}" style="height: 52px; display: flex; align-items: center; gap: 10px; border: 1px solid {{c.rule}}; border-radius: 14px; background: {{c.sunk}}; padding: 0 12px; box-sizing: border-box;">
+          <span aria-hidden="true" style="width: 40px; height: 22px; border-radius: 11px; background: {{pg.includeTrackBg}}; position: relative; flex-shrink: 0; transition: background 150ms ease;">
+            <span style="position: absolute; top: 2px; left: {{pg.includeThumbLeft}}px; width: 18px; height: 18px; border-radius: 9px; background: #FFFFFF; transition: left 150ms ease;"></span>
+          </span>
+          <span style="flex-grow: 1; font-size: 12.5px; font-weight: 600; text-align: left; color: {{c.ink}}; line-height: 1.3;">{{pg.includeLabel}}</span>
+        </button>
+
+        <div style="height: 1px; background: {{c.rule}};"></div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 11.5px; color: {{c.mute}};">Projected Net Gross Settled</span>
+            <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">TTD {{pg.grossFmt}}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 11.5px; color: {{c.mute}};">Projected Net Settled</span>
+            <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">TTD {{pg.netFmt}}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: 12px; background: {{pg.pctBg}};">
+            <span style="font-size: 11.5px; color: {{c.mute}};">Projected persistency</span>
+            <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700; color: {{pg.pctColor}};">{{pg.pctFmt}}%</span>
+          </div>
+          <div style="height: 1px; background: {{c.rule}};"></div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 11.5px; color: {{c.mute}};">New business needed to reach 90%</span>
+            <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; color: {{c.accent}};">TTD {{pg.shortfallFmt}}</span>
+            <span style="font-size: 11px; color: {{c.mute}}; line-height: 1.4;">{{pg.shortfallNote}}</span>
+          </div>
+        </div>
+
+        <button onClick="{{resetPg}}" style="height: 44px; border-radius: 13px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">Reset</button>
+        <button onClick="{{closeSheet}}" style="height: 50px; border-radius: 14px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 14.5px; font-weight: 700;">Done</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ SHEET: CONFIRM THIS MONTH ============ -->
+  <sc-if value="{{sheetConfirmOpen}}" hint-placeholder-val="{{false}}">
+    <div style="position: fixed; inset: 0; z-index: 30;">
+      <div onClick="{{closeSheet}}" aria-hidden="true" style="position: absolute; inset: 0; background: rgba(15,13,10,0.5);"></div>
+      <div role="dialog" aria-modal="true" aria-label="Confirm October 2026" style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 86vh; overflow-y: auto; box-sizing: border-box; background: {{c.surface}}; border-radius: 22px 22px 0 0; padding: 4px 20px 24px; display: flex; flex-direction: column; gap: 12px; animation: m3pSheetUp 260ms cubic-bezier(0.32,0.72,0,1) both;">
+        <div style="display: flex; justify-content: center; padding: 10px 0;"><div style="width: 40px; height: 5px; border-radius: 3px; background: {{c.rule}};"></div></div>
+        <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">Confirm October 2026</span>
+        <span style="font-size: 12px; color: {{c.mute}}; line-height: 1.4;">3 figures come straight from your ledger. Type in the other 4 — they never default to zero.</span>
+
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">FROM PORTFOLIO IMPORT, 15 SEP 2026</span>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 11.5px; font-weight: 600; color: {{c.mute}};">Gross Settled</span><input value="TTD 42,300.00" readonly style="height: 46px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.accentTint}}; padding: 0 12px; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; box-sizing: border-box;"></label>
+          <label style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 11.5px; font-weight: 600; color: {{c.mute}};">Not Takens</span><input value="TTD 1,200.00" readonly style="height: 46px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.accentTint}}; padding: 0 12px; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; box-sizing: border-box;"></label>
+          <label style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 11.5px; font-weight: 600; color: {{c.mute}};">Lapses</span><input value="TTD 3,450.00" readonly style="height: 46px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.accentTint}}; padding: 0 12px; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; box-sizing: border-box;"></label>
+        </div>
+
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}}; margin-top: 4px;">TYPE THESE IN — REQUIRED</span>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 11.5px; font-weight: 600;">Decreases</span><input type="number" placeholder="Enter amount" value="{{confirm.decreases}}" onInput="{{setConfirmDecreases}}" style="height: 46px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; padding: 0 12px; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; box-sizing: border-box;"></label>
+          <label style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 11.5px; font-weight: 600;">Increases</span><input type="number" placeholder="Enter amount" value="{{confirm.increases}}" onInput="{{setConfirmIncreases}}" style="height: 46px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; padding: 0 12px; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; box-sizing: border-box;"></label>
+          <label style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 11.5px; font-weight: 600;">Lumpsums (100%)</span><input type="number" placeholder="Enter amount" value="{{confirm.lumpsums}}" onInput="{{setConfirmLumpsums}}" style="height: 46px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; padding: 0 12px; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; box-sizing: border-box;"></label>
+          <label style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 11.5px; font-weight: 600;">Reinstatements</span><input type="number" placeholder="Enter amount" value="{{confirm.reinstatements}}" onInput="{{setConfirmReinstatements}}" style="height: 46px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; padding: 0 12px; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; box-sizing: border-box;"></label>
+        </div>
+        <span style="font-size: 11px; color: {{c.faint}};">{{confirm.blockMsg}}</span>
+
+        <div style="display: flex; gap: 10px; margin-top: 4px;">
+          <button onClick="{{closeSheet}}" style="flex-grow: 1; height: 48px; border-radius: 13px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13.5px; font-weight: 700;">Cancel</button>
+          <button onClick="{{saveConfirm}}" disabled="{{confirm.saveDisabledAttr}}" style="flex-grow: 2; height: 48px; border-radius: 13px; border: 0; background: {{confirm.saveBg}}; color: {{confirm.saveColor}}; font-family: 'Onest', sans-serif; font-size: 13.5px; font-weight: 700;">Save · confirmed by you</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ SHEET: COUNTED POLICIES ============ -->
+  <sc-if value="{{sheetCountedOpen}}" hint-placeholder-val="{{false}}">
+    <div style="position: fixed; inset: 0; z-index: 30;">
+      <div onClick="{{closeSheet}}" aria-hidden="true" style="position: absolute; inset: 0; background: rgba(15,13,10,0.5);"></div>
+      <div role="dialog" aria-modal="true" aria-label="Counted policies" style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 82vh; overflow-y: auto; box-sizing: border-box; background: {{c.surface}}; border-radius: 22px 22px 0 0; padding: 4px 20px 24px; display: flex; flex-direction: column; gap: 12px; animation: m3pSheetUp 260ms cubic-bezier(0.32,0.72,0,1) both;">
+        <div style="display: flex; justify-content: center; padding: 10px 0;"><div style="width: 40px; height: 5px; border-radius: 3px; background: {{c.rule}};"></div></div>
+        <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">Counted policies</span>
+        <span style="font-size: 12px; color: {{c.mute}}; line-height: 1.4;">Which policies fed the derived figure, and why the rest were left out.</span>
+        <div style="border: 1px solid {{c.rule}}; border-radius: 14px; padding: 0 12px;">
+          <sc-for list="{{drawer.rows}}" as="dr" hint-placeholder-count="5">
+            <div style="display: flex; align-items: center; gap: 10px; min-height: 56px; border-bottom: 1px solid {{dr.rule}};">
+              <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+                <span style="font-size: 13.5px; font-weight: 700;">{{dr.name}}</span>
+                <span style="font-size: 11px; color: {{c.mute}}; line-height: 1.3;">{{dr.reason}}</span>
+              </span>
+              <span style="font-size: 12px; font-weight: 600; color: {{c.mute}}; flex-shrink: 0;">{{dr.api}}</span>
+            </div>
+            <div style="padding: 0 0 8px;">
+              <span style="height: 22px; padding: 0 9px; border-radius: 11px; background: {{dr.badgeBg}}; color: {{dr.badgeFg}}; display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 700;">{{dr.badge}}</span>
+            </div>
+          </sc-for>
+        </div>
+        <button onClick="{{closeSheet}}" style="height: 48px; border-radius: 14px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Done</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}">
+    <div style="position: absolute; left: 0; bottom: 0;">
+      <dc-import name="M3-Nav" active="money" dark="{{dark}}" hint-size="390px,84px"></dc-import>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":390,"height":1360}}'>
+const PP_IDS = ['Outlook', 'Month', 'Winback', 'Maths'];
+const PP_LABELS = ['Outlook', 'Month by month', 'Win-back', 'The maths'];
+const PP_H = [380, 480, 1080, 1100];
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const params = (props && props.params) || '';
+    const pm = /page=([A-Za-z]+)/.exec(params);
+    const startIdx = pm ? PP_IDS.indexOf(pm[1]) : 0;
+    this.state = {
+      page: startIdx < 0 ? 0 : startIdx, dragX: 0, dragging: false, everMoved: false,
+      chartTableOn: false, chartFlip: false,
+      formulaOpen: true, formulaWhyOpen: false,
+      annuityRule: 'ignore',
+      sheet: null,
+      confirm: { decreases: '', increases: '', lumpsums: '', reinstatements: '' },
+      sel: { r1: false, r2: false, r3: false, r4: true, r5: false, r6: true, r7: false },
+      agedOpen: false,
+      pg: { newBiz: 0, newOrphans: 0, lapsesExp: 0, reinstPlanned: 0, decExp: 0, rollingOff: 0, includePlan: false },
+      dispPg: null
+    };
+    this._pgTimer = null;
+    this.drag = null;
+  }
+  componentWillUnmount() { if (this._pgTimer) clearInterval(this._pgTimer); }
+  go(p) {
+    const next = Math.max(0, Math.min(PP_IDS.length - 1, p));
+    this.setState({ page: next, everMoved: true });
+  }
+  animatePg(from, to) {
+    if (this._pgTimer) clearInterval(this._pgTimer);
+    const start = Date.now(), dur = 420;
+    this._pgTimer = setInterval(() => {
+      const t = Math.min(1, (Date.now() - start) / dur);
+      const e = 1 - Math.pow(1 - t, 3);
+      this.setState({ dispPg: {
+        gross: from.gross + (to.gross - from.gross) * e,
+        net: from.net + (to.net - from.net) * e,
+        pct: from.pct + (to.pct - from.pct) * e
+      } });
+      if (t >= 1) { clearInterval(this._pgTimer); this._pgTimer = null; }
+    }, 30);
+  }
+  computeProjection(pgv, selSum, ngsBase, lapsesBase) {
+    const G0 = ngsBase + pgv.newOrphans - pgv.rollingOff - pgv.decExp;
+    const gross = G0 + pgv.newBiz;
+    const reinstApplied = pgv.reinstPlanned + (pgv.includePlan ? selSum : 0);
+    const lnet = lapsesBase + pgv.lapsesExp - reinstApplied;
+    const net = gross - lnet;
+    const pct = gross > 0 ? (net / gross * 100) : 0;
+    const shortfall = Math.max(0, 10 * lnet - G0);
+    return { gross: gross, net: net, pct: pct, shortfall: shortfall };
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = Object.assign({}, this.props.dark ? dark : light);
+    c.cat0 = c.cat[0];
+    const s = this.state;
+
+    const fmt0 = (n) => Math.round(n).toLocaleString('en-US');
+    const fmt2 = (n) => (Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const pct1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
+
+    const go = {};
+    go.back = (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('back'); } };
+    const navTo = (id) => (e) => { if (e) e.preventDefault(); if (this.props.onNav) this.props.onNav(id); };
+
+    // ---- swipe pages ----
+    const page = s.page;
+    const pagerKeyDown = (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); this.go(page + 1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); this.go(page - 1); }
+    };
+    const pages = PP_LABELS.map((label, i) => {
+      const on = i === page;
+      return { label: label, selected: on ? 'true' : 'false', bg: on ? c.accent : c.sunk, color: on ? c.onAccent : c.mute, dot: on ? c.accent : c.rule, dotW: on ? 18 : 6, pick: () => this.go(i) };
+    });
+    const clip = PP_H[page];
+    const BIG = 4000;
+    const maxHs = [0, 1, 2, 3].map((i) => i === page ? BIG : clip);
+    const down = (e) => { this.drag = { x: e.clientX, y: e.clientY, hist: [], active: false, id: e.pointerId, el: e.currentTarget }; };
+    const move = (e) => {
+      const d = this.drag;
+      if (!d) return;
+      const dx = e.clientX - d.x;
+      const dy = e.clientY - d.y;
+      if (!d.active) {
+        if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) { d.active = true; try { d.el.setPointerCapture(d.id); } catch (err) {} }
+        else if (Math.abs(dy) > 10) { this.drag = null; return; }
+        else return;
+      }
+      d.hist.push({ x: e.clientX, t: performance.now() });
+      if (d.hist.length > 5) d.hist.shift();
+      const edge = (page === 0 && dx > 0) || (page === PP_IDS.length - 1 && dx < 0);
+      const off = edge ? (dx * 390 * 0.55) / (390 + 0.55 * Math.abs(dx)) : dx;
+      this.setState({ dragX: off, dragging: true });
+    };
+    const up = () => {
+      const d = this.drag;
+      this.drag = null;
+      if (!d || !d.active) return;
+      let v = 0;
+      const h = d.hist;
+      if (h.length > 1) v = ((h[h.length - 1].x - h[0].x) / Math.max(1, h[h.length - 1].t - h[0].t)) * 1000;
+      const projected = this.state.dragX + (v / 1000) * 0.99 / (1 - 0.99);
+      let target = page;
+      if (projected < -195) target = page + 1;
+      else if (projected > 195) target = page - 1;
+      this.setState({ dragX: 0, dragging: false, page: Math.max(0, Math.min(PP_IDS.length - 1, target)), everMoved: true });
+    };
+    const tx = -page * 390 + (s.dragX || 0);
+    const trans = s.dragging ? 'none' : 'transform 520ms cubic-bezier(0.32, 0.72, 0, 1)';
+    const trackWidth = PP_IDS.length * 390;
+    const FIXED_CHROME = 150;
+    const rootH = FIXED_CHROME + clip + 104;
+    const showHint = !s.everMoved;
+
+    // ---- real September baseline (Tatil memo 29-08-2026, ledger export 15-09-2026) ----
+    const NGS_BASE = 210975.24;
+    const LAPSES_BASE = 28196.88;
+    const NET_BASE = 182778.36;
+
+    const sepPct = s.annuityRule === 'ignore' ? 86.6 : 72.2;
+
+    // ---- reinstatement rows ----
+    const rowsDef = [
+      { id: 'r1', issued: '28-10-2024', ml: 1, api: 1182.36, warn: true },
+      { id: 'r2', issued: '28-05-2025', ml: 8, api: 2400.00 },
+      { id: 'r3', issued: '14-08-2025', ml: 11, api: 11996.64 },
+      { id: 'r4', issued: '19-11-2025', ml: 14, api: 4821.12 },
+      { id: 'r5', issued: '11-11-2025', ml: 14, api: 3617.64 },
+      { id: 'r6', issued: '19-11-2025', ml: 14, api: 2400.00 },
+      { id: 'r7', issued: '20-11-2025', ml: 14, api: 1779.12 }
+    ];
+    const selSum = rowsDef.reduce((sum, r) => sum + (s.sel[r.id] ? r.api : 0), 0);
+
+    // ---- playground projection ----
+    const pgv = s.pg;
+    const proj = this.computeProjection(pgv, selSum, NGS_BASE, LAPSES_BASE);
+    const dp = s.dispPg || { gross: proj.gross, net: proj.net, pct: proj.pct };
+
+    const PENDING_API = 36000;
+    const ifPendingGross = dp.gross + PENDING_API;
+    const ifPendingNet = dp.net + PENDING_API;
+    const ifPendingPct = ifPendingGross > 0 ? (ifPendingNet / ifPendingGross * 100) : 0;
+
+    // =========================================================
+    // 1. OUTLOOK HERO
+    // =========================================================
+    const hero = {
+      modelLine: '24-month model · September 2026 onwards',
+      exportLabel: 'LEDGER 15-09-2026',
+      staleLine: 'Ledger data is 12 days old (exported 15-09-2026, today 27-09-2026) — flips to a stale warning after 45 days.',
+      tiles: [
+        { label: 'CONFIRMED · LAST SAVED', value: '84.8%', color: c.ink, sub: 'Aug 2026 · saved by you (SAMPLE)' },
+        { label: 'DERIVED · SEP 2026', value: pct1(sepPct) + '%', color: sepPct >= 90 ? c.accent : c.warm, sub: 'Straight off your ledger, no save needed' },
+        { label: 'ESTIMATE TODAY', value: pct1(sepPct) + '%', color: sepPct >= 90 ? c.accent : c.warm, sub: 'As of 27-09-2026 (today)' },
+        { label: 'IF PENDING SETTLE', value: pct1(ifPendingPct) + '%', color: ifPendingPct >= 90 ? c.accent : c.warm, sub: 'If your pending TTD 36,000 settles' },
+        { label: 'GATE MONTH', value: '—', color: c.faint, sub: 'Dec 2026 · not known yet' }
+      ]
+    };
+
+    const gateChips = [
+      { label: 'Campaign gate 90% · ' + pct1(Math.max(0, 90 - sepPct)) + 'pp to go', bg: c.warmTint, fg: c.warm },
+      { label: 'Award gate 92% · ' + pct1(Math.max(0, 92 - sepPct)) + 'pp to go', bg: c.goldTint, fg: c.gold },
+      { label: 'Award gate 95% · ' + pct1(Math.max(0, 95 - sepPct)) + 'pp to go', bg: c.goldTint, fg: c.gold }
+    ];
+
+    // =========================================================
+    // Reinstatement planner math
+    // =========================================================
+    const netWithReinst = NET_BASE + selSum;
+    const persWithReinst = netWithReinst / NGS_BASE * 100;
+    const bandFor = (p) => {
+      if (p >= 90) return { name: '100%', prize: 7000 };
+      if (p >= 85) return { name: '50%', prize: 3500 };
+      if (p >= 80) return { name: '25%', prize: 1750 };
+      return { name: 'not qualified', prize: 0 };
+    };
+    const curBand = bandFor(86.6);
+    const newBand = bandFor(persWithReinst);
+
+    const toggleSel = (id) => () => { const ns = Object.assign({}, this.state.sel); ns[id] = !ns[id]; this.setState({ sel: ns }); this.maybeGlidePg(ns); };
+    const pickSmallest = () => this.setState({ sel: { r1: false, r2: false, r3: false, r4: true, r5: false, r6: true, r7: false } }, () => this.maybeGlidePg(this.state.sel));
+    const pickOne = () => this.setState({ sel: { r1: false, r2: false, r3: true, r4: false, r5: false, r6: false, r7: false } }, () => this.maybeGlidePg(this.state.sel));
+
+    const isSmallest = s.sel.r4 && s.sel.r6 && !s.sel.r3 && !s.sel.r1 && !s.sel.r2 && !s.sel.r5 && !s.sel.r7;
+    const isOne = s.sel.r3 && !s.sel.r1 && !s.sel.r2 && !s.sel.r4 && !s.sel.r5 && !s.sel.r6 && !s.sel.r7;
+
+    const plannerRows = rowsDef.map((r) => {
+      const checked = !!s.sel[r.id];
+      return {
+        id: r.id, issued: r.issued, api: 'TTD ' + fmt2(r.api),
+        monthsLeft: r.ml + (r.ml === 1 ? ' month left' : ' months left'),
+        barPct: Math.round((r.ml / 14) * 100), barColor: r.ml <= 2 ? c.warm : c.accent,
+        warn: !!r.warn,
+        checked: checked, checkedAria: checked ? 'true' : 'false',
+        checkBorder: checked ? c.accent : c.rule, checkFill: checked ? c.accent : 'transparent',
+        toggle: toggleSel(r.id)
+      };
+    });
+
+    const planner = {
+      rows: plannerRows,
+      smallestSel: isSmallest ? 'true' : 'false', oneSel: isOne ? 'true' : 'false',
+      smallestBg: isSmallest ? c.accent : c.surface, smallestColor: isSmallest ? c.onAccent : c.ink, smallestBorder: isSmallest ? c.accent : c.rule,
+      oneBg: isOne ? c.accent : c.surface, oneColor: isOne ? c.onAccent : c.ink, oneBorder: isOne ? c.accent : c.rule,
+      resultLine: 'Persistency with these reinstated: ' + pct1(persWithReinst) + '% — Christmas prize band ' + curBand.name + ' → ' + newBand.name + ' (TTD ' + fmt0(curBand.prize) + ' → TTD ' + fmt0(newBand.prize) + ')',
+      resultBg: persWithReinst >= 90 ? c.accentTint : c.warmTint, resultColor: persWithReinst >= 90 ? c.accent : c.warm,
+      agedLabel: s.agedOpen ? 'Hide the older-lapse note' : '80 older lapses are outside the window — why don’t they help?',
+      agedOpen: s.agedOpen
+    };
+    const toggleAged = () => this.setState({ agedOpen: !s.agedOpen });
+    const startWinback = navTo('Focus?mode=Winback');
+    const openInLedger = navTo('Ledger?view=Winback');
+
+    // =========================================================
+    // Formula card (September 2026, real totals; split is SAMPLE)
+    // =========================================================
+    const GROSS = 221655.24, NOT_TAKENS = 9750.00, DECREASES = 4320.00, INCREASES = 2140.00, LUMPSUMS = 12500.00, REINSTATEMENTS = 0.00;
+    const toggleFormula = () => this.setState({ formulaOpen: !s.formulaOpen });
+    const toggleWhy = () => this.setState({ formulaWhyOpen: !s.formulaWhyOpen });
+    const formula = {
+      open: s.formulaOpen, openAria: s.formulaOpen ? 'true' : 'false', chevronRotate: s.formulaOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+      pctLabel: pct1(86.6) + '%',
+      whyOpen: s.formulaWhyOpen, whyLabel: s.formulaWhyOpen ? 'Hide the formula' : 'Why?',
+      ledgerFields: [
+        { label: 'Gross Settled', value: 'TTD ' + fmt2(GROSS) },
+        { label: 'Not Takens', value: 'TTD ' + fmt2(NOT_TAKENS) },
+        { label: 'Lapses', value: 'TTD ' + fmt2(LAPSES_BASE) }
+      ],
+      manualFields: [
+        { label: 'Decreases', value: 'TTD ' + fmt2(DECREASES) },
+        { label: 'Increases', value: 'TTD ' + fmt2(INCREASES) },
+        { label: 'Lumpsums (100%)', value: 'TTD ' + fmt2(LUMPSUMS) },
+        { label: 'Reinstatements', value: 'TTD ' + fmt2(REINSTATEMENTS) }
+      ],
+      ngs: fmt2(NGS_BASE), net: fmt2(NET_BASE),
+      provenance: 'Confirmed by you · 16-09-2026 · from portfolio import 15-09-2026'
+    };
+
+    // =========================================================
+    // Sheets (confirm / playground / counted policies)
+    // =========================================================
+    const openConfirm = () => this.setState({ sheet: 'confirm' });
+    const openPlayground = () => this.setState({ sheet: 'playground' });
+    const openCounted = () => this.setState({ sheet: 'counted' });
+    const closeSheet = () => this.setState({ sheet: null });
+    const setConfirmField = (key) => (e) => { const v = Object.assign({}, this.state.confirm); v[key] = e.target.value; this.setState({ confirm: v }); };
+    const confirmFilled = s.confirm.decreases !== '' && s.confirm.increases !== '' && s.confirm.lumpsums !== '' && s.confirm.reinstatements !== '';
+    const saveConfirm = () => { if (confirmFilled) { this.setState({ sheet: null }); if (this.props.onNav) this.props.onNav('event:toast:October confirmed'); } };
+    const confirm = {
+      decreases: s.confirm.decreases, increases: s.confirm.increases, lumpsums: s.confirm.lumpsums, reinstatements: s.confirm.reinstatements,
+      blockMsg: confirmFilled ? 'All 4 figures entered. Ready to save.' : 'Enter the 4 figures the export does not have.',
+      saveDisabledAttr: confirmFilled ? 'false' : 'true', saveBg: confirmFilled ? c.accent : c.sunk, saveColor: confirmFilled ? c.onAccent : c.faint
+    };
+
+    // =========================================================
+    // Annuity rule switch + counted-policies drawer
+    // =========================================================
+    const setAnnuityIgnore = () => this.setState({ annuityRule: 'ignore' });
+    const setAnnuityLapse = () => this.setState({ annuityRule: 'lapse' });
+    const annuity = {
+      ignoreSel: s.annuityRule === 'ignore' ? 'true' : 'false', lapseSel: s.annuityRule === 'lapse' ? 'true' : 'false',
+      ignoreBg: s.annuityRule === 'ignore' ? c.surface : 'transparent', ignoreColor: s.annuityRule === 'ignore' ? c.accent : c.mute,
+      lapseBg: s.annuityRule === 'lapse' ? c.surface : 'transparent', lapseColor: s.annuityRule === 'lapse' ? c.warm : c.mute,
+      pctLabel: pct1(sepPct) + '%', color: sepPct >= 90 ? c.accent : c.warm,
+      note: s.annuityRule === 'ignore' ? 'A missed annuity premium is not treated as lapsed. September reads 86.6%.' : 'A missed annuity premium lapses after a 60-day grace period. September drops to 72.2%.'
+    };
+    const drawerRows = [
+      { name: '[Client H]', reason: 'Settled within the 24-month window', api: 'TTD 36,000.00', badge: 'Counted', badgeBg: c.accentTint, badgeFg: c.accent, rule: c.rule },
+      { name: '[Client I]', reason: 'Settled within the 24-month window', api: 'TTD 24,946.00', badge: 'Counted', badgeBg: c.accentTint, badgeFg: c.accent, rule: c.rule },
+      { name: '[Client X]', reason: 'Issued before the 24-month window opened', api: 'TTD 9,000.00', badge: 'Excluded', badgeBg: c.sunk, badgeFg: c.faint, rule: c.rule },
+      { name: '[Client Y]', reason: 'Submitted, not yet settled this period', api: 'TTD 13,000.00', badge: 'Excluded', badgeBg: c.sunk, badgeFg: c.faint, rule: c.rule },
+      { name: '[Client E]', reason: '1 month left in the window — ages out after October', api: 'TTD 1,182.36', badge: 'Counted, at risk', badgeBg: c.warmTint, badgeFg: c.warm, rule: 'transparent' }
+    ];
+    const drawer = { rows: drawerRows };
+
+    // =========================================================
+    // Playground (What-If)
+    // =========================================================
+    this.maybeGlidePg = (nextSel) => {
+      if (!this.state.pg.includePlan) return;
+      const nextSum = rowsDef.reduce((sum, r) => sum + (nextSel[r.id] ? r.api : 0), 0);
+      const nextProj = this.computeProjection(this.state.pg, nextSum, NGS_BASE, LAPSES_BASE);
+      const from = this.state.dispPg || { gross: proj.gross, net: proj.net, pct: proj.pct };
+      this.animatePg(from, nextProj);
+    };
+
+    const sliderDef = (key, label, min, max, step) => {
+      const v = pgv[key];
+      return {
+        id: 'm3p-pg-' + key, key: key, label: label, min: min, max: max, step: step, value: v,
+        valueLabel: 'TTD ' + fmt0(v),
+        onChange: (e) => {
+          const nv = parseFloat(e.target.value) || 0;
+          const nextPg = Object.assign({}, this.state.pg, { [key]: nv });
+          const nextProj = this.computeProjection(nextPg, selSum, NGS_BASE, LAPSES_BASE);
+          const from = this.state.dispPg || { gross: proj.gross, net: proj.net, pct: proj.pct };
+          this.animatePg(from, nextProj);
+          this.setState({ pg: nextPg });
+        }
+      };
+    };
+    const pgSliders = [
+      sliderDef('newBiz', 'New business planned (TTD)', 0, 50000, 500),
+      sliderDef('newOrphans', 'New orphans adopted (TTD)', 0, 20000, 500),
+      sliderDef('lapsesExp', 'Lapses expected (TTD)', 0, 20000, 250),
+      sliderDef('reinstPlanned', 'Reinstatements planned (TTD)', 0, 20000, 250),
+      sliderDef('decExp', 'Decreases expected (TTD, 24-month months only)', 0, 10000, 250),
+      sliderDef('rollingOff', 'Business rolling off (TTD)', 0, 20000, 500)
+    ];
+    const toggleIncludePlan = () => {
+      const nextPg = Object.assign({}, this.state.pg, { includePlan: !this.state.pg.includePlan });
+      const nextProj = this.computeProjection(nextPg, selSum, NGS_BASE, LAPSES_BASE);
+      const from = this.state.dispPg || { gross: proj.gross, net: proj.net, pct: proj.pct };
+      this.animatePg(from, nextProj);
+      this.setState({ pg: nextPg });
+    };
+    const resetPg = () => {
+      const nextPg = { newBiz: 0, newOrphans: 0, lapsesExp: 0, reinstPlanned: 0, decExp: 0, rollingOff: 0, includePlan: false };
+      const nextProj = this.computeProjection(nextPg, selSum, NGS_BASE, LAPSES_BASE);
+      const from = this.state.dispPg || { gross: proj.gross, net: proj.net, pct: proj.pct };
+      this.animatePg(from, nextProj);
+      this.setState({ pg: nextPg });
+    };
+    const shortfallBand = bandFor(90);
+    const pg = {
+      header: '24-month model · based on Sep 2026, updates as you move the sliders',
+      sliders: pgSliders,
+      includeChecked: pgv.includePlan ? 'true' : 'false',
+      includeTrackBg: pgv.includePlan ? c.accent : c.rule, includeThumbLeft: pgv.includePlan ? 20 : 2,
+      includeLabel: 'Include my reinstatement plan (+TTD ' + fmt0(selSum) + ')',
+      grossFmt: fmt2(dp.gross), netFmt: fmt2(dp.net),
+      pctFmt: pct1(dp.pct), pctColor: dp.pct >= 90 ? c.accent : c.warm, pctBg: dp.pct >= 90 ? c.accentTint : c.warmTint,
+      shortfallFmt: fmt0(proj.shortfall),
+      shortfallNote: proj.shortfall <= 0 ? 'Already at or above the gate on today’s sliders.' : 'The new business that would clear 90%, holding your other sliders where they are → ' + shortfallBand.name + ' band.'
+    };
+
+    // =========================================================
+    // 2. MONTH-BY-MONTH CHART
+    // =========================================================
+    const legacyDefs = [
+      { label: 'Oct', val: 88.2 }, { label: 'Nov', val: 87.5 }, { label: 'Dec', val: 89.0 },
+      { label: 'Jan', val: 90.1 }, { label: 'Feb', val: 91.0 }, { label: 'Mar', val: 89.8 },
+      { label: 'Apr', val: 88.4 }, { label: 'May', val: 87.9 }, { label: 'Jun', val: 86.0 },
+      { label: 'Jul', val: 85.2 }, { label: 'Aug', val: 84.8 }
+    ];
+    const monthsAll = legacyDefs.map((m) => ({ label: m.label, val: m.val, real: false, ghost: false }))
+      .concat([
+        { label: 'Sep', val: sepPct, real: true, ghost: false },
+        { label: 'Oct', val: dp.pct, real: false, ghost: true }
+      ]);
+
+    const PT_PX = 6, HALF_PTS = 12, HALF_PX = PT_PX * HALF_PTS;
+    const MARGIN_TOP = 34, MARGIN_BOTTOM = 20;
+    const GATE_TOP_PX = MARGIN_TOP + HALF_PX;
+    const FLOOR_TOP_PX = GATE_TOP_PX + (90 - 80) * PT_PX;
+    const bars = monthsAll.map((m) => {
+      const tatil = m.real || m.ghost;
+      const delta = m.val - 90;
+      const deltaC = Math.max(-HALF_PTS, Math.min(HALF_PTS, delta));
+      const isUp = deltaC >= 0;
+      const h = Math.max(2, Math.round(Math.abs(deltaC) * PT_PX));
+      const topPx = isUp ? (GATE_TOP_PX - h) : GATE_TOP_PX;
+      const solid = isUp ? c.accent : c.warm;
+      const lightC = isUp ? c.accentTint : c.warmTint;
+      return {
+        label: m.label + (m.ghost ? '*' : ''),
+        h: h, topPx: topPx, radius: isUp ? '4px 4px 0 0' : '0 0 4px 4px',
+        color: m.ghost ? lightC : (tatil ? solid : lightC), border: m.ghost ? ('2px dashed ' + solid) : 'none',
+        belowGate: !isUp, markerTopPx: topPx + h + 2, labelTopPx: isUp ? (topPx - 12) : (topPx + h + 2),
+        showValTop: true,
+        valLabel: (m.ghost ? '~' : '') + pct1(m.val) + '%',
+        aria: m.label + (m.ghost ? ' 2026, projected' : '') + ' persistency ' + pct1(m.val) + ' percent, ' + (isUp ? 'above' : 'below') + ' the 90 percent gate' + (tatil ? '' : ', sample')
+      };
+    });
+
+    const dividerPct = Math.round((11 / 13) * 1000) / 10;
+    const toggleChartTable = () => this.setState({ chartTableOn: !s.chartTableOn, chartFlip: !s.chartFlip });
+
+    const chart = {
+      title: 'Month by month vs the 90% gate',
+      subtitle: 'Bars grow from the gate line. Move the What if sliders — the October bar updates.',
+      tableLabel: s.chartTableOn ? 'Chart' : 'Table',
+      showBars: !s.chartTableOn, showTable: s.chartTableOn,
+      fadeAnim: s.chartFlip ? 'm3pFadeA' : 'm3pFadeB',
+      bars: bars, gateTopPx: GATE_TOP_PX, floorTopPx: FLOOR_TOP_PX, gateLabelTopPx: GATE_TOP_PX - 12, floorLabelTopPx: FLOOR_TOP_PX - 12, dividerPct: dividerPct,
+      tableRows: monthsAll.map((m) => ({ month: m.label + (m.ghost ? ' (projected)' : ''), model: m.real || m.ghost ? '24-month' : '12-month (sample)', val: (m.ghost ? '~' : '') + pct1(m.val) + '%', color: m.val >= 90 ? c.accent : c.warm }))
+    };
+
+    return {
+      c: c, dark: !!this.props.dark, showNav: !this.props.embedded, go: go,
+      sheetBtnBottom: this.props.embedded ? 16 : 100,
+      pages: pages, pagerKeyDown: pagerKeyDown, showHint: showHint,
+      down: down, move: move, up: up, tx: tx, trans: trans, trackWidth: trackWidth, rootH: rootH,
+      hidden0: page === 0 ? 'false' : 'true', hidden1: page === 1 ? 'false' : 'true', hidden2: page === 2 ? 'false' : 'true', hidden3: page === 3 ? 'false' : 'true',
+      maxH0: maxHs[0], maxH1: maxHs[1], maxH2: maxHs[2], maxH3: maxHs[3],
+      hero: hero, gateChips: gateChips,
+      chart: chart, toggleChartTable: toggleChartTable,
+      formula: formula, toggleFormula: toggleFormula, toggleWhy: toggleWhy,
+      annuity: annuity, setAnnuityIgnore: setAnnuityIgnore, setAnnuityLapse: setAnnuityLapse,
+      drawer: drawer,
+      planner: planner, pickSmallest: pickSmallest, pickOne: pickOne, toggleAged: toggleAged,
+      startWinback: startWinback, openInLedger: openInLedger,
+      pg: pg, toggleIncludePlan: toggleIncludePlan, resetPg: resetPg,
+      sheetPlaygroundOpen: s.sheet === 'playground', sheetConfirmOpen: s.sheet === 'confirm', sheetCountedOpen: s.sheet === 'counted',
+      openPlayground: openPlayground, openConfirm: openConfirm, openCounted: openCounted, closeSheet: closeSheet,
+      confirm: confirm, saveConfirm: saveConfirm,
+      setConfirmDecreases: setConfirmField('decreases'), setConfirmIncreases: setConfirmField('increases'), setConfirmLumpsums: setConfirmField('lumpsums'), setConfirmReinstatements: setConfirmField('reinstatements')
+    };
+  }
+}
+</script>
+</body>
+</html>

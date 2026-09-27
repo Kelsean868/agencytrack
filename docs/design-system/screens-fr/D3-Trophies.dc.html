@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trophy room — desktop v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>body{margin:0}a{color:inherit}
+.tn{font-variant-numeric:tabular-nums}
+.trs-item{transition:transform 260ms cubic-bezier(0.34,1.56,0.64,1),background 160ms ease}.trs-item:hover{transform:translateY(-4px)}
+.trs-item:focus-visible{outline:2px solid #0B5D5E;outline-offset:2px}
+@keyframes trsInA{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+@keyframes trsInB{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+@keyframes trsGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes trsScrimA{from{opacity:0}to{opacity:1}}
+@keyframes trsScrimB{from{opacity:0}to{opacity:1}}
+@keyframes trsPopA{0%{opacity:0;transform:scale(0.3) rotate(-12deg)}60%{opacity:1;transform:scale(1.12) rotate(4deg)}80%{transform:scale(0.97) rotate(-1deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes trsPopB{0%{opacity:0;transform:scale(0.3) rotate(-12deg)}60%{opacity:1;transform:scale(1.12) rotate(4deg)}80%{transform:scale(0.97) rotate(-1deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes trsSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes trsHalo{0%,100%{opacity:0.55;transform:scale(0.96)}50%{opacity:0.9;transform:scale(1.04)}}
+@keyframes trsRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes trsFall{0%{opacity:0;transform:translate3d(0,-40px,0) rotate(0)}10%{opacity:1}100%{opacity:0;transform:translate3d(var(--dx),620px,0) rotate(var(--rot))}}
+@keyframes trsShelfIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;animation-iteration-count:1 !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div tabindex="0" onKeyDown="{{onKey}}" style="width: {{rootW}}px; height: 900px; box-sizing: border-box; display: flex; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; overflow: hidden; outline: none; position: relative;">
+  <sc-if value="{{showChrome}}" hint-placeholder-val="{{true}}">
+    <div style="width: 220px; flex-shrink: 0; align-self: stretch; background: {{c.sideBg}};">
+      <dc-import name="D3-Sidebar" active="Trophies" dark="{{dark}}" h="{{900}}" hint-size="220px,900px"></dc-import>
+    </div>
+  </sc-if>
+  <main style="width: 1220px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0; position: relative;">
+    <header style="height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 20px 0 28px; display: flex; align-items: center; gap: 14px; background: {{c.glass}}; border-bottom: 1px solid {{c.rule}};">
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">Trophy room</h1>
+      <div role="tablist" aria-label="Show" style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: {{c.sunk}};">
+        <sc-for list="{{filters}}" as="f" hint-placeholder-count="5">
+          <button role="tab" aria-selected="{{f.on}}" onClick="{{f.pick}}" style="height: 44px; margin: -7px 0; padding: 0; border: 0; background: transparent; display: flex; align-items: center; cursor: pointer; font-family: 'Onest', sans-serif;"><span style="height: 30px; padding: 0 12px; border-radius: 8px; background: {{f.bg}}; color: {{f.color}}; box-shadow: {{f.shadow}}; font-size: 13px; font-weight: 700; display: flex; align-items: center;">{{f.label}}</span></button>
+        </sc-for>
+      </div>
+      <span class="tn" style="font-size: 13px; color: {{c.mute}};">{{earnedCount}} of {{totalCount}} earned</span>
+      <span style="flex-grow: 1;"></span>
+      <a href="D3-Today.dc.html" onClick="{{go.Search}}" style="width: 200px; height: 36px; margin: 4px 0; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.surface}}; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; color: {{c.faint}}; font-size: 13px; text-decoration: none;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><span style="flex-grow: 1;">Search</span><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; background: {{c.sunk}}; border-radius: 5px; padding: 2px 6px; color: {{c.mute}};">Ctrl K</kbd></a>
+      <button onClick="{{celebrateNext}}" style="height: 36px; min-height: 44px; margin: -4px 0; padding: 0 14px; border: 0; border-radius: 10px; background: {{c.gold}}; color: {{c.onGold}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 7px; cursor: pointer;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.9L19 9.7l-4.2 3.1 1.5 5.2L12 15l-4.3 3 1.5-5.2L5 9.7l5.2-1.8z"></path></svg>Preview an unlock</button>
+    </header>
+
+    <div style="flex-grow: 1; min-height: 0; display: flex;">
+      <div style="flex-grow: 1; min-width: 0; overflow-y: auto; padding: 22px 28px 36px; display: flex; flex-direction: column; gap: 22px;">
+
+        <section aria-label="Your level" style="flex-shrink: 0; border-radius: 22px; background: {{c.heroBg}}; border: 1px solid {{c.rule}}; padding: 20px 24px; display: grid; grid-template-columns: 140px minmax(0, 1fr) 190px; gap: 22px; align-items: center; position: relative; overflow: hidden;">
+          <span aria-hidden="true" style="position: absolute; left: -60px; top: -80px; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle, {{c.heroGlow}} 0%, transparent 65%);"></span>
+          <span style="width: 140px; height: 140px; position: relative;"><dc-import name="D3-Trophy" kind="level-pro" size="140" dark="{{dark}}" hint-size="140px,140px"></dc-import></span>
+          <div style="display: flex; flex-direction: column; gap: 10px; position: relative; min-width: 0;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.gold}};">YOUR LEVEL</span>
+            <span style="display: flex; align-items: baseline; gap: 12px;"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 40px; font-weight: 800; letter-spacing: -0.03em; line-height: 1;">Pro</span><span class="tn" style="font-size: 16px; font-weight: 700; color: {{c.mute}};">2,940 pts</span></span>
+            <span role="img" aria-label="2,940 of 3,500 points to Elite" style="position: relative; height: 12px; border-radius: 6px; background: {{c.sunk}}; overflow: hidden;">
+              <span style="position: absolute; left: 0; top: 0; bottom: 0; width: 72%; border-radius: 6px; background: linear-gradient(90deg, {{c.gold}}, #F0B93A); transform-origin: left; animation: trsGrow 900ms cubic-bezier(0.32, 0.72, 0, 1) both;"></span>
+            </span>
+            <span style="font-size: 14px;"><strong>560 points to Elite.</strong> <span style="color: {{c.mute}};">About 2 applications and 1 closing interview.</span></span>
+            <div style="display: flex; align-items: center; gap: 0; margin-top: 4px;">
+              <sc-for list="{{levels}}" as="lv" hint-placeholder-count="5">
+                <span style="display: flex; align-items: center;">
+                  <sc-if value="{{lv.hasTrack}}" hint-placeholder-val="{{true}}"><span style="width: 18px; height: 3px; border-radius: 2px; background: {{lv.track}};"></span></sc-if>
+                  <button onClick="{{lv.pick}}" aria-label="{{lv.aria}}" style="width: 60px; min-height: 76px; border: 0; background: transparent; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; color: {{c.ink}};">
+                    <span style="width: 48px; height: 48px;"><dc-import name="D3-Trophy" kind="{{lv.kind}}" size="48" locked="{{lv.locked}}" progress="{{lv.progress}}" dark="{{dark}}" hint-size="48px,48px"></dc-import></span>
+                    <span style="font-size: 11px; font-weight: {{lv.weight}}; color: {{lv.color}};">{{lv.name}}</span>
+                  </button>
+                </span>
+              </sc-for>
+            </div>
+          </div>
+          <button onClick="{{pickStreak}}" style="border: 0; border-radius: 18px; background: {{c.surface}}; box-shadow: 0 1px 2px rgba(0,0,0,0.06); padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; cursor: pointer; font-family: 'Onest', sans-serif; color: {{c.ink}};">
+            <span style="width: 84px; height: 84px;"><dc-import name="D3-Trophy" kind="streak" size="84" dark="{{dark}}" hint-size="84px,84px"></dc-import></span>
+            <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">13 weeks</span>
+            <span style="font-size: 12px; color: {{c.mute}};">Report streak · next at 25</span>
+          </button>
+        </section>
+
+        <section aria-label="Closest to unlocking" style="flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: baseline; gap: 10px;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">Closest to unlocking</h2>
+            <span style="font-size: 13px; color: {{c.mute}};">Do these this week</span>
+            <span style="flex-grow: 1;"></span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: {{c.faint}};">PROGRESS IS SAMPLE</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+            <sc-for list="{{nextUp}}" as="n" hint-placeholder-count="3">
+              <button class="trs-item" onClick="{{n.pick}}" style="border-radius: 16px; border: 1px solid {{c.rule}}; background: {{c.surface}}; padding: 14px; display: flex; gap: 12px; align-items: center; text-align: left; cursor: pointer; font-family: 'Onest', sans-serif; color: {{c.ink}};">
+                <span style="width: 64px; height: 64px; flex-shrink: 0;"><dc-import name="D3-Trophy" kind="{{n.kind}}" size="64" locked="{{true}}" progress="{{n.progress}}" dark="{{dark}}" hint-size="64px,64px"></dc-import></span>
+                <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px;">
+                  <span style="display: flex; justify-content: space-between; gap: 8px;"><span style="font-size: 15px; font-weight: 700;">{{n.name}}</span><span class="tn" style="font-size: 13px; font-weight: 700; color: {{c.gold}};">{{n.progress}}%</span></span>
+                  <span style="height: 6px; border-radius: 3px; background: {{c.sunk}};"><span style="display: block; height: 6px; width: {{n.progress}}%; border-radius: 3px; background: {{c.gold}}; transform-origin: left; animation: trsGrow 700ms cubic-bezier(0.32, 0.72, 0, 1) both;"></span></span>
+                  <span style="font-size: 12px; color: {{c.mute}}; line-height: 1.35;">{{n.left}}</span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+        </section>
+
+        <sc-for list="{{shelves}}" as="sh" hint-placeholder-count="3">
+          <section aria-label="{{sh.title}}" style="flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; animation: trsShelfIn 420ms cubic-bezier(0.32, 0.72, 0, 1) both; animation-delay: {{sh.delay}};">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">{{sh.title}}</h2>
+              <span class="tn" style="font-size: 13px; color: {{c.mute}};">{{sh.count}}</span>
+              <span style="flex-grow: 1;"></span>
+              <span style="font-size: 12px; color: {{c.faint}};">{{sh.note}}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0 6px; padding: 8px 6px 0; position: relative;">
+              <sc-for list="{{sh.items}}" as="it" hint-placeholder-count="7">
+                <button class="trs-item" onClick="{{it.pick}}" aria-pressed="{{it.sel}}" aria-label="{{it.aria}}" style="border: 0; border-radius: 14px; background: {{it.bg}}; padding: 8px 4px 0; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; font-family: 'Onest', sans-serif; color: {{c.ink}}; position: relative; z-index: 1; min-height: 150px;">
+                  <span style="width: 84px; height: 84px;"><dc-import name="D3-Trophy" kind="{{it.kind}}" size="84" locked="{{it.locked}}" progress="{{it.progress}}" dark="{{dark}}" hint-size="84px,84px"></dc-import></span>
+                  <span style="font-size: 12px; font-weight: 700; text-align: center; line-height: 1.2; color: {{it.nameColor}};">{{it.name}}</span>
+                  <span class="tn" style="font-size: 11px; color: {{it.subColor}};">{{it.sub}}</span>
+                </button>
+                <sc-if value="{{it.shelfBreak}}" hint-placeholder-val="{{false}}">
+                  <span aria-hidden="true" style="grid-column: 1 / -1; height: 12px; margin: -4px -6px 14px; border-radius: 3px; background: {{c.shelf}}; box-shadow: 0 6px 12px {{c.shelfShadow}};"></span>
+                </sc-if>
+              </sc-for>
+            </div>
+          </section>
+        </sc-for>
+        <span style="font-size: 12px; color: {{c.faint}};">Badge names, levels, points and award names are the live app's. Earned dates, rarity and which items are unlocked are SAMPLE. Jul–Dec monthly awards are recognition only.</span>
+      </div>
+
+      <aside aria-label="Selected trophy" style="width: 340px; flex-shrink: 0; overflow-y: auto; border-left: 1px solid {{c.rule}}; background: {{c.pane}}; padding: 22px 22px 28px; box-sizing: border-box;">
+        <div style="display: flex; flex-direction: column; gap: 14px; animation: {{inspAnim}};">
+          <div style="height: 200px; border-radius: 20px; background: {{sel.stage}}; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+            <sc-if value="{{sel.earned}}" hint-placeholder-val="{{true}}">
+              <span aria-hidden="true" style="position: absolute; width: 260px; height: 260px; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0deg, {{c.ray}} 12deg, transparent 24deg, transparent 45deg, {{c.ray}} 57deg, transparent 69deg, transparent 90deg, {{c.ray}} 102deg, transparent 114deg, transparent 135deg, {{c.ray}} 147deg, transparent 159deg, transparent 180deg, {{c.ray}} 192deg, transparent 204deg, transparent 225deg, {{c.ray}} 237deg, transparent 249deg, transparent 270deg, {{c.ray}} 282deg, transparent 294deg, transparent 315deg, {{c.ray}} 327deg, transparent 339deg); animation: trsSpin 24s linear infinite;"></span>
+            </sc-if>
+            <span style="width: 160px; height: 160px; position: relative;"><dc-import name="D3-Trophy" kind="{{sel.kind}}" size="160" locked="{{sel.locked}}" progress="{{sel.progress}}" dark="{{dark}}" hint-size="160px,160px"></dc-import></span>
+          </div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{sel.groupColor}};">{{sel.group}}</span>
+          <h2 style="margin: -6px 0 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1;">{{sel.name}}</h2>
+          <span style="align-self: flex-start; height: 26px; padding: 0 10px; border-radius: 13px; background: {{sel.chipBg}}; color: {{sel.chipFg}}; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{sel.chipIcon}}"></path></svg>{{sel.status}}</span>
+          <sc-if value="{{sel.locked}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="height: 8px; border-radius: 4px; background: {{c.sunk}};"><span style="display: block; height: 8px; width: {{sel.progress}}%; border-radius: 4px; background: {{c.gold}}; transform-origin: left; animation: trsGrow 600ms cubic-bezier(0.32, 0.72, 0, 1) both; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></span></span>
+              <span style="font-size: 14px; font-weight: 600;">{{sel.left}}</span>
+            </div>
+          </sc-if>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 12px; font-weight: 700; color: {{c.mute}};">How you earn it</span>
+            <span style="font-size: 14px; line-height: 1.45;">{{sel.rule}}</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <span style="border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 11px; color: {{c.mute}};">Worth</span><span class="tn" style="font-size: 16px; font-weight: 800;">{{sel.pts}}</span></span>
+            <span style="border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 11px; color: {{c.mute}};">In your branch</span><span class="tn" style="font-size: 16px; font-weight: 800;">{{sel.rarity}}</span></span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <sc-if value="{{sel.hasCta}}" hint-placeholder-val="{{true}}">
+              <a href="{{sel.ctaHref}}" onClick="{{sel.ctaGo}}" style="height: 44px; border-radius: 12px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 700; text-decoration: none;">{{sel.cta}}</a>
+            </sc-if>
+            <sc-if value="{{sel.earned}}" hint-placeholder-val="{{true}}">
+              <button onClick="{{shareSel}}" style="height: 44px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer;">Show the team</button>
+            </sc-if>
+            <button onClick="{{celebrateSel}}" style="height: 44px; border-radius: 12px; border: 0; background: {{c.goldTint}}; color: {{c.gold}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 800; cursor: pointer;">Preview the celebration</button>
+          </div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: {{c.faint}};">DATES, RARITY AND PROGRESS ARE SAMPLE</span>
+        </div>
+      </aside>
+    </div>
+
+    <sc-if value="{{celebrating}}" hint-placeholder-val="{{false}}">
+      <div role="dialog" aria-modal="true" aria-label="{{cele.aria}}" style="position: absolute; inset: 0; z-index: 20; background: radial-gradient(circle at 50% 42%, rgba(60,44,8,0.9) 0%, rgba(12,11,9,0.94) 60%); color: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; overflow: hidden; animation: {{cele.scrim}};">
+        <sc-for list="{{confetti}}" as="cf" hint-placeholder-count="12">
+          <span aria-hidden="true" style="position: absolute; left: {{cf.left}}%; top: 0; width: {{cf.w}}px; height: {{cf.h}}px; border-radius: 2px; background: {{cf.color}}; --dx: {{cf.dx}}px; --rot: {{cf.rot}}deg; animation: trsFall {{cf.dur}}ms cubic-bezier(0.2, 0.6, 0.4, 1) both; animation-delay: {{cf.delay}}ms;"></span>
+        </sc-for>
+        <div style="position: relative; width: 300px; height: 300px; display: flex; align-items: center; justify-content: center;">
+          <span aria-hidden="true" style="position: absolute; inset: -40px; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0deg, rgba(255,214,120,0.28) 10deg, transparent 20deg, transparent 30deg, rgba(255,214,120,0.28) 40deg, transparent 50deg, transparent 60deg, rgba(255,214,120,0.28) 70deg, transparent 80deg, transparent 90deg, rgba(255,214,120,0.28) 100deg, transparent 110deg, transparent 120deg, rgba(255,214,120,0.28) 130deg, transparent 140deg, transparent 150deg, rgba(255,214,120,0.28) 160deg, transparent 170deg, transparent 180deg, rgba(255,214,120,0.28) 190deg, transparent 200deg, transparent 210deg, rgba(255,214,120,0.28) 220deg, transparent 230deg, transparent 240deg, rgba(255,214,120,0.28) 250deg, transparent 260deg, transparent 270deg, rgba(255,214,120,0.28) 280deg, transparent 290deg, transparent 300deg, rgba(255,214,120,0.28) 310deg, transparent 320deg, transparent 330deg, rgba(255,214,120,0.28) 340deg, transparent 350deg); animation: trsSpin 18s linear infinite;"></span>
+          <span aria-hidden="true" style="position: absolute; width: 230px; height: 230px; border-radius: 50%; background: radial-gradient(circle, rgba(255,210,110,0.55) 0%, rgba(255,210,110,0) 70%); animation: trsHalo 2.4s ease-in-out infinite;"></span>
+          <span style="width: 220px; height: 220px; position: relative; animation: {{cele.pop}};"><dc-import name="D3-Trophy" kind="{{cele.kind}}" size="220" dark="{{true}}" hint-size="220px,220px"></dc-import></span>
+        </div>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; color: #F2C14E; animation: trsRise 520ms 240ms cubic-bezier(0.32, 0.72, 0, 1) both;">{{cele.kicker}}</span>
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 46px; font-weight: 800; letter-spacing: -0.03em; animation: trsRise 520ms 320ms cubic-bezier(0.32, 0.72, 0, 1) both;">{{cele.name}}</h2>
+        <p style="margin: 0; font-size: 17px; opacity: 0.85; max-width: 520px; text-align: center; line-height: 1.45; animation: trsRise 520ms 400ms cubic-bezier(0.32, 0.72, 0, 1) both;">{{cele.line}}</p>
+        <span class="tn" style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 30px; font-weight: 800; color: #F2C14E; animation: trsRise 520ms 480ms cubic-bezier(0.32, 0.72, 0, 1) both;">+{{celePts}} pts</span>
+        <div style="display: flex; gap: 10px; margin-top: 6px; animation: trsRise 520ms 560ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+          <button onClick="{{shareSel}}" style="height: 48px; padding: 0 22px; border-radius: 14px; border: 0; background: #F2C14E; color: #1F1D1A; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 800; cursor: pointer;">Show the team</button>
+          <button onClick="{{closeCele}}" style="height: 48px; padding: 0 22px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: #FFFFFF; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer;">Close</button>
+        </div>
+        <span style="font-size: 12px; opacity: 0.6;">Esc to close</span>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"onNav":{"editor":null},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { filter: 'All', sel: 'big-week', selN: 0, cele: '', celeN: 0, celePts: 0 };
+    this.timer = null;
+  }
+  startCount(target) {
+    if (this.timer) clearInterval(this.timer);
+    const t0 = Date.now();
+    this.setState({ celePts: 0 });
+    this.timer = setInterval(() => {
+      const p = Math.min(1, (Date.now() - t0) / 900);
+      const e = 1 - Math.pow(1 - p, 3);
+      this.setState({ celePts: Math.round(target * e) });
+      if (p >= 1) { clearInterval(this.timer); this.timer = null; }
+    }, 30);
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', onGold: '#FFFFFF', goldTint: '#F5EAD3', sideBg: '#EFEBE2', glass: 'rgba(246,243,236,0.86)', pane: '#FBFAF6', sel: '#DCEAE7', heroBg: '#FFFDF7', heroGlow: 'rgba(240,185,58,0.28)', shelf: 'linear-gradient(180deg, #E9DFCB, #D6C8AC)', shelfShadow: 'rgba(90,70,30,0.18)', ray: 'rgba(240,185,58,0.22)', stageEarned: 'radial-gradient(circle at 50% 55%, #FFF4D6 0%, #F6F3EC 70%)', stageLocked: '#F0ECE4' };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', onGold: '#1F1D1A', goldTint: '#342911', sideBg: '#181816', glass: 'rgba(19,19,17,0.86)', pane: '#171714', sel: '#16312F', heroBg: '#1B1A16', heroGlow: 'rgba(232,180,78,0.18)', shelf: 'linear-gradient(180deg, #3A342A, #2A251D)', shelfShadow: 'rgba(0,0,0,0.5)', ray: 'rgba(232,180,78,0.16)', stageEarned: 'radial-gradient(circle at 50% 55%, #3A2E14 0%, #171714 70%)', stageLocked: '#1F1E1B' };
+    const c = this.props.dark ? dark : light;
+    const s = this.state;
+    const nav = (t) => (e) => { if (e && e.preventDefault && this.props.onNav) e.preventDefault(); if (this.props.onNav) this.props.onNav(t); };
+    const go = { Search: nav('Search') };
+    const toast = (t) => { if (this.props.onNav) this.props.onNav('event:toast:' + t); };
+
+    // [kind, name, group, earned, progress, sub/left, rule, pts, rarity, ctaLabel, ctaTarget]
+    const ALL = [
+      ['first-steps', 'First Steps', 'Badges', true, 100, 'Earned 12-01-2026', 'Log your first week in AgencyTrack.', 25, '18 of 18'],
+      ['on-a-roll', 'On a Roll', 'Badges', true, 100, 'Earned 02-08-2026', 'Hit a 5-week report streak.', 50, '11 of 18'],
+      ['committed', 'Committed', 'Badges', true, 100, 'Earned 06-09-2026', 'Hit a 10-week report streak.', 75, '7 of 18'],
+      ['quarter-strong', 'Quarter Strong', 'Badges', true, 100, 'Earned 20-09-2026', 'Meet your weekly plan every week for a full quarter.', 100, '4 of 18'],
+      ['consistent', 'Consistent', 'Badges', true, 100, 'Earned 13-09-2026', 'Log activity on every working day for 4 weeks.', 50, '6 of 18'],
+      ['closer', 'Closer', 'Badges', true, 100, 'Earned 23-08-2026', 'Turn 3 closing interviews in a row into applications.', 75, '5 of 18'],
+      ['big-week', 'Big Week', 'Badges', false, 70, 'One more closing interview this week unlocks it.', 'Score 300 points in a single week.', 100, '3 of 18', 'Start power hour', 'Calls'],
+      ['dial-king', 'Dial King', 'Badges', false, 64, '36 more dials this week.', 'Make 100 dials in one week.', 75, '2 of 18', 'Start power hour', 'Calls'],
+      ['century', 'Century', 'Badges', false, 52, '48 more logged calls with an outcome.', 'Log 100 calls with an outcome.', 100, '5 of 18', 'Start power hour', 'Calls'],
+      ['mdrt-pace', 'MDRT Pace', 'Badges', false, 38, 'TTD 42,975 a week keeps you on pace.', 'Be on pace for MDRT at the end of a month.', 150, '2 of 18', 'Open game plan', 'Money?tab=GamePlan'],
+      ['sharpshooter', 'Sharpshooter', 'Badges', false, 30, 'Close ratio 30% of the 50% needed.', 'Close half your closing interviews over 8 weeks.', 100, '1 of 18', 'See your funnel', 'Funnel'],
+      ['mdrt-bound', 'MDRT Bound', 'Badges', false, 13, 'TTD 601,654 to go.', 'Pass half of the MDRT line.', 200, '1 of 18', 'Open MDRT goal', 'Money?tab=Goals'],
+      ['mdrt-qualified', 'MDRT Qualified', 'Badges', false, 13, 'TTD 601,654 to go · 14 weeks left.', 'Reach TTD 688,800 in the year (MDRT 2026).', 500, '0 of 18', 'Open MDRT goal', 'Money?tab=Goals'],
+      ['untouchable', 'Untouchable', 'Badges', false, 8, 'Hold 1st place for 4 weeks.', 'Hold 1st place on the branch board for 4 weeks in a row.', 300, '0 of 18', 'Open leaderboard', 'Arena'],
+      ['level-rookie', 'Rookie', 'Levels', true, 100, 'From 0 pts', 'Everyone starts here.', 0, '18 of 18'],
+      ['level-associate', 'Associate', 'Levels', true, 100, 'At 500 pts', 'Reach 500 points.', 500, '14 of 18'],
+      ['level-pro', 'Pro', 'Levels', true, 100, 'At 1,500 pts', 'Reach 1,500 points.', 1500, '8 of 18'],
+      ['level-elite', 'Elite', 'Levels', false, 84, '560 pts to go', 'Reach 3,500 points.', 3500, '3 of 18', 'Start power hour', 'Calls'],
+      ['level-legend', 'Legend', 'Levels', false, 42, '4,060 pts to go', 'Reach 7,000 points.', 7000, '1 of 18', 'Start power hour', 'Calls'],
+      ['new-business', 'New Business Advisor', 'Awards', true, 100, 'Qualified 12-09-2026', 'New Business Advisor Award — from confirmed settlements.', 250, '5 of 18'],
+      ['persistency-silver', 'Persistency — Silver', 'Awards', false, 96, 'Reinstate TTD 7,100 to reach 90%.', 'Persistency Award — Silver. 24-month aggregate, Tatil memo 29-08-2026.', 200, '6 of 18', 'See at-risk policies', 'Money?tab=Persistency'],
+      ['aotm-apps', 'Advisor of the Month — Apps', 'Awards', false, 80, '1 more application in September.', 'Most applications in the branch this month. Recognition only Jul–Dec.', 150, '1 a month', 'Start power hour', 'Calls'],
+      ['quarterly-api', 'Quarterly API', 'Awards', false, 45, 'TTD [n] to go this quarter.', 'Quarterly API Award — top API for the quarter.', 200, '1 a quarter', 'Open leaderboard', 'Arena'],
+      ['aotm-api', 'Advisor of the Month — API', 'Awards', false, 38, 'TTD [n] to top the branch.', 'Most settled API in the branch this month. Recognition only Jul–Dec.', 150, '1 a month', 'Open leaderboard', 'Arena'],
+      ['quarterly-apps', 'Quarterly Apps', 'Awards', false, 33, '[n] applications to go.', 'Quarterly Apps Award — most applications for the quarter.', 200, '1 a quarter', 'Start power hour', 'Calls'],
+      ['persistency-gold', 'Persistency — Gold', 'Awards', false, 30, 'Above silver: [n]% needed.', 'Persistency Award — Gold.', 300, '2 of 18', 'See at-risk policies', 'Money?tab=Persistency'],
+      ['mdrt', 'MDRT', 'Awards', false, 13, 'TTD 601,654 to go · family policies count here.', 'Qualify for MDRT (TTD 688,800 in 2026).', 500, '0 of 18', 'Open MDRT goal', 'Money?tab=Goals'],
+      ['rookie-year', 'Rookie of the Year', 'Awards', false, 0, 'For agents in their first year.', 'Rookie of the Year — first-year agents only.', 300, '1 a year'],
+      ['agent-year', 'Agent of the Year', 'Awards', false, 9, 'Ranked on the full year.', 'Agent of the Year — ranked on the full year.', 500, '1 a year', 'Open leaderboard', 'Arena'],
+      ['centurion', 'Centurion', 'Awards', false, 5, '[n] applications needed.', 'Centurion Award.', 400, '0 of 18', 'Start power hour', 'Calls'],
+      ['xmas-tier', 'Champion tier', 'Christmas campaign', true, 100, 'In the race', 'Christmas Campaign 2026 — Champion tier, TTD 7,000 cash.', 100, '9 of 18'],
+      ['xmas-champion', 'Christmas Champion', 'Christmas campaign', false, 27, 'TTD 201,054 and 32 apps to go · 96 days.', 'Reach TTD 275,000 and 35 applications by 31-12-2026. Persistency gate applies.', 500, '0 of 18', 'Open campaign', 'Campaign']
+    ];
+    const byKind = {}; ALL.forEach((a) => { byKind[a[0]] = a; });
+    const pick = (kind) => () => this.setState({ sel: kind, selN: s.selN + 1 });
+
+    const F = ['All', 'Badges', 'Levels', 'Awards', 'Christmas campaign'];
+    const FL = { 'Christmas campaign': 'Campaign' };
+    const filters = F.map((f) => ({ label: FL[f] || f, on: s.filter === f, pick: () => this.setState({ filter: f }), bg: s.filter === f ? c.surface : 'transparent', color: s.filter === f ? c.ink : c.mute, shadow: s.filter === f ? '0 1px 2px rgba(0,0,0,0.1)' : 'none' }));
+
+    const groups = ['Badges', 'Levels', 'Awards', 'Christmas campaign'].filter((g) => s.filter === 'All' || s.filter === g);
+    const NOTES = { Badges: 'The live app’s 14 badges', Levels: 'Rookie 0 · Associate 500 · Pro 1,500 · Elite 3,500 · Legend 7,000', Awards: 'Source: live from policy ledger and confirmed settlements', 'Christmas campaign': '01-07-2026 to 31-12-2026 · retreat Costa Rica April 2027' };
+    const shelves = groups.map((g, gi) => {
+      const list = ALL.filter((a) => a[2] === g);
+      const earned = list.filter((a) => a[3]).length;
+      const items = list.map((a, i) => ({
+        kind: a[0], name: a[1], locked: !a[3], progress: a[3] ? 0 : a[4], sub: a[3] ? 'Earned' : a[4] + '%',
+        nameColor: a[3] ? c.ink : c.mute, subColor: a[3] ? c.gold : c.faint,
+        sel: s.sel === a[0], bg: s.sel === a[0] ? c.sel : 'transparent',
+        aria: a[1] + (a[3] ? ', earned' : ', ' + a[4] + ' percent there'), pick: pick(a[0]),
+        shelfBreak: (i % 7 === 6) || i === list.length - 1
+      }));
+      return { title: g, count: earned + ' of ' + list.length, note: NOTES[g], items: items, delay: (gi * 60) + 'ms' };
+    });
+
+    const nextUp = ['big-week', 'dial-king', 'century'].map((k) => { const a = byKind[k]; return { kind: k, name: a[1], progress: a[4], left: a[5], pick: pick(k) }; });
+
+    const LV = ['level-rookie', 'level-associate', 'level-pro', 'level-elite', 'level-legend'];
+    const levels = LV.map((k, i) => { const a = byKind[k]; return { kind: k, name: a[1], locked: !a[3], progress: a[3] ? 0 : a[4], hasTrack: i > 0, track: i <= 2 ? c.gold : c.sunk, weight: k === 'level-pro' ? 800 : 600, color: k === 'level-pro' ? c.ink : c.mute, aria: a[1] + (a[3] ? ', reached' : ', ' + a[5]), pick: pick(k) }; });
+
+    const a = byKind[s.sel] || ALL[0];
+    const FILES = { Calls: 'D3-Focus', Money: 'D3-Money', Funnel: 'D3-Pipeline', Arena: 'D2-Arena', Campaign: 'D3-Campaign' };
+    const hasCta = !!a[9];
+    const ctaT = a[10] || '';
+    const sel = {
+      kind: a[0], name: a[1], group: a[2].toUpperCase(), groupColor: a[2] === 'Levels' ? c.accent : c.gold,
+      earned: a[3], locked: !a[3], progress: a[3] ? 0 : a[4], left: a[5], rule: a[6],
+      pts: a[7] ? (a[2] === 'Levels' ? a[7].toLocaleString('en-US') + ' pts' : '+' + a[7] + ' pts') : '—', rarity: a[8],
+      status: a[3] ? (a[2] === 'Levels' ? 'Reached' : a[5]) : a[4] + '% there',
+      chipBg: a[3] ? c.goldTint : c.sunk, chipFg: a[3] ? c.gold : c.mute,
+      chipIcon: a[3] ? 'M20 6 9 17l-5-5' : 'M6 11h12v10H6zM8.5 11V7.5a3.5 3.5 0 0 1 7 0V11',
+      stage: a[3] ? c.stageEarned : c.stageLocked,
+      hasCta: hasCta, cta: a[9] || '', ctaHref: (FILES[ctaT.split('?')[0]] || 'D3-Today') + '.dc.html', ctaGo: nav(ctaT)
+    };
+
+    const COLORS = ['#F2C14E', '#63C5BF', '#E0724B', '#FFFFFF', '#B794D6', '#8FD3CD', '#F0B93A', '#FF8A65'];
+    const confetti = [];
+    for (let i = 0; i < 44; i++) {
+      const left = (i * 37.3 + 11) % 100;
+      confetti.push({ left: left.toFixed(1), w: 6 + (i % 3) * 2, h: 10 + (i % 4) * 3, color: COLORS[i % COLORS.length], dx: ((i * 53) % 160) - 80, rot: ((i * 97) % 720) - 360, dur: 1800 + (i % 7) * 260, delay: (i % 11) * 70 });
+    }
+    const ck = byKind[s.cele] || a;
+    const celebrate = (kind) => { const x = byKind[kind]; this.setState({ cele: kind, celeN: s.celeN + 1 }); this.startCount(x[7] || 100); };
+
+    return {
+      c: c, go: go, dark: !!this.props.dark,
+      showChrome: !this.props.embedded, rootW: this.props.embedded ? 1220 : 1440,
+      filters: filters, earnedCount: ALL.filter((x) => x[3]).length, totalCount: ALL.length,
+      shelves: shelves, nextUp: nextUp, levels: levels, sel: sel,
+      pickStreak: () => toast('Streak: 13 weeks. Next milestone at 25 weeks.'),
+      inspAnim: (s.selN % 2 ? 'trsInA' : 'trsInB') + ' 300ms cubic-bezier(0.32, 0.72, 0, 1) both',
+      celebrating: !!s.cele,
+      cele: {
+        kind: ck[0], name: ck[2] === 'Levels' ? 'Level up: ' + ck[1] : ck[1],
+        kicker: ck[2] === 'Levels' ? 'NEW LEVEL' : (ck[2] === 'Awards' ? 'AWARD QUALIFIED' : 'TROPHY UNLOCKED'),
+        line: ck[6], aria: 'Celebration: ' + ck[1],
+        scrim: (s.celeN % 2 ? 'trsScrimA' : 'trsScrimB') + ' 320ms ease both',
+        pop: (s.celeN % 2 ? 'trsPopA' : 'trsPopB') + ' 900ms 120ms cubic-bezier(0.32, 0.72, 0, 1) both'
+      },
+      celePts: s.celePts, confetti: confetti,
+      celebrateSel: () => celebrate(s.sel),
+      celebrateNext: () => celebrate('big-week'),
+      closeCele: () => this.setState({ cele: '' }),
+      shareSel: () => toast('Saved · shared "' + (byKind[s.cele || s.sel] || a)[1] + '" to your branch feed'),
+      onKey: (e) => { if (e.key === 'Escape' && s.cele) { e.preventDefault(); this.setState({ cele: '' }); } }
+    };
+  }
+}
+</script>
+</body>
+</html>
