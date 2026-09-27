@@ -40,6 +40,7 @@ const { APP_URL, CONTACT_EMAIL } = require('../lib/config');
 const admin = require('firebase-admin');
 const functions = require('firebase-functions/v1');
 const { buildMailDoc } = require('../utils/email');
+const { withAppCheckMonitor } = require('../lib/appCheckMonitor');
 // CJS twin of the src/lib predicates — kept in lock-step by
 // src/lib/__tests__/financingMissPredicates.cross-check.test.js. The CF RECOMPUTES
 // the clause-5.3 >10% condition from canonical ledger data; it never trusts the
@@ -82,7 +83,7 @@ function pctLabel(ratio) {
   return `${pct}%`;
 }
 
-exports.notifyFinancingAdjustment = functions.https.onCall(async (data, context) => {
+exports.notifyFinancingAdjustment = functions.https.onCall(withAppCheckMonitor('notifyFinancingAdjustment', async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
@@ -264,7 +265,7 @@ exports.notifyFinancingAdjustment = functions.https.onCall(async (data, context)
   const result = { success: true, recipientUid, agentId, month, emailQueued };
   if (emailError) result.emailError = emailError;
   return result;
-});
+}));
 
 // Exported for unit tests (handler reachable via the onCall ._onCall shim).
 exports._internals = { agentInScope, pctLabel, NOTIFY_ACTOR_ROLES, NOTIFY_TYPE };

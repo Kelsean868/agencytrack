@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions/v1');
 const { extractTotalProductionCredit, extractTotalApps, extractActivityFields } = require('../utils/fieldHelpers');
+const { withAppCheckMonitor } = require('../lib/appCheckMonitor');
 
 const MANAGER_ROLES = new Set([
   'branch_manager',
@@ -9,7 +10,7 @@ const MANAGER_ROLES = new Set([
   'platform_admin',
 ]);
 
-exports.getAgentOfMonthCandidates = functions.https.onCall(async (data, context) => {
+exports.getAgentOfMonthCandidates = functions.https.onCall(withAppCheckMonitor('getAgentOfMonthCandidates', async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
@@ -114,4 +115,4 @@ exports.getAgentOfMonthCandidates = functions.https.onCall(async (data, context)
     apps: rankCategory('apps'),
     activity: rankCategory('activity'),
   };
-});
+}));

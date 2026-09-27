@@ -9,11 +9,12 @@ const CROSS_BRANCH_ROLES = new Set([
   'platform_admin',
 ]);
 
-// SEC-03 (audit 2026-09-24): every token expires. The one constant for kiosk
-// token lifetime — the validators reject a token with no expiresAt.
-const KIOSK_TOKEN_TTL_DAYS = 90;
-const TOKEN_TTL_MS = KIOSK_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000;
+// SEC-03 (audit 2026-09-24): every token expires — the validators reject a
+// token with no expiresAt. P2e (SEC-04): the lifetime lives in tokenLife.js so
+// the validator renews by the same constant.
+const { KIOSK_TOKEN_TTL_DAYS, KIOSK_TOKEN_TTL_MS: TOKEN_TTL_MS } = require('./tokenLife');
 const { APP_URL: BASE_URL } = require('../lib/config');
+const { withAppCheckMonitor } = require('../lib/appCheckMonitor');
 
 // A branch_manager owns their claim branchId and any branch in ownedBranchIds
 // (createUser sets ownedBranchIds = [branchId] for BMs).
@@ -23,7 +24,7 @@ function branchManagerOwns(token, branchId) {
   return Array.isArray(token.ownedBranchIds) && token.ownedBranchIds.includes(branchId);
 }
 
-exports.createKioskToken = functions.https.onCall(async (data, context) => {
+exports.createKioskToken = functions.https.onCall(withAppCheckMonitor('createKioskToken', async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
@@ -65,9 +66,15 @@ exports.createKioskToken = functions.https.onCall(async (data, context) => {
       expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
       revokedAt: null,
       lastUsedAt: null,
+      // P2e (SEC-04): renewed to now + 90 days on every successful use. Tokens
+      // minted before P2e lack this flag and keep their original expiry.
+      rolling: true,
+      // Bound to the first device that opens the link (validateKioskToken).
+      deviceSecretHash: null,
+      deviceBoundAt: null,
     });
 
   return { tokenId, kioskUrl: `${BASE_URL}/kiosk/${tenantId}/${tokenId}` };
-});
+}));
 
 exports.KIOSK_TOKEN_TTL_DAYS = KIOSK_TOKEN_TTL_DAYS;

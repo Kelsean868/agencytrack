@@ -1,5 +1,6 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions/v1');
+const { withAppCheckMonitor } = require('../lib/appCheckMonitor');
 
 // Owner-only, matching createCallSource's self-service model and the rules'
 // owner-scoped read arm. No role gate: a manager has no more claim on an
@@ -7,7 +8,7 @@ const functions = require('firebase-functions/v1');
 // through revokeInboundLinks under the Admin SDK, which bypasses rules and
 // needs no manager read path.
 
-exports.revokeCallSource = functions.https.onCall(async (data, context) => {
+exports.revokeCallSource = functions.https.onCall(withAppCheckMonitor('revokeCallSource', async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
@@ -41,4 +42,4 @@ exports.revokeCallSource = functions.https.onCall(async (data, context) => {
   });
 
   return { success: true };
-});
+}));

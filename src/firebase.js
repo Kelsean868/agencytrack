@@ -8,6 +8,7 @@ import {
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
+import { initAppCheck } from './lib/appCheck';
 
 export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -19,6 +20,11 @@ export const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+// P2e (SEC-11): App Check in MONITOR mode — attaches tokens, enforces nothing.
+// Skipped when VITE_APPCHECK_SITE_KEY is empty. Initialised before any other
+// service so their first requests already carry a token.
+export const appCheck = initAppCheck(app);
 
 export const auth = getAuth(app);
 export const db = initializeFirestore(app, {

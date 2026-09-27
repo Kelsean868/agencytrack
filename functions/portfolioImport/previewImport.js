@@ -18,6 +18,7 @@ const { loadPortfolioImport } = require('./loadPortfolioImport');
 const { readWorkbook, MAX_FILE_BYTES } = require('./readWorkbook');
 const { resolveCaller, partitionByServicingAgent } = require('./identity');
 const { savePlan, purgeOldPlans } = require('./planStore');
+const { withAppCheckMonitor } = require('../lib/appCheckMonitor');
 
 /**
  * Parsing a 5 MB workbook and diffing it against a whole ledger does not fit the
@@ -192,5 +193,5 @@ async function handler(data, context) {
   };
 }
 
-exports.previewPortfolioImport = functions.runWith(RUNTIME).https.onCall(handler);
+exports.previewPortfolioImport = functions.runWith(RUNTIME).https.onCall(withAppCheckMonitor('previewPortfolioImport', handler));
 exports.__handler = handler; // unit tests call the handler directly

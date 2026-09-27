@@ -150,7 +150,8 @@ export default function KioskModeTab() {
           <h2 className="text-xl font-semibold text-ink">Kiosk Mode</h2>
           <p className="text-ink-muted text-sm mt-1">
             Generate a secure URL to display the branch performance dashboard on a TV.
-            Tokens expire after one year.
+            Each link pairs with the first screen that opens it and works only there.
+            It stays live while that screen uses it at least once every 90 days.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -207,6 +208,10 @@ export default function KioskModeTab() {
                   <p className="text-ink-muted text-xs mt-1">
                     Created {formatDate(token.createdAt)}
                     {token.expiresAt && ` · Expires ${formatDate(token.expiresAt)}`}
+                    {' · '}
+                    <span data-testid={`kiosk-pairing-${token.id}`}>
+                      {token.deviceBoundAt ? `Paired ${formatDate(token.deviceBoundAt)}` : 'Not paired yet'}
+                    </span>
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -220,11 +225,11 @@ export default function KioskModeTab() {
                     <Copy size={15} className={copied ? 'text-success-ink' : ''} />
                   </button>
                   <a
-                    aria-label="Open kiosk"
+                    aria-label="Open kiosk (pairs this device if the link is not paired yet)"
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Open kiosk"
+                    title={token.deviceBoundAt ? 'Open kiosk' : 'Open kiosk — this pairs the link with THIS device'}
                     className="h-11 w-11 rounded-lg flex items-center justify-center text-ink-muted hover:text-primary hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <ExternalLink size={15} />

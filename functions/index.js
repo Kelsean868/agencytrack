@@ -8,6 +8,7 @@ const { wholeYearsSince } = require('./utils/tenure');
 const { computePoints } = require('./lib/computePoints');
 const { resolveLevel } = require('./lib/gamificationConfig');
 const { APP_URL, CONTACT_EMAIL } = require('./lib/config');
+const { withAppCheckMonitor } = require('./lib/appCheckMonitor');
 
 // Ambient credentials. createCustomToken needs iam.serviceAccounts.signBlob;
 // granted via roles/iam.serviceAccountTokenCreator on the App Engine default SA
@@ -483,7 +484,7 @@ async function doCreateUser(data, context) {
 
 // Resolves the sales_manager uid for a tenant via Admin SDK (bypasses client-side
 // rules — agents cannot list users). Returns { smUid: string|null }.
-exports.resolveSalesManagerUid = functions.https.onCall(async (data, context) => {
+exports.resolveSalesManagerUid = functions.https.onCall(withAppCheckMonitor('resolveSalesManagerUid', async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
   }
@@ -501,7 +502,7 @@ exports.resolveSalesManagerUid = functions.https.onCall(async (data, context) =>
     console.warn(`resolveSalesManagerUid: ${snap.size} SM docs in tenant ${tenantId}; returning first`);
   }
   return { smUid: snap.docs[0].id };
-});
+}));
 
 // SEC-01 (audit 2026-09-24): the setUserClaims callable was deleted here. It
 // wrote role/tenantId/branch claims taken verbatim from the request, so one call
@@ -527,7 +528,7 @@ exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // PR-2: Polymorphic createUser — full creation matrix
 // ─────────────────────────────────────────────────────────────────────────────
-exports.createUser = functions.https.onCall(doCreateUser);
+exports.createUser = functions.https.onCall(withAppCheckMonitor('createUser', doCreateUser));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Resend invite — server-side replacement for client-side sendPasswordReset
@@ -545,7 +546,7 @@ exports.createUser = functions.https.onCall(doCreateUser);
 // ─────────────────────────────────────────────────────────────────────────────
 const RESEND_INVITE_ACTOR_ROLES = ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager'];
 
-exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
+exports.resendInviteEmail = functions.https.onCall(withAppCheckMonitor('resendInviteEmail', async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
@@ -712,7 +713,7 @@ exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
   if (channel === 'link') result.link = resetLink;
   if (emailError) result.emailError = emailError;
   return result;
-});
+}));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Track C C2: bulkImportUsers — wraps doCreateUser in a per-row loop.
@@ -737,7 +738,7 @@ exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
 // ─────────────────────────────────────────────────────────────────────────────
 exports.bulkImportUsers = functions
   .runWith({ timeoutSeconds: 540, memory: '256MB' })
-  .https.onCall(async (data, context) => {
+  .https.onCall(withAppCheckMonitor('bulkImportUsers', async (data, context) => {
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
     }
@@ -871,13 +872,13 @@ exports.bulkImportUsers = functions
     );
 
     return { results, csvImportBatchId };
-  });
+  }));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PR-2: deactivateUser — soft-delete (active: false) with immediate
 // refresh-token revocation, or reactivation (active: true).
 // ─────────────────────────────────────────────────────────────────────────────
-exports.deactivateUser = functions.https.onCall(async (data, context) => {
+exports.deactivateUser = functions.https.onCall(withAppCheckMonitor('deactivateUser', async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
@@ -945,7 +946,7 @@ exports.deactivateUser = functions.https.onCall(async (data, context) => {
   }
 
   return { success: true };
-});
+}));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PR-4b: updateUser — claim-atomic role + branchId edits.
@@ -981,7 +982,7 @@ function buildClaimsForUpdate(role, { tenantId, branchId, ownedBranchIds }) {
   return c;
 }
 
-exports.updateUser = functions.https.onCall(async (data, context) => {
+exports.updateUser = functions.https.onCall(withAppCheckMonitor('updateUser', async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
@@ -1237,7 +1238,7 @@ exports.updateUser = functions.https.onCall(async (data, context) => {
     success: true,
     updatedFields: Object.keys(updates),
   };
-});
+}));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCHEDULED: Sunday 6 PM Trinidad time (22:00 UTC) — submission reminder
