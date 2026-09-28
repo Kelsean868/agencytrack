@@ -6,5 +6,6 @@ import { FOUNDATION_SCENES } from './foundationScenes';
 import { SHELL_SCENES } from './shellScenes';
 import { TODAY_SCENES } from './todayScenes';
 import { MONEY_SCENES } from './moneyScenes';
+import { WORK_SCENES } from './workScenes';
 
-export const SCENES = [...FOUNDATION_SCENES, ...SHELL_SCENES, ...TODAY_SCENES, ...MONEY_SCENES];
+export const SCENES = [...FOUNDATION_SCENES, ...SHELL_SCENES, ...TODAY_SCENES, ...MONEY_SCENES, ...WORK_SCENES];

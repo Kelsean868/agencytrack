@@ -42,9 +42,9 @@ export const FR_ICON_PATHS = Object.freeze({
  */
 export const FR_NAV = Object.freeze([
   { id: 'today', label: 'Today', icon: 'today', tabId: 'dashboard', group: 'Work' },
-  { id: 'focus', label: 'Focus', icon: 'focus', tabId: 'focus', group: 'Work', ready: false },
+  { id: 'focus', label: 'Focus', icon: 'focus', tabId: 'focus', group: 'Work' },
   { id: 'week', label: 'Week', icon: 'week', tabId: 'planner', group: 'Work' },
-  { id: 'pipeline', label: 'Pipeline', icon: 'pipeline', tabId: 'pipeline', group: 'Work', ready: false },
+  { id: 'pipeline', label: 'Pipeline', icon: 'pipeline', tabId: 'pipeline', group: 'Work' },
   { id: 'prep', label: 'Prospect prep', icon: 'prep', tabId: 'prospect-info', group: 'Work' },
   {
     id: 'numbers', label: 'Numbers', icon: 'numbers', group: 'Numbers',

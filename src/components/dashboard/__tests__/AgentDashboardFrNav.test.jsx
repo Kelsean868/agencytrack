@@ -125,9 +125,9 @@ vi.mock('../../awards/AgentAwardsPanel',             () => ({ default: () => nul
 vi.mock('../../submissions/SubmissionViewer',        () => ({ default: () => null }));
 vi.mock('../../submissions/HistoryTab',              () => ({ default: () => null }));
 vi.mock('../../agent/ProspectInfoPanel',             () => ({ default: () => null }));
-vi.mock('../../agent/PolicyLedgerPanel',             () => ({ default: () => null }));
+vi.mock('../../agent/PolicyLedgerPanel',             () => ({ default: () => React.createElement('div', { 'data-testid': 'policy-ledger-mock' }) }));
 vi.mock('../../agent/MoneyNeedsPanel',               () => ({ default: () => React.createElement('div', { 'data-testid': 'money-needs-mock' }) }));
-vi.mock('../../productionReport/ProductionReportTab', () => ({ default: () => null }));
+vi.mock('../../productionReport/ProductionReportTab', () => ({ default: () => React.createElement('div', { 'data-testid': 'production-report-mock' }) }));
 vi.mock('../../agent/PersistencyTab',                () => ({ default: () => React.createElement('div', { 'data-testid': 'persistency-tab-mock' }) }));
 vi.mock('../../daily/DailyFAB',                      () => ({ default: () => null }));
 vi.mock('../../onboarding/WelcomeScreen',            () => ({ default: () => null }));
@@ -140,6 +140,15 @@ vi.mock('../HomeV2', () => ({ default: () => React.createElement('div', { 'data-
 vi.mock('../../fr/today/FrToday', () => ({ default: () => React.createElement('div', { 'data-testid': 'fr-today-mock' }) }));
 // FR-3: the Money Overview (route `money`) and the FR header above each calculator.
 vi.mock('../../fr/money/FrMoney', () => ({ default: () => React.createElement('div', { 'data-testid': 'fr-money-mock' }) }));
+// FR-4: Focus, Pipeline, and the headers above the Numbers routes and the Ledger.
+vi.mock('../../fr/work/FrFocus', () => ({
+  default: ({ mode }) => React.createElement('div', { 'data-testid': 'fr-focus-mock', 'data-mode': mode }),
+}));
+vi.mock('../../fr/work/FrPipeline', () => ({ default: () => React.createElement('div', { 'data-testid': 'fr-pipeline-mock' }) }));
+vi.mock('../../fr/work/FrWorkHeaders', () => ({
+  FrNumbersHeader: () => React.createElement('div', { 'data-testid': 'fr-numbers-header-mock' }),
+  FrLedgerHeader: ({ onOpenWinback }) => React.createElement('button', { 'data-testid': 'fr-ledger-header-mock', onClick: onOpenWinback }),
+}));
 vi.mock('../../fr/money/FrMoneyHeader', () => ({
   default: ({ tab }) => React.createElement('div', { 'data-testid': 'fr-money-header-mock', 'data-tab': tab }),
 }));
@@ -302,5 +311,55 @@ describe('AgentDashboard — FR-3 Money', () => {
     expect(screen.queryByTestId('fr-money-mock')).toBeNull();
     expect(screen.queryByTestId('fr-money-header-mock')).toBeNull();
   });
+});
+
+describe('AgentDashboard — FR-4 Work', () => {
+  it('with the opt-in: Focus and Pipeline are routes of their own', async () => {
+    localStorage.setItem('agencytrack-look', 'fr');
+    render(<AgentDashboard />);
+    act(() => captured.sidebar.props.onNavigate('focus'));
+    expect(await screen.findByTestId('fr-focus-mock')).toHaveAttribute('data-mode', 'calls');
+    act(() => captured.sidebar.props.onNavigate('pipeline'));
+    expect(await screen.findByTestId('fr-pipeline-mock')).toBeInTheDocument();
+  });
+
+  it('with the opt-in: the FR headers sit above the unchanged Production report and Policy Ledger', async () => {
+    localStorage.setItem('agencytrack-look', 'fr');
+    render(<AgentDashboard />);
+    act(() => captured.sidebar.props.onNavigate('production-report'));
+    expect(await screen.findByTestId('production-report-mock')).toBeInTheDocument();
+    expect(screen.getByTestId('fr-numbers-header-mock')).toBeInTheDocument();
+    act(() => captured.sidebar.props.onNavigate('policy-ledger'));
+    expect(await screen.findByTestId('policy-ledger-mock')).toBeInTheDocument();
+    expect(screen.getByTestId('fr-ledger-header-mock')).toBeInTheDocument();
+  });
+
+  it('the Ledger win-back lens opens Focus in Win-back mode', async () => {
+    localStorage.setItem('agencytrack-look', 'fr');
+    render(<AgentDashboard />);
+    act(() => captured.sidebar.props.onNavigate('policy-ledger'));
+    act(() => screen.getByTestId('fr-ledger-header-mock').click());
+    expect(await screen.findByTestId('fr-focus-mock')).toHaveAttribute('data-mode', 'winback');
+  });
+
+  it('without the opt-in: no FR-4 surface, and the Ledger renders exactly as before', async () => {
+    render(<AgentDashboard />);
+    expect(NEXUS_TABS).not.toContain('focus');
+    expect(NEXUS_TABS).not.toContain('pipeline');
+    expect(screen.queryByTestId('fr-numbers-header-mock')).toBeNull();
+    expect(screen.queryByTestId('fr-ledger-header-mock')).toBeNull();
+  });
+
+  it.each([['focus', 'dashboard'], ['pipeline', 'policy-ledger']])(
+    'switching the opt-in off on %s falls back to %s',
+    async (route, fallback) => {
+      localStorage.setItem('agencytrack-look', 'fr');
+      render(<AgentDashboard />);
+      act(() => captured.sidebar.props.onNavigate(route));
+      act(() => setLookOptIn(false));
+      await screen.findByTestId('shell-mock');
+      expect(captured.activeTab).toBe(fallback);
+    },
+  );
 });
 

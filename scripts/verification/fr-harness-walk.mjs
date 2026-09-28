@@ -156,7 +156,10 @@ async function drawCountProbe(page, { tMid = 240, tEnd = 700 } = {}) {
     const c = nums();
     let changed = 0; let between = 0; let settled = 0;
     for (let i = 0; i < Math.min(a.length, m.length, c.length); i += 1) {
-      if (a[i] == null || c[i] == null || Math.abs(c[i] - a[i]) < 1) continue;
+      // A change of under 2 display units (e.g. 2 → 3 apps) has no whole
+      // value strictly between old and new, so "mid-flight" cannot exist;
+      // those figures are not judged here.
+      if (a[i] == null || c[i] == null || Math.abs(c[i] - a[i]) < 2) continue;
       changed += 1;
       if (m[i] > Math.min(a[i], c[i]) && m[i] < Math.max(a[i], c[i])) between += 1;
       if (m[i] === c[i]) settled += 1;

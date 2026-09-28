@@ -19,8 +19,11 @@ const baseProps = () => ({
 describe('frNav model', () => {
   it('hides items whose slice has not landed (never a stub)', () => {
     const ids = frNavItems().map((i) => i.id);
-    expect(ids).not.toContain('focus');
-    expect(ids).not.toContain('pipeline');
+    // FR-4 landed Focus and Pipeline; Campaign and Trophy room land with FR-5.
+    expect(ids).toContain('focus');
+    expect(ids).toContain('pipeline');
+    expect(ids).not.toContain('campaign');
+    expect(ids).not.toContain('trophies');
     expect(ids).toContain('money');
   });
   it('finds the hub that owns a section route', () => {

@@ -1,11 +1,10 @@
 import React, { useMemo } from 'react';
-import { outlookGateFor } from '../../../lib/persistency/persistencyOutlook';
 import { getTodayTT } from '../../../utils/dateInputs';
 import { ytdEarned, runRate } from '../../../utils/commissionAnchor';
 import { provenanceLine } from '../../../lib/ledgerProduction';
 import { heroGoal, weeklyFloors } from '../../dashboard/HomeV2/homeDerivations';
 import { settledByMonthFrom } from '../../../lib/fr/todayModel';
-import { isHomeCampaign } from '../../../lib/fr/homeCampaigns';
+import { campaignGate } from '../../../lib/fr/homeCampaigns';
 import { paceModel, persistencySeries, reinstatementPlan, headerTiles } from '../../../lib/fr/moneyModel';
 import useMoneyExtras from './useMoneyExtras';
 import FrMoneyHeaderView from './FrMoneyHeaderView';
@@ -43,10 +42,7 @@ export default function FrMoneyHeader({
   const known = Boolean(ledgerProduction) && !ledgerPending && !ledgerError;
   const settled = known && Number.isFinite(ledgerProduction?.settled?.api) ? ledgerProduction.settled.api : null;
 
-  const gate = useMemo(() => {
-    const c = (Array.isArray(activeCampaigns) ? activeCampaigns : []).filter(isHomeCampaign).find((x) => outlookGateFor(x));
-    return c ? outlookGateFor(c) : null;
-  }, [activeCampaigns]);
+  const gate = useMemo(() => campaignGate(activeCampaigns), [activeCampaigns]);
 
   const plan = useMemo(() => (tab === 'persistency' && Array.isArray(campaignPolicies)
     ? reinstatementPlan({ policies: campaignPolicies, records: Array.isArray(persistency) ? persistency : [], todayTT, gate })
