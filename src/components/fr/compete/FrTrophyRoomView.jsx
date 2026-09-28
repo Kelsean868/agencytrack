@@ -1,0 +1,198 @@
+import React, { useEffect, useRef, useState } from 'react';
+import Trophy from '../trophies/Trophy';
+import { Bullet } from '../charts';
+import { CARD, EYEBROW, FOCUS, SKELETON } from '../money/moneyParts';
+
+/**
+ * FrTrophyRoomView — FR "Trophy room" (FR-5). PURE: props only (plus which
+ * trophy is selected, a view concern).
+ *
+ * Glanceable first row: your level (points toward the next), your report
+ * streak, and what is closest to unlocking. Then the shelves — the engine's
+ * badges and the five levels — and a detail panel that says how each one is
+ * earned. Everything shown is what the points engine recorded
+ * (competeModel.trophyRoom); nothing here earns or awards anything.
+ *
+ * @param {{ room: object|null, loading?: boolean, error?: boolean, onRetry?: () => void }} props
+ */
+const n = (v) => Number(v).toLocaleString('en-TT');
+
+function LevelCard({ room }) {
+  return (
+    <section className={`${CARD} flex min-w-0 items-center gap-4 p-4`} aria-label="Your level" data-testid="trophy-level">
+      <Trophy kind={`level-${room.level.title.toLowerCase()}`} size={64} />
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <p className={EYEBROW}>Your level</p>
+        <Bullet
+          value={room.points - room.level.threshold}
+          max={room.next ? room.next.threshold - room.level.threshold : Math.max(1, room.points - room.level.threshold)}
+          label={room.level.title}
+          valueText={`${n(room.points)} pts`}
+          tone="gold"
+          height={10}
+        />
+        <p className="text-[12px] text-ink-muted" data-testid="trophy-level-next">
+          {room.next ? `${n(room.toNext)} points to ${room.next.title}.` : 'You are at the top level.'}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function StreakCard({ room }) {
+  return (
+    <section className={`${CARD} flex min-w-0 items-center gap-4 p-4`} aria-label="Report streak" data-testid="trophy-streak">
+      <Trophy kind="streak" size={64} locked={!room.streak} />
+      <div className="min-w-0">
+        <p className={EYEBROW}>Report streak</p>
+        <p className="font-display text-[22px] font-bold leading-tight tabular-nums text-ink">
+          {room.streak == null ? '—' : `${room.streak} ${room.streak === 1 ? 'week' : 'weeks'}`}
+        </p>
+        <p className="text-[12px] text-ink-muted">
+          {room.streak == null
+            ? 'Starts with your first weekly report.'
+            : room.nextStreak
+              ? `Weeks in a row with a report · next badge at ${room.nextStreak}`
+              : 'Weeks in a row with a report · every streak badge earned'}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function Closest({ items, onSelect }) {
+  return (
+    <section className={`${CARD} flex min-w-0 flex-col gap-3 p-4`} aria-label="Closest to unlocking" data-testid="trophy-closest">
+      <p className={EYEBROW}>Closest to unlocking</p>
+      {items.length ? (
+        <ul className="flex flex-col gap-3">
+          {items.map((t) => (
+            <li key={t.key}>
+              <button type="button" onClick={() => onSelect(t.key)} className={`${FOCUS} block min-h-[44px] w-full rounded-lg text-left`}>
+                <Bullet value={t.progress} max={100} label={t.label} valueText={`${t.progress}%`} tone="gold" height={8} />
+                {t.left ? <span className="mt-1 block text-[12px] text-ink-muted">{t.left}</span> : null}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[13px] text-ink-muted">Nothing measured yet — streak and level progress show here once you report.</p>
+      )}
+    </section>
+  );
+}
+
+function Shelf({ title, note, items, selected, onSelect }) {
+  const earned = items.filter((t) => t.earned).length;
+  return (
+    <section className={`${CARD} flex min-w-0 flex-col gap-3 p-4`} aria-label={title} data-testid={`trophy-shelf-${title.toLowerCase()}`}>
+      <header className="flex items-baseline justify-between gap-2">
+        <h3 className="font-display text-[18px] font-bold text-ink">{title}</h3>
+        <span className="flex-none text-[12px] tabular-nums text-ink-muted">{earned} of {items.length}</span>
+      </header>
+      {note ? <p className="-mt-2 text-[12px] text-ink-muted">{note}</p> : null}
+      <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+        {items.map((t) => (
+          <li key={t.key} className="min-w-0">
+            <button
+              type="button"
+              aria-pressed={selected === t.key}
+              onClick={() => onSelect(t.key)}
+              data-testid={`trophy-${t.key}`}
+              className={`${FOCUS} flex w-full min-w-0 flex-col items-center gap-1 rounded-xl p-2 transition-colors ${selected === t.key ? 'bg-fr-sunk' : 'hover:bg-fr-sunk'}`}
+            >
+              <Trophy kind={t.kind} size={64} locked={!t.earned} progress={t.progress} />
+              <span className="w-full truncate text-center text-[12px] font-semibold text-ink" title={t.label}>{t.label}</span>
+              <span className="text-[11px] text-ink-muted">{t.earned ? 'Earned' : t.progress != null ? `${t.progress}% there` : 'Locked'}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+const Detail = React.forwardRef(function Detail({ item }, ref) {
+  if (!item) return null;
+  return (
+    <aside ref={ref} className={`${CARD} flex min-w-0 flex-col items-center gap-3 p-5 text-center lg:sticky lg:top-4`} aria-label="Trophy detail" data-testid="trophy-detail">
+      <Trophy kind={item.kind} size={112} locked={!item.earned} progress={item.progress} />
+      <div>
+        <p className={EYEBROW}>{item.group}</p>
+        <h3 className="font-display text-[22px] font-bold leading-tight text-ink">{item.label}</h3>
+        <p className="mt-1 text-[13px] font-semibold text-ink-muted">
+          {item.earned ? 'Earned' : item.progress != null ? `Locked · ${item.progress}% there` : 'Locked'}
+        </p>
+        {!item.earned && item.left ? <p className="text-[12px] text-ink-muted">{item.left}</p> : null}
+      </div>
+      <div className="w-full rounded-lg bg-fr-sunk p-3 text-left">
+        <p className={EYEBROW}>How you earn it</p>
+        <p className="mt-1 text-[14px] text-ink">{item.how}</p>
+      </div>
+    </aside>
+  );
+});
+
+export default function FrTrophyRoomView({ room, loading = false, error = false, onRetry }) {
+  const [selected, setSelected] = useState(null);
+  const detailRef = useRef(null);
+  // Phone / tablet: the detail sits below the shelves, so a tap would change
+  // something off-screen. Bring it into view on an actual selection (never on
+  // first render); on desktop it is the sticky column beside the shelves.
+  useEffect(() => {
+    if (selected == null || typeof window === 'undefined' || !window.matchMedia) return;
+    if (window.matchMedia('(min-width: 1024px)').matches) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    detailRef.current?.scrollIntoView?.({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  }, [selected]);
+
+  if (error) {
+    return (
+      <div role="alert" className={`${CARD} flex flex-col items-start gap-3 p-5`} data-testid="fr-trophies">
+        <p className="text-[14px] text-ink">Your trophies did not load.</p>
+        {onRetry ? (
+          <button type="button" onClick={onRetry} className={`${FOCUS} inline-flex min-h-[44px] items-center rounded-lg border border-border px-4 text-[14px] font-semibold text-ink`}>Retry</button>
+        ) : null}
+      </div>
+    );
+  }
+  if (loading || !room) {
+    return (
+      <div className="flex flex-col gap-4" aria-busy="true" data-testid="fr-trophies">
+        <div className="grid gap-3 lg:grid-cols-3">{[0, 1, 2].map((i) => <div key={i} className={`h-28 ${SKELETON}`} />)}</div>
+        <div className={`h-64 ${SKELETON}`} />
+      </div>
+    );
+  }
+
+  const all = [...room.badges, ...room.levels];
+  const current = all.find((t) => t.key === selected) ?? room.closest[0] ?? room.badges.find((t) => t.earned) ?? room.badges[0];
+
+  return (
+    <div className="flex flex-col gap-4 lg:gap-5" data-testid="fr-trophies">
+      <header>
+        <p className={EYEBROW}>Compete · Trophy room</p>
+        <h2 className="font-display text-[28px] font-bold leading-tight text-ink lg:text-[32px]">Trophy room</h2>
+        <p className="mt-1 text-[13px] text-ink-muted" data-testid="trophy-count">{room.earnedCount} of {room.total} earned</p>
+      </header>
+      <div className="grid gap-3 lg:grid-cols-3">
+        <LevelCard room={room} />
+        <StreakCard room={room} />
+        <Closest items={room.closest} onSelect={setSelected} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-4">
+          <Shelf title="Badges" note="From your weekly reports." items={room.badges} selected={current?.key} onSelect={setSelected} />
+          <Shelf title="Levels" note="Points build up over time toward levels." items={room.levels} selected={current?.key} onSelect={setSelected} />
+          {room.other.length ? (
+            <p className="text-[13px] text-ink-muted" data-testid="trophy-other">Also earned: {room.other.map((o) => o.label).join(', ')}</p>
+          ) : null}
+        </div>
+        <Detail ref={detailRef} item={current} />
+      </div>
+      <p className="text-[12px] text-ink-muted">
+        Badges, points and levels are the ones the app already awards from your weekly reports. Company awards are on the Awards screen.
+      </p>
+    </div>
+  );
+}
