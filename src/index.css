@@ -51,6 +51,11 @@
 @tailwind utilities;
 
 :root {
+  /* Font families as tokens (FR-D2). Nexus v2 values; the FR look
+   * (src/styles/fr-look.css) re-points them under html[data-look="fr"]. */
+  --font-body: 'Satoshi', system-ui, sans-serif;
+  --font-display: 'Cabinet Grotesk', system-ui, sans-serif;
+
   /* ── Channel-split tokens + derived aliases (PR-C-FU3) ─────────────────
    * Each migrated color is defined in two forms:
    *   --X-channels: R G B   space-separated triplet, for Tailwind opacity
@@ -425,7 +430,7 @@
 * { box-sizing: border-box; }
 
 html {
-  font-family: 'Satoshi', system-ui, sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -437,7 +442,7 @@ body {
 }
 
 h1, h2, h3, h4 {
-  font-family: 'Cabinet Grotesk', system-ui, sans-serif;
+  font-family: var(--font-display);
   font-weight: 700;
   line-height: 1.2;
 }

@@ -1,0 +1,163 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+ * FR look — the agent "Free Redesign" (docs/briefs/fr-agent-redesign-program.md).
+ *
+ * SCOPED, not replacing Nexus v2: every rule here sits under
+ * html[data-look="fr"], which `useLook()` / src/main.jsx set only for an agent
+ * who opted in (or whose tenant has featureFlags.agentRedesign). With the
+ * attribute absent this file changes nothing (FR-D2).
+ *
+ * Two layers:
+ *   1. Re-point the EXISTING channel tokens so every current screen (and every
+ *      Tailwind utility built on them) picks up the FR palette.
+ *   2. New FR-only tokens (--fr-*, --chart-*) used by src/components/fr/.
+ * Values are the canvas palette (screens-fr/specs/DESKTOP3.md), validated AA.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+html[data-look='fr'] {
+  --font-body: 'Onest Variable', 'Onest', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', system-ui, sans-serif;
+
+  /* 1 · existing tokens, re-pointed (light) */
+  --bg-channels: 246 243 236;              /* #F6F3EC */
+  --surface-channels: 255 255 255;
+  --surface-raised-channels: 251 250 246;  /* pane #FBFAF6 */
+  --surface-muted-channels: 236 231 220;   /* sunk #ECE7DC */
+  --text-channels: 31 29 26;               /* #1F1D1A */
+  --text-muted-channels: 90 84 74;         /* #5A544A */
+  --text-faint-channels: 107 101 88;       /* #6B6558 */
+  --ink-dim-channels: 184 176 162;         /* non-text only */
+  --border-channels: 226 220 208;          /* #E2DCD0 */
+  --border-strong-channels: 204 197 184;
+  --primary-channels: 11 93 94;            /* #0B5D5E */
+  --primary-dark-channels: 8 72 73;
+  --primary-light-channels: 0 140 133;
+  --color-primary-tint: #DCEAE7;
+  --gold-ink-channels: 133 84 0;           /* #855400 */
+  --color-gold-tint: #F5EAD3;
+  --warning-ink-channels: 166 61 26;       /* #A63D1A */
+  --color-warning-tint: #F7E4DA;
+
+  /* 2 · FR-only tokens (light) */
+  --fr-accent-channels: 11 93 94;
+  --fr-on-accent-channels: 255 255 255;
+  --fr-accent-tint-channels: 220 234 231;
+  --fr-ghost-channels: 169 208 203;        /* submitted / waiting */
+  --fr-sunk-channels: 236 231 220;
+  --fr-side-channels: 239 235 226;
+  --fr-pane-channels: 251 250 246;
+  --fr-warm-channels: 166 61 26;
+  --fr-warm-tint-channels: 247 228 218;
+  --fr-gold-channels: 133 84 0;
+  --fr-gold-tint-channels: 245 234 211;
+  --fr-gold-on-ink-channels: 242 193 78;
+  --chart-1-channels: 0 140 133;           /* #008C85 */
+  --chart-2-channels: 169 104 0;           /* #A96800 */
+  --chart-3-channels: 47 111 196;          /* #2F6FC4 */
+  --chart-4-channels: 192 74 43;           /* #C04A2B */
+  --chart-5-channels: 133 89 165;          /* #8559A5 */
+
+  /* Motion (FR-D7) */
+  --fr-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --fr-glide: 480ms;
+  --fr-snap: 520ms;
+  --fr-fade: 220ms;
+}
+
+html.dark[data-look='fr'] {
+  --bg-channels: 19 19 17;                 /* #131311 */
+  --surface-channels: 29 28 25;            /* #1D1C19 */
+  --surface-raised-channels: 34 33 29;
+  --surface-muted-channels: 42 41 37;      /* #2A2925 */
+  --text-channels: 242 239 232;            /* #F2EFE8 */
+  --text-muted-channels: 189 182 168;      /* #BDB6A8 */
+  --text-faint-channels: 163 156 142;      /* #A39C8E */
+  --ink-dim-channels: 84 80 72;
+  --border-channels: 51 49 43;             /* #33312B */
+  --border-strong-channels: 70 67 60;
+  --primary-channels: 99 197 191;          /* #63C5BF — text teal */
+  --primary-dark-channels: 11 93 94;       /* button fill under white text (D6) */
+  --primary-light-channels: 138 214 209;
+  --color-primary-tint: #16312F;
+  --gold-ink-channels: 232 180 78;         /* #E8B44E */
+  --color-gold-tint: #342911;
+  --warning-ink-channels: 242 144 102;     /* #F29066 */
+  --color-warning-tint: #3A2217;
+
+  --fr-accent-channels: 99 197 191;
+  --fr-on-accent-channels: 13 27 26;
+  --fr-accent-tint-channels: 22 49 47;
+  --fr-ghost-channels: 42 85 82;
+  --fr-sunk-channels: 42 41 37;
+  --fr-side-channels: 24 24 22;
+  --fr-pane-channels: 23 23 20;
+  --fr-warm-channels: 242 144 102;
+  --fr-warm-tint-channels: 58 34 23;
+  --fr-gold-channels: 232 180 78;
+  --fr-gold-tint-channels: 52 41 17;
+  --fr-gold-on-ink-channels: 133 84 0;
+  --chart-1-channels: 18 163 155;          /* #12A39B */
+  --chart-2-channels: 184 132 26;          /* #B8841A */
+  --chart-3-channels: 79 134 219;          /* #4F86DB */
+  --chart-4-channels: 210 100 61;          /* #D2643D */
+  --chart-5-channels: 159 119 204;         /* #9F77CC */
+}
+
+/* Older screens set Cabinet Grotesk inline for display numbers. Under the FR
+ * look they follow the display token instead (no component edits needed). */
+html[data-look='fr'] [style*='Cabinet Grotesk'] {
+  font-family: var(--font-display) !important;
+}
+
+html[data-look='fr'] h1,
+html[data-look='fr'] h2,
+html[data-look='fr'] h3 {
+  letter-spacing: -0.02em;
+}
+
+/* ── FR motion utilities (FR-D7). Geometry values come from data via inline
+ * style; the transition lives here so it is one definition. ─────────────── */
+.fr-glide-w { transition: width var(--fr-glide, 480ms) var(--fr-ease, ease-out); }
+.fr-glide-h { transition: height var(--fr-glide, 480ms) var(--fr-ease, ease-out); }
+.fr-glide-x { transition: left var(--fr-glide, 480ms) var(--fr-ease, ease-out), transform var(--fr-glide, 480ms) var(--fr-ease, ease-out); }
+.fr-glide-svg-col {
+  transition: height var(--fr-glide, 480ms) var(--fr-ease, ease-out),
+              y var(--fr-glide, 480ms) var(--fr-ease, ease-out);
+}
+.fr-glide-svg-row { transition: width var(--fr-glide, 480ms) var(--fr-ease, ease-out); }
+.fr-glide-svg-pt {
+  transition: cx var(--fr-glide, 480ms) var(--fr-ease, ease-out),
+              cy var(--fr-glide, 480ms) var(--fr-ease, ease-out);
+}
+
+@keyframes frDrawA { from { stroke-dashoffset: var(--fr-len, 1000); } to { stroke-dashoffset: 0; } }
+@keyframes frDrawB { from { stroke-dashoffset: var(--fr-len, 1000); } to { stroke-dashoffset: 0; } }
+@keyframes frWashA { from { opacity: 0; } to { opacity: 0.1; } }
+@keyframes frWashB { from { opacity: 0; } to { opacity: 0.1; } }
+@keyframes frFadeA { from { opacity: 0; } to { opacity: 1; } }
+@keyframes frFadeB { from { opacity: 0; } to { opacity: 1; } }
+@keyframes frGrowY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes frGrowX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.fr-draw-a { stroke-dasharray: var(--fr-len, 1000); animation: frDrawA 600ms var(--fr-ease, ease-out) both; }
+.fr-draw-b { stroke-dasharray: var(--fr-len, 1000); animation: frDrawB 600ms var(--fr-ease, ease-out) both; }
+.fr-wash-a { animation: frWashA 400ms var(--fr-ease, ease-out) both; }
+.fr-wash-b { animation: frWashB 400ms var(--fr-ease, ease-out) both; }
+.fr-fade-a { animation: frFadeA var(--fr-fade, 220ms) var(--fr-ease, ease-out) both; }
+.fr-fade-b { animation: frFadeB var(--fr-fade, 220ms) var(--fr-ease, ease-out) both; }
+.fr-dot-late { animation: frFadeA 200ms ease-out 450ms both; }
+.fr-grow-y { transform-origin: bottom; animation: frGrowY 380ms var(--fr-ease, ease-out) both; }
+.fr-grow-x { transform-origin: left; animation: frGrowX 380ms var(--fr-ease, ease-out) both; }
+.fr-track { transition: transform var(--fr-snap, 520ms) var(--fr-ease, ease-out); }
+.fr-track[data-dragging='true'] { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fr-glide-w, .fr-glide-h, .fr-glide-x, .fr-glide-svg-col, .fr-glide-svg-row, .fr-glide-svg-pt,
+  .fr-track {
+    transition-duration: 1ms !important;
+  }
+  .fr-draw-a, .fr-draw-b, .fr-wash-a, .fr-wash-b, .fr-fade-a, .fr-fade-b, .fr-dot-late,
+  .fr-grow-y, .fr-grow-x {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
+}

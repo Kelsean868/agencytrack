@@ -167,3 +167,46 @@ stock/generated faces, no purple-as-brand, no cool grays):
   text on `--inkDim`. · No bare icon buttons without `aria-label`. · No page-level
   horizontal scroll for a wide table (scroll the card). · No one-long-blob
   navigation menu — always sectioned.
+
+---
+
+## 7. FR look — the agent "Free Redesign" (added 27-09-2026, FR-0)
+
+Program brief: `docs/briefs/fr-agent-redesign-program.md`. Design source:
+`docs/design-system/screens-fr/`. Everything above still applies; this section
+adds what the FR look changes.
+
+- **Scoped, opt-in.** The FR look exists only under `html[data-look="fr"]`
+  (`src/styles/fr-look.css`), set for an **agent** who opted in from Settings
+  ("Try the new design", `localStorage['agencytrack-look']`) or whose tenant has
+  `featureFlags.agentRedesign`. Every other user sees Nexus v2 unchanged.
+  Gate: `src/lib/fr/look.js` + `src/hooks/useLook.js`.
+- **Type.** Bricolage Grotesque (display) + Onest (body), self-hosted from
+  `@fontsource-variable/*`; JetBrains Mono for eyebrows. Font families are now
+  tokens (`--font-body`, `--font-display`); Tailwind `font-sans` / `font-display`
+  read them.
+- **Colour.** The FR block re-points the existing channel tokens (surfaces, inks,
+  borders, primary, gold-ink, warning-ink) and adds FR-only tokens as Tailwind
+  colours: `fr-accent`, `fr-on-accent`, `fr-accent-tint`, `fr-ghost`
+  (submitted / waiting), `fr-sunk`, `fr-side`, `fr-pane`, `fr-warm` (+ `-tint`),
+  `fr-gold` (+ `-tint`). Chart series `chart-1..5` in a fixed order, never cycled;
+  text never uses a series colour. In dark, `primary-dark` stays a button fill
+  under white text (§ D6 unchanged).
+- **Charts** (`src/components/fr/charts/`): one idea per chart, the title is the
+  takeaway, a **Table** toggle on every chart, direct labels on key values, no
+  dual axis, targets as 1px solid lines with a text label. On a phone, bars keep
+  direct labels only on first / last / min / max; tooltips anchor inward so they
+  never widen the page.
+- **Motion.** Data changes **glide**: geometry sits in a data-driven inline style,
+  the transition in a class (`fr-glide-*`, 480ms, `cubic-bezier(0.32,0.72,0,1)`);
+  lines replay a draw (`fr-draw-a/b`); numbers count over 420ms; entrance stagger
+  only on first mount; reduced motion ⇒ ~instant. Inline `style` is allowed only
+  for data-driven geometry and CSS custom properties.
+- **Swipe pages** (`src/components/fr/pager/SwipePager.jsx`): long phone screens
+  become 3–5 named pages (chip pager + dots, 1:1 drag, rubber band, velocity
+  projection, 520ms snap, height from the active page). Sticky bars and sheets
+  live outside the pager.
+- **Trophies** (`src/components/fr/trophies/`): 33 kinds, colours in
+  `src/styles/fr-trophy.css`, locked silhouette + progress ring.
+- **Proof.** Every FR slice runs the **FR harness walk**
+  (`scripts/verification/fr-harness-walk.mjs`, `scripts/verification/SMOKES.md`).

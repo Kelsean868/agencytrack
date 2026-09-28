@@ -1,0 +1,227 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+ * fr-trophy.css — every colour + motion value for the D3-Trophy port
+ * (src/components/fr/trophies/Trophy.jsx + trophyKinds.js).
+ *
+ * Design source: docs/design-system/screens-fr/D3-Trophy.dc.html.
+ *
+ * Deliberately scoped to NOTHING but `.fr-trophy` (and `html.dark` for the
+ * handful of values the canvas itself only ever varied by dark mode: the
+ * locked metal, the locked ribbon, the progress ring and the lock badge).
+ * It is NOT gated on html[data-look="fr"] — a trophy must look right
+ * wherever it is used (trophy room, awards list, anywhere else), not only
+ * inside the FR look.
+ *
+ * No component/JSX in this program carries a hex or rgb() literal for any of
+ * these — every one lives here as a custom property (per metal / per ribbon)
+ * or a plain declaration, consumed via [data-metal]/[data-ribbon] attributes
+ * set by Trophy.jsx and via the fr-t-* utility classes below.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.fr-trophy {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+
+  /* Fixed accent colours — not metal- or theme-dependent (canvas hardcodes
+     these two laurel tones and two crown-dot tones regardless of dark mode). */
+  --fr-t-accent-plat: #2FA89F;
+  --fr-t-accent-gold: #C8901E;
+  --fr-t-accent-ruby: #E04A3A;
+  --fr-t-accent-teal: #0B5D5E;
+}
+
+/* ── entrance + hover (canvas .d3t / .d3t-art) ─────────────────────────── */
+
+.fr-t-art {
+  display: block;
+  overflow: visible;
+  transform-origin: 50% 60%;
+  transition: transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: fr-t-pop 560ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.fr-trophy:hover .fr-t-art {
+  transform: scale(1.07) rotate(-4deg);
+}
+
+@keyframes fr-t-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  70% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ── shadow ellipse ────────────────────────────────────────────────────── */
+
+.fr-t-shadow {
+  fill: #000000;
+  opacity: 0.13;
+}
+
+/* ── property-owner utility classes (composed on paths in Trophy.jsx) ──── */
+
+.fr-t-no-fill { fill: none; }
+.fr-t-rim-stroke { stroke: var(--fr-t-rim); }
+.fr-t-rim-stroke-2 { stroke: var(--fr-t2-rim); }
+.fr-t-fill-lo { fill: var(--fr-t-lo); }
+.fr-t-lo-both { fill: var(--fr-t-lo); stroke: var(--fr-t-lo); }
+
+.fr-t-laurel-plat { fill: var(--fr-t-accent-plat); stroke: var(--fr-t-accent-plat); }
+.fr-t-laurel-gold { fill: var(--fr-t-accent-gold); stroke: var(--fr-t-accent-gold); }
+.fr-t-dots-ruby { fill: var(--fr-t-accent-ruby); }
+.fr-t-dots-teal { fill: var(--fr-t-accent-teal); }
+
+.fr-t-ribbon-fill { fill: var(--fr-t-rib-base); stroke: var(--fr-t-rib-edge); }
+.fr-t-ribbon-stripe { fill: none; stroke: var(--fr-t-rib-stripe); }
+
+.fr-t-glyph-fill { fill: var(--fr-t-glyph); stroke: none; }
+.fr-t-glyph-stroke { fill: none; stroke: var(--fr-t-glyph); }
+
+.fr-t-facet { fill: none; stroke: #FFFFFF; opacity: 0.5; }
+.fr-t-inner-op { opacity: 0.55; }
+
+/* gradient stops */
+.fr-t-stop-hi { stop-color: var(--fr-t-hi); }
+.fr-t-stop-mid { stop-color: var(--fr-t-mid); }
+.fr-t-stop-lo { stop-color: var(--fr-t-lo); }
+.fr-t-stop-hi-2 { stop-color: var(--fr-t2-hi); }
+.fr-t-stop-lo-2 { stop-color: var(--fr-t2-lo); }
+
+/* shine sweep — fixed white ramp, same both themes (canvas never varied it) */
+.fr-t-shine-stop-a { stop-color: #FFFFFF; stop-opacity: 0; }
+.fr-t-shine-stop-b { stop-color: #FFFFFF; stop-opacity: 0.6; }
+
+.fr-t-shine-sweep {
+  animation: fr-t-shine 4.2s cubic-bezier(0.32, 0.72, 0, 1) infinite;
+}
+
+/* Keyframe percentages mirror the canvas SMIL keyTimes (0 / 0.55 / 0.85 / 1):
+   hold off-screen left, sweep across, hold off-screen right. Values are in
+   viewBox user units (this element lives inside the 0..100 viewBox svg) —
+   `px` here means "user unit", the standard convention for CSS-transforming
+   an element nested inside a scaled/viewBox'd <svg>, not a literal pixel. */
+@keyframes fr-t-shine {
+  0%, 55% { transform: translateX(-70px); }
+  85%, 100% { transform: translateX(170px); }
+}
+
+/* ── progress ring (locked + progress only) ────────────────────────────── */
+
+.fr-t-ring {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+
+.fr-t-ring-track { stroke: #E2DCD0; }
+html.dark .fr-t-ring-track { stroke: #33312B; }
+
+.fr-t-ring-fill { stroke: #B07A10; }
+html.dark .fr-t-ring-fill { stroke: #E8B44E; }
+
+.fr-t-ring-progress {
+  transition: stroke-dasharray 480ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ── lock badge ─────────────────────────────────────────────────────────── */
+
+.fr-t-lock {
+  position: absolute;
+  right: 2%;
+  bottom: 4%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fr-t-lock-badge {
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+html.dark .fr-t-lock-badge { background: #26241F; }
+
+.fr-t-lock-icon { stroke: #5A544A; }
+html.dark .fr-t-lock-icon { stroke: #BDB6A8; }
+
+/* ── metal gradients — [data-metal] on the .fr-trophy root ─────────────── */
+/* Primary set (hi/mid/lo/rim/glyph): drives the main diagonal gradient,
+   rims/outlines, and the locked-state overrides for laurel/dots. */
+
+.fr-trophy[data-metal='bronze'] { --fr-t-hi: #F6C79A; --fr-t-mid: #C98246; --fr-t-lo: #8A4B22; --fr-t-rim: #6E3A18; --fr-t-glyph: #5A2E12; }
+.fr-trophy[data-metal='silver'] { --fr-t-hi: #FFFFFF; --fr-t-mid: #C9CFD6; --fr-t-lo: #8C96A1; --fr-t-rim: #5E6873; --fr-t-glyph: #46505A; }
+.fr-trophy[data-metal='gold']   { --fr-t-hi: #FFF1B8; --fr-t-mid: #F0B93A; --fr-t-lo: #B07A10; --fr-t-rim: #7A5205; --fr-t-glyph: #6B4604; }
+.fr-trophy[data-metal='plat']   { --fr-t-hi: #D6FFF9; --fr-t-mid: #5CC9C0; --fr-t-lo: #0E6F6B; --fr-t-rim: #0B4F4E; --fr-t-glyph: #073A39; }
+.fr-trophy[data-metal='ruby']   { --fr-t-hi: #FFB3A7; --fr-t-mid: #E04A3A; --fr-t-lo: #8E1F16; --fr-t-rim: #6A150F; --fr-t-glyph: #FFE3A0; }
+.fr-trophy[data-metal='ember']  { --fr-t-hi: #FFE08A; --fr-t-mid: #FF8A3D; --fr-t-lo: #C8361A; --fr-t-rim: #8A2410; --fr-t-glyph: #5A1608; }
+.fr-trophy[data-metal='wood']   { --fr-t-hi: #A6754C; --fr-t-mid: #7A4E2C; --fr-t-lo: #4E2F19; --fr-t-rim: #3A2211; --fr-t-glyph: #FFFFFF; }
+
+/* locked metal ('lock') — light values (lockL) by default, dark values
+   (lockD) under html.dark. This is the ONLY metal whose colour set the
+   canvas itself varied by theme, so it is the only one with a dark block. */
+.fr-trophy[data-metal='lock'] {
+  --fr-t-hi: #EFEBE3; --fr-t-mid: #D6D0C4; --fr-t-lo: #B5AD9E; --fr-t-rim: #A0988A; --fr-t-glyph: #8E8678;
+}
+html.dark .fr-trophy[data-metal='lock'] {
+  --fr-t-hi: #4C4943; --fr-t-mid: #393731; --fr-t-lo: #2B2A26; --fr-t-rim: #5A564E; --fr-t-glyph: #777166;
+}
+
+/* Secondary set (hi/lo/rim only — feeds the vertical gid2 gradient and the
+   plaque bodyRim). Metal2 is 'wood' only for an unlocked plaque; every other
+   kind mirrors its own metal here, so the full set exists for all 8 keys. */
+
+.fr-trophy[data-metal-secondary='bronze'] { --fr-t2-hi: #F6C79A; --fr-t2-lo: #8A4B22; --fr-t2-rim: #6E3A18; }
+.fr-trophy[data-metal-secondary='silver'] { --fr-t2-hi: #FFFFFF; --fr-t2-lo: #8C96A1; --fr-t2-rim: #5E6873; }
+.fr-trophy[data-metal-secondary='gold']   { --fr-t2-hi: #FFF1B8; --fr-t2-lo: #B07A10; --fr-t2-rim: #7A5205; }
+.fr-trophy[data-metal-secondary='plat']   { --fr-t2-hi: #D6FFF9; --fr-t2-lo: #0E6F6B; --fr-t2-rim: #0B4F4E; }
+.fr-trophy[data-metal-secondary='ruby']   { --fr-t2-hi: #FFB3A7; --fr-t2-lo: #8E1F16; --fr-t2-rim: #6A150F; }
+.fr-trophy[data-metal-secondary='ember']  { --fr-t2-hi: #FFE08A; --fr-t2-lo: #C8361A; --fr-t2-rim: #8A2410; }
+.fr-trophy[data-metal-secondary='wood']   { --fr-t2-hi: #A6754C; --fr-t2-lo: #4E2F19; --fr-t2-rim: #3A2211; }
+
+.fr-trophy[data-metal-secondary='lock'] {
+  --fr-t2-hi: #EFEBE3; --fr-t2-lo: #B5AD9E; --fr-t2-rim: #A0988A;
+}
+html.dark .fr-trophy[data-metal-secondary='lock'] {
+  --fr-t2-hi: #4C4943; --fr-t2-lo: #2B2A26; --fr-t2-rim: #5A564E;
+}
+
+/* ── ribbon — [data-ribbon] on the .fr-trophy root ──────────────────────── */
+/* base/edge/stripe, fixed regardless of theme (canvas never varied these). */
+
+.fr-trophy[data-ribbon='teal']  { --fr-t-rib-base: #0B5D5E; --fr-t-rib-edge: #08403F; --fr-t-rib-stripe: #9ED8D2; }
+.fr-trophy[data-ribbon='blue']  { --fr-t-rib-base: #24508F; --fr-t-rib-edge: #183863; --fr-t-rib-stripe: #A9C4EE; }
+.fr-trophy[data-ribbon='green'] { --fr-t-rib-base: #1F6B3A; --fr-t-rib-edge: #144826; --fr-t-rib-stripe: #F0B93A; }
+.fr-trophy[data-ribbon='red']   { --fr-t-rib-base: #B3261E; --fr-t-rib-edge: #7E1A14; --fr-t-rib-stripe: #F0B93A; }
+.fr-trophy[data-ribbon='gold']  { --fr-t-rib-base: #B07A10; --fr-t-rib-edge: #7A5205; --fr-t-rib-stripe: #FFF1B8; }
+
+/* locked ribbon: base is a fixed grey (light/dark), edge/stripe borrow the
+   locked METAL's rim/hi (var() resolves against the SAME element, since
+   Trophy.jsx sets [data-metal='lock'] alongside [data-ribbon='locked'] on
+   the same root — rule order does not matter for this reference). */
+.fr-trophy[data-ribbon='locked'] {
+  --fr-t-rib-base: #CFC8BB;
+  --fr-t-rib-edge: var(--fr-t-rim);
+  --fr-t-rib-stripe: var(--fr-t-hi);
+}
+html.dark .fr-trophy[data-ribbon='locked'] {
+  --fr-t-rib-base: #3A3833;
+}
+
+/* ── reduced motion ─────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .fr-t-art {
+    animation: none;
+    transition: none;
+  }
+  .fr-trophy:hover .fr-t-art {
+    transform: none;
+  }
+  .fr-t-shine-sweep {
+    animation: none;
+    opacity: 0;
+  }
+  .fr-t-ring-progress {
+    transition: none;
+  }
+}

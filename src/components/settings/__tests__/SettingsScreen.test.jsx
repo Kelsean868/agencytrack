@@ -115,3 +115,21 @@ describe('SettingsScreen — Account tab', () => {
     expect(baseProps.onOpenProfile).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('SettingsScreen — "Try the new design" opt-in (FR-D3)', () => {
+  it('is offered to agents and stores the per-browser opt-in', () => {
+    render(<SettingsScreen {...{ ...baseProps, role: 'agent', roleLabel: 'Agent' }} />);
+    const on = screen.getByTestId('settings-look-on');
+    expect(screen.getByTestId('settings-look-off')).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(on);
+    expect(localStorage.getItem('agencytrack-look')).toBe('fr');
+    expect(on).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByTestId('settings-look-off'));
+    expect(localStorage.getItem('agencytrack-look')).toBeNull();
+  });
+
+  it('is not offered to managers (the gate ignores it for them anyway)', () => {
+    render(<SettingsScreen {...baseProps} />);
+    expect(screen.queryByTestId('settings-look-on')).toBeNull();
+  });
+});
