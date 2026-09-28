@@ -18,7 +18,7 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999), FR-2 (#1001), FR-3 (#1002), FR-4 (#1003), FR-5 (#1004) and FR-5b (#1008) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at each FR post-merge through #1008) | LOW | FR redesign / verification | — | see § FR preview click-through |
+| FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999), FR-2 (#1001), FR-3 (#1002), FR-4 (#1003), FR-5 (#1004) and FR-5b (#1008) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at each FR post-merge through #1008). **Desktop walked 28-09-2026 on production (`e31155ff`): 25 FR screens, 0 errors. OPEN FOR PHONE WIDTH ONLY** | LOW | FR redesign / verification | — | see § FR preview click-through |
 | "YTD vs tenure floor" bars (agent Production view, agent report view) show the API floor without the 40-apps company minimum — fold into the redesign, not a standalone fix (banked 2026-09-27, #994 post-merge) | LOW | Goals / company floor | redesign | see § YTD vs tenure floor bars: show the apps minimum |
 | Report-Only CSP `connect-src` in `vercel.json` lacks `https://www.google.com` — reCAPTCHA Enterprise (App Check, live since P2e) calls it; enforcing the CSP as-is would block App Check token fetches. Add it before the CSP leaves Report-Only (banked 2026-09-27, P2e post-merge). **Fix in PR #994; stays open until the enforce-time check below** | MEDIUM | Security / CSP | before CSP enforce | see § CSP connect-src needs www.google.com before enforce |
 | App Check is in monitor mode — switch each service to enforce only after 7 consecutive clean days per `docs/runbooks/app-check.md` §3 (key live 2026-09-27, so no earlier than 2026-10-04); Storage → Firestore → Functions, one at a time (banked 2026-09-27, P2e post-merge) | MEDIUM | Security / App Check | not before 2026-10-04 | see § App Check: enforce after 7 clean days |
@@ -360,6 +360,10 @@
 | Partial import (a file where SOME rows are serviced by another agent) is UNIT-TESTED ONLY — Kyron's export is 100% his own servicing number, so the P4a emulator run could only produce the all-or-nothing refusal, never a partial `counts.skippedNotYours`. Prove it on the first export that actually contains another agent's rows (banked 2026-09-18, P4a Rule 22 gap) | MEDIUM | OIPA import / verification | — | see § Partial import is unit-tested only |
 | `kioskTokens` read is still open to every manager role, `unit_manager` included — the doc ID is the token, so a UM can copy another branch's live kiosk URL. S1 kept reads for `KioskModeTab` (banked 2026-09-25, security S1) | LOW | Security / Kiosk | — | see § Kiosk token revoke and read scope |
 | Persistency `get`/`list` UM and BM arms compare `users/{agent}.unitId`/`branchId` to the caller's — a caller whose own doc LACKS the field matches every agent that also lacks it (`null == null`). Pre-existing in `get`; S1's `list` inherits it (banked 2026-09-25, security S1) | LOW | Security / Rules | — | see § Persistency null-scope match |
+| **FR Today persistency tile and coach line read the latest saved record, not the outlook:** Today showed 56.5% (Jul 2026 record, 12-month model) while the Persistency screen showed the current 24-month outlook (~86.6% Sep; 85.7% at the Dec gate). Root cause: FR-2 spec `persistencyLatestPct` = latest record (`src/lib/fr/todayModel.js:87-94`). Fix: same outlook derivation as the Persistency screen, month labelled (banked 2026-09-28, production click-through) | MEDIUM | FR redesign / persistency | — | see § FR Today persistency reads the latest record, not the outlook at end of file |
+| **Question — campaign card persistency 89.6% vs Persistency screen Dec gate 85.7%:** confirm each figure's window and model; if both are correct, label them (banked 2026-09-28, production click-through) | LOW | campaigns / persistency | — | see § Campaign card persistency vs the Persistency screen at end of file |
+| **Award engine creates Rookie of the Year / New Business Advisor for a 14+-year agent (Kyron):** likely `monthsInIndustry` / `monthsAtTatil` 0 or missing on the user doc — `awardsEngine.js` reads them through `p()` (missing → 0) and admits `=== 0`. Same on the Awards tab. Pre-existing (banked 2026-09-28, production click-through) | LOW | awards | — | see § Award engine treats missing tenure as a rookie at end of file |
+| **PWA prompt mode: a signed-in Chrome ran an old build until "Update" was tapped** — consider whether agents need a stale-build reminder (banked 2026-09-28, production click-through) | INFO | PWA | — | see § PWA prompt mode keeps an old build running at end of file |
 
 
 ---
@@ -7756,6 +7760,10 @@ After #994, the agent Goals tab and the manager agent drill show "Company minimu
 **Extended 2026-09-28 at the #1006/#1007/#1008 consolidated post-merge fill (`71e22c3e`) to FR-5b award trophies.** Same waiver reason; the autonomous run that built it also barred preview sign-in. FR-5 harness walk passed 68/68 on `95c427b2`; CI green on `c41c2e9a`. Add to the walk:
 - 5c. Trophy room → the Awards shelf after Levels: each award trophy agrees with the same award's card on the Awards tab (lit ↔ Qualified, captioned "Qualified — <period>"; otherwise the same first-criterion figure); no trophy says "won" or shows a prize amount; Rookie of the Year and New Business Advisor appear only when the Awards tab shows them too; the room header's earned/total counts include awards.
 
+**Desktop walk DONE 28-09-2026 — production, `e31155ff` (read-only, opt-in on, signed-in Chrome).** 25 FR screens opened: 0 console errors, 0 `NaN` / `undefined` rendered, 0 horizontal scroll. Findings banked separately at the end of this file: § FR Today persistency reads the latest record, not the outlook (MEDIUM); § Campaign card persistency vs the Persistency screen (LOW, question); § Award engine treats missing tenure as a rookie (LOW, pre-existing); § PWA prompt mode keeps an old build running (INFO).
+
+**Still open — phone width only.** The 390 px walk (steps 4 and 5 above, the phone half) was NOT run: the window could not be resized in that session. This entry closes when the phone walk runs and passes.
+
 ## FR-5b: award calculation shared helper
 
 **RESOLVED by #1008 (squash `71e22c3e`, merged 2026-09-28; branch `feat/fr-5b-award-trophies`, brief `docs/briefs/fr-5b-award-trophies-kickoff.md`): characterization tests first (`e8559659`), then the move to `src/lib/awards/agentAwardModel.js` (`fc64137c`; the characterization test file and snapshot are byte-identical at the move and at HEAD), then the award trophies in the Trophy room from the same helper. Christmas campaign/tier and club tiers are deliberately not shown (brief D5: no engine award to light them). Merge channel: human-merge.**
@@ -7816,3 +7824,60 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Suggested fix (not done — outside #1008's file inventory, Rule 1):** `<AgentDashboard key={`${tenantId}:${user.uid}`} />` in `src/App.jsx` (a remount on identity change discards all dashboard state in one line), and optionally clear `policiesAll` in `retryPolicies` if a blank-while-refetching state is preferred over stale-while-revalidate.
 
 **Falsification (Rule 23):** overturned if an identity change is shown to reach a mounted `AgentDashboard` without passing through `LoginScreen` (e.g. a cross-tab sign-in that fires `onAuthStateChanged` A → B with no null in between and `AuthContext` keeping `isAuthenticated` true), which would make this a live defect and raise it to HIGH.
+
+## FR Today persistency reads the latest record, not the outlook
+
+**Banked 2026-09-28 from the production desktop click-through (`e31155ff`, read-only). Severity: MEDIUM — two screens show the same agent two different persistency figures on the same day, and Today's is the stale one.**
+
+**Observed:** Today's persistency tile and its coach line ("Persistency 56.5% — below the 90% gate") showed the latest saved persistency record: Jul 2026, 12-month model, 56.5%. The Persistency screen showed the current 24-month outlook: about 86.6% for Sep and 85.7% at the Dec gate.
+
+**Root cause (verified on `e31155ff`, Rule 11):** the FR-2 spec defined the input as the latest record.
+- `src/components/fr/today/FrToday.jsx:43` — "persistencyLatestPct — the latest E3 record, fraction → percent."; `:144` `latestPersistencyPct(persistency)`.
+- `src/lib/fr/todayModel.js:87-94` `latestPersistencyPct(records)` sorts the saved records by month and returns the last one's `persistency`, whatever its model or age.
+- Consumers: the tile (`todayModel.js:268-273`) and the coach line (`:330-333`, `Persistency ${persistencyLatestPct.toFixed(1)}% — below the ${PERS_GATE_PCT}% gate`).
+- The Persistency screen reads `buildPersistencyOutlook` (`src/components/agent/PersistencyTab.jsx:137`). FrToday already builds the same outlook (`FrToday.jsx:113-124`), but only for the win-back item's `gateMonth`, and only when a gating campaign exists.
+
+**Fix shape:** Today takes its figure from the same outlook derivation as the Persistency screen (one derivation, no second reader — v3 non-negotiables 1 and 2), and labels the month the figure is for (e.g. "Sep 2026"). The coach line reads the same value. Test: one fixture through the Persistency screen and through Today must show the same figure and month; a stale older record must not win over the outlook.
+
+**Falsification (Rule 23):** overturned if the 56.5% on Today is shown to come from a different code path than `latestPersistencyPct` (e.g. a cached build — see § PWA prompt mode), or if Kyron rules that Today should show the last *confirmed* record rather than the outlook; in that case the fix is labelling only.
+
+## Campaign card persistency vs the Persistency screen
+
+**Banked 2026-09-28 from the production desktop click-through (`e31155ff`). Severity: LOW. A question, not yet a defect.**
+
+**Observed:** the campaign card showed persistency 89.6%; the Persistency screen showed 85.7% at the Dec gate.
+
+**What the code says (verified on `e31155ff`):** `src/lib/campaignPersistencyReading.js` prefers the campaign's own gate reading, `persistencyPctForGate(records, campaign)` (`src/utils/campaignEngine.js:292-297`: the final-month record for a `finalMonth` gate, otherwise the campaign period's records), and only falls back to the outlook's headline month (`:43`) when that is unknown. The Persistency screen's Dec figure is the outlook at the Dec gate. So the two can legitimately differ: different window (campaign period vs Dec gate month) and possibly a different source (saved records vs the outlook).
+
+**To do:** for this agent, confirm which branch produced 89.6% and which month/window and model (12- vs 24-month) each figure uses. If both are correct, label them (e.g. "Campaign gate, <month>" vs "Dec gate outlook"). If one is wrong, it becomes a defect with its own fix.
+
+**Falsification (Rule 23):** closed as "correct, labelled" when both figures are traced to their windows and each card names its window; reopened as a defect if either figure reads a record outside its stated window.
+
+## Award engine treats missing tenure as a rookie
+
+**Banked 2026-09-28 from the production desktop click-through (`e31155ff`). Severity: LOW. Pre-existing (not FR-5b): the Awards tab shows the same.**
+
+**Observed:** the award engine creates Rookie of the Year and New Business Advisor for Kyron, who has 14+ years in the industry.
+
+**Likely cause (verified in code on `e31155ff`; the profile data is NOT yet checked):**
+- `src/utils/awardsEngine.js:7` `const p = (v) => parseFloat(v) || 0;` — a missing or non-numeric field becomes 0.
+- `:111-112` `monthsInIndustry = p(profile.monthsInIndustry)`, `monthsAtTatil = p(profile.monthsAtTatil)`.
+- `:286` `if (monthsInIndustry <= ruleset.rookieAward.maxMonthsInIndustry || monthsInIndustry === 0)` and `:301` the same for `monthsAtTatil` → a missing field or a stored 0 creates both awards.
+- By contrast `src/lib/yearPlanProjection.js:150` only treats the agent as a rookie when `typeof monthsInIndustry === 'number'`. The two readers disagree on a missing field.
+- The fields are written once at onboarding (`src/services/userService.js:143-151`, CONTEXT Locked decision "Onboarding tenure — write-once").
+
+**To do:** read Kyron's user doc for `monthsInIndustry` / `monthsAtTatil` (read-only). Then decide the fallback: a missing tenure should not create rookie-only awards (treat as unknown, not as 0), and whether a stored 0 means "brand new" or "not entered". Any change to `awardsEngine.js` or the ruleset is a human-merge slice with characterization tests (FR-5b precedent).
+
+**Falsification (Rule 23):** overturned if Kyron's user doc holds a real, large `monthsInIndustry` and the awards still appear — then the cause is elsewhere (e.g. a different profile object reaching the engine).
+
+## PWA prompt mode keeps an old build running
+
+**Banked 2026-09-28 from the production desktop click-through (`e31155ff`). Severity: INFO.**
+
+**Observed:** a signed-in Chrome kept running an old build until "Update" was tapped on the reload banner.
+
+**Why (verified on `e31155ff`):** `vite.config.js:42` `registerType: 'prompt'`; `src/components/ui/ReloadPrompt.jsx` shows a persistent, non-blocking banner on `onNeedRefresh` and waits for the tap. This is by design — no forced reload mid-report.
+
+**To consider:** whether field agents need a stronger nudge (e.g. a reminder after N hours or on next app open, or an "outdated build" note in Settings), and whether smoke walks should tap Update first so they test the current build.
+
+**Falsification (Rule 23):** not a defect unless an agent is shown to act on stale figures because of an old build; then it becomes a LOW with a concrete nudge.

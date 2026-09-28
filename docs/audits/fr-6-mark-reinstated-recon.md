@@ -71,7 +71,7 @@ It is enforced on **Arm A** body edits (`firestore.rules:481-489`, money and cre
 | **Awards engine** | Reads settlement-row `persistency`. Reinstatement is not an input. | `src/utils/awardsEngine.js:187-190` |
 | **Points** | `reinstatementsSubmitted` / `reinstatementAPI` come from the **weekly report**, not the policy. | `src/lib/computePoints.js:65-66` |
 
-**Finding (for the ruling, not a defect of this recon):** the only reinstatement input that exists today (§1.5, row 2) is **agent-declared and already blended** into the persistency figure. That is exactly what non-negotiable 5 forbids for new work ("evidenced and declared are never blended"). Whatever FR-6 builds should not add a second, per-policy declared input that sums into the same number.
+**Finding (for the ruling, not a defect of this recon):** the only reinstatement input that exists today (§1.5, row 2) is **agent-declared and already blended** into the persistency figure. That is exactly what non-negotiable 5 forbids for new work ("evidenced and declared are never blended"). Whatever FR-6 builds should not add a second, per-policy declared input that sums into the same number. **Ruled 28-09-2026 (Kyron): the existing input stays as it is, counted in persistency — see §3 Recommendation.**
 
 ---
 
@@ -213,6 +213,8 @@ A BM (or TA/PA, or an SM with `canConfirmSettlements`) moves a lapsed policy bac
 - It needs no CF, index or new collection, and the import evidences it on its own.
 
 Option B makes a manager's belief look like head office's truth and flip-flops with every import. It is worth revisiting only if Tatil wants branch managers to be able to confirm reinstatements before the export does. That is a policy decision for Kyron, and it could later sit **on top of** A: a manager "confirm" stamp on the declaration, still not a status change.
+
+**Ruling (Kyron, 28-09-2026):** keep the existing monthly agent-typed `reinstatements` input as it is now, counted in persistency. The rest of this recommendation (per-policy declarations shown separately, never auto-written into that input) and Option A itself are not yet ruled.
 
 **Before any FR-6 build, the finding in §1.5 needs a ruling:** the existing monthly `reinstatements` manual input is already declared-and-blended. Recommended: leave it as is for v1, but have the FR-6 planner show per-policy declarations **separately**, and never auto-write them into that manual input. That way there is no double count and no new blending.
 
