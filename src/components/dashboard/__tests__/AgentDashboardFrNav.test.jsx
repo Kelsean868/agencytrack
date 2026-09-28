@@ -357,11 +357,16 @@ describe('AgentDashboard — FR-4 Work', () => {
     expect(await screen.findByTestId('fr-focus-mock')).toHaveAttribute('data-mode', 'winback');
   });
 
-  it('without the opt-in: no FR-4 surface, and the Ledger renders exactly as before', async () => {
+  it('without the opt-in: no FR-4 surface, and the Numbers and Ledger screens render exactly as before', async () => {
     render(<AgentDashboard />);
     expect(NEXUS_TABS).not.toContain('focus');
     expect(NEXUS_TABS).not.toContain('pipeline');
+    // Visit each wrapped tab through the Nexus shell, so a broken `fr` gate would show its header.
+    act(() => captured.setActiveTab('production-report'));
+    expect(await screen.findByTestId('production-report-mock')).toBeInTheDocument();
     expect(screen.queryByTestId('fr-numbers-header-mock')).toBeNull();
+    act(() => captured.setActiveTab('policy-ledger'));
+    expect(await screen.findByTestId('policy-ledger-mock')).toBeInTheDocument();
     expect(screen.queryByTestId('fr-ledger-header-mock')).toBeNull();
   });
 

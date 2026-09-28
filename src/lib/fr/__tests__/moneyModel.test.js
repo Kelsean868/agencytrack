@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   paceModel, persistencySeries, clearingSets, reinstatementPlan, whatIf,
-  shiftMonthKey, monthLabel, wholeTTDUp, EXACT_SEARCH_MAX, selectionSummary, SOON_MONTHS,
+  shiftMonthKey, monthLabel, wholeTTDUp, EXACT_SEARCH_MAX, selectionSummary, SOON_MONTHS, WINDOW_MONTHS,
 } from '../moneyModel';
 import { buildPersistencyOutlook } from '../../persistency/persistencyOutlook';
 
@@ -173,6 +173,29 @@ describe('reinstatementPlan', () => {
       expect(preset.agingOut.map((l) => l.policyNumber))
         .toEqual(preset.items.filter((l) => l.agesOutSoon).map((l) => l.policyNumber));
     }
+  });
+
+  it('agesOutSoon boundary: exactly SOON_MONTHS after the planned month is flagged, SOON_MONTHS + 1 is not', () => {
+    // No gate → fig.monthKey is the current month derived from TODAY ('2026-09-20').
+    const plannedMonth = TODAY.slice(0, 7);
+    const countsThroughAt = shiftMonthKey(plannedMonth, SOON_MONTHS);
+    const countsThroughOver = shiftMonthKey(plannedMonth, SOON_MONTHS + 1);
+    // countsThrough = shiftMonthKey(issuedMonth, WINDOW_MONTHS - 1), so work the date back.
+    const issuedAt = shiftMonthKey(countsThroughAt, -(WINDOW_MONTHS - 1));
+    const issuedOver = shiftMonthKey(countsThroughOver, -(WINDOW_MONTHS - 1));
+    const boundaryLedger = [
+      ...LEDGER,
+      pol('B1', 'lapsed', 1000, `${issuedAt}-01`),
+      pol('B2', 'lapsed', 1000, `${issuedOver}-01`),
+    ];
+    const plan = reinstatementPlan({ policies: boundaryLedger, todayTT: TODAY });
+    const by = Object.fromEntries(plan.lapses.map((l) => [l.policyNumber, l]));
+    expect(by.B1).toBeTruthy();
+    expect(by.B2).toBeTruthy();
+    expect(by.B1.countsThrough).toBe(countsThroughAt);
+    expect(by.B2.countsThrough).toBe(countsThroughOver);
+    expect(by.B1.agesOutSoon).toBe(true);
+    expect(by.B2.agesOutSoon).toBe(false);
   });
 
   it('a gate month further out: aging is measured from the gate month, not today', () => {
