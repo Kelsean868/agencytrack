@@ -49,6 +49,8 @@ import DailyFAB from '../daily/DailyFAB';
 import QuickAddMenu from '../shell/QuickAddMenu';
 import { getQuickAddActions } from '../shell/quickAddConfig';
 import AgentDashboardHomeV2 from './HomeV2';
+// FR-2: the FR Today screen replaces HomeV2 on the dashboard tab under the FR look.
+import FrToday from '../fr/today/FrToday';
 import { formatHomeHeaderDate } from './HomeV2/homeDerivations';
 import Avatar from '../ui/Avatar';
 import { getTodayTT } from '../../utils/dateInputs';
@@ -877,42 +879,81 @@ export default function AgentDashboard() {
             onStart={() => setShowWizard(true)}
           />
         ) : (
-          <AgentDashboardHomeV2
-            ytdTotals={ytdTotals}
-            ledgerProduction={ledgerProduction}
-            ledgerPending={ledgerPending}
-            ledgerError={policiesError}
-            onRetryLedger={retryPolicies}
-            onOpenLedgerCreate={openLedgerCreate}
-            personalAnnualAPI={personalAnnualAPI}
-            personalGoalAPI={goals?.personalAnnualAPI ?? null}
-            kpiData={kpiData}
-            allSubmissions={allSubmissions}
-            resolvedMinimums={resolvedMinimums}
-            currentWeekSub={currentWeekSub}
-            persistency={persistency}
-            settlements={settlements}
-            awardsRuleset={awardsRuleset}
-            agentProfile={userProfile}
-            activityEvents={activityEvents}
-            activeCampaigns={activeCampaigns}
-            campaignsLoading={campaignsLoading}
-            campaignPolicies={policiesAll}
-            campaignSubs={campaignSubs}
-            agentUid={user?.uid}
-            policies={policies}
-            showDailyCTA={showDailyCTA}
-            todayDailyChecked={todayDailyChecked}
-            todayDailyEntry={todayDailyEntry}
-            submissionsError={submissionsError}
-            committedPlan={committedPlan}
-            weekDailyDocs={weekDailyDocs}
-            weekStart={currentWeek}
-            onSubmit={() => setShowWizard(true)}
-            onLogToday={() => setShowDailyModal(true)}
-            onOpenTab={setActiveTab}
-            onOpenLedgerFilter={handleOpenLedgerFilter}
-          />
+          fr ? (
+            <FrToday
+              ytdTotals={ytdTotals}
+              ledgerProduction={ledgerProduction}
+              ledgerPending={ledgerPending}
+              ledgerError={policiesError}
+              onRetryLedger={retryPolicies}
+              onOpenLedgerCreate={openLedgerCreate}
+              personalAnnualAPI={personalAnnualAPI}
+              personalGoalAPI={goals?.personalAnnualAPI ?? null}
+              kpiData={kpiData}
+              allSubmissions={allSubmissions}
+              resolvedMinimums={resolvedMinimums}
+              currentWeekSub={currentWeekSub}
+              persistency={persistency}
+              settlements={settlements}
+              awardsRuleset={awardsRuleset}
+              agentProfile={userProfile}
+              activityEvents={activityEvents}
+              activeCampaigns={activeCampaigns}
+              campaignsLoading={campaignsLoading}
+              campaignPolicies={policiesAll}
+              campaignSubs={campaignSubs}
+              agentUid={user?.uid}
+              policies={policies}
+              showDailyCTA={showDailyCTA}
+              todayDailyChecked={todayDailyChecked}
+              todayDailyEntry={todayDailyEntry}
+              submissionsError={submissionsError}
+              committedPlan={committedPlan}
+              weekDailyDocs={weekDailyDocs}
+              weekStart={currentWeek}
+              onSubmit={() => setShowWizard(true)}
+              onLogToday={() => setShowDailyModal(true)}
+              onOpenTab={setActiveTab}
+              onOpenLedgerFilter={handleOpenLedgerFilter}
+            />
+          ) : (
+            <AgentDashboardHomeV2
+              ytdTotals={ytdTotals}
+              ledgerProduction={ledgerProduction}
+              ledgerPending={ledgerPending}
+              ledgerError={policiesError}
+              onRetryLedger={retryPolicies}
+              onOpenLedgerCreate={openLedgerCreate}
+              personalAnnualAPI={personalAnnualAPI}
+              personalGoalAPI={goals?.personalAnnualAPI ?? null}
+              kpiData={kpiData}
+              allSubmissions={allSubmissions}
+              resolvedMinimums={resolvedMinimums}
+              currentWeekSub={currentWeekSub}
+              persistency={persistency}
+              settlements={settlements}
+              awardsRuleset={awardsRuleset}
+              agentProfile={userProfile}
+              activityEvents={activityEvents}
+              activeCampaigns={activeCampaigns}
+              campaignsLoading={campaignsLoading}
+              campaignPolicies={policiesAll}
+              campaignSubs={campaignSubs}
+              agentUid={user?.uid}
+              policies={policies}
+              showDailyCTA={showDailyCTA}
+              todayDailyChecked={todayDailyChecked}
+              todayDailyEntry={todayDailyEntry}
+              submissionsError={submissionsError}
+              committedPlan={committedPlan}
+              weekDailyDocs={weekDailyDocs}
+              weekStart={currentWeek}
+              onSubmit={() => setShowWizard(true)}
+              onLogToday={() => setShowDailyModal(true)}
+              onOpenTab={setActiveTab}
+              onOpenLedgerFilter={handleOpenLedgerFilter}
+            />
+          )
         )
       )}
 

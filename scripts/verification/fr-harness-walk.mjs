@@ -243,7 +243,16 @@ async function walkScene(browser, scene, theme, vpName) {
     const ok = g.changed > 0 && g.between / g.changed >= 0.8;
     record(scene.id, theme, vpName, 'glide probe', ok, `${g.between}/${g.changed} values mid-flight at ${g.tMid}ms`);
   }
-  if (scene.pager) {
+  // A responsive scene has its phone pager only at phone width (absent, or
+  // display:none, above it) — there is nothing to swipe there, so the probe is
+  // a SKIP with a note, never a pass. At phone width a missing pager FAILS.
+  const pagerVisible = scene.pager
+    && await page.locator('[data-testid="swipe-pager-viewport"]').first().isVisible().catch(() => false);
+  if (scene.pager && !pagerVisible) {
+    if (vpName === 'phone') record(scene.id, theme, vpName, 'swipe: pager present', false, 'scene has a pager but none is visible at phone width');
+    else record(scene.id, theme, vpName, 'swipe probe', null, 'no pager at this viewport (phone-only layout)');
+  }
+  if (pagerVisible) {
     const s = await swipeProbe(page);
     record(scene.id, theme, vpName, 'swipe: slow 60px stays', s.slowShortStays);
     record(scene.id, theme, vpName, 'swipe: 220px moves one page', s.longMoves);
@@ -278,6 +287,16 @@ try {
     scene.hasVariants = (await probe.$('[data-testid="fr-harness-change"]')) !== null;
     scene.pager = (await probe.$('[data-testid="swipe-pager-viewport"]')) !== null;
     await probe.close();
+    // A responsive scene may render its pager ONLY at phone width (one layout
+    // at a time, e.g. FR-2 Today), so look for it at 390px too — otherwise the
+    // swipe probe would silently never run.
+    if (!scene.pager) {
+      const pctx = await browser.newContext(VIEWPORTS.phone);
+      const pp = await pctx.newPage();
+      await pp.goto(`${BASE}/fr-harness.html?scene=${scene.id}`, { waitUntil: 'networkidle' });
+      scene.pager = (await pp.$('[data-testid="swipe-pager-viewport"]')) !== null;
+      await pctx.close();
+    }
     // viewport: 'desktop' | 'phone' | 'both' | a comma list ('desktop,tablet,phone').
     const vps = scene.viewport === 'both' ? ['desktop', 'phone'] : scene.viewport.split(',');
     for (const vp of vps) {
@@ -292,10 +311,11 @@ try {
 
 const failed = results.filter((r) => r.pass === false);
 const rows = results.filter((r) => r.check !== 'screenshot');
+const skipped = rows.filter((r) => r.pass === null).length;
 const md = [
   `### FR harness walk — slice ${SLICE} — ${new Date().toISOString().slice(0, 16)}Z`,
   '',
-  `${rows.length - failed.length}/${rows.length} checks pass · screenshots: ${results.filter((r) => r.check === 'screenshot').length} (in \`${OUT}\`)`,
+  `${rows.length - failed.length - skipped}/${rows.length - skipped} checks pass${skipped ? ` · ${skipped} skipped (see Detail)` : ''} · screenshots: ${results.filter((r) => r.check === 'screenshot').length} (in \`${OUT}\`)`,
   '',
   '| Scene | Theme | Viewport | Check | Result | Detail |',
   '|---|---|---|---|---|---|',

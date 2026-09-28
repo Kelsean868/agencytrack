@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 
 // ── Hoisted capture for Shell's navItems / bottomNavItems props ──────────────
 
@@ -127,7 +127,9 @@ vi.mock('../../gamification/BadgeGrid', () => ({
   default: () => null,
   computeEarnedBadges: () => [],
 }));
-vi.mock('../HomeV2', () => ({ default: () => null }));
+vi.mock('../HomeV2', () => ({ default: () => React.createElement('div', { 'data-testid': 'home-v2-mock' }) }));
+// FR-2: under the FR look the dashboard tab renders FrToday instead of HomeV2.
+vi.mock('../../fr/today/FrToday', () => ({ default: () => React.createElement('div', { 'data-testid': 'fr-today-mock' }) }));
 
 // ProductionLeaderboardSurface — capture mount when activeTab is the production tab.
 const productionMountedRef = vi.hoisted(() => ({ current: false }));
@@ -143,6 +145,7 @@ vi.mock('../../leaderboard/ProductionLeaderboardSurface', () => ({
 // here would silently allow a regression where the import is reintroduced.
 
 import AgentDashboard from '../AgentDashboard';
+import { getAgentSubmissions } from '../../../services/submissionService';
 
 import { getNavConfig } from '../../shell/navConfig';
 
@@ -211,5 +214,24 @@ describe('AgentDashboard — FR-1 keeps every destination', () => {
     render(<AgentDashboard />);
     expect(captured.sidebar.props.report).toBeTruthy();
     expect(captured.bottomNavItems.find((i) => i.fab)?.action).toBe('quick-add');
+  });
+});
+
+describe('AgentDashboard — FR-2 Today', () => {
+  const SUBS = [{ id: 's1', status: 'submitted', weekStarting: '2026-05-18' }];
+
+  it('with the opt-in and at least one submission: FrToday renders instead of HomeV2', async () => {
+    getAgentSubmissions.mockResolvedValue(SUBS);
+    localStorage.setItem('agencytrack-look', 'fr');
+    render(<AgentDashboard />);
+    expect(await screen.findByTestId('fr-today-mock')).toBeInTheDocument();
+    expect(screen.queryByTestId('home-v2-mock')).toBeNull();
+  });
+
+  it('without the opt-in: HomeV2 renders, FrToday does not', async () => {
+    getAgentSubmissions.mockResolvedValue(SUBS);
+    render(<AgentDashboard />);
+    expect(await screen.findByTestId('home-v2-mock')).toBeInTheDocument();
+    expect(screen.queryByTestId('fr-today-mock')).toBeNull();
   });
 });
