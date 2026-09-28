@@ -1953,3 +1953,29 @@ An agent who switches on "Try the new design" now lands on the FR Today screen i
 An agent who switches on "Try the new design" now gets a Money Overview (pace to MDRT or their goal, persistency against the gate, one headline per calculator, a What if), a glanceable FR header above each of the six existing Money calculators (the calculators themselves are unchanged), and a read-only reinstatement planner that shows which lapsed policies to win back to clear the persistency gate. Nothing is saved from the planner. Nobody else sees any change. No rules, functions or indexes changed. The read-only preview click-through with the opt-in on is still owed (FOLLOW_UPS § FR preview click-through, now covering FR-0 to FR-3).
 
 **Next:** merge #1003 (FR-4 Work, restacked by this fill), then #1004 (FR-5 Compete/You, without award trophies per Kyron's ruling); then the green-channel planner-nits PR and, separately, FR-5b (award helper). App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
+
+## Archived 2026-09-28 (post-#1011 fill — Rule 16 caps)
+
+### Last updated — entry 3 (FR-4 Work, #1003)
+
+**FR-4 Work SHIPPED (2026-09-28), PR #1003 squash `767a4ff7` (feature-branch HEAD `3ccbef65`).** Under the per-user FR opt-in only: Focus (new route `focus`, read + `tel:` only: Calls from today's planner items and prospects, call blocks listed as capacity and never counted, today's dials/contacts only from the daily entry; Paperwork oldest first with age; Win-back = the FR-3 planner), Pipeline (new route `pipeline`: Funnel of the selling ladder vs the company minimum, week or year; Board of own policies by ledger stage), FR headers above the Numbers routes and the Policy Ledger (with a win-back lens that opens Focus). Activity codes only from `ACTIVITY_METADATA`. Phone tab bar is now Today · Pipeline · + · Money · Arena. CI green.
+
+### Current main HEAD — entry 3 (`767a4ff7`, FR-4 Work)
+
+`767a4ff7` (PR #1003 squash - FR-4 Work, 2026-09-28). Merge `2026-09-28T05:24:29Z`. **No deploy-gated surfaces touched** (`git diff --stat ae424625..767a4ff7 -- firestore.rules firestore.indexes.json storage.rules functions/` is empty).
+
+### Active track — entry 3 (FR program IN PROGRESS, #1003 → #1004 open)
+
+**FR agent redesign program — IN PROGRESS.** FR-0 to FR-4 SHIPPED (last: #1003 `767a4ff7`). Open: #1004 FR-5 Compete/You (restacked onto main after this fill, then marked ready for review; CodeRabbit + SHA report; human-merge). Award trophies are NOT in FR-5 (Kyron ruling 28 Sep; FOLLOW_UPS § FR-5b). After #1004: the green-channel FR-3 planner-nits PR, and FR-5b (separate, human-merge). FR-6 (Mark reinstated) is a separate brief.
+
+### Recently shipped — oldest row (#1002 FR-3 Money)
+
+| [#1002](https://github.com/Kelsean868/agencytrack/pull/1002) | `e7dc8ef2` | **feat(fr): FR-3 Money.** Under the FR opt-in only: Money Overview (pace, persistency vs gate, calculator headlines, What if), an FR header above each of the six existing calculators (unchanged, tested), persistency month bars and a read-only reinstatement planner (Fewest calls / Least money, any mix, age-out flag). |
+
+### Where we left off — PRIOR block (FR-4 Work, #1003)
+
+**PRIOR - 2026-09-28. FR-4 Work merged as `767a4ff7` (#1003).**
+
+An agent who switches on "Try the new design" now gets Focus (who to call today with a tap-to-call link, paperwork waiting oldest first, and the win-back planner) and Pipeline (the selling funnel against the company minimum, and a board of their own policies by stage), plus FR headers above the Numbers screens and the Policy Ledger. The phone tab bar reads Today · Pipeline · + · Money · Arena. Nothing new is written; call outcomes still go through the existing Daily Capture sheet. Nobody else sees any change. No rules, functions or indexes changed. The read-only preview click-through with the opt-in on is still owed (FOLLOW_UPS § FR preview click-through, now covering FR-0 to FR-4).
+
+**Next:** #1004 (FR-5 Compete/You) restacked onto main, marked ready, CodeRabbit, then Kyron's merge. Then the green-channel FR-3 planner-nits PR and FR-5b (award helper). App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
