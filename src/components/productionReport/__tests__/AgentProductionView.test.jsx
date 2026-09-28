@@ -17,6 +17,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { getTodayTT } from '../../../utils/dateInputs';
 
 // ── Hoisted mocks (declared before any import of AgentProductionView) ────────
 
@@ -404,7 +405,9 @@ describe('AgentProductionView — P2c: no tenant-wide user read', () => {
   const SUBS = [{
     // Current-week flat submission (read through extractFields).
     id: 's1', agentId: 'me-viewer-uid', status: 'submitted',
-    weekStarting: new Date().toISOString().slice(0, 10),
+    // Trinidad's today, not UTC's: from 20:00 TT the UTC date is already
+    // tomorrow, which falls after the YTD end and the fixture counted 0.
+    weekStarting: getTodayTT(),
     version: 2, newBusiness: { api: 12500, apps: 2 },
   }];
 
