@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { buildPersistencyOutlook, outlookGateFor } from '../../../lib/persistency/persistencyOutlook';
 import { filterCounts } from '../../../lib/policyLedgerDerivation';
-import { isTieredCampaign } from '../../../utils/campaignEngine';
+import { isHomeCampaign } from '../../../lib/fr/homeCampaigns';
 import { elapsedWorkingDays } from '../../../utils/planVariance';
 import { getTodayTT } from '../../../utils/dateInputs';
 import {
@@ -20,10 +20,6 @@ import { buildTodayModel, settledByMonthFrom, latestPersistencyPct } from '../..
 import FrTodayView from './FrTodayView';
 import useMinWidth from '../../../hooks/useMinWidth';
 
-/** A campaign the compact card can render — the same test HomeV2 applies. */
-function isHomeCampaign(c) {
-  return Boolean(c) && isTieredCampaign(c) && c.structure === 'qualify';
-}
 
 /** Hour of day in Trinidad and Tobago (UTC-4 all year, no DST). */
 function hourInTT(now = new Date()) {

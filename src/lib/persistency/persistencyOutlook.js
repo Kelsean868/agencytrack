@@ -164,6 +164,9 @@ function figureFrom(docs, { monthKey, exportDate, rule, records, source }) {
     inputs: ledger.inputs,
     derived: ledger.derived,
     counted: ledger.counted,
+    // The policy numbers behind each input (FR-3 reinstatement planner lists
+    // the counted lapses from here, so it never re-derives which ones count).
+    evidence: ledger.evidence,
     exportDate: exportDate ?? null,
     annuityMissedPremiumRule: rule,
     annuityRuleLabel: ANNUITY_MISSED_PREMIUM_RULE_LABELS[rule],
