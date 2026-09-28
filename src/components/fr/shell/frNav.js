@@ -129,7 +129,10 @@ export function frFlatItems(nav = FR_NAV) {
 /** The phone tab bar (canvas M3-Nav), trimmed to ready routes. */
 export const FR_TABBAR = Object.freeze([
   { id: 'today', label: 'Today', frIcon: 'today', tabId: 'dashboard' },
-  { id: 'money', label: 'Money', frIcon: 'money', tabId: 'money', matchTabs: ['money', 'goals', 'game-plan', 'money-needs', 'commission', 'persistency', 'financing'] },
+  // FR-4: Pipeline is a ready route now, so it takes its canvas slot (M3-Nav:
+  // Today · Pipeline · + · Money · Arena).
+  { id: 'pipeline', label: 'Pipeline', frIcon: 'pipeline', tabId: 'pipeline' },
   { id: 'log', label: 'Log', frIcon: 'log', action: 'quick-add', fab: true },
+  { id: 'money', label: 'Money', frIcon: 'money', tabId: 'money', matchTabs: ['money', 'goals', 'game-plan', 'money-needs', 'commission', 'persistency', 'financing'] },
   { id: 'arena', label: 'Arena', frIcon: 'arena', tabId: 'production-leaderboard' },
 ]);

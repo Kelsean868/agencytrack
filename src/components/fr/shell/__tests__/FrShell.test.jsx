@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import FrSidebar from '../FrSidebar';
 import FrHubHeader from '../FrHubHeader';
 import FrIcon from '../FrIcon';
-import { FR_NAV, frNavItems, frFindByTab, frTargetTab, frTitleFor, frFlatItems } from '../frNav';
+import { FR_NAV, FR_TABBAR, frNavItems, frFindByTab, frTargetTab, frTitleFor, frFlatItems } from '../frNav';
 import MobileBottomNav from '../../../shell/MobileBottomNav';
 
 const baseProps = () => ({
@@ -25,6 +25,9 @@ describe('frNav model', () => {
     expect(ids).not.toContain('campaign');
     expect(ids).not.toContain('trophies');
     expect(ids).toContain('money');
+  });
+  it('phone tab bar is the canvas order: Today · Pipeline · + · Money · Arena', () => {
+    expect(FR_TABBAR.map((i) => i.id)).toEqual(['today', 'pipeline', 'log', 'money', 'arena']);
   });
   it('finds the hub that owns a section route', () => {
     expect(frFindByTab('commission').item.id).toBe('money');
