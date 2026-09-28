@@ -4,12 +4,16 @@ import React, { useMemo } from 'react';
 import FrTrophyRoomView from '../../compete/FrTrophyRoomView';
 import FrCampaignView from '../../compete/FrCampaignView';
 import { FrArenaHeaderView, FrMeHeaderView } from '../../compete/FrCompeteHeaderViews';
-import { trophyRoom, arenaStanding, meTiles } from '../../../../lib/fr/competeModel';
+import { trophyRoom, arenaStanding, meTiles, awardTrophies } from '../../../../lib/fr/competeModel';
+import { awardInputs, agentAwardsView } from '../../../../lib/awards/agentAwardModel';
+import { DEFAULT_RULESET_2026 } from '../../../../config/awardsRuleset/2026';
 
 /**
  * FR-5 harness scenes (SAMPLE data through the real competeModel). The engine
  * doc stands in for `leaderboard/{uid}`; variant B = more points and one more
- * report week (same badges, so no trophy re-enters and every bar glides).
+ * report week (same badges, so no badge re-enters and every bar glides).
+ * FR-5b: the trophy-room scene also carries award trophies from the real
+ * award model — A some qualified, B none qualified plus a rookie (D9).
  * Names are placeholders, never real agents.
  */
 
@@ -38,8 +42,36 @@ function Frame({ children }) {
   );
 }
 
+// FR-5b award fixtures through the REAL award model (awardInputs →
+// agentAwardsView → awardTrophies) and the 2026 default ruleset. A: tenured,
+// a strong Q3 (Quarterly API qualified, Advisor of the Month API qualified).
+// B: a rookie with a quiet year — nothing qualified; Rookie of the Year and
+// New Business appear because the engine creates them for a rookie.
+const AWARD_NOW = new Date('2026-09-15T16:00:00Z');
+const spol = (n, dateIssued, api) => ({ id: n, status: 'settled', productLine: 'life', newBusinessType: 'nb_ordinary', dateIssued, proposedAPI: api });
+const AWARD_SAMPLE = {
+  A: {
+    profile: { uid: 'sample', monthsInIndustry: 60, monthsAtTatil: 60 },
+    ledger: [spol('S-1', '2026-07-08', 36000), spol('S-2', '2026-08-11', 27500), spol('S-3', '2026-09-02', 52000), spol('S-4', '2026-09-09', 14000)],
+    settlements: ['2026-07', '2026-08', '2026-09'].map((periodKey) => ({ periodKey, persistency: 92 })),
+  },
+  B: {
+    profile: { uid: 'sample', monthsInIndustry: 6, monthsAtTatil: 6 },
+    ledger: [spol('S-5', '2026-08-20', 9000), spol('S-6', '2026-09-03', 6000)],
+    settlements: ['2026-08', '2026-09'].map((periodKey) => ({ periodKey, persistency: 88 })),
+  },
+};
+
+function sampleAwards(variant) {
+  const s = AWARD_SAMPLE[variant] ?? AWARD_SAMPLE.A;
+  const { rows } = awardInputs({ ledgerPolicies: s.ledger, confirmedSettlements: s.settlements, usesPolicyLedger: false });
+  return awardTrophies(agentAwardsView({
+    rows, submissions: [], agentProfile: s.profile, now: AWARD_NOW, ruleset: DEFAULT_RULESET_2026, activeCampaigns: [],
+  }), AWARD_NOW);
+}
+
 function TrophiesScene({ variant }) {
-  const room = useMemo(() => trophyRoom(ENTRY[variant] ?? ENTRY.A), [variant]);
+  const room = useMemo(() => trophyRoom(ENTRY[variant] ?? ENTRY.A, sampleAwards(variant)), [variant]);
   return <Frame><FrTrophyRoomView room={room} /></Frame>;
 }
 

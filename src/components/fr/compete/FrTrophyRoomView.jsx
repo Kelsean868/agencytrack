@@ -103,11 +103,30 @@ function Shelf({ title, note, items, selected, onSelect }) {
             >
               <Trophy kind={t.kind} size={64} locked={!t.earned} progress={t.progress} />
               <span className="w-full truncate text-center text-[12px] font-semibold text-ink" title={t.label}>{t.label}</span>
-              <span className="text-[11px] text-ink-muted">{t.earned ? 'Earned' : t.progress != null ? `${t.progress}% there` : 'Locked'}</span>
+              <span className="text-center text-[11px] leading-snug text-ink-muted">{t.earned ? (t.earnedText ?? 'Earned') : t.progress != null ? `${t.progress}% there` : 'Locked'}</span>
             </button>
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+/** Awards group while the policy ledger loads, or when it failed (FR-5b D6). */
+function AwardsPending({ state, onRetry }) {
+  return (
+    <section className={`${CARD} flex min-w-0 flex-col gap-3 p-4`} aria-label="Awards" data-testid="trophy-shelf-awards">
+      <h3 className="font-display text-[18px] font-bold text-ink">Awards</h3>
+      {state === 'error' ? (
+        <div role="alert" className="flex flex-col items-start gap-2">
+          <p className="text-[13px] text-ink">Your award progress did not load.</p>
+          {onRetry ? (
+            <button type="button" onClick={onRetry} className={`${FOCUS} inline-flex min-h-[44px] items-center rounded-lg border border-border px-4 text-[14px] font-semibold text-ink`}>Retry</button>
+          ) : null}
+        </div>
+      ) : (
+        <div aria-busy="true" className={`h-24 ${SKELETON}`} />
+      )}
     </section>
   );
 }
@@ -121,7 +140,7 @@ const Detail = React.forwardRef(function Detail({ item }, ref) {
         <p className={EYEBROW}>{item.group}</p>
         <h3 className="font-display text-[22px] font-bold leading-tight text-ink">{item.label}</h3>
         <p className="mt-1 text-[13px] font-semibold text-ink-muted">
-          {item.earned ? 'Earned' : item.progress != null ? `Locked · ${item.progress}% there` : 'Locked'}
+          {item.earned ? (item.earnedText ?? 'Earned') : item.progress != null ? `Locked · ${item.progress}% there` : 'Locked'}
         </p>
         {!item.earned && item.left ? <p className="text-[12px] text-ink-muted">{item.left}</p> : null}
       </div>
@@ -133,7 +152,14 @@ const Detail = React.forwardRef(function Detail({ item }, ref) {
   );
 });
 
-export default function FrTrophyRoomView({ room, loading = false, error = false, onRetry }) {
+/**
+ * @param {{
+ *   room: object|null, loading?: boolean, error?: boolean, onRetry?: () => void,
+ *   awardsState?: 'ready'|'loading'|'error', onRetryAwards?: () => void,
+ * }} props  awardsState: the award group's own state (the policy ledger read),
+ *   separate from the badges/levels doc (FR-5b D6).
+ */
+export default function FrTrophyRoomView({ room, loading = false, error = false, onRetry, awardsState = 'ready', onRetryAwards }) {
   const [selected, setSelected] = useState(null);
   const detailRef = useRef(null);
   // Phone / tablet: the detail sits below the shelves, so a tap would change
@@ -165,7 +191,7 @@ export default function FrTrophyRoomView({ room, loading = false, error = false,
     );
   }
 
-  const all = [...room.badges, ...room.levels];
+  const all = [...room.badges, ...room.levels, ...(room.awards ?? [])];
   const current = all.find((t) => t.key === selected) ?? room.closest[0] ?? room.badges.find((t) => t.earned) ?? room.badges[0];
 
   return (
@@ -184,6 +210,11 @@ export default function FrTrophyRoomView({ room, loading = false, error = false,
         <div className="flex min-w-0 flex-col gap-4">
           <Shelf title="Badges" note="From your weekly reports." items={room.badges} selected={current?.key} onSelect={setSelected} />
           <Shelf title="Levels" note="Points build up over time toward levels." items={room.levels} selected={current?.key} onSelect={setSelected} />
+          {awardsState !== 'ready' ? (
+            <AwardsPending state={awardsState} onRetry={onRetryAwards} />
+          ) : room.awards?.length ? (
+            <Shelf title="Awards" note="Qualification for the current period — awards are decided when the period closes." items={room.awards} selected={current?.key} onSelect={setSelected} />
+          ) : null}
           {room.other.length ? (
             <p className="text-[13px] text-ink-muted" data-testid="trophy-other">Also earned: {room.other.map((o) => o.label).join(', ')}</p>
           ) : null}
@@ -191,7 +222,7 @@ export default function FrTrophyRoomView({ room, loading = false, error = false,
         <Detail ref={detailRef} item={current} />
       </div>
       <p className="text-[12px] text-ink-muted">
-        Badges, points and levels are the ones the app already awards from your weekly reports. Company awards are on the Awards screen.
+        Badges, points and levels are the ones the app already awards from your weekly reports. Awards use the same figures as the Awards screen, where each one is shown in full.
       </p>
     </div>
   );

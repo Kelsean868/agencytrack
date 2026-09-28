@@ -441,11 +441,12 @@ export default function AgentDashboard() {
   // and the home hero plus every Goals panel read production from the ledger.
   // Fires at most once (the `policies === null` guard); reuses the same fetch.
   // Under the FR look, the Money Overview and Persistency header (FR-3), Focus,
-  // Pipeline and the Ledger header (FR-4), and Campaign (FR-5) read the ledger
-  // too — same fetch, same once-only guard.
+  // Pipeline and the Ledger header (FR-4), Campaign (FR-5) and the Trophy
+  // room's award trophies (FR-5b) read the ledger too — same fetch, same
+  // once-only guard.
   useEffect(() => {
     const needsPolicies = POLICY_TABS.has(activeTab)
-      || (fr && ['money', 'persistency', 'focus', 'pipeline', 'policy-ledger', 'campaign'].includes(activeTab));
+      || (fr && ['money', 'persistency', 'focus', 'pipeline', 'policy-ledger', 'campaign', 'trophies'].includes(activeTab));
     if (needsPolicies && policies === null) loadPolicies();
   }, [activeTab, loadPolicies, policies, fr]);
 
@@ -964,7 +965,21 @@ export default function AgentDashboard() {
           onOpenAwards={() => setActiveTab('awards')}
         />
       )}
-      {fr && activeTab === 'trophies' && <FrTrophyRoom tenantId={tenantId} uid={user?.uid} />}
+      {fr && activeTab === 'trophies' && (
+        <FrTrophyRoom
+          tenantId={tenantId}
+          uid={user?.uid}
+          ledgerPolicies={policiesAll}
+          ledgerError={policiesError}
+          onRetryPolicies={retryPolicies}
+          settlements={settlements}
+          allSubmissions={allSubmissions}
+          userProfile={userProfile}
+          awardsRuleset={awardsRuleset}
+          activeCampaigns={activeCampaigns}
+          now={now}
+        />
+      )}
       {fr && activeTab === 'production-leaderboard' && <FrArenaHeader uid={user?.uid} />}
       {fr && activeTab === 'profile' && (
         <FrMeHeader tenantId={tenantId} uid={user?.uid} onOpenTrophies={() => setActiveTab('trophies')} />

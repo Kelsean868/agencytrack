@@ -407,6 +407,11 @@ describe('prop-provenance guard — every policy array handed to a child is clas
       why: 'FR-5 Campaign route (FR look only): mounts the existing CampaignScreenWithTier, fed the same raw ledger as the Awards tab campaign hero (C-D10: campaign rules decide what counts; a 100% imported book would read TTD 0 filtered).',
     },
     {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <FrTrophyRoom ledgerPolicies>',
+      provenance: 'unfiltered',
+      why: 'FR-5b Trophy room award trophies (FR look only): awards are earned by date, not origin (R5, same as AgentAwardsPanel) — the room runs the SAME award model (lib/awards/agentAwardModel) on the same unfiltered ledger the Awards tab fetches, so both show the same qualification.',
+    },
+    {
       id: 'src/components/fr/compete/FrCampaign.jsx :: <CampaignScreenWithTier policies>',
       provenance: 'unfiltered',
       why: 'FR-5: the Campaign route renders the existing campaign screen with the unfiltered ledger it receives — the same list and reason as AgentAwardsPanel’s CampaignScreenWithTier site.',
@@ -497,9 +502,9 @@ describe('prop-provenance guard — every policy array handed to a child is clas
     expect(sites.map((s) => s.id).join(' ')).not.toContain('onViewLapsedPolicies');
     // 4 before FR-3; +3 FR-3 sites (FrMoney and FrMoneyHeader on the dashboard,
     // the Money Overview campaign slot); +2 FR-4 (FrFocus, FrLedgerHeader);
-    // +2 FR-5 (FrCampaign, its CampaignScreenWithTier) — each declared in the
-    // manifest above.
-    expect(sites.filter((s) => s.namesRawCarrier).length).toBe(11);
+    // +2 FR-5 (FrCampaign, its CampaignScreenWithTier); +1 FR-5b (FrTrophyRoom
+    // ledgerPolicies) — each declared in the manifest above.
+    expect(sites.filter((s) => s.namesRawCarrier).length).toBe(12);
   });
 });
 
@@ -582,6 +587,8 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
       'src/components/dashboard/AgentDashboard.jsx :: <FrMoney campaignPolicies>',
       'src/components/dashboard/AgentDashboard.jsx :: <FrMoneyHeader campaignPolicies>',
       'src/components/dashboard/AgentDashboard.jsx :: <FrToday campaignPolicies>',
+      // FR-5b: the Trophy room's award trophies run the Awards tab's model (R5).
+      'src/components/dashboard/AgentDashboard.jsx :: <FrTrophyRoom ledgerPolicies>',
       'src/components/dashboard/HomeV2/index.jsx :: <CampaignHeroCard policies>',
       // FR-3: the Money Overview campaign slot (same readout as HomeV2 / FrToday).
       'src/components/fr/compete/FrCampaign.jsx :: <CampaignScreenWithTier policies>',
@@ -633,6 +640,8 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
       /\[policiesAll, thisYear, currentWeek, allSubmissions\]/,
       /policiesAll === null && !policiesError/,
       /campaignPolicies=\{policiesAll\}/,
+      // FR-5b: the Trophy room's award trophies (same unfiltered list as the Awards tab).
+      /^ledgerPolicies=\{policiesAll\}$/,
     ];
     const hits = [];
     for (const f of files) {

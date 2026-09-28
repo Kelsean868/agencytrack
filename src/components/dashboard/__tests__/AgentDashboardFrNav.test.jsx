@@ -154,7 +154,12 @@ vi.mock('../../fr/work/FrWorkHeaders', () => ({
 vi.mock('../../fr/compete/FrCampaign', () => ({
   default: ({ onOpenAwards }) => React.createElement('button', { 'data-testid': 'fr-campaign-mock', onClick: onOpenAwards }),
 }));
-vi.mock('../../fr/compete/FrTrophyRoom', () => ({ default: () => React.createElement('div', { 'data-testid': 'fr-trophies-mock' }) }));
+vi.mock('../../fr/compete/FrTrophyRoom', () => ({
+  default: (props) => {
+    captured.trophyProps = props;
+    return React.createElement('div', { 'data-testid': 'fr-trophies-mock' });
+  },
+}));
 vi.mock('../../fr/compete/FrCompeteHeaders', () => ({
   FrArenaHeader: () => React.createElement('div', { 'data-testid': 'fr-arena-header-mock' }),
   FrMeHeader: ({ onOpenTrophies }) => React.createElement('button', { 'data-testid': 'fr-me-header-mock', onClick: onOpenTrophies }),
@@ -379,6 +384,11 @@ describe('AgentDashboard — FR-5 Compete / You', () => {
     render(<AgentDashboard />);
     act(() => captured.sidebar.props.onNavigate('trophies'));
     expect(await screen.findByTestId('fr-trophies-mock')).toBeInTheDocument();
+    // FR-5b: the room gets the Awards tab's inputs from what the dashboard holds (no new read).
+    expect(Object.keys(captured.trophyProps)).toEqual(expect.arrayContaining([
+      'ledgerPolicies', 'ledgerError', 'onRetryPolicies', 'settlements', 'allSubmissions',
+      'userProfile', 'awardsRuleset', 'activeCampaigns', 'now',
+    ]));
     act(() => captured.sidebar.props.onNavigate('campaign'));
     act(() => screen.getByTestId('fr-campaign-mock').click());
     await screen.findByTestId('shell-mock');

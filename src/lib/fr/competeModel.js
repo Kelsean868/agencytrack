@@ -32,6 +32,104 @@ export const BADGE_TROPHY_KIND = Object.freeze({
   mdrt_qualified: 'mdrt-qualified',
 });
 
+/**
+ * Engine award id → trophy kind (FR-5b, brief D5). Only awards the agent awards
+ * engine (`computeAgentAwards`) creates; club tiers and the Christmas campaign
+ * are deliberately absent (a trophy that can never light is a fake).
+ */
+export const AWARD_TROPHY_KIND = Object.freeze({
+  advisor_month_api: 'aotm-api',
+  advisor_month_apps: 'aotm-apps',
+  quarterly_api: 'quarterly-api',
+  quarterly_apps: 'quarterly-apps',
+  persistency_silver: 'persistency-silver',
+  persistency_gold: 'persistency-gold',
+  rookie_of_year: 'rookie-year',
+  new_bs_award: 'new-business',
+  centurion: 'centurion',
+  agent_of_year: 'agent-year',
+  mdrt: 'mdrt',
+});
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * The period an award is measured over, as the engine measures it (the same
+ * calendar fields `computeAgentAwards` / `getPeriodCtx` read from `now`).
+ */
+export function awardPeriodLabel(category, now) {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  if (category === 'monthly') return `${MONTHS[m]} ${y}`;
+  if (category === 'quarterly') return `Q${Math.floor(m / 3) + 1} ${y}`;
+  return String(y);
+}
+
+const ttd = (n) => `TTD ${Math.ceil(Math.max(0, n)).toLocaleString('en-TT')}`;
+
+function criterionTarget(c) {
+  if (c.unit === 'TTD') return `${c.label} ${ttd(c.target)}`;
+  if (c.unit === '%') return `${c.label} ${c.target}%`;
+  return `${c.label} ${Math.round(c.target).toLocaleString('en-TT')}`;
+}
+
+function criterionLeft(c) {
+  const gap = c.target - c.current;
+  if (!(gap > 0)) return null;
+  if (c.unit === 'TTD') return `${ttd(gap)} to go`;
+  if (c.unit === '%') return `${Number(c.current).toFixed(1)}% now · gate ${c.target}%`;
+  const n = Math.ceil(gap);
+  return `${n.toLocaleString('en-TT')} more ${c.unit === 'apps' ? (n === 1 ? 'app' : 'apps') : c.unit}`;
+}
+
+/**
+ * Award trophies from the shared award view (lib/awards/agentAwardModel
+ * `agentAwardsView`, the same view the Awards tab renders).
+ *
+ * Lit rule (D4): lit when the engine says `eligible === true` for the award's
+ * current period, captioned "Qualified — {period}". Never "won", never a prize
+ * amount — awards are decided at period end. Unlit: progress from the first
+ * criterion (current / target, capped at 99%) and what is left.
+ *
+ * @param {{ awards: object }|null} awardsView
+ * @param {Date} now
+ * @returns {object[]} trophy items in AWARD_TROPHY_KIND order
+ */
+export function awardTrophies(awardsView, now) {
+  const awards = awardsView?.awards ?? {};
+  for (const [id, a] of Object.entries(awards)) {
+    if (!AWARD_TROPHY_KIND[id] && a?.category !== 'club' && import.meta.env.DEV) {
+      // v3 rule 11: an engine award with no trophy mapping must not vanish silently.
+      console.warn(`[competeModel] award "${id}" has no trophy kind — not shown in the Trophy room`);
+    }
+  }
+  return Object.entries(AWARD_TROPHY_KIND)
+    .filter(([id]) => awards[id])
+    .map(([id, kind]) => {
+      const a = awards[id];
+      const period = awardPeriodLabel(a.category, now);
+      const first = a.criteria?.[0] ?? null;
+      const earned = a.eligible === true;
+      const pct = first && first.target > 0 ? Math.floor((Number(first.current) / first.target) * 100) : null;
+      return {
+        key: id,
+        kind,
+        group: 'Award',
+        label: a.name,
+        earned,
+        earnedText: `Qualified — ${period}`,
+        period,
+        progress: earned || pct == null ? null : Math.max(0, Math.min(99, pct)),
+        left: earned || !first ? null : criterionLeft(first),
+        how: `Measured over ${a.category === 'monthly' ? 'the month' : a.category === 'quarterly' ? 'the quarter' : 'the year'} (${period}): ${(a.criteria ?? []).map(criterionTarget).join(' · ')}. Decided at the end of the period.`,
+        detail: period,
+        current: first ? Number(first.current) : null,
+        target: first ? Number(first.target) : null,
+        unit: first?.unit ?? null,
+      };
+    });
+}
+
 /** Streak badges and the weeks each needs — progress rings come from `weeklyStreak`. */
 export const STREAK_BADGES = Object.freeze({ streak_4: 4, streak_8: 8, streak_13: 13 });
 
@@ -54,14 +152,16 @@ const num = (v) => {
 /**
  * @param {object|null} entry  the agent's `leaderboard/{uid}` doc data, or null
  *   when the doc does not exist yet (no report submitted — everything locked).
+ * @param {object[]} [awards]  award trophy items (awardTrophies) — counted in
+ *   earnedCount / total and eligible for "Closest to unlocking" (FR-5b D8).
  * @returns {{
- *   badges: object[], levels: object[], other: object[],
+ *   badges: object[], levels: object[], awards: object[], other: object[],
  *   earnedCount: number, total: number,
  *   points: number, level: object, next: object|null, toNext: number|null, levelPct: number,
  *   streak: number|null, nextStreak: number|null, closest: object[],
  * }}
  */
-export function trophyRoom(entry) {
+export function trophyRoom(entry, awards = []) {
   const owned = new Set(Array.isArray(entry?.badges) ? entry.badges : []);
   const points = Math.max(0, num(entry?.points) ?? 0);
   const streak = entry ? Math.max(0, Math.floor(num(entry.weeklyStreak) ?? 0)) : null;
@@ -118,18 +218,21 @@ export function trophyRoom(entry) {
   const nextStreak = streak == null ? null : (Object.values(STREAK_BADGES).find((w) => w > streak) ?? null);
 
   // "Closest to unlocking": locked items with measured progress, nearest first.
-  const closest = [...badges, ...levels]
+  const awardList = Array.isArray(awards) ? awards : [];
+  const closest = [...badges, ...levels, ...awardList]
     .filter((t) => !t.earned && t.progress != null)
     .sort((a, b) => b.progress - a.progress)
     .slice(0, 3);
 
-  const earnedCount = badges.filter((b) => b.earned).length + levels.filter((l) => l.earned).length;
+  const earnedCount = badges.filter((b) => b.earned).length + levels.filter((l) => l.earned).length
+    + awardList.filter((a) => a.earned).length;
   return {
     badges,
     levels,
+    awards: awardList,
     other,
     earnedCount,
-    total: badges.length + levels.length,
+    total: badges.length + levels.length + awardList.length,
     points,
     level,
     next,
@@ -209,6 +312,6 @@ export function meTiles(room) {
     { id: 'level', label: 'Your level', value: room.level.title, unit: 'text', note: room.next ? `${room.toNext.toLocaleString('en-TT')} points to ${room.next.title}` : 'Top level' },
     { id: 'points', label: 'Points', value: room.points, unit: 'count', note: 'From your weekly reports' },
     { id: 'streak', label: 'Report streak', value: room.streak, unit: 'count', note: room.streak == null ? 'No report yet' : `${room.streak === 1 ? 'week' : 'weeks'} in a row` },
-    { id: 'trophies', label: 'Trophies', value: `${room.earnedCount} of ${room.total}`, unit: 'text', note: 'Badges and levels earned' },
+    { id: 'trophies', label: 'Trophies', value: `${room.earnedCount} of ${room.total}`, unit: 'text', note: room.awards?.length ? 'Badges, levels and awards' : 'Badges and levels earned' },
   ];
 }
