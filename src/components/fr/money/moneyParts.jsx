@@ -30,7 +30,9 @@ function TileValue({ value, unit, decimals = 0 }) {
     : Math.round(Number(animated) || 0).toLocaleString('en-TT');
   const final = unit === 'pct'
     ? `${Number(value).toFixed(decimals)}%`
-    : `TTD ${Math.round(Number(value) || 0).toLocaleString('en-TT')}`;
+    : unit === 'count'
+      ? Math.round(Number(value) || 0).toLocaleString('en-TT')
+      : `TTD ${Math.round(Number(value) || 0).toLocaleString('en-TT')}`;
   return (
     <>
       <span aria-hidden="true" className="whitespace-nowrap">
@@ -43,7 +45,7 @@ function TileValue({ value, unit, decimals = 0 }) {
 }
 
 /**
- * @param {{ tile: { id, label, value, unit: 'ttd'|'pct'|'text', decimals?, note?, warm? }, loading?: boolean }} props
+ * @param {{ tile: { id, label, value, unit: 'ttd'|'pct'|'count'|'text', decimals?, note?, warm? }, loading?: boolean }} props
  */
 export function StatTile({ tile, loading = false }) {
   return (

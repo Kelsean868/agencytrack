@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import FrSidebar from '../FrSidebar';
 import FrHubHeader from '../FrHubHeader';
 import FrIcon from '../FrIcon';
-import { FR_NAV, frNavItems, frFindByTab, frTargetTab, frTitleFor, frFlatItems } from '../frNav';
+import { FR_NAV, FR_TABBAR, frNavItems, frFindByTab, frTargetTab, frTitleFor, frFlatItems } from '../frNav';
 import MobileBottomNav from '../../../shell/MobileBottomNav';
 
 const baseProps = () => ({
@@ -19,9 +19,15 @@ const baseProps = () => ({
 describe('frNav model', () => {
   it('hides items whose slice has not landed (never a stub)', () => {
     const ids = frNavItems().map((i) => i.id);
-    expect(ids).not.toContain('focus');
-    expect(ids).not.toContain('pipeline');
+    // FR-4 landed Focus and Pipeline; Campaign and Trophy room land with FR-5.
+    expect(ids).toContain('focus');
+    expect(ids).toContain('pipeline');
+    expect(ids).not.toContain('campaign');
+    expect(ids).not.toContain('trophies');
     expect(ids).toContain('money');
+  });
+  it('phone tab bar is the canvas order: Today · Pipeline · + · Money · Arena', () => {
+    expect(FR_TABBAR.map((i) => i.id)).toEqual(['today', 'pipeline', 'log', 'money', 'arena']);
   });
   it('finds the hub that owns a section route', () => {
     expect(frFindByTab('commission').item.id).toBe('money');

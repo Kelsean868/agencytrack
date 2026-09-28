@@ -42,9 +42,9 @@ export const FR_ICON_PATHS = Object.freeze({
  */
 export const FR_NAV = Object.freeze([
   { id: 'today', label: 'Today', icon: 'today', tabId: 'dashboard', group: 'Work' },
-  { id: 'focus', label: 'Focus', icon: 'focus', tabId: 'focus', group: 'Work', ready: false },
+  { id: 'focus', label: 'Focus', icon: 'focus', tabId: 'focus', group: 'Work' },
   { id: 'week', label: 'Week', icon: 'week', tabId: 'planner', group: 'Work' },
-  { id: 'pipeline', label: 'Pipeline', icon: 'pipeline', tabId: 'pipeline', group: 'Work', ready: false },
+  { id: 'pipeline', label: 'Pipeline', icon: 'pipeline', tabId: 'pipeline', group: 'Work' },
   { id: 'prep', label: 'Prospect prep', icon: 'prep', tabId: 'prospect-info', group: 'Work' },
   {
     id: 'numbers', label: 'Numbers', icon: 'numbers', group: 'Numbers',
@@ -129,7 +129,10 @@ export function frFlatItems(nav = FR_NAV) {
 /** The phone tab bar (canvas M3-Nav), trimmed to ready routes. */
 export const FR_TABBAR = Object.freeze([
   { id: 'today', label: 'Today', frIcon: 'today', tabId: 'dashboard' },
-  { id: 'money', label: 'Money', frIcon: 'money', tabId: 'money', matchTabs: ['money', 'goals', 'game-plan', 'money-needs', 'commission', 'persistency', 'financing'] },
+  // FR-4: Pipeline is a ready route now, so it takes its canvas slot (M3-Nav:
+  // Today · Pipeline · + · Money · Arena).
+  { id: 'pipeline', label: 'Pipeline', frIcon: 'pipeline', tabId: 'pipeline' },
   { id: 'log', label: 'Log', frIcon: 'log', action: 'quick-add', fab: true },
+  { id: 'money', label: 'Money', frIcon: 'money', tabId: 'money', matchTabs: ['money', 'goals', 'game-plan', 'money-needs', 'commission', 'persistency', 'financing'] },
   { id: 'arena', label: 'Arena', frIcon: 'arena', tabId: 'production-leaderboard' },
 ]);

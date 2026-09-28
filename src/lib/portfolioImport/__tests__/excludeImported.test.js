@@ -382,6 +382,26 @@ describe('prop-provenance guard — every policy array handed to a child is clas
       why: 'FR-3: the Money Overview campaign slot — the same compact campaign readout as HomeV2 / FrToday, same C-D10 reason (a 100% imported book would read TTD 0 filtered).',
     },
     {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <FrFocus campaignPolicies>',
+      provenance: 'unfiltered',
+      why: 'FR-4 Focus · Win-back (FR look only): the FR-3 reinstatement planner, i.e. buildPersistencyOutlook, whose contract is the UNFILTERED ledger (as PersistencyTab and FrMoneyHeader).',
+    },
+    {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <FrFocus policies>',
+      provenance: 'filtered-upstream',
+      why: 'FR-4 Focus · Paperwork: the agent’s own keyed pipeline (written / submitted / rated / postponed), the excludeImported half as the delivery strip.',
+    },
+    {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <FrPipeline policies>',
+      provenance: 'filtered-upstream',
+      why: 'FR-4 Pipeline · Board: the agent’s own keyed policies by ledger stage — the excludeImported half, so the historical imported book does not flood the board.',
+    },
+    {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <FrLedgerHeader campaignPolicies>',
+      provenance: 'unfiltered',
+      why: 'FR-4 Policy Ledger header, win-back lens: reinstatementPlan → buildPersistencyOutlook, UNFILTERED by contract (the ledger below lists the whole book too).',
+    },
+    {
       id: 'src/components/dashboard/AgentDashboard.jsx :: <CommissionAnchorStrip policies>',
       provenance: 'filtered-upstream',
       why: 'Commission totals aggregate money, and imported docs were earned outside this system (ruling 5e).',
@@ -466,8 +486,9 @@ describe('prop-provenance guard — every policy array handed to a child is clas
     expect(sites.length).toBeGreaterThanOrEqual(8);
     expect(sites.map((s) => s.id).join(' ')).not.toContain('onViewLapsedPolicies');
     // 4 before FR-3; +3 FR-3 sites (FrMoney and FrMoneyHeader on the dashboard,
-    // the Money Overview campaign slot), each declared in the manifest above.
-    expect(sites.filter((s) => s.namesRawCarrier).length).toBe(7);
+    // the Money Overview campaign slot); +2 FR-4 (FrFocus, FrLedgerHeader) —
+    // each declared in the manifest above.
+    expect(sites.filter((s) => s.namesRawCarrier).length).toBe(9);
   });
 });
 
@@ -543,6 +564,8 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
       // manifest above for that site's own classification.)
       'src/components/dashboard/AgentDashboard.jsx :: <AgentDashboardHomeV2 campaignPolicies>',
       // FR-2: the same readout on the FR Today screen (FrToday mirrors HomeV2).
+      'src/components/dashboard/AgentDashboard.jsx :: <FrFocus campaignPolicies>',
+      'src/components/dashboard/AgentDashboard.jsx :: <FrLedgerHeader campaignPolicies>',
       'src/components/dashboard/AgentDashboard.jsx :: <FrMoney campaignPolicies>',
       'src/components/dashboard/AgentDashboard.jsx :: <FrMoneyHeader campaignPolicies>',
       'src/components/dashboard/AgentDashboard.jsx :: <FrToday campaignPolicies>',
@@ -576,6 +599,8 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
   it('2b · the derived figures travel only to the production hero', () => {
     expect(propSitesNaming(['ledgerProduction'])).toEqual([
       'src/components/dashboard/AgentDashboard.jsx :: <AgentDashboardHomeV2 ledgerProduction>',
+      // FR-4: the Policy Ledger header shows the same year figures.
+      'src/components/dashboard/AgentDashboard.jsx :: <FrLedgerHeader ledgerProduction>',
       // FR-3: the Money Overview and the Money headers read the same derived figures.
       'src/components/dashboard/AgentDashboard.jsx :: <FrMoney ledgerProduction>',
       'src/components/dashboard/AgentDashboard.jsx :: <FrMoneyHeader ledgerProduction>',
@@ -613,10 +638,10 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
     }
     // campaignPolicies={policiesAll} is the agent dashboard's alone: once for
     // HomeV2, and under the FR look once each for FrToday (FR-2), FrMoney and
-    // FrMoneyHeader (FR-3).
+    // FrMoneyHeader (FR-3), FrFocus and FrLedgerHeader (FR-4).
     expect([...new Set(hits.filter((h) => /campaignPolicies=/.test(h.line)).map((h) => h.rel))])
       .toEqual(['src/components/dashboard/AgentDashboard.jsx']);
-    expect(hits.filter((h) => /campaignPolicies=/.test(h.line))).toHaveLength(4);
+    expect(hits.filter((h) => /campaignPolicies=/.test(h.line))).toHaveLength(6);
   });
 
   it('the scanner actually scans (guards the guard)', () => {

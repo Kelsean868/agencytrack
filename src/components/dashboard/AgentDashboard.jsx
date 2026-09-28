@@ -56,6 +56,11 @@ import FrToday from '../fr/today/FrToday';
 import FrMoney from '../fr/money/FrMoney';
 import FrMoneyHeader from '../fr/money/FrMoneyHeader';
 import { FR_MONEY_TABS } from '../../lib/fr/moneyModel';
+// FR-4: Focus and Pipeline (new FR routes) and the FR headers above the
+// Numbers hub routes and the Policy Ledger — FR look only.
+import FrFocus from '../fr/work/FrFocus';
+import FrPipeline from '../fr/work/FrPipeline';
+import { FrNumbersHeader, FrLedgerHeader } from '../fr/work/FrWorkHeaders';
 import { formatHomeHeaderDate } from './HomeV2/homeDerivations';
 import Avatar from '../ui/Avatar';
 import { getTodayTT } from '../../utils/dateInputs';
@@ -139,8 +144,12 @@ export default function AgentDashboard() {
   // FR-3: `money` (the Money Overview) exists only under the FR look. If the
   // agent switches the opt-in off while on it, fall back to Goals, the
   // pre-FR Money landing (the Nexus nav has no `money` route).
+  // FR-4 adds `focus` and `pipeline`, likewise FR-only: each falls back to the
+  // Nexus screen that held its content before (Home, the Policy Ledger).
+  const [focusMode, setFocusMode] = useState('calls');
   useEffect(() => {
-    if (!fr && activeTab === 'money') setActiveTab('goals');
+    const FR_ONLY_FALLBACK = { money: 'goals', focus: 'dashboard', pipeline: 'policy-ledger' };
+    if (!fr && FR_ONLY_FALLBACK[activeTab]) setActiveTab(FR_ONLY_FALLBACK[activeTab]);
   }, [fr, activeTab]);
   // Planner → Daily Capture handoff seed (screen 9). Set when the agent taps
   // "Carry into today's log"; blank-fills DailyCaptureV2 for today, then cleared.
@@ -424,10 +433,12 @@ export default function AgentDashboard() {
   // and Goals — the home DeliveryStripCard needs settled/undelivered policies,
   // and the home hero plus every Goals panel read production from the ledger.
   // Fires at most once (the `policies === null` guard); reuses the same fetch.
-  // FR-3: under the FR look the Money Overview (`money`) and the Persistency
-  // header (reinstatement planner) read the ledger too — same fetch, same guard.
+  // Under the FR look, the Money Overview and Persistency header (FR-3), Focus,
+  // Pipeline and the Ledger header (FR-4) read the ledger too — same fetch,
+  // same once-only guard.
   useEffect(() => {
-    const needsPolicies = POLICY_TABS.has(activeTab) || (fr && (activeTab === 'money' || activeTab === 'persistency'));
+    const needsPolicies = POLICY_TABS.has(activeTab)
+      || (fr && ['money', 'persistency', 'focus', 'pipeline', 'policy-ledger'].includes(activeTab));
     if (needsPolicies && policies === null) loadPolicies();
   }, [activeTab, loadPolicies, policies, fr]);
 
@@ -893,6 +904,46 @@ export default function AgentDashboard() {
           resolvedMinimums={resolvedMinimums}
           commissionRate={parseFloat(userProfile?.commissionRate)}
           activeCampaigns={activeCampaigns}
+        />
+      )}
+      {/* ── FR-4 WORK (FR look only): Focus, Pipeline, and the FR headers above
+          the Numbers hub routes and the Policy Ledger (screens below unchanged). ── */}
+      {fr && activeTab === 'focus' && (
+        <FrFocus
+          tenantId={tenantId}
+          uid={user?.uid}
+          mode={focusMode}
+          onMode={setFocusMode}
+          policies={policies}
+          campaignPolicies={policiesAll}
+          persistency={persistency}
+          activeCampaigns={activeCampaigns}
+          todayDailyEntry={todayDailyEntry}
+          onLogToday={() => setShowDailyModal(true)}
+          onOpenTab={setActiveTab}
+        />
+      )}
+      {fr && activeTab === 'pipeline' && (
+        <FrPipeline
+          allSubmissions={allSubmissions}
+          currentWeekSub={currentWeekSub}
+          weekDailyDocs={weekDailyDocs}
+          resolvedMinimums={resolvedMinimums}
+          policies={policies}
+        />
+      )}
+      {fr && ['production-report', 'agent-report', 'history'].includes(activeTab) && (
+        <FrNumbersHeader allSubmissions={allSubmissions} />
+      )}
+      {fr && activeTab === 'policy-ledger' && (
+        <FrLedgerHeader
+          ledgerProduction={ledgerProduction}
+          ledgerPending={ledgerPending}
+          ledgerError={policiesError}
+          campaignPolicies={policiesAll}
+          persistency={persistency}
+          activeCampaigns={activeCampaigns}
+          onOpenWinback={() => { setFocusMode('winback'); setActiveTab('focus'); }}
         />
       )}
       {fr && activeTab === 'money' && (
