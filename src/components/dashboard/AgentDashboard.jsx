@@ -74,6 +74,12 @@ import MdrtTracker from '../goals/MdrtTracker';
 import FinancingSelfViewSkeleton from '../financing/FinancingSelfViewSkeleton';
 import AgentReportView from '../profile/AgentReportView';
 import { PERS_GATE_PCT } from '../../lib/persistency/calculations';
+// FR agent redesign (docs/briefs/fr-agent-redesign-program.md) — FR-1 shell.
+import useLook from '../../hooks/useLook';
+import FrSidebar from '../fr/shell/FrSidebar';
+import FrHubHeader from '../fr/shell/FrHubHeader';
+import { frIconComponent } from '../fr/shell/frIconComponent';
+import { FR_TABBAR, frFlatItems, frTitleFor } from '../fr/shell/frNav';
 
 // PERF-01 — lazy-loaded: the financing tab is not the default view for most
 // agent sessions, so its component + service reads stay out of the entry
@@ -118,6 +124,9 @@ const POLICY_TABS = new Set(['commission', 'dashboard', 'goals']);
 
 export default function AgentDashboard() {
   const { user, userProfile, role, tenantId, branchId } = useAuth();
+  // FR-D3: 'fr' only for an agent who opted in; everything below that reads
+  // `fr` is a no-op otherwise, so the Nexus dashboard renders exactly as before.
+  const fr = useLook() === 'fr';
 
   const [activeTab, setActiveTab]             = useState('dashboard');
   // Planner → Daily Capture handoff seed (screen 9). Set when the agent taps
@@ -218,6 +227,27 @@ export default function AgentDashboard() {
     ),
     [showDailyCTA, todayDailyChecked, todayDailyEntry]
   );
+
+  // FR-1 nav (FR-D9): flat rows for the palette + More sheet, the phone tab bar,
+  // and the More sheet minus what the tab bar already holds. Hub subs (Money)
+  // are covered by the tab bar's `matchTabs`, so they stay out of the sheet.
+  const frItems = useMemo(
+    () => frFlatItems().map((i) => ({ ...i, Icon: frIconComponent(i.frIcon) })),
+    []
+  );
+  const frBottomItems = useMemo(
+    () => FR_TABBAR.map((i) => ({
+      ...i,
+      Icon: frIconComponent(i.frIcon),
+      ...(i.fab ? { dot: showDailyCTA && todayDailyChecked && !todayDailyEntry } : {}),
+    })),
+    [showDailyCTA, todayDailyChecked, todayDailyEntry]
+  );
+  const frDrawerItems = useMemo(() => {
+    const onBar = new Set(FR_TABBAR.flatMap((b) => [b.tabId, ...(b.matchTabs ?? [])]).filter(Boolean));
+    const rows = frItems.filter((i) => !onBar.has(i.tabId));
+    return [...rows, { ...SETTINGS_NAV_ITEM, sectionLabel: undefined }];
+  }, [frItems]);
 
   // ★ Pinned-nav (Nav redesign PR-2) — seeds + persistence + pin/unpin.
   const { pinnedItems, isPinned, pin, unpin } = usePinnedNav({
@@ -696,16 +726,31 @@ export default function AgentDashboard() {
 
   return (
     <Shell
-      navItems={navItems}
-      bottomNavItems={bottomNavItems}
-      drawerNavItems={drawerNavItems}
+      navItems={fr ? frItems : navItems}
+      bottomNavItems={fr ? frBottomItems : bottomNavItems}
+      drawerNavItems={fr ? frDrawerItems : drawerNavItems}
       showWorkspaceToggle={menuLayout !== 'pinned'}
+      showPinnedZone={!fr}
+      sidebar={fr ? (
+        <FrSidebar
+          activeTab={activeTab}
+          onNavigate={setActiveTab}
+          onAction={handleAction}
+          report={currentWeekSub?.status === 'submitted'
+            ? { done: true, title: 'Weekly report is in', sub: 'Tap to review it' }
+            : { done: false, title: 'Weekly report', sub: 'Submit when your week is done' }}
+          user={{ name: displayName, roleLabel, photoURL: userProfile?.photoURL }}
+          onSignOut={handleSignOut}
+        />
+      ) : undefined}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
       onAction={handleAction}
       userProfile={userProfile}
       roleLabel={roleLabel}
-      topbarTitle={activeTab === 'dashboard'
+      topbarTitle={fr
+        ? frTitleFor(activeTab, activeTab === 'profile' ? 'Me' : 'AgencyTrack')
+        : activeTab === 'dashboard'
         ? 'Home'
         : tabTitleFromItems(navItems, activeTab, activeTab === 'settings' ? 'Settings' : activeTab === 'profile' ? 'Profile' : 'Dashboard')}
       // Home redesign R1: a 56px mobile header (avatar · Home · mono date ·
@@ -809,6 +854,9 @@ export default function AgentDashboard() {
           Suppress the dashboard-level screen-enter for game-plan ONLY so the fade
           plays once on populated content instead of firing on the skeleton — all
           other tabs are unchanged. */}
+      {/* FR-1: hub section chips (Money, Numbers) — outside the keyed wrapper so
+          they stay put while the section below changes. Null for non-hub routes. */}
+      {fr && <FrHubHeader activeTab={activeTab} onNavigate={setActiveTab} />}
       <div key={activeTab} className={activeTab === 'game-plan' ? undefined : 'screen-enter'}>
       {/* ── DASHBOARD TAB (v2 home — Hero + PulseStrip + Recent) ── */}
       {activeTab === 'dashboard' && (

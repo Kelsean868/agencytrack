@@ -161,3 +161,187 @@ html[data-look='fr'] h3 {
     animation-delay: 0ms !important;
   }
 }
+
+/* ── FR shell (FR-1): sidebar, hub chips, phone tab bar ──────────────────────
+ * The FR sidebar replaces the Nexus sidebar only when the FR look is on
+ * (AgentDashboard passes it to Shell). Same breakpoints as the Nexus shell:
+ * ≥1024px full (220px) · 768–1023px icon rail (72px) · <768px hidden. */
+html[data-look='fr'] .shell { grid-template-columns: 220px 1fr; }
+.fr-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--fr-side-channels));
+  border-right: 1px solid rgb(var(--border-channels));
+  color: rgb(var(--text-channels));
+  font-family: var(--font-body);
+}
+.fr-sidebar-brand {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  color: inherit;
+}
+.fr-sidebar-mark {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: rgb(var(--fr-accent-channels));
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  padding-bottom: 7px;
+}
+.fr-sidebar-mark > span { width: 3px; border-radius: 2px; background: rgb(var(--fr-on-accent-channels)); }
+.fr-sidebar-mark > span:nth-child(1) { opacity: 0.6; }
+.fr-sidebar-mark > span:nth-child(2) { opacity: 0.8; }
+.fr-sidebar-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 10px 8px;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: thin;
+}
+.fr-sidebar-head {
+  height: 26px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 10px 4px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--text-faint-channels));
+}
+.fr-sidebar-item {
+  min-height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: inherit;
+  transition: background-color 120ms ease;
+}
+.fr-sidebar-item:hover { background: rgb(var(--text-muted-channels) / 0.12); }
+.fr-sidebar-item[data-active='true'] {
+  background: rgb(var(--surface-channels));
+  color: rgb(var(--primary-channels));
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+.fr-sidebar-subs {
+  display: flex;
+  flex-direction: column;
+  margin: 2px 0 4px 20px;
+  padding-left: 10px;
+  border-left: 1px solid rgb(var(--border-channels));
+  animation: frFadeA 260ms var(--fr-ease) both;
+}
+.fr-sidebar-sub {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgb(var(--text-muted-channels));
+  text-align: left;
+}
+.fr-sidebar-sub:hover { background: rgb(var(--text-muted-channels) / 0.12); }
+.fr-sidebar-sub[data-active='true'] { color: rgb(var(--primary-channels)); font-weight: 700; }
+.fr-sidebar-foot {
+  flex-shrink: 0;
+  padding: 10px;
+  border-top: 1px solid rgb(var(--border-channels));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fr-sidebar-report {
+  min-height: 48px;
+  border-radius: 12px;
+  background: rgb(var(--surface-channels));
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fr-sidebar-report[data-done='true'] { background: rgb(var(--fr-accent-tint-channels)); }
+.fr-sidebar-account { display: flex; align-items: center; gap: 8px; min-height: 48px; }
+.fr-sidebar-avatar {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  background: rgb(var(--fr-accent-tint-channels));
+  color: rgb(var(--primary-channels));
+}
+.fr-sidebar-icon-btn {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: rgb(var(--text-muted-channels));
+}
+.fr-sidebar-icon-btn:hover { color: rgb(var(--text-channels)); background: rgb(var(--text-muted-channels) / 0.12); }
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  html[data-look='fr'] .shell { grid-template-columns: 72px 1fr; }
+  .fr-sidebar-hide { display: none !important; }
+  .fr-sidebar-brand { justify-content: center; padding: 0; }
+  .fr-sidebar-scroll { padding: 0 8px 8px; }
+  .fr-sidebar-item, .fr-sidebar-report { justify-content: center; padding: 0; }
+  .fr-sidebar-account { flex-direction: column; }
+}
+@media (max-width: 767px) {
+  html[data-look='fr'] .shell { grid-template-columns: 1fr; }
+  .fr-sidebar { display: none; }
+}
+
+/* Phone tab bar: the existing MobileBottomNav, dressed as canvas M3-Nav —
+ * glass bar, 11px labels, the + as a 56px ink tile. */
+html[data-look='fr'] .bottom-nav {
+  background: rgb(var(--bg-channels) / 0.86);
+  -webkit-backdrop-filter: saturate(160%) blur(18px);
+  backdrop-filter: saturate(160%) blur(18px);
+  border-top: 0.5px solid rgb(var(--border-channels));
+}
+html[data-look='fr'] .bottom-nav-item { font-family: var(--font-body); }
+html[data-look='fr'] .bottom-nav-item.active { color: rgb(var(--primary-channels)); font-weight: 700; }
+html[data-look='fr'] .bottom-nav-fab {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: rgb(var(--text-channels));
+  color: rgb(var(--bg-channels));
+  border: 0;
+  box-shadow: none;
+  transform: none;
+}
+html[data-look='fr'] .bottom-nav-fab:hover { transform: none; box-shadow: none; }
+/* Canvas M3-Nav: the + tile carries no visible label (it has an aria-label). */
+html[data-look='fr'] .bottom-nav-fab-label { display: none; }

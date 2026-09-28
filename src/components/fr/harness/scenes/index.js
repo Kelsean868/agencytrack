@@ -3,5 +3,6 @@
  * Scene: { id, title, slice, viewport: 'desktop'|'phone', hasVariants?, pager?, render }
  */
 import { FOUNDATION_SCENES } from './foundationScenes';
+import { SHELL_SCENES } from './shellScenes';
 
-export const SCENES = [...FOUNDATION_SCENES];
+export const SCENES = [...FOUNDATION_SCENES, ...SHELL_SCENES];

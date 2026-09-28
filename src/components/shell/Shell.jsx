@@ -58,6 +58,10 @@ export default function Shell({
   showWorkspaceToggle = false,
   workspace,
   onWorkspaceChange,
+  // FR-1 (docs/briefs/fr-agent-redesign-program.md): an optional replacement
+  // for the desktop sidebar. AgentDashboard passes <FrSidebar/> only when the
+  // FR look is on; every other caller omits it and gets <Sidebar/> unchanged.
+  sidebar,
   children,
 }) {
   const mainRef = useRef(null);
@@ -140,7 +144,7 @@ export default function Shell({
           the ~20-item sidebar and jump straight to content (A11Y-103,
           WCAG 2.4.1). Visually hidden until focused (see .skip-link in index.css). */}
       <a href="#main-content" className="skip-link">Skip to main content</a>
-      <Sidebar
+      {sidebar ?? <Sidebar
         navItems={sidebarNavItems}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -159,7 +163,7 @@ export default function Shell({
         showWorkspaceToggle={showWorkspaceToggle}
         workspace={workspace}
         onWorkspaceChange={onWorkspaceChange}
-      />
+      />}
       <div className="shell-main">
         <TopBar
           title={topbarTitle}
