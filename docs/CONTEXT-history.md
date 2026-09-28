@@ -1925,3 +1925,31 @@ An agent who switches on "Try the new design" now gets the FR navigation: a side
 An agent who switches on "Try the new design" now lands on the FR Today screen instead of the current home: the same numbers from the same sources, laid out as one wide grid on desktop and four swipe pages on the phone (Today · Week · Money · Campaign). Nobody else sees any change. No rules, functions or indexes changed. The read-only preview click-through with the opt-in on is still owed (FOLLOW_UPS § FR preview click-through, now covering FR-0 to FR-2).
 
 **Next:** merge #1002 (FR-3 Money), then #1003 (FR-4 Work), then #1004 (FR-5 Compete/You); each is rebased onto main after the one before it merges. Kyron to rule on award trophies (FR-5) and the planner's 2-month "stops counting soon" window. App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
+
+## Archived from CONTEXT.md § Last updated — 2026-09-28 consolidated fill (PRs #1006, #1007, #1008)
+
+**FR-3 Money SHIPPED (2026-09-28), PR #1002 squash `e7dc8ef2` (feature-branch HEAD `26a358a4`).** Under the per-user FR opt-in only: Money Overview (new route `money`: settled-API pace chart, persistency vs the gate, campaign slot, one headline per calculator, What if), an FR header of glanceable tiles above each of the six existing Money calculators (all mounted unchanged, tested), persistency month bars from the 90% gate, and the read-only reinstatement planner (presets "Fewest calls" and "Least money", any mix tickable, "Stops counting after <Mon YYYY>" flag within `SOON_MONTHS` = 2 of the planned month — Kyron ruling 28 Sep, approved as built). Persistency figures come only from `buildPersistencyOutlook`; `persistencyOutlook`'s figure gains an additive `evidence` field. CI green.
+
+## Archived from CONTEXT.md § Current main HEAD — 2026-09-28 consolidated fill (PRs #1006, #1007, #1008)
+
+`e7dc8ef2` (PR #1002 squash - FR-3 Money, 2026-09-28). Merge `2026-09-28T05:12:42Z`. **No deploy-gated surfaces touched** (`git diff --stat 9ecbc0bf..e7dc8ef2 -- firestore.rules firestore.indexes.json storage.rules functions/` is empty).
+
+## Archived from CONTEXT.md § Active track — 2026-09-28 consolidated fill (PRs #1006, #1007, #1008)
+
+**FR agent redesign program — IN PROGRESS.** FR-0 (#998), FR-1 (#999), FR-2 (#1001 `7c8cb3cc`) and FR-3 (#1002 `e7dc8ef2`) SHIPPED. Open, human-merge: #1003 FR-4 Work (restacked onto `e7dc8ef2` by this fill), then #1004 FR-5 Compete/You (draft; restack, mark ready, CodeRabbit after #1003). Kyron rulings 28 Sep: award trophies are NOT in FR-5 (follow-up "FR-5b", separate PR); `SOON_MONTHS` = 2 approved, two small nits banked for a green-channel PR after #1004. FR-6 (Mark reinstated) is a separate brief.
+
+## Archived from CONTEXT.md § Recently shipped — 2026-09-28 consolidated fill (PRs #1006, #1007, #1008)
+
+| [#1001](https://github.com/Kelsean868/agencytrack/pull/1001) | `7c8cb3cc` | **feat(fr): FR-2 Today.** Under the FR opt-in only: FrToday replaces HomeV2 on the dashboard tab (same props and derivations, no new reads). One layout per width (`useMinWidth`): 12-col grid on wide screens, swipe pages Today · Week · Money · Campaign on the phone. `todayModel`: hero, tiles, week meters, computed coach lines, settled API by issue month. Tile figures fit at 360px. |
+
+## Archived from CONTEXT.md § Recently shipped — 2026-09-28 consolidated fill (PRs #1006, #1007, #1008)
+
+| [#999](https://github.com/Kelsean868/agencytrack/pull/999) | `d3ea1769` | **feat(fr): FR-1 shell.** Under the FR opt-in only: FR sidebar (Work · Numbers · Money · Compete · You), Money/Numbers hub chips above the existing screens, phone tab bar Today · Money · + · Arena · More, `frNav` route map (no destination lost, tested). Carries the `AgentProductionView` TT-date test fix. |
+
+## Archived from CONTEXT.md § Where we left off — 2026-09-28 consolidated fill (PRs #1006, #1007, #1008)
+
+**PRIOR - 2026-09-28. FR-3 Money merged as `e7dc8ef2` (#1002).**
+
+An agent who switches on "Try the new design" now gets a Money Overview (pace to MDRT or their goal, persistency against the gate, one headline per calculator, a What if), a glanceable FR header above each of the six existing Money calculators (the calculators themselves are unchanged), and a read-only reinstatement planner that shows which lapsed policies to win back to clear the persistency gate. Nothing is saved from the planner. Nobody else sees any change. No rules, functions or indexes changed. The read-only preview click-through with the opt-in on is still owed (FOLLOW_UPS § FR preview click-through, now covering FR-0 to FR-3).
+
+**Next:** merge #1003 (FR-4 Work, restacked by this fill), then #1004 (FR-5 Compete/You, without award trophies per Kyron's ruling); then the green-channel planner-nits PR and, separately, FR-5b (award helper). App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.

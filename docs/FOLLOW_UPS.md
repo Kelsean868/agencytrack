@@ -18,7 +18,7 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999), FR-2 (#1001), FR-3 (#1002), FR-4 (#1003) and FR-5 (#1004) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at each FR post-merge through #1004) | LOW | FR redesign / verification | — | see § FR preview click-through |
+| FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999), FR-2 (#1001), FR-3 (#1002), FR-4 (#1003), FR-5 (#1004) and FR-5b (#1008) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at each FR post-merge through #1008) | LOW | FR redesign / verification | — | see § FR preview click-through |
 | "YTD vs tenure floor" bars (agent Production view, agent report view) show the API floor without the 40-apps company minimum — fold into the redesign, not a standalone fix (banked 2026-09-27, #994 post-merge) | LOW | Goals / company floor | redesign | see § YTD vs tenure floor bars: show the apps minimum |
 | Report-Only CSP `connect-src` in `vercel.json` lacks `https://www.google.com` — reCAPTCHA Enterprise (App Check, live since P2e) calls it; enforcing the CSP as-is would block App Check token fetches. Add it before the CSP leaves Report-Only (banked 2026-09-27, P2e post-merge). **Fix in PR #994; stays open until the enforce-time check below** | MEDIUM | Security / CSP | before CSP enforce | see § CSP connect-src needs www.google.com before enforce |
 | App Check is in monitor mode — switch each service to enforce only after 7 consecutive clean days per `docs/runbooks/app-check.md` §3 (key live 2026-09-27, so no earlier than 2026-10-04); Storage → Firestore → Functions, one at a time (banked 2026-09-27, P2e post-merge) | MEDIUM | Security / App Check | not before 2026-10-04 | see § App Check: enforce after 7 clean days |
@@ -7753,9 +7753,12 @@ After #994, the agent Goals tab and the manager agent drill show "Company minimu
 - 5a. Trophy room: lit badges match the agent's leaderboard badges (Nexus Career badge grid may differ — it uses the old client thresholds, see the FR-5 PR); level and streak read from the same doc as the points card; tapping a trophy shows "How you earn it" (phone: the detail scrolls into view).
 - 5b. Campaign opens the existing campaign screen (or "No campaign running" linking to Awards); the Leaderboard shows the Arena header above the unchanged board; Profile shows the Me header, and "Trophy room" opens it.
 
+**Extended 2026-09-28 at the #1006/#1007/#1008 consolidated post-merge fill (`71e22c3e`) to FR-5b award trophies.** Same waiver reason; the autonomous run that built it also barred preview sign-in. FR-5 harness walk passed 68/68 on `95c427b2`; CI green on `c41c2e9a`. Add to the walk:
+- 5c. Trophy room → the Awards shelf after Levels: each award trophy agrees with the same award's card on the Awards tab (lit ↔ Qualified, captioned "Qualified — <period>"; otherwise the same first-criterion figure); no trophy says "won" or shows a prize amount; Rookie of the Year and New Business Advisor appear only when the Awards tab shows them too; the room header's earned/total counts include awards.
+
 ## FR-5b: award calculation shared helper
 
-**RESOLVED by #1008 (branch `feat/fr-5b-award-trophies`, brief `docs/briefs/fr-5b-award-trophies-kickoff.md`): characterization tests first (`e8559659`), then the move to `src/lib/awards/agentAwardModel.js` (`fc64137c`; the characterization test file and snapshot are byte-identical at the move and at HEAD), then the award trophies in the Trophy room from the same helper. Christmas campaign/tier and club tiers are deliberately not shown (brief D5: no engine award to light them). Merge channel: human-merge.**
+**RESOLVED by #1008 (squash `71e22c3e`, merged 2026-09-28; branch `feat/fr-5b-award-trophies`, brief `docs/briefs/fr-5b-award-trophies-kickoff.md`): characterization tests first (`e8559659`), then the move to `src/lib/awards/agentAwardModel.js` (`fc64137c`; the characterization test file and snapshot are byte-identical at the move and at HEAD), then the award trophies in the Trophy room from the same helper. Christmas campaign/tier and club tiers are deliberately not shown (brief D5: no engine award to light them). Merge channel: human-merge.**
 
 **Banked 2026-09-28 at the #1002 post-merge fill (`e7dc8ef2`). Severity: LOW. Kyron ruling 28-09-2026.**
 
@@ -7772,7 +7775,7 @@ After #994, the agent Goals tab and the manager agent drill show "Company minimu
 
 ## FR-3 planner nits (SOON_MONTHS copy + boundary test)
 
-**RESOLVED by #1006 (branch `fix/fr-3-planner-nits`, brief `docs/briefs/fr-3-planner-nits-kickoff.md`): a, b and c done, each mutation-checked (see the PR). Merge channel for that run: human-merge (no preview smoke possible — previews are bound to production).**
+**RESOLVED by #1006 (squash `4cf61be9`, merged 2026-09-28; branch `fix/fr-3-planner-nits`, brief `docs/briefs/fr-3-planner-nits-kickoff.md`): a, b and c done, each mutation-checked (see the PR). Merge channel for that run: human-merge (no preview smoke possible — previews are bound to production).**
 
 **Banked 2026-09-28 at the #1002 post-merge fill (`e7dc8ef2`). Severity: LOW. Kyron ruling 28-09-2026: `SOON_MONTHS` = 2 approved as built; these two nits go in one small follow-up PR after #1004, green-channel eligible (test + copy only).**
 
