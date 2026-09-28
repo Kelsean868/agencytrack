@@ -1780,3 +1780,28 @@ LX, MX, L3 and FX are all live and passed production smoke. Report: `docs/report
 A branch manager now sees and changes only their own branch; a unit manager only their own unit. Rules, the two user-admin functions and the two new `policies` indexes are live (queried from Firebase, not inferred). Whether `backfill-branchid-p2b.mjs --apply` has run against `tatillife_south` was not checked in this fill.
 
 **Next:** P2c financing integrity (#988).
+
+## Archived from CONTEXT.md § Last updated — 2026-09-28 fill (PR #998)
+
+**P2c financing integrity SHIPPED AND DEPLOYED (2026-09-27), PR #988 merge `4eddb96a` (feature-branch HEAD `d96f7607`).** SEC-09 (`firestore.rules`): `hasOnly` key lists on `financingTerms` (14 keys), `financing` (26) and `financingReconciliation` (22); a `financingTerms` create must start at `not_on_financing` and an update keeps the status or makes a legal move via new `isLegalFinancingTransition` (mirrors `LEGAL_TRANSITIONS` in `src/services/financingService.js`). **Ruling (Kyron, 27 Sep 2026):** the `adjustmentPct` -1 floor is replaced by `managerFinancing <= financingTerms/{agentId}.agreedMonthlyFinancing` (a `get()` that runs only when the manager figure is set or changed); upper bound `adjustmentPct <= 1` kept. **Ruling:** SMs with `canConfirmSettlements` may confirm. `runningBalance` stays unbounded (a negative balance is a legitimate surplus). BUG-07: `transitionFinancingStatus` runs as one `runTransaction`. P2b scope arms unchanged. Per dispatcher: dry run clean; prod role walk 80 screens, 0 permission errors. Brief: `docs/briefs/p2c-financing-integrity.md`. **Deploy state QUERIED (see Current main HEAD).**
+
+## Archived from CONTEXT.md § Current main HEAD — 2026-09-28 fill (PR #998)
+
+`4eddb96a` (PR #988 merge - P2c financing integrity SEC-09/BUG-07 + P2b leftovers, 2026-09-27). **MERGED AND DEPLOYED - QUERIED, not inferred.** Merge `2026-09-27T14:00:09Z`. Only deploy-gated surface: `firestore.rules` (`git diff --stat a7c6dc4a..4eddb96a -- firestore.rules firestore.indexes.json storage.rules functions/` shows `firestore.rules` only). Rules API readback: released ruleset `18feeb94` (released `2026-09-27T14:00:43Z`, after the merge) is byte-identical to `firestore.rules` on main (141,440 bytes).
+
+## Archived from CONTEXT.md § Active track — 2026-09-28 fill (PR #998)
+
+**Security audit P2 (2026-09-24 audit) — IN PROGRESS.** P2a (#978 `5faf4a6a`), P2b (#987 `0e78089b`) and P2c (#988 `4eddb96a`) SHIPPED AND DEPLOYED. Next: P2d + P2e (numbers, kiosk, App Check), brief `docs/briefs/p2d-p2e-numbers-kiosk-appcheck.md`, to run as a cloud session.
+
+## Archived from CONTEXT.md § Recently shipped — 2026-09-28 fill (PR #998)
+
+| [#988](https://github.com/Kelsean868/agencytrack/pull/988) | `4eddb96a` | **P2c: financing integrity (SEC-09, BUG-07) + P2b leftovers.** `hasOnly` key lists on the three financing collections; `financingTerms` status moves must be legal (`isLegalFinancingTransition`); manager figure must not exceed agreed (ruling replaces the `adjustmentPct` -1 floor); `transitionFinancingStatus` in one transaction. Rules live (queried). |
+| [#987](https://github.com/Kelsean868/agencytrack/pull/987) | `0e78089b` | **P2b: branch scoping (SEC-05, SEC-08) + branchId backfill.** BM own branch, UM own unit on policies, the three financing collections, manager submission writes, user edits and `updateUser`/`deactivateUser`; `branchId`/`unitId` stamped on financing writes; backfill script `backfill-branchid-p2b.mjs`; two new `policies` indexes. Rules, functions and indexes live (queried). |
+
+## Archived from CONTEXT.md § Where we left off — 2026-09-28 fill (PR #998)
+
+**PRIOR - 2026-09-27 (afternoon). P2c financing integrity merged as `4eddb96a` (#988).**
+
+Financing docs now accept only known fields. A financing status can only make a legal move. A manager's confirmed figure can no longer exceed the agreed amount. Live rules match main (queried). Per dispatcher: dry run clean; prod role walk 80 screens, 0 permission errors.
+
+**Next:** the P2d + P2e brief (`docs/briefs/p2d-p2e-numbers-kiosk-appcheck.md`) lands docs-only and runs as a cloud session. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
