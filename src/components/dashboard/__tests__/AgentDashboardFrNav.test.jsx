@@ -90,8 +90,9 @@ vi.mock('../../../utils/buildActivityEvents', () => ({ buildActivityEvents: () =
 // ── Shell mock — captures nav props for assertion ────────────────────────────
 
 vi.mock('../../shell/Shell', () => ({
-  default: ({ children, navItems, bottomNavItems, drawerNavItems, activeTab, sidebar, showPinnedZone }) => {
+  default: ({ children, navItems, bottomNavItems, drawerNavItems, activeTab, setActiveTab, sidebar, showPinnedZone }) => {
     captured.sidebar        = sidebar;
+    captured.setActiveTab   = setActiveTab;
     captured.showPinnedZone = showPinnedZone;
     captured.navItems       = navItems;
     captured.bottomNavItems = bottomNavItems;
@@ -395,11 +396,17 @@ describe('AgentDashboard — FR-5 Compete / You', () => {
     expect(await screen.findByTestId('fr-trophies-mock')).toBeInTheDocument();
   });
 
-  it('without the opt-in: no FR-5 surface; the Leaderboard renders exactly as before', async () => {
+  it('without the opt-in: no FR-5 surface; the Leaderboard and Profile render exactly as before', async () => {
     render(<AgentDashboard />);
     expect(NEXUS_TABS).not.toContain('campaign');
     expect(NEXUS_TABS).not.toContain('trophies');
+    // Visit each wrapped tab through the Nexus shell, so a broken `fr` gate would show its header.
+    act(() => captured.setActiveTab('production-leaderboard'));
+    expect(await screen.findByTestId('production-leaderboard-surface-mock')).toBeInTheDocument();
     expect(screen.queryByTestId('fr-arena-header-mock')).toBeNull();
+    act(() => captured.setActiveTab('profile'));
+    await screen.findByTestId('shell-mock');
+    expect(captured.activeTab).toBe('profile');
     expect(screen.queryByTestId('fr-me-header-mock')).toBeNull();
   });
 
