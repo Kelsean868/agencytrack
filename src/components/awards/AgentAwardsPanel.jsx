@@ -1,10 +1,10 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { TrendingUp, TrendingDown, Minus, Trophy } from 'lucide-react';
-import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, computeAwardPace, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../../utils/awardsEngine';
 import { formatCurrency } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
 import { getOwnPolicies } from '../../services/policiesService';
-import { awardRowsFromLedger, deriveYearProduction, provenanceLine } from '../../lib/ledgerProduction';
+import { deriveYearProduction, provenanceLine } from '../../lib/ledgerProduction';
+import { awardInputs, agentAwardsView } from '../../lib/awards/agentAwardModel';
 import { ttDateParts } from '../../utils/dateInputs';
 import { HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer } from './awardPrimitives';
 import CampaignScreenWithTier from '../campaigns/CampaignScreenWithTier';
@@ -113,21 +113,13 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
 
   useEffect(() => { loadLedgerPolicies(); }, [loadLedgerPolicies]);
 
-  // H2 item 2 — the ledger is the source when the agent is flagged OR holds at
-  // least one ledger policy. An agent with neither keeps confirmed settlements.
-  // The flag is kept: it still forces the ledger for a flagged agent whose
-  // ledger is empty.
-  const readsLedger = usesPolicyLedger || (ledgerPolicies?.length ?? 0) > 0;
-
-  const activeConfirmedData = useMemo(() => {
-    if (!readsLedger) return confirmedSettlements ?? [];
-    const persistByPeriod = {};
-    for (const s of (confirmedSettlements ?? [])) {
-      if (s.periodKey && s.persistency) persistByPeriod[s.periodKey] = s.persistency;
-    }
-    return awardRowsFromLedger(ledgerPolicies ?? [])
-      .map((row) => ({ ...row, persistency: persistByPeriod[row.periodKey] ?? 0 }));
-  }, [readsLedger, ledgerPolicies, confirmedSettlements]);
+  // H2 item 2 — which source the awards read, and the rows the engine reads.
+  // The derivation lives in lib/awards/agentAwardModel (shared with the FR
+  // Trophy room, FR-5b); this panel only feeds it its own ledger fetch.
+  const { readsLedger, rows: activeConfirmedData } = useMemo(
+    () => awardInputs({ ledgerPolicies, confirmedSettlements, usesPolicyLedger }),
+    [ledgerPolicies, confirmedSettlements, usesPolicyLedger],
+  );
 
   const now = useMemo(() => currentDate ?? new Date(), [currentDate]);
 
@@ -140,36 +132,12 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
     return { year, ...deriveYearProduction(ledgerPolicies, { year }).settled };
   }, [readsLedger, ledgerPolicies, now]);
 
-  const computation = useMemo(() => {
-    try {
-      // Rule 10 — the campaigns are ALREADY loaded by the dashboard via
-      // getActiveCampaignsForAgent, so this is a prop, not a new read. A
-      // flagged campaign covering this month/quarter turns the four advisor
-      // prize strings into "Recognition only"; nothing else about the award
-      // changes, because the award is still won.
-      const rawAwards = computeAgentAwards(activeConfirmedData, submissions, agentProfile, now, ruleset, activeCampaigns);
-      const awards = {};
-      for (const [id, award] of Object.entries(rawAwards)) {
-        const periodCtx = getPeriodCtx(award.category, now);
-        const paceStatus = computeAtRiskStatus(award, periodCtx);
-        const persistencyBlock = isPersistencyOnlyBlock(award);
-        let tierGap = null;
-        if (award.category === 'club' && !award.eligible) {
-          const annualApi = award.criteria[0]?.current ?? 0;
-          tierGap = nextTierDistance(annualApi, ruleset.clubAward.tiers);
-        }
-        // §2.7 pace narrative — same periodCtx.weeksElapsed already used for
-        // paceStatus above; see computeAwardPace's own doc comment for the
-        // honesty rule (period-total ÷ elapsed-weeks, null for '%' criteria).
-        const pace = computeAwardPace(award, periodCtx.weeksElapsed, now);
-        awards[id] = { ...award, paceStatus, persistencyBlock, tierGap, pace };
-      }
-      return { awards, ratioTrends: computeRatioTrends(submissions), error: null };
-    } catch (e) {
-      console.error(e);
-      return { awards: {}, ratioTrends: null, error: 'Failed to compute awards.' };
-    }
-  }, [activeConfirmedData, submissions, agentProfile, now, ruleset, activeCampaigns]);
+  // Every award with its pace, persistency block, club gap and pace narrative
+  // (lib/awards/agentAwardModel — the same view the FR Trophy room reads).
+  const computation = useMemo(
+    () => agentAwardsView({ rows: activeConfirmedData, submissions, agentProfile, now, ruleset, activeCampaigns }),
+    [activeConfirmedData, submissions, agentProfile, now, ruleset, activeCampaigns],
+  );
 
   const { awards, ratioTrends, error } = computation;
 

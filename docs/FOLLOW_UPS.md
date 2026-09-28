@@ -18,7 +18,6 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| FR-5b: extract the award calculation (AgentAwardsPanel's award inputs: ledger vs settlements, persistency merge) into a shared helper, then add award trophies to the FR Trophy room — characterization tests first (Kyron ruling 28-09-2026; banked #1002 post-merge) | LOW | FR redesign / awards | — | see § FR-5b: award calculation shared helper |
 | FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999), FR-2 (#1001), FR-3 (#1002), FR-4 (#1003) and FR-5 (#1004) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at each FR post-merge through #1004) | LOW | FR redesign / verification | — | see § FR preview click-through |
 | "YTD vs tenure floor" bars (agent Production view, agent report view) show the API floor without the 40-apps company minimum — fold into the redesign, not a standalone fix (banked 2026-09-27, #994 post-merge) | LOW | Goals / company floor | redesign | see § YTD vs tenure floor bars: show the apps minimum |
 | Report-Only CSP `connect-src` in `vercel.json` lacks `https://www.google.com` — reCAPTCHA Enterprise (App Check, live since P2e) calls it; enforcing the CSP as-is would block App Check token fetches. Add it before the CSP leaves Report-Only (banked 2026-09-27, P2e post-merge). **Fix in PR #994; stays open until the enforce-time check below** | MEDIUM | Security / CSP | before CSP enforce | see § CSP connect-src needs www.google.com before enforce |
@@ -7755,6 +7754,8 @@ After #994, the agent Goals tab and the manager agent drill show "Company minimu
 - 5b. Campaign opens the existing campaign screen (or "No campaign running" linking to Awards); the Leaderboard shows the Arena header above the unchanged board; Profile shows the Me header, and "Trophy room" opens it.
 
 ## FR-5b: award calculation shared helper
+
+**RESOLVED by #1008 (branch `feat/fr-5b-award-trophies`, brief `docs/briefs/fr-5b-award-trophies-kickoff.md`): characterization tests first (`e8559659`), then the move to `src/lib/awards/agentAwardModel.js` (`fc64137c`; the characterization test file and snapshot are byte-identical at the move and at HEAD), then the award trophies in the Trophy room from the same helper. Christmas campaign/tier and club tiers are deliberately not shown (brief D5: no engine award to light them). Merge channel: human-merge.**
 
 **Banked 2026-09-28 at the #1002 post-merge fill (`e7dc8ef2`). Severity: LOW. Kyron ruling 28-09-2026.**
 

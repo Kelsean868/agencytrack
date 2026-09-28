@@ -8,7 +8,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import FrTrophyRoomView from '../FrTrophyRoomView';
 import FrCampaignView from '../FrCampaignView';
 import { FrArenaHeaderView, FrMeHeaderView } from '../FrCompeteHeaderViews';
-import { trophyRoom, arenaStanding, meTiles } from '../../../../lib/fr/competeModel';
+import { trophyRoom, arenaStanding, meTiles, awardTrophies } from '../../../../lib/fr/competeModel';
 
 const ROOM = trophyRoom({ badges: ['first_submission', 'streak_4', 'big_week'], points: 2100, weeklyStreak: 6 });
 
@@ -49,6 +49,47 @@ describe('FrTrophyRoomView', () => {
     rerender(<FrTrophyRoomView room={trophyRoom(null)} />);
     expect(screen.getByTestId('trophy-streak')).toHaveTextContent('—');
     expect(screen.getByTestId('trophy-count')).toHaveTextContent('1 of 14 earned');
+  });
+});
+
+describe('FrTrophyRoomView — award trophies (FR-5b)', () => {
+  const NOW = new Date('2026-09-15T16:00:00Z');
+  const crit = (label, target, current, unit) => ({ label, target, current, unit });
+  const AWARDS = awardTrophies({
+    awards: {
+      quarterly_api: { id: 'quarterly_api', name: 'Quarterly API Award', category: 'quarterly', eligible: true, criteria: [crit('Quarterly API', 125000, 135000, 'TTD')] },
+      advisor_month_api: { id: 'advisor_month_api', name: 'Advisor of the Month — API', category: 'monthly', eligible: false, criteria: [crit('Monthly API', 50000, 30000, 'TTD')] },
+    },
+  }, NOW);
+  const AROOM = trophyRoom({ badges: ['first_submission'], points: 2100, weeklyStreak: 2 }, AWARDS);
+
+  it('an Awards shelf after Levels: qualified shows "Qualified — {period}", unlit shows progress; counts include awards', () => {
+    render(<FrTrophyRoomView room={AROOM} />);
+    const shelf = screen.getByTestId('trophy-shelf-awards');
+    expect(within(shelf).getByRole('heading', { name: 'Awards' })).toBeInTheDocument();
+    expect(within(screen.getByTestId('trophy-quarterly_api')).getByText('Qualified — Q3 2026')).toBeInTheDocument();
+    expect(within(screen.getByTestId('trophy-advisor_month_api')).getByText('60% there')).toBeInTheDocument();
+    expect(screen.getByTestId('trophy-count')).toHaveTextContent(`${AROOM.earnedCount} of 16 earned`);
+    fireEvent.click(screen.getByTestId('trophy-quarterly_api'));
+    expect(screen.getByTestId('trophy-detail')).toHaveTextContent('Qualified — Q3 2026');
+    expect(screen.getByTestId('trophy-detail')).toHaveTextContent('Decided at the end of the period');
+    expect(screen.getByTestId('trophy-detail')).not.toHaveTextContent(/won/i);
+  });
+
+  it('the Awards group has its own loading and error states (badges and levels stay)', () => {
+    const onRetryAwards = vi.fn();
+    const { rerender } = render(<FrTrophyRoomView room={ROOM} awardsState="loading" />);
+    expect(within(screen.getByTestId('trophy-shelf-awards')).getByText('Awards')).toBeInTheDocument();
+    expect(screen.getByTestId('trophy-shelf-awards').querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(screen.getByTestId('trophy-shelf-badges')).toBeInTheDocument();
+    rerender(<FrTrophyRoomView room={ROOM} awardsState="error" onRetryAwards={onRetryAwards} />);
+    fireEvent.click(within(screen.getByTestId('trophy-shelf-awards')).getByRole('button', { name: 'Retry' }));
+    expect(onRetryAwards).toHaveBeenCalled();
+  });
+
+  it('no award from the engine: no Awards shelf (never an empty fake group)', () => {
+    render(<FrTrophyRoomView room={ROOM} />);
+    expect(screen.queryByTestId('trophy-shelf-awards')).toBeNull();
   });
 });
 

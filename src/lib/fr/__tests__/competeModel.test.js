@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { trophyRoom, arenaStanding, arenaTiles, meTiles, BADGE_TROPHY_KIND } from '../competeModel';
+import { trophyRoom, arenaStanding, arenaTiles, meTiles, BADGE_TROPHY_KIND, AWARD_TROPHY_KIND, awardTrophies, awardPeriodLabel } from '../competeModel';
 import { BADGE_DEFINITIONS, LEVEL_THRESHOLDS } from '../../gamificationConfig';
 import { TROPHY_KINDS } from '../../../components/fr/trophies/trophyKinds';
 
@@ -108,5 +108,50 @@ describe('meTiles', () => {
     expect(tiles.map((t) => t.value)).toEqual(['Associate', 520, 1, '3 of 14']);
     expect(tiles[0].note).toBe('980 points to Pro');
     expect(tiles[2].note).toBe('week in a row');
+  });
+});
+
+describe('awardTrophies (FR-5b)', () => {
+  const NOW = new Date('2026-09-15T16:00:00Z');
+  const crit = (label, target, current, unit) => ({ label, target, current, unit });
+  const VIEW = {
+    awards: {
+      advisor_month_api: { id: 'advisor_month_api', name: 'Advisor of the Month — API', category: 'monthly', eligible: false, criteria: [crit('Monthly API', 50000, 30000, 'TTD'), crit('Persistency', 90, 91, '%')] },
+      quarterly_api: { id: 'quarterly_api', name: 'Quarterly API Award', category: 'quarterly', eligible: true, criteria: [crit('Quarterly API', 125000, 135000, 'TTD')] },
+      centurion: { id: 'centurion', name: 'Centurion Award', category: 'annual', eligible: false, criteria: [crit('Annual Apps', 100, 99.5, 'apps')] },
+      persistency_gold: { id: 'persistency_gold', name: 'Persistency Award — Gold', category: 'annual', eligible: false, criteria: [crit('Avg Persistency', 90, 86.25, '%')] },
+      bronze_club_l1: { id: 'bronze_club_l1', name: 'Bronze Club', category: 'club', eligible: false, criteria: [crit('Annual API', 100000, 5000, 'TTD')] },
+    },
+  };
+
+  it('lit only when the engine says eligible, captioned with the award’s own period; never "won" or a prize', () => {
+    const items = awardTrophies(VIEW, NOW);
+    const by = Object.fromEntries(items.map((t) => [t.key, t]));
+    expect(by.quarterly_api).toMatchObject({ kind: 'quarterly-api', earned: true, earnedText: 'Qualified — Q3 2026', progress: null, left: null });
+    expect(by.advisor_month_api).toMatchObject({ kind: 'aotm-api', earned: false, earnedText: 'Qualified — Sep 2026', progress: 60, left: 'TTD 20,000 to go' });
+    expect(by.centurion).toMatchObject({ earned: false, progress: 99, left: '1 more app' });
+    expect(by.persistency_gold.left).toBe('86.3% now · gate 90%');
+    for (const t of items) expect(`${t.earnedText} ${t.how}`).not.toMatch(/\bwon\b|Recognition|Bonus|Gift/);
+  });
+
+  it('only engine awards with a trophy kind appear, in the frozen order; club tiers never', () => {
+    expect(awardTrophies(VIEW, NOW).map((t) => t.key)).toEqual(['advisor_month_api', 'quarterly_api', 'persistency_gold', 'centurion']);
+    expect(awardTrophies(null, NOW)).toEqual([]);
+    Object.values(AWARD_TROPHY_KIND).forEach((k) => expect(TROPHY_KINDS).toContain(k));
+  });
+
+  it('period labels follow the engine’s calendar fields', () => {
+    expect(awardPeriodLabel('monthly', NOW)).toBe('Sep 2026');
+    expect(awardPeriodLabel('quarterly', NOW)).toBe('Q3 2026');
+    expect(awardPeriodLabel('annual', NOW)).toBe('2026');
+  });
+
+  it('trophyRoom counts award trophies and can offer them as closest to unlocking', () => {
+    const awards = awardTrophies(VIEW, NOW);
+    const room = trophyRoom({ badges: ['first_submission'], points: 10 }, awards);
+    expect(room.total).toBe(9 + 5 + 4);
+    expect(room.earnedCount).toBe(1 + 1 + 1); // first_submission, Rookie level, quarterly_api
+    expect(room.closest.map((t) => t.key)).toContain('centurion');
+    expect(trophyRoom(null).awards).toEqual([]);
   });
 });
