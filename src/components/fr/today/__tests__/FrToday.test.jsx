@@ -24,7 +24,8 @@ vi.mock('../../../dashboard/HomeV2/StandardDetail', () => ({
 
 import FrToday from '../FrToday';
 import { deriveYearProduction } from '../../../../lib/ledgerProduction';
-import { buildPersistencyOutlook } from '../../../../lib/persistency/persistencyOutlook';
+import { buildPersistencyOutlook, formatOutlookPct } from '../../../../lib/persistency/persistencyOutlook';
+import { formatPersistencyPct } from '../../../../lib/persistency/persistencyRounding';
 import { PersistencyGateBarBlock } from '../../../campaigns/CampaignScreenBlocks';
 
 const imported = (over) => ({ importSource: 'oipa_import', newBusinessType: 'nb_ordinary', productLine: 'life', settledAPI: null, ...over });
@@ -37,7 +38,7 @@ const POLICIES_ALL = [
 
 // A book whose persistency is known to the outlook: the Kyron-shaped fixture
 // persistencyOutlook.test.js pins (export 15 Sep 2026 → Aug derived 89.6 %,
-// Sep estimate 86.6 %). Synthetic, no client data. Issue dates are 2024–25,
+// Sep estimate 86.6 % at one decimal; 86.63 % at the ruled two). Synthetic, no client data. Issue dates are 2024–25,
 // so the 2026 production figures are untouched by it.
 const EXPORT = '2026-09-15';
 const oipa = (policyNumber, dateIssued, status, api) => ({
@@ -173,6 +174,7 @@ describe('FrToday container', () => {
     expect(desktop().textContent).not.toMatch(/TTD 0\b/);
     // Persistency waits for the ledger too — a skeleton, not the saved July record.
     expect(within(desktop()).getByTestId('today-tile-persistency')).toBeInTheDocument();
+    expect(within(desktop()).getByTestId('today-tile-persistency-loading')).toBeInTheDocument();
     expect(within(desktop()).queryByTestId('today-tile-persistency-value')).toBeNull();
     expect(desktop().textContent).not.toMatch(/56\.5/);
   });
@@ -206,16 +208,20 @@ describe('FrToday container', () => {
     expect(document.querySelectorAll('#recent-compact-heading')).toHaveLength(1);
   });
 
-  it('persistency: this month\'s estimate (Sep 86.6 %), not the newest saved record (Jul 56.5 %)', () => {
+  it('persistency: this month\'s estimate (Sep 86.63 %), not the newest saved record (Jul 56.5 %)', () => {
     render(<FrToday {...props({ campaignPolicies: PERSISTENCY_BOOK, persistency: JULY_RECORD })} />);
     const t = within(desktop()).getByTestId('today-tile-persistency');
-    expect(within(t).getByTestId('today-tile-persistency-value')).toHaveTextContent('86.6%');
+    expect(within(t).getByTestId('today-tile-persistency-value')).toHaveTextContent('86.63%');
     expect(t).toHaveTextContent('Sep 2026 estimate · below the 90% gate');
-    expect(within(desktop()).getByText('Persistency 86.6% (Sep 2026 estimate) — below the 90% gate')).toBeInTheDocument();
+    expect(within(desktop()).getByText('Persistency 86.63% (Sep 2026 estimate) — below the 90% gate')).toBeInTheDocument();
     expect(desktop().textContent).not.toMatch(/56\.5/);
   });
 
-  it('parity: the Today tile prints the same figure as the Persistency screen\'s estimate column', () => {
+  // Parity of SOURCE: Today and the Persistency screen's estimate column read
+  // the same outlook value for the same month. Their precision differs until
+  // the screen adopts the 2-dp rule too (Kyron ruling 28-09-2026; FOLLOW_UPS
+  // § One rounding rule for every agent-facing persistency figure).
+  it('parity: the Today tile and the Persistency screen\'s estimate column read the same outlook value', () => {
     render(<FrToday {...props({ campaignPolicies: PERSISTENCY_BOOK, persistency: JULY_RECORD })} />);
     // The tile's final value (the visible digits count up; the sr-only text is the settled figure).
     const today = within(desktop()).getByTestId('today-tile-persistency-value').querySelector('.sr-only').textContent;
@@ -223,9 +229,12 @@ describe('FrToday container', () => {
     const outlook = buildPersistencyOutlook({ policies: PERSISTENCY_BOOK, records: JULY_RECORD, today: '2026-09-27' });
     render(<PersistencyGateBarBlock projectedPct={null} threshold={90} judgedLabel={null} outlook={outlook} />);
     const col = screen.getByTestId('campaign-screen-gate-month-estimate');
+    const source = outlook.estimateToday;
+    expect(source.monthKey).toBe('2026-09');
     expect(col).toHaveTextContent('Sep');
-    expect(col).toHaveTextContent(today);
-    expect(today).toBe('86.6%');
+    expect(col).toHaveTextContent(formatOutlookPct(source.persistency)); // 86.6% (1 dp, until the FU)
+    expect(today).toBe(formatPersistencyPct(source.persistency * 100));  // same value, 2 dp
+    expect(today).toBe('86.63%');
   });
 
   it('a submissions error shows the same alert copy as HomeV2', () => {

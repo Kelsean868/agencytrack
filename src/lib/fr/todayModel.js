@@ -20,6 +20,7 @@ import { WEEKLY_ACTIVITY_FLOOR_ROWS } from '../../utils/weeklyActivityFloors';
 import { varianceState, elapsedWorkingDays, PACE_WORKING_DAYS } from '../../utils/planVariance';
 import { weekNumber } from '../../utils/dateHelpers';
 import { PERS_GATE_PCT } from '../persistency/calculations';
+import { roundPersistencyPct, formatPersistencyPct } from '../persistency/persistencyRounding';
 import { heroGoal, firstBehindStandardRow } from '../../components/dashboard/HomeV2/homeDerivations';
 import { outlookMonthLabel } from '../../components/persistency/outlookLabels';
 
@@ -94,9 +95,9 @@ export const PERSISTENCY_KIND_WORD = Object.freeze({
  * persistencyNowFrom(outlook) — the "persistency now" figure Today shows, from
  * one buildPersistencyOutlook() result: this month's estimate first; if there
  * is none, the headline (newest confirmed / derived month); else null (no
- * figure — never a confident 0). `pct` is 0–100 with the same one-decimal
- * rounding as formatOutlookPct, so Today and the Persistency screen print the
- * same number.
+ * figure — never a confident 0). `pct` is 0–100, rounded by
+ * roundPersistencyPct (2 decimals, half up — Kyron ruling 28-09-2026); the
+ * tile, the coach line AND the gate verdict all read this one rounded value.
  *
  * @returns {{ pct: number, monthKey: string, kind: 'estimate'|'confirmed'|'derived' } | null}
  */
@@ -109,7 +110,7 @@ export function persistencyNowFrom(outlook) {
       ? { persistency: head.persistency, monthKey: head.monthKey, kind: head.kind }
       : null;
   if (!pick || !isNum(pick.persistency)) return null;
-  return { pct: Number((pick.persistency * 100).toFixed(1)), monthKey: pick.monthKey, kind: pick.kind };
+  return { pct: roundPersistencyPct(pick.persistency * 100), monthKey: pick.monthKey, kind: pick.kind };
 }
 
 function sentenceCase(label) {
@@ -290,12 +291,15 @@ export function buildTodayModel({
   if (persistencyNow && !persWord && import.meta.env.DEV) {
     throw new Error(`buildTodayModel: unknown persistency kind "${persistencyNow.kind}"`);
   }
-  const persNow = !pending && !error && persWord && isNum(persistencyNow.pct) ? persistencyNow : null;
+  const persPct = !pending && !error && persWord ? roundPersistencyPct(persistencyNow.pct) : null;
+  const persNow = persPct != null ? persistencyNow : null;
   const persMonth = persNow ? outlookMonthLabel(persNow.monthKey) : null;
-  const persBelow = persNow ? persNow.pct < PERS_GATE_PCT : false;
+  // The gate is judged on the SAME 2-decimal value the tile prints (ruling
+  // 28-09-2026), so "90.00%" can never sit beside "below the 90% gate".
+  const persBelow = persNow ? persPct < PERS_GATE_PCT : false;
   if (pending && !error) {
     tiles.push({
-      id: 'persistency', label: 'Persistency', value: null, unit: 'pct', decimals: 1,
+      id: 'persistency', label: 'Persistency', value: null, unit: 'pct', decimals: 2,
       note: null, tone: 'neutral', spark: null, target: 'persistency',
     });
   } else if (persNow) {
@@ -303,9 +307,9 @@ export function buildTodayModel({
     tiles.push({
       id: 'persistency',
       label: 'Persistency',
-      value: persNow.pct,
+      value: persPct,
       unit: 'pct',
-      decimals: 1,
+      decimals: 2,
       note: persNow.kind === 'estimate'
         ? `${persMonth} estimate · ${gateText}`
         : `${persMonth} · ${persWord} · ${gateText}`,
@@ -365,7 +369,7 @@ export function buildTodayModel({
   if (persNow && persBelow) {
     coach.push({
       id: 'persistency',
-      text: `Persistency ${persNow.pct.toFixed(1)}% (${persMonth} ${persWord}) — below the ${PERS_GATE_PCT}% gate`,
+      text: `Persistency ${formatPersistencyPct(persPct)} (${persMonth} ${persWord}) — below the ${PERS_GATE_PCT}% gate`,
       tone: 'warm',
       action: { label: 'See persistency', target: 'persistency' },
     });

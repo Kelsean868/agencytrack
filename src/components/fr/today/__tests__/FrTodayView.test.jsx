@@ -26,7 +26,7 @@ function makeModel(over = {}) {
     actuals: { source: 'daily', values: { callsMade: null, telContacts: 22, factFindsCompleted: 3 } },
     weekStart: '2026-09-27',
     doNextItems: [{ id: 'confirm', title: 'Confirm settled policies', sub: '2 waiting', tone: 'teal', target: 'ledger-confirm' }],
-    persistencyNow: { pct: 86.6, monthKey: '2026-10', kind: 'estimate' },
+    persistencyNow: { pct: 86.63, monthKey: '2026-10', kind: 'estimate' },
     settledByMonth: [{ month: '2026-09', api: 87146.28 }],
     todayTT: '2026-10-01',
     hourTT: 9,
@@ -114,7 +114,7 @@ describe('FrTodayView — data', () => {
     expect(within(desktop).getByTestId('today-tile-settled-value')).toHaveTextContent('TTD 87,146');
     expect(within(desktop).getByTestId('today-tile-waiting-value')).toHaveTextContent('TTD 36,000');
     expect(within(desktop).getByTestId('today-tile-goal-value')).toHaveTextContent('13%');
-    expect(within(desktop).getByTestId('today-tile-persistency-value')).toHaveTextContent('86.6%');
+    expect(within(desktop).getByTestId('today-tile-persistency-value')).toHaveTextContent('86.63%');
     expect(within(desktop).getByText('Oct 2026 estimate · below the 90% gate')).toBeInTheDocument();
   });
 
@@ -212,6 +212,7 @@ describe('FrTodayView — loading and error (never zeros)', () => {
     expect(within(desktop).queryByTestId('today-tile-settled-value')).toBeNull();
     // Persistency now comes from the ledger too: skeleton, never a stale record.
     expect(within(desktop).getByTestId('today-tile-persistency')).toBeInTheDocument();
+    expect(within(desktop).getByTestId('today-tile-persistency-loading')).toBeInTheDocument();
     expect(within(desktop).queryByTestId('today-tile-persistency-value')).toBeNull();
   });
 

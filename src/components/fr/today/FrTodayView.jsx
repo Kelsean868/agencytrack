@@ -107,7 +107,7 @@ function StatTile({ tile, loading, onNavigate }) {
     >
       <span className="truncate text-[13px] font-medium text-ink-muted" title={tile.label}>{tile.label}</span>
       {pendingValue ? (
-        <span className={`h-8 w-28 ${SKELETON}`} aria-hidden="true" />
+        <span className={`h-8 w-28 ${SKELETON}`} aria-hidden="true" data-testid={`today-tile-${tile.id}-loading`} />
       ) : (
         <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
           <span className="whitespace-nowrap font-display text-[20px] font-bold leading-none tabular-nums text-ink sm:text-[26px] lg:text-[28px]" data-testid={`today-tile-${tile.id}-value`}>

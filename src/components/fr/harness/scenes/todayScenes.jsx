@@ -16,7 +16,7 @@ import NeedsActionBanner from '../../../dashboard/HomeV2/NeedsActionBanner';
  * FR-2 harness scene: the Today screen (FrTodayView) with SAMPLE inputs run
  * through the real buildTodayModel — the canvas figures (settled 87,146 / 5
  * apps; 36,000 / 1 app submitted, not settled; MDRT 688,800; persistency
- * 86.6 %, this month's estimate) and week-40 activity against the company weekly minimums.
+ * 86.63 %, this month's estimate) and week-40 activity against the company weekly minimums.
  * Variant B = more activity this week + a 48,000 policy settled in May (large
  * enough that the hero bar moves ~15px on a phone — a 12,000 change moved it
  * under 4px, inside the probe's rounding band). Lists keep their length
@@ -35,7 +35,7 @@ const SAMPLE = {
     settled: { api: 87146.28, apps: 5, count: 5, fromHeadOffice: 3, selfConfirmed: 2 },
     pending: { api: 36000, apps: 1, count: 1 },
     months: [['2026-02', 6000], ['2026-04', 7200], ['2026-07', 21600], ['2026-08', 22346.28], ['2026-09', 30000]],
-    persistency: { pct: 86.6, monthKey: '2026-10', kind: 'estimate' },
+    persistency: { pct: 86.63, monthKey: '2026-10', kind: 'estimate' },
     week: { callsMade: null, telContacts: 22, appointmentsScheduled: 9, interviewsKept: 6, factFindsCompleted: 3, closingInterviewsKept: 3, applicationsSubmitted: 0, clientsSold: 0, referralsNewLeads: 41 },
     confirm: 2,
     reinstate: 7100,
@@ -44,7 +44,7 @@ const SAMPLE = {
     settled: { api: 135146.28, apps: 6, count: 6, fromHeadOffice: 3, selfConfirmed: 3 },
     pending: { api: 36000, apps: 1, count: 1 },
     months: [['2026-02', 6000], ['2026-04', 7200], ['2026-05', 48000], ['2026-07', 21600], ['2026-08', 22346.28], ['2026-09', 30000]],
-    persistency: { pct: 88.2, monthKey: '2026-10', kind: 'estimate' },
+    persistency: { pct: 88.21, monthKey: '2026-10', kind: 'estimate' },
     week: { callsMade: null, telContacts: 31, appointmentsScheduled: 13, interviewsKept: 9, factFindsCompleted: 5, closingInterviewsKept: 4, applicationsSubmitted: 1, clientsSold: 1, referralsNewLeads: 58 },
     confirm: 1,
     reinstate: 4300,
