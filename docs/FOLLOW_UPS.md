@@ -20,7 +20,7 @@
 |---|---|---|---|---|
 | FR-5b: extract the award calculation (AgentAwardsPanel's award inputs: ledger vs settlements, persistency merge) into a shared helper, then add award trophies to the FR Trophy room — characterization tests first (Kyron ruling 28-09-2026; banked #1002 post-merge) | LOW | FR redesign / awards | — | see § FR-5b: award calculation shared helper |
 | FR-3 planner nits: footnote copy hard-codes "within two months" (derive from `SOON_MONTHS`); no boundary test at exactly `SOON_MONTHS` / `SOON_MONTHS + 1` — one small green-channel PR after #1004 (Kyron ruling 28-09-2026; banked #1002 post-merge) | LOW | FR redesign / money | — | see § FR-3 planner nits (SOON_MONTHS copy + boundary test) |
-| FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999), FR-2 (#1001) and FR-3 (#1002) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at #1001 and #1002 post-merge) | LOW | FR redesign / verification | — | see § FR preview click-through |
+| FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999), FR-2 (#1001), FR-3 (#1002) and FR-4 (#1003) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at #1001, #1002 and #1003 post-merge) | LOW | FR redesign / verification | — | see § FR preview click-through |
 | "YTD vs tenure floor" bars (agent Production view, agent report view) show the API floor without the 40-apps company minimum — fold into the redesign, not a standalone fix (banked 2026-09-27, #994 post-merge) | LOW | Goals / company floor | redesign | see § YTD vs tenure floor bars: show the apps minimum |
 | Report-Only CSP `connect-src` in `vercel.json` lacks `https://www.google.com` — reCAPTCHA Enterprise (App Check, live since P2e) calls it; enforcing the CSP as-is would block App Check token fetches. Add it before the CSP leaves Report-Only (banked 2026-09-27, P2e post-merge). **Fix in PR #994; stays open until the enforce-time check below** | MEDIUM | Security / CSP | before CSP enforce | see § CSP connect-src needs www.google.com before enforce |
 | App Check is in monitor mode — switch each service to enforce only after 7 consecutive clean days per `docs/runbooks/app-check.md` §3 (key live 2026-09-27, so no earlier than 2026-10-04); Storage → Firestore → Functions, one at a time (banked 2026-09-27, P2e post-merge) | MEDIUM | Security / App Check | not before 2026-10-04 | see § App Check: enforce after 7 clean days |
@@ -7744,6 +7744,10 @@ After #994, the agent Goals tab and the manager agent drill show "Company minimu
 **Extended 2026-09-28 at the #1002 post-merge fill (`e7dc8ef2`) to FR-3 Money.** Same waiver reason. FR-3 harness walk passed; CI green. Add to the walk:
 - 3a. Money (tab bar or sidebar) opens the Money Overview; each of the six calculator chips opens its existing calculator with the FR header above it, and the calculator works as before.
 - 3b. Persistency: the reinstatement planner shows both presets; ticking policies moves the running total and the projected %; nothing is saved (reload clears it).
+
+**Extended 2026-09-28 at the #1003 post-merge fill (`767a4ff7`) to FR-4 Work.** Same waiver reason. FR-4 harness walk passed; CI green. Add to the walk:
+- 4a. Focus opens on Calls: today's planner items with a prospect show a Call link (`tel:`), call blocks are listed but not counted, and dials/contacts read "—" until today is logged. Do not place a call; hover only. Paperwork and Win-back switch without error.
+- 4b. Pipeline: Funnel (This week / This year) and Board switch; the Policy Ledger's FR header "Plan the win-back" opens Focus on Win-back. Phone: the tab bar reads Today · Pipeline · + · Money · Arena.
 
 ## FR-5b: award calculation shared helper
 

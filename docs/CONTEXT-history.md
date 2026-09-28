@@ -1877,3 +1877,27 @@ Every tenure band now also asks for 40 applications a year. The agent Goals tab 
 FR-0 lays the base for the agent redesign: the FR look (fonts, colours) lives in a scoped block that only switches on when an agent opts in from Settings ("Try the new design"). Nobody sees it unless they opt in; managers never get it. It also adds the FR chart kit, trophies, the swipe pager and a dev-only harness at `/__fr` with its walk script. The agent report PDF now uses the agent's tenure band for the company minimum, with "· 40 apps", the same figure Goals shows. No rules, functions or indexes changed.
 
 **Next:** FR-1 shell (#999) is rebased onto main and goes to Kyron for merge; then FR-2 Today, FR-3 Money, FR-4 Work, FR-5 Compete/You (brief `docs/briefs/fr-agent-redesign-program.md`). App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
+
+## Archived from CONTEXT.md § Last updated — 2026-09-28 fill (PR #1003)
+
+**FR-1 shell SHIPPED (2026-09-28), PR #999 squash `d3ea1769` (feature-branch HEAD `e46d26bb`).** Under the per-user FR opt-in only: FR desktop sidebar (Work · Numbers · Money · Compete · You; 220px ≥1024, 72px rail 768–1023), hub section chips for Money and Numbers above the existing screens, phone tab bar Today · Money · + · Arena · More, `frNav` mapping every FR item onto an existing route (Focus, Pipeline, Campaign, Trophies hidden until their slices). Every AGENT_NAV route stays reachable on desktop and phone (test). Also carries the `AgentProductionView` TT-date test fix (same as #1000). Rebased onto `c003dfcd` before merge; first CI run hit the known `DailyCaptureV2` streak timeout, one re-run passed.
+
+## Archived from CONTEXT.md § Current main HEAD — 2026-09-28 fill (PR #1003)
+
+`d3ea1769` (PR #999 squash - FR-1 shell, 2026-09-28). Merge `2026-09-28T01:16:57Z`. **No deploy-gated surfaces touched** (`git diff --stat 23b1f5e3..d3ea1769 -- firestore.rules firestore.indexes.json storage.rules functions/` is empty).
+
+## Archived from CONTEXT.md § Active track — 2026-09-28 fill (PR #1003)
+
+**FR agent redesign program — IN PROGRESS.** FR-0 (#998 `c003dfcd`) and FR-1 (#999 `d3ea1769`) SHIPPED. Next: FR-2 Today (`feat/fr-2-today`, PR to open), then FR-3 Money (`feat/fr-3-money`, model only so far), FR-4 Work, FR-5 Compete/You; one stacked PR each, human-merge. Open: #1000 (test-only TT-date fix).
+
+## Archived from CONTEXT.md § Recently shipped — 2026-09-28 fill (PR #1003)
+
+| [#996](https://github.com/Kelsean868/agencytrack/pull/996) | `a85d14e4` | **fix(report): agent PDF company minimum uses the tenure-resolved floor.** `buildAgentReportModel` uses `resolveAnnualAPIFloor` (same inputs as Goals); label "Company minimum (<band>): TTD X · 40 apps"; `COMPANY_FLOOR` deleted. |
+
+## Archived from CONTEXT.md § Where we left off — 2026-09-28 fill (PR #1003)
+
+**PRIOR - 2026-09-28. FR-1 shell merged as `d3ea1769` (#999).**
+
+An agent who switches on "Try the new design" now gets the FR navigation: a sidebar grouped Work · Numbers · Money · Compete · You, section chips at the top of Money and Numbers (each chip is one of the existing screens), and a phone tab bar Today · Money · + · Arena · More. Every existing agent screen is still reachable. Nobody else sees any change. No rules, functions or indexes changed. The read-only preview click-through with the opt-in on is still owed (see FOLLOW_UPS § FR preview click-through).
+
+**Next:** FR-2 Today PR (`feat/fr-2-today`), then FR-3 Money, FR-4 Work, FR-5 Compete/You (brief `docs/briefs/fr-agent-redesign-program.md`). #1000 (test-only TT-date fix) was later closed as superseded: the same fix landed with #999. App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
