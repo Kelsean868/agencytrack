@@ -16,7 +16,7 @@ import FilingStreakCelebration from '../../dashboard/HomeV2/FilingStreakCelebrat
 import LedgerReconciliationNote from '../../dashboard/HomeV2/LedgerReconciliationNote';
 import CampaignHeroCard from '../../campaigns/CampaignHeroCard';
 import MyPointsCard from '../../gamification/MyPointsCard';
-import { buildTodayModel, settledByMonthFrom, latestPersistencyPct } from '../../../lib/fr/todayModel';
+import { buildTodayModel, settledByMonthFrom, persistencyNowFrom } from '../../../lib/fr/todayModel';
 import FrTodayView from './FrTodayView';
 import useMinWidth from '../../../hooks/useMinWidth';
 
@@ -40,7 +40,9 @@ function hourInTT(now = new Date()) {
  *     the same list deriveYearProduction read for the hero) through
  *     settledCreditList, so the months sum to the hero figure (R5: date
  *     decides, not origin).
- *   · persistencyLatestPct — the latest E3 record, fraction → percent.
+ *   · persistencyNow — this month's estimate, else the newest confirmed /
+ *     derived month, from the same buildPersistencyOutlook() result that
+ *     gives the win-back gate month (one call; no new reads).
  *
  * Layout: `wide = useMinWidth(768)` picks ONE layout for the view, so each
  * slot component mounts once.
@@ -110,19 +112,22 @@ export default function FrToday({
     () => (Array.isArray(campaignPolicies) ? filterCounts(campaignPolicies).action : null),
     [campaignPolicies],
   );
-  const gateMonth = useMemo(() => {
-    if (!Array.isArray(campaignPolicies) || !gatingCampaign) return null;
+  // One outlook call: the gate month (win-back item, only with a gating
+  // campaign) and Today's persistency figure both come from this result.
+  const outlook = useMemo(() => {
+    if (!Array.isArray(campaignPolicies)) return null;
     try {
       return buildPersistencyOutlook({
         policies: campaignPolicies,
         records: Array.isArray(persistency) ? persistency : [],
         today: todayTT,
-        gate: outlookGateFor(gatingCampaign),
-      }).gateMonth;
+        gate: gatingCampaign ? outlookGateFor(gatingCampaign) : null,
+      });
     } catch {
-      return null; // outlook error → the win-back item stays hidden
+      return null; // outlook error → no win-back item, no persistency figure
     }
   }, [campaignPolicies, gatingCampaign, persistency, todayTT]);
+  const gateMonth = outlook?.gateMonth ?? null;
   const behind = useMemo(
     () => (weekLoading ? null : firstBehindStandardRow({
       floors, actuals: weekActuals, elapsed: elapsedWorkingDays(weekStart, todayTT),
@@ -141,7 +146,7 @@ export default function FrToday({
     () => (Array.isArray(campaignPolicies) ? settledByMonthFrom(campaignPolicies, productionYear) : []),
     [campaignPolicies, productionYear],
   );
-  const persistencyLatest = useMemo(() => latestPersistencyPct(persistency), [persistency]);
+  const persistencyNow = useMemo(() => persistencyNowFrom(outlook), [outlook]);
 
   const model = useMemo(() => buildTodayModel({
     production: ledgerProduction ?? null,
@@ -156,14 +161,14 @@ export default function FrToday({
     doNextItems,
     doNextLoading,
     currentWeekSub,
-    persistencyLatestPct: persistencyLatest,
+    persistencyNow,
     settledByMonth,
     todayTT,
     hourTT: hourInTT(),
     displayName: agentProfile?.name ?? '',
   }), [
     ledgerProduction, ledgerPending, ledgerError, personalGoalAPI, floors, weekActuals, weekLoading,
-    submissionsError, weekStart, doNextItems, doNextLoading, currentWeekSub, persistencyLatest,
+    submissionsError, weekStart, doNextItems, doNextLoading, currentWeekSub, persistencyNow,
     settledByMonth, todayTT, agentProfile?.name,
   ]);
 

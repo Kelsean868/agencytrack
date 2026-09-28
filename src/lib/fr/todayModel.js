@@ -3,7 +3,7 @@
  *
  * PURE: no SDK, no JSX, no clock. Everything arrives as input — the same
  * figures HomeV2 already derives (deriveYearProduction output, the week's floor
- * actuals, the Do-next descriptors, the persistency records) — and comes back
+ * actuals, the Do-next descriptors, the persistency outlook) — and comes back
  * as plain data for FrTodayView.
  *
  * FR-D10 honest numbers: every figure may be `null` = unknown. The view shows
@@ -21,6 +21,7 @@ import { varianceState, elapsedWorkingDays, PACE_WORKING_DAYS } from '../../util
 import { weekNumber } from '../../utils/dateHelpers';
 import { PERS_GATE_PCT } from '../persistency/calculations';
 import { heroGoal, firstBehindStandardRow } from '../../components/dashboard/HomeV2/homeDerivations';
+import { outlookMonthLabel } from '../../components/persistency/outlookLabels';
 
 export const MONTH_SHORT = Object.freeze(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']);
 const MONTH_LONG = Object.freeze(['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']);
@@ -79,18 +80,36 @@ export function settledByMonthFrom(policies, year) {
 }
 
 /**
- * The latest persistency reading as a percentage, or null. Records are the
- * E3 shape (`persistency` = 0–1 fraction). A month with no settled business
- * (`grossSettled === 0`) stores persistency 0 by division rule — that is "no
- * reading", not 0 %, so it is skipped.
+ * How Today names each kind of persistency figure. Keyed by the outlook's own
+ * kinds: `estimateToday` is 'estimate'; `headline.kind` is 'confirmed' or
+ * 'derived' (derived = worked out from the head-office export).
  */
-export function latestPersistencyPct(records) {
-  const list = (Array.isArray(records) ? records : [])
-    .filter((r) => r && isNum(r.persistency) && !(r.grossSettled === 0))
-    .map((r) => ({ r, key: r.monthKey ?? `${r.year}-${String(r.month).padStart(2, '0')}` }))
-    .sort((a, b) => String(a.key).localeCompare(String(b.key)));
-  const last = list[list.length - 1];
-  return last ? Math.round(last.r.persistency * 1000) / 10 : null;
+export const PERSISTENCY_KIND_WORD = Object.freeze({
+  estimate: 'estimate',
+  confirmed: 'confirmed',
+  derived: 'from head office',
+});
+
+/**
+ * persistencyNowFrom(outlook) — the "persistency now" figure Today shows, from
+ * one buildPersistencyOutlook() result: this month's estimate first; if there
+ * is none, the headline (newest confirmed / derived month); else null (no
+ * figure — never a confident 0). `pct` is 0–100 with the same one-decimal
+ * rounding as formatOutlookPct, so Today and the Persistency screen print the
+ * same number.
+ *
+ * @returns {{ pct: number, monthKey: string, kind: 'estimate'|'confirmed'|'derived' } | null}
+ */
+export function persistencyNowFrom(outlook) {
+  const est = outlook?.estimateToday ?? null;
+  const head = outlook?.headline ?? null;
+  const pick = est
+    ? { persistency: est.persistency, monthKey: est.monthKey, kind: 'estimate' }
+    : head
+      ? { persistency: head.persistency, monthKey: head.monthKey, kind: head.kind }
+      : null;
+  if (!pick || !isNum(pick.persistency)) return null;
+  return { pct: Number((pick.persistency * 100).toFixed(1)), monthKey: pick.monthKey, kind: pick.kind };
 }
 
 function sentenceCase(label) {
@@ -124,7 +143,7 @@ function cumulative(values) {
  * @param {Array} [p.doNextItems]           buildDoNextItems() output
  * @param {boolean} [p.doNextLoading]
  * @param {object|null} [p.currentWeekSub]
- * @param {number|null} [p.persistencyLatestPct]  e.g. 86.6
+ * @param {{pct:number, monthKey:string, kind:string}|null} [p.persistencyNow]  persistencyNowFrom() output
  * @param {Array<{month:string, api:number}>} [p.settledByMonth]
  * @param {string} p.todayTT                YYYY-MM-DD
  * @param {number} [p.hourTT]               0–23
@@ -143,7 +162,7 @@ export function buildTodayModel({
   doNextItems = [],
   doNextLoading = false,
   currentWeekSub = null,
-  persistencyLatestPct = null,
+  persistencyNow = null,
   settledByMonth = [],
   todayTT,
   hourTT = null,
@@ -265,16 +284,32 @@ export function buildTodayModel({
       target: 'goals',
     },
   ];
-  if (isNum(persistencyLatestPct)) {
-    const below = persistencyLatestPct < PERS_GATE_PCT;
+  // Persistency "now" (FR-2 fix): read from the ledger through the outlook, so
+  // it is unknown while the ledger loads (skeleton) and hidden on a ledger error.
+  const persWord = persistencyNow ? PERSISTENCY_KIND_WORD[persistencyNow.kind] : null;
+  if (persistencyNow && !persWord && import.meta.env.DEV) {
+    throw new Error(`buildTodayModel: unknown persistency kind "${persistencyNow.kind}"`);
+  }
+  const persNow = !pending && !error && persWord && isNum(persistencyNow.pct) ? persistencyNow : null;
+  const persMonth = persNow ? outlookMonthLabel(persNow.monthKey) : null;
+  const persBelow = persNow ? persNow.pct < PERS_GATE_PCT : false;
+  if (pending && !error) {
+    tiles.push({
+      id: 'persistency', label: 'Persistency', value: null, unit: 'pct', decimals: 1,
+      note: null, tone: 'neutral', spark: null, target: 'persistency',
+    });
+  } else if (persNow) {
+    const gateText = persBelow ? `below the ${PERS_GATE_PCT}% gate` : `at or above the ${PERS_GATE_PCT}% gate`;
     tiles.push({
       id: 'persistency',
       label: 'Persistency',
-      value: persistencyLatestPct,
+      value: persNow.pct,
       unit: 'pct',
       decimals: 1,
-      note: below ? `Below the ${PERS_GATE_PCT}% gate` : `At or above the ${PERS_GATE_PCT}% gate`,
-      tone: below ? 'warm' : 'neutral',
+      note: persNow.kind === 'estimate'
+        ? `${persMonth} estimate · ${gateText}`
+        : `${persMonth} · ${persWord} · ${gateText}`,
+      tone: persBelow ? 'warm' : 'neutral',
       spark: null,
       target: 'persistency',
     });
@@ -327,10 +362,10 @@ export function buildTodayModel({
       action: { label: 'Open game plan', target: 'game-plan' },
     });
   }
-  if (isNum(persistencyLatestPct) && persistencyLatestPct < PERS_GATE_PCT) {
+  if (persNow && persBelow) {
     coach.push({
       id: 'persistency',
-      text: `Persistency ${persistencyLatestPct.toFixed(1)}% — below the ${PERS_GATE_PCT}% gate`,
+      text: `Persistency ${persNow.pct.toFixed(1)}% (${persMonth} ${persWord}) — below the ${PERS_GATE_PCT}% gate`,
       tone: 'warm',
       action: { label: 'See persistency', target: 'persistency' },
     });

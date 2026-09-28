@@ -97,7 +97,7 @@ function TileValue({ value, unit, decimals }) {
 }
 
 function StatTile({ tile, loading, onNavigate }) {
-  const pendingValue = loading && tile.value == null && tile.id !== 'persistency';
+  const pendingValue = loading && tile.value == null;
   return (
     <button
       type="button"
