@@ -26,7 +26,7 @@ function makeModel(over = {}) {
     actuals: { source: 'daily', values: { callsMade: null, telContacts: 22, factFindsCompleted: 3 } },
     weekStart: '2026-09-27',
     doNextItems: [{ id: 'confirm', title: 'Confirm settled policies', sub: '2 waiting', tone: 'teal', target: 'ledger-confirm' }],
-    persistencyLatestPct: 86.6,
+    persistencyNow: { pct: 86.63, monthKey: '2026-10', kind: 'estimate' },
     settledByMonth: [{ month: '2026-09', api: 87146.28 }],
     todayTT: '2026-10-01',
     hourTT: 9,
@@ -114,8 +114,8 @@ describe('FrTodayView — data', () => {
     expect(within(desktop).getByTestId('today-tile-settled-value')).toHaveTextContent('TTD 87,146');
     expect(within(desktop).getByTestId('today-tile-waiting-value')).toHaveTextContent('TTD 36,000');
     expect(within(desktop).getByTestId('today-tile-goal-value')).toHaveTextContent('13%');
-    expect(within(desktop).getByTestId('today-tile-persistency-value')).toHaveTextContent('86.6%');
-    expect(within(desktop).getByText('Below the 90% gate')).toBeInTheDocument();
+    expect(within(desktop).getByTestId('today-tile-persistency-value')).toHaveTextContent('86.63%');
+    expect(within(desktop).getByText('Oct 2026 estimate · below the 90% gate')).toBeInTheDocument();
   });
 
   it('hero: takeaway title, figures, provenance, "Log a policy" → ledger-create', () => {
@@ -193,7 +193,7 @@ describe('FrTodayView — data', () => {
 
   it('nothing to say → coach says so; nothing waiting → on-track line', () => {
     const model = makeModel({
-      production: null, pending: true, persistencyLatestPct: 95, doNextItems: [],
+      production: null, pending: true, persistencyNow: { pct: 95, monthKey: '2026-10', kind: 'estimate' }, doNextItems: [],
       currentWeekSub: { status: 'submitted' }, actuals: { source: 'final', values: {} },
     });
     const { desktop } = setup({ model, loading: true });
@@ -210,6 +210,10 @@ describe('FrTodayView — loading and error (never zeros)', () => {
     expect(within(desktop).getByTestId('today-monthly-loading')).toHaveAttribute('aria-busy', 'true');
     expect(container.textContent).not.toMatch(/TTD 0\b/);
     expect(within(desktop).queryByTestId('today-tile-settled-value')).toBeNull();
+    // Persistency now comes from the ledger too: skeleton, never a stale record.
+    expect(within(desktop).getByTestId('today-tile-persistency')).toBeInTheDocument();
+    expect(within(desktop).getByTestId('today-tile-persistency-loading')).toBeInTheDocument();
+    expect(within(desktop).queryByTestId('today-tile-persistency-value')).toBeNull();
   });
 
   it('phone layout: loading shows the hero skeleton and no TTD 0 either', () => {

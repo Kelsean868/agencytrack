@@ -8,15 +8,17 @@ import {
   greetingFor,
   weeksToYearEnd,
   settledByMonthFrom,
-  latestPersistencyPct,
+  persistencyNowFrom,
   ddmmyyyy,
 } from '../todayModel';
 import { deriveYearProduction } from '../../ledgerProduction';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../../utils/weeklyActivityFloors';
 import { firstBehindStandardRow } from '../../../components/dashboard/HomeV2/homeDerivations';
 import { MDRT_THRESHOLDS_2026 } from '../../../config/mdrtThresholds/2026';
+import { PERS_GATE_PCT } from '../../persistency/calculations';
 
 const TODAY = '2026-09-27'; // Sunday, week 40
+const EST_SEP = Object.freeze({ pct: 86.63, monthKey: '2026-09', kind: 'estimate' });
 const WEEK_START = '2026-09-27';
 
 const PRODUCTION = {
@@ -40,7 +42,7 @@ function base(over = {}) {
     weekStart: WEEK_START,
     doNextItems: [],
     currentWeekSub: null,
-    persistencyLatestPct: 86.6,
+    persistencyNow: EST_SEP,
     settledByMonth: [],
     todayTT: TODAY,
     hourTT: 9,
@@ -161,13 +163,53 @@ describe('unknown is never zero', () => {
     expect(loading.meters.every((x) => x.behind === false)).toBe(true);
   });
 
-  it('persistency tile is hidden when unknown, warm below the gate', () => {
-    expect(tile(buildTodayModel(base({ persistencyLatestPct: null })), 'persistency')).toBeUndefined();
+  it('persistency tile: the estimate, named with its month and kind, warm below the gate', () => {
     const low = tile(buildTodayModel(base()), 'persistency');
-    expect(low.value).toBe(86.6);
+    expect(low.value).toBe(86.63);
+    expect(low.decimals).toBe(2);
     expect(low.tone).toBe('warm');
-    expect(low.note).toBe('Below the 90% gate');
-    expect(tile(buildTodayModel(base({ persistencyLatestPct: 92 })), 'persistency').tone).toBe('neutral');
+    expect(low.note).toBe('Sep 2026 estimate · below the 90% gate');
+  });
+
+  it.each([
+    [{ pct: 92.4, monthKey: '2026-07', kind: 'confirmed' }, 'Jul 2026 · confirmed · at or above the 90% gate', 'neutral'],
+    [{ pct: 90, monthKey: '2026-07', kind: 'confirmed' }, 'Jul 2026 · confirmed · at or above the 90% gate', 'neutral'],
+    [{ pct: 89.6, monthKey: '2026-08', kind: 'derived' }, 'Aug 2026 · from head office · below the 90% gate', 'warm'],
+    [{ pct: 91.2, monthKey: '2026-09', kind: 'estimate' }, 'Sep 2026 estimate · at or above the 90% gate', 'neutral'],
+  ])('persistency tile note for %o', (now, note, tone) => {
+    const t = tile(buildTodayModel(base({ persistencyNow: now })), 'persistency');
+    expect(t).toMatchObject({ value: now.pct, note, tone });
+  });
+
+  it('the gate verdict reads the rounded value, never the raw one (ruling 28-09-2026)', () => {
+    // A caller that passes an unrounded percent still gets one rounded value
+    // for the tile, the note and the coach line.
+    const m = buildTodayModel(base({ persistencyNow: { pct: 89.996, monthKey: '2026-09', kind: 'estimate' } }));
+    expect(tile(m, 'persistency')).toMatchObject({ value: 90, note: 'Sep 2026 estimate · at or above the 90% gate', tone: 'neutral' });
+    expect(m.coach.find((c) => c.id === 'persistency')).toBeUndefined();
+  });
+
+  it('persistency: no figure → no tile and no coach line (never a confident 0)', () => {
+    const m = buildTodayModel(base({ persistencyNow: null }));
+    expect(tile(m, 'persistency')).toBeUndefined();
+    expect(m.coach.find((c) => c.id === 'persistency')).toBeUndefined();
+  });
+
+  it('persistency while the ledger loads → a value-less tile (skeleton); ledger error → hidden', () => {
+    const loading = buildTodayModel(base({ production: null, pending: true, persistencyNow: null }));
+    expect(tile(loading, 'persistency')).toMatchObject({ value: null, note: null });
+    // Even if a figure is passed, it is not shown while the ledger is unknown.
+    const loadingWithFigure = buildTodayModel(base({ production: null, pending: true }));
+    expect(tile(loadingWithFigure, 'persistency').value).toBeNull();
+    expect(loadingWithFigure.coach.find((c) => c.id === 'persistency')).toBeUndefined();
+    const failed = buildTodayModel(base({ production: null, error: true }));
+    expect(tile(failed, 'persistency')).toBeUndefined();
+    expect(failed.coach.find((c) => c.id === 'persistency')).toBeUndefined();
+  });
+
+  it('an unknown persistency kind throws in development (rule 11: no silent fallback)', () => {
+    expect(() => buildTodayModel(base({ persistencyNow: { pct: 80, monthKey: '2026-09', kind: 'guess' } })))
+      .toThrow(/unknown persistency kind/);
   });
 });
 
@@ -217,13 +259,27 @@ describe('coach', () => {
     expect(m.coach.map((c) => c.id)).toEqual(['behind', 'pace', 'persistency']);
     expect(m.coach.find((c) => c.id === 'pace').text).toBe('TTD 42,976 a week gets you to MDRT by 31-12-2026');
     expect(m.coach.find((c) => c.id === 'persistency')).toMatchObject({
-      text: 'Persistency 86.6% — below the 90% gate', tone: 'warm', action: { target: 'persistency' },
+      text: 'Persistency 86.63% (Sep 2026 estimate) — below the 90% gate', tone: 'warm',
+      action: { label: 'See persistency', target: 'persistency' },
     });
     for (const c of m.coach) expect(['daily-log', 'game-plan', 'persistency']).toContain(c.action.target);
   });
 
+  it.each([
+    [{ pct: 86.63, monthKey: '2026-09', kind: 'estimate' }, 'Persistency 86.63% (Sep 2026 estimate) — below the 90% gate'],
+    [{ pct: 56.5, monthKey: '2026-07', kind: 'confirmed' }, 'Persistency 56.50% (Jul 2026 confirmed) — below the 90% gate'],
+    [{ pct: 89.58, monthKey: '2026-08', kind: 'derived' }, 'Persistency 89.58% (Aug 2026 from head office) — below the 90% gate'],
+  ])('persistency coach line names the month and kind: %o', (now, text) => {
+    expect(buildTodayModel(base({ persistencyNow: now })).coach.find((c) => c.id === 'persistency').text).toBe(text);
+  });
+
+  it('no persistency coach line at or above the gate', () => {
+    const m = buildTodayModel(base({ persistencyNow: { ...EST_SEP, pct: 90 } }));
+    expect(m.coach.find((c) => c.id === 'persistency')).toBeUndefined();
+  });
+
   it('empty when there is nothing to say', () => {
-    const m = buildTodayModel(base({ production: null, pending: true, persistencyLatestPct: 95 }));
+    const m = buildTodayModel(base({ production: null, pending: true, persistencyNow: { ...EST_SEP, pct: 95 } }));
     expect(m.coach).toEqual([]);
   });
 });
@@ -307,28 +363,45 @@ describe('monthly settled API', () => {
   });
 });
 
-describe('latestPersistencyPct', () => {
-  it('latest by monthKey, fraction → percent, one decimal', () => {
-    expect(latestPersistencyPct([
-      { monthKey: '2026-08', persistency: 0.871, grossSettled: 100 },
-      { monthKey: '2026-09', persistency: 0.8661, grossSettled: 100 },
-      { monthKey: '2026-07', persistency: 0.9, grossSettled: 100 },
-    ])).toBe(86.6);
+describe('persistencyNowFrom (which figure Today shows)', () => {
+  const est = { monthKey: '2026-09', persistency: 0.86647 };
+  const confirmed = { kind: 'confirmed', monthKey: '2026-07', persistency: 0.565 };
+  const derived = { kind: 'derived', monthKey: '2026-08', persistency: 0.8958 };
+
+  it('this month\'s estimate first, even when a headline exists', () => {
+    expect(persistencyNowFrom({ estimateToday: est, headline: confirmed }))
+      .toEqual({ pct: 86.65, monthKey: '2026-09', kind: 'estimate' });
   });
 
-  it('a month with no settled business is no reading; empty → null', () => {
-    expect(latestPersistencyPct([
-      { monthKey: '2026-08', persistency: 0.9, grossSettled: 100 },
-      { monthKey: '2026-09', persistency: 0, grossSettled: 0 },
-    ])).toBe(90);
-    expect(latestPersistencyPct([])).toBeNull();
-    expect(latestPersistencyPct(null)).toBeNull();
+  it('no estimate → the headline, keeping its kind', () => {
+    expect(persistencyNowFrom({ estimateToday: null, headline: confirmed }))
+      .toEqual({ pct: 56.5, monthKey: '2026-07', kind: 'confirmed' });
+    expect(persistencyNowFrom({ estimateToday: null, headline: derived }))
+      .toEqual({ pct: 89.58, monthKey: '2026-08', kind: 'derived' });
   });
 
-  it('falls back to year/month when monthKey is absent', () => {
-    expect(latestPersistencyPct([
-      { year: 2026, month: 9, persistency: 0.8 },
-      { year: 2026, month: 10, persistency: 0.85 },
-    ])).toBe(85);
+  it('neither, or no outlook → null', () => {
+    expect(persistencyNowFrom({ estimateToday: null, headline: null })).toBeNull();
+    expect(persistencyNowFrom(null)).toBeNull();
+    expect(persistencyNowFrom({ estimateToday: { monthKey: '2026-09', persistency: NaN }, headline: null })).toBeNull();
+  });
+
+  // Kyron ruling 28-09-2026: 2 decimals, half up; the tile, the coach line and
+  // the gate verdict all read the SAME rounded value, end to end.
+  it.each([
+    [0.89996, 90, '90.00%', 'at or above', false],
+    [0.89994, 89.99, '89.99%', 'below', true],
+    [0.89995, 90, '90.00%', 'at or above', false],
+    [0.9, 90, '90.00%', 'at or above', false],
+  ])('persistency %f → %f: shows %s and is judged %s the gate on that same value', (fraction, pct, shown, verdict, coached) => {
+    const now = persistencyNowFrom({ estimateToday: { monthKey: '2026-09', persistency: fraction }, headline: null });
+    expect(now.pct).toBe(pct);
+    const m = buildTodayModel(base({ persistencyNow: now }));
+    const t = tile(m, 'persistency');
+    expect(`${t.value.toFixed(t.decimals)}%`).toBe(shown);
+    expect(t.note).toBe(`Sep 2026 estimate · ${verdict} the ${PERS_GATE_PCT}% gate`);
+    const line = m.coach.find((c) => c.id === 'persistency');
+    if (coached) expect(line.text).toBe(`Persistency ${shown} (Sep 2026 estimate) — below the ${PERS_GATE_PCT}% gate`);
+    else expect(line).toBeUndefined();
   });
 });
