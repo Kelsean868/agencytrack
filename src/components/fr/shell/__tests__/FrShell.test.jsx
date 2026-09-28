@@ -19,12 +19,9 @@ const baseProps = () => ({
 describe('frNav model', () => {
   it('hides items whose slice has not landed (never a stub)', () => {
     const ids = frNavItems().map((i) => i.id);
-    // FR-4 landed Focus and Pipeline; Campaign and Trophy room land with FR-5.
-    expect(ids).toContain('focus');
-    expect(ids).toContain('pipeline');
-    expect(ids).not.toContain('campaign');
-    expect(ids).not.toContain('trophies');
-    expect(ids).toContain('money');
+    // FR-5 landed Campaign and Trophy room: every FR item is live now.
+    for (const id of ['focus', 'pipeline', 'campaign', 'trophies', 'money']) expect(ids).toContain(id);
+    expect(frNavItems(FR_NAV.map((i) => (i.id === 'campaign' ? { ...i, ready: false } : i))).map((i) => i.id)).not.toContain('campaign');
   });
   it('phone tab bar is the canvas order: Today · Pipeline · + · Money · Arena', () => {
     expect(FR_TABBAR.map((i) => i.id)).toEqual(['today', 'pipeline', 'log', 'money', 'arena']);

@@ -149,6 +149,15 @@ vi.mock('../../fr/work/FrWorkHeaders', () => ({
   FrNumbersHeader: () => React.createElement('div', { 'data-testid': 'fr-numbers-header-mock' }),
   FrLedgerHeader: ({ onOpenWinback }) => React.createElement('button', { 'data-testid': 'fr-ledger-header-mock', onClick: onOpenWinback }),
 }));
+// FR-5: Campaign, Trophy room, and the headers above the Leaderboard and Profile.
+vi.mock('../../fr/compete/FrCampaign', () => ({
+  default: ({ onOpenAwards }) => React.createElement('button', { 'data-testid': 'fr-campaign-mock', onClick: onOpenAwards }),
+}));
+vi.mock('../../fr/compete/FrTrophyRoom', () => ({ default: () => React.createElement('div', { 'data-testid': 'fr-trophies-mock' }) }));
+vi.mock('../../fr/compete/FrCompeteHeaders', () => ({
+  FrArenaHeader: () => React.createElement('div', { 'data-testid': 'fr-arena-header-mock' }),
+  FrMeHeader: ({ onOpenTrophies }) => React.createElement('button', { 'data-testid': 'fr-me-header-mock', onClick: onOpenTrophies }),
+}));
 vi.mock('../../fr/money/FrMoneyHeader', () => ({
   default: ({ tab }) => React.createElement('div', { 'data-testid': 'fr-money-header-mock', 'data-tab': tab }),
 }));
@@ -363,3 +372,46 @@ describe('AgentDashboard — FR-4 Work', () => {
   );
 });
 
+describe('AgentDashboard — FR-5 Compete / You', () => {
+  it('with the opt-in: Campaign and Trophy room are routes of their own; Campaign links to Awards', async () => {
+    localStorage.setItem('agencytrack-look', 'fr');
+    render(<AgentDashboard />);
+    act(() => captured.sidebar.props.onNavigate('trophies'));
+    expect(await screen.findByTestId('fr-trophies-mock')).toBeInTheDocument();
+    act(() => captured.sidebar.props.onNavigate('campaign'));
+    act(() => screen.getByTestId('fr-campaign-mock').click());
+    await screen.findByTestId('shell-mock');
+    expect(captured.activeTab).toBe('awards');
+  });
+
+  it('with the opt-in: the FR headers sit above the unchanged Leaderboard and Profile; Me opens the Trophy room', async () => {
+    localStorage.setItem('agencytrack-look', 'fr');
+    render(<AgentDashboard />);
+    act(() => captured.sidebar.props.onNavigate('production-leaderboard'));
+    expect(await screen.findByTestId('production-leaderboard-surface-mock')).toBeInTheDocument();
+    expect(screen.getByTestId('fr-arena-header-mock')).toBeInTheDocument();
+    act(() => captured.sidebar.props.onNavigate('profile'));
+    act(() => screen.getByTestId('fr-me-header-mock').click());
+    expect(await screen.findByTestId('fr-trophies-mock')).toBeInTheDocument();
+  });
+
+  it('without the opt-in: no FR-5 surface; the Leaderboard renders exactly as before', async () => {
+    render(<AgentDashboard />);
+    expect(NEXUS_TABS).not.toContain('campaign');
+    expect(NEXUS_TABS).not.toContain('trophies');
+    expect(screen.queryByTestId('fr-arena-header-mock')).toBeNull();
+    expect(screen.queryByTestId('fr-me-header-mock')).toBeNull();
+  });
+
+  it.each([['campaign', 'awards'], ['trophies', 'career']])(
+    'switching the opt-in off on %s falls back to %s',
+    async (route, fallback) => {
+      localStorage.setItem('agencytrack-look', 'fr');
+      render(<AgentDashboard />);
+      act(() => captured.sidebar.props.onNavigate(route));
+      act(() => setLookOptIn(false));
+      await screen.findByTestId('shell-mock');
+      expect(captured.activeTab).toBe(fallback);
+    },
+  );
+});

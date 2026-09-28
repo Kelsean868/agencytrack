@@ -61,6 +61,11 @@ import { FR_MONEY_TABS } from '../../lib/fr/moneyModel';
 import FrFocus from '../fr/work/FrFocus';
 import FrPipeline from '../fr/work/FrPipeline';
 import { FrNumbersHeader, FrLedgerHeader } from '../fr/work/FrWorkHeaders';
+// FR-5: Campaign and Trophy room (new FR routes) and the FR headers above the
+// Leaderboard (Arena) and Profile (Me) — FR look only.
+import FrCampaign from '../fr/compete/FrCampaign';
+import FrTrophyRoom from '../fr/compete/FrTrophyRoom';
+import { FrArenaHeader, FrMeHeader } from '../fr/compete/FrCompeteHeaders';
 import { formatHomeHeaderDate } from './HomeV2/homeDerivations';
 import Avatar from '../ui/Avatar';
 import { getTodayTT } from '../../utils/dateInputs';
@@ -146,9 +151,11 @@ export default function AgentDashboard() {
   // pre-FR Money landing (the Nexus nav has no `money` route).
   // FR-4 adds `focus` and `pipeline`, likewise FR-only: each falls back to the
   // Nexus screen that held its content before (Home, the Policy Ledger).
+  // FR-5 adds `campaign` (the campaign screen sat on Awards) and `trophies`
+  // (the badge grid sat in Career).
   const [focusMode, setFocusMode] = useState('calls');
   useEffect(() => {
-    const FR_ONLY_FALLBACK = { money: 'goals', focus: 'dashboard', pipeline: 'policy-ledger' };
+    const FR_ONLY_FALLBACK = { money: 'goals', focus: 'dashboard', pipeline: 'policy-ledger', campaign: 'awards', trophies: 'career' };
     if (!fr && FR_ONLY_FALLBACK[activeTab]) setActiveTab(FR_ONLY_FALLBACK[activeTab]);
   }, [fr, activeTab]);
   // Planner → Daily Capture handoff seed (screen 9). Set when the agent taps
@@ -434,11 +441,11 @@ export default function AgentDashboard() {
   // and the home hero plus every Goals panel read production from the ledger.
   // Fires at most once (the `policies === null` guard); reuses the same fetch.
   // Under the FR look, the Money Overview and Persistency header (FR-3), Focus,
-  // Pipeline and the Ledger header (FR-4) read the ledger too — same fetch,
-  // same once-only guard.
+  // Pipeline and the Ledger header (FR-4), and Campaign (FR-5) read the ledger
+  // too — same fetch, same once-only guard.
   useEffect(() => {
     const needsPolicies = POLICY_TABS.has(activeTab)
-      || (fr && ['money', 'persistency', 'focus', 'pipeline', 'policy-ledger'].includes(activeTab));
+      || (fr && ['money', 'persistency', 'focus', 'pipeline', 'policy-ledger', 'campaign'].includes(activeTab));
     if (needsPolicies && policies === null) loadPolicies();
   }, [activeTab, loadPolicies, policies, fr]);
 
@@ -945,6 +952,22 @@ export default function AgentDashboard() {
           activeCampaigns={activeCampaigns}
           onOpenWinback={() => { setFocusMode('winback'); setActiveTab('focus'); }}
         />
+      )}
+      {/* ── FR-5 COMPETE / YOU (FR look only): Campaign and Trophy room, and the
+          FR headers above the Leaderboard and Profile (screens below unchanged). ── */}
+      {fr && activeTab === 'campaign' && (
+        <FrCampaign
+          activeCampaigns={activeCampaigns}
+          campaignPolicies={policiesAll}
+          ledgerError={policiesError}
+          persistency={persistency}
+          onOpenAwards={() => setActiveTab('awards')}
+        />
+      )}
+      {fr && activeTab === 'trophies' && <FrTrophyRoom tenantId={tenantId} uid={user?.uid} />}
+      {fr && activeTab === 'production-leaderboard' && <FrArenaHeader uid={user?.uid} />}
+      {fr && activeTab === 'profile' && (
+        <FrMeHeader tenantId={tenantId} uid={user?.uid} onOpenTrophies={() => setActiveTab('trophies')} />
       )}
       {fr && activeTab === 'money' && (
         <FrMoney
