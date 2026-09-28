@@ -88,7 +88,7 @@ function TileValue({ value, unit, decimals }) {
   return (
     <>
       <span aria-hidden="true" className="whitespace-nowrap">
-        {unit === 'pct' ? null : <span className="mr-1 font-sans text-[13px] font-semibold text-ink-muted">TTD</span>}
+        {unit === 'pct' ? null : <span className="mr-1 font-sans text-[12px] sm:text-[13px] font-semibold text-ink-muted">TTD</span>}
         {shown}
       </span>
       <span className="sr-only">{final}</span>
@@ -110,7 +110,7 @@ function StatTile({ tile, loading, onNavigate }) {
         <span className={`h-8 w-28 ${SKELETON}`} aria-hidden="true" />
       ) : (
         <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
-          <span className="whitespace-nowrap font-display text-[22px] font-bold leading-none tabular-nums text-ink sm:text-[26px] lg:text-[28px]" data-testid={`today-tile-${tile.id}-value`}>
+          <span className="whitespace-nowrap font-display text-[20px] font-bold leading-none tabular-nums text-ink sm:text-[26px] lg:text-[28px]" data-testid={`today-tile-${tile.id}-value`}>
             <TileValue value={tile.value} unit={tile.unit} decimals={tile.decimals} />
           </span>
           {tile.qualifier && tile.value != null ? <span className="text-[13px] text-ink-muted">{tile.qualifier}</span> : null}
