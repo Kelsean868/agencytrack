@@ -21,6 +21,13 @@ import { monthLabel, wholeTTDUp, selectionSummary, SOON_MONTHS } from '../../../
  * Pure: `plan` is reinstatementPlan() output (src/lib/fr/moneyModel.js).
  */
 
+// Month count in words for copy ("two months"); SOON_MONTHS drives it, so the footnote never goes stale.
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+function monthsPhrase(n) {
+  const word = NUMBER_WORDS[n] ?? String(n);
+  return `${word} ${n === 1 ? 'month' : 'months'}`;
+}
+
 const money = (n) => `TTD ${Number(n || 0).toLocaleString('en-TT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function ddmmyyyy(ymd) {
@@ -191,7 +198,7 @@ export default function ReinstatementPlanner({ plan }) {
       <Why>
         Persistency = Net Settled ÷ Net Gross Settled. Here: {money(plan.netSettled)} ÷ {money(plan.grossSettled)} = {plan.currentPct.toFixed(1)}%.
         {' '}A reinstated lapse adds its API back to Net Settled, so {plan.threshold}% needs {plan.meets ? 'nothing more' : `${money(plan.need)} reinstated`}.
-        {' '}Only lapses still inside the 24-month window are listed; older ones no longer count and cannot help. A policy flagged “Stops counting after” leaves the window within two months, so reinstating it helps only until then.
+        {' '}Only lapses still inside the 24-month window are listed; older ones no longer count and cannot help. A policy flagged “Stops counting after” leaves the window within {monthsPhrase(SOON_MONTHS)}, so reinstating it helps only until then.
         {' '}Ticking here is a what-if and is not saved.
       </Why>
       {plan.stale ? (
