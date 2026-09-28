@@ -77,17 +77,23 @@ export default function Bullet({
         <span className="flex-none text-[13px] font-semibold tabular-nums text-ink">{vText}</span>
       </div>
       <div className="relative">
-        <div className="flex w-full overflow-hidden rounded-full bg-fr-sunk" style={{ height }}>
-          <div data-part="fill" className={`h-full fr-glide-w ${FILL[tone] || FILL.accent}`} style={{ width: `${fillPct}%` }} />
-          <div data-part="ghost" className="h-full bg-fr-ghost fr-glide-w" style={{ width: `${ghostPct}%` }} />
-        </div>
-        {hasTarget ? (
-          <>
+        {/* The tick is scoped to the track's own box, so it never runs down
+            through the target label underneath. */}
+        <div className="relative">
+          <div className="flex w-full overflow-hidden rounded-full bg-fr-sunk" style={{ height }}>
+            <div data-part="fill" className={`h-full fr-glide-w ${FILL[tone] || FILL.accent}`} style={{ width: `${fillPct}%` }} />
+            <div data-part="ghost" className="h-full bg-fr-ghost fr-glide-w" style={{ width: `${ghostPct}%` }} />
+          </div>
+          {hasTarget ? (
             <div
               data-part="tick"
               className="absolute -top-1 -bottom-1 w-px -translate-x-1/2 bg-ink-muted fr-glide-x"
               style={{ left: `${targetPct}%` }}
             />
+          ) : null}
+        </div>
+        {hasTarget ? (
+          <>
             {tText ? (
               <div className="relative h-4">
                 <span

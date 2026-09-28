@@ -347,6 +347,16 @@ describe('prop-provenance guard — every policy array handed to a child is clas
       why: 'The excludeImported half of the same fetch, for DeliveryStripCard and the commission strip.',
     },
     {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <FrToday campaignPolicies>',
+      provenance: 'unfiltered',
+      why: 'FR-2: FrToday takes the HomeV2 prop set under the FR look and forwards this raw half to CampaignHeroCard exactly as HomeV2 does (C-D10), and reads it for the monthly settled split through settledCreditList — the same credit list deriveYearProduction sums for the hero from the same raw list (R5: date decides, not origin), so the months add up to the hero figure.',
+    },
+    {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <FrToday policies>',
+      provenance: 'filtered-upstream',
+      why: 'FR-2: the excludeImported half, forwarded to DeliveryStripCard exactly as HomeV2 does.',
+    },
+    {
       id: 'src/components/dashboard/AgentDashboard.jsx :: <CommissionAnchorStrip policies>',
       provenance: 'filtered-upstream',
       why: 'Commission totals aggregate money, and imported docs were earned outside this system (ruling 5e).',
@@ -360,6 +370,16 @@ describe('prop-provenance guard — every policy array handed to a child is clas
       id: 'src/components/dashboard/HomeV2/index.jsx :: <CampaignHeroCard policies>',
       provenance: 'unfiltered',
       why: 'The campaign readout, C-D10, now via H3’s CampaignHeroCard (replaced CampaignCard on Home). The operator’s book is 100% imported, so the FILTERED array is empty here and the card would render TTD 0 against a real TTD 73,946.28.',
+    },
+    {
+      id: 'src/components/fr/today/FrToday.jsx :: <CampaignHeroCard policies>',
+      provenance: 'unfiltered',
+      why: 'FR-2: the FR Today campaign slot — the same compact campaign readout HomeV2 renders, same C-D10 reason: the operator’s book is 100% imported, so the filtered array would read TTD 0 against the real campaign figure.',
+    },
+    {
+      id: 'src/components/fr/today/FrToday.jsx :: <DeliveryStripCard policies>',
+      provenance: 'filtered-upstream',
+      why: 'FR-2: delivery register surface, same as HomeV2 — an imported policy was delivered years ago, outside this system.',
     },
     {
       id: 'src/components/awards/AgentAwardsPanel.jsx :: <CampaignScreenWithTier policies>',
@@ -420,7 +440,7 @@ describe('prop-provenance guard — every policy array handed to a child is clas
     // above would pass vacuously.
     expect(sites.length).toBeGreaterThanOrEqual(8);
     expect(sites.map((s) => s.id).join(' ')).not.toContain('onViewLapsedPolicies');
-    expect(sites.filter((s) => s.namesRawCarrier).length).toBe(2);
+    expect(sites.filter((s) => s.namesRawCarrier).length).toBe(4);
   });
 });
 
@@ -495,7 +515,10 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
       // identifier, so it does not appear here — see the prop-provenance
       // manifest above for that site's own classification.)
       'src/components/dashboard/AgentDashboard.jsx :: <AgentDashboardHomeV2 campaignPolicies>',
+      // FR-2: the same readout on the FR Today screen (FrToday mirrors HomeV2).
+      'src/components/dashboard/AgentDashboard.jsx :: <FrToday campaignPolicies>',
       'src/components/dashboard/HomeV2/index.jsx :: <CampaignHeroCard policies>',
+      'src/components/fr/today/FrToday.jsx :: <CampaignHeroCard policies>',
     ]);
   });
 
@@ -522,7 +545,10 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
   it('2b · the derived figures travel only to the production hero', () => {
     expect(propSitesNaming(['ledgerProduction'])).toEqual([
       'src/components/dashboard/AgentDashboard.jsx :: <AgentDashboardHomeV2 ledgerProduction>',
+      // FR-2: the FR Today hero reads the same derived figures.
+      'src/components/dashboard/AgentDashboard.jsx :: <FrToday ledgerProduction>',
       'src/components/dashboard/HomeV2/index.jsx :: <HeroCard production>',
+      'src/components/fr/today/FrToday.jsx :: <LedgerReconciliationNote production>',
     ]);
   });
 
@@ -551,9 +577,11 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
         `${h.rel}:${h.n} uses policiesAll in an unreviewed shape: ${h.line}`,
       ).toBe(true);
     }
-    // campaignPolicies={policiesAll} is the agent dashboard's alone.
-    expect(hits.filter((h) => /campaignPolicies=/.test(h.line)).map((h) => h.rel))
+    // campaignPolicies={policiesAll} is the agent dashboard's alone (FR-2:
+    // twice there — once for HomeV2, once for FrToday under the FR look).
+    expect([...new Set(hits.filter((h) => /campaignPolicies=/.test(h.line)).map((h) => h.rel))])
       .toEqual(['src/components/dashboard/AgentDashboard.jsx']);
+    expect(hits.filter((h) => /campaignPolicies=/.test(h.line))).toHaveLength(2);
   });
 
   it('the scanner actually scans (guards the guard)', () => {
