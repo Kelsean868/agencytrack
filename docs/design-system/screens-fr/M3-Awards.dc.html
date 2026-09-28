@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Awards — mobile v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+.m3aw-swipe{scrollbar-width:none}.m3aw-swipe::-webkit-scrollbar{display:none}
+.m3aw-card{transition:transform 140ms ease}.m3aw-card:active{transform:scale(0.98)}
+.m3aw-chip{transition:background 120ms ease}
+@keyframes m3awFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes m3awPopA{0%{transform:scale(0.4);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+@keyframes m3awPopB{0%{transform:scale(0.4);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+@keyframes m3awHalo{0%,100%{transform:scale(1);opacity:0.55}50%{transform:scale(1.18);opacity:0.2}}
+@keyframes m3awRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes m3awFall{0%{transform:translateY(-40px) rotate(0);opacity:1}100%{transform:translateY(900px) rotate(600deg);opacity:0.2}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;animation-iteration-count:1 !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: {{rootH}}px; box-sizing: border-box; position: relative; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; display: flex; flex-direction: column; gap: 14px; padding: 12px 0 104px;">
+
+  <header style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 16px;">
+    <a onClick="{{go.back}}" href="M3-Arena.dc.html" aria-label="Back to Arena" style="width: 44px; height: 44px; border-radius: 22px; background: {{c.sunk}}; display: flex; align-items: center; justify-content: center; color: {{c.ink}}; flex-shrink: 0;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
+    <h1 style="flex-grow: 1; margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700;">Awards</h1>
+  </header>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; padding: 0 16px;">
+    <div role="tablist" aria-label="Awards pages" tabindex="0" onKeyDown="{{pagerKey}}" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;">
+      <sc-for list="{{pages}}" as="pg" hint-placeholder-count="5">
+        <button role="tab" aria-selected="{{pg.on}}" onClick="{{pg.pick}}" class="m3aw-chip" style="flex-shrink: 0; height: 44px; padding: 0 14px; border: 0; border-radius: 14px; background: {{pg.bg}}; color: {{pg.color}}; box-shadow: {{pg.shadow}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">{{pg.label}}</button>
+      </sc-for>
+    </div>
+    <div style="display: flex; justify-content: center; align-items: center; gap: 6px; height: 6px;" aria-hidden="true">
+      <sc-for list="{{pages}}" as="pg" hint-placeholder-count="5">
+        <span style="width: {{pg.dotW}}px; height: 6px; border-radius: 3px; background: {{pg.dot}}; transition: width 200ms ease;"></span>
+      </sc-for>
+    </div>
+    <span style="font-size: 11px; color: {{c.faint}}; text-align: center; visibility: {{hintVis}};">Swipe for more →</span>
+  </div>
+
+  <div onPointerDown="{{down}}" onPointerMove="{{move}}" onPointerUp="{{up}}" onPointerCancel="{{up}}" style="width: 390px; overflow: hidden; touch-action: pan-y;">
+    <div style="width: 1950px; display: flex; align-items: flex-start; transform: translateX({{tx}}px); transition: {{trans}}; will-change: transform;">
+
+      <section aria-label="Summary" aria-hidden="{{hidden0}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 14px;">
+        <section aria-label="Filter by data source" class="m3aw-swipe" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;">
+          <sc-for list="{{srcChips}}" as="sc" hint-placeholder-count="2">
+            <button role="tab" aria-selected="{{sc.on}}" onClick="{{sc.pick}}" style="flex-shrink: 0; height: 40px; padding: 0 12px; border: 0; border-radius: 12px; background: {{sc.bg}}; color: {{sc.color}}; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.05em;">{{sc.label}}</button>
+          </sc-for>
+        </section>
+
+        <section aria-label="Award groups" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+          <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;">
+            <span style="width: 26px; height: 26px; border-radius: 13px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12 2.5 2.5 4.5-4.5"></path></svg>
+            </span>
+            <span style="font-size: 11px; font-weight: 600; color: {{c.mute}};">Qualified</span>
+            <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700;">{{countQualified}} <span style="font-size: 12px; font-weight: 500; color: {{c.mute}};">of 11</span></span>
+          </div>
+          <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;">
+            <span style="width: 26px; height: 26px; border-radius: 13px; background: {{c.goldTint}}; color: {{c.gold}}; display: flex; align-items: center; justify-content: center;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"></path></svg>
+            </span>
+            <span style="font-size: 11px; font-weight: 600; color: {{c.mute}};">Almost there · 70%+</span>
+            <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700;">{{countAlmost}} <span style="font-size: 12px; font-weight: 500; color: {{c.mute}};">of 11</span></span>
+          </div>
+          <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;">
+            <span style="width: 26px; height: 26px; border-radius: 13px; background: {{c.sel}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l6-6 4 4 8-8"></path><path d="M14 7h8v8"></path></svg>
+            </span>
+            <span style="font-size: 11px; font-weight: 600; color: {{c.mute}};">Making progress · 30–70%</span>
+            <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700;">{{countProgress}} <span style="font-size: 12px; font-weight: 500; color: {{c.mute}};">of 11</span></span>
+          </div>
+          <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;">
+            <span style="width: 26px; height: 26px; border-radius: 13px; background: {{c.sunk}}; color: {{c.faint}}; display: flex; align-items: center; justify-content: center;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle></svg>
+            </span>
+            <span style="font-size: 11px; font-weight: 600; color: {{c.mute}};">Just starting · under 30%</span>
+            <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700;">{{countStarting}} <span style="font-size: 12px; font-weight: 500; color: {{c.mute}};">of 11</span></span>
+          </div>
+        </section>
+
+        <span style="font-size: 12px; color: {{c.mute}}; line-height: 1.4;">Jul–Dec monthly awards (Advisor of the Month) are recognition only — they do not carry a cash prize.</span>
+      </section>
+
+      <section aria-label="Qualified" aria-hidden="{{hidden1}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700; color: {{groupQualified.color}};">{{groupQualified.label}}</h2>
+          <span style="font-size: 12px; color: {{c.mute}};">{{groupQualified.count}} award{{groupQualified.plural}}</span>
+        </div>
+        <sc-for list="{{groupQualified.items}}" as="a" hint-placeholder-count="3">
+          <button class="m3aw-card" onClick="{{a.select}}" style="text-align: left; border: {{a.border}}; border-radius: 16px; background: {{c.surface}}; padding: 12px; display: flex; flex-direction: column; gap: 8px; font-family: 'Onest', sans-serif; color: {{c.ink}};">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="flex-shrink: 0; width: 52px; height: 52px;"><dc-import name="D3-Trophy" kind="{{a.kind}}" size="52" locked="{{a.locked}}" progress="{{a.pct}}" dark="{{dark}}" hint-size="52px,52px"></dc-import></span>
+              <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex-grow: 1;">
+                <span style="font-size: 14px; font-weight: 700; line-height: 1.25;">{{a.name}}</span>
+                <sc-if value="{{a.isSample}}" hint-placeholder-val="{{false}}"><span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span></sc-if>
+              </span>
+            </div>
+            <div style="height: 6px; border-radius: 3px; background: {{c.sunk}};"><div style="width: {{a.pct}}%; height: 6px; border-radius: 3px; background: {{groupQualified.color}};"></div></div>
+            <span style="font-size: 12px; font-weight: 700; color: {{c.mute}};">{{a.pct}}% · {{a.left}}</span>
+            <span class="m3aw-chip" style="align-self: flex-start; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.05em; color: {{c.faint}}; border: 1px solid {{c.rule}}; border-radius: 4px; padding: 2px 5px;">{{a.src}}</span>
+          </button>
+        </sc-for>
+      </section>
+
+      <section aria-label="Almost there" aria-hidden="{{hidden2}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700; color: {{groupAlmost.color}};">{{groupAlmost.label}}</h2>
+          <span style="font-size: 12px; color: {{c.mute}};">{{groupAlmost.count}} award{{groupAlmost.plural}}</span>
+        </div>
+        <sc-for list="{{groupAlmost.items}}" as="a" hint-placeholder-count="3">
+          <button class="m3aw-card" onClick="{{a.select}}" style="text-align: left; border: {{a.border}}; border-radius: 16px; background: {{c.surface}}; padding: 12px; display: flex; flex-direction: column; gap: 8px; font-family: 'Onest', sans-serif; color: {{c.ink}};">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="flex-shrink: 0; width: 52px; height: 52px;"><dc-import name="D3-Trophy" kind="{{a.kind}}" size="52" locked="{{a.locked}}" progress="{{a.pct}}" dark="{{dark}}" hint-size="52px,52px"></dc-import></span>
+              <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex-grow: 1;">
+                <span style="font-size: 14px; font-weight: 700; line-height: 1.25;">{{a.name}}</span>
+                <sc-if value="{{a.isSample}}" hint-placeholder-val="{{false}}"><span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span></sc-if>
+              </span>
+            </div>
+            <div style="height: 6px; border-radius: 3px; background: {{c.sunk}};"><div style="width: {{a.pct}}%; height: 6px; border-radius: 3px; background: {{groupAlmost.color}};"></div></div>
+            <span style="font-size: 12px; font-weight: 700; color: {{c.mute}};">{{a.pct}}% · {{a.left}}</span>
+            <span class="m3aw-chip" style="align-self: flex-start; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.05em; color: {{c.faint}}; border: 1px solid {{c.rule}}; border-radius: 4px; padding: 2px 5px;">{{a.src}}</span>
+          </button>
+        </sc-for>
+      </section>
+
+      <section aria-label="Making progress" aria-hidden="{{hidden3}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700; color: {{groupProgress.color}};">{{groupProgress.label}}</h2>
+          <span style="font-size: 12px; color: {{c.mute}};">{{groupProgress.count}} award{{groupProgress.plural}}</span>
+        </div>
+        <sc-for list="{{groupProgress.items}}" as="a" hint-placeholder-count="3">
+          <button class="m3aw-card" onClick="{{a.select}}" style="text-align: left; border: {{a.border}}; border-radius: 16px; background: {{c.surface}}; padding: 12px; display: flex; flex-direction: column; gap: 8px; font-family: 'Onest', sans-serif; color: {{c.ink}};">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="flex-shrink: 0; width: 52px; height: 52px;"><dc-import name="D3-Trophy" kind="{{a.kind}}" size="52" locked="{{a.locked}}" progress="{{a.pct}}" dark="{{dark}}" hint-size="52px,52px"></dc-import></span>
+              <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex-grow: 1;">
+                <span style="font-size: 14px; font-weight: 700; line-height: 1.25;">{{a.name}}</span>
+                <sc-if value="{{a.isSample}}" hint-placeholder-val="{{false}}"><span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span></sc-if>
+              </span>
+            </div>
+            <div style="height: 6px; border-radius: 3px; background: {{c.sunk}};"><div style="width: {{a.pct}}%; height: 6px; border-radius: 3px; background: {{groupProgress.color}};"></div></div>
+            <span style="font-size: 12px; font-weight: 700; color: {{c.mute}};">{{a.pct}}% · {{a.left}}</span>
+            <span class="m3aw-chip" style="align-self: flex-start; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.05em; color: {{c.faint}}; border: 1px solid {{c.rule}}; border-radius: 4px; padding: 2px 5px;">{{a.src}}</span>
+          </button>
+        </sc-for>
+      </section>
+
+      <section aria-label="Just starting" aria-hidden="{{hidden4}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700; color: {{groupStarting.color}};">{{groupStarting.label}}</h2>
+          <span style="font-size: 12px; color: {{c.mute}};">{{groupStarting.count}} award{{groupStarting.plural}}</span>
+        </div>
+        <sc-for list="{{groupStarting.items}}" as="a" hint-placeholder-count="3">
+          <button class="m3aw-card" onClick="{{a.select}}" style="text-align: left; border: {{a.border}}; border-radius: 16px; background: {{c.surface}}; padding: 12px; display: flex; flex-direction: column; gap: 8px; font-family: 'Onest', sans-serif; color: {{c.ink}};">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="flex-shrink: 0; width: 52px; height: 52px;"><dc-import name="D3-Trophy" kind="{{a.kind}}" size="52" locked="{{a.locked}}" progress="{{a.pct}}" dark="{{dark}}" hint-size="52px,52px"></dc-import></span>
+              <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex-grow: 1;">
+                <span style="font-size: 14px; font-weight: 700; line-height: 1.25;">{{a.name}}</span>
+                <sc-if value="{{a.isSample}}" hint-placeholder-val="{{false}}"><span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span></sc-if>
+              </span>
+            </div>
+            <div style="height: 6px; border-radius: 3px; background: {{c.sunk}};"><div style="width: {{a.pct}}%; height: 6px; border-radius: 3px; background: {{groupStarting.color}};"></div></div>
+            <span style="font-size: 12px; font-weight: 700; color: {{c.mute}};">{{a.pct}}% · {{a.left}}</span>
+            <span class="m3aw-chip" style="align-self: flex-start; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.05em; color: {{c.faint}}; border: 1px solid {{c.rule}}; border-radius: 4px; padding: 2px 5px;">{{a.src}}</span>
+          </button>
+        </sc-for>
+      </section>
+
+    </div>
+  </div>
+
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}">
+    <div style="position: absolute; left: 0; bottom: 0;">
+      <dc-import name="M3-Nav" active="arena" dark="{{dark}}" hint-size="390px,84px"></dc-import>
+    </div>
+  </sc-if>
+
+  <div aria-hidden="{{sheetHiddenStr}}" onClick="{{closeSheet}}" style="position: absolute; inset: 0; background: rgba(12,12,10,0.55); opacity: {{backdropOpacity}}; pointer-events: {{backdropEvents}}; transition: opacity 320ms cubic-bezier(0.32, 0.72, 0, 1); z-index: 15;"></div>
+  <div role="dialog" aria-modal="{{sheetModal}}" aria-label="{{sel.name}}" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 16; max-height: 88%; overflow-y: auto; box-sizing: border-box; border-radius: 24px 24px 0 0; background: {{c.pane}}; padding: 8px 20px 28px; display: flex; flex-direction: column; gap: 14px; transform: translateY({{sheetY}}%); transition: transform 420ms cubic-bezier(0.32, 0.72, 0, 1); box-shadow: 0 -8px 30px rgba(0,0,0,0.18);">
+    <div style="display: flex; justify-content: center; padding: 6px 0 2px;"><span style="width: 40px; height: 4px; border-radius: 2px; background: {{c.rule}};"></span></div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; animation: {{selAnim}};">
+      <span style="width: 132px; height: 132px;"><dc-import name="D3-Trophy" kind="{{sel.kind}}" size="132" locked="{{sel.locked}}" progress="{{sel.pct}}" dark="{{dark}}" hint-size="132px,132px"></dc-import></span>
+      <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">{{sel.name}}</h2>
+      <span style="font-size: 13px; color: {{c.mute}}; line-height: 1.4;">{{sel.rule}}</span>
+
+      <div style="width: 100%; border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 12px; display: flex; flex-direction: column; gap: 8px; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <span style="font-size: 13px; font-weight: 700;">Progress history</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span>
+        </div>
+        <svg width="100%" height="52" viewBox="0 0 320 52" role="img" aria-label="Progress history for {{sel.name}}, now at {{sel.pct}} percent">
+          <polyline points="{{sel.histPts}}" fill="none" stroke="{{c.accent}}" stroke-width="2"></polyline>
+          <circle cx="{{sel.histLastX}}" cy="{{sel.histLastY}}" r="4" fill="{{c.surface}}" stroke="{{c.accent}}" stroke-width="2"></circle>
+        </svg>
+        <span style="font-size: 12px; color: {{c.mute}};">{{sel.left}}</span>
+      </div>
+
+      <div style="width: 100%; display: flex; flex-direction: column; gap: 8px; text-align: left;">
+        <span style="font-size: 13px; font-weight: 700;">How to get there this week</span>
+        <sc-for list="{{sel.steps}}" as="st" hint-placeholder-count="3">
+          <div style="display: flex; align-items: center; gap: 10px; border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 10px 12px;">
+            <span style="flex-grow: 1; font-size: 13px; line-height: 1.35;">{{st.text}}</span>
+            <sc-if value="{{st.hasBtn}}" hint-placeholder-val="{{false}}">
+              <a href="{{st.href}}" onClick="{{st.go}}" style="flex-shrink: 0; height: 40px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; text-decoration: none; font-size: 12px; font-weight: 700;">{{st.btnLabel}}</a>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <button onClick="{{previewCeleb}}" style="width: 100%; min-height: 48px; border-radius: 14px; border: 0; background: {{c.gold}}; color: #FFFFFF; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 800;">Preview the celebration</button>
+    </div>
+  </div>
+
+  <sc-if value="{{celebOpen}}" hint-placeholder-val="{{false}}">
+    <div role="dialog" aria-modal="true" aria-label="Celebration preview" style="position: absolute; inset: 0; z-index: 25; background: rgba(12,12,10,0.78); display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 0 24px;">
+      <sc-for list="{{confetti}}" as="cf" hint-placeholder-count="0"><span aria-hidden="true" style="position: absolute; top: 0; left: {{cf.left}}%; width: {{cf.w}}px; height: {{cf.h}}px; border-radius: 2px; background: {{cf.color}}; animation: m3awFall {{cf.dur}}ms {{cf.delay}}ms cubic-bezier(0.2, 0.6, 0.4, 1) both;"></span></sc-for>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; color: #F6F3EC;">
+        <span style="position: relative; width: 140px; height: 140px; display: flex; align-items: center; justify-content: center;">
+          <span style="position: absolute; inset: -16px; border-radius: 50%; background: radial-gradient(circle, rgba(242,193,78,0.55), rgba(242,193,78,0) 70%); animation: {{haloAnim}};"></span>
+          <span style="width: 140px; height: 140px; animation: {{popAnim}};"><dc-import name="D3-Trophy" kind="{{sel.kind}}" size="140" locked="false" progress="100" dark="{{dark}}" hint-size="140px,140px"></dc-import></span>
+        </span>
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; animation: {{riseAnim1}};">{{sel.name}}</h2>
+        <p style="margin: 0; font-size: 14px; opacity: 0.85; line-height: 1.4; animation: {{riseAnim2}};">{{sel.left}}</p>
+        <span style="border-radius: 14px; background: rgba(255,255,255,0.1); padding: 10px 16px; animation: {{riseAnim3}};"><span style="display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 800;">{{celebPct}}%</span><span style="font-size: 11px; opacity: 0.75;">of the way there</span></span>
+        <button onClick="{{closeCeleb}}" style="height: 48px; padding: 0 26px; border-radius: 24px; border: 0; background: #F6F3EC; color: #1F1D1A; font-family: 'Onest', sans-serif; font-size: 16px; font-weight: 800; animation: {{riseAnim4}};">Close</button>
+        <span style="font-size: 11px; opacity: 0.6;">This is a preview — figures are SAMPLE.</span>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":390,"height":1080}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const IDS = ['Summary', 'Qualified', 'Almost', 'Progress', 'Starting'];
+    const m = /page=([A-Za-z]+)/.exec(props.params || '');
+    const start = m ? IDS.indexOf(m[1]) : -1;
+    this.state = { srcFilter: '', selected: 0, selRun: 0, sheetOpen: false, celebOpen: false, celebRun: 0, ct: 0, page: start < 0 ? 0 : start, dragX: 0, dragging: false, hintSeen: false };
+    this.civ = null;
+    this.drag = null;
+  }
+  componentWillUnmount() { if (this.civ) clearInterval(this.civ); }
+  history(pct, seed) {
+    const n = 8;
+    return Array.from({ length: n }, (_, i) => {
+      const t = i / (n - 1);
+      const wobble = Math.sin(i * 1.3 + seed) * 4;
+      return Math.max(0, Math.min(100, Math.round(pct * (0.35 + 0.65 * t) + wobble)));
+    });
+  }
+  goPage(p) {
+    this.setState({ page: Math.max(0, Math.min(4, p)), hintSeen: true });
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', pane: '#FBFAF6', sel: '#DCEAE7', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', pane: '#171714', sel: '#16312F', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = this.props.dark ? dark : light;
+    const s = this.state;
+    const page = s.page;
+
+    const nav = (t) => (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav(t); } };
+    const go = { back: (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('back'); } }, Calls: nav('Focus?mode=Calls'), Ledger: nav('Ledger') };
+
+    const LIVE = 'LIVE FROM POLICY LEDGER', CONFIRMED = 'FROM CONFIRMED SETTLEMENTS';
+
+    const stepsFor = (cat) => {
+      const S = {
+        apps: [
+          { text: 'Book two more fact-finds this week to feed the pipeline.', hasBtn: false },
+          { text: 'Run a focused calling block on your warmest leads.', hasBtn: true, btnLabel: 'Focus session', href: 'M3-Focus.dc.html', go: go.Calls },
+          { text: 'Confirm every submitted application is logged in the ledger.', hasBtn: true, btnLabel: 'Ledger', href: 'M3-Ledger.dc.html', go: go.Ledger }
+        ],
+        api: [
+          { text: 'Prioritise larger cases already in the closing stage.', hasBtn: false },
+          { text: 'Work the phones for referrals from your top clients.', hasBtn: true, btnLabel: 'Focus session', href: 'M3-Focus.dc.html', go: go.Calls },
+          { text: 'Check which settled policies are already counting.', hasBtn: true, btnLabel: 'Ledger', href: 'M3-Ledger.dc.html', go: go.Ledger }
+        ],
+        persistency: [
+          { text: 'Call clients with a lapsed or pending premium this week.', hasBtn: true, btnLabel: 'Focus session', href: 'M3-Focus.dc.html', go: go.Calls },
+          { text: 'Confirm reinstatements as they clear in the ledger.', hasBtn: true, btnLabel: 'Ledger', href: 'M3-Ledger.dc.html', go: go.Ledger }
+        ],
+        annual: [
+          { text: 'This one is scored on the full year — keep your weekly minimums up.', hasBtn: false },
+          { text: 'A steady calling habit compounds over the year.', hasBtn: true, btnLabel: 'Focus session', href: 'M3-Focus.dc.html', go: go.Calls }
+        ],
+        ineligible: [
+          { text: 'Open to first-year advisors only — not applicable this year.', hasBtn: false }
+        ]
+      };
+      return S[cat];
+    };
+
+    const RAW = [
+      { kind: 'new-business', name: 'New Business Advisor Award', group: 0, pct: 100, locked: false, rule: 'Qualify by settling any new business application.', left: 'Qualified on 12-09-2026', src: CONFIRMED, cat: 'api', sample: false },
+      { kind: 'persistency-silver', name: 'Persistency Award — Silver', group: 1, pct: 96, locked: true, rule: 'Reach 90% aggregate persistency over the 24-month window.', left: '86.6% of 90% · reinstate TTD 7,100', src: LIVE, cat: 'persistency', sample: false },
+      { kind: 'aotm-apps', name: 'Advisor of the Month — Apps', group: 1, pct: 80, locked: true, rule: 'Most applications submitted in the branch this month.', left: '1 more application in September', src: LIVE, cat: 'apps', sample: false },
+      { kind: 'quarterly-api', name: 'Quarterly API Award', group: 2, pct: 45, locked: true, rule: 'Highest settled API in the branch this quarter.', left: 'TTD [n] to go this quarter', src: CONFIRMED, cat: 'api', sample: false },
+      { kind: 'aotm-api', name: 'Advisor of the Month — API', group: 2, pct: 38, locked: true, rule: 'Highest settled API in the branch this month.', left: 'TTD [n] to top the branch', src: LIVE, cat: 'api', sample: false },
+      { kind: 'quarterly-apps', name: 'Quarterly Apps Award', group: 2, pct: 42, locked: true, rule: 'Most applications submitted in the branch this quarter.', left: '[n] applications to go this quarter', src: LIVE, cat: 'apps', sample: true },
+      { kind: 'persistency-gold', name: 'Persistency Award — Gold', group: 2, pct: 61, locked: true, rule: 'Reach a higher aggregate persistency bar than Silver.', left: '86.6% today', src: LIVE, cat: 'persistency', sample: true },
+      { kind: 'mdrt', name: 'MDRT', group: 3, pct: 13, locked: true, rule: 'Reach TTD 688,800 settled API in the year; family policies count.', left: 'TTD 601,654 to go · family policies count here', src: CONFIRMED, cat: 'api', sample: false },
+      { kind: 'agent-year', name: 'Agent of the Year', group: 3, pct: 9, locked: true, rule: 'Ranked on full-year settled API across the agency.', left: 'Ranked on the full year', src: CONFIRMED, cat: 'annual', sample: false },
+      { kind: 'centurion', name: 'Centurion Award', group: 3, pct: 5, locked: true, rule: 'Submit 100 applications in the year.', left: '[n] applications needed', src: LIVE, cat: 'apps', sample: false },
+      { kind: 'rookie-year', name: 'Rookie of the Year', group: 3, pct: 0, locked: true, rule: 'Open to first-year advisors only.', left: 'Not eligible this year', src: CONFIRMED, cat: 'ineligible', sample: true }
+    ];
+
+    const awards = RAW.map((a, i) => {
+      const hist = this.history(a.pct, i);
+      const step = 320 / (hist.length - 1);
+      const maxV = Math.max(10, Math.max.apply(null, hist));
+      const histPts = hist.map((v, j) => (j * step).toFixed(1) + ',' + (48 - (v / maxV) * 40).toFixed(1)).join(' ');
+      const lastV = hist[hist.length - 1];
+      return Object.assign({}, a, {
+        select: () => this.setState({ selected: i, selRun: s.selRun + 1, sheetOpen: true }),
+        histPts: histPts,
+        histLastX: ((hist.length - 1) * step).toFixed(1),
+        histLastY: (48 - (lastV / maxV) * 40).toFixed(1)
+      });
+    });
+
+    const GROUP_DEF = [
+      { label: 'Qualified', color: c.accent },
+      { label: 'Almost there · 70%+', color: c.gold },
+      { label: 'Making progress · 30–70%', color: c.cat[2] },
+      { label: 'Just starting · under 30%', color: c.faint }
+    ];
+    const groups = GROUP_DEF.map((g, gi) => {
+      const items = awards.filter((a) => a.group === gi && (!s.srcFilter || a.src === s.srcFilter)).map((a) => Object.assign({}, a, {
+        border: a.pct >= 100 ? '2px solid ' + c.gold : '1px solid ' + c.rule,
+        isSample: a.sample
+      }));
+      return { label: g.label, color: g.color, items: items, count: items.length, plural: items.length === 1 ? '' : 's' };
+    });
+
+    const srcChips = [LIVE, CONFIRMED].map((label) => ({
+      label: label, on: s.srcFilter === label ? 'true' : 'false',
+      bg: s.srcFilter === label ? c.surface : c.sunk, color: s.srcFilter === label ? c.ink : c.mute,
+      pick: () => this.setState({ srcFilter: s.srcFilter === label ? '' : label })
+    }));
+
+    const selRaw = awards[s.selected] || awards[0];
+    const sel = Object.assign({}, selRaw, { steps: stepsFor(selRaw.cat) });
+
+    const COLORS = ['#F2C14E', '#8FD3CD', '#E0A084', '#B9BBEC', '#F6F3EC', '#63C5BF'];
+    const confetti = Array.from({ length: 50 }, (_, i) => ({
+      left: ((i * 137.508) % 100).toFixed(2), delay: (i * 41) % 900, dur: 1700 + ((i * 67) % 1300),
+      w: 6 + (i % 3) * 3, h: 10 + (i % 4) * 3, color: COLORS[i % COLORS.length]
+    }));
+    const ce = 1 - Math.pow(1 - s.ct, 3);
+    const celebPct = Math.round(selRaw.pct * ce);
+    const suffix = s.celebRun % 2 ? 'B' : 'A';
+
+    const PAGES = ['Summary', 'Qualified', 'Almost there', 'Making progress', 'Just starting'];
+    const CLIP = [420, 560, 460, 620, 400];
+    const clip = CLIP[page];
+    const rootH = 12 + 56 + 16 + 88 + 16 + clip + 104;
+    const pages = PAGES.map((label, i) => {
+      const on = i === page;
+      return {
+        label: label, on: on ? 'true' : 'false', bg: on ? c.surface : c.sunk, color: on ? c.ink : c.mute,
+        shadow: on ? '0 1px 2px rgba(0,0,0,0.12)' : 'none', dot: on ? c.accent : c.rule, dotW: on ? 18 : 6,
+        pick: () => this.goPage(i)
+      };
+    });
+
+    return {
+      c: c, dark: !!this.props.dark, showNav: !this.props.embedded, go: go, srcChips: srcChips,
+      countQualified: awards.filter((a) => a.group === 0).length,
+      countAlmost: awards.filter((a) => a.group === 1).length,
+      countProgress: awards.filter((a) => a.group === 2).length,
+      countStarting: awards.filter((a) => a.group === 3).length,
+      groupQualified: groups[0], groupAlmost: groups[1], groupProgress: groups[2], groupStarting: groups[3],
+      sel: sel,
+      selAnim: 'm3awFade 220ms cubic-bezier(0.32, 0.72, 0, 1) both',
+      sheetOpen: s.sheetOpen, sheetY: s.sheetOpen ? 0 : 100, sheetModal: s.sheetOpen ? 'true' : 'false',
+      sheetHiddenStr: s.sheetOpen ? 'false' : 'true',
+      backdropOpacity: s.sheetOpen ? 1 : 0, backdropEvents: s.sheetOpen ? 'auto' : 'none',
+      closeSheet: () => this.setState({ sheetOpen: false }),
+      celebOpen: s.celebOpen, confetti: confetti, celebPct: celebPct,
+      popAnim: 'm3awPop' + suffix + ' 620ms cubic-bezier(0.32, 0.72, 0, 1) both',
+      haloAnim: 'm3awHalo 2.2s ease-in-out infinite',
+      riseAnim1: 'm3awRise 480ms 180ms cubic-bezier(0.32, 0.72, 0, 1) both',
+      riseAnim2: 'm3awRise 480ms 280ms cubic-bezier(0.32, 0.72, 0, 1) both',
+      riseAnim3: 'm3awRise 480ms 380ms cubic-bezier(0.32, 0.72, 0, 1) both',
+      riseAnim4: 'm3awRise 480ms 480ms cubic-bezier(0.32, 0.72, 0, 1) both',
+      previewCeleb: () => {
+        this.setState({ celebOpen: true, celebRun: s.celebRun + 1, ct: 0 });
+        if (this.civ) clearInterval(this.civ);
+        this.civ = setInterval(() => {
+          const t = Math.min(1, this.state.ct + 0.04);
+          this.setState({ ct: t });
+          if (t >= 1) { clearInterval(this.civ); this.civ = null; }
+        }, 30);
+      },
+      closeCeleb: () => this.setState({ celebOpen: false }),
+      pages: pages, clip: clip, rootH: rootH,
+      hintVis: (page === 0 && !s.hintSeen) ? 'visible' : 'hidden',
+      hidden0: page === 0 ? 'false' : 'true',
+      hidden1: page === 1 ? 'false' : 'true',
+      hidden2: page === 2 ? 'false' : 'true',
+      hidden3: page === 3 ? 'false' : 'true',
+      hidden4: page === 4 ? 'false' : 'true',
+      tx: -page * 390 + (s.dragX || 0),
+      trans: s.dragging ? 'none' : 'transform 520ms cubic-bezier(0.32, 0.72, 0, 1)',
+      pagerKey: (e) => {
+        if (e.key === 'ArrowRight') { e.preventDefault(); this.goPage(page + 1); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); this.goPage(page - 1); }
+      },
+      down: (e) => { this.drag = { x: e.clientX, y: e.clientY, hist: [], active: false, id: e.pointerId, el: e.currentTarget }; },
+      move: (e) => {
+        const dr = this.drag;
+        if (!dr) return;
+        const dx = e.clientX - dr.x;
+        const dy = e.clientY - dr.y;
+        if (!dr.active) {
+          if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+            dr.active = true;
+            try { dr.el.setPointerCapture(dr.id); } catch (err) {}
+          } else if (Math.abs(dy) > 10) { this.drag = null; return; } else { return; }
+        }
+        dr.hist.push({ x: e.clientX, t: performance.now() });
+        if (dr.hist.length > 5) dr.hist.shift();
+        const edge = (page === 0 && dx > 0) || (page === 4 && dx < 0);
+        const off = edge ? (dx * 390 * 0.55) / (390 + 0.55 * Math.abs(dx)) : dx;
+        this.setState({ dragX: off, dragging: true });
+      },
+      up: () => {
+        const dr = this.drag;
+        this.drag = null;
+        if (!dr || !dr.active) return;
+        let v = 0;
+        const h = dr.hist;
+        if (h.length > 1) { v = ((h[h.length - 1].x - h[0].x) / Math.max(1, h[h.length - 1].t - h[0].t)) * 1000; }
+        const projected = this.state.dragX + (v / 1000) * 0.99 / (1 - 0.99);
+        let target = page;
+        if (projected < -195) target = page + 1;
+        else if (projected > 195) target = page - 1;
+        this.setState({ dragX: 0, dragging: false, page: Math.max(0, Math.min(4, target)), hintSeen: true });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

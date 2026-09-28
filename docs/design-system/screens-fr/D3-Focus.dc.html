@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Focus — desktop v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+@keyframes phCardA{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes phCardB{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes phUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes phFloat{0%{opacity:0;transform:translateY(6px) scale(0.9)}20%{opacity:1;transform:translateY(0) scale(1.1)}100%{opacity:0;transform:translateY(-34px) scale(1)}}
+@keyframes phFloatB{0%{opacity:0;transform:translateY(6px) scale(0.9)}20%{opacity:1;transform:translateY(0) scale(1.1)}100%{opacity:0;transform:translateY(-34px) scale(1)}}
+@keyframes phPop{0%{transform:scale(0.6);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+@keyframes phFall{0%{transform:translateY(-40px) rotate(0);opacity:1}100%{transform:translateY(760px) rotate(540deg);opacity:0}}
+@keyframes phTrail{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes phBarGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes focusModeA{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes focusModeB{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.ph-q{transition:background 120ms ease}.ph-q:hover{background:rgba(127,120,105,0.10)}
+.ph:focus{outline:none}
+.ph-bar{transform-origin:bottom;animation:phBarGrow 380ms cubic-bezier(0.32,0.72,0,1) both}
+.ph-mode{transition:background 160ms ease,color 160ms ease}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div class="ph" tabindex="0" onKeyDown="{{onKey}}" style="width: {{rootW}}px; height: 900px; box-sizing: border-box; display: flex; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; overflow: hidden; position: relative;">
+  <sc-if value="{{showChrome}}" hint-placeholder-val="{{true}}">
+    <div style="width: 220px; flex-shrink: 0; align-self: stretch; background: {{c.sideBg}};">
+      <dc-import name="D3-Sidebar" active="Calls" dark="{{dark}}" h="{{900}}" hint-size="220px,900px"></dc-import>
+    </div>
+  </sc-if>
+  <main style="width: 1220px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0; position: relative;">
+    <header style="height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 20px 0 28px; display: flex; align-items: center; gap: 12px; background: {{c.glass}}; border-bottom: 1px solid {{c.rule}};">
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">Focus</h1>
+      <button onClick="{{toggleTimer}}" aria-label="{{timerAria}}" style="height: 36px; margin: 4px 0; padding: 0 12px; border-radius: 18px; border: 1px solid {{c.rule}}; background: {{timerBg}}; color: {{timerFg}}; display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="{{timerIcon}}"></path></svg>{{clock}}</button>
+      <span style="font-size: 13px; color: {{c.mute}};">{{goalText}}</span>
+      <span style="flex-grow: 1;"></span>
+      <div role="tablist" aria-label="Focus mode" style="display: flex; gap: 6px;">
+        <sc-for list="{{modes}}" as="m" hint-placeholder-count="3">
+          <button class="ph-mode" role="tab" aria-selected="{{m.on}}" onClick="{{m.pick}}" style="height: 44px; min-width: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid {{m.border}}; background: {{m.bg}}; color: {{m.color}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{m.label}}</button>
+        </sc-for>
+      </div>
+      <button onClick="{{endSession}}" style="height: 36px; margin: 4px 0; padding: 0 14px; border-radius: 10px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">End session</button>
+    </header>
+
+    <div style="flex-grow: 1; min-height: 0; display: flex; animation: {{modeAnim}};">
+
+      <sc-if value="{{isCalls}}" hint-placeholder-val="{{true}}">
+      <nav aria-label="Call queue" style="width: 290px; flex-shrink: 0; overflow-y: auto; background: {{c.pane}}; border-right: 1px solid {{c.rule}}; padding: 12px 10px; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px;">
+        <div style="padding: 4px 8px 6px; display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.faint}};">FROM KQM CALLS</span>
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <sc-for list="{{callFilters}}" as="f" hint-placeholder-count="5">
+              <button onClick="{{f.pick}}" aria-pressed="{{f.on}}" style="height: 26px; min-height: 44px; padding: 0 10px; border-radius: 13px; border: 1px solid {{f.border}}; background: {{f.bg}}; color: {{f.color}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700;">{{f.label}}</button>
+            </sc-for>
+          </div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.faint}};">{{callQueueLabel}}</span>
+        </div>
+        <sc-for list="{{callQueue}}" as="r" hint-placeholder-count="12">
+          <button class="ph-q" onClick="{{r.pick}}" aria-current="{{r.current}}" style="min-height: 72px; border: 0; border-radius: 10px; background: {{r.bg}}; color: {{c.ink}}; display: flex; align-items: center; gap: 10px; padding: 8px 10px; text-align: left; font-family: 'Onest', sans-serif; opacity: {{r.opacity}};">
+            <span style="width: 32px; height: 32px; border-radius: 16px; background: {{r.avBg}}; color: #1F1D1A; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0;">{{r.initials}}</span>
+            <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 14px; font-weight: 700;">{{r.name}}</span>
+              <span style="font-size: 12px; color: {{r.subColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{r.sub}}</span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; letter-spacing: 0.04em; color: {{c.faint}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{r.campaign}} &middot; {{r.household}}</span>
+            </span>
+            <sc-if value="{{r.done}}" hint-placeholder-val="{{false}}"><span style="font-size: 11px; font-weight: 700; color: {{r.outColor}}; white-space: nowrap;">{{r.outcome}}</span></sc-if>
+          </button>
+        </sc-for>
+      </nav>
+
+      <section aria-label="Current call" style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0;">
+        <sc-if value="{{hasCallCur}}" hint-placeholder-val="{{true}}">
+          <div style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; animation: {{cardAnim}};">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <span style="width: 64px; height: 64px; border-radius: 32px; background: {{callCur.avBg}}; color: #1F1D1A; display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 800;">{{callCur.initials}}</span>
+              <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;">
+                <span style="display: flex; align-items: center; gap: 8px;"><h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 30px; font-weight: 700; letter-spacing: -0.02em;">{{callCur.name}}</h2><span style="height: 24px; padding: 0 9px; border-radius: 12px; background: {{callCur.tagBg}}; color: {{callCur.tagFg}}; display: flex; align-items: center; font-size: 12px; font-weight: 700;">{{callCur.kind}}</span><a href="#" onClick="{{openKqm}}" style="font-size: 13px; font-weight: 700; color: {{c.accent}}; text-decoration: none; display: flex; align-items: center; gap: 4px;">Open in KQM<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"></path></svg></a></span>
+                <span style="font-size: 14px; color: {{c.mute}};">{{callCur.last}}</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: {{c.faint}};">{{callCur.campaign}} &middot; {{callCur.household}}</span>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <a href="tel:+18680000000" style="align-self: flex-start; height: 48px; padding: 0 18px; border-radius: 24px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 800; text-decoration: none;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg>Call on your phone</a>
+              <span style="font-size: 12px; color: {{c.mute}};">Calls go through your own phone. Nothing is recorded &mdash; you just pick what happened.</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+              <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.accent}};">WHY YOU'RE CALLING</span>
+                <span style="font-size: 15px; font-weight: 700; line-height: 1.35;">{{callCur.why}}</span>
+                <span style="font-size: 13px; line-height: 1.45; color: {{c.mute}};">{{callCur.note}}</span>
+              </div>
+              <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.accent}};">OPENER</span>
+                <span style="font-size: 14px; line-height: 1.5;">{{callCur.opener}}</span>
+              </div>
+              <div style="border-radius: 16px; background: {{c.sunk}}; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.warm}};">IF THEY SAY</span>
+                <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">"{{callCur.objection}}"</span>
+                <span style="font-size: 13px; line-height: 1.45; color: {{c.mute}};">[Your answer, in your own words]</span>
+              </div>
+            </div>
+            <sc-if value="{{callCur.isLapsed}}" hint-placeholder-val="{{false}}">
+              <div style="border-radius: 14px; background: {{c.goldTint}}; color: {{c.gold}}; padding: 12px 16px; font-size: 14px; font-weight: 700;">Reinstating this policy moves your Christmas prize from the 50% band to 100%.</div>
+            </sc-if>
+          </div>
+
+          <div style="flex-shrink: 0; border-top: 1px solid {{c.rule}}; background: {{c.glass}}; padding: 14px 28px 18px; display: flex; flex-direction: column; gap: 10px;">
+            <sc-if value="{{showCallTrail}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; flex-direction: column; gap: 8px; animation: phUp 260ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+                <span style="font-size: 13px; font-weight: 700;">Result: {{callCur.result}}</span>
+                <sc-for list="{{callTrail}}" as="tr" hint-placeholder-count="3">
+                  <div style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 12px; border-radius: 12px; background: {{tr.bg}}; animation: phTrail 260ms {{tr.delay}} cubic-bezier(0.32, 0.72, 0, 1) both;">
+                    <span style="color: {{tr.color}}; display: flex; flex-shrink: 0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{tr.icon}}"></path></svg></span>
+                    <span style="font-size: 13px; font-weight: 700; color: {{tr.color}}; flex-grow: 1;">{{tr.label}}</span>
+                    <sc-if value="{{tr.hasBtn}}" hint-placeholder-val="{{false}}">
+                      <button onClick="{{tr.btn}}" style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid {{c.warm}}; background: transparent; color: {{c.warm}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">Add place</button>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{callPickNone}}" hint-placeholder-val="{{true}}">
+              <div style="display: flex; flex-direction: column; gap: 10px; animation: phUp 260ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+                <span style="font-size: 13px; font-weight: 600; color: {{c.mute}};">How did it go? Press a number or click.</span>
+                <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px;">
+                  <sc-for list="{{callOutcomes}}" as="o" hint-placeholder-count="5">
+                    <button onClick="{{o.pick}}" style="height: 56px; border-radius: 14px; border: 1px solid {{o.border}}; background: {{o.bg}}; color: {{o.color}}; display: flex; align-items: center; justify-content: center; gap: 10px; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 700;">
+                      <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; border: 1px solid currentColor; border-radius: 5px; padding: 1px 6px; opacity: 0.75;">{{o.key}}</kbd>{{o.label}}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{callPickBook}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; flex-direction: column; gap: 10px; animation: phUp 260ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+                <div style="display: flex; align-items: center; gap: 10px;"><span style="font-size: 15px; font-weight: 700;">Book {{callCur.first}} — pick a free slot</span>
+                  <span style="flex-grow: 1;"></span>
+                  <sc-for list="{{callTypes}}" as="t" hint-placeholder-count="2"><button onClick="{{t.pick}}" aria-pressed="{{t.on}}" style="height: 36px; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid {{t.border}}; background: {{t.bg}}; color: {{t.color}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{t.label}}</button></sc-for>
+                  <button onClick="{{cancelCallPick}}" style="height: 44px; padding: 0 12px; border: 0; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600;">Cancel <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 10px; background: {{c.sunk}}; border-radius: 4px; padding: 1px 5px;">Esc</kbd></button>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px;">
+                  <sc-for list="{{callSlots}}" as="sl" hint-placeholder-count="6"><button onClick="{{sl.pick}}" style="height: 56px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: 'Onest', sans-serif;"><span style="font-size: 12px; color: {{c.mute}};">{{sl.day}}</span><span style="font-size: 15px; font-weight: 800;">{{sl.time}}</span></button></sc-for>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{callPickBack}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; align-items: center; gap: 10px; animation: phUp 260ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+                <span style="font-size: 15px; font-weight: 700;">Call {{callCur.first}} back…</span>
+                <sc-for list="{{callCallbacks}}" as="cb" hint-placeholder-count="3"><button onClick="{{cb.pick}}" style="height: 48px; padding: 0 18px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">{{cb.label}}</button></sc-for>
+                <span style="flex-grow: 1;"></span>
+                <button onClick="{{cancelCallPick}}" style="height: 44px; padding: 0 12px; border: 0; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600;">Cancel</button>
+              </div>
+            </sc-if>
+            <div style="display: flex; align-items: center; gap: 14px; font-size: 13px; color: {{c.mute}};">
+              <button onClick="{{skipCall}}" style="height: 36px; min-height: 44px; padding: 0 10px; border: 0; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600;">Skip for now <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 10px; background: {{c.sunk}}; border-radius: 4px; padding: 1px 5px;">S</kbd></button>
+              <sc-if value="{{canUndoCall}}" hint-placeholder-val="{{false}}"><button onClick="{{undoCall}}" style="height: 36px; min-height: 44px; padding: 0 10px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Undo last <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 10px; background: {{c.sunk}}; border-radius: 4px; padding: 1px 5px;">Z</kbd></button></sc-if>
+              <span style="flex-grow: 1;"></span>
+              <span>Every result logs itself and fills your weekly report.</span>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{callQueueDone}}" hint-placeholder-val="{{false}}">
+          <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 40px;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 30px; font-weight: 700;">Queue cleared.</h2>
+            <p style="margin: 0; font-size: 15px; color: {{c.mute}};">Everyone in this list has a result. End the session to see how it went.</p>
+          </div>
+        </sc-if>
+      </section>
+
+      <aside aria-label="This session" style="width: 300px; flex-shrink: 0; overflow-y: auto; border-left: 1px solid {{c.rule}}; background: {{c.pane}}; padding: 22px 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px;">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between;">
+            <span style="font-size: 13px; font-weight: 700;">Dials by hour today</span>
+            <button onClick="{{toggleCallHourTable}}" style="height: 28px; padding: 0 8px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700;">{{callHourTableLabel}}</button>
+          </div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span>
+          <sc-if value="{{showCallHourChart}}" hint-placeholder-val="{{true}}">
+            <svg width="100%" height="64" viewBox="0 0 260 64" role="img" aria-label="Dials by hour today, current hour highlighted">
+              <sc-for list="{{callHourBars}}" as="hb" hint-placeholder-count="9">
+                <rect class="ph-bar" x="{{hb.x}}" y="{{hb.y}}" width="{{hb.w}}" height="{{hb.h}}" rx="3" fill="{{hb.color}}" style="animation-delay: {{hb.delay}};"></rect>
+              </sc-for>
+              <line x1="0" y1="54" x2="260" y2="54" stroke="{{c.rule}}" stroke-width="1"></line>
+            </svg>
+          </sc-if>
+          <sc-if value="{{showCallHourChart}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; justify-content: space-between;">
+              <sc-for list="{{callHourLabels}}" as="hl" hint-placeholder-count="9"><span style="font-size: 9px; color: {{hl.color}}; font-weight: {{hl.weight}};">{{hl.t}}</span></sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{showCallHourTable}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <sc-for list="{{callHourLabels}}" as="hl" hint-placeholder-count="9"><div style="display: flex; justify-content: space-between; font-size: 11px; color: {{c.mute}};"><span>{{hl.t}}</span><span style="color: {{c.ink}}; font-weight: 700;">{{hl.v}}</span></div></sc-for>
+            </div>
+          </sc-if>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          <div style="border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 10px;"><span style="display: block; font-size: 11px; color: {{c.mute}};">Dials</span><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">{{callDials}}</span><span style="display: block; font-size: 10px; color: {{c.faint}};">min 60/wk</span></div>
+          <div style="border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 10px;"><span style="display: block; font-size: 11px; color: {{c.mute}};">Contacts</span><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">{{callContacts}}</span><span style="display: block; font-size: 10px; color: {{c.faint}};">min 40/wk</span></div>
+          <div style="border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 10px;"><span style="display: block; font-size: 11px; color: {{c.mute}};">Booked</span><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">{{callBooked}}</span><span style="display: block; font-size: 10px; color: {{c.faint}};">min 20/wk</span></div>
+        </div>
+
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.faint}};">THIS SESSION</span>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+          <sc-for list="{{callRings}}" as="rg" hint-placeholder-count="2">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+              <svg width="104" height="104" viewBox="0 0 100 100" role="img" aria-label="{{rg.aria}}">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="{{c.sunk}}" stroke-width="10"></circle>
+                <circle cx="50" cy="50" r="40" fill="none" stroke="{{rg.color}}" stroke-width="10" stroke-linecap="round" stroke-dasharray="{{rg.dash}}" transform="rotate(-90 50 50)" style="stroke-dasharray: {{rg.dash}}; transition: stroke-dasharray 520ms cubic-bezier(0.32, 0.72, 0, 1);"></circle>
+                <text x="50" y="52" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="24" font-weight="700" fill="{{c.ink}}">{{rg.val}}</text>
+                <text x="50" y="68" text-anchor="middle" font-family="Onest, sans-serif" font-size="10" fill="{{c.mute}}">of {{rg.goal}}</text>
+              </svg>
+              <span style="font-size: 13px; font-weight: 700;">{{rg.label}}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+          <div style="border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 12px;"><span style="display: block; font-size: 12px; color: {{c.mute}};">Spoke to</span><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700;">{{callContacts}}</span></div>
+          <div style="position: relative; border-radius: 12px; background: {{c.goldTint}}; padding: 12px;"><span style="display: block; font-size: 12px; color: {{c.gold}};">Points</span><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700; color: {{c.gold}};">+{{callPts}}</span>
+            <sc-if value="{{showFloat}}" hint-placeholder-val="{{false}}"><span style="position: absolute; right: 12px; top: 10px; font-size: 16px; font-weight: 800; color: {{c.gold}}; animation: {{floatAnim}};">+{{lastPts}}</span></sc-if></div>
+        </div>
+        <div style="border-radius: 14px; background: {{c.accentTint}}; padding: 14px; display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 13px; color: {{c.accent}}; font-weight: 600;">Pipeline this session</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 700; color: {{c.accent}};">≈ TTD {{callWorth}}</span>
+          <span style="font-size: 12px; color: {{c.mute}};">Each dial ≈ TTD 740 of API, from your last 12 weeks (SAMPLE ratios).</span>
+        </div>
+        <div style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 13px; font-weight: 700;">In play</span>
+          <span style="font-size: 13px; color: {{c.mute}};">Dial King badge · [n] dials this week</span>
+          <div style="height: 6px; border-radius: 3px; background: {{c.sunk}};"><div style="width: {{callDialKingPct}}%; height: 6px; border-radius: 3px; background: {{c.gold}}; transition: width 420ms cubic-bezier(0.32, 0.72, 0, 1);"></div></div>
+          <span style="font-size: 13px; color: {{c.mute}};">Week 40 dials: {{callWeekDials}} of 60</span>
+        </div>
+        <div style="border-radius: 14px; background: {{c.sunk}}; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 12px; color: {{c.mute}}; line-height: 1.4;">Called from another phone or app? Press <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 10px; background: {{c.surface}}; border-radius: 4px; padding: 1px 5px;">L</kbd> to log it — it still counts.</span>
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span style="height: 24px; padding: 0 9px; border-radius: 12px; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; font-size: 11px; font-weight: 700;">Tracy-ann logged 6 calls for you today · they count as yours</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}}; background: {{c.surface}}; padding: 2px 6px; border-radius: 5px;">SAMPLE</span>
+          </div>
+        </div>
+      </aside>
+      </sc-if>
+
+      <sc-if value="{{isWinback}}" hint-placeholder-val="{{false}}">
+      <nav aria-label="Win-back queue" style="width: 290px; flex-shrink: 0; overflow-y: auto; background: {{c.pane}}; border-right: 1px solid {{c.rule}}; padding: 12px 10px; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px;">
+        <div style="padding: 4px 8px 6px; display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.faint}};">LAPSED, STILL INSIDE 24 MONTHS</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.faint}};">{{wbQueueLabel}}</span>
+        </div>
+        <sc-for list="{{wbQueue}}" as="r" hint-placeholder-count="7">
+          <button class="ph-q" onClick="{{r.pick}}" aria-current="{{r.current}}" style="min-height: 76px; border: 0; border-radius: 10px; background: {{r.bg}}; color: {{c.ink}}; display: flex; align-items: center; gap: 10px; padding: 8px 10px; text-align: left; font-family: 'Onest', sans-serif; opacity: {{r.opacity}};">
+            <span style="width: 32px; height: 32px; border-radius: 16px; background: {{c.ghost}}; color: #1F1D1A; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0;">{{r.initials}}</span>
+            <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+              <span style="display: flex; align-items: center; gap: 6px;"><span style="font-size: 14px; font-weight: 700;">{{r.name}}</span>
+                <sc-if value="{{r.gate}}" hint-placeholder-val="{{false}}"><span style="height: 16px; padding: 0 6px; border-radius: 8px; background: {{c.goldTint}}; color: {{c.gold}}; font-size: 9.5px; font-weight: 700; display: flex; align-items: center;">Clears the gate</span></sc-if>
+                <sc-if value="{{r.agesOut}}" hint-placeholder-val="{{false}}"><span style="height: 16px; padding: 0 6px; border-radius: 8px; background: {{c.warmTint}}; color: {{c.warm}}; font-size: 9.5px; font-weight: 700; display: flex; align-items: center;">Ages out</span></sc-if>
+              </span>
+              <span style="font-size: 12px; color: {{c.mute}};">{{r.api}} &middot; {{r.monthsLeft}} mo left</span>
+              <div style="height: 4px; border-radius: 2px; background: {{c.rule}};"><div style="width: {{r.barPct}}%; height: 4px; border-radius: 2px; background: {{c.ghost}}; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></div></div>
+            </span>
+            <sc-if value="{{r.done}}" hint-placeholder-val="{{false}}"><span style="font-size: 10.5px; font-weight: 700; color: {{c.accent}}; white-space: nowrap;">{{r.statusLabel}}</span></sc-if>
+          </button>
+        </sc-for>
+      </nav>
+
+      <section aria-label="Current win-back call" style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0;">
+        <sc-if value="{{hasWinCur}}" hint-placeholder-val="{{true}}">
+          <div style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; animation: {{cardAnim}};">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <span style="width: 64px; height: 64px; border-radius: 32px; background: {{c.ghost}}; color: #1F1D1A; display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 800;">{{wbCur.initials}}</span>
+              <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;">
+                <span style="display: flex; align-items: center; gap: 8px;"><h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 30px; font-weight: 700; letter-spacing: -0.02em;">{{wbCur.name}}</h2><span style="height: 24px; padding: 0 9px; border-radius: 12px; background: {{c.warmTint}}; color: {{c.warm}}; display: flex; align-items: center; font-size: 12px; font-weight: 700;">Lapsed</span></span>
+                <span style="font-size: 14px; color: {{c.mute}};">Issued {{wbCur.issuedLabel}} &middot; lapsed {{wbCur.monthYearLabel}} &middot; {{wbCur.monthsLeft}} months left in window</span>
+                <sc-if value="{{wbCur.isAgesOut}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; font-weight: 700; color: {{c.warm}};">Ages out end of {{wbCur.agesOutLabel}} — the window closes for good.</span></sc-if>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <a href="tel:+18680000000" style="align-self: flex-start; height: 48px; padding: 0 18px; border-radius: 24px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 800; text-decoration: none;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg>Call on your phone</a>
+              <span style="font-size: 12px; color: {{c.mute}};">Calls go through your own phone. Nothing is recorded &mdash; you just pick what happened.</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+              <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.accent}};">WHY YOU'RE CALLING</span>
+                <span style="font-size: 15px; font-weight: 700; line-height: 1.35;">{{wbCur.why}}</span>
+              </div>
+              <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.accent}};">OPENER</span>
+                <span style="font-size: 14px; line-height: 1.5;">{{wbCur.opener}}</span>
+              </div>
+              <div style="border-radius: 16px; background: {{c.sunk}}; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.warm}};">IF THEY SAY</span>
+                <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">"{{wbCur.objection}}"</span>
+                <span style="font-size: 13px; line-height: 1.45; color: {{c.mute}};">{{wbCur.answer}}</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE SCRIPT</span>
+              </div>
+            </div>
+            <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+              <span style="font-size: 13px; font-weight: 700;">Status</span>
+              <div style="display: flex; gap: 4px;">
+                <sc-for list="{{wbCur.track}}" as="st" hint-placeholder-count="5">
+                  <span style="flex: 1; height: 32px; border-radius: 8px; background: {{st.bg}}; color: {{st.color}}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; text-align: center; padding: 0 2px; transition: background 320ms cubic-bezier(0.32, 0.72, 0, 1);">{{st.label}}</span>
+                </sc-for>
+              </div>
+              <span style="font-size: 12px; color: {{c.mute}};">{{wbCur.statusText}}</span>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <sc-if value="{{wbCur.showFormSent}}" hint-placeholder-val="{{false}}"><button onClick="{{wbCur.doFormSent}}" style="height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Form sent</button></sc-if>
+                <sc-if value="{{wbCur.showPaid}}" hint-placeholder-val="{{false}}"><button onClick="{{wbCur.doPaid}}" style="height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Paid</button></sc-if>
+                <sc-if value="{{wbCur.showReinstate}}" hint-placeholder-val="{{false}}"><button onClick="{{wbCur.doReinstate}}" style="height: 44px; padding: 0 14px; border-radius: 10px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Mark reinstated in ledger</button></sc-if>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex-shrink: 0; border-top: 1px solid {{c.rule}}; background: {{c.glass}}; padding: 14px 28px 18px; display: flex; flex-direction: column; gap: 10px;">
+            <sc-if value="{{showWinTrail}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; flex-direction: column; gap: 8px; animation: phUp 260ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+                <span style="font-size: 13px; font-weight: 700;">Result: {{wbCur.result}}</span>
+                <sc-for list="{{winTrail}}" as="tr" hint-placeholder-count="1">
+                  <div style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 12px; border-radius: 12px; background: {{tr.bg}};">
+                    <span style="font-size: 13px; font-weight: 700; color: {{tr.color}}; flex-grow: 1;">{{tr.label}}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{winPickNone}}" hint-placeholder-val="{{true}}">
+              <div style="display: flex; flex-direction: column; gap: 10px; animation: phUp 260ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+                <span style="font-size: 13px; font-weight: 600; color: {{c.mute}};">How did it go? Press a number or click.</span>
+                <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px;">
+                  <sc-for list="{{wbOutcomes}}" as="o" hint-placeholder-count="5">
+                    <button onClick="{{o.pick}}" style="height: 56px; border-radius: 14px; border: 1px solid {{o.border}}; background: {{o.bg}}; color: {{o.color}}; display: flex; align-items: center; justify-content: center; gap: 10px; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">
+                      <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; border: 1px solid currentColor; border-radius: 5px; padding: 1px 6px; opacity: 0.75;">{{o.key}}</kbd>{{o.label}}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{winPickBack}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; align-items: center; gap: 10px; animation: phUp 260ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+                <span style="font-size: 15px; font-weight: 700;">Call back…</span>
+                <sc-for list="{{wbCallbacks}}" as="cb" hint-placeholder-count="3"><button onClick="{{cb.pick}}" style="height: 48px; padding: 0 18px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">{{cb.label}}</button></sc-for>
+                <span style="flex-grow: 1;"></span>
+                <button onClick="{{cancelWinPick}}" style="height: 44px; padding: 0 12px; border: 0; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600;">Cancel</button>
+              </div>
+            </sc-if>
+            <div style="display: flex; align-items: center; gap: 14px; font-size: 13px; color: {{c.mute}};">
+              <button onClick="{{skipWin}}" style="height: 36px; min-height: 44px; padding: 0 10px; border: 0; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600;">Skip for now <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 10px; background: {{c.sunk}}; border-radius: 4px; padding: 1px 5px;">S</kbd></button>
+              <sc-if value="{{canUndoWin}}" hint-placeholder-val="{{false}}"><button onClick="{{undoWin}}" style="height: 36px; min-height: 44px; padding: 0 10px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Undo last <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 10px; background: {{c.sunk}}; border-radius: 4px; padding: 1px 5px;">Z</kbd></button></sc-if>
+              <span style="flex-grow: 1;"></span>
+              <a href="D3-Ledger.dc.html" onClick="{{openWinbackLedger}}" style="font-size: 13px; font-weight: 700; color: {{c.accent}}; text-decoration: none;">Open the win-back list in the ledger</a>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{winQueueDone}}" hint-placeholder-val="{{false}}">
+          <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 40px;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 30px; font-weight: 700;">Queue cleared.</h2>
+            <p style="margin: 0; font-size: 15px; color: {{c.mute}};">Every lapsed policy in the window has a result. End the session to see how it went.</p>
+          </div>
+        </sc-if>
+      </section>
+
+      <aside aria-label="Persistency" style="width: 300px; flex-shrink: 0; overflow-y: auto; border-left: 1px solid {{c.rule}}; background: {{c.pane}}; padding: 22px 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px;">
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <span style="font-size: 13px; font-weight: 700;">Persistency (24-month, projected)</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 34px; font-weight: 700;">{{wbMeterLabel}}</span>
+          <div style="position: relative; height: 16px; border-radius: 8px; background: {{c.sunk}};">
+            <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{wbMeterPct}}%; border-radius: 8px; background: {{cat0}}; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></div>
+            <div style="position: absolute; left: 90%; top: -3px; bottom: -3px; width: 2px; background: {{c.faint}};"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: {{c.faint}};"><span>0%</span><span>Gate 90%</span><span>100%</span></div>
+          <span style="font-size: 12px; color: {{c.mute}};">Glides up as policies reach Paid or Reinstated. Projected until the next head-office export confirms it.</span>
+        </div>
+        <div style="border-radius: 14px; background: {{c.goldTint}}; padding: 14px; display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 13px; color: {{c.gold}}; font-weight: 600;">Christmas prize band</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700; color: {{c.gold}};">{{wbTierPct}} &middot; {{wbTierAmt}}</span>
+          <span style="font-size: 12px; color: {{c.mute}};">50% band pays TTD 3,500 &middot; 100% band pays TTD 7,000, once you clear the 90% gate.</span>
+        </div>
+        <div style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 13px; font-weight: 700;">Session points</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700; color: {{c.gold}};">+{{callPts}}</span>
+          <span style="font-size: 12px; color: {{c.mute}};">Reinstating a policy in the ledger is worth 10 points.</span>
+        </div>
+      </aside>
+      </sc-if>
+
+      <sc-if value="{{isPaperwork}}" hint-placeholder-val="{{false}}">
+      <nav aria-label="Paperwork queue" style="width: 340px; flex-shrink: 0; overflow-y: auto; background: {{c.pane}}; border-right: 1px solid {{c.rule}}; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <svg width="64" height="64" viewBox="0 0 100 100" role="img" aria-label="{{pwProgressAria}}">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="{{c.sunk}}" stroke-width="10"></circle>
+            <circle cx="50" cy="50" r="40" fill="none" stroke="{{c.accent}}" stroke-width="10" stroke-linecap="round" stroke-dasharray="{{pwRingDash}}" transform="rotate(-90 50 50)" style="stroke-dasharray: {{pwRingDash}}; transition: stroke-dasharray 480ms cubic-bezier(0.32, 0.72, 0, 1);"></circle>
+            <text x="50" y="57" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="26" font-weight="700" fill="{{c.ink}}">{{pwDoneCount}}</text>
+          </svg>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 15px; font-weight: 700;">{{pwDoneCount}} of {{pwTotal}} done</span>
+            <span style="font-size: 12px; color: {{c.mute}};">Today's admin queue</span>
+          </div>
+        </div>
+        <sc-for list="{{pwQueue}}" as="t" hint-placeholder-count="6">
+          <button class="ph-q" onClick="{{t.pick}}" aria-current="{{t.current}}" style="min-height: 56px; border: 0; border-radius: 10px; background: {{t.bg}}; color: {{c.ink}}; display: flex; align-items: center; gap: 10px; padding: 8px 12px; text-align: left; font-family: 'Onest', sans-serif; opacity: {{t.opacity}};">
+            <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 13.5px; font-weight: 700;">{{t.label}}</span>
+              <span style="font-size: 11.5px; color: {{c.mute}};">~{{t.mins}} min</span>
+            </span>
+            <sc-if value="{{t.isDone}}" hint-placeholder-val="{{false}}"><span style="font-size: 11px; font-weight: 700; color: {{c.accent}};">Done</span></sc-if>
+            <sc-if value="{{t.isSkipped}}" hint-placeholder-val="{{false}}"><span style="font-size: 11px; font-weight: 700; color: {{c.faint}};">Skipped</span></sc-if>
+          </button>
+        </sc-for>
+      </nav>
+
+      <section aria-label="Current paperwork task" style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; padding: 40px; box-sizing: border-box;">
+        <sc-if value="{{hasPaperCur}}" hint-placeholder-val="{{true}}">
+          <div style="width: 480px; max-width: 100%; border-radius: 20px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; animation: {{cardAnim}};">
+            <span style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{c.sunk}}; color: {{c.mute}}; display: flex; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.06em;">~{{pwCur.mins}} MIN</span>
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700;">{{pwCur.label}}</h2>
+            <a href="#" onClick="{{pwCur.open}}" style="font-size: 14px; font-weight: 700; color: {{c.accent}}; text-decoration: none;">Open</a>
+            <div style="display: flex; gap: 10px; margin-top: 8px;">
+              <button onClick="{{pwCur.markDone}}" style="height: 48px; padding: 0 20px; border-radius: 12px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px;">Done <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; background: rgba(255,255,255,0.25); border-radius: 5px; padding: 1px 6px;">D</kbd></button>
+              <button onClick="{{pwCur.skip}}" style="height: 48px; padding: 0 18px; border-radius: 12px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Skip <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 10px; background: {{c.sunk}}; border-radius: 4px; padding: 1px 5px;">S</kbd></button>
+              <sc-if value="{{canUndoPaper}}" hint-placeholder-val="{{false}}"><button onClick="{{undoPaper}}" style="height: 48px; padding: 0 14px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Undo <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 10px; background: {{c.sunk}}; border-radius: 4px; padding: 1px 5px;">Z</kbd></button></sc-if>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{paperAllClear}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center;">
+            <span style="width: 64px; height: 64px; border-radius: 32px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center;">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+            </span>
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 700;">All clear.</h2>
+            <p style="margin: 0; font-size: 15px; color: {{c.mute}};">Nothing waiting on you. End the session whenever you're ready.</p>
+          </div>
+        </sc-if>
+      </section>
+      </sc-if>
+
+    </div>
+
+    <sc-if value="{{showSummary}}" hint-placeholder-val="{{false}}">
+      <div role="dialog" aria-modal="true" aria-label="Session summary" style="position: absolute; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 10; overflow: hidden;">
+        <sc-for list="{{confetti}}" as="cf" hint-placeholder-count="0"><span aria-hidden="true" style="position: absolute; top: 0; left: {{cf.left}}%; width: 8px; height: 12px; border-radius: 2px; background: {{cf.color}}; animation: phFall {{cf.dur}}ms {{cf.delay}}ms cubic-bezier(0.2, 0.6, 0.4, 1) both;"></span></sc-for>
+        <div style="width: 520px; border-radius: 24px; background: {{c.surface}}; padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,0.35); animation: phPop 480ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+          <span style="width: 88px; height: 88px; border-radius: 44px; background: {{c.goldTint}}; color: {{c.gold}}; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 10px {{c.goldHalo}};">
+            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg></span>
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 30px; font-weight: 800; letter-spacing: -0.02em;">{{summaryTitle}}</h2>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; width: 100%;">
+            <sc-for list="{{summary}}" as="sm" hint-placeholder-count="4"><div style="border-radius: 12px; background: {{c.pane}}; padding: 10px;"><span style="display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 800;">{{sm.v}}</span><span style="font-size: 12px; color: {{c.mute}};">{{sm.l}}</span></div></sc-for>
+          </div>
+          <p style="margin: 0; font-size: 14px; color: {{c.mute}};">All of it is already in your week and your weekly report.</p>
+          <div style="display: flex; gap: 10px;">
+            <button onClick="{{again}}" style="height: 48px; padding: 0 18px; border-radius: 12px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 700;">Another 15 minutes</button>
+            <a href="D3-Today.dc.html" onClick="{{go.Today}}" style="height: 48px; padding: 0 18px; border-radius: 12px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; font-size: 15px; font-weight: 700; text-decoration: none;">Back to Today</a>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const raw = this.parseMode(props.params);
+    const MODES = ['Calls', 'Winback', 'Paperwork'];
+    const mode = MODES.indexOf(raw) >= 0 ? raw : 'Calls';
+    this.state = {
+      mode: mode, modeFlip: 0, anim: 0,
+      secs: 45 * 60, running: false, summary: false,
+      pts: 0, lastPts: 0, floatN: 0, dispPts: null,
+      cIdx: 0, cFilter: 0, cResults: {}, cPlaces: {}, cPick: 'none', cType: 0, cDials: 0, cContacts: 0, cBooked: 0, cHist: [], cHourTable: false, dispCalls: null,
+      wIdx: 0, wResults: {}, wStatus: {}, wPick: 'none', wHist: [], dispWin: null,
+      pIdx: 0, pResults: {}, pHist: []
+    };
+    this.timer = null;
+    this._timers = {};
+  }
+  parseMode(params) {
+    if (!params) return null;
+    if (typeof params === 'object') return params.mode || null;
+    const m = /mode=([A-Za-z]+)/.exec(String(params));
+    return m ? m[1] : null;
+  }
+  componentWillUnmount() {
+    if (this.timer) clearInterval(this.timer);
+    const T = this._timers;
+    Object.keys(T).forEach((k) => { if (T[k]) clearInterval(T[k]); });
+  }
+  tween(name, from, to, dur) {
+    if (this._timers[name]) clearInterval(this._timers[name]);
+    const start = Date.now();
+    const D = dur || 420;
+    this._timers[name] = setInterval(() => {
+      const t = Math.min(1, (Date.now() - start) / D);
+      const e = 1 - Math.pow(1 - t, 3);
+      const cur = {};
+      Object.keys(to).forEach((k) => { cur[k] = from[k] + (to[k] - from[k]) * e; });
+      const upd = {};
+      upd[name] = cur;
+      this.setState(upd);
+      if (t >= 1) { clearInterval(this._timers[name]); this._timers[name] = null; }
+    }, 30);
+  }
+  startTimer() {
+    if (this.timer) return;
+    this.timer = setInterval(() => {
+      if (!this.state.running) return;
+      this.setState({ secs: Math.max(0, this.state.secs - 1) });
+    }, 1000);
+  }
+  callsPeople() {
+    return [
+      { id: 'A', name: '[Client A]', kind: 'Follow-up', campaign: 'Portfolio 2026', household: 'Household of 2', why: 'Asked for a quote on 22-09-2026. It is ready.', note: 'Wants cover for 2 children. Budget TTD [n] a month. Overdue 2 days.', objection: 'I need to think about it.', warm: true },
+      { id: 'B', name: '[Client B]', kind: 'Referral', campaign: 'Referrals', household: 'Household of 1', why: 'Referred by [name] after their review.', note: 'Newly married. Works at [employer].', objection: 'I already have cover at work.' },
+      { id: 'E', name: '[Client E]', kind: 'Lapsed', campaign: 'Orphans 2026', household: 'Household of 3', why: 'Whole life, TTD 7,100 a year, lapsed 02-03-2026.', note: 'Missed premiums after a job change. Reinstatement window still open.', objection: 'Money is tight right now.', lapsed: true },
+      { id: 'C', name: '[Client C]', kind: 'Referral', campaign: 'Referrals', household: 'Household of 2', why: 'Referred by [name].', note: 'Has a mortgage coming up.', objection: 'Send me something to read first.' },
+      { id: 'D', name: '[Client D]', kind: 'Review', campaign: 'Reviews', household: 'Household of 4', why: 'Policy anniversary on 04-10-2026.', note: 'Education plan. Child starts secondary school next year.', objection: 'Everything is fine as it is.' },
+      { id: 'F', name: '[Client F]', kind: 'Referral', campaign: 'Referrals', household: 'Household of 1', why: 'Referred by [name].', note: 'Self-employed. No pension.', objection: 'Call me next month.' },
+      { id: 'G', name: '[Client G]', kind: 'Follow-up', campaign: 'Portfolio 2026', household: 'Household of 3', why: 'Met at the seminar on 19-09-2026.', note: 'Asked about retirement income.', objection: 'I need to talk to my spouse.', warm: true },
+      { id: 'H', name: '[Client H]', kind: 'Referral', campaign: 'Referrals', household: 'Household of 4', why: 'Referred by [name].', note: 'Two young children.', objection: 'I am too busy right now.' },
+      { id: 'I', name: '[Client I]', kind: 'Review', campaign: 'Reviews', household: 'Household of 2', why: 'Annual review due.', note: 'Term policy ends in 2028.', objection: 'I will call you.' },
+      { id: 'J', name: '[Client J]', kind: 'Referral', campaign: 'Referrals', household: 'Household of 1', why: 'Referred by [name].', note: 'Just started a business.', objection: 'How much does it cost?' },
+      { id: 'K', name: '[Client K]', kind: 'Follow-up', campaign: 'Portfolio 2026', household: 'Household of 2', why: 'Missed our call on 24-09-2026.', note: 'Interested in health cover.', objection: 'I have health cover already.' },
+      { id: 'L', name: '[Client L]', kind: 'Referral', campaign: 'Referrals', household: 'Household of 3', why: 'Referred by [name].', note: 'Retiring in 5 years.', objection: 'I don’t trust insurance companies.' }
+    ];
+  }
+  winbackPolicies() {
+    return [
+      { id: 1, name: '[Client P1]', lapsed: '19-11-2025', monthsLeft: 14, api: 4821.12, gate: true },
+      { id: 2, name: '[Client P2]', lapsed: '28-05-2025', monthsLeft: 8, api: 2400.00, gate: true },
+      { id: 3, name: '[Client P3]', lapsed: '28-10-2024', monthsLeft: 1, api: 1182.36, agesOut: true },
+      { id: 4, name: '[Client P4]', lapsed: '14-08-2025', monthsLeft: 11, api: 11996.64 },
+      { id: 5, name: '[Client P5]', lapsed: '11-11-2025', monthsLeft: 14, api: 3617.64 },
+      { id: 6, name: '[Client P6]', lapsed: '20-11-2025', monthsLeft: 14, api: 1779.12 },
+      { id: 7, name: '[Client P7]', lapsed: '19-11-2025', monthsLeft: 14, api: 2400.00 }
+    ];
+  }
+  paperworkTasks() {
+    return [
+      { id: 1, label: 'Confirm settled policies ([n] waiting)', nav: 'Ledger', mins: 2 },
+      { id: 2, label: 'Log Friday’s meeting outcome', nav: 'Outcome', mins: 3 },
+      { id: 3, label: 'Submit week 39 report', nav: 'Report', mins: 5 },
+      { id: 4, label: '3 KQM calls need a meeting place', nav: 'Connections', mins: 4 },
+      { id: 5, label: 'Mark the paid win-backs as reinstated', nav: 'Ledger?view=Winback', mins: 2 },
+      { id: 6, label: 'Plan week 40', nav: 'Week', mins: 6 }
+    ];
+  }
+  monthYear(d) {
+    const MO = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const p = d.split('-');
+    return MO[parseInt(p[1], 10) - 1] + ' ' + p[2];
+  }
+  addMonthsLabel(d, n) {
+    const MO = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const p = d.split('-').map(Number);
+    let mIdx = p[1] - 1 + n;
+    const y = p[2] + Math.floor(mIdx / 12);
+    mIdx = ((mIdx % 12) + 12) % 12;
+    return MO[mIdx] + ' ' + y;
+  }
+  filteredCalls(P, f) {
+    const kinds = [null, 'Follow-up', 'Lapsed', 'Referral', 'Review'];
+    return kinds[f] ? P.filter((p) => p.kind === kinds[f]) : P;
+  }
+  recordCalls(label, add, extra) {
+    const s = this.state;
+    const P = this.callsPeople();
+    const list = this.filteredCalls(P, s.cFilter);
+    const cur = list[s.cIdx];
+    if (!cur) return;
+    const snap = { idx: s.cIdx, results: s.cResults, dials: s.cDials, contacts: s.cContacts, booked: s.cBooked, pts: s.pts };
+    const results = Object.assign({}, s.cResults, { [cur.id]: label });
+    let next = list.findIndex((p, i) => i > s.cIdx && !results[p.id]);
+    if (next < 0) next = list.findIndex((p) => !results[p.id]);
+    const toStats = { dials: s.cDials + 1, contacts: s.cContacts + (add.contact ? 1 : 0), booked: s.cBooked + (add.booked ? 1 : 0) };
+    const fromStats = s.dispCalls || { dials: s.cDials, contacts: s.cContacts, booked: s.cBooked };
+    this.tween('dispCalls', fromStats, toStats);
+    const toPts = s.pts + add.pts;
+    this.tween('dispPts', s.dispPts || { pts: s.pts }, { pts: toPts });
+    this.setState({
+      cResults: results, cIdx: next < 0 ? list.length : next, cPick: 'none',
+      cDials: toStats.dials, cContacts: toStats.contacts, cBooked: toStats.booked,
+      pts: toPts, lastPts: add.pts, floatN: s.floatN + 1, cHist: s.cHist.concat([snap]).slice(-10),
+      running: true, anim: s.anim + 1
+    });
+    this.startTimer();
+    if (extra && this.props.onNav) this.props.onNav('event:toast:' + extra);
+  }
+  undoCalls() {
+    const s = this.state;
+    const h = s.cHist[s.cHist.length - 1];
+    if (!h) return;
+    const fromStats = s.dispCalls || { dials: s.cDials, contacts: s.cContacts, booked: s.cBooked };
+    this.tween('dispCalls', fromStats, { dials: h.dials, contacts: h.contacts, booked: h.booked });
+    this.tween('dispPts', s.dispPts || { pts: s.pts }, { pts: h.pts });
+    this.setState({ cIdx: h.idx, cResults: h.results, cDials: h.dials, cContacts: h.contacts, cBooked: h.booked, pts: h.pts, cHist: s.cHist.slice(0, -1), cPick: 'none', anim: s.anim + 1 });
+  }
+  recordWin(label, statusMin, pts, extra) {
+    const s = this.state;
+    const P = this.winbackPolicies();
+    const cur = P[s.wIdx];
+    if (!cur) return;
+    const snap = { idx: s.wIdx, results: s.wResults, status: s.wStatus, pts: s.pts };
+    const results = Object.assign({}, s.wResults, { [cur.id]: label });
+    const status = Object.assign({}, s.wStatus);
+    if (statusMin != null) status[cur.id] = Math.max(status[cur.id] || 0, statusMin);
+    let next = P.findIndex((p, i) => i > s.wIdx && !results[p.id]);
+    if (next < 0) next = P.findIndex((p) => !results[p.id]);
+    const toPts = s.pts + pts;
+    this.tween('dispPts', s.dispPts || { pts: s.pts }, { pts: toPts });
+    this.setState({ wResults: results, wStatus: status, wIdx: next < 0 ? P.length : next, wPick: 'none', pts: toPts, lastPts: pts, floatN: s.floatN + 1, wHist: s.wHist.concat([snap]).slice(-10), running: true, anim: s.anim + 1 });
+    this.startTimer();
+    if (extra && this.props.onNav) this.props.onNav('event:toast:' + extra);
+  }
+  advanceWin(id, newStatus, toast, ptsAward) {
+    const s = this.state;
+    const NET_GROSS = 210975.24, NET_BASE = 182778.36;
+    const persistPct = (add) => (NET_BASE + add) / NET_GROSS * 100;
+    const WP = this.winbackPolicies();
+    const beforeAdd = WP.filter((p) => (s.wStatus[p.id] || 0) >= 3).reduce((a, p) => a + p.api, 0);
+    const status = Object.assign({}, s.wStatus, { [id]: newStatus });
+    const afterAdd = WP.filter((p) => (status[p.id] || 0) >= 3).reduce((a, p) => a + p.api, 0);
+    const fromObj = s.dispWin || { persist: persistPct(beforeAdd) };
+    this.tween('dispWin', fromObj, { persist: persistPct(afterAdd) });
+    const toPts = s.pts + (ptsAward || 0);
+    if (ptsAward) this.tween('dispPts', s.dispPts || { pts: s.pts }, { pts: toPts });
+    this.setState({ wStatus: status, pts: toPts, lastPts: ptsAward || s.lastPts, floatN: ptsAward ? s.floatN + 1 : s.floatN });
+    if (toast && this.props.onNav) this.props.onNav('event:toast:' + toast);
+  }
+  undoWin() {
+    const s = this.state;
+    const h = s.wHist[s.wHist.length - 1];
+    if (!h) return;
+    this.tween('dispPts', s.dispPts || { pts: s.pts }, { pts: h.pts });
+    this.setState({ wIdx: h.idx, wResults: h.results, wStatus: h.status, pts: h.pts, wHist: s.wHist.slice(0, -1), wPick: 'none', anim: s.anim + 1 });
+  }
+  recordPaper(markDone) {
+    const s = this.state;
+    const T = this.paperworkTasks();
+    const cur = T[s.pIdx];
+    if (!cur) return;
+    const snap = { idx: s.pIdx, results: s.pResults };
+    const results = Object.assign({}, s.pResults, { [cur.id]: markDone ? 'done' : 'skipped' });
+    let next = T.findIndex((t, i) => i > s.pIdx && !results[t.id]);
+    if (next < 0) next = T.findIndex((t) => !results[t.id]);
+    this.setState({ pResults: results, pIdx: next < 0 ? T.length : next, pHist: s.pHist.concat([snap]).slice(-10), anim: s.anim + 1 });
+  }
+  undoPaper() {
+    const s = this.state;
+    const h = s.pHist[s.pHist.length - 1];
+    if (!h) return;
+    this.setState({ pIdx: h.idx, pResults: h.results, pHist: s.pHist.slice(0, -1), anim: s.anim + 1 });
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', goldHalo: 'rgba(242,193,78,0.28)', sideBg: '#EFEBE2', glass: 'rgba(246,243,236,0.9)', pane: '#FBFAF6', sel: '#DCEAE7', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', goldHalo: 'rgba(232,180,78,0.22)', sideBg: '#181816', glass: 'rgba(19,19,17,0.9)', pane: '#171714', sel: '#16312F', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = this.props.dark ? dark : light;
+    const s = this.state;
+    const cat0 = c.cat[0];
+    const goTo = (t) => (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav(t); } };
+    const go = { Today: goTo('Today') };
+    const circ = 251.3;
+    const ring = (v, g) => (circ * Math.min(1, v / g)).toFixed(1) + ' ' + circ;
+
+    const modeDefs = [['Calls', 'Calls'], ['Winback', 'Win-back'], ['Paperwork', 'Paperwork']];
+    const modes = modeDefs.map((d) => {
+      const on = d[0] === s.mode;
+      return { label: d[1], on: on ? 'true' : 'false', bg: on ? c.ink : 'transparent', color: on ? c.bg : c.ink, border: on ? c.ink : c.rule, pick: () => { if (d[0] !== s.mode) this.setState({ mode: d[0], modeFlip: s.modeFlip + 1, anim: s.anim + 1 }); } };
+    });
+    const goalText = s.mode === 'Calls' ? 'Goal: 20 dials · 3 booked' : (s.mode === 'Winback' ? 'Goal: clear the 90% persistency gate' : 'Goal: clear today’s paperwork queue');
+    const modeAnim = (s.modeFlip % 2 ? 'focusModeA' : 'focusModeB') + ' 220ms cubic-bezier(0.32, 0.72, 0, 1) both';
+    const cardAnim = (s.anim % 2 ? 'phCardB' : 'phCardA') + ' 320ms cubic-bezier(0.32, 0.72, 0, 1) both';
+    const mm = String(Math.floor(s.secs / 60)).padStart(2, '0');
+    const ss = String(s.secs % 60).padStart(2, '0');
+    const dPtsObj = s.dispPts || { pts: s.pts };
+    const dPts = Math.round(dPtsObj.pts);
+
+    // ---- Calls mode ----
+    const P = this.callsPeople();
+    const listC = this.filteredCalls(P, s.cFilter);
+    const AV = { 'Follow-up': '#F2C14E', Referral: '#8FD3CD', Lapsed: '#E0A084', Review: '#B9BBEC' };
+    const TAG = { 'Follow-up': [c.goldTint, c.gold], Referral: [c.accentTint, c.accent], Lapsed: [c.warmTint, c.warm], Review: [c.sunk, c.ink] };
+    const OUTC = { 'No answer': c.faint, 'Call back': c.gold, Booked: c.accent, 'Not interested': c.warm, 'Wrong number': c.faint };
+    const callQueue = listC.map((p, i) => {
+      const r = s.cResults[p.id];
+      const on = i === s.cIdx;
+      return {
+        name: p.name, initials: p.id === 'E' ? 'CE' : 'C' + p.id, sub: p.kind + ' · ' + p.why, avBg: AV[p.kind],
+        campaign: p.campaign.toUpperCase(), household: p.household.toUpperCase(),
+        subColor: p.warm || p.lapsed ? c.warm : c.mute,
+        bg: on ? c.sel : 'transparent', current: on ? 'true' : 'false', opacity: r && !on ? 0.6 : 1,
+        done: !!r, outcome: (r || '').split(' · ')[0], outColor: OUTC[(r || '').split(' · ')[0]] || c.mute,
+        pick: () => this.setState({ cIdx: i, cPick: 'none', anim: s.anim + 1 })
+      };
+    });
+    const curCP = listC[s.cIdx];
+    const curCResult = curCP ? s.cResults[curCP.id] : null;
+    const needsPlace = curCP && curCResult && curCResult.indexOf('Booked') === 0 && !s.cPlaces[curCP.id];
+    const callCur = curCP ? {
+      name: curCP.name, first: curCP.name, initials: curCP.id === 'E' ? 'CE' : 'C' + curCP.id, kind: curCP.kind, avBg: AV[curCP.kind],
+      tagBg: TAG[curCP.kind][0], tagFg: TAG[curCP.kind][1], why: curCP.why, note: curCP.note, objection: curCP.objection,
+      campaign: curCP.campaign, household: curCP.household, result: curCResult || '',
+      last: 'Last contact ' + (curCP.warm ? '22-09-2026 · phone' : 'none yet') + ' · ' + (curCResult ? 'result: ' + curCResult : 'not called this session'),
+      opener: curCP.kind === 'Referral' ? 'Hi, it’s Kyron from Tatil Life. [Name] asked me to give you a call — do you have two minutes?' : (curCP.kind === 'Lapsed' ? 'Hi, it’s Kyron. I noticed your policy lapsed in March. The good news is we can still restore it. Can I show you how?' : (curCP.kind === 'Review' ? 'Hi, it’s Kyron. Your policy anniversary is coming up — can we book 20 minutes to make sure it still fits?' : 'Hi, it’s Kyron from Tatil. I have the quote you asked for. Do you have two minutes?')),
+      isLapsed: !!curCP.lapsed
+    } : {};
+    const callOutcomeDefs = [
+      { key: '1', label: 'No answer', do: () => this.recordCalls('No answer', { pts: 1 }) },
+      { key: '2', label: 'Call back', do: () => this.setState({ cPick: 'back' }) },
+      { key: '3', label: 'Booked', do: () => this.setState({ cPick: 'book' }), primary: true },
+      { key: '4', label: 'Not interested', do: () => this.recordCalls('Not interested', { pts: 1, contact: true }) },
+      { key: '5', label: 'Wrong number', do: () => this.recordCalls('Wrong number', { pts: 0 }) }
+    ];
+    const callOutcomes = callOutcomeDefs.map((o) => ({ key: o.key, label: o.label, pick: o.do, bg: o.primary ? c.accent : c.surface, color: o.primary ? c.onAccent : c.ink, border: o.primary ? c.accent : c.rule }));
+    const callTypeNames = ['Fact-find', 'Closing'];
+    const callTypes = callTypeNames.map((label, i) => ({ label: label, on: i === s.cType ? 'true' : 'false', bg: i === s.cType ? c.ink : c.surface, color: i === s.cType ? c.bg : c.ink, border: i === s.cType ? c.ink : c.rule, pick: () => this.setState({ cType: i }) }));
+    const callSlotDefs = [['Mon 28', '09:30'], ['Mon 28', '13:00'], ['Mon 28', '14:00'], ['Tue 29', '09:00'], ['Tue 29', '16:00'], ['Wed 30', '11:00']];
+    const callSlots = callSlotDefs.map((d) => ({ day: d[0], time: d[1], pick: () => this.recordCalls('Booked · ' + d[0] + ' ' + d[1], { pts: 4, contact: true, booked: true }, 'Booked ' + (s.cType ? 'closing' : 'fact-find') + ' · ' + d[0] + ' at ' + d[1] + ' · added to your week') }));
+    const callCallbacks = ['Tomorrow 10:00', 'In 3 days', 'Next week'].map((label) => ({ label: label, pick: () => this.recordCalls('Call back · ' + label, { pts: 1, contact: true }, 'Call back set · ' + label) }));
+    const countsC = [P.length, P.filter((p) => p.kind === 'Follow-up').length, P.filter((p) => p.kind === 'Lapsed').length, P.filter((p) => p.kind === 'Referral').length, P.filter((p) => p.kind === 'Review').length];
+    const fNames = ['All', 'Portfolio 2026', 'Orphans 2026', 'Referrals', 'Reviews'];
+    const callFilters = fNames.map((n, i) => ({ label: n + ' ' + countsC[i], on: i === s.cFilter ? 'true' : 'false', bg: i === s.cFilter ? c.ink : 'transparent', color: i === s.cFilter ? c.bg : c.ink, border: i === s.cFilter ? c.ink : c.rule, pick: () => this.setState({ cFilter: i, cIdx: 0, cPick: 'none', anim: s.anim + 1 }) }));
+    const COLORS = [c.accent, c.gold, c.warm, c.ghost, '#F2C14E'];
+    const confetti = Array.from({ length: 46 }, (_, i) => ({ left: ((i * 137.508) % 100).toFixed(2), delay: (i * 37) % 700, dur: 1600 + ((i * 53) % 900), color: COLORS[i % COLORS.length] }));
+    const doneAllC = listC.length > 0 && listC.every((p) => s.cResults[p.id]);
+    const callTrail = curCP && curCResult ? [
+      { label: 'Saved in KQM', icon: 'M8 12.5l2.5 2.5L16 9.5M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', color: c.accent, bg: c.accentTint, delay: '0ms', hasBtn: false, btn: null },
+      { label: 'Counted in AgencyTrack (+1 dial, +3 pts)', icon: 'M8 12.5l2.5 2.5L16 9.5M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', color: c.accent, bg: c.accentTint, delay: '250ms', hasBtn: false, btn: null },
+      needsPlace
+        ? { label: 'ApplyOn: waiting — needs a meeting place', icon: 'M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', color: c.warm, bg: c.warmTint, delay: '500ms', hasBtn: true, btn: () => this.setState({ cPlaces: Object.assign({}, s.cPlaces, { [curCP.id]: true }) }) }
+        : { label: 'ApplyOn: queued', icon: 'M8 12.5l2.5 2.5L16 9.5M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', color: c.accent, bg: c.accentTint, delay: '500ms', hasBtn: false, btn: null }
+    ] : [];
+    const hourVals = [1, 2, 3, 2, 4, 3, 5, 2, 1];
+    const hourNames = ['8a', '9a', '10a', '11a', '12p', '1p', '2p', '3p', '4p'];
+    const curHour = 4;
+    const maxH = Math.max.apply(null, hourVals);
+    const barW = 22, gap = 6.5;
+    const callHourBars = hourVals.map((v, i) => {
+      const h = Math.round((v / maxH) * 44);
+      return { x: (i * (barW + gap)).toFixed(1), y: (54 - h).toFixed(1), w: barW, h: h, color: i === curHour ? cat0 : c.ghost, delay: (i * 30) + 'ms' };
+    });
+    const callHourLabels = hourNames.map((t, i) => ({ t: t, v: hourVals[i], color: i === curHour ? c.ink : c.faint, weight: i === curHour ? 700 : 500 }));
+    const dCalls = s.dispCalls || { dials: s.cDials, contacts: s.cContacts, booked: s.cBooked };
+    const dDials = Math.round(dCalls.dials), dContacts = Math.round(dCalls.contacts), dBooked = Math.round(dCalls.booked);
+
+    // ---- Winback mode ----
+    const NET_GROSS = 210975.24, NET_BASE = 182778.36;
+    const persistPct = (add) => (NET_BASE + add) / NET_GROSS * 100;
+    const basePersist = persistPct(0);
+    const WPraw = this.winbackPolicies();
+    let runningNet = NET_BASE, runningPct = basePersist, gateSeen = 0;
+    const wbFull = WPraw.map((p) => {
+      let fromPct, toPct, whyExtra;
+      if (p.gate) {
+        fromPct = runningPct;
+        runningNet += p.api;
+        toPct = persistPct(runningNet - NET_BASE);
+        runningPct = toPct;
+        gateSeen++;
+        whyExtra = gateSeen === 1 ? '; with the next one on this list you pass 90%' : ' — that clears the 90% gate';
+      } else {
+        fromPct = basePersist;
+        toPct = persistPct(p.api);
+        whyExtra = p.agesOut ? ('. This one ages out end of ' + this.addMonthsLabel(p.lapsed, 24) + ' — call it regardless of the gate.') : '';
+      }
+      const apiWhole = 'TTD ' + Math.round(p.api).toLocaleString('en-US');
+      return Object.assign({}, p, {
+        monthYearLabel: this.monthYear(p.lapsed),
+        why: 'Reinstating ' + apiWhole + ' lifts persistency ' + fromPct.toFixed(1) + '% → ' + toPct.toFixed(1) + '%' + whyExtra
+      });
+    });
+    const STATUS_LABELS = ['To call', 'Agreed', 'Form sent', 'Paid', 'Reinstated'];
+    const wbQueue = wbFull.map((p, i) => {
+      const r = s.wResults[p.id];
+      const on = i === s.wIdx;
+      const status = s.wStatus[p.id] || 0;
+      return {
+        name: p.name, initials: 'P' + p.id,
+        api: 'TTD ' + Math.round(p.api).toLocaleString('en-US'),
+        monthsLeft: p.monthsLeft, barPct: Math.round(p.monthsLeft / 24 * 100),
+        gate: !!p.gate, agesOut: !!p.agesOut,
+        bg: on ? c.sel : 'transparent', current: on ? 'true' : 'false', opacity: r && !on ? 0.6 : 1,
+        done: !!r, statusLabel: STATUS_LABELS[status],
+        pick: () => this.setState({ wIdx: i, wPick: 'none', anim: s.anim + 1 })
+      };
+    });
+    const curWP = wbFull[s.wIdx];
+    const curWResult = curWP ? s.wResults[curWP.id] : null;
+    const curStatus = curWP ? (s.wStatus[curWP.id] || 0) : 0;
+    const wbTrack = curWP ? STATUS_LABELS.map((label, i) => {
+      const state = i < curStatus ? 'done' : (i === curStatus ? 'current' : 'future');
+      return { label: label, bg: state === 'future' ? c.sunk : (state === 'current' ? c.accentTint : c.accent), color: state === 'future' ? c.mute : (state === 'current' ? c.accent : c.onAccent) };
+    }) : [];
+    const wbCur = curWP ? {
+      name: curWP.name, initials: 'P' + curWP.id, issuedLabel: curWP.lapsed, monthYearLabel: curWP.monthYearLabel, monthsLeft: curWP.monthsLeft,
+      why: curWP.why,
+      opener: 'Hi, it’s Kyron from Tatil Life. I’m calling about the policy that lapsed in ' + curWP.monthYearLabel + ' — the good news is we can still bring it back. Do you have two minutes?',
+      objection: 'I can’t pay the back premiums',
+      answer: 'Ask about paying the arrears in two parts.',
+      isAgesOut: !!curWP.agesOut, agesOutLabel: curWP.agesOut ? this.addMonthsLabel(curWP.lapsed, 24) : '',
+      track: wbTrack,
+      statusText: curStatus === 4 ? 'Reinstated · waiting on head office' : STATUS_LABELS[curStatus],
+      showFormSent: curStatus === 1, showPaid: curStatus === 2, showReinstate: curStatus === 3,
+      doFormSent: () => this.advanceWin(curWP.id, 2, 'Form sent · ' + curWP.name),
+      doPaid: () => this.advanceWin(curWP.id, 3, 'Marked paid · ' + curWP.name),
+      doReinstate: () => this.advanceWin(curWP.id, 4, 'Saved · marked reinstated, waiting on head office', 10),
+      result: curWResult || ''
+    } : {};
+    const wbOutcomeDefs = [
+      { key: '1', label: 'Will reinstate', do: () => this.recordWin('Will reinstate', 1, 5) },
+      { key: '2', label: 'Send form', do: () => this.recordWin('Send form', 2, 3) },
+      { key: '3', label: 'Call back', do: () => this.setState({ wPick: 'back' }) },
+      { key: '4', label: 'No answer', do: () => this.recordWin('No answer', null, 1) },
+      { key: '5', label: 'Not interested', do: () => this.recordWin('Not interested', null, 1) }
+    ];
+    const wbOutcomes = wbOutcomeDefs.map((o) => ({ key: o.key, label: o.label, pick: o.do, bg: c.surface, color: c.ink, border: c.rule }));
+    const wbCallbacks = ['Tomorrow 10:00', 'In 3 days', 'Next week'].map((label) => ({ label: label, pick: () => this.recordWin('Call back · ' + label, null, 1, 'Call back set · ' + label) }));
+    const doneAllW = wbFull.length > 0 && wbFull.every((p) => s.wResults[p.id]);
+    const winTrail = curWP && curWResult ? [{ label: 'Saved in KQM · status: ' + wbCur.statusText, color: c.accent, bg: c.accentTint }] : [];
+    const projectedAddNow = wbFull.filter((p) => (s.wStatus[p.id] || 0) >= 3).reduce((a, p) => a + p.api, 0);
+    const dispWinVal = s.dispWin ? s.dispWin.persist : persistPct(projectedAddNow);
+    const wbMeterPct = Math.max(0, Math.min(100, dispWinVal));
+    const wbMeterLabel = dispWinVal.toFixed(1) + '%';
+    const tier = dispWinVal >= 90 ? { pct: '100%', amt: 'TTD 7,000' } : (dispWinVal >= 85 ? { pct: '50%', amt: 'TTD 3,500' } : (dispWinVal >= 80 ? { pct: '25%', amt: 'TTD 1,750' } : { pct: '0%', amt: 'not qualified' }));
+
+    // ---- Paperwork mode ----
+    const T = this.paperworkTasks();
+    const pwQueue = T.map((t, i) => {
+      const r = s.pResults[t.id];
+      const on = i === s.pIdx;
+      return { label: t.label, mins: t.mins, bg: on ? c.sel : 'transparent', current: on ? 'true' : 'false', opacity: r && !on ? 0.6 : 1, isDone: r === 'done', isSkipped: r === 'skipped', pick: () => this.setState({ pIdx: i, anim: s.anim + 1 }) };
+    });
+    const curPT = T[s.pIdx];
+    const pwDoneCount = T.filter((t) => s.pResults[t.id] === 'done').length;
+    const pwSkippedCount = T.filter((t) => s.pResults[t.id] === 'skipped').length;
+    const pwCur = curPT ? {
+      label: curPT.label, mins: curPT.mins,
+      open: (e) => { e.preventDefault(); if (this.props.onNav) this.props.onNav(curPT.nav); },
+      markDone: () => this.recordPaper(true),
+      skip: () => this.recordPaper(false)
+    } : {};
+
+    return {
+      c: c, go: go, dark: !!this.props.dark,
+      showChrome: !this.props.embedded, rootW: this.props.embedded ? 1220 : 1440,
+      cat0: cat0,
+      clock: mm + ':' + ss + ' left', timerBg: s.running ? c.goldTint : c.surface, timerFg: s.running ? c.gold : c.ink,
+      timerIcon: s.running ? 'M6 4h4v16H6zM14 4h4v16h-4z' : 'M7 4v16l13-8z', timerAria: s.running ? 'Pause timer' : 'Start timer',
+      toggleTimer: () => { this.startTimer(); this.setState({ running: !s.running }); },
+      goalText: goalText, modes: modes, modeAnim: modeAnim,
+      endSession: () => this.setState({ summary: true, running: false }),
+      isCalls: s.mode === 'Calls', isWinback: s.mode === 'Winback', isPaperwork: s.mode === 'Paperwork',
+      cardAnim: cardAnim,
+      callFilters: callFilters, callQueue: callQueue, callQueueLabel: 'QUEUE · ' + Object.keys(s.cResults).length + ' OF ' + P.length + ' DONE',
+      hasCallCur: !!curCP && !doneAllC, callQueueDone: doneAllC || !curCP, callCur: callCur,
+      openKqm: (e) => { e.preventDefault(); if (this.props.onNav) this.props.onNav('event:toast:Opens this person in KQM Calls'); },
+      showCallTrail: s.cPick === 'none' && !!curCResult, callTrail: callTrail,
+      callOutcomes: callOutcomes, callPickNone: s.cPick === 'none' && !curCResult, callPickBook: s.cPick === 'book', callPickBack: s.cPick === 'back',
+      callTypes: callTypes, callSlots: callSlots, callCallbacks: callCallbacks,
+      cancelCallPick: () => this.setState({ cPick: 'none' }),
+      skipCall: () => { const n = listC.findIndex((p, i) => i > s.cIdx && !s.cResults[p.id]); this.setState({ cIdx: n < 0 ? s.cIdx : n, cPick: 'none', anim: s.anim + 1 }); },
+      canUndoCall: s.cHist.length > 0, undoCall: () => this.undoCalls(),
+      callHourBars: callHourBars, callHourLabels: callHourLabels, showCallHourChart: !s.cHourTable, showCallHourTable: s.cHourTable,
+      callHourTableLabel: s.cHourTable ? 'Chart' : 'Table', toggleCallHourTable: () => this.setState({ cHourTable: !s.cHourTable }),
+      callRings: [
+        { label: 'Dials', val: dDials, goal: 20, color: c.accent, dash: ring(s.cDials, 20), aria: s.cDials + ' of 20 dials' },
+        { label: 'Booked', val: dBooked, goal: 3, color: c.gold, dash: ring(s.cBooked, 3), aria: s.cBooked + ' of 3 booked' }
+      ],
+      callContacts: dContacts, callBooked: dBooked, callDials: dDials, callPts: dPts, lastPts: s.lastPts,
+      showFloat: s.floatN > 0 && s.lastPts > 0, floatAnim: (s.floatN % 2 ? 'phFloat' : 'phFloatB') + ' 900ms ease-out both',
+      callWorth: (s.cDials * 740).toLocaleString('en-US'),
+      callWeekDials: s.cDials, callDialKingPct: Math.min(100, Math.round((s.cDials / 60) * 100)),
+      wbQueue: wbQueue, wbQueueLabel: 'QUEUE · ' + Object.keys(s.wResults).length + ' OF ' + wbFull.length + ' DONE',
+      hasWinCur: !!curWP && !doneAllW, winQueueDone: doneAllW || !curWP, wbCur: wbCur,
+      showWinTrail: s.wPick === 'none' && !!curWResult, winTrail: winTrail,
+      wbOutcomes: wbOutcomes, winPickNone: s.wPick === 'none' && !curWResult, winPickBack: s.wPick === 'back',
+      wbCallbacks: wbCallbacks, cancelWinPick: () => this.setState({ wPick: 'none' }),
+      skipWin: () => { const n = wbFull.findIndex((p, i) => i > s.wIdx && !s.wResults[p.id]); this.setState({ wIdx: n < 0 ? s.wIdx : n, wPick: 'none', anim: s.anim + 1 }); },
+      canUndoWin: s.wHist.length > 0, undoWin: () => this.undoWin(),
+      wbMeterPct: wbMeterPct, wbMeterLabel: wbMeterLabel, wbTierPct: tier.pct, wbTierAmt: tier.amt,
+      openWinbackLedger: (e) => { e.preventDefault(); if (this.props.onNav) this.props.onNav('Ledger?view=Winback'); },
+      pwQueue: pwQueue, pwCur: pwCur, hasPaperCur: !!curPT, paperAllClear: !curPT,
+      pwDoneCount: pwDoneCount, pwTotal: T.length, pwRingDash: ring(pwDoneCount, T.length),
+      pwProgressAria: pwDoneCount + ' of ' + T.length + ' done',
+      canUndoPaper: s.pHist.length > 0, undoPaper: () => this.undoPaper(),
+      showSummary: s.summary, confetti: confetti,
+      summaryTitle: s.mode === 'Calls' ? 'Power hour done' : (s.mode === 'Winback' ? 'Win-back session done' : 'Paperwork session done'),
+      summary: s.mode === 'Calls' ? [{ v: s.cDials, l: 'dials' }, { v: s.cContacts, l: 'spoke to' }, { v: s.cBooked, l: 'booked' }, { v: '+' + s.pts, l: 'points' }]
+        : (s.mode === 'Winback' ? [{ v: Object.keys(s.wResults).length, l: 'calls made' }, { v: wbFull.filter((p) => (s.wStatus[p.id] || 0) >= 4).length, l: 'reinstated' }, { v: 'TTD ' + Math.round(wbFull.filter((p) => (s.wStatus[p.id] || 0) >= 4).reduce((a, p) => a + p.api, 0)).toLocaleString('en-US'), l: 'value reinstated' }, { v: '+' + s.pts, l: 'points' }]
+          : [{ v: pwDoneCount, l: 'tasks done' }, { v: pwSkippedCount, l: 'skipped' }, { v: Math.max(0, T.length - pwDoneCount - pwSkippedCount), l: 'left' }, { v: '+' + s.pts, l: 'points' }]),
+      again: () => this.setState({ summary: false, secs: 15 * 60, running: true }),
+      onKey: (e) => {
+        const tag = (e.target && e.target.tagName) || '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        if (e.key === 'Escape') {
+          if (s.mode === 'Calls' && s.cPick !== 'none') { e.preventDefault(); this.setState({ cPick: 'none' }); }
+          else if (s.mode === 'Winback' && s.wPick !== 'none') { e.preventDefault(); this.setState({ wPick: 'none' }); }
+          return;
+        }
+        if (s.summary) return;
+        if (s.mode === 'Calls') {
+          if (!curCP) return;
+          if (s.cPick === 'none' && !curCResult && ['1', '2', '3', '4', '5'].indexOf(e.key) >= 0) { e.preventDefault(); callOutcomeDefs[parseInt(e.key, 10) - 1].do(); return; }
+          if (s.cPick === 'book' && ['1', '2', '3', '4', '5', '6'].indexOf(e.key) >= 0) { e.preventDefault(); callSlots[parseInt(e.key, 10) - 1].pick(); return; }
+          if (s.cPick === 'back' && ['1', '2', '3'].indexOf(e.key) >= 0) { e.preventDefault(); callCallbacks[parseInt(e.key, 10) - 1].pick(); return; }
+          if (e.key === 's' || e.key === 'S') { e.preventDefault(); const n = listC.findIndex((p, i) => i > s.cIdx && !s.cResults[p.id]); this.setState({ cIdx: n < 0 ? s.cIdx : n, anim: s.anim + 1 }); return; }
+          if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); this.undoCalls(); return; }
+        } else if (s.mode === 'Winback') {
+          if (!curWP) return;
+          if (s.wPick === 'none' && !curWResult && ['1', '2', '3', '4', '5'].indexOf(e.key) >= 0) { e.preventDefault(); wbOutcomeDefs[parseInt(e.key, 10) - 1].do(); return; }
+          if (s.wPick === 'back' && ['1', '2', '3'].indexOf(e.key) >= 0) { e.preventDefault(); wbCallbacks[parseInt(e.key, 10) - 1].pick(); return; }
+          if (e.key === 's' || e.key === 'S') { e.preventDefault(); const n = wbFull.findIndex((p, i) => i > s.wIdx && !s.wResults[p.id]); this.setState({ wIdx: n < 0 ? s.wIdx : n, wPick: 'none', anim: s.anim + 1 }); return; }
+          if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); this.undoWin(); return; }
+        } else {
+          if (!curPT) return;
+          if (e.key === 'd' || e.key === 'D') { e.preventDefault(); this.recordPaper(true); return; }
+          if (e.key === 's' || e.key === 'S') { e.preventDefault(); this.recordPaper(false); return; }
+          if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); this.undoPaper(); return; }
+        }
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

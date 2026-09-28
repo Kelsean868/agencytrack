@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Focus session — mobile v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}
+a{color:inherit}
+*{font-variant-numeric:tabular-nums}
+@keyframes m3fCardA{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes m3fCardB{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes m3fUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes m3fTrail{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes m3fPop{0%{transform:scale(0.7);opacity:0}60%{transform:scale(1.06);opacity:1}100%{transform:scale(1)}}
+@keyframes m3fFall{0%{transform:translateY(-40px) rotate(0);opacity:1}100%{transform:translateY(760px) rotate(540deg);opacity:0}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: 1760px; box-sizing: border-box; position: relative; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; display: flex; flex-direction: column; gap: 14px; padding: 12px 16px 104px;">
+
+  <header style="display: flex; align-items: center; gap: 8px; min-height: 44px;">
+    <a href="M3-Home.dc.html" onClick="{{go.back}}" aria-label="Back to Today" style="width: 44px; height: 44px; border-radius: 22px; background: {{c.sunk}}; display: flex; align-items: center; justify-content: center; color: {{c.ink}}; flex-shrink: 0;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
+    <h1 style="flex-grow: 1; margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700;">Focus session</h1>
+    <button onClick="{{endSession}}" style="min-height: 44px; padding: 0 12px; border-radius: 10px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">End</button>
+  </header>
+
+  <div role="tablist" aria-label="Focus mode" style="height: 48px; box-sizing: border-box; padding: 3px; border-radius: 14px; background: {{c.sunk}}; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px;">
+    <sc-for list="{{modeTabs}}" as="t" hint-placeholder-count="3">
+      <button role="tab" aria-selected="{{t.selected}}" onClick="{{t.pick}}" style="height: 42px; border: 0; border-radius: 11px; background: {{t.bg}}; color: {{t.color}}; box-shadow: {{t.shadow}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{t.label}}</button>
+    </sc-for>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <button onClick="{{toggleTimer}}" aria-label="{{timerAria}}" style="height: 36px; padding: 0 12px; border-radius: 18px; border: 1px solid {{c.rule}}; background: {{timerBg}}; color: {{timerFg}}; display: flex; align-items: center; gap: 7px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; flex-shrink: 0;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="{{timerIcon}}"></path></svg>{{clock}}</button>
+    <span style="flex-grow: 1;"></span>
+    <sc-for list="{{rings}}" as="rg" hint-placeholder-count="2">
+      <span style="display: flex; align-items: center; gap: 6px;">
+        <svg width="34" height="34" viewBox="0 0 40 40" role="img" aria-label="{{rg.aria}}">
+          <circle cx="20" cy="20" r="16" fill="none" stroke="{{c.sunk}}" stroke-width="5"></circle>
+          <circle cx="20" cy="20" r="16" fill="none" stroke="{{rg.color}}" stroke-width="5" stroke-linecap="round" stroke-dasharray="{{rg.dash}}" transform="rotate(-90 20 20)" style="transition: stroke-dasharray 420ms cubic-bezier(0.32, 0.72, 0, 1);"></circle>
+        </svg>
+        <span style="display: flex; flex-direction: column; line-height: 1.1;"><span style="font-size: 12px; font-weight: 700;">{{rg.val}}/{{rg.goal}}</span><span style="font-size: 10px; color: {{c.mute}};">{{rg.label}}</span></span>
+      </span>
+    </sc-for>
+    <span style="font-size: 13px; font-weight: 700; color: {{c.gold}};">+{{pts}}</span>
+  </div>
+
+  <sc-if value="{{isWinback}}" hint-placeholder-val="{{false}}">
+    <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.accent}};">PROJECTED PERSISTENCY</span>
+        <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; color: {{persColor}};">{{persPct}}%</span>
+      </div>
+      <div style="position: relative; height: 12px; border-radius: 6px; background: {{c.sunk}};">
+        <div style="position: absolute; left: 0; top: 0; height: 12px; border-radius: 6px; background: {{persColor}}; width: {{persWidth}}%; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></div>
+        <span style="position: absolute; left: 83.3%; top: -3px; width: 2px; height: 18px; background: {{c.ink}};"></span>
+      </div>
+      <span style="font-size: 11.5px; color: {{c.mute}};">Gate 90% &middot; you're at {{bandLabel}} of the Christmas prize band right now.</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{hasCurrent}}" hint-placeholder-val="{{true}}">
+    <section aria-label="Current item" style="display: flex; flex-direction: column; gap: 14px; animation: {{cardAnim}};">
+
+      <sc-if value="{{isPaperwork}}" hint-placeholder-val="{{false}}">
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: {{c.mute}};">{{countLabel}}</span>
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2;">{{cur.title}}</h2>
+          <p style="margin: 0; font-size: 14.5px; line-height: 1.5; color: {{c.mute}};">{{cur.sub}}</p>
+          <a href="{{cur.href}}" onClick="{{cur.go}}" style="min-height: 52px; border-radius: 14px; border: 1px solid {{c.rule}}; background: {{c.sunk}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 700; text-decoration: none;">{{cur.cta}}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></a>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <button onClick="{{markDone}}" style="min-height: 56px; border-radius: 14px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 16px; font-weight: 700;">Done</button>
+          <button onClick="{{markSkip}}" style="min-height: 56px; border-radius: 14px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 16px; font-weight: 700;">Skip for now</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isCall}}" hint-placeholder-val="{{true}}">
+        <sc-if value="{{isCalls}}" hint-placeholder-val="{{true}}">
+          <span style="display: flex; align-items: center; gap: 6px; align-self: flex-start;">
+            <span style="height: 22px; padding: 0 9px; border-radius: 11px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
+              KQM Calls · synced 2 min ago</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}}; background: {{c.sunk}}; padding: 2px 6px; border-radius: 5px;">SAMPLE</span>
+          </span>
+        </sc-if>
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="width: 52px; height: 52px; border-radius: 26px; background: {{cur.avBg}}; color: #1F1D1A; display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 800; flex-shrink: 0;">{{cur.initials}}</span>
+            <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+              <span style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.01em;">{{cur.name}}</span><span style="height: 20px; padding: 0 8px; border-radius: 10px; background: {{cur.tagBg}}; color: {{cur.tagFg}}; display: flex; align-items: center; font-size: 11px; font-weight: 700;">{{cur.kind}}</span></span>
+              <span style="font-size: 12.5px; color: {{c.mute}};">{{cur.sub}}</span>
+            </div>
+          </div>
+          <sc-if value="{{cur.priority}}" hint-placeholder-val="{{false}}">
+            <span style="align-self: flex-start; height: 24px; padding: 0 10px; border-radius: 12px; background: {{c.goldTint}}; color: {{c.gold}}; display: flex; align-items: center; font-size: 12px; font-weight: 700;">Part of the smallest set that clears the gate</span>
+          </sc-if>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <a href="tel:+18680000000" style="align-self: flex-start; min-height: 48px; padding: 0 18px; border-radius: 24px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 800; text-decoration: none;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg>Call on your phone</a>
+            <span style="font-size: 11.5px; color: {{c.mute}};">Calls go through your own phone. Nothing is recorded — you just pick what happened.</span>
+          </div>
+          <sc-if value="{{isCalls}}" hint-placeholder-val="{{true}}">
+            <a href="#" onClick="{{openKqm}}" style="font-size: 13px; font-weight: 700; color: {{c.accent}}; text-decoration: none; display: flex; align-items: center; gap: 4px;">Open in KQM<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"></path></svg></a>
+          </sc-if>
+          <sc-if value="{{isWinback}}" hint-placeholder-val="{{false}}">
+            <div role="group" aria-label="Reinstatement status" style="display: flex; gap: 4px; overflow-x: auto;">
+              <sc-for list="{{track}}" as="tk" hint-placeholder-count="5">
+                <button onClick="{{tk.pick}}" aria-pressed="{{tk.on}}" style="flex-shrink: 0; height: 30px; padding: 0 10px; border-radius: 15px; border: 1px solid {{tk.border}}; background: {{tk.bg}}; color: {{tk.color}}; font-family: 'Onest', sans-serif; font-size: 11.5px; font-weight: 700;">{{tk.label}}</button>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <button onClick="{{toggleNotes}}" aria-expanded="{{notesOpen}}" style="align-self: flex-start; min-height: 44px; padding: 0 4px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{notesLabel}}</button>
+          <sc-if value="{{notesOpen}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; flex-direction: column; gap: 8px; animation: m3fUp 220ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+              <div style="border-radius: 14px; background: {{c.sunk}}; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.accent}};">WHY YOU'RE CALLING</span>
+                <span style="font-size: 14px; font-weight: 700; line-height: 1.35;">{{cur.why}}</span>
+              </div>
+              <div style="border-radius: 14px; background: {{c.sunk}}; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.accent}};">OPENER</span>
+                <span style="font-size: 13.5px; line-height: 1.5;">{{cur.opener}}</span>
+              </div>
+              <div style="border-radius: 14px; background: {{c.warmTint}}; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.warm}};">IF THEY SAY</span>
+                <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; font-weight: 700;">"{{cur.objection}}"</span>
+                <span style="font-size: 12.5px; color: {{c.mute}};">[Your answer, in your own words]</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{showTrail}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <span style="font-size: 13px; font-weight: 700;">Result: {{cur.result}}</span>
+            <sc-for list="{{trail}}" as="tr" hint-placeholder-count="3">
+              <div style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 12px; border-radius: 12px; background: {{tr.bg}}; animation: m3fTrail 260ms {{tr.delay}} cubic-bezier(0.32, 0.72, 0, 1) both;">
+                <span style="color: {{tr.color}}; display: flex; flex-shrink: 0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{tr.icon}}"></path></svg></span>
+                <span style="font-size: 13px; font-weight: 700; color: {{tr.color}}; flex-grow: 1;">{{tr.label}}</span>
+                <sc-if value="{{tr.hasBtn}}" hint-placeholder-val="{{false}}">
+                  <button onClick="{{tr.btn}}" style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid {{c.warm}}; background: transparent; color: {{c.warm}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">Add place</button>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{pickNone}}" hint-placeholder-val="{{true}}">
+          <div style="display: flex; flex-direction: column; gap: 10px; animation: m3fUp 220ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+            <span style="font-size: 13px; font-weight: 600; color: {{c.mute}};">How did it go? Tap a result.</span>
+            <sc-for list="{{outcomes}}" as="o" hint-placeholder-count="5">
+              <button onClick="{{o.pick}}" style="min-height: 56px; border-radius: 14px; border: 1px solid {{o.border}}; background: {{o.bg}}; color: {{o.color}}; display: flex; align-items: center; justify-content: center; gap: 10px; font-family: 'Onest', sans-serif; font-size: 16px; font-weight: 700;">{{o.label}}</button>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{pickBook}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 10px; animation: m3fUp 220ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="flex-grow: 1; font-size: 15px; font-weight: 700;">Book — pick a free slot</span><button onClick="{{cancelPick}}" style="min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600;">Cancel</button></div>
+            <div style="display: flex; gap: 8px;">
+              <sc-for list="{{types}}" as="t" hint-placeholder-count="2"><button onClick="{{t.pick}}" aria-pressed="{{t.on}}" style="flex: 1; min-height: 44px; border-radius: 10px; border: 1px solid {{t.border}}; background: {{t.bg}}; color: {{t.color}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{t.label}}</button></sc-for>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+              <sc-for list="{{slots}}" as="sl" hint-placeholder-count="6"><button onClick="{{sl.pick}}" style="min-height: 56px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: 'Onest', sans-serif;"><span style="font-size: 12px; color: {{c.mute}};">{{sl.day}}</span><span style="font-size: 15px; font-weight: 800;">{{sl.time}}</span></button></sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{pickBack}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 10px; animation: m3fUp 220ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="flex-grow: 1; font-size: 15px; font-weight: 700;">Call back…</span><button onClick="{{cancelPick}}" style="min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600;">Cancel</button></div>
+            <sc-for list="{{callbacks}}" as="cb" hint-placeholder-count="3"><button onClick="{{cb.pick}}" style="min-height: 52px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">{{cb.label}}</button></sc-for>
+          </div>
+        </sc-if>
+
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <button onClick="{{skipOne}}" style="min-height: 44px; padding: 0 10px; border: 0; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 600;">Skip for now</button>
+          <sc-if value="{{canUndo}}" hint-placeholder-val="{{false}}"><button onClick="{{undo}}" style="min-height: 44px; padding: 0 10px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Undo last</button></sc-if>
+        </div>
+      </sc-if>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{queueDone}}" hint-placeholder-val="{{false}}">
+    <section style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 40px 16px;">
+      <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 700;">Queue cleared.</h2>
+      <p style="margin: 0; font-size: 14.5px; color: {{c.mute}};">Everyone in this list has a result. End the session to see how it went.</p>
+    </section>
+  </sc-if>
+
+  <span style="font-size: 11px; color: {{c.faint}};">Every result logs itself and fills your weekly report.</span>
+
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}">
+    <div style="position: absolute; left: 0; bottom: 0;"><dc-import name="M3-Nav" active="none" dark="{{dark}}" hint-size="390px,84px"></dc-import></div>
+  </sc-if>
+
+  <sc-if value="{{showSummary}}" hint-placeholder-val="{{false}}">
+    <div role="dialog" aria-modal="true" aria-label="Session summary" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 10; overflow: hidden;">
+      <sc-for list="{{confetti}}" as="cf" hint-placeholder-count="0"><span aria-hidden="true" style="position: absolute; top: 0; left: {{cf.left}}%; width: 7px; height: 10px; border-radius: 2px; background: {{cf.color}}; animation: m3fFall {{cf.dur}}ms {{cf.delay}}ms cubic-bezier(0.2, 0.6, 0.4, 1) both;"></span></sc-for>
+      <div style="width: 336px; border-radius: 22px; background: {{c.surface}}; padding: 26px 22px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.35); animation: m3fPop 460ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+        <span style="width: 72px; height: 72px; border-radius: 36px; background: {{c.goldTint}}; color: {{c.gold}}; display: flex; align-items: center; justify-content: center;">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg></span>
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.02em;">{{summaryTitle}}</h2>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%;">
+          <sc-for list="{{summary}}" as="sm" hint-placeholder-count="3"><div style="border-radius: 12px; background: {{c.sunk}}; padding: 10px;"><span style="display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 800;">{{sm.v}}</span><span style="font-size: 11.5px; color: {{c.mute}};">{{sm.l}}</span></div></sc-for>
+        </div>
+        <p style="margin: 0; font-size: 13.5px; color: {{c.mute}};">All of it is already in your week and your weekly report.</p>
+        <div style="display: flex; gap: 10px; width: 100%;">
+          <button onClick="{{again}}" style="flex: 1; min-height: 48px; border-radius: 12px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Another 15 min</button>
+          <a href="M3-Home.dc.html" onClick="{{go.back}}" style="flex: 1; min-height: 48px; border-radius: 12px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; text-decoration: none;">Back to Today</a>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":390,"height":1760}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const m = props.params && /mode=([A-Za-z]+)/.exec(props.params);
+    const raw = (m && m[1]) || 'Calls';
+    const mode = ['Calls', 'Winback', 'Paperwork'].indexOf(raw) >= 0 ? raw : 'Calls';
+    this.state = {
+      mode: mode,
+      idx: { Calls: 0, Winback: 0, Paperwork: 0 },
+      results: { Calls: {}, Winback: {}, Paperwork: {} },
+      order: { Paperwork: null },
+      statuses: {}, pick: 'none', notesOpen: false, type: 0,
+      hist: [], secs: 25 * 60, running: false, summary: false, anim: 0
+    };
+    this.timer = null;
+  }
+  componentWillUnmount() { if (this.timer) clearInterval(this.timer); }
+  startTimer() {
+    if (this.timer) return;
+    this.timer = setInterval(() => { if (!this.state.running) return; this.setState({ secs: Math.max(0, this.state.secs - 1) }); }, 1000);
+  }
+  callsPeople() {
+    return [
+      { id: 'A', name: '[Client A]', kind: 'Follow-up', why: 'Asked for a quote on 22-09-2026. It is ready.', opener: 'Hi, it’s Kyron from Tatil. I have the quote you asked for. Do you have two minutes?', objection: 'I need to think about it.', warm: true },
+      { id: 'B', name: '[Client B]', kind: 'Referral', why: 'Referred by [name] after their review.', opener: 'Hi, it’s Kyron from Tatil Life. [Name] asked me to give you a call — do you have two minutes?', objection: 'I already have cover at work.' },
+      { id: 'E', name: '[Client E]', kind: 'Lapsed', why: 'Whole life, TTD 7,100 a year, lapsed 02-03-2026.', opener: 'Hi, it’s Kyron. I noticed your policy lapsed in March. The good news is we can still restore it. Can I show you how?', objection: 'Money is tight right now.', warm: true },
+      { id: 'C', name: '[Client C]', kind: 'Referral', why: 'Referred by [name].', opener: 'Hi, it’s Kyron from Tatil Life. [Name] asked me to give you a call — do you have two minutes?', objection: 'Send me something to read first.' },
+      { id: 'D', name: '[Client D]', kind: 'Review', why: 'Policy anniversary on 04-10-2026.', opener: 'Hi, it’s Kyron. Your policy anniversary is coming up — can we book 20 minutes to make sure it still fits?', objection: 'Everything is fine as it is.' },
+      { id: 'F', name: '[Client F]', kind: 'Referral', why: 'Referred by [name].', opener: 'Hi, it’s Kyron from Tatil Life. [Name] asked me to give you a call — do you have two minutes?', objection: 'Call me next month.' },
+      { id: 'G', name: '[Client G]', kind: 'Follow-up', why: 'Met at the seminar on 19-09-2026.', opener: 'Hi, it’s Kyron from Tatil. I have the quote you asked for. Do you have two minutes?', objection: 'I need to talk to my spouse.', warm: true },
+      { id: 'H', name: '[Client H]', kind: 'Referral', why: 'Referred by [name].', opener: 'Hi, it’s Kyron from Tatil Life. [Name] asked me to give you a call — do you have two minutes?', objection: 'I am too busy right now.' },
+      { id: 'I', name: '[Client I]', kind: 'Review', why: 'Annual review due.', opener: 'Hi, it’s Kyron. Your policy anniversary is coming up — can we book 20 minutes to make sure it still fits?', objection: 'I will call you.' },
+      { id: 'J', name: '[Client J]', kind: 'Referral', why: 'Referred by [name].', opener: 'Hi, it’s Kyron from Tatil Life. [Name] asked me to give you a call — do you have two minutes?', objection: 'How much does it cost?' },
+      { id: 'K', name: '[Client K]', kind: 'Follow-up', why: 'Missed our call on 24-09-2026.', opener: 'Hi, it’s Kyron from Tatil. I have the quote you asked for. Do you have two minutes?', objection: 'I have health cover already.' },
+      { id: 'L', name: '[Client L]', kind: 'Referral', why: 'Referred by [name].', opener: 'Hi, it’s Kyron from Tatil Life. [Name] asked me to give you a call — do you have two minutes?', objection: 'I don’t trust insurance companies.' }
+    ];
+  }
+  winbackPolicies() {
+    const P = [
+      { id: 'r1', n: 1, issued: '28-10-2024', ml: 1, api: 1182.36 },
+      { id: 'r2', n: 2, issued: '28-05-2025', ml: 8, api: 2400.00 },
+      { id: 'r3', n: 3, issued: '14-08-2025', ml: 11, api: 11996.64 },
+      { id: 'r4', n: 4, issued: '19-11-2025', ml: 14, api: 4821.12, priority: true },
+      { id: 'r5', n: 5, issued: '11-11-2025', ml: 14, api: 3617.64 },
+      { id: 'r6', n: 6, issued: '19-11-2025', ml: 14, api: 2400.00, priority: true },
+      { id: 'r7', n: 7, issued: '20-11-2025', ml: 14, api: 1779.12 }
+    ];
+    const order = ['r4', 'r6', 'r1', 'r7', 'r2', 'r5', 'r3'];
+    return order.map((id) => P.filter((p) => p.id === id)[0]);
+  }
+  paperworkTasks() {
+    return [
+      { id: 'p1', title: 'Confirm settled policies', sub: 'Head office shows [n] of your policies as settled. Confirm them so they count.', cta: 'Open the ledger', t: 'Ledger' },
+      { id: 'p2', title: "Log Friday's meeting outcome", sub: '[Client name] · fact-find · 25-09-2026.', cta: 'Log the outcome', t: 'Outcome' },
+      { id: 'p3', title: 'Submit your week 39 report', sub: 'Due today. Your daily logs fill it in.', cta: 'Start the report', t: 'Report' },
+      { id: 'p4', title: '3 KQM calls need a meeting place', sub: 'They count here already — ApplyOn waits for the place.', cta: 'Fix in Connections', t: 'Connections' },
+      { id: 'p5', title: 'Mark paid win-backs reinstated', sub: 'Self-confirmed, like settled policies — the next OIPA export confirms it.', cta: 'Open the ledger', t: 'Ledger?view=Winback' },
+      { id: 'p6', title: 'Plan week 40', sub: 'Book 5 fact-finds. Monday to Wednesday are still open.', cta: 'Open plan', t: 'Plan' }
+    ];
+  }
+  record(add, statusStr, extra) {
+    const s = this.state;
+    const mode = s.mode;
+    const list = mode === 'Calls' ? this.callsPeople() : this.winbackPolicies();
+    const cur = list[s.idx[mode]];
+    if (!cur) return;
+    const snap = { mode: mode, idx: s.idx[mode], results: s.results[mode], statuses: s.statuses };
+    const results = Object.assign({}, s.results[mode], { [cur.id]: add.label });
+    const statuses = statusStr ? Object.assign({}, s.statuses, { [cur.id]: statusStr }) : s.statuses;
+    let next = list.findIndex((p, i) => i > s.idx[mode] && !results[p.id]);
+    if (next < 0) next = list.findIndex((p) => !results[p.id]);
+    this.setState({
+      results: Object.assign({}, s.results, { [mode]: results }), statuses: statuses,
+      idx: Object.assign({}, s.idx, { [mode]: next < 0 ? list.length : next }),
+      pick: 'none', notesOpen: false, hist: s.hist.concat([snap]).slice(-8), running: true, anim: s.anim + 1
+    });
+    this.startTimer();
+    if (extra && this.props.onNav) this.props.onNav('event:toast:' + extra);
+  }
+  renderVals() {
+    const c = Object.assign({
+      bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0',
+      accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA',
+      gold: '#855400', goldTint: '#F5EAD3', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5']
+    }, this.props.dark ? {
+      bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B',
+      accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217',
+      gold: '#E8B44E', goldTint: '#342911', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC']
+    } : {});
+    const s = this.state;
+    const mode = s.mode;
+    const isCalls = mode === 'Calls', isWinback = mode === 'Winback', isPaperwork = mode === 'Paperwork';
+    const nav = (t) => (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav(t); } };
+    const go = { back: nav('Home') };
+    const FILES = { Ledger: 'M3-Ledger', Outcome: 'Outcome', Report: 'Weekly-Report', Connections: 'M3-Connections', Plan: 'Plan' };
+    const hrefFor = (t) => (FILES[t.split('?')[0]] || t.split('?')[0]) + '.dc.html';
+
+    const modeTabs = ['Calls', 'Winback', 'Paperwork'].map((mm) => {
+      const on = mm === mode;
+      const labels = { Calls: 'Calls', Winback: 'Win-back', Paperwork: 'Paperwork' };
+      return { label: labels[mm], selected: on ? 'true' : 'false', bg: on ? c.surface : 'transparent', color: on ? c.ink : c.mute, shadow: on ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', pick: () => this.setState({ mode: mm, pick: 'none', notesOpen: false }) };
+    });
+
+    const AV = { 'Follow-up': '#F2C14E', Referral: '#8FD3CD', Lapsed: '#E0A084', Review: '#B9BBEC' };
+    const TAG = { 'Follow-up': [c.goldTint, c.gold], Referral: [c.accentTint, c.accent], Lapsed: [c.warmTint, c.warm], Review: [c.sunk, c.ink] };
+
+    const callsList = this.callsPeople();
+    const winList = this.winbackPolicies();
+    const paperList = this.paperworkTasks();
+
+    // ---- Calls / Winback shared item builder ----
+    let list, curP, curResult, needsPlace, cur, outcomes;
+    if (isCalls) {
+      list = callsList;
+      curP = list[s.idx.Calls];
+      curResult = curP ? s.results.Calls[curP.id] : null;
+      needsPlace = curResult && curResult.indexOf('Booked') === 0;
+      cur = curP ? {
+        name: curP.name, initials: 'C' + curP.id, kind: curP.kind, avBg: AV[curP.kind], tagBg: TAG[curP.kind][0], tagFg: TAG[curP.kind][1],
+        why: curP.why, opener: curP.opener, objection: curP.objection, sub: curP.kind + ' · ' + curP.why, result: curResult || '', priority: false
+      } : {};
+      outcomes = [
+        { key: '1', label: 'No answer', pick: () => this.record({ label: 'No answer', pts: 1 }) },
+        { key: '2', label: 'Call back', pick: () => this.setState({ pick: 'back' }) },
+        { key: '3', label: 'Booked', pick: () => this.setState({ pick: 'book' }), primary: true },
+        { key: '4', label: 'Not interested', pick: () => this.record({ label: 'Not interested', pts: 1, contact: true }) },
+        { key: '5', label: 'Wrong number', pick: () => this.record({ label: 'Wrong number', pts: 0 }) }
+      ];
+    } else if (isWinback) {
+      list = winList;
+      curP = list[s.idx.Winback];
+      curResult = curP ? s.results.Winback[curP.id] : null;
+      needsPlace = false;
+      const status = curP ? (s.statuses[curP.id] || 'To call') : 'To call';
+      cur = curP ? {
+        name: '[Client ' + curP.n + ']', initials: 'P' + curP.n, kind: 'Lapsed', avBg: AV.Lapsed, tagBg: TAG.Lapsed[0], tagFg: TAG.Lapsed[1],
+        why: 'Lapsed policy still inside the 24-month window — issued ' + curP.issued + ', TTD ' + curP.api.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' API, ' + curP.ml + ' month' + (curP.ml === 1 ? '' : 's') + ' left. Only these can move persistency.',
+        opener: 'Hi, it’s Kyron. I noticed your policy lapsed. The good news is we can still restore it — can I show you how?',
+        objection: 'Money is tight right now.',
+        sub: 'Issued ' + curP.issued + ' · TTD ' + curP.api.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' API · ' + curP.ml + ' mo left',
+        result: curResult || '', priority: !!curP.priority, status: status
+      } : {};
+      outcomes = [
+        { key: '1', label: 'Will reinstate', pick: () => this.record({ label: 'Will reinstate', pts: 4, contact: true }, 'Agreed') },
+        { key: '2', label: 'Send form', pick: () => this.record({ label: 'Send form', pts: 3, contact: true }, 'Form sent') },
+        { key: '3', label: 'Call back', pick: () => this.setState({ pick: 'back' }) },
+        { key: '4', label: 'No answer', pick: () => this.record({ label: 'No answer', pts: 1 }) },
+        { key: '5', label: 'Not interested', pick: () => this.record({ label: 'Not interested', pts: 1, contact: true }) }
+      ];
+    }
+    const outs = (outcomes || []).map((o) => ({ key: o.key, label: o.label, pick: o.pick, bg: o.primary ? c.accent : c.surface, color: o.primary ? c.onAccent : c.ink, border: o.primary ? c.accent : c.rule }));
+
+    const track = (isWinback && curP) ? ['To call', 'Agreed', 'Form sent', 'Paid', 'Reinstated'].map((label) => {
+      const on = label === cur.status;
+      return { label: label, on: on ? 'true' : 'false', bg: on ? c.accent : c.sunk, color: on ? c.onAccent : c.mute, border: on ? c.accent : c.rule, pick: () => this.setState({ statuses: Object.assign({}, s.statuses, { [curP.id]: label }) }) };
+    }) : [];
+
+    const trail = (isCalls || isWinback) && curP && curResult ? (
+      isCalls ? [
+        { label: 'Saved in KQM', icon: 'M8 12.5l2.5 2.5L16 9.5M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', color: c.accent, bg: c.accentTint, delay: '0ms', hasBtn: false, btn: null },
+        { label: 'Counted in AgencyTrack', icon: 'M8 12.5l2.5 2.5L16 9.5M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', color: c.accent, bg: c.accentTint, delay: '250ms', hasBtn: false, btn: null },
+        needsPlace
+          ? { label: 'ApplyOn: waiting — needs a meeting place', icon: 'M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', color: c.warm, bg: c.warmTint, delay: '500ms', hasBtn: true, btn: () => this.setState({}) }
+          : { label: 'ApplyOn: queued', icon: 'M8 12.5l2.5 2.5L16 9.5M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', color: c.accent, bg: c.accentTint, delay: '500ms', hasBtn: false, btn: null }
+      ] : [
+        { label: 'Saved to the win-back list', icon: 'M8 12.5l2.5 2.5L16 9.5M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', color: c.accent, bg: c.accentTint, delay: '0ms', hasBtn: false, btn: null },
+        { label: 'Status: ' + cur.status, icon: 'M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', color: c.gold, bg: c.goldTint, delay: '250ms', hasBtn: false, btn: null }
+      ]
+    ) : [];
+
+    const typeNames = ['Fact-find', 'Closing'];
+    const types = typeNames.map((label, i) => ({ label: label, on: i === s.type ? 'true' : 'false', bg: i === s.type ? c.ink : c.surface, color: i === s.type ? c.bg : c.ink, border: i === s.type ? c.ink : c.rule, pick: () => this.setState({ type: i }) }));
+    const slotDefs = [['Mon 28', '09:30'], ['Mon 28', '13:00'], ['Mon 28', '14:00'], ['Tue 29', '09:00'], ['Tue 29', '16:00'], ['Wed 30', '11:00']];
+    const slots = slotDefs.map((d) => ({ day: d[0], time: d[1], pick: () => this.record({ label: 'Booked · ' + d[0] + ' ' + d[1], pts: 4, contact: true, booked: true }, null, 'Booked ' + (s.type ? 'closing' : 'fact-find') + ' · ' + d[0] + ' at ' + d[1]) }));
+    const callbacks = ['Tomorrow 10:00', 'In 3 days', 'Next week'].map((label) => ({ label: label, pick: () => this.record({ label: 'Call back · ' + label, pts: 1, contact: true }, null, 'Call back set · ' + label) }));
+
+    // ---- Paperwork ----
+    const doneP = s.results.Paperwork;
+    const orderP = paperList.slice().sort((a, b) => (doneP[a.id] === 'skip' ? 1 : 0) - (doneP[b.id] === 'skip' ? 1 : 0));
+    const remainingP = orderP.filter((p) => doneP[p.id] !== 'done');
+    const curTaskP = remainingP[0];
+    const curTask = curTaskP ? Object.assign({}, curTaskP, { href: hrefFor(curTaskP.t), go: nav(curTaskP.t) }) : {};
+    const markDone = () => this.setState({ results: Object.assign({}, s.results, { Paperwork: Object.assign({}, doneP, { [curTaskP.id]: 'done' }) }), anim: s.anim + 1 });
+    const markSkip = () => this.setState({ results: Object.assign({}, s.results, { Paperwork: Object.assign({}, doneP, { [curTaskP.id]: 'skip' }) }), anim: s.anim + 1 });
+
+    const hasCurrent = isPaperwork ? !!curTaskP : (isCalls || isWinback) && !!curP;
+    const queueDone = isPaperwork ? !curTaskP : ((isCalls || isWinback) && (!curP || list.every((p) => s.results[mode][p.id])));
+
+    const doneCountP = paperList.filter((p) => doneP[p.id] === 'done').length;
+    const skipCountP = paperList.filter((p) => doneP[p.id] === 'skip').length;
+
+    const countLabel = isPaperwork ? ((paperList.length - remainingP.length + 1) + ' OF ' + paperList.length) : '';
+
+    // ---- persistency projection (Winback) ----
+    const paidAPI = winList.filter((p) => ['Paid', 'Reinstated'].indexOf(s.statuses[p.id] || 'To call') >= 0).reduce((a, p) => a + p.api, 0);
+    const persPct = (((182778.36 + paidAPI) / 210975.24) * 100).toFixed(1);
+    const persNum = parseFloat(persPct);
+    const persColor = persNum >= 90 ? c.accent : c.warm;
+    const persWidth = Math.min(100, Math.max(0, ((persNum - 80) / (92 - 80)) * 100)).toFixed(1);
+    const bandLabel = persNum >= 90 ? '100%' : (persNum >= 85 ? '50%' : (persNum >= 80 ? '25%' : 'no'));
+
+    // ---- rings + points ----
+    const circ = 2 * Math.PI * 16;
+    const ring = (v, g) => (circ * Math.min(1, g ? v / g : 0)).toFixed(1) + ' ' + circ;
+    let rings, pts;
+    if (isCalls) {
+      const dials = Object.keys(s.results.Calls).length;
+      const booked = Object.keys(s.results.Calls).filter((k) => (s.results.Calls[k] || '').indexOf('Booked') === 0).length;
+      pts = Object.keys(s.results.Calls).reduce((a) => a, 0);
+      rings = [
+        { label: 'Dials', val: dials, goal: 20, color: c.accent, dash: ring(dials, 20), aria: dials + ' of 20 dials' },
+        { label: 'Booked', val: booked, goal: 3, color: c.gold, dash: ring(booked, 3), aria: booked + ' of 3 booked' }
+      ];
+      pts = dials * 2 + booked * 2;
+    } else if (isWinback) {
+      const called = Object.keys(s.results.Winback).length;
+      const cleared = winList.filter((p) => p.priority && ['Paid', 'Reinstated'].indexOf(s.statuses[p.id] || 'To call') >= 0).length;
+      rings = [
+        { label: 'Called', val: called, goal: winList.length, color: c.accent, dash: ring(called, winList.length), aria: called + ' of ' + winList.length + ' called' },
+        { label: 'Gate', val: cleared, goal: 2, color: c.gold, dash: ring(cleared, 2), aria: cleared + ' of 2 clearing the gate' }
+      ];
+      pts = called * 3 + cleared * 5;
+    } else {
+      rings = [
+        { label: 'Done', val: doneCountP, goal: paperList.length, color: c.accent, dash: ring(doneCountP, paperList.length), aria: doneCountP + ' of ' + paperList.length + ' done' },
+        { label: 'Skipped', val: skipCountP, goal: paperList.length, color: c.gold, dash: ring(skipCountP, paperList.length), aria: skipCountP + ' skipped' }
+      ];
+      pts = doneCountP;
+    }
+
+    const mm = String(Math.floor(s.secs / 60)).padStart(2, '0');
+    const ss = String(s.secs % 60).padStart(2, '0');
+    const COLORS = [c.accent, c.gold, c.warm, c.ghost, '#F2C14E'];
+    const confetti = Array.from({ length: 32 }, (_, i) => ({ left: ((i * 137.508) % 100).toFixed(2), delay: (i * 37) % 700, dur: 1500 + ((i * 53) % 900), color: COLORS[i % COLORS.length] }));
+    const summary = isPaperwork
+      ? [{ v: doneCountP, l: 'done' }, { v: skipCountP, l: 'skipped' }, { v: '+' + pts, l: 'points' }]
+      : isWinback
+        ? [{ v: Object.keys(s.results.Winback).length, l: 'called' }, { v: persPct + '%', l: 'projected' }, { v: '+' + pts, l: 'points' }]
+        : [{ v: Object.keys(s.results.Calls).length, l: 'dials' }, { v: Object.keys(s.results.Calls).filter((k) => (s.results.Calls[k] || '').indexOf('Booked') === 0).length, l: 'booked' }, { v: '+' + pts, l: 'points' }];
+
+    return {
+      c: c, dark: !!this.props.dark, go: go, showNav: !this.props.embedded,
+      modeTabs: modeTabs, isCalls: isCalls, isWinback: isWinback, isPaperwork: isPaperwork, isCall: isCalls || isWinback,
+      clock: mm + ':' + ss, timerBg: s.running ? c.goldTint : c.surface, timerFg: s.running ? c.gold : c.ink,
+      timerIcon: s.running ? 'M6 4h4v16H6zM14 4h4v16h-4z' : 'M7 4v16l13-8z', timerAria: s.running ? 'Pause timer' : 'Start timer',
+      toggleTimer: () => { this.startTimer(); this.setState({ running: !s.running }); },
+      rings: rings, pts: pts,
+      persPct: persPct, persColor: persColor, persWidth: persWidth, bandLabel: bandLabel,
+      hasCurrent: hasCurrent, queueDone: queueDone, countLabel: countLabel,
+      cardAnim: (s.anim % 2 ? 'm3fCardB' : 'm3fCardA') + ' 320ms cubic-bezier(0.32, 0.72, 0, 1) both',
+      cur: isPaperwork ? curTask : cur,
+      priority: !!(cur && cur.priority),
+      track: track,
+      notesOpen: s.notesOpen, notesLabel: s.notesOpen ? 'Hide call notes' : 'Show call notes', toggleNotes: () => this.setState({ notesOpen: !s.notesOpen }),
+      openKqm: (e) => { e.preventDefault(); if (this.props.onNav) this.props.onNav('event:toast:Opens this person in KQM Calls'); },
+      showTrail: (isCalls || isWinback) && s.pick === 'none' && !!curResult, trail: trail,
+      outcomes: outs, pickNone: (isCalls || isWinback) && s.pick === 'none' && !curResult, pickBook: isCalls && s.pick === 'book', pickBack: (isCalls || isWinback) && s.pick === 'back',
+      types: types, slots: slots, callbacks: callbacks,
+      cancelPick: () => this.setState({ pick: 'none' }),
+      skipOne: () => { if (!list || !curP) return; const n = list.findIndex((p, i) => i > s.idx[mode] && !s.results[mode][p.id]); this.setState({ idx: Object.assign({}, s.idx, { [mode]: n < 0 ? s.idx[mode] : n }), anim: s.anim + 1 }); },
+      canUndo: s.hist.length > 0 && s.hist[s.hist.length - 1].mode === mode,
+      undo: () => {
+        const h = s.hist[s.hist.length - 1];
+        if (!h || h.mode !== mode) return;
+        this.setState({ results: Object.assign({}, s.results, { [mode]: h.results }), idx: Object.assign({}, s.idx, { [mode]: h.idx }), statuses: h.statuses, hist: s.hist.slice(0, -1), pick: 'none', anim: s.anim + 1 });
+      },
+      markDone: markDone, markSkip: markSkip,
+      endSession: () => this.setState({ summary: true, running: false }),
+      showSummary: s.summary, confetti: confetti, summary: summary,
+      summaryTitle: isPaperwork ? 'Paperwork cleared' : (isWinback ? 'Win-back session done' : 'Focus session done'),
+      again: () => this.setState({ summary: false, secs: 15 * 60, running: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

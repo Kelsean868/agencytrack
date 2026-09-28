@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Policy ledger — mobile v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: 1940px; box-sizing: border-box; position: relative; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; display: flex; flex-direction: column; gap: 14px; padding: 12px 16px 104px;">
+
+  <header style="display: flex; align-items: center; gap: 8px; min-height: 56px;">
+    <a onClick="{{go.back}}" href="M3-Money.dc.html" aria-label="Back to Money" style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 22px; background: {{c.sunk}}; display: flex; align-items: center; justify-content: center; color: {{c.ink}};">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
+    <h1 style="flex-grow: 1; margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 700;">Policy ledger</h1>
+    <button aria-label="Filter and sort" style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 22px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"></path></svg></button>
+    <span style="flex-shrink: 0; position: relative;">
+      <button onClick="{{toggleExport}}" aria-label="Export CSV or PDF" aria-expanded="{{exportOpenAria}}" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"></path></svg></button>
+      <sc-if value="{{exportOpen}}" hint-placeholder-val="{{false}}">
+        <div style="position: absolute; right: 0; top: 50px; width: 190px; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.22); padding: 6px; display: flex; flex-direction: column; gap: 2px; z-index: 8;">
+          <button onClick="{{exportPick}}" style="height: 44px; border: 0; background: transparent; border-radius: 8px; text-align: left; padding: 0 10px; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 600; color: {{c.ink}};">CSV</button>
+          <button onClick="{{exportPick}}" style="height: 44px; border: 0; background: transparent; border-radius: 8px; text-align: left; padding: 0 10px; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 600; color: {{c.ink}};">PDF check sheet</button>
+        </div>
+      </sc-if>
+    </span>
+  </header>
+
+  <label style="position: relative; display: block;">
+    <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: {{c.faint}}; display: flex;" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></span>
+    <span style="position: absolute; left: -9999px;">Search by client</span>
+    <input value="{{query}}" onInput="{{onQuery}}" placeholder="Filter by client" style="width: 100%; height: 44px; box-sizing: border-box; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; padding: 0 14px 0 36px;">
+  </label>
+
+  <div style="display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px;">
+    <sc-for list="{{views}}" as="v" hint-placeholder-count="6">
+      <button onClick="{{v.pick}}" aria-pressed="{{v.on}}" style="flex-shrink: 0; height: 44px; min-width: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid {{v.border}}; background: {{v.bg}}; color: {{v.color}}; display: flex; align-items: center; gap: 6px; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{v.label}}<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; opacity: 0.7;">{{v.count}}</span></button>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{showLens}}" hint-placeholder-val="{{true}}">
+    <div style="display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px;">
+      <sc-for list="{{lensChips}}" as="l" hint-placeholder-count="4">
+        <button onClick="{{l.pick}}" aria-pressed="{{l.onAria}}" style="flex-shrink: 0; height: 40px; padding: 0 12px; border-radius: 20px; border: 1px solid {{l.border}}; background: {{l.bg}}; color: {{l.color}}; display: flex; align-items: center; gap: 6px; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">
+          <span style="width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid {{l.dotBorder}}; background: {{l.dotFill}}; flex-shrink: 0; display: flex; align-items: center; justify-content: center;"><sc-if value="{{l.onFlag}}" hint-placeholder-val="{{false}}"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="{{c.onAccent}}" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span>
+          {{l.label}}
+        </button>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showTotals}}" hint-placeholder-val="{{true}}">
+    <section aria-label="Totals for this view" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+        <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 12px; color: {{c.mute}};">Settled</span><span style="font-size: 17px; font-weight: 700;">{{tot.settled}}</span><span style="font-size: 11px; color: {{c.faint}};">counts</span></span>
+        <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 12px; color: {{c.mute}};">Submitted</span><span style="font-size: 17px; font-weight: 700;">{{tot.submitted}}</span><span style="font-size: 11px; color: {{c.faint}};">waiting</span></span>
+        <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 12px; color: {{c.mute}};">Apps</span><span style="font-size: 17px; font-weight: 700;">{{tot.apps}}</span><span style="font-size: 11px; color: {{c.faint}};">in view</span></span>
+      </div>
+      <div style="height: 1px; background: {{c.rule}};"></div>
+      <span style="font-size: 12px; color: {{c.mute}};">{{prov.headOffice}} from head office · {{prov.selfConfirmed}} self-confirmed</span>
+    </section>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE ROWS · TOTALS ARE YOUR LIVE FIGURES</span>
+  </sc-if>
+
+  <sc-if value="{{showNormalRows}}" hint-placeholder-val="{{true}}">
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <sc-for list="{{rows}}" as="p" hint-placeholder-count="5">
+        <article style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <button onClick="{{p.toggleCheck}}" role="checkbox" aria-checked="{{p.checkedAria}}" aria-label="Select {{p.client}}" style="flex-shrink: 0; width: 26px; height: 26px; margin-top: 2px; border-radius: 7px; border: 2px solid {{p.checkBorder}}; background: {{p.checkFill}}; display: flex; align-items: center; justify-content: center; padding: 0;">
+              <sc-if value="{{p.checked}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{c.onAccent}}" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
+            </button>
+            <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+              <span style="font-size: 15px; font-weight: 700;">{{p.client}}</span>
+              <span style="font-size: 12px; color: {{c.mute}};">{{p.product}} · {{p.freq}} · {{p.date}}</span>
+            </span>
+            <span style="font-size: 16px; font-weight: 700; white-space: nowrap;">{{p.api}}</span>
+            <button onClick="{{p.toggleActions}}" aria-label="More actions for {{p.client}}" aria-expanded="{{p.actionsAria}}" style="flex-shrink: 0; width: 32px; height: 32px; border-radius: 16px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="19" cy="12" r="2"></circle></svg>
+            </button>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+            <span style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{p.statusBg}}; color: {{p.statusFg}}; display: flex; align-items: center; font-size: 12px; font-weight: 700;">{{p.status}}</span>
+            <sc-for list="{{p.counts}}" as="k" hint-placeholder-count="2">
+              <span style="height: 26px; padding: 0 9px; border-radius: 13px; border: 1px solid {{c.rule}}; color: {{c.mute}}; display: flex; align-items: center; font-size: 12px; font-weight: 600;">{{k}}</span>
+            </sc-for>
+          </div>
+          <sc-if value="{{p.actionsOpen}}" hint-placeholder-val="{{false}}">
+            <div style="border-top: 1px solid {{c.rule}}; padding-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+              <sc-if value="{{p.needsConfirm}}" hint-placeholder-val="{{false}}">
+                <button onClick="{{p.confirm}}" style="height: 44px; border-radius: 12px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Confirm — head office shows this as settled</button>
+              </sc-if>
+              <button onClick="{{p.toggleHistory}}" style="height: 44px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">{{p.historyLabel}}</button>
+              <sc-if value="{{p.historyOpen}}" hint-placeholder-val="{{false}}">
+                <div style="display: flex; flex-direction: column;">
+                  <sc-for list="{{p.history}}" as="h" hint-placeholder-count="3">
+                    <div style="display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid {{c.rule}};">
+                      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: {{c.faint}}; width: 76px; flex-shrink: 0;">{{h.date}}</span>
+                      <span style="font-size: 13px; color: {{c.ink}};">{{h.label}}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </article>
+      </sc-for>
+      <sc-if value="{{noRows}}" hint-placeholder-val="{{false}}">
+        <span style="font-size: 13px; color: {{c.faint}}; padding: 8px 2px;">No policies match this view.</span>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showWinback}}" hint-placeholder-val="{{false}}">
+    <section aria-label="Win-back effect on persistency" style="background: {{c.warmTint}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: {{c.warm}};">ONLY THESE 7 CAN MOVE PERSISTENCY</span>
+      <span style="font-size: 15px; font-weight: 700; line-height: 1.4;">Tick policies below to preview the effect</span>
+      <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+        <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: -0.02em;">{{wbPctLabel}}%</span>
+        <span style="font-size: 13px; color: {{c.mute}};">was 86.6% · gate 90%</span>
+      </div>
+      <div style="position: relative; height: 36px;">
+        <div style="position: absolute; left: 0; right: 0; top: 10px; height: 18px; display: grid; grid-template-columns: 20fr 20fr 20fr 40fr; gap: 2px; border-radius: 9px; overflow: hidden;">
+          <span style="background: {{c.warmTint}}; box-shadow: inset 0 0 0 1px {{c.warm}};"></span>
+          <span style="background: {{c.goldTint}};"></span>
+          <span style="background: {{c.goldTint}};"></span>
+          <span style="background: {{c.accentTint}};"></span>
+        </div>
+        <div style="position: absolute; top: 0; left: {{wbBandLeftPct}}%; display: flex; flex-direction: column; align-items: center; transform: translateX(-50%); transition: left 480ms cubic-bezier(0.32, 0.72, 0, 1);">
+          <span style="height: 16px; padding: 0 6px; border-radius: 8px; background: {{c.ink}}; color: {{c.bg}}; font-size: 9px; font-weight: 800; display: flex; align-items: center; white-space: nowrap;">YOU</span>
+          <span style="width: 2px; height: 16px; background: {{c.ink}};"></span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+        <span style="font-size: 13px; font-weight: 700;">Ticked: {{wbTickedLabel}}</span>
+        <sc-if value="{{wbClearsGate}}" hint-placeholder-val="{{false}}">
+          <span style="height: 24px; padding: 0 10px; border-radius: 12px; background: {{c.goldTint}}; color: {{c.gold}}; display: flex; align-items: center; font-size: 11px; font-weight: 700;">Clears the gate</span>
+        </sc-if>
+      </div>
+      <span style="font-size: 12px; color: {{c.mute}}; line-height: 1.4;">80 more lapsed policies are outside the 24-month window and can't help persistency (count only).</span>
+    </section>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <sc-for list="{{wbRows}}" as="w" hint-placeholder-count="7">
+        <article style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <button onClick="{{w.toggleCheck}}" role="checkbox" aria-checked="{{w.checkedAria}}" aria-label="Select policy issued {{w.issued}}" style="flex-shrink: 0; width: 26px; height: 26px; margin-top: 2px; border-radius: 7px; border: 2px solid {{w.checkBorder}}; background: {{w.checkFill}}; display: flex; align-items: center; justify-content: center; padding: 0;">
+              <sc-if value="{{w.checked}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{c.onAccent}}" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
+            </button>
+            <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+              <span style="font-size: 15px; font-weight: 700;">Issued {{w.issued}}</span>
+              <span style="font-size: 12px; color: {{c.mute}};">{{w.monthsLeftLabel}}</span>
+            </span>
+            <span style="font-size: 15px; font-weight: 700; white-space: nowrap;">{{w.api}}</span>
+            <button onClick="{{w.toggleActions}}" aria-label="More actions" aria-expanded="{{w.actionsAria}}" style="flex-shrink: 0; width: 32px; height: 32px; border-radius: 16px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="19" cy="12" r="2"></circle></svg>
+            </button>
+          </div>
+
+          <div style="height: 6px; border-radius: 3px; background: {{c.sunk}}; overflow: hidden;">
+            <div style="height: 6px; border-radius: 3px; width: {{w.windowPct}}%; background: {{w.windowColor}}; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></div>
+          </div>
+
+          <sc-if value="{{w.clears}}" hint-placeholder-val="{{false}}">
+            <span style="align-self: flex-start; height: 22px; padding: 0 9px; border-radius: 11px; background: {{c.goldTint}}; color: {{c.gold}}; display: flex; align-items: center; font-size: 11px; font-weight: 700;">Clears the gate alone</span>
+          </sc-if>
+
+          <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div style="display: flex; align-items: center; gap: 3px;">
+              <sc-for list="{{w.track}}" as="seg" hint-placeholder-count="5">
+                <span style="flex-grow: 1; height: 4px; border-radius: 2px; background: {{seg.bg}}; transition: background 480ms cubic-bezier(0.32, 0.72, 0, 1);"></span>
+              </sc-for>
+            </div>
+            <span style="font-size: 12px; font-weight: 700; color: {{w.stageColor}};">{{w.stageLabel}}</span>
+          </div>
+
+          <sc-if value="{{w.actionsOpen}}" hint-placeholder-val="{{false}}">
+            <div style="border-top: 1px solid {{c.rule}}; padding-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+              <button onClick="{{w.call}}" style="height: 44px; border-radius: 12px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Call — start Focus · Win-back</button>
+              <button onClick="{{w.advance}}" style="height: 44px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">{{w.advanceLabel}}</button>
+              <button onClick="{{w.markReinstated}}" style="height: 44px; border-radius: 12px; border: 1px solid {{c.accent}}; background: {{c.accentTint}}; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Mark reinstated</button>
+            </div>
+          </sc-if>
+        </article>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showBulkBar}}" hint-placeholder-val="{{false}}">
+    <div style="position: absolute; left: 16px; right: 16px; bottom: 96px; height: 56px; border-radius: 16px; background: {{c.ink}}; color: {{c.bg}}; box-shadow: 0 12px 28px rgba(0,0,0,0.28); display: flex; align-items: center; padding: 0 14px; gap: 12px;">
+      <span style="font-size: 13px; font-weight: 700;">{{checkedCount}} selected</span>
+      <span style="flex-grow: 1;"></span>
+      <button onClick="{{bulkConfirm}}" style="border: 0; background: transparent; color: {{c.bg}}; font-size: 13px; font-weight: 700; font-family: 'Onest', sans-serif;">Confirm</button>
+      <button onClick="{{bulkExport}}" style="border: 0; background: transparent; color: {{c.bg}}; font-size: 13px; font-weight: 700; font-family: 'Onest', sans-serif;">Export</button>
+      <button onClick="{{bulkClear}}" style="border: 0; background: transparent; color: {{c.bg}}; opacity: 0.75; font-size: 13px; font-weight: 700; font-family: 'Onest', sans-serif;">Clear</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showWbBar}}" hint-placeholder-val="{{false}}">
+    <div style="position: absolute; left: 16px; right: 16px; bottom: 96px; border-radius: 16px; background: {{c.ink}}; color: {{c.bg}}; box-shadow: 0 12px 28px rgba(0,0,0,0.28); display: flex; flex-direction: column; gap: 8px; padding: 12px 14px;">
+      <button onClick="{{wbStartSession}}" style="height: 44px; border-radius: 12px; border: 0; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Start win-back session ({{wbCheckedCount}})</button>
+      <button onClick="{{wbMarkReinstatedBulk}}" style="height: 44px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Mark reinstated ({{wbCheckedCount}})</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}"><div style="position: absolute; left: 0; bottom: 0;"><dc-import name="M3-Nav" active="money" dark="{{dark}}" hint-size="390px,84px"></dc-import></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":390,"height":1940}}'>
+const LEDGER_ROWS = [
+  { id: 0, client: '[Client A]', product: 'Whole life', freq: 'Monthly', date: '14-09-2026', api: 'TTD 36,000', baseStatus: 'waiting', counts: ['Christmas', 'MDRT', 'Sep'], xmas: true,
+    history: [{ date: '10-09-2026', label: 'Application submitted' }, { date: '13-09-2026', label: 'Underwriting cleared' }, { date: '14-09-2026', label: 'Head office shows settled' }] },
+  { id: 1, client: '[Client B]', product: 'Term 20', freq: 'Monthly', date: '22-09-2026', api: 'TTD 36,000', baseStatus: 'submitted', counts: ['Christmas'], xmas: true,
+    history: [{ date: '22-09-2026', label: 'Application submitted' }, { date: '24-09-2026', label: 'Under review' }] },
+  { id: 2, client: '[Client C]', product: 'Education plan', freq: 'Annual', date: '03-09-2026', api: 'TTD 24,946', baseStatus: 'settled', counts: ['Christmas', 'MDRT'], xmas: true,
+    history: [{ date: '28-08-2026', label: 'Application submitted' }, { date: '01-09-2026', label: 'Underwriting cleared' }, { date: '03-09-2026', label: 'Settled' }] },
+  { id: 3, client: '[Client D]', product: 'Annuity', freq: 'Single', date: '18-07-2026', api: 'TTD 13,000', baseStatus: 'settled', counts: ['MDRT', 'Q3'], xmas: false,
+    history: [{ date: '10-07-2026', label: 'Application submitted' }, { date: '15-07-2026', label: 'Underwriting cleared' }, { date: '18-07-2026', label: 'Settled' }] },
+  { id: 4, client: '[Client E]', product: 'Whole life', freq: 'Monthly', date: '02-03-2026', api: 'TTD 7,100', baseStatus: 'lapsed', counts: ['Win back → 90% gate'], xmas: false,
+    history: [{ date: '02-03-2025', label: 'Policy issued' }, { date: '15-08-2026', label: 'Premium missed' }, { date: '02-03-2026', label: 'Lapsed' }] }
+];
+const WB_POLICIES = [
+  { id: 0, issued: '28-10-2024', monthsLeft: 1, api: 1182.36 },
+  { id: 1, issued: '28-05-2025', monthsLeft: 8, api: 2400.00 },
+  { id: 2, issued: '14-08-2025', monthsLeft: 11, api: 11996.64 },
+  { id: 3, issued: '19-11-2025', monthsLeft: 14, api: 4821.12 },
+  { id: 4, issued: '11-11-2025', monthsLeft: 14, api: 3617.64 },
+  { id: 5, issued: '19-11-2025', monthsLeft: 14, api: 2400.00 },
+  { id: 6, issued: '20-11-2025', monthsLeft: 14, api: 1779.12 }
+];
+const STAGES = ['To call', 'Agreed', 'Form sent', 'Paid', 'Reinstated'];
+const NET_GROSS_SETTLED = 210975.24;
+const NET_SETTLED_BASE = 182778.36;
+const GAP = 7099.36;
+const pctFor = (sum) => (NET_SETTLED_BASE + sum) / NET_GROSS_SETTLED * 100;
+const fmtMoney = (n) => 'TTD ' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const effectiveIdSet = (checkedArr, stageObj) => {
+  const s = {};
+  checkedArr.forEach((id) => { s[id] = true; });
+  WB_POLICIES.forEach((p) => { if ((stageObj[p.id] || 0) >= 3) s[p.id] = true; });
+  return s;
+};
+const sumForIdSet = (idSet) => WB_POLICIES.filter((p) => idSet[p.id]).reduce((a, p) => a + p.api, 0);
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const paramsStr = (props && props.params) || '';
+    const initialView = /view=Winback/i.test(paramsStr) ? 5 : 0;
+    const initialWb = [3, 5];
+    this.state = {
+      view: initialView, lens: [], query: '',
+      checked: [], confirmed: {}, rowHistoryOpen: {}, rowActionsOpen: {}, exportOpen: false,
+      wbChecked: initialWb, wbStage: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }, wbActionsOpen: {},
+      sumFrom: 0, sumTo: 0, animT: 1, animRun: 0
+    };
+    this.animTimer = null;
+  }
+  componentDidMount() {
+    const startSum = WB_POLICIES.filter((p) => this.state.wbChecked.indexOf(p.id) >= 0).reduce((a, p) => a + p.api, 0);
+    this.animateSum(startSum, 0);
+  }
+  componentWillUnmount() { if (this.animTimer) clearInterval(this.animTimer); }
+  currentDisplaySum() {
+    const ease = 1 - Math.pow(1 - this.state.animT, 3);
+    return this.state.sumFrom + (this.state.sumTo - this.state.sumFrom) * ease;
+  }
+  animateSum(toSum, fromOverride) {
+    const from = fromOverride != null ? fromOverride : this.currentDisplaySum();
+    if (this.animTimer) clearInterval(this.animTimer);
+    this.setState({ sumFrom: from, sumTo: toSum, animT: 0, animRun: this.state.animRun + 1 });
+    this.animTimer = setInterval(() => {
+      const t = Math.min(1, this.state.animT + 0.06);
+      this.setState({ animT: t });
+      if (t >= 1) { clearInterval(this.animTimer); this.animTimer = null; }
+    }, 30);
+  }
+  toggleWbCheck(id) {
+    return (e) => {
+      e.stopPropagation();
+      const next = this.state.wbChecked.slice();
+      const idx = next.indexOf(id);
+      if (idx >= 0) next.splice(idx, 1); else next.push(id);
+      this.setState({ wbChecked: next });
+      this.animateSum(sumForIdSet(effectiveIdSet(next, this.state.wbStage)));
+    };
+  }
+  advanceWb(id) {
+    return () => {
+      const cur = this.state.wbStage[id] || 0;
+      const nextStage = Math.min(4, cur + 1);
+      const nextStageObj = Object.assign({}, this.state.wbStage, { [id]: nextStage });
+      this.setState({ wbStage: nextStageObj });
+      this.animateSum(sumForIdSet(effectiveIdSet(this.state.wbChecked, nextStageObj)));
+    };
+  }
+  markReinstatedWb(id) {
+    return () => {
+      const nextStageObj = Object.assign({}, this.state.wbStage, { [id]: 4 });
+      const nextActionsOpen = Object.assign({}, this.state.wbActionsOpen, { [id]: false });
+      this.setState({ wbStage: nextStageObj, wbActionsOpen: nextActionsOpen });
+      this.animateSum(sumForIdSet(effectiveIdSet(this.state.wbChecked, nextStageObj)));
+      if (this.props.onNav) this.props.onNav('event:toast:Marked reinstated · self-confirmed, next OIPA export confirms it');
+    };
+  }
+  wbStartSession() {
+    return () => { if (this.props.onNav) this.props.onNav('Focus?mode=Winback'); };
+  }
+  wbMarkReinstatedBulkFn() {
+    return () => {
+      const nextStageObj = Object.assign({}, this.state.wbStage);
+      const n = this.state.wbChecked.length;
+      this.state.wbChecked.forEach((id) => { nextStageObj[id] = 4; });
+      this.setState({ wbStage: nextStageObj });
+      this.animateSum(sumForIdSet(effectiveIdSet(this.state.wbChecked, nextStageObj)));
+      if (this.props.onNav) this.props.onNav('event:toast:Marked ' + n + ' reinstated · self-confirmed, next OIPA export confirms it');
+    };
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3' };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911' };
+    const c = this.props.dark ? dark : light;
+
+    const go = {};
+    [].forEach((t) => { go[t] = (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav(t); } }; });
+    go.back = (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('back'); } };
+
+    const st = {
+      settled: { label: 'Settled', bg: c.accentTint, fg: c.accent },
+      waiting: { label: 'Settled — confirm', bg: c.goldTint, fg: c.gold },
+      submitted: { label: 'Submitted, not issued', bg: c.sunk, fg: c.mute },
+      lapsed: { label: 'Lapsed', bg: c.warmTint, fg: c.warm }
+    };
+    const statusOf = (row) => row.baseStatus === 'waiting' ? (this.state.confirmed[row.id] ? 'settled' : 'waiting') : row.baseStatus;
+    const withStatus = LEDGER_ROWS.map((row) => Object.assign({}, row, { s: statusOf(row) }));
+
+    const v = this.state.view;
+    const viewPass = (row) => {
+      if (v === 0) return true;
+      if (v === 1) return row.xmas;
+      if (v === 2) return row.s === 'waiting';
+      if (v === 3) return row.s === 'submitted';
+      if (v === 4) return row.s === 'lapsed';
+      return true;
+    };
+    const lensPass = (row) => this.state.lens.length === 0 || row.counts.some((tag) => this.state.lens.indexOf(tag) >= 0);
+    const q = this.state.query.trim().toLowerCase();
+    const searchPass = (row) => !q || row.client.toLowerCase().indexOf(q) >= 0;
+
+    const viewCounts = [0, 1, 2, 3, 4].map((i) => withStatus.filter((row) => (i === 0 || (i === 1 && row.xmas) || (i === 2 && row.s === 'waiting') || (i === 3 && row.s === 'submitted') || (i === 4 && row.s === 'lapsed'))).length);
+    const viewLabels = ['All 2026', 'Christmas', 'Needs attention', 'Not issued', 'Lapsed', 'Win-back'];
+    const viewCountsFull = viewCounts.concat([7]);
+    const views = viewLabels.map((label, i) => ({
+      label: label, on: i === v ? 'true' : 'false',
+      bg: i === v ? c.ink : c.surface, color: i === v ? c.bg : c.ink, border: i === v ? c.ink : c.rule,
+      count: String(viewCountsFull[i]),
+      pick: () => { this.setState({ view: i, checked: [] }); }
+    }));
+
+    const LENS_DEFS = [{ label: 'Christmas', tag: 'Christmas' }, { label: 'MDRT', tag: 'MDRT' }, { label: 'Advisor of the Month — Sep', tag: 'Sep' }, { label: 'Q3', tag: 'Q3' }];
+    const lensChips = LENS_DEFS.map((l) => {
+      const on = this.state.lens.indexOf(l.tag) >= 0;
+      return {
+        label: l.label, onAria: on ? 'true' : 'false', onFlag: on, bg: on ? c.accentTint : c.surface, color: on ? c.accent : c.ink, border: on ? c.accent : c.rule,
+        dotBorder: on ? c.accent : c.rule, dotFill: on ? c.accent : 'transparent',
+        pick: () => {
+          const next = this.state.lens.slice();
+          const idx = next.indexOf(l.tag);
+          if (idx >= 0) next.splice(idx, 1); else next.push(l.tag);
+          this.setState({ lens: next });
+        }
+      };
+    });
+
+    const filtered = withStatus.filter((row) => viewPass(row) && lensPass(row) && searchPass(row));
+    const checked = this.state.checked;
+    const rows = filtered.map((row) => {
+      const actionsOpen = !!this.state.rowActionsOpen[row.id];
+      const historyOpen = !!this.state.rowHistoryOpen[row.id];
+      const isChecked = checked.indexOf(row.id) >= 0;
+      return {
+        id: row.id, client: row.client, product: row.product, freq: row.freq, date: row.date, api: row.api,
+        status: st[row.s].label, statusBg: st[row.s].bg, statusFg: st[row.s].fg, counts: row.counts,
+        checked: isChecked, checkedAria: isChecked ? 'true' : 'false',
+        checkBorder: isChecked ? c.accent : c.rule, checkFill: isChecked ? c.accent : 'transparent',
+        toggleCheck: (e) => {
+          e.stopPropagation();
+          const next = checked.slice();
+          const idx = next.indexOf(row.id);
+          if (idx >= 0) next.splice(idx, 1); else next.push(row.id);
+          this.setState({ checked: next });
+        },
+        actionsOpen: actionsOpen, actionsAria: actionsOpen ? 'true' : 'false',
+        toggleActions: () => { const next = Object.assign({}, this.state.rowActionsOpen, { [row.id]: !actionsOpen }); this.setState({ rowActionsOpen: next }); },
+        needsConfirm: row.s === 'waiting',
+        confirm: () => {
+          const nextConf = Object.assign({}, this.state.confirmed, { [row.id]: true });
+          this.setState({ confirmed: nextConf });
+          if (this.props.onNav) this.props.onNav('event:toast:Confirmed · now counts for Christmas and MDRT');
+        },
+        historyOpen: historyOpen, historyLabel: historyOpen ? 'Hide status history' : 'View status history',
+        toggleHistory: () => { const next = Object.assign({}, this.state.rowHistoryOpen, { [row.id]: !historyOpen }); this.setState({ rowHistoryOpen: next }); },
+        history: row.history
+      };
+    });
+
+    const totsByView = [
+      { settled: '87,146', submitted: '123,146', apps: '6' },
+      { settled: '73,946', submitted: '109,946', apps: '4' },
+      { settled: '—', submitted: '—', apps: String(viewCounts[2]) },
+      { settled: '—', submitted: '36,000', apps: String(viewCounts[3]) },
+      { settled: '—', submitted: '—', apps: String(viewCounts[4]) }
+    ];
+    const headOfficeCount = filtered.filter((r) => r.s === 'settled' && r.baseStatus === 'settled').length;
+    const selfConfirmedCount = filtered.filter((r) => r.s === 'settled' && r.baseStatus === 'waiting').length;
+
+    const checkedCount = checked.length;
+    const bulkConfirm = () => {
+      const toConfirm = checked.filter((id) => { const r = LEDGER_ROWS.find((rr) => rr.id === id); return r && r.baseStatus === 'waiting' && !this.state.confirmed[id]; });
+      const nextConf = Object.assign({}, this.state.confirmed);
+      toConfirm.forEach((id) => { nextConf[id] = true; });
+      this.setState({ confirmed: nextConf, checked: [] });
+      if (this.props.onNav) this.props.onNav('event:toast:Confirmed ' + toConfirm.length + ' polic' + (toConfirm.length === 1 ? 'y' : 'ies') + ' · now counting');
+    };
+    const bulkExport = () => { this.setState({ exportOpen: true }); };
+    const bulkClear = () => { this.setState({ checked: [] }); };
+
+    // ---- Win-back view ----
+    const idSetNow = effectiveIdSet(this.state.wbChecked, this.state.wbStage);
+    const targetSum = sumForIdSet(idSetNow);
+    const displaySum = this.currentDisplaySum();
+    const displayPct = pctFor(displaySum);
+    const wbPctLabel = displayPct.toFixed(1);
+    const wbBandLeftPct = Math.max(0, Math.min(100, ((displayPct - 75) / 25) * 100));
+    const tickedSum = WB_POLICIES.filter((p) => this.state.wbChecked.indexOf(p.id) >= 0).reduce((a, p) => a + p.api, 0);
+    const wbTickedLabel = fmtMoney(tickedSum);
+    const wbClearsGate = tickedSum >= GAP;
+
+    const wbRows = WB_POLICIES.map((p) => {
+      const stage = this.state.wbStage[p.id] || 0;
+      const isChecked = this.state.wbChecked.indexOf(p.id) >= 0;
+      const actionsOpen = !!this.state.wbActionsOpen[p.id];
+      const track = STAGES.map((_, i) => ({ bg: i <= stage ? c.accent : c.rule }));
+      const stageLabel = stage === 4 ? 'Reinstated · waiting on head office (self-confirmed)' : STAGES[stage];
+      return {
+        id: p.id, issued: p.issued,
+        monthsLeftLabel: p.monthsLeft + (p.monthsLeft === 1 ? ' month left in window' : ' months left in window'),
+        api: fmtMoney(p.api),
+        windowPct: Math.round((p.monthsLeft / 24) * 100),
+        windowColor: p.monthsLeft <= 2 ? c.warm : c.accent,
+        clears: p.api >= GAP,
+        checked: isChecked, checkedAria: isChecked ? 'true' : 'false',
+        checkBorder: isChecked ? c.accent : c.rule, checkFill: isChecked ? c.accent : 'transparent',
+        toggleCheck: this.toggleWbCheck(p.id),
+        actionsOpen: actionsOpen, actionsAria: actionsOpen ? 'true' : 'false',
+        toggleActions: () => { const next = Object.assign({}, this.state.wbActionsOpen, { [p.id]: !actionsOpen }); this.setState({ wbActionsOpen: next }); },
+        track: track, stageColor: stage === 4 ? c.accent : c.mute, stageLabel: stageLabel,
+        call: this.wbStartSession(),
+        advanceLabel: stage >= 4 ? 'Fully reinstated' : 'Advance to ' + STAGES[Math.min(4, stage + 1)],
+        advance: this.advanceWb(p.id),
+        markReinstated: this.markReinstatedWb(p.id)
+      };
+    });
+    const wbCheckedCount = this.state.wbChecked.length;
+
+    const exportOpen = this.state.exportOpen;
+    const exportPick = () => { this.setState({ exportOpen: false }); if (this.props.onNav) this.props.onNav('event:toast:Export ready'); };
+
+    return {
+      go: go, showNav: !this.props.embedded, c: c, dark: !!this.props.dark,
+      query: this.state.query, onQuery: (e) => this.setState({ query: e.target.value }),
+      views: views, showLens: v !== 5, lensChips: lensChips,
+      showTotals: v !== 5, tot: totsByView[Math.min(v, 4)], prov: { headOffice: String(headOfficeCount), selfConfirmed: String(selfConfirmedCount) },
+      showNormalRows: v !== 5, rows: rows, noRows: v !== 5 && rows.length === 0,
+      showWinback: v === 5, wbRows: wbRows,
+      wbPctLabel: wbPctLabel, wbBandLeftPct: wbBandLeftPct, wbTickedLabel: wbTickedLabel, wbClearsGate: wbClearsGate,
+      showBulkBar: v !== 5 && checkedCount > 0, checkedCount: checkedCount, bulkConfirm: bulkConfirm, bulkExport: bulkExport, bulkClear: bulkClear,
+      showWbBar: v === 5 && wbCheckedCount > 0, wbCheckedCount: wbCheckedCount, wbStartSession: this.wbStartSession(), wbMarkReinstatedBulk: this.wbMarkReinstatedBulkFn(),
+      exportOpen: exportOpen, exportOpenAria: exportOpen ? 'true' : 'false', toggleExport: () => this.setState({ exportOpen: !exportOpen }), exportPick: exportPick
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trophy room — mobile v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+.m3tr-item{transition:transform 200ms cubic-bezier(0.34,1.56,0.64,1)}.m3tr-item:active{transform:scale(0.95)}
+.m3tr-swipe{scrollbar-width:none}.m3tr-swipe::-webkit-scrollbar{display:none}
+.m3tr-chip{transition:background 120ms ease}
+@keyframes m3trGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes m3trSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes m3trHalo{0%,100%{opacity:0.55;transform:scale(0.96)}50%{opacity:0.9;transform:scale(1.04)}}
+@keyframes m3trRise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes m3trPopA{0%{opacity:0;transform:scale(0.3) rotate(-10deg)}60%{opacity:1;transform:scale(1.1) rotate(3deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes m3trPopB{0%{opacity:0;transform:scale(0.3) rotate(-10deg)}60%{opacity:1;transform:scale(1.1) rotate(3deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes m3trFall{0%{opacity:0;transform:translate3d(0,-30px,0) rotate(0)}10%{opacity:1}100%{opacity:0;transform:translate3d(var(--dx),640px,0) rotate(var(--rot))}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;animation-iteration-count:1 !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: {{rootH}}px; box-sizing: border-box; position: relative; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; display: flex; flex-direction: column; gap: 14px; padding: 12px 0 104px;">
+
+  <header style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 16px;">
+    <a onClick="{{go.back}}" href="M3-Arena.dc.html" aria-label="Back to Arena" style="width: 44px; height: 44px; border-radius: 22px; background: {{c.sunk}}; display: flex; align-items: center; justify-content: center; color: {{c.ink}}; flex-shrink: 0;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
+    <h1 style="flex-grow: 1; margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 700;">Trophy room</h1>
+    <span style="font-size: 12px; color: {{c.mute}}; flex-shrink: 0;">{{earnedCount}} of {{totalCount}}</span>
+  </header>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; padding: 0 16px;">
+    <div role="tablist" aria-label="Trophy room pages" tabindex="0" onKeyDown="{{pagerKey}}" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;">
+      <sc-for list="{{pages}}" as="pg" hint-placeholder-count="5">
+        <button role="tab" aria-selected="{{pg.on}}" onClick="{{pg.pick}}" class="m3tr-chip" style="flex-shrink: 0; height: 44px; padding: 0 14px; border: 0; border-radius: 14px; background: {{pg.bg}}; color: {{pg.color}}; box-shadow: {{pg.shadow}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{pg.label}}</button>
+      </sc-for>
+    </div>
+    <div style="display: flex; justify-content: center; align-items: center; gap: 6px; height: 6px;" aria-hidden="true">
+      <sc-for list="{{pages}}" as="pg" hint-placeholder-count="5">
+        <span style="width: {{pg.dotW}}px; height: 6px; border-radius: 3px; background: {{pg.dot}}; transition: width 200ms ease;"></span>
+      </sc-for>
+    </div>
+    <span style="font-size: 11px; color: {{c.faint}}; text-align: center; visibility: {{hintVis}};">Swipe for more →</span>
+  </div>
+
+  <div onPointerDown="{{down}}" onPointerMove="{{move}}" onPointerUp="{{up}}" onPointerCancel="{{up}}" style="width: 390px; overflow: hidden; touch-action: pan-y;">
+    <div style="width: 1950px; display: flex; align-items: flex-start; transform: translateX({{tx}}px); transition: {{trans}}; will-change: transform;">
+
+      <section aria-label="Level" aria-hidden="{{hidden0}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 14px;">
+        <section aria-label="Your level" style="border-radius: 22px; background: {{c.heroBg}}; border: 1px solid {{c.rule}}; padding: 18px; display: flex; flex-direction: column; gap: 12px; position: relative; overflow: hidden;">
+          <span aria-hidden="true" style="position: absolute; left: -60px; top: -80px; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle, {{c.heroGlow}} 0%, transparent 65%);"></span>
+          <div style="display: flex; gap: 14px; align-items: center; position: relative;">
+            <span style="width: 96px; height: 96px; flex-shrink: 0;"><dc-import name="D3-Trophy" kind="level-pro" size="96" dark="{{dark}}" hint-size="96px,96px"></dc-import></span>
+            <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.gold}};">YOUR LEVEL</span>
+              <span style="display: flex; align-items: baseline; gap: 8px;"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1;">Pro</span><span style="font-size: 13px; font-weight: 700; color: {{c.mute}};">2,940 pts</span></span>
+              <span role="img" aria-label="2,940 of 3,500 points to Elite" style="position: relative; height: 10px; border-radius: 5px; background: {{c.sunk}}; overflow: hidden;">
+                <span style="position: absolute; left: 0; top: 0; bottom: 0; width: 72%; border-radius: 5px; background: linear-gradient(90deg, {{c.gold}}, #F0B93A); transform-origin: left; animation: m3trGrow 900ms cubic-bezier(0.32, 0.72, 0, 1) both;"></span>
+              </span>
+            </div>
+          </div>
+          <span style="font-size: 13px; position: relative;"><strong>560 points to Elite.</strong> <span style="color: {{c.mute}};">About 2 applications and 1 closing interview.</span></span>
+          <div style="display: flex; align-items: center; position: relative;">
+            <sc-for list="{{levels}}" as="lv" hint-placeholder-count="5">
+              <span style="display: flex; align-items: center; flex-grow: 1;">
+                <sc-if value="{{lv.hasTrack}}" hint-placeholder-val="{{true}}"><span style="flex-grow: 1; height: 3px; border-radius: 2px; background: {{lv.track}};"></span></sc-if>
+                <button onClick="{{lv.pick}}" aria-label="{{lv.aria}}" style="width: 52px; min-height: 68px; border: 0; background: transparent; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; color: {{c.ink}};">
+                  <span style="width: 40px; height: 40px;"><dc-import name="D3-Trophy" kind="{{lv.kind}}" size="40" locked="{{lv.locked}}" progress="{{lv.progress}}" dark="{{dark}}" hint-size="40px,40px"></dc-import></span>
+                  <span style="font-size: 9px; font-weight: {{lv.weight}}; color: {{lv.color}};">{{lv.name}}</span>
+                </button>
+              </span>
+            </sc-for>
+          </div>
+        </section>
+
+        <button onClick="{{pickStreak}}" style="border: 0; border-radius: 18px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px; display: flex; align-items: center; gap: 14px; cursor: pointer; font-family: 'Onest', sans-serif; color: {{c.ink}}; text-align: left;">
+          <span style="width: 68px; height: 68px; flex-shrink: 0;"><dc-import name="D3-Trophy" kind="streak" size="68" dark="{{dark}}" hint-size="68px,68px"></dc-import></span>
+          <span style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -0.02em;">13 weeks</span>
+            <span style="font-size: 12px; color: {{c.mute}};">Report streak · next at 25</span>
+          </span>
+        </button>
+      </section>
+
+      <section aria-label="Closest to unlocking" aria-hidden="{{hidden1}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">Closest to unlocking</h2>
+          <span style="font-size: 12px; color: {{c.mute}};">Do these this week</span>
+        </div>
+        <div class="m3tr-swipe" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 2px;">
+          <sc-for list="{{nextUp}}" as="n" hint-placeholder-count="3">
+            <button class="m3tr-item" onClick="{{n.pick}}" style="flex-shrink: 0; width: 220px; border-radius: 16px; border: 1px solid {{c.rule}}; background: {{c.surface}}; padding: 12px; display: flex; gap: 10px; align-items: center; text-align: left; font-family: 'Onest', sans-serif; color: {{c.ink}};">
+              <span style="width: 56px; height: 56px; flex-shrink: 0;"><dc-import name="D3-Trophy" kind="{{n.kind}}" size="56" locked="{{true}}" progress="{{n.progress}}" dark="{{dark}}" hint-size="56px,56px"></dc-import></span>
+              <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+                <span style="display: flex; justify-content: space-between; gap: 6px;"><span style="font-size: 14px; font-weight: 700;">{{n.name}}</span><span style="font-size: 12px; font-weight: 700; color: {{c.gold}};">{{n.progress}}%</span></span>
+                <span style="height: 6px; border-radius: 3px; background: {{c.sunk}};"><span style="display: block; height: 6px; width: {{n.progress}}%; border-radius: 3px; background: {{c.gold}};"></span></span>
+                <span style="font-size: 11px; color: {{c.mute}}; line-height: 1.3;">{{n.left}}</span>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+        <span style="font-size: 11px; color: {{c.faint}}; line-height: 1.4;">Badge names, levels, points and award names are the live app's. Earned dates, rarity and which items are unlocked are SAMPLE. Jul–Dec monthly awards are recognition only.</span>
+      </section>
+
+      <section aria-label="Badges" aria-hidden="{{hidden2}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">{{shelfBadges.title}}</h2>
+          <span style="font-size: 12px; color: {{c.mute}};">{{shelfBadges.count}}</span>
+        </div>
+        <span style="font-size: 11px; color: {{c.faint}};">{{shelfBadges.note}}</span>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding-top: 4px;">
+          <sc-for list="{{shelfBadges.items}}" as="it" hint-placeholder-count="9">
+            <button class="m3tr-item" onClick="{{it.pick}}" aria-label="{{it.aria}}" style="border: 0; border-radius: 14px; background: transparent; padding: 6px 2px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: {{c.ink}}; font-family: 'Onest', sans-serif;">
+              <span style="width: 72px; height: 72px;"><dc-import name="D3-Trophy" kind="{{it.kind}}" size="72" locked="{{it.locked}}" progress="{{it.progress}}" dark="{{dark}}" hint-size="72px,72px"></dc-import></span>
+              <span style="font-size: 11px; font-weight: 700; text-align: center; line-height: 1.15; color: {{it.nameColor}};">{{it.name}}</span>
+              <span style="font-size: 10px; color: {{it.subColor}};">{{it.sub}}</span>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+
+      <section aria-label="Awards" aria-hidden="{{hidden3}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">{{shelfAwards.title}}</h2>
+          <span style="font-size: 12px; color: {{c.mute}};">{{shelfAwards.count}}</span>
+        </div>
+        <span style="font-size: 11px; color: {{c.faint}};">{{shelfAwards.note}}</span>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding-top: 4px;">
+          <sc-for list="{{shelfAwards.items}}" as="it" hint-placeholder-count="9">
+            <button class="m3tr-item" onClick="{{it.pick}}" aria-label="{{it.aria}}" style="border: 0; border-radius: 14px; background: transparent; padding: 6px 2px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: {{c.ink}}; font-family: 'Onest', sans-serif;">
+              <span style="width: 72px; height: 72px;"><dc-import name="D3-Trophy" kind="{{it.kind}}" size="72" locked="{{it.locked}}" progress="{{it.progress}}" dark="{{dark}}" hint-size="72px,72px"></dc-import></span>
+              <span style="font-size: 11px; font-weight: 700; text-align: center; line-height: 1.15; color: {{it.nameColor}};">{{it.name}}</span>
+              <span style="font-size: 10px; color: {{it.subColor}};">{{it.sub}}</span>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+
+      <section aria-label="Christmas campaign" aria-hidden="{{hidden4}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">{{shelfCampaign.title}}</h2>
+          <span style="font-size: 12px; color: {{c.mute}};">{{shelfCampaign.count}}</span>
+        </div>
+        <span style="font-size: 11px; color: {{c.faint}};">{{shelfCampaign.note}}</span>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding-top: 4px;">
+          <sc-for list="{{shelfCampaign.items}}" as="it" hint-placeholder-count="9">
+            <button class="m3tr-item" onClick="{{it.pick}}" aria-label="{{it.aria}}" style="border: 0; border-radius: 14px; background: transparent; padding: 6px 2px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: {{c.ink}}; font-family: 'Onest', sans-serif;">
+              <span style="width: 72px; height: 72px;"><dc-import name="D3-Trophy" kind="{{it.kind}}" size="72" locked="{{it.locked}}" progress="{{it.progress}}" dark="{{dark}}" hint-size="72px,72px"></dc-import></span>
+              <span style="font-size: 11px; font-weight: 700; text-align: center; line-height: 1.15; color: {{it.nameColor}};">{{it.name}}</span>
+              <span style="font-size: 10px; color: {{it.subColor}};">{{it.sub}}</span>
+            </button>
+          </sc-for>
+        </div>
+        <span style="font-size: 11px; color: {{c.faint}}; line-height: 1.4;">Badge names, levels, points and award names are the live app's. Earned dates, rarity and which items are unlocked are SAMPLE. Jul–Dec monthly awards are recognition only.</span>
+      </section>
+
+    </div>
+  </div>
+
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}">
+    <div style="position: absolute; left: 0; bottom: 0;">
+      <dc-import name="M3-Nav" active="arena" dark="{{dark}}" hint-size="390px,84px"></dc-import>
+    </div>
+  </sc-if>
+
+  <div aria-hidden="{{sheetHiddenStr}}" onClick="{{closeSheet}}" style="position: absolute; inset: 0; background: rgba(12,12,10,0.55); opacity: {{backdropOpacity}}; pointer-events: {{backdropEvents}}; transition: opacity 320ms cubic-bezier(0.32, 0.72, 0, 1); z-index: 15;"></div>
+  <div role="dialog" aria-modal="{{sheetModal}}" aria-label="{{sel.name}}" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 16; max-height: 86%; overflow-y: auto; box-sizing: border-box; border-radius: 24px 24px 0 0; background: {{c.pane}}; padding: 8px 20px 28px; display: flex; flex-direction: column; gap: 14px; transform: translateY({{sheetY}}%); transition: transform 420ms cubic-bezier(0.32, 0.72, 0, 1); box-shadow: 0 -8px 30px rgba(0,0,0,0.18);">
+    <div style="display: flex; justify-content: center; padding: 6px 0 2px;"><span style="width: 40px; height: 4px; border-radius: 2px; background: {{c.rule}};"></span></div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; animation: {{inspAnim}};">
+      <div style="height: 168px; width: 168px; border-radius: 20px; background: {{sel.stage}}; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+        <sc-if value="{{sel.earned}}" hint-placeholder-val="{{true}}">
+          <span aria-hidden="true" style="position: absolute; width: 220px; height: 220px; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0deg, {{c.ray}} 12deg, transparent 24deg, transparent 45deg, {{c.ray}} 57deg, transparent 69deg, transparent 90deg, {{c.ray}} 102deg, transparent 114deg, transparent 135deg, {{c.ray}} 147deg, transparent 159deg, transparent 180deg, {{c.ray}} 192deg, transparent 204deg, transparent 225deg, {{c.ray}} 237deg, transparent 249deg, transparent 270deg, {{c.ray}} 282deg, transparent 294deg, transparent 315deg, {{c.ray}} 327deg, transparent 339deg); animation: m3trSpin 24s linear infinite;"></span>
+        </sc-if>
+        <span style="width: 132px; height: 132px; position: relative;"><dc-import name="D3-Trophy" kind="{{sel.kind}}" size="132" locked="{{sel.locked}}" progress="{{sel.progress}}" dark="{{dark}}" hint-size="132px,132px"></dc-import></span>
+      </div>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{sel.groupColor}};">{{sel.group}}</span>
+      <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; text-align: center; line-height: 1.1;">{{sel.name}}</h2>
+      <span style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{sel.chipBg}}; color: {{sel.chipFg}}; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{sel.chipIcon}}"></path></svg>{{sel.status}}</span>
+      <sc-if value="{{sel.locked}}" hint-placeholder-val="{{false}}">
+        <div style="width: 100%; display: flex; flex-direction: column; gap: 6px;">
+          <span style="height: 8px; border-radius: 4px; background: {{c.sunk}};"><span style="display: block; height: 8px; width: {{sel.progress}}%; border-radius: 4px; background: {{c.gold}}; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></span></span>
+          <span style="font-size: 13px; font-weight: 600; text-align: center;">{{sel.left}}</span>
+        </div>
+      </sc-if>
+      <span style="font-size: 13px; line-height: 1.45; text-align: center;"><strong>How you earn it: </strong>{{sel.rule}}</span>
+      <div style="width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <span style="border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 11px; color: {{c.mute}};">Worth</span><span style="font-size: 15px; font-weight: 800;">{{sel.pts}}</span></span>
+        <span style="border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 11px; color: {{c.mute}};">In your branch</span><span style="font-size: 15px; font-weight: 800;">{{sel.rarity}}</span></span>
+      </div>
+      <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
+        <sc-if value="{{sel.hasCta}}" hint-placeholder-val="{{true}}">
+          <a href="{{sel.ctaHref}}" onClick="{{sel.ctaGo}}" style="height: 48px; border-radius: 14px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 700; text-decoration: none;">{{sel.cta}}</a>
+        </sc-if>
+        <sc-if value="{{sel.earned}}" hint-placeholder-val="{{true}}">
+          <button onClick="{{shareSel}}" style="height: 48px; border-radius: 14px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 700;">Show the team</button>
+        </sc-if>
+        <button onClick="{{celebrateSel}}" style="height: 48px; border-radius: 14px; border: 0; background: {{c.goldTint}}; color: {{c.gold}}; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 800;">Preview the celebration</button>
+      </div>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: {{c.faint}};">DATES, RARITY AND PROGRESS ARE SAMPLE</span>
+    </div>
+  </div>
+
+  <sc-if value="{{celebrating}}" hint-placeholder-val="{{false}}">
+    <div role="dialog" aria-modal="true" aria-label="{{cele.aria}}" style="position: absolute; inset: 0; z-index: 25; background: radial-gradient(circle at 50% 42%, rgba(60,44,8,0.92) 0%, rgba(12,11,9,0.96) 60%); color: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; overflow: hidden; padding: 0 20px; text-align: center;">
+      <sc-for list="{{confetti}}" as="cf" hint-placeholder-count="10">
+        <span aria-hidden="true" style="position: absolute; left: {{cf.left}}%; top: 0; width: {{cf.w}}px; height: {{cf.h}}px; border-radius: 2px; background: {{cf.color}}; --dx: {{cf.dx}}px; --rot: {{cf.rot}}deg; animation: m3trFall {{cf.dur}}ms {{cf.delay}}ms cubic-bezier(0.2, 0.6, 0.4, 1) both;"></span>
+      </sc-for>
+      <div style="position: relative; width: 220px; height: 220px; display: flex; align-items: center; justify-content: center;">
+        <span aria-hidden="true" style="position: absolute; inset: -30px; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0deg, rgba(255,214,120,0.28) 10deg, transparent 20deg, transparent 30deg, rgba(255,214,120,0.28) 40deg, transparent 50deg, transparent 60deg, rgba(255,214,120,0.28) 70deg, transparent 80deg, transparent 90deg, rgba(255,214,120,0.28) 100deg, transparent 110deg, transparent 120deg, rgba(255,214,120,0.28) 130deg, transparent 140deg, transparent 150deg, rgba(255,214,120,0.28) 160deg, transparent 170deg, transparent 180deg, rgba(255,214,120,0.28) 190deg, transparent 200deg, transparent 210deg, rgba(255,214,120,0.28) 220deg, transparent 230deg, transparent 240deg, rgba(255,214,120,0.28) 250deg, transparent 260deg, transparent 270deg, rgba(255,214,120,0.28) 280deg, transparent 290deg, transparent 300deg, rgba(255,214,120,0.28) 310deg, transparent 320deg, transparent 330deg, rgba(255,214,120,0.28) 340deg, transparent 350deg); animation: m3trSpin 18s linear infinite;"></span>
+        <span aria-hidden="true" style="position: absolute; width: 170px; height: 170px; border-radius: 50%; background: radial-gradient(circle, rgba(255,210,110,0.55) 0%, rgba(255,210,110,0) 70%); animation: m3trHalo 2.4s ease-in-out infinite;"></span>
+        <span style="width: 160px; height: 160px; position: relative; animation: {{cele.pop}};"><dc-import name="D3-Trophy" kind="{{cele.kind}}" size="160" dark="{{true}}" hint-size="160px,160px"></dc-import></span>
+      </div>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: #F2C14E; animation: m3trRise 480ms 200ms cubic-bezier(0.32, 0.72, 0, 1) both;">{{cele.kicker}}</span>
+      <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: -0.03em; animation: m3trRise 480ms 280ms cubic-bezier(0.32, 0.72, 0, 1) both;">{{cele.name}}</h2>
+      <p style="margin: 0; font-size: 14px; opacity: 0.85; line-height: 1.4; animation: m3trRise 480ms 360ms cubic-bezier(0.32, 0.72, 0, 1) both;">{{cele.line}}</p>
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 800; color: #F2C14E; animation: m3trRise 480ms 440ms cubic-bezier(0.32, 0.72, 0, 1) both;">+{{celePts}} pts</span>
+      <div style="display: flex; gap: 10px; margin-top: 4px; animation: m3trRise 480ms 520ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+        <button onClick="{{shareSel}}" style="height: 48px; padding: 0 20px; border-radius: 14px; border: 0; background: #F2C14E; color: #1F1D1A; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 800;">Show the team</button>
+        <button onClick="{{closeCele}}" style="height: 48px; padding: 0 20px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: #FFFFFF; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Close</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":390,"height":1180}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const IDS = ['Level', 'Closest', 'Badges', 'Awards', 'Campaign'];
+    const m = /page=([A-Za-z]+)/.exec(props.params || '');
+    const start = m ? IDS.indexOf(m[1]) : -1;
+    this.state = { sel: 'big-week', selN: 0, sheetOpen: false, cele: '', celeN: 0, celePts: 0, page: start < 0 ? 0 : start, dragX: 0, dragging: false, hintSeen: false };
+    this.timer = null;
+    this.drag = null;
+  }
+  componentWillUnmount() { if (this.timer) clearInterval(this.timer); }
+  startCount(target) {
+    if (this.timer) clearInterval(this.timer);
+    const t0 = Date.now();
+    this.setState({ celePts: 0 });
+    this.timer = setInterval(() => {
+      const p = Math.min(1, (Date.now() - t0) / 900);
+      const e = 1 - Math.pow(1 - p, 3);
+      this.setState({ celePts: Math.round(target * e) });
+      if (p >= 1) { clearInterval(this.timer); this.timer = null; }
+    }, 30);
+  }
+  goPage(p) {
+    this.setState({ page: Math.max(0, Math.min(4, p)), hintSeen: true });
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', pane: '#FBFAF6', heroBg: '#FFFDF7', heroGlow: 'rgba(240,185,58,0.28)', ray: 'rgba(240,185,58,0.22)', stageEarned: 'radial-gradient(circle at 50% 55%, #FFF4D6 0%, #F6F3EC 70%)', stageLocked: '#F0ECE4' };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', pane: '#171714', heroBg: '#1B1A16', heroGlow: 'rgba(232,180,78,0.18)', ray: 'rgba(232,180,78,0.16)', stageEarned: 'radial-gradient(circle at 50% 55%, #3A2E14 0%, #171714 70%)', stageLocked: '#1F1E1B' };
+    const c = this.props.dark ? dark : light;
+    const s = this.state;
+    const page = s.page;
+    const nav = (t) => (e) => { if (e && e.preventDefault && this.props.onNav) e.preventDefault(); if (this.props.onNav) this.props.onNav(t); };
+    const toast = (t) => { if (this.props.onNav) this.props.onNav('event:toast:' + t); };
+
+    // [kind, name, group, earned, pct/progress, left, rule, pts, rarity, ctaLabel, ctaTarget]
+    const ALL = [
+      ['first-steps', 'First Steps', 'Badges', true, 100, 'Earned 12-01-2026', 'Log your first week in AgencyTrack.', 25, '18 of 18'],
+      ['on-a-roll', 'On a Roll', 'Badges', true, 100, 'Earned 02-08-2026', 'Hit a 5-week report streak.', 50, '11 of 18'],
+      ['committed', 'Committed', 'Badges', true, 100, 'Earned 06-09-2026', 'Hit a 10-week report streak.', 75, '7 of 18'],
+      ['quarter-strong', 'Quarter Strong', 'Badges', true, 100, 'Earned 20-09-2026', 'Meet your weekly plan every week for a full quarter.', 100, '4 of 18'],
+      ['consistent', 'Consistent', 'Badges', true, 100, 'Earned 13-09-2026', 'Log activity on every working day for 4 weeks.', 50, '6 of 18'],
+      ['closer', 'Closer', 'Badges', true, 100, 'Earned 23-08-2026', 'Turn 3 closing interviews in a row into applications.', 75, '5 of 18'],
+      ['big-week', 'Big Week', 'Badges', false, 70, 'One more closing interview this week unlocks it.', 'Score 300 points in a single week.', 100, '3 of 18', 'Start a focus session', 'Focus?mode=Calls'],
+      ['dial-king', 'Dial King', 'Badges', false, 64, '36 more dials this week.', 'Make 100 dials in one week.', 75, '2 of 18', 'Start a focus session', 'Focus?mode=Calls'],
+      ['century', 'Century', 'Badges', false, 52, '48 more logged calls with an outcome.', 'Log 100 calls with an outcome.', 100, '5 of 18', 'Start a focus session', 'Focus?mode=Calls'],
+      ['mdrt-pace', 'MDRT Pace', 'Badges', false, 38, 'TTD 42,975 a week keeps you on pace.', 'Be on pace for MDRT at the end of a month.', 150, '2 of 18', 'Open game plan', 'GamePlan'],
+      ['sharpshooter', 'Sharpshooter', 'Badges', false, 30, 'Close ratio 30% of the 50% needed.', 'Close half your closing interviews over 8 weeks.', 100, '1 of 18', 'See your funnel', 'Pipeline?view=Funnel'],
+      ['mdrt-bound', 'MDRT Bound', 'Badges', false, 13, 'TTD 601,654 to go.', 'Pass half of the MDRT line.', 200, '1 of 18', 'Open MDRT goal', 'Goals'],
+      ['mdrt-qualified', 'MDRT Qualified', 'Badges', false, 13, 'TTD 601,654 to go · 14 weeks left.', 'Reach TTD 688,800 in the year (MDRT 2026).', 500, '0 of 18', 'Open MDRT goal', 'Goals'],
+      ['untouchable', 'Untouchable', 'Badges', false, 8, 'Hold 1st place for 4 weeks.', 'Hold 1st place on the branch board for 4 weeks in a row.', 300, '0 of 18', 'Open leaderboard', 'Arena'],
+      ['level-rookie', 'Rookie', 'Levels', true, 100, 'From 0 pts', 'Everyone starts here.', 0, '18 of 18'],
+      ['level-associate', 'Associate', 'Levels', true, 100, 'At 500 pts', 'Reach 500 points.', 500, '14 of 18'],
+      ['level-pro', 'Pro', 'Levels', true, 100, 'At 1,500 pts', 'Reach 1,500 points.', 1500, '8 of 18'],
+      ['level-elite', 'Elite', 'Levels', false, 84, '560 pts to go', 'Reach 3,500 points.', 3500, '3 of 18', 'Start a focus session', 'Focus?mode=Calls'],
+      ['level-legend', 'Legend', 'Levels', false, 42, '4,060 pts to go', 'Reach 7,000 points.', 7000, '1 of 18', 'Start a focus session', 'Focus?mode=Calls'],
+      ['new-business', 'New Business Advisor', 'Awards', true, 100, 'Qualified 12-09-2026', 'New Business Advisor Award — from confirmed settlements.', 250, '5 of 18'],
+      ['persistency-silver', 'Persistency — Silver', 'Awards', false, 96, 'Reinstate TTD 7,100 to reach 90%.', 'Persistency Award — Silver. 24-month aggregate, Tatil memo 29-08-2026.', 200, '6 of 18', 'See at-risk policies', 'Persistency'],
+      ['aotm-apps', 'Advisor of the Month — Apps', 'Awards', false, 80, '1 more application in September.', 'Most applications in the branch this month. Recognition only Jul–Dec.', 150, '1 a month', 'Start a focus session', 'Focus?mode=Calls'],
+      ['quarterly-api', 'Quarterly API', 'Awards', false, 45, 'TTD [n] to go this quarter.', 'Quarterly API Award — top API for the quarter.', 200, '1 a quarter', 'Open leaderboard', 'Arena'],
+      ['aotm-api', 'Advisor of the Month — API', 'Awards', false, 38, 'TTD [n] to top the branch.', 'Most settled API in the branch this month. Recognition only Jul–Dec.', 150, '1 a month', 'Open leaderboard', 'Arena'],
+      ['quarterly-apps', 'Quarterly Apps', 'Awards', false, 33, '[n] applications to go.', 'Quarterly Apps Award — most applications for the quarter.', 200, '1 a quarter', 'Start a focus session', 'Focus?mode=Calls'],
+      ['persistency-gold', 'Persistency — Gold', 'Awards', false, 30, 'Above silver: [n]% needed.', 'Persistency Award — Gold.', 300, '2 of 18', 'See at-risk policies', 'Persistency'],
+      ['mdrt', 'MDRT', 'Awards', false, 13, 'TTD 601,654 to go · family policies count here.', 'Qualify for MDRT (TTD 688,800 in 2026).', 500, '0 of 18', 'Open MDRT goal', 'Goals'],
+      ['rookie-year', 'Rookie of the Year', 'Awards', false, 0, 'For agents in their first year.', 'Rookie of the Year — first-year agents only.', 300, '1 a year'],
+      ['agent-year', 'Agent of the Year', 'Awards', false, 9, 'Ranked on the full year.', 'Agent of the Year — ranked on the full year.', 500, '1 a year', 'Open leaderboard', 'Arena'],
+      ['centurion', 'Centurion', 'Awards', false, 5, '[n] applications needed.', 'Centurion Award.', 400, '0 of 18', 'Start a focus session', 'Focus?mode=Calls'],
+      ['xmas-tier', 'Champion tier', 'Christmas campaign', true, 100, 'In the race', 'Christmas Campaign 2026 — Champion tier, TTD 7,000 cash.', 100, '9 of 18'],
+      ['xmas-champion', 'Christmas Champion', 'Christmas campaign', false, 27, 'TTD 201,054 and 32 apps to go · 96 days.', 'Reach TTD 275,000 and 35 applications by 31-12-2026. Persistency gate applies.', 500, '0 of 18', 'Open campaign', 'Campaign']
+    ];
+    const byKind = {}; ALL.forEach((a) => { byKind[a[0]] = a; });
+    const pick = (kind) => () => this.setState({ sel: kind, selN: s.selN + 1, sheetOpen: true });
+
+    const NOTES = { Badges: 'The live app’s 14 badges', Levels: 'Rookie 0 · Associate 500 · Pro 1,500 · Elite 3,500 · Legend 7,000', Awards: 'Source: live from policy ledger and confirmed settlements', 'Christmas campaign': '01-07-2026 to 31-12-2026 · retreat Costa Rica April 2027' };
+    const groupOrder = ['Badges', 'Levels', 'Awards', 'Christmas campaign'];
+    const shelves = {};
+    groupOrder.forEach((g) => {
+      const list = ALL.filter((a) => a[2] === g);
+      const earned = list.filter((a) => a[3]).length;
+      const items = list.map((a) => ({
+        kind: a[0], name: a[1], locked: !a[3], progress: a[3] ? 0 : a[4], sub: a[3] ? 'Earned' : a[4] + '%',
+        nameColor: a[3] ? c.ink : c.mute, subColor: a[3] ? c.gold : c.faint,
+        aria: a[1] + (a[3] ? ', earned' : ', ' + a[4] + ' percent there'), pick: pick(a[0])
+      }));
+      shelves[g] = { title: g, count: earned + ' of ' + list.length, note: NOTES[g], items: items };
+    });
+
+    const nextUp = ['big-week', 'dial-king', 'century'].map((k) => { const a = byKind[k]; return { kind: k, name: a[1], progress: a[4], left: a[5], pick: pick(k) }; });
+
+    const LV = ['level-rookie', 'level-associate', 'level-pro', 'level-elite', 'level-legend'];
+    const levels = LV.map((k, i) => { const a = byKind[k]; return { kind: k, name: a[1], locked: !a[3], progress: a[3] ? 0 : a[4], hasTrack: i > 0, track: i <= 2 ? c.gold : c.sunk, weight: k === 'level-pro' ? 800 : 600, color: k === 'level-pro' ? c.ink : c.mute, aria: a[1] + (a[3] ? ', reached' : ', ' + a[5]), pick: pick(k) }; });
+
+    const a = byKind[s.sel] || ALL[0];
+    const FILES = { Calls: 'M3-Focus', 'Focus?mode=Calls': 'M3-Focus', GamePlan: 'M3-GamePlan', Goals: 'M3-Goals', Persistency: 'M3-Persistency', Arena: 'M3-Arena', 'Pipeline?view=Funnel': 'M3-Pipeline', Campaign: 'M3-Campaign' };
+    const hasCta = !!a[9];
+    const ctaT = a[10] || '';
+    const ctaFile = FILES[ctaT.split('?')[0]] || FILES[ctaT] || 'M3-Arena';
+    const sel = {
+      kind: a[0], name: a[1], group: a[2].toUpperCase(), groupColor: a[2] === 'Levels' ? c.accent : c.gold,
+      earned: a[3], locked: !a[3], progress: a[3] ? 0 : a[4], left: a[5], rule: a[6],
+      pts: a[7] ? (a[2] === 'Levels' ? a[7].toLocaleString('en-US') + ' pts' : '+' + a[7] + ' pts') : '—', rarity: a[8],
+      status: a[3] ? (a[2] === 'Levels' ? 'Reached' : a[5]) : a[4] + '% there',
+      chipBg: a[3] ? c.goldTint : c.sunk, chipFg: a[3] ? c.gold : c.mute,
+      chipIcon: a[3] ? 'M20 6 9 17l-5-5' : 'M6 11h12v10H6zM8.5 11V7.5a3.5 3.5 0 0 1 7 0V11',
+      stage: a[3] ? c.stageEarned : c.stageLocked,
+      hasCta: hasCta, cta: a[9] || '', ctaHref: ctaFile + '.dc.html', ctaGo: nav(ctaT)
+    };
+
+    const COLORS = ['#F2C14E', '#63C5BF', '#E0724B', '#FFFFFF', '#B794D6', '#8FD3CD', '#F0B93A', '#FF8A65'];
+    const confetti = [];
+    for (let i = 0; i < 40; i++) {
+      const left = (i * 37.3 + 11) % 100;
+      confetti.push({ left: left.toFixed(1), w: 6 + (i % 3) * 2, h: 10 + (i % 4) * 3, color: COLORS[i % COLORS.length], dx: ((i * 53) % 140) - 70, rot: ((i * 97) % 720) - 360, dur: 1700 + (i % 7) * 240, delay: (i % 11) * 65 });
+    }
+    const ck = byKind[s.cele] || a;
+    const celebrate = (kind) => { const x = byKind[kind]; this.setState({ cele: kind, celeN: s.celeN + 1 }); this.startCount(x[7] || 100); };
+
+    const PAGES = ['Level', 'Closest', 'Badges', 'Awards', 'Campaign'];
+    const CLIP = [560, 460, 720, 940, 900];
+    const clip = CLIP[page];
+    const rootH = 12 + 56 + 16 + 88 + 16 + clip + 104;
+    const pages = PAGES.map((label, i) => {
+      const on = i === page;
+      return {
+        label: label, on: on ? 'true' : 'false', bg: on ? c.surface : c.sunk, color: on ? c.ink : c.mute,
+        shadow: on ? '0 1px 2px rgba(0,0,0,0.12)' : 'none', dot: on ? c.accent : c.rule, dotW: on ? 18 : 6,
+        pick: () => this.goPage(i)
+      };
+    });
+
+    return {
+      c: c, dark: !!this.props.dark, showNav: !this.props.embedded,
+      go: { back: (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('back'); } } },
+      earnedCount: ALL.filter((x) => x[3]).length, totalCount: ALL.length,
+      shelfBadges: shelves.Badges, shelfAwards: shelves.Awards, shelfCampaign: shelves['Christmas campaign'],
+      nextUp: nextUp, levels: levels, sel: sel,
+      pickStreak: () => toast('Streak: 13 weeks. Next milestone at 25 weeks.'),
+      inspAnim: (s.selN % 2 ? 'm3trRise' : 'm3trRise') + ' 260ms cubic-bezier(0.32, 0.72, 0, 1) both',
+      sheetOpen: s.sheetOpen, sheetY: s.sheetOpen ? 0 : 100, sheetModal: s.sheetOpen ? 'true' : 'false',
+      sheetHiddenStr: s.sheetOpen ? 'false' : 'true',
+      backdropOpacity: s.sheetOpen ? 1 : 0, backdropEvents: s.sheetOpen ? 'auto' : 'none',
+      closeSheet: () => this.setState({ sheetOpen: false }),
+      celebrating: !!s.cele,
+      cele: {
+        kind: ck[0], name: ck[2] === 'Levels' ? 'Level up: ' + ck[1] : ck[1],
+        kicker: ck[2] === 'Levels' ? 'NEW LEVEL' : (ck[2] === 'Awards' ? 'AWARD QUALIFIED' : 'TROPHY UNLOCKED'),
+        line: ck[6], aria: 'Celebration: ' + ck[1],
+        pop: (s.celeN % 2 ? 'm3trPopA' : 'm3trPopB') + ' 900ms 120ms cubic-bezier(0.32, 0.72, 0, 1) both'
+      },
+      celePts: s.celePts, confetti: confetti,
+      celebrateSel: () => celebrate(s.sel),
+      shareSel: () => toast('Saved · shared "' + (byKind[s.cele || s.sel] || a)[1] + '" to your branch feed'),
+      closeCele: () => this.setState({ cele: '' }),
+      pages: pages, clip: clip, rootH: rootH,
+      hintVis: (page === 0 && !s.hintSeen) ? 'visible' : 'hidden',
+      hidden0: page === 0 ? 'false' : 'true',
+      hidden1: page === 1 ? 'false' : 'true',
+      hidden2: page === 2 ? 'false' : 'true',
+      hidden3: page === 3 ? 'false' : 'true',
+      hidden4: page === 4 ? 'false' : 'true',
+      tx: -page * 390 + (s.dragX || 0),
+      trans: s.dragging ? 'none' : 'transform 520ms cubic-bezier(0.32, 0.72, 0, 1)',
+      pagerKey: (e) => {
+        if (e.key === 'ArrowRight') { e.preventDefault(); this.goPage(page + 1); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); this.goPage(page - 1); }
+      },
+      down: (e) => { this.drag = { x: e.clientX, y: e.clientY, hist: [], active: false, id: e.pointerId, el: e.currentTarget }; },
+      move: (e) => {
+        const dr = this.drag;
+        if (!dr) return;
+        const dx = e.clientX - dr.x;
+        const dy = e.clientY - dr.y;
+        if (!dr.active) {
+          if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+            dr.active = true;
+            try { dr.el.setPointerCapture(dr.id); } catch (err) {}
+          } else if (Math.abs(dy) > 10) { this.drag = null; return; } else { return; }
+        }
+        dr.hist.push({ x: e.clientX, t: performance.now() });
+        if (dr.hist.length > 5) dr.hist.shift();
+        const edge = (page === 0 && dx > 0) || (page === 4 && dx < 0);
+        const off = edge ? (dx * 390 * 0.55) / (390 + 0.55 * Math.abs(dx)) : dx;
+        this.setState({ dragX: off, dragging: true });
+      },
+      up: () => {
+        const dr = this.drag;
+        this.drag = null;
+        if (!dr || !dr.active) return;
+        let v = 0;
+        const h = dr.hist;
+        if (h.length > 1) { v = ((h[h.length - 1].x - h[0].x) / Math.max(1, h[h.length - 1].t - h[0].t)) * 1000; }
+        const projected = this.state.dragX + (v / 1000) * 0.99 / (1 - 0.99);
+        let target = page;
+        if (projected < -195) target = page + 1;
+        else if (projected > 195) target = page - 1;
+        this.setState({ dragX: 0, dragging: false, page: Math.max(0, Math.min(4, target)), hintSeen: true });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

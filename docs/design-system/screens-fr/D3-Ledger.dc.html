@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ledger — desktop v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+tr.row:hover{background:rgba(11,93,94,0.06)}
+.lg-view{transition:background 120ms ease}
+.lg-view:hover{background:rgba(127,120,105,0.12)}
+.wb-row{transition:background 120ms ease}
+.wb-row .acts{opacity:0;transition:opacity 120ms ease}
+.wb-row:hover .acts{opacity:1}
+.wb-row:hover{background:rgba(127,120,105,0.08)}
+@keyframes lgSlideUp{0%{transform:translateY(16px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes wbFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: {{rootW}}px; height: 900px; box-sizing: border-box; display: flex; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; overflow: hidden;">
+  <sc-if value="{{showChrome}}" hint-placeholder-val="{{true}}">
+    <div style="width: 220px; flex-shrink: 0; align-self: stretch; background: {{c.sideBg}};">
+      <dc-import name="D3-Sidebar" active="Ledger" dark="{{dark}}" h="{{900}}" hint-size="220px,900px"></dc-import>
+    </div>
+  </sc-if>
+  <main style="width: 1220px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;">
+    <header style="height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 20px 0 28px; display: flex; align-items: center; gap: 10px; background: {{c.glass}}; border-bottom: 1px solid {{c.rule}};">
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; flex-shrink: 0;">Policy ledger</h1>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}}; background: {{c.sunk}}; padding: 3px 8px; border-radius: 6px; flex-shrink: 0;">2026</span>
+      <span style="flex-grow: 1;"></span>
+      <a href="D3-Today.dc.html" onClick="{{go.Search}}" style="width: 220px; height: 36px; box-sizing: border-box; border-radius: 9px; border: 1px solid {{c.rule}}; background: {{c.surface}}; display: flex; align-items: center; gap: 8px; padding: 0 10px; text-decoration: none; color: {{c.faint}}; flex-shrink: 0;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+        <span style="flex-grow: 1; font-size: 13px;">Search</span>
+        <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; background: {{c.sunk}}; border-radius: 5px; padding: 2px 6px; color: {{c.faint}};">Ctrl K</kbd>
+      </a>
+    </header>
+
+    <div style="flex-grow: 1; min-height: 0; display: flex;">
+      <aside aria-label="Saved views and award lens" style="width: 220px; flex-shrink: 0; align-self: stretch; background: {{c.pane}}; border-right: 1px solid {{c.rule}}; padding: 16px 12px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; box-sizing: border-box;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <h2 style="margin: 0 6px 6px; font-family: 'Bricolage Grotesque', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: -0.02em; color: {{c.mute}};">Saved views</h2>
+          <sc-for list="{{views}}" as="v" hint-placeholder-count="6">
+            <button onClick="{{v.pick}}" aria-pressed="{{v.on}}" class="lg-view" style="height: 40px; border: 0; border-radius: 9px; background: {{v.bg}}; color: {{v.color}}; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: {{v.weight}}; text-align: left;">
+              <span>{{v.label}}</span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: {{v.countColor}};">{{v.count}}</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px; border-top: 1px solid {{c.rule}}; padding-top: 14px;">
+          <h2 style="margin: 0 6px 6px; font-family: 'Bricolage Grotesque', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: -0.02em; color: {{c.mute}};">Counts toward</h2>
+          <sc-for list="{{lensChips}}" as="l" hint-placeholder-count="4">
+            <button onClick="{{l.pick}}" aria-pressed="{{l.onAria}}" class="lg-view" style="height: 40px; border: 0; border-radius: 9px; background: {{l.bg}}; color: {{l.color}}; display: flex; align-items: center; gap: 8px; padding: 0 10px; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600; text-align: left;">
+              <span style="width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid {{l.dotBorder}}; background: {{l.dotFill}}; flex-shrink: 0; display: flex; align-items: center; justify-content: center;"><sc-if value="{{l.onFlag}}" hint-placeholder-val="{{false}}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{c.onAccent}}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span>
+              <span>{{l.label}}</span>
+            </button>
+          </sc-for>
+        </div>
+      </aside>
+
+      <div style="flex-grow: 1; min-width: 0; position: relative; display: flex; flex-direction: column; padding: 18px 20px; gap: 14px; overflow-y: auto; box-sizing: border-box;">
+
+        <sc-if value="{{showClassicPane}}" hint-placeholder-val="{{true}}">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <label style="position: relative; flex-shrink: 0;">
+              <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: {{c.faint}}; display: flex;" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></span>
+              <span style="position: absolute; left: -9999px;">Search policies</span>
+              <input value="{{query}}" onInput="{{onQuery}}" placeholder="Filter by client" style="width: 200px; height: 36px; box-sizing: border-box; border-radius: 9px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; padding: 0 12px 0 32px;">
+            </label>
+            <button aria-label="Filter and sort" style="width: 36px; height: 36px; border-radius: 9px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"></path></svg></button>
+            <span style="flex-grow: 1;"></span>
+            <div style="position: relative; flex-shrink: 0;">
+              <button onClick="{{toggleExport}}" aria-expanded="{{exportOpen}}" style="height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; gap: 8px; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"></path></svg>Export</button>
+              <sc-if value="{{exportOpen}}" hint-placeholder-val="{{false}}">
+                <div style="position: absolute; right: 0; top: 44px; width: 200px; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.14); padding: 6px; display: flex; flex-direction: column; gap: 2px; z-index: 8;">
+                  <button style="height: 44px; border: 0; background: transparent; border-radius: 8px; text-align: left; padding: 0 10px; font-size: 13px; font-weight: 600; color: {{c.ink}};">CSV</button>
+                  <button style="height: 44px; border: 0; background: transparent; border-radius: 8px; text-align: left; padding: 0 10px; font-size: 13px; font-weight: 600; color: {{c.ink}};">PDF check sheet</button>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+
+          <section aria-label="Totals for this view" style="flex-shrink: 0; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; padding: 14px 18px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+            <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 12px; color: {{c.mute}};">Settled</span><span style="font-size: 20px; font-weight: 700; font-family: 'Bricolage Grotesque', sans-serif;">{{tot.settled}}</span><span style="font-size: 11px; color: {{c.faint}};">counts</span></span>
+            <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 12px; color: {{c.mute}};">Submitted</span><span style="font-size: 20px; font-weight: 700; font-family: 'Bricolage Grotesque', sans-serif;">{{tot.submitted}}</span><span style="font-size: 11px; color: {{c.faint}};">waiting</span></span>
+            <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 12px; color: {{c.mute}};">Apps</span><span style="font-size: 20px; font-weight: 700; font-family: 'Bricolage Grotesque', sans-serif;">{{tot.apps}}</span><span style="font-size: 11px; color: {{c.faint}};">in view</span></span>
+          </section>
+
+          <span style="flex-shrink: 0; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE ROWS · TOTALS ARE YOUR LIVE FIGURES</span>
+
+          <div style="flex-grow: 1; min-height: 0; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; overflow: auto; padding-bottom: {{tablePadBottom}}px; box-sizing: border-box;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 1px solid {{c.rule}};">
+                  <th style="width: 40px; padding: 10px 0 10px 16px;">
+                    <button onClick="{{toggleAll}}" role="checkbox" aria-checked="{{allCheckedAria}}" aria-label="Select all rows" style="width: 20px; height: 20px; border-radius: 5px; border: 2px solid {{allCheckedBorder}}; background: {{allCheckedFill}}; display: flex; align-items: center; justify-content: center; padding: 0;">
+                      <sc-if value="{{allChecked}}" hint-placeholder-val="{{false}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{c.onAccent}}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
+                    </button>
+                  </th>
+                  <th style="text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600; color: {{c.mute}};">Client</th>
+                  <th style="text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600; color: {{c.mute}};">Product</th>
+                  <th style="text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600; color: {{c.mute}};">Freq</th>
+                  <th style="text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600; color: {{c.mute}};">Date</th>
+                  <th style="text-align: right; padding: 10px 12px; font-size: 12px; font-weight: 600; color: {{c.mute}};">API</th>
+                  <th style="text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600; color: {{c.mute}};">Status</th>
+                  <th style="text-align: left; padding: 10px 16px; font-size: 12px; font-weight: 600; color: {{c.mute}};">Counts toward</th>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{rows}}" as="p" hint-placeholder-count="5">
+                  <tr class="row" onClick="{{p.select}}" style="height: 52px; border-bottom: 1px solid {{c.rule}}; cursor: pointer; background: {{p.rowBg}};">
+                    <td style="padding: 0 0 0 16px;">
+                      <button onClick="{{p.toggleCheck}}" role="checkbox" aria-checked="{{p.checkedAria}}" aria-label="Select {{p.client}}" style="width: 20px; height: 20px; border-radius: 5px; border: 2px solid {{p.checkBorder}}; background: {{p.checkFill}}; display: flex; align-items: center; justify-content: center; padding: 0;">
+                        <sc-if value="{{p.checked}}" hint-placeholder-val="{{false}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{c.onAccent}}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
+                      </button>
+                    </td>
+                    <td style="padding: 0 12px; font-size: 14px; font-weight: 700;">{{p.client}}</td>
+                    <td style="padding: 0 12px; font-size: 13px; color: {{c.mute}};">{{p.product}}</td>
+                    <td style="padding: 0 12px; font-size: 13px; color: {{c.mute}};">{{p.freq}}</td>
+                    <td style="padding: 0 12px; font-size: 13px; color: {{c.mute}};">{{p.date}}</td>
+                    <td style="padding: 0 12px; font-size: 14px; font-weight: 700; text-align: right; white-space: nowrap;">{{p.api}}</td>
+                    <td style="padding: 0 12px;"><span style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{p.statusBg}}; color: {{p.statusFg}}; display: inline-flex; align-items: center; font-size: 12px; font-weight: 700; white-space: nowrap;">{{p.status}}</span></td>
+                    <td style="padding: 0 16px; font-size: 12px; color: {{c.mute}};">{{p.countsLabel}}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            <sc-if value="{{noRows}}" hint-placeholder-val="{{false}}">
+              <div style="padding: 24px 16px; font-size: 13px; color: {{c.faint}};">No policies match this view.</div>
+            </sc-if>
+          </div>
+
+          <sc-if value="{{hasChecked}}" hint-placeholder-val="{{false}}">
+            <div style="position: absolute; left: 20px; right: 20px; bottom: 18px; height: 52px; border-radius: 14px; background: {{c.ink}}; color: {{c.bg}}; box-shadow: 0 12px 28px rgba(0,0,0,0.28); display: flex; align-items: center; padding: 0 16px; gap: 14px; animation: lgSlideUp 220ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+              <span style="font-size: 13px; font-weight: 700;">{{checkedCount}} selected</span>
+              <span style="width: 1px; height: 20px; background: rgba(255,255,255,0.2);"></span>
+              <button onClick="{{confirmChecked}}" style="border: 0; background: transparent; color: {{c.bg}}; font-size: 13px; font-weight: 700; font-family: 'Onest', sans-serif;">Confirm settled</button>
+              <button onClick="{{exportChecked}}" style="border: 0; background: transparent; color: {{c.bg}}; font-size: 13px; font-weight: 700; font-family: 'Onest', sans-serif;">Export</button>
+              <button onClick="{{clearChecked}}" style="border: 0; background: transparent; color: {{c.bg}}; opacity: 0.75; font-size: 13px; font-weight: 700; font-family: 'Onest', sans-serif;">Clear</button>
+            </div>
+          </sc-if>
+        </sc-if>
+
+        <sc-if value="{{isWinback}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 14px; animation: wbFadeIn 220ms cubic-bezier(0.32,0.72,0,1) both;">
+
+            <section aria-label="Win-back overview" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;">
+              <span style="font-size: 13px; font-weight: 700; color: {{c.ink}}; line-height: 1.4;">Only these 7 can still move your persistency. 80 older lapses are outside the 24-month window.</span>
+              <button onClick="{{wb.toggleAged}}" style="align-self: flex-start; background: transparent; border: 0; padding: 0; color: {{c.faint}}; font-size: 11.5px; text-decoration: underline; font-family: 'Onest', sans-serif; cursor: pointer;">{{wb.agedLabel}}</button>
+              <sc-if value="{{wb.agedOpen}}" hint-placeholder-val="{{false}}">
+                <span style="font-size: 11.5px; color: {{c.faint}}; line-height: 1.4;">They lapsed more than 24 months ago, so they no longer count toward or against this figure — reinstating them can't move it.</span>
+              </sc-if>
+
+              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 4px;">
+                <div style="display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: {{c.sunk}};">
+                  <span style="font-size: 11px; color: {{c.mute}};">Confirmed persistency</span>
+                  <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -0.02em;">{{wb.confirmedPct}}%</span>
+                  <span style="font-size: 11px; color: {{c.faint}};">{{wb.bandChip}}</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: {{c.accentTint}};">
+                  <span style="font-size: 11px; color: {{c.mute}};">Projected · your ticks + reinstated</span>
+                  <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: {{wb.projectedColor}};">{{wb.projectedPct}}%</span>
+                  <span style="height: 6px; border-radius: 3px; background: {{c.surface}};"><span style="display: block; height: 6px; border-radius: 3px; background: {{cat0}}; width: {{wb.barPct}}%; transition: width 480ms cubic-bezier(0.32,0.72,0,1);"></span></span>
+                </div>
+              </div>
+
+              <button onClick="{{wb.pickSmallest}}" aria-pressed="{{wb.smallestOn}}" style="align-self: flex-start; height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid {{wb.smallestBorder}}; background: {{wb.smallestBg}}; color: {{wb.smallestColor}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">{{wb.smallestLabel}}</button>
+              <span style="font-size: 11px; color: {{c.mute}}; line-height: 1.4;">Projected moves the moment you tick a policy or mark it reinstated. Awards and the campaign gate only read the confirmed figure, after the next head-office export.</span>
+            </section>
+
+            <section aria-label="Win-back policies" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; padding: 4px 16px; display: flex; flex-direction: column;">
+              <div style="display: flex; align-items: center; gap: 10px; height: 40px; border-bottom: 1px solid {{c.rule}};">
+                <span style="width: 30px; flex-shrink: 0;"></span>
+                <span style="width: 150px; flex-shrink: 0; font-size: 12px; font-weight: 600; color: {{c.mute}};">Client · issued</span>
+                <span style="width: 110px; flex-shrink: 0; font-size: 12px; font-weight: 600; color: {{c.mute}};">Months left</span>
+                <span style="width: 100px; flex-shrink: 0; font-size: 12px; font-weight: 600; color: {{c.mute}};">Lapse month <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span></span>
+                <span style="flex-grow: 1; font-size: 12px; font-weight: 600; color: {{c.mute}}; text-align: right;">API</span>
+                <span style="width: 150px; flex-shrink: 0; font-size: 12px; font-weight: 600; color: {{c.mute}}; text-align: center;">Status <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span></span>
+                <span style="width: 172px; flex-shrink: 0;"></span>
+              </div>
+              <sc-for list="{{wbRows}}" as="r" hint-placeholder-count="7">
+                <div class="wb-row" onClick="{{r.select}}" style="display: flex; align-items: center; gap: 10px; min-height: 62px; border-bottom: 1px solid {{c.rule}}; cursor: pointer; background: {{r.rowBg}};">
+                  <span style="width: 30px; flex-shrink: 0; display: flex;">
+                    <button onClick="{{r.toggle}}" role="checkbox" aria-checked="{{r.checkedAria}}" aria-label="Include {{r.issued}}" style="width: 20px; height: 20px; border-radius: 5px; border: 2px solid {{r.checkBorder}}; background: {{r.checkFill}}; display: flex; align-items: center; justify-content: center; padding: 0;">
+                      <sc-if value="{{r.checked}}" hint-placeholder-val="{{false}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{c.onAccent}}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
+                    </button>
+                  </span>
+                  <span style="width: 150px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1px;">
+                    <span style="font-size: 13.5px; font-weight: 700;">[Client name]</span>
+                    <span style="font-size: 11.5px; color: {{c.mute}};">{{r.issued}}</span>
+                  </span>
+                  <span style="width: 110px; flex-shrink: 0; display: flex; flex-direction: column; gap: 3px;">
+                    <span style="font-size: 11px; color: {{c.mute}};">{{r.monthsLeft}}</span>
+                    <span style="height: 6px; border-radius: 3px; background: {{c.sunk}};"><span style="display: block; height: 6px; border-radius: 3px; background: {{r.barColor}}; width: {{r.barPct}}%; transition: width 480ms cubic-bezier(0.32,0.72,0,1);"></span></span>
+                  </span>
+                  <span style="width: 100px; flex-shrink: 0; font-size: 12.5px; color: {{c.mute}};">{{r.lapseMonth}}</span>
+                  <span style="flex-grow: 1; font-size: 14px; font-weight: 700; text-align: right; white-space: nowrap;">{{r.api}}</span>
+                  <span style="width: 150px; flex-shrink: 0; display: flex; justify-content: center;">
+                    <span style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{r.statusBg}}; color: {{r.statusFg}}; display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 700; white-space: nowrap;">{{r.statusLabel}}</span>
+                  </span>
+                  <span class="acts" style="width: 172px; flex-shrink: 0; display: flex; gap: 4px; justify-content: flex-end;">
+                    <button onClick="{{r.call}}" aria-label="Call about {{r.issued}}" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; padding: 0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.68 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.32 1.85.55 2.81.68A2 2 0 0 1 22 16.92Z"></path></svg></button>
+                    <sc-if value="{{r.canAdvance}}" hint-placeholder-val="{{true}}">
+                      <button onClick="{{r.advance}}" aria-label="Advance status for {{r.issued}}" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; padding: 0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+                    </sc-if>
+                    <sc-if value="{{r.notReinstated}}" hint-placeholder-val="{{true}}">
+                      <button onClick="{{r.markReinstated}}" aria-label="Mark reinstated for {{r.issued}}" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center; padding: 0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></button>
+                    </sc-if>
+                    <sc-if value="{{r.isReinstated}}" hint-placeholder-val="{{false}}">
+                      <span style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: {{c.accent}};" aria-label="Reinstated"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+                    </sc-if>
+                  </span>
+                </div>
+              </sc-for>
+            </section>
+
+            <sc-if value="{{wbHasChecked}}" hint-placeholder-val="{{false}}">
+              <div style="position: absolute; left: 20px; right: 20px; bottom: 18px; height: 52px; border-radius: 14px; background: {{c.ink}}; color: {{c.bg}}; box-shadow: 0 12px 28px rgba(0,0,0,0.28); display: flex; align-items: center; padding: 0 16px; gap: 14px; animation: lgSlideUp 220ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+                <span style="font-size: 13px; font-weight: 700;">{{wbBulk.count}} ticked</span>
+                <span style="width: 1px; height: 20px; background: rgba(255,255,255,0.2);"></span>
+                <button onClick="{{wbBulk.start}}" style="border: 0; background: transparent; color: {{c.bg}}; font-size: 13px; font-weight: 700; font-family: 'Onest', sans-serif;">{{wbBulk.startLabel}}</button>
+                <button onClick="{{wbBulk.markAll}}" style="border: 0; background: transparent; color: {{c.bg}}; font-size: 13px; font-weight: 700; font-family: 'Onest', sans-serif;">{{wbBulk.markLabel}}</button>
+                <button onClick="{{wbBulk.clear}}" style="border: 0; background: transparent; color: {{c.bg}}; opacity: 0.75; font-size: 13px; font-weight: 700; font-family: 'Onest', sans-serif;">Clear</button>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{hasSelection}}" hint-placeholder-val="{{false}}">
+        <aside aria-label="Policy details" style="width: 340px; flex-shrink: 0; align-self: stretch; background: {{c.surface}}; border-left: 1px solid {{c.rule}}; padding: 18px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; box-sizing: border-box;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">{{sel.client}}</span>
+              <span style="font-size: 13px; color: {{c.mute}};">{{sel.product}} · {{sel.freq}}</span>
+            </div>
+            <button onClick="{{clearSel}}" aria-label="Close details" style="width: 32px; height: 32px; border-radius: 16px; border: 0; background: {{c.sunk}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 13px; color: {{c.mute}};">API</span><span style="font-size: 15px; font-weight: 700;">{{sel.api}}</span></div>
+            <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 13px; color: {{c.mute}};">Date</span><span style="font-size: 14px; font-weight: 600;">{{sel.date}}</span></div>
+            <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 13px; color: {{c.mute}};">Status</span><span style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{sel.statusBg}}; color: {{sel.statusFg}}; display: flex; align-items: center; font-size: 12px; font-weight: 700;">{{sel.status}}</span></div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <span style="font-size: 13px; font-weight: 700;">Status history</span>
+            <div style="display: flex; flex-direction: column; gap: 0;">
+              <sc-for list="{{sel.history}}" as="h" hint-placeholder-count="3">
+                <div style="display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid {{c.rule}};">
+                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: {{c.faint}}; width: 76px; flex-shrink: 0;">{{h.date}}</span>
+                  <span style="font-size: 13px; color: {{c.ink}};">{{h.label}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-size: 13px; font-weight: 700;">Counts toward</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <sc-for list="{{sel.counts}}" as="k" hint-placeholder-count="2">
+                <span style="height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid {{c.rule}}; color: {{c.mute}}; display: flex; align-items: center; font-size: 12px; font-weight: 600;">{{k}}</span>
+              </sc-for>
+            </div>
+          </div>
+
+          <sc-if value="{{sel.needsConfirm}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid {{c.rule}}; padding-top: 14px;">
+              <span style="font-size: 13px; color: {{c.mute}};">Head office shows this as settled.</span>
+              <button onClick="{{sel.confirm}}" style="height: 48px; border-radius: 12px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 700;">Confirm</button>
+            </div>
+          </sc-if>
+        </aside>
+      </sc-if>
+
+      <sc-if value="{{hasWbSelection}}" hint-placeholder-val="{{false}}">
+        <aside aria-label="Win-back policy details" style="width: 340px; flex-shrink: 0; align-self: stretch; background: {{c.surface}}; border-left: 1px solid {{c.rule}}; padding: 18px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; box-sizing: border-box;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">[Client name]</span>
+              <span style="font-size: 13px; color: {{c.mute}};">Issued {{wbSel.issued}}</span>
+            </div>
+            <button onClick="{{clearWbSel}}" aria-label="Close details" style="width: 32px; height: 32px; border-radius: 16px; border: 0; background: {{c.sunk}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 13px; color: {{c.mute}};">API</span><span style="font-size: 15px; font-weight: 700;">{{wbSel.api}}</span></div>
+            <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 13px; color: {{c.mute}};">Lapse month</span><span style="font-size: 14px; font-weight: 600;">{{wbSel.lapseMonth}} <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span></span></div>
+            <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 13px; color: {{c.mute}};">Status</span><span style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{wbSel.statusBg}}; color: {{wbSel.statusFg}}; display: flex; align-items: center; font-size: 12px; font-weight: 700;">{{wbSel.statusLabel}}</span></div>
+          </div>
+
+          <sc-if value="{{wbSel.warn}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: {{c.warmTint}};">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{c.warm}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="M12 9v4M12 17h.01M12 3l9 16H3z"></path></svg>
+              <span style="font-size: 12.5px; font-weight: 700; color: {{c.warm}};">Ages out after October 2026 — {{wbSel.monthsLeft}}</span>
+            </div>
+          </sc-if>
+
+          <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid {{c.rule}}; padding-top: 12px;">
+            <span style="font-size: 13px; font-weight: 700;">Persistency effect</span>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 11.5px; color: {{c.mute}};">This policy alone</span>
+              <span style="font-size: 15px; font-weight: 700;">{{wbSel.onePctLabel}}</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 11.5px; color: {{c.mute}};">Your ticked set</span>
+              <span style="font-size: 15px; font-weight: 700;">{{wbSel.setPctLabel}}</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 11.5px; color: {{c.mute}};">Christmas prize band</span>
+              <span style="font-size: 14px; font-weight: 700;">{{wbSel.bandLabel}}</span>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <span style="font-size: 13px; font-weight: 700;">Status history <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span></span>
+            <div style="display: flex; flex-direction: column; gap: 0;">
+              <sc-for list="{{wbSel.history}}" as="h" hint-placeholder-count="3">
+                <div style="display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid {{c.rule}};">
+                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: {{c.faint}}; width: 76px; flex-shrink: 0;">{{h.date}}</span>
+                  <span style="font-size: 13px; color: {{c.ink}};">{{h.label}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid {{c.rule}}; padding-top: 14px;">
+            <button onClick="{{wbSel.call}}" style="height: 44px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13.5px; font-weight: 700;">Call</button>
+            <sc-if value="{{wbSel.canAdvance}}" hint-placeholder-val="{{true}}">
+              <button onClick="{{wbSel.advance}}" style="height: 44px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13.5px; font-weight: 700;">Advance status</button>
+            </sc-if>
+            <sc-if value="{{wbSel.isReinstated}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: {{c.accentTint}};">
+                <span style="font-size: 12px; font-weight: 700; color: {{c.accent}};">{{wbSel.reinstatedNote}}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{wbSel.notReinstated}}" hint-placeholder-val="{{true}}">
+              <button onClick="{{wbSel.markReinstated}}" style="height: 48px; border-radius: 12px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 700;">Mark reinstated</button>
+            </sc-if>
+          </div>
+        </aside>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const rawParams = props && props.params;
+    let pv = null;
+    if (rawParams) {
+      if (typeof rawParams === 'string') {
+        const mm = rawParams.match(/view=([A-Za-z]+)/);
+        pv = mm ? mm[1] : null;
+      } else if (typeof rawParams === 'object') {
+        pv = rawParams.view || null;
+      }
+    }
+    const initView = pv === 'Winback' ? 5 : 0;
+    this.pctTimer = null;
+    this.state = {
+      view: initView, lens: [], query: '', checked: [], selectedId: null, exportOpen: false,
+      confirmed: {},
+      wbChecked: ['r4', 'r6'],
+      wbStatus: { r1: 0, r2: 0, r3: 1, r4: 2, r5: 0, r6: 3, r7: 0 },
+      wbReinstatedAt: {},
+      wbSelectedId: null,
+      wbAgedOpen: false,
+      wbDispPct: (182778.36 + 4821.12 + 2400.00) / 210975.24 * 100,
+      allRows: [
+        { id: 0, client: '[Client A]', product: 'Whole life', freq: 'Monthly', date: '14-09-2026', api: 'TTD 36,000', baseStatus: 'waiting', counts: ['Christmas', 'MDRT', 'Sep'], xmas: true,
+          history: [{ date: '10-09-2026', label: 'Application submitted' }, { date: '13-09-2026', label: 'Underwriting cleared' }, { date: '14-09-2026', label: 'Head office shows settled' }] },
+        { id: 1, client: '[Client B]', product: 'Term 20', freq: 'Monthly', date: '22-09-2026', api: 'TTD 36,000', baseStatus: 'submitted', counts: ['Christmas'], xmas: true,
+          history: [{ date: '22-09-2026', label: 'Application submitted' }, { date: '24-09-2026', label: 'Under review' }] },
+        { id: 2, client: '[Client C]', product: 'Education plan', freq: 'Annual', date: '03-09-2026', api: 'TTD 24,946', baseStatus: 'settled', counts: ['Christmas', 'MDRT'], xmas: true,
+          history: [{ date: '28-08-2026', label: 'Application submitted' }, { date: '01-09-2026', label: 'Underwriting cleared' }, { date: '03-09-2026', label: 'Settled' }] },
+        { id: 3, client: '[Client D]', product: 'Annuity', freq: 'Single', date: '18-07-2026', api: 'TTD 13,000', baseStatus: 'settled', counts: ['MDRT', 'Q3'], xmas: false,
+          history: [{ date: '10-07-2026', label: 'Application submitted' }, { date: '15-07-2026', label: 'Underwriting cleared' }, { date: '18-07-2026', label: 'Settled' }] },
+        { id: 4, client: '[Client E]', product: 'Whole life', freq: 'Monthly', date: '02-03-2026', api: 'TTD 7,100', baseStatus: 'lapsed', counts: ['Win back → 90% gate'], xmas: false,
+          history: [{ date: '02-03-2025', label: 'Policy issued' }, { date: '15-08-2026', label: 'Premium missed' }, { date: '02-03-2026', label: 'Lapsed' }] }
+      ]
+    };
+  }
+  componentWillUnmount() { if (this.pctTimer) clearInterval(this.pctTimer); }
+  glidePct(target) {
+    if (this.pctTimer) clearInterval(this.pctTimer);
+    const start = this.state.wbDispPct;
+    const t0 = Date.now();
+    this.pctTimer = setInterval(() => {
+      const t = Math.min(1, (Date.now() - t0) / 420);
+      const eased = 1 - Math.pow(1 - t, 3);
+      this.setState({ wbDispPct: start + (target - start) * eased });
+      if (t >= 1) { clearInterval(this.pctTimer); this.pctTimer = null; }
+    }, 30);
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', sideBg: '#EFEBE2', glass: 'rgba(246,243,236,0.86)', pane: '#FBFAF6', sel: '#DCEAE7', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', sideBg: '#181816', glass: 'rgba(19,19,17,0.86)', pane: '#171714', sel: '#16312F', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = this.props.dark ? dark : light;
+    c.cat0 = c.cat[0];
+    const cat0 = c.cat[0];
+
+    const go = {};
+    go.Search = (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('Today'); } };
+    go.back = (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('back'); } };
+
+    const fmt0 = (n) => Math.round(n).toLocaleString('en-US');
+    const fmt2 = (n) => (Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const pct1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
+
+    // ---------------- classic ledger (all D2 features kept) ----------------
+    const st = {
+      settled: { label: 'Settled', bg: c.accentTint, fg: c.accent },
+      waiting: { label: 'Settled — confirm', bg: c.goldTint, fg: c.gold },
+      submitted: { label: 'Submitted, not issued', bg: c.sunk, fg: c.mute },
+      lapsed: { label: 'Lapsed', bg: c.warmTint, fg: c.warm }
+    };
+    const statusOf = (row) => row.baseStatus === 'waiting' ? (this.state.confirmed[row.id] ? 'settled' : 'waiting') : row.baseStatus;
+    const withStatus = this.state.allRows.map((row) => Object.assign({}, row, { s: statusOf(row) }));
+
+    const v = this.state.view;
+    const isWinback = v === 5;
+    const viewPass = (row) => {
+      if (v === 0) return true;
+      if (v === 1) return row.xmas;
+      if (v === 2) return row.s === 'waiting';
+      if (v === 3) return row.s === 'submitted';
+      if (v === 4) return row.s === 'lapsed';
+      return false;
+    };
+    const lensPass = (row) => this.state.lens.length === 0 || row.counts.some((tag) => this.state.lens.indexOf(tag) >= 0);
+    const q = this.state.query.trim().toLowerCase();
+    const searchPass = (row) => !q || row.client.toLowerCase().indexOf(q) >= 0;
+
+    const viewCounts0to4 = [0, 1, 2, 3, 4].map((i) => withStatus.filter((row) => (i === 0 || (i === 1 && row.xmas) || (i === 2 && row.s === 'waiting') || (i === 3 && row.s === 'submitted') || (i === 4 && row.s === 'lapsed'))).length);
+    const WB_TOTAL = 7;
+    const viewLabels = ['All 2026', 'Christmas', 'Needs attention', 'Not issued', 'Lapsed', 'Win-back'];
+    const viewCounts = viewCounts0to4.concat([WB_TOTAL]);
+    const views = viewLabels.map((label, i) => ({
+      label: label, on: i === v ? 'true' : 'false',
+      bg: i === v ? c.sel : 'transparent', color: c.ink, weight: i === v ? 700 : 500,
+      count: String(viewCounts[i]), countColor: c.faint,
+      pick: () => {
+        if (i === 5) this.setState({ view: 5, selectedId: null, checked: [] });
+        else this.setState({ view: i, selectedId: null, checked: [], wbSelectedId: null });
+      }
+    }));
+
+    const LENS_DEFS = [{ label: 'Christmas', tag: 'Christmas' }, { label: 'MDRT', tag: 'MDRT' }, { label: 'Advisor of the Month — Sep', tag: 'Sep' }, { label: 'Q3', tag: 'Q3' }];
+    const lensChips = LENS_DEFS.map((l) => {
+      const on = this.state.lens.indexOf(l.tag) >= 0;
+      return {
+        label: l.label, onAria: on ? 'true' : 'false', onFlag: on, bg: on ? c.accentTint : 'transparent', color: on ? c.accent : c.ink,
+        dotBorder: on ? c.accent : c.rule, dotFill: on ? c.accent : 'transparent',
+        pick: () => {
+          const next = this.state.lens.slice();
+          const idx = next.indexOf(l.tag);
+          if (idx >= 0) next.splice(idx, 1); else next.push(l.tag);
+          this.setState({ lens: next });
+        }
+      };
+    });
+
+    const filtered = withStatus.filter((row) => viewPass(row) && lensPass(row) && searchPass(row));
+    const checked = this.state.checked;
+    const rows = filtered.map((row) => ({
+      id: row.id, client: row.client, product: row.product, freq: row.freq, date: row.date, api: row.api,
+      status: st[row.s].label, statusBg: st[row.s].bg, statusFg: st[row.s].fg,
+      countsLabel: row.counts.join(' · '),
+      rowBg: row.id === this.state.selectedId ? c.sel : 'transparent',
+      checked: checked.indexOf(row.id) >= 0,
+      checkedAria: checked.indexOf(row.id) >= 0 ? 'true' : 'false',
+      checkBorder: checked.indexOf(row.id) >= 0 ? c.accent : c.rule,
+      checkFill: checked.indexOf(row.id) >= 0 ? c.accent : 'transparent',
+      toggleCheck: (e) => {
+        e.stopPropagation();
+        const next = checked.slice();
+        const idx = next.indexOf(row.id);
+        if (idx >= 0) next.splice(idx, 1); else next.push(row.id);
+        this.setState({ checked: next });
+      },
+      select: () => this.setState({ selectedId: row.id, wbSelectedId: null })
+    }));
+
+    const allChecked = filtered.length > 0 && filtered.every((row) => checked.indexOf(row.id) >= 0);
+    const toggleAll = (e) => {
+      e.stopPropagation();
+      if (allChecked) this.setState({ checked: [] });
+      else this.setState({ checked: filtered.map((row) => row.id) });
+    };
+
+    const totsByView = [
+      { settled: '87,146', submitted: '123,146', apps: '6' },
+      { settled: '73,946', submitted: '109,946', apps: '4' },
+      { settled: '—', submitted: '—', apps: String(viewCounts[2]) },
+      { settled: '—', submitted: '36,000', apps: String(viewCounts[3]) },
+      { settled: '—', submitted: '—', apps: String(viewCounts[4]) },
+      { settled: '—', submitted: '—', apps: String(WB_TOTAL) }
+    ];
+
+    const selRaw = (!isWinback) ? (withStatus.find((row) => row.id === this.state.selectedId) || null) : null;
+    const sel = selRaw ? {
+      client: selRaw.client, product: selRaw.product, freq: selRaw.freq, date: selRaw.date, api: selRaw.api,
+      status: st[selRaw.s].label, statusBg: st[selRaw.s].bg, statusFg: st[selRaw.s].fg,
+      history: selRaw.history, counts: selRaw.counts,
+      needsConfirm: selRaw.s === 'waiting',
+      confirm: () => {
+        const next = Object.assign({}, this.state.confirmed, { [selRaw.id]: true });
+        this.setState({ confirmed: next });
+        if (this.props.onNav) this.props.onNav('event:toast:Confirmed · now counts for Christmas and MDRT');
+      }
+    } : {};
+
+    const checkedCount = checked.length;
+    const confirmChecked = () => {
+      const toConfirm = checked.filter((id) => { const r = this.state.allRows.find((rr) => rr.id === id); return r && r.baseStatus === 'waiting' && !this.state.confirmed[id]; });
+      if (toConfirm.length > 0) {
+        const nextConf = Object.assign({}, this.state.confirmed);
+        toConfirm.forEach((id) => { nextConf[id] = true; });
+        this.setState({ confirmed: nextConf, checked: [] });
+        if (this.props.onNav) this.props.onNav('event:toast:Confirmed ' + toConfirm.length + ' policies · now counting');
+      } else {
+        this.setState({ checked: [] });
+      }
+    };
+
+    // ---------------- Win-back ----------------
+    const WB_TRACK = ['To call', 'Agreed', 'Form sent', 'Paid', 'Reinstated'];
+    const NGS_BASE = 210975.24, NET_BASE = 182778.36;
+    const pctFor = (extraApi) => (NET_BASE + extraApi) / NGS_BASE * 100;
+    const basePct = pctFor(0);
+    const bandFor = (p) => {
+      if (p >= 90) return { name: '100%', prize: 7000 };
+      if (p >= 85) return { name: '50%', prize: 3500 };
+      if (p >= 80) return { name: '25%', prize: 1750 };
+      return { name: 'not qualified', prize: 0 };
+    };
+    const wbRowsDef = [
+      { id: 'r1', issued: '28-10-2024', lapseMonth: 'Aug 2025', ml: 1, api: 1182.36, warn: true },
+      { id: 'r2', issued: '28-05-2025', lapseMonth: 'Feb 2026', ml: 8, api: 2400.00 },
+      { id: 'r3', issued: '14-08-2025', lapseMonth: 'Apr 2026', ml: 11, api: 11996.64 },
+      { id: 'r4', issued: '19-11-2025', lapseMonth: 'Jun 2026', ml: 14, api: 4821.12 },
+      { id: 'r5', issued: '11-11-2025', lapseMonth: 'May 2026', ml: 14, api: 3617.64 },
+      { id: 'r6', issued: '19-11-2025', lapseMonth: 'Jun 2026', ml: 14, api: 2400.00 },
+      { id: 'r7', issued: '20-11-2025', lapseMonth: 'Jul 2026', ml: 14, api: 1779.12 }
+    ];
+    const wbChecked = this.state.wbChecked;
+    const wbSumOf = (ids) => wbRowsDef.filter((r) => ids.indexOf(r.id) >= 0).reduce((s, r) => s + r.api, 0);
+    const tickedSum = wbSumOf(wbChecked);
+    const tickedCount = wbChecked.length;
+    const SMALLEST_IDS = ['r4', 'r6'];
+    const smallestSum = wbSumOf(SMALLEST_IDS);
+    const isSmallestPicked = wbChecked.length === 2 && wbChecked.indexOf('r4') >= 0 && wbChecked.indexOf('r6') >= 0;
+    const pickSmallestWb = () => {
+      this.setState({ wbChecked: SMALLEST_IDS.slice() });
+      this.glidePct(pctFor(smallestSum));
+    };
+    const currentBand = bandFor(basePct);
+    const STEP_DATES = ['20-09-2026', '22-09-2026', '24-09-2026', '26-09-2026', '27-09-2026'];
+
+    const toggleWbRow = (id) => (e) => {
+      e.stopPropagation();
+      const next = wbChecked.slice();
+      const idx = next.indexOf(id);
+      if (idx >= 0) next.splice(idx, 1); else next.push(id);
+      this.setState({ wbChecked: next });
+      this.glidePct(pctFor(wbSumOf(next)));
+    };
+    const advanceWb = (id) => (e) => {
+      e.stopPropagation();
+      const cur = this.state.wbStatus[id] || 0;
+      if (cur < 3) {
+        const ns = Object.assign({}, this.state.wbStatus);
+        ns[id] = cur + 1;
+        this.setState({ wbStatus: ns });
+        const rr = wbRowsDef.find((r) => r.id === id);
+        if (this.props.onNav) this.props.onNav('event:toast:' + WB_TRACK[cur + 1] + ' · ' + (rr ? rr.issued : ''));
+      }
+    };
+    const markReinstatedWb = (id) => (e) => {
+      if (e) e.stopPropagation();
+      const ns = Object.assign({}, this.state.wbStatus, { [id]: 4 });
+      const nd = Object.assign({}, this.state.wbReinstatedAt, { [id]: '27-09-2026' });
+      const nextChecked = wbChecked.indexOf(id) >= 0 ? wbChecked : wbChecked.concat([id]);
+      this.setState({ wbStatus: ns, wbReinstatedAt: nd, wbChecked: nextChecked });
+      this.glidePct(pctFor(wbSumOf(nextChecked)));
+      if (this.props.onNav) this.props.onNav('event:toast:Reinstated · waiting on head office');
+    };
+    const callWb = (e) => { if (e) e.stopPropagation(); if (this.props.onNav) this.props.onNav('Calls?mode=Winback'); };
+
+    const wbRows = wbRowsDef.map((r) => {
+      const statusIdx = this.state.wbStatus[r.id] || 0;
+      const reinstated = statusIdx >= 4;
+      const isChecked = wbChecked.indexOf(r.id) >= 0;
+      return {
+        id: r.id, issued: r.issued, lapseMonth: r.lapseMonth, api: 'TTD ' + fmt2(r.api),
+        monthsLeft: r.ml + (r.ml === 1 ? ' month left' : ' months left'),
+        barPct: Math.round((r.ml / 14) * 100), barColor: r.ml <= 2 ? c.warm : cat0,
+        warn: !!r.warn,
+        checked: isChecked, checkedAria: isChecked ? 'true' : 'false',
+        checkBorder: isChecked ? c.accent : c.rule, checkFill: isChecked ? c.accent : 'transparent',
+        toggle: toggleWbRow(r.id),
+        statusLabel: WB_TRACK[statusIdx],
+        statusBg: reinstated ? c.accentTint : (statusIdx === 3 ? c.goldTint : c.sunk),
+        statusFg: reinstated ? c.accent : (statusIdx === 3 ? c.gold : c.mute),
+        rowBg: r.id === this.state.wbSelectedId ? c.sel : 'transparent',
+        select: () => this.setState({ wbSelectedId: r.id, selectedId: null }),
+        call: callWb,
+        advance: advanceWb(r.id), canAdvance: statusIdx < 3,
+        markReinstated: markReinstatedWb(r.id), notReinstated: !reinstated,
+        isReinstated: reinstated
+      };
+    });
+
+    const wbSelRaw = isWinback ? (wbRowsDef.find((r) => r.id === this.state.wbSelectedId) || null) : null;
+    let wbSel = {};
+    if (wbSelRaw) {
+      const statusIdx = this.state.wbStatus[wbSelRaw.id] || 0;
+      const reinstated = statusIdx >= 4;
+      const onePct = pctFor(wbSelRaw.api);
+      const setPct = pctFor(tickedSum);
+      const setBand = bandFor(setPct);
+      const hist = WB_TRACK.map((label, i) => ({ date: STEP_DATES[i], label: label })).slice(0, statusIdx + 1).slice().reverse();
+      wbSel = {
+        issued: wbSelRaw.issued, lapseMonth: wbSelRaw.lapseMonth, api: 'TTD ' + fmt2(wbSelRaw.api),
+        monthsLeft: wbSelRaw.ml + (wbSelRaw.ml === 1 ? ' month left' : ' months left'),
+        warn: !!wbSelRaw.warn,
+        statusLabel: WB_TRACK[statusIdx], statusBg: reinstated ? c.accentTint : (statusIdx === 3 ? c.goldTint : c.sunk), statusFg: reinstated ? c.accent : (statusIdx === 3 ? c.gold : c.mute),
+        onePctLabel: pct1(basePct) + '% → ' + pct1(onePct) + '%',
+        setPctLabel: pct1(basePct) + '% → ' + pct1(setPct) + '% (' + tickedCount + ' ticked)',
+        bandLabel: currentBand.name + ' → ' + setBand.name + ' (TTD ' + fmt0(currentBand.prize) + ' → TTD ' + fmt0(setBand.prize) + ')',
+        history: hist,
+        isReinstated: reinstated, notReinstated: !reinstated,
+        reinstatedNote: reinstated ? ('Self-confirmed by Kyron on ' + (this.state.wbReinstatedAt[wbSelRaw.id] || '27-09-2026') + ' · head-office export will confirm') : '',
+        call: callWb, advance: advanceWb(wbSelRaw.id), canAdvance: statusIdx < 3,
+        markReinstated: markReinstatedWb(wbSelRaw.id)
+      };
+    }
+
+    const wb = {
+      confirmedPct: pct1(basePct), projectedPct: pct1(this.state.wbDispPct),
+      projectedColor: this.state.wbDispPct >= 90 ? c.accent : c.warm,
+      smallestLabel: 'Smallest set that clears 90%: 2 policies, TTD ' + fmt0(smallestSum),
+      smallestOn: isSmallestPicked ? 'true' : 'false',
+      smallestBg: isSmallestPicked ? c.accent : c.surface, smallestColor: isSmallestPicked ? c.onAccent : c.ink, smallestBorder: isSmallestPicked ? c.accent : c.rule,
+      pickSmallest: pickSmallestWb,
+      agedLabel: this.state.wbAgedOpen ? '80 older lapses — hide' : '80 older lapses are outside the 24-month window →',
+      agedOpen: this.state.wbAgedOpen,
+      toggleAged: () => this.setState({ wbAgedOpen: !this.state.wbAgedOpen }),
+      bandChip: currentBand.name + ' band today',
+      barPct: Math.max(0, Math.min(100, Math.round(this.state.wbDispPct)))
+    };
+
+    const wbHasChecked = wbChecked.length > 0 && isWinback;
+    const wbBulk = {
+      count: wbChecked.length,
+      startLabel: 'Start win-back session (' + wbChecked.length + ')',
+      markLabel: 'Mark reinstated (' + wbChecked.length + ')',
+      start: () => { if (this.props.onNav) this.props.onNav('Calls?mode=Winback'); },
+      markAll: () => {
+        const ns = Object.assign({}, this.state.wbStatus);
+        const nd = Object.assign({}, this.state.wbReinstatedAt);
+        wbChecked.forEach((id) => { ns[id] = 4; nd[id] = '27-09-2026'; });
+        this.setState({ wbStatus: ns, wbReinstatedAt: nd });
+        if (this.props.onNav) this.props.onNav('event:toast:Reinstated ' + wbChecked.length + ' policies · waiting on head office');
+      },
+      clear: () => this.setState({ wbChecked: [] })
+    };
+
+    return {
+      c: c, cat0: cat0, go: go, showChrome: !this.props.embedded, rootW: this.props.embedded ? 1220 : 1440, dark: !!this.props.dark,
+      views: views, lensChips: lensChips,
+      query: this.state.query, onQuery: (e) => this.setState({ query: e.target.value }),
+      rows: rows, noRows: rows.length === 0, tot: totsByView[v],
+      allChecked: allChecked, allCheckedAria: allChecked ? 'true' : 'false',
+      allCheckedBorder: allChecked ? c.accent : c.rule, allCheckedFill: allChecked ? c.accent : 'transparent', toggleAll: toggleAll,
+      hasChecked: checkedCount > 0 && !isWinback, checkedCount: checkedCount,
+      confirmChecked: confirmChecked, exportChecked: () => this.setState({ exportOpen: true }), clearChecked: () => this.setState({ checked: [] }),
+      tablePadBottom: (checkedCount > 0 && !isWinback) ? 64 : 0,
+      hasSelection: !!selRaw, sel: sel, clearSel: () => this.setState({ selectedId: null }),
+      exportOpen: this.state.exportOpen, toggleExport: () => this.setState({ exportOpen: !this.state.exportOpen }),
+      isWinback: isWinback, showClassicPane: !isWinback,
+      wb: wb, wbRows: wbRows, wbHasChecked: wbHasChecked, wbBulk: wbBulk,
+      hasWbSelection: !!wbSelRaw, wbSel: wbSel, clearWbSel: () => this.setState({ wbSelectedId: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

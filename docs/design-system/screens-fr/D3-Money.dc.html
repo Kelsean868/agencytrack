@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Money — desktop v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>body{margin:0}a{color:inherit}
+@keyframes d3mShellA{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes d3mShellB{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.d3m-tab{transition:background 160ms ease,color 160ms ease,box-shadow 160ms ease}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: {{rootW}}px; height: 900px; box-sizing: border-box; display: flex; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; overflow: hidden;">
+  <sc-if value="{{showChrome}}" hint-placeholder-val="{{true}}">
+    <div style="width: 220px; flex-shrink: 0; align-self: stretch; background: {{c.sideBg}};">
+      <dc-import name="D3-Sidebar" active="Money" tab="{{tab}}" dark="{{dark}}" h="{{900}}" on-nav="{{innerNav}}" hint-size="220px,900px"></dc-import>
+    </div>
+  </sc-if>
+  <main style="width: 1220px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;">
+    <header style="height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 20px 0 28px; display: flex; align-items: center; gap: 14px; background: {{c.glass}}; border-bottom: 1px solid {{c.rule}};">
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; flex-shrink: 0;">Money</h1>
+      <div role="tablist" aria-label="Money section" style="height: 40px; box-sizing: border-box; padding: 3px; border-radius: 12px; background: {{c.sunk}}; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; width: 720px; flex-shrink: 0;">
+        <sc-for list="{{tabsUI}}" as="t" hint-placeholder-count="7">
+          <button class="d3m-tab" role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="height: 44px; margin: -5px 0; border: 0; background: transparent; padding: 0; display: flex; align-items: center; cursor: pointer; font-family: 'Onest', sans-serif;"><span class="d3m-tab" style="width: 100%; height: 34px; border-radius: 9px; background: {{t.bg}}; color: {{t.color}}; box-shadow: {{t.shadow}}; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;">{{t.label}}</span></button>
+        </sc-for>
+      </div>
+      <span style="flex-grow: 1;"></span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: {{c.faint}}; white-space: nowrap;">24-MONTH PERSISTENCY · LEDGER 15-09-2026</span>
+      <a href="D3-Today.dc.html" onClick="{{goSearch}}" style="width: 180px; height: 38px; box-sizing: border-box; border-radius: 11px; border: 1px solid {{c.rule}}; background: {{c.surface}}; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px; color: {{c.faint}}; font-size: 13px; text-decoration: none; flex-shrink: 0;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+        <span style="flex-grow: 1;">Search</span>
+        <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; color: {{c.mute}}; background: {{c.sunk}}; border-radius: 5px; padding: 2px 5px;">Ctrl K</kbd>
+      </a>
+    </header>
+    <div style="height: 844px; flex-shrink: 0; overflow: hidden; animation: {{tabAnim}};">
+      <sc-if value="{{is.Overview}}" hint-placeholder-val="{{true}}"><dc-import name="D3M-Overview" dark="{{dark}}" on-nav="{{innerNav}}" params="{{params}}" hint-size="1220px,844px"></dc-import></sc-if>
+      <sc-if value="{{is.Goals}}" hint-placeholder-val="{{false}}"><dc-import name="D3M-Goals" dark="{{dark}}" on-nav="{{innerNav}}" params="{{params}}" hint-size="1220px,844px"></dc-import></sc-if>
+      <sc-if value="{{is.GamePlan}}" hint-placeholder-val="{{false}}"><dc-import name="D3M-GamePlan" dark="{{dark}}" on-nav="{{innerNav}}" params="{{params}}" hint-size="1220px,844px"></dc-import></sc-if>
+      <sc-if value="{{is.MoneyNeeds}}" hint-placeholder-val="{{false}}"><dc-import name="D3M-MoneyNeeds" dark="{{dark}}" on-nav="{{innerNav}}" params="{{params}}" hint-size="1220px,844px"></dc-import></sc-if>
+      <sc-if value="{{is.Commission}}" hint-placeholder-val="{{false}}"><dc-import name="D3M-Commission" dark="{{dark}}" on-nav="{{innerNav}}" params="{{params}}" hint-size="1220px,844px"></dc-import></sc-if>
+      <sc-if value="{{is.Persistency}}" hint-placeholder-val="{{false}}"><dc-import name="D3M-Persistency" dark="{{dark}}" on-nav="{{innerNav}}" params="{{params}}" hint-size="1220px,844px"></dc-import></sc-if>
+      <sc-if value="{{is.Financing}}" hint-placeholder-val="{{false}}"><dc-import name="D3M-Financing" dark="{{dark}}" on-nav="{{innerNav}}" params="{{params}}" hint-size="1220px,844px"></dc-import></sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const TABS = ['Overview', 'Goals', 'GamePlan', 'MoneyNeeds', 'Commission', 'Persistency', 'Financing'];
+    const want = props && props.params && props.params.tab;
+    this.state = { tab: TABS.indexOf(want) >= 0 ? want : 'Overview', flip: 0 };
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', sideBg: '#EFEBE2', glass: 'rgba(246,243,236,0.86)' };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', sideBg: '#181816', glass: 'rgba(19,19,17,0.86)' };
+    const c = this.props.dark ? dark : light;
+    const s = this.state;
+    const TABS = [['Overview', 'Overview'], ['Goals', 'Goals · MDRT'], ['GamePlan', 'Game plan'], ['MoneyNeeds', 'Money needs'], ['Commission', 'Commission'], ['Persistency', 'Persistency'], ['Financing', 'Financing']];
+    const ids = TABS.map((t) => t[0]);
+    const setTab = (id) => { if (id !== this.state.tab) this.setState({ tab: id, flip: this.state.flip + 1 }); };
+    const innerNav = (t) => {
+      const m = /^Money\?tab=([A-Za-z]+)/.exec(String(t || ''));
+      if (m && ids.indexOf(m[1]) >= 0) { setTab(m[1]); return; }
+      if (this.props.onNav) this.props.onNav(t);
+    };
+    const is = {};
+    ids.forEach((id) => { is[id] = s.tab === id; });
+    const tabsUI = TABS.map((t) => {
+      const on = s.tab === t[0];
+      return { label: t[1], on: on, pick: () => setTab(t[0]), bg: on ? c.surface : 'transparent', color: on ? c.ink : c.mute, shadow: on ? '0 1px 2px rgba(0,0,0,0.1)' : 'none' };
+    });
+    return {
+      c: c, dark: !!this.props.dark, showChrome: !this.props.embedded, rootW: this.props.embedded ? 1220 : 1440,
+      tab: s.tab, is: is, tabsUI: tabsUI, innerNav: innerNav, params: { tab: s.tab },
+      tabAnim: (s.flip % 2 ? 'd3mShellA' : 'd3mShellB') + ' 240ms cubic-bezier(0.32, 0.72, 0, 1) both',
+      goSearch: (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('Search'); } }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mobile v3 tab bar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400..800&display=swap">
+<style>body{margin:0}a{color:inherit}</style>
+</helmet>
+<nav aria-label="Main" style="width: 390px; height: 84px; box-sizing: border-box; padding-bottom: 14px; background: {{c.glass}}; border-top: 0.5px solid {{c.hair}}; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; font-family: 'Onest', sans-serif;">
+  <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+    <sc-if value="{{t.isFab}}" hint-placeholder-val="{{false}}">
+      <a href="Log-Sheet.dc.html" aria-label="Log activity" style="justify-self: center; width: 56px; height: 56px; border-radius: 18px; background: {{c.ink}}; color: {{c.bg}}; display: flex; align-items: center; justify-content: center;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></a>
+    </sc-if>
+    <sc-if value="{{t.isTab}}" hint-placeholder-val="{{true}}">
+      <a href="{{t.href}}" aria-current="{{t.current}}" style="min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: {{t.weight}}; color: {{t.color}}; text-decoration: none;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.icon}}"></path></svg>{{t.label}}</a>
+    </sc-if>
+  </sc-for>
+</nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["today","pipeline","money","arena","none"],"default":"today"},"dark":{"editor":"boolean","default":false},"$preview":{"width":390,"height":84}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const light = { bg: '#F6F3EC', ink: '#1F1D1A', mute: '#5A544A', accent: '#0B5D5E', glass: 'rgba(246,243,236,0.92)', hair: 'rgba(31,29,26,0.18)' };
+    const dark = { bg: '#131311', ink: '#F2EFE8', mute: '#BDB6A8', accent: '#63C5BF', glass: 'rgba(29,28,25,0.92)', hair: 'rgba(242,239,232,0.16)' };
+    const c = this.props.dark ? dark : light;
+    const a = this.props.active || 'today';
+    const D = [
+    { id: 'today', label: 'Today', href: 'M3-Home.dc.html', icon: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4' },
+    { id: 'pipeline', label: 'Pipeline', href: 'M3-Pipeline.dc.html', icon: 'M3 4h18l-7 8v6l-4 2v-8z' },
+    { id: 'log', fab: true },
+    { id: 'money', label: 'Money', href: 'M3-Money.dc.html', icon: 'M2 6h20v13H2zM12 15.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z' },
+    { id: 'arena', label: 'Arena', href: 'M3-Arena.dc.html', icon: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3' }
+  ];
+    return { c: c, tabs: D.map((d) => ({ isFab: !!d.fab, isTab: !d.fab, label: d.label, icon: d.icon, href: d.href, current: d.id === a ? 'page' : 'false', color: d.id === a ? c.accent : c.mute, weight: d.id === a ? 700 : 600 })) };
+  }
+}
+</script>
+</body>
+</html>

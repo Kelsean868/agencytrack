@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Financing — Money tab</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}
+a{color:inherit}
+*{font-variant-numeric:tabular-nums}
+tr.fm-row:hover{background:rgba(127,120,105,0.08)}
+@keyframes fmFadeA{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes fmFadeB{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes fmDrawA{to{stroke-dashoffset:0}}
+@keyframes fmDrawB{to{stroke-dashoffset:0}}
+@keyframes fmGrowY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.fm-line{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation-duration:700ms;animation-timing-function:cubic-bezier(0.32,0.72,0,1);animation-fill-mode:both}
+.fm-col{transform-origin:bottom;animation:fmGrowY 380ms cubic-bezier(0.32,0.72,0,1) both}
+.fm-bar{transition:height 480ms cubic-bezier(0.32,0.72,0,1), y 480ms cubic-bezier(0.32,0.72,0,1);}
+.fm-chip{transition:background 150ms ease,color 150ms ease}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 1220px; height: 844px; box-sizing: border-box; display: flex; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif;">
+
+  <div style="flex-grow: 1; min-width: 0; overflow-y: auto; padding: 22px 26px 40px; display: flex; flex-direction: column; gap: 20px;">
+
+    <!-- ============ READ-ONLY / NO-AGREEMENT BANNER ============ -->
+    <section aria-label="About this tab" style="background: {{c.sunk}}; border-radius: 14px; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.mute}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><circle cx="12" cy="12" r="9"></circle><path d="M12 16v-4M12 8h.01"></path></svg>
+      <span style="font-size: 12.5px; color: {{c.mute}}; line-height: 1.5;">You don't have a financing agreement on file yet, so every figure below is a <strong style="color: {{c.ink}};">SAMPLE</strong> preview of how this tab works once you do. This view is read-only — your manager confirms the real figures; their internal workings never reach this screen.</span>
+    </section>
+
+    <!-- ============ 1. PAYDOWN ARC HERO ============ -->
+    <section aria-label="Paydown arc" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.faint}};">FINANCING BALANCE · SAMPLE</span>
+          <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700; line-height: 1.1;">{{arc.nowBalanceFmt}}</span>
+          <span style="font-size: 13px; color: {{arc.msgColor}};">{{arc.msg}}</span>
+        </div>
+        <button onClick="{{arc.toggle}}" style="height: 32px; padding: 0 12px; border-radius: 9px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700; flex-shrink: 0;">{{arc.tableLabel}}</button>
+      </div>
+
+      <div role="tablist" aria-label="Preview a paydown state" style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <sc-for list="{{arc.buttons}}" as="b" hint-placeholder-count="4">
+          <button role="tab" aria-selected="{{b.on}}" onClick="{{b.pick}}" style="min-height: 44px; padding: 0 14px; border-radius: 11px; border: 1px solid {{b.border}}; background: {{b.bg}}; color: {{b.color}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">{{b.label}}</button>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{arc.showChart}}" hint-placeholder-val="{{true}}">
+        <svg width="100%" height="220" viewBox="0 0 1000 220" role="img" aria-label="Financing balance history and honest straight-line projection, sample data">
+          <line x1="30" x2="970" y1="{{arc.baselineY}}" y2="{{arc.baselineY}}" stroke="{{c.rule}}" stroke-width="1"></line>
+          <text x="30" y="{{arc.baselineLabelY}}" font-family="JetBrains Mono, monospace" font-size="10" fill="{{c.faint}}">TTD 0</text>
+
+          <sc-if value="{{arc.showLine}}" hint-placeholder-val="{{true}}">
+            <path class="fm-line" style="--len: {{arc.lineLen}}; animation-name: {{arc.animName}};" d="{{arc.pathD}}" fill="none" stroke="{{c.cat0}}" stroke-width="2.5" stroke-linecap="round"></path>
+            <circle cx="{{arc.todayX}}" cy="{{arc.todayY}}" r="4.5" fill="{{c.surface}}" stroke="{{c.cat0}}" stroke-width="2.5"></circle>
+            <text x="{{arc.todayX}}" y="{{arc.todayLabelY}}" text-anchor="middle" font-family="Onest, sans-serif" font-size="11" font-weight="700" fill="{{c.ink}}">Today</text>
+          </sc-if>
+
+          <sc-if value="{{arc.showProj}}" hint-placeholder-val="{{false}}">
+            <path d="{{arc.projD}}" fill="none" stroke="{{c.ghost}}" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 5"></path>
+            <circle cx="{{arc.endX}}" cy="{{arc.endY}}" r="4.5" fill="{{c.surface}}" stroke="{{c.ghost}}" stroke-width="2"></circle>
+            <text x="{{arc.endX}}" y="{{arc.todayLabelY}}" text-anchor="end" font-family="Onest, sans-serif" font-size="11" font-weight="700" fill="{{c.mute}}">Projected clear</text>
+          </sc-if>
+
+          <sc-if value="{{arc.few}}" hint-placeholder-val="{{false}}">
+            <circle cx="{{arc.todayX}}" cy="{{arc.todayY}}" r="6" fill="{{c.cat0}}"></circle>
+            <text x="{{arc.todayX}}" y="{{arc.todayLabelY}}" text-anchor="middle" font-family="Onest, sans-serif" font-size="12" font-weight="700" fill="{{c.ink}}">Sep only</text>
+          </sc-if>
+        </svg>
+      </sc-if>
+
+      <sc-if value="{{arc.showTable}}" hint-placeholder-val="{{false}}">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead><tr><th scope="col" style="text-align: left; font-size: 11px; color: {{c.mute}}; padding: 0 8px 6px 0; border-bottom: 1px solid {{c.rule}};">Month</th><th scope="col" style="text-align: right; font-size: 11px; color: {{c.mute}}; padding: 0 0 6px 8px; border-bottom: 1px solid {{c.rule}};">Balance</th></tr></thead>
+          <tbody>
+            <sc-for list="{{arc.tableRows}}" as="ar" hint-placeholder-count="6">
+              <tr class="fm-row" style="height: 32px;">
+                <td style="padding: 0 8px 0 0; border-bottom: 1px solid {{c.rule}}; font-size: 12.5px; font-weight: 600;">{{ar.month}}</td>
+                <td style="padding: 0 0 0 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 12.5px;">{{ar.value}}</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </sc-if>
+    </section>
+
+    <!-- ============ 2. PROJECTED BONUS (getProjectedBonus) ============ -->
+    <section aria-label="This quarter's projected bonus" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.faint}};">PROJECTED BONUS · YEAR 2 OF AGREEMENT · Q2 · SAMPLE</span>
+          <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 30px; font-weight: 700; line-height: 1.1;">{{M.projBonusFmt}}</span>
+          <span style="font-size: 13px; font-weight: 600; color: {{M.gateColor}};">{{M.gateLabel}} this quarter</span>
+        </div>
+        <button onClick="{{why.toggleYq}}" aria-expanded="{{why.yq}}" style="height: 32px; padding: 0 12px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 4px; flex-shrink: 0;">Why?
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: {{why.yqRot}};"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+      </div>
+
+      <sc-if value="{{why.yq}}" hint-placeholder-val="{{false}}">
+        <div style="background: {{c.sunk}}; border-radius: 10px; padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.7; color: {{c.mute}};">
+          Year and quarter come from your agreement's start date (SAMPLE 01-04-2025) versus today's month (2026-09): 17 months in = Year 2, Quarter 2.<br>
+          Year 2, Q2 means this quarter counts on a SETTLED basis (only status = settled), never submitted. Q1 of any year would count SUBMITTED policies instead.<br>
+          Anything from your imported / historical book is excluded — financing only ever projects off business written in AgencyTrack.
+        </div>
+      </sc-if>
+
+      <div>
+        <span style="font-size: 12.5px; font-weight: 700; color: {{c.ink}};">What counts toward your credited API</span>
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 22px; height: 22px; border-radius: 11px; background: {{c.warmTint}}; color: {{c.warm}}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;">0%</span><span style="font-size: 13px; color: {{c.mute}};">Self and family policies</span></div>
+          <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 22px; height: 22px; border-radius: 11px; background: {{c.warmTint}}; color: {{c.warm}}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;">0%</span><span style="font-size: 13px; color: {{c.mute}};">Replacement policies</span></div>
+          <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 22px; height: 22px; border-radius: 11px; background: {{c.warmTint}}; color: {{c.warm}}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;">0%</span><span style="font-size: 13px; color: {{c.mute}};">Single-premium immediate annuities (SPIA)</span></div>
+          <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 22px; height: 22px; border-radius: 11px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">100%</span><span style="font-size: 13px; color: {{c.mute}};">Everything else you write, settled this quarter</span></div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0,1fr) 22px minmax(0,1fr) 22px minmax(0,1fr); align-items: center; gap: 4px;">
+        <div style="background: {{c.sunk}}; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 11px; color: {{c.mute}};">Gross</span>
+          <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">{{M.grossFmt}}</span>
+          <span style="font-size: 10.5px; color: {{c.faint}};">Credited settled API minus not-taken</span>
+        </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.faint}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+        <div style="background: {{c.sunk}}; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 11px; color: {{c.mute}};">Net-for-persistency</span>
+          <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">{{M.netPersFmt}}</span>
+          <span style="font-size: 10.5px; color: {{c.faint}};">Minus lapses inside 2 yrs, plus reinstatements</span>
+        </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.faint}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+        <div style="background: {{c.sunk}}; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 11px; color: {{c.mute}};">Net-for-production</span>
+          <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">{{M.netProdFmt}}</span>
+          <span style="font-size: 10.5px; color: {{c.faint}};">Minus credited lumpsum and PPP portion</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3. QUARTERLY GATE ============ -->
+    <section aria-label="Quarterly gate" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.faint}};">QUARTERLY GATE · Q2+ RULE</span>
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Gross ≥ TTD 50,000 AND persistency ≥ 90% (Year 2)</h2>
+          <span style="font-size: 12px; color: {{c.faint}};">Q1 of any year is exempt except a flat TTD 37,500 gross-only minimum, no persistency test. Year 1 needs 95% persistency instead of 90%.</span>
+        </div>
+        <span class="fm-chip" style="height: 30px; padding: 0 14px; border-radius: 15px; background: {{M.gateBg}}; color: {{M.gateColor}}; font-size: 13px; font-weight: 700; display: flex; align-items: center; flex-shrink: 0;">{{M.gateLabel}}</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 20px;">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 12.5px; font-weight: 600;">Gross production</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;">{{M.grossFmt}}</span></div>
+          <div style="position: relative; height: 10px; border-radius: 5px; background: {{c.sunk}};">
+            <div class="fm-bar" style="position: absolute; left: 0; top: 0; height: 10px; border-radius: 5px; background: {{c.cat0}}; width: {{M.grossBarPct}}%;"></div>
+            <div style="position: absolute; left: 100%; top: -3px; width: 2px; height: 16px; background: {{c.faint}}; transform: translateX(-1px);"></div>
+          </div>
+          <span style="font-size: 10px; color: {{c.faint}};">Target TTD 50,000</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 12.5px; font-weight: 600;">Persistency</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;">{{M.sliderPersistLabel}}</span></div>
+          <div style="position: relative; height: 10px; border-radius: 5px; background: {{c.sunk}};">
+            <div class="fm-bar" style="position: absolute; left: 0; top: 0; height: 10px; border-radius: 5px; background: {{c.cat0}}; width: {{M.persistBarPct}}%;"></div>
+            <div style="position: absolute; left: 100%; top: -3px; width: 2px; height: 16px; background: {{c.faint}}; transform: translateX(-1px);"></div>
+          </div>
+          <span style="font-size: 10px; color: {{c.faint}};">Target 90%</span>
+        </div>
+      </div>
+
+      <div style="background: {{M.gapBg}}; border-radius: 12px; padding: 12px 14px;">
+        <span style="font-size: 13px; font-weight: 700; color: {{M.gapColor}};">{{M.gapLabel}}</span>
+      </div>
+    </section>
+
+    <!-- ============ 4. CONSISTENCY + PRODUCTION, AND ANNUAL ADJUSTMENT ============ -->
+    <div style="display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 18px; align-items: start;">
+      <section aria-label="Consistency and production bonus" style="min-width: 0; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.faint}};">THIS QUARTER · FLOORED AT ZERO · SAMPLE RATES</span>
+        <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Consistency + production bonus</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 13px; color: {{c.mute}};">Consistency (4% of net-for-persistency)</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700;">{{M.consBonusFmt}}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 13px; color: {{c.mute}};">Production, Year 2 (6% of net-for-persistency)</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700;">{{M.prodBonusFmt}}</span>
+        </div>
+        <div style="height: 1px; background: {{c.rule}};"></div>
+        <span style="font-size: 12.5px; color: {{M.gateColor}};">{{M.floorNote}}</span>
+        <button onClick="{{go.Persistency}}" style="align-self: flex-start; height: 40px; padding: 0 14px; border-radius: 11px; border: 1px solid {{c.rule}}; background: {{c.sunk}}; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">See your Persistency numbers</button>
+      </section>
+
+      <section aria-label="Annual bonus adjustment" style="min-width: 0; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.faint}};">ANNUAL · YEAR-END TRUE-UP · SAMPLE</span>
+        <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Annual Bonus Adjustment</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 13px; color: {{c.mute}};">Annual gross API (TTD 245,000) → rate tier</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700;">4.0%</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 13px; color: {{c.mute}};">Lives-qualified add-on (9 of 8 policies needed)</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700; color: {{c.accent}};">+1.5%</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 13px; color: {{c.mute}};">Qualifying amount, less prior bonuses paid YTD</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 14px; color: {{c.faint}};">TTD 11,550 − TTD 8,200</span>
+        </div>
+        <div style="height: 1px; background: {{c.rule}};"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 13px; font-weight: 700;">Adjustment (top-up only, never a clawback)</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; color: {{c.accent}};">TTD 3,350</span>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ 5. TAKE-HOME WATERFALL ============ -->
+    <section aria-label="Take-home waterfall" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">{{M.wfTitle}}</h2>
+          <span style="font-size: 12px; color: {{c.mute}};">Tax comes off first, PAYE 25% (SAMPLE marginal rate). This is this quarter's bonus only — the Annual Bonus Adjustment above is a separate year-end top-up.</span>
+        </div>
+        <button onClick="{{M.wfToggle}}" style="height: 32px; padding: 0 12px; border-radius: 9px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700; flex-shrink: 0;">{{M.wfTableLabel}}</button>
+      </div>
+
+      <sc-if value="{{M.wfShowChart}}" hint-placeholder-val="{{true}}">
+        <svg width="100%" height="210" viewBox="0 0 700 210" role="img" aria-label="Waterfall from gross bonus, through tax, to take-home">
+          <line x1="20" x2="680" y1="175" y2="175" stroke="{{c.rule}}" stroke-width="1"></line>
+
+          <line x1="200" x2="280" y1="{{M.wfGrossY}}" y2="{{M.wfGrossY}}" stroke="{{c.rule}}" stroke-width="1" stroke-dasharray="3 3"></line>
+          <line x1="410" x2="490" y1="{{M.wfNetY}}" y2="{{M.wfNetY}}" stroke="{{c.rule}}" stroke-width="1" stroke-dasharray="3 3"></line>
+
+          <g class="fm-col">
+            <rect class="fm-bar" x="70" width="130" y="{{M.wfGrossY}}" height="{{M.wfGrossH}}" rx="4" fill="{{c.cat0}}"></rect>
+          </g>
+          <text x="135" y="{{M.wfGrossLabelY}}" text-anchor="middle" font-family="Onest, sans-serif" font-size="13" font-weight="700" fill="{{c.ink}}">{{M.projBonusFmt}}</text>
+          <text x="135" y="200" text-anchor="middle" font-family="Onest, sans-serif" font-size="11" fill="{{c.mute}}">Bonus (gross)</text>
+
+          <g class="fm-col">
+            <rect class="fm-bar" x="280" width="130" y="{{M.wfTaxY}}" height="{{M.wfTaxH}}" rx="4" fill="{{c.warm}}"></rect>
+          </g>
+          <text x="345" y="{{M.wfTaxLabelY}}" text-anchor="middle" font-family="Onest, sans-serif" font-size="13" font-weight="700" fill="{{c.warm}}">− {{M.taxFmt}}</text>
+          <text x="345" y="200" text-anchor="middle" font-family="Onest, sans-serif" font-size="11" fill="{{c.mute}}">Tax (PAYE 25%)</text>
+
+          <g class="fm-col">
+            <rect class="fm-bar" x="490" width="130" y="{{M.wfNetY}}" height="{{M.wfNetH}}" rx="4" fill="{{c.accent}}"></rect>
+          </g>
+          <text x="555" y="{{M.wfNetLabelY}}" text-anchor="middle" font-family="Onest, sans-serif" font-size="13" font-weight="700" fill="{{c.accent}}">{{M.netFmt}}</text>
+          <text x="555" y="200" text-anchor="middle" font-family="Onest, sans-serif" font-size="11" fill="{{c.mute}}">Take-home</text>
+        </svg>
+      </sc-if>
+
+      <sc-if value="{{M.wfShowTable}}" hint-placeholder-val="{{false}}">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead><tr><th scope="col" style="text-align: left; font-size: 11px; color: {{c.mute}}; padding: 0 8px 6px 0; border-bottom: 1px solid {{c.rule}};">Step</th><th scope="col" style="text-align: right; font-size: 11px; color: {{c.mute}}; padding: 0 0 6px 8px; border-bottom: 1px solid {{c.rule}};">Amount</th></tr></thead>
+          <tbody>
+            <tr class="fm-row" style="height: 34px;"><td style="border-bottom: 1px solid {{c.rule}}; font-size: 13px; font-weight: 600;">Bonus (gross)</td><td style="border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">{{M.projBonusFmt}}</td></tr>
+            <tr class="fm-row" style="height: 34px;"><td style="border-bottom: 1px solid {{c.rule}}; font-size: 13px; font-weight: 600;">Tax (PAYE 25% SAMPLE)</td><td style="border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px; color: {{c.warm}};">− {{M.taxFmt}}</td></tr>
+            <tr class="fm-row" style="height: 34px;"><td style="font-size: 13px; font-weight: 700;">Take-home</td><td style="text-align: right; font-size: 13px; font-weight: 700; color: {{c.accent}};">{{M.netFmt}}</td></tr>
+          </tbody>
+        </table>
+      </sc-if>
+    </section>
+
+    <!-- ============ 6. VALIDATION SCHEDULE / PRORATION ============ -->
+    <section aria-label="Validation schedule" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.faint}};">VALIDATION SCHEDULE · SAMPLE</span>
+        <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Months 1–3 are submitted-final; month 4 onward, past months are settled-confirmed</h2>
+        <span style="font-size: 12px; color: {{c.mute}};">This month is always submitted-provisional — a display-only preview, never a stored determination. Suggested financing is capped at 100% of your agreed monthly amount. Adjustment % only appears once a manager has confirmed a figure, and only flags a downward move strictly greater than 10%.</span>
+      </div>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; min-width: 860px;">
+          <thead><tr>
+            <th scope="col" style="text-align: left; font-size: 11px; font-weight: 600; color: {{c.mute}}; padding: 8px 8px 8px 0; border-bottom: 1px solid {{c.rule}};">Month</th>
+            <th scope="col" style="text-align: left; font-size: 11px; font-weight: 600; color: {{c.mute}}; padding: 8px; border-bottom: 1px solid {{c.rule}};">Basis</th>
+            <th scope="col" style="text-align: right; font-size: 11px; font-weight: 600; color: {{c.mute}}; padding: 8px; border-bottom: 1px solid {{c.rule}};">Validating API</th>
+            <th scope="col" style="text-align: right; font-size: 11px; font-weight: 600; color: {{c.mute}}; padding: 8px; border-bottom: 1px solid {{c.rule}};">Actual API</th>
+            <th scope="col" style="text-align: right; font-size: 11px; font-weight: 600; color: {{c.mute}}; padding: 8px; border-bottom: 1px solid {{c.rule}};">Suggested financing</th>
+            <th scope="col" style="text-align: right; font-size: 11px; font-weight: 600; color: {{c.mute}}; padding: 8px; border-bottom: 1px solid {{c.rule}};">Manager-confirmed</th>
+            <th scope="col" style="text-align: right; font-size: 11px; font-weight: 600; color: {{c.mute}}; padding: 8px 0 8px 8px; border-bottom: 1px solid {{c.rule}};">Adjustment</th>
+          </tr></thead>
+          <tbody>
+            <tr class="fm-row" style="height: 46px;"><td style="padding: 0 8px 0 0; border-bottom: 1px solid {{c.rule}}; font-size: 13px; font-weight: 700;">Apr-2026</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; font-size: 12.5px; color: {{c.mute}};">Settled-confirmed</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 15,000</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px; color: {{c.accent}};">TTD 16,200</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 5,000</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 5,000</td><td style="padding: 8px 0 8px 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 12.5px; color: {{c.mute}};">0%</td></tr>
+            <tr class="fm-row" style="height: 46px;"><td style="padding: 0 8px 0 0; border-bottom: 1px solid {{c.rule}}; font-size: 13px; font-weight: 700;">May-2026</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; font-size: 12.5px; color: {{c.mute}};">Settled-confirmed</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 15,000</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px; color: {{c.warm}};">TTD 13,900</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 4,633</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 4,500</td><td style="padding: 8px 0 8px 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 12.5px; color: {{c.mute}};">10.0%</td></tr>
+            <tr class="fm-row" style="height: 46px;"><td style="padding: 0 8px 0 0; border-bottom: 1px solid {{c.rule}}; font-size: 13px; font-weight: 700;">Jun-2026</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; font-size: 12.5px; color: {{c.mute}};">Settled-confirmed</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 15,000</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px; color: {{c.warm}};">TTD 10,600</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 3,533</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 3,300</td><td style="padding: 8px 0 8px 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 12.5px; font-weight: 700; color: {{c.warm}};">26.7% · notify</td></tr>
+            <tr class="fm-row" style="height: 46px;"><td style="padding: 0 8px 0 0; border-bottom: 1px solid {{c.rule}}; font-size: 13px; font-weight: 700;">Jul-2026</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; font-size: 12.5px; color: {{c.mute}};">Settled-confirmed</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 15,000</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px; color: {{c.accent}};">TTD 15,800</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 5,000</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 5,000</td><td style="padding: 8px 0 8px 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 12.5px; color: {{c.accent}};">increase</td></tr>
+            <tr class="fm-row" style="height: 46px;"><td style="padding: 0 8px 0 0; border-bottom: 1px solid {{c.rule}}; font-size: 13px; font-weight: 700;">Aug-2026</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; font-size: 12.5px; color: {{c.mute}};">Settled-confirmed</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 15,000</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px; color: {{c.warm}};">TTD 9,400</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 3,133</td><td style="padding: 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 13px;">TTD 3,133</td><td style="padding: 8px 0 8px 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 12.5px; font-weight: 700; color: {{c.warm}};">37.3% · notify</td></tr>
+            <tr class="fm-row" style="height: 46px;"><td style="padding: 0 8px 0 0; font-size: 13px; font-weight: 700;">Sep-2026 (this month)</td><td style="padding: 8px; font-size: 12.5px; color: {{c.ghost}};">Submitted-provisional</td><td style="padding: 8px; text-align: right; font-size: 13px;">TTD 15,000</td><td style="padding: 8px; text-align: right; font-size: 13px; color: {{c.ghost}};">TTD 12,200</td><td style="padding: 8px; text-align: right; font-size: 13px; color: {{c.ghost}};">TTD 4,067 (preview)</td><td style="padding: 8px; text-align: right; font-size: 13px; color: {{c.faint}};">— pending</td><td style="padding: 8px 0 8px 8px; text-align: right; font-size: 12.5px; color: {{c.faint}};">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <span style="font-size: 12px; color: {{c.warm}};">A confirmed downward adjustment over 10% means your manager must notify you (clause 5.3). Exactly 10%, like May, does not flag.</span>
+    </section>
+
+    <!-- ============ 7. TERMINATION-RISK FLAGS ============ -->
+    <section aria-label="Termination risk" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.faint}};">CONSECUTIVE-MISS COUNTER · SAMPLE</span>
+        <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">1 consecutive miss right now — amber at 2, critical at 3</h2>
+        <span style="font-size: 12px; color: {{c.mute}};">A miss is actual API below validating API on a CONFIRMED month only — this month never counts while it's provisional. A confirmed meet resets the counter to zero; a pending month just holds it where it is.</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <div style="width: 44px; height: 44px; border-radius: 10px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; line-height: 1.2;"><span>Apr</span><span>meet</span></div>
+        <div style="width: 44px; height: 44px; border-radius: 10px; background: {{c.warmTint}}; color: {{c.warm}}; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; line-height: 1.2;"><span>May</span><span>miss 1</span></div>
+        <div style="width: 44px; height: 44px; border-radius: 10px; background: {{c.warmTint}}; color: {{c.warm}}; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; line-height: 1.2; box-shadow: 0 0 0 2px {{c.warm}} inset;"><span>Jun</span><span>miss 2</span></div>
+        <div style="width: 44px; height: 44px; border-radius: 10px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; line-height: 1.2;"><span>Jul</span><span>reset</span></div>
+        <div style="width: 44px; height: 44px; border-radius: 10px; background: {{c.warmTint}}; color: {{c.warm}}; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; line-height: 1.2;"><span>Aug</span><span>miss 1</span></div>
+        <div style="width: 44px; height: 44px; border-radius: 10px; background: {{c.sunk}}; color: {{c.faint}}; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; line-height: 1.2;"><span>Sep</span><span>hold</span></div>
+        <span style="flex-grow: 1;"></span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.06em; color: {{c.faint}};">AMBER = 2 · CRITICAL = 3 (7.2c CONDITION)</span>
+      </div>
+      <div style="background: {{c.sunk}}; border-radius: 12px; padding: 12px 14px;">
+        <span style="font-size: 12.5px; color: {{c.mute}};">Reaching critical is a flag only — it is never automatic. Whether anything happens always stays with a person.</span>
+      </div>
+    </section>
+
+    <!-- ============ 8. RECONCILIATION ============ -->
+    <section aria-label="Reconciliation" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.faint}};">RECONCILIATION · SAMPLE</span>
+        <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">12-month waiver gate vs. 24-month term wind-down</h2>
+        <span style="font-size: 12px; color: {{c.mute}};">A waiver needs 12 months of continuous service. Separately, the whole agreement winds down at 24 months regardless.</span>
+      </div>
+      <div style="position: relative; height: 54px;">
+        <div style="position: absolute; left: 0; right: 0; top: 24px; height: 4px; border-radius: 2px; background: {{c.sunk}};"></div>
+        <div style="position: absolute; left: 0; top: 24px; height: 4px; border-radius: 2px; background: {{c.accent}}; width: 70.8%;"></div>
+        <div style="position: absolute; left: 0%; top: 12px; width: 28px; height: 28px; margin-left: -14px; border-radius: 14px; background: {{c.surface}}; border: 2px solid {{c.accent}}; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: {{c.accent}};">0</div>
+        <div style="position: absolute; left: 0%; top: 46px; font-size: 10px; color: {{c.faint}}; white-space: nowrap;">Start 01-04-2025</div>
+        <div style="position: absolute; left: 50%; top: 12px; width: 28px; height: 28px; margin-left: -14px; border-radius: 14px; background: {{c.accentTint}}; border: 2px solid {{c.accent}}; display: flex; align-items: center; justify-content: center; color: {{c.accent}};"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></div>
+        <div style="position: absolute; left: 50%; top: 46px; transform: translateX(-50%); font-size: 10px; color: {{c.faint}}; white-space: nowrap;">12 mo · waiver eligible</div>
+        <div style="position: absolute; left: 70.8%; top: 12px; width: 28px; height: 28px; margin-left: -14px; border-radius: 14px; background: {{c.ink}}; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: {{c.bg}};">T</div>
+        <div style="position: absolute; left: 70.8%; top: 46px; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: {{c.ink}}; white-space: nowrap;">Today · month 17</div>
+        <div style="position: absolute; left: 100%; top: 12px; width: 28px; height: 28px; margin-left: -14px; border-radius: 14px; background: {{c.surface}}; border: 2px solid {{c.rule}}; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: {{c.mute}};">24</div>
+        <div style="position: absolute; left: 100%; top: 46px; transform: translateX(-100%); font-size: 10px; color: {{c.faint}}; white-space: nowrap;">Term ends 01-04-2027</div>
+      </div>
+      <span style="font-size: 12.5px; color: {{c.accent}}; font-weight: 600;">Your 12-month continuous-service waiver gate already passed — 6 months remain until the 24-month term winds the agreement down completely.</span>
+    </section>
+
+  </div>
+
+  <!-- ============ 9. INSPECTOR — WHAT-IF CALCULATOR ============ -->
+  <aside aria-label="Financing what-if calculator" style="width: 340px; flex-shrink: 0; box-sizing: border-box; overflow-y: auto; background: {{c.pane}}; border-left: 1px solid {{c.rule}}; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: -0.02em;">What if</span>
+      <span style="font-size: 12px; color: {{c.mute}};">Move this quarter's numbers. Every chart and figure to the left glides live.</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <label for="fin-gross" style="font-size: 12.5px; font-weight: 600;">This quarter's gross production</label>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: {{c.accent}};">{{M.sliderGrossLabel}}</span>
+      </div>
+      <input id="fin-gross" type="range" min="30000" max="90000" step="500" value="{{M.sliderGrossVal}}" onChange="{{setGross}}" style="width: 100%; accent-color: {{c.accent}}; height: 44px;">
+      <div style="display: flex; justify-content: space-between; font-size: 10px; color: {{c.faint}};"><span>TTD 30,000</span><span>TTD 90,000</span></div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <label for="fin-persist" style="font-size: 12.5px; font-weight: 600;">This quarter's persistency</label>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: {{c.accent}};">{{M.sliderPersistLabel}}</span>
+      </div>
+      <input id="fin-persist" type="range" min="70" max="100" step="0.1" value="{{M.sliderPersistVal}}" onChange="{{setPersist}}" style="width: 100%; accent-color: {{c.accent}}; height: 44px;">
+      <div style="display: flex; justify-content: space-between; font-size: 10px; color: {{c.faint}};"><span>70%</span><span>100%</span></div>
+    </div>
+
+    <div style="height: 1px; background: {{c.rule}};"></div>
+
+    <div class="fm-chip" style="display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; background: {{M.gateBg}};">
+      <sc-if value="{{M.gatePass}}" hint-placeholder-val="{{false}}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.accent}}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="M20 6 9 17l-5-5"></path></svg>
+      </sc-if>
+      <sc-if value="{{M.gateFail}}" hint-placeholder-val="{{true}}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.warm}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>
+      </sc-if>
+      <span style="font-size: 13.5px; font-weight: 700; color: {{M.gateColor}};">{{M.gateLabel}}</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-size: 11px; color: {{c.mute}};">Projected bonus this quarter</span>
+        <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 25px; font-weight: 700;">{{M.projBonusFmt}}</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-size: 11px; color: {{c.mute}};">Take-home after tax</span>
+        <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 21px; font-weight: 700; color: {{c.accent}};">{{M.netFmt}}</span>
+      </div>
+    </div>
+
+    <div style="height: 1px; background: {{c.rule}};"></div>
+    <span style="font-size: 11px; color: {{c.faint}};">SAMPLE calculator, for feel only. Your real agreement terms and figures live with your unit manager.</span>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":1220,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      arcState: 'normal',
+      arcAnim: false,
+      gross: 58600,
+      persist: 86.6,
+      dispCalc: null,
+      tables: { arc: false, wf: false },
+      why: { yq: false }
+    };
+    this._calcTimer = null;
+  }
+  componentWillUnmount() {
+    if (this._calcTimer) clearInterval(this._calcTimer);
+  }
+  pathLen(pts) {
+    let len = 0;
+    for (let i = 1; i < pts.length; i++) { len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); }
+    return len.toFixed(1);
+  }
+  buildArc(monthly) {
+    const n = monthly.length;
+    if (n < 2) { return { few: true }; }
+    const maxAbs = Math.max(1, Math.max.apply(null, monthly.map((p) => Math.abs(p.bal))));
+    const x0 = 60, x1 = 600, y0 = 170, span = 130;
+    const stepX = (x1 - x0) / (n - 1);
+    const sy = (bal) => y0 - (bal / maxAbs) * span;
+    const pts = monthly.map((p, i) => ({ x: x0 + stepX * i, y: sy(p.bal) }));
+    const first = monthly[0].bal, last = monthly[n - 1].bal;
+    const rate = (first - last) / (n - 1);
+    const todayPt = pts[n - 1];
+    if (last <= 0) { return { few: false, cleared: true, flat: false, pts, todayPt, y0, last }; }
+    if (rate <= 0) { return { few: false, cleared: false, flat: true, pts, todayPt, y0, last }; }
+    const monthsToZero = Math.ceil(last / rate);
+    const projPts = [todayPt];
+    for (let k = 1; k <= monthsToZero; k++) {
+      const bal = Math.max(0, last - rate * k);
+      projPts.push({ x: todayPt.x + stepX * k, y: sy(bal) });
+    }
+    return { few: false, cleared: false, flat: false, pts, projPts, todayPt, endPt: projPts[projPts.length - 1], monthsToZero, y0, last };
+  }
+  animateCalc(from, to) {
+    if (this._calcTimer) clearInterval(this._calcTimer);
+    const start = Date.now(), dur = 420;
+    const keys = Object.keys(to);
+    this._calcTimer = setInterval(() => {
+      const t = Math.min(1, (Date.now() - start) / dur);
+      const e = 1 - Math.pow(1 - t, 3);
+      const next = {};
+      keys.forEach((k) => { next[k] = from[k] + (to[k] - from[k]) * e; });
+      this.setState({ dispCalc: next });
+      if (t >= 1) { clearInterval(this._calcTimer); this._calcTimer = null; }
+    }, 30);
+  }
+  renderVals() {
+    const light = { pane: '#FBFAF6', bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { pane: '#171714', bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = Object.assign({}, this.props.dark ? dark : light);
+    c.cat0 = c.cat[0];
+    const s = this.state;
+
+    const fmt = (n) => Math.round(n).toLocaleString('en-US');
+    const fmtTTD = (n) => (n < -0.5 ? ('TTD ' + fmt(Math.abs(n)) + ' credit') : ('TTD ' + fmt(n)));
+    const pct1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
+
+    // ---- constants (SAMPLE ruleset) ----
+    const GROSS_MIN = 50000;
+    const PERSIST_REQ = 0.90; // Year 2
+    const CONS_RATE = 0.04;
+    const PROD_RATE = 0.06; // Year 2
+    const LAPSE_ADJ = 2100;
+    const PROD_ADJ = 2400;
+    const TAX_RATE = 0.25;
+
+    const computeCalc = (gross, persistPct) => {
+      const netPers = Math.max(0, gross - LAPSE_ADJ);
+      const netProd = Math.max(0, netPers - PROD_ADJ);
+      const persistFrac = persistPct / 100;
+      const grossPass = gross >= GROSS_MIN;
+      const persPass = persistFrac >= PERSIST_REQ;
+      const gatePass = grossPass && persPass;
+      const consBonus = gatePass ? CONS_RATE * netPers : 0;
+      const prodBonus = gatePass ? PROD_RATE * netPers : 0;
+      const projBonus = consBonus + prodBonus;
+      const tax = projBonus * TAX_RATE;
+      const net = projBonus - tax;
+      return { gross, persist: persistPct, netPers, netProd, consBonus, prodBonus, projBonus, tax, net, grossPass, persPass, gatePass };
+    };
+    const numKeys = ['gross', 'persist', 'netPers', 'netProd', 'consBonus', 'prodBonus', 'projBonus', 'tax', 'net'];
+    const cur = computeCalc(s.gross, s.persist);
+    const disp = s.dispCalc || cur;
+
+    const go = {};
+    go.Persistency = (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('Money?tab=Persistency'); } };
+    go.Commission = (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('Money?tab=Commission'); } };
+
+    const setGross = (e) => {
+      const v = parseInt(e.target.value, 10) || 0;
+      const next = computeCalc(v, s.persist);
+      const from = {}, to = {};
+      numKeys.forEach((k) => { from[k] = disp[k]; to[k] = next[k]; });
+      this.animateCalc(from, to);
+      this.setState({ gross: v });
+    };
+    const setPersist = (e) => {
+      const v = parseFloat(e.target.value) || 0;
+      const next = computeCalc(s.gross, v);
+      const from = {}, to = {};
+      numKeys.forEach((k) => { from[k] = disp[k]; to[k] = next[k]; });
+      this.animateCalc(from, to);
+      this.setState({ persist: v });
+    };
+
+    const toggleArcTable = () => { const t = Object.assign({}, s.tables); t.arc = !t.arc; this.setState({ tables: t }); };
+    const toggleWfTable = () => { const t = Object.assign({}, s.tables); t.wf = !t.wf; this.setState({ tables: t }); };
+    const toggleYq = () => { const w = Object.assign({}, s.why); w.yq = !w.yq; this.setState({ why: w }); };
+
+    // ---- Section 3/4/5/9: shared reactive money model ----
+    const gapPts = cur.persPass ? 0 : Math.round((PERSIST_REQ * 100 - disp.persist) * 10) / 10;
+    const M = {
+      grossFmt: fmtTTD(disp.gross),
+      netPersFmt: fmtTTD(disp.netPers),
+      netProdFmt: fmtTTD(disp.netProd),
+      consBonusFmt: fmtTTD(disp.consBonus),
+      prodBonusFmt: fmtTTD(disp.prodBonus),
+      projBonusFmt: fmtTTD(disp.projBonus),
+      taxFmt: fmtTTD(disp.tax),
+      netFmt: fmtTTD(disp.net),
+      floorNote: cur.gatePass ? 'Gate met — paid in full this quarter.' : 'Gate not met — both bonuses floor to TTD 0 this quarter.',
+      gatePass: cur.gatePass, gateFail: !cur.gatePass,
+      gateLabel: cur.gatePass ? 'Gate met' : 'Gate not met',
+      gateColor: cur.gatePass ? c.accent : c.warm,
+      gateBg: cur.gatePass ? c.accentTint : c.warmTint,
+      grossBarPct: Math.max(2, Math.min(100, (disp.gross / GROSS_MIN) * 100)),
+      persistBarPct: Math.max(2, Math.min(100, (disp.persist / (PERSIST_REQ * 100)) * 100)),
+      gapLabel: cur.gatePass ? 'Gate met — nothing more needed this quarter.' : ('Needs +' + gapPts + ' points of persistency (or more gross production) to pass — the same reinstatement math as your Persistency tab.'),
+      gapColor: cur.gatePass ? c.accent : c.warm,
+      gapBg: cur.gatePass ? c.accentTint : c.warmTint,
+      sliderGrossVal: s.gross, sliderGrossLabel: fmt(disp.gross),
+      sliderPersistVal: s.persist, sliderPersistLabel: pct1(disp.persist) + '%',
+      wfTitle: cur.gatePass ? 'Take-home waterfall — this quarter' : 'Take-home waterfall — TTD 0 this quarter (gate not met)',
+      wfToggle: toggleWfTable, wfTableLabel: s.tables.wf ? 'Chart' : 'Table', wfShowChart: !s.tables.wf, wfShowTable: !!s.tables.wf
+    };
+    const wfMax = Math.max(3000, disp.projBonus);
+    const wfScale = (v) => (v / wfMax) * 130;
+    const wfGrossH = wfScale(disp.projBonus), wfGrossY = 175 - wfGrossH;
+    const wfNetH = wfScale(disp.net), wfNetY = 175 - wfNetH;
+    const wfTaxH = Math.max(0, wfGrossH - wfNetH), wfTaxY = wfGrossY;
+    M.wfGrossH = wfGrossH.toFixed(2); M.wfGrossY = wfGrossY.toFixed(2); M.wfGrossLabelY = (wfGrossY - 8).toFixed(2);
+    M.wfNetH = wfNetH.toFixed(2); M.wfNetY = wfNetY.toFixed(2); M.wfNetLabelY = (wfNetY - 8).toFixed(2);
+    M.wfTaxH = wfTaxH.toFixed(2); M.wfTaxY = wfTaxY.toFixed(2); M.wfTaxLabelY = (wfTaxY - 8).toFixed(2);
+
+    // ---- Section 1: paydown arc ----
+    const ARC_SETS = {
+      normal: [{ month: 'Apr', bal: 12000 }, { month: 'May', bal: 10200 }, { month: 'Jun', bal: 8700 }, { month: 'Jul', bal: 7100 }, { month: 'Aug', bal: 5600 }, { month: 'Sep', bal: 4000 }],
+      few: [{ month: 'Sep', bal: 4000 }],
+      flat: [{ month: 'Apr', bal: 6000 }, { month: 'May', bal: 6200 }, { month: 'Jun', bal: 6100 }, { month: 'Jul', bal: 6400 }, { month: 'Aug', bal: 6300 }, { month: 'Sep', bal: 6500 }],
+      cleared: [{ month: 'Apr', bal: 3000 }, { month: 'May', bal: 2000 }, { month: 'Jun', bal: 1000 }, { month: 'Jul', bal: 0 }, { month: 'Aug', bal: -200 }, { month: 'Sep', bal: -200 }]
+    };
+    const rawSet = ARC_SETS[s.arcState].map((p) => ({ bal: p.bal }));
+    const active = this.buildArc(rawSet);
+    const buildD = (pts) => pts.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(2) + ',' + p.y.toFixed(2)).join(' ');
+
+    const pickArc = (key) => () => this.setState({ arcState: key, arcAnim: !s.arcAnim });
+    const arcDefs = [['normal', 'Normal (declining)'], ['few', 'Too few points'], ['flat', 'Flat or growing'], ['cleared', 'Already cleared']];
+    const arcButtons = arcDefs.map((d) => {
+      const on = d[0] === s.arcState;
+      return { key: d[0], label: d[1], on: on, pick: pickArc(d[0]), bg: on ? c.accent : c.surface, color: on ? c.onAccent : c.ink, border: on ? c.accent : c.rule };
+    });
+
+    let arcMsg = '', arcMsgColor = c.mute, nowBalanceFmt = '', showLine = !active.few, showProj = false, pathD = '', projD = '', lineLen = '1';
+    let todayX = 500, todayY = 110, endX = 0, endY = 0;
+    if (active.few) {
+      arcMsg = 'Only one month recorded — need at least 2 months of history before a payoff can be projected.';
+      arcMsgColor = c.mute;
+      nowBalanceFmt = fmtTTD(ARC_SETS.few[0].bal);
+    } else {
+      pathD = buildD(active.pts);
+      lineLen = this.pathLen(active.pts);
+      todayX = active.todayPt.x; todayY = active.todayPt.y;
+      nowBalanceFmt = fmtTTD(active.last);
+      if (active.cleared) {
+        arcMsg = 'Fully repaid — nothing left to project.';
+        arcMsgColor = c.accent;
+      } else if (active.flat) {
+        arcMsg = "Balance is flat or growing — no projection is shown until it's actually declining.";
+        arcMsgColor = c.warm;
+      } else {
+        showProj = true;
+        projD = buildD(active.projPts);
+        endX = active.endPt.x; endY = active.endPt.y;
+        arcMsg = 'Straight-line, at your average paydown rate: clears in about ' + active.monthsToZero + (active.monthsToZero === 1 ? ' month.' : ' months.');
+        arcMsgColor = c.accent;
+      }
+    }
+    const arc = {
+      animName: s.arcAnim ? 'fmDrawB' : 'fmDrawA',
+      buttons: arcButtons,
+      nowBalanceFmt: nowBalanceFmt, msg: arcMsg, msgColor: arcMsgColor,
+      few: active.few, showLine: showLine, showProj: showProj,
+      pathD: pathD, projD: projD, lineLen: lineLen,
+      todayX: todayX, todayY: todayY, todayLabelY: todayY - 12,
+      endX: endX, endY: endY,
+      baselineY: 170, baselineLabelY: 184,
+      toggle: toggleArcTable, tableLabel: s.tables.arc ? 'Chart' : 'Table', showChart: !s.tables.arc, showTable: !!s.tables.arc,
+      tableRows: ARC_SETS[s.arcState].map((p) => ({ month: p.month, value: fmtTTD(p.bal) }))
+    };
+
+    const why = { yq: s.why.yq, yqRot: s.why.yq ? 'rotate(180deg)' : 'rotate(0deg)', toggleYq: toggleYq };
+
+    return { c: c, go: go, arc: arc, M: M, why: why, setGross: setGross, setPersist: setPersist };
+  }
+}
+</script>
+</body>
+</html>

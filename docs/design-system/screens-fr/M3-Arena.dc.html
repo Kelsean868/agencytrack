@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Arena — leaderboard, level and awards</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+@keyframes m3arRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes m3arGlow{0%,100%{box-shadow:0 0 0 0 rgba(242,193,78,0.0),0 8px 22px rgba(242,193,78,0.25)}50%{box-shadow:0 0 0 8px rgba(242,193,78,0.16),0 8px 22px rgba(242,193,78,0.35)}}
+@keyframes m3arRunA{from{width:0}}
+@keyframes m3arRunB{from{width:0}}
+@keyframes m3arPop{0%{transform:scale(0.4);opacity:0}60%{transform:scale(1.12);opacity:1}100%{transform:scale(1)}}
+@keyframes m3arHalo{0%,100%{transform:scale(1);opacity:0.55}50%{transform:scale(1.18);opacity:0.2}}
+@keyframes m3arFall{0%{transform:translateY(-40px) rotate(0);opacity:1}100%{transform:translateY(900px) rotate(600deg);opacity:0.2}}
+@keyframes m3arFlame{0%,100%{transform:scale(1) rotate(-2deg)}50%{transform:scale(1.08) rotate(2deg)}}
+.m3ar-chip{transition:background 120ms ease}
+.m3ar-row{transition:background 120ms ease}
+.m3ar-link{transition:transform 120ms ease}.m3ar-link:active{transform:scale(0.98)}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;animation-iteration-count:1 !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: {{rootH}}px; box-sizing: border-box; position: relative; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; display: flex; flex-direction: column; gap: 16px; padding: 12px 0 104px;">
+
+  <header style="display: flex; flex-direction: column; gap: 2px; min-height: 40px; padding: 0 16px;">
+    <h1 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700;">Arena</h1>
+    <span style="font-size: 12px; color: {{c.mute}};">San Fernando branch · ranked by settled API</span>
+  </header>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; padding: 0 16px;">
+    <div role="tablist" aria-label="Arena pages" tabindex="0" onKeyDown="{{pagerKey}}" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;">
+      <sc-for list="{{pages}}" as="pg" hint-placeholder-count="3">
+        <button role="tab" aria-selected="{{pg.on}}" onClick="{{pg.pick}}" class="m3ar-chip" style="flex-shrink: 0; height: 44px; padding: 0 14px; border: 0; border-radius: 14px; background: {{pg.bg}}; color: {{pg.color}}; box-shadow: {{pg.shadow}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">{{pg.label}}</button>
+      </sc-for>
+    </div>
+    <div style="display: flex; justify-content: center; align-items: center; gap: 6px; height: 6px;" aria-hidden="true">
+      <sc-for list="{{pages}}" as="pg" hint-placeholder-count="3">
+        <span style="width: {{pg.dotW}}px; height: 6px; border-radius: 3px; background: {{pg.dot}}; transition: width 200ms ease;"></span>
+      </sc-for>
+    </div>
+    <span style="font-size: 11px; color: {{c.faint}}; text-align: center; visibility: {{hintVis}};">Swipe for more →</span>
+  </div>
+
+  <div onPointerDown="{{down}}" onPointerMove="{{move}}" onPointerUp="{{up}}" onPointerCancel="{{up}}" style="width: 390px; overflow: hidden; touch-action: pan-y;">
+    <div style="width: 1170px; display: flex; align-items: flex-start; transform: translateX({{tx}}px); transition: {{trans}}; will-change: transform;">
+
+      <section aria-label="Podium" aria-hidden="{{hidden0}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 16px;">
+        <section aria-label="Period" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;">
+          <sc-for list="{{periods}}" as="p" hint-placeholder-count="4">
+            <button role="tab" aria-selected="{{p.on}}" onClick="{{p.pick}}" class="m3ar-chip" style="flex-shrink: 0; height: 44px; min-width: 64px; padding: 0 14px; border: 0; border-radius: 14px; background: {{p.bg}}; color: {{p.color}}; box-shadow: {{p.shadow}}; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700;">{{p.label}}</button>
+          </sc-for>
+        </section>
+
+        <section aria-label="Podium" style="border-radius: 22px; background: {{c.stage}}; color: #F6F3EC; padding: 18px 14px 0; display: flex; flex-direction: column; gap: 6px; overflow: hidden; position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: #F2C14E;">{{podiumTitle}}</span>
+          </div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(246,243,236,0.6);">OTHER AGENTS AND FIGURES ARE SAMPLE</span>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end; padding-top: 6px;">
+            <sc-for list="{{podium}}" as="pd" hint-placeholder-count="3">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; animation: m3arRise 480ms {{pd.delay}}ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+                <span style="width: {{pd.size}}px; height: {{pd.size}}px; border-radius: 50%; background: {{pd.coin}}; color: #1F1D1A; display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-size: {{pd.fs}}px; font-weight: 800; border: 3px solid rgba(255,255,255,0.6); animation: {{pd.glow}};">{{pd.initials}}</span>
+                <span style="font-size: 13px; font-weight: 700; text-align: center;">{{pd.name}}</span>
+                <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700;">TTD {{pd.shown}}</span>
+                <div style="width: 100%; height: {{pd.h}}px; border-radius: 12px 12px 0 0; background: {{pd.block}}; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 8px; gap: 2px;">
+                  <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 800; color: {{pd.numColor}};">{{pd.rank}}</span>
+                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.08em; color: {{pd.numColor}}; text-align: center;">{{pd.label}}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+
+        <div style="border-radius: 16px; background: {{c.accentTint}}; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+          <span style="font-size: 14px; font-weight: 700; line-height: 1.4; color: {{c.accent}};">{{gapLine}}</span>
+          <a href="M3-Focus.dc.html" onClick="{{startFocus}}" style="height: 48px; border-radius: 14px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 15px; font-weight: 700;">Start a focus session</a>
+        </div>
+      </section>
+
+      <section aria-label="The race" aria-hidden="{{hidden1}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.02em;">The race</h2>
+          <span style="font-size: 12px; color: {{c.mute}};">{{raceSub}}</span>
+        </div>
+        <div style="border-radius: 18px; background: {{c.surface}}; border: 1px solid {{c.rule}}; overflow: hidden;">
+          <sc-for list="{{race}}" as="r" hint-placeholder-count="7">
+            <sc-if value="{{r.isGap}}" hint-placeholder-val="{{false}}">
+              <div style="height: 30px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: {{c.faint}}; background: {{c.sunk}};">+ 8 more agents</div>
+            </sc-if>
+            <sc-if value="{{r.isRow}}" hint-placeholder-val="{{true}}">
+              <div class="m3ar-row" style="padding: 10px 14px; border-bottom: 1px solid {{c.rule}}; background: {{r.bg}}; box-shadow: {{r.ring}};">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="width: 20px; flex-shrink: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; font-weight: 800; color: {{r.rankColor}};">{{r.rank}}</span>
+                  <span style="width: 26px; height: 26px; flex-shrink: 0; border-radius: 13px; background: {{r.av}}; color: #1F1D1A; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800;">{{r.initials}}</span>
+                  <span style="flex-grow: 1; min-width: 0; display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 14px; font-weight: {{r.weight}}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{r.name}}</span>
+                    <sc-if value="{{r.you}}" hint-placeholder-val="{{false}}"><span style="flex-shrink: 0; height: 18px; padding: 0 6px; border-radius: 9px; background: {{c.accent}}; color: {{c.onAccent}}; font-size: 9px; font-weight: 800; display: flex; align-items: center; letter-spacing: 0.05em;">YOU</span></sc-if>
+                  </span>
+                  <sc-if value="{{r.hasMove}}" hint-placeholder-val="{{false}}"><span style="flex-shrink: 0; font-size: 11px; font-weight: 700; color: {{r.moveColor}};" aria-label="{{r.moveAria}}">{{r.move}}</span></sc-if>
+                  <span style="flex-shrink: 0; text-align: right; font-size: 14px; font-weight: 700;">{{r.api}}</span>
+                </div>
+                <div style="margin-top: 6px; position: relative; height: 8px; border-radius: 4px; background: {{c.sunk}};">
+                  <span style="position: absolute; left: 0; top: 0; height: 8px; border-radius: 4px; width: {{r.pct}}%; background: {{r.bar}}; animation: {{runAnim}}; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></span>
+                </div>
+              </div>
+            </sc-if>
+          </sc-for>
+        </div>
+      </section>
+
+      <section aria-label="You" aria-hidden="{{hidden2}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 16px;">
+        <section aria-label="Level" style="border-radius: 18px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.gold}};">LEVEL</span><span style="font-size: 11px; color: {{c.faint}};">SAMPLE points</span></div>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.02em;">Pro <span style="font-size: 15px; font-weight: 600; color: {{c.mute}};">2,940 pts</span></span>
+          <div style="height: 10px; border-radius: 5px; background: {{c.sunk}}; overflow: hidden;"><div style="width: 72%; height: 10px; border-radius: 5px; background: linear-gradient(90deg, {{c.gold}}, #F2C14E); animation: {{runAnim}}; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></div></div>
+          <span style="font-size: 13px; color: {{c.mute}}; line-height: 1.4;">560 points to <strong style="color: {{c.ink}};">Elite</strong> — less than one week like week 39 (820 pts).</span>
+          <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px;">
+            <sc-for list="{{levels}}" as="lv" hint-placeholder-count="5"><span style="display: flex; flex-direction: column; align-items: center; gap: 3px;"><span style="width: 100%; height: 4px; border-radius: 2px; background: {{lv.bar}};"></span><span style="font-size: 9px; font-weight: {{lv.weight}}; color: {{lv.color}};">{{lv.name}}</span></span></sc-for>
+          </div>
+        </section>
+
+        <section aria-label="Streak" style="border-radius: 18px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 16px; display: flex; align-items: center; gap: 14px;">
+          <span style="width: 52px; height: 52px; border-radius: 26px; background: {{c.goldTint}}; color: {{c.gold}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="animation: m3arFlame 1.6s ease-in-out infinite;"><path d="M12 2c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-6 1 1 2 2 3 2 0-2-1-4 0-6z"></path></svg></span>
+          <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-size: 16px; font-weight: 800;">13-week streak</span>
+            <span style="display: flex; gap: 6px; align-items: center;">
+              <sc-for list="{{miles}}" as="mi" hint-placeholder-count="4"><span style="height: 20px; min-width: 28px; padding: 0 5px; box-sizing: border-box; border-radius: 10px; background: {{mi.bg}}; color: {{mi.color}}; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center;">{{mi.n}}</span></sc-for>
+            </span>
+            <span style="font-size: 12px; color: {{c.mute}};">Next milestone: 25 weeks · SAMPLE</span>
+          </span>
+        </section>
+
+        <section aria-label="Agent of the Month" style="border-radius: 18px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.gold}};">AGENT OF THE MONTH · SEPTEMBER SO FAR</span>
+          <sc-for list="{{aotm}}" as="m" hint-placeholder-count="3">
+            <div style="display: flex; align-items: center; gap: 10px; min-height: 32px;"><span style="font-size: 12px; color: {{c.mute}}; width: 96px; flex-shrink: 0;">{{m.cat}}</span><span style="flex-grow: 1; font-size: 14px; font-weight: 700;">{{m.who}}</span><span style="font-size: 11px; color: {{c.faint}};">{{m.you}}</span></div>
+          </sc-for>
+          <span style="font-size: 11px; color: {{c.faint}}; line-height: 1.35;">Names are SAMPLE · announced at the branch meeting and on the office TV.</span>
+        </section>
+
+        <section aria-label="More in the arena" style="display: flex; flex-direction: column; gap: 10px;">
+          <a href="M3-Trophies.dc.html" onClick="{{go.Trophies}}" class="m3ar-link" style="min-height: 64px; border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 0 16px; display: flex; align-items: center; gap: 12px; text-decoration: none; color: {{c.ink}};">
+            <span style="width: 40px; height: 40px; border-radius: 12px; background: {{c.goldTint}}; color: {{c.gold}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"></path></svg></span>
+            <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 15px; font-weight: 700;">Trophy room</span><span style="font-size: 12px; color: {{c.mute}};">Level, streak, badges and campaign trophies</span></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.faint}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+          </a>
+          <a href="M3-Awards.dc.html" onClick="{{go.Awards}}" class="m3ar-link" style="min-height: 64px; border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 0 16px; display: flex; align-items: center; gap: 12px; text-decoration: none; color: {{c.ink}};">
+            <span style="width: 40px; height: 40px; border-radius: 12px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"></path></svg></span>
+            <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 15px; font-weight: 700;">Awards</span><span style="font-size: 12px; color: {{c.mute}};">Qualified, almost there, making progress</span></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.faint}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+          </a>
+        </section>
+
+        <button onClick="{{celebrate}}" style="height: 48px; border-radius: 14px; border: 1px solid {{c.gold}}; background: {{c.goldTint}}; color: {{c.gold}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Preview a celebration</button>
+      </section>
+
+    </div>
+  </div>
+
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}">
+    <div style="position: absolute; left: 0; bottom: 0;">
+      <dc-import name="M3-Nav" active="arena" dark="{{dark}}" hint-size="390px,84px"></dc-import>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showCeleb}}" hint-placeholder-val="{{false}}">
+    <div role="dialog" aria-modal="true" aria-label="Celebration" style="position: absolute; inset: 0; z-index: 20; background: rgba(12,12,10,0.78); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+      <sc-for list="{{confetti}}" as="cf" hint-placeholder-count="0"><span aria-hidden="true" style="position: absolute; top: 0; left: {{cf.left}}%; width: {{cf.w}}px; height: {{cf.h}}px; border-radius: 2px; background: {{cf.color}}; animation: m3arFall {{cf.dur}}ms {{cf.delay}}ms cubic-bezier(0.2, 0.6, 0.4, 1) both;"></span></sc-for>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; color: #F6F3EC; padding: 0 24px;">
+        <span style="position: relative; width: 132px; height: 132px; display: flex; align-items: center; justify-content: center;">
+          <span style="position: absolute; inset: -16px; border-radius: 50%; background: radial-gradient(circle, rgba(242,193,78,0.55), rgba(242,193,78,0) 70%); animation: m3arHalo 2.2s ease-in-out infinite;"></span>
+          <span style="width: 132px; height: 132px; border-radius: 66px; background: #F2C14E; color: #1F1D1A; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 5px solid rgba(255,255,255,0.7); animation: m3arPop 620ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em;">MOVED UP</span>
+            <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 48px; font-weight: 800; line-height: 1;">6th</span>
+          </span>
+        </span>
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; animation: m3arRise 480ms 180ms cubic-bezier(0.32, 0.72, 0, 1) both;">You passed A. Ramdial</h2>
+        <p style="margin: 0; font-size: 15px; opacity: 0.85; line-height: 1.4; animation: m3arRise 480ms 280ms cubic-bezier(0.32, 0.72, 0, 1) both;">One settled application did it. Next up: M. Singh, TTD 5,724 ahead.</p>
+        <div style="display: flex; gap: 10px; animation: m3arRise 480ms 380ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+          <span style="border-radius: 14px; background: rgba(255,255,255,0.1); padding: 10px 16px;"><span style="display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 800;">TTD {{celebApi}}</span><span style="font-size: 11px; opacity: 0.75;">YTD settled API</span></span>
+          <span style="border-radius: 14px; background: rgba(255,255,255,0.1); padding: 10px 16px;"><span style="display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 800;">+{{celebPts}}</span><span style="font-size: 11px; opacity: 0.75;">points</span></span>
+        </div>
+        <button onClick="{{closeCeleb}}" style="height: 48px; padding: 0 26px; border-radius: 24px; border: 0; background: #F6F3EC; color: #1F1D1A; font-family: 'Onest', sans-serif; font-size: 16px; font-weight: 800; animation: m3arRise 480ms 480ms cubic-bezier(0.32, 0.72, 0, 1) both;">Nice</button>
+        <span style="font-size: 11px; opacity: 0.6;">This is a preview with SAMPLE figures.</span>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":390,"height":1046}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const IDS = ['Podium', 'Race', 'You'];
+    const m = /page=([A-Za-z]+)/.exec(props.params || '');
+    const start = m ? IDS.indexOf(m[1]) : -1;
+    this.state = { period: 3, t: 1, run: 0, celeb: false, ct: 1, page: start < 0 ? 0 : start, dragX: 0, dragging: false, hintSeen: false };
+    this.iv = null;
+    this.civ = null;
+    this.drag = null;
+  }
+  componentDidMount() { this.countUp(); }
+  componentWillUnmount() { if (this.iv) clearInterval(this.iv); if (this.civ) clearInterval(this.civ); }
+  countUp() {
+    if (this.iv) clearInterval(this.iv);
+    this.setState({ t: 0 });
+    this.iv = setInterval(() => {
+      const t = Math.min(1, this.state.t + 0.06);
+      this.setState({ t: t });
+      if (t >= 1) { clearInterval(this.iv); this.iv = null; }
+    }, 30);
+  }
+  goPage(p) {
+    this.setState({ page: Math.max(0, Math.min(2, p)), hintSeen: true });
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', stage: '#10302F' };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', stage: '#0B1F1E' };
+    const c = this.props.dark ? dark : light;
+    const s = this.state;
+    const page = s.page;
+    const nav = (t) => (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav(t); } };
+    const go = { Trophies: nav('Trophies'), Awards: nav('Awards') };
+    const ease = 1 - Math.pow(1 - s.t, 3);
+    const fmt = (n) => Math.round(n).toLocaleString('en-US');
+    const NAMES = ['S. Mohammed', 'R. Baptiste', 'K. Ali', 'T. Joseph', 'M. Singh', 'A. Ramdial', 'You', 'D. Holder', 'L. Charles', 'P. Rampersad'];
+    const DATA = {
+      WK: { order: [1, 0, 3, 6, 2, 4, 5, 7, 9, 8], api: [48000, 41200, 36000, 30000, 24500, 18000, 12000, 9600, 6000, 0], move: [2, -1, 3, 5, -2, 0, -1, 1, 0, -4] },
+      MTD: { order: [0, 1, 6, 2, 3, 4, 5, 7, 8, 9], api: [96400, 81250, 60946, 58000, 52300, 41000, 37500, 30100, 22000, 18400] },
+      QTD: { order: [0, 2, 1, 3, 6, 4, 5, 7, 8, 9], api: [140200, 122800, 118300, 97400, 73946, 70100, 64000, 51000, 40250, 33900] },
+      YTD: { order: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], api: [212400, 188900, 161250, 132000, 110300, 96250, 87146, 84900, 71300, 60800] }
+    };
+    const P = ['WK', 'MTD', 'QTD', 'YTD'];
+    const pk = P[s.period];
+    const d = DATA[pk];
+    const ranked = d.order.map((ni, i) => ({ name: NAMES[ni], api: d.api[i], rank: i + 1, move: d.move ? d.move[i] : null }));
+    const meIdx = ranked.findIndex((r) => r.name === 'You');
+    const leader = ranked[0].api || 1;
+    const AV = ['#F2C14E', '#C9CCD6', '#E0A084', '#8FD3CD', '#B9BBEC', '#F2C14E', '#8FD3CD', '#E0A084', '#C9CCD6', '#B9BBEC'];
+    const initials = (n) => n === 'You' ? 'KM' : n.replace(/[^A-Z]/g, '').slice(0, 2);
+    const podOrder = [1, 0, 2];
+    const LABELS = ['Champion', 'Runner-up', 'Third place'];
+    const COIN = ['#F2C14E', '#D5D8E0', '#E0A084'];
+    const podium = podOrder.map((i, k) => {
+      const r = ranked[i];
+      return {
+        name: r.name, initials: initials(r.name), shown: fmt(r.api * ease), rank: String(i + 1), label: LABELS[i].toUpperCase(),
+        coin: COIN[i], size: i === 0 ? 84 : 64, fs: i === 0 ? 24 : 18, h: i === 0 ? 128 : (i === 1 ? 100 : 80),
+        block: i === 0 ? 'rgba(242,193,78,0.22)' : 'rgba(246,243,236,0.10)', numColor: i === 0 ? '#F2C14E' : 'rgba(246,243,236,0.85)',
+        glow: i === 0 ? 'm3arGlow 2.4s ease-in-out infinite' : 'none', delay: [100, 0, 200][k]
+      };
+    });
+    const tail = ranked.slice(3, 10);
+    const race = [];
+    tail.forEach((r) => {
+      const you = r.name === 'You';
+      race.push({
+        isRow: true, isGap: false, rank: String(r.rank), name: you ? 'Kyron' : r.name, initials: initials(r.name), av: AV[r.rank - 1], you: you,
+        weight: you ? 800 : 600, api: 'TTD ' + fmt(r.api), pct: Math.max(2, Math.round((r.api / leader) * 100)),
+        bar: you ? c.accent : c.ghost, bg: you ? c.accentTint : 'transparent', ring: you ? 'inset 3px 0 0 ' + c.accent : 'none', rankColor: you ? c.accent : c.mute,
+        hasMove: r.move != null,
+        move: r.move == null ? '' : (r.move > 0 ? '▲' + r.move : (r.move < 0 ? '▼' + Math.abs(r.move) : '–')),
+        moveColor: r.move > 0 ? c.accent : (r.move < 0 ? c.warm : c.faint),
+        moveAria: r.move == null ? '' : (r.move > 0 ? 'Climbed ' + r.move + ' spots' : (r.move < 0 ? 'Dropped ' + Math.abs(r.move) + ' spots' : 'No change'))
+      });
+    });
+    race.push({ isGap: true, isRow: false });
+    const me = ranked[meIdx];
+    const ahead = ranked[meIdx - 1];
+    const gap = ahead ? ahead.api - me.api : 0;
+    const apps = Math.max(1, Math.round(gap / 17430));
+    const gapLine = meIdx === 0 ? 'You are leading. Keep the gap.' : 'TTD ' + fmt(gap) + ' to pass ' + ahead.name + ' — about ' + apps + ' application' + (apps > 1 ? 's' : '') + ' at your average.';
+    const periods = P.map((label, i) => ({
+      label: label, on: i === s.period ? 'true' : 'false', bg: i === s.period ? c.surface : c.sunk, color: i === s.period ? c.ink : c.mute,
+      shadow: i === s.period ? '0 1px 2px rgba(0,0,0,0.12)' : 'none',
+      pick: () => { this.setState({ period: i, run: s.run + 1 }); this.countUp(); }
+    }));
+    const LV = [['Rookie', 0], ['Associate', 500], ['Pro', 1500], ['Elite', 3500], ['Legend', 7000]];
+    const levels = LV.map((l, i) => ({ name: l[0], bar: i <= 2 ? c.gold : c.sunk, color: i === 2 ? c.ink : c.mute, weight: i === 2 ? 800 : 600 }));
+    const miles = [5, 10, 25, 52].map((n) => ({ n: String(n), bg: n <= 13 ? c.goldTint : c.sunk, color: n <= 13 ? c.gold : c.faint }));
+    const aotm = [
+      { cat: 'API Champion', who: 'S. Mohammed', you: 'you: 4th' },
+      { cat: 'Apps Leader', who: 'R. Baptiste', you: 'you: 2nd' },
+      { cat: 'Activity Winner', who: 'You', you: '1,240 pts' }
+    ];
+    const COLORS = ['#F2C14E', '#8FD3CD', '#E0A084', '#B9BBEC', '#F6F3EC', '#63C5BF'];
+    const confetti = Array.from({ length: 50 }, (_, i) => ({
+      left: ((i * 137.508) % 100).toFixed(2), delay: (i * 41) % 900, dur: 1700 + ((i * 67) % 1300),
+      w: 6 + (i % 3) * 3, h: 10 + (i % 4) * 3, color: COLORS[i % COLORS.length]
+    }));
+    const ce = 1 - Math.pow(1 - s.ct, 3);
+
+    const PAGES = ['Podium', 'The race', 'You'];
+    const CLIP = [520, 650, 760];
+    const clip = CLIP[page];
+    const HEADER_H = 50, PAGER_H = 88, GAP = 16, PAD = 116;
+    const rootH = 12 + HEADER_H + GAP + PAGER_H + GAP + clip + 104;
+    const pages = PAGES.map((label, i) => {
+      const on = i === page;
+      return {
+        label: label, on: on ? 'true' : 'false', bg: on ? c.surface : c.sunk, color: on ? c.ink : c.mute,
+        shadow: on ? '0 1px 2px rgba(0,0,0,0.12)' : 'none', dot: on ? c.accent : c.rule, dotW: on ? 18 : 6,
+        pick: () => this.goPage(i)
+      };
+    });
+
+    return {
+      c: c, go: go, dark: !!this.props.dark, showNav: !this.props.embedded,
+      periods: periods, podium: podium, race: race, gapLine: gapLine,
+      podiumTitle: ({ WK: 'THIS WEEK', MTD: 'SEPTEMBER SO FAR', QTD: 'Q3 SO FAR', YTD: '2026 SO FAR' })[pk] + ' · SETTLED API',
+      raceSub: (pk === 'WK' ? 'Arrows show places moved since last week · ' : '') + 'You are ' + (meIdx + 1) + (['st', 'nd', 'rd'][meIdx] || 'th') + ' of 18',
+      runAnim: (s.run % 2 ? 'm3arRunB' : 'm3arRunA') + ' 700ms cubic-bezier(0.32, 0.72, 0, 1) both',
+      levels: levels, miles: miles, aotm: aotm,
+      showCeleb: s.celeb, confetti: confetti,
+      celebApi: fmt(104576 * ce), celebPts: fmt(42 * ce),
+      startFocus: (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('Focus?mode=Calls'); } },
+      celebrate: () => {
+        this.setState({ celeb: true, ct: 0 });
+        if (this.civ) clearInterval(this.civ);
+        this.civ = setInterval(() => { const t = Math.min(1, this.state.ct + 0.04); this.setState({ ct: t }); if (t >= 1) { clearInterval(this.civ); this.civ = null; } }, 30);
+      },
+      closeCeleb: () => this.setState({ celeb: false }),
+      pages: pages, clip: clip, rootH: rootH,
+      hintVis: (page === 0 && !s.hintSeen) ? 'visible' : 'hidden',
+      hidden0: page === 0 ? 'false' : 'true',
+      hidden1: page === 1 ? 'false' : 'true',
+      hidden2: page === 2 ? 'false' : 'true',
+      tx: -page * 390 + (s.dragX || 0),
+      trans: s.dragging ? 'none' : 'transform 520ms cubic-bezier(0.32, 0.72, 0, 1)',
+      pagerKey: (e) => {
+        if (e.key === 'ArrowRight') { e.preventDefault(); this.goPage(page + 1); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); this.goPage(page - 1); }
+      },
+      down: (e) => { this.drag = { x: e.clientX, y: e.clientY, hist: [], active: false, id: e.pointerId, el: e.currentTarget }; },
+      move: (e) => {
+        const dr = this.drag;
+        if (!dr) return;
+        const dx = e.clientX - dr.x;
+        const dy = e.clientY - dr.y;
+        if (!dr.active) {
+          if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+            dr.active = true;
+            try { dr.el.setPointerCapture(dr.id); } catch (err) {}
+          } else if (Math.abs(dy) > 10) { this.drag = null; return; } else { return; }
+        }
+        dr.hist.push({ x: e.clientX, t: performance.now() });
+        if (dr.hist.length > 5) dr.hist.shift();
+        const edge = (page === 0 && dx > 0) || (page === 2 && dx < 0);
+        const off = edge ? (dx * 390 * 0.55) / (390 + 0.55 * Math.abs(dx)) : dx;
+        this.setState({ dragX: off, dragging: true });
+      },
+      up: () => {
+        const dr = this.drag;
+        this.drag = null;
+        if (!dr || !dr.active) return;
+        let v = 0;
+        const h = dr.hist;
+        if (h.length > 1) { v = ((h[h.length - 1].x - h[0].x) / Math.max(1, h[h.length - 1].t - h[0].t)) * 1000; }
+        const projected = this.state.dragX + (v / 1000) * 0.99 / (1 - 0.99);
+        let target = page;
+        if (projected < -195) target = page + 1;
+        else if (projected > 195) target = page - 1;
+        this.setState({ dragX: 0, dragging: false, page: Math.max(0, Math.min(2, target)), hintSeen: true });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

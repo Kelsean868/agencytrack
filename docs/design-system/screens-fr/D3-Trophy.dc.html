@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trophy</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap">
+<style>body{margin:0}.d3t{position:relative}.d3t-art{transition:transform 420ms cubic-bezier(0.34,1.56,0.64,1);transform-origin:50% 60%;animation:d3tPop 560ms cubic-bezier(0.32,0.72,0,1) both}.d3t:hover .d3t-art{transform:scale(1.07) rotate(-4deg)}@keyframes d3tPop{0%{opacity:0;transform:scale(0.6)}70%{opacity:1;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}@media (prefers-reduced-motion: reduce){.d3t-art{animation:none;transition:none}}</style>
+</helmet>
+<div class="d3t" role="img" aria-label="{{label}}" style="width: {{size}}px; height: {{size}}px;">
+  <svg class="d3t-art" width="{{size}}" height="{{size}}" viewBox="0 0 100 100" aria-hidden="true" style="display: block; overflow: visible;">
+    <defs>
+      <linearGradient id="{{gid}}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="{{m.hi}}"></stop>
+        <stop offset="0.48" stop-color="{{m.mid}}"></stop>
+        <stop offset="1" stop-color="{{m.lo}}"></stop>
+      </linearGradient>
+      <linearGradient id="{{gid2}}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="{{m2.hi}}"></stop>
+        <stop offset="1" stop-color="{{m2.lo}}"></stop>
+      </linearGradient>
+      <linearGradient id="d3t-shine" x1="0" y1="0" x2="1" y2="0.35">
+        <stop offset="0.35" stop-color="#FFFFFF" stop-opacity="0"></stop>
+        <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.6"></stop>
+        <stop offset="0.65" stop-color="#FFFFFF" stop-opacity="0"></stop>
+        <animateTransform attributeName="gradientTransform" type="translate" values="-1.2 0;-1.2 0;1.2 0;1.2 0" keyTimes="0;0.55;0.85;1" dur="4.2s" repeatCount="indefinite"></animateTransform>
+      </linearGradient>
+    </defs>
+    <ellipse cx="50" cy="97" rx="26" ry="3" fill="#000000" opacity="0.13"></ellipse>
+    <g transform="{{mainT}}">
+      <path d="{{laurelD}}" fill="{{laurelFill}}" stroke="{{laurelFill}}" stroke-width="1.2" stroke-linejoin="round"></path>
+      <path d="{{tailsD}}" fill="{{ribbon}}" stroke="{{ribbonEdge}}" stroke-width="1.2" stroke-linejoin="round"></path>
+      <path d="{{tailStripeD}}" fill="none" stroke="{{ribbonStripe}}" stroke-width="2.2"></path>
+      <path d="{{handlesD}}" fill="none" stroke="{{m.rim}}" stroke-width="6" stroke-linecap="round"></path>
+      <path d="{{handlesD}}" fill="none" stroke="{{fillMain}}" stroke-width="3.6" stroke-linecap="round"></path>
+      <path d="{{body2D}}" fill="{{fillSecond}}" stroke="{{m.rim}}" stroke-width="1.6" stroke-linejoin="round"></path>
+      <path d="{{bodyD}}" fill="{{fillBody}}" stroke="{{bodyRim}}" stroke-width="2" stroke-linejoin="round"></path>
+      <path d="{{plateD}}" fill="{{fillMain}}" stroke="{{m.rim}}" stroke-width="1.6" stroke-linejoin="round"></path>
+      <path d="{{innerD}}" fill="none" stroke="{{m.rim}}" stroke-width="1.4" opacity="0.55"></path>
+      <path d="{{facetD}}" fill="none" stroke="#FFFFFF" stroke-width="1.4" opacity="0.5" stroke-linejoin="round"></path>
+      <path d="{{dotsD}}" fill="{{dotsFill}}" stroke="{{m.rim}}" stroke-width="1"></path>
+      <path d="{{shineD}}" fill="url(#d3t-shine)"></path>
+      <g transform="{{glyphT}}">
+        <path d="{{glyphFillD}}" fill="{{m.glyph}}"></path>
+        <path d="{{glyphD}}" fill="none" stroke="{{m.glyph}}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"></path>
+      </g>
+      <text x="50" y="{{textY}}" text-anchor="middle" dominant-baseline="central" fill="{{m.glyph}}" style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: {{textSize}}px; letter-spacing: -0.02em;">{{text}}</text>
+    </g>
+  </svg>
+  <sc-if value="{{showRing}}" hint-placeholder-val="{{false}}">
+    <svg width="{{size}}" height="{{size}}" viewBox="0 0 100 100" aria-hidden="true" style="position: absolute; left: 0; top: 0; overflow: visible; transform: rotate(-90deg);">
+      <circle cx="50" cy="50" r="49" fill="none" stroke="{{ringTrack}}" stroke-width="2.5"></circle>
+      <circle cx="50" cy="50" r="49" fill="none" stroke="{{ringFill}}" stroke-width="2.5" stroke-linecap="round" pathLength="100" stroke-dasharray="{{ringDash}}"></circle>
+    </svg>
+  </sc-if>
+  <sc-if value="{{isLocked}}" hint-placeholder-val="{{false}}">
+    <span style="position: absolute; right: 2%; bottom: 4%; width: {{lockBox}}px; height: {{lockBox}}px; border-radius: 50%; background: {{lockBg}}; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+      <svg width="{{lockIcon}}" height="{{lockIcon}}" viewBox="0 0 24 24" fill="none" stroke="{{lockFg}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 11h12v10H6zM8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>
+    </span>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"kind":{"editor":"enum","options":["first-steps","on-a-roll","committed","quarter-strong","mdrt-pace","mdrt-qualified","closer","big-week","century","dial-king","sharpshooter","mdrt-bound","untouchable","consistent","level-rookie","level-associate","level-pro","level-elite","level-legend","aotm-api","aotm-apps","quarterly-api","quarterly-apps","persistency-silver","persistency-gold","rookie-year","new-business","centurion","agent-year","mdrt","xmas-champion","xmas-tier","streak"],"default":"mdrt-qualified"},"size":{"editor":"int","default":96},"locked":{"editor":"boolean","default":false},"progress":{"editor":"int","default":0},"dark":{"editor":"boolean","default":false},"$preview":{"width":96,"height":96}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = !!this.props.dark;
+    const locked = !!this.props.locked;
+    const size = this.props.size || 96;
+    const kind = this.props.kind || 'mdrt-qualified';
+
+    const METALS = {
+      bronze: { hi: '#F6C79A', mid: '#C98246', lo: '#8A4B22', rim: '#6E3A18', glyph: '#5A2E12' },
+      silver: { hi: '#FFFFFF', mid: '#C9CFD6', lo: '#8C96A1', rim: '#5E6873', glyph: '#46505A' },
+      gold: { hi: '#FFF1B8', mid: '#F0B93A', lo: '#B07A10', rim: '#7A5205', glyph: '#6B4604' },
+      plat: { hi: '#D6FFF9', mid: '#5CC9C0', lo: '#0E6F6B', rim: '#0B4F4E', glyph: '#073A39' },
+      ruby: { hi: '#FFB3A7', mid: '#E04A3A', lo: '#8E1F16', rim: '#6A150F', glyph: '#FFE3A0' },
+      ember: { hi: '#FFE08A', mid: '#FF8A3D', lo: '#C8361A', rim: '#8A2410', glyph: '#5A1608' },
+      lockL: { hi: '#EFEBE3', mid: '#D6D0C4', lo: '#B5AD9E', rim: '#A0988A', glyph: '#8E8678' },
+      lockD: { hi: '#4C4943', mid: '#393731', lo: '#2B2A26', rim: '#5A564E', glyph: '#777166' },
+      wood: { hi: '#A6754C', mid: '#7A4E2C', lo: '#4E2F19', rim: '#3A2211', glyph: '#FFFFFF' }
+    };
+    const RIB = { teal: ['#0B5D5E', '#08403F', '#9ED8D2'], blue: ['#24508F', '#183863', '#A9C4EE'], green: ['#1F6B3A', '#144826', '#F0B93A'], red: ['#B3261E', '#7E1A14', '#F0B93A'], gold: ['#B07A10', '#7A5205', '#FFF1B8'] };
+
+    // ---- geometry helpers (viewBox 0..100) ----
+    const f = (n) => Math.round(n * 100) / 100;
+    const circle = (cx, cy, r) => 'M' + f(cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0z';
+    const star = (cx, cy, R, r, n, rot) => {
+      let d = '';
+      for (let i = 0; i < n * 2; i++) {
+        const a = (rot || -90) * Math.PI / 180 + i * Math.PI / n;
+        const rr = i % 2 === 0 ? R : r;
+        d += (i === 0 ? 'M' : 'L') + f(cx + rr * Math.cos(a)) + ' ' + f(cy + rr * Math.sin(a));
+      }
+      return d + 'z';
+    };
+    const scallop = (cx, cy, R, n, bump) => {
+      let d = '';
+      for (let i = 0; i <= n; i++) {
+        const a = -Math.PI / 2 + i * 2 * Math.PI / n;
+        const x = cx + R * Math.cos(a), y = cy + R * Math.sin(a);
+        if (i === 0) { d += 'M' + f(x) + ' ' + f(y); continue; }
+        const am = a - Math.PI / n;
+        const cx2 = cx + (R + bump) * Math.cos(am), cy2 = cy + (R + bump) * Math.sin(am);
+        d += 'Q' + f(cx2) + ' ' + f(cy2) + ' ' + f(x) + ' ' + f(y);
+      }
+      return d + 'z';
+    };
+    const laurel = (cx, cy, R) => {
+      let d = '';
+      [-1, 1].forEach((s) => {
+        // stem
+        const a0 = (90 - s * 8) * Math.PI / 180, a1 = (90 - s * 128) * Math.PI / 180;
+        d += 'M' + f(cx + R * Math.cos(a0)) + ' ' + f(cy + R * Math.sin(a0)) + 'A' + R + ' ' + R + ' 0 0 ' + (s > 0 ? 0 : 1) + ' ' + f(cx + R * Math.cos(a1)) + ' ' + f(cy + R * Math.sin(a1)) + 'l0.01 0' ;
+        for (let k = 0; k < 8; k++) {
+          const deg = 16 + k * 15;
+          const a = (90 - s * deg) * Math.PI / 180;
+          const bx = cx + R * Math.cos(a), by = cy + R * Math.sin(a);
+          [1, -1].forEach((side) => {
+            if (k === 0 && side < 0) return;
+            const a2 = a - s * 0.2;
+            const rr = R + side * 10;
+            const tx = cx + rr * Math.cos(a2), ty = cy + rr * Math.sin(a2);
+            const mx = (bx + tx) / 2, my = (by + ty) / 2;
+            const px = -(ty - by), py = tx - bx;
+            const len = Math.sqrt(px * px + py * py) || 1;
+            const o = 3.4;
+            d += 'M' + f(bx) + ' ' + f(by) + 'Q' + f(mx + px / len * o) + ' ' + f(my + py / len * o) + ' ' + f(tx) + ' ' + f(ty) + 'Q' + f(mx - px / len * o) + ' ' + f(my - py / len * o) + ' ' + f(bx) + ' ' + f(by) + 'z';
+          });
+        }
+      });
+      return d;
+    };
+    const SHAPES = {
+      medal: { tails: 'M29 2h15l11 36H41zM56 2h15L60 38H45z', stripe: 'M36.5 3l9 33M63.5 3l-9 33', body: circle(50, 64, 30), inner: circle(50, 64, 24), gx: 50, gy: 64, gs: 1 },
+      cup: { handles: 'M27 17H16c0 13 6 20 13 21M73 17h11c0 13-6 20-13 21', body2: 'M44 56h12v10H44zM33 66h34l3 10H30zM25 76h50v11H25z', body: 'M25 9h50v17c0 18-11 31-25 31S25 44 25 26z', inner: 'M30 15h40', gx: 50, gy: 30, gs: 0.85 },
+      shield: { body: 'M50 5l37 11v28c0 23-16 40-37 50C29 84 13 67 13 44V16z', inner: 'M50 12l30 9v23c0 19-13 33-30 42C33 77 20 63 20 44V21z', gx: 50, gy: 46, gs: 1.05 },
+      rosette: { tails: 'M35 62l-9 33 11-6 7 9 5-34zM65 62l9 33-11-6-7 9-5-34z', stripe: 'M31 70l-4 18M69 70l4 18', body: scallop(50, 42, 33, 18, 7), inner: circle(50, 42, 24), gx: 50, gy: 42, gs: 1 },
+      burst: { body: star(50, 52, 46, 37, 14, -90), inner: circle(50, 52, 29), gx: 50, gy: 52, gs: 1.05 },
+      gem: { body: 'M50 5l40 23v44L50 95 10 72V28z', facet: 'M10 28l40 19 40-19M50 47v48M28 17l22 30 22-30M10 72l40-25 40 25', gx: 50, gy: 50, gs: 0 },
+      crown: { body: 'M11 30l20 18 19-33 19 33 20-18-8 48H19z', body2: 'M17 78h66v12H17z', dots: circle(11, 30, 4.5) + circle(50, 15, 5) + circle(89, 30, 4.5) + circle(34, 84, 3) + circle(50, 84, 3) + circle(66, 84, 3), gx: 50, gy: 58, gs: 0.8 },
+      plaque: { body: 'M14 6h72a7 7 0 0 1 7 7v74a7 7 0 0 1-7 7H14a7 7 0 0 1-7-7V13a7 7 0 0 1 7-7z', plate: 'M21 16h58v48H21zM29 72h42v12H29z', inner: 'M26 21h48v38H26z', gx: 50, gy: 40, gs: 1 }
+    };
+
+    const G = {
+      feet: { fill: 'M-5 9c-3.5 0-5.5-3.5-5.5-8.5S-8.6-9-5.4-9-1 -4.5-1 .5-1.8 9-5 9zM6 4C2.7 4 1.2.5 1.2-4.5S3.4-14 6.4-14s4.6 4.5 4.6 9.5S9.2 4 6 4zM-6.8 13.5a2.6 2.6 0 1 0 5.2 0 2.6 2.6 0 1 0-5.2 0zM4.2 8.5a2.6 2.6 0 1 0 5.2 0 2.6 2.6 0 1 0-5.2 0z' },
+      flame: { fill: 'M0 14c-7.5 0-11.5-5-11.5-10.5 0-7 6.5-10 6-18 4.5 3 6 6.5 5.5 10 2-2 3.5-4.5 3.5-8 5.5 4.5 8 10 8 15.5 0 6.5-4 11-11.5 11z' },
+      calendar: { d: 'M-11-9h22v20h-22zM-11-3h22M-5-13v6M5-13v6M-5 5l3 3 7-7' },
+      quads: { d: 'M-12 0a12 12 0 1 0 24 0a12 12 0 1 0-24 0M0-12v24M-12 0h24' },
+      gauge: { d: 'M-13 7a13 13 0 0 1 26 0M0 7l7-10M-13 7h3M10 7h3M0-6v3' },
+      star: { fill: star(0, 1, 13, 5.4, 5, -90) },
+      check: { d: 'M-10 0l6 6 13-13' },
+      bolt: { fill: 'M3-15L-10 3h9l-4 13L12-4H3z' },
+      phone: { d: 'M-11-12c0 15 8 23 23 23l2-7-7-3-3 3c-4-2-6-4-8-8l3-3-3-7z' },
+      target: { d: 'M-12 0a12 12 0 1 0 24 0a12 12 0 1 0-24 0M-6.5 0a6.5 6.5 0 1 0 13 0a6.5 6.5 0 1 0-13 0M-1 0h2' },
+      summit: { d: 'M-14 12L-4-4l5 7 4-5 9 14zM1-4v-12l8 3-8 3' },
+      infinity: { d: 'M0 0c-4-5-7-7-10-7a7 7 0 0 0 0 14c3 0 6-2 10-7s7-7 10-7a7 7 0 0 1 0 14c-3 0-6-2-10-7z' },
+      chev1: { d: 'M-11 4l11-8 11 8' },
+      chev2: { d: 'M-11 -2l11-8 11 8M-11 8l11-8 11 8' },
+      chev3: { d: 'M-11 -8l11-8 11 8M-11 1l11-8 11 8M-11 10l11-8 11 8' },
+      bars: { d: 'M-9 11V3M-2 11V-4M5 11V-11M-13 11h26' },
+      doc: { d: 'M-8-12h11l6 6v18H-8zM3-12v6h6M-4 2h9M-4 7h9' },
+      loop: { d: 'M10-6a11 11 0 1 0 2 8M12-12v7H5' },
+      sprout: { d: 'M0 13V-1M0-1c0-7-5-11-12-11 0 7 5 11 12 11zM0 5c0-6 4-9 10-9 0 6-4 9-10 9z' },
+      case: { d: 'M-12-5h24v16h-24zM-5-5v-4h10v4M-12 2h24' },
+      snow: { d: 'M0-13v26M-11-6.5l22 13M-11 6.5l22-13M-3.5-10L0-6.5 3.5-10M-3.5 10L0 6.5 3.5 10' },
+      none: {}
+    };
+
+    // kind: [label, shape, metal, glyph, text, ribbon, laurel]
+    const K = {
+      'first-steps': ['First Steps', 'medal', 'bronze', 'feet', '', 'teal'],
+      'on-a-roll': ['On a Roll', 'shield', 'bronze', 'flame', '', ''],
+      'committed': ['Committed', 'rosette', 'silver', 'calendar', '', 'teal'],
+      'quarter-strong': ['Quarter Strong', 'shield', 'gold', 'quads', '', ''],
+      'mdrt-pace': ['MDRT Pace', 'medal', 'silver', 'gauge', '', 'teal'],
+      'mdrt-qualified': ['MDRT Qualified', 'cup', 'gold', 'star', '', '', true],
+      'closer': ['Closer', 'medal', 'gold', 'check', '', 'teal'],
+      'big-week': ['Big Week', 'burst', 'gold', 'bolt', '', ''],
+      'century': ['Century', 'rosette', 'gold', 'none', '100', 'gold'],
+      'dial-king': ['Dial King', 'crown', 'gold', 'phone', '', ''],
+      'sharpshooter': ['Sharpshooter', 'medal', 'silver', 'target', '', 'blue'],
+      'mdrt-bound': ['MDRT Bound', 'shield', 'silver', 'summit', '', ''],
+      'untouchable': ['Untouchable', 'gem', 'plat', 'none', '', ''],
+      'consistent': ['Consistent', 'rosette', 'bronze', 'infinity', '', 'teal'],
+      'level-rookie': ['Level: Rookie', 'shield', 'bronze', 'chev1', '', ''],
+      'level-associate': ['Level: Associate', 'shield', 'silver', 'chev2', '', ''],
+      'level-pro': ['Level: Pro', 'shield', 'gold', 'chev3', '', ''],
+      'level-elite': ['Level: Elite', 'shield', 'plat', 'star', '', '', true],
+      'level-legend': ['Level: Legend', 'crown', 'plat', 'star', '', '', true],
+      'aotm-api': ['Advisor of the Month — API', 'plaque', 'gold', 'none', 'API', ''],
+      'aotm-apps': ['Advisor of the Month — Apps', 'plaque', 'silver', 'none', 'APPS', ''],
+      'quarterly-api': ['Quarterly API Award', 'cup', 'silver', 'bars', '', ''],
+      'quarterly-apps': ['Quarterly Apps Award', 'cup', 'bronze', 'doc', '', ''],
+      'persistency-silver': ['Persistency Award — Silver', 'shield', 'silver', 'loop', '', ''],
+      'persistency-gold': ['Persistency Award — Gold', 'shield', 'gold', 'loop', '', '', true],
+      'rookie-year': ['Rookie of the Year', 'medal', 'gold', 'sprout', '', 'green'],
+      'new-business': ['New Business Advisor Award', 'medal', 'gold', 'case', '', 'blue'],
+      'centurion': ['Centurion Award', 'rosette', 'gold', 'none', 'C', 'blue', true],
+      'agent-year': ['Agent of the Year', 'cup', 'plat', 'star', '', '', true],
+      'mdrt': ['MDRT', 'medal', 'plat', 'none', 'MDRT', 'blue', true],
+      'xmas-champion': ['Christmas Champion', 'cup', 'ruby', 'star', '', '', true],
+      'xmas-tier': ['Christmas tier', 'medal', 'ruby', 'snow', '', 'green'],
+      'streak': ['Streak', 'burst', 'ember', 'flame', '', '']
+    };
+    const k = K[kind] || K['mdrt-qualified'];
+    const sh = SHAPES[k[1]];
+    const metalKey = locked ? (dark ? 'lockD' : 'lockL') : k[2];
+    const m = METALS[metalKey];
+    const m2 = METALS[k[1] === 'plaque' && !locked ? 'wood' : metalKey];
+    const gid = 'd3t-g-' + metalKey;
+    const gid2 = 'd3t-h-' + (k[1] === 'plaque' && !locked ? 'wood' : metalKey);
+    const glyph = G[k[3]] || {};
+    const rib = RIB[k[5] || 'teal'];
+    const ribbon = locked ? (dark ? '#3A3833' : '#CFC8BB') : rib[0];
+    const hasLaurel = !!k[6];
+    const text = k[4] || '';
+    const textSize = text.length >= 4 ? 13 : (text.length === 3 ? (k[1] === 'plaque' ? 16 : 17) : 26);
+    const prog = Math.max(0, Math.min(100, this.props.progress || 0));
+    const isPlaque = k[1] === 'plaque';
+
+    return {
+      size: size,
+      label: k[0] + (locked ? ' — locked' + (prog ? ', ' + prog + '% there' : '') : ''),
+      gid: gid, gid2: gid2, m: m, m2: m2,
+      mainT: hasLaurel ? 'translate(50 52) scale(0.8) translate(-50 -52)' : 'translate(0 0)',
+      laurelD: hasLaurel ? laurel(50, 54, 44) : '',
+      laurelFill: locked ? m.lo : (k[2] === 'plat' ? '#2FA89F' : '#C8901E'),
+      tailsD: sh.tails || '', tailStripeD: sh.stripe || '',
+      ribbon: ribbon, ribbonEdge: locked ? m.rim : rib[1], ribbonStripe: locked ? m.hi : rib[2],
+      handlesD: sh.handles || '',
+      body2D: sh.body2 || '',
+      bodyD: sh.body || '',
+      plateD: sh.plate || '',
+      innerD: sh.inner || '',
+      facetD: sh.facet || '',
+      dotsD: sh.dots || '', dotsFill: locked ? m.lo : (k[2] === 'plat' ? '#E04A3A' : '#0B5D5E'),
+      fillMain: 'url(#' + gid + ')',
+      fillSecond: 'url(#' + gid + ')',
+      fillBody: isPlaque ? 'url(#' + gid2 + ')' : 'url(#' + gid + ')',
+      bodyRim: isPlaque ? m2.rim : m.rim,
+      shineD: locked ? '' : (isPlaque ? sh.plate : sh.body),
+      glyphT: 'translate(' + sh.gx + ' ' + sh.gy + ') scale(' + sh.gs + ')',
+      glyphD: glyph.d || '', glyphFillD: glyph.fill || '',
+      text: text, textY: sh.gy, textSize: textSize,
+      isLocked: locked,
+      showRing: locked && prog > 0,
+      ringTrack: dark ? '#33312B' : '#E2DCD0', ringFill: dark ? '#E8B44E' : '#B07A10',
+      ringDash: prog + ' 100',
+      lockBox: Math.max(16, Math.round(size * 0.26)), lockIcon: Math.max(10, Math.round(size * 0.15)),
+      lockBg: dark ? '#26241F' : '#FFFFFF', lockFg: dark ? '#BDB6A8' : '#5A544A'
+    };
+  }
+}
+</script>
+</body>
+</html>

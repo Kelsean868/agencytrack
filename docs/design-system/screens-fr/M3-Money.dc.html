@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Money — mobile v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+@keyframes m3mFadeA{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes m3mFadeB{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes m3mSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes m3mGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.m3m-barx{transform-origin:left;animation:m3mGrowX 380ms cubic-bezier(0.32,0.72,0,1) both}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: 2180px; box-sizing: border-box; position: relative; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; display: flex; flex-direction: column; gap: 16px; padding: 12px 16px 104px;">
+
+  <header style="display: flex; align-items: center; gap: 8px; min-height: 44px;">
+    <h1 style="flex-grow: 1; margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700;">Money</h1>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SEP 2026</span>
+  </header>
+
+  <!-- ============ 4 STAT TILES (2x2) ============ -->
+  <section aria-label="This year at a glance" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+    <sc-for list="{{statTiles}}" as="st" hint-placeholder-count="4">
+      <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">{{st.label}}</span>
+        <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; color: {{st.color}};">{{st.value}}</span>
+        <span style="font-size: 11px; color: {{c.mute}};">{{st.sub}}</span>
+      </div>
+    </sc-for>
+  </section>
+
+  <!-- ============ MDRT PACE (SIMPLIFIED) ============ -->
+  <section aria-label="MDRT pace" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+      <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 15.5px; font-weight: 700; line-height: 1.35; flex-grow: 1; min-width: 0;">{{pace.title}}</h2>
+      <button onClick="{{pace.toggle}}" style="height: 30px; padding: 0 10px; border-radius: 9px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 11.5px; font-weight: 700; flex-shrink: 0;">{{pace.tableLabel}}</button>
+    </div>
+
+    <sc-if value="{{pace.showChart}}" hint-placeholder-val="{{true}}">
+      <div style="animation: {{pace.fadeAnim}} 220ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+        <svg width="100%" height="150" viewBox="0 0 358 158" role="img" aria-label="{{pace.aria}}">
+          <line x1="6" x2="352" y1="{{pace.thresholdY}}" y2="{{pace.thresholdY}}" stroke="{{c.faint}}" stroke-width="1"></line>
+          <text x="350" y="{{pace.thresholdLabelY}}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="600" fill="{{c.faint}}">MDRT 688,800</text>
+          <path d="{{pace.areaD}}" fill="{{c.accent}}" opacity="0.10"></path>
+          <path d="{{pace.actualD}}" fill="none" stroke="{{c.accent}}" stroke-width="2.6" stroke-linecap="round"></path>
+          <path d="{{pace.neededD}}" fill="none" stroke="{{c.faint}}" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 5"></path>
+          <circle cx="{{pace.lastX}}" cy="{{pace.lastY}}" r="4.5" fill="{{c.surface}}" stroke="{{c.accent}}" stroke-width="2"></circle>
+          <circle cx="{{pace.endX}}" cy="{{pace.endY}}" r="4" fill="{{c.surface}}" stroke="{{c.faint}}" stroke-width="2"></circle>
+          <text x="{{pace.lastLabelX}}" y="{{pace.lastLabelY}}" font-family="Onest, sans-serif" font-size="12" font-weight="700" fill="{{c.ink}}">{{pace.lastLabel}}</text>
+          <text x="{{pace.endLabelX}}" y="{{pace.endLabelY}}" text-anchor="end" font-family="Onest, sans-serif" font-size="11.5" font-weight="700" fill="{{c.faint}}">{{pace.endLabel}}</text>
+          <sc-for list="{{pace.ticks}}" as="tk" hint-placeholder-count="5">
+            <text x="{{tk.x}}" y="154" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" font-weight="600" fill="{{c.faint}}">{{tk.label}}</text>
+          </sc-for>
+        </svg>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{pace.showTable}}" hint-placeholder-val="{{false}}">
+      <div style="animation: {{pace.fadeAnim}} 220ms cubic-bezier(0.32, 0.72, 0, 1) both; display: flex; flex-direction: column;">
+        <sc-for list="{{pace.rows}}" as="pr" hint-placeholder-count="12">
+          <div style="display: flex; justify-content: space-between; align-items: center; min-height: 32px; border-bottom: 1px solid {{c.rule}};">
+            <span style="font-size: 13px; font-weight: 600; width: 40px;">{{pr.month}}</span>
+            <span style="font-size: 12.5px; color: {{c.ink}}; flex-grow: 1; text-align: right;">{{pr.settled}}</span>
+            <span style="font-size: 12.5px; color: {{c.faint}}; width: 96px; text-align: right;">{{pr.needed}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <span style="font-size: 11.5px; color: {{c.mute}};">Ghost mark on September = TTD 36,000 submitted, not yet settled.</span>
+  </section>
+
+  <!-- ============ CALCULATOR CARDS ============ -->
+  <section aria-label="Every calculator" style="display: flex; flex-direction: column; gap: 10px;">
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">Every calculator</h2>
+      <span style="font-size: 12.5px; color: {{c.mute}};">Tap a card to open it.</span>
+    </div>
+
+    <!-- Goals -->
+    <a href="M3-Goals.dc.html" onClick="{{cardGoals.pick}}" style="text-decoration: none; color: inherit; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-height: 44px; box-sizing: border-box;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">GOALS</span>
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">TTD 500,000 floor</span>
+      <span style="font-size: 13px; color: {{c.mute}};">{{cardGoals.ytdLabel}}</span>
+      <svg width="100%" height="10" viewBox="0 0 320 10" role="img" aria-label="{{cardGoals.aria}}">
+        <rect x="0" y="2" width="320" height="6" rx="3" fill="{{c.sunk}}"></rect>
+        <rect class="m3m-barx" x="0" y="2" width="{{cardGoals.barW}}" height="6" rx="3" fill="{{c.cat0}}" style="width: {{cardGoals.barW}}px; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+      </svg>
+      <span style="font-size: 11.5px; color: {{c.faint}};">Higher of company minimum and any locked target · no manager lock set</span>
+    </a>
+
+    <!-- Game plan -->
+    <a href="M3-GamePlan.dc.html" onClick="{{cardPlan.pick}}" style="text-decoration: none; color: inherit; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-height: 44px; box-sizing: border-box;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">GAME PLAN</span>
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">{{cardPlan.stepsLabel}}</span>
+      <span style="font-size: 13px; font-weight: 700; color: {{cardPlan.paceColor}};">{{cardPlan.paceLabel}}</span>
+      <div style="display: flex; gap: 6px;">
+        <sc-for list="{{cardPlan.steps}}" as="sp" hint-placeholder-count="3">
+          <span style="flex-grow: 1; height: 9px; border-radius: 4px; background: {{sp.color}};"></span>
+        </sc-for>
+      </div>
+      <span style="font-size: 11.5px; color: {{c.faint}};">{{cardPlan.gapLabel}} · SAMPLE ratios</span>
+    </a>
+
+    <!-- Commission -->
+    <a href="M3-Commission.dc.html" onClick="{{cardCom.pick}}" style="text-decoration: none; color: inherit; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-height: 44px; box-sizing: border-box;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">COMMISSION</span>
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.3;">{{cardCom.headline}}</span>
+      <svg width="100%" height="10" viewBox="0 0 320 10" role="img" aria-label="{{cardCom.aria}}">
+        <rect x="0" y="2" width="320" height="6" rx="3" fill="{{c.sunk}}"></rect>
+        <rect class="m3m-barx" x="0" y="2" width="{{cardCom.barW}}" height="6" rx="3" fill="{{c.cat0}}" style="width: {{cardCom.barW}}px; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+      </svg>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE · 40% rate · earned TTD 9,420 so far (real)</span>
+    </a>
+
+    <!-- Money needs -->
+    <a href="M3-MoneyNeeds.dc.html" onClick="{{cardNeeds.pick}}" style="text-decoration: none; color: inherit; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-height: 44px; box-sizing: border-box;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">MONEY NEEDS</span>
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.3;">{{cardNeeds.headline}}</span>
+      <svg width="100%" height="10" viewBox="0 0 320 10" role="img" aria-label="{{cardNeeds.aria}}">
+        <rect x="0" y="2" width="320" height="6" rx="3" fill="{{c.sunk}}"></rect>
+        <rect class="m3m-barx" x="0" y="2" width="{{cardNeeds.barW}}" height="6" rx="3" fill="{{c.cat0}}" style="width: {{cardNeeds.barW}}px; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+      </svg>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE · after tax · {{cardNeeds.progressLabel}} settled so far (real)</span>
+    </a>
+
+    <!-- Persistency -->
+    <a href="M3-Persistency.dc.html" onClick="{{cardPers.pick}}" style="text-decoration: none; color: inherit; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-height: 44px; box-sizing: border-box;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">PERSISTENCY</span>
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">86.6%</span>
+      <svg width="100%" height="54" viewBox="0 0 320 54" role="img" aria-label="Persistency over the last 6 months, ending at 86.6 percent in September">
+        <line x1="0" x2="320" y1="{{cardPers.gateY}}" y2="{{cardPers.gateY}}" stroke="{{c.faint}}" stroke-width="1"></line>
+        <text x="317" y="{{cardPers.gateLabelY}}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="600" fill="{{c.faint}}">90</text>
+        <sc-for list="{{cardPers.bars}}" as="pb" hint-placeholder-count="6">
+          <rect x="{{pb.x}}" y="{{pb.y}}" width="34" height="{{pb.h}}" rx="4" fill="{{pb.color}}"></rect>
+          <text x="{{pb.labelX}}" y="52" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="600" fill="{{c.faint}}">{{pb.label}}</text>
+        </sc-for>
+      </svg>
+      <span style="font-size: 11.5px; color: {{c.warm}}; font-weight: 600;">TTD 7,221.12 reinstated clears 90%</span>
+    </a>
+
+    <!-- Financing -->
+    <a href="Financing.dc.html" onClick="{{cardFin.pick}}" style="text-decoration: none; color: inherit; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 8px; min-height: 44px; box-sizing: border-box;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">FINANCING</span>
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: -0.02em;">{{cardFin.headline}}</span>
+      <div style="display: flex; gap: 8px;">
+        <sc-for list="{{cardFin.dots}}" as="d" hint-placeholder-count="3">
+          <span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 12px; background: {{d.bg}}; color: {{d.fg}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <sc-if value="{{d.ok}}" hint-placeholder-val="{{true}}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+            </sc-if>
+            <sc-if value="{{d.warn}}" hint-placeholder-val="{{false}}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M12 3l9 16H3z"></path></svg>
+            </sc-if>
+          </span>
+        </sc-for>
+      </div>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE · gate needs gross ≥ min AND persistency ≥ 90%</span>
+    </a>
+  </section>
+
+  <!-- ============ WHY THESE NUMBERS AGREE ============ -->
+  <section aria-label="Why these numbers agree" style="background: {{c.sunk}}; border-radius: 16px; padding: 14px; display: flex; align-items: flex-start; gap: 10px;">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{c.mute}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 8h.01M11 12h1v4h1"></path></svg>
+    <span style="font-size: 12.5px; color: {{c.mute}}; line-height: 1.5;">All six calculators share one engine and one persistency figure (24-month model, ledger 15-09-2026). Change a number in What if and every card moves together.</span>
+  </section>
+
+  <!-- ============ STICKY WHAT IF BUTTON ============ -->
+  <button onClick="{{whatIf.open}}" style="position: fixed; left: 16px; right: 16px; bottom: {{whatIf.btnBottom}}px; height: 52px; border-radius: 16px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 700; box-shadow: 0 10px 26px rgba(0,0,0,0.22); z-index: 5;">What if...</button>
+
+  <!-- ============ WHAT IF BOTTOM SHEET ============ -->
+  <sc-if value="{{whatIf.isOpen}}" hint-placeholder-val="{{false}}">
+    <div style="position: fixed; inset: 0; z-index: 30;">
+      <div onClick="{{whatIf.close}}" aria-hidden="true" style="position: absolute; inset: 0; background: rgba(15,13,10,0.5);"></div>
+      <div role="dialog" aria-modal="true" aria-label="What if" style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 82vh; overflow-y: auto; box-sizing: border-box; background: {{c.surface}}; border-radius: 22px 22px 0 0; padding: 4px 20px 24px; display: flex; flex-direction: column; gap: 14px; animation: m3mSheetUp 260ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+        <div style="display: flex; justify-content: center; padding: 10px 0;"><div style="width: 40px; height: 5px; border-radius: 3px; background: {{c.rule}};"></div></div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">What if</span>
+          <button onClick="{{whatIf.close}}" aria-label="Close" style="width: 40px; height: 40px; border-radius: 12px; border: 0; background: {{c.sunk}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <span style="font-size: 12.5px; color: {{c.mute}}; margin-top: -8px;">Try a scenario. Numbers glide as you move the sliders.</span>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <label for="m3m-extra-apps" style="font-size: 13px; font-weight: 600;">Extra applications this quarter</label>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 700; color: {{c.accent}};">{{whatIf.extraAppsLabel}}</span>
+          </div>
+          <input id="m3m-extra-apps" type="range" min="0" max="10" step="1" value="{{whatIf.extraApps}}" onInput="{{setExtraApps}}" style="width: 100%; height: 44px; accent-color: {{c.accent}};">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <label for="m3m-avg-api" style="font-size: 13px; font-weight: 600;">Average API per app</label>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 700; color: {{c.accent}};">{{whatIf.avgApiLabel}}</span>
+          </div>
+          <input id="m3m-avg-api" type="range" min="10000" max="30000" step="100" value="{{whatIf.avgApi}}" onInput="{{setAvgApi}}" style="width: 100%; height: 44px; accent-color: {{c.accent}};">
+        </div>
+
+        <button role="switch" aria-checked="{{whatIf.reinstateChecked}}" onClick="{{toggleReinstate}}" style="height: 52px; display: flex; align-items: center; gap: 10px; border: 1px solid {{c.rule}}; border-radius: 14px; background: {{c.sunk}}; padding: 0 12px; box-sizing: border-box;">
+          <span aria-hidden="true" style="width: 40px; height: 22px; border-radius: 11px; background: {{whatIf.trackBg}}; position: relative; flex-shrink: 0; transition: background 150ms ease;">
+            <span style="position: absolute; top: 2px; left: {{whatIf.thumbLeft}}px; width: 18px; height: 18px; border-radius: 9px; background: #FFFFFF; transition: left 150ms ease;"></span>
+          </span>
+          <span style="flex-grow: 1; font-size: 12.5px; font-weight: 600; text-align: left; color: {{c.ink}}; line-height: 1.35;">Reinstate 2 lapsed policies · 19-11-2025 ×2 · TTD 7,221.12</span>
+        </button>
+
+        <div style="height: 1px; background: {{c.rule}};"></div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 11.5px; color: {{c.mute}};">Projected settled API</span>
+            <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700;">TTD {{whatIf.projApiFmt}}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11.5px; color: {{c.mute}};">% of MDRT</span>
+            <span style="font-size: 16px; font-weight: 700;">{{whatIf.pctMdrt}}%</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: {{whatIf.persBg}};">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 11.5px; color: {{c.mute}};">Persistency</span>
+              <span style="font-size: 16px; font-weight: 700; color: {{whatIf.persColor}};">{{whatIf.persistency}}%</span>
+            </div>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.06em; color: {{c.faint}};">24-MONTH MODEL · LEDGER 15-09-2026</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11.5px; color: {{c.mute}};">Christmas prize band</span>
+            <span style="font-size: 14px; font-weight: 700; color: {{whatIf.bandColor}};">{{whatIf.bandName}}</span>
+          </div>
+          <div style="height: 1px; background: {{c.rule}};"></div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 11.5px; color: {{c.mute}};">Projected take-home change</span>
+            <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; color: {{c.accent}};">TTD [n]</span>
+          </div>
+        </div>
+
+        <button onClick="{{whatIf.close}}" style="height: 48px; border-radius: 14px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; margin-top: 4px;">Done</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}">
+    <div style="position: absolute; left: 0; bottom: 0;">
+      <dc-import name="M3-Nav" active="money" dark="{{dark}}" hint-size="390px,84px"></dc-import>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":390,"height":2180}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      whatIf: { open: false, extraApps: 3, avgApi: 17430, reinstate: false },
+      paceTableOn: false, paceFlip: false,
+      dispWhatIf: null
+    };
+    this._wiTimer = null;
+  }
+  componentWillUnmount() {
+    if (this._wiTimer) clearInterval(this._wiTimer);
+  }
+  buildPath(pts) {
+    return pts.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join(' ');
+  }
+  animateWhatIf(from, to) {
+    if (this._wiTimer) clearInterval(this._wiTimer);
+    const start = Date.now(), dur = 420;
+    this._wiTimer = setInterval(() => {
+      const t = Math.min(1, (Date.now() - start) / dur);
+      const e = 1 - Math.pow(1 - t, 3);
+      this.setState({ dispWhatIf: {
+        api: from.api + (to.api - from.api) * e,
+        pct: from.pct + (to.pct - from.pct) * e,
+        pers: from.pers + (to.pers - from.pers) * e
+      } });
+      if (t >= 1) { clearInterval(this._wiTimer); this._wiTimer = null; }
+    }, 30);
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = Object.assign({}, this.props.dark ? dark : light);
+    c.cat0 = c.cat[0];
+    const s = this.state;
+    const fmt = (n) => Math.round(n).toLocaleString('en-US');
+    const n1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
+
+    const goTab = (id) => (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav(id); } };
+    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // =========================================================
+    // WHAT-IF SHEET
+    // =========================================================
+    const wi = s.whatIf;
+    const projApi = 87146 + wi.extraApps * wi.avgApi;
+    const pctMdrt = Math.round((projApi / 688800) * 1000) / 10;
+    const persistency = wi.reinstate ? 90.1 : 86.6;
+    const bandFor = (p) => {
+      if (p >= 90) return { name: '100% of prize (TTD 7,000)', color: c.accent };
+      if (p >= 85) return { name: '50% of prize (TTD 3,500)', color: c.gold };
+      if (p >= 80) return { name: '25% of prize (TTD 1,750)', color: c.warm };
+      return { name: 'Not qualified (TTD 0)', color: c.warm };
+    };
+    const band = bandFor(persistency);
+    const wiFrom = { api: s.dispWhatIf ? s.dispWhatIf.api : projApi, pct: s.dispWhatIf ? s.dispWhatIf.pct : pctMdrt, pers: s.dispWhatIf ? s.dispWhatIf.pers : persistency };
+    const setExtraApps = (e) => {
+      const v = parseInt(e.target.value, 10) || 0;
+      const nextApi = 87146 + v * wi.avgApi;
+      const nextPct = Math.round((nextApi / 688800) * 1000) / 10;
+      this.animateWhatIf(wiFrom, { api: nextApi, pct: nextPct, pers: persistency });
+      this.setState({ whatIf: Object.assign({}, this.state.whatIf, { extraApps: v }) });
+    };
+    const setAvgApi = (e) => {
+      const v = parseInt(e.target.value, 10) || 0;
+      const nextApi = 87146 + wi.extraApps * v;
+      const nextPct = Math.round((nextApi / 688800) * 1000) / 10;
+      this.animateWhatIf(wiFrom, { api: nextApi, pct: nextPct, pers: persistency });
+      this.setState({ whatIf: Object.assign({}, this.state.whatIf, { avgApi: v }) });
+    };
+    const toggleReinstate = () => {
+      const nextReinstate = !wi.reinstate;
+      const nextPers = nextReinstate ? 90.1 : 86.6;
+      this.animateWhatIf(wiFrom, { api: projApi, pct: pctMdrt, pers: nextPers });
+      this.setState({ whatIf: Object.assign({}, this.state.whatIf, { reinstate: nextReinstate }) });
+    };
+    const openSheet = (e) => { if (e) e.preventDefault(); this.setState({ whatIf: Object.assign({}, this.state.whatIf, { open: true }) }); };
+    const closeSheet = (e) => { if (e) e.preventDefault(); this.setState({ whatIf: Object.assign({}, this.state.whatIf, { open: false }) }); };
+    const dProjApi = s.dispWhatIf ? s.dispWhatIf.api : projApi;
+    const dPctMdrt = s.dispWhatIf ? s.dispWhatIf.pct : pctMdrt;
+    const dPersistency = s.dispWhatIf ? s.dispWhatIf.pers : persistency;
+    const whatIf = {
+      isOpen: wi.open, open: openSheet, close: closeSheet, btnBottom: this.props.embedded ? 16 : 100,
+      extraApps: wi.extraApps, extraAppsLabel: String(wi.extraApps),
+      avgApi: wi.avgApi, avgApiLabel: 'TTD ' + fmt(wi.avgApi),
+      reinstateChecked: wi.reinstate ? 'true' : 'false',
+      trackBg: wi.reinstate ? c.accent : c.rule, thumbLeft: wi.reinstate ? 20 : 2,
+      projApiFmt: fmt(dProjApi), pctMdrt: dPctMdrt.toFixed(1), persistency: dPersistency.toFixed(1),
+      persColor: dPersistency >= 90 ? c.accent : c.warm, persBg: dPersistency >= 90 ? c.accentTint : c.warmTint,
+      bandName: band.name, bandColor: band.color
+    };
+
+    // =========================================================
+    // STAT TILES
+    // =========================================================
+    const statTiles = [
+      { label: 'SETTLED API', value: 'TTD 87,146', color: c.ink, sub: '5 apps' },
+      { label: 'SUBMITTED API', value: 'TTD 123,146', color: c.ghost, sub: '6 apps' },
+      { label: 'TO MDRT', value: 'TTD 601,654', color: c.ink, sub: '14 weeks left' },
+      { label: 'NEEDED A WEEK', value: 'TTD 42,975', color: c.ink, sub: '14 weeks · ≈2.5 apps' }
+    ];
+
+    // =========================================================
+    // MDRT PACE — simplified area/line + Table toggle
+    // =========================================================
+    const monthlySettled = [3200, 5400, 8100, 6800, 9200, 11400, 14800, 12900, 15346];
+    const cumulative = [];
+    monthlySettled.reduce((sum, v, i) => { cumulative[i] = sum + v; return cumulative[i]; }, 0);
+    const yDomainMax = 720000;
+    const lx0 = 6, lx1 = 352, y0 = 134, yTopRange = 120;
+    const xStep = (lx1 - lx0) / 11;
+    const xFor = (i) => lx0 + i * xStep;
+    const yFor = (v) => y0 - (v / yDomainMax) * yTopRange;
+    const actualPts = cumulative.map((v, i) => ({ x: xFor(i), y: yFor(v) }));
+    const neededPts = [{ x: xFor(8), y: yFor(cumulative[8]) }, { x: xFor(11), y: yFor(688800) }];
+    const areaPts = actualPts.concat([{ x: xFor(8), y: y0 }, { x: xFor(0), y: y0 }]);
+    const tickIdx = [0, 3, 6, 8, 11];
+    const paceTicks = tickIdx.map((i) => ({ label: monthLabels[i], x: xFor(i).toFixed(1) }));
+    const paceRows = monthLabels.map((label, i) => {
+      const settled = i <= 8 ? 'TTD ' + fmt(cumulative[i]) : '—';
+      let needed = '—';
+      if (i === 8) needed = 'TTD ' + fmt(cumulative[8]);
+      if (i === 9) needed = 'TTD ' + fmt(cumulative[8] + (688800 - cumulative[8]) / 3);
+      if (i === 10) needed = 'TTD ' + fmt(cumulative[8] + (688800 - cumulative[8]) / 3 * 2);
+      if (i === 11) needed = 'TTD 688,800';
+      return { month: label, settled: settled, needed: needed };
+    });
+    const toggleTable = () => this.setState({ paceTableOn: !s.paceTableOn, paceFlip: !s.paceFlip });
+    const pace = {
+      title: 'On pace? TTD 87,146 settled by Sep, needs TTD 688,800 by 31-12-2026',
+      aria: 'Cumulative settled API reaches TTD 87,146 by September, and needs to reach TTD 688,800 by 31 December',
+      toggle: toggleTable, tableLabel: s.paceTableOn ? 'Chart' : 'Table',
+      showChart: !s.paceTableOn, showTable: s.paceTableOn, fadeAnim: s.paceFlip ? 'm3mFadeA' : 'm3mFadeB',
+      thresholdY: yFor(688800).toFixed(1), thresholdLabelY: (yFor(688800) - 4).toFixed(1),
+      areaD: this.buildPath(areaPts) + ' Z',
+      actualD: this.buildPath(actualPts),
+      neededD: this.buildPath(neededPts),
+      lastX: xFor(8).toFixed(1), lastY: yFor(cumulative[8]).toFixed(1),
+      endX: xFor(11).toFixed(1), endY: yFor(688800).toFixed(1),
+      lastLabelX: (xFor(8) + 6).toFixed(1), lastLabelY: (yFor(cumulative[8]) - 8).toFixed(1), lastLabel: 'Sep · 87,146',
+      endLabelX: (xFor(11) - 4).toFixed(1), endLabelY: (yFor(688800) + 16).toFixed(1), endLabel: '688,800 by 31-12',
+      ticks: paceTicks, rows: paceRows
+    };
+
+    // =========================================================
+    // CALCULATOR CARDS
+    // =========================================================
+    const companyFloor = 500000, lockedTarget = 0;
+    const effFloor = Math.max(companyFloor, lockedTarget);
+    const ytdPct = Math.min(100, (87146 / effFloor) * 100);
+    const cardGoals = {
+      pick: goTab('Goals'),
+      ytdLabel: n1(ytdPct) + '% YTD · TTD 87,146 settled',
+      barW: Math.max(2, (ytdPct / 100) * 320).toFixed(1),
+      aria: n1(ytdPct) + ' percent of the TTD ' + fmt(effFloor) + ' floor'
+    };
+
+    const appsNeed = 2.5, dialsDoing = 48;
+    const ciNeed = appsNeed / 0.25;
+    const ffNeed = ciNeed / 0.57;
+    const apptNeed = ffNeed / 0.506;
+    const contactsNeed = apptNeed / 0.45;
+    const dialsNeed = contactsNeed / 0.65;
+    const dialsShort = dialsNeed - dialsDoing;
+    const stepsBuilt = 2, stepsTotal = 3;
+    const onPace = dialsShort <= 0;
+    const cardPlan = {
+      pick: goTab('GamePlan'),
+      stepsLabel: stepsBuilt + ' of ' + stepsTotal + ' steps built',
+      paceLabel: onPace ? 'On pace' : 'Behind pace',
+      paceColor: onPace ? c.accent : c.warm,
+      steps: [0, 1, 2].map((i) => ({ color: i < stepsBuilt ? c.accent : c.sunk })),
+      gapLabel: 'Dials short by ' + n1(dialsShort) + '/wk (need ' + n1(dialsNeed) + ')'
+    };
+
+    const comTargetSample = 10000, comRateSample = 0.40, comEarnedReal = 9420;
+    const comApiNeeded = Math.round(comTargetSample / (comRateSample * 0.25 * (1 + 0.5 + 0.25 + 1 / 12)));
+    const comProgress = Math.min(100, (comEarnedReal / comTargetSample) * 100);
+    const cardCom = {
+      pick: goTab('Commission'),
+      headline: 'This month: TTD ' + fmt(comTargetSample) + ' needs TTD ' + fmt(comApiNeeded) + ' API',
+      barW: Math.max(2, (comProgress / 100) * 320).toFixed(1),
+      aria: 'TTD ' + fmt(comEarnedReal) + ' earned of a TTD ' + fmt(comTargetSample) + ' target'
+    };
+
+    const needsYearTotal = 191460, needsApiNeeded = 563200;
+    const needsProgress = Math.min(100, (87146 / needsApiNeeded) * 100);
+    const cardNeeds = {
+      pick: goTab('MoneyNeeds'),
+      headline: 'TTD ' + fmt(needsYearTotal) + '/yr needs TTD ' + fmt(needsApiNeeded) + ' API',
+      barW: Math.max(2, (needsProgress / 100) * 320).toFixed(1),
+      aria: n1(needsProgress) + ' percent of the API needed settled so far',
+      progressLabel: n1(needsProgress) + '%'
+    };
+
+    const persHistLabels = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
+    const persHistVals = [88.4, 87.9, 86.0, 85.2, 84.8, 86.6];
+    const persFloor = 80, persCap = 92, persBarMax = 40, persBase = 46;
+    const persBarW = 34, persGap = 20;
+    const persBars = persHistVals.map((v, i) => {
+      const h = Math.max(3, ((v - persFloor) / (persCap - persFloor)) * persBarMax);
+      const isLast = i === persHistVals.length - 1;
+      return {
+        x: (i * (persBarW + persGap)).toFixed(1), y: (persBase - h).toFixed(1), h: h.toFixed(1),
+        color: isLast ? c.warm : c.ghost,
+        labelX: (i * (persBarW + persGap) + persBarW / 2).toFixed(1), label: persHistLabels[i]
+      };
+    });
+    const persGateY = (persBase - ((90 - persFloor) / (persCap - persFloor)) * persBarMax);
+    const cardPers = {
+      pick: goTab('Persistency'),
+      bars: persBars, gateY: persGateY.toFixed(1), gateLabelY: (persGateY - 3).toFixed(1)
+    };
+
+    const finChecksRaw = [
+      { label: 'Production this quarter vs [n]', ok: true },
+      { label: 'Persistency ≥ [n]%', ok: false },
+      { label: 'Reports submitted 13 of 13 weeks', ok: true }
+    ];
+    const finOkCount = finChecksRaw.filter((k) => k.ok).length;
+    const cardFin = {
+      pick: goTab('Financing'),
+      headline: finOkCount === finChecksRaw.length ? 'Qualifying · ' + finOkCount + ' of ' + finChecksRaw.length + ' checks' : 'Persistency gap open',
+      dots: finChecksRaw.map((k) => ({ ok: k.ok ? 'true' : 'false', warn: k.ok ? 'false' : 'true', bg: k.ok ? c.accentTint : c.warmTint, fg: k.ok ? c.accent : c.warm }))
+    };
+
+    return {
+      c: c, dark: !!this.props.dark, showNav: !this.props.embedded,
+      statTiles: statTiles, pace: pace,
+      cardGoals: cardGoals, cardPlan: cardPlan, cardCom: cardCom, cardNeeds: cardNeeds, cardPers: cardPers, cardFin: cardFin,
+      whatIf: whatIf, setExtraApps: setExtraApps, setAvgApi: setAvgApi, toggleReinstate: toggleReinstate
+    };
+  }
+}
+</script>
+</body>
+</html>

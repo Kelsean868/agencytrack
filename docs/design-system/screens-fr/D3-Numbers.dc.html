@@ -1,0 +1,903 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Numbers — desktop v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+@keyframes numTabA{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes numTabB{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes numBarGrowY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes numBarGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes numKpiFadeA{from{opacity:0}to{opacity:1}}
+@keyframes numKpiFadeB{from{opacity:0}to{opacity:1}}
+.numBarY{transform-origin:bottom;animation:numBarGrowY 380ms cubic-bezier(0.32,0.72,0,1) both}
+.numBarX{transform-origin:left;animation:numBarGrowX 380ms cubic-bezier(0.32,0.72,0,1) both}
+.num-row:hover{background:rgba(127,120,105,0.10)}
+.num-hh:hover .num-hh-tip{opacity:1}
+.num-hh-tip{opacity:0;transition:opacity 120ms ease;pointer-events:none}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: {{rootW}}px; height: 900px; box-sizing: border-box; display: flex; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; overflow: hidden;">
+  <sc-if value="{{showChrome}}" hint-placeholder-val="{{true}}">
+    <div style="width: 220px; flex-shrink: 0; align-self: stretch; background: {{c.sideBg}};">
+      <dc-import name="D3-Sidebar" active="Numbers" tab="{{tab}}" dark="{{dark}}" h="{{900}}" hint-size="220px,900px"></dc-import>
+    </div>
+  </sc-if>
+  <main style="width: 1220px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;">
+    <header style="height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 20px 0 28px; display: flex; align-items: center; gap: 12px; background: {{c.glass}}; border-bottom: 1px solid {{c.rule}};">
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; flex-shrink: 0;">Numbers</h1>
+      <div role="tablist" aria-label="Numbers section" style="height: 40px; box-sizing: border-box; padding: 3px; border-radius: 12px; background: {{c.sunk}}; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; width: 460px; flex-shrink: 0;">
+        <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+          <button role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="height: 34px; border: 0; border-radius: 9px; background: {{t.bg}}; color: {{t.color}}; box-shadow: {{t.shadow}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">{{t.label}}</button>
+        </sc-for>
+      </div>
+      <span style="flex-grow: 1;"></span>
+      <div role="tablist" aria-label="Period" style="height: 36px; box-sizing: border-box; padding: 3px; border-radius: 10px; background: {{c.sunk}}; display: flex; gap: 2px; flex-shrink: 0;">
+        <sc-for list="{{periods}}" as="p" hint-placeholder-count="4">
+          <button role="tab" aria-selected="{{p.on}}" onClick="{{p.pick}}" style="height: 30px; padding: 0 14px; border: 0; border-radius: 8px; background: {{p.bg}}; color: {{p.color}}; box-shadow: {{p.shadow}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{p.label}}</button>
+        </sc-for>
+      </div>
+    </header>
+
+    <div style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 22px 28px 40px; display: flex; flex-direction: column; gap: 22px;">
+
+      <sc-if value="{{isScorecard}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-direction: column; gap: 20px; animation: {{sectionAnim}} 280ms cubic-bezier(0.32,0.72,0,1) both;">
+
+        <section aria-label="Key ratios" style="display: flex; flex-direction: column; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">Am I on track — {{periodLabel}}</h2>
+          <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px;">
+            <sc-for list="{{kpis}}" as="k" hint-placeholder-count="6">
+              <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; padding: 13px; display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                <span style="font-size: 11.5px; color: {{c.mute}}; line-height: 1.25; min-height: 28px;">{{k.label}}</span>
+                <span class="tn" style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 23px; font-weight: 700;">{{k.big}}</span>
+                <svg width="100%" height="24" viewBox="0 0 96 24" aria-hidden="true" style="display: block; animation: {{k.sparkAnim}};">
+                  <polyline points="{{k.sparkPts}}" fill="none" stroke="{{c.ghost}}" stroke-width="1.6"></polyline>
+                  <circle cx="{{k.sparkLastX}}" cy="{{k.sparkLastY}}" r="2.6" fill="{{k.deltaColor}}"></circle>
+                </svg>
+                <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: {{k.deltaColor}};">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: {{k.arrowRot}};" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+                  {{k.deltaText}} vs last week
+                </span>
+                <sc-if value="{{k.sample}}" hint-placeholder-val="{{true}}"><span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+
+        <section aria-label="Coach" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">Coach</h2>
+            <span style="display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 12px; background: {{c.accentTint}}; color: {{c.accent}}; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v3M12 18v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M3 12h3M18 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path><circle cx="12" cy="12" r="4"></circle></svg>
+              AI · FROM YOUR NUMBERS ONLY
+            </span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <sc-for list="{{insights}}" as="ins" hint-placeholder-count="3">
+              <div style="border: 1px solid {{c.rule}}; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; align-items: flex-start; gap: 10px;">
+                  <span style="flex-grow: 1; font-size: 14px; line-height: 1.4;">{{ins.text}}</span>
+                  <div style="display: flex; gap: 0px; flex-shrink: 0;">
+                    <button onClick="{{ins.up}}" aria-label="{{ins.upLabel}}" aria-pressed="{{ins.upOn}}" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: {{ins.upBg}}; color: {{ins.upFg}}; display: flex; align-items: center; justify-content: center;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11M15 4l-1 6h6.5a1.5 1.5 0 0 1 1.4 2.1l-3 7A2 2 0 0 1 17 21H7a2 2 0 0 1-2-2V11a2 2 0 0 1 .5-1.3L11 3a1 1 0 0 1 1.6.4z"></path></svg>
+                    </button>
+                    <button onClick="{{ins.down}}" aria-label="{{ins.downLabel}}" aria-pressed="{{ins.downOn}}" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: {{ins.downBg}}; color: {{ins.downFg}}; display: flex; align-items: center; justify-content: center;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 14V3M9 20l1-6H3.5a1.5 1.5 0 0 1-1.4-2.1l3-7A2 2 0 0 1 7 4h10a2 2 0 0 1 2 2v8a2 2 0 0 1-.5 1.3L13 21a1 1 0 0 1-1.6-.4z"></path></svg>
+                    </button>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <button onClick="{{ins.toggleWhy}}" aria-expanded="{{ins.whyOpen}}" style="height: 30px; padding: 0 4px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                    Why?
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: {{ins.whyRot}};"><path d="m6 9 6 6 6-6"></path></svg>
+                  </button>
+                  <span style="flex-grow: 1;"></span>
+                  <a href="{{ins.actionHref}}" onClick="{{ins.actionGo}}" style="height: 36px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.accent}}; background: transparent; color: {{c.accent}}; text-decoration: none; display: flex; align-items: center; font-size: 12.5px; font-weight: 700;">{{ins.action}}</a>
+                </div>
+                <sc-if value="{{ins.whyOpen}}" hint-placeholder-val="{{false}}">
+                  <div style="background: {{c.sunk}}; border-radius: 10px; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.6; color: {{c.mute}};">{{ins.why}}</div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <span style="font-size: 11.5px; color: {{c.faint}}; line-height: 1.4;">Coach sees totals and ratios only — never client names. Updated 07:00 daily.</span>
+        </section>
+
+        <section aria-label="13 weeks of activity" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">13 weeks of activity</h2>
+            <button onClick="{{toggleSmallTable}}" style="height: 28px; padding: 0 8px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700;">{{smallTableLabel}}</button>
+          </div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE · WEEKS 28–40</span>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+            <sc-for list="{{small}}" as="sm" hint-placeholder-count="6">
+              <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                <span style="font-size: 12.5px; font-weight: 700;">{{sm.title}}</span>
+                <sc-if value="{{showSmallChart}}" hint-placeholder-val="{{true}}">
+                  <svg width="100%" height="66" viewBox="0 0 240 66" role="img" aria-label="{{sm.aria}}">
+                    <line x1="0" y1="{{sm.minY}}" x2="240" y2="{{sm.minY}}" stroke="{{c.faint}}" stroke-width="1"></line>
+                    <text x="238" y="{{sm.minTy}}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="8" font-weight="600" fill="{{c.faint}}">min {{sm.min}}</text>
+                    <sc-for list="{{sm.bars}}" as="b" hint-placeholder-count="13">
+                      <rect class="numBarY" x="{{b.x}}" y="{{b.y}}" width="{{b.w}}" height="{{b.h}}" rx="2" fill="{{b.color}}" style="animation-delay: {{b.delay}};"></rect>
+                    </sc-for>
+                    <text x="1" y="64" font-family="JetBrains Mono, monospace" font-size="8" font-weight="600" fill="{{c.faint}}">wk28</text>
+                    <text x="239" y="64" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="8" font-weight="600" fill="{{c.faint}}">wk40</text>
+                  </svg>
+                </sc-if>
+                <sc-if value="{{showSmallTable}}" hint-placeholder-val="{{false}}">
+                  <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color: {{c.mute}};">This week</span><span style="font-weight: 700;">{{sm.current}}</span></div>
+                  <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color: {{c.mute}};">13-wk avg</span><span style="font-weight: 700;">{{sm.avg}}</span></div>
+                  <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color: {{c.mute}};">Company min</span><span style="font-weight: 700;">{{sm.min}}</span></div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+
+      </div>
+      </sc-if>
+
+      <sc-if value="{{isProduction}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 20px; animation: {{sectionAnim}} 280ms cubic-bezier(0.32,0.72,0,1) both;">
+
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="display: flex; gap: 6px;">
+              <sc-for list="{{prodChips}}" as="ch" hint-placeholder-count="3">
+                <button onClick="{{ch.pick}}" aria-pressed="{{ch.on}}" style="height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid {{ch.border}}; background: {{ch.bg}}; color: {{ch.color}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{ch.label}}</button>
+              </sc-for>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 16px; background: {{c.accentTint}}; color: {{c.accent}};">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.04em;">HEAD OFFICE DATA · AS OF 25-09-2026</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button style="height: 44px; padding: 0 18px; border-radius: 12px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Download PDF</button>
+            <button style="height: 44px; padding: 0 18px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Share with my manager</button>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;">
+          <sc-for list="{{prodKpis}}" as="k" hint-placeholder-count="4">
+            <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 15px; padding: 14px; display: flex; flex-direction: column; gap: 5px;">
+              <span style="font-size: 12px; color: {{c.mute}};">{{k.label}}</span>
+              <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; color: {{k.color}};">{{k.big}}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;">
+
+          <section aria-label="API by month" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between;">
+              <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700;">API by month — on pace for TTD 87,146 settled</h2>
+              <button onClick="{{toggleApiTable}}" style="height: 26px; padding: 0 6px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700; flex-shrink: 0;">{{apiTableLabel}}</button>
+            </div>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE SPLIT · TOTAL SETTLED IS REAL</span>
+            <sc-if value="{{showApiChart}}" hint-placeholder-val="{{true}}">
+              <svg width="100%" height="176" viewBox="0 0 460 176" role="img" aria-label="API settled by month, Jan to Sep 2026, TTD 87,146 total">
+                <sc-for list="{{apiBars}}" as="b" hint-placeholder-count="9">
+                  <rect class="numBarY" x="{{b.x}}" y="{{b.y}}" width="{{b.w}}" height="{{b.h}}" rx="3" fill="{{c.cat0}}" style="height: {{b.h}}px; y: {{b.y}}px; animation-delay: {{b.delay}}; transition: height 480ms cubic-bezier(0.32, 0.72, 0, 1), y 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+                  <sc-if value="{{b.hasGhost}}" hint-placeholder-val="{{false}}">
+                    <rect class="numBarY" x="{{b.x}}" y="{{b.ghostY}}" width="{{b.w}}" height="{{b.ghostH}}" rx="3" fill="{{c.ghost}}" style="height: {{b.ghostH}}px; y: {{b.ghostY}}px; animation-delay: {{b.delay}}; transition: height 480ms cubic-bezier(0.32, 0.72, 0, 1), y 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+                  </sc-if>
+                  <text x="{{b.labelX}}" y="150" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600" fill="{{c.faint}}">{{b.label}}</text>
+                </sc-for>
+                <text x="4" y="16" font-family="Onest, sans-serif" font-size="11" font-weight="700" fill="{{c.ink}}">TTD 87,146</text>
+              </svg>
+              <span style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: {{c.mute}};"><span style="width: 10px; height: 10px; border-radius: 2px; background: {{c.ghost}};"></span>Submitted, not settled (TTD 36,000)</span>
+            </sc-if>
+            <sc-if value="{{showApiTable}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <sc-for list="{{apiRows}}" as="ar" hint-placeholder-count="9"><div style="display: flex; justify-content: space-between; font-size: 12px; color: {{c.mute}};"><span>{{ar.label}}</span><span style="color: {{c.ink}}; font-weight: 700;">{{ar.val}}</span></div></sc-for>
+              </div>
+            </sc-if>
+          </section>
+
+          <section aria-label="Applications by month" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between;">
+              <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700;">Applications by month — 5 settled, 1 waiting</h2>
+              <button onClick="{{toggleAppsTable}}" style="height: 26px; padding: 0 6px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700; flex-shrink: 0;">{{appsTableLabel}}</button>
+            </div>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE SPLIT · TOTAL APPS IS REAL</span>
+            <sc-if value="{{showAppsChart}}" hint-placeholder-val="{{true}}">
+              <svg width="100%" height="176" viewBox="0 0 460 176" role="img" aria-label="Applications settled by month, Jan to Sep 2026, 5 total">
+                <sc-for list="{{appsBars}}" as="b" hint-placeholder-count="9">
+                  <rect class="numBarY" x="{{b.x}}" y="{{b.y}}" width="{{b.w}}" height="{{b.h}}" rx="3" fill="{{c.cat0}}" style="height: {{b.h}}px; y: {{b.y}}px; animation-delay: {{b.delay}}; transition: height 480ms cubic-bezier(0.32, 0.72, 0, 1), y 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+                  <sc-if value="{{b.hasGhost}}" hint-placeholder-val="{{false}}">
+                    <rect class="numBarY" x="{{b.x}}" y="{{b.ghostY}}" width="{{b.w}}" height="{{b.ghostH}}" rx="3" fill="{{c.ghost}}" style="height: {{b.ghostH}}px; y: {{b.ghostY}}px; animation-delay: {{b.delay}}; transition: height 480ms cubic-bezier(0.32, 0.72, 0, 1), y 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+                  </sc-if>
+                  <text x="{{b.labelX}}" y="150" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600" fill="{{c.faint}}">{{b.label}}</text>
+                  <sc-if value="{{b.hasCount}}" hint-placeholder-val="{{false}}"><text x="{{b.labelX}}" y="{{b.countY}}" text-anchor="middle" font-family="Onest, sans-serif" font-size="10" font-weight="700" fill="{{c.ink}}">{{b.count}}</text></sc-if>
+                </sc-for>
+              </svg>
+              <span style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: {{c.mute}};"><span style="width: 10px; height: 10px; border-radius: 2px; background: {{c.ghost}};"></span>Submitted, not settled (1 app)</span>
+            </sc-if>
+            <sc-if value="{{showAppsTable}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <sc-for list="{{appsRows}}" as="ar" hint-placeholder-count="9"><div style="display: flex; justify-content: space-between; font-size: 12px; color: {{c.mute}};"><span>{{ar.label}}</span><span style="color: {{c.ink}}; font-weight: 700;">{{ar.val}}</span></div></sc-for>
+              </div>
+            </sc-if>
+          </section>
+
+        </div>
+
+        <section aria-label="By product" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700;">By product — whole life leads at 46%</h2>
+            <button onClick="{{toggleProductTable}}" style="height: 26px; padding: 0 6px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700;">{{productTableLabel}}</button>
+          </div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span>
+          <sc-if value="{{showProductChart}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <sc-for list="{{products}}" as="p" hint-placeholder-count="4">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="width: 90px; flex-shrink: 0; font-size: 12.5px; font-weight: 600;">{{p.label}}</span>
+                  <svg width="100%" height="20" viewBox="0 0 400 20" role="img" aria-label="{{p.label}}: {{p.pct}} percent">
+                    <rect x="0" y="3" width="400" height="14" rx="7" fill="{{c.sunk}}"></rect>
+                    <rect class="numBarX" x="0" y="3" width="{{p.barW}}" height="14" rx="7" fill="{{c.cat0}}"></rect>
+                  </svg>
+                  <span style="width: 40px; flex-shrink: 0; text-align: right; font-size: 12.5px; font-weight: 700;">{{p.pct}}%</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{showProductTable}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <sc-for list="{{products}}" as="p" hint-placeholder-count="4"><div style="display: flex; justify-content: space-between; font-size: 12px; color: {{c.mute}};"><span>{{p.label}}</span><span style="color: {{c.ink}}; font-weight: 700;">{{p.pct}}%</span></div></sc-for>
+            </div>
+          </sc-if>
+        </section>
+
+      </div>
+      </sc-if>
+
+      <sc-if value="{{isSources}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 20px; animation: {{sectionAnim}} 280ms cubic-bezier(0.32,0.72,0,1) both;">
+
+        <p style="margin: 0; font-size: 13px; color: {{c.mute}}; line-height: 1.4; max-width: 760px;">Calls made in another app can count as yours. See where your new names come from below, or link an app so it can send calls in.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;">
+
+          <section aria-label="New names by source" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between;">
+              <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700;">New names by source — referrals close best</h2>
+              <button onClick="{{toggleSourceTable}}" style="height: 26px; padding: 0 6px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700; flex-shrink: 0;">{{sourceTableLabel}}</button>
+            </div>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span>
+            <sc-if value="{{showSourceChart}}" hint-placeholder-val="{{true}}">
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <sc-for list="{{sourceBars}}" as="s" hint-placeholder-count="5">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="width: 100px; flex-shrink: 0; font-size: 12.5px; font-weight: 600;">{{s.label}}</span>
+                    <svg width="100%" height="20" viewBox="0 0 400 20" role="img" aria-label="{{s.label}}: {{s.count}} new names">
+                      <rect x="0" y="3" width="400" height="14" rx="7" fill="{{c.sunk}}"></rect>
+                      <rect class="numBarX" x="0" y="3" width="{{s.barW}}" height="14" rx="7" fill="{{c.cat0}}" style="width: {{s.barW}}px; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+                    </svg>
+                    <span style="width: 34px; flex-shrink: 0; text-align: right; font-size: 12.5px; font-weight: 700;">{{s.count}}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{showSourceTable}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <sc-for list="{{sourceBars}}" as="s" hint-placeholder-count="5"><div style="display: flex; justify-content: space-between; font-size: 12px; color: {{c.mute}};"><span>{{s.label}}</span><span style="color: {{c.ink}}; font-weight: 700;">{{s.count}}</span></div></sc-for>
+              </div>
+            </sc-if>
+          </section>
+
+          <section aria-label="Which sources turn into sales" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between;">
+              <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700;">Which sources turn into sales</h2>
+              <button onClick="{{toggleConvTable}}" style="height: 26px; padding: 0 6px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700; flex-shrink: 0;">{{convTableLabel}}</button>
+            </div>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE · CONVERSION TO SALE</span>
+            <sc-if value="{{showConvChart}}" hint-placeholder-val="{{true}}">
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <sc-for list="{{convBars}}" as="s" hint-placeholder-count="5">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="width: 100px; flex-shrink: 0; font-size: 12.5px; font-weight: 600;">{{s.label}}</span>
+                    <svg width="100%" height="20" viewBox="0 0 400 20" role="img" aria-label="{{s.label}}: {{s.pct}} percent conversion">
+                      <rect x="0" y="3" width="400" height="14" rx="7" fill="{{c.sunk}}"></rect>
+                      <rect class="numBarX" x="0" y="3" width="{{s.barW}}" height="14" rx="7" fill="{{c.cat0}}" style="width: {{s.barW}}px; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+                    </svg>
+                    <span style="width: 34px; flex-shrink: 0; text-align: right; font-size: 12.5px; font-weight: 700;">{{s.pct}}%</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{showConvTable}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <sc-for list="{{convBars}}" as="s" hint-placeholder-count="5"><div style="display: flex; justify-content: space-between; font-size: 12px; color: {{c.mute}};"><span>{{s.label}}</span><span style="color: {{c.ink}}; font-weight: 700;">{{s.pct}}%</span></div></sc-for>
+              </div>
+            </sc-if>
+          </section>
+
+        </div>
+
+        <div style="display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 20px; align-items: start;">
+
+          <section aria-label="Linked sources" style="min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Linked sources</h2>
+            <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; overflow: hidden;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="height: 40px;">
+                    <th style="text-align: left; padding: 0 14px; font-size: 11px; font-weight: 600; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">Source</th>
+                    <th style="text-align: left; padding: 0 14px; font-size: 11px; font-weight: 600; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">Linked</th>
+                    <th style="text-align: left; padding: 0 14px; font-size: 11px; font-weight: 600; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">Last call</th>
+                    <th style="padding: 0 14px; border-bottom: 1px solid {{c.rule}};"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-if value="{{hasLink}}" hint-placeholder-val="{{true}}">
+                    <tr class="num-row" style="height: 60px;">
+                      <td style="padding: 0 14px;">
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                          <span style="font-size: 14px; font-weight: 700;">Tracy-ann Nurse (assistant)</span>
+                          <span style="font-size: 11px; color: {{c.mute}};">kqm-calls · user kqm-user-77</span>
+                        </div>
+                      </td>
+                      <td style="padding: 0 14px; font-size: 13px; color: {{c.mute}};">12-09-2026</td>
+                      <td style="padding: 0 14px; font-size: 13px; color: {{c.mute}};">26-09-2026</td>
+                      <td style="padding: 0 14px; text-align: right;">
+                        <button onClick="{{revoke}}" style="height: 38px; padding: 0 14px; border-radius: 11px; border: 1px solid {{c.warm}}; background: transparent; color: {{c.warm}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">Revoke</button>
+                      </td>
+                    </tr>
+                  </sc-if>
+                  <sc-if value="{{noLink}}" hint-placeholder-val="{{false}}">
+                    <tr><td colspan="4" style="padding: 28px 14px; text-align: center; font-size: 12px; color: {{c.faint}};">No linked sources yet.</td></tr>
+                  </sc-if>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section aria-label="Add a call source" style="min-width: 0; display: flex; flex-direction: column; gap: 12px;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Add a source</h2>
+            <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="d3n-cslabel" style="font-size: 12px; font-weight: 600; color: {{c.mute}};">Label</label>
+                <input id="d3n-cslabel" placeholder="e.g. Tracy-ann Nurse (assistant)" style="height: 40px; box-sizing: border-box; border-radius: 11px; border: 1px solid {{c.rule}}; background: {{c.bg}}; color: {{c.ink}}; padding: 0 12px; font-family: 'Onest', sans-serif; font-size: 13px;">
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="d3n-cssource" style="font-size: 12px; font-weight: 600; color: {{c.mute}};">Source system</label>
+                <input id="d3n-cssource" value="kqm-calls" style="height: 40px; box-sizing: border-box; border-radius: 11px; border: 1px solid {{c.rule}}; background: {{c.bg}}; color: {{c.ink}}; padding: 0 12px; font-family: 'Onest', sans-serif; font-size: 13px;">
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="d3n-csuser" style="font-size: 12px; font-weight: 600; color: {{c.mute}};">Source user ID</label>
+                <input id="d3n-csuser" placeholder="e.g. kqm-user-77" style="height: 40px; box-sizing: border-box; border-radius: 11px; border: 1px solid {{c.rule}}; background: {{c.bg}}; color: {{c.ink}}; padding: 0 12px; font-family: 'Onest', sans-serif; font-size: 13px;">
+              </div>
+              <button onClick="{{createKey}}" style="height: 40px; border-radius: 11px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Create link key</button>
+            </div>
+            <sc-if value="{{showKey}}" hint-placeholder-val="{{false}}">
+              <div aria-label="New key" style="background: {{c.accentTint}}; border: 1px solid {{c.accent}}; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: {{c.ink}}; word-break: break-all;">cs_live_[shown once]</span>
+                <button onClick="{{copyKey}}" style="align-self: flex-start; height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid {{c.accent}}; background: {{c.surface}}; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">{{copyLabel}}</button>
+                <span style="font-size: 11px; color: {{c.warm}}; font-weight: 600; line-height: 1.4;">Copy it now. You will not see this key again.</span>
+                <button onClick="{{doneKey}}" style="height: 38px; border-radius: 10px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">Done</button>
+              </div>
+            </sc-if>
+          </section>
+
+        </div>
+
+      </div>
+      </sc-if>
+
+      <sc-if value="{{isHistory}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 18px; animation: {{sectionAnim}} 280ms cubic-bezier(0.32,0.72,0,1) both;">
+
+        <section aria-label="52-week report calendar" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">52-week report calendar — <span style="color: {{c.gold}};">13-week streak</span> running</h2>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button onClick="{{toggleHeatTable}}" style="height: 26px; padding: 0 6px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700;">{{heatTableLabel}}</button>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE POINTS EXCEPT WEEKS 37–39</span>
+            </div>
+          </div>
+          <sc-if value="{{showHeatChart}}" hint-placeholder-val="{{true}}">
+            <div style="display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 5px;">
+              <sc-for list="{{heatSquares}}" as="s" hint-placeholder-count="52">
+                <span aria-label="{{s.aria}}" style="width: 100%; aspect-ratio: 1 / 1; border-radius: 4px; background: {{s.color}}; box-sizing: border-box; border: {{s.ring}}; transition: border-color 320ms cubic-bezier(0.32, 0.72, 0, 1);"></span>
+              </sc-for>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 11px; color: {{c.mute}};">Fewer</span>
+              <div style="display: flex; gap: 3px;">
+                <sc-for list="{{legendSwatches}}" as="lg" hint-placeholder-count="5"><span style="width: 16px; height: 10px; border-radius: 2px; background: {{lg.color}};"></span></sc-for>
+              </div>
+              <span style="font-size: 11px; color: {{c.mute}};">More</span>
+              <span style="flex-grow: 1;"></span>
+              <span style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: {{c.mute}};"><span style="width: 10px; height: 10px; border-radius: 2px; background: transparent; border: 2px solid {{c.gold}};"></span>Current streak (weeks 28–40)</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{showHeatTable}}" hint-placeholder-val="{{false}}">
+            <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 16px; max-height: 220px; overflow-y: auto;">
+              <sc-for list="{{heatRows}}" as="hr" hint-placeholder-count="40"><div style="display: flex; justify-content: space-between; font-size: 11.5px; color: {{c.mute}};"><span>Wk {{hr.num}}</span><span style="color: {{c.ink}}; font-weight: 700;">{{hr.pts}}</span></div></sc-for>
+            </div>
+          </sc-if>
+        </section>
+
+        <div role="tablist" aria-label="Weekly or daily" style="width: 380px; height: 44px; box-sizing: border-box; padding: 3px; border-radius: 13px; background: {{c.sunk}}; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px;">
+          <sc-for list="{{histTabs}}" as="t" hint-placeholder-count="2">
+            <button role="tab" aria-selected="{{t.selected}}" onClick="{{t.pick}}" style="height: 38px; border: 0; border-radius: 10px; background: {{t.bg}}; color: {{t.color}}; box-shadow: {{t.shadow}}; font-family: 'Onest', sans-serif; font-size: 13.5px; font-weight: 700;">{{t.label}}</button>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{weeklyOn}}" hint-placeholder-val="{{true}}">
+        <section aria-label="Weekly reports" style="display: flex; flex-direction: column; gap: 8px; animation: {{weekFadeAnim}};">
+          <table style="width: 100%; border-collapse: collapse; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; overflow: hidden;">
+            <thead>
+              <tr>
+                <th style="width: 70px; text-align: left; padding: 0 14px; height: 44px; font-size: 12px; font-weight: 600; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">Week</th>
+                <th style="text-align: left; padding: 0 14px; height: 44px; font-size: 12px; font-weight: 600; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">Sunday start</th>
+                <th style="text-align: right; padding: 0 14px; height: 44px; font-size: 12px; font-weight: 600; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">Points</th>
+                <th style="text-align: right; padding: 0 14px; height: 44px; font-size: 12px; font-weight: 600; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">API</th>
+                <th style="width: 130px; text-align: left; padding: 0 14px; height: 44px; font-size: 12px; font-weight: 600; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">Trend</th>
+                <th style="width: 150px; text-align: left; padding: 0 14px; height: 44px; font-size: 12px; font-weight: 600; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">Status</th>
+                <th style="width: 44px; border-bottom: 1px solid {{c.rule}};"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{weeks}}" as="w" hint-placeholder-count="13">
+                <tr class="num-row" style="height: 58px;">
+                  <td style="padding: 0 14px; font-size: 15px; font-weight: 700; border-bottom: 1px solid {{c.rule}};">{{w.num}}</td>
+                  <td style="padding: 0 14px; font-size: 13px; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">{{w.sunday}}</td>
+                  <td style="padding: 0 14px; text-align: right; font-size: 14px; font-weight: 700; border-bottom: 1px solid {{c.rule}};">{{w.pts}}</td>
+                  <td style="padding: 0 14px; text-align: right; font-size: 13px; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">{{w.api}}</td>
+                  <td style="padding: 0 14px; border-bottom: 1px solid {{c.rule}};">
+                    <svg width="90" height="26" viewBox="0 0 90 26" aria-hidden="true"><polyline points="{{w.sparkPts}}" fill="none" stroke="{{c.cat0}}" stroke-width="1.6"></polyline></svg>
+                  </td>
+                  <td style="padding: 0 14px; border-bottom: 1px solid {{c.rule}};">
+                    <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 12px; background: {{w.statusBg}}; color: {{w.statusFg}}; font-size: 11.5px; font-weight: 700;">{{w.status}}</span>
+                  </td>
+                  <td style="padding: 0 14px; text-align: right; border-bottom: 1px solid {{c.rule}};">
+                    <a onClick="{{go.Report}}" href="D2-Report.dc.html" aria-label="Open week {{w.num}} report" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{c.faint}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+                    </a>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </section>
+        </sc-if>
+
+        <sc-if value="{{dailyOn}}" hint-placeholder-val="{{false}}">
+        <section aria-label="Daily logs" style="display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span>
+          <table style="width: 100%; border-collapse: collapse; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; overflow: hidden;">
+            <thead>
+              <tr>
+                <th style="width: 160px; text-align: left; padding: 0 16px; height: 44px; font-size: 12px; font-weight: 600; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">Date</th>
+                <th style="text-align: left; padding: 0 16px; height: 44px; font-size: 12px; font-weight: 600; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">Activity</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{days}}" as="d" hint-placeholder-count="5">
+                <tr class="num-row" style="height: 52px;">
+                  <td style="padding: 0 16px; font-size: 14px; font-weight: 700; border-bottom: 1px solid {{c.rule}};">{{d.date}}</td>
+                  <td style="padding: 0 16px; font-size: 14px; color: {{c.mute}}; border-bottom: 1px solid {{c.rule}};">{{d.summary}}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </section>
+        </sc-if>
+
+        <button style="align-self: flex-start; height: 44px; padding: 0 20px; border-radius: 14px; border: 1px solid {{c.rule}}; background: {{c.surface}}; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; color: {{c.ink}};">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"></path></svg>
+          Download my history (CSV)</button>
+
+      </div>
+      </sc-if>
+
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const initTab = (props.params && props.params.tab) || 'Scorecard';
+    this.state = {
+      tab: initTab, animFlip: false, period: 1,
+      prodPeriod: 0,
+      coachOpen: [false, false, false], coachVote: [0, 0, 0],
+      tableOn: { small: false, api: false, apps: false, product: false, source: false, conv: false, heat: false },
+      histTab: 0,
+      revoked: false, showKey: false, copied: false,
+      dispKpis: null, kpiFlip: false, weekFlip: false
+    };
+    this._kpiTimer = null;
+  }
+  componentWillUnmount() {
+    if (this._kpiTimer) clearInterval(this._kpiTimer);
+  }
+  animateKpis(from, to) {
+    if (this._kpiTimer) clearInterval(this._kpiTimer);
+    const start = Date.now(), dur = 420;
+    this._kpiTimer = setInterval(() => {
+      const t = Math.min(1, (Date.now() - start) / dur);
+      const e = 1 - Math.pow(1 - t, 3);
+      this.setState({ dispKpis: from.map((f, i) => f + (to[i] - f) * e) });
+      if (t >= 1) { clearInterval(this._kpiTimer); this._kpiTimer = null; }
+    }, 30);
+  }
+  hexToRgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  mix(a, b, t) {
+    const ar = this.hexToRgb(a), br = this.hexToRgb(b);
+    const m = (x, y) => Math.round(x + (y - x) * t);
+    return 'rgb(' + m(ar[0], br[0]) + ',' + m(ar[1], br[1]) + ',' + m(ar[2], br[2]) + ')';
+  }
+  sparkPoints(vals, w, h, pad) {
+    const maxV = Math.max.apply(null, vals), minV = Math.min.apply(null, vals);
+    const range = Math.max(1, maxV - minV);
+    const n = vals.length;
+    const step = n > 1 ? (w - pad * 2) / (n - 1) : 0;
+    const coords = vals.map((v, i) => (pad + i * step).toFixed(1) + ',' + (h - pad - ((v - minV) / range) * (h - pad * 2)).toFixed(1));
+    const lastX = (pad + (n - 1) * step).toFixed(1);
+    const lastY = (h - pad - ((vals[n - 1] - minV) / range) * (h - pad * 2)).toFixed(1);
+    return { points: coords.join(' '), lastX: lastX, lastY: lastY };
+  }
+  seriesFor(base, seed, n) {
+    return Array.from({ length: n }, (_, i) => Math.max(0, Math.round(base * (0.72 + 0.28 * Math.sin(i * 0.65 + seed) + i * 0.01))));
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', sideBg: '#EFEBE2', glass: 'rgba(246,243,236,0.9)', pane: '#FBFAF6', sel: '#DCEAE7', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', sideBg: '#181816', glass: 'rgba(19,19,17,0.9)', pane: '#171714', sel: '#16312F', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = Object.assign({}, this.props.dark ? dark : light);
+    c.cat0 = c.cat[0];
+    const s = this.state;
+    const cat0 = c.cat[0];
+
+    const toast = (m) => { if (this.props.onNav) this.props.onNav('event:toast:' + m); };
+    const go = {};
+    go.Report = (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('Report'); } };
+    go.Week = (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('Week'); } };
+    go.MoneyPersistency = (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('Money?tab=Persistency'); } };
+
+    // ---- toolbar: section tabs ----
+    const switchTab = (id) => () => this.setState({ tab: id, animFlip: !s.animFlip });
+    const tabDefs = [['Scorecard', 'Scorecard'], ['Production', 'Production report'], ['Sources', 'Call sources'], ['History', 'History']];
+    const tabs = tabDefs.map((d) => {
+      const on = d[0] === s.tab;
+      return { label: d[1], on: on ? 'true' : 'false', bg: on ? c.surface : 'transparent', color: on ? c.accent : c.mute, shadow: on ? '0 1px 2px rgba(0,0,0,0.10)' : 'none', pick: switchTab(d[0]) };
+    });
+    const sectionAnim = s.animFlip ? 'numTabA' : 'numTabB';
+
+    // ---- toolbar: global period chips (rescales SAMPLE data) ----
+    const ratioKeys = ['closing', 'activity', 'f2f', 'present'];
+    const ratioValsFor = (p) => ratioKeys.map((k) => ratioTable[k].rows[p]);
+    const periodDefs = ['4W', '13W', '26W', 'YTD'];
+    const periods = periodDefs.map((label, i) => {
+      const on = i === s.period;
+      return {
+        label: label, on: on ? 'true' : 'false', bg: on ? c.surface : 'transparent', color: on ? c.ink : c.mute, shadow: on ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+        pick: () => {
+          const fromVals = s.dispKpis || ratioValsFor(s.period);
+          this.animateKpis(fromVals, ratioValsFor(i));
+          this.setState({ period: i, kpiFlip: !s.kpiFlip, weekFlip: !s.weekFlip });
+        }
+      };
+    });
+    const periodLabels = ['last 4 weeks', 'last 13 weeks', 'last 26 weeks', 'year to date'];
+    const periodLabel = periodLabels[s.period];
+    // ---- shared period → range helpers (drives Production/Sources/History too) ----
+    const periodMonthStart = [8, 6, 3, 0][s.period]; // 4W=Sep only, 13W=Jul-Sep, 26W=Apr-Sep, YTD=Jan-Sep
+    const periodWeekScale = [4, 13, 26, 39][s.period] / 13;
+    const periodWeekStart = [37, 28, 15, 1][s.period];
+    const weekFadeAnim = (s.weekFlip ? 'numTabA' : 'numTabB') + ' 260ms cubic-bezier(0.32, 0.72, 0, 1) both';
+
+    // ================= SCORECARD =================
+    // ratio tiles rescale with the global period chip; deltas always compare the most recent week
+    const ratioTable = {
+      closing: { rows: [38, 40, 42, 37], delta: 2 },
+      activity: { rows: [67, 65, 64, 66], delta: -1 },
+      f2f: { rows: [81, 79, 77, 80], delta: 3 },
+      present: { rows: [12, 14, 13, 15], delta: 1 }
+    };
+    const kpiDefs = [
+      { key: 'closing', label: 'Closing ratio — applications ÷ closing interviews', unit: '%', sample: true, seed: 0.4 },
+      { key: 'activity', label: 'Activity efficiency — contacts ÷ dials', unit: '%', sample: true, seed: 1.1 },
+      { key: 'f2f', label: 'Face-to-face success — kept ÷ appointments set', unit: '%', sample: true, seed: 2.0 },
+      { key: 'present', label: 'Presentation-to-close — applications ÷ fact finds', unit: '%', sample: true, seed: 2.8 }
+    ];
+    const kpis = kpiDefs.map((d, idx) => {
+      const rt = ratioTable[d.key];
+      const targetVal = rt.rows[s.period];
+      const val = s.dispKpis ? Math.round(s.dispKpis[idx]) : targetVal;
+      const delta = rt.delta;
+      const spark = this.seriesFor(targetVal, d.seed + s.period * 0.15, 12);
+      const sp = this.sparkPoints(spark, 96, 24, 3);
+      const up = delta >= 0;
+      return {
+        label: d.label, big: val + d.unit, sample: 'true',
+        sparkPts: sp.points, sparkLastX: sp.lastX, sparkLastY: sp.lastY,
+        sparkAnim: (s.kpiFlip ? 'numKpiFadeA' : 'numKpiFadeB') + ' 320ms cubic-bezier(0.32, 0.72, 0, 1) both',
+        deltaColor: up ? c.accent : c.warm, arrowRot: up ? 'none' : 'rotate(180deg)',
+        deltaText: (up ? '+' : '') + delta + 'pts'
+      };
+    });
+    // API tiles — grounded figures, not sample
+    const mdrtGoal = 688800, ytdApi = 87146;
+    const ytdPct = Math.round((ytdApi / mdrtGoal) * 1000) / 10;
+    const mtdMin = 4800 * 4, mtdApi = 21400;
+    const mtdPct = Math.round((mtdApi / mtdMin) * 100);
+    const apiSpark1 = [40, 48, 55, 60, 68, 74, 79, 83, 88, 92, 96, 100].map((v) => Math.round(ytdApi * v / 100));
+    const apiSpark2 = [10, 22, 30, 44, 52, 58, 66, 72, 80, 86, 93, 100].map((v) => Math.round(mtdApi * v / 100));
+    const sp1 = this.sparkPoints(apiSpark1, 96, 24, 3);
+    const sp2 = this.sparkPoints(apiSpark2, 96, 24, 3);
+    kpis.push({
+      label: 'YTD API progress — TTD 87,146 of MDRT 688,800', big: ytdPct + '%', sample: 'false',
+      sparkPts: sp1.points, sparkLastX: sp1.lastX, sparkLastY: sp1.lastY, sparkAnim: 'none',
+      deltaColor: c.accent, arrowRot: 'none', deltaText: '+1.1pt'
+    });
+    kpis.push({
+      label: 'MTD API progress — TTD ' + mtdApi.toLocaleString('en-US') + ' of TTD ' + mtdMin.toLocaleString('en-US') + ' minimum', big: mtdPct + '%', sample: 'false',
+      sparkPts: sp2.points, sparkLastX: sp2.lastX, sparkLastY: sp2.lastY, sparkAnim: 'none',
+      deltaColor: mtdPct >= 100 ? c.accent : c.warm, arrowRot: mtdPct >= 100 ? 'none' : 'rotate(180deg)', deltaText: (mtdPct >= 100 ? '+' : '') + Math.round(mtdPct - 100) + 'pt'
+    });
+
+    // ---- Coach ----
+    const toggleWhy = (i) => () => { const arr = s.coachOpen.slice(); arr[i] = !arr[i]; this.setState({ coachOpen: arr }); };
+    const vote = (i, v) => () => { const arr = s.coachVote.slice(); arr[i] = (arr[i] === v ? 0 : v); this.setState({ coachVote: arr }); };
+    const insightDefs = [
+      {
+        text: 'Reinstating TTD 7,100 is worth more than a new sale this month — it lifts your Christmas prize from 50% to 100%.',
+        why: 'Christmas Campaign & Retreat 2026: settled TTD 73,946 of TTD 275,000.\nPersistency 86.6% (gate 90%) keeps you in the 50% band.\nReinstating TTD 7,100 clears the 90% gate, moving you to the 100% band.',
+        action: 'See at-risk policies', href: 'D3-Money.dc.html', go: go.MoneyPersistency
+      },
+      {
+        text: 'Your contacts turn into appointments best on Tuesday mornings (SAMPLE).',
+        why: 'Tuesday 9–11am: 61% of contacts become appointments (SAMPLE).\nAll other times: 38% (SAMPLE).\nAcross your last 13 weeks (SAMPLE).',
+        action: 'Block Tuesday 9–11', href: 'D2-Week.dc.html', go: go.Week
+      },
+      {
+        text: 'Fact finds to closing interviews is 40% vs your 13-week 55% (SAMPLE).',
+        why: 'This week: 4 closing interviews from 10 fact finds = 40% (SAMPLE).\nYour 13-week average is 55% (SAMPLE).',
+        action: 'Practise the close', href: '#', go: (e) => { e.preventDefault(); toast('Opens a practice script for the closing interview'); }
+      }
+    ];
+    const insights = insightDefs.map((d, i) => {
+      const upOn = s.coachVote[i] === 1, downOn = s.coachVote[i] === -1;
+      return {
+        text: d.text, why: d.why, action: d.action, actionHref: d.href, actionGo: d.go,
+        whyOpen: s.coachOpen[i], whyRot: s.coachOpen[i] ? 'rotate(180deg)' : 'none', toggleWhy: toggleWhy(i),
+        upLabel: 'Mark insight ' + (i + 1) + ' helpful', downLabel: 'Mark insight ' + (i + 1) + ' not helpful',
+        upOn: upOn ? 'true' : 'false', downOn: downOn ? 'true' : 'false',
+        upBg: upOn ? c.accentTint : 'transparent', upFg: upOn ? c.accent : c.faint,
+        downBg: downOn ? c.warmTint : 'transparent', downFg: downOn ? c.warm : c.faint,
+        up: vote(i, 1), down: vote(i, -1)
+      };
+    });
+
+    // ---- 13 weeks of activity (fixed window, weeks 28-40) ----
+    const smallDefs = [
+      { key: 'dials', title: 'Dials', base: 48, min: 60, seed: 0.2 },
+      { key: 'contacts', title: 'Contacts', base: 31, min: 40, seed: 0.9 },
+      { key: 'appts', title: 'Appointments set', base: 14, min: 20, seed: 1.6 },
+      { key: 'ff', title: 'Fact finds', base: 7, min: 10, seed: 2.3 },
+      { key: 'ci', title: 'Closing interviews', base: 4, min: 10, seed: 3.0 },
+      { key: 'apps', title: 'Applications', base: 1, min: 1, seed: 3.7 }
+    ];
+    const chartW = 240, chartH = 66, barGap = 3;
+    const small = smallDefs.map((d) => {
+      const series = this.seriesFor(d.base, d.seed, 13);
+      const maxUnit = Math.max(d.min, Math.max.apply(null, series));
+      const barW = (chartW / 13) - barGap;
+      const minY = 50 - Math.min(46, Math.round((d.min / maxUnit) * 46));
+      const avg = Math.round(series.reduce((a, b) => a + b, 0) / series.length);
+      const bars = series.map((v, i) => {
+        const h = Math.max(2, Math.round((v / maxUnit) * 46));
+        return { x: (i * (chartW / 13)).toFixed(1), y: (50 - h).toFixed(1), w: barW.toFixed(1), h: h, color: i === series.length - 1 ? cat0 : c.ghost, delay: (i * 25) + 'ms' };
+      });
+      return {
+        title: d.title, aria: d.title + ': ' + series[series.length - 1] + ' this week vs a ' + d.min + ' minimum',
+        bars: bars, min: d.min, minY: minY.toFixed(1), minTy: (minY - 3).toFixed(1),
+        current: series[series.length - 1], avg: avg
+      };
+    });
+    const toggleSmallTable = () => this.setState({ tableOn: Object.assign({}, s.tableOn, { small: !s.tableOn.small }) });
+
+    // ================= PRODUCTION REPORT =================
+    const prodChips = ['Sep-2026', 'Q3', '2026 YTD'].map((label, i) => {
+      const on = i === s.prodPeriod;
+      return { label: label, on: on ? 'true' : 'false', bg: on ? c.accent : c.surface, color: on ? c.onAccent : c.mute, border: on ? c.accent : c.rule, pick: () => this.setState({ prodPeriod: i }) };
+    });
+    const prodKpis = [
+      { label: 'Settled API', big: 'TTD 87,146', color: c.ink },
+      { label: 'Apps', big: '5', color: c.ink },
+      { label: 'Submitted API', big: 'TTD 123,146', color: c.ink },
+      { label: 'Persistency', big: '86.6%', color: c.warm }
+    ];
+    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
+    const apiSettled = [4200, 6800, 5200, 9400, 7600, 11200, 8100, 10600, 24046];
+    const apiGhostSep = 36000;
+    const apiMax = Math.max.apply(null, apiSettled.map((v, i) => v + (i === apiSettled.length - 1 ? apiGhostSep : 0)));
+    const plotH = 130, plotW = 460, colW = plotW / 9;
+    const apiBars = monthLabels.map((label, i) => {
+      const inRange = i >= periodMonthStart;
+      const v = apiSettled[i];
+      const h = inRange ? Math.max(2, Math.round((v / apiMax) * plotH)) : 0;
+      const isSep = i === monthLabels.length - 1;
+      const hasGhost = isSep && inRange;
+      const ghostH = hasGhost ? Math.max(2, Math.round((apiGhostSep / apiMax) * plotH)) : 0;
+      const barW = 30;
+      const x = (i * colW + (colW - barW) / 2).toFixed(1);
+      return {
+        label: label, x: x, w: barW, y: (140 - h).toFixed(1), h: h, delay: (i * 40) + 'ms',
+        labelX: (i * colW + colW / 2).toFixed(1),
+        hasGhost: hasGhost, ghostY: hasGhost ? (140 - h - ghostH).toFixed(1) : '0', ghostH: ghostH
+      };
+    });
+    const apiRows = monthLabels.map((label, i) => ({ label: label + (i === 8 ? ' (+ TTD 36,000 submitted)' : ''), val: 'TTD ' + apiSettled[i].toLocaleString('en-US') }));
+    const appsSettled = [0, 1, 0, 1, 0, 1, 0, 1, 1];
+    const appsGhostSep = 1;
+    const appsMax = 2;
+    const appsBars = monthLabels.map((label, i) => {
+      const inRange = i >= periodMonthStart;
+      const v = appsSettled[i];
+      const h = inRange ? Math.max(2, Math.round((v / appsMax) * plotH)) : 0;
+      const isSep = i === monthLabels.length - 1;
+      const hasGhost = isSep && inRange;
+      const ghostH = hasGhost ? Math.max(2, Math.round((appsGhostSep / appsMax) * plotH)) : 0;
+      const barW = 30;
+      const x = (i * colW + (colW - barW) / 2).toFixed(1);
+      const total = inRange ? (v + (isSep ? appsGhostSep : 0)) : 0;
+      return {
+        label: label, x: x, w: barW, y: (140 - h).toFixed(1), h: h, delay: (i * 40) + 'ms',
+        labelX: (i * colW + colW / 2).toFixed(1),
+        hasGhost: hasGhost, ghostY: hasGhost ? (140 - h - ghostH).toFixed(1) : '0', ghostH: ghostH,
+        hasCount: total > 0, count: total, countY: hasGhost ? (140 - h - ghostH - 6).toFixed(1) : (140 - h - 6).toFixed(1)
+      };
+    });
+    const appsRows = monthLabels.map((label, i) => ({ label: label + (i === 8 ? ' (+ 1 submitted)' : ''), val: appsSettled[i] + ' app' + (appsSettled[i] === 1 ? '' : 's') }));
+    const products = [
+      { label: 'Whole life', pct: 46 }, { label: 'Term', pct: 27 }, { label: 'Education', pct: 18 }, { label: 'Annuity', pct: 9 }
+    ].map((p) => Object.assign({}, p, { barW: Math.round((p.pct / 46) * 400) }));
+
+    const toggleApiTable = () => this.setState({ tableOn: Object.assign({}, s.tableOn, { api: !s.tableOn.api }) });
+    const toggleAppsTable = () => this.setState({ tableOn: Object.assign({}, s.tableOn, { apps: !s.tableOn.apps }) });
+    const toggleProductTable = () => this.setState({ tableOn: Object.assign({}, s.tableOn, { product: !s.tableOn.product }) });
+
+    // ================= CALL SOURCES =================
+    // both counts and conversion % rescale with the global period chip (13W values are the baseline)
+    const sourceDefs = [
+      { label: 'Referrals', count: 42 }, { label: 'Cold canvass', count: 65 },
+      { label: 'Existing clients', count: 28 }, { label: 'Old names', count: 34 }, { label: 'Orphans', count: 51 }
+    ];
+    const sourceBarsRaw = sourceDefs.map((d) => ({ label: d.label, count: Math.max(0, Math.round(d.count * periodWeekScale)) }));
+    const sourceMax = Math.max.apply(null, sourceBarsRaw.map((d) => d.count)) || 1;
+    const sourceBars = sourceBarsRaw.map((d) => Object.assign({}, d, { barW: Math.round((d.count / sourceMax) * 400) }));
+    const convTable = {
+      'Referrals': [42, 38, 35, 37], 'Cold canvass': [14, 12, 11, 13],
+      'Existing clients': [29, 31, 33, 30], 'Old names': [21, 19, 17, 20], 'Orphans': [11, 9, 8, 10]
+    };
+    const convLabels = ['Referrals', 'Cold canvass', 'Existing clients', 'Old names', 'Orphans'];
+    const convDefs = convLabels.map((label) => ({ label: label, pct: convTable[label][s.period] }));
+    const convMax = Math.max.apply(null, convDefs.map((d) => d.pct));
+    const convBars = convDefs.map((d) => Object.assign({}, d, { barW: Math.round((d.pct / convMax) * 400) }));
+    const toggleSourceTable = () => this.setState({ tableOn: Object.assign({}, s.tableOn, { source: !s.tableOn.source }) });
+    const toggleConvTable = () => this.setState({ tableOn: Object.assign({}, s.tableOn, { conv: !s.tableOn.conv }) });
+
+    // ================= HISTORY =================
+    const missed = [5, 17];
+    const realPts = { 37: 705, 38: 760, 39: 820 };
+    const weekPts = (w) => {
+      if (missed.indexOf(w) !== -1) return 0;
+      if (realPts[w] !== undefined) return realPts[w];
+      if (w > 40) return -1;
+      if (w === 40) return 210;
+      return Math.max(80, Math.round(500 + 260 * Math.sin(w * 0.5) + w * 3));
+    };
+    let maxPts = 0;
+    for (let w = 1; w <= 40; w++) { const v = weekPts(w); if (v > maxPts) maxPts = v; }
+    const heatSquares = [];
+    for (let w = 1; w <= 52; w++) {
+      const v = weekPts(w);
+      const inStreak = w >= periodWeekStart && w <= 40;
+      if (v < 0) {
+        heatSquares.push({ color: c.sunk, ring: '1px dashed ' + c.rule, aria: 'Week ' + w + ', upcoming' });
+      } else {
+        const t = v / maxPts;
+        heatSquares.push({ color: this.mix(c.sunk, cat0, t), ring: inStreak ? '2px solid ' + c.gold : '2px solid transparent', aria: 'Week ' + w + ', ' + v + ' points' + (inStreak ? ', in current streak' : '') });
+      }
+    }
+    const legendSwatches = [0, 0.25, 0.5, 0.75, 1].map((t) => ({ color: this.mix(c.sunk, cat0, t) }));
+    const toggleHeatTable = () => this.setState({ tableOn: Object.assign({}, s.tableOn, { heat: !s.tableOn.heat }) });
+    const heatRows = [];
+    for (let w = 40; w >= 1; w--) { const v = weekPts(w); if (v >= 0) heatRows.push({ num: w, pts: v }); }
+
+    const histTabLabels = ['Weekly reports', 'Daily logs'];
+    const histTabs = histTabLabels.map((label, i) => {
+      const on = i === s.histTab;
+      return { label: label, selected: on ? 'true' : 'false', bg: on ? c.surface : 'transparent', color: on ? c.ink : c.mute, shadow: on ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', pick: () => this.setState({ histTab: i }) };
+    });
+    const weekMeta = [
+      { num: 40, sunday: '27-09-2026', pts: 210, api: 'TTD 6,100', status: 'In progress' },
+      { num: 39, sunday: '20-09-2026', pts: 820, api: 'TTD 9,800', status: 'Submitted on time' },
+      { num: 38, sunday: '13-09-2026', pts: 760, api: 'TTD 7,200', status: 'Submitted on time' },
+      { num: 37, sunday: '06-09-2026', pts: 705, api: 'TTD 5,600', status: 'Submitted on time' },
+      { num: 36, sunday: '30-08-2026', pts: 690, api: 'TTD 6,900', status: 'Submitted on time' },
+      { num: 35, sunday: '23-08-2026', pts: 640, api: 'TTD 4,300', status: 'Submitted late' },
+      { num: 34, sunday: '16-08-2026', pts: 720, api: 'TTD 8,100', status: 'Submitted on time' },
+      { num: 33, sunday: '09-08-2026', pts: 780, api: 'TTD 7,400', status: 'Submitted on time' },
+      { num: 32, sunday: '02-08-2026', pts: 660, api: 'TTD 5,100', status: 'Submitted on time' },
+      { num: 31, sunday: '26-07-2026', pts: 700, api: 'TTD 6,300', status: 'Submitted on time' },
+      { num: 30, sunday: '19-07-2026', pts: 610, api: 'TTD 4,800', status: 'Submitted on time' },
+      { num: 29, sunday: '12-07-2026', pts: 730, api: 'TTD 7,000', status: 'Submitted on time' },
+      { num: 28, sunday: '05-07-2026', pts: 650, api: 'TTD 5,500', status: 'Submitted on time' }
+    ];
+    const weeksAll = weekMeta.map((w, idx) => {
+      const trend = this.seriesFor(Math.max(20, Math.round(w.pts / 6)), idx * 0.5, 6);
+      const sp = this.sparkPoints(trend, 90, 26, 3);
+      const late = w.status === 'Submitted late', prog = w.status === 'In progress';
+      return Object.assign({}, w, {
+        sparkPts: sp.points,
+        statusBg: prog ? c.sunk : (late ? c.goldTint : c.accentTint),
+        statusFg: prog ? c.mute : (late ? c.gold : c.accent)
+      });
+    });
+    // weekly table shows only weeks within the selected period's range
+    const weeks = weeksAll.filter((w) => w.num >= periodWeekStart);
+    const days = [
+      { date: 'Sat 26-09-2026', summary: '12 dials · 1 FFI' },
+      { date: 'Fri 25-09-2026', summary: '9 dials · 0 FFI' },
+      { date: 'Thu 24-09-2026', summary: '15 dials · 2 FFIs' },
+      { date: 'Wed 23-09-2026', summary: '7 dials · 1 CI' },
+      { date: 'Tue 22-09-2026', summary: '11 dials · 0 FFI' }
+    ];
+
+    // ---- Call sources state (Tracy-ann link) ----
+    const revoke = () => this.setState({ revoked: true });
+    const createKey = () => this.setState({ showKey: true, copied: false });
+    const copyKey = () => this.setState({ copied: true });
+    const doneKey = () => this.setState({ showKey: false, copied: false });
+
+    return {
+      c: c, dark: !!this.props.dark, showChrome: !this.props.embedded, rootW: this.props.embedded ? 1220 : 1440,
+      tab: s.tab, go: go, tabs: tabs, sectionAnim: sectionAnim, periods: periods, periodLabel: periodLabel,
+      isScorecard: s.tab === 'Scorecard', isProduction: s.tab === 'Production', isSources: s.tab === 'Sources', isHistory: s.tab === 'History',
+
+      kpis: kpis, insights: insights,
+
+      small: small, showSmallChart: !s.tableOn.small, showSmallTable: s.tableOn.small,
+      smallTableLabel: s.tableOn.small ? 'Chart' : 'Table', toggleSmallTable: toggleSmallTable,
+
+      prodChips: prodChips, prodKpis: prodKpis,
+      apiBars: apiBars, apiRows: apiRows, showApiChart: !s.tableOn.api, showApiTable: s.tableOn.api,
+      apiTableLabel: s.tableOn.api ? 'Chart' : 'Table', toggleApiTable: toggleApiTable,
+      appsBars: appsBars, appsRows: appsRows, showAppsChart: !s.tableOn.apps, showAppsTable: s.tableOn.apps,
+      appsTableLabel: s.tableOn.apps ? 'Chart' : 'Table', toggleAppsTable: toggleAppsTable,
+      products: products, showProductChart: !s.tableOn.product, showProductTable: s.tableOn.product,
+      productTableLabel: s.tableOn.product ? 'Chart' : 'Table', toggleProductTable: toggleProductTable,
+      cat0: cat0,
+
+      sourceBars: sourceBars, showSourceChart: !s.tableOn.source, showSourceTable: s.tableOn.source,
+      sourceTableLabel: s.tableOn.source ? 'Chart' : 'Table', toggleSourceTable: toggleSourceTable,
+      convBars: convBars, showConvChart: !s.tableOn.conv, showConvTable: s.tableOn.conv,
+      convTableLabel: s.tableOn.conv ? 'Chart' : 'Table', toggleConvTable: toggleConvTable,
+      hasLink: !s.revoked, noLink: s.revoked, revoke: revoke,
+      showKey: s.showKey, createKey: createKey, copyKey: copyKey, copyLabel: s.copied ? 'Copied' : 'Copy', doneKey: doneKey,
+
+      heatSquares: heatSquares, legendSwatches: legendSwatches, showHeatChart: !s.tableOn.heat, showHeatTable: s.tableOn.heat,
+      heatTableLabel: s.tableOn.heat ? 'Chart' : 'Table', toggleHeatTable: toggleHeatTable, heatRows: heatRows,
+      histTabs: histTabs, weeklyOn: s.histTab === 0, dailyOn: s.histTab === 1, weeks: weeks, days: days, weekFadeAnim: weekFadeAnim
+    };
+  }
+}
+</script>
+</body>
+</html>

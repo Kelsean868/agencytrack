@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connections — desktop v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+tr.d3c-row:hover{background:#F6F3EC}
+@keyframes d3cIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes d3cBar{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes d3cDot{0%{transform:translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateX(120px);opacity:0}}
+.d3c-bar{transform-origin:bottom;animation:d3cBar 380ms cubic-bezier(0.32,0.72,0,1) both}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: {{rootW}}px; height: 900px; box-sizing: border-box; display: flex; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; overflow: hidden;">
+  <sc-if value="{{showChrome}}" hint-placeholder-val="{{true}}">
+    <div style="width: 220px; flex-shrink: 0; align-self: stretch; background: {{c.sideBg}};">
+      <dc-import name="D3-Sidebar" active="Connections" dark="{{dark}}" h="{{900}}" hint-size="220px,900px"></dc-import>
+    </div>
+  </sc-if>
+  <main style="width: 1220px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;">
+    <header style="height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 20px 0 28px; display: flex; align-items: center; gap: 12px; background: {{c.glass}}; border-bottom: 1px solid {{c.rule}};">
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">Connections</h1>
+      <span style="font-size: 13px; color: {{c.mute}};">What is linked, and whether the numbers arriving are healthy</span>
+    </header>
+
+    <div style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 24px;">
+
+      <section aria-label="KQM Calls is linked" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 22px; display: flex; flex-direction: column; gap: 16px; animation: d3cIn 280ms cubic-bezier(0.32,0.72,0,1) both;">
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700;">KQM Calls is linked</h2>
+        <div style="display: flex; align-items: center; gap: 0;">
+          <div style="width: 260px; flex-shrink: 0; border-radius: 16px; background: {{c.pane}}; border: 1px solid {{c.rule}}; padding: 16px; display: flex; flex-direction: column; gap: 6px;">
+            <span style="height: 30px; width: 30px; border-radius: 9px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg></span>
+            <span style="font-size: 15px; font-weight: 700;">KQM Calls</span>
+            <span style="font-size: 12px; color: {{c.mute}}; word-break: break-all;">kyronmarchan@gmail.com</span>
+          </div>
+          <div style="flex-grow: 1; height: 44px; position: relative; overflow: hidden;">
+            <svg width="100%" height="44" viewBox="0 0 200 44" preserveAspectRatio="none" aria-hidden="true">
+              <line x1="0" y1="22" x2="200" y2="22" stroke="{{c.rule}}" stroke-width="2"></line>
+            </svg>
+            <sc-for list="{{dots}}" as="d" hint-placeholder-count="3">
+              <span aria-hidden="true" style="position: absolute; left: 0; top: 18px; width: 8px; height: 8px; border-radius: 4px; background: {{c.accent}}; animation: d3cDot 1800ms {{d.delay}} linear infinite;"></span>
+            </sc-for>
+          </div>
+          <div style="width: 260px; flex-shrink: 0; border-radius: 16px; background: {{c.pane}}; border: 1px solid {{c.rule}}; padding: 16px; display: flex; flex-direction: column; gap: 6px;">
+            <span style="height: 30px; width: 30px; border-radius: 9px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span>
+            <span style="font-size: 15px; font-weight: 700;">AgencyTrack</span>
+            <span style="font-size: 12px; color: {{c.mute}}; word-break: break-all;">kyron.marchan@tatil.co.tt</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+          <span style="font-size: 13px; color: {{c.mute}};">Agent number [Agent no.] · Linked by you on 03-09-2026</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}}; background: {{c.sunk}}; padding: 2px 6px; border-radius: 5px;">SAMPLE</span>
+          <span style="flex-grow: 1;"></span>
+          <button onClick="{{pauseSync}}" style="height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{pauseLabel}}</button>
+          <button onClick="{{unlink}}" style="height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.warm}}; background: transparent; color: {{c.warm}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Unlink</button>
+        </div>
+        <span style="font-size: 12px; color: {{c.faint}};">Each agent links their own calling app. Your manager can't link it for you.</span>
+      </section>
+
+      <section aria-label="Where calls flow" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">Today's calls, step by step</h2>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}}; background: {{c.sunk}}; padding: 2px 6px; border-radius: 5px;">SAMPLE</span>
+        </div>
+        <div style="display: flex; align-items: stretch; gap: 8px;">
+          <sc-for list="{{flow}}" as="fl" hint-placeholder-count="3">
+            <div style="flex-grow: 1; display: flex; align-items: center; gap: 8px;">
+              <div style="flex-grow: 1; border-radius: 14px; background: {{fl.bg}}; border: 1px solid {{fl.border}}; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
+                <span style="font-size: 13px; font-weight: 700; color: {{fl.titleColor}};">{{fl.title}}</span>
+                <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; color: {{fl.color}};">{{fl.count}}</span>
+                <sc-if value="{{fl.warn}}" hint-placeholder-val="{{false}}">
+                  <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: {{c.warm}};"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>{{fl.sub}}</span>
+                </sc-if>
+                <sc-if value="{{fl.hasSub2}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; color: {{c.mute}};">{{fl.sub}}</span></sc-if>
+              </div>
+              <sc-if value="{{fl.hasArrow}}" hint-placeholder-val="{{true}}"><span style="flex-shrink: 0; color: {{c.faint}}; font-size: 20px;">→</span></sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section aria-label="Calls logged vs counted" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">Calls logged vs counted — last 14 days</h2>
+            <span style="font-size: 12px; color: {{c.mute}};">Bars show what KQM logged next to what AgencyTrack counted</span>
+          </div>
+          <button onClick="{{toggleTable}}" style="height: 30px; padding: 0 10px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">{{tableLabel}}</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: {{c.mute}};"><span style="width: 10px; height: 10px; border-radius: 3px; background: {{c.ghost}};"></span>Logged in KQM</span>
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: {{c.mute}};"><span style="width: 10px; height: 10px; border-radius: 3px; background: {{cat0}};"></span>Counted in AgencyTrack</span>
+        </div>
+        <sc-if value="{{showChart}}" hint-placeholder-val="{{true}}">
+          <svg width="100%" height="160" viewBox="0 0 1096 160" role="img" aria-label="Calls logged vs counted, last 14 days">
+            <sc-for list="{{bars}}" as="b" hint-placeholder-count="28">
+              <rect class="d3c-bar" x="{{b.x}}" y="{{b.y}}" width="{{b.w}}" height="{{b.h}}" rx="3" fill="{{b.color}}" style="animation-delay: {{b.delay}};"></rect>
+            </sc-for>
+            <line x1="0" y1="130" x2="1096" y2="130" stroke="{{c.rule}}" stroke-width="1"></line>
+            <text x="1050" y="{{lastLoggedY}}" text-anchor="middle" font-family="Onest, sans-serif" font-size="11" font-weight="700" fill="{{c.mute}}">{{lastLogged}}</text>
+            <text x="1078" y="{{lastCountedY}}" text-anchor="middle" font-family="Onest, sans-serif" font-size="11" font-weight="700" fill="{{c.ink}}">{{lastCounted}}</text>
+          </svg>
+          <div style="display: flex; justify-content: space-between; padding: 0 2px;">
+            <sc-for list="{{dayLabels}}" as="dl" hint-placeholder-count="14"><span style="font-size: 10px; color: {{c.faint}}; flex: 1; text-align: center;">{{dl.t}}</span></sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{showChart}}" hint-placeholder-val="{{true}}">
+        </sc-if>
+        <sc-if value="{{showTable}}" hint-placeholder-val="{{false}}">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead><tr><th style="text-align: left; font-size: 12px; color: {{c.mute}}; font-weight: 600; padding: 6px 8px;">Date</th><th style="text-align: right; font-size: 12px; color: {{c.mute}}; font-weight: 600; padding: 6px 8px;">Logged</th><th style="text-align: right; font-size: 12px; color: {{c.mute}}; font-weight: 600; padding: 6px 8px;">Counted</th></tr></thead>
+            <tbody>
+              <sc-for list="{{tableRows}}" as="tr" hint-placeholder-count="14">
+                <tr class="d3c-row"><td style="padding: 6px 8px; font-size: 13px;">{{tr.date}}</td><td style="padding: 6px 8px; font-size: 13px; text-align: right;">{{tr.logged}}</td><td style="padding: 6px 8px; font-size: 13px; text-align: right; font-weight: 700; color: {{tr.color}};">{{tr.counted}}</td></tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </sc-if>
+        <div style="display: flex; align-items: center; gap: 8px; border-radius: 12px; background: {{c.warmTint}}; color: {{c.warm}}; padding: 12px 14px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+          <span style="font-size: 13px; font-weight: 600;">3 calls on 22-09-2026 didn't count: campaign 'Schools 2026' has no lane yet. Ask your admin to map it.</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.warm}}; opacity: 0.8;">SAMPLE</span>
+        </div>
+      </section>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start;">
+        <section aria-label="Who logs for you" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">Who logs for you</h2>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="width: 40px; height: 40px; border-radius: 20px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0;">TA</span>
+            <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 14px; font-weight: 700;">Tracy-ann · assistant</span>
+              <span style="font-size: 12px; color: {{c.mute}};">Her calls count as yours</span>
+              <span style="font-size: 11px; color: {{c.faint}};">Last logged for you: today, 6 calls (SAMPLE)</span>
+            </div>
+            <button onClick="{{toggleTracy}}" aria-pressed="{{tracyOn}}" aria-label="Let Tracy-ann log calls for you" style="width: 44px; height: 26px; border-radius: 13px; border: 0; background: {{tracyBg}}; position: relative; flex-shrink: 0;">
+              <span style="position: absolute; top: 3px; left: {{tracyLeft}}px; width: 20px; height: 20px; border-radius: 10px; background: #FFFFFF; transition: left 160ms ease;"></span>
+            </button>
+          </div>
+        </section>
+
+        <section aria-label="Other connections" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">Other connections</h2>
+          <sc-for list="{{others}}" as="o" hint-placeholder-count="3">
+            <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid {{c.rule}};">
+              <span style="width: 34px; height: 34px; border-radius: 9px; background: {{c.sunk}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{o.icon}}"></path></svg></span>
+              <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+                <span style="font-size: 13px; font-weight: 700;">{{o.name}}</span>
+                <span style="font-size: 12px; color: {{o.statusColor}};">{{o.status}}</span>
+              </div>
+              <sc-if value="{{o.hasBtn}}" hint-placeholder-val="{{false}}"><button onClick="{{o.pick}}" style="height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700; flex-shrink: 0;">Link</button></sc-if>
+            </div>
+          </sc-for>
+        </section>
+      </div>
+
+      <section aria-label="Campaigns and where they count" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">Campaigns and where they count</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead><tr>
+            <th style="text-align: left; font-size: 12px; color: {{c.mute}}; font-weight: 600; padding: 8px;">Campaign</th>
+            <th style="text-align: left; font-size: 12px; color: {{c.mute}}; font-weight: 600; padding: 8px;">Counts in AgencyTrack</th>
+            <th style="text-align: left; font-size: 12px; color: {{c.mute}}; font-weight: 600; padding: 8px;">Goes to ApplyOn</th>
+          </tr></thead>
+          <tbody>
+            <sc-for list="{{campaigns}}" as="cp" hint-placeholder-count="4">
+              <tr class="d3c-row" style="border-top: 1px solid {{c.rule}};">
+                <td style="padding: 10px 8px; font-size: 13px; font-weight: 700;">{{cp.name}}</td>
+                <td style="padding: 10px 8px;">
+                  <span style="display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 13px; background: {{cp.countsBg}}; color: {{cp.countsColor}}; font-size: 12px; font-weight: 700;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{cp.countsIcon}}"></path></svg>{{cp.countsLabel}}</span>
+                </td>
+                <td style="padding: 10px 8px;">
+                  <span style="display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 13px; background: {{cp.applyBg}}; color: {{cp.applyColor}}; font-size: 12px; font-weight: 700;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{cp.applyIcon}}"></path></svg>{{cp.applyLabel}}</span>
+                </td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </section>
+
+      <section aria-label="Privacy" style="background: {{c.sunk}}; border-radius: 20px; padding: 18px; display: flex; align-items: center; gap: 12px;">
+        <span style="width: 34px; height: 34px; border-radius: 9px; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"></path></svg></span>
+        <span style="font-size: 13px; color: {{c.mute}}; line-height: 1.5;"><strong style="color: {{c.ink}};">What AgencyTrack gets from KQM:</strong> date, time, outcome, campaign. Not your notes, not recordings.</span>
+      </section>
+
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"onNav":{"editor":null},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { paused: false, tracyOn: true, table: false };
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', sideBg: '#EFEBE2', glass: 'rgba(246,243,236,0.9)', pane: '#FBFAF6', sel: '#DCEAE7', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', sideBg: '#181816', glass: 'rgba(19,19,17,0.9)', pane: '#171714', sel: '#16312F', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = this.props.dark ? dark : light;
+    const s = this.state;
+    const goTo = (t) => (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav(t); } };
+    const toast = (m) => { if (this.props.onNav) this.props.onNav('event:toast:' + m); };
+    const dots = [0, 600, 1200].map((d) => ({ delay: d + 'ms' }));
+    const flow = [
+      { title: 'KQM Calls', count: '14 calls logged', color: c.ink, titleColor: c.mute, hasArrow: true, warn: false, hasSub2: false, bg: c.pane, border: c.rule },
+      { title: 'AgencyTrack KPIs', count: '14 counted', color: c.accent, titleColor: c.mute, hasArrow: true, warn: false, hasSub2: false, bg: c.pane, border: c.rule },
+      { title: 'ApplyOn', count: '9 sent', color: c.ink, titleColor: c.mute, hasArrow: false, warn: true, hasSub2: false, sub: '3 waiting on a meeting place', bg: c.warmTint, border: c.warm }
+    ];
+    const days = ['14-09', '15-09', '16-09', '17-09', '18-09', '19-09', '20-09', '21-09', '22-09', '23-09', '24-09', '25-09', '26-09', '27-09'];
+    const logged = [10, 12, 9, 14, 11, 8, 13, 12, 15, 10, 14, 12, 11, 14];
+    const counted = [10, 12, 9, 14, 11, 8, 13, 12, 12, 10, 14, 12, 11, 14];
+    const maxV = Math.max.apply(null, logged);
+    const groupW = 1096 / 14, barW = 20, gap2 = 3;
+    const bars = [];
+    days.forEach((d, i) => {
+      const gx = i * groupW + (groupW - (barW * 2 + gap2)) / 2;
+      const hL = Math.round((logged[i] / maxV) * 100);
+      const hC = Math.round((counted[i] / maxV) * 100);
+      bars.push({ x: gx.toFixed(1), y: (130 - hL).toFixed(1), w: barW, h: hL, color: c.ghost, delay: (i * 20) + 'ms' });
+      bars.push({ x: (gx + barW + gap2).toFixed(1), y: (130 - hC).toFixed(1), w: barW, h: hC, color: c.cat[0], delay: (i * 20 + 10) + 'ms' });
+    });
+    const lastI = days.length - 1;
+    const lastLoggedY = 130 - Math.round((logged[lastI] / maxV) * 100) - 6;
+    const lastCountedY = 130 - Math.round((counted[lastI] / maxV) * 100) - 6;
+    const dayLabels = days.map((d) => ({ t: d }));
+    const tableRows = days.map((d, i) => ({ date: d + '-2026', logged: logged[i], counted: counted[i], color: counted[i] < logged[i] ? c.warm : c.ink }));
+    const CHECK = 'M20 6 9 17l-5-5';
+    const DASH = 'M8 12h8';
+    const WARN = 'M12 9v3.5M12 16h.01M12 3l9 16H3z';
+    const campaigns = [
+      { name: 'Portfolio 2026', countsLabel: 'Yes', countsBg: c.accentTint, countsColor: c.accent, countsIcon: CHECK, applyLabel: 'Yes', applyBg: c.accentTint, applyColor: c.accent, applyIcon: CHECK },
+      { name: 'Orphans 2026', countsLabel: 'Yes', countsBg: c.accentTint, countsColor: c.accent, countsIcon: CHECK, applyLabel: 'Yes', applyBg: c.accentTint, applyColor: c.accent, applyIcon: CHECK },
+      { name: 'Referrals', countsLabel: 'Yes', countsBg: c.accentTint, countsColor: c.accent, countsIcon: CHECK, applyLabel: 'Needs a named person', applyBg: c.goldTint, applyColor: c.gold, applyIcon: WARN },
+      { name: 'Schools 2026', countsLabel: 'No', countsBg: c.sunk, countsColor: c.mute, countsIcon: DASH, applyLabel: 'Not mapped', applyBg: c.warmTint, applyColor: c.warm, applyIcon: WARN }
+    ];
+    const others = [
+      { name: 'Google Calendar', status: 'For your Week — Not linked', statusColor: c.mute, icon: 'M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM3 9h18M8 2v4M16 2v4', hasBtn: true, pick: () => toast('Google Calendar link coming soon') },
+      { name: 'ApplyOn', status: 'Daily push at 18:00 — you review before it sends', statusColor: c.accent, icon: 'M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 8h8M8 12h8M8 16h5', hasBtn: false, pick: null },
+      { name: 'Outlook calendar', status: 'Not linked', statusColor: c.mute, icon: 'M4 4h16v16H4zM4 8h16M8 4v4', hasBtn: true, pick: () => toast('Outlook Calendar link coming soon') }
+    ];
+    return {
+      c: c, dark: !!this.props.dark, showChrome: !this.props.embedded, rootW: this.props.embedded ? 1220 : 1440,
+      cat0: c.cat[0], dots: dots, flow: flow,
+      pauseLabel: s.paused ? 'Resume sync' : 'Pause sync',
+      pauseSync: () => { this.setState({ paused: !s.paused }); toast(s.paused ? 'Sync resumed' : 'Sync paused'); },
+      unlink: () => toast('This would unlink KQM Calls'),
+      showChart: !s.table, showTable: s.table, tableLabel: s.table ? 'Chart' : 'Table', toggleTable: () => this.setState({ table: !s.table }),
+      bars: bars, dayLabels: dayLabels, tableRows: tableRows,
+      lastLogged: logged[lastI], lastLoggedY: lastLoggedY, lastCounted: counted[lastI], lastCountedY: lastCountedY,
+      tracyOn: s.tracyOn ? 'true' : 'false', tracyBg: s.tracyOn ? c.accent : c.rule, tracyLeft: s.tracyOn ? 21 : 3,
+      toggleTracy: () => this.setState({ tracyOn: !s.tracyOn }),
+      others: others, campaigns: campaigns
+    };
+  }
+}
+</script>
+</body>
+</html>

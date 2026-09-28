@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Game plan — Money tab component</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+@keyframes d3gFadeA{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes d3gFadeB{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.d3g-row:hover{background:rgba(127,120,105,0.08)}
+input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{opacity:1}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 1220px; height: 844px; box-sizing: border-box; display: flex; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif;">
+
+  <div style="flex-grow: 1; min-width: 0; overflow-y: auto; display: flex; flex-direction: column;">
+
+    <div style="position: sticky; top: 0; z-index: 5; background: {{c.bg}}; box-sizing: border-box; padding: 18px 24px 14px; border-bottom: 1px solid {{c.rule}}; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0;">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: {{c.faint}};">YOUR GAME PLAN</span>
+        <span style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{stepsBadge.bg}}; color: {{stepsBadge.fg}}; display: flex; align-items: center; font-size: 11px; font-weight: 700; flex-shrink: 0;">{{stepsBadge.label}}</span>
+      </div>
+
+      <div style="position: relative;">
+        <div style="position: absolute; left: 20px; right: 20px; top: 22px; height: 2px; background: {{c.rule}}; z-index: 0;"></div>
+        <div style="position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+          <sc-for list="{{steps}}" as="st" hint-placeholder-count="3">
+            <button onClick="{{st.onClick}}" style="text-align: left; min-height: 108px; box-sizing: border-box; border-radius: 16px; background: {{st.bg}}; border: 1px solid {{st.border}}; padding: 12px; display: flex; flex-direction: column; gap: 6px; cursor: {{st.cursor}}; font-family: 'Onest', sans-serif;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="width: 24px; height: 24px; border-radius: 12px; background: {{st.dotBg}}; color: {{st.dotFg}}; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; flex-shrink: 0;">{{st.n}}</span>
+                <span style="font-size: 12px; font-weight: 700; color: {{st.labelColor}};">{{st.label}}</span>
+              </div>
+              <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700; line-height: 1.15;">{{st.value}}</span>
+              <span style="font-size: 11px; color: {{c.faint}}; line-height: 1.3;">{{st.sub}}</span>
+              <span style="font-size: 11px; font-weight: 700; color: {{st.actionColor}}; margin-top: auto;">{{st.actionLabel}}</span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.08em; color: {{c.faint}};">PERSONAL COMMITMENT</span>
+          <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">{{anchor.apiLabel}} <span style="font-size: 12px; font-weight: 600; color: {{c.mute}};">· {{anchor.appsLabel}}</span></span>
+        </div>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;">
+          <div style="height: 8px; border-radius: 4px; background: {{c.sunk}}; overflow: hidden;">
+            <div style="height: 8px; border-radius: 4px; background: {{c.accent}}; width: {{anchor.progressPct}}%; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></div>
+          </div>
+          <span style="font-size: 11px; color: {{c.mute}};">{{anchor.progressLabel}} · {{anchor.progressPct}}%</span>
+        </div>
+        <span style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{anchor.tagBg}}; color: {{anchor.tagFg}}; display: flex; align-items: center; font-size: 11px; font-weight: 700; flex-shrink: 0; white-space: nowrap;">{{anchor.committedTag}}</span>
+      </div>
+    </div>
+
+    <div style="padding: 18px 24px 32px; display: flex; flex-direction: column; gap: 22px;">
+
+      <section id="gp-months" aria-label="Monthly plan" style="display: flex; flex-direction: column; gap: 10px;">
+        <div>
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Step 2 · Monthly plan</h2>
+          <span style="font-size: 12px; color: {{c.mute}};">Jan – Dec 2026 · edit any month, the year total reconciles below</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 16px; align-items: start;">
+          <div style="min-width: 0; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 14px; padding: 4px 12px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead><tr>
+                <th scope="col" style="text-align: left; font-size: 10px; font-weight: 600; color: {{c.mute}}; padding: 8px 4px; border-bottom: 1px solid {{c.rule}};">Month</th>
+                <th scope="col" style="text-align: right; font-size: 10px; font-weight: 600; color: {{c.mute}}; padding: 8px 4px; border-bottom: 1px solid {{c.rule}};">Planned API</th>
+                <th scope="col" style="text-align: right; font-size: 10px; font-weight: 600; color: {{c.mute}}; padding: 8px 4px; border-bottom: 1px solid {{c.rule}}; width: 84px;">Apps</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{monthRows}}" as="m" hint-placeholder-count="12">
+                  <tr class="d3g-row" style="height: 40px;">
+                    <td style="padding: 0 4px; border-bottom: 1px solid {{c.rule}}; font-size: 12.5px; font-weight: 600;">{{m.label}}</td>
+                    <td style="padding: 4px; border-bottom: 1px solid {{c.rule}};">
+                      <div style="height: 30px; box-sizing: border-box; border-radius: 8px; border: 1px solid {{c.rule}}; background: {{c.bg}}; display: flex; align-items: center; padding: 0 8px; gap: 4px;">
+                        <span style="font-size: 11px; font-weight: 600; color: {{c.mute}};">TTD</span>
+                        <input type="number" step="1000" min="0" inputmode="decimal" value="{{m.apiVal}}" onChange="{{m.onApi}}" style="flex-grow: 1; width: 100%; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 600; outline: none; text-align: right;">
+                      </div>
+                    </td>
+                    <td style="padding: 4px 0 4px 4px; border-bottom: 1px solid {{c.rule}};">
+                      <input type="number" step="0.5" min="0" inputmode="decimal" value="{{m.appsVal}}" onChange="{{m.onApps}}" style="width: 100%; height: 30px; box-sizing: border-box; border-radius: 8px; border: 1px solid {{c.rule}}; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 600; outline: none; text-align: right; padding: 0 8px;">
+                    </td>
+                  </tr>
+                </sc-for>
+                <tr style="height: 42px;">
+                  <td style="padding: 0 4px; font-size: 13px; font-weight: 700;">Year total</td>
+                  <td style="padding: 0 4px; text-align: right; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; font-weight: 700;">TTD {{yearTotalAPIFmt}}</td>
+                  <td style="padding: 0 0 0 4px; text-align: right; font-size: 13px; font-weight: 700;">{{yearTotalAppsFmt}}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 13px; font-weight: 700;">By line</span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE SPLIT</span>
+            </div>
+            <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+              <sc-for list="{{byLine}}" as="b" hint-placeholder-count="3">
+                <div style="display: flex; flex-direction: column; gap: 3px;">
+                  <div style="display: flex; justify-content: space-between;"><span style="font-size: 12px; font-weight: 600;">{{b.label}}</span><span style="font-size: 12px; font-weight: 700;">TTD {{b.amount}} · {{b.pct}}%</span></div>
+                  <div style="height: 7px; border-radius: 4px; background: {{c.sunk}}; overflow: hidden;"><div style="height: 7px; border-radius: 4px; background: {{b.color}}; width: {{b.pct}}%; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></div></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 13px; font-weight: 700;">Year total against your floor and MDRT</span>
+          <svg width="100%" height="60" viewBox="0 0 440 60" role="img" aria-label="{{recon.aria}}">
+            <rect x="0" y="20" width="440" height="16" rx="6" fill="{{c.sunk}}"></rect>
+            <rect x="0" y="20" width="{{recon.barW}}" height="16" rx="6" fill="{{cat0}}" style="width: {{recon.barW}}px; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+            <line x1="{{recon.floorX}}" y1="6" x2="{{recon.floorX}}" y2="50" stroke="{{c.faint}}" stroke-width="1"></line>
+            <text x="{{recon.floorTx}}" y="58" text-anchor="{{recon.floorAnchor}}" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600" fill="{{c.faint}}">Floor 500,000</text>
+            <line x1="{{recon.mdrtX}}" y1="6" x2="{{recon.mdrtX}}" y2="50" stroke="{{c.faint}}" stroke-width="1"></line>
+            <text x="{{recon.mdrtTx}}" y="14" text-anchor="{{recon.mdrtAnchor}}" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600" fill="{{c.faint}}">MDRT 688,800</text>
+            <text x="6" y="15" font-family="Onest, sans-serif" font-size="11" font-weight="700" fill="{{c.ink}}">TTD {{yearTotalAPIFmt}}</text>
+          </svg>
+          <span style="font-size: 12px; font-weight: 600; color: {{recon.noteColor}};">{{recon.note}}</span>
+        </div>
+
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+            <div>
+              <h3 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 14px; font-weight: 700;">Plan vs actual, month by month</h3>
+              <span style="font-size: 11px; color: {{c.mute}};">TTD {{settledYtdFmt}} settled is real, split SAMPLE across Jan–Sep · Oct–Dec show plan only</span>
+            </div>
+            <button onClick="{{monthlyChart.toggle}}" style="height: 26px; padding: 0 8px; border-radius: 7px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700; flex-shrink: 0;">{{monthlyChart.tableLabel}}</button>
+          </div>
+          <sc-if value="{{monthlyChart.showChart}}" hint-placeholder-val="{{true}}">
+            <svg width="100%" height="140" viewBox="0 0 820 150" role="img" aria-label="Planned and actual API by month">
+              <sc-for list="{{monthBars}}" as="mb" hint-placeholder-count="12">
+                <rect x="{{mb.planX}}" y="{{mb.planY}}" width="{{mb.planW}}" height="{{mb.planH}}" rx="3" fill="{{c.ghost}}" style="height: {{mb.planH}}px; y: {{mb.planY}}px; transition: height 480ms cubic-bezier(0.32, 0.72, 0, 1), y 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+                <sc-if value="{{mb.hasActual}}" hint-placeholder-val="{{false}}">
+                  <rect x="{{mb.actX}}" y="{{mb.actY}}" width="{{mb.actW}}" height="{{mb.actH}}" rx="3" fill="{{cat0}}"></rect>
+                </sc-if>
+                <text x="{{mb.labelX}}" y="146" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" font-weight="600" fill="{{c.faint}}">{{mb.label}}</text>
+              </sc-for>
+            </svg>
+            <div style="display: flex; gap: 14px;">
+              <span style="display: flex; align-items: center; gap: 5px; font-size: 11px; color: {{c.mute}};"><span style="width: 9px; height: 9px; border-radius: 2px; background: {{c.ghost}};"></span>Plan</span>
+              <span style="display: flex; align-items: center; gap: 5px; font-size: 11px; color: {{c.mute}};"><span style="width: 9px; height: 9px; border-radius: 2px; background: {{cat0}};"></span>Actual (settled)</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{monthlyChart.showTable}}" hint-placeholder-val="{{false}}">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead><tr><th scope="col" style="text-align: left; font-size: 10px; color: {{c.mute}}; padding: 0 6px 6px 0; border-bottom: 1px solid {{c.rule}};">Month</th><th scope="col" style="text-align: right; font-size: 10px; color: {{c.mute}}; padding: 0 6px 6px; border-bottom: 1px solid {{c.rule}};">Plan</th><th scope="col" style="text-align: right; font-size: 10px; color: {{c.mute}}; padding: 0 0 6px 6px; border-bottom: 1px solid {{c.rule}};">Actual</th></tr></thead>
+              <tbody>
+                <sc-for list="{{monthTableRows}}" as="mt" hint-placeholder-count="12">
+                  <tr style="height: 28px;">
+                    <td style="padding: 0 6px 0 0; border-bottom: 1px solid {{c.rule}}; font-size: 12px; font-weight: 600;">{{mt.label}}</td>
+                    <td style="padding: 0 6px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 12px;">{{mt.plan}}</td>
+                    <td style="padding: 0 0 0 6px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 12px; color: {{c.mute}};">{{mt.actual}}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </sc-if>
+        </div>
+      </section>
+
+      <section aria-label="Suggested week" style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+          <div>
+            <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Suggested week</h2>
+            <span style="font-size: 12px; color: {{c.mute}};">The backward solve for TTD {{weeklyAPINeedFmt}} a week · outline = what you need, solid = your 4-week average (SAMPLE ratios)</span>
+          </div>
+          <button onClick="{{ladder.toggle}}" style="height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700; flex-shrink: 0;">{{ladder.tableLabel}}</button>
+        </div>
+
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 11px; background: {{pace.bg}};">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{pace.iconColor}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{pace.iconPath}}"></path></svg>
+            <span style="font-size: 12.5px; font-weight: 700; color: {{pace.textColor}};">{{pace.label}}</span>
+          </div>
+
+          <sc-if value="{{ladder.showChart}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; flex-direction: column; gap: 13px;">
+              <sc-for list="{{ladderRows}}" as="r" hint-placeholder-count="6">
+                <div style="display: flex; flex-direction: column; gap: 3px;">
+                  <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <span style="font-size: 13px; font-weight: 700;">{{r.label}}</span>
+                    <sc-if value="{{r.short}}" hint-placeholder-val="{{true}}">
+                      <span style="font-size: 11px; font-weight: 700; color: {{c.warm}};">{{r.shortLabel}}</span>
+                    </sc-if>
+                  </div>
+                  <svg width="100%" height="26" viewBox="0 0 620 26" role="img" aria-label="{{r.aria}}">
+                    <rect x="0" y="2" width="{{r.needW}}" height="9" rx="4" fill="none" stroke="{{c.ghost}}" stroke-width="1.5" style="width: {{r.needW}}px; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+                    <text x="{{r.needTx}}" y="9" font-family="JetBrains Mono, monospace" font-size="10" font-weight="600" fill="{{c.faint}}">need {{r.needLabel}}</text>
+                    <rect x="0" y="15" width="{{r.doW}}" height="9" rx="4" fill="{{cat0}}" style="width: {{r.doW}}px; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+                    <text x="{{r.doTx}}" y="22" font-family="JetBrains Mono, monospace" font-size="10" font-weight="600" fill="{{c.ink}}">avg {{r.doLabel}}</text>
+                    <line x1="{{r.tickX}}" y1="0" x2="{{r.tickX}}" y2="26" stroke="{{c.faint}}" stroke-width="1" style="transition: x1 480ms cubic-bezier(0.32, 0.72, 0, 1), x2 480ms cubic-bezier(0.32, 0.72, 0, 1);"></line>
+                  </svg>
+                  <span style="font-size: 11px; color: {{c.faint}};">{{r.ratioNote}} · company {{r.minLabel}}/wk</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ladder.showTable}}" hint-placeholder-val="{{false}}">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead><tr>
+                <th scope="col" style="text-align: left; font-size: 11px; color: {{c.mute}}; padding: 0 8px 6px 0; border-bottom: 1px solid {{c.rule}};">Stage</th>
+                <th scope="col" style="text-align: right; font-size: 11px; color: {{c.mute}}; padding: 0 8px 6px; border-bottom: 1px solid {{c.rule}};">Need</th>
+                <th scope="col" style="text-align: right; font-size: 11px; color: {{c.mute}}; padding: 0 8px 6px; border-bottom: 1px solid {{c.rule}};">4-wk avg</th>
+                <th scope="col" style="text-align: right; font-size: 11px; color: {{c.mute}}; padding: 0 0 6px 8px; border-bottom: 1px solid {{c.rule}};">Co. min</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ladderRows}}" as="r" hint-placeholder-count="6">
+                  <tr style="height: 32px;">
+                    <td style="padding: 0 8px 0 0; border-bottom: 1px solid {{c.rule}}; font-size: 12.5px; font-weight: 600;">{{r.label}}</td>
+                    <td style="padding: 0 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 12.5px;">{{r.needLabel}}</td>
+                    <td style="padding: 0 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 12.5px; color: {{c.mute}};">{{r.doLabel}}</td>
+                    <td style="padding: 0 0 0 8px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 12.5px; color: {{c.faint}};">{{r.minLabel}}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </sc-if>
+
+          <button onClick="{{go.week}}" style="height: 44px; border-radius: 12px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Put this week in my calendar</button>
+        </div>
+      </section>
+
+      <section aria-label="From your manager" data-clarity-mask="True" style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">From your manager</h2>
+          <div role="tablist" aria-label="Preview state" style="display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: {{c.sunk}};">
+            <sc-for list="{{suggestPreviewChips}}" as="sp" hint-placeholder-count="3">
+              <button role="tab" aria-selected="{{sp.on}}" onClick="{{sp.pick}}" style="height: 26px; padding: 0 9px; border: 0; border-radius: 7px; background: {{sp.bg}}; color: {{sp.color}}; font-family: 'Onest', sans-serif; font-size: 10px; font-weight: 700;">{{sp.label}}</button>
+            </sc-for>
+          </div>
+        </div>
+
+        <sc-if value="{{suggestion.visible}}" hint-placeholder-val="{{true}}">
+          <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <sc-if value="{{suggestion.unread}}" hint-placeholder-val="{{false}}">
+                <span style="width: 8px; height: 8px; border-radius: 4px; background: {{c.accent}}; flex-shrink: 0;" aria-hidden="true"></span>
+              </sc-if>
+              <span style="font-size: 12px; font-weight: 700; color: {{c.mute}};">{{suggestion.from}}</span>
+              <sc-if value="{{suggestion.unread}}" hint-placeholder-val="{{false}}">
+                <span style="height: 18px; padding: 0 7px; border-radius: 9px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; font-size: 10px; font-weight: 700;">1 new</span>
+              </sc-if>
+            </div>
+            <p style="margin: 0; font-size: 13.5px; line-height: 1.45;">{{suggestion.text}}</p>
+            <div style="display: flex; gap: 8px;">
+              <button onClick="{{suggestion.accept}}" style="height: 40px; padding: 0 14px; border-radius: 11px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Accept</button>
+              <button onClick="{{suggestion.reply}}" style="height: 40px; padding: 0 14px; border-radius: 11px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Reply</button>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{suggestion.showEmpty}}" hint-placeholder-val="{{false}}">
+          <div style="border: 1px dashed {{c.rule}}; border-radius: 16px; padding: 20px; text-align: center;">
+            <span style="font-size: 12px; color: {{c.faint}};">(Quiet by design — nothing renders here when there is no suggestion.)</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{suggestion.showError}}" hint-placeholder-val="{{false}}">
+          <div style="border: 1px dashed {{c.rule}}; border-radius: 16px; padding: 20px; text-align: center;">
+            <span style="font-size: 12px; color: {{c.faint}};">(Quiet by design — fails silently, no error banner shown to the agent.)</span>
+          </div>
+        </sc-if>
+      </section>
+
+      <button onClick="{{reviewCTA.onClick}}" style="height: 48px; border-radius: 13px; border: 0; background: {{reviewCTA.bg}}; color: {{reviewCTA.fg}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">{{reviewCTA.label}}</button>
+
+    </div>
+  </div>
+
+  <aside aria-label="Plan calculator" style="width: 340px; flex-shrink: 0; border-left: 1px solid {{c.rule}}; background: {{c.pane}}; overflow-y: auto; box-sizing: border-box; padding: 18px; display: flex; flex-direction: column; gap: 16px;">
+
+    <sc-if value="{{isCalc}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-direction: column; gap: 16px; animation: {{vfAnim}} 220ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.faint}};">THE CALCULATOR</span>
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">Your plan</h2>
+          <span style="font-size: 12px; color: {{c.mute}}; line-height: 1.4;">Change any number — every chart on the left updates.</span>
+        </div>
+
+        <label style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 11px; font-weight: 700; color: {{c.mute}};">Annual API commitment</span>
+          <div style="height: 44px; box-sizing: border-box; border-radius: 11px; border: 1px solid {{c.rule}}; background: {{c.surface}}; display: flex; align-items: center; padding: 0 12px; gap: 6px;">
+            <span style="font-size: 12px; font-weight: 600; color: {{c.mute}};">TTD</span>
+            <input type="number" step="1000" min="0" inputmode="decimal" value="{{annualAPI}}" onChange="{{onAnnualAPI}}" style="flex-grow: 1; width: 100%; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; outline: none; text-align: right;">
+          </div>
+        </label>
+
+        <label style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 11px; font-weight: 700; color: {{c.mute}};">Annual apps commitment</span>
+          <input type="number" step="0.5" min="0" inputmode="decimal" value="{{annualApps}}" onChange="{{onAnnualApps}}" style="height: 44px; box-sizing: border-box; border-radius: 11px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; outline: none; text-align: right; padding: 0 12px;">
+        </label>
+
+        <label style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; font-weight: 700; color: {{c.mute}};">Average policy API</span>
+            <button onClick="{{toggleWhy}}" aria-expanded="{{whyOpenAria}}" style="height: 22px; padding: 0; border: 0; background: transparent; font-size: 10px; font-weight: 700; color: {{c.accent}}; font-family: 'Onest', sans-serif;">Why?</button>
+          </div>
+          <div style="height: 44px; box-sizing: border-box; border-radius: 11px; border: 1px solid {{c.rule}}; background: {{c.surface}}; display: flex; align-items: center; padding: 0 12px; gap: 6px;">
+            <span style="font-size: 12px; font-weight: 600; color: {{c.mute}};">TTD</span>
+            <input type="number" step="500" min="0" inputmode="decimal" value="{{avgPolicyAPI}}" onChange="{{onAvgPolicy}}" style="flex-grow: 1; width: 100%; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; outline: none; text-align: right;">
+          </div>
+          <sc-if value="{{whyOpen}}" hint-placeholder-val="{{false}}">
+            <span style="font-size: 11px; color: {{c.faint}}; line-height: 1.4; background: {{c.sunk}}; border-radius: 8px; padding: 8px;">Apps = API commitment ÷ average policy API. TTD {{annualAPIFmt}} ÷ TTD {{avgPolicyFmt}} ≈ {{derivedAppsFmt}} apps.</span>
+          </sc-if>
+        </label>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 12px; font-weight: 700;">Ratios</span>
+          <label style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 11px; color: {{c.mute}};">CI → sale ratio (%)</span>
+            <input type="number" step="1" min="1" max="100" inputmode="decimal" value="{{ciToSaleRatio}}" onChange="{{onCiToSale}}" style="height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700; outline: none; text-align: right; padding: 0 10px;">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 11px; color: {{c.mute}};">Dials → contacts ratio (%)</span>
+            <input type="number" step="1" min="1" max="100" inputmode="decimal" value="{{dialsToContactsRatio}}" onChange="{{onDialsToContacts}}" style="height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700; outline: none; text-align: right; padding: 0 10px;">
+          </label>
+          <span style="align-self: flex-start; height: 22px; padding: 0 8px; border-radius: 11px; background: {{c.sunk}}; color: {{c.faint}}; display: flex; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600;">{{ratioSourceChip}}</span>
+        </div>
+
+        <button onClick="{{goReview}}" style="margin-top: auto; height: 46px; border-radius: 13px; border: 0; background: {{reviewBtn.bg}}; color: {{reviewBtn.fg}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">{{reviewBtn.label}}</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isReview}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 14px; animation: {{vfAnim}} 220ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button onClick="{{backToCalc}}" aria-label="Back" style="width: 32px; height: 32px; border-radius: 16px; border: 0; background: {{c.sunk}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.faint}};">STEP 3 · REVIEW</span>
+        </div>
+        <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">Review your plan</h2>
+
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 11px; color: {{c.mute}};">Annual API commitment</span>
+          <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700;">TTD {{annualAPIFmt}}</span>
+          <span style="font-size: 12px; color: {{c.mute}};">{{reviewAppsLine}}</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 12px; font-weight: 700;">By line</span>
+          <sc-for list="{{byLineReview}}" as="b" hint-placeholder-count="3">
+            <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color: {{c.mute}};">{{b.label}}</span><span style="font-weight: 600;">TTD {{b.amount}}</span></div>
+          </sc-for>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 12px; font-weight: 700;">Monthly shape</span>
+          <div style="display: flex; align-items: flex-end; gap: 2px; height: 44px;">
+            <sc-for list="{{shapeBars}}" as="sb" hint-placeholder-count="12">
+              <div style="flex-grow: 1; height: {{sb.h}}px; border-radius: 2px; background: {{cat0}}; transition: height 480ms cubic-bezier(0.32, 0.72, 0, 1);" title="{{sb.title}}"></div>
+            </sc-for>
+          </div>
+        </div>
+
+        <sc-if value="{{nudge.show}}" hint-placeholder-val="{{false}}">
+          <button onClick="{{nudge.onClick}}" style="text-align: left; padding: 10px; border-radius: 10px; background: {{c.warmTint}}; color: {{c.warm}}; border: 0; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">{{nudge.label}}</button>
+        </sc-if>
+
+        <button onClick="{{goConsequence}}" style="margin-top: auto; height: 46px; border-radius: 13px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Continue →</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isConsequence}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 14px; animation: {{vfAnim}} 220ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button onClick="{{consequenceBack}}" aria-label="Back" style="width: 32px; height: 32px; border-radius: 16px; border: 0; background: {{c.sunk}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.faint}};">STEP 3 · WHAT THIS MEANS</span>
+        </div>
+        <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">What committing means</h2>
+        <p style="margin: 0; font-size: 13px; line-height: 1.45; color: {{c.ink}};">{{weeklyConsequenceLine}}</p>
+        <p style="margin: 0; font-size: 13px; line-height: 1.45; font-weight: 700;">No manager approval needed. Your managers can see your commitment once it's set, but only you can change it.</p>
+
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <sc-for list="{{cascade}}" as="cs" hint-placeholder-count="5">
+            <div style="display: flex; justify-content: space-between; padding: 8px 10px; border-radius: 10px; background: {{cs.bg}};">
+              <span style="font-size: 12px; font-weight: 600; color: {{cs.color}};">{{cs.label}}</span>
+              <span style="font-size: 12px; font-weight: 700; color: {{cs.color}};">{{cs.value}}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <button onClick="{{goConfirm}}" style="margin-top: auto; height: 46px; border-radius: 13px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Continue →</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isConfirm}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 14px; animation: {{vfAnim}} 220ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button onClick="{{confirmBack}}" aria-label="Back" style="width: 32px; height: 32px; border-radius: 16px; border: 0; background: {{c.sunk}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.faint}};">STEP 3 · CONFIRM</span>
+        </div>
+        <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">{{confirmHeading}}</h2>
+
+        <div style="display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: {{c.sunk}};">
+          <span style="font-size: 12px;">TTD {{annualAPIFmt}} API · {{annualAppsFmt}} apps</span>
+          <span style="font-size: 11px; color: {{c.mute}};">avg policy TTD {{avgPolicyFmt}}</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">PREVIEW AN ERROR</span>
+          <div style="display: flex; gap: 4px;">
+            <sc-for list="{{previewChips}}" as="pc" hint-placeholder-count="3">
+              <button onClick="{{pc.pick}}" aria-pressed="{{pc.on}}" style="height: 26px; padding: 0 8px; border: 0; border-radius: 7px; background: {{pc.bg}}; color: {{pc.color}}; font-family: 'Onest', sans-serif; font-size: 10px; font-weight: 700;">{{pc.label}}</button>
+            </sc-for>
+          </div>
+        </div>
+
+        <sc-if value="{{apiError.show}}" hint-placeholder-val="{{false}}">
+          <div style="border-radius: 12px; background: {{c.warmTint}}; color: {{c.warm}}; padding: 10px 12px; font-size: 12.5px; line-height: 1.4; font-weight: 600;">{{apiError.text}}</div>
+        </sc-if>
+        <sc-if value="{{appsError.show}}" hint-placeholder-val="{{false}}">
+          <div style="border-radius: 12px; background: {{c.warmTint}}; color: {{c.warm}}; padding: 10px 12px; font-size: 12.5px; line-height: 1.4; font-weight: 600;">{{appsError.text}}</div>
+        </sc-if>
+        <sc-if value="{{avgPolicyError.show}}" hint-placeholder-val="{{false}}">
+          <div style="border-radius: 12px; background: {{c.warmTint}}; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;">
+            <span style="color: {{c.warm}}; font-size: 12.5px; font-weight: 600; line-height: 1.4;">{{avgPolicyError.text}}</span>
+            <label style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 11px; font-weight: 700; color: {{c.warm}};">Avg policy (TTD)</span>
+              <div style="display: flex; gap: 6px;">
+                <input type="number" step="500" min="0" inputmode="decimal" value="{{avgPolicyError.captureVal}}" onChange="{{avgPolicyError.onCapture}}" style="flex-grow: 1; height: 38px; box-sizing: border-box; border-radius: 9px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700; outline: none; text-align: right; padding: 0 10px;">
+                <button onClick="{{avgPolicyError.onSave}}" style="height: 38px; padding: 0 12px; border-radius: 9px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700; flex-shrink: 0;">Save</button>
+              </div>
+            </label>
+          </div>
+        </sc-if>
+
+        <button onClick="{{confirmCommit}}" style="margin-top: auto; height: 46px; border-radius: 13px; border: 0; background: {{confirmBtn.bg}}; color: {{confirmBtn.fg}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">{{confirmBtn.label}}</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isDone}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 14px; align-items: flex-start; animation: {{vfAnim}} 220ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+        <span style="width: 48px; height: 48px; border-radius: 24px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+        <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">Plan committed</h2>
+        <span style="font-size: 13px; color: {{c.mute}};">{{doneLine}}</span>
+        <span style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; font-size: 11px; font-weight: 700;">{{doneBadge}}</span>
+        <button onClick="{{reopen}}" style="margin-top: auto; height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">Change your mind? Re-open your plan</button>
+      </div>
+    </sc-if>
+
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":1220,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const AVG_POLICY_DEFAULT = 17430;
+    const weights = [0.06, 0.06, 0.07, 0.07, 0.08, 0.08, 0.08, 0.08, 0.09, 0.11, 0.12, 0.10];
+    const months = weights.map((w) => ({ api: Math.round(688800 * w / 100) * 100, apps: 0 }));
+    const sum0 = months.reduce((a, m) => a + m.api, 0);
+    months[11].api += (688800 - sum0);
+    months.forEach((m) => { m.apps = Math.round((m.api / AVG_POLICY_DEFAULT) * 10) / 10; });
+    const p = (props && props.params) || {};
+    let initView = 'calc';
+    if (p.view === 'review' || p.view === 'consequence' || p.view === 'confirm' || p.view === 'done') initView = p.view;
+    this.state = {
+      annualAPI: 688800, annualApps: 40, avgPolicyAPI: AVG_POLICY_DEFAULT,
+      ciToSaleRatio: 25, dialsToContactsRatio: 65,
+      months: months,
+      inspectorView: initView, viewFlip: 0,
+      whyOpen: false,
+      previewError: null, avgPolicyCapture: '',
+      committed: false, commitDate: '',
+      monthlyTable: false, ladderTable: false,
+      suggestionPreview: 'sample', suggestionStatus: 'open'
+    };
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', sideBg: '#EFEBE2', glass: 'rgba(246,243,236,0.9)', pane: '#FBFAF6', sel: '#DCEAE7', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', sideBg: '#181816', glass: 'rgba(19,19,17,0.9)', pane: '#171714', sel: '#16312F', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = this.props.dark ? dark : light;
+    const s = this.state;
+    const fmt = (n) => Math.round(n || 0).toLocaleString('en-US');
+    const n1 = (n) => (Math.round((n || 0) * 10) / 10).toFixed(1);
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    const goTo = (t) => (e) => { if (e) e.preventDefault(); if (this.props.onNav) this.props.onNav(t); };
+    const toast = (m) => { if (this.props.onNav) this.props.onNav('event:toast:' + m); };
+    const go = { moneyNeeds: goTo('Money?tab=MoneyNeeds'), week: goTo('Week') };
+
+    // ---------------- real constants ----------------
+    const COMPANY_FLOOR_API = 500000, COMPANY_FLOOR_APPS = 40;
+    const MDRT = 688800;
+    const SETTLED_YTD = 87146, SETTLED_APPS_YTD = 5;
+    const WEEKS_LEFT = 14;
+    const WK_MIN = { calls: 60, contacts: 40, appts: 20, ff: 10, ci: 10, apps: 1 };
+
+    // ---------------- driving inputs ----------------
+    const annualAPI = s.annualAPI, annualApps = s.annualApps, avgPolicyAPI = s.avgPolicyAPI;
+    const avgPolicySafe = avgPolicyAPI > 0 ? avgPolicyAPI : 1;
+    const ciToSaleFrac = clamp(s.ciToSaleRatio, 1, 100) / 100;
+    const dialsToContactsFrac = clamp(s.dialsToContactsRatio, 1, 100) / 100;
+
+    const onAnnualAPI = (e) => { const v = parseFloat(e.target.value); this.setState({ annualAPI: isNaN(v) ? 0 : v }); };
+    const onAnnualApps = (e) => { const v = parseFloat(e.target.value); this.setState({ annualApps: isNaN(v) ? 0 : v }); };
+    const onAvgPolicy = (e) => { const v = parseFloat(e.target.value); this.setState({ avgPolicyAPI: isNaN(v) || v < 0 ? 0 : v }); };
+    const onCiToSale = (e) => { const v = parseFloat(e.target.value); this.setState({ ciToSaleRatio: isNaN(v) ? s.ciToSaleRatio : clamp(v, 1, 100) }); };
+    const onDialsToContacts = (e) => { const v = parseFloat(e.target.value); this.setState({ dialsToContactsRatio: isNaN(v) ? s.dialsToContactsRatio : clamp(v, 1, 100) }); };
+    const toggleWhy = () => this.setState({ whyOpen: !s.whyOpen });
+
+    // ---------------- weekly backward solve ----------------
+    const remainingAPI = Math.max(0, annualAPI - SETTLED_YTD);
+    const weeklyAPINeed = remainingAPI / WEEKS_LEFT;
+    const appsNeed = weeklyAPINeed / avgPolicySafe;
+    const ciNeed = appsNeed / ciToSaleFrac;
+    const ffNeed = ciNeed / 0.57;
+    const apptNeed = ffNeed / 0.506;
+    const contactsNeed = apptNeed / 0.45;
+    const dialsNeed = contactsNeed / dialsToContactsFrac;
+    const doing = { dials: 48, contacts: 31, appts: 14, ff: 7, ci: 4, apps: 1 };
+
+    const ladderDefs = [
+      { label: 'Applications', need: appsNeed, doing: doing.apps, min: WK_MIN.apps, note: '≈TTD ' + fmt(avgPolicyAPI) + ' average API per app' },
+      { label: 'Closing interviews', need: ciNeed, doing: doing.ci, min: WK_MIN.ci, note: '≈' + Math.round(ciToSaleFrac * 100) + '% of closing interviews become an application' },
+      { label: 'Fact finds', need: ffNeed, doing: doing.ff, min: WK_MIN.ff, note: '≈57% of fact finds become a closing interview (SAMPLE)' },
+      { label: 'Appointments kept', need: apptNeed, doing: doing.appts, min: WK_MIN.appts, note: '≈51% of kept appointments become a fact find (SAMPLE)' },
+      { label: 'Contacts', need: contactsNeed, doing: doing.contacts, min: WK_MIN.contacts, note: '≈45% of contacts become an appointment (SAMPLE)' },
+      { label: 'Dials', need: dialsNeed, doing: doing.dials, min: WK_MIN.calls, note: '≈' + Math.round(dialsToContactsFrac * 100) + '% of dials become a contact' }
+    ];
+    const ladderTrack = 590;
+    const ladderRows = ladderDefs.map((r, i) => {
+      const rowMax = Math.max(r.need, r.doing, r.min, 1);
+      const needW = Math.max(4, (r.need / rowMax) * ladderTrack);
+      const doW = Math.max(4, (r.doing / rowMax) * ladderTrack);
+      const tickX = Math.min(ladderTrack, (r.min / rowMax) * ladderTrack);
+      const short = r.doing < r.need;
+      return {
+        label: r.label, needW: needW.toFixed(1), doW: doW.toFixed(1), tickX: tickX.toFixed(1),
+        needTx: (needW + 6).toFixed(1), doTx: (doW + 6).toFixed(1),
+        needLabel: n1(r.need), doLabel: String(r.doing), minLabel: 'min ' + r.min,
+        short: short, shortLabel: short ? ('short by ' + n1(r.need - r.doing)) : '',
+        ratioNote: r.note,
+        aria: r.label + ': need ' + n1(r.need) + ' a week, doing ' + r.doing + ' on a 4-week average, company minimum ' + r.min
+      };
+    });
+    const ladderTableUI = { showChart: !s.ladderTable, showTable: !!s.ladderTable, tableLabel: s.ladderTable ? 'Chart' : 'Table', toggle: () => this.setState({ ladderTable: !s.ladderTable }) };
+    const ladder = Object.assign({ rows: ladderRows }, ladderTableUI);
+
+    // ---------------- pace tracking ----------------
+    const weekSoFarApps = 2.5;
+    const paceDiffApps = weekSoFarApps - appsNeed;
+    const onPace = paceDiffApps >= -0.05;
+    const pace = {
+      bg: onPace ? c.accentTint : c.warmTint, textColor: onPace ? c.accent : c.warm, iconColor: onPace ? c.accent : c.warm,
+      iconPath: onPace ? 'M20 6 9 17l-5-5' : 'M12 9v4M12 17h.01M12 3l9 16H3z',
+      label: onPace
+        ? ('On pace for TTD ' + fmt(weeklyAPINeed) + ' this week (' + n1(weekSoFarApps) + ' of ' + n1(appsNeed) + ' applications)')
+        : ('Behind by ' + n1(Math.abs(paceDiffApps)) + ' applications this week · ~TTD ' + fmt(Math.abs(paceDiffApps) * avgPolicySafe) + ' short')
+    };
+
+    // ---------------- Step 1 compact Money Needs chain ----------------
+    const grossFromNet = (net) => {
+      const netAtCap = 1000000 - 0.25 * (1000000 - 90000);
+      if (net <= 90000) return net;
+      if (net <= netAtCap) return (net - 22500) / 0.75;
+      return (net - 72500) / 0.7;
+    };
+    const SAMPLE_AFTER_TAX_NEED = 191460; // same sample worksheet as the Money needs tab
+    const preTax = grossFromNet(SAMPLE_AFTER_TAX_NEED);
+    const persistencyDefault = 1; // Money needs tab assumes every dollar settles and stays
+    const commissionRateSample = 0.40;
+    const commissionNeeded = preTax;
+    const persistAdjCommission = commissionNeeded / persistencyDefault;
+    const apiNeededFromNeeds = persistAdjCommission / commissionRateSample;
+    const chainText = 'TTD ' + fmt(SAMPLE_AFTER_TAX_NEED) + ' need → TTD ' + fmt(preTax) + ' pre-tax (PAYE) → TTD ' + fmt(commissionNeeded) + ' commission · SAMPLE need';
+
+    // ---------------- Step 2 monthly plan ----------------
+    const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = s.months;
+    const yearTotalAPI = months.reduce((a, m) => a + (m.api || 0), 0);
+    const yearTotalApps = months.reduce((a, m) => a + (m.apps || 0), 0);
+    const yearTotalAPIFmt = fmt(yearTotalAPI);
+    const yearTotalAppsFmt = n1(yearTotalApps);
+
+    const monthRows = months.map((m, i) => ({
+      label: MONTH_LABELS[i], apiVal: m.api, appsVal: m.apps,
+      onApi: (e) => { const v = parseFloat(e.target.value); const m2 = this.state.months.slice(); m2[i] = Object.assign({}, m2[i], { api: isNaN(v) ? 0 : v }); this.setState({ months: m2 }); },
+      onApps: (e) => { const v = parseFloat(e.target.value); const m2 = this.state.months.slice(); m2[i] = Object.assign({}, m2[i], { apps: isNaN(v) ? 0 : v }); this.setState({ months: m2 }); }
+    }));
+
+    const w9 = [0.05, 0.07, 0.08, 0.09, 0.10, 0.12, 0.14, 0.16, 0.19];
+    const acc = w9.map((w) => Math.round(SETTLED_YTD * w));
+    const accSum = acc.reduce((a, b) => a + b, 0);
+    acc[8] += (SETTLED_YTD - accSum);
+    const ACTUAL_API = acc.concat([null, null, null]);
+    const ACTUAL_APPS = [0, 0, 1, 0, 1, 0, 1, 0, 2, null, null, null];
+
+    const maxBarVals = months.map((m) => m.api).concat(ACTUAL_API.filter((x) => x != null));
+    const maxBar = Math.max.apply(null, maxBarVals.concat([1]));
+    const chartBaseline = 130, chartMaxH = 100, slot = 820 / 12;
+    const monthBars = months.map((m, i) => {
+      const planH = Math.max(3, Math.round((m.api / maxBar) * chartMaxH));
+      const planY = chartBaseline - planH;
+      const hasActual = ACTUAL_API[i] != null;
+      const actH = hasActual ? Math.max(3, Math.round((ACTUAL_API[i] / maxBar) * chartMaxH)) : 0;
+      const actY = chartBaseline - actH;
+      const x = i * slot;
+      return {
+        planX: (x + 5).toFixed(1), planW: (slot - 10).toFixed(1), planY: planY.toFixed(1), planH: planH.toFixed(1),
+        hasActual: hasActual, actX: (x + slot / 2 - 10).toFixed(1), actW: 20, actY: actY.toFixed(1), actH: actH.toFixed(1),
+        labelX: (x + slot / 2).toFixed(1), label: MONTH_LABELS[i]
+      };
+    });
+    const monthlyTableUI = { showChart: !s.monthlyTable, showTable: !!s.monthlyTable, tableLabel: s.monthlyTable ? 'Chart' : 'Table', toggle: () => this.setState({ monthlyTable: !s.monthlyTable }) };
+    const monthlyChart = monthlyTableUI;
+    const monthTableRows = months.map((m, i) => ({ label: MONTH_LABELS[i], plan: 'TTD ' + fmt(m.api), actual: ACTUAL_API[i] != null ? ('TTD ' + fmt(ACTUAL_API[i])) : '—' }));
+
+    const LINE_SPLIT = [{ label: 'Life', pct: 55, k: 0 }, { label: 'A&H', pct: 20, k: 1 }, { label: 'General', pct: 25, k: 2 }];
+    const splitByLine = (total) => LINE_SPLIT.map((l) => ({ label: l.label, pct: l.pct, amount: fmt(total * l.pct / 100), color: c.cat[l.k] }));
+    const byLine = splitByLine(yearTotalAPI);
+    const byLineReview = splitByLine(annualAPI).map((b) => ({ label: b.label, amount: b.amount }));
+
+    const reconMax = Math.max(yearTotalAPI, MDRT, COMPANY_FLOOR_API, 1) * 1.08;
+    const barW = Math.max(4, (yearTotalAPI / reconMax) * 440);
+    const floorX = (COMPANY_FLOOR_API / reconMax) * 440;
+    const mdrtX = (MDRT / reconMax) * 440;
+    const floorAnchor = floorX > 440 - 90 ? 'end' : 'start';
+    const floorTx = floorAnchor === 'end' ? floorX - 4 : floorX + 4;
+    const mdrtAnchor = mdrtX > 440 - 90 ? 'end' : 'start';
+    const mdrtTx = mdrtAnchor === 'end' ? mdrtX - 4 : mdrtX + 4;
+    const diff = yearTotalAPI - annualAPI;
+    const reconciled = Math.abs(diff) < 1000;
+    const recon = {
+      barW: barW.toFixed(1), floorX: floorX.toFixed(1), floorTx: floorTx.toFixed(1), floorAnchor: floorAnchor,
+      mdrtX: mdrtX.toFixed(1), mdrtTx: mdrtTx.toFixed(1), mdrtAnchor: mdrtAnchor,
+      note: reconciled ? ('Matches your Step 3 commitment of TTD ' + fmt(annualAPI)) : (diff > 0 ? ('TTD ' + fmt(diff) + ' above your commitment of TTD ' + fmt(annualAPI)) : ('TTD ' + fmt(Math.abs(diff)) + ' below your commitment of TTD ' + fmt(annualAPI))),
+      noteColor: reconciled ? c.accent : c.warm,
+      aria: 'Year total TTD ' + fmt(yearTotalAPI) + ' against company floor TTD 500,000 and MDRT TTD 688,800'
+    };
+    const monthlyPlanFilled = reconciled;
+
+    // ---------------- gating / steps ----------------
+    const step1Done = true;
+    const step2Done = monthlyPlanFilled;
+    const step3Done = s.committed;
+    const stepsBuilt = (step1Done ? 1 : 0) + (step2Done ? 1 : 0) + (step3Done ? 1 : 0);
+    const stepsPct = Math.round((stepsBuilt / 3) * 100);
+    const stepsBadge = { label: stepsBuilt + '/3 steps built · ' + stepsPct + '%', bg: stepsBuilt === 3 ? c.accentTint : c.sunk, fg: stepsBuilt === 3 ? c.accent : c.mute };
+
+    const scrollToMonths = () => { try { const el = document.getElementById('gp-months'); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (err) {} };
+    const goStep3 = () => { if (step2Done) this.bumpView(s.committed ? 'confirm' : 'review'); };
+
+    const steps = [
+      { n: '1', label: 'Money needs', dotBg: c.accent, dotFg: c.onAccent, labelColor: c.ink, bg: c.surface, border: c.rule, cursor: 'pointer',
+        value: 'TTD ' + fmt(apiNeededFromNeeds) + ' API needed', sub: chainText,
+        actionLabel: 'Open Money needs →', actionColor: c.accent, onClick: go.moneyNeeds },
+      { n: '2', label: 'Monthly plan', dotBg: step2Done ? c.accent : c.sunk, dotFg: step2Done ? c.onAccent : c.mute, labelColor: c.ink, bg: c.surface, border: c.rule, cursor: 'pointer',
+        value: 'TTD ' + yearTotalAPIFmt, sub: recon.note,
+        actionLabel: 'Review months ↓', actionColor: c.accent, onClick: scrollToMonths },
+      { n: '3', label: 'Review and commit', dotBg: step3Done ? c.accent : c.sunk, dotFg: step3Done ? c.onAccent : c.mute, labelColor: step2Done ? c.ink : c.faint, bg: c.surface, border: c.rule, cursor: step2Done ? 'pointer' : 'default',
+        value: step3Done ? 'Committed' : (step2Done ? 'Ready' : 'Locked'),
+        sub: step3Done ? ('Shared with your manager · ' + s.commitDate) : (step2Done ? 'Continue when ready' : 'Finish Monthly plan first'),
+        actionLabel: step3Done ? 'Change in panel →' : (step2Done ? 'Review & commit →' : 'Locked'), actionColor: step2Done ? c.accent : c.faint,
+        onClick: goStep3 }
+    ];
+
+    const anchor = {
+      apiLabel: 'TTD ' + fmt(annualAPI), appsLabel: n1(annualApps) + ' apps',
+      progressPct: clamp(Math.round((SETTLED_YTD / Math.max(1, annualAPI)) * 100), 0, 100),
+      progressLabel: 'TTD ' + fmt(SETTLED_YTD) + ' settled of TTD ' + fmt(annualAPI),
+      tagBg: s.committed ? c.accentTint : c.sunk, tagFg: s.committed ? c.accent : c.mute,
+      committedTag: s.committed ? ('Committed ' + s.commitDate) : 'Draft · not committed yet'
+    };
+
+    const reviewCTA = {
+      label: s.committed ? 'Plan committed — open it in the panel →' : (step2Done ? 'Ready for Step 3? Review and commit →' : 'Finish your Monthly plan to unlock Step 3'),
+      onClick: () => { if (step2Done) this.bumpView(s.committed ? 'confirm' : 'review'); },
+      bg: step2Done ? c.accent : c.sunk, fg: step2Done ? c.onAccent : c.faint
+    };
+
+    // ---------------- inspector: calc ----------------
+    const goReview = () => { if (step2Done) this.bumpView('review'); };
+    const reviewBtn = { label: step2Done ? 'Continue to Step 3 →' : 'Finish Monthly plan first', bg: step2Done ? c.accent : c.sunk, fg: step2Done ? c.onAccent : c.faint };
+    const derivedApps = annualAPI / avgPolicySafe;
+    const ratioSourceChip = 'your last 12 submitted weeks (needs 8+) · company defaults';
+
+    // ---------------- inspector: review ----------------
+    const backToCalc = () => this.bumpView('calc');
+    const reviewAppsLine = n1(annualApps) + ' apps · avg TTD ' + fmt(avgPolicyAPI) + ' per policy';
+    const shapeBars = months.map((m, i) => ({ h: Math.max(3, Math.round((m.api / Math.max(1, Math.max.apply(null, months.map((mm) => mm.api)))) * 40)), title: MONTH_LABELS[i] + ': TTD ' + fmt(m.api) }));
+    const nudge = { show: !step2Done, label: 'Monthly plan not drafted → Go to Monthly plan', onClick: () => { this.bumpView('calc'); scrollToMonths(); } };
+    const goConsequence = () => this.bumpView('consequence');
+
+    // ---------------- inspector: consequence ----------------
+    const consequenceBack = () => this.bumpView('review');
+    const weeklyConsequenceLine = 'Committing sets your Personal Commitment. To reach it you will need about TTD ' + fmt(weeklyAPINeed) + ' a week (≈' + n1(appsNeed) + ' applications), tracked in Suggested week.';
+    const cascadeDefs = [
+      { label: 'Company Floor', api: COMPANY_FLOOR_API, apps: COMPANY_FLOOR_APPS, real: true, personal: false },
+      { label: 'Sales Manager Target (SAMPLE)', api: 560000, apps: 42, real: false, personal: false },
+      { label: 'Branch Target (SAMPLE)', api: 600000, apps: 45, real: false, personal: false },
+      { label: 'Unit Target (SAMPLE)', api: 640000, apps: 48, real: false, personal: false },
+      { label: 'Personal Commitment', api: annualAPI, apps: annualApps, real: true, personal: true }
+    ];
+    const cascade = cascadeDefs.map((cd) => ({ label: cd.label, value: 'TTD ' + fmt(cd.api) + ' · ' + n1(cd.apps) + ' apps', bg: cd.personal ? c.accentTint : 'transparent', color: cd.personal ? c.accent : c.ink }));
+    const goConfirm = () => this.bumpView('confirm');
+
+    // ---------------- inspector: confirm ----------------
+    const confirmBack = () => this.bumpView('consequence');
+    const confirmHeading = s.committed ? 'Re-confirm commitment' : 'Confirm commitment';
+    const apiFloorViolation = annualAPI < COMPANY_FLOOR_API;
+    const appsFloorViolation = annualApps < COMPANY_FLOOR_APPS;
+    const avgPolicyMissing = !avgPolicyAPI || avgPolicyAPI <= 0;
+    const previewApi = s.previewError === 'api', previewApps = s.previewError === 'apps', previewAvgPolicy = s.previewError === 'avgpolicy';
+    const showApiError = apiFloorViolation || previewApi;
+    const showAppsError = appsFloorViolation || previewApps;
+    const showAvgPolicyError = avgPolicyMissing || previewAvgPolicy;
+    const hasBlockingError = showApiError || showAppsError || showAvgPolicyError;
+    const previewChips = [{ key: 'api', label: 'API floor' }, { key: 'apps', label: 'Apps floor' }, { key: 'avgpolicy', label: 'Avg policy' }].map((pc) => {
+      const on = s.previewError === pc.key;
+      return { label: pc.label, on: on ? 'true' : 'false', bg: on ? c.warm : c.sunk, color: on ? c.onAccent : c.mute, pick: () => this.setState({ previewError: on ? null : pc.key }) };
+    });
+    const apiError = { show: showApiError, text: 'Plan is below your API floor of TTD ' + fmt(COMPANY_FLOOR_API) + '. Raise it in Money Needs.' };
+    const appsError = { show: showAppsError, text: 'Plan is below the apps floor of ' + COMPANY_FLOOR_APPS + '. Plan more or smaller policies, or raise your API in Money Needs.' };
+    const avgPolicyError = {
+      show: showAvgPolicyError, text: 'We need an average policy size to turn this into applications.',
+      captureVal: s.avgPolicyCapture, onCapture: (e) => this.setState({ avgPolicyCapture: e.target.value }),
+      onSave: () => { const v = parseFloat(this.state.avgPolicyCapture); if (!isNaN(v) && v > 0) { this.setState({ avgPolicyAPI: v, avgPolicyCapture: '', previewError: this.state.previewError === 'avgpolicy' ? null : this.state.previewError }); } }
+    };
+    const confirmCommit = () => { if (hasBlockingError) return; this.setState({ committed: true, commitDate: '27-09-2026', inspectorView: 'done', previewError: null }); };
+    const confirmBtn = { label: s.committed ? 'Re-confirm commitment' : 'Confirm commitment', bg: hasBlockingError ? c.sunk : c.accent, fg: hasBlockingError ? c.faint : c.onAccent };
+
+    // ---------------- inspector: done ----------------
+    const doneLine = 'Committed ' + (s.commitDate || '27-09-2026') + ' · shared with your manager';
+    const doneBadge = '3 / 3 steps built · 100%';
+    const reopen = () => this.bumpView('confirm');
+
+    // ---------------- manager suggestions ----------------
+    const suggestPreviewChips = ['sample', 'empty', 'error'].map((k) => {
+      const on = s.suggestionPreview === k;
+      return { label: k.charAt(0).toUpperCase() + k.slice(1), on: on ? 'true' : 'false', bg: on ? c.surface : 'transparent', color: on ? c.ink : c.mute, pick: () => this.setState({ suggestionPreview: k }) };
+    });
+    const suggestion = {
+      visible: s.suggestionPreview === 'sample', showEmpty: s.suggestionPreview === 'empty', showError: s.suggestionPreview === 'error',
+      unread: s.suggestionStatus === 'open', from: '[Your manager]',
+      text: 'Try raising your average policy size — a few whole life reviews could get you there faster. Suggested annual API: TTD ' + fmt(annualAPI + 20000) + '.',
+      accept: () => { this.setState({ annualAPI: this.state.annualAPI + 20000, suggestionStatus: 'acknowledged' }); toast("Applied your manager's suggestion"); },
+      reply: () => { this.setState({ suggestionStatus: 'acknowledged' }); toast('Reply sent to your manager'); }
+    };
+
+    return {
+      c: c, dark: !!this.props.dark, go: go, cat0: c.cat[0],
+      isCalc: s.inspectorView === 'calc', isReview: s.inspectorView === 'review', isConsequence: s.inspectorView === 'consequence', isConfirm: s.inspectorView === 'confirm', isDone: s.inspectorView === 'done',
+      vfAnim: s.viewFlip % 2 === 0 ? 'd3gFadeA' : 'd3gFadeB',
+      stepsBadge: stepsBadge, steps: steps, anchor: anchor,
+      yearTotalAPIFmt: yearTotalAPIFmt, yearTotalAppsFmt: yearTotalAppsFmt,
+      monthRows: monthRows, byLine: byLine, recon: recon,
+      settledYtdFmt: fmt(SETTLED_YTD), monthlyChart: monthlyChart, monthBars: monthBars, monthTableRows: monthTableRows,
+      weeklyAPINeedFmt: fmt(weeklyAPINeed), ladder: ladder, ladderRows: ladderRows, pace: pace,
+      suggestPreviewChips: suggestPreviewChips, suggestion: suggestion,
+      reviewCTA: reviewCTA,
+      annualAPI: annualAPI, annualApps: annualApps, avgPolicyAPI: avgPolicyAPI,
+      annualAPIFmt: fmt(annualAPI), annualAppsFmt: n1(annualApps), avgPolicyFmt: fmt(avgPolicyAPI), derivedAppsFmt: n1(derivedApps),
+      onAnnualAPI: onAnnualAPI, onAnnualApps: onAnnualApps, onAvgPolicy: onAvgPolicy,
+      toggleWhy: toggleWhy, whyOpen: s.whyOpen, whyOpenAria: s.whyOpen ? 'true' : 'false',
+      ciToSaleRatio: s.ciToSaleRatio, dialsToContactsRatio: s.dialsToContactsRatio, onCiToSale: onCiToSale, onDialsToContacts: onDialsToContacts,
+      ratioSourceChip: ratioSourceChip, goReview: goReview, reviewBtn: reviewBtn,
+      backToCalc: backToCalc, reviewAppsLine: reviewAppsLine, byLineReview: byLineReview, shapeBars: shapeBars, nudge: nudge, goConsequence: goConsequence,
+      consequenceBack: consequenceBack, weeklyConsequenceLine: weeklyConsequenceLine, cascade: cascade, goConfirm: goConfirm,
+      confirmBack: confirmBack, confirmHeading: confirmHeading, previewChips: previewChips,
+      apiError: apiError, appsError: appsError, avgPolicyError: avgPolicyError, confirmCommit: confirmCommit, confirmBtn: confirmBtn,
+      doneLine: doneLine, doneBadge: doneBadge, reopen: reopen
+    };
+  }
+  bumpView(v) { this.setState({ inspectorView: v, viewFlip: 1 - this.state.viewFlip }); }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Money needs — mobile v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}
+a{color:inherit}
+*{font-variant-numeric:tabular-nums}
+.m3mn-scroll{-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.m3mn-scroll::-webkit-scrollbar{display:none}
+@keyframes m3mnSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes m3mnFade{from{opacity:0}to{opacity:1}}
+input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{opacity:1}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: {{rootH}}px; box-sizing: border-box; position: relative; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; display: flex; flex-direction: column; gap: 14px; padding: 12px 0 104px;">
+
+  <header style="display: flex; align-items: center; gap: 8px; min-height: 56px; flex-shrink: 0; padding: 0 16px;">
+    <a href="M3-Money.dc.html" onClick="{{go.back}}" aria-label="Back to Money" style="width: 44px; height: 44px; border-radius: 22px; background: {{c.sunk}}; display: flex; align-items: center; justify-content: center; color: {{c.ink}}; flex-shrink: 0;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+    </a>
+    <h1 style="flex-grow: 1; min-width: 0; margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 700;">Money needs</h1>
+  </header>
+
+  <!-- ============ PAGER ============ -->
+  <div style="display: flex; flex-direction: column; gap: 8px; padding: 0 16px;">
+    <div role="tablist" aria-label="Money needs groups" tabIndex="0" onKeyDown="{{pagerKeyDown}}" class="m3mn-scroll" style="display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px;">
+      <sc-for list="{{pages}}" as="pg2" hint-placeholder-count="6">
+        <button role="tab" aria-selected="{{pg2.selected}}" onClick="{{pg2.pick}}" style="flex-shrink: 0; min-height: 52px; padding: 6px 14px; border-radius: 14px; border: 0; background: {{pg2.bg}}; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; white-space: nowrap;">
+          <span style="font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700; color: {{pg2.color}};">{{pg2.label}}</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; color: {{pg2.subColor}};">{{pg2.sub}}</span>
+        </button>
+      </sc-for>
+    </div>
+    <div style="display: flex; justify-content: center; align-items: center; gap: 6px; height: 8px;" aria-hidden="true">
+      <sc-for list="{{pages}}" as="pd" hint-placeholder-count="6">
+        <span style="width: {{pd.dotW}}px; height: 6px; border-radius: 3px; background: {{pd.dot}}; transition: width 200ms ease;"></span>
+      </sc-for>
+    </div>
+    <sc-if value="{{showHint}}" hint-placeholder-val="{{false}}">
+      <span style="font-size: 11px; color: {{c.faint}};">Swipe for more →</span>
+    </sc-if>
+  </div>
+
+  <!-- ============ TRACK ============ -->
+  <div onPointerDown="{{down}}" onPointerMove="{{move}}" onPointerUp="{{up}}" onPointerCancel="{{up}}" style="width: 390px; overflow: hidden; touch-action: pan-y;">
+    <div style="width: {{trackWidth}}px; display: flex; align-items: flex-start; transform: translateX({{tx}}px); transition: {{trans}}; will-change: transform;">
+
+      <!-- PAGE 0 — FIXED EXPENSES -->
+      <section aria-label="Fixed Expenses" aria-hidden="{{hidden0}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{maxH0}}px; overflow: hidden; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: {{c.mute}};">What your household and business need to cover. Every line here feeds your income goal.</p>
+          <span style="align-self: flex-start; height: 26px; padding: 0 12px; border-radius: 13px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; font-size: 11.5px; font-weight: 700;">{{tally.filled}} of {{tally.total}} filled overall</span>
+        </div>
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 2px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">{{g0.label}}</h2>
+            <span style="font-size: 11px; color: {{c.mute}}; flex-shrink: 0;">{{g0.filled}}/{{g0.total}} filled</span>
+          </div>
+          <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; margin: 2px 0 6px;">TTD {{g0.subtotal}} a year</span>
+          <sc-for list="{{g0.rows}}" as="r" hint-placeholder-count="6">
+            <div style="padding: 10px 0; border-bottom: 1px solid {{c.rule}}; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <sc-if value="{{r.isCustom}}" hint-placeholder-val="{{false}}">
+                  <input value="{{r.label}}" onChange="{{r.onLabel}}" placeholder="Custom line" aria-label="Custom line name" style="flex-grow: 1; min-width: 0; height: 32px; box-sizing: border-box; border: 1px solid {{c.rule}}; border-radius: 8px; padding: 0 8px; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 600;">
+                </sc-if>
+                <sc-if value="{{r.isSeedLabel}}" hint-placeholder-val="{{true}}">
+                  <label for="{{r.id}}" style="flex-grow: 1; min-width: 0; font-size: 12.5px; font-weight: 600; line-height: 1.3;">{{r.label}}</label>
+                </sc-if>
+                <span style="flex-shrink: 0; font-size: 10.5px; color: {{c.mute}};">{{r.yearly}}/yr</span>
+                <sc-if value="{{r.isCustom}}" hint-placeholder-val="{{false}}">
+                  <button aria-label="Remove line" onClick="{{r.onRemove}}" style="width: 26px; height: 26px; flex-shrink: 0; border: 0; border-radius: 7px; background: transparent; color: {{c.faint}}; display: flex; align-items: center; justify-content: center;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+                  </button>
+                </sc-if>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <sc-if value="{{r.calcFedLive}}" hint-placeholder-val="{{false}}">
+                  <span style="flex-grow: 1; font-size: 13px; font-weight: 600; color: {{c.mute}};">TTD {{r.value}} <span style="font-size: 10px; font-style: italic; color: {{c.faint}};">calculated</span></span>
+                  <button onClick="{{r.onEdit}}" style="height: 30px; padding: 0 10px; flex-shrink: 0; border: 0; border-radius: 8px; background: {{c.sunk}}; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700;">Edit</button>
+                </sc-if>
+                <sc-if value="{{r.editable}}" hint-placeholder-val="{{true}}">
+                  <div style="flex-grow: 1; min-width: 0; height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.bg}}; display: flex; align-items: center; padding: 0 10px; gap: 6px;">
+                    <span style="font-size: 12px; font-weight: 600; color: {{c.mute}};">TTD</span>
+                    <input id="{{r.id}}" inputmode="decimal" aria-label="{{r.label}}" value="{{r.value}}" onChange="{{r.onAmount}}" style="flex-grow: 1; width: 100%; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; outline: none; text-align: right;">
+                  </div>
+                  <sc-if value="{{r.showFreq}}" hint-placeholder-val="{{true}}">
+                    <div style="display: flex; gap: 2px; flex-shrink: 0;">
+                      <sc-for list="{{r.freqBtns}}" as="fb" hint-placeholder-count="4">
+                        <button onClick="{{fb.pick}}" aria-pressed="{{fb.on}}" aria-label="{{fb.full}}" style="width: 28px; height: 28px; border: 0; border-radius: 7px; background: {{fb.bg}}; color: {{fb.color}}; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;">{{fb.label}}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </sc-if>
+                <sc-if value="{{r.calcFedOverridden}}" hint-placeholder-val="{{false}}">
+                  <button onClick="{{r.onReset}}" style="flex-shrink: 0; font-size: 10.5px; font-weight: 700; color: {{c.accent}}; background: transparent; border: 0;">Reset</button>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+          <button onClick="{{g0.addLine}}" style="align-self: flex-start; height: 36px; margin: 10px 0 6px; padding: 0 12px; border-radius: 9px; border: 1px dashed {{c.rule}}; background: transparent; color: {{c.mute}}; display: flex; align-items: center; gap: 6px; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add a line</button>
+        </div>
+      </section>
+
+      <!-- PAGE 1 — LIVING EXPENSES -->
+      <section aria-label="Living Expenses" aria-hidden="{{hidden1}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{maxH1}}px; overflow: hidden; display: flex; flex-direction: column; gap: 10px;">
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 2px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">{{g1.label}}</h2>
+            <span style="font-size: 11px; color: {{c.mute}}; flex-shrink: 0;">{{g1.filled}}/{{g1.total}} filled</span>
+          </div>
+          <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; margin: 2px 0 6px;">TTD {{g1.subtotal}} a year</span>
+          <sc-for list="{{g1.rows}}" as="r" hint-placeholder-count="8">
+            <div style="padding: 10px 0; border-bottom: 1px solid {{c.rule}}; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <sc-if value="{{r.isCustom}}" hint-placeholder-val="{{false}}">
+                  <input value="{{r.label}}" onChange="{{r.onLabel}}" placeholder="Custom line" aria-label="Custom line name" style="flex-grow: 1; min-width: 0; height: 32px; box-sizing: border-box; border: 1px solid {{c.rule}}; border-radius: 8px; padding: 0 8px; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 600;">
+                </sc-if>
+                <sc-if value="{{r.isSeedLabel}}" hint-placeholder-val="{{true}}">
+                  <label for="{{r.id}}" style="flex-grow: 1; min-width: 0; font-size: 12.5px; font-weight: 600; line-height: 1.3;">{{r.label}}</label>
+                </sc-if>
+                <span style="flex-shrink: 0; font-size: 10.5px; color: {{c.mute}};">{{r.yearly}}/yr</span>
+                <sc-if value="{{r.isCustom}}" hint-placeholder-val="{{false}}">
+                  <button aria-label="Remove line" onClick="{{r.onRemove}}" style="width: 26px; height: 26px; flex-shrink: 0; border: 0; border-radius: 7px; background: transparent; color: {{c.faint}}; display: flex; align-items: center; justify-content: center;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+                  </button>
+                </sc-if>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <sc-if value="{{r.calcFedLive}}" hint-placeholder-val="{{false}}">
+                  <span style="flex-grow: 1; font-size: 13px; font-weight: 600; color: {{c.mute}};">TTD {{r.value}} <span style="font-size: 10px; font-style: italic; color: {{c.faint}};">calculated</span></span>
+                  <button onClick="{{r.onEdit}}" style="height: 30px; padding: 0 10px; flex-shrink: 0; border: 0; border-radius: 8px; background: {{c.sunk}}; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700;">Edit</button>
+                </sc-if>
+                <sc-if value="{{r.editable}}" hint-placeholder-val="{{true}}">
+                  <div style="flex-grow: 1; min-width: 0; height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.bg}}; display: flex; align-items: center; padding: 0 10px; gap: 6px;">
+                    <span style="font-size: 12px; font-weight: 600; color: {{c.mute}};">TTD</span>
+                    <input id="{{r.id}}" inputmode="decimal" aria-label="{{r.label}}" value="{{r.value}}" onChange="{{r.onAmount}}" style="flex-grow: 1; width: 100%; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; outline: none; text-align: right;">
+                  </div>
+                  <sc-if value="{{r.showFreq}}" hint-placeholder-val="{{true}}">
+                    <div style="display: flex; gap: 2px; flex-shrink: 0;">
+                      <sc-for list="{{r.freqBtns}}" as="fb" hint-placeholder-count="4">
+                        <button onClick="{{fb.pick}}" aria-pressed="{{fb.on}}" aria-label="{{fb.full}}" style="width: 28px; height: 28px; border: 0; border-radius: 7px; background: {{fb.bg}}; color: {{fb.color}}; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;">{{fb.label}}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </sc-if>
+                <sc-if value="{{r.calcFedOverridden}}" hint-placeholder-val="{{false}}">
+                  <button onClick="{{r.onReset}}" style="flex-shrink: 0; font-size: 10.5px; font-weight: 700; color: {{c.accent}}; background: transparent; border: 0;">Reset</button>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+          <button onClick="{{g1.addLine}}" style="align-self: flex-start; height: 36px; margin: 10px 0 6px; padding: 0 12px; border-radius: 9px; border: 1px dashed {{c.rule}}; background: transparent; color: {{c.mute}}; display: flex; align-items: center; gap: 6px; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add a line</button>
+        </div>
+      </section>
+
+      <!-- PAGE 2 — BUSINESS EXPENSES -->
+      <section aria-label="Business Expenses" aria-hidden="{{hidden2}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{maxH2}}px; overflow: hidden; display: flex; flex-direction: column; gap: 10px;">
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 2px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">{{g2.label}}</h2>
+            <span style="font-size: 11px; color: {{c.mute}}; flex-shrink: 0;">{{g2.filled}}/{{g2.total}} filled</span>
+          </div>
+          <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; margin: 2px 0 6px;">TTD {{g2.subtotal}} a year</span>
+          <sc-for list="{{g2.rows}}" as="r" hint-placeholder-count="8">
+            <div style="padding: 10px 0; border-bottom: 1px solid {{c.rule}}; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <sc-if value="{{r.isCustom}}" hint-placeholder-val="{{false}}">
+                  <input value="{{r.label}}" onChange="{{r.onLabel}}" placeholder="Custom line" aria-label="Custom line name" style="flex-grow: 1; min-width: 0; height: 32px; box-sizing: border-box; border: 1px solid {{c.rule}}; border-radius: 8px; padding: 0 8px; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 600;">
+                </sc-if>
+                <sc-if value="{{r.isSeedLabel}}" hint-placeholder-val="{{true}}">
+                  <label for="{{r.id}}" style="flex-grow: 1; min-width: 0; font-size: 12.5px; font-weight: 600; line-height: 1.3;">{{r.label}}</label>
+                </sc-if>
+                <span style="flex-shrink: 0; font-size: 10.5px; color: {{c.mute}};">{{r.yearly}}/yr</span>
+                <sc-if value="{{r.isCustom}}" hint-placeholder-val="{{false}}">
+                  <button aria-label="Remove line" onClick="{{r.onRemove}}" style="width: 26px; height: 26px; flex-shrink: 0; border: 0; border-radius: 7px; background: transparent; color: {{c.faint}}; display: flex; align-items: center; justify-content: center;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+                  </button>
+                </sc-if>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <sc-if value="{{r.calcFedLive}}" hint-placeholder-val="{{false}}">
+                  <span style="flex-grow: 1; font-size: 13px; font-weight: 600; color: {{c.mute}};">TTD {{r.value}} <span style="font-size: 10px; font-style: italic; color: {{c.faint}};">calculated</span></span>
+                  <button onClick="{{r.onEdit}}" style="height: 30px; padding: 0 10px; flex-shrink: 0; border: 0; border-radius: 8px; background: {{c.sunk}}; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700;">Edit</button>
+                </sc-if>
+                <sc-if value="{{r.editable}}" hint-placeholder-val="{{true}}">
+                  <div style="flex-grow: 1; min-width: 0; height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.bg}}; display: flex; align-items: center; padding: 0 10px; gap: 6px;">
+                    <span style="font-size: 12px; font-weight: 600; color: {{c.mute}};">TTD</span>
+                    <input id="{{r.id}}" inputmode="decimal" aria-label="{{r.label}}" value="{{r.value}}" onChange="{{r.onAmount}}" style="flex-grow: 1; width: 100%; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; outline: none; text-align: right;">
+                  </div>
+                  <sc-if value="{{r.showFreq}}" hint-placeholder-val="{{true}}">
+                    <div style="display: flex; gap: 2px; flex-shrink: 0;">
+                      <sc-for list="{{r.freqBtns}}" as="fb" hint-placeholder-count="4">
+                        <button onClick="{{fb.pick}}" aria-pressed="{{fb.on}}" aria-label="{{fb.full}}" style="width: 28px; height: 28px; border: 0; border-radius: 7px; background: {{fb.bg}}; color: {{fb.color}}; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;">{{fb.label}}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </sc-if>
+                <sc-if value="{{r.calcFedOverridden}}" hint-placeholder-val="{{false}}">
+                  <button onClick="{{r.onReset}}" style="flex-shrink: 0; font-size: 10.5px; font-weight: 700; color: {{c.accent}}; background: transparent; border: 0;">Reset</button>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+          <button onClick="{{g2.addLine}}" style="align-self: flex-start; height: 36px; margin: 10px 0 6px; padding: 0 12px; border-radius: 9px; border: 1px dashed {{c.rule}}; background: transparent; color: {{c.mute}}; display: flex; align-items: center; gap: 6px; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add a line</button>
+        </div>
+      </section>
+
+      <!-- PAGE 3 — SAVINGS & ACCUMULATION -->
+      <section aria-label="Savings &amp; Accumulation" aria-hidden="{{hidden3}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{maxH3}}px; overflow: hidden; display: flex; flex-direction: column; gap: 10px;">
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 2px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">{{g3.label}}</h2>
+            <span style="font-size: 11px; color: {{c.mute}}; flex-shrink: 0;">{{g3.filled}}/{{g3.total}} filled</span>
+          </div>
+          <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; margin: 2px 0 6px;">TTD {{g3.subtotal}} a year</span>
+          <sc-for list="{{g3.rows}}" as="r" hint-placeholder-count="6">
+            <div style="padding: 10px 0; border-bottom: 1px solid {{c.rule}}; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <sc-if value="{{r.isCustom}}" hint-placeholder-val="{{false}}">
+                  <input value="{{r.label}}" onChange="{{r.onLabel}}" placeholder="Custom line" aria-label="Custom line name" style="flex-grow: 1; min-width: 0; height: 32px; box-sizing: border-box; border: 1px solid {{c.rule}}; border-radius: 8px; padding: 0 8px; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 600;">
+                </sc-if>
+                <sc-if value="{{r.isSeedLabel}}" hint-placeholder-val="{{true}}">
+                  <label for="{{r.id}}" style="flex-grow: 1; min-width: 0; font-size: 12.5px; font-weight: 600; line-height: 1.3;">{{r.label}}</label>
+                </sc-if>
+                <span style="flex-shrink: 0; font-size: 10.5px; color: {{c.mute}};">{{r.yearly}}/yr</span>
+                <sc-if value="{{r.isCustom}}" hint-placeholder-val="{{false}}">
+                  <button aria-label="Remove line" onClick="{{r.onRemove}}" style="width: 26px; height: 26px; flex-shrink: 0; border: 0; border-radius: 7px; background: transparent; color: {{c.faint}}; display: flex; align-items: center; justify-content: center;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+                  </button>
+                </sc-if>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <sc-if value="{{r.calcFedLive}}" hint-placeholder-val="{{false}}">
+                  <span style="flex-grow: 1; font-size: 13px; font-weight: 600; color: {{c.mute}};">TTD {{r.value}} <span style="font-size: 10px; font-style: italic; color: {{c.faint}};">calculated</span></span>
+                  <button onClick="{{r.onEdit}}" style="height: 30px; padding: 0 10px; flex-shrink: 0; border: 0; border-radius: 8px; background: {{c.sunk}}; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700;">Edit</button>
+                </sc-if>
+                <sc-if value="{{r.editable}}" hint-placeholder-val="{{true}}">
+                  <div style="flex-grow: 1; min-width: 0; height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.bg}}; display: flex; align-items: center; padding: 0 10px; gap: 6px;">
+                    <span style="font-size: 12px; font-weight: 600; color: {{c.mute}};">TTD</span>
+                    <input id="{{r.id}}" inputmode="decimal" aria-label="{{r.label}}" value="{{r.value}}" onChange="{{r.onAmount}}" style="flex-grow: 1; width: 100%; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; outline: none; text-align: right;">
+                  </div>
+                  <sc-if value="{{r.showFreq}}" hint-placeholder-val="{{true}}">
+                    <div style="display: flex; gap: 2px; flex-shrink: 0;">
+                      <sc-for list="{{r.freqBtns}}" as="fb" hint-placeholder-count="4">
+                        <button onClick="{{fb.pick}}" aria-pressed="{{fb.on}}" aria-label="{{fb.full}}" style="width: 28px; height: 28px; border: 0; border-radius: 7px; background: {{fb.bg}}; color: {{fb.color}}; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;">{{fb.label}}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </sc-if>
+                <sc-if value="{{r.calcFedOverridden}}" hint-placeholder-val="{{false}}">
+                  <button onClick="{{r.onReset}}" style="flex-shrink: 0; font-size: 10.5px; font-weight: 700; color: {{c.accent}}; background: transparent; border: 0;">Reset</button>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+          <button onClick="{{g3.addLine}}" style="align-self: flex-start; height: 36px; margin: 10px 0 6px; padding: 0 12px; border-radius: 9px; border: 1px dashed {{c.rule}}; background: transparent; color: {{c.mute}}; display: flex; align-items: center; gap: 6px; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add a line</button>
+        </div>
+      </section>
+
+      <!-- PAGE 4 — MISCELLANEOUS -->
+      <section aria-label="Miscellaneous" aria-hidden="{{hidden4}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{maxH4}}px; overflow: hidden; display: flex; flex-direction: column; gap: 10px;">
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 2px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">{{g4.label}}</h2>
+            <span style="font-size: 11px; color: {{c.mute}}; flex-shrink: 0;">{{g4.filled}}/{{g4.total}} filled</span>
+          </div>
+          <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; margin: 2px 0 6px;">TTD {{g4.subtotal}} a year</span>
+          <sc-for list="{{g4.rows}}" as="r" hint-placeholder-count="6">
+            <div style="padding: 10px 0; border-bottom: 1px solid {{c.rule}}; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <sc-if value="{{r.isCustom}}" hint-placeholder-val="{{false}}">
+                  <input value="{{r.label}}" onChange="{{r.onLabel}}" placeholder="Custom line" aria-label="Custom line name" style="flex-grow: 1; min-width: 0; height: 32px; box-sizing: border-box; border: 1px solid {{c.rule}}; border-radius: 8px; padding: 0 8px; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 600;">
+                </sc-if>
+                <sc-if value="{{r.isSeedLabel}}" hint-placeholder-val="{{true}}">
+                  <label for="{{r.id}}" style="flex-grow: 1; min-width: 0; font-size: 12.5px; font-weight: 600; line-height: 1.3;">{{r.label}}</label>
+                </sc-if>
+                <span style="flex-shrink: 0; font-size: 10.5px; color: {{c.mute}};">{{r.yearly}}/yr</span>
+                <sc-if value="{{r.isCustom}}" hint-placeholder-val="{{false}}">
+                  <button aria-label="Remove line" onClick="{{r.onRemove}}" style="width: 26px; height: 26px; flex-shrink: 0; border: 0; border-radius: 7px; background: transparent; color: {{c.faint}}; display: flex; align-items: center; justify-content: center;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+                  </button>
+                </sc-if>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <sc-if value="{{r.calcFedLive}}" hint-placeholder-val="{{false}}">
+                  <span style="flex-grow: 1; font-size: 13px; font-weight: 600; color: {{c.mute}};">TTD {{r.value}} <span style="font-size: 10px; font-style: italic; color: {{c.faint}};">calculated</span></span>
+                  <button onClick="{{r.onEdit}}" style="height: 30px; padding: 0 10px; flex-shrink: 0; border: 0; border-radius: 8px; background: {{c.sunk}}; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700;">Edit</button>
+                </sc-if>
+                <sc-if value="{{r.editable}}" hint-placeholder-val="{{true}}">
+                  <div style="flex-grow: 1; min-width: 0; height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.bg}}; display: flex; align-items: center; padding: 0 10px; gap: 6px;">
+                    <span style="font-size: 12px; font-weight: 600; color: {{c.mute}};">TTD</span>
+                    <input id="{{r.id}}" inputmode="decimal" aria-label="{{r.label}}" value="{{r.value}}" onChange="{{r.onAmount}}" style="flex-grow: 1; width: 100%; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; outline: none; text-align: right;">
+                  </div>
+                  <sc-if value="{{r.showFreq}}" hint-placeholder-val="{{true}}">
+                    <div style="display: flex; gap: 2px; flex-shrink: 0;">
+                      <sc-for list="{{r.freqBtns}}" as="fb" hint-placeholder-count="4">
+                        <button onClick="{{fb.pick}}" aria-pressed="{{fb.on}}" aria-label="{{fb.full}}" style="width: 28px; height: 28px; border: 0; border-radius: 7px; background: {{fb.bg}}; color: {{fb.color}}; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;">{{fb.label}}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </sc-if>
+                <sc-if value="{{r.calcFedOverridden}}" hint-placeholder-val="{{false}}">
+                  <button onClick="{{r.onReset}}" style="flex-shrink: 0; font-size: 10.5px; font-weight: 700; color: {{c.accent}}; background: transparent; border: 0;">Reset</button>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+          <button onClick="{{g4.addLine}}" style="align-self: flex-start; height: 36px; margin: 10px 0 6px; padding: 0 12px; border-radius: 9px; border: 1px dashed {{c.rule}}; background: transparent; color: {{c.mute}}; display: flex; align-items: center; gap: 6px; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add a line</button>
+        </div>
+      </section>
+
+      <!-- PAGE 5 — WHERE IT GOES -->
+      <section aria-label="Where it goes" aria-hidden="{{hidden5}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px; max-height: {{maxH5}}px; overflow: hidden; display: flex; flex-direction: column; gap: 14px;">
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <h3 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 13.5px; font-weight: 700; line-height: 1.3;">{{donut.title}}</h3>
+            <button onClick="{{donut.toggle}}" style="height: 26px; padding: 0 9px; border-radius: 7px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700; flex-shrink: 0;">{{donut.tableLabel}}</button>
+          </div>
+          <sc-if value="{{donut.showChart}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <svg width="118" height="118" viewBox="0 0 140 140" role="img" aria-label="Expenses by group">
+                <sc-for list="{{donut.slices}}" as="d" hint-placeholder-count="5">
+                  <circle cx="70" cy="70" r="45" fill="none" stroke="{{d.color}}" stroke-width="20" style="stroke-dasharray: {{d.dash}}; stroke-dashoffset: {{d.offset}}; transition: stroke-dasharray 520ms cubic-bezier(0.32, 0.72, 0, 1), stroke-dashoffset 520ms cubic-bezier(0.32, 0.72, 0, 1);" transform="rotate(-90 70 70)"></circle>
+                </sc-for>
+                <text x="70" y="66" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="14" font-weight="500" fill="{{c.ink}}">TTD</text>
+                <text x="70" y="82" text-anchor="middle" font-family="Onest, sans-serif" font-size="9" font-weight="600" fill="{{c.mute}}">{{tally.yearTotal}}/yr</text>
+              </svg>
+              <div style="min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+                <sc-for list="{{donut.slices}}" as="d" hint-placeholder-count="5">
+                  <span style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: {{c.mute}};"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{d.color}}; flex-shrink: 0;"></span>{{d.label}} · {{d.pct}}%</span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{donut.showTable}}" hint-placeholder-val="{{false}}">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead><tr><th scope="col" style="text-align: left; font-size: 10.5px; color: {{c.mute}}; padding: 0 6px 6px 0; border-bottom: 1px solid {{c.rule}};">Group</th><th scope="col" style="text-align: right; font-size: 10.5px; color: {{c.mute}}; padding: 0 6px 6px; border-bottom: 1px solid {{c.rule}};">Yearly</th><th scope="col" style="text-align: right; font-size: 10.5px; color: {{c.mute}}; padding: 0 0 6px 6px; border-bottom: 1px solid {{c.rule}};">Share</th></tr></thead>
+              <tbody>
+                <sc-for list="{{donut.slices}}" as="d" hint-placeholder-count="5">
+                  <tr style="height: 30px;">
+                    <td style="padding: 0 6px 0 0; border-bottom: 1px solid {{c.rule}}; font-size: 12px; font-weight: 600;">{{d.label}}</td>
+                    <td style="padding: 0 6px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 12px;">TTD {{d.value}}</td>
+                    <td style="padding: 0 0 0 6px; border-bottom: 1px solid {{c.rule}}; text-align: right; font-size: 12px; color: {{c.mute}};">{{d.pct}}%</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </sc-if>
+        </div>
+
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <h3 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 13.5px; font-weight: 700;">Allocate your commission across product lines</h3>
+          <span style="font-size: 10.5px; color: {{c.faint}}; line-height: 1.4;">Commission-canonical 3-line model (Life / A&amp;H / General). The legacy 4-line target model (Life / A&amp;H / Property / Motor) still exists behind a flag, off by default.</span>
+          <div style="height: 20px; border-radius: 8px; overflow: hidden; display: flex; background: {{c.sunk}};">
+            <sc-for list="{{allocRows}}" as="al" hint-placeholder-count="3">
+              <div style="height: 20px; width: {{al.barPct}}%; background: {{al.color}}; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></div>
+            </sc-for>
+          </div>
+          <sc-for list="{{allocRows}}" as="al" hint-placeholder-count="3">
+            <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid {{c.rule}};">
+              <span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700;"><span style="width: 9px; height: 9px; border-radius: 5px; background: {{al.color}}; flex-shrink: 0;"></span>{{al.label}}</span>
+              <div style="display: flex; gap: 8px;">
+                <label style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;">
+                  <span style="font-size: 9.5px; color: {{c.faint}};">Share %</span>
+                  <input inputmode="decimal" aria-label="{{al.label}} share percent" value="{{al.share}}" onChange="{{al.onShare}}" style="height: 34px; box-sizing: border-box; border: 1px solid {{c.rule}}; border-radius: 8px; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600; text-align: right; padding: 0 8px;">
+                </label>
+                <label style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;">
+                  <span style="font-size: 9.5px; color: {{c.faint}};">Rate %</span>
+                  <input inputmode="decimal" aria-label="{{al.label}} commission rate percent" value="{{al.rate}}" onChange="{{al.onRate}}" style="height: 34px; box-sizing: border-box; border: 1px solid {{c.rule}}; border-radius: 8px; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600; text-align: right; padding: 0 8px;">
+                </label>
+              </div>
+              <span style="font-size: 10.5px; color: {{c.mute}};">commission TTD {{al.commission}} → API TTD {{al.api}}</span>
+            </div>
+          </sc-for>
+          <span style="font-size: 10.5px; color: {{allocNote.color}};">{{allocNote.text}}</span>
+          <span style="font-size: 10px; color: {{c.faint}}; line-height: 1.4;">General carries a low 10% rate by default, so it takes far more API than Life to reach the same commission.</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700;">Sub-calculators</h2>
+          <span style="font-size: 11px; color: {{c.faint}}; line-height: 1.4;">Each one feeds straight into a worksheet line above. If one was never set up, its seeded lines come back automatically — never an empty list. Tap Adjust to open it.</span>
+
+          <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="flex-grow: 1; font-size: 13.5px; font-weight: 700;">Insurance Industry</span>
+              <span style="font-size: 10.5px; color: {{c.mute}};">{{ii.filled}} of {{ii.total}}</span>
+            </div>
+            <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">TTD {{ii.annual}}</span>
+            <span style="font-size: 10.5px; color: {{c.faint}};">a year · feeds Business Expenses · Professional/industry expenses</span>
+            <button onClick="{{ii.open}}" style="margin-top: 4px; height: 40px; border-radius: 11px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">Adjust amounts →</button>
+          </div>
+
+          <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="flex-grow: 1; font-size: 13.5px; font-weight: 700;">Car Expenses</span>
+              <span style="font-size: 10.5px; color: {{c.mute}};">{{car.filled}} of {{car.total}}</span>
+            </div>
+            <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">TTD {{car.annual}}</span>
+            <span style="font-size: 10.5px; color: {{c.faint}};">a year · splits to Living + Business Expenses</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span style="font-size: 12px; font-weight: 600;">With loan?</span>
+              <div style="display: flex; gap: 2px;">
+                <button onClick="{{car.onLoanYes}}" aria-pressed="{{car.loanOnYes}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: {{car.loanYesBg}}; color: {{car.loanYesColor}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">Yes</button>
+                <button onClick="{{car.onLoanNo}}" aria-pressed="{{car.loanOnNo}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: {{car.loanNoBg}}; color: {{car.loanNoColor}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">No</button>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div style="background: {{c.sunk}}; border-radius: 10px; padding: 8px 10px;"><span style="font-size: 9.5px; color: {{c.mute}}; display: block;">Personal · 33.3%</span><span style="font-size: 14px; font-weight: 700;">TTD {{car.personal}}</span></div>
+              <div style="background: {{c.sunk}}; border-radius: 10px; padding: 8px 10px;"><span style="font-size: 9.5px; color: {{c.mute}}; display: block;">Business · 66.7%</span><span style="font-size: 14px; font-weight: 700;">TTD {{car.business}}</span></div>
+            </div>
+            <span style="font-size: 10px; color: {{c.faint}}; line-height: 1.4;">Car Loan (TTD {{car.loanAnnual}}/yr) lives in Loans &amp; Debt below — shown there for reference only, not part of this split.</span>
+            <button onClick="{{car.open}}" style="margin-top: 4px; height: 40px; border-radius: 11px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">Adjust amounts →</button>
+          </div>
+
+          <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="flex-grow: 1; font-size: 13.5px; font-weight: 700;">Loans &amp; Debt</span>
+              <span style="font-size: 10.5px; color: {{c.mute}};">{{ld.filled}} of {{ld.total}}</span>
+            </div>
+            <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">TTD {{ld.annual}}</span>
+            <span style="font-size: 10.5px; color: {{c.faint}};">a year · feeds Savings &amp; Accumulation · Debt reduction</span>
+            <button onClick="{{ld.open}}" style="margin-top: 4px; height: 40px; border-radius: 11px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">Adjust amounts →</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ============ STICKY RESULT BAR ============ -->
+  <button onClick="{{openRollup}}" style="position: fixed; left: 16px; right: 16px; bottom: {{sheetBtnBottom}}px; box-sizing: border-box; height: 60px; border-radius: 16px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; box-shadow: 0 10px 26px rgba(20,30,28,0.28); font-family: 'Onest', sans-serif; z-index: 5;">
+    <span style="display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.08em; opacity: 0.85;">YOUR FLOOR</span>
+      <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; font-weight: 700;">{{bottomBarLabel}}</span>
+    </span>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="m18 15-6-6-6 6"></path></svg>
+  </button>
+
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}">
+    <div style="position: absolute; left: 0; bottom: 0;">
+      <dc-import name="M3-Nav" active="money" dark="{{dark}}" hint-size="390px,84px"></dc-import>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{sheet.insurance}}" hint-placeholder-val="{{false}}">
+    <div style="position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; animation: m3mnFade 180ms ease both;">
+      <div onClick="{{closeSheet}}" style="position: absolute; inset: 0; background: rgba(20,18,14,0.45);"></div>
+      <div style="position: relative; width: 390px; max-height: 82vh; box-sizing: border-box; background: {{c.surface}}; border-radius: 22px 22px 0 0; padding: 8px 18px 22px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; animation: m3mnSheetUp 320ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+        <div style="align-self: center; width: 36px; height: 4px; border-radius: 2px; background: {{c.rule}};"></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">Insurance Industry</h2>
+          <button onClick="{{closeSheet}}" style="height: 36px; padding: 0 14px; border-radius: 10px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">Done</button>
+        </div>
+        <span style="font-size: 11px; color: {{c.faint}};">Feeds Business Expenses · Professional/industry expenses</span>
+        <sc-for list="{{ii.rows}}" as="r" hint-placeholder-count="6">
+          <div style="display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-bottom: 1px solid {{c.rule}};">
+            <label for="{{r.id}}" style="font-size: 12.5px; font-weight: 600;">{{r.label}}</label>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div style="flex-grow: 1; height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.bg}}; display: flex; align-items: center; padding: 0 10px; gap: 6px;">
+                <span style="font-size: 12px; font-weight: 600; color: {{c.mute}};">TTD</span>
+                <input id="{{r.id}}" inputmode="decimal" aria-label="{{r.label}}" value="{{r.value}}" onChange="{{r.onAmount}}" style="flex-grow: 1; width: 100%; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; outline: none; text-align: right;">
+              </div>
+              <span style="font-size: 10.5px; color: {{c.faint}}; flex-shrink: 0; width: 62px; text-align: right;">= {{r.yearly}}/yr</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{sheet.car}}" hint-placeholder-val="{{false}}">
+    <div style="position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; animation: m3mnFade 180ms ease both;">
+      <div onClick="{{closeSheet}}" style="position: absolute; inset: 0; background: rgba(20,18,14,0.45);"></div>
+      <div style="position: relative; width: 390px; max-height: 82vh; box-sizing: border-box; background: {{c.surface}}; border-radius: 22px 22px 0 0; padding: 8px 18px 22px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; animation: m3mnSheetUp 320ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+        <div style="align-self: center; width: 36px; height: 4px; border-radius: 2px; background: {{c.rule}};"></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">Car Expenses</h2>
+          <button onClick="{{closeSheet}}" style="height: 36px; padding: 0 14px; border-radius: 10px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">Done</button>
+        </div>
+        <span style="font-size: 11px; color: {{c.faint}};">Splits {{car.personal}} personal (33.3%) / {{car.business}} business (66.7%) — edit amounts and frequency below.</span>
+        <sc-for list="{{car.rows}}" as="r" hint-placeholder-count="7">
+          <div style="display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-bottom: 1px solid {{c.rule}};">
+            <label for="{{r.id}}" style="font-size: 12.5px; font-weight: 600;">{{r.label}}</label>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div style="flex-grow: 1; height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.bg}}; display: flex; align-items: center; padding: 0 10px; gap: 6px;">
+                <span style="font-size: 12px; font-weight: 600; color: {{c.mute}};">TTD</span>
+                <input id="{{r.id}}" inputmode="decimal" aria-label="{{r.label}}" value="{{r.value}}" onChange="{{r.onAmount}}" style="flex-grow: 1; width: 100%; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; outline: none; text-align: right;">
+              </div>
+              <div style="display: flex; gap: 2px; flex-shrink: 0;">
+                <sc-for list="{{r.freqBtns}}" as="fb" hint-placeholder-count="4">
+                  <button onClick="{{fb.pick}}" aria-pressed="{{fb.on}}" aria-label="{{fb.full}}" style="width: 26px; height: 26px; border: 0; border-radius: 6px; background: {{fb.bg}}; color: {{fb.color}}; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700;">{{fb.label}}</button>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{sheet.loans}}" hint-placeholder-val="{{false}}">
+    <div style="position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; animation: m3mnFade 180ms ease both;">
+      <div onClick="{{closeSheet}}" style="position: absolute; inset: 0; background: rgba(20,18,14,0.45);"></div>
+      <div style="position: relative; width: 390px; max-height: 82vh; box-sizing: border-box; background: {{c.surface}}; border-radius: 22px 22px 0 0; padding: 8px 18px 22px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; animation: m3mnSheetUp 320ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+        <div style="align-self: center; width: 36px; height: 4px; border-radius: 2px; background: {{c.rule}};"></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">Loans &amp; Debt</h2>
+          <button onClick="{{closeSheet}}" style="height: 36px; padding: 0 14px; border-radius: 10px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">Done</button>
+        </div>
+        <span style="font-size: 11px; color: {{c.faint}};">Feeds Savings &amp; Accumulation · Debt reduction</span>
+        <sc-for list="{{ld.rows}}" as="r" hint-placeholder-count="6">
+          <div style="display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-bottom: 1px solid {{c.rule}};">
+            <label for="{{r.id}}" style="font-size: 12.5px; font-weight: 600;">{{r.label}}</label>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div style="flex-grow: 1; height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.bg}}; display: flex; align-items: center; padding: 0 10px; gap: 6px;">
+                <span style="font-size: 12px; font-weight: 600; color: {{c.mute}};">TTD</span>
+                <input id="{{r.id}}" inputmode="decimal" aria-label="{{r.label}}" value="{{r.value}}" onChange="{{r.onAmount}}" style="flex-grow: 1; width: 100%; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; outline: none; text-align: right;">
+              </div>
+              <span style="font-size: 10.5px; color: {{c.faint}}; flex-shrink: 0; width: 62px; text-align: right;">= {{r.yearly}}/yr</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{sheet.rollup}}" hint-placeholder-val="{{false}}">
+    <div style="position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; animation: m3mnFade 180ms ease both;">
+      <div onClick="{{closeSheet}}" style="position: absolute; inset: 0; background: rgba(20,18,14,0.45);"></div>
+      <div style="position: relative; width: 390px; max-height: 88vh; box-sizing: border-box; background: {{c.surface}}; border-radius: 22px 22px 0 0; padding: 8px 18px 24px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; animation: m3mnSheetUp 320ms cubic-bezier(0.32, 0.72, 0, 1) both;">
+        <div style="align-self: center; width: 36px; height: 4px; border-radius: 2px; background: {{c.rule}};"></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <div style="display: flex; flex-direction: column; gap: 1px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; color: {{c.faint}};">YOUR CALCULATOR</span>
+            <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">What you need to earn</h2>
+          </div>
+          <button onClick="{{closeSheet}}" style="flex-shrink: 0; height: 36px; padding: 0 14px; border-radius: 10px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">Done</button>
+        </div>
+
+        <sc-for list="{{ladder}}" as="l" hint-placeholder-count="5">
+          <div style="display: flex; flex-direction: column; gap: 3px; padding-bottom: 10px; border-bottom: 1px solid {{c.rule}};">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px;">
+              <span style="font-size: 11.5px; color: {{c.mute}};">{{l.label}}</span>
+              <sc-if value="{{l.hasWhy}}" hint-placeholder-val="{{true}}">
+                <button onClick="{{l.toggleWhy}}" style="font-size: 10.5px; font-weight: 700; color: {{c.accent}}; background: transparent; border: 0; flex-shrink: 0;">{{l.whyLabel}}</button>
+              </sc-if>
+            </div>
+            <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700;">TTD {{l.value}}</span>
+            <sc-if value="{{l.whyOpen}}" hint-placeholder-val="{{false}}">
+              <span style="font-size: 11px; color: {{c.mute}}; line-height: 1.4; background: {{c.sunk}}; border-radius: 8px; padding: 8px;">{{l.formula}}</span>
+            </sc-if>
+          </div>
+        </sc-for>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <svg width="100%" height="54" viewBox="0 0 340 54" role="img" aria-label="{{compareBar.aria}}">
+            <rect x="0" y="18" width="340" height="16" rx="8" fill="{{c.sunk}}"></rect>
+            <rect x="0" y="18" width="{{compareBar.barW}}" height="16" rx="8" fill="{{c.accent}}" style="width: {{compareBar.barW}}px; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></rect>
+            <line x1="{{compareBar.floorX}}" y1="8" x2="{{compareBar.floorX}}" y2="42" stroke="{{c.faint}}" stroke-width="1"></line>
+            <text x="{{compareBar.floorX}}" y="52" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" font-weight="600" fill="{{c.faint}}">floor 500K</text>
+            <line x1="{{compareBar.mdrtX}}" y1="8" x2="{{compareBar.mdrtX}}" y2="42" stroke="{{c.faint}}" stroke-width="1"></line>
+            <text x="{{compareBar.mdrtX}}" y="8" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" font-weight="600" fill="{{c.faint}}">MDRT 688.8K</text>
+          </svg>
+          <span style="font-size: 11px; color: {{c.mute}};">{{compareBar.vsFloor}} · {{compareBar.vsMdrt}}</span>
+          <span style="font-size: 10px; color: {{c.faint}}; line-height: 1.4;">Assumes every dollar you write settles and stays on the books. At your current persistency of 86.6%, writing a little more than this keeps you covered against lapses.</span>
+        </div>
+
+        <div style="border-radius: 16px; background: {{c.accentTint}}; padding: 14px; display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.accent}};">YOUR FLOOR</span>
+          <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700; line-height: 1.25; color: {{c.accent}};">{{floorHeadline}}</span>
+        </div>
+
+        <a href="M3-GamePlan.dc.html" onClick="{{go.GamePlan}}" style="height: 50px; border-radius: 14px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; justify-content: center; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; text-decoration: none;">Use this in my game plan</a>
+        <button onClick="{{toggleMdrt}}" style="height: 46px; border-radius: 14px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{mdrtBtnLabel}}</button>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":390,"height":1584}}'>
+const MN_IDS = ['Fixed', 'Living', 'Business', 'Savings', 'Misc', 'Where'];
+const MN_H = [590, 750, 750, 590, 590, 1140];
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.customSeq = 1;
+    const it = (id, label, freq, amount, calcKey) => ({ id: id, label: label, freq: freq, amount: amount, calcKey: calcKey || null, isCustom: false });
+    const params = (props && props.params) || '';
+    const pm = /page=([A-Za-z]+)/.exec(params);
+    const startIdx = pm ? MN_IDS.indexOf(pm[1]) : 0;
+    this.state = {
+      page: startIdx < 0 ? 0 : startIdx, dragX: 0, dragging: false, everMoved: false,
+      groups: {
+        fixedExpenses: { open: true, items: [
+          it('seed-fe-0', 'Rent or mortgage payments', 'A', 54000),
+          it('seed-fe-1', 'Utilities – gas, heat, light, telephone, water', 'M', 850),
+          it('seed-fe-2', 'Disability income insurance', 'M', 0),
+          it('seed-fe-3', 'Homeowners insurance', 'M', 0),
+          it('seed-fe-5', 'Property taxes', 'A', 0),
+          it('seed-fe-6', 'Other', 'M', 0)
+        ] },
+        livingExpenses: { open: false, items: [
+          it('seed-le-0', 'Food', 'M', 2400),
+          it('seed-le-1', 'Clothing', 'M', 600),
+          it('seed-le-2', 'Laundry, tailoring', 'M', 150),
+          it('seed-le-3', 'Entertainment', 'M', 500),
+          it('seed-le-4', 'Car expenses, nonbusiness', 'A', 0, 'carExpenses.personal'),
+          it('seed-le-5', 'Medical – doctor, dentist, drugs', 'M', 400),
+          it('seed-le-6', 'Household', 'M', 700),
+          it('seed-le-7', 'Other', 'M', 0)
+        ] },
+        businessExpenses: { open: false, items: [
+          it('seed-be-0', 'Sales promotion, advertising, direct mail, tuition', 'M', 300),
+          it('seed-be-2', 'Telephone, computer, stationery, postage, supplies', 'M', 450),
+          it('seed-be-3', 'Secretarial and banking services', 'M', 0),
+          it('seed-be-4', 'Business car expenses', 'A', 0, 'carExpenses.business'),
+          it('seed-be-5', 'Business entertainment', 'M', 200),
+          it('seed-be-6', 'Other', 'M', 0),
+          it('seed-be-7', 'Professional/industry expenses', 'A', 0, 'insuranceIndustry'),
+          it('seed-be-8', 'Other business travel', 'M', 0)
+        ] },
+        savingsAccumulation: { open: false, items: [
+          it('seed-sa-0', 'Life insurance', 'M', 350),
+          it('seed-sa-1', 'Savings account', 'M', 500),
+          it('seed-sa-2', 'Debt reduction (non-mortgage)', 'A', 0, 'loansDebt'),
+          it('seed-sa-3', 'Investments', 'M', 0),
+          it('seed-sa-4', 'Slush fund', 'M', 0),
+          it('seed-sa-5', 'Other', 'M', 0)
+        ] },
+        miscellaneous: { open: false, items: [
+          it('seed-mi-0', 'Donations – religious, charitable, etc.', 'M', 200),
+          it('seed-mi-1', 'Recreation', 'M', 150),
+          it('seed-mi-2', 'Club dues', 'M', 0),
+          it('seed-mi-3', 'Gifts and services', 'M', 100),
+          it('seed-mi-4', 'Vacation', 'M', 0),
+          it('seed-mi-5', 'Other', 'M', 0)
+        ] }
+      },
+      calcFed: {
+        'seed-le-4': { overridden: false, amount: 0, freq: 'A' },
+        'seed-be-4': { overridden: false, amount: 0, freq: 'A' },
+        'seed-be-7': { overridden: false, amount: 0, freq: 'A' },
+        'seed-sa-2': { overridden: false, amount: 0, freq: 'A' }
+      },
+      sub: {
+        insuranceIndustry: { items: [
+          it('seed-ii-0', 'Life License Renewal', 'A', 500),
+          it('seed-ii-1', 'General License Renewal', 'A', 0),
+          it('seed-ii-2', 'TTAIFA fees', 'A', 600),
+          it('seed-ii-3', 'TTII Portal Fee', 'A', 0),
+          it('seed-ii-4', 'CPD classes', 'A', 800),
+          it('seed-ii-5', 'TTAIFA Courses (FSCP/etc)', 'A', 1500),
+          it('seed-ii-6', 'TTAIFA Congress', 'A', 0),
+          it('seed-ii-7', 'MDRT membership fee', 'A', 900),
+          it('seed-ii-8', 'MDRT Convention', 'A', 0),
+          it('seed-ii-9', 'Branch Retreats', 'A', 0),
+          it('seed-ii-10', 'Other Industry Events', 'A', 0)
+        ] },
+        carExpenses: { withLoan: true, items: [
+          it('seed-ce-0', 'Gas/Petrol/Electric', 'M', 600),
+          it('seed-ce-1', 'Mechanical Servicing', 'Q', 800),
+          it('seed-ce-2', 'Insurance', 'A', 4200),
+          it('seed-ce-3', 'Parking fees', 'M', 100),
+          it('seed-ce-4', 'Tickets', 'A', 0),
+          it('seed-ce-5', 'Car wash and maintenance', 'M', 80),
+          it('seed-ce-6', 'Miscellaneous', 'A', 0)
+        ] },
+        loansDebt: { items: [
+          it('seed-ld-0', 'Credit Card', 'M', 350),
+          it('seed-ld-1', 'Car Loan', 'M', 1200),
+          it('seed-ld-2', 'Personal Loan', 'M', 0),
+          it('seed-ld-3', 'Sou-sou', 'M', 300),
+          it('seed-ld-4', 'Hire-Purchase', 'M', 0),
+          it('seed-ld-5', 'Other', 'M', 0)
+        ] }
+      },
+      donutTable: false,
+      useMdrt: false,
+      whyOpen: {},
+      alloc: { life: { share: 55, rate: 35 }, ah: { share: 20, rate: 25 }, general: { share: 25, rate: 10 } },
+      sheetOpen: null
+    };
+    this.drag = null;
+  }
+  go(p) {
+    const next = Math.max(0, Math.min(MN_IDS.length - 1, p));
+    this.setState({ page: next, everMoved: true });
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = this.props.dark ? dark : light;
+    const s = this.state;
+
+    const parse = (raw) => parseFloat(String(raw).replace(/,/g, '')) || 0;
+    const fmt = (n) => Math.round(n || 0).toLocaleString('en-US');
+    const FREQ_MULT = { A: 1, S: 2, Q: 4, M: 12 };
+    const FREQ_LIST = [
+      { value: 'M', label: 'M', full: 'Monthly' },
+      { value: 'Q', label: 'Q', full: 'Quarterly' },
+      { value: 'S', label: 'S', full: 'Semi-annual' },
+      { value: 'A', label: 'A', full: 'Annual' }
+    ];
+    const annualize = (amount, freq) => (parseFloat(amount) || 0) * (FREQ_MULT[freq] || 12);
+    const sumAnnual = (items) => items.reduce((sum, i) => sum + annualize(i.amount, i.freq), 0);
+
+    const insuranceAnnual = sumAnnual(s.sub.insuranceIndustry.items);
+    const loansAnnual = sumAnnual(s.sub.loansDebt.items);
+    const carAnnual = sumAnnual(s.sub.carExpenses.items);
+    const carPersonal = Math.round((carAnnual * 33.3) / 100);
+    const carBusiness = Math.round((carAnnual * 66.7) / 100);
+    const calcTotals = { 'carExpenses.personal': carPersonal, 'carExpenses.business': carBusiness, insuranceIndustry: insuranceAnnual, loansDebt: loansAnnual };
+
+    const buildFreqBtns = (liveFreq, pick) => FREQ_LIST.map((f) => {
+      const on = f.value === liveFreq;
+      return { label: f.label, full: f.full, on: on ? 'true' : 'false', bg: on ? c.accent : 'transparent', color: on ? c.onAccent : c.mute, pick: () => pick(f.value) };
+    });
+
+    const buildRow = (item, opts, showFreq) => {
+      const isCalcFed = !!item.calcKey;
+      let liveAmount, liveFreq, editable = true, calcFedLive = false, calcFedOverridden = false;
+      if (isCalcFed) {
+        const cf = s.calcFed[item.id];
+        if (cf.overridden) { liveAmount = cf.amount; liveFreq = cf.freq; calcFedOverridden = true; }
+        else { liveAmount = calcTotals[item.calcKey] || 0; liveFreq = 'A'; editable = false; calcFedLive = true; }
+      } else {
+        liveAmount = item.amount; liveFreq = item.freq;
+      }
+      const annualVal = annualize(liveAmount, liveFreq);
+      return {
+        id: item.id, label: item.label, isCustom: !!item.isCustom, isSeedLabel: !item.isCustom,
+        value: fmt(liveAmount), yearly: fmt(annualVal), showFreq: !!showFreq,
+        calcFedLive: calcFedLive, calcFedOverridden: calcFedOverridden, editable: editable,
+        freqBtns: buildFreqBtns(liveFreq, (f) => opts.setFreq(item.id, f)),
+        onAmount: (e) => opts.setAmount(item.id, parse(e.target.value)),
+        onLabel: item.isCustom ? ((e) => opts.setLabel(item.id, e.target.value)) : null,
+        onRemove: item.isCustom ? (() => opts.removeItem(item.id)) : null,
+        onEdit: calcFedLive ? (() => opts.startOverride(item.id, calcTotals[item.calcKey] || 0)) : null,
+        onReset: calcFedOverridden ? (() => opts.resetOverride(item.id)) : null
+      };
+    };
+
+    const GROUP_META = [
+      { key: 'fixedExpenses', label: 'Fixed Expenses', dotIdx: 0 },
+      { key: 'livingExpenses', label: 'Living Expenses', dotIdx: 1 },
+      { key: 'businessExpenses', label: 'Business Expenses', dotIdx: 2 },
+      { key: 'savingsAccumulation', label: 'Savings & Accumulation', dotIdx: 3 },
+      { key: 'miscellaneous', label: 'Miscellaneous', dotIdx: 4 }
+    ];
+
+    const groupOpts = (key, st) => ({
+      setAmount: (id, v) => {
+        const it2 = st.items.find((x) => x.id === id);
+        if (it2 && it2.calcKey) { this.setState({ calcFed: Object.assign({}, s.calcFed, { [id]: Object.assign({}, s.calcFed[id], { amount: v }) }) }); }
+        else { const items2 = st.items.map((x) => x.id === id ? Object.assign({}, x, { amount: v }) : x); this.setState({ groups: Object.assign({}, s.groups, { [key]: Object.assign({}, st, { items: items2 }) }) }); }
+      },
+      setFreq: (id, f) => {
+        const it2 = st.items.find((x) => x.id === id);
+        if (it2 && it2.calcKey) { this.setState({ calcFed: Object.assign({}, s.calcFed, { [id]: Object.assign({}, s.calcFed[id], { freq: f }) }) }); }
+        else { const items2 = st.items.map((x) => x.id === id ? Object.assign({}, x, { freq: f }) : x); this.setState({ groups: Object.assign({}, s.groups, { [key]: Object.assign({}, st, { items: items2 }) }) }); }
+      },
+      setLabel: (id, l) => { const items2 = st.items.map((x) => x.id === id ? Object.assign({}, x, { label: l }) : x); this.setState({ groups: Object.assign({}, s.groups, { [key]: Object.assign({}, st, { items: items2 }) }) }); },
+      removeItem: (id) => { const items2 = st.items.filter((x) => x.id !== id); this.setState({ groups: Object.assign({}, s.groups, { [key]: Object.assign({}, st, { items: items2 }) }) }); },
+      startOverride: (id, initial) => { this.setState({ calcFed: Object.assign({}, s.calcFed, { [id]: { overridden: true, amount: initial, freq: 'A' } }) }); },
+      resetOverride: (id) => { this.setState({ calcFed: Object.assign({}, s.calcFed, { [id]: { overridden: false, amount: 0, freq: 'A' } }) }); }
+    });
+
+    const groupsUI = GROUP_META.map((meta) => {
+      const st = s.groups[meta.key];
+      const rows = st.items.map((item) => buildRow(item, groupOpts(meta.key, st), true));
+      const filled = st.items.filter((item) => {
+        if (item.calcKey) { const cf = s.calcFed[item.id]; return (cf.overridden ? cf.amount : (calcTotals[item.calcKey] || 0)) > 0; }
+        return item.amount > 0;
+      }).length;
+      const subtotalRaw = st.items.reduce((sum, item) => {
+        if (item.calcKey) { const cf = s.calcFed[item.id]; const amt = cf.overridden ? cf.amount : (calcTotals[item.calcKey] || 0); const freq = cf.overridden ? cf.freq : 'A'; return sum + annualize(amt, freq); }
+        return sum + annualize(item.amount, item.freq);
+      }, 0);
+      return {
+        key: meta.key, label: meta.label, dot: c.cat[meta.dotIdx], open: st.open, openAria: st.open ? 'true' : 'false',
+        filled: filled, total: st.items.length, subtotal: fmt(subtotalRaw), subtotalRaw: subtotalRaw,
+        chevronRot: st.open ? 'rotate(180deg)' : 'rotate(0deg)',
+        toggle: () => this.setState({ groups: Object.assign({}, s.groups, { [meta.key]: Object.assign({}, st, { open: !st.open }) }) }),
+        addLine: () => {
+          const id = 'custom-' + (this.customSeq++);
+          const items2 = st.items.concat([{ id: id, label: '', freq: 'M', amount: 0, isCustom: true, calcKey: null }]);
+          this.setState({ groups: Object.assign({}, s.groups, { [meta.key]: Object.assign({}, st, { items: items2 }) }) });
+        },
+        rows: rows
+      };
+    });
+
+    const tallyFilled = groupsUI.reduce((sum, g) => sum + g.filled, 0);
+    const tallyTotal = groupsUI.reduce((sum, g) => sum + g.total, 0);
+    const totalAfterTax = groupsUI.reduce((sum, g) => sum + g.subtotalRaw, 0);
+
+    // ---- swipe pages ----
+    const page = s.page;
+    const pagerKeyDown = (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); this.go(page + 1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); this.go(page - 1); }
+    };
+    const pagerLabels = groupsUI.map((g) => g.label).concat(['Where it goes']);
+    const pagerSubs = groupsUI.map((g) => 'TTD ' + g.subtotal).concat(['TTD ' + fmt(totalAfterTax)]);
+    const pages = pagerLabels.map((label, i) => {
+      const on = i === page;
+      return {
+        label: label, sub: pagerSubs[i],
+        selected: on ? 'true' : 'false', bg: on ? c.accent : c.sunk,
+        color: on ? c.onAccent : c.ink, subColor: on ? c.onAccent : c.faint,
+        dot: on ? c.accent : c.rule, dotW: on ? 18 : 6,
+        pick: () => this.go(i)
+      };
+    });
+    const clip = MN_H[page];
+    const BIG = 4000;
+    const maxHs = [0, 1, 2, 3, 4, 5].map((i) => i === page ? BIG : clip);
+    const down = (e) => { this.drag = { x: e.clientX, y: e.clientY, hist: [], active: false, id: e.pointerId, el: e.currentTarget }; };
+    const move = (e) => {
+      const d = this.drag;
+      if (!d) return;
+      const dx = e.clientX - d.x;
+      const dy = e.clientY - d.y;
+      if (!d.active) {
+        if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) { d.active = true; try { d.el.setPointerCapture(d.id); } catch (err) {} }
+        else if (Math.abs(dy) > 10) { this.drag = null; return; }
+        else return;
+      }
+      d.hist.push({ x: e.clientX, t: performance.now() });
+      if (d.hist.length > 5) d.hist.shift();
+      const edge = (page === 0 && dx > 0) || (page === MN_IDS.length - 1 && dx < 0);
+      const off = edge ? (dx * 390 * 0.55) / (390 + 0.55 * Math.abs(dx)) : dx;
+      this.setState({ dragX: off, dragging: true });
+    };
+    const up = () => {
+      const d = this.drag;
+      this.drag = null;
+      if (!d || !d.active) return;
+      let v = 0;
+      const h = d.hist;
+      if (h.length > 1) v = ((h[h.length - 1].x - h[0].x) / Math.max(1, h[h.length - 1].t - h[0].t)) * 1000;
+      const projected = this.state.dragX + (v / 1000) * 0.99 / (1 - 0.99);
+      let target = page;
+      if (projected < -195) target = page + 1;
+      else if (projected > 195) target = page - 1;
+      this.setState({ dragX: 0, dragging: false, page: Math.max(0, Math.min(MN_IDS.length - 1, target)), everMoved: true });
+    };
+    const tx = -page * 390 + (s.dragX || 0);
+    const trans = s.dragging ? 'none' : 'transform 520ms cubic-bezier(0.32, 0.72, 0, 1)';
+    const trackWidth = MN_IDS.length * 390;
+    const FIXED_CHROME = 152;
+    const rootH = FIXED_CHROME + clip + 104;
+    const showHint = !s.everMoved;
+
+    const subOpts = (key, st) => ({
+      setAmount: (id, v) => { const items2 = st.items.map((x) => x.id === id ? Object.assign({}, x, { amount: v }) : x); this.setState({ sub: Object.assign({}, s.sub, { [key]: Object.assign({}, st, { items: items2 }) }) }); },
+      setFreq: (id, f) => { const items2 = st.items.map((x) => x.id === id ? Object.assign({}, x, { freq: f }) : x); this.setState({ sub: Object.assign({}, s.sub, { [key]: Object.assign({}, st, { items: items2 }) }) }); },
+      setLabel: () => {}, removeItem: () => {}, startOverride: () => {}, resetOverride: () => {}
+    });
+    const openSheetFn = (key) => () => this.setState({ sheetOpen: key });
+    const subUI = (key, showFreq) => {
+      const st = s.sub[key];
+      const rows = st.items.map((item) => buildRow(item, subOpts(key, st), showFreq));
+      const filled = st.items.filter((item) => item.amount > 0).length;
+      return { key: key, filled: filled, total: st.items.length, annual: fmt(sumAnnual(st.items)), rows: rows, open: openSheetFn(key === 'insuranceIndustry' ? 'insurance' : 'loans') };
+    };
+    const ii = subUI('insuranceIndustry', false);
+    const ld = subUI('loansDebt', false);
+    const carSt = s.sub.carExpenses;
+    const carRows = carSt.items.map((item) => buildRow(item, subOpts('carExpenses', carSt), true));
+    const carFilled = carSt.items.filter((item) => item.amount > 0).length;
+    const carLoanItem = s.sub.loansDebt.items.find((i) => i.id === 'seed-ld-1');
+    const car = {
+      filled: carFilled, total: carSt.items.length,
+      annual: fmt(carAnnual), personal: fmt(carPersonal), business: fmt(carBusiness),
+      loanAnnual: fmt(carLoanItem ? annualize(carLoanItem.amount, carLoanItem.freq) : 0),
+      loanOnYes: carSt.withLoan ? 'true' : 'false', loanOnNo: !carSt.withLoan ? 'true' : 'false',
+      loanYesBg: carSt.withLoan ? c.accent : 'transparent', loanYesColor: carSt.withLoan ? c.onAccent : c.mute,
+      loanNoBg: !carSt.withLoan ? c.accent : 'transparent', loanNoColor: !carSt.withLoan ? c.onAccent : c.mute,
+      onLoanYes: () => this.setState({ sub: Object.assign({}, s.sub, { carExpenses: Object.assign({}, carSt, { withLoan: true }) }) }),
+      onLoanNo: () => this.setState({ sub: Object.assign({}, s.sub, { carExpenses: Object.assign({}, carSt, { withLoan: false }) }) }),
+      rows: carRows, open: openSheetFn('car')
+    };
+
+    const totalPreTax = (() => {
+      const allowance = 90000;
+      const net = totalAfterTax;
+      if (net <= allowance) return net;
+      let grossFloor = allowance, netFloor = allowance, prevFloor = 0;
+      const brackets = [{ upTo: 1000000, rate: 0.25 }, { upTo: null, rate: 0.30 }];
+      for (let bi = 0; bi < brackets.length; bi++) {
+        const b = brackets[bi];
+        if (b.upTo === null) return grossFloor + (net - netFloor) / (1 - b.rate);
+        const bandWidth = b.upTo - prevFloor;
+        const netCeil = netFloor + bandWidth * (1 - b.rate);
+        const grossCeil = grossFloor + bandWidth;
+        if (net <= netCeil) return grossFloor + (net - netFloor) / (1 - b.rate);
+        prevFloor = b.upTo; grossFloor = grossCeil; netFloor = netCeil;
+      }
+      return net;
+    })();
+    const payeTax = totalPreTax - totalAfterTax;
+    const monthlyPreTax = totalPreTax / 12;
+    const commissionNeeded = totalPreTax;
+    const rateSample = 0.40;
+    const apiNeededCalc = commissionNeeded / rateSample;
+    const apiNeeded = s.useMdrt ? 688800 : apiNeededCalc;
+
+    const ladderDefs = [
+      { id: 'afterTax', label: 'Total annual needs · after tax', value: fmt(totalAfterTax), hasWhy: false, formula: '' },
+      { id: 'paye', label: 'PAYE (grossed up)', value: fmt(payeTax), hasWhy: true, formula: 'Personal allowance TTD 90,000, tax-free. 25% on the next TTD 1,000,000 of chargeable income, 30% above that.' },
+      { id: 'preTax', label: 'Total annual needs · pre-tax (= the commission you need to earn)', value: fmt(totalPreTax), hasWhy: false, formula: '' },
+      { id: 'monthly', label: 'Per month · pre-tax', value: fmt(monthlyPreTax), hasWhy: false, formula: '' },
+      { id: 'api', label: 'API needed at your commission rate', value: fmt(apiNeededCalc), hasWhy: true, formula: 'TTD ' + fmt(commissionNeeded) + ' ÷ 40% (SAMPLE commission rate, annual mode) = TTD ' + fmt(apiNeededCalc) + '.' }
+    ];
+    const ladder = ladderDefs.map((l) => ({
+      id: l.id, label: l.label, value: l.value, hasWhy: l.hasWhy, formula: l.formula,
+      whyOpen: !!s.whyOpen[l.id], whyLabel: s.whyOpen[l.id] ? 'Hide' : 'Why?',
+      toggleWhy: () => this.setState({ whyOpen: Object.assign({}, s.whyOpen, { [l.id]: !s.whyOpen[l.id] }) })
+    }));
+
+    const compMax = Math.max(apiNeededCalc, 688800, 500000) * 1.08;
+    const compareBar = {
+      barW: Math.round((Math.min(apiNeededCalc, compMax) / compMax) * 340),
+      floorX: Math.round((500000 / compMax) * 340),
+      mdrtX: Math.round((688800 / compMax) * 340),
+      aria: 'API needed TTD ' + fmt(apiNeededCalc) + ' against company floor TTD 500,000 and MDRT TTD 688,800',
+      vsFloor: apiNeededCalc >= 500000 ? ('TTD ' + fmt(apiNeededCalc - 500000) + ' above the company floor') : ('TTD ' + fmt(500000 - apiNeededCalc) + ' below the company floor'),
+      vsMdrt: apiNeededCalc >= 688800 ? 'above MDRT already' : ('TTD ' + fmt(688800 - apiNeededCalc) + ' short of MDRT')
+    };
+
+    const floorHeadline = s.useMdrt ? 'Using MDRT instead: TTD 688,800 API a year' : ('Your money needs are your floor: TTD ' + fmt(apiNeededCalc) + ' API a year');
+    const mdrtBtnLabel = s.useMdrt ? 'Use your calculated need instead' : 'Use MDRT (TTD 688,800) instead';
+    const toggleMdrt = () => this.setState({ useMdrt: !s.useMdrt });
+    const bottomBarLabel = s.useMdrt ? 'TTD 688,800 API a year' : ('TTD ' + fmt(apiNeededCalc) + ' API a year');
+    const go = { GamePlan: (e) => { if (e) e.preventDefault(); if (this.props.onNav) this.props.onNav('GamePlan'); }, back: (e) => { if (e) e.preventDefault(); if (this.props.onNav) this.props.onNav('back'); } };
+
+    const donutTotal = totalAfterTax;
+    let cum = 0;
+    const CIRC = 282.7;
+    const donutSlices = groupsUI.map((g, i) => {
+      const frac = donutTotal > 0 ? g.subtotalRaw / donutTotal : 0;
+      const len = frac * CIRC;
+      const dash = len.toFixed(1) + ' ' + Math.max(0, CIRC - len).toFixed(1);
+      const offset = (-cum).toFixed(1);
+      cum += len;
+      const pct = donutTotal > 0 ? Math.round((g.subtotalRaw / donutTotal) * 1000) / 10 : 0;
+      return { key: g.key, label: g.label, color: c.cat[i], value: fmt(g.subtotalRaw), pct: pct.toFixed(1), raw: g.subtotalRaw, dash: dash, offset: offset };
+    });
+    const biggest = donutSlices.reduce((a, b) => (b.raw > a.raw ? b : a), donutSlices[0]);
+    const donut = {
+      title: biggest.label + ' is your biggest group — ' + biggest.pct + '% of the year',
+      slices: donutSlices, showChart: !s.donutTable, showTable: s.donutTable,
+      tableLabel: s.donutTable ? 'Chart' : 'Table', toggle: () => this.setState({ donutTable: !s.donutTable })
+    };
+
+    const ALLOC_META = [{ key: 'life', label: 'Life', idx: 0 }, { key: 'ah', label: 'A&H', idx: 1 }, { key: 'general', label: 'General', idx: 2 }];
+    const shareSum = ALLOC_META.reduce((sum, m) => sum + (parseFloat(s.alloc[m.key].share) || 0), 0);
+    const allocRows = ALLOC_META.map((m) => {
+      const a = s.alloc[m.key];
+      const share = parseFloat(a.share) || 0;
+      const rate = parseFloat(a.rate) || 0;
+      const commission = Math.round(commissionNeeded * (share / 100));
+      const api = rate > 0 ? Math.round(commission / (rate / 100)) : 0;
+      return {
+        key: m.key, label: m.label, color: c.cat[m.idx], share: share, rate: rate, barPct: Math.max(0, share),
+        commission: fmt(commission), api: fmt(api),
+        onShare: (e) => { this.setState({ alloc: Object.assign({}, s.alloc, { [m.key]: Object.assign({}, a, { share: parse(e.target.value) }) }) }); },
+        onRate: (e) => { this.setState({ alloc: Object.assign({}, s.alloc, { [m.key]: Object.assign({}, a, { rate: parse(e.target.value) }) }) }); }
+      };
+    });
+    const allocNote = Math.abs(shareSum - 100) < 0.5
+      ? { text: 'Shares total 100%.', color: c.mute }
+      : { text: 'Shares total ' + shareSum + '% — should be 100%.', color: c.warm };
+
+    const sheet = { insurance: s.sheetOpen === 'insurance', car: s.sheetOpen === 'car', loans: s.sheetOpen === 'loans', rollup: s.sheetOpen === 'rollup' };
+    const closeSheet = () => this.setState({ sheetOpen: null });
+    const openRollup = () => this.setState({ sheetOpen: 'rollup' });
+
+    return {
+      c: c, dark: !!this.props.dark, go: go, showNav: !this.props.embedded,
+      pages: pages, pagerKeyDown: pagerKeyDown, showHint: showHint,
+      down: down, move: move, up: up, tx: tx, trans: trans, trackWidth: trackWidth, rootH: rootH,
+      hidden0: page === 0 ? 'false' : 'true', hidden1: page === 1 ? 'false' : 'true', hidden2: page === 2 ? 'false' : 'true',
+      hidden3: page === 3 ? 'false' : 'true', hidden4: page === 4 ? 'false' : 'true', hidden5: page === 5 ? 'false' : 'true',
+      maxH0: maxHs[0], maxH1: maxHs[1], maxH2: maxHs[2], maxH3: maxHs[3], maxH4: maxHs[4], maxH5: maxHs[5],
+      sheetBtnBottom: this.props.embedded ? 16 : 100,
+      tally: { filled: tallyFilled, total: tallyTotal, yearTotal: fmt(totalAfterTax), monthTotal: fmt(totalAfterTax / 12) },
+      g0: groupsUI[0], g1: groupsUI[1], g2: groupsUI[2], g3: groupsUI[3], g4: groupsUI[4],
+      ii: ii, car: car, ld: ld,
+      donut: donut, allocRows: allocRows, allocNote: allocNote,
+      ladder: ladder, compareBar: compareBar, floorHeadline: floorHeadline, mdrtBtnLabel: mdrtBtnLabel, toggleMdrt: toggleMdrt,
+      bottomBarLabel: bottomBarLabel, sheet: sheet, closeSheet: closeSheet, openRollup: openRollup
+    };
+  }
+}
+</script>
+</body>
+</html>

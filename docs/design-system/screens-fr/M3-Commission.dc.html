@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Commission — Money (mobile v3)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}
+a{color:inherit}
+*{font-variant-numeric:tabular-nums}
+@keyframes mcFadeA{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes mcFadeB{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes mcSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes mcGrowY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes mcDrawA{to{stroke-dashoffset:0}}
+@keyframes mcDrawB{to{stroke-dashoffset:0}}
+@keyframes mcDotA{from{opacity:0}to{opacity:1}}
+@keyframes mcDotB{from{opacity:0}to{opacity:1}}
+.mc-bar{transform-origin:bottom;animation:mcGrowY 380ms cubic-bezier(0.32,0.72,0,1) both}
+.mc-chip{transition:background 120ms ease,color 120ms ease}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: {{rootH}}px; box-sizing: border-box; position: relative; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; display: flex; flex-direction: column; gap: 12px; padding: 12px 16px 104px;">
+
+  <header style="display: flex; align-items: center; gap: 8px; min-height: 56px;">
+    <a onClick="{{go.back}}" href="M3-Money.dc.html" aria-label="Back to Money" style="width: 44px; height: 44px; border-radius: 22px; background: {{c.sunk}}; display: flex; align-items: center; justify-content: center; color: {{c.ink}};">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
+    <h1 style="flex-grow: 1; margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700;">Commission</h1>
+  </header>
+
+  <!-- ============ PAGER ============ -->
+  <div role="tablist" aria-label="Commission pages" onKeyDown="{{pagerKeyDown}}" tabindex="0" style="height: 48px; box-sizing: border-box; padding: 3px; border-radius: 14px; background: {{c.sunk}}; display: flex; gap: 3px; overflow-x: auto;">
+    <sc-for list="{{pages}}" as="pg" hint-placeholder-count="5">
+      <button role="tab" aria-selected="{{pg.selected}}" onClick="{{pg.pick}}" class="mc-chip" style="flex: 1 0 auto; min-width: 66px; height: 42px; border: 0; border-radius: 11px; background: {{pg.bg}}; color: {{pg.color}}; box-shadow: {{pg.shadow}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700; padding: 0 6px;">{{pg.label}}</button>
+    </sc-for>
+  </div>
+  <div style="display: flex; justify-content: center; align-items: center; gap: 6px; height: 12px;" aria-hidden="true">
+    <sc-for list="{{pages}}" as="pg" hint-placeholder-count="5">
+      <span style="width: {{pg.dotW}}px; height: 6px; border-radius: 3px; background: {{pg.dot}}; transition: width 200ms ease;"></span>
+    </sc-for>
+  </div>
+  <sc-if value="{{showHint}}" hint-placeholder-val="{{false}}">
+    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: {{c.faint}};">Swipe for more
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+    </div>
+  </sc-if>
+
+  <!-- ============ TRACK ============ -->
+  <div onPointerDown="{{down}}" onPointerMove="{{move}}" onPointerUp="{{up}}" onPointerCancel="{{up}}" style="width: 390px; overflow: hidden; touch-action: pan-y;">
+    <div style="width: 1950px; display: flex; align-items: flex-start; transform: translateX({{tx}}px); transition: {{trans}}; will-change: transform;">
+
+      <!-- ============ PAGE 0 · THIS MONTH ============ -->
+      <section aria-label="This month" aria-hidden="{{hidden0}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding-right: 2px; display: flex; flex-direction: column; gap: 16px; {{clip0}}">
+        <div aria-label="Commission anchor" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.accent}};">SEPTEMBER · RUN-RATE</span>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px;">
+            <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 30px; font-weight: 700;">{{anchor.actualFmt}}</span>
+            <span style="font-size: 15px; font-weight: 700; color: {{anchor.statusColor}}; text-align: right;">{{anchor.statusLabel}}</span>
+          </div>
+          <div style="height: 14px; border-radius: 7px; background: {{c.sunk}}; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: 0; left: 0; height: 14px; border-radius: 7px; background: {{anchor.barColor}}; width: {{anchor.pct}}%; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1), background 200ms ease;"></div>
+            <div style="position: absolute; top: -3px; left: {{anchor.markPct}}%; width: 2px; height: 20px; background: {{c.ink}};"></div>
+          </div>
+          <span style="font-size: 12px; color: {{c.mute}};">of {{anchor.targetFmt}} target · {{anchor.gapLabel}} <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span></span>
+        </div>
+
+        <div aria-label="This month's target" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+          <span style="font-size: 13px; font-weight: 700; color: {{c.mute}};">I want this much commission this month</span>
+          <label style="display: flex; align-items: center; gap: 8px; height: 56px; border-radius: 14px; border: 1px solid {{c.rule}}; background: {{c.sunk}}; padding: 0 14px;">
+            <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; color: {{c.mute}};">TTD</span>
+            <input type="number" min="0" step="100" value="{{target}}" onChange="{{onTarget}}" aria-label="Commission target this month" style="flex-grow: 1; min-width: 0; height: 52px; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Bricolage Grotesque', sans-serif; font-size: 30px; font-weight: 700; letter-spacing: -0.02em;">
+          </label>
+          <div style="height: 1px; background: {{c.rule}};"></div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 12px; font-weight: 700; color: {{c.mute}};">Required API</span>
+              <span style="letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 36px; font-weight: 700;">{{a.requiredApiFmt}}</span>
+              <span style="font-size: 12.5px; color: {{c.mute}};">≈ {{a.appsFmt}} applications at your TTD {{a.avgApiFmt}} average</span>
+            </div>
+            <button onClick="{{toggleWhyA}}" aria-expanded="{{whyAAria}}" style="height: 32px; padding: 0 12px; border-radius: 9px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700; flex-shrink: 0;">Why?</button>
+          </div>
+          <sc-if value="{{showWhyA}}" hint-placeholder-val="{{false}}">
+            <div style="border-radius: 12px; background: {{c.sunk}}; padding: 10px 12px; font-size: 12.5px; color: {{c.mute}}; line-height: 1.5;">{{a.whyText}}</div>
+          </sc-if>
+          <div style="border-radius: 14px; background: {{c.accentTint}}; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 13px; font-weight: 700; color: {{c.accent}}; line-height: 1.4;">To keep {{a.targetFmt}} after lapses at {{a.persistencyLabel}}% persistency, write for {{a.writeForKeepFmt}}.</span>
+            <span style="font-size: 11px; color: {{c.mute}};">Persistency-adjusted commission = target ÷ persistency rate.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PAGE 1 · PAYMENT MIX ============ -->
+      <section aria-label="Payment mix" aria-hidden="{{hidden1}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding-right: 2px; display: flex; flex-direction: column; gap: 16px; {{clip1}}">
+        <div aria-label="Commission breakdown by mode" style="display: flex; flex-direction: column; gap: 8px;">
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">Breakdown by mode</h2>
+          <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 0 14px;">
+            <sc-for list="{{breakdown}}" as="bd" hint-placeholder-count="4">
+              <div style="min-height: 60px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid {{bd.rule}}; padding: 8px 0;">
+                <span style="width: 10px; height: 10px; border-radius: 3px; background: {{bd.color}}; flex-shrink: 0;"></span>
+                <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                  <span style="font-size: 14.5px; font-weight: 700;">{{bd.mode}}</span>
+                  <span style="font-size: 12px; color: {{c.mute}};">{{bd.mixFmt}} mix · API {{bd.apiFmt}}</span>
+                </span>
+                <span style="font-size: 14.5px; font-weight: 700; flex-shrink: 0;">{{bd.commissionFmt}}</span>
+              </div>
+            </sc-for>
+            <div style="min-height: 52px; display: flex; align-items: center; gap: 10px; padding: 8px 0;">
+              <span style="flex-grow: 1; font-size: 14.5px; font-weight: 800;">Total</span>
+              <span style="font-size: 14.5px; font-weight: 800;">{{a.targetFmt}}</span>
+            </div>
+          </div>
+        </div>
+
+        <div aria-label="Why monthly-pay earns less" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700;">Why monthly pays less this month</h2>
+          <span style="font-size: 12.5px; color: {{c.mute}}; line-height: 1.5;">Only the first payment counts this month — annual pays it all now, monthly pays 1/12th.</span>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; align-items: end; height: 84px;">
+            <sc-for list="{{firstPay}}" as="fp" hint-placeholder-count="4">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end;">
+                <span style="font-size: 12px; font-weight: 700;">{{fp.pctFmt}}</span>
+                <div style="width: 100%; height: 50px; display: flex; align-items: flex-end;">
+                  <div class="mc-bar" style="width: 100%; border-radius: 6px 6px 0 0; background: {{fp.color}}; height: {{fp.h}}px; transition: height 480ms cubic-bezier(0.32, 0.72, 0, 1);"></div>
+                </div>
+                <span style="font-size: 10px; color: {{c.mute}};">{{fp.label}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PAGE 2 · WHAT IT TAKES ============ -->
+      <section aria-label="What it takes" aria-hidden="{{hidden2}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding-right: 2px; display: flex; flex-direction: column; gap: 8px; {{clip2}}">
+        <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">What that takes</h2>
+        <div role="tablist" aria-label="Pace against" style="height: 44px; box-sizing: border-box; padding: 3px; border-radius: 12px; background: {{c.sunk}}; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px;">
+          <sc-for list="{{monthChips}}" as="mc" hint-placeholder-count="2">
+            <button role="tab" aria-selected="{{mc.on}}" onClick="{{mc.pick}}" class="mc-chip" style="height: 38px; border: 0; border-radius: 9px; background: {{mc.bg}}; color: {{mc.color}}; font-family: 'Onest', sans-serif; font-size: 12.5px; font-weight: 700;">{{mc.label}}</button>
+          </sc-for>
+        </div>
+        <span style="font-size: 11.5px; color: {{c.faint}}; line-height: 1.4;">{{weeksExplain}}</span>
+        <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 0 14px;">
+          <sc-for list="{{chain}}" as="ch" hint-placeholder-count="6">
+            <div style="min-height: 56px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid {{ch.rule}};">
+              <span style="flex-grow: 1; font-size: 14px; font-weight: 700;">{{ch.label}}</span>
+              <span style="font-size: 14px; font-weight: 700;">{{ch.monthFmt}}</span>
+              <span style="width: 1px; height: 18px; background: {{c.rule}};"></span>
+              <span style="font-size: 13px; color: {{c.mute}}; text-align: right;">{{ch.weekFmt}}/wk</span>
+            </div>
+          </sc-for>
+        </div>
+        <span style="font-size: 11px; color: {{c.faint}};">This month · per week, rest of {{targetMonthLabel}}</span>
+      </section>
+
+      <!-- ============ PAGE 3 · GOAL BREAKDOWN ============ -->
+      <section aria-label="Goal breakdown" aria-hidden="{{hidden3}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding-right: 2px; display: flex; flex-direction: column; gap: 12px; {{clip3}}">
+        <div aria-label="Goal decomposition" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 22px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">Goal decomposition</h2>
+              <span style="font-size: 12px; color: {{c.mute}};">Your income goal, turned into work</span>
+            </div>
+            <button onClick="{{toggleWhyB}}" aria-expanded="{{whyBAria}}" style="height: 32px; padding: 0 12px; border-radius: 9px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700; flex-shrink: 0;">Why?</button>
+          </div>
+          <sc-if value="{{showWhyB}}" hint-placeholder-val="{{false}}">
+            <div style="border-radius: 12px; background: {{c.sunk}}; padding: 10px 12px; font-size: 12px; color: {{c.mute}}; line-height: 1.5;">{{b.whyText}}</div>
+          </sc-if>
+          <span style="font-size: 11px; color: {{c.faint}};">Ratios from: {{ratioSource}} <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.04em;">{{ratioTag}}</span></span>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <sc-for list="{{cascade}}" as="cs" hint-placeholder-count="10">
+              <div style="min-height: {{cs.rowH}}px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid {{c.rule}}; background: {{cs.rowBg}}; border-radius: 10px; padding: 6px 8px;">
+                <span style="flex-grow: 1; min-width: 0; font-size: {{cs.fontSize}}px; font-weight: {{cs.weight}};">{{cs.label}}</span>
+                <span style="text-align: right; font-size: {{cs.fontSize}}px; font-weight: {{cs.weight}};">{{cs.yearFmt}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <span style="font-size: 10.5px; color: {{c.faint}}; line-height: 1.4;">API to settle assumes 100% placement · Dials/FFIs is one combined figure.</span>
+        </div>
+      </section>
+
+      <!-- ============ PAGE 4 · CASH FLOW ============ -->
+      <section aria-label="Cash flow" aria-hidden="{{hidden4}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; padding-right: 2px; display: flex; flex-direction: column; gap: 16px; {{clip4}}">
+        <div aria-label="12-month cash flow" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+            <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700; max-width: 240px;">{{cash.title}}</h2>
+            <button onClick="{{cash.toggle}}" style="height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700; flex-shrink: 0;">{{cash.tableLabel}}</button>
+          </div>
+          <span style="font-size: 11.5px; color: {{c.mute}};">This month's mode mix, spread across the year it actually pays out</span>
+          <sc-if value="{{cash.showChart}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; flex-wrap: wrap; gap: 10px 14px;">
+              <sc-for list="{{cash.legend}}" as="lg" hint-placeholder-count="4">
+                <span style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: {{c.mute}};"><span style="width: 9px; height: 9px; border-radius: 3px; background: {{lg.color}}; display: inline-block;"></span>{{lg.label}}</span>
+              </sc-for>
+            </div>
+            <svg width="100%" height="170" viewBox="0 0 358 190" role="img" aria-label="{{cash.aria}}">
+              <sc-for list="{{cash.gridLines}}" as="gl" hint-placeholder-count="3">
+                <line x1="6" x2="352" y1="{{gl.y}}" y2="{{gl.y}}" stroke="{{c.rule}}" stroke-width="1"></line>
+              </sc-for>
+              <sc-for list="{{cash.segs}}" as="sg" hint-placeholder-count="24">
+                <rect x="{{sg.x}}" y="{{sg.y}}" width="{{sg.w}}" height="{{sg.h}}" fill="{{sg.color}}" style="height: {{sg.h}}px; y: {{sg.y}}px; transition: height 480ms cubic-bezier(0.32,0.72,0,1), y 480ms cubic-bezier(0.32,0.72,0,1);"></rect>
+              </sc-for>
+              <sc-for list="{{cash.totals}}" as="tt" hint-placeholder-count="6">
+                <text x="{{tt.x}}" y="{{tt.labelY}}" text-anchor="middle" font-family="Onest, sans-serif" font-size="10" font-weight="700" fill="{{c.ink}}" style="transition: y 480ms cubic-bezier(0.32,0.72,0,1);">{{tt.label}}</text>
+                <text x="{{tt.x}}" y="184" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" font-weight="600" fill="{{c.faint}}">{{tt.month}}</text>
+              </sc-for>
+            </svg>
+            <div style="display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid {{c.rule}};">
+              <span style="font-size: 12.5px; font-weight: 700;">Cumulative commission from this cohort</span>
+              <svg width="100%" height="76" viewBox="0 0 358 84" role="img" aria-label="Cumulative commission over the year, ending at {{cash.cumEndFmt}}">
+                <path d="{{cash.cumArea}}" fill="{{c.cat0}}" opacity="0.10"></path>
+                <path style="--len: {{cash.cumLen}}; stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: {{cash.drawAnim}} 600ms cubic-bezier(0.32,0.72,0,1) both;" d="{{cash.cumPath}}" fill="none" stroke="{{c.cat0}}" stroke-width="2" stroke-linecap="round"></path>
+                <circle cx="{{cash.cumLastX}}" cy="{{cash.cumLastY}}" r="4" fill="{{c.surface}}" stroke="{{c.cat0}}" stroke-width="2" style="animation: {{cash.dotAnim}} 260ms ease both; animation-delay: 450ms;"></circle>
+                <text x="{{cash.cumLastLabelX}}" y="{{cash.cumLastLabelY}}" text-anchor="end" font-family="Onest, sans-serif" font-size="12" font-weight="700" fill="{{c.ink}}">{{cash.cumEndFmt}}</text>
+              </svg>
+            </div>
+          </sc-if>
+          <sc-if value="{{cash.showTable}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; flex-direction: column; gap: 0;">
+              <sc-for list="{{cash.rows}}" as="cr" hint-placeholder-count="6">
+                <div style="min-height: 48px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid {{c.rule}};">
+                  <span style="width: 62px; flex-shrink: 0; font-size: 12.5px; font-weight: 700;">{{cr.month}}</span>
+                  <span style="flex-grow: 1; font-size: 12.5px; color: {{c.mute}}; text-align: right;">{{cr.total}}</span>
+                  <span style="width: 92px; flex-shrink: 0; font-size: 12.5px; font-weight: 700; text-align: right;">{{cr.cumulative}}</span>
+                </div>
+              </sc-for>
+            </div>
+            <span style="font-size: 10.5px; color: {{c.faint}};">Column: this bin's total · running cumulative</span>
+          </sc-if>
+        </div>
+
+        <div aria-label="Saved scenarios" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700;">Saved scenarios</h2>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <sc-for list="{{scenarios}}" as="scn" hint-placeholder-count="3">
+              <button onClick="{{scn.recall}}" style="height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid {{c.rule}}; background: {{c.sunk}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{scn.label}}</button>
+            </sc-for>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <input value="{{scenarioName}}" onInput="{{onScenarioName}}" placeholder="e.g. Christmas push" aria-label="Scenario name" style="flex-grow: 1; min-width: 0; height: 46px; box-sizing: border-box; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; padding: 0 12px;">
+            <button onClick="{{saveScenario}}" style="height: 46px; padding: 0 16px; border-radius: 12px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700; flex-shrink: 0;">Save</button>
+          </div>
+        </div>
+
+        <div aria-label="Insights" style="display: flex; flex-direction: column; gap: 8px;">
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700;">Insights</h2>
+          <sc-if value="{{hasInsights}}" hint-placeholder-val="{{true}}">
+            <sc-for list="{{insights}}" as="ins" hint-placeholder-count="3">
+              <div style="border-radius: 14px; background: {{ins.bg}}; padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{ins.color}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px;"><path d="M12 9v4M12 17h.01M12 3l9 16H3z"></path></svg>
+                <span style="font-size: 12.5px; color: {{ins.color}}; line-height: 1.45;">{{ins.text}}</span>
+              </div>
+            </sc-for>
+          </sc-if>
+          <sc-if value="{{noInsights}}" hint-placeholder-val="{{false}}">
+            <span style="font-size: 12px; color: {{c.faint}};">Nothing unusual right now — your assumptions are close to the company defaults.</span>
+          </sc-if>
+        </div>
+
+        <div aria-label="How September adds up" style="display: flex; flex-direction: column; gap: 8px;">
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">How September adds up</h2>
+          <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+            <sc-for list="{{fall}}" as="f" hint-placeholder-count="6">
+              <div style="display: flex; flex-direction: column; gap: 5px;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 14px; font-weight: {{f.weight}};">{{f.label}}</span><span style="font-size: 14px; font-weight: 700; color: {{f.color}};">{{f.amount}}</span></div>
+                <div style="height: 10px; border-radius: 5px; background: {{c.sunk}}; position: relative;"><div style="position: absolute; top: 0; left: {{f.left}}%; width: {{f.width}}%; height: 10px; border-radius: 5px; background: {{f.bar}};"></div></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div aria-label="Upcoming payouts" style="display: flex; flex-direction: column; gap: 8px;">
+          <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">Upcoming payouts</h2>
+          <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 0 14px;">
+            <sc-for list="{{payouts}}" as="p" hint-placeholder-count="3">
+              <div style="min-height: 64px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid {{p.rule}};">
+                <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 700;">{{p.period}}</span><span style="font-size: 12px; color: {{c.mute}};">{{p.amount}}</span></span>
+                <span style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{p.bg}}; color: {{p.fg}}; display: flex; align-items: center; font-size: 11.5px; font-weight: 700; flex-shrink: 0;">{{p.status}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <a onClick="{{go.Ledger}}" href="M3-Ledger.dc.html" style="height: 48px; border-radius: 14px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; font-size: 14px; font-weight: 700;">See what's pending on the Ledger</a>
+          <a onClick="{{go.Persistency}}" href="M3-Persistency.dc.html" style="min-height: 52px; border-radius: 14px; border: 1px solid {{c.rule}}; background: {{c.warmTint}}; color: {{c.warm}}; display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center; text-decoration: none; font-size: 13.5px; font-weight: 700; padding: 8px 12px;">Persistency bonus at risk · 86.6% · needs 90%</a>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ============ ADJUST BUTTON (opens sheet) ============ -->
+  <button onClick="{{openSheet}}" style="position: fixed; left: 16px; right: 16px; bottom: {{sheetBtnBottom}}px; z-index: 15; height: 52px; border-radius: 16px; border: 0; background: {{c.ink}}; color: {{c.bg}}; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 700; box-shadow: 0 8px 20px rgba(0,0,0,0.22);">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h6"></path></svg>{{adjustLabel}}</button>
+
+  <!-- ============ BOTTOM SHEET: ADJUST ============ -->
+  <sc-if value="{{sheetOpen}}" hint-placeholder-val="{{false}}">
+    <div style="position: fixed; inset: 0; z-index: 30;">
+      <div onClick="{{closeSheet}}" aria-hidden="true" style="position: absolute; inset: 0; background: rgba(15,13,10,0.5);"></div>
+      <div role="dialog" aria-modal="true" aria-label="Adjust your calculator" style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 82vh; overflow-y: auto; box-sizing: border-box; background: {{c.surface}}; border-radius: 22px 22px 0 0; padding: 4px 20px 24px; display: flex; flex-direction: column; gap: 14px; animation: mcSheetUp 260ms cubic-bezier(0.32,0.72,0,1) both;">
+        <div style="display: flex; justify-content: center; padding: 10px 0;"><div style="width: 40px; height: 5px; border-radius: 3px; background: {{c.rule}};"></div></div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">{{sheetTitle}}</span>
+          <span style="font-size: 12px; color: {{c.mute}};">Change anything — every number on the screen updates.</span>
+        </div>
+
+        <sc-if value="{{isModeA}}" hint-placeholder-val="{{true}}">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-size: 13px; font-weight: 700;">Mode mix — always 100%</span>
+            <sc-for list="{{mixSliders}}" as="ms" hint-placeholder-count="4">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                  <label for="{{ms.id}}" style="font-size: 13px; color: {{c.mute}};">{{ms.label}}</label>
+                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: {{c.accent}};">{{ms.valueFmt}}</span>
+                </div>
+                <input id="{{ms.id}}" type="range" min="0" max="100" step="0.5" value="{{ms.value}}" onChange="{{ms.onChange}}" style="width: 100%; accent-color: {{c.accent}};">
+              </div>
+            </sc-for>
+          </div>
+          <label style="display: flex; flex-direction: column; gap: 3px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+              <span style="font-size: 13px; font-weight: 700;">Commission rate <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; color: {{c.faint}};">SAMPLE</span></span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: {{c.accent}};">{{rateFmt}}</span>
+            </div>
+            <input type="range" min="10" max="70" step="1" value="{{rate}}" onChange="{{onRate}}" style="width: 100%; accent-color: {{c.accent}};">
+          </label>
+        </sc-if>
+
+        <sc-if value="{{isModeB}}" hint-placeholder-val="{{false}}">
+          <label style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 13px; font-weight: 700;">Income goal, after tax, annual <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; color: {{c.faint}};">SAMPLE</span></span>
+            <div style="display: flex; align-items: center; gap: 6px; height: 46px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.bg}}; padding: 0 12px;"><span style="font-size: 13px; color: {{c.mute}};">TTD</span><input type="number" min="0" step="1000" value="{{incomeGoal}}" onChange="{{onIncomeGoal}}" style="flex-grow: 1; height: 44px; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; padding: 0;"></div>
+          </label>
+          <button role="switch" aria-checked="{{usePayeAria}}" onClick="{{toggleUsePaye}}" style="height: 46px; display: flex; align-items: center; gap: 10px; border: 1px solid {{c.rule}}; border-radius: 12px; background: {{c.surface}}; padding: 0 12px; box-sizing: border-box;">
+            <span aria-hidden="true" style="width: 38px; height: 22px; border-radius: 11px; background: {{payeTrackBg}}; position: relative; flex-shrink: 0; transition: background 150ms ease;"><span style="position: absolute; top: 2px; left: {{payeThumbLeft}}px; width: 18px; height: 18px; border-radius: 9px; background: #FFFFFF; transition: left 150ms ease;"></span></span>
+            <span style="flex-grow: 1; font-size: 13px; font-weight: 600; text-align: left;">Use PAYE brackets to gross up</span>
+          </button>
+          <sc-if value="{{showFlatRate}}" hint-placeholder-val="{{false}}">
+            <label style="display: flex; flex-direction: column; gap: 3px;">
+              <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 13px; color: {{c.mute}};">Flat tax rate</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: {{c.accent}};">{{flatRateFmt}}</span></div>
+              <input type="range" min="0" max="40" step="1" value="{{flatRate}}" onChange="{{onFlatRate}}" style="width: 100%; accent-color: {{c.accent}};">
+            </label>
+          </sc-if>
+          <sc-if value="{{showPayeNote}}" hint-placeholder-val="{{true}}">
+            <span style="font-size: 11px; color: {{c.faint}}; line-height: 1.4;">Allowance TTD 90,000 · 25% to TTD 1,000,000 chargeable · 30% above.</span>
+          </sc-if>
+          <label style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 13px; font-weight: 700;">Renewal income, annual <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; color: {{c.faint}};">SAMPLE</span></span>
+            <div style="display: flex; align-items: center; gap: 6px; height: 46px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.bg}}; padding: 0 12px;"><span style="font-size: 13px; color: {{c.mute}};">TTD</span><input type="number" min="0" step="500" value="{{renewal}}" onChange="{{onRenewal}}" style="flex-grow: 1; height: 44px; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; padding: 0;"></div>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 3px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 13px; font-weight: 700;">Commission rate</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: {{c.accent}};">{{rateFmt}}</span></div>
+            <input type="range" min="10" max="70" step="1" value="{{rate}}" onChange="{{onRate}}" style="width: 100%; accent-color: {{c.accent}};">
+          </label>
+          <button role="switch" aria-checked="{{useHistoryAria}}" onClick="{{toggleUseHistory}}" style="height: 40px; display: flex; align-items: center; gap: 8px; border: 0; background: {{c.sunk}}; border-radius: 10px; padding: 0 10px; text-align: left; font-family: 'Onest', sans-serif;">
+            <span aria-hidden="true" style="width: 32px; height: 18px; border-radius: 9px; background: {{historyTrackBg}}; position: relative; flex-shrink: 0; transition: background 150ms ease;"><span style="position: absolute; top: 2px; left: {{historyThumbLeft}}px; width: 14px; height: 14px; border-radius: 7px; background: #FFFFFF; transition: left 150ms ease;"></span></span>
+            <span style="font-size: 12px; font-weight: 600; color: {{c.ink}};">Prefer my own history when I have it</span>
+          </button>
+          <label style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 13px; font-weight: 700;">Average policy API <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; color: {{c.faint}};">SAMPLE</span></span>
+            <div style="display: flex; align-items: center; gap: 6px; height: 46px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.bg}}; padding: 0 12px;"><span style="font-size: 13px; color: {{c.mute}};">TTD</span><input type="number" min="1000" step="100" value="{{avgApi}}" onChange="{{onAvgApi}}" style="flex-grow: 1; height: 44px; border: 0; background: transparent; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 14px; padding: 0;"></div>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 3px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 13px; font-weight: 700;">Persistency rate <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; color: {{c.faint}};">86.6% real</span></span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: {{c.accent}};">{{persistencyFmt}}</span></div>
+            <input type="range" min="70" max="100" step="0.1" value="{{persistency}}" onChange="{{onPersistency}}" style="width: 100%; accent-color: {{c.accent}};">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 3px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 13px; color: {{c.mute}};">CI-to-sale ratio</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: {{c.accent}};">{{ciToSaleFmt}}</span></div>
+            <input type="range" min="2" max="40" step="0.5" value="{{ciToSale}}" onChange="{{onCiToSale}}" style="width: 100%; accent-color: {{c.accent}};">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 3px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 13px; color: {{c.mute}};">Dials-to-CI ratio</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: {{c.accent}};">{{dialsToCIFmt}}</span></div>
+            <input type="range" min="2" max="50" step="0.5" value="{{dialsToCI}}" onChange="{{onDialsToCI}}" style="width: 100%; accent-color: {{c.accent}};">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 3px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 13px; color: {{c.mute}};">Prospect (contact) ratio</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: {{c.accent}};">{{prospectFmt}}</span></div>
+            <input type="range" min="10" max="90" step="1" value="{{prospect}}" onChange="{{onProspect}}" style="width: 100%; accent-color: {{c.accent}};">
+          </label>
+          <button onClick="{{saveAssumptions}}" style="height: 48px; border-radius: 13px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">Save assumptions</button>
+          <span style="font-size: 10.5px; color: {{c.faint}}; line-height: 1.4;">Saves your 9 assumption fields to your Goals doc, with a browser copy of the income goal as backup.</span>
+        </sc-if>
+
+        <button onClick="{{closeSheet}}" style="height: 52px; margin-top: 4px; border-radius: 15px; border: 0; background: {{c.ink}}; color: {{c.bg}}; font-family: 'Onest', sans-serif; font-size: 15px; font-weight: 700;">Done</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}">
+    <div style="position: absolute; left: 0; bottom: 0;">
+      <dc-import name="M3-Nav" active="money" dark="{{dark}}" hint-size="390px,84px"></dc-import>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":390,"height":760}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const p = (props && props.params) || {};
+    const raw = String(p.page || p || '');
+    const pm = /page=([A-Za-z]+)/.exec(raw);
+    const ids = this.pagesDef().map((x) => x.id);
+    let startIdx = pm ? ids.indexOf(pm[1]) : -1;
+    if (startIdx < 0 && /GoalDecomposition/.test(raw)) startIdx = ids.indexOf('Breakdown');
+    if (startIdx < 0) startIdx = 0;
+    this.state = {
+      page: startIdx, dragX: 0, dragging: false, swiped: false,
+      target: 10000, mix: { annual: 25, semiAnnual: 25, quarterly: 25, monthly: 25 }, rate: 40,
+      targetMonth: 'Sep',
+      avgApi: 17430, persistency: 86.6,
+      incomeGoal: 300000, usePaye: true, flatRate: 25, renewal: 15000,
+      ciToSale: 10, dialsToCI: 16.7, prospect: 60, useHistory: true,
+      whyA: false, whyB: false,
+      cashTable: false, cashFlip: 0,
+      scenarioName: '',
+      scenarios: [{ name: 'Baseline (SAMPLE)', snap: { target: 10000, mix: { annual: 25, semiAnnual: 25, quarterly: 25, monthly: 25 }, rate: 40, avgApi: 17430, persistency: 86.6, incomeGoal: 300000, usePaye: true, flatRate: 25, renewal: 15000, ciToSale: 10, dialsToCI: 16.7, prospect: 60 } }],
+      sheetOpen: false,
+      dispA: null, dispB: null
+    };
+    this.state.dispA = this.computeRawA(this.state);
+    this.state.dispB = this.computeRawB(this.state);
+    this._tA = null; this._tB = null;
+    this.drag = null;
+  }
+  componentWillUnmount() { if (this._tA) clearInterval(this._tA); if (this._tB) clearInterval(this._tB); }
+  pagesDef() {
+    return [
+      { id: 'Month', label: 'This month', h: 480 },
+      { id: 'Mix', label: 'Mix', h: 600 },
+      { id: 'Takes', label: 'Takes', h: 580 },
+      { id: 'Breakdown', label: 'Breakdown', h: 580 },
+      { id: 'Cash', label: 'Cash', h: 1750 }
+    ];
+  }
+  goPage(i) {
+    const n = this.pagesDef().length;
+    this.setState({ page: Math.max(0, Math.min(n - 1, i)), swiped: true });
+  }
+  modes() { return ['annual', 'semiAnnual', 'quarterly', 'monthly']; }
+  modeLabels() { return { annual: 'Annual', semiAnnual: 'Semi-annual', quarterly: 'Quarterly', monthly: 'Monthly' }; }
+  ratio() { return { annual: 1, semiAnnual: 0.5, quarterly: 0.25, monthly: 1 / 12 }; }
+  weightedRatio(mix) {
+    const R = this.ratio();
+    return this.modes().reduce((sum, k) => sum + (mix[k] / 100) * R[k], 0);
+  }
+  rebalance(mix, key, val) {
+    val = Math.max(0, Math.min(100, val));
+    const others = this.modes().filter((k) => k !== key);
+    const othersSum = others.reduce((a, k) => a + mix[k], 0);
+    const remaining = 100 - val;
+    const next = {}; next[key] = val;
+    if (othersSum <= 0.0001) { const each = remaining / others.length; others.forEach((k) => { next[k] = each; }); }
+    else { others.forEach((k) => { next[k] = (mix[k] / othersSum) * remaining; }); }
+    return next;
+  }
+  grossFromNet(net, usePaye, flatRate) {
+    const allowance = 90000, band1 = 1000000;
+    if (!usePaye) return net / (1 - flatRate / 100);
+    let gross = (net - 0.25 * allowance) / 0.75;
+    if (gross - allowance <= band1) return gross;
+    gross = (net - 0.3 * allowance - 50000) / 0.7;
+    return gross;
+  }
+  computeRawA(st) {
+    const wr = this.weightedRatio(st.mix);
+    const requiredAPI = st.target / (wr * (st.rate / 100));
+    const apps = requiredAPI / st.avgApi;
+    return { requiredAPI: requiredAPI, apps: apps, cis: apps * 10, ffis: apps * 10, appts: apps * 20, dials: apps * 60, names: apps * 100, writeForKeep: st.target / (st.persistency / 100) };
+  }
+  computeRawB(st) {
+    const preTax = this.grossFromNet(st.incomeGoal, st.usePaye, st.flatRate);
+    const firstYear = Math.max(0, preTax - st.renewal);
+    const commissionAdj = firstYear / (st.persistency / 100);
+    const apiWrite = commissionAdj / (st.rate / 100);
+    const apiSettle = apiWrite;
+    const apps = apiSettle / st.avgApi;
+    const cis = apps / (st.ciToSale / 100);
+    const dials = cis / (st.dialsToCI / 100);
+    const prospects = dials / (st.prospect / 100);
+    return { preTax: preTax, firstYear: firstYear, commissionAdj: commissionAdj, apiWrite: apiWrite, apiSettle: apiSettle, apps: apps, cis: cis, dials: dials, prospects: prospects };
+  }
+  animate(key, from, to) {
+    const tk = key === 'dispA' ? '_tA' : '_tB';
+    if (this[tk]) clearInterval(this[tk]);
+    const start = Date.now(), dur = 420;
+    this[tk] = setInterval(() => {
+      const t = Math.min(1, (Date.now() - start) / dur);
+      const e = 1 - Math.pow(1 - t, 3);
+      const obj = {};
+      Object.keys(to).forEach((k) => { obj[k] = from[k] + (to[k] - from[k]) * e; });
+      this.setState({ [key]: obj });
+      if (t >= 1) { clearInterval(this[tk]); this[tk] = null; }
+    }, 30);
+  }
+  set(patch) {
+    const prevA = this.computeRawA(this.state), prevB = this.computeRawB(this.state);
+    const merged = Object.assign({}, this.state, patch);
+    const nextA = this.computeRawA(merged), nextB = this.computeRawB(merged);
+    this.setState(patch);
+    this.animate('dispA', prevA, nextA);
+    this.animate('dispB', prevB, nextB);
+  }
+  buildPath(pts) { return pts.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join(' '); }
+  pathLen(pts) { let len = 0; for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); return len.toFixed(1); }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', warmBar: '#E0A084', gold: '#855400', goldTint: '#F5EAD3', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', warmBar: '#8A4A30', gold: '#E8B44E', goldTint: '#342911', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = Object.assign({}, this.props.dark ? dark : light);
+    c.cat0 = c.cat[0];
+    const s = this.state;
+    const fmt = (n) => Math.round(n).toLocaleString('en-US');
+    const money = (n) => 'TTD ' + fmt(n);
+    const R = this.ratio();
+    const MODES = this.modes();
+    const LABELS = this.modeLabels();
+
+    const go = {};
+    ['Ledger', 'Persistency'].forEach((t) => { go[t] = (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav(t); } }; });
+    go.back = (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('back'); } };
+    const toast = (m) => { if (this.props.onNav) this.props.onNav('event:toast:' + m); };
+
+    // ---------------- PAGER ----------------
+    const PAGES = this.pagesDef();
+    const N = PAGES.length;
+    const activeH = PAGES[s.page].h;
+    const clipStyle = (i) => (i === s.page ? '' : ('max-height:' + activeH + 'px;overflow:hidden;'));
+    const pages = PAGES.map((pd, i) => {
+      const on = i === s.page;
+      return {
+        label: pd.label, selected: on ? 'true' : 'false',
+        bg: on ? c.surface : 'transparent', color: on ? c.ink : c.mute,
+        shadow: on ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+        dot: on ? c.accent : c.rule, dotW: on ? 18 : 6,
+        pick: () => this.goPage(i)
+      };
+    });
+    const rootH = 280 + activeH;
+    // Breakdown page uses the goal-decomposition (mode B) assumptions in the sheet; every other page uses mode A (mix/rate).
+    const isModeB = PAGES[s.page].id === 'Breakdown';
+    const isModeA = !isModeB;
+
+    // ---------------- MODE A (this month / mix / takes) ----------------
+    const curA = this.computeRawA(s);
+    const dA = s.dispA || curA;
+    const whyText = 'TTD ' + fmt(s.target) + ' ÷ (mode-mix-weighted ratio ' + (this.weightedRatio(s.mix)).toFixed(3) + ' × ' + s.rate + '% rate) = ' + money(curA.requiredAPI) + ' API required.';
+    const a = {
+      targetFmt: money(s.target), requiredApiFmt: money(dA.requiredAPI), appsFmt: (Math.round(curA.apps * 10) / 10).toFixed(1),
+      avgApiFmt: fmt(s.avgApi), persistencyLabel: (Math.round(s.persistency * 10) / 10).toFixed(1),
+      writeForKeepFmt: money(dA.writeForKeep), whyText: whyText
+    };
+    const breakdown = MODES.map((k, i) => {
+      const apiReq = curA.requiredAPI * (s.mix[k] / 100);
+      const commission = apiReq * (s.rate / 100) * R[k];
+      return { mode: LABELS[k], mixFmt: (Math.round(s.mix[k] * 10) / 10).toFixed(1) + '%', apiFmt: money(Math.round(apiReq / 10) * 10), commissionFmt: money(commission), color: c.cat[i], rule: i === MODES.length - 1 ? 'transparent' : c.rule };
+    });
+    const firstPay = MODES.map((k, i) => ({ label: LABELS[k], pctFmt: Math.round(R[k] * 100) + '%', h: Math.max(4, Math.round(R[k] * 100) * 0.5), color: c.cat[i] }));
+
+    const monthChips = [['Sep', 'September'], ['Oct', 'October']].map((d) => {
+      const on = d[0] === s.targetMonth;
+      return { label: d[1], on: on ? 'true' : 'false', bg: on ? c.surface : 'transparent', color: on ? c.ink : c.mute, pick: () => this.set({ targetMonth: d[0] }) };
+    });
+    const targetMonthLabel = s.targetMonth === 'Sep' ? 'September' : 'October';
+    const weeksLeft = s.targetMonth === 'Sep' ? 1 : 4;
+    const weeksExplain = 'Sun 27-09-2026: September has 3 days left, under a full week. October runs 4 full Sunday-start weeks.';
+    const chainDefs = [
+      ['Applications', curA.apps], ['Closing interviews', curA.cis], ['Fact finds', curA.ffis],
+      ['Appointments', curA.appts], ['Dials', curA.dials], ['Names / referrals', curA.names]
+    ];
+    const chain = chainDefs.map((d, i) => {
+      const monthV = d[1];
+      const dec = d[0] === 'Applications' ? 1 : 0;
+      const f = (n) => dec ? (Math.round(n * 10) / 10).toFixed(1) : fmt(n);
+      return { label: d[0], monthFmt: f(monthV), weekFmt: f(monthV / weeksLeft), rule: i === chainDefs.length - 1 ? 'transparent' : c.rule };
+    });
+
+    // ---------------- ANCHOR STRIP ----------------
+    const actualCommission = 9420;
+    const anchorPct = Math.max(0, Math.min(140, (actualCommission / Math.max(1, s.target)) * 100));
+    const anchor = {
+      actualFmt: money(actualCommission), targetFmt: money(s.target),
+      pct: Math.min(100, anchorPct), markPct: 100,
+      barColor: anchorPct >= 100 ? c.accent : (anchorPct >= 80 ? c.accent : c.warm),
+      statusColor: anchorPct >= 100 ? c.accent : c.warm,
+      statusLabel: anchorPct >= 100 ? 'On pace' : Math.round(anchorPct) + '% there',
+      gapLabel: anchorPct >= 100 ? 'target cleared' : money(Math.max(0, s.target - actualCommission)) + ' short'
+    };
+
+    // ---------------- MODE B (goal breakdown) ----------------
+    const curB = this.computeRawB(s);
+    const dB = s.dispB || curB;
+    const whyTextB = money(s.incomeGoal) + ' after tax → ' + money(curB.preTax) + ' pre-tax (PAYE) − ' + money(s.renewal) + ' renewal = ' + money(curB.firstYear) + ' 1st-year commission needed, ÷ ' + s.persistency.toFixed(1) + '% persistency = ' + money(curB.commissionAdj) + ', ÷ ' + s.rate + '% rate = ' + money(curB.apiWrite) + ' API to write.';
+    const b = { whyText: whyTextB };
+    const cascadeDefs = [
+      ['Income goal (after tax)', s.incomeGoal, false],
+      ['Pre-tax income needed', curB.preTax, false],
+      ['1st-year commission needed', curB.firstYear, false],
+      ['Persistency-adjusted commission', curB.commissionAdj, false],
+      ['API to write', dB.apiWrite, true],
+      ['API to settle', dB.apiSettle, true],
+      ['Applications', dB.apps, true],
+      ['CIs (closing interviews)', dB.cis, true],
+      ['Dials/FFIs', dB.dials, true],
+      ['Prospects/names', dB.prospects, true]
+    ];
+    const cascade = cascadeDefs.map((d) => {
+      const year = d[1];
+      const isApps = d[0] === 'Applications';
+      const fY = isApps ? (Math.round(year * 10) / 10).toFixed(1) : fmt(year);
+      const emphasize = d[2];
+      return { label: d[0], yearFmt: (isApps ? '' : 'TTD ') + fY, rowH: emphasize ? 42 : 34, fontSize: emphasize ? 14 : 12.5, weight: emphasize ? 800 : 600, rowBg: emphasize ? c.accentTint : 'transparent' };
+    });
+
+    // ---------------- PAYE toggle visuals ----------------
+    const usePayeAria = s.usePaye ? 'true' : 'false';
+    const payeTrackBg = s.usePaye ? c.accent : c.rule;
+    const payeThumbLeft = s.usePaye ? 18 : 2;
+    const showFlatRate = !s.usePaye;
+    const showPayeNote = s.usePaye;
+
+    // ---------------- history toggle + ratio source ----------------
+    const weeksSubmitted = 5;
+    const hasEnoughHistory = weeksSubmitted >= 8;
+    const useHistoryAria = s.useHistory ? 'true' : 'false';
+    const historyTrackBg = s.useHistory ? c.accent : c.rule;
+    const historyThumbLeft = s.useHistory ? 16 : 2;
+    const usingHistory = s.useHistory && hasEnoughHistory;
+    const ratioSource = usingHistory ? 'your last 12 submitted weeks' : 'company defaults';
+    const ratioTag = usingHistory ? 'HISTORY' : (s.useHistory ? weeksSubmitted + ' OF 8 WEEKS' : 'FORCED');
+
+    // ---------------- insights ----------------
+    const insightsRaw = [];
+    if (!usingHistory) insightsRaw.push({ text: 'Not enough weeks yet for your own ratios (' + weeksSubmitted + ' of 8 submitted weeks needed) — using company defaults.', warn: true });
+    const defAvgApi = 15000;
+    if (Math.abs(s.avgApi - defAvgApi) / defAvgApi > 0.15) insightsRaw.push({ text: 'Your average policy API (TTD ' + fmt(s.avgApi) + ') is ' + Math.round(((s.avgApi - defAvgApi) / defAvgApi) * 100) + '% from the company default (TTD ' + fmt(defAvgApi) + ') — that moves every figure below it.', warn: false });
+    if (s.mix.monthly >= 50) insightsRaw.push({ text: 'More than half this month’s mix is monthly-pay, so Required API is higher than an all-annual mix would need.', warn: true });
+    const defCiToSale = 10;
+    if (Math.abs(s.ciToSale - defCiToSale) > 4) insightsRaw.push({ text: 'Your CI-to-sale ratio (' + s.ciToSale.toFixed(1) + '%) is away from the company default (' + defCiToSale + '%) — this moves your closing interviews needed.', warn: false });
+    const insights = insightsRaw.slice(0, 3).map((k) => ({ text: k.text, color: k.warn ? c.warm : c.accent, bg: k.warn ? c.warmTint : c.accentTint }));
+    const hasInsights = insights.length > 0, noInsights = insights.length === 0;
+
+    // ---------------- cash flow chart (12 months aggregated into 6 two-month bins) ----------------
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const startIdxM = s.targetMonth === 'Sep' ? 8 : 9;
+    const monthLabelsFull = Array.from({ length: 12 }, (_, i) => monthNames[(startIdxM + i) % 12]);
+    const totalAnnualByMode = MODES.map((k) => (curA.requiredAPI * (s.mix[k] / 100)) * (s.rate / 100));
+    const schedule = { annual: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], semiAnnual: [0.5, 0, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 0], quarterly: [0.25, 0, 0, 0.25, 0, 0, 0.25, 0, 0, 0.25, 0, 0], monthly: Array.from({ length: 12 }, () => 1 / 12) };
+    const perModeMonth = MODES.map((k, mi) => schedule[k].map((frac) => frac * totalAnnualByMode[mi]));
+    const monthTotalsRaw = Array.from({ length: 12 }, (_, mi) => MODES.reduce((sum, k, ki) => sum + perModeMonth[ki][mi], 0));
+    const BINS = 6;
+    const binLabels = Array.from({ length: BINS }, (_, bi) => monthLabelsFull[bi * 2] + '–' + monthLabelsFull[bi * 2 + 1]);
+    const perModeBin = MODES.map((k, ki) => Array.from({ length: BINS }, (_, bi) => perModeMonth[ki][bi * 2] + perModeMonth[ki][bi * 2 + 1]));
+    const binTotals = Array.from({ length: BINS }, (_, bi) => monthTotalsRaw[bi * 2] + monthTotalsRaw[bi * 2 + 1]);
+    const maxTotal = Math.max.apply(null, binTotals.concat([1]));
+    const chartW = 340, chartH = 150, baseY = 168, barW = 34, gap = (chartW - barW * BINS) / (BINS - 1);
+    const xFor = (i) => 6 + i * (barW + gap);
+    const segs = [];
+    binTotals.forEach((total, bi) => {
+      let acc = 0;
+      MODES.forEach((k, ki) => {
+        const v = perModeBin[ki][bi];
+        const h = (v / maxTotal) * chartH;
+        const y = baseY - acc - h;
+        if (v > 0.5) segs.push({ x: xFor(bi).toFixed(1), y: y.toFixed(1), w: barW, h: Math.max(1, h).toFixed(1), color: c.cat[ki] });
+        acc += h;
+      });
+    });
+    const totals = binTotals.map((total, bi) => {
+      const h = (total / maxTotal) * chartH;
+      return { x: (xFor(bi) + barW / 2).toFixed(1), labelY: (baseY - h - 6).toFixed(1), label: total >= 1 ? fmt(total) : '', month: binLabels[bi] };
+    });
+    const legend = MODES.map((k, i) => ({ label: LABELS[k], color: c.cat[i] }));
+    const cumRaw = []; let running = 0;
+    binTotals.forEach((v) => { running += v; cumRaw.push(running); });
+    const cumMax = Math.max.apply(null, cumRaw.concat([1]));
+    const cumXFor = (i) => 6 + i * (346 / (BINS - 1));
+    const cumYFor = (v) => 68 - (v / cumMax) * 54;
+    const cumPts = cumRaw.map((v, i) => ({ x: cumXFor(i), y: cumYFor(v) }));
+    const cumAreaPts = cumPts.concat([{ x: cumXFor(BINS - 1), y: 74 }, { x: cumXFor(0), y: 74 }]);
+    const cashTableToggle = () => this.setState({ cashTable: !this.state.cashTable });
+    const cashRows = binLabels.map((mo, i) => ({ month: mo, total: fmt(binTotals[i]), cumulative: fmt(cumRaw[i]) }));
+    const cash = {
+      title: '12 months of this cohort’s commission', toggle: cashTableToggle, tableLabel: s.cashTable ? 'Chart' : 'Table',
+      showChart: !s.cashTable, showTable: !!s.cashTable,
+      legend: legend, segs: segs, totals: totals,
+      gridLines: [{ y: 16 }, { y: 92 }, { y: 168 }],
+      aria: '12 month commission cash flow in 2-month bins, starting ' + binLabels[0],
+      cumArea: this.buildPath(cumAreaPts) + ' Z', cumPath: this.buildPath(cumPts), cumLen: this.pathLen(cumPts),
+      cumLastX: cumXFor(BINS - 1).toFixed(1), cumLastY: cumYFor(cumRaw[BINS - 1]).toFixed(1),
+      cumLastLabelX: (cumXFor(BINS - 1) - 6).toFixed(1), cumLastLabelY: (cumYFor(cumRaw[BINS - 1]) - 10).toFixed(1),
+      cumEndFmt: money(cumRaw[BINS - 1]), drawAnim: s.cashFlip % 2 === 0 ? 'mcDrawA' : 'mcDrawB', dotAnim: s.cashFlip % 2 === 0 ? 'mcDotA' : 'mcDotB',
+      rows: cashRows
+    };
+
+    // ---------------- waterfall + payouts ----------------
+    const wMax = 14200; const wPct = (n) => Math.round((n / wMax) * 1000) / 10;
+    const fall = [
+      { label: 'First-year commission', amount: '+ 11,600', left: 0, width: wPct(11600), bar: c.accent, color: c.ink, weight: 600 },
+      { label: 'Renewals', amount: '+ 1,850', left: wPct(11600), width: wPct(1850), bar: c.accent, color: c.ink, weight: 600 },
+      { label: 'Campaign cash (Christmas)', amount: '+ 0', left: wPct(13450), width: 0, bar: c.accent, color: c.mute, weight: 600 },
+      { label: 'Chargebacks', amount: '− 750', left: wPct(12700), width: wPct(750), bar: c.warmBar, color: c.warm, weight: 600 },
+      { label: 'Financing repayment', amount: '− 3,280', left: wPct(9420), width: wPct(3280), bar: c.warmBar, color: c.warm, weight: 600 },
+      { label: 'Take-home', amount: 'TTD 9,420', left: 0, width: wPct(9420), bar: c.ink, color: c.ink, weight: 800 }
+    ];
+    const payoutsRaw = [
+      { period: 'September 2026', amount: 'TTD 9,420 · estimated take-home', status: 'Paid', bg: c.accentTint, fg: c.accent },
+      { period: 'Pending settlement', amount: '1 app · TTD 36,000 API waiting on head office', status: 'Awaiting', bg: c.goldTint, fg: c.gold },
+      { period: 'Christmas campaign cash', amount: 'Champion tier · next tier Champion, TTD 7,000 cash', status: 'Pending', bg: c.goldTint, fg: c.gold }
+    ];
+    const payouts = payoutsRaw.map((p, i) => Object.assign({}, p, { rule: i === payoutsRaw.length - 1 ? 'transparent' : c.rule }));
+
+    // ---------------- scenarios ----------------
+    const applySnap = (snap) => this.set(snap);
+    const scenarios = s.scenarios.map((scn) => ({ label: scn.name, recall: () => { applySnap(scn.snap); toast('Loaded "' + scn.name + '"'); } }));
+    const onScenarioName = (e) => this.setState({ scenarioName: e.target.value });
+    const saveScenario = () => {
+      const name = (s.scenarioName || '').trim();
+      if (!name) { toast('Give the scenario a name first'); return; }
+      const snap = { target: s.target, mix: s.mix, rate: s.rate, avgApi: s.avgApi, persistency: s.persistency, incomeGoal: s.incomeGoal, usePaye: s.usePaye, flatRate: s.flatRate, renewal: s.renewal, ciToSale: s.ciToSale, dialsToCI: s.dialsToCI, prospect: s.prospect };
+      this.setState({ scenarios: s.scenarios.concat([{ name: name, snap: snap }]), scenarioName: '' });
+      toast('Saved "' + name + '"');
+    };
+    const saveAssumptions = () => toast('Saved your 9 assumptions to Goals');
+
+    // ---------------- input handlers ----------------
+    const onTarget = (e) => this.set({ target: Math.max(0, parseFloat(e.target.value) || 0) });
+    const onRate = (e) => this.set({ rate: parseFloat(e.target.value) });
+    const mixSliders = MODES.map((k) => ({
+      id: 'mc-mix-' + k, label: LABELS[k], value: (Math.round(s.mix[k] * 10) / 10).toString(), valueFmt: (Math.round(s.mix[k] * 10) / 10).toFixed(1) + '%',
+      onChange: (e) => this.set({ mix: this.rebalance(s.mix, k, parseFloat(e.target.value)) })
+    }));
+    const onIncomeGoal = (e) => this.set({ incomeGoal: Math.max(0, parseFloat(e.target.value) || 0) });
+    const toggleUsePaye = () => this.set({ usePaye: !s.usePaye });
+    const onFlatRate = (e) => this.set({ flatRate: parseFloat(e.target.value) });
+    const onRenewal = (e) => this.set({ renewal: Math.max(0, parseFloat(e.target.value) || 0) });
+    const onAvgApi = (e) => this.set({ avgApi: Math.max(1, parseFloat(e.target.value) || 1) });
+    const onPersistency = (e) => this.set({ persistency: parseFloat(e.target.value) });
+    const onCiToSale = (e) => this.set({ ciToSale: parseFloat(e.target.value) });
+    const onDialsToCI = (e) => this.set({ dialsToCI: parseFloat(e.target.value) });
+    const onProspect = (e) => this.set({ prospect: parseFloat(e.target.value) });
+    const toggleUseHistory = () => this.set({ useHistory: !s.useHistory });
+    const toggleWhyA = () => this.setState({ whyA: !s.whyA });
+    const toggleWhyB = () => this.setState({ whyB: !s.whyB });
+    const openSheet = () => this.setState({ sheetOpen: true });
+    const closeSheet = () => this.setState({ sheetOpen: false });
+
+    return {
+      c: c, dark: !!this.props.dark, showNav: !this.props.embedded, go: go,
+      rootH: rootH,
+      pages: pages, showHint: !s.swiped,
+      pagerKeyDown: (e) => {
+        if (e.key === 'ArrowRight') { e.preventDefault(); this.goPage(s.page + 1); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); this.goPage(s.page - 1); }
+      },
+      hidden0: s.page === 0 ? 'false' : 'true',
+      hidden1: s.page === 1 ? 'false' : 'true',
+      hidden2: s.page === 2 ? 'false' : 'true',
+      hidden3: s.page === 3 ? 'false' : 'true',
+      hidden4: s.page === 4 ? 'false' : 'true',
+      clip0: clipStyle(0), clip1: clipStyle(1), clip2: clipStyle(2), clip3: clipStyle(3), clip4: clipStyle(4),
+      tx: -s.page * 390 + (s.dragX || 0),
+      trans: s.dragging ? 'none' : 'transform 520ms cubic-bezier(0.32, 0.72, 0, 1)',
+      down: (e) => { this.drag = { x: e.clientX, y: e.clientY, hist: [], active: false, id: e.pointerId, el: e.currentTarget }; },
+      move: (e) => {
+        const d = this.drag;
+        if (!d) return;
+        const dx = e.clientX - d.x;
+        const dy = e.clientY - d.y;
+        if (!d.active) {
+          if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+            d.active = true;
+            try { d.el.setPointerCapture(d.id); } catch (err) {}
+          } else if (Math.abs(dy) > 10) { this.drag = null; return; } else { return; }
+        }
+        d.hist.push({ x: e.clientX, t: performance.now() });
+        if (d.hist.length > 5) d.hist.shift();
+        const edge = (s.page === 0 && dx > 0) || (s.page === N - 1 && dx < 0);
+        const off = edge ? (dx * 390 * 0.55) / (390 + 0.55 * Math.abs(dx)) : dx;
+        this.setState({ dragX: off, dragging: true });
+      },
+      up: () => {
+        const d = this.drag;
+        this.drag = null;
+        if (!d || !d.active) { return; }
+        let v = 0;
+        const h = d.hist;
+        if (h.length > 1) { v = ((h[h.length - 1].x - h[0].x) / Math.max(1, h[h.length - 1].t - h[0].t)) * 1000; }
+        const projected = this.state.dragX + (v / 1000) * 0.99 / (1 - 0.99);
+        let target = s.page;
+        if (projected < -195) target = s.page + 1;
+        else if (projected > 195) target = s.page - 1;
+        this.setState({ dragX: 0, dragging: false, swiped: true, page: Math.max(0, Math.min(N - 1, target)) });
+      },
+
+      anchor: anchor,
+      a: a, breakdown: breakdown, firstPay: firstPay,
+      monthChips: monthChips, targetMonthLabel: targetMonthLabel, weeksExplain: weeksExplain, chain: chain,
+      showWhyA: s.whyA, whyAAria: s.whyA ? 'true' : 'false', toggleWhyA: toggleWhyA,
+      b: b, cascade: cascade,
+      showWhyB: s.whyB, whyBAria: s.whyB ? 'true' : 'false', toggleWhyB: toggleWhyB,
+      ratioSource: ratioSource, ratioTag: ratioTag,
+      cash: cash,
+      scenarios: scenarios, scenarioName: s.scenarioName, onScenarioName: onScenarioName, saveScenario: saveScenario,
+      insights: insights, hasInsights: hasInsights, noInsights: noInsights,
+      fall: fall, payouts: payouts,
+      sheetOpen: s.sheetOpen, openSheet: openSheet, closeSheet: closeSheet,
+      isModeA: isModeA, isModeB: isModeB,
+      sheetTitle: isModeB ? 'Adjust ratios and goal' : 'Adjust mix and rate',
+      adjustLabel: isModeB ? 'Adjust ratios and goal' : 'Adjust mix and rate',
+      sheetBtnBottom: this.props.embedded ? 16 : 100,
+      target: (Math.round(s.target * 10) / 10).toString(), onTarget: onTarget,
+      rate: s.rate.toString(), rateFmt: s.rate + '%', onRate: onRate,
+      mixSliders: mixSliders,
+      incomeGoal: s.incomeGoal.toString(), onIncomeGoal: onIncomeGoal,
+      usePayeAria: usePayeAria, payeTrackBg: payeTrackBg, payeThumbLeft: payeThumbLeft, toggleUsePaye: toggleUsePaye,
+      showFlatRate: showFlatRate, showPayeNote: showPayeNote, flatRate: s.flatRate.toString(), flatRateFmt: s.flatRate + '%', onFlatRate: onFlatRate,
+      renewal: s.renewal.toString(), onRenewal: onRenewal,
+      avgApi: s.avgApi.toString(), onAvgApi: onAvgApi,
+      persistency: s.persistency.toString(), persistencyFmt: s.persistency.toFixed(1) + '%', onPersistency: onPersistency,
+      ciToSale: s.ciToSale.toString(), ciToSaleFmt: s.ciToSale.toFixed(1) + '%', onCiToSale: onCiToSale,
+      dialsToCI: s.dialsToCI.toString(), dialsToCIFmt: s.dialsToCI.toFixed(1) + '%', onDialsToCI: onDialsToCI,
+      prospect: s.prospect.toString(), prospectFmt: s.prospect.toFixed(1) + '%', onProspect: onProspect,
+      useHistoryAria: useHistoryAria, historyTrackBg: historyTrackBg, historyThumbLeft: historyThumbLeft, toggleUseHistory: toggleUseHistory,
+      saveAssumptions: saveAssumptions
+    };
+  }
+}
+</script>
+</body>
+</html>

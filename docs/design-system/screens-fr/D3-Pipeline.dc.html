@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pipeline — desktop v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}a{color:inherit}*{font-variant-numeric:tabular-nums}
+@keyframes d3fGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.d3f-bar{transform-origin:left;animation:d3fGrow 380ms cubic-bezier(0.32,0.72,0,1) both}
+.d3f-row{transition:background 120ms ease}.d3f-row:hover{background:rgba(127,120,105,0.10)}
+@keyframes d3pFadeA{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes d3pFadeB{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes trendDrawA{from{stroke-dashoffset:500}to{stroke-dashoffset:0}}
+@keyframes trendDrawB{from{stroke-dashoffset:500}to{stroke-dashoffset:0}}
+@keyframes dotFadeA{from{opacity:0}to{opacity:1}}
+@keyframes dotFadeB{from{opacity:0}to{opacity:1}}
+@keyframes d3pPulse{0%{box-shadow:0 0 0 0 var(--pulseColor)}100%{box-shadow:0 0 0 8px transparent}}
+.pl-chip{transition:background 120ms ease,color 120ms ease}
+.pl-card{transition:box-shadow 160ms ease}
+.pl-card:hover{box-shadow:0 4px 12px rgba(0,0,0,0.10)}
+.pl-card:hover .pl-kqm{opacity:1}
+.pl-kqm{opacity:0;transition:opacity 120ms ease}
+.pl-col{transition:background 140ms ease,border-color 140ms ease}
+.pl-scroll{scrollbar-width:thin}
+@keyframes plSettle{0%{transform:scale(1.05);box-shadow:0 18px 30px rgba(0,0,0,0.22)}100%{transform:scale(1);box-shadow:0 1px 2px rgba(0,0,0,0.05)}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: {{rootW}}px; height: 900px; box-sizing: border-box; display: flex; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; overflow: hidden;">
+  <sc-if value="{{showChrome}}" hint-placeholder-val="{{true}}">
+    <div style="width: 220px; flex-shrink: 0; align-self: stretch; background: {{c.sideBg}};">
+      <dc-import name="D3-Sidebar" active="Pipeline" dark="{{dark}}" h="{{900}}" hint-size="220px,900px"></dc-import>
+    </div>
+  </sc-if>
+  <main style="width: 1220px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;">
+    <header style="height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 20px 0 28px; display: flex; align-items: center; gap: 12px; background: {{c.glass}}; border-bottom: 1px solid {{c.rule}};">
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; flex-shrink: 0;">Pipeline</h1>
+
+      <div role="tablist" aria-label="View" style="height: 50px; box-sizing: border-box; padding: 3px; border-radius: 13px; background: {{c.sunk}}; display: flex; gap: 2px; flex-shrink: 0;">
+        <sc-for list="{{views}}" as="v" hint-placeholder-count="2">
+          <button role="tab" aria-selected="{{v.on}}" onClick="{{v.pick}}" style="height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: {{v.bg}}; color: {{v.color}}; box-shadow: {{v.shadow}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{v.label}}</button>
+        </sc-for>
+      </div>
+
+      <div role="tablist" aria-label="Period" style="height: 36px; box-sizing: border-box; padding: 3px; border-radius: 10px; background: {{c.sunk}}; display: flex; gap: 2px; flex-shrink: 0;">
+        <sc-for list="{{periods}}" as="p" hint-placeholder-count="3">
+          <button role="tab" aria-selected="{{p.on}}" onClick="{{p.pick}}" style="height: 30px; padding: 0 14px; border: 0; border-radius: 8px; background: {{p.bg}}; color: {{p.color}}; box-shadow: {{p.shadow}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700; white-space: nowrap;">{{p.label}}</button>
+        </sc-for>
+      </div>
+
+      <span style="flex-grow: 1;"></span>
+
+      <a href="D3-Today.dc.html" onClick="{{go.Search}}" style="width: 200px; height: 38px; box-sizing: border-box; border-radius: 11px; border: 1px solid {{c.rule}}; background: {{c.surface}}; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px; color: {{c.faint}}; font-size: 13px; text-decoration: none; flex-shrink: 0;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+        <span style="flex-grow: 1;">Search</span>
+        <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; color: {{c.mute}}; background: {{c.sunk}}; border-radius: 5px; padding: 2px 5px;">Ctrl K</kbd>
+      </a>
+      <button onClick="{{addProspect}}" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 0; background: {{c.ink}}; color: {{c.bg}}; display: flex; align-items: center; gap: 6px; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700; flex-shrink: 0;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add prospect</button>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}}; background: {{c.sunk}}; padding: 3px 7px; border-radius: 6px; flex-shrink: 0;">SAMPLE</span>
+    </header>
+
+    <div role="tablist" aria-label="Campaign filter" style="height: 44px; flex-shrink: 0; box-sizing: border-box; padding: 0 28px; display: flex; align-items: center; gap: 8px; background: {{c.bg}}; border-bottom: 1px solid {{c.rule}};">
+      <span style="font-size: 11px; font-weight: 700; color: {{c.faint}}; letter-spacing: 0.02em; flex-shrink: 0;">Campaign</span>
+      <sc-for list="{{campaignChips}}" as="ch" hint-placeholder-count="5">
+        <button role="tab" aria-selected="{{ch.on}}" onClick="{{ch.pick}}" class="pl-chip" style="height: 30px; padding: 0 12px; border-radius: 15px; border: 1px solid {{ch.border}}; background: {{ch.bg}}; color: {{ch.color}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700; white-space: nowrap;">{{ch.label}}</button>
+      </sc-for>
+    </div>
+
+    <div style="flex-grow: 1; min-height: 0; display: flex;">
+
+      <sc-if value="{{isFunnel}}" hint-placeholder-val="{{true}}">
+        <div style="flex-grow: 1; min-width: 0; overflow-y: auto; padding: 22px 24px; display: flex; flex-direction: column; gap: 20px; animation: {{vfAnim}} 220ms cubic-bezier(0.32,0.72,0,1) both;">
+
+          <section aria-label="Funnel" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 4px;">
+            <h2 style="margin: 0 0 4px; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">{{heroTitle}}</h2>
+            <span style="font-size: 12px; color: {{c.mute}}; margin-bottom: 8px;">Each stage shows count, conversion from the stage before, your target tick, and how many people are sitting there on the board right now</span>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+              <div style="display: flex; flex-direction: column; gap: 0;">
+                <button class="d3f-row" onClick="{{r.pick}}" aria-pressed="{{r.on}}" style="display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 4px 8px; border: 0; border-radius: 10px; background: {{r.rowBg}}; text-align: left; font-family: 'Onest', sans-serif; cursor: pointer;">
+                  <span style="width: 128px; flex-shrink: 0; font-size: 13px; font-weight: 700; color: {{c.ink}};">{{r.label}}</span>
+                  <svg width="420" height="34" viewBox="0 0 420 34" role="img" aria-label="{{r.aria}}" style="flex-shrink: 0;">
+                    <rect x="0" y="6" width="420" height="22" rx="6" fill="{{c.sunk}}"></rect>
+                    <rect class="d3f-bar" x="0" y="6" height="22" rx="6" fill="{{r.color}}" style="width: {{r.barPct}}%; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1); animation-delay: {{r.delay}};"></rect>
+                    <line x1="{{r.tickX}}" y1="0" x2="{{r.tickX}}" y2="34" stroke="{{c.faint}}" stroke-width="1" style="transition: x1 480ms cubic-bezier(0.32,0.72,0,1), x2 480ms cubic-bezier(0.32,0.72,0,1);"></line>
+                    <text x="{{r.tickTx}}" y="9" text-anchor="{{r.tickAnchor}}" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600" fill="{{c.faint}}" style="transition: x 480ms cubic-bezier(0.32,0.72,0,1);">min {{r.min}}</text>
+                  </svg>
+                  <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+                    <span style="font-size: 14px; font-weight: 700; color: {{c.ink}};">{{r.count}}</span>
+                    <sc-if value="{{r.hasConv}}" hint-placeholder-val="{{true}}"><span style="font-size: 11px; color: {{c.mute}};">{{r.conv}}</span></sc-if>
+                    <sc-if value="{{r.short}}" hint-placeholder-val="{{false}}">
+                      <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: {{c.warm}};"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M12 3l9 16H3z"></path></svg>{{r.shortLabel}}</span>
+                    </sc-if>
+                  </span>
+                </button>
+                <div style="display: flex; align-items: center; gap: 8px; padding: 0 8px 6px 148px;">
+                  <span style="font-size: 11px; color: {{c.mute}};">{{r.peopleLabel}}</span>
+                  <button onClick="{{r.seeOnBoard}}" style="height: 26px; padding: 0 10px; border: 0; border-radius: 13px; background: {{c.accentTint}}; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 700;">See on board →</button>
+                </div>
+              </div>
+            </sc-for>
+          </section>
+
+          <section aria-label="Where it leaks" style="display: flex; flex-direction: column; gap: 10px;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700;">Where it leaks</h2>
+            <span style="font-size: 12px; color: {{c.mute}};">Your biggest drop-offs this period, against your own 13-week average</span>
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+              <sc-for list="{{leaks}}" as="lk" hint-placeholder-count="3">
+                <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: {{c.faint}};">{{lk.rank}}</span>
+                  <span style="font-size: 14px; font-weight: 700;">{{lk.title}}</span>
+                  <span style="font-size: 22px; font-weight: 700; font-family: 'Bricolage Grotesque', sans-serif; color: {{c.warm}};">{{lk.pct}}</span>
+                  <span style="font-size: 12px; color: {{c.mute}};">vs your average {{lk.avg}}</span>
+                  <svg width="100%" height="32" viewBox="0 0 160 32" aria-hidden="true">
+                    <polyline points="{{lk.pts}}" fill="none" stroke="{{c.ghost}}" stroke-width="2"></polyline>
+                    <circle cx="{{lk.lastX}}" cy="{{lk.lastY}}" r="3.5" fill="{{c.warm}}"></circle>
+                  </svg>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+
+        </div>
+
+        <aside aria-label="Stage detail" style="width: 340px; flex-shrink: 0; overflow-y: auto; border-left: 1px solid {{c.rule}}; background: {{c.pane}}; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px; animation: {{vfAnim}} 220ms cubic-bezier(0.32,0.72,0,1) both;">
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: {{c.faint}};">SELECTED STAGE</span>
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">{{sel.label}}</h2>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-size: 13px; font-weight: 700;">13-week trend</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: {{c.faint}};">SAMPLE</span>
+            <svg width="100%" height="64" viewBox="0 0 300 64" role="img" aria-label="13-week trend for {{sel.label}}">
+              <polyline points="{{sel.linePts}}" fill="none" stroke="{{cat0}}" stroke-width="2" stroke-dasharray="500" style="animation: {{sel.drawAnim}} 600ms cubic-bezier(0.32,0.72,0,1) both;"></polyline>
+              <circle cx="{{sel.lineLastX}}" cy="{{sel.lineLastY}}" r="4" fill="{{c.surface}}" stroke="{{cat0}}" stroke-width="2" style="animation: {{sel.dotAnim}} 260ms ease both; animation-delay: 450ms;"></circle>
+            </svg>
+          </div>
+
+          <div style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 12px; color: {{c.mute}};">Your rate vs your 13-wk average</span>
+            <span style="font-size: 18px; font-weight: 700;">{{sel.rateNow}} <span style="font-size: 13px; font-weight: 500; color: {{c.mute}};">vs {{sel.rateAvg}} avg</span></span>
+          </div>
+
+          <div style="border-radius: 14px; background: {{c.warmTint}}; color: {{c.warm}}; padding: 12px 14px; font-size: 13px; font-weight: 600; line-height: 1.4;">{{sel.coaching}}</div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <span style="font-size: 13px; font-weight: 700;">Work these in KQM</span>
+            <sc-if value="{{sel.hasPeople}}" hint-placeholder-val="{{true}}">
+              <sc-for list="{{sel.people}}" as="pp" hint-placeholder-count="3">
+                <div style="border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 10px; display: flex; flex-direction: column; gap: 8px;">
+                  <span style="font-size: 13px; font-weight: 700;">{{pp.name}}</span>
+                  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px;">
+                    <a href="#" onClick="{{pp.openKqm}}" style="height: 36px; border-radius: 9px; border: 1px solid {{c.rule}}; background: transparent; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 12px; font-weight: 700;">Open in KQM</a>
+                    <a href="D3-Focus.dc.html" onClick="{{pp.callNow}}" style="height: 36px; border-radius: 9px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 12px; font-weight: 700;">Call now</a>
+                  </div>
+                </div>
+              </sc-for>
+            </sc-if>
+            <sc-if value="{{sel.empty}}" hint-placeholder-val="{{false}}">
+              <span style="font-size: 12px; color: {{c.faint}};">No one on the board at this stage right now.</span>
+            </sc-if>
+          </div>
+        </aside>
+      </sc-if>
+
+      <sc-if value="{{isBoard}}" hint-placeholder-val="{{false}}">
+        <div style="flex-grow: 1; min-width: 0; padding: 16px 20px 18px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; animation: {{vfAnim}} 220ms cubic-bezier(0.32,0.72,0,1) both;">
+          <span style="font-size: 12px; color: {{c.mute}};">People live in KQM Calls. Moving a card here updates KQM.</span>
+          <label style="display: flex; flex-direction: column; gap: 4px; max-width: 320px; flex-shrink: 0;">
+            <span style="font-size: 11px; font-weight: 700; color: {{c.mute}};">Find a person</span>
+            <input value="{{query}}" onInput="{{onQuery}}" placeholder="Search by name" style="height: 44px; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; padding: 0 12px;">
+          </label>
+          <div class="pl-scroll" style="flex-grow: 1; min-height: 0; display: flex; gap: 12px; overflow-x: auto; overflow-y: hidden; padding-bottom: 6px;">
+            <sc-for list="{{columns}}" as="col" hint-placeholder-count="8">
+              <div data-col="{{col.id}}" class="pl-col" style="width: 168px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0; background: {{col.bg}}; border: 1px solid {{col.border}}; border-radius: 14px; position: relative; box-sizing: border-box; --pulseColor: {{c.accent}}; animation: {{col.pulseAnim}};">
+                <sc-if value="{{col.hasConv}}" hint-placeholder-val="{{false}}">
+                  <span style="position: absolute; left: -13px; top: 12px; z-index: 3; background: {{c.pane}}; border: 1px solid {{c.rule}}; border-radius: 10px; padding: 2px 6px; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; color: {{c.mute}}; white-space: nowrap;">{{col.convLabel}}</span>
+                </sc-if>
+                <div style="flex-shrink: 0; padding: 12px 10px 8px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid {{c.rule}};">
+                  <span style="font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{col.label}}</span>
+                  <span style="display: flex; align-items: baseline; gap: 4px;">
+                    <span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700;">{{col.countDisp}}</span>
+                    <span style="font-size: 9px; color: {{c.faint}};">/ {{col.minDisp}} wk min</span>
+                  </span>
+                  <span style="height: 4px; border-radius: 2px; background: {{c.rule}}; display: block; overflow: hidden;">
+                    <span style="display: block; height: 4px; border-radius: 2px; background: {{c.accent}}; width: {{col.meterPct}}%; transition: width 480ms cubic-bezier(0.32, 0.72, 0, 1);"></span>
+                  </span>
+                  <sc-if value="{{col.hasSettledStat}}" hint-placeholder-val="{{false}}">
+                    <span style="font-size: 10px; color: {{c.mute}};">{{col.settledStat}}</span>
+                  </sc-if>
+                </div>
+                <div style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px;">
+                  <sc-for list="{{col.cards}}" as="cd" hint-placeholder-count="2">
+                    <div onPointerDown="{{cd.down}}" onPointerMove="{{move}}" onPointerUp="{{up}}" onPointerCancel="{{up}}" onClick="{{cd.select}}" class="pl-card" tabindex="0" role="button" aria-label="{{cd.ariaLabel}}" style="cursor: grab; touch-action: none; position: relative; border-radius: 12px; background: {{cd.bg}}; border: 1px solid {{cd.border}}; padding: 8px; display: flex; flex-direction: column; gap: 5px; box-sizing: border-box; transform: {{cd.transform}}; box-shadow: {{cd.shadow}}; z-index: {{cd.z}}; pointer-events: {{cd.pe}}; animation: {{cd.anim}};">
+                      <button class="pl-kqm" onClick="{{cd.openKqm}}" aria-label="Open {{cd.name}} in KQM" style="position: absolute; right: 6px; top: 6px; width: 22px; height: 22px; border: 0; border-radius: 6px; background: {{c.sunk}}; color: {{c.mute}}; display: flex; align-items: center; justify-content: center;">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"></path></svg>
+                      </button>
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <span aria-hidden="true" style="width: 22px; height: 22px; border-radius: 11px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">{{cd.initials}}</span>
+                        <span style="flex-grow: 1; min-width: 0; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{cd.name}}</span>
+                      </div>
+                      <span style="align-self: flex-start; height: 17px; padding: 0 6px; border-radius: 8px; background: {{c.sunk}}; color: {{c.faint}}; display: flex; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600;">{{cd.campaign}}</span>
+                      <span style="font-size: 11px; color: {{c.mute}}; line-height: 1.3;">{{cd.context}}</span>
+                      <sc-if value="{{cd.hasApi}}" hint-placeholder-val="{{false}}">
+                        <span style="font-size: 11px; font-weight: 700; color: {{c.ink}};">{{cd.api}}</span>
+                      </sc-if>
+                      <span style="font-size: 10px; color: {{c.faint}};">Next: {{cd.next}} · {{cd.date}}</span>
+                      <sc-if value="{{cd.moved}}" hint-placeholder-val="{{false}}">
+                        <span style="position: absolute; left: 6px; top: 6px; width: 7px; height: 7px; border-radius: 4px; background: {{c.accent}};" aria-hidden="true"></span>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{col.empty}}" hint-placeholder-val="{{false}}">
+                    <span style="font-size: 11px; color: {{c.faint}}; padding: 6px 2px;">No one here.</span>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <sc-if value="{{hasSelection}}" hint-placeholder-val="{{false}}">
+          <aside aria-label="Prospect details" style="width: 340px; flex-shrink: 0; align-self: stretch; background: {{c.surface}}; border-left: 1px solid {{c.rule}}; padding: 18px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; box-sizing: border-box; animation: {{vfAnim}} 220ms cubic-bezier(0.32,0.72,0,1) both;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em;">{{sel2.name}}</span>
+                <span style="font-size: 12px; color: {{c.mute}};">{{sel2.stageLabel}} · {{sel2.campaign}}</span>
+              </div>
+              <button onClick="{{clearSel}}" aria-label="Close details" style="width: 32px; height: 32px; border-radius: 16px; border: 0; background: {{c.sunk}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <span style="font-size: 13px; font-weight: 700;">Timeline</span>
+              <div style="display: flex; flex-direction: column; gap: 0;">
+                <sc-for list="{{sel2.touches}}" as="t" hint-placeholder-count="2">
+                  <div style="display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid {{c.rule}};">
+                    <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: {{c.faint}}; width: 76px; flex-shrink: 0;">{{t.date}}</span>
+                    <span style="font-size: 13px; color: {{c.ink}};">{{t.label}}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-size: 13px; font-weight: 700;">Needs</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                <sc-for list="{{sel2.needs}}" as="n" hint-placeholder-count="2">
+                  <span style="height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid {{c.rule}}; color: {{c.mute}}; display: flex; align-items: center; font-size: 12px; font-weight: 600;">{{n}}</span>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: {{c.sunk}};">
+              <span style="font-size: 12px; color: {{c.mute}};">Next step</span>
+              <span style="font-size: 14px; font-weight: 700;">{{sel2.next}} · {{sel2.date}}</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+              <a href="#" onClick="{{sel2.openKqm}}" aria-label="Open {{sel2.name}} in KQM" style="height: 44px; border-radius: 12px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 13px; font-weight: 700;">Open in KQM</a>
+              <a href="Add-Appointment.dc.html" onClick="{{sel2.book}}" style="height: 44px; border-radius: 12px; background: {{c.ink}}; color: {{c.bg}}; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 13px; font-weight: 700;">Book</a>
+              <a href="Outcome.dc.html" onClick="{{go.Outcome}}" style="height: 44px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 13px; font-weight: 700;">Log outcome</a>
+            </div>
+
+            <div style="position: relative;">
+              <button onClick="{{toggleMove}}" aria-expanded="{{moveOpenAria}}" style="width: 100%; height: 44px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">
+                Move to…
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+              </button>
+              <sc-if value="{{moveOpen}}" hint-placeholder-val="{{false}}">
+                <div style="position: absolute; left: 0; right: 0; bottom: 50px; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 14px; box-shadow: 0 10px 28px rgba(0,0,0,0.18); padding: 6px; display: flex; flex-direction: column; gap: 2px; z-index: 6; max-height: 260px; overflow-y: auto;">
+                  <sc-for list="{{sel2.moveTargets}}" as="mt" hint-placeholder-count="7">
+                    <button onClick="{{mt.pick}}" style="height: 40px; border: 0; background: transparent; border-radius: 8px; text-align: left; padding: 0 10px; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600; color: {{c.ink}}; flex-shrink: 0;">{{mt.label}}</button>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </aside>
+        </sc-if>
+      </sc-if>
+
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const p = (props && props.params) || {};
+    const initView = p.view === 'Board' ? 'Board' : 'Funnel';
+    let initStage = 1;
+    if (p.stage !== undefined && p.stage !== null && p.stage !== '') {
+      const n = parseInt(p.stage, 10);
+      if (!isNaN(n)) initStage = Math.max(0, Math.min(6, n));
+    }
+    this.drag = null;
+    this.animFrom = {};
+    this.iv = null;
+    this.state = {
+      view: initView, viewFlip: 0,
+      period: 0,
+      selected: initStage, trendFlip: 0,
+      selectedId: null, moveOpen: false,
+      dragId: null, dragDX: 0, dragDY: 0, hoverCol: null, settledId: null,
+      highlightCol: null,
+      campaign: 'All', query: '',
+      animT: 1,
+      cards: [
+        { id: 1, name: '[Client A]', stage: 'toCall', campaign: 'Portfolio 2026', context: 'Referral from [Aaron], not yet called', next: 'Call to introduce', date: '30-09-2026', movedDate: '25-09-2026', needs: ['Life cover'], touches: [{ date: '25-09-2026', label: 'Referral received from [Aaron]' }] },
+        { id: 2, name: '[Client M]', stage: 'toCall', campaign: 'Orphans 2026', context: "Old client file, not reached in 2 years", next: 'First call', date: '01-10-2026', movedDate: '05-09-2026', needs: ['Whole life review'], touches: [{ date: '05-09-2026', label: 'Pulled from the orphan list' }] },
+        { id: 3, name: '[Client B]', stage: 'contacted', campaign: 'Referrals', context: 'Asked for a quote 22-09-2026', next: 'Send quote follow-up', date: '29-09-2026', movedDate: '22-09-2026', product: 'Term 20', needs: ['Term life'], touches: [{ date: '22-09-2026', label: 'Requested a quote' }] },
+        { id: 4, name: '[Client N]', stage: 'contacted', campaign: 'Reviews', context: 'Annual review call done, comparing options', next: 'Send review summary', date: '01-10-2026', movedDate: '24-09-2026', needs: ['Retirement'], touches: [{ date: '24-09-2026', label: 'Annual review call' }] },
+        { id: 5, name: '[Client C]', stage: 'apptSet', campaign: 'Portfolio 2026', context: 'Fact-find booked for Monday', next: 'Confirm the time', date: '28-09-2026', movedDate: '12-09-2026', product: 'Whole life', needs: ['Life cover', 'Retirement'], touches: [{ date: '12-09-2026', label: 'Fact-find booked' }, { date: '08-09-2026', label: 'First call' }] },
+        { id: 6, name: '[Client D]', stage: 'kept', campaign: 'Orphans 2026', context: "Kept Monday's appointment, fact-find not yet done", next: 'Book the fact-find follow-up', date: '29-09-2026', movedDate: '26-09-2026', needs: ['Education plan'], touches: [{ date: '26-09-2026', label: 'Kept the appointment' }, { date: '18-09-2026', label: 'Appointment set' }] },
+        { id: 7, name: '[Client E]', stage: 'ffDone', campaign: 'Portfolio 2026', context: 'Fact-find done, drafting illustration', next: 'Send illustration', date: '01-10-2026', movedDate: '24-09-2026', product: 'Education plan', needs: ['Education'], touches: [{ date: '24-09-2026', label: 'Fact-find completed' }, { date: '20-09-2026', label: 'Fact-find booked' }] },
+        { id: 8, name: '[Client F]', stage: 'ciBooked', campaign: 'Referrals', context: 'Closing interview booked for Wed', next: 'Bring the illustration', date: '30-09-2026', movedDate: '23-09-2026', product: 'Whole life', needs: ['Life cover'], touches: [{ date: '23-09-2026', label: 'Closing interview booked' }, { date: '12-09-2026', label: 'Fact-find completed' }] },
+        { id: 9, name: '[Client G]', stage: 'appIn', campaign: 'Referrals', context: 'Application submitted', next: 'Await underwriting', date: '05-10-2026', movedDate: '22-09-2026', product: 'Term 20', api: 'TTD 36,000', needs: ['Term life'], touches: [{ date: '22-09-2026', label: 'Application submitted' }, { date: '10-09-2026', label: 'Closing interview' }] },
+        { id: 10, name: '[Client H]', stage: 'settled', campaign: 'Portfolio 2026', context: 'Settled', next: 'Policy delivered', date: '14-09-2026', movedDate: '14-09-2026', product: 'Whole life', api: 'TTD 36,000', needs: ['Life cover'], touches: [{ date: '14-09-2026', label: 'Settled' }, { date: '10-09-2026', label: 'Application submitted' }] },
+        { id: 11, name: '[Client I]', stage: 'settled', campaign: 'Reviews', context: 'Settled', next: 'Annual review', date: '03-09-2026', movedDate: '03-09-2026', product: 'Education plan', api: 'TTD 24,946', needs: ['Education'], touches: [{ date: '03-09-2026', label: 'Settled' }] },
+        { id: 12, name: '[Client J]', stage: 'settled', campaign: 'Orphans 2026', context: 'Settled', next: 'Annual review', date: '18-07-2026', movedDate: '18-07-2026', product: 'Annuity', api: 'TTD 13,000', needs: ['Retirement'], touches: [{ date: '18-07-2026', label: 'Settled' }] },
+        { id: 13, name: '[Client K]', stage: 'settled', campaign: 'Portfolio 2026', context: 'Settled', next: 'Annual review', date: '02-08-2026', movedDate: '02-08-2026', product: 'Term 20', api: 'TTD 9,000', needs: ['Term life'], touches: [{ date: '02-08-2026', label: 'Settled' }] },
+        { id: 14, name: '[Client L]', stage: 'settled', campaign: 'Referrals', context: 'Settled', next: 'Annual review', date: '20-06-2026', movedDate: '20-06-2026', product: 'Whole life', api: 'TTD 4,200', needs: ['Life cover'], touches: [{ date: '20-06-2026', label: 'Settled' }] }
+      ]
+    };
+  }
+  componentWillUnmount() { if (this.iv) clearInterval(this.iv); }
+  bumpAnim() {
+    if (this.iv) clearInterval(this.iv);
+    this.setState({ animT: 0 });
+    const start = Date.now();
+    this.iv = setInterval(() => {
+      const t = Math.min(1, (Date.now() - start) / 420);
+      this.setState({ animT: t });
+      if (t >= 1) { clearInterval(this.iv); this.iv = null; }
+    }, 30);
+  }
+  stagesBase() {
+    return [
+      { key: 'toCall', label: 'Dials', value: 48, min: 60 },
+      { key: 'contacted', label: 'Contacts', value: 31, min: 40 },
+      { key: 'apptSet', label: 'Appointments set', value: 14, min: 20 },
+      { key: 'kept', label: 'Kept', value: 11, min: 15 },
+      { key: 'ffDone', label: 'Fact finds', value: 7, min: 10 },
+      { key: 'ciBooked', label: 'Closing interviews', value: 4, min: 10 },
+      { key: 'appIn', label: 'Applications', value: 1, min: 1 }
+    ];
+  }
+  boardCols() {
+    return [
+      { id: 'toCall', label: 'To call', min: 60 },
+      { id: 'contacted', label: 'Contacted', min: 40 },
+      { id: 'apptSet', label: 'Appointment set', min: 20 },
+      { id: 'kept', label: 'Kept', min: 15 },
+      { id: 'ffDone', label: 'Fact find done', min: 10 },
+      { id: 'ciBooked', label: 'Closing booked', min: 10 },
+      { id: 'appIn', label: 'Application in', min: 1 },
+      { id: 'settled', label: 'Settled', min: 1 }
+    ];
+  }
+  shade(c, i, n) {
+    const hexToRgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+    const a = hexToRgb(c.accent), g = hexToRgb(c.ghost);
+    const t = n > 1 ? i / (n - 1) : 0;
+    const mix = (x, y) => Math.round(x + (y - x) * t);
+    return 'rgb(' + mix(a[0], g[0]) + ',' + mix(a[1], g[1]) + ',' + mix(a[2], g[2]) + ')';
+  }
+  boardCounts(cards, campaign) {
+    const out = {};
+    const pass = (cd) => !campaign || campaign === 'All' || cd.campaign === campaign;
+    this.boardCols().forEach((col) => { out[col.id] = cards.filter((cd) => cd.stage === col.id && pass(cd)).length; });
+    return out;
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', sideBg: '#EFEBE2', glass: 'rgba(246,243,236,0.9)', pane: '#FBFAF6', sel: '#DCEAE7', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5'] };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', sideBg: '#181816', glass: 'rgba(19,19,17,0.9)', pane: '#171714', sel: '#16312F', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC'] };
+    const c = this.props.dark ? dark : light;
+    const s = this.state;
+    const ease = 1 - Math.pow(1 - s.animT, 3);
+    const disp = (key, target) => {
+      const from = (this.animFrom && this.animFrom[key] !== undefined) ? this.animFrom[key] : target;
+      return Math.round(from + (target - from) * ease);
+    };
+
+    const goTo = (t) => (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav(t); } };
+    const toast = (m) => { if (this.props.onNav) this.props.onNav('event:toast:' + m); };
+    const go = { Search: goTo('Today'), Outcome: goTo('Outcome') };
+    const addProspect = (e) => { e.preventDefault(); toast('Opens the new-prospect form in KQM Calls'); };
+    const campaignPass = (cd) => s.campaign === 'All' || cd.campaign === s.campaign;
+    const CAMPAIGNS = ['All', 'Portfolio 2026', 'Orphans 2026', 'Referrals', 'Reviews'];
+    const campaignChips = CAMPAIGNS.map((camp) => {
+      const on = s.campaign === camp;
+      return {
+        label: camp === 'All' ? 'All' : camp.replace(' 2026', ''),
+        on: on ? 'true' : 'false', bg: on ? c.ink : c.surface, color: on ? c.bg : c.ink, border: on ? c.ink : c.rule,
+        pick: () => {
+          if (this.state.campaign === camp) return;
+          const from = {};
+          const oldCounts = this.boardCounts(this.state.cards, this.state.campaign);
+          Object.keys(oldCounts).forEach((k) => { from['b_' + k] = oldCounts[k]; });
+          this.animFrom = Object.assign({}, this.animFrom, from);
+          this.setState({ campaign: camp });
+          this.bumpAnim();
+        }
+      };
+    });
+
+    const BOARD_COLS = this.boardCols();
+    const TODAY = new Date(Date.UTC(2026, 8, 27));
+    const parseDMY = (str) => { const parts = str.split('-'); return new Date(Date.UTC(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]))); };
+    const daysAgo = (str) => Math.round((TODAY - parseDMY(str)) / 86400000);
+    const periodMult = [1, 4, 13];
+    const periodDays = [7, 28, 91];
+    const mult = periodMult[s.period];
+    const windowDays = periodDays[s.period];
+
+    // ---- funnel (activity) ----
+    const stagesBase = this.stagesBase();
+    const stages = stagesBase.map((st) => ({ key: st.key, label: st.label, value: Math.round(st.value * mult), min: Math.round(st.min * mult) }));
+    const maxUnit = Math.max.apply(null, stages.map((st) => Math.max(st.value, st.min)));
+    const boardNow = this.boardCounts(s.cards, s.campaign);
+
+    // ---- view swap ----
+    const isFunnel = s.view === 'Funnel';
+    const vfAnim = (s.viewFlip % 2 === 0 ? 'd3pFadeA' : 'd3pFadeB');
+    const views = ['Funnel', 'Board'].map((v) => {
+      const on = v === s.view;
+      return {
+        label: v, on: on ? 'true' : 'false', bg: on ? c.surface : 'transparent', color: on ? c.ink : c.mute, shadow: on ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+        pick: () => { if (this.state.view === v) return; this.setState({ view: v, viewFlip: 1 - this.state.viewFlip }); }
+      };
+    });
+
+    const goBoardFromStage = (i) => {
+      const col = BOARD_COLS[i];
+      if (!col) return;
+      this.setState({ view: 'Board', viewFlip: 1 - this.state.viewFlip, highlightCol: col.id });
+      setTimeout(() => {
+        try {
+          const el = document.querySelector('[data-col="' + col.id + '"]');
+          if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        } catch (err) {}
+      }, 60);
+      setTimeout(() => { if (this.state.highlightCol === col.id) this.setState({ highlightCol: null }); }, 1000);
+    };
+
+    const periods = ['This week', 'Last 4 weeks', '13 weeks'].map((n, i) => ({
+      label: n, on: i === s.period ? 'true' : 'false', bg: i === s.period ? c.surface : 'transparent', color: i === s.period ? c.ink : c.mute, shadow: i === s.period ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+      pick: () => {
+        if (this.state.period === i) return;
+        const from = {};
+        stages.forEach((st) => { from['f_' + st.key] = st.value; });
+        this.animFrom = Object.assign({}, this.animFrom, from);
+        this.setState({ period: i, trendFlip: 1 - this.state.trendFlip });
+        this.bumpAnim();
+      }
+    }));
+
+    const chartW = 100;
+    const rows = stages.map((st, i) => {
+      const prev = i > 0 ? stages[i - 1].value : null;
+      const conv = prev ? Math.round((st.value / prev) * 100) : null;
+      const dispVal = disp('f_' + st.key, st.value);
+      const barPct = Math.max(1, Math.round((st.value / maxUnit) * chartW));
+      const tickX = Math.min(420, Math.round((st.min / maxUnit) * 420));
+      const isShort = st.value < st.min;
+      const anchor = tickX > 420 - 46 ? 'end' : 'start';
+      const tickTx = anchor === 'end' ? tickX - 2 : tickX + 2;
+      const peopleNow = disp('b_' + st.key, boardNow[st.key] || 0);
+      return {
+        label: st.label, count: dispVal.toLocaleString('en-US'), min: st.min.toLocaleString('en-US'),
+        barPct: barPct, tickX: tickX, tickTx: tickTx, tickAnchor: anchor,
+        color: this.shade(c, i, stages.length), delay: (i * 60) + 'ms',
+        hasConv: conv !== null, conv: conv !== null ? conv + '% of ' + stages[i - 1].label.toLowerCase() : '',
+        short: isShort, shortLabel: (st.min - st.value) + ' short',
+        aria: st.label + ': ' + st.value + ' of a ' + st.min + ' minimum',
+        on: i === s.selected ? 'true' : 'false', rowBg: i === s.selected ? c.sel : 'transparent',
+        peopleLabel: peopleNow + (peopleNow === 1 ? ' person' : ' people') + ' at this stage now',
+        seeOnBoard: (e) => { e.preventDefault(); goBoardFromStage(i); },
+        pick: () => {
+          if (this.state.selected === i) { goBoardFromStage(i); return; }
+          this.setState({ selected: i, trendFlip: 1 - this.state.trendFlip });
+        }
+      };
+    });
+
+    const trendFor = (base) => {
+      const pts = Array.from({ length: 13 }, (_, i) => Math.max(1, Math.round(base * (0.75 + 0.25 * Math.sin(i * 0.7) + i * 0.012))));
+      const maxV = Math.max.apply(null, pts);
+      const step = 300 / 12;
+      const coords = pts.map((v, i) => (i * step).toFixed(1) + ',' + (60 - (v / maxV) * 52).toFixed(1));
+      const last = pts[pts.length - 1];
+      return { points: coords.join(' '), lastX: ((pts.length - 1) * step).toFixed(1), lastY: (60 - (last / maxV) * 52).toFixed(1) };
+    };
+    const coaching = {
+      toCall: 'You are 12 dials short of the weekly minimum. A second Power hour block would close most of the gap.',
+      contacted: 'Contacts → Dials sits at 65%. That is close to your average — keep the same opener.',
+      apptSet: 'Contacts → Appointments dropped from 52% to 45%. Try the referral opener in Power hour.',
+      kept: 'Kept rate is steady at 79%. Reminders the day before are working — keep sending them.',
+      ffDone: 'Kept → Fact find is 64%, in line with your average. No change needed here.',
+      ciBooked: 'Fact find → Closing interview fell to 57% from a 65% average. Revisit the close at the end of the fact-find.',
+      appIn: 'Closing → Application is 25%, below your 38% average. Ask for the application before you leave the room.'
+    };
+    const sIdx = s.selected;
+    const st = stages[sIdx];
+    const trend = trendFor(st.value || 1);
+    const rateNow = sIdx > 0 ? Math.round((st.value / stages[sIdx - 1].value) * 100) + '%' : st.value + '/wk';
+    const rateAvgNum = sIdx > 0 ? Math.min(95, Math.round((st.value / stages[sIdx - 1].value) * 100) + (sIdx === 2 || sIdx === 5 ? 8 : 2)) : null;
+    const peopleAtStage = s.cards.filter((cd) => cd.stage === BOARD_COLS[sIdx].id && campaignPass(cd));
+    const drawAnim = s.trendFlip % 2 === 0 ? 'trendDrawA' : 'trendDrawB';
+    const dotAnim = s.trendFlip % 2 === 0 ? 'dotFadeA' : 'dotFadeB';
+    const sel = {
+      key: st.key, label: st.label,
+      linePts: trend.points, lineLastX: trend.lastX, lineLastY: trend.lastY,
+      drawAnim: drawAnim, dotAnim: dotAnim,
+      rateNow: rateNow, rateAvg: rateAvgNum !== null ? rateAvgNum + '%' : '—',
+      coaching: coaching[st.key],
+      hasPeople: peopleAtStage.length > 0, empty: peopleAtStage.length === 0,
+      people: peopleAtStage.slice(0, 4).map((cd) => ({
+        name: cd.name,
+        openKqm: (e) => { e.preventDefault(); toast('Opens ' + cd.name + ' in KQM Calls'); },
+        callNow: goTo('Calls')
+      }))
+    };
+
+    const leakDefs = [
+      { title: 'Contacts → Appointments', pct: '45%', avg: '52%', base: 45 },
+      { title: 'Closing → Applications', pct: '25%', avg: '38%', base: 25 },
+      { title: 'Fact finds → Closing', pct: '57%', avg: '65%', base: 57 }
+    ];
+    const leaks = leakDefs.map((lk, i) => {
+      const pts = Array.from({ length: 10 }, (_, j) => Math.max(4, Math.round(lk.base + 14 * Math.sin(j * 0.9 + i) - j * 0.6)));
+      const maxV = Math.max.apply(null, pts), minV = Math.min.apply(null, pts);
+      const range = Math.max(1, maxV - minV);
+      const step = 160 / 9;
+      const coords = pts.map((v, j) => (j * step).toFixed(1) + ',' + (28 - ((v - minV) / range) * 22).toFixed(1));
+      const lastV = pts[pts.length - 1];
+      return { rank: '#' + (i + 1), title: lk.title, pct: lk.pct, avg: lk.avg, pts: coords.join(' '), lastX: ((pts.length - 1) * step).toFixed(1), lastY: (28 - ((lastV - minV) / range) * 22).toFixed(1) };
+    });
+
+    // ---- board (people) ----
+    const moveCard = (id, newColId) => {
+      const idx = this.state.cards.findIndex((cd) => cd.id === id);
+      if (idx < 0 || this.state.cards[idx].stage === newColId) { this.setState({ moveOpen: false }); return; }
+      const from = {};
+      BOARD_COLS.forEach((col) => { from['b_' + col.id] = this.state.cards.filter((cd) => cd.stage === col.id && campaignPass(cd)).length; });
+      this.animFrom = Object.assign({}, this.animFrom, from);
+      const client = this.state.cards[idx].name;
+      const cards2 = this.state.cards.slice();
+      cards2[idx] = Object.assign({}, cards2[idx], { stage: newColId, movedDate: '27-09-2026' });
+      this.setState({ cards: cards2, settledId: id, moveOpen: false });
+      this.bumpAnim();
+      setTimeout(() => { if (this.state.settledId === id) this.setState({ settledId: null }); }, 280);
+      if (this.props.onNav) {
+        if (newColId === 'apptSet') this.props.onNav('AddAppt?type=0&client=' + client);
+        else if (newColId === 'ciBooked') this.props.onNav('AddAppt?type=1&client=' + client);
+        else if (newColId === 'ffDone') this.props.onNav('Outcome');
+        else this.props.onNav('event:toast:Saved · moved in KQM, counted here');
+      }
+    };
+
+    const move = (e) => {
+      const d = this.drag;
+      if (!d) return;
+      const dx = e.clientX - d.x;
+      const dy = e.clientY - d.y;
+      let hover = null;
+      try {
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const colEl = el && el.closest ? el.closest('[data-col]') : null;
+        hover = colEl ? colEl.getAttribute('data-col') : null;
+      } catch (err) {}
+      this.setState({ dragDX: dx, dragDY: dy, hoverCol: hover });
+    };
+    const up = (e) => {
+      const d = this.drag;
+      this.drag = null;
+      if (!d) { this.setState({ dragId: null, dragDX: 0, dragDY: 0, hoverCol: null }); return; }
+      const hover = this.state.hoverCol;
+      if (hover) moveCard(d.id, hover);
+      this.setState({ dragId: null, dragDX: 0, dragDY: 0, hoverCol: null });
+    };
+
+    const isBoard = s.view === 'Board';
+    const counts = BOARD_COLS.map((col) => s.cards.filter((cd) => cd.stage === col.id && campaignPass(cd)).length);
+    const appInIdx = BOARD_COLS.findIndex((col) => col.id === 'appIn');
+    const q = (s.query || '').trim().toLowerCase();
+    const columns = BOARD_COLS.map((col, i) => {
+      const listAll = s.cards.filter((cd) => cd.stage === col.id && campaignPass(cd));
+      const listVisible = q ? listAll.filter((cd) => cd.name.toLowerCase().indexOf(q) !== -1) : listAll;
+      const isSettled = col.id === 'settled';
+      const hovered = !!s.dragId && s.hoverCol === col.id;
+      const pulse = s.highlightCol === col.id;
+      const min = Math.round(col.min * mult);
+      const countTarget = counts[i];
+      const countShown = disp('b_' + col.id, countTarget);
+      const meterPct = Math.max(0, Math.min(100, Math.round((countTarget / Math.max(1, min)) * 100)));
+      const prevCount = i > 0 ? counts[i - 1] : null;
+      const convPct = (!isSettled && prevCount) ? Math.round((countTarget / prevCount) * 100) : null;
+      const settledOf = countTarget + (counts[appInIdx] || 0);
+      return {
+        id: col.id, label: col.label,
+        countDisp: countShown.toLocaleString('en-US'), minDisp: min.toLocaleString('en-US'), meterPct: meterPct,
+        hasConv: false, convLabel: convPct + '% →',
+        hasSettledStat: isSettled, settledStat: countTarget + ' of ' + settledOf + ' settled',
+        bg: hovered ? c.accentTint : c.pane, border: hovered ? c.accent : c.rule,
+        pulseAnim: pulse ? 'd3pPulse 900ms ease' : 'none',
+        empty: listVisible.length === 0,
+        cards: listVisible.map((cd) => {
+          const dragging = s.dragId === cd.id;
+          const settling = s.settledId === cd.id;
+          const m = cd.name.match(/Client ([A-Za-z])/);
+          const letter = m ? m[1] : '?';
+          const moved = daysAgo(cd.movedDate) <= windowDays;
+          return {
+            id: cd.id, name: cd.name, ariaLabel: cd.name + ', ' + col.label,
+            campaign: cd.campaign, context: cd.context,
+            hasApi: !!cd.api, api: cd.api || '',
+            next: cd.next, date: cd.date, moved: moved,
+            initials: 'C' + letter,
+            bg: s.selectedId === cd.id ? c.sel : c.surface,
+            border: s.selectedId === cd.id ? c.accent : c.rule,
+            transform: dragging ? ('translate(' + s.dragDX + 'px,' + s.dragDY + 'px) scale(1.04)') : 'none',
+            shadow: dragging ? '0 18px 34px rgba(0,0,0,0.28)' : '0 1px 2px rgba(0,0,0,0.05)',
+            z: dragging ? 50 : 1,
+            pe: dragging ? 'none' : 'auto',
+            anim: settling ? 'plSettle 260ms cubic-bezier(0.32, 0.72, 0, 1) both' : 'none',
+            openKqm: (e) => { e.preventDefault(); toast('Opens ' + cd.name + ' in KQM Calls'); },
+            down: (e) => {
+              this.drag = { id: cd.id, x: e.clientX, y: e.clientY };
+              try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+              this.setState({ dragId: cd.id, dragDX: 0, dragDY: 0, hoverCol: null });
+            },
+            select: () => this.setState({ selectedId: cd.id, moveOpen: false })
+          };
+        })
+      };
+    });
+
+    const selRaw = s.cards.find((cd) => cd.id === s.selectedId) || null;
+    const stageLabelById = {}; BOARD_COLS.forEach((col) => { stageLabelById[col.id] = col.label; });
+    const sel2 = selRaw ? {
+      name: selRaw.name, stageLabel: stageLabelById[selRaw.stage], campaign: selRaw.campaign,
+      touches: selRaw.touches, needs: selRaw.needs, next: selRaw.next, date: selRaw.date,
+      openKqm: (e) => { e.preventDefault(); toast('Opens ' + selRaw.name + ' in KQM Calls'); },
+      book: (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav('AddAppt?type=0&client=' + selRaw.name); } },
+      moveTargets: BOARD_COLS.filter((col) => col.id !== selRaw.stage).map((col) => ({ label: col.label, pick: () => moveCard(selRaw.id, col.id) }))
+    } : {};
+
+    return {
+      c: c, go: go, dark: !!this.props.dark, showChrome: !this.props.embedded, rootW: this.props.embedded ? 1220 : 1440,
+      cat0: c.cat[0], views: views, periods: periods, campaignChips: campaignChips, addProspect: addProspect,
+      query: s.query, onQuery: (e) => this.setState({ query: e.target.value }),
+      isFunnel: isFunnel, isBoard: isBoard, vfAnim: vfAnim,
+      heroTitle: 'This week: ' + stages[0].value + ' dials → ' + stages[stages.length - 1].value + ' application' + (stages[stages.length - 1].value === 1 ? '' : 's'),
+      rows: rows, sel: sel, leaks: leaks,
+      move: move, up: up, columns: columns,
+      hasSelection: !!selRaw, sel2: sel2, clearSel: () => this.setState({ selectedId: null, moveOpen: false }),
+      moveOpen: s.moveOpen, moveOpenAria: s.moveOpen ? 'true' : 'false', toggleMove: () => this.setState({ moveOpen: !s.moveOpen })
+    };
+  }
+}
+</script>
+</body>
+</html>

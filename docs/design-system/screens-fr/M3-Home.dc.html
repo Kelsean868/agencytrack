@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Today — mobile v3 (swipe)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}
+a{color:inherit}
+*{font-variant-numeric:tabular-nums}
+.m3h-scroll{-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.m3h-scroll::-webkit-scrollbar{display:none}
+@keyframes m3hCardA{from{opacity:0;transform:translateY(8px) scale(0.99)}to{opacity:1;transform:none}}
+@keyframes m3hCardB{from{opacity:0;transform:translateY(8px) scale(0.99)}to{opacity:1;transform:none}}
+@keyframes m3hDraw{from{stroke-dashoffset:400}to{stroke-dashoffset:0}}
+@keyframes m3hGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes m3hGrowY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: {{rootH}}px; box-sizing: border-box; position: relative; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; display: flex; flex-direction: column; gap: 14px; padding: 12px 0 104px;">
+
+  <header style="display: flex; align-items: flex-start; gap: 8px; padding: 0 16px;">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px; padding-top: 6px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: {{c.faint}};">SUN 27-09-2026 &middot; WEEK 40</span>
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05;">Morning, Kyron.</h1>
+    </div>
+    <a href="Search.dc.html" onClick="{{go.Search}}" aria-label="Search" style="width: 44px; height: 44px; border-radius: 22px; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; text-decoration: none;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></a>
+    <a href="Notifications.dc.html" onClick="{{go.Notifications}}" aria-label="Notifications, 2 unread" style="width: 44px; height: 44px; border-radius: 22px; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; position: relative; text-decoration: none;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+      <span style="position: absolute; top: 10px; right: 11px; width: 8px; height: 8px; border-radius: 4px; background: {{c.warm}};"></span>
+    </a>
+    <a href="Me.dc.html" onClick="{{go.Me}}" aria-label="Me — profile, awards, settings" style="width: 44px; height: 44px; border-radius: 22px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; text-decoration: none;">KM</a>
+  </header>
+
+  <sc-if value="{{showStrip}}" hint-placeholder-val="{{true}}">
+    <a href="Weekly-Report.dc.html" onClick="{{go.Report}}" style="margin: 0 16px; box-sizing: border-box; min-height: 44px; border-radius: 12px; background: {{c.warmTint}}; border: 1px solid {{c.warm}}; display: flex; align-items: center; gap: 10px; padding: 0 12px; text-decoration: none; color: {{c.ink}};">
+      <span style="width: 28px; height: 28px; border-radius: 14px; background: {{c.warm}}; color: {{c.onAccent}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+      <span style="flex-grow: 1; font-size: 13px; font-weight: 700; color: {{c.warm}};">Week 39 report due today</span>
+      <span style="font-size: 12.5px; font-weight: 700; color: {{c.warm}};">Submit</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{c.warm}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+    </a>
+  </sc-if>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; padding: 0 16px;">
+    <div role="tablist" aria-label="Home pages" tabindex="0" onKeyDown="{{pagerKey}}" class="m3h-scroll" style="display: flex; gap: 8px; overflow-x: auto; height: 44px;">
+      <sc-for list="{{chips}}" as="ch" hint-placeholder-count="3">
+        <button role="tab" aria-selected="{{ch.selected}}" onClick="{{ch.pick}}" style="flex: 0 0 auto; min-width: 100px; height: 44px; padding: 0 16px; box-sizing: border-box; border: 1px solid {{ch.border}}; border-radius: 22px; background: {{ch.bg}}; color: {{ch.color}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700;">{{ch.label}}</button>
+      </sc-for>
+    </div>
+    <div style="display: flex; justify-content: center; align-items: center; gap: 6px; height: 10px;" aria-hidden="true">
+      <sc-for list="{{chips}}" as="ch" hint-placeholder-count="3">
+        <span style="width: {{ch.dotW}}px; height: 6px; border-radius: 3px; background: {{ch.dot}}; transition: width 200ms ease;"></span>
+      </sc-for>
+    </div>
+    <sc-if value="{{showHint}}" hint-placeholder-val="{{true}}">
+      <span style="display: block; text-align: center; font-size: 12px; font-weight: 600; color: {{c.faint}};">Swipe for more &rarr;</span>
+    </sc-if>
+  </div>
+
+  <div onPointerDown="{{down}}" onPointerMove="{{move}}" onPointerUp="{{up}}" onPointerCancel="{{up}}" style="width: 390px; overflow: hidden; touch-action: pan-y;">
+    <div style="width: 1170px; display: flex; align-items: flex-start; transform: translateX({{tx}}px); transition: {{trans}}; will-change: transform;">
+
+      <section aria-label="Focus" aria-hidden="{{hidden0}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 2px 16px 0; display: flex; flex-direction: column; gap: 18px;">
+        <section aria-label="Start a focus session" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 21px; font-weight: 700; letter-spacing: -0.02em;">Start a focus session</h2>
+            <span style="font-size: 13px; color: {{c.mute}};">One person or task at a time. Big buttons, no swiping.</span>
+          </div>
+          <sc-for list="{{modes}}" as="m" hint-placeholder-count="3">
+            <a href="M3-Focus.dc.html" onClick="{{m.go}}" style="min-height: 64px; border-radius: 16px; background: {{m.bg}}; border: 1px solid {{m.border}}; display: flex; align-items: center; gap: 12px; padding: 10px 14px; text-decoration: none; color: {{c.ink}};">
+              <span style="width: 40px; height: 40px; border-radius: 20px; background: {{m.iconBg}}; color: {{m.iconFg}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{m.icon}}"></path></svg></span>
+              <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px;">
+                <span style="font-size: 16px; font-weight: 700;">{{m.label}}</span>
+                <span style="font-size: 13px; color: {{m.subColor}};">{{m.sub}}</span>
+              </span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.faint}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+            </a>
+          </sc-for>
+        </section>
+
+        <sc-if value="{{hasCurrent}}" hint-placeholder-val="{{true}}">
+          <section aria-label="Next up" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 10px; animation: {{cardAnim}};">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: {{c.accent}};">NEXT UP</span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: {{c.mute}}; background: {{c.sunk}}; padding: 3px 9px; border-radius: 999px;">{{countLabel}}</span>
+            </div>
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15;">{{cur.title}}</h2>
+            <p style="margin: 0; font-size: 14.5px; line-height: 1.45; color: {{c.mute}};">{{cur.body}}</p>
+            <a href="{{cur.href}}" onClick="{{cur.go}}" style="min-height: 52px; border-radius: 14px; background: {{c.accent}}; color: {{c.onAccent}}; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;">{{cur.cta}}
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a>
+            <sc-if value="{{canSkip}}" hint-placeholder-val="{{true}}">
+              <button onClick="{{skip}}" style="min-height: 44px; border: 0; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 600;">Not now — show the next thing</button>
+            </sc-if>
+          </section>
+        </sc-if>
+        <sc-if value="{{allClear}}" hint-placeholder-val="{{false}}">
+          <section aria-label="All clear" style="background: {{c.accentTint}}; border-radius: 22px; padding: 20px 18px; display: flex; flex-direction: column; gap: 6px; animation: {{cardAnim}};">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: {{c.accent}};">ALL CLEAR</span>
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.02em;">Nothing else is due today.</h2>
+            <p style="margin: 0; font-size: 14px; color: {{c.mute}};">A focus session is the best use of spare time.</p>
+          </section>
+        </sc-if>
+
+        <section aria-label="Tomorrow" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">Tomorrow &middot; Mon 28-09</h2>
+            <a href="Plan.dc.html" onClick="{{go.Plan}}" style="min-height: 44px; display: flex; align-items: center; font-size: 13px; font-weight: 700; color: {{c.accent}}; text-decoration: none;">Open plan</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <sc-for list="{{visibleAgenda}}" as="a" hint-placeholder-count="2">
+              <a href="{{a.href}}" onClick="{{a.go}}" style="display: flex; gap: 10px; text-decoration: none; color: {{c.ink}}; min-height: 50px;">
+                <span style="width: 46px; flex-shrink: 0; padding-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: {{c.faint}};">{{a.time}}</span>
+                <span style="flex-grow: 1; border-radius: 12px; padding: 10px 12px; background: {{a.bg}}; border: 1px {{a.border}} {{c.rule}}; display: flex; flex-direction: column; gap: 2px; box-shadow: inset 3px 0 0 {{a.tag}};">
+                  <span style="font-size: 14px; font-weight: 700;">{{a.title}}</span><span style="font-size: 12px; color: {{c.mute}};">{{a.sub}}</span></span>
+              </a>
+            </sc-for>
+          </div>
+          <button onClick="{{toggleTomorrow}}" style="min-height: 44px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700; text-align: left;">{{tomorrowLabel}}</button>
+        </section>
+      </section>
+
+      <section aria-label="Score" aria-hidden="{{hidden1}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 2px 16px 0; display: flex; flex-direction: column; gap: 18px;">
+        <section aria-label="Am I on track" style="display: flex; flex-direction: column; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">Am I on track</h2>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+            <sc-for list="{{tiles}}" as="t" hint-placeholder-count="4">
+              <a href="{{t.href}}" onClick="{{t.go}}" style="box-sizing: border-box; background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 12px 14px 10px; display: flex; flex-direction: column; gap: 5px; text-decoration: none; color: {{c.ink}};">
+                <span style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 12px; font-weight: 600; color: {{c.mute}};">{{t.label}}</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: {{c.faint}};">{{t.tag}}</span></span>
+                <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05;">{{t.value}}</span>
+                <span style="font-size: 11px; font-weight: 600; color: {{t.noteColor}}; line-height: 1.3;">{{t.note}}</span>
+                <svg width="100%" height="24" viewBox="0 0 140 26" preserveAspectRatio="none" aria-hidden="true" style="display: block; margin-top: 2px;">
+                  <path d="{{t.area}}" fill="{{t.lineColor}}" opacity="0.12"></path>
+                  <path d="{{t.line}}" fill="none" stroke="{{t.lineColor}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" stroke-dasharray="400" style="animation: m3hDraw 700ms cubic-bezier(0.32, 0.72, 0, 1) both;"></path>
+                </svg>
+              </a>
+            </sc-for>
+          </div>
+        </section>
+
+        <section aria-label="Week 40 targets" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">Week 40 so far</h2>
+            <span style="font-size: 14px; font-weight: 700; color: {{c.gold}};">+{{ptsToday}} pts</span>
+          </div>
+          <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 8px 14px;">
+            <sc-for list="{{visibleMeters}}" as="m" hint-placeholder-count="3">
+              <div style="min-height: 62px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 8px 0; border-bottom: 1px solid {{m.rule}};">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                  <span style="font-size: 14px; font-weight: 700;">{{m.label}}</span>
+                  <span class="tn" style="font-size: 13px; color: {{c.mute}};"><span style="font-size: 17px; font-weight: 700; color: {{c.ink}};">{{m.val}}</span> / {{m.target}}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span role="img" aria-label="{{m.aria2}}" style="position: relative; flex-grow: 1; height: 18px;">
+                    <span style="position: absolute; left: 0; right: 0; top: 6px; height: 6px; border-radius: 3px; background: {{c.sunk}};"></span>
+                    <span style="position: absolute; left: 0; top: 6px; height: 6px; width: {{m.pct}}%; border-radius: 3px; background: {{m.fill}}; transform-origin: left; animation: m3hGrowX 520ms cubic-bezier(0.32, 0.72, 0, 1) both; transition: width 420ms cubic-bezier(0.32, 0.72, 0, 1);"></span>
+                    <span style="position: absolute; left: {{m.planPct}}%; top: 0; width: 2px; height: 18px; margin-left: -1px; background: {{c.ink}};"></span>
+                  </span>
+                  <button onClick="{{m.inc}}" aria-label="{{m.aria}}" style="width: 44px; height: 36px; min-height: 44px; flex-shrink: 0; border-radius: 10px; border: 0; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; justify-content: center;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>
+                </div>
+              </div>
+            </sc-for>
+            <button onClick="{{toggleMeters}}" style="width: 100%; min-height: 44px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{metersLabel}}</button>
+          </div>
+          <span style="font-size: 11.5px; color: {{c.faint}};">Company minimums: 60 calls &middot; 20 appointments &middot; 10 fact finds &middot; 10 closings &middot; 1 application a week.</span>
+        </section>
+
+        <section aria-label="Arena and next trophy" style="display: flex; flex-direction: column; gap: 8px;">
+          <a href="M3-Arena.dc.html" onClick="{{go.Arena}}" aria-label="Leaderboard" style="border-radius: 18px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px; display: flex; flex-direction: column; gap: 10px; text-decoration: none; color: {{c.ink}};">
+            <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.gold}};">LEADERBOARD &middot; YTD API</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: {{c.faint}};">SAMPLE</span></div>
+            <div style="display: flex; align-items: flex-end; gap: 8px; height: 84px;">
+              <sc-for list="{{race}}" as="r" hint-placeholder-count="5">
+                <span style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;">
+                  <span style="width: 100%; max-width: 30px; height: {{r.h}}px; border-radius: 5px 5px 0 0; background: {{r.fill}}; transform-origin: bottom; animation: m3hGrowY 600ms cubic-bezier(0.32, 0.72, 0, 1) both;"></span>
+                  <span style="font-size: 10px; font-weight: {{r.weight}}; color: {{r.nameColor}}; white-space: nowrap;">{{r.short}}</span>
+                </span>
+              </sc-for>
+            </div>
+            <span style="font-size: 13.5px; line-height: 1.4;"><strong>7th of 18.</strong> TTD 9,104 to pass A. Ramdial.</span>
+          </a>
+          <a href="M3-Trophies.dc.html" onClick="{{go.Trophies}}" aria-label="Next trophy" style="border-radius: 18px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 12px 14px; display: flex; align-items: center; gap: 12px; text-decoration: none; color: {{c.ink}};">
+            <span style="width: 56px; height: 56px; flex-shrink: 0;"><dc-import name="D3-Trophy" kind="big-week" size="56" locked="{{true}}" progress="{{70}}" dark="{{dark}}" hint-size="56px,56px"></dc-import></span>
+            <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px;">
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.gold}};">NEXT TROPHY</span>
+              <span style="font-size: 15px; font-weight: 700;">Big Week &middot; 70% there</span>
+              <span style="font-size: 12px; color: {{c.mute}};">One more closing interview unlocks it.</span>
+            </span>
+            <span style="flex-shrink: 0; height: 24px; padding: 0 9px; border-radius: 12px; background: {{c.goldTint}}; color: {{c.gold}}; display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; white-space: nowrap;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"></path></svg>{{streakLabel}}</span>
+          </a>
+        </section>
+      </section>
+
+      <section aria-label="Money" aria-hidden="{{hidden2}}" style="width: 390px; flex-shrink: 0; box-sizing: border-box; max-height: {{clip}}px; overflow: hidden; padding: 2px 16px 0; display: flex; flex-direction: column; gap: 18px;">
+        <section aria-label="Settled API by month" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+            <span style="display: flex; flex-direction: column; gap: 2px;">
+              <h2 style="margin: 0; letter-spacing: -0.02em; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700;">Settled API by month</h2>
+              <span style="font-size: 12.5px; color: {{c.mute}};">September is your best month so far.</span>
+            </span>
+            <button onClick="{{toggleChart}}" style="min-height: 44px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700; white-space: nowrap;">{{chartToggleLabel}}</button>
+          </div>
+          <sc-if value="{{chartOpen}}" hint-placeholder-val="{{false}}">
+            <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; padding: 14px;">
+              <div style="display: flex; justify-content: flex-end;">
+                <button onClick="{{toggleTable}}" aria-pressed="{{tableOn}}" style="min-height: 44px; padding: 0 6px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 12px; font-weight: 700;">{{tableLabel}}</button>
+              </div>
+              <sc-if value="{{chartOn}}" hint-placeholder-val="{{true}}">
+                <div style="display: flex; align-items: flex-end; gap: 8px; height: 130px; border-bottom: 1px solid {{c.rule}};">
+                  <sc-for list="{{months}}" as="mo" hint-placeholder-count="6">
+                    <div style="flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px;">
+                      <span style="font-size: 11px; font-weight: 700; color: {{c.ink}};">{{mo.label}}</span>
+                      <span style="width: 100%; max-width: 34px; height: {{mo.h}}px; border-radius: 5px 5px 0 0; background: {{mo.fill}}; transform-origin: bottom; animation: m3hGrowY 520ms cubic-bezier(0.32, 0.72, 0, 1) both;"></span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <sc-for list="{{months}}" as="mo" hint-placeholder-count="6"><span style="flex: 1; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: {{c.faint}};">{{mo.m}}</span></sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{tableOn}}" hint-placeholder-val="{{false}}">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                  <tr><th scope="col" style="text-align: left; padding: 6px 0; color: {{c.mute}}; font-weight: 600; border-bottom: 1px solid {{c.rule}};">Month</th><th scope="col" style="text-align: right; padding: 6px 0; color: {{c.mute}}; font-weight: 600; border-bottom: 1px solid {{c.rule}};">Settled API</th></tr>
+                  <sc-for list="{{months}}" as="mo" hint-placeholder-count="6"><tr><td style="padding: 6px 0; border-bottom: 1px solid {{c.rule}};">{{mo.m}} 2026</td><td class="tn" style="padding: 6px 0; text-align: right; border-bottom: 1px solid {{c.rule}};">TTD {{mo.full}}</td></tr></sc-for>
+                </table>
+              </sc-if>
+              <span style="display: block; margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: {{c.faint}};">MONTHLY SPLIT IS SAMPLE &middot; YEAR TOTAL 87,146 IS REAL</span>
+            </div>
+          </sc-if>
+        </section>
+
+        <section aria-label="Coach" style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: -0.02em;">Coach</h2>
+            <span style="height: 22px; padding: 0 8px; border-radius: 11px; background: {{c.accentTint}}; color: {{c.accent}}; display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.9L19 9.7l-4.2 3.1 1.5 5.2L12 15l-4.3 3 1.5-5.2L5 9.7l5.2-1.8z"></path></svg>From your numbers only</span>
+          </div>
+          <sc-for list="{{insights}}" as="n" hint-placeholder-count="2">
+            <div style="border-radius: 14px; background: {{c.sunk}}; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+              <span style="font-size: 14px; font-weight: 600; line-height: 1.4;">{{n.text}}</span>
+              <sc-if value="{{n.open}}" hint-placeholder-val="{{false}}">
+                <span style="font-size: 12.5px; line-height: 1.5; color: {{c.mute}};">{{n.why}}</span>
+              </sc-if>
+              <span style="display: flex; gap: 8px; align-items: center;">
+                <a href="{{n.href}}" onClick="{{n.go}}" style="min-height: 44px; padding: 0 14px; border-radius: 10px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; font-size: 13px; font-weight: 700; text-decoration: none;">{{n.cta}}</a>
+                <button onClick="{{n.toggle}}" aria-expanded="{{n.open}}" style="min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: {{c.mute}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600;">{{n.whyLabel}}</button>
+              </span>
+            </div>
+          </sc-for>
+        </section>
+
+        <section aria-label="Waiting on you" style="display: flex; flex-direction: column; gap: 8px;">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">Waiting on you</h2>
+          <div style="background: {{c.surface}}; border: 1px solid {{c.rule}}; border-radius: 18px; overflow: hidden;">
+            <sc-for list="{{visibleWaiting}}" as="w" hint-placeholder-count="2">
+              <a href="{{w.href}}" onClick="{{w.go}}" style="min-height: 66px; display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid {{w.rule}}; text-decoration: none; color: {{c.ink}};">
+                <span style="width: 34px; height: 34px; border-radius: 10px; background: {{w.iconBg}}; color: {{w.iconFg}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{w.icon}}"></path></svg></span>
+                <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14.5px; font-weight: 700;">{{w.title}}</span><span style="font-size: 12.5px; color: {{w.subColor}};">{{w.sub}}</span></span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{c.faint}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+              </a>
+            </sc-for>
+            <button onClick="{{toggleWait}}" style="width: 100%; min-height: 44px; border: 0; background: transparent; color: {{c.accent}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 700;">{{waitLabel}}</button>
+          </div>
+        </section>
+      </section>
+
+    </div>
+  </div>
+
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}">
+    <div style="position: absolute; left: 0; bottom: 0;"><dc-import name="M3-Nav" active="today" dark="{{dark}}" hint-size="390px,84px"></dc-import></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"params":{"editor":null},"onNav":{"editor":null},"reportDone":{"editor":"boolean","default":false},"$preview":{"width":390,"height":1200}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const names = ['Focus', 'Score', 'Money'];
+    const pm = /page=(Focus|Score|Money)/.exec((props && props.params) || '');
+    const start = pm ? names.indexOf(pm[1]) : 0;
+    this.state = {
+      page: start < 0 ? 0 : start,
+      calls: 0, appts: 0, ffi: 0, ci: 0, apps: 0, skip: 0, open: {},
+      metersOpen: false, chartOpen: false, table: false, waitOpen: false, tomorrowOpen: false,
+      dragX: 0, dragging: false, hintDismissed: false
+    };
+    this.drag = null;
+  }
+  go(p) {
+    this.setState({ page: Math.max(0, Math.min(2, p)) });
+  }
+  renderVals() {
+    const c = Object.assign({
+      bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0',
+      accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', ghost: '#A9D0CB', warm: '#A63D1A', warmTint: '#F7E4DA',
+      gold: '#855400', goldTint: '#F5EAD3', cat: ['#008C85', '#A96800', '#2F6FC4', '#C04A2B', '#8559A5']
+    }, this.props.dark ? {
+      bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B',
+      accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', ghost: '#2A5552', warm: '#F29066', warmTint: '#3A2217',
+      gold: '#E8B44E', goldTint: '#342911', cat: ['#12A39B', '#B8841A', '#4F86DB', '#D2643D', '#9F77CC']
+    } : {});
+    const s = this.state;
+    const names = ['Focus', 'Score', 'Money'];
+    const page = s.page;
+    const reportDone = !!this.props.reportDone;
+    const FILES = { Search: 'Search', Notifications: 'Notifications', Me: 'Me', Money: 'M3-Money', Focus: 'M3-Focus', Campaign: 'M3-Campaign', Persistency: 'M3-Persistency', Arena: 'M3-Arena', Trophies: 'M3-Trophies', Ledger: 'M3-Ledger', Plan: 'Plan', Report: 'Weekly-Report', Connections: 'M3-Connections', Outcome: 'Outcome' };
+    const nav = (t) => (e) => { if (this.props.onNav) { e.preventDefault(); this.props.onNav(t); } };
+    const go = {};
+    Object.keys(FILES).forEach((t) => { go[t] = nav(t); });
+    const hrefFor = (t) => (FILES[t.split('?')[0]] || t.split('?')[0]) + '.dc.html';
+
+    // --- sparkline (140 x 26 box) ---
+    const spark = (vals, lo, hi) => {
+      const n = vals.length, W = 140, H = 26, pad = 3;
+      const X = (i) => (i / (n - 1)) * W;
+      const Y = (v) => H - pad - ((v - lo) / (hi - lo)) * (H - pad * 2);
+      let line = '';
+      vals.forEach((v, i) => { line += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); });
+      return { line: line, area: line + 'L' + W + ' ' + H + 'L0 ' + H + 'z' };
+    };
+    const monthly = [0, 6000, 0, 7200, 0, 0, 21600, 22346, 30000];
+    let cum = 0; const cumu = monthly.map((v) => (cum += v));
+    const sApi = spark(cumu, 0, 100000);
+    const sXmas = spark([0, 6, 14, 21, 29, 36, 44, 52, 60, 67, 74], 0, 80);
+    const sPers = spark([91.2, 90.8, 90.1, 89.7, 89.9, 88.8, 88.1, 87.9, 87.2, 86.9, 86.6], 84, 92);
+    const sRank = spark([11, 11, 10, 10, 9, 9, 9, 8, 9, 8, 7].map((r) => 19 - r), 6, 13);
+    const T = [
+      { label: 'Settled API', tag: 'REAL', value: 'TTD 87,146', note: '13% of MDRT', noteColor: c.mute, sp: sApi, col: c.cat[0], t: 'Money' },
+      { label: 'Christmas', tag: 'REAL', value: '27%', note: 'TTD 73,946 of 275,000', noteColor: c.mute, sp: sXmas, col: c.cat[1], t: 'Campaign' },
+      { label: 'Persistency', tag: 'REAL', value: '86.6%', note: 'Below the 90% gate', noteColor: c.warm, sp: sPers, col: c.warm, t: 'Persistency' },
+      { label: 'Branch rank', tag: 'SAMPLE', value: '7th of 18', note: 'Up 2 places', noteColor: c.accent, sp: sRank, col: c.cat[0], t: 'Arena' }
+    ];
+    const tiles = T.map((t) => ({ label: t.label, tag: t.tag, value: t.value, note: t.note, noteColor: t.noteColor, line: t.sp.line, area: t.sp.area, lineColor: t.col, href: hrefFor(t.t), go: nav(t.t) }));
+
+    const MODES = [
+      { id: 'Calls', label: 'Calls', sub: '12 people ready from KQM', icon: 'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z', warm: false },
+      { id: 'Winback', label: 'Win-back', sub: '2 policies clear the 90% gate', icon: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5', warm: true },
+      { id: 'Paperwork', label: 'Paperwork', sub: '6 tasks waiting on you', icon: 'M9 3h6v4H9zM7 7h10v14H7zM9 12h6M9 16h6', warm: false }
+    ];
+    const modes = MODES.map((m) => ({
+      label: m.label, sub: m.sub, icon: m.icon,
+      bg: m.warm ? c.warmTint : c.sunk, border: m.warm ? c.warm : c.rule,
+      iconBg: m.warm ? c.warm : c.accentTint, iconFg: m.warm ? c.onAccent : c.accent,
+      subColor: m.warm ? c.warm : c.mute,
+      go: nav('Focus?mode=' + m.id)
+    }));
+
+    const tasks = [
+      { key: 'report', title: 'Submit your week 39 report', body: 'Due today. Your daily logs fill it in. About 1 minute on the fast path.', cta: 'Start report', t: 'Report' },
+      { key: 'confirm', title: 'Confirm settled policies', body: 'Head office shows [n] of your policies as settled. Confirm them so they count.', cta: 'Open the ledger', t: 'Ledger' },
+      { key: 'winback', title: 'Win back a lapsed policy', body: 'Reinstating TTD 7,100 lifts your persistency over the 90% gate.', cta: 'Start win-back calls', t: 'Focus?mode=Winback' },
+      { key: 'plan', title: 'Plan week 40', body: 'Book 5 fact-finds. Monday to Wednesday are still open.', cta: 'Open plan', t: 'Plan' }
+    ].filter((x) => !(reportDone && x.key === 'report'));
+    const k = tasks.length ? s.skip % tasks.length : 0;
+    const queue = tasks.slice(k).concat(tasks.slice(0, k)).map((x) => Object.assign({}, x, { href: hrefFor(x.t), go: nav(x.t) }));
+    const cur = queue[0] || {};
+
+    const PTS = { calls: 1, appts: 3, ffi: 5, ci: 10, apps: 25 };
+    const defs = [
+      { key: 'calls', label: 'Dials', target: 60, last: 52 },
+      { key: 'appts', label: 'Appointments', target: 7, last: 6 },
+      { key: 'ffi', label: 'Fact finds', target: 5, last: 3 },
+      { key: 'ci', label: 'Closings', target: 3, last: 2 },
+      { key: 'apps', label: 'Applications', target: 2.5, last: 1 }
+    ];
+    const meters = defs.map((d, i) => {
+      const scale = d.target * 1.4;
+      const v = s[d.key];
+      return {
+        label: d.label, target: d.target, val: v,
+        pct: Math.min(100, (v / scale) * 100).toFixed(1), planPct: ((d.target / scale) * 100).toFixed(1),
+        fill: v >= d.target ? c.gold : c.cat[0],
+        aria: 'Log one ' + d.label.toLowerCase(), aria2: d.label + ': ' + v + ' done of ' + d.target + ' planned',
+        rule: i === defs.length - 1 ? 'transparent' : c.rule,
+        inc: () => this.setState({ [d.key]: s[d.key] + 1 })
+      };
+    });
+    const ptsToday = defs.reduce((a, d) => a + s[d.key] * PTS[d.key], 0);
+
+    const MN = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
+    const half = monthly.slice(3);
+    const maxM = 30000;
+    const months = half.map((v, i) => ({
+      m: MN[i], full: v.toLocaleString('en-US'), h: v ? Math.max(4, Math.round((v / maxM) * 110)) : 2,
+      label: i === half.length - 1 ? '30.0K' : '', fill: i === half.length - 1 ? c.cat[0] : c.ghost
+    }));
+
+    const INS = [
+      { id: 'a', text: 'Reinstating TTD 7,100 is worth more than a new sale this month: it lifts your Christmas prize from 50% to 100%.', why: 'Persistency 86.6% vs the 90% gate. Prize TTD 7,000 × 50% = TTD 3,500 today; × 100% = TTD 7,000.', cta: 'Call the 2 policies', t: 'Focus?mode=Winback' },
+      { id: 'b', text: 'Your contacts turn into appointments best on Tuesday mornings (SAMPLE).', why: 'Last 13 weeks: Tuesday 09:00–11:00 booked 31% of contacts; your average is 19% (SAMPLE).', cta: 'Open plan', t: 'Plan' }
+    ];
+    const insights = INS.map((n) => {
+      const open = !!s.open[n.id];
+      return { text: n.text, why: n.why, cta: n.cta, href: hrefFor(n.t), go: nav(n.t), open: open, whyLabel: open ? 'Hide the numbers' : 'Why?', toggle: () => this.setState({ open: Object.assign({}, s.open, { [n.id]: !open }) }) };
+    });
+
+    const W = [
+      { title: 'Confirm settled policies', sub: '[n] waiting · you confirm your own now', t: 'Ledger', icon: 'M20 6 9 17l-5-5', tone: 'accent' },
+      { title: 'Win back [Client E]', sub: 'Lapsed · TTD 7,100 · clears the 90% gate', t: 'Focus?mode=Winback', icon: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5', tone: 'warm' },
+      { title: '3 KQM calls need a meeting place', sub: 'They count here already · ApplyOn waits for the place', t: 'Connections', icon: 'M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z', tone: 'warm' },
+      { title: "Log Friday's meeting outcome", sub: '[Client name] · fact-find · 25-09-2026', t: 'Outcome', icon: 'M4 3h16v18H4zM8 8h8M8 12h8', tone: 'accent' }
+    ];
+    const waiting = W.map((w, i) => ({
+      title: w.title, sub: w.sub, icon: w.icon, href: hrefFor(w.t), go: nav(w.t),
+      iconBg: w.tone === 'warm' ? c.warmTint : c.accentTint, iconFg: w.tone === 'warm' ? c.warm : c.accent,
+      subColor: w.tone === 'warm' ? c.warm : c.mute, rule: i === W.length - 1 ? 'transparent' : c.rule
+    }));
+    const visibleWaiting = s.waitOpen ? waiting : waiting.slice(0, 2);
+
+    const A = [
+      { time: '09:00', title: 'Focus · Calls', sub: '12 people from KQM · about 45 min', t: 'Focus?mode=Calls', tag: c.gold, bg: c.goldTint, border: 'solid' },
+      { time: '11:00', title: '[Client name] · fact-find', sub: 'Referral · open for prep', t: 'Plan', tag: c.accent, bg: c.surface, border: 'solid' },
+      { time: '13:00', title: 'Free · 2 hours', sub: 'Open the plan to fill it', t: 'Plan', tag: 'transparent', bg: 'transparent', border: 'dashed' },
+      { time: '15:30', title: '[Client name] · closing', sub: 'Family plan · bring the illustration', t: 'Plan', tag: c.gold, bg: c.surface, border: 'solid' }
+    ];
+    const agenda = A.map((a) => Object.assign({}, a, { href: hrefFor(a.t), go: nav(a.t) }));
+    const visibleAgenda = s.tomorrowOpen ? agenda : agenda.slice(0, 2);
+
+    const R = [['Mohammed', 212400, 1], ['Singh', 110300, 5], ['Ramdial', 96250, 6], ['You', 87146, 7], ['Holder', 84900, 8]];
+    const race = R.map((r) => {
+      const you = r[0] === 'You';
+      return {
+        short: (r[1] / 1000).toFixed(1) + 'K', h: Math.max(6, Math.round((r[1] / 212400) * 76)),
+        fill: you ? c.cat[0] : c.ghost, weight: you ? 800 : 600, nameColor: you ? c.ink : c.mute
+      };
+    });
+
+    const streakWeeks = reportDone ? 13 : 12;
+    const streakLabel = streakWeeks + '-wk streak';
+
+    const chips = names.map((label, i) => {
+      const on = i === page;
+      return {
+        label: label, selected: on ? 'true' : 'false',
+        bg: on ? c.accent : c.surface, color: on ? c.onAccent : c.ink, border: on ? c.accent : c.rule,
+        dot: on ? c.accent : c.rule, dotW: on ? 18 : 6,
+        pick: () => this.go(i)
+      };
+    });
+
+    const CLIPS = { Focus: 840, Score: 900, Money: 1080 };
+    const clip = CLIPS[names[page]];
+    const showStrip = !reportDone;
+    const showHint = !s.hintDismissed;
+    const rootH = 270 + (showStrip ? 66 : 0) + (showHint ? 24 : 0) + clip;
+
+    return {
+      c: c, dark: !!this.props.dark, go: go, showNav: !this.props.embedded,
+      tiles: tiles, modes: modes,
+      cur: cur, hasCurrent: queue.length > 0, allClear: queue.length === 0, canSkip: queue.length > 1,
+      countLabel: '1 OF ' + queue.length + ' TODAY',
+      cardAnim: (s.skip % 2 ? 'm3hCardB' : 'm3hCardA') + ' 420ms cubic-bezier(0.32, 0.72, 0, 1) both',
+      skip: () => this.setState({ skip: s.skip + 1 }),
+      visibleMeters: s.metersOpen ? meters : meters.slice(0, 3), metersLabel: s.metersOpen ? 'Show fewer' : 'Show all 5',
+      toggleMeters: () => this.setState({ metersOpen: !s.metersOpen }),
+      ptsToday: ptsToday,
+      months: months, chartOpen: s.chartOpen, chartToggleLabel: s.chartOpen ? 'Hide chart' : 'Show chart',
+      toggleChart: () => this.setState({ chartOpen: !s.chartOpen }),
+      chartOn: !s.table, tableOn: s.table, tableLabel: s.table ? 'Chart' : 'Table', toggleTable: () => this.setState({ table: !s.table }),
+      insights: insights,
+      visibleWaiting: visibleWaiting, waitLabel: s.waitOpen ? 'Show fewer' : 'Show all ' + waiting.length,
+      toggleWait: () => this.setState({ waitOpen: !s.waitOpen }),
+      visibleAgenda: visibleAgenda, tomorrowLabel: s.tomorrowOpen ? 'Show fewer' : 'Show all ' + agenda.length,
+      toggleTomorrow: () => this.setState({ tomorrowOpen: !s.tomorrowOpen }),
+      race: race,
+      streakLabel: streakLabel,
+      showStrip: showStrip, showHint: showHint,
+      chips: chips, clip: clip, rootH: rootH,
+      tx: -page * 390 + (s.dragX || 0),
+      trans: s.dragging ? 'none' : 'transform 520ms cubic-bezier(0.32, 0.72, 0, 1)',
+      hidden0: page === 0 ? 'false' : 'true',
+      hidden1: page === 1 ? 'false' : 'true',
+      hidden2: page === 2 ? 'false' : 'true',
+      pagerKey: (e) => {
+        if (e.key === 'ArrowRight') { e.preventDefault(); this.go(page + 1); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); this.go(page - 1); }
+      },
+      down: (e) => { this.drag = { x: e.clientX, y: e.clientY, hist: [], active: false, id: e.pointerId, el: e.currentTarget }; },
+      move: (e) => {
+        const d = this.drag;
+        if (!d) return;
+        const dx = e.clientX - d.x;
+        const dy = e.clientY - d.y;
+        if (!d.active) {
+          if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+            d.active = true;
+            try { d.el.setPointerCapture(d.id); } catch (err) {}
+          } else if (Math.abs(dy) > 10) { this.drag = null; return; } else { return; }
+        }
+        d.hist.push({ x: e.clientX, t: performance.now() });
+        if (d.hist.length > 5) d.hist.shift();
+        const edge = (page === 0 && dx > 0) || (page === 2 && dx < 0);
+        const off = edge ? (dx * 390 * 0.55) / (390 + 0.55 * Math.abs(dx)) : dx;
+        this.setState({ dragX: off, dragging: true });
+      },
+      up: () => {
+        const d = this.drag;
+        this.drag = null;
+        if (!d || !d.active) return;
+        let v = 0;
+        const h = d.hist;
+        if (h.length > 1) { v = ((h[h.length - 1].x - h[0].x) / Math.max(1, h[h.length - 1].t - h[0].t)) * 1000; }
+        const projected = s.dragX + (v / 1000) * 0.99 / (1 - 0.99);
+        let target = page;
+        if (projected < -195) target = page + 1;
+        else if (projected > 195) target = page - 1;
+        this.setState({ dragX: 0, dragging: false, page: Math.max(0, Math.min(2, target)), hintDismissed: true });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>
