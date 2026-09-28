@@ -1853,3 +1853,27 @@ Settled figures now say where they came from (head office vs self-confirmed). An
 Every tenure band now also asks for 40 applications a year. The agent Goals tab and the manager's agent drill show it beside the API minimum ("Company minimum (2–3 yrs) TTD 250,000 · 40 apps"), and Game Plan commit blocks a plan under 40 apps. The seed ran on `tatillife_south` from Kyron's PC: `annualApps` 42 → 40, bands no longer provisional. The Report-Only CSP now allows reCAPTCHA; production showed 0 CSP reports for google.com. No rules or functions changed.
 
 **Next:** the agent report PDF still hard-codes a 250,000 company floor — fix in flight (Kyron ruling 27 Sep: fix now). "YTD vs tenure floor" bars without apps fold into the redesign (FOLLOW_UPS). App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
+
+## Archived from CONTEXT.md § Last updated — 2026-09-28 fill (PR #1002)
+
+**FR-0 foundation SHIPPED (2026-09-28), PR #998 squash `c003dfcd` (feature-branch HEAD `25d0f319`); agent PDF company floor fix SHIPPED (2026-09-27), PR #996 squash `a85d14e4` (feature-branch HEAD `14438a83`).** FR-0 (brief `docs/briefs/fr-agent-redesign-program.md`, #997 `22f4f389`): scoped FR look `html[data-look="fr"]` (Bricolage Grotesque + Onest, self-hosted), per-user agent-only opt-in (`useLook`, Settings "Try the new design", restored in `main.jsx` before mount), FR chart kit (`src/components/fr/charts/`), 33 `Trophy` kinds, `SwipePager`, DEV-only harness `/__fr` + `scripts/verification/fr-harness-walk.mjs`. **No opt-in ⇒ the app renders exactly as before.** #996: the agent report PDF resolves the company floor by tenure (`resolveAnnualAPIFloor`, same inputs as Goals) and prints "Company minimum (<band>): TTD X · 40 apps"; `COMPANY_FLOOR` constant deleted. Both `src/`-only.
+
+## Archived from CONTEXT.md § Current main HEAD — 2026-09-28 fill (PR #1002)
+
+`c003dfcd` (PR #998 squash - FR-0 foundation, 2026-09-28). Merge `2026-09-28T00:30:42Z`. Preceded by `a85d14e4` (PR #996 squash - agent PDF tenure-resolved company floor, merge `2026-09-27T20:10:32Z`). **No deploy-gated surfaces touched** (`git diff --stat 0b1b6ec5..c003dfcd -- firestore.rules firestore.indexes.json storage.rules functions/` is empty), so nothing to query. #997 (`22f4f389`) was docs-only (Rule 16(b)).
+
+## Archived from CONTEXT.md § Active track — 2026-09-28 fill (PR #1002)
+
+**FR agent redesign program — IN PROGRESS.** FR-0 (#998 `c003dfcd`) SHIPPED. FR-1 shell (#999) rebasing onto main; FR-2 Today (`feat/fr-2-today`) in progress; then FR-3 Money, FR-4 Work, FR-5 Compete/You, one stacked PR each, human-merge. FR-6 (Mark reinstated) is a separate brief. Agent PDF floor fix (#996 `a85d14e4`) SHIPPED.
+
+## Archived from CONTEXT.md § Recently shipped — 2026-09-28 fill (PR #1002)
+
+| [#994](https://github.com/Kelsean868/agencytrack/pull/994) | `0b1b6ec5` | **feat(goals): company minimum 40 apps + CSP allows reCAPTCHA.** Company apps floor 42 → 40 in every default; "Company minimum (<band>) TTD X · 40 apps" on agent Goals and the manager agent drill; `commitPlan` enforces the config value; seed `set-company-minimum-apps.mjs` (applied on `tatillife_south`); CSP `connect-src` + `www.google.com`, `frame-src` + `www.gstatic.com` (still Report-Only). |
+
+## Archived from CONTEXT.md § Where we left off — 2026-09-28 fill (PR #1002)
+
+**PRIOR - 2026-09-28. FR-0 foundation merged as `c003dfcd` (#998); agent PDF floor fix merged as `a85d14e4` (#996).**
+
+FR-0 lays the base for the agent redesign: the FR look (fonts, colours) lives in a scoped block that only switches on when an agent opts in from Settings ("Try the new design"). Nobody sees it unless they opt in; managers never get it. It also adds the FR chart kit, trophies, the swipe pager and a dev-only harness at `/__fr` with its walk script. The agent report PDF now uses the agent's tenure band for the company minimum, with "· 40 apps", the same figure Goals shows. No rules, functions or indexes changed.
+
+**Next:** FR-1 shell (#999) is rebased onto main and goes to Kyron for merge; then FR-2 Today, FR-3 Money, FR-4 Work, FR-5 Compete/You (brief `docs/briefs/fr-agent-redesign-program.md`). App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
