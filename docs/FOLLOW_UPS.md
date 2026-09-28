@@ -18,6 +18,7 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998) and FR-1 (#999) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge) | LOW | FR redesign / verification | — | see § FR preview click-through |
 | "YTD vs tenure floor" bars (agent Production view, agent report view) show the API floor without the 40-apps company minimum — fold into the redesign, not a standalone fix (banked 2026-09-27, #994 post-merge) | LOW | Goals / company floor | redesign | see § YTD vs tenure floor bars: show the apps minimum |
 | Report-Only CSP `connect-src` in `vercel.json` lacks `https://www.google.com` — reCAPTCHA Enterprise (App Check, live since P2e) calls it; enforcing the CSP as-is would block App Check token fetches. Add it before the CSP leaves Report-Only (banked 2026-09-27, P2e post-merge). **Fix in PR #994; stays open until the enforce-time check below** | MEDIUM | Security / CSP | before CSP enforce | see § CSP connect-src needs www.google.com before enforce |
 | App Check is in monitor mode — switch each service to enforce only after 7 consecutive clean days per `docs/runbooks/app-check.md` §3 (key live 2026-09-27, so no earlier than 2026-10-04); Storage → Firestore → Functions, one at a time (banked 2026-09-27, P2e post-merge) | MEDIUM | Security / App Check | not before 2026-10-04 | see § App Check: enforce after 7 clean days |
@@ -7714,3 +7715,23 @@ After #994, the agent Goals tab and the manager agent drill show "Company minimu
 **Fix shape:** when these views are redesigned, read the company minimums once (as Goals does via `getCompanyMinimums` + `resolveAnnualAPIFloor({ contractStartDate, tenureApiFloors })`) and show "Company minimum (<band>) TTD X · N apps" with N from `annualApps`. The agent report PDF is out of this entry — it has its own fix.
 
 **Falsification (Rule 23):** closed when both views show the apps minimum read from `config/companyMinimums`. Overturned if the redesign drops the YTD-vs-floor bar from both views (then the entry is moot).
+
+## FR preview click-through (read-only, opt-in on)
+
+**Banked 2026-09-28 from the #999 post-merge fill (`d3ea1769`), covering FR-0 (#998 `c003dfcd`) and FR-1 (#999). Severity: LOW. Rule 13 deferred verification.**
+
+**Verification waived because** the cloud session that built FR-0 and FR-1 has no `.env.local`, and feature-branch previews run against PRODUCTION Firebase (CLAUDE.md § Workflow), so no signed-in preview walk was run from there. The FR surface is invisible in production until an agent opts in (Settings → Try the new design), and every harness walk passed (FR-0 51/51, FR-1 20/20).
+
+**Unverified criteria (brief §5.4, verbatim):** "a read-only click-through in Kyron's Chrome (Claude in Chrome) with the opt-in switched on."
+
+**Re-run steps (read-only, no writes):**
+1. Sign in to production as an agent account in incognito (Chrome), light theme.
+2. Settings → switch on "Try the new design". The page takes the FR look (Bricolage Grotesque headings, warm paper background).
+3. Desktop 1440: click every sidebar item in Work · Numbers · Money · Compete · You; on Money and Numbers, click every section chip. Each opens its existing screen with no console error.
+4. Phone 390 (DevTools device mode): tab bar Today · Money · + · Arena · More; open More and tap every row.
+5. Switch dark mode on and repeat steps 3–4 briefly.
+6. Settings → switch the opt-in off. The Nexus v2 look and the pinned sidebar return unchanged.
+7. Do not submit, log or edit anything (read-only walk).
+
+**Falsification (Rule 23):** closed when the walk runs with 0 console errors and every route opens. Reopen as a bug if any route is missing or the opt-in off state differs from before.
+
