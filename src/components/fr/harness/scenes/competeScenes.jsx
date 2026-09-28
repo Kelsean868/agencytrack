@@ -12,8 +12,11 @@ import { DEFAULT_RULESET_2026 } from '../../../../config/awardsRuleset/2026';
  * FR-5 harness scenes (SAMPLE data through the real competeModel). The engine
  * doc stands in for `leaderboard/{uid}`; variant B = more points and one more
  * report week (same badges, so no badge re-enters and every bar glides).
- * FR-5b: the trophy-room scene also carries award trophies from the real
- * award model — A some qualified, B none qualified plus a rookie (D9).
+ * FR-5b: award trophies from the real award model (D9). `trophy-room` carries
+ * sample A's awards in BOTH variants, so its A/B change stays a pure glide (the
+ * walk compares elements index by index; swapping award sets re-lays the page).
+ * `trophy-awards` shows both award samples side by side — A some qualified, B a
+ * rookie with none qualified — so both states are rendered and walked.
  * Names are placeholders, never real agents.
  */
 
@@ -71,8 +74,29 @@ function sampleAwards(variant) {
 }
 
 function TrophiesScene({ variant }) {
-  const room = useMemo(() => trophyRoom(ENTRY[variant] ?? ENTRY.A, sampleAwards(variant)), [variant]);
+  const room = useMemo(() => trophyRoom(ENTRY[variant] ?? ENTRY.A, sampleAwards('A')), [variant]);
   return <Frame><FrTrophyRoomView room={room} /></Frame>;
+}
+
+function AwardSamplesScene() {
+  const rooms = useMemo(() => ({
+    A: trophyRoom(ENTRY.A, sampleAwards('A')),
+    B: trophyRoom({ badges: ['first_submission'], points: 320, weeklyStreak: 2 }, sampleAwards('B')),
+  }), []);
+  return (
+    <Frame>
+      <div className="flex flex-col gap-10">
+        <section aria-label="Sample A — tenured, some awards qualified" className="flex flex-col gap-2">
+          <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted">Sample A · tenured · some qualified</p>
+          <FrTrophyRoomView room={rooms.A} />
+        </section>
+        <section aria-label="Sample B — rookie, no award qualified" className="flex flex-col gap-2">
+          <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted">Sample B · rookie · none qualified</p>
+          <FrTrophyRoomView room={rooms.B} />
+        </section>
+      </div>
+    </Frame>
+  );
 }
 
 function CampaignScene() {
@@ -106,6 +130,7 @@ function HeadersScene({ variant }) {
 
 export const COMPETE_SCENES = [
   { id: 'trophy-room', title: 'Compete · Trophy room', slice: 'FR-5', viewport: 'desktop,phone', hasVariants: true, render: TrophiesScene },
+  { id: 'trophy-awards', title: 'Compete · Trophy room award samples (A · B)', slice: 'FR-5', viewport: 'desktop,phone', render: AwardSamplesScene },
   { id: 'campaign', title: 'Compete · Campaign', slice: 'FR-5', viewport: 'desktop,phone', render: CampaignScene },
   { id: 'compete-headers', title: 'Arena + Me headers', slice: 'FR-5', viewport: 'desktop,phone', hasVariants: true, render: HeadersScene },
 ];
