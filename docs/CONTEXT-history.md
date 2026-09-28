@@ -1901,3 +1901,27 @@ FR-0 lays the base for the agent redesign: the FR look (fonts, colours) lives in
 An agent who switches on "Try the new design" now gets the FR navigation: a sidebar grouped Work · Numbers · Money · Compete · You, section chips at the top of Money and Numbers (each chip is one of the existing screens), and a phone tab bar Today · Money · + · Arena · More. Every existing agent screen is still reachable. Nobody else sees any change. No rules, functions or indexes changed. The read-only preview click-through with the opt-in on is still owed (see FOLLOW_UPS § FR preview click-through).
 
 **Next:** FR-2 Today PR (`feat/fr-2-today`), then FR-3 Money, FR-4 Work, FR-5 Compete/You (brief `docs/briefs/fr-agent-redesign-program.md`). #1000 (test-only TT-date fix) was later closed as superseded: the same fix landed with #999. App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
+
+## Archived from CONTEXT.md § Last updated — 2026-09-28 fill (PR #1004)
+
+**FR-2 Today SHIPPED (2026-09-28), PR #1001 squash `7c8cb3cc` (feature-branch HEAD `9a627049`).** Under the per-user FR opt-in only, FrToday replaces HomeV2 on the agent dashboard tab: same props, same derivations (`homeDerivations`), no new reads or writes. One layout per width (`useMinWidth(768)`): wide = 12-col grid, phone = swipe pages Today · Week · Money · Campaign. `todayModel` (pure): hero, stat tiles, week meters, computed coach lines (no AI), settled API by issue month from the hero's own list. Tile figures never wrap; 20px below `sm` so a 7-figure TTD value fits at 360px (Kyron ruling 28 Sep). Harness walk FR-2 green; CI green. #1000 closed as superseded (its test fix landed with #999).
+
+## Archived from CONTEXT.md § Current main HEAD — 2026-09-28 fill (PR #1004)
+
+`7c8cb3cc` (PR #1001 squash - FR-2 Today, 2026-09-28). Merge `2026-09-28T05:02:47Z`. **No deploy-gated surfaces touched** (`git diff --stat 5350c4f3..7c8cb3cc -- firestore.rules firestore.indexes.json storage.rules functions/` is empty).
+
+## Archived from CONTEXT.md § Active track — 2026-09-28 fill (PR #1004)
+
+**FR agent redesign program — IN PROGRESS.** FR-0 (#998 `c003dfcd`), FR-1 (#999 `d3ea1769`) and FR-2 (#1001 `7c8cb3cc`) SHIPPED. Open, stacked, human-merge, CI green at 04:55 UTC: #1002 FR-3 Money (rebased onto `7c8cb3cc` by this fill), #1003 FR-4 Work, #1004 FR-5 Compete/You (draft). Awaiting Kyron: award trophies in FR-5 (needs the AgentAwardsPanel award inputs extracted, Rule 1) and the planner's 2-month "stops counting soon" window. FR-6 (Mark reinstated) is a separate brief. #1000 closed as superseded.
+
+## Archived from CONTEXT.md § Recently shipped — 2026-09-28 fill (PR #1004)
+
+| [#998](https://github.com/Kelsean868/agencytrack/pull/998) | `c003dfcd` | **feat(fr): FR-0 foundation.** Scoped FR look (`html[data-look="fr"]`, self-hosted Bricolage Grotesque + Onest, Nexus v2 values unchanged); agent-only per-user opt-in (`useLook`, Settings switch, pre-mount restore); FR chart kit; 33 `Trophy` kinds; `SwipePager`; DEV-only harness `/__fr` + `fr-harness-walk.mjs`. Off by default. Brief `docs/briefs/fr-agent-redesign-program.md` (#997 `22f4f389`). |
+
+## Archived from CONTEXT.md § Where we left off — 2026-09-28 fill (PR #1004)
+
+**PRIOR - 2026-09-28. FR-2 Today merged as `7c8cb3cc` (#1001).**
+
+An agent who switches on "Try the new design" now lands on the FR Today screen instead of the current home: the same numbers from the same sources, laid out as one wide grid on desktop and four swipe pages on the phone (Today · Week · Money · Campaign). Nobody else sees any change. No rules, functions or indexes changed. The read-only preview click-through with the opt-in on is still owed (FOLLOW_UPS § FR preview click-through, now covering FR-0 to FR-2).
+
+**Next:** merge #1002 (FR-3 Money), then #1003 (FR-4 Work), then #1004 (FR-5 Compete/You); each is rebased onto main after the one before it merges. Kyron to rule on award trophies (FR-5) and the planner's 2-month "stops counting soon" window. App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.

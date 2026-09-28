@@ -20,7 +20,7 @@
 |---|---|---|---|---|
 | FR-5b: extract the award calculation (AgentAwardsPanel's award inputs: ledger vs settlements, persistency merge) into a shared helper, then add award trophies to the FR Trophy room — characterization tests first (Kyron ruling 28-09-2026; banked #1002 post-merge) | LOW | FR redesign / awards | — | see § FR-5b: award calculation shared helper |
 | FR-3 planner nits: footnote copy hard-codes "within two months" (derive from `SOON_MONTHS`); no boundary test at exactly `SOON_MONTHS` / `SOON_MONTHS + 1` — one small green-channel PR after #1004 (Kyron ruling 28-09-2026; banked #1002 post-merge) | LOW | FR redesign / money | — | see § FR-3 planner nits (SOON_MONTHS copy + boundary test) |
-| FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999), FR-2 (#1001), FR-3 (#1002) and FR-4 (#1003) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at #1001, #1002 and #1003 post-merge) | LOW | FR redesign / verification | — | see § FR preview click-through |
+| FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999), FR-2 (#1001), FR-3 (#1002), FR-4 (#1003) and FR-5 (#1004) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at each FR post-merge through #1004) | LOW | FR redesign / verification | — | see § FR preview click-through |
 | "YTD vs tenure floor" bars (agent Production view, agent report view) show the API floor without the 40-apps company minimum — fold into the redesign, not a standalone fix (banked 2026-09-27, #994 post-merge) | LOW | Goals / company floor | redesign | see § YTD vs tenure floor bars: show the apps minimum |
 | Report-Only CSP `connect-src` in `vercel.json` lacks `https://www.google.com` — reCAPTCHA Enterprise (App Check, live since P2e) calls it; enforcing the CSP as-is would block App Check token fetches. Add it before the CSP leaves Report-Only (banked 2026-09-27, P2e post-merge). **Fix in PR #994; stays open until the enforce-time check below** | MEDIUM | Security / CSP | before CSP enforce | see § CSP connect-src needs www.google.com before enforce |
 | App Check is in monitor mode — switch each service to enforce only after 7 consecutive clean days per `docs/runbooks/app-check.md` §3 (key live 2026-09-27, so no earlier than 2026-10-04); Storage → Firestore → Functions, one at a time (banked 2026-09-27, P2e post-merge) | MEDIUM | Security / App Check | not before 2026-10-04 | see § App Check: enforce after 7 clean days |
@@ -7749,6 +7749,10 @@ After #994, the agent Goals tab and the manager agent drill show "Company minimu
 - 4a. Focus opens on Calls: today's planner items with a prospect show a Call link (`tel:`), call blocks are listed but not counted, and dials/contacts read "—" until today is logged. Do not place a call; hover only. Paperwork and Win-back switch without error.
 - 4b. Pipeline: Funnel (This week / This year) and Board switch; the Policy Ledger's FR header "Plan the win-back" opens Focus on Win-back. Phone: the tab bar reads Today · Pipeline · + · Money · Arena.
 
+**Extended 2026-09-28 at the #1004 post-merge fill (`83318db8`) to FR-5 Compete / You.** Same waiver reason. FR-5 harness walk passed (54/54); CI green. Add to the walk:
+- 5a. Trophy room: lit badges match the agent's leaderboard badges (Nexus Career badge grid may differ — it uses the old client thresholds, see the FR-5 PR); level and streak read from the same doc as the points card; tapping a trophy shows "How you earn it" (phone: the detail scrolls into view).
+- 5b. Campaign opens the existing campaign screen (or "No campaign running" linking to Awards); the Leaderboard shows the Arena header above the unchanged board; Profile shows the Me header, and "Trophy room" opens it.
+
 ## FR-5b: award calculation shared helper
 
 **Banked 2026-09-28 at the #1002 post-merge fill (`e7dc8ef2`). Severity: LOW. Kyron ruling 28-09-2026.**
@@ -7771,5 +7775,7 @@ After #994, the agent Goals tab and the manager agent drill show "Company minimu
 **Verified against source at banking (Rule 17):**
 - a. `src/components/fr/money/ReinstatementPlanner.jsx` footnote (the sentence "leaves the window within two months") hard-codes the number; the preset line above it already renders `{SOON_MONTHS}`. Fix: derive the footnote's number from `SOON_MONTHS`.
 - b. The rule is `monthIndex(countsThrough) - monthIndex(plannedMonth) <= SOON_MONTHS` (`src/lib/fr/moneyModel.js`, `agesOutSoon`). `src/lib/fr/__tests__/moneyModel.test.js` covers 1 month (flagged) and 3 months (not flagged) but not the boundary. Add: a lapse counting through exactly `SOON_MONTHS` months after the planned month is flagged; `SOON_MONTHS + 1` is not.
+
+- c. **Proposed at the #1004 post-merge fill, not yet ruled (Kyron to confirm it rides this PR):** `src/components/dashboard/__tests__/AgentDashboardFrNav.test.jsx` › "without the opt-in: no FR-4 surface…" asserts the Numbers and Ledger FR headers are absent without first navigating to those tabs, so it cannot fail — the same shape CodeRabbit flagged on #1004 (fixed there for the FR-5 headers with `captured.setActiveTab`). Fix: visit `production-report` and `policy-ledger` through the Nexus shell before asserting, mutation-checked against the `fr &&` gates.
 
 **Falsification (Rule 23):** closed when the footnote reads from `SOON_MONTHS` and the boundary test passes (and fails if `<=` is mutated to `<`).
