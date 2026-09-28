@@ -357,6 +357,31 @@ describe('prop-provenance guard — every policy array handed to a child is clas
       why: 'FR-2: the excludeImported half, forwarded to DeliveryStripCard exactly as HomeV2 does.',
     },
     {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <FrMoney campaignPolicies>',
+      provenance: 'unfiltered',
+      why: 'FR-3 Money Overview (FR look only). Three readers, each needing the whole book: buildPersistencyOutlook, whose contract is the UNFILTERED ledger (the same list PersistencyTab fetches unfiltered); the monthly settled split through settledCreditList (R5, sums to the hero, as FrToday); and the campaign slot (C-D10, as HomeV2).',
+    },
+    {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <FrMoney policies>',
+      provenance: 'filtered-upstream',
+      why: 'FR-3: the excludeImported half, for the commission-earned card only (ytdEarned) — commission totals aggregate money, and imported docs were earned outside this system (ruling 5e), exactly as CommissionAnchorStrip.',
+    },
+    {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <FrMoneyHeader campaignPolicies>',
+      provenance: 'unfiltered',
+      why: 'FR-3 header above the existing Money calculators (FR look only): the Persistency reinstatement planner reads buildPersistencyOutlook (UNFILTERED by contract, as PersistencyTab) and the Goals pace chart reads settledCreditList (R5, as the hero).',
+    },
+    {
+      id: 'src/components/dashboard/AgentDashboard.jsx :: <FrMoneyHeader policies>',
+      provenance: 'filtered-upstream',
+      why: 'FR-3: the Commission header tiles (ytdEarned, runRate) — the same filtered list CommissionAnchorStrip receives (ruling 5e).',
+    },
+    {
+      id: 'src/components/fr/money/FrMoney.jsx :: <CampaignHeroCard policies>',
+      provenance: 'unfiltered',
+      why: 'FR-3: the Money Overview campaign slot — the same compact campaign readout as HomeV2 / FrToday, same C-D10 reason (a 100% imported book would read TTD 0 filtered).',
+    },
+    {
       id: 'src/components/dashboard/AgentDashboard.jsx :: <CommissionAnchorStrip policies>',
       provenance: 'filtered-upstream',
       why: 'Commission totals aggregate money, and imported docs were earned outside this system (ruling 5e).',
@@ -440,7 +465,9 @@ describe('prop-provenance guard — every policy array handed to a child is clas
     // above would pass vacuously.
     expect(sites.length).toBeGreaterThanOrEqual(8);
     expect(sites.map((s) => s.id).join(' ')).not.toContain('onViewLapsedPolicies');
-    expect(sites.filter((s) => s.namesRawCarrier).length).toBe(4);
+    // 4 before FR-3; +3 FR-3 sites (FrMoney and FrMoneyHeader on the dashboard,
+    // the Money Overview campaign slot), each declared in the manifest above.
+    expect(sites.filter((s) => s.namesRawCarrier).length).toBe(7);
   });
 });
 
@@ -516,8 +543,12 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
       // manifest above for that site's own classification.)
       'src/components/dashboard/AgentDashboard.jsx :: <AgentDashboardHomeV2 campaignPolicies>',
       // FR-2: the same readout on the FR Today screen (FrToday mirrors HomeV2).
+      'src/components/dashboard/AgentDashboard.jsx :: <FrMoney campaignPolicies>',
+      'src/components/dashboard/AgentDashboard.jsx :: <FrMoneyHeader campaignPolicies>',
       'src/components/dashboard/AgentDashboard.jsx :: <FrToday campaignPolicies>',
       'src/components/dashboard/HomeV2/index.jsx :: <CampaignHeroCard policies>',
+      // FR-3: the Money Overview campaign slot (same readout as HomeV2 / FrToday).
+      'src/components/fr/money/FrMoney.jsx :: <CampaignHeroCard policies>',
       'src/components/fr/today/FrToday.jsx :: <CampaignHeroCard policies>',
     ]);
   });
@@ -545,6 +576,9 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
   it('2b · the derived figures travel only to the production hero', () => {
     expect(propSitesNaming(['ledgerProduction'])).toEqual([
       'src/components/dashboard/AgentDashboard.jsx :: <AgentDashboardHomeV2 ledgerProduction>',
+      // FR-3: the Money Overview and the Money headers read the same derived figures.
+      'src/components/dashboard/AgentDashboard.jsx :: <FrMoney ledgerProduction>',
+      'src/components/dashboard/AgentDashboard.jsx :: <FrMoneyHeader ledgerProduction>',
       // FR-2: the FR Today hero reads the same derived figures.
       'src/components/dashboard/AgentDashboard.jsx :: <FrToday ledgerProduction>',
       'src/components/dashboard/HomeV2/index.jsx :: <HeroCard production>',
@@ -577,11 +611,12 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
         `${h.rel}:${h.n} uses policiesAll in an unreviewed shape: ${h.line}`,
       ).toBe(true);
     }
-    // campaignPolicies={policiesAll} is the agent dashboard's alone (FR-2:
-    // twice there — once for HomeV2, once for FrToday under the FR look).
+    // campaignPolicies={policiesAll} is the agent dashboard's alone: once for
+    // HomeV2, and under the FR look once each for FrToday (FR-2), FrMoney and
+    // FrMoneyHeader (FR-3).
     expect([...new Set(hits.filter((h) => /campaignPolicies=/.test(h.line)).map((h) => h.rel))])
       .toEqual(['src/components/dashboard/AgentDashboard.jsx']);
-    expect(hits.filter((h) => /campaignPolicies=/.test(h.line))).toHaveLength(2);
+    expect(hits.filter((h) => /campaignPolicies=/.test(h.line))).toHaveLength(4);
   });
 
   it('the scanner actually scans (guards the guard)', () => {

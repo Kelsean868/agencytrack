@@ -58,6 +58,9 @@ export const FR_NAV = Object.freeze([
   {
     id: 'money', label: 'Money', icon: 'money', group: 'Money',
     subs: [
+      // FR-3: the Money hub's own Overview (new route, FR-D9); the rest are the
+      // existing calculator routes, each mounted unchanged under an FR header.
+      { id: 'overview', label: 'Overview', tabId: 'money' },
       { id: 'goals', label: 'Goals and MDRT', tabId: 'goals' },
       { id: 'gameplan', label: 'Game plan', tabId: 'game-plan' },
       { id: 'moneyneeds', label: 'Money needs', tabId: 'money-needs' },
@@ -126,7 +129,7 @@ export function frFlatItems(nav = FR_NAV) {
 /** The phone tab bar (canvas M3-Nav), trimmed to ready routes. */
 export const FR_TABBAR = Object.freeze([
   { id: 'today', label: 'Today', frIcon: 'today', tabId: 'dashboard' },
-  { id: 'money', label: 'Money', frIcon: 'money', tabId: 'goals', matchTabs: ['goals', 'game-plan', 'money-needs', 'commission', 'persistency', 'financing'] },
+  { id: 'money', label: 'Money', frIcon: 'money', tabId: 'money', matchTabs: ['money', 'goals', 'game-plan', 'money-needs', 'commission', 'persistency', 'financing'] },
   { id: 'log', label: 'Log', frIcon: 'log', action: 'quick-add', fab: true },
   { id: 'arena', label: 'Arena', frIcon: 'arena', tabId: 'production-leaderboard' },
 ]);

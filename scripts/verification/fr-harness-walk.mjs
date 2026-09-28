@@ -13,6 +13,10 @@
  *   5. glide probe           (scenes with A/B data) click "Change data"; geometry
  *                            sampled at ~0 / 240 / 700 ms must be strictly between
  *                            old and new at 240 ms and settled at 700 ms (MOTION3.md)
+ *      redraw / count-up     (same click, FR-3) Line paths flip fr-draw-a↔b and are
+ *                            mid-draw at 240 ms, drawn by 700 ms; changed tile figures
+ *                            read between old and new at 240 ms. A variant scene must
+ *                            have at least one of the three motions measured.
  *   6. reduced-motion probe  same change under prefers-reduced-motion settles < 60 ms
  *   7. swipe probe           (pager scenes) slow 60px drag stays · 220px drag moves one
  *                            page · ArrowRight moves one page · viewport height ==
@@ -77,7 +81,12 @@ async function listScenes(browser) {
 /** In-page: geometry of every data-driven element inside the scene root. */
 const SNAPSHOT = () => {
   const root = document.querySelector('[data-scene-root]');
-  const els = [...root.querySelectorAll('[style]')].filter((el) => /width|height|left|top|transform|stroke-dash/.test(el.getAttribute('style')));
+  // A Line chart's end dot and end label are RE-KEYED on a data change and fade
+  // in after the redraw (MOTION3 rule 3) — they jump by design, so they belong
+  // to the redraw probe, not the glide probe.
+  const els = [...root.querySelectorAll('[style]')]
+    .filter((el) => /width|height|left|top|transform|stroke-dash/.test(el.getAttribute('style')))
+    .filter((el) => !['end-dot', 'end-label'].includes(el.getAttribute('data-part')));
   return els.map((el) => {
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
@@ -112,6 +121,56 @@ async function glideProbe(page) {
     }
     return { changed, between, tMid: Math.round(tMid) };
   }, SNAPSHOT.toString());
+}
+
+/**
+ * Redraw + count-up probe (FR-3). Two motions the geometry probe cannot see:
+ *   · Line charts REDRAW (MOTION3 rule 3: paths cannot tween) — after a data
+ *     change the path class flips fr-draw-a ↔ fr-draw-b and the stroke is
+ *     mid-draw at ~240 ms (0 < dashoffset < --fr-len) and drawn by 700 ms.
+ *   · Big numbers COUNT old → new in 420 ms (MOTION3 rule 4) — every changed
+ *     tile figure ([data-testid$="-value"] [aria-hidden]) must read strictly
+ *     between old and new at ~240 ms and equal new by 700 ms.
+ */
+async function drawCountProbe(page, { tMid = 240, tEnd = 700 } = {}) {
+  return page.evaluate(async ({ tMid, tEnd }) => {
+    const root = document.querySelector('[data-scene-root]');
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const nums = () => [...root.querySelectorAll('[data-testid$="-value"] [aria-hidden="true"]')]
+      .map((el) => { const n = parseFloat(el.textContent.replace(/[^0-9.-]/g, '')); return Number.isFinite(n) ? n : null; });
+    const paths = () => [...root.querySelectorAll('path.fr-draw-a, path.fr-draw-b')];
+    const cls0 = paths().map((p) => p.getAttribute('class'));
+    const a = nums();
+    document.querySelector('[data-testid="fr-harness-change"]').click();
+    const t0 = performance.now();
+    await wait(tMid);
+    const now = paths();
+    const mid = now.map((p) => {
+      const cs = getComputedStyle(p);
+      return { off: parseFloat(cs.strokeDashoffset) || 0, len: parseFloat(cs.getPropertyValue('--fr-len')) || 0 };
+    });
+    const m = nums();
+    const tAt = Math.round(performance.now() - t0);
+    await wait(tEnd - tMid);
+    const end = now.map((p) => parseFloat(getComputedStyle(p).strokeDashoffset) || 0);
+    const c = nums();
+    let changed = 0; let between = 0; let settled = 0;
+    for (let i = 0; i < Math.min(a.length, m.length, c.length); i += 1) {
+      if (a[i] == null || c[i] == null || Math.abs(c[i] - a[i]) < 1) continue;
+      changed += 1;
+      if (m[i] > Math.min(a[i], c[i]) && m[i] < Math.max(a[i], c[i])) between += 1;
+      if (m[i] === c[i]) settled += 1;
+    }
+    const flipped = now.filter((p, i) => cls0[i] && p.getAttribute('class') !== cls0[i]).length;
+    return {
+      tMid: tAt,
+      lines: now.length,
+      flipped,
+      drawingMid: mid.filter((d) => d.off > 0.5 && d.len > 0 && d.off < d.len).length,
+      drawnEnd: end.every((o) => Math.abs(o) <= 0.5),
+      numbers: { changed, between, settledAtMid: settled },
+    };
+  }, { tMid, tEnd });
 }
 
 async function reducedProbe(page) {
@@ -240,8 +299,27 @@ async function walkScene(browser, scene, theme, vpName) {
 
   if (scene.hasVariants) {
     const g = await glideProbe(page);
-    const ok = g.changed > 0 && g.between / g.changed >= 0.8;
-    record(scene.id, theme, vpName, 'glide probe', ok, `${g.between}/${g.changed} values mid-flight at ${g.tMid}ms`);
+    // Reload so the redraw/count-up probe starts from variant A again.
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(700);
+    const dc = await drawCountProbe(page);
+    let measured = 0;
+    if (g.changed > 0) {
+      measured += 1;
+      record(scene.id, theme, vpName, 'glide probe', g.between / g.changed >= 0.8, `${g.between}/${g.changed} values mid-flight at ${g.tMid}ms`);
+    } else {
+      record(scene.id, theme, vpName, 'glide probe', null, 'no styled geometry changes in this scene (see redraw / count-up)');
+    }
+    if (dc.lines > 0 && dc.flipped > 0) {
+      measured += 1;
+      record(scene.id, theme, vpName, 'line redraw probe', dc.drawingMid > 0 && dc.drawnEnd, `${dc.drawingMid}/${dc.lines} lines mid-draw at ${dc.tMid}ms; drawn by 700ms: ${dc.drawnEnd}`);
+    }
+    if (dc.numbers.changed > 0) {
+      measured += 1;
+      record(scene.id, theme, vpName, 'count-up probe', dc.numbers.between / dc.numbers.changed >= 0.8, `${dc.numbers.between}/${dc.numbers.changed} figures between old and new at ${dc.tMid}ms`);
+    }
+    // A scene with sample variants must have SOME motion measured — never a pass by skipping.
+    if (measured === 0) record(scene.id, theme, vpName, 'motion measured', false, 'the data change moved no geometry, line or figure');
   }
   // A responsive scene has its phone pager only at phone width (absent, or
   // display:none, above it) — there is nothing to swipe there, so the probe is
@@ -269,7 +347,20 @@ async function walkScene(browser, scene, theme, vpName) {
     await rp.goto(url, { waitUntil: 'networkidle' });
     await rp.waitForTimeout(300);
     const r = await reducedProbe(rp);
-    record(scene.id, 'reduced', vpName, 'reduced motion settles < 60ms', r.changed > 0 && r.settled / r.changed >= 0.9, `${r.settled}/${r.changed}`);
+    await rp.reload({ waitUntil: 'networkidle' });
+    await rp.waitForTimeout(300);
+    const rd = await drawCountProbe(rp, { tMid: 60, tEnd: 300 });
+    const parts = [];
+    let ok = true;
+    let measured = 0;
+    if (r.changed > 0) { measured += 1; ok = ok && r.settled / r.changed >= 0.9; parts.push(`geometry ${r.settled}/${r.changed}`); }
+    if (rd.numbers.changed > 0) {
+      measured += 1;
+      ok = ok && rd.numbers.settledAtMid === rd.numbers.changed;
+      parts.push(`figures ${rd.numbers.settledAtMid}/${rd.numbers.changed}`);
+    }
+    if (rd.lines > 0 && rd.flipped > 0) { measured += 1; ok = ok && rd.drawingMid === 0; parts.push(`lines mid-draw at 60ms: ${rd.drawingMid}`); }
+    record(scene.id, 'reduced', vpName, 'reduced motion settles < 60ms', measured > 0 && ok, parts.join(' · ') || 'nothing measured');
     await rctx.close();
   }
 }

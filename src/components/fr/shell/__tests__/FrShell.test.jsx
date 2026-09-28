@@ -30,7 +30,7 @@ describe('frNav model', () => {
     expect(frFindByTab('nope')).toBeNull();
   });
   it('a hub click goes to its first section', () => {
-    expect(frTargetTab(FR_NAV.find((i) => i.id === 'money'))).toBe('goals');
+    expect(frTargetTab(FR_NAV.find((i) => i.id === 'money'))).toBe('money');
     expect(frTitleFor('persistency')).toBe('Money');
     expect(frTitleFor('dashboard')).toBe('Today');
   });

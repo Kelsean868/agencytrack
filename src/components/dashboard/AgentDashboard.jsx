@@ -51,6 +51,11 @@ import { getQuickAddActions } from '../shell/quickAddConfig';
 import AgentDashboardHomeV2 from './HomeV2';
 // FR-2: the FR Today screen replaces HomeV2 on the dashboard tab under the FR look.
 import FrToday from '../fr/today/FrToday';
+// FR-3: the Money hub Overview (route `money`) and the FR header above each
+// existing Money calculator — both only under the FR look.
+import FrMoney from '../fr/money/FrMoney';
+import FrMoneyHeader from '../fr/money/FrMoneyHeader';
+import { FR_MONEY_TABS } from '../../lib/fr/moneyModel';
 import { formatHomeHeaderDate } from './HomeV2/homeDerivations';
 import Avatar from '../ui/Avatar';
 import { getTodayTT } from '../../utils/dateInputs';
@@ -131,6 +136,12 @@ export default function AgentDashboard() {
   const fr = useLook() === 'fr';
 
   const [activeTab, setActiveTab]             = useState('dashboard');
+  // FR-3: `money` (the Money Overview) exists only under the FR look. If the
+  // agent switches the opt-in off while on it, fall back to Goals, the
+  // pre-FR Money landing (the Nexus nav has no `money` route).
+  useEffect(() => {
+    if (!fr && activeTab === 'money') setActiveTab('goals');
+  }, [fr, activeTab]);
   // Planner → Daily Capture handoff seed (screen 9). Set when the agent taps
   // "Carry into today's log"; blank-fills DailyCaptureV2 for today, then cleared.
   const [plannerSeed, setPlannerSeed]         = useState(null);
@@ -413,9 +424,12 @@ export default function AgentDashboard() {
   // and Goals — the home DeliveryStripCard needs settled/undelivered policies,
   // and the home hero plus every Goals panel read production from the ledger.
   // Fires at most once (the `policies === null` guard); reuses the same fetch.
+  // FR-3: under the FR look the Money Overview (`money`) and the Persistency
+  // header (reinstatement planner) read the ledger too — same fetch, same guard.
   useEffect(() => {
-    if (POLICY_TABS.has(activeTab) && policies === null) loadPolicies();
-  }, [activeTab, loadPolicies, policies]);
+    const needsPolicies = POLICY_TABS.has(activeTab) || (fr && (activeTab === 'money' || activeTab === 'persistency'));
+    if (needsPolicies && policies === null) loadPolicies();
+  }, [activeTab, loadPolicies, policies, fr]);
 
   // Resolved personal annual API: agent's own commitment if set, else the
   // tenant company-floor minimum, else 200000 (matches getCompanyMinimums
@@ -860,6 +874,45 @@ export default function AgentDashboard() {
           they stay put while the section below changes. Null for non-hub routes. */}
       {fr && <FrHubHeader activeTab={activeTab} onNavigate={setActiveTab} />}
       <div key={activeTab} className={activeTab === 'game-plan' ? undefined : 'screen-enter'}>
+      {/* ── FR-3 MONEY (FR look only): Overview route + the FR header above each
+          existing calculator. The calculators below render unchanged (FR-D5). ── */}
+      {fr && FR_MONEY_TABS.includes(activeTab) && (
+        <FrMoneyHeader
+          tab={activeTab}
+          tenantId={tenantId}
+          uid={user?.uid}
+          ledgerProduction={ledgerProduction}
+          ledgerPending={ledgerPending}
+          ledgerError={policiesError}
+          campaignPolicies={policiesAll}
+          policies={policies}
+          persistency={persistency}
+          goals={goals}
+          hierarchy={hierarchy}
+          hierarchyLoading={hierarchyLoading}
+          resolvedMinimums={resolvedMinimums}
+          commissionRate={parseFloat(userProfile?.commissionRate)}
+          activeCampaigns={activeCampaigns}
+        />
+      )}
+      {fr && activeTab === 'money' && (
+        <FrMoney
+          tenantId={tenantId}
+          uid={user?.uid}
+          ledgerProduction={ledgerProduction}
+          ledgerPending={ledgerPending}
+          ledgerError={policiesError}
+          onRetryLedger={retryPolicies}
+          campaignPolicies={policiesAll}
+          policies={policies}
+          persistency={persistency}
+          goals={goals}
+          hierarchy={hierarchy}
+          activeCampaigns={activeCampaigns}
+          campaignsLoading={campaignsLoading}
+          onOpenTab={setActiveTab}
+        />
+      )}
       {/* ── DASHBOARD TAB (v2 home — Hero + PulseStrip + Recent) ── */}
       {activeTab === 'dashboard' && (
         loading ? (

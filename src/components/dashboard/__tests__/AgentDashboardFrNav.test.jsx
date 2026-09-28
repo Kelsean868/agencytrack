@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 
 // ── Hoisted capture for Shell's navItems / bottomNavItems props ──────────────
 
@@ -108,8 +108,16 @@ vi.mock('../../shell/Shell', () => ({
 // ── Component blank stubs ────────────────────────────────────────────────────
 
 vi.mock('../../wizard/WizardForm',                   () => ({ default: () => null }));
-vi.mock('../../goals/GapAnalysisPanel',              () => ({ default: () => null }));
-vi.mock('../../goals/CommissionPlayground',          () => ({ default: () => null }));
+vi.mock('../../goals/GapAnalysisPanel',              () => ({ default: () => React.createElement('div', { 'data-testid': 'gap-analysis-mock' }) }));
+vi.mock('../../goals/CommissionPlayground',          () => ({ default: () => React.createElement('div', { 'data-testid': 'commission-playground-mock' }) }));
+// FR-3: the other Goals-tab panels (the FR header tests open Goals).
+// FR-3: the remaining Money calculators, so each tab can be checked mounted under its FR header.
+vi.mock('../../agent/CommissionAnchorStrip', () => ({ default: () => null }));
+vi.mock('../GamePlanV2', () => ({ default: () => React.createElement('div', { 'data-testid': 'game-plan-mock' }) }));
+vi.mock('../../financing/FinancingSelfView', () => ({ default: () => React.createElement('div', { 'data-testid': 'financing-self-view-mock' }) }));
+vi.mock('../../goals/DerivedIncomePanel', () => ({ default: () => null }));
+vi.mock('../../goals/AwardsReachPanel',   () => ({ default: () => null }));
+vi.mock('../../goals/MdrtTracker',        () => ({ default: () => null }));
 vi.mock('../../profile/CareerPortal',                () => ({ default: () => null }));
 vi.mock('../../profile/ProfileScreen',               () => ({ default: () => null }));
 vi.mock('../../ui/ReportRangeModal',                 () => ({ default: () => null }));
@@ -118,9 +126,9 @@ vi.mock('../../submissions/SubmissionViewer',        () => ({ default: () => nul
 vi.mock('../../submissions/HistoryTab',              () => ({ default: () => null }));
 vi.mock('../../agent/ProspectInfoPanel',             () => ({ default: () => null }));
 vi.mock('../../agent/PolicyLedgerPanel',             () => ({ default: () => null }));
-vi.mock('../../agent/MoneyNeedsPanel',               () => ({ default: () => null }));
+vi.mock('../../agent/MoneyNeedsPanel',               () => ({ default: () => React.createElement('div', { 'data-testid': 'money-needs-mock' }) }));
 vi.mock('../../productionReport/ProductionReportTab', () => ({ default: () => null }));
-vi.mock('../../agent/PersistencyTab',                () => ({ default: () => null }));
+vi.mock('../../agent/PersistencyTab',                () => ({ default: () => React.createElement('div', { 'data-testid': 'persistency-tab-mock' }) }));
 vi.mock('../../daily/DailyFAB',                      () => ({ default: () => null }));
 vi.mock('../../onboarding/WelcomeScreen',            () => ({ default: () => null }));
 vi.mock('../../gamification/BadgeGrid', () => ({
@@ -130,6 +138,11 @@ vi.mock('../../gamification/BadgeGrid', () => ({
 vi.mock('../HomeV2', () => ({ default: () => React.createElement('div', { 'data-testid': 'home-v2-mock' }) }));
 // FR-2: under the FR look the dashboard tab renders FrToday instead of HomeV2.
 vi.mock('../../fr/today/FrToday', () => ({ default: () => React.createElement('div', { 'data-testid': 'fr-today-mock' }) }));
+// FR-3: the Money Overview (route `money`) and the FR header above each calculator.
+vi.mock('../../fr/money/FrMoney', () => ({ default: () => React.createElement('div', { 'data-testid': 'fr-money-mock' }) }));
+vi.mock('../../fr/money/FrMoneyHeader', () => ({
+  default: ({ tab }) => React.createElement('div', { 'data-testid': 'fr-money-header-mock', 'data-tab': tab }),
+}));
 
 // ProductionLeaderboardSurface — capture mount when activeTab is the production tab.
 const productionMountedRef = vi.hoisted(() => ({ current: false }));
@@ -145,6 +158,7 @@ vi.mock('../../leaderboard/ProductionLeaderboardSurface', () => ({
 // here would silently allow a regression where the import is reintroduced.
 
 import AgentDashboard from '../AgentDashboard';
+import { setLookOptIn } from '../../../lib/fr/look';
 import { getAgentSubmissions } from '../../../services/submissionService';
 
 import { getNavConfig } from '../../shell/navConfig';
@@ -235,3 +249,58 @@ describe('AgentDashboard — FR-2 Today', () => {
     expect(screen.queryByTestId('fr-today-mock')).toBeNull();
   });
 });
+
+describe('AgentDashboard — FR-3 Money', () => {
+  it('with the opt-in: the Money tab-bar item opens the Overview (route `money`)', async () => {
+    localStorage.setItem('agencytrack-look', 'fr');
+    render(<AgentDashboard />);
+    expect(captured.bottomNavItems.find((i) => i.id === 'money')?.tabId).toBe('money');
+    act(() => captured.sidebar.props.onNavigate('money'));
+    expect(await screen.findByTestId('fr-money-mock')).toBeInTheDocument();
+  });
+
+  it('with the opt-in: the FR header sits ABOVE the unchanged Goals calculator', async () => {
+    localStorage.setItem('agencytrack-look', 'fr');
+    render(<AgentDashboard />);
+    act(() => captured.sidebar.props.onNavigate('goals'));
+    const header = await screen.findByTestId('fr-money-header-mock');
+    expect(header).toHaveAttribute('data-tab', 'goals');
+    const calc = screen.getByTestId('gap-analysis-mock');
+    expect(header.compareDocumentPosition(calc) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it.each([
+    ['goals', 'gap-analysis-mock'],
+    ['game-plan', 'game-plan-mock'],
+    ['money-needs', 'money-needs-mock'],
+    ['commission', 'commission-playground-mock'],
+    ['persistency', 'persistency-tab-mock'],
+    ['financing', 'financing-self-view-mock'],
+  ])('with the opt-in: %s keeps its existing calculator mounted under the FR header (FR-D5)', async (tab, calcId) => {
+    localStorage.setItem('agencytrack-look', 'fr');
+    render(<AgentDashboard />);
+    act(() => captured.sidebar.props.onNavigate(tab));
+    expect(await screen.findByTestId(calcId)).toBeInTheDocument();
+    expect(screen.getByTestId('fr-money-header-mock')).toHaveAttribute('data-tab', tab);
+  });
+
+  it('without the opt-in: no Nexus route leads to `money`, and no FR Money surface renders', () => {
+    render(<AgentDashboard />);
+    expect(NEXUS_TABS).not.toContain('money');
+    expect(screen.queryByTestId('fr-money-mock')).toBeNull();
+    expect(screen.queryByTestId('fr-money-header-mock')).toBeNull();
+  });
+
+  it('switching the opt-in off while on the Overview falls back to Goals (no dead route)', async () => {
+    localStorage.setItem('agencytrack-look', 'fr');
+    render(<AgentDashboard />);
+    act(() => captured.sidebar.props.onNavigate('money'));
+    expect(await screen.findByTestId('fr-money-mock')).toBeInTheDocument();
+    act(() => setLookOptIn(false));
+    expect(await screen.findByTestId('gap-analysis-mock')).toBeInTheDocument();
+    expect(captured.activeTab).toBe('goals');
+    expect(screen.queryByTestId('fr-money-mock')).toBeNull();
+    expect(screen.queryByTestId('fr-money-header-mock')).toBeNull();
+  });
+});
+
