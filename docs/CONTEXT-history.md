@@ -1829,3 +1829,27 @@ Financing docs now accept only known fields. A financing status can only make a 
 Settled figures now say where they came from (head office vs self-confirmed). An agent can confirm the figures on a policy they declared settled themselves, but cannot touch a head-office policy's money or credit-deciding fields. Dates follow Trinidad. The kiosk link rolls every 90 days and works on one screen only. App Check is live in monitor mode: it logs, it blocks nothing. Per Kyron's PC session: rules and functions deployed, App Check key live, role walks 80 screens with 0 permission errors. This fill could not query Firebase (no CLI in the cloud container).
 
 **Next:** watch App Check metrics for 7 clean days, then enforce per `docs/runbooks/app-check.md` §3 (earliest 2026-10-04). Before CSP is enforced, add `https://www.google.com` to `connect-src`. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
+
+## Archived from CONTEXT.md § Last updated — 2026-09-28 fill (PR #1001)
+
+**Company minimum 40 apps + CSP allows reCAPTCHA SHIPPED (2026-09-27), PR #994 squash `0b1b6ec5` (feature-branch HEAD `9a0ccb46`).** Kyron ruling 27 Sep: the 6 tenure API bands are confirmed (no longer provisional) and every band also requires **40 applications a year**. Code defaults for the company apps floor moved 42 → 40 (career levels L1–L6 untouched); agent Goals floor row and the manager agent drill now show "Company minimum (<band>) TTD X · 40 apps"; `commitPlan` enforces the config value (`BelowAppsFloorError`). New seed `scripts/maintenance/set-company-minimum-apps.mjs`. CSP (Report-Only): `connect-src` + `https://www.google.com`, `frame-src` + `https://www.gstatic.com`. **Seed applied on `tatillife_south` by Claude on Kyron's PC (operator-reported):** `annualApps` 42 → 40, `tenureApiFloorsProvisional` true → false, `updatedAt` 2026-09-27T19:30:41Z; post-check 8 keys, nothing else changed. Smoke: agent Goals shows "COMPANY MINIMUM (2–3 YRS) TTD 250,000 · 40 apps"; 0 CSP reports for google.com. Brief: `docs/briefs/company-min-apps-csp.md`.
+
+## Archived from CONTEXT.md § Current main HEAD — 2026-09-28 fill (PR #1001)
+
+`0b1b6ec5` (PR #994 squash - company minimum 40 apps + CSP allows reCAPTCHA, 2026-09-27). Merge `2026-09-27T19:30:20Z`. **No deploy-gated surfaces touched** (`git diff --stat 8bfa24a1..0b1b6ec5 -- firestore.rules firestore.indexes.json storage.rules functions/` is empty), so step 5a had nothing to query; Vercel ships the code and `vercel.json` header on merge. **Data write (operator-reported, not queried from this fill):** seed `set-company-minimum-apps.mjs --apply` on `tatillife_south` set `annualApps` 40 and `tenureApiFloorsProvisional` false (`updatedAt` 2026-09-27T19:30:41Z; 8 keys after, nothing else changed). CI: the first `lint-and-build` run failed on the known `DailyCaptureV2` streak-test timeout (FOLLOW_UPS index row "#899 flake fix is on staging only"); one re-run with no code change passed.
+
+## Archived from CONTEXT.md § Active track — 2026-09-28 fill (PR #1001)
+
+**Company minimum 40 apps + CSP (#994 `0b1b6ec5`) SHIPPED; seed applied.** In flight: agent report PDF company floor fix (PDF hard-codes `COMPANY_FLOOR = 250000`; Kyron ruling 27 Sep: fix now — separate PR, tenure-resolved floor + band label + apps). Open: "YTD vs tenure floor" bars (Production view, agent report view) don't show apps — banked, folds into the redesign. App Check still monitor mode until 7 clean days (earliest 2026-10-04); CSP stays Report-Only.
+
+## Archived from CONTEXT.md § Recently shipped — 2026-09-28 fill (PR #1001)
+
+| [#990](https://github.com/Kelsean868/agencytrack/pull/990) | `7ecccd88` | **P2d: numbers you can trust (BUG-01, BUG-02, BUG-04, BUG-05) + P2c leftovers.** Provenance line on every settled figure (`settledProvenance.js`); agent self-confirm of own self-declared settled policies (Arm F); head-office policies locked — money and credit-deciding fields read-only to agents (Kyron ruling, `isHeadOfficeStatus()`); persistency `enteredBy` must be the writer; one Trinidad "today" + lint ban on `toISOString().slice`; one YTD credit list (`settledCreditList`, parity property test); manager history writes scoped by parent policy; Reconciliation Confirm tab hidden without `canConfirmSettlements`. Rules live (operator-reported). |
+
+## Archived from CONTEXT.md § Where we left off — 2026-09-28 fill (PR #1001)
+
+**PRIOR - 2026-09-27 (night). Company minimum 40 apps + CSP merged as `0b1b6ec5` (#994); seed applied.**
+
+Every tenure band now also asks for 40 applications a year. The agent Goals tab and the manager's agent drill show it beside the API minimum ("Company minimum (2–3 yrs) TTD 250,000 · 40 apps"), and Game Plan commit blocks a plan under 40 apps. The seed ran on `tatillife_south` from Kyron's PC: `annualApps` 42 → 40, bands no longer provisional. The Report-Only CSP now allows reCAPTCHA; production showed 0 CSP reports for google.com. No rules or functions changed.
+
+**Next:** the agent report PDF still hard-codes a 250,000 company floor — fix in flight (Kyron ruling 27 Sep: fix now). "YTD vs tenure floor" bars without apps fold into the redesign (FOLLOW_UPS). App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.

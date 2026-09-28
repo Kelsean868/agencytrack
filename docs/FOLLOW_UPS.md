@@ -18,7 +18,7 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998) and FR-1 (#999) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge) | LOW | FR redesign / verification | — | see § FR preview click-through |
+| FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999) and FR-2 (#1001) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at #1001 post-merge) | LOW | FR redesign / verification | — | see § FR preview click-through |
 | "YTD vs tenure floor" bars (agent Production view, agent report view) show the API floor without the 40-apps company minimum — fold into the redesign, not a standalone fix (banked 2026-09-27, #994 post-merge) | LOW | Goals / company floor | redesign | see § YTD vs tenure floor bars: show the apps minimum |
 | Report-Only CSP `connect-src` in `vercel.json` lacks `https://www.google.com` — reCAPTCHA Enterprise (App Check, live since P2e) calls it; enforcing the CSP as-is would block App Check token fetches. Add it before the CSP leaves Report-Only (banked 2026-09-27, P2e post-merge). **Fix in PR #994; stays open until the enforce-time check below** | MEDIUM | Security / CSP | before CSP enforce | see § CSP connect-src needs www.google.com before enforce |
 | App Check is in monitor mode — switch each service to enforce only after 7 consecutive clean days per `docs/runbooks/app-check.md` §3 (key live 2026-09-27, so no earlier than 2026-10-04); Storage → Firestore → Functions, one at a time (banked 2026-09-27, P2e post-merge) | MEDIUM | Security / App Check | not before 2026-10-04 | see § App Check: enforce after 7 clean days |
@@ -7734,4 +7734,8 @@ After #994, the agent Goals tab and the manager agent drill show "Company minimu
 7. Do not submit, log or edit anything (read-only walk).
 
 **Falsification (Rule 23):** closed when the walk runs with 0 console errors and every route opens. Reopen as a bug if any route is missing or the opt-in off state differs from before.
+
+**Extended 2026-09-28 at the #1001 post-merge fill (`7c8cb3cc`) to FR-2 Today.** Same waiver reason (no `.env.local` in the cloud session; previews hit production). FR-2 harness walk passed; CI green. Add to the walk, after step 2:
+- 2a. Desktop 1440: the dashboard tab shows FR Today (hero, tiles, week meters, coach lines, settled-by-month bars), one layout only, and its figures match the Nexus home's for the same agent.
+- 2b. Phone 390: FR Today shows swipe pages Today · Week · Money · Campaign; swipe and the page chips move one page at a time.
 
