@@ -30,13 +30,13 @@ function levelParts(room) {
 function LevelCard({ room }) {
   const parts = levelParts(room);
   const table = {
-    caption: 'Points toward your next level',
+    caption: room.next ? 'Points toward your next level' : 'Your points at the top level',
     columns: [{ key: 'label', label: 'Part' }, { key: 'value', label: 'Points', format: n }],
     rows: parts.map((p) => ({ key: p.key, label: p.label, value: p.value })),
   };
   return (
     <div className="min-w-0" data-testid="trophy-level">
-      <ChartCard title={`Your level: ${room.level.title}`} subtitle="Points toward the next level" table={table}>
+      <ChartCard title={`Your level: ${room.level.title}`} subtitle={room.next ? 'Points toward the next level' : 'Your points at the top level'} table={table}>
         <Donut parts={parts} size={132} thickness={16} centerValue={room.level.title} centerLabel={`${n(room.points)} pts`} format={n} />
         <p className="mt-3 text-[12px] text-ink-muted" data-testid="trophy-level-next">
           {room.next ? `${n(room.toNext)} points to ${room.next.title}.` : 'You are at the top level.'}

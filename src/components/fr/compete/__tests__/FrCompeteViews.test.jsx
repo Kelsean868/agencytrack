@@ -120,6 +120,19 @@ describe('FrTrophyRoomView — hero chart row (R2-5)', () => {
     const card = screen.getByTestId('trophy-level');
     expect(within(card).getByRole('img')).toHaveAttribute('aria-label', 'Points 7,000 (100%)');
     expect(screen.getByTestId('trophy-level-next')).toHaveTextContent('You are at the top level.');
+    // CodeRabbit (#1018): no "next level" wording when there is no next level.
+    expect(card).toHaveTextContent('Your points at the top level');
+    expect(card).not.toHaveTextContent(/toward the next level/i);
+    fireEvent.click(within(card).getByRole('button', { name: 'Table' }));
+    expect(within(card).getByRole('table')).toHaveAccessibleName('Your points at the top level');
+  });
+
+  it('below the top level the subtitle and table caption talk about the next level', () => {
+    render(<FrTrophyRoomView room={ROOM} />);
+    const card = screen.getByTestId('trophy-level');
+    expect(card).toHaveTextContent('Points toward the next level');
+    fireEvent.click(within(card).getByRole('button', { name: 'Table' }));
+    expect(within(card).getByRole('table')).toHaveAccessibleName('Points toward your next level');
   });
 
   it('Earned is a Donut of badges, levels and locked that adds up to the header count', () => {
