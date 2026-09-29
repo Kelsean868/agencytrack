@@ -119,7 +119,12 @@ vi.mock('../../financing/FinancingSelfView', () => ({ default: () => React.creat
 vi.mock('../../goals/DerivedIncomePanel', () => ({ default: () => null }));
 vi.mock('../../goals/AwardsReachPanel',   () => ({ default: () => null }));
 vi.mock('../../goals/MdrtTracker',        () => ({ default: () => null }));
-vi.mock('../../profile/CareerPortal',                () => ({ default: () => null }));
+vi.mock('../../profile/CareerPortal',                () => ({
+  default: (props) => {
+    captured.careerProps = props;
+    return null;
+  },
+}));
 vi.mock('../../profile/ProfileScreen',               () => ({ default: () => null }));
 vi.mock('../../ui/ReportRangeModal',                 () => ({ default: () => null }));
 vi.mock('../../awards/AgentAwardsPanel',             () => ({ default: () => null }));
@@ -423,6 +428,24 @@ describe('AgentDashboard — FR-5 Compete / You', () => {
     await screen.findByTestId('shell-mock');
     expect(captured.activeTab).toBe('profile');
     expect(screen.queryByTestId('fr-me-header-mock')).toBeNull();
+  });
+
+  it('R2-5: under FR the Career card gets a way into the Trophy room; under Nexus it does not (the grid stays)', async () => {
+    localStorage.setItem('agencytrack-look', 'fr');
+    const { unmount } = render(<AgentDashboard />);
+    act(() => captured.sidebar.props.onNavigate('career'));
+    await screen.findByTestId('shell-mock');
+    expect(typeof captured.careerProps.onOpenTrophies).toBe('function');
+    act(() => captured.careerProps.onOpenTrophies());
+    expect(await screen.findByTestId('fr-trophies-mock')).toBeInTheDocument();
+    unmount();
+    localStorage.clear();
+    captured.careerProps = undefined;
+    render(<AgentDashboard />);
+    act(() => captured.setActiveTab('career'));
+    await screen.findByTestId('shell-mock');
+    expect(captured.careerProps).toBeDefined();
+    expect(captured.careerProps.onOpenTrophies).toBeUndefined();
   });
 
   it.each([['campaign', 'awards'], ['trophies', 'career']])(

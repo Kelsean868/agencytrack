@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Trophy from '../trophies/Trophy';
-import { Bullet } from '../charts';
+import { Bullet, ChartCard, Donut, MeterList } from '../charts';
 import { CARD, EYEBROW, FOCUS, SKELETON } from '../money/moneyParts';
 
 /**
  * FrTrophyRoomView — FR "Trophy room" (FR-5). PURE: props only (plus which
  * trophy is selected, a view concern).
  *
- * Glanceable first row: your level (points toward the next), your report
- * streak, and what is closest to unlocking. Then the shelves — the engine's
+ * Glanceable first row (R2-5): FR-kit ChartCards — your level (Donut: points
+ * toward the next), earned vs locked (Donut), award progress (MeterList). Then
+ * your report streak and what is closest to unlocking. Then the shelves — the engine's
  * badges and the five levels — and a detail panel that says how each one is
  * earned. Everything shown is what the points engine recorded
  * (competeModel.trophyRoom); nothing here earns or awards anything.
@@ -17,25 +18,104 @@ import { CARD, EYEBROW, FOCUS, SKELETON } from '../money/moneyParts';
  */
 const n = (v) => Number(v).toLocaleString('en-TT');
 
+/** Level Donut parts: points into this level and what is left to the next one. */
+function levelParts(room) {
+  if (!room.next) return [{ key: 'in', label: 'Points', value: room.points }];
+  return [
+    { key: 'in', label: 'This level', value: Math.max(0, room.points - room.level.threshold) },
+    { key: 'left', label: `To ${room.next.title}`, value: room.toNext },
+  ];
+}
+
 function LevelCard({ room }) {
+  const parts = levelParts(room);
+  const table = {
+    caption: 'Points toward your next level',
+    columns: [{ key: 'label', label: 'Part' }, { key: 'value', label: 'Points', format: n }],
+    rows: parts.map((p) => ({ key: p.key, label: p.label, value: p.value })),
+  };
   return (
-    <section className={`${CARD} flex min-w-0 items-center gap-4 p-4`} aria-label="Your level" data-testid="trophy-level">
-      <Trophy kind={`level-${room.level.title.toLowerCase()}`} size={64} />
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <p className={EYEBROW}>Your level</p>
-        <Bullet
-          value={room.points - room.level.threshold}
-          max={room.next ? room.next.threshold - room.level.threshold : Math.max(1, room.points - room.level.threshold)}
-          label={room.level.title}
-          valueText={`${n(room.points)} pts`}
-          tone="gold"
-          height={10}
-        />
-        <p className="text-[12px] text-ink-muted" data-testid="trophy-level-next">
+    <div className="min-w-0" data-testid="trophy-level">
+      <ChartCard title={`Your level: ${room.level.title}`} subtitle="Points toward the next level" table={table}>
+        <Donut parts={parts} size={132} thickness={16} centerValue={room.level.title} centerLabel={`${n(room.points)} pts`} format={n} />
+        <p className="mt-3 text-[12px] text-ink-muted" data-testid="trophy-level-next">
           {room.next ? `${n(room.toNext)} points to ${room.next.title}.` : 'You are at the top level.'}
         </p>
+      </ChartCard>
+    </div>
+  );
+}
+
+/** Earned vs still locked, by shelf (badges, levels, awards). At most four parts. */
+function earnedParts(room) {
+  const earnedOf = (list) => list.filter((t) => t.earned).length;
+  const parts = [
+    { key: 'badges', label: 'Badges', value: earnedOf(room.badges) },
+    { key: 'levels', label: 'Levels', value: earnedOf(room.levels) },
+  ];
+  if (room.awards?.length) parts.push({ key: 'awards', label: 'Awards', value: earnedOf(room.awards) });
+  parts.push({ key: 'locked', label: 'Locked', value: room.total - room.earnedCount });
+  return parts;
+}
+
+function EarnedCard({ room }) {
+  const parts = earnedParts(room);
+  const table = {
+    caption: 'Trophies earned and still locked',
+    columns: [{ key: 'label', label: 'Group' }, { key: 'value', label: 'Count', format: n }],
+    rows: parts.map((p) => ({ key: p.key, label: p.label, value: p.value })),
+  };
+  return (
+    <div className="min-w-0" data-testid="trophy-earned">
+      <ChartCard title={`${room.earnedCount} of ${room.total} earned`} subtitle="Earned badges, levels and qualified awards against what is still locked" table={table}>
+        <Donut parts={parts} size={132} thickness={16} centerValue={room.earnedCount} centerLabel={`of ${room.total}`} format={n} />
+      </ChartCard>
+    </div>
+  );
+}
+
+/** Progress toward each award's first requirement, as a percentage (qualified = 100%). */
+function AwardProgressCard({ room, awardsState, onRetryAwards }) {
+  const items = (room.awards ?? []).filter((a) => a.earned || a.progress != null);
+  const qualified = (room.awards ?? []).filter((a) => a.earned).length;
+  const pctOf = (a) => (a.earned ? 100 : a.progress);
+  const table = {
+    caption: 'Award progress',
+    columns: [
+      { key: 'label', label: 'Award' },
+      { key: 'progress', label: 'Progress', format: (v) => `${v}%` },
+      { key: 'status', label: 'Status' },
+    ],
+    rows: items.map((a) => ({ key: a.key, label: a.label, progress: pctOf(a), status: a.earned ? 'Qualified' : 'In progress' })),
+  };
+  let body;
+  if (awardsState === 'error') {
+    body = (
+      <div role="alert" className="flex flex-col items-start gap-2">
+        <p className="text-[13px] text-ink">Your award progress did not load.</p>
+        {onRetryAwards ? (
+          <button type="button" onClick={onRetryAwards} className={`${FOCUS} inline-flex min-h-[44px] items-center rounded-lg border border-border px-4 text-[14px] font-semibold text-ink`}>Retry</button>
+        ) : null}
       </div>
-    </section>
+    );
+  } else if (awardsState === 'loading') {
+    body = <div aria-busy="true" className={`h-24 ${SKELETON}`} />;
+  } else if (!items.length) {
+    body = <p className="text-[13px] text-ink-muted">No award has measured progress for you right now.</p>;
+  } else {
+    body = <MeterList items={items.map((a) => ({ key: a.key, label: a.label, value: pctOf(a), target: 100, format: (v) => `${v}%` }))} />;
+  }
+  const ready = awardsState === 'ready';
+  return (
+    <div className="min-w-0" data-testid="trophy-award-progress">
+      <ChartCard
+        title={ready && (room.awards ?? []).length ? `${qualified} of ${room.awards.length} awards qualified` : 'Award progress'}
+        subtitle="Progress toward each award. Decided when the period closes."
+        table={ready && items.length ? table : undefined}
+      >
+        {body}
+      </ChartCard>
+    </div>
   );
 }
 
@@ -201,8 +281,12 @@ export default function FrTrophyRoomView({ room, loading = false, error = false,
         <h2 className="font-display text-[28px] font-bold leading-tight text-ink lg:text-[32px]">Trophy room</h2>
         <p className="mt-1 text-[13px] text-ink-muted" data-testid="trophy-count">{room.earnedCount} of {room.total} earned</p>
       </header>
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div className="grid gap-3 lg:grid-cols-3 lg:items-start" data-testid="trophy-hero">
         <LevelCard room={room} />
+        <EarnedCard room={room} />
+        <AwardProgressCard room={room} awardsState={awardsState} onRetryAwards={onRetryAwards} />
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
         <StreakCard room={room} />
         <Closest items={room.closest} onSelect={setSelected} />
       </div>

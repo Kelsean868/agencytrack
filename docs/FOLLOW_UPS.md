@@ -365,6 +365,7 @@
 | **PWA prompt mode: a signed-in Chrome ran an old build until "Update" was tapped** — consider whether agents need a stale-build reminder (banked 2026-09-28, production click-through) | INFO | PWA | — | see § PWA prompt mode keeps an old build running at end of file |
 | **One rounding rule for every agent-facing persistency figure:** Kyron ruled (28-09-2026) that a persistency percent is shown to 2 decimals, half up, and the gate verdict is judged on that same rounded value. Today follows it (#1011); every other agent-facing surface still prints 1 decimal and judges the raw value, so screens can disagree at the gate (banked 2026-09-28) | MEDIUM | persistency / FR + Nexus | — | see § One rounding rule for every agent-facing persistency figure at end of file |
 | **Today persistency tile does not say when the export is stale:** Today states a gate verdict from the outlook estimate but not that the head-office export is older than 45 days (`outlook.stale`), nor which inputs the estimate assumes as 0 (`outlook.assumptions.assumedZero`), both of which the Persistency screen shows (banked 2026-09-28, CodeRabbit on #1011) | LOW | FR Today / persistency | — | see § Today persistency tile: stale export warning at end of file |
+| **`computeEarnedBadges` (`BadgeGrid.jsx`) still uses the OLD MDRT thresholds** (TTD 500,000 / 250,000, v1 `apiSold` only) while the points engine uses 688,800 / 344,400 — and it still feeds the Home activity feed and the branch team-medals panel. The Trophy room and the new Career card read the engine doc instead (banked 2026-09-29 from R2-5) | MEDIUM | Gamification / badge accuracy | — | see § computeEarnedBadges still uses the old MDRT threshold at end of file |
 
 
 ---
@@ -7911,3 +7912,15 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Fix shape:** when `outlook.stale`, or when `outlook.assumptions.assumedZero` is non-empty, add a short qualifier to the tile note (copy to be ruled; the D3 copy in `docs/briefs/fr-today-persistency-kickoff.md` is locked), e.g. "export 52 days old" / "some inputs assumed 0". `FrToday.jsx` already holds the outlook, so no new read is needed. Wording added at post-merge of #1011 (the assumed-input half was named by CodeRabbit's final summary and was not in the banked entry).
 
 **Falsification (Rule 23):** closed without change if Kyron rules that the "estimate" label plus the link to the Persistency screen is qualification enough.
+
+## computeEarnedBadges still uses the old MDRT threshold
+
+**Banked 2026-09-29 from R2-5 (Career badge merge). Severity: MEDIUM — an agent or a manager can be shown an MDRT badge (or its absence) that disagrees with the points engine and the Trophy room.**
+
+**Observed (verified on `258a7098`):** `computeEarnedBadges` in `src/components/gamification/BadgeGrid.jsx` awards `mdrt_qualified` at `ytdAPI >= 500000` (line 62) and `mdrt_pace` at `>= 250000` by week 26 (line 67), and reads only v1 `apiSold` / `api`. The engine (`BADGE_DEFINITIONS`, `functions/lib/gamificationConfig.js`) uses TTD 688,800 / 344,400 and the canonical production reader. The `BADGES` copy strings in the same file still say "$500k". `src/lib/fr/competeModel.js` documents the disagreement and reads the engine doc instead.
+
+**Callers (`git grep -n "computeEarnedBadges" -- src`):** `AgentDashboard.jsx:491` (`earnedBadges` → `buildActivityEvents` → the Home activity feed: `ActivityFeed.jsx`, `HomeV2/RecentCompact.jsx`) and `hooks/useBranchOverview.js:256` (`badgeCounts` → `TeamMedalsPanel.jsx`). Correction to the R2-5 brief's wording: `ActivityFeed`, `RecentCompact` and `TeamMedalsPanel` import only the `BADGES` display map, not `computeEarnedBadges`; they inherit the wrong earned set from the two callers above. `CareerPortal` was the third caller until R2-5: under the FR look it now shows the engine count instead, but under the Nexus look (no Trophy room) it still renders `<BadgeGrid submissions>`, so the drift stays visible there.
+
+**Fix shape:** stop computing badges on the client. Read the engine `badges` array from `leaderboard/{uid}` (agent) and the per-agent docs the branch overview already lists (manager), or at minimum align the two thresholds to `gamificationConfig`. Related and older: § BadgeGrid → gamificationConfig reconciliation (label drift, aspirational badges). Money-adjacent display only; no payout reads this.
+
+**Falsification (Rule 23):** overturned if the activity feed and team medals are shown to be intentionally "client preview" surfaces that Kyron accepts as approximate, or if the engine's thresholds are ruled to change back to 500,000.
