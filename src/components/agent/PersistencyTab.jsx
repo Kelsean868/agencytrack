@@ -181,10 +181,11 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
     && currentRecord.enteredByRole !== 'agent';
 
   // Trend chart data: oldest-first decimals scaled to %, rounded by the shared
-  // 2-dp half-up rule (null = no reading).
+  // 2-dp half-up rule. A missing or non-finite reading stays null (no reading):
+  // `null * 100` is 0, which would draw a confident 0.00% bar.
   const chartData = useMemo(() => history.map((r) => ({
     monthKey: r.monthKey,
-    pct: roundPersistencyPct(r.persistency * 100),
+    pct: Number.isFinite(r.persistency) ? roundPersistencyPct(r.persistency * 100) : null,
   })), [history]);
 
   // First paint only — before any successful load, show a skeleton instead of

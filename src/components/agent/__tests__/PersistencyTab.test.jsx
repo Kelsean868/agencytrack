@@ -29,7 +29,15 @@ vi.mock('../../../services/policiesService', () => ({
 // The stub keeps the chart TYPE observable: a BarChart renders `chart-bars`, a
 // LineChart would render `chart-line`, and the gate ReferenceLine exposes its y.
 vi.mock('recharts', () => ({
-  BarChart:            ({ data, children }) => <div data-testid="chart-bars" data-count={data.length}>{children}</div>,
+  BarChart:            ({ data, children }) => (
+    <div
+      data-testid="chart-bars"
+      data-count={data.length}
+      data-pairs={JSON.stringify(data.map((d) => [d.monthKey, d.pct]))}
+    >
+      {children}
+    </div>
+  ),
   LineChart:           ({ children }) => <div data-testid="chart-line">{children}</div>,
   Bar:                 () => <div data-testid="bar-series" />,
   Cell:                () => null,
@@ -134,9 +142,40 @@ describe('agent PersistencyTab', () => {
       render(<PersistencyTab />);
       const chart = await screen.findByTestId('chart-bars');
       expect(chart.getAttribute('data-count')).toBe('3');
+      // Every month and its 2-dp percent (0.89996 -> 89.996 -> 90).
+      expect(JSON.parse(chart.getAttribute('data-pairs'))).toEqual([
+        ['2025-12', 80], ['2026-01', 90], ['2026-02', 91],
+      ]);
       expect(screen.getByTestId('bar-series')).toBeInTheDocument();
       expect(screen.getByTestId('gate-line').getAttribute('data-y')).toBe('90');
       expect(screen.queryByTestId('chart-line')).not.toBeInTheDocument();
+    });
+
+    it('a missing reading stays null - never a 0.00% bar - on both chart paths', async () => {
+      const records = () => {
+        hoisted.getAgentHistory.mockResolvedValueOnce([
+          E3_RECORD({ monthKey: '2025-12', persistency: 0.80 }),
+          E3_RECORD({ monthKey: '2026-01', persistency: null }),
+          E3_RECORD({ monthKey: '2026-02', persistency: 0.91 }),
+        ]);
+        hoisted.getAvailableMonths.mockResolvedValueOnce(['2026-02', '2026-01', '2025-12']);
+      };
+      records();
+      const { unmount } = render(<PersistencyTab />);
+      const chart = await screen.findByTestId('chart-bars');
+      expect(JSON.parse(chart.getAttribute('data-pairs'))).toEqual([
+        ['2025-12', 80], ['2026-01', null], ['2026-02', 91],
+      ]);
+      const tableText = screen.getByTestId('persistency-trend-table').textContent;
+      expect(tableText).not.toMatch(/\b0\.00%/); // "80.00%" is fine; a bare "0.00%" is the bug
+      expect(tableText).not.toContain('2026-01');
+      unmount();
+
+      records();
+      render(<PersistencyTab fr />);
+      const card = await screen.findByTestId('persistency-trend-chart');
+      await waitFor(() => expect(card.querySelectorAll('[data-part="bar"]')).toHaveLength(2));
+      expect(card.textContent).not.toMatch(/\b0\.00%/);
     });
 
     it('FR look: GateBars, one bar per month, the gate line, and 2-dp direct values', async () => {
