@@ -14,3 +14,6 @@ These are Design-canvas files: they load a canvas runtime (`support.js`) that is
 so open them on the canvas, or read them as annotated HTML. Figures in them are the real
 27-09-2026 sample (Kyron) or labelled SAMPLE. **"FR" not "v3":** v3 already names the Linked
 Agent System (`design_handoff_agencytrack_v3/`).
+
+**Round 2 additions (29-09-2026, canvas version 39, approved by Kyron):** `D3-Leaderboard`, `M3-Leaderboard`,
+`D3-Career`, `M3-Career`. Build brief: `docs/briefs/fr-career-leaderboard-kickoff.md` (R2-10 / R2-11).
