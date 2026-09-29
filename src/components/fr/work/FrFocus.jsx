@@ -16,11 +16,13 @@ import FrFocusView from './FrFocusView';
  * from the daily entry AgentDashboard already holds. Outcomes are logged
  * through the existing Daily Capture sheet (`onLogToday`); nothing here writes.
  * Paperwork: own (filtered) policies. Win-back: the FR-3 reinstatement planner
- * on the unfiltered ledger, same gate rule as Money.
+ * on the unfiltered ledger, same gate rule as Money. FR-6: `reinstateActions`
+ * (AgentDashboard's useReinstatementDeclaration) gives the planner rows
+ * "Mark reinstated" / "Withdraw"; the write lives there, not here.
  */
 export default function FrFocus({
   tenantId, uid, mode, onMode, policies, campaignPolicies, persistency, activeCampaigns,
-  todayDailyEntry, onLogToday, onOpenTab,
+  todayDailyEntry, onLogToday, onOpenTab, reinstateActions = null,
 }) {
   const todayTT = getTodayTT();
   const [day, setDay] = useState({ appts: null, prospects: [], error: false });
@@ -61,6 +63,7 @@ export default function FrFocus({
       onRetryCalls={retry}
       paperwork={rows}
       plan={plan}
+      reinstateActions={reinstateActions}
       onLogToday={onLogToday}
       onOpenLedger={() => onOpenTab?.('policy-ledger')}
       onOpenPlanner={() => onOpenTab?.('planner')}

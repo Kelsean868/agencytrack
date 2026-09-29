@@ -5,6 +5,8 @@ import { LEGAL_AGENT_TRANSITIONS, POLICY_STATUS_LABELS } from '../../../constant
 import { policyToken, policyPillLabel, isConfirmed, needsManagerConfirmation } from '../../../lib/policyStatusTokens';
 import { lifecycleNodes } from '../../../lib/policyLedgerDerivation';
 import { formatWhole } from '../../../lib/awardLensView';
+import { hasLiveDeclaration } from '../../../lib/persistency/reinstatementDeclaration';
+import { DeclaredReinstatedChip } from '../../persistency/ReinstatementDeclaration';
 
 function fmtDate(ts) {
   if (!ts) return '—';
@@ -173,8 +175,12 @@ export default function PolicyCard({ policy, onOpen, lensRow = null, awardKind =
             </p>
           )}
         </div>
-        <span className={`shrink-0 px-2.5 py-[3px] rounded-full font-mono text-[10px] font-bold tracking-[0.1em] uppercase ${t.tint} ${t.text}`}>
-          {policyPillLabel(policy)}
+        <span className="flex shrink-0 flex-col items-end gap-1">
+          <span className={`shrink-0 px-2.5 py-[3px] rounded-full font-mono text-[10px] font-bold tracking-[0.1em] uppercase ${t.tint} ${t.text}`}>
+            {policyPillLabel(policy)}
+          </span>
+          {/* FR-6: a declared reinstatement, beside the (unchanged) status. */}
+          {hasLiveDeclaration(policy) && <DeclaredReinstatedChip />}
         </span>
       </div>
 

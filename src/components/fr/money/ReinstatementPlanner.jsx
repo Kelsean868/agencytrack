@@ -2,6 +2,8 @@ import React, { useId, useState } from 'react';
 import { ChartCard, GateBars, Bullet } from '../charts';
 import { CARD, EYEBROW, FOCUS, FrCheckbox, WarnIcon, Why } from './moneyParts';
 import { monthLabel, wholeTTDUp, selectionSummary, SOON_MONTHS } from '../../../lib/fr/moneyModel';
+import { formatPersistencyPct } from '../../../lib/persistency/persistencyRounding';
+import ReinstatementDeclarationControl from '../../persistency/ReinstatementDeclaration';
 
 /**
  * ReinstatementPlanner — READ-ONLY planner over the lapsed policies that
@@ -15,10 +17,16 @@ import { monthLabel, wholeTTDUp, selectionSummary, SOON_MONTHS } from '../../../
  *   · The agent can tick any mix; the running total is shown against the gap
  *     with the projected persistency.
  *
- * Ticking is a what-if: local UI state, never saved. Marking a policy
- * reinstated is FR-6, not here, so there is no control that pretends to.
+ * Ticking is a what-if: local UI state, never saved.
  *
- * Pure: `plan` is reinstatementPlan() output (src/lib/fr/moneyModel.js).
+ * FR-6 (Option A): with `actions`, each own lapsed row offers "Mark reinstated"
+ * / "Withdraw" — a real declaration, written by the caller. A declared row says
+ * "Reinstated — waiting for head office". The header shows the evidenced
+ * figure and, BESIDE it, "with your declared reinstatements"; the gap, the
+ * presets and the running total stay evidenced-only.
+ *
+ * Pure: `plan` is reinstatementPlan() output (src/lib/fr/moneyModel.js);
+ * `actions` is useReinstatementDeclaration() output, or null (read-only).
  */
 
 // Month count in words for copy ("two months"); SOON_MONTHS drives it, so the footnote never goes stale.
@@ -107,7 +115,20 @@ function RunningTotal({ plan, sum }) {
   );
 }
 
-export default function ReinstatementPlanner({ plan }) {
+/** "86.60% evidenced · with your declared reinstatements 90.10% (2 policies, waiting for head office)". */
+function DeclaredLine({ declared }) {
+  if (!declared?.count) return null;
+  return (
+    <p className="text-[13px] text-ink" data-testid="planner-declared">
+      <span className="font-semibold tabular-nums">{formatPersistencyPct(declared.evidencedPct)}</span> evidenced
+      {' · '}with your declared reinstatements{' '}
+      <span className="font-semibold tabular-nums" data-testid="planner-declared-pct">{formatPersistencyPct(declared.pct)}</span>
+      <span className="text-ink-muted"> ({plural(declared.count, 'policy', 'policies')}, waiting for head office)</span>
+    </p>
+  );
+}
+
+export default function ReinstatementPlanner({ plan, actions = null }) {
   const idBase = useId();
   const [picked, setPicked] = useState(() => new Set());
   if (!plan) {
@@ -138,6 +159,7 @@ export default function ReinstatementPlanner({ plan }) {
           {monthLabel(plan.monthKey)}{plan.isGateMonth ? ' (campaign gate month)' : ''} · {plan.currentPct.toFixed(1)}% now · 24-month model
           {plan.annuityRuleLabel ? ` · ${plan.annuityRuleLabel}` : ''}
         </p>
+        <DeclaredLine declared={plan.declared} />
       </header>
 
       {!plan.meets && presets ? (
@@ -161,6 +183,7 @@ export default function ReinstatementPlanner({ plan }) {
             <ul className="flex flex-col divide-y divide-border">
               {plan.lapses.map((l) => {
                 const id = `${idBase}-${l.policyNumber}`;
+                const canAct = Boolean(actions && l.id && actions.canAct(l.id));
                 return (
                   <li key={l.policyNumber} data-testid={`planner-row-${l.policyNumber}`}>
                     <label htmlFor={id} className="relative flex min-h-[44px] cursor-pointer items-start gap-3 py-2.5 pl-3">
@@ -180,6 +203,22 @@ export default function ReinstatementPlanner({ plan }) {
                         )}
                       </span>
                     </label>
+                    {canAct ? (
+                      <div className="pb-3 pl-3">
+                        <ReinstatementDeclarationControl
+                          declaration={l.declaration}
+                          onDeclare={(note) => actions.declare(l.id, note)}
+                          onWithdraw={() => actions.withdraw(l.id)}
+                          busy={actions.busyId === l.id}
+                          error={actions.errorFor(l.id)}
+                          testIdPrefix={`planner-reinstate-${l.policyNumber}`}
+                        />
+                      </div>
+                    ) : l.declaration ? (
+                      <p className="pb-3 pl-3 text-[12px] font-semibold text-ink" data-testid={`planner-reinstate-${l.policyNumber}-declared`}>
+                        Reinstated — waiting for head office
+                      </p>
+                    ) : null}
                   </li>
                 );
               })}
@@ -200,6 +239,7 @@ export default function ReinstatementPlanner({ plan }) {
         {' '}A reinstated lapse adds its API back to Net Settled, so {plan.threshold}% needs {plan.meets ? 'nothing more' : `${money(plan.need)} reinstated`}.
         {' '}Only lapses still inside the 24-month window are listed; older ones no longer count and cannot help. A policy flagged “Stops counting after” leaves the window within {monthsPhrase(SOON_MONTHS)}, so reinstating it helps only until then.
         {' '}Ticking here is a what-if and is not saved.
+        {' '}“Mark reinstated” records that the client has paid while head office still shows the policy lapsed; it is shown beside your persistency, never inside it, until the next export confirms it.
       </Why>
       {plan.stale ? (
         <p className="flex items-start gap-1.5 text-[12px] font-semibold text-fr-warm"><WarnIcon className="mt-px" />Estimate is getting stale; import a fresh export.</p>

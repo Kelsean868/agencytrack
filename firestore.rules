@@ -658,6 +658,42 @@ service cloud.firestore {
           && setsOwnStatusProvenance()
           && request.resource.data.dateLapsed is timestamp;
 
+        // FR-6 Arm G — the agent DECLARES (or withdraws) a reinstatement on an
+        // OWN LAPSED policy (docs/audits/fr-6-mark-reinstated-recon.md § 3
+        // Option A; Kyron ruling R-b, 29-09-2026). ADDITIVE: no other arm is
+        // edited. OR'd with the other arms by Firestore.
+        //
+        // Touches ONLY the three declaration fields, so status, statusSource and
+        // every money field stay exactly as the import (or Arm D) left them. The
+        // P2d head-office lock (isHeadOfficeStatus) is therefore not engaged:
+        // head office's figures cannot move through this arm. A declaration is
+        // shown BESIDE the evidenced figure, never inside it, and never feeds
+        // money (awards, financing, commission). Owner only (agent or producing
+        // manager); managers get no new write power. Mirrored in
+        // src/services/policiesService.js (declareReinstatement /
+        // withdrawReinstatement) and src/lib/persistency/reinstatementDeclaration.js.
+        allow update: if isSignedIn()
+          && (isAgent() || isProducingManager())
+          && getTenantId() == tenantId
+          && resource.data.agentId == request.auth.uid
+          && resource.data.status == 'lapsed'
+          && request.resource.data.status == 'lapsed'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['reinstatementDeclaredAt', 'reinstatementDeclaredBy', 'reinstatementNote'])
+          && (
+            // declare: stamped as the caller, at the server's clock (never
+            // backdated); the optional note is a short string.
+            (request.resource.data.get('reinstatementDeclaredBy', null) == request.auth.uid
+             && request.resource.data.get('reinstatementDeclaredAt', null) == request.time
+             && (!('reinstatementNote' in request.resource.data)
+                 || (request.resource.data.reinstatementNote is string
+                     && request.resource.data.reinstatementNote.size() <= 200)))
+            // withdraw: all three cleared (deleted or null).
+            || (request.resource.data.get('reinstatementDeclaredAt', null) == null
+                && request.resource.data.get('reinstatementDeclaredBy', null) == null
+                && request.resource.data.get('reinstatementNote', null) == null)
+          );
+
         allow delete: if false;
 
         // H1.2: policy history subcollection — append-only audit (PRD §7.4).
@@ -704,6 +740,27 @@ service cloud.firestore {
                   // P2d ruling (option A): not on a head-office policy (Arm F is closed there).
                   && get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.get('statusSource', null) != 'oipa_import')
             );
+
+          // FR-6 Arm G history — the declare / withdraw event (lapsed → lapsed)
+          // on an OWN policy that is lapsed. ADDITIVE: a separate `allow create`
+          // (OR'd by Firestore), so the agent arm above is not edited. That arm
+          // cannot admit this event: isLegalAgentTransition denies toStatus
+          // 'lapsed'. Parent-bound like the agent arm (the parent's agentId must
+          // be the caller) and only while the parent is lapsed.
+          allow create: if isSignedIn()
+            && (isAgent() || isProducingManager())
+            && getTenantId() == tenantId
+            && request.resource.data.actorUid == request.auth.uid
+            && request.resource.data.agentId == request.auth.uid
+            && get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.agentId == request.auth.uid
+            && request.resource.data.keys().hasAll([
+                 'fromStatus', 'toStatus', 'changedFields', 'actorUid',
+                 'actorRole', 'at', 'agentId'
+               ])
+            && request.resource.data.fromStatus == 'lapsed'
+            && request.resource.data.toStatus == 'lapsed'
+            && request.resource.data.get('event', null) in ['reinstatement_declared', 'reinstatement_withdrawn']
+            && get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.status == 'lapsed';
 
           // Manager arm: manager writes a confirmation event (H2a).
           // fromStatus == toStatus == 'settled' is explicitly allowed (confirm

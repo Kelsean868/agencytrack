@@ -31,6 +31,7 @@
 import { deriveAll } from './calculations';
 import { monthsBetweenKeys, parseDateOnlyTT } from '../../utils/dateInputs';
 import { OIPA_NEVER_PLACED_SUB_STATUSES } from '../portfolioImport/oipaImportConfig';
+import { hasLiveDeclaration } from './reinstatementDeclaration';
 
 /**
  * The 24-month window length. ONE constant.
@@ -247,6 +248,12 @@ export function deriveFromLedger(docs, options = {}) {
   let notTakens = 0;
   let lapses = 0;
 
+  // FR-6 (Option A): counted lapses the agent has DECLARED reinstated while head
+  // office still shows them lapsed. Kept apart from every evidenced input —
+  // they never enter `inputs` or `derived` (v3 non-negotiable 5).
+  let declaredReinstatements = 0;
+  const declaredPolicies = [];
+
   const atRiskAnnuities = [];
   const pendingDeathClaims = [];
 
@@ -300,6 +307,12 @@ export function deriveFromLedger(docs, options = {}) {
       if (lapseStillCounts(doc)) {
         lapses += api;
         evidence.lapses.push(policyNumber);
+        // The declared amount is the same figure this lapse costs — the agent
+        // never types money (recon § 3 Option A).
+        if (hasLiveDeclaration(doc)) {
+          declaredReinstatements += api;
+          declaredPolicies.push(policyNumber);
+        }
       } else if (doc.terminalReason === 'deceased') {
         evidence.excluded.deceasedNotLapsed.push(policyNumber);
       } else {
@@ -356,6 +369,16 @@ export function deriveFromLedger(docs, options = {}) {
 
   const persistencyUnder = (lapseTotal) => deriveAll({ ...inputs, lapses: lapseTotal }).persistency;
 
+  // FR-6 — "with your declared reinstatements": the evidenced inputs plus the
+  // declared amount added to Reinstatements. A SEPARATE figure; `inputs`,
+  // `derived` and every money reader stay evidenced-only.
+  const declaredTotal = money2(declaredReinstatements);
+  const declared = {
+    reinstatements: declaredTotal,
+    policies: declaredPolicies,
+    persistency: deriveAll({ ...inputs, reinstatements: money2(inputs.reinstatements + declaredTotal) }).persistency,
+  };
+
   return {
     monthKey,
     exportDate: exportDate ?? null,
@@ -375,6 +398,13 @@ export function deriveFromLedger(docs, options = {}) {
      */
     counted: evidence.businessPlaced.length,
     evidence,
+
+    /**
+     * FR-6 — declared reinstatements, shown BESIDE the evidenced figure and
+     * never inside it: `{ reinstatements, policies, persistency }`. Never feeds
+     * money (awards, financing, commission).
+     */
+    declared,
 
     /** Which of the seven the export cannot supply, for the "enter manually" note. */
     derivedInputs: [...LEDGER_DERIVED_INPUTS],

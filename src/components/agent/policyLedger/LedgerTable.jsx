@@ -15,6 +15,8 @@ import { policyValue } from '../../../lib/policyLedgerDerivation';
 import { toDisplayDate, humanizeToken } from '../../../lib/ledgerFilters';
 import { toDateStr } from '../../../lib/policyCampaignLens';
 import { STATUS_SOURCE_IMPORT } from '../../../lib/portfolioImport/oipaImportConfig';
+import { hasLiveDeclaration } from '../../../lib/persistency/reinstatementDeclaration';
+import { DeclaredReinstatedChip } from '../../persistency/ReinstatementDeclaration';
 
 const STATUS_PILL = {
   settled: 'text-success-ink bg-success-tint',
@@ -97,6 +99,8 @@ export default function LedgerTable({ rows, sortKey, onSort, onOpen }) {
                     <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase ${STATUS_PILL[p.status] ?? 'bg-surface-muted text-ink-muted'}`}>
                       {POLICY_STATUS_LABELS[p.status] ?? p.status}
                     </span>
+                    {/* FR-6: a declared reinstatement, beside the (unchanged) status. */}
+                    {hasLiveDeclaration(p) && <DeclaredReinstatedChip className="ml-1.5" />}
                   </td>
                   <td className="h-[52px] whitespace-nowrap border-b border-border/60 px-3 text-[13px] text-ink-muted">{fromHo ? 'Head office' : 'Self'}</td>
                   <td className="h-[52px] whitespace-nowrap border-b border-border/60 px-3 text-[13px] tabular-nums text-ink">{toDisplayDate(toDateStr(p.dateSubmitted) ?? toDateStr(p.dateWritten)) || '—'}</td>
