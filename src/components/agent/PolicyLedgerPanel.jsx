@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { PROSPECTING_SOURCES } from '../../services/prospectInfoService';
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../../utils/prospectingConstants';
 import { createPolicy, getOwnPolicies, transitionPolicyStatus, selfConfirmPolicy, declareReinstatement, withdrawReinstatement } from '../../services/policiesService';
-import { canDeclareReinstatement } from '../../lib/persistency/reinstatementDeclaration';
+import { canDeclareReinstatement, reinstatementWriteError } from '../../lib/persistency/reinstatementDeclaration';
 import { getPolicyPlans } from '../../services/planCatalogService';
 import { getTodayTT } from '../../utils/dateInputs';
 import { applyLedgerFilter, LEDGER_FILTERS } from '../../lib/policyLedgerDerivation';
@@ -304,12 +304,19 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
     setReinstateError(null);
     try {
       await write(drawerPolicy);
-      onPoliciesChanged?.();
+    } catch (err) {
+      setReinstateError(reinstatementWriteError(err));
+      setReinstating(false);
+      return;
+    }
+    onPoliciesChanged?.();
+    try {
       const fresh = await getOwnPolicies(tenantId, user.uid);
       setPolicies(fresh);
       setDrawerPolicy(fresh.find((p) => p.id === id) ?? null);
-    } catch (err) {
-      setReinstateError(err.message);
+    } catch {
+      // The write landed; only the refresh failed. Say so rather than "not saved".
+      setReinstateError('Saved. The list could not refresh; reopen the ledger to see it.');
     } finally {
       setReinstating(false);
     }

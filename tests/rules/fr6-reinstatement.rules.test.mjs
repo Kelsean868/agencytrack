@@ -23,7 +23,7 @@
  * Fixture tenant
  *   branchA: bmA · umA1 · umA2 · agents a1 (umA1), a2 (umA2)
  *   branchB: agent b1
- *   ta (tenant_admin), smF (sales_manager, canConfirmSettlements)
+ *   ta (tenant_admin), smF (sales_manager, canConfirmSettlements), smN (sales_manager, no flag)
  *   other tenant: x1 (agent)
  */
 
@@ -52,6 +52,9 @@ const USERS = {
   bmA:  { role: 'branch_manager', branchId: A },
   umA1: { role: 'unit_manager', branchId: A, unitId: 'umA1' },
   smF:  { role: 'sales_manager', branchId: A, canConfirmSettlements: true },
+  // A sales manager WITHOUT canConfirmSettlements: the pre-existing manager
+  // history arm does not admit them either, so they isolate Arm G's role guard.
+  smN:  { role: 'sales_manager', branchId: A },
   ta:   { role: 'tenant_admin', branchId: A },
   a1:   { role: 'agent', branchId: A, unitId: 'umA1' },
   a2:   { role: 'agent', branchId: A, unitId: 'umA2' },
@@ -160,8 +163,13 @@ async function main() {
       'a1-declared-3':  hoLapsed('a1', declared),
       'a1-declared-4':  hoLapsed('a1', declared),
       'a1-declared-b':  hoLapsed('a1', declared),
+      'a1-declared-5':  hoLapsed('a1', declared),
       'a2-ho':          hoLapsed('a2'),
       'umA1-own':       hoLapsed('umA1'),
+      // A lapsed policy a tenant admin / sales manager OWNS — isolates the role guard.
+      'ta-own':         { ...hoLapsed('a1'), agentId: 'ta' },
+      'smF-own':        { ...hoLapsed('a1'), agentId: 'smF' },
+      'smN-own':        { ...hoLapsed('a1'), agentId: 'smN' },
     };
     for (const [id, p] of Object.entries(pols)) {
       await setDoc(doc(db, `tenants/${T}/policies/${id}`), p);
@@ -201,6 +209,8 @@ async function main() {
     batch.set(doc(collection(db, `tenants/${T}/policies/a1-ho-batch/history`)), declEvent('a1'));
     await assertSucceeds(batch.commit());
   });
+  await t('G10. RE-declare over a live declaration with the service\'s no-note payload (note deleted) → ALLOW', () =>
+    assertSucceeds(updateDoc(pol(as('a1'), 'a1-declared-5'), declare('a1', { reinstatementNote: deleteField() }))));
   await t('G9. withdrawReinstatement batch (policy + withdrawn event) → ALLOW', async () => {
     const db = as('a1');
     const batch = writeBatch(db);
@@ -244,6 +254,15 @@ async function main() {
     assertFails(updateDoc(pol(as('smF'), 'a1-ho-2'), declare('smF'))));
   await t('D14. agent of ANOTHER tenant declares on this tenant\'s policy → DENY', () =>
     assertFails(updateDoc(pol(as('x1', OTHER_T), 'a1-ho-2'), declare('x1'))));
+  // The same uid, but its token belongs to ANOTHER tenant: isolates the tenant
+  // guard (D14 is also caught by the own-uid guard).
+  await t('D14b. OWN uid with a token for ANOTHER tenant declares on this tenant\'s policy → DENY', () =>
+    assertFails(updateDoc(pol(as('a1', OTHER_T), 'a1-ho-2'), declare('a1'))));
+  // Owner, but a role Arm G does not admit (not agent / UM / BM): isolates the role guard.
+  await t('D20. tenant admin declares on a lapsed policy they OWN → DENY (role not admitted)', () =>
+    assertFails(updateDoc(pol(as('ta'), 'ta-own'), declare('ta'))));
+  await t('D21. sales manager declares on a lapsed policy they OWN → DENY (role not admitted)', () =>
+    assertFails(updateDoc(pol(as('smF'), 'smF-own'), declare('smF'))));
   await t('D15. unauthenticated declare → DENY', () =>
     assertFails(updateDoc(pol(testEnv.unauthenticatedContext().firestore(), 'a1-ho-2'), declare('a1'))));
   await t('D16. withdraw that leaves the note behind → DENY', () =>
@@ -290,6 +309,14 @@ async function main() {
     const { changedFields: _c, ...rest } = declEvent('a1');
     await assertFails(setDoc(hist(as('a1'), 'a1-ho-3', 'h11'), rest));
   });
+
+  // (A TA / flagged SM / BM may already write ANY history event through the
+  // pre-existing manager arm — unchanged by this PR — so the role guard is
+  // isolated with an un-flagged sales manager, whom neither arm admits.)
+  await t('H13. un-flagged sales manager writes the event on a lapsed policy they OWN → DENY (role not admitted)', () =>
+    assertFails(setDoc(hist(as('smN'), 'smN-own', 'h13'), declEvent('smN', { unitId: null }))));
+  await t('H12. OWN uid with a token for ANOTHER tenant writes the event → DENY', () =>
+    assertFails(setDoc(hist(as('a1', OTHER_T), 'a1-ho-3', 'h12'), declEvent('a1'))));
 
   await testEnv.cleanup();
   console.log(`\n${passed} passed, ${failed} failed`);

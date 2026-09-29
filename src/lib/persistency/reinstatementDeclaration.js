@@ -117,6 +117,19 @@ export function canDeclareReinstatement(policy, { uid, role } = {}) {
     && policy?.status === 'lapsed';
 }
 
+/**
+ * The words a refused declare / withdraw shows. Firestore refuses the write
+ * as a whole (the batch is atomic), so nothing on the policy changed. A
+ * `permission-denied` is what an agent sees if this client reaches them before
+ * the Arm G rules are deployed, or if the policy stopped being lapsed meanwhile.
+ */
+export function reinstatementWriteError(err) {
+  if (err?.code === 'permission-denied') {
+    return 'Could not save: the change was refused, so nothing on this policy changed. Marking reinstated may not be switched on yet, or head office has updated the policy. Try again later.';
+  }
+  return err?.message || 'Could not save. Nothing on this policy changed. Try again.';
+}
+
 /** "12 Oct 2026" from `YYYY-MM-DD`, or "—". */
 export function declarationDateLabel(ymd) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd ?? ''));

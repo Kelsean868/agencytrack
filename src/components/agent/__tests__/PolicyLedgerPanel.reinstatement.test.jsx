@@ -102,6 +102,30 @@ describe('PolicyLedgerPanel — FR-6 Mark reinstated', () => {
     expect(hoisted.getOwnPolicies).toHaveBeenCalledTimes(1); // no refetch
   });
 
+  it('a rules refusal (permission-denied — e.g. Arm G not deployed yet) reads in words and says nothing changed', async () => {
+    hoisted.getOwnPolicies.mockResolvedValue([LAPSED]);
+    hoisted.declareReinstatement.mockRejectedValueOnce(Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' }));
+    const onPoliciesChanged = vi.fn();
+    render(<PolicyLedgerPanel onPoliciesChanged={onPoliciesChanged} />);
+    const drawer = await openDrawer();
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Mark reinstated' }));
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Confirm — mark reinstated' }));
+    await waitFor(() => expect(within(drawer).getByRole('alert')).toHaveTextContent('nothing on this policy changed'));
+    expect(onPoliciesChanged).not.toHaveBeenCalled();
+    // Still offered: the agent can try again once the rules are live.
+    expect(within(drawer).getByRole('button', { name: 'Confirm — mark reinstated' })).toBeInTheDocument();
+  });
+
+  it('the write lands but the refresh fails → says it was saved, not "could not save"', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([LAPSED]).mockRejectedValueOnce(new Error('offline'));
+    render(<PolicyLedgerPanel />);
+    const drawer = await openDrawer();
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Mark reinstated' }));
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Confirm — mark reinstated' }));
+    await waitFor(() => expect(within(drawer).getByRole('alert')).toHaveTextContent(/^Saved\./));
+    expect(hoisted.declareReinstatement).toHaveBeenCalledTimes(1);
+  });
+
   it('a role Arm G does not admit (tenant admin) gets no control', async () => {
     hoisted.useAuth.mockReturnValue({ user: { uid: 'agent1' }, userProfile: {}, role: 'tenant_admin', tenantId: 'tenant1' });
     hoisted.getOwnPolicies.mockResolvedValue([LAPSED]);

@@ -12,6 +12,7 @@ import {
   declarationView,
   canDeclareReinstatement,
   declarationDateLabel,
+  reinstatementWriteError,
   REINSTATEMENT_UNCONFIRMED_DAYS,
   REINSTATEMENT_DECLARATION_FIELDS,
 } from '../reinstatementDeclaration';
@@ -149,6 +150,52 @@ describe('deriveFromLedger — declared reinstatements sit BESIDE the evidenced 
         prev = r.declared.persistency;
       }
     }
+  });
+});
+
+// Deep copy with every `declared` key removed — what is left is the evidenced model.
+function stripDeclared(v) {
+  if (Array.isArray(v)) return v.map(stripDeclared);
+  if (v && typeof v === 'object') {
+    return Object.fromEntries(Object.entries(v).filter(([k]) => k !== 'declared').map(([k, x]) => [k, stripDeclared(x)]));
+  }
+  return v;
+}
+
+describe('the evidenced persistency model is identical with and without declarations (brief §3 stop guard)', () => {
+  const RECORDS = [
+    { monthKey: '2026-07', persistency: 0.881, reinstatements: 500, annuityMissedPremiumRule: 'lapse' },
+    { monthKey: '2026-08', persistency: 0.872 },
+  ];
+  it.each([
+    ['no records', {}],
+    ['with saved records (manual reinstatements win)', { records: RECORDS }],
+    ['with a campaign gate', { records: RECORDS, gate: { basis: 'finalMonth', monthKey: '2026-12', threshold: 90 } }],
+  ])('buildPersistencyOutlook — %s: every evidenced field equal, only `declared` differs', (_label, extra) => {
+    const plain = buildPersistencyOutlook({ policies: LEDGER, today: TODAY, ...extra });
+    const withDecl = buildPersistencyOutlook({ policies: declare(LEDGER, ['L1', 'L2', 'L4', 'L3', 'L5', 'S1']), today: TODAY, ...extra });
+    expect(stripDeclared(withDecl)).toEqual(stripDeclared(plain));
+    // …and the declaration is really there (the strip is not hiding an empty diff).
+    expect(withDecl.estimateToday.declared.policies.length).toBeGreaterThan(0);
+    expect(plain.estimateToday.declared.policies).toEqual([]);
+  });
+
+  it('deriveFromLedger: the whole result minus `declared` is identical', () => {
+    const plain = deriveFromLedger(LEDGER, { ...OPTS, manual: { reinstatements: 250, decreases: 100 } });
+    const withDecl = deriveFromLedger(declare(LEDGER, ['L1', 'L4']), { ...OPTS, manual: { reinstatements: 250, decreases: 100 } });
+    expect(stripDeclared(withDecl)).toEqual(stripDeclared(plain));
+  });
+});
+
+describe('reinstatementWriteError', () => {
+  it('a rules refusal reads in words and says nothing changed', () => {
+    const msg = reinstatementWriteError({ code: 'permission-denied', message: 'Missing or insufficient permissions.' });
+    expect(msg).toMatch(/nothing on this policy changed/);
+    expect(msg).not.toMatch(/insufficient permissions/);
+  });
+  it('other errors keep their message; no message → a generic line', () => {
+    expect(reinstatementWriteError(new Error('Only a lapsed policy can be marked reinstated'))).toBe('Only a lapsed policy can be marked reinstated');
+    expect(reinstatementWriteError(null)).toMatch(/Could not save/);
   });
 });
 

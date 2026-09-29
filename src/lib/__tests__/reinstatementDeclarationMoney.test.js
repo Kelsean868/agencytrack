@@ -27,6 +27,9 @@ import { getTodayTT } from '../../utils/dateInputs';
 import { ytdEarned, runRate } from '../../utils/commissionAnchor';
 import { deriveYearProduction } from '../ledgerProduction';
 import { settlementShapeFromPolicies } from '../policiesDerivation';
+import { campaignPersistencyReading } from '../campaignPersistencyReading';
+import { buildPersistencyOutlook } from '../persistency/persistencyOutlook';
+import { CHRISTMAS } from './fixtures/awardLensFixtures';
 
 const ts = (d) => ({ toDate: () => new Date(`${d}T04:00:00Z`), seconds: Date.parse(`${d}T04:00:00Z`) / 1000 });
 const DECLARATION = { reinstatementDeclaredAt: ts('2026-05-02'), reinstatementDeclaredBy: 'a1', reinstatementNote: 'Receipt 1' };
@@ -76,6 +79,28 @@ describe('a declaration never moves a money figure', () => {
   it('settlement shape feeding the awards engine: identical', () => {
     expect(settlementShapeFromPolicies(DECLARED)).toEqual(settlementShapeFromPolicies(POLICIES));
   });
+
+  it('campaign persistency gate reading (award-bearing): identical — the declared figure never lifts it', () => {
+    // A head-office book under the 90 % gate on evidence (gross 112,000, net 100,000 = 89.29 %),
+    // above it with the declaration (100 %). The reading must stay on evidence.
+    const HO = { productLine: 'life', agentId: 'a1', isWritingAgent: true, exportDate: '2026-09-15', importSource: 'oipa_import', statusSource: 'oipa_import' };
+    const book = [
+      { ...HO, id: 's', policyNumber: 'S', status: 'settled', proposedAPI: 100000, dateIssued: '2025-06-01' },
+      { ...HO, id: 'l', policyNumber: 'L', status: 'lapsed', proposedAPI: 12000, dateIssued: '2025-01-10' },
+    ];
+    const declaredBook = book.map((p) => (p.status === 'lapsed' ? { ...p, ...DECLARATION } : p));
+    const today = '2026-09-26';
+    const plain = campaignPersistencyReading({ campaign: CHRISTMAS, policies: book, records: [], today });
+    const withDecl = campaignPersistencyReading({ campaign: CHRISTMAS, policies: declaredBook, records: [], today });
+    expect(plain.value).toBeCloseTo((100000 / 112000) * 100, 9);
+    expect(plain.below).toBe(true);
+    expect(withDecl).toEqual(plain);
+    // Live guard: the declaration really is counted — in the separate `declared` figure only.
+    const o = buildPersistencyOutlook({ policies: declaredBook, records: [], today });
+    expect(o.headline.persistency).toBeCloseTo(100000 / 112000, 12);
+    expect(o.derived.declared.policies).toEqual(['L']);
+    expect(o.derived.declared.persistency).toBeCloseTo(1, 9);
+  });
 });
 
 // ── Source guard ─────────────────────────────────────────────────────────────
@@ -111,7 +136,8 @@ const ALLOWED = new Set([
   'src/components/fr/work/FrFocus.jsx',
   'src/components/fr/harness/scenes/reinstatementScenes.jsx', // DEV-only harness, sample data
 ]);
-const MONEY_PATH_RE = /financing|award|commission|computePoints|settlement|ledgerProduction|policyCampaignLens|campaignEngine|leaderboard|bonus/i;
+// `campaign` covers every campaign surface and engine (award-bearing gates and tiers).
+const MONEY_PATH_RE = /financing|award|commission|computePoints|settlement|ledgerProduction|campaign|leaderboard|bonus|trophy|goalDecomposition/i;
 
 describe('source guard — declarations reach display only', () => {
   it('only the allow-listed display files read the declaration fields', () => {

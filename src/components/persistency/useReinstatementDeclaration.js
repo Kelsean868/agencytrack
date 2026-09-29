@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { declareReinstatement, withdrawReinstatement } from '../../services/policiesService';
-import { canDeclareReinstatement } from '../../lib/persistency/reinstatementDeclaration';
+import { canDeclareReinstatement, reinstatementWriteError } from '../../lib/persistency/reinstatementDeclaration';
 
 /**
  * useReinstatementDeclaration — FR-6 write handling for a list of the signed-in
@@ -38,7 +38,7 @@ export default function useReinstatementDeclaration({ tenantId, declarer, polici
       await write(p);
       onChanged?.();
     } catch (err) {
-      setError({ id: policyId, message: err?.message || 'Could not save. Try again.' });
+      setError({ id: policyId, message: reinstatementWriteError(err) });
     } finally {
       setBusyId(null);
     }
