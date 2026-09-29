@@ -26,10 +26,15 @@ vi.mock('../../../services/policiesService', () => ({
 }));
 
 // Recharts requires a wrapper — stub it to avoid the ResizeObserver / SVG dependency.
+// The stub keeps the chart TYPE observable: a BarChart renders `chart-bars`, a
+// LineChart would render `chart-line`, and the gate ReferenceLine exposes its y.
 vi.mock('recharts', () => ({
-  LineChart:           ({ children }) => <div data-testid="chart">{children}</div>,
+  BarChart:            ({ data, children }) => <div data-testid="chart-bars" data-count={data.length}>{children}</div>,
+  LineChart:           ({ children }) => <div data-testid="chart-line">{children}</div>,
+  Bar:                 () => <div data-testid="bar-series" />,
+  Cell:                () => null,
   Line:                () => null,
-  ReferenceLine:       () => null,
+  ReferenceLine:       ({ y }) => <div data-testid="gate-line" data-y={y} />,
   Tooltip:             () => null,
   XAxis:               () => null,
   YAxis:               () => null,
@@ -110,8 +115,75 @@ describe('agent PersistencyTab', () => {
     ]);
     hoisted.getAvailableMonths.mockResolvedValueOnce(['2026-02', '2026-01', '2025-12']);
     render(<PersistencyTab />);
-    await waitFor(() => expect(screen.getByTestId('chart')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('chart-bars')).toBeInTheDocument());
     expect(screen.getByTestId('persistency-trend-chart')).toBeInTheDocument();
+  });
+
+  describe('R2-2 monthly trend is bars against the 90% gate', () => {
+    const THREE_MONTHS = () => {
+      hoisted.getAgentHistory.mockResolvedValueOnce([
+        E3_RECORD({ monthKey: '2025-12', persistency: 0.80 }),
+        E3_RECORD({ monthKey: '2026-01', persistency: 0.89996 }),
+        E3_RECORD({ monthKey: '2026-02', persistency: 0.91 }),
+      ]);
+      hoisted.getAvailableMonths.mockResolvedValueOnce(['2026-02', '2026-01', '2025-12']);
+    };
+
+    it('Nexus look: a BarChart with one bar series and a gate line at 90, never a line chart', async () => {
+      THREE_MONTHS();
+      render(<PersistencyTab />);
+      const chart = await screen.findByTestId('chart-bars');
+      expect(chart.getAttribute('data-count')).toBe('3');
+      expect(screen.getByTestId('bar-series')).toBeInTheDocument();
+      expect(screen.getByTestId('gate-line').getAttribute('data-y')).toBe('90');
+      expect(screen.queryByTestId('chart-line')).not.toBeInTheDocument();
+    });
+
+    it('FR look: GateBars, one bar per month, the gate line, and 2-dp direct values', async () => {
+      THREE_MONTHS();
+      render(<PersistencyTab fr />);
+      const card = await screen.findByTestId('persistency-trend-chart');
+      await waitFor(() => expect(card.querySelectorAll('[data-part="bar"]')).toHaveLength(3));
+      expect(card.querySelector('[data-part="gate"]')).not.toBeNull();
+      expect(card.textContent).toContain('Gate 90%');
+      // 0.89996 → 89.996 → 90.00% (at the gate); the same rule the rest of the app uses.
+      expect(screen.getByRole('button', { name: /Jan 26: 90\.00%, at or above the 90% gate/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Dec 25: 80\.00%, below the 90% gate/ })).toBeInTheDocument();
+      // The FR path draws no Recharts chart at all.
+      expect(screen.queryByTestId('chart-bars')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('chart-line')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('R2-2 annuity rule switch sits under the headline figure', () => {
+    const imported = (policyNumber, dateIssued, status, api, extra = {}) => ({
+      policyNumber, dateIssued, status, proposedAPI: api,
+      isWritingAgent: true, importSource: 'oipa', exportDate: '2026-09-15', productLine: 'life', ...extra,
+    });
+    const BOOK = [
+      imported('P-A1', '2024-09-10', 'settled', 82800),
+      imported('P-A2', '2024-09-12', 'lapsed', 2682),
+      imported('P-B1', '2024-11-10', 'settled', 21197.16),
+      imported('P-C1', '2025-06-10', 'settled', 161581.2),
+      imported('P-AN1', '2025-07-01', 'settled', 30000, { policyClass: 'annuity', paidToDate: '2026-05-01' }),
+    ];
+
+    it('is visible without opening the assumptions, and choosing the other rule changes the figure', async () => {
+      hoisted.getAgentHistory.mockResolvedValueOnce([]);
+      hoisted.getAvailableMonths.mockResolvedValueOnce([]);
+      hoisted.getOwnPolicies.mockResolvedValue(BOOK);
+      render(<PersistencyTab />);
+      const sw = await screen.findByTestId('annuity-rule-switch');
+      // Nothing was expanded.
+      expect(screen.queryByTestId('persistency-outlook-assumptions')).not.toBeInTheDocument();
+      expect(sw).toBeVisible();
+      const before = screen.getByTestId('persistency-outlook-derived-pct').textContent;
+      expect(screen.getByTestId('annuity-rule-ignore')).toHaveAttribute('aria-checked', 'true');
+      fireEvent.click(screen.getByTestId('annuity-rule-lapse'));
+      await waitFor(() => expect(screen.getByTestId('annuity-rule-lapse')).toHaveAttribute('aria-checked', 'true'));
+      const after = screen.getByTestId('persistency-outlook-derived-pct').textContent;
+      expect(after).not.toBe(before);
+    });
   });
 
   it('renders fallback message when no history', async () => {
