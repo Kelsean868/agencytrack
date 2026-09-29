@@ -15,6 +15,8 @@ import { campaignPersistencyReading } from '../../lib/campaignPersistencyReading
 import PanelSkeleton from '../ui/PanelSkeleton';
 import CampaignHeroCompact from './CampaignHeroCompact';
 import TargetTierPicker from './TargetTierPicker';
+import CampaignPolicyList from './CampaignPolicyList';
+import { buildCampaignPolicyGroups } from '../../lib/campaignPolicyGroups';
 import {
   ProgressBlock, WhatItTakesBlock, PersistencyGateBarBlock, TierLadderBlock, WhatIfBlock, ScreenFooter,
 } from './CampaignScreenBlocks';
@@ -79,6 +81,7 @@ function HeroRow({ label, current, target, unit, achieved, testId }) {
 export default function CampaignHeroCard({
   campaign, policies = [], persistencyRecords = [], loading = false, error = false,
   variant = 'full', onOpenDetails, targetTierName = null, onTargetTierChange = null,
+  onOpenPolicy = null,
 }) {
   const tiered = Boolean(campaign) && isTieredCampaign(campaign) && campaign.structure === 'qualify';
 
@@ -161,6 +164,14 @@ export default function CampaignHeroCard({
 
   const compact = variant === 'compact';
   const screen = variant === 'screen';
+
+  // R2-4 — "Policies in this campaign" (screen variant only). Grouped off the
+  // SAME lens as every figure on this screen, so the Counting / Waiting totals
+  // are the campaign's own API / applications figures by construction.
+  const policyGroups = useMemo(
+    () => (screen && lens ? buildCampaignPolicyGroups(lens, policies) : null),
+    [screen, lens, policies],
+  );
 
   if (loading) {
     if (compact) {
@@ -318,6 +329,8 @@ export default function CampaignHeroCard({
             />
           </div>
         </div>
+
+        <CampaignPolicyList groups={policyGroups} exportDate={lens.exportDate} onOpenPolicy={onOpenPolicy} />
 
         <ScreenFooter />
       </div>

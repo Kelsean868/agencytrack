@@ -164,7 +164,10 @@ function policyIsEligible(policy) {
   return true;
 }
 
-function policyDate(policy) {
+/** The SUBMISSION-window date the legacy path tests (dateSubmitted ?? dateWritten).
+ * Exported for the Campaign screen's policy list (R2-4) so the date it shows is
+ * the one the lens tested, never a twin. */
+export function policyDate(policy) {
   return toDateStr(policy?.dateSubmitted) ?? toDateStr(policy?.dateWritten);
 }
 

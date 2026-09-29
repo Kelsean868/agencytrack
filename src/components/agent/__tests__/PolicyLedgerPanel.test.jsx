@@ -691,3 +691,84 @@ describe('PolicyLedgerPanel — LX page layout', () => {
     expect(screen.getByTestId('award-lens-ring-persistency')).toBeInTheDocument();
   });
 });
+
+// ── R2-4 — the Campaign screen's "Change status" hand-off ────────────────────
+//
+// The Campaign screen never writes. Its "Change status" opens THIS panel with
+// `initialPolicyId`, which opens that policy's drawer through the same
+// `openDrawer` a tap on its card uses — so the change runs through this panel's
+// own handleTransition → transitionPolicyStatus, with the same arguments.
+
+describe('PolicyLedgerPanel — initialPolicyId hand-off (R2-4)', () => {
+  const OTHER = makePolicy({ id: 'p0', ownerName: 'Other Owner', status: 'submitted' });
+
+  async function submitDrawer() {
+    await waitFor(() => screen.getByTestId('policy-drawer'));
+    fireEvent.submit(screen.getByTestId('policy-drawer').querySelector('form'));
+    await waitFor(() => expect(hoisted.transitionPolicyStatus).toHaveBeenCalledOnce());
+    return hoisted.transitionPolicyStatus.mock.calls[0];
+  }
+
+  it('opens the handed-off policy\'s drawer once the ledger has loaded, then reports it consumed', async () => {
+    const target = makePolicy({ id: 'p1', ownerName: 'Target Owner', status: 'submitted' });
+    hoisted.getOwnPolicies.mockResolvedValue([OTHER, target]);
+    const onInitialPolicyConsumed = vi.fn();
+    render(<PolicyLedgerPanel initialPolicyId="p1" onInitialPolicyConsumed={onInitialPolicyConsumed} />);
+    const drawer = await waitFor(() => screen.getByTestId('policy-drawer'));
+    expect(within(drawer).getByText('Target Owner')).toBeInTheDocument();
+    expect(onInitialPolicyConsumed).toHaveBeenCalledTimes(1);
+  });
+
+  it('a change made from the hand-off calls transitionPolicyStatus with the SAME arguments as one opened from the ledger card', async () => {
+    const target = makePolicy({ id: 'p1', status: 'submitted' });
+
+    // Path A — the ledger itself: tap the card, confirm.
+    hoisted.getOwnPolicies.mockResolvedValue([OTHER, target]);
+    const a = render(<PolicyLedgerPanel />);
+    await waitFor(() => screen.getByTestId('policy-card-p1'));
+    fireEvent.click(screen.getByTestId('policy-card-p1'));
+    const fromLedger = await submitDrawer();
+    a.unmount();
+    hoisted.transitionPolicyStatus.mockClear();
+
+    // Path B — the Campaign screen's hand-off: no tap, confirm.
+    render(<PolicyLedgerPanel initialPolicyId="p1" />);
+    const fromCampaign = await submitDrawer();
+
+    expect(fromCampaign).toEqual(fromLedger);
+    expect(fromCampaign[0]).toBe('tenant1');
+    expect(fromCampaign[1]).toEqual({ uid: 'agent1', name: 'Agent Name' });
+    expect(fromCampaign.slice(2, 5)).toEqual(['p1', 'submitted', 'rated']);
+  });
+
+  it('a head-office settled policy handed off stays locked exactly as in the ledger (no transition footer)', async () => {
+    hoisted.getOwnPolicies.mockResolvedValue([makePolicy({
+      id: 'p1', status: 'settled', statusSource: 'oipa_import', settledAPI: 5000,
+    })]);
+    render(<PolicyLedgerPanel initialPolicyId="p1" />);
+    const drawer = await waitFor(() => screen.getByTestId('policy-drawer'));
+    expect(within(drawer).queryByTestId('drawer-tx-confirm')).not.toBeInTheDocument();
+    expect(within(drawer).getByTestId('drawer-ho-figures')).toBeInTheDocument();
+  });
+
+  it('an id no longer in the ledger opens nothing, and is still consumed', async () => {
+    hoisted.getOwnPolicies.mockResolvedValue([OTHER]);
+    const onInitialPolicyConsumed = vi.fn();
+    render(<PolicyLedgerPanel initialPolicyId="gone" onInitialPolicyConsumed={onInitialPolicyConsumed} />);
+    await waitFor(() => screen.getByTestId('policy-card-p0'));
+    await waitFor(() => expect(onInitialPolicyConsumed).toHaveBeenCalledTimes(1));
+    expect(screen.queryByTestId('policy-drawer')).toBeNull();
+  });
+
+  it('closing the drawer does not reopen it (the hand-off is consumed once per mount)', async () => {
+    hoisted.getOwnPolicies.mockResolvedValue([makePolicy({ id: 'p1', status: 'submitted' })]);
+    render(<PolicyLedgerPanel initialPolicyId="p1" />);
+    await waitFor(() => screen.getByTestId('policy-drawer'));
+    fireEvent.click(within(screen.getByTestId('policy-drawer')).getByRole('button', { name: /close/i }));
+    await waitFor(() => expect(screen.queryByTestId('policy-drawer')).toBeNull());
+    fireEvent.click(screen.getByTestId('policy-card-p1'));
+    await waitFor(() => screen.getByTestId('policy-drawer'));
+    fireEvent.click(within(screen.getByTestId('policy-drawer')).getByRole('button', { name: /close/i }));
+    await waitFor(() => expect(screen.queryByTestId('policy-drawer')).toBeNull());
+  });
+});

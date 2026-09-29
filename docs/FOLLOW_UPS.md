@@ -365,6 +365,7 @@
 | **PWA prompt mode: a signed-in Chrome ran an old build until "Update" was tapped** — consider whether agents need a stale-build reminder (banked 2026-09-28, production click-through) | INFO | PWA | — | see § PWA prompt mode keeps an old build running at end of file |
 | **One rounding rule for every agent-facing persistency figure:** Kyron ruled (28-09-2026) that a persistency percent is shown to 2 decimals, half up, and the gate verdict is judged on that same rounded value. Today follows it (#1011); every other agent-facing surface still prints 1 decimal and judges the raw value, so screens can disagree at the gate (banked 2026-09-28) | MEDIUM | persistency / FR + Nexus | — | see § One rounding rule for every agent-facing persistency figure at end of file |
 | **Today persistency tile does not say when the export is stale:** Today states a gate verdict from the outlook estimate but not that the head-office export is older than 45 days (`outlook.stale`), nor which inputs the estimate assumes as 0 (`outlook.assumptions.assumedZero`), both of which the Persistency screen shows (banked 2026-09-28, CodeRabbit on #1011) | LOW | FR Today / persistency | — | see § Today persistency tile: stale export warning at end of file |
+| **Campaign "Change status" opens the ledger drawer without its "Counts toward" chips:** the R2-4 hand-off opens the drawer through the ledger's `openDrawer` with no award windows, because those are computed inside `AwardLensPanel` (banked 2026-09-29, R2-4) | LOW | Policy ledger / campaign | — | see § Campaign hand-off drawer: Counts toward chips at end of file |
 
 
 ---
@@ -7911,3 +7912,11 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Fix shape:** when `outlook.stale`, or when `outlook.assumptions.assumedZero` is non-empty, add a short qualifier to the tile note (copy to be ruled; the D3 copy in `docs/briefs/fr-today-persistency-kickoff.md` is locked), e.g. "export 52 days old" / "some inputs assumed 0". `FrToday.jsx` already holds the outlook, so no new read is needed. Wording added at post-merge of #1011 (the assumed-input half was named by CodeRabbit's final summary and was not in the banked entry).
 
 **Falsification (Rule 23):** closed without change if Kyron rules that the "estimate" label plus the link to the Persistency screen is qualification enough.
+
+## Campaign hand-off drawer: Counts toward chips
+
+**Banked 2026-09-29 (FR round 2, R2-4).** The Campaign screen's "Change status" opens the Policy ledger with that policy's drill drawer open (`PolicyLedgerPanel` `initialPolicyId`). The drawer, its transition footer, the head-office lock and the write (`handleTransition` → `transitionPolicyStatus`) are the ledger's own. One difference from a tap on the card: the "Counts toward" chip row (L3) is empty, because `awardWindowsForPolicy` rows are computed inside `AwardLensPanel` (`windowsById`, from `awardLensPeriods`, which needs the async campaign fetch) and only reach the drawer through `openWithWindows`.
+
+**Fix shape:** route the hand-off through `AwardLensPanel` (open via `openWithWindows` once `campaignsLoading` has settled), or have the drawer derive its own windows. Neither changes the write path.
+
+**Falsification (Rule 23):** closed without change if Kyron rules the chips are not needed on a drawer reached from the Campaign screen, where the campaign is already the context.

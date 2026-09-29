@@ -20,6 +20,8 @@ const captured = vi.hoisted(() => ({
   bottomNavItems: null,
   drawerNavItems: null,
   activeTab:      null,
+  ledgerProps:    null,
+  awardsProps:    null,
 }));
 
 // ── Service mocks (minimal — we don't exercise data paths in this test) ──────
@@ -122,11 +124,16 @@ vi.mock('../../goals/MdrtTracker',        () => ({ default: () => null }));
 vi.mock('../../profile/CareerPortal',                () => ({ default: () => null }));
 vi.mock('../../profile/ProfileScreen',               () => ({ default: () => null }));
 vi.mock('../../ui/ReportRangeModal',                 () => ({ default: () => null }));
-vi.mock('../../awards/AgentAwardsPanel',             () => ({ default: () => null }));
+vi.mock('../../awards/AgentAwardsPanel',             () => ({ default: (props) => { captured.awardsProps = props; return null; } }));
 vi.mock('../../submissions/SubmissionViewer',        () => ({ default: () => null }));
 vi.mock('../../submissions/HistoryTab',              () => ({ default: () => null }));
 vi.mock('../../agent/ProspectInfoPanel',             () => ({ default: () => null }));
-vi.mock('../../agent/PolicyLedgerPanel',             () => ({ default: () => React.createElement('div', { 'data-testid': 'policy-ledger-mock' }) }));
+vi.mock('../../agent/PolicyLedgerPanel',             () => ({
+  default: (props) => {
+    captured.ledgerProps = props;
+    return React.createElement('div', { 'data-testid': 'policy-ledger-mock' });
+  },
+}));
 vi.mock('../../agent/MoneyNeedsPanel',               () => ({ default: () => React.createElement('div', { 'data-testid': 'money-needs-mock' }) }));
 vi.mock('../../productionReport/ProductionReportTab', () => ({ default: () => React.createElement('div', { 'data-testid': 'production-report-mock' }) }));
 vi.mock('../../agent/PersistencyTab',                () => ({ default: () => React.createElement('div', { 'data-testid': 'persistency-tab-mock' }) }));
@@ -152,7 +159,10 @@ vi.mock('../../fr/work/FrWorkHeaders', () => ({
 }));
 // FR-5: Campaign, Trophy room, and the headers above the Leaderboard and Profile.
 vi.mock('../../fr/compete/FrCampaign', () => ({
-  default: ({ onOpenAwards }) => React.createElement('button', { 'data-testid': 'fr-campaign-mock', onClick: onOpenAwards }),
+  default: ({ onOpenAwards, onOpenPolicy }) => React.createElement(React.Fragment, null,
+    React.createElement('button', { 'data-testid': 'fr-campaign-mock', onClick: onOpenAwards }),
+    // R2-4 — a campaign row's "Change status".
+    React.createElement('button', { 'data-testid': 'fr-campaign-change-status-mock', onClick: () => onOpenPolicy?.('p9') })),
 }));
 vi.mock('../../fr/compete/FrTrophyRoom', () => ({
   default: (props) => {
@@ -195,6 +205,8 @@ beforeEach(() => {
   captured.navItems = null;
   captured.bottomNavItems = null;
   captured.drawerNavItems = null;
+  captured.ledgerProps = null;
+  captured.awardsProps = null;
 });
 
 // Every route the Nexus agent nav reaches today (plus Profile + Settings).
@@ -436,4 +448,32 @@ describe('AgentDashboard — FR-5 Compete / You', () => {
       expect(captured.activeTab).toBe(fallback);
     },
   );
+});
+
+// ── R2-4 — Campaign "Change status" → the Policy ledger with that drawer open ──
+describe('AgentDashboard — R2-4 campaign status-change hand-off', () => {
+  it('FR Campaign: "Change status" opens the Policy ledger with that policy handed off; consuming clears it', async () => {
+    localStorage.setItem('agencytrack-look', 'fr');
+    render(<AgentDashboard />);
+    act(() => captured.sidebar.props.onNavigate('campaign'));
+    act(() => screen.getByTestId('fr-campaign-change-status-mock').click());
+    expect(await screen.findByTestId('policy-ledger-mock')).toBeInTheDocument();
+    expect(captured.activeTab).toBe('policy-ledger');
+    expect(captured.ledgerProps.initialPolicyId).toBe('p9');
+    act(() => captured.ledgerProps.onInitialPolicyConsumed());
+    expect(captured.ledgerProps.initialPolicyId).toBeNull();
+  });
+
+  it('Nexus Awards (the Nexus campaign screen) gets the same hand-off, and leaving the ledger clears it', async () => {
+    render(<AgentDashboard />);
+    act(() => captured.setActiveTab('awards'));
+    await vi.waitFor(() => expect(captured.awardsProps?.onOpenPolicy).toBeTypeOf('function'));
+    act(() => captured.awardsProps.onOpenPolicy('p9'));
+    expect(await screen.findByTestId('policy-ledger-mock')).toBeInTheDocument();
+    expect(captured.ledgerProps.initialPolicyId).toBe('p9');
+    act(() => captured.setActiveTab('awards'));
+    act(() => captured.setActiveTab('policy-ledger'));
+    expect(await screen.findByTestId('policy-ledger-mock')).toBeInTheDocument();
+    expect(captured.ledgerProps.initialPolicyId).toBeNull();
+  });
 });

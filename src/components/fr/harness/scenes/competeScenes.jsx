@@ -3,6 +3,9 @@
 import React, { useMemo } from 'react';
 import FrTrophyRoomView from '../../compete/FrTrophyRoomView';
 import FrCampaignView from '../../compete/FrCampaignView';
+import CampaignPolicyList from '../../../campaigns/CampaignPolicyList';
+import { derivePolicyLens } from '../../../../lib/policyCampaignLens';
+import { buildCampaignPolicyGroups } from '../../../../lib/campaignPolicyGroups';
 import { FrArenaHeaderView, FrMeHeaderView } from '../../compete/FrCompeteHeaderViews';
 import { trophyRoom, arenaStanding, meTiles, awardTrophies } from '../../../../lib/fr/competeModel';
 import { awardInputs, agentAwardsView } from '../../../../lib/awards/agentAwardModel';
@@ -117,6 +120,43 @@ function CampaignScene() {
   );
 }
 
+// R2-4 — "Policies in this campaign" through the REAL lens (derivePolicyLens →
+// buildCampaignPolicyGroups). A Rule 7 campaign, so every group and two credit
+// cases show: a Platinum Edge (an app, no API) and a head-office Pending that
+// the ledger still lets the agent move. Placeholder clients, never real ones.
+const R24_CAMPAIGN = {
+  id: 'c1', name: '[Christmas Campaign 2026]', startDate: '2026-07-01', endDate: '2026-12-31',
+  structure: 'qualify', credit: {},
+  tiers: [{ level: 1, name: 'Champion', api: 275000, apps: 35, cash: 7000 }],
+};
+const HO = { statusSource: 'oipa_import', exportDate: '2026-09-15' };
+const R24_POLICIES = [
+  { id: 's1', ownerName: '[Client A]', policyNumber: '10020031', status: 'settled', productLine: 'life', newBusinessType: 'nb_ordinary', settledAPI: 73946.28, dateIssued: '2026-08-15', ...HO },
+  { id: 's2', ownerName: '[Client B with a much longer name than fits on a phone row]', policyNumber: '10020187', status: 'settled', productLine: 'life', newBusinessType: 'platinum_edge', settledAPI: 12000, dateIssued: '2026-09-01', statusSource: 'agent' },
+  { id: 'w1', ownerName: '[Client C]', status: 'submitted', productLine: 'life', newBusinessType: 'nb_ordinary', proposedAPI: 18500, dateWritten: '2026-09-10', dateSubmitted: '2026-09-12', statusSource: 'agent' },
+  { id: 'w2', ownerName: '[Client D]', policyNumber: '10020244', status: 'submitted', productLine: 'life', newBusinessType: 'nb_ordinary', proposedAPI: 9600, dateWritten: '2026-08-28', ...HO },
+  { id: 'x1', ownerName: '[Client E]', policyNumber: '10019902', status: 'lapsed', productLine: 'life', newBusinessType: 'nb_ordinary', settledAPI: 8400, dateIssued: '2025-11-02', ...HO },
+  { id: 'x2', ownerName: '[Client F]', policyNumber: '10019655', status: 'settled', productLine: 'life', newBusinessType: 'nb_ordinary', settledAPI: 15200, dateIssued: '2026-03-10', ...HO },
+  { id: 'x3', ownerName: '[Client G]', policyNumber: '10020300', status: 'settled', productLine: 'life', isSelfOrFamily: true, newBusinessType: 'nb_ordinary', settledAPI: 6000, dateIssued: '2026-08-02', statusSource: 'agent' },
+];
+
+function CampaignPoliciesScene() {
+  const groups = useMemo(() => {
+    const lens = derivePolicyLens(R24_POLICIES, R24_CAMPAIGN, { now: new Date('2026-09-26T12:00:00Z') });
+    return buildCampaignPolicyGroups(lens, R24_POLICIES);
+  }, []);
+  return (
+    <Frame>
+      <FrCampaignView
+        campaigns={[R24_CAMPAIGN]}
+        renderCampaign={() => (
+          <CampaignPolicyList groups={groups} exportDate="2026-09-15" onOpenPolicy={() => {}} showNotCounting />
+        )}
+      />
+    </Frame>
+  );
+}
+
 function HeadersScene({ variant }) {
   const standing = useMemo(() => arenaStanding(BOARD(variant), 'me'), [variant]);
   const tiles = useMemo(() => meTiles(trophyRoom(ENTRY[variant] ?? ENTRY.A)), [variant]);
@@ -132,5 +172,6 @@ export const COMPETE_SCENES = [
   { id: 'trophy-room', title: 'Compete · Trophy room', slice: 'FR-5', viewport: 'desktop,phone', hasVariants: true, render: TrophiesScene },
   { id: 'trophy-awards', title: 'Compete · Trophy room award samples (A · B)', slice: 'FR-5', viewport: 'desktop,phone', render: AwardSamplesScene },
   { id: 'campaign', title: 'Compete · Campaign', slice: 'FR-5', viewport: 'desktop,phone', render: CampaignScene },
+  { id: 'campaign-policies', title: 'Compete · Campaign — policies in this campaign', slice: 'R2-4', viewport: 'desktop,tablet,phone', render: CampaignPoliciesScene },
   { id: 'compete-headers', title: 'Arena + Me headers', slice: 'FR-5', viewport: 'desktop,phone', hasVariants: true, render: HeadersScene },
 ];
