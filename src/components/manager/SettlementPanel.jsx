@@ -6,6 +6,7 @@ import useToast from '../../hooks/useToast';
 import { getTenantUsers } from '../../services/managerService';
 import { confirmSettlement, getSettlementsForUnit, deleteSettlement } from '../../services/settlementService';
 import { formatCurrency } from '../../utils/formatters';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 const MONTHS = [
   'January','February','March','April','May','June',
@@ -280,7 +281,7 @@ export default function SettlementPanel() {
                           <td className="px-3 py-2.5 text-ink-muted whitespace-nowrap">{periodLabel(s.periodKey)}</td>
                           <td className="px-3 py-2.5 text-right text-ink tabular-nums whitespace-nowrap">{formatCurrency(s.settledAPI)}</td>
                           <td className="px-3 py-2.5 text-right text-ink tabular-nums">{s.settledApps ?? '—'}</td>
-                          <td className="px-3 py-2.5 text-right text-ink tabular-nums">{s.persistency != null ? `${s.persistency}%` : '—'}</td>
+                          <td className="px-3 py-2.5 text-right text-ink tabular-nums">{s.persistency != null ? formatPersistencyPct(Number(s.persistency)) : '—'}</td>
                           <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{s.confirmedByName ?? '—'}</td>
                           <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{formatTs(s.confirmedAt)}</td>
                         </tr>
@@ -563,7 +564,7 @@ export default function SettlementPanel() {
                         <td className="px-3 py-2.5 text-ink-muted whitespace-nowrap">{periodLabel(s.periodKey)}</td>
                         <td className="px-3 py-2.5 text-right text-ink tabular-nums whitespace-nowrap">{formatCurrency(s.settledAPI)}</td>
                         <td className="px-3 py-2.5 text-right text-ink tabular-nums">{s.settledApps ?? '—'}</td>
-                        <td className="px-3 py-2.5 text-right text-ink tabular-nums">{s.persistency != null ? `${s.persistency}%` : '—'}</td>
+                        <td className="px-3 py-2.5 text-right text-ink tabular-nums">{s.persistency != null ? formatPersistencyPct(Number(s.persistency)) : '—'}</td>
                         <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{s.confirmedByName ?? '—'}</td>
                         <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{formatTs(s.confirmedAt)}</td>
                         <td className="px-3 py-2.5 text-center">

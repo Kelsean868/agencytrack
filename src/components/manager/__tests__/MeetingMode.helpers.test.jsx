@@ -81,12 +81,12 @@ describe('persistency helpers', () => {
   it('aggregateLatestPersistency SUM-aggregates — it does NOT average percentages', () => {
     // A $200k advisor at 94% and a $2k advisor at 86%.
     //   average of percentages → (94 + 86) / 2               = 90  ← WRONG
-    //   aggregate              → 189,720 / 202,000 = 0.9392  = 94  ← the book
+    //   aggregate              → 189,720 / 202,000 = 0.9392  = 93.92 ← the book (2 dp, R-a)
     const map = {
       a: [{ month: 6, persistency: 0.94, grossSettled: 200000, netSettled: 188000 }],
       b: [{ month: 6, persistency: 0.86, grossSettled: 2000,   netSettled: 1720 }],
     };
-    expect(aggregateLatestPersistency(['a', 'b'], map)).toBe(94);
+    expect(aggregateLatestPersistency(['a', 'b'], map)).toBe(93.92);
     expect(aggregateLatestPersistency(['a', 'b'], map)).not.toBe(90); // the average
     expect(aggregateLatestPersistency(['x'], map)).toBeNull();
   });
@@ -137,7 +137,7 @@ describe('persistency scale regression — decimals must not read as percentages
     const flag = classifyFlag({ submitted: true, tiles: okTiles, persistency: pct });
     expect(flag.key).toBe('persistency');
     // The reason line must read as a real percentage, not "1%".
-    expect(flag.reason).toContain('72%');
+    expect(flag.reason).toContain('72.00%'); // 2 dp, ruling R-a
     expect(flag.reason).toContain('80%');
   });
 

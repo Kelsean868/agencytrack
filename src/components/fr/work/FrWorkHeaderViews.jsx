@@ -2,6 +2,7 @@ import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import { CARD, EYEBROW, FOCUS, TileGrid, WarnIcon } from '../money/moneyParts';
 import { monthLabel, wholeTTDUp } from '../../../lib/fr/moneyModel';
+import { formatPersistencyPct } from '../../../lib/persistency/persistencyRounding';
 
 /**
  * FR headers above the existing Numbers screens and the Policy Ledger (FR-4,
@@ -35,13 +36,13 @@ export function FrLedgerHeaderView({ tiles, plan, loading = false, onOpenWinback
           {plan ? (
             plan.meets ? (
               <p className="text-[14px] font-semibold text-ink">
-                {plan.currentPct.toFixed(1)}% persistency — at or above the {plan.threshold}% gate
+                {formatPersistencyPct(plan.currentPct)} persistency — at or above the {plan.threshold}% gate
                 {plan.lapses.length ? ` · ${plan.lapses.length} lapsed ${plan.lapses.length === 1 ? 'policy still counts' : 'policies still count'}` : ''}
               </p>
             ) : (
               <p className="flex items-start gap-1.5 text-[14px] font-semibold text-fr-warm">
                 <WarnIcon className="mt-0.5" />
-                {plan.currentPct.toFixed(1)}% — TTD {wholeTTDUp(plan.need)} reinstated clears {plan.threshold}% · {plan.lapses.length} lapsed {plan.lapses.length === 1 ? 'policy' : 'policies'} can help
+                {formatPersistencyPct(plan.currentPct)} — TTD {wholeTTDUp(plan.need)} reinstated clears {plan.threshold}% · {plan.lapses.length} lapsed {plan.lapses.length === 1 ? 'policy' : 'policies'} can help
               </p>
             )
           ) : (

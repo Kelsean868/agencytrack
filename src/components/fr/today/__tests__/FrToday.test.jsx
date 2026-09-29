@@ -27,6 +27,7 @@ import { deriveYearProduction } from '../../../../lib/ledgerProduction';
 import { buildPersistencyOutlook, formatOutlookPct } from '../../../../lib/persistency/persistencyOutlook';
 import { formatPersistencyPct } from '../../../../lib/persistency/persistencyRounding';
 import { PersistencyGateBarBlock } from '../../../campaigns/CampaignScreenBlocks';
+import PersistencyOutlookHero from '../../../persistency/PersistencyOutlookHero';
 
 const imported = (over) => ({ importSource: 'oipa_import', newBusinessType: 'nb_ordinary', productLine: 'life', settledAPI: null, ...over });
 const POLICIES_ALL = [
@@ -37,8 +38,8 @@ const POLICIES_ALL = [
 ];
 
 // A book whose persistency is known to the outlook: the Kyron-shaped fixture
-// persistencyOutlook.test.js pins (export 15 Sep 2026 → Aug derived 89.6 %,
-// Sep estimate 86.6 % at one decimal; 86.63 % at the ruled two). Synthetic, no client data. Issue dates are 2024–25,
+// persistencyOutlook.test.js pins (export 15 Sep 2026 → Aug derived 89.58 %,
+// Sep estimate 86.63 %, 2 decimals half up — ruling R-a). Synthetic, no client data. Issue dates are 2024–25,
 // so the 2026 production figures are untouched by it.
 const EXPORT = '2026-09-15';
 const oipa = (policyNumber, dateIssued, status, api) => ({
@@ -217,24 +218,28 @@ describe('FrToday container', () => {
     expect(desktop().textContent).not.toMatch(/56\.5/);
   });
 
-  // Parity of SOURCE: Today and the Persistency screen's estimate column read
-  // the same outlook value for the same month. Their precision differs until
-  // the screen adopts the 2-dp rule too (Kyron ruling 28-09-2026; FOLLOW_UPS
-  // § One rounding rule for every agent-facing persistency figure).
-  it('parity: the Today tile and the Persistency screen\'s estimate column read the same outlook value', () => {
+  // Parity of STRING (ruling R-a, R2-1): Today, the Persistency screen and the
+  // campaign card print the SAME string for the same month of the same book.
+  // (Was a source-only parity while the other screens printed 1 decimal.)
+  it('parity: Today, the Persistency screen and the campaign card print the same string', () => {
     render(<FrToday {...props({ campaignPolicies: PERSISTENCY_BOOK, persistency: JULY_RECORD })} />);
     // The tile's final value (the visible digits count up; the sr-only text is the settled figure).
     const today = within(desktop()).getByTestId('today-tile-persistency-value').querySelector('.sr-only').textContent;
     // The same real outlook the Persistency/Campaign screen builds for these inputs.
     const outlook = buildPersistencyOutlook({ policies: PERSISTENCY_BOOK, records: JULY_RECORD, today: '2026-09-27' });
-    render(<PersistencyGateBarBlock projectedPct={null} threshold={90} judgedLabel={null} outlook={outlook} />);
-    const col = screen.getByTestId('campaign-screen-gate-month-estimate');
     const source = outlook.estimateToday;
     expect(source.monthKey).toBe('2026-09');
-    expect(col).toHaveTextContent('Sep');
-    expect(col).toHaveTextContent(formatOutlookPct(source.persistency)); // 86.6% (1 dp, until the FU)
-    expect(today).toBe(formatPersistencyPct(source.persistency * 100));  // same value, 2 dp
+    expect(today).toBe(formatPersistencyPct(source.persistency * 100));
     expect(today).toBe('86.63%');
+    // The campaign card (Campaign screen month-history row, estimate column).
+    render(<PersistencyGateBarBlock projectedPct={null} threshold={90} judgedLabel={null} outlook={outlook} />);
+    const col = screen.getByTestId('campaign-screen-gate-month-estimate');
+    expect(col).toHaveTextContent('Sep');
+    expect(col).toHaveTextContent(today);
+    expect(formatOutlookPct(source.persistency)).toBe(today);
+    // The Persistency screen (outlook hero, "Estimated today" figure).
+    render(<PersistencyOutlookHero outlook={outlook} canConfirm={false} onConfirm={() => {}} />);
+    expect(screen.getByTestId('persistency-outlook-estimate-pct').textContent).toBe(today);
   });
 
   it('a submissions error shows the same alert copy as HomeV2', () => {
