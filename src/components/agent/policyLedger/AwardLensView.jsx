@@ -148,8 +148,12 @@ function RankedBoxes({ summary }) {
  * the right. The shrink victim is the sub text (v3 #8) — the ring never shrinks.
  */
 function RingCell({ caption, ring, tone = 'teal', tick = null, subClass = 'text-ink-muted', testId }) {
+  // fr-fit-any-width: the cell picks ring-BESIDE-text (D3) or ring-OVER-text
+  // (D1) by the width the CELL has, not the window — three rings in a strip
+  // beside the sidebar are too narrow for the side-by-side form.
   return (
-    <div className="flex min-w-0 flex-col items-center gap-1 text-center lg:flex-1 lg:flex-row lg:gap-2.5 lg:text-left" data-testid={testId}>
+    <div className="@container min-w-0 @[60rem]/award:flex-1" data-testid={testId}>
+    <div className="flex min-w-0 flex-col items-center gap-1 text-center @[11rem]:flex-row @[11rem]:gap-2.5 @[11rem]:text-left">
       <ProgressDonut
         value={ring.value ?? 0}
         max={ring.max ?? 100}
@@ -158,18 +162,19 @@ function RingCell({ caption, ring, tone = 'teal', tick = null, subClass = 'text-
         tick={tick}
         centerLabel={ring.center}
         ariaLabel={ring.aria}
-        className="h-[84px] w-[84px] lg:h-14 lg:w-14"
+        className="h-[84px] w-[84px] @[11rem]:h-14 @[11rem]:w-14"
       />
-      <span className="flex min-w-0 flex-col items-center lg:items-start">
+      <span className="flex min-w-0 flex-col items-center @[11rem]:items-start">
         <span className="text-[13px] font-bold text-ink">{caption}</span>
-        <span className={`text-xs lg:hidden ${subClass}`}>{ring.sub}</span>
+        <span className={`text-xs @[11rem]:hidden ${subClass}`}>{ring.sub}</span>
         {ring.subPending && (
-          <span className="text-xs font-semibold text-ink lg:hidden" data-testid={`${testId}-pending`}>{ring.subPending}</span>
+          <span className="text-xs font-semibold text-ink @[11rem]:hidden" data-testid={`${testId}-pending`}>{ring.subPending}</span>
         )}
-        <span className={`hidden min-w-0 text-xs font-semibold leading-snug lg:block ${subClass}`}>
+        <span className={`hidden min-w-0 text-xs font-semibold leading-snug @[11rem]:block ${subClass}`}>
           {ring.subWide ?? ring.sub}
         </span>
       </span>
+    </div>
     </div>
   );
 }
@@ -178,7 +183,7 @@ function CampaignRings({ rings, persistency }) {
   const pers = persistencyRingLabels(persistency);
   return (
     <div
-      className={`grid gap-1.5 lg:flex lg:flex-nowrap lg:gap-4 ${pers ? 'grid-cols-3' : 'grid-cols-2'}`}
+      className={`grid gap-1.5 @[60rem]/award:flex @[60rem]/award:flex-nowrap @[60rem]/award:gap-4 ${pers ? 'grid-cols-3' : 'grid-cols-2'}`}
       data-testid="award-lens-rings"
     >
       <RingCell caption="API" ring={rings.api} testId="award-lens-ring-api" />
@@ -212,14 +217,19 @@ export function AwardSummaryCard({ lens, summary, tierPicker, onExportProof, per
   const isCampaign = lens.award.kind === 'campaign';
   const campaignTiers = isCampaign ? lens.award.campaign?.tiers : null;
   const rings = isCampaign ? summary.rings : null;
+  // fr-fit-any-width: the three-column strip (D3) needs about 60rem of CARD
+  // width (360 + 260 fixed columns + the figures). Beside the sidebar on a
+  // narrow window the card keeps the stacked card (D1) instead of squeezing
+  // the figures to a few pixels. Wide windows (≥ 1280) still get the strip.
   return (
+    <div className="@container/award">
     <section
       aria-label="Award summary"
-      className="flex flex-col gap-3 rounded-[20px] border border-border bg-card p-4 lg:flex-row lg:items-center lg:gap-6 lg:rounded-[18px] lg:px-[18px] lg:py-3.5"
+      className="flex flex-col gap-3 rounded-[20px] border border-border bg-card p-4 @[60rem]/award:flex-row @[60rem]/award:items-center @[60rem]/award:gap-6 @[60rem]/award:rounded-[18px] @[60rem]/award:px-[18px] @[60rem]/award:py-3.5"
       data-testid="award-lens-card"
     >
-      <div className="flex min-w-0 flex-col gap-3 lg:w-[360px] lg:shrink-0">
-        <div className={`flex items-center justify-between gap-2 ${rings ? 'lg:hidden' : ''}`}>
+      <div className="flex min-w-0 flex-col gap-3 @[60rem]/award:w-[360px] @[60rem]/award:shrink-0">
+        <div className={`flex items-center justify-between gap-2 ${rings ? '@[60rem]/award:hidden' : ''}`}>
           <span className="min-w-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-gold-ink">
             {summary.eyebrow}
           </span>
@@ -245,25 +255,25 @@ export function AwardSummaryCard({ lens, summary, tierPicker, onExportProof, per
         )}
       </div>
 
-      <div className="flex min-w-0 flex-col gap-2 lg:flex-1">
+      <div className="flex min-w-0 flex-col gap-2 @[60rem]/award:flex-1">
         {rings && <CampaignRings rings={rings} persistency={persistency} />}
         {!rings && summary.hasRing && <RingFigures summary={summary} lens={lens} />}
         {!rings && !summary.hasRing && <RankedBoxes summary={summary} />}
         {summary.hasRing && (
-          <RingLegend show={lens.pending.api > 0} className={rings ? 'lg:hidden' : 'justify-start'} />
+          <RingLegend show={lens.pending.api > 0} className={rings ? '@[60rem]/award:hidden' : 'justify-start'} />
         )}
       </div>
 
-      <div className="flex min-w-0 flex-col gap-2 lg:w-[260px] lg:shrink-0">
+      <div className="flex min-w-0 flex-col gap-2 @[60rem]/award:w-[260px] @[60rem]/award:shrink-0">
         <div
-          className={`flex flex-col gap-1 rounded-xl bg-surface px-3 py-2.5 ${rings ? 'lg:bg-transparent lg:p-0' : ''}`}
+          className={`flex flex-col gap-1 rounded-xl bg-surface px-3 py-2.5 ${rings ? '@[60rem]/award:bg-transparent @[60rem]/award:p-0' : ''}`}
           data-testid="award-lens-rule"
         >
           <span className="text-[13px] font-bold text-ink" data-testid="award-lens-line1">{summary.line1}</span>
           {summary.pendingNote && (
             <>
-              <span className="text-xs leading-snug text-ink-muted lg:hidden" data-testid="award-lens-pending-note">{summary.pendingNote}</span>
-              <span className="hidden text-xs leading-snug text-ink-muted lg:block">{summary.pendingNoteShort}</span>
+              <span className="text-xs leading-snug text-ink-muted @[60rem]/award:hidden" data-testid="award-lens-pending-note">{summary.pendingNote}</span>
+              <span className="hidden text-xs leading-snug text-ink-muted @[60rem]/award:block">{summary.pendingNoteShort}</span>
             </>
           )}
           <span className="text-xs leading-snug text-ink-muted" data-testid="award-lens-line2">{summary.line2}</span>
@@ -285,6 +295,7 @@ export function AwardSummaryCard({ lens, summary, tierPicker, onExportProof, per
         )}
       </div>
     </section>
+    </div>
   );
 }
 
