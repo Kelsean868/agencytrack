@@ -94,7 +94,7 @@ describe('CampaignHeroCard variant="compact"', () => {
     const records = [{ monthKey: '2026-09', grossSettled: 100_000, netSettled: 86_600 }];
     render(<CampaignHeroCard variant="compact" campaign={CAMPAIGN} policies={POLICIES} persistencyRecords={records} />);
     const cell = screen.getByTestId('campaign-compact-persistency');
-    expect(cell).toHaveTextContent('86.6%');
+    expect(cell).toHaveTextContent('86.60%');
     expect(cell).toHaveTextContent('Gate 90% · Dec');
     const donut = screen.getByTestId('campaign-compact-persistency-donut');
     expect(donut.querySelector('[data-testid="donut-arc"]').getAttribute('class')).toContain('stroke-warning');

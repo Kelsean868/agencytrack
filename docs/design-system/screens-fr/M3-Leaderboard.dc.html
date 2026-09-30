@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Leaderboard — mobile v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>body{margin:0}a{color:inherit}
+.tn{font-variant-numeric:tabular-nums}
+.ml-bar{transition:width 520ms cubic-bezier(0.32,0.72,0,1)}
+.ml-pod{transition:height 520ms cubic-bezier(0.32,0.72,0,1)}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: 1640px; box-sizing: border-box; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; position: relative; overflow: hidden; display: flex; flex-direction: column;">
+  <header style="padding: 18px 16px 10px; display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; flex-grow: 1;">Leaderboard</h1>
+      <span class="tn" style="font-size: 12px; color: {{c.mute}};">South · 10 agents</span>
+    </div>
+    <div role="radiogroup" aria-label="Period" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; padding: 3px; border-radius: 12px; background: {{c.sunk}};">
+      <sc-for list="{{periods}}" as="p" hint-placeholder-count="4">
+        <button role="radio" aria-checked="{{p.on}}" onClick="{{p.pick}}" style="height: 44px; border: 0; border-radius: 10px; background: {{p.bg}}; color: {{p.color}}; box-shadow: {{p.shadow}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer;">{{p.label}}</button>
+      </sc-for>
+    </div>
+  </header>
+
+  <div style="padding: 0 16px; display: flex; flex-direction: column; gap: 14px;">
+    <section aria-label="Your standing" style="border-radius: 20px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; align-items: center;">
+      <span class="tn" style="grid-row: 1 / span 2; font-family: 'Bricolage Grotesque', sans-serif; font-size: 48px; font-weight: 800; letter-spacing: -0.04em; line-height: 1;">{{you.rankBig}}</span>
+      <span style="font-size: 14px; font-weight: 700;">of {{you.of}} · {{you.api}}</span>
+      <span class="tn" style="font-size: 13px; color: {{c.mute}};">{{you.toPass}} {{you.toPassWho}}</span>
+      <span role="img" aria-label="{{you.passAria}}" style="grid-column: 1 / -1; margin-top: 8px; position: relative; height: 10px; border-radius: 5px; background: {{c.sunk}};"><span class="ml-bar" style="position: absolute; left: 0; top: 0; bottom: 0; width: {{you.passPct}}%; border-radius: 5px; background: {{c.accent}};"></span></span>
+      <div role="img" aria-label="{{rankAria}}" style="grid-column: 1 / -1; margin-top: 10px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; align-items: end; height: 64px;">
+        <sc-for list="{{rankCols}}" as="rc" hint-placeholder-count="4">
+          <span style="display: flex; flex-direction: column; align-items: center; gap: 3px;"><span class="tn" style="font-size: 12px; font-weight: 800; color: {{rc.color}};">#{{rc.rank}}</span><span class="ml-bar" style="width: 100%; height: {{rc.h}}px; border-radius: 6px 6px 2px 2px; background: {{rc.fill}};"></span><span style="font-size: 10px; font-weight: 700; color: {{c.mute}};">{{rc.label}}</span></span>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-label="Podium" style="border-radius: 22px; background: {{c.heroBg}}; border: 1px solid {{c.rule}}; padding: 14px 14px 0; display: flex; flex-direction: column; gap: 6px; overflow: hidden;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.gold}};">TOP OF THE BOARD · {{periodShort}}</span>
+      <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -0.02em;">{{title}}</h2>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end; height: 220px;">
+        <sc-for list="{{podium}}" as="pd" hint-placeholder-count="3">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0;">
+            <span style="width: {{pd.av}}px; height: {{pd.av}}px; border-radius: 50%; background: {{c.accentTint}}; color: {{c.accent}}; border: 3px solid {{pd.ring}}; display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; font-weight: 800; box-sizing: border-box;">{{pd.initials}}</span>
+            <span style="font-size: 13px; font-weight: 800; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{pd.name}}">{{pd.name}}</span>
+            <span class="tn" style="font-size: 13px; font-weight: 800; color: {{pd.valColor}};">{{pd.apiShort}}</span>
+            <span class="ml-pod" style="width: 100%; height: {{pd.h}}px; border-radius: 12px 12px 0 0; background: {{pd.block}}; display: flex; justify-content: center; padding-top: 6px; box-sizing: border-box; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800; color: {{pd.blockInk}};">{{pd.place}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-label="Everyone else" style="border-radius: 20px; border: 1px solid {{c.rule}}; background: {{c.surface}}; overflow: hidden;">
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
+        <sc-if value="{{r.isGap}}" hint-placeholder-val="{{false}}"><div style="height: 30px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: {{c.faint}}; border-top: 1px solid {{c.rule}};">{{r.gapText}}</div></sc-if>
+        <sc-if value="{{r.isRow}}" hint-placeholder-val="{{true}}">
+          <div style="min-height: 60px; padding: 8px 14px; box-sizing: border-box; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; border-top: {{r.top}}; background: {{r.bg}}; box-shadow: {{r.ring}};">
+            <span class="tn" style="grid-row: 1 / span 2; font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: {{r.rankColor}};">{{r.rank}}</span>
+            <span style="font-size: 14px; font-weight: {{r.weight}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{r.name}}">{{r.name}}</span>
+            <span class="tn" style="font-size: 14px; font-weight: 800; color: {{r.valColor}}; flex: 0 0 auto;">{{r.api}}</span>
+            <span role="img" aria-label="{{r.pctLabel}}" style="height: 6px; border-radius: 3px; background: {{c.sunk}};"><span class="ml-bar" style="display: block; height: 6px; width: {{r.pct}}%; border-radius: 3px; background: {{r.barColor}};"></span></span>
+            <span class="tn" style="font-size: 12px; color: {{c.mute}}; text-align: right;">{{r.apps}} apps</span>
+          </div>
+        </sc-if>
+      </sc-for>
+    </section>
+
+    <section aria-label="Last week's champions" style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.gold}};">WEEK 39 CHAMPIONS · WHOLE COMPANY</span>
+      <sc-for list="{{champs}}" as="ch" hint-placeholder-count="3">
+        <div style="border-radius: 14px; border: 1px solid {{c.rule}}; background: {{c.surface}}; padding: 8px 12px; display: flex; align-items: center; gap: 10px;">
+          <span style="width: 40px; height: 40px; flex-shrink: 0;"><dc-import name="D3-Trophy" kind="{{ch.kind}}" size="40" dark="{{dark}}" hint-size="40px,40px"></dc-import></span>
+          <span style="flex-grow: 1; display: flex; flex-direction: column;"><span style="font-size: 11px; font-weight: 700; color: {{c.mute}};">{{ch.title}}</span><span style="font-size: 14px; font-weight: 700;">{{ch.name}}</span></span>
+          <span class="tn" style="font-size: 13px; font-weight: 700; color: {{c.gold}};">{{ch.value}}</span>
+        </div>
+      </sc-for>
+    </section>
+    <span style="font-size: 11px; color: {{c.faint}}; line-height: 1.4;">Ranked by settled API in your branch. Updated 29-09-2026 05:10. Names and figures are SAMPLE; your own figure is the live one.</span>
+  </div>
+
+  <div style="position: absolute; left: 12px; right: 12px; bottom: 96px; border-radius: 16px; background: {{c.ink}}; color: {{c.bg}}; padding: 10px 14px; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);">
+    <span class="tn" style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 800;">{{you.rankBig}}</span>
+    <span style="flex-grow: 1; display: flex; flex-direction: column;"><span style="font-size: 13px; font-weight: 700;">You · {{you.api}}</span><span class="tn" style="font-size: 12px; opacity: 0.8;">{{you.toPass}} {{you.toPassWho}}</span></span>
+  </div>
+  <div style="position: absolute; left: 0; bottom: 0;"><dc-import name="M3-Nav" active="arena" dark="{{dark}}" hint-size="390px,84px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"period":{"editor":"enum","options":["wk","mtd","qtd","ytd"],"default":"ytd"},"$preview":{"width":390,"height":1640}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { period: null };
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', gold: '#855400', heroBg: '#FFFDF7', b1: 'linear-gradient(180deg, #F2C14E, #D9A22E)', b2: 'linear-gradient(180deg, #D8D6D0, #B9B6AE)', b3: 'linear-gradient(180deg, #E0A77A, #C27F4F)', bInk: '#1F1D1A', r1: '#D9A22E', r2: '#A8A59D', r3: '#C27F4F', bar: '#9FC9C4', you: '#DCEAE7' };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', gold: '#E8B44E', heroBg: '#1B1A16', b1: 'linear-gradient(180deg, #E8B44E, #B8872A)', b2: 'linear-gradient(180deg, #8E8B84, #6C6A64)', b3: 'linear-gradient(180deg, #C98A5C, #9A6440)', bInk: '#131311', r1: '#E8B44E', r2: '#8E8B84', r3: '#C98A5C', bar: '#2F5B58', you: '#16312F' };
+    const c = this.props.dark ? dark : light;
+    const period = this.state.period || this.props.period || 'ytd';
+    const A = [
+      ['S. Mohammed', 12400, 51300, 98500, 312400, 41], ['A. Ramdial', 18900, 44100, 87300, 268900, 35],
+      ['K. Baptiste', 6200, 30200, 71200, 221300, 30], ['R. Singh', 4100, 28700, 60400, 176050, 26],
+      ['D. Charles', 9800, 21900, 52100, 142700, 22], ['T. Joseph', 0, 12300, 33000, 98400, 15],
+      ['Kyron Marchan', 11996, 26450, 48900, 87146, 5, true], ['N. Ali', 3300, 9800, 21000, 64200, 11],
+      ['J. Pierre', 0, 4200, 14900, 41800, 8], ['M. Lewis', 2100, 3900, 9100, 22600, 4]
+    ];
+    const IDX = { wk: 1, mtd: 2, qtd: 3, ytd: 4 };
+    const LBL = { wk: 'WK', mtd: 'MTD', qtd: 'QTD', ytd: 'YTD' };
+    const TITLE = { wk: "Who's leading this week.", mtd: "Who's leading this month.", qtd: "Who's leading the quarter.", ytd: "Who's leading the year." };
+    const fmt = (n) => 'TTD ' + Math.round(n).toLocaleString('en-US');
+    const short = (n) => n >= 1000 ? 'TTD ' + Math.round(n / 1000) + 'K' : 'TTD ' + n;
+    const initials = (n) => n.split(/[\s.]+/).filter(Boolean).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+    const rankFor = (p) => A.map((a) => ({ a: a, v: a[IDX[p]] })).sort((x, y) => y.v - x.v);
+    const ranked = rankFor(period);
+    const leader = ranked[0].v || 1;
+    const appsFor = (a) => Math.max(0, Math.round(a[5] * (a[IDX[period]] / (a[4] || 1))));
+    const periods = ['wk', 'mtd', 'qtd', 'ytd'].map((p) => ({ label: LBL[p], on: p === period, pick: () => this.setState({ period: p }), bg: p === period ? c.surface : 'transparent', color: p === period ? c.ink : c.mute, shadow: p === period ? '0 1px 2px rgba(0,0,0,0.1)' : 'none' }));
+    const H = [120, 86, 60];
+    const podium = [1, 0, 2].map((i) => { const e = ranked[i]; return { place: i + 1, name: e.a[6] ? 'You' : e.a[0], initials: initials(e.a[0]), apiShort: short(e.v), h: H[i], av: i === 0 ? 52 : 44, ring: [c.r1, c.r2, c.r3][i], block: [c.b1, c.b2, c.b3][i], blockInk: c.bInk, valColor: i === 0 ? c.gold : c.ink }; });
+    const youIdx = ranked.findIndex((e) => e.a[6]);
+    const mk = (i, first) => { const e = ranked[i]; const you = !!e.a[6]; const pct = Math.round((e.v / leader) * 100); return { isRow: true, isGap: false, rank: i + 1, name: you ? 'You · Kyron' : e.a[0], apps: appsFor(e.a), api: fmt(e.v), pct: pct, pctLabel: pct + ' percent of the leader', barColor: you ? c.accent : c.bar, bg: you ? c.you : 'transparent', ring: you ? 'inset 0 0 0 1.5px ' + c.accent : 'none', rankColor: you ? c.accent : c.mute, weight: you ? 800 : 600, valColor: you ? c.accent : c.ink, top: first ? '0' : '1px solid ' + c.rule }; };
+    const rows = [];
+    for (let i = 3; i < Math.min(7, ranked.length); i++) rows.push(mk(i, i === 3));
+    if (youIdx >= 7) { rows.push({ isRow: false, isGap: true, gapText: '+' + (youIdx - 7) + ' agents' }); rows.push(mk(youIdx, false)); }
+    const me = ranked[youIdx]; const above = youIdx > 0 ? ranked[youIdx - 1] : null;
+    const rankCols = ['wk', 'mtd', 'qtd', 'ytd'].map((p) => { const r = rankFor(p).findIndex((e) => e.a[6]) + 1; return { label: LBL[p], rank: r, h: Math.round(8 + (A.length - r) / (A.length - 1) * 36), fill: p === period ? c.accent : c.bar, color: p === period ? c.accent : c.mute }; });
+    return {
+      c: c, dark: !!this.props.dark, periods: periods, periodShort: LBL[period], title: TITLE[period], podium: podium, rows: rows,
+      you: { rankBig: '#' + (youIdx + 1), of: A.length, api: fmt(me.v), toPass: above ? fmt(above.v - me.v) : 'You lead', toPassWho: above ? 'to pass ' + above.a[0] : '', passPct: above ? Math.round((me.v / above.v) * 100) : 100, passAria: above ? Math.round((me.v / above.v) * 100) + ' percent of the way to the next agent' : 'You lead' },
+      rankCols: rankCols, rankAria: 'Your rank: ' + rankCols.map((r) => r.label + ' ' + r.rank).join(', '),
+      champs: [
+        { kind: 'aotm-api', title: 'API champion', name: 'A. Ramdial', value: 'TTD 22,450' },
+        { kind: 'aotm-apps', title: 'Apps leader', name: 'K. Baptiste', value: '4 apps' },
+        { kind: 'big-week', title: 'Activity winner', name: 'You', value: '312 pts' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

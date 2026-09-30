@@ -1,6 +1,7 @@
 import { createElement } from 'react';
 import { extractFields, extractTotalProductionCredit } from '../utils/extractFields';
 import { aggregatePersistency } from '../lib/persistency/calculations';
+import { roundPersistencyPct } from '../lib/persistency/persistencyRounding';
 import { escapeCsvField } from '../lib/csvExport';
 import { getTodayTT } from '../utils/dateInputs';
 // NOTE: @react-pdf/renderer and AgentReportDocument are dynamically imported
@@ -188,7 +189,7 @@ export function exportBranchCSV(users, submissions, persistencyMap) {
     // percentages). aggregatedPersistency is a 0–1 decimal — multiply by 100 for CSV.
     const persEntries = (persistencyMap?.[agent.id] ?? []);
     const persistencyAvg = persEntries.length > 0
-      ? Math.round(aggregatePersistency(persEntries).aggregatedPersistency * 100)
+      ? (roundPersistencyPct(aggregatePersistency(persEntries).aggregatedPersistency * 100) ?? '')
       : '';
 
     const lastSub = agentSubs.sort((a, b) =>

@@ -99,10 +99,10 @@ describe('persistencySeries', () => {
     { monthKey: '2026-05', persistency: 0.93 },
   ];
 
-  it('sorted, percent to 1 dp, a zero-gross month skipped, estimate appended as projected', () => {
+  it('sorted, percent to 2 dp half up (ruling R-a), a zero-gross month skipped, estimate appended as projected', () => {
     const s = persistencySeries({ records, estimate: { monthKey: '2026-09', persistency: 0.8661 } });
     expect(s.data.map((d) => [d.key, d.value, d.projected])).toEqual([
-      ['2026-05', 93, false], ['2026-06', 91.2, false], ['2026-07', 88.4, false], ['2026-09', 86.6, true],
+      ['2026-05', 93, false], ['2026-06', 91.2, false], ['2026-07', 88.4, false], ['2026-09', 86.61, true],
     ]);
     expect(s.hasTwelveMonthModel).toBe(true); // May–Jul 2026 predate the 24-month model
   });

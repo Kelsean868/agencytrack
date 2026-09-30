@@ -4,6 +4,7 @@ import { formatCompact, formatAppsRange } from '../../lib/campaignPace';
 import { whatIfProjection, clampToWhatIfStep, WHAT_IF_MIN, WHAT_IF_MAX, WHAT_IF_STEP } from '../../lib/campaignWhatIf';
 import { outlookDateLabel, outlookMonthShortLabel } from '../persistency/outlookLabels';
 import { formatOutlookPct } from '../../lib/persistency/persistencyOutlook';
+import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 import { formatCurrency } from '../../utils/formatters';
 
 /** "70,000" — `formatCurrency` minus its "TTD " prefix, for a column that
@@ -282,7 +283,7 @@ function MonthHistoryRow({ outlook, threshold }) {
         <MonthColumn
           label={outlookMonthShortLabel(gateMonth.monthKey)}
           value={formatOutlookPct(gateMonth.persistency)}
-          tone={Number.isFinite(threshold) && gateMonth.persistency * 100 < threshold ? 'warning' : undefined}
+          tone={Number.isFinite(threshold) && roundPersistencyPct(gateMonth.persistency * 100) < threshold ? 'warning' : undefined}
           note="Projected"
           testId="campaign-screen-gate-month-projected"
         />
@@ -291,7 +292,11 @@ function MonthHistoryRow({ outlook, threshold }) {
   );
 }
 
-export function PersistencyGateBarBlock({ projectedPct, threshold, judgedLabel, outlook }) {
+export function PersistencyGateBarBlock({ projectedPct: rawProjectedPct, threshold, judgedLabel, outlook }) {
+  // Ruling R-a: printed and judged at 2 decimals, half up (89.996 → 90.00, at
+  // the gate). Rounded here as well as by the caller, so the block can never
+  // print one value and judge another.
+  const projectedPct = roundPersistencyPct(rawProjectedPct);
   const fillPct = gateBarPct(projectedPct);
   const tickPct = gateBarPct(threshold);
   const belowGate = Number.isFinite(projectedPct) && Number.isFinite(threshold) && projectedPct < threshold;
@@ -310,7 +315,7 @@ export function PersistencyGateBarBlock({ projectedPct, threshold, judgedLabel, 
         <div className="lg:min-w-0 lg:flex-1" data-testid="campaign-screen-gate-bar">
           <span className="sr-only">
             {`Persistency gate, ${GATE_BAR_MIN} to ${GATE_BAR_MAX} percent, gate at ${threshold} percent`}
-            {projectedPct != null ? `, projected ${projectedPct.toFixed(1)} percent` : ''}
+            {projectedPct != null ? `, projected ${projectedPct.toFixed(2)} percent` : ''}
           </span>
           {/* A div-based bar has no Tailwind way to place a fill/tick at a
               RUNTIME percentage without an inline `style` (Tailwind's
@@ -359,7 +364,7 @@ export function PersistencyGateBarBlock({ projectedPct, threshold, judgedLabel, 
                 className={`absolute -translate-x-1/2 font-semibold ${belowGate ? 'text-warning-ink' : 'text-success-ink'} ${leftClassFor(fillPct)}`}
                 data-testid="campaign-screen-gate-bar-value"
               >
-                {projectedPct.toFixed(1)}
+                {formatPersistencyPct(projectedPct)}
               </span>
             )}
             {tickPct != null && (

@@ -27,11 +27,18 @@ import {
 import { derivePolicyLens } from '../../lib/policyCampaignLens';
 import { isTieredCampaign } from '../../utils/campaignEngine';
 import { getTodayTT } from '../../utils/dateInputs';
-import { roundPersistencyPct } from '../../lib/persistency/persistencyRounding';
+import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
+import { PERS_FLOOR_PCT, PERS_GATE_PCT } from '../../lib/persistency/calculations';
 
+// Ruling R-a: every persistency percent prints at 2 decimals, half up, and
+// every verdict on this screen is judged on that same rounded value.
 function formatPct(decimal) {
   if (!Number.isFinite(decimal)) return '—';
-  return `${(decimal * 100).toFixed(1)}%`;
+  return formatPersistencyPct(decimal * 100);
+}
+
+function shownPct(decimal) {
+  return Number.isFinite(decimal) ? roundPersistencyPct(decimal * 100) : null;
 }
 
 
@@ -171,7 +178,8 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
     return { 6: 'six', 7: 'seven' }[persistencyModelFor(activeMonthKey).inputs.length] ?? null;
   }, [activeMonthKey]);
   const currentDecimal = currentRecord?.persistency ?? null;
-  const meetsGate = (currentDecimal ?? 0) >= 0.90;
+  const currentShownPct = shownPct(currentDecimal);
+  const meetsGate = (currentShownPct ?? 0) >= PERS_GATE_PCT;
 
   // Manager has entered if the existing record's enteredByRole is anything
   // other than 'agent'. Agents may still see (read-only) a manager-entered
@@ -185,7 +193,7 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
   // `null * 100` is 0, which would draw a confident 0.00% bar.
   const chartData = useMemo(() => history.map((r) => ({
     monthKey: r.monthKey,
-    pct: Number.isFinite(r.persistency) ? roundPersistencyPct(r.persistency * 100) : null,
+    pct: shownPct(r.persistency),
   })), [history]);
 
   // First paint only — before any successful load, show a skeleton instead of
@@ -265,8 +273,8 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
           >
             {Number.isFinite(currentDecimal) && (
               <span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${
-                currentDecimal >= 0.90 ? 'bg-[--hero-dot-success]'
-                  : currentDecimal >= 0.80 ? 'bg-[--hero-dot-warning]'
+                currentShownPct >= PERS_GATE_PCT ? 'bg-[--hero-dot-success]'
+                  : currentShownPct >= PERS_FLOOR_PCT ? 'bg-[--hero-dot-warning]'
                   : 'bg-[--hero-dot-danger]'
               }`} />
             )}
@@ -290,7 +298,7 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
             data-testid="ledger-preview-line"
           >
             {`${ledgerPreview.provenance}: `}
-            <strong>{`${(ledgerPreview.ledger.derived.persistency * 100).toFixed(1)}%`}</strong>
+            <strong>{formatPct(ledgerPreview.ledger.derived.persistency)}</strong>
             {' (not saved yet)'}
           </p>
         )}
