@@ -1307,6 +1307,7 @@ export default function AgentDashboard() {
               tenantId={tenantId}
               currentGoal={goals?.personalAnnualAPI ?? null}
               onGoalSaved={() => getGoals(tenantId, user.uid).then(setGoals)}
+              look={fr ? 'fr' : 'nexus'}
             />
           </div>
         </div>
