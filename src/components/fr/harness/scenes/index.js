@@ -1,6 +1,7 @@
 /**
  * FR harness scene registry. Each slice appends its scenes here.
- * Scene: { id, title, slice, viewport: 'desktop'|'phone', hasVariants?, pager?, render }
+ * Scene: { id, title, slice, viewport: 'desktop'|'phone', hasVariants?, pager?, frame?, render }
+ * `frame: false` means the scene draws the app shell itself, so `?frame=app` never wraps it.
  */
 import { FOUNDATION_SCENES } from './foundationScenes';
 import { SHELL_SCENES } from './shellScenes';
@@ -15,5 +16,6 @@ import { CAREER_SCENES } from './careerScenes';
 import { PERSISTENCY_TAB_SCENES } from './persistencyTabScenes';
 import { PLAYGROUND_SCENES } from './playgroundScenes';
 import { REINSTATEMENT_SCENES } from './reinstatementScenes';
+import { LEDGER_SCENES } from './ledgerScenes';
 
-export const SCENES = [...FOUNDATION_SCENES, ...SHELL_SCENES, ...TODAY_SCENES, ...MONEY_SCENES, ...MONEY_NEEDS_SCENES, ...GAME_PLAN_SCENES, ...COMMISSION_SCENES, ...WORK_SCENES, ...COMPETE_SCENES, ...CAREER_SCENES, ...PERSISTENCY_TAB_SCENES, ...PLAYGROUND_SCENES, ...REINSTATEMENT_SCENES];
+export const SCENES = [...FOUNDATION_SCENES, ...SHELL_SCENES, ...TODAY_SCENES, ...MONEY_SCENES, ...MONEY_NEEDS_SCENES, ...GAME_PLAN_SCENES, ...COMMISSION_SCENES, ...WORK_SCENES, ...COMPETE_SCENES, ...CAREER_SCENES, ...PERSISTENCY_TAB_SCENES, ...PLAYGROUND_SCENES, ...REINSTATEMENT_SCENES, ...LEDGER_SCENES];

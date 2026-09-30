@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- DEV-only harness registry:
    scenes are exported as data (an array of { id, render }), not as components. */
+import ScenePage from '../ScenePage';
 import React, { useState } from 'react';
 import FrCareerView from '../../you/FrCareerView';
 import useMinWidth from '../../../../hooks/useMinWidth';
@@ -47,7 +48,7 @@ function CareerScene({ variant = 'A', editing = false, commitState = 'ready' }) 
     { key: 'persistency', label: 'Persistency', actual: stats.avgPersistency, mine: 90, manager: 90, floor: 90, fmt: (v) => `${v.toFixed(2)}%` },
   ].map((r) => ({ ...r, belowFloor: r.mine < r.floor, aria: `${r.label} sample` }));
   return (
-    <main className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 p-4 sm:p-6">
+    <ScenePage className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 p-4 sm:p-6">
       <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted">R2-10 · Career · SAMPLE</p>
       <FrCareerView
         layout={layout}
@@ -70,7 +71,7 @@ function CareerScene({ variant = 'A', editing = false, commitState = 'ready' }) 
         trophies={{ loading: false, error: false, onRetry: noop, earned: 9, total: 32 }}
         onOpenTrophies={noop}
       />
-    </main>
+    </ScenePage>
   );
 }
 function CareerStatesScene() {

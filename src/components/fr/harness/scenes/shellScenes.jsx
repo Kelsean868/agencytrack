@@ -51,5 +51,5 @@ function ShellScene() {
 }
 
 export const SHELL_SCENES = [
-  { id: 'shell', title: 'FR shell (sidebar, hub chips, tab bar)', slice: 'FR-1', viewport: 'desktop,tablet,phone', render: ShellScene },
+  { id: 'shell', title: 'FR shell (sidebar, hub chips, tab bar)', slice: 'FR-1', viewport: 'desktop,tablet,phone', frame: false, render: ShellScene },
 ];

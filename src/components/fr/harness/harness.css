@@ -1,0 +1,16 @@
+/* DEV-only FR harness styles (never shipped — only fr-harness.html loads this).
+ *
+ * `.fr-harness-frame` is the app shell used by `?frame=app` (W-1 width sweep).
+ * In the app the shell is exactly one viewport tall and `.shell-content`
+ * scrolls; here the page grows to the content instead, so a full-page
+ * screenshot shows the whole view. Only HEIGHT and the scroll owner change —
+ * every width (grid columns, padding) is the app's own CSS. A view that is too
+ * wide therefore widens the page, which the sweep reports as sideways scroll. */
+.fr-harness-frame {
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
+}
+.fr-harness-frame .shell-content {
+  overflow: visible;
+}

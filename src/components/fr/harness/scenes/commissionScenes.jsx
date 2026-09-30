@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- DEV-only harness registry:
    scenes are exported as data (an array of { id, render }), not as components. */
+import ScenePage from '../ScenePage';
 import React, { useEffect, useMemo, useState } from 'react';
 import FrCommissionView from '../../money/FrCommissionView';
 import useMinWidth from '../../../../hooks/useMinWidth';
@@ -34,10 +35,10 @@ const SCENARIOS = [
 
 function Frame({ children }) {
   return (
-    <main className="mx-auto flex max-w-[1400px] flex-col gap-3 p-4 sm:p-6">
+    <ScenePage className="mx-auto flex max-w-[1400px] flex-col gap-3 p-4 sm:p-6">
       <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted">R2-7 · Commission playground · SAMPLE</p>
       {children}
-    </main>
+    </ScenePage>
   );
 }
 

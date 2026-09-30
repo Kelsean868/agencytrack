@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- DEV-only harness registry:
    scenes are exported as data (an array of { id, render }), not as components. */
+import ScenePage from '../ScenePage';
 import React, { useMemo, useState } from 'react';
 import PersistencyTrendChart from '../../../persistency/PersistencyTrendChart';
 import PersistencyOutlookHero from '../../../persistency/PersistencyOutlookHero';
@@ -30,10 +31,10 @@ const toRows = (fractions) => MONTH_KEYS.map((monthKey, i) => ({
 
 function Frame({ children, phone = false }) {
   return (
-    <div className={phone ? 'mx-auto w-[390px] px-4 py-4' : 'mx-auto max-w-[900px] px-8 py-8'}>
+    <ScenePage as="div" className={phone ? 'mx-auto w-[390px] px-4 py-4' : 'mx-auto max-w-[900px] px-8 py-8'}>
       <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted">FR harness · SAMPLE data</p>
       {children}
-    </div>
+    </ScenePage>
   );
 }
 

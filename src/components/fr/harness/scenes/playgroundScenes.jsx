@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- DEV-only harness registry:
    scenes are exported as data (an array of { id, render }), not as components. */
+import ScenePage from '../ScenePage';
 import React, { useState } from 'react';
 import IncomeGoalField from '../../../goals/CommissionPlayground/components/IncomeGoalField';
 
@@ -29,7 +30,7 @@ const ROWS = [
 
 function IncomeGoalPeriodScene() {
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-4 p-4 sm:p-6">
+    <ScenePage className="mx-auto flex max-w-3xl flex-col gap-4 p-4 sm:p-6">
       <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted">R2-3 · Commission playground · SAMPLE</p>
       <section className="card flex flex-col gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Income Assumptions</p>
@@ -45,7 +46,7 @@ function IncomeGoalPeriodScene() {
           </div>
         ))}
       </section>
-    </main>
+    </ScenePage>
   );
 }
 

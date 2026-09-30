@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- DEV-only harness registry:
    scenes are exported as data (an array of { id, render }), not as components. */
+import ScenePage from '../ScenePage';
 import React from 'react';
 import {
   ChartCard, Bullet, MeterList, Columns, GateBars, Line, Sparkline, Donut,
@@ -37,10 +38,10 @@ const PERS_B = [91.2, 90.8, 90.4, 89.9, 89.1, 88.7, 88.2, 87.9, 87.5, 87.1, 86.8
 
 function Frame({ children, phone = false }) {
   return (
-    <div className={phone ? 'mx-auto w-[390px] px-4 py-4' : 'mx-auto max-w-[1220px] px-8 py-8'}>
+    <ScenePage as="div" className={phone ? 'mx-auto w-[390px] px-4 py-4' : 'mx-auto max-w-[1220px] px-8 py-8'}>
       <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted">FR harness · SAMPLE data</p>
       {children}
-    </div>
+    </ScenePage>
   );
 }
 
