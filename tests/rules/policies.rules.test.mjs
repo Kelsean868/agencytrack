@@ -1,5 +1,6 @@
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'fs';
+import { buildLapseUpdate } from '../../src/lib/policies/lapsePolicyUpdate.js';
 import {
   doc, collection, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
   query, where, Timestamp, serverTimestamp,
@@ -91,6 +92,15 @@ const SETTLED_FIELDS = {
   issuedCoverage: 100000,
   initialPremium: 416.67,
   earnedCommission: 250,
+};
+
+// F-1 (audit A-1) — the five current-provenance cases of a settled policy.
+const F1_CASES = {
+  'policy-f1-agent':   { statusSource: 'agent',       statusSetBy: 'agent-a', statusAsOf: '2026-09-01' },
+  'policy-f1-oipa':    { statusSource: 'oipa_import', statusSetBy: 'import',  statusAsOf: '2026-09-01' },
+  'policy-f1-other':   { statusSource: 'manager',     statusSetBy: 'um-a',    statusAsOf: '2026-09-01' },
+  'policy-f1-same-bm': { statusSource: 'manager',     statusSetBy: 'bm-a',    statusAsOf: '2026-09-01' },
+  'policy-f1-legacy':  {},
 };
 
 async function main() {
@@ -216,6 +226,14 @@ async function main() {
       ...VALID_PAYLOAD,
       ...SETTLED_FIELDS,
     });
+    // F-1 (audit A-1): one settled policy per current-provenance case. The app's
+    // lapse payload must pass Arm D whoever set the settled status.
+    for (const [id, provenance] of Object.entries(F1_CASES)) {
+      await db.doc(`tenants/${TENANT_ID}/policies/${id}`).set({
+        ...VALID_PAYLOAD, ...SETTLED_FIELDS, ...provenance,
+      });
+    }
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-f1-wrong-uid`).set({ ...VALID_PAYLOAD, ...SETTLED_FIELDS });
     // H2c: dedicated rated policy untouched by Arm B tests — Arm D DENY (non-settled) test target.
     // policy-a1-rated is mutated by the "rated → settled" ALLOW test, so we need a separate doc.
     // P4e provenance-guard fixture — a submitted policy of agent-a's own.
@@ -814,21 +832,49 @@ async function main() {
     dateLapsed:      Timestamp.now(),
   };
 
+  // F-1 (audit A-1): the app's EXACT lapse update, from the same pure builder
+  // lapsePolicy() uses (src/lib/policies/lapsePolicyUpdate.js) — never a
+  // hand-written superset. That is what let the old version of the two ALLOW
+  // tests below pass while the app's write was denied.
+  const appLapseUpdate = (managerUid) => buildLapseUpdate({
+    managerUid,
+    fields: { dateLapsed: Timestamp.now(), lapseReason: 'Non-payment' },
+    today: '2026-09-30',
+    statusUpdatedAt: serverTimestamp(),
+  }).policyUpdate;
+  // The update the app sent before F-1: no status provenance.
+  const PRE_F1_LAPSE = { status: 'lapsed', statusUpdatedAt: serverTimestamp(), dateLapsed: Timestamp.now(), lapseReason: 'Non-payment' };
+
   // BM lapses settled policy → ALLOW
-  await run('Arm D ALLOW: BM lapses settled policy', true, () =>
+  await run('Arm D ALLOW: BM lapses settled policy (app payload)', true, () =>
     updateDoc(
       doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-arm-d-bm'),
-      { ...LAPSE_FIELDS, ...prov('bm-a', 'manager') }
+      appLapseUpdate('bm-a')
     )
   );
 
   // tenant_admin lapses settled policy → ALLOW
-  await run('Arm D ALLOW: tenant_admin lapses settled policy', true, () =>
+  await run('Arm D ALLOW: tenant_admin lapses settled policy (app payload)', true, () =>
     updateDoc(
       doc(taDb, 'tenants', TENANT_ID, 'policies', 'policy-arm-d-ta'),
-      { ...LAPSE_FIELDS, ...prov('ta-1', 'manager') }
+      appLapseUpdate('ta-1')
     )
   );
+
+  // F-1: the four A-1 denials, reproduced with the pre-F-1 payload (DENY does
+  // not write, so each doc is still settled for the ALLOW that follows)…
+  for (const id of ['policy-f1-agent', 'policy-f1-oipa', 'policy-f1-other', 'policy-f1-legacy']) {
+    await run(`F-1 DENY: pre-F-1 lapse payload (no provenance) on ${id}`, false, () =>
+      updateDoc(doc(bmADb, 'tenants', TENANT_ID, 'policies', id), PRE_F1_LAPSE));
+  }
+  // …and the app's payload now passes for all five current-provenance cases.
+  for (const id of Object.keys(F1_CASES)) {
+    await run(`F-1 ALLOW: app lapse payload on ${id}`, true, () =>
+      updateDoc(doc(bmADb, 'tenants', TENANT_ID, 'policies', id), appLapseUpdate('bm-a')));
+  }
+  // A provenance naming someone else is still refused (setsOwnStatusProvenance).
+  await run('F-1 DENY: app lapse payload built for another uid', false, () =>
+    updateDoc(doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-f1-wrong-uid'), appLapseUpdate('ta-1')));
 
   // agent tries to lapse → DENY (not a manager + Arm B rejects 'lapsed' as target)
   await run('Arm D DENY: agent cannot lapse a policy', false, () =>
