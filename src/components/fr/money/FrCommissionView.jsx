@@ -5,11 +5,11 @@ import SwipePager from '../pager/SwipePager';
 import IncomeGoalField from '../../goals/CommissionPlayground/components/IncomeGoalField';
 import SavedScenarioChips from '../../goals/CommissionPlayground/components/SavedScenarioChips';
 import { rebalance } from '../../goals/CommissionPlayground/utils/modeMixBalancer';
-import { PLAYGROUND_PERIODS, playgroundPeriod } from '../../../utils/playgroundPeriods';
+import { PLAYGROUND_PERIODS } from '../../../utils/playgroundPeriods';
 import { formatCurrency } from '../../../utils/formatters';
 import { CARD, FOCUS, Why, WarnIcon } from './moneyParts';
 import {
-  goalTableRows, requiredApiText, breakdownRows, firstPaymentBars, cashFlowModel, CASH_TABLE_COLUMNS,
+  goalTableRows, cadenceFor, requiredApiText, breakdownRows, firstPaymentBars, cashFlowModel, CASH_TABLE_COLUMNS,
 } from './commissionModel';
 
 /**
@@ -249,7 +249,7 @@ function HistoryNote({ goal }) {
 function Decomposition({ goal }) {
   const { computed, inputs, preTaxAlreadyApplied, freqKey, setFreqKey } = goal;
   const rows = goalTableRows({ computed, inputs, preTaxAlreadyApplied, freqKey });
-  const period = playgroundPeriod(freqKey);
+  const period = cadenceFor(freqKey);
   const perLabel = `Per ${period.display.toLowerCase()}`;
   return (
     <section aria-labelledby="fr-cp-decomp-h" className={`${CARD} flex min-w-0 flex-col gap-3 p-4 sm:p-5`} data-testid="fr-commission-decomposition">

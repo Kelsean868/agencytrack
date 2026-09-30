@@ -293,3 +293,17 @@ describe('FR Commission playground — phone', () => {
     expect(actions.closest('[aria-hidden="true"]')).toBeNull();
   });
 });
+
+describe('FR Commission playground — a saved scenario with an unknown cadence', () => {
+  it('shows it as Annual (as the Nexus ladder does) instead of crashing', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    prefsMock.getUserPrefs.mockImplementation(() => Promise.resolve({
+      commissionScenarios: [{ id: 'sc-x', label: 'Old', savedAt: '2026-01-01T00:00:00.000Z', freqKey: 'fortnight', inputs: {} }],
+    }));
+    renderPlayground('fr');
+    fireEvent.click(await screen.findByTestId('scenario-apply-sc-x'));
+    expect(screen.getByTestId('fr-commission-decomposition-table')).toBeInTheDocument();
+    expect(frColumn('period').every((v) => v === null)).toBe(true);
+    warn.mockRestore();
+  });
+});

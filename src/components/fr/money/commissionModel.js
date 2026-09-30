@@ -2,7 +2,7 @@ import { formatCurrency } from '../../../utils/formatters';
 import { FIRST_PAYMENT_RATIO } from '../../goals/CommissionPlayground/utils/commissionMath';
 import { buildStackedData } from '../../goals/CommissionPlayground/utils/cashFlowStacking';
 import { ladderFigures, formatLadderFigure } from '../../goals/CommissionPlayground/utils/decompositionStages';
-import { playgroundPeriod } from '../../../utils/playgroundPeriods';
+import { PLAYGROUND_PERIODS } from '../../../utils/playgroundPeriods';
 
 /**
  * commissionModel — pure formatters for the FR Commission playground (R2-7,
@@ -26,11 +26,23 @@ function modeLabel(mode) {
 }
 
 /**
+ * The view cadence for `freqKey`. A saved scenario may carry a key that is not
+ * (or no longer) a playground period; the Nexus ladder shows such a key as
+ * Annual (`PERIODS.find(...) ?? PERIODS[0]`), so the FR table does the same
+ * instead of throwing — and says so in development (v3 rule 11).
+ */
+export function cadenceFor(freqKey) {
+  const found = PLAYGROUND_PERIODS.find((p) => p.key === freqKey);
+  if (!found && import.meta.env?.DEV) console.warn(`commissionModel: unknown view cadence "${freqKey}" — showing Annual`);
+  return found ?? PLAYGROUND_PERIODS[0];
+}
+
+/**
  * The decomposition table: one row per ladder stage, the annual figure and
  * the figure for the chosen view cadence (null when the cadence is Annual).
  */
 export function goalTableRows({ computed, inputs, preTaxAlreadyApplied, freqKey }) {
-  const period = playgroundPeriod(freqKey);
+  const period = cadenceFor(freqKey);
   return ladderFigures({ computed, inputs, preTaxAlreadyApplied }).map((figure) => ({
     key: figure.key,
     label: figure.label,
