@@ -37,12 +37,16 @@ export default function useCareerCommitment(careerYear) {
   const retry = () => { setLoaded(false); setLoadFailed(false); setReloadToken((n) => n + 1); };
 
   useEffect(() => {
-    if (!authUser?.uid || !tenantId) return;
+    if (!authUser?.uid || !tenantId) return undefined;
+    // A retry or a year change can start a second read before the first ends;
+    // only the latest run may set state (CodeRabbit on #1026).
+    let active = true;
     Promise.all([
-      getGoals(tenantId, authUser.uid).catch(() => { setLoadFailed(true); return null; }),
+      getGoals(tenantId, authUser.uid).catch(() => { if (active) setLoadFailed(true); return null; }),
       getCompanyMinimums(tenantId).catch(() => ({ annualAPI: 200000, annualApps: 40, persistency: 90 })),
       getMoneyNeeds(tenantId, authUser.uid, careerYear).catch(() => null),
     ]).then(([g, mins, mn]) => {
+      if (!active) return;
       setGoalsState(g);
       setMinimums(mins);
       setMoneyNeedsRequired(parseFloat(mn?.firstYearCommissionsRequired) || 0);
@@ -53,6 +57,7 @@ export default function useCareerCommitment(careerYear) {
       });
       setLoaded(true);
     });
+    return () => { active = false; };
   }, [authUser?.uid, tenantId, careerYear, reloadToken]);
 
   async function doSave(draftToSave) {

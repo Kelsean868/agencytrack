@@ -358,7 +358,13 @@ export default function FrCareerView({
         Level {header.level} · {header.title}{header.years != null ? ` · ${header.years.toFixed(1)} years of service` : ''}
       </span>
       <span className="flex-1" />
-      <button type="button" onClick={() => commitment.setEditing(!commitment.editing)} className={BTN_QUIET} aria-pressed={commitment.editing}>
+      <button
+        type="button"
+        onClick={() => commitment.setEditing(!commitment.editing)}
+        disabled={!commitment.loaded || commitment.loadFailed}
+        className={BTN_QUIET}
+        aria-pressed={commitment.editing}
+      >
         <Pencil size={14} aria-hidden="true" />
         {commitment.editing ? 'Stop editing' : 'Edit my goals'}
       </button>

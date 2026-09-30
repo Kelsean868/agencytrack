@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, cleanup, renderHook, act } from '@testing-library/react';
 
 const hoisted = vi.hoisted(() => ({
   aggregatePersistency: vi.fn(),
@@ -31,6 +31,7 @@ vi.mock('../../compete/useMyLeaderboardEntry', () => ({ default: (...a) => hoist
 vi.mock('../../../gamification/BadgeGrid', () => ({ default: () => null }));
 
 import FrCareer from '../FrCareer';
+import useCareerCommitment from '../../../profile/useCareerCommitment';
 import CareerPortal from '../../../profile/CareerPortal';
 import { levelRings, biggestGap, weeksLeftInYear } from '../../../../lib/fr/careerViewModel';
 import { computeQuarterlyAPI, quarterlyAPISeries } from '../../../../lib/career/careerModel';
@@ -177,11 +178,28 @@ describe('FrCareer — screen', () => {
     expect(hoisted.setGoals.mock.calls[0]).toEqual(nexusCall);
   });
 
-  it('commitment read failed → Retry reads again', async () => {
+  it('commitment read failed → Edit is disabled; Retry reads again', async () => {
     hoisted.getGoals.mockRejectedValueOnce(new Error('offline'));
     render(<FrCareer {...props()} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    expect(screen.getByRole('button', { name: /Edit my goals/ })).toBeDisabled();
+    fireEvent.click(retry);
     await waitFor(() => expect(hoisted.getGoals).toHaveBeenCalledTimes(2));
     expect(await screen.findByTestId('fr-career-commit-api')).toBeInTheDocument();
+  });
+});
+
+describe('useCareerCommitment — a superseded read never overwrites a newer one', () => {
+  it('a slow read for the old year that resolves last is ignored', async () => {
+    let resolveSlow;
+    hoisted.getGoals
+      .mockImplementationOnce(() => new Promise((r) => { resolveSlow = r; }))      // year 2026: slow
+      .mockImplementationOnce(() => Promise.resolve({ personalAnnualAPI: 500000 })); // year 2027: fast
+    const { result, rerender } = renderHook(({ year }) => useCareerCommitment(year), { initialProps: { year: 2026 } });
+    rerender({ year: 2027 });
+    await waitFor(() => expect(result.current.goals?.personalAnnualAPI).toBe(500000));
+    await act(async () => { resolveSlow({ personalAnnualAPI: 111000 }); await Promise.resolve(); });
+    expect(result.current.goals.personalAnnualAPI).toBe(500000);
+    expect(result.current.draft.personalAnnualAPI).toBe(500000);
   });
 });
