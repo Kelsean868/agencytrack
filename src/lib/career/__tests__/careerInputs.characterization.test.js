@@ -12,7 +12,7 @@ vi.mock('../../persistency/calculations', () => ({
   aggregatePersistency: () => ({ aggregatedPersistency: 0.95 }),
 }));
 
-import { careerStats, currentLevel, computeQuarterlyAPI, quarterlyAPISeries } from '../careerModel';
+import { careerStats, currentLevel, computeQuarterlyAPI, quarterlyAPISeries, yearsOfServiceFrom, submissionAPI } from '../careerModel';
 
 const NOW = new Date('2026-09-30T12:00:00Z');
 const YEAR_MS = 365.25 * 24 * 60 * 60 * 1000;
@@ -66,5 +66,24 @@ describe('Career level inputs — characterization (F-2)', () => {
     for (const row of ROWS) {
       expect(quarterlyAPISeries(row.subs).map((q) => q.value)).toEqual(computeQuarterlyAPI(row.subs));
     }
+  });
+});
+
+describe('F-2 helpers', () => {
+  const now = Date.UTC(2026, 8, 30);
+  it.each([
+    ['', null], [undefined, null], [null, null], ['15/01/2023', null], ['2023-02-30', null], ['2023-1-5', null],
+    ['2024-09-30', 2], ['2026-09-30', 0],
+  ])('yearsOfServiceFrom(%j)', (input, expected) => {
+    const got = yearsOfServiceFrom(input, now);
+    if (expected === null) expect(got).toBeNull();
+    else expect(Math.round(got * 100) / 100).toBe(expected);
+  });
+
+  it('submissionAPI reads v2 newBusiness.api, v1 apiSold and legacy api', () => {
+    expect(submissionAPI({ version: 2, newBusiness: { api: 1200 } })).toBe(1200);
+    expect(submissionAPI({ apiSold: 900 })).toBe(900);
+    expect(submissionAPI({ api: 700 })).toBe(700);
+    expect(submissionAPI({})).toBe(0);
   });
 });

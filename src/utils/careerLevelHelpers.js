@@ -1,6 +1,9 @@
+import { extractFields } from './extractFields';
+
 /**
  * Computes the trailing 2-year average annual API from submission docs.
- * Sums apiSold from the reference year and the prior year, then divides by 2.
+ * Sums each report's API (through extractFields: v2 newBusiness.api, v1
+ * apiSold / api / annualPremium — F-2) from the reference year and the prior year, then divides by 2.
  * Agents < 2 years in naturally produce a lower average (prior year sums to 0).
  *
  * @param {object[]} submissions - all agent submission docs
@@ -13,7 +16,7 @@ export function compute2YearAverageAPI(submissions, referenceYear) {
   for (const sub of (submissions ?? [])) {
     if (sub.status !== 'submitted') continue;
     if (!yearKeys.some((k) => (sub.weekStarting ?? '').startsWith(k))) continue;
-    total += parseFloat(sub.apiSold) || 0;
+    total += extractFields(sub).apiSold || 0;
   }
   return total / 2;
 }

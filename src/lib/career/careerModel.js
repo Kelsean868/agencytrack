@@ -1,6 +1,7 @@
 import { compute2YearAverageAPI } from '../../utils/careerLevelHelpers';
 import { aggregatePersistency } from '../persistency/calculations';
 import { roundPersistencyPct } from '../persistency/persistencyRounding';
+import { extractFields } from '../../utils/extractFields';
 
 /**
  * careerModel — the Career portal's levels, copy and pure derivations (R2-10).
@@ -54,6 +55,34 @@ export const UNLOCK_COPY = {
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * One report's API through extractFields — the only way to read submission
+ * fields (CLAUDE.md). v2 reports carry it under `newBusiness.api`; v1 reports
+ * as `apiSold` (or legacy `api` / `annualPremium`). F-2: this was
+ * `parseFloat(s.apiSold)`, which read 0 for every v2 report.
+ */
+export function submissionAPI(s) {
+  return extractFields(s).apiSold || 0;
+}
+
+const YEAR_MS = 365.25 * 24 * 60 * 60 * 1000;
+
+/**
+ * Years of service from the user doc's `contractStartDate` (YYYY-MM-DD; the
+ * field onboarding sets and doCreateUser stamps as ''). F-2: this read
+ * `user.startDate`, which nothing writes, so it was always null. '' / absent /
+ * not YYYY-MM-DD / not a real date → null, as a missing start date was before.
+ * Same year length as before (365.25 days), from UTC midnight of that date.
+ */
+export function yearsOfServiceFrom(contractStartDate, now = Date.now()) {
+  if (typeof contractStartDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(contractStartDate)) return null;
+  const [y, m, d] = contractStartDate.split('-').map((p) => parseInt(p, 10));
+  const start = Date.UTC(y, m - 1, d);
+  const check = new Date(start);
+  if (check.getUTCFullYear() !== y || check.getUTCMonth() !== m - 1 || check.getUTCDate() !== d) return null;
+  return (now - start) / YEAR_MS;
+}
 export function getLevelState(level, currentLevel) {
   if (level < currentLevel) return 'achieved';
   if (level === currentLevel) return 'current';
@@ -69,7 +98,7 @@ export function computeQuarterlyAPI(submissions) {
     const y = d.getUTCFullYear();
     const q = Math.floor(d.getUTCMonth() / 3);
     const key = `${y}-Q${q}`;
-    byQuarterKey[key] = (byQuarterKey[key] || 0) + (parseFloat(s.apiSold) || 0);
+    byQuarterKey[key] = (byQuarterKey[key] || 0) + submissionAPI(s);
   }
   const sorted = Object.entries(byQuarterKey)
     .sort(([a], [b]) => a.localeCompare(b))
@@ -106,7 +135,7 @@ export function careerStats(submissions, persistencyData, user, thisYear) {
   const ytdSubs = (submissions ?? []).filter(
     s => s.status === 'submitted' && s.weekStarting?.startsWith(String(thisYear))
   );
-  const ytdAPI  = ytdSubs.reduce((sum, s) => sum + (parseFloat(s.apiSold) || 0), 0);
+  const ytdAPI  = ytdSubs.reduce((sum, s) => sum + submissionAPI(s), 0);
   const ytdApps = ytdSubs.reduce((sum, s) => sum + (parseFloat(s.applicationsSold || s.appsSold) || 0), 0);
 
   const persArr = Array.isArray(persistencyData) ? persistencyData : [];
@@ -117,11 +146,7 @@ export function careerStats(submissions, persistencyData, user, thisYear) {
     ? roundPersistencyPct(aggregatePersistency(ytdPers).aggregatedPersistency * 100)
     : null;
 
-  let yearsOfService = null;
-  if (user?.startDate) {
-    const start = new Date(user.startDate);
-    if (!isNaN(start)) yearsOfService = (Date.now() - start.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
-  }
+  const yearsOfService = yearsOfServiceFrom(user?.contractStartDate);
 
   const trailing2YrAPI = compute2YearAverageAPI(submissions, thisYear);
   const weeksCount = weeksSubmittedThisYear(submissions, thisYear);
@@ -166,7 +191,7 @@ export function quarterlyAPISeries(submissions) {
     if (s.status !== 'submitted' || !s.weekStarting) continue;
     const d = new Date(s.weekStarting + 'T12:00:00Z');
     const key = `${d.getUTCFullYear()}-Q${Math.floor(d.getUTCMonth() / 3)}`;
-    byQuarterKey[key] = (byQuarterKey[key] || 0) + (parseFloat(s.apiSold) || 0);
+    byQuarterKey[key] = (byQuarterKey[key] || 0) + submissionAPI(s);
   }
   const series = Object.entries(byQuarterKey)
     .sort(([a], [b]) => a.localeCompare(b))

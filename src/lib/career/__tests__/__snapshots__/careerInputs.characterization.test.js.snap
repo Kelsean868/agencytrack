@@ -2,17 +2,6 @@
 
 exports[`Career level inputs — characterization (F-2) > 'A v1 only · contractStartDate 3.7 y' 1`] = `
 {
-  "level": 1,
-  "quarters": "0,0,0,0,0,0,300,300",
-  "trailing2YrAPI": 300000,
-  "years": null,
-  "ytdAPI": 300000,
-  "ytdApps": 42,
-}
-`;
-
-exports[`Career level inputs — characterization (F-2) > 'B v1 only · startDate 3.7 y, no contr…' 1`] = `
-{
   "level": 2,
   "quarters": "0,0,0,0,0,0,300,300",
   "trailing2YrAPI": 300000,
@@ -22,24 +11,35 @@ exports[`Career level inputs — characterization (F-2) > 'B v1 only · startDat
 }
 `;
 
+exports[`Career level inputs — characterization (F-2) > 'B v1 only · startDate 3.7 y, no contr…' 1`] = `
+{
+  "level": 1,
+  "quarters": "0,0,0,0,0,0,300,300",
+  "trailing2YrAPI": 300000,
+  "years": null,
+  "ytdAPI": 300000,
+  "ytdApps": 42,
+}
+`;
+
 exports[`Career level inputs — characterization (F-2) > 'C v2 only (API and apps under newBusi…' 1`] = `
 {
   "level": 1,
-  "quarters": "0,0,0,0,0,0,0,0",
-  "trailing2YrAPI": 0,
-  "years": null,
-  "ytdAPI": 0,
+  "quarters": "0,0,0,0,0,0,300,300",
+  "trailing2YrAPI": 300000,
+  "years": 3.71,
+  "ytdAPI": 300000,
   "ytdApps": 0,
 }
 `;
 
 exports[`Career level inputs — characterization (F-2) > 'D mixed: v2 API + one v1 week with 42…' 1`] = `
 {
-  "level": 1,
-  "quarters": "0,0,0,0,0,0,0,0",
-  "trailing2YrAPI": 0,
-  "years": null,
-  "ytdAPI": 0,
+  "level": 2,
+  "quarters": "0,0,0,0,0,0,300,300",
+  "trailing2YrAPI": 300000,
+  "years": 3.71,
+  "ytdAPI": 300000,
   "ytdApps": 42,
 }
 `;
@@ -71,7 +71,7 @@ exports[`Career level inputs — characterization (F-2) > 'G contractStartDate 1
   "level": 1,
   "quarters": "0,0,0,0,0,0,300,300",
   "trailing2YrAPI": 300000,
-  "years": null,
+  "years": 1.9,
   "ytdAPI": 300000,
   "ytdApps": 42,
 }
@@ -79,10 +79,10 @@ exports[`Career level inputs — characterization (F-2) > 'G contractStartDate 1
 
 exports[`Career level inputs — characterization (F-2) > 'H contractStartDate just over 2.0 y' 1`] = `
 {
-  "level": 1,
+  "level": 2,
   "quarters": "0,0,0,0,0,0,300,300",
   "trailing2YrAPI": 300000,
-  "years": null,
+  "years": 2,
   "ytdAPI": 300000,
   "ytdApps": 42,
 }
@@ -90,10 +90,10 @@ exports[`Career level inputs — characterization (F-2) > 'H contractStartDate j
 
 exports[`Career level inputs — characterization (F-2) > 'I contractStartDate 5.1 y · 600,000 a…' 1`] = `
 {
-  "level": 1,
+  "level": 5,
   "quarters": "0,0,0,0,0,0,600,600",
   "trailing2YrAPI": 600000,
-  "years": null,
+  "years": 5.08,
   "ytdAPI": 600000,
   "ytdApps": 52,
 }
@@ -101,11 +101,11 @@ exports[`Career level inputs — characterization (F-2) > 'I contractStartDate 5
 
 exports[`Career level inputs — characterization (F-2) > 'J legacy \`api\` field only · 3.7 y' 1`] = `
 {
-  "level": 1,
-  "quarters": "0,0,0,0,0,0,0,0",
-  "trailing2YrAPI": 0,
-  "years": null,
-  "ytdAPI": 0,
+  "level": 2,
+  "quarters": "0,0,0,0,0,0,300,300",
+  "trailing2YrAPI": 300000,
+  "years": 3.71,
+  "ytdAPI": 300000,
   "ytdApps": 42,
 }
 `;

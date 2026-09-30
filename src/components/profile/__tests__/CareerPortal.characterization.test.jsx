@@ -54,7 +54,8 @@ function fixture({ avg, apps, pers, years, ytdWeeks = 20, spread = false }) {
   const submissions = [...weeks(Y - 1, 20, avg, 0, spread), ...weeks(Y, ytdWeeks, avg, apps, spread)];
   const persistencyData = pers == null ? [] : [{ year: Y, month: 1 }];
   hoisted.aggregatePersistency.mockReturnValue({ aggregatedPersistency: pers == null ? null : pers / 100 });
-  const user = years == null ? {} : { startDate: new Date(Date.now() - years * YEAR_MS).toISOString() };
+  // F-2: years of service come from contractStartDate (YYYY-MM-DD); startDate is no longer read.
+  const user = years == null ? {} : { contractStartDate: new Date(Date.now() - years * YEAR_MS).toISOString().slice(0, 10) };
   return { submissions, persistencyData, user };
 }
 function levelShown() {

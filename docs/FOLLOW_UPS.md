@@ -23,7 +23,7 @@
 | FR Arena header (`FrArenaHeader`) is unused once R2-11 merges — the FR Leaderboard carries the standing — and its "settled API puts you there" note claims a source the board does not use (banked 2026-09-30, R2-11) | LOW | FR redesign / Compete | — | see § FR Arena header unused after R2-11 |
 | Commission playground ladder says "÷ comm · × settle", but API to write divides by the PERSISTENCY rate; settlement feeds nothing shown (Nexus look; the FR port omits the connector text) (banked 2026-09-30, R2-7) | MEDIUM | Commission playground | — | see § Commission playground ladder: the settle label does not match the math |
 | FR Commission playground (R2-7) omits canvas blocks the app does not compute (apps at average API, persistency-adjusted write-for, this-month chain vs weekly minimums, cumulative line, waterfall, upcoming payouts, PAYE / own-history switches, phone Adjust sheet) — needs a ruling (banked 2026-09-30) | LOW | FR redesign / Commission | — | see § FR Commission playground: canvas blocks not computed today |
-| Career level inputs likely empty for every agent: years of service reads `user.startDate` (no writer in the codebase; profiles carry `contractStartDate`), and API reads only the v1 `apiSold` field (v2 reports store `newBusiness.api`) — so the level is probably stuck at 1. Found in R2-10; level logic not changed (brief § 5 stop) (banked 2026-09-30) | HIGH | Career / levels | — | see § Career level inputs: startDate and apiSold |
+| Career level: YTD applications read only v1 `applicationsSold` / `appsSold` (v2 reports store `newBusiness.apps`), so an agent whose reports are all v2 has 0 applications and stays at level 1 even after F-2 fixed years and API (banked 2026-09-30, F-2) | HIGH | Career / levels | — | see § Career level: applications still v1-only (after F-2) |
 | Head-office **Pending** policies can still be changed from the ledger (reached from the Campaign screen's "Change status"); lock not built per Kyron ruling 4 — needs a ledger + rules change (banked 2026-09-30, R2-4) | MEDIUM | Policy Ledger / rules | — | see § Head-office Pending policies can still be changed from the ledger |
 | FR round 2 (#1014–#1021) preview smokes waived under Rule 13; read-only production click-through deferred (banked 2026-09-30, #1014–#1021 fill) | LOW | FR redesign / verification | — | see § FR round 2 deferred click-through |
 | FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999), FR-2 (#1001), FR-3 (#1002), FR-4 (#1003), FR-5 (#1004) and FR-5b (#1008) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at each FR post-merge through #1008). **Desktop walked 28-09-2026 on production (`e31155ff`): 25 FR screens, 0 errors. OPEN FOR PHONE WIDTH ONLY** | LOW | FR redesign / verification | — | see § FR preview click-through |
@@ -8240,6 +8240,8 @@ The existing rules test (`tests/rules/policies.rules.test.mjs`, "Arm D ALLOW: BM
 
 ## Career level inputs: startDate and apiSold
 
+**RESOLVED by #TBD (F-2, branch `claude/f2-career-level-inputs`, brief `docs/briefs/fr-round2-followups.md` § 4; Kyron ruling 30-09-2026).** Years of service now come from `contractStartDate` (`yearsOfServiceFrom`, `src/lib/career/careerModel.js`; `''` / absent / not a real YYYY-MM-DD date → null; `startDate` is no longer read), and API from `extractFields(s).apiSold` (`submissionAPI`) in `careerStats`, `computeQuarterlyAPI`, `quarterlyAPISeries` and `compute2YearAverageAPI`. Level thresholds unchanged. Level before → after for the fixture table is in the PR. Not fixed here (not in the ruling): YTD applications are still v1-only — see § Career level: applications still v1-only (after F-2). Ledger (settled) API is also not in scope.
+
 **Banked 2026-09-30 from R2-10 (Career FR port). Severity: HIGH — an agent-facing verdict (career level, title, unlocks) is probably wrong for everyone. Not checked against live user or submission docs.**
 
 **Observed (source, on R2-10's branch; the code moved verbatim from `CareerPortal.jsx` to `src/lib/career/careerModel.js`):**
@@ -8251,3 +8253,13 @@ The existing rules test (`tests/rules/policies.rules.test.mjs`, "Arm D ALLOW: BM
 **Fix shape (needs a ruling):** read `contractStartDate` for years of service (and decide how `''` is treated), and read API through `extractFields` or, better, from the ledger (settled API) for the 2-yr average and the trajectory. Both change who sits at which level: characterization tests first, a table of expected level changes, human-merge.
 
 **Falsification (Rule 23):** overturned if a live user doc is found with `startDate` set by some path outside this repo, or if live submissions still carry `apiSold`.
+
+## Career level: applications still v1-only (after F-2)
+
+**Banked 2026-09-30 from F-2. Severity: HIGH — without it, F-2 does not move any agent whose weekly reports are all v2.**
+
+**Observed (source, `claude/f2-career-level-inputs`):** `careerStats` (`src/lib/career/careerModel.js`) sums `ytdApps` from `parseFloat(s.applicationsSold || s.appsSold)`. v2 reports store applications under `newBusiness.apps`, which `extractFields` reads (`version === 2 ? newBusiness.apps : applicationsSold || appsSold`). Every level from 1 to 6 needs `minApps` (42–52), so an all-v2 agent has `ytdApps = 0` and stays at level 1. F-2 fixture C shows it: API 300,000 and 3.7 years, still level 1.
+
+**Fix shape:** read `extractFields(s).applicationsSold` in `careerStats` (one line, same pattern as `submissionAPI`), with a characterization row and a level before → after table. Human-merge (agent-facing verdict). Needs a dispatcher ruling: the F-2 ruling named years and API only.
+
+**Falsification (Rule 23):** overturned if live v2 submissions also carry a flat `applicationsSold` (then the v1 read already sees them) — check one v2 submission doc before building.
