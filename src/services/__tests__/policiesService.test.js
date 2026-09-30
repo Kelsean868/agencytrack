@@ -705,6 +705,37 @@ describe('lapsePolicy', () => {
     expect(notifPayload.body).toContain('Jane Smith');
   });
 
+  // F-1 (audit A-1): the EXACT update, provenance included. Rules Arm D denies
+  // a lapse without statusSource / statusSetBy unless this same manager set the
+  // settled status. tests/rules/policies.rules.test.mjs sends this payload via
+  // buildLapseUpdate.
+  it('policy update is exactly the lapse fields plus the manager status provenance', async () => {
+    // Fixed clock (CodeRabbit on #1032): statusAsOf is today in Trinidad time,
+    // so a run across midnight must not read two different days.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-09-30T16:00:00Z'));   // 12:00 in Trinidad
+      await lapsePolicy('t1', mockBMProfile, 'p1', mockSettledPolicy, { ...mockFields, lapseReason: ' Non-payment ' });
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(hoisted.mockBatchUpdate.mock.calls[0][1]).toEqual({
+      status:          'lapsed',
+      statusUpdatedAt: { _type: 'serverTimestamp' },
+      dateLapsed:      mockFields.dateLapsed,
+      lapseReason:     'Non-payment',
+      statusSource:    'manager',
+      statusSetBy:     'bm-uid',
+      statusAsOf:      '2026-09-30',
+    });
+    expect(hoisted.mockBatchSet.mock.calls[0][1].changedFields).toEqual({
+      dateLapsed:   mockFields.dateLapsed,
+      lapseReason:  'Non-payment',
+      statusSource: 'manager',
+      statusSetBy:  'bm-uid',
+    });
+  });
+
   it('tenant_admin can also lapse a policy', async () => {
     const taProfile = { uid: 'ta1', name: 'Tenant Admin', role: 'tenant_admin' };
     await expect(

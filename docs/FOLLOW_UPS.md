@@ -18,7 +18,6 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| Branch-manager "lapse policy" (`lapsePolicy`) is DENIED by its own rules arm in most cases: it omits `statusSource` / `statusSetBy` / `statusAsOf`, which Arm D requires — passes only when the same BM set the settled status. Emulator-proven (A-1, 2026-09-30) | HIGH | Policy Ledger / rules / manager | — | see § A-1: lapsePolicy fails Arm D without status provenance |
 | Policies rules hit Firestore's 1000-expression limit on an update: several `policies` update arms report "maximum of 1000 expressions … reached" in the emulator (seen on a lapse write); a valid write whose allowing arm hits the limit would be denied (banked 2026-09-30, A-1) | MEDIUM | Firestore rules | — | see § Policies rules reach the 1000-expression limit |
 | FR Arena header (`FrArenaHeader`) is unused once R2-11 merges — the FR Leaderboard carries the standing — and its "settled API puts you there" note claims a source the board does not use (banked 2026-09-30, R2-11) | LOW | FR redesign / Compete | — | see § FR Arena header unused after R2-11 |
 | Commission playground ladder says "÷ comm · × settle", but API to write divides by the PERSISTENCY rate; settlement feeds nothing shown (Nexus look; the FR port omits the connector text) (banked 2026-09-30, R2-7) | MEDIUM | Commission playground | — | see § Commission playground ladder: the settle label does not match the math |
@@ -8162,6 +8161,8 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Falsification (Rule 23):** closed if Kyron rules the modals and the omitted pieces stay as they are.
 
 ## A-1: lapsePolicy fails Arm D without status provenance
+
+**RESOLVED by #TBD (F-1, branch `claude/f1-lapse-provenance`, brief `docs/briefs/fr-round2-followups.md` § 4).** `lapsePolicy` now stamps `statusSource: manager`, `statusSetBy: <manager uid>`, `statusAsOf` (and `changedFields` carries statusSource / statusSetBy), built by the pure `buildLapseUpdate` (`src/lib/policies/lapsePolicyUpdate.js`) that the emulator rules test imports, so the test sends the app's exact payload. Emulator: the pre-F-1 payload is DENIED for the four A-1 cases; the app payload is ALLOWED for all five; mutation (drop `statusSetBy`) fails 6 ALLOW cases. No rules change. The "Also seen" point (Arm D does not check `isHeadOfficeStatus`) is NOT addressed here and still needs a ruling.
 
 **Banked 2026-09-30 from audit A-1 (`docs/briefs/fr-round2-followups.md` § 1, audit only — no code change in the audit). Severity: HIGH — a branch manager's "lapse policy" action fails in production for almost every policy, and the rules test that covers it passes only because it sends fields the app does not.**
 

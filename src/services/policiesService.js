@@ -7,6 +7,7 @@ import { PROSPECTING_SOURCES } from './prospectInfoService';
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../utils/prospectingConstants';
 import { isLegalAgentTransition } from '../constants/policyLifecycle';
 import { parseDateOnlyTT, getTodayTT } from '../utils/dateInputs';
+import { buildLapseUpdate } from '../lib/policies/lapsePolicyUpdate';
 import { excludeImported } from '../lib/portfolioImport/excludeImported';
 import { isFromHeadOffice } from '../lib/settledProvenance';
 import {
@@ -460,15 +461,14 @@ export async function lapsePolicy(tenantId, managerProfile, policyId, policy, fi
   const historyRef = doc(collection(db, 'tenants', tenantId, 'policies', policyId, 'history'));
   const notifRef   = doc(collection(db, 'tenants', tenantId, 'notifications'));
 
-  const policyUpdate = {
-    status:          'lapsed',
+  // F-1 (audit A-1): the update carries status provenance, or rules Arm D
+  // denies it. Built by a pure function the emulator rules test also imports.
+  const { policyUpdate, changedFields } = buildLapseUpdate({
+    managerUid:      managerProfile.uid,
+    fields,
+    today:           getTodayTT(),
     statusUpdatedAt: serverTimestamp(),
-    dateLapsed:      fields.dateLapsed,
-  };
-  if (fields.lapseReason?.trim()) policyUpdate.lapseReason = fields.lapseReason.trim();
-
-  const changedFields = { dateLapsed: fields.dateLapsed };
-  if (fields.lapseReason?.trim()) changedFields.lapseReason = fields.lapseReason.trim();
+  });
 
   const historyDoc = {
     fromStatus:   'settled',
