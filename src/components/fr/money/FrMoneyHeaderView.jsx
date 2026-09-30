@@ -25,7 +25,7 @@ const TITLES = {
   financing: 'Financing',
 };
 
-export default function FrMoneyHeaderView({ tab, tiles, loading = false, pace = null, series = null, plan = null }) {
+export default function FrMoneyHeaderView({ tab, tiles, loading = false, pace = null, series = null, plan = null, reinstateActions = null }) {
   const title = TITLES[tab];
   if (!title) {
     if (import.meta.env.DEV) throw new Error(`FrMoneyHeaderView: unknown tab "${tab}"`);
@@ -59,7 +59,7 @@ export default function FrMoneyHeaderView({ tab, tiles, loading = false, pace = 
       {tab === 'persistency' ? (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:items-start">
           <div className="min-w-0 lg:col-span-5"><PersistencyHistory series={series} threshold={plan?.threshold ?? 90} /></div>
-          <div className="min-w-0 lg:col-span-7"><ReinstatementPlanner plan={plan} /></div>
+          <div className="min-w-0 lg:col-span-7"><ReinstatementPlanner plan={plan} actions={reinstateActions} /></div>
         </div>
       ) : null}
       <p className="text-[12px] text-ink-muted">The full {title.toLowerCase()} calculator is below.</p>

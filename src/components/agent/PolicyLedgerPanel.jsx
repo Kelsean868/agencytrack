@@ -3,7 +3,8 @@ import { Plus, Upload, Loader2, AlertCircle, ArrowLeft, Info } from 'lucide-reac
 import { useAuth } from '../../context/AuthContext';
 import { PROSPECTING_SOURCES } from '../../services/prospectInfoService';
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../../utils/prospectingConstants';
-import { createPolicy, getOwnPolicies, transitionPolicyStatus, selfConfirmPolicy } from '../../services/policiesService';
+import { createPolicy, getOwnPolicies, transitionPolicyStatus, selfConfirmPolicy, declareReinstatement, withdrawReinstatement } from '../../services/policiesService';
+import { canDeclareReinstatement, reinstatementWriteError } from '../../lib/persistency/reinstatementDeclaration';
 import { getPolicyPlans } from '../../services/planCatalogService';
 import { getTodayTT } from '../../utils/dateInputs';
 import { applyLedgerFilter, LEDGER_FILTERS } from '../../lib/policyLedgerDerivation';
@@ -144,6 +145,9 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
   const [drawerAwardWindows, setDrawerAwardWindows] = useState([]);
   const [transitioning, setTransitioning] = useState(false);
   const [transitionError, setTransitionError] = useState(null);
+  // FR-6 — Mark reinstated / Withdraw on an own lapsed policy (Arm G).
+  const [reinstating, setReinstating] = useState(false);
+  const [reinstateError, setReinstateError] = useState(null);
 
   // ── Portfolio import (P4c) ──
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -256,6 +260,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
 
   function openDrawer(policy, awardWindows = []) {
     setTransitionError(null);
+    setReinstateError(null);
     setDrawerPolicy(policy);
     setDrawerAwardWindows(awardWindows);
   }
@@ -264,6 +269,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
     setDrawerPolicy(null);
     setDrawerAwardWindows([]);
     setTransitionError(null);
+    setReinstateError(null);
   }
 
   async function handleTransition(toStatus, fields) {
@@ -301,6 +307,45 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
     } finally {
       setTransitioning(false);
     }
+  }
+
+  // FR-6 (Option A) — the agent declares / withdraws a reinstatement on an OWN
+  // LAPSED policy (firestore.rules Arm G). The drawer stays open on the fresh
+  // doc so the agent sees the declaration land.
+  const declarer = { uid: user?.uid, ...userProfile, role: role ?? userProfile?.role };
+  const canReinstate = Boolean(drawerPolicy) && canDeclareReinstatement(drawerPolicy, declarer);
+
+  async function runReinstate(write) {
+    if (!drawerPolicy) return;
+    const id = drawerPolicy.id;
+    setReinstating(true);
+    setReinstateError(null);
+    try {
+      await write(drawerPolicy);
+    } catch (err) {
+      setReinstateError(reinstatementWriteError(err));
+      setReinstating(false);
+      return;
+    }
+    onPoliciesChanged?.();
+    try {
+      const fresh = await getOwnPolicies(tenantId, user.uid);
+      setPolicies(fresh);
+      setDrawerPolicy(fresh.find((p) => p.id === id) ?? null);
+    } catch {
+      // The write landed; only the refresh failed. Say so rather than "not saved".
+      setReinstateError('Saved. The list could not refresh; reopen the ledger to see it.');
+    } finally {
+      setReinstating(false);
+    }
+  }
+
+  function handleDeclareReinstatement(note) {
+    return runReinstate((p) => declareReinstatement(tenantId, declarer, p.id, p, { note }));
+  }
+
+  function handleWithdrawReinstatement() {
+    return runReinstate((p) => withdrawReinstatement(tenantId, declarer, p.id, p));
   }
 
   function openCreate() {
@@ -466,6 +511,10 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
             onSelfConfirm={handleSelfConfirm}
             selfConfirming={transitioning}
             selfConfirmError={transitionError}
+            onDeclareReinstatement={canReinstate ? handleDeclareReinstatement : null}
+            onWithdrawReinstatement={canReinstate ? handleWithdrawReinstatement : null}
+            reinstating={reinstating}
+            reinstateError={reinstateError}
           />
         )}
 

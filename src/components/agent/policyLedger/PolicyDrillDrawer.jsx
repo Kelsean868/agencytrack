@@ -12,6 +12,14 @@ import { policyToken, policyPillLabel, isConfirmed } from '../../../lib/policySt
 import { STATUS_SOURCE_IMPORT } from '../../../lib/portfolioImport/oipaImportConfig';
 import { isFromHeadOffice } from '../../../lib/settledProvenance';
 import { AwardWindowChips } from './PolicyCard';
+import ReinstatementDeclarationControl from '../../persistency/ReinstatementDeclaration';
+import { declarationView, REINSTATEMENT_EVENTS } from '../../../lib/persistency/reinstatementDeclaration';
+
+/** FR-6 history events read as words, not "Lapsed → Lapsed". */
+const HISTORY_EVENT_LABELS = {
+  [REINSTATEMENT_EVENTS.declared]: 'Marked reinstated',
+  [REINSTATEMENT_EVENTS.withdrawn]: 'Reinstatement withdrawn',
+};
 
 /**
  * P4e ruling 3 — one plain-words line saying where an imported status came from.
@@ -79,6 +87,7 @@ const inputCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm t
 export default function PolicyDrillDrawer({
   policy, awardWindows = null, onClose, onTransition, transitioning, transitionError,
   onSelfConfirm = null, selfConfirming = false, selfConfirmError = null,
+  onDeclareReinstatement = null, onWithdrawReinstatement = null, reinstating = false, reinstateError = null,
 }) {
   const { tenantId, user } = useAuth();
   const today = getTodayTT();
@@ -102,7 +111,9 @@ export default function PolicyDrillDrawer({
       .then((rows) => { if (alive) setHistory(rows); })
       .catch(() => { if (alive) { setHistory([]); setHistError(true); } });
     return () => { alive = false; };
-  }, [tenantId, policy.id, user?.uid]);
+    // FR-6: a declare / withdraw changes reinstatementDeclaredBy, so the history
+    // reloads and shows the new event.
+  }, [tenantId, policy.id, user?.uid, policy.reinstatementDeclaredBy]);
 
   const t = policyToken(policy);
   const nodes = lifecycleNodes(policy);
@@ -114,6 +125,11 @@ export default function PolicyDrillDrawer({
   const headOfficeSettled = policy.status === 'settled' && isFromHeadOffice(policy);
   const canSelfConfirm = Boolean(onSelfConfirm) && policy.status === 'settled'
     && !policy.confirmedByUid && !headOfficeSettled;
+  // FR-6 (Option A): a declared reinstatement on a lapsed policy. Shown beside
+  // the status, never changing it; the controls only for the owner (Arm G).
+  const reinstatement = declarationView(policy, today);
+  const canReinstate = policy.status === 'lapsed'
+    && Boolean(onDeclareReinstatement) && Boolean(onWithdrawReinstatement);
 
   function onConfirmField(e) {
     const { name, value } = e.target;
@@ -290,7 +306,8 @@ export default function PolicyDrillDrawer({
               <div key={h.id} className="flex items-start gap-2 text-xs">
                 <span className="font-mono text-ink-muted shrink-0">{fmtDate(h.at)}</span>
                 <span className="text-ink">
-                  {(POLICY_STATUS_LABELS[h.fromStatus] ?? h.fromStatus)} → {(POLICY_STATUS_LABELS[h.toStatus] ?? h.toStatus)}
+                  {HISTORY_EVENT_LABELS[h.event]
+                    ?? <>{(POLICY_STATUS_LABELS[h.fromStatus] ?? h.fromStatus)} → {(POLICY_STATUS_LABELS[h.toStatus] ?? h.toStatus)}</>}
                   <span className="text-ink-muted ml-1.5">({h.actorRole})</span>
                 </span>
               </div>
@@ -418,6 +435,31 @@ export default function PolicyDrillDrawer({
               <Detail k="INITIAL PREMIUM" v={moneyOrDash(policy.initialPremium)} />
               <Detail k="EARNED COMMISSION" v={moneyOrDash(policy.earnedCommission)} />
             </div>
+          </div>
+        )}
+
+        {/* FR-6 — Mark reinstated / Withdraw on an own lapsed policy (Arm G).
+            Status and money stay as head office left them. */}
+        {policy.status === 'lapsed' && (canReinstate || reinstatement) && (
+          <div className="p-5 border-t border-border bg-surface-muted" data-testid="drawer-reinstatement">
+            <p className="text-[13px] font-bold text-ink">Reinstatement</p>
+            <p className="text-[11.5px] text-ink-muted mt-1 mb-3">
+              The client has paid and the policy is back in force? Mark it here. It stays lapsed until head office’s export confirms it.
+            </p>
+            {canReinstate ? (
+              <ReinstatementDeclarationControl
+                declaration={reinstatement}
+                onDeclare={onDeclareReinstatement}
+                onWithdraw={onWithdrawReinstatement}
+                busy={reinstating}
+                error={reinstateError}
+                testIdPrefix="drawer-reinstate"
+              />
+            ) : (
+              <p className="text-[13px] font-semibold text-ink" data-testid="drawer-reinstate-declared">
+                Reinstated — waiting for head office
+              </p>
+            )}
           </div>
         )}
 

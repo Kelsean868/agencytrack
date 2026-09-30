@@ -9,6 +9,7 @@ import {
 } from '../../lib/persistency/persistencyOutlook';
 import { TATIL_24M_LABELS } from '../../lib/persistency/model';
 import { formatCurrency } from '../../utils/formatters';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 import AnnuityRuleSwitch from './AnnuityRuleSwitch';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import { outlookMonthLabel, outlookMonthEndLabel, outlookDateLabel } from './outlookLabels';
@@ -203,6 +204,17 @@ export default function PersistencyOutlookHero({
         <p className="text-sm text-ink" data-testid="persistency-outlook-if-pending">
           If your {ifPendingSettle.pendingCount} pending {ifPendingSettle.pendingCount === 1 ? 'policy settles' : 'policies settle'}
           {' '}({formatCurrency(ifPendingSettle.pendingApi)}): <strong>{formatOutlookPct(ifPendingSettle.persistency)}</strong>
+        </p>
+      )}
+
+      {/* FR-6 — declared reinstatements, BESIDE the evidenced estimate and never
+          inside it (Option A; never feeds awards, financing or commission). */}
+      {estimateToday?.declared?.policies?.length > 0 && (
+        <p className="text-sm text-ink" data-testid="persistency-outlook-declared">
+          With your declared reinstatements: <strong className="tabular-nums">{formatPersistencyPct(estimateToday.declared.persistency * 100)}</strong>
+          <span className="text-ink-muted">
+            {' '}({estimateToday.declared.policies.length} {estimateToday.declared.policies.length === 1 ? 'policy' : 'policies'}, waiting for head office · evidenced {formatPersistencyPct(estimateToday.persistency * 100)})
+          </span>
         </p>
       )}
 

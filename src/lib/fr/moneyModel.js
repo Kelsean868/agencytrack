@@ -17,6 +17,7 @@ import { buildPersistencyOutlook, toLedgerDoc } from '../persistency/persistency
 import { calculateShortfall, deriveAll, projectPersistency, PERS_GATE } from '../persistency/calculations';
 import { roundPersistencyPct, formatPersistencyPct } from '../persistency/persistencyRounding';
 import { isTwentyFourMonthModel } from '../persistency/model';
+import { declarationView } from '../persistency/reinstatementDeclaration';
 
 export const MONTH_SHORT = Object.freeze(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']);
 
@@ -316,6 +317,12 @@ export function reinstatementPlan({ policies, records = [], todayTT, gate = null
     const countsThrough = shiftMonthKey(issuedKey, WINDOW_MONTHS - 1);
     lapses.push({
       policyNumber: num,
+      // FR-6: the policy doc behind the row (for "Mark reinstated" / "Withdraw")
+      // and its live declaration, if any. Display only — never in a figure below.
+      id: d.id ?? null,
+      agentId: d.agentId ?? null,
+      status: d.status ?? null,
+      declaration: declarationView(d, todayTT),
       clientName: d.ownerName ?? d.insuredName ?? d.clientName ?? null,
       api: money2(Number(d.proposedAPI) || 0),
       dateIssued: String(d.dateIssued).slice(0, 10),
@@ -373,6 +380,17 @@ export function reinstatementPlan({ policies, records = [], todayTT, gate = null
     stale: Boolean(outlook.stale),
     estimate: outlook.estimateToday,
     inputs: fig.inputs,
+    // FR-6 — declared reinstatements, BESIDE the evidenced figure. Raw percents
+    // (formatted with formatPersistencyPct at display). Every other field of
+    // this plan is evidenced-only; a declaration never moves them.
+    declared: fig.declared
+      ? {
+        count: fig.declared.policies.length,
+        total: money2(fig.declared.reinstatements),
+        evidencedPct: fig.persistency * 100,
+        pct: fig.declared.persistency * 100,
+      }
+      : null,
   };
 }
 

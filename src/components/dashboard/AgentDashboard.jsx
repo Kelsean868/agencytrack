@@ -56,6 +56,8 @@ import FrToday from '../fr/today/FrToday';
 import FrMoney from '../fr/money/FrMoney';
 import FrMoneyHeader from '../fr/money/FrMoneyHeader';
 import { FR_MONEY_TABS } from '../../lib/fr/moneyModel';
+// FR-6: Mark reinstated / Withdraw on the FR-3 planner rows (Money · Persistency, Focus · Win back).
+import useReinstatementDeclaration from '../persistency/useReinstatementDeclaration';
 // FR-4: Focus and Pipeline (new FR routes) and the FR headers above the
 // Numbers hub routes and the Policy Ledger — FR look only.
 import FrFocus from '../fr/work/FrFocus';
@@ -669,6 +671,16 @@ export default function AgentDashboard() {
   // is kept until the refetch lands, so the hero never flashes to empty.
   const markPoliciesStale = useCallback(() => { setPolicies(null); }, []);
 
+  // FR-6 (Mark reinstated): who is declaring, for the FR-3 planner's write
+  // (firestore.rules Arm G decides; the service mirrors it).
+  const reinstateDeclarer = useMemo(
+    () => (user?.uid ? { uid: user.uid, role, unitId: userProfile?.unitId ?? null } : null),
+    [user?.uid, role, userProfile?.unitId],
+  );
+  const reinstateActions = useReinstatementDeclaration({
+    tenantId, declarer: reinstateDeclarer, policies: policiesAll, onChanged: markPoliciesStale,
+  });
+
   // Unlock banner
   const showUnlockBanner =
     !unlockDismissed &&
@@ -924,6 +936,7 @@ export default function AgentDashboard() {
           resolvedMinimums={resolvedMinimums}
           commissionRate={parseFloat(userProfile?.commissionRate)}
           activeCampaigns={activeCampaigns}
+          reinstateActions={reinstateActions}
         />
       )}
       {/* ── FR-4 WORK (FR look only): Focus, Pipeline, and the FR headers above
@@ -941,6 +954,7 @@ export default function AgentDashboard() {
           todayDailyEntry={todayDailyEntry}
           onLogToday={() => setShowDailyModal(true)}
           onOpenTab={setActiveTab}
+          reinstateActions={reinstateActions}
         />
       )}
       {fr && activeTab === 'pipeline' && (

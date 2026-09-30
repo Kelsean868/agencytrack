@@ -162,7 +162,7 @@ function Paperwork({ rows, onOpenLedger }) {
 
 export default function FrFocusView({
   mode = 'calls', onMode, calls, callsLoading = false, callsError = false, onRetryCalls,
-  paperwork, plan, onLogToday, onOpenLedger, onOpenPlanner,
+  paperwork, plan, onLogToday, onOpenLedger, onOpenPlanner, reinstateActions = null,
 }) {
   return (
     <div className="flex flex-col gap-4 lg:gap-5" data-testid="fr-focus">
@@ -178,7 +178,7 @@ export default function FrFocusView({
       ) : mode === 'paperwork' ? (
         <Paperwork rows={paperwork} onOpenLedger={onOpenLedger} />
       ) : (
-        <ReinstatementPlanner plan={plan} />
+        <ReinstatementPlanner plan={plan} actions={reinstateActions} />
       )}
     </div>
   );

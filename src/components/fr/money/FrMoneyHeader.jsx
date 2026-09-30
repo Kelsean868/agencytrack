@@ -14,7 +14,9 @@ import FrMoneyHeaderView from './FrMoneyHeaderView';
  * calculator (FR-3, FR-D5). Rendered by AgentDashboard ABOVE the unchanged
  * calculator, only under the FR look. Reads props the dashboard already
  * loads; Money Needs and Financing add one read-only existing-service call
- * each (useMoneyExtras), and only on their own tab.
+ * each (useMoneyExtras), and only on their own tab. FR-6: on Persistency,
+ * `reinstateActions` (AgentDashboard's useReinstatementDeclaration) gives the
+ * planner rows "Mark reinstated" / "Withdraw"; the write lives there.
  */
 export default function FrMoneyHeader({
   tab,
@@ -32,6 +34,7 @@ export default function FrMoneyHeader({
   resolvedMinimums,
   commissionRate,
   activeCampaigns,
+  reinstateActions = null,
 }) {
   const todayTT = getTodayTT();
   const year = ledgerProduction?.year ?? Number(todayTT.slice(0, 4));
@@ -78,5 +81,15 @@ export default function FrMoneyHeader({
   const loading = (tab === 'goals' && (Boolean(ledgerPending) || Boolean(hierarchyLoading)))
     || ((tab === 'money-needs' || tab === 'financing') && extras.loading);
 
-  return <FrMoneyHeaderView tab={tab} tiles={tiles} loading={loading} pace={pace} series={series} plan={plan} />;
+  return (
+    <FrMoneyHeaderView
+      tab={tab}
+      tiles={tiles}
+      loading={loading}
+      pace={pace}
+      series={series}
+      plan={plan}
+      reinstateActions={tab === 'persistency' ? reinstateActions : null}
+    />
+  );
 }

@@ -1,7 +1,7 @@
 import { db } from '../firebase';
 import {
   collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, Timestamp,
-  writeBatch, doc, updateDoc,
+  writeBatch, doc, updateDoc, deleteField,
 } from 'firebase/firestore';
 import { PROSPECTING_SOURCES } from './prospectInfoService';
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../utils/prospectingConstants';
@@ -9,6 +9,12 @@ import { isLegalAgentTransition } from '../constants/policyLifecycle';
 import { parseDateOnlyTT, getTodayTT } from '../utils/dateInputs';
 import { excludeImported } from '../lib/portfolioImport/excludeImported';
 import { isFromHeadOffice } from '../lib/settledProvenance';
+import {
+  REINSTATEMENT_NOTE_MAX,
+  REINSTATEMENT_EVENTS,
+  canDeclareReinstatement,
+  hasLiveDeclaration,
+} from '../lib/persistency/reinstatementDeclaration';
 import {
   STATUS_SOURCE_AGENT,
   STATUS_SOURCE_MANAGER,
@@ -491,6 +497,98 @@ export async function lapsePolicy(tenantId, managerProfile, policyId, policy, fi
   batch.update(policyRef, policyUpdate);
   batch.set(historyRef, historyDoc);
   batch.set(notifRef, notifDoc);
+  await batch.commit();
+}
+
+/**
+ * declareReinstatement — FR-6 (Option A): the agent declares that their OWN
+ * LAPSED policy has been reinstated, while head office still shows it lapsed
+ * (docs/audits/fr-6-mark-reinstated-recon.md § 3; Kyron ruling R-b). Atomic
+ * writeBatch: the three declaration fields on the policy, and a lapsed → lapsed
+ * `reinstatement_declared` history event.
+ *
+ * Never touches status, statusSource or any money field (firestore.rules Arm G
+ * refuses the write if it did), so the P2d head-office lock holds and no
+ * award, financing or commission figure moves. No amount is stored: readers
+ * take the lapse's own API from the ledger evidence.
+ *
+ * @param {string} tenantId
+ * @param {object} agentProfile — { uid, role, unitId }
+ * @param {string} policyId
+ * @param {object} policy       — current policy doc ({ agentId, status, ... })
+ * @param {{ note?: string }} [opts] — optional short note (receipt reference), ≤ 200 chars
+ */
+export async function declareReinstatement(tenantId, agentProfile, policyId, policy, { note } = {}) {
+  // JS mirror of Arm G.
+  if (policy?.agentId !== agentProfile?.uid) throw new Error('You can only mark your own policies reinstated');
+  if (policy?.status !== 'lapsed') throw new Error('Only a lapsed policy can be marked reinstated');
+  if (!canDeclareReinstatement(policy, agentProfile)) throw new Error('Your role cannot mark a policy reinstated');
+  const trimmed = typeof note === 'string' ? note.trim() : '';
+  if (trimmed.length > REINSTATEMENT_NOTE_MAX) {
+    throw new Error(`The note can be at most ${REINSTATEMENT_NOTE_MAX} characters`);
+  }
+
+  const policyRef  = doc(db, 'tenants', tenantId, 'policies', policyId);
+  const historyRef = doc(collection(db, 'tenants', tenantId, 'policies', policyId, 'history'));
+
+  const batch = writeBatch(db);
+  batch.update(policyRef, {
+    reinstatementDeclaredAt: serverTimestamp(),
+    reinstatementDeclaredBy: agentProfile.uid,
+    // An empty note is removed, not stored as ''.
+    reinstatementNote: trimmed ? trimmed : deleteField(),
+  });
+  batch.set(historyRef, {
+    fromStatus:    'lapsed',
+    toStatus:      'lapsed',
+    event:         REINSTATEMENT_EVENTS.declared,
+    changedFields: { reinstatementDeclaredBy: agentProfile.uid, ...(trimmed ? { reinstatementNote: trimmed } : {}) },
+    actorUid:      agentProfile.uid,
+    actorRole:     agentProfile.role ?? 'agent',
+    agentId:       agentProfile.uid,
+    unitId:        agentProfile.unitId ?? null,
+    at:            serverTimestamp(),
+  });
+  await batch.commit();
+}
+
+/**
+ * withdrawReinstatement — FR-6: the agent withdraws their declaration on their
+ * OWN LAPSED policy. Atomic writeBatch: the three declaration fields deleted,
+ * and a lapsed → lapsed `reinstatement_withdrawn` history event. Same limits as
+ * declareReinstatement (Arm G).
+ *
+ * @param {string} tenantId
+ * @param {object} agentProfile — { uid, role, unitId }
+ * @param {string} policyId
+ * @param {object} policy       — current policy doc
+ */
+export async function withdrawReinstatement(tenantId, agentProfile, policyId, policy) {
+  if (policy?.agentId !== agentProfile?.uid) throw new Error('You can only change your own policies');
+  if (policy?.status !== 'lapsed') throw new Error('Only a lapsed policy has a reinstatement to withdraw');
+  if (!canDeclareReinstatement(policy, agentProfile)) throw new Error('Your role cannot change this declaration');
+  if (!hasLiveDeclaration(policy)) throw new Error('This policy is not marked reinstated');
+
+  const policyRef  = doc(db, 'tenants', tenantId, 'policies', policyId);
+  const historyRef = doc(collection(db, 'tenants', tenantId, 'policies', policyId, 'history'));
+
+  const batch = writeBatch(db);
+  batch.update(policyRef, {
+    reinstatementDeclaredAt: deleteField(),
+    reinstatementDeclaredBy: deleteField(),
+    reinstatementNote:       deleteField(),
+  });
+  batch.set(historyRef, {
+    fromStatus:    'lapsed',
+    toStatus:      'lapsed',
+    event:         REINSTATEMENT_EVENTS.withdrawn,
+    changedFields: { reinstatementDeclaredBy: null },
+    actorUid:      agentProfile.uid,
+    actorRole:     agentProfile.role ?? 'agent',
+    agentId:       agentProfile.uid,
+    unitId:        agentProfile.unitId ?? null,
+    at:            serverTimestamp(),
+  });
   await batch.commit();
 }
 

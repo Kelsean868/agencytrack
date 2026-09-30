@@ -642,6 +642,10 @@ describe('raw-carrier guard — who may receive the unfiltered list, by prop', (
       /campaignPolicies=\{policiesAll\}/,
       // FR-5b: the Trophy room's award trophies (same unfiltered list as the Awards tab).
       /^ledgerPolicies=\{policiesAll\}$/,
+      // FR-6: the Mark-reinstated hook looks a planner row's doc up by id (the
+      // FR-3 planner lists head-office lapses, which the filtered list drops).
+      // It hands that one doc to the write service; it derives no figure.
+      /^tenantId, declarer: reinstateDeclarer, policies: policiesAll, onChanged: markPoliciesStale,$/,
     ];
     const hits = [];
     for (const f of files) {
