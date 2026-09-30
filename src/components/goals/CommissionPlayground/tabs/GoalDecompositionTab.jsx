@@ -7,26 +7,23 @@ import {
 } from '../../../../services/userPrefsService';
 import { formatCurrency } from '../../../../utils/formatters';
 import SavedScenarioChips from '../components/SavedScenarioChips';
+import IncomeGoalField from '../components/IncomeGoalField';
 import {
   decomposeFromIncome,
   deriveRatiosFromHistory,
   roundTo10,
   roundToWhole,
-  WEEKLY_DIVISOR,
-  DAILY_DIVISOR,
   DEFAULT_DECOMPOSITION_INPUTS,
 } from '../../../../utils/goalDecomposition';
+import {
+  PLAYGROUND_PERIODS,
+  DEFAULT_INCOME_GOAL_PERIOD,
+  toAnnualIncomeGoal,
+} from '../../../../utils/playgroundPeriods';
 
-const PERIODS = [
-  { key: 'annual',    label: 'Annual',  display: 'Annual',  divisor: 1             },
-  { key: 'semi',      label: 'Semi',    display: 'Semi',    divisor: 2             },
-  { key: 'quarterly', label: 'Quarter', display: 'Quarter', divisor: 4             },
-  { key: 'monthly',   label: 'Month',   display: 'Month',   divisor: 10            },
-  { key: 'weekly',    label: 'Week',    display: 'Week',    divisor: WEEKLY_DIVISOR },
-  // §4.7 daily-cadence chip. DAILY_DIVISOR = 43 selling weeks × 6 selling days
-  // = 258 (derivation + Rule 17 note live on the constant in goalDecomposition).
-  { key: 'daily',     label: 'Day',     display: 'Day',     divisor: DAILY_DIVISOR  },
-];
+// The view-cadence chips and the income-goal period select share ONE table
+// (utils/playgroundPeriods.js) — R2-3 moved it there so the two cannot drift.
+const PERIODS = PLAYGROUND_PERIODS;
 
 function NumField({ label, value, onChange, prefix, step = 1, min = 0, badge }) {
   const id = `gdt-${label.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase()}`;
@@ -179,6 +176,18 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   const [error, setError]                       = useState('');
   const [showConfirm, setShowConfirm]           = useState(false);
   const [preTaxAlreadyApplied, setPtaFlag]      = useState(false);
+  // R2-3: the income goal as the agent TYPED it, plus its period. The annual
+  // `inputs.incomeGoal` every reader uses is always amount × divisor(period);
+  // the three writers (field edits via setIncomeEntry, the Money Needs
+  // hand-off, scenario apply) always set all three together.
+  const [incomeAmount, setIncomeAmount]         = useState(DEFAULT_DECOMPOSITION_INPUTS.incomeGoal);
+  const [incomePeriod, setIncomePeriod]         = useState(DEFAULT_INCOME_GOAL_PERIOD);
+
+  const setIncomeEntry = (amount, period) => {
+    setIncomeAmount(amount);
+    setIncomePeriod(period);
+    setInputs((prev) => ({ ...prev, incomeGoal: toAnnualIncomeGoal(amount, period) }));
+  };
 
   // ── R-06: saved scenario chips (agent-private, own-write) ──────────────────
   // Persisted on the shared `users/{uid}/prefs/app` doc via userPrefsService
@@ -245,7 +254,12 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   const handleScenarioApply = (s) => {
     // Merge over the defaults so a scenario saved before a new input key was
     // added still applies cleanly (missing key → default, never undefined).
-    setInputs({ ...DEFAULT_DECOMPOSITION_INPUTS, ...(s.inputs || {}) });
+    const next = { ...DEFAULT_DECOMPOSITION_INPUTS, ...(s.inputs || {}) };
+    setInputs(next);
+    // Scenarios store the ANNUAL income goal only (no period) — they load as
+    // annual, the same value the agent saved (R2-3 decision 3).
+    setIncomeAmount(next.incomeGoal);
+    setIncomePeriod(DEFAULT_INCOME_GOAL_PERIOD);
     if (s.freqKey) setFreqKey(s.freqKey);
     setActiveScenarioId(s.id);
   };
@@ -263,7 +277,10 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
       const val = isObj ? parseFloat(parsed.value) : parseFloat(parsed);
       const flag = isObj && parsed.preTaxAlreadyApplied === true;
       if (val > 0) {
-        setInputs((prev) => ({ ...prev, incomeGoal: val }));
+        // The Money Needs hand-off is an annual figure → period Annual.
+        setIncomeAmount(val);
+        setIncomePeriod(DEFAULT_INCOME_GOAL_PERIOD);
+        setInputs((prev) => ({ ...prev, incomeGoal: toAnnualIncomeGoal(val, DEFAULT_INCOME_GOAL_PERIOD) }));
         setPtaFlag(flag);
       }
     }
@@ -285,8 +302,19 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   }, [hasHistory, autoCiToSale, autoDialsToCI]);
 
   const setField = (key) => (value) => {
-    if (key === 'incomeGoal' || key === 'taxRate') setPtaFlag(false);
+    if (key === 'taxRate') setPtaFlag(false);
     setInputs((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // Editing the amount OR its period changes the annual income goal, so either
+  // clears the Money Needs pre-tax flag — same contract as the old direct edit.
+  const handleIncomeAmountChange = (amount) => {
+    setPtaFlag(false);
+    setIncomeEntry(amount, incomePeriod);
+  };
+  const handleIncomePeriodChange = (period) => {
+    setPtaFlag(false);
+    setIncomeEntry(incomeAmount, period);
   };
 
   const computed = useMemo(
@@ -332,6 +360,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
       const name = userProfile?.name ?? userProfile?.email ?? 'Agent';
       await setGoals(tenantId, agentId, {
         playgroundIncomeGoal:      inputs.incomeGoal,
+        playgroundIncomeGoalPeriod: incomePeriod,
         playgroundTaxRate:         inputs.taxRate,
         playgroundRenewalIncome:   inputs.renewalIncome,
         playgroundSettlementRate:  inputs.settlementRate,
@@ -375,8 +404,15 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
 
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Income Assumptions</p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <NumField label="Income Goal (TTD)"    value={inputs.incomeGoal}     onChange={setField('incomeGoal')}     prefix="TTD" step={5000} />
+        <div className="mb-3 sm:max-w-md">
+          <IncomeGoalField
+            amount={incomeAmount}
+            period={incomePeriod}
+            onAmountChange={handleIncomeAmountChange}
+            onPeriodChange={handleIncomePeriodChange}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <NumField label="Tax Rate (%)"          value={inputs.taxRate}         onChange={setField('taxRate')}         step={1}     min={0} />
           <NumField label="Renewal Income (TTD)" value={inputs.renewalIncome}  onChange={setField('renewalIncome')}  prefix="TTD" step={1000} />
           <NumField label="Settlement Rate (%)"  value={inputs.settlementRate} onChange={setField('settlementRate')} step={1}     min={0} />

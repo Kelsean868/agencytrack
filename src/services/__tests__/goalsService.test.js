@@ -766,3 +766,66 @@ describe('setBranchGoals', () => {
     expect(payload.dials).toBe(100);
   });
 });
+
+// ── setGoals — playground assumptions (FR round 2, R2-3) ─────────────────────
+//
+// "Reload" here is the persistence round-trip: whatever setGoals merge-writes is
+// what getGoals reads back. A tiny in-memory doc stands in for Firestore so the
+// assertion is on the value the next read returns, not only on the write call.
+describe('setGoals — playground assumptions round-trip (R2-3)', () => {
+  let stored;
+  beforeEach(() => {
+    stored = null;
+    mockSetDoc.mockImplementation(async (_ref, payload, opts) => {
+      stored = opts?.merge ? { ...(stored || {}), ...payload } : { ...payload };
+    });
+    mockGetDoc.mockImplementation(async () => ({
+      exists: () => stored !== null,
+      data: () => stored,
+    }));
+  });
+
+  it('a saved settlement rate is written (as a number) and read back — it was silently dropped before', async () => {
+    await setGoals('t1', 'a1', { playgroundSettlementRate: '85' }, 'a1', 'Agent');
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload.playgroundSettlementRate).toBe(85);
+    const reloaded = await getGoals('t1', 'a1');
+    expect(reloaded.playgroundSettlementRate).toBe(85);
+  });
+
+  it('the Save Assumptions payload round-trips every key it sends, settlement rate included', async () => {
+    const sent = {
+      playgroundIncomeGoal: 500000, playgroundIncomeGoalPeriod: 'monthly',
+      playgroundTaxRate: 25, playgroundRenewalIncome: 0, playgroundSettlementRate: 88,
+      playgroundCommissionRate: 35, playgroundAvgPolicyAPI: 12000, playgroundPersistencyRate: 90,
+      playgroundCiToSaleRatio: 2, playgroundDialsToCIRatio: 2.5, playgroundProspectRatio: 2,
+    };
+    await setGoals('t1', 'a1', sent, 'a1', 'Agent');
+    const reloaded = await getGoals('t1', 'a1');
+    for (const [k, v] of Object.entries(sent)) expect(reloaded[k]).toBe(v);
+  });
+
+  it.each(['annual', 'semi', 'quarterly', 'monthly', 'weekly', 'daily'])(
+    'income goal period %s is stored as that string and reloads unchanged',
+    async (period) => {
+      await setGoals('t1', 'a1', { playgroundIncomeGoal: 500000, playgroundIncomeGoalPeriod: period }, 'a1', 'Agent');
+      const reloaded = await getGoals('t1', 'a1');
+      expect(reloaded.playgroundIncomeGoalPeriod).toBe(period);
+      // The income goal itself stays ANNUAL whatever the period.
+      expect(reloaded.playgroundIncomeGoal).toBe(500000);
+    },
+  );
+
+  it('a period outside the six-key allowlist throws and writes nothing', async () => {
+    await expect(
+      setGoals('t1', 'a1', { playgroundIncomeGoal: 500000, playgroundIncomeGoalPeriod: 'fortnightly' }, 'a1', 'Agent'),
+    ).rejects.toThrow(/income goal period/i);
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('no period sent → no period key written (older saves load as annual in the playground)', async () => {
+    await setGoals('t1', 'a1', { playgroundIncomeGoal: 300000 }, 'a1', 'Agent');
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect('playgroundIncomeGoalPeriod' in payload).toBe(false);
+  });
+});
