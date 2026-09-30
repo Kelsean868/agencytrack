@@ -84,3 +84,21 @@ describe('award engine persistency criteria (today)', () => {
     `);
   });
 });
+
+// R2-1b review fix (CodeRabbit on #1027): the manager award averages the RAW
+// per-agent means and rounds ONCE. Two agents at 89.994 and 89.995 average to
+// 89.9945 → 89.99 %, below the 90 gate; rounding each agent first (89.99 and
+// 90.00) would average to 90.00 and pass.
+describe('manager Production Award persistency (rounded once, after aggregation)', () => {
+  it('89.994 + 89.995 → 89.99 %, not met', async () => {
+    const { computeManagerAwards } = await import('../awardsEngine');
+    const confirmed = [
+      { agentId: 'a1', periodKey: '2026-03', settledAPI: 400000, settledApps: 30, persistency: 89.994 },
+      { agentId: 'a2', periodKey: '2026-03', settledAPI: 400000, settledApps: 30, persistency: 89.995 },
+    ];
+    const awards = computeManagerAwards(confirmed, ['a1', 'a2'], confirmed, { newAdvisors: 0 }, new Date(2026, 8, 15), 'branch_manager');
+    const crit = awards.production_award.criteria.find((c) => /Persistency/.test(c.label));
+    expect(crit.met).toBe(false);
+    expect(awards.production_award.eligible).toBe(false);
+  });
+});

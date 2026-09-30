@@ -24,13 +24,14 @@ function getQuarterMonths(quarter, year) {
   return starts[quarter].map((m) => monthKey(year, m));
 }
 
-// Every persistency figure an award judges is rounded to 2 decimals, half up
-// (ruling 1, 29-09-2026): the criterion prints and passes on the same value,
-// so 89.995 meets a 90 gate and 89.994 does not.
+// Raw mean of the docs' persistency. Every figure an award JUDGES is rounded
+// to 2 decimals, half up, at its verdict (ruling 1, 29-09-2026) — once, never
+// before a further average (the manager award averages the raw per-agent
+// means, then rounds; rounding first could lift 89.9945 to 90).
 function avgPersistency(docs) {
   const vals = docs.map((d) => p(d.persistency)).filter((v) => v > 0);
   if (vals.length === 0) return 0;
-  return roundPersistencyPct(vals.reduce((s, v) => s + v, 0) / vals.length);
+  return vals.reduce((s, v) => s + v, 0) / vals.length;
 }
 
 function makeAward({ id, name, category, eligible, inContention, criteria, prize, dataSource, progressPercent, note = null }) {
@@ -123,7 +124,7 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
   if (monthlyConf.length > 0) {
     monthlyAPI = monthlyConf.reduce((s, d) => s + p(d.settledAPI), 0);
     monthlyApps = monthlyConf.reduce((s, d) => s + p(d.settledApps), 0);
-    monthlyPersist = avgPersistency(monthlyConf);
+    monthlyPersist = roundPersistencyPct(avgPersistency(monthlyConf));
     monthlySource = 'confirmed';
   } else {
     const mSubs = submitted.filter(
@@ -142,7 +143,7 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
   if (quarterlyConf.length > 0) {
     quarterlyAPI = quarterlyConf.reduce((s, d) => s + p(d.settledAPI), 0);
     quarterlyApps = quarterlyConf.reduce((s, d) => s + p(d.settledApps), 0);
-    quarterlyPersist = avgPersistency(quarterlyConf);
+    quarterlyPersist = roundPersistencyPct(avgPersistency(quarterlyConf));
     quarterlySource = 'confirmed';
   } else {
     const qSubs = submitted.filter((s) => {
