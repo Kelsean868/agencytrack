@@ -29,6 +29,7 @@ import { deriveYearProduction } from '../ledgerProduction';
 import { settlementShapeFromPolicies } from '../policiesDerivation';
 import { campaignPersistencyReading } from '../campaignPersistencyReading';
 import { buildPersistencyOutlook } from '../persistency/persistencyOutlook';
+import { roundPersistencyPct } from '../persistency/persistencyRounding';
 import { CHRISTMAS } from './fixtures/awardLensFixtures';
 
 const ts = (d) => ({ toDate: () => new Date(`${d}T04:00:00Z`), seconds: Date.parse(`${d}T04:00:00Z`) / 1000 });
@@ -92,7 +93,8 @@ describe('a declaration never moves a money figure', () => {
     const today = '2026-09-26';
     const plain = campaignPersistencyReading({ campaign: CHRISTMAS, policies: book, records: [], today });
     const withDecl = campaignPersistencyReading({ campaign: CHRISTMAS, policies: declaredBook, records: [], today });
-    expect(plain.value).toBeCloseTo((100000 / 112000) * 100, 9);
+    // R-a (#1014): the campaign reading is the 2-dp half-up rounded percent.
+    expect(plain.value).toBeCloseTo(roundPersistencyPct((100000 / 112000) * 100), 9);
     expect(plain.below).toBe(true);
     expect(withDecl).toEqual(plain);
     // Live guard: the declaration really is counted — in the separate `declared` figure only.
