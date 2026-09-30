@@ -19,6 +19,8 @@
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
 | FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999), FR-2 (#1001), FR-3 (#1002), FR-4 (#1003), FR-5 (#1004) and FR-5b (#1008) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at each FR post-merge through #1008). **Desktop walked 28-09-2026 on production (`e31155ff`): 25 FR screens, 0 errors. OPEN FOR PHONE WIDTH ONLY** | LOW | FR redesign / verification | — | see § FR preview click-through |
+| Nexus Game plan: the committed weekly plan's "Clear" text button is 17px tall (below the 44px touch target); the FR look fixes it on its own surface only (banked 2026-09-30, R2-8) | LOW | Game plan / a11y | — | see § Nexus Game plan: weekly plan Clear button under 44px |
+| FR Game plan (R2-8) keeps the Monthly plan and Review & commit MODALS; the canvas puts them inline (editable month table, inspector review flow) and adds a floor/MDRT reconciliation bar — needs a ruling before any follow-up port (banked 2026-09-30) | LOW | FR redesign / Game plan | — | see § FR Game plan: inline editing and the floor/MDRT bar (canvas deltas) |
 | "YTD vs tenure floor" bars (agent Production view, agent report view) show the API floor without the 40-apps company minimum — fold into the redesign, not a standalone fix (banked 2026-09-27, #994 post-merge) | LOW | Goals / company floor | redesign | see § YTD vs tenure floor bars: show the apps minimum |
 | Report-Only CSP `connect-src` in `vercel.json` lacks `https://www.google.com` — reCAPTCHA Enterprise (App Check, live since P2e) calls it; enforcing the CSP as-is would block App Check token fetches. Add it before the CSP leaves Report-Only (banked 2026-09-27, P2e post-merge). **Fix in PR #994; stays open until the enforce-time check below** | MEDIUM | Security / CSP | before CSP enforce | see § CSP connect-src needs www.google.com before enforce |
 | App Check is in monitor mode — switch each service to enforce only after 7 consecutive clean days per `docs/runbooks/app-check.md` §3 (key live 2026-09-27, so no earlier than 2026-10-04); Storage → Firestore → Functions, one at a time (banked 2026-09-27, P2e post-merge) | MEDIUM | Security / App Check | not before 2026-10-04 | see § App Check: enforce after 7 clean days |
@@ -7911,3 +7913,27 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Fix shape:** when `outlook.stale`, or when `outlook.assumptions.assumedZero` is non-empty, add a short qualifier to the tile note (copy to be ruled; the D3 copy in `docs/briefs/fr-today-persistency-kickoff.md` is locked), e.g. "export 52 days old" / "some inputs assumed 0". `FrToday.jsx` already holds the outlook, so no new read is needed. Wording added at post-merge of #1011 (the assumed-input half was named by CodeRabbit's final summary and was not in the banked entry).
 
 **Falsification (Rule 23):** closed without change if Kyron rules that the "estimate" label plus the link to the Persistency screen is qualification enough.
+
+## Nexus Game plan: weekly plan Clear button under 44px
+
+**Banked 2026-09-30 from the R2-8 FR harness walk. Severity: LOW — a11y, touch target.**
+
+**Observed:** `src/components/dashboard/GamePlanV2/SuggestedWeekCard.jsx`, committed view, the `data-testid="weekly-plan-clear"` text button is 27×17px (the FR harness walk's tap-target check failed on it). CLAUDE.md requires 44px targets. R2-8 must leave the Nexus look unchanged, so the FR look gets the 44px target through a descendant variant on its own surface class (`FR_SUGGESTED_WEEK_SURFACE` in `src/components/fr/money/gamePlanModel.js`); the Nexus card still has the 17px button.
+
+**Fix shape:** give the button `inline-flex min-h-[44px] items-center px-2` in `SuggestedWeekCard.jsx` itself, then drop the four `[&_[data-testid=weekly-plan-clear]]:*` classes from `FR_SUGGESTED_WEEK_SURFACE`. A Nexus visual change, so human-merge.
+
+**Falsification (Rule 23):** closed without change if the button is measured at 44px or more on a phone in the Nexus look (e.g. an ancestor already stretches it).
+
+## FR Game plan: inline editing and the floor/MDRT bar (canvas deltas)
+
+**Banked 2026-09-30 from R2-8. Severity: LOW — design fidelity, no functional gap.**
+
+**What R2-8 shipped:** the FR Game plan follows `D3M-GamePlan` / `M3-GamePlan` for layout (steps, commitment strip, Step 2 monthly plan, suggested week, from your manager, a right-hand Step 3 panel; four swipe pages on a phone) but keeps two things as they are today, because moving them changes write paths, which R-e rules out ("every function kept, logic untouched"):
+- **Monthly plan editing** stays in the existing `MonthlyPlanModal` (opened from the step card and an "Edit monthly plan" button). The canvas has an inline editable month table.
+- **Review → consequence → confirm → done** stays in the existing `ReviewCommitModal`. The canvas runs it inside the right-hand inspector.
+
+**Also not ported:** the canvas's "Year total against your floor and MDRT" bar (the hub does not receive the company floor today; it would need a new prop from AgentDashboard), the canvas's six-stage suggested-week ladder (its middle stages use SAMPLE ratios the engine does not have), and the calculator inputs in the inspector (annual API / apps / average policy / ratios; the hub has no such inputs today).
+
+**Ask:** Kyron to rule whether a later slice moves the two modals inline and adds the floor/MDRT bar (with the floor passed in from `resolvedMinimums`).
+
+**Falsification (Rule 23):** closed if Kyron rules the modals and the omitted pieces stay as they are.

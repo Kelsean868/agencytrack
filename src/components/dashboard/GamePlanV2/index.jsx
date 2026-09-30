@@ -17,6 +17,8 @@ import PlanSuggestionsCard from './PlanSuggestionsCard';
 import SuggestedWeekCard from './SuggestedWeekCard';
 import MonthlyPlanModal from '../../agent/MonthlyPlanModal';
 import ReviewCommitModal from './ReviewCommitModal';
+import FrGamePlan from '../../fr/money/FrGamePlan';
+import { FR_SUGGESTED_WEEK_SURFACE } from '../../fr/money/gamePlanModel';
 
 const GAME_PLAN_LOOP_ENABLED = import.meta.env.VITE_GAME_PLAN_LOOP_ENABLED !== 'false';
 
@@ -88,6 +90,11 @@ export default function GamePlanScreen({
   // fade plays once on populated content instead of firing on the skeleton.
   // Default false → byte-identical legacy behavior (ManagerDashboard, etc.).
   gatedEntrance = false,
+  // R2-8 — 'fr' swaps the content block for the FR layout (FrGamePlan): the
+  // same reads, derivations, handlers and modals, arranged to the D3M/M3
+  // Game plan canvas. Default 'nexus' → byte-identical Nexus output
+  // (ManagerDashboard never passes it). AgentDashboard passes useLook().
+  look = 'nexus',
 }) {
   const { tenantId, user } = useAuth();
   const uid = user?.uid;
@@ -284,7 +291,11 @@ export default function GamePlanScreen({
   const openMonthlyPlan = GAME_PLAN_LOOP_ENABLED ? () => setMonthlyPlanOpen(true) : undefined;
   const openReviewCommit = GAME_PLAN_LOOP_ENABLED ? () => setReviewCommitOpen(true) : undefined;
 
-  const headerBlock = (
+  const fr = look === 'fr';
+  // FR: full content width, aligned with the FR Money header above it.
+  const hubClass = fr ? 'space-y-4' : 'mx-auto max-w-5xl space-y-4';
+
+  const headerBlock = fr ? null : (
     <header>
       <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink">Game Plan</h1>
       <p className="mt-0.5 text-sm text-ink-muted">Build your {year} — what you need to earn, step by step.</p>
@@ -374,7 +385,66 @@ export default function GamePlanScreen({
     </>
   );
 
-  const contentBlock = (
+  const suggestedWeekCard = (
+    <SuggestedWeekCard
+      committedAnnualAPI={committedAnnualAPI}
+      avgPolicyAPI={avgPolicyAPI}
+      prospectRatio={prospectRatio}
+      submissions={submissions}
+      floors={weeklyActivityFloors}
+      loading={dataLoading}
+      error={dataError}
+      onRetry={onRetry}
+      onBuildPlan={openGoals}
+      weekLabel={`Wk ${weekNum}`}
+      committedPlan={committedPlan}
+      onCommit={handleCommitPlan}
+      onDeletePlan={handleDeletePlan}
+      planBusy={planBusy}
+      planError={planError}
+      weekStart={weekStart}
+      weekSubmission={weekSubmission}
+      dailyDocs={dailyDocs}
+      {...(fr ? { surfaceClassName: FR_SUGGESTED_WEEK_SURFACE } : {})}
+    />
+  );
+
+  const contentBlock = fr ? (
+    <FrGamePlan
+      values={{
+        year,
+        afterTaxNeed,
+        renewalsCover,
+        grossNeed,
+        commissionNeed,
+        moneyNeedsFilled,
+        loopEnabled: GAME_PLAN_LOOP_ENABLED,
+        yearPlanFilled,
+        yearPlanTotalAPI,
+        yearPlanLines: yearPlan?.lines ?? null,
+        lineKeys: LINE_KEYS,
+        monthlyPlanFilled,
+        monthlyPlanTotal,
+        monthlyTargets,
+        monthlyActuals: actualsByMonth,
+        currentMonthIndex,
+        monthlyYtdDelta,
+        committed,
+        committedAt,
+        committedAnnualAPI,
+        stepsBuilt,
+        totalSteps: TOTAL_STEPS,
+        planBuiltPct,
+      }}
+      onOpenMoneyNeeds={openMoneyNeeds}
+      onOpenMonthlyPlan={openMonthlyPlan}
+      onOpenReviewCommit={openReviewCommit}
+      slots={{
+        suggestedWeek: suggestedWeekCard,
+        suggestions: <PlanSuggestionsCard tenantId={tenantId} agentId={uid} />,
+      }}
+    />
+  ) : (
     <>
       <PlanAnchorStrip
         year={year}
@@ -432,26 +502,7 @@ export default function GamePlanScreen({
           nothing when there are none). Reads through the agent-own arm. */}
       <PlanSuggestionsCard tenantId={tenantId} agentId={uid} />
 
-      <SuggestedWeekCard
-        committedAnnualAPI={committedAnnualAPI}
-        avgPolicyAPI={avgPolicyAPI}
-        prospectRatio={prospectRatio}
-        submissions={submissions}
-        floors={weeklyActivityFloors}
-        loading={dataLoading}
-        error={dataError}
-        onRetry={onRetry}
-        onBuildPlan={openGoals}
-        weekLabel={`Wk ${weekNum}`}
-        committedPlan={committedPlan}
-        onCommit={handleCommitPlan}
-        onDeletePlan={handleDeletePlan}
-        planBusy={planBusy}
-        planError={planError}
-        weekStart={weekStart}
-        weekSubmission={weekSubmission}
-        dailyDocs={dailyDocs}
-      />
+      {suggestedWeekCard}
     </>
   );
 
@@ -465,7 +516,7 @@ export default function GamePlanScreen({
   // skeleton and content fills after — the accepted straggler tradeoff.
   if (gatedEntrance) {
     return (
-      <div className="mx-auto max-w-5xl space-y-4" data-testid="game-plan-hub">
+      <div className={hubClass} data-testid="game-plan-hub">
         {!entranceReleased ? (
           renderLoading(slowPath)
         ) : (
@@ -488,7 +539,7 @@ export default function GamePlanScreen({
   // Legacy (default) path — byte-for-byte the prior behavior. The caller's
   // dashboard-level `.screen-enter` owns the entrance here.
   return (
-    <div className="mx-auto max-w-5xl space-y-4" data-testid="game-plan-hub">
+    <div className={hubClass} data-testid="game-plan-hub">
       {headerBlock}
       {loading && renderLoading(false)}
       {!loading && error && errorBlock}
