@@ -24,7 +24,7 @@ import { getRecentSundays } from '../../../../utils/validators';
 const LINES_A = { life: { enabled: true, targetAPI: 400000 }, ah: { enabled: true, targetAPI: 150000 }, general: { enabled: false, targetAPI: 50000 } };
 const LINES_B = { life: { enabled: true, targetAPI: 330000 }, ah: { enabled: true, targetAPI: 220000 }, general: { enabled: false, targetAPI: 50000 } };
 const TARGETS_A = [30000, 30000, 35000, 40000, 45000, 45000, 45000, 50000, 55000, 60000, 60000, 55000];
-const TARGETS_B = [45000, 45000, 45000, 45000, 45000, 45000, 45000, 45000, 50000, 50000, 50000, 45000];
+const TARGETS_B = [45000, 45000, 45000, 45000, 45000, 45000, 45000, 45000, 50000, 50000, 50000, 40000];
 const ACTUALS = [0, 0, 0, 0, 0, 0, 33000, 75000, 37000, 0, 0, 0];
 
 // Ten submitted SAMPLE weeks → the planner derives its ratios (≥ 8 weeks).

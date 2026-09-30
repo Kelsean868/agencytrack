@@ -133,7 +133,7 @@ describe('CampaignHeroCard', () => {
     ];
     render(<CampaignHeroCard campaign={FINAL_MONTH_CAMPAIGN} policies={POLICIES} persistencyRecords={records} />);
     const persistencyRow = screen.getByTestId('campaign-hero-row-persistency');
-    expect(persistencyRow.textContent).toContain('92%');
+    expect(persistencyRow.textContent).toContain('92.00%');
     expect(persistencyRow.textContent).not.toContain('60%');
     expect(persistencyRow.textContent).not.toContain('Sep 2026');
     expect(screen.queryByTestId('campaign-hero-persistency-preview-note')).not.toBeInTheDocument();
@@ -146,7 +146,7 @@ describe('CampaignHeroCard', () => {
     const records = [{ monthKey: '2026-08', grossSettled: 100_000, netSettled: 95_000 }];
     render(<CampaignHeroCard campaign={CAMPAIGN} policies={POLICIES} persistencyRecords={records} />);
     const persistencyRow = screen.getByTestId('campaign-hero-row-persistency');
-    expect(persistencyRow.textContent).toContain('95%');
+    expect(persistencyRow.textContent).toContain('95.00%');
     expect(persistencyRow.textContent).toContain('90%');
     expect(screen.queryByTestId('campaign-hero-persistency-unknown')).not.toBeInTheDocument();
   });
