@@ -8191,6 +8191,8 @@ The existing rules test (`tests/rules/policies.rules.test.mjs`, "Arm D ALLOW: BM
 
 UPDATE 2026-09-30: Kyron ruling 2B - a manager may not override a head-office status; the 'Also seen' point becomes slice F-4 (brief § 5).
 
+UPDATE 2026-09-30: the 'Also seen' point is built by F-4 (#TBD, branch `claude/f4-ho-status-lock`): Arm D now also requires `!isHeadOfficeStatus(resource.data)`, and `lapsePolicy` refuses a head-office policy with a clear message. Takes effect only after `firebase deploy --only firestore:rules`.
+
 ## Policies rules reach the 1000-expression limit
 
 **Banked 2026-09-30 from audit A-1. Severity: MEDIUM — no failing app write found from it yet; needs a look before more arms are added.**

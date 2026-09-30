@@ -867,11 +867,17 @@ async function main() {
     await run(`F-1 DENY: pre-F-1 lapse payload (no provenance) on ${id}`, false, () =>
       updateDoc(doc(bmADb, 'tenants', TENANT_ID, 'policies', id), PRE_F1_LAPSE));
   }
-  // …and the app's payload now passes for all five current-provenance cases.
-  for (const id of Object.keys(F1_CASES)) {
+  // …and the app's payload passes for every SELF-DECLARED settled status.
+  for (const id of Object.keys(F1_CASES).filter((k) => k !== 'policy-f1-oipa')) {
     await run(`F-1 ALLOW: app lapse payload on ${id}`, true, () =>
       updateDoc(doc(bmADb, 'tenants', TENANT_ID, 'policies', id), appLapseUpdate('bm-a')));
   }
+  // F-4 (Kyron ruling 2B, 30-09-2026): a status head office set is NOT a
+  // manager's to change — the app payload is DENIED, for BM and tenant_admin.
+  await run('F-4 DENY: BM lapses a head-office-settled policy (app payload)', false, () =>
+    updateDoc(doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-f1-oipa'), appLapseUpdate('bm-a')));
+  await run('F-4 DENY: tenant_admin lapses a head-office-settled policy (app payload)', false, () =>
+    updateDoc(doc(taDb, 'tenants', TENANT_ID, 'policies', 'policy-f1-oipa'), appLapseUpdate('ta-1')));
   // A provenance naming someone else is still refused (setsOwnStatusProvenance).
   await run('F-1 DENY: app lapse payload built for another uid', false, () =>
     updateDoc(doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-f1-wrong-uid'), appLapseUpdate('ta-1')));
