@@ -14,8 +14,10 @@ import {
 import {
   aggregatePersistency,
   computeBarStats,
+  PERS_FLOOR_PCT,
 } from '../../lib/persistency/calculations';
 import { persistencyModelFor, LABELS } from '../../lib/persistency/model';
+import { roundPersistencyPct } from '../../lib/persistency/persistencyRounding';
 import { getTenantUsers } from '../../services/managerService';
 import { escapeCsvField } from '../../lib/csvExport';
 import { ymdUTC } from '../../utils/dateInputs';
@@ -173,7 +175,8 @@ export default function PersistencyTab() {
   // At-risk book: resolved agents below floor, sorted worst-first.
   const atRiskRows = useMemo(
     () => sortedRows
-      .filter(({ record: r }) => r && Number.isFinite(r.persistency) && r.persistency < 0.80)
+      // Judged on the 2-dp value the roster prints (ruling R-a).
+      .filter(({ record: r }) => r && Number.isFinite(r.persistency) && roundPersistencyPct(r.persistency * 100) < PERS_FLOOR_PCT)
       .sort((a, b) => (a.record?.persistency ?? 1) - (b.record?.persistency ?? 1)),
     [sortedRows],
   );
@@ -201,7 +204,8 @@ export default function PersistencyTab() {
     ];
     const body = sortedRows.map(({ user: u, record: r }) => [
       u.name ?? u.email ?? u.id,
-      r ? (r.persistency * 100).toFixed(1) : '',
+      // 2 decimals, half up (ruling R-a); numeric cell under a "%" header.
+      r && Number.isFinite(r.persistency) ? roundPersistencyPct(r.persistency * 100).toFixed(2) : '',
       r ? Math.round(r.grossSettled) : '',
       r ? Math.round(r.netSettled) : '',
       r ? Math.round(r.lapses) : '',

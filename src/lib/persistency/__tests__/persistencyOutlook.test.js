@@ -43,26 +43,26 @@ const outlookFor = (policies, extra = {}) => buildPersistencyOutlook({
 describe('persistencyOutlook — Kyron shape reproduces the probe table', () => {
   const o = outlookFor(KYRON_SHAPE);
 
-  it('derived = August, head-office export only, 89.6%', () => {
+  it('derived = August, head-office export only, 89.58%', () => {
     expect(o.derived.monthKey).toBe('2026-08');
     expect(o.derived.source).toBe('ho_export');
     expect(o.derived.inputs.businessPlaced).toBe(296457.24);
     expect(o.derived.inputs.lapses).toBe(30878.88);
-    expect(formatOutlookPct(o.derived.persistency)).toBe('89.6%');
+    expect(formatOutlookPct(o.derived.persistency)).toBe('89.58%');
   });
 
-  it('estimate today = September, 86.6%', () => {
+  it('estimate today = September, 86.63%', () => {
     expect(o.estimateToday.monthKey).toBe('2026-09');
     expect(o.estimateToday.inputs.businessPlaced).toBe(210975.24);
     expect(o.estimateToday.inputs.lapses).toBe(28196.88);
-    expect(formatOutlookPct(o.estimateToday.persistency)).toBe('86.6%');
+    expect(formatOutlookPct(o.estimateToday.persistency)).toBe('86.63%');
   });
 
-  it('December projection 85.7% with the gap to the cent', () => {
+  it('December projection 85.68% with the gap to the cent', () => {
     expect(o.gateMonth.monthKey).toBe('2026-12');
     expect(o.gateMonth.inputs.businessPlaced).toBe(188595.72);
     expect(o.gateMonth.inputs.lapses).toBe(27014.52);
-    expect(formatOutlookPct(o.gateMonth.persistency)).toBe('85.7%');
+    expect(formatOutlookPct(o.gateMonth.persistency)).toBe('85.68%');
     expect(o.gateMonth.meetsThreshold).toBe(false);
     expect(o.gateMonth.gap.settledApiNeeded).toBe(81549.48);
     expect(o.gateMonth.gap.reinstateNeeded).toBe(8154.95);

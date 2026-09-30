@@ -7,8 +7,8 @@ const read = (over = {}) => campaignPersistencyReading({ campaign: CHRISTMAS, po
 describe('campaignPersistencyReading — the one persistency reading for Home + ledger campaign cards', () => {
   it('a gate reading on file → value, label, below-gate flag, December gate month', () => {
     const r = read({ records: [{ monthKey: '2026-09', grossSettled: 100_000, netSettled: 86_600 }] });
-    expect(r.value).toBeCloseTo(86.6, 1);
-    expect(r.label).toBe('86.6%');
+    expect(r.value).toBe(86.6);
+    expect(r.label).toBe('86.60%');
     expect(r.below).toBe(true);
     expect(r.threshold).toBe(90);
     expect(r.gateMonthKey).toBe('2026-12');

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { X } from 'lucide-react';
 import useFocusTrap from '../../hooks/useFocusTrap';
 import { fmtTTD, fmtPct } from './planFormat';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 // Track K — Strategic Plan · presentation mode. Clones the MeetingMode shell
 // (scene list + agenda rail + prev/next + presenter notes + keyboard transport)
@@ -63,7 +64,7 @@ function SceneBody({ id, plan }) {
               { l: 'Annual quota', v: fmtTTD(a.apiQuota) },
               { l: 'Net settled', v: fmtTTD(a.apiNetSettled) },
               { l: 'Projected EOY', v: fmtTTD(a.projectedApi) },
-              { l: 'Persistency', v: fmtPct(plan.production?.persistency?.currentPct) },
+              { l: 'Persistency', v: formatPersistencyPct(plan.production?.persistency?.currentPct) },
             ].map((m) => (
               <div key={m.l}>
                 <p className="text-sm text-presentation-muted">{m.l}</p>

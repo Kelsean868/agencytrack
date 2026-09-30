@@ -11,6 +11,7 @@
 // (brief §4 "net is the locked denominator"); the raw annual % is `apiPctObj`.
 
 import { aggregatePersistency } from '../persistency/calculations';
+import { roundPersistencyPct } from '../persistency/persistencyRounding';
 import { RECRUITING_STAGES, STAGE_KEYS, stageIndex } from '../../services/recruitingService';
 import {
   yearWindow, periodWindows, sumProductionWindow, prorateQuota,
@@ -32,7 +33,8 @@ function latestPersistencyPct(records) {
     (a, b) => String(a.monthKey).localeCompare(String(b.monthKey)),
   ).at(-1);
   const p = latest?.persistency;
-  return typeof p === 'number' ? p * 100 : null;
+  // 2 decimals, half up (ruling R-a) — the value the plan prints and judges.
+  return typeof p === 'number' ? roundPersistencyPct(p * 100) : null;
 }
 
 function latestRecords(persistencyByAgent) {
@@ -50,7 +52,8 @@ function branchPersistencyPct(persistencyByAgent) {
   if (!latest.length) return null;
   const agg = aggregatePersistency(latest);
   if (!(agg.sumGrossSettled > 0)) return null;
-  return agg.aggregatedPersistency * 100;
+  // 2 decimals, half up (ruling R-a).
+  return roundPersistencyPct(agg.aggregatedPersistency * 100);
 }
 
 // ── Agent Performance Tracker (deck §02) ────────────────────────────────────

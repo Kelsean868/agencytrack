@@ -3,6 +3,7 @@ import { Target, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { statusToken } from '../../lib/policyStatusTokens';
 import { tenureBandLabel } from '../../utils/tenureFloors';
+import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 // Group-key dots — one colour per org layer
 const LAYER_DOT = {
@@ -51,7 +52,7 @@ function CommitmentHero({ personal, ytdTotals, belowFloor, ytdPersistency, persi
   const appsPct = appsTarget > 0 ? Math.max(0, Math.min(100, Math.round((ytdApps / appsTarget) * 100))) : null;
 
   const pstDisplay = ytdPersistency !== null
-    ? `${(ytdPersistency * 100).toFixed(1)}%`
+    ? formatPersistencyPct(ytdPersistency * 100)
     : '—';
   const pstBarPct = ytdPersistency !== null && persistencyFloor > 0
     ? Math.max(0, Math.min(100, Math.round((ytdPersistency * 100 / persistencyFloor) * 100)))
@@ -234,7 +235,8 @@ export default function GapAnalysisPanel({
     (hasPersonal &&
       hierarchy?.companyFloor?.api != null &&
       hierarchy.personal.api < hierarchy.companyFloor.api) ||
-    (ytdPersistency !== null && parseFloat((ytdPersistency * 100).toFixed(1)) < persistencyFloor);
+    // Judged on the 2-dp value the hero prints (ruling R-a).
+    (ytdPersistency !== null && roundPersistencyPct(ytdPersistency * 100) < persistencyFloor);
 
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) {

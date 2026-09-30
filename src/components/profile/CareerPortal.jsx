@@ -8,6 +8,7 @@ import { compute2YearAverageAPI } from '../../utils/careerLevelHelpers';
 import { aggregatePersistency } from '../../lib/persistency/calculations';
 import { useAuth } from '../../context/AuthContext';
 import BadgeGrid from '../gamification/BadgeGrid';
+import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 import CareerTrophiesCard from '../fr/compete/CareerTrophiesCard';
 
 const CAREER_LEVELS = [
@@ -476,7 +477,7 @@ function LevelDrillDrawer({ level, currentLevel, ytdAPI, ytdApps, avgPersistency
 
   const fmtV = (v, kind) => {
     if (kind === 'currency') return v >= 1000 ? `TTD ${(v / 1000).toFixed(0)}K` : `TTD ${Math.round(v)}`;
-    if (kind === 'percent')  return `${Math.round(v)}%`;
+    if (kind === 'percent')  return formatPersistencyPct(v);
     if (kind === 'years')    return `${v.toFixed(1)} yrs`;
     return String(Math.round(v));
   };
@@ -804,8 +805,10 @@ export default function CareerPortal({ submissions, user, persistencyData, ytdTo
 
     const persArr = Array.isArray(persistencyData) ? persistencyData : [];
     const ytdPers = persArr.filter(p => p.year === thisYear);
+    // 2 decimals, half up (ruling R-a): the level check and the drawer judge
+    // the same value the drawer prints.
     const avgPersistency = ytdPers.length > 0
-      ? aggregatePersistency(ytdPers).aggregatedPersistency * 100
+      ? roundPersistencyPct(aggregatePersistency(ytdPers).aggregatedPersistency * 100)
       : null;
 
     let yearsOfService = null;

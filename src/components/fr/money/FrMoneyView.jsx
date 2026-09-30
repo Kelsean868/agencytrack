@@ -4,6 +4,7 @@ import { ChartCard, Line, Bullet } from '../charts';
 import SwipePager from '../pager/SwipePager';
 import { CARD, EYEBROW, FOCUS, FrCheckbox, SKELETON, WarnIcon, Why } from './moneyParts';
 import { whatIf, wholeTTD, wholeTTDUp, monthLabel } from '../../../lib/fr/moneyModel';
+import { formatPersistencyPct } from '../../../lib/persistency/persistencyRounding';
 
 /**
  * FrMoneyView — the FR Money hub's Overview (FR-3, canvas D3M-Overview /
@@ -110,7 +111,7 @@ function PersistencyCard({ plan, onNavigate }) {
             target={plan.threshold}
             max={100}
             label="24-month persistency"
-            valueText={`${plan.currentPct.toFixed(1)}%`}
+            valueText={formatPersistencyPct(plan.currentPct)}
             targetText={`Gate ${plan.threshold}%`}
             tone={plan.meets ? 'accent' : 'warm'}
             height={12}
@@ -235,7 +236,7 @@ function WhatIf({ model }) {
           testId="what-if-settled"
         />
         <Output label={model.isMdrt ? '% of MDRT' : '% of your goal'} value={w.pctOfGoal == null ? '—' : `${w.pctOfGoal.toFixed(1)}%`} testId="what-if-goal" />
-        <Output label="Persistency" value={w.persistencyPct == null ? '—' : `${w.persistencyPct.toFixed(1)}%`} note={model.plan ? `${monthLabel(model.plan.monthKey)} · 24-month model` : null} testId="what-if-persistency" />
+        <Output label="Persistency" value={formatPersistencyPct(w.persistencyPct)} note={model.plan ? `${monthLabel(model.plan.monthKey)} · 24-month model` : null} testId="what-if-persistency" />
       </div>
       <Why>
         Extra applications × average API are added to settled API, and to both sides of the persistency fraction (new business placed inside the window).

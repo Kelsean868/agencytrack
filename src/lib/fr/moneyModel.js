@@ -15,6 +15,7 @@
  */
 import { buildPersistencyOutlook, toLedgerDoc } from '../persistency/persistencyOutlook';
 import { calculateShortfall, deriveAll, projectPersistency, PERS_GATE } from '../persistency/calculations';
+import { roundPersistencyPct, formatPersistencyPct } from '../persistency/persistencyRounding';
 import { isTwentyFourMonthModel } from '../persistency/model';
 
 export const MONTH_SHORT = Object.freeze(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']);
@@ -141,7 +142,8 @@ function recordFraction(r) {
 /**
  * persistencySeries — the saved monthly records (newest `limit`), plus the
  * outlook's estimate for the current month as a PROJECTED bar when it is
- * newer than the last saved month. Values in percent, 1 decimal.
+ * newer than the last saved month. Values in percent, 2 decimals, half up
+ * (ruling R-a, `roundPersistencyPct`).
  *
  * @returns {{ data: Array<{key,label,value,projected}>, hasTwelveMonthModel: boolean }}
  */
@@ -155,7 +157,7 @@ export function persistencySeries({ records, estimate = null, limit = 12 }) {
   }
   const saved = [...byMonth.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-limit);
   const data = saved.map(([key, f]) => ({
-    key, label: monthAxisLabel(key), value: Math.round(f * 1000) / 10, projected: false,
+    key, label: monthAxisLabel(key), value: roundPersistencyPct(f * 100), projected: false,
   }));
   const last = saved[saved.length - 1]?.[0] ?? null;
   if (estimate && isNum(estimate.persistency) && parseMonthKey(estimate.monthKey)
@@ -163,7 +165,7 @@ export function persistencySeries({ records, estimate = null, limit = 12 }) {
     data.push({
       key: estimate.monthKey,
       label: monthAxisLabel(estimate.monthKey),
-      value: Math.round(estimate.persistency * 1000) / 10,
+      value: roundPersistencyPct(estimate.persistency * 100),
       projected: true,
     });
     if (data.length > limit) data.shift();
@@ -278,8 +280,9 @@ export function reinstatementPlan({ policies, records = [], todayTT, gate = null
   const fig = outlook.gateMonth ?? outlook.estimateToday;
   if (!fig) return null;
   const threshold = isNum(outlook.gateMonth?.threshold) ? outlook.gateMonth.threshold : PERS_GATE * 100;
-  const currentPct = Math.round(fig.persistency * 1000) / 10;
-  const meets = fig.persistency * 100 >= threshold;
+  // R-a: the figure and the verdict are the same 2-dp rounded value.
+  const currentPct = roundPersistencyPct(fig.persistency * 100);
+  const meets = currentPct >= threshold;
 
   const need = outlook.gateMonth
     ? money2(outlook.gateMonth.gap.reinstateNeeded)
@@ -327,7 +330,7 @@ export function reinstatementPlan({ policies, records = [], todayTT, gate = null
 
   const after = (extra) => {
     const d = deriveAll({ ...fig.inputs, reinstatements: money2((Number(fig.inputs.reinstatements) || 0) + extra) });
-    return Math.round(d.persistency * 1000) / 10;
+    return roundPersistencyPct(d.persistency * 100);
   };
 
   // Two presets (Kyron ruling 28-09-2026): "Fewest calls" and "Least money",
@@ -384,7 +387,7 @@ export function selectionSummary(plan, policyNumbers) {
   const items = plan.lapses.filter((l) => chosen.has(l.policyNumber));
   const total = money2(items.reduce((s, l) => s + l.api, 0));
   const d = deriveAll({ ...plan.inputs, reinstatements: money2((Number(plan.inputs.reinstatements) || 0) + total) });
-  const afterPct = Math.round(d.persistency * 1000) / 10;
+  const afterPct = roundPersistencyPct(d.persistency * 100);
   return {
     count: items.length,
     total,
@@ -429,7 +432,7 @@ export function whatIf({ settled, goal, extraApps = 0, avgApi = 0, plan = null, 
       newBusinessPlanned: added,
       newReinstatementsPlanned: reinstated,
     });
-    persistencyPct = Math.round(p.projectedPersistency * 1000) / 10;
+    persistencyPct = roundPersistencyPct(p.projectedPersistency * 100);
   }
   return { added, projectedSettled, pctOfGoal, persistencyPct, reinstated: reinstate && plan?.suggestion ? plan.suggestion.total : 0 };
 }
@@ -501,7 +504,7 @@ export function moneyCards({
     id: 'persistency',
     tabId: 'persistency',
     eyebrow: 'Persistency',
-    headline: plan ? `${plan.currentPct.toFixed(1)}%` : '—',
+    headline: plan ? formatPersistencyPct(plan.currentPct) : '—',
     sub: persSub,
     warm: Boolean(plan && !plan.meets),
   });
@@ -570,7 +573,7 @@ export function headerTiles(tab, i = {}) {
     case 'persistency': {
       const p = i.plan;
       return [
-        tile('now', p ? `Persistency, ${monthLabel(p.monthKey)}` : 'Persistency', p ? p.currentPct : null, 'pct', { decimals: 1, warm: Boolean(p && !p.meets), note: p ? (p.meets ? `At or above ${p.threshold}%` : `Below the ${p.threshold}% gate`) : 'No ledger figure yet' }),
+        tile('now', p ? `Persistency, ${monthLabel(p.monthKey)}` : 'Persistency', p ? p.currentPct : null, 'pct', { decimals: 2 /* R-a: currentPct is already roundPersistencyPct() */, warm: Boolean(p && !p.meets), note: p ? (p.meets ? `At or above ${p.threshold}%` : `Below the ${p.threshold}% gate`) : 'No ledger figure yet' }),
         tile('need', 'Reinstated to clear the gate', p ? (p.meets ? 0 : Math.ceil(p.need)) : null, 'ttd', { note: p && !p.meets ? 'Rounded up to the dollar' : null }),
         tile('lapses', 'Lapses counted', p ? p.lapsesTotal : null, 'ttd', { note: p ? `${p.lapses.length} ${p.lapses.length === 1 ? 'policy' : 'policies'} in the 24-month window` : null }),
       ];

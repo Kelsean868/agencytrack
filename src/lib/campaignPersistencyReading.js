@@ -7,21 +7,22 @@
  * Home cannot show two different persistency figures for the same campaign.
  * The actual gate reading (`persistencyPctForGate`) wins whenever it exists;
  * only when it is still unknown does the reading fall back to the persistency
- * outlook's headline month, labelled with its own decimals so 89.6% is never
- * rounded up to a passing 90%.
+ * outlook's headline month, labelled and judged at 2 decimals, half up
+ * (ruling R-a: 89.996 → 90.00%, passes; 89.994 → 89.99%, below).
  *
  * Pure. Nothing is stored.
  */
 import { isTieredCampaign, normalizeGate, persistencyPctForGate } from '../utils/campaignEngine';
 import { toDateStr } from './policyCampaignLens';
 import { buildPersistencyOutlook, formatOutlookPct } from './persistency/persistencyOutlook';
+import { roundPersistencyPct } from './persistency/persistencyRounding';
 
 /**
  * campaignPersistencyReading({ campaign, policies, records, today })
  *
  * @returns {null | {
  *   value: number|null,       // 0–100, null when not yet known
- *   label: string,            // "86.6%" or "—"
+ *   label: string,            // "86.63%" or "—"
  *   below: boolean,           // under the campaign's gate threshold
  *   gateMonthKey: string|null, // YYYY-MM of a finalMonth gate
  *   threshold: number|null,
@@ -44,7 +45,10 @@ export function campaignPersistencyReading({ campaign, policies = [], records = 
     preview = headline && Number.isFinite(headline.persistency) ? headline : null;
   }
 
-  const value = known ? persPct : preview ? preview.persistency * 100 : null;
+  // The preview is judged on the same 2-dp value its label prints (ruling R-a).
+  // The actual gate reading (`persPct`) is the campaign engine's whole-number
+  // payout basis and is deliberately left as it is (R2-1 stop: money outcome).
+  const value = known ? persPct : preview ? roundPersistencyPct(preview.persistency * 100) : null;
   if (value == null) {
     return { value: null, label: '—', below: false, gateMonthKey: null, threshold };
   }

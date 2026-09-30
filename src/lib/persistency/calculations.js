@@ -54,7 +54,9 @@
 //     banding convention in the same brief ("green ≥90%, amber 80-89%,
 //     red <80%") and has since been used as an at-risk threshold. Treat it as
 //     an in-app convention, not a carrier-supplied standard.
-//
+
+import { roundPersistencyPct } from './persistencyRounding';
+
 // UNIT: decimal, per this module's contract above. Consumers that render or
 // compare on a 0–100 scale MUST use the _PCT companions below rather than
 // hand-rolling `* 100` or hardcoding 80 / 90 — a raw literal is how a decimal
@@ -146,12 +148,17 @@ export function aggregatePersistency(records) {
 // Records with non-finite persistency (partial fan-out / no-data rows) are
 // excluded from all counts — they do not contribute to the aggregate or the
 // floor/gate tallies.
+//
+// The floor / gate tallies judge each agent on the 2-dp rounded percent the
+// roster prints (ruling R-a), so a row shown as "90.00%" is never counted
+// below the gate.
 export function computeBarStats(records) {
   const resolved = (records ?? []).filter((r) => r && Number.isFinite(r.persistency));
+  const shownPct = (r) => roundPersistencyPct(r.persistency * 100);
   return {
     resolvedCount: resolved.length,
-    belowFloor:    resolved.filter((r) => r.persistency < PERS_FLOOR).length,
-    awardEligible: resolved.filter((r) => r.persistency >= PERS_GATE).length,
+    belowFloor:    resolved.filter((r) => shownPct(r) < PERS_FLOOR_PCT).length,
+    awardEligible: resolved.filter((r) => shownPct(r) >= PERS_GATE_PCT).length,
     sumLapses:     resolved.reduce((s, r) => s + (Number.isFinite(r.lapses) ? r.lapses : 0), 0),
   };
 }

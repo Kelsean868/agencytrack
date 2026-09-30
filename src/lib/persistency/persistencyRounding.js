@@ -1,6 +1,6 @@
 /**
- * persistencyRounding.js — the one rounding rule for an agent-facing
- * persistency percent (Kyron ruling, 28-09-2026).
+ * persistencyRounding.js — the one rounding rule for every agent- and
+ * manager-facing persistency percent (Kyron ruling R-a, 28–29-09-2026).
  *
  * Head office reports persistency to 2 decimals, so a figure is rounded to
  * 2 decimals, half up (89.996 → 90.00; 89.994 → 89.99; 89.995 → 90.00). The

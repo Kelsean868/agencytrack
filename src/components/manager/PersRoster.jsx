@@ -2,14 +2,17 @@ import React from 'react';
 import { Edit3, Calculator } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import { formatCurrency } from '../../utils/formatters';
+import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
+import { PERS_FLOOR_PCT, PERS_GATE_PCT } from '../../lib/persistency/calculations';
 
 const MANAGER_ROLES = new Set([
   'branch_manager', 'unit_manager', 'sales_manager', 'tenant_admin', 'platform_admin',
 ]);
 
+// Ruling R-a: 2 decimals, half up; bands are judged on the same value.
 function formatPercent(decimal) {
   if (decimal == null || !Number.isFinite(decimal)) return '—';
-  return `${(decimal * 100).toFixed(1)}%`;
+  return formatPersistencyPct(decimal * 100);
 }
 
 function formatDate(ts) {
@@ -23,14 +26,16 @@ function formatDate(ts) {
 }
 
 function bandFillClass(p) {
-  if (p >= 0.90) return 'bg-success';
-  if (p >= 0.80) return 'bg-warning';
+  const shown = roundPersistencyPct(p * 100);
+  if (shown >= PERS_GATE_PCT) return 'bg-success';
+  if (shown >= PERS_FLOOR_PCT) return 'bg-warning';
   return 'bg-danger';
 }
 
 function bandValueClass(p) {
-  if (p >= 0.90) return 'text-success-ink';
-  if (p >= 0.80) return 'text-warning-ink';
+  const shown = roundPersistencyPct(p * 100);
+  if (shown >= PERS_GATE_PCT) return 'text-success-ink';
+  if (shown >= PERS_FLOOR_PCT) return 'text-warning-ink';
   return 'text-danger-ink';
 }
 
