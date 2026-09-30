@@ -3,6 +3,7 @@ import StatusPill from '../ui/StatusPill';
 import { SectionCard, SectionState } from './SectionState';
 import { StatHero, PlanAvatar } from './planPrimitives';
 import { fmtTTD, fmtNum, fmtPct, paceBand } from './planFormat';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 // Track K — Agent Performance Tracker (deck §02). Dense per-advisor table with a
 // glass-hero summary strip; producing Unit/Trainee Managers appear as rows
@@ -104,7 +105,7 @@ export default function AgentPerformanceTracker({ agents, loading, error, onRetr
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-ink-muted">{fmtNum(r.contacts)}</td>
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-ink-muted">{fmtNum(r.factFinds)}</td>
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-ink-muted">{fmtNum(r.closingInterviews)}</td>
-                      <td className={`px-2 py-2 text-right font-mono tabular-nums ${r.persistencyPct != null && r.persistencyPct < 85 ? 'text-warning-ink' : 'text-ink-muted'}`}>{fmtPct(r.persistencyPct)}</td>
+                      <td className={`px-2 py-2 text-right font-mono tabular-nums ${r.persistencyPct != null && r.persistencyPct < 85 ? 'text-warning-ink' : 'text-ink-muted'}`}>{formatPersistencyPct(r.persistencyPct)}</td>
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-ink-muted">{fmtTTD(r.objYtd)}</td>
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-ink-muted">{fmtTTD(r.apiSubmitted)}</td>
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-ink-muted">{fmtTTD(r.apiGrossSettled)}</td>

@@ -4,6 +4,7 @@ import { formatCurrency } from '../../utils/formatters';
 import { ytdEarned, runRate, gapToGoal, latestPersistency } from '../../utils/commissionAnchor';
 import { getTodayTT } from '../../utils/dateInputs';
 import { useCountUp } from '../../hooks/useCountUp';
+import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 // §2 count-up — hero/KPI currency figures count up on load. decimals:2
 // preserves TTD cents exactly (no rounding drift at the end of the animation).
@@ -12,10 +13,10 @@ function CountUpCurrency({ value }) {
   return <>{formatCurrency(display)}</>;
 }
 
-// Persistency % chip — integer percent, no decimals.
+// Persistency % chip — 2 decimals, half up (ruling R-a).
 function CountUpPercent({ value }) {
-  const display = useCountUp(value, { duration: 900, decimals: 0 });
-  return <>{display}%</>;
+  const display = useCountUp(value, { duration: 900, decimals: 2 });
+  return <>{formatPersistencyPct(display)}</>;
 }
 
 function ProvChip({ children, warning }) {
@@ -231,7 +232,7 @@ export default function CommissionAnchorStrip({
         {persResult && (
           <Chip
             label="Persistency · latest month"
-            value={<CountUpPercent value={Math.round(persResult.decimal * 100)} />}
+            value={<CountUpPercent value={roundPersistencyPct(persResult.decimal * 100)} />}
             dotClass="bg-[--hero-dot-success]"
           />
         )}

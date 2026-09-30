@@ -6,7 +6,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { X, Lock, AlertCircle } from 'lucide-react';
 import SaveButton from '../ui/SaveButton';
 import { savePersistency } from '../../services/persistencyService';
-import { deriveAll, PERS_GATE, PERS_GATE_PCT } from '../../lib/persistency/calculations';
+import { deriveAll, PERS_GATE_PCT } from '../../lib/persistency/calculations';
+import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 import { persistencyModelFor } from '../../lib/persistency/model';
 import { formatCurrency } from '../../utils/formatters';
 import {
@@ -389,11 +390,11 @@ export default function PersistencyEntryForm({
               <div>
                 <p className="text-ink-muted">Persistency</p>
                 <p className="font-semibold text-ink" data-testid="derived-persistency">
-                  {(derived.persistency * 100).toFixed(1)}%
+                  {formatPersistencyPct(derived.persistency * 100)}
                 </p>
               </div>
             </div>
-            {derived.persistency >= PERS_GATE && (
+            {roundPersistencyPct(derived.persistency * 100) >= PERS_GATE_PCT && (
               <p className="text-xs text-success-ink font-semibold">{`Meets ${PERS_GATE_PCT}% award gate`}</p>
             )}
             {derived.grossSettled < 0 && (

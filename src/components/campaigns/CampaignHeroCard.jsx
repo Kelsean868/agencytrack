@@ -6,6 +6,7 @@ import {
 } from '../../utils/campaignEngine';
 import { toDateStr } from '../../lib/policyCampaignLens';
 import { buildPersistencyOutlook, formatOutlookPct, outlookGateFor } from '../../lib/persistency/persistencyOutlook';
+import { roundPersistencyPct } from '../../lib/persistency/persistencyRounding';
 import { getTodayTT } from '../../utils/dateInputs';
 import { provenanceLine } from '../../lib/settledProvenance';
 import { outlookMonthLabel, outlookMonthShortLabel } from '../persistency/outlookLabels';
@@ -115,15 +116,16 @@ export default function CampaignHeroCard({
   }, [tiered, gateEnabled, policies, persistencyRecords]);
   const persistencyKnown = gateEnabled && persPct != null;
   const persistencyPreview = !persistencyKnown && previewReading ? previewReading : null;
-  // The bar width works on the 0–100 scale; the preview keeps its decimals so
-  // 89.6% is never rounded up to a passing 90%.
-  const persistencyDisplayPct = persistencyKnown
-    ? persPct
-    : persistencyPreview ? persistencyPreview.persistency * 100 : null;
+  // The bar width works on the 0–100 scale. The preview is printed AND judged
+  // at 2 decimals, half up (ruling R-a: 89.996 → 90.00%, at the gate; 89.994 →
+  // 89.99%, below). The known reading (`persPct`) is the campaign engine's
+  // whole-number payout basis and is left exactly as it was (R2-1 stop).
+  const previewPct = persistencyPreview ? roundPersistencyPct(persistencyPreview.persistency * 100) : null;
+  const persistencyDisplayPct = persistencyKnown ? persPct : previewPct;
   const persistencyAchieved = persistencyKnown
     ? gateAchieved
-    : persistencyPreview
-      ? persistencyPreview.persistency * 100 >= (gate?.threshold ?? 0)
+    : previewPct != null
+      ? previewPct >= (gate?.threshold ?? 0)
       : false;
   const persistencyWarning = Boolean(persistencyPreview) && !persistencyAchieved;
 
@@ -243,7 +245,10 @@ export default function CampaignHeroCard({
     const endKey = toDateStr(campaign.endDate);
     const threshold = gate?.threshold ?? 0;
     const gateMonth = fullOutlook?.gateMonth ?? null;
-    const projectedPct = gateMonth ? gateMonth.persistency * 100 : (persistencyPreview?.persistency != null ? persistencyPreview.persistency * 100 : null);
+    // R-a: the projection is printed and judged at 2 decimals, half up.
+    const projectedPct = gateMonth
+      ? roundPersistencyPct(gateMonth.persistency * 100)
+      : (persistencyPreview?.persistency != null ? roundPersistencyPct(persistencyPreview.persistency * 100) : null);
     const persistencyDisplayPctScreen = persistencyKnown ? persPct : projectedPct;
     const persistencyLabelScreen = persistencyKnown
       ? `${persPct}%`
