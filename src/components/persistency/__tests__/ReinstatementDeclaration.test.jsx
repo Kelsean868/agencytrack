@@ -185,7 +185,7 @@ describe('PersistencyOutlookHero — FR-6', () => {
       'With your declared reinstatements: 93.75% (1 policy, waiting for head office · evidenced 89.29%)',
     );
     // The evidenced estimate itself is unchanged.
-    expect(screen.getByTestId('persistency-outlook-estimate-pct')).toHaveTextContent('89.3%');
+    expect(screen.getByTestId('persistency-outlook-estimate-pct')).toHaveTextContent('89.29%');
   });
 
   it('no declaration → no declared line', () => {
