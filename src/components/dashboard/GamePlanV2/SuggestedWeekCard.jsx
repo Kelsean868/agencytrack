@@ -99,6 +99,9 @@ export default function SuggestedWeekCard({
   weekStart = null,        // this week's Sunday (YYYY-MM-DD) — pace week membership
   weekSubmission = null,   // the week's submitted report (final source), or null
   dailyDocs = [],          // the week's dailyActivity docs (mid-week source)
+  // ── R2-8 (FR look) — the card's surface only. Default = the Nexus hero,
+  // unchanged; the FR Game plan passes an FR card that re-points --hero-*. ──
+  surfaceClassName = 'rounded-2xl p-5 glass hero teal',
 }) {
   const [expanded, setExpanded] = useState(null); // which metric's chain is revealed
   const [editing, setEditing] = useState(false);
@@ -211,7 +214,7 @@ export default function SuggestedWeekCard({
   // ── shell ──────────────────────────────────────────────────────────────────
   return (
     <section
-      className="rounded-2xl p-5 glass hero teal"
+      className={surfaceClassName}
       data-testid="suggested-week-card"
       aria-label="Suggested weekly plan"
     >
