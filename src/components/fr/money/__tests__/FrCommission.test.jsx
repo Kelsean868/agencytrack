@@ -16,6 +16,8 @@ vi.mock('../../../../context/AuthContext', () => ({
 }));
 vi.mock('../../../../services/goalsService', () => ({
   setGoals: vi.fn().mockResolvedValue(undefined),
+  // R2-3b: the tab loads saved assumptions on open; none saved here.
+  getGoals: vi.fn().mockResolvedValue(null),
 }));
 vi.mock('../../../goals/CommissionPlayground/components/CashFlowChart', () => ({ default: () => null }));
 
@@ -31,7 +33,7 @@ vi.mock('../../../../services/userPrefsService', () => ({
 
 globalThis.ResizeObserver = class { observe() {}; unobserve() {}; disconnect() {} };
 
-import { setGoals } from '../../../../services/goalsService';
+import { setGoals, getGoals } from '../../../../services/goalsService';
 import CommissionPlayground from '../../../goals/CommissionPlayground';
 
 const CHIPS = ['Annual', 'Semi', 'Quarter', 'Month', 'Week', 'Day'];
@@ -47,6 +49,11 @@ function renderPlayground(look, props = {}) {
   return render(
     <CommissionPlayground submissions={[]} agentId="a1" tenantId="t1" currentGoal={250000} look={look} {...props} />,
   );
+}
+
+/** R2-3b: wait until the saved assumptions have loaded (the inputs render). */
+async function ready() {
+  await waitFor(() => expect(screen.queryByTestId('commission-settings-loading')).toBeNull());
 }
 
 function chip(name) {
@@ -98,18 +105,20 @@ afterEach(() => {
 });
 
 describe('FR Commission playground — look switch', () => {
-  it('no look → the Nexus card; look="fr" → the FR layout', () => {
+  it('no look → the Nexus card; look="fr" → the FR layout', async () => {
     renderPlayground(undefined);
+    await ready();
     expect(screen.getByRole('tablist', { name: 'Commission Playground views' })).toBeInTheDocument();
     expect(screen.queryByTestId('fr-commission')).toBeNull();
     cleanup();
     renderPlayground('fr');
+    await ready();
     expect(screen.getByTestId('fr-commission')).toHaveAttribute('data-layout', 'desktop');
     expect(screen.queryByRole('tablist', { name: 'Commission Playground views' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Goal decomposition' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('an unknown look throws instead of silently rendering Nexus', () => {
+  it('an unknown look throws instead of silently rendering Nexus', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(() => renderPlayground('neon')).toThrow(/unknown look "neon"/);
     spy.mockRestore();
@@ -117,12 +126,14 @@ describe('FR Commission playground — look switch', () => {
 });
 
 describe('FR Commission playground — Goal decomposition parity with Nexus', () => {
-  it('default inputs: the Per-year column is the Annual ladder and each cadence column is that chip\'s ladder', () => {
+  it('default inputs: the Per-year column is the Annual ladder and each cadence column is that chip\'s ladder', async () => {
     renderPlayground('nexus');
+    await ready();
     const nexus = {};
     for (const name of CHIPS) { fireEvent.click(chip(name)); nexus[name] = nexusLadder(); }
     cleanup();
     renderPlayground('fr');
+    await ready();
     expect(frColumn('year')).toEqual(nexus.Annual);
     expect(frColumn('period').every((v) => v === null)).toBe(true);
     for (const name of CHIPS.slice(1)) {
@@ -132,8 +143,9 @@ describe('FR Commission playground — Goal decomposition parity with Nexus', ()
     }
   });
 
-  it('a custom input set (monthly income goal) prints the same figures', () => {
+  it('a custom input set (monthly income goal) prints the same figures', async () => {
     renderPlayground('nexus');
+    await ready();
     applyCustom('nexus');
     fireEvent.click(chip('Annual'));
     const annual = nexusLadder();
@@ -141,23 +153,29 @@ describe('FR Commission playground — Goal decomposition parity with Nexus', ()
     const week = nexusLadder();
     cleanup();
     renderPlayground('fr');
+    await ready();
     applyCustom('fr');
     fireEvent.click(chip('Week'));
     expect(frColumn('year')).toEqual(annual);
     expect(frColumn('period')).toEqual(week);
   });
 
-  it('the Money Needs hand-off (pre-tax flag) prints the same figures', () => {
+  it('the Money Needs hand-off (pre-tax flag) prints the same figures', async () => {
     localStorage.setItem(HANDOFF_KEY, JSON.stringify({ value: 180000, preTaxAlreadyApplied: true }));
     renderPlayground('nexus');
+    await ready();
     const nexus = nexusLadder();
     cleanup();
+    // R2-3b: the hand-off is applied once and removed — send it again.
+    localStorage.setItem(HANDOFF_KEY, JSON.stringify({ value: 180000, preTaxAlreadyApplied: true }));
     renderPlayground('fr');
+    await ready();
     expect(frColumn('year')).toEqual(nexus);
   });
 
   it('Save assumptions writes the same payload as Nexus', async () => {
     renderPlayground('nexus');
+    await ready();
     applyCustom('nexus');
     fireEvent.click(screen.getByRole('button', { name: 'Save Assumptions' }));
     await waitFor(() => expect(setGoals).toHaveBeenCalledTimes(1));
@@ -165,6 +183,7 @@ describe('FR Commission playground — Goal decomposition parity with Nexus', ()
     cleanup();
     setGoals.mockClear();
     renderPlayground('fr');
+    await ready();
     applyCustom('fr');
     fireEvent.click(screen.getByTestId('commission-save-assumptions-btn'));
     await waitFor(() => expect(setGoals).toHaveBeenCalledTimes(1));
@@ -173,6 +192,7 @@ describe('FR Commission playground — Goal decomposition parity with Nexus', ()
 
   it('Save as my goals confirms, then writes the same payload as Nexus', async () => {
     renderPlayground('nexus');
+    await ready();
     fireEvent.click(screen.getByTestId('commission-save-goal-btn'));
     const nexusConfirm = screen.getByTestId('commission-confirm-new').textContent;
     fireEvent.click(screen.getByTestId('commission-confirm-btn'));
@@ -181,6 +201,7 @@ describe('FR Commission playground — Goal decomposition parity with Nexus', ()
     cleanup();
     setGoals.mockClear();
     renderPlayground('fr');
+    await ready();
     fireEvent.click(screen.getByTestId('commission-save-goal-btn'));
     expect(setGoals).not.toHaveBeenCalled();
     expect(screen.getByTestId('commission-confirm-current').textContent).toBe('TTD 250,000');
@@ -198,10 +219,12 @@ describe('FR Commission playground — Goal decomposition parity with Nexus', ()
       }],
     }));
     renderPlayground('nexus');
+    await ready();
     fireEvent.click(await screen.findByTestId('scenario-apply-sc-1'));
     const nexus = nexusLadder();
     cleanup();
     renderPlayground('fr');
+    await ready();
     fireEvent.click(await screen.findByTestId('scenario-apply-sc-1'));
     expect(chip('Week')).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByLabelText('Income Goal (TTD)').value).toBe('420000');
@@ -248,8 +271,9 @@ describe("FR Commission playground — This month's target parity with Nexus", (
     fireEvent.change(screen.getByLabelText('Quarterly mix percentage'), { target: { value: '50' } });
   }
 
-  it('defaults and a mixed split print the same API, rows and insights', () => {
+  it('defaults and a mixed split print the same API, rows and insights', async () => {
     renderPlayground('nexus');
+    await ready();
     fireEvent.click(screen.getByRole('tab', { name: /modal targeting/i }));
     const nexusDefault = nexusModal();
     mixed('Target Commission (TTD)');
@@ -258,6 +282,7 @@ describe("FR Commission playground — This month's target parity with Nexus", (
     const nexusUneven = nexusModal();
     cleanup();
     renderPlayground('fr');
+    await ready();
     fireEvent.click(screen.getByRole('button', { name: "This month's target" }));
     expect(frModal()).toEqual(nexusDefault);
     mixed('I want this much commission this month');
@@ -269,8 +294,9 @@ describe("FR Commission playground — This month's target parity with Nexus", (
     expect(nexusUneven.rows.map((r) => r[1])).toContain('34%');
   });
 
-  it('the cash-flow table ends at the year total in the card title', () => {
+  it('the cash-flow table ends at the year total in the card title', async () => {
     renderPlayground('fr');
+    await ready();
     fireEvent.click(screen.getByRole('button', { name: "This month's target" }));
     expect(screen.getByRole('heading', { name: /lands over the next 12 months/ }).textContent)
       .toBe('TTD 5,000 lands over the next 12 months');
@@ -282,9 +308,10 @@ describe("FR Commission playground — This month's target parity with Nexus", (
 });
 
 describe('FR Commission playground — phone', () => {
-  it('pages the goal mode and keeps the saves outside the pager', () => {
+  it('pages the goal mode and keeps the saves outside the pager', async () => {
     stubWidth(false);
     renderPlayground('fr');
+    await ready();
     const root = screen.getByTestId('fr-commission');
     expect(root).toHaveAttribute('data-layout', 'phone');
     expect(within(root).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Your numbers', 'Breakdown', 'Scenarios']);
@@ -301,9 +328,34 @@ describe('FR Commission playground — a saved scenario with an unknown cadence'
       commissionScenarios: [{ id: 'sc-x', label: 'Old', savedAt: '2026-01-01T00:00:00.000Z', freqKey: 'fortnight', inputs: {} }],
     }));
     renderPlayground('fr');
+    await ready();
     fireEvent.click(await screen.findByTestId('scenario-apply-sc-x'));
     expect(screen.getByTestId('fr-commission-decomposition-table')).toBeInTheDocument();
     expect(frColumn('period').every((v) => v === null)).toBe(true);
     warn.mockRestore();
+  });
+});
+
+describe('FR Commission playground — saved assumptions load back (R2-3b)', () => {
+  it('shows the loading state first, then the saved values and a per-ratio history label', async () => {
+    let resolve;
+    getGoals.mockImplementationOnce(() => new Promise((r) => { resolve = r; }));
+    const week = () => ({ status: 'submitted', ciConducted: 3, applicationsSold: 1, referralCalls: 4, followUpCalls: 3, coldCalls: 2 });
+    renderPlayground('fr', { submissions: Array.from({ length: 10 }, week) });
+    expect(screen.getByTestId('commission-settings-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('fr-commission-goal-inputs')).toBeNull();
+    await waitFor(() => expect(typeof resolve).toBe('function'));
+    resolve({ playgroundTaxRate: 20, playgroundCiToSaleRatio: 5 });
+    await ready();
+    expect(screen.getByLabelText('Tax rate (%)').value).toBe('20');
+    expect(screen.getByLabelText('CIs per sale').value).toBe('5');
+    const inputs = screen.getByTestId('fr-commission-goal-inputs');
+    // The saved ratio has no history label; the unsaved one still does, with
+    // the history value (9 calls per 3 CIs each week → 3).
+    expect(within(inputs).getAllByText('From your history')).toHaveLength(1);
+    const field = (label) => screen.getByLabelText(label).closest('div').parentElement;
+    expect(within(field('CIs per sale')).queryByText('From your history')).toBeNull();
+    expect(within(field('Calls per CI')).getByText('From your history')).toBeInTheDocument();
+    expect(screen.getByLabelText('Calls per CI').value).toBe('3');
   });
 });

@@ -21,6 +21,8 @@ vi.mock('../../../../context/AuthContext', () => ({
 }));
 vi.mock('../../../../services/goalsService', () => ({
   setGoals: vi.fn().mockResolvedValue(undefined),
+  // R2-3b: the tab loads saved assumptions on open; none saved here.
+  getGoals: vi.fn().mockResolvedValue(null),
 }));
 vi.mock('../components/CashFlowChart', () => ({ default: () => null }));
 
@@ -45,6 +47,11 @@ function renderPlayground(props = {}) {
   return render(
     <CommissionPlayground submissions={[]} agentId="a1" tenantId="t1" currentGoal={250000} {...props} />,
   );
+}
+
+/** R2-3b: wait until the saved assumptions have loaded (the inputs render). */
+async function ready() {
+  await waitFor(() => expect(screen.queryByTestId('commission-settings-loading')).toBeNull());
 }
 
 /** Each ladder stage as "label = value". */
@@ -76,8 +83,9 @@ afterEach(() => {
 });
 
 describe('Commission playground characterization — Goal Decomposition', () => {
-  it('default inputs, every view-cadence chip', () => {
+  it('default inputs, every view-cadence chip', async () => {
     renderPlayground();
+    await ready();
     const byChip = {};
     for (const name of ['Annual', 'Semi', 'Quarter', 'Month', 'Week', 'Day']) {
       fireEvent.click(chip(name));
@@ -143,8 +151,9 @@ describe('Commission playground characterization — Goal Decomposition', () => 
     `);
   });
 
-  it('a custom input set (monthly income goal), Annual and Month chips', () => {
+  it('a custom input set (monthly income goal), Annual and Month chips', async () => {
     renderPlayground();
+    await ready();
     fireEvent.change(screen.getByTestId('income-goal-period'), { target: { value: 'monthly' } });
     setNum('Income Goal (TTD)', 20000);
     setNum('Tax Rate (%)', 20);
@@ -184,9 +193,10 @@ describe('Commission playground characterization — Goal Decomposition', () => 
     `);
   });
 
-  it('Money Needs hand-off with the pre-tax flag', () => {
+  it('Money Needs hand-off with the pre-tax flag', async () => {
     localStorage.setItem(HANDOFF_KEY, JSON.stringify({ value: 180000, preTaxAlreadyApplied: true }));
     renderPlayground();
+    await ready();
     expect(ladder()).toMatchInlineSnapshot(`
       [
         "Income goal = TTD 180,000",
@@ -200,12 +210,13 @@ describe('Commission playground characterization — Goal Decomposition', () => 
     `);
   });
 
-  it('history-derived ratios (8+ submitted weeks)', () => {
+  it('history-derived ratios (8+ submitted weeks)', async () => {
     const week = (i) => ({
       status: 'submitted', ciConducted: 3 + (i % 2), applicationsSold: 1,
       referralCalls: 4, followUpCalls: 3, coldCalls: 2, seminarTradeshowCalls: i % 3,
     });
     renderPlayground({ submissions: Array.from({ length: 10 }, (_, i) => week(i)) });
+    await ready();
     expect({
       ci: screen.getByLabelText('CIs per Sale').value,
       calls: screen.getByLabelText('Calls per CI').value,
@@ -237,6 +248,7 @@ describe('Commission playground characterization — Goal Decomposition', () => 
       }],
     }));
     renderPlayground();
+    await ready();
     fireEvent.click(await screen.findByTestId('scenario-apply-sc-1'));
     expect({
       amount: screen.getByLabelText('Income Goal (TTD)').value,
@@ -263,6 +275,7 @@ describe('Commission playground characterization — Goal Decomposition', () => 
 
   it('Save Assumptions writes exactly these keys and values', async () => {
     renderPlayground();
+    await ready();
     fireEvent.change(screen.getByTestId('income-goal-period'), { target: { value: 'weekly' } });
     setNum('Income Goal (TTD)', 7000);
     setNum('Settlement Rate (%)', 75);
@@ -280,6 +293,7 @@ describe('Commission playground characterization — Goal Decomposition', () => 
           "playgroundIncomeGoal": 301000,
           "playgroundIncomeGoalPeriod": "weekly",
           "playgroundPersistencyRate": 90,
+          "playgroundPreTaxAlreadyApplied": false,
           "playgroundProspectRatio": 2,
           "playgroundRenewalIncome": 0,
           "playgroundSettlementRate": 75,
@@ -293,6 +307,7 @@ describe('Commission playground characterization — Goal Decomposition', () => 
 
   it('Save as My Goals writes the computed API and applications after confirm', async () => {
     renderPlayground();
+    await ready();
     fireEvent.click(screen.getByTestId('commission-save-goal-btn'));
     expect({
       current: screen.getByTestId('commission-confirm-current').textContent,
@@ -321,8 +336,9 @@ describe('Commission playground characterization — Goal Decomposition', () => 
 });
 
 describe('Commission playground characterization — Modal Targeting', () => {
-  function openModal() {
+  async function openModal() {
     renderPlayground();
+    await ready();
     fireEvent.click(screen.getByRole('tab', { name: /modal targeting/i }));
   }
   function readModal() {
@@ -336,8 +352,8 @@ describe('Commission playground characterization — Modal Targeting', () => {
     return { api: result.querySelector('p.text-3xl').textContent, rows, insights };
   }
 
-  it('defaults (all annual, the profile commission rate)', () => {
-    openModal();
+  it('defaults (all annual, the profile commission rate)', async () => {
+    await openModal();
     expect(readModal()).toMatchInlineSnapshot(`
       {
         "api": "TTD 14,300",
@@ -352,8 +368,8 @@ describe('Commission playground characterization — Modal Targeting', () => {
     `);
   });
 
-  it('target, rate and a mixed mode split', () => {
-    openModal();
+  it('target, rate and a mixed mode split', async () => {
+    await openModal();
     fireEvent.change(screen.getByLabelText('Target Commission (TTD)'), { target: { value: '8000' } });
     fireEvent.change(screen.getByLabelText('Commission Rate (%)'), { target: { value: '40' } });
     fireEvent.change(screen.getByLabelText('Monthly mix percentage'), { target: { value: '50' } });

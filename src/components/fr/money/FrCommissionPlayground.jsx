@@ -26,6 +26,15 @@ function useLayout() {
 
 function FrGoalTab({ layout, onTabChange, submissions, agentId, tenantId, currentGoal, onGoalSaved }) {
   const goal = useGoalDecomposition({ submissions, agentId, tenantId, onGoalSaved });
+  // R2-3b: the saved assumptions load before the inputs render (as in Nexus).
+  if (goal.settingsLoading) {
+    return (
+      <div className="flex flex-col gap-3" aria-busy="true" data-testid="commission-settings-loading">
+        <p className="text-[12px] text-ink-muted">Loading your saved assumptions…</p>
+        {[0, 1, 2].map((i) => <div key={i} className="h-16 rounded-[14px] bg-fr-sunk motion-safe:animate-pulse" />)}
+      </div>
+    );
+  }
   return <FrCommissionView layout={layout} tab="goal" onTabChange={onTabChange} goal={{ ...goal, currentGoal }} />;
 }
 

@@ -251,6 +251,17 @@ export async function setGoals(tenantId, agentId, data, setBy, setByName) {
     payload.playgroundIncomeGoalPeriod = period;
   }
 
+  // Playground boolean — R2-3b (ruling A+, 30-09-2026). Whether the saved
+  // income goal is already pre-tax (sent from Money Needs), so reopening does
+  // not gross it up for tax again. Only a real boolean is written.
+  if ('playgroundPreTaxAlreadyApplied' in data) {
+    const flag = data.playgroundPreTaxAlreadyApplied;
+    if (typeof flag !== 'boolean') {
+      throw new Error(`Invalid pre-tax flag: ${String(flag)}`);
+    }
+    payload.playgroundPreTaxAlreadyApplied = flag;
+  }
+
   await setDoc(ref, payload, { merge: true });
 }
 

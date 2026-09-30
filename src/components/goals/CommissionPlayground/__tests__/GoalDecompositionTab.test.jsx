@@ -16,6 +16,8 @@ vi.mock('../../../../context/AuthContext', () => ({
 }));
 vi.mock('../../../../services/goalsService', () => ({
   setGoals: vi.fn().mockResolvedValue(undefined),
+  // R2-3b: the tab reads the saved assumptions on open (none saved here).
+  getGoals: vi.fn().mockResolvedValue(null),
 }));
 vi.mock('../components/CashFlowChart', () => ({ default: () => null }));
 
@@ -41,6 +43,13 @@ import { setGoals } from '../../../../services/goalsService';
 import GoalDecompositionTab from '../tabs/GoalDecompositionTab';
 import CommissionPlayground from '../index';
 
+// R2-3b: the inputs render once the saved assumptions have loaded.
+async function renderReady(ui) {
+  const r = render(ui);
+  await waitFor(() => expect(screen.queryByTestId('commission-settings-loading')).toBeNull());
+  return r;
+}
+
 describe('GoalDecompositionTab — D5 parked RTL baseline', () => {
   beforeEach(() => {
     setGoals.mockClear();
@@ -52,39 +61,39 @@ describe('GoalDecompositionTab — D5 parked RTL baseline', () => {
   });
 
   // ── Test 1: 7 ladder stages render ──────────────────────────────────────
-  it('renders all 7 decomposition ladder stages', () => {
-    render(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
+  it('renders all 7 decomposition ladder stages', async () => {
+    await renderReady(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
     const stages = screen.getAllByTestId('commission-ladder-stage');
     expect(stages).toHaveLength(7);
   });
 
   // ── Test 2: localStorage income-goal persistence ─────────────────────────
-  it('loads income goal from localStorage on mount', () => {
+  it('loads income goal from localStorage on mount', async () => {
     localStorage.setItem('agencytrack-playground-income-goal', JSON.stringify(250000));
-    render(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
+    await renderReady(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
     const input = screen.getByLabelText(/income goal/i);
     expect(parseFloat(input.value)).toBe(250000);
   });
 
   // ── Test 3: tab switch via CommissionPlayground ───────────────────────────
-  it('clicking Modal Targeting tab shows mode mix sliders', () => {
-    render(<CommissionPlayground submissions={[]} agentId="a" tenantId="t" />);
+  it('clicking Modal Targeting tab shows mode mix sliders', async () => {
+    await renderReady(<CommissionPlayground submissions={[]} agentId="a" tenantId="t" />);
     const tabBtn = screen.getByRole('tab', { name: /modal targeting/i });
     fireEvent.click(tabBtn);
     expect(screen.getByText(/mode mix/i)).toBeInTheDocument();
   });
 
   // ── Test 4 (S3): "Save as My Goals" opens confirm dialog, not direct write ─
-  it('clicking Save as My Goals shows confirm dialog without calling setGoals', () => {
-    render(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
+  it('clicking Save as My Goals shows confirm dialog without calling setGoals', async () => {
+    await renderReady(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
     fireEvent.click(screen.getByTestId('commission-save-goal-btn'));
     expect(screen.getByTestId('commission-confirm-dialog')).toBeInTheDocument();
     expect(setGoals).not.toHaveBeenCalled();
   });
 
   // ── Test 5 (S3): confirm dialog shows current and new API values ──────────
-  it('confirm dialog shows current goal and new computed API', () => {
-    render(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" currentGoal={84000} />);
+  it('confirm dialog shows current goal and new computed API', async () => {
+    await renderReady(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" currentGoal={84000} />);
     fireEvent.click(screen.getByTestId('commission-save-goal-btn'));
     const current = screen.getByTestId('commission-confirm-current');
     const newVal  = screen.getByTestId('commission-confirm-new');
@@ -93,8 +102,8 @@ describe('GoalDecompositionTab — D5 parked RTL baseline', () => {
   });
 
   // ── Test 6 (S3): Cancel hides confirm without writing ────────────────────
-  it('clicking Cancel hides confirm dialog without calling setGoals', () => {
-    render(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
+  it('clicking Cancel hides confirm dialog without calling setGoals', async () => {
+    await renderReady(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
     fireEvent.click(screen.getByTestId('commission-save-goal-btn'));
     expect(screen.getByTestId('commission-confirm-dialog')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('commission-confirm-cancel'));
@@ -105,7 +114,7 @@ describe('GoalDecompositionTab — D5 parked RTL baseline', () => {
   // ── Test 7 (S3): Confirm calls setGoals byte-shaped vs CareerPortal path ──
   it('clicking Set as my goal in confirm calls setGoals with personalAnnualAPI + apps', async () => {
     const onGoalSaved = vi.fn();
-    render(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" onGoalSaved={onGoalSaved} />);
+    await renderReady(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" onGoalSaved={onGoalSaved} />);
     fireEvent.click(screen.getByTestId('commission-save-goal-btn'));
     fireEvent.click(screen.getByTestId('commission-confirm-btn'));
     await waitFor(() => expect(setGoals).toHaveBeenCalled());
@@ -117,8 +126,8 @@ describe('GoalDecompositionTab — D5 parked RTL baseline', () => {
   });
 
   // ── Test 8 (S3): guard rail — zero income goal does not open confirm ───────
-  it('guard rail: income goal of 0 does not open confirm dialog', () => {
-    render(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
+  it('guard rail: income goal of 0 does not open confirm dialog', async () => {
+    await renderReady(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
     // Drive income to 0 so decomposeFromIncome returns apiToWrite = 0
     const input = screen.getByLabelText(/income goal/i);
     fireEvent.change(input, { target: { value: '0' } });
@@ -128,9 +137,9 @@ describe('GoalDecompositionTab — D5 parked RTL baseline', () => {
   });
 
   // ── Test 9: backward-compat — bare number localStorage ──────────────────
-  it('backward-compat: bare number in localStorage loads incomeGoal without preTaxAlreadyApplied', () => {
+  it('backward-compat: bare number in localStorage loads incomeGoal without preTaxAlreadyApplied', async () => {
     localStorage.setItem('agencytrack-playground-income-goal', JSON.stringify(840000));
-    render(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
+    await renderReady(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
     const input = screen.getByLabelText(/income goal/i);
     expect(parseFloat(input.value)).toBe(840000);
     // No flag → normal gross-up applies; the confirm button is available (apiToWrite > 0).
@@ -139,23 +148,23 @@ describe('GoalDecompositionTab — D5 parked RTL baseline', () => {
   });
 
   // ── Test 10: new object shape sets incomeGoal + preTaxAlreadyApplied ────
-  it('new object shape {value, preTaxAlreadyApplied:true} loads correct incomeGoal', () => {
+  it('new object shape {value, preTaxAlreadyApplied:true} loads correct incomeGoal', async () => {
     localStorage.setItem(
       'agencytrack-playground-income-goal',
       JSON.stringify({ value: 1090000, preTaxAlreadyApplied: true }),
     );
-    render(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
+    await renderReady(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
     const input = screen.getByLabelText(/income goal/i);
     expect(parseFloat(input.value)).toBe(1090000);
   });
 
   // ── Test 11: manual incomeGoal edit clears preTaxAlreadyApplied ─────────
-  it('manually editing Income Goal clears the preTaxAlreadyApplied flag (confirm opens, apiToWrite reflects normal gross-up)', () => {
+  it('manually editing Income Goal clears the preTaxAlreadyApplied flag (confirm opens, apiToWrite reflects normal gross-up)', async () => {
     localStorage.setItem(
       'agencytrack-playground-income-goal',
       JSON.stringify({ value: 1090000, preTaxAlreadyApplied: true }),
     );
-    render(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
+    await renderReady(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
     const input = screen.getByLabelText(/income goal/i);
     // Manually override the field — flag must clear.
     fireEvent.change(input, { target: { value: '900000' } });
@@ -183,7 +192,7 @@ describe('GoalDecompositionTab — R-06 scenario persistence', () => {
     prefsMock.getUserPrefs.mockResolvedValue({ commissionScenarios: [] });
     prefsMock.setCommissionScenarios.mockRejectedValue(new Error('offline'));
 
-    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    await renderReady(<GoalDecompositionTab {...TAB_PROPS} />);
     await waitFor(() => expect(screen.getByTestId('scenario-chips')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('scenario-save-open'));
@@ -204,7 +213,7 @@ describe('GoalDecompositionTab — R-06 scenario persistence', () => {
     prefsMock.getUserPrefs.mockReturnValue(new Promise((res) => { resolveHydration = res; }));
     prefsMock.setCommissionScenarios.mockResolvedValue();
 
-    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    await renderReady(<GoalDecompositionTab {...TAB_PROPS} />);
     await waitFor(() => expect(screen.getByTestId('scenario-chips')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('scenario-save-open'));
@@ -242,15 +251,15 @@ describe('GoalDecompositionTab — R2-3 income goal period', () => {
     localStorage.removeItem('agencytrack-playground-income-goal');
   });
 
-  it('defaults to Annual — the typed amount IS the annual goal', () => {
-    render(<GoalDecompositionTab {...TAB_PROPS} />);
+  it('defaults to Annual — the typed amount IS the annual goal', async () => {
+    await renderReady(<GoalDecompositionTab {...TAB_PROPS} />);
     expect(screen.getByLabelText(/goal period/i).value).toBe('annual');
     expect(headStage()).toContain('TTD 300,000');
     expect(screen.getByTestId('income-goal-conversion').textContent).toBe('TTD 300,000 a year');
   });
 
-  it('TTD 50,000 a month → annual TTD 500,000, and the Month chip shows TTD 50,000', () => {
-    render(<GoalDecompositionTab {...TAB_PROPS} />);
+  it('TTD 50,000 a month → annual TTD 500,000, and the Month chip shows TTD 50,000', async () => {
+    await renderReady(<GoalDecompositionTab {...TAB_PROPS} />);
     enter(50000, 'monthly');
     expect(screen.getByTestId('income-goal-conversion').textContent)
       .toBe('TTD 50,000 a month × 10 selling months = TTD 500,000 a year');
@@ -260,8 +269,8 @@ describe('GoalDecompositionTab — R2-3 income goal period', () => {
     expect(headStage()).not.toContain('TTD 500,000');
   });
 
-  it('changing the period keeps the typed amount and re-derives the annual goal', () => {
-    render(<GoalDecompositionTab {...TAB_PROPS} />);
+  it('changing the period keeps the typed amount and re-derives the annual goal', async () => {
+    await renderReady(<GoalDecompositionTab {...TAB_PROPS} />);
     enter(50000, 'annual');
     expect(headStage()).toContain('TTD 50,000');
     fireEvent.change(screen.getByLabelText(/goal period/i), { target: { value: 'monthly' } });
@@ -269,8 +278,8 @@ describe('GoalDecompositionTab — R2-3 income goal period', () => {
     expect(headStage()).toContain('TTD 500,000');
   });
 
-  it('weekly round-trip: TTD 1,000 a week → TTD 43,000 a year → Week chip shows TTD 1,000', () => {
-    render(<GoalDecompositionTab {...TAB_PROPS} />);
+  it('weekly round-trip: TTD 1,000 a week → TTD 43,000 a year → Week chip shows TTD 1,000', async () => {
+    await renderReady(<GoalDecompositionTab {...TAB_PROPS} />);
     enter(1000, 'weekly');
     expect(screen.getByTestId('income-goal-conversion').textContent)
       .toBe('TTD 1,000 a week × 43 selling weeks = TTD 43,000 a year');
@@ -279,8 +288,8 @@ describe('GoalDecompositionTab — R2-3 income goal period', () => {
     expect(headStage()).toContain('TTD 1,000');
   });
 
-  it('daily round-trip: TTD 200 a day → TTD 51,600 a year → Day chip shows TTD 200', () => {
-    render(<GoalDecompositionTab {...TAB_PROPS} />);
+  it('daily round-trip: TTD 200 a day → TTD 51,600 a year → Day chip shows TTD 200', async () => {
+    await renderReady(<GoalDecompositionTab {...TAB_PROPS} />);
     enter(200, 'daily');
     expect(screen.getByTestId('income-goal-conversion').textContent)
       .toBe('TTD 200 a day × 258 selling days = TTD 51,600 a year');
@@ -290,7 +299,7 @@ describe('GoalDecompositionTab — R2-3 income goal period', () => {
   });
 
   it('Save Assumptions sends the ANNUAL goal, its period and the settlement rate', async () => {
-    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    await renderReady(<GoalDecompositionTab {...TAB_PROPS} />);
     enter(50000, 'monthly');
     fireEvent.click(screen.getByRole('button', { name: /save assumptions/i }));
     await waitFor(() => expect(setGoals).toHaveBeenCalled());
@@ -301,7 +310,7 @@ describe('GoalDecompositionTab — R2-3 income goal period', () => {
   });
 
   it('a saved scenario stores the annual goal and loads back as Annual with that same value', async () => {
-    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    await renderReady(<GoalDecompositionTab {...TAB_PROPS} />);
     await waitFor(() => expect(screen.getByTestId('scenario-chips')).toBeInTheDocument());
     enter(50000, 'monthly');
     fireEvent.click(screen.getByTestId('scenario-save-open'));
@@ -315,7 +324,7 @@ describe('GoalDecompositionTab — R2-3 income goal period', () => {
     // same annual goal (scenarios carry no period — they load as Annual).
     cleanup();
     prefsMock.getUserPrefs.mockResolvedValue({ commissionScenarios: [saved] });
-    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    await renderReady(<GoalDecompositionTab {...TAB_PROPS} />);
     fireEvent.click(await screen.findByText('Month plan'));
     expect(screen.getByLabelText(/goal period/i).value).toBe('annual');
     expect(parseFloat(screen.getByLabelText(/income goal \(ttd\)/i).value)).toBe(500000);
@@ -326,7 +335,7 @@ describe('GoalDecompositionTab — R2-3 income goal period', () => {
     prefsMock.getUserPrefs.mockResolvedValue({
       commissionScenarios: [{ id: 'sc-old', label: 'Old one', savedAt: '2026-01-01T00:00:00.000Z', freqKey: 'annual', inputs: { incomeGoal: 420000 } }],
     });
-    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    await renderReady(<GoalDecompositionTab {...TAB_PROPS} />);
     enter(1000, 'weekly');
     fireEvent.click(await screen.findByText('Old one'));
     expect(screen.getByLabelText(/goal period/i).value).toBe('annual');

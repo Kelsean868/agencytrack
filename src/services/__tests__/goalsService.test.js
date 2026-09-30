@@ -828,4 +828,18 @@ describe('setGoals — playground assumptions round-trip (R2-3)', () => {
     const [, payload] = mockSetDoc.mock.calls[0];
     expect('playgroundIncomeGoalPeriod' in payload).toBe(false);
   });
+
+  // R2-3b, ruling A+ (30-09-2026): the pre-tax flag is saved with the assumptions.
+  it.each([true, false])('the pre-tax flag %s is stored as that boolean and reloads unchanged', async (flag) => {
+    await setGoals('t1', 'a1', { playgroundIncomeGoal: 180000, playgroundPreTaxAlreadyApplied: flag }, 'a1', 'Agent');
+    const reloaded = await getGoals('t1', 'a1');
+    expect(reloaded.playgroundPreTaxAlreadyApplied).toBe(flag);
+  });
+
+  it('a pre-tax flag that is not a boolean throws and writes nothing', async () => {
+    await expect(
+      setGoals('t1', 'a1', { playgroundIncomeGoal: 180000, playgroundPreTaxAlreadyApplied: 'true' }, 'a1', 'Agent'),
+    ).rejects.toThrow(/pre-tax flag/i);
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
 });

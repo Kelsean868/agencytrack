@@ -74,7 +74,7 @@ function CommissionScene({ variant, initialTab = 'goal' }) {
     incomeAmount, incomePeriod,
     handleIncomeAmountChange: setIncomeAmount, handleIncomePeriodChange: setIncomePeriod,
     setField: (key) => (value) => setRatios((prev) => ({ ...prev, [key]: value })),
-    hasHistory: b, historyWeeks: 12,
+    hasHistory: b, fromHistory: () => b, historyWeeks: 12,
     scenarios: SCENARIOS, scenarioSaving: false, activeScenarioId: b ? 'sc-1' : null,
     handleScenarioApply: noop, handleScenarioSave: noop, handleScenarioDelete: noop,
     currentGoal: 250000, showConfirm: false, setShowConfirm: noop, saving: false,
