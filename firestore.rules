@@ -651,6 +651,12 @@ service cloud.firestore {
           // P2b (SEC-08): a BM lapses policies in their own branch only.
           && managerDocInScope(tenantId, resource.data)
           && resource.data.status == 'settled'
+          // F-4 (Kyron ruling 2B, 30-09-2026): head office is the source of
+          // truth. A manager may not change a status that the OIPA import set
+          // (statusSource 'oipa_import'); only a self-declared settled status can
+          // be lapsed here. Tightening only — no other arm is edited, and this
+          // is the only arm through which a manager moves a policy's status.
+          && !isHeadOfficeStatus(resource.data)
           && request.resource.data.status == 'lapsed'
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['status', 'statusUpdatedAt', 'dateLapsed', 'lapseReason',

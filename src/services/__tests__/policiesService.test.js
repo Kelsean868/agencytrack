@@ -736,6 +736,14 @@ describe('lapsePolicy', () => {
     });
   });
 
+  // F-4 (Kyron ruling 2B): head office is the source of truth.
+  it('refuses a head-office policy before writing anything', async () => {
+    await expect(
+      lapsePolicy('t1', mockBMProfile, 'p1', { ...mockSettledPolicy, statusSource: 'oipa_import' }, mockFields)
+    ).rejects.toThrow('Head office set this status, so it cannot be lapsed here.');
+    expect(hoisted.mockBatchCommit).not.toHaveBeenCalled();
+  });
+
   it('tenant_admin can also lapse a policy', async () => {
     const taProfile = { uid: 'ta1', name: 'Tenant Admin', role: 'tenant_admin' };
     await expect(

@@ -453,6 +453,12 @@ export async function lapsePolicy(tenantId, managerProfile, policyId, policy, fi
   if (policy.status !== 'settled') {
     throw new Error('Only settled policies can be lapsed.');
   }
+  // F-4 (Kyron ruling 2B, 30-09-2026): head office is the source of truth.
+  // firestore.rules Arm D refuses a lapse on a head-office status; say why here
+  // instead of surfacing a permission error.
+  if (isFromHeadOffice(policy)) {
+    throw new Error('Head office set this status, so it cannot be lapsed here.');
+  }
   if (!fields?.dateLapsed) {
     throw new Error('dateLapsed is required to lapse a policy.');
   }
