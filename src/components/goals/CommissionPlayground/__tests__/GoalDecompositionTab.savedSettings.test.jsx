@@ -125,8 +125,11 @@ describe('R2-3b — saved assumptions load back', () => {
 
   it('savedPlaygroundSettings maps the goals doc back and ignores non-numbers', () => {
     expect(savedPlaygroundSettings({ playgroundIncomeGoal: 430000, playgroundIncomeGoalPeriod: 'weekly', playgroundTaxRate: '25' }))
-      .toEqual({ inputs: { incomeGoal: 430000 }, period: 'weekly', amount: 10000 });
-    expect(savedPlaygroundSettings(null)).toEqual({ inputs: {}, period: 'annual', amount: null });
+      .toEqual({ inputs: { incomeGoal: 430000 }, period: 'weekly', amount: 10000, preTaxAlreadyApplied: false });
+    expect(savedPlaygroundSettings(null)).toEqual({ inputs: {}, period: 'annual', amount: null, preTaxAlreadyApplied: false });
+    // A+ (30-09-2026): only a stored `true` counts.
+    expect(savedPlaygroundSettings({ playgroundPreTaxAlreadyApplied: true }).preTaxAlreadyApplied).toBe(true);
+    expect(savedPlaygroundSettings({ playgroundPreTaxAlreadyApplied: 'true' }).preTaxAlreadyApplied).toBe(false);
   });
 });
 
@@ -161,5 +164,38 @@ describe('R2-3b review fixes (CodeRabbit on #1029)', () => {
     const label = (text) => screen.getByText(text, { selector: 'label' }).parentElement;
     await waitFor(() => expect(label('Calls per CI').textContent).toContain('From your history'));
     expect(label('CIs per Sale').textContent).not.toContain('From your history');
+  });
+
+  // A+ (Kyron, 30-09-2026): the pre-tax flag is saved with the assumptions.
+  it('a goal sent from Money Needs and saved comes back pre-tax — not grossed up for tax again', async () => {
+    const ladder = () => screen.getAllByTestId('commission-ladder-stage').map((el) => el.textContent);
+    localStorage.setItem(HANDOFF, JSON.stringify({ value: 180000, preTaxAlreadyApplied: true }));
+    await open();
+    const sentLadder = ladder();
+    fireEvent.click(screen.getByRole('button', { name: 'Save Assumptions' }));
+    await waitFor(() => expect(goalsMock.setGoals).toHaveBeenCalledTimes(1));
+    const saved = goalsMock.setGoals.mock.calls[0][2];
+    expect(saved.playgroundPreTaxAlreadyApplied).toBe(true);
+    cleanup();
+    goalsMock.getGoals.mockResolvedValue(saved);
+    await open();
+    expect(localStorage.getItem(HANDOFF)).toBeNull();
+    expect(val('Income Goal (TTD)')).toBe('180000');
+    expect(ladder()).toEqual(sentLadder);
+  });
+
+  it('a typed goal saves the flag as false, and editing the tax rate after a hand-off clears it', async () => {
+    await open();
+    fireEvent.click(screen.getByRole('button', { name: 'Save Assumptions' }));
+    await waitFor(() => expect(goalsMock.setGoals).toHaveBeenCalledTimes(1));
+    expect(goalsMock.setGoals.mock.calls[0][2].playgroundPreTaxAlreadyApplied).toBe(false);
+    cleanup();
+    goalsMock.setGoals.mockClear();
+    goalsMock.getGoals.mockResolvedValue({ playgroundIncomeGoal: 180000, playgroundPreTaxAlreadyApplied: true });
+    await open();
+    set('Tax Rate (%)', 20);
+    fireEvent.click(screen.getByRole('button', { name: 'Save Assumptions' }));
+    await waitFor(() => expect(goalsMock.setGoals).toHaveBeenCalledTimes(1));
+    expect(goalsMock.setGoals.mock.calls[0][2].playgroundPreTaxAlreadyApplied).toBe(false);
   });
 });

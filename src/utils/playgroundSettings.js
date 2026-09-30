@@ -25,10 +25,12 @@ export const PLAYGROUND_SETTING_KEYS = Object.freeze({
 
 /**
  * @param {object|null} goals  the agent's goals doc (getGoals), or null
- * @returns {{ inputs: object, period: string, amount: number|null }}
+ * @returns {{ inputs: object, period: string, amount: number|null, preTaxAlreadyApplied: boolean }}
  *   inputs — only the saved keys, as numbers (incomeGoal is ANNUAL);
  *   period — the saved income-goal period, or Annual when none / invalid;
- *   amount — the income goal as typed in that period (annual ÷ divisor), or null.
+ *   amount — the income goal as typed in that period (annual ÷ divisor), or null;
+ *   preTaxAlreadyApplied — the saved pre-tax flag (ruling A+, 30-09-2026):
+ *     true only when saved as exactly `true`.
  */
 export function savedPlaygroundSettings(goals) {
   const inputs = {};
@@ -39,5 +41,6 @@ export function savedPlaygroundSettings(goals) {
   const rawPeriod = goals?.playgroundIncomeGoalPeriod;
   const period = PLAYGROUND_PERIOD_KEYS.includes(rawPeriod) ? rawPeriod : DEFAULT_INCOME_GOAL_PERIOD;
   const amount = inputs.incomeGoal == null ? null : inputs.incomeGoal / playgroundPeriod(period).divisor;
-  return { inputs, period, amount };
+  const preTaxAlreadyApplied = goals?.playgroundPreTaxAlreadyApplied === true;
+  return { inputs, period, amount, preTaxAlreadyApplied };
 }

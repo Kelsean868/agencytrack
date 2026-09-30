@@ -140,7 +140,9 @@ export default function useGoalDecomposition({ submissions = [], agentId, tenant
   // The hand-off is removed once applied, so the next open shows the saved
   // assumptions again (nothing else clears it). The inputs render only after
   // this settles (`settingsLoading`), so defaults never flash first. A failed
-  // read falls back to the defaults.
+  // read falls back to the defaults. The pre-tax flag is saved with the
+  // assumptions (ruling A+), so a goal sent from Money Needs and then saved is
+  // not grossed up for tax a second time on reopen.
   const [settingsLoading, setSettingsLoading] = useState(Boolean(tenantId && agentId));
   const savedRatioKeysRef = useRef(new Set());
   // Which ratios on screen came from the agent's history (not from saved
@@ -190,6 +192,7 @@ export default function useGoalDecomposition({ submissions = [], agentId, tenant
         setInputs({ ...DEFAULT_DECOMPOSITION_INPUTS, ...saved.inputs });
         setIncomeAmount(saved.amount ?? DEFAULT_DECOMPOSITION_INPUTS.incomeGoal);
         setIncomePeriod(saved.amount != null ? saved.period : DEFAULT_INCOME_GOAL_PERIOD);
+        setPtaFlag(saved.preTaxAlreadyApplied);
       })
       .catch(() => {
         // No saved assumptions readable → the defaults.
@@ -198,6 +201,7 @@ export default function useGoalDecomposition({ submissions = [], agentId, tenant
         setInputs({ ...DEFAULT_DECOMPOSITION_INPUTS });
         setIncomeAmount(DEFAULT_DECOMPOSITION_INPUTS.incomeGoal);
         setIncomePeriod(DEFAULT_INCOME_GOAL_PERIOD);
+        setPtaFlag(false);
       })
       .finally(() => {
         if (!alive) return;
@@ -298,6 +302,7 @@ export default function useGoalDecomposition({ submissions = [], agentId, tenant
         playgroundCiToSaleRatio:   inputs.ciToSaleRatio,
         playgroundDialsToCIRatio:  inputs.dialsToCIRatio,
         playgroundProspectRatio:   inputs.prospectRatio,
+        playgroundPreTaxAlreadyApplied: preTaxAlreadyApplied,
       }, user.uid, name);
       setSavedAssumptions(true);
       setTimeout(() => setSavedAssumptions(false), 2500);

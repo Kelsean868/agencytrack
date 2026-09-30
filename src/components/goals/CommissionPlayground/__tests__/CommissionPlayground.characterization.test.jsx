@@ -293,6 +293,7 @@ describe('Commission playground characterization — Goal Decomposition', () => 
           "playgroundIncomeGoal": 301000,
           "playgroundIncomeGoalPeriod": "weekly",
           "playgroundPersistencyRate": 90,
+          "playgroundPreTaxAlreadyApplied": false,
           "playgroundProspectRatio": 2,
           "playgroundRenewalIncome": 0,
           "playgroundSettlementRate": 75,
