@@ -88,7 +88,7 @@ describe('agent PersistencyTab', () => {
     await waitFor(() => expect(screen.getByTestId('award-gate-banner')).toBeInTheDocument());
     // The banner text contains the persistency value scoped to the banner.
     const banner = screen.getByTestId('award-gate-banner');
-    expect(banner.textContent).toMatch(/74\.0%/);
+    expect(banner.textContent).toMatch(/74\.00%/); // 2 dp, ruling R-a
     expect(banner.textContent).toMatch(/Awards require 90%/i);
   });
 
@@ -197,7 +197,7 @@ describe('PersistencyTab — ledger preview line on the main card', () => {
 
     const line = await screen.findByTestId('ledger-preview-line');
     expect(line.textContent).toMatch(/From portfolio import, 15 Sep 2026/);
-    expect(line.textContent).toMatch(/90\.9%/);
+    expect(line.textContent).toMatch(/90\.91%/); // 2 dp, ruling R-a
     // The qualifier is the point: an unsaved derivation is not a record and
     // does not gate an award.
     expect(line.textContent).toMatch(/not saved yet/);
@@ -233,5 +233,33 @@ describe('PersistencyTab — ledger preview line on the main card', () => {
     render(<PersistencyTab />);
     await waitFor(() => expect(screen.queryByText(/No record entered/)).toBeNull());
     expect(screen.queryByTestId('ledger-preview-line')).toBeNull();
+  });
+});
+
+// Ruling R-a (R2-1): the headline figure and the award-gate banner judge the
+// same 2-dp rounded value — 89.996 prints "90.00%" and shows NO banner.
+describe('agent PersistencyTab — 2-dp gate verdict (ruling R-a)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hoisted.useAuth.mockReturnValue({ user: { uid: 'a1' }, role: 'agent', tenantId: 'tenant1' });
+    hoisted.getOwnPolicies.mockResolvedValue([]);
+  });
+
+  it.each([
+    [89.994, '89.99%', true],
+    [89.995, '90.00%', false],
+    [89.996, '90.00%', false],
+    [90, '90.00%', false],
+  ])('%f → %s → banner %s', async (pct, printed, banner) => {
+    hoisted.getAgentHistory.mockResolvedValueOnce([E3_RECORD({ persistency: pct / 100 })]);
+    hoisted.getAvailableMonths.mockResolvedValueOnce(['2026-02']);
+    render(<PersistencyTab />);
+    await waitFor(() => expect(screen.getByTestId('agent-persistency-summary')).toBeInTheDocument());
+    expect(screen.getByTestId('agent-persistency-summary')).toHaveTextContent(printed);
+    if (banner) {
+      expect(screen.getByTestId('award-gate-banner')).toHaveTextContent(printed);
+    } else {
+      expect(screen.queryByTestId('award-gate-banner')).not.toBeInTheDocument();
+    }
   });
 });

@@ -38,6 +38,8 @@ import {
   Svg, Line, Path, Circle, Rect,
 } from '@react-pdf/renderer';
 import { formatCurrency } from '../../utils/formatters';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
+import { PERS_FLOOR_PCT, PERS_GATE_PCT } from '../../lib/persistency/calculations';
 import { BRAND_NAME, CONTACT_EMAIL } from '../../constants/brand';
 import {
   buildAgentReportModel, ratioValueStr, periodLabel, formatConfirmedDate,
@@ -451,8 +453,8 @@ export function AgentReportDocument(props) {
             <View style={{ flex: 1 }} />
             <HeroStat
               eyebrow="PERSISTENCY"
-              value={m.persPct !== null ? `${m.persPct.toFixed(0)}%` : '—'}
-              color={m.persPct !== null && m.persPct >= 90 ? COLORS.success : m.persPct !== null && m.persPct < 80 ? COLORS.warningInk : COLORS.text}
+              value={formatPersistencyPct(m.persPct)}
+              color={m.persPct !== null && m.persPct >= PERS_GATE_PCT ? COLORS.success : m.persPct !== null && m.persPct < PERS_FLOOR_PCT ? COLORS.warningInk : COLORS.text}
             />
             <View style={{ width: 22 }} />
             <HeroStat eyebrow="CLOSING RATIO" value={ratioValueStr(m.closingRatio)} sub="CI → App"
@@ -741,7 +743,7 @@ export function AgentReportDocument(props) {
               </View>
               {m.settlementRows.map((s, i) => {
                 const persVal = parseFloat(s.persistency);
-                const persStr = Number.isFinite(persVal) && persVal > 0 ? `${persVal.toFixed(0)}%` : '—';
+                const persStr = Number.isFinite(persVal) && persVal > 0 ? formatPersistencyPct(persVal) : '—';
                 return (
                   <View key={s.id ?? `${s.periodKey}-${i}`} style={[styles.tableRow, { backgroundColor: i % 2 === 0 ? COLORS.paperPanel : COLORS.paper }]}>
                     <View style={{ width: 100 }}><Text style={{ fontSize: 9 }}>{periodLabel(s.periodKey)}</Text></View>

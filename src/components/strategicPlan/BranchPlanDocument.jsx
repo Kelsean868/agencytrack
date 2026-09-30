@@ -2,6 +2,7 @@ import React from 'react';
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer';
 import { formatCurrency } from '../../utils/formatters';
 import { BRAND_NAME } from '../../constants/brand';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 // Track K — Strategic Plan · PDF document. Follows AgentReportDocument.jsx:
 // @react-pdf/renderer CANNOT resolve CSS custom properties, so this palette is a
@@ -108,7 +109,7 @@ export function BranchPlanDocument({ plan }) {
           <View style={s.tr} key={r.id} wrap={false}>
             <Text style={[s.td, { flex: 3 }]}>{r.name}{r.isUnitHead ? '  (unit head)' : ''}</Text>
             <Text style={[s.tdMuted, s.right, { flex: 1 }]}>{fmtYears(r.experienceYears)}</Text>
-            <Text style={[s.td, s.right, { flex: 1 }]}>{fmtPct(r.persistencyPct)}</Text>
+            <Text style={[s.td, s.right, { flex: 1 }]}>{formatPersistencyPct(r.persistencyPct)}</Text>
             <Text style={[s.td, s.right, { flex: 2 }]}>{fmtTTD(r.apiNetSettled)}</Text>
             {/* % Obj = net ÷ ANNUAL quota (head-office figure) — neutral ink, unbanded */}
             <Text style={[s.td, s.right, { flex: 1 }]}>{fmtPct(r.apiPctObj)}</Text>
@@ -149,7 +150,7 @@ export function BranchPlanDocument({ plan }) {
             <Text style={[s.tdMuted, { marginTop: 10 }]}>
               Monthly quota (prorated): {fmtTTD(prod.monthly.apiQuota)} · Avg monthly production: {fmtTTD(prod.monthly.avgMonthlyApi)}
             </Text>
-            <Text style={[s.tdMuted, { marginTop: 4 }]}>Branch persistency (current): {fmtPct(prod.persistency.currentPct)}</Text>
+            <Text style={[s.tdMuted, { marginTop: 4 }]}>Branch persistency (current): {formatPersistencyPct(prod.persistency.currentPct)}</Text>
           </>
         ) : <Text style={s.tdMuted}>No production data.</Text>}
         <Footer meta={meta} />

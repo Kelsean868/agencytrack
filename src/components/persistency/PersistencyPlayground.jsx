@@ -21,9 +21,12 @@ import {
   calculateShortfall,
   PERS_FLOOR,
   PERS_GATE,
+  PERS_FLOOR_PCT,
+  PERS_GATE_PCT,
 } from '../../lib/persistency/calculations';
 import { persistencyModelFor, PERSISTENCY_MODEL_24M_EFFECTIVE_FROM } from '../../lib/persistency/model';
 import { formatCurrency } from '../../utils/formatters';
+import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 const BASE_LEVERS = [
   {
@@ -98,15 +101,17 @@ function modelHeaderLine(model) {
   return `${model.windowMonths}-month model · through ${formatMonthYear(priorMonthKey)}`;
 }
 
+// Ruling R-a: 2 decimals, half up; the band is judged on that same value.
 function formatPct(decimal) {
   if (!Number.isFinite(decimal)) return '—';
-  return `${(decimal * 100).toFixed(1)}%`;
+  return formatPersistencyPct(decimal * 100);
 }
 
 function bandClass(decimal) {
   if (!Number.isFinite(decimal)) return 'bg-border/40 text-ink-muted';
-  if (decimal >= PERS_GATE)  return 'bg-success/15 text-success-ink';
-  if (decimal >= PERS_FLOOR) return 'bg-warning/15 text-warning-ink';
+  const shown = roundPersistencyPct(decimal * 100);
+  if (shown >= PERS_GATE_PCT)  return 'bg-success/15 text-success-ink';
+  if (shown >= PERS_FLOOR_PCT) return 'bg-warning/15 text-warning-ink';
   return 'bg-danger/15 text-danger-ink';
 }
 
@@ -438,8 +443,8 @@ export default function PersistencyPlayground({
                 <>
                   <p className="text-xs text-ink-muted mb-2">
                     {`${formatCurrency(ledgerPrefill.ledger.atRisk.annuityApiTotal)} of API. `}
-                    {`Ignored: ${(ledgerPrefill.ledger.atRisk.persistencyUnderIgnore * 100).toFixed(1)}% · `}
-                    {`counted as lapse: ${(ledgerPrefill.ledger.atRisk.persistencyUnderLapse * 100).toFixed(1)}%`}
+                    {`Ignored: ${formatPct(ledgerPrefill.ledger.atRisk.persistencyUnderIgnore)} · `}
+                    {`counted as lapse: ${formatPct(ledgerPrefill.ledger.atRisk.persistencyUnderLapse)}`}
                   </p>
                   <ul className="flex flex-col gap-1">
                     {ledgerPrefill.ledger.atRisk.annuities.map((a) => (

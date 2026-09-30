@@ -3,6 +3,9 @@
 import React, { useMemo } from 'react';
 import FrMoneyView from '../../money/FrMoneyView';
 import FrMoneyHeaderView from '../../money/FrMoneyHeaderView';
+import { ChartCard, GateBars } from '../../charts';
+import { PersistencyGateBarBlock } from '../../../campaigns/CampaignScreenBlocks';
+import { formatPersistencyPct } from '../../../../lib/persistency/persistencyRounding';
 import useMinWidth from '../../../../hooks/useMinWidth';
 import { settledByMonthFrom } from '../../../../lib/fr/todayModel';
 import {
@@ -129,8 +132,35 @@ function GoalsHeaderScene({ variant }) {
   );
 }
 
+// R2-1 (ruling R-a): the 2-dp rule at the gate boundary. SAMPLE values only —
+// 89.994 prints 89.99% and sits below the gate; 89.995 / 89.996 / 90 print
+// 90.00% and sit at it. The campaign gate bar shows the same pair.
+const BOUNDARY = [
+  ['Jun', 89.994], ['Jul', 89.995], ['Aug', 89.996], ['Sep', 90], ['Oct', 86.63], ['Nov', 91.2],
+];
+
+function PersistencyBoundaryScene() {
+  const data = BOUNDARY.map(([m, v]) => ({ key: m, label: m, value: v }));
+  return (
+    <Frame>
+      <div className="flex flex-col gap-5">
+        <ChartCard
+          title="2 decimals, half up, at the 90% gate"
+          subtitle="Persistency by month — sample boundary values"
+          table={{ columns: [{ key: 'label', label: 'Month' }, { key: 'value', label: 'Persistency', align: 'right' }], rows: data.map((d) => ({ label: d.label, value: formatPersistencyPct(d.value) })) }}
+        >
+          <GateBars data={data} gate={90} domain={[80, 95]} />
+        </ChartCard>
+        <PersistencyGateBarBlock projectedPct={89.994} threshold={90} judgedLabel="Judged on December" outlook={null} />
+        <PersistencyGateBarBlock projectedPct={89.996} threshold={90} judgedLabel="Judged on December" outlook={null} />
+      </div>
+    </Frame>
+  );
+}
+
 export const MONEY_SCENES = [
   { id: 'money', title: 'Money · Overview', slice: 'FR-3', viewport: 'desktop,tablet,phone', hasVariants: true, render: MoneyScene },
   { id: 'money-persistency', title: 'Money · Persistency header + planner', slice: 'FR-3', viewport: 'desktop,phone', hasVariants: true, render: PersistencyHeaderScene },
   { id: 'money-goals', title: 'Money · Goals header', slice: 'FR-3', viewport: 'desktop,phone', hasVariants: true, render: GoalsHeaderScene },
+  { id: 'persistency-2dp', title: 'Persistency · 2-dp gate boundary (R2-1)', slice: 'R2-1', viewport: 'desktop,tablet,phone', render: PersistencyBoundaryScene },
 ];
