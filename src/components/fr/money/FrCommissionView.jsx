@@ -156,8 +156,9 @@ function InspectorFrame({ asCard, tab, onTabChange, children }) {
 /* ─────────────────────────── Goal decomposition ─────────────────────────── */
 
 function GoalInputs({ goal, grid }) {
-  const { inputs, setField, hasHistory, incomeAmount, incomePeriod, handleIncomeAmountChange, handleIncomePeriodChange } = goal;
-  const history = hasHistory ? 'From your history' : undefined;
+  const { inputs, setField, fromHistory, incomeAmount, incomePeriod, handleIncomeAmountChange, handleIncomePeriodChange } = goal;
+  // R2-3b: a ratio the agent saved is not "from your history" (per ratio).
+  const history = (key) => (fromHistory(key) ? 'From your history' : undefined);
   return (
     <div className="flex flex-col gap-3.5" data-testid="fr-commission-goal-inputs">
       <IncomeGoalField
@@ -173,8 +174,8 @@ function GoalInputs({ goal, grid }) {
         <NumInput id="fr-cp-commission" label="Commission rate (%)" value={inputs.commissionRate} onChange={setField('commissionRate')} step={1} min={1} />
         <NumInput id="fr-cp-avg-api" label="Average policy API" prefix="TTD" value={inputs.avgPolicyAPI} onChange={setField('avgPolicyAPI')} step={500} min={1} />
         <NumInput id="fr-cp-persistency" label="Persistency rate (%)" value={inputs.persistencyRate} onChange={setField('persistencyRate')} step={1} min={1} />
-        <NumInput id="fr-cp-ci-sale" label="CIs per sale" value={inputs.ciToSaleRatio} onChange={setField('ciToSaleRatio')} step={0.1} min={0.1} badge={history} />
-        <NumInput id="fr-cp-calls-ci" label="Calls per CI" value={inputs.dialsToCIRatio} onChange={setField('dialsToCIRatio')} step={0.1} min={0.1} badge={history} />
+        <NumInput id="fr-cp-ci-sale" label="CIs per sale" value={inputs.ciToSaleRatio} onChange={setField('ciToSaleRatio')} step={0.1} min={0.1} badge={history('ciToSaleRatio')} />
+        <NumInput id="fr-cp-calls-ci" label="Calls per CI" value={inputs.dialsToCIRatio} onChange={setField('dialsToCIRatio')} step={0.1} min={0.1} badge={history('dialsToCIRatio')} />
         <NumInput id="fr-cp-prospects" label="Prospects per call" value={inputs.prospectRatio} onChange={setField('prospectRatio')} step={0.1} min={0.1} />
       </div>
     </div>

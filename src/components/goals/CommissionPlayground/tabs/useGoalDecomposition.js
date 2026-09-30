@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
-import { setGoals } from '../../../../services/goalsService';
+import { setGoals, getGoals } from '../../../../services/goalsService';
 import {
   getUserPrefs, setCommissionScenarios, COMMISSION_SCENARIO_CAP,
 } from '../../../../services/userPrefsService';
@@ -13,6 +13,10 @@ import {
   DEFAULT_INCOME_GOAL_PERIOD,
   toAnnualIncomeGoal,
 } from '../../../../utils/playgroundPeriods';
+import { savedPlaygroundSettings } from '../../../../utils/playgroundSettings';
+
+const HANDOFF_KEY = 'agencytrack-playground-income-goal';
+const HISTORY_RATIO_KEYS = ['ciToSaleRatio', 'dialsToCIRatio'];
 
 /**
  * useGoalDecomposition — every read, derivation, handler and write of the
@@ -128,10 +132,35 @@ export default function useGoalDecomposition({ submissions = [], agentId, tenant
     persistScenarios(scenarios.filter((s) => s.id !== id));
   };
 
+  // R2-3b (rulings 29-09 and 30-09-2026, option A) — on open, load the saved
+  // assumptions, THEN apply the Money Needs hand-off on top. Order, lowest to
+  // highest:
+  //   defaults → saved assumptions → Money Needs hand-off (once, then removed)
+  //   → history ratios (only for the two ratios the agent has NOT saved).
+  // The hand-off is removed once applied, so the next open shows the saved
+  // assumptions again (nothing else clears it). The inputs render only after
+  // this settles (`settingsLoading`), so defaults never flash first. A failed
+  // read falls back to the defaults.
+  const [settingsLoading, setSettingsLoading] = useState(Boolean(tenantId && agentId));
+  const savedRatioKeysRef = useRef(new Set());
+  // Which ratios on screen came from the agent's history (not from saved
+  // assumptions) — the "From your history" labels follow this, per ratio.
+  const [historyRatioKeys, setHistoryRatioKeys] = useState(() => new Set());
+  const fromHistory = (key) => historyRatioKeys.has(key);
+
   useEffect(() => {
-    const stored = localStorage.getItem('agencytrack-playground-income-goal');
-    if (stored) {
-      const parsed = JSON.parse(stored);
+    let alive = true;
+    const applyHandoff = () => {
+      const stored = localStorage.getItem(HANDOFF_KEY);
+      if (!stored) return;
+      let parsed;
+      try {
+        parsed = JSON.parse(stored);
+      } catch {
+        // A malformed hand-off must not hold the tab on its loading state.
+        localStorage.removeItem(HANDOFF_KEY);
+        return;
+      }
       const isObj = parsed !== null && typeof parsed === 'object';
       const val = isObj ? parseFloat(parsed.value) : parseFloat(parsed);
       const flag = isObj && parsed.preTaxAlreadyApplied === true;
@@ -142,23 +171,63 @@ export default function useGoalDecomposition({ submissions = [], agentId, tenant
         setInputs((prev) => ({ ...prev, incomeGoal: toAnnualIncomeGoal(val, DEFAULT_INCOME_GOAL_PERIOD) }));
         setPtaFlag(flag);
       }
+      localStorage.removeItem(HANDOFF_KEY);
+    };
+    if (!tenantId || !agentId) {
+      applyHandoff();
+      setSettingsLoading(false);
+      return undefined;
     }
-  }, []);
+    // A new target (tenant / agent) starts from the defaults, not from the
+    // previous target's values (CodeRabbit on #1029).
+    setSettingsLoading(true);
+    Promise.resolve()
+      .then(() => getGoals(tenantId, agentId))
+      .then((goals) => {
+        if (!alive) return;
+        const saved = savedPlaygroundSettings(goals);
+        savedRatioKeysRef.current = new Set(HISTORY_RATIO_KEYS.filter((k) => k in saved.inputs));
+        setInputs({ ...DEFAULT_DECOMPOSITION_INPUTS, ...saved.inputs });
+        setIncomeAmount(saved.amount ?? DEFAULT_DECOMPOSITION_INPUTS.incomeGoal);
+        setIncomePeriod(saved.amount != null ? saved.period : DEFAULT_INCOME_GOAL_PERIOD);
+      })
+      .catch(() => {
+        // No saved assumptions readable → the defaults.
+        if (!alive) return;
+        savedRatioKeysRef.current = new Set();
+        setInputs({ ...DEFAULT_DECOMPOSITION_INPUTS });
+        setIncomeAmount(DEFAULT_DECOMPOSITION_INPUTS.incomeGoal);
+        setIncomePeriod(DEFAULT_INCOME_GOAL_PERIOD);
+      })
+      .finally(() => {
+        if (!alive) return;
+        applyHandoff();
+        setSettingsLoading(false);
+      });
+    return () => { alive = false; };
+  }, [tenantId, agentId]);
 
   const { autoCiToSale, autoDialsToCI, hasHistory } = useMemo(
     () => deriveRatiosFromHistory(submissions),
     [submissions],
   );
 
-  useEffect(() => {
-    if (hasHistory) {
+  // A LAYOUT effect: it runs in the same commit that ends the loading state,
+  // so the inputs never show the saved/default ratios for a frame before the
+  // history ratios land (tests would otherwise race it too).
+  useLayoutEffect(() => {
+    // Waits for the saved assumptions (R2-3b): a ratio the agent saved wins
+    // over the history-derived one.
+    if (hasHistory && !settingsLoading) {
+      const saved = savedRatioKeysRef.current;
+      setHistoryRatioKeys(new Set(HISTORY_RATIO_KEYS.filter((k) => !saved.has(k))));
       setInputs((prev) => ({
         ...prev,
-        ciToSaleRatio:  parseFloat(autoCiToSale.toFixed(2)),
-        dialsToCIRatio: parseFloat(autoDialsToCI.toFixed(2)),
+        ...(saved.has('ciToSaleRatio') ? {} : { ciToSaleRatio: parseFloat(autoCiToSale.toFixed(2)) }),
+        ...(saved.has('dialsToCIRatio') ? {} : { dialsToCIRatio: parseFloat(autoDialsToCI.toFixed(2)) }),
       }));
     }
-  }, [hasHistory, autoCiToSale, autoDialsToCI]);
+  }, [hasHistory, autoCiToSale, autoDialsToCI, settingsLoading]);
 
   const setField = (key) => (value) => {
     if (key === 'taxRate') setPtaFlag(false);
@@ -246,7 +315,11 @@ export default function useGoalDecomposition({ submissions = [], agentId, tenant
     showConfirm, setShowConfirm, preTaxAlreadyApplied, incomeAmount, incomePeriod,
     scenarios, scenarioSaving, activeScenarioId,
     handleScenarioSave, handleScenarioApply, handleScenarioDelete,
-    hasHistory, historyWeeks, setField, handleIncomeAmountChange, handleIncomePeriodChange,
+    // hasHistory: at least one ratio on screen came from history (the banner);
+    // fromHistory(key): that ratio did (its badge). settingsLoading: the saved
+    // assumptions are still loading — render the loading state, not the inputs.
+    hasHistory: historyRatioKeys.size > 0, fromHistory, settingsLoading,
+    historyWeeks, setField, handleIncomeAmountChange, handleIncomePeriodChange,
     computed, handleRequestConfirm, handleConfirmWrite, handleSaveAssumptions,
   };
 }

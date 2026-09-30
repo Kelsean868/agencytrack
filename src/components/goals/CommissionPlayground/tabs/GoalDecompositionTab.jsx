@@ -156,9 +156,18 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
     showConfirm, setShowConfirm, preTaxAlreadyApplied, incomeAmount, incomePeriod,
     scenarios, scenarioSaving, activeScenarioId,
     handleScenarioSave, handleScenarioApply, handleScenarioDelete,
-    hasHistory, setField, handleIncomeAmountChange, handleIncomePeriodChange,
+    hasHistory, fromHistory, settingsLoading, setField, handleIncomeAmountChange, handleIncomePeriodChange,
     computed, handleRequestConfirm, handleConfirmWrite, handleSaveAssumptions,
   } = useGoalDecomposition({ submissions, agentId, tenantId, onGoalSaved });
+
+  if (settingsLoading) {
+    return (
+      <div className="flex flex-col gap-3" aria-busy="true" data-testid="commission-settings-loading">
+        <p className="text-xs text-ink-muted">Loading your saved assumptions…</p>
+        {[0, 1, 2].map((i) => <div key={i} className="h-16 rounded-xl bg-card-raised animate-pulse" />)}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -217,7 +226,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
             onChange={setField('ciToSaleRatio')}
             step={0.1}
             min={0.1}
-            badge={hasHistory ? 'From your history' : undefined}
+            badge={fromHistory('ciToSaleRatio') ? 'From your history' : undefined}
           />
           <NumField
             label="Calls per CI"
@@ -225,7 +234,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
             onChange={setField('dialsToCIRatio')}
             step={0.1}
             min={0.1}
-            badge={hasHistory ? 'From your history' : undefined}
+            badge={fromHistory('dialsToCIRatio') ? 'From your history' : undefined}
           />
           <NumField label="Prospects per Call" value={inputs.prospectRatio} onChange={setField('prospectRatio')} step={0.1} min={0.1} />
         </div>
@@ -236,7 +245,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
         inputs={inputs}
         freqKey={freqKey}
         onFreqChange={setFreqKey}
-        hasHistory={hasHistory}
+        hasHistory={fromHistory('dialsToCIRatio')}
         preTaxAlreadyApplied={preTaxAlreadyApplied}
       />
 
