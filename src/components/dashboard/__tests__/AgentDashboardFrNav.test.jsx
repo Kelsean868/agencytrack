@@ -139,8 +139,6 @@ vi.mock('../../agent/PolicyLedgerPanel',             () => ({
     return React.createElement('div', { 'data-testid': 'policy-ledger-mock' });
   },
 }));
-vi.mock('../../agent/MoneyNeedsPanel',               () => ({ default: () => React.createElement('div', { 'data-testid': 'money-needs-mock' }) }));
-vi.mock('../../agent/PolicyLedgerPanel',             () => ({ default: () => React.createElement('div', { 'data-testid': 'policy-ledger-mock' }) }));
 vi.mock('../../agent/MoneyNeedsPanel',               () => ({ default: ({ look }) => React.createElement('div', { 'data-testid': 'money-needs-mock', 'data-look': look }) }));
 vi.mock('../../productionReport/ProductionReportTab', () => ({ default: () => React.createElement('div', { 'data-testid': 'production-report-mock' }) }));
 vi.mock('../../agent/PersistencyTab',                () => ({ default: () => React.createElement('div', { 'data-testid': 'persistency-tab-mock' }) }));
