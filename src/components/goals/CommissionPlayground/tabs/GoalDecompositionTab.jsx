@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { History, Info, Check } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
-import { setGoals } from '../../../../services/goalsService';
+import { setGoals, getGoals } from '../../../../services/goalsService';
 import {
   getUserPrefs, setCommissionScenarios, COMMISSION_SCENARIO_CAP,
 } from '../../../../services/userPrefsService';
@@ -20,6 +20,7 @@ import {
   DEFAULT_INCOME_GOAL_PERIOD,
   toAnnualIncomeGoal,
 } from '../../../../utils/playgroundPeriods';
+import { savedPlaygroundSettings } from '../../../../utils/playgroundSettings';
 
 // The view-cadence chips and the income-goal period select share ONE table
 // (utils/playgroundPeriods.js) — R2-3 moved it there so the two cannot drift.
@@ -269,9 +270,22 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
     persistScenarios(scenarios.filter((s) => s.id !== id));
   };
 
+  // R2-3b (ruling 3, 29-09-2026) — on open, load the saved assumptions, THEN
+  // apply the Money Needs hand-off on top. Order, lowest to highest:
+  //   defaults → saved assumptions → Money Needs hand-off → history ratios
+  //   (history fills only the two ratios the agent has NOT saved).
+  // The hand-off is applied once and removed, so the next open shows the saved
+  // assumptions again (it is never cleared anywhere else). The inputs render
+  // only after this settles, so the agent never sees defaults flash first.
+  // A failed read falls back to the defaults (the same contract as before).
+  const [settingsLoading, setSettingsLoading] = useState(Boolean(tenantId && agentId));
+  const savedRatioKeysRef = useRef(new Set());
+
   useEffect(() => {
-    const stored = localStorage.getItem('agencytrack-playground-income-goal');
-    if (stored) {
+    let alive = true;
+    const applyHandoff = () => {
+      const stored = localStorage.getItem('agencytrack-playground-income-goal');
+      if (!stored) return;
       const parsed = JSON.parse(stored);
       const isObj = parsed !== null && typeof parsed === 'object';
       const val = isObj ? parseFloat(parsed.value) : parseFloat(parsed);
@@ -283,8 +297,32 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
         setInputs((prev) => ({ ...prev, incomeGoal: toAnnualIncomeGoal(val, DEFAULT_INCOME_GOAL_PERIOD) }));
         setPtaFlag(flag);
       }
+      localStorage.removeItem('agencytrack-playground-income-goal');
+    };
+    if (!tenantId || !agentId) {
+      applyHandoff();
+      return undefined;
     }
-  }, []);
+    Promise.resolve()
+      .then(() => getGoals(tenantId, agentId))
+      .then((goals) => {
+        if (!alive) return;
+        const saved = savedPlaygroundSettings(goals);
+        savedRatioKeysRef.current = new Set(['ciToSaleRatio', 'dialsToCIRatio'].filter((k) => k in saved.inputs));
+        setInputs((prev) => ({ ...prev, ...saved.inputs }));
+        if (saved.amount != null) {
+          setIncomeAmount(saved.amount);
+          setIncomePeriod(saved.period);
+        }
+      })
+      .catch(() => { /* no saved assumptions readable → the defaults stay */ })
+      .finally(() => {
+        if (!alive) return;
+        applyHandoff();
+        setSettingsLoading(false);
+      });
+    return () => { alive = false; };
+  }, [tenantId, agentId]);
 
   const { autoCiToSale, autoDialsToCI, hasHistory } = useMemo(
     () => deriveRatiosFromHistory(submissions),
@@ -292,14 +330,17 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   );
 
   useEffect(() => {
-    if (hasHistory) {
+    // Waits for the saved assumptions (R2-3b): a ratio the agent saved wins
+    // over the history-derived one.
+    if (hasHistory && !settingsLoading) {
+      const saved = savedRatioKeysRef.current;
       setInputs((prev) => ({
         ...prev,
-        ciToSaleRatio:  parseFloat(autoCiToSale.toFixed(2)),
-        dialsToCIRatio: parseFloat(autoDialsToCI.toFixed(2)),
+        ...(saved.has('ciToSaleRatio') ? {} : { ciToSaleRatio: parseFloat(autoCiToSale.toFixed(2)) }),
+        ...(saved.has('dialsToCIRatio') ? {} : { dialsToCIRatio: parseFloat(autoDialsToCI.toFixed(2)) }),
       }));
     }
-  }, [hasHistory, autoCiToSale, autoDialsToCI]);
+  }, [hasHistory, autoCiToSale, autoDialsToCI, settingsLoading]);
 
   const setField = (key) => (value) => {
     if (key === 'taxRate') setPtaFlag(false);
@@ -379,6 +420,15 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
       setSaving(false);
     }
   };
+
+  if (settingsLoading) {
+    return (
+      <div className="flex flex-col gap-3" aria-busy="true" data-testid="commission-settings-loading">
+        <p className="text-xs text-ink-muted">Loading your saved assumptions…</p>
+        {[0, 1, 2].map((i) => <div key={i} className="h-16 rounded-xl bg-card-raised animate-pulse" />)}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
