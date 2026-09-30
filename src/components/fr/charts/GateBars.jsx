@@ -1,5 +1,6 @@
 import React from 'react';
 import { tipAlign, keyIndexes, linearScale } from './scales';
+import { roundPersistencyPct, formatPersistencyPct } from '../../../lib/persistency/persistencyRounding';
 
 /**
  * GateBars — persistency month by month against the gate.
@@ -30,7 +31,9 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
-const defaultFormat = (v) => `${v.toFixed(1)}%`;
+// Ruling R-a: a persistency percent prints at 2 decimals, half up, and the
+// bar's side of the gate is judged on that same rounded value.
+const defaultFormat = (v) => formatPersistencyPct(v);
 
 function barClasses(up, projected) {
   if (up) {
@@ -78,7 +81,7 @@ export default function GateBars({
               const clampedHigh = d.value > hi;
               const clamped = clampedLow || clampedHigh;
               const v = Math.min(hi, Math.max(lo, d.value));
-              const up = d.value >= gate;
+              const up = roundPersistencyPct(d.value) >= gate;
               const endY = y(v);
               const h = Math.max(MIN_BAR_PX, round2(Math.abs(endY - gateY)));
               const top = up ? round2(gateY - h) : gateY;

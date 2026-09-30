@@ -1,4 +1,6 @@
 import React from 'react';
+import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
+import { PERS_FLOOR_PCT, PERS_GATE_PCT } from '../../lib/persistency/calculations';
 
 function formatCurrencyCompact(amount) {
   const n = parseFloat(amount ?? 0);
@@ -7,15 +9,17 @@ function formatCurrencyCompact(amount) {
   return `TTD ${Math.round(n)}`;
 }
 
+// Ruling R-a: 2 decimals, half up; bands are judged on the same value.
 function formatPercent(decimal) {
   if (decimal == null || !Number.isFinite(decimal)) return '—';
-  return `${(decimal * 100).toFixed(1)}%`;
+  return formatPersistencyPct(decimal * 100);
 }
 
 function aggregateDotClass(p) {
   if (p == null || !Number.isFinite(p)) return 'bg-[--hero-dot-warning]';
-  if (p >= 0.90) return 'bg-[--hero-dot-success]';
-  if (p >= 0.80) return 'bg-[--hero-dot-warning]';
+  const shown = roundPersistencyPct(p * 100);
+  if (shown >= PERS_GATE_PCT) return 'bg-[--hero-dot-success]';
+  if (shown >= PERS_FLOOR_PCT) return 'bg-[--hero-dot-warning]';
   return 'bg-[--hero-dot-danger]';
 }
 
@@ -24,8 +28,9 @@ function SparkBar({ value, isCurrent }) {
     return <div className="w-1.5 rounded-t-sm bg-border/40" style={{ height: '15%' }} />;
   }
   const pct = Math.min(Math.max(value * 100, 5), 100);
-  const colorClass = value >= 0.90 ? 'bg-success/70'
-    : value >= 0.80 ? 'bg-warning/70'
+  const shown = roundPersistencyPct(value * 100);
+  const colorClass = shown >= PERS_GATE_PCT ? 'bg-success/70'
+    : shown >= PERS_FLOOR_PCT ? 'bg-warning/70'
     : 'bg-danger/70';
   return (
     <div

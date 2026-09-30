@@ -111,8 +111,8 @@ describe('CampaignHeroCard', () => {
     const records = [{ monthKey: '2026-09', grossSettled: 100_000, netSettled: 80_000 }];
     render(<CampaignHeroCard campaign={FINAL_MONTH_CAMPAIGN} policies={POLICIES} persistencyRecords={records} />);
     const persistencyRow = screen.getByTestId('campaign-hero-row-persistency');
-    // One decimal on the preview (the outlook's format), labelled with what it is.
-    expect(persistencyRow.textContent).toContain('80.0% confirmed, Sep 2026');
+    // Two decimals on the preview (ruling R-a), labelled with what it is.
+    expect(persistencyRow.textContent).toContain('80.00% confirmed, Sep 2026');
     expect(persistencyRow.textContent).toContain('90%');
 
     const note = screen.getByTestId('campaign-hero-persistency-preview-note');

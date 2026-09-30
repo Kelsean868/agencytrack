@@ -11,6 +11,7 @@
 
 import { extractFields, computeRatios } from '../../utils/extractFields';
 import { PERS_FLOOR_PCT, aggregatePersistency } from '../../lib/persistency/calculations';
+import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 import {
   DEFAULT_WEEKLY_ACTIVITY_FLOORS,
   deriveWeeklyFloorActuals,
@@ -116,10 +117,12 @@ export function classifyFlag({ submitted, tiles, persistency }) {
     };
   }
   // `persistency` is a PERCENTAGE (0–100) — see latestPersistency's scale note.
-  if (persistency != null && persistency < PERS_FLOOR_PCT) {
+  // Judged on the 2-dp rounded value the reason prints (ruling R-a).
+  const shownPct = roundPersistencyPct(persistency);
+  if (shownPct != null && shownPct < PERS_FLOOR_PCT) {
     return {
       key: 'persistency', label: 'Persistency', tone: 'warning',
-      reason: `${Math.round(persistency)}% persistency · below the ${PERS_FLOOR_PCT}% threshold.`,
+      reason: `${formatPersistencyPct(shownPct)} persistency · below the ${PERS_FLOOR_PCT}% threshold.`,
     };
   }
   return { key: null, label: 'On pace', tone: 'success', reason: '' };
@@ -197,7 +200,8 @@ export function aggregateLatestPersistency(agentIds, persMap) {
   if (!latest.length) return null;
   const agg = aggregatePersistency(latest);
   if (!(agg.sumGrossSettled > 0)) return null;
-  return Math.round(agg.aggregatedPersistency * 100);
+  // 2 decimals, half up (ruling R-a) — the same rule every persistency screen uses.
+  return roundPersistencyPct(agg.aggregatedPersistency * 100);
 }
 
 // ── Identity ──

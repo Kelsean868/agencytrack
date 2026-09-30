@@ -9,6 +9,7 @@ import {
   RATIO_KEY_ORDER, RATIO_LABELS, formatRatioValue, ratioColorClass,
 } from '../../utils/extractFields';
 import { deriveAgentReportModel } from './agentReportModel';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 /**
  * AgentReportView — the live, in-app twin of the Agent Performance Report PDF
@@ -180,7 +181,7 @@ export default function AgentReportView({
         />
         <ReportStat
           k="Persistency"
-          v={model.persistencyPct !== null ? `${model.persistencyPct.toFixed(0)}%` : '—'}
+          v={formatPersistencyPct(model.persistencyPct)}
         />
         <div className="flex-1" />
         <ReportStat

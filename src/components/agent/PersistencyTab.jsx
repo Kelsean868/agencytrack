@@ -5,9 +5,6 @@
 // CTA. Award-gate banner appears when persistency is below 90%.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  LineChart, Line, ReferenceLine, Tooltip, XAxis, YAxis, ResponsiveContainer,
-} from 'recharts';
 import { TrendingUp, AlertCircle, Calculator, Edit3, Lock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -21,6 +18,7 @@ import { DEFAULT_ANNUITY_MISSED_PREMIUM_RULE } from '../../lib/persistency/deriv
 import { persistencyModelFor } from '../../lib/persistency/model';
 import PersistencyPlayground from '../persistency/PersistencyPlayground';
 import PersistencyOutlookHero from '../persistency/PersistencyOutlookHero';
+import PersistencyTrendChart from '../persistency/PersistencyTrendChart';
 import ConfirmPersistencySheet from '../persistency/ConfirmPersistencySheet';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import {
@@ -29,10 +27,18 @@ import {
 import { derivePolicyLens } from '../../lib/policyCampaignLens';
 import { isTieredCampaign } from '../../utils/campaignEngine';
 import { getTodayTT } from '../../utils/dateInputs';
+import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
+import { PERS_FLOOR_PCT, PERS_GATE_PCT } from '../../lib/persistency/calculations';
 
+// Ruling R-a: every persistency percent prints at 2 decimals, half up, and
+// every verdict on this screen is judged on that same rounded value.
 function formatPct(decimal) {
   if (!Number.isFinite(decimal)) return '—';
-  return `${(decimal * 100).toFixed(1)}%`;
+  return formatPersistencyPct(decimal * 100);
+}
+
+function shownPct(decimal) {
+  return Number.isFinite(decimal) ? roundPersistencyPct(decimal * 100) : null;
 }
 
 
@@ -45,7 +51,7 @@ function gatingCampaign(campaigns) {
   )) ?? null;
 }
 
-export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns = [] }) {
+export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns = [], fr = false }) {
   const { user, role, tenantId } = useAuth();
 
   const [history, setHistory] = useState([]);
@@ -172,7 +178,8 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
     return { 6: 'six', 7: 'seven' }[persistencyModelFor(activeMonthKey).inputs.length] ?? null;
   }, [activeMonthKey]);
   const currentDecimal = currentRecord?.persistency ?? null;
-  const meetsGate = (currentDecimal ?? 0) >= 0.90;
+  const currentShownPct = shownPct(currentDecimal);
+  const meetsGate = (currentShownPct ?? 0) >= PERS_GATE_PCT;
 
   // Manager has entered if the existing record's enteredByRole is anything
   // other than 'agent'. Agents may still see (read-only) a manager-entered
@@ -181,10 +188,12 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
     && currentRecord.enteredByRole
     && currentRecord.enteredByRole !== 'agent';
 
-  // Trend chart data: oldest-first decimals scaled to %.
+  // Trend chart data: oldest-first decimals scaled to %, rounded by the shared
+  // 2-dp half-up rule. A missing or non-finite reading stays null (no reading):
+  // `null * 100` is 0, which would draw a confident 0.00% bar.
   const chartData = useMemo(() => history.map((r) => ({
     monthKey: r.monthKey,
-    pct: Number.isFinite(r.persistency) ? Math.round(r.persistency * 1000) / 10 : null,
+    pct: shownPct(r.persistency),
   })), [history]);
 
   // First paint only — before any successful load, show a skeleton instead of
@@ -264,8 +273,8 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
           >
             {Number.isFinite(currentDecimal) && (
               <span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${
-                currentDecimal >= 0.90 ? 'bg-[--hero-dot-success]'
-                  : currentDecimal >= 0.80 ? 'bg-[--hero-dot-warning]'
+                currentShownPct >= PERS_GATE_PCT ? 'bg-[--hero-dot-success]'
+                  : currentShownPct >= PERS_FLOOR_PCT ? 'bg-[--hero-dot-warning]'
                   : 'bg-[--hero-dot-danger]'
               }`} />
             )}
@@ -289,7 +298,7 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
             data-testid="ledger-preview-line"
           >
             {`${ledgerPreview.provenance}: `}
-            <strong>{`${(ledgerPreview.ledger.derived.persistency * 100).toFixed(1)}%`}</strong>
+            <strong>{formatPct(ledgerPreview.ledger.derived.persistency)}</strong>
             {' (not saved yet)'}
           </p>
         )}
@@ -324,32 +333,7 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
             No history yet — your trend appears after the first month is entered.
           </p>
         ) : (
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
-                <XAxis dataKey="monthKey" fontSize={10} stroke="var(--color-text-muted)" />
-                <YAxis domain={[0, 100]} fontSize={10} stroke="var(--color-text-muted)" />
-                <Tooltip
-                  formatter={(v) => [`${v}%`, 'Persistency']}
-                  contentStyle={{
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                />
-                <ReferenceLine y={90} stroke="var(--color-gold)" strokeDasharray="3 3" />
-                <Line
-                  type="monotone"
-                  dataKey="pct"
-                  stroke="var(--color-primary)"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <PersistencyTrendChart data={chartData} fr={fr} />
         )}
       </div>
 

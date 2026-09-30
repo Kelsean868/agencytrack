@@ -1,5 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
+import { formatPersistencyPct } from '../../../lib/persistency/persistencyRounding';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 import PersistencyPlayground from '../PersistencyPlayground';
@@ -71,7 +72,7 @@ describe('PersistencyPlayground', () => {
       newOrphansAdopted:        0,
       newLapsesAnticipated:     0,
     });
-    const expectedPct = `${(expected.projectedPersistency * 100).toFixed(1)}%`;
+    const expectedPct = formatPersistencyPct(expected.projectedPersistency * 100); // ruling R-a
     expect(getProjectedPct()).toBe(expectedPct);
   });
 
@@ -92,7 +93,7 @@ describe('PersistencyPlayground', () => {
       newOrphansAdopted:        0,
       newLapsesAnticipated:     0,
     });
-    const expectedPct = `${(expected.projectedPersistency * 100).toFixed(1)}%`;
+    const expectedPct = formatPersistencyPct(expected.projectedPersistency * 100); // ruling R-a
     expect(getProjectedPct()).toBe(expectedPct);
   });
 
@@ -115,7 +116,7 @@ describe('PersistencyPlayground', () => {
       newOrphansAdopted:        0,
       newLapsesAnticipated:     0,
     });
-    const expectedPct = `${(expected.projectedPersistency * 100).toFixed(1)}%`;
+    const expectedPct = formatPersistencyPct(expected.projectedPersistency * 100); // ruling R-a
     expect(getProjectedPct()).toBe(expectedPct);
   });
 
@@ -287,7 +288,7 @@ describe('PersistencyPlayground — P4 24-month model levers', () => {
       newLapsesAnticipated:     0,
       decreasesAnticipated:     DA,
     });
-    const expectedPct = `${(expected.projectedPersistency * 100).toFixed(1)}%`;
+    const expectedPct = formatPersistencyPct(expected.projectedPersistency * 100); // ruling R-a
     expect(getProjectedPct()).toBe(expectedPct);
   });
 
@@ -309,7 +310,7 @@ describe('PersistencyPlayground — P4 24-month model levers', () => {
       newLapsesAnticipated:     0,
       decreasesAnticipated:     0,
     });
-    const expectedPct = `${(expected.projectedPersistency * 100).toFixed(1)}%`;
+    const expectedPct = formatPersistencyPct(expected.projectedPersistency * 100); // ruling R-a
     expect(getProjectedPct()).toBe(expectedPct);
   });
 
@@ -396,7 +397,7 @@ describe('PersistencyPlayground — P4b negative-denominator guard', () => {
     expect(expected.projectedGrossSettled).toBe(100000);
     expect(expected.projectedPersistency).toBe(1.1); // 110,000 / 100,000
 
-    expect(getProjectedPct()).toBe('110.0%');
+    expect(getProjectedPct()).toBe('110.00%');
     expect(screen.queryByTestId('playground-negative-denominator-warning')).not.toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import { SectionCard, SectionState } from './SectionState';
 import { StatHero } from './planPrimitives';
 import { fmtTTD, fmtPct, fmtSignedTTD } from './planFormat';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 // Track K — Production Summary (deck §03). Glass-hero summary + annual-vs-run-rate
 // card (progress bar) + monthly prorated + persistency. All numbers from the
@@ -89,8 +90,8 @@ export default function ProductionSummary({ production, loading, error, onRetry 
                 <div className="overflow-hidden rounded-xl border border-border">
                   <CardHead>Persistency · floor 85%</CardHead>
                   <div className="p-4">
-                    <KV label="Branch (current)" value={fmtPct(p.persistency.currentPct)} tone={p.persistency.currentPct != null && p.persistency.currentPct < 85 ? 'danger' : undefined} />
-                    <KV label="EOY projection" value={p.persistency.eoyPct == null ? 'current only' : fmtPct(p.persistency.eoyPct)} />
+                    <KV label="Branch (current)" value={formatPersistencyPct(p.persistency.currentPct)} tone={p.persistency.currentPct != null && p.persistency.currentPct < 85 ? 'danger' : undefined} />
+                    <KV label="EOY projection" value={p.persistency.eoyPct == null ? 'current only' : formatPersistencyPct(p.persistency.eoyPct)} />
                   </div>
                 </div>
               </div>

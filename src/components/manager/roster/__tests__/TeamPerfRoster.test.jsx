@@ -76,7 +76,7 @@ describe('PersBandCell', () => {
   it('shows pers-band-cell for a populated value', () => {
     render(<PersBandCell persistency={94} />);
     expect(screen.getByTestId('pers-band-cell')).toBeTruthy();
-    expect(screen.getByText('94%')).toBeTruthy();
+    expect(screen.getByText('94.00%')).toBeTruthy();
   });
 
   it('shows pers-band-cell-empty for null', () => {
@@ -106,7 +106,7 @@ describe('PersBandCell', () => {
 
   it('caps value at 100 in display', () => {
     render(<PersBandCell persistency={110} />);
-    expect(screen.getByText('100%')).toBeTruthy();
+    expect(screen.getByText('100.00%')).toBeTruthy();
   });
 });
 

@@ -8,6 +8,7 @@ import Trophy from '../../trophies/Trophy';
 import { TROPHY_KINDS } from '../../trophies/trophyKinds';
 import SwipePager from '../../pager/SwipePager';
 import { formatCurrency, formatCompactTTD } from '../../../../utils/formatters';
+import { formatPersistencyPct } from '../../../../lib/persistency/persistencyRounding';
 
 /**
  * FR-0 harness scenes: tokens, chart kit (desktop + phone), trophies, pager.
@@ -129,7 +130,7 @@ function ChartGrid({ variant, phone = false }) {
       <ChartCard
         title={b ? 'September back over the 90% gate' : 'Persistency slipped under the gate in January'}
         subtitle="Persistency by month, 24-month model"
-        table={{ columns: [{ key: 'label', label: 'Month' }, { key: 'value', label: 'Persistency', align: 'right' }], rows: MONTHS.map((m, i) => ({ label: m, value: `${pers[i].toFixed(1)}%` })) }}
+        table={{ columns: [{ key: 'label', label: 'Month' }, { key: 'value', label: 'Persistency', align: 'right' }], rows: MONTHS.map((m, i) => ({ label: m, value: formatPersistencyPct(pers[i]) })) }}
       >
         <GateBars data={MONTHS.map((m, i) => ({ key: m, label: m, value: pers[i], projected: b && i === MONTHS.length - 1 }))} gate={90} domain={[80, 95]} />
       </ChartCard>

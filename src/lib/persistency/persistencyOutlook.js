@@ -35,6 +35,7 @@ import {
 } from './deriveFromLedger';
 import { aggregatePersistency, calculateShortfall, PERS_GATE } from './calculations';
 import { applicableManualInputs } from './ledgerPrefill';
+import { roundPersistencyPct, formatPersistencyPct } from './persistencyRounding';
 import { isTwentyFourMonthModel } from './model';
 import { toDateStr } from '../policyCampaignLens';
 import { normalizeGate } from '../../utils/campaignEngine';
@@ -299,7 +300,8 @@ export function buildPersistencyOutlook({
       gateMonth = {
         ...fig,
         threshold: gateThreshold,
-        meetsThreshold: fig.persistency * 100 >= gateThreshold,
+        // R-a: judged on the same 2-dp rounded value the screen prints.
+        meetsThreshold: roundPersistencyPct(fig.persistency * 100) >= gateThreshold,
         gap: {
           settledApiNeeded,
           reinstateNeeded,
@@ -346,17 +348,23 @@ export function buildPersistencyOutlook({
 
 /**
  * Tone for a persistency figure. Below the threshold is WARNING; only a
- * confirmed gate-month figure below the threshold may be DANGER.
+ * confirmed gate-month figure below the threshold may be DANGER. Judged on the
+ * 2-dp rounded percent (ruling R-a), so the tone always agrees with the
+ * printed figure.
  */
 export function persistencyTone(decimal, { threshold = PERS_GATE * 100, confirmedGateMonth = false } = {}) {
   if (!Number.isFinite(decimal)) return 'neutral';
-  if (decimal * 100 >= threshold) return 'success';
+  if (roundPersistencyPct(decimal * 100) >= threshold) return 'success';
   return confirmedGateMonth ? 'danger' : 'warning';
 }
 
-/** `0.8958…` → `"89.6%"`. One decimal, so 89.6 is never displayed as a passing 90. */
+/**
+ * `0.8958…` → `"89.58%"`. A decimal fraction printed through the one rounding
+ * rule (`formatPersistencyPct`, 2 decimals, half up — ruling R-a), so the
+ * printed figure and every verdict judged on `roundPersistencyPct` agree.
+ */
 export function formatOutlookPct(decimal) {
-  return Number.isFinite(decimal) ? `${(decimal * 100).toFixed(1)}%` : '—';
+  return Number.isFinite(decimal) ? formatPersistencyPct(decimal * 100) : '—';
 }
 
 /**
