@@ -448,8 +448,9 @@ describe('AgentDashboard — FR-5 Compete / You', () => {
     localStorage.setItem('agencytrack-look', 'fr');
     const { unmount } = render(<AgentDashboard />);
     act(() => captured.sidebar.props.onNavigate('career'));
-    await screen.findByTestId('shell-mock');
-    expect(typeof captured.careerProps.onOpenTrophies).toBe('function');
+    // The career tab shows a skeleton until the dashboard's data load settles,
+    // so wait for CareerPortal itself rather than the always-present shell.
+    await vi.waitFor(() => expect(captured.careerProps?.onOpenTrophies).toBeTypeOf('function'));
     act(() => captured.careerProps.onOpenTrophies());
     expect(await screen.findByTestId('fr-trophies-mock')).toBeInTheDocument();
     unmount();
@@ -457,8 +458,7 @@ describe('AgentDashboard — FR-5 Compete / You', () => {
     captured.careerProps = undefined;
     render(<AgentDashboard />);
     act(() => captured.setActiveTab('career'));
-    await screen.findByTestId('shell-mock');
-    expect(captured.careerProps).toBeDefined();
+    await vi.waitFor(() => expect(captured.careerProps).toBeDefined());
     expect(captured.careerProps.onOpenTrophies).toBeUndefined();
   });
 
