@@ -367,6 +367,7 @@
 | **Today persistency tile does not say when the export is stale:** Today states a gate verdict from the outlook estimate but not that the head-office export is older than 45 days (`outlook.stale`), nor which inputs the estimate assumes as 0 (`outlook.assumptions.assumedZero`), both of which the Persistency screen shows (banked 2026-09-28, CodeRabbit on #1011) | LOW | FR Today / persistency | — | see § Today persistency tile: stale export warning at end of file |
 | **Persistency verdicts still on whole-number or raw values in money logic:** R2-1 applied ruling R-a to every display verdict but left the campaign gate reading (whole percent → payout band), the award engine's persistency criteria and the stored `meetsAwardGate` unchanged (brief §3 money stop); needs a ruling on whether R-a extends to the payout basis (banked 2026-09-29) | MEDIUM | campaigns / awards | — | see § Persistency verdicts still on whole-number or raw values in money logic at end of file |
 | **Campaign screen gate bar: value label overlaps "GATE 90" near the gate** — `PersistencyGateBarBlock` places both labels by the same position lookup, so a figure within ~1 point of the gate is unreadable (pre-existing; seen in R2-1's harness walk, banked 2026-09-29) | LOW | campaigns | — | see § Campaign screen gate bar: the value label overlaps "GATE 90" near the gate at end of file |
+| **`computeEarnedBadges` (`BadgeGrid.jsx`) still uses the OLD MDRT thresholds** (TTD 500,000 / 250,000, v1 `apiSold` only) while the points engine uses 688,800 / 344,400 — and it still feeds the Home activity feed and the branch team-medals panel. The Trophy room and the new Career card read the engine doc instead (banked 2026-09-29 from R2-5) | MEDIUM | Gamification / badge accuracy | — | see § computeEarnedBadges still uses the old MDRT threshold at end of file |
 
 
 ---
@@ -7939,6 +7940,18 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Fix shape:** when the two positions are within a set distance, put the value label above the bar (or offset it away from the tick). No figure or verdict changes.
 
 **Falsification (Rule 23):** not a defect if the canvas for the Campaign screen specifies overlapping labels at the gate (it does not show that state today).
+
+## computeEarnedBadges still uses the old MDRT threshold
+
+**Banked 2026-09-29 from R2-5 (Career badge merge). Severity: MEDIUM — an agent or a manager can be shown an MDRT badge (or its absence) that disagrees with the points engine and the Trophy room.**
+
+**Observed (verified on `258a7098`):** `computeEarnedBadges` in `src/components/gamification/BadgeGrid.jsx` awards `mdrt_qualified` at `ytdAPI >= 500000` (line 62) and `mdrt_pace` at `>= 250000` by week 26 (line 67), and reads only v1 `apiSold` / `api`. The engine (`BADGE_DEFINITIONS`, `functions/lib/gamificationConfig.js`) uses TTD 688,800 / 344,400 and the canonical production reader. The `BADGES` copy strings in the same file still say "$500k". `src/lib/fr/competeModel.js` documents the disagreement and reads the engine doc instead.
+
+**Callers (`git grep -n "computeEarnedBadges" -- src`):** `AgentDashboard.jsx:491` (`earnedBadges` → `buildActivityEvents` → the Home activity feed: `ActivityFeed.jsx`, `HomeV2/RecentCompact.jsx`) and `hooks/useBranchOverview.js:256` (`badgeCounts` → `TeamMedalsPanel.jsx`). Correction to the R2-5 brief's wording: `ActivityFeed`, `RecentCompact` and `TeamMedalsPanel` import only the `BADGES` display map, not `computeEarnedBadges`; they inherit the wrong earned set from the two callers above. `CareerPortal` was the third caller until R2-5: under the FR look it now shows the engine count instead, but under the Nexus look (no Trophy room) it still renders `<BadgeGrid submissions>`, so the drift stays visible there.
+
+**Fix shape:** stop computing badges on the client. Read the engine `badges` array from `leaderboard/{uid}` (agent) and the per-agent docs the branch overview already lists (manager), or at minimum align the two thresholds to `gamificationConfig`. Related and older: § BadgeGrid → gamificationConfig reconciliation (label drift, aspirational badges). Money-adjacent display only; no payout reads this.
+
+**Falsification (Rule 23):** overturned if the activity feed and team medals are shown to be intentionally "client preview" surfaces that Kyron accepts as approximate, or if the engine's thresholds are ruled to change back to 500,000.
 
 ## FR Money needs: canvas figures not computed today
 
