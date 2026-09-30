@@ -83,6 +83,7 @@ describe('FR Money needs — look switch', () => {
   it('look="fr" renders the FR layout in place of the Nexus worksheet', async () => {
     await renderFr();
     expect(screen.getByTestId('fr-money-needs').dataset.layout).toBe('desktop');
+    expect(screen.getByTestId('fr-mn-inspector').closest('.sticky')).not.toBeNull();
     expect(screen.queryByText('Money Needs Worksheet')).toBeNull();
     expect(screen.queryByTestId('mn-composition')).toBeNull();
     expect(screen.getByRole('complementary', { name: 'Your money needs roll-up' })).toBeInTheDocument();
@@ -99,6 +100,11 @@ describe('FR Money needs — look switch', () => {
     stubViewport(900);
     await renderFr();
     expect(screen.getByTestId('fr-money-needs').dataset.layout).toBe('tablet');
+    const inspector = screen.getByTestId('fr-mn-inspector');
+    expect(within(inspector).getByTestId('fr-mn-ladder-commission').textContent).toContain('TTD 113,466.67');
+    // Inline in the one column, after the worksheet — not the desktop sticky column.
+    expect(inspector.closest('.sticky')).toBeNull();
+    expect(screen.getByTestId('fr-mn-worksheet').compareDocumentPosition(inspector) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('phone width: five group pages in a pager, each group mounted once, no collapse', async () => {
