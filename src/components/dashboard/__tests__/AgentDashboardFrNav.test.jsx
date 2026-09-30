@@ -175,6 +175,13 @@ vi.mock('../../fr/compete/FrTrophyRoom', () => ({
     return React.createElement('div', { 'data-testid': 'fr-trophies-mock' });
   },
 }));
+// R2-10: under FR the Career tab renders FrCareer in place of CareerPortal.
+vi.mock('../../fr/you/FrCareer', () => ({
+  default: (props) => {
+    captured.frCareerProps = props;
+    return React.createElement('div', { 'data-testid': 'fr-career-mock' });
+  },
+}));
 // R2-11: under FR the Leaderboard tab renders FrLeaderboard in place of the
 // Arena header + the Nexus surface.
 vi.mock('../../fr/compete/FrLeaderboard', () => ({
@@ -456,22 +463,29 @@ describe('AgentDashboard — FR-5 Compete / You', () => {
     expect(screen.queryByTestId('fr-me-header-mock')).toBeNull();
   });
 
-  it('R2-5: under FR the Career card gets a way into the Trophy room; under Nexus it does not (the grid stays)', async () => {
+  it('R2-10: under FR the Career tab is FrCareer (Trophy room + Game plan links); under Nexus CareerPortal keeps its grid', async () => {
     localStorage.setItem('agencytrack-look', 'fr');
     const { unmount } = render(<AgentDashboard />);
     act(() => captured.sidebar.props.onNavigate('career'));
     // The career tab shows a skeleton until the dashboard's data load settles,
-    // so wait for CareerPortal itself rather than the always-present shell.
-    await vi.waitFor(() => expect(captured.careerProps?.onOpenTrophies).toBeTypeOf('function'));
-    act(() => captured.careerProps.onOpenTrophies());
+    // so wait for FrCareer itself rather than the always-present shell.
+    await vi.waitFor(() => expect(captured.frCareerProps?.onOpenTrophies).toBeTypeOf('function'));
+    expect(captured.careerProps).toBeUndefined();
+    act(() => captured.frCareerProps.onOpenTrophies());
     expect(await screen.findByTestId('fr-trophies-mock')).toBeInTheDocument();
+    act(() => captured.sidebar.props.onNavigate('career'));
+    await vi.waitFor(() => expect(screen.getByTestId('fr-career-mock')).toBeInTheDocument());
+    act(() => captured.frCareerProps.onPlan());
+    expect(await screen.findByTestId('game-plan-mock')).toBeInTheDocument();
     unmount();
+    captured.frCareerProps = undefined;
     localStorage.clear();
     captured.careerProps = undefined;
     render(<AgentDashboard />);
     act(() => captured.setActiveTab('career'));
     await vi.waitFor(() => expect(captured.careerProps).toBeDefined());
     expect(captured.careerProps.onOpenTrophies).toBeUndefined();
+    expect(captured.frCareerProps).toBeUndefined();
   });
 
   it.each([['campaign', 'awards'], ['trophies', 'career']])(
