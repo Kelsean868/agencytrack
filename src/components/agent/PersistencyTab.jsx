@@ -323,7 +323,10 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
         </div>
       )}
 
-      {/* Trend chart */}
+      {/* Trend chart — Nexus look only. Ruling 2 (29-09-2026, R2-2b): under the
+          FR look the Persistency screen already shows a month chart, so the
+          tab's own trend chart is not rendered (two month charts was noise). */}
+      {!fr && (
       <div className="card flex flex-col gap-2" data-testid="persistency-trend-chart">
         <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">
           Monthly trend
@@ -336,6 +339,7 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
           <PersistencyTrendChart data={chartData} fr={fr} />
         )}
       </div>
+      )}
 
       {/* Self-entry CTA */}
       <div className="card flex flex-col gap-2">
