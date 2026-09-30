@@ -8011,7 +8011,7 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 
 ## FR-6 declared reinstatements — three rulings wanted
 
-**PARTLY RULED 29-09-2026 (Kyron, `docs/briefs/fr-round2-followups.md` § 0 ruling 6): Option C** — #1019 merged as is (its content landed on `main` in squash `92d4e5b4`). **Item 2 CLOSED:** the 60-day "not confirmed" threshold is confirmed as it is. The one-line addition to the head-office guard test's allowlist (`src/lib/portfolioImport/__tests__/excludeImported.test.js`) is confirmed. The import-side fix for a stale declaration after a new lapse (CodeRabbit on #1019) is slice R2-6b. Items 1 and 3 remain open.
+**PARTLY RULED 29-09-2026 (Kyron, `docs/briefs/fr-round2-followups.md` § 0 ruling 6): Option C** — #1019 merged as is (its content landed on `main` in squash `92d4e5b4`). **Item 2 CLOSED:** the 60-day "not confirmed" threshold is confirmed as it is. The one-line addition to the head-office guard test's allowlist (`src/lib/portfolioImport/__tests__/excludeImported.test.js`) is confirmed. The import-side fix for a stale declaration after a new lapse (CodeRabbit on #1019) is slice R2-6b — **built in #TBD (R2-6b): both import paths clear the three declaration fields when a policy moves into lapsed from a non-lapsed status; lapsed → lapsed keeps them.** Items 1 and 3 remain open.
 
 **Banked 2026-09-29 in the R2-6 PR (FR-6 Mark reinstated, Option A; branch `claude/fr-r2-6-mark-reinstated`). Severity: LOW — every item is display-only or history-only; no evidenced figure and no money reader is affected (pinned by `src/lib/__tests__/reinstatementDeclarationMoney.test.js` and the evidenced-identical tests in `src/lib/persistency/__tests__/reinstatementDeclaration.test.js`).**
 

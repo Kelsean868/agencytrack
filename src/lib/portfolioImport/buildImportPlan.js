@@ -72,6 +72,19 @@ export const IMPORT_OWNED_FIELDS = Object.freeze([
  * `firstImportRunId` is deliberately ABSENT from both lists: it is written once,
  * at create, and no update may ever touch it.
  */
+/**
+ * R2-6b — the agent's reinstatement declaration (FR-6, Arm G). The import never
+ * OWNS these fields, but a NEW lapse makes an old declaration stale: without
+ * this, a policy that head office reinstated and then lapsed again would show
+ * the earlier "declared reinstated" as live (`hasLiveDeclaration` only looks at
+ * `status === 'lapsed'`). Kept local because this folder is mirrored byte for
+ * byte into functions/ and cannot import src/lib/persistency; pinned equal to
+ * `REINSTATEMENT_DECLARATION_FIELDS` by buildImportPlan.reinstatement.test.js.
+ */
+export const DECLARATION_FIELDS_CLEARED_ON_NEW_LAPSE = Object.freeze([
+  'reinstatementDeclaredAt', 'reinstatementDeclaredBy', 'reinstatementNote',
+]);
+
 export const PROVENANCE_ONLY_FIELDS = Object.freeze([
   'exportDate', 'importedAt', 'importSource', 'lastImportRunId',
   // P4e. `statusAsOf` is the export date, so it moves on EVERY policy whenever
@@ -266,6 +279,17 @@ export function buildImportPlan(parsedDocs, options = {}) {
         setBy: existing.statusSetBy ?? null,
         source: existing.statusSource ?? null,
       });
+    }
+
+    // R2-6b — the status moves INTO lapsed from any non-lapsed status: clear a
+    // declaration made before the reinstatement, in the same write. Only these
+    // three fields; `null` reads as "not declared" everywhere, and the plan stays
+    // plain data (it is stored between preview and apply). lapsed → lapsed keeps
+    // the declaration: that is the lapse it was made about.
+    const newLapse = statusMoved && changed.status === 'lapsed' && existing.status !== 'lapsed';
+    const declared = DECLARATION_FIELDS_CLEARED_ON_NEW_LAPSE.some((k) => existing[k] != null);
+    if (newLapse && declared) {
+      for (const key of DECLARATION_FIELDS_CLEARED_ON_NEW_LAPSE) changed[key] = null;
     }
 
     if (substantive.length === 0) {
