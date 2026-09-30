@@ -11,6 +11,7 @@ import {
   resolveAnnualAPIFloor,
 } from '../utils/tenureFloors';
 import { PERS_GATE_PCT } from '../lib/persistency/calculations';
+import { PLAYGROUND_PERIOD_KEYS } from '../utils/playgroundPeriods';
 
 export async function getGoals(tenantId, agentId) {
   const ref = doc(db, `tenants/${tenantId}/goals/${agentId}`);
@@ -226,15 +227,29 @@ export async function setGoals(tenantId, agentId, data, setBy, setByName) {
     if ('personalAnnualPersistency' in data) payload.personalAnnualPersistency = p(data.personalAnnualPersistency);
   }
 
-  // Playground assumption fields
+  // Playground assumption fields (numeric — parseFloat before write).
+  // R2-3: playgroundSettlementRate was sent by the playground's Save
+  // Assumptions but missing here, so it was silently dropped.
   const pgKeys = [
     'playgroundIncomeGoal', 'playgroundTaxRate', 'playgroundRenewalIncome',
+    'playgroundSettlementRate',
     'playgroundCommissionRate', 'playgroundAvgPolicyAPI', 'playgroundPersistencyRate',
     'playgroundCiToSaleRatio', 'playgroundDialsToCIRatio', 'playgroundProspectRatio',
   ];
   pgKeys.forEach((key) => {
     if (key in data) payload[key] = p(data[key]);
   });
+
+  // Playground string fields — R2-3. The income goal's period is stored as one
+  // of the six playground period keys; playgroundIncomeGoal itself stays
+  // ANNUAL. Anything outside the allowlist throws rather than being written.
+  if ('playgroundIncomeGoalPeriod' in data) {
+    const period = data.playgroundIncomeGoalPeriod;
+    if (!PLAYGROUND_PERIOD_KEYS.includes(period)) {
+      throw new Error(`Invalid income goal period: ${String(period)}`);
+    }
+    payload.playgroundIncomeGoalPeriod = period;
+  }
 
   await setDoc(ref, payload, { merge: true });
 }

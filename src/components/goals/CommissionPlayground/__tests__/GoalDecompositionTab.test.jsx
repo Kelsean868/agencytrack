@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react';
 
 vi.mock('../../../../context/AuthContext', () => ({
   useAuth: () => ({
@@ -216,5 +216,120 @@ describe('GoalDecompositionTab — R-06 scenario persistence', () => {
     resolveHydration({ commissionScenarios: [] });
     await new Promise((r) => setTimeout(r, 30));
     expect(screen.getByText('Survivor')).toBeInTheDocument();
+  });
+});
+
+// ── FR round 2 R2-3: the income goal's period ────────────────────────────────
+//
+// The agent types an amount and picks its period; the playground turns it into
+// the ANNUAL income goal (amount × divisor) that every reader already uses. The
+// ladder's view-cadence chips then divide that annual figure back for display.
+describe('GoalDecompositionTab — R2-3 income goal period', () => {
+  const TAB_PROPS = { submissions: [], agentId: 'a1', tenantId: 't1' };
+  const headStage = () => screen.getAllByTestId('commission-ladder-stage')[0].textContent;
+  const chip = (name) => within(screen.getByRole('group', { name: /view cadence/i })).getByRole('button', { name });
+  const enter = (amount, period) => {
+    fireEvent.change(screen.getByLabelText(/income goal \(ttd\)/i), { target: { value: String(amount) } });
+    fireEvent.change(screen.getByLabelText(/goal period/i), { target: { value: period } });
+  };
+
+  beforeEach(() => {
+    setGoals.mockClear();
+    prefsMock.getUserPrefs.mockReset();
+    prefsMock.getUserPrefs.mockResolvedValue(null);
+    prefsMock.setCommissionScenarios.mockReset();
+    prefsMock.setCommissionScenarios.mockResolvedValue();
+    localStorage.removeItem('agencytrack-playground-income-goal');
+  });
+
+  it('defaults to Annual — the typed amount IS the annual goal', () => {
+    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    expect(screen.getByLabelText(/goal period/i).value).toBe('annual');
+    expect(headStage()).toContain('TTD 300,000');
+    expect(screen.getByTestId('income-goal-conversion').textContent).toBe('TTD 300,000 a year');
+  });
+
+  it('TTD 50,000 a month → annual TTD 500,000, and the Month chip shows TTD 50,000', () => {
+    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    enter(50000, 'monthly');
+    expect(screen.getByTestId('income-goal-conversion').textContent)
+      .toBe('TTD 50,000 a month × 10 selling months = TTD 500,000 a year');
+    expect(headStage()).toContain('TTD 500,000');   // Annual chip (default view)
+    fireEvent.click(chip('Month'));
+    expect(headStage()).toContain('TTD 50,000');
+    expect(headStage()).not.toContain('TTD 500,000');
+  });
+
+  it('changing the period keeps the typed amount and re-derives the annual goal', () => {
+    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    enter(50000, 'annual');
+    expect(headStage()).toContain('TTD 50,000');
+    fireEvent.change(screen.getByLabelText(/goal period/i), { target: { value: 'monthly' } });
+    expect(parseFloat(screen.getByLabelText(/income goal \(ttd\)/i).value)).toBe(50000);
+    expect(headStage()).toContain('TTD 500,000');
+  });
+
+  it('weekly round-trip: TTD 1,000 a week → TTD 43,000 a year → Week chip shows TTD 1,000', () => {
+    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    enter(1000, 'weekly');
+    expect(screen.getByTestId('income-goal-conversion').textContent)
+      .toBe('TTD 1,000 a week × 43 selling weeks = TTD 43,000 a year');
+    expect(headStage()).toContain('TTD 43,000');
+    fireEvent.click(chip('Week'));
+    expect(headStage()).toContain('TTD 1,000');
+  });
+
+  it('daily round-trip: TTD 200 a day → TTD 51,600 a year → Day chip shows TTD 200', () => {
+    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    enter(200, 'daily');
+    expect(screen.getByTestId('income-goal-conversion').textContent)
+      .toBe('TTD 200 a day × 258 selling days = TTD 51,600 a year');
+    expect(headStage()).toContain('TTD 51,600');
+    fireEvent.click(chip('Day'));
+    expect(headStage()).toContain('TTD 200');
+  });
+
+  it('Save Assumptions sends the ANNUAL goal, its period and the settlement rate', async () => {
+    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    enter(50000, 'monthly');
+    fireEvent.click(screen.getByRole('button', { name: /save assumptions/i }));
+    await waitFor(() => expect(setGoals).toHaveBeenCalled());
+    const [, , payload] = setGoals.mock.calls[0];
+    expect(payload.playgroundIncomeGoal).toBe(500000);
+    expect(payload.playgroundIncomeGoalPeriod).toBe('monthly');
+    expect(payload.playgroundSettlementRate).toBe(90);
+  });
+
+  it('a saved scenario stores the annual goal and loads back as Annual with that same value', async () => {
+    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    await waitFor(() => expect(screen.getByTestId('scenario-chips')).toBeInTheDocument());
+    enter(50000, 'monthly');
+    fireEvent.click(screen.getByTestId('scenario-save-open'));
+    fireEvent.change(screen.getByTestId('scenario-name-input'), { target: { value: 'Month plan' } });
+    fireEvent.click(screen.getByTestId('scenario-save-confirm'));
+    await waitFor(() => expect(prefsMock.setCommissionScenarios).toHaveBeenCalled());
+    const saved = prefsMock.setCommissionScenarios.mock.calls[0][2][0];
+    expect(saved.inputs.incomeGoal).toBe(500000);
+
+    // Reload: a fresh mount hydrates that scenario; applying it restores the
+    // same annual goal (scenarios carry no period — they load as Annual).
+    cleanup();
+    prefsMock.getUserPrefs.mockResolvedValue({ commissionScenarios: [saved] });
+    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    fireEvent.click(await screen.findByText('Month plan'));
+    expect(screen.getByLabelText(/goal period/i).value).toBe('annual');
+    expect(parseFloat(screen.getByLabelText(/income goal \(ttd\)/i).value)).toBe(500000);
+    expect(headStage()).toContain('TTD 500,000');
+  });
+
+  it('an old scenario with no period (annual value) applies as Annual', async () => {
+    prefsMock.getUserPrefs.mockResolvedValue({
+      commissionScenarios: [{ id: 'sc-old', label: 'Old one', savedAt: '2026-01-01T00:00:00.000Z', freqKey: 'annual', inputs: { incomeGoal: 420000 } }],
+    });
+    render(<GoalDecompositionTab {...TAB_PROPS} />);
+    enter(1000, 'weekly');
+    fireEvent.click(await screen.findByText('Old one'));
+    expect(screen.getByLabelText(/goal period/i).value).toBe('annual');
+    expect(headStage()).toContain('TTD 420,000');
   });
 });
