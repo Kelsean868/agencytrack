@@ -18,6 +18,7 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| FR Arena header (`FrArenaHeader`) is unused once R2-11 merges — the FR Leaderboard carries the standing — and its "settled API puts you there" note claims a source the board does not use (banked 2026-09-30, R2-11) | LOW | FR redesign / Compete | — | see § FR Arena header unused after R2-11 |
 | R2-8 Game plan FR port is NOT on `main`: #1020's squash `92d4e5b4` carried R2-6 instead, and its two Game plan commits (`1c0aefb5`, `c98451ae`) are on no merged branch (banked 2026-09-30, #1014–#1021 fill) | HIGH | FR redesign / Money | — | see § R2-8 Game plan FR port missing from main |
 | Head-office **Pending** policies can still be changed from the ledger (reached from the Campaign screen's "Change status"); lock not built per Kyron ruling 4 — needs a ledger + rules change (banked 2026-09-30, R2-4) | MEDIUM | Policy Ledger / rules | — | see § Head-office Pending policies can still be changed from the ledger |
 | FR round 2 (#1014–#1021) preview smokes waived under Rule 13; read-only production click-through deferred (banked 2026-09-30, #1014–#1021 fill) | LOW | FR redesign / verification | — | see § FR round 2 deferred click-through |
@@ -5081,6 +5082,8 @@ Banked: Track J P1b leaderboard-aggregate CF (PR #400), 2026-05-31.
 
 ## Track J (V2 Redesign) — P1b leaderboard CF: reconciled-production swap point (FU-2 reference, banked 2026-05-31, PR #400)
 
+**UPDATE 2026-09-30 (R2-11, Kyron's question):** this is why the Leaderboard shows TTD 0 for every agent while the Policy Ledger shows settled API (Kyron: TTD 87,146). Checked in source: the board reads `tenants/{tid}/leaderboards/{branchId}` (`src/hooks/useLeaderboard.js`), written hourly by `recomputeLeaderboardScheduled` (`functions/leaderboard/leaderboardAggregate.js`, `TENANT_ID = 'tatillife_south'`). `loadInputs` reads only `submissions` with `status == 'submitted'` this year, and `extractTotalProductionCredit` (`functions/leaderboard/rankingLogic.js`) sums the API typed into weekly reports (`newBusiness.api` + PPP + lumpsums, or v1 `apiSold`). It never reads `policies`. Production is now recorded in the Policy Ledger (the heroes moved to the ledger in #968), and the weekly report's API step is not being filled, so every period sums to 0. The swap described below is still the fix; it is a functions change + deploy (human-merge). R2-11 did NOT change the ranking source (dispatcher instruction). R2-11's FR copy says "Ranked by the API on submitted weekly reports" instead of the canvas's "settled API", so the screen does not claim a source it does not use. Not checked: the live `leaderboards/*` doc values (no production read was made).
+
 The FU-2 reference (originally banked in PR #398 description): when `usesPolicyLedger` H3 flip-gate clears branch-wide and reconciled-production data is available for all agents, the leaderboard CF is the **single swap point** for the entire Leaderboard / Production Report family. Replace `loadInputs` in `functions/leaderboard/leaderboardAggregate.js` with a reconciled-source fetch; the rest of the pipeline (groupByBranch, rankForLeaderboard, agent-readable doc shape) is unchanged. All consumers (P3 podium, P4 around-me, P7 AgentProductionView, BM/UM ProductionViews, kiosk) inherit the switch via the aggregate doc.
 
 **Prerequisite:** Branch-wide `usesPolicyLedger` (not per-agent opt-in).
@@ -8146,3 +8149,13 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Ask:** Kyron to rule whether a later slice moves the two modals inline and adds the floor/MDRT bar (with the floor passed in from `resolvedMinimums`).
 
 **Falsification (Rule 23):** closed if Kyron rules the modals and the omitted pieces stay as they are.
+
+## FR Arena header unused after R2-11
+
+**Banked 2026-09-30 from R2-11. Severity: LOW — dead code plus a misleading line of copy.**
+
+**Observed:** R2-11 renders `FrLeaderboard` instead of `FrArenaHeader` + `ProductionLeaderboardSurface` under the FR look. `FrArenaHeader` (`src/components/fr/compete/FrCompeteHeaders.jsx`) then has no app caller; `FrArenaHeaderView` is used only by the `compete-headers` harness scene. `arenaTiles` (`src/lib/fr/competeModel.js`) says "Not on the board yet — settled API puts you there", but the board ranks weekly-report API (see § Track J P1b leaderboard CF: reconciled-production swap point, UPDATE 2026-09-30).
+
+**Fix shape:** remove `FrArenaHeader` / `FrArenaHeaderView` / `arenaTiles` and the harness scene after R2-11 merges, or reword the note if the header is kept anywhere.
+
+**Falsification (Rule 23):** closed if the leaderboard source moves to settled ledger API (then the copy is true) and the header is still wanted somewhere.
