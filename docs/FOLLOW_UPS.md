@@ -18,7 +18,6 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| Policy reconciliation Lapse tab still lists head-office-settled policies, which F-4 makes unlapsable (pressing Lapse shows the refusal). Kyron ruling 2B (30-09-2026): hide them — small human-merge PR, no rules change, queued AFTER the npm audit fix lands on main (banked 2026-09-30, F-4) | LOW | Policy Ledger / manager UI | — | see § Lapse tab: hide head-office policies (after F-4) |
 | Policies rules hit Firestore's 1000-expression limit on an update: several `policies` update arms report "maximum of 1000 expressions … reached" in the emulator (seen on a lapse write); a valid write whose allowing arm hits the limit would be denied (banked 2026-09-30, A-1) | MEDIUM | Firestore rules | — | see § Policies rules reach the 1000-expression limit |
 | FR Arena header (`FrArenaHeader`) is unused once R2-11 merges — the FR Leaderboard carries the standing — and its "settled API puts you there" note claims a source the board does not use (banked 2026-09-30, R2-11) | LOW | FR redesign / Compete | — | see § FR Arena header unused after R2-11 |
 | Commission playground ladder says "÷ comm · × settle", but API to write divides by the PERSISTENCY rate; settlement feeds nothing shown (Nexus look; the FR port omits the connector text) (banked 2026-09-30, R2-7) | MEDIUM | Commission playground | — | see § Commission playground ladder: the settle label does not match the math |
@@ -8275,6 +8274,8 @@ UPDATE 2026-09-30: the 'Also seen' point is built by F-4 (#1035, squash `ad544d6
 UPDATE 2026-09-30: Kyron ruling 1A - build it; slice F-3 (brief § 5).
 
 ## Lapse tab: hide head-office policies (after F-4)
+
+**RESOLVED by #TBD (branch `claude/lapse-tab-hide-ho`; Kyron ruling 2B, 30-09-2026).** The Lapse tab leaves out every policy where `isFromHeadOffice` (statusSource `oipa_import`), shows one muted line with how many are not shown, and the empty state reads "No policies you can lapse" when only head-office policies exist. UI only; no rules or service change. Falsification check done first: the list had no provenance filter (`lapseTabPolicies` filtered only on status and period).
 
 **Banked 2026-09-30 from F-4 (#1035). Severity: LOW. Ruled: Kyron 2B, 30-09-2026 — build it.**
 
