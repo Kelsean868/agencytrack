@@ -6,15 +6,18 @@ import { useAuth } from '../../context/AuthContext';
 import useFocusTrap from '../../hooks/useFocusTrap';
 import {
   createMoneyNeeds, getMoneyNeeds,
-  updateExpenseGroup, annualizeAmount, computeGroupTotal,
+  annualizeAmount,
   updateSubCalculator, updateCommissionTargets, refreshPAYECalculation,
-  updateVisibility, countFilledLineItems, calcFedValue,
+  updateVisibility, countFilledLineItems,
   PLAYGROUND_INCOME_GOAL_KEY, PAYE_BRACKETS_VERSION,
   CAR_PERSONAL_PCT, CAR_BUSINESS_PCT, CAR_LOAN_LOANSDEBT_LINE_ID,
 } from '../../services/moneyNeedsService';
 import { formatCurrency } from '../../utils/formatters';
 import { compositionSegments } from '../../lib/moneyNeedsComposition';
 import MoneyNeedsAllocator from './MoneyNeedsAllocator';
+import useExpenseGroupEditor from './useExpenseGroupEditor';
+import FrMoneyNeeds from '../fr/money/FrMoneyNeeds';
+import { EXPENSE_GROUPS, FREQUENCY_OPTIONS, payeBuildUp } from './moneyNeedsShared';
 
 // Merged Money-Needs + Allocator surface — flag-gated, DEFAULT OFF. `=== 'true'`
 // (not the GamePlan loop's `!== 'false'`) so an unset env renders today's panel
@@ -22,25 +25,11 @@ import MoneyNeedsAllocator from './MoneyNeedsAllocator';
 // allocator and opens the worksheet adaptively on first run.
 const MONEY_NEEDS_MERGED_ENABLED = import.meta.env.VITE_MONEY_NEEDS_MERGED_ENABLED === 'true';
 
-// Checklist restyle (Game Plan v2 Slice 1): each group leads with a colored
-// dot, mirroring the build annotation's group key. Presentation only — no
-// data-model change.
-const EXPENSE_GROUPS = [
-  { key: 'fixedExpenses',       label: 'Fixed Expenses',         dot: 'bg-primary'    },
-  { key: 'livingExpenses',      label: 'Living Expenses',        dot: 'bg-ink-muted'  },
-  { key: 'businessExpenses',    label: 'Business Expenses',      dot: 'bg-gold'       },
-  { key: 'savingsAccumulation', label: 'Savings & Accumulation', dot: 'bg-success'    },
-  { key: 'miscellaneous',       label: 'Miscellaneous',          dot: 'bg-ink-faint'  },
-];
-
-const FREQUENCY_OPTIONS = [
-  { value: 'M', label: 'Monthly'    },
-  { value: 'Q', label: 'Quarterly'  },
-  { value: 'S', label: 'Semi-Annual'},
-  { value: 'A', label: 'Annual'     },
-];
+// EXPENSE_GROUPS + FREQUENCY_OPTIONS live in ./moneyNeedsShared (R2-9: shared
+// with the FR port, moved verbatim).
 
 const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
 
 function makeItemId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -202,103 +191,13 @@ function FieldSection({ variant, children }) {
 
 // open + onToggle props lifted to MoneyNeedsPanel (Fix 2 — single-open accordion).
 function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGroupSaved, onOpenCalc, open, onToggle }) {
-  const { tenantId, user } = useAuth();
-  const [localItems, setLocalItems] = useState(() => group?.lineItems ?? []);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
-
-  useEffect(() => {
-    setLocalItems(group?.lineItems ?? []);
-  }, [group]);
-
-  async function saveGroup(items) {
-    setSaving(true);
-    setSaveError('');
-    try {
-      const processedItems = items.map((item) => {
-        const amount = parseFloat(item.amount) || 0;
-        return {
-          ...item,
-          amount,
-          annualizedAmount: annualizeAmount(amount, item.frequency),
-        };
-      });
-      const groupAnnualTotal = computeGroupTotal({ lineItems: processedItems });
-      const updatedGroup = {
-        lineItems: processedItems,
-        subCalculatorRefs: [],
-        groupAnnualTotal,
-      };
-      const newAllGroups = { ...worksheetDoc.expenseGroups, [groupKey]: updatedGroup };
-      const rollup = await updateExpenseGroup(
-        tenantId, user.uid, worksheetDoc.year, groupKey, updatedGroup, newAllGroups,
-      );
-      onGroupSaved(groupKey, updatedGroup, rollup);
-    } catch {
-      setSaveError('Save failed — check connection.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function handleAddItem() {
-    const newItem = {
-      id: makeItemId(),
-      label: '',
-      amount: 0,
-      frequency: 'M',
-      annualizedAmount: 0,
-      isCustom: true,
-    };
-    const next = [...localItems, newItem];
-    setLocalItems(next);
-    saveGroup(next);
-  }
-
-  function handleDeleteItem(id) {
-    const next = localItems.filter((i) => i.id !== id);
-    setLocalItems(next);
-    saveGroup(next);
-  }
-
-  // Editing a calc-fed line's amount/frequency stores an explicit override.
-  function handleItemChange(id, field, value, saveNow = false) {
-    const next = localItems.map((i) => {
-      if (i.id !== id) return i;
-      const updated = { ...i, [field]: value };
-      if (i.calcKey && (field === 'amount' || field === 'frequency')) updated.isOverridden = true;
-      return updated;
-    });
-    setLocalItems(next);
-    if (saveNow) saveGroup(next);
-  }
-
-  // Reset a calc-fed line back to its current calculator value.
-  function handleResetCalcLine(id) {
-    const next = localItems.map((i) => {
-      if (i.id !== id || !i.calcKey) return i;
-      const synced = calcFedValue(i.calcKey, worksheetDoc.subCalculators);
-      return { ...i, isOverridden: false, amount: synced, frequency: 'A', annualizedAmount: synced };
-    });
-    setLocalItems(next);
-    saveGroup(next);
-  }
-
-  function handleBlur() {
-    saveGroup(localItems);
-  }
-
-  const calcFedItems = localItems.filter((i) => i.calcKey);
-  const manualItems = localItems.filter((i) => !i.calcKey);
-
-  const groupAnnualTotal = computeGroupTotal({
-    lineItems: localItems.map((item) => ({
-      ...item,
-      annualizedAmount: annualizeAmount(parseFloat(item.amount) || 0, item.frequency),
-    })),
-  });
-
-  const filledCount = localItems.filter((i) => (parseFloat(i.amount) || 0) > 0).length;
+  // R2-9: the edit + save state lives in useExpenseGroupEditor (moved verbatim)
+  // so the FR worksheet group runs the same code.
+  const {
+    localItems, calcFedItems, manualItems, groupAnnualTotal, filledCount,
+    saving, saveError, handleAddItem, handleDeleteItem, handleItemChange,
+    handleResetCalcLine, handleBlur,
+  } = useExpenseGroupEditor({ groupKey, group, worksheetDoc, onGroupSaved });
 
   return (
     <div className={`border border-border rounded-xl overflow-hidden${open ? ' shadow-sm' : ''}`}>
@@ -444,13 +343,12 @@ function CompositionBar({ expenseGroups }) {
 
 function PAYESummary({ worksheet }) {
   if (!worksheet) return null;
-  const { totalAnnualAfterTax = 0, totalAnnualPreTax = 0 } = worksheet;
+  // Read-only summary cascade — all derived from existing worksheet fields
+  // (payeBuildUp, shared with the FR port).
+  const {
+    totalAnnualAfterTax, totalAnnualPreTax, payeGrossUp, renewals, commissionsRequired,
+  } = payeBuildUp(worksheet);
   if (totalAnnualAfterTax === 0 && totalAnnualPreTax === 0) return null;
-
-  // Read-only summary cascade — all derived from existing worksheet fields.
-  const payeGrossUp = Math.max(0, totalAnnualPreTax - totalAnnualAfterTax);
-  const renewals = parseFloat(worksheet.estimatedRenewalIncome?.total) || 0;
-  const commissionsRequired = Math.max(0, totalAnnualPreTax - renewals);
 
   return (
     <div className="rounded-xl bg-surface-raised border border-border px-4 py-3 space-y-2">
@@ -970,7 +868,11 @@ function LoansDebtCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
 }
 
 // onOpenTab (rev 5 Tweak B): passed from AgentDashboard, threaded to CommissionTargetsPanel.
-export default function MoneyNeedsPanel({ onOpenTab }) {
+// look (R2-9): 'fr' arranges the loaded worksheet to the FR canvas
+// (FrMoneyNeeds) with the same state, handlers, modals and writes. Default
+// 'nexus' → the unchanged panel (ManagerDashboard never passes it).
+export default function MoneyNeedsPanel({ onOpenTab, look = 'nexus' }) {
+  const fr = look === 'fr';
   const { tenantId, user } = useAuth();
   const uid = user?.uid;
 
@@ -1101,35 +1003,124 @@ export default function MoneyNeedsPanel({ onOpenTab }) {
     );
   })();
 
+  // R2-9: the pieces both looks mount — identical elements, so the Nexus
+  // render is unchanged and the FR layout reuses the same inputs and writes.
+  const yearSelect = (
+    <select
+      value={year}
+      onChange={(e) => setYear(Number(e.target.value))}
+      className="h-9 px-2 rounded-lg bg-surface border border-border text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40 min-h-[44px]"
+      aria-label="Select year"
+    >
+      {YEAR_OPTIONS.map((y) => (
+        <option key={y} value={y}>{y}</option>
+      ))}
+    </select>
+  );
+
+  const refreshBanner = worksheet
+    ? <PAYERefreshBanner worksheet={worksheet} onRefreshed={handlePAYERefreshed} />
+    : null;
+
+  const visibilityBlock = worksheet ? (
+    <div className="rounded-xl bg-card border border-border px-4 py-3 mb-2">
+      <label className="flex items-center gap-3 cursor-pointer min-h-[44px]">
+        <input
+          type="checkbox"
+          checked={worksheet.visibility === 'shared'}
+          onChange={(e) => handleVisibilityToggle(e.target.checked)}
+          className="h-4 w-4 rounded border-border accent-primary"
+          aria-label="Share with my Unit Manager and Branch Manager"
+        />
+        <span className="text-sm text-ink">
+          Share with my Unit Manager &amp; Branch Manager
+        </span>
+      </label>
+      <p className="mt-1 text-xs text-ink-muted">
+        This controls your budget worksheet only. Your production plan (targets by
+        line) is visible to your managers, like your weekly plan.
+      </p>
+    </div>
+  ) : null;
+
+  // Flag-gated merge point: ON → the seam + allocator (Money Needs is the
+  // source, ending in Send→Game Plan); OFF → today's CommissionTargetsPanel.
+  // The worksheet + PAYE build-up above are shared by both.
+  const allocationBlock = worksheet ? (
+    MONEY_NEEDS_MERGED_ENABLED ? (
+      <MoneyNeedsAllocator
+        worksheet={worksheet}
+        onOpenTab={onOpenTab}
+      />
+    ) : (
+      <CommissionTargetsPanel
+        worksheet={worksheet}
+        onTargetsSaved={handleTargetsSaved}
+        onOpenTab={onOpenTab}
+      />
+    )
+  ) : null;
+
+  // Floating calculators — opened by the trigger next to each calc-fed
+  // line. Mounted only while open so the focus trap captures the
+  // originating trigger and returns focus to it on close.
+  const calcModal = worksheet && openCalc ? (
+    <FloatingCalcModal
+      onClose={() => setOpenCalc(null)}
+      title={CALC_TITLES[openCalc]}
+      footer={calcFooter}
+    >
+      {openCalc === 'insuranceIndustry' && (
+        <InsuranceIndustryCalc
+          calcData={worksheet.subCalculators?.insuranceIndustry}
+          worksheetDoc={worksheet}
+          onSubCalcSaved={handleSubCalcSaved}
+        />
+      )}
+      {openCalc === 'carExpenses' && (
+        <CarExpensesCalc
+          calcData={worksheet.subCalculators?.carExpenses}
+          worksheetDoc={worksheet}
+          onSubCalcSaved={handleSubCalcSaved}
+        />
+      )}
+      {openCalc === 'loansDebt' && (
+        <LoansDebtCalc
+          calcData={worksheet.subCalculators?.loansDebt}
+          worksheetDoc={worksheet}
+          onSubCalcSaved={handleSubCalcSaved}
+        />
+      )}
+    </FloatingCalcModal>
+  ) : null;
+
+  const toggleGroup = (key) => setOpenGroup((o) => (o === key ? null : key));
+
   // The worksheet root carries data-clarity-mask — personal financial data
   // (household budget); do not remove. (Clarity mask, guarded by clarity-mask-guard.test.js.)
   return (
-    <div data-clarity-mask="True" className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Calculator size={20} className="text-primary" />
-          <h2 className="text-lg font-bold text-ink">Money Needs Worksheet</h2>
-          {worksheet && (
-            <span
-              data-testid="money-needs-filled-counter"
-              className="font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted bg-surface-raised border border-border rounded-full px-2 py-0.5 shrink-0"
-            >
-              Filled {filledTotal}/{itemsTotal}
-            </span>
-          )}
+    <div data-clarity-mask="True" className={fr ? 'flex min-w-0 flex-col gap-4' : 'max-w-2xl mx-auto px-4 py-6 space-y-4'}>
+      {/* Header — FR: the FR view carries its own intro + year select once the
+          worksheet is loaded; before that only the year select shows. */}
+      {fr ? (
+        (loading || !worksheet) && <div className="flex justify-end">{yearSelect}</div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calculator size={20} className="text-primary" />
+            <h2 className="text-lg font-bold text-ink">Money Needs Worksheet</h2>
+            {worksheet && (
+              <span
+                data-testid="money-needs-filled-counter"
+                className="font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted bg-surface-raised border border-border rounded-full px-2 py-0.5 shrink-0"
+              >
+                Filled {filledTotal}/{itemsTotal}
+              </span>
+            )}
+          </div>
+          {yearSelect}
         </div>
-        <select
-          value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
-          className="h-9 px-2 rounded-lg bg-surface border border-border text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40 min-h-[44px]"
-          aria-label="Select year"
-        >
-          {[CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1].map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
-      </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -1174,31 +1165,34 @@ export default function MoneyNeedsPanel({ onOpenTab }) {
         </div>
       )}
 
+      {/* Worksheet — FR (R2-9): the same groups, sub-calculators, build-up,
+          share toggle and allocation, arranged to D3M/M3-MoneyNeeds. */}
+      {!loading && worksheet && fr && (
+        <>
+          <FrMoneyNeeds
+            worksheet={worksheet}
+            year={year}
+            years={YEAR_OPTIONS}
+            onYearChange={setYear}
+            onGroupSaved={handleGroupSaved}
+            onOpenCalc={setOpenCalc}
+            openGroup={openGroup}
+            onToggleGroup={toggleGroup}
+            onOpenGamePlan={onOpenTab ? () => onOpenTab('game-plan') : undefined}
+            slots={{ refreshBanner, visibility: visibilityBlock, allocation: allocationBlock }}
+          />
+          {calcModal}
+        </>
+      )}
+
       {/* Worksheet */}
-      {!loading && worksheet && (
+      {!loading && worksheet && !fr && (
         <div className="space-y-2">
           <WorksheetLede />
 
-          <PAYERefreshBanner worksheet={worksheet} onRefreshed={handlePAYERefreshed} />
+          {refreshBanner}
 
-          <div className="rounded-xl bg-card border border-border px-4 py-3 mb-2">
-            <label className="flex items-center gap-3 cursor-pointer min-h-[44px]">
-              <input
-                type="checkbox"
-                checked={worksheet.visibility === 'shared'}
-                onChange={(e) => handleVisibilityToggle(e.target.checked)}
-                className="h-4 w-4 rounded border-border accent-primary"
-                aria-label="Share with my Unit Manager and Branch Manager"
-              />
-              <span className="text-sm text-ink">
-                Share with my Unit Manager &amp; Branch Manager
-              </span>
-            </label>
-            <p className="mt-1 text-xs text-ink-muted">
-              This controls your budget worksheet only. Your production plan (targets by
-              line) is visible to your managers, like your weekly plan.
-            </p>
-          </div>
+          {visibilityBlock}
 
           {EXPENSE_GROUPS.map(({ key, label, dot }) => (
             <ExpenseGroupAccordion
@@ -1211,7 +1205,7 @@ export default function MoneyNeedsPanel({ onOpenTab }) {
               onGroupSaved={handleGroupSaved}
               onOpenCalc={setOpenCalc}
               open={openGroup === key}
-              onToggle={() => setOpenGroup((o) => (o === key ? null : key))}
+              onToggle={() => toggleGroup(key)}
             />
           ))}
 
@@ -1235,54 +1229,9 @@ export default function MoneyNeedsPanel({ onOpenTab }) {
 
           <PAYESummary worksheet={worksheet} />
 
-          {/* Flag-gated merge point: ON → the seam + allocator (Money Needs is the
-              source, ending in Send→Game Plan); OFF → today's CommissionTargetsPanel.
-              The worksheet + PAYE build-up above are shared by both. */}
-          {MONEY_NEEDS_MERGED_ENABLED ? (
-            <MoneyNeedsAllocator
-              worksheet={worksheet}
-              onOpenTab={onOpenTab}
-            />
-          ) : (
-            <CommissionTargetsPanel
-              worksheet={worksheet}
-              onTargetsSaved={handleTargetsSaved}
-              onOpenTab={onOpenTab}
-            />
-          )}
+          {allocationBlock}
 
-          {/* Floating calculators — opened by the trigger next to each calc-fed
-              line. Mounted only while open so the focus trap captures the
-              originating trigger and returns focus to it on close. */}
-          {openCalc && (
-            <FloatingCalcModal
-              onClose={() => setOpenCalc(null)}
-              title={CALC_TITLES[openCalc]}
-              footer={calcFooter}
-            >
-              {openCalc === 'insuranceIndustry' && (
-                <InsuranceIndustryCalc
-                  calcData={worksheet.subCalculators?.insuranceIndustry}
-                  worksheetDoc={worksheet}
-                  onSubCalcSaved={handleSubCalcSaved}
-                />
-              )}
-              {openCalc === 'carExpenses' && (
-                <CarExpensesCalc
-                  calcData={worksheet.subCalculators?.carExpenses}
-                  worksheetDoc={worksheet}
-                  onSubCalcSaved={handleSubCalcSaved}
-                />
-              )}
-              {openCalc === 'loansDebt' && (
-                <LoansDebtCalc
-                  calcData={worksheet.subCalculators?.loansDebt}
-                  worksheetDoc={worksheet}
-                  onSubCalcSaved={handleSubCalcSaved}
-                />
-              )}
-            </FloatingCalcModal>
-          )}
+          {calcModal}
         </div>
       )}
     </div>

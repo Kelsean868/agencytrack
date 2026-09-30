@@ -1202,7 +1202,7 @@ export default function AgentDashboard() {
         />
       )}
 
-      {activeTab === 'money-needs' && <MoneyNeedsPanel onOpenTab={setActiveTab} />}
+      {activeTab === 'money-needs' && <MoneyNeedsPanel onOpenTab={setActiveTab} look={fr ? 'fr' : 'nexus'} />}
 
       {/* ── GOALS TAB ── */}
       {activeTab === 'goals' && (
