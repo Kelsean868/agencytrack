@@ -1129,6 +1129,7 @@ export default function AgentDashboard() {
             hierarchyLoading={hierarchyLoading}
             hierarchyError={hierarchyError}
             ytdTotals={ytdTotals}
+            onOpenTrophies={fr ? () => setActiveTab('trophies') : undefined}
           />
         )
       )}

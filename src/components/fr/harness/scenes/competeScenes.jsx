@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import FrTrophyRoomView from '../../compete/FrTrophyRoomView';
 import FrCampaignView from '../../compete/FrCampaignView';
+import CareerTrophiesCardView from '../../compete/CareerTrophiesCardView';
 import CampaignPolicyList from '../../../campaigns/CampaignPolicyList';
 import { derivePolicyLens } from '../../../../lib/policyCampaignLens';
 import { buildCampaignPolicyGroups } from '../../../../lib/campaignPolicyGroups';
@@ -102,6 +103,21 @@ function AwardSamplesScene() {
   );
 }
 
+// R2-5: the Career card that replaced the badge grid (R-c) — the engine count
+// (badges + levels) and the way into the Trophy room; loading and error states too.
+function CareerCardScene({ variant }) {
+  const room = useMemo(() => trophyRoom(ENTRY[variant] ?? ENTRY.A), [variant]);
+  return (
+    <Frame>
+      <div className="mx-auto flex max-w-[720px] flex-col gap-6">
+        <CareerTrophiesCardView room={room} onOpen={() => {}} />
+        <CareerTrophiesCardView loading onOpen={() => {}} />
+        <CareerTrophiesCardView error onRetry={() => {}} onOpen={() => {}} />
+      </div>
+    </Frame>
+  );
+}
+
 function CampaignScene() {
   const slot = (c) => (
     <section className="rounded-[18px] border border-border bg-card p-5">
@@ -171,6 +187,7 @@ function HeadersScene({ variant }) {
 export const COMPETE_SCENES = [
   { id: 'trophy-room', title: 'Compete · Trophy room', slice: 'FR-5', viewport: 'desktop,phone', hasVariants: true, render: TrophiesScene },
   { id: 'trophy-awards', title: 'Compete · Trophy room award samples (A · B)', slice: 'FR-5', viewport: 'desktop,phone', render: AwardSamplesScene },
+  { id: 'career-trophies', title: 'Career · Your badges and trophies card', slice: 'FR-5', viewport: 'desktop,phone', render: CareerCardScene },
   { id: 'campaign', title: 'Compete · Campaign', slice: 'FR-5', viewport: 'desktop,phone', render: CampaignScene },
   { id: 'campaign-policies', title: 'Compete · Campaign — policies in this campaign', slice: 'R2-4', viewport: 'desktop,tablet,phone', render: CampaignPoliciesScene },
   { id: 'compete-headers', title: 'Arena + Me headers', slice: 'FR-5', viewport: 'desktop,phone', hasVariants: true, render: HeadersScene },
