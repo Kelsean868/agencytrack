@@ -122,9 +122,12 @@ export const PROBE = () => {
   }
 
   // 3 — overlap (in-flow visible siblings)
+  // Plain inline boxes are left out: a wrapped inline span's bounding box
+  // covers every line it touches, so the next span on its last line would
+  // "intersect" it while nothing overlaps on screen.
   const inFlow = (el) => {
     const cs = getComputedStyle(el);
-    return ['static', 'relative', 'sticky'].includes(cs.position) && cs.display !== 'contents' && !cs.transform.startsWith('matrix(-');
+    return ['static', 'relative', 'sticky'].includes(cs.position) && !['contents', 'inline'].includes(cs.display) && !cs.transform.startsWith('matrix(-');
   };
   for (const parent of [root, ...all]) {
     if (inPager(parent)) continue;
