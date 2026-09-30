@@ -83,6 +83,26 @@ describe('PersistencyOutlookHero', () => {
     expect(screen.getByTestId('assumptions-export').textContent).toContain('15 Sep 2026 · 8 days ago');
   });
 
+  it('R2-2: the annuity rule switch is visible at once, under the headline figures and above the folded assumptions', () => {
+    render(<PersistencyOutlookHero outlook={outlookOf()} annuityRule="ignore" onAnnuityRuleChange={() => {}} />);
+    const sw = screen.getByTestId('annuity-rule-switch');
+    expect(screen.queryByTestId('persistency-outlook-assumptions')).not.toBeInTheDocument();
+    expect(sw).toBeVisible();
+    // DOM order: the figure comes first, then the switch.
+    const figure = screen.getByTestId('persistency-outlook-derived');
+    expect(figure.compareDocumentPosition(sw) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The assumptions block keeps its "Rule:" line and no longer holds a second switch.
+    fireEvent.click(screen.getByTestId('persistency-outlook-info'));
+    expect(screen.getByTestId('assumptions-rule').textContent).toContain('ignored');
+    expect(screen.getAllByTestId('annuity-rule-switch')).toHaveLength(1);
+    expect(screen.getByTestId('persistency-outlook-assumptions').contains(sw)).toBe(false);
+  });
+
+  it('R2-2: no switch is rendered when no change handler is given', () => {
+    render(<PersistencyOutlookHero outlook={outlookOf()} />);
+    expect(screen.queryByTestId('annuity-rule-switch')).not.toBeInTheDocument();
+  });
+
   it('renders the stale banner, the empty state and the error state', () => {
     const stale = buildPersistencyOutlook({ policies: BOOK, today: '2026-11-15' });
     const { rerender } = render(<PersistencyOutlookHero outlook={stale} />);

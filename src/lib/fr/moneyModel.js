@@ -66,7 +66,7 @@ export function monthLabel(key) {
 }
 
 /** "2026-09" → "Sep 26" (compact axis label). */
-function monthAxisLabel(key) {
+export function monthAxisLabel(key) {
   const p = parseMonthKey(key);
   return p ? `${MONTH_SHORT[p.m - 1]} ${String(p.y).slice(2)}` : '';
 }
