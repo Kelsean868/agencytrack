@@ -2007,3 +2007,31 @@ An agent who switches on "Try the new design" now gets Focus (who to call today 
 An agent who switches on "Try the new design" now has the whole FR agent app: Today, Focus, Week, Pipeline, Numbers, the Policy Ledger, Money with its six calculators, the Leaderboard with their own standing on top, Campaign, Awards, a Trophy room (the badges and levels the points engine already awards, with what earns each), Me, Career and Connections. Every existing screen is still reachable and unchanged underneath. Nobody who has not opted in sees any change. No rules, functions or indexes changed across the program.
 
 **Next:** the green-channel FR-3 planner-nits PR; FR-5b (award helper, then award trophies; human-merge); the read-only preview click-through with the opt-in on (FR-0 to FR-5); FR-6 (Mark reinstated) is a separate brief. App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
+
+## Archived 2026-09-30 (consolidated post-#1022–#1031 fill — Rule 16 caps)
+
+### Last updated — entry 3 (FR-5b award trophies + FR-3 planner nits, #1006 / #1007 / #1008)
+
+**FR-5b award trophies + FR-3 planner nits SHIPPED (2026-09-28); one consolidated fill for #1006, #1007 and #1008.** **#1008** squash `71e22c3e` (feature-branch HEAD `c41c2e9a`: a merge of `main` that resolved the adjacent `docs/FOLLOW_UPS.md` index-row conflict with #1006, keeping both deletions; CI green on it). The award inputs and view moved into the pure `src/lib/awards/agentAwardModel.js`; the Awards tab calls it, and its characterization tests are byte-identical before and after the move. Under the FR opt-in the Trophy room gains an Awards shelf: the engine's awards mapped to trophy kinds, lit only when `eligible` ("Qualified — Sep 2026 / Q3 2026 / 2026"; never "won", never a prize amount), from the dashboard's unfiltered ledger with no new read. **#1006** squash `4cf61be9` (HEAD `7826acfa`): the planner footnote reads `SOON_MONTHS`; `agesOutSoon` boundary test; the FR-4 opt-out test now visits the Numbers and Ledger tabs (all mutation-checked). **#1007** `a6f1e9fc` is docs-only (Rule 16(b)): FR-6 recon, CI flake recurrence FU, AgentDashboard uid-binding hardening FU.
+
+### Current main HEAD — entry 3 (`71e22c3e`, FR-5b)
+
+`71e22c3e` (PR #1008 squash - FR-5b award trophies, 2026-09-28). Merge `2026-09-28T15:14:02Z`. Same cycle: `4cf61be9` (PR #1006 squash - FR-3 planner nits, merge `2026-09-28T15:05:04Z`); #1007 `a6f1e9fc` is docs-only and not tracked here (Rule 16(b)). **No deploy-gated surfaces touched** (`git diff --stat 7a909b5d..71e22c3e -- firestore.rules firestore.indexes.json storage.rules functions/` is empty).
+
+### Active track — entry 3 (FR-0 to FR-5 and FR-5b complete)
+
+**FR agent redesign program — FR-0 to FR-5 and FR-5b COMPLETE; planner nits closed** (#1006 `4cf61be9`, #1008 `71e22c3e`). Everything still sits behind the per-user agent opt-in; the tenant default is unchanged. Queued: (1) the read-only preview click-through with the opt-in on — desktop done 28-09-2026 on production, phone width still open (FOLLOW_UPS § FR preview click-through); four findings banked from it, incl. MEDIUM § FR Today persistency reads the latest record; (2) FR-6 Mark reinstated — recon landed in #1007 (`docs/audits/fr-6-mark-reinstated-recon.md`): Option A, an agent-declared overlay, recommended provisionally; the existing monthly `reinstatements` input is ruled (Kyron 28-09-2026: keep it as it is, counted in persistency); before a brief it still needs the three falsification checks and a ruling on Option A (rules + deploy, human-merge); (3) LOW hardening: key `AgentDashboard` by tenant:uid (FOLLOW_UPS § AgentDashboard state not bound to the signed-in uid). Flipping FR to the default is out of scope (brief FR-D12).
+
+### Recently shipped — oldest row
+
+| PR | SHA | Description |
+|---|---|---|
+| [#1004](https://github.com/Kelsean868/agencytrack/pull/1004) | `83318db8` | **feat(fr): FR-5 Compete / You.** Under the FR opt-in only: Trophy room (engine badges + levels from `leaderboard/{uid}`, lit only when the engine wrote them; no award trophies yet — FR-5b), Campaign route (existing campaign screen), Arena header (own rank, API, gap above) and Me header (level, points, streak, trophies). Closes FR-0 to FR-5. |
+
+### Where we left off — PRIOR block (FR-5b, #1008)
+
+**PRIOR - 2026-09-28. FR-5b award trophies merged as `71e22c3e` (#1008); FR-3 planner nits as `4cf61be9` (#1006); FR-6 recon (docs) as `a6f1e9fc` (#1007).**
+
+With the new design switched on, the Trophy room now also shows the awards: the ones the Awards tab already tracks for that agent, lit only when the agent currently qualifies for this month, quarter or year, and otherwise showing how close they are and what is left. The Awards tab now computes from the same shared helper, and characterization tests prove its output did not change. The planner footnote follows its setting, and the FR-4 opt-out test can now fail. No rules, functions or indexes changed.
+
+**Next:** Kyron's ruling on FR-6 (recon in `docs/audits/fr-6-mark-reinstated-recon.md`: Option A recommended, provisional; the existing monthly `reinstatements` input: ruled 28-09-2026, kept as it is, counted in persistency); the phone-width click-through (desktop done 28-09-2026); the MEDIUM FR Today persistency fix; the one-line `AgentDashboard` key hardening (LOW). The `AgentPlannerPanel.weeknav` flake hit twice on 28 Sep (#1007, #1008). App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.

@@ -74,3 +74,32 @@
 - Any rules change, new collection or index: **STOP and wait for dispatcher**.
 - R2-1b expectation changes outside its table: **STOP and wait for dispatcher**.
 - Anything that would touch production data, deploy, or merge: **STOP IMMEDIATELY**.
+
+## 4. Round 2b follow-ups (Kyron, 30-09-2026)
+
+**Rulings (30-09-2026) — locked:**
+- **R2-1b:** payouts are judged on 2 decimals. 89.994 → 89.99 → not paid. Confirmed (settles #1027's STOP).
+- **R2-3b load order:** option A — defaults → saved settings → the Money-needs hand-off once (then cleared) → history ratios only where nothing is saved. Pre-tax flag: **A+** — save `playgroundPreTaxAlreadyApplied` with the assumptions. If the goals rules reject the new key: **STOP and wait for dispatcher** (park the slice).
+- **Leaderboard ranking source** (weekly reports vs ledger): not now — stays banked.
+
+**Channel:** every slice is `human-merge`, one PR each, cut fresh from `origin/main`.
+
+| # | Item | Model / effort |
+|---|---|---|
+| F-1 | `lapsePolicy` stamps status provenance (HIGH, from A-1) | Opus 5.5 / medium |
+| F-2 | Career level inputs: years of service and API | Opus 5.5 / high |
+
+### F-1 — `lapsePolicy` passes rules Arm D
+- **Source (verified 30-09-2026 on `02c6dfdd`):** `lapsePolicy` (`src/services/policiesService.js`, near line 447) writes `{ status: 'lapsed', statusUpdatedAt, dateLapsed, lapseReason? }` with no provenance. `transitionPolicyStatus` in the same file stamps `statusSource` / `statusSetBy` / `statusAsOf` (near lines 216-218). Arm D requires `setsOwnStatusProvenance()`. Evidence: FOLLOW_UPS § A-1: lapsePolicy fails Arm D without status provenance.
+- **Phase 1:** `git grep -n "statusSource\|statusSetBy\|statusAsOf" -- src/services/policiesService.js` and `git grep -n "setsOwnStatusProvenance" -- firestore.rules`; quote both.
+- **Fix:** in `lapsePolicy`, stamp `statusSource: STATUS_SOURCE_MANAGER`, `statusSetBy: <the manager's uid>`, `statusAsOf: getTodayTT()` exactly as `transitionPolicyStatus` does, and add them to `changedFields` in the history doc. **No rules change.** Any rules change: **STOP and wait for dispatcher**.
+- **Tests:** a unit test pins the exact update payload. An emulator rules test sends that exact payload (imported from, or byte-equal to, the service's payload — never a hand-written superset) for all five A-1 cases: settled by the agent · by the head-office import (`oipa_import`) · by another manager · by this same BM · legacy with no provenance. All five ALLOW with the new payload; the old payload is kept as a DENY case for the four A-1 denials. Mutation check: drop one provenance field → the rules test fails.
+- **Out of scope (banked in A-1, decide separately):** Arm D does not check `isHeadOfficeStatus`, so a BM can lapse a head-office-settled policy. Do not change it here.
+
+### F-2 — Career level inputs
+- **Source (verified 30-09-2026 on `02c6dfdd`):** `careerStats` (`src/lib/career/careerModel.js`) computes `yearsOfService` from `user.startDate`, which nothing writes; user docs carry `contractStartDate` (`YYYY-MM-DD`, stamped `''` by `doCreateUser`). `careerStats` (`ytdAPI`), `computeQuarterlyAPI`, `quarterlyAPISeries` and `compute2YearAverageAPI` (`src/utils/careerLevelHelpers.js`) read only `s.apiSold`; v2 reports store `newBusiness.api`, which `extractFields` reads (`version === 2 ? newBusiness.api : apiSold || api || annualPremium`). Evidence: FOLLOW_UPS § Career level inputs: startDate and apiSold.
+- **Phase 1:** `git grep -n "startDate" -- src functions | grep -v -i "campaign\|contractStartDate"` (no writer), `git grep -n "apiSold" -- src/lib/career src/utils/careerLevelHelpers.js`, and the `extractFields` API line; quote all three.
+- **Commit 1 — characterization tests first:** a fixture table (v1-only, v2-only, mixed; `contractStartDate` `''` / absent / invalid / 1.9 y / 2.0 y / 5 y; `startDate` set with `contractStartDate` absent) pinning today's level, `yearsOfService`, `ytdAPI`, `trailing2YrAPI` and the quarterly series.
+- **Commit 2 — the change:** years of service from `contractStartDate` (`''`, absent or not `YYYY-MM-DD` → `null`, as today's missing `startDate`); API through `extractFields(s).apiSold` in all four readers. `startDate` is no longer read. **Level thresholds unchanged.** Only the expectations the change explains may move; the PR body shows the fixture table **level before → after**. Any other expectation change: **STOP and wait for dispatcher**.
+- **Not in scope:** `ytdApps` reads `applicationsSold || appsSold` (v1 only) — the same defect for applications, not covered by the ruling. Consequence: an agent whose reports are all v2 still has `ytdApps = 0`, fails every level's `minApps`, and stays at level 1 after F-2. Leave it (a scope change needs a ruling, Rule 1); bank it in the PR's gaps and as a FOLLOW_UPS entry. Ledger-based (settled) API is also not in scope.
+- **No production data reads.** Human-merge (agent-facing verdict: level, title, unlocks).
