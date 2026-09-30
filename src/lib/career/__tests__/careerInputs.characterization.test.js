@@ -21,6 +21,10 @@ const PERS = [{ year: 2026, month: 1 }];
 const v1 = (weekStarting, api, apps = 0) => ({ status: 'submitted', weekStarting, apiSold: api, applicationsSold: apps });
 // One submitted weekly report in the v2 wizard shape (API under newBusiness).
 const v2 = (weekStarting, api, apps = 0) => ({ status: 'submitted', version: 2, weekStarting, newBusiness: { api, apps } });
+// A report in the nested (step-grouped) schema that extractFields also reads.
+const nested = (weekStarting, api, apps = 0) => ({ status: 'submitted', weekStarting, step1: {}, step4: { apiSold: api, applicationsSold: apps } });
+// A legacy v1 report that stored applications as `appsSold`.
+const legacyApps = (weekStarting, api, apps = 0) => ({ status: 'submitted', weekStarting, apiSold: api, appsSold: apps });
 // A legacy v1 report that stored API as `api`, not `apiSold`.
 const legacyApi = (weekStarting, api, apps = 0) => ({ status: 'submitted', weekStarting, api, applicationsSold: apps });
 
@@ -39,6 +43,10 @@ const ROWS = [
   { name: 'I contractStartDate 5.1 y · 600,000 avg, 52 apps', user: { contractStartDate: '2021-09-01' }, subs: [v1('2025-03-02', 600000), v1('2026-02-01', 600000, 52)] },
   { name: 'J legacy `api` field only · 3.7 y', user: { contractStartDate: '2023-01-15' }, subs: [legacyApi('2025-03-02', 300000), legacyApi('2026-02-01', 300000, 42)] },
   { name: 'K no user fields', user: {}, subs: V1_PRODUCTION },
+  // F-3 rows (applications).
+  { name: 'L nested schema (step4) · 3.7 y', user: { contractStartDate: '2023-01-15' }, subs: [nested('2025-03-02', 300000), nested('2026-02-01', 300000, 42)] },
+  { name: 'M legacy `appsSold` · 3.7 y', user: { contractStartDate: '2023-01-15' }, subs: [legacyApps('2025-03-02', 300000), legacyApps('2026-02-01', 300000, 42)] },
+  { name: 'N v2 only, 41 apps (one short of level 2) · 3.7 y', user: { contractStartDate: '2023-01-15' }, subs: [v2('2025-03-02', 300000), v2('2026-02-01', 300000, 41)] },
 ];
 
 function outcome({ user, subs }) {

@@ -120,3 +120,36 @@ exports[`Career level inputs — characterization (F-2) > 'K no user fields' 1`]
   "ytdApps": 42,
 }
 `;
+
+exports[`Career level inputs — characterization (F-2) > 'L nested schema (step4) · 3.7 y' 1`] = `
+{
+  "level": 1,
+  "quarters": "0,0,0,0,0,0,300,300",
+  "trailing2YrAPI": 300000,
+  "years": 3.71,
+  "ytdAPI": 300000,
+  "ytdApps": 0,
+}
+`;
+
+exports[`Career level inputs — characterization (F-2) > 'M legacy \`appsSold\` · 3.7 y' 1`] = `
+{
+  "level": 2,
+  "quarters": "0,0,0,0,0,0,300,300",
+  "trailing2YrAPI": 300000,
+  "years": 3.71,
+  "ytdAPI": 300000,
+  "ytdApps": 42,
+}
+`;
+
+exports[`Career level inputs — characterization (F-2) > 'N v2 only, 41 apps (one short of leve…' 1`] = `
+{
+  "level": 1,
+  "quarters": "0,0,0,0,0,0,300,300",
+  "trailing2YrAPI": 300000,
+  "years": 3.71,
+  "ytdAPI": 300000,
+  "ytdApps": 0,
+}
+`;
