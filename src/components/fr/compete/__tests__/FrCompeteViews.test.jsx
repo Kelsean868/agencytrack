@@ -93,6 +93,93 @@ describe('FrTrophyRoomView — award trophies (FR-5b)', () => {
   });
 });
 
+describe('FrTrophyRoomView — hero chart row (R2-5)', () => {
+  const NOW = new Date('2026-09-15T16:00:00Z');
+  const crit = (label, target, current, unit) => ({ label, target, current, unit });
+  const AWARDS = awardTrophies({
+    awards: {
+      quarterly_api: { id: 'quarterly_api', name: 'Quarterly API Award', category: 'quarterly', eligible: true, criteria: [crit('Quarterly API', 125000, 135000, 'TTD')] },
+      advisor_month_api: { id: 'advisor_month_api', name: 'Advisor of the Month — API', category: 'monthly', eligible: false, criteria: [crit('Monthly API', 50000, 30000, 'TTD')] },
+    },
+  }, NOW);
+  const AROOM = trophyRoom({ badges: ['first_submission'], points: 2100, weeklyStreak: 2 }, AWARDS);
+
+  it('Your level is a Donut: points into the level vs to the next, the centre is the level name', () => {
+    render(<FrTrophyRoomView room={ROOM} />);
+    const card = screen.getByTestId('trophy-level');
+    // 2,100 pts: Pro starts at 1,500 → 600 in, 1,400 to Elite (3,500); 30% / 70%.
+    expect(within(card).getByRole('img')).toHaveAttribute('aria-label', 'This level 600 (30%), To Elite 1,400 (70%)');
+    expect(card.querySelectorAll('[data-part="arc"]')).toHaveLength(2);
+    expect(within(card).getAllByText('Pro').length).toBeGreaterThan(0);
+    expect(card).toHaveTextContent('2,100 pts');
+    expect(screen.getByTestId('trophy-level-next')).toHaveTextContent('1,400 points to Elite.');
+  });
+
+  it('top level: a single full part and no "to next" figure', () => {
+    render(<FrTrophyRoomView room={trophyRoom({ badges: [], points: 7000, weeklyStreak: 1 })} />);
+    const card = screen.getByTestId('trophy-level');
+    expect(within(card).getByRole('img')).toHaveAttribute('aria-label', 'Points 7,000 (100%)');
+    expect(screen.getByTestId('trophy-level-next')).toHaveTextContent('You are at the top level.');
+    // CodeRabbit (#1018): no "next level" wording when there is no next level.
+    expect(card).toHaveTextContent('Your points at the top level');
+    expect(card).not.toHaveTextContent(/toward the next level/i);
+    fireEvent.click(within(card).getByRole('button', { name: 'Table' }));
+    expect(within(card).getByRole('table')).toHaveAccessibleName('Your points at the top level');
+  });
+
+  it('below the top level the subtitle and table caption talk about the next level', () => {
+    render(<FrTrophyRoomView room={ROOM} />);
+    const card = screen.getByTestId('trophy-level');
+    expect(card).toHaveTextContent('Points toward the next level');
+    fireEvent.click(within(card).getByRole('button', { name: 'Table' }));
+    expect(within(card).getByRole('table')).toHaveAccessibleName('Points toward your next level');
+  });
+
+  it('Earned is a Donut of badges, levels and locked that adds up to the header count', () => {
+    render(<FrTrophyRoomView room={ROOM} />);
+    const card = screen.getByTestId('trophy-earned');
+    // 3 badges + 3 levels (Rookie, Associate, Pro) earned; 14 in all → 8 locked.
+    expect(within(card).getByRole('img')).toHaveAttribute('aria-label', 'Badges 3 (21%), Levels 3 (21%), Locked 8 (57%)');
+    expect(within(card).getByRole('heading', { name: '6 of 14 earned' })).toBeInTheDocument();
+    expect(card).toHaveTextContent('of 14');
+  });
+
+  it('Award progress is a MeterList of the engine awards (qualified = 100%), with the awards in the earned donut', () => {
+    render(<FrTrophyRoomView room={AROOM} />);
+    const card = screen.getByTestId('trophy-award-progress');
+    expect(within(card).getByRole('heading', { name: '1 of 2 awards qualified' })).toBeInTheDocument();
+    const rows = within(card).getAllByRole('listitem');
+    expect(rows).toHaveLength(2);
+    // Engine order (AWARD_TROPHY_KIND): Advisor of the Month first.
+    expect(rows[0]).toHaveTextContent('Advisor of the Month — API');
+    expect(rows[0]).toHaveTextContent('60%');
+    expect(rows[1]).toHaveTextContent('Quarterly API Award');
+    expect(rows[1]).toHaveTextContent('100%');
+    expect(within(screen.getByTestId('trophy-earned')).getByRole('img')).toHaveAttribute('aria-label', expect.stringContaining('Awards 1 ('));
+  });
+
+  it('Award progress: loading skeleton, error with Retry, and no fake meters', () => {
+    const onRetryAwards = vi.fn();
+    const { rerender } = render(<FrTrophyRoomView room={ROOM} awardsState="loading" />);
+    expect(screen.getByTestId('trophy-award-progress').querySelector('[aria-busy="true"]')).toBeTruthy();
+    rerender(<FrTrophyRoomView room={ROOM} awardsState="error" onRetryAwards={onRetryAwards} />);
+    fireEvent.click(within(screen.getByTestId('trophy-award-progress')).getByRole('button', { name: 'Retry' }));
+    expect(onRetryAwards).toHaveBeenCalled();
+    rerender(<FrTrophyRoomView room={ROOM} />);
+    expect(within(screen.getByTestId('trophy-award-progress')).queryAllByRole('listitem')).toHaveLength(0);
+    expect(screen.getByTestId('trophy-award-progress')).toHaveTextContent('No award has measured progress');
+  });
+
+  it('every hero chart has a Table toggle carrying the same values', () => {
+    render(<FrTrophyRoomView room={AROOM} />);
+    const card = screen.getByTestId('trophy-earned');
+    fireEvent.click(within(card).getByRole('button', { name: 'Table' }));
+    const table = within(card).getByRole('table');
+    expect(within(table).getByText('Badges').closest('tr')).toHaveTextContent('1');
+    expect(within(table).getByText('Locked').closest('tr')).toHaveTextContent(String(AROOM.total - AROOM.earnedCount));
+  });
+});
+
 describe('FrCampaignView', () => {
   it('mounts the existing campaign screen for each active campaign', () => {
     const renderCampaign = vi.fn((c) => <div data-testid={`screen-${c.id}`} />);
