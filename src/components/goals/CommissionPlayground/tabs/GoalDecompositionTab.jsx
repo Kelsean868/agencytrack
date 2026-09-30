@@ -280,13 +280,24 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   // A failed read falls back to the defaults (the same contract as before).
   const [settingsLoading, setSettingsLoading] = useState(Boolean(tenantId && agentId));
   const savedRatioKeysRef = useRef(new Set());
+  // Which ratios on screen came from the agent's history (not from saved
+  // assumptions) — the "From your history" labels follow this, per ratio.
+  const [historyRatioKeys, setHistoryRatioKeys] = useState(() => new Set());
+  const fromHistory = (key) => historyRatioKeys.has(key);
 
   useEffect(() => {
     let alive = true;
     const applyHandoff = () => {
       const stored = localStorage.getItem('agencytrack-playground-income-goal');
       if (!stored) return;
-      const parsed = JSON.parse(stored);
+      let parsed;
+      try {
+        parsed = JSON.parse(stored);
+      } catch {
+        // A malformed hand-off must not hold the tab on its loading state.
+        localStorage.removeItem('agencytrack-playground-income-goal');
+        return;
+      }
       const isObj = parsed !== null && typeof parsed === 'object';
       const val = isObj ? parseFloat(parsed.value) : parseFloat(parsed);
       const flag = isObj && parsed.preTaxAlreadyApplied === true;
@@ -301,21 +312,30 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
     };
     if (!tenantId || !agentId) {
       applyHandoff();
+      setSettingsLoading(false);
       return undefined;
     }
+    // A new target (tenant / agent) starts from the defaults, not from the
+    // previous target's values (CodeRabbit on #1029).
+    setSettingsLoading(true);
     Promise.resolve()
       .then(() => getGoals(tenantId, agentId))
       .then((goals) => {
         if (!alive) return;
         const saved = savedPlaygroundSettings(goals);
         savedRatioKeysRef.current = new Set(['ciToSaleRatio', 'dialsToCIRatio'].filter((k) => k in saved.inputs));
-        setInputs((prev) => ({ ...prev, ...saved.inputs }));
-        if (saved.amount != null) {
-          setIncomeAmount(saved.amount);
-          setIncomePeriod(saved.period);
-        }
+        setInputs({ ...DEFAULT_DECOMPOSITION_INPUTS, ...saved.inputs });
+        setIncomeAmount(saved.amount ?? DEFAULT_DECOMPOSITION_INPUTS.incomeGoal);
+        setIncomePeriod(saved.amount != null ? saved.period : DEFAULT_INCOME_GOAL_PERIOD);
       })
-      .catch(() => { /* no saved assumptions readable → the defaults stay */ })
+      .catch(() => {
+        // No saved assumptions readable → the defaults.
+        if (!alive) return;
+        savedRatioKeysRef.current = new Set();
+        setInputs({ ...DEFAULT_DECOMPOSITION_INPUTS });
+        setIncomeAmount(DEFAULT_DECOMPOSITION_INPUTS.incomeGoal);
+        setIncomePeriod(DEFAULT_INCOME_GOAL_PERIOD);
+      })
       .finally(() => {
         if (!alive) return;
         applyHandoff();
@@ -334,6 +354,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
     // over the history-derived one.
     if (hasHistory && !settingsLoading) {
       const saved = savedRatioKeysRef.current;
+      setHistoryRatioKeys(new Set(['ciToSaleRatio', 'dialsToCIRatio'].filter((k) => !saved.has(k))));
       setInputs((prev) => ({
         ...prev,
         ...(saved.has('ciToSaleRatio') ? {} : { ciToSaleRatio: parseFloat(autoCiToSale.toFixed(2)) }),
@@ -432,7 +453,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
 
   return (
     <div className="flex flex-col gap-5">
-      {hasHistory && (
+      {historyRatioKeys.size > 0 && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
           <History size={14} className="text-primary shrink-0" />
           <p className="text-xs text-primary">
@@ -487,7 +508,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
             onChange={setField('ciToSaleRatio')}
             step={0.1}
             min={0.1}
-            badge={hasHistory ? 'From your history' : undefined}
+            badge={fromHistory('ciToSaleRatio') ? 'From your history' : undefined}
           />
           <NumField
             label="Calls per CI"
@@ -495,7 +516,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
             onChange={setField('dialsToCIRatio')}
             step={0.1}
             min={0.1}
-            badge={hasHistory ? 'From your history' : undefined}
+            badge={fromHistory('dialsToCIRatio') ? 'From your history' : undefined}
           />
           <NumField label="Prospects per Call" value={inputs.prospectRatio} onChange={setField('prospectRatio')} step={0.1} min={0.1} />
         </div>
@@ -506,7 +527,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
         inputs={inputs}
         freqKey={freqKey}
         onFreqChange={setFreqKey}
-        hasHistory={hasHistory}
+        hasHistory={fromHistory('dialsToCIRatio')}
         preTaxAlreadyApplied={preTaxAlreadyApplied}
       />
 

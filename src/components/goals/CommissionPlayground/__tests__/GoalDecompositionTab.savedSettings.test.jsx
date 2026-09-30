@@ -129,3 +129,37 @@ describe('R2-3b — saved assumptions load back', () => {
     expect(savedPlaygroundSettings(null)).toEqual({ inputs: {}, period: 'annual', amount: null });
   });
 });
+
+describe('R2-3b review fixes (CodeRabbit on #1029)', () => {
+  it('a malformed hand-off does not hold the tab on loading, and is removed', async () => {
+    localStorage.setItem(HANDOFF, '{not json');
+    await open();
+    expect(val('Income Goal (TTD)')).toBe('300000');
+    expect(localStorage.getItem(HANDOFF)).toBeNull();
+  });
+
+  it('a new target starts from the defaults, not from the previous target\'s values', async () => {
+    goalsMock.getGoals.mockImplementation((_t, agentId) => Promise.resolve(
+      agentId === 'a1' ? { playgroundSettlementRate: 70, playgroundIncomeGoal: 240000, playgroundIncomeGoalPeriod: 'monthly' } : {},
+    ));
+    const { rerender } = render(<GoalDecompositionTab {...PROPS} />);
+    await waitFor(() => expect(screen.queryByTestId('commission-settings-loading')).toBeNull());
+    expect(val('Settlement Rate (%)')).toBe('70');
+    rerender(<GoalDecompositionTab {...PROPS} agentId="a2" />);
+    await waitFor(() => expect(screen.queryByTestId('commission-settings-loading')).toBeNull());
+    await waitFor(() => expect(val('Settlement Rate (%)')).toBe('90'));
+    expect(val('Income Goal (TTD)')).toBe('300000');
+    expect(screen.getByTestId('income-goal-period').value).toBe('annual');
+  });
+
+  it('"From your history" labels only the ratios history actually filled', async () => {
+    const history = Array.from({ length: 10 }, () => ({
+      status: 'submitted', ciConducted: 4, applicationsSold: 1, referralCalls: 6, followUpCalls: 2, coldCalls: 2, seminarTradeshowCalls: 0,
+    }));
+    goalsMock.getGoals.mockResolvedValue({ playgroundCiToSaleRatio: 1.5 });
+    await open({ submissions: history });
+    const label = (text) => screen.getByText(text, { selector: 'label' }).parentElement;
+    await waitFor(() => expect(label('Calls per CI').textContent).toContain('From your history'));
+    expect(label('CIs per Sale').textContent).not.toContain('From your history');
+  });
+});
