@@ -1130,6 +1130,7 @@ export default function AgentDashboard() {
             hierarchyLoading={hierarchyLoading}
             hierarchyError={hierarchyError}
             ytdTotals={ytdTotals}
+            onOpenTrophies={fr ? () => setActiveTab('trophies') : undefined}
           />
         )
       )}
@@ -1295,7 +1296,7 @@ export default function AgentDashboard() {
       )}
 
       {/* ── PERSISTENCY TAB ── */}
-      {activeTab === 'persistency' && <AgentPersistencyTab onViewLapsedPolicies={handleOpenLapsedPolicies} activeCampaigns={activeCampaigns} />}
+      {activeTab === 'persistency' && <AgentPersistencyTab onViewLapsedPolicies={handleOpenLapsedPolicies} activeCampaigns={activeCampaigns} fr={fr} />}
 
       {/* ── PRODUCTION REPORT TAB ── */}
       {activeTab === 'production-report' && (

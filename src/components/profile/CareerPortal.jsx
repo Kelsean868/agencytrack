@@ -9,6 +9,7 @@ import { aggregatePersistency } from '../../lib/persistency/calculations';
 import { useAuth } from '../../context/AuthContext';
 import BadgeGrid from '../gamification/BadgeGrid';
 import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
+import CareerTrophiesCard from '../fr/compete/CareerTrophiesCard';
 
 const CAREER_LEVELS = [
   { level: 1, title: 'Salesperson',    minApi: 200000, minApps: 42, minPersistency: 90, minYears: 0  },
@@ -787,7 +788,11 @@ function GoalsSection() {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function CareerPortal({ submissions, user, persistencyData, ytdTotals: _ytdTotals }) {
+// `onOpenTrophies` is passed only under the FR look (R2-5, ruling R-c): the Trophy
+// room exists only there (AgentDashboard FR_ONLY_FALLBACK sends `trophies` back to
+// Career under Nexus), so without it the Nexus look keeps its badge grid as before.
+export default function CareerPortal({ submissions, user, persistencyData, ytdTotals: _ytdTotals, onOpenTrophies }) {
+  const { user: authUser, tenantId } = useAuth();
   const [drawerLevel, setDrawerLevel] = useState(null);
   const thisYear = CAREER_PORTAL_YEAR;
 
@@ -866,13 +871,18 @@ export default function CareerPortal({ submissions, user, persistencyData, ytdTo
       {/* Commitment scorecards */}
       <GoalsSection />
 
-      {/* Achievement badges */}
-      <section aria-labelledby="career-portal-achievements-heading" className="card">
-        <h3 id="career-portal-achievements-heading" className="text-sm font-semibold text-ink mb-4">
-          Achievement badges
-        </h3>
-        <BadgeGrid submissions={submissions} />
-      </section>
+      {/* Achievement badges — FR look: the badge grid lives in the Trophy room (R-c);
+          Career keeps a count card with a button there. Nexus look: unchanged. */}
+      {onOpenTrophies ? (
+        <CareerTrophiesCard tenantId={tenantId} uid={authUser?.uid} onOpen={onOpenTrophies} />
+      ) : (
+        <section aria-labelledby="career-portal-achievements-heading" className="card">
+          <h3 id="career-portal-achievements-heading" className="text-sm font-semibold text-ink mb-4">
+            Achievement badges
+          </h3>
+          <BadgeGrid submissions={submissions} />
+        </section>
+      )}
     </div>
 
       {/* Level drill drawer — outside `.stagger` (fixed-position overlay; see note above) */}
