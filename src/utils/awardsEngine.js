@@ -3,6 +3,7 @@ import { extractFields, extractTotalProductionCredit } from './extractFields';
 import { DEFAULT_RULESET_2026 } from '../config/awardsRuleset/2026';
 import { MDRT_THRESHOLDS_2026, mdrtAwardThresholds } from '../config/mdrtThresholds/2026';
 import { ymdTT } from './dateInputs';
+import { roundPersistencyPct } from '../lib/persistency/persistencyRounding';
 
 const p = (v) => parseFloat(v) || 0;
 
@@ -23,10 +24,13 @@ function getQuarterMonths(quarter, year) {
   return starts[quarter].map((m) => monthKey(year, m));
 }
 
+// Every persistency figure an award judges is rounded to 2 decimals, half up
+// (ruling 1, 29-09-2026): the criterion prints and passes on the same value,
+// so 89.995 meets a 90 gate and 89.994 does not.
 function avgPersistency(docs) {
   const vals = docs.map((d) => p(d.persistency)).filter((v) => v > 0);
   if (vals.length === 0) return 0;
-  return vals.reduce((s, v) => s + v, 0) / vals.length;
+  return roundPersistencyPct(vals.reduce((s, v) => s + v, 0) / vals.length);
 }
 
 function makeAward({ id, name, category, eligible, inContention, criteria, prize, dataSource, progressPercent, note = null }) {
@@ -186,7 +190,7 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
 
   const confPersistVals = annualConf.map((d) => p(d.persistency)).filter((v) => v > 0);
   const annualPersist = confPersistVals.length > 0
-    ? confPersistVals.reduce((s, v) => s + v, 0) / confPersistVals.length
+    ? roundPersistencyPct(confPersistVals.reduce((s, v) => s + v, 0) / confPersistVals.length)
     : 0;
 
   // Self/family business is excluded from every award's API and apps, but
@@ -462,7 +466,7 @@ export function computeManagerAwards(confirmedData, unitAgentIds, allAgentConfir
   const avgAPIPerAdvisor = agentCount > 0 ? totalAPI / agentCount : 0;
   const avgAppsPerAdvisor = agentCount > 0 ? totalApps / agentCount : 0;
   const persistVals = agentVals.map((a) => a.persist).filter((v) => v > 0);
-  const avgPersist = persistVals.length > 0 ? persistVals.reduce((s, v) => s + v, 0) / persistVals.length : 0;
+  const avgPersist = persistVals.length > 0 ? roundPersistencyPct(persistVals.reduce((s, v) => s + v, 0) / persistVals.length) : 0;
 
   const dataSource = annualConf.length > 0 ? 'confirmed' : 'estimated';
   const note = dataSource === 'estimated' ? 'Estimated — pending confirmation' : null;

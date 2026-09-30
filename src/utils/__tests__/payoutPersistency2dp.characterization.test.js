@@ -31,10 +31,10 @@ describe('campaign gate reading (today)', () => {
     });
     expect(rows).toMatchInlineSnapshot(`
       [
-        "89.49 → 89 → payout 0",
-        "89.5 → 90 → payout 1",
-        "89.6 → 90 → payout 1",
-        "89.994 → 90 → payout 1",
+        "89.49 → 89.49 → payout 0",
+        "89.5 → 89.5 → payout 0",
+        "89.6 → 89.6 → payout 0",
+        "89.994 → 89.99 → payout 0",
         "89.995 → 90 → payout 1",
         "89.996 → 90 → payout 1",
         "90 → 90 → payout 1",
@@ -49,10 +49,10 @@ describe('campaign gate reading (today)', () => {
     });
     expect(rows).toMatchInlineSnapshot(`
       [
-        "89.49 → 89 → payout 0",
-        "89.5 → 90 → payout 1",
-        "89.6 → 90 → payout 1",
-        "89.994 → 90 → payout 1",
+        "89.49 → 89.49 → payout 0",
+        "89.5 → 89.5 → payout 0",
+        "89.6 → 89.6 → payout 0",
+        "89.994 → 89.99 → payout 0",
         "89.995 → 90 → payout 1",
         "89.996 → 90 → payout 1",
         "90 → 90 → payout 1",
@@ -76,9 +76,9 @@ describe('award engine persistency criteria (today)', () => {
         "89.49 → current 89.49 met false · API award eligible false · apps award eligible false",
         "89.5 → current 89.5 met false · API award eligible false · apps award eligible false",
         "89.6 → current 89.6 met false · API award eligible false · apps award eligible false",
-        "89.994 → current 89.994 met false · API award eligible false · apps award eligible false",
-        "89.995 → current 89.995 met false · API award eligible false · apps award eligible false",
-        "89.996 → current 89.996 met false · API award eligible false · apps award eligible false",
+        "89.994 → current 89.99 met false · API award eligible false · apps award eligible false",
+        "89.995 → current 90 met true · API award eligible true · apps award eligible true",
+        "89.996 → current 90 met true · API award eligible true · apps award eligible true",
         "90 → current 90 met true · API award eligible true · apps award eligible true",
       ]
     `);

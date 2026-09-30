@@ -925,8 +925,8 @@ describe('savePersistency — meetsAwardGate at the gate (R2-1b characterization
         "89.5 → stored false",
         "89.6 → stored false",
         "89.994 → stored false",
-        "89.995 → stored false",
-        "89.996 → stored false",
+        "89.995 → stored true",
+        "89.996 → stored true",
         "90 → stored true",
       ]
     `);
