@@ -60,5 +60,10 @@
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^3.2.4",
     "xlsx": "^0.18.5"
+  },
+  "overrides": {
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "^1.14.5"
+    }
   }
 }
