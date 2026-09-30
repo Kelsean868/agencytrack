@@ -60,7 +60,7 @@ function RatioTrendCard({ label, value4w, value12w, trend, format, sparkValues, 
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function AgentAwardsPanel({ submissions, confirmedSettlements, agentProfile, currentDate, ruleset, activeCampaigns = [], persistency = [] }) {
+export default function AgentAwardsPanel({ submissions, confirmedSettlements, agentProfile, currentDate, ruleset, activeCampaigns = [], persistency = [], onOpenPolicy = null }) {
   const [activeCategory, setActiveCategory]  = useState('All');
   const [drawerAwardId, setDrawerAwardId]    = useState(null);
   const { tenantId } = useAuth();
@@ -292,6 +292,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
               persistencyRecords={persistency}
               loading={ledgerPolicies === null}
               error={ledgerError}
+              onOpenPolicy={onOpenPolicy}
             />
           ))}
         </div>

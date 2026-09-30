@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Plus, Upload, Loader2, AlertCircle, ArrowLeft, Info } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PROSPECTING_SOURCES } from '../../services/prospectInfoService';
@@ -95,10 +95,16 @@ const selectCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm 
 // transition, portfolio import) so a parent holding its own copy of the list —
 // the dashboard's production hero — can refetch instead of showing stale figures.
 //
+// `initialPolicyId` (optional, R2-4) is a hand-off from the Campaign screen's
+// "Change status": once the ledger has loaded, that policy's drill drawer opens
+// through the same `openDrawer` a tap on its card uses, so the status change runs
+// through this panel's own `handleTransition` — the one write path. Consumed
+// once per mount; `onInitialPolicyConsumed` lets the parent clear it.
+//
 // `persistency` (optional) is the agent's persistency records, as the dashboard
 // already holds them for the Awards tab and Home; with them the campaign card
 // shows its persistency ring. Omitted (e.g. a manager's own ledger) → no ring.
-export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, initialFilter, onPoliciesChanged, ruleset = DEFAULT_RULESET_2026, persistency = null }) {
+export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, initialFilter, initialPolicyId = null, onInitialPolicyConsumed, onPoliciesChanged, ruleset = DEFAULT_RULESET_2026, persistency = null }) {
   const { user, userProfile, tenantId, role } = useAuth();
   // Computed fresh per render so overnight-open sessions always show the real today.
   const today = getTodayTT();
@@ -172,6 +178,18 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
   useEffect(() => {
     if (initialForm) onPrefillConsumed?.();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // R2-4 — open the handed-off policy's drawer once the list has loaded. A
+  // policy that is no longer in the ledger simply opens nothing.
+  const pendingOpenIdRef = useRef(initialPolicyId);
+  useEffect(() => {
+    const id = pendingOpenIdRef.current;
+    if (!id || loading || loadError) return;
+    pendingOpenIdRef.current = null;
+    const target = policies.find((p) => p.id === id);
+    if (target) openDrawer(target);
+    onInitialPolicyConsumed?.();
+  }, [loading, loadError, policies]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;

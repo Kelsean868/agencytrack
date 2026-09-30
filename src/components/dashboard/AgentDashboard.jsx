@@ -165,6 +165,9 @@ export default function AgentDashboard() {
   const [plannerSeed, setPlannerSeed]         = useState(null);
   const [prefillPolicy, setPrefillPolicy]     = useState(null);
   const [policyLedgerFilter, setPolicyLedgerFilter] = useState(null);
+  // R2-4 — the Campaign screen's "Change status" hand-off: the id of the
+  // policy whose ledger drawer should open. Same lifetime as the filter above.
+  const [policyLedgerOpenId, setPolicyLedgerOpenId] = useState(null);
   const [showWizard, setShowWizard]           = useState(false);
   const [wizardWeek, setWizardWeek]           = useState(null);
   const [wizardInitialStep, setWizardInitialStep] = useState(1);
@@ -309,6 +312,7 @@ export default function AgentDashboard() {
     if (activeTab !== 'policy-ledger') {
       setPrefillPolicy(null);
       setPolicyLedgerFilter(null);
+      setPolicyLedgerOpenId(null);
     }
   }, [activeTab]);
 
@@ -320,6 +324,14 @@ export default function AgentDashboard() {
   // Home "Do next" → the Policy Ledger opened on one of its own filter chips.
   function handleOpenLedgerFilter(filter) {
     setPolicyLedgerFilter(filter);
+    setActiveTab('policy-ledger');
+  }
+
+  // R2-4 — Campaign screen "Change status" → the Policy ledger with that
+  // policy's drawer open. The change itself runs through the ledger's own
+  // drawer and write path; nothing is written from the Campaign screen.
+  function handleOpenLedgerPolicy(policyId) {
+    setPolicyLedgerOpenId(policyId);
     setActiveTab('policy-ledger');
   }
 
@@ -977,6 +989,7 @@ export default function AgentDashboard() {
           ledgerError={policiesError}
           persistency={persistency}
           onOpenAwards={() => setActiveTab('awards')}
+          onOpenPolicy={handleOpenLedgerPolicy}
         />
       )}
       {fr && activeTab === 'trophies' && (
@@ -1164,6 +1177,7 @@ export default function AgentDashboard() {
               currentDate={now}
               ruleset={awardsRuleset}
               persistency={persistency}
+              onOpenPolicy={handleOpenLedgerPolicy}
             />
           </div>
         )
@@ -1194,6 +1208,8 @@ export default function AgentDashboard() {
           initialForm={prefillPolicy}
           onPrefillConsumed={() => setPrefillPolicy(null)}
           initialFilter={policyLedgerFilter}
+          initialPolicyId={policyLedgerOpenId}
+          onInitialPolicyConsumed={() => setPolicyLedgerOpenId(null)}
           onPoliciesChanged={markPoliciesStale}
           ruleset={awardsRuleset}
           persistency={persistency}
