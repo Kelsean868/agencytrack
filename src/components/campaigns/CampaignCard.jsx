@@ -11,6 +11,7 @@ import {
 } from '../../utils/campaignEngine';
 import { derivePolicyLens } from '../../lib/policyCampaignLens';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 function DaysPill({ days }) {
   if (days > 7)  return <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary">{days} days left</span>;
@@ -95,7 +96,7 @@ function RetreatReadout({ campaign, lens, persistencyRecords }) {
         <p className="text-sm font-semibold text-danger-ink" data-testid="retreat-disqualified">
           Disqualified — cash and retreat.
           <span className="block text-xs font-normal text-ink-muted mt-0.5">
-            Persistency {persPct}% is below the {gate.threshold}% the campaign requires. The room is
+            Persistency {formatPersistencyPct(persPct)} is below the {gate.threshold}% the campaign requires. The room is
             not reduced, it is removed.
           </span>
         </p>
@@ -131,7 +132,7 @@ function RetreatReadout({ campaign, lens, persistencyRecords }) {
         <p className="text-[11px] text-ink-muted" data-testid="retreat-gate">
           {persPct == null
             ? `Both the cash and the room still depend on persistency reaching ${gate.threshold}%${gate.basis === 'finalMonth' ? ' at the campaign’s final month' : ' across the campaign'}. Not yet known.`
-            : `Persistency ${persPct}% clears the ${gate.threshold}% the campaign requires.`}
+            : `Persistency ${formatPersistencyPct(persPct)} clears the ${gate.threshold}% the campaign requires.`}
         </p>
       )}
 

@@ -3,6 +3,7 @@ import { extractFields, extractTotalProductionCredit } from './extractFields';
 import { DEFAULT_RULESET_2026 } from '../config/awardsRuleset/2026';
 import { MDRT_THRESHOLDS_2026, mdrtAwardThresholds } from '../config/mdrtThresholds/2026';
 import { ymdTT } from './dateInputs';
+import { roundPersistencyPct } from '../lib/persistency/persistencyRounding';
 
 const p = (v) => parseFloat(v) || 0;
 
@@ -23,6 +24,10 @@ function getQuarterMonths(quarter, year) {
   return starts[quarter].map((m) => monthKey(year, m));
 }
 
+// Raw mean of the docs' persistency. Every figure an award JUDGES is rounded
+// to 2 decimals, half up, at its verdict (ruling 1, 29-09-2026) — once, never
+// before a further average (the manager award averages the raw per-agent
+// means, then rounds; rounding first could lift 89.9945 to 90).
 function avgPersistency(docs) {
   const vals = docs.map((d) => p(d.persistency)).filter((v) => v > 0);
   if (vals.length === 0) return 0;
@@ -119,7 +124,7 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
   if (monthlyConf.length > 0) {
     monthlyAPI = monthlyConf.reduce((s, d) => s + p(d.settledAPI), 0);
     monthlyApps = monthlyConf.reduce((s, d) => s + p(d.settledApps), 0);
-    monthlyPersist = avgPersistency(monthlyConf);
+    monthlyPersist = roundPersistencyPct(avgPersistency(monthlyConf));
     monthlySource = 'confirmed';
   } else {
     const mSubs = submitted.filter(
@@ -138,7 +143,7 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
   if (quarterlyConf.length > 0) {
     quarterlyAPI = quarterlyConf.reduce((s, d) => s + p(d.settledAPI), 0);
     quarterlyApps = quarterlyConf.reduce((s, d) => s + p(d.settledApps), 0);
-    quarterlyPersist = avgPersistency(quarterlyConf);
+    quarterlyPersist = roundPersistencyPct(avgPersistency(quarterlyConf));
     quarterlySource = 'confirmed';
   } else {
     const qSubs = submitted.filter((s) => {
@@ -186,7 +191,7 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
 
   const confPersistVals = annualConf.map((d) => p(d.persistency)).filter((v) => v > 0);
   const annualPersist = confPersistVals.length > 0
-    ? confPersistVals.reduce((s, v) => s + v, 0) / confPersistVals.length
+    ? roundPersistencyPct(confPersistVals.reduce((s, v) => s + v, 0) / confPersistVals.length)
     : 0;
 
   // Self/family business is excluded from every award's API and apps, but
@@ -462,7 +467,7 @@ export function computeManagerAwards(confirmedData, unitAgentIds, allAgentConfir
   const avgAPIPerAdvisor = agentCount > 0 ? totalAPI / agentCount : 0;
   const avgAppsPerAdvisor = agentCount > 0 ? totalApps / agentCount : 0;
   const persistVals = agentVals.map((a) => a.persist).filter((v) => v > 0);
-  const avgPersist = persistVals.length > 0 ? persistVals.reduce((s, v) => s + v, 0) / persistVals.length : 0;
+  const avgPersist = persistVals.length > 0 ? roundPersistencyPct(persistVals.reduce((s, v) => s + v, 0) / persistVals.length) : 0;
 
   const dataSource = annualConf.length > 0 ? 'confirmed' : 'estimated';
   const note = dataSource === 'estimated' ? 'Estimated — pending confirmation' : null;

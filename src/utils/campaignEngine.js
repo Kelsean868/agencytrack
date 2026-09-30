@@ -1,5 +1,6 @@
 import { extractFields } from './extractFields';
 import { aggregatePersistency } from '../lib/persistency/calculations';
+import { roundPersistencyPct } from '../lib/persistency/persistencyRounding';
 import { getTodayTT } from './dateInputs';
 
 const METRIC_LABELS = {
@@ -254,7 +255,9 @@ export function persistencyPctForPeriod(records, startDate, endDate) {
   if (!inRange.length) return null;
   const { aggregatedPersistency, sumGrossSettled } = aggregatePersistency(inRange);
   if (!(sumGrossSettled > 0)) return null;
-  return Math.round(aggregatedPersistency * 100);
+  // 2 decimals, half up (ruling 1, 29-09-2026): the gate judges the same
+  // figure every screen prints (was a whole percent — 89.6 read as 90).
+  return roundPersistencyPct(aggregatedPersistency * 100);
 }
 
 // Persistency at the campaign's FINAL MONTH — the basis Rule 5 of the signed
@@ -280,7 +283,7 @@ export function persistencyPctAtFinalMonth(records, endDate) {
   if (rec.persistency == null || rec.persistency === '') return null;
   const value = Number(rec.persistency);
   if (!Number.isFinite(value)) return null;
-  return Math.round(value * 100);
+  return roundPersistencyPct(value * 100); // 2 dp, half up (ruling 1)
 }
 
 // The ONLY persistency function a gate consumer calls. Dispatches on the
