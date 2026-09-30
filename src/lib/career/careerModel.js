@@ -153,3 +153,25 @@ export function levelCriteria(lvl, { ytdApps, avgPersistency, yearsOfService, tr
   if (lvl.minYears > 0)             criteria.push({ label: 'Years of service', current: yearsOfService ?? 0, target: lvl.minYears, fmt: 'years' });
   return criteria;
 }
+
+/**
+ * The same 8 quarters as computeQuarterlyAPI (same filter, same grouping,
+ * same rounding), with their keys, so a chart can label them. Padding quarters
+ * (fewer than 8 on file) have key null. R2-10; pinned equal to
+ * computeQuarterlyAPI by careerModel.test.js.
+ */
+export function quarterlyAPISeries(submissions) {
+  const byQuarterKey = {};
+  for (const s of (submissions ?? [])) {
+    if (s.status !== 'submitted' || !s.weekStarting) continue;
+    const d = new Date(s.weekStarting + 'T12:00:00Z');
+    const key = `${d.getUTCFullYear()}-Q${Math.floor(d.getUTCMonth() / 3)}`;
+    byQuarterKey[key] = (byQuarterKey[key] || 0) + (parseFloat(s.apiSold) || 0);
+  }
+  const series = Object.entries(byQuarterKey)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-8)
+    .map(([key, v]) => ({ key, value: Math.round(v / 1000) }));
+  while (series.length < 8) series.unshift({ key: null, value: 0 });
+  return series;
+}

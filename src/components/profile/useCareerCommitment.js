@@ -28,11 +28,18 @@ export default function useCareerCommitment(careerYear) {
     personalAnnualApps:        '',
     personalAnnualPersistency: '',
   });
+  // R2-10 (additive; the Nexus scorecards ignore these): the FR Career shows a
+  // loading state, and a Retry when the goals read failed. The read itself and
+  // its fallback to "no goals" are unchanged.
+  const [loaded, setLoaded]            = useState(false);
+  const [loadFailed, setLoadFailed]    = useState(false);
+  const [reloadToken, setReloadToken]  = useState(0);
+  const retry = () => { setLoaded(false); setLoadFailed(false); setReloadToken((n) => n + 1); };
 
   useEffect(() => {
     if (!authUser?.uid || !tenantId) return;
     Promise.all([
-      getGoals(tenantId, authUser.uid).catch(() => null),
+      getGoals(tenantId, authUser.uid).catch(() => { setLoadFailed(true); return null; }),
       getCompanyMinimums(tenantId).catch(() => ({ annualAPI: 200000, annualApps: 40, persistency: 90 })),
       getMoneyNeeds(tenantId, authUser.uid, careerYear).catch(() => null),
     ]).then(([g, mins, mn]) => {
@@ -44,8 +51,9 @@ export default function useCareerCommitment(careerYear) {
         personalAnnualApps:        g?.personalAnnualApps        ?? '',
         personalAnnualPersistency: g?.personalAnnualPersistency ?? '',
       });
+      setLoaded(true);
     });
-  }, [authUser?.uid, tenantId, careerYear]);
+  }, [authUser?.uid, tenantId, careerYear, reloadToken]);
 
   async function doSave(draftToSave) {
     setSaving(true); setSaveError('');
@@ -88,5 +96,6 @@ export default function useCareerCommitment(careerYear) {
     goals, minimums, editing, setEditing, saving, saveError, setSaveError, draft, setDraft,
     showNudge, setShowNudge, pendingDraft, setPendingDraft, moneyNeedsRequired,
     doSave, handleSave, mins, resolvedAnnualAPIFloor, mgr, mine,
+    loaded, loadFailed, retry,
   };
 }

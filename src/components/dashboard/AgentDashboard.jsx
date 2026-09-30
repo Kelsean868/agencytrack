@@ -24,6 +24,7 @@ import { getDailyEntry, getDailyEntriesForWeek } from '../../services/dailyActiv
 import { getWeeklyPlan } from '../../services/weeklyPlanService';
 import { prefetchGamePlanYearDocs } from '../../services/gamePlanPrefetch';
 import CareerPortal from '../profile/CareerPortal';
+import FrCareer from '../fr/you/FrCareer';
 import ProfileScreen from '../profile/ProfileScreen';
 import CallSourcesTab from '../callSources/CallSourcesTab';
 import SettingsScreen from '../settings/SettingsScreen';
@@ -1134,6 +1135,14 @@ export default function AgentDashboard() {
               <div key={i} className="h-24 rounded-xl bg-border/40 animate-pulse" />
             ))}
           </div>
+        ) : fr ? (
+          <FrCareer
+            submissions={allSubmissions}
+            user={userProfile}
+            persistencyData={persistency}
+            onOpenTrophies={() => setActiveTab('trophies')}
+            onPlan={() => setActiveTab('game-plan')}
+          />
         ) : (
           <CareerPortal
             submissions={allSubmissions}

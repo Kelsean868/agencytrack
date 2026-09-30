@@ -18,6 +18,7 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| Career level inputs likely empty for every agent: years of service reads `user.startDate` (no writer in the codebase; profiles carry `contractStartDate`), and API reads only the v1 `apiSold` field (v2 reports store `newBusiness.api`) — so the level is probably stuck at 1. Found in R2-10; level logic not changed (brief § 5 stop) (banked 2026-09-30) | HIGH | Career / levels | — | see § Career level inputs: startDate and apiSold |
 | R2-8 Game plan FR port is NOT on `main`: #1020's squash `92d4e5b4` carried R2-6 instead, and its two Game plan commits (`1c0aefb5`, `c98451ae`) are on no merged branch (banked 2026-09-30, #1014–#1021 fill) | HIGH | FR redesign / Money | — | see § R2-8 Game plan FR port missing from main |
 | Head-office **Pending** policies can still be changed from the ledger (reached from the Campaign screen's "Change status"); lock not built per Kyron ruling 4 — needs a ledger + rules change (banked 2026-09-30, R2-4) | MEDIUM | Policy Ledger / rules | — | see § Head-office Pending policies can still be changed from the ledger |
 | FR round 2 (#1014–#1021) preview smokes waived under Rule 13; read-only production click-through deferred (banked 2026-09-30, #1014–#1021 fill) | LOW | FR redesign / verification | — | see § FR round 2 deferred click-through |
@@ -8146,3 +8147,17 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Ask:** Kyron to rule whether a later slice moves the two modals inline and adds the floor/MDRT bar (with the floor passed in from `resolvedMinimums`).
 
 **Falsification (Rule 23):** closed if Kyron rules the modals and the omitted pieces stay as they are.
+
+## Career level inputs: startDate and apiSold
+
+**Banked 2026-09-30 from R2-10 (Career FR port). Severity: HIGH — an agent-facing verdict (career level, title, unlocks) is probably wrong for everyone. Not checked against live user or submission docs.**
+
+**Observed (source, on R2-10's branch; the code moved verbatim from `CareerPortal.jsx` to `src/lib/career/careerModel.js`):**
+- **Years of service** — `careerStats` computes `yearsOfService` from `user.startDate`. `git grep -n "startDate"` finds no writer in `src/` or `functions/`; user docs carry `contractStartDate` (stamped `''` by `doCreateUser`, set by onboarding — see CONTEXT § Onboarding tenure). With `startDate` absent, `yearsOfService` is `null`, and `currentLevel` fails every level from 2 up (`minYears > 0`), so the level stays at 1.
+- **API** — `careerStats` (`ytdAPI`), `compute2YearAverageAPI` (`src/utils/careerLevelHelpers.js`, the 2-yr average the level uses) and `computeQuarterlyAPI` read only `s.apiSold`, the v1 field. The v2 wizard stores `newBusiness.api` (+ PPP / lumpsums), which `extractFields.js` reads. CLAUDE.md: "extractFields.js: ONLY way to read submission fields." And production has moved to the Policy Ledger (#968), like the leaderboard (§ Track J P1b swap point, UPDATE 2026-09-30).
+
+**Not changed in R2-10:** the brief forbids any change to the level verdict or its inputs (§ 5 stop). The FR Career shows exactly what the Nexus portal computes; the characterization suite pins it.
+
+**Fix shape (needs a ruling):** read `contractStartDate` for years of service (and decide how `''` is treated), and read API through `extractFields` or, better, from the ledger (settled API) for the 2-yr average and the trajectory. Both change who sits at which level: characterization tests first, a table of expected level changes, human-merge.
+
+**Falsification (Rule 23):** overturned if a live user doc is found with `startDate` set by some path outside this repo, or if live submissions still carry `apiSold`.
