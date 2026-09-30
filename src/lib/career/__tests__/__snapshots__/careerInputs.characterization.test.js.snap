@@ -24,12 +24,12 @@ exports[`Career level inputs — characterization (F-2) > 'B v1 only · startDat
 
 exports[`Career level inputs — characterization (F-2) > 'C v2 only (API and apps under newBusi…' 1`] = `
 {
-  "level": 1,
+  "level": 2,
   "quarters": "0,0,0,0,0,0,300,300",
   "trailing2YrAPI": 300000,
   "years": 3.71,
   "ytdAPI": 300000,
-  "ytdApps": 0,
+  "ytdApps": 42,
 }
 `;
 
@@ -123,12 +123,12 @@ exports[`Career level inputs — characterization (F-2) > 'K no user fields' 1`]
 
 exports[`Career level inputs — characterization (F-2) > 'L nested schema (step4) · 3.7 y' 1`] = `
 {
-  "level": 1,
+  "level": 2,
   "quarters": "0,0,0,0,0,0,300,300",
   "trailing2YrAPI": 300000,
   "years": 3.71,
   "ytdAPI": 300000,
-  "ytdApps": 0,
+  "ytdApps": 42,
 }
 `;
 
@@ -150,6 +150,6 @@ exports[`Career level inputs — characterization (F-2) > 'N v2 only, 41 apps (o
   "trailing2YrAPI": 300000,
   "years": 3.71,
   "ytdAPI": 300000,
-  "ytdApps": 0,
+  "ytdApps": 41,
 }
 `;

@@ -66,6 +66,17 @@ export function submissionAPI(s) {
   return extractFields(s).apiSold || 0;
 }
 
+/**
+ * One report's applications through extractFields (all schemas: v2
+ * `newBusiness.apps`, nested `step4.applicationsSold`, v1 `applicationsSold`
+ * / legacy `appsSold`). F-3 (Kyron ruling 1A, 30-09-2026): this was
+ * `parseFloat(s.applicationsSold || s.appsSold)`, which read 0 for v2 and
+ * nested reports.
+ */
+export function submissionApps(s) {
+  return extractFields(s).applicationsSold || 0;
+}
+
 const YEAR_MS = 365.25 * 24 * 60 * 60 * 1000;
 
 /**
@@ -136,7 +147,7 @@ export function careerStats(submissions, persistencyData, user, thisYear) {
     s => s.status === 'submitted' && s.weekStarting?.startsWith(String(thisYear))
   );
   const ytdAPI  = ytdSubs.reduce((sum, s) => sum + submissionAPI(s), 0);
-  const ytdApps = ytdSubs.reduce((sum, s) => sum + (parseFloat(s.applicationsSold || s.appsSold) || 0), 0);
+  const ytdApps = ytdSubs.reduce((sum, s) => sum + submissionApps(s), 0);
 
   const persArr = Array.isArray(persistencyData) ? persistencyData : [];
   const ytdPers = persArr.filter(p => p.year === thisYear);

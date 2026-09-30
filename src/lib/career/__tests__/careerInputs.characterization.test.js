@@ -12,7 +12,7 @@ vi.mock('../../persistency/calculations', () => ({
   aggregatePersistency: () => ({ aggregatedPersistency: 0.95 }),
 }));
 
-import { careerStats, currentLevel, computeQuarterlyAPI, quarterlyAPISeries, yearsOfServiceFrom, submissionAPI } from '../careerModel';
+import { careerStats, currentLevel, computeQuarterlyAPI, quarterlyAPISeries, yearsOfServiceFrom, submissionAPI, submissionApps } from '../careerModel';
 
 const NOW = new Date('2026-09-30T12:00:00Z');
 const PERS = [{ year: 2026, month: 1 }];
@@ -92,5 +92,15 @@ describe('F-2 helpers', () => {
     expect(submissionAPI({ apiSold: 900 })).toBe(900);
     expect(submissionAPI({ api: 700 })).toBe(700);
     expect(submissionAPI({})).toBe(0);
+  });
+});
+
+describe('F-3 helper', () => {
+  it('submissionApps reads v2 newBusiness.apps, nested step4, v1 applicationsSold and legacy appsSold', () => {
+    expect(submissionApps({ version: 2, newBusiness: { apps: 3 } })).toBe(3);
+    expect(submissionApps({ step1: {}, step4: { applicationsSold: 2 } })).toBe(2);
+    expect(submissionApps({ applicationsSold: 4 })).toBe(4);
+    expect(submissionApps({ appsSold: 5 })).toBe(5);
+    expect(submissionApps({})).toBe(0);
   });
 });
