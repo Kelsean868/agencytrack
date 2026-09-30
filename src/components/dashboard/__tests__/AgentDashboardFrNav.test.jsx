@@ -139,7 +139,7 @@ vi.mock('../../agent/PolicyLedgerPanel',             () => ({
     return React.createElement('div', { 'data-testid': 'policy-ledger-mock' });
   },
 }));
-vi.mock('../../agent/MoneyNeedsPanel',               () => ({ default: () => React.createElement('div', { 'data-testid': 'money-needs-mock' }) }));
+vi.mock('../../agent/MoneyNeedsPanel',               () => ({ default: ({ look }) => React.createElement('div', { 'data-testid': 'money-needs-mock', 'data-look': look }) }));
 vi.mock('../../productionReport/ProductionReportTab', () => ({ default: () => React.createElement('div', { 'data-testid': 'production-report-mock' }) }));
 vi.mock('../../agent/PersistencyTab',                () => ({ default: () => React.createElement('div', { 'data-testid': 'persistency-tab-mock' }) }));
 vi.mock('../../daily/DailyFAB',                      () => ({ default: () => null }));
@@ -323,6 +323,8 @@ describe('AgentDashboard — FR-3 Money', () => {
     act(() => captured.sidebar.props.onNavigate(tab));
     expect(await screen.findByTestId(calcId)).toBeInTheDocument();
     expect(screen.getByTestId('fr-money-header-mock')).toHaveAttribute('data-tab', tab);
+    // R2-9: Money needs gets the FR layout at the dashboard boundary.
+    if (tab === 'money-needs') expect(screen.getByTestId(calcId)).toHaveAttribute('data-look', 'fr');
   });
 
   it('without the opt-in: no Nexus route leads to `money`, and no FR Money surface renders', () => {

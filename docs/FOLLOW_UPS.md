@@ -19,6 +19,7 @@
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
 | FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999), FR-2 (#1001), FR-3 (#1002), FR-4 (#1003), FR-5 (#1004) and FR-5b (#1008) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at each FR post-merge through #1008). **Desktop walked 28-09-2026 on production (`e31155ff`): 25 FR screens, 0 errors. OPEN FOR PHONE WIDTH ONLY** | LOW | FR redesign / verification | — | see § FR preview click-through |
+| FR Money needs (R2-9) omits the canvas figures the panel does not compute today (per-month need, API needed at a commission rate, floor/MDRT bar, "Use MDRT instead", car "With loan?" toggle, share-% / rate-% allocation) and keeps the sub-calculators, targets panel and merged allocator in their existing (Nexus-styled) forms — needs a ruling (banked 2026-09-30) | LOW | FR redesign / Money needs | — | see § FR Money needs: canvas figures not computed today |
 | "YTD vs tenure floor" bars (agent Production view, agent report view) show the API floor without the 40-apps company minimum — fold into the redesign, not a standalone fix (banked 2026-09-27, #994 post-merge) | LOW | Goals / company floor | redesign | see § YTD vs tenure floor bars: show the apps minimum |
 | Report-Only CSP `connect-src` in `vercel.json` lacks `https://www.google.com` — reCAPTCHA Enterprise (App Check, live since P2e) calls it; enforcing the CSP as-is would block App Check token fetches. Add it before the CSP leaves Report-Only (banked 2026-09-27, P2e post-merge). **Fix in PR #994; stays open until the enforce-time check below** | MEDIUM | Security / CSP | before CSP enforce | see § CSP connect-src needs www.google.com before enforce |
 | App Check is in monitor mode — switch each service to enforce only after 7 consecutive clean days per `docs/runbooks/app-check.md` §3 (key live 2026-09-27, so no earlier than 2026-10-04); Storage → Firestore → Functions, one at a time (banked 2026-09-27, P2e post-merge) | MEDIUM | Security / App Check | not before 2026-10-04 | see § App Check: enforce after 7 clean days |
@@ -7974,6 +7975,23 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Fix shape:** route the hand-off through `AwardLensPanel` (open via `openWithWindows` once `campaignsLoading` has settled), or have the drawer derive its own windows. Neither changes the write path.
 
 **Falsification (Rule 23):** closed without change if Kyron rules the chips are not needed on a drawer reached from the Campaign screen, where the campaign is already the context.
+
+## FR Money needs: canvas figures not computed today
+
+**Banked 2026-09-30 from R2-9. Severity: LOW — design fidelity, no functional gap.**
+
+**What R2-9 shipped:** the FR Money needs follows `D3M-MoneyNeeds` / `M3-MoneyNeeds` for layout (intro + tally, "The worksheet" table with M/Q/S/A frequency buttons, sub-calculator cards, a donut of where the money goes with a Table toggle, and a right-hand "What you need to earn" inspector; five swipe pages on a phone). Every figure comes from what the panel already computes (`payeBuildUp`, `useExpenseGroupEditor`, `compositionSegments`, stored sub-calculator totals). R-e ("every function kept, logic untouched") and the brief's §3 money-math stop rule out the rest.
+
+**Not ported (each would be new money math, new state or a new write):**
+- Ladder rows "Per month · pre-tax" (pre-tax ÷ 12) and "API needed at your commission rate" (the canvas divides by a SAMPLE 40%), the API-vs-floor-500K/MDRT-688.8K compare bar, the persistency caveat under it, and the "Use MDRT (TTD 688,800) instead" toggle with its "YOUR FLOOR" headline.
+- The car sub-calculator's "With loan?" Yes/No toggle (`CarExpensesCalc` always saves `withLoan: false` today) and the car-loan reference line on the card (it stays inside the car modal).
+- The canvas's share-% / rate-% three-line allocation. With `VITE_MONEY_NEEDS_MERGED_ENABLED` off (default) the existing Commission Targets panel (four lines, Send to Playground) renders in that section; with it on, the existing `MoneyNeedsAllocator`. Both keep their Nexus styling inside the FR section.
+- Inline expanding sub-calculators: the FR cards open the existing floating calculator modals (same as the phone canvas's "Adjust amounts"), which keep their Nexus styling.
+- The phone canvas's sixth "Where it goes" page and sticky result bar: SwipePager takes at most five pages (SWIPE3 rule 3), so the five group pages swipe and the inspector, donut, allocation and sub-calculators follow below.
+
+**Ask:** Kyron to rule which of these a later slice should add (the per-month and API-needed rows need an agreed commission-rate source; the floor needs `resolvedMinimums` passed in).
+
+**Falsification (Rule 23):** closed if Kyron rules the FR Money needs stays as shipped.
 
 ## FR-6 declared reinstatements — three rulings wanted
 
