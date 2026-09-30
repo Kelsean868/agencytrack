@@ -350,7 +350,12 @@ describe('FR Commission playground — saved assumptions load back (R2-3b)', () 
     expect(screen.getByLabelText('Tax rate (%)').value).toBe('20');
     expect(screen.getByLabelText('CIs per sale').value).toBe('5');
     const inputs = screen.getByTestId('fr-commission-goal-inputs');
-    // The saved ratio has no history label; the unsaved one still does.
+    // The saved ratio has no history label; the unsaved one still does, with
+    // the history value (9 calls per 3 CIs each week → 3).
     expect(within(inputs).getAllByText('From your history')).toHaveLength(1);
+    const field = (label) => screen.getByLabelText(label).closest('div').parentElement;
+    expect(within(field('CIs per sale')).queryByText('From your history')).toBeNull();
+    expect(within(field('Calls per CI')).getByText('From your history')).toBeInTheDocument();
+    expect(screen.getByLabelText('Calls per CI').value).toBe('3');
   });
 });

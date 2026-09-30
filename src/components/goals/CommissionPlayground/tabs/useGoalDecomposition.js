@@ -123,6 +123,10 @@ export default function useGoalDecomposition({ submissions = [], agentId, tenant
     // annual, the same value the agent saved (R2-3 decision 3).
     setIncomeAmount(next.incomeGoal);
     setIncomePeriod(DEFAULT_INCOME_GOAL_PERIOD);
+    // Scenarios store no pre-tax flag, so their income goal is an ordinary
+    // (after-tax) goal. Without this, a flag restored from saved assumptions
+    // (R2-3b A+) would skip the scenario's tax gross-up (CodeRabbit on #1029).
+    setPtaFlag(false);
     if (s.freqKey) setFreqKey(s.freqKey);
     setActiveScenarioId(s.id);
   };
@@ -304,6 +308,11 @@ export default function useGoalDecomposition({ submissions = [], agentId, tenant
         playgroundProspectRatio:   inputs.prospectRatio,
         playgroundPreTaxAlreadyApplied: preTaxAlreadyApplied,
       }, user.uid, name);
+      // The ratios on screen are now the agent's saved ones: a later history
+      // update must not overwrite them, and they are no longer "from your
+      // history" (CodeRabbit on #1029). Only after the write succeeds.
+      savedRatioKeysRef.current = new Set(HISTORY_RATIO_KEYS);
+      setHistoryRatioKeys(new Set());
       setSavedAssumptions(true);
       setTimeout(() => setSavedAssumptions(false), 2500);
     } catch (e) {

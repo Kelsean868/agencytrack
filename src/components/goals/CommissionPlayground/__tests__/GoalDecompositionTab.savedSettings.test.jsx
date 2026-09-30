@@ -198,4 +198,30 @@ describe('R2-3b review fixes (CodeRabbit on #1029)', () => {
     await waitFor(() => expect(goalsMock.setGoals).toHaveBeenCalledTimes(1));
     expect(goalsMock.setGoals.mock.calls[0][2].playgroundPreTaxAlreadyApplied).toBe(false);
   });
+
+  // CodeRabbit on #1029 (review of 004e7af4).
+  it('applying a scenario clears a restored pre-tax flag (scenarios carry none)', async () => {
+    goalsMock.getGoals.mockResolvedValue({ playgroundIncomeGoal: 180000, playgroundPreTaxAlreadyApplied: true });
+    prefsMock.getUserPrefs.mockResolvedValue({
+      commissionScenarios: [{ id: 'sc-1', label: 'Stretch', savedAt: '2026-09-01T00:00:00.000Z', freqKey: 'annual', inputs: { incomeGoal: 500000 } }],
+    });
+    await open();
+    fireEvent.click(await screen.findByTestId('scenario-apply-sc-1'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Assumptions' }));
+    await waitFor(() => expect(goalsMock.setGoals).toHaveBeenCalledTimes(1));
+    expect(goalsMock.setGoals.mock.calls[0][2]).toMatchObject({ playgroundIncomeGoal: 500000, playgroundPreTaxAlreadyApplied: false });
+  });
+
+  it('ratios saved in this session are not overwritten by a later history update', async () => {
+    const wk = (calls) => ({ status: 'submitted', ciConducted: 4, applicationsSold: 1, referralCalls: calls, followUpCalls: 0, coldCalls: 0 });
+    const r = render(<GoalDecompositionTab {...PROPS} submissions={Array.from({ length: 10 }, () => wk(10))} />);
+    await waitFor(() => expect(screen.queryByTestId('commission-settings-loading')).toBeNull());
+    expect(val('Calls per CI')).toBe('2.5');
+    set('Calls per CI', 7);
+    fireEvent.click(screen.getByRole('button', { name: 'Save Assumptions' }));
+    await waitFor(() => expect(goalsMock.setGoals).toHaveBeenCalledTimes(1));
+    r.rerender(<GoalDecompositionTab {...PROPS} submissions={Array.from({ length: 10 }, () => wk(20))} />);
+    expect(val('Calls per CI')).toBe('7');
+    expect(screen.queryByText('From your history')).toBeNull();
+  });
 });
