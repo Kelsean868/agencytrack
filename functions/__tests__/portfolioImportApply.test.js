@@ -62,6 +62,26 @@ describe('applyPlan', () => {
     expect(after.agentNotes).toBe('do not lose me');
   });
 
+  // R2-6b — the plan builder clears a stale reinstatement declaration when the
+  // status moves INTO lapsed (buildImportPlan.reinstatement.test.js runs that
+  // sequence on this mirror). Here: the writer applies those nulls in the same
+  // update and touches nothing else on the policy.
+  it('a new lapse writes the declaration fields as null in the same update, and nothing else', async () => {
+    const db = createFakeDb();
+    const path = `tenants/${CALLER.tenantId}/policies/doc-R1`;
+    db._seed(path, {
+      policyNumber: 'R1', status: 'settled', agentNotes: 'keep me', proposedAPI: 1200,
+      reinstatementDeclaredAt: '2026-06-01T10:00:00Z', reinstatementDeclaredBy: CALLER.uid, reinstatementNote: 'paid in May',
+    });
+    const changed = { status: 'lapsed', reinstatementDeclaredAt: null, reinstatementDeclaredBy: null, reinstatementNote: null };
+    await applyPlan(db, { creates: [], updates: [update('R1', changed)], report: {} }, CALLER, SOURCE, RUN);
+    const after = db._docs.get(path);
+    expect(after).toMatchObject({
+      status: 'lapsed', reinstatementDeclaredAt: null, reinstatementDeclaredBy: null, reinstatementNote: null,
+      agentNotes: 'keep me', proposedAPI: 1200, updatedAt: '<ts>',
+    });
+  });
+
   it('stays under the 500-write batch limit for 229 policies', async () => {
     const db = createFakeDb();
     const creates = Array.from({ length: 229 }, (_, i) => create(`P${i}`));
