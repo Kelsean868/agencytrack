@@ -6,7 +6,7 @@ import {
 } from '../../utils/campaignEngine';
 import { toDateStr } from '../../lib/policyCampaignLens';
 import { buildPersistencyOutlook, formatOutlookPct, outlookGateFor } from '../../lib/persistency/persistencyOutlook';
-import { roundPersistencyPct } from '../../lib/persistency/persistencyRounding';
+import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 import { getTodayTT } from '../../utils/dateInputs';
 import { provenanceLine } from '../../lib/settledProvenance';
 import { outlookMonthLabel, outlookMonthShortLabel } from '../persistency/outlookLabels';
@@ -251,7 +251,7 @@ export default function CampaignHeroCard({
       : (persistencyPreview?.persistency != null ? roundPersistencyPct(persistencyPreview.persistency * 100) : null);
     const persistencyDisplayPctScreen = persistencyKnown ? persPct : projectedPct;
     const persistencyLabelScreen = persistencyKnown
-      ? `${persPct}%`
+      ? formatPersistencyPct(persPct)
       : projectedPct != null ? formatOutlookPct(projectedPct / 100) : '—';
     const gateMonthKey = gate?.basis === 'finalMonth' && endKey ? endKey.slice(0, 7) : (gateMonth?.monthKey ?? null);
     const gateMonthShort = gateMonthKey && MONTH_KEY_RE.test(gateMonthKey) ? outlookMonthShortLabel(gateMonthKey) : null;
@@ -383,7 +383,7 @@ export default function CampaignHeroCard({
             <span className="text-xs font-semibold text-ink-muted">24-Month Persistency</span>
             <span className="text-xs text-ink tabular-nums">
               {persistencyKnown
-                ? `${persPct}%`
+                ? formatPersistencyPct(persPct)
                 : persistencyPreview
                   ? `${formatOutlookPct(persistencyPreview.persistency)} ${persistencyPreview.kind}, ${outlookMonthLabel(persistencyPreview.monthKey)}`
                   : '—'}
