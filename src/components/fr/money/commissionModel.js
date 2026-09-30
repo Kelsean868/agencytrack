@@ -62,6 +62,7 @@ export function firstPaymentBars() {
     key: mode,
     label: modeLabel(mode),
     value: Math.round(ratio * 1000) / 10,
+    highlight: true, // four bars: every one carries its value label
   }));
 }
 
@@ -81,7 +82,8 @@ export function cashFlowModel({ totalApi, modeMix, commissionRate }) {
     cumulative: r.cumulative,
   }));
   return {
-    bars: rows.map((r) => ({ key: r.key, label: r.month, value: r.total })),
+    // Month 1 is "this month" — it carries a value label (Columns also labels the last bar).
+    bars: rows.map((r, i) => ({ key: r.key, label: r.month, value: r.total, highlight: i === 0 })),
     rows,
     yearTotal: rows.length ? rows[rows.length - 1].cumulative : 0,
   };

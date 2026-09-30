@@ -4,7 +4,7 @@ import { ChartCard, Columns } from '../charts';
 import SwipePager from '../pager/SwipePager';
 import IncomeGoalField from '../../goals/CommissionPlayground/components/IncomeGoalField';
 import SavedScenarioChips from '../../goals/CommissionPlayground/components/SavedScenarioChips';
-import ModeMixSlider from '../../goals/CommissionPlayground/components/ModeMixSlider';
+import { rebalance } from '../../goals/CommissionPlayground/utils/modeMixBalancer';
 import { PLAYGROUND_PERIODS, playgroundPeriod } from '../../../utils/playgroundPeriods';
 import { formatCurrency } from '../../../utils/formatters';
 import { CARD, FOCUS, Why, WarnIcon } from './moneyParts';
@@ -47,14 +47,15 @@ const MODE_TABS = [
 ];
 
 function ModeTabs({ tab, onTabChange }) {
+  // A two-way switch (pressed buttons), not a tablist: on phone the pager
+  // below owns the page's tabs, and the two must not be confused.
   return (
-    <div role="tablist" aria-label="Calculator mode" className="grid grid-cols-2 gap-1 rounded-xl bg-fr-sunk p-1">
+    <div role="group" aria-label="Calculator mode" className="grid grid-cols-2 gap-1 rounded-xl bg-fr-sunk p-1">
       {MODE_TABS.map((t) => (
         <button
           key={t.key}
           type="button"
-          role="tab"
-          aria-selected={tab === t.key}
+          aria-pressed={tab === t.key}
           onClick={() => onTabChange(t.key)}
           className={`${FOCUS} min-h-[44px] rounded-[9px] px-2 text-[12.5px] font-bold transition-colors ${
             tab === t.key ? 'bg-card text-ink shadow-sm' : 'text-ink-muted hover:text-ink'
@@ -64,6 +65,47 @@ function ModeTabs({ tab, onTabChange }) {
           {t.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+const MIX_LABELS = [
+  ['annual', 'Annual'],
+  ['semiAnnual', 'Semi-Annual'],
+  ['quarterly', 'Quarterly'],
+  ['monthly', 'Monthly'],
+];
+
+/**
+ * The mode-mix sliders with a 44px hit area. Same change rule as the Nexus
+ * ModeMixSlider: rebalance() keeps the four modes at 100%.
+ */
+function ModeMix({ modeMix, onChange }) {
+  return (
+    <div className="flex flex-col gap-1">
+      {MIX_LABELS.map(([mode, label]) => {
+        const pct = Math.round((modeMix[mode] ?? 0) * 100);
+        const id = `fr-cp-mix-${mode}`;
+        return (
+          <div key={mode} className="flex flex-col">
+            <div className="flex items-baseline justify-between gap-2">
+              <label htmlFor={id} className="text-[12px] text-ink-muted">{label}</label>
+              <span className="font-mono text-[12px] font-bold tabular-nums text-primary">{pct}%</span>
+            </div>
+            <input
+              id={id}
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={pct}
+              onChange={(e) => onChange(rebalance(modeMix, mode, parseFloat(e.target.value) / 100))}
+              className={`${FOCUS} h-11 w-full cursor-pointer accent-primary`}
+              aria-label={`${label} mix percentage`}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -223,7 +265,7 @@ function Decomposition({ goal }) {
               type="button"
               aria-pressed={freqKey === p.key}
               onClick={() => setFreqKey(p.key)}
-              className={`${FOCUS} min-h-[36px] rounded-lg px-2.5 text-[12px] font-bold transition-colors ${
+              className={`${FOCUS} min-h-[44px] rounded-lg px-2.5 text-[12px] font-bold transition-colors ${
                 freqKey === p.key ? 'bg-card text-ink shadow-sm' : 'text-ink-muted hover:text-ink'
               }`}
             >
@@ -297,7 +339,7 @@ function ModalInputs({ modal, grid }) {
       </div>
       <div className="flex flex-col gap-2">
         <span className="text-[12.5px] font-bold text-ink">Mode mix — always 100%</span>
-        <ModeMixSlider modeMix={modal.modeMix} onChange={modal.setModeMix} />
+        <ModeMix modeMix={modal.modeMix} onChange={modal.setModeMix} />
       </div>
     </div>
   );
@@ -450,11 +492,10 @@ export default function FrCommissionView({ layout, tab, onTabChange, goal, modal
     <div className="flex min-w-0 flex-1 flex-col gap-5">
       <RequiredApi modal={modal} />
       <Breakdown modal={modal} />
-      <div className="grid grid-cols-1 gap-5 2xl:grid-cols-2 2xl:items-start">
-        <FirstPayment />
-        <Insights modal={modal} />
-      </div>
+      <FirstPayment />
       <CashFlow modal={modal} />
+      {/* Last: it appears and disappears with the mix, and must not push the charts. */}
+      <Insights modal={modal} />
     </div>
   );
 

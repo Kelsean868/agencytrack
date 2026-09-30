@@ -18,6 +18,8 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| Commission playground ladder says "÷ comm · × settle", but API to write divides by the PERSISTENCY rate; settlement feeds nothing shown (Nexus look; the FR port omits the connector text) (banked 2026-09-30, R2-7) | MEDIUM | Commission playground | — | see § Commission playground ladder: the settle label does not match the math |
+| FR Commission playground (R2-7) omits canvas blocks the app does not compute (apps at average API, persistency-adjusted write-for, this-month chain vs weekly minimums, cumulative line, waterfall, upcoming payouts, PAYE / own-history switches, phone Adjust sheet) — needs a ruling (banked 2026-09-30) | LOW | FR redesign / Commission | — | see § FR Commission playground: canvas blocks not computed today |
 | R2-8 Game plan FR port is NOT on `main`: #1020's squash `92d4e5b4` carried R2-6 instead, and its two Game plan commits (`1c0aefb5`, `c98451ae`) are on no merged branch (banked 2026-09-30, #1014–#1021 fill) | HIGH | FR redesign / Money | — | see § R2-8 Game plan FR port missing from main |
 | Head-office **Pending** policies can still be changed from the ledger (reached from the Campaign screen's "Change status"); lock not built per Kyron ruling 4 — needs a ledger + rules change (banked 2026-09-30, R2-4) | MEDIUM | Policy Ledger / rules | — | see § Head-office Pending policies can still be changed from the ledger |
 | FR round 2 (#1014–#1021) preview smokes waived under Rule 13; read-only production click-through deferred (banked 2026-09-30, #1014–#1021 fill) | LOW | FR redesign / verification | — | see § FR round 2 deferred click-through |
@@ -8146,3 +8148,34 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Ask:** Kyron to rule whether a later slice moves the two modals inline and adds the floor/MDRT bar (with the floor passed in from `resolvedMinimums`).
 
 **Falsification (Rule 23):** closed if Kyron rules the modals and the omitted pieces stay as they are.
+
+## Commission playground ladder: the settle label does not match the math
+
+**Banked 2026-09-30 from R2-7 (Commission playground FR port). Severity: MEDIUM — an agent reading the Nexus ladder is told the wrong reason their API target is what it is.**
+
+**Observed (on R2-7's branch, unchanged from `main`):** the Nexus Goal Decomposition ladder's connector between "1st-year commission" and "API to write" reads `÷ {commissionRate}% comm · × {settlementRate}% settle` (`src/components/goals/CommissionPlayground/tabs/GoalDecompositionTab.jsx`, `DecompositionLadder`). The figure it labels is computed by `decomposeFromIncome` (`src/utils/goalDecomposition.js`) as `firstYearCommRequired / (persistencyRate / 100) / (commissionRate / 100)`. The settlement rate only feeds `apiToSettle`, which no ladder stage shows. So changing the settlement rate changes no figure, while the persistency rate (not named in the connector) does.
+
+**Not changed in R2-7:** the FR port omits connector text (its canvas table has none) and its "Why?" states the real chain (persistency and commission). The Nexus string is left as is — R2-7 keeps Nexus unchanged, pinned by the characterization suite.
+
+**Fix shape:** change the Nexus connector to `÷ {persistencyRate}% persistency · ÷ {commissionRate}% comm`, or show the API-to-settle stage if settlement is meant to count. Copy-only for the first; needs a ruling for the second.
+
+**Falsification (Rule 23):** overturned if `decomposeFromIncome` is shown to use the settlement rate in `apiToWrite` (it does not at `2026-09-30`).
+
+## FR Commission playground: canvas blocks not computed today
+
+**Banked 2026-09-30 from R2-7. Severity: LOW — design fidelity; every function of the playground is present.**
+
+**What R2-7 shipped (FR look only):** the Commission calculator inspector (mode switch, inputs, saves), the goal decomposition table (per year + the chosen cadence), saved scenarios, the required-API card, the commission breakdown by mode, "Why monthly-pay policies earn less this month" (from `FIRST_PAYMENT_RATIO`), the 12-month cash flow with a Table toggle (from `buildStackedData`) and the insights. Every figure comes from a helper the Nexus playground already uses.
+
+**Not ported (each would be new money math, new state or a new read):**
+- Mode A: "≈ N applications at your TTD X average" (the modal tab has no average policy API), "To keep X after lapses at P% persistency, write for Y", and "What that takes, this month" (the chain against company weekly minimums, with its pace chips).
+- The cumulative-commission line with its end dot (the year total is in the card title and the table's Cumulative column).
+- "How September adds up" (waterfall) and "Upcoming payouts" with the Ledger and persistency-bonus links.
+- The canvas's slider inputs for rates and ratios (kept as number inputs), the "Use PAYE brackets to gross up" and "Prefer my own history when I have it" switches, and the "86.6% real, 24-month model" persistency hint.
+- The canvas's anchor strip: the existing `CommissionAnchorStrip` still sits above the playground in its Nexus styling.
+- Phone: the canvas's "Adjust" bottom sheet — the inputs are the first pager page instead.
+- The empty-insights sentence ("…close to the company defaults"): the insight rules do not check the defaults, so the section is hidden when there is nothing to say, as in Nexus.
+
+**Ask:** Kyron to rule which of these a later slice should add.
+
+**Falsification (Rule 23):** closed if Kyron rules the FR Commission playground stays as shipped.

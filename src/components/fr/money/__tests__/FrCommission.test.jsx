@@ -106,7 +106,7 @@ describe('FR Commission playground — look switch', () => {
     renderPlayground('fr');
     expect(screen.getByTestId('fr-commission')).toHaveAttribute('data-layout', 'desktop');
     expect(screen.queryByRole('tablist', { name: 'Commission Playground views' })).toBeNull();
-    expect(screen.getByRole('tab', { name: 'Goal decomposition' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: 'Goal decomposition' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('an unknown look throws instead of silently rendering Nexus', () => {
@@ -258,7 +258,7 @@ describe("FR Commission playground — This month's target parity with Nexus", (
     const nexusUneven = nexusModal();
     cleanup();
     renderPlayground('fr');
-    fireEvent.click(screen.getByRole('tab', { name: "This month's target" }));
+    fireEvent.click(screen.getByRole('button', { name: "This month's target" }));
     expect(frModal()).toEqual(nexusDefault);
     mixed('I want this much commission this month');
     expect(frModal()).toEqual(nexusMixed);
@@ -271,7 +271,7 @@ describe("FR Commission playground — This month's target parity with Nexus", (
 
   it('the cash-flow table ends at the year total in the card title', () => {
     renderPlayground('fr');
-    fireEvent.click(screen.getByRole('tab', { name: "This month's target" }));
+    fireEvent.click(screen.getByRole('button', { name: "This month's target" }));
     expect(screen.getByRole('heading', { name: /lands over the next 12 months/ }).textContent)
       .toBe('TTD 5,000 lands over the next 12 months');
     // All monthly: TTD 5,000 lands in month 1 and in each of the next 11.
@@ -287,9 +287,8 @@ describe('FR Commission playground — phone', () => {
     renderPlayground('fr');
     const root = screen.getByTestId('fr-commission');
     expect(root).toHaveAttribute('data-layout', 'phone');
-    expect(within(root).getAllByRole('tab').map((t) => t.textContent)).toEqual(
-      expect.arrayContaining(["This month's target", 'Goal decomposition', 'Your numbers', 'Breakdown', 'Scenarios']),
-    );
+    expect(within(root).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Your numbers', 'Breakdown', 'Scenarios']);
+    expect(within(root).getByRole('button', { name: 'Goal decomposition' })).toHaveAttribute('aria-pressed', 'true');
     const actions = screen.getByTestId('fr-commission-goal-actions');
     expect(actions.closest('[aria-hidden="true"]')).toBeNull();
   });
