@@ -18,6 +18,9 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| R2-8 Game plan FR port is NOT on `main`: #1020's squash `92d4e5b4` carried R2-6 instead, and its two Game plan commits (`1c0aefb5`, `c98451ae`) are on no merged branch (banked 2026-09-30, #1014–#1021 fill) | HIGH | FR redesign / Money | — | see § R2-8 Game plan FR port missing from main |
+| Head-office **Pending** policies can still be changed from the ledger (reached from the Campaign screen's "Change status"); lock not built per Kyron ruling 4 — needs a ledger + rules change (banked 2026-09-30, R2-4) | MEDIUM | Policy Ledger / rules | — | see § Head-office Pending policies can still be changed from the ledger |
+| FR round 2 (#1014–#1021) preview smokes waived under Rule 13; read-only production click-through deferred (banked 2026-09-30, #1014–#1021 fill) | LOW | FR redesign / verification | — | see § FR round 2 deferred click-through |
 | FR redesign preview click-through (read-only, opt-in on) not yet run for FR-0 (#998), FR-1 (#999), FR-2 (#1001), FR-3 (#1002), FR-4 (#1003), FR-5 (#1004) and FR-5b (#1008) — waived per brief §5.4 / Rule 13 (banked 2026-09-28, #999 post-merge; extended at each FR post-merge through #1008). **Desktop walked 28-09-2026 on production (`e31155ff`): 25 FR screens, 0 errors. OPEN FOR PHONE WIDTH ONLY** | LOW | FR redesign / verification | — | see § FR preview click-through |
 | FR Money needs (R2-9) omits the canvas figures the panel does not compute today (per-month need, API needed at a commission rate, floor/MDRT bar, "Use MDRT instead", car "With loan?" toggle, share-% / rate-% allocation) and keeps the sub-calculators, targets panel and merged allocator in their existing (Nexus-styled) forms — needs a ruling (banked 2026-09-30) | LOW | FR redesign / Money needs | — | see § FR Money needs: canvas figures not computed today |
 | "YTD vs tenure floor" bars (agent Production view, agent report view) show the API floor without the 40-apps company minimum — fold into the redesign, not a standalone fix (banked 2026-09-27, #994 post-merge) | LOW | Goals / company floor | redesign | see § YTD vs tenure floor bars: show the apps minimum |
@@ -7893,7 +7896,7 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 
 ## One rounding rule for every agent-facing persistency figure
 
-**RESOLVED by #TBD (squash TBD; branch `claude/fr-r2-1-persistency-2dp`, brief `docs/briefs/fr-round2-program.md` § R2-1). Ruling R-a (29-09-2026) widened the rule to agent AND manager screens, which settles this entry's closing question about the manager surfaces. Every agent- and manager-facing persistency percent now prints through `formatPersistencyPct` (or, for a decimal fraction, `formatOutlookPct`, which now delegates to it), and every display verdict beside a figure judges `roundPersistencyPct(x)` against the gate or floor: the outlook `meetsThreshold` and `persistencyTone`, the FR Money / Work win-back plan (`reinstatementPlan` currentPct, meets, afterPct, whatIf, series), GateBars, the campaign card and screen PREVIEW path (`campaignPersistencyReading`, CampaignHeroCard, the Campaign screen gate bar and month row), the agent Persistency tab, Playground, Goals hero, Commission anchor chip, Career level check, Meeting Mode (branch cell, persistency flag), the manager Persistency tab (roster, reality bar, at-risk book, entry form, CSV), the team roster, the settlement tables, the agent report (screen and PDF), the Strategic Plan and the branch CSV. Table tests at 89.994 / 89.995 / 89.996 / 90 for each verdict site (`src/lib/persistency/__tests__/persistencyGateVerdicts.test.js`, `src/components/persistency/__tests__/persistencyGateVerdicts.components.test.jsx`, plus the agent Persistency tab), each mutation-checked; #1011's parity test is now a same-STRING check across Today, the Persistency screen and the campaign card. **Not migrated, returned to the dispatcher (brief §3 stop, money outcome):** the campaign engine's gate reading (`persistencyPctForPeriod` / `persistencyPctAtFinalMonth` round to a WHOLE percent and feed `gateBandFor` → payout multiplier) and every surface that prints that known reading; the award engine's persistency criteria (`awardsEngine.js` `persistGate` comparisons) and their displays; the stored `meetsAwardGate` field (`persistencyService.js`). See § Persistency verdicts still on whole-number or raw values in money logic at end of file.**
+**RESOLVED by #1014 (squash `c426e18a`, merged 2026-09-30; branch `claude/fr-r2-1-persistency-2dp`, brief `docs/briefs/fr-round2-program.md` § R2-1). Ruling R-a (29-09-2026) widened the rule to agent AND manager screens, which settles this entry's closing question about the manager surfaces. Every agent- and manager-facing persistency percent now prints through `formatPersistencyPct` (or, for a decimal fraction, `formatOutlookPct`, which now delegates to it), and every display verdict beside a figure judges `roundPersistencyPct(x)` against the gate or floor: the outlook `meetsThreshold` and `persistencyTone`, the FR Money / Work win-back plan (`reinstatementPlan` currentPct, meets, afterPct, whatIf, series), GateBars, the campaign card and screen PREVIEW path (`campaignPersistencyReading`, CampaignHeroCard, the Campaign screen gate bar and month row), the agent Persistency tab, Playground, Goals hero, Commission anchor chip, Career level check, Meeting Mode (branch cell, persistency flag), the manager Persistency tab (roster, reality bar, at-risk book, entry form, CSV), the team roster, the settlement tables, the agent report (screen and PDF), the Strategic Plan and the branch CSV. Table tests at 89.994 / 89.995 / 89.996 / 90 for each verdict site (`src/lib/persistency/__tests__/persistencyGateVerdicts.test.js`, `src/components/persistency/__tests__/persistencyGateVerdicts.components.test.jsx`, plus the agent Persistency tab), each mutation-checked; #1011's parity test is now a same-STRING check across Today, the Persistency screen and the campaign card. **Not migrated, returned to the dispatcher (brief §3 stop, money outcome):** the campaign engine's gate reading (`persistencyPctForPeriod` / `persistencyPctAtFinalMonth` round to a WHOLE percent and feed `gateBandFor` → payout multiplier) and every surface that prints that known reading; the award engine's persistency criteria (`awardsEngine.js` `persistGate` comparisons) and their displays; the stored `meetsAwardGate` field (`persistencyService.js`). See § Persistency verdicts still on whole-number or raw values in money logic at end of file.**
 
 **Banked 2026-09-28 from Kyron's ruling on #1011. Severity: MEDIUM — the 90% gate drives bonuses, and two screens can show the same agent's same month on opposite sides of it.**
 
@@ -7922,6 +7925,8 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 
 ## Persistency verdicts still on whole-number or raw values in money logic
 
+**RULED 29-09-2026 (Kyron, `docs/briefs/fr-round2-followups.md` § 0 ruling 1): YES — the 2-dp rule reaches payouts.** The campaign gate reading, the award engine's persistency criteria and the stored `meetsAwardGate` all judge `roundPersistencyPct(x)`. Built as slice R2-1b (characterization first, then the change; expected flips: campaign gate 89.50 / 89.60 now fail, award criteria 89.995 / 89.996 now pass). The precision-only test edits in #1014 are accepted under R-a. Stays open until R2-1b merges.
+
 **Banked 2026-09-29 from R2-1 (brief `docs/briefs/fr-round2-program.md` § R2-1 / §3 stop). Severity: MEDIUM — awaiting a dispatcher ruling; each site decides or shows a money outcome, so R2-1 did not change it.**
 
 **Observed (verified on R2-1's head):**
@@ -7946,6 +7951,8 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 
 ## computeEarnedBadges still uses the old MDRT threshold
 
+**RULING 29-09-2026 (Kyron, `docs/briefs/fr-round2-followups.md` § 0 ruling 5, amends R-c):** the Trophy room exists only in FR, so the Nexus Career keeps `BadgeGrid`. The threshold drift below is therefore still visible under Nexus; this entry stays open.
+
 **Banked 2026-09-29 from R2-5 (Career badge merge). Severity: MEDIUM — an agent or a manager can be shown an MDRT badge (or its absence) that disagrees with the points engine and the Trophy room.**
 
 **Observed (verified on `258a7098`):** `computeEarnedBadges` in `src/components/gamification/BadgeGrid.jsx` awards `mdrt_qualified` at `ytdAPI >= 500000` (line 62) and `mdrt_pace` at `>= 250000` by week 26 (line 67), and reads only v1 `apiSold` / `api`. The engine (`BADGE_DEFINITIONS`, `functions/lib/gamificationConfig.js`) uses TTD 688,800 / 344,400 and the canonical production reader. The `BADGES` copy strings in the same file still say "$500k". `src/lib/fr/competeModel.js` documents the disagreement and reads the engine doc instead.
@@ -7957,6 +7964,8 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Falsification (Rule 23):** overturned if the activity feed and team medals are shown to be intentionally "client preview" surfaces that Kyron accepts as approximate, or if the engine's thresholds are ruled to change back to 500,000.
 
 ## Commission playground: saved assumptions are never loaded back
+
+**RULED 29-09-2026 (Kyron, `docs/briefs/fr-round2-followups.md` § 0 ruling 3):** load the saved settings when the screen opens; a scenario the agent loads replaces them on screen until the agent saves again; saved scenarios keep loading as Annual. Built as slice R2-3b. Stays open until R2-3b merges.
 
 **Banked 2026-09-29 from FR round 2 slice R2-3 (Phase 1 finding). Severity: MEDIUM. Nothing wrong is shown, but "Save Assumptions" tells the agent something was saved that the playground never uses again.**
 
@@ -7978,6 +7987,8 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 
 ## FR Money needs: canvas figures not computed today
 
+**RULING 29-09-2026 (Kyron, `docs/briefs/fr-round2-followups.md` § 0 ruling 8):** agreed — the canvas features left out of R2-8 / R2-9 stay banked here. No slice is queued.
+
 **Banked 2026-09-30 from R2-9. Severity: LOW — design fidelity, no functional gap.**
 
 **What R2-9 shipped:** the FR Money needs follows `D3M-MoneyNeeds` / `M3-MoneyNeeds` for layout (intro + tally, "The worksheet" table with M/Q/S/A frequency buttons, sub-calculator cards, a donut of where the money goes with a Table toggle, and a right-hand "What you need to earn" inspector; five swipe pages on a phone). Every figure comes from what the panel already computes (`payeBuildUp`, `useExpenseGroupEditor`, `compositionSegments`, stored sub-calculator totals). R-e ("every function kept, logic untouched") and the brief's §3 money-math stop rule out the rest.
@@ -7995,6 +8006,8 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 
 ## FR-6 declared reinstatements — three rulings wanted
 
+**PARTLY RULED 29-09-2026 (Kyron, `docs/briefs/fr-round2-followups.md` § 0 ruling 6): Option C** — #1019 merged as is (its content landed on `main` in squash `92d4e5b4`). **Item 2 CLOSED:** the 60-day "not confirmed" threshold is confirmed as it is. The one-line addition to the head-office guard test's allowlist (`src/lib/portfolioImport/__tests__/excludeImported.test.js`) is confirmed. The import-side fix for a stale declaration after a new lapse (CodeRabbit on #1019) is slice R2-6b. Items 1 and 3 remain open.
+
 **Banked 2026-09-29 in the R2-6 PR (FR-6 Mark reinstated, Option A; branch `claude/fr-r2-6-mark-reinstated`). Severity: LOW — every item is display-only or history-only; no evidenced figure and no money reader is affected (pinned by `src/lib/__tests__/reinstatementDeclarationMoney.test.js` and the evidenced-identical tests in `src/lib/persistency/__tests__/reinstatementDeclaration.test.js`).**
 
 1. **Possible double count in the declared figure.** `deriveFromLedger` computes `declared.persistency` as the evidenced inputs plus the declared lapses' API added to `reinstatements` — and `reinstatements` already holds the agent's own monthly typed input (ruled 28-09-2026 to stay as it is). An agent who types a reinstatement into the monthly record AND marks the same policy reinstated sees it counted twice in the "with your declared reinstatements" figure. The evidenced figure is unaffected. Options: a hint beside the monthly input, or subtract nothing and accept it. Needs a ruling; no data can tell the two apart today (the monthly input carries no policy numbers).
@@ -8002,3 +8015,107 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 3. **Pre-existing, not introduced by R2-6:** the manager history arm (`firestore.rules`, `match /history/{historyId}`, "Manager arm") admits TA / PA / BM / flagged SM on any in-scope policy with no transition or `event` constraint, so such a manager can already write a `lapsed → lapsed` `reinstatement_declared` history doc. The policy doc itself is not writable by them through Arm G (rules tests D10–D13, D20–D21). Found while mutation-testing R2-6's history arm (a TA-owned test case passed on the unmodified rules).
 
 **Falsification (Rule 23):** item 1 closes if Kyron rules the monthly input and the per-policy declaration are never used for the same policy (or accepts the overlap); item 2 if the 60-day rule is ruled "from the first declaration" and implemented from history, or accepted as is; item 3 if the manager history arm is intended to be event-agnostic.
+
+## FR round 2 deferred click-through (#1014–#1021, Rule 13)
+
+**Banked 2026-09-30 in the consolidated post-merge fill for #1014–#1021. Severity: LOW — deferred verification, not a known defect.**
+
+**Verification waived because** the cloud session that built the eight slices had no preview or bypass credentials, and feature-branch previews run against PRODUCTION Firebase (Rule 13 waiver recorded in `docs/briefs/fr-round2-followups.md` § 0). Claude-web runs one **read-only** production click-through after the merges. Do not save, confirm, declare or type into any field.
+
+**Unverified criteria, per PR:**
+
+**#1014 — R2-1 persistency 2-dp** (steps quoted verbatim from the PR body):
+
+> 1. As an agent, open **Persistency**. The outlook figures show 2 decimals (e.g. "86.63%"); a figure at or above 90.00% is teal, below is amber, and there is no "below the gate" banner beside a "90.00%".
+> 2. **Today** tile and the **Persistency** "Estimated today" figure show the same string.
+> 3. **Campaign** screen: the month-history row and the gate bar value show 2 decimals. The known campaign reading (if the final month is on file) still shows a whole percent; that is expected, see the STOP.
+> 4. **Money → Persistency** (FR look): the header tile, planner title, presets and bars all show 2 decimals.
+> 5. As a manager, open the **Persistency** tab. The roster, reality-bar aggregate and at-risk book show 2 decimals; the "award eligible" count matches the rows at 90.00% or above.
+> 6. As a manager, open **Team roster** and **Strategic Plan**. The persistency cells show 2 decimals.
+>
+> All steps are read-only. **Do not save anything:** a feature-branch preview runs against PRODUCTION Firebase.
+
+**#1015 — R2-2 tab trend as bars** (steps quoted verbatim from the PR body):
+
+> 1. Sign in as an agent with the FR look opted in; open Persistency.
+> 2. Confirm the annuity two-option switch is visible under the Derived/Estimated figures without clicking the (i) button; tap the other option and see the figures change; the (i) panel still lists "Rule:".
+> 3. Confirm the Monthly trend card shows bars from a "Gate 90%" line with 2-dp labels.
+> 4. Turn the FR look off in Settings; confirm a bar chart with a dashed 90 line and a 2-dp tooltip on tap/hover.
+> 5. Check phone width in both themes: no sideways scroll, switch options are easy to tap.
+
+**#1016 — R2-3 income goal period** (steps quoted verbatim from the PR body):
+
+> 1. Sign in as an agent and open **Money → Commission** (playground, *Goal Decomposition* tab).
+> 2. Check that the Income Goal shows a period select (default *Annual*) and the line "TTD 300,000 a year".
+> 3. Type 50000 and choose **Month**. The line should read "TTD 50,000 a month × 10 selling months = TTD 500,000 a year", and the ladder's *Income goal* should show TTD 500,000 on the *Annual* chip.
+> 4. Click the ladder's **Month** chip. *Income goal* should show TTD 50,000.
+> 5. Try **Week** and **Day** in the select. The sentence should show × 43 selling weeks / × 258 selling days.
+> 6. Do NOT click *Save Assumptions*, *Save as My Goals* or save a scenario on a preview. Those write to production.
+
+**#1017 — R2-4 Campaign policies** (steps quoted verbatim from the PR body):
+
+> 1. FR look on: open Campaign and scroll to "Policies in this campaign". Check that the Counting total equals the API / Applications figures in the progress block above.
+> 2. Expand "Not counting". Check that each row shows its reason, for example "Issued before the campaign".
+> 3. Check that head-office settled or lapsed rows show "Status set by head office" and no button.
+> 4. On a row with "Change status", tap it. The Policy ledger should open with that policy's drawer and its transition footer. Close the drawer **without confirming**.
+> 5. FR look off: open Awards and repeat steps 1 and 3 on the campaign screen there.
+
+**#1018 — R2-5 Career badges + Trophy room** (steps quoted verbatim from the PR body):
+
+> 1. Open Career: the badge grid is gone; the "Your badges and trophies" card shows "N of 14 earned" and the "Open the Trophy room" button.
+> 2. Tap the button: the Trophy room opens; header count (with awards) is >= the card's count.
+> 3. Trophy room: the level Donut centre shows your level name; "points to <next>" matches the old text.
+> 4. Hero row: earned Donut adds up to the header count; the Award progress meters match the "Awards" shelf percentages; "Table" toggles work.
+> 5. Switch the FR opt-in off: Career shows the original badge grid again.
+> 6. Check both themes and a phone width.
+
+**#1019 — R2-6 Mark reinstated (content in squash `92d4e5b4`)** (steps quoted verbatim from the PR body):
+
+> 1. Sign in as an agent who has lapsed head-office policies. Open **Policy ledger** and open a lapsed policy. The drawer shows a "Reinstatement" section with **Mark reinstated**. Click it, check the note field and the help text, then press **Cancel**.
+> 2. The policy's status pill still says lapsed, and there is no "Declared reinstated" chip.
+> 3. FR look, **Money → Persistency**: the planner rows show **Mark reinstated**. With nothing declared, there is no second figure.
+> 4. FR look, **Focus → Win back**: the same planner and the same buttons.
+> 5. Nexus look, **Persistency** tab: the hero is unchanged, with no declared line.
+> 6. Signed in as a TA or SM, open an agent's lapsed policy: there is no Mark reinstated control.
+
+**#1020 — R2-8 Game plan — NOT ON MAIN, skip until re-landed** (steps quoted verbatim from the PR body):
+
+> 1. Sign in as an agent with "Try the new design" on and open Money → Game plan. You should see the FR steps, commitment strip, Step 2, Suggested week and the Step 3 panel.
+> 2. Check the figures match the Nexus look: turn the switch off and compare.
+> 3. Open the Monthly plan and Review and commit modals, and close them **without saving or committing**.
+> 4. Toggle the chart's **Table**.
+> 5. At phone width, swipe through all four pages.
+> 6. As a manager, or with the switch off, confirm the Game plan is the unchanged Nexus hub.
+
+**#1021 — R2-9 Money needs** (steps quoted verbatim from the PR body):
+
+> 1. Sign in as an agent with "Try the new design" on and open Money → Money needs. You should see the intro and tally, The worksheet, Sub-calculators, Where the money goes, and the "What you need to earn" inspector on the right.
+> 2. Turn the switch off and compare: the tally, group subtotals, PAYE build-up and 1st-year commissions required should match.
+> 3. Expand and collapse a group. Open "Adjust amounts" on a sub-calculator and close it with the ✕ (not "Done"), without typing.
+> 4. Toggle the donut's **Table**, and "Why?" on the PAYE row.
+> 5. At phone width, swipe through the five group pages.
+> 6. As a manager, or with the switch off, confirm Money needs is the unchanged Nexus panel.
+
+**Close when:** every step above has been walked on production (desktop and phone width, both themes) with the result written here. R2-6 (#1019) now runs against deployed rules, so its steps 1–6 still must not press Confirm. #1020's steps cannot be walked until the Game plan port is re-landed (§ R2-8 Game plan FR port missing from main).
+
+**Falsification (Rule 23):** closed early if a later slice's own smoke walks the same screens on production after these merges.
+
+## Head-office Pending policies can still be changed from the ledger
+
+**Banked 2026-09-30 from Kyron's ruling 4 on R2-4 (`docs/briefs/fr-round2-followups.md` § 0). Severity: MEDIUM — not built; needs a ledger and a rules change.**
+
+**Observed:** the Campaign screen's "Change status" (R2-4, #1017) opens the Policy ledger with that policy's drawer open, and the drawer's transition footer and write are the ledger's own. Head-office **settled**, **lapsed**, **NTU** and **denied** policies are locked ("Status set by head office", no button), but a head-office policy still **waiting** (Pending) keeps "Change status" and can be moved by the agent from the drawer (pinned by `src/lib/__tests__/campaignPolicyGroups.test.js:211`: a waiting head-office row has `canChangeStatus: true`). Kyron ruled to keep the jump to the ledger and **not** to build the Pending lock now.
+
+**Fix shape (when scheduled):** extend the ledger's head-office lock to head-office Pending statuses in the drawer footer, and mirror it in the `policies` update arm of `firestore.rules` so the client lock is not the only guard. Rules change → human-merge, rules deploy by Kyron.
+
+**Falsification (Rule 23):** overturned if head office's Pending status is shown to be advisory only (an agent is expected to move it), in which case no lock is wanted.
+
+## R2-8 Game plan FR port missing from main
+
+**Banked 2026-09-30 in the consolidated post-merge fill for #1014–#1021. Severity: HIGH — approved, merged-in-intent work is not on `main`; nothing is broken for users.**
+
+**Observed (verified 2026-09-30):** PR #1020 ("R2-8 — Game plan FR port") merged as squash `92d4e5b4`, but that squash contains the R2-6 Mark reinstated change (30 files, `firestore.rules` +57) and none of the Game plan port. #1020's final head `f42120a1` does not hold the port: its two commits `1c0aefb5` (characterization tests) and `c98451ae` (the port, the SHA CI and CodeRabbit approved) were dropped by a later merge on that branch. The 7 files they add are absent from `origin/main`: `src/components/fr/money/FrGamePlan.jsx`, `FrGamePlanView.jsx`, `gamePlanModel.js`, `src/components/fr/money/__tests__/FrGamePlan.test.jsx`, `src/components/fr/harness/scenes/gamePlanScenes.jsx`, `src/components/dashboard/GamePlanV2/__tests__/GamePlanHub.characterization.test.jsx`, `gamePlanCharFixtures.js`. #1019 (R2-6) then squashed empty (`1ce3285a`, 0 files) because its content was already on `main`. Check used: for each PR, every file added by a non-merge commit was looked up on `origin/main`; only #1020's 7 were missing.
+
+**Fix shape:** re-land `1c0aefb5` + `c98451ae` on a fresh branch off `origin/main` as a new human-merge PR, resolve against R2-6 / R2-9 (both touch `src/components/fr/money/` and `src/components/fr/harness/scenes/index.js`), re-run lint / full suite / build, CI and CodeRabbit.
+
+**Falsification (Rule 23):** wrong if `git cat-file -e origin/main:src/components/fr/money/FrGamePlanView.jsx` succeeds (the port landed under another path or PR).

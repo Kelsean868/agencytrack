@@ -1979,3 +1979,31 @@ An agent who switches on "Try the new design" now gets a Money Overview (pace to
 An agent who switches on "Try the new design" now gets Focus (who to call today with a tap-to-call link, paperwork waiting oldest first, and the win-back planner) and Pipeline (the selling funnel against the company minimum, and a board of their own policies by stage), plus FR headers above the Numbers screens and the Policy Ledger. The phone tab bar reads Today · Pipeline · + · Money · Arena. Nothing new is written; call outcomes still go through the existing Daily Capture sheet. Nobody else sees any change. No rules, functions or indexes changed. The read-only preview click-through with the opt-in on is still owed (FOLLOW_UPS § FR preview click-through, now covering FR-0 to FR-4).
 
 **Next:** #1004 (FR-5 Compete/You) restacked onto main, marked ready, CodeRabbit, then Kyron's merge. Then the green-channel FR-3 planner-nits PR and FR-5b (award helper). App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
+
+## Archived 2026-09-30 (consolidated post-#1014–#1021 fill — Rule 16 caps)
+
+### Last updated — entry 3 (FR-5 Compete / You, #1004)
+
+**FR-5 Compete / You SHIPPED (2026-09-28), PR #1004 squash `83318db8` (feature-branch HEAD `90bd4d58`).** Under the per-user FR opt-in only: Trophy room (new route `trophies`: the points engine's own `leaderboard/{uid}` doc — 9 badge trophies lit only when the engine wrote the key, 5 level trophies, level and streak progress, TTD "how you earn it" copy from `BADGE_DEFINITIONS`; no award trophies per Kyron ruling 28 Sep, see FOLLOW_UPS § FR-5b), Campaign (new route `campaign`: the existing campaign screen per active campaign), FR headers above the Leaderboard (own rank, API, gap to the agent above) and Profile (level, points, streak, trophies). Awards and Connections reskinned by the FR look only. CodeRabbit: 1 finding implemented (opt-out test now visits the wrapped tabs), docstring warning declined. CI green (one re-run: known `DailyCaptureV2` flake + an `AwardsRulesetPanel` loading race, both outside the diff). **FR-0 to FR-5 complete.**
+
+### Current main HEAD — entry 3 (`83318db8`, FR-5 Compete / You)
+
+`83318db8` (PR #1004 squash - FR-5 Compete / You, 2026-09-28). Merge `2026-09-28T05:43:45Z`. **No deploy-gated surfaces touched** (`git diff --stat f790cf3e..83318db8 -- firestore.rules firestore.indexes.json storage.rules functions/` is empty).
+
+### Active track — entry 3 (FR-0 to FR-5 complete)
+
+**FR agent redesign program FR-0 to FR-5 — COMPLETE** (#998, #999, #1001, #1002, #1003, #1004; last `83318db8`). Everything sits behind the per-user agent opt-in (Settings → Try the new design); the tenant default is unchanged. Queued from it: (1) the green-channel FR-3 planner-nits PR (FOLLOW_UPS § FR-3 planner nits); (2) FR-5b award calculation shared helper, then award trophies (separate, human-merge); (3) the read-only preview click-through with the opt-in on (FOLLOW_UPS § FR preview click-through, FR-0 to FR-5); (4) FR-6 Mark reinstated (separate brief: rules + deploy, human). Flipping FR to the default is out of scope (brief FR-D12).
+
+### Recently shipped — oldest row
+
+| PR | SHA | Description |
+|---|---|---|
+| [#1003](https://github.com/Kelsean868/agencytrack/pull/1003) | `767a4ff7` | **feat(fr): FR-4 Work.** Under the FR opt-in only: Focus (Calls from today's planner with `tel:` links, call blocks as capacity; Paperwork oldest first; Win-back planner), Pipeline (Funnel vs company minimum; Board by ledger stage), FR headers above Numbers and the Policy Ledger (win-back lens). Phone tab bar Today · Pipeline · + · Money · Arena. Read + `tel:` only. |
+
+### Where we left off — PRIOR block (FR-5 Compete / You, #1004)
+
+**PRIOR - 2026-09-28. FR-5 Compete / You merged as `83318db8` (#1004). FR-0 to FR-5 complete.**
+
+An agent who switches on "Try the new design" now has the whole FR agent app: Today, Focus, Week, Pipeline, Numbers, the Policy Ledger, Money with its six calculators, the Leaderboard with their own standing on top, Campaign, Awards, a Trophy room (the badges and levels the points engine already awards, with what earns each), Me, Career and Connections. Every existing screen is still reachable and unchanged underneath. Nobody who has not opted in sees any change. No rules, functions or indexes changed across the program.
+
+**Next:** the green-channel FR-3 planner-nits PR; FR-5b (award helper, then award trophies; human-merge); the read-only preview click-through with the opt-in on (FR-0 to FR-5); FR-6 (Mark reinstated) is a separate brief. App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
