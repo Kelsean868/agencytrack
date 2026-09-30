@@ -7974,7 +7974,7 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 
 ## Commission playground: saved assumptions are never loaded back
 
-**RESOLVED by #TBD (R2-3b, branch `claude/fr-r2-3b-playground-load`) — pending the dispatcher's answer on the load order (see the PR).** On open the Goal Decomposition tab reads `getGoals` and applies the saved `playground*` values (`src/utils/playgroundSettings.js`), including the income-goal period and the settlement rate, before the inputs render; missing keys keep the defaults; a failed read keeps all defaults. Order: defaults → saved → Money Needs hand-off (applied once, then removed from localStorage) → history ratios only for the ratios not saved. A loaded scenario replaces the on-screen values without writing.
+**RESOLVED by #1029 (squash `46a284b9`, merged 2026-09-30) (R2-3b, branch `claude/fr-r2-3b-playground-load`) — pending the dispatcher's answer on the load order (see the PR).** On open the Goal Decomposition tab reads `getGoals` and applies the saved `playground*` values (`src/utils/playgroundSettings.js`), including the income-goal period and the settlement rate, before the inputs render; missing keys keep the defaults; a failed read keeps all defaults. Order: defaults → saved → Money Needs hand-off (applied once, then removed from localStorage) → history ratios only for the ratios not saved. A loaded scenario replaces the on-screen values without writing.
 
 **RULED 29-09-2026 (Kyron, `docs/briefs/fr-round2-followups.md` § 0 ruling 3):** load the saved settings when the screen opens; a scenario the agent loads replaces them on screen until the agent saves again; saved scenarios keep loading as Annual. Built as slice R2-3b. Stays open until R2-3b merges.
 
@@ -8163,7 +8163,7 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 
 ## A-1: lapsePolicy fails Arm D without status provenance
 
-**RESOLVED by #TBD (F-1, branch `claude/f1-lapse-provenance`, brief `docs/briefs/fr-round2-followups.md` § 4).** `lapsePolicy` now stamps `statusSource: manager`, `statusSetBy: <manager uid>`, `statusAsOf` (and `changedFields` carries statusSource / statusSetBy), built by the pure `buildLapseUpdate` (`src/lib/policies/lapsePolicyUpdate.js`) that the emulator rules test imports, so the test sends the app's exact payload. Emulator: the pre-F-1 payload is DENIED for the four A-1 cases; the app payload is ALLOWED for all five; mutation (drop `statusSetBy`) fails 6 ALLOW cases. No rules change. The "Also seen" point (Arm D does not check `isHeadOfficeStatus`) is NOT addressed here and still needs a ruling.
+**RESOLVED by #1032 (squash `e00ce083`, merged 2026-09-30) (F-1, branch `claude/f1-lapse-provenance`, brief `docs/briefs/fr-round2-followups.md` § 4).** `lapsePolicy` now stamps `statusSource: manager`, `statusSetBy: <manager uid>`, `statusAsOf` (and `changedFields` carries statusSource / statusSetBy), built by the pure `buildLapseUpdate` (`src/lib/policies/lapsePolicyUpdate.js`) that the emulator rules test imports, so the test sends the app's exact payload. Emulator: the pre-F-1 payload is DENIED for the four A-1 cases; the app payload is ALLOWED for all five; mutation (drop `statusSetBy`) fails 6 ALLOW cases. No rules change. The "Also seen" point (Arm D does not check `isHeadOfficeStatus`) is NOT addressed here and still needs a ruling.
 
 **Banked 2026-09-30 from audit A-1 (`docs/briefs/fr-round2-followups.md` § 1, audit only — no code change in the audit). Severity: HIGH — a branch manager's "lapse policy" action fails in production for almost every policy, and the rules test that covers it passes only because it sends fields the app does not.**
 
@@ -8188,6 +8188,8 @@ The existing rules test (`tests/rules/policies.rules.test.mjs`, "Arm D ALLOW: BM
 **Also seen (decide separately):** Arm D does not check `isHeadOfficeStatus`, so with provenance a BM can lapse a policy whose settled status came from the head-office import. The P2d head-office lock covers agent arms only; confirm that a BM overriding head office is intended.
 
 **Falsification (Rule 23):** overturned if production shows lapses succeeding through this panel for policies another person settled (e.g. a Cloud Function or another path adds the provenance before the write — none found in `src/` or `functions/`).
+
+UPDATE 2026-09-30: Kyron ruling 2B - a manager may not override a head-office status; the 'Also seen' point becomes slice F-4 (brief § 5).
 
 ## Policies rules reach the 1000-expression limit
 
@@ -8242,7 +8244,7 @@ The existing rules test (`tests/rules/policies.rules.test.mjs`, "Arm D ALLOW: BM
 
 ## Career level inputs: startDate and apiSold
 
-**RESOLVED by #TBD (F-2, branch `claude/f2-career-level-inputs`, brief `docs/briefs/fr-round2-followups.md` § 4; Kyron ruling 30-09-2026).** Years of service now come from `contractStartDate` (`yearsOfServiceFrom`, `src/lib/career/careerModel.js`; `''` / absent / not a real YYYY-MM-DD date → null; `startDate` is no longer read), and API from `extractFields(s).apiSold` (`submissionAPI`) in `careerStats`, `computeQuarterlyAPI`, `quarterlyAPISeries` and `compute2YearAverageAPI`. Level thresholds unchanged. Level before → after for the fixture table is in the PR. Not fixed here (not in the ruling): YTD applications are still v1-only — see § Career level: applications still v1-only (after F-2). Ledger (settled) API is also not in scope.
+**RESOLVED by #1033 (squash `84241454`, merged 2026-09-30) (F-2, branch `claude/f2-career-level-inputs`, brief `docs/briefs/fr-round2-followups.md` § 4; Kyron ruling 30-09-2026).** Years of service now come from `contractStartDate` (`yearsOfServiceFrom`, `src/lib/career/careerModel.js`; `''` / absent / not a real YYYY-MM-DD date → null; `startDate` is no longer read), and API from `extractFields(s).apiSold` (`submissionAPI`) in `careerStats`, `computeQuarterlyAPI`, `quarterlyAPISeries` and `compute2YearAverageAPI`. Level thresholds unchanged. Level before → after for the fixture table is in the PR. Not fixed here (not in the ruling): YTD applications are still v1-only — see § Career level: applications still v1-only (after F-2). Ledger (settled) API is also not in scope.
 
 **Banked 2026-09-30 from R2-10 (Career FR port). Severity: HIGH — an agent-facing verdict (career level, title, unlocks) is probably wrong for everyone. Not checked against live user or submission docs.**
 
@@ -8265,3 +8267,5 @@ The existing rules test (`tests/rules/policies.rules.test.mjs`, "Arm D ALLOW: BM
 **Fix shape:** read `extractFields(s).applicationsSold` in `careerStats` (one line, same pattern as `submissionAPI`), with a characterization row and a level before → after table. Human-merge (agent-facing verdict). Needs a dispatcher ruling: the F-2 ruling named years and API only.
 
 **Falsification (Rule 23):** overturned if live v2 submissions also carry a flat `applicationsSold` (then the v1 read already sees them) — check one v2 submission doc before building.
+
+UPDATE 2026-09-30: Kyron ruling 1A - build it; slice F-3 (brief § 5).

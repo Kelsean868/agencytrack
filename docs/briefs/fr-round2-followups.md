@@ -103,3 +103,32 @@
 - **Commit 2 — the change:** years of service from `contractStartDate` (`''`, absent or not `YYYY-MM-DD` → `null`, as today's missing `startDate`); API through `extractFields(s).apiSold` in all four readers. `startDate` is no longer read. **Level thresholds unchanged.** Only the expectations the change explains may move; the PR body shows the fixture table **level before → after**. Any other expectation change: **STOP and wait for dispatcher**.
 - **Not in scope:** `ytdApps` reads `applicationsSold || appsSold` (v1 only) — the same defect for applications, not covered by the ruling. Consequence: an agent whose reports are all v2 still has `ytdApps = 0`, fails every level's `minApps`, and stays at level 1 after F-2. Leave it (a scope change needs a ruling, Rule 1); bank it in the PR's gaps and as a FOLLOW_UPS entry. Ledger-based (settled) API is also not in scope.
 - **No production data reads.** Human-merge (agent-facing verdict: level, title, unlocks).
+
+
+## 5. Round 2c follow-ups (Kyron, 30-09-2026)
+
+**Rulings (30-09-2026) — locked:**
+- **1A:** Career reads applications the same way as API (F-3 below).
+- **2B:** a manager may **not** override a status that came from head office. Head office is the source of truth (standing ruling). Build as F-4 below — a rules change.
+
+**Channel:** every slice is `human-merge`, one PR each, cut fresh from `origin/main`.
+
+| # | Item | Model / effort |
+|---|---|---|
+| F-3 | Career applications through `extractFields` | Opus 5.5 / medium |
+| F-4 | Managers may not change a head-office status (rules) | Opus 5.5 / high |
+
+### F-3 — Career applications through `extractFields`
+- **Source (verified 30-09-2026 on `46a284b9`):** `careerStats` (`src/lib/career/careerModel.js`, near line 139) sums `ytdApps` from `parseFloat(s.applicationsSold || s.appsSold)`. `extractFields` (`src/utils/extractFields.js`) reads `version === 2 ? newBusiness.apps : applicationsSold || appsSold` (flat) and `step4.applicationsSold` (nested). Evidence: FOLLOW_UPS § Career level: applications still v1-only (after F-2).
+- **Phase 1:** `git grep -n "applicationsSold\|appsSold" -- src/lib/career src/utils/careerLevelHelpers.js` and the `extractFields` line; quote both.
+- **Commit 1 — characterization first:** add rows to `src/lib/career/__tests__/careerInputs.characterization.test.js` (v2-only apps, nested-schema apps, legacy `appsSold`) pinning today's level.
+- **Commit 2 — the change:** `ytdApps` sums `extractFields(s).applicationsSold`. Level thresholds unchanged. The PR updates F-2's before → after fixture table (row C and the new rows). Any other expectation change: **STOP and wait for dispatcher**.
+- Close the HIGH FU § Career level: applications still v1-only (after F-2).
+
+### F-4 — Managers may not change a head-office status
+- **Source (verified 30-09-2026 on `46a284b9`):** in `firestore.rules`, the only arm that lets a manager change a policy's status is **Arm D** (settled → lapsed, BM / TA / PA, own branch). Arm C (manager confirm) never touches status. Arm B admits a producing manager only on their OWN policy, as an agent — agent cases stay unchanged. `isHeadOfficeStatus(data)` (`statusSource == 'oipa_import'`) already exists and guards Arms A and F. The client already refuses self-confirm on head-office policies (`isFromHeadOffice` in `selfConfirmPolicy`, `policiesService.js`).
+- **Phase 1:** `grep -n "allow update" firestore.rules` for the policies block; quote Arm D and `isHeadOfficeStatus`; enumerate every arm that can move `status` and say which roles reach it (Rule 2).
+- **Rules change (tightening only):** Arm D adds `&& !isHeadOfficeStatus(resource.data)`. No other arm is edited.
+- **Client:** `lapsePolicy` refuses a head-office policy with a clear message before writing (same pattern as `selfConfirmPolicy`), so the manager sees why instead of a permission error.
+- **Rules tests (emulator):** head-office-settled → manager lapse **DENIED**; self-declared settled → manager lapse **ALLOWED** (the F-1 path, app payload from `buildLapseUpdate`); agent cases unchanged; re-run all five A-1 cases (the `oipa_import` case now flips to DENIED — the only expected change) and the full rules suite.
+- **Deploy (Rule 19, Kyron, after merge):** pre-flight — worktree HEAD = `origin/main`; `firebase use agencytrack-2a610`; then `firebase deploy --only firestore:rules`. The PR body states this exactly.
