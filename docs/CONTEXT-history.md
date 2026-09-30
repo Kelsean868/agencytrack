@@ -2065,3 +2065,33 @@ Rule 16 caps: moved verbatim, nothing dropped.
 With the new design switched on, the Today screen's persistency tile and coach line now show this month's figure, the same one the Persistency screen works out, and say which month and kind it is ("Sep 2026 estimate · below the 90% gate"). Before, Today showed the newest saved record (Jul 2026, 56.5%) while the Persistency screen showed about 86.6%. Per Kyron's ruling the figure is shown to two decimals, rounded half up, and the above-or-below-the-gate wording is judged on that same rounded number, so 89.996 reads "90.00%, at or above the gate" and 89.994 reads "89.99%, below". While the ledger loads the tile shows a placeholder, and on a ledger error it is hidden. No rules, functions or indexes changed.
 
 **Next:** the MEDIUM follow-up to apply the same two-decimal rule to every agent-facing persistency figure (Persistency screen, campaign card, reinstatement planner, Nexus surfaces; it needs a brief, and manager screens are to be asked about first); the phone-width click-through (desktop done 28-09-2026); Kyron's ruling on FR-6 (recon in `docs/audits/fr-6-mark-reinstated-recon.md`); the one-line `AgentDashboard` key hardening (LOW); the LOW Today stale-export and assumed-input warning. The `AgentPlannerPanel.weeknav` flake hit twice on 28 Sep (#1007, #1008). App Check enforce no earlier than 2026-10-04. **Still open from the ledger run:** LX partial blocks (card, rail, 1440 table fit); Excel export vs Ruling 1.
+
+## Archived from CONTEXT.md - 2026-09-30 consolidated fill (PRs #1034, #1035, #1036)
+
+Rule 16 caps: moved verbatim, nothing dropped.
+
+### Recently shipped row (dropped when the round 2c row became the 6th row)
+
+| PR | SHA | Description |
+|---|---|---|
+| [#1008](https://github.com/Kelsean868/agencytrack/pull/1008) | `71e22c3e` | **feat(fr): FR-5b shared award model + award trophies.** Award inputs and view moved to `src/lib/awards/agentAwardModel.js` (Awards tab output pinned by characterization tests, unchanged); under the FR opt-in the Trophy room gets an Awards shelf (engine awards, lit only when qualified for the current period, no new read). |
+
+### Last updated - entry 3
+
+**FR round 2 SHIPPED (2026-09-30); one consolidated fill for #1014–#1021 (Rule 16(c)).** Ledger (PR · squash · Rule 16(b) class): #1014 `c426e18a` work (R2-1 persistency 2-dp on every display) · #1015 `3bfd20dd` work (R2-2 tab trend as bars, annuity switch visible) · #1016 `70b0940d` work (R2-3 income goal period + settlement-rate save) · #1017 `71d0f29a` work (R2-4 Campaign lists its policies; also carried `docs/briefs/fr-round2-followups.md`) · #1018 `b12c170a` work (R2-5 Career badge merge + Trophy room charts) · #1021 `a836e6a0` work (R2-9 Money needs FR port) · **#1020 `92d4e5b4` work, but it carries R2-6 (Mark reinstated: `firestore.rules` +57, 30 files), NOT R2-8** · **#1019 `1ce3285a` EMPTY squash (0 files; its content had already landed in `92d4e5b4`)**. **The R2-8 Game plan FR port is NOT on `main`:** #1020's final head `f42120a1` no longer holds its two commits (`1c0aefb5`, `c98451ae`); the 7 files they add (`FrGamePlan.jsx`, `FrGamePlanView.jsx`, `gamePlanModel.js`, `gamePlanScenes.jsx`, their tests and the Game plan characterization suite) are absent from `origin/main` — banked HIGH, see FOLLOW_UPS § R2-8 Game plan FR port missing from main. Rules for R2-6 are deployed (Kyron, 2026-09-30). Preview smokes for all eight were waived under Rule 13; the deferred read-only click-through is banked (FOLLOW_UPS § FR round 2 deferred click-through). Kyron's round-2 rulings (29-09-2026) are recorded in the FOLLOW_UPS entries they settle. **Prior:**
+
+### Current main HEAD - entry 3
+
+`1ce3285a` (PR #1019 squash - empty; the last content squash is `92d4e5b4`, PR #1020, carrying R2-6). Merges `2026-09-30T01:59:32Z` (#1014) to `2026-09-30T03:23:45Z` (#1019). **Deploy-gated trigger FIRED:** `git diff --stat 942bcca8..1ce3285a -- firestore.rules firestore.indexes.json storage.rules functions/` shows `firestore.rules` +57 (the R2-6 Arm G / history arm, in `92d4e5b4`); Kyron reports the rules deployed 2026-09-30. No functions or index change. **Prior:**
+
+### Active track - entry 3
+
+**FR round 2 follow-ups** (`docs/briefs/fr-round2-followups.md`): overnight run 2026-09-30, every slice human-merge, one PR each: R2-7 Commission playground FR port → R2-11 Leaderboard → R2-10 Career (`docs/briefs/fr-career-leaderboard-kickoff.md`) → R2-1b payouts on the 2-dp rule → R2-6b import clears a stale reinstatement declaration → R2-3b saved playground settings load back → R2-2b hide the tab trend chart under FR → A-1 audit (client lapse write vs its rules arm). **Plus** the HIGH re-land of the R2-8 Game plan FR port that #1020's squash dropped. Everything FR still sits behind the per-user agent opt-in. **Prior:**
+
+### Where we left off - PRIOR block (oldest)
+
+**PRIOR - 2026-09-30. FR round 2 merged: #1014–#1021 (last squash `1ce3285a`). One slice did not land.**
+
+Seven of the eight round-2 slices are on `main`: persistency now prints to two decimals everywhere it is shown (agent and manager), the Persistency tab's monthly trend is a bar chart with the annuity switch always visible, the playground's income goal takes a period and its settlement rate now saves, the Campaign screen lists the policies it counts, Career's badges moved into the Trophy room, agents can mark a lapsed policy reinstated (rules deployed), and Money needs has its FR layout. The Game plan FR port (R2-8, #1020) is **not** on `main`: #1020's branch lost its two Game plan commits in a later merge, so its squash `92d4e5b4` carried the R2-6 changes instead, and #1019's squash `1ce3285a` is empty. Nothing is broken for users; the Game plan simply still shows the Nexus layout under the FR look. Kyron's rulings of 29-09-2026 are recorded: R2-1b (payouts on the 2-dp rule), R2-3b (saved playground settings load back), R2-2b (hide the tab trend chart under FR) and R2-6b (import clears a stale declaration) are queued; the head-office Pending lock is banked; Nexus keeps `BadgeGrid`. The eight preview smokes were waived under Rule 13 and the read-only click-through is banked.
+
+**Next:** the overnight queue in `docs/briefs/fr-round2-followups.md` § 1 (R2-7 → R2-11 → R2-10 → R2-1b → R2-6b → R2-3b → R2-2b → A-1), each its own human-merge PR, plus the R2-8 re-land PR; Claude-web's read-only production click-through for #1014–#1021. App Check enforce no earlier than 2026-10-04.

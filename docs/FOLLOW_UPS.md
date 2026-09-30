@@ -8191,7 +8191,7 @@ The existing rules test (`tests/rules/policies.rules.test.mjs`, "Arm D ALLOW: BM
 
 UPDATE 2026-09-30: Kyron ruling 2B - a manager may not override a head-office status; the 'Also seen' point becomes slice F-4 (brief § 5).
 
-UPDATE 2026-09-30: the 'Also seen' point is built by F-4 (#TBD, branch `claude/f4-ho-status-lock`): Arm D now also requires `!isHeadOfficeStatus(resource.data)`, and `lapsePolicy` refuses a head-office policy with a clear message. Takes effect only after `firebase deploy --only firestore:rules`.
+UPDATE 2026-09-30: the 'Also seen' point is built by F-4 (#1035, squash `ad544d62`, merged 2026-09-30, branch `claude/f4-ho-status-lock`): Arm D now also requires `!isHeadOfficeStatus(resource.data)`, and `lapsePolicy` refuses a head-office policy with a clear message. Takes effect only after `firebase deploy --only firestore:rules`. Rules DEPLOYED 2026-09-30 (Kyron).
 
 ## Policies rules reach the 1000-expression limit
 
@@ -8262,7 +8262,7 @@ UPDATE 2026-09-30: the 'Also seen' point is built by F-4 (#TBD, branch `claude/f
 
 ## Career level: applications still v1-only (after F-2)
 
-**RESOLVED by #TBD (F-3, branch `claude/f3-career-apps`, brief `docs/briefs/fr-round2-followups.md` § 5; Kyron ruling 1A, 30-09-2026).** `careerStats` sums `submissionApps(s)` = `extractFields(s).applicationsSold` (v2 `newBusiness.apps`, nested `step4`, v1 `applicationsSold` / legacy `appsSold`). Level thresholds unchanged. Characterization rows C (v2) and L (nested) move 1 → 2; N (v2, 41 apps) stays 1; M (legacy `appsSold`) unchanged. The falsification check (does a live v2 doc also carry a flat `applicationsSold`?) was not run — no production reads.
+**RESOLVED by #1034 (squash `a70f180f`, merged 2026-09-30; F-3, branch `claude/f3-career-apps`, brief `docs/briefs/fr-round2-followups.md` § 5; Kyron ruling 1A, 30-09-2026).** `careerStats` sums `submissionApps(s)` = `extractFields(s).applicationsSold` (v2 `newBusiness.apps`, nested `step4`, v1 `applicationsSold` / legacy `appsSold`). Level thresholds unchanged. Characterization rows C (v2) and L (nested) move 1 → 2; N (v2, 41 apps) stays 1; M (legacy `appsSold`) unchanged. The falsification check (does a live v2 doc also carry a flat `applicationsSold`?) was not run — no production reads.
 
 **Banked 2026-09-30 from F-2. Severity: HIGH — without it, F-2 does not move any agent whose weekly reports are all v2.**
 
