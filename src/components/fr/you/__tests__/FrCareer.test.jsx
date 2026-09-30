@@ -52,7 +52,8 @@ function props(extra = {}) {
       { status: 'submitted', weekStarting: `${Y - 1}-03-01`, apiSold: 300000, applicationsSold: 0 },
       { status: 'submitted', weekStarting: `${Y}-02-01`, apiSold: 300000, applicationsSold: 20 },
     ],
-    user: { startDate: new Date(Date.now() - 2.5 * YEAR_MS).toISOString() },
+    // F-2: years of service come from contractStartDate (YYYY-MM-DD).
+    user: { contractStartDate: new Date(Date.now() - 2.5 * YEAR_MS).toISOString().slice(0, 10) },
     persistencyData: [{ year: Y, month: 1 }],
     onOpenTrophies: vi.fn(),
     onPlan: vi.fn(),
