@@ -28,9 +28,9 @@ describe('GateBars', () => {
 
   it('labels each month for screen readers and direct-labels values', () => {
     render(<GateBars data={data} />);
-    expect(screen.getByRole('button', { name: 'Aug: 86.5%, below the 90% gate' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sep: 91.0%, projected, at or above the 90% gate' })).toBeInTheDocument();
-    expect(screen.getByText('~91.0%')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Aug: 86.50%, below the 90% gate' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sep: 91.00%, projected, at or above the 90% gate' })).toBeInTheDocument();
+    expect(screen.getByText('~91.00%')).toBeInTheDocument();
   });
 
   it('clamps values outside the domain and marks them', () => {
@@ -38,7 +38,7 @@ describe('GateBars', () => {
     const [bar] = bars(container);
     expect(bar.style.height).toBe('120px');
     expect(bar).toHaveAttribute('data-clamped', 'true');
-    expect(screen.getByRole('button', { name: 'Oct: 64.0%, below the 90% gate, beyond the chart range' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Oct: 64.00%, below the 90% gate, beyond the chart range' })).toBeInTheDocument();
   });
 
   it('shows an empty sentence with no data', () => {

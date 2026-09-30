@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import { X, AlertTriangle, HeartPulse, ListChecks } from 'lucide-react';
 
 import { formatCurrency } from '../../utils/formatters';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 /**
  * CountedPoliciesDrawer — answers "which policies?" for a persistency figure.
@@ -46,7 +47,7 @@ export default function CountedPoliciesDrawer({ ledger, onClose }) {
   const claims = ledger.atRisk?.pendingDeathClaims ?? [];
   const atRisk = ledger.atRisk?.annuities ?? [];
 
-  const pct = (v) => `${(v * 100).toFixed(1)}%`;
+  const pct = (v) => formatPersistencyPct(v * 100);
 
   return (
     <div

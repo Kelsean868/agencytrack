@@ -230,7 +230,7 @@ describe('GapAnalysisPanel', () => {
       />
     );
     const hero = screen.getByTestId('commitment-hero');
-    expect(within(hero).getByText('92.3%')).toBeInTheDocument();
+    expect(within(hero).getByText('92.30%')).toBeInTheDocument();
     expect(within(hero).getByText('Pst.')).toBeInTheDocument();
   });
 

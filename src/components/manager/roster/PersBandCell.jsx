@@ -1,5 +1,6 @@
 import React from 'react';
 import { PERS_FLOOR_PCT, PERS_GATE_PCT } from '../../../lib/persistency/calculations';
+import { roundPersistencyPct, formatPersistencyPct } from '../../../lib/persistency/persistencyRounding';
 
 // Input: persistency 0–100 scale (matches RosterRow interface — `lib/teamRoster.js`
 // scales the E3 decimal by 100 before it reaches here). Use the canonical
@@ -7,6 +8,7 @@ import { PERS_FLOOR_PCT, PERS_GATE_PCT } from '../../../lib/persistency/calculat
 const FLOOR = PERS_FLOOR_PCT; // 80
 const GATE  = PERS_GATE_PCT;  // 90
 
+// Bands are judged on the 2-dp value the cell prints (ruling R-a).
 function bandTextClass(p) {
   if (p >= GATE)  return 'text-success-ink';
   if (p >= FLOOR) return 'text-warning-ink';
@@ -28,10 +30,11 @@ export default function PersBandCell({ persistency }) {
     );
   }
   const pct = Math.min(Math.max(persistency, 0), 100);
+  const shown = roundPersistencyPct(pct);
   return (
     <div className="flex flex-col items-end gap-1" data-testid="pers-band-cell">
-      <span className={`font-display font-extrabold text-sm leading-none ${bandTextClass(pct)}`}>
-        {pct}%
+      <span className={`font-display font-extrabold text-sm leading-none ${bandTextClass(shown)}`}>
+        {formatPersistencyPct(shown)}
       </span>
       {/* Two-tick band — same grammar as PersRoster BandTrack */}
       <div
@@ -40,7 +43,7 @@ export default function PersBandCell({ persistency }) {
         aria-hidden="true"
       >
         <div
-          className={`absolute left-0 top-0 bottom-0 rounded-full ${bandFillClass(pct)}`}
+          className={`absolute left-0 top-0 bottom-0 rounded-full ${bandFillClass(shown)}`}
           style={{ width: `${pct}%` }}
         />
         {/* Floor tick at 80% — danger */}

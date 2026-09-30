@@ -65,10 +65,10 @@ describe('CampaignHeroCard variant="screen"', () => {
     expect(screen.getByTestId('campaign-screen-progress-persistency')).toHaveTextContent('Below the gate');
     expect(screen.getByTestId('campaign-screen-progress-persistency')).toHaveTextContent(/need 90% in Dec/);
     // Regression: a raw unrounded float ("86.0377446303493 of 100") must never
-    // render — every number shown here is at most one decimal place.
+    // render — every number shown here is at most two decimal places (ruling R-a).
     const persistencyText = screen.getByTestId('campaign-screen-progress-persistency').textContent;
     for (const m of persistencyText.matchAll(/\d+\.(\d+)/g)) {
-      expect(m[1].length).toBeLessThanOrEqual(1);
+      expect(m[1].length).toBeLessThanOrEqual(2);
     }
     expect(persistencyText).not.toMatch(/of 100\b/);
   });
@@ -158,7 +158,7 @@ describe('CampaignHeroCard variant="screen"', () => {
     expect(row).toBeInTheDocument();
     const derivedCol = screen.getByTestId('campaign-screen-gate-month-derived');
     expect(derivedCol).toHaveTextContent('Aug');
-    expect(derivedCol).toHaveTextContent('86.0%'); // both fixture policies are Aug-issued, so the lapse counts here too
+    expect(derivedCol).toHaveTextContent('86.04%'); // both fixture policies are Aug-issued, so the lapse counts here too
     // Aug 2026 predates the 24-month model's September cutover, so #971's own
     // `derived.confirmable` is false here — reusing that flag (never recomputing
     // it) means this column correctly shows no Confirm affordance for this month.
@@ -168,7 +168,7 @@ describe('CampaignHeroCard variant="screen"', () => {
     expect(screen.getByTestId('campaign-screen-gate-month-estimate')).toHaveTextContent('Estimate');
     const projectedCol = screen.getByTestId('campaign-screen-gate-month-projected');
     expect(projectedCol).toHaveTextContent('Dec');
-    expect(projectedCol).toHaveTextContent('86.0%');
+    expect(projectedCol).toHaveTextContent('86.04%');
     expect(projectedCol).toHaveTextContent('Projected');
     // "Confirm" is inert text, never a control (self-confirm write path is P2d, out of scope).
     expect(screen.queryByRole('button', { name: /confirm/i })).toBeNull();

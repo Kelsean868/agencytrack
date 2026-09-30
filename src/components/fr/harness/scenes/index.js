@@ -8,6 +8,7 @@ import { TODAY_SCENES } from './todayScenes';
 import { MONEY_SCENES } from './moneyScenes';
 import { WORK_SCENES } from './workScenes';
 import { COMPETE_SCENES } from './competeScenes';
+import { PERSISTENCY_TAB_SCENES } from './persistencyTabScenes';
 import { PLAYGROUND_SCENES } from './playgroundScenes';
 
-export const SCENES = [...FOUNDATION_SCENES, ...SHELL_SCENES, ...TODAY_SCENES, ...MONEY_SCENES, ...WORK_SCENES, ...COMPETE_SCENES, ...PLAYGROUND_SCENES];
+export const SCENES = [...FOUNDATION_SCENES, ...SHELL_SCENES, ...TODAY_SCENES, ...MONEY_SCENES, ...WORK_SCENES, ...COMPETE_SCENES, ...PERSISTENCY_TAB_SCENES, ...PLAYGROUND_SCENES];

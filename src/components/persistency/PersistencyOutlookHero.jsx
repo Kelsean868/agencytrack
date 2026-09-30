@@ -172,6 +172,12 @@ export default function PersistencyOutlookHero({
         )}
       </div>
 
+      {/* The annuity rule changes the headline figure, so its switch sits right
+          under the figure, always visible - not inside the folded assumptions. */}
+      {onAnnuityRuleChange && (
+        <AnnuityRuleSwitch value={annuityRule} onChange={onAnnuityRuleChange} />
+      )}
+
       {infoOpen && assumptions && (
         <div id={infoId} className="p-3 rounded-xl bg-card-raised border border-border flex flex-col gap-2 text-sm text-ink" data-testid="persistency-outlook-assumptions">
           {assumptions.assumedZero.length > 0 && (
@@ -190,9 +196,6 @@ export default function PersistencyOutlookHero({
               : 'none imported'}
           </p>
           <p data-testid="assumptions-rule"><strong>Rule:</strong> {assumptions.annuityRuleLabel}</p>
-          {onAnnuityRuleChange && (
-            <AnnuityRuleSwitch value={annuityRule} onChange={onAnnuityRuleChange} />
-          )}
         </div>
       )}
 

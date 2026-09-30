@@ -30,6 +30,7 @@ import { getPersistencyMapForYear } from '../../services/persistencyService';
 import { getCampaigns } from '../../services/campaignService';
 import { computeStandings, isTieredCampaign, persistencyPctForGate, campaignYears } from '../../utils/campaignEngine';
 import { CampaignStandingsBlock } from '../campaigns/CampaignStandings';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 import FunnelMeetingScene from './FunnelMeetingScene';
 import {
   deriveWeekPulse, deriveBranchWindows, deriveUnits, deriveAgentRuns,
@@ -220,7 +221,7 @@ function BranchScene({ windows }) {
             <BranchCell big={w.apps} hero={w.hero} />
             {w.pers == null
               ? <div className="px-5 text-right text-xs text-presentation-muted">n/a · monthly</div>
-              : <BranchCell big={`${w.pers}%`} hero={w.hero} />}
+              : <BranchCell big={formatPersistencyPct(w.pers)} hero={w.hero} />}
           </div>
         ))}
       </div>
