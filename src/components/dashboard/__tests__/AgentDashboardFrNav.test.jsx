@@ -182,6 +182,14 @@ vi.mock('../../fr/you/FrCareer', () => ({
     return React.createElement('div', { 'data-testid': 'fr-career-mock' });
   },
 }));
+// R2-11: under FR the Leaderboard tab renders FrLeaderboard in place of the
+// Arena header + the Nexus surface.
+vi.mock('../../fr/compete/FrLeaderboard', () => ({
+  default: (props) => {
+    captured.frLeaderboardProps = props;
+    return React.createElement('div', { 'data-testid': 'fr-leaderboard-mock' });
+  },
+}));
 vi.mock('../../fr/compete/FrCompeteHeaders', () => ({
   FrArenaHeader: () => React.createElement('div', { 'data-testid': 'fr-arena-header-mock' }),
   FrMeHeader: ({ onOpenTrophies }) => React.createElement('button', { 'data-testid': 'fr-me-header-mock', onClick: onOpenTrophies }),
@@ -426,12 +434,15 @@ describe('AgentDashboard — FR-5 Compete / You', () => {
     expect(captured.activeTab).toBe('awards');
   });
 
-  it('with the opt-in: the FR headers sit above the unchanged Leaderboard and Profile; Me opens the Trophy room', async () => {
+  it('with the opt-in: the FR Leaderboard replaces the Arena header + surface (R2-11); Me header above Profile opens the Trophy room', async () => {
     localStorage.setItem('agencytrack-look', 'fr');
     render(<AgentDashboard />);
     act(() => captured.sidebar.props.onNavigate('production-leaderboard'));
-    expect(await screen.findByTestId('production-leaderboard-surface-mock')).toBeInTheDocument();
-    expect(screen.getByTestId('fr-arena-header-mock')).toBeInTheDocument();
+    expect(await screen.findByTestId('fr-leaderboard-mock')).toBeInTheDocument();
+    expect(screen.queryByTestId('production-leaderboard-surface-mock')).toBeNull();
+    expect(screen.queryByTestId('fr-arena-header-mock')).toBeNull();
+    act(() => captured.frLeaderboardProps.onOpenTrophies());
+    expect(await screen.findByTestId('fr-trophies-mock')).toBeInTheDocument();
     act(() => captured.sidebar.props.onNavigate('profile'));
     act(() => screen.getByTestId('fr-me-header-mock').click());
     expect(await screen.findByTestId('fr-trophies-mock')).toBeInTheDocument();
@@ -445,6 +456,7 @@ describe('AgentDashboard — FR-5 Compete / You', () => {
     act(() => captured.setActiveTab('production-leaderboard'));
     expect(await screen.findByTestId('production-leaderboard-surface-mock')).toBeInTheDocument();
     expect(screen.queryByTestId('fr-arena-header-mock')).toBeNull();
+    expect(screen.queryByTestId('fr-leaderboard-mock')).toBeNull();
     act(() => captured.setActiveTab('profile'));
     await screen.findByTestId('shell-mock');
     expect(captured.activeTab).toBe('profile');

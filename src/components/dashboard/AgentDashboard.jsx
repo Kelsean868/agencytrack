@@ -68,7 +68,8 @@ import { FrNumbersHeader, FrLedgerHeader } from '../fr/work/FrWorkHeaders';
 // Leaderboard (Arena) and Profile (Me) — FR look only.
 import FrCampaign from '../fr/compete/FrCampaign';
 import FrTrophyRoom from '../fr/compete/FrTrophyRoom';
-import { FrArenaHeader, FrMeHeader } from '../fr/compete/FrCompeteHeaders';
+import { FrMeHeader } from '../fr/compete/FrCompeteHeaders';
+import FrLeaderboard from '../fr/compete/FrLeaderboard';
 import { formatHomeHeaderDate } from './HomeV2/homeDerivations';
 import Avatar from '../ui/Avatar';
 import { getTodayTT } from '../../utils/dateInputs';
@@ -1008,7 +1009,7 @@ export default function AgentDashboard() {
           now={now}
         />
       )}
-      {fr && activeTab === 'production-leaderboard' && <FrArenaHeader uid={user?.uid} />}
+      {/* R2-11: under FR the Leaderboard is FrLeaderboard below (it carries the standing the Arena header showed). */}
       {fr && activeTab === 'profile' && (
         <FrMeHeader tenantId={tenantId} uid={user?.uid} onOpenTrophies={() => setActiveTab('trophies')} />
       )}
@@ -1316,6 +1317,7 @@ export default function AgentDashboard() {
               tenantId={tenantId}
               currentGoal={goals?.personalAnnualAPI ?? null}
               onGoalSaved={() => getGoals(tenantId, user.uid).then(setGoals)}
+              look={fr ? 'fr' : 'nexus'}
             />
           </div>
         </div>
@@ -1358,7 +1360,9 @@ export default function AgentDashboard() {
       )}
 
       {/* ── LEADERBOARD TAB (Track J P6 — production-based, nav-driven) ── */}
-      {activeTab === 'production-leaderboard' && <ProductionLeaderboardSurface key={ptrRevision} />}
+      {activeTab === 'production-leaderboard' && (fr
+        ? <FrLeaderboard key={ptrRevision} onOpenTrophies={() => setActiveTab('trophies')} />
+        : <ProductionLeaderboardSurface key={ptrRevision} />)}
 
       {/* ── PROFILE TAB ── */}
       {activeTab === 'profile' && (

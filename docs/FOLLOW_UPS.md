@@ -20,6 +20,9 @@
 |---|---|---|---|---|
 | Branch-manager "lapse policy" (`lapsePolicy`) is DENIED by its own rules arm in most cases: it omits `statusSource` / `statusSetBy` / `statusAsOf`, which Arm D requires — passes only when the same BM set the settled status. Emulator-proven (A-1, 2026-09-30) | HIGH | Policy Ledger / rules / manager | — | see § A-1: lapsePolicy fails Arm D without status provenance |
 | Policies rules hit Firestore's 1000-expression limit on an update: several `policies` update arms report "maximum of 1000 expressions … reached" in the emulator (seen on a lapse write); a valid write whose allowing arm hits the limit would be denied (banked 2026-09-30, A-1) | MEDIUM | Firestore rules | — | see § Policies rules reach the 1000-expression limit |
+| FR Arena header (`FrArenaHeader`) is unused once R2-11 merges — the FR Leaderboard carries the standing — and its "settled API puts you there" note claims a source the board does not use (banked 2026-09-30, R2-11) | LOW | FR redesign / Compete | — | see § FR Arena header unused after R2-11 |
+| Commission playground ladder says "÷ comm · × settle", but API to write divides by the PERSISTENCY rate; settlement feeds nothing shown (Nexus look; the FR port omits the connector text) (banked 2026-09-30, R2-7) | MEDIUM | Commission playground | — | see § Commission playground ladder: the settle label does not match the math |
+| FR Commission playground (R2-7) omits canvas blocks the app does not compute (apps at average API, persistency-adjusted write-for, this-month chain vs weekly minimums, cumulative line, waterfall, upcoming payouts, PAYE / own-history switches, phone Adjust sheet) — needs a ruling (banked 2026-09-30) | LOW | FR redesign / Commission | — | see § FR Commission playground: canvas blocks not computed today |
 | Career level inputs likely empty for every agent: years of service reads `user.startDate` (no writer in the codebase; profiles carry `contractStartDate`), and API reads only the v1 `apiSold` field (v2 reports store `newBusiness.api`) — so the level is probably stuck at 1. Found in R2-10; level logic not changed (brief § 5 stop) (banked 2026-09-30) | HIGH | Career / levels | — | see § Career level inputs: startDate and apiSold |
 | R2-8 Game plan FR port is NOT on `main`: #1020's squash `92d4e5b4` carried R2-6 instead, and its two Game plan commits (`1c0aefb5`, `c98451ae`) are on no merged branch (banked 2026-09-30, #1014–#1021 fill) | HIGH | FR redesign / Money | — | see § R2-8 Game plan FR port missing from main |
 | Head-office **Pending** policies can still be changed from the ledger (reached from the Campaign screen's "Change status"); lock not built per Kyron ruling 4 — needs a ledger + rules change (banked 2026-09-30, R2-4) | MEDIUM | Policy Ledger / rules | — | see § Head-office Pending policies can still be changed from the ledger |
@@ -5083,6 +5086,8 @@ Banked: Track J P1b leaderboard-aggregate CF (PR #400), 2026-05-31.
 
 ## Track J (V2 Redesign) — P1b leaderboard CF: reconciled-production swap point (FU-2 reference, banked 2026-05-31, PR #400)
 
+**UPDATE 2026-09-30 (R2-11, Kyron's question):** this is why the Leaderboard shows TTD 0 for every agent while the Policy Ledger shows settled API (Kyron: TTD 87,146). Checked in source: the board reads `tenants/{tid}/leaderboards/{branchId}` (`src/hooks/useLeaderboard.js`), written hourly by `recomputeLeaderboardScheduled` (`functions/leaderboard/leaderboardAggregate.js`, `TENANT_ID = 'tatillife_south'`). `loadInputs` reads only `submissions` with `status == 'submitted'` this year, and `extractTotalProductionCredit` (`functions/leaderboard/rankingLogic.js`) sums the API typed into weekly reports (`newBusiness.api` + PPP + lumpsums, or v1 `apiSold`). It never reads `policies`. Production is now recorded in the Policy Ledger (the heroes moved to the ledger in #968), and the weekly report's API step is not being filled, so every period sums to 0. The swap described below is still the fix; it is a functions change + deploy (human-merge). R2-11 did NOT change the ranking source (dispatcher instruction). R2-11's FR copy says "Ranked by the API on submitted weekly reports" instead of the canvas's "settled API", so the screen does not claim a source it does not use. Not checked: the live `leaderboards/*` doc values (no production read was made).
+
 The FU-2 reference (originally banked in PR #398 description): when `usesPolicyLedger` H3 flip-gate clears branch-wide and reconciled-production data is available for all agents, the leaderboard CF is the **single swap point** for the entire Leaderboard / Production Report family. Replace `loadInputs` in `functions/leaderboard/leaderboardAggregate.js` with a reconciled-source fetch; the rest of the pipeline (groupByBranch, rankForLeaderboard, agent-readable doc shape) is unchanged. All consumers (P3 podium, P4 around-me, P7 AgentProductionView, BM/UM ProductionViews, kiosk) inherit the switch via the aggregate doc.
 
 **Prerequisite:** Branch-wide `usesPolicyLedger` (not per-agent opt-in).
@@ -8186,6 +8191,47 @@ The existing rules test (`tests/rules/policies.rules.test.mjs`, "Arm D ALLOW: BM
 **Fix shape:** measure which helper calls dominate (repeated `get()` / `exists()` / `diff().affectedKeys()` across arms), hoist shared checks into functions called once per arm, or split the update arms by `request.resource.data.status`. Rules change → human-merge + rules deploy.
 
 **Falsification (Rule 23):** closed if the limit messages turn out to be emulator-only (the production evaluator budget differs) — check the Firestore docs' current limit before changing anything.
+
+## FR Arena header unused after R2-11
+
+**Banked 2026-09-30 from R2-11. Severity: LOW — dead code plus a misleading line of copy.**
+
+**Observed:** R2-11 renders `FrLeaderboard` instead of `FrArenaHeader` + `ProductionLeaderboardSurface` under the FR look. `FrArenaHeader` (`src/components/fr/compete/FrCompeteHeaders.jsx`) then has no app caller; `FrArenaHeaderView` is used only by the `compete-headers` harness scene. `arenaTiles` (`src/lib/fr/competeModel.js`) says "Not on the board yet — settled API puts you there", but the board ranks weekly-report API (see § Track J P1b leaderboard CF: reconciled-production swap point, UPDATE 2026-09-30).
+
+**Fix shape:** remove `FrArenaHeader` / `FrArenaHeaderView` / `arenaTiles` and the harness scene after R2-11 merges, or reword the note if the header is kept anywhere.
+
+**Falsification (Rule 23):** closed if the leaderboard source moves to settled ledger API (then the copy is true) and the header is still wanted somewhere.
+
+## Commission playground ladder: the settle label does not match the math
+
+**Banked 2026-09-30 from R2-7 (Commission playground FR port). Severity: MEDIUM — an agent reading the Nexus ladder is told the wrong reason their API target is what it is.**
+
+**Observed (on R2-7's branch, unchanged from `main`):** the Nexus Goal Decomposition ladder's connector between "1st-year commission" and "API to write" reads `÷ {commissionRate}% comm · × {settlementRate}% settle` (`src/components/goals/CommissionPlayground/tabs/GoalDecompositionTab.jsx`, `DecompositionLadder`). The figure it labels is computed by `decomposeFromIncome` (`src/utils/goalDecomposition.js`) as `firstYearCommRequired / (persistencyRate / 100) / (commissionRate / 100)`. The settlement rate only feeds `apiToSettle`, which no ladder stage shows. So changing the settlement rate changes no figure, while the persistency rate (not named in the connector) does.
+
+**Not changed in R2-7:** the FR port omits connector text (its canvas table has none) and its "Why?" states the real chain (persistency and commission). The Nexus string is left as is — R2-7 keeps Nexus unchanged, pinned by the characterization suite.
+
+**Fix shape:** change the Nexus connector to `÷ {persistencyRate}% persistency · ÷ {commissionRate}% comm`, or show the API-to-settle stage if settlement is meant to count. Copy-only for the first; needs a ruling for the second.
+
+**Falsification (Rule 23):** overturned if `decomposeFromIncome` is shown to use the settlement rate in `apiToWrite` (it does not at `2026-09-30`).
+
+## FR Commission playground: canvas blocks not computed today
+
+**Banked 2026-09-30 from R2-7. Severity: LOW — design fidelity; every function of the playground is present.**
+
+**What R2-7 shipped (FR look only):** the Commission calculator inspector (mode switch, inputs, saves), the goal decomposition table (per year + the chosen cadence), saved scenarios, the required-API card, the commission breakdown by mode, "Why monthly-pay policies earn less this month" (from `FIRST_PAYMENT_RATIO`), the 12-month cash flow with a Table toggle (from `buildStackedData`) and the insights. Every figure comes from a helper the Nexus playground already uses.
+
+**Not ported (each would be new money math, new state or a new read):**
+- Mode A: "≈ N applications at your TTD X average" (the modal tab has no average policy API), "To keep X after lapses at P% persistency, write for Y", and "What that takes, this month" (the chain against company weekly minimums, with its pace chips).
+- The cumulative-commission line with its end dot (the year total is in the card title and the table's Cumulative column).
+- "How September adds up" (waterfall) and "Upcoming payouts" with the Ledger and persistency-bonus links.
+- The canvas's slider inputs for rates and ratios (kept as number inputs), the "Use PAYE brackets to gross up" and "Prefer my own history when I have it" switches, and the "86.6% real, 24-month model" persistency hint.
+- The canvas's anchor strip: the existing `CommissionAnchorStrip` still sits above the playground in its Nexus styling.
+- Phone: the canvas's "Adjust" bottom sheet — the inputs are the first pager page instead.
+- The empty-insights sentence ("…close to the company defaults"): the insight rules do not check the defaults, so the section is hidden when there is nothing to say, as in Nexus.
+
+**Ask:** Kyron to rule which of these a later slice should add.
+
+**Falsification (Rule 23):** closed if Kyron rules the FR Commission playground stays as shipped.
 
 ## Career level inputs: startDate and apiSold
 
