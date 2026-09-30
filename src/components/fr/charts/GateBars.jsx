@@ -62,8 +62,10 @@ export default function GateBars({
   const gateY = round2(y(Math.min(hi, Math.max(lo, gate))));
   const keys = keyIndexes(data.map((d) => d.value));
 
+  // `@container`: whether every bar keeps its value label depends on the width
+  // the CHART has (a card beside the sidebar, a phone), not on the window.
   return (
-    <div>
+    <div className="@container">
       <div className="pb-8 pt-5">
         <div className="relative" style={{ height }}>
           <div
@@ -128,7 +130,7 @@ export default function GateBars({
                       aria-hidden="true"
                       className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold tabular-nums text-ink ${
                         up ? 'bottom-full mb-1' : 'top-full mt-[11px]'
-                      } ${keys.has(i) ? '' : 'hidden sm:inline'}`}
+                      } ${keys.has(i) ? '' : 'hidden @[36rem]:inline'}`}
                     >
                       {d.projected ? '~' : ''}
                       {valueText}

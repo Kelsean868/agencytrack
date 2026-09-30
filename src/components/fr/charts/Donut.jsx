@@ -93,7 +93,10 @@ export default function Donut({
           </div>
         ) : null}
       </div>
-      <ul className="min-w-0 flex-1 space-y-1.5">
+      {/* min-w: below it the legend wraps UNDER the ring instead of squeezing
+          beside it (fr-fit-any-width decision 3) — a row needs room for its value
+          and share; only the label truncates. */}
+      <ul className="min-w-[13rem] flex-1 space-y-1.5">
         {arcs.map((a) => (
           <li key={a.key} className="flex items-center gap-2 text-[13px]">
             <span className={`h-2.5 w-2.5 flex-none rounded-sm ${BG[a.i]}`} aria-hidden="true" />

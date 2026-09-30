@@ -1,3 +1,5 @@
+import containerQueries from '@tailwindcss/container-queries';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -212,5 +214,7 @@ export default {
       },
     },
   },
-  plugins: [],
+  // fr-fit-any-width: `@container` / `@[..]:` variants — page regions lay out
+  // by the width they actually have (beside the sidebar), not by the window.
+  plugins: [containerQueries],
 }
