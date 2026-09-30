@@ -8,7 +8,7 @@ import FrCampaignView from './FrCampaignView';
  * campaign hero gets — campaign rules decide what counts) and persistency are
  * what AgentDashboard already holds.
  */
-export default function FrCampaign({ activeCampaigns, campaignPolicies, ledgerError, persistency, onOpenAwards }) {
+export default function FrCampaign({ activeCampaigns, campaignPolicies, ledgerError, persistency, onOpenAwards, onOpenPolicy = null }) {
   const pending = campaignPolicies == null && !ledgerError;
   const renderCampaign = (c) => (
     <CampaignScreenWithTier
@@ -17,6 +17,7 @@ export default function FrCampaign({ activeCampaigns, campaignPolicies, ledgerEr
       persistencyRecords={persistency}
       loading={pending}
       error={ledgerError}
+      onOpenPolicy={onOpenPolicy}
     />
   );
   return <FrCampaignView campaigns={activeCampaigns} onOpenAwards={onOpenAwards} renderCampaign={renderCampaign} />;

@@ -370,6 +370,7 @@
 | **Persistency verdicts still on whole-number or raw values in money logic:** R2-1 applied ruling R-a to every display verdict but left the campaign gate reading (whole percent → payout band), the award engine's persistency criteria and the stored `meetsAwardGate` unchanged (brief §3 money stop); needs a ruling on whether R-a extends to the payout basis (banked 2026-09-29) | MEDIUM | campaigns / awards | — | see § Persistency verdicts still on whole-number or raw values in money logic at end of file |
 | **Campaign screen gate bar: value label overlaps "GATE 90" near the gate** — `PersistencyGateBarBlock` places both labels by the same position lookup, so a figure within ~1 point of the gate is unreadable (pre-existing; seen in R2-1's harness walk, banked 2026-09-29) | LOW | campaigns | — | see § Campaign screen gate bar: the value label overlaps "GATE 90" near the gate at end of file |
 | **`computeEarnedBadges` (`BadgeGrid.jsx`) still uses the OLD MDRT thresholds** (TTD 500,000 / 250,000, v1 `apiSold` only) while the points engine uses 688,800 / 344,400 — and it still feeds the Home activity feed and the branch team-medals panel. The Trophy room and the new Career card read the engine doc instead (banked 2026-09-29 from R2-5) | MEDIUM | Gamification / badge accuracy | — | see § computeEarnedBadges still uses the old MDRT threshold at end of file |
+| **Campaign "Change status" opens the ledger drawer without its "Counts toward" chips:** the R2-4 hand-off opens the drawer through the ledger's `openDrawer` with no award windows, because those are computed inside `AwardLensPanel` (banked 2026-09-29, R2-4) | LOW | Policy ledger / campaign | — | see § Campaign hand-off drawer: Counts toward chips at end of file |
 
 
 ---
@@ -7966,6 +7967,14 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Fix shape (once ruled):** on mount, read `getGoals(tenantId, uid)`. Apply the saved `playground*` values over the defaults, with `playgroundIncomeGoalPeriod` → the period select (missing → `annual`; amount = `playgroundIncomeGoal / divisor`). Then apply the ruled precedence for the Money Needs hand-off and the history ratios. R2-7 (Commission playground FR port) is the natural place if it has not started. Otherwise this is a small follow-up PR.
 
 **Falsification (Rule 23):** closed without change if Kyron rules that "Save Assumptions" is only meant to feed other screens (Game plan's average policy API, the planner's prospect ratio). Then the button copy should say so instead.
+
+## Campaign hand-off drawer: Counts toward chips
+
+**Banked 2026-09-29 (FR round 2, R2-4).** The Campaign screen's "Change status" opens the Policy ledger with that policy's drill drawer open (`PolicyLedgerPanel` `initialPolicyId`). The drawer, its transition footer, the head-office lock and the write (`handleTransition` → `transitionPolicyStatus`) are the ledger's own. One difference from a tap on the card: the "Counts toward" chip row (L3) is empty, because `awardWindowsForPolicy` rows are computed inside `AwardLensPanel` (`windowsById`, from `awardLensPeriods`, which needs the async campaign fetch) and only reach the drawer through `openWithWindows`.
+
+**Fix shape:** route the hand-off through `AwardLensPanel` (open via `openWithWindows` once `campaignsLoading` has settled), or have the drawer derive its own windows. Neither changes the write path.
+
+**Falsification (Rule 23):** closed without change if Kyron rules the chips are not needed on a drawer reached from the Campaign screen, where the campaign is already the context.
 
 ## Nexus Game plan: weekly plan Clear button under 44px
 
