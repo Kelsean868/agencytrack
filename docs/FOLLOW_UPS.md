@@ -8275,7 +8275,7 @@ UPDATE 2026-09-30: Kyron ruling 1A - build it; slice F-3 (brief § 5).
 
 ## Lapse tab: hide head-office policies (after F-4)
 
-**RESOLVED by #TBD (branch `claude/lapse-tab-hide-ho`; Kyron ruling 2B, 30-09-2026).** The Lapse tab leaves out every policy where `isFromHeadOffice` (statusSource `oipa_import`), shows one muted line with how many are not shown, and the empty state reads "No policies you can lapse" when only head-office policies exist. UI only; no rules or service change. Falsification check done first: the list had no provenance filter (`lapseTabPolicies` filtered only on status and period).
+**RESOLVED by #1037 (squash `41d70588`, merged 2026-09-30; branch `claude/lapse-tab-hide-ho`; Kyron ruling 2B, 30-09-2026).** The Lapse tab leaves out every policy where `isFromHeadOffice` (statusSource `oipa_import`), shows one muted line with how many are not shown, and the empty state reads "No policies you can lapse" when only head-office policies exist. UI only; no rules or service change. Falsification check done first: the list had no provenance filter (`lapseTabPolicies` filtered only on status and period).
 
 **Banked 2026-09-30 from F-4 (#1035). Severity: LOW. Ruled: Kyron 2B, 30-09-2026 — build it.**
 
