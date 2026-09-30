@@ -95,7 +95,7 @@ function LevelPanelBody({ panel }) {
 function Ladder({ coins, selected, onSelect, layout, panel, current }) {
   const phone = layout === 'phone';
   return (
-    <section aria-labelledby="fr-career-ladder-h" className={`${CARD} flex min-w-0 flex-col gap-4 p-4 sm:p-5`} data-testid="fr-career-ladder">
+    <section aria-labelledby="fr-career-ladder-h" className={`${CARD} @container flex min-w-0 flex-col gap-4 p-4 sm:p-5`} data-testid="fr-career-ladder">
       <div>
         <h2 id="fr-career-ladder-h" className={H2}>Your career ladder</h2>
         <p className="text-[12px] text-ink-muted">{current} of 7 levels · tap a level to see what it takes</p>
@@ -114,7 +114,9 @@ function Ladder({ coins, selected, onSelect, layout, panel, current }) {
           ))}
         </ol>
       ) : (
-        <ol className="grid grid-cols-7 gap-1">
+        // fr-fit-any-width: seven across needs ~46rem of card; narrower (beside
+        // the sidebar) the ladder runs 4 + 3, still in order, never cut.
+        <ol className="grid grid-cols-4 gap-1 @[46rem]:grid-cols-7">
           {coins.map((coin) => (
             <li key={coin.level} className="min-w-0">
               <Coin coin={coin} selected={selected === coin.level} onSelect={onSelect} />
