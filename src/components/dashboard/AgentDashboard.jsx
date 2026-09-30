@@ -1220,6 +1220,7 @@ export default function AgentDashboard() {
       {activeTab === 'game-plan' && (
         <GamePlanScreen
           gatedEntrance
+          look={fr ? 'fr' : 'nexus'}
           committedAnnualAPI={goals?.personalAnnualAPI ?? null}
           onOpenTab={setActiveTab}
           avgPolicyAPI={goals?.playgroundAvgPolicyAPI ?? null}
