@@ -18,6 +18,8 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| Branch-manager "lapse policy" (`lapsePolicy`) is DENIED by its own rules arm in most cases: it omits `statusSource` / `statusSetBy` / `statusAsOf`, which Arm D requires — passes only when the same BM set the settled status. Emulator-proven (A-1, 2026-09-30) | HIGH | Policy Ledger / rules / manager | — | see § A-1: lapsePolicy fails Arm D without status provenance |
+| Policies rules hit Firestore's 1000-expression limit on an update: several `policies` update arms report "maximum of 1000 expressions … reached" in the emulator (seen on a lapse write); a valid write whose allowing arm hits the limit would be denied (banked 2026-09-30, A-1) | MEDIUM | Firestore rules | — | see § Policies rules reach the 1000-expression limit |
 | R2-8 Game plan FR port is NOT on `main`: #1020's squash `92d4e5b4` carried R2-6 instead, and its two Game plan commits (`1c0aefb5`, `c98451ae`) are on no merged branch (banked 2026-09-30, #1014–#1021 fill) | HIGH | FR redesign / Money | — | see § R2-8 Game plan FR port missing from main |
 | Head-office **Pending** policies can still be changed from the ledger (reached from the Campaign screen's "Change status"); lock not built per Kyron ruling 4 — needs a ledger + rules change (banked 2026-09-30, R2-4) | MEDIUM | Policy Ledger / rules | — | see § Head-office Pending policies can still be changed from the ledger |
 | FR round 2 (#1014–#1021) preview smokes waived under Rule 13; read-only production click-through deferred (banked 2026-09-30, #1014–#1021 fill) | LOW | FR redesign / verification | — | see § FR round 2 deferred click-through |
@@ -8146,3 +8148,39 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Ask:** Kyron to rule whether a later slice moves the two modals inline and adds the floor/MDRT bar (with the floor passed in from `resolvedMinimums`).
 
 **Falsification (Rule 23):** closed if Kyron rules the modals and the omitted pieces stay as they are.
+
+## A-1: lapsePolicy fails Arm D without status provenance
+
+**Banked 2026-09-30 from audit A-1 (`docs/briefs/fr-round2-followups.md` § 1, audit only — no code change in the audit). Severity: HIGH — a branch manager's "lapse policy" action fails in production for almost every policy, and the rules test that covers it passes only because it sends fields the app does not.**
+
+**The write** — `lapsePolicy` (`src/services/policiesService.js:447`, called from `src/components/manager/PolicyReconciliationPanel.jsx:161`) batches a policy update of exactly `{ status: 'lapsed', statusUpdatedAt: serverTimestamp(), dateLapsed, lapseReason? }`, plus a history doc and an agent notification.
+
+**The arm** — `firestore.rules` Arm D (settled → lapsed, BM / TA / PA, own branch) requires `setsOwnStatusProvenance()`: `request.resource.data.statusSource in ['agent','manager'] && request.resource.data.statusSetBy == request.auth.uid`. Rules see the document AFTER the write, so a payload without these fields keeps the policy's OLD provenance. `transitionPolicyStatus` stamps it (`policiesService.js:216-218`); `lapsePolicy` was missed when P4e added the guard.
+
+**Evidence (Firestore emulator, `firebase emulators:exec --only firestore`, the app's exact payload, a BM of the policy's branch):**
+
+| Settled policy's current provenance | App payload (no provenance) | Same payload + `statusSource: 'manager'`, `statusSetBy: <bm uid>`, `statusAsOf` |
+|---|---|---|
+| set by the agent | **DENIED** | ALLOWED |
+| set by the head-office import (`oipa_import`) | **DENIED** | ALLOWED |
+| set by another manager | **DENIED** | ALLOWED |
+| set by this same BM | ALLOWED | ALLOWED |
+| legacy, no provenance fields | **DENIED** | ALLOWED |
+
+The existing rules test (`tests/rules/policies.rules.test.mjs`, "Arm D ALLOW: BM lapses settled policy") adds `...prov('bm-a', 'manager')` to its payload, so it passes while the app's write fails. Because the write is a batch, the history doc and the agent's notification are not written either.
+
+**Fix shape:** in `lapsePolicy`, stamp `statusSource: STATUS_SOURCE_MANAGER`, `statusSetBy: managerProfile.uid`, `statusAsOf: getTodayTT()` (and add them to `changedFields`), exactly as `transitionPolicyStatus` does; add a unit test pinning the payload; change the rules test to send the service's exact payload (or add a DENY case for the payload without provenance). No rules change needed. Human-merge (money-adjacent: a lapse moves Centurion progress and persistency).
+
+**Also seen (decide separately):** Arm D does not check `isHeadOfficeStatus`, so with provenance a BM can lapse a policy whose settled status came from the head-office import. The P2d head-office lock covers agent arms only; confirm that a BM overriding head office is intended.
+
+**Falsification (Rule 23):** overturned if production shows lapses succeeding through this panel for policies another person settled (e.g. a Cloud Function or another path adds the provenance before the write — none found in `src/` or `functions/`).
+
+## Policies rules reach the 1000-expression limit
+
+**Banked 2026-09-30 from audit A-1. Severity: MEDIUM — no failing app write found from it yet; needs a look before more arms are added.**
+
+**Observed:** in the emulator, one settled → lapsed update logged for the `policies` update arms: `Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L568, … L600, … L635, … L648, … L675` (line numbers on `origin/main` at `f91e8025`). Firestore evaluates every `allow update` for the path; an arm that runs out of budget evaluates as an error (not true). Here those arms were meant to be false anyway, but if the arm that SHOULD allow a write is the one that hits the limit, a valid write is denied with no clear reason.
+
+**Fix shape:** measure which helper calls dominate (repeated `get()` / `exists()` / `diff().affectedKeys()` across arms), hoist shared checks into functions called once per arm, or split the update arms by `request.resource.data.status`. Rules change → human-merge + rules deploy.
+
+**Falsification (Rule 23):** closed if the limit messages turn out to be emulator-only (the production evaluator budget differs) — check the Firestore docs' current limit before changing anything.
