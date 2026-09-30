@@ -5,9 +5,6 @@
 // CTA. Award-gate banner appears when persistency is below 90%.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  LineChart, Line, ReferenceLine, Tooltip, XAxis, YAxis, ResponsiveContainer,
-} from 'recharts';
 import { TrendingUp, AlertCircle, Calculator, Edit3, Lock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -21,6 +18,7 @@ import { DEFAULT_ANNUITY_MISSED_PREMIUM_RULE } from '../../lib/persistency/deriv
 import { persistencyModelFor } from '../../lib/persistency/model';
 import PersistencyPlayground from '../persistency/PersistencyPlayground';
 import PersistencyOutlookHero from '../persistency/PersistencyOutlookHero';
+import PersistencyTrendChart from '../persistency/PersistencyTrendChart';
 import ConfirmPersistencySheet from '../persistency/ConfirmPersistencySheet';
 import PanelSkeleton from '../ui/PanelSkeleton';
 import {
@@ -53,7 +51,7 @@ function gatingCampaign(campaigns) {
   )) ?? null;
 }
 
-export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns = [] }) {
+export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns = [], fr = false }) {
   const { user, role, tenantId } = useAuth();
 
   const [history, setHistory] = useState([]);
@@ -190,7 +188,9 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
     && currentRecord.enteredByRole
     && currentRecord.enteredByRole !== 'agent';
 
-  // Trend chart data: oldest-first decimals scaled to %.
+  // Trend chart data: oldest-first decimals scaled to %, rounded by the shared
+  // 2-dp half-up rule. A missing or non-finite reading stays null (no reading):
+  // `null * 100` is 0, which would draw a confident 0.00% bar.
   const chartData = useMemo(() => history.map((r) => ({
     monthKey: r.monthKey,
     pct: shownPct(r.persistency),
@@ -333,32 +333,7 @@ export default function PersistencyTab({ onViewLapsedPolicies, activeCampaigns =
             No history yet — your trend appears after the first month is entered.
           </p>
         ) : (
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
-                <XAxis dataKey="monthKey" fontSize={10} stroke="var(--color-text-muted)" />
-                <YAxis domain={[0, 100]} fontSize={10} stroke="var(--color-text-muted)" />
-                <Tooltip
-                  formatter={(v) => [formatPersistencyPct(v), 'Persistency']}
-                  contentStyle={{
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                />
-                <ReferenceLine y={90} stroke="var(--color-gold)" strokeDasharray="3 3" />
-                <Line
-                  type="monotone"
-                  dataKey="pct"
-                  stroke="var(--color-primary)"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <PersistencyTrendChart data={chartData} fr={fr} />
         )}
       </div>
 
