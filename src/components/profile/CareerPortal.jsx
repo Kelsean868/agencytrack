@@ -1,103 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Pencil, X, Check, Lock, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
-import { getGoals, setGoals, getCompanyMinimums } from '../../services/goalsService';
-import { getMoneyNeeds } from '../../services/moneyNeedsService';
-import { resolveAnnualAPIFloor, FLAT_ANNUAL_API_FALLBACK } from '../../utils/tenureFloors';
-import { compute2YearAverageAPI } from '../../utils/careerLevelHelpers';
-import { aggregatePersistency } from '../../lib/persistency/calculations';
 import { useAuth } from '../../context/AuthContext';
 import BadgeGrid from '../gamification/BadgeGrid';
-import { roundPersistencyPct, formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
+import {
+  CAREER_LEVELS, LEVEL_TAGLINES, UNLOCK_COPY, getLevelState, computeQuarterlyAPI,
+  estimateWeeksToNextLevel, careerStats, currentLevel as currentLevelFor, levelCriteria,
+} from '../../lib/career/careerModel';
 import CareerTrophiesCard from '../fr/compete/CareerTrophiesCard';
-
-const CAREER_LEVELS = [
-  { level: 1, title: 'Salesperson',    minApi: 200000, minApps: 42, minPersistency: 90, minYears: 0  },
-  { level: 2, title: 'Advisor II',     minApi: 250000, minApps: 42, minPersistency: 90, minYears: 2  },
-  { level: 3, title: 'Advisor III',    minApi: 350000, minApps: 48, minPersistency: 90, minYears: 3  },
-  { level: 4, title: 'Advisor IV',     minApi: 450000, minApps: 48, minPersistency: 90, minYears: 4  },
-  { level: 5, title: 'Senior Advisor', minApi: 600000, minApps: 52, minPersistency: 90, minYears: 5  },
-  { level: 6, title: 'Elite Advisor',  minApi: 800000, minApps: 52, minPersistency: 90, minYears: 6  },
-  { level: 7, title: 'Legend',         minApi: null,   minApps: null, minPersistency: null, minYears: 10 },
-];
-
-const LEVEL_TAGLINES = {
-  1: 'Where every journey starts.',
-  2: 'Earned consistency — the first tier reward.',
-  3: 'Repeatable production — referrals open up.',
-  4: 'Senior tier of the producing ranks.',
-  5: 'Industry recognition — advisor seniority.',
-  6: 'Elite producer — top-tier rewards.',
-  7: "Chairman's recognition — the pinnacle.",
-};
-
-const UNLOCK_COPY = {
-  2: [{ label: 'Higher commission rate',   detail: 'Tier 2 schedule' },
-      { label: '"Advisor II" title',        detail: 'Official designation' },
-      { label: 'Advanced training modules', detail: 'Onboarded access' }],
-  3: [{ label: 'Elevated commission tier',   detail: 'Tier 3 schedule' },
-      { label: '"Advisor III" designation',  detail: 'Official designation' },
-      { label: 'Priority client referrals',  detail: 'Branch-routed leads' }],
-  4: [{ label: 'Senior commission tier',   detail: 'Tier 4 schedule' },
-      { label: '"Advisor IV" + cards',      detail: 'Title + business cards' },
-      { label: 'Mentorship eligibility',    detail: 'Bring on a junior' }],
-  5: [{ label: 'Senior Advisor recognition', detail: 'Industry standing' },
-      { label: 'Dedicated branch support',   detail: 'Direct BM channel' },
-      { label: 'Quarterly bonus eligibility',detail: 'TTD 8K–25K per quarter' },
-      { label: 'Conference seat',            detail: 'Annual leadership event' }],
-  6: [{ label: '"Elite Advisor" title',   detail: 'Top of the producing ranks' },
-      { label: 'Top-tier commission',      detail: 'Maximum schedule' },
-      { label: 'Conference + retreat',     detail: 'Annual incentive trip' }],
-  7: [{ label: '"Legend" designation',    detail: "Chairman's recognition" },
-      { label: 'Lifetime acknowledgement', detail: 'Hall of fame' },
-      { label: 'Legacy portfolio',         detail: 'Senior advisor lineage' }],
-};
+import useCareerCommitment from './useCareerCommitment';
 
 const CAREER_PORTAL_YEAR = new Date().getFullYear();
-
-// ── Helpers ─────────────────────────────────────────────────────────────────
-function getLevelState(level, currentLevel) {
-  if (level < currentLevel) return 'achieved';
-  if (level === currentLevel) return 'current';
-  return 'locked';
-}
-
-function computeQuarterlyAPI(submissions) {
-  // Returns up to 8 quarterly API totals (oldest first)
-  const byQuarterKey = {};
-  for (const s of (submissions ?? [])) {
-    if (s.status !== 'submitted' || !s.weekStarting) continue;
-    const d = new Date(s.weekStarting + 'T12:00:00Z');
-    const y = d.getUTCFullYear();
-    const q = Math.floor(d.getUTCMonth() / 3);
-    const key = `${y}-Q${q}`;
-    byQuarterKey[key] = (byQuarterKey[key] || 0) + (parseFloat(s.apiSold) || 0);
-  }
-  const sorted = Object.entries(byQuarterKey)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-8)
-    .map(([, v]) => Math.round(v / 1000)); // TTD thousands
-  // Pad to 8 if fewer
-  while (sorted.length < 8) sorted.unshift(0);
-  return sorted;
-}
-
-function weeksSubmittedThisYear(submissions, year) {
-  return (submissions ?? []).filter(
-    s => s.status === 'submitted' && s.weekStarting?.startsWith(String(year))
-  ).length;
-}
-
-function estimateWeeksToNextLevel(ytdAPI, nextLevelApi, weeklyPace) {
-  if (!nextLevelApi) return null;
-  if (ytdAPI >= nextLevelApi) return 'You qualify!';
-  if (!weeklyPace || weeklyPace <= 0) return null;
-  const remaining = nextLevelApi - ytdAPI;
-  const weeks = Math.ceil(remaining / weeklyPace);
-  if (weeks <= 4) return `about ${weeks} week${weeks === 1 ? '' : 's'}`;
-  const months = Math.round(weeks / 4.33);
-  return `about ${months} month${months === 1 ? '' : 's'}`;
-}
 
 // ── LadderCoin — the 3D circular medal for a ladder node ────────────────────
 function LadderCoin({ state, levelNum, size = 56 }) {
@@ -469,11 +383,7 @@ function LevelDrillDrawer({ level, currentLevel, ytdAPI, ytdApps, avgPersistency
   const unlocks = UNLOCK_COPY[level] || [];
   const estimate = isNext ? estimateWeeksToNextLevel(ytdAPI, lvl.minApi, weeklyPace) : null;
 
-  const criteria = [];
-  if (lvl.minApi !== null)          criteria.push({ label: '2-yr Avg API', current: trailing2YrAPI, target: lvl.minApi, fmt: 'currency' });
-  if (lvl.minApps !== null)         criteria.push({ label: 'YTD Applications', current: ytdApps, target: lvl.minApps, fmt: 'count' });
-  if (lvl.minPersistency !== null)  criteria.push({ label: 'Persistency rate', current: avgPersistency ?? 0, target: lvl.minPersistency, fmt: 'percent' });
-  if (lvl.minYears > 0)             criteria.push({ label: 'Years of service', current: yearsOfService ?? 0, target: lvl.minYears, fmt: 'years' });
+  const criteria = levelCriteria(lvl, { ytdApps, avgPersistency, yearsOfService, trailing2YrAPI });
 
   const fmtV = (v, kind) => {
     if (kind === 'currency') return v >= 1000 ? `TTD ${(v / 1000).toFixed(0)}K` : `TTD ${Math.round(v)}`;
@@ -609,75 +519,11 @@ function LevelDrillDrawer({ level, currentLevel, ytdAPI, ytdApps, avgPersistency
 
 // ── GoalsSection — loads + edits goals, renders CommitmentScorecards ─────────
 function GoalsSection() {
-  const { user: authUser, userProfile, tenantId } = useAuth();
-  const [goals, setGoalsState]         = useState(null);
-  const [minimums, setMinimums]        = useState(null);
-  const [editing, setEditing]          = useState(false);
-  const [saving, setSaving]            = useState(false);
-  const [saveError, setSaveError]      = useState('');
-  const [moneyNeedsRequired, setMoneyNeedsRequired] = useState(0);
-  const [showNudge, setShowNudge]      = useState(false);
-  const [pendingDraft, setPendingDraft]= useState(null);
-  const [draft, setDraft] = useState({
-    personalAnnualAPI:         '',
-    personalAnnualApps:        '',
-    personalAnnualPersistency: '',
-  });
-
-  useEffect(() => {
-    if (!authUser?.uid || !tenantId) return;
-    Promise.all([
-      getGoals(tenantId, authUser.uid).catch(() => null),
-      getCompanyMinimums(tenantId).catch(() => ({ annualAPI: 200000, annualApps: 40, persistency: 90 })),
-      getMoneyNeeds(tenantId, authUser.uid, CAREER_PORTAL_YEAR).catch(() => null),
-    ]).then(([g, mins, mn]) => {
-      setGoalsState(g);
-      setMinimums(mins);
-      setMoneyNeedsRequired(parseFloat(mn?.firstYearCommissionsRequired) || 0);
-      setDraft({
-        personalAnnualAPI:         g?.personalAnnualAPI         ?? '',
-        personalAnnualApps:        g?.personalAnnualApps        ?? '',
-        personalAnnualPersistency: g?.personalAnnualPersistency ?? '',
-      });
-    });
-  }, [authUser?.uid, tenantId]);
-
-  async function doSave(draftToSave) {
-    setSaving(true); setSaveError('');
-    try {
-      const name = userProfile?.name ?? userProfile?.email ?? 'Agent';
-      await setGoals(tenantId, authUser.uid, {
-        personalAnnualAPI:         draftToSave.personalAnnualAPI,
-        personalAnnualApps:        draftToSave.personalAnnualApps,
-        personalAnnualPersistency: draftToSave.personalAnnualPersistency,
-      }, authUser.uid, name);
-      const updated = await getGoals(tenantId, authUser.uid);
-      setGoalsState(updated);
-      setEditing(false);
-    } catch (e) {
-      setSaveError(e.message ?? 'Failed to save.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const handleSave = async () => {
-    if (!tenantId) return;
-    const api = parseFloat(draft.personalAnnualAPI) || 0;
-    if (moneyNeedsRequired > 0 && api < moneyNeedsRequired) {
-      setPendingDraft({ ...draft }); setShowNudge(true); return;
-    }
-    await doSave(draft);
-  };
-
-  const mins  = minimums ?? { annualAPI: 200000, annualApps: 40, persistency: 90 };
-  const resolvedAnnualAPIFloor = resolveAnnualAPIFloor({
-    contractStartDate: userProfile?.contractStartDate ?? null,
-    tenureApiFloors: mins.tenureApiFloors,
-    fallback: FLAT_ANNUAL_API_FALLBACK,
-  });
-  const mgr  = { api: goals?.targetAnnualAPI ?? 0, apps: goals?.targetAnnualApps ?? 0, persistency: goals?.targetAnnualPersistency ?? 0 };
-  const mine = { api: goals?.personalAnnualAPI ?? 0, apps: goals?.personalAnnualApps ?? 0, persistency: goals?.personalAnnualPersistency ?? 0 };
+  const {
+    editing, setEditing, saving, saveError, setSaveError, draft, setDraft,
+    showNudge, setShowNudge, pendingDraft, setPendingDraft, moneyNeedsRequired,
+    doSave, handleSave, mins, resolvedAnnualAPIFloor, mgr, mine,
+  } = useCareerCommitment(CAREER_PORTAL_YEAR);
 
   return (
     <div className="flex flex-col gap-4">
@@ -796,46 +642,15 @@ export default function CareerPortal({ submissions, user, persistencyData, ytdTo
   const [drawerLevel, setDrawerLevel] = useState(null);
   const thisYear = CAREER_PORTAL_YEAR;
 
-  const { ytdAPI, ytdApps, avgPersistency, yearsOfService, trailing2YrAPI, weeklyPace } = useMemo(() => {
-    const ytdSubs = (submissions ?? []).filter(
-      s => s.status === 'submitted' && s.weekStarting?.startsWith(String(thisYear))
-    );
-    const ytdAPI  = ytdSubs.reduce((sum, s) => sum + (parseFloat(s.apiSold) || 0), 0);
-    const ytdApps = ytdSubs.reduce((sum, s) => sum + (parseFloat(s.applicationsSold || s.appsSold) || 0), 0);
+  const { ytdAPI, ytdApps, avgPersistency, yearsOfService, trailing2YrAPI, weeklyPace } = useMemo(
+    () => careerStats(submissions, persistencyData, user, thisYear),
+    [submissions, persistencyData, user, thisYear],
+  );
 
-    const persArr = Array.isArray(persistencyData) ? persistencyData : [];
-    const ytdPers = persArr.filter(p => p.year === thisYear);
-    // 2 decimals, half up (ruling R-a): the level check and the drawer judge
-    // the same value the drawer prints.
-    const avgPersistency = ytdPers.length > 0
-      ? roundPersistencyPct(aggregatePersistency(ytdPers).aggregatedPersistency * 100)
-      : null;
-
-    let yearsOfService = null;
-    if (user?.startDate) {
-      const start = new Date(user.startDate);
-      if (!isNaN(start)) yearsOfService = (Date.now() - start.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
-    }
-
-    const trailing2YrAPI = compute2YearAverageAPI(submissions, thisYear);
-    const weeksCount = weeksSubmittedThisYear(submissions, thisYear);
-    const weeklyPace = weeksCount > 0 ? ytdAPI / weeksCount : 0;
-
-    return { ytdAPI, ytdApps, avgPersistency, yearsOfService, trailing2YrAPI, weeklyPace };
-  }, [submissions, persistencyData, user, thisYear]);
-
-  const currentLevel = useMemo(() => {
-    let highest = CAREER_LEVELS[0];
-    for (const lvl of CAREER_LEVELS) {
-      const apiOk   = lvl.minApi === null   || trailing2YrAPI >= lvl.minApi;
-      const appsOk  = lvl.minApps === null  || ytdApps >= lvl.minApps;
-      const persOk  = lvl.minPersistency === null || (avgPersistency !== null && avgPersistency >= lvl.minPersistency);
-      const yearsOk = lvl.minYears === 0 || (yearsOfService !== null && yearsOfService >= lvl.minYears);
-      if (apiOk && appsOk && persOk && yearsOk) highest = lvl;
-      else break;
-    }
-    return highest;
-  }, [trailing2YrAPI, ytdApps, avgPersistency, yearsOfService]);
+  const currentLevel = useMemo(
+    () => currentLevelFor({ trailing2YrAPI, ytdApps, avgPersistency, yearsOfService }),
+    [trailing2YrAPI, ytdApps, avgPersistency, yearsOfService],
+  );
 
   const nextLevel = CAREER_LEVELS.find(l => l.level === currentLevel.level + 1) ?? null;
   const estimateStr = nextLevel ? estimateWeeksToNextLevel(ytdAPI, nextLevel.minApi, weeklyPace) : null;
