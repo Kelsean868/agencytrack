@@ -315,6 +315,8 @@ describe('PolicyReconciliationPanel — Lapse tab hides head-office policies', (
     expect(screen.getByTestId('lapse-policy-card-pol-2')).toBeInTheDocument();
     expect(screen.queryByTestId('lapse-policy-card-pol-1')).not.toBeInTheDocument();
     expect(screen.getByTestId('lapse-hidden-ho')).toHaveTextContent('1 head-office policy is not shown: head office sets its status.');
+    // CodeRabbit on #1037: the count changes with the period, so screen readers are told.
+    expect(screen.getByTestId('lapse-hidden-ho')).toHaveAttribute('aria-live', 'polite');
   });
 
   it('a policy imported from head office but whose status a person set stays listed (statusSource, not importSource)', async () => {

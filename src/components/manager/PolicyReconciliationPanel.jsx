@@ -464,7 +464,7 @@ export default function PolicyReconciliationPanel() {
 
       {/* ── Lapse tab ── */}
       {!loading && !error && activeTab === 'lapse' && hiddenHeadOfficeNote && (
-        <p className="text-xs text-ink-muted" data-testid="lapse-hidden-ho">{hiddenHeadOfficeNote}</p>
+        <p aria-live="polite" className="text-xs text-ink-muted" data-testid="lapse-hidden-ho">{hiddenHeadOfficeNote}</p>
       )}
       {!loading && !error && activeTab === 'lapse' && (
         lapseTabPolicies.length === 0 ? (
