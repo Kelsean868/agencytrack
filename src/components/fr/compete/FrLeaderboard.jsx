@@ -92,6 +92,9 @@ export default function FrLeaderboard({ onOpenTrophies }) {
         />
       )}
       onOpenTrophies={onOpenTrophies}
+      // The standing comes from arenaStanding (branch-wide); say so when the
+      // board shows a unit (CodeRabbit on #1025).
+      branchWide={scope === 'unit'}
     />
   );
 }

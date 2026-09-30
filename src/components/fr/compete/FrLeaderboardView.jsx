@@ -234,7 +234,7 @@ function EveryoneElse({ rows, phone }) {
   );
 }
 
-function YouBlock({ you, toPass, rankCols, share, period, asCard, onOpenTrophies }) {
+function YouBlock({ you, toPass, rankCols, share, period, asCard, onOpenTrophies, branchWide }) {
   const maxOf = Math.max(1, ...rankCols.map((c) => c.of || 0));
   const rankAria = rankCols.map((c) => `${c.label} ${c.rank == null ? 'not ranked' : `#${c.rank}`}`).join(', ');
   return (
@@ -244,6 +244,11 @@ function YouBlock({ you, toPass, rankCols, share, period, asCard, onOpenTrophies
       data-testid="fr-leaderboard-you"
     >
       <span className={`${EYEBROW} text-primary`}>Your standing · {period}</span>
+      {branchWide ? (
+        <p className="-mt-2 text-[12px] text-ink-muted" data-testid="fr-leaderboard-branch-note">
+          Your rank, the agent to pass and the rank per period are across the whole branch; the board and your share follow the unit you picked.
+        </p>
+      ) : null}
       <div className="flex items-baseline gap-2.5">
         <span className="font-display text-[48px] font-extrabold leading-none tabular-nums text-ink" data-testid="fr-leaderboard-you-rank">
           {you.rank == null ? '—' : `#${you.rank}`}
@@ -263,12 +268,12 @@ function YouBlock({ you, toPass, rankCols, share, period, asCard, onOpenTrophies
         <div className="flex flex-col gap-2 rounded-[16px] border border-border bg-card p-3.5" data-testid="fr-leaderboard-topass">
           {toPass.lead ? (
             <>
-              <span className="text-[12px] font-bold text-ink-muted">To pass the next agent</span>
+              <span className="text-[12px] font-bold text-ink-muted">{branchWide ? 'To pass the next agent in the branch' : 'To pass the next agent'}</span>
               <span className="font-display text-[22px] font-extrabold text-ink">You lead</span>
             </>
           ) : (
             <>
-              <span className="text-[12px] font-bold text-ink-muted">To pass the next agent</span>
+              <span className="text-[12px] font-bold text-ink-muted">{branchWide ? 'To pass the next agent in the branch' : 'To pass the next agent'}</span>
               <span className="whitespace-nowrap font-display text-[24px] font-extrabold tabular-nums text-ink">{formatCurrency(toPass.gap)}</span>
               <span className="text-[13px] text-ink-muted">{toPass.aboveName ? `to pass ${toPass.aboveName} (#${toPass.aboveRank})` : `to pass #${toPass.aboveRank}`}</span>
               <span role="img" aria-label={`You are at ${Math.round(toPass.pct)}% of #${toPass.aboveRank}'s API`} className="block h-3 overflow-hidden rounded-full bg-fr-sunk">
@@ -280,7 +285,7 @@ function YouBlock({ you, toPass, rankCols, share, period, asCard, onOpenTrophies
       ) : null}
 
       <div className="flex flex-col gap-2.5 rounded-[16px] border border-border bg-card p-3.5">
-        <span className="text-[12px] font-bold text-ink-muted">Your rank in each period</span>
+        <span className="text-[12px] font-bold text-ink-muted">{branchWide ? 'Your branch rank in each period' : 'Your rank in each period'}</span>
         <div role="img" aria-label={rankAria} className="grid h-[110px] grid-cols-4 items-end gap-2.5" data-testid="fr-leaderboard-rankcols">
           {rankCols.map((c) => {
             const h = c.rank == null ? 6 : Math.max(10, Math.round(((maxOf - c.rank + 1) / maxOf) * 72));
@@ -366,6 +371,7 @@ export default function FrLeaderboardView(props) {
   const {
     layout, status, errorCode, onRetry, periods, period, onPeriod, scopeControl, scopeLine, title, periodWord,
     champions, podium, rows, viewerUid, you, toPass, rankCols, share, updated, mobileYouBar, onOpenTrophies,
+    branchWide = false,
   } = props;
   if (!['desktop', 'tablet', 'phone'].includes(layout)) throw new Error(`FrLeaderboardView: unknown layout "${layout}"`);
   if (!['loading', 'error', 'empty', 'ready'].includes(status)) throw new Error(`FrLeaderboardView: unknown status "${status}"`);
@@ -387,7 +393,7 @@ export default function FrLeaderboardView(props) {
     </p>
   ) : null;
   const youBlock = (asCard) => (
-    <YouBlock you={you} toPass={toPass} rankCols={rankCols} share={share} period={period} asCard={asCard} onOpenTrophies={onOpenTrophies} />
+    <YouBlock you={you} toPass={toPass} rankCols={rankCols} share={share} period={period} asCard={asCard} onOpenTrophies={onOpenTrophies} branchWide={branchWide} />
   );
 
   if (phone) {

@@ -108,6 +108,13 @@ describe('FR Leaderboard — one state source with the Nexus surface', () => {
     const displayed = scopeName === 'unit' ? YTD.filter((e) => e.unitId === 'um-1') : YTD;
     const total = displayed.reduce((sum, e) => sum + e.periodApi, 0);
     expect(screen.getByTestId('fr-leaderboard-share').textContent).toContain(`of TTD ${total.toLocaleString('en-US')}`);
+    // The standing is branch-wide (arenaStanding); in unit scope the screen says so.
+    if (scopeName === 'unit') {
+      expect(screen.getByTestId('fr-leaderboard-branch-note')).toBeInTheDocument();
+      expect(screen.getByTestId('fr-leaderboard-you').textContent).toContain('Your branch rank in each period');
+    } else {
+      expect(screen.queryByTestId('fr-leaderboard-branch-note')).toBeNull();
+    }
   });
 });
 
