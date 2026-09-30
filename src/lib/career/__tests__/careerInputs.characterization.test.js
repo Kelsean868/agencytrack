@@ -15,7 +15,6 @@ vi.mock('../../persistency/calculations', () => ({
 import { careerStats, currentLevel, computeQuarterlyAPI, quarterlyAPISeries, yearsOfServiceFrom, submissionAPI } from '../careerModel';
 
 const NOW = new Date('2026-09-30T12:00:00Z');
-const YEAR_MS = 365.25 * 24 * 60 * 60 * 1000;
 const PERS = [{ year: 2026, month: 1 }];
 
 // One submitted weekly report in the current (v1, flat) shape.
