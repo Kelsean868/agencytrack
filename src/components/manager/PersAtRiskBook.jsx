@@ -2,10 +2,12 @@ import React from 'react';
 import { MessageSquare } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import { formatCurrency } from '../../utils/formatters';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
+// Ruling R-a: 2 decimals, half up.
 function formatPercent(decimal) {
   if (decimal == null || !Number.isFinite(decimal)) return '—';
-  return `${(decimal * 100).toFixed(1)}%`;
+  return formatPersistencyPct(decimal * 100);
 }
 
 export default function PersAtRiskBook({ rows, onCoach }) {

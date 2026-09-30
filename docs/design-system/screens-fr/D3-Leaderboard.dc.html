@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Leaderboard — desktop v3</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>body{margin:0}a{color:inherit}
+.tn{font-variant-numeric:tabular-nums}
+.lb-row{transition:background 160ms ease}
+.lb-bar{transition:width 520ms cubic-bezier(0.32,0.72,0,1)}
+.lb-pod{transition:height 520ms cubic-bezier(0.32,0.72,0,1)}
+@keyframes lbRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes lbPulse{0%,100%{opacity:0.45}50%{opacity:0.9}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms !important;animation-iteration-count:1 !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="width: {{rootW}}px; height: 900px; box-sizing: border-box; display: flex; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; overflow: hidden; position: relative;">
+  <sc-if value="{{showChrome}}" hint-placeholder-val="{{true}}">
+    <div style="width: 220px; flex-shrink: 0; align-self: stretch; background: {{c.sideBg}};">
+      <dc-import name="D3-Sidebar" active="Arena" dark="{{dark}}" h="{{900}}" hint-size="220px,900px"></dc-import>
+    </div>
+  </sc-if>
+  <main style="width: 1220px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;">
+    <header style="height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 20px 0 28px; display: flex; align-items: center; gap: 14px; background: {{c.glass}}; border-bottom: 1px solid {{c.rule}};">
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">Leaderboard</h1>
+      <div role="radiogroup" aria-label="Period" style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: {{c.sunk}};">
+        <sc-for list="{{periods}}" as="p" hint-placeholder-count="4">
+          <button role="radio" aria-checked="{{p.on}}" onClick="{{p.pick}}" style="height: 44px; margin: -7px 0; padding: 0; border: 0; background: transparent; display: flex; align-items: center; cursor: pointer; font-family: 'Onest', sans-serif;"><span style="height: 30px; padding: 0 12px; border-radius: 8px; background: {{p.bg}}; color: {{p.color}}; box-shadow: {{p.shadow}}; font-size: 13px; font-weight: 700; display: flex; align-items: center;">{{p.label}}</span></button>
+        </sc-for>
+      </div>
+      <sc-if value="{{isManager}}" hint-placeholder-val="{{false}}">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: {{c.mute}};">Scope
+          <select aria-label="Scope" style="height: 36px; min-height: 44px; margin: -4px 0; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.surface}}; color: {{c.ink}}; font-family: 'Onest', sans-serif; font-size: 13px; font-weight: 600; padding: 0 10px;"><option>My branch · South</option><option>South Unit</option><option>Coastal Unit</option></select>
+        </label>
+      </sc-if>
+      <span class="tn" style="font-size: 13px; color: {{c.mute}};">{{scopeLine}}</span>
+      <span style="flex-grow: 1;"></span>
+      <a href="D3-Today.dc.html" style="width: 200px; height: 36px; margin: 4px 0; box-sizing: border-box; border-radius: 10px; border: 1px solid {{c.rule}}; background: {{c.surface}}; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; color: {{c.faint}}; font-size: 13px; text-decoration: none;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><span style="flex-grow: 1;">Search</span><kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; background: {{c.sunk}}; border-radius: 5px; padding: 2px 6px; color: {{c.mute}};">Ctrl K</kbd></a>
+    </header>
+
+    <div style="flex-grow: 1; min-height: 0; display: flex;">
+      <div style="flex-grow: 1; min-width: 0; overflow-y: auto; padding: 20px 28px 28px; display: flex; flex-direction: column; gap: 18px;">
+
+        <section aria-label="Last week's champions" style="flex-shrink: 0; display: grid; grid-template-columns: 170px repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch;">
+          <div style="display: flex; flex-direction: column; justify-content: center; gap: 2px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.gold}};">WEEK 39 CHAMPIONS</span>
+            <span style="font-size: 12px; color: {{c.mute}};">Whole company · last full week</span>
+          </div>
+          <sc-for list="{{champs}}" as="ch" hint-placeholder-count="3">
+            <div style="border-radius: 14px; border: 1px solid {{c.rule}}; background: {{c.surface}}; padding: 10px 12px; display: flex; align-items: center; gap: 10px;">
+              <span style="width: 40px; height: 40px; flex-shrink: 0;"><dc-import name="D3-Trophy" kind="{{ch.kind}}" size="40" dark="{{dark}}" hint-size="40px,40px"></dc-import></span>
+              <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+                <span style="font-size: 11px; font-weight: 700; color: {{c.mute}};">{{ch.title}}</span>
+                <span style="font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ch.name}}</span>
+                <span class="tn" style="font-size: 12px; color: {{c.gold}}; font-weight: 700;">{{ch.value}}</span>
+              </span>
+            </div>
+          </sc-for>
+        </section>
+
+        <sc-if value="{{isLoading}}" hint-placeholder-val="{{false}}">
+          <section aria-label="Loading rankings" aria-busy="true" style="flex-shrink: 0; border-radius: 20px; border: 1px solid {{c.rule}}; background: {{c.surface}}; padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+            <span style="font-size: 14px; color: {{c.mute}};">Loading rankings…</span>
+            <sc-for list="{{skeleton}}" as="sk" hint-placeholder-count="5"><span style="height: 40px; border-radius: 10px; background: {{c.sunk}}; animation: lbPulse 1.4s ease-in-out infinite;"></span></sc-for>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{isError}}" hint-placeholder-val="{{false}}">
+          <section role="alert" style="flex-shrink: 0; border-radius: 20px; border: 1px solid {{c.warm}}; background: {{c.warmTint}}; padding: 22px; display: flex; align-items: center; gap: 14px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{c.warm}}" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16h.01"></path></svg>
+            <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><strong style="font-size: 15px;">Couldn't load the leaderboard</strong><span style="font-size: 13px; color: {{c.mute}};">Check your connection and try again.</span></span>
+            <button style="height: 44px; padding: 0 18px; border-radius: 12px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font-family: 'Onest', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer;">Retry</button>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{isEmpty}}" hint-placeholder-val="{{false}}">
+          <section style="flex-shrink: 0; border-radius: 20px; border: 1px dashed {{c.rule}}; background: {{c.surface}}; padding: 40px 22px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="{{c.mute}}" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 20h4v-7H4zM10 20h4V8h-4zM16 20h4v-10h-4z"></path></svg>
+            <strong style="font-size: 16px;">No production logged for {{periodWord}} yet</strong>
+            <span style="font-size: 13px; color: {{c.mute}};">The board fills in as settled business comes in. Log a policy to get on it.</span>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{isReady}}" hint-placeholder-val="{{true}}">
+          <section aria-label="Podium" style="flex-shrink: 0; border-radius: 22px; background: {{c.heroBg}}; border: 1px solid {{c.rule}}; padding: 18px 22px 0; display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden;">
+            <span aria-hidden="true" style="position: absolute; left: 50%; top: -120px; margin-left: -200px; width: 400px; height: 360px; border-radius: 50%; background: radial-gradient(circle, {{c.heroGlow}} 0%, transparent 65%);"></span>
+            <div style="display: flex; align-items: baseline; gap: 10px; position: relative;">
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.gold}};">TOP OF THE BOARD · {{periodShort}}</span>
+              <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">{{title}}</h2>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: end; position: relative; height: 250px;">
+              <sc-for list="{{podium}}" as="pd" hint-placeholder-count="3">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; animation: lbRise 420ms cubic-bezier(0.32, 0.72, 0, 1) both; animation-delay: {{pd.delay}};">
+                  <sc-if value="{{pd.isYou}}" hint-placeholder-val="{{false}}"><span style="height: 20px; padding: 0 8px; border-radius: 10px; background: {{c.accent}}; color: {{c.onAccent}}; font-size: 11px; font-weight: 800; display: flex; align-items: center;">YOU</span></sc-if>
+                  <span style="width: {{pd.av}}px; height: {{pd.av}}px; border-radius: 50%; background: {{c.accentTint}}; color: {{c.accent}}; border: 3px solid {{pd.ring}}; display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 800; box-sizing: border-box;">{{pd.initials}}</span>
+                  <span style="font-size: 15px; font-weight: 800;">{{pd.name}}</span>
+                  <span style="font-size: 12px; color: {{c.mute}};">{{pd.unit}} · {{pd.apps}}</span>
+                  <span class="tn" style="font-family: 'Bricolage Grotesque', sans-serif; font-size: {{pd.fs}}px; font-weight: 800; letter-spacing: -0.02em; color: {{pd.valColor}};">{{pd.api}}</span>
+                  <span class="lb-pod" style="width: 100%; height: {{pd.h}}px; border-radius: 14px 14px 0 0; background: {{pd.block}}; display: flex; justify-content: center; padding-top: 8px; box-sizing: border-box; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 800; color: {{pd.blockInk}};">{{pd.place}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+
+          <section aria-label="Everyone else" style="flex-shrink: 0; border-radius: 20px; border: 1px solid {{c.rule}}; background: {{c.surface}}; overflow: hidden;">
+            <div style="height: 40px; padding: 0 18px; display: grid; grid-template-columns: 44px minmax(0, 1fr) 70px 280px 110px; gap: 12px; align-items: center; background: {{c.sunk}}; font-size: 12px; font-weight: 700; color: {{c.mute}};">
+              <span>Rank</span><span>Agent</span><span style="text-align: right;">Apps</span><span>Against the leader</span><span style="text-align: right;">Settled API</span>
+            </div>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+              <sc-if value="{{r.isGap}}" hint-placeholder-val="{{false}}">
+                <div style="height: 32px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: {{c.faint}}; border-top: 1px solid {{c.rule}};">{{r.gapText}}</div>
+              </sc-if>
+              <sc-if value="{{r.isRow}}" hint-placeholder-val="{{true}}">
+                <div class="lb-row" style="min-height: 52px; padding: 0 18px; display: grid; grid-template-columns: 44px minmax(0, 1fr) 70px 280px 110px; gap: 12px; align-items: center; border-top: 1px solid {{c.rule}}; background: {{r.bg}}; box-shadow: {{r.ring}};">
+                  <span class="tn" style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: {{r.rankColor}};">{{r.rank}}</span>
+                  <span style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                    <span style="width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; background: {{r.avBg}}; color: {{r.avFg}}; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800;">{{r.initials}}</span>
+                    <span style="display: flex; flex-direction: column; min-width: 0;"><span style="font-size: 14px; font-weight: {{r.weight}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{r.name}}">{{r.name}}</span><span style="font-size: 12px; color: {{c.mute}};">{{r.unit}}</span></span>
+                    <sc-if value="{{r.hasMove}}" hint-placeholder-val="{{false}}"><span style="flex-shrink: 0; height: 22px; padding: 0 8px; border-radius: 11px; background: {{c.accentTint}}; color: {{c.accent}}; font-size: 11px; font-weight: 800; display: flex; align-items: center;">{{r.move}}</span></sc-if>
+                  </span>
+                  <span class="tn" style="text-align: right; font-size: 13px; color: {{c.mute}};">{{r.apps}}</span>
+                  <span role="img" aria-label="{{r.pctLabel}}" style="height: 10px; border-radius: 5px; background: {{c.sunk}}; overflow: hidden;"><span class="lb-bar" style="display: block; height: 10px; width: {{r.pct}}%; border-radius: 5px; background: {{r.barColor}};"></span></span>
+                  <span class="tn" style="text-align: right; font-size: 14px; font-weight: 800; color: {{r.valColor}};">{{r.api}}</span>
+                </div>
+              </sc-if>
+            </sc-for>
+          </section>
+          <span style="font-size: 12px; color: {{c.faint}};">Ranked by settled API in your branch. Test accounts are left out. Updated 29-09-2026 05:10 · 0 reports skipped. Names and figures are SAMPLE; your own figure is the live one.</span>
+        </sc-if>
+      </div>
+
+      <aside aria-label="You" style="width: 340px; flex-shrink: 0; overflow-y: auto; border-left: 1px solid {{c.rule}}; background: {{c.pane}}; padding: 20px 22px 28px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px;">
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.accent}};">YOUR STANDING · {{periodShort}}</span>
+        <div style="display: flex; align-items: baseline; gap: 10px;">
+          <span class="tn" style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 56px; font-weight: 800; letter-spacing: -0.04em; line-height: 1;">{{you.rankBig}}</span>
+          <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 700;">of {{you.of}} agents</span><span class="tn" style="font-size: 13px; color: {{c.mute}};">{{you.api}} settled</span></span>
+        </div>
+        <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 12px; font-weight: 700; color: {{c.mute}};">To pass the next agent</span>
+          <span class="tn" style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -0.02em;">{{you.toPass}}</span>
+          <span style="font-size: 13px; color: {{c.mute}};">{{you.toPassWho}}</span>
+          <span role="img" aria-label="{{you.passAria}}" style="position: relative; height: 12px; border-radius: 6px; background: {{c.sunk}};">
+            <span class="lb-bar" style="position: absolute; left: 0; top: 0; bottom: 0; width: {{you.passPct}}%; border-radius: 6px; background: {{c.accent}};"></span>
+          </span>
+        </div>
+        <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+          <span style="font-size: 12px; font-weight: 700; color: {{c.mute}};">Your rank in each period</span>
+          <div role="img" aria-label="{{rankAria}}" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; align-items: end; height: 110px;">
+            <sc-for list="{{rankCols}}" as="rc" hint-placeholder-count="4">
+              <span style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                <span class="tn" style="font-size: 13px; font-weight: 800; color: {{rc.color}};">#{{rc.rank}}</span>
+                <span class="lb-bar" style="width: 100%; height: {{rc.h}}px; border-radius: 8px 8px 3px 3px; background: {{rc.fill}};"></span>
+                <span style="font-size: 11px; font-weight: 700; color: {{c.mute}};">{{rc.label}}</span>
+              </span>
+            </sc-for>
+          </div>
+          <span style="font-size: 12px; color: {{c.faint}};">Taller is better.</span>
+        </div>
+        <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px; display: flex; align-items: center; gap: 14px;">
+          <svg width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="{{share.aria}}">
+            <circle cx="48" cy="48" r="38" fill="none" stroke="{{c.sunk}}" stroke-width="12"></circle>
+            <circle cx="48" cy="48" r="38" fill="none" stroke="{{c.accent}}" stroke-width="12" stroke-linecap="round" stroke-dasharray="{{share.dash}}" transform="rotate(-90 48 48)"></circle>
+            <text x="48" y="53" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="17" font-weight="800" fill="{{c.ink}}">{{share.pct}}</text>
+          </svg>
+          <span style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 14px; font-weight: 700;">Your share of the branch</span><span class="tn" style="font-size: 13px; color: {{c.mute}};">{{share.line}}</span></span>
+        </div>
+        <a href="D3-Trophies.dc.html" style="min-height: 44px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 700; text-decoration: none; color: {{c.ink}};">Awards you can win from here</a>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"role":{"editor":"enum","options":["agent","manager"],"default":"agent"},"state":{"editor":"enum","options":["ready","loading","empty","error"],"default":"ready"},"period":{"editor":"enum","options":["wk","mtd","qtd","ytd"],"default":"ytd"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { period: null };
+  }
+  renderVals() {
+    const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', sideBg: '#EFEBE2', glass: 'rgba(246,243,236,0.86)', pane: '#FBFAF6', heroBg: '#FFFDF7', heroGlow: 'rgba(240,185,58,0.26)', b1: 'linear-gradient(180deg, #F2C14E, #D9A22E)', b2: 'linear-gradient(180deg, #D8D6D0, #B9B6AE)', b3: 'linear-gradient(180deg, #E0A77A, #C27F4F)', bInk: '#1F1D1A', r1: '#D9A22E', r2: '#A8A59D', r3: '#C27F4F', bar: '#9FC9C4', you: '#DCEAE7' };
+    const dark = { bg: '#131311', surface: '#1D1C19', sunk: '#2A2925', ink: '#F2EFE8', mute: '#BDB6A8', faint: '#A39C8E', rule: '#33312B', accent: '#63C5BF', onAccent: '#0D1B1A', accentTint: '#16312F', warm: '#F29066', warmTint: '#3A2217', gold: '#E8B44E', goldTint: '#342911', sideBg: '#181816', glass: 'rgba(19,19,17,0.86)', pane: '#171714', heroBg: '#1B1A16', heroGlow: 'rgba(232,180,78,0.16)', b1: 'linear-gradient(180deg, #E8B44E, #B8872A)', b2: 'linear-gradient(180deg, #8E8B84, #6C6A64)', b3: 'linear-gradient(180deg, #C98A5C, #9A6440)', bInk: '#131311', r1: '#E8B44E', r2: '#8E8B84', r3: '#C98A5C', bar: '#2F5B58', you: '#16312F' };
+    const c = this.props.dark ? dark : light;
+    const period = this.state.period || this.props.period || 'ytd';
+    const role = this.props.role || 'agent';
+    const st = this.props.state || 'ready';
+
+    // [name, unit, wk, mtd, qtd, ytd, appsYtd, isYou]
+    const A = [
+      ['S. Mohammed', 'South Unit', 12400, 51300, 98500, 312400, 41],
+      ['A. Ramdial', 'South Unit', 18900, 44100, 87300, 268900, 35],
+      ['K. Baptiste', 'Coastal Unit', 6200, 30200, 71200, 221300, 30],
+      ['R. Singh', 'Coastal Unit', 4100, 28700, 60400, 176050, 26],
+      ['D. Charles', 'South Unit', 9800, 21900, 52100, 142700, 22],
+      ['T. Joseph', 'Coastal Unit', 0, 12300, 33000, 98400, 15],
+      ['Kyron Marchan', 'South Unit', 11996, 26450, 48900, 87146, 5, true],
+      ['N. Ali', 'South Unit', 3300, 9800, 21000, 64200, 11],
+      ['J. Pierre', 'Coastal Unit', 0, 4200, 14900, 41800, 8],
+      ['M. Lewis', 'South Unit', 2100, 3900, 9100, 22600, 4]
+    ];
+    const IDX = { wk: 2, mtd: 3, qtd: 4, ytd: 5 };
+    const LBL = { wk: 'WK', mtd: 'MTD', qtd: 'QTD', ytd: 'YTD' };
+    const WORD = { wk: 'this week', mtd: 'this month', qtd: 'this quarter', ytd: 'this year' };
+    const TITLE = { wk: "Who's leading this week.", mtd: "Who's leading this month.", qtd: "Who's leading the quarter.", ytd: "Who's leading the year." };
+    const fmt = (n) => 'TTD ' + Math.round(n).toLocaleString('en-US');
+    const initials = (n) => n.split(/[\s.]+/).filter(Boolean).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+    const rankFor = (p) => A.map((a) => ({ a: a, v: a[IDX[p]] })).sort((x, y) => y.v - x.v);
+    const ranked = rankFor(period);
+    const leader = ranked[0].v || 1;
+    const appsFor = (a) => Math.max(0, Math.round(a[6] * (a[IDX[period]] / (a[5] || 1))));
+
+    const periods = ['wk', 'mtd', 'qtd', 'ytd'].map((p) => ({ label: LBL[p], on: p === period, pick: () => this.setState({ period: p }), bg: p === period ? c.surface : 'transparent', color: p === period ? c.ink : c.mute, shadow: p === period ? '0 1px 2px rgba(0,0,0,0.1)' : 'none' }));
+
+    const order = [1, 0, 2];
+    const H = [150, 110, 80];
+    const podium = order.map((i, k) => {
+      const e = ranked[i];
+      return { place: i + 1, name: e.a[7] ? 'You' : e.a[0], unit: e.a[1], apps: appsFor(e.a) + ' apps', initials: initials(e.a[0]), api: fmt(e.v), isYou: !!e.a[7], h: H[i], av: i === 0 ? 64 : 52, fs: i === 0 ? 26 : 20, ring: [c.r1, c.r2, c.r3][i], block: [c.b1, c.b2, c.b3][i], blockInk: c.bInk, valColor: i === 0 ? c.gold : c.ink, delay: (k * 80) + 'ms' };
+    });
+
+    const youIdx = ranked.findIndex((e) => e.a[7]);
+    const visible = [];
+    for (let i = 3; i < Math.min(8, ranked.length); i++) visible.push(i);
+    const rows = [];
+    const mk = (i) => {
+      const e = ranked[i];
+      const you = !!e.a[7];
+      const pct = Math.round((e.v / leader) * 100);
+      return { isRow: true, isGap: false, rank: i + 1, name: you ? 'You · Kyron' : e.a[0], unit: e.a[1], initials: you ? 'YOU' : initials(e.a[0]), apps: appsFor(e.a), api: fmt(e.v), pct: pct, pctLabel: pct + ' percent of the leader', barColor: you ? c.accent : c.bar, bg: you ? c.you : 'transparent', ring: you ? 'inset 0 0 0 1.5px ' + c.accent : 'none', rankColor: you ? c.accent : c.mute, avBg: you ? c.accent : c.sunk, avFg: you ? c.onAccent : c.mute, weight: you ? 800 : 600, valColor: you ? c.accent : c.ink, hasMove: you && period === 'wk', move: '▲ 2 this week' };
+    };
+    visible.forEach((i) => rows.push(mk(i)));
+    if (youIdx >= 8) {
+      rows.push({ isRow: false, isGap: true, gapText: '+' + (youIdx - 8) + ' agents' });
+      rows.push(mk(youIdx - 1)); rows.push(mk(youIdx)); if (youIdx + 1 < ranked.length) rows.push(mk(youIdx + 1));
+    }
+
+    const me = ranked[youIdx];
+    const above = youIdx > 0 ? ranked[youIdx - 1] : null;
+    const gap = above ? above.v - me.v : 0;
+    const total = ranked.reduce((s, e) => s + e.v, 0) || 1;
+    const share = me.v / total;
+    const circ = 2 * Math.PI * 38;
+
+    const rankCols = ['wk', 'mtd', 'qtd', 'ytd'].map((p) => {
+      const r = rankFor(p).findIndex((e) => e.a[7]) + 1;
+      return { label: LBL[p], rank: r, h: Math.round(12 + (A.length - r) / (A.length - 1) * 68), fill: p === period ? c.accent : c.bar, color: p === period ? c.accent : c.mute };
+    });
+
+    return {
+      c: c, dark: !!this.props.dark, showChrome: !this.props.embedded, rootW: this.props.embedded ? 1220 : 1440,
+      periods: periods, periodShort: LBL[period], periodWord: WORD[period], title: TITLE[period],
+      isManager: role === 'manager', scopeLine: 'South branch · ' + A.length + ' agents',
+      isReady: st === 'ready', isLoading: st === 'loading', isEmpty: st === 'empty', isError: st === 'error',
+      skeleton: [1, 2, 3, 4, 5],
+      champs: [
+        { kind: 'aotm-api', title: 'API champion', name: 'A. Ramdial', value: 'TTD 22,450' },
+        { kind: 'aotm-apps', title: 'Apps leader', name: 'K. Baptiste', value: '4 applications' },
+        { kind: 'big-week', title: 'Activity winner', name: 'You', value: '312 points' }
+      ],
+      podium: podium, rows: rows,
+      you: { rankBig: '#' + (youIdx + 1), of: A.length, api: fmt(me.v), toPass: above ? fmt(gap) : 'You lead', toPassWho: above ? 'to pass ' + above.a[0] + ' (' + fmt(above.v) + ')' : 'Nobody above you', passPct: above ? Math.round((me.v / above.v) * 100) : 100, passAria: above ? Math.round((me.v / above.v) * 100) + ' percent of the way to the next agent' : 'You lead' },
+      rankCols: rankCols, rankAria: 'Your rank: ' + rankCols.map((r) => r.label + ' ' + r.rank).join(', '),
+      share: { pct: (share * 100).toFixed(1) + '%', dash: (share * circ).toFixed(1) + ' ' + circ.toFixed(1), line: fmt(me.v) + ' of ' + fmt(total), aria: 'Your share of branch settled API: ' + (share * 100).toFixed(1) + ' percent' }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -96,10 +96,10 @@ describe('PersistencyEntryForm', () => {
   it('updates the derived preview as inputs change (Ricardo Duke validation)', () => {
     render(<PersistencyEntryForm {...DEFAULT_PROPS} />);
     fillRicardo();
-    // Derived persistency should match the Tatil Feb 2026 figure (73.9% rounded
-    // to one decimal in the form preview).
+    // Derived persistency should match the Tatil Feb 2026 figure (73.93%,
+    // 2 decimals half up in the form preview — ruling R-a).
     const persText = screen.getByTestId('derived-persistency').textContent;
-    expect(persText).toMatch(/73\.9%/);
+    expect(persText).toMatch(/73\.93%/);
   });
 
   it('disables save until all six inputs are populated', () => {

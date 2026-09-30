@@ -12,6 +12,7 @@ import { computeAgentAwards } from '../../utils/awardsEngine';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 import { MDRT_THRESHOLDS_2026 } from '../../config/mdrtThresholds/2026';
 import { deriveAgentReportModel } from './agentReportModel';
+import { roundPersistencyPct } from '../../lib/persistency/persistencyRounding';
 import { resolveAnnualAPIFloor, tenureBandLabel, FLAT_ANNUAL_API_FALLBACK } from '../../utils/tenureFloors';
 
 // Career ladder (kept in sync with the app career levels).
@@ -262,7 +263,8 @@ export function buildAgentReportModel({
     .sort((a, b) => String(b.periodKey ?? '').localeCompare(String(a.periodKey ?? '')));
 
   // Cover meta.
-  const persPct = latestPersistencyPercent(persistency);
+  // 2 decimals, half up (ruling R-a) — the PDF prints and colours this value.
+  const persPct = roundPersistencyPct(latestPersistencyPercent(persistency));
   const monthsInService = (() => {
     const mo = parseFloat(agentProfile?.monthsInIndustry ?? agentProfile?.monthsAtTatil);
     return Number.isFinite(mo) && mo > 0 ? Math.round(mo) : null;

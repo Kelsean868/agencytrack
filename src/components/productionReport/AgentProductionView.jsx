@@ -15,6 +15,7 @@ import TimePeriodToggle from './TimePeriodToggle';
 import DataSourceBadge from './DataSourceBadge';
 import WhereYouRankPanel from './WhereYouRankPanel';
 import useLeaderboard from '../../hooks/useLeaderboard';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 const PERIOD_LABEL = {
   week: 'this week', mtd: 'month to date', quarter: 'quarter to date', ytd: 'year to date',
@@ -148,7 +149,7 @@ export default function AgentProductionView({ onDownloadPDF, generating = false 
   const branchTotal  = rankingForPeriod.length;
 
   const persDecimal = persHistory[0]?.persistency ?? null;
-  const persDisplay = Number.isFinite(persDecimal) ? `${(persDecimal * 100).toFixed(1)}%` : '—';
+  const persDisplay = Number.isFinite(persDecimal) ? formatPersistencyPct(persDecimal * 100) : '—';
 
   if (loading) {
     return (

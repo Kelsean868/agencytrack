@@ -22,6 +22,7 @@ import {
   computeAgentTotals,
 } from '../../lib/productionReport/computations';
 import { resolveAnnualAPIFloor } from '../../utils/tenureFloors';
+import { roundPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 // Keys computeRatios (and the activity tiles) read — seeded to 0 so a
 // zero-submission aggregate yields clean nulls/0s, never NaN.
@@ -169,7 +170,8 @@ export function deriveAgentReportModel({
     // hero
     ytdAPI, ytdApps, settledYTD, settledAppsYTD, hasSettlements,
     heroPrimaryAPI, heroApps, heroEyebrow, dataSource,
-    persistencyPct: latestPersistencyPercent(persistency),
+    // 2 decimals, half up (ruling R-a) — the value the report prints and judges.
+    persistencyPct: roundPersistencyPct(latestPersistencyPercent(persistency)),
     closingRatio: ratios.closingRatio,
     // period
     periodTotals, windows,
