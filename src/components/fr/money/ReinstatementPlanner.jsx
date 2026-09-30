@@ -2,6 +2,7 @@ import React, { useId, useState } from 'react';
 import { ChartCard, GateBars, Bullet } from '../charts';
 import { CARD, EYEBROW, FOCUS, FrCheckbox, WarnIcon, Why } from './moneyParts';
 import { monthLabel, wholeTTDUp, selectionSummary, SOON_MONTHS } from '../../../lib/fr/moneyModel';
+import { formatPersistencyPct } from '../../../lib/persistency/persistencyRounding';
 
 /**
  * ReinstatementPlanner — READ-ONLY planner over the lapsed policies that
@@ -65,7 +66,7 @@ function PresetButton({ id, label, preset, selected, onPick, threshold }) {
     >
       <span className={EYEBROW}>{label}{preset.exact ? '' : ' (best found)'}</span>
       <span className="text-[14px] font-semibold text-ink">
-        {plural(preset.items.length, 'policy', 'policies')} · {money(preset.total)} → {preset.afterPct.toFixed(1)}%
+        {plural(preset.items.length, 'policy', 'policies')} · {money(preset.total)} → {formatPersistencyPct(preset.afterPct)}
         {preset.afterPct >= threshold ? ' · clears the gate' : ''}
       </span>
       {/* Always one line, so the button's height does not jump when the data
@@ -97,8 +98,8 @@ function RunningTotal({ plan, sum }) {
         {sum.count === 0
           ? 'Tick policies, or pick a preset, to see where they take you.'
           : sum.clears
-            ? `Clears the ${plan.threshold}% gate → ${sum.afterPct.toFixed(1)}%`
-            : `${money(sum.remaining)} still to go → ${sum.afterPct.toFixed(1)}%`}
+            ? `Clears the ${plan.threshold}% gate → ${formatPersistencyPct(sum.afterPct)}`
+            : `${money(sum.remaining)} still to go → ${formatPersistencyPct(sum.afterPct)}`}
       </p>
       {agingLine(sum.agingOut) ? (
         <p className="flex items-start gap-1.5 text-[12px] font-semibold text-fr-warm"><WarnIcon className="mt-px" />{agingLine(sum.agingOut)}</p>
@@ -126,7 +127,7 @@ export default function ReinstatementPlanner({ plan }) {
   });
   const pick = (preset) => setPicked(new Set(preset.items.map((l) => l.policyNumber)));
   const title = plan.meets
-    ? `${plan.currentPct.toFixed(1)}% — at or above the ${plan.threshold}% gate`
+    ? `${formatPersistencyPct(plan.currentPct)} — at or above the ${plan.threshold}% gate`
     : `TTD ${wholeTTDUp(plan.need)} reinstated clears the ${plan.threshold}% gate`;
   const { presets } = plan;
 
@@ -135,7 +136,7 @@ export default function ReinstatementPlanner({ plan }) {
       <header className="flex flex-col gap-1">
         <h3 className="font-display text-[18px] font-bold leading-tight text-ink">{title}</h3>
         <p className="text-[13px] text-ink-muted">
-          {monthLabel(plan.monthKey)}{plan.isGateMonth ? ' (campaign gate month)' : ''} · {plan.currentPct.toFixed(1)}% now · 24-month model
+          {monthLabel(plan.monthKey)}{plan.isGateMonth ? ' (campaign gate month)' : ''} · {formatPersistencyPct(plan.currentPct)} now · 24-month model
           {plan.annuityRuleLabel ? ` · ${plan.annuityRuleLabel}` : ''}
         </p>
       </header>
@@ -196,7 +197,7 @@ export default function ReinstatementPlanner({ plan }) {
       ) : null}
 
       <Why>
-        Persistency = Net Settled ÷ Net Gross Settled. Here: {money(plan.netSettled)} ÷ {money(plan.grossSettled)} = {plan.currentPct.toFixed(1)}%.
+        Persistency = Net Settled ÷ Net Gross Settled. Here: {money(plan.netSettled)} ÷ {money(plan.grossSettled)} = {formatPersistencyPct(plan.currentPct)}.
         {' '}A reinstated lapse adds its API back to Net Settled, so {plan.threshold}% needs {plan.meets ? 'nothing more' : `${money(plan.need)} reinstated`}.
         {' '}Only lapses still inside the 24-month window are listed; older ones no longer count and cannot help. A policy flagged “Stops counting after” leaves the window within {monthsPhrase(SOON_MONTHS)}, so reinstating it helps only until then.
         {' '}Ticking here is a what-if and is not saved.
@@ -232,7 +233,7 @@ export function PersistencyHistory({ series, threshold = 90 }) {
           { key: 'value', label: 'Persistency', align: 'right' },
           { key: 'kind', label: 'Figure' },
         ],
-        rows: data.map((d) => ({ key: d.key, month: monthLabel(d.key), value: `${d.value.toFixed(1)}%`, kind: d.projected ? 'Estimate' : 'Saved' })),
+        rows: data.map((d) => ({ key: d.key, month: monthLabel(d.key), value: formatPersistencyPct(d.value), kind: d.projected ? 'Estimate' : 'Saved' })),
       } : undefined}
     >
       {data.length ? <GateBars data={data} gate={threshold} /> : <p className="py-6 text-[13px] text-ink-muted">No data yet</p>}

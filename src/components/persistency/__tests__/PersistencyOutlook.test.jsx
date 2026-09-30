@@ -53,17 +53,17 @@ const CAMPAIGN = {
 beforeEach(() => { savePersistency.mockClear(); });
 
 describe('PersistencyOutlookHero', () => {
-  it('shows Derived Aug 89.6% (no Confirm, with the reason), Estimated today 86.6%, Dec 85.7% and the gap sentence', () => {
+  it('shows Derived Aug 89.58% (no Confirm, with the reason), Estimated today 86.63%, Dec 85.68% and the gap sentence', () => {
     const o = outlookOf();
     render(<PersistencyOutlookHero outlook={o} canConfirm={o.derived.confirmable} onConfirm={() => {}} />);
     expect(screen.getByTestId('persistency-outlook-derived').textContent).toContain('Derived · Aug 2026');
-    expect(screen.getByTestId('persistency-outlook-derived-pct').textContent).toBe('89.6%');
+    expect(screen.getByTestId('persistency-outlook-derived-pct').textContent).toBe('89.58%');
     expect(screen.getByTestId('persistency-outlook-derived-pct').className).toContain('text-warning-ink');
     expect(screen.queryByTestId('persistency-outlook-confirm')).not.toBeInTheDocument();
     expect(screen.getByTestId('persistency-outlook-derived').textContent)
       .toContain('Confirm opens from Sep 2026: head office reports earlier months on the 12-month model.');
-    expect(screen.getByTestId('persistency-outlook-estimate-pct').textContent).toBe('86.6%');
-    expect(screen.getByTestId('persistency-outlook-gate-pct').textContent).toBe('85.7%');
+    expect(screen.getByTestId('persistency-outlook-estimate-pct').textContent).toBe('86.63%');
+    expect(screen.getByTestId('persistency-outlook-gate-pct').textContent).toBe('85.68%');
     const gap = screen.getByTestId('persistency-outlook-gap').textContent;
     expect(gap).toContain('TTD 81,549.48');
     expect(gap).toContain('31 Dec');
@@ -81,6 +81,26 @@ describe('PersistencyOutlookHero', () => {
       .toContain('Decreases, Increases, Lumpsums (100%), Reinstatements');
     expect(screen.getByTestId('assumptions-rule').textContent).toContain('ignored');
     expect(screen.getByTestId('assumptions-export').textContent).toContain('15 Sep 2026 · 8 days ago');
+  });
+
+  it('R2-2: the annuity rule switch is visible at once, under the headline figures and above the folded assumptions', () => {
+    render(<PersistencyOutlookHero outlook={outlookOf()} annuityRule="ignore" onAnnuityRuleChange={() => {}} />);
+    const sw = screen.getByTestId('annuity-rule-switch');
+    expect(screen.queryByTestId('persistency-outlook-assumptions')).not.toBeInTheDocument();
+    expect(sw).toBeVisible();
+    // DOM order: the figure comes first, then the switch.
+    const figure = screen.getByTestId('persistency-outlook-derived');
+    expect(figure.compareDocumentPosition(sw) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The assumptions block keeps its "Rule:" line and no longer holds a second switch.
+    fireEvent.click(screen.getByTestId('persistency-outlook-info'));
+    expect(screen.getByTestId('assumptions-rule').textContent).toContain('ignored');
+    expect(screen.getAllByTestId('annuity-rule-switch')).toHaveLength(1);
+    expect(screen.getByTestId('persistency-outlook-assumptions').contains(sw)).toBe(false);
+  });
+
+  it('R2-2: no switch is rendered when no change handler is given', () => {
+    render(<PersistencyOutlookHero outlook={outlookOf()} />);
+    expect(screen.queryByTestId('annuity-rule-switch')).not.toBeInTheDocument();
   });
 
   it('renders the stale banner, the empty state and the error state', () => {
@@ -128,7 +148,7 @@ describe('ConfirmPersistencySheet — choice 1 writes ho_confirmed, then the gat
     }
     expect(button).toBeDisabled(); // Reinstatements still blank
     fireEvent.change(screen.getByTestId('confirm-input-reinstatements'), { target: { value: '0' } });
-    expect(screen.getByTestId('confirm-will-save').textContent).toContain('86.6%');
+    expect(screen.getByTestId('confirm-will-save').textContent).toContain('86.63%');
     expect(button).not.toBeDisabled();
     fireEvent.click(button);
     await waitFor(() => expect(savePersistency).toHaveBeenCalledTimes(1));
@@ -159,15 +179,15 @@ describe('ConfirmPersistencySheet — choice 1 writes ho_confirmed, then the gat
 
     render(<CampaignHeroCard campaign={CAMPAIGN} policies={BOOK_OCT} persistencyRecords={[saved]} />);
     const row = screen.getByTestId('campaign-hero-row-persistency');
-    expect(row.textContent).toContain('86.6% confirmed, Sep 2026');
+    expect(row.textContent).toContain('86.63% confirmed, Sep 2026');
   });
 });
 
 describe('CampaignHeroCard — outlook preview (R5)', () => {
-  it('previews the derived August month at 89.6% in warning — never rounded up to a passing 90%', () => {
+  it('previews the derived August month at 89.58% in warning — never rounded up to a passing 90%', () => {
     render(<CampaignHeroCard campaign={CAMPAIGN} policies={BOOK} persistencyRecords={[]} />);
     const row = screen.getByTestId('campaign-hero-row-persistency');
-    expect(row.textContent).toContain('89.6%');
+    expect(row.textContent).toContain('89.58%');
     expect(row.textContent).toContain('derived');
     expect(row.textContent).toContain('Aug 2026');
     expect(screen.getByTestId('campaign-hero-persistency-bar-fill').className).toContain('bg-warning');
