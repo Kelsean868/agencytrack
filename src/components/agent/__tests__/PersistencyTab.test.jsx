@@ -171,26 +171,25 @@ describe('agent PersistencyTab', () => {
       expect(tableText).not.toContain('2026-01');
       unmount();
 
+      // R2-2b (ruling 2): the FR look does not render the tab's trend chart.
       records();
       render(<PersistencyTab fr />);
-      const card = await screen.findByTestId('persistency-trend-chart');
-      await waitFor(() => expect(card.querySelectorAll('[data-part="bar"]')).toHaveLength(2));
-      expect(card.textContent).not.toMatch(/\b0\.00%/);
+      await screen.findAllByText(/Self-entry/i);
+      expect(screen.queryByTestId('persistency-trend-chart')).toBeNull();
     });
 
-    it('FR look: GateBars, one bar per month, the gate line, and 2-dp direct values', async () => {
+    it('R2-2b (ruling 2): the FR look renders no trend chart on the tab; the Nexus look keeps it', async () => {
       THREE_MONTHS();
-      render(<PersistencyTab fr />);
+      const { unmount } = render(<PersistencyTab fr />);
+      await screen.findAllByText(/Self-entry/i);
+      expect(screen.queryByTestId('persistency-trend-chart')).toBeNull();
+      expect(screen.queryByTestId('persistency-trend-bars')).toBeNull();
+      expect(screen.queryByTestId('chart-bars')).toBeNull();
+      unmount();
+      THREE_MONTHS();
+      render(<PersistencyTab />);
       const card = await screen.findByTestId('persistency-trend-chart');
-      await waitFor(() => expect(card.querySelectorAll('[data-part="bar"]')).toHaveLength(3));
-      expect(card.querySelector('[data-part="gate"]')).not.toBeNull();
-      expect(card.textContent).toContain('Gate 90%');
-      // 0.89996 → 89.996 → 90.00% (at the gate); the same rule the rest of the app uses.
-      expect(screen.getByRole('button', { name: /Jan 26: 90\.00%, at or above the 90% gate/ })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Dec 25: 80\.00%, below the 90% gate/ })).toBeInTheDocument();
-      // The FR path draws no Recharts chart at all.
-      expect(screen.queryByTestId('chart-bars')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('chart-line')).not.toBeInTheDocument();
+      await waitFor(() => expect(card.textContent).toContain('Monthly trend'));
     });
   });
 

@@ -25,7 +25,7 @@ function gapText(award) {
   if (!unmet.length) {
     // All unmet criteria are persistency-only
     const pers = (award.criteria ?? []).find((c) => !c.met && /persistency/i.test(c.label));
-    if (pers) return `${(pers.target - pers.current).toFixed(1)}% persistency needed`;
+    if (pers) return `${(pers.target - pers.current).toFixed(2)}% persistency needed`;
     return null;
   }
   const c = unmet[0];

@@ -1,26 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import { formatCurrency } from '../../../../utils/formatters';
 import ModeMixSlider from '../components/ModeMixSlider';
 import CommissionBreakdownTable from '../components/CommissionBreakdownTable';
 import CashFlowChart from '../components/CashFlowChart';
 import InsightCard from '../components/InsightCard';
-import { reverseCalc, modeBreakdown } from '../utils/commissionMath';
-import { DEFAULT_MODE_MIX } from '../utils/modeMixBalancer';
+import useModalTargeting from './useModalTargeting';
 
 export default function ModalTargetingTab({ defaultCommissionRate = 35 }) {
-  const [targetCommission, setTargetCommission] = useState(5000);
-  const [commissionRate, setCommissionRate]     = useState(defaultCommissionRate);
-  const [modeMix, setModeMix]                   = useState(DEFAULT_MODE_MIX);
-
-  const totalApi = useMemo(
-    () => reverseCalc({ targetCommission, modeMix, commissionRate }),
-    [targetCommission, modeMix, commissionRate],
-  );
-
-  const breakdown = useMemo(
-    () => modeBreakdown({ totalApi, modeMix, commissionRate }),
-    [totalApi, modeMix, commissionRate],
-  );
+  const {
+    targetCommission, setTargetCommission, commissionRate, setCommissionRate,
+    modeMix, setModeMix, totalApi, breakdown,
+  } = useModalTargeting({ defaultCommissionRate });
 
   return (
     <div className="flex flex-col gap-5">

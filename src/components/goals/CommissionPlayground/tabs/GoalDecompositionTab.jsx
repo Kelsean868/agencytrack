@@ -1,26 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React from 'react';
 import { History, Info, Check } from 'lucide-react';
-import { useAuth } from '../../../../context/AuthContext';
-import { setGoals, getGoals } from '../../../../services/goalsService';
-import {
-  getUserPrefs, setCommissionScenarios, COMMISSION_SCENARIO_CAP,
-} from '../../../../services/userPrefsService';
 import { formatCurrency } from '../../../../utils/formatters';
 import SavedScenarioChips from '../components/SavedScenarioChips';
 import IncomeGoalField from '../components/IncomeGoalField';
-import {
-  decomposeFromIncome,
-  deriveRatiosFromHistory,
-  roundTo10,
-  roundToWhole,
-  DEFAULT_DECOMPOSITION_INPUTS,
-} from '../../../../utils/goalDecomposition';
-import {
-  PLAYGROUND_PERIODS,
-  DEFAULT_INCOME_GOAL_PERIOD,
-  toAnnualIncomeGoal,
-} from '../../../../utils/playgroundPeriods';
-import { savedPlaygroundSettings } from '../../../../utils/playgroundSettings';
+import { PLAYGROUND_PERIODS } from '../../../../utils/playgroundPeriods';
+import useGoalDecomposition from './useGoalDecomposition';
+import { ladderFigures, formatLadderFigure } from '../utils/decompositionStages';
 
 // The view-cadence chips and the income-goal period select share ONE table
 // (utils/playgroundPeriods.js) — R2-3 moved it there so the two cannot drift.
@@ -107,10 +92,8 @@ function DecompositionLadder({ computed, inputs, freqKey, onFreqChange, hasHisto
   const { divisor } = period;
   const cadenceSuffix = freqKey === 'annual' ? 'ANNUAL' : `/ ${period.display.toUpperCase()}`;
 
-  const preTaxIncome = preTaxAlreadyApplied
-    ? inputs.incomeGoal
-    : (inputs.taxRate < 100 ? inputs.incomeGoal / (1 - inputs.taxRate / 100) : 0);
-  const firstYearCommRequired = Math.max(0, preTaxIncome - (inputs.renewalIncome || 0));
+  const [income, firstYear, api, apps, ci, calls, prospects] = ladderFigures({ computed, inputs, preTaxAlreadyApplied });
+  const fmt = (figure) => formatLadderFigure(figure, divisor);
 
   const taxConnector = inputs.taxRate > 0
     ? `− ${inputs.taxRate}% tax${inputs.renewalIncome > 0 ? ` · − ${formatCurrency(Math.round(inputs.renewalIncome / 1000) * 1000)} renewals` : ''}`
@@ -140,17 +123,17 @@ function DecompositionLadder({ computed, inputs, freqKey, onFreqChange, hasHisto
       </div>
 
       <div className="flex flex-col">
-        <LadderStage label="Income goal"         sublabel="PRE-TAX TARGET"                         value={formatCurrency(roundTo10(inputs.incomeGoal / divisor))}        variant="head" />
+        <LadderStage label="Income goal"         sublabel="PRE-TAX TARGET"                         value={fmt(income)}        variant="head" />
         <LadderConnector>{taxConnector}</LadderConnector>
-        <LadderStage label="1st-year commission" sublabel="NET NEW NEEDED"                         value={formatCurrency(roundTo10(firstYearCommRequired / divisor))}     variant="plain" />
+        <LadderStage label="1st-year commission" sublabel="NET NEW NEEDED"                         value={fmt(firstYear)}     variant="plain" />
         <LadderConnector>
           ÷ {inputs.commissionRate}% comm · <span className="text-primary font-bold">× {inputs.settlementRate}% settle</span>
         </LadderConnector>
-        <LadderStage label="API to write"        sublabel="ANNUAL PREMIUM"                         value={formatCurrency(roundTo10(computed.apiToWrite / divisor))}       variant="plain" />
+        <LadderStage label="API to write"        sublabel="ANNUAL PREMIUM"                         value={fmt(api)}       variant="plain" />
         <LadderConnector>÷ {formatCurrency(Math.round(inputs.avgPolicyAPI / 1000) * 1000)} avg policy API</LadderConnector>
-        <LadderStage label="Apps"                sublabel={cadenceSuffix}                           value={`~${roundToWhole(computed.applications / divisor).toLocaleString()}`} variant="act" />
+        <LadderStage label="Apps"                sublabel={cadenceSuffix}                           value={fmt(apps)} variant="act" />
         <LadderConnector isActivity>× {inputs.ciToSaleRatio} CI→sale</LadderConnector>
-        <LadderStage label="Closing interviews"  sublabel={cadenceSuffix}                           value={`~${roundToWhole(computed.ci / divisor).toLocaleString()}`}         variant="act" />
+        <LadderStage label="Closing interviews"  sublabel={cadenceSuffix}                           value={fmt(ci)}         variant="act" />
         <LadderConnector isActivity>
           × {inputs.dialsToCIRatio} calls→CI
           {hasHistory && (
@@ -159,301 +142,27 @@ function DecompositionLadder({ computed, inputs, freqKey, onFreqChange, hasHisto
             </span>
           )}
         </LadderConnector>
-        <LadderStage label="Prospecting calls"   sublabel={`${cadenceSuffix} · 4-COMPONENT SUM`}   value={`~${roundToWhole(computed.dials / divisor).toLocaleString()}`}        variant="act" />
+        <LadderStage label="Prospecting calls"   sublabel={`${cadenceSuffix} · 4-COMPONENT SUM`}   value={fmt(calls)}        variant="act" />
         <LadderConnector>× {inputs.prospectRatio} prospect ratio</LadderConnector>
-        <LadderStage label="Prospects"           sublabel={cadenceSuffix}                           value={`~${roundToWhole(computed.prospects / divisor).toLocaleString()}`}    variant="act" />
+        <LadderStage label="Prospects"           sublabel={cadenceSuffix}                           value={fmt(prospects)}    variant="act" />
       </div>
     </div>
   );
 }
 
 export default function GoalDecompositionTab({ submissions = [], agentId, tenantId, currentGoal = null, onGoalSaved }) {
-  const { user, userProfile } = useAuth();
-  const [inputs, setInputs]                     = useState(DEFAULT_DECOMPOSITION_INPUTS);
-  const [freqKey, setFreqKey]                   = useState('annual');
-  const [saving, setSaving]                     = useState(false);
-  const [savedGoals, setSavedGoals]             = useState(false);
-  const [savedAssumptions, setSavedAssumptions] = useState(false);
-  const [error, setError]                       = useState('');
-  const [showConfirm, setShowConfirm]           = useState(false);
-  const [preTaxAlreadyApplied, setPtaFlag]      = useState(false);
-  // R2-3: the income goal as the agent TYPED it, plus its period. The annual
-  // `inputs.incomeGoal` every reader uses is always amount × divisor(period);
-  // the three writers (field edits via setIncomeEntry, the Money Needs
-  // hand-off, scenario apply) always set all three together.
-  const [incomeAmount, setIncomeAmount]         = useState(DEFAULT_DECOMPOSITION_INPUTS.incomeGoal);
-  const [incomePeriod, setIncomePeriod]         = useState(DEFAULT_INCOME_GOAL_PERIOD);
-
-  const setIncomeEntry = (amount, period) => {
-    setIncomeAmount(amount);
-    setIncomePeriod(period);
-    setInputs((prev) => ({ ...prev, incomeGoal: toAnnualIncomeGoal(amount, period) }));
-  };
-
-  // ── R-06: saved scenario chips (agent-private, own-write) ──────────────────
-  // Persisted on the shared `users/{uid}/prefs/app` doc via userPrefsService
-  // (merge-write). That rules arm is `request.auth.uid == uid` for read AND
-  // write with NO manager arm, so scenarios are private by construction — no
-  // firestore.rules change, no index, no shared/manager visibility to leak.
-  const [scenarios, setScenarios]     = useState([]);
-  const [scenarioSaving, setScenSaving] = useState(false);
-  const [activeScenarioId, setActiveScenarioId] = useState(null);
-
-  // `mutatedRef` closes a hydration RACE: a slow getUserPrefs resolving AFTER the
-  // agent has already saved or deleted locally would otherwise clobber that
-  // mutation with pre-mutation server state. Once any local mutation has
-  // happened, hydration results are ignored (the local list is authoritative —
-  // it is also what was just written).
-  const mutatedRef = useRef(false);
-
-  useEffect(() => {
-    if (!tenantId || !user?.uid) return undefined;
-    let alive = true;
-    getUserPrefs(tenantId, user.uid)
-      .then((prefs) => {
-        if (!alive || mutatedRef.current) return;   // unmounted, or a local write already won
-        setScenarios(Array.isArray(prefs?.commissionScenarios) ? prefs.commissionScenarios : []);
-      })
-      // Degrade silently to "no scenarios" — never block the playground on a
-      // prefs read (same contract as the nav-prefs consumers).
-      .catch(() => { /* no-op */ });
-    return () => { alive = false; };
-  }, [tenantId, user?.uid]);
-
-  const persistScenarios = async (next) => {
-    // Capture the pre-optimistic state so a failed write can be ROLLED BACK —
-    // otherwise the chip row keeps showing a scenario that was never persisted,
-    // i.e. the UI lies about server state until the next reload.
-    const prevScenarios = scenarios;
-    const prevActiveId  = activeScenarioId;
-    mutatedRef.current = true;
-    setScenarios(next);           // optimistic — the chip row is a preference, not money
-    setScenSaving(true);
-    try {
-      await setCommissionScenarios(tenantId, user.uid, next);
-    } catch {
-      setScenarios(prevScenarios);
-      setActiveScenarioId(prevActiveId);
-      setError('Could not save the scenario — check your connection and try again.');
-    } finally {
-      setScenSaving(false);
-    }
-  };
-
-  const handleScenarioSave = (label) => {
-    const entry = {
-      id: `sc-${Date.now()}`,
-      label,
-      savedAt: new Date().toISOString(),   // client ISO — never a serverTimestamp inside an array
-      inputs: { ...inputs },
-      freqKey,
-    };
-    setActiveScenarioId(entry.id);
-    persistScenarios([...scenarios, entry].slice(0, COMMISSION_SCENARIO_CAP));
-  };
-
-  const handleScenarioApply = (s) => {
-    // Merge over the defaults so a scenario saved before a new input key was
-    // added still applies cleanly (missing key → default, never undefined).
-    const next = { ...DEFAULT_DECOMPOSITION_INPUTS, ...(s.inputs || {}) };
-    setInputs(next);
-    // Scenarios store the ANNUAL income goal only (no period) — they load as
-    // annual, the same value the agent saved (R2-3 decision 3).
-    setIncomeAmount(next.incomeGoal);
-    setIncomePeriod(DEFAULT_INCOME_GOAL_PERIOD);
-    if (s.freqKey) setFreqKey(s.freqKey);
-    setActiveScenarioId(s.id);
-  };
-
-  const handleScenarioDelete = (id) => {
-    if (activeScenarioId === id) setActiveScenarioId(null);
-    persistScenarios(scenarios.filter((s) => s.id !== id));
-  };
-
-  // R2-3b (ruling 3, 29-09-2026) — on open, load the saved assumptions, THEN
-  // apply the Money Needs hand-off on top. Order, lowest to highest:
-  //   defaults → saved assumptions → Money Needs hand-off → history ratios
-  //   (history fills only the two ratios the agent has NOT saved).
-  // The hand-off is applied once and removed, so the next open shows the saved
-  // assumptions again (it is never cleared anywhere else). The inputs render
-  // only after this settles, so the agent never sees defaults flash first.
-  // A failed read falls back to the defaults (the same contract as before).
-  const [settingsLoading, setSettingsLoading] = useState(Boolean(tenantId && agentId));
-  const savedRatioKeysRef = useRef(new Set());
-  // Which ratios on screen came from the agent's history (not from saved
-  // assumptions) — the "From your history" labels follow this, per ratio.
-  const [historyRatioKeys, setHistoryRatioKeys] = useState(() => new Set());
-  const fromHistory = (key) => historyRatioKeys.has(key);
-
-  useEffect(() => {
-    let alive = true;
-    const applyHandoff = () => {
-      const stored = localStorage.getItem('agencytrack-playground-income-goal');
-      if (!stored) return;
-      let parsed;
-      try {
-        parsed = JSON.parse(stored);
-      } catch {
-        // A malformed hand-off must not hold the tab on its loading state.
-        localStorage.removeItem('agencytrack-playground-income-goal');
-        return;
-      }
-      const isObj = parsed !== null && typeof parsed === 'object';
-      const val = isObj ? parseFloat(parsed.value) : parseFloat(parsed);
-      const flag = isObj && parsed.preTaxAlreadyApplied === true;
-      if (val > 0) {
-        // The Money Needs hand-off is an annual figure → period Annual.
-        setIncomeAmount(val);
-        setIncomePeriod(DEFAULT_INCOME_GOAL_PERIOD);
-        setInputs((prev) => ({ ...prev, incomeGoal: toAnnualIncomeGoal(val, DEFAULT_INCOME_GOAL_PERIOD) }));
-        setPtaFlag(flag);
-      }
-      localStorage.removeItem('agencytrack-playground-income-goal');
-    };
-    if (!tenantId || !agentId) {
-      applyHandoff();
-      setSettingsLoading(false);
-      return undefined;
-    }
-    // A new target (tenant / agent) starts from the defaults, not from the
-    // previous target's values (CodeRabbit on #1029).
-    setSettingsLoading(true);
-    Promise.resolve()
-      .then(() => getGoals(tenantId, agentId))
-      .then((goals) => {
-        if (!alive) return;
-        const saved = savedPlaygroundSettings(goals);
-        savedRatioKeysRef.current = new Set(['ciToSaleRatio', 'dialsToCIRatio'].filter((k) => k in saved.inputs));
-        setInputs({ ...DEFAULT_DECOMPOSITION_INPUTS, ...saved.inputs });
-        setIncomeAmount(saved.amount ?? DEFAULT_DECOMPOSITION_INPUTS.incomeGoal);
-        setIncomePeriod(saved.amount != null ? saved.period : DEFAULT_INCOME_GOAL_PERIOD);
-      })
-      .catch(() => {
-        // No saved assumptions readable → the defaults.
-        if (!alive) return;
-        savedRatioKeysRef.current = new Set();
-        setInputs({ ...DEFAULT_DECOMPOSITION_INPUTS });
-        setIncomeAmount(DEFAULT_DECOMPOSITION_INPUTS.incomeGoal);
-        setIncomePeriod(DEFAULT_INCOME_GOAL_PERIOD);
-      })
-      .finally(() => {
-        if (!alive) return;
-        applyHandoff();
-        setSettingsLoading(false);
-      });
-    return () => { alive = false; };
-  }, [tenantId, agentId]);
-
-  const { autoCiToSale, autoDialsToCI, hasHistory } = useMemo(
-    () => deriveRatiosFromHistory(submissions),
-    [submissions],
-  );
-
-  useEffect(() => {
-    // Waits for the saved assumptions (R2-3b): a ratio the agent saved wins
-    // over the history-derived one.
-    if (hasHistory && !settingsLoading) {
-      const saved = savedRatioKeysRef.current;
-      setHistoryRatioKeys(new Set(['ciToSaleRatio', 'dialsToCIRatio'].filter((k) => !saved.has(k))));
-      setInputs((prev) => ({
-        ...prev,
-        ...(saved.has('ciToSaleRatio') ? {} : { ciToSaleRatio: parseFloat(autoCiToSale.toFixed(2)) }),
-        ...(saved.has('dialsToCIRatio') ? {} : { dialsToCIRatio: parseFloat(autoDialsToCI.toFixed(2)) }),
-      }));
-    }
-  }, [hasHistory, autoCiToSale, autoDialsToCI, settingsLoading]);
-
-  const setField = (key) => (value) => {
-    if (key === 'taxRate') setPtaFlag(false);
-    setInputs((prev) => ({ ...prev, [key]: value }));
-  };
-
-  // Editing the amount OR its period changes the annual income goal, so either
-  // clears the Money Needs pre-tax flag — same contract as the old direct edit.
-  const handleIncomeAmountChange = (amount) => {
-    setPtaFlag(false);
-    setIncomeEntry(amount, incomePeriod);
-  };
-  const handleIncomePeriodChange = (period) => {
-    setPtaFlag(false);
-    setIncomeEntry(incomeAmount, period);
-  };
-
-  const computed = useMemo(
-    () => decomposeFromIncome({ ...inputs, preTaxAlreadyApplied }),
-    [inputs, preTaxAlreadyApplied],
-  );
-
-  const handleRequestConfirm = () => {
-    const api = computed.apiToWrite;
-    if (!api || api <= 0 || !isFinite(api)) return;
-    setError('');
-    setShowConfirm(true);
-  };
-
-  const handleConfirmWrite = async () => {
-    // Defensive guard — handleRequestConfirm already validates, but protect
-    // against any state race between the confirm dialog opening and submission.
-    const api = computed.apiToWrite;
-    if (!api || api <= 0 || !isFinite(api)) { setShowConfirm(false); return; }
-    setSaving(true);
-    setError('');
-    try {
-      const name = userProfile?.name ?? userProfile?.email ?? 'Agent';
-      await setGoals(tenantId, agentId, {
-        personalAnnualAPI:  computed.apiToWrite,
-        personalAnnualApps: computed.applications,
-      }, user.uid, name);
-      setShowConfirm(false);
-      setSavedGoals(true);
-      onGoalSaved?.();
-      setTimeout(() => setSavedGoals(false), 2500);
-    } catch (e) {
-      setError(e.message ?? 'Failed to save goals.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSaveAssumptions = async () => {
-    setSaving(true);
-    setError('');
-    try {
-      const name = userProfile?.name ?? userProfile?.email ?? 'Agent';
-      await setGoals(tenantId, agentId, {
-        playgroundIncomeGoal:      inputs.incomeGoal,
-        playgroundIncomeGoalPeriod: incomePeriod,
-        playgroundTaxRate:         inputs.taxRate,
-        playgroundRenewalIncome:   inputs.renewalIncome,
-        playgroundSettlementRate:  inputs.settlementRate,
-        playgroundCommissionRate:  inputs.commissionRate,
-        playgroundAvgPolicyAPI:    inputs.avgPolicyAPI,
-        playgroundPersistencyRate: inputs.persistencyRate,
-        playgroundCiToSaleRatio:   inputs.ciToSaleRatio,
-        playgroundDialsToCIRatio:  inputs.dialsToCIRatio,
-        playgroundProspectRatio:   inputs.prospectRatio,
-      }, user.uid, name);
-      setSavedAssumptions(true);
-      setTimeout(() => setSavedAssumptions(false), 2500);
-    } catch (e) {
-      setError(e.message ?? 'Failed to save assumptions.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (settingsLoading) {
-    return (
-      <div className="flex flex-col gap-3" aria-busy="true" data-testid="commission-settings-loading">
-        <p className="text-xs text-ink-muted">Loading your saved assumptions…</p>
-        {[0, 1, 2].map((i) => <div key={i} className="h-16 rounded-xl bg-card-raised animate-pulse" />)}
-      </div>
-    );
-  }
+  const {
+    inputs, freqKey, setFreqKey, saving, savedGoals, savedAssumptions, error,
+    showConfirm, setShowConfirm, preTaxAlreadyApplied, incomeAmount, incomePeriod,
+    scenarios, scenarioSaving, activeScenarioId,
+    handleScenarioSave, handleScenarioApply, handleScenarioDelete,
+    hasHistory, setField, handleIncomeAmountChange, handleIncomePeriodChange,
+    computed, handleRequestConfirm, handleConfirmWrite, handleSaveAssumptions,
+  } = useGoalDecomposition({ submissions, agentId, tenantId, onGoalSaved });
 
   return (
     <div className="flex flex-col gap-5">
-      {historyRatioKeys.size > 0 && (
+      {hasHistory && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
           <History size={14} className="text-primary shrink-0" />
           <p className="text-xs text-primary">
@@ -508,7 +217,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
             onChange={setField('ciToSaleRatio')}
             step={0.1}
             min={0.1}
-            badge={fromHistory('ciToSaleRatio') ? 'From your history' : undefined}
+            badge={hasHistory ? 'From your history' : undefined}
           />
           <NumField
             label="Calls per CI"
@@ -516,7 +225,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
             onChange={setField('dialsToCIRatio')}
             step={0.1}
             min={0.1}
-            badge={fromHistory('dialsToCIRatio') ? 'From your history' : undefined}
+            badge={hasHistory ? 'From your history' : undefined}
           />
           <NumField label="Prospects per Call" value={inputs.prospectRatio} onChange={setField('prospectRatio')} step={0.1} min={0.1} />
         </div>
@@ -527,7 +236,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
         inputs={inputs}
         freqKey={freqKey}
         onFreqChange={setFreqKey}
-        hasHistory={fromHistory('dialsToCIRatio')}
+        hasHistory={hasHistory}
         preTaxAlreadyApplied={preTaxAlreadyApplied}
       />
 

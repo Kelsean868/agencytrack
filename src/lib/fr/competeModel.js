@@ -1,4 +1,5 @@
 import { BADGE_DEFINITIONS, LEVEL_THRESHOLDS, resolveLevel } from '../gamificationConfig';
+import { formatPersistencyPct } from '../persistency/persistencyRounding';
 
 /**
  * FR Compete / You model (FR-5). Pure — no React, no Firebase.
@@ -77,7 +78,7 @@ function criterionLeft(c) {
   const gap = c.target - c.current;
   if (!(gap > 0)) return null;
   if (c.unit === 'TTD') return `${ttd(gap)} to go`;
-  if (c.unit === '%') return `${Number(c.current).toFixed(1)}% now · gate ${c.target}%`;
+  if (c.unit === '%') return `${formatPersistencyPct(c.current)} now · gate ${c.target}%`;
   const n = Math.ceil(gap);
   return `${n.toLocaleString('en-TT')} more ${c.unit === 'apps' ? (n === 1 ? 'app' : 'apps') : c.unit}`;
 }

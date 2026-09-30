@@ -2,15 +2,37 @@ import React, { useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import GoalDecompositionTab from './tabs/GoalDecompositionTab';
 import ModalTargetingTab from './tabs/ModalTargetingTab';
+import FrCommissionPlayground from '../../fr/money/FrCommissionPlayground';
 
 const TABS = [
   { key: 'goal',  label: 'Goal Decomposition' },
   { key: 'modal', label: 'Modal Targeting'     },
 ];
 
-export default function CommissionPlayground({ submissions = [], agentId, tenantId, _agentName, isManagerSelf, currentGoal = null, onGoalSaved }) {
+/**
+ * `look` (R2-7): 'nexus' (default — ManagerDashboard and GoalsPanel never pass
+ * it) renders the Nexus card below; 'fr' renders the FR layout, which runs the
+ * same tab hooks. Only AgentDashboard passes 'fr', under the per-user opt-in.
+ */
+export default function CommissionPlayground({ submissions = [], agentId, tenantId, _agentName, isManagerSelf, currentGoal = null, onGoalSaved, look = 'nexus' }) {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('goal');
+
+  if (look === 'fr') {
+    return (
+      <FrCommissionPlayground
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        submissions={submissions}
+        agentId={agentId}
+        tenantId={tenantId}
+        currentGoal={currentGoal}
+        onGoalSaved={onGoalSaved}
+        defaultCommissionRate={parseFloat(userProfile?.commissionRate) || 35}
+      />
+    );
+  }
+  if (look !== 'nexus') throw new Error(`CommissionPlayground: unknown look "${look}"`);
 
   return (
     <div className="card flex flex-col gap-5">

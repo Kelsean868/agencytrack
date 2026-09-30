@@ -130,7 +130,7 @@ describe('awardTrophies (FR-5b)', () => {
     expect(by.quarterly_api).toMatchObject({ kind: 'quarterly-api', earned: true, earnedText: 'Qualified — Q3 2026', progress: null, left: null });
     expect(by.advisor_month_api).toMatchObject({ kind: 'aotm-api', earned: false, earnedText: 'Qualified — Sep 2026', progress: 60, left: 'TTD 20,000 to go' });
     expect(by.centurion).toMatchObject({ earned: false, progress: 99, left: '1 more app' });
-    expect(by.persistency_gold.left).toBe('86.3% now · gate 90%');
+    expect(by.persistency_gold.left).toBe('86.25% now · gate 90%');
     for (const t of items) expect(`${t.earnedText} ${t.how}`).not.toMatch(/\bwon\b|Recognition|Bonus|Gift/);
   });
 

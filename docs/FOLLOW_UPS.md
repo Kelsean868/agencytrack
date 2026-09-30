@@ -18,6 +18,12 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| Branch-manager "lapse policy" (`lapsePolicy`) is DENIED by its own rules arm in most cases: it omits `statusSource` / `statusSetBy` / `statusAsOf`, which Arm D requires — passes only when the same BM set the settled status. Emulator-proven (A-1, 2026-09-30) | HIGH | Policy Ledger / rules / manager | — | see § A-1: lapsePolicy fails Arm D without status provenance |
+| Policies rules hit Firestore's 1000-expression limit on an update: several `policies` update arms report "maximum of 1000 expressions … reached" in the emulator (seen on a lapse write); a valid write whose allowing arm hits the limit would be denied (banked 2026-09-30, A-1) | MEDIUM | Firestore rules | — | see § Policies rules reach the 1000-expression limit |
+| FR Arena header (`FrArenaHeader`) is unused once R2-11 merges — the FR Leaderboard carries the standing — and its "settled API puts you there" note claims a source the board does not use (banked 2026-09-30, R2-11) | LOW | FR redesign / Compete | — | see § FR Arena header unused after R2-11 |
+| Commission playground ladder says "÷ comm · × settle", but API to write divides by the PERSISTENCY rate; settlement feeds nothing shown (Nexus look; the FR port omits the connector text) (banked 2026-09-30, R2-7) | MEDIUM | Commission playground | — | see § Commission playground ladder: the settle label does not match the math |
+| FR Commission playground (R2-7) omits canvas blocks the app does not compute (apps at average API, persistency-adjusted write-for, this-month chain vs weekly minimums, cumulative line, waterfall, upcoming payouts, PAYE / own-history switches, phone Adjust sheet) — needs a ruling (banked 2026-09-30) | LOW | FR redesign / Commission | — | see § FR Commission playground: canvas blocks not computed today |
+| Career level inputs likely empty for every agent: years of service reads `user.startDate` (no writer in the codebase; profiles carry `contractStartDate`), and API reads only the v1 `apiSold` field (v2 reports store `newBusiness.api`) — so the level is probably stuck at 1. Found in R2-10; level logic not changed (brief § 5 stop) (banked 2026-09-30) | HIGH | Career / levels | — | see § Career level inputs: startDate and apiSold |
 | R2-8 Game plan FR port is NOT on `main`: #1020's squash `92d4e5b4` carried R2-6 instead, and its two Game plan commits (`1c0aefb5`, `c98451ae`) are on no merged branch (banked 2026-09-30, #1014–#1021 fill) | HIGH | FR redesign / Money | — | see § R2-8 Game plan FR port missing from main |
 | Head-office **Pending** policies can still be changed from the ledger (reached from the Campaign screen's "Change status"); lock not built per Kyron ruling 4 — needs a ledger + rules change (banked 2026-09-30, R2-4) | MEDIUM | Policy Ledger / rules | — | see § Head-office Pending policies can still be changed from the ledger |
 | FR round 2 (#1014–#1021) preview smokes waived under Rule 13; read-only production click-through deferred (banked 2026-09-30, #1014–#1021 fill) | LOW | FR redesign / verification | — | see § FR round 2 deferred click-through |
@@ -371,7 +377,6 @@
 | **Award engine creates Rookie of the Year / New Business Advisor for a 14+-year agent (Kyron):** likely `monthsInIndustry` / `monthsAtTatil` 0 or missing on the user doc — `awardsEngine.js` reads them through `p()` (missing → 0) and admits `=== 0`. Same on the Awards tab. Pre-existing (banked 2026-09-28, production click-through) | LOW | awards | — | see § Award engine treats missing tenure as a rookie at end of file |
 | **PWA prompt mode: a signed-in Chrome ran an old build until "Update" was tapped** — consider whether agents need a stale-build reminder (banked 2026-09-28, production click-through) | INFO | PWA | — | see § PWA prompt mode keeps an old build running at end of file |
 | **Today persistency tile does not say when the export is stale:** Today states a gate verdict from the outlook estimate but not that the head-office export is older than 45 days (`outlook.stale`), nor which inputs the estimate assumes as 0 (`outlook.assumptions.assumedZero`), both of which the Persistency screen shows (banked 2026-09-28, CodeRabbit on #1011) | LOW | FR Today / persistency | — | see § Today persistency tile: stale export warning at end of file |
-| **Persistency verdicts still on whole-number or raw values in money logic:** R2-1 applied ruling R-a to every display verdict but left the campaign gate reading (whole percent → payout band), the award engine's persistency criteria and the stored `meetsAwardGate` unchanged (brief §3 money stop); needs a ruling on whether R-a extends to the payout basis (banked 2026-09-29) | MEDIUM | campaigns / awards | — | see § Persistency verdicts still on whole-number or raw values in money logic at end of file |
 | **Campaign screen gate bar: value label overlaps "GATE 90" near the gate** — `PersistencyGateBarBlock` places both labels by the same position lookup, so a figure within ~1 point of the gate is unreadable (pre-existing; seen in R2-1's harness walk, banked 2026-09-29) | LOW | campaigns | — | see § Campaign screen gate bar: the value label overlaps "GATE 90" near the gate at end of file |
 | **`computeEarnedBadges` (`BadgeGrid.jsx`) still uses the OLD MDRT thresholds** (TTD 500,000 / 250,000, v1 `apiSold` only) while the points engine uses 688,800 / 344,400 — and it still feeds the Home activity feed and the branch team-medals panel. The Trophy room and the new Career card read the engine doc instead (banked 2026-09-29 from R2-5) | MEDIUM | Gamification / badge accuracy | — | see § computeEarnedBadges still uses the old MDRT threshold at end of file |
 | **Campaign "Change status" opens the ledger drawer without its "Counts toward" chips:** the R2-4 hand-off opens the drawer through the ledger's `openDrawer` with no award windows, because those are computed inside `AwardLensPanel` (banked 2026-09-29, R2-4) | LOW | Policy ledger / campaign | — | see § Campaign hand-off drawer: Counts toward chips at end of file |
@@ -5080,6 +5085,8 @@ Banked: Track J P1b leaderboard-aggregate CF (PR #400), 2026-05-31.
 
 ## Track J (V2 Redesign) — P1b leaderboard CF: reconciled-production swap point (FU-2 reference, banked 2026-05-31, PR #400)
 
+**UPDATE 2026-09-30 (R2-11, Kyron's question):** this is why the Leaderboard shows TTD 0 for every agent while the Policy Ledger shows settled API (Kyron: TTD 87,146). Checked in source: the board reads `tenants/{tid}/leaderboards/{branchId}` (`src/hooks/useLeaderboard.js`), written hourly by `recomputeLeaderboardScheduled` (`functions/leaderboard/leaderboardAggregate.js`, `TENANT_ID = 'tatillife_south'`). `loadInputs` reads only `submissions` with `status == 'submitted'` this year, and `extractTotalProductionCredit` (`functions/leaderboard/rankingLogic.js`) sums the API typed into weekly reports (`newBusiness.api` + PPP + lumpsums, or v1 `apiSold`). It never reads `policies`. Production is now recorded in the Policy Ledger (the heroes moved to the ledger in #968), and the weekly report's API step is not being filled, so every period sums to 0. The swap described below is still the fix; it is a functions change + deploy (human-merge). R2-11 did NOT change the ranking source (dispatcher instruction). R2-11's FR copy says "Ranked by the API on submitted weekly reports" instead of the canvas's "settled API", so the screen does not claim a source it does not use. Not checked: the live `leaderboards/*` doc values (no production read was made).
+
 The FU-2 reference (originally banked in PR #398 description): when `usesPolicyLedger` H3 flip-gate clears branch-wide and reconciled-production data is available for all agents, the leaderboard CF is the **single swap point** for the entire Leaderboard / Production Report family. Replace `loadInputs` in `functions/leaderboard/leaderboardAggregate.js` with a reconciled-source fetch; the rest of the pipeline (groupByBranch, rankForLeaderboard, agent-readable doc shape) is unchanged. All consumers (P3 podium, P4 around-me, P7 AgentProductionView, BM/UM ProductionViews, kiosk) inherit the switch via the aggregate doc.
 
 **Prerequisite:** Branch-wide `usesPolicyLedger` (not per-agent opt-in).
@@ -7927,6 +7934,8 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 
 ## Persistency verdicts still on whole-number or raw values in money logic
 
+**RESOLVED by #TBD (R2-1b, branch `claude/fr-r2-1b-payout-2dp`, brief `docs/briefs/fr-round2-followups.md` § R2-1b) — pending the dispatcher's answer on the 89.994 campaign flip (see the PR's STOP).** The campaign gate reading (`persistencyPctForPeriod` / `persistencyPctAtFinalMonth`), the award engine's persistency figures (`avgPersistency`, `annualPersist`, manager `avgPersist`) and the stored `meetsAwardGate` all judge `roundPersistencyPct(x)`; every surface that prints the known reading or an award persistency figure prints it through `formatPersistencyPct` (CampaignCard, CampaignHeroCard card + screen, CampaignStandings `GatePill`, `campaignPersistencyReading`, `competeModel` criterion line, Meeting Mode award values; `AwardsReachPanel` gap to 2 dp). Characterization first (`src/utils/__tests__/payoutPersistency2dp.characterization.test.js`, `persistencyService.test.js`), then the change; parity test `src/components/campaigns/__tests__/campaignGateReading.parity.test.jsx`.
+
 **RULED 29-09-2026 (Kyron, `docs/briefs/fr-round2-followups.md` § 0 ruling 1): YES — the 2-dp rule reaches payouts.** The campaign gate reading, the award engine's persistency criteria and the stored `meetsAwardGate` all judge `roundPersistencyPct(x)`. Built as slice R2-1b (characterization first, then the change; expected flips: campaign gate 89.50 / 89.60 now fail, award criteria 89.995 / 89.996 now pass). The precision-only test edits in #1014 are accepted under R-a. Stays open until R2-1b merges.
 
 **Banked 2026-09-29 from R2-1 (brief `docs/briefs/fr-round2-program.md` § R2-1 / §3 stop). Severity: MEDIUM — awaiting a dispatcher ruling; each site decides or shows a money outcome, so R2-1 did not change it.**
@@ -8010,7 +8019,7 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 
 ## FR-6 declared reinstatements — three rulings wanted
 
-**PARTLY RULED 29-09-2026 (Kyron, `docs/briefs/fr-round2-followups.md` § 0 ruling 6): Option C** — #1019 merged as is (its content landed on `main` in squash `92d4e5b4`). **Item 2 CLOSED:** the 60-day "not confirmed" threshold is confirmed as it is. The one-line addition to the head-office guard test's allowlist (`src/lib/portfolioImport/__tests__/excludeImported.test.js`) is confirmed. The import-side fix for a stale declaration after a new lapse (CodeRabbit on #1019) is slice R2-6b. Items 1 and 3 remain open.
+**PARTLY RULED 29-09-2026 (Kyron, `docs/briefs/fr-round2-followups.md` § 0 ruling 6): Option C** — #1019 merged as is (its content landed on `main` in squash `92d4e5b4`). **Item 2 CLOSED:** the 60-day "not confirmed" threshold is confirmed as it is. The one-line addition to the head-office guard test's allowlist (`src/lib/portfolioImport/__tests__/excludeImported.test.js`) is confirmed. The import-side fix for a stale declaration after a new lapse (CodeRabbit on #1019) is slice R2-6b — **built in #TBD (R2-6b): both import paths clear the three declaration fields when a policy moves into lapsed from a non-lapsed status; lapsed → lapsed keeps them.** Items 1 and 3 remain open.
 
 **Banked 2026-09-29 in the R2-6 PR (FR-6 Mark reinstated, Option A; branch `claude/fr-r2-6-mark-reinstated`). Severity: LOW — every item is display-only or history-only; no evidenced figure and no money reader is affected (pinned by `src/lib/__tests__/reinstatementDeclarationMoney.test.js` and the evidenced-identical tests in `src/lib/persistency/__tests__/reinstatementDeclaration.test.js`).**
 
@@ -8147,3 +8156,94 @@ On PR #1004 (FR-5, head `90bd4d58`, run 36382357776 attempt 1), `lint-and-build`
 **Ask:** Kyron to rule whether a later slice moves the two modals inline and adds the floor/MDRT bar (with the floor passed in from `resolvedMinimums`).
 
 **Falsification (Rule 23):** closed if Kyron rules the modals and the omitted pieces stay as they are.
+
+## A-1: lapsePolicy fails Arm D without status provenance
+
+**Banked 2026-09-30 from audit A-1 (`docs/briefs/fr-round2-followups.md` § 1, audit only — no code change in the audit). Severity: HIGH — a branch manager's "lapse policy" action fails in production for almost every policy, and the rules test that covers it passes only because it sends fields the app does not.**
+
+**The write** — `lapsePolicy` (`src/services/policiesService.js:447`, called from `src/components/manager/PolicyReconciliationPanel.jsx:161`) batches a policy update of exactly `{ status: 'lapsed', statusUpdatedAt: serverTimestamp(), dateLapsed, lapseReason? }`, plus a history doc and an agent notification.
+
+**The arm** — `firestore.rules` Arm D (settled → lapsed, BM / TA / PA, own branch) requires `setsOwnStatusProvenance()`: `request.resource.data.statusSource in ['agent','manager'] && request.resource.data.statusSetBy == request.auth.uid`. Rules see the document AFTER the write, so a payload without these fields keeps the policy's OLD provenance. `transitionPolicyStatus` stamps it (`policiesService.js:216-218`); `lapsePolicy` was missed when P4e added the guard.
+
+**Evidence (Firestore emulator, `firebase emulators:exec --only firestore`, the app's exact payload, a BM of the policy's branch):**
+
+| Settled policy's current provenance | App payload (no provenance) | Same payload + `statusSource: 'manager'`, `statusSetBy: <bm uid>`, `statusAsOf` |
+|---|---|---|
+| set by the agent | **DENIED** | ALLOWED |
+| set by the head-office import (`oipa_import`) | **DENIED** | ALLOWED |
+| set by another manager | **DENIED** | ALLOWED |
+| set by this same BM | ALLOWED | ALLOWED |
+| legacy, no provenance fields | **DENIED** | ALLOWED |
+
+The existing rules test (`tests/rules/policies.rules.test.mjs`, "Arm D ALLOW: BM lapses settled policy") adds `...prov('bm-a', 'manager')` to its payload, so it passes while the app's write fails. Because the write is a batch, the history doc and the agent's notification are not written either.
+
+**Fix shape:** in `lapsePolicy`, stamp `statusSource: STATUS_SOURCE_MANAGER`, `statusSetBy: managerProfile.uid`, `statusAsOf: getTodayTT()` (and add them to `changedFields`), exactly as `transitionPolicyStatus` does; add a unit test pinning the payload; change the rules test to send the service's exact payload (or add a DENY case for the payload without provenance). No rules change needed. Human-merge (money-adjacent: a lapse moves Centurion progress and persistency).
+
+**Also seen (decide separately):** Arm D does not check `isHeadOfficeStatus`, so with provenance a BM can lapse a policy whose settled status came from the head-office import. The P2d head-office lock covers agent arms only; confirm that a BM overriding head office is intended.
+
+**Falsification (Rule 23):** overturned if production shows lapses succeeding through this panel for policies another person settled (e.g. a Cloud Function or another path adds the provenance before the write — none found in `src/` or `functions/`).
+
+## Policies rules reach the 1000-expression limit
+
+**Banked 2026-09-30 from audit A-1. Severity: MEDIUM — no failing app write found from it yet; needs a look before more arms are added.**
+
+**Observed:** in the emulator, one settled → lapsed update logged for the `policies` update arms: `Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L568, … L600, … L635, … L648, … L675` (line numbers on `origin/main` at `f91e8025`). Firestore evaluates every `allow update` for the path; an arm that runs out of budget evaluates as an error (not true). Here those arms were meant to be false anyway, but if the arm that SHOULD allow a write is the one that hits the limit, a valid write is denied with no clear reason.
+
+**Fix shape:** measure which helper calls dominate (repeated `get()` / `exists()` / `diff().affectedKeys()` across arms), hoist shared checks into functions called once per arm, or split the update arms by `request.resource.data.status`. Rules change → human-merge + rules deploy.
+
+**Falsification (Rule 23):** closed if the limit messages turn out to be emulator-only (the production evaluator budget differs) — check the Firestore docs' current limit before changing anything.
+
+## FR Arena header unused after R2-11
+
+**Banked 2026-09-30 from R2-11. Severity: LOW — dead code plus a misleading line of copy.**
+
+**Observed:** R2-11 renders `FrLeaderboard` instead of `FrArenaHeader` + `ProductionLeaderboardSurface` under the FR look. `FrArenaHeader` (`src/components/fr/compete/FrCompeteHeaders.jsx`) then has no app caller; `FrArenaHeaderView` is used only by the `compete-headers` harness scene. `arenaTiles` (`src/lib/fr/competeModel.js`) says "Not on the board yet — settled API puts you there", but the board ranks weekly-report API (see § Track J P1b leaderboard CF: reconciled-production swap point, UPDATE 2026-09-30).
+
+**Fix shape:** remove `FrArenaHeader` / `FrArenaHeaderView` / `arenaTiles` and the harness scene after R2-11 merges, or reword the note if the header is kept anywhere.
+
+**Falsification (Rule 23):** closed if the leaderboard source moves to settled ledger API (then the copy is true) and the header is still wanted somewhere.
+
+## Commission playground ladder: the settle label does not match the math
+
+**Banked 2026-09-30 from R2-7 (Commission playground FR port). Severity: MEDIUM — an agent reading the Nexus ladder is told the wrong reason their API target is what it is.**
+
+**Observed (on R2-7's branch, unchanged from `main`):** the Nexus Goal Decomposition ladder's connector between "1st-year commission" and "API to write" reads `÷ {commissionRate}% comm · × {settlementRate}% settle` (`src/components/goals/CommissionPlayground/tabs/GoalDecompositionTab.jsx`, `DecompositionLadder`). The figure it labels is computed by `decomposeFromIncome` (`src/utils/goalDecomposition.js`) as `firstYearCommRequired / (persistencyRate / 100) / (commissionRate / 100)`. The settlement rate only feeds `apiToSettle`, which no ladder stage shows. So changing the settlement rate changes no figure, while the persistency rate (not named in the connector) does.
+
+**Not changed in R2-7:** the FR port omits connector text (its canvas table has none) and its "Why?" states the real chain (persistency and commission). The Nexus string is left as is — R2-7 keeps Nexus unchanged, pinned by the characterization suite.
+
+**Fix shape:** change the Nexus connector to `÷ {persistencyRate}% persistency · ÷ {commissionRate}% comm`, or show the API-to-settle stage if settlement is meant to count. Copy-only for the first; needs a ruling for the second.
+
+**Falsification (Rule 23):** overturned if `decomposeFromIncome` is shown to use the settlement rate in `apiToWrite` (it does not at `2026-09-30`).
+
+## FR Commission playground: canvas blocks not computed today
+
+**Banked 2026-09-30 from R2-7. Severity: LOW — design fidelity; every function of the playground is present.**
+
+**What R2-7 shipped (FR look only):** the Commission calculator inspector (mode switch, inputs, saves), the goal decomposition table (per year + the chosen cadence), saved scenarios, the required-API card, the commission breakdown by mode, "Why monthly-pay policies earn less this month" (from `FIRST_PAYMENT_RATIO`), the 12-month cash flow with a Table toggle (from `buildStackedData`) and the insights. Every figure comes from a helper the Nexus playground already uses.
+
+**Not ported (each would be new money math, new state or a new read):**
+- Mode A: "≈ N applications at your TTD X average" (the modal tab has no average policy API), "To keep X after lapses at P% persistency, write for Y", and "What that takes, this month" (the chain against company weekly minimums, with its pace chips).
+- The cumulative-commission line with its end dot (the year total is in the card title and the table's Cumulative column).
+- "How September adds up" (waterfall) and "Upcoming payouts" with the Ledger and persistency-bonus links.
+- The canvas's slider inputs for rates and ratios (kept as number inputs), the "Use PAYE brackets to gross up" and "Prefer my own history when I have it" switches, and the "86.6% real, 24-month model" persistency hint.
+- The canvas's anchor strip: the existing `CommissionAnchorStrip` still sits above the playground in its Nexus styling.
+- Phone: the canvas's "Adjust" bottom sheet — the inputs are the first pager page instead.
+- The empty-insights sentence ("…close to the company defaults"): the insight rules do not check the defaults, so the section is hidden when there is nothing to say, as in Nexus.
+
+**Ask:** Kyron to rule which of these a later slice should add.
+
+**Falsification (Rule 23):** closed if Kyron rules the FR Commission playground stays as shipped.
+
+## Career level inputs: startDate and apiSold
+
+**Banked 2026-09-30 from R2-10 (Career FR port). Severity: HIGH — an agent-facing verdict (career level, title, unlocks) is probably wrong for everyone. Not checked against live user or submission docs.**
+
+**Observed (source, on R2-10's branch; the code moved verbatim from `CareerPortal.jsx` to `src/lib/career/careerModel.js`):**
+- **Years of service** — `careerStats` computes `yearsOfService` from `user.startDate`. `git grep -n "startDate"` finds no writer in `src/` or `functions/`; user docs carry `contractStartDate` (stamped `''` by `doCreateUser`, set by onboarding — see CONTEXT § Onboarding tenure). With `startDate` absent, `yearsOfService` is `null`, and `currentLevel` fails every level from 2 up (`minYears > 0`), so the level stays at 1.
+- **API** — `careerStats` (`ytdAPI`), `compute2YearAverageAPI` (`src/utils/careerLevelHelpers.js`, the 2-yr average the level uses) and `computeQuarterlyAPI` read only `s.apiSold`, the v1 field. The v2 wizard stores `newBusiness.api` (+ PPP / lumpsums), which `extractFields.js` reads. CLAUDE.md: "extractFields.js: ONLY way to read submission fields." And production has moved to the Policy Ledger (#968), like the leaderboard (§ Track J P1b swap point, UPDATE 2026-09-30).
+
+**Not changed in R2-10:** the brief forbids any change to the level verdict or its inputs (§ 5 stop). The FR Career shows exactly what the Nexus portal computes; the characterization suite pins it.
+
+**Fix shape (needs a ruling):** read `contractStartDate` for years of service (and decide how `''` is treated), and read API through `extractFields` or, better, from the ledger (settled API) for the 2-yr average and the trajectory. Both change who sits at which level: characterization tests first, a table of expected level changes, human-merge.
+
+**Falsification (Rule 23):** overturned if a live user doc is found with `startDate` set by some path outside this repo, or if live submissions still carry `apiSold`.
