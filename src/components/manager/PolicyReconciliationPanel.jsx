@@ -7,6 +7,7 @@ import { getTenantUsers } from '../../services/managerService';
 import { parseDateOnlyTT } from '../../utils/dateInputs';
 import { formatCurrency, formatCompactTTD } from '../../utils/formatters';
 import { statusToken, needsManagerConfirmation } from '../../lib/policyStatusTokens';
+import { isFromHeadOffice } from '../../lib/settledProvenance';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -193,9 +194,18 @@ export default function PolicyReconciliationPanel() {
   // hasDiscrepancy only exists after the manager keys + confirms.
   const pendingValue = toReconcile.reduce((s, p) => s + (Number(p.settledAPI) || 0), 0);
 
-  const lapseTabPolicies = allPoliciesRaw.filter((p) =>
+  const lapseTabCandidates = allPoliciesRaw.filter((p) =>
     (p.status === 'settled' || p.status === 'lapsed') && inPeriod(p.dateIssued, selectedYear, selectedMonth),
   );
+  // Kyron ruling 2B (30-09-2026): head office is the source of truth, and a
+  // manager may not change a status it set (firestore.rules Arm D, F-4). Those
+  // policies are hidden here rather than offered with a Lapse button that can
+  // only be refused; the count below says how many are not shown.
+  const lapseTabPolicies = lapseTabCandidates.filter((p) => !isFromHeadOffice(p));
+  const hiddenHeadOfficeCount = lapseTabCandidates.length - lapseTabPolicies.length;
+  const hiddenHeadOfficeNote = hiddenHeadOfficeCount > 0
+    ? `${hiddenHeadOfficeCount} head-office ${hiddenHeadOfficeCount === 1 ? 'policy is' : 'policies are'} not shown: head office sets ${hiddenHeadOfficeCount === 1 ? 'its' : 'their'} status.`
+    : null;
 
   const TILES = [
     { key: 'toReconcile', label: 'To reconcile', state: 'toReconcile', count: toReconcile.length,    note: 'awaiting your confirm' },
@@ -453,10 +463,13 @@ export default function PolicyReconciliationPanel() {
       )}
 
       {/* ── Lapse tab ── */}
+      {!loading && !error && activeTab === 'lapse' && hiddenHeadOfficeNote && (
+        <p className="text-xs text-ink-muted" data-testid="lapse-hidden-ho">{hiddenHeadOfficeNote}</p>
+      )}
       {!loading && !error && activeTab === 'lapse' && (
         lapseTabPolicies.length === 0 ? (
           <div className="card text-center py-10" data-testid="lapse-empty">
-            <p className="text-sm text-ink-muted">No settled policies for {MONTHS[selectedMonth - 1]} {selectedYear}.</p>
+            <p className="text-sm text-ink-muted">{hiddenHeadOfficeCount > 0 ? 'No policies you can lapse' : 'No settled policies'} for {MONTHS[selectedMonth - 1]} {selectedYear}.</p>
           </div>
         ) : (
           <div className="flex flex-col gap-2.5" data-testid="lapse-worklist">

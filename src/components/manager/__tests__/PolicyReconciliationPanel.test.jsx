@@ -295,3 +295,46 @@ describe('PolicyReconciliationPanel', () => {
     });
   });
 });
+
+// Kyron ruling 2B (30-09-2026, after F-4): head-office policies are hidden on
+// the Lapse tab — a manager may not change a status head office set.
+describe('PolicyReconciliationPanel — Lapse tab hides head-office policies', () => {
+  const openLapseTab = async () => {
+    await waitFor(() => expect(screen.getByTestId('tab-lapse')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('tab-lapse'));
+  };
+
+  it('shows a self-declared settled policy and hides a head-office one, saying how many are hidden', async () => {
+    setupBM();
+    hoisted.getPoliciesForManager.mockResolvedValue([
+      makePolicy({ statusSource: 'oipa_import' }),   // head office
+      makePolicyB({ statusSource: 'agent' }),        // self-declared
+    ]);
+    render(<PolicyReconciliationPanel />);
+    await openLapseTab();
+    expect(screen.getByTestId('lapse-policy-card-pol-2')).toBeInTheDocument();
+    expect(screen.queryByTestId('lapse-policy-card-pol-1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('lapse-hidden-ho')).toHaveTextContent('1 head-office policy is not shown: head office sets its status.');
+  });
+
+  it('a policy imported from head office but whose status a person set stays listed (statusSource, not importSource)', async () => {
+    setupBM();
+    hoisted.getPoliciesForManager.mockResolvedValue([makePolicy({ importSource: 'oipa_import', statusSource: 'manager' })]);
+    render(<PolicyReconciliationPanel />);
+    await openLapseTab();
+    expect(screen.getByTestId('lapse-policy-card-pol-1')).toBeInTheDocument();
+    expect(screen.queryByTestId('lapse-hidden-ho')).not.toBeInTheDocument();
+  });
+
+  it('only head-office policies: the empty state says none can be lapsed, and the note counts them', async () => {
+    setupBM();
+    hoisted.getPoliciesForManager.mockResolvedValue([
+      makePolicy({ statusSource: 'oipa_import' }),
+      makePolicyB({ statusSource: 'oipa_import' }),
+    ]);
+    render(<PolicyReconciliationPanel />);
+    await openLapseTab();
+    expect(screen.getByTestId('lapse-empty')).toHaveTextContent(/^No policies you can lapse for /);
+    expect(screen.getByTestId('lapse-hidden-ho')).toHaveTextContent('2 head-office policies are not shown: head office sets their status.');
+  });
+});
