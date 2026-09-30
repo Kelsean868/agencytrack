@@ -1,0 +1,70 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CareerPortal characterization — annual commitment (GoalsSection) > a commitment below Money Needs asks first; "Yes, continue" saves, "Cancel" does not 1`] = `"Commitment below Money NeedsYour commitment (TTD 150,000) is below your Money Needs requirement (TTD 400,000). Save anyway?Yes, continueCancel"`;
+
+exports[`CareerPortal characterization — annual commitment (GoalsSection) > a commitment below Money Needs asks first; "Yes, continue" saves, "Cancel" does not 2`] = `
+{
+  "personalAnnualAPI": "150000",
+  "personalAnnualApps": 45,
+  "personalAnnualPersistency": 90,
+}
+`;
+
+exports[`CareerPortal characterization — annual commitment (GoalsSection) > shows the scorecards, then saves the edited draft with the same service calls 1`] = `
+[
+  "t1",
+  "u1",
+  {
+    "personalAnnualAPI": "450000",
+    "personalAnnualApps": "50",
+    "personalAnnualPersistency": 90,
+  },
+  "u1",
+  "Test Agent",
+]
+`;
+
+exports[`CareerPortal characterization — current level > L1 (nothing met) 1`] = `"1 of 7 levels"`;
+
+exports[`CareerPortal characterization — current level > L2 1`] = `"2 of 7 levels"`;
+
+exports[`CareerPortal characterization — current level > L3 1`] = `"3 of 7 levels"`;
+
+exports[`CareerPortal characterization — current level > L4 1`] = `"4 of 7 levels"`;
+
+exports[`CareerPortal characterization — current level > L5 1`] = `"5 of 7 levels"`;
+
+exports[`CareerPortal characterization — current level > L6 1`] = `"6 of 7 levels"`;
+
+exports[`CareerPortal characterization — current level > L7 1`] = `"7 of 7 levels"`;
+
+exports[`CareerPortal characterization — current level > persistency 89.994 vs 90 1`] = `"1 of 7 levels"`;
+
+exports[`CareerPortal characterization — current level > persistency 89.996 vs 90 1`] = `"2 of 7 levels"`;
+
+exports[`CareerPortal characterization — current level > persistency null 1`] = `"1 of 7 levels"`;
+
+exports[`CareerPortal characterization — current level > years null 1`] = `"1 of 7 levels"`;
+
+exports[`CareerPortal characterization — the next-milestone estimate > months (YTD 40,000) 1`] = `"Next milestoneLevel 2 — Advisor IIabout 24 monthsAt your current pace of TTD 2,000/week"`;
+
+exports[`CareerPortal characterization — the next-milestone estimate > no weeks this year 1`] = `"Next milestoneLevel 2 — Advisor IISubmit weekly reports to see your estimate."`;
+
+exports[`CareerPortal characterization — the next-milestone estimate > qualifies (YTD 260,000) 1`] = `"Next milestoneLevel 2 — Advisor IIYou qualify!At your current pace of TTD 13,000/week"`;
+
+exports[`CareerPortal characterization — the next-milestone estimate > weeks (YTD 220,000, 30,000 to go at 11,000 a week) 1`] = `"Next milestoneLevel 2 — Advisor IIabout 3 weeksAt your current pace of TTD 11,000/week"`;
+
+exports[`CareerPortal characterization — trajectory and YTD stats > 8 quarters of API (TTD thousands) 1`] = `
+[
+  "0K TTD",
+  "0K TTD",
+  "0K TTD",
+  "192K TTD",
+  "128K TTD",
+  "107K TTD",
+  "107K TTD",
+  "107K TTD",
+]
+`;
+
+exports[`CareerPortal characterization — trajectory and YTD stats > the level drawer prints the YTD stats against each criterion 1`] = `"CloseFuture levelLevel 5 — Senior AdvisorIndustry recognition — advisor seniority.Criteria · 4 to clear2-yr Avg API53%TTD 320KTTD 600KYTD Applications58%3052Persistency rate98%88.50%90.00%Years of service70%3.5 yrs5.0 yrs★ What you unlockSenior Advisor recognitionIndustry standingDedicated branch supportDirect BM channelQuarterly bonus eligibilityTTD 8K–25K per quarterConference seatAnnual leadership event"`;
