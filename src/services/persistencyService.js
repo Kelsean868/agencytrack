@@ -22,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { deriveAll, PERS_GATE } from '../lib/persistency/calculations';
+import { roundPersistencyPct } from '../lib/persistency/persistencyRounding';
 import { persistencyModelFor } from '../lib/persistency/model';
 import { getTenantUsers } from './managerService';
 import { getTodayTT } from '../utils/dateInputs';
@@ -424,7 +425,9 @@ export async function savePersistency(tenantId, monthKey, agentUid, inputs, role
     throw new Error('Net Gross Settled is negative — check Decreases against Gross Settled.');
   }
 
-  const meetsAwardGate = derived.persistency >= AWARD_GATE;
+  // Judged on the 2-dp percent, half up (ruling 1, 29-09-2026) — the same
+  // value every screen prints. Write semantics only; no new field.
+  const meetsAwardGate = roundPersistencyPct(derived.persistency * 100) >= AWARD_GATE * 100;
   const { year, month } = parseMonthKey(monthKey);
   const period = reportPeriodFromMonthKey(monthKey);
 

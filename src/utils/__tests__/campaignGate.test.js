@@ -86,7 +86,7 @@ describe('C1 — persistencyPctAtFinalMonth (C-D2)', () => {
     const withoutDecember = FIXTURE_RECORDS.filter((r) => r.monthKey !== '2026-12');
     expect(persistencyPctAtFinalMonth(withoutDecember, '2026-12-31')).toBeNull();
     // and specifically does NOT return the aggregate of whatever remains
-    expect(persistencyPctForPeriod(withoutDecember, '2026-07-01', '2026-12-31')).toBe(91);
+    expect(persistencyPctForPeriod(withoutDecember, '2026-07-01', '2026-12-31')).toBe(91.4);
   });
 
   it('abstains on an unusable end date, an empty set, or a non-numeric persistency', () => {

@@ -15,7 +15,7 @@
 import { isTieredCampaign, normalizeGate, persistencyPctForGate } from '../utils/campaignEngine';
 import { toDateStr } from './policyCampaignLens';
 import { buildPersistencyOutlook, formatOutlookPct } from './persistency/persistencyOutlook';
-import { roundPersistencyPct } from './persistency/persistencyRounding';
+import { roundPersistencyPct, formatPersistencyPct } from './persistency/persistencyRounding';
 
 /**
  * campaignPersistencyReading({ campaign, policies, records, today })
@@ -46,8 +46,8 @@ export function campaignPersistencyReading({ campaign, policies = [], records = 
   }
 
   // The preview is judged on the same 2-dp value its label prints (ruling R-a).
-  // The actual gate reading (`persPct`) is the campaign engine's whole-number
-  // payout basis and is deliberately left as it is (R2-1 stop: money outcome).
+  // The actual gate reading (`persPct`) is the campaign engine's payout basis,
+  // 2 dp half up since R2-1b (ruling 1), so it prints the same way.
   const value = known ? persPct : preview ? roundPersistencyPct(preview.persistency * 100) : null;
   if (value == null) {
     return { value: null, label: '—', below: false, gateMonthKey: null, threshold };
@@ -55,7 +55,7 @@ export function campaignPersistencyReading({ campaign, policies = [], records = 
   const endKey = toDateStr(campaign.endDate);
   return {
     value,
-    label: known ? `${persPct}%` : formatOutlookPct(preview.persistency),
+    label: known ? formatPersistencyPct(persPct) : formatOutlookPct(preview.persistency),
     below: value < (threshold ?? 0),
     gateMonthKey: gate?.basis === 'finalMonth' && endKey ? endKey.slice(0, 7) : null,
     threshold,

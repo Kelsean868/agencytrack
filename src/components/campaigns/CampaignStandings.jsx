@@ -8,6 +8,7 @@ import {
   normalizeGate,
 } from '../../utils/campaignEngine';
 import { formatCurrency } from '../../utils/formatters';
+import { formatPersistencyPct } from '../../lib/persistency/persistencyRounding';
 
 // Campaigns v2 — DISPLAY-ONLY standings surfaces.
 //
@@ -97,7 +98,7 @@ export function GatePill({ persPct, band }) {
   const tone = GATE_TONE[band?.tone ?? 'warning'] ?? GATE_TONE.warning;
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className="text-xs font-mono font-bold text-ink tabular-nums">{persPct}%</span>
+      <span className="text-xs font-mono font-bold text-ink tabular-nums">{formatPersistencyPct(persPct)}</span>
       <span className={`text-[8.5px] font-mono font-bold px-1.5 py-0.5 rounded-full ${tone.pill}`}>
         {band?.label ?? '—'}
       </span>

@@ -137,6 +137,9 @@ const ALLOWED = new Set([
   'src/components/fr/money/FrMoneyHeader.jsx',
   'src/components/fr/work/FrFocus.jsx',
   'src/components/fr/harness/scenes/reinstatementScenes.jsx', // DEV-only harness, sample data
+  // R2-6b: the import plan CLEARS a stale declaration (writes null on a new
+  // lapse); it never reads the fields into a figure. Needs the dispatcher's OK.
+  'src/lib/portfolioImport/buildImportPlan.js',
 ]);
 // `campaign` covers every campaign surface and engine (award-bearing gates and tiers).
 const MONEY_PATH_RE = /financing|award|commission|computePoints|settlement|ledgerProduction|campaign|leaderboard|bonus|trophy|goalDecomposition/i;

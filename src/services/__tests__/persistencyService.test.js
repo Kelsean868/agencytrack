@@ -905,3 +905,30 @@ describe('getAvailableMonths — model-incomplete months stay reachable', () => 
     expect(isModelCompleteDoc({ ...E3_FULL_DOC, monthKey: '2026-09' })).toBe(false);
   });
 });
+
+// R2-1b commit 1 — CHARACTERIZATION of the stored `meetsAwardGate` flag at the
+// seven brief values, before the 2-dp rule reaches it. Gross 100,000; lapses
+// set so net / gross is exactly the value in percent.
+describe('savePersistency — meetsAwardGate at the gate (R2-1b characterization)', () => {
+  it('pins the stored flag at 89.49 / 89.50 / 89.60 / 89.994 / 89.995 / 89.996 / 90', async () => {
+    const rows = [];
+    for (const v of [89.49, 89.5, 89.6, 89.994, 89.995, 89.996, 90]) {
+      mockGetDoc.mockResolvedValueOnce({ exists: () => false });
+      mockSetDoc.mockResolvedValueOnce(undefined);
+      const inputs = { businessPlaced: 100000, notTakens: 0, incPPPs: 0, lumpsums100: 0, lapses: 100000 - v * 1000, reinstatements: 0 };
+      const result = await savePersistency('tenant1', '2026-02', 'agent-1', inputs, 'agent');
+      rows.push(`${v} → stored ${result.meetsAwardGate}`);
+    }
+    expect(rows).toMatchInlineSnapshot(`
+      [
+        "89.49 → stored false",
+        "89.5 → stored false",
+        "89.6 → stored false",
+        "89.994 → stored false",
+        "89.995 → stored true",
+        "89.996 → stored true",
+        "90 → stored true",
+      ]
+    `);
+  });
+});

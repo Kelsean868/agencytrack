@@ -541,7 +541,7 @@ function CelebrationsScene({ anniversaries }) {
 // shared module).
 function awardValueLabel(unit, v) {
   if (unit === 'TTD') return formatCurrency(v);
-  if (unit === '%') return `${Number(v).toFixed(1)}%`;
+  if (unit === '%') return formatPersistencyPct(Number(v));
   return `${Math.round(v)}`;
 }
 
