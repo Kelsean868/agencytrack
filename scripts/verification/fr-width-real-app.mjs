@@ -26,7 +26,9 @@
  * in .env.local: that is a PRODUCTION account and fails against staging
  * (scripts/verification/SMOKES.md). The password is read, never printed.
  * Open modal dialogs (Today's celebration takeover) are closed with Escape before
- * every click and probe, and listed in the report. A route that still fails is
+ * every click and probe, and listed in the report. The weekly-report wizard
+ * (which ignores Escape and replaces the whole shell) is probed as its own
+ * screen, then left with its own Close button. A route that still fails is
  * reported NOT CHECKED and the sweep moves on.
  * Exit 1 when any finding remains or a route was not checked, 2 when a guard
  * refuses to run.
@@ -120,7 +122,7 @@ const settle = (page, ms) => page.evaluate((t) => new Promise((r) => requestAnim
 
 /** Every FR sidebar route: top items, and the sub-items a hub opens. */
 async function collectRoutes(page) {
-  const top = await page.$$eval('[data-testid^="fr-nav-"]', (bs) => bs.map((b) => ({ id: b.getAttribute('data-testid'), label: b.textContent.trim(), hub: b.hasAttribute('aria-expanded') })));
+  const top = await page.$$eval('[data-testid^="fr-nav-"]', (bs) => bs.map((b) => ({ id: b.getAttribute('data-testid'), label: (b.innerText || b.textContent).trim().split(/\r?\n/)[0].trim(), hub: b.hasAttribute('aria-expanded') })));
   const routes = [];
   for (const t of top) {
     if (!t.hub) { routes.push({ label: t.label, path: [t.id] }); continue; }
@@ -141,11 +143,20 @@ async function collectRoutes(page) {
  * readOnly(). Every close is listed in the report.
  */
 const dismissed = [];
+/**
+ * The weekly-report wizard is not a pop-up over a screen: while it is open the
+ * app draws no shell (no sidebar, no main), and it does not close on Escape
+ * (by design — it holds a draft). The sweep treats it as its own screen:
+ * probes it, then closes it with its own Close button. Its close behaviour is
+ * never changed or worked around.
+ */
+const WIZARD = '[data-testid="wizard-v2-modal"]';
 async function closeDialogs(page, where) {
   for (let i = 0; i < 3; i += 1) {
-    const open = await page.$$eval('[role="dialog"][aria-modal="true"]', (ds) => ds
+    const open = await page.$$eval('[role="dialog"][aria-modal="true"]', (ds, wizard) => ds
+      .filter((d) => !d.matches(wizard))
       .filter((d) => { const r = d.getBoundingClientRect(); return r.width > 0 && r.height > 0; })
-      .map((d) => d.getAttribute('data-testid') || d.getAttribute('aria-labelledby') || 'dialog'));
+      .map((d) => d.getAttribute('data-testid') || d.getAttribute('aria-labelledby') || 'dialog'), WIZARD);
     if (!open.length) return;
     dismissed.push({ where, dialogs: open });
     await page.keyboard.press('Escape');
@@ -165,6 +176,28 @@ async function open(page, route) {
   await page.waitForLoadState('networkidle').catch(() => {});
   await settle(page, 900);
   await closeDialogs(page, route.label);
+  return (await page.locator(WIZARD).first().isVisible().catch(() => false)) ? 'wizard' : 'page';
+}
+
+/**
+ * Leave the wizard with its own Close control (the header X, or the week
+ * picker's Close before a week is chosen). If it is still open after that, a
+ * reload brings the signed-in app back (nothing was saved: readOnly()).
+ * Returns how it was left, for the report.
+ */
+async function leaveWizard(page) {
+  for (const sel of [`${WIZARD} [data-testid="wizard-v2-close"]`, `${WIZARD} [aria-label="Close"]`]) {
+    const btn = page.locator(sel).first();
+    if (await btn.isVisible().catch(() => false)) {
+      await btn.click();
+      await settle(page, 500);
+      if (!(await page.locator(WIZARD).first().isVisible().catch(() => false))) return 'closed with its Close button';
+    }
+  }
+  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('[data-testid="fr-sidebar"]', { timeout: 20_000 });
+  await closeDialogs(page, 'after reload');
+  return 'still open after Close — page reloaded';
 }
 
 if (GUARD_ONLY) {
@@ -207,7 +240,8 @@ try {
     let n = 0;
     try {
       await page.setViewportSize({ width: 1440, height: 900 });
-      await open(page, route);
+      const kind = await open(page, route);
+      const root = kind === 'wizard' ? WIZARD : 'main#main-content';
       for (const w of WIDTHS) {
         await page.setViewportSize({ width: w, height: w < 768 ? 844 : 900 });
         await settle(page, 400);
@@ -215,15 +249,16 @@ try {
         for (const theme of ['light', 'dark']) {
           await page.evaluate((dark) => document.documentElement.classList.toggle('dark', dark), theme === 'dark');
           await settle(page, 150);
-          const found = await page.evaluate(`(${PROBE.toString()})('main#main-content')`);
+          const found = await page.evaluate(`(${PROBE.toString()})(${JSON.stringify(root)})`);
           for (const f of found) findings.push({ route: route.label, width: w, theme, ...f });
           n += found.length;
           mkdirSync(join(OUT, slug), { recursive: true });
           await page.screenshot({ path: join(OUT, slug, `${w}-${theme}.png`) });
         }
       }
-      visited.push({ route: route.label, findings: n });
-      console.log(`${n ? 'FIND' : 'OK  '} ${route.label} · ${n} findings`);
+      const note = kind === 'wizard' ? `wizard probed as its own screen; ${await leaveWizard(page)}` : null;
+      visited.push({ route: route.label, findings: n, note });
+      console.log(`${n ? 'FIND' : 'OK  '} ${route.label} · ${n} findings${note ? ` · ${note}` : ''}`);
     } catch (e) {
       // One route failing (a stuck overlay, a slow screen) must not lose the
       // rest of the sweep; it is reported as NOT CHECKED, never as clean.
@@ -258,6 +293,7 @@ const md = [
   `|---|${WIDTHS.map(() => '---').join('|')}|`,
   ...visited.map((v) => `| ${v.route} | ${v.error ? `**NOT CHECKED** — ${cell(v.error)} |${' |'.repeat(WIDTHS.length - 1)}` : `${WIDTHS.map((w) => { const c = rows.filter((r) => r.route === v.route && r.width === w).length; return c ? `**${c}**` : '0'; }).join(' | ')} |`}`),
   '',
+  ...(visited.some((v) => v.note) ? ['Notes:', '', ...visited.filter((v) => v.note).map((v) => `- ${v.route}: ${cell(v.note)}`), ''] : []),
   ...(dismissed.length ? ['Modal dialogs closed with Escape before probing:', '', ...dismissed.map((d) => `- ${cell(d.where)}: ${d.dialogs.map((x) => `\`${cell(x)}\``).join(', ')}`), ''] : []),
   ...(rows.length ? ['| Route | Width | Theme | Probe | Element | Text | Detail |', '|---|---|---|---|---|---|---|',
     ...rows.map((r) => `| ${r.route} | ${r.width} | ${[...r.themes].sort().join('+')} | ${r.probe} | \`${cell(r.selector).slice(0, 100)}\` | ${cell(r.text)} | ${cell(r.detail)} |`)] : []),
