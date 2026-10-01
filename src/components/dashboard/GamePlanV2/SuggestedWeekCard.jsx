@@ -456,7 +456,7 @@ export default function SuggestedWeekCard({
 
       {/* ── derived (read-only suggestion) ── */}
       {!loading && !error && !showCommitted && !editing && resolution.mode === 'derived' && (
-        <div className="mt-3" data-testid="suggested-week-derived">
+        <div className="@container mt-3" data-testid="suggested-week-derived">
           <p className="font-display text-base font-extrabold leading-snug tracking-tight text-[--hero-ink]">
             To stay on your <span className="text-[--hero-accent]">{formatCurrency(resolution.anchor)}</span> plan, your week looks like:
           </p>
@@ -468,7 +468,9 @@ export default function SuggestedWeekCard({
               { key: 'apps', label: 'Apps', value: resolution.weekly.applications, basis: `÷ ${formatCurrency(resolution.avg)} avg policy` },
             ];
             return (
-              <div className="mt-3 grid grid-cols-3 gap-2.5">
+              // fr-fit-any-width: three across only when the card has room for
+              // each chip's basis line (≥ 20rem); a narrow phone stacks them.
+              <div className="mt-3 grid grid-cols-1 gap-2.5 @[20rem]:grid-cols-3">
                 {chips.map((c) => {
                   const open = expanded === c.key;
                   return (

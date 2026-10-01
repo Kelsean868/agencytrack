@@ -93,15 +93,21 @@ export default function Donut({
           </div>
         ) : null}
       </div>
-      <ul className="min-w-0 flex-1 space-y-1.5">
+      {/* min-w-min: the legend is never narrower than its values and shares
+          need — each row is a grid whose label column is minmax(3rem, 1fr), so
+          the label counts for 3rem in the minimum (it truncates) but its full
+          width in the natural size. When the values do not fit beside the
+          ring the legend wraps UNDER it instead of squeezing
+          (fr-fit-any-width decision 3). */}
+      <ul className="min-w-min flex-1 space-y-1.5">
         {arcs.map((a) => (
-          <li key={a.key} className="flex items-center gap-2 text-[13px]">
+          <li key={a.key} className="grid grid-cols-[auto_minmax(3rem,1fr)_auto_auto] items-center gap-2 text-[13px]">
             <span className={`h-2.5 w-2.5 flex-none rounded-sm ${BG[a.i]}`} aria-hidden="true" />
-            <span className="min-w-0 flex-1 truncate text-ink-muted" title={a.label}>
+            <span className="min-w-0 truncate text-ink-muted" title={a.label}>
               {a.label}
             </span>
-            <span className="flex-none font-semibold tabular-nums text-ink">{format(a.value)}</span>
-            <span className="w-10 flex-none text-right tabular-nums text-ink-muted">{Math.round(a.share)}%</span>
+            <span className="whitespace-nowrap font-semibold tabular-nums text-ink">{format(a.value)}</span>
+            <span className="w-10 whitespace-nowrap text-right tabular-nums text-ink-muted">{Math.round(a.share)}%</span>
           </li>
         ))}
       </ul>

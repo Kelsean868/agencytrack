@@ -89,9 +89,9 @@ function StepCard({ step, onClick }) {
 function Steps({ model, onOpenMoneyNeeds, onOpenMonthlyPlan, onOpenReviewCommit }) {
   const handlers = { 'money-needs': onOpenMoneyNeeds, monthly: onOpenMonthlyPlan, review: onOpenReviewCommit };
   return (
-    <section aria-label="Your three steps" className="min-w-0">
+    <section aria-label="Your three steps" className="@container min-w-0">
       <h2 className="sr-only">Your three steps</h2>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 @[34rem]:grid-cols-3">
         {model.steps.map((s) => (
           <StepCard key={s.id} step={s} onClick={handlers[s.id]} />
         ))}
@@ -103,7 +103,7 @@ function Steps({ model, onOpenMoneyNeeds, onOpenMonthlyPlan, onOpenReviewCommit 
 function CommitmentStrip({ model }) {
   const c = model.commitment;
   return (
-    <section className={`${CARD} flex flex-col gap-3 p-4`} aria-label="Personal commitment" data-testid="fr-gp-commitment">
+    <section className={`${CARD} @container flex flex-col gap-3 p-4`} aria-label="Personal commitment" data-testid="fr-gp-commitment">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="flex min-w-0 flex-col">
           <span className={EYEBROW}>Personal commitment</span>
@@ -125,7 +125,7 @@ function CommitmentStrip({ model }) {
         </span>
       </div>
       {model.chain ? (
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-3 sm:grid-cols-4" data-testid="fr-gp-chain">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-3 @[28rem]:grid-cols-4" data-testid="fr-gp-chain">
           {model.chain.map((f) => (
             <div key={f.key} className="flex min-w-0 flex-col">
               <dt className="text-[12px] text-ink-muted">{f.label}</dt>
@@ -180,7 +180,7 @@ function MonthlyPlan({ model, onOpenMonthlyPlan }) {
     actual: row.actual == null ? '—' : `TTD ${Math.round(row.actual).toLocaleString('en-TT')}`,
   }));
   return (
-    <section aria-labelledby="fr-gp-months-h" className="flex min-w-0 flex-col gap-3" data-testid="fr-gp-monthly">
+    <section aria-labelledby="fr-gp-months-h" className="@container flex min-w-0 flex-col gap-3" data-testid="fr-gp-monthly">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="min-w-0">
           <h2 id="fr-gp-months-h" className={H2}>Step 2 · Monthly plan</h2>
@@ -197,7 +197,7 @@ function MonthlyPlan({ model, onOpenMonthlyPlan }) {
           </button>
         ) : null}
       </div>
-      <div className="flex min-w-0 flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_240px] lg:items-start">
+      <div className="flex min-w-0 flex-col gap-4 @[36rem]:grid @[36rem]:grid-cols-[minmax(0,1fr)_240px] @[36rem]:items-start">
         {m.filled ? (
           <ChartCard
             className="min-w-0"
@@ -330,9 +330,11 @@ export default function FrGamePlanView({
 
   if (wide) {
     return (
-      <div className="flex flex-col gap-5" data-testid="fr-game-plan">
+      // fr-fit-any-width: every grid here splits by the width its region HAS
+      // (beside the sidebar), not the window. Thresholds keep the ≥1280 layout.
+      <div className="@container/gp flex flex-col gap-5" data-testid="fr-game-plan">
         <Header model={model} />
-        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start" data-testid="fr-game-plan-wide">
+        <div className="flex flex-col gap-5 @[60rem]/gp:grid @[60rem]/gp:grid-cols-[minmax(0,1fr)_340px] @[60rem]/gp:items-start" data-testid="fr-game-plan-wide">
           <div className="flex min-w-0 flex-col gap-5">
             <Steps {...stepsProps} />
             <CommitmentStrip model={model} />
@@ -341,7 +343,7 @@ export default function FrGamePlanView({
             {slots.suggestions ?? null}
           </div>
           {model.commit.enabled ? (
-            <aside aria-label="Review and commit" className="min-w-0 lg:sticky lg:top-4">
+            <aside aria-label="Review and commit" className="min-w-0 @[60rem]/gp:sticky @[60rem]/gp:top-4">
               <CommitPanel model={model} onOpenReviewCommit={onOpenReviewCommit} />
             </aside>
           ) : null}

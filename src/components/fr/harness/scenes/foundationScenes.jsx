@@ -193,7 +193,8 @@ function TrophiesScene({ variant }) {
   return (
     <Frame>
       <h1 className="mt-2 font-display text-[28px] font-bold">Trophies</h1>
-      <ul className="mt-4 grid grid-cols-6 gap-4 md:grid-cols-8">
+      {/* As many 88px trophies per row as the page has room for (fr-fit-any-width). */}
+      <ul className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(7rem,1fr))] gap-4">
         {TROPHY_KINDS.map((kind, i) => {
           const locked = i % 3 === 2;
           return (

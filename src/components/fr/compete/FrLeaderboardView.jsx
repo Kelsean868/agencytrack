@@ -94,8 +94,11 @@ function PeriodRadios({ periods, period, onPeriod }) {
 
 function Champions({ champions, compact }) {
   return (
-    <section aria-label="Last week's champions" className={compact ? 'flex flex-col gap-2' : 'grid grid-cols-1 gap-3 lg:grid-cols-[180px_repeat(3,minmax(0,1fr))]'} data-testid="fr-leaderboard-champions">
-      <div className="flex flex-col justify-center gap-0.5">
+    // fr-fit-any-width: the strip follows the BOARD's width. Under 42rem (beside
+    // the 340px "you" column on a narrow window) the heading takes its own row
+    // so the three champion cards keep room for their figures.
+    <section aria-label="Last week's champions" className={compact ? 'flex flex-col gap-2' : 'grid grid-cols-1 gap-3 @[30rem]/board:grid-cols-3 @[42rem]/board:grid-cols-[180px_repeat(3,minmax(0,1fr))]'} data-testid="fr-leaderboard-champions">
+      <div className={`flex flex-col justify-center gap-0.5 ${compact ? '' : '@[30rem]/board:col-span-3 @[42rem]/board:col-span-1'}`}>
         <span className={`${EYEBROW} text-gold-ink`}>{champions.heading}</span>
         <span className="text-[12px] text-ink-muted">Whole company · last full week</span>
       </div>
@@ -411,7 +414,7 @@ export default function FrLeaderboardView(props) {
   }
 
   const board = (
-    <div className="flex min-w-0 flex-1 flex-col gap-[18px]">
+    <div className="@container/board flex min-w-0 flex-1 flex-col gap-[18px]">
       {status === 'error' ? null : <Champions champions={champions} />}
       {layout === 'tablet' && ready ? youBlock(true) : null}
       {ready ? <Podium podium={podium} viewerUid={viewerUid} period={period} title={title} /> : <StatusBlock status={status} errorCode={errorCode} onRetry={onRetry} periodWord={periodWord} />}

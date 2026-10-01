@@ -165,13 +165,15 @@ function Closest({ items, onSelect }) {
 function Shelf({ title, note, items, selected, onSelect }) {
   const earned = items.filter((t) => t.earned).length;
   return (
-    <section className={`${CARD} flex min-w-0 flex-col gap-3 p-4`} aria-label={title} data-testid={`trophy-shelf-${title.toLowerCase()}`}>
+    <section className={`${CARD} @container flex min-w-0 flex-col gap-3 p-4`} aria-label={title} data-testid={`trophy-shelf-${title.toLowerCase()}`}>
       <header className="flex items-baseline justify-between gap-2">
         <h3 className="font-display text-[18px] font-bold text-ink">{title}</h3>
         <span className="flex-none text-[12px] tabular-nums text-ink-muted">{earned} of {items.length}</span>
       </header>
       {note ? <p className="-mt-2 text-[12px] text-ink-muted">{note}</p> : null}
-      <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+      {/* fr-fit-any-width: five across by the SHELF's width (≥ 28rem), not the
+          window — beside the sidebar and the 300px detail column it has less. */}
+      <ul className="grid grid-cols-3 gap-2 @[28rem]:grid-cols-5">
         {items.map((t) => (
           <li key={t.key} className="min-w-0">
             <button

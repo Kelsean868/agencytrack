@@ -95,7 +95,7 @@ function LevelPanelBody({ panel }) {
 function Ladder({ coins, selected, onSelect, layout, panel, current }) {
   const phone = layout === 'phone';
   return (
-    <section aria-labelledby="fr-career-ladder-h" className={`${CARD} flex min-w-0 flex-col gap-4 p-4 sm:p-5`} data-testid="fr-career-ladder">
+    <section aria-labelledby="fr-career-ladder-h" className={`${CARD} @container flex min-w-0 flex-col gap-4 p-4 sm:p-5`} data-testid="fr-career-ladder">
       <div>
         <h2 id="fr-career-ladder-h" className={H2}>Your career ladder</h2>
         <p className="text-[12px] text-ink-muted">{current} of 7 levels · tap a level to see what it takes</p>
@@ -114,7 +114,9 @@ function Ladder({ coins, selected, onSelect, layout, panel, current }) {
           ))}
         </ol>
       ) : (
-        <ol className="grid grid-cols-7 gap-1">
+        // fr-fit-any-width: seven across needs ~46rem of card; narrower (beside
+        // the sidebar) the ladder runs 4 + 3, still in order, never cut.
+        <ol className="grid grid-cols-4 gap-1 @[46rem]:grid-cols-7">
           {coins.map((coin) => (
             <li key={coin.level} className="min-w-0">
               <Coin coin={coin} selected={selected === coin.level} onSelect={onSelect} />
@@ -318,7 +320,9 @@ function Commitment({ commitment }) {
 
 function TrophiesCard({ trophies, onOpenTrophies }) {
   return (
-    <section aria-label="Badges and trophies" className={`${CARD} flex min-w-0 flex-col items-start gap-4 p-4 sm:p-5 md:flex-row md:items-center`} data-testid="fr-career-trophies">
+    // fr-fit-any-width: one wrapping row — the text keeps 16rem and moves under
+    // the ring when the card is narrow, instead of being squeezed beside it.
+    <section aria-label="Badges and trophies" className={`${CARD} flex min-w-0 flex-wrap items-center gap-4 p-4 sm:p-5`} data-testid="fr-career-trophies">
       {trophies.loading ? (
         <span className="h-[72px] w-[72px] rounded-full bg-fr-sunk motion-safe:animate-pulse" aria-busy="true" />
       ) : trophies.error ? (
@@ -337,7 +341,7 @@ function TrophiesCard({ trophies, onOpenTrophies }) {
           centerValue={`${trophies.earned}/${trophies.total}`}
         />
       )}
-      <span className="flex w-full min-w-0 flex-1 flex-col gap-0.5">
+      <span className="flex min-w-[min(100%,16rem)] flex-1 flex-col gap-0.5">
         <span className="text-[14px] font-bold text-ink">Badges and trophies live in the Trophy room</span>
         <span className="text-[12.5px] text-ink-muted">One place for badges, levels and awards — the same rules the points engine uses.</span>
       </span>

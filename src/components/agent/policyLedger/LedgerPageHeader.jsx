@@ -38,8 +38,12 @@ export function LedgerSearchInput({ value, onChange, className = '', testId = 'l
 export default function LedgerPageHeader({ exportDate, search, onSearchChange, showSearch = false, exportMenu = null, actions = null }) {
   const year = exportDate ? String(exportDate).slice(0, 4) : '';
   return (
-    <header className="flex items-center gap-2 lg:items-end lg:gap-3" data-testid="ledger-page-header">
-      <div className="flex min-w-0 flex-1 flex-col lg:flex-col-reverse">
+    // fr-fit-any-width: the row WRAPS. On the desktop layout the title column
+    // keeps at least 15rem, so beside the sidebar on a narrow window the search
+    // and buttons move under the title instead of crushing it to one word per
+    // line. Phones never wrap (no minimum there), wide windows stay one row.
+    <header className="flex flex-wrap items-center gap-2 lg:items-end lg:gap-3" data-testid="ledger-page-header">
+      <div className="flex min-w-0 flex-1 flex-col lg:min-w-[15rem] lg:flex-col-reverse">
         <h2 className="text-[17px] font-bold leading-tight text-ink lg:font-display lg:text-[30px] lg:tracking-tight">
           Policy ledger
         </h2>
@@ -50,16 +54,18 @@ export default function LedgerPageHeader({ exportDate, search, onSearchChange, s
           </span>
         )}
       </div>
-      {showSearch && (
-        <LedgerSearchInput
-          value={search}
-          onChange={onSearchChange}
-          className="hidden w-[280px] lg:flex"
-          testId="ledger-search-desktop"
-        />
-      )}
-      {actions}
-      {exportMenu}
+      <div className="ml-auto flex shrink-0 items-center gap-2 lg:gap-3">
+        {showSearch && (
+          <LedgerSearchInput
+            value={search}
+            onChange={onSearchChange}
+            className="hidden w-[280px] lg:flex"
+            testId="ledger-search-desktop"
+          />
+        )}
+        {actions}
+        {exportMenu}
+      </div>
     </header>
   );
 }
