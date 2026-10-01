@@ -3,11 +3,21 @@
  *
  * Runs the REAL aggregate code (functions/leaderboard/leaderboardAggregate.js
  * `loadInputs` + `computeLeaderboards`) against STAGING tenant `staging_test`
- * and prints a per-agent table. It NEVER writes a leaderboards or
- * weeklyChampions doc — the compute is called directly, the batch write is not.
+ * and prints a per-agent table. Without --write it NEVER writes a leaderboards
+ * or weeklyChampions doc — the compute is called directly, the batch write is not.
  *
  *   node scripts/verification/fr-lb-l1-dryrun-staging.mjs           # read-only
  *   node scripts/verification/fr-lb-l1-dryrun-staging.mjs --seed    # + seed
+ *   node scripts/verification/fr-lb-l1-dryrun-staging.mjs --write   # + write
+ *
+ * --write (FR Leaderboard L-2, dispatcher ruling 1 Oct 2026): writes the
+ * computed `tenants/staging_test/leaderboards/{branchId}` docs (full replace,
+ * same shape as the deployed job), so the real-app width sweep on a staging
+ * build has a three-board doc to render. Staging functions are NOT deployed and
+ * nobody signs in to run the on-demand job — this script is the writer. It does
+ * not write weeklyChampions. It cannot be combined with --seed (seeded days are
+ * deleted at the end, so a doc built from them would describe days that no
+ * longer exist).
  *
  * --seed (dispatcher ruling, 1 Oct 2026): writes up to three current-week
  * dailyActivity entries for staging fixture agent 1, so the Activity path is
@@ -34,6 +44,11 @@ const TENANT_ID = 'staging_test';
 const FIXTURE_EMAIL = 'staging-agent-1@agencytrack-staging.test';
 const SEED_MARK = 'fr-lb-l1-dryrun';
 const SEED = process.argv.includes('--seed');
+const WRITE = process.argv.includes('--write');
+if (SEED && WRITE) {
+  console.error('DRY-RUN ABORTED — --seed and --write cannot be combined.');
+  process.exit(2);
+}
 
 const KEY_PATH = process.env.STAGING_SA_KEY_PATH
   ? resolve(process.env.STAGING_SA_KEY_PATH)
@@ -142,7 +157,7 @@ function printTable(docs) {
 let seeded = null;
 let exitCode = 0;
 try {
-  console.log(`Target: ${STAGING_PROJECT} / tenants/${TENANT_ID}  ref=${now.toISOString()}  mode=${SEED ? 'seed + dry-run' : 'read-only dry-run'}`);
+  console.log(`Target: ${STAGING_PROJECT} / tenants/${TENANT_ID}  ref=${now.toISOString()}  mode=${SEED ? 'seed + dry-run' : WRITE ? 'compute + WRITE leaderboards' : 'read-only dry-run'}`);
   if (SEED) {
     seeded = await seed();
     console.log(`SEEDED ${seeded.created.length} days for fixture agent 1 (week ${seeded.weekStarting}): ${seeded.created.map((r) => r.id).join(', ')}`);
@@ -155,6 +170,26 @@ try {
   console.log(`WINDOWS week=${JSON.stringify(periodWindow('week', now))} mtd=${JSON.stringify(periodWindow('mtd', now))} qtd=${JSON.stringify(periodWindow('quarter', now))} ytd=${JSON.stringify(periodWindow('ytd', now))}`);
   printTable(docs);
   console.log(`\nCHAMPIONS weeklyChampions/${priorWeekStarting} (NOT written): ${JSON.stringify(championsDoc)}`);
+
+  if (WRITE) {
+    // Same doc shape the deployed job writes (computeAndWriteLeaderboards), staging only.
+    const batch = db.batch();
+    const paths = [];
+    for (const [branchId, doc] of docs.entries()) {
+      const ref = db.doc(`tenants/${TENANT_ID}/leaderboards/${branchId}`);
+      batch.set(ref, doc);
+      paths.push(ref.path);
+    }
+    if (!paths.length) throw new Error('nothing to write — no branch has participants');
+    await batch.commit();
+    for (const p of paths) {
+      const snap = await db.doc(p).get();
+      const d = snap.data() || {};
+      const ok = snap.exists && Array.isArray(d.ytd) && d.ytd.every((e) => 'points' in e) && d.sources?.points === 'activity';
+      console.log(`WROTE ${p}: ${ok ? 'read back OK' : 'READ BACK FAILED'} (ytd entries=${d.ytd?.length ?? 0}, computedAt=${d.computedAt?.toDate?.()?.toISOString?.() ?? 'n/a'})`);
+      if (!ok) exitCode = 1;
+    }
+  }
 
   if (seeded) {
     const expected = seeded.seededDays.reduce((s, d) => s + computeDayPoints(d), 0);

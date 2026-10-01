@@ -86,6 +86,15 @@ describe('WeeklyChampionsBanner — with data', () => {
     expect(screen.getByText('27')).toBeInTheDocument();
   });
 
+  it('activityUnit="points" (the champions doc since L-1) words Top Activity as points', () => {
+    render(<WeeklyChampionsBanner champions={{ ...CHAMPIONS_FULL, topActivity: { ...CHAMPIONS_FULL.topActivity, value: 1312 } }} loading={false} activityUnit="points" />);
+    expect(screen.getByText('1,312 points')).toBeInTheDocument();
+  });
+
+  it('an unknown activityUnit throws', () => {
+    expect(() => render(<WeeklyChampionsBanner champions={CHAMPIONS_FULL} loading={false} activityUnit="pts" />)).toThrow(/unknown activityUnit/);
+  });
+
   it('uses mobile-stacking grid (grid-cols-1 sm:grid-cols-3)', () => {
     const { container } = render(<WeeklyChampionsBanner champions={CHAMPIONS_FULL} loading={false} />);
     const grid = container.querySelector('.grid-cols-1.sm\\:grid-cols-3');

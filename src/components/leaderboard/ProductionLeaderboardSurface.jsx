@@ -279,17 +279,18 @@ export function TailRow({ entry, leaderApi, isLast, isViewer = false }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Empty / slow-period state
+// Copy = the FR API board's empty state (FR Leaderboard L-2 brief D11): since
+// L-1 this surface ranks settled API from the policy ledger, not weekly reports.
 // ─────────────────────────────────────────────────────────────────────────────
 function EmptyState({ periodLabel }) {
   return (
     <div className="card flex flex-col items-center text-center py-12">
       <MedalCoin rank={1} size={48} glow={false} />
       <p className="mt-4 text-base font-bold font-display text-ink">
-        No production logged for {periodLabel.toLowerCase()} yet
+        No settled business this {periodLabel.toLowerCase()} yet
       </p>
       <p className="mt-1.5 text-sm text-ink-muted max-w-md">
-        Once weekly reports are submitted, the leaderboard will show every agent in
-        your branch ranked by period API. Try a different period to see year-to-date totals.
+        The board fills in as policies settle in the ledger.
       </p>
     </div>
   );
@@ -384,7 +385,7 @@ export default function ProductionLeaderboardSurface({
           doc-id matches the CF's priorWeekStartingString by construction).
           Empty payload → the banner's existing "No data yet" cards render
           honestly (no rules denial; the CF always writes the doc). */}
-      <WeeklyChampionsBanner champions={champions} loading={championsLoading} />
+      <WeeklyChampionsBanner champions={champions} loading={championsLoading} activityUnit="points" />
 
       {/* Header — title block + scope control + period chips. Scope sits
           LEFT of the period chips on desktop, stacked above on mobile.

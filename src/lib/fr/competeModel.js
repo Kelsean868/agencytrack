@@ -255,28 +255,36 @@ export const ARENA_PERIODS = Object.freeze([
 /**
  * The agent's own standing in each period of the branch leaderboard aggregate
  * (`leaderboards/{branchId}`, the same doc the Leaderboard screen reads).
- * Not on the board (nothing settled yet, or a test account) → rank null.
+ * Not on the board (not a participant, or a test account) → rank null.
+ *
+ * `metric` (FR Leaderboard L-2) is the entry field the board ranks by:
+ * `value` / `aboveValue` / `gapUp` are measured in it. Default 'periodApi'
+ * keeps the Arena header exactly as before. `api` / `aboveApi` are always API.
+ * Pass `byPeriod` already ranked for the board (leaderboardBoards.boardByPeriod)
+ * so `rank` and `previousRank` belong to the same board.
  */
-export function arenaStanding(byPeriod, uid) {
+export function arenaStanding(byPeriod, uid, metric = 'periodApi') {
   const out = {};
   ARENA_PERIODS.forEach(({ id }) => {
     const rows = Array.isArray(byPeriod?.[id]) ? [...byPeriod[id]] : [];
     rows.sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity));
     const mine = uid ? rows.find((r) => r.agentId === uid) : null;
     if (!mine || !Number.isFinite(mine.rank)) {
-      out[id] = { rank: null, of: rows.length, api: null, apps: null, gapUp: null, moved: null };
+      out[id] = { rank: null, of: rows.length, api: null, apps: null, value: null, gapUp: null, moved: null };
       return;
     }
     const above = rows.filter((r) => Number.isFinite(r.rank) && r.rank < mine.rank).pop() ?? null;
-    const api = num(mine.periodApi) ?? 0;
+    const value = num(mine[metric]) ?? 0;
     out[id] = {
       rank: mine.rank,
       of: rows.length,
-      api,
+      api: num(mine.periodApi) ?? 0,
       apps: num(mine.apps),
-      gapUp: above ? Math.max(0, (num(above.periodApi) ?? 0) - api) : null,
+      value,
+      gapUp: above ? Math.max(0, (num(above[metric]) ?? 0) - value) : null,
       aboveRank: above?.rank ?? null,
       aboveApi: above ? (num(above.periodApi) ?? 0) : null,
+      aboveValue: above ? (num(above[metric]) ?? 0) : null,
       moved: Number.isFinite(mine.previousRank) ? mine.previousRank - mine.rank : null,
     };
   });
@@ -294,7 +302,7 @@ export function arenaTiles(standing, periodId = 'ytd') {
     ? (s.moved === 0 ? 'Same place as last update' : null)
     : s.moved > 0 ? `Up ${s.moved} since last update` : `Down ${-s.moved} since last update`;
   return [
-    { id: 'rank', label: `Your rank · ${label.toLowerCase()}`, value: s.rank == null ? null : `#${s.rank} of ${s.of}`, unit: 'text', note: s.rank == null ? 'Not on the board yet — settled API puts you there' : movedNote },
+    { id: 'rank', label: `Your rank · ${label.toLowerCase()}`, value: s.rank == null ? null : `#${s.rank} of ${s.of}`, unit: 'text', note: s.rank == null ? 'Not on the board yet' : movedNote },
     { id: 'api', label: `Your API · ${label.toLowerCase()}`, value: s.api, unit: 'ttd', note: s.apps == null ? null : `${s.apps} ${s.apps === 1 ? 'app' : 'apps'}` },
     {
       id: 'gap',

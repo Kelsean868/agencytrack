@@ -3,13 +3,15 @@ import { AlertCircle, BarChart3 } from 'lucide-react';
 import MedalCoin from '../../ui/MedalCoin';
 import Trophy from '../trophies/Trophy';
 import { Donut } from '../charts';
-import { formatCurrency } from '../../../utils/formatters';
 
 /**
- * FrLeaderboardView — the FR Leaderboard (R2-11, canvas D3-Leaderboard /
- * M3-Leaderboard). PURE: props only. The container (FrLeaderboard) runs the
- * same hook as the Nexus surface (useProductionLeaderboard) plus
- * arenaStanding, and shapes the rest with src/lib/fr/leaderboardModel.js.
+ * FrLeaderboardView — the FR Leaderboard (R2-11; three boards in FR
+ * Leaderboard L-2, canvas D3-Leaderboard / M3-Leaderboard v43). PURE: props
+ * only. The container (FrLeaderboard) runs the same hook as the Nexus surface
+ * (useProductionLeaderboard) and shapes the chosen board with
+ * src/lib/fr/leaderboardModel.js `boardView`. Every value, column and line of
+ * copy comes from `boardConfig` (src/lib/fr/leaderboardBoards.js) — the view
+ * never branches on which board is showing.
  *
  * Layout (ONE is rendered, chosen by `layout`):
  *   desktop  board column (champions · podium · everyone else) + a 340px
@@ -23,6 +25,10 @@ import { formatCurrency } from '../../../utils/formatters';
  * @param {'loading'|'error'|'empty'|'ready'} props.status
  * @param {string} [props.errorCode]
  * @param {Function} props.onRetry
+ * @param {{id:string,label:string}[]} props.boards   board switch, in order (Activity · API · Apps)
+ * @param {string} props.board           the chosen board id
+ * @param {Function} props.onBoard
+ * @param {object} props.boardConfig     LEADERBOARD_BOARDS[board]
  * @param {{k:string,label:string}[]} props.periods
  * @param {string} props.period          'WK' | 'MTD' | 'QTD' | 'YTD'
  * @param {Function} props.onPeriod
@@ -34,10 +40,11 @@ import { formatCurrency } from '../../../utils/formatters';
  * @param {object[]} props.podium       ranking entries 1–3
  * @param {object[]} props.rows         { type:'row', entry, pct, isYou } | { type:'gap', text } | { type:'unranked' }
  * @param {string|null} props.viewerUid
- * @param {object} props.you            { rank, of, api, movedNote }
+ * @param {object} props.you            { rank, of, value, movedNote }
  * @param {object|null} props.toPass    toPass()
  * @param {object[]} props.rankCols     rankColumns()
  * @param {object|null} props.share     shareOfScope()
+ * @param {'branch'|'unit'} [props.scope]
  * @param {string|null} props.updated
  * @param {React.ReactNode} [props.mobileYouBar]
  * @param {Function} [props.onOpenTrophies]
@@ -92,6 +99,52 @@ function PeriodRadios({ periods, period, onPeriod }) {
   );
 }
 
+// The board switch (D10, canvas v43): a radiogroup before the Period radios,
+// arrow keys move the choice. Phone: full width, three equal columns.
+function BoardRadios({ boards, board, onBoard, phone }) {
+  const refs = useRef([]);
+  const idx = boards.findIndex((b) => b.id === board);
+  const move = (to) => {
+    const next = (to + boards.length) % boards.length;
+    onBoard(boards[next].id);
+    refs.current[next]?.focus();
+  };
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); move(idx + 1); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); move(idx - 1); }
+  };
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Board"
+      className={`gap-0.5 rounded-xl bg-fr-sunk p-1 ${phone ? 'grid w-full grid-cols-3' : 'flex'}`}
+      data-testid="fr-leaderboard-boards"
+    >
+      {boards.map((b, i) => {
+        const on = b.id === board;
+        return (
+          <button
+            key={b.id}
+            ref={(el) => { refs.current[i] = el; }}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            tabIndex={on ? 0 : -1}
+            onKeyDown={onKeyDown}
+            onClick={() => onBoard(b.id)}
+            className={`${FOCUS} min-h-[44px] rounded-[9px] px-3.5 font-extrabold transition-colors ${phone ? 'text-[14px]' : 'min-w-[64px] text-[13px]'} ${
+              on ? 'bg-fr-accent text-fr-on-accent' : 'text-ink-muted hover:text-ink'
+            }`}
+            data-testid={`fr-leaderboard-board-${b.id}`}
+          >
+            {b.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function Champions({ champions, compact }) {
   return (
     // fr-fit-any-width: the strip follows the BOARD's width. Under 42rem (beside
@@ -128,11 +181,11 @@ const PODIUM_ORDER = [1, 0, 2];
 const PODIUM_LABEL = ['1st', '2nd', '3rd'];
 const BLOCK_H = ['h-[92px]', 'h-[66px]', 'h-[48px]'];
 
-function Podium({ podium, viewerUid, period, title }) {
+function Podium({ podium, viewerUid, period, title, config }) {
   return (
     <section aria-label="Podium" className={`${CARD} flex flex-col gap-2 overflow-hidden bg-fr-pane px-4 pt-4 sm:px-6`} data-testid="fr-leaderboard-podium">
       <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        <span className={`${EYEBROW} text-gold-ink`}>Top of the board · {period}</span>
+        <span className={`${EYEBROW} text-gold-ink`}>Top of the board · {period} · {config.label}</span>
         <h2 className="font-display text-[20px] font-extrabold leading-tight text-ink sm:text-[22px]">{title}</h2>
       </div>
       <div className="grid grid-cols-3 items-end gap-2 sm:gap-4">
@@ -148,9 +201,9 @@ function Podium({ podium, viewerUid, period, title }) {
                 {initialsOf(e.name)}
               </span>
               <span className="w-full truncate text-[14px] font-extrabold text-ink" title={e.name}>{e.name}</span>
-              <span className="w-full truncate text-[12px] text-ink-muted">{[e.unitName, `${e.apps ?? 0} apps`].filter(Boolean).join(' · ')}</span>
+              <span className="w-full truncate text-[12px] text-ink-muted">{[e.unitName, config.second(e)].filter(Boolean).join(' · ')}</span>
               <span className={`whitespace-nowrap font-display font-extrabold tabular-nums ${i === 0 ? 'text-[20px] text-gold-ink sm:text-[24px]' : 'text-[15px] text-ink sm:text-[18px]'}`}>
-                {formatCurrency(e.periodApi ?? 0)}
+                {config.format(e[config.metric])}
               </span>
               <span className={`mt-1 flex w-full justify-center rounded-t-[14px] pt-2 font-display text-[22px] font-extrabold text-ink-muted ${BLOCK_H[i]} ${i === 0 ? 'bg-fr-gold-tint' : 'bg-fr-sunk'}`}>
                 {PODIUM_LABEL[i]}
@@ -163,8 +216,13 @@ function Podium({ podium, viewerUid, period, title }) {
   );
 }
 
-function Row({ entry, pct, isYou, phone }) {
-  const api = formatCurrency(entry.periodApi ?? 0);
+// The desktop row grid. The second column holds a count (Apps) on two boards
+// and a TTD figure (Settled API) on the Apps board, so it widens there.
+const ROW_GRID = 'grid-cols-[44px_minmax(0,1fr)_64px_minmax(120px,240px)_120px]';
+const ROW_GRID_WIDE = 'grid-cols-[44px_minmax(0,1fr)_112px_minmax(120px,240px)_120px]';
+
+function Row({ entry, pct, isYou, phone, config }) {
+  const value = config.format(entry[config.metric]);
   const bar = (
     <span role="img" aria-label={`${Math.round(pct)}% of the leader`} className="block h-2.5 overflow-hidden rounded-full bg-fr-sunk">
       <span className="block h-full rounded-full bg-fr-accent fr-glide-w" style={{ width: `${pct}%` }} />
@@ -185,37 +243,37 @@ function Row({ entry, pct, isYou, phone }) {
         <div className="flex items-center gap-3">
           <span className="w-8 flex-none font-mono text-[14px] font-bold tabular-nums text-ink-muted">{entry.rank}</span>
           <span className="min-w-0 flex-1">{who}</span>
-          <span className="flex-none whitespace-nowrap text-[14px] font-extrabold tabular-nums text-ink">{api}</span>
+          <span className="flex-none whitespace-nowrap text-[14px] font-extrabold tabular-nums text-ink">{value}</span>
         </div>
         <div className="flex items-center gap-3 pl-11">
           <span className="min-w-0 flex-1">{bar}</span>
-          <span className="flex-none whitespace-nowrap text-[12px] tabular-nums text-ink-muted">{entry.apps ?? 0} apps</span>
+          <span className="flex-none whitespace-nowrap text-[12px] tabular-nums text-ink-muted">{config.second(entry)}</span>
         </div>
       </li>
     );
   }
   return (
     <li
-      className={`grid min-h-[52px] grid-cols-[44px_minmax(0,1fr)_64px_minmax(120px,240px)_120px] items-center gap-3 border-t border-border px-4 ${isYou ? 'bg-fr-accent-tint ring-2 ring-inset ring-primary' : ''}`}
+      className={`grid min-h-[52px] ${config.wideSecond ? ROW_GRID_WIDE : ROW_GRID} items-center gap-3 border-t border-border px-4 ${isYou ? 'bg-fr-accent-tint ring-2 ring-inset ring-primary' : ''}`}
       data-testid={`fr-leaderboard-row-${entry.rank}`}
       data-you={isYou ? 'true' : undefined}
     >
       <span className="font-mono text-[14px] font-bold tabular-nums text-ink-muted">{entry.rank}</span>
       {who}
-      <span className="text-right text-[13px] tabular-nums text-ink-muted">{entry.apps ?? 0}</span>
+      <span className="truncate whitespace-nowrap text-right text-[13px] tabular-nums text-ink-muted" title={config.second(entry)}>{config.secondShort(entry)}</span>
       {bar}
-      <span className="whitespace-nowrap text-right text-[14px] font-extrabold tabular-nums text-ink">{api}</span>
+      <span className="whitespace-nowrap text-right text-[14px] font-extrabold tabular-nums text-ink">{value}</span>
     </li>
   );
 }
 
-function EveryoneElse({ rows, phone }) {
+function EveryoneElse({ rows, phone, config }) {
   if (!rows.length) return null;
   return (
     <section aria-label="Everyone else" className={`${CARD} overflow-hidden`} data-testid="fr-leaderboard-rows">
       {phone ? null : (
-        <div className="grid h-10 grid-cols-[44px_minmax(0,1fr)_64px_minmax(120px,240px)_120px] items-center gap-3 bg-fr-sunk px-4 text-[12px] font-bold text-ink-muted" aria-hidden="true">
-          <span>Rank</span><span>Agent</span><span className="text-right">Apps</span><span>Against the leader</span><span className="text-right">API</span>
+        <div className={`grid h-10 ${config.wideSecond ? ROW_GRID_WIDE : ROW_GRID} items-center gap-3 bg-fr-sunk px-4 text-[12px] font-bold text-ink-muted`} aria-hidden="true">
+          <span>Rank</span><span>Agent</span><span className="text-right">{config.secondColumn}</span><span>Against the leader</span><span className="text-right">{config.column}</span>
         </div>
       )}
       <ol className="flex flex-col">
@@ -230,14 +288,14 @@ function EveryoneElse({ rows, phone }) {
               </li>
             );
           }
-          return <Row key={r.entry.agentId} entry={r.entry} pct={r.pct} isYou={r.isYou} phone={phone} />;
+          return <Row key={r.entry.agentId} entry={r.entry} pct={r.pct} isYou={r.isYou} phone={phone} config={config} />;
         })}
       </ol>
     </section>
   );
 }
 
-function YouBlock({ you, toPass, rankCols, share, period, asCard, onOpenTrophies, branchWide }) {
+function YouBlock({ you, toPass, rankCols, share, period, asCard, onOpenTrophies, branchWide, config, scope }) {
   const maxOf = Math.max(1, ...rankCols.map((c) => c.of || 0));
   const rankAria = rankCols.map((c) => `${c.label} ${c.rank == null ? 'not ranked' : `#${c.rank}`}`).join(', ');
   return (
@@ -262,7 +320,7 @@ function YouBlock({ you, toPass, rankCols, share, period, asCard, onOpenTrophies
           ) : (
             <span className="text-[14px] font-bold text-ink">of {you.of} agents</span>
           )}
-          <span className="whitespace-nowrap text-[13px] tabular-nums text-ink-muted">{formatCurrency(you.api ?? 0)} API</span>
+          <span className="whitespace-nowrap text-[13px] tabular-nums text-ink-muted" data-testid="fr-leaderboard-you-value">{config.format(you.value ?? 0)}{config.youSuffix}</span>
         </span>
       </div>
       {you.movedNote ? <p className="-mt-2 text-[12px] text-ink-muted" data-testid="fr-leaderboard-moved">{you.movedNote}</p> : null}
@@ -277,9 +335,9 @@ function YouBlock({ you, toPass, rankCols, share, period, asCard, onOpenTrophies
           ) : (
             <>
               <span className="text-[12px] font-bold text-ink-muted">{branchWide ? 'To pass the next agent in the branch' : 'To pass the next agent'}</span>
-              <span className="whitespace-nowrap font-display text-[24px] font-extrabold tabular-nums text-ink">{formatCurrency(toPass.gap)}</span>
+              <span className="whitespace-nowrap font-display text-[24px] font-extrabold tabular-nums text-ink">{config.format(toPass.gap)}</span>
               <span className="text-[13px] text-ink-muted">{toPass.aboveName ? `to pass ${toPass.aboveName} (#${toPass.aboveRank})` : `to pass #${toPass.aboveRank}`}</span>
-              <span role="img" aria-label={`You are at ${Math.round(toPass.pct)}% of #${toPass.aboveRank}'s API`} className="block h-3 overflow-hidden rounded-full bg-fr-sunk">
+              <span role="img" aria-label={`You are at ${Math.round(toPass.pct)}% of #${toPass.aboveRank}'s ${config.noun}`} className="block h-3 overflow-hidden rounded-full bg-fr-sunk">
                 <span className="block h-full rounded-full bg-fr-accent fr-glide-w" style={{ width: `${toPass.pct}%` }} />
               </span>
             </>
@@ -307,8 +365,8 @@ function YouBlock({ you, toPass, rankCols, share, period, asCard, onOpenTrophies
       {share ? (
         <div className="flex flex-col gap-3 rounded-[16px] border border-border bg-card p-3.5" data-testid="fr-leaderboard-share">
           <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[14px] font-bold text-ink">Your share {share.of}</span>
-            <span className="text-[13px] tabular-nums text-ink-muted">{formatCurrency(share.mine)} of {formatCurrency(share.total)}</span>
+            <span className="text-[14px] font-bold text-ink">{scope === 'unit' ? `Your share of the unit's ${config.noun}` : `Your share of branch ${config.noun}`}</span>
+            <span className="text-[13px] tabular-nums text-ink-muted">{config.format(share.mine)} of {config.format(share.total)}</span>
           </span>
           <Donut
             size={96}
@@ -318,7 +376,7 @@ function YouBlock({ you, toPass, rankCols, share, period, asCard, onOpenTrophies
               { key: 'rest', label: 'Everyone else', value: Math.max(0, share.total - share.mine) },
             ]}
             centerValue={share.pctLabel}
-            format={(v) => formatCurrency(v)}
+            format={config.format}
           />
         </div>
       ) : null}
@@ -332,7 +390,7 @@ function YouBlock({ you, toPass, rankCols, share, period, asCard, onOpenTrophies
   );
 }
 
-function StatusBlock({ status, errorCode, onRetry, periodWord }) {
+function StatusBlock({ status, errorCode, onRetry, periodWord, config }) {
   if (status === 'loading') {
     return (
       <section aria-label="Loading rankings" aria-busy="true" className={`${CARD} flex flex-col gap-3 p-5`} data-testid="fr-leaderboard-loading">
@@ -362,50 +420,54 @@ function StatusBlock({ status, errorCode, onRetry, periodWord }) {
   return (
     <section className="flex flex-col items-center gap-2 rounded-[20px] border border-dashed border-border bg-card px-5 py-10 text-center" data-testid="fr-leaderboard-empty">
       <BarChart3 size={28} aria-hidden="true" className="text-ink-muted" />
-      <strong className="text-[16px] text-ink">No production logged for {periodWord} yet</strong>
-      <span className="max-w-md text-[13px] text-ink-muted">
-        The board fills in from the API on submitted weekly reports. Try a different period to see year-to-date totals.
-      </span>
+      <strong className="text-[16px] text-ink">{config.emptyTitle(periodWord)}</strong>
+      <span className="max-w-md text-[13px] text-ink-muted">{config.emptyLine}</span>
     </section>
   );
 }
 
 export default function FrLeaderboardView(props) {
   const {
-    layout, status, errorCode, onRetry, periods, period, onPeriod, scopeControl, scopeLine, title, periodWord,
-    champions, podium, rows, viewerUid, you, toPass, rankCols, share, updated, mobileYouBar, onOpenTrophies,
+    layout, status, errorCode, onRetry, boards, board, onBoard, boardConfig: config,
+    periods, period, onPeriod, scopeControl, scopeLine, title, periodWord,
+    champions, podium, rows, viewerUid, you, toPass, rankCols, share, scope = 'branch', updated, mobileYouBar, onOpenTrophies,
     branchWide = false,
   } = props;
   if (!['desktop', 'tablet', 'phone'].includes(layout)) throw new Error(`FrLeaderboardView: unknown layout "${layout}"`);
   if (!['loading', 'error', 'empty', 'ready'].includes(status)) throw new Error(`FrLeaderboardView: unknown status "${status}"`);
+  if (!config) throw new Error('FrLeaderboardView: boardConfig is required');
   const phone = layout === 'phone';
   const ready = status === 'ready';
 
   const header = (
     <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2" data-testid="fr-leaderboard-header">
       <h1 className="font-display text-[20px] font-bold text-ink">Leaderboard</h1>
+      <BoardRadios boards={boards} board={board} onBoard={onBoard} phone={phone} />
       <PeriodRadios periods={periods} period={period} onPeriod={onPeriod} />
       {scopeControl}
       <span className="min-w-0 text-[13px] text-ink-muted" data-testid="fr-leaderboard-scope-line">{scopeLine}</span>
     </div>
   );
+  // D11: the board's footer, then the shared tail, then when it was updated.
   const footer = ready ? (
     <p className="text-[12px] text-ink-muted" data-testid="fr-leaderboard-footer">
-      Ranked by the API on submitted weekly reports in your branch. Test accounts are left out.
+      {`${config.footer} ${config.footerTail}`}
       {updated ? ` Updated ${updated}.` : ''}
     </p>
   ) : null;
   const youBlock = (asCard) => (
-    <YouBlock you={you} toPass={toPass} rankCols={rankCols} share={share} period={period} asCard={asCard} onOpenTrophies={onOpenTrophies} branchWide={branchWide} />
+    <YouBlock you={you} toPass={toPass} rankCols={rankCols} share={share} period={period} asCard={asCard} onOpenTrophies={onOpenTrophies} branchWide={branchWide} config={config} scope={scope} />
   );
+  const statusBlock = <StatusBlock status={status} errorCode={errorCode} onRetry={onRetry} periodWord={periodWord} config={config} />;
+  const podiumBlock = <Podium podium={podium} viewerUid={viewerUid} period={period} title={title} config={config} />;
 
   if (phone) {
     return (
-      <div className="flex min-w-0 flex-col gap-4 pb-24" data-testid="fr-leaderboard" data-layout="phone">
+      <div className="flex min-w-0 flex-col gap-4 pb-24" data-testid="fr-leaderboard" data-layout="phone" data-board={board}>
         {header}
         {ready ? youBlock(true) : null}
-        {ready ? <Podium podium={podium} viewerUid={viewerUid} period={period} title={title} /> : <StatusBlock status={status} errorCode={errorCode} onRetry={onRetry} periodWord={periodWord} />}
-        {ready ? <EveryoneElse rows={rows} phone /> : null}
+        {ready ? podiumBlock : statusBlock}
+        {ready ? <EveryoneElse rows={rows} phone config={config} /> : null}
         {footer}
         {status === 'error' ? null : <Champions champions={champions} compact />}
         {ready ? mobileYouBar : null}
@@ -413,25 +475,25 @@ export default function FrLeaderboardView(props) {
     );
   }
 
-  const board = (
+  const boardColumn = (
     <div className="@container/board flex min-w-0 flex-1 flex-col gap-[18px]">
       {status === 'error' ? null : <Champions champions={champions} />}
       {layout === 'tablet' && ready ? youBlock(true) : null}
-      {ready ? <Podium podium={podium} viewerUid={viewerUid} period={period} title={title} /> : <StatusBlock status={status} errorCode={errorCode} onRetry={onRetry} periodWord={periodWord} />}
-      {ready ? <EveryoneElse rows={rows} /> : null}
+      {ready ? podiumBlock : statusBlock}
+      {ready ? <EveryoneElse rows={rows} config={config} /> : null}
       {footer}
     </div>
   );
 
   return (
-    <div className="flex min-w-0 flex-col gap-4" data-testid="fr-leaderboard" data-layout={layout}>
+    <div className="flex min-w-0 flex-col gap-4" data-testid="fr-leaderboard" data-layout={layout} data-board={board}>
       {header}
       {layout === 'desktop' ? (
         <div className="flex min-w-0 items-start gap-5">
-          {board}
+          {boardColumn}
           {ready ? <div className="sticky top-4 w-[340px] flex-none">{youBlock(false)}</div> : null}
         </div>
-      ) : board}
+      ) : boardColumn}
     </div>
   );
 }

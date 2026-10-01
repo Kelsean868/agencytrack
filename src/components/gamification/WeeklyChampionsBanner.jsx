@@ -28,7 +28,18 @@ export function ChampionCard({ Icon, label, champion, medalClass, format }) {
   );
 }
 
-export default function WeeklyChampionsBanner({ champions, loading }) {
+// `activityUnit` — what Top Activity's value is. 'count' (default): the legacy
+// Leaderboard's client-side FFI + CI + apps count (utils/weeklyChampions.js).
+// 'points': the weeklyChampions doc, which stores points since FR Leaderboard
+// L-1 (brief D9); the Production Leaderboard passes this.
+const ACTIVITY_FORMAT = {
+  count: (v) => String(v),
+  points: (v) => `${Number(v).toLocaleString('en-TT')} ${Number(v) === 1 ? 'point' : 'points'}`,
+};
+
+export default function WeeklyChampionsBanner({ champions, loading, activityUnit = 'count' }) {
+  const formatActivity = ACTIVITY_FORMAT[activityUnit];
+  if (!formatActivity) throw new Error(`WeeklyChampionsBanner: unknown activityUnit "${activityUnit}"`);
   if (loading) {
     return (
       <div className="rounded-xl bg-primary/10 border border-primary/20 p-4 mb-4">
@@ -57,7 +68,7 @@ export default function WeeklyChampionsBanner({ champions, loading }) {
   const cards = [
     { Icon: Trophy,        label: 'Top API',      champion: topAPI,      medalClass: 'medal-1', format: (v) => formatCurrency(Math.round(v)) },
     { Icon: ClipboardList, label: 'Top Apps',     champion: topApps,     medalClass: 'medal-2', format: (v) => String(v) },
-    { Icon: Zap,           label: 'Top Activity', champion: topActivity, medalClass: 'medal-3', format: (v) => String(v) },
+    { Icon: Zap,           label: 'Top Activity', champion: topActivity, medalClass: 'medal-3', format: formatActivity },
   ];
 
   const hasAnyData = topAPI || topApps || topActivity;

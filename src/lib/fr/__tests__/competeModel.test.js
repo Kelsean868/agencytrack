@@ -100,6 +100,20 @@ describe('arenaStanding / arenaTiles', () => {
     const lead = arenaStanding(board, 'a');
     expect(arenaTiles(lead, 'ytd')[2]).toMatchObject({ value: null, note: 'You lead the branch' });
   });
+
+  it('not on the board says so without claiming what puts you there (L-2)', () => {
+    expect(arenaTiles(arenaStanding(board, 'me'), 'week')[0].note).toBe('Not on the board yet');
+  });
+
+  it('a metric measures value, the gap and the agent above in that metric; api stays API (L-2)', () => {
+    const pts = { week: [], mtd: [], qtd: [], ytd: [
+      { agentId: 'a', rank: 1, periodApi: 100, points: 900 },
+      { agentId: 'me', rank: 2, periodApi: 500, points: 650 },
+    ] };
+    expect(arenaStanding(pts, 'me', 'points').ytd).toMatchObject({ value: 650, gapUp: 250, aboveValue: 900, api: 500, aboveApi: 100 });
+    // Default metric is API, exactly as before.
+    expect(arenaStanding(pts, 'me').ytd).toMatchObject({ value: 500, gapUp: 0, aboveValue: 100 });
+  });
 });
 
 describe('meTiles', () => {

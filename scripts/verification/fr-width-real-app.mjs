@@ -5,7 +5,10 @@
  * a local STAGING build — signed in as the staging fixture agent, on every FR
  * agent route at 1024, 1280, 1366, 1440 and 390 px, light and dark.
  *
- * READ-ONLY. It only clicks navigation. Every Firestore WRITE channel and every
+ * READ-ONLY. It only clicks navigation, plus the Leaderboard's Board switch
+ * (FR Leaderboard L-2): on a screen that shows the switch, every board
+ * (Activity · API · Apps) is probed at every width and theme, and its findings
+ * are tagged "[Board]". The switch is screen state only. Every Firestore WRITE channel and every
  * Cloud Functions call is aborted at the network layer, so a screen that writes
  * on open cannot write. Sign-in (identitytoolkit / securetoken) and reads pass.
  *
@@ -151,6 +154,8 @@ const dismissed = [];
  * never changed or worked around.
  */
 const WIZARD = '[data-testid="wizard-v2-modal"]';
+// FR Leaderboard L-2 — the Board switch's radios (FrLeaderboardView BoardRadios).
+const BOARD_RADIO = '[data-testid^="fr-leaderboard-board-"]';
 async function closeDialogs(page, where) {
   for (let i = 0; i < 3; i += 1) {
     const open = await page.$$eval('[role="dialog"][aria-modal="true"]', (ds, wizard) => ds
@@ -278,22 +283,35 @@ try {
     let kind = 'page';
     let error = null;
     let cleanup = null;
+    let boardsSeen = null;
     try {
       await page.setViewportSize({ width: 1440, height: 900 });
       kind = await open(page, route);
       const root = kind === 'wizard' ? WIZARD : 'main#main-content';
-      for (const w of WIDTHS) {
-        await page.setViewportSize({ width: w, height: w < 768 ? 844 : 900 });
-        await settle(page, 400);
-        await closeDialogs(page, `${route.label} @ ${w}`);
-        for (const theme of ['light', 'dark']) {
-          await page.evaluate((dark) => document.documentElement.classList.toggle('dark', dark), theme === 'dark');
-          await settle(page, 150);
-          const found = await page.evaluate(`(${PROBE.toString()})(${JSON.stringify(root)})`);
-          for (const f of found) findings.push({ route: route.label, width: w, theme, ...f });
-          n += found.length;
-          mkdirSync(join(OUT, slug), { recursive: true });
-          await page.screenshot({ path: join(OUT, slug, `${w}-${theme}.png`) });
+      // L-2: a screen with the Board switch is probed once per board.
+      const boards = kind === 'wizard' ? [] : await page.$$eval(BOARD_RADIO, (els) => els.map((e) => ({
+        id: e.getAttribute('data-testid').replace('fr-leaderboard-board-', ''), label: e.textContent.trim(),
+      })));
+      if (boards.length) boardsSeen = boards.map((b) => b.label).join(' · ');
+      for (const board of boards.length ? boards : [null]) {
+        for (const w of WIDTHS) {
+          await page.setViewportSize({ width: w, height: w < 768 ? 844 : 900 });
+          await settle(page, 400);
+          await closeDialogs(page, `${route.label} @ ${w}`);
+          if (board) {
+            await page.click(`[data-testid="fr-leaderboard-board-${board.id}"]`);
+            await settle(page, 250);
+          }
+          for (const theme of ['light', 'dark']) {
+            await page.evaluate((dark) => document.documentElement.classList.toggle('dark', dark), theme === 'dark');
+            await settle(page, 150);
+            const found = await page.evaluate(`(${PROBE.toString()})(${JSON.stringify(root)})`);
+            const where = board ? `${route.label} [${board.label}]` : route.label;
+            for (const f of found) findings.push({ route: where, width: w, theme, ...f });
+            n += found.length;
+            mkdirSync(join(OUT, slug), { recursive: true });
+            await page.screenshot({ path: join(OUT, slug, `${board ? `${board.id}-` : ''}${w}-${theme}.png`) });
+          }
         }
       }
     } catch (e) {
@@ -311,7 +329,7 @@ try {
         cleanup = `shell NOT restored: ${shellLost}`;
       }
     }
-    const note = [kind === 'wizard' ? 'wizard probed as its own screen' : null, cleanup].filter(Boolean).join('; ') || null;
+    const note = [kind === 'wizard' ? 'wizard probed as its own screen' : null, boardsSeen ? `boards probed: ${boardsSeen}` : null, cleanup].filter(Boolean).join('; ') || null;
     visited.push({ route: route.label, findings: n, note, error });
     if (error) console.log(`FAIL ${route.label} · not checked — ${error}${note ? ` · ${note}` : ''}`);
     else console.log(`${n ? 'FIND' : 'OK  '} ${route.label} · ${n} findings${note ? ` · ${note}` : ''}`);
@@ -336,7 +354,7 @@ const md = [
   '',
   `Staging build served at a local port · signed in as the staging fixture agent · FR look · widths ${WIDTHS.join(', ')} · light + dark · read-only (${blocked.length} write/function requests aborted).`,
   '',
-  `**${rows.length} findings** on ${new Set(rows.map((r) => r.route)).size}/${visited.length} routes${failed.length ? ` · **${failed.length} route(s) NOT CHECKED**` : ''}. Screenshots are not committed.`,
+  `**${rows.length} findings** on ${new Set(rows.map((r) => r.route.replace(/ \[[^\]]*\]$/, ''))).size}/${visited.length} routes${failed.length ? ` · **${failed.length} route(s) NOT CHECKED**` : ''}. Screenshots are not committed.`,
   '',
   `| Route | ${WIDTHS.join(' | ')} |`,
   `|---|${WIDTHS.map(() => '---').join('|')}|`,
