@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { niceMax, tipAlign } from './scales';
+import { niceMax, tipAlign, highlightLabelClass } from './scales';
 
 /**
  * Columns — vertical bars (one series, optional "waiting" ghost stacked on
@@ -31,6 +31,7 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
+
 export default function Columns({ data = [], ...rest }) {
   if (!data || data.length === 0) {
     return <p className="py-6 text-[13px] text-ink-muted">No data yet</p>;
@@ -49,9 +50,10 @@ function ColumnsPlot({ data, target, targetLabel, height = 160, format = String,
   const toPx = (v) => round2(Math.min(height, Math.max(0, ((v || 0) / max) * height)));
   const anyHighlight = data.some((d) => d.highlight);
   const last = data.length - 1;
+  const hiLabel = highlightLabelClass(data.map((d) => format(d.value || 0)), data.findIndex((d) => d.highlight));
 
   return (
-    <div>
+    <div className="@container">
       <div className="pt-5">
         <div className="relative border-b border-border" style={{ height }}>
           {hasTarget ? (
@@ -98,7 +100,7 @@ function ColumnsPlot({ data, target, targetLabel, height = 160, format = String,
                     {d.highlight || i === last ? (
                       <span
                         aria-hidden="true"
-                        className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold tabular-nums text-ink"
+                        className={`absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold tabular-nums text-ink ${d.highlight && i !== last ? hiLabel : 'mb-1'}`}
                       >
                         {valueText}
                       </span>

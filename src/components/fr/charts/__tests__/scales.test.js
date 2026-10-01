@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { linearScale, niceMax, pct, pathFromPoints, pathLength, tipAlign, keyIndexes } from '../scales';
+import { linearScale, niceMax, pct, pathFromPoints, pathLength, tipAlign, keyIndexes, highlightLabelClass } from '../scales';
 
 describe('scales', () => {
   it('linearScale maps domain to range, inverted ranges too', () => {
@@ -49,5 +49,22 @@ describe('tipAlign / keyIndexes (phone-safe labels)', () => {
   it('keeps first, last, min and max', () => {
     expect([...keyIndexes([5, 9, 1, 4, 3])].sort()).toEqual([0, 1, 2, 4]);
     expect(keyIndexes([]).size).toBe(0);
+  });
+});
+
+describe('highlightLabelClass (fr-fit-any-width W-4: raise one label)', () => {
+  const twelve = Array.from({ length: 12 }, () => 'TTD 20,833');
+  it('never raises when nothing is highlighted or the highlight is the last bar', () => {
+    expect(highlightLabelClass(twelve, -1)).toBe('mb-1');
+    expect(highlightLabelClass(twelve, 11)).toBe('mb-1');
+  });
+  it('raises below a plot width that grows as the two labelled bars get closer', () => {
+    expect(highlightLabelClass(twelve, 9)).toBe('mb-5 @[28rem]:mb-1'); // two bars apart
+    expect(highlightLabelClass(twelve, 10)).toBe('mb-5 @[56rem]:mb-1'); // side by side
+    expect(highlightLabelClass(twelve, 2)).toBe('mb-5 @[16rem]:mb-1'); // far apart
+  });
+  it('stays raised at every width when no step is wide enough', () => {
+    const long = Array.from({ length: 24 }, () => 'TTD 1,234,567.89');
+    expect(highlightLabelClass(long, 22)).toBe('mb-5');
   });
 });
