@@ -199,12 +199,14 @@ export default function AgentReportView({
     { id: 'quarter', label: 'Quarter' },
     { id: 'ytd', label: 'Year' },
   ];
+  // fr-fit-any-width W-4: the tile grids follow the width their block HAS
+  // (beside the 360px column at lg), not the window — 4 across from 28rem.
   const windowsGrid = (
-    <div>
+    <div className="@container">
       <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted mb-2.5">
         Production · week → year
       </p>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5" data-testid="agent-report-windows">
+      <div className="grid grid-cols-2 @[28rem]:grid-cols-4 gap-2.5" data-testid="agent-report-windows">
         {WINDOWS.map((p) => {
           const t = model.windows[p.id];
           const active = p.id === model.activePeriod;
@@ -238,11 +240,11 @@ export default function AgentReportView({
     { key: 'names', label: 'New Names' },
   ];
   const activityCard = (
-    <div className="card">
+    <div className="@container card">
       <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted mb-3">
         Activity · {WINDOWS.find((w) => w.id === model.activePeriod)?.label}
       </p>
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5" data-testid="agent-report-activity">
+      <div className="grid grid-cols-3 @[28rem]:grid-cols-4 gap-2.5" data-testid="agent-report-activity">
         {ACTIVITY_TILES.map((tile) => (
           <div key={tile.key} className="rounded-xl p-3 border border-border bg-surface-raised">
             <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">

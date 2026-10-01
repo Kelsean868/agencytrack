@@ -264,12 +264,13 @@ export default function AgentProductionView({ onDownloadPDF, generating = false 
       </div>
       {/* @@hero-pane-end */}
 
-      {/* 4-window period grid */}
-      <div>
+      {/* 4-window period grid — 4 across when the block has 28rem, else 2
+          (fr-fit-any-width W-4: on a phone the TTD figures were crushed). */}
+      <div className="@container">
         <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted mb-2.5">
           What I did · week → year
         </p>
-        <div className="grid grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5 @[28rem]:grid-cols-4">
           {PERIOD_DISPLAY.map(p => {
             const t = periodTotals[p.id];
             const active = p.id === period;
