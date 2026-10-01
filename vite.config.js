@@ -28,6 +28,9 @@ const stubPath = resolve(__dirname, 'src/__mocks__/firebase.js')
 const firebaseTestStubPlugin = {
   name: 'firebase-test-stub',
   enforce: 'pre',
+  // The FR harness opt-in is for the dev server ONLY: even with
+  // FR_HARNESS_STUB_FIREBASE=1 set, `vite build` never gets the stub.
+  apply: (_config, { command }) => isTest || command === 'serve',
   resolveId(source) {
     if (/\/firebase$/.test(source)) return stubPath
     return null

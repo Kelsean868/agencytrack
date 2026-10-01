@@ -12,6 +12,7 @@ import { deriveAwardLens } from '../../../../lib/ledgerProduction';
 import { awardLensSummary } from '../../../../lib/awardLensView';
 import { sortRows, footerCounts, DEFAULT_SORT_KEY, builtInViews } from '../../../../lib/ledgerFilters';
 import { formatCurrency } from '../../../../utils/formatters';
+import { applyLedgerFilter } from '../../../../lib/policyLedgerDerivation';
 
 /**
  * fr-fit-any-width W-1 — the Policy ledger list page (the FR `policy-ledger`
@@ -80,7 +81,11 @@ function LedgerScene({ initial }) {
     [selected, campaign, tier],
   );
   const summary = useMemo(() => awardLensSummary(lens, { today: TODAY }), [lens]);
-  const rows = useMemo(() => sortRows(lens.rows, DEFAULT_SORT_KEY), [lens]);
+  // The page's one search (header on desktop), through the ledger's own predicate.
+  const rows = useMemo(() => {
+    const visible = new Set(applyLedgerFilter(POLICIES, { search }).map((p) => p.id));
+    return sortRows(lens.rows.filter((r) => visible.has(r.policy.id)), DEFAULT_SORT_KEY);
+  }, [lens, search]);
   const ids = useMemo(() => new Set(rows.map((r) => r.policy.id)), [rows]);
   const footer = footerCounts(rows);
   const views = builtInViews({ hasCampaign: true, campaignLabel: 'Christmas campaign' });
