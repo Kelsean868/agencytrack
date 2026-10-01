@@ -2183,3 +2183,29 @@ Three PRs, all work. #1036 (`ee1e4bcd`): clears the root npm audit highs (`@grpc
 Kyron's rulings of 30-09-2026: 1A - a producing manager keeps the own-policy path (Arm B); 2B - hide head-office policies on the Lapse tab (follow-up PR open, FOLLOW_UPS § Lapse tab: hide head-office policies (after F-4)).
 
 **Next:** the 2B Lapse-tab UI PR (human-merge); then the queue is clear for `docs/briefs/fr-round2-followups.md`.
+
+## Archived from CONTEXT.md - 2026-10-01 post-merge fill (PR #1045)
+
+### Last updated - entry 3
+
+**Lapse-tab hide SHIPPED (2026-09-30); #1037 (Rule 16(b) class: work).** #1037 `41d70588` (merged `2026-09-30T20:49:31Z`; feature HEAD before squash `4655c073`): the Policy reconciliation Lapse tab leaves out every policy whose status came from head office (`isFromHeadOffice`), shows an aria-live count line, and the empty state reads accurately (Kyron ruling 2B, 30-09-2026). UI only (`src/`); no rules, service, functions or index change. **Deploy:** none needed; the deploy-gated trigger is empty. **The `docs/briefs/fr-round2-followups.md` queue is now clear.** Ledger: #1037 `41d70588` work.
+
+### Current main HEAD - entry 3
+
+`41d70588` (PR #1037 squash - Lapse tab hides head-office policies; the last work squash of the FR round 2 follow-ups brief). Merged `2026-09-30T20:49:31Z`. **Deploy-gated trigger: empty.** `git diff --stat 1c1f8979..41d70588 -- firestore.rules firestore.indexes.json storage.rules functions/` printed nothing; no deploy needed.
+
+### Active track - entry 3
+
+**(queue clear)** for `docs/briefs/fr-round2-followups.md`: #1037 (2B Lapse-tab hide) was its last slice. What is next is tracked in `docs/FOLLOW_UPS.md`. Everything FR still sits behind the per-user agent opt-in; flipping FR to the default stays out of scope (brief FR-D12).
+
+### Recently shipped row (dropped when #1045 became the 6th row)
+
+| [#1029](https://github.com/Kelsean868/agencytrack/pull/1029), [#1032](https://github.com/Kelsean868/agencytrack/pull/1032), [#1033](https://github.com/Kelsean868/agencytrack/pull/1033) | `e00ce083` · `84241454` · `46a284b9` | **FR round 2b.** F-1 (#1032 `e00ce083`): `lapsePolicy` stamps `statusSource` / `statusSetBy` / `statusAsOf` so the lapse write passes `firestore.rules` Arm D (no rules change). F-2 (#1033 `84241454`): Career level years of service from `contractStartDate`, API through `extractFields` (thresholds unchanged). R2-3b (#1029 `46a284b9`): the Goal Decomposition tab loads saved playground settings back (defaults, saved, Money needs hand-off once, history ratios only where nothing is saved), pre-tax flag saved with them. No deploy needed. |
+
+### Where we left off - PRIOR block (oldest)
+
+**PRIOR - 2026-09-30. Lapse-tab hide merged: #1037 (squash `41d70588`, merged `2026-09-30T20:49:31Z`).**
+
+One PR, work, UI only. The Policy reconciliation Lapse tab now leaves out every policy whose status came from head office (`isFromHeadOffice`), shows an aria-live count of how many are not shown, and the empty state reads accurately when only head-office policies exist (Kyron ruling 2B, 30-09-2026). No rules, service, functions or index change; the deploy-gated trigger is empty, so no deploy is needed.
+
+**Next:** the `docs/briefs/fr-round2-followups.md` queue is clear. What is next is in `docs/FOLLOW_UPS.md`.
