@@ -1380,7 +1380,9 @@ export default function AgentPlannerPanel({
   return (
     <div className={`${isDesktop ? 'max-w-none' : 'max-w-3xl mx-auto'} px-4 py-6 screen-enter`}>
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-4">
+      {/* Wraps (v3 rule 7, fr-fit-any-width W-4): on a 390 phone the actions
+          move under the title instead of widening the page. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-4">
         <div className="flex items-center gap-2">
           <CalendarClock size={20} className="text-primary" aria-hidden="true" />
           <h1 className="text-lg font-bold text-ink">Planner</h1>
