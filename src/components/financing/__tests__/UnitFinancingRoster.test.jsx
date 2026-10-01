@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
   authValue: { role: 'unit_manager', tenantId: 't1' },
@@ -230,13 +230,42 @@ describe('UnitFinancingRoster', () => {
   // (CodeRabbit #775 Major: day-aware elapsed+1 lagged the convention by one when
   // today's day-of-month precedes the effectiveDate's day-of-month).
   describe('1-based draw-month chip (roster == shipped MONTH-n convention)', () => {
+    // Freeze the clock so the suite never depends on the wall time. Only `Date`
+    // is faked — findBy*/waitFor still need real setTimeout. The instant is
+    // mid-month and mid-day so UTC and Trinidad (UTC-4) agree on the month.
+    const FIXED_NOW = new Date('2026-06-15T16:00:00Z');
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(FIXED_NOW);
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     const pad = (n) => String(n).padStart(2, '0');
-    // effectiveDate N calendar months back on the given day-of-month.
+    // effectiveDate N calendar months back on the given day-of-month, counted
+    // from TODAY IN TRINIDAD — the same clock the component reads via
+    // getTodayTT(). Counting from the UTC month made the expected value and the
+    // fixture disagree between 00:00 and 04:00 UTC on the 1st of every month.
     const effMonthsBack = (n, day = 1) => {
-      const now = new Date();
-      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - n, 1));
+      const [y, m] = getTodayTT().split('-').map(Number);
+      const d = new Date(Date.UTC(y, m - 1 - n, 1));
       return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(day)}`;
     };
+
+    it('uses the Trinidad month at 00:15 UTC on the 1st (2026-10-01 is still 30 Sep in TT)', async () => {
+      // CI run 36794690884 failed at exactly this instant: the UTC month was
+      // October, the TT month (which the component uses) was still September.
+      vi.setSystemTime(new Date('2026-10-01T00:15:00Z'));
+      expect(getTodayTT()).toBe('2026-09-30');
+      const eff = effMonthsBack(6);
+      expect(eff).toBe('2026-03-01');
+      expect(financingMonthIndex(eff, monthKeyFromDate(getTodayTT()))).toBe(7);
+      mockUnit([MISS_AGENT], { a1: MISS_LEDGER }, { a1: TERMS({ effectiveDate: eff }) });
+      render(<UnitFinancingRoster tenantId="t1" />);
+      const chip = await screen.findByTestId('unit-financing-term-a1');
+      expect(chip).toHaveTextContent('Fin. month 7 / 12');
+    });
 
     it('renders the SAME month N as the shipped 1-based convention for the same effectiveDate', async () => {
       const eff = effMonthsBack(6); // K10a-seed shape → 1-based month 7
