@@ -200,6 +200,37 @@ async function leaveWizard(page) {
   return 'still open after Close — page reloaded';
 }
 
+const SIDEBAR = '[data-testid="fr-sidebar"]';
+const shown = (page, sel) => page.locator(sel).first().isVisible().catch(() => false);
+
+/**
+ * Put the signed-in shell back after a route, whether its probes passed or
+ * threw: the next route needs the sidebar. At 1440 wide (below 768 the
+ * sidebar is hidden by design), leave the wizard with its own Close button;
+ * if the sidebar is still missing, reload and confirm it is back. Returns
+ * what it had to do (null when nothing), for the report. Throws only when
+ * even a reload cannot bring the sidebar back.
+ */
+async function restoreShell(page) {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await settle(page, 200);
+  const steps = [];
+  if (await shown(page, WIZARD)) {
+    try {
+      steps.push(`wizard ${await leaveWizard(page)}`);
+    } catch (e) {
+      steps.push(`wizard Close failed (${String(e.message || e).split('\n')[0].slice(0, 80)})`);
+    }
+  }
+  if (!(await shown(page, SIDEBAR)) || (await shown(page, WIZARD))) {
+    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector(SIDEBAR, { timeout: 20_000 });
+    await closeDialogs(page, 'after reload');
+    steps.push('page reloaded, sidebar back');
+  }
+  return steps.length ? steps.join('; ') : null;
+}
+
 if (GUARD_ONLY) {
   try {
     const g = await bundleGuard();
@@ -235,12 +266,21 @@ try {
   await closeDialogs(page, 'after sign-in');
   const routes = await collectRoutes(page);
   console.log(`${routes.length} routes`);
+  let shellLost = null; // set when even a reload could not bring the sidebar back
   for (const route of routes) {
+    if (shellLost) {
+      visited.push({ route: route.label, findings: 0, error: `not reached — ${shellLost}` });
+      console.log(`FAIL ${route.label} · not checked — ${shellLost}`);
+      continue;
+    }
     const slug = route.label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     let n = 0;
+    let kind = 'page';
+    let error = null;
+    let cleanup = null;
     try {
       await page.setViewportSize({ width: 1440, height: 900 });
-      const kind = await open(page, route);
+      kind = await open(page, route);
       const root = kind === 'wizard' ? WIZARD : 'main#main-content';
       for (const w of WIDTHS) {
         await page.setViewportSize({ width: w, height: w < 768 ? 844 : 900 });
@@ -256,16 +296,25 @@ try {
           await page.screenshot({ path: join(OUT, slug, `${w}-${theme}.png`) });
         }
       }
-      const note = kind === 'wizard' ? `wizard probed as its own screen; ${await leaveWizard(page)}` : null;
-      visited.push({ route: route.label, findings: n, note });
-      console.log(`${n ? 'FIND' : 'OK  '} ${route.label} · ${n} findings${note ? ` · ${note}` : ''}`);
     } catch (e) {
       // One route failing (a stuck overlay, a slow screen) must not lose the
       // rest of the sweep; it is reported as NOT CHECKED, never as clean.
-      const reason = String(e.message || e).split('\n')[0].slice(0, 160);
-      visited.push({ route: route.label, findings: n, error: reason });
-      console.log(`FAIL ${route.label} · not checked — ${reason}`);
+      error = String(e.message || e).split('\n')[0].slice(0, 160);
+    } finally {
+      // Runs after success AND failure: a failed wizard probe must not leave
+      // the wizard covering the shell for every later route. The route's
+      // own error (above) is kept; the cleanup outcome is added as a note.
+      try {
+        cleanup = await restoreShell(page);
+      } catch (e) {
+        shellLost = `the sidebar did not come back after "${route.label}" (${String(e.message || e).split('\n')[0].slice(0, 80)})`;
+        cleanup = `shell NOT restored: ${shellLost}`;
+      }
     }
+    const note = [kind === 'wizard' ? 'wizard probed as its own screen' : null, cleanup].filter(Boolean).join('; ') || null;
+    visited.push({ route: route.label, findings: n, note, error });
+    if (error) console.log(`FAIL ${route.label} · not checked — ${error}${note ? ` · ${note}` : ''}`);
+    else console.log(`${n ? 'FIND' : 'OK  '} ${route.label} · ${n} findings${note ? ` · ${note}` : ''}`);
   }
   await context.close();
 } finally {
