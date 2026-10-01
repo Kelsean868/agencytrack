@@ -195,26 +195,31 @@ function HeadersScene({ variant }) {
 // ranking, scope, around-me, standing); the View is pure. Each board ranks a
 // different order: the viewer ("[You]") is #11 on API (around-me cluster and
 // "+N agents" gap row), #2 on Activity (podium) and #9 on Apps (cluster, an
-// apps tie broken by API). Variant B keeps the API order with different
-// ratios so the bars glide. Names are placeholders.
+// apps tie broken by API). Variant B keeps every board's order (and ties) with
+// different ratios so the bars glide on each board. Names are placeholders.
 const LB_NAMES = ['[Agent A]', '[Agent B]', '[Agent C]', '[Agent D]', '[Agent E]', '[Agent F]', '[Agent G]', '[Agent H]', '[Agent I]', '[Agent J]', '[You]', '[Agent L]'];
 const LB_BASE = [812400, 640150, 522900, 410300, 355000, 301200, 262750, 214000, 190500, 150200, 128600, 90400];
 // Same order, different ratios, so the bars (share of the leader, to pass) move.
 const LB_BASE_B = [850000, 700000, 610000, 300000, 260000, 225000, 200000, 150000, 130000, 115000, 108000, 95000];
 const LB_POINTS = [5200, 6100, 4300, 7400, 2800, 8100, 3100, 6900, 4600, 1900, 7900, 2400];
 const LB_APPS = [9, 7, 8, 5, 6, 4, 6, 3, 5, 2, 4, 1];
+// Variant B for the other two boards: same order and the same ties, different ratios.
+const LB_POINTS_B = [2600, 2800, 1800, 3000, 600, 9000, 1000, 2900, 2000, 300, 8800, 400];
+const LB_APPS_B = [12, 9, 10, 6, 8, 5, 8, 4, 6, 3, 5, 2];
+const LB_A = { api: LB_BASE, points: LB_POINTS, apps: LB_APPS };
+const LB_B = { api: LB_BASE_B, points: LB_POINTS_B, apps: LB_APPS_B };
 // Per-period scale: [API, points, apps].
 const LB_SCALE = { week: [0.02, 0.04, 0.25], mtd: [0.1, 0.15, 0.4], qtd: [0.3, 0.4, 0.7], ytd: [1, 1, 1] };
-function lbRanking(period, base) {
+function lbRanking(period, data) {
   const [api, pts, apps] = LB_SCALE[period];
   return LB_NAMES.map((name, i) => ({
     agentId: name === '[You]' ? 'me' : `a${i}`,
     name,
     unitId: i % 2 ? 'u2' : 'u1',
     unitName: i % 2 ? 'Coastal Unit' : 'South Unit',
-    periodApi: Math.round(base[i] * api),
-    apps: Math.round(LB_APPS[i] * apps),
-    points: Math.round(LB_POINTS[i] * pts),
+    periodApi: Math.round(data.api[i] * api),
+    apps: Math.round(data.apps[i] * apps),
+    points: Math.round(data.points[i] * pts),
     previousRanks: period === 'week'
       ? (name === '[You]' ? { activity: 4, api: 12, apps: 10 } : { activity: i + 1, api: i + 1, apps: i + 1 })
       : null,
@@ -234,13 +239,13 @@ function LeaderboardScene({ variant, status = 'ready', initialBoard = DEFAULT_BO
   const layout = !wide ? 'phone' : desktop ? 'desktop' : 'tablet';
   const [period, setPeriod] = React.useState('YTD');
   const [board, setBoard] = React.useState(initialBoard);
-  const base = variant === 'B' ? LB_BASE_B : LB_BASE;
+  const data = variant === 'B' ? LB_B : LB_A;
   const byPeriod = useMemo(() => ({
-    week: lbRanking('week', base),
-    mtd: lbRanking('mtd', base),
-    qtd: lbRanking('qtd', base),
-    ytd: lbRanking('ytd', base),
-  }), [base]);
+    week: lbRanking('week', data),
+    mtd: lbRanking('mtd', data),
+    qtd: lbRanking('qtd', data),
+    ytd: lbRanking('ytd', data),
+  }), [data]);
   const field = LEADERBOARD_PERIODS.find((p) => p.k === period).field;
   const view = boardView({ byPeriod, activeField: field, board, scope: 'branch', targetUnitId: null, viewerUid: 'me', phone: layout === 'phone' });
   const periodWord = (ARENA_PERIODS.find((p) => p.id === field)?.label ?? 'this year').toLowerCase();
