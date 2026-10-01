@@ -106,8 +106,8 @@ export default function Donut({
             <span className="min-w-0 truncate text-ink-muted" title={a.label}>
               {a.label}
             </span>
-            <span className="flex-none font-semibold tabular-nums text-ink">{format(a.value)}</span>
-            <span className="w-10 flex-none text-right tabular-nums text-ink-muted">{Math.round(a.share)}%</span>
+            <span className="whitespace-nowrap font-semibold tabular-nums text-ink">{format(a.value)}</span>
+            <span className="w-10 whitespace-nowrap text-right tabular-nums text-ink-muted">{Math.round(a.share)}%</span>
           </li>
         ))}
       </ul>
