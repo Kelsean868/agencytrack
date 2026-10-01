@@ -613,10 +613,10 @@ export const CONFIG_SECTIONS = {
           {
             id: 'dat.pii',
             label: 'Client PII on leaderboards',
-            desc: 'Verified against the actual leaderboard-write shape: computeAndWriteLeaderboards only ever writes agentId, name, unitId, unitName, periodApi, apps, rank, rankWithinUnit, previousRank. No phone/email/address/SSN field is written.',
+            desc: 'Verified against the actual leaderboard-write shape: computeAndWriteLeaderboards only ever writes agentId, name, unitId, unitName, periodApi, apps, points, rank, rankWithinUnit, previousRank, previousRanks per entry, plus the doc-level computedAt, sources and skippedNoBranch. periodApi and apps are per-agent totals from the policy ledger; no policy, client name or policy number is copied. No phone/email/address/SSN field is written.',
             lock: 'platform',
             value: 'NEVER',
-            source: 'functions/leaderboard/leaderboardAggregate.js:356-366',
+            source: 'functions/leaderboard/boardMetrics.js:222-234',
           },
           {
             id: 'dat.audit',

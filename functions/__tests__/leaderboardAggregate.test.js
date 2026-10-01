@@ -10,6 +10,7 @@
 
 const firestoreData = {}; // path → array of docs (for collection queries)
 const firestoreDocs = {}; // doc-path → data (for db.doc().get())
+const queryLog = [];      // every collection query run: { path, filters }
 
 const mockBatch = {
   ops: [],
@@ -23,6 +24,7 @@ function makeQuery(collectionPath) {
     _filters: [],
     where(field, op, value) { this._filters.push({ field, op, value }); return this; },
     async get() {
+      queryLog.push({ path: this._path, filters: [...this._filters] });
       const all = firestoreData[this._path] || [];
       const filtered = all.filter((d) =>
         this._filters.every((f) => {
@@ -30,7 +32,8 @@ function makeQuery(collectionPath) {
           if (f.op === '==') return v === f.value;
           if (f.op === '>=') return v >= f.value;
           if (f.op === '<=') return v <= f.value;
-          return true;
+          if (f.op === 'in') return f.value.includes(v);
+          throw new Error(`mock: unsupported op ${f.op}`);
         })
       );
       return { docs: filtered.map((d) => ({ id: d.id, data: () => d })) };
@@ -41,6 +44,7 @@ function makeQuery(collectionPath) {
 const mockFirestore = () => ({
   collection: (path) => makeQuery(path),
   doc:        (path) => ({
+    path,
     async get() { return { exists: !!firestoreDocs[path], data: () => firestoreDocs[path] }; },
     async set(data) { firestoreDocs[path] = data; },
   }),
@@ -72,7 +76,19 @@ jest.mock('firebase-functions/v1', () => ({
 
 const { _internals, recomputeLeaderboardOnDemand } =
   require('../leaderboard/leaderboardAggregate');
-const { groupByBranch, buildLeaderboardDoc, computeAndWriteLeaderboards } = _internals;
+const {
+  isParticipant,
+  groupByBranch,
+  buildLeaderboardDoc,
+  computeAndWriteLeaderboards,
+  priorWeekStartingString,
+} = _internals;
+const { ledgerCreditsByAgent, weekPointsByAgent } = require('../leaderboard/boardMetrics');
+
+const ctxOf = ({ policies = [], submissions = [], dailies = new Map() } = {}) => ({
+  creditsByAgent: ledgerCreditsByAgent(policies),
+  weekPointsByAgent: weekPointsByAgent(submissions, dailies),
+});
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -102,10 +118,32 @@ function mkTestAgent(id, name, branchId, unitId = null) {
   return { id, role: 'agent', name, branchId, unitId, provisioning: false, isTestAccount: true };
 }
 
+// L-1: API + Apps come from settled ledger policies (D2/D3).
+function mkPolicy(id, agentId, dateIssued, api, extra = {}) {
+  return {
+    id, agentId, dateIssued,
+    status: 'settled', productLine: 'life', newBusinessType: 'nb_ordinary', settledAPI: api,
+    ...extra,
+  };
+}
+
+// L-1: a daily entry (points for weeks with no submitted report, D5 ruling).
+function mkDay(date, weekStarting, fields = {}) {
+  return { date, weekStarting, ...fields };
+}
+
+function resetStore() {
+  for (const k of Object.keys(firestoreData)) delete firestoreData[k];
+  for (const k of Object.keys(firestoreDocs)) delete firestoreDocs[k];
+  queryLog.length = 0;
+  mockBatch.ops = [];
+}
+
 // REF inside current calendar year — use a Sunday in the current quarter.
 // Use a fixed REF for determinism.
 const REF = new Date('2026-05-15T10:00:00Z');
 const WK_SUN = '2026-05-10';
+const PREV_WK_SUN = '2026-05-03';
 
 // ── groupByBranch ────────────────────────────────────────────────────────────
 
@@ -197,6 +235,19 @@ describe('groupByBranch', () => {
     expect(skippedNoBranch.agentIds).toEqual([]); // no agentId to record
   });
 
+  test('D8: a deactivated user (active === false) is not a participant; active absent/true is', () => {
+    const users = [
+      mkAgent('on', 'On', 'south'),
+      { ...mkAgent('off', 'Off', 'south'), active: false },
+      { ...mkAgent('yes', 'Yes', 'south'), active: true },
+    ];
+    const subs = [mkSub('s1', 'on', WK_SUN, 1), mkSub('s2', 'off', WK_SUN, 1)];
+    const { byBranch, skippedNoBranch } = groupByBranch(subs, users);
+    expect(byBranch.get('south').users.map((u) => u.id).sort()).toEqual(['on', 'yes']);
+    expect(skippedNoBranch.agentIds).toEqual(['off']);
+    expect(isParticipant({ ...mkAgent('x', 'X', 'south'), active: false })).toBe(false);
+  });
+
   test('empty inputs produce empty map + zero skip', () => {
     const { byBranch, skippedNoBranch } = groupByBranch([], []);
     expect(byBranch.size).toBe(0);
@@ -220,80 +271,74 @@ describe('groupByBranch', () => {
 });
 
 // ── buildLeaderboardDoc ──────────────────────────────────────────────────────
+//
+// L-1: API + Apps from the ledger, points from activity. The decision-level
+// math is covered in boardMetrics.test.js; these pin the doc shape.
 
 describe('buildLeaderboardDoc', () => {
-  test('returns { week, mtd, qtd, ytd, computedAt }', () => {
+  test('returns { computedAt, sources, week, mtd, qtd, ytd }', () => {
     const users = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkUM('u1', 'UM', 'south')];
-    const subs  = [mkSub('s1', 'a1', WK_SUN, 100)];
-    const doc = buildLeaderboardDoc(subs, users, REF);
-    expect(Object.keys(doc).sort()).toEqual(['computedAt', 'mtd', 'qtd', 'week', 'ytd']);
+    const doc = buildLeaderboardDoc(users, REF, ctxOf());
+    expect(Object.keys(doc).sort()).toEqual(['computedAt', 'mtd', 'qtd', 'sources', 'week', 'ytd']);
     expect(doc.computedAt).toBe('<serverTimestamp>');
+    expect(doc.sources).toEqual({ api: 'ledger', apps: 'ledger', points: 'activity' });
   });
 
-  test('each period entry has the consumer shape (P5-prep adds unitId + previousRank)', () => {
+  test('each period entry has the consumer shape (L-1 adds points + previousRanks)', () => {
     const users = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkUM('u1', 'UM', 'south')];
-    const subs  = [mkSub('s1', 'a1', WK_SUN, 100)];
-    const doc = buildLeaderboardDoc(subs, users, REF);
+    const ctx = ctxOf({
+      policies: [mkPolicy('p1', 'a1', '2026-05-11', 100)],
+      dailies: new Map([['a1', [mkDay('2026-05-11', WK_SUN, { ciConducted: 1 })]]]),
+    });
+    const doc = buildLeaderboardDoc(users, REF, ctx);
     expect(doc.week[0]).toEqual({
       agentId:        'a1',
       name:           'Alpha',
-      unitId:         'u1',                // P5-prep: passthrough
+      unitId:         'u1',
       unitName:       'Unit u1',
       periodApi:      100,
       apps:           1,
+      points:         10,
       rank:           1,
       rankWithinUnit: 1,
-      previousRank:   null,                // P5-prep: week-only; null when no prior-rank map supplied
+      previousRank:   1,
+      previousRanks:  { activity: 1, api: 1, apps: 1 }, // prior week all 0: name decides (Alpha < UM)
     });
+    expect(doc.ytd[0]).toMatchObject({ previousRank: null, previousRanks: null });
   });
 
-  test('agents with no production in period still appear (rank N, periodApi=0)', () => {
-    const users = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkAgent('a2', 'Beta',  'south', 'u1'),
-    ];
-    const subs  = [mkSub('s1', 'a1', WK_SUN, 500)];
-    const doc = buildLeaderboardDoc(subs, users, REF);
+  test('participants with no production in period still appear (rank N, periodApi=0)', () => {
+    const users = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkAgent('a2', 'Beta', 'south', 'u1')];
+    const doc = buildLeaderboardDoc(users, REF, ctxOf({ policies: [mkPolicy('p1', 'a1', '2026-05-11', 500)] }));
     const a2 = doc.week.find((e) => e.agentId === 'a2');
-    expect(a2.periodApi).toBe(0);
-    expect(a2.rank).toBe(2);
+    expect(a2).toMatchObject({ periodApi: 0, apps: 0, points: 0, rank: 2 });
   });
 
   test('unitName falls back to null when agent has no unitId', () => {
-    const users = [mkAgent('a1', 'Solo', 'south', null)];
-    const subs  = [mkSub('s1', 'a1', WK_SUN, 100)];
-    const doc = buildLeaderboardDoc(subs, users, REF);
+    const doc = buildLeaderboardDoc([mkAgent('a1', 'Solo', 'south', null)], REF, ctxOf());
     expect(doc.week[0].unitName).toBeNull();
+    expect(doc.week[0].unitId).toBeNull();
   });
 
-  test('UM IS always ranked (role-gated, no flag needed); unitName resolves; UM submissions count for UM only', () => {
-    // Phase 1: inclusion is role-gated. UMs always appear alongside agents.
-    // A submission attributed to the UM uid is credited to the UM.
+  test('UM is always ranked; its own policies count for the UM only; unitName resolves', () => {
     const users = [
       mkAgent('a1', 'Alpha', 'south', 'u1'),
       mkAgent('a2', 'Beta',  'south', 'u1'),
       mkUM('u1', 'UM South', 'south'),
     ];
-    const subs = [
-      mkSub('s1',  'a1', WK_SUN, 100),
-      mkSub('s2',  'a2', WK_SUN, 200),
-      mkSub('sUM', 'u1', WK_SUN, 9999), // UM submission — credited to UM, not agents
-    ];
-    const doc = buildLeaderboardDoc(subs, users, REF);
-
-    // Assertion 1: UM IS ranked (always, by role) and its submission counted
+    const ctx = ctxOf({
+      policies: [
+        mkPolicy('p1', 'a1', '2026-05-11', 100),
+        mkPolicy('p2', 'a2', '2026-05-11', 200),
+        mkPolicy('pUM', 'u1', '2026-05-11', 9999),
+      ],
+    });
+    const doc = buildLeaderboardDoc(users, REF, ctx);
     for (const periodKey of ['week', 'mtd', 'qtd', 'ytd']) {
-      const ids = doc[periodKey].map((e) => e.agentId);
-      expect(ids).toContain('u1');
-      expect(ids.sort()).toEqual(['a1', 'a2', 'u1']);
+      expect(doc[periodKey].map((e) => e.agentId).sort()).toEqual(['a1', 'a2', 'u1']);
     }
     expect(doc.week.find((e) => e.agentId === 'u1').periodApi).toBe(9999);
-
-    // Assertion 2: Agent unitName still resolves from the UM doc
     expect(doc.week.find((e) => e.agentId === 'a1').unitName).toBe('Unit u1');
-    expect(doc.week.find((e) => e.agentId === 'a2').unitName).toBe('Unit u1');
-
-    // Assertion 3: UM submission did NOT inflate agents' individual API totals
     expect(doc.week.find((e) => e.agentId === 'a2').periodApi).toBe(200);
     expect(doc.week.find((e) => e.agentId === 'a1').periodApi).toBe(100);
   });
@@ -305,9 +350,7 @@ describe('computeAndWriteLeaderboards', () => {
   let warnSpy;
 
   beforeEach(() => {
-    for (const k of Object.keys(firestoreData)) delete firestoreData[k];
-    for (const k of Object.keys(firestoreDocs)) delete firestoreDocs[k];
-    mockBatch.ops = [];
+    resetStore();
     warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
@@ -315,17 +358,11 @@ describe('computeAndWriteLeaderboards', () => {
     warnSpy.mockRestore();
   });
 
-  // Helper: filter to leaderboards ops (have a `week` array) vs the
-  // weeklyChampions op (added in P5-prep — has `weekStarting` at top-level).
   const leaderboardOps = () => mockBatch.ops.filter((op) => Array.isArray(op.data.week));
   const championsOp    = () => mockBatch.ops.find((op) => op.data.weekStarting !== undefined);
+  const dailyQueries   = (uid) => queryLog.filter((q) => q.path === `tenants/T/users/${uid}/dailyActivity`);
 
-  test('writes one leaderboards/{branchId} doc per branch (+ 1 weeklyChampions doc, P5-prep)', async () => {
-    firestoreData['tenants/T/submissions'] = [
-      mkSub('s1', 'a1', WK_SUN, 100),
-      mkSub('s2', 'a2', WK_SUN, 200),
-      mkSub('s3', 'a3', WK_SUN, 300),
-    ];
+  function southNorth() {
     firestoreData['tenants/T/users'] = [
       mkAgent('a1', 'Alpha', 'south', 'u1'),
       mkAgent('a2', 'Beta',  'south', 'u1'),
@@ -333,66 +370,130 @@ describe('computeAndWriteLeaderboards', () => {
       mkUM('u1', 'UM South', 'south'),
       mkUM('u2', 'UM North', 'north'),
     ];
+    firestoreData['tenants/T/policies'] = [
+      mkPolicy('p1', 'a1', '2026-05-11', 100),
+      mkPolicy('p2', 'a2', '2026-05-11', 200),
+      mkPolicy('p3', 'a3', '2026-05-11', 300),
+    ];
+  }
 
+  test('writes one leaderboards/{branchId} doc per branch + 1 weeklyChampions doc', async () => {
+    southNorth();
     const result = await computeAndWriteLeaderboards('T', REF);
     expect(result.branchCount).toBe(2);
-    expect(leaderboardOps()).toHaveLength(2);     // 2 branches
-    expect(championsOp()).toBeDefined();          // + 1 champions
-    expect(mockBatch.ops).toHaveLength(3);        // 2 leaderboards + 1 champions
+    expect(result.totalPolicies).toBe(3);
+    expect(leaderboardOps()).toHaveLength(2);
+    expect(championsOp()).toBeDefined();
+    expect(mockBatch.ops).toHaveLength(3);
+    expect(mockBatch.ops.map((op) => op.ref.path).sort()).toEqual([
+      'tenants/T/leaderboards/north',
+      'tenants/T/leaderboards/south',
+      'tenants/T/weeklyChampions/2026-05-03',
+    ]);
   });
 
-  test('per-branch doc has correct rankings for that branch only', async () => {
-    firestoreData['tenants/T/submissions'] = [
-      mkSub('s1', 'a1', WK_SUN, 100),  // south
-      mkSub('s2', 'a2', WK_SUN, 200),  // south
-      mkSub('s3', 'a3', WK_SUN, 300),  // north
-    ];
-    firestoreData['tenants/T/users'] = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkAgent('a2', 'Beta',  'south', 'u1'),
-      mkAgent('a3', 'Gamma', 'north', 'u2'),
-      mkUM('u1', 'UM South', 'south'),
-      mkUM('u2', 'UM North', 'north'),
-    ];
-
+  test('per-branch doc ranks that branch only, by ledger API', async () => {
+    southNorth();
     await computeAndWriteLeaderboards('T', REF);
-    const southOp = mockBatch.ops.find((op) => op.data.week.some((e) => e.agentId === 'a1'));
-    expect(southOp.data.week).toHaveLength(3);
-    // Within south: a2 (200) > a1 (100) > UM u1 (0, no submissions)
-    expect(southOp.data.week[0].agentId).toBe('a2');
-    expect(southOp.data.week[1].agentId).toBe('a1');
-    expect(southOp.data.week[2].agentId).toBe('u1');
-
-    const northOp = mockBatch.ops.find((op) => op.data.week.some((e) => e.agentId === 'a3'));
-    expect(northOp.data.week).toHaveLength(2);
-    expect(northOp.data.week[0].agentId).toBe('a3');
-    expect(northOp.data.week[1].agentId).toBe('u2');
+    const southOp = leaderboardOps().find((op) => op.data.week.some((e) => e.agentId === 'a1'));
+    expect(southOp.data.week.map((e) => e.agentId)).toEqual(['a2', 'a1', 'u1']);
+    const northOp = leaderboardOps().find((op) => op.data.week.some((e) => e.agentId === 'a3'));
+    expect(northOp.data.week.map((e) => e.agentId)).toEqual(['a3', 'u2']);
+    expect(southOp.data.sources).toEqual({ api: 'ledger', apps: 'ledger', points: 'activity' });
   });
 
-  test('empty inputs → 0 leaderboards docs, but champions doc still written (P5-prep: honest empty payload)', async () => {
-    firestoreData['tenants/T/submissions'] = [];
-    firestoreData['tenants/T/users'] = [];
+  test('weekly-report API no longer ranks the board (D2)', async () => {
+    firestoreData['tenants/T/users'] = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkUM('u1', 'UM', 'south')];
+    firestoreData['tenants/T/submissions'] = [mkSub('s1', 'a1', WK_SUN, 9999, 9)];
+    await computeAndWriteLeaderboards('T', REF);
+    expect(leaderboardOps()[0].data.week.find((e) => e.agentId === 'a1')).toMatchObject({ periodApi: 0, apps: 0 });
+  });
+
+  test('empty inputs → 0 leaderboards docs, but champions doc still written (honest empty payload)', async () => {
     const result = await computeAndWriteLeaderboards('T', REF);
     expect(result.branchCount).toBe(0);
     expect(leaderboardOps()).toHaveLength(0);
-    // The champions doc is ALWAYS written — "no champions this week" is an
-    // honest signal, not a missing doc. Banner reads doc-exists.
-    expect(championsOp()).toBeDefined();
-    expect(championsOp().data.topAPI).toBeNull();
-    expect(championsOp().data.topApps).toBeNull();
-    expect(championsOp().data.topActivity).toBeNull();
+    expect(championsOp().data).toMatchObject({ topAPI: null, topApps: null, topActivity: null });
   });
 
-  test('only submissions in the calendar YTD window are read (status filter applied)', async () => {
-    firestoreData['tenants/T/submissions'] = [
-      { ...mkSub('s1', 'a1', WK_SUN, 100), status: 'submitted' },
-      { ...mkSub('s2', 'a1', WK_SUN, 999), status: 'draft' }, // excluded by status filter
-    ];
+  test('D5: only SUBMITTED reports are read; a draft never counts and its week reads the days', async () => {
     firestoreData['tenants/T/users'] = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkUM('u1', 'UM', 'south')];
-
+    firestoreData['tenants/T/submissions'] = [
+      { ...mkSub('s2', 'a1', WK_SUN, 0), status: 'draft', ciConducted: 50 }, // never read
+    ];
+    firestoreData['tenants/T/users/a1/dailyActivity'] = [
+      mkDay('2026-05-11', WK_SUN, { ciConducted: 1 }),
+      mkDay('2026-05-12', WK_SUN, { ffiConducted: 1 }),
+    ];
     await computeAndWriteLeaderboards('T', REF);
-    const op = mockBatch.ops[0];
-    expect(op.data.week[0].periodApi).toBe(100); // draft excluded
+    const subsQuery = queryLog.find((q) => q.path === 'tenants/T/submissions');
+    expect(subsQuery.filters).toContainEqual({ field: 'status', op: '==', value: 'submitted' });
+    expect(leaderboardOps()[0].data.week.find((e) => e.agentId === 'a1').points).toBe(15);
+  });
+
+  test('D5: dailies are read ONLY for weeks without a submitted report, in `in` chunks of ≤ 30', async () => {
+    firestoreData['tenants/T/users'] = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkUM('u1', 'UM', 'south')];
+    firestoreData['tenants/T/submissions'] = [
+      { ...mkSub('s1', 'a1', WK_SUN, 0, 0), ciConducted: 2 },      // reported week: 20 points
+      { ...mkSub('s0', 'a1', PREV_WK_SUN, 0, 0), ciConducted: 1 }, // reported week: 10 points
+    ];
+    firestoreData['tenants/T/users/a1/dailyActivity'] = [
+      mkDay('2026-05-11', WK_SUN, { ciConducted: 9 }), // bait — its week has a report
+      mkDay('2026-04-27', '2026-04-26', { ffiConducted: 1 }),
+    ];
+    await computeAndWriteLeaderboards('T', REF);
+
+    const qs = dailyQueries('a1');
+    const weeksRead = qs.flatMap((q) => q.filters.find((f) => f.op === 'in').value);
+    expect(qs.every((q) => q.filters.length === 1 && q.filters[0].field === 'weekStarting')).toBe(true);
+    expect(qs.every((q) => q.filters[0].value.length <= 30)).toBe(true);
+    expect(weeksRead).not.toContain(WK_SUN);
+    expect(weeksRead).not.toContain(PREV_WK_SUN);
+    expect(weeksRead).toContain('2026-04-26');
+    // 2025-12-21 (first Sunday on/after the 14-day cushion) … 2026-05-10 = 21 Sundays, minus 2 reported
+    expect(weeksRead).toHaveLength(19);
+    expect(weeksRead[0]).toBe('2025-12-21');
+
+    const week = leaderboardOps()[0].data.week.find((e) => e.agentId === 'a1');
+    const ytd = leaderboardOps()[0].data.ytd.find((e) => e.agentId === 'a1');
+    expect(week.points).toBe(20);
+    expect(ytd.points).toBe(35);
+  });
+
+  test('dailies are read for participants and champion candidates only', async () => {
+    firestoreData['tenants/T/users'] = [
+      mkAgent('a1', 'Alpha', 'south', 'u1'),
+      mkUM('u1', 'UM', 'south'),
+      { id: 'nb', role: 'agent', name: 'NoBranch' },                         // champion candidate
+      mkTestAgent('t', 'Test', 'south'),
+      { id: 'sm', role: 'sales_manager', name: 'SM', branchId: 'south' },
+      { id: 'bm', role: 'branch_manager', name: 'BM', branchId: 'south' },  // not opted in
+      { ...mkAgent('off', 'Off', 'south'), active: false },
+    ];
+    await computeAndWriteLeaderboards('T', REF);
+    const readers = [...new Set(queryLog.map((q) => q.path).filter((p) => p.endsWith('/dailyActivity')))].sort();
+    expect(readers).toEqual([
+      'tenants/T/users/a1/dailyActivity',
+      'tenants/T/users/nb/dailyActivity',
+      'tenants/T/users/u1/dailyActivity',
+    ]);
+  });
+
+  test('D8: a deactivated agent is absent from every period and is not a champion', async () => {
+    firestoreData['tenants/T/users'] = [
+      mkAgent('a1', 'Alpha', 'south', 'u1'),
+      { ...mkAgent('off', 'Off', 'south', 'u1'), active: false },
+      mkUM('u1', 'UM', 'south'),
+    ];
+    firestoreData['tenants/T/policies'] = [
+      mkPolicy('p1', 'a1', '2026-05-05', 100),
+      mkPolicy('bait', 'off', '2026-05-05', 99999),
+    ];
+    await computeAndWriteLeaderboards('T', REF);
+    for (const periodKey of ['week', 'mtd', 'qtd', 'ytd']) {
+      expect(leaderboardOps()[0].data[periodKey].map((e) => e.agentId)).not.toContain('off');
+    }
+    expect(championsOp().data.topAPI.agentId).toBe('a1');
   });
 
   test('writes skippedNoBranch={count:0, agentIds:[]} onto each branch doc when no skips', async () => {
@@ -401,8 +502,7 @@ describe('computeAndWriteLeaderboards', () => {
 
     const result = await computeAndWriteLeaderboards('T', REF);
     expect(result.skippedNoBranch).toEqual({ count: 0, agentIds: [] });
-    const op = mockBatch.ops[0];
-    expect(op.data.skippedNoBranch).toEqual({ count: 0, agentIds: [] });
+    expect(leaderboardOps()[0].data.skippedNoBranch).toEqual({ count: 0, agentIds: [] });
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
@@ -418,23 +518,18 @@ describe('computeAndWriteLeaderboards', () => {
     ];
 
     const result = await computeAndWriteLeaderboards('T', REF);
-    expect(result.branchCount).toBe(1); // only south
+    expect(result.branchCount).toBe(1);
     expect(result.skippedNoBranch).toEqual({ count: 1, agentIds: ['a2'] });
-
-    // CF logs the count + agentIds via console.warn so the drift surfaces in logs
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy.mock.calls[0][0]).toMatch(/skippedNoBranch=1/);
     expect(warnSpy.mock.calls[0][0]).toMatch(/"a2"/);
-
-    // Every per-branch doc carries the tenant-wide skippedNoBranch metadata
-    const southOp = mockBatch.ops.find((op) => op.data.week.some((e) => e.agentId === 'a1'));
-    expect(southOp.data.skippedNoBranch).toEqual({ count: 1, agentIds: ['a2'] });
+    expect(leaderboardOps()[0].data.skippedNoBranch).toEqual({ count: 1, agentIds: ['a2'] });
   });
 
   test('skip metadata written to ALL per-branch docs (tenant-wide visibility)', async () => {
     firestoreData['tenants/T/submissions'] = [
-      mkSub('s1', 'a1', WK_SUN, 100),  // south
-      mkSub('s2', 'a3', WK_SUN, 300),  // north
+      mkSub('s1', 'a1', WK_SUN, 100),
+      mkSub('s2', 'a3', WK_SUN, 300),
       mkSub('s9', 'a9', WK_SUN, 999),  // no branchId — dropped
     ];
     firestoreData['tenants/T/users'] = [
@@ -446,26 +541,79 @@ describe('computeAndWriteLeaderboards', () => {
     ];
 
     await computeAndWriteLeaderboards('T', REF);
-    expect(leaderboardOps()).toHaveLength(2); // south + north
+    expect(leaderboardOps()).toHaveLength(2);
     for (const op of leaderboardOps()) {
       expect(op.data.skippedNoBranch).toEqual({ count: 1, agentIds: ['a9'] });
+    }
+  });
+
+  test('D9 + D7 wiring: champions from last week and previousRanks on WEEK entries', async () => {
+    firestoreData['tenants/T/users'] = [
+      mkAgent('a1', 'Alpha', 'south', 'u1'),
+      mkAgent('a2', 'Beta',  'south', 'u1'),
+      mkUM('u1', 'UM', 'south'),
+    ];
+    firestoreData['tenants/T/policies'] = [
+      mkPolicy('p1', 'a1', '2026-05-05', 500),                                       // prior week: a1 API
+      mkPolicy('p2', 'a2', '2026-05-06', 100, { newBusinessType: 'platinum_edge' }), // prior week: a2 app
+      mkPolicy('p3', 'a2', '2026-05-07', 100, { newBusinessType: 'platinum_edge' }),
+      mkPolicy('c1', 'a1', '2026-05-11', 100),                                       // this week: a2 > a1
+      mkPolicy('c2', 'a2', '2026-05-11', 300),
+    ];
+    firestoreData['tenants/T/users/a2/dailyActivity'] = [mkDay('2026-05-04', PREV_WK_SUN, { ciConducted: 2 })];
+
+    const result = await computeAndWriteLeaderboards('T', REF);
+    expect(result.priorWeekStarting).toBe(PREV_WK_SUN);
+    expect(championsOp().data).toMatchObject({
+      weekStarting: PREV_WK_SUN,
+      topAPI: { agentId: 'a1', value: 500 },
+      topApps: { agentId: 'a2', value: 2 },
+      topActivity: { agentId: 'a2', value: 20 },
+    });
+
+    const week = leaderboardOps()[0].data.week;
+    const a1 = week.find((e) => e.agentId === 'a1');
+    const a2 = week.find((e) => e.agentId === 'a2');
+    expect(a1).toMatchObject({ rank: 2, previousRank: 1, previousRanks: { api: 1, apps: 2, activity: 2 } });
+    expect(a2).toMatchObject({ rank: 1, previousRank: 2, previousRanks: { api: 2, apps: 1, activity: 1 } });
+    for (const k of ['mtd', 'qtd', 'ytd']) {
+      expect(leaderboardOps()[0].data[k].every((e) => e.previousRank === null && e.previousRanks === null)).toBe(true);
+    }
+  });
+
+  test('entries carry unitId in every period', async () => {
+    firestoreData['tenants/T/users'] = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkUM('u1', 'UM', 'south')];
+    await computeAndWriteLeaderboards('T', REF);
+    for (const periodKey of ['week', 'mtd', 'qtd', 'ytd']) {
+      expect(leaderboardOps()[0].data[periodKey].find((e) => e.agentId === 'a1').unitId).toBe('u1');
+    }
+  });
+
+  // Year-boundary: UTC Jan 1 02:00 = TT Dec 31 22:00 (still the prior TT year).
+  // The 14-day cushion keeps late-December reports and days in range.
+  test('year-boundary: TT Dec-31 ref (UTC Jan 1 02:00) still counts late-December business', async () => {
+    const TT_YE_REF = new Date('2026-01-01T02:00:00Z');
+    const DEC_28_SUN = '2025-12-28';
+    firestoreData['tenants/T/users'] = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkUM('u1', 'UM South', 'south')];
+    firestoreData['tenants/T/policies'] = [mkPolicy('p1', 'a1', '2025-12-30', 500)];
+    firestoreData['tenants/T/users/a1/dailyActivity'] = [mkDay('2025-12-29', DEC_28_SUN, { ciConducted: 1 })];
+
+    const result = await computeAndWriteLeaderboards('T', TT_YE_REF);
+    expect(result.branchCount).toBe(1);
+    for (const periodKey of ['week', 'mtd', 'qtd', 'ytd']) {
+      const entry = leaderboardOps()[0].data[periodKey].find((e) => e.agentId === 'a1');
+      expect(entry.periodApi).toBe(500);
+      expect(entry.points).toBe(10);
     }
   });
 });
 
 // ── isTestAccount filter ──────────────────────────────────────────────────────
-//
-// isTestAccount:true agents must be excluded from:
-//   1. groupByBranch() — not in branchByAgent, subs dropped, not in byBranch.users
-//   2. computeAndWriteLeaderboards() — absent from ranked output (even at $0)
-//   3. computeWeeklyChampions() — not a champion candidate
 
 describe('isTestAccount filter', () => {
   let warnSpy;
   beforeEach(() => {
-    for (const k of Object.keys(firestoreData)) delete firestoreData[k];
-    for (const k of Object.keys(firestoreDocs)) delete firestoreDocs[k];
-    mockBatch.ops = [];
+    resetStore();
     warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
   });
   afterEach(() => { warnSpy.mockRestore(); });
@@ -480,66 +628,33 @@ describe('isTestAccount filter', () => {
       mkSub('s2', 'test', WK_SUN, 9999), // bait — must be dropped
     ];
     const { byBranch, skippedNoBranch } = groupByBranch(subs, users);
-    // Test account absent from byBranch.users
     expect(byBranch.get('south').users.map((u) => u.id)).toEqual(['real']);
-    // Test account's submission dropped (not in branchByAgent → no branchId lookup)
     expect(byBranch.get('south').subs.map((s) => s.agentId)).toEqual(['real']);
-    // Counted as skipped
     expect(skippedNoBranch.count).toBe(1);
     expect(skippedNoBranch.agentIds).toEqual(['test']);
   });
 
-  test('computeAndWriteLeaderboards: test-account agent absent from ranked output in all periods', async () => {
-    firestoreData['tenants/T/submissions'] = [
-      mkSub('s1', 'real', WK_SUN, 500),
-      mkSub('s2', 'test', WK_SUN, 9999), // bait
-    ];
+  test('test-account agent absent from every period, with or without business, and never a champion', async () => {
     firestoreData['tenants/T/users'] = [
       mkAgent('real',   'Real Agent',   'south', 'u1'),
       mkTestAgent('test', 'Test Account', 'south', 'u1'),
+      mkTestAgent('quiet', 'Quiet Test', 'south', 'u1'),
       mkUM('u1', 'UM', 'south'),
     ];
-
+    firestoreData['tenants/T/policies'] = [
+      mkPolicy('p1', 'real', '2026-05-05', 500),
+      mkPolicy('bait', 'test', '2026-05-05', 99999),
+    ];
     await computeAndWriteLeaderboards('T', REF);
-    const leaderboardOp = mockBatch.ops.find((op) => Array.isArray(op.data.week));
-    expect(leaderboardOp).toBeDefined();
+    const lb = mockBatch.ops.find((op) => Array.isArray(op.data.week));
     for (const periodKey of ['week', 'mtd', 'qtd', 'ytd']) {
-      const ids = leaderboardOp.data[periodKey].map((e) => e.agentId);
-      expect(ids).not.toContain('test'); // test account absent from all periods
-      expect(ids).toContain('real');     // real agent present
+      const ids = lb.data[periodKey].map((e) => e.agentId);
+      expect(ids).toContain('real');
+      expect(ids).not.toContain('test');
+      expect(ids).not.toContain('quiet');
     }
-  });
-
-  test('computeAndWriteLeaderboards: test-account agent with NO submission absent (not ranked at $0)', async () => {
-    firestoreData['tenants/T/submissions'] = [mkSub('s1', 'real', WK_SUN, 100)];
-    firestoreData['tenants/T/users'] = [
-      mkAgent('real',   'Real Agent',   'south', 'u1'),
-      mkTestAgent('test', 'Test Account', 'south', 'u1'), // no sub — would appear at $0 if not filtered
-      mkUM('u1', 'UM', 'south'),
-    ];
-
-    await computeAndWriteLeaderboards('T', REF);
-    const leaderboardOp = mockBatch.ops.find((op) => Array.isArray(op.data.week));
-    // UM u1 now ranked (hiddenFromLeaderboard absent = visible); test account still absent
-    expect(leaderboardOp.data.week).toHaveLength(2);
-    const weekIds = leaderboardOp.data.week.map((e) => e.agentId);
-    expect(weekIds).not.toContain('test');
-    expect(weekIds).toContain('real');
-  });
-
-  test('computeWeeklyChampions: test-account agent NOT a champion candidate', () => {
-    const users = [
-      mkAgent('real',   'Real Agent',   'south', 'u1'),
-      mkTestAgent('test', 'Test Account', 'south', 'u1'),
-    ];
-    const subs = [
-      mkSubActivity('s1', 'real', PREV_WK_SUN, { api: 100, apps: 1, ffi: 1, ci: 1 }),
-      mkSubActivity('s2', 'test', PREV_WK_SUN, { api: 9999, apps: 99, ffi: 99, ci: 99 }), // bait
-    ];
-    const out = computeWeeklyChampions(subs, users, PREV_WK_SUN);
-    expect(out.topAPI.agentId).toBe('real');
-    expect(out.topApps.agentId).toBe('real');
-    expect(out.topActivity.agentId).toBe('real');
+    const champions = mockBatch.ops.find((op) => op.data.weekStarting !== undefined);
+    expect(champions.data.topAPI.agentId).toBe('real');
   });
 
   test('normal agent unaffected when isTestAccount is absent or false', () => {
@@ -562,8 +677,7 @@ describe('recomputeLeaderboardOnDemand', () => {
   const handler = recomputeLeaderboardOnDemand._onCall;
 
   beforeEach(() => {
-    for (const k of Object.keys(firestoreData)) delete firestoreData[k];
-    mockBatch.ops = [];
+    resetStore();
   });
 
   test('rejects unauthenticated', async () => {
@@ -586,19 +700,16 @@ describe('recomputeLeaderboardOnDemand', () => {
   });
 
   test('tenant_admin invokes for own tenant', async () => {
-    firestoreData['tenants/T2/submissions'] = [];
-    firestoreData['tenants/T2/users']       = [];
     const result = await handler(
       {},
       { auth: { token: { role: 'tenant_admin', tenantId: 'T2' } } }
     );
     expect(result.ok).toBe(true);
     expect(result.tenantId).toBe('T2');
+    expect(queryLog.every((q) => q.path.startsWith('tenants/T2/'))).toBe(true);
   });
 
   test('platform_admin may target any tenant via data.tenantId', async () => {
-    firestoreData['tenants/T3/submissions'] = [];
-    firestoreData['tenants/T3/users']       = [];
     const result = await handler(
       { tenantId: 'T3' },
       { auth: { token: { role: 'platform_admin', tenantId: null } } }
@@ -608,299 +719,7 @@ describe('recomputeLeaderboardOnDemand', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// P5-PREP — unitId passthrough + previousRank + weeklyChampions
-// ─────────────────────────────────────────────────────────────────────────────
-
-const {
-  computeWeeklyChampions,
-  computePriorRankByAgent,
-  priorWeekStartingString,
-  extractApplicationsSold,
-  extractFFIConducted,
-  extractCIConducted,
-  extractActivity,
-} = _internals;
-
-// Reuse WK_SUN/REF from above (WK_SUN = '2026-05-10', REF = mid-Friday 2026-05-15).
-const PREV_WK_SUN = '2026-05-03';
-
-// Activity-bearing submission helpers (mkSub above only carries newBusiness.api/apps;
-// for the Activity metric we need ffi/ci/applicationsSold counts).
-function mkSubActivity(id, agentId, weekStarting, { api = 0, apps = 0, ffi = 0, ci = 0 } = {}) {
-  return {
-    id,
-    agentId,
-    weekStarting,
-    status: 'submitted',
-    version: 2,
-    newBusiness:  { api, apps },
-    pppIncreases: { apiIncrease: 0, apps: 0 },
-    lumpsums:     { apiCredit: 0, commission: 0 },
-    totalProductionCredit: api,
-    // Flat fields used by the champions Activity formula
-    ffiConducted: ffi,
-    ciConducted:  ci,
-    applicationsSold: apps,
-  };
-}
-
-// ── Field extractors ─────────────────────────────────────────────────────────
-
-describe('extract helpers (P5-prep champions)', () => {
-  test('extractApplicationsSold — v2 reads newBusiness.apps (NOT ppp.apps)', () => {
-    const s = {
-      version: 2,
-      newBusiness:  { apps: 3 },
-      pppIncreases: { apps: 5 },
-    };
-    expect(extractApplicationsSold(s)).toBe(3);
-  });
-
-  test('extractApplicationsSold — v1 reads applicationsSold / appsSold', () => {
-    expect(extractApplicationsSold({ applicationsSold: 7 })).toBe(7);
-    expect(extractApplicationsSold({ appsSold: 4 })).toBe(4);
-  });
-
-  test('extractApplicationsSold — nested schema reads step4.applicationsSold', () => {
-    expect(extractApplicationsSold({ step1: {}, step4: { applicationsSold: 9 } })).toBe(9);
-  });
-
-  test('extractFFIConducted — flat path reads s.ffiConducted', () => {
-    expect(extractFFIConducted({ ffiConducted: 5 })).toBe(5);
-  });
-
-  test('extractCIConducted — flat path reads s.ciConducted', () => {
-    expect(extractCIConducted({ ciConducted: 8 })).toBe(8);
-  });
-
-  test('extractActivity = ffi + ci + applicationsSold', () => {
-    const s = { ffiConducted: 3, ciConducted: 4, applicationsSold: 2, version: 2,
-                newBusiness: { apps: 2 } };
-    expect(extractActivity(s)).toBe(3 + 4 + 2);
-  });
-
-  test('extractApplicationsSold/FFI/CI — empty/null → 0', () => {
-    expect(extractApplicationsSold(null)).toBe(0);
-    expect(extractApplicationsSold({})).toBe(0);
-    expect(extractFFIConducted(null)).toBe(0);
-    expect(extractCIConducted(null)).toBe(0);
-    expect(extractActivity({})).toBe(0);
-  });
-});
-
-// ── computeWeeklyChampions ───────────────────────────────────────────────────
-
-describe('computeWeeklyChampions', () => {
-  test('empty prior-week subs → all-null champions doc (matches retired banner)', () => {
-    const out = computeWeeklyChampions([], [], PREV_WK_SUN);
-    expect(out).toEqual({
-      topAPI: null, topApps: null, topActivity: null, weekStarting: PREV_WK_SUN,
-    });
-  });
-
-  test('top-1 by API picks highest periodApi agent', () => {
-    const users = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkAgent('a2', 'Beta',  'south', 'u1'),
-    ];
-    const subs = [
-      mkSubActivity('s1', 'a1', PREV_WK_SUN, { api: 100, apps: 2, ffi: 1, ci: 1 }),
-      mkSubActivity('s2', 'a2', PREV_WK_SUN, { api: 500, apps: 1, ffi: 0, ci: 0 }),
-    ];
-    const out = computeWeeklyChampions(subs, users, PREV_WK_SUN);
-    expect(out.topAPI).toEqual({ agentId: 'a2', agentName: 'Beta', value: 500 });
-  });
-
-  test('top-1 by Apps + by Activity can be different agents', () => {
-    const users = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkAgent('a2', 'Beta',  'south', 'u1'),
-      mkAgent('a3', 'Gamma', 'south', 'u1'),
-    ];
-    const subs = [
-      mkSubActivity('s1', 'a1', PREV_WK_SUN, { api: 100, apps: 5, ffi: 0, ci: 0 }),   // top Apps
-      mkSubActivity('s2', 'a2', PREV_WK_SUN, { api: 500, apps: 1, ffi: 0, ci: 0 }),   // top API
-      mkSubActivity('s3', 'a3', PREV_WK_SUN, { api: 100, apps: 2, ffi: 5, ci: 4 }),   // top Activity
-    ];
-    const out = computeWeeklyChampions(subs, users, PREV_WK_SUN);
-    expect(out.topAPI.agentId).toBe('a2');
-    expect(out.topApps.agentId).toBe('a1');
-    expect(out.topActivity.agentId).toBe('a3');
-    // Activity = ffi + ci + applicationsSold = 5 + 4 + 2
-    expect(out.topActivity.value).toBe(11);
-  });
-
-  test('ties broken alphabetically by agentName', () => {
-    const users = [
-      mkAgent('a1', 'Zara',  'south', 'u1'),
-      mkAgent('a2', 'Alice', 'south', 'u1'),
-    ];
-    const subs = [
-      mkSubActivity('s1', 'a1', PREV_WK_SUN, { api: 100, apps: 1 }),
-      mkSubActivity('s2', 'a2', PREV_WK_SUN, { api: 100, apps: 1 }),
-    ];
-    const out = computeWeeklyChampions(subs, users, PREV_WK_SUN);
-    // Alice < Zara alphabetically → Alice wins all three ties
-    expect(out.topAPI.agentName).toBe('Alice');
-    expect(out.topApps.agentName).toBe('Alice');
-  });
-
-  test('null when no agent has a positive value in that category', () => {
-    const users = [mkAgent('a1', 'Alpha', 'south', 'u1')];
-    const subs = [
-      mkSubActivity('s1', 'a1', PREV_WK_SUN, { api: 100, apps: 0, ffi: 0, ci: 0 }),
-    ];
-    const out = computeWeeklyChampions(subs, users, PREV_WK_SUN);
-    expect(out.topAPI).not.toBeNull();
-    expect(out.topApps).toBeNull();      // 0 apps → no winner
-    expect(out.topActivity).toBeNull();  // 0 activity → no winner
-  });
-
-  test('non-agent (UM) submissions excluded from champions', () => {
-    const users = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkUM('u1', 'UM Bait', 'south'),
-    ];
-    const subs = [
-      mkSubActivity('s1', 'a1',  PREV_WK_SUN, { api: 100, apps: 1, ffi: 1, ci: 1 }),
-      mkSubActivity('sU', 'u1',  PREV_WK_SUN, { api: 9999, apps: 99, ffi: 99, ci: 99 }), // bait
-    ];
-    const out = computeWeeklyChampions(subs, users, PREV_WK_SUN);
-    expect(out.topAPI.agentId).toBe('a1');
-    expect(out.topApps.agentId).toBe('a1');
-    expect(out.topActivity.agentId).toBe('a1');
-  });
-
-  test('provisioning agents excluded from champions', () => {
-    const users = [
-      mkAgent('a1', 'Real', 'south', 'u1'),
-      mkAgent('a2', 'Stub', 'south', 'u1', true), // provisioning
-    ];
-    const subs = [
-      mkSubActivity('s1', 'a1', PREV_WK_SUN, { api: 100, apps: 1 }),
-      mkSubActivity('s2', 'a2', PREV_WK_SUN, { api: 9999, apps: 99 }),
-    ];
-    const out = computeWeeklyChampions(subs, users, PREV_WK_SUN);
-    expect(out.topAPI.agentId).toBe('a1');
-  });
-});
-
-// ── computePriorRankByAgent ──────────────────────────────────────────────────
-
-describe('computePriorRankByAgent', () => {
-  test('returns prior-week branch ranks for agents with positive prior-week API', () => {
-    const users = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkAgent('a2', 'Beta',  'south', 'u1'),
-      mkAgent('a3', 'Gamma', 'north', 'u2'),
-      mkUM('u1', 'UM S', 'south'),
-      mkUM('u2', 'UM N', 'north'),
-    ];
-    const subs = [
-      // Prior week — 2026-05-03
-      mkSub('p1', 'a1', PREV_WK_SUN, 500),  // south, rank 1
-      mkSub('p2', 'a2', PREV_WK_SUN, 200),  // south, rank 2
-      mkSub('p3', 'a3', PREV_WK_SUN, 999),  // north, rank 1 (only agent in north)
-      // Current week — 2026-05-10
-      mkSub('c1', 'a1', WK_SUN, 100),
-      mkSub('c2', 'a2', WK_SUN, 300),
-      mkSub('c3', 'a3', WK_SUN, 50),
-    ];
-    const { priorRankByAgent, priorWeekSubs } = computePriorRankByAgent(
-      subs, users, REF, groupByBranch
-    );
-    expect(priorWeekSubs.map((s) => s.id).sort()).toEqual(['p1', 'p2', 'p3']);
-    expect(priorRankByAgent.get('a1')).toBe(1); // south
-    expect(priorRankByAgent.get('a2')).toBe(2); // south
-    expect(priorRankByAgent.get('a3')).toBe(1); // north
-  });
-
-  test('ranked-$0 agent (in branch, no prior-week sub) carries their prior-week rank (NOT null)', () => {
-    // a1 has prior-week production; a2 is in the branch but had no prior sub.
-    // rankForLeaderboard ranks ALL active branch agents in the prior week:
-    // a1 at rank 1 with 500 API; a2 at rank 2 tied at $0. previousRank must
-    // carry that rank — symmetric with current-week behavior, where $0 agents
-    // appear in the leaderboard entries at the bottom.
-    const users = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkAgent('a2', 'Beta',  'south', 'u1'),
-      mkUM('u1', 'UM S', 'south'),
-    ];
-    const subs = [
-      mkSub('p1', 'a1', PREV_WK_SUN, 500),
-      mkSub('c1', 'a1', WK_SUN, 100),
-      mkSub('c2', 'a2', WK_SUN, 300),
-    ];
-    const { priorRankByAgent } = computePriorRankByAgent(subs, users, REF, groupByBranch);
-    expect(priorRankByAgent.get('a1')).toBe(1);
-    expect(priorRankByAgent.get('a2')).toBe(2); // ← ranked-$0, NOT undefined
-  });
-
-  test('agent truly absent from groupByBranch (e.g., missing branchId) → not in priorRankByAgent (→ previousRank null safety-net)', () => {
-    // Defensive coverage: an agent without a branchId is excluded by
-    // groupByBranch in BOTH prior- and current-week passes, so they never
-    // appear in the leaderboard doc's entries. The previousRank `?? null`
-    // fallback only fires defensively in this case; if reached, it must
-    // honestly produce null.
-    const users = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      // a-orphan has NO branchId — excluded by groupByBranch
-      { id: 'a-orphan', role: 'agent', name: 'Orphan', provisioning: false },
-      mkUM('u1', 'UM S', 'south'),
-    ];
-    const subs = [
-      mkSub('p1', 'a1',       PREV_WK_SUN, 500),
-      mkSub('p2', 'a-orphan', PREV_WK_SUN, 999), // would be discarded by groupByBranch
-    ];
-    const { priorRankByAgent } = computePriorRankByAgent(subs, users, REF, groupByBranch);
-    expect(priorRankByAgent.get('a1')).toBe(1);
-    expect(priorRankByAgent.get('a-orphan')).toBeUndefined(); // ← truly absent
-  });
-
-  test('empty prior week → all branch agents still ranked at $0 (carry previousRank into the doc)', () => {
-    // No prior-week submissions, but agents still exist in the branch.
-    // rankForLeaderboard ranks ALL active branch agents in the prior week —
-    // everyone ties at $0. previousRank carries that rank rather than null.
-    const users = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkAgent('a2', 'Beta',  'south', 'u1'),
-      mkUM('u1', 'UM', 'south'),
-    ];
-    const subs = [mkSub('c1', 'a1', WK_SUN, 100)]; // only current week
-    const { priorRankByAgent, priorWeekSubs } = computePriorRankByAgent(
-      subs, users, REF, groupByBranch
-    );
-    expect(priorWeekSubs).toHaveLength(0);
-    // Both agents in the map at $0 — tie-break by name (Alpha < Beta).
-    expect(priorRankByAgent.get('a1')).toBe(1);
-    expect(priorRankByAgent.get('a2')).toBe(2);
-  });
-
-  test('no users at all → empty map (defensive)', () => {
-    const { priorRankByAgent } = computePriorRankByAgent([], [], REF, groupByBranch);
-    expect(priorRankByAgent.size).toBe(0);
-  });
-
-  test('prior-week ranks are branch-scoped — a south agent\'s rank does not bleed into north', () => {
-    const users = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkAgent('a2', 'Beta',  'north', 'u2'),
-      mkUM('u1', 'UM S', 'south'),
-      mkUM('u2', 'UM N', 'north'),
-    ];
-    const subs = [
-      mkSub('p1', 'a1', PREV_WK_SUN, 100),  // south — rank 1 of 1
-      mkSub('p2', 'a2', PREV_WK_SUN, 200),  // north — rank 1 of 1
-    ];
-    const { priorRankByAgent } = computePriorRankByAgent(subs, users, REF, groupByBranch);
-    // Both agents are rank 1 within THEIR OWN branch, even though a2 has more API
-    expect(priorRankByAgent.get('a1')).toBe(1);
-    expect(priorRankByAgent.get('a2')).toBe(1);
-  });
-});
-
-// ── priorWeekStartingString ─────────────────────────────────────────────────
+// ── priorWeekStartingString ──────────────────────────────────────────────────
 
 describe('priorWeekStartingString', () => {
   test('REF mid-week May 15 2026 → prior week Sunday is 2026-05-03', () => {
@@ -914,7 +733,6 @@ describe('priorWeekStartingString', () => {
   });
 
   test('REF on Sat 23:59 TT 2026-01-03 → prior week is the last Sunday of 2025 (Dec 28)', () => {
-    // Sat 03:59 TT (which is the LAST minute of 2026-01-03 in TT)
     // - Current week (TT) is 2025-12-28 → 2026-01-03 — Sat 23:59:59 TT is in this week
     // - Prior week (TT) starts at 2025-12-21 (Sun)
     const ref = new Date('2026-01-04T03:59:00Z');
@@ -922,289 +740,55 @@ describe('priorWeekStartingString', () => {
   });
 });
 
-// ── buildLeaderboardDoc — new entry shape (unitId + previousRank) ────────────
-
-describe('buildLeaderboardDoc — P5-prep entry shape', () => {
-  test('entries carry unitId (all periods)', () => {
-    const users = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkUM('u1', 'UM', 'south')];
-    const subs  = [mkSub('s1', 'a1', WK_SUN, 100)];
-    const doc = buildLeaderboardDoc(subs, users, REF);
-    for (const periodKey of ['week', 'mtd', 'qtd', 'ytd']) {
-      expect(doc[periodKey][0].unitId).toBe('u1');
-    }
-  });
-
-  test('entries carry unitId=null when agent has no unitId', () => {
-    const users = [mkAgent('a1', 'Solo', 'south', null)];
-    const subs  = [mkSub('s1', 'a1', WK_SUN, 100)];
-    const doc = buildLeaderboardDoc(subs, users, REF);
-    expect(doc.week[0].unitId).toBeNull();
-  });
-
-  test('WEEK entries carry previousRank from the priorRankByAgent map', () => {
-    const users = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkAgent('a2', 'Beta',  'south', 'u1'),
-      mkUM('u1', 'UM', 'south'),
-    ];
-    const subs  = [mkSub('s1', 'a1', WK_SUN, 100), mkSub('s2', 'a2', WK_SUN, 200)];
-    const priorRankByAgent = new Map([['a1', 2], ['a2', 1]]);
-    const doc = buildLeaderboardDoc(subs, users, REF, priorRankByAgent);
-    // Current week: a2 (200) is rank 1, a1 (100) is rank 2
-    const wA1 = doc.week.find((e) => e.agentId === 'a1');
-    const wA2 = doc.week.find((e) => e.agentId === 'a2');
-    expect(wA1.previousRank).toBe(2);
-    expect(wA2.previousRank).toBe(1);
-  });
-
-  test('MTD/QTD/YTD entries carry previousRank: null (week-only)', () => {
-    const users = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkUM('u1', 'UM', 'south')];
-    const subs  = [mkSub('s1', 'a1', WK_SUN, 100)];
-    const priorRankByAgent = new Map([['a1', 1]]); // would set 1 on week, null on rest
-    const doc = buildLeaderboardDoc(subs, users, REF, priorRankByAgent);
-    expect(doc.week[0].previousRank).toBe(1);
-    expect(doc.mtd[0].previousRank).toBeNull();
-    expect(doc.qtd[0].previousRank).toBeNull();
-    expect(doc.ytd[0].previousRank).toBeNull();
-  });
-
-  test('agent absent from priorRankByAgent → previousRank: null on WEEK', () => {
-    const users = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkAgent('a2', 'Beta',  'south', 'u1'),
-      mkUM('u1', 'UM', 'south'),
-    ];
-    const subs  = [mkSub('s1', 'a1', WK_SUN, 100), mkSub('s2', 'a2', WK_SUN, 200)];
-    // Only a1 was in the prior week; a2 is new this week
-    const priorRankByAgent = new Map([['a1', 1]]);
-    const doc = buildLeaderboardDoc(subs, users, REF, priorRankByAgent);
-    expect(doc.week.find((e) => e.agentId === 'a1').previousRank).toBe(1);
-    expect(doc.week.find((e) => e.agentId === 'a2').previousRank).toBeNull();
-  });
-
-  test('priorRankByAgent omitted → all previousRank: null', () => {
-    const users = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkUM('u1', 'UM', 'south')];
-    const subs  = [mkSub('s1', 'a1', WK_SUN, 100)];
-    const doc = buildLeaderboardDoc(subs, users, REF); // no priorRankByAgent
-    expect(doc.week[0].previousRank).toBeNull();
-  });
-});
-
-// ── computeAndWriteLeaderboards — wires it all together + writes champions ──
-
-describe('computeAndWriteLeaderboards — P5-prep wiring', () => {
-  beforeEach(() => {
-    for (const k of Object.keys(firestoreData)) delete firestoreData[k];
-    for (const k of Object.keys(firestoreDocs)) delete firestoreDocs[k];
-    mockBatch.ops = [];
-  });
-
-  test('writes one weeklyChampions/{weekStarting} doc alongside the per-branch leaderboard docs', async () => {
-    firestoreData['tenants/T/submissions'] = [
-      // Prior week
-      mkSubActivity('p1', 'a1', PREV_WK_SUN, { api: 500, apps: 2, ffi: 1, ci: 1 }),
-      mkSubActivity('p2', 'a2', PREV_WK_SUN, { api: 100, apps: 5, ffi: 0, ci: 0 }),
-      // Current week
-      mkSubActivity('c1', 'a1', WK_SUN,      { api: 100, apps: 1, ffi: 0, ci: 0 }),
-      mkSubActivity('c2', 'a2', WK_SUN,      { api: 200, apps: 1, ffi: 0, ci: 0 }),
-    ];
-    firestoreData['tenants/T/users'] = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkAgent('a2', 'Beta',  'south', 'u1'),
-      mkUM('u1', 'UM', 'south'),
-    ];
-
-    const result = await computeAndWriteLeaderboards('T', REF);
-    expect(result.branchCount).toBe(1);
-    expect(result.priorWeekStarting).toBe(PREV_WK_SUN);
-
-    // batch contains 1 leaderboards doc + 1 weeklyChampions doc = 2 ops
-    expect(mockBatch.ops).toHaveLength(2);
-    const championsOp = mockBatch.ops.find(
-      (op) => op.data.topAPI !== undefined || op.data.weekStarting !== undefined
-    );
-    expect(championsOp).toBeDefined();
-    expect(championsOp.data.weekStarting).toBe(PREV_WK_SUN);
-    expect(championsOp.data.topAPI.agentId).toBe('a1');      // 500 > 100
-    expect(championsOp.data.topApps.agentId).toBe('a2');     // 5 > 2
-    // a1 activity = ffi 1 + ci 1 + apps 2 = 4
-    // a2 activity = ffi 0 + ci 0 + apps 5 = 5 → a2 wins
-    expect(championsOp.data.topActivity.agentId).toBe('a2');
-  });
-
-  test('WEEK entries on the leaderboards doc carry previousRank from the prior week', async () => {
-    firestoreData['tenants/T/submissions'] = [
-      // Prior week — a1 (500) > a2 (200) within south
-      mkSub('p1', 'a1', PREV_WK_SUN, 500),
-      mkSub('p2', 'a2', PREV_WK_SUN, 200),
-      // Current week — a2 (300) > a1 (100) within south  (swap)
-      mkSub('c1', 'a1', WK_SUN, 100),
-      mkSub('c2', 'a2', WK_SUN, 300),
-    ];
-    firestoreData['tenants/T/users'] = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkAgent('a2', 'Beta',  'south', 'u1'),
-      mkUM('u1', 'UM', 'south'),
-    ];
-
-    await computeAndWriteLeaderboards('T', REF);
-    const leaderboardOp = mockBatch.ops.find(
-      (op) => Array.isArray(op.data.week)
-    );
-    // Current-week ranking: a2 rank 1, a1 rank 2
-    const a1Week = leaderboardOp.data.week.find((e) => e.agentId === 'a1');
-    const a2Week = leaderboardOp.data.week.find((e) => e.agentId === 'a2');
-    expect(a1Week.rank).toBe(2);
-    expect(a1Week.previousRank).toBe(1);  // prior week a1 was rank 1
-    expect(a2Week.rank).toBe(1);
-    expect(a2Week.previousRank).toBe(2);  // prior week a2 was rank 2
-
-    // MTD/QTD/YTD entries have previousRank: null
-    expect(leaderboardOp.data.mtd.every((e) => e.previousRank === null)).toBe(true);
-    expect(leaderboardOp.data.qtd.every((e) => e.previousRank === null)).toBe(true);
-    expect(leaderboardOp.data.ytd.every((e) => e.previousRank === null)).toBe(true);
-  });
-
-  test('entries carry unitId in every period', async () => {
-    firestoreData['tenants/T/submissions'] = [mkSub('s1', 'a1', WK_SUN, 100)];
-    firestoreData['tenants/T/users'] = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkUM('u1', 'UM', 'south'),
-    ];
-    await computeAndWriteLeaderboards('T', REF);
-    const leaderboardOp = mockBatch.ops.find((op) => Array.isArray(op.data.week));
-    for (const periodKey of ['week', 'mtd', 'qtd', 'ytd']) {
-      expect(leaderboardOp.data[periodKey][0].unitId).toBe('u1');
-    }
-  });
-
-  test('weeklyChampions doc is also written when prior week is EMPTY (all-null payload)', async () => {
-    firestoreData['tenants/T/submissions'] = [
-      // ONLY current-week submissions
-      mkSub('c1', 'a1', WK_SUN, 100),
-    ];
-    firestoreData['tenants/T/users'] = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkUM('u1', 'UM', 'south'),
-    ];
-
-    await computeAndWriteLeaderboards('T', REF);
-    const championsOp = mockBatch.ops.find((op) => op.data.weekStarting !== undefined);
-    expect(championsOp).toBeDefined();
-    expect(championsOp.data.topAPI).toBeNull();
-    expect(championsOp.data.topApps).toBeNull();
-    expect(championsOp.data.topActivity).toBeNull();
-    expect(championsOp.data.weekStarting).toBe(PREV_WK_SUN);
-  });
-
-  // ── Year-boundary: TT year-end (UTC Jan 1 02:00 = TT Dec 31 22:00) ──────────
-  //
-  // Regression guard: before P5-prep, loadInputs used lowerBound = Jan 1 of UTC
-  // year (no 14-day cushion). When UTC year ticked over before TT year (a 4-hour
-  // window), lowerBound jumped to next-year Jan 1 and excluded the last TT-week
-  // submissions, producing an empty leaderboard. P5-prep's 14-day cushion
-  // inadvertently fixed this; this test pins the fix.
-  test('year-boundary: TT Dec-31 ref (UTC Jan 1 02:00) still loads and ranks late-Dec submissions', async () => {
-    // UTC Jan 1 02:00 = TT Dec 31 22:00 — still the prior TT calendar year.
-    const TT_YE_REF = new Date('2026-01-01T02:00:00Z');
-    // The last TT-week Sunday in Dec 2025: Dec 28.
-    const DEC_28_SUN = '2025-12-28';
-
-    firestoreData['tenants/T/submissions'] = [
-      mkSub('s1', 'a1', DEC_28_SUN, 500),
-    ];
-    firestoreData['tenants/T/users'] = [
-      mkAgent('a1', 'Alpha', 'south', 'u1'),
-      mkUM('u1', 'UM South', 'south'),
-    ];
-
-    const result = await computeAndWriteLeaderboards('T', TT_YE_REF);
-
-    // The branch must have been computed — not empty.
-    expect(result.branchCount).toBe(1);
-    const lbOps = mockBatch.ops.filter((op) => Array.isArray(op.data.week));
-    expect(lbOps).toHaveLength(1);
-
-    // The agent must appear in EVERY period with positive API (not silently dropped).
-    for (const periodKey of ['week', 'mtd', 'qtd', 'ytd']) {
-      const entry = lbOps[0].data[periodKey].find((e) => e.agentId === 'a1');
-      expect(entry).toBeDefined();          // agent is ranked
-      expect(entry.periodApi).toBeGreaterThan(0); // submission was counted
-    }
-  });
-});
-
 // ── appearOnLeaderboard opt-in (BM role-gated) ───────────────────────────────
 //
-// Phase 1 of the producing-manager spec: inclusion is role-gated.
 // Agents and UMs always appear. BMs appear only when appearOnLeaderboard===true
 // (self opt-in). SM/TA/PA are never included regardless of flag value.
 describe('leaderboardAggregate — appearOnLeaderboard opt-in (BM role-gated)', () => {
   beforeEach(() => {
-    Object.keys(firestoreData).forEach((k) => delete firestoreData[k]);
-    mockBatch.ops = [];
+    resetStore();
   });
 
+  const weekEntry = (id) => mockBatch.ops.find((op) => Array.isArray(op.data.week)).data.week.find((e) => e.agentId === id);
+
   test('BM with appearOnLeaderboard:true is included alongside agents and UM', async () => {
-    firestoreData['tenants/T/submissions'] = [
-      mkSub('s1', 'a1', WK_SUN, 300),
-      mkSub('sbm', 'bm1', WK_SUN, 500),
-    ];
     firestoreData['tenants/T/users'] = [
       mkAgent('a1', 'Alpha', 'south', 'u1'),
       mkUM('u1', 'UM South', 'south'),
       { id: 'bm1', role: 'branch_manager', name: 'BM', branchId: 'south', appearOnLeaderboard: true },
     ];
-
+    firestoreData['tenants/T/policies'] = [
+      mkPolicy('p1', 'a1', '2026-05-11', 300),
+      mkPolicy('pbm', 'bm1', '2026-05-11', 500),
+    ];
     await computeAndWriteLeaderboards('T', REF);
-    const lbOps = mockBatch.ops.filter((op) => Array.isArray(op.data.week));
-    expect(lbOps).toHaveLength(1);
-
-    const bmEntry    = lbOps[0].data.week.find((e) => e.agentId === 'bm1');
-    const agentEntry = lbOps[0].data.week.find((e) => e.agentId === 'a1');
-    expect(bmEntry).toBeDefined();
-    expect(bmEntry.periodApi).toBe(500);
-    expect(agentEntry).toBeDefined();
-    expect(agentEntry.periodApi).toBe(300);
+    expect(weekEntry('bm1').periodApi).toBe(500);
+    expect(weekEntry('a1').periodApi).toBe(300);
   });
 
   test('BM without appearOnLeaderboard is excluded by default', async () => {
-    firestoreData['tenants/T/submissions'] = [
-      mkSub('s1', 'a1', WK_SUN, 300),
-      mkSub('sbm', 'bm1', WK_SUN, 9999), // BM submission — must not appear
-    ];
     firestoreData['tenants/T/users'] = [
       mkAgent('a1', 'Alpha', 'south', 'u1'),
       mkUM('u1', 'UM South', 'south'),
-      { id: 'bm1', role: 'branch_manager', name: 'BM', branchId: 'south' }, // flag absent
+      { id: 'bm1', role: 'branch_manager', name: 'BM', branchId: 'south' },
     ];
-
+    firestoreData['tenants/T/policies'] = [
+      mkPolicy('p1', 'a1', '2026-05-11', 300),
+      mkPolicy('pbm', 'bm1', '2026-05-11', 9999),
+    ];
     await computeAndWriteLeaderboards('T', REF);
-    const lbOps = mockBatch.ops.filter((op) => Array.isArray(op.data.week));
-
-    const bmEntry = lbOps[0].data.week.find((e) => e.agentId === 'bm1');
-    expect(bmEntry).toBeUndefined();
-
-    // Agent unaffected; BM submission not credited to anyone
-    const agentEntry = lbOps[0].data.week.find((e) => e.agentId === 'a1');
-    expect(agentEntry.periodApi).toBe(300);
+    expect(weekEntry('bm1')).toBeUndefined();
+    expect(weekEntry('a1').periodApi).toBe(300);
   });
 
   test('SM with appearOnLeaderboard:true is still excluded (flag is BM-only)', async () => {
-    firestoreData['tenants/T/submissions'] = [
-      mkSub('s1', 'a1', WK_SUN, 400),
-      mkSub('ssm', 'sm1', WK_SUN, 9999),
-    ];
     firestoreData['tenants/T/users'] = [
       mkAgent('a1', 'Alpha', 'south', 'u1'),
       mkUM('u1', 'UM South', 'south'),
       { id: 'sm1', role: 'sales_manager', name: 'SM', branchId: 'south', appearOnLeaderboard: true },
     ];
-
+    firestoreData['tenants/T/policies'] = [mkPolicy('psm', 'sm1', '2026-05-11', 9999)];
     await computeAndWriteLeaderboards('T', REF);
-    const lbOps = mockBatch.ops.filter((op) => Array.isArray(op.data.week));
-
-    const smEntry = lbOps[0].data.week.find((e) => e.agentId === 'sm1');
-    expect(smEntry).toBeUndefined();
+    expect(weekEntry('sm1')).toBeUndefined();
   });
 });
