@@ -51,13 +51,26 @@ if (existsSync('.env.local')) {
 const EMAIL = process.env.A11Y_AGENT_EMAIL;
 const PASSWORD = process.env.A11Y_AGENT_PASSWORD;
 
+// After any fetch, exit through process.exitCode, never process.exit(): on
+// Windows, exiting while fetch keep-alive handles close trips a libuv
+// assertion (exit 127). Refusals before the first fetch may exit at once.
+class Refused extends Error {}
 function refuse(msg) {
-  console.error(`REFUSED: ${msg}`);
-  process.exit(2);
+  throw new Refused(msg);
 }
-if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(BASE)) refuse('--base must be a local server (staging build served locally)');
+function reportRefusal(e) {
+  if (!(e instanceof Refused)) throw e;
+  console.error(`REFUSED: ${e.message}`);
+  process.exitCode = 2;
+}
 const GUARD_ONLY = process.argv.includes('--guard-only');
-if (!GUARD_ONLY && (!EMAIL || !PASSWORD)) refuse('A11Y_AGENT_EMAIL / A11Y_AGENT_PASSWORD are not set (.env.local)');
+try {
+  if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(BASE)) refuse('--base must be a local server (staging build served locally)');
+  if (!GUARD_ONLY && (!EMAIL || !PASSWORD)) refuse('A11Y_AGENT_EMAIL / A11Y_AGENT_PASSWORD are not set (.env.local)');
+} catch (e) {
+  reportRefusal(e);
+  process.exit(2); // no fetch has run yet, so exiting here is safe
+}
 
 /** Staging guard: the served entry bundle must name staging and never production. */
 async function bundleGuard() {
@@ -112,10 +125,22 @@ async function open(page, route) {
 }
 
 if (GUARD_ONLY) {
-  const g = await bundleGuard();
-  console.log(`staging guard OK — ${g.staging}x agencytrack-staging, 0x agencytrack-2a610 in ${g.scripts} entry script(s)`);
-  process.exit(0);
+  try {
+    const g = await bundleGuard();
+    console.log(`staging guard OK — ${g.staging}x agencytrack-staging, 0x agencytrack-2a610 in ${g.scripts} entry script(s)`);
+    process.exitCode = 0;
+  } catch (e) {
+    reportRefusal(e);
+  }
+} else {
+  try {
+    process.exitCode = await sweep();
+  } catch (e) {
+    reportRefusal(e);
+  }
 }
+
+async function sweep() {
 
 const browser = await chromium.launch();
 const findings = [];
@@ -185,4 +210,5 @@ const md = [
 writeFileSync(join(OUT, 'real-app.md'), md);
 if (REPORT) writeFileSync(REPORT, md);
 console.log(`\n${md}\n\nScreenshots: ${OUT}`);
-process.exit(rows.length ? 1 : 0);
+return rows.length ? 1 : 0;
+}
