@@ -2123,3 +2123,33 @@ Seven of the eight round-2 slices are on `main`: persistency now prints to two d
 The Game plan FR port that #1020's squash dropped is back on `main` (#1022, with a scene fix in #1023). The Commission playground (#1024), Leaderboard (#1025) and Career (#1026) now have their FR layouts. Payouts are judged on two decimals (#1027): Kyron confirmed that 89.994 rounds to 89.99 and is not paid. Marking a policy lapsed on import now clears an old reinstatement declaration (#1028, functions deployed), and the Persistency tab's trend chart is hidden under the new design (#1030). #1031 is the A-1 audit: `lapsePolicy` fails its own rules arm. Nothing in this batch changes rules or indexes; the only deploy was the three portfolio-import functions.
 
 **Next:** brief section 4 in `docs/briefs/fr-round2-followups.md`: finish R2-3b (#1029, draft; load order option A with pre-tax flag A+), F-1 `lapsePolicy` provenance (HIGH), F-2 Career level inputs (HIGH). All human-merge. Claude-web's read-only production click-through for #1014–#1026 is still owed; #1020's Game plan steps can now be walked. Leaderboard ranking source (weekly reports vs ledger) is not now. App Check enforce no earlier than 2026-10-04.
+
+---
+
+## Archived from CONTEXT.md - 2026-10-01 consolidated fill (PRs #1042, #1039, #1040)
+
+### Recently shipped row (dropped when the #1039/#1040/#1042 row became the 6th row)
+
+| [#1014–#1021](https://github.com/Kelsean868/agencytrack/pulls?q=is%3Apr+1014..1021) | `c426e18a` … `1ce3285a` | **FR round 2 (R2-1 to R2-6, R2-9).** Persistency 2-dp on every display (#1014), tab trend as bars (#1015), income goal period + settlement-rate save (#1016), Campaign lists its policies (#1017), Career badge merge + Trophy room charts (#1018), Mark reinstated with an additive rules arm (landed via #1020's squash `92d4e5b4`; #1019's squash is empty), Money needs FR port (#1021). **R2-8 Game plan FR port did NOT land** (HIGH FU). |
+
+### Last updated - entry 3
+
+**FR round 2b SHIPPED (2026-09-30); one consolidated fill for #1032, #1033, #1029 (Rule 16(c)).** Ledger (PR · squash · Rule 16(b) class): #1032 `e00ce083` work (F-1 `lapsePolicy` stamps status provenance so `firestore.rules` Arm D allows it; feature HEAD `ba835a6f`) · #1033 `84241454` work (F-2 Career level years from `contractStartDate`, API through `extractFields`; feature HEAD `c12e0ca2`) · #1029 `46a284b9` work (R2-3b saved playground settings load back, option A + pre-tax flag A+; feature HEAD `f3b9f90f`). **Deploy:** none needed; the deploy-gated trigger is empty. **Kyron's rulings of 30-09-2026:** 1A - Career reads applications through `extractFields` (slice F-3); 2B - a manager may not override a head-office status (slice F-4, a `firestore.rules` change, so a rules deploy follows its merge). Brief section 5 (F-3, F-4) appended to `docs/briefs/fr-round2-followups.md` in this fill (Rule 10).
+
+### Current main HEAD - entry 3
+
+`46a284b9` (PR #1029 squash - R2-3b saved playground settings load back; the last work squash of round 2b). Merges `2026-09-30T17:45:59Z` (#1032) to `2026-09-30T17:47:15Z` (#1029). **Deploy-gated trigger: empty.** `git diff --stat 7cba7ba2..46a284b9 -- firestore.rules firestore.indexes.json storage.rules functions/` printed nothing; no deploy needed.
+
+### Active track - entry 3
+
+**FR round 2c** (`docs/briefs/fr-round2-followups.md` § 5): F-3 Career applications through `extractFields` (HIGH FU), F-4 managers may not change a head-office status (`firestore.rules` change + rules deploy after merge). Every slice is human-merge, one PR each. Everything FR still sits behind the per-user agent opt-in; flipping FR to the default stays out of scope (brief FR-D12).
+
+### Where we left off - PRIOR block (oldest)
+
+**PRIOR - 2026-09-30. FR round 2b merged: #1032, #1033, #1029 (last work squash `46a284b9`).**
+
+Three PRs, all work, no deploy needed. #1032 (`e00ce083`, F-1): `lapsePolicy` now stamps status provenance (`statusSource`, `statusSetBy`, `statusAsOf`), so the lapse write passes `firestore.rules` Arm D; no rules change. #1033 (`84241454`, F-2): Career level years of service come from `contractStartDate` and API through `extractFields`; thresholds unchanged. #1029 (`46a284b9`, R2-3b): the Goal Decomposition tab loads the saved playground settings back (defaults, saved, Money needs hand-off once, history ratios only where nothing is saved), with the pre-tax flag saved alongside (option A + A+). The deploy-gated trigger over `7cba7ba2..46a284b9` is empty.
+
+Kyron's rulings of 30-09-2026: 1A - Career reads YTD applications through `extractFields` (slice F-3); 2B - a manager may not override a head-office status (slice F-4, a `firestore.rules` change that needs a rules deploy after merge).
+
+**Next:** brief section 5 in `docs/briefs/fr-round2-followups.md`: F-3 (HIGH FU), then F-4 (rules change, rules deploy after merge). Both human-merge.
