@@ -25,7 +25,11 @@
  * .env.staging — the same as smoke-daily-call-fields.mjs. NOT the A11Y_* pair
  * in .env.local: that is a PRODUCTION account and fails against staging
  * (scripts/verification/SMOKES.md). The password is read, never printed.
- * Exit 1 when any finding remains, 2 when a guard refuses to run.
+ * Open modal dialogs (Today's celebration takeover) are closed with Escape before
+ * every click and probe, and listed in the report. A route that still fails is
+ * reported NOT CHECKED and the sweep moves on.
+ * Exit 1 when any finding remains or a route was not checked, 2 when a guard
+ * refuses to run.
  */
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
@@ -128,14 +132,39 @@ async function collectRoutes(page) {
   return routes;
 }
 
+/**
+ * Close any open modal dialog with Escape (its own keyboard path). Today can
+ * open a celebration takeover (FilingStreakCelebration / CelebrationTakeover):
+ * a full-screen dialog whose scrim button covers the sidebar and the page, so
+ * a click would never land and the probes would measure the page under it.
+ * Closing only clears page state; anything that tried to save is aborted by
+ * readOnly(). Every close is listed in the report.
+ */
+const dismissed = [];
+async function closeDialogs(page, where) {
+  for (let i = 0; i < 3; i += 1) {
+    const open = await page.$$eval('[role="dialog"][aria-modal="true"]', (ds) => ds
+      .filter((d) => { const r = d.getBoundingClientRect(); return r.width > 0 && r.height > 0; })
+      .map((d) => d.getAttribute('data-testid') || d.getAttribute('aria-labelledby') || 'dialog'));
+    if (!open.length) return;
+    dismissed.push({ where, dialogs: open });
+    await page.keyboard.press('Escape');
+    await settle(page, 300);
+  }
+  throw new Error(`a modal dialog would not close with Escape (${where})`);
+}
+
 async function open(page, route) {
+  await closeDialogs(page, `before ${route.label}`);
   await page.click(`[data-testid="${route.path[0]}"]`);
   await settle(page, 250);
   if (route.path.length > 1) {
+    await closeDialogs(page, `before ${route.label}`);
     await page.locator('.fr-sidebar-subs button').nth(route.path[1]).click();
   }
   await page.waitForLoadState('networkidle').catch(() => {});
   await settle(page, 900);
+  await closeDialogs(page, route.label);
 }
 
 if (GUARD_ONLY) {
@@ -170,28 +199,38 @@ try {
   const page = await context.newPage();
   await loginAs(page, BASE, EMAIL, PASSWORD);
   await page.waitForSelector('[data-testid="fr-sidebar"]', { timeout: 20_000 });
+  await closeDialogs(page, 'after sign-in');
   const routes = await collectRoutes(page);
   console.log(`${routes.length} routes`);
   for (const route of routes) {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await open(page, route);
     const slug = route.label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     let n = 0;
-    for (const w of WIDTHS) {
-      await page.setViewportSize({ width: w, height: w < 768 ? 844 : 900 });
-      await settle(page, 400);
-      for (const theme of ['light', 'dark']) {
-        await page.evaluate((dark) => document.documentElement.classList.toggle('dark', dark), theme === 'dark');
-        await settle(page, 150);
-        const found = await page.evaluate(`(${PROBE.toString()})('main#main-content')`);
-        for (const f of found) findings.push({ route: route.label, width: w, theme, ...f });
-        n += found.length;
-        mkdirSync(join(OUT, slug), { recursive: true });
-        await page.screenshot({ path: join(OUT, slug, `${w}-${theme}.png`) });
+    try {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await open(page, route);
+      for (const w of WIDTHS) {
+        await page.setViewportSize({ width: w, height: w < 768 ? 844 : 900 });
+        await settle(page, 400);
+        await closeDialogs(page, `${route.label} @ ${w}`);
+        for (const theme of ['light', 'dark']) {
+          await page.evaluate((dark) => document.documentElement.classList.toggle('dark', dark), theme === 'dark');
+          await settle(page, 150);
+          const found = await page.evaluate(`(${PROBE.toString()})('main#main-content')`);
+          for (const f of found) findings.push({ route: route.label, width: w, theme, ...f });
+          n += found.length;
+          mkdirSync(join(OUT, slug), { recursive: true });
+          await page.screenshot({ path: join(OUT, slug, `${w}-${theme}.png`) });
+        }
       }
+      visited.push({ route: route.label, findings: n });
+      console.log(`${n ? 'FIND' : 'OK  '} ${route.label} · ${n} findings`);
+    } catch (e) {
+      // One route failing (a stuck overlay, a slow screen) must not lose the
+      // rest of the sweep; it is reported as NOT CHECKED, never as clean.
+      const reason = String(e.message || e).split('\n')[0].slice(0, 160);
+      visited.push({ route: route.label, findings: n, error: reason });
+      console.log(`FAIL ${route.label} · not checked — ${reason}`);
     }
-    visited.push({ route: route.label, findings: n });
-    console.log(`${n ? 'FIND' : 'OK  '} ${route.label} · ${n} findings`);
   }
   await context.close();
 } finally {
@@ -206,23 +245,26 @@ for (const f of findings) {
   if (m) m.themes.add(f.theme); else merged.set(key(f), { ...f, themes: new Set([f.theme]) });
 }
 const rows = [...merged.values()];
+const failed = visited.filter((v) => v.error);
 const cell = (s) => String(s).replace(/\|/g, '/');
 const md = [
   `# FR width sweep — real app (staging) — ${new Date().toISOString().slice(0, 16)}Z`,
   '',
   `Staging build served at a local port · signed in as the staging fixture agent · FR look · widths ${WIDTHS.join(', ')} · light + dark · read-only (${blocked.length} write/function requests aborted).`,
   '',
-  `**${rows.length} findings** on ${new Set(rows.map((r) => r.route)).size}/${visited.length} routes. Screenshots are not committed.`,
+  `**${rows.length} findings** on ${new Set(rows.map((r) => r.route)).size}/${visited.length} routes${failed.length ? ` · **${failed.length} route(s) NOT CHECKED**` : ''}. Screenshots are not committed.`,
   '',
   `| Route | ${WIDTHS.join(' | ')} |`,
   `|---|${WIDTHS.map(() => '---').join('|')}|`,
-  ...visited.map((v) => `| ${v.route} | ${WIDTHS.map((w) => { const c = rows.filter((r) => r.route === v.route && r.width === w).length; return c ? `**${c}**` : '0'; }).join(' | ')} |`),
+  ...visited.map((v) => `| ${v.route} | ${v.error ? `**NOT CHECKED** — ${cell(v.error)} |${' |'.repeat(WIDTHS.length - 1)}` : `${WIDTHS.map((w) => { const c = rows.filter((r) => r.route === v.route && r.width === w).length; return c ? `**${c}**` : '0'; }).join(' | ')} |`}`),
   '',
+  ...(dismissed.length ? ['Modal dialogs closed with Escape before probing:', '', ...dismissed.map((d) => `- ${cell(d.where)}: ${d.dialogs.map((x) => `\`${cell(x)}\``).join(', ')}`), ''] : []),
   ...(rows.length ? ['| Route | Width | Theme | Probe | Element | Text | Detail |', '|---|---|---|---|---|---|---|',
     ...rows.map((r) => `| ${r.route} | ${r.width} | ${[...r.themes].sort().join('+')} | ${r.probe} | \`${cell(r.selector).slice(0, 100)}\` | ${cell(r.text)} | ${cell(r.detail)} |`)] : []),
 ].join('\n');
 writeFileSync(join(OUT, 'real-app.md'), md);
 if (REPORT) writeFileSync(REPORT, md);
 console.log(`\n${md}\n\nScreenshots: ${OUT}`);
-return rows.length ? 1 : 0;
+// A route that could not be checked is a failure, never a clean pass.
+return rows.length || failed.length ? 1 : 0;
 }
