@@ -2,7 +2,7 @@
  * fr-width-real-app — the W-3 real-app width sweep (docs/briefs/fr-fit-any-width-kickoff.md § W-3).
  *
  * Runs the W-1 breakage probes (lib/fr-width-probes.mjs) against the REAL app —
- * a local STAGING build — signed in as the staging A11Y agent, on every FR
+ * a local STAGING build — signed in as the staging fixture agent, on every FR
  * agent route at 1024, 1280, 1366, 1440 and 390 px, light and dark.
  *
  * READ-ONLY. It only clicks navigation. Every Firestore WRITE channel and every
@@ -20,12 +20,15 @@
  *        [--widths 1024,1280,1366,1440,390] [--out <dir>] [--report docs/audits/fr-width-real-app-<date>.md]
  *   node scripts/verification/fr-width-real-app.mjs --guard-only   (staging bundle check, no sign-in)
  *
- * Credentials: A11Y_AGENT_EMAIL / A11Y_AGENT_PASSWORD from .env.local (see
- * .env.example). Values are read, never printed.
+ * Credentials: the staging fixture agent staging-agent-1@agencytrack-staging.test
+ * (seeded by scripts/staging/seed-staging.mjs) with STAGING_SEED_PASSWORD from
+ * .env.staging — the same as smoke-daily-call-fields.mjs. NOT the A11Y_* pair
+ * in .env.local: that is a PRODUCTION account and fails against staging
+ * (scripts/verification/SMOKES.md). The password is read, never printed.
  * Exit 1 when any finding remains, 2 when a guard refuses to run.
  */
 import { chromium } from 'playwright';
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { PROBE } from './lib/fr-width-probes.mjs';
@@ -41,15 +44,26 @@ const OUT = arg('out', join(tmpdir(), `fr-width-real-app-${Date.now()}`));
 const REPORT = arg('report', null);
 mkdirSync(OUT, { recursive: true });
 
-// .env.local → process.env, KEY=VALUE lines only (Rule 4), values never logged.
-if (existsSync('.env.local')) {
-  for (const line of readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
-    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
-  }
+// ── env (names only ever referenced; values never logged) ────────────────────
+// KEY=VALUE lines only (Rule 4). Same loader and precedence as
+// smoke-daily-call-fields.mjs: .env.local, then .env.staging, then process.env.
+function loadEnvFile(path) {
+  const out = {};
+  try {
+    for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
+      const m = /^([A-Z0-9_]+)=(.*)$/.exec(line);
+      if (m) out[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    }
+  } catch { /* file absent — fall through to process.env */ }
+  return out;
 }
-const EMAIL = process.env.A11Y_AGENT_EMAIL;
-const PASSWORD = process.env.A11Y_AGENT_PASSWORD;
+// Staging fixture credentials. The A11Y_* pair in `.env.local` is a PRODUCTION
+// account — it fails against staging Firebase with "Incorrect email or
+// password". The staging fixtures are seeded by scripts/staging/seed-staging.mjs
+// with the synthetic address below and STAGING_SEED_PASSWORD from .env.staging.
+const E = { ...loadEnvFile('.env.local'), ...loadEnvFile('.env.staging'), ...process.env };
+const EMAIL = 'staging-agent-1@agencytrack-staging.test';
+const PASSWORD = E.STAGING_SEED_PASSWORD;
 
 // After any fetch, exit through process.exitCode, never process.exit(): on
 // Windows, exiting while fetch keep-alive handles close trips a libuv
@@ -66,7 +80,7 @@ function reportRefusal(e) {
 const GUARD_ONLY = process.argv.includes('--guard-only');
 try {
   if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(BASE)) refuse('--base must be a local server (staging build served locally)');
-  if (!GUARD_ONLY && (!EMAIL || !PASSWORD)) refuse('A11Y_AGENT_EMAIL / A11Y_AGENT_PASSWORD are not set (.env.local)');
+  if (!GUARD_ONLY && (!EMAIL || !PASSWORD)) refuse('STAGING_SEED_PASSWORD is not set (.env.staging in this checkout)');
 } catch (e) {
   reportRefusal(e);
   process.exit(2); // no fetch has run yet, so exiting here is safe
@@ -196,7 +210,7 @@ const cell = (s) => String(s).replace(/\|/g, '/');
 const md = [
   `# FR width sweep — real app (staging) — ${new Date().toISOString().slice(0, 16)}Z`,
   '',
-  `Staging build served at a local port · signed in as the A11Y agent · FR look · widths ${WIDTHS.join(', ')} · light + dark · read-only (${blocked.length} write/function requests aborted).`,
+  `Staging build served at a local port · signed in as the staging fixture agent · FR look · widths ${WIDTHS.join(', ')} · light + dark · read-only (${blocked.length} write/function requests aborted).`,
   '',
   `**${rows.length} findings** on ${new Set(rows.map((r) => r.route)).size}/${visited.length} routes. Screenshots are not committed.`,
   '',
