@@ -31,11 +31,15 @@ export const PHONE_BREAKPOINT = 768;
 /** Widths that always get a screenshot (the W-2 before/after pairs + a phone). */
 export const KEY_WIDTHS = [390, 1024, 1280, 1366];
 
-/** In-page probe. Serialised with toString(), so it must be self-contained. */
-export const PROBE = () => {
-  const root = document.querySelector('[data-scene-root]');
+/**
+ * In-page probe. Serialised with toString(), so it must be self-contained.
+ * `rootSel` is the region to judge: the harness scene root by default, or the
+ * real app's `main#main-content` (fr-width-real-app.mjs, W-3).
+ */
+export const PROBE = (rootSel = '[data-scene-root]') => {
+  const root = document.querySelector(rootSel);
   const out = [];
-  if (!root) return [{ probe: 'harness', selector: '-', text: '', detail: 'no [data-scene-root]' }];
+  if (!root) return [{ probe: 'harness', selector: '-', text: '', detail: `no ${rootSel}` }];
   const canvas = document.createElement('canvas').getContext('2d');
 
   const cssPath = (el) => {
